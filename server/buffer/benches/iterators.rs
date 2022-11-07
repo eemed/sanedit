@@ -1,0 +1,158 @@
+use std::{io, path::PathBuf};
+
+use criterion::{criterion_group, criterion_main, Criterion};
+use eemebuffer::piece_tree::{CursorIterator, PieceTree};
+
+fn bytes(c: &mut Criterion) {
+    c.bench_function("byte_next", |bench| {
+        // let pt = PieceTreeBytes::from_path(&PathBuf::from("benches/large.txt")).unwrap();
+
+        let large = io::Cursor::new(include_str!("large.txt"));
+        let pt = PieceTree::from_reader(large).unwrap();
+
+        let iter = pt.bytes();
+        let mut i = iter.clone();
+        bench.iter(move || {
+            if i.next().is_none() {
+                i = iter.clone();
+            }
+        });
+    });
+
+    c.bench_function("byte_prev", |bench| {
+        // let pt = PieceTreeBytes::from_path(&PathBuf::from("benches/large.txt")).unwrap();
+
+        let large = io::Cursor::new(include_str!("large.txt"));
+        let pt = PieceTree::from_reader(large).unwrap();
+
+        let iter = pt.bytes_at(pt.len());
+        let mut i = iter.clone();
+        bench.iter(move || {
+            if i.prev().is_none() {
+                i = iter.clone();
+            }
+        });
+    });
+}
+
+fn chunks(c: &mut Criterion) {
+    c.bench_function("chunks_next", |bench| {
+        // let pt = PieceTreeBytes::from_path(&PathBuf::from("benches/large.txt")).unwrap();
+
+        let large = io::Cursor::new(include_str!("large.txt"));
+        let pt = PieceTree::from_reader(large).unwrap();
+
+        let iter = pt.chunks();
+        let mut i = iter.clone();
+        bench.iter(move || {
+            if i.next().is_none() {
+                i = iter.clone();
+            }
+        });
+    });
+
+    c.bench_function("chunks_prev", |bench| {
+        // let pt = PieceTreeBytes::from_path(&PathBuf::from("benches/large.txt")).unwrap();
+
+        let large = io::Cursor::new(include_str!("large.txt"));
+        let pt = PieceTree::from_reader(large).unwrap();
+
+        let iter = pt.chunks_at(pt.len());
+        let mut i = iter.clone();
+        bench.iter(move || {
+            if i.prev().is_none() {
+                i = iter.clone();
+            }
+        });
+    });
+
+    c.bench_function("chunks_next_10_000", |bench| {
+        let large = io::Cursor::new(include_str!("large.txt"));
+        let mut pt = PieceTree::from_reader(large).unwrap();
+        for _ in 0..10_000 {
+            pt.insert_str(0, "A");
+        }
+        let chunks = pt.chunks();
+        let mut chks = chunks.clone();
+        bench.iter(move || {
+            if chks.next().is_none() {
+                chks = chunks.clone();
+            }
+        });
+    });
+
+    c.bench_function("chunks_prev_10_000", |bench| {
+        let large = io::Cursor::new(include_str!("large.txt"));
+        let mut pt = PieceTree::from_reader(large).unwrap();
+        for _ in 0..10_000 {
+            pt.insert_str(0, "A");
+        }
+        let chunks = pt.chunks();
+        let mut chks = chunks.clone();
+        bench.iter(move || {
+            if chks.prev().is_none() {
+                chks = chunks.clone();
+            }
+        });
+    });
+
+    c.bench_function("chunks_next_100_000", |bench| {
+        let large = io::Cursor::new(include_str!("large.txt"));
+        let mut pt = PieceTree::from_reader(large).unwrap();
+        for _ in 0..100_000 {
+            pt.insert_str(0, "A");
+        }
+        let chunks = pt.chunks();
+        let mut chks = chunks.clone();
+        bench.iter(move || {
+            if chks.next().is_none() {
+                chks = chunks.clone();
+            }
+        });
+    });
+
+    c.bench_function("chunks_prev_100_000", |bench| {
+        let large = io::Cursor::new(include_str!("large.txt"));
+        let mut pt = PieceTree::from_reader(large).unwrap();
+        for _ in 0..100_000 {
+            pt.insert_str(0, "A");
+        }
+        let chunks = pt.chunks();
+        let mut chks = chunks.clone();
+        bench.iter(move || {
+            if chks.prev().is_none() {
+                chks = chunks.clone();
+            }
+        });
+    });
+}
+
+// fn graphemes(c: &mut Criterion) {
+//     c.bench_function("graphemes_next", |bench| {
+//         let large = io::Cursor::new(include_str!("large.txt"));
+//         let pt = PieceTree::from_reader(large).unwrap();
+//         let bytes = pt.bytes();
+//         let graphemes = Graphemes::from(CodePoints::from(bytes));
+//         let mut g = graphemes.clone();
+//         bench.iter(move || {
+//             if g.next().is_none() {
+//                 g = graphemes.clone();
+//             }
+//         });
+//     });
+
+//     c.bench_function("graphemes_prev", |bench| {
+//         let large = io::Cursor::new(include_str!("large.txt"));
+//         let pt = PieceTreeBytes::new(large).unwrap();
+//         let graphemes = pt.graphemes_at(pt.len());
+//         let mut g = graphemes.clone();
+//         bench.iter(move || {
+//             if g.prev().is_none() {
+//                 g = graphemes.clone();
+//             }
+//         });
+//     });
+// }
+
+criterion_group!(benches, bytes);
+criterion_main!(benches);

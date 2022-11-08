@@ -2,6 +2,7 @@ mod buffer;
 mod window;
 
 pub(crate) use buffer::*;
+use slotmap::SlotMap;
 pub(crate) use window::*;
 
 use std::collections::HashMap;
@@ -16,7 +17,7 @@ use crate::server::ClientId;
 pub(crate) struct Editor {
     clients: HashMap<ClientId, ClientHandle>,
     windows: HashMap<ClientId, Window>,
-    // buffers: SlotMap<BufferId, Buffer>,
+    buffers: SlotMap<BufferId, Buffer>,
 }
 
 impl Editor {

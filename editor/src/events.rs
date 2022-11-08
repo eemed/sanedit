@@ -6,9 +6,10 @@ use crate::server::{ClientId, ClientHandle};
 
 pub(crate) enum ToServer {
     NewClient(ClientHandle),
-    Message(ClientId, Vec<u8>),
+    Message(ClientId, Message),
     FatalError(io::Error),
 }
 pub(crate) enum FromServer {}
 
-pub(crate) struct Message;
+pub(crate) enum Message {
+}

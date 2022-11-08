@@ -2,6 +2,7 @@ pub(crate) mod buffers;
 pub(crate) mod builder;
 pub(crate) mod bytes;
 pub(crate) mod chunks;
+mod graphemes;
 pub(crate) mod tree;
 
 use std::fs::File;
@@ -19,6 +20,10 @@ use buffers::OriginalBuffer;
 pub use crate::cursor_iterator::CursorIterator;
 pub use crate::piece_tree::bytes::Bytes;
 pub use builder::PieceTreeBuilder;
+pub use graphemes::{
+    is_grapheme_boundary, next_grapheme, next_grapheme_boundary, prev_grapheme,
+    prev_grapheme_boundary,
+};
 
 /// A Snapshot of the piece tree.
 //
@@ -43,14 +48,14 @@ pub struct Mark {
 /// Buffer is created using two buffers. Original buffer which stores original
 /// file content and is immutable and add buffer which stores added text and is
 /// append only. Then pieces referencing parts of these two buffers are in a
-/// red-black tree datastructure. The buffer contents can be now fetched by
-/// traversing the tree in order and getting the buffer parts that the pieces
+/// red-black tree datastructure. The buffer contents can be now constructed by
+/// traversing the tree in-order and getting the buffer parts that the pieces
 /// reference.
 ///
 /// The tree implementation uses copy-on-write. This means we can easily create
 /// snapshots from the tree. These copies are relatively lightweight as the
-/// tree data structure is shared. Data is only copied when modifying the tree
-/// and still holding snaphots.
+/// tree data structure can be shared among copies. Data is only copied when
+/// modifying the tree and still holding snaphots.
 #[derive(Debug)]
 pub struct PieceTree {
     pub(crate) orig: OriginalBuffer,

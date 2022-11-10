@@ -9,6 +9,7 @@ pub(crate) use client::*;
 
 use std::{
     net::SocketAddr,
+    path::PathBuf,
     sync::{
         atomic::{AtomicUsize, Ordering},
         Arc,
@@ -16,13 +17,14 @@ use std::{
 };
 
 use tokio::{
-    io,
-    net::TcpListener,
-    sync::mpsc::{channel, Receiver, Sender},
+    sync::mpsc::{channel, Sender},
     task::JoinHandle,
 };
 
 use crate::{editor, events::ToServer};
+
+/// Channel buffer size for tokio channels
+pub(crate) const CHANNEL_SIZE: usize = 64;
 
 /// Editor handle allows us to communicate with the editor
 #[derive(Clone)]
@@ -44,18 +46,26 @@ impl ServerHandle {
     }
 }
 
+pub enum ListenAddr {
+    UnixDomainSocket(PathBuf),
+    Tcp(SocketAddr),
+}
+
+pub struct ServerOptions {
+    socket: PathBuf,
+}
+
 /// Run the editor.
 /// Spawn connection acceptor task and the main editor loop task
 /// The acceptor then spawns a new task for each client connection.
 #[tokio::main]
-pub async fn run() {
+pub async fn run(addr: ListenAddr) {
     // Editor loop
     let (handle, join) = spawn_editor_loop().await;
 
-    // Acceptor
+    // IDEA: multiple acceptors?
     tokio::spawn(async move {
-        // let bind = ([0, 0, 0, 0], 3456).into();
-        // telnet_chat::accept::start_accept(bind, handle).await;
+        accept::spawn_accept(addr, handle).await;
     });
 
     join.await.unwrap();
@@ -63,7 +73,7 @@ pub async fn run() {
 
 /// Spawn editor loop, and return a handle to it and the task join handle
 async fn spawn_editor_loop() -> (ServerHandle, JoinHandle<()>) {
-    let (send, recv) = channel(64);
+    let (send, recv) = channel(CHANNEL_SIZE);
     let handle = ServerHandle {
         sender: send,
         next_id: Default::default(),

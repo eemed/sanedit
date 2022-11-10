@@ -1,11 +1,20 @@
-use tokio::{net::{TcpListener, unix::SocketAddr}, io};
+use std::path::PathBuf;
+
+use tokio::{
+    io,
+    net::{unix::SocketAddr, TcpListener, UnixListener},
+};
 
 use crate::events::ToServer;
 
-use super::ServerHandle;
+use super::{spawn_client, ClientConnection, ClientInfo, ListenAddr, ServerHandle};
 
-async fn spawn_accept(bind: SocketAddr, mut handle: ServerHandle) {
-    let res = accept_loop(bind, handle.clone()).await;
+pub async fn spawn_accept(addr: ListenAddr, mut handle: ServerHandle) {
+    let res = match addr {
+        ListenAddr::UnixDomainSocket(path) => unix_domain_socket_loop(path, handle.clone()).await,
+        ListenAddr::Tcp(addr) => todo!(),
+    };
+
     match res {
         Ok(()) => {}
         Err(err) => {
@@ -14,19 +23,22 @@ async fn spawn_accept(bind: SocketAddr, mut handle: ServerHandle) {
     }
 }
 
-async fn accept_loop(bind: SocketAddr, mut handle: ServerHandle) -> Result<(), io::Error> {
-    let listen = TcpListener::bind(bind).await?;
+async fn unix_domain_socket_loop(path: PathBuf, mut handle: ServerHandle) -> Result<(), io::Error> {
+    let listen = UnixListener::bind(path)?;
 
     loop {
-        let (tcp, ip) = listen.accept().await?;
+        let (chan, addr) = listen.accept().await?;
+        let path = addr
+            .as_pathname()
+            .expect("unix domain socket listener got unnamed client")
+            .to_path_buf();
 
         let id = handle.next_id();
 
         let data = ClientInfo {
-            ip,
             id,
-            tcp,
-            handle: handle.clone(),
+            conn: ClientConnection::UnixDomainSocket { path, chan },
+            server_handle: handle.clone(),
         };
 
         spawn_client(data);

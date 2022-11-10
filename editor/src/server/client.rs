@@ -1,68 +1,98 @@
-use tokio::sync::mpsc::Sender;
+use std::path::PathBuf;
 
-use crate::events::FromServer;
+use tokio::{
+    io,
+    net::UnixStream,
+    sync::{
+        mpsc::{channel, Receiver, Sender},
+        oneshot,
+    },
+    task::JoinHandle,
+};
 
-pub(crate) struct ClientId(pub(crate) usize);
+use crate::events::{FromServer, ToServer};
+
+use super::{ServerHandle, CHANNEL_SIZE};
+
+/// Data passed on to spawn client when acceptor accepts a new client.
+pub(crate) struct ClientInfo {
+    pub(crate) id: ClientId,
+    pub(crate) conn: ClientConnection,
+    pub(crate) server_handle: ServerHandle,
+}
+
+pub(crate) enum ClientConnection {
+    UnixDomainSocket { path: PathBuf, chan: UnixStream },
+    Tcp {},
+}
+
+impl ClientConnection {}
 
 /// Client handle allows us to communicate with the client
 pub(crate) struct ClientHandle {
+    id: ClientId,
     send: Sender<FromServer>,
+    kill: JoinHandle<()>,
 }
+
+#[derive(Clone, Copy)]
+pub(crate) struct ClientId(pub(crate) usize);
 pub(crate) struct Client {}
 
-pub(crate) async fn spawn_client() {
-    todo!()
+pub(crate) async fn spawn_client(info: ClientInfo) {
+    let id = info.id;
+    // Create a channel to receive messages from the server
+    let (send, recv) = channel(CHANNEL_SIZE);
+
+    // Create a oneshot channel to send the task the clients handle.
+    // Oneshot channel is needed to get the `JoinHandle` returned by
+    // tokio::spawn(run_client(..)).
+    let (my_send, my_recv) = oneshot::channel();
+    let kill = tokio::spawn(run_client(my_recv, recv, info));
+    let handle = ClientHandle { id, send, kill };
+
+    // Ignore send errors here. Should only happen if the server is shutting
+    // down.
+    let _ = my_send.send(handle);
 }
 
-// pub async fn spawn_client() {
-//     let (send, recv) = channel(64);
+async fn run_client(
+    my_handle: oneshot::Receiver<ClientHandle>,
+    server_recv: Receiver<FromServer>,
+    mut info: ClientInfo,
+) {
+    let my_handle = match my_handle.await {
+        Ok(my_handle) => my_handle,
+        Err(_) => return,
+    };
 
-//     let data = ClientData {
-//         id: info.id,
-//         handle: info.handle.clone(),
-//         tcp: info.tcp,
-//         recv,
-//     };
+    // Send client handle to the server
+    info.server_handle
+        .send(ToServer::NewClient(my_handle))
+        .await;
 
-//     // This spawns the new task.
-//     let (my_send, my_recv) = oneshot::channel();
-//     let kill = tokio::spawn(start_client(my_recv, data));
+    let res = client_loop(server_recv, info).await;
+    match res {
+        Ok(()) => {}
+        Err(err) => {
+            eprintln!("Something went wrong: {}.", err);
+        }
+    }
+}
 
-//     // Then we create a ClientHandle to this new task, and use the oneshot
-//     // channel to send it to the task.
-//     let handle = ClientHandle {
-//         id: info.id,
-//         ip: info.ip,
-//         chan: send,
-//         kill,
-//     };
-
-//     // Ignore send errors here. Should only happen if the server is shutting
-//     // down.
-//     let _ = my_send.send(handle);
-// }
-// async fn start_client(my_handle: oneshot::Receiver<ClientHandle>, mut data: ClientData) {
-//     // Wait for `spawn_client` to send us the `ClientHandle` so we can forward
-//     // it to the main loop. We need the oneshot channel because we cannot
-//     // otherwise get the `JoinHandle` returned by `tokio::spawn`. We forward it
-//     // from here instead of in `spawn_client` because we want the server to see
-//     // the NewClient message before this actor starts sending other messages.
-//     let my_handle = match my_handle.await {
-//         Ok(my_handle) => my_handle,
-//         Err(_) => return,
-//     };
-//     data.handle.send(ToServer::NewClient(my_handle)).await;
-
-//     // We sent the client handle to the main loop. Start talking to the tcp
-//     // connection.
-//     let res = client_loop(data).await;
-//     match res {
-//         Ok(()) => {},
-//         Err(err) => {
-//             eprintln!("Something went wrong: {}.", err);
-//         },
-//     }
-// }
+async fn client_loop(
+    mut server_recv: Receiver<FromServer>,
+    info: ClientInfo,
+) -> Result<(), io::Error> {
+    // Now we can
+    // Send to server: info.server_handle.send()
+    // Receive from server: server_recv.recv()
+    //
+    // TODO:
+    // Send to unix domain socket: info.conn.send()
+    // Read from unix domain socket: info.conn.recv()
+    Ok(())
+}
 
 // /// This method performs the actual job of running the client actor.
 // async fn client_loop(mut data: ClientData) -> Result<(), io::Error> {

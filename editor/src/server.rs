@@ -51,10 +51,6 @@ pub enum ListenAddr {
     Tcp(SocketAddr),
 }
 
-pub struct ServerOptions {
-    socket: PathBuf,
-}
-
 /// Run the editor.
 /// Spawn connection acceptor task and the main editor loop task
 /// The acceptor then spawns a new task for each client connection.

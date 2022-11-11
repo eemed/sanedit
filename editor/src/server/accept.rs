@@ -7,7 +7,7 @@ use tokio::{
 
 use crate::events::ToServer;
 
-use super::{spawn_client, ClientConnection, ClientInfo, ListenAddr, ServerHandle};
+use super::{spawn_client, ClientConnection, ClientInfo, ListenAddr, ServerHandle, ClientConnectionInfo};
 
 pub async fn spawn_accept(addr: ListenAddr, mut handle: ServerHandle) {
     let res = match addr {
@@ -37,7 +37,8 @@ async fn unix_domain_socket_loop(path: PathBuf, mut handle: ServerHandle) -> Res
 
         let data = ClientInfo {
             id,
-            conn: ClientConnection::UnixDomainSocket { path, chan },
+            conn: ClientConnection::UnixDomainSocket(chan),
+            conn_info: ClientConnectionInfo::UnixDomainSocket(path),
             server_handle: handle.clone(),
         };
 

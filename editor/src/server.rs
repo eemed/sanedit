@@ -27,7 +27,7 @@ use crate::{editor, events::ToServer};
 pub(crate) const CHANNEL_SIZE: usize = 64;
 
 /// Editor handle allows us to communicate with the editor
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub(crate) struct ServerHandle {
     sender: Sender<ToServer>,
     next_id: Arc<AtomicUsize>,
@@ -57,18 +57,18 @@ pub enum ListenAddr {
 #[tokio::main]
 pub async fn run(addr: ListenAddr) {
     // Editor loop
-    let (handle, join) = spawn_editor_loop().await;
+    let (handle, join) = spawn_editor_loop();
 
     // IDEA: multiple acceptors?
     tokio::spawn(async move {
-        accept::spawn_accept(addr, handle).await;
+        accept::accept_loop(addr, handle).await;
     });
 
     join.await.unwrap();
 }
 
 /// Spawn editor loop, and return a handle to it and the task join handle
-async fn spawn_editor_loop() -> (ServerHandle, JoinHandle<()>) {
+fn spawn_editor_loop() -> (ServerHandle, JoinHandle<()>) {
     let (send, recv) = channel(CHANNEL_SIZE);
     let handle = ServerHandle {
         sender: send,

@@ -1,15 +1,12 @@
 use std::path::PathBuf;
 
-use tokio::{
-    io,
-    net::{unix::SocketAddr, TcpListener, UnixListener},
-};
+use tokio::{io, net::UnixListener};
 
 use crate::events::ToServer;
 
-use super::{spawn_client, ClientConnection, ClientInfo, ListenAddr, ServerHandle, ClientConnectionInfo};
+use super::{spawn_client, ClientConnection, ClientInfo, ListenAddr, ServerHandle};
 
-pub async fn spawn_accept(addr: ListenAddr, mut handle: ServerHandle) {
+pub(crate) async fn accept_loop(addr: ListenAddr, mut handle: ServerHandle) {
     let res = match addr {
         ListenAddr::UnixDomainSocket(path) => unix_domain_socket_loop(path, handle.clone()).await,
         ListenAddr::Tcp(addr) => todo!(),
@@ -37,8 +34,7 @@ async fn unix_domain_socket_loop(path: PathBuf, mut handle: ServerHandle) -> Res
 
         let data = ClientInfo {
             id,
-            conn: ClientConnection::UnixDomainSocket(chan),
-            conn_info: ClientConnectionInfo::UnixDomainSocket(path),
+            conn: ClientConnection::from_unix_domain_socket(chan, path),
             server_handle: handle.clone(),
         };
 

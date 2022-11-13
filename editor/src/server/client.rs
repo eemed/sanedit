@@ -16,57 +16,71 @@ use crate::events::{FromServer, ToServer};
 use super::{ServerHandle, CHANNEL_SIZE};
 
 /// Data passed on to spawn client when acceptor accepts a new client.
+#[derive(Debug)]
 pub(crate) struct ClientInfo {
     pub(crate) id: ClientId,
     pub(crate) conn: ClientConnection,
-    pub(crate) conn_info: ClientConnectionInfo,
     pub(crate) server_handle: ServerHandle,
 }
 
 /// Information on how the client is connected
-#[derive(Clone)]
-pub(crate) enum ClientConnectionInfo {
+#[derive(Debug, Clone)]
+pub(crate) enum ConnectionInfo {
     UnixDomainSocket(PathBuf),
     Tcp {},
 }
 
-/// All possible client connections
-pub(crate) enum ClientConnection {
+#[derive(Debug)]
+pub(crate) enum Connection {
     UnixDomainSocket(UnixStream),
     Tcp {},
 }
 
+#[derive(Debug)]
+pub(crate) struct ClientConnection {
+    info: ConnectionInfo,
+    conn: Connection,
+}
+
 impl ClientConnection {
+    pub(crate) fn from_unix_domain_socket(chan: UnixStream, socket: PathBuf) -> ClientConnection {
+        ClientConnection {
+            info: ConnectionInfo::UnixDomainSocket(socket),
+            conn: Connection::UnixDomainSocket(chan),
+        }
+    }
+
     fn split<'a>(&'a mut self) -> (impl AsyncReadExt + 'a, impl AsyncWriteExt + 'a) {
-        match self {
-            ClientConnection::UnixDomainSocket(chan) => chan.split(),
-            ClientConnection::Tcp {} => todo!(),
+        match &mut self.conn {
+            Connection::UnixDomainSocket(chan) => chan.split(),
+            Connection::Tcp {} => todo!(),
         }
     }
 
     async fn shutdown(&mut self) -> Result<(), io::Error> {
-        match self {
-            ClientConnection::UnixDomainSocket(chan) => chan.shutdown().await,
-            ClientConnection::Tcp {} => todo!(),
+        match &mut self.conn {
+            Connection::UnixDomainSocket(chan) => chan.shutdown().await,
+            Connection::Tcp {} => todo!(),
         }
     }
 }
 
 /// Client handle allows us to communicate with the client
+#[derive(Debug)]
 pub(crate) struct ClientHandle {
     id: ClientId,
-    conn_info: ClientConnectionInfo,
+    conn_info: ConnectionInfo,
     send: Sender<FromServer>,
     kill: JoinHandle<()>,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub(crate) struct ClientId(pub(crate) usize);
 pub(crate) struct Client {}
 
-pub(crate) async fn spawn_client(info: ClientInfo) {
+pub(crate) fn spawn_client(info: ClientInfo) {
     let id = info.id;
-    let conn_info = info.conn_info.clone();
+    let conn_info = info.conn.info.clone();
     // Create a channel to receive messages from the server
     let (send, recv) = channel(CHANNEL_SIZE);
 

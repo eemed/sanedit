@@ -22,7 +22,11 @@ pub(crate) struct Editor {
 
 impl Editor {
     fn new() -> Editor {
-        todo!()
+        Editor {
+            clients: HashMap::new(),
+            windows: HashMap::new(),
+            buffers: SlotMap::with_key(),
+        }
     }
 }
 
@@ -35,6 +39,8 @@ pub(crate) async fn main_loop(mut recv: Receiver<ToServer>) -> Result<(), io::Er
     while let Some(event) = recv.recv().await {
         // TODO do editor logic
     }
+
+    println!("RECv: {:?}", recv.recv().await);
 
     Ok(())
 }

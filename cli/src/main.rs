@@ -15,15 +15,15 @@ struct Cli {
     debug: bool,
 }
 
-fn spawn_server() -> thread::JoinHandle<()> {
-    thread::spawn(|| {
-    })
-}
-
 fn main() {
+    let socket = PathBuf::from("/tmp/sanedit");
     let cli = Cli::parse();
-    let (handle, join) = sanedit_editor::run(ListenAddr::UnixDomainSocket(PathBuf::from("/tmp/sanedit")));
+
+    let s = socket.clone();
+    let join = thread::spawn(|| {
+        sanedit_editor::run_sync(ListenAddr::UnixDomainSocket(s));
+    });
 
     // let ui =
-    // handle.join().unwrap();
+    join.join().unwrap();
 }

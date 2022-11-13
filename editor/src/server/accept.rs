@@ -20,7 +20,7 @@ pub(crate) async fn accept_loop(addr: ListenAddr, mut handle: ServerHandle) {
     }
 }
 
-async fn unix_domain_socket_loop(path: PathBuf, mut handle: ServerHandle) -> Result<(), io::Error> {
+async fn unix_domain_socket_loop(path: PathBuf, handle: ServerHandle) -> Result<(), io::Error> {
     let listen = UnixListener::bind(path)?;
 
     loop {

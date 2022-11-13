@@ -51,11 +51,19 @@ pub enum ListenAddr {
     Tcp(SocketAddr),
 }
 
+pub fn run_sync(addr: ListenAddr) {
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .worker_threads(1)
+        .enable_all()
+        .build()
+        .unwrap();
+    runtime.block_on(async { main(addr).await });
+}
+
 /// Run the editor.
 /// Spawn connection acceptor task and the main editor loop task
 /// The acceptor then spawns a new task for each client connection.
-#[tokio::main]
-pub async fn run(addr: ListenAddr) {
+async fn main(addr: ListenAddr) {
     // Editor loop
     let (handle, join) = spawn_editor_loop();
 

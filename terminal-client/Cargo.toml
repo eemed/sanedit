@@ -6,3 +6,9 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+sanedit-editor = { path = "../editor" }
+sanedit-view = { path = "../view" }
+
+# Drawing to the terminal
+crossterm = "0.23"
+anyhow = "1.0"

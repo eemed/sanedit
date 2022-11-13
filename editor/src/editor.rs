@@ -38,9 +38,8 @@ pub(crate) async fn main_loop(mut recv: Receiver<ToServer>) -> Result<(), io::Er
 
     while let Some(event) = recv.recv().await {
         // TODO do editor logic
+        println!("Server got: {:?}", event);
     }
-
-    println!("RECv: {:?}", recv.recv().await);
 
     Ok(())
 }

@@ -7,7 +7,7 @@ mod mouse;
 
 pub use key::KeyEvent;
 pub use mouse::MouseEvent;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 /// Messages sent to the client
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
@@ -33,3 +33,5 @@ pub enum Message {
     Resize,
     Bye,
 }
+
+

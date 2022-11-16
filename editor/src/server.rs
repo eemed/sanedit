@@ -51,13 +51,17 @@ pub enum ListenAddr {
     Tcp(SocketAddr),
 }
 
-pub fn run_sync(addr: ListenAddr) {
+pub fn run(addr: ListenAddr) {
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .worker_threads(1)
         .enable_all()
         .build()
         .unwrap();
     runtime.block_on(async { main(addr).await });
+}
+
+pub async fn run(addr: ListenAddr) {
+    main(addr).await
 }
 
 /// Run the editor.

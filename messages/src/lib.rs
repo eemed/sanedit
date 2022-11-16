@@ -4,16 +4,18 @@
 
 mod key;
 mod mouse;
+mod redraw;
 
-pub use key::KeyEvent;
+pub use key::{Key, KeyMods, KeyEvent};
 pub use mouse::MouseEvent;
+pub use redraw::Redraw;
 use serde::{Deserialize, Serialize};
 
 /// Messages sent to the client
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
 pub enum ClientMessage {
     Hello,
-    Redraw,
+    Redraw(Redraw),
     Flush,
     Bye,
 }
@@ -33,5 +35,3 @@ pub enum Message {
     Resize,
     Bye,
 }
-
-

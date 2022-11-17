@@ -12,3 +12,4 @@ sanedit-terminal-client = { path = "../terminal-client" }
 sanedit-editor = { path = "../editor" }
 
 clap = { version = "^4", features = ["derive"] }
+tokio = { version = "1.20", features = ["full"] }

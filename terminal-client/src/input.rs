@@ -1,5 +1,5 @@
 use crossterm::event::{KeyCode, KeyModifiers};
-use sanedit_messages::{Key, KeyMods};
+use sanedit_messages::{Key, KeyEvent, KeyMods};
 
 // const POLL_DURATION: Duration = Duration::from_millis(100);
 // const RE_RESIZE_POLL_DURATION: Duration = Duration::from_millis(100);
@@ -95,5 +95,5 @@ pub(crate) fn convert_key_event(key: crossterm::event::KeyEvent) -> sanedit_mess
         mods |= KeyMods::CONTROL;
     }
 
-    KeyPress::new(plain_key, mods)
+    KeyEvent::new(plain_key, mods)
 }

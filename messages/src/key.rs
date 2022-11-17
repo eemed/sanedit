@@ -7,6 +7,12 @@ pub struct KeyEvent {
     pub(crate) mods: KeyMods,
 }
 
+impl KeyEvent {
+    pub fn new(key: Key, mods: KeyMods) -> KeyEvent {
+        KeyEvent { key, mods }
+    }
+}
+
 bitflags! {
     #[derive(Serialize, Deserialize)]
     pub struct KeyMods: u8 {

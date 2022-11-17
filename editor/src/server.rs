@@ -13,6 +13,7 @@ use std::{
 
 use tokio::{
     net::unix::SocketAddr,
+    runtime::Runtime,
     sync::mpsc::{channel, Sender},
     task::JoinHandle,
 };
@@ -45,6 +46,12 @@ impl ServerHandle {
 pub enum Address {
     UnixDomainSocket(PathBuf),
     Tcp(SocketAddr),
+}
+
+pub fn run_sync(addrs: Vec<Address>) {
+    if let Ok(rt) = Runtime::new() {
+        rt.spawn_blocking(|| async move { run(addrs).await });
+    }
 }
 
 /// Run the editor.

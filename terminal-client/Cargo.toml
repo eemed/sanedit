@@ -11,3 +11,4 @@ sanedit-messages = { path = "../messages" }
 # Drawing to the terminal
 crossterm = "0.23"
 anyhow = "1.0"
+tokio = { version = "1.20", features = ["full"] }

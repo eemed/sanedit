@@ -1,7 +1,6 @@
 use std::{path::PathBuf, thread};
 
 use clap::{Parser, Subcommand};
-use sanedit_editor::ListenAddr;
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -16,12 +15,12 @@ struct Cli {
 }
 
 fn main() {
-    let socket = PathBuf::from("/tmp/sanedit");
+    // Just run everything from here for now
     let cli = Cli::parse();
 
-    let s = socket.clone();
+    let socket = PathBuf::from("/tmp/sanedit");
     let join = thread::spawn(|| {
-        sanedit_editor::run_sync(ListenAddr::UnixDomainSocket(s));
+        sanedit_editor::run_sync(vec![Address::UnixDomainSocket(socket)]);
     });
 
     // let ui =

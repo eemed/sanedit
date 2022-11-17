@@ -3,12 +3,7 @@ mod client;
 
 pub(crate) use client::*;
 
-// TASK: Acceptor
-// TASK: Each client connection proxy
-// TASK: Server
-
 use std::{
-    net::SocketAddr,
     path::PathBuf,
     sync::{
         atomic::{AtomicUsize, Ordering},
@@ -17,6 +12,7 @@ use std::{
 };
 
 use tokio::{
+    net::unix::SocketAddr,
     sync::mpsc::{channel, Sender},
     task::JoinHandle,
 };
@@ -46,35 +42,33 @@ impl ServerHandle {
     }
 }
 
-pub enum ListenAddr {
+pub enum Address {
     UnixDomainSocket(PathBuf),
     Tcp(SocketAddr),
 }
 
-pub fn run(addr: ListenAddr) {
-    let runtime = tokio::runtime::Builder::new_multi_thread()
-        .worker_threads(1)
-        .enable_all()
-        .build()
-        .unwrap();
-    runtime.block_on(async { main(addr).await });
-}
-
-pub async fn run(addr: ListenAddr) {
-    main(addr).await
-}
-
 /// Run the editor.
-/// Spawn connection acceptor task and the main editor loop task
+/// Spawn connection acceptor tasks and the main editor loop task
 /// The acceptor then spawns a new task for each client connection.
-async fn main(addr: ListenAddr) {
+pub async fn run(addrs: Vec<Address>) {
     // Editor loop
     let (handle, join) = spawn_editor_loop();
 
-    // IDEA: multiple acceptors?
-    tokio::spawn(async move {
-        accept::accept_loop(addr, handle).await;
-    });
+    for addr in addrs.into_iter() {
+        let h = handle.clone();
+        match addr {
+            Address::UnixDomainSocket(addr) => {
+                tokio::spawn(async move {
+                    accept::unix::accept_loop(addr, h).await;
+                });
+            }
+            Address::Tcp(addr) => {
+                tokio::spawn(async move {
+                    accept::tcp::accept_loop(addr, h).await;
+                });
+            }
+        }
+    }
 
     join.await.unwrap();
 }

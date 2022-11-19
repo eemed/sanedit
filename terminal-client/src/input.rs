@@ -1,3 +1,5 @@
+use std::sync::atomic::AtomicBool;
+
 use crossterm::event::{KeyCode, KeyModifiers};
 use sanedit_messages::{Key, KeyEvent, KeyMods};
 

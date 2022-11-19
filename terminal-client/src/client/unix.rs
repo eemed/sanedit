@@ -1,6 +1,5 @@
 use std::{
     io,
-    ops::Receiver,
     os::unix::net::UnixStream,
     path::Path,
     sync::mpsc::{self, Sender},

@@ -4,14 +4,15 @@ use bstr::ByteSlice;
 use super::PieceTree;
 
 pub fn is_grapheme_boundary(pt: &PieceTree, pos: usize) -> bool {
-    let chunks = pt.chunks_at(pos);
-    let chunk = chunks.get();
+    // let chunks = pt.chunks_at(pos);
+    // let chunk = chunks.get();
 
-    if let Some(chk) = chunk {
-        let bytes = chk.as_ref();
-    } else {
-        false
-    }
+    // if let Some(chk) = chunk {
+    //     let bytes = chk.as_ref();
+    // } else {
+    //     false
+    // }
+    todo!()
 }
 
 pub fn next_grapheme_boundary(pt: &PieceTree, pos: usize) -> Option<usize> {

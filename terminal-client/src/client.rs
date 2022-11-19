@@ -36,9 +36,9 @@ where
     // IDEA: Send inputs to logic task and logic task sends them to server if needed?
     let input_join = thread::spawn(|| input::run_loop(&STOP));
 
-    // Read thread: 
+    // Read thread:
     // IDEA: is this needed? could you just read here => probably
-    let read_join = thread::spawn(|| super::conn_read(read, send, &STOP));
+    let read_join = thread::spawn(|| conn_read(read, send, &STOP));
 
     // Logic thread
     while let Ok(msg) = recv.recv() {

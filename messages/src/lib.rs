@@ -5,6 +5,7 @@
 mod key;
 mod mouse;
 mod redraw;
+mod reader;
 
 pub use key::{Key, KeyMods, KeyEvent};
 pub use mouse::MouseEvent;

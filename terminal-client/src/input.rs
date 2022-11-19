@@ -1,6 +1,9 @@
 use crossterm::event::{KeyCode, KeyModifiers};
 use sanedit_messages::{Key, KeyEvent, KeyMods};
 
+pub(crate) fn run_loop(stop: &AtomicBool) {
+}
+
 // const POLL_DURATION: Duration = Duration::from_millis(100);
 // const RE_RESIZE_POLL_DURATION: Duration = Duration::from_millis(100);
 

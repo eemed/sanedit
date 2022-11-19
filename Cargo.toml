@@ -1,0 +1,9 @@
+[workspace]
+
+members = [
+    "buffer",
+    "cli",
+    "editor",
+    "messages",
+    "terminal-client",
+]

@@ -1,7 +1,8 @@
 pub mod unix;
 
 use std::{
-    io::{self, Read},
+    collections::VecDeque,
+    io::{self, BufReader, Read},
     os::unix::net::UnixStream,
     path::Path,
     sync::{
@@ -30,7 +31,7 @@ where
     const STOP: AtomicBool = AtomicBool::new(false);
 
     // Channel for reader task to send us the messages
-    let (send, recv): (Sender<ClientMessage>, Receiver<ClientMessage>) = mpsc::channel();
+    // let (send, recv): (Sender<ClientMessage>, Receiver<ClientMessage>) = mpsc::channel();
 
     // Input thread
     // IDEA: Send inputs to logic task and logic task sends them to server if needed?
@@ -38,10 +39,19 @@ where
 
     // Read thread:
     // IDEA: is this needed? could you just read here => probably
-    let read_join = thread::spawn(|| conn_read(read, send, &STOP));
+    // let read_join = thread::spawn(|| conn_read(read, send, &STOP));
 
-    // Logic thread
-    while let Ok(msg) = recv.recv() {
+    // -----------------
+    let mut msg_queue = VecDeque::new();
+    let mut reader = BufReader::new(read);
+    loop {
+        match ClientMessage::from_reader(&mut reader) {
+            Ok(msg) => msg_queue.push_back(msg),
+            Err(_e) => break,
+        };
+    }
+
+    while let Some(msg) = msg_queue.pop_front() {
         match msg {
             ClientMessage::Hello => {}
             ClientMessage::Redraw(_) => todo!(),
@@ -50,8 +60,20 @@ where
         }
     }
 
+    // -----------------
+
+    // Logic thread
+    // while let Ok(msg) = recv.recv() {
+    //     match msg {
+    //         ClientMessage::Hello => {}
+    //         ClientMessage::Redraw(_) => todo!(),
+    //         ClientMessage::Flush => todo!(),
+    //         ClientMessage::Bye => todo!(),
+    //     }
+    // }
+
     STOP.store(true, Ordering::SeqCst);
 
-    read_join.join();
+    // read_join.join();
     input_join.join();
 }

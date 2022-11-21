@@ -49,8 +49,9 @@ pub enum Address {
 }
 
 pub fn run_sync(addrs: Vec<Address>) {
-    if let Ok(rt) = Runtime::new() {
-        rt.spawn_blocking(|| async move { run(addrs).await });
+    match Runtime::new() {
+        Ok(rt) => rt.block_on(async { run(addrs).await }),
+        Err(e) => println!("Error creating runtime: {}", e),
     }
 }
 

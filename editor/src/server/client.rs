@@ -1,7 +1,7 @@
 pub(crate) mod tcp;
 pub(crate) mod unix;
 
-use std::path::PathBuf;
+use std::{path::PathBuf, pin::Pin};
 
 use tokio::{
     io::{self, AsyncReadExt, AsyncWriteExt},
@@ -37,12 +37,17 @@ async fn conn_read(
     read: impl AsyncReadExt,
     server_handle: ServerHandle,
 ) -> Result<(), io::Error> {
-    todo!()
+    let mut read = Box::pin(read);
+    loop {
+        let mut buf = [0u8; 256];
+        let size = read.read(&mut buf).await.unwrap();
+        println!("BUF: {:?}", &buf[..size]);
+    }
 }
 
 async fn conn_write(
     write: impl AsyncWriteExt,
     server_recv: Receiver<FromServer>,
 ) -> Result<(), io::Error> {
-    todo!()
+    Ok(())
 }

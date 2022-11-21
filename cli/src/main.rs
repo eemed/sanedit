@@ -1,6 +1,8 @@
+use core::time;
 use std::{path::PathBuf, thread};
 
 use clap::{Parser, Subcommand};
+use sanedit_editor::Address;
 use sanedit_terminal_client::unix::UnixDomainSocketClient;
 
 #[derive(Parser)]
@@ -20,10 +22,20 @@ fn main() {
     let cli = Cli::parse();
 
     let socket = PathBuf::from("/tmp/sanedit");
+    let s = socket.clone();
     let editor_join =
-        thread::spawn(|| sanedit_editor::run_sync(vec![Address::UnixDomainSocket(socket)]));
+        thread::spawn(|| sanedit_editor::run_sync(vec![Address::UnixDomainSocket(s)]));
 
-    let client = UnixDomainSocketClient::connect(socket);
+    thread::sleep(time::Duration::from_secs(2));
+
+    match UnixDomainSocketClient::connect(socket) {
+        Ok(client) => {
+            client.run();
+        }
+        Err(e) => {
+            println!("Error connecting to socket: {}", e);
+        }
+    }
 
     editor_join.join().unwrap();
 }

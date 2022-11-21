@@ -17,4 +17,13 @@ impl UnixDomainSocketClient {
         let conn = UnixStream::connect(path)?;
         Ok(UnixDomainSocketClient { conn })
     }
+
+    pub fn run(self) {
+        match (self.conn.try_clone(), self.conn.try_clone()) {
+            (Ok(read), Ok(write)) => {
+                super::run(read, write)
+            }
+            _ => {}
+        }
+    }
 }

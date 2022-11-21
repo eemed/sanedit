@@ -34,12 +34,14 @@ impl Editor {
 /// Editor uses client handles to communicate to clients. Client handles are
 /// sent using the provided reciver.
 pub(crate) async fn main_loop(mut recv: Receiver<ToServer>) -> Result<(), io::Error> {
+    println!("Main loop");
     let mut editor = Editor::new();
 
-    while let Some(event) = recv.recv().await {
+    while let Some(msg) = recv.recv().await {
         // TODO do editor logic
-        println!("Server got: {:?}", event);
+        println!("Server got: {:?}", msg);
     }
 
+    println!("Main loop exiting");
     Ok(())
 }

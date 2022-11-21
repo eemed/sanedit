@@ -4,12 +4,14 @@
 
 mod key;
 mod mouse;
+mod reader;
 mod redraw;
 
 use std::io;
 
 pub use key::{Key, KeyEvent, KeyMods};
 pub use mouse::MouseEvent;
+pub use reader::Reader;
 pub use redraw::Redraw;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -21,6 +23,9 @@ pub enum Error {
 
     #[error("Encountered invalid data")]
     InvalidData,
+
+    #[error("Need more data")]
+    NeedMore,
 }
 
 /// Messages sent to the client
@@ -33,7 +38,7 @@ pub enum ClientMessage {
 }
 
 impl ClientMessage {
-    pub fn to_bytes(&self) -> Result<Vec<u8>, Error> {
+    pub fn serialize(&self) -> Result<Vec<u8>, Error> {
         match bincode::serialize(self) {
             Ok(bytes) => Ok(bytes),
             Err(e) => match *e {
@@ -43,11 +48,27 @@ impl ClientMessage {
         }
     }
 
-    pub fn from_reader<R: io::Read>(reader: R) -> Result<ClientMessage, Error> {
-        match bincode::deserialize_from::<_, ClientMessage>(reader) {
+    pub fn serialized_size(&self) -> Result<u64, Error> {
+        match bincode::serialized_size(self) {
+            Ok(size) => Ok(size),
+            Err(e) => match *e {
+                bincode::ErrorKind::Io(io) => match io.kind() {
+                    io::ErrorKind::UnexpectedEof => Err(Error::NeedMore),
+                    _ => Err(Error::Io(io)),
+                },
+                _ => Err(Error::InvalidData),
+            },
+        }
+    }
+
+    pub fn deserialize(bytes: &[u8]) -> Result<ClientMessage, Error> {
+        match bincode::deserialize::<ClientMessage>(bytes) {
             Ok(msg) => Ok(msg),
             Err(e) => match *e {
-                bincode::ErrorKind::Io(io) => Err(Error::Io(io)),
+                bincode::ErrorKind::Io(io) => match io.kind() {
+                    io::ErrorKind::UnexpectedEof => Err(Error::NeedMore),
+                    _ => Err(Error::Io(io)),
+                },
                 _ => Err(Error::InvalidData),
             },
         }
@@ -65,7 +86,7 @@ pub enum Message {
 }
 
 impl Message {
-    pub fn to_bytes(&self) -> Result<Vec<u8>, Error> {
+    pub fn serialize(&self) -> Result<Vec<u8>, Error> {
         match bincode::serialize(self) {
             Ok(bytes) => Ok(bytes),
             Err(e) => match *e {
@@ -74,14 +95,56 @@ impl Message {
             },
         }
     }
-
-    pub fn from_reader<R: io::Read>(reader: R) -> Result<Message, Error> {
-        match bincode::deserialize_from::<_, Message>(reader) {
-            Ok(msg) => Ok(msg),
+    pub fn serialized_size(&self) -> Result<u64, Error> {
+        match bincode::serialized_size(self) {
+            Ok(size) => Ok(size),
             Err(e) => match *e {
-                bincode::ErrorKind::Io(io) => Err(Error::Io(io)),
+                bincode::ErrorKind::Io(io) => match io.kind() {
+                    io::ErrorKind::UnexpectedEof => Err(Error::NeedMore),
+                    _ => Err(Error::Io(io)),
+                },
                 _ => Err(Error::InvalidData),
             },
         }
+    }
+
+    pub fn deserialize(bytes: &[u8]) -> Result<Message, Error> {
+        match bincode::deserialize::<Message>(bytes) {
+            Ok(msg) => Ok(msg),
+            Err(e) => match *e {
+                bincode::ErrorKind::Io(io) => match io.kind() {
+                    io::ErrorKind::UnexpectedEof => Err(Error::NeedMore),
+                    _ => Err(Error::Io(io)),
+                },
+                _ => Err(Error::InvalidData),
+            },
+        }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn deserialize_hello() {
+        let hello = ClientMessage::Hello;
+        let bytes = hello.serialize().unwrap();
+        let deserialized = ClientMessage::deserialize(&bytes).unwrap();
+        assert_eq!(deserialized, hello);
+    }
+
+    #[test]
+    fn invalid_bytes() {
+        let bytes = [5, 0, 0, 0, 0];
+        let err = ClientMessage::deserialize(&bytes).unwrap_err();
+        assert_eq!("Encountered invalid data", &err.to_string());
+    }
+
+    #[test]
+    fn not_enough_bytes() {
+        let bytes = [0, 0, 0];
+        let err = ClientMessage::deserialize(&bytes).unwrap_err();
+        assert_eq!("Need more data", &err.to_string());
     }
 }

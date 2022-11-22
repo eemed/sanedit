@@ -37,12 +37,13 @@ async fn conn_read(
     read: impl AsyncReadExt,
     server_handle: ServerHandle,
 ) -> Result<(), io::Error> {
-    let mut read = Box::pin(read);
-    loop {
-        let mut buf = [0u8; 256];
-        let size = read.read(&mut buf).await.unwrap();
-        println!("BUF: {:?}", &buf[..size]);
-    }
+    // let mut read = Box::pin(read);
+    // loop {
+    //     let mut buf = [0u8; 256];
+    //     let size = read.read(&mut buf).await.unwrap();
+    //     println!("BUF: {:?}", &buf[..size]);
+    // }
+    Ok(())
 }
 
 async fn conn_write(

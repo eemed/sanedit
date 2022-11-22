@@ -1,6 +1,8 @@
-use std::io;
+use std::{io, marker::PhantomData};
 
-use crate::ClientMessage;
+use bytes::{Buf, BufMut, BytesMut};
+use serde::{Deserialize, Serialize};
+use tokio_util::codec::{Decoder, Encoder};
 
 /// Helper struct to read arbitrary amounts of bytes into memory from a reader.
 /// It is different from a BufReader as it does not itself implement read, but
@@ -8,7 +10,7 @@ use crate::ClientMessage;
 /// read more into the internal buffer.
 pub struct Reader<R: io::Read> {
     read: R,
-    buf: Vec<u8>,
+    buf: BytesMut,
 }
 
 impl<R: io::Read> Reader<R> {
@@ -16,7 +18,7 @@ impl<R: io::Read> Reader<R> {
     pub fn new(read: R) -> Reader<R> {
         Reader {
             read,
-            buf: Vec::new(),
+            buf: BytesMut::new(),
         }
     }
 
@@ -31,46 +33,69 @@ impl<R: io::Read> Reader<R> {
 
     /// Consumes the first len bytes from the internal buffer
     #[inline]
-    pub fn consume(&mut self, len: u64) {
-        for _ in 0..len {
-            self.buf.remove(0);
-        }
+    pub fn advance(&mut self, len: usize) {
+        self.buf.advance(len);
     }
 
     #[inline]
-    pub fn buffer(&self) -> &[u8] {
-        &self.buf
+    pub fn buffer(&mut self) -> &mut BytesMut {
+        &mut self.buf
     }
 }
 
-// impl<R: io::Read> Iterator for Reader<R> {
-//     type Item = ClientMessage;
+pub struct BinCodec<T> {
+    phantom: PhantomData<T>,
+}
 
-//     fn next(&mut self) -> Option<Self::Item> {
-//         loop {
-//             match ClientMessage::deserialize(self.buf.as_ref()) {
-//                 Ok(msg) => {
-//                     let size = msg.serialized_size().unwrap();
-//                     // TODO optimize
-//                     for _ in 0..size {
-//                         self.buf.remove(0);
-//                     }
-//                     return Some(msg);
-//                 }
-//                 Err(e) => match e {
-//                     crate::Error::Io(_) => {
-//                         return None;
-//                     }
-//                     crate::Error::InvalidData => {
-//                         // Move one byte to the right
-//                         // TODO optimize
-//                         self.buf.remove(0);
-//                     }
-//                     crate::Error::NeedMore => {
-//                         self.read_more().ok()?;
-//                     }
-//                 },
-//             }
-//         }
-//     }
-// }
+impl<T> BinCodec<T>
+where
+    for<'de> T: Deserialize<'de> + Serialize,
+{
+    pub fn new() -> BinCodec<T> {
+        BinCodec {
+            phantom: PhantomData::default(),
+        }
+    }
+}
+
+impl<T> Decoder for BinCodec<T>
+where
+    for<'de> T: Deserialize<'de> + Serialize,
+{
+    type Item = T;
+
+    type Error = bincode::Error;
+
+    fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
+        match bincode::deserialize::<T>(&src) {
+            Ok(item) => {
+                let size = bincode::serialized_size(&item)? as usize;
+                src.advance(size);
+                Ok(Some(item))
+            }
+            Err(e) => {
+                // TODO advance 1 on error bytes
+                if let bincode::ErrorKind::Io(io) = e.as_ref() {
+                    if let io::ErrorKind::UnexpectedEof = io.kind() {
+                        return Ok(None);
+                    }
+                }
+
+                Err(e)
+            }
+        }
+    }
+}
+
+impl<T> Encoder<T> for BinCodec<T>
+where
+    for<'de> T: Deserialize<'de> + Serialize,
+{
+    type Error = bincode::Error;
+
+    fn encode(&mut self, item: T, dst: &mut BytesMut) -> Result<(), Self::Error> {
+        let size = bincode::serialized_size(&item)? as usize;
+        dst.reserve(size);
+        bincode::serialize_into(dst.writer(), &item)
+    }
+}

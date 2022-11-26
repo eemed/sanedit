@@ -27,3 +27,5 @@ slotmap = "1.0"
 # Lua api support
 # mlua  = { version = "0.8", features = ["luajit", "vendored", "async", "macros"] }
 tokio = { version = "1.20", features = ["full"] }
+tokio-util = { version = "0.7", features = ["codec"] }
+futures = "0.3"

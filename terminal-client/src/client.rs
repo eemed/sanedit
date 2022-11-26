@@ -1,5 +1,6 @@
 pub mod unix;
 
+use bytes::BytesMut;
 use std::{
     collections::VecDeque,
     io::{self, BufReader, Read},
@@ -12,7 +13,7 @@ use std::{
     thread,
 };
 
-use sanedit_messages::{BinCodec, ClientMessage, Decoder, Message, Reader};
+use sanedit_messages::{BinCodec, ClientMessage, Decoder, Encoder, Message, Reader};
 
 use crate::input;
 
@@ -35,23 +36,32 @@ where
     // IDEA: is this needed? could you just read here => probably
     // let read_join = thread::spawn(|| conn_read(read, send, &STOP));
 
-    // write.write(&Message::Hello.serialize().unwrap()).unwrap();
+    {
+        let mut codec: BinCodec<Message> = BinCodec::new();
+        let mut buf = BytesMut::new();
+        codec
+            .encode(Message::Hello, &mut buf)
+            .expect("Failed to encode hello");
+        write.write(&buf).expect("Failed to write hello");
+    }
 
-    // -----------------
     let mut reader = Reader::new(read);
     let mut codec: BinCodec<ClientMessage> = BinCodec::new();
 
     loop {
         match codec.decode(reader.buffer()) {
             Ok(Some(msg)) => {
-                println!("MSG: {:?}", msg);
+                println!("Client got message: {:?}", msg);
             }
             Ok(None) => {
-                println!("NOEN");
-                break;
+                if let Err(e) = reader.more() {
+                    println!("Error while reading: {}", e);
+                    break;
+                }
             }
             Err(e) => {
-                println!("ERR: {}", e);
+                println!("Decode error: {}", e);
+                reader.advance(1);
                 break;
             }
         }

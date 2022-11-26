@@ -74,7 +74,6 @@ where
                 Ok(Some(item))
             }
             Err(e) => {
-                // TODO advance 1 on error bytes
                 if let bincode::ErrorKind::Io(io) = e.as_ref() {
                     if let io::ErrorKind::UnexpectedEof = io.kind() {
                         return Ok(None);

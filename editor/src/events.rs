@@ -1,8 +1,9 @@
 // Events sent between client and editor
 
+use sanedit_messages::{ClientMessage, Message};
 use tokio::io;
 
-use crate::server::{ClientId, ClientHandle};
+use crate::server::{ClientHandle, ClientId};
 
 #[derive(Debug)]
 pub(crate) enum ToServer {
@@ -12,8 +13,12 @@ pub(crate) enum ToServer {
 }
 
 #[derive(Debug)]
-pub(crate) enum FromServer {}
+pub(crate) enum FromServer {
+    Message(ClientMessage),
+}
 
-#[derive(Debug)]
-pub(crate) enum Message {
+impl From<ClientMessage> for FromServer {
+    fn from(msg: ClientMessage) -> Self {
+        FromServer::Message(msg)
+    }
 }

@@ -3,17 +3,20 @@ pub(crate) mod unix;
 
 use std::{path::PathBuf, pin::Pin};
 
+use futures::{SinkExt, StreamExt};
+use sanedit_messages::{BinCodec, ClientMessage, Decoder, Message};
 use tokio::{
-    io::{self, AsyncReadExt, AsyncWriteExt},
+    io::{self, AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt},
     sync::mpsc::{Receiver, Sender},
     task::JoinHandle,
 };
+use tokio_util::codec::{FramedRead, FramedWrite};
 
-use crate::events::FromServer;
+use crate::events::{FromServer, ToServer};
 
 use super::ServerHandle;
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub(crate) struct ClientId(pub(crate) usize);
 
 /// Client handle allows us to communicate with the client
@@ -35,20 +38,40 @@ pub(crate) enum ClientConnectionInfo {
 async fn conn_read(
     id: ClientId,
     read: impl AsyncReadExt,
-    server_handle: ServerHandle,
+    mut server_handle: ServerHandle,
 ) -> Result<(), io::Error> {
-    // let mut read = Box::pin(read);
-    // loop {
-    //     let mut buf = [0u8; 256];
-    //     let size = read.read(&mut buf).await.unwrap();
-    //     println!("BUF: {:?}", &buf[..size]);
-    // }
+    let codec: BinCodec<Message> = BinCodec::new();
+    let mut read = Box::pin(FramedRead::new(read, codec));
+    for msg in read.next().await {
+        match msg {
+            Ok(msg) => {
+                server_handle.send(ToServer::Message(id, msg)).await;
+            }
+            Err(e) => {
+                println!("conn_read error: {}", e);
+            }
+        }
+    }
     Ok(())
 }
 
 async fn conn_write(
     write: impl AsyncWriteExt,
-    server_recv: Receiver<FromServer>,
+    mut server_recv: Receiver<FromServer>,
 ) -> Result<(), io::Error> {
+    let codec: BinCodec<ClientMessage> = BinCodec::new();
+    let mut write = Box::pin(FramedWrite::new(write, codec));
+
+    while let Some(msg) = server_recv.recv().await {
+        match msg {
+            FromServer::Message(msg) => {
+                if let Err(e) = write.send(msg).await {
+                    println!("conn_write error: {}", e);
+                    break;
+                }
+            }
+        }
+    }
+
     Ok(())
 }

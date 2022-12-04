@@ -1,5 +1,6 @@
 mod buffer;
 mod window;
+mod keymap;
 
 pub(crate) use buffer::*;
 use sanedit_messages::ClientMessage;

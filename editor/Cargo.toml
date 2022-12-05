@@ -7,10 +7,11 @@ edition = "2021"
 
 [dependencies]
 sanedit-messages = { path = "../messages" }
+sanedit-buffer = { path = "../buffer" }
 
 # General
 lazy_static = "1.4.0"
-log         = "0.4.14"
+log         = "0.4"
 parking_lot = "0.12.0"
 
 # Good helper macros for enums
@@ -23,6 +24,8 @@ thiserror   = "1.0"
 
 # Used to store elements and generate an id for them
 slotmap = "1.0"
+
+encoding_rs = "0.8"
 
 # Lua api support
 # mlua  = { version = "0.8", features = ["luajit", "vendored", "async", "macros"] }

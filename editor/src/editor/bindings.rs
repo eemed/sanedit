@@ -1,43 +1,44 @@
 use std::collections::HashMap;
 
-use strum_macros::{Display, EnumIter, EnumString, IntoStaticStr};
+use sanedit_messages::KeyEvent;
 
-use super::mode::Mode;
-use crate::{
-    actions::Action,
-    model::{key::KeyPress, KEY_PRESS_SEPARATOR},
-};
-
+use crate::actions::Action;
 
 // Window should hold hashmap<Name, Keymap>
 // and events vec<keypress>, not sure where to place these yet
 
 #[derive(Debug, Clone)]
-pub(crate) struct Keymap {
+pub(crate) struct KeyBindings {
     root: KeyTrie,
 }
 
-impl Keymap {
-    fn get(&mut self, events: &[KeyPress]) -> KeymapResult {
+impl KeyBindings {
+    /// Get a binding result for events.
+    /// The result may be
+    /// Matched => found a binding for events and its action
+    /// NotFound => no binding for key combination
+    /// Pending => need more input to decide
+    fn get(&mut self, events: &[KeyEvent]) -> BindingResult {
         self.root.get(events)
     }
 
-    fn bind(&mut self, events: &[KeyPress], action: Action) {
+    /// Create a new binding for key combination events.
+    fn bind(&mut self, events: &[KeyEvent], action: Action) {
         self.root.bind(events, action);
     }
 }
 
-impl Default for Keymap {
+impl Default for KeyBindings {
     fn default() -> Self {
-        Keymap {
+        KeyBindings {
             root: KeyTrie::default(),
         }
     }
 }
 
 #[derive(Debug)]
-pub(crate) enum KeymapResult {
-    Matched { action: Action },
+pub(crate) enum BindingResult {
+    Matched(Action),
     Pending,
     NotFound,
 }
@@ -48,20 +49,11 @@ struct KeyTrie {
 }
 
 impl KeyTrie {
-    fn get(&self, events: &[KeyPress]) -> KeymapResult {
+    fn get(&self, events: &[KeyEvent]) -> BindingResult {
         self.root.get(events)
     }
 
-    fn bind(&mut self, events: &[KeyPress], action: Action) {
-        log::debug!(
-            "bind: {}, \t{}",
-            events
-                .iter()
-                .map(|key| format!("{}", key))
-                .collect::<Vec<String>>()
-                .join(KEY_PRESS_SEPARATOR),
-            action
-        );
+    fn bind(&mut self, events: &[KeyEvent], action: Action) {
         self.root.bind(events, action);
     }
 }
@@ -79,11 +71,11 @@ impl Default for KeyTrie {
 #[derive(Debug, Clone)]
 enum KeyTrieNode {
     Leaf { action: Action },
-    Node { map: HashMap<KeyPress, KeyTrieNode> },
+    Node { map: HashMap<KeyEvent, KeyTrieNode> },
 }
 
 impl KeyTrieNode {
-    fn bind(&mut self, events: &[KeyPress], new_action: Action) {
+    fn bind(&mut self, events: &[KeyEvent], new_action: Action) {
         use KeyTrieNode::*;
         match self {
             Leaf { action: _ } => {
@@ -118,31 +110,29 @@ impl KeyTrieNode {
         }
     }
 
-    fn get(&self, events: &[KeyPress]) -> KeymapResult {
+    fn get(&self, events: &[KeyEvent]) -> BindingResult {
         match self {
             KeyTrieNode::Leaf { action } => {
                 if events.is_empty() {
-                    return KeymapResult::Matched {
-                        action: action.clone(),
-                    };
+                    return BindingResult::Matched(action.clone());
                 }
 
-                KeymapResult::NotFound
+                BindingResult::NotFound
             }
             KeyTrieNode::Node { map } => {
                 if events.is_empty() && !map.is_empty() {
-                    return KeymapResult::Pending;
+                    return BindingResult::Pending;
                 }
 
                 if events.is_empty() {
-                    return KeymapResult::NotFound;
+                    return BindingResult::NotFound;
                 }
 
                 if let Some(node) = map.get(&events[0]) {
                     return node.get(&events[1..]);
                 }
 
-                KeymapResult::NotFound
+                BindingResult::NotFound
             }
         }
     }

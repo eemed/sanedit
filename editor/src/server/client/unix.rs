@@ -74,7 +74,7 @@ async fn run_client(
     match res {
         Ok(()) => {}
         Err(err) => {
-            eprintln!("Something went wrong: {}.", err);
+            log::error!("Something went wrong: {}.", err);
         }
     }
 }

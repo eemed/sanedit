@@ -1,7 +1,7 @@
 use std::{cmp, ops::Range};
 
 #[derive(Debug)]
-pub(crate) struct Selection {
+pub(crate) struct Cursor {
     /// Position in buffer
     pos: usize,
 
@@ -12,9 +12,9 @@ pub(crate) struct Selection {
     anchor: Option<usize>,
 }
 
-impl Selection {
-    pub fn new(pos: usize) -> Selection {
-        Selection {
+impl Cursor {
+    pub fn new(pos: usize) -> Cursor {
+        Cursor {
             pos,
             v_col: None,
             anchor: None,
@@ -35,15 +35,15 @@ impl Selection {
         self.v_col = Some(v_col);
     }
 
-    pub fn start_selection(&mut self, anchor: usize) {
-        self.anchor = Some(anchor);
+    pub fn anchor(&mut self) {
+        self.anchor = Some(self.pos);
     }
 
-    pub fn unselect(&mut self) {
+    pub fn disanchor(&mut self) {
         self.anchor = None;
     }
 
-    pub fn get(&self) -> Option<Range<usize>> {
+    pub fn selection(&self) -> Option<Range<usize>> {
         let anchor = self.anchor?;
         let min = cmp::min(self.pos, anchor);
         let max = cmp::max(self.pos, anchor);
@@ -51,7 +51,7 @@ impl Selection {
     }
 
     /// Check wether this position is in the selected area.
-    pub fn contains(&self, pos: usize) -> bool {
-        pos == self.pos || self.get().map_or(false, |range| range.contains(&pos))
+    pub fn selection_contains(&self, pos: usize) -> bool {
+        self.get().map_or(false, |range| range.contains(&pos))
     }
 }

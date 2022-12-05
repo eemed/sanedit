@@ -1,10 +1,10 @@
+mod cursor;
 mod message;
-mod selection;
 mod view;
 
 use self::{
     message::{Message, Severity},
-    view::View,
+    view::View, cursor::Cursor,
 };
 
 use super::BufferId;
@@ -14,6 +14,9 @@ pub(crate) struct Window {
     buf: BufferId,
     view: View,
     message: Message,
+    // All cursor in the current window.
+    // Cursror at index 0 is the primary cursor
+    cursors: Vec<Cursor>,
 }
 
 impl Window {

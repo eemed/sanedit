@@ -20,7 +20,7 @@ use crate::input;
 // We have 3 tasks that need to be running
 // Input thread: polls inputs and writes them to the server.
 // Logic thread: Reacts to server messages, draws screen.
-pub fn run<R, W>(mut read: R, mut write: W)
+pub fn run<R, W>(read: R, mut write: W)
 where
     R: io::Read,
     W: io::Write,
@@ -30,11 +30,7 @@ where
 
     // Input thread
     // IDEA: Send inputs to logic task and logic task sends them to server if needed?
-    // let input_join = thread::spawn(|| input::run_loop(&STOP));
-
-    // Read thread:
-    // IDEA: is this needed? could you just read here => probably
-    // let read_join = thread::spawn(|| conn_read(read, send, &STOP));
+    let input_join = thread::spawn(|| input::run_loop(&STOP));
 
     {
         let mut codec: BinCodec<Message> = BinCodec::new();
@@ -51,16 +47,16 @@ where
     loop {
         match codec.decode(reader.buffer()) {
             Ok(Some(msg)) => {
-                println!("Client got message: {:?}", msg);
+                log::info!("Client got message: {:?}", msg);
             }
             Ok(None) => {
                 if let Err(e) = reader.more() {
-                    println!("Error while reading: {}", e);
+                    log::info!("Error while reading: {}", e);
                     break;
                 }
             }
             Err(e) => {
-                println!("Decode error: {}", e);
+                log::info!("Decode error: {}", e);
                 reader.advance(1);
                 break;
             }
@@ -69,6 +65,5 @@ where
 
     STOP.store(true, Ordering::SeqCst);
 
-    // read_join.join();
-    // input_join.join();
+    input_join.join().expect("Failed to join input thread");
 }

@@ -1,12 +1,4 @@
-use std::ops::Deref;
-
 use strum_macros::{AsRefStr, EnumIter};
-
-#[cfg(target_os = "windows")]
-pub(crate) const DEFAULT_EOL: EOL = EOL::CRLF;
-
-#[cfg(not(target_os = "windows"))]
-pub(crate) const DEFAULT_EOL: EOL = EOL::LF;
 
 #[derive(Debug, Copy, Clone, PartialEq, EnumIter, AsRefStr)]
 pub(crate) enum EOL {
@@ -20,5 +12,17 @@ impl EOL {
             EOL::LF => "\n",
             EOL::CRLF => "\r\n",
         }
+    }
+}
+
+impl Default for EOL {
+    fn default() -> Self {
+        #[cfg(target_os = "windows")]
+        const DEFAULT_EOL: EOL = EOL::CRLF;
+
+        #[cfg(not(target_os = "windows"))]
+        const DEFAULT_EOL: EOL = EOL::LF;
+
+        DEFAULT_EOL
     }
 }

@@ -48,7 +48,7 @@ async fn conn_read(
                 server_handle.send(ToServer::Message(id, msg)).await;
             }
             Err(e) => {
-                println!("conn_read error: {}", e);
+                log::info!("conn_read error: {}", e);
             }
         }
     }
@@ -66,7 +66,7 @@ async fn conn_write(
         match msg {
             FromServer::Message(msg) => {
                 if let Err(e) = write.send(msg).await {
-                    println!("conn_write error: {}", e);
+                    log::error!("conn_write error: {}", e);
                     break;
                 }
             }

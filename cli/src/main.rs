@@ -1,3 +1,5 @@
+mod log;
+
 use core::time;
 use std::{path::PathBuf, thread};
 
@@ -18,6 +20,8 @@ struct Cli {
 }
 
 fn main() {
+    log::setup();
+
     // Just run everything from here for now
     let cli = Cli::parse();
 
@@ -33,7 +37,7 @@ fn main() {
             client.run();
         }
         Err(e) => {
-            println!("Error connecting to socket: {}", e);
+            log::info!("Error connecting to socket: {}", e);
         }
     }
 

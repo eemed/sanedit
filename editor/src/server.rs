@@ -9,6 +9,7 @@ use std::{
         atomic::{AtomicUsize, Ordering},
         Arc,
     },
+    thread,
 };
 
 use tokio::{
@@ -78,18 +79,18 @@ pub async fn run(addrs: Vec<Address>) {
         }
     }
 
-    join.await.unwrap();
+    join.join().unwrap();
 }
 
 /// Spawn editor loop, and return a handle to it and the task join handle
-fn spawn_editor_loop() -> (ServerHandle, JoinHandle<()>) {
+fn spawn_editor_loop() -> (ServerHandle, std::thread::JoinHandle<()>) {
     let (send, recv) = channel(CHANNEL_SIZE);
     let handle = ServerHandle {
         sender: send,
         next_id: Default::default(),
     };
-    let join = tokio::spawn(async move {
-        let res = editor::main_loop(recv).await;
+    let join = thread::spawn(|| {
+        let res = editor::main_loop(recv);
         match res {
             Ok(()) => {}
             Err(err) => {

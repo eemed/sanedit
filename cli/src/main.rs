@@ -1,4 +1,4 @@
-mod log;
+mod logging;
 
 use core::time;
 use std::{path::PathBuf, thread};
@@ -20,7 +20,7 @@ struct Cli {
 }
 
 fn main() {
-    log::setup();
+    logging::setup();
 
     // Just run everything from here for now
     let cli = Cli::parse();

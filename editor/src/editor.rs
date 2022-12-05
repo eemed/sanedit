@@ -40,17 +40,17 @@ impl Editor {
 /// Execute editor logic, getting each message from the passed receiver.
 /// Editor uses client handles to communicate to clients. Client handles are
 /// sent using the provided reciver.
-pub(crate) async fn main_loop(mut recv: Receiver<ToServer>) -> Result<(), io::Error> {
-    log::info!("Main loop");
+pub(crate) fn main_loop(mut recv: Receiver<ToServer>) -> Result<(), io::Error> {
+    log::info!("Main loop stating");
     let mut editor = Editor::new();
 
-    while let Some(msg) = recv.recv().await {
+    while let Some(msg) = recv.blocking_recv() {
         match msg {
             ToServer::NewClient(handle) => {
                 log::info!("Client connected: {:?}, id: {:?}", handle.info, handle.id);
                 editor.clients.insert(handle.id, handle);
             }
-            ToServer::Message(id, msg) => handle_msg(&mut editor, id, msg).await?,
+            ToServer::Message(id, msg) => handle_msg(&mut editor, id, msg)?,
             ToServer::FatalError(e) => {
                 log::info!("Fatal error: {}", e);
                 break;
@@ -62,14 +62,13 @@ pub(crate) async fn main_loop(mut recv: Receiver<ToServer>) -> Result<(), io::Er
     Ok(())
 }
 
-async fn handle_msg(editor: &mut Editor, id: ClientId, msg: Message) -> Result<(), io::Error> {
+fn handle_msg(editor: &mut Editor, id: ClientId, msg: Message) -> Result<(), io::Error> {
     log::info!("Message {:?} from client {:?}", msg, id);
     match msg {
         Message::Hello => {
             if let Err(_e) = editor.clients[&id]
                 .send
-                .send(ClientMessage::Hello.into())
-                .await
+                .blocking_send(ClientMessage::Hello.into())
             {
                 log::info!(
                     "Server failed to send reponse for client {:?}, removing from client map",

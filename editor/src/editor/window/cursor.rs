@@ -49,9 +49,4 @@ impl Cursor {
         let max = cmp::max(self.pos, anchor);
         Some(min..max)
     }
-
-    /// Check wether this position is in the selected area.
-    pub fn selection_contains(&self, pos: usize) -> bool {
-        self.get().map_or(false, |range| range.contains(&pos))
-    }
 }

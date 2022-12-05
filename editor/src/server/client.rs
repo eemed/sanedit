@@ -1,12 +1,12 @@
 pub(crate) mod tcp;
 pub(crate) mod unix;
 
-use std::{path::PathBuf, pin::Pin};
+use std::path::PathBuf;
 
 use futures::{SinkExt, StreamExt};
-use sanedit_messages::{BinCodec, ClientMessage, Decoder, Message};
+use sanedit_messages::{BinCodec, ClientMessage, Message};
 use tokio::{
-    io::{self, AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt},
+    io::{self, AsyncRead, AsyncWrite},
     sync::mpsc::{Receiver, Sender},
     task::JoinHandle,
 };
@@ -37,7 +37,7 @@ pub(crate) enum ClientConnectionInfo {
 
 async fn conn_read(
     id: ClientId,
-    read: impl AsyncReadExt,
+    read: impl AsyncRead,
     mut server_handle: ServerHandle,
 ) -> Result<(), io::Error> {
     let codec: BinCodec<Message> = BinCodec::new();
@@ -56,7 +56,7 @@ async fn conn_read(
 }
 
 async fn conn_write(
-    write: impl AsyncWriteExt,
+    write: impl AsyncWrite,
     mut server_recv: Receiver<FromServer>,
 ) -> Result<(), io::Error> {
     let codec: BinCodec<ClientMessage> = BinCodec::new();

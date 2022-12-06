@@ -4,7 +4,7 @@ use super::{Bytes, PieceTree};
 use bstr::ByteSlice;
 
 // Using bstr to convert bytes to grapheme clusters.
-// bstr is not meant to be used on streaming 
+// bstr is not meant to be used on streaming
 
 #[inline]
 fn is_utf8_start(byte: u8) -> bool {
@@ -45,22 +45,19 @@ fn read_next_codepoint(bytes: &mut Bytes, buf: &mut Vec<u8>) -> bool {
 }
 
 pub fn next_grapheme_boundary(pt: &PieceTree, pos: usize) -> Option<usize> {
+    // TODO read from a chunk and fallback to this impl if it fails?
     let mut bytes = Bytes::new(pt, pos);
     let mut buf = Vec::new();
-    let mut prev_match = None;
 
     loop {
-        if !read_next_codepoint(&mut bytes, &mut buf) {
-            return prev_match.map(|p| pos + p);
-        }
+        let at_end = !read_next_codepoint(&mut bytes, &mut buf);
 
-        if let Some((start, end, grapheme)) = buf.grapheme_indices().next() {
-            let end_matches_prev = prev_match.map_or(false, |prev| prev == end);
-            if end_matches_prev {
+        if let Some((_start, end, _grapheme)) = buf.grapheme_indices().next() {
+            if at_end || end != buf.len() {
                 return Some(pos + end);
             }
-
-            prev_match = Some(end);
+        } else if at_end {
+            return None;
         }
     }
 }

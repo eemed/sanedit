@@ -1,7 +1,7 @@
 use crate::cursor_iterator::CursorIterator;
 
 use super::{Bytes, PieceTree};
-use bstr::ByteSlice;
+use bstr::{BString, ByteSlice, B};
 
 // Using bstr to convert bytes to grapheme clusters.
 // bstr is not meant to be used on streaming
@@ -27,7 +27,7 @@ fn is_utf8_start(byte: u8) -> bool {
 //
 
 #[inline]
-fn read_next_codepoint(bytes: &mut Bytes, buf: &mut Vec<u8>) -> bool {
+fn read_next_codepoint(bytes: &mut Bytes, buf: &mut BString) -> bool {
     match bytes.get() {
         Some(b) => buf.push(b),
         None => return false,
@@ -44,10 +44,26 @@ fn read_next_codepoint(bytes: &mut Bytes, buf: &mut Vec<u8>) -> bool {
     true
 }
 
+// pub fn next_grapheme_boundary_chunk(pt: &PieceTree, pos: usize) {
+//     let chunks = pt.chunks_at(pos);
+//     let chunk = chunks.get();
+//     let chunk_pos = chunks.pos();
+
+//     if let Some(chk) = chunk {
+//         let relative_pos = pos - chunk_pos;
+//         let bytes = &chk.as_ref()[relative_pos..];
+//         if let Some((_start, end, _grapheme)) = bytes.grapheme_indices().next() {
+//             if end != bytes.len() {
+//                 return Some(pos + end);
+//             }
+//         }
+//     }
+// }
+
 pub fn next_grapheme_boundary(pt: &PieceTree, pos: usize) -> Option<usize> {
     // TODO read from a chunk and fallback to this impl if it fails?
     let mut bytes = Bytes::new(pt, pos);
-    let mut buf = Vec::new();
+    let mut buf = BString::default();
 
     loop {
         let at_end = !read_next_codepoint(&mut bytes, &mut buf);

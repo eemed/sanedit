@@ -19,9 +19,11 @@ impl Grid {
         }
     }
 
-    pub fn add_component<C: Component>(&mut self, comp: C) {
+    pub fn add_component(&mut self, comp: impl Component + 'static) {
         self.components.push(Box::new(comp));
     }
 
-    pub fn draw(&mut self) -> Vec<Vec<String>> {}
+    pub fn draw(&mut self) -> Vec<Vec<String>> {
+        todo!()
+    }
 }

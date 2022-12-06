@@ -21,7 +21,7 @@ pub use crate::cursor_iterator::CursorIterator;
 pub use crate::piece_tree::bytes::Bytes;
 pub use builder::PieceTreeBuilder;
 pub use graphemes::{
-    is_grapheme_boundary, next_grapheme, next_grapheme_boundary, prev_grapheme,
+    next_grapheme, next_grapheme_boundary, prev_grapheme,
     prev_grapheme_boundary,
 };
 

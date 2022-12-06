@@ -30,3 +30,6 @@ pub(crate) struct Buffer {
     last_change: Option<Change>,
     last_saved_snapshot: usize,
 }
+
+impl Buffer {
+}

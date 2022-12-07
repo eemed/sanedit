@@ -7,7 +7,6 @@ use super::{
 };
 
 // Limit max chunk size to not read massive chunks into memory
-// TODO remove limit at original buffer and limit it only here
 const MAX_CHUNK_SIZE: usize = 1024 * 64;
 
 #[derive(Debug, Clone, PartialEq)]

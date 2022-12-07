@@ -3,12 +3,14 @@ pub(crate) mod builder;
 pub(crate) mod bytes;
 pub(crate) mod chunks;
 mod graphemes;
+mod slice;
 pub(crate) mod tree;
 
 use std::fs::File;
 use std::io::{self, Write};
-use std::ops::RangeBounds;
+use std::ops::{Bound, RangeBounds};
 
+use self::slice::PieceTreeSlice;
 use self::tree::pieces::Pieces;
 use self::tree::Tree;
 use crate::piece_tree::buffers::BufferKind;
@@ -20,10 +22,7 @@ use buffers::OriginalBuffer;
 pub use crate::cursor_iterator::CursorIterator;
 pub use crate::piece_tree::bytes::Bytes;
 pub use builder::PieceTreeBuilder;
-pub use graphemes::{
-    next_grapheme, next_grapheme_boundary, prev_grapheme,
-    prev_grapheme_boundary,
-};
+pub use graphemes::{next_grapheme, next_grapheme_boundary, prev_grapheme, prev_grapheme_boundary};
 
 /// A Snapshot of the piece tree.
 //
@@ -221,14 +220,14 @@ impl PieceTree {
     #[inline]
     pub fn remove<R: RangeBounds<usize>>(&mut self, range: R) {
         let start = match range.start_bound() {
-            std::ops::Bound::Included(i) => *i,
-            std::ops::Bound::Excluded(i) => *i + 1,
+            std::ops::Bound::Included(n) => *n,
+            std::ops::Bound::Excluded(n) => *n + 1,
             std::ops::Bound::Unbounded => 0,
         };
 
         let end = match range.end_bound() {
-            std::ops::Bound::Included(i) => *i + 1,
-            std::ops::Bound::Excluded(i) => *i,
+            std::ops::Bound::Included(n) => *n + 1,
+            std::ops::Bound::Excluded(n) => *n,
             std::ops::Bound::Unbounded => self.len,
         };
 
@@ -295,26 +294,22 @@ impl PieceTree {
         Chunks::new(self, pos)
     }
 
-    // #[inline]
-    // pub fn chunk_at<'a>(&'a self, pos: usize) -> Option<Chunk<'a>> {
-    //     self.chunks_at(pos).get()
-    // }
+    #[inline]
+    pub fn slice<'a, R: RangeBounds<usize>>(&'a self, range: R) -> PieceTreeSlice<'a> {
+        let start = match range.start_bound() {
+            Bound::Included(n) => *n,
+            Bound::Excluded(n) => *n + 1,
+            Bound::Unbounded => 0,
+        };
 
-    // #[inline]
-    // pub fn graphemes(&self) -> Graphemes {
-    //     self.graphemes_at(0)
-    // }
+        let end = match range.end_bound() {
+            Bound::Included(n) => *n + 1,
+            Bound::Excluded(n) => *n,
+            Bound::Unbounded => self.len,
+        };
 
-    // #[inline]
-    // pub fn graphemes_at(&self, pos: usize) -> Graphemes {
-    //     debug_assert!(
-    //         pos <= self.len,
-    //         "graphemes_at: Attempting to index {} over buffer len {}",
-    //         pos,
-    //         self.len
-    //     );
-    //     Graphemes::new(self, pos)
-    // }
+        PieceTreeSlice::new(self, start, end)
+    }
 }
 
 impl From<&PieceTree> for String {

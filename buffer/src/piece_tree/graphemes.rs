@@ -90,18 +90,24 @@ fn prev_grapheme_impl_copy<'a>(pt: &'a PieceTree, pos: usize) -> Option<PieceTre
 
     loop {
         if !read_prev_codepoint(&mut bytes, &mut buf) {
-            return prev_match_len.map(|p| pos - p);
+            todo!()
+            // return prev_match_len.map(|p| pos - p);
         }
 
         if let Some((start, end, grapheme)) = buf.grapheme_indices().next_back() {
             let end_matches_prev = prev_match_len.map_or(false, |prev| prev == end - start);
             if end_matches_prev {
-                return Some(pos - (end - start));
+                todo!()
+                // return Some(pos - (end - start));
             }
 
             prev_match_len = Some(end - start);
         }
     }
+}
+
+fn prev_grapheme_impl<'a>(pt: &'a PieceTree, pos: usize) -> Option<PieceTreeSlice<'a>> {
+    todo!()
 }
 
 #[inline]
@@ -112,7 +118,7 @@ pub fn next_grapheme_boundary(pt: &PieceTree, pos: usize) -> Option<usize> {
 
 #[inline]
 pub fn prev_grapheme_boundary(pt: &PieceTree, pos: usize) -> Option<usize> {
-    let slice = next_grapheme_impl(pt, pos)?;
+    let slice = prev_grapheme_impl(pt, pos)?;
     Some(slice.start())
 }
 

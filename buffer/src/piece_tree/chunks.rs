@@ -1,4 +1,4 @@
-use std::ops::RangeBounds;
+use std::ops::{RangeBounds, Range};
 
 use super::{
     buffers::{BufferKind, ByteSlice},

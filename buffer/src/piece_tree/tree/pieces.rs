@@ -1,3 +1,5 @@
+use std::ops::Range;
+
 use super::node::internal_node::InternalNode;
 use super::node::Node;
 use super::piece::Piece;
@@ -9,19 +11,26 @@ use crate::piece_tree::PieceTree;
 pub(crate) struct Pieces<'a> {
     pt: &'a PieceTree,
     stack: Vec<&'a InternalNode>,
-    pos: usize, // Current piece pos in buffer
+    pos: usize,          // Current piece pos in buffer
+    range: Range<usize>, // Limit pieces only to a part of the buffer
 }
 
 impl<'a> Pieces<'a> {
     #[inline]
-    pub(crate) fn new(pt: &'a PieceTree, at: usize) -> Self {
+    pub(crate) fn new(pt: &'a PieceTree, at: usize, range: Range<usize>) -> Self {
+        let at = range.start + at;
         // Be empty at pt.len
         let (stack, pos) = if at == pt.len {
             (Vec::with_capacity(pt.tree.max_height()), at)
         } else {
             pt.tree.find_node(at)
         };
-        Pieces { pt, stack, pos }
+        Pieces {
+            pt,
+            stack,
+            pos,
+            range,
+        }
     }
 
     pub fn tree_next(&mut self) -> Option<&Piece> {
@@ -98,20 +107,22 @@ impl<'a> Pieces<'a> {
 }
 
 impl<'a> CursorIterator for Pieces<'a> {
-    type Item = Piece;
+    type Item = (usize, Piece);
 
     #[inline(always)]
-    fn get(&self) -> Option<Piece> {
-        self.stack.last().map(|&node| node.piece.clone())
+    fn get(&self) -> Option<(usize, Piece)> {
+        let piece = self.stack.last().map(|&node| node.piece.clone())?;
+        let pos = self.pos();
+        Some((pos, piece))
     }
 
     #[inline]
-    fn next(&mut self) -> Option<Piece> {
-        let prev_len = self.get()?.len;
+    fn next(&mut self) -> Option<(usize, Piece)> {
+        let prev_len = self.get()?.1.len;
 
         if let Some(p) = self.tree_next().cloned() {
             self.pos += prev_len;
-            Some(p)
+            Some((self.pos, p))
         } else {
             self.pos = self.pt.len;
             None
@@ -119,14 +130,14 @@ impl<'a> CursorIterator for Pieces<'a> {
     }
 
     #[inline]
-    fn prev(&mut self) -> Option<Piece> {
+    fn prev(&mut self) -> Option<(usize, Piece)> {
         if self.pos == 0 {
             return None;
         }
 
         if let Some(p) = self.tree_prev().cloned() {
             self.pos -= p.len;
-            Some(p)
+            Some((self.pos, p))
         } else {
             let (stack, index) = self.pt.tree.find_node(self.pt.len());
             self.stack = stack;

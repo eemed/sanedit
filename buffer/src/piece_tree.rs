@@ -1,28 +1,28 @@
 pub(crate) mod buffers;
 pub(crate) mod builder;
-pub(crate) mod bytes;
-pub(crate) mod chunks;
-mod graphemes;
-mod slice;
+// pub(crate) mod bytes;
+// pub(crate) mod chunks;
+// mod graphemes;
+// mod slice;
 pub(crate) mod tree;
 
 use std::fs::File;
 use std::io::{self, Write};
 use std::ops::{Bound, RangeBounds};
 
-use self::slice::PieceTreeSlice;
+// use self::slice::PieceTreeSlice;
 use self::tree::pieces::Pieces;
 use self::tree::Tree;
 use crate::piece_tree::buffers::BufferKind;
-use crate::piece_tree::chunks::Chunks;
+// use crate::piece_tree::chunks::Chunks;
 use crate::piece_tree::tree::piece::Piece;
 use buffers::AddBuffer;
 use buffers::OriginalBuffer;
 
 pub use crate::cursor_iterator::CursorIterator;
-pub use crate::piece_tree::bytes::Bytes;
+// pub use crate::piece_tree::bytes::Bytes;
 pub use builder::PieceTreeBuilder;
-pub use graphemes::{next_grapheme, next_grapheme_boundary, prev_grapheme, prev_grapheme_boundary};
+// pub use graphemes::{next_grapheme, next_grapheme_boundary, prev_grapheme, prev_grapheme_boundary};
 
 /// A Snapshot of the piece tree.
 //
@@ -116,9 +116,8 @@ impl PieceTree {
             pos,
             self.len
         );
-        let pieces = Pieces::new(self, pos);
-        let p_pos = pieces.pos();
-        let piece = pieces
+        let pieces = Pieces::new(self, pos, 0..self.len);
+        let (p_pos, piece) = pieces
             .get()
             .expect(&format!("Cannot find a piece for position {pos}"));
         let off = pos - p_pos;
@@ -131,13 +130,12 @@ impl PieceTree {
     /// Get a buffer position from a mark.
     /// If the buffer position has been deleted returns None.
     pub fn mark_to_pos(&self, mark: &Mark) -> Option<usize> {
-        let mut pieces = Pieces::new(self, 0);
+        let mut pieces = Pieces::new(self, 0, 0..self.len);
         let mut piece = pieces.get();
 
-        while let Some(p) = piece {
+        while let Some((p_pos, p)) = piece {
             if p.kind == mark.kind && p.pos <= mark.pos && mark.pos < p.pos + p.len {
                 let off = mark.pos - p.pos;
-                let p_pos = pieces.pos();
                 return Some(p_pos + off);
             }
             piece = pieces.next();
@@ -262,54 +260,54 @@ impl PieceTree {
         self.insert(self.len, bytes);
     }
 
-    #[inline]
-    pub fn bytes(&self) -> Bytes {
-        self.bytes_at(0)
-    }
+    // #[inline]
+    // pub fn bytes(&self) -> Bytes {
+    //     self.bytes_at(0)
+    // }
 
-    #[inline]
-    pub fn bytes_at(&self, pos: usize) -> Bytes {
-        debug_assert!(
-            pos <= self.len,
-            "bytes_at: Attempting to index {} over buffer len {}",
-            pos,
-            self.len
-        );
-        Bytes::new(self, pos)
-    }
+    // #[inline]
+    // pub fn bytes_at(&self, pos: usize) -> Bytes {
+    //     debug_assert!(
+    //         pos <= self.len,
+    //         "bytes_at: Attempting to index {} over buffer len {}",
+    //         pos,
+    //         self.len
+    //     );
+    //     Bytes::new(self, pos)
+    // }
 
-    #[inline]
-    pub fn chunks(&self) -> Chunks {
-        self.chunks_at(0)
-    }
+    // #[inline]
+    // pub fn chunks(&self) -> Chunks {
+    //     self.chunks_at(0)
+    // }
 
-    #[inline]
-    pub fn chunks_at(&self, pos: usize) -> Chunks {
-        debug_assert!(
-            pos <= self.len,
-            "chunks_at: Attempting to index {} over buffer len {}",
-            pos,
-            self.len
-        );
-        Chunks::new(self, pos)
-    }
+    // #[inline]
+    // pub fn chunks_at(&self, pos: usize) -> Chunks {
+    //     debug_assert!(
+    //         pos <= self.len,
+    //         "chunks_at: Attempting to index {} over buffer len {}",
+    //         pos,
+    //         self.len
+    //     );
+    //     Chunks::new(self, pos)
+    // }
 
-    #[inline]
-    pub fn slice<'a, R: RangeBounds<usize>>(&'a self, range: R) -> PieceTreeSlice<'a> {
-        let start = match range.start_bound() {
-            Bound::Included(n) => *n,
-            Bound::Excluded(n) => *n + 1,
-            Bound::Unbounded => 0,
-        };
+    // #[inline]
+    // pub fn slice<'a, R: RangeBounds<usize>>(&'a self, range: R) -> PieceTreeSlice<'a> {
+    //     let start = match range.start_bound() {
+    //         Bound::Included(n) => *n,
+    //         Bound::Excluded(n) => *n + 1,
+    //         Bound::Unbounded => 0,
+    //     };
 
-        let end = match range.end_bound() {
-            Bound::Included(n) => *n + 1,
-            Bound::Excluded(n) => *n,
-            Bound::Unbounded => self.len,
-        };
+    //     let end = match range.end_bound() {
+    //         Bound::Included(n) => *n + 1,
+    //         Bound::Excluded(n) => *n,
+    //         Bound::Unbounded => self.len,
+    //     };
 
-        PieceTreeSlice::new(self, start, end)
-    }
+    //     PieceTreeSlice::new(self, start, end)
+    // }
 }
 
 impl From<&PieceTree> for String {

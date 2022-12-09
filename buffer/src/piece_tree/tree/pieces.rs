@@ -175,12 +175,12 @@ impl<'a> CursorIterator for BoundedPieceIter<'a> {
         // Shrink the piece if bounds are met
         if p_start < start {
             let diff = start - p_start;
-            piece.split_left(diff);
+            piece.split_right(diff);
             p_start += diff;
         }
 
         if end < p_end {
-            piece.split_right(p_end - end);
+            piece.split_left(piece.len - (p_end - end));
         }
 
         if piece.len == 0 {
@@ -191,59 +191,30 @@ impl<'a> CursorIterator for BoundedPieceIter<'a> {
     }
 
     fn next(&mut self) -> Option<Self::Item> {
-        todo!()
-        // let over_bounds = self
-        //     .stack
-        //     .last()
-        //     .map(|n| {
-        //         let piece = &n.piece;
-        //         let p_start = self.pos;
-        //         let p_end = p_start + piece.len;
-        //         let Range { end, .. } = self.range;
-        //         end < p_end
-        //     })
-        //     .unwrap_or(false);
+        let (p_start, _) = self.iter.get()?;
+        let Range { end, .. } = self.range;
+        let over_bounds = end < p_start;
 
-        // if over_bounds {
-        //     return None;
-        // }
+        if over_bounds {
+            return None;
+        }
 
-        // self.next_piece()?;
-        // self.get()
+        self.iter.next()?;
+        self.get()
     }
 
     fn prev(&mut self) -> Option<Self::Item> {
-        todo!()
-        // // Restart iteration from last position if we went past it
-        // if self.stack.len() == 0 {
-        // let (stack, index) = self.pt.tree.find_node(self.range.end);
-        // self.stack = stack;
-        // self.pos = index;
-        // return self.get();
-        // }
+        if let Some((p_start, _)) = self.iter.get() {
+            let Range { start, .. } = self.range;
+            let over_bounds = p_start <= start;
 
-        // // Don't iterate and empty stack if we are at the first piece
-        // if self.pos == 0 {
-        // return None;
-        // }
+            if over_bounds {
+                return None;
+            }
+        }
 
-        // // Don't iterate if this piece is already over the bounds
-        // let over_bounds = self
-        // .stack
-        // .last()
-        // .map(|_| {
-        //     let p_start = self.pos;
-        //     let Range { start, .. } = self.range;
-        //     p_start < start
-        // })
-        // .unwrap_or(false);
-
-        // if over_bounds {
-        // return None;
-        // }
-
-        // self.prev_piece()?;
-        // self.get()
+        self.iter.prev()?;
+        self.get()
     }
 }
 
@@ -334,5 +305,41 @@ pub(crate) mod test {
         assert_eq!(add_piece(0, 0, 4), pieces.get());
         assert_eq!(add_piece(4, 5, 1), pieces.next());
         assert_eq!(add_piece(5, 4, 1), pieces.next());
+    }
+
+    #[test]
+    fn bounded1() {
+        let mut pt = PieceTree::new();
+        pt.insert_str(0, "baz"); // pos 6, buf 0
+        pt.insert_str(0, "bar"); // pos 3, buf 3
+        pt.insert_str(0, "foo"); // pos 0, buf 6
+        let mut pieces = BoundedPieceIter::new(&pt, 0, 2..7); // fo(obarb)az
+
+        assert_eq!(add_piece(2, 8, 1), pieces.get()); // o
+        assert_eq!(add_piece(3, 3, 3), pieces.next()); // bar
+        assert_eq!(add_piece(6, 0, 1), pieces.next()); // b
+        assert_eq!(None, pieces.next());
+        assert_eq!(None, pieces.get());
+        assert_eq!(add_piece(6, 0, 1), pieces.prev());
+        assert_eq!(add_piece(3, 3, 3), pieces.prev());
+        assert_eq!(add_piece(2, 8, 1), pieces.prev());
+        assert_eq!(None, pieces.prev());
+        assert_eq!(add_piece(2, 8, 1), pieces.get());
+    }
+
+    #[test]
+    fn bounded2() {
+        let mut pt = PieceTree::new();
+        pt.insert_str(0, "baz");
+        pt.insert_str(0, "bar");
+        pt.insert_str(0, "foo");
+        let mut pieces = BoundedPieceIter::new(&pt, 0, 3..6);
+
+        assert_eq!(add_piece(3, 3, 3), pieces.get());
+        assert_eq!(None, pieces.next());
+        assert_eq!(None, pieces.get());
+        assert_eq!(add_piece(3, 3, 3), pieces.prev());
+        assert_eq!(None, pieces.prev());
+        assert_eq!(add_piece(3, 3, 3), pieces.get());
     }
 }

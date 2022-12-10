@@ -1,4 +1,4 @@
-use std::ops::{RangeBounds, Range};
+use std::ops::{Range, RangeBounds};
 
 use super::{
     buffers::{BufferKind, ByteSlice},
@@ -36,12 +36,20 @@ impl<'a> Chunks<'a> {
     #[inline]
     pub fn new(pt: &'a PieceTree, at: usize) -> Chunks<'a> {
         let pieces = Pieces::new(pt, at);
-        let pos = pieces.pos();
+        let pos = pieces.get().map(|(n, _)| n).unwrap_or(0);
+        Chunks { pt, pieces, pos }
+    }
+
+    #[inline]
+    pub fn new_from_slice(pt: &'a PieceTree, at: usize, range: Range<usize>) -> Chunks<'a> {
+        let pieces = Pieces::new_from_slice(pt, at, range);
+        let pos = pieces.get().map(|(n, _)| n).unwrap_or(0);
         Chunks { pt, pieces, pos }
     }
 }
 
 impl<'a> CursorIterator for Chunks<'a> {
+    // TODO (usize, Chunk<'a>)
     type Item = Chunk<'a>;
 
     #[inline]
@@ -51,18 +59,17 @@ impl<'a> CursorIterator for Chunks<'a> {
 
     #[inline]
     fn get(&self) -> Option<Chunk<'a>> {
-        let piece = self.pieces.get()?;
+        let (_, piece) = self.pieces.get()?;
         read_piece(&self.pt, &piece)
     }
 
     #[inline]
     fn next(&mut self) -> Option<Chunk<'a>> {
-        let piece = self.pieces.get()?;
+        let (p_pos, piece) = self.pieces.get()?;
         self.pos += piece.len;
-        let p_pos = self.pieces.pos();
         let end = p_pos + piece.len;
 
-        let piece = if end <= self.pos {
+        let (_, piece) = if end <= self.pos {
             self.pieces.next()?
         } else {
             self.pieces.get()?
@@ -73,15 +80,16 @@ impl<'a> CursorIterator for Chunks<'a> {
 
     #[inline]
     fn prev(&mut self) -> Option<Chunk<'a>> {
-        let p_pos = self.pieces.pos();
-        let piece = if self.pos == p_pos {
-            self.pieces.prev()?
-        } else {
-            self.pieces.get()?
-        };
+        todo!()
+        // let p_pos = self.pieces.pos();
+        // let (_, piece) = if self.pos == p_pos {
+        //     self.pieces.prev()?
+        // } else {
+        //     self.pieces.get()?
+        // };
 
-        self.pos -= piece.len;
-        read_piece(&self.pt, &piece)
+        // self.pos -= piece.len;
+        // read_piece(&self.pt, &piece)
     }
 }
 

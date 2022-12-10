@@ -3,8 +3,96 @@ use std::ops::Range;
 use super::node::internal_node::InternalNode;
 use super::node::Node;
 use super::piece::Piece;
-use crate::cursor_iterator::CursorIterator;
 use crate::piece_tree::PieceTree;
+
+pub(crate) type Pieces<'a> = BoundedPieceIter<'a>;
+
+#[derive(Debug, Clone)]
+pub(crate) struct BoundedPieceIter<'a> {
+    range: Range<usize>,
+    iter: PieceIter<'a>,
+}
+
+impl<'a> BoundedPieceIter<'a> {
+    pub fn new_from_slice(
+        pt: &'a PieceTree,
+        at: usize,
+        range: Range<usize>,
+    ) -> BoundedPieceIter<'a> {
+        let iter = PieceIter::new(pt, range.start + at);
+        BoundedPieceIter { range, iter }
+    }
+
+    pub fn new(pt: &'a PieceTree, at: usize) -> BoundedPieceIter<'a> {
+        let iter = PieceIter::new(pt, at);
+        BoundedPieceIter {
+            range: 0..pt.len(),
+            iter,
+        }
+    }
+
+    // TODO remove this
+    pub fn pos(&self) -> usize {
+        0
+    }
+
+    #[inline]
+    fn shrink_to_range(&self, (mut p_start, mut piece): (usize, Piece)) -> Option<(usize, Piece)> {
+        let p_end = p_start + piece.len;
+
+        let Range { start, end } = self.range;
+
+        // Shrink the piece if bounds are met
+        if p_start < start {
+            let diff = start - p_start;
+            piece.split_right(diff);
+            p_start += diff;
+        }
+
+        if end < p_end {
+            piece.split_left(piece.len - (p_end - end));
+        }
+
+        if piece.len == 0 {
+            return None;
+        }
+
+        Some((p_start - start, piece))
+    }
+
+    #[inline]
+    pub fn get(&self) -> Option<(usize, Piece)> {
+        let piece_with_pos = self.iter.get()?;
+        self.shrink_to_range(piece_with_pos)
+    }
+
+    pub fn next(&mut self) -> Option<(usize, Piece)> {
+        let (p_start, _) = self.iter.get()?;
+        let Range { end, .. } = self.range;
+        let over_bounds = end < p_start;
+
+        if over_bounds {
+            return None;
+        }
+
+        let piece_with_pos = self.iter.next()?;
+        self.shrink_to_range(piece_with_pos)
+    }
+
+    pub fn prev(&mut self) -> Option<(usize, Piece)> {
+        if let Some((p_start, _)) = self.iter.get() {
+            let Range { start, .. } = self.range;
+            let over_bounds = p_start <= start;
+
+            if over_bounds {
+                return None;
+            }
+        }
+
+        let piece_with_pos = self.iter.prev()?;
+        self.shrink_to_range(piece_with_pos)
+    }
+}
 
 /// Traverse pieces in the tree, in order
 #[derive(Debug, Clone)]
@@ -97,20 +185,16 @@ impl<'a> PieceIter<'a> {
             None
         }
     }
-}
-
-impl<'a> CursorIterator for PieceIter<'a> {
-    type Item = (usize, Piece);
 
     #[inline(always)]
-    fn get(&self) -> Option<(usize, Piece)> {
+    pub fn get(&self) -> Option<(usize, Piece)> {
         let piece = self.stack.last().map(|&node| node.piece.clone())?;
         let pos = self.pos();
         Some((pos, piece))
     }
 
     #[inline]
-    fn next(&mut self) -> Option<(usize, Piece)> {
+    pub fn next(&mut self) -> Option<(usize, Piece)> {
         let prev_len = self.get()?.1.len;
 
         if let Some(p) = self.tree_next().cloned() {
@@ -123,7 +207,7 @@ impl<'a> CursorIterator for PieceIter<'a> {
     }
 
     #[inline]
-    fn prev(&mut self) -> Option<(usize, Piece)> {
+    pub fn prev(&mut self) -> Option<(usize, Piece)> {
         if self.pos == 0 {
             return None;
         }
@@ -140,81 +224,8 @@ impl<'a> CursorIterator for PieceIter<'a> {
     }
 
     #[inline(always)]
-    fn pos(&self) -> usize {
+    pub fn pos(&self) -> usize {
         self.pos
-    }
-}
-
-#[derive(Debug, Clone)]
-pub(crate) struct BoundedPieceIter<'a> {
-    range: Range<usize>,
-    iter: PieceIter<'a>,
-}
-
-impl<'a> BoundedPieceIter<'a> {
-    pub fn new(pt: &'a PieceTree, at: usize, range: Range<usize>) -> BoundedPieceIter<'a> {
-        let iter = PieceIter::new(pt, range.start + at);
-        BoundedPieceIter { range, iter }
-    }
-}
-
-impl<'a> CursorIterator for BoundedPieceIter<'a> {
-    type Item = (usize, Piece);
-
-    fn pos(&self) -> usize {
-        // TODO remove this
-        0
-    }
-
-    fn get(&self) -> Option<Self::Item> {
-        let (mut p_start, mut piece) = self.iter.get()?;
-        let p_end = p_start + piece.len;
-
-        let Range { start, end } = self.range;
-
-        // Shrink the piece if bounds are met
-        if p_start < start {
-            let diff = start - p_start;
-            piece.split_right(diff);
-            p_start += diff;
-        }
-
-        if end < p_end {
-            piece.split_left(piece.len - (p_end - end));
-        }
-
-        if piece.len == 0 {
-            return None;
-        }
-
-        Some((p_start, piece))
-    }
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let (p_start, _) = self.iter.get()?;
-        let Range { end, .. } = self.range;
-        let over_bounds = end < p_start;
-
-        if over_bounds {
-            return None;
-        }
-
-        self.iter.next()?;
-        self.get()
-    }
-
-    fn prev(&mut self) -> Option<Self::Item> {
-        if let Some((p_start, _)) = self.iter.get() {
-            let Range { start, .. } = self.range;
-            let over_bounds = p_start <= start;
-
-            if over_bounds {
-                return None;
-            }
-        }
-
-        self.iter.prev()?;
-        self.get()
     }
 }
 
@@ -313,18 +324,18 @@ pub(crate) mod test {
         pt.insert_str(0, "baz"); // pos 6, buf 0
         pt.insert_str(0, "bar"); // pos 3, buf 3
         pt.insert_str(0, "foo"); // pos 0, buf 6
-        let mut pieces = BoundedPieceIter::new(&pt, 0, 2..7); // fo(obarb)az
+        let mut pieces = BoundedPieceIter::new_from_slice(&pt, 0, 2..7); // fo(obarb)az
 
-        assert_eq!(add_piece(2, 8, 1), pieces.get()); // o
-        assert_eq!(add_piece(3, 3, 3), pieces.next()); // bar
-        assert_eq!(add_piece(6, 0, 1), pieces.next()); // b
+        assert_eq!(add_piece(0, 8, 1), pieces.get()); // o
+        assert_eq!(add_piece(1, 3, 3), pieces.next()); // bar
+        assert_eq!(add_piece(4, 0, 1), pieces.next()); // b
         assert_eq!(None, pieces.next());
         assert_eq!(None, pieces.get());
-        assert_eq!(add_piece(6, 0, 1), pieces.prev());
-        assert_eq!(add_piece(3, 3, 3), pieces.prev());
-        assert_eq!(add_piece(2, 8, 1), pieces.prev());
+        assert_eq!(add_piece(4, 0, 1), pieces.prev());
+        assert_eq!(add_piece(1, 3, 3), pieces.prev());
+        assert_eq!(add_piece(0, 8, 1), pieces.prev());
         assert_eq!(None, pieces.prev());
-        assert_eq!(add_piece(2, 8, 1), pieces.get());
+        assert_eq!(add_piece(0, 8, 1), pieces.get());
     }
 
     #[test]
@@ -333,13 +344,33 @@ pub(crate) mod test {
         pt.insert_str(0, "baz");
         pt.insert_str(0, "bar");
         pt.insert_str(0, "foo");
-        let mut pieces = BoundedPieceIter::new(&pt, 0, 3..6);
+        let mut pieces = BoundedPieceIter::new_from_slice(&pt, 0, 3..6);
 
-        assert_eq!(add_piece(3, 3, 3), pieces.get());
+        assert_eq!(add_piece(0, 3, 3), pieces.get());
         assert_eq!(None, pieces.next());
         assert_eq!(None, pieces.get());
-        assert_eq!(add_piece(3, 3, 3), pieces.prev());
+        assert_eq!(add_piece(0, 3, 3), pieces.prev());
         assert_eq!(None, pieces.prev());
-        assert_eq!(add_piece(3, 3, 3), pieces.get());
+        assert_eq!(add_piece(0, 3, 3), pieces.get());
+    }
+
+    #[test]
+    fn bounded3() {
+        let mut pt = PieceTree::new();
+        pt.insert_str(0, "baz"); // pos 6, buf 0
+        pt.insert_str(0, "bar"); // pos 3, buf 3
+        pt.insert_str(0, "foo"); // pos 0, buf 6
+        let mut pieces = BoundedPieceIter::new_from_slice(&pt, 0, 0..pt.len());
+
+        assert_eq!(add_piece(0, 6, 3), pieces.get()); // foo
+        assert_eq!(add_piece(3, 3, 3), pieces.next()); // bar
+        assert_eq!(add_piece(6, 0, 3), pieces.next()); // baz
+        assert_eq!(None, pieces.next());
+        assert_eq!(None, pieces.get());
+        assert_eq!(add_piece(6, 0, 3), pieces.prev());
+        assert_eq!(add_piece(3, 3, 3), pieces.prev());
+        assert_eq!(add_piece(0, 6, 3), pieces.prev());
+        assert_eq!(None, pieces.prev());
+        assert_eq!(add_piece(0, 6, 3), pieces.get());
     }
 }

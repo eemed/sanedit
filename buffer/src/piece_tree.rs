@@ -1,7 +1,7 @@
 pub(crate) mod buffers;
 pub(crate) mod builder;
 // pub(crate) mod bytes;
-// pub(crate) mod chunks;
+pub(crate) mod chunks;
 // mod graphemes;
 // mod slice;
 pub(crate) mod tree;
@@ -11,10 +11,10 @@ use std::io::{self, Write};
 use std::ops::{Bound, RangeBounds};
 
 // use self::slice::PieceTreeSlice;
-use self::tree::pieces::PieceIter;
+use self::tree::pieces::Pieces;
 use self::tree::Tree;
 use crate::piece_tree::buffers::BufferKind;
-// use crate::piece_tree::chunks::Chunks;
+use crate::piece_tree::chunks::Chunks;
 use crate::piece_tree::tree::piece::Piece;
 use buffers::AddBuffer;
 use buffers::OriginalBuffer;
@@ -116,7 +116,7 @@ impl PieceTree {
             pos,
             self.len
         );
-        let pieces = PieceIter::new(self, pos);
+        let pieces = Pieces::new(self, pos);
         let (p_pos, piece) = pieces
             .get()
             .expect(&format!("Cannot find a piece for position {pos}"));
@@ -130,7 +130,7 @@ impl PieceTree {
     /// Get a buffer position from a mark.
     /// If the buffer position has been deleted returns None.
     pub fn mark_to_pos(&self, mark: &Mark) -> Option<usize> {
-        let mut pieces = PieceIter::new(self, 0);
+        let mut pieces = Pieces::new(self, 0);
         let mut piece = pieces.get();
 
         while let Some((p_pos, p)) = piece {
@@ -276,21 +276,21 @@ impl PieceTree {
     //     Bytes::new(self, pos)
     // }
 
-    // #[inline]
-    // pub fn chunks(&self) -> Chunks {
-    //     self.chunks_at(0)
-    // }
+    #[inline]
+    pub fn chunks(&self) -> Chunks {
+        self.chunks_at(0)
+    }
 
-    // #[inline]
-    // pub fn chunks_at(&self, pos: usize) -> Chunks {
-    //     debug_assert!(
-    //         pos <= self.len,
-    //         "chunks_at: Attempting to index {} over buffer len {}",
-    //         pos,
-    //         self.len
-    //     );
-    //     Chunks::new(self, pos)
-    // }
+    #[inline]
+    pub fn chunks_at(&self, pos: usize) -> Chunks {
+        debug_assert!(
+            pos <= self.len,
+            "chunks_at: Attempting to index {} over buffer len {}",
+            pos,
+            self.len
+        );
+        Chunks::new(self, pos)
+    }
 
     // #[inline]
     // pub fn slice<'a, R: RangeBounds<usize>>(&'a self, range: R) -> PieceTreeSlice<'a> {

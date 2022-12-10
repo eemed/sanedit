@@ -1,6 +1,8 @@
+use std::ops::Range;
+
 use super::{
     chunks::{Chunk, Chunks},
-    CursorIterator, PieceTree,
+    PieceTree,
 };
 
 #[derive(Debug, Clone)]
@@ -24,24 +26,24 @@ impl<'a> Bytes<'a> {
             pos,
         }
     }
-}
 
-impl<'a> CursorIterator for Bytes<'a> {
-    type Item = u8;
+    pub(crate) fn new_from_slice(pt: &'a PieceTree, at: usize, range: Range<usize>) -> Bytes<'a> {
+        let chunks = Chunks::new_from_slice(pt, at, range);
+        let chunk = chunks.get();
+        let chunk_len = chunk.as_ref().map(|c| c.as_ref().len()).unwrap_or(0);
+        let pos = at - chunks.pos();
+        Bytes {
+            chunk,
+            chunks,
+            chunk_len,
+            pos,
+        }
+    }
 
     #[inline]
     fn get(&self) -> Option<u8> {
         let chunk = self.chunk.as_ref()?.as_ref();
         Some(chunk[self.pos])
-    }
-
-    #[inline]
-    fn pos(&self) -> usize {
-        if self.chunk.is_none() {
-            self.chunks.pos()
-        } else {
-            self.chunks.pos() + self.pos
-        }
     }
 
     #[inline]

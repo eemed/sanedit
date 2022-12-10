@@ -3,7 +3,7 @@ use std::ops::{Range, RangeBounds};
 use super::{
     buffers::{BufferKind, ByteSlice},
     tree::{piece::Piece, pieces::Pieces},
-    CursorIterator, PieceTree,
+    PieceTree,
 };
 
 // Limit max chunk size to not read massive chunks into memory
@@ -29,22 +29,19 @@ impl<'a> Chunk<'a> {
 pub struct Chunks<'a> {
     pt: &'a PieceTree,
     pieces: Pieces<'a>,
-    pos: usize,
 }
 
 impl<'a> Chunks<'a> {
     #[inline]
     pub fn new(pt: &'a PieceTree, at: usize) -> Chunks<'a> {
         let pieces = Pieces::new(pt, at);
-        let pos = pieces.get().map(|(n, _)| n).unwrap_or(0);
-        Chunks { pt, pieces, pos }
+        Chunks { pt, pieces }
     }
 
     #[inline]
     pub fn new_from_slice(pt: &'a PieceTree, at: usize, range: Range<usize>) -> Chunks<'a> {
         let pieces = Pieces::new_from_slice(pt, at, range);
-        let pos = pieces.get().map(|(n, _)| n).unwrap_or(0);
-        Chunks { pt, pieces, pos }
+        Chunks { pt, pieces }
     }
 
     #[inline]

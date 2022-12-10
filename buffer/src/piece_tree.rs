@@ -1,6 +1,6 @@
 pub(crate) mod buffers;
 pub(crate) mod builder;
-// pub(crate) mod bytes;
+pub(crate) mod bytes;
 pub(crate) mod chunks;
 // mod graphemes;
 // mod slice;
@@ -20,7 +20,7 @@ use buffers::AddBuffer;
 use buffers::OriginalBuffer;
 
 pub use crate::cursor_iterator::CursorIterator;
-// pub use crate::piece_tree::bytes::Bytes;
+pub use crate::piece_tree::bytes::Bytes;
 pub use builder::PieceTreeBuilder;
 // pub use graphemes::{next_grapheme, next_grapheme_boundary, prev_grapheme, prev_grapheme_boundary};
 

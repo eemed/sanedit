@@ -46,50 +46,26 @@ impl<'a> Chunks<'a> {
         let pos = pieces.get().map(|(n, _)| n).unwrap_or(0);
         Chunks { pt, pieces, pos }
     }
-}
-
-impl<'a> CursorIterator for Chunks<'a> {
-    // TODO (usize, Chunk<'a>)
-    type Item = Chunk<'a>;
 
     #[inline]
-    fn pos(&self) -> usize {
-        self.pos
-    }
-
-    #[inline]
-    fn get(&self) -> Option<Chunk<'a>> {
-        let (_, piece) = self.pieces.get()?;
-        read_piece(&self.pt, &piece)
-    }
-
-    #[inline]
-    fn next(&mut self) -> Option<Chunk<'a>> {
+    pub fn get(&self) -> Option<(usize, Chunk<'a>)> {
         let (p_pos, piece) = self.pieces.get()?;
-        self.pos += piece.len;
-        let end = p_pos + piece.len;
-
-        let (_, piece) = if end <= self.pos {
-            self.pieces.next()?
-        } else {
-            self.pieces.get()?
-        };
-
-        read_piece(&self.pt, &piece)
+        let chunk = read_piece(&self.pt, &piece)?;
+        Some((p_pos, chunk))
     }
 
     #[inline]
-    fn prev(&mut self) -> Option<Chunk<'a>> {
-        todo!()
-        // let p_pos = self.pieces.pos();
-        // let (_, piece) = if self.pos == p_pos {
-        //     self.pieces.prev()?
-        // } else {
-        //     self.pieces.get()?
-        // };
+    pub fn next(&mut self) -> Option<(usize, Chunk<'a>)> {
+        let (p_pos, piece) = self.pieces.next()?;
+        let chunk = read_piece(&self.pt, &piece)?;
+        Some((p_pos, chunk))
+    }
 
-        // self.pos -= piece.len;
-        // read_piece(&self.pt, &piece)
+    #[inline]
+    pub fn prev(&mut self) -> Option<(usize, Chunk<'a>)> {
+        let (p_pos, piece) = self.pieces.prev()?;
+        let chunk = read_piece(&self.pt, &piece)?;
+        Some((p_pos, chunk))
     }
 }
 
@@ -107,11 +83,11 @@ fn read_piece<'a>(pt: &'a PieceTree, piece: &Piece) -> Option<Chunk<'a>> {
 mod test {
     use super::*;
 
-    fn chunk(string: &str) -> Option<Chunk> {
+    fn chunk(pos: usize, string: &str) -> Option<(usize, Chunk)> {
         let bytes = ByteSlice::Memory {
             bytes: string.as_ref(),
         };
-        Some(Chunk(bytes))
+        Some((pos, Chunk(bytes)))
     }
 
     #[test]
@@ -122,18 +98,12 @@ mod test {
 
         let mut chunks = pt.chunks();
 
-        assert_eq!(chunk("foo"), chunks.get());
-        assert_eq!(0, chunks.pos());
-
-        assert_eq!(chunk("bar"), chunks.next());
-        assert_eq!(3, chunks.pos());
-
-        assert_eq!(None, chunks.next());
-        assert_eq!(6, chunks.pos());
+        assert_eq!(chunk(0, "foo"), chunks.get());
+        assert_eq!(chunk(3, "bar"), chunks.next());
 
         assert_eq!(None, chunks.next());
         assert_eq!(None, chunks.next());
-        assert_eq!(6, chunks.pos());
+        assert_eq!(None, chunks.next());
     }
 
     #[test]
@@ -145,17 +115,12 @@ mod test {
         let mut chunks = pt.chunks_at(pt.len);
 
         assert_eq!(None, chunks.get());
-        assert_eq!(6, chunks.pos());
 
-        assert_eq!(chunk("bar"), chunks.prev());
-        assert_eq!(3, chunks.pos());
-
-        assert_eq!(chunk("foo"), chunks.prev());
-        assert_eq!(0, chunks.pos());
+        assert_eq!(chunk(3, "bar"), chunks.prev());
+        assert_eq!(chunk(0, "foo"), chunks.prev());
 
         assert_eq!(None, chunks.prev());
-        assert_eq!(0, chunks.pos());
-        assert_eq!(chunk("foo"), chunks.get());
+        assert_eq!(chunk(0, "foo"), chunks.get());
     }
 
     #[test]
@@ -166,14 +131,9 @@ mod test {
 
         let mut chunks = pt.chunks();
 
-        assert_eq!(chunk("foo"), chunks.get());
-        assert_eq!(0, chunks.pos());
-
-        assert_eq!(chunk("bar".as_ref()), chunks.next());
-        assert_eq!(3, chunks.pos());
-
-        assert_eq!(chunk("foo"), chunks.prev());
-        assert_eq!(0, chunks.pos());
+        assert_eq!(chunk(0, "foo"), chunks.get());
+        assert_eq!(chunk(3, "bar"), chunks.next());
+        assert_eq!(chunk(0, "foo"), chunks.prev());
     }
 
     #[test]
@@ -185,16 +145,9 @@ mod test {
         let mut chunks = pt.chunks_at(pt.len);
 
         assert_eq!(None, chunks.get());
-        assert_eq!(6, chunks.pos());
-
-        assert_eq!(chunk("bar"), chunks.prev());
-        assert_eq!(3, chunks.pos());
-
-        assert_eq!(chunk("foo"), chunks.prev());
-        assert_eq!(0, chunks.pos());
-
-        assert_eq!(chunk("bar"), chunks.next());
-        assert_eq!(3, chunks.pos());
+        assert_eq!(chunk(3, "bar"), chunks.prev());
+        assert_eq!(chunk(0, "foo"), chunks.prev());
+        assert_eq!(chunk(3, "bar"), chunks.next());
     }
 
     // #[test]

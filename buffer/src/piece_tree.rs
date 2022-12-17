@@ -3,7 +3,8 @@ pub(crate) mod builder;
 pub(crate) mod bytes;
 pub(crate) mod chunks;
 // mod graphemes;
-mod slice;
+pub(crate) mod codepoints;
+pub(crate) mod slice;
 pub(crate) mod tree;
 
 use std::fs::File;
@@ -16,6 +17,7 @@ use self::tree::Tree;
 use crate::piece_tree::buffers::BufferKind;
 use crate::piece_tree::chunks::Chunks;
 use crate::piece_tree::tree::piece::Piece;
+use bstr::BString;
 use buffers::AddBuffer;
 use buffers::OriginalBuffer;
 
@@ -109,6 +111,7 @@ impl PieceTree {
     // These can be safely indexed into because they never change after written.
     // Searching for a mark is O(n) operation where n is the number of pieces in the
     // piece tree
+    #[inline]
     pub fn mark(&self, pos: usize) -> Mark {
         debug_assert!(
             pos <= self.len,
@@ -129,6 +132,7 @@ impl PieceTree {
 
     /// Get a buffer position from a mark.
     /// If the buffer position has been deleted returns None.
+    #[inline]
     pub fn mark_to_pos(&self, mark: &Mark) -> Option<usize> {
         let mut pieces = Pieces::new(self, 0);
         let mut piece = pieces.get();
@@ -145,19 +149,19 @@ impl PieceTree {
     }
 
     pub fn write_to<W: Write>(&self, mut writer: W) -> io::Result<usize> {
-        todo!()
-        // let mut written = 0;
-        // let mut chunks = self.str_chunks();
-        // let mut chunk = chunks.current();
+        let mut written = 0;
+        let mut chunks = self.chunks();
+        let mut pos_chunk = chunks.get();
 
-        // while let Some(chk) = chunk {
-        //     writer.write(chk.as_bytes())?;
-        //     written += chk.len();
-        //     chunk = chunks.next();
-        // }
+        while let Some((_pos, chunk)) = pos_chunk {
+            let chunk_bytes = chunk.as_ref();
+            writer.write(chunk_bytes)?;
+            written += chunk_bytes.len();
+            pos_chunk = chunks.next();
+        }
 
-        // writer.flush()?;
-        // Ok(written)
+        writer.flush()?;
+        Ok(written)
     }
 
     #[inline]
@@ -310,20 +314,27 @@ impl PieceTree {
     }
 }
 
+impl From<&PieceTree> for Vec<u8> {
+    fn from(pt: &PieceTree) -> Self {
+        let mut bytes = Vec::with_capacity(pt.len());
+        let mut chunks = pt.chunks();
+        let mut pos_chunk = chunks.get();
+
+        while let Some((_pos, chunk)) = pos_chunk {
+            let chunk_bytes = chunk.as_ref();
+            bytes.extend_from_slice(chunk_bytes);
+            pos_chunk = chunks.next();
+        }
+
+        bytes
+    }
+}
+
 impl From<&PieceTree> for String {
     fn from(pt: &PieceTree) -> Self {
-        todo!()
-        // let mut result = String::with_capacity(pt.len);
-        // let mut chunks = pt.str_chunks();
-        // let mut chunk = chunks.current();
-
-        // while let Some(chk) = chunk {
-        //     result.push_str(&chk);
-
-        //     chunk = chunks.next();
-        // }
-
-        // result
+        let bytes = Vec::from(pt);
+        let byte_string = BString::from(bytes);
+        byte_string.to_string()
     }
 }
 

@@ -92,8 +92,8 @@ impl<'a, B: AsRef<[u8]>> PartialEq<B> for PieceTreeSlice<'a> {
     }
 }
 
-impl<'a> From<PieceTreeSlice<'a>> for Vec<u8> {
-    fn from(slice: PieceTreeSlice<'a>) -> Self {
+impl<'a> From<&PieceTreeSlice<'a>> for Vec<u8> {
+    fn from(slice: &PieceTreeSlice<'a>) -> Self {
         let mut bytes = Vec::with_capacity(slice.len());
         let mut chunks = slice.chunks();
         let mut pos_chunk = chunks.get();
@@ -108,8 +108,8 @@ impl<'a> From<PieceTreeSlice<'a>> for Vec<u8> {
     }
 }
 
-impl<'a> From<PieceTreeSlice<'a>> for String {
-    fn from(slice: PieceTreeSlice) -> Self {
+impl<'a> From<&PieceTreeSlice<'a>> for String {
+    fn from(slice: &PieceTreeSlice) -> Self {
         let bytes = Vec::from(slice);
         let byte_string = BString::from(bytes);
         byte_string.to_string()
@@ -129,7 +129,7 @@ mod test {
         let slice = pt.slice(3..9);
         let result = "lo wor";
 
-        assert_eq!(result.to_string(), String::from(slice.clone()));
+        assert_eq!(result.to_string(), String::from(&slice));
         assert!(slice == result);
     }
 
@@ -142,7 +142,7 @@ mod test {
         let slice = pt.slice(..);
         let result = "hello world";
 
-        assert_eq!(result.to_string(), String::from(slice.clone()));
+        assert_eq!(result.to_string(), String::from(&slice));
         assert!(slice == result);
     }
 

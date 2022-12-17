@@ -3,14 +3,14 @@ pub(crate) mod builder;
 pub(crate) mod bytes;
 pub(crate) mod chunks;
 // mod graphemes;
-// mod slice;
+mod slice;
 pub(crate) mod tree;
 
 use std::fs::File;
 use std::io::{self, Write};
 use std::ops::{Bound, RangeBounds};
 
-// use self::slice::PieceTreeSlice;
+use self::slice::PieceTreeSlice;
 use self::tree::pieces::Pieces;
 use self::tree::Tree;
 use crate::piece_tree::buffers::BufferKind;
@@ -260,21 +260,21 @@ impl PieceTree {
         self.insert(self.len, bytes);
     }
 
-    // #[inline]
-    // pub fn bytes(&self) -> Bytes {
-    //     self.bytes_at(0)
-    // }
+    #[inline]
+    pub fn bytes(&self) -> Bytes {
+        self.bytes_at(0)
+    }
 
-    // #[inline]
-    // pub fn bytes_at(&self, pos: usize) -> Bytes {
-    //     debug_assert!(
-    //         pos <= self.len,
-    //         "bytes_at: Attempting to index {} over buffer len {}",
-    //         pos,
-    //         self.len
-    //     );
-    //     Bytes::new(self, pos)
-    // }
+    #[inline]
+    pub fn bytes_at(&self, pos: usize) -> Bytes {
+        debug_assert!(
+            pos <= self.len,
+            "bytes_at: Attempting to index {} over buffer len {}",
+            pos,
+            self.len
+        );
+        Bytes::new(self, pos)
+    }
 
     #[inline]
     pub fn chunks(&self) -> Chunks {
@@ -292,22 +292,22 @@ impl PieceTree {
         Chunks::new(self, pos)
     }
 
-    // #[inline]
-    // pub fn slice<'a, R: RangeBounds<usize>>(&'a self, range: R) -> PieceTreeSlice<'a> {
-    //     let start = match range.start_bound() {
-    //         Bound::Included(n) => *n,
-    //         Bound::Excluded(n) => *n + 1,
-    //         Bound::Unbounded => 0,
-    //     };
+    #[inline]
+    pub fn slice<'a, R: RangeBounds<usize>>(&'a self, range: R) -> PieceTreeSlice<'a> {
+        let start = match range.start_bound() {
+            Bound::Included(n) => *n,
+            Bound::Excluded(n) => *n + 1,
+            Bound::Unbounded => 0,
+        };
 
-    //     let end = match range.end_bound() {
-    //         Bound::Included(n) => *n + 1,
-    //         Bound::Excluded(n) => *n,
-    //         Bound::Unbounded => self.len,
-    //     };
+        let end = match range.end_bound() {
+            Bound::Included(n) => *n + 1,
+            Bound::Excluded(n) => *n,
+            Bound::Unbounded => self.len,
+        };
 
-    //     PieceTreeSlice::new(self, start, end)
-    // }
+        PieceTreeSlice::new(self, start, end)
+    }
 }
 
 impl From<&PieceTree> for String {

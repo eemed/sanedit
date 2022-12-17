@@ -1,7 +1,7 @@
 use std::{io, path::PathBuf};
 
 use criterion::{criterion_group, criterion_main, Criterion};
-use eemebuffer::piece_tree::{CursorIterator, PieceTree};
+use sanedit_buffer::piece_tree::PieceTree;
 
 fn bytes(c: &mut Criterion) {
     c.bench_function("byte_next", |bench| {

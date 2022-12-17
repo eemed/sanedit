@@ -6,9 +6,6 @@ use super::{
     PieceTree,
 };
 
-// Limit max chunk size to not read massive chunks into memory
-const MAX_CHUNK_SIZE: usize = 1024 * 64;
-
 #[derive(Debug, Clone, PartialEq)]
 pub struct Chunk<'a>(pub(crate) ByteSlice<'a>);
 

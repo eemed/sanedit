@@ -57,25 +57,26 @@ impl<'a> PieceTreeSlice<'a> {
 
 impl<'a, B: AsRef<[u8]>> PartialEq<B> for PieceTreeSlice<'a> {
     fn eq(&self, other: &B) -> bool {
-        let mut total = 0;
-        let other = other.as_ref();
-        let mut chunks = self.chunks();
-        let mut chunk = chunks.get();
+        todo!()
+        // let mut total = 0;
+        // let other = other.as_ref();
+        // let mut chunks = self.chunks();
+        // let mut chunk = chunks.get();
 
-        while let Some(chk) = chunk {
-            let chk_pos = chunks.pos();
-            let chk_bytes = &chk.as_ref()[self.start.saturating_sub(chk_pos)..];
-            let chk_len = chk_bytes.len();
+        // while let Some(chk) = chunk {
+        //     let chk_pos = chunks.pos();
+        //     let chk_bytes = &chk.as_ref()[self.start.saturating_sub(chk_pos)..];
+        //     let chk_len = chk_bytes.len();
 
-            if chk_bytes != &other[..chk_len] {
-                return false;
-            }
+        //     if chk_bytes != &other[..chk_len] {
+        //         return false;
+        //     }
 
-            total += chk_len;
+        //     total += chk_len;
 
-            chunk = chunks.next();
-        }
+        //     chunk = chunks.next();
+        // }
 
-        total == other.len()
+        // total == other.len()
     }
 }

@@ -16,9 +16,10 @@ pub struct Bytes<'a> {
 impl<'a> Bytes<'a> {
     pub(crate) fn new(pt: &'a PieceTree, at: usize) -> Bytes<'a> {
         let chunks = Chunks::new(pt, at);
-        let chunk = chunks.get();
+        let pos_chunk = chunks.get();
+        let pos = pos_chunk.as_ref().map(|(pos, _)| at - pos).unwrap_or(0);
+        let chunk = pos_chunk.map(|(_, c)| c);
         let chunk_len = chunk.as_ref().map(|c| c.as_ref().len()).unwrap_or(0);
-        let pos = at - chunks.pos();
         Bytes {
             chunk,
             chunks,
@@ -29,9 +30,13 @@ impl<'a> Bytes<'a> {
 
     pub(crate) fn new_from_slice(pt: &'a PieceTree, at: usize, range: Range<usize>) -> Bytes<'a> {
         let chunks = Chunks::new_from_slice(pt, at, range);
-        let chunk = chunks.get();
-        let chunk_len = chunk.as_ref().map(|c| c.as_ref().len()).unwrap_or(0);
-        let pos = at - chunks.pos();
+        let pos_chunk = chunks.get();
+        let pos = pos_chunk.as_ref().map(|(pos, _)| at - pos).unwrap_or(0);
+        let chunk = pos_chunk.map(|(_, chunk)| chunk);
+        let chunk_len = chunk
+            .as_ref()
+            .map(|chunk| chunk.as_ref().len())
+            .unwrap_or(0);
         Bytes {
             chunk,
             chunks,
@@ -41,32 +46,41 @@ impl<'a> Bytes<'a> {
     }
 
     #[inline]
-    fn get(&self) -> Option<u8> {
+    pub fn get(&self) -> Option<u8> {
         let chunk = self.chunk.as_ref()?.as_ref();
         Some(chunk[self.pos])
     }
 
     #[inline]
-    fn next(&mut self) -> Option<u8> {
+    pub fn next(&mut self) -> Option<u8> {
         self.pos += 1;
 
         if self.pos >= self.chunk_len {
             self.pos = 0;
-            self.chunk = self.chunks.next();
-            self.chunk_len = self.chunk.as_ref().map(|c| c.as_ref().len()).unwrap_or(0);
+            let (chunk, len): (Option<Chunk>, usize) = self
+                .chunks
+                .next()
+                .map(|(_, chunk)| {
+                    let len = chunk.as_ref().len();
+                    (Some(chunk), len)
+                })
+                .unwrap_or((None, 0));
+            self.chunk = chunk;
+            self.chunk_len = len;
         }
 
         self.get()
     }
 
     #[inline]
-    fn prev(&mut self) -> Option<u8> {
+    pub fn prev(&mut self) -> Option<u8> {
         if self.pos != 0 {
             self.pos -= 1;
         } else {
-            let chunk = self.chunks.prev()?;
-            self.pos = chunk.as_ref().len().saturating_sub(1);
-            self.chunk_len = chunk.as_ref().len();
+            let chunk = self.chunks.prev()?.1;
+            let len = chunk.as_ref().len();
+            self.pos = len.saturating_sub(1);
+            self.chunk_len = len;
             self.chunk = Some(chunk);
         }
 
@@ -86,7 +100,6 @@ mod test {
     fn bytes_empty() {
         let mut pt = PieceTree::new();
         let mut bytes = pt.bytes();
-        assert_eq!(0, bytes.pos());
         assert_eq!(None, bytes.get());
     }
 
@@ -96,20 +109,12 @@ mod test {
         pt.insert_str(0, "foo");
         let mut bytes = pt.bytes();
 
-        assert_eq!(0, bytes.pos());
-
         assert_eq!(as_byte("f"), bytes.get());
-        assert_eq!(0, bytes.pos());
-
         assert_eq!(as_byte("o"), bytes.next());
-        assert_eq!(1, bytes.pos());
-
         assert_eq!(as_byte("o"), bytes.next());
-        assert_eq!(2, bytes.pos());
 
         assert!(bytes.next().is_none());
         assert!(bytes.get().is_none());
-        assert_eq!(3, bytes.pos());
     }
 
     #[test]
@@ -119,17 +124,12 @@ mod test {
         let mut bytes = pt.bytes_at(pt.len());
 
         assert!(bytes.get().is_none());
-        assert_eq!(3, bytes.pos());
         assert_eq!(as_byte("o"), bytes.prev());
-        assert_eq!(2, bytes.pos());
         assert_eq!(as_byte("o"), bytes.prev());
-        assert_eq!(1, bytes.pos());
         assert_eq!(as_byte("f"), bytes.prev());
-        assert_eq!(0, bytes.pos());
         assert!(bytes.prev().is_none());
         assert!(bytes.prev().is_none());
         assert!(bytes.prev().is_none());
-        assert_eq!(0, bytes.pos());
         assert_eq!(as_byte("f"), bytes.get());
     }
 
@@ -140,21 +140,16 @@ mod test {
         let mut bytes = pt.bytes();
 
         assert_eq!(Some(b'f'), bytes.get());
-        assert_eq!(0, bytes.pos());
         assert_eq!(as_byte("o"), bytes.next());
         assert_eq!(as_byte("o"), bytes.next());
         assert_eq!(None, bytes.next());
-        assert_eq!(3, bytes.pos());
         assert_eq!(None, bytes.next());
-        assert_eq!(3, bytes.pos());
         assert_eq!(None, bytes.next());
-        assert_eq!(3, bytes.pos());
         assert!(bytes.get().is_none());
         assert_eq!(as_byte("o"), bytes.prev());
         assert_eq!(as_byte("o"), bytes.prev());
         assert_eq!(as_byte("f"), bytes.prev());
         assert_eq!(None, bytes.prev());
-        assert_eq!(0, bytes.pos());
         assert_eq!(as_byte("f"), bytes.get());
     }
 
@@ -166,12 +161,8 @@ mod test {
         let mut bytes = pt.bytes_at(3);
 
         assert_eq!(as_byte("b"), bytes.get());
-        assert_eq!(3, bytes.pos());
         assert_eq!(as_byte("o"), bytes.prev());
-        assert_eq!(2, bytes.pos());
         assert_eq!(as_byte("o"), bytes.prev());
-        assert_eq!(1, bytes.pos());
         assert_eq!(as_byte("f"), bytes.prev());
-        assert_eq!(0, bytes.pos());
     }
 }

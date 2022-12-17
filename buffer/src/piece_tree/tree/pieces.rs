@@ -62,8 +62,8 @@ impl<'a> BoundedPieceIter<'a> {
 
     #[inline]
     pub fn get(&self) -> Option<(usize, Piece)> {
-        let piece_with_pos = self.iter.get()?;
-        self.shrink_to_range(piece_with_pos)
+        let pos_piece = self.iter.get()?;
+        self.shrink_to_range(pos_piece)
     }
 
     pub fn next(&mut self) -> Option<(usize, Piece)> {
@@ -75,8 +75,8 @@ impl<'a> BoundedPieceIter<'a> {
             return None;
         }
 
-        let piece_with_pos = self.iter.next()?;
-        self.shrink_to_range(piece_with_pos)
+        let pos_piece = self.iter.next()?;
+        self.shrink_to_range(pos_piece)
     }
 
     pub fn prev(&mut self) -> Option<(usize, Piece)> {
@@ -89,8 +89,8 @@ impl<'a> BoundedPieceIter<'a> {
             }
         }
 
-        let piece_with_pos = self.iter.prev()?;
-        self.shrink_to_range(piece_with_pos)
+        let pos_piece = self.iter.prev()?;
+        self.shrink_to_range(pos_piece)
     }
 }
 

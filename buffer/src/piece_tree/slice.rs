@@ -1,82 +1,161 @@
-use super::{chunks::Chunks, Bytes, CursorIterator, PieceTree};
+use std::ops::Range;
 
-#[derive(Debug)]
+use bstr::BString;
+
+use super::{chunks::Chunks, Bytes, PieceTree};
+
+#[derive(Debug, Clone)]
 pub struct PieceTreeSlice<'a> {
-    start: usize,
-    end: usize,
+    range: Range<usize>,
     pt: &'a PieceTree,
 }
 
 impl<'a> PieceTreeSlice<'a> {
-    pub(crate) fn new(pt: &'a PieceTree, start: usize, end: usize) -> PieceTreeSlice {
-        PieceTreeSlice { start, end, pt }
+    pub(crate) fn new(pt: &'a PieceTree, range: Range<usize>) -> PieceTreeSlice {
+        PieceTreeSlice { range, pt }
     }
 
     #[inline]
     pub fn start(&self) -> usize {
-        self.start
+        self.range.start
     }
 
     #[inline]
     pub fn end(&self) -> usize {
-        self.end
+        self.range.end
+    }
+
+    #[inline]
+    pub fn len(&self) -> usize {
+        self.range.len()
     }
 
     #[inline]
     pub fn bytes(&self) -> Bytes {
-        self.bytes_at(self.start)
+        self.bytes_at(0)
     }
 
     #[inline]
     pub fn bytes_at(&self, pos: usize) -> Bytes {
         debug_assert!(
-            self.start + pos <= self.pt.len,
+            self.start() + pos <= self.pt.len,
             "bytes_at: Attempting to index {} over buffer len {}",
-            self.start + pos,
+            self.start() + pos,
             self.pt.len
         );
-        Bytes::new(self.pt, self.start + pos)
+        Bytes::new_from_slice(self.pt, pos, self.range.clone())
     }
 
     #[inline]
     pub fn chunks(&self) -> Chunks {
-        self.chunks_at(self.start)
+        self.chunks_at(0)
     }
 
     #[inline]
     pub fn chunks_at(&self, pos: usize) -> Chunks {
         debug_assert!(
-            self.start + pos <= self.pt.len,
+            self.start() + pos <= self.pt.len,
             "chunks_at: Attempting to index {} over buffer len {}",
-            self.start + pos,
+            self.start() + pos,
             self.pt.len
         );
-        Chunks::new(self.pt, self.start + pos)
+        Chunks::new_from_slice(self.pt, pos, self.range.clone())
     }
 }
 
 impl<'a, B: AsRef<[u8]>> PartialEq<B> for PieceTreeSlice<'a> {
     fn eq(&self, other: &B) -> bool {
-        todo!()
-        // let mut total = 0;
-        // let other = other.as_ref();
-        // let mut chunks = self.chunks();
-        // let mut chunk = chunks.get();
+        if other.as_ref().len() != self.len() {
+            return false;
+        }
 
-        // while let Some(chk) = chunk {
-        //     let chk_pos = chunks.pos();
-        //     let chk_bytes = &chk.as_ref()[self.start.saturating_sub(chk_pos)..];
-        //     let chk_len = chk_bytes.len();
+        let mut total = 0;
+        let mut other = other.as_ref();
+        let mut chunks = self.chunks();
+        let mut pos_chunk = chunks.get();
 
-        //     if chk_bytes != &other[..chk_len] {
-        //         return false;
-        //     }
+        while let Some((_pos, chunk)) = pos_chunk {
+            let chunk_bytes = chunk.as_ref();
+            let chunk_len = chunk_bytes.len();
 
-        //     total += chk_len;
+            if chunk_bytes != &other[..chunk_len] {
+                return false;
+            }
+            other = &other[chunk_len..];
 
-        //     chunk = chunks.next();
-        // }
+            total += chunk_len;
 
-        // total == other.len()
+            pos_chunk = chunks.next();
+        }
+
+        total == self.len()
+    }
+}
+
+impl<'a> From<PieceTreeSlice<'a>> for Vec<u8> {
+    fn from(slice: PieceTreeSlice<'a>) -> Self {
+        let mut bytes = Vec::with_capacity(slice.len());
+        let mut chunks = slice.chunks();
+        let mut pos_chunk = chunks.get();
+
+        while let Some((_pos, chunk)) = pos_chunk {
+            let chunk_bytes = chunk.as_ref();
+            bytes.extend_from_slice(chunk_bytes);
+            pos_chunk = chunks.next();
+        }
+
+        bytes
+    }
+}
+
+impl<'a> From<PieceTreeSlice<'a>> for String {
+    fn from(slice: PieceTreeSlice) -> Self {
+        let bytes = Vec::from(slice);
+        let byte_string = BString::from(bytes);
+        byte_string.to_string()
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn partial_eq() {
+        let mut pt = PieceTree::new();
+        pt.insert_str(0, "world");
+        pt.insert_str(0, "hello ");
+
+        let slice = pt.slice(3..9);
+        let result = "lo wor";
+
+        assert_eq!(result.to_string(), String::from(slice.clone()));
+        assert!(slice == result);
+    }
+
+    #[test]
+    fn partial_eq_unbounded() {
+        let mut pt = PieceTree::new();
+        pt.insert_str(0, "world");
+        pt.insert_str(0, "hello ");
+
+        let slice = pt.slice(..);
+        let result = "hello world";
+
+        assert_eq!(result.to_string(), String::from(slice.clone()));
+        assert!(slice == result);
+    }
+
+    #[test]
+    fn partial_ne() {
+        let mut pt = PieceTree::new();
+        pt.insert_str(0, "world");
+        pt.insert_str(0, "hello ");
+
+        let slice = pt.slice(6..);
+        let result = " worl";
+
+        assert_ne!(result.to_string(), String::from(slice.clone()));
+        assert!(slice != result);
     }
 }

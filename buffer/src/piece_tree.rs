@@ -306,7 +306,7 @@ impl PieceTree {
             Bound::Unbounded => self.len,
         };
 
-        PieceTreeSlice::new(self, start, end)
+        PieceTreeSlice::new(self, start..end)
     }
 }
 

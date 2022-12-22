@@ -3,7 +3,7 @@ pub(crate) mod builder;
 pub(crate) mod bytes;
 pub(crate) mod chunks;
 // mod graphemes;
-pub(crate) mod codepoints;
+pub(crate) mod chars;
 pub(crate) mod slice;
 pub(crate) mod tree;
 

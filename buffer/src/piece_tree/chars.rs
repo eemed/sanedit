@@ -40,7 +40,24 @@ impl<'a> Chars<'a> {
     }
 }
 
-fn decode_last(bytes: &[u8]) {}
+fn decode_last(bytes: &[u8]) {
+    let (ch, size) = bstr::decode_last_utf8(&bytes);
+    if let Some(ch) = ch {
+        *bytes = &bytes[..bytes.len() - size];
+        DecodeResult::Ok(ch)
+    } else {
+        let len = cmp::min(3, bytes.len());
+        let partial = &bytes[bytes.len() - len..];
+        // TODO
+        let is_invalid = utf8_valid_up_to(partial) == 0;
+
+        if is_invalid {
+            DecodeResult::Invalid
+        } else {
+            DecodeResult::Incomplete
+        }
+    }
+}
 
 // Decodes a char from bytes and consumes the bytes decoded.
 // If the result is Invalid or Incomplete no bytes are consumed
@@ -52,14 +69,14 @@ fn decode(mut bytes: &mut &[u8]) -> DecodeResult {
         *bytes = &bytes[size..];
         DecodeResult::Ok(ch)
     } else {
-        let len = cmp::max(3, bytes.len());
+        let len = cmp::min(3, bytes.len());
         let partial = &bytes[..len];
-        let has_valid_bytes = utf8_valid_up_to(partial) > 0;
+        let is_invalid = utf8_valid_up_to(partial) == 0;
 
-        if has_valid_bytes {
-            DecodeResult::Incomplete
-        } else {
+        if is_invalid {
             DecodeResult::Invalid
+        } else {
+            DecodeResult::Incomplete
         }
     }
 }

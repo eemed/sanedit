@@ -1,9 +1,9 @@
 pub(crate) mod buffers;
 pub(crate) mod builder;
 pub(crate) mod bytes;
-pub(crate) mod chunks;
-// mod graphemes;
 pub(crate) mod chars;
+pub(crate) mod chunks;
+mod graphemes;
 pub(crate) mod slice;
 pub(crate) mod tree;
 

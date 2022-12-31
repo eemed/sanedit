@@ -128,7 +128,7 @@ pub fn next_grapheme<'a>(pt: &'a PieceTree, pos: usize) -> Option<PieceTreeSlice
 }
 
 #[inline]
-pub fn prev_grapheme(pt: &PieceTree, pos: usize) -> Option<PieceTreeSlice<'a>> {
+pub fn prev_grapheme<'a>(pt: &'a PieceTree, pos: usize) -> Option<PieceTreeSlice<'a>> {
     prev_grapheme_impl(pt, pos)
 }
 

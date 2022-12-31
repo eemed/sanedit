@@ -46,15 +46,7 @@ impl<'a> Bytes<'a> {
     }
 
     #[inline]
-    pub fn get(&self) -> Option<u8> {
-        let chunk = self.chunk.as_ref()?.as_ref();
-        Some(chunk[self.pos])
-    }
-
-    #[inline]
     pub fn next(&mut self) -> Option<u8> {
-        self.pos += 1;
-
         if self.pos >= self.chunk_len {
             self.pos = 0;
             let (chunk, len): (Option<Chunk>, usize) = self
@@ -69,7 +61,10 @@ impl<'a> Bytes<'a> {
             self.chunk_len = len;
         }
 
-        self.get()
+        let chunk = self.chunk.as_ref()?.as_ref();
+        let byte = chunk[self.pos];
+        self.pos += 1;
+        Some(byte)
     }
 
     #[inline]
@@ -84,7 +79,14 @@ impl<'a> Bytes<'a> {
             self.chunk = Some(chunk);
         }
 
-        self.get()
+        let chunk = self.chunk.as_ref()?.as_ref();
+        let byte = chunk[self.pos];
+        Some(byte)
+    }
+
+    #[inline]
+    pub fn pos(&self) -> usize {
+        self.pos
     }
 }
 
@@ -100,7 +102,7 @@ mod test {
     fn bytes_empty() {
         let mut pt = PieceTree::new();
         let mut bytes = pt.bytes();
-        assert_eq!(None, bytes.get());
+        assert_eq!(None, bytes.next());
     }
 
     #[test]
@@ -109,12 +111,12 @@ mod test {
         pt.insert_str(0, "foo");
         let mut bytes = pt.bytes();
 
-        assert_eq!(as_byte("f"), bytes.get());
+        assert_eq!(as_byte("f"), bytes.next());
         assert_eq!(as_byte("o"), bytes.next());
         assert_eq!(as_byte("o"), bytes.next());
 
         assert!(bytes.next().is_none());
-        assert!(bytes.get().is_none());
+        assert!(bytes.next().is_none());
     }
 
     #[test]
@@ -123,14 +125,14 @@ mod test {
         pt.insert_str(0, "foo");
         let mut bytes = pt.bytes_at(pt.len());
 
-        assert!(bytes.get().is_none());
+        assert!(bytes.next().is_none());
         assert_eq!(as_byte("o"), bytes.prev());
         assert_eq!(as_byte("o"), bytes.prev());
         assert_eq!(as_byte("f"), bytes.prev());
         assert!(bytes.prev().is_none());
         assert!(bytes.prev().is_none());
         assert!(bytes.prev().is_none());
-        assert_eq!(as_byte("f"), bytes.get());
+        assert_eq!(as_byte("f"), bytes.next());
     }
 
     #[test]
@@ -139,18 +141,18 @@ mod test {
         pt.insert_str(0, "foo");
         let mut bytes = pt.bytes();
 
-        assert_eq!(Some(b'f'), bytes.get());
+        assert_eq!(Some(b'f'), bytes.next());
         assert_eq!(as_byte("o"), bytes.next());
         assert_eq!(as_byte("o"), bytes.next());
         assert_eq!(None, bytes.next());
         assert_eq!(None, bytes.next());
         assert_eq!(None, bytes.next());
-        assert!(bytes.get().is_none());
+        assert!(bytes.next().is_none());
         assert_eq!(as_byte("o"), bytes.prev());
         assert_eq!(as_byte("o"), bytes.prev());
         assert_eq!(as_byte("f"), bytes.prev());
         assert_eq!(None, bytes.prev());
-        assert_eq!(as_byte("f"), bytes.get());
+        assert_eq!(as_byte("f"), bytes.next());
     }
 
     #[test]
@@ -160,7 +162,6 @@ mod test {
         pt.insert_str(0, "foo");
         let mut bytes = pt.bytes_at(3);
 
-        assert_eq!(as_byte("b"), bytes.get());
         assert_eq!(as_byte("o"), bytes.prev());
         assert_eq!(as_byte("o"), bytes.prev());
         assert_eq!(as_byte("f"), bytes.prev());

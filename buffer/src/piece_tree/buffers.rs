@@ -19,9 +19,9 @@ pub(crate) enum ByteSlice<'a> {
         bytes: &'a [u8],
     },
     File {
-        start: usize,
-        end: usize,
-        bytes: Rc<(usize, Vec<u8>)>,
+        start: usize,                // Start of this slice
+        end: usize,                  // End of this slice
+        bytes: Rc<(usize, Vec<u8>)>, // Stores a block of data read from the file
     },
 }
 
@@ -84,9 +84,12 @@ pub(crate) type AddBuffer = Vec<u8>;
 
 #[derive(Debug)]
 pub(crate) enum OriginalBuffer {
+    // Uses a backing file to read the data from. The file data is read in
+    // blocks and cached. The Rc pointer is cloned to the slices given out, so
+    // we can change the cache here and the slice will hold the block alive.
     File {
-        file: RefCell<File>,
-        cache: RefCell<Rc<(usize, Vec<u8>)>>,
+        file: RefCell<File>,                  // File handle to read data from
+        cache: RefCell<Rc<(usize, Vec<u8>)>>, // Stores a block of data read from the file
     },
     Memory {
         bytes: Vec<u8>,

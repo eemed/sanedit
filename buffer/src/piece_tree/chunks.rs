@@ -16,6 +16,12 @@ impl<'a> AsRef<[u8]> for Chunk<'a> {
     }
 }
 
+impl<'a> From<&[u8]> for Chunk<'a> {
+    fn from(_: &[u8]) -> Self {
+        todo!()
+    }
+}
+
 impl<'a> Chunk<'a> {
     pub fn slice<R: RangeBounds<usize>>(&self, range: R) -> Chunk<'a> {
         Chunk(self.0.slice(range))

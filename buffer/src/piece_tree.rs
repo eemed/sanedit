@@ -3,7 +3,7 @@ pub(crate) mod builder;
 pub(crate) mod bytes;
 pub(crate) mod chars;
 pub(crate) mod chunks;
-mod graphemes;
+// mod graphemes;
 pub(crate) mod slice;
 pub(crate) mod tree;
 
@@ -11,6 +11,7 @@ use std::fs::File;
 use std::io::{self, Write};
 use std::ops::{Bound, RangeBounds};
 
+use self::chars::Chars;
 use self::slice::PieceTreeSlice;
 use self::tree::pieces::Pieces;
 use self::tree::Tree;
@@ -311,6 +312,16 @@ impl PieceTree {
         };
 
         PieceTreeSlice::new(self, start..end)
+    }
+
+    #[inline]
+    pub fn chars(&self) -> Chars {
+        self.chars_at(0)
+    }
+
+    #[inline]
+    pub fn chars_at(&self, at: usize) -> Chars {
+        Chars::new(self, at)
     }
 }
 

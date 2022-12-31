@@ -155,7 +155,7 @@ mod test {
         let slice = pt.slice(6..);
         let result = " worl";
 
-        assert_ne!(result.to_string(), String::from(slice.clone()));
+        assert_ne!(result.to_string(), String::from(&slice));
         assert!(slice != result);
     }
 }

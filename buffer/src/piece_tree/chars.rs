@@ -1,17 +1,11 @@
-use std::{cmp, ops::Range};
+use std::ops::Range;
 
-use bstr::ByteSlice;
-
-use super::{
-    chunks::{Chunk, Chunks},
-    Bytes, PieceTree,
-};
+use super::{Bytes, PieceTree};
 
 const REPLACEMENT_CHAR: char = '\u{FFFD}';
 
 #[derive(Debug, Clone)]
 pub struct Chars<'a> {
-    pt: &'a PieceTree,
     bytes: Bytes<'a>,
     buf: [u8; 4],
     valid_to: usize,
@@ -20,10 +14,9 @@ pub struct Chars<'a> {
 
 impl<'a> Chars<'a> {
     #[inline]
-    pub fn new(pt: &'a PieceTree, at: usize) -> Chars<'a> {
+    pub(crate) fn new(pt: &'a PieceTree, at: usize) -> Chars<'a> {
         let bytes = Bytes::new(pt, at);
         Chars {
-            pt,
             bytes,
             buf: [0; 4],
             valid_to: 0,
@@ -32,10 +25,9 @@ impl<'a> Chars<'a> {
     }
 
     #[inline]
-    pub fn new_from_slice(pt: &'a PieceTree, at: usize, range: Range<usize>) -> Chars<'a> {
+    pub(crate) fn new_from_slice(pt: &'a PieceTree, at: usize, range: Range<usize>) -> Chars<'a> {
         let bytes = Bytes::new_from_slice(pt, at, range);
         Chars {
-            pt,
             bytes,
             buf: [0; 4],
             valid_to: 0,
@@ -123,6 +115,7 @@ enum DecodeResult {
     Ok(char),
 }
 
+#[inline]
 fn decode_char(bytes: &[u8]) -> DecodeResult {
     if bytes.is_empty() {
         return DecodeResult::Incomplete;

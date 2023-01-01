@@ -1,8 +1,6 @@
 use std::ops::Range;
 
-use bstr::BString;
-
-use super::{chunks::Chunks, Bytes, PieceTree};
+use super::{chars::Chars, chunks::Chunks, Bytes, PieceTree};
 
 #[derive(Debug, Clone)]
 pub struct PieceTreeSlice<'a> {
@@ -61,6 +59,22 @@ impl<'a> PieceTreeSlice<'a> {
         );
         Chunks::new_from_slice(self.pt, pos, self.range.clone())
     }
+
+    #[inline]
+    pub fn chars(&self) -> Chars {
+        self.chars_at(0)
+    }
+
+    #[inline]
+    pub fn chars_at(&self, pos: usize) -> Chars {
+        debug_assert!(
+            self.start() + pos <= self.pt.len,
+            "chars_at: Attempting to index {} over buffer len {}",
+            self.start() + pos,
+            self.pt.len
+        );
+        Chars::new_from_slice(self.pt, pos, self.range.clone())
+    }
 }
 
 impl<'a, B: AsRef<[u8]>> PartialEq<B> for PieceTreeSlice<'a> {
@@ -110,9 +124,12 @@ impl<'a> From<&PieceTreeSlice<'a>> for Vec<u8> {
 
 impl<'a> From<&PieceTreeSlice<'a>> for String {
     fn from(slice: &PieceTreeSlice) -> Self {
-        let bytes = Vec::from(slice);
-        let byte_string = BString::from(bytes);
-        byte_string.to_string()
+        let mut result = String::new();
+        let mut chars = slice.chars();
+        while let Some((_, ch)) = chars.next() {
+            result.push(ch);
+        }
+        result
     }
 }
 

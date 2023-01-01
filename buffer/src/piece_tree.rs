@@ -3,7 +3,7 @@ pub(crate) mod builder;
 pub(crate) mod bytes;
 pub(crate) mod chars;
 pub(crate) mod chunks;
-// mod graphemes;
+pub(crate) mod graphemes;
 pub(crate) mod slice;
 pub(crate) mod tree;
 
@@ -18,7 +18,6 @@ use self::tree::Tree;
 use crate::piece_tree::buffers::BufferKind;
 use crate::piece_tree::chunks::Chunks;
 use crate::piece_tree::tree::piece::Piece;
-use bstr::BString;
 use buffers::AddBuffer;
 use buffers::OriginalBuffer;
 
@@ -343,9 +342,12 @@ impl From<&PieceTree> for Vec<u8> {
 
 impl From<&PieceTree> for String {
     fn from(pt: &PieceTree) -> Self {
-        let bytes = Vec::from(pt);
-        let byte_string = BString::from(bytes);
-        byte_string.to_string()
+        let mut result = String::new();
+        let mut chars = pt.chars();
+        while let Some((_, ch)) = chars.next() {
+            result.push(ch);
+        }
+        result
     }
 }
 

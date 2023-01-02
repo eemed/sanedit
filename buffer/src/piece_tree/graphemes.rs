@@ -1,37 +1,44 @@
-use std::ops::Range;
+pub fn next_grapheme_boundary(pt: &PieceTree, pos: usize) -> usize {
+    let mut chars = pt.chars_at(pos);
 
-use super::{chars::Chars, slice::PieceTreeSlice, PieceTree};
+    // TODO graphemes can be arbitrary sized. Should we allocate that amount of
+    // memory anyway? any api user would want to display the grapheme anyway and
+    // it would be allocated.
+    // Buf fits 2 chars
+    let mut pos = 0;
+    let mut buf = [0u8; 8];
+    let mut valid_to = 0;
 
-#[derive(Debug, Clone)]
-struct Graphemes<'a> {
-    chars: Chars<'a>,
+    for _ in 0..2 {
+        if let Some((_pos, ch)) = chars.next() {
+            ch.encode_utf8(&mut buf[valid_to..]);
+            valid_to += ch.len_utf8();
+        }
+    }
+
+    let mut gc = unicode_segmentation::GraphemeCursor::new(pos, usize::MAX, true);
+
+    let chunk = unsafe { std::str::from_utf8_unchecked(&buf[..valid_to]) };
+    match gc.next_boundary(chunk, pos) {
+        Ok(Some(bound)) => {
+            return bound;
+        }
+        Ok(None) => {
+            return pos;
+        }
+        Err(e) => match e {
+            unicode_segmentation::GraphemeIncomplete::PreContext(_) => todo!(),
+            unicode_segmentation::GraphemeIncomplete::NextChunk => todo!(),
+            _ => unreachable!(),
+        },
+    }
 }
 
-impl<'a> Graphemes<'a> {
-    pub(crate) fn new(pt: &'a PieceTree, at: usize) -> Graphemes {
-        let chars = Chars::new(pt, at);
-        Graphemes { chars }
-    }
-    pub(crate) fn new_from_slice(pt: &'a PieceTree, at: usize, range: Range<usize>) -> Graphemes {
-        let chars = Chars::new_from_slice(pt, at, range);
-        Graphemes { chars }
-    }
-
-    fn next(&mut self) -> Option<PieceTreeSlice> {
-        // TODO use chars iterator to get pieces and use grapheme cursor to get
-        // graphemes
-        todo!()
-    }
-
-    fn prev(&mut self) -> Option<PieceTreeSlice> {
-        todo!()
-    }
+pub fn prev_grapheme_boundary(pt: &PieceTree, pos: usize) -> usize {
+    todo!()
 }
-
-// use crate::cursor_iterator::CursorIterator;
 
 // use super::{slice::PieceTreeSlice, Bytes, PieceTree};
-// use bstr::{BString, ByteSlice, B};
 
 // // Using bstr to convert bytes to grapheme clusters.
 // // bstr is not meant to be used on streaming
@@ -223,3 +230,5 @@ impl<'a> Graphemes<'a> {
 //     //     println!("TEST {:?}", CONTENT.grapheme_indices().next());
 //     // }
 // }
+
+use super::PieceTree;

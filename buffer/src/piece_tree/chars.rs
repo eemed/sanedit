@@ -62,6 +62,7 @@ impl<'a> Chars<'a> {
                     self.read_next_byte()?;
                 }
                 DecodeResult::Ok(ch) => {
+                    self.invalid = false;
                     self.valid_to = 0;
                     return Some((start, ch));
                 }
@@ -100,6 +101,7 @@ impl<'a> Chars<'a> {
                     self.read_prev_until_leading_utf8_byte()?;
                 }
                 DecodeResult::Ok(ch) => {
+                    self.invalid = false;
                     self.valid_to = 0;
                     return Some((self.bytes.pos(), ch));
                 }
@@ -171,5 +173,35 @@ mod test {
         assert_eq!(Some((1, 'b')), chars.prev());
         assert_eq!(Some((0, 'a')), chars.prev());
         assert_eq!(None, chars.prev());
+    }
+
+    #[test]
+    fn next_then_prev() {
+        let mut pt = PieceTree::new();
+        pt.insert(0, b"ab\xFF\xFF\xFF\xFF\xFFba");
+
+        let mut chars = pt.chars();
+        assert_eq!(Some((0, 'a')), chars.next());
+        assert_eq!(Some((1, 'b')), chars.next());
+        assert_eq!(Some((2, REPLACEMENT_CHAR)), chars.next());
+        assert_eq!(Some((7, 'b')), chars.next());
+        assert_eq!(Some((7, 'b')), chars.prev());
+        assert_eq!(Some((6, REPLACEMENT_CHAR)), chars.prev());
+        assert_eq!(Some((1, 'b')), chars.prev());
+        assert_eq!(Some((0, 'a')), chars.prev());
+        assert_eq!(None, chars.prev());
+    }
+
+    #[test]
+    fn middle_of_char() {
+        let mut pt = PieceTree::new();
+        pt.insert_str(0, "§ab");
+
+        let slice = pt.slice(1..);
+        let mut chars = slice.chars();
+        assert_eq!(Some((0, REPLACEMENT_CHAR)), chars.next());
+        assert_eq!(Some((1, 'a')), chars.next());
+        assert_eq!(Some((2, 'b')), chars.next());
+        assert_eq!(None, chars.next());
     }
 }

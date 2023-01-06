@@ -1,6 +1,6 @@
 use std::ops::Range;
 
-use super::{Bytes, PieceTree};
+use crate::piece_tree::{Bytes, PieceTree};
 
 const REPLACEMENT_CHAR: char = '\u{FFFD}';
 
@@ -129,7 +129,7 @@ fn decode_char(bytes: &[u8]) -> DecodeResult {
             DecodeResult::Ok(ch)
         }
         Err(e) => {
-            if e.valid_up_to() == 0 {
+            if e.error_len().is_some() && e.valid_up_to() == 0 {
                 DecodeResult::Invalid
             } else {
                 DecodeResult::Incomplete
@@ -202,6 +202,28 @@ mod test {
         assert_eq!(Some((0, REPLACEMENT_CHAR)), chars.next());
         assert_eq!(Some((1, 'a')), chars.next());
         assert_eq!(Some((2, 'b')), chars.next());
+        assert_eq!(None, chars.next());
+    }
+
+    #[test]
+    fn multi_byte() {
+        let mut pt = PieceTree::new();
+        const CONTENT: &str = "❤🤍🥳❤️간÷나는산다⛄";
+        pt.insert_str(0, CONTENT);
+        let mut chars = pt.chars();
+
+        assert_eq!(Some((0, '❤')), chars.next());
+        assert_eq!(Some((3, '🤍')), chars.next());
+        assert_eq!(Some((7, '🥳')), chars.next());
+        assert_eq!(Some((11, '❤')), chars.next());
+        assert_eq!(Some((14, '\u{fe0f}')), chars.next());
+        assert_eq!(Some((17, '간')), chars.next());
+        assert_eq!(Some((20, '÷')), chars.next());
+        assert_eq!(Some((22, '나')), chars.next());
+        assert_eq!(Some((25, '는')), chars.next());
+        assert_eq!(Some((28, '산')), chars.next());
+        assert_eq!(Some((31, '다')), chars.next());
+        assert_eq!(Some((34, '⛄')), chars.next());
         assert_eq!(None, chars.next());
     }
 }

@@ -1,20 +1,19 @@
 pub(crate) mod buffers;
 pub(crate) mod builder;
 pub(crate) mod bytes;
-pub(crate) mod chars;
 pub(crate) mod chunks;
-pub(crate) mod graphemes;
 pub(crate) mod slice;
 pub(crate) mod tree;
+pub(crate) mod utf8;
 
 use std::fs::File;
 use std::io::{self, Write};
 use std::ops::{Bound, RangeBounds};
 
-use self::chars::Chars;
 use self::slice::PieceTreeSlice;
 use self::tree::pieces::Pieces;
 use self::tree::Tree;
+use self::utf8::chars::Chars;
 use crate::piece_tree::buffers::BufferKind;
 use crate::piece_tree::chunks::Chunks;
 use crate::piece_tree::tree::piece::Piece;
@@ -24,7 +23,6 @@ use buffers::OriginalBuffer;
 pub use crate::cursor_iterator::CursorIterator;
 pub use crate::piece_tree::bytes::Bytes;
 pub use builder::PieceTreeBuilder;
-// pub use graphemes::{next_grapheme, next_grapheme_boundary, prev_grapheme, prev_grapheme_boundary};
 
 /// A Snapshot of the piece tree.
 //
@@ -337,17 +335,6 @@ impl From<&PieceTree> for Vec<u8> {
         }
 
         bytes
-    }
-}
-
-impl From<&PieceTree> for String {
-    fn from(pt: &PieceTree) -> Self {
-        let mut result = String::new();
-        let mut chars = pt.chars();
-        while let Some((_, ch)) = chars.next() {
-            result.push(ch);
-        }
-        result
     }
 }
 

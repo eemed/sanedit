@@ -1,7 +1,7 @@
 use std::{io, path::PathBuf};
 
 use criterion::{criterion_group, criterion_main, Criterion};
-use sanedit_buffer::piece_tree::PieceTree;
+use sanedit_buffer::piece_tree::{next_grapheme_boundary, PieceTree};
 
 fn bytes(c: &mut Criterion) {
     c.bench_function("bytes_next", |bench| {
@@ -58,6 +58,23 @@ fn chars(c: &mut Criterion) {
         bench.iter(move || {
             if i.prev().is_none() {
                 i = iter.clone();
+            }
+        });
+    });
+}
+
+fn graphemes(c: &mut Criterion) {
+    c.bench_function("grapheme_boundary_next", |bench| {
+        let large = io::Cursor::new(include_str!("large.txt"));
+        let pt = PieceTree::from_reader(large).unwrap();
+        let mut pos = 0;
+
+        bench.iter(move || {
+            let end = next_grapheme_boundary(&pt, pos);
+            pos = end;
+
+            if pos == pt.len() {
+                pos = 0
             }
         });
     });
@@ -182,5 +199,6 @@ fn chunks(c: &mut Criterion) {
     });
 }
 
-criterion_group!(benches, bytes, chars);
+// criterion_group!(benches, bytes, chars, graphemes);
+criterion_group!(benches, graphemes);
 criterion_main!(benches);

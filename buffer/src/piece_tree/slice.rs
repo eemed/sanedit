@@ -1,6 +1,6 @@
-use std::ops::Range;
+use std::ops::{Bound, Range, RangeBounds};
 
-use super::{chars::Chars, chunks::Chunks, Bytes, PieceTree};
+use super::{chunks::Chunks, utf8::chars::Chars, Bytes, PieceTree};
 
 #[derive(Debug, Clone)]
 pub struct PieceTreeSlice<'a> {
@@ -75,6 +75,26 @@ impl<'a> PieceTreeSlice<'a> {
         );
         Chars::new_from_slice(self.pt, pos, self.range.clone())
     }
+
+    #[inline]
+    pub fn slice<R: RangeBounds<usize>>(&self, range: R) -> PieceTreeSlice<'a> {
+        let sub_start = match range.start_bound() {
+            Bound::Included(n) => *n,
+            Bound::Excluded(n) => *n + 1,
+            Bound::Unbounded => 0,
+        };
+
+        let sub_end = match range.end_bound() {
+            Bound::Included(n) => *n + 1,
+            Bound::Excluded(n) => *n,
+            Bound::Unbounded => self.len(),
+        };
+
+        let start = self.range.start + sub_start;
+        let end = self.range.start + sub_end;
+
+        self.pt.slice(start..end)
+    }
 }
 
 impl<'a, B: AsRef<[u8]>> PartialEq<B> for PieceTreeSlice<'a> {
@@ -119,17 +139,6 @@ impl<'a> From<&PieceTreeSlice<'a>> for Vec<u8> {
         }
 
         bytes
-    }
-}
-
-impl<'a> From<&PieceTreeSlice<'a>> for String {
-    fn from(slice: &PieceTreeSlice) -> Self {
-        let mut result = String::new();
-        let mut chars = slice.chars();
-        while let Some((_, ch)) = chars.next() {
-            result.push(ch);
-        }
-        result
     }
 }
 

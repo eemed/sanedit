@@ -1,24 +1,25 @@
+use unicode_segmentation::GraphemeCursor;
+
 use crate::piece_tree::slice::PieceTreeSlice;
 
-// TODO take in a slice instead
-pub fn next_grapheme_boundary(pt: &PieceTreeSlice, pos: usize) -> usize {
-    let mut chars = pt.chars_at(pos);
+pub fn next_grapheme_boundary(slice: &PieceTreeSlice, pos: usize) -> usize {
+    let mut chars = slice.chars_at(pos);
     let mut ch = chars.next();
 
-    let mut ch_pos;
+    let mut ch_pos = 0;
     let mut valid_to;
     let mut buf = [0u8; 4];
 
-    let mut gc = unicode_segmentation::GraphemeCursor::new(pos, usize::MAX, true);
+    let mut gc = GraphemeCursor::new(0, slice.len(), true);
 
     loop {
         match ch {
             Some((pos, ch)) => {
                 ch.encode_utf8(&mut buf);
                 valid_to = ch.len_utf8();
-                ch_pos = pos;
+                ch_pos += ch.len_utf8();
             }
-            None => return pt.len(),
+            None => return slice.len(),
         }
 
         let chunk = unsafe { std::str::from_utf8_unchecked(&buf[..valid_to]) };
@@ -26,10 +27,10 @@ pub fn next_grapheme_boundary(pt: &PieceTreeSlice, pos: usize) -> usize {
         use unicode_segmentation::GraphemeIncomplete::*;
         match gc.next_boundary(chunk, ch_pos) {
             Ok(Some(bound)) => return bound,
-            Ok(None) => return pt.len(),
+            Ok(None) => return slice.len(),
             Err(e) => match e {
                 PreContext(pos) => {
-                    let mut pre_chars = pt.chars_at(pos);
+                    let mut pre_chars = slice.chars_at(pos);
                     let (pos, ch) = pre_chars
                         .prev()
                         .expect("Precontext: Cannot find char ending at {pos}");
@@ -119,6 +120,8 @@ pub fn prev_grapheme<'a>(slice: &'a PieceTreeSlice, pos: usize) -> Option<PieceT
 
 #[cfg(test)]
 mod test {
+    use crate::piece_tree::PieceTree;
+
     use super::*;
 
     // #[test]
@@ -142,16 +145,29 @@ mod test {
         const CONTENT: &str = "❤🤍🥳❤️간÷나는산다⛄";
         pt.insert_str(0, CONTENT);
 
-        let mut start = 0;
+        let boundaries = [3, 7, 11, 17, 20, 22, 25, 28, 31, 34];
+        let mut pos = 0;
+        let slice = pt.slice(..);
 
-        while start != pt.len() {
-            let end = next_grapheme_boundary(&pt, start);
-            println!(
-                "Next grapheme boundary multibyte: {}, {}",
-                end,
-                &CONTENT[start..end]
-            );
-            start = end;
+        for boundary in boundaries {
+            pos = next_grapheme_boundary(&slice, pos);
+            assert_eq!(boundary, pos);
+        }
+    }
+
+    #[test]
+    fn next_grapheme_boundary_multi_byte_slice() {
+        let mut pt = PieceTree::new();
+        const CONTENT: &str = "❤🤍🥳❤️간÷나는산다⛄";
+        pt.insert_str(0, CONTENT);
+
+        let boundaries = [3, 7, 11, 17, 20, 22, 25, 28, 31, 34];
+        let mut pos = 0;
+        let slice = pt.slice(5..20);
+
+        for boundary in boundaries {
+            pos = next_grapheme_boundary(&slice, pos);
+            assert_eq!(boundary, pos);
         }
     }
 

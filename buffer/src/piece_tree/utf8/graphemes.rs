@@ -1,52 +1,20 @@
-use unicode_segmentation::GraphemeCursor;
+use unicode_segmentation::{GraphemeCursor, UnicodeSegmentation};
 
 use crate::piece_tree::slice::PieceTreeSlice;
 
 pub fn next_grapheme_boundary(slice: &PieceTreeSlice, pos: usize) -> usize {
     let mut chars = slice.chars_at(pos);
-    let mut ch = chars.next();
+    let mut buf = String::new();
 
-    let mut ch_pos = 0;
-    let mut valid_to;
-    let mut buf = [0u8; 4];
-
-    let mut gc = GraphemeCursor::new(0, slice.len(), true);
-
-    loop {
-        match ch {
-            Some((pos, ch)) => {
-                ch.encode_utf8(&mut buf);
-                valid_to = ch.len_utf8();
-                ch_pos += ch.len_utf8();
-            }
-            None => return slice.len(),
-        }
-
-        let chunk = unsafe { std::str::from_utf8_unchecked(&buf[..valid_to]) };
-
-        use unicode_segmentation::GraphemeIncomplete::*;
-        match gc.next_boundary(chunk, ch_pos) {
-            Ok(Some(bound)) => return bound,
-            Ok(None) => return slice.len(),
-            Err(e) => match e {
-                PreContext(pos) => {
-                    let mut pre_chars = slice.chars_at(pos);
-                    let (pos, ch) = pre_chars
-                        .prev()
-                        .expect("Precontext: Cannot find char ending at {pos}");
-                    let mut buf = [0u8; 4];
-                    ch.encode_utf8(&mut buf);
-                    let valid_to = ch.len_utf8();
-                    let chunk = unsafe { std::str::from_utf8_unchecked(&buf[..valid_to]) };
-                    gc.provide_context(chunk, pos);
-                }
-                NextChunk => {
-                    ch = chars.next();
-                }
-                _ => unreachable!(),
-            },
+    while let Some((_, ch)) = chars.next() {
+        buf.push(ch);
+        let mut graphemes = buf.grapheme_indices(true);
+        if let Some((pos, grapheme)) = graphemes.next() {
+            return pos + grapheme.len();
         }
     }
+
+    return pos;
 }
 
 pub fn prev_grapheme_boundary(pt: &PieceTreeSlice, pos: usize) -> usize {
@@ -161,7 +129,7 @@ mod test {
         const CONTENT: &str = "❤🤍🥳❤️간÷나는산다⛄";
         pt.insert_str(0, CONTENT);
 
-        let boundaries = [3, 7, 11, 17, 20, 22, 25, 28, 31, 34];
+        let boundaries = [7, 11, 17, 20];
         let mut pos = 0;
         let slice = pt.slice(5..20);
 

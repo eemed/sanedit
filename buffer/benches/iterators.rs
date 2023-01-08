@@ -1,7 +1,7 @@
 use std::{io, path::PathBuf};
 
 use criterion::{criterion_group, criterion_main, Criterion};
-use sanedit_buffer::piece_tree::{next_grapheme_boundary, PieceTree};
+use sanedit_buffer::piece_tree::{next_grapheme_boundary, prev_grapheme_boundary, PieceTree};
 
 fn bytes(c: &mut Criterion) {
     c.bench_function("bytes_next", |bench| {
@@ -76,6 +76,22 @@ fn graphemes(c: &mut Criterion) {
 
             if pos == slice.len() {
                 pos = 0
+            }
+        });
+    });
+
+    c.bench_function("grapheme_boundary_prev", |bench| {
+        let large = io::Cursor::new(include_str!("large.txt"));
+        let pt = PieceTree::from_reader(large).unwrap();
+        let slice = pt.slice(..);
+        let mut pos = pt.len();
+
+        bench.iter(move || {
+            let end = prev_grapheme_boundary(&slice, pos);
+            pos = end;
+
+            if pos == 0 {
+                pos = slice.len();
             }
         });
     });

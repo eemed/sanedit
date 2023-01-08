@@ -14,6 +14,7 @@ pub struct Bytes<'a> {
 }
 
 impl<'a> Bytes<'a> {
+    #[inline]
     pub(crate) fn new(pt: &'a PieceTree, at: usize) -> Bytes<'a> {
         let chunks = Chunks::new(pt, at);
         let pos_chunk = chunks.get();
@@ -28,6 +29,7 @@ impl<'a> Bytes<'a> {
         }
     }
 
+    #[inline]
     pub(crate) fn new_from_slice(pt: &'a PieceTree, at: usize, range: Range<usize>) -> Bytes<'a> {
         let chunks = Chunks::new_from_slice(pt, at, range);
         let pos_chunk = chunks.get();

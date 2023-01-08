@@ -1,24 +1,87 @@
-use unicode_segmentation::{GraphemeCursor, UnicodeSegmentation};
-
 use crate::piece_tree::slice::PieceTreeSlice;
 
 pub fn next_grapheme_boundary(slice: &PieceTreeSlice, pos: usize) -> usize {
+    let mut at_start = pos == 0;
     let mut chars = slice.chars_at(pos);
-    let mut buf = String::new();
+    let mut pre = None;
+    let mut all: Vec<(usize, char)> = Vec::with_capacity(4);
+    let mut buf = String::with_capacity(4);
 
-    while let Some((_, ch)) = chars.next() {
+    if let Some((pos, ch)) = chars.next() {
+        all.push((pos, ch));
         buf.push(ch);
-        let mut graphemes = buf.grapheme_indices(true);
-        if let Some((pos, grapheme)) = graphemes.next() {
-            return pos + grapheme.len();
+    }
+
+    while let Some((pos, ch)) = chars.next() {
+        all.push((pos, ch));
+        buf.push(ch);
+
+        use BoundaryResult::*;
+        match find_next_boundary(&buf, at_start) {
+            AtEnd => return slice.end(),
+            Boundary(bound) => {
+                // Find slice boundary from all graphemes, by counting the utf8
+                // length of yielded chars and then returning their slice
+                // position.
+                let mut utf8_len = 0;
+                for (pos, ch) in all.into_iter() {
+                    if bound == utf8_len {
+                        return pos;
+                    }
+                    utf8_len += ch.len_utf8();
+                }
+
+                return slice.end();
+            }
+            NeedPre => {
+                pre = Some(pre.unwrap_or(slice.chars_at(pos)));
+                // Safe to unwrap as we just created pre iter if it did not exist
+                if let Some((pos, ch)) = pre.as_mut().unwrap().prev() {
+                    all.insert(0, (pos, ch));
+                    buf.insert(0, ch);
+                } else {
+                    at_start = true;
+                }
+            }
+            NeedMore => {
+                // automatically handled
+            }
         }
     }
 
-    return pos;
+    return slice.end();
 }
 
-pub fn prev_grapheme_boundary(pt: &PieceTreeSlice, pos: usize) -> usize {
-    let mut chars = pt.chars_at(pos);
+enum BoundaryResult {
+    /// No boundary because we are at the end
+    AtEnd,
+    /// Found a boundary
+    Boundary(usize),
+    /// Need more data
+    NeedMore,
+    /// Need previous data
+    NeedPre,
+}
+
+#[inline]
+fn find_next_boundary(chunk: &str, at_start: bool) -> BoundaryResult {
+    let gc_start = if at_start { 0 } else { 4 };
+    let mut gc = unicode_segmentation::GraphemeCursor::new(gc_start, usize::MAX, true);
+
+    use unicode_segmentation::GraphemeIncomplete::*;
+    match gc.next_boundary(chunk, gc_start) {
+        Ok(Some(bound)) => return BoundaryResult::Boundary(bound - gc_start),
+        Ok(None) => return BoundaryResult::AtEnd,
+        Err(e) => match e {
+            PreContext(_pos) => return BoundaryResult::NeedPre,
+            NextChunk => return BoundaryResult::NeedMore,
+            _ => unreachable!(),
+        },
+    }
+}
+
+pub fn prev_grapheme_boundary(slice: &PieceTreeSlice, pos: usize) -> usize {
+    let mut chars = slice.chars_at(pos);
     let mut ch = chars.prev();
 
     let mut ch_pos;
@@ -45,7 +108,7 @@ pub fn prev_grapheme_boundary(pt: &PieceTreeSlice, pos: usize) -> usize {
             Ok(None) => return 0,
             Err(e) => match e {
                 PreContext(pos) => {
-                    let mut pre_chars = pt.chars_at(pos);
+                    let mut pre_chars = slice.chars_at(pos);
                     let (pos, ch) = pre_chars
                         .prev()
                         .expect("Precontext: Cannot find char ending at {pos}");

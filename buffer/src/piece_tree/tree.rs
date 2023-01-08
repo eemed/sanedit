@@ -30,7 +30,7 @@ impl Tree {
 
     #[inline(always)]
     pub fn max_height(&self) -> usize {
-        2 * (self.node_count as f64).log2() as usize
+        2 * ((self.node_count + 1) as f64).log2() as usize
     }
 
     /// Insert piece `piece` to tree at index `index`.
@@ -245,49 +245,49 @@ fn remove_rec(
     (rem_p, node_removed, ins_p)
 }
 
-/// Find a node at `index` in the tree.
-#[inline]
-pub(crate) fn find_node_at(tree: &Tree, pos: usize) -> (Vec<&InternalNode>, usize) {
-    if tree.root.is_leaf() {
-        return (vec![], 0);
-    }
+// /// Find a node at `index` in the tree.
+// #[inline]
+// pub(crate) fn find_node_at(tree: &Tree, pos: usize) -> (Vec<&InternalNode>, usize) {
+//     if tree.root.is_leaf() {
+//         return (vec![], 0);
+//     }
 
-    let mut stack = Vec::with_capacity(tree.max_height());
-    let idx = find_node_rec(&tree.root, pos, 0, &mut stack);
-    (stack, idx)
-}
+//     let mut stack = Vec::with_capacity(tree.max_height());
+//     let idx = find_node_rec(&tree.root, pos, 0, &mut stack);
+//     (stack, idx)
+// }
 
-fn find_node_rec<'a>(
-    node: &'a Node,
-    mut pos: usize,
-    mut cur_pos: usize,
-    stack: &mut Vec<&'a InternalNode>,
-) -> usize {
-    if let Node::Internal(n) = node {
-        let node_left_len = n.left_subtree_len;
-        let node_piece = &n.piece;
+// fn find_node_rec<'a>(
+//     node: &'a Node,
+//     mut pos: usize,
+//     mut cur_pos: usize,
+//     stack: &mut Vec<&'a InternalNode>,
+// ) -> usize {
+//     if let Node::Internal(n) = node {
+//         let node_left_len = n.left_subtree_len;
+//         let node_piece = &n.piece;
 
-        cur_pos += node_left_len;
+//         cur_pos += node_left_len;
 
-        if node_left_len > pos {
-            stack.push(n);
-            return find_node_rec(&n.left, pos, cur_pos - node_left_len, stack);
-        } else if node_left_len == pos
-            || node_left_len + node_piece.len > pos
-            || node_left_len + node_piece.len == pos && n.right.is_leaf()
-        {
-            stack.push(n);
-            return cur_pos;
-        } else {
-            stack.push(n);
-            pos -= node_left_len + node_piece.len;
-            cur_pos += node_piece.len;
-            return find_node_rec(&n.right, pos, cur_pos, stack);
-        }
-    }
+//         if node_left_len > pos {
+//             stack.push(n);
+//             return find_node_rec(&n.left, pos, cur_pos - node_left_len, stack);
+//         } else if node_left_len == pos
+//             || node_left_len + node_piece.len > pos
+//             || node_left_len + node_piece.len == pos && n.right.is_leaf()
+//         {
+//             stack.push(n);
+//             return cur_pos;
+//         } else {
+//             stack.push(n);
+//             pos -= node_left_len + node_piece.len;
+//             cur_pos += node_piece.len;
+//             return find_node_rec(&n.right, pos, cur_pos, stack);
+//         }
+//     }
 
-    unreachable!()
-}
+//     unreachable!()
+// }
 
 impl Default for Tree {
     fn default() -> Self {

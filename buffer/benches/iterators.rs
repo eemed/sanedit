@@ -67,13 +67,14 @@ fn graphemes(c: &mut Criterion) {
     c.bench_function("grapheme_boundary_next", |bench| {
         let large = io::Cursor::new(include_str!("large.txt"));
         let pt = PieceTree::from_reader(large).unwrap();
+        let slice = pt.slice(..);
         let mut pos = 0;
 
         bench.iter(move || {
-            let end = next_grapheme_boundary(&pt, pos);
+            let end = next_grapheme_boundary(&slice, pos);
             pos = end;
 
-            if pos == pt.len() {
+            if pos == slice.len() {
                 pos = 0
             }
         });

@@ -23,6 +23,7 @@ use buffers::OriginalBuffer;
 pub use crate::cursor_iterator::CursorIterator;
 pub use crate::piece_tree::bytes::Bytes;
 pub use builder::PieceTreeBuilder;
+pub use utf8::graphemes::next_grapheme_boundary;
 
 /// A Snapshot of the piece tree.
 //

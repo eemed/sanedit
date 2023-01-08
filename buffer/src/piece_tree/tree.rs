@@ -30,7 +30,14 @@ impl Tree {
 
     #[inline(always)]
     pub fn max_height(&self) -> usize {
-        2 * ((self.node_count + 1) as f64).log2() as usize
+        // Optimize log2 calculation by counting leading zeros.
+        // This often has a special cpu instruction so its fast.
+        #[inline(always)]
+        fn log2(n: usize) -> usize {
+            (usize::BITS - n.leading_zeros()) as usize
+        }
+
+        2 * log2(self.node_count + 1)
     }
 
     /// Insert piece `piece` to tree at index `index`.

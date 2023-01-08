@@ -1,6 +1,6 @@
-use std::sync::atomic::AtomicBool;
+use std::{sync::atomic::AtomicBool, time::Duration};
 
-use crossterm::event::{KeyCode, KeyModifiers};
+use crossterm::event::{KeyCode, KeyModifiers, poll, read};
 use sanedit_messages::{Key, KeyEvent, KeyMods};
 
 pub(crate) fn run_loop(stop: &AtomicBool) {

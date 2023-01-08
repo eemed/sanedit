@@ -2,14 +2,8 @@ pub mod unix;
 
 use bytes::BytesMut;
 use std::{
-    collections::VecDeque,
-    io::{self, BufReader, Read},
-    os::unix::net::UnixStream,
-    path::Path,
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        mpsc::{self, Receiver, Sender},
-    },
+    io,
+    sync::atomic::{AtomicBool, Ordering},
     thread,
 };
 
@@ -17,7 +11,7 @@ use sanedit_messages::{BinCodec, ClientMessage, Decoder, Encoder, Message, Reade
 
 use crate::input;
 
-// We have 3 tasks that need to be running
+// We have 2 tasks that need to be running
 // Input thread: polls inputs and writes them to the server.
 // Logic thread: Reacts to server messages, draws screen.
 pub fn run<R, W>(read: R, mut write: W)

@@ -30,7 +30,7 @@ fn main() {
     let editor_join =
         thread::spawn(|| sanedit_editor::run_sync(vec![Address::UnixDomainSocket(s)]));
 
-    thread::sleep(time::Duration::from_secs(2));
+    thread::sleep(time::Duration::from_millis(100));
 
     match UnixDomainSocketClient::connect(socket) {
         Ok(client) => {

@@ -1,63 +1,67 @@
 pub mod unix;
 
-use bytes::BytesMut;
 use std::{
     io,
-    sync::atomic::{AtomicBool, Ordering},
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
     thread,
 };
 
-use sanedit_messages::{BinCodec, ClientMessage, Decoder, Encoder, Message, Reader};
+use sanedit_messages::{ClientMessage, Message, Reader, Writer};
 
-use crate::input;
+use crate::{input, terminal::Terminal};
 
 // We have 2 tasks that need to be running
 // Input thread: polls inputs and writes them to the server.
 // Logic thread: Reacts to server messages, draws screen.
 pub fn run<R, W>(read: R, mut write: W)
 where
-    R: io::Read,
-    W: io::Write,
+    R: io::Read + Clone + Send + 'static,
+    W: io::Write + Clone + Send + 'static,
 {
     // Other threads check this flag once in a while and stop if it is true.
-    const STOP: AtomicBool = AtomicBool::new(false);
+    let stop = Arc::new(AtomicBool::new(false));
+    let mut writer: Writer<_, Message> = Writer::new(write.clone());
+    writer.write(Message::Hello).expect("Failed to send hello");
 
     // Input thread
     // IDEA: Send inputs to logic task and logic task sends them to server if needed?
-    let input_join = thread::spawn(|| input::run_loop(&STOP));
+    let cloned_write = write.clone();
+    let cloned_stop = stop.clone();
+    let input_join =
+        thread::spawn(|| input::run_loop(cloned_write, cloned_stop).expect("Input loop failed"));
 
-    {
-        let mut codec: BinCodec<Message> = BinCodec::new();
-        let mut buf = BytesMut::new();
-        codec
-            .encode(Message::Hello, &mut buf)
-            .expect("Failed to encode hello");
-        write.write(&buf).expect("Failed to write hello");
-    }
+    run_logic_loop(read, write);
+    stop.store(true, Ordering::Relaxed);
+    input_join.join().expect("Failed to join input thread");
+}
 
-    let mut reader = Reader::new(read);
-    let mut codec: BinCodec<ClientMessage> = BinCodec::new();
+fn run_logic_loop<R, W>(read: R, mut write: W)
+where
+    R: io::Read + Clone + Send + 'static,
+    W: io::Write + Clone + Send + 'static,
+{
+    let mut writer: Writer<_, Message> = Writer::new(write);
+    let mut reader: Reader<_, ClientMessage> = Reader::new(read);
+    let mut terminal = Terminal::new().expect("Failed to create terminal");
 
-    loop {
-        match codec.decode(reader.buffer()) {
-            Ok(Some(msg)) => {
-                log::info!("Client got message: {:?}", msg);
-            }
-            Ok(None) => {
-                if let Err(e) = reader.more() {
-                    log::info!("Error while reading: {}", e);
-                    break;
-                }
-            }
-            Err(e) => {
-                log::info!("Decode error: {}", e);
-                reader.advance(1);
-                break;
-            }
+    for msg in reader {
+        log::info!("Client got message: {:?}", msg);
+        if handle_message(msg, &mut writer) {
+            break;
         }
     }
+}
 
-    STOP.store(true, Ordering::SeqCst);
+fn handle_message<W: io::Write>(msg: ClientMessage, writer: &mut Writer<W, Message>) -> bool {
+    match msg {
+        ClientMessage::Hello => {}
+        ClientMessage::Redraw(_) => {}
+        ClientMessage::Flush => {}
+        ClientMessage::Bye => return true,
+    }
 
-    input_join.join().expect("Failed to join input thread");
+    return false;
 }

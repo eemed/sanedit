@@ -2,17 +2,21 @@
 // has happened.
 // Commands trigger something which should happen (in the future).
 
+mod codec;
 mod key;
 mod mouse;
 mod reader;
 mod redraw;
+mod writer;
 
+pub use codec::BinCodec;
 pub use key::{Key, KeyEvent, KeyMods};
 pub use mouse::MouseEvent;
-pub use reader::{BinCodec, Reader};
+pub use reader::Reader;
 pub use redraw::Redraw;
 use serde::{Deserialize, Serialize};
 pub use tokio_util::codec::{Decoder, Encoder};
+pub use writer::{WriteError, Writer};
 
 /// Messages sent to the client
 #[derive(Serialize, Deserialize, PartialEq, Debug)]

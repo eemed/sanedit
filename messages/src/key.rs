@@ -34,12 +34,24 @@ pub enum Key {
 
 #[derive(Serialize, Deserialize, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct KeyEvent {
-    pub(crate) key: Key,
-    pub(crate) mods: KeyMods,
+    key: Key,
+    mods: KeyMods,
 }
 
 impl KeyEvent {
     pub fn new(key: Key, mods: KeyMods) -> KeyEvent {
         KeyEvent { key, mods }
+    }
+
+    pub fn key(&self) -> &Key {
+        &self.key
+    }
+
+    pub fn control_pressed(&self) -> bool {
+        self.mods.contains(KeyMods::CONTROL)
+    }
+
+    pub fn alt_pressed(&self) -> bool {
+        self.mods.contains(KeyMods::ALT)
     }
 }

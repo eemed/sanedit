@@ -42,16 +42,20 @@ async fn conn_read(
 ) -> Result<(), io::Error> {
     let codec: BinCodec<Message> = BinCodec::new();
     let mut read = Box::pin(FramedRead::new(read, codec));
-    for msg in read.next().await {
+    // TODO this does not work like this
+    while let Some(msg) = read.next().await {
         match msg {
             Ok(msg) => {
+                log::info!("READ: {:?}", msg);
                 server_handle.send(ToServer::Message(id, msg)).await;
             }
             Err(e) => {
                 log::info!("conn_read error: {}", e);
+                break;
             }
         }
     }
+
     Ok(())
 }
 
@@ -62,6 +66,7 @@ async fn conn_write(
     let codec: BinCodec<ClientMessage> = BinCodec::new();
     let mut write = Box::pin(FramedWrite::new(write, codec));
 
+    // TODO check this too if its good
     while let Some(msg) = server_recv.recv().await {
         match msg {
             FromServer::Message(msg) => {

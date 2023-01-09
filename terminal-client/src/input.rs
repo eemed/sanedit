@@ -1,72 +1,80 @@
-use std::{sync::atomic::AtomicBool, time::Duration};
+use std::{
+    io,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
+    time::Duration,
+};
 
-use crossterm::event::{KeyCode, KeyModifiers, poll, read};
-use sanedit_messages::{Key, KeyEvent, KeyMods};
+use anyhow::Result;
+use crossterm::event::{poll, read, KeyCode, KeyModifiers, MouseEventKind};
+use sanedit_messages::{Key, KeyEvent, KeyMods, Message, MouseEvent, Writer};
 
-pub(crate) fn run_loop(stop: &AtomicBool) {
+const POLL_DURATION: Duration = Duration::from_millis(100);
+const RE_RESIZE_POLL_DURATION: Duration = Duration::from_millis(100);
+
+pub(crate) fn run_loop<W: io::Write>(write: W, stop: Arc<AtomicBool>) -> Result<()> {
+    let mut writer: Writer<_, Message> = Writer::new(write);
+
+    loop {
+        if poll(POLL_DURATION)? {
+            let event = read()?;
+            process_input_event(event, &mut writer)?;
+        }
+
+        if stop.load(Ordering::Acquire) {
+            break;
+        }
+    }
+
+    Ok(())
 }
 
-// const POLL_DURATION: Duration = Duration::from_millis(100);
-// const RE_RESIZE_POLL_DURATION: Duration = Duration::from_millis(100);
+fn process_input_event<W: io::Write>(
+    event: crossterm::event::Event,
+    writer: &mut Writer<W, Message>,
+) -> Result<()> {
+    use crossterm::event::Event::*;
 
-// pub(crate) fn input_loop(mut handle: EditorHandle) -> Result<()> {
-//     loop {
-//         if poll(POLL_DURATION)? {
-//             let event = read()?;
-//             process_input_event(event, &mut handle)?;
-//         }
+    match event {
+        Key(key_event) => {
+            let key = convert_key_event(key_event);
+            writer.write(Message::KeyEvent(key))?;
+        }
+        Resize(mut width, mut height) => {
+            // while poll(RE_RESIZE_POLL_DURATION)? {
+            //     let e = read()?;
+            //     match e {
+            //         Resize(w, h) => {
+            //             width = w;
+            //             height = h;
+            //         }
+            //         _ => {
+            //             resize(width as usize, height as usize, handle)?;
+            //             process_input_event(e, handle)?;
+            //             return Ok(());
+            //         }
+            //     }
+            // }
 
-//         if !IS_RUNNING.load(Ordering::Acquire) {
-//             break;
-//         }
-//     }
+            // resize(width as usize, height as usize, handle)?;
+        }
+        Mouse(mouse_event) => {
+            let msg: Option<Message> = match mouse_event.kind {
+                MouseEventKind::ScrollDown => Some(MouseEvent::ScrollDown.into()),
+                MouseEventKind::ScrollUp => Some(MouseEvent::ScrollDown.into()),
+                _ => None,
+            };
 
-//     Ok(())
-// }
+            if let Some(msg) = msg {
+                writer.write(msg)?;
+            }
+        }
+    }
 
-// fn process_input_event(event: crossterm::event::Event, handle: &mut EditorHandle) -> Result<()> {
-//     use crossterm::event::Event::*;
-
-//     match event {
-//         Key(key_event) => {
-//             let key = convert_key_event(key_event);
-//             if !handle.send_key_press(key) {
-//                 return Err(anyhow!("Failed to send key press"));
-//             }
-//         }
-//         Resize(mut width, mut height) => {
-//             while poll(RE_RESIZE_POLL_DURATION)? {
-//                 let e = read()?;
-//                 match e {
-//                     Resize(w, h) => {
-//                         width = w;
-//                         height = h;
-//                     }
-//                     _ => {
-//                         resize(width as usize, height as usize, handle)?;
-//                         process_input_event(e, handle)?;
-//                         return Ok(());
-//                     }
-//                 }
-//             }
-
-//             resize(width as usize, height as usize, handle)?;
-//         }
-//         Mouse(mouse_event) => {
-//             let result = match mouse_event.kind {
-//                 MouseEventKind::ScrollDown => handle.mouse_scroll_down(),
-//                 MouseEventKind::ScrollUp => handle.mouse_scroll_up(),
-//                 _ => true,
-//             };
-
-//             if !result {
-//                 return Err(anyhow!("Failed to mouse event"));
-//             }
-//         }
-//     }
-
-//     Ok(())
-// }
+    Ok(())
+}
 
 pub(crate) fn convert_key_event(key: crossterm::event::KeyEvent) -> sanedit_messages::KeyEvent {
     let plain_key = match key.code {

@@ -21,8 +21,8 @@ pub struct Cell {
 
 impl Display for Cell {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self.content {
-            Some(content) => f.write_str(&content),
+        match &self.content {
+            Some(content) => f.write_str(content),
             None => f.write_str(""),
         }
     }

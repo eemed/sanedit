@@ -3,7 +3,10 @@ pub(crate) mod unix;
 
 use std::path::PathBuf;
 
-use futures::{SinkExt, StreamExt};
+use futures::{
+    stream::{TryStream, TryStreamExt},
+    Sink, SinkExt, Stream, StreamExt,
+};
 use sanedit_messages::{BinCodec, ClientMessage, Message};
 use tokio::{
     io::{self, AsyncRead, AsyncWrite},
@@ -41,12 +44,11 @@ async fn conn_read(
     mut server_handle: ServerHandle,
 ) -> Result<(), io::Error> {
     let codec: BinCodec<Message> = BinCodec::new();
-    let mut read = Box::pin(FramedRead::new(read, codec));
-    // TODO this does not work like this
+    let framed_read = FramedRead::new(read, codec);
+    let mut read = Box::pin(framed_read);
     while let Some(msg) = read.next().await {
         match msg {
             Ok(msg) => {
-                log::info!("READ: {:?}", msg);
                 server_handle.send(ToServer::Message(id, msg)).await;
             }
             Err(e) => {
@@ -66,7 +68,6 @@ async fn conn_write(
     let codec: BinCodec<ClientMessage> = BinCodec::new();
     let mut write = Box::pin(FramedWrite::new(write, codec));
 
-    // TODO check this too if its good
     while let Some(msg) = server_recv.recv().await {
         match msg {
             FromServer::Message(msg) => {

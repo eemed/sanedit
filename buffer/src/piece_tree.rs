@@ -86,7 +86,7 @@ impl PieceTree {
     /// The whole file is not read into memory at any time.
     /// Windowing is used instead which only reads a part of the file.
     #[inline]
-    pub fn from_file<F>(file: File) -> io::Result<PieceTree> {
+    pub fn from_file(file: File) -> io::Result<PieceTree> {
         let orig_buf = OriginalBuffer::from_file(file)?;
         Self::from_original_buffer(orig_buf)
     }

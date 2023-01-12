@@ -31,9 +31,9 @@ pub(crate) struct Editor {
 impl Editor {
     fn new() -> Editor {
         Editor {
-            clients: HashMap::new(),
+            clients: HashMap::default(),
             windows: Windows::default(),
-            buffers: SlotMap::with_key(),
+            buffers: Buffers::default(),
             keybindings: KeyBindings::default(),
             is_running: true,
         }

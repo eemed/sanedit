@@ -8,8 +8,8 @@ use super::buffers::buffer::BufferId;
 
 pub(crate) mod window;
 
-#[derive(Debug)]
-pub struct Windows {
+#[derive(Debug, Default)]
+pub(crate) struct Windows {
     windows: HashMap<ClientId, Window>,
 }
 
@@ -23,7 +23,7 @@ impl Windows {
         self.windows.get(&id)
     }
 
-    pub fn get_mut(&self, id: ClientId) -> Option<&mut Window> {
+    pub fn get_mut(&mut self, id: ClientId) -> Option<&mut Window> {
         self.windows.get_mut(&id)
     }
 
@@ -31,3 +31,4 @@ impl Windows {
         self.windows.remove(&id)
     }
 }
+

@@ -4,8 +4,8 @@ use self::buffer::{Buffer, BufferId};
 
 pub(crate) mod buffer;
 
-#[derive(Debug)]
-pub struct Buffers {
+#[derive(Debug, Default)]
+pub(crate) struct Buffers {
     buffers: SlotMap<BufferId, Buffer>,
 }
 
@@ -20,7 +20,7 @@ impl Buffers {
         self.buffers.get(id)
     }
 
-    pub fn get_mut(&self, id: BufferId) -> Option<&mut Buffer> {
+    pub fn get_mut(&mut self, id: BufferId) -> Option<&mut Buffer> {
         self.buffers.get_mut(id)
     }
 

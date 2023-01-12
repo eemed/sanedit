@@ -25,7 +25,9 @@ thiserror   = "1.0"
 # Used to store elements and generate an id for them
 slotmap = "1.0"
 
+# Encoding stuff
 encoding_rs = "0.8"
+chardetng   = "0.1.17"
 
 # Lua api support
 # mlua  = { version = "0.8", features = ["luajit", "vendored", "async", "macros"] }

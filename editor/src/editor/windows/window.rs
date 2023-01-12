@@ -1,10 +1,11 @@
-mod cursor;
+mod cursors;
 mod message;
 mod view;
 
 use self::{
+    cursors::{Cursor, Cursors},
     message::{Message, Severity},
-    view::View, cursor::Cursor,
+    view::View,
 };
 
 use super::BufferId;
@@ -14,12 +15,19 @@ pub(crate) struct Window {
     buf: BufferId,
     view: View,
     message: Message,
-    // All cursor in the current window.
-    // Cursror at index 0 is the primary cursor
-    cursors: Vec<Cursor>,
+    cursors: Cursors,
 }
 
 impl Window {
+    pub fn new(buf: BufferId) -> Window {
+        Window {
+            buf,
+            view: View::default(),
+            message: Message::default(),
+            cursors: Cursors::default(),
+        }
+    }
+
     pub fn info_msg(&mut self, message: String) {
         self.message = Message {
             severity: Severity::Info,
@@ -39,5 +47,9 @@ impl Window {
             severity: Severity::Error,
             message,
         };
+    }
+
+    pub fn primary_cursor(&self) -> &Cursor {
+        self.cursors.primary()
     }
 }

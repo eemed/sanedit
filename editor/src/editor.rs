@@ -1,13 +1,11 @@
 mod bindings;
-mod buffer;
-mod window;
+mod buffers;
+mod windows;
 
-pub(crate) use buffer::*;
 use sanedit_messages::ClientMessage;
 use sanedit_messages::KeyEvent;
 use sanedit_messages::Message;
 use slotmap::SlotMap;
-pub(crate) use window::*;
 
 use std::collections::HashMap;
 
@@ -19,12 +17,14 @@ use crate::server::ClientHandle;
 use crate::server::ClientId;
 
 use self::bindings::KeyBindings;
+use self::buffers::Buffers;
+use self::windows::Windows;
 
 pub(crate) struct Editor {
     clients: HashMap<ClientId, ClientHandle>,
-    windows: HashMap<ClientId, Window>,
-    buffers: SlotMap<BufferId, Buffer>,
-    binds: KeyBindings,
+    windows: Windows,
+    buffers: Buffers,
+    keybindings: KeyBindings,
     is_running: bool,
 }
 
@@ -32,9 +32,9 @@ impl Editor {
     fn new() -> Editor {
         Editor {
             clients: HashMap::new(),
-            windows: HashMap::new(),
+            windows: Windows::default(),
             buffers: SlotMap::with_key(),
-            binds: KeyBindings::default(),
+            keybindings: KeyBindings::default(),
             is_running: true,
         }
     }

@@ -1,3 +1,4 @@
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub(crate) struct View {
 }
+

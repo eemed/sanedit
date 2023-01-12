@@ -50,3 +50,9 @@ impl Cursor {
         Some(min..max)
     }
 }
+
+impl Default for Cursor {
+    fn default() -> Self {
+        Cursor::new(0)
+    }
+}

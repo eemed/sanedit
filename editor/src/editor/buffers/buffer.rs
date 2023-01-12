@@ -21,7 +21,7 @@ slotmap::new_key_type!(
 
 #[derive(Debug)]
 pub(crate) struct Buffer {
-    id: BufferId,
+    pub(crate) id: BufferId,
     pt: PieceTree,
     is_modified: bool,
     snapshots: Snapshots,

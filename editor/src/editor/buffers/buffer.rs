@@ -4,9 +4,14 @@ mod eol;
 mod options;
 mod snapshots;
 
-use std::{fs::File, io, path::PathBuf};
+use std::{
+    fs::File,
+    io,
+    ops::RangeBounds,
+    path::{Path, PathBuf},
+};
 
-use sanedit_buffer::piece_tree::PieceTree;
+use sanedit_buffer::piece_tree::{PieceTree, PieceTreeSlice};
 
 use self::{change::Change, options::BufferOptions, snapshots::Snapshots};
 
@@ -48,9 +53,6 @@ impl Buffer {
     }
 
     pub fn from_file(file: File) -> io::Result<Buffer> {
-        // TODO
-        // do we need encoding here
-        // create an in memory buffer if file size is small
         let pt = PieceTree::from_file(file)?;
         let snapshot = pt.snapshot();
         Ok(Buffer {
@@ -79,10 +81,18 @@ impl Buffer {
             last_saved_snapshot: 0,
         })
     }
+
+    pub fn set_path<P: AsRef<Path>>(&mut self, path: P) {
+        self.path = Some(path.as_ref().to_owned())
+    }
+
+    pub fn slice<R: RangeBounds<usize>>(&self, range: R) -> PieceTreeSlice {
+        self.pt.slice(range)
+    }
 }
 
 impl Default for Buffer {
     fn default() -> Self {
-        todo!()
+        Buffer::new()
     }
 }

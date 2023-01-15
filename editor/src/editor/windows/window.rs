@@ -8,6 +8,8 @@ use self::{
     view::View,
 };
 
+pub(crate) use view::Cell;
+
 use super::BufferId;
 
 #[derive(Debug)]
@@ -51,5 +53,8 @@ impl Window {
 
     pub fn primary_cursor(&self) -> &Cursor {
         self.cursors.primary()
+    }
+
+    pub fn redraw(&mut self) {
     }
 }

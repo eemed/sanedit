@@ -1,11 +1,11 @@
 mod bindings;
 mod buffers;
 mod windows;
+pub(crate) mod common;
 
 use sanedit_messages::ClientMessage;
 use sanedit_messages::KeyEvent;
 use sanedit_messages::Message;
-use slotmap::SlotMap;
 
 use std::collections::HashMap;
 

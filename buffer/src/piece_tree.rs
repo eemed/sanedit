@@ -10,7 +10,6 @@ use std::fs::File;
 use std::io::{self, Write};
 use std::ops::{Bound, RangeBounds};
 
-use self::slice::PieceTreeSlice;
 use self::tree::pieces::Pieces;
 use self::tree::Tree;
 use self::utf8::chars::Chars;
@@ -20,6 +19,7 @@ use crate::piece_tree::tree::piece::Piece;
 use buffers::AddBuffer;
 use buffers::OriginalBuffer;
 
+pub use self::slice::PieceTreeSlice;
 pub use crate::cursor_iterator::CursorIterator;
 pub use crate::piece_tree::bytes::Bytes;
 pub use builder::PieceTreeBuilder;

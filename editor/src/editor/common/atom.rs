@@ -29,6 +29,15 @@ pub(crate) struct AtomOptions {
     pub line_width: usize,
 }
 
+impl Default for AtomOptions {
+    fn default() -> Self {
+        AtomOptions {
+            tabstop: 8,
+            line_width: 80,
+        }
+    }
+}
+
 /// An iterator of atoms from a buffer slice.
 #[derive(Debug, Clone)]
 pub(crate) struct AtomIterator<'a> {
@@ -85,10 +94,6 @@ impl<'a> Iterator for AtomIterator<'a> {
         let grapheme = next_grapheme(&self.slice, self.slice_offset)?;
         self.slice_offset += grapheme.len();
         let atoms = grapheme_to_atoms(grapheme, self.column, &self.options);
-
-        self.column += atoms.len();
-        self.column %= self.options.line_width;
-
         let (first, rest) = atoms.split_first()?;
         self.queue.extend_from_slice(rest);
         let (line, col) = self.advance();
@@ -112,16 +117,12 @@ fn grapheme_to_atoms(
 
     let mut chars = grapheme.chars();
     let mut atom = String::new();
-    let mut min = 0;
-    let mut max = usize::MAX;
-    while let Some((pos, ch)) = chars.next() {
-        min = cmp::min(min, pos);
-        max = cmp::max(max, pos);
+    while let Some((_pos, ch)) = chars.next() {
         atom.push(ch);
     }
     atoms.push(Atom {
         display: atom,
-        slice_range: min..max,
+        slice_range: grapheme.start()..grapheme.end(),
     });
     atoms
 }
@@ -136,18 +137,28 @@ mod test {
     fn emoji() {
         let mut pt = PieceTree::new();
         pt.insert_str(0, "❤️");
+        let slice = pt.slice(..);
+
+        let mut iter = AtomIterator::new(slice, 0, 0, AtomOptions::default());
+        println!("{:?}", iter.next());
     }
 
     #[test]
     fn control_sequence_null() {
         let mut pt = PieceTree::new();
         pt.insert(0, b"\0");
+        let slice = pt.slice(..);
+        let mut iter = AtomIterator::new(slice, 0, 0, AtomOptions::default());
+        println!("{:?}", iter.next());
     }
 
     #[test]
     fn invalid_utf8() {
         let mut pt = PieceTree::new();
         pt.insert(0, b"\xFF\xFF");
+        let slice = pt.slice(..);
+        let mut iter = AtomIterator::new(slice, 0, 0, AtomOptions::default());
+        println!("{:?}", iter.next());
     }
 
     #[test]

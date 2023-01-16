@@ -23,6 +23,7 @@ impl std::ops::Deref for Atom {
     }
 }
 
+/// Options on how to display atoms
 #[derive(Debug, Clone)]
 pub(crate) struct AtomOptions {
     pub tabstop: u8,
@@ -35,69 +36,6 @@ impl Default for AtomOptions {
             tabstop: 8,
             line_width: 80,
         }
-    }
-}
-
-/// An iterator of atoms from a buffer slice.
-#[derive(Debug, Clone)]
-pub(crate) struct AtomIterator<'a> {
-    /// Sometimes graphemes are segmented into multiple atoms, and we want to
-    /// yield them one by one.
-    queue: Vec<Atom>,
-    slice_offset: usize,
-    slice: PieceTreeSlice<'a>,
-    line: usize,
-    column: usize,
-    options: AtomOptions,
-}
-
-impl<'a> AtomIterator<'a> {
-    pub fn new(
-        slice: PieceTreeSlice<'a>,
-        line: usize,
-        column: usize,
-        options: AtomOptions,
-    ) -> AtomIterator<'a> {
-        AtomIterator {
-            queue: Vec::new(),
-            slice_offset: 0,
-            slice,
-            line,
-            column,
-            options,
-        }
-    }
-
-    /// Advances one position on the grid, returns the old position
-    fn advance(&mut self) -> (usize, usize) {
-        let line = self.line;
-        let col = self.column;
-        if self.column == self.options.line_width {
-            self.line += 1;
-            self.column = 0;
-        } else {
-            self.column += 1;
-        }
-        (line, col)
-    }
-}
-
-impl<'a> Iterator for AtomIterator<'a> {
-    type Item = (usize, usize, Atom);
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if let Some(atom) = self.queue.pop() {
-            let (line, col) = self.advance();
-            return Some((line, col, atom));
-        }
-
-        let grapheme = next_grapheme(&self.slice, self.slice_offset)?;
-        self.slice_offset += grapheme.len();
-        let atoms = grapheme_to_atoms(grapheme, self.column, &self.options);
-        let (first, rest) = atoms.split_first()?;
-        self.queue.extend_from_slice(rest);
-        let (line, col) = self.advance();
-        Some((line, col, first.clone()))
     }
 }
 
@@ -130,6 +68,7 @@ fn grapheme_to_atoms(
 #[cfg(test)]
 mod test {
     use sanedit_buffer::piece_tree::PieceTree;
+    use std::ops::Deref;
 
     use super::*;
 
@@ -138,9 +77,8 @@ mod test {
         let mut pt = PieceTree::new();
         pt.insert_str(0, "❤️");
         let slice = pt.slice(..);
-
-        let mut iter = AtomIterator::new(slice, 0, 0, AtomOptions::default());
-        println!("{:?}", iter.next());
+        let atoms = grapheme_to_atoms(slice, 0, &AtomOptions::default());
+        assert_eq!("❤️", atoms[0].deref());
     }
 
     #[test]
@@ -148,8 +86,8 @@ mod test {
         let mut pt = PieceTree::new();
         pt.insert(0, b"\0");
         let slice = pt.slice(..);
-        let mut iter = AtomIterator::new(slice, 0, 0, AtomOptions::default());
-        println!("{:?}", iter.next());
+        let atoms = grapheme_to_atoms(slice, 0, &AtomOptions::default());
+        assert_eq!("\0", atoms[0].deref());
     }
 
     #[test]
@@ -157,8 +95,8 @@ mod test {
         let mut pt = PieceTree::new();
         pt.insert(0, b"\xFF\xFF");
         let slice = pt.slice(..);
-        let mut iter = AtomIterator::new(slice, 0, 0, AtomOptions::default());
-        println!("{:?}", iter.next());
+        let atoms = grapheme_to_atoms(slice, 0, &AtomOptions::default());
+        assert_eq!("\u{fffd}", atoms[0].deref());
     }
 
     #[test]

@@ -31,14 +31,20 @@ impl<'a> Bytes<'a> {
 
     #[inline]
     pub(crate) fn new_from_slice(pt: &'a PieceTree, at: usize, range: Range<usize>) -> Bytes<'a> {
+        debug_assert!(
+            range.end - range.start >= at,
+            "Attempting to index {} over slice len {} ",
+            at,
+            range.end - range.start,
+        );
         let chunks = Chunks::new_from_slice(pt, at, range);
         let pos_chunk = chunks.get();
-        let pos = pos_chunk.as_ref().map(|(pos, _)| at - pos).unwrap_or(0);
         let chunk = pos_chunk.map(|(_, chunk)| chunk);
         let chunk_len = chunk
             .as_ref()
             .map(|chunk| chunk.as_ref().len())
             .unwrap_or(0);
+        let pos = if chunk.is_some() { at } else { 0 };
         Bytes {
             chunk,
             chunks,
@@ -167,5 +173,35 @@ mod test {
         assert_eq!(as_byte("o"), bytes.prev());
         assert_eq!(as_byte("o"), bytes.prev());
         assert_eq!(as_byte("f"), bytes.prev());
+    }
+
+    #[test]
+    fn bytes_slice() {
+        let mut pt = PieceTree::new();
+        pt.insert_str(0, "bar");
+        pt.insert_str(0, "foo");
+        let slice = pt.slice(2..);
+        let mut bytes = slice.bytes();
+
+        assert_eq!(as_byte("o"), bytes.next());
+        assert_eq!(as_byte("b"), bytes.next());
+        assert_eq!(as_byte("a"), bytes.next());
+        assert_eq!(as_byte("r"), bytes.next());
+        assert_eq!(None, bytes.next());
+    }
+
+    #[test]
+    fn bytes_slice_prev() {
+        let mut pt = PieceTree::new();
+        pt.insert_str(0, "bar");
+        pt.insert_str(0, "foo");
+        let slice = pt.slice(2..);
+        let mut bytes = slice.bytes_at(slice.len());
+
+        assert_eq!(as_byte("r"), bytes.prev());
+        assert_eq!(as_byte("a"), bytes.prev());
+        assert_eq!(as_byte("b"), bytes.prev());
+        assert_eq!(as_byte("o"), bytes.prev());
+        assert_eq!(None, bytes.prev());
     }
 }

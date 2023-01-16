@@ -149,14 +149,4 @@ mod test {
         assert_eq!(chunk(0, "foo"), chunks.prev());
         assert_eq!(chunk(3, "bar"), chunks.next());
     }
-
-    // #[test]
-    // fn over_max_chunk_size() {
-    //     let mut pt = PieceTree::new();
-    //     pt.insert_str(0, &"a".repeat(MAX_CHUNK_SIZE * 2));
-    //     let chunks = pt.chunks_at(15);
-
-    //     assert_eq!(15, chunks.pos());
-    //     assert_eq!(chunk(&"a".repeat(MAX_CHUNK_SIZE)), chunks.get());
-    // }
 }

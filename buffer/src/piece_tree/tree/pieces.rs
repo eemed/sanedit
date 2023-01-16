@@ -15,6 +15,14 @@ pub(crate) struct BoundedPieceIter<'a> {
 
 impl<'a> BoundedPieceIter<'a> {
     #[inline]
+    pub fn new(pt: &'a PieceTree, at: usize) -> BoundedPieceIter<'a> {
+        let iter = PieceIter::new(pt, at);
+        BoundedPieceIter {
+            range: 0..pt.len(),
+            iter,
+        }
+    }
+    #[inline]
     pub fn new_from_slice(
         pt: &'a PieceTree,
         at: usize,
@@ -24,14 +32,6 @@ impl<'a> BoundedPieceIter<'a> {
         BoundedPieceIter { range, iter }
     }
 
-    #[inline]
-    pub fn new(pt: &'a PieceTree, at: usize) -> BoundedPieceIter<'a> {
-        let iter = PieceIter::new(pt, at);
-        BoundedPieceIter {
-            range: 0..pt.len(),
-            iter,
-        }
-    }
 
     #[inline]
     fn shrink_to_range(&self, (mut p_start, mut piece): (usize, Piece)) -> Option<(usize, Piece)> {

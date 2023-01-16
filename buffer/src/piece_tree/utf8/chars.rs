@@ -26,6 +26,12 @@ impl<'a> Chars<'a> {
 
     #[inline]
     pub(crate) fn new_from_slice(pt: &'a PieceTree, at: usize, range: Range<usize>) -> Chars<'a> {
+        debug_assert!(
+            range.end - range.start >= at,
+            "Attempting to index {} over slice len {} ",
+            at,
+            range.end - range.start,
+        );
         let bytes = Bytes::new_from_slice(pt, at, range);
         Chars {
             bytes,
@@ -59,7 +65,10 @@ impl<'a> Chars<'a> {
                     }
                 }
                 DecodeResult::Incomplete => {
-                    self.read_next_byte()?;
+                    if self.read_next_byte().is_none() {
+                        self.invalid = true;
+                        return Some((self.bytes.pos(), REPLACEMENT_CHAR));
+                    }
                 }
                 DecodeResult::Ok(ch) => {
                     self.invalid = false;
@@ -71,34 +80,38 @@ impl<'a> Chars<'a> {
     }
 
     #[inline(always)]
-    fn read_prev_until_leading_utf8_byte(&mut self) -> Option<()> {
+    fn read_prev_until_leading_utf8_byte(&mut self) -> Option<bool> {
         while self.valid_to != 4 {
             let byte = self.bytes.prev()?;
             self.buf[self.buf.len() - self.valid_to - 1] = byte;
             self.valid_to += 1;
 
             if is_leading_utf8_byte(byte) {
-                break;
+                return Some(true);
             }
         }
 
-        Some(())
+        return Some(false);
     }
 
+    // TODO yield replacement chars at the same positions as next
     pub fn prev(&mut self) -> Option<(usize, char)> {
         loop {
             match decode_char(&self.buf[self.buf.len() - self.valid_to..]) {
                 DecodeResult::Invalid => {
                     if self.invalid {
                         self.valid_to = 0;
-                        self.read_prev_until_leading_utf8_byte()?;
+                        while !self.read_prev_until_leading_utf8_byte()? {}
                     } else {
                         self.invalid = true;
                         return Some((self.bytes.pos(), REPLACEMENT_CHAR));
                     }
                 }
                 DecodeResult::Incomplete => {
-                    self.read_prev_until_leading_utf8_byte()?;
+                    if self.read_prev_until_leading_utf8_byte().is_none() {
+                        self.invalid = true;
+                        return Some((self.bytes.pos(), REPLACEMENT_CHAR));
+                    }
                 }
                 DecodeResult::Ok(ch) => {
                     self.invalid = false;
@@ -225,5 +238,39 @@ mod test {
         assert_eq!(Some((31, '다')), chars.next());
         assert_eq!(Some((34, '⛄')), chars.next());
         assert_eq!(None, chars.next());
+    }
+
+    #[test]
+    fn multi_byte_slice() {
+        let mut pt = PieceTree::new();
+        const CONTENT: &str = "❤🤍🥳❤️간÷나는산다⛄";
+        pt.insert_str(0, CONTENT);
+        let slice = pt.slice(5..20);
+        let mut chars = slice.chars();
+
+        assert_eq!(Some((0, REPLACEMENT_CHAR)), chars.next());
+        assert_eq!(Some((2, '🥳')), chars.next());
+        assert_eq!(Some((6, '❤')), chars.next());
+        assert_eq!(Some((9, '\u{fe0f}')), chars.next());
+        assert_eq!(Some((12, '간')), chars.next());
+        assert_eq!(Some((15, REPLACEMENT_CHAR)), chars.next());
+        assert_eq!(None, chars.next());
+    }
+
+    #[test]
+    fn multi_byte_slice_prev() {
+        let mut pt = PieceTree::new();
+        const CONTENT: &str = "❤🤍🥳❤️간÷나는산다⛄";
+        pt.insert_str(0, CONTENT);
+        let slice = pt.slice(5..20);
+        let mut chars = slice.chars_at(slice.len());
+
+        assert_eq!(Some((15, REPLACEMENT_CHAR)), chars.prev());
+        assert_eq!(Some((12, '간')), chars.prev());
+        assert_eq!(Some((9, '\u{fe0f}')), chars.prev());
+        assert_eq!(Some((6, '❤')), chars.prev());
+        assert_eq!(Some((2, '🥳')), chars.prev());
+        assert_eq!(Some((0, REPLACEMENT_CHAR)), chars.prev());
+        assert_eq!(None, chars.prev());
     }
 }

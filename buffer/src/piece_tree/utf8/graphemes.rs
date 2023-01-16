@@ -56,13 +56,16 @@ pub fn next_grapheme_boundary(slice: &PieceTreeSlice, pos: usize) -> usize {
         buf.push(ch);
     }
 
+    let end = slice.end() - slice.start();
     while let Some((pos, ch)) = chars.next() {
         all.push((pos, ch));
         buf.push(ch);
 
         use BoundaryResult::*;
         match find_next_boundary(&buf, at_start) {
-            AtEnd => return slice.end(),
+            AtEnd => {
+                return end;
+            }
             Boundary(bound) => {
                 // Find slice boundary from all graphemes, by counting the utf8
                 // length of yielded chars and then returning their slice
@@ -75,7 +78,7 @@ pub fn next_grapheme_boundary(slice: &PieceTreeSlice, pos: usize) -> usize {
                     utf8_len += ch.len_utf8();
                 }
 
-                return slice.end();
+                return end;
             }
             NeedPre => {
                 pre = Some(pre.unwrap_or(slice.chars_at(pos)));
@@ -93,7 +96,7 @@ pub fn next_grapheme_boundary(slice: &PieceTreeSlice, pos: usize) -> usize {
         }
     }
 
-    return slice.end();
+    return end;
 }
 
 #[inline]
@@ -129,19 +132,17 @@ pub fn prev_grapheme_boundary(slice: &PieceTreeSlice, pos: usize) -> usize {
     let mut all = SmallVec4::new();
     let mut buf = String::with_capacity(4);
 
-    if let Some((pos, ch)) = chars.prev() {
-        all.push((pos, ch));
-        buf.push(ch);
-    }
-
     while let Some((pos, ch)) = chars.prev() {
-        let at_start = pos == slice.start();
         all.insert(0, (pos, ch));
         buf.insert(0, ch);
 
+        println!("PO {pos}");
         use BoundaryResult::*;
-        match find_prev_boundary(&buf, at_start) {
-            AtEnd => return slice.start(),
+        match find_prev_boundary(&buf, pos == 0) {
+            AtEnd => {
+                println!("H");
+                return 0;
+            }
             Boundary(bound) => {
                 // Find slice boundary from all graphemes, by counting the utf8
                 // length of yielded chars and then returning their slice
@@ -149,12 +150,14 @@ pub fn prev_grapheme_boundary(slice: &PieceTreeSlice, pos: usize) -> usize {
                 let mut utf8_len = 0;
                 for (pos, ch) in all.into_iter() {
                     if bound == utf8_len {
+                        println!("BB {}, {}, {}", pos, bound, utf8_len);
                         return pos;
                     }
                     utf8_len += ch.len_utf8();
                 }
 
-                return slice.start();
+                println!("B");
+                return 0;
             }
             _ => {
                 // NeedPrev is automatically handled
@@ -162,7 +165,8 @@ pub fn prev_grapheme_boundary(slice: &PieceTreeSlice, pos: usize) -> usize {
         }
     }
 
-    return slice.start();
+    println!("D");
+    return 0;
 }
 
 #[inline]
@@ -181,21 +185,6 @@ mod test {
     use crate::piece_tree::PieceTree;
 
     use super::*;
-
-    // #[test]
-    // fn next_grapheme() {
-    //     let mut pt = PieceTree::new();
-    //     pt.insert_str(0, "foobar");
-
-    //     println!(
-    //         "Next grapheme boundary: {:?}",
-    //         next_grapheme_boundary(&pt, 0)
-    //     );
-    // }
-
-    // #[test]
-    // fn next_grapheme_boundary_multi_byte() {
-    // }
 
     #[test]
     fn next_grapheme_boundary_multi_byte() {
@@ -219,7 +208,7 @@ mod test {
         const CONTENT: &str = "❤🤍🥳❤️간÷나는산다⛄";
         pt.insert_str(0, CONTENT);
 
-        let boundaries = [7, 11, 17, 20];
+        let boundaries = [2, 6, 12, 15];
         let mut pos = 0;
         let slice = pt.slice(5..20);
 
@@ -235,9 +224,25 @@ mod test {
         const CONTENT: &str = "❤🤍🥳❤️간÷나는산다⛄";
         pt.insert_str(0, CONTENT);
 
-        let boundaries = [3, 7, 11, 17, 20, 22, 25, 28, 31, 34];
+        let boundaries = [0, 3, 7, 11, 17, 20, 22, 25, 28, 31, 34];
         let mut pos = pt.len();
         let slice = pt.slice(..);
+
+        for boundary in boundaries.iter().rev() {
+            pos = prev_grapheme_boundary(&slice, pos);
+            assert_eq!(*boundary, pos);
+        }
+    }
+
+    #[test]
+    fn prev_grapheme_boundary_multi_byte_slice() {
+        let mut pt = PieceTree::new();
+        const CONTENT: &str = "❤🤍🥳❤️간÷나는산다⛄";
+        pt.insert_str(0, CONTENT);
+
+        let boundaries = [0, 2, 6, 12];
+        let slice = pt.slice(5..20);
+        let mut pos = slice.len();
 
         for boundary in boundaries.iter().rev() {
             pos = prev_grapheme_boundary(&slice, pos);

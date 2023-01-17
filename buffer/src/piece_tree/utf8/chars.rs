@@ -66,8 +66,11 @@ impl<'a> Chars<'a> {
                 }
                 DecodeResult::Incomplete => {
                     if self.read_next_byte().is_none() {
-                        self.invalid = true;
-                        return Some((self.bytes.pos(), REPLACEMENT_CHAR));
+                        if self.valid_to == 0 {
+                            return None;
+                        }
+
+                        return Some((start, REPLACEMENT_CHAR));
                     }
                 }
                 DecodeResult::Ok(ch) => {
@@ -94,8 +97,8 @@ impl<'a> Chars<'a> {
         return Some(false);
     }
 
-    // TODO yield replacement chars at the same positions as next
     pub fn prev(&mut self) -> Option<(usize, char)> {
+        self.valid_to = 0;
         loop {
             match decode_char(&self.buf[self.buf.len() - self.valid_to..]) {
                 DecodeResult::Invalid => {
@@ -109,7 +112,9 @@ impl<'a> Chars<'a> {
                 }
                 DecodeResult::Incomplete => {
                     if self.read_prev_until_leading_utf8_byte().is_none() {
-                        self.invalid = true;
+                        if self.valid_to == 0 {
+                            return None;
+                        }
                         return Some((self.bytes.pos(), REPLACEMENT_CHAR));
                     }
                 }
@@ -253,7 +258,6 @@ mod test {
         assert_eq!(Some((6, '❤')), chars.next());
         assert_eq!(Some((9, '\u{fe0f}')), chars.next());
         assert_eq!(Some((12, '간')), chars.next());
-        assert_eq!(Some((15, REPLACEMENT_CHAR)), chars.next());
         assert_eq!(None, chars.next());
     }
 
@@ -265,7 +269,6 @@ mod test {
         let slice = pt.slice(5..20);
         let mut chars = slice.chars_at(slice.len());
 
-        assert_eq!(Some((15, REPLACEMENT_CHAR)), chars.prev());
         assert_eq!(Some((12, '간')), chars.prev());
         assert_eq!(Some((9, '\u{fe0f}')), chars.prev());
         assert_eq!(Some((6, '❤')), chars.prev());

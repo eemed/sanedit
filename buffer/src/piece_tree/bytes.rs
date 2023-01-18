@@ -7,8 +7,9 @@ use super::{
 
 #[derive(Debug, Clone)]
 pub struct Bytes<'a> {
+    range: Range<usize>,
     chunks: Chunks<'a>,
-    chunk: Option<Chunk<'a>>,
+    chunk: Option<(usize, Chunk<'a>)>,
     chunk_len: usize, // cache chunk len to improve next performance about from 1.7ns to about 1.1ns ~30%.
     pos: usize,       // Position relative to the current chunk.
 }
@@ -17,15 +18,15 @@ impl<'a> Bytes<'a> {
     #[inline]
     pub(crate) fn new(pt: &'a PieceTree, at: usize) -> Bytes<'a> {
         let chunks = Chunks::new(pt, at);
-        let pos_chunk = chunks.get();
-        let pos = pos_chunk.as_ref().map(|(pos, _)| at - pos).unwrap_or(0);
-        let chunk = pos_chunk.map(|(_, c)| c);
-        let chunk_len = chunk.as_ref().map(|c| c.as_ref().len()).unwrap_or(0);
+        let chunk = chunks.get();
+        let pos = chunk.as_ref().map(|(pos, _)| at - pos).unwrap_or(0);
+        let chunk_len = chunk.as_ref().map(|(_, c)| c.as_ref().len()).unwrap_or(0);
         Bytes {
             chunk,
             chunks,
             chunk_len,
             pos,
+            range: 0..pt.len(),
         }
     }
 
@@ -37,19 +38,20 @@ impl<'a> Bytes<'a> {
             at,
             range.end - range.start,
         );
-        let chunks = Chunks::new_from_slice(pt, at, range);
-        let pos_chunk = chunks.get();
-        let chunk = pos_chunk.map(|(_, chunk)| chunk);
+        let chunks = Chunks::new_from_slice(pt, at, range.clone());
+        let chunk = chunks.get();
         let chunk_len = chunk
             .as_ref()
-            .map(|chunk| chunk.as_ref().len())
+            .map(|(_, chunk)| chunk.as_ref().len())
             .unwrap_or(0);
-        let pos = if chunk.is_some() { at } else { 0 };
+        // let pos = if chunk.is_some() { at } else { 0 };
+        let pos = chunk.as_ref().map(|(pos, _)| at - pos).unwrap_or(0);
         Bytes {
             chunk,
             chunks,
             chunk_len,
             pos,
+            range,
         }
     }
 
@@ -57,19 +59,19 @@ impl<'a> Bytes<'a> {
     pub fn next(&mut self) -> Option<u8> {
         if self.pos >= self.chunk_len {
             self.pos = 0;
-            let (chunk, len): (Option<Chunk>, usize) = self
+            let (chunk, len): (Option<(usize, Chunk)>, usize) = self
                 .chunks
                 .next()
-                .map(|(_, chunk)| {
+                .map(|(pos, chunk)| {
                     let len = chunk.as_ref().len();
-                    (Some(chunk), len)
+                    (Some((pos, chunk)), len)
                 })
                 .unwrap_or((None, 0));
             self.chunk = chunk;
             self.chunk_len = len;
         }
 
-        let chunk = self.chunk.as_ref()?.as_ref();
+        let chunk = self.chunk.as_ref()?.1.as_ref();
         let byte = chunk[self.pos];
         self.pos += 1;
         Some(byte)
@@ -80,21 +82,26 @@ impl<'a> Bytes<'a> {
         if self.pos != 0 {
             self.pos -= 1;
         } else {
-            let chunk = self.chunks.prev()?.1;
-            let len = chunk.as_ref().len();
+            let chunk = self.chunks.prev()?;
+            let len = chunk.1.as_ref().len();
             self.pos = len.saturating_sub(1);
             self.chunk_len = len;
             self.chunk = Some(chunk);
         }
 
-        let chunk = self.chunk.as_ref()?.as_ref();
+        let chunk = self.chunk.as_ref()?.1.as_ref();
         let byte = chunk[self.pos];
         Some(byte)
     }
 
     #[inline]
     pub fn pos(&self) -> usize {
-        self.pos
+        let chunk_pos = self
+            .chunk
+            .as_ref()
+            .map(|(pos, _)| *pos)
+            .unwrap_or(self.range.end);
+        chunk_pos + self.pos
     }
 }
 

@@ -38,6 +38,18 @@ impl<'a> Chars<'a> {
         let start = self.bytes.pos();
         let mut buf = [0u8; 4];
         let mut read = 0;
+        // TODO read like prev does
+        // while let Some(byte) = self.bytes.next() {
+        //     buf[read] = byte;
+        //     read += 1;
+        //     if read == LEN || is_leading_or_invalid_utf8_byte(byte) {
+        //         break;
+        //     }
+        // }
+
+        // if read == 0 {
+        //     return None;
+        // }
 
         loop {
             match decode_char(&buf[..read]) {
@@ -67,57 +79,40 @@ impl<'a> Chars<'a> {
         }
     }
 
-    // #[inline(always)]
-    // fn read_prev_until_leading_utf8_byte(&mut self) -> Option<bool> {
-    //     while self.valid_to != 4 {
-    //         let byte = self.bytes.prev()?;
-    //         self.buf[self.buf.len() - self.valid_to - 1] = byte;
-    //         self.valid_to += 1;
-
-    //         if is_leading_utf8_byte(byte) {
-    //             return Some(true);
-    //         }
-    //     }
-
-    //     return Some(false);
-    // }
-
-    pub fn prev(&mut self) -> Option<(usize, char)> {
+    pub fn prev(&mut self) -> Option<(usize, usize, char)> {
         let end = self.bytes.pos();
-        let mut buf = [0u8; 4];
+        const LEN: usize = 4;
+        let mut buf = [0u8; LEN];
         let mut read = 0;
 
-        // Read to buf until is leading byte, or invalid byte, or 4 bytes total
-        // read.
+        // Read to atleast one byte stop if is leading byte, or invalid byte, or 4 bytes total
+        // read. Fill buf backwards
+        while let Some(byte) = self.bytes.prev() {
+            buf[LEN - 1 - read] = byte;
+            read += 1;
+            if read == LEN || is_leading_or_invalid_utf8_byte(byte) {
+                break;
+            }
+        }
 
-        todo!()
-        // self.valid_to = 0;
-        // loop {
-        //     match decode_char(&self.buf[self.buf.len() - self.valid_to..]) {
-        //         DecodeResult::Invalid => {
-        //             if self.invalid {
-        //                 self.valid_to = 0;
-        //                 while !self.read_prev_until_leading_utf8_byte()? {}
-        //             } else {
-        //                 self.invalid = true;
-        //                 return Some((self.bytes.pos(), REPLACEMENT_CHAR));
-        //             }
-        //         }
-        //         DecodeResult::Incomplete => {
-        //             if self.read_prev_until_leading_utf8_byte().is_none() {
-        //                 if self.valid_to == 0 {
-        //                     return None;
-        //                 }
-        //                 return Some((self.bytes.pos(), REPLACEMENT_CHAR));
-        //             }
-        //         }
-        //         DecodeResult::Ok(ch) => {
-        //             self.invalid = false;
-        //             self.valid_to = 0;
-        //             return Some((self.bytes.pos(), ch));
-        //         }
-        //     }
-        // }
+        if read == 0 {
+            return None;
+        }
+
+        let start = end - read;
+
+        match decode_char(&buf[LEN - read..]) {
+            DecodeResult::Invalid(_) => {
+                // We have an invalid byte, restore the iter
+                let extra_bytes_read = read - 1;
+                for _ in 0..extra_bytes_read {
+                    self.bytes.next();
+                }
+                return Some((start + extra_bytes_read, end, REPLACEMENT_CHAR))
+            }
+            DecodeResult::Ok(ch) => return Some((start, end, ch)),
+            DecodeResult::Incomplete => return Some((start, end, REPLACEMENT_CHAR)),
+        }
     }
 }
 
@@ -182,35 +177,40 @@ mod test {
     #[test]
     fn next() {
         let mut pt = PieceTree::new();
-        pt.insert(0, b"ab\xFF\xF0\x90\x8Dcd");
-        // should contain two replacement chars for xff and the rest 3
+        pt.insert(0, b"ab\xFF\xF0\x90\x8D\xFF\x90\x8Dcd");
 
         let mut chars = pt.chars();
 
-        while let Some((start, end, ch)) = chars.next() {
-            println!("{start}..{end} {ch}");
-        }
-        // assert_eq!(Some((0, 'a')), chars.next());
-        // assert_eq!(Some((1, 'b')), chars.next());
-        // assert_eq!(Some((2, REPLACEMENT_CHAR)), chars.next());
-        // assert_eq!(Some((7, 'b')), chars.next());
-        // assert_eq!(Some((8, 'a')), chars.next());
-        // assert_eq!(None, chars.next());
+        assert_eq!(Some((0, 1, 'a')), chars.next());
+        assert_eq!(Some((1, 2, 'b')), chars.next());
+        assert_eq!(Some((2, 3, REPLACEMENT_CHAR)), chars.next());
+        assert_eq!(Some((3, 6, REPLACEMENT_CHAR)), chars.next());
+        assert_eq!(Some((6, 7, REPLACEMENT_CHAR)), chars.next());
+        assert_eq!(Some((7, 8, REPLACEMENT_CHAR)), chars.next());
+        assert_eq!(Some((8, 9, REPLACEMENT_CHAR)), chars.next());
+        assert_eq!(Some((9, 10, 'c')), chars.next());
+        assert_eq!(Some((10, 11, 'd')), chars.next());
+        assert_eq!(None, chars.next());
     }
 
-    // #[test]
-    // fn prev() {
-    //     let mut pt = PieceTree::new();
-    //     pt.insert(0, b"ab\xFF\xFF\xFF\xFF\xFFba");
-    //     let mut chars = pt.chars_at(pt.len());
+    #[test]
+    fn prev() {
+        let mut pt = PieceTree::new();
+        pt.insert(0, b"ab\xFF\xF0\x90\x8D\xFF\x90\x8Dcd");
+        let mut chars = pt.chars_at(pt.len());
 
-    //     assert_eq!(Some((8, 'a')), chars.prev());
-    //     assert_eq!(Some((7, 'b')), chars.prev());
-    //     assert_eq!(Some((6, REPLACEMENT_CHAR)), chars.prev());
-    //     assert_eq!(Some((1, 'b')), chars.prev());
-    //     assert_eq!(Some((0, 'a')), chars.prev());
-    //     assert_eq!(None, chars.prev());
-    // }
+        assert_eq!(Some((10, 11, 'd')), chars.prev());
+        assert_eq!(Some((9, 10, 'c')), chars.prev());
+        assert_eq!(Some((8, 9, REPLACEMENT_CHAR)), chars.prev());
+        assert_eq!(Some((7, 8, REPLACEMENT_CHAR)), chars.prev());
+        assert_eq!(Some((6, 7, REPLACEMENT_CHAR)), chars.prev());
+        assert_eq!(Some((3, 6, REPLACEMENT_CHAR)), chars.prev());
+        assert_eq!(Some((2, 3, REPLACEMENT_CHAR)), chars.prev());
+        assert_eq!(Some((1, 2, 'b')), chars.prev());
+        assert_eq!(Some((0, 1, 'a')), chars.prev());
+        assert_eq!(None, chars.prev());
+
+    }
 
     // #[test]
     // fn next_then_prev() {

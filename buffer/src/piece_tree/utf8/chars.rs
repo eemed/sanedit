@@ -103,6 +103,7 @@ impl<'a> Chars<'a> {
 
         match decode_char(&buf[LEN - read..]) {
             DecodeResult::Invalid(_) => {
+                // TODO better way to save these bytes?
                 // We have an invalid byte, restore the iter
                 let extra_bytes_read = read - 1;
                 for _ in 0..extra_bytes_read {

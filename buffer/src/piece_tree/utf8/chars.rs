@@ -1,4 +1,4 @@
-use std::{cmp, ops::Range};
+use std::ops::Range;
 
 use crate::piece_tree::{Bytes, PieceTree};
 
@@ -36,20 +36,9 @@ impl<'a> Chars<'a> {
 
     pub fn next(&mut self) -> Option<(usize, usize, char)> {
         let start = self.bytes.pos();
-        let mut buf = [0u8; 4];
+        const LEN: usize = 4;
+        let mut buf = [0u8; LEN];
         let mut read = 0;
-        // TODO read like prev does
-        // while let Some(byte) = self.bytes.next() {
-        //     buf[read] = byte;
-        //     read += 1;
-        //     if read == LEN || is_leading_or_invalid_utf8_byte(byte) {
-        //         break;
-        //     }
-        // }
-
-        // if read == 0 {
-        //     return None;
-        // }
 
         loop {
             match decode_char(&buf[..read]) {
@@ -109,7 +98,7 @@ impl<'a> Chars<'a> {
                 for _ in 0..extra_bytes_read {
                     self.bytes.next();
                 }
-                return Some((start + extra_bytes_read, end, REPLACEMENT_CHAR))
+                return Some((start + extra_bytes_read, end, REPLACEMENT_CHAR));
             }
             DecodeResult::Ok(ch) => return Some((start, end, ch)),
             DecodeResult::Incomplete => return Some((start, end, REPLACEMENT_CHAR)),
@@ -140,11 +129,6 @@ fn decode_char(bytes: &[u8]) -> DecodeResult {
             None => DecodeResult::Incomplete,
         },
     }
-}
-
-#[inline(always)]
-fn is_leading_utf8_byte(byte: u8) -> bool {
-    (byte & 0xC0) != 0x80
 }
 
 #[inline(always)]
@@ -210,90 +194,93 @@ mod test {
         assert_eq!(Some((1, 2, 'b')), chars.prev());
         assert_eq!(Some((0, 1, 'a')), chars.prev());
         assert_eq!(None, chars.prev());
-
     }
 
-    // #[test]
-    // fn next_then_prev() {
-    //     let mut pt = PieceTree::new();
-    //     pt.insert(0, b"ab\xFF\xFF\xFF\xFF\xFFba");
+    #[test]
+    fn next_then_prev() {
+        let mut pt = PieceTree::new();
+        pt.insert(0, b"ab\xFF\xFFba");
 
-    //     let mut chars = pt.chars();
-    //     assert_eq!(Some((0, 'a')), chars.next());
-    //     assert_eq!(Some((1, 'b')), chars.next());
-    //     assert_eq!(Some((2, REPLACEMENT_CHAR)), chars.next());
-    //     assert_eq!(Some((7, 'b')), chars.next());
-    //     assert_eq!(Some((7, 'b')), chars.prev());
-    //     assert_eq!(Some((6, REPLACEMENT_CHAR)), chars.prev());
-    //     assert_eq!(Some((1, 'b')), chars.prev());
-    //     assert_eq!(Some((0, 'a')), chars.prev());
-    //     assert_eq!(None, chars.prev());
-    // }
+        let mut chars = pt.chars();
+        assert_eq!(Some((0, 1, 'a')), chars.next());
+        assert_eq!(Some((1, 2, 'b')), chars.next());
+        assert_eq!(Some((2, 3, REPLACEMENT_CHAR)), chars.next());
+        assert_eq!(Some((3, 4, REPLACEMENT_CHAR)), chars.next());
+        assert_eq!(Some((4, 5, 'b')), chars.next());
+        assert_eq!(Some((4, 5, 'b')), chars.prev());
+        assert_eq!(Some((3, 4, REPLACEMENT_CHAR)), chars.prev());
+        assert_eq!(Some((2, 3, REPLACEMENT_CHAR)), chars.prev());
+        assert_eq!(Some((1, 2, 'b')), chars.prev());
+        assert_eq!(Some((0, 1, 'a')), chars.prev());
+        assert_eq!(None, chars.prev());
+    }
 
-    // #[test]
-    // fn middle_of_char() {
-    //     let mut pt = PieceTree::new();
-    //     pt.insert_str(0, "§ab");
+    #[test]
+    fn middle_of_char() {
+        let mut pt = PieceTree::new();
+        pt.insert_str(0, "§ab");
 
-    //     let slice = pt.slice(1..);
-    //     let mut chars = slice.chars();
-    //     assert_eq!(Some((0, REPLACEMENT_CHAR)), chars.next());
-    //     assert_eq!(Some((1, 'a')), chars.next());
-    //     assert_eq!(Some((2, 'b')), chars.next());
-    //     assert_eq!(None, chars.next());
-    // }
+        let slice = pt.slice(1..);
+        let mut chars = slice.chars();
+        assert_eq!(Some((0, 1, REPLACEMENT_CHAR)), chars.next());
+        assert_eq!(Some((1, 2, 'a')), chars.next());
+        assert_eq!(Some((2, 3, 'b')), chars.next());
+        assert_eq!(None, chars.next());
+    }
 
-    // #[test]
-    // fn multi_byte() {
-    //     let mut pt = PieceTree::new();
-    //     const CONTENT: &str = "❤🤍🥳❤️간÷나는산다⛄";
-    //     pt.insert_str(0, CONTENT);
-    //     let mut chars = pt.chars();
+    #[test]
+    fn multi_byte() {
+        let mut pt = PieceTree::new();
+        const CONTENT: &str = "❤🤍🥳❤️간÷나는산다⛄";
+        pt.insert_str(0, CONTENT);
+        let mut chars = pt.chars();
 
-    //     assert_eq!(Some((0, '❤')), chars.next());
-    //     assert_eq!(Some((3, '🤍')), chars.next());
-    //     assert_eq!(Some((7, '🥳')), chars.next());
-    //     assert_eq!(Some((11, '❤')), chars.next());
-    //     assert_eq!(Some((14, '\u{fe0f}')), chars.next());
-    //     assert_eq!(Some((17, '간')), chars.next());
-    //     assert_eq!(Some((20, '÷')), chars.next());
-    //     assert_eq!(Some((22, '나')), chars.next());
-    //     assert_eq!(Some((25, '는')), chars.next());
-    //     assert_eq!(Some((28, '산')), chars.next());
-    //     assert_eq!(Some((31, '다')), chars.next());
-    //     assert_eq!(Some((34, '⛄')), chars.next());
-    //     assert_eq!(None, chars.next());
-    // }
+        assert_eq!(Some((0, 3, '❤')), chars.next());
+        assert_eq!(Some((3, 7, '🤍')), chars.next());
+        assert_eq!(Some((7, 11, '🥳')), chars.next());
+        assert_eq!(Some((11, 14, '❤')), chars.next());
+        assert_eq!(Some((14, 17, '\u{fe0f}')), chars.next());
+        assert_eq!(Some((17, 20, '간')), chars.next());
+        assert_eq!(Some((20, 22, '÷')), chars.next());
+        assert_eq!(Some((22, 25, '나')), chars.next());
+        assert_eq!(Some((25, 28, '는')), chars.next());
+        assert_eq!(Some((28, 31, '산')), chars.next());
+        assert_eq!(Some((31, 34, '다')), chars.next());
+        assert_eq!(Some((34, 37, '⛄')), chars.next());
+        assert_eq!(None, chars.next());
+    }
 
-    // #[test]
-    // fn multi_byte_slice() {
-    //     let mut pt = PieceTree::new();
-    //     const CONTENT: &str = "❤🤍🥳❤️간÷나는산다⛄";
-    //     pt.insert_str(0, CONTENT);
-    //     let slice = pt.slice(5..20);
-    //     let mut chars = slice.chars();
+    #[test]
+    fn multi_byte_slice() {
+        let mut pt = PieceTree::new();
+        const CONTENT: &str = "❤🤍🥳❤️간÷나는산다⛄";
+        pt.insert_str(0, CONTENT);
+        let slice = pt.slice(5..20);
+        let mut chars = slice.chars();
 
-    //     assert_eq!(Some((0, REPLACEMENT_CHAR)), chars.next());
-    //     assert_eq!(Some((2, '🥳')), chars.next());
-    //     assert_eq!(Some((6, '❤')), chars.next());
-    //     assert_eq!(Some((9, '\u{fe0f}')), chars.next());
-    //     assert_eq!(Some((12, '간')), chars.next());
-    //     assert_eq!(None, chars.next());
-    // }
+        assert_eq!(Some((0, 1, REPLACEMENT_CHAR)), chars.next());
+        assert_eq!(Some((1, 2, REPLACEMENT_CHAR)), chars.next());
+        assert_eq!(Some((2, 6, '🥳')), chars.next());
+        assert_eq!(Some((6, 9, '❤')), chars.next());
+        assert_eq!(Some((9, 12, '\u{fe0f}')), chars.next());
+        assert_eq!(Some((12, 15, '간')), chars.next());
+        assert_eq!(None, chars.next());
+    }
 
-    // #[test]
-    // fn multi_byte_slice_prev() {
-    //     let mut pt = PieceTree::new();
-    //     const CONTENT: &str = "❤🤍🥳❤️간÷나는산다⛄";
-    //     pt.insert_str(0, CONTENT);
-    //     let slice = pt.slice(5..20);
-    //     let mut chars = slice.chars_at(slice.len());
+    #[test]
+    fn multi_byte_slice_prev() {
+        let mut pt = PieceTree::new();
+        const CONTENT: &str = "❤🤍🥳❤️간÷나는산다⛄";
+        pt.insert_str(0, CONTENT);
+        let slice = pt.slice(5..20);
+        let mut chars = slice.chars_at(slice.len());
 
-    //     assert_eq!(Some((12, '간')), chars.prev());
-    //     assert_eq!(Some((9, '\u{fe0f}')), chars.prev());
-    //     assert_eq!(Some((6, '❤')), chars.prev());
-    //     assert_eq!(Some((2, '🥳')), chars.prev());
-    //     assert_eq!(Some((0, REPLACEMENT_CHAR)), chars.prev());
-    //     assert_eq!(None, chars.prev());
-    // }
+        assert_eq!(Some((12, 15, '간')), chars.prev());
+        assert_eq!(Some((9, 12, '\u{fe0f}')), chars.prev());
+        assert_eq!(Some((6, 9, '❤')), chars.prev());
+        assert_eq!(Some((2, 6, '🥳')), chars.prev());
+        assert_eq!(Some((1, 2, REPLACEMENT_CHAR)), chars.prev());
+        assert_eq!(Some((0, 1, REPLACEMENT_CHAR)), chars.prev());
+        assert_eq!(None, chars.prev());
+    }
 }

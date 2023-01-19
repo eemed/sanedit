@@ -1,7 +1,7 @@
 use std::{io, path::PathBuf};
 
 use criterion::{criterion_group, criterion_main, Criterion};
-use sanedit_buffer::piece_tree::{next_grapheme_boundary, prev_grapheme_boundary, PieceTree};
+use sanedit_buffer::piece_tree::PieceTree;
 
 fn bytes(c: &mut Criterion) {
     c.bench_function("bytes_next", |bench| {
@@ -63,39 +63,39 @@ fn chars(c: &mut Criterion) {
     });
 }
 
-fn graphemes(c: &mut Criterion) {
-    c.bench_function("grapheme_boundary_next", |bench| {
-        let large = io::Cursor::new(include_str!("large.txt"));
-        let pt = PieceTree::from_reader(large).unwrap();
-        let slice = pt.slice(..);
-        let mut pos = 0;
+// fn graphemes(c: &mut Criterion) {
+//     c.bench_function("grapheme_boundary_next", |bench| {
+//         let large = io::Cursor::new(include_str!("large.txt"));
+//         let pt = PieceTree::from_reader(large).unwrap();
+//         let slice = pt.slice(..);
+//         let mut pos = 0;
 
-        bench.iter(move || {
-            let end = next_grapheme_boundary(&slice, pos);
-            pos = end;
+//         bench.iter(move || {
+//             let end = next_grapheme_boundary(&slice, pos);
+//             pos = end;
 
-            if pos == slice.len() {
-                pos = 0
-            }
-        });
-    });
+//             if pos == slice.len() {
+//                 pos = 0
+//             }
+//         });
+//     });
 
-    c.bench_function("grapheme_boundary_prev", |bench| {
-        let large = io::Cursor::new(include_str!("large.txt"));
-        let pt = PieceTree::from_reader(large).unwrap();
-        let slice = pt.slice(..);
-        let mut pos = pt.len();
+//     c.bench_function("grapheme_boundary_prev", |bench| {
+//         let large = io::Cursor::new(include_str!("large.txt"));
+//         let pt = PieceTree::from_reader(large).unwrap();
+//         let slice = pt.slice(..);
+//         let mut pos = pt.len();
 
-        bench.iter(move || {
-            let end = prev_grapheme_boundary(&slice, pos);
-            pos = end;
+//         bench.iter(move || {
+//             let end = prev_grapheme_boundary(&slice, pos);
+//             pos = end;
 
-            if pos == 0 {
-                pos = slice.len();
-            }
-        });
-    });
-}
+//             if pos == 0 {
+//                 pos = slice.len();
+//             }
+//         });
+//     });
+// }
 
 // fn graphemes(c: &mut Criterion) {
 //     c.bench_function("graphemes_next", |bench| {
@@ -217,5 +217,5 @@ fn chunks(c: &mut Criterion) {
 }
 
 // criterion_group!(benches, bytes, chars, graphemes);
-criterion_group!(benches, graphemes);
+criterion_group!(benches, chars);
 criterion_main!(benches);

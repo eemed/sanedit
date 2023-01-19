@@ -51,13 +51,13 @@ pub fn next_grapheme_boundary(slice: &PieceTreeSlice, pos: usize) -> usize {
     let mut all = SmallVec4::new();
     let mut buf = String::with_capacity(4);
 
-    if let Some((pos, ch)) = chars.next() {
+    if let Some((pos, _, ch)) = chars.next() {
         all.push((pos, ch));
         buf.push(ch);
     }
 
     let end = slice.end() - slice.start();
-    while let Some((pos, ch)) = chars.next() {
+    while let Some((pos, _, ch)) = chars.next() {
         all.push((pos, ch));
         buf.push(ch);
 
@@ -83,7 +83,7 @@ pub fn next_grapheme_boundary(slice: &PieceTreeSlice, pos: usize) -> usize {
             NeedPre => {
                 pre = Some(pre.unwrap_or(slice.chars_at(pos)));
                 // Safe to unwrap as we just created pre iter if it did not exist
-                if let Some((pos, ch)) = pre.as_mut().unwrap().prev() {
+                if let Some((pos, _, ch)) = pre.as_mut().unwrap().prev() {
                     all.insert(0, (pos, ch));
                     buf.insert(0, ch);
                 } else {
@@ -132,7 +132,7 @@ pub fn prev_grapheme_boundary(slice: &PieceTreeSlice, pos: usize) -> usize {
     let mut all = SmallVec4::new();
     let mut buf = String::with_capacity(4);
 
-    while let Some((pos, ch)) = chars.prev() {
+    while let Some((pos, _, ch)) = chars.prev() {
         all.insert(0, (pos, ch));
         buf.insert(0, ch);
 
@@ -165,7 +165,6 @@ pub fn prev_grapheme_boundary(slice: &PieceTreeSlice, pos: usize) -> usize {
         }
     }
 
-    println!("D");
     return 0;
 }
 
@@ -208,7 +207,7 @@ mod test {
         const CONTENT: &str = "❤🤍🥳❤️간÷나는산다⛄";
         pt.insert_str(0, CONTENT);
 
-        let boundaries = [2, 6, 12, 15];
+        let boundaries = [1, 2, 6, 12, 15];
         let mut pos = 0;
         let slice = pt.slice(5..20);
 
@@ -240,7 +239,7 @@ mod test {
         const CONTENT: &str = "❤🤍🥳❤️간÷나는산다⛄";
         pt.insert_str(0, CONTENT);
 
-        let boundaries = [0, 2, 6, 12];
+        let boundaries = [0, 1, 2, 6, 12];
         let slice = pt.slice(5..20);
         let mut pos = slice.len();
 
@@ -249,10 +248,4 @@ mod test {
             assert_eq!(*boundary, pos);
         }
     }
-
-    // #[test]
-    // fn next_grapheme_test() {
-    //     const CONTENT: &[u8] = "❤️".as_bytes();
-    //     println!("TEST {:?}", CONTENT.grapheme_indices().next());
-    // }
 }

@@ -9,7 +9,6 @@ edition = "2018"
 [dependencies]
 log = "0.4.14"
 smallvec = "0.1"
-smartstring = "1"
 unicode-segmentation = "1.9"
 
 [dev-dependencies]

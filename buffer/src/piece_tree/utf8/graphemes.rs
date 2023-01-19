@@ -48,13 +48,9 @@ pub fn next_grapheme_boundary(slice: &PieceTreeSlice, pos: usize) -> usize {
     let mut at_start = pos == 0;
     let mut chars = slice.chars_at(pos);
     let mut pre = None;
+    // TODO figure out a better way than to store every char here.
     let mut all = SmallVec4::new();
     let mut buf = String::with_capacity(4);
-
-    if let Some((pos, _, ch)) = chars.next() {
-        all.push((pos, ch));
-        buf.push(ch);
-    }
 
     let end = slice.end() - slice.start();
     while let Some((pos, _, ch)) = chars.next() {

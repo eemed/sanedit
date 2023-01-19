@@ -44,7 +44,9 @@ impl<'a> Chars<'a> {
             match decode_char(&buf[..read]) {
                 DecodeResult::Invalid(valid_up_to) => {
                     // TODO is there better way than to scroll back.
-                    // Maybe store this in a buf?
+                    // Maybe store this in a buf, store last direction bool, and
+                    // scroll back by buffer if needed?
+                    // Not a high priority because we are handling invalid utf8
                     for _ in 0..read - valid_up_to {
                         self.bytes.prev();
                     }
@@ -92,7 +94,6 @@ impl<'a> Chars<'a> {
 
         match decode_char(&buf[LEN - read..]) {
             DecodeResult::Invalid(_) => {
-                // TODO better way to save these bytes?
                 // We have an invalid byte, restore the iter
                 let extra_bytes_read = read - 1;
                 for _ in 0..extra_bytes_read {

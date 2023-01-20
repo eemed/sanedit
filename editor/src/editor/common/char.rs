@@ -1,21 +1,22 @@
-use std::{cmp, ops::Range};
+use std::ops::Range;
 
-use sanedit_buffer::piece_tree::{next_grapheme, PieceTreeSlice};
+use sanedit_buffer::piece_tree::PieceTreeSlice;
 use smallvec::SmallVec1;
 use smartstring::alias::String;
 
-/// Representation of a grapheme in the buffer.
+/// Representation of a grapheme cluster (clusters of codepoints we treat as one
+/// character) in the buffer.
 /// This is a separate type to distinguish graphemes that have already been
 /// converted to the format we want the user to see.
 #[derive(Debug, Default, Clone, PartialEq, Hash)]
-pub(crate) struct Atom {
+pub(crate) struct Char {
     display: String,
-    slice_range: Range<usize>,
+    buf_range: Option<Range<usize>>,
 }
 
-impl Atom {}
+impl Char {}
 
-impl std::ops::Deref for Atom {
+impl std::ops::Deref for Char {
     type Target = str;
 
     fn deref(&self) -> &Self::Target {
@@ -23,16 +24,16 @@ impl std::ops::Deref for Atom {
     }
 }
 
-/// Options on how to display atoms
+/// Options on how to display chars
 #[derive(Debug, Clone)]
-pub(crate) struct AtomOptions {
+pub(crate) struct DisplayOptions {
     pub tabstop: u8,
     pub line_width: usize,
 }
 
-impl Default for AtomOptions {
+impl Default for DisplayOptions {
     fn default() -> Self {
-        AtomOptions {
+        DisplayOptions {
             tabstop: 8,
             line_width: 80,
         }
@@ -40,7 +41,7 @@ impl Default for AtomOptions {
 }
 
 #[inline]
-fn grapheme_width(grapheme: PieceTreeSlice, column: usize, options: &AtomOptions) -> usize {
+fn grapheme_width(grapheme: PieceTreeSlice, column: usize, options: &DisplayOptions) -> usize {
     grapheme_to_atoms(grapheme, column, options).len()
 }
 
@@ -48,19 +49,19 @@ fn grapheme_width(grapheme: PieceTreeSlice, column: usize, options: &AtomOptions
 fn grapheme_to_atoms(
     grapheme: PieceTreeSlice,
     column: usize,
-    options: &AtomOptions,
-) -> SmallVec1<Atom> {
+    options: &DisplayOptions,
+) -> SmallVec1<Char> {
     let mut atoms = SmallVec1::new();
     if grapheme == "\t" {}
 
     let mut chars = grapheme.chars();
-    let mut atom = String::new();
+    let mut display = String::new();
     while let Some((_pos, _, ch)) = chars.next() {
-        atom.push(ch);
+        display.push(ch);
     }
-    atoms.push(Atom {
-        display: atom,
-        slice_range: grapheme.start()..grapheme.end(),
+    atoms.push(Char {
+        display,
+        buf_range: Some(grapheme.start()..grapheme.end()),
     });
     atoms
 }
@@ -77,7 +78,7 @@ mod test {
         let mut pt = PieceTree::new();
         pt.insert_str(0, "❤️");
         let slice = pt.slice(..);
-        let atoms = grapheme_to_atoms(slice, 0, &AtomOptions::default());
+        let atoms = grapheme_to_atoms(slice, 0, &DisplayOptions::default());
         assert_eq!("❤️", atoms[0].deref());
     }
 
@@ -86,7 +87,7 @@ mod test {
         let mut pt = PieceTree::new();
         pt.insert(0, b"\0");
         let slice = pt.slice(..);
-        let atoms = grapheme_to_atoms(slice, 0, &AtomOptions::default());
+        let atoms = grapheme_to_atoms(slice, 0, &DisplayOptions::default());
         assert_eq!("\0", atoms[0].deref());
     }
 
@@ -95,7 +96,7 @@ mod test {
         let mut pt = PieceTree::new();
         pt.insert(0, b"\xFF\xFF");
         let slice = pt.slice(..);
-        let atoms = grapheme_to_atoms(slice, 0, &AtomOptions::default());
+        let atoms = grapheme_to_atoms(slice, 0, &DisplayOptions::default());
         assert_eq!("\u{fffd}", atoms[0].deref());
     }
 

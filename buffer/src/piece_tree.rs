@@ -23,9 +23,9 @@ pub use self::slice::PieceTreeSlice;
 pub use crate::cursor_iterator::CursorIterator;
 pub use crate::piece_tree::bytes::Bytes;
 pub use builder::PieceTreeBuilder;
-// pub use utf8::graphemes::{
-//     next_grapheme, next_grapheme_boundary, prev_grapheme, prev_grapheme_boundary,
-// };
+pub use utf8::graphemes::{
+    next_grapheme, next_grapheme_boundary, prev_grapheme, prev_grapheme_boundary,
+};
 
 /// A Snapshot of the piece tree.
 //

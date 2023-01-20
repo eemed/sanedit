@@ -55,7 +55,7 @@ fn grapheme_to_atoms(
 
     let mut chars = grapheme.chars();
     let mut atom = String::new();
-    while let Some((_pos, ch)) = chars.next() {
+    while let Some((_pos, _, ch)) = chars.next() {
         atom.push(ch);
     }
     atoms.push(Atom {

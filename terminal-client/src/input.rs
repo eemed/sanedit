@@ -20,7 +20,9 @@ pub(crate) fn run_loop<W: io::Write>(write: W, stop: Arc<AtomicBool>) -> Result<
     loop {
         if poll(POLL_DURATION)? {
             let event = read()?;
-            process_input_event(event, &mut writer)?;
+            if let Err(e) = process_input_event(event, &mut writer) {
+                log::error!("Client failed to send event {:?} to server: {}", event, e);
+            }
         }
 
         if stop.load(Ordering::Acquire) {

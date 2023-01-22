@@ -14,6 +14,7 @@ use std::{
 use sanedit_buffer::piece_tree::{PieceTree, PieceTreeSlice};
 
 use self::{change::Change, options::BufferOptions, snapshots::Snapshots};
+pub(crate) use eol::EOL;
 
 slotmap::new_key_type!(
     pub(crate) struct BufferId;
@@ -88,6 +89,10 @@ impl Buffer {
 
     pub fn slice<R: RangeBounds<usize>>(&self, range: R) -> PieceTreeSlice {
         self.pt.slice(range)
+    }
+
+    pub fn options(&self) -> &BufferOptions {
+        &self.options
     }
 }
 

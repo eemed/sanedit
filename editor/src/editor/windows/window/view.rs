@@ -2,10 +2,16 @@ mod cell;
 
 use sanedit_buffer::piece_tree::{next_grapheme, PieceTreeSlice};
 
+use crate::editor::{
+    buffers::buffer::{Buffer, EOL},
+    common::char::{Char, DisplayOptions},
+};
+
 pub(crate) use self::cell::Cell;
 
 #[derive(Debug, Default)]
 pub(crate) struct View {
+    offset: usize,
     cells: Vec<Vec<Cell>>,
     width: usize,
     height: usize,
@@ -14,6 +20,7 @@ pub(crate) struct View {
 impl View {
     pub fn new(width: usize, height: usize) -> View {
         View {
+            offset: 0,
             cells: vec![vec![Cell::default(); width]; height],
             width,
             height,
@@ -34,7 +41,12 @@ impl View {
         self.height
     }
 
-    fn redraw(&mut self, slice: PieceTreeSlice) {
+    fn draw_trailing_whitespace(&mut self) {}
+    fn draw_end_of_buffer(&mut self) {}
+    fn draw_cursors(&mut self) {}
+
+    fn redraw(&mut self, buf: &Buffer, opts: &DisplayOptions) {
+        let slice = buf.slice(self.offset..);
         let mut pos = 0;
         let mut line = 0;
         let mut col = 0;
@@ -43,8 +55,13 @@ impl View {
             if line == self.height {
                 break;
             }
+            let is_eol = EOL::is_eol(&grapheme);
+            let ch = Char::new(grapheme, col, opts);
+            let width = ch.width();
+            let cell = ch.into();
+            self.cells[line][col] = cell;
+            // TODO advance line + col for width
 
-            //     let is_eol = is_buf_eol(&buf, &g);
             //     let mut cells = grapheme_to_cells(&g, v_col, buf.options.tabstop, &win.options.symbols);
         }
 

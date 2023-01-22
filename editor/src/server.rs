@@ -16,7 +16,6 @@ use tokio::{
     net::unix::SocketAddr,
     runtime::Runtime,
     sync::mpsc::{channel, Sender},
-    task::JoinHandle,
 };
 
 use crate::{editor, events::ToServer};

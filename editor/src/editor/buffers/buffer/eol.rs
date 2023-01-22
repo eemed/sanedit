@@ -1,9 +1,12 @@
+use sanedit_buffer::piece_tree::PieceTreeSlice;
+use strum::IntoEnumIterator;
 use strum_macros::{AsRefStr, EnumIter};
 
 #[derive(Debug, Copy, Clone, PartialEq, EnumIter, AsRefStr)]
 pub(crate) enum EOL {
     LF,
     CRLF,
+    // TODO add others
 }
 
 impl EOL {
@@ -12,6 +15,10 @@ impl EOL {
             EOL::LF => "\n",
             EOL::CRLF => "\r\n",
         }
+    }
+
+    pub fn is_eol(string: &PieceTreeSlice) -> bool {
+        EOL::iter().any(|eol| string == &eol.as_str())
     }
 }
 

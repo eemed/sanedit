@@ -1,10 +1,14 @@
 mod cursors;
 mod message;
+mod options;
 mod view;
+
+use crate::editor::buffers::buffer::Buffer;
 
 use self::{
     cursors::{Cursor, Cursors},
     message::{Message, Severity},
+    options::WindowOptions,
     view::View,
 };
 
@@ -18,6 +22,8 @@ pub(crate) struct Window {
     view: View,
     message: Message,
     cursors: Cursors,
+
+    options: WindowOptions,
 }
 
 impl Window {
@@ -27,6 +33,7 @@ impl Window {
             view: View::default(),
             message: Message::default(),
             cursors: Cursors::default(),
+            options: WindowOptions::default(),
         }
     }
 
@@ -55,5 +62,5 @@ impl Window {
         self.cursors.primary()
     }
 
-    pub fn redraw(&mut self) {}
+    pub fn redraw(&mut self, buf: &Buffer) {}
 }

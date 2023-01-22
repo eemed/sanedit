@@ -1,4 +1,3 @@
-
 // /// Data passed on to spawn client when acceptor accepts a new client.
 // #[derive(Debug)]
 // pub(crate) struct ClientInfo {

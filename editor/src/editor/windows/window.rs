@@ -55,6 +55,5 @@ impl Window {
         self.cursors.primary()
     }
 
-    pub fn redraw(&mut self) {
-    }
+    pub fn redraw(&mut self) {}
 }

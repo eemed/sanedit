@@ -32,7 +32,6 @@ impl<'a> BoundedPieceIter<'a> {
         BoundedPieceIter { range, iter }
     }
 
-
     #[inline]
     fn shrink_to_range(&self, (mut p_start, mut piece): (usize, Piece)) -> Option<(usize, Piece)> {
         let p_end = p_start + piece.len;

@@ -3,4 +3,4 @@ pub(crate) mod editor;
 pub(crate) mod events;
 pub(crate) mod server;
 
-pub use server::{Address, run, run_sync};
+pub use server::{run, run_sync, Address};

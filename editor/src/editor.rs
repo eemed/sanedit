@@ -1,7 +1,7 @@
 mod bindings;
 mod buffers;
-mod windows;
 pub(crate) mod common;
+mod windows;
 
 use sanedit_messages::ClientMessage;
 use sanedit_messages::KeyEvent;

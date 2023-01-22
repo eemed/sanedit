@@ -31,4 +31,3 @@ impl Windows {
         self.windows.remove(&id)
     }
 }
-

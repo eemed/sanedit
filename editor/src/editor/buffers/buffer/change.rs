@@ -5,4 +5,3 @@ pub(crate) enum Change {
     Undo,
     Redo,
 }
-

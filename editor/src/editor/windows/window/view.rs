@@ -1,6 +1,6 @@
 mod cell;
 
-use sanedit_buffer::piece_tree::{next_grapheme, PieceTreeSlice};
+use sanedit_buffer::piece_tree::next_grapheme;
 
 use crate::editor::{
     buffers::buffer::{Buffer, EOL},
@@ -9,7 +9,7 @@ use crate::editor::{
 
 pub(crate) use self::cell::Cell;
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub(crate) struct View {
     offset: usize,
     cells: Vec<Vec<Cell>>,
@@ -41,11 +41,26 @@ impl View {
         self.height
     }
 
+    /// Advance line and col in the grid by amount
+    fn advance(&mut self, line: &mut usize, col: &mut usize, amount: usize) {
+        for _ in 0..amount {
+            *col += 1;
+
+            if *col == self.width {
+                *line += 1;
+                *col = 0;
+            }
+
+            if *line == self.height {
+                break;
+            }
+        }
+    }
+
     fn draw_trailing_whitespace(&mut self) {}
     fn draw_end_of_buffer(&mut self) {}
     fn draw_cursors(&mut self) {}
-
-    fn redraw(&mut self, buf: &Buffer, opts: &DisplayOptions) {
+    fn draw_cells(&mut self, buf: &Buffer, opts: &DisplayOptions) {
         let slice = buf.slice(self.offset..);
         let mut pos = 0;
         let mut line = 0;
@@ -55,89 +70,69 @@ impl View {
             if line == self.height {
                 break;
             }
+            let grapheme_len = grapheme.len();
             let is_eol = EOL::is_eol(&grapheme);
             let ch = Char::new(grapheme, col, opts);
-            let width = ch.width();
+            let ch_width = ch.width();
             let cell = ch.into();
             self.cells[line][col] = cell;
-            // TODO advance line + col for width
 
-            //     let mut cells = grapheme_to_cells(&g, v_col, buf.options.tabstop, &win.options.symbols);
+            self.advance(&mut line, &mut col, ch_width);
+
+            // c_col != 0 because eol maybe on the last cell and we don't
+            // want to crate extra empty line
+            if is_eol && col != 0 {
+                line += 1;
+                col = 0;
+            }
+
+            pos += grapheme_len;
+        }
+    }
+
+    pub fn redraw(&mut self, buf: &Buffer, opts: &DisplayOptions) {
+        self.draw_cells(buf, opts);
+        self.draw_cursors();
+        self.draw_end_of_buffer();
+        self.draw_trailing_whitespace();
+    }
+}
+
+impl From<&View> for Vec<Vec<String>> {
+    fn from(view: &View) -> Self {
+        let mut grid = vec![vec![String::new(); view.width()]; view.height()];
+
+        for (line, row) in view.cells.iter().enumerate() {
+            for (col, cell) in row.iter().enumerate() {
+                grid[line][col] = cell.char().display().to_string();
+            }
         }
 
-        // let symbols = &win.options.symbols;
-        // let mut cursor = CellPosition::default();
-        // let mut grid = Grid::new(Cell::empty(), width, height);
+        grid
+    }
+}
 
-        // let mut graphemes = buf.graphemes_at(win.offset);
-        // let mut grapheme = graphemes.get();
+#[cfg(test)]
+mod test {
+    use super::*;
 
-        // let mut c_line = 0;
-        // let mut c_col = 0;
-        // let mut v_col = 0;
+    #[test]
+    fn tabs() {
+        let width = 80;
+        let opts = DisplayOptions::default();
+        let mut buf = Buffer::new();
+        buf.append("\tHello\tWorld");
 
-        // while let Some(g) = grapheme {
-        //     if c_line == height {
-        //         break;
-        //     }
-        //     let is_eol = is_buf_eol(&buf, &g);
-        //     let mut cells = grapheme_to_cells(&g, v_col, buf.options.tabstop, &win.options.symbols);
+        let mut view = View::new(width, 1);
+        view.redraw(&buf, &opts);
 
-        //     for cell in cells.into_iter() {
-        //         grid[c_line][c_col] = cell;
-
-        //         c_col += 1;
-        //         v_col += 1;
-
-        //         if c_col == width {
-        //             c_line += 1;
-        //             c_col = 0;
-        //         }
-
-        //         if c_line == height {
-        //             break;
-        //         }
-        //     }
-
-        //     // c_col != 0 because eol maybe on the last cell and we don't
-        //     // want to crate extra empty line
-        //     if is_eol && c_col != 0 {
-        //         c_line += 1;
-        //         c_col = 0;
-        //         v_col = 0;
-        //     }
-
-        //     grapheme = graphemes.next();
-
-        //     // Set cursor
-        //     if graphemes.pos() == win.cursor.pos() {
-        //         cursor = CellPosition {
-        //             x: c_col,
-        //             y: c_line,
-        //         };
-        //     }
-        // }
-
-        // mark_trailing_whitespace(&mut grid, buf, symbols);
-
-        // // create used cell for eof if visible
-        // if graphemes.pos() == buf.len() && c_line < height && c_col < width {
-        //     grid[c_line][c_col] = Cell::new(" ");
-        // }
-
-        // // Fill to end of view
-        // while c_line + 1 < height {
-        //     c_line += 1;
-
-        //     grid[c_line][0] = Cell::new_unused(&symbols[Symbol::BufferEnd]);
-        // }
-
-        // WindowCells {
-        //     grid,
-        //     cursor_selection: win.cursor.selection_range(),
-        //     cursor,
-        //     buf_range: win.offset..graphemes.pos(),
-        //     style: None,
-        // }
+        println!("{}", "-".repeat(width));
+        for row in &view.cells {
+            for cell in row {
+                print!("{}", cell.char().display());
+            }
+            println!("");
+        }
+        println!("{}", "-".repeat(width));
     }
 }

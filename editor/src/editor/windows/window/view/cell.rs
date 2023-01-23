@@ -6,6 +6,12 @@ pub(crate) struct Cell {
     // style: Style,
 }
 
+impl Cell {
+    pub fn char(&self) -> &Char {
+        &self.ch
+    }
+}
+
 impl From<Char> for Cell {
     fn from(ch: Char) -> Self {
         Cell { ch }

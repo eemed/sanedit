@@ -6,12 +6,14 @@ mod windows;
 use sanedit_messages::ClientMessage;
 use sanedit_messages::KeyEvent;
 use sanedit_messages::Message;
+use sanedit_messages::Redraw;
 
 use std::collections::HashMap;
 
 use tokio::io;
 use tokio::sync::mpsc::Receiver;
 
+use crate::editor::buffers::buffer::Buffer;
 use crate::events::ToServer;
 use crate::server::ClientHandle;
 use crate::server::ClientId;
@@ -49,14 +51,14 @@ impl Editor {
 
     fn on_client_connected(&mut self, handle: ClientHandle) {
         log::info!("Client connected: {:?}, id: {:?}", handle.info, handle.id);
+        let id = handle.id;
         self.clients.insert(handle.id, handle);
+        let bid = self.buffers.insert(Buffer::new());
+        self.windows.new_window(id, bid, 80, 120);
     }
 
     fn send_to_client(&mut self, id: ClientId, msg: ClientMessage) {
-        if let Err(_e) = self.clients[&id]
-            .send
-            .blocking_send(ClientMessage::Hello.into())
-        {
+        if let Err(_e) = self.clients[&id].send.blocking_send(msg.into()) {
             log::info!(
                 "Server failed to send reponse for client {:?}, removing from client map",
                 id
@@ -74,6 +76,20 @@ impl Editor {
             Message::Resize => {}
             Message::Bye => {}
         }
+
+        self.redraw(id);
+    }
+
+    fn redraw(&mut self, id: ClientId) {
+        let win = self.windows.get_mut(id).expect("Client window is closed");
+        let buf = self
+            .buffers
+            .get(win.buffer_id())
+            .expect("Window referencing non existent buffer");
+        win.redraw(buf);
+        let view: Vec<Vec<String>> = win.view().into();
+        let msg = ClientMessage::Redraw(Redraw::Window(view));
+        self.send_to_client(id, msg);
     }
 
     fn handle_key_event(&mut self, id: ClientId, event: KeyEvent) {
@@ -85,19 +101,25 @@ impl Editor {
             return;
         }
 
+        let mut win = self.windows.get_mut(id).expect("Client window is closed");
+        let mut buf = self
+            .buffers
+            .get_mut(win.buffer_id())
+            .expect("Window referencing non existent buffer");
+
         match event.key() {
-            // Char(ch) => todo!()
-            // F(n) => todo!(),
+            Char(ch) => buf.insert_char(0, *ch),
             // Enter => todo!(),
-            // Esc => todo!(),
             // Tab => todo!(),
+            // Backspace => todo!(),
+            // Delete => todo!(),
+            // F(n) => todo!(),
+            // Esc => todo!(),
             // BackTab => todo!(),
             // Up => todo!(),
             // Down => todo!(),
             // Left => todo!(),
             // Right => todo!(),
-            // Backspace => todo!(),
-            // Delete => todo!(),
             // Home => todo!(),
             // End => todo!(),
             // PageUp => todo!(),

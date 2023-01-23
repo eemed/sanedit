@@ -261,7 +261,7 @@ impl PieceTree {
     }
 
     #[inline]
-    pub fn append(&mut self, bytes: &[u8]) {
+    pub fn append<B: AsRef<[u8]>>(&mut self, bytes: B) {
         self.insert(self.len, bytes);
     }
 

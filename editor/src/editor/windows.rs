@@ -14,8 +14,8 @@ pub(crate) struct Windows {
 }
 
 impl Windows {
-    pub fn new_window(&mut self, id: ClientId, buf: BufferId) {
-        self.windows.insert(id, Window::new(buf));
+    pub fn new_window(&mut self, id: ClientId, buf: BufferId, width: usize, height: usize) {
+        self.windows.insert(id, Window::new(buf, width, height));
         // TODO return anything?
     }
 

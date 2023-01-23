@@ -27,10 +27,10 @@ pub(crate) struct Window {
 }
 
 impl Window {
-    pub fn new(buf: BufferId) -> Window {
+    pub fn new(buf: BufferId, width: usize, height: usize) -> Window {
         Window {
             buf,
-            view: View::default(),
+            view: View::new(width, height),
             message: Message::default(),
             cursors: Cursors::default(),
             options: WindowOptions::default(),
@@ -62,5 +62,15 @@ impl Window {
         self.cursors.primary()
     }
 
-    pub fn redraw(&mut self, buf: &Buffer) {}
+    pub fn redraw(&mut self, buf: &Buffer) {
+        self.view.redraw(buf, &self.options.display)
+    }
+
+    pub fn buffer_id(&self) -> BufferId {
+        self.buf
+    }
+
+    pub fn view(&self) -> &View {
+        &self.view
+    }
 }

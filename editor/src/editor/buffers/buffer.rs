@@ -39,7 +39,8 @@ pub(crate) struct Buffer {
 
 impl Buffer {
     pub fn new() -> Buffer {
-        let pt = PieceTree::new();
+        let mut pt = PieceTree::new();
+        pt.append("Scratch buffer");
         let snapshot = pt.snapshot();
         Buffer {
             id: BufferId::default(),
@@ -81,6 +82,22 @@ impl Buffer {
             last_change: None,
             last_saved_snapshot: 0,
         })
+    }
+
+    pub fn remove<R: RangeBounds<usize>>(&mut self, range: R) {
+        self.pt.remove(range)
+    }
+
+    pub fn append<B: AsRef<[u8]>>(&mut self, bytes: B) {
+        self.pt.append(bytes)
+    }
+
+    pub fn insert<B: AsRef<[u8]>>(&mut self, pos: usize, bytes: B) {
+        self.pt.insert(pos, bytes)
+    }
+
+    pub fn insert_char(&mut self, pos: usize, ch: char) {
+        self.pt.insert_char(pos, ch)
     }
 
     pub fn set_path<P: AsRef<Path>>(&mut self, path: P) {

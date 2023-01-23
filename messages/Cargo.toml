@@ -15,3 +15,4 @@ tokio-util = { version = "0.7", features = ["codec"] }
 lazy_static = "1.4"
 strum        = "0.23"
 strum_macros = "0.23"
+log = "0.4"

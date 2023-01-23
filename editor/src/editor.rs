@@ -54,7 +54,7 @@ impl Editor {
         let id = handle.id;
         self.clients.insert(handle.id, handle);
         let bid = self.buffers.insert(Buffer::new());
-        self.windows.new_window(id, bid, 80, 120);
+        self.windows.new_window(id, bid, 80, 20);
     }
 
     fn send_to_client(&mut self, id: ClientId, msg: ClientMessage) {
@@ -90,6 +90,7 @@ impl Editor {
         let view: Vec<Vec<String>> = win.view().into();
         let msg = ClientMessage::Redraw(Redraw::Window(view));
         self.send_to_client(id, msg);
+        self.send_to_client(id, ClientMessage::Flush);
     }
 
     fn handle_key_event(&mut self, id: ClientId, event: KeyEvent) {

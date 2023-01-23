@@ -34,7 +34,7 @@ impl Terminal {
 
     pub fn draw_cell(&mut self, cell: &Cell, x: usize, y: usize) -> Result<()> {
         if let Some(written) = self.written.get(y).map(|row| row.get(x)).flatten() {
-            if written != cell {
+            if cell != "" && written != cell {
                 // if cell.style != self.brush {
                 //     self.set_style(cell.style)?;
                 // }

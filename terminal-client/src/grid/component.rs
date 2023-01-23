@@ -16,21 +16,32 @@ pub struct Size {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Cell {
-    content: Option<SmolStr>,
+    content: SmolStr,
+}
+
+impl From<&str> for Cell {
+    fn from(value: &str) -> Self {
+        Cell {
+            content: SmolStr::from(value),
+        }
+    }
+}
+
+impl PartialEq<str> for Cell {
+    fn eq(&self, other: &str) -> bool {
+        self.content == other
+    }
 }
 
 impl Display for Cell {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match &self.content {
-            Some(content) => f.write_str(content),
-            None => f.write_str(""),
-        }
+        f.write_str(&self.content)
     }
 }
 
 impl Default for Cell {
     fn default() -> Self {
-        Cell { content: None }
+        Cell { content: "".into() }
     }
 }
 
@@ -39,4 +50,14 @@ pub(crate) trait Component {
     fn draw(&mut self) -> Vec<Vec<Cell>>;
     // fn size(&self) -> Size;
     // fn styles(&mut self) -> Vec<Style>;
+}
+
+impl Component for Vec<Vec<Cell>> {
+    fn position(&self) -> Point {
+        Point { x: 0, y: 0 }
+    }
+
+    fn draw(&mut self) -> Vec<Vec<Cell>> {
+        self.clone()
+    }
 }

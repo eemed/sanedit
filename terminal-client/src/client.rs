@@ -9,9 +9,9 @@ use std::{
     thread,
 };
 
-use sanedit_messages::{ClientMessage, Message, Reader, Writer};
+use sanedit_messages::{ClientMessage, Message, Reader, Redraw, Writer};
 
-use crate::{input, terminal::Terminal};
+use crate::{input, terminal::Terminal, ui::UI};
 
 // We have 2 tasks that need to be running
 // Input thread: polls inputs and writes them to the server.
@@ -44,24 +44,14 @@ where
     W: io::Write + Clone + Send + 'static,
 {
     let mut writer: Writer<_, Message> = Writer::new(write);
+    let mut ui = UI::new(writer).expect("Failed to start UI");
     let mut reader: Reader<_, ClientMessage> = Reader::new(read);
-    let mut terminal = Terminal::new().expect("Failed to create terminal");
+
+
 
     for msg in reader {
-        log::info!("Client got message: {:?}", msg);
-        if handle_message(msg, &mut writer) {
+        if ui.handle_message(msg) {
             break;
         }
     }
-}
-
-fn handle_message<W: io::Write>(msg: ClientMessage, writer: &mut Writer<W, Message>) -> bool {
-    match msg {
-        ClientMessage::Hello => {}
-        ClientMessage::Redraw(_) => {}
-        ClientMessage::Flush => {}
-        ClientMessage::Bye => return true,
-    }
-
-    return false;
 }

@@ -1,4 +1,4 @@
-use crate::editor::common::char::Char;
+use crate::common::char::Char;
 
 #[derive(Debug, Default, Clone)]
 pub(crate) struct Cell {

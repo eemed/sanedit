@@ -1,5 +1,4 @@
 mod buffers;
-pub(crate) mod common;
 mod keymap;
 mod windows;
 
@@ -117,14 +116,8 @@ impl Editor {
         self.keys.push(event);
 
         // Handle key bindings
-        if let Some(action) = self.get_bound_action() {
-            action.execute(self);
-            return;
-        }
-
-        // Handle quit
-        if *event.key() == Char('c') && event.control_pressed() {
-            self.quit();
+        if let Some(mut action) = self.get_bound_action() {
+            action.execute(self, id);
             return;
         }
 
@@ -134,6 +127,7 @@ impl Editor {
             .get_mut(win.buffer_id())
             .expect("Window referencing non existent buffer");
 
+        let event = self.keys.iter().last().unwrap();
         match event.key() {
             Char(ch) => buf.insert_char(0, *ch),
             // Enter => todo!(),

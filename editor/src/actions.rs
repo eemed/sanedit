@@ -1,12 +1,11 @@
-mod editor;
+pub(crate) mod editor;
 
 use std::{fmt, sync::Arc};
 
-use crate::editor::Editor;
+use crate::{editor::Editor, server::ClientId};
 
-pub(crate) type ActionFunction = Arc<dyn Fn(&mut Editor) + Send + Sync>;
+pub(crate) type ActionFunction = Arc<dyn Fn(&mut Editor, ClientId) + Send + Sync>;
 
-// Actions operate on editor
 #[derive(Clone)]
 pub(crate) struct Action {
     name: String,
@@ -14,8 +13,18 @@ pub(crate) struct Action {
 }
 
 impl Action {
-    pub fn execute(&mut self, editor: &mut Editor) {
-        (self.fun)(editor)
+    pub fn new<F>(name: &str, fun: F) -> Action
+    where
+        F: Fn(&mut Editor, ClientId) + Sync + Send + 'static,
+    {
+        Action {
+            name: name.to_string(),
+            fun: Arc::new(fun),
+        }
+    }
+
+    pub fn execute(&mut self, editor: &mut Editor, id: ClientId) {
+        (self.fun)(editor, id)
     }
 }
 

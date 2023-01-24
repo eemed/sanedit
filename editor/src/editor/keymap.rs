@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
-use sanedit_messages::KeyEvent;
+use sanedit_messages::{Key, KeyEvent, KeyMods};
 
-use crate::actions::Action;
+use crate::actions::{self, Action};
 
 #[derive(Debug, Clone)]
 pub(crate) struct Keymap {
@@ -27,9 +27,15 @@ impl Keymap {
 
 impl Default for Keymap {
     fn default() -> Self {
-        Keymap {
+        let mut map = Keymap {
             root: KeyTrie::default(),
-        }
+        };
+
+        let action = Action::new("quit", actions::editor::quit);
+        let ctrlc = KeyEvent::new(Key::Char('c'), KeyMods::CONTROL);
+        map.bind(&[ctrlc], action);
+
+        map
     }
 }
 

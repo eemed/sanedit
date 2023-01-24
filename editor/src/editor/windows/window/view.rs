@@ -2,10 +2,8 @@ mod cell;
 
 use sanedit_buffer::piece_tree::next_grapheme;
 
-use crate::editor::{
-    buffers::buffer::{Buffer, EOL},
-    common::char::{Char, DisplayOptions},
-};
+use crate::common::char::{Char, DisplayOptions};
+use crate::editor::buffers::buffer::{Buffer, EOL};
 
 pub(crate) use self::cell::Cell;
 

@@ -1,5 +1,5 @@
-use crate::editor::Editor;
+use crate::{editor::Editor, server::ClientId};
 
-fn quit(editor: &mut Editor) {
+pub(crate) fn quit(editor: &mut Editor, _id: ClientId) {
     editor.quit();
 }

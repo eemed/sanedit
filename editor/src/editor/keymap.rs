@@ -4,40 +4,37 @@ use sanedit_messages::KeyEvent;
 
 use crate::actions::Action;
 
-// Window should hold hashmap<Name, Keymap>
-// and events vec<keypress>, not sure where to place these yet
-
 #[derive(Debug, Clone)]
-pub(crate) struct KeyBindings {
+pub(crate) struct Keymap {
     root: KeyTrie,
 }
 
-impl KeyBindings {
+impl Keymap {
     /// Get a binding result for events.
     /// The result may be
     /// Matched => found a binding for events and its action
     /// NotFound => no binding for key combination
     /// Pending => need more input to decide
-    fn get(&mut self, events: &[KeyEvent]) -> BindingResult {
+    pub fn get(&mut self, events: &[KeyEvent]) -> KeymapResult {
         self.root.get(events)
     }
 
     /// Create a new binding for key combination events.
-    fn bind(&mut self, events: &[KeyEvent], action: Action) {
+    pub fn bind(&mut self, events: &[KeyEvent], action: Action) {
         self.root.bind(events, action);
     }
 }
 
-impl Default for KeyBindings {
+impl Default for Keymap {
     fn default() -> Self {
-        KeyBindings {
+        Keymap {
             root: KeyTrie::default(),
         }
     }
 }
 
 #[derive(Debug)]
-pub(crate) enum BindingResult {
+pub(crate) enum KeymapResult {
     Matched(Action),
     Pending,
     NotFound,
@@ -49,7 +46,7 @@ struct KeyTrie {
 }
 
 impl KeyTrie {
-    fn get(&self, events: &[KeyEvent]) -> BindingResult {
+    fn get(&self, events: &[KeyEvent]) -> KeymapResult {
         self.root.get(events)
     }
 
@@ -110,29 +107,29 @@ impl KeyTrieNode {
         }
     }
 
-    fn get(&self, events: &[KeyEvent]) -> BindingResult {
+    fn get(&self, events: &[KeyEvent]) -> KeymapResult {
         match self {
             KeyTrieNode::Leaf { action } => {
                 if events.is_empty() {
-                    return BindingResult::Matched(action.clone());
+                    return KeymapResult::Matched(action.clone());
                 }
 
-                BindingResult::NotFound
+                KeymapResult::NotFound
             }
             KeyTrieNode::Node { map } => {
                 if events.is_empty() && !map.is_empty() {
-                    return BindingResult::Pending;
+                    return KeymapResult::Pending;
                 }
 
                 if events.is_empty() {
-                    return BindingResult::NotFound;
+                    return KeymapResult::NotFound;
                 }
 
                 if let Some(node) = map.get(&events[0]) {
                     return node.get(&events[1..]);
                 }
 
-                BindingResult::NotFound
+                KeymapResult::NotFound
             }
         }
     }

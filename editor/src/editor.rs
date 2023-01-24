@@ -1,6 +1,6 @@
-mod bindings;
 mod buffers;
 pub(crate) mod common;
+mod keymap;
 mod windows;
 
 use sanedit_messages::ClientMessage;
@@ -13,20 +13,22 @@ use std::collections::HashMap;
 use tokio::io;
 use tokio::sync::mpsc::Receiver;
 
+use crate::actions::Action;
 use crate::editor::buffers::buffer::Buffer;
 use crate::events::ToServer;
 use crate::server::ClientHandle;
 use crate::server::ClientId;
 
-use self::bindings::KeyBindings;
 use self::buffers::Buffers;
+use self::keymap::Keymap;
 use self::windows::Windows;
 
 pub(crate) struct Editor {
     clients: HashMap<ClientId, ClientHandle>,
     windows: Windows,
     buffers: Buffers,
-    keybindings: KeyBindings,
+    keymap: Keymap,
+    keys: Vec<KeyEvent>,
     is_running: bool,
 }
 
@@ -36,12 +38,13 @@ impl Editor {
             clients: HashMap::default(),
             windows: Windows::default(),
             buffers: Buffers::default(),
-            keybindings: KeyBindings::default(),
+            keymap: Keymap::default(),
+            keys: Vec::default(),
             is_running: true,
         }
     }
 
-    fn quit(&mut self) {
+    pub fn quit(&mut self) {
         for (_, client) in &self.clients {
             // Dont care about errors here we are quitting anyway
             let _ = client.send.blocking_send(ClientMessage::Bye.into());
@@ -93,8 +96,31 @@ impl Editor {
         self.send_to_client(id, ClientMessage::Flush);
     }
 
+    fn get_bound_action(&mut self) -> Option<Action> {
+        match self.keymap.get(&self.keys) {
+            keymap::KeymapResult::Matched(action) => {
+                self.keys.clear();
+                Some(action)
+            }
+            keymap::KeymapResult::NotFound => {
+                self.keys.clear();
+                None
+            }
+            keymap::KeymapResult::Pending => None,
+        }
+    }
+
     fn handle_key_event(&mut self, id: ClientId, event: KeyEvent) {
         use sanedit_messages::Key::*;
+
+        // Add key to buffer
+        self.keys.push(event);
+
+        // Handle key bindings
+        if let Some(action) = self.get_bound_action() {
+            action.execute(self);
+            return;
+        }
 
         // Handle quit
         if *event.key() == Char('c') && event.control_pressed() {

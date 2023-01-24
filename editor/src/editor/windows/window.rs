@@ -45,6 +45,7 @@ impl Window {
     }
 
     pub fn warn_msg(&mut self, message: String) {
+                // TODO better way to save these bytes?
         self.message = Message {
             severity: Severity::Warn,
             message,

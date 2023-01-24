@@ -1,3 +1,5 @@
+mod editor;
+
 use std::{fmt, sync::Arc};
 
 use crate::editor::Editor;

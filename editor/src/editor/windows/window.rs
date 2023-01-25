@@ -64,7 +64,7 @@ impl Window {
     }
 
     pub fn redraw(&mut self, buf: &Buffer) {
-        self.view.redraw(buf, &self.options.display)
+        self.view.redraw(buf, &self.cursors, &self.options.display)
     }
 
     pub fn buffer_id(&self) -> BufferId {

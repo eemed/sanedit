@@ -5,8 +5,8 @@ pub(crate) struct Cursor {
     /// Position in buffer
     pos: usize,
 
-    /// Visual column, keeps track of the wanted column for cursor, used if moving lines
-    v_col: Option<usize>,
+    /// keeps track of the wanted column for cursor, used if moving lines
+    col: Option<usize>,
 
     /// Selection anchor. Selected range is formed from this position and the current `pos`
     anchor: Option<usize>,
@@ -16,23 +16,23 @@ impl Cursor {
     pub fn new(pos: usize) -> Cursor {
         Cursor {
             pos,
-            v_col: None,
+            col: None,
             anchor: None,
         }
     }
 
-    pub fn visual_column(&self) -> Option<usize> {
-        self.v_col
+    pub fn column(&self) -> Option<usize> {
+        self.col
     }
 
     pub fn goto(&mut self, pos: usize) {
         self.pos = pos;
-        self.v_col = None;
+        self.col = None;
     }
 
-    pub fn goto_with_vcol(&mut self, pos: usize, v_col: usize) {
+    pub fn goto_with_col(&mut self, pos: usize, col: usize) {
         self.pos = pos;
-        self.v_col = Some(v_col);
+        self.col = Some(col);
     }
 
     pub fn anchor(&mut self) {

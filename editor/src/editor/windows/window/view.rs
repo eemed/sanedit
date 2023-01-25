@@ -8,6 +8,8 @@ use crate::editor::buffers::buffer::Buffer;
 
 pub(crate) use self::cell::Cell;
 
+use super::cursors::Cursors;
+
 #[derive(Debug)]
 pub(crate) struct View {
     offset: usize,
@@ -58,7 +60,12 @@ impl View {
 
     fn draw_trailing_whitespace(&mut self) {}
     fn draw_end_of_buffer(&mut self) {}
-    fn draw_cursors(&mut self) {}
+
+    fn draw_cursors(&mut self, cursors: &Cursors) {
+        let primary = cursors.primary();
+        todo!()
+    }
+
     fn draw_cells(&mut self, buf: &Buffer, opts: &DisplayOptions) {
         let slice = buf.slice(self.offset..);
         let mut pos = 0;
@@ -89,9 +96,9 @@ impl View {
         }
     }
 
-    pub fn redraw(&mut self, buf: &Buffer, opts: &DisplayOptions) {
+    pub fn redraw(&mut self, buf: &Buffer, cursors: &Cursors, opts: &DisplayOptions) {
         self.draw_cells(buf, opts);
-        self.draw_cursors();
+        self.draw_cursors(cursors);
         self.draw_end_of_buffer();
         self.draw_trailing_whitespace();
     }
@@ -123,7 +130,7 @@ mod test {
         buf.append("\tHello\tWorld");
 
         let mut view = View::new(width, 1);
-        view.redraw(&buf, &opts);
+        view.redraw(&buf, &Cursors::default(), &opts);
 
         println!("{}", "-".repeat(width));
         for row in &view.cells {

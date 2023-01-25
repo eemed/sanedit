@@ -8,6 +8,7 @@ use sanedit_messages::Message;
 use sanedit_messages::Redraw;
 
 use std::collections::HashMap;
+use std::mem;
 
 use tokio::io;
 use tokio::sync::mpsc::Receiver;
@@ -101,11 +102,7 @@ impl Editor {
                 self.keys.clear();
                 Some(action)
             }
-            keymap::KeymapResult::NotFound => {
-                self.keys.clear();
-                None
-            }
-            keymap::KeymapResult::Pending => None,
+            _ => None,
         }
     }
 
@@ -127,27 +124,30 @@ impl Editor {
             .get_mut(win.buffer_id())
             .expect("Window referencing non existent buffer");
 
-        let event = self.keys.iter().last().unwrap();
-        match event.key() {
-            Char(ch) => buf.insert_char(0, *ch),
-            // Enter => todo!(),
-            // Tab => todo!(),
-            // Backspace => todo!(),
-            // Delete => todo!(),
-            // F(n) => todo!(),
-            // Esc => todo!(),
-            // BackTab => todo!(),
-            // Up => todo!(),
-            // Down => todo!(),
-            // Left => todo!(),
-            // Right => todo!(),
-            // Home => todo!(),
-            // End => todo!(),
-            // PageUp => todo!(),
-            // PageDown => todo!(),
-            // Insert => todo!(),
-            // Unknown => todo!(),
-            _ => {}
+        // Clear keys buffer, and handle them separately
+        let events = mem::replace(&mut self.keys, vec![]);
+        for event in events {
+            match event.key() {
+                Char(ch) => buf.insert_char(0, *ch),
+                // Enter => todo!(),
+                // Tab => todo!(),
+                // Backspace => todo!(),
+                // Delete => todo!(),
+                // F(n) => todo!(),
+                // Esc => todo!(),
+                // BackTab => todo!(),
+                // Up => todo!(),
+                // Down => todo!(),
+                // Left => todo!(),
+                // Right => todo!(),
+                // Home => todo!(),
+                // End => todo!(),
+                // PageUp => todo!(),
+                // PageDown => todo!(),
+                // Insert => todo!(),
+                // Unknown => todo!(),
+                _ => {}
+            }
         }
     }
 

@@ -3,7 +3,8 @@ mod cell;
 use sanedit_buffer::piece_tree::next_grapheme;
 
 use crate::common::char::{Char, DisplayOptions};
-use crate::editor::buffers::buffer::{Buffer, EOL};
+use crate::common::eol::EOL;
+use crate::editor::buffers::buffer::Buffer;
 
 pub(crate) use self::cell::Cell;
 

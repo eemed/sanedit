@@ -32,7 +32,7 @@ impl Default for Keymap {
         };
 
         let action = Action::new("quit", actions::editor::quit);
-        let ctrlc = KeyEvent::new(Key::Char('c'), KeyMods::CONTROL);
+        let ctrlc = KeyEvent::try_from("ctrl+c").unwrap();
         map.bind(&[ctrlc], action);
 
         map

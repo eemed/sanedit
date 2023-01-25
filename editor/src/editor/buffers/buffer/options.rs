@@ -1,4 +1,4 @@
-use super::eol::EOL;
+use crate::common::eol::EOL;
 
 #[derive(Debug)]
 pub(crate) struct BufferOptions {

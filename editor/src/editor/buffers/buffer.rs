@@ -1,6 +1,5 @@
 mod change;
 mod detect;
-mod eol;
 mod options;
 mod snapshots;
 
@@ -14,7 +13,6 @@ use std::{
 use sanedit_buffer::piece_tree::{PieceTree, PieceTreeSlice};
 
 use self::{change::Change, options::BufferOptions, snapshots::Snapshots};
-pub(crate) use eol::EOL;
 
 slotmap::new_key_type!(
     pub(crate) struct BufferId;

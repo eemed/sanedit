@@ -1,4 +1,4 @@
-use super::eol::EOL;
+use crate::common::eol::EOL;
 
 pub(crate) fn detect_encoding(buf: &[u8]) -> &'static encoding_rs::Encoding {
     let mut encoding_detector = chardetng::EncodingDetector::new();

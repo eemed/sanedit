@@ -165,3 +165,13 @@ impl TryFrom<&str> for KeyEvent {
         return Err(format!("Failed to parse keybinding {}", string));
     }
 }
+
+pub fn try_parse_keyevents(string: &str) -> Result<Vec<KeyEvent>, String> {
+    let key_events = string.split(KEY_PRESS_SEPARATOR);
+
+    let mut events = vec![];
+    for event in key_events {
+        events.push(KeyEvent::try_from(event)?);
+    }
+    Ok(events)
+}

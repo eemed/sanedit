@@ -1,8 +1,16 @@
 use std::collections::HashMap;
 
-use sanedit_messages::{Key, KeyEvent, KeyMods};
+use sanedit_messages::{try_parse_keyevents, Key, KeyEvent, KeyMods};
 
 use crate::actions::{self, Action};
+
+macro_rules! map {
+    ($keymap:ident, $($mapping: expr, $action:expr),+,) => {
+        $(
+            $keymap.bind(&try_parse_keyevents($mapping).unwrap(), $action);
+         )*
+    }
+}
 
 #[derive(Debug, Clone)]
 pub(crate) struct Keymap {
@@ -31,9 +39,10 @@ impl Default for Keymap {
             root: KeyTrie::default(),
         };
 
-        let action = Action::new("quit", actions::editor::quit);
-        let ctrlc = KeyEvent::try_from("ctrl+c").unwrap();
-        map.bind(&[ctrlc], action);
+        #[rustfmt::skip]
+        map!(map,
+             "ctrl+c", Action::quit,
+        );
 
         map
     }

@@ -10,7 +10,7 @@ pub mod redraw;
 mod writer;
 
 pub use codec::BinCodec;
-pub use key::{Key, KeyEvent, KeyMods};
+pub use key::{try_parse_keyevents, Key, KeyEvent, KeyMods};
 pub use mouse::MouseEvent;
 pub use reader::Reader;
 use redraw::Redraw;

@@ -123,7 +123,7 @@ impl PieceTree {
         let pieces = Pieces::new(self, pos);
         let (p_pos, piece) = pieces
             .get()
-            .expect(&format!("Cannot find a piece for position {pos}"));
+            .unwrap_or_else(|| panic!("Cannot find a piece for position {}", pos));
         let off = pos - p_pos;
         Mark {
             kind: piece.kind,
@@ -156,7 +156,7 @@ impl PieceTree {
 
         while let Some((_pos, chunk)) = pos_chunk {
             let chunk_bytes = chunk.as_ref();
-            writer.write(chunk_bytes)?;
+            writer.write_all(chunk_bytes)?;
             written += chunk_bytes.len();
             pos_chunk = chunks.next();
         }
@@ -298,7 +298,7 @@ impl PieceTree {
     }
 
     #[inline]
-    pub fn slice<'a, R: RangeBounds<usize>>(&'a self, range: R) -> PieceTreeSlice<'a> {
+    pub fn slice<R: RangeBounds<usize>>(&self, range: R) -> PieceTreeSlice {
         let start = match range.start_bound() {
             Bound::Included(n) => *n,
             Bound::Excluded(n) => *n + 1,

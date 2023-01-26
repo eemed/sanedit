@@ -50,21 +50,21 @@ impl<'a> Chunks<'a> {
     #[inline]
     pub fn get(&self) -> Option<(usize, Chunk<'a>)> {
         let (p_pos, piece) = self.pieces.get()?;
-        let chunk = read_piece(&self.pt, &piece)?;
+        let chunk = read_piece(self.pt, &piece)?;
         Some((p_pos, chunk))
     }
 
     #[inline]
     pub fn next(&mut self) -> Option<(usize, Chunk<'a>)> {
         let (p_pos, piece) = self.pieces.next()?;
-        let chunk = read_piece(&self.pt, &piece)?;
+        let chunk = read_piece(self.pt, &piece)?;
         Some((p_pos, chunk))
     }
 
     #[inline]
     pub fn prev(&mut self) -> Option<(usize, Chunk<'a>)> {
         let (p_pos, piece) = self.pieces.prev()?;
-        let chunk = read_piece(&self.pt, &piece)?;
+        let chunk = read_piece(self.pt, &piece)?;
         Some((p_pos, chunk))
     }
 }

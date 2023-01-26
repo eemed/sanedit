@@ -2,7 +2,7 @@ use std::fmt::Display;
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, PartialEq, Debug, Default, Clone)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Default, Clone)]
 pub struct Cell {
     text: String,
 }

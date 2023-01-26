@@ -99,10 +99,10 @@ impl<'a> Chars<'a> {
                 for _ in 0..extra_bytes_read {
                     self.bytes.next();
                 }
-                return Some((start + extra_bytes_read, end, REPLACEMENT_CHAR));
+                Some((start + extra_bytes_read, end, REPLACEMENT_CHAR))
             }
-            DecodeResult::Ok(ch) => return Some((start, end, ch)),
-            DecodeResult::Incomplete => return Some((start, end, REPLACEMENT_CHAR)),
+            DecodeResult::Ok(ch) => Some((start, end, ch)),
+            DecodeResult::Incomplete => Some((start, end, REPLACEMENT_CHAR)),
         }
     }
 }

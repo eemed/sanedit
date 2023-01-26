@@ -29,6 +29,11 @@ impl<'a> PieceTreeSlice<'a> {
     }
 
     #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.range.is_empty()
+    }
+
+    #[inline]
     pub fn bytes(&self) -> Bytes {
         self.bytes_at(0)
     }

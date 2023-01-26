@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
-use sanedit_messages::{try_parse_keyevents, Key, KeyEvent, KeyMods};
+use sanedit_messages::{try_parse_keyevents, KeyEvent};
 
-use crate::actions::{self, Action};
+use crate::actions::Action;
 
 macro_rules! map {
     ($keymap:ident, $($mapping: expr, $action:expr),+,) => {

@@ -162,7 +162,7 @@ impl TryFrom<&str> for KeyEvent {
             };
         }
 
-        return Err(format!("Failed to parse keybinding {}", string));
+        Err(format!("Failed to parse keybinding {}", string))
     }
 }
 

@@ -19,6 +19,15 @@ where
     }
 }
 
+impl<T> Default for BinCodec<T>
+where
+    for<'de> T: Deserialize<'de> + Serialize,
+{
+    fn default() -> Self {
+        BinCodec::new()
+    }
+}
+
 impl<T> Decoder for BinCodec<T>
 where
     for<'de> T: Deserialize<'de> + Serialize,
@@ -28,7 +37,7 @@ where
     type Error = bincode::Error;
 
     fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
-        match bincode::deserialize::<T>(&src) {
+        match bincode::deserialize::<T>(src) {
             Ok(item) => {
                 let size = bincode::serialized_size(&item)? as usize;
                 src.advance(size);

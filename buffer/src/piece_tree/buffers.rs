@@ -109,7 +109,7 @@ impl OriginalBuffer {
         Ok(OriginalBuffer::Memory { bytes })
     }
 
-    pub fn from_file(mut file: File) -> io::Result<OriginalBuffer> {
+    pub fn from_file(_file: File) -> io::Result<OriginalBuffer> {
         todo!()
     }
 
@@ -207,9 +207,6 @@ impl OriginalBuffer {
 
     #[inline]
     pub fn is_file_backed(&self) -> bool {
-        match self {
-            OriginalBuffer::File { .. } => true,
-            _ => false,
-        }
+        matches!(self, OriginalBuffer::File { .. })
     }
 }

@@ -19,7 +19,7 @@ pub use tokio_util::codec::{Decoder, Encoder};
 pub use writer::{WriteError, Writer};
 
 /// Messages sent to the client
-#[derive(Serialize, Deserialize, PartialEq, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Debug)]
 pub enum ClientMessage {
     Hello,
     Redraw(Redraw),
@@ -28,7 +28,7 @@ pub enum ClientMessage {
 }
 
 /// Messages sent to the server
-#[derive(Serialize, Deserialize, PartialEq, Debug)]
+#[derive(Serialize, Deserialize, PartialEq,Eq, Debug)]
 pub enum Message {
     Hello,
     KeyEvent(KeyEvent),

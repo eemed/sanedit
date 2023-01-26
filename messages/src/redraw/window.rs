@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{Cell, Point};
 
-#[derive(Serialize, Deserialize, PartialEq, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Debug)]
 pub struct Window {
     cells: Vec<Vec<Cell>>,
     primary_cursor: Point,

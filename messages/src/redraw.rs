@@ -10,7 +10,7 @@ pub use window::*;
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, PartialEq, Debug)]
+#[derive(Serialize, Deserialize, PartialEq,Eq,  Debug)]
 pub enum Redraw {
     Window(Window),
 }

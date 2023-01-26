@@ -52,7 +52,7 @@ where
                     return Some(msg);
                 }
                 Ok(None) => {
-                    if let Err(e) = self.read_more_to_buf() {
+                    if let Err(_e) = self.read_more_to_buf() {
                         return None;
                     }
                 }

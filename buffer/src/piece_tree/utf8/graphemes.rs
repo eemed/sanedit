@@ -34,11 +34,11 @@ fn find_next_boundary(chunk: &str, at_start: bool) -> BoundaryResult {
 
     use unicode_segmentation::GraphemeIncomplete::*;
     match gc.next_boundary(chunk, gc_start) {
-        Ok(Some(bound)) => return BoundaryResult::Boundary(bound - gc_start),
-        Ok(None) => return BoundaryResult::AtEnd,
+        Ok(Some(bound)) => BoundaryResult::Boundary(bound - gc_start),
+        Ok(None) => BoundaryResult::AtEnd,
         Err(e) => match e {
-            PreContext(_pos) => return BoundaryResult::NeedPre,
-            NextChunk => return BoundaryResult::NeedMore,
+            PreContext(_pos) => BoundaryResult::NeedPre,
+            NextChunk => BoundaryResult::NeedMore,
             _ => unreachable!(),
         },
     }
@@ -92,7 +92,7 @@ pub fn next_grapheme_boundary(slice: &PieceTreeSlice, pos: usize) -> usize {
         }
     }
 
-    return end;
+    end
 }
 
 #[inline]
@@ -114,10 +114,10 @@ fn find_prev_boundary(chunk: &str, at_start: bool) -> BoundaryResult {
 
     use unicode_segmentation::GraphemeIncomplete::*;
     match gc.prev_boundary(chunk, gc_start) {
-        Ok(Some(bound)) => return BoundaryResult::Boundary(bound - gc_start),
-        Ok(None) => return BoundaryResult::AtEnd,
+        Ok(Some(bound)) => BoundaryResult::Boundary(bound - gc_start),
+        Ok(None) => BoundaryResult::AtEnd,
         Err(e) => match e {
-            PreContext(_) | PrevChunk => return BoundaryResult::NeedPre,
+            PreContext(_) | PrevChunk => BoundaryResult::NeedPre,
             _ => unreachable!(),
         },
     }
@@ -132,11 +132,9 @@ pub fn prev_grapheme_boundary(slice: &PieceTreeSlice, pos: usize) -> usize {
         all.insert(0, (pos, ch));
         buf.insert(0, ch);
 
-        println!("PO {pos}");
         use BoundaryResult::*;
         match find_prev_boundary(&buf, pos == 0) {
             AtEnd => {
-                println!("H");
                 return 0;
             }
             Boundary(bound) => {
@@ -146,13 +144,11 @@ pub fn prev_grapheme_boundary(slice: &PieceTreeSlice, pos: usize) -> usize {
                 let mut utf8_len = 0;
                 for (pos, ch) in all.into_iter() {
                     if bound == utf8_len {
-                        println!("BB {}, {}, {}", pos, bound, utf8_len);
                         return pos;
                     }
                     utf8_len += ch.len_utf8();
                 }
 
-                println!("B");
                 return 0;
             }
             _ => {
@@ -161,7 +157,7 @@ pub fn prev_grapheme_boundary(slice: &PieceTreeSlice, pos: usize) -> usize {
         }
     }
 
-    return 0;
+    0
 }
 
 #[inline]

@@ -28,9 +28,9 @@ where
 
     pub fn write(&mut self, msg: T) -> Result<(), WriteError> {
         self.codec.encode(msg, &mut self.buf)?;
-        let written = self.write.write_all(&self.buf)?;
+        self.write.write_all(&self.buf)?;
         self.buf.clear();
-        Ok(written)
+        Ok(())
     }
 }
 

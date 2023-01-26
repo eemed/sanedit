@@ -9,7 +9,7 @@ use std::{
     thread,
 };
 
-use sanedit_messages::{ClientMessage, Message, Reader, Redraw, Writer};
+use sanedit_messages::{redraw::Redraw, ClientMessage, Message, Reader, Writer};
 
 use crate::{input, terminal::Terminal, ui::UI};
 
@@ -46,8 +46,6 @@ where
     let mut writer: Writer<_, Message> = Writer::new(write);
     let mut ui = UI::new(writer).expect("Failed to start UI");
     let mut reader: Reader<_, ClientMessage> = Reader::new(read);
-
-
 
     for msg in reader {
         if ui.handle_message(msg) {

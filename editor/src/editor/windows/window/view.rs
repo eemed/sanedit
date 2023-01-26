@@ -1,19 +1,22 @@
 mod cell;
 
 use sanedit_buffer::piece_tree::next_grapheme;
+use sanedit_messages::redraw::{self, Point};
 
 use crate::common::char::{Char, DisplayOptions};
 use crate::common::eol::EOL;
 use crate::editor::buffers::buffer::Buffer;
 
 pub(crate) use self::cell::Cell;
+use self::cell::CellPosition;
 
-use super::cursors::Cursors;
+use super::cursors::{Cursor, Cursors};
 
 #[derive(Debug)]
 pub(crate) struct View {
     offset: usize,
     cells: Vec<Vec<Cell>>,
+    primary_cursor: Point,
     width: usize,
     height: usize,
 }
@@ -23,6 +26,7 @@ impl View {
         View {
             offset: 0,
             cells: vec![vec![Cell::default(); width]; height],
+            primary_cursor: Point::default(),
             width,
             height,
         }
@@ -43,7 +47,7 @@ impl View {
     }
 
     /// Advance line and col in the grid by amount
-    fn advance(&mut self, line: &mut usize, col: &mut usize, amount: usize) {
+    fn grid_advance(&mut self, line: &mut usize, col: &mut usize, amount: usize) {
         for _ in 0..amount {
             *col += 1;
 
@@ -63,7 +67,27 @@ impl View {
 
     fn draw_cursors(&mut self, cursors: &Cursors) {
         let primary = cursors.primary();
-        todo!()
+        self.primary_cursor = self
+            .cursor_cell_pos(primary)
+            .expect("Primary cursor not in view");
+    }
+
+    fn cursor_cell_pos(&mut self, cursor: &Cursor) -> Option<Point> {
+        if cursor.pos() == self.offset {
+            return Some(Point { x: 0, y: 0 });
+        }
+
+        let mut pos = self.offset;
+        for (line, row) in self.cells.iter().enumerate() {
+            for (col, cell) in row.iter().enumerate() {
+                pos += cell.char().grapheme_len();
+                if cursor.pos() == pos {
+                    return Some(Point { x: col, y: line });
+                }
+            }
+        }
+
+        None
     }
 
     fn draw_cells(&mut self, buf: &Buffer, opts: &DisplayOptions) {
@@ -83,7 +107,7 @@ impl View {
             let cell = ch.into();
             self.cells[line][col] = cell;
 
-            self.advance(&mut line, &mut col, ch_width);
+            self.grid_advance(&mut line, &mut col, ch_width);
 
             // c_col != 0 because eol maybe on the last cell and we don't
             // want to crate extra empty line
@@ -104,17 +128,17 @@ impl View {
     }
 }
 
-impl From<&View> for Vec<Vec<String>> {
+impl From<&View> for redraw::Window {
     fn from(view: &View) -> Self {
-        let mut grid = vec![vec![String::new(); view.width()]; view.height()];
+        let mut grid = vec![vec![redraw::Cell::default(); view.width()]; view.height()];
 
         for (line, row) in view.cells.iter().enumerate() {
             for (col, cell) in row.iter().enumerate() {
-                grid[line][col] = cell.char().display().to_string();
+                grid[line][col] = cell.char().display().into();
             }
         }
 
-        grid
+        redraw::Window::new(grid, view.primary_cursor)
     }
 }
 

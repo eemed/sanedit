@@ -1,11 +1,26 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, PartialEq, Debug)]
-struct Window {
-    cells: Vec<Vec<Cell>>,
-}
+use super::{Cell, Point};
 
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
-struct Cell {
-    text: String,
+pub struct Window {
+    cells: Vec<Vec<Cell>>,
+    primary_cursor: Point,
+}
+
+impl Window {
+    pub fn new(cells: Vec<Vec<Cell>>, primary_cursor: Point) -> Window {
+        Window {
+            cells,
+            primary_cursor,
+        }
+    }
+
+    pub fn cells(&self) -> &Vec<Vec<Cell>> {
+        &self.cells
+    }
+
+    pub fn primary_cursor(&self) -> Point {
+        self.primary_cursor
+    }
 }

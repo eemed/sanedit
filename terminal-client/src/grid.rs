@@ -3,7 +3,9 @@ mod component;
 use core::fmt;
 use std::mem;
 
-pub(crate) use self::component::{Cell, Component};
+use sanedit_messages::redraw::{Cell, Point};
+
+pub(crate) use self::component::Component;
 
 pub(crate) struct Grid {
     width: usize,
@@ -34,11 +36,16 @@ impl Grid {
         self.components.push(Box::new(comp));
     }
 
-    pub fn draw(&mut self) -> Vec<Vec<Cell>> {
+    pub fn draw(&mut self) -> (Vec<Vec<Cell>>, Point) {
+        let mut cursor = Point::default();
         let mut canvas: Vec<Vec<Cell>> = vec![vec![Cell::default(); self.width]; self.height];
         let components = mem::replace(&mut self.components, vec![]);
 
         for mut component in components.into_iter() {
+            if let Some(cur) = component.cursor() {
+                cursor = cur;
+            }
+
             let top_left = component.position();
             let grid = component.draw();
             for (row, line) in grid.into_iter().enumerate() {
@@ -50,6 +57,6 @@ impl Grid {
             }
         }
 
-        canvas
+        (canvas, cursor)
     }
 }

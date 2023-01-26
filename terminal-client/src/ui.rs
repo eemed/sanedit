@@ -1,12 +1,12 @@
 use std::io;
 
 use anyhow::Result;
-use sanedit_messages::{ClientMessage, Message, Redraw, Writer};
-
-use crate::{
-    grid::{Cell, Grid},
-    terminal::Terminal,
+use sanedit_messages::{
+    redraw::{Cell, Redraw},
+    ClientMessage, Message, Writer,
 };
+
+use crate::{grid::Grid, terminal::Terminal};
 
 pub struct UI<W: io::Write> {
     terminal: Terminal,
@@ -40,28 +40,22 @@ impl<W: io::Write> UI<W> {
 
     fn handle_redraw(&mut self, msg: Redraw) {
         match msg {
-            Redraw::Window(redraw) => {
-                log::info!("redraw {}x{}", redraw.len(), redraw[0].len());
-                let mut cells =
-                    vec![vec![Cell::default(); self.terminal.width()]; self.terminal.height()];
-                for (line, row) in redraw.iter().enumerate() {
-                    for (col, content) in row.iter().enumerate() {
-                        cells[line][col] = Cell::from(content.as_str());
-                    }
-                }
-                self.grid.push_component(cells);
+            Redraw::Window(win) => {
+                log::info!("redraw {}x{}", win.cells().len(), win.cells()[0].len());
+                self.grid.push_component(win);
             }
         }
     }
 
     fn flush(&mut self) {
-        let cells = self.grid.draw();
+        let (cells, cursor) = self.grid.draw();
         for (line, row) in cells.iter().enumerate() {
             for (col, cell) in row.iter().enumerate() {
                 self.terminal.draw_cell(cell, col, line);
             }
         }
 
+        self.terminal.goto(cursor.x, cursor.y);
         self.terminal.flush();
     }
 }

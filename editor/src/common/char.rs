@@ -14,7 +14,7 @@ use unicode_width::UnicodeWidthStr;
 pub(crate) struct Char {
     display: SmartString<LazyCompact>,
     width: usize,
-    buf_range: Option<Range<usize>>,
+    grapheme: Option<Range<usize>>,
 }
 
 impl Char {
@@ -28,6 +28,10 @@ impl Char {
 
     pub fn display(&self) -> &str {
         &self.display
+    }
+
+    pub fn grapheme_len(&self) -> usize {
+        self.grapheme.as_ref().map(|range| range.len()).unwrap_or(0)
     }
 }
 
@@ -93,7 +97,7 @@ fn grapheme_to_char(grapheme: PieceTreeSlice, column: usize, options: &DisplayOp
     Char {
         display,
         width,
-        buf_range,
+        grapheme: buf_range,
     }
 }
 
@@ -119,7 +123,7 @@ fn tab_to_char(buf_range: Option<Range<usize>>, column: usize, options: &Display
     Char {
         display,
         width,
-        buf_range,
+        grapheme: buf_range,
     }
 }
 

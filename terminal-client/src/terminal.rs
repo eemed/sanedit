@@ -2,8 +2,7 @@ use std::io::{stdout, BufWriter, Stdout, Write};
 
 use anyhow::Result;
 use crossterm::{cursor, event::*, execute, queue, style, terminal::*};
-
-use crate::grid::Cell;
+use sanedit_messages::redraw::Cell;
 
 pub struct Terminal {
     out: BufWriter<Stdout>,

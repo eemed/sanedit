@@ -6,14 +6,14 @@ mod codec;
 mod key;
 mod mouse;
 mod reader;
-mod redraw;
+pub mod redraw;
 mod writer;
 
 pub use codec::BinCodec;
 pub use key::{Key, KeyEvent, KeyMods};
 pub use mouse::MouseEvent;
 pub use reader::Reader;
-pub use redraw::Redraw;
+use redraw::Redraw;
 use serde::{Deserialize, Serialize};
 pub use tokio_util::codec::{Decoder, Encoder};
 pub use writer::{WriteError, Writer};

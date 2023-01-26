@@ -5,7 +5,8 @@ mod windows;
 use sanedit_messages::ClientMessage;
 use sanedit_messages::KeyEvent;
 use sanedit_messages::Message;
-use sanedit_messages::Redraw;
+use sanedit_messages::redraw;
+use sanedit_messages::redraw::Redraw;
 
 use std::collections::HashMap;
 use std::mem;
@@ -90,8 +91,8 @@ impl Editor {
             .get(win.buffer_id())
             .expect("Window referencing non existent buffer");
         win.redraw(buf);
-        let view: Vec<Vec<String>> = win.view().into();
-        let msg = ClientMessage::Redraw(Redraw::Window(view));
+        let win: redraw::Window = win.view().into();
+        let msg = ClientMessage::Redraw(Redraw::Window(win));
         self.send_to_client(id, msg);
         self.send_to_client(id, ClientMessage::Flush);
     }

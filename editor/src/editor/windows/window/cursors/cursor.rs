@@ -21,6 +21,10 @@ impl Cursor {
         }
     }
 
+    pub fn pos(&self) -> usize {
+        self.pos
+    }
+
     pub fn column(&self) -> Option<usize> {
         self.col
     }

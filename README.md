@@ -11,15 +11,11 @@ Inspiration taken from vim, kakoune, emacs, neovim and vis.
 
 ## Notes
 
-Creating grapheme iterator that yields the graphemes would be preferred to do in
-a fashion that does not read a whole grapheme into memory at once. Graphemes
-can be constructed to be arbitrarily large. Also invalid utf8 sequences may be
-very large and thus should not be loaded into memory all at once.
+Sometimes server quits and client cannot get exit event.
+Make internal events for the client side, and send exit event if writing to server fails.
+just quit the main thread and the rest should follow, no need for atomic graceful shutdown.
 
-=> Need for a streaming grapheme cluster separator,
-bstr seems to use one internally, its based on automatons
-=> use that but instead of byte slices use our byte iterator? Also has one for chars
-
+Handle resizing
 
 ## Crates
 

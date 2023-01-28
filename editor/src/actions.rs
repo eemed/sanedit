@@ -1,11 +1,15 @@
 pub(crate) mod editor;
+pub(crate) mod movement;
 
-use std::collections::HashMap;
 use std::{fmt, sync::Arc};
 
 use crate::{editor::Editor, server::ClientId};
 
 use self::editor::quit;
+use self::movement::{
+    next_grapheme,
+    prev_grapheme,
+};
 
 macro_rules! action_list {
     ( $($name:ident,)*) => {
@@ -58,6 +62,8 @@ impl Action {
     #[rustfmt::skip]
     action_list!(
         quit,
+        next_grapheme,
+        prev_grapheme,
     );
 }
 

@@ -73,17 +73,14 @@ impl View {
     }
 
     fn cursor_cell_pos(&mut self, cursor: &Cursor) -> Option<Point> {
-        if cursor.pos() == self.offset {
-            return Some(Point { x: 0, y: 0 });
-        }
 
         let mut pos = self.offset;
         for (line, row) in self.cells.iter().enumerate() {
             for (col, cell) in row.iter().enumerate() {
-                pos += cell.char().grapheme_len();
                 if cursor.pos() == pos {
                     return Some(Point { x: col, y: line });
                 }
+                pos += cell.char().grapheme_len();
             }
         }
 

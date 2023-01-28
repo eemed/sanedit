@@ -2,11 +2,11 @@ mod buffers;
 mod keymap;
 mod windows;
 
+use sanedit_messages::redraw;
+use sanedit_messages::redraw::Redraw;
 use sanedit_messages::ClientMessage;
 use sanedit_messages::KeyEvent;
 use sanedit_messages::Message;
-use sanedit_messages::redraw;
-use sanedit_messages::redraw::Redraw;
 
 use std::collections::HashMap;
 use std::mem;
@@ -22,6 +22,7 @@ use crate::server::ClientId;
 
 use self::buffers::Buffers;
 use self::keymap::Keymap;
+use self::windows::window::Window;
 use self::windows::Windows;
 
 pub(crate) struct Editor {
@@ -45,8 +46,30 @@ impl Editor {
         }
     }
 
+    pub fn get_win_buf(&self, id: ClientId) -> (&Window, &Buffer) {
+        let win = self.windows.get(id).expect("no win for cliend id {id}");
+        let bid = win.buffer_id();
+        let buf = self
+            .buffers
+            .get(bid)
+            .expect("no buffer for buffer id {bid}");
+        (win, buf)
+    }
+
+    pub fn get_win_buf_mut(&mut self, id: ClientId) -> (&mut Window, &mut Buffer) {
+        let win = self.windows.get_mut(id).expect("no win for cliend id {id}");
+        let bid = win.buffer_id();
+        let buf = self
+            .buffers
+            .get_mut(bid)
+            .expect("no buffer for buffer id {bid}");
+        (win, buf)
+    }
+
     pub fn quit(&mut self) {
+        log::info!("Quit");
         for (_, client) in &self.clients {
+            log::info!("Quit to {:?}", client.id);
             // Dont care about errors here we are quitting anyway
             let _ = client.send.blocking_send(ClientMessage::Bye.into());
         }

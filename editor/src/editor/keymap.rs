@@ -42,6 +42,8 @@ impl Default for Keymap {
         #[rustfmt::skip]
         map!(map,
              "ctrl+c", Action::quit,
+             "left", Action::prev_grapheme,
+             "right", Action::next_grapheme,
         );
 
         map

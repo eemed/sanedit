@@ -63,6 +63,10 @@ impl Window {
         self.cursors.primary()
     }
 
+    pub fn primary_cursor_mut(&mut self) -> &mut Cursor {
+        self.cursors.primary_mut()
+    }
+
     pub fn redraw(&mut self, buf: &Buffer) {
         self.view.redraw(buf, &self.cursors, &self.options.display)
     }

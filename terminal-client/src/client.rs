@@ -30,15 +30,17 @@ where
     // IDEA: Send inputs to logic task and logic task sends them to server if needed?
     let cloned_write = write.clone();
     let cloned_stop = stop.clone();
-    let input_join =
-        thread::spawn(|| input::run_loop(cloned_write, cloned_stop).expect("Input loop failed"));
+    let input_join = thread::spawn(|| {
+        let stop = cloned_stop;
+        input::run_loop(cloned_write, stop.clone()).expect("Input loop failed");
+        stop.store(true, Ordering::Relaxed);
+    });
 
-    run_logic_loop(read, write);
-    stop.store(true, Ordering::Relaxed);
+    run_logic_loop(read, write, stop);
     input_join.join().expect("Failed to join input thread");
 }
 
-fn run_logic_loop<R, W>(read: R, mut write: W)
+fn run_logic_loop<R, W>(read: R, mut write: W, stop: Arc<AtomicBool>)
 where
     R: io::Read + Clone + Send + 'static,
     W: io::Write + Clone + Send + 'static,
@@ -52,4 +54,6 @@ where
             break;
         }
     }
+
+    stop.store(true, Ordering::Relaxed);
 }

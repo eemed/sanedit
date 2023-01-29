@@ -12,8 +12,6 @@ use self::{
     view::View,
 };
 
-pub(crate) use view::Cell;
-
 use super::BufferId;
 
 #[derive(Debug)]
@@ -45,7 +43,7 @@ impl Window {
     }
 
     pub fn warn_msg(&mut self, message: String) {
-                // TODO better way to save these bytes?
+        // TODO better way to save these bytes?
         self.message = Message {
             severity: Severity::Warn,
             message,
@@ -68,7 +66,9 @@ impl Window {
     }
 
     pub fn redraw(&mut self, buf: &Buffer) {
-        self.view.redraw(buf, &self.cursors, &self.options.display)
+        let slice = buf.slice(self.view.offset()..);
+        self.view
+            .redraw(&slice, &self.cursors, &self.options.display)
     }
 
     pub fn buffer_id(&self) -> BufferId {

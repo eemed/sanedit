@@ -41,6 +41,7 @@ pub(crate) fn end_of_line(slice: &PieceTreeSlice, mut pos: usize) -> usize {
 pub(crate) fn next_line(slice: &PieceTreeSlice, pos: usize) -> usize {
     todo!()
 }
+
 pub(crate) fn prev_line(slice: &PieceTreeSlice, pos: usize) -> usize {
     todo!()
 }

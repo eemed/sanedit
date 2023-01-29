@@ -1,14 +1,12 @@
 mod cell;
 
-use sanedit_buffer::piece_tree::next_grapheme;
+use sanedit_buffer::piece_tree::{next_grapheme, PieceTreeSlice};
 use sanedit_messages::redraw::{self, Point};
 
 use crate::common::char::{Char, DisplayOptions};
 use crate::common::eol::EOL;
-use crate::editor::buffers::buffer::Buffer;
 
 pub(crate) use self::cell::Cell;
-use self::cell::CellPosition;
 
 use super::cursors::{Cursor, Cursors};
 
@@ -19,6 +17,7 @@ pub(crate) struct View {
     primary_cursor: Point,
     width: usize,
     height: usize,
+    needs_redraw: bool,
 }
 
 impl View {
@@ -29,6 +28,7 @@ impl View {
             primary_cursor: Point::default(),
             width,
             height,
+            needs_redraw: true,
         }
     }
 
@@ -73,7 +73,6 @@ impl View {
     }
 
     fn cursor_cell_pos(&mut self, cursor: &Cursor) -> Option<Point> {
-
         let mut pos = self.offset;
         for (line, row) in self.cells.iter().enumerate() {
             for (col, cell) in row.iter().enumerate() {
@@ -87,8 +86,7 @@ impl View {
         None
     }
 
-    fn draw_cells(&mut self, buf: &Buffer, opts: &DisplayOptions) {
-        let slice = buf.slice(self.offset..);
+    fn draw_cells(&mut self, slice: &PieceTreeSlice, opts: &DisplayOptions) {
         let mut pos = 0;
         let mut line = 0;
         let mut col = 0;
@@ -117,11 +115,49 @@ impl View {
         }
     }
 
-    pub fn redraw(&mut self, buf: &Buffer, cursors: &Cursors, opts: &DisplayOptions) {
-        self.draw_cells(buf, opts);
+    pub fn redraw(&mut self, slice: &PieceTreeSlice, cursors: &Cursors, opts: &DisplayOptions) {
+        debug_assert!(
+            self.offset == slice.start(),
+            "Provided slice start {} does not match view offset {}",
+            slice.start(),
+            self.offset
+        );
+
+        self.draw_cells(slice, opts);
         self.draw_cursors(cursors);
         self.draw_end_of_buffer();
         self.draw_trailing_whitespace();
+        self.needs_redraw = false;
+    }
+
+    pub fn scroll_down(
+        &mut self,
+        slice: &PieceTreeSlice,
+        cursors: &Cursors,
+        opts: &DisplayOptions,
+    ) {
+        if self.needs_redraw {
+            self.redraw(slice, cursors, opts);
+        }
+    }
+
+    pub fn scroll_up(&mut self, slice: &PieceTreeSlice, cursors: &Cursors, opts: &DisplayOptions) {
+        if self.needs_redraw {
+            self.redraw(slice, cursors, opts);
+        }
+    }
+
+    pub fn offset(&self) -> usize {
+        self.offset
+    }
+
+    pub fn set_view_offset(&mut self, offset: usize) {
+        self.offset = offset;
+        self.needs_redraw = true;
+    }
+
+    pub fn needs_redraw(&self) -> bool {
+        self.needs_redraw
     }
 }
 
@@ -141,6 +177,8 @@ impl From<&View> for redraw::Window {
 
 #[cfg(test)]
 mod test {
+    use crate::editor::buffers::buffer::Buffer;
+
     use super::*;
 
     #[test]
@@ -151,7 +189,7 @@ mod test {
         buf.append("\tHello\tWorld");
 
         let mut view = View::new(width, 1);
-        view.redraw(&buf, &Cursors::default(), &opts);
+        view.redraw(&buf.slice(..), &Cursors::default(), &opts);
 
         println!("{}", "-".repeat(width));
         for row in &view.cells {

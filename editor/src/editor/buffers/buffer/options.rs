@@ -2,7 +2,7 @@ use crate::common::eol::EOL;
 
 #[derive(Debug)]
 pub(crate) struct BufferOptions {
-    eol: EOL,
+    pub(crate) eol: EOL,
     /// How many spaces for a tab character, note that tab does not always have
     /// width `tab_width` because sometimes tabs are used to align stuff, so it
     /// is "elastic" calculated tabstop - (col % tabstop).

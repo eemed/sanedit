@@ -14,6 +14,8 @@ use std::mem;
 use tokio::io;
 use tokio::sync::mpsc::Receiver;
 
+use crate::actions;
+use crate::actions::text;
 use crate::actions::Action;
 use crate::editor::buffers::buffer::Buffer;
 use crate::events::ToServer;
@@ -142,18 +144,24 @@ impl Editor {
             return;
         }
 
-        let mut win = self.windows.get_mut(id).expect("Client window is closed");
-        let mut buf = self
-            .buffers
-            .get_mut(win.buffer_id())
-            .expect("Window referencing non existent buffer");
+        // let mut win = self.windows.get_mut(id).expect("Client window is closed");
+        // let mut buf = self
+        //     .buffers
+        //     .get_mut(win.buffer_id())
+        //     .expect("Window referencing non existent buffer");
 
         // Clear keys buffer, and handle them separately
         let events = mem::replace(&mut self.keys, vec![]);
         for event in events {
             match event.key() {
-                Char(ch) => buf.insert_char(0, *ch),
-                // Enter => todo!(),
+                Char(ch) => text::insert_char_at_cursor(self, id, *ch),
+                Enter => {
+                    let eol = {
+                        let (_, buf) = self.get_win_buf(id);
+                        buf.options().eol
+                    };
+                    text::insert_at_cursor(self, id, eol.as_str());
+                }
                 // Tab => todo!(),
                 // Backspace => todo!(),
                 // Delete => todo!(),

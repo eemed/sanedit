@@ -1,12 +1,6 @@
 use crate::common::char::Char;
 
 #[derive(Debug, Default, Clone)]
-pub struct CellPosition {
-    x: usize,
-    y: usize,
-}
-
-#[derive(Debug, Default, Clone)]
 pub(crate) struct Cell {
     ch: Char,
     // style: Style,

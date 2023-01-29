@@ -46,7 +46,7 @@ impl<'a> BoundedPieceIter<'a> {
         }
 
         if end < p_end {
-            piece.split_left(piece.len - (p_end - end));
+            piece.split_left(piece.len.saturating_sub(p_end - end));
         }
 
         if piece.len == 0 {

@@ -4,6 +4,7 @@ mod windows;
 
 use sanedit_messages::redraw;
 use sanedit_messages::redraw::Redraw;
+use sanedit_messages::redraw::Size;
 use sanedit_messages::ClientMessage;
 use sanedit_messages::KeyEvent;
 use sanedit_messages::Message;
@@ -80,10 +81,7 @@ impl Editor {
 
     fn on_client_connected(&mut self, handle: ClientHandle) {
         log::info!("Client connected: {:?}, id: {:?}", handle.info, handle.id);
-        let id = handle.id;
         self.clients.insert(handle.id, handle);
-        let bid = self.buffers.insert(Buffer::new());
-        self.windows.new_window(id, bid, 80, 20);
     }
 
     fn send_to_client(&mut self, id: ClientId, msg: ClientMessage) {
@@ -99,14 +97,20 @@ impl Editor {
     fn handle_message(&mut self, id: ClientId, msg: Message) {
         log::info!("Message {:?} from client {:?}", msg, id);
         match msg {
-            Message::Hello => self.send_to_client(id, ClientMessage::Hello),
+            Message::Hello(size) => self.handle_hello(size, id),
             Message::KeyEvent(key_event) => self.handle_key_event(id, key_event),
             Message::MouseEvent(_) => {}
-            Message::Resize => {}
+            Message::Resize(size) => {}
             Message::Bye => {}
         }
 
         self.redraw(id);
+    }
+
+    fn handle_hello(&mut self, size: Size, id: ClientId) {
+        let bid = self.buffers.insert(Buffer::default());
+        self.windows.new_window(id, bid, size.width, size.height);
+        self.send_to_client(id, ClientMessage::Hello);
     }
 
     fn redraw(&mut self, id: ClientId) {

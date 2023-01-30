@@ -7,10 +7,9 @@ use std::{fmt, sync::Arc};
 use crate::{editor::Editor, server::ClientId};
 
 use self::editor::quit;
-use self::movement::{
-    next_grapheme,
-    prev_grapheme,
-};
+use self::movement::{next_grapheme, prev_grapheme};
+
+use self::text::{remove_char_after_cursor, remove_char_before_cursor};
 
 macro_rules! action_list {
     ( $($name:ident,)*) => {
@@ -65,6 +64,8 @@ impl Action {
         quit,
         next_grapheme,
         prev_grapheme,
+        remove_char_after_cursor,
+        remove_char_before_cursor,
     );
 }
 

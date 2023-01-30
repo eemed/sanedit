@@ -9,7 +9,10 @@ use std::{
     thread,
 };
 
-use sanedit_messages::{redraw::Redraw, ClientMessage, Message, Reader, Writer};
+use sanedit_messages::{
+    redraw::{Redraw, Size},
+    ClientMessage, Message, Reader, Writer,
+};
 
 use crate::{input, terminal::Terminal, ui::UI};
 
@@ -24,7 +27,10 @@ where
     // Other threads check this flag once in a while and stop if it is true.
     let stop = Arc::new(AtomicBool::new(false));
     let mut writer: Writer<_, Message> = Writer::new(write.clone());
-    writer.write(Message::Hello).expect("Failed to send hello");
+    let mut ui = UI::new().expect("Failed to start UI");
+    writer
+        .write(Message::Hello(ui.size()))
+        .expect("Failed to send hello");
 
     // Input thread
     // IDEA: Send inputs to logic task and logic task sends them to server if needed?
@@ -36,17 +42,16 @@ where
         stop.store(true, Ordering::Relaxed);
     });
 
-    run_logic_loop(read, write, stop);
+    run_logic_loop(ui, read, write, stop);
     input_join.join().expect("Failed to join input thread");
 }
 
-fn run_logic_loop<R, W>(read: R, mut write: W, stop: Arc<AtomicBool>)
+fn run_logic_loop<R, W>(mut ui: UI, read: R, mut write: W, stop: Arc<AtomicBool>)
 where
     R: io::Read + Clone + Send + 'static,
     W: io::Write + Clone + Send + 'static,
 {
     let mut writer: Writer<_, Message> = Writer::new(write);
-    let mut ui = UI::new(writer).expect("Failed to start UI");
     let mut reader: Reader<_, ClientMessage> = Reader::new(read);
 
     for msg in reader {

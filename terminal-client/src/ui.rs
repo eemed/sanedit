@@ -2,27 +2,25 @@ use std::io;
 
 use anyhow::Result;
 use sanedit_messages::{
-    redraw::{Cell, Redraw},
+    redraw::{Cell, Redraw, Size},
     ClientMessage, Message, Writer,
 };
 
 use crate::{grid::Grid, terminal::Terminal};
 
-pub struct UI<W: io::Write> {
+pub struct UI {
     terminal: Terminal,
     grid: Grid,
-    writer: Writer<W, Message>,
 }
 
-impl<W: io::Write> UI<W> {
-    pub fn new(writer: Writer<W, Message>) -> Result<UI<W>> {
+impl UI {
+    pub fn new() -> Result<UI> {
         let terminal = Terminal::new()?;
         let width = terminal.width();
         let height = terminal.height();
         Ok(UI {
             terminal,
             grid: Grid::new(width, height),
-            writer,
         })
     }
 
@@ -41,7 +39,7 @@ impl<W: io::Write> UI<W> {
     fn handle_redraw(&mut self, msg: Redraw) {
         match msg {
             Redraw::Window(win) => {
-                log::info!("redraw {}x{}", win.cells().len(), win.cells()[0].len());
+                log::info!("redraw {}x{}", win.cells()[0].len(), win.cells().len());
                 self.grid.push_component(win);
             }
         }
@@ -57,5 +55,12 @@ impl<W: io::Write> UI<W> {
 
         self.terminal.goto(cursor.x, cursor.y);
         self.terminal.flush();
+    }
+
+    pub fn size(&self) -> Size {
+        Size {
+            width: self.terminal.width(),
+            height: self.terminal.height(),
+        }
     }
 }

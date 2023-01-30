@@ -1,4 +1,4 @@
-use crate::{editor::Editor, server::ClientId};
+use crate::{editor::Editor, server::ClientId, common};
 
 pub(crate) fn insert_char_at_cursor(editor: &mut Editor, id: ClientId, ch: char) {
     let mut buf = [0u8; 4];
@@ -18,34 +18,21 @@ pub(crate) fn insert_at_cursor<B: AsRef<[u8]>>(editor: &mut Editor, id: ClientId
     inner(editor, id, bytes.as_ref());
 }
 
-pub(crate) fn remove_char_after_cursor(editor: &mut Editor, id: ClientId) {}
+pub(crate) fn remove_char_after_cursor(editor: &mut Editor, id: ClientId) {
+    let (win, buf) = editor.get_win_buf_mut(id);
+    let cursor = win.primary_cursor_mut();
+    let pos = common::movement::next_grapheme_boundary(&buf.slice(..), cursor.pos());
+    buf.remove(cursor.pos()..pos);
+}
 
 pub(crate) fn remove_char_before_cursor(editor: &mut Editor, id: ClientId) {
-
-    // let edit = {
-    //     let editor = state.borrow();
-    //     let (win, buf) = editor.win_buf();
-    //     let cursor = &win.cursor;
-    //     let pos = {
-    //         let mut graphemes = buf.graphemes_at(cursor.pos());
-    //         graphemes.prev();
-    //         graphemes.pos()
-    //     };
-    //     let range = pos..cursor.pos();
-    //     Edit::Remove {
-    //         range: range.clone(),
-    //     }
-    // };
-
-    // if let Err(e) = insert(state, edit) {
-    //     state.borrow_mut().warn_msg(&e.to_string());
-    // }
+    let (win, buf) = editor.get_win_buf_mut(id);
+    let cursor = win.primary_cursor_mut();
+    let pos = common::movement::prev_grapheme_boundary(&buf.slice(..), cursor.pos());
+    buf.remove(pos..cursor.pos());
+    cursor.goto(pos);
 }
 
 pub(crate) fn undo(editor: &mut Editor, id: ClientId) {}
 
 pub(crate) fn redo(editor: &mut Editor, id: ClientId) {}
-
-fn insert() {}
-
-fn remove() {}

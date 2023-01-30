@@ -38,7 +38,7 @@ pub(crate) struct Buffer {
 impl Buffer {
     pub fn new() -> Buffer {
         let mut pt = PieceTree::new();
-        pt.append("Scratch buffer");
+        // pt.append("Scratch buffer");
         let snapshot = pt.snapshot();
         Buffer {
             id: BufferId::default(),

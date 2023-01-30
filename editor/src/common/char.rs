@@ -6,6 +6,8 @@ use sanedit_buffer::piece_tree::PieceTreeSlice;
 use smartstring::{LazyCompact, SmartString};
 use unicode_width::UnicodeWidthStr;
 
+use super::eol::EOL;
+
 /// Representation of a grapheme cluster (clusters of codepoints we treat as one
 /// character) in the buffer.
 /// This is a separate type to distinguish graphemes that have already been
@@ -15,6 +17,7 @@ pub(crate) struct Char {
     display: SmartString<LazyCompact>,
     width: usize,
     grapheme: Option<Range<usize>>,
+    grapheme_category: GraphemeCategory,
 }
 
 impl Char {
@@ -33,6 +36,21 @@ impl Char {
     pub fn grapheme_len(&self) -> usize {
         self.grapheme.as_ref().map(|range| range.len()).unwrap_or(0)
     }
+
+    pub fn grapheme_category(&self) -> GraphemeCategory {
+        self.grapheme_category
+    }
+}
+
+#[derive(PartialEq, Default, Clone, Copy, Debug, Hash)]
+pub(crate) enum GraphemeCategory {
+    EOL,
+    Whitespace,
+    Word,
+    Punctuation,
+
+    #[default]
+    Unknown,
 }
 
 #[derive(Debug, Hash, Eq, PartialEq, Clone)]
@@ -81,7 +99,10 @@ fn grapheme_to_char(grapheme: PieceTreeSlice, column: usize, options: &DisplayOp
     if grapheme == "\t" {
         return tab_to_char(buf_range, column, options);
     }
-    // TODO is eol
+    // is eol
+    if EOL::is_eol(&grapheme) {
+        return eol_to_char(buf_range, options);
+    }
     // TODO is nbsp
 
     let display = {
@@ -98,6 +119,8 @@ fn grapheme_to_char(grapheme: PieceTreeSlice, column: usize, options: &DisplayOp
         display,
         width,
         grapheme: buf_range,
+        // TODO
+        grapheme_category: GraphemeCategory::Word,
     }
 }
 
@@ -124,7 +147,50 @@ fn tab_to_char(buf_range: Option<Range<usize>>, column: usize, options: &Display
         display,
         width,
         grapheme: buf_range,
+        grapheme_category: GraphemeCategory::Whitespace,
     }
+}
+
+fn eol_to_char(buf_range: Option<Range<usize>>, options: &DisplayOptions) -> Char {
+    let display = options
+        .replacements
+        .get(&Replacement::EOL)
+        .cloned()
+        .unwrap_or_else(|| String::from(" "));
+    let width = display.width();
+
+    Char {
+        display: display.into(),
+        width,
+        grapheme: buf_range,
+        grapheme_category: GraphemeCategory::EOL,
+    }
+}
+
+#[inline(always)]
+pub(crate) fn grapheme_category(grapheme: &str) -> GraphemeCategory {
+    if grapheme
+        .chars()
+        .fold(true, |acc, ch| acc && ch.is_whitespace())
+    {
+        return GraphemeCategory::Whitespace;
+    }
+
+    if grapheme
+        .chars()
+        .fold(true, |acc, ch| acc && (ch.is_alphanumeric() || ch == '_'))
+    {
+        return GraphemeCategory::Word;
+    }
+
+    if grapheme.chars().count() == 1 {
+        let char = grapheme.chars().next().unwrap();
+        if char.is_ascii() && !char.is_alphanumeric() {
+            return GraphemeCategory::Punctuation;
+        }
+    }
+
+    GraphemeCategory::Unknown
 }
 
 #[cfg(test)]

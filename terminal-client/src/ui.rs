@@ -27,7 +27,7 @@ impl<W: io::Write> UI<W> {
     }
 
     pub fn handle_message(&mut self, msg: ClientMessage) -> bool {
-        log::info!("Client got message: {:?}", msg);
+        // log::info!("Client got message: {:?}", msg);
         match msg {
             ClientMessage::Hello => {}
             ClientMessage::Redraw(msg) => self.handle_redraw(msg),

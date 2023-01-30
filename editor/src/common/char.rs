@@ -3,7 +3,6 @@ use std::ops::Range;
 
 use sanedit_buffer::piece_tree::PieceTreeSlice;
 
-use smartstring::{LazyCompact, SmartString};
 use unicode_width::UnicodeWidthStr;
 
 use super::eol::EOL;
@@ -14,10 +13,10 @@ use super::eol::EOL;
 /// converted to the format we want the user to see.
 #[derive(Debug, Default, Clone, PartialEq, Hash)]
 pub(crate) struct Char {
-    display: SmartString<LazyCompact>,
+    display: Option<String>,
     width: usize,
-    grapheme: Option<Range<usize>>,
-    grapheme_category: GraphemeCategory,
+    grapheme_range: Option<Range<usize>>,
+    grapheme: String,
 }
 
 impl Char {
@@ -30,15 +29,18 @@ impl Char {
     }
 
     pub fn display(&self) -> &str {
-        &self.display
+        self.display.as_ref().unwrap_or(&self.grapheme)
     }
 
     pub fn grapheme_len(&self) -> usize {
-        self.grapheme.as_ref().map(|range| range.len()).unwrap_or(0)
+        self.grapheme_range
+            .as_ref()
+            .map(|range| range.len())
+            .unwrap_or(0)
     }
 
     pub fn grapheme_category(&self) -> GraphemeCategory {
-        self.grapheme_category
+        grapheme_category(&self.grapheme)
     }
 }
 
@@ -93,38 +95,36 @@ impl Default for DisplayOptions {
 }
 
 #[inline]
-fn grapheme_to_char(grapheme: PieceTreeSlice, column: usize, options: &DisplayOptions) -> Char {
-    let buf_range = Some(grapheme.start()..grapheme.end());
+fn grapheme_to_char(slice: PieceTreeSlice, column: usize, options: &DisplayOptions) -> Char {
+    let buf_range = Some(slice.start()..slice.end());
+    let grapheme = String::from(&slice);
+
     // is tab
     if grapheme == "\t" {
-        return tab_to_char(buf_range, column, options);
+        return tab_to_char(grapheme, buf_range, column, options);
     }
     // is eol
-    if EOL::is_eol(&grapheme) {
-        return eol_to_char(buf_range, options);
+    if EOL::is_eol_bytes(&grapheme) {
+        return eol_to_char(grapheme, buf_range, options);
     }
     // TODO is nbsp
 
-    let display = {
-        let mut display = SmartString::new();
-        let mut chars = grapheme.chars();
-        while let Some((_pos, _, ch)) = chars.next() {
-            display.push(ch);
-        }
-        display
-    };
-    let width = UnicodeWidthStr::width(display.as_str()).max(1);
+    let width = UnicodeWidthStr::width(grapheme.as_str()).max(1);
 
     Char {
-        display,
+        display: None,
         width,
-        grapheme: buf_range,
-        // TODO
-        grapheme_category: GraphemeCategory::Word,
+        grapheme_range: buf_range,
+        grapheme,
     }
 }
 
-fn tab_to_char(buf_range: Option<Range<usize>>, column: usize, options: &DisplayOptions) -> Char {
+fn tab_to_char(
+    grapheme: String,
+    buf_range: Option<Range<usize>>,
+    column: usize,
+    options: &DisplayOptions,
+) -> Char {
     // Calculate tab based on current visual column
     let width = options.tabstop - (column % options.tabstop);
     let first = options
@@ -138,20 +138,24 @@ fn tab_to_char(buf_range: Option<Range<usize>>, column: usize, options: &Display
         .cloned()
         .unwrap_or_else(|| String::from(" "));
 
-    let mut display: SmartString<LazyCompact> = first.into();
+    let mut display: String = first;
     for _ in 1..width {
         display.push_str(&fill);
     }
 
     Char {
-        display,
+        display: Some(display),
         width,
-        grapheme: buf_range,
-        grapheme_category: GraphemeCategory::Whitespace,
+        grapheme_range: buf_range,
+        grapheme,
     }
 }
 
-fn eol_to_char(buf_range: Option<Range<usize>>, options: &DisplayOptions) -> Char {
+fn eol_to_char(
+    grapheme: String,
+    buf_range: Option<Range<usize>>,
+    options: &DisplayOptions,
+) -> Char {
     let display = options
         .replacements
         .get(&Replacement::EOL)
@@ -160,15 +164,19 @@ fn eol_to_char(buf_range: Option<Range<usize>>, options: &DisplayOptions) -> Cha
     let width = display.width();
 
     Char {
-        display: display.into(),
+        display: Some(display),
         width,
-        grapheme: buf_range,
-        grapheme_category: GraphemeCategory::EOL,
+        grapheme_range: buf_range,
+        grapheme,
     }
 }
 
 #[inline(always)]
 pub(crate) fn grapheme_category(grapheme: &str) -> GraphemeCategory {
+    if EOL::is_eol_bytes(grapheme) {
+        return GraphemeCategory::EOL;
+    }
+
     if grapheme
         .chars()
         .fold(true, |acc, ch| acc && ch.is_whitespace())

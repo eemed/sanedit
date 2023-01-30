@@ -21,8 +21,8 @@ impl EOL {
         EOL::iter().any(|eol| string == &eol.as_str())
     }
 
-    pub fn is_eol_bytes(bytes: &[u8]) -> bool {
-        EOL::iter().any(|eol| bytes == eol.as_str().as_bytes())
+    pub fn is_eol_bytes<B: AsRef<[u8]>>(bytes: B) -> bool {
+        EOL::iter().any(|eol| bytes.as_ref() == eol.as_str().as_bytes())
     }
 }
 

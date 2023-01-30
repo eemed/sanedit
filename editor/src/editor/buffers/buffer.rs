@@ -82,6 +82,10 @@ impl Buffer {
         })
     }
 
+    pub fn len(&self) -> usize {
+        self.pt.len()
+    }
+
     pub fn remove<R: RangeBounds<usize>>(&mut self, range: R) {
         self.pt.remove(range)
     }

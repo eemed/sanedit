@@ -11,6 +11,7 @@ pub(crate) fn prev_grapheme_boundary(slice: &PieceTreeSlice, pos: usize) -> usiz
 }
 
 pub(crate) fn start_of_line(slice: &PieceTreeSlice, mut pos: usize) -> usize {
+    log::info!("sol");
     // TODO use bytes for more efficient impl
     let mut grapheme = piece_tree::prev_grapheme(slice, pos);
     while let Some(g) = grapheme {
@@ -18,6 +19,7 @@ pub(crate) fn start_of_line(slice: &PieceTreeSlice, mut pos: usize) -> usize {
             return pos;
         }
         pos -= g.len();
+        log::info!("{pos}");
         grapheme = piece_tree::prev_grapheme(slice, pos);
     }
 

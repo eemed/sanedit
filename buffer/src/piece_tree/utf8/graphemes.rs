@@ -162,8 +162,8 @@ pub fn prev_grapheme_boundary(slice: &PieceTreeSlice, pos: usize) -> usize {
 
 #[inline]
 pub fn prev_grapheme<'a>(slice: &'a PieceTreeSlice, pos: usize) -> Option<PieceTreeSlice<'a>> {
-    let start = pos;
-    let end = prev_grapheme_boundary(slice, pos);
+    let end = pos;
+    let start = prev_grapheme_boundary(slice, pos);
     if start == end {
         return None;
     }

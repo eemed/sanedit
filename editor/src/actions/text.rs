@@ -18,14 +18,14 @@ pub(crate) fn insert_at_cursor<B: AsRef<[u8]>>(editor: &mut Editor, id: ClientId
     inner(editor, id, bytes.as_ref());
 }
 
-pub(crate) fn remove_char_after_cursor(editor: &mut Editor, id: ClientId) {
+pub(crate) fn remove_grapheme_after_cursor(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.get_win_buf_mut(id);
     let cursor = win.primary_cursor_mut();
     let pos = common::movement::next_grapheme_boundary(&buf.slice(..), cursor.pos());
     buf.remove(cursor.pos()..pos);
 }
 
-pub(crate) fn remove_char_before_cursor(editor: &mut Editor, id: ClientId) {
+pub(crate) fn remove_grapheme_before_cursor(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.get_win_buf_mut(id);
     let cursor = win.primary_cursor_mut();
     let pos = common::movement::prev_grapheme_boundary(&buf.slice(..), cursor.pos());

@@ -44,8 +44,14 @@ impl Default for Keymap {
              "ctrl+c", Action::quit,
              "left", Action::prev_grapheme,
              "right", Action::next_grapheme,
-             "backspace", Action::remove_char_before_cursor,
-             "delete", Action::remove_char_after_cursor,
+             "backspace", Action::remove_grapheme_before_cursor,
+             "delete", Action::remove_grapheme_after_cursor,
+
+             "alt+b", Action::end_of_buffer,
+             "alt+B", Action::start_of_buffer,
+
+             "alt+e", Action::end_of_line,
+             "alt+E", Action::start_of_line,
         );
 
         map

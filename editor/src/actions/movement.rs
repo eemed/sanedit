@@ -46,11 +46,19 @@ pub(crate) fn prev_visual_line(editor: &mut Editor, id: ClientId) {
 
 pub(crate) fn next_visual_line(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.get_win_buf_mut(id);
-    let cursor_on_last_line = {
-        let view = win.view();
-        view.primary_cursor().y == view.height().saturating_sub(1)
-    };
-    if cursor_on_last_line {
+    let cursor = win.view().primary_cursor();
+    let last_line = win.view().height().saturating_sub(1);
+    let on_last_line = cursor.y == last_line;
+    if on_last_line {
         win.scroll_down(buf);
     }
+
+    // TODO 
+    // make point below cursor => y - 1
+    // Make sure it its x is within the line => cmp::min(col, width)
+    //
+    //
+    // let line = cmp::min(y + 1, last_line);
+    // let pos = common::pos_at_line(&view, line, v_col)?;
+    // Some((pos, v_col))
 }

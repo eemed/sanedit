@@ -155,11 +155,9 @@ impl View {
         self.needs_redraw = false;
     }
 
-    pub fn scroll_down(&mut self, buf: &Buffer, cursors: &Cursors, opts: &DisplayOptions) {
-    }
+    pub fn scroll_down(&mut self, buf: &Buffer, cursors: &Cursors, opts: &DisplayOptions) {}
 
-    pub fn scroll_up(&mut self, buf: &Buffer, cursors: &Cursors, opts: &DisplayOptions) {
-    }
+    pub fn scroll_up(&mut self, buf: &Buffer, cursors: &Cursors, opts: &DisplayOptions) {}
 
     pub fn offset(&self) -> usize {
         self.offset
@@ -176,6 +174,28 @@ impl View {
 
     pub fn primary_cursor(&self) -> Point {
         self.primary_cursor
+    }
+
+    pub fn pos_at_point(&self, point: Point) -> Option<usize> {
+        let mut c_pos = self.offset;
+        for (line, row) in self.cells.iter().enumerate() {
+            for (col, cell) in row.iter().enumerate() {
+                if matches!(cell, Cell::Empty) {
+                    continue;
+                }
+
+                todo!()
+                // if pos.y == y && c_pos == view.buf_range.end {
+                //     return Some(view.buf_range.end);
+                // }
+                // if pos.y == y && pos.x == x {
+                //     return Some(c_pos);
+                // }
+                // c_pos += cell.used_len();
+            }
+        }
+
+        None
     }
 }
 

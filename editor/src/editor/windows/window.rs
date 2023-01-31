@@ -66,10 +66,14 @@ impl Window {
     }
 
     pub fn redraw(&mut self, buf: &Buffer) {
-        let slice = buf.slice(self.view.offset()..);
-        self.view
-            .redraw(&slice, &self.cursors, &self.options.display)
+        debug_assert!(buf.id == self.buf, "Provided a wrong buffer to window");
+        self.view.redraw(&buf, &self.cursors, &self.options.display)
     }
+
+    pub fn scroll_down(&mut self, buf: &Buffer) {
+    }
+
+    pub fn scroll_up(&mut self, buf: &Buffer) {}
 
     pub fn buffer_id(&self) -> BufferId {
         self.buf

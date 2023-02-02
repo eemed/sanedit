@@ -176,24 +176,35 @@ impl View {
         self.primary_cursor
     }
 
-    pub fn pos_at_point(&self, point: Point) -> Option<usize> {
-        let mut c_pos = self.offset;
-        for (line, row) in self.cells.iter().enumerate() {
-            for (col, cell) in row.iter().enumerate() {
-                if matches!(cell, Cell::Empty) {
-                    continue;
-                }
-
-                todo!()
-                // if pos.y == y && c_pos == view.buf_range.end {
-                //     return Some(view.buf_range.end);
-                // }
-                // if pos.y == y && pos.x == x {
-                //     return Some(c_pos);
-                // }
-                // c_pos += cell.used_len();
+    pub fn last_char_on_line(&self, line: usize) -> Point {
+        let mut last = Point { x: 0, y: line };
+        let row = &self.cells[line];
+        for (col, cell) in row.iter().enumerate() {
+            if matches!(cell, Cell::Char { .. }) {
+                last = Point { x: col, y: line };
             }
         }
+
+        last
+    }
+
+    pub fn pos_at_point(&self, point: Point) -> Option<usize> {
+        let mut pos = self.offset;
+        for (y, row) in self.cells.iter().enumerate() {
+            for (x, cell) in row.iter().enumerate() {
+                if let Cell::Char { ch } = cell {
+                    if point.y == y && point.x == x {
+                        return Some(pos);
+                    }
+                    pos += ch.grapheme_len();
+                }
+            }
+        }
+
+        // TODO handle end of buffer
+        // if pos.y == y && c_pos == view.buf_range.end {
+        //     return Some(view.buf_range.end);
+        // }
 
         None
     }

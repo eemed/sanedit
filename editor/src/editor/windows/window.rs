@@ -71,9 +71,17 @@ impl Window {
     }
 
     pub fn scroll_down(&mut self, buf: &Buffer) {
+        todo!()
     }
 
-    pub fn scroll_up(&mut self, buf: &Buffer) {}
+    pub fn scroll_up(&mut self, buf: &Buffer) {
+        todo!()
+    }
+
+    ///  sets window offset so that primary cursor is visible in the drawn view.
+    pub fn view_to_cursor(&mut self) {
+        todo!()
+    }
 
     pub fn buffer_id(&self) -> BufferId {
         self.buf

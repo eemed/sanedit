@@ -16,6 +16,20 @@ impl Cell {
             Cell::Char { ch } => Some(ch),
         }
     }
+
+    pub fn width(&self) -> usize {
+        match self {
+            Cell::Empty => 0,
+            Cell::Char { ch } => ch.width(),
+        }
+    }
+
+    pub fn grapheme_len(&self) -> usize {
+        match self {
+            Cell::Empty => 0,
+            Cell::Char { ch } => ch.grapheme_len(),
+        }
+    }
 }
 
 impl Default for Cell {

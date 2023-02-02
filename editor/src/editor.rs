@@ -159,6 +159,7 @@ impl Editor {
         for event in events {
             match event.key() {
                 Char(ch) => text::insert_char_at_cursor(self, id, *ch),
+                Tab => text::insert_char_at_cursor(self, id, '\t'),
                 Enter => {
                     let eol = {
                         let (_, buf) = self.get_win_buf(id);
@@ -166,7 +167,6 @@ impl Editor {
                     };
                     text::insert_at_cursor(self, id, eol.as_str());
                 }
-                // Tab => todo!(),
                 // Backspace => todo!(),
                 // Delete => todo!(),
                 // F(n) => todo!(),

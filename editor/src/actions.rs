@@ -69,6 +69,8 @@ impl Action {
         end_of_line,
         start_of_buffer,
         end_of_buffer,
+        next_visual_line,
+        prev_visual_line,
     );
 }
 

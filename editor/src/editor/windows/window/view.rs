@@ -1,9 +1,9 @@
 mod cell;
 
 use sanedit_buffer::piece_tree::{next_grapheme, PieceTreeSlice};
-use sanedit_messages::redraw::{self, Point};
+use sanedit_messages::redraw::{self, Point, Size};
 
-use crate::common::char::{Char, DisplayOptions, GraphemeCategory};
+use crate::common::char::{Char, DisplayOptions, GraphemeCategory, Replacement};
 use crate::common::eol::EOL;
 use crate::editor::buffers::buffer::Buffer;
 
@@ -20,6 +20,9 @@ pub(crate) struct View {
     width: usize,
     height: usize,
     needs_redraw: bool,
+
+    /// Display options which were used to draw this view
+    display_options: DisplayOptions,
 }
 
 impl View {
@@ -32,13 +35,13 @@ impl View {
             width,
             height,
             needs_redraw: true,
+            display_options: DisplayOptions::default(),
         }
     }
 
     pub fn clear(&mut self) {
-        let width = self.width();
-        let height = self.height();
-        *self = View::new(width, height);
+        self.cells = vec![vec![Cell::default(); self.width]; self.height];
+        self.needs_redraw = true;
     }
 
     pub fn width(&self) -> usize {
@@ -66,8 +69,6 @@ impl View {
     }
 
     fn draw_trailing_whitespace(&mut self) {}
-    fn draw_end_of_buffer(&mut self) {}
-
     fn draw_cursors(&mut self, cursors: &Cursors) {
         let primary = cursors.primary();
         self.primary_cursor = self
@@ -114,7 +115,7 @@ impl View {
         None
     }
 
-    fn draw_cells(&mut self, buf: &Buffer, opts: &DisplayOptions) {
+    fn draw_cells(&mut self, buf: &Buffer) {
         let slice = buf.slice(self.offset..);
         let mut pos = 0;
         let mut line = 0;
@@ -126,7 +127,7 @@ impl View {
             }
             let grapheme_len = grapheme.len();
             let is_eol = EOL::is_eol(&grapheme);
-            let ch = Char::new(grapheme, col, opts);
+            let ch = Char::new(grapheme, col, &self.display_options);
             let ch_width = ch.width();
             let cell = ch.into();
             self.cells[line][col] = cell;
@@ -152,16 +153,15 @@ impl View {
 
     pub fn redraw(&mut self, buf: &Buffer, cursors: &Cursors, opts: &DisplayOptions) {
         self.clear();
-        self.draw_cells(buf, opts);
+        self.display_options = opts.clone();
+        self.draw_cells(buf);
         self.draw_cursors(cursors);
-        self.draw_end_of_buffer();
-        self.draw_trailing_whitespace();
         self.needs_redraw = false;
     }
 
-    pub fn scroll_down(&mut self, buf: &Buffer, cursors: &Cursors, opts: &DisplayOptions) {}
+    pub fn scroll_down(&mut self, buf: &Buffer, cursors: &Cursors) {}
 
-    pub fn scroll_up(&mut self, buf: &Buffer, cursors: &Cursors, opts: &DisplayOptions) {}
+    pub fn scroll_up(&mut self, buf: &Buffer, cursors: &Cursors) {}
 
     pub fn offset(&self) -> usize {
         self.offset
@@ -227,6 +227,13 @@ impl View {
 
         None
     }
+
+    pub fn resize(&mut self, size: Size) {
+        self.width = size.width;
+        self.height = size.height;
+        self.cells = vec![vec![Cell::default(); self.width]; self.height];
+        self.needs_redraw = true;
+    }
 }
 
 impl From<&View> for redraw::Window {
@@ -239,8 +246,32 @@ impl From<&View> for redraw::Window {
             }
         }
 
+        draw_end_of_buffer(view, &mut grid);
+        draw_trailing_whitespace(view, &mut grid);
+
         redraw::Window::new(grid, view.primary_cursor)
     }
+}
+
+fn draw_end_of_buffer(view: &View, grid: &mut Vec<Vec<redraw::Cell>>) {
+    for (line, row) in view.cells.iter().enumerate() {
+        let is_empty = row
+            .iter()
+            .fold(true, |acc, cell| acc && matches!(cell, Cell::Empty));
+        if is_empty {
+            if let Some(rep) = view
+                .display_options
+                .replacements
+                .get(&Replacement::BufferEnd)
+            {
+                grid[line][0] = rep.as_str().into();
+            }
+        }
+    }
+}
+
+fn draw_trailing_whitespace(view: &View, grid: &mut Vec<Vec<redraw::Cell>>) {
+    for (line, row) in view.cells.iter().enumerate() {}
 }
 
 #[cfg(test)]

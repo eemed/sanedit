@@ -1,67 +1,72 @@
-use std::{
-    io,
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        Arc,
-    },
-    time::Duration,
-};
+use std::{sync::mpsc, time::Duration};
 
 use anyhow::Result;
 use crossterm::event::{poll, read, KeyCode, KeyModifiers, MouseEventKind};
-use sanedit_messages::{Key, KeyEvent, KeyMods, Message, MouseEvent, Writer};
+use sanedit_messages::{redraw::Size, Key, KeyEvent, KeyMods, Message, MouseEvent};
+
+use crate::message::ClientInternalMessage;
 
 const POLL_DURATION: Duration = Duration::from_millis(100);
 const RE_RESIZE_POLL_DURATION: Duration = Duration::from_millis(100);
 
-pub(crate) fn run_loop<W: io::Write>(write: W, stop: Arc<AtomicBool>) -> Result<()> {
-    let mut writer: Writer<_, Message> = Writer::new(write);
+pub(crate) fn run_loop(mut sender: mpsc::Sender<ClientInternalMessage>) {
+    let msg = match run_loop_impl(&mut sender) {
+        Ok(_) => ClientInternalMessage::Bye,
+        Err(e) => ClientInternalMessage::Error(e.to_string()),
+    };
 
+    let _ = sender.send(msg);
+}
+
+pub(crate) fn run_loop_impl(sender: &mut mpsc::Sender<ClientInternalMessage>) -> Result<()> {
     loop {
         if poll(POLL_DURATION)? {
             let event = read()?;
-            if let Err(e) = process_input_event(event, &mut writer) {
-                log::error!("Client failed to send event {:?} to server: {}", event, e);
-                break;
-            }
-        }
-
-        if stop.load(Ordering::Acquire) {
-            break;
+            process_input_event(event, sender)?;
         }
     }
-
-    Ok(())
 }
 
-fn process_input_event<W: io::Write>(
+fn process_input_event(
     event: crossterm::event::Event,
-    writer: &mut Writer<W, Message>,
+    sender: &mut mpsc::Sender<ClientInternalMessage>,
 ) -> Result<()> {
     use crossterm::event::Event::*;
 
     match event {
         Key(key_event) => {
             let key = convert_key_event(key_event);
-            writer.write(Message::KeyEvent(key))?;
+            sender.send(Message::KeyEvent(key).into())?;
         }
         Resize(mut width, mut height) => {
-            // while poll(RE_RESIZE_POLL_DURATION)? {
-            //     let e = read()?;
-            //     match e {
-            //         Resize(w, h) => {
-            //             width = w;
-            //             height = h;
-            //         }
-            //         _ => {
-            //             resize(width as usize, height as usize, handle)?;
-            //             process_input_event(e, handle)?;
-            //             return Ok(());
-            //         }
-            //     }
-            // }
+            while poll(RE_RESIZE_POLL_DURATION)? {
+                let e = read()?;
+                match e {
+                    Resize(w, h) => {
+                        width = w;
+                        height = h;
+                    }
+                    _ => {
+                        sender.send(
+                            Message::Resize(Size {
+                                width: width as usize,
+                                height: height as usize,
+                            })
+                            .into(),
+                        )?;
+                        process_input_event(e, sender)?;
+                        return Ok(());
+                    }
+                }
+            }
 
-            // resize(width as usize, height as usize, handle)?;
+            sender.send(
+                Message::Resize(Size {
+                    width: width as usize,
+                    height: height as usize,
+                })
+                .into(),
+            )?;
         }
         Mouse(mouse_event) => {
             let msg: Option<Message> = match mouse_event.kind {
@@ -71,7 +76,7 @@ fn process_input_event<W: io::Write>(
             };
 
             if let Some(msg) = msg {
-                writer.write(msg)?;
+                sender.send(msg.into())?;
             }
         }
     }

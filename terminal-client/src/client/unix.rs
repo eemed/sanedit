@@ -51,6 +51,6 @@ impl UnixDomainSocketClient {
     pub fn run(self) {
         let read = self.socket.clone();
         let write = self.socket;
-        super::run(read, write);
+        crate::run(read, write);
     }
 }

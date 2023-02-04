@@ -3,6 +3,8 @@ mod message;
 mod options;
 mod view;
 
+use sanedit_messages::redraw::Size;
+
 use crate::editor::buffers::buffer::Buffer;
 
 use self::{
@@ -71,10 +73,12 @@ impl Window {
     }
 
     pub fn scroll_down(&mut self, buf: &Buffer) {
+        debug_assert!(buf.id == self.buf, "Provided a wrong buffer to window");
         todo!()
     }
 
     pub fn scroll_up(&mut self, buf: &Buffer) {
+        debug_assert!(buf.id == self.buf, "Provided a wrong buffer to window");
         todo!()
     }
 
@@ -89,5 +93,13 @@ impl Window {
 
     pub fn view(&self) -> &View {
         &self.view
+    }
+
+    pub fn resize(&mut self, size: Size) {
+        self.view.resize(size);
+    }
+
+    pub fn needs_redraw(&self) -> bool {
+        self.view.needs_redraw()
     }
 }

@@ -97,17 +97,22 @@ impl Editor {
     fn handle_message(&mut self, id: ClientId, msg: Message) {
         log::info!("Message {:?} from client {:?}", msg, id);
         match msg {
-            Message::Hello(size) => self.handle_hello(size, id),
+            Message::Hello(size) => self.handle_hello(id, size),
             Message::KeyEvent(key_event) => self.handle_key_event(id, key_event),
             Message::MouseEvent(_) => {}
-            Message::Resize(size) => {}
+            Message::Resize(size) => self.handle_resize(id, size),
             Message::Bye => {}
         }
 
         self.redraw(id);
     }
 
-    fn handle_hello(&mut self, size: Size, id: ClientId) {
+    fn handle_resize(&mut self, id: ClientId, size: Size) {
+        let win = self.windows.get_mut(id).expect("Client window is closed");
+        win.resize(size);
+    }
+
+    fn handle_hello(&mut self, id: ClientId, size: Size) {
         let bid = self.buffers.insert(Buffer::default());
         self.windows.new_window(id, bid, size.width, size.height);
         self.send_to_client(id, ClientMessage::Hello);

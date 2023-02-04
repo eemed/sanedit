@@ -122,11 +122,17 @@ fn next_visual_line_impl(editor: &mut Editor, id: ClientId) -> bool {
     let cursor_point = win.view().primary_cursor();
     let last_line = win.view().height().saturating_sub(1);
     let target_line = cmp::min(last_line, cursor_point.y + 1);
-    let max_col = win
+
+    let max_col = match win
         .view()
         .last_non_empty_cell(target_line)
         .map(|point| point.x)
-        .unwrap_or(0);
+    {
+        Some(n) => n,
+        // No cursor placeable cell on target line
+        None => return false,
+    };
+
     let cursor_col = win.primary_cursor().column().unwrap_or(cursor_point.x);
     let col = cmp::min(max_col, cursor_col);
 
@@ -137,10 +143,6 @@ fn next_visual_line_impl(editor: &mut Editor, id: ClientId) -> bool {
             y: target_line,
         })
         .unwrap_or(buf.len());
-
-    if pos == win.primary_cursor().pos() {
-        return false;
-    }
 
     win.primary_cursor_mut().goto_with_col(pos, cursor_col);
     true

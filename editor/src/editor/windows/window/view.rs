@@ -143,6 +143,10 @@ impl View {
             pos += grapheme_len;
         }
 
+        if pos == buf.len() {
+            self.cells[line][col] = Cell::EOF;
+        }
+
         self.end = pos;
     }
 
@@ -163,6 +167,18 @@ impl View {
         self.offset
     }
 
+    /// wether this view includes the buffer start
+    pub fn at_start(&self) -> bool {
+        self.offset == 0
+    }
+
+    /// wether this view includes the buffer end
+    pub fn at_end(&self) -> bool {
+        self.cells[self.height - 1]
+            .iter()
+            .fold(true, |acc, cell| acc && matches!(cell, Cell::Empty))
+    }
+
     pub fn set_view_offset(&mut self, offset: usize) {
         self.offset = offset;
         self.needs_redraw = true;
@@ -176,12 +192,12 @@ impl View {
         self.primary_cursor
     }
 
-    pub fn last_char_on_line(&self, line: usize) -> Point {
-        let mut last = Point { x: 0, y: line };
+    pub fn last_non_empty_cell(&self, line: usize) -> Option<Point> {
+        let mut last = None;
         let row = &self.cells[line];
         for (col, cell) in row.iter().enumerate() {
-            if matches!(cell, Cell::Char { .. }) {
-                last = Point { x: col, y: line };
+            if !matches!(cell, Cell::Empty) {
+                last = Some(Point { x: col, y: line });
             }
         }
 
@@ -192,19 +208,22 @@ impl View {
         let mut pos = self.offset;
         for (y, row) in self.cells.iter().enumerate() {
             for (x, cell) in row.iter().enumerate() {
-                if let Cell::Char { ch } = cell {
-                    if point.y == y && point.x == x {
-                        return Some(pos);
+                match cell {
+                    Cell::EOF => {
+                        if point.y == y && point.x == x {
+                            return Some(pos);
+                        }
                     }
-                    pos += ch.grapheme_len();
+                    Cell::Char { ch } => {
+                        if point.y == y && point.x == x {
+                            return Some(pos);
+                        }
+                        pos += ch.grapheme_len();
+                    }
+                    _ => {}
                 }
             }
         }
-
-        // TODO handle end of buffer
-        // if pos.y == y && c_pos == view.buf_range.end {
-        //     return Some(view.buf_range.end);
-        // }
 
         None
     }

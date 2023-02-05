@@ -108,6 +108,10 @@ impl Window {
         self.view.needs_redraw()
     }
 
+    pub fn prompt(&self) -> Option<&Prompt> {
+        self.prompt.as_ref()
+    }
+
     pub fn prompt_mut(&mut self) -> Option<&mut Prompt> {
         self.prompt.as_mut()
     }

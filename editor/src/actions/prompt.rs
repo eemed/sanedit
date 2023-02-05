@@ -14,6 +14,13 @@ pub(crate) fn prompt_prev_grapheme(editor: &mut Editor, id: ClientId) {
     }
 }
 
+pub(crate) fn prompt_insert_at_cursor(editor: &mut Editor, id: ClientId, string: &str) {
+    let (win, buf) = editor.get_win_buf_mut(id);
+    if let Some(prompt) = win.prompt_mut() {
+        prompt.insert_at_cursor(string);
+    }
+}
+
 pub(crate) fn prompt_insert_char_at_cursor(editor: &mut Editor, id: ClientId, ch: char) {
     let (win, buf) = editor.get_win_buf_mut(id);
     if let Some(prompt) = win.prompt_mut() {

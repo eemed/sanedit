@@ -16,6 +16,7 @@ use tokio::io;
 use tokio::sync::mpsc::Receiver;
 
 use crate::actions;
+use crate::actions::prompt;
 use crate::actions::text;
 use crate::actions::Action;
 use crate::editor::buffers::buffer::Buffer;
@@ -153,43 +154,37 @@ impl Editor {
             return;
         }
 
-        // let mut win = self.windows.get_mut(id).expect("Client window is closed");
-        // let mut buf = self
-        //     .buffers
-        //     .get_mut(win.buffer_id())
-        //     .expect("Window referencing non existent buffer");
-
         // Clear keys buffer, and handle them separately
         let events = mem::replace(&mut self.keys, vec![]);
         for event in events {
             match event.key() {
-                Char(ch) => text::insert_char_at_cursor(self, id, *ch),
-                Tab => text::insert_char_at_cursor(self, id, '\t'),
+                Char(ch) => {
+                    let mut buf = [0u8; 4];
+                    let string = ch.encode_utf8(&mut buf);
+                    self.handle_insert(id, string);
+                }
+                Tab => self.handle_insert(id, "\t"),
                 Enter => {
                     let eol = {
                         let (_, buf) = self.get_win_buf(id);
                         buf.options().eol
                     };
-                    text::insert_at_cursor(self, id, eol.as_str());
+                    self.handle_insert(id, eol.as_str());
                 }
-                // Backspace => todo!(),
-                // Delete => todo!(),
-                // F(n) => todo!(),
-                // Esc => todo!(),
-                // BackTab => todo!(),
-                // Up => todo!(),
-                // Down => todo!(),
-                // Left => todo!(),
-                // Right => todo!(),
-                // Home => todo!(),
-                // End => todo!(),
-                // PageUp => todo!(),
-                // PageDown => todo!(),
-                // Insert => todo!(),
-                // Unknown => todo!(),
                 _ => {}
             }
         }
+    }
+
+    fn handle_insert(&mut self, id: ClientId, text: &str) {
+        // Where to send input
+        let has_prompt = self.get_win_buf(id).0.prompt().is_some();
+        if has_prompt {
+            prompt::prompt_insert_at_cursor(self, id, text);
+            return;
+        }
+
+        text::insert_at_cursor(self, id, text);
     }
 
     fn is_running(&self) -> bool {

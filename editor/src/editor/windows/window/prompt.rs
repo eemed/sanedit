@@ -63,6 +63,12 @@ impl Prompt {
         &self.input
     }
 
+    pub fn insert_at_cursor(&mut self, string: &str) {
+        self.input.insert_str(self.cursor, string);
+        self.cursor += string.len();
+        // completion_calculate_matches(&mut prompt.completion, &prompt.userinput);
+    }
+
     pub fn insert_char_at_cursor(&mut self, ch: char) {
         self.input.insert(self.cursor, ch);
         self.cursor += ch.len_utf8();

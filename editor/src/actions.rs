@@ -9,6 +9,7 @@ use crate::{editor::Editor, server::ClientId};
 
 use self::editor::quit;
 use self::movement::*;
+use self::prompt::*;
 use self::text::*;
 
 macro_rules! action_list {
@@ -72,6 +73,15 @@ impl Action {
         end_of_buffer,
         next_visual_line,
         prev_visual_line,
+
+        prompt_next_grapheme,
+        prompt_prev_grapheme,
+        prompt_remove_grapheme_after_cursor,
+        prompt_confirm,
+        prompt_next_completion,
+        prompt_prev_completion,
+        prompt_close,
+        prompt_open_file,
     );
 }
 

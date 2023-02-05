@@ -1,16 +1,20 @@
 mod completion;
 mod cursors;
+mod input;
 mod message;
 mod options;
 mod prompt;
 mod view;
 
+use std::mem;
+
 use sanedit_messages::redraw::Size;
 
 use crate::editor::buffers::buffer::Buffer;
 
-use self::{
+pub(crate) use self::{
     cursors::{Cursor, Cursors},
+    input::InputMode,
     message::{Message, Severity},
     options::WindowOptions,
     prompt::Prompt,
@@ -25,8 +29,8 @@ pub(crate) struct Window {
     view: View,
     message: Message,
     cursors: Cursors,
-    prompt: Option<Prompt>,
-
+    prompt: Prompt,
+    input: InputMode,
     options: WindowOptions,
 }
 
@@ -37,8 +41,9 @@ impl Window {
             view: View::new(width, height),
             message: Message::default(),
             cursors: Cursors::default(),
-            prompt: None,
+            prompt: Prompt::default(),
             options: WindowOptions::default(),
+            input: InputMode::Normal,
         }
     }
 
@@ -108,15 +113,28 @@ impl Window {
         self.view.needs_redraw()
     }
 
-    pub fn prompt(&self) -> Option<&Prompt> {
-        self.prompt.as_ref()
+    pub fn prompt(&self) -> &Prompt {
+        &self.prompt
     }
 
-    pub fn prompt_mut(&mut self) -> Option<&mut Prompt> {
-        self.prompt.as_mut()
+    pub fn prompt_mut(&mut self) -> &mut Prompt {
+        &mut self.prompt
     }
 
-    pub fn prompt_take(&mut self) -> Option<Prompt> {
-        self.prompt.take()
+    pub fn take_prompt(&mut self) -> Prompt {
+        mem::replace(&mut self.prompt, Prompt::default())
+    }
+
+    pub fn input_mode(&self) -> InputMode {
+        self.input
+    }
+
+    pub fn open_prompt(&mut self, prompt: Prompt) {
+        self.prompt = prompt;
+        self.input = InputMode::Prompt;
+    }
+
+    pub fn close_prompt(&mut self) {
+        self.input = InputMode::Normal;
     }
 }

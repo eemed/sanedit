@@ -10,12 +10,13 @@ use sanedit_messages::KeyEvent;
 use sanedit_messages::Message;
 
 use std::collections::HashMap;
+use std::env;
 use std::mem;
+use std::path::PathBuf;
 
 use tokio::io;
 use tokio::sync::mpsc::Receiver;
 
-use crate::actions;
 use crate::actions::prompt;
 use crate::actions::text;
 use crate::actions::Action;
@@ -26,6 +27,7 @@ use crate::server::ClientId;
 
 use self::buffers::Buffers;
 use self::keymap::Keymap;
+use self::windows::window::InputMode;
 use self::windows::window::Window;
 use self::windows::Windows;
 
@@ -33,9 +35,14 @@ pub(crate) struct Editor {
     clients: HashMap<ClientId, ClientHandle>,
     windows: Windows,
     buffers: Buffers,
+
     keymap: Keymap,
+    prompt_keymap: Keymap,
+
     keys: Vec<KeyEvent>,
     is_running: bool,
+
+    working_dir: PathBuf,
 }
 
 impl Editor {
@@ -44,9 +51,11 @@ impl Editor {
             clients: HashMap::default(),
             windows: Windows::default(),
             buffers: Buffers::default(),
-            keymap: Keymap::default(),
+            keymap: Keymap::default_normal(),
+            prompt_keymap: Keymap::default_prompt(),
             keys: Vec::default(),
             is_running: true,
+            working_dir: env::current_dir().expect("Cannot get current working directory."),
         }
     }
 
@@ -71,11 +80,11 @@ impl Editor {
     }
 
     pub fn quit(&mut self) {
-        log::info!("Quit");
-        for (_, client) in &self.clients {
-            log::info!("Quit to {:?}", client.id);
+        let client_ids: Vec<ClientId> = self.clients.iter().map(|(id, _)| *id).collect();
+        for id in client_ids {
+            log::info!("Quit to {:?}", id);
             // Dont care about errors here we are quitting anyway
-            let _ = client.send.blocking_send(ClientMessage::Bye.into());
+            let _ = self.send_to_client(id, ClientMessage::Bye.into());
         }
         self.is_running = false;
     }
@@ -98,7 +107,11 @@ impl Editor {
     fn handle_message(&mut self, id: ClientId, msg: Message) {
         log::info!("Message {:?} from client {:?}", msg, id);
         match msg {
-            Message::Hello(size) => self.handle_hello(id, size),
+            Message::Hello(size) => {
+                let bid = self.buffers.insert(Buffer::default());
+                self.windows.new_window(id, bid, size.width, size.height);
+                self.send_to_client(id, ClientMessage::Hello);
+            }
             Message::KeyEvent(key_event) => self.handle_key_event(id, key_event),
             Message::MouseEvent(_) => {}
             Message::Resize(size) => self.handle_resize(id, size),
@@ -111,12 +124,6 @@ impl Editor {
     fn handle_resize(&mut self, id: ClientId, size: Size) {
         let win = self.windows.get_mut(id).expect("Client window is closed");
         win.resize(size);
-    }
-
-    fn handle_hello(&mut self, id: ClientId, size: Size) {
-        let bid = self.buffers.insert(Buffer::default());
-        self.windows.new_window(id, bid, size.width, size.height);
-        self.send_to_client(id, ClientMessage::Hello);
     }
 
     fn redraw(&mut self, id: ClientId) {
@@ -132,12 +139,15 @@ impl Editor {
         self.send_to_client(id, ClientMessage::Flush);
     }
 
-    fn get_bound_action(&mut self) -> Option<Action> {
-        match self.keymap.get(&self.keys) {
-            keymap::KeymapResult::Matched(action) => {
-                self.keys.clear();
-                Some(action)
-            }
+    fn get_bound_action(&mut self, id: ClientId) -> Option<Action> {
+        let (win, _buf) = self.get_win_buf(id);
+        let keymap = match win.input_mode() {
+            InputMode::Normal => &self.keymap,
+            InputMode::Prompt => &self.prompt_keymap,
+        };
+
+        match keymap.get(&self.keys) {
+            keymap::KeymapResult::Matched(action) => Some(action),
             _ => None,
         }
     }
@@ -149,7 +159,8 @@ impl Editor {
         self.keys.push(event);
 
         // Handle key bindings
-        if let Some(mut action) = self.get_bound_action() {
+        if let Some(mut action) = self.get_bound_action(id) {
+            self.keys.clear();
             action.execute(self, id);
             return;
         }
@@ -177,14 +188,13 @@ impl Editor {
     }
 
     fn handle_insert(&mut self, id: ClientId, text: &str) {
-        // Where to send input
-        let has_prompt = self.get_win_buf(id).0.prompt().is_some();
-        if has_prompt {
-            prompt::prompt_insert_at_cursor(self, id, text);
-            return;
-        }
+        let (win, _buf) = self.get_win_buf(id);
 
-        text::insert_at_cursor(self, id, text);
+        // Where to send input
+        match win.input_mode() {
+            InputMode::Normal => text::insert_at_cursor(self, id, text),
+            InputMode::Prompt => prompt::prompt_insert_at_cursor(self, id, text),
+        }
     }
 
     fn is_running(&self) -> bool {

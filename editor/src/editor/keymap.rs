@@ -18,23 +18,7 @@ pub(crate) struct Keymap {
 }
 
 impl Keymap {
-    /// Get a binding result for events.
-    /// The result may be
-    /// Matched => found a binding for events and its action
-    /// NotFound => no binding for key combination
-    /// Pending => need more input to decide
-    pub fn get(&mut self, events: &[KeyEvent]) -> KeymapResult {
-        self.root.get(events)
-    }
-
-    /// Create a new binding for key combination events.
-    pub fn bind(&mut self, events: &[KeyEvent], action: Action) {
-        self.root.bind(events, action);
-    }
-}
-
-impl Default for Keymap {
-    fn default() -> Self {
+    pub fn default_normal() -> Keymap {
         let mut map = Keymap {
             root: KeyTrie::default(),
         };
@@ -54,9 +38,44 @@ impl Default for Keymap {
 
              "alt+e", Action::end_of_line,
              "alt+E", Action::start_of_line,
+
+             "ctrl+o", Action::prompt_open_file,
         );
 
         map
+    }
+
+    pub fn default_prompt() -> Keymap {
+        let mut map = Keymap {
+            root: KeyTrie::default(),
+        };
+
+        #[rustfmt::skip]
+        map!(map,
+             "ctrl+c", Action::prompt_close,
+             "backspace", Action::prompt_remove_grapheme_after_cursor,
+             "left", Action::prompt_prev_grapheme,
+             "right", Action::prompt_next_grapheme,
+             "tab", Action::prompt_next_completion,
+             "btab", Action::prompt_prev_completion,
+             "enter", Action::prompt_confirm,
+        );
+
+        map
+    }
+
+    /// Get a binding result for events.
+    /// The result may be
+    /// Matched => found a binding for events and its action
+    /// NotFound => no binding for key combination
+    /// Pending => need more input to decide
+    pub fn get(&self, events: &[KeyEvent]) -> KeymapResult {
+        self.root.get(events)
+    }
+
+    /// Create a new binding for key combination events.
+    pub fn bind(&mut self, events: &[KeyEvent], action: Action) {
+        self.root.bind(events, action);
     }
 }
 

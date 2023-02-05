@@ -1,66 +1,61 @@
 use crate::{editor::Editor, server::ClientId};
 
+pub(crate) fn prompt_open_file(editor: &mut Editor, id: ClientId) {
+    let (win, buf) = editor.get_win_buf_mut(id);
+    tokio::spawn(async {
+    });
+    // win.open_prompt();
+}
+
+pub(crate) fn prompt_close(editor: &mut Editor, id: ClientId) {
+    let (win, buf) = editor.get_win_buf_mut(id);
+    win.close_prompt();
+}
+
 pub(crate) fn prompt_next_grapheme(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.get_win_buf_mut(id);
-    if let Some(prompt) = win.prompt_mut() {
-        prompt.next_grapheme();
-    }
+    win.prompt_mut().next_grapheme();
 }
 
 pub(crate) fn prompt_prev_grapheme(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.get_win_buf_mut(id);
-    if let Some(prompt) = win.prompt_mut() {
-        prompt.prev_grapheme();
-    }
+    win.prompt_mut().prev_grapheme();
 }
 
 pub(crate) fn prompt_insert_at_cursor(editor: &mut Editor, id: ClientId, string: &str) {
     let (win, buf) = editor.get_win_buf_mut(id);
-    if let Some(prompt) = win.prompt_mut() {
-        prompt.insert_at_cursor(string);
-    }
+    win.prompt_mut().insert_at_cursor(string);
 }
 
 pub(crate) fn prompt_insert_char_at_cursor(editor: &mut Editor, id: ClientId, ch: char) {
     let (win, buf) = editor.get_win_buf_mut(id);
-    if let Some(prompt) = win.prompt_mut() {
-        prompt.insert_char_at_cursor(ch);
-    }
+    win.prompt_mut().insert_char_at_cursor(ch);
 }
 
-pub(crate) fn prompt_remove_grapheme_at_cursor(editor: &mut Editor, id: ClientId) {
+pub(crate) fn prompt_remove_grapheme_after_cursor(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.get_win_buf_mut(id);
-    if let Some(prompt) = win.prompt_mut() {
-        prompt.remove_grapheme_at_cursor();
-    }
+    win.prompt_mut().remove_grapheme_after_cursor();
 }
 
-pub(crate) fn confirm(editor: &mut Editor, id: ClientId) {
+pub(crate) fn prompt_confirm(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.get_win_buf_mut(id);
-    if let Some(prompt) = win.prompt_take() {
-        let action = prompt.action();
-        let input = prompt.input();
-        (action)(editor, id, input)
-    }
+    let prompt = win.take_prompt();
+    let action = prompt.action();
+    let input = prompt.input();
+    (action)(editor, id, input)
 }
 
 pub(crate) fn prompt_next_completion(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.get_win_buf_mut(id);
-    if let Some(prompt) = win.prompt_mut() {
-        prompt.next_completion();
-    }
+    win.prompt_mut().next_completion();
 }
 
 pub(crate) fn prompt_prev_completion(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.get_win_buf_mut(id);
-    if let Some(prompt) = win.prompt_mut() {
-        prompt.next_completion();
-    }
+    win.prompt_mut().prev_completion();
 }
 
 pub(crate) fn provide_completions(editor: &mut Editor, id: ClientId, completions: Vec<String>) {
     let (win, buf) = editor.get_win_buf_mut(id);
-    if let Some(prompt) = win.prompt_mut() {
-        prompt.provide_completions(completions);
-    }
+    win.prompt_mut().provide_completions(completions);
 }

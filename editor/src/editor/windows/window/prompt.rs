@@ -2,7 +2,10 @@ use std::sync::Arc;
 
 use unicode_segmentation::UnicodeSegmentation;
 
-use crate::{editor::Editor, server::ClientId};
+use crate::{
+    editor::{keymap::Keymap, Editor},
+    server::ClientId,
+};
 
 use super::completion::Completion;
 
@@ -19,6 +22,16 @@ pub(crate) struct Prompt {
 }
 
 impl Prompt {
+    pub fn new(message: &str, on_confirm: PromptAction, must_complete: bool) -> Prompt {
+        Prompt {
+            message: String::from(message),
+            input: String::new(),
+            cursor: 0,
+            completion: Completion::new(must_complete),
+            on_confirm,
+        }
+    }
+
     pub fn next_grapheme(&mut self) {
         let mut graphemes = self.input.grapheme_indices(true);
         graphemes.position(|(pos, _)| pos == self.cursor);
@@ -39,7 +52,7 @@ impl Prompt {
         self.cursor = last;
     }
 
-    pub fn remove_grapheme_at_cursor(&mut self) {
+    pub fn remove_grapheme_after_cursor(&mut self) {
         let end = self.cursor;
         self.prev_grapheme();
         let start = self.cursor;
@@ -77,6 +90,12 @@ impl Prompt {
 
     pub fn provide_completions(&mut self, completions: Vec<String>) {
         self.completion.provide_options(completions);
+    }
+}
+
+impl Default for Prompt {
+    fn default() -> Self {
+        Prompt::new("", Arc::new(|_, _, _| {}), false)
     }
 }
 

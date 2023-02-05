@@ -1,6 +1,8 @@
+mod completion;
 mod cursors;
 mod message;
 mod options;
+mod prompt;
 mod view;
 
 use sanedit_messages::redraw::Size;
@@ -11,6 +13,7 @@ use self::{
     cursors::{Cursor, Cursors},
     message::{Message, Severity},
     options::WindowOptions,
+    prompt::Prompt,
     view::View,
 };
 
@@ -22,6 +25,7 @@ pub(crate) struct Window {
     view: View,
     message: Message,
     cursors: Cursors,
+    prompt: Option<Prompt>,
 
     options: WindowOptions,
 }
@@ -33,6 +37,7 @@ impl Window {
             view: View::new(width, height),
             message: Message::default(),
             cursors: Cursors::default(),
+            prompt: None,
             options: WindowOptions::default(),
         }
     }
@@ -101,5 +106,13 @@ impl Window {
 
     pub fn needs_redraw(&self) -> bool {
         self.view.needs_redraw()
+    }
+
+    pub fn prompt_mut(&mut self) -> Option<&mut Prompt> {
+        self.prompt.as_mut()
+    }
+
+    pub fn prompt_take(&mut self) -> Option<Prompt> {
+        self.prompt.take()
     }
 }

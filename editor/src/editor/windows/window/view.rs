@@ -1,5 +1,7 @@
 mod cell;
 
+use std::mem;
+
 use sanedit_buffer::piece_tree::{next_grapheme, PieceTreeSlice};
 use sanedit_messages::redraw::{self, Point, Size};
 
@@ -61,14 +63,20 @@ impl View {
                 *line += 1;
                 *col = 0;
             }
-
-            if *line == self.height {
-                break;
-            }
         }
     }
 
-    fn draw_trailing_whitespace(&mut self) {}
+    fn grid_advance_backwards(&mut self, line: &mut usize, col: &mut usize, amount: usize) {
+        for _ in 0..amount {
+            if *col == 0 {
+                *line -= 1;
+                *col = self.width.saturating_sub(1);
+            }
+
+            *col -= 1;
+        }
+    }
+
     fn draw_cursors(&mut self, cursors: &Cursors) {
         let primary = cursors.primary();
         self.primary_cursor = self
@@ -77,39 +85,25 @@ impl View {
     }
 
     fn cursor_cell_pos(&mut self, cursor: &Cursor) -> Option<Point> {
-        // Cursor is always on a character or at the end of buffer
-        let mut last_char: Option<(Point, GraphemeCategory)> = None;
-
+        // Cursor is always on a character or at the end of file
         let mut pos = self.offset;
         for (line, row) in self.cells.iter().enumerate() {
             for (col, cell) in row.iter().enumerate() {
-                if let Some(ch) = cell.char() {
-                    if cursor.pos() == pos {
-                        return Some(Point { x: col, y: line });
+                match cell {
+                    Cell::Empty => {}
+                    Cell::EOF => {
+                        if cursor.pos() == pos {
+                            return Some(Point { x: col, y: line });
+                        }
                     }
-                    pos += ch.grapheme_len();
-                    last_char = Some((Point { x: col, y: line }, ch.grapheme_category()));
+                    Cell::Char { ch } => {
+                        if cursor.pos() == pos {
+                            return Some(Point { x: col, y: line });
+                        }
+                        pos += ch.grapheme_len();
+                    }
                 }
             }
-        }
-
-        if cursor.pos() == self.end {
-            let point = last_char
-                .map(|(mut point, category)| {
-                    // If we do not have EOL and space available, put cursor to
-                    // the right side. Otherwise put cursor to the beginning of the
-                    // next line.
-                    if point.x + 1 < self.width && category != GraphemeCategory::EOL {
-                        point.x += 1;
-                        point
-                    } else {
-                        point.y += 1;
-                        point.x = 0;
-                        point
-                    }
-                })
-                .unwrap_or(Point::default());
-            return Some(point);
         }
 
         None
@@ -121,27 +115,8 @@ impl View {
         let mut line = 0;
         let mut col = 0;
 
-        while let Some(grapheme) = next_grapheme(&slice, pos) {
-            if line == self.height {
-                break;
-            }
-            let grapheme_len = grapheme.len();
-            let is_eol = EOL::is_eol(&grapheme);
-            let ch = Char::new(grapheme, col, &self.display_options);
-            let ch_width = ch.width();
-            let cell = ch.into();
-            self.cells[line][col] = cell;
-
-            self.grid_advance(&mut line, &mut col, ch_width);
-
-            // c_col != 0 because eol maybe on the last cell and we don't
-            // want to crate extra empty line
-            if is_eol && col != 0 {
-                line += 1;
-                col = 0;
-            }
-
-            pos += grapheme_len;
+        while pos != buf.len() && line < self.height {
+            self.draw_line(&slice, &mut pos, &mut line, &mut col);
         }
 
         if pos == buf.len() {
@@ -151,17 +126,112 @@ impl View {
         self.end = pos;
     }
 
+    fn draw_line_backwards(
+        &mut self,
+        slice: &PieceTreeSlice,
+        pos: &mut usize,
+        line: &mut usize,
+        col: &mut usize,
+    ) {
+        let cur = *line;
+
+        while let Some(grapheme) = next_grapheme(&slice, *pos) {
+            let grapheme_len = grapheme.len();
+            let ch = Char::new(grapheme, *col, &self.display_options);
+            let ch_width = ch.width();
+            let cell = ch.into();
+
+            self.cells[*line][*col] = cell;
+            *pos -= grapheme_len;
+
+            self.grid_advance_backwards(line, col, ch_width);
+
+            if cur != *line {
+                break;
+            }
+        }
+    }
+
+    fn draw_line(
+        &mut self,
+        slice: &PieceTreeSlice,
+        pos: &mut usize,
+        line: &mut usize,
+        col: &mut usize,
+    ) {
+        let cur = *line;
+
+        while let Some(grapheme) = next_grapheme(&slice, *pos) {
+            let grapheme_len = grapheme.len();
+            let is_eol = EOL::is_eol(&grapheme);
+            let ch = Char::new(grapheme, *col, &self.display_options);
+            let ch_width = ch.width();
+            let cell = ch.into();
+
+            self.cells[*line][*col] = cell;
+            *pos += grapheme_len;
+
+            if is_eol {
+                *line += 1;
+                *col = 0;
+            } else {
+                self.grid_advance(line, col, ch_width);
+            }
+
+            if cur != *line {
+                break;
+            }
+        }
+    }
+
     pub fn redraw(&mut self, buf: &Buffer, cursors: &Cursors, opts: &DisplayOptions) {
-        self.clear();
         self.display_options = opts.clone();
+        self.clear();
         self.draw_cells(buf);
         self.draw_cursors(cursors);
         self.needs_redraw = false;
     }
 
-    pub fn scroll_down(&mut self, buf: &Buffer, cursors: &Cursors) {}
+    pub fn scroll_down(&mut self, buf: &Buffer, cursors: &Cursors) {
+        if self.end == buf.len() {
+            return;
+        }
 
-    pub fn scroll_up(&mut self, buf: &Buffer, cursors: &Cursors) {}
+        // TODO better way?
+        self.cells.remove(0);
+        self.cells.push(vec![Cell::default(); self.width]);
+
+        let slice = buf.slice(self.end..);
+        let last_line = self.height - 1;
+        let mut pos = 0;
+        let mut line = last_line;
+        let mut col = 0;
+
+        while pos != buf.len() && line < self.height {
+            self.draw_line(&slice, &mut pos, &mut line, &mut col);
+        }
+
+        self.draw_cursors(cursors);
+    }
+
+    pub fn scroll_up(&mut self, buf: &Buffer, cursors: &Cursors) {
+        if self.offset == 0 {
+            return;
+        }
+
+        // TODO better way?
+        self.cells.pop();
+        self.cells.insert(0, vec![Cell::default(); self.width]);
+
+        let slice = buf.slice(..self.offset);
+        let mut pos = self.offset;
+        let mut line = 0;
+        let mut col = self.width.saturating_sub(1);
+
+        todo!()
+
+        // self.draw_cursors(cursors);
+    }
 
     pub fn offset(&self) -> usize {
         self.offset

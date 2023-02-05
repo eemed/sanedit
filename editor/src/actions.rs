@@ -1,5 +1,6 @@
 pub(crate) mod editor;
 pub(crate) mod movement;
+pub(crate) mod prompt;
 pub(crate) mod text;
 
 use std::{fmt, sync::Arc};

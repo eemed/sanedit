@@ -22,14 +22,14 @@ pub(crate) fn start_of_line(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.get_win_buf_mut(id);
     let cursor = win.primary_cursor_mut();
     let pos = common::movement::start_of_line(&buf.slice(..), cursor.pos());
-    cursor.goto(pos);
+    cursor.goto_with_col(pos, 0);
 }
 
 pub(crate) fn end_of_line(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.get_win_buf_mut(id);
     let cursor = win.primary_cursor_mut();
     let pos = common::movement::end_of_line(&buf.slice(..), cursor.pos());
-    cursor.goto(pos);
+    cursor.goto_with_col(pos, usize::MAX);
 }
 
 pub(crate) fn start_of_buffer(editor: &mut Editor, id: ClientId) {

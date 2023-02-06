@@ -11,10 +11,10 @@ use tokio::{
 };
 
 use crate::{
-    events::{FromServer, ToServer},
+    events::{FromEditor, ToEditor},
     server::{
         client::{conn_read, conn_write},
-        ServerHandle, CHANNEL_SIZE,
+        EditorHandle, CHANNEL_SIZE,
     },
 };
 
@@ -26,7 +26,7 @@ pub(crate) struct ClientInfo {
     pub(crate) id: ClientId,
     pub(crate) conn: UnixStream,
     pub(crate) path: PathBuf,
-    pub(crate) server_handle: ServerHandle,
+    pub(crate) server_handle: EditorHandle,
 }
 
 pub(crate) fn spawn_client(info: ClientInfo) {
@@ -57,7 +57,7 @@ pub(crate) fn spawn_client(info: ClientInfo) {
 
 async fn run_client(
     my_handle: oneshot::Receiver<ClientHandle>,
-    server_recv: Receiver<FromServer>,
+    server_recv: Receiver<FromEditor>,
     mut info: ClientInfo,
 ) {
     let my_handle = match my_handle.await {
@@ -67,7 +67,7 @@ async fn run_client(
 
     // Send client handle to the server
     info.server_handle
-        .send(ToServer::NewClient(my_handle))
+        .send(ToEditor::NewClient(my_handle))
         .await;
 
     let res = client_loop(server_recv, info).await;
@@ -80,7 +80,7 @@ async fn run_client(
 }
 
 async fn client_loop(
-    server_recv: Receiver<FromServer>,
+    server_recv: Receiver<FromEditor>,
     mut info: ClientInfo,
 ) -> Result<(), io::Error> {
     let (read, write) = info.conn.split();

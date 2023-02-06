@@ -3,10 +3,7 @@ pub(crate) mod unix;
 
 use std::path::PathBuf;
 
-use futures::{
-    stream::{TryStream, TryStreamExt},
-    Sink, SinkExt, Stream, StreamExt,
-};
+use futures::{SinkExt, StreamExt};
 use sanedit_messages::{BinCodec, ClientMessage, Message};
 use tokio::{
     io::{self, AsyncRead, AsyncWrite},
@@ -15,9 +12,9 @@ use tokio::{
 };
 use tokio_util::codec::{FramedRead, FramedWrite};
 
-use crate::events::{FromServer, ToServer};
+use crate::events::{FromEditor, ToEditor};
 
-use super::ServerHandle;
+use super::EditorHandle;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub(crate) struct ClientId(pub(crate) usize);
@@ -27,7 +24,7 @@ pub(crate) struct ClientId(pub(crate) usize);
 pub(crate) struct ClientHandle {
     pub(crate) id: ClientId,
     pub(crate) info: ClientConnectionInfo,
-    pub(crate) send: Sender<FromServer>,
+    pub(crate) send: Sender<FromEditor>,
     pub(crate) kill: JoinHandle<()>,
 }
 
@@ -41,7 +38,7 @@ pub(crate) enum ClientConnectionInfo {
 async fn conn_read(
     id: ClientId,
     read: impl AsyncRead,
-    mut server_handle: ServerHandle,
+    mut server_handle: EditorHandle,
 ) -> Result<(), io::Error> {
     let codec: BinCodec<Message> = BinCodec::new();
     let framed_read = FramedRead::new(read, codec);
@@ -49,7 +46,7 @@ async fn conn_read(
     while let Some(msg) = read.next().await {
         match msg {
             Ok(msg) => {
-                server_handle.send(ToServer::Message(id, msg)).await;
+                server_handle.send(ToEditor::Message(id, msg)).await;
             }
             Err(e) => {
                 log::info!("conn_read error: {}", e);
@@ -63,14 +60,14 @@ async fn conn_read(
 
 async fn conn_write(
     write: impl AsyncWrite,
-    mut server_recv: Receiver<FromServer>,
+    mut server_recv: Receiver<FromEditor>,
 ) -> Result<(), io::Error> {
     let codec: BinCodec<ClientMessage> = BinCodec::new();
     let mut write = Box::pin(FramedWrite::new(write, codec));
 
     while let Some(msg) = server_recv.recv().await {
         match msg {
-            FromServer::Message(msg) => {
+            FromEditor::Message(msg) => {
                 if let Err(e) = write.send(msg).await {
                     log::error!("conn_write error: {}", e);
                     break;

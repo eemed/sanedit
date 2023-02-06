@@ -2,6 +2,7 @@ pub(crate) mod editor;
 pub(crate) mod movement;
 pub(crate) mod prompt;
 pub(crate) mod text;
+pub(crate) mod jobs;
 
 use std::{fmt, sync::Arc};
 
@@ -11,6 +12,7 @@ use self::editor::quit;
 use self::movement::*;
 use self::prompt::*;
 use self::text::*;
+use self::jobs::*;
 
 macro_rules! action_list {
     ( $($name:ident,)*) => {
@@ -82,6 +84,8 @@ impl Action {
         prompt_prev_completion,
         prompt_close,
         prompt_open_file,
+
+        jobs_test,
     );
 }
 

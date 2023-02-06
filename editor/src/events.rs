@@ -3,22 +3,23 @@
 use sanedit_messages::{ClientMessage, Message};
 use tokio::io;
 
-use crate::server::{ClientHandle, ClientId};
+use crate::server::{ClientHandle, ClientId, FromJobs};
 
 #[derive(Debug)]
-pub(crate) enum ToServer {
+pub(crate) enum ToEditor {
     NewClient(ClientHandle),
+    Jobs(FromJobs),
     Message(ClientId, Message),
     FatalError(io::Error),
 }
 
 #[derive(Debug)]
-pub(crate) enum FromServer {
+pub(crate) enum FromEditor {
     Message(ClientMessage),
 }
 
-impl From<ClientMessage> for FromServer {
+impl From<ClientMessage> for FromEditor {
     fn from(msg: ClientMessage) -> Self {
-        FromServer::Message(msg)
+        FromEditor::Message(msg)
     }
 }

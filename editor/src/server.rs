@@ -3,6 +3,7 @@ mod client;
 mod jobs;
 
 pub(crate) use client::*;
+pub(crate) use jobs::{FromJobs, Job, JobId, JobsHandle, ToJobs};
 
 use std::{
     path::PathBuf,
@@ -19,22 +20,22 @@ use tokio::{
     sync::mpsc::{channel, Sender},
 };
 
-use crate::{editor, events::ToServer};
+use crate::{editor, events::ToEditor};
 
-use self::jobs::jobs_loop;
+use self::jobs::spawn_jobs;
 
 /// Channel buffer size for tokio channels
 pub(crate) const CHANNEL_SIZE: usize = 64;
 
 /// Editor handle allows us to communicate with the editor
 #[derive(Clone, Debug)]
-pub(crate) struct ServerHandle {
-    sender: Sender<ToServer>,
+pub(crate) struct EditorHandle {
+    sender: Sender<ToEditor>,
     next_id: Arc<AtomicUsize>,
 }
 
-impl ServerHandle {
-    pub async fn send(&mut self, msg: ToServer) {
+impl EditorHandle {
+    pub async fn send(&mut self, msg: ToEditor) {
         if self.sender.send(msg).await.is_err() {
             panic!("Main loop has shut down.");
         }
@@ -62,12 +63,22 @@ pub fn run_sync(addrs: Vec<Address>) {
 /// Spawn connection acceptor tasks and the main editor loop task
 /// The acceptor then spawns a new task for each client connection.
 pub async fn run(addrs: Vec<Address>) {
+    let (send, recv) = channel(CHANNEL_SIZE);
+    let handle = EditorHandle {
+        sender: send,
+        next_id: Default::default(),
+    };
 
-    tokio::spawn(async move {
-        jobs_loop().await;
+    let jobs_handle = spawn_jobs(handle.clone()).await;
+    let join = thread::spawn(|| {
+        let res = editor::main_loop(jobs_handle, recv);
+        match res {
+            Ok(()) => {}
+            Err(err) => {
+                log::error!("Oops {}.", err);
+            }
+        }
     });
-
-    let (handle, join) = spawn_editor_loop();
 
     for addr in addrs.into_iter() {
         let h = handle.clone();
@@ -88,22 +99,8 @@ pub async fn run(addrs: Vec<Address>) {
     join.join().unwrap();
 }
 
-/// Spawn editor loop, and return a handle to it and the task join handle
-fn spawn_editor_loop() -> (ServerHandle, std::thread::JoinHandle<()>) {
-    let (send, recv) = channel(CHANNEL_SIZE);
-    let handle = ServerHandle {
-        sender: send,
-        next_id: Default::default(),
-    };
-    let join = thread::spawn(|| {
-        let res = editor::main_loop(recv);
-        match res {
-            Ok(()) => {}
-            Err(err) => {
-                log::error!("Oops {}.", err);
-            }
-        }
-    });
+// /// Spawn editor loop, and return a handle to it and the task join handle
+// fn spawn_editor_loop(jobs_handle: JobsHandle) -> (ServerHandle, std::thread::JoinHandle<()>) {
 
-    (handle, join)
-}
+//     (handle, join)
+// }

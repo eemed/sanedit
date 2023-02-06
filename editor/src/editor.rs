@@ -1,4 +1,5 @@
 mod buffers;
+mod jobs;
 mod keymap;
 mod windows;
 
@@ -21,11 +22,13 @@ use crate::actions::prompt;
 use crate::actions::text;
 use crate::actions::Action;
 use crate::editor::buffers::buffer::Buffer;
-use crate::events::ToServer;
+use crate::events::ToEditor;
 use crate::server::ClientHandle;
 use crate::server::ClientId;
+use crate::server::JobsHandle;
 
 use self::buffers::Buffers;
+use self::jobs::Jobs;
 use self::keymap::Keymap;
 use self::windows::window::InputMode;
 use self::windows::window::Window;
@@ -35,6 +38,7 @@ pub(crate) struct Editor {
     clients: HashMap<ClientId, ClientHandle>,
     windows: Windows,
     buffers: Buffers,
+    jobs: Jobs,
 
     keymap: Keymap,
     prompt_keymap: Keymap,
@@ -46,11 +50,12 @@ pub(crate) struct Editor {
 }
 
 impl Editor {
-    fn new() -> Editor {
+    fn new(jobs_handle: JobsHandle) -> Editor {
         Editor {
             clients: HashMap::default(),
             windows: Windows::default(),
             buffers: Buffers::default(),
+            jobs: Jobs::new(jobs_handle),
             keymap: Keymap::default_normal(),
             prompt_keymap: Keymap::default_prompt(),
             keys: Vec::default(),
@@ -200,19 +205,29 @@ impl Editor {
     fn is_running(&self) -> bool {
         self.is_running
     }
+
+    pub fn jobs_mut(&mut self) -> &mut Jobs {
+        &mut self.jobs
+    }
 }
 
 /// Execute editor logic, getting each message from the passed receiver.
 /// Editor uses client handles to communicate to clients. Client handles are
 /// sent using the provided reciver.
-pub(crate) fn main_loop(mut recv: Receiver<ToServer>) -> Result<(), io::Error> {
-    let mut editor = Editor::new();
+pub(crate) fn main_loop(
+    jobs_handle: JobsHandle,
+    mut recv: Receiver<ToEditor>,
+) -> Result<(), io::Error> {
+    let mut editor = Editor::new(jobs_handle);
 
     while let Some(msg) = recv.blocking_recv() {
         match msg {
-            ToServer::NewClient(handle) => editor.on_client_connected(handle),
-            ToServer::Message(id, msg) => editor.handle_message(id, msg),
-            ToServer::FatalError(e) => {
+            ToEditor::NewClient(handle) => editor.on_client_connected(handle),
+            ToEditor::Jobs(msg) => {
+                log::info!("msg from jobs {msg:?}");
+            }
+            ToEditor::Message(id, msg) => editor.handle_message(id, msg),
+            ToEditor::FatalError(e) => {
                 log::info!("Fatal error: {}", e);
                 break;
             }

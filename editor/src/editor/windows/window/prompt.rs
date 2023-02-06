@@ -2,10 +2,7 @@ use std::sync::Arc;
 
 use unicode_segmentation::UnicodeSegmentation;
 
-use crate::{
-    editor::{keymap::Keymap, Editor},
-    server::ClientId,
-};
+use crate::{editor::Editor, server::ClientId};
 
 use super::completion::Completion;
 

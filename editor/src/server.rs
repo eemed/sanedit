@@ -1,5 +1,6 @@
 mod accept;
 mod client;
+mod jobs;
 
 pub(crate) use client::*;
 
@@ -19,6 +20,8 @@ use tokio::{
 };
 
 use crate::{editor, events::ToServer};
+
+use self::jobs::jobs_loop;
 
 /// Channel buffer size for tokio channels
 pub(crate) const CHANNEL_SIZE: usize = 64;
@@ -59,7 +62,11 @@ pub fn run_sync(addrs: Vec<Address>) {
 /// Spawn connection acceptor tasks and the main editor loop task
 /// The acceptor then spawns a new task for each client connection.
 pub async fn run(addrs: Vec<Address>) {
-    // Editor loop
+
+    tokio::spawn(async move {
+        jobs_loop().await;
+    });
+
     let (handle, join) = spawn_editor_loop();
 
     for addr in addrs.into_iter() {

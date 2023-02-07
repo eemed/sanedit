@@ -1,10 +1,4 @@
-mod fs;
-
-pub(crate) use fs::*;
-
-use std::collections::HashMap;
-
-use crate::server::{ClientId, Job, JobId, JobsHandle};
+use crate::server::{Job, JobsHandle};
 
 #[derive(Debug)]
 pub(crate) struct Jobs {
@@ -16,10 +10,7 @@ impl Jobs {
         Jobs { handle }
     }
 
-    pub fn new_job<J>(&mut self, job: J)
-    where
-        J: Job + 'static,
-    {
+    pub fn new_job(&mut self, job: Job) {
         self.handle.new_job(job);
     }
 }

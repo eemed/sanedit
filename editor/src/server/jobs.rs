@@ -1,6 +1,13 @@
 use core::fmt::Debug;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::{
+    pin::Pin,
+    sync::{
+        atomic::{AtomicUsize, Ordering},
+        Arc,
+    },
+};
 
+use futures::Future;
 use tokio::sync::mpsc;
 
 use crate::events::ToEditor;
@@ -20,14 +27,34 @@ impl JobId {
     }
 }
 
-/// Job trait, tokio runtime is used to run these
-pub(crate) trait Job: Debug + Send {
-    fn run_async(&mut self, handle: EditorHandle);
+// TODO give out a output provider instead of whole editorhandle, so that we can
+// only send output and error messages from future fn
+pub(crate) type JobFutureFn =
+    Box<dyn Fn(EditorHandle) -> Pin<Box<dyn Future<Output = bool> + Send + Sync>> + Send + Sync>;
+
+pub(crate) struct Job {
+    id: JobId,
+    fun: JobFutureFn,
+}
+
+impl Job {
+    pub fn new(fun: JobFutureFn) -> Job {
+        Job {
+            id: JobId::next(),
+            fun,
+        }
+    }
+}
+
+impl Debug for Job {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        todo!()
+    }
 }
 
 #[derive(Debug)]
 pub(crate) enum ToJobs {
-    New(Box<dyn Job>),
+    New(Job),
     Stop(JobId),
 }
 
@@ -35,7 +62,8 @@ pub(crate) enum ToJobs {
 pub(crate) enum FromJobs {
     Output(String),
     Error(String),
-    Done,
+    Ok,
+    Fail,
 }
 
 #[derive(Debug)]
@@ -44,11 +72,8 @@ pub(crate) struct JobsHandle {
 }
 
 impl JobsHandle {
-    pub fn new_job<J>(&mut self, job: J) -> Result<(), mpsc::error::SendError<ToJobs>>
-    where
-        J: Job + 'static,
-    {
-        self.send.blocking_send(ToJobs::New(Box::new(job)))
+    pub fn new_job(&mut self, job: Job) -> Result<(), mpsc::error::SendError<ToJobs>> {
+        self.send.blocking_send(ToJobs::New(job))
     }
 }
 
@@ -64,13 +89,22 @@ pub(crate) async fn spawn_jobs(editor_handle: EditorHandle) -> JobsHandle {
 }
 
 // Runs jobs in tokio runtime.
-async fn jobs_loop(mut recv: mpsc::Receiver<ToJobs>, mut handle: EditorHandle) {
+async fn jobs_loop(mut recv: mpsc::Receiver<ToJobs>, handle: EditorHandle) {
     while let Some(msg) = recv.recv().await {
         match msg {
-            ToJobs::New(mut job) => {
-                let job = job.as_mut();
-                job.run_async(handle.clone());
-                handle.send(ToEditor::Jobs(FromJobs::Done)).await;
+            ToJobs::New(job) => {
+                let job_future = (job.fun)(handle.clone());
+                let mut h = handle.clone();
+                let future = async move {
+                    let success = job_future.await;
+                    let msg = if success {
+                        FromJobs::Ok
+                    } else {
+                        FromJobs::Fail
+                    };
+                    h.send(ToEditor::Jobs(msg)).await;
+                };
+                tokio::spawn(future);
             }
             ToJobs::Stop(id) => {
                 // TODO implement stop mechanism for jobs

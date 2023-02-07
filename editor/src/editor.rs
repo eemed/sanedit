@@ -1,5 +1,5 @@
 mod buffers;
-mod jobs;
+pub(crate) mod jobs;
 mod keymap;
 mod windows;
 
@@ -39,13 +39,10 @@ pub(crate) struct Editor {
     windows: Windows,
     buffers: Buffers,
     jobs: Jobs,
-
     keymap: Keymap,
     prompt_keymap: Keymap,
-
     keys: Vec<KeyEvent>,
     is_running: bool,
-
     working_dir: PathBuf,
 }
 

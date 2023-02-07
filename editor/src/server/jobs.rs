@@ -1,5 +1,5 @@
-use core::fmt::{self, Debug};
-use std::sync::Arc;
+use core::fmt::Debug;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use tokio::sync::mpsc;
 
@@ -8,53 +8,34 @@ use crate::events::ToEditor;
 use super::{EditorHandle, CHANNEL_SIZE};
 
 #[derive(Debug)]
-pub(crate) struct JobId {}
+pub(crate) struct JobId {
+    id: usize,
+}
 
-impl Default for JobId {
-    fn default() -> Self {
-        JobId {}
+impl JobId {
+    pub fn next() -> JobId {
+        static NEXT_ID: AtomicUsize = AtomicUsize::new(0);
+        let id = NEXT_ID.fetch_add(1, Ordering::Relaxed);
+        JobId { id }
     }
 }
 
-pub(crate) struct Job {
-    id: JobId,
-    fun: Arc<dyn Fn(EditorHandle) + Send + Sync>,
-}
-
-impl Debug for Job {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Job").field("id", &self.id).finish()
-    }
-}
-
-impl Default for Job {
-    fn default() -> Self {
-        Job {
-            id: JobId::default(),
-            fun: Arc::new(|mut handle| {
-                tokio::spawn(async move {
-                    let mut entries = std::fs::read_dir(".")
-                        .unwrap()
-                        .map(|res| res.map(|e| e.path()))
-                        .collect::<Result<Vec<_>, std::io::Error>>()
-                        .unwrap();
-                    log::info!("Entries: {entries:?}");
-                    handle.send(ToEditor::Jobs(FromJobs::Ok)).await;
-                });
-            }),
-        }
-    }
+/// Job trait, tokio runtime is used to run these
+pub(crate) trait Job: Debug + Send {
+    fn run_async(&mut self, handle: EditorHandle);
 }
 
 #[derive(Debug)]
 pub(crate) enum ToJobs {
-    New(Job),
+    New(Box<dyn Job>),
     Stop(JobId),
 }
 
 #[derive(Debug)]
 pub(crate) enum FromJobs {
-    Ok,
+    Output(String),
+    Error(String),
+    Done,
 }
 
 #[derive(Debug)]
@@ -63,8 +44,11 @@ pub(crate) struct JobsHandle {
 }
 
 impl JobsHandle {
-    pub fn new_job(&mut self, job: Job) -> Result<(), mpsc::error::SendError<ToJobs>> {
-        self.send.blocking_send(ToJobs::New(job))
+    pub fn new_job<J>(&mut self, job: J) -> Result<(), mpsc::error::SendError<ToJobs>>
+    where
+        J: Job + 'static,
+    {
+        self.send.blocking_send(ToJobs::New(Box::new(job)))
     }
 }
 
@@ -83,11 +67,14 @@ pub(crate) async fn spawn_jobs(editor_handle: EditorHandle) -> JobsHandle {
 async fn jobs_loop(mut recv: mpsc::Receiver<ToJobs>, mut handle: EditorHandle) {
     while let Some(msg) = recv.recv().await {
         match msg {
-            ToJobs::New(Job { id, fun }) => {
-                log::info!("new job");
-                (fun)(handle.clone())
+            ToJobs::New(mut job) => {
+                let job = job.as_mut();
+                job.run_async(handle.clone());
+                handle.send(ToEditor::Jobs(FromJobs::Done)).await;
             }
-            ToJobs::Stop(id) => {}
+            ToJobs::Stop(id) => {
+                // TODO implement stop mechanism for jobs
+            }
         }
     }
 }

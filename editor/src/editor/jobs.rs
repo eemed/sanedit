@@ -1,9 +1,10 @@
-use tokio::sync::mpsc;
+mod fs;
 
-use crate::{
-    events::ToEditor,
-    server::{Job, JobId, JobsHandle, ToJobs},
-};
+pub(crate) use fs::*;
+
+use std::collections::HashMap;
+
+use crate::server::{ClientId, Job, JobId, JobsHandle};
 
 #[derive(Debug)]
 pub(crate) struct Jobs {
@@ -15,7 +16,10 @@ impl Jobs {
         Jobs { handle }
     }
 
-    pub fn test(&mut self) {
-        self.handle.new_job(Job::default());
+    pub fn new_job<J>(&mut self, job: J)
+    where
+        J: Job + 'static,
+    {
+        self.handle.new_job(job);
     }
 }

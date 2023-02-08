@@ -1,10 +1,7 @@
 use core::fmt::Debug;
 use std::{
     pin::Pin,
-    sync::{
-        atomic::{AtomicUsize, Ordering},
-        Arc,
-    },
+    sync::atomic::{AtomicUsize, Ordering},
 };
 
 use futures::Future;
@@ -14,7 +11,7 @@ use crate::events::ToEditor;
 
 use super::{EditorHandle, CHANNEL_SIZE};
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub(crate) struct JobId {
     id: usize,
 }
@@ -27,10 +24,18 @@ impl JobId {
     }
 }
 
-// TODO give out a output provider instead of whole editorhandle, so that we can
-// only send output and error messages from future fn
-pub(crate) type JobFutureFn =
-    Box<dyn Fn(EditorHandle) -> Pin<Box<dyn Future<Output = bool> + Send + Sync>> + Send + Sync>;
+pub(crate) struct JobProgressSender(EditorHandle);
+impl JobProgressSender {
+    pub async fn send(&mut self, progress: JobProgress) {
+        self.0
+            .sender
+            .send(ToEditor::Jobs(FromJobs::Progress(progress)))
+            .await;
+    }
+}
+
+pub(crate) type PinnedFuture = Pin<Box<dyn Future<Output = bool> + Send + Sync>>;
+pub(crate) type JobFutureFn = Box<dyn FnOnce(JobProgressSender) -> PinnedFuture + Send + Sync>;
 
 pub(crate) struct Job {
     id: JobId,
@@ -43,6 +48,10 @@ impl Job {
             id: JobId::next(),
             fun,
         }
+    }
+
+    pub fn id(&self) -> JobId {
+        self.id
     }
 }
 
@@ -58,10 +67,16 @@ pub(crate) enum ToJobs {
     Stop(JobId),
 }
 
+/// Used to report job progress. Basically stdout and stderr.
+#[derive(Debug)]
+pub(crate) enum JobProgress {
+    Output(Vec<String>),
+    Error(Vec<String>),
+}
+
 #[derive(Debug)]
 pub(crate) enum FromJobs {
-    Output(String),
-    Error(String),
+    Progress(JobProgress),
     Ok,
     Fail,
 }
@@ -72,7 +87,7 @@ pub(crate) struct JobsHandle {
 }
 
 impl JobsHandle {
-    pub fn new_job(&mut self, job: Job) -> Result<(), mpsc::error::SendError<ToJobs>> {
+    pub fn run_job(&mut self, job: Job) -> Result<(), mpsc::error::SendError<ToJobs>> {
         self.send.blocking_send(ToJobs::New(job))
     }
 }
@@ -93,7 +108,8 @@ async fn jobs_loop(mut recv: mpsc::Receiver<ToJobs>, handle: EditorHandle) {
     while let Some(msg) = recv.recv().await {
         match msg {
             ToJobs::New(job) => {
-                let job_future = (job.fun)(handle.clone());
+                let progress_handle = JobProgressSender(handle.clone());
+                let job_future = (job.fun)(progress_handle);
                 let mut h = handle.clone();
                 let future = async move {
                     let success = job_future.await;

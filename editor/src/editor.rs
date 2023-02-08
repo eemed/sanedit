@@ -13,6 +13,7 @@ use sanedit_messages::Message;
 use std::collections::HashMap;
 use std::env;
 use std::mem;
+use std::path::Path;
 use std::path::PathBuf;
 
 use tokio::io;
@@ -205,6 +206,10 @@ impl Editor {
 
     pub fn jobs_mut(&mut self) -> &mut Jobs {
         &mut self.jobs
+    }
+
+    pub fn working_dir(&self) -> &Path {
+        &self.working_dir
     }
 }
 

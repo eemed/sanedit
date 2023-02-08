@@ -3,7 +3,10 @@ mod client;
 mod jobs;
 
 pub(crate) use client::*;
-pub(crate) use jobs::{FromJobs, Job, JobId, JobsHandle, ToJobs};
+pub(crate) use jobs::{
+    FromJobs, Job, JobFutureFn, JobId, JobProgress, JobProgressSender, JobsHandle, PinnedFuture,
+    ToJobs,
+};
 
 use std::{
     path::PathBuf,

@@ -10,7 +10,7 @@ impl Jobs {
         Jobs { handle }
     }
 
-    pub fn new_job(&mut self, job: Job) {
-        self.handle.new_job(job);
+    pub fn run_job(&mut self, job: Job) {
+        self.handle.run_job(job);
     }
 }

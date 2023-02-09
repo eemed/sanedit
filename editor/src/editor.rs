@@ -31,8 +31,8 @@ use crate::server::JobsHandle;
 use self::buffers::Buffers;
 use self::jobs::Jobs;
 use self::keymap::Keymap;
-use self::windows::window::Mode;
-use self::windows::window::Window;
+use self::windows::Mode;
+use self::windows::Window;
 use self::windows::Windows;
 
 pub(crate) struct Editor {

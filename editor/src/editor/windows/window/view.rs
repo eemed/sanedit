@@ -6,6 +6,8 @@ use crate::common::eol::EOL;
 use crate::editor::buffers::buffer::Buffer;
 use crate::editor::windows::window::{Cursor, Cursors};
 
+use super::Window;
+
 #[derive(Debug, Clone)]
 pub(crate) enum Cell {
     Empty,
@@ -69,11 +71,13 @@ pub(crate) struct View {
 }
 
 impl View {
-    pub fn new(width: usize, height: usize, buf: &Buffer, window: &Window) -> View {
-        todo!()
-    }
+    // pub fn new(width: usize, height: usize, buf: &Buffer, window: &Window) -> View {
+    //     let mut view = View::empty(width, height);
+    //     view.redraw(buf, window);
+    //     view
+    // }
 
-    pub fn empty(width: usize, height: usize) -> View {
+    pub fn new(width: usize, height: usize) -> View {
         View {
             offset: 0,
             end: 0,
@@ -229,8 +233,9 @@ impl View {
         }
     }
 
-    pub fn redraw(&mut self, buf: &Buffer, cursors: &Cursors, opts: &DisplayOptions) {
-        self.display_options = opts.clone();
+    pub fn redraw(&mut self, buf: &Buffer, win: &Window) {
+        self.display_options = win.options.display.clone();
+        let cursors = win.cursors();
         self.clear();
         self.draw_cells(buf);
         self.draw_cursors(cursors);
@@ -348,6 +353,12 @@ impl View {
         self.height = size.height;
         self.cells = vec![vec![Cell::default(); self.width]; self.height];
         self.needs_redraw = true;
+    }
+}
+
+impl Default for View {
+    fn default() -> Self {
+        View::new(0, 0)
     }
 }
 

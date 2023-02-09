@@ -8,11 +8,10 @@ mod view;
 
 use std::mem;
 
-use sanedit_messages::redraw::{Size, Redraw};
+use sanedit_messages::redraw::{self, Redraw, Size};
 
 use crate::editor::buffers::buffer::Buffer;
 
-use self::view::View;
 pub(crate) use self::{
     cursors::{Cursor, Cursors},
     message::{Message, Severity},
@@ -31,16 +30,16 @@ pub(crate) struct Window {
     view: View,
     message: Message,
     cursors: Cursors,
-    prompt: Prompt,
     mode: Mode,
-    options: WindowOptions,
+    pub prompt: Prompt,
+    pub options: WindowOptions,
 }
 
 impl Window {
     pub fn new(buf: BufferId, width: usize, height: usize) -> Window {
         Window {
             buf,
-            view: View::empty(width, height),
+            view: View::new(width, height),
             message: Message::default(),
             cursors: Cursors::default(),
             prompt: Prompt::default(),
@@ -81,9 +80,8 @@ impl Window {
 
     fn redraw_view(&mut self, buf: &Buffer) {
         debug_assert!(buf.id == self.buf, "Provided a wrong buffer to window");
-        let width = self.view().width();
-        let height = self.view().height();
-        let view = View::new(width, height, &buf, self);
+        let mut view = mem::take(&mut self.view);
+        view.redraw(buf, self);
         self.view = view;
     }
 
@@ -118,18 +116,6 @@ impl Window {
         self.view.needs_redraw()
     }
 
-    pub fn prompt(&self) -> &Prompt {
-        &self.prompt
-    }
-
-    pub fn prompt_mut(&mut self) -> &mut Prompt {
-        &mut self.prompt
-    }
-
-    pub fn take_prompt(&mut self) -> Prompt {
-        mem::replace(&mut self.prompt, Prompt::default())
-    }
-
     pub fn mode(&self) -> Mode {
         self.mode
     }
@@ -144,6 +130,19 @@ impl Window {
     }
 
     pub fn redraw(&mut self, buf: &Buffer) -> Vec<Redraw> {
-        todo!()
+        let mut redraw = vec![];
+        match self.mode {
+            Mode::Normal => {
+                self.redraw_view(buf);
+                redraw.push(Redraw::Window(redraw::Window::from(&self.view)))
+            }
+            Mode::Prompt => {}
+        }
+
+        redraw
+    }
+
+    pub fn cursors(&self) -> &Cursors {
+        &self.cursors
     }
 }

@@ -1,12 +1,9 @@
+mod window;
 use std::collections::HashMap;
 
-use crate::server::ClientId;
-
-use self::window::Window;
-
 use super::buffers::buffer::BufferId;
-
-pub(crate) mod window;
+use crate::server::ClientId;
+pub(crate) use window::*;
 
 #[derive(Debug, Default)]
 pub(crate) struct Windows {

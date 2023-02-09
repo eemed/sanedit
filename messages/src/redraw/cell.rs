@@ -21,6 +21,16 @@ impl From<&str> for Cell {
     }
 }
 
+impl From<char> for Cell {
+    fn from(ch: char) -> Self {
+        let mut buf = [0u8; 4];
+        let string = ch.encode_utf8(&mut buf);
+        Cell {
+            text: string.to_string(),
+        }
+    }
+}
+
 impl PartialEq<str> for Cell {
     fn eq(&self, other: &str) -> bool {
         self.text == other

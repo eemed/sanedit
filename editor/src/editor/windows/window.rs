@@ -1,23 +1,25 @@
 mod completion;
 mod cursors;
-mod input;
 mod message;
+mod mode;
 mod options;
 mod prompt;
 mod view;
 
 use std::mem;
 
-use sanedit_messages::redraw::Size;
+use sanedit_messages::redraw::{Size, Redraw};
 
 use crate::editor::buffers::buffer::Buffer;
 
+use self::view::View;
 pub(crate) use self::{
     cursors::{Cursor, Cursors},
-    input::InputMode,
     message::{Message, Severity},
+    mode::Mode,
     options::WindowOptions,
     prompt::Prompt,
+    prompt::PromptAction,
     view::View,
 };
 
@@ -30,7 +32,7 @@ pub(crate) struct Window {
     message: Message,
     cursors: Cursors,
     prompt: Prompt,
-    input: InputMode,
+    mode: Mode,
     options: WindowOptions,
 }
 
@@ -38,12 +40,12 @@ impl Window {
     pub fn new(buf: BufferId, width: usize, height: usize) -> Window {
         Window {
             buf,
-            view: View::new(width, height),
+            view: View::empty(width, height),
             message: Message::default(),
             cursors: Cursors::default(),
             prompt: Prompt::default(),
             options: WindowOptions::default(),
-            input: InputMode::Normal,
+            mode: Mode::Normal,
         }
     }
 
@@ -77,9 +79,12 @@ impl Window {
         self.cursors.primary_mut()
     }
 
-    pub fn redraw(&mut self, buf: &Buffer) {
+    fn redraw_view(&mut self, buf: &Buffer) {
         debug_assert!(buf.id == self.buf, "Provided a wrong buffer to window");
-        self.view.redraw(&buf, &self.cursors, &self.options.display)
+        let width = self.view().width();
+        let height = self.view().height();
+        let view = View::new(width, height, &buf, self);
+        self.view = view;
     }
 
     pub fn scroll_down(&mut self, buf: &Buffer) {
@@ -125,16 +130,20 @@ impl Window {
         mem::replace(&mut self.prompt, Prompt::default())
     }
 
-    pub fn input_mode(&self) -> InputMode {
-        self.input
+    pub fn mode(&self) -> Mode {
+        self.mode
     }
 
     pub fn open_prompt(&mut self, prompt: Prompt) {
         self.prompt = prompt;
-        self.input = InputMode::Prompt;
+        self.mode = Mode::Prompt;
     }
 
     pub fn close_prompt(&mut self) {
-        self.input = InputMode::Normal;
+        self.mode = Mode::Normal;
+    }
+
+    pub fn redraw(&mut self, buf: &Buffer) -> Vec<Redraw> {
+        todo!()
     }
 }

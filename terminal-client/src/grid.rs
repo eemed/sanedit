@@ -52,7 +52,9 @@ impl Grid {
                 for (col, cell) in row.into_iter().enumerate() {
                     let x = top_left.x + col;
                     let y = top_left.y + line;
-                    canvas[y][x] = cell;
+                    if x < self.width && y < self.height {
+                        canvas[y][x] = cell;
+                    }
                 }
             }
         }

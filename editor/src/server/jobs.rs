@@ -26,11 +26,14 @@ impl JobId {
 
 pub(crate) struct JobProgressSender(EditorHandle);
 impl JobProgressSender {
-    pub async fn send(&mut self, progress: JobProgress) {
+    pub async fn send(
+        &mut self,
+        progress: JobProgress,
+    ) -> Result<(), mpsc::error::SendError<ToEditor>> {
         self.0
             .sender
             .send(ToEditor::Jobs(FromJobs::Progress(progress)))
-            .await;
+            .await
     }
 }
 

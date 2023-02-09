@@ -1,17 +1,58 @@
-mod cell;
-
-use std::mem;
-
 use sanedit_buffer::piece_tree::{next_grapheme, PieceTreeSlice};
 use sanedit_messages::redraw::{self, Point, Size};
 
 use crate::common::char::{Char, DisplayOptions, GraphemeCategory, Replacement};
 use crate::common::eol::EOL;
 use crate::editor::buffers::buffer::Buffer;
+use crate::editor::windows::window::{Cursor, Cursors};
 
-pub(crate) use self::cell::Cell;
+#[derive(Debug, Clone)]
+pub(crate) enum Cell {
+    Empty,
+    EOF, // End of file where cursor can be placed
+    Char {
+        ch: Char,
+        // style: Style,
+    },
+}
 
-use super::cursors::{Cursor, Cursors};
+impl Cell {
+    pub fn char(&self) -> Option<&Char> {
+        match self {
+            Cell::Empty => None,
+            Cell::EOF => None,
+            Cell::Char { ch } => Some(ch),
+        }
+    }
+
+    pub fn width(&self) -> usize {
+        match self {
+            Cell::Empty => 0,
+            Cell::EOF => 0,
+            Cell::Char { ch } => ch.width(),
+        }
+    }
+
+    pub fn grapheme_len(&self) -> usize {
+        match self {
+            Cell::Empty => 0,
+            Cell::EOF => 0,
+            Cell::Char { ch } => ch.grapheme_len(),
+        }
+    }
+}
+
+impl Default for Cell {
+    fn default() -> Self {
+        Cell::Empty
+    }
+}
+
+impl From<Char> for Cell {
+    fn from(ch: Char) -> Self {
+        Cell::Char { ch }
+    }
+}
 
 #[derive(Debug)]
 pub(crate) struct View {
@@ -28,7 +69,11 @@ pub(crate) struct View {
 }
 
 impl View {
-    pub fn new(width: usize, height: usize) -> View {
+    pub fn new(width: usize, height: usize, buf: &Buffer, window: &Window) -> View {
+        todo!()
+    }
+
+    pub fn empty(width: usize, height: usize) -> View {
         View {
             offset: 0,
             end: 0,

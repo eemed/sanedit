@@ -39,9 +39,10 @@ impl UI {
     fn handle_redraw(&mut self, msg: Redraw) {
         match msg {
             Redraw::Window(win) => {
-                log::info!("redraw {}x{}", win.cells()[0].len(), win.cells().len());
                 self.grid.push_component(win);
             }
+            Redraw::Statusline(line) => self.grid.push_component(line),
+            Redraw::Prompt(prompt) => self.grid.push_component(prompt),
         }
     }
 

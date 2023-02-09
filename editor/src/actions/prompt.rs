@@ -1,10 +1,20 @@
-use crate::{editor::Editor, server::ClientId};
+use std::sync::Arc;
+
+use crate::{
+    editor::{
+        windows::window::{Prompt, PromptAction},
+        Editor,
+    },
+    server::ClientId,
+};
 
 pub(crate) fn prompt_open_file(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.get_win_buf_mut(id);
-    tokio::spawn(async {
+    let action: PromptAction = Arc::new(|editor, id, input| {
+        log::info!("prompt execute with {input}");
     });
-    // win.open_prompt();
+    let prompt = Prompt::new("Open a file: ", action, false);
+    win.open_prompt(prompt);
 }
 
 pub(crate) fn prompt_close(editor: &mut Editor, id: ClientId) {

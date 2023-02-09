@@ -1,7 +1,7 @@
 mod buffers;
 pub(crate) mod jobs;
 mod keymap;
-mod windows;
+pub(crate) mod windows;
 
 use sanedit_messages::redraw;
 use sanedit_messages::redraw::Redraw;
@@ -31,7 +31,7 @@ use crate::server::JobsHandle;
 use self::buffers::Buffers;
 use self::jobs::Jobs;
 use self::keymap::Keymap;
-use self::windows::window::InputMode;
+use self::windows::window::Mode;
 use self::windows::window::Window;
 use self::windows::Windows;
 
@@ -135,18 +135,21 @@ impl Editor {
             .buffers
             .get(win.buffer_id())
             .expect("Window referencing non existent buffer");
-        win.redraw(buf);
-        let win: redraw::Window = win.view().into();
-        let msg = ClientMessage::Redraw(Redraw::Window(win));
-        self.send_to_client(id, msg);
+
+        let messages = win.redraw(buf);
+
+        for msg in messages {
+            self.send_to_client(id, ClientMessage::Redraw(msg));
+        }
+
         self.send_to_client(id, ClientMessage::Flush);
     }
 
     fn get_bound_action(&mut self, id: ClientId) -> Option<Action> {
         let (win, _buf) = self.get_win_buf(id);
-        let keymap = match win.input_mode() {
-            InputMode::Normal => &self.keymap,
-            InputMode::Prompt => &self.prompt_keymap,
+        let keymap = match win.mode() {
+            Mode::Normal => &self.keymap,
+            Mode::Prompt => &self.prompt_keymap,
         };
 
         match keymap.get(&self.keys) {
@@ -194,9 +197,9 @@ impl Editor {
         let (win, _buf) = self.get_win_buf(id);
 
         // Where to send input
-        match win.input_mode() {
-            InputMode::Normal => text::insert_at_cursor(self, id, text),
-            InputMode::Prompt => prompt::prompt_insert_at_cursor(self, id, text),
+        match win.mode() {
+            Mode::Normal => text::insert_at_cursor(self, id, text),
+            Mode::Prompt => prompt::prompt_insert_at_cursor(self, id, text),
         }
     }
 

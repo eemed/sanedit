@@ -1,3 +1,4 @@
+mod theme;
 mod buffers;
 pub(crate) mod jobs;
 mod keymap;

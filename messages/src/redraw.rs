@@ -1,16 +1,22 @@
 mod cell;
+mod color;
 mod point;
 mod prompt;
 mod size;
 mod statusline;
+mod style;
+mod text_style;
 mod window;
 
 pub use cell::*;
+pub use color::*;
 pub use point::*;
-pub use size::*;
-pub use window::*;
-pub use statusline::*;
 pub use prompt::*;
+pub use size::*;
+pub use statusline::*;
+pub use style::*;
+pub use text_style::*;
+pub use window::*;
 
 use serde::{Deserialize, Serialize};
 

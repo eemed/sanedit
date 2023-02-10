@@ -2,6 +2,16 @@ use std::fmt::Display;
 
 use serde::{Deserialize, Serialize};
 
+pub trait IntoCells {
+    fn into_cells(self) -> Vec<Cell>;
+}
+
+impl IntoCells for &str {
+    fn into_cells(self) -> Vec<Cell> {
+        self.chars().map(|ch| Cell::from(ch)).collect()
+    }
+}
+
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Default, Clone)]
 pub struct Cell {
     text: String,

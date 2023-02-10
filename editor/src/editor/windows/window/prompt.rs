@@ -9,10 +9,10 @@ use super::completion::Completion;
 pub(crate) type PromptAction = Arc<dyn Fn(&mut Editor, ClientId, &str) + Send + Sync>;
 
 pub(crate) struct Prompt {
-    pub(crate) message: String,
-    pub(crate) input: String,
-    pub(crate) cursor: usize,
-    pub(crate) completion: Completion,
+    message: String,
+    input: String,
+    cursor: usize,
+    completion: Completion,
 
     /// Callback called on confirm
     on_confirm: PromptAction,
@@ -27,6 +27,10 @@ impl Prompt {
             completion: Completion::new(must_complete),
             on_confirm,
         }
+    }
+
+    pub fn message(&self) -> &str {
+        &self.message
     }
 
     pub fn next_grapheme(&mut self) {
@@ -73,6 +77,10 @@ impl Prompt {
         &self.input
     }
 
+    pub fn cursor(&self) -> usize {
+        self.cursor
+    }
+
     pub fn insert_at_cursor(&mut self, string: &str) {
         self.input.insert_str(self.cursor, string);
         self.cursor += string.len();
@@ -87,6 +95,10 @@ impl Prompt {
 
     pub fn provide_completions(&mut self, completions: Vec<String>) {
         self.completion.provide_options(completions);
+    }
+
+    pub fn options(&self) -> Vec<&str> {
+        self.completion.matches()
     }
 }
 

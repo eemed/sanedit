@@ -8,7 +8,7 @@ mod view;
 
 use std::mem;
 
-use sanedit_messages::redraw::{self, Redraw, Size};
+use sanedit_messages::redraw::{self, Cell, Redraw, Size, Statusline};
 
 use crate::editor::buffers::buffer::Buffer;
 
@@ -28,7 +28,7 @@ use super::BufferId;
 pub(crate) struct Window {
     buf: BufferId,
     view: View,
-    message: Message,
+    message: Option<Message>,
     cursors: Cursors,
     mode: Mode,
     pub prompt: Prompt,
@@ -40,7 +40,7 @@ impl Window {
         Window {
             buf,
             view: View::new(width, height),
-            message: Message::default(),
+            message: None,
             cursors: Cursors::default(),
             prompt: Prompt::default(),
             options: WindowOptions::default(),
@@ -49,25 +49,24 @@ impl Window {
     }
 
     pub fn info_msg(&mut self, message: String) {
-        self.message = Message {
+        self.message = Some(Message {
             severity: Severity::Info,
             message,
-        };
+        });
     }
 
     pub fn warn_msg(&mut self, message: String) {
-        // TODO better way to save these bytes?
-        self.message = Message {
+        self.message = Some(Message {
             severity: Severity::Warn,
             message,
-        };
+        });
     }
 
     pub fn error_msg(&mut self, message: String) {
-        self.message = Message {
+        self.message = Some(Message {
             severity: Severity::Error,
             message,
-        };
+        });
     }
 
     pub fn primary_cursor(&self) -> &Cursor {
@@ -75,14 +74,8 @@ impl Window {
     }
 
     pub fn primary_cursor_mut(&mut self) -> &mut Cursor {
+        self.view.invalidate();
         self.cursors.primary_mut()
-    }
-
-    fn redraw_view(&mut self, buf: &Buffer) {
-        debug_assert!(buf.id == self.buf, "Provided a wrong buffer to window");
-        let mut view = mem::take(&mut self.view);
-        view.redraw(buf, self);
-        self.view = view;
     }
 
     pub fn scroll_down(&mut self, buf: &Buffer) {
@@ -129,20 +122,50 @@ impl Window {
         self.mode = Mode::Normal;
     }
 
+    pub fn cursors(&self) -> &Cursors {
+        &self.cursors
+    }
+
     pub fn redraw(&mut self, buf: &Buffer) -> Vec<Redraw> {
         let mut redraw = vec![];
         match self.mode {
             Mode::Normal => {
                 self.redraw_view(buf);
-                redraw.push(Redraw::Window(redraw::Window::from(&self.view)))
+                redraw.push(Redraw::Window(redraw::Window::from(&self.view)));
+
+                let statusline = self.draw_statusline(buf);
+                redraw.push(statusline);
             }
-            Mode::Prompt => {}
+            Mode::Prompt => {
+                let prompt = self.draw_prompt();
+                redraw.push(prompt);
+            }
         }
 
         redraw
     }
 
-    pub fn cursors(&self) -> &Cursors {
-        &self.cursors
+    fn redraw_view(&mut self, buf: &Buffer) {
+        debug_assert!(buf.id == self.buf, "Provided a wrong buffer to window");
+        let mut view = mem::take(&mut self.view);
+        view.redraw(buf, self);
+        self.view = view;
+    }
+
+    fn draw_statusline(&mut self, buf: &Buffer) -> redraw::Redraw {
+        let line = match self.message.as_ref() {
+            Some(msg) => format!("{}", msg.message),
+            None => format!("{}", buf.name()),
+        };
+
+        Redraw::Statusline(Statusline::new(line.as_str()))
+    }
+
+    fn draw_prompt(&mut self) -> redraw::Redraw {
+        let msg = self.prompt.message();
+        let input = self.prompt.input();
+        let cursor = self.prompt.cursor();
+        let options = self.prompt.options();
+        Redraw::Prompt(redraw::Prompt::new(msg, input, cursor, options))
     }
 }

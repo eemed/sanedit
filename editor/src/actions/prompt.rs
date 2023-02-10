@@ -13,7 +13,7 @@ pub(crate) fn prompt_open_file(editor: &mut Editor, id: ClientId) {
     let action: PromptAction = Arc::new(|editor, id, input| {
         log::info!("prompt execute with {input}");
     });
-    let prompt = Prompt::new("Open a file: ", action, false);
+    let prompt = Prompt::new("Open a file", action, false);
     win.open_prompt(prompt);
 }
 

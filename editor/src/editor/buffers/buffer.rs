@@ -4,6 +4,7 @@ mod options;
 mod snapshots;
 
 use std::{
+    borrow::Cow,
     fs::File,
     io,
     ops::RangeBounds,
@@ -80,6 +81,13 @@ impl Buffer {
             last_change: None,
             last_saved_snapshot: 0,
         })
+    }
+
+    pub fn name(&self) -> Cow<'_, str> {
+        self.path
+            .as_ref()
+            .map(|p| p.to_string_lossy())
+            .unwrap_or(Cow::from("scratch"))
     }
 
     pub fn len(&self) -> usize {

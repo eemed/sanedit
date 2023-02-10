@@ -1,18 +1,16 @@
 use serde::{Deserialize, Serialize};
 
-use super::Cell;
-
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
 pub struct Statusline {
-    line: Vec<Cell>,
+    line: String,
 }
 
 impl Statusline {
-    pub fn new(line: Vec<Cell>) -> Statusline {
-        Statusline { line }
+    pub fn new(line: &str) -> Statusline {
+        Statusline { line: line.to_string() }
     }
 
-    pub fn line(&self) -> &Vec<Cell> {
+    pub fn line(&self) -> &str {
         &self.line
     }
 }

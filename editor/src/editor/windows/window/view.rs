@@ -56,6 +56,8 @@ impl From<Char> for Cell {
     }
 }
 
+/// View of the current window, used to draw the actual content sent to client
+/// as well as implement movements which operate on visual information.
 #[derive(Debug)]
 pub(crate) struct View {
     offset: usize,
@@ -71,12 +73,6 @@ pub(crate) struct View {
 }
 
 impl View {
-    // pub fn new(width: usize, height: usize, buf: &Buffer, window: &Window) -> View {
-    //     let mut view = View::empty(width, height);
-    //     view.redraw(buf, window);
-    //     view
-    // }
-
     pub fn new(width: usize, height: usize) -> View {
         View {
             offset: 0,
@@ -352,6 +348,10 @@ impl View {
         self.width = size.width;
         self.height = size.height;
         self.cells = vec![vec![Cell::default(); self.width]; self.height];
+        self.needs_redraw = true;
+    }
+
+    pub fn invalidate(&mut self) {
         self.needs_redraw = true;
     }
 }

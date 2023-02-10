@@ -1,4 +1,4 @@
-use sanedit_messages::redraw::{Cell, Point, Prompt, Statusline, Window};
+use sanedit_messages::redraw::{Cell, IntoCells, Point, Prompt, Statusline, Window};
 
 pub(crate) trait Component {
     fn position(&self) -> Point;
@@ -30,7 +30,7 @@ impl Component for Statusline {
     }
 
     fn draw(&mut self) -> Vec<Vec<Cell>> {
-        let line = self.line().clone();
+        let line = self.line().into_cells();
         vec![line]
     }
 
@@ -45,17 +45,24 @@ impl Component for Prompt {
     }
 
     fn draw(&mut self) -> Vec<Vec<Cell>> {
-        let prompt_line = self.prompt().clone();
-        let mut prompt = vec![prompt_line];
-        let opts = self.options().clone();
+        let line = format!("{}: {}", self.message(), self.input());
+        let mut prompt = vec![line.into_cells()];
+        let opts: Vec<Vec<Cell>> = self.options().iter().map(|opt| opt.into_cells()).collect();
         prompt.extend(opts);
         prompt
     }
 
     fn cursor(&self) -> Option<Point> {
         let point = self.position();
+        let cursor_col = {
+            let input_cells_before_cursor =
+                self.input()[..self.cursor_in_input()].into_cells().len();
+            let msg_len = self.message().into_cells().len();
+            let extra = 2; // " :"
+            msg_len + extra + input_cells_before_cursor
+        };
         Some(Point {
-            x: point.x + self.cursor_x(),
+            x: point.x + cursor_col,
             y: point.y,
         })
     }

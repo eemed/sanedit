@@ -31,6 +31,7 @@ impl UI {
             ClientMessage::Redraw(msg) => self.handle_redraw(msg),
             ClientMessage::Flush => self.flush(),
             ClientMessage::Bye => return true,
+            ClientMessage::Theme(_) => todo!(),
         }
 
         false

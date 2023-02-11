@@ -1,6 +1,7 @@
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Color {
     Black,
     White,
@@ -8,20 +9,20 @@ pub enum Color {
 }
 
 impl Color {
-    pub fn from_hex_str(string: &str) -> Result<Color, HexStringError> {
-        Rgb::from_hex_str(string).map(|hex| Color::Rgb(hex))
+    pub fn from_hex(string: &str) -> Result<Color, HexStringError> {
+        Rgb::from_hex(string).map(|hex| Color::Rgb(hex))
     }
 
     pub fn from_str(string: &str) -> Result<Color, HexStringError> {
         match string {
             "black" => Ok(Color::Black),
             "white" => Ok(Color::White),
-            _ => Rgb::from_hex_str(string).map(|rgb| Color::Rgb(rgb)),
+            _ => Rgb::from_hex(string).map(|rgb| Color::Rgb(rgb)),
         }
     }
 }
 
-#[derive(Clone, PartialEq, Copy, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Copy)]
 pub struct Rgb {
     pub(crate) red: u8,
     pub(crate) green: u8,

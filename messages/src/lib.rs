@@ -13,7 +13,7 @@ pub use codec::BinCodec;
 pub use key::{try_parse_keyevents, Key, KeyEvent, KeyMods};
 pub use mouse::MouseEvent;
 pub use reader::Reader;
-use redraw::{Redraw, Size};
+use redraw::{Redraw, Size, Theme};
 use serde::{Deserialize, Serialize};
 pub use tokio_util::codec::{Decoder, Encoder};
 pub use writer::{WriteError, Writer};
@@ -22,6 +22,7 @@ pub use writer::{WriteError, Writer};
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug)]
 pub enum ClientMessage {
     Hello,
+    Theme(Theme),
     Redraw(Redraw),
     Flush,
     Bye,

@@ -1,12 +1,13 @@
-mod theme;
 mod buffers;
 pub(crate) mod jobs;
 mod keymap;
+mod themes;
 pub(crate) mod windows;
 
 use sanedit_messages::redraw;
 use sanedit_messages::redraw::Redraw;
 use sanedit_messages::redraw::Size;
+use sanedit_messages::redraw::Theme;
 use sanedit_messages::ClientMessage;
 use sanedit_messages::KeyEvent;
 use sanedit_messages::Message;
@@ -46,6 +47,7 @@ pub(crate) struct Editor {
     keys: Vec<KeyEvent>,
     is_running: bool,
     working_dir: PathBuf,
+    themes: HashMap<String, Theme>,
 }
 
 impl Editor {
@@ -60,6 +62,7 @@ impl Editor {
             keys: Vec::default(),
             is_running: true,
             working_dir: env::current_dir().expect("Cannot get current working directory."),
+            themes: themes::default_themes(),
         }
     }
 

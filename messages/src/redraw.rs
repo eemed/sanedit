@@ -6,6 +6,7 @@ mod size;
 mod statusline;
 mod style;
 mod text_style;
+mod theme;
 mod window;
 
 pub use cell::*;
@@ -16,6 +17,7 @@ pub use size::*;
 pub use statusline::*;
 pub use style::*;
 pub use text_style::*;
+pub use theme::*;
 pub use window::*;
 
 use serde::{Deserialize, Serialize};

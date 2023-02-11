@@ -1,17 +1,27 @@
-use super::Color;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, PartialEq, Clone, Copy)]
-pub struct CellStyle {
+use std::mem;
+
+use super::{Color, TextStyle};
+
+#[derive(Serialize, Deserialize,Debug, PartialEq, Eq, Clone, Copy)]
+pub struct Style {
     pub text_style: Option<TextStyle>,
     pub bg: Option<Color>,
     pub fg: Option<Color>,
 }
 
-pub fn merge_cell_styles(styles: &[Option<CellStyle>]) -> Option<CellStyle> {
+impl Style {
+    pub fn invert(&mut self) {
+        mem::swap(&mut self.bg, &mut self.fg);
+    }
+}
+
+pub fn merge_cell_styles(styles: &[Option<Style>]) -> Option<Style> {
     styles.into_iter().cloned().fold(None, merge_2_cell_styles)
 }
 
-fn merge_2_cell_styles(one: Option<CellStyle>, two: Option<CellStyle>) -> Option<CellStyle> {
+fn merge_2_cell_styles(one: Option<Style>, two: Option<Style>) -> Option<Style> {
     if one.is_none() {
         return two;
     }

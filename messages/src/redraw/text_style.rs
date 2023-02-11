@@ -1,6 +1,8 @@
 use bitflags::bitflags;
+use serde::{Deserialize, Serialize};
 
 bitflags! {
+#[derive(Serialize, Deserialize)]
 pub struct TextStyle: u32 {
     const BOLD      = 0b00000001;
     const UNDERLINE = 0b00000010;

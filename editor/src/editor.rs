@@ -117,7 +117,16 @@ impl Editor {
             Message::Hello(size) => {
                 let bid = self.buffers.insert(Buffer::default());
                 self.windows.new_window(id, bid, size.width, size.height);
+
+                let win = self.windows.get(id).expect("Window not present");
+                let theme_name = &win.options.display.theme;
+                let theme = self
+                    .themes
+                    .get(theme_name.as_str())
+                    .expect("Theme not present")
+                    .clone();
                 self.send_to_client(id, ClientMessage::Hello);
+                self.send_to_client(id, ClientMessage::Theme(theme));
             }
             Message::KeyEvent(key_event) => self.handle_key_event(id, key_event),
             Message::MouseEvent(_) => {}

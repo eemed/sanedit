@@ -4,7 +4,7 @@ use std::mem;
 
 use super::{Color, TextStyle};
 
-#[derive(Serialize, Deserialize,Debug, PartialEq, Eq, Clone, Copy)]
+#[derive(Serialize, Deserialize,Debug, PartialEq, Eq, Clone, Copy, Default)]
 pub struct Style {
     pub text_style: Option<TextStyle>,
     pub bg: Option<Color>,

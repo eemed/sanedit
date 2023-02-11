@@ -69,6 +69,7 @@ pub(crate) enum Replacement {
 /// Options on how to display chars
 #[derive(Debug, Clone)]
 pub(crate) struct DisplayOptions {
+    pub theme: String,
     pub tabstop: usize,
     pub line_width: usize,
     pub replacements: HashMap<Replacement, String>,
@@ -87,6 +88,7 @@ impl Default for DisplayOptions {
         replacements.insert(NonBreakingSpace, "•".to_string());
 
         DisplayOptions {
+            theme: "gruvbox".into(),
             tabstop: 8,
             line_width: 80,
             replacements,

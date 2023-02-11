@@ -2,6 +2,8 @@ use std::fmt::Display;
 
 use serde::{Deserialize, Serialize};
 
+use super::Style;
+
 pub trait IntoCells {
     fn into_cells(self) -> Vec<Cell>;
 }
@@ -12,14 +14,18 @@ impl IntoCells for &str {
     }
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Default, Clone)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
 pub struct Cell {
-    text: String,
+    pub text: String,
+    pub style: Style,
 }
 
-impl Cell {
-    pub fn as_str(&self) -> &str {
-        &self.text
+impl Default for Cell {
+    fn default() -> Self {
+        Cell {
+            text: String::from(" "),
+            style: Style::default(),
+        }
     }
 }
 
@@ -27,6 +33,7 @@ impl From<&str> for Cell {
     fn from(string: &str) -> Self {
         Cell {
             text: string.to_string(),
+            style: Style::default(),
         }
     }
 }
@@ -37,6 +44,7 @@ impl From<char> for Cell {
         let string = ch.encode_utf8(&mut buf);
         Cell {
             text: string.to_string(),
+            style: Style::default(),
         }
     }
 }

@@ -50,6 +50,8 @@ pub(crate) fn prompt_remove_grapheme_after_cursor(editor: &mut Editor, id: Clien
 pub(crate) fn prompt_confirm(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.get_win_buf_mut(id);
     let prompt = mem::take(&mut win.prompt);
+    win.close_prompt();
+
     let action = prompt.action();
     let input = prompt.input();
     (action)(editor, id, input)

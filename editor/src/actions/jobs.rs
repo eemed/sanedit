@@ -1,30 +1,55 @@
 use std::{
+    mem,
     path::{Path, PathBuf},
     time::Duration,
 };
 
-use tokio::fs;
+use futures::{future::LocalBoxFuture, Future, FutureExt};
+use tokio::{
+    fs::{self, DirEntry},
+    io,
+};
 
 use crate::{
     editor::Editor,
-    server::{ClientId, Job, JobFutureFn, JobProgress, JobProgressSender, PinnedFuture},
+    server::{ClientId, Job, JobFutureFn, JobProgress, JobProgressSender},
 };
 
 async fn list_files(mut send: JobProgressSender, dir: PathBuf) -> bool {
-    log::info!("list_files hello");
-    send.send(JobProgress::Output(vec![
-        "hello".to_string(),
-        "world".to_string(),
-    ]))
-    .await;
-    tokio::time::sleep(Duration::from_secs(2)).await;
+    async fn read_recursive(mut send: JobProgressSender, base: PathBuf) -> io::Result<()> {
+        let mut entries: Vec<String> = Vec::new();
+        let mut stack: Vec<PathBuf> = Vec::new();
+        stack.push(base.clone());
 
-    // match fs::read_dir(&cwd).await {
-    //     Ok(_) => {}
-    //     Err(_) => {}
-    // }
+        while let Some(dir) = stack.pop() {
+            let mut read_dir = fs::read_dir(&dir).await?;
+            while let Ok(Some(entry)) = read_dir.next_entry().await {
+                let path = entry.path();
+                let metadata = entry.metadata().await?;
+                if metadata.is_dir() {
+                    stack.push(path);
+                } else {
+                    let stripped = path.strip_prefix(&base).unwrap();
+                    let name: String = stripped.to_string_lossy().into();
+                    entries.push(name);
 
-    true
+                    if entries.len() > 100 {
+                        send.send(JobProgress::Output(mem::take(&mut entries)))
+                            .await;
+                    }
+                }
+            }
+        }
+
+        if !entries.is_empty() {
+            send.send(JobProgress::Output(entries)).await;
+        }
+
+        Ok(())
+    }
+
+    log::info!("List files");
+    read_recursive(send, dir).await.is_ok()
 }
 
 pub(crate) fn jobs_test(editor: &mut Editor, id: ClientId) {

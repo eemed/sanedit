@@ -5,7 +5,7 @@ use std::collections::HashMap;
 
 use super::Style;
 
-#[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone, Default)]
 pub struct Theme {
     pub(crate) name: String,
     pub(crate) styles: HashMap<String, Style>,

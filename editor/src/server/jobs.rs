@@ -24,7 +24,9 @@ impl JobId {
     }
 }
 
+#[derive(Clone)]
 pub(crate) struct JobProgressSender(EditorHandle);
+
 impl JobProgressSender {
     pub async fn send(
         &mut self,

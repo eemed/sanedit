@@ -5,6 +5,8 @@ use std::mem;
 
 use sanedit_messages::redraw::{Cell, Point};
 
+use crate::ui::UIContext;
+
 pub(crate) use self::component::Component;
 
 pub(crate) struct Grid {
@@ -36,18 +38,18 @@ impl Grid {
         self.components.push(Box::new(comp));
     }
 
-    pub fn draw(&mut self) -> (Vec<Vec<Cell>>, Point) {
+    pub fn draw(&mut self, ctx: &UIContext) -> (Vec<Vec<Cell>>, Point) {
         let mut cursor = Point::default();
         let mut canvas: Vec<Vec<Cell>> = vec![vec![Cell::default(); self.width]; self.height];
         let components = mem::take(&mut self.components);
 
         for mut component in components.into_iter() {
-            if let Some(cur) = component.cursor() {
+            if let Some(cur) = component.cursor(ctx) {
                 cursor = cur;
             }
 
-            let top_left = component.position();
-            let grid = component.draw();
+            let top_left = component.position(ctx);
+            let grid = component.draw(ctx);
             for (line, row) in grid.into_iter().enumerate() {
                 for (col, cell) in row.into_iter().enumerate() {
                     let x = top_left.x + col;

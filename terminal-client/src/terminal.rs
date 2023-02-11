@@ -2,11 +2,12 @@ use std::io::{stdout, BufWriter, Stdout, Write};
 
 use anyhow::Result;
 use crossterm::{cursor, event::*, execute, queue, style, terminal::*};
-use sanedit_messages::redraw::Cell;
+use sanedit_messages::redraw::{Cell, Color, Style, TextStyle};
 
 pub struct Terminal {
     out: BufWriter<Stdout>,
     written: Vec<Vec<Cell>>,
+    brush: Style,
 }
 
 impl Terminal {
@@ -24,6 +25,7 @@ impl Terminal {
         Ok(Terminal {
             out: BufWriter::with_capacity(4096_000, stdout),
             written: vec![vec![Cell::default(); width]; height],
+            brush: Style::default(),
         })
     }
 
@@ -34,10 +36,10 @@ impl Terminal {
     pub fn draw_cell(&mut self, cell: &Cell, x: usize, y: usize) -> Result<()> {
         if let Some(written) = self.written.get(y).map(|row| row.get(x)).flatten() {
             if written != cell {
-                // log::info!("write {:?} to {}x{}", cell, y, x);
-                // if cell.style != self.brush {
-                //     self.set_style(cell.style)?;
-                // }
+                log::info!("write {:?} to {}x{}", cell, y, x);
+                if cell.style != self.brush {
+                    self.set_style(cell.style)?;
+                }
 
                 self.goto(x, y)?;
                 write!(self.out, "{}", cell)?;
@@ -53,45 +55,47 @@ impl Terminal {
         Ok(())
     }
 
-    // pub fn set_style(&mut self, cell_style: Option<CellStyle>) -> Result<()> {
-    //     if let Some(style) = cell_style {
-    //         self.set_text_style(style.text_style)?;
-    //         queue!(
-    //             self.out,
-    //             style::SetBackgroundColor(color_to_crossterm_color(style.bg.as_ref()))
-    //         )?;
-    //         queue!(
-    //             self.out,
-    //             style::SetForegroundColor(color_to_crossterm_color(style.fg.as_ref()))
-    //         )?;
-    //     } else {
-    //         queue!(self.out, style::ResetColor)?;
-    //     }
-    //     self.brush = cell_style;
+    pub fn set_style(&mut self, style: Style) -> Result<()> {
+        self.set_text_style(style.text_style)?;
+        self.set_color(style.bg, true)?;
+        self.set_color(style.fg, false)?;
+        self.brush = style;
 
-    //     Ok(())
-    // }
+        Ok(())
+    }
 
-    // pub fn set_text_style(&mut self, style: Option<TextStyle>) -> Result<()> {
-    //     if let Some(style) = style {
-    //         let mut attrs = style::Attributes::default();
-    //         if style.contains(TextStyle::BOLD) {
-    //             attrs.set(style::Attribute::Bold);
-    //         }
+    fn set_color(&mut self, color: Option<Color>, is_bg: bool) -> Result<()> {
+        if is_bg {
+            let bg = color_to_crossterm_color(color.as_ref());
+            queue!(self.out, style::SetBackgroundColor(bg))?;
+        } else {
+            let fg = color_to_crossterm_color(color.as_ref());
+            queue!(self.out, style::SetForegroundColor(fg))?;
+        }
 
-    //         if style.contains(TextStyle::UNDERLINE) {
-    //             attrs.set(style::Attribute::Underlined);
-    //         }
+        Ok(())
+    }
 
-    //         if style.contains(TextStyle::ITALIC) {
-    //             attrs.set(style::Attribute::Italic);
-    //         }
-    //         queue!(self.out, style::SetAttributes(attrs))?;
-    //     } else {
-    //         queue!(self.out, style::SetAttribute(style::Attribute::Reset))?;
-    //     }
-    //     Ok(())
-    // }
+    fn set_text_style(&mut self, style: Option<TextStyle>) -> Result<()> {
+        if let Some(style) = style {
+            let mut attrs = style::Attributes::default();
+            if style.contains(TextStyle::BOLD) {
+                attrs.set(style::Attribute::Bold);
+            }
+
+            if style.contains(TextStyle::UNDERLINE) {
+                attrs.set(style::Attribute::Underlined);
+            }
+
+            if style.contains(TextStyle::ITALIC) {
+                attrs.set(style::Attribute::Italic);
+            }
+            queue!(self.out, style::SetAttributes(attrs))?;
+        } else {
+            queue!(self.out, style::SetAttribute(style::Attribute::Reset))?;
+        }
+        Ok(())
+    }
 
     pub fn flush(&mut self) -> Result<()> {
         self.out.flush()?;
@@ -121,4 +125,19 @@ impl Drop for Terminal {
 
 pub(crate) fn terminal_size() -> (usize, usize) {
     size().map_or((80, 24), |(x, y)| (x as usize, y as usize))
+}
+
+pub(crate) fn color_to_crossterm_color(color: Option<&Color>) -> style::Color {
+    if let Some(color) = color {
+        match color {
+            Color::Black => style::Color::Black,
+            Color::White => style::Color::White,
+            Color::Rgb(rgb) => {
+                let (r, g, b) = rgb.get();
+                style::Color::Rgb { r, g, b }
+            }
+        }
+    } else {
+        style::Color::Reset
+    }
 }

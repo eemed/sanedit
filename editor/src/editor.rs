@@ -119,12 +119,13 @@ impl Editor {
                 self.windows.new_window(id, bid, size.width, size.height);
 
                 let win = self.windows.get(id).expect("Window not present");
-                let theme_name = &win.options.display.theme;
-                let theme = self
-                    .themes
-                    .get(theme_name.as_str())
-                    .expect("Theme not present")
-                    .clone();
+                let theme = {
+                    let theme_name = &win.options.display.theme;
+                    self.themes
+                        .get(theme_name.as_str())
+                        .expect("Theme not present")
+                        .clone()
+                };
                 self.send_to_client(id, ClientMessage::Hello);
                 self.send_to_client(id, ClientMessage::Theme(theme));
             }
@@ -149,7 +150,13 @@ impl Editor {
             .get(win.buffer_id())
             .expect("Window referencing non existent buffer");
 
-        let messages = win.redraw(buf);
+        let theme = {
+            let theme_name = &win.options.display.theme;
+            self.themes
+                .get(theme_name.as_str())
+                .expect("Theme not present")
+        };
+        let messages = win.redraw(buf, theme);
 
         for msg in messages {
             self.send_to_client(id, ClientMessage::Redraw(msg));

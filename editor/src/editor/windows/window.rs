@@ -8,10 +8,11 @@ mod view;
 
 use std::mem;
 
-use sanedit_messages::redraw::{self, Cell, Redraw, Size, Statusline};
+use sanedit_messages::redraw::{self, Cell, Redraw, Size, Statusline, Theme};
 
 use crate::editor::buffers::buffer::Buffer;
 
+use self::view::draw_into_window;
 pub(crate) use self::{
     cursors::{Cursor, Cursors},
     message::{Message, Severity},
@@ -126,12 +127,12 @@ impl Window {
         &self.cursors
     }
 
-    pub fn redraw(&mut self, buf: &Buffer) -> Vec<Redraw> {
+    pub fn redraw(&mut self, buf: &Buffer, theme: &Theme) -> Vec<Redraw> {
         let mut redraw = vec![];
         match self.mode {
             Mode::Normal => {
                 self.redraw_view(buf);
-                redraw.push(Redraw::Window(redraw::Window::from(&self.view)));
+                redraw.push(Redraw::Window(draw_into_window(&self.view, theme)));
 
                 let statusline = self.draw_statusline(buf);
                 redraw.push(statusline);

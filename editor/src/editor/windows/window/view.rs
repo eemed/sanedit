@@ -1,5 +1,5 @@
 use sanedit_buffer::piece_tree::{next_grapheme, PieceTreeSlice};
-use sanedit_messages::redraw::{self, Point, Size};
+use sanedit_messages::redraw::{self, Point, Size, Style, Theme, ThemeField};
 
 use crate::common::char::{Char, DisplayOptions, GraphemeCategory, Replacement};
 use crate::common::eol::EOL;
@@ -362,24 +362,37 @@ impl Default for View {
     }
 }
 
-impl From<&View> for redraw::Window {
-    fn from(view: &View) -> Self {
-        let mut grid = vec![vec![redraw::Cell::default(); view.width()]; view.height()];
+pub(crate) fn draw_into_window(view: &View, theme: &Theme) -> redraw::Window {
+    let def = theme
+        .get(ThemeField::Default.into())
+        .unwrap_or(Style::default());
+    let mut grid = vec![
+        vec![
+            redraw::Cell {
+                text: " ".into(),
+                style: def
+            };
+            view.width()
+        ];
+        view.height()
+    ];
 
-        for (line, row) in view.cells.iter().enumerate() {
-            for (col, cell) in row.iter().enumerate() {
-                grid[line][col] = cell.char().map(|ch| ch.display()).unwrap_or(" ").into();
-            }
+    for (line, row) in view.cells.iter().enumerate() {
+        for (col, cell) in row.iter().enumerate() {
+            grid[line][col] = cell.char().map(|ch| ch.display()).unwrap_or(" ").into();
         }
-
-        draw_end_of_buffer(view, &mut grid);
-        draw_trailing_whitespace(view, &mut grid);
-
-        redraw::Window::new(grid, view.primary_cursor)
     }
+
+    draw_end_of_buffer(&mut grid, view, theme);
+    draw_trailing_whitespace(&mut grid, view, theme);
+
+    redraw::Window::new(grid, view.primary_cursor)
 }
 
-fn draw_end_of_buffer(view: &View, grid: &mut Vec<Vec<redraw::Cell>>) {
+fn draw_end_of_buffer(grid: &mut Vec<Vec<redraw::Cell>>, view: &View, theme: &Theme) {
+    let eob = theme
+        .get(ThemeField::EndOfBuffer.into())
+        .unwrap_or(Style::default());
     for (line, row) in view.cells.iter().enumerate() {
         let is_empty = row
             .iter()
@@ -390,13 +403,16 @@ fn draw_end_of_buffer(view: &View, grid: &mut Vec<Vec<redraw::Cell>>) {
                 .replacements
                 .get(&Replacement::BufferEnd)
             {
-                grid[line][0] = rep.as_str().into();
+                grid[line][0] = redraw::Cell {
+                    text: rep.as_str().into(),
+                    style: eob,
+                };
             }
         }
     }
 }
 
-fn draw_trailing_whitespace(view: &View, grid: &mut Vec<Vec<redraw::Cell>>) {
+fn draw_trailing_whitespace(grid: &mut Vec<Vec<redraw::Cell>>, view: &View, theme: &Theme) {
     for (line, row) in view.cells.iter().enumerate() {}
 }
 

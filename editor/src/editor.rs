@@ -158,11 +158,13 @@ impl Editor {
         };
         let messages = win.redraw(buf, theme);
 
-        for msg in messages {
-            self.send_to_client(id, ClientMessage::Redraw(msg));
-        }
+        if !messages.is_empty() {
+            for msg in messages {
+                self.send_to_client(id, ClientMessage::Redraw(msg));
+            }
 
-        self.send_to_client(id, ClientMessage::Flush);
+            self.send_to_client(id, ClientMessage::Flush);
+        }
     }
 
     fn get_bound_action(&mut self, id: ClientId) -> Option<Action> {
@@ -231,11 +233,13 @@ impl Editor {
                     JobProgress::Output(out) => {
                         if let Some((client_id, on_output)) = self.jobs.on_output_handler(&id) {
                             (on_output)(self, client_id, out);
+                            self.redraw(client_id);
                         }
                     }
                     JobProgress::Error(out) => {
                         if let Some((client_id, on_error)) = self.jobs.on_error_handler(&id) {
                             (on_error)(self, client_id, out);
+                            self.redraw(client_id);
                         }
                     }
                 }

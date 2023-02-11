@@ -80,12 +80,12 @@ impl Default for DisplayOptions {
         use Replacement::*;
 
         let mut replacements = HashMap::new();
-        replacements.insert(Tab, "→".to_string());
-        replacements.insert(TabFill, " ".to_string());
-        replacements.insert(EOL, "↲".to_string());
-        replacements.insert(BufferEnd, "~".to_string());
-        replacements.insert(TrailingWhitespace, "•".to_string());
-        replacements.insert(NonBreakingSpace, "•".to_string());
+        replacements.insert(Tab, "→".into());
+        replacements.insert(TabFill, " ".into());
+        replacements.insert(EOL, " ".into());
+        replacements.insert(BufferEnd, "~".into());
+        replacements.insert(TrailingWhitespace, "•".into());
+        replacements.insert(NonBreakingSpace, "•".into());
 
         DisplayOptions {
             theme: "gruvbox".into(),

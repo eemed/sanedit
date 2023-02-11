@@ -17,7 +17,7 @@ impl Prompt {
             message: message.to_string(),
             input: input.to_string(),
             cursor,
-            options: options.into_iter().map(|opt| opt.to_string()).collect(),
+            options: options.into_iter().map(|opt| opt.into()).collect(),
         }
     }
 

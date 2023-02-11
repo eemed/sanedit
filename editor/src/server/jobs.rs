@@ -1,7 +1,7 @@
 use core::fmt::Debug;
 use std::{
     pin::Pin,
-    sync::atomic::{AtomicUsize, Ordering},
+    sync::atomic::{AtomicUsize, Ordering}, fmt::Display,
 };
 
 use futures::Future;
@@ -11,10 +11,11 @@ use crate::events::ToEditor;
 
 use super::{EditorHandle, CHANNEL_SIZE};
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) struct JobId {
     id: usize,
 }
+
 
 impl JobId {
     pub fn next() -> JobId {
@@ -24,17 +25,26 @@ impl JobId {
     }
 }
 
+impl Display for JobId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.id)
+    }
+}
+
 #[derive(Clone)]
-pub(crate) struct JobProgressSender(EditorHandle);
+pub(crate) struct JobProgressSender {
+    pub(crate) id: JobId,
+    pub(crate) handle: EditorHandle,
+}
 
 impl JobProgressSender {
     pub async fn send(
         &mut self,
         progress: JobProgress,
     ) -> Result<(), mpsc::error::SendError<ToEditor>> {
-        self.0
+        self.handle
             .sender
-            .send(ToEditor::Jobs(FromJobs::Progress(progress)))
+            .send(ToEditor::Jobs(FromJobs::Progress(self.id, progress)))
             .await
     }
 }
@@ -81,9 +91,9 @@ pub(crate) enum JobProgress {
 
 #[derive(Debug)]
 pub(crate) enum FromJobs {
-    Progress(JobProgress),
-    Ok,
-    Fail,
+    Progress(JobId, JobProgress),
+    Ok(JobId),
+    Fail(JobId),
 }
 
 #[derive(Debug)]
@@ -113,15 +123,19 @@ async fn jobs_loop(mut recv: mpsc::Receiver<ToJobs>, handle: EditorHandle) {
     while let Some(msg) = recv.recv().await {
         match msg {
             ToJobs::New(job) => {
-                let progress_handle = JobProgressSender(handle.clone());
+                let id = job.id;
+                let progress_handle = JobProgressSender {
+                    id,
+                    handle: handle.clone(),
+                };
                 let job_future = (job.fun)(progress_handle);
                 let mut h = handle.clone();
                 let future = async move {
                     let success = job_future.await;
                     let msg = if success {
-                        FromJobs::Ok
+                        FromJobs::Ok(id)
                     } else {
-                        FromJobs::Fail
+                        FromJobs::Fail(id)
                     };
                     h.send(ToEditor::Jobs(msg)).await;
                 };

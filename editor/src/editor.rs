@@ -4,8 +4,6 @@ mod keymap;
 mod themes;
 pub(crate) mod windows;
 
-use sanedit_messages::redraw;
-use sanedit_messages::redraw::Redraw;
 use sanedit_messages::redraw::Size;
 use sanedit_messages::redraw::Theme;
 use sanedit_messages::ClientMessage;
@@ -28,6 +26,8 @@ use crate::editor::buffers::buffer::Buffer;
 use crate::events::ToEditor;
 use crate::server::ClientHandle;
 use crate::server::ClientId;
+use crate::server::FromJobs;
+use crate::server::JobProgress;
 use crate::server::JobsHandle;
 
 use self::buffers::Buffers;
@@ -223,6 +223,34 @@ impl Editor {
         }
     }
 
+    pub fn handle_job_msg(&mut self, msg: FromJobs) {
+        match msg {
+            FromJobs::Progress(id, progress) => {
+                log::info!("Job {id} progress.");
+                match progress {
+                    JobProgress::Output(out) => {
+                        if let Some((client_id, on_output)) = self.jobs.on_output_handler(&id) {
+                            (on_output)(self, client_id, out);
+                        }
+                    }
+                    JobProgress::Error(out) => {
+                        if let Some((client_id, on_error)) = self.jobs.on_error_handler(&id) {
+                            (on_error)(self, client_id, out);
+                        }
+                    }
+                }
+            }
+            FromJobs::Ok(id) => {
+                log::info!("Job {id} succesful.");
+                self.jobs.job_done(&id);
+            }
+            FromJobs::Fail(id) => {
+                log::info!("Job {id} failed.");
+                self.jobs.job_done(&id);
+            }
+        }
+    }
+
     fn is_running(&self) -> bool {
         self.is_running
     }
@@ -249,7 +277,7 @@ pub(crate) fn main_loop(
         match msg {
             ToEditor::NewClient(handle) => editor.on_client_connected(handle),
             ToEditor::Jobs(msg) => {
-                log::info!("msg from jobs {msg:?}");
+                editor.handle_job_msg(msg);
             }
             ToEditor::Message(id, msg) => editor.handle_message(id, msg),
             ToEditor::FatalError(e) => {

@@ -115,6 +115,6 @@ impl std::fmt::Debug for Prompt {
             .field("input", &self.input)
             .field("cursor", &self.cursor)
             .field("completions", &self.completion)
-            .finish()
+            .finish_non_exhaustive()
     }
 }

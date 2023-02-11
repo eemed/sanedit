@@ -8,6 +8,8 @@ use crate::{
     server::ClientId,
 };
 
+use super::jobs;
+
 pub(crate) fn prompt_open_file(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.get_win_buf_mut(id);
     let action: PromptAction = Arc::new(|editor, id, input| {
@@ -15,6 +17,8 @@ pub(crate) fn prompt_open_file(editor: &mut Editor, id: ClientId) {
     });
     let prompt = Prompt::new("Open a file", action, false);
     win.open_prompt(prompt);
+
+    jobs::list_files_provide_completions(editor, id);
 }
 
 pub(crate) fn prompt_close(editor: &mut Editor, id: ClientId) {

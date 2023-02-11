@@ -84,8 +84,6 @@ impl Action {
         prompt_prev_completion,
         prompt_close,
         prompt_open_file,
-
-        jobs_test,
     );
 }
 

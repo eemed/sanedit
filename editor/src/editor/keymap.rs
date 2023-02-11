@@ -40,8 +40,6 @@ impl Keymap {
              "alt+E", Action::start_of_line,
 
              "ctrl+o", Action::prompt_open_file,
-
-             "alt+j", Action::jobs_test,
         );
 
         map

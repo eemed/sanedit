@@ -20,8 +20,7 @@ impl fmt::Debug for Grid {
         f.debug_struct("Grid")
             .field("width", &self.width)
             .field("height", &self.height)
-            .field("component_count", &self.components.len())
-            .finish()
+            .finish_non_exhaustive()
     }
 }
 

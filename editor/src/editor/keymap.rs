@@ -39,6 +39,12 @@ impl Keymap {
              "alt+e", Action::end_of_line,
              "alt+E", Action::start_of_line,
 
+             "alt+l", Action::next_visual_line,
+             "alt+L", Action::prev_visual_line,
+
+             "alt+s", Action::scroll_down,
+             "alt+S", Action::scroll_up,
+
              "ctrl+o", Action::prompt_open_file,
         );
 

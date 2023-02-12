@@ -37,7 +37,10 @@ impl UI {
             ClientMessage::Theme(theme) => self.context.theme = theme,
             ClientMessage::Redraw(msg) => self.handle_redraw(msg),
             ClientMessage::Flush => self.flush(),
-            ClientMessage::Bye => return true,
+            ClientMessage::Bye => {
+                log::info!("UI got bye, exiting.");
+                return true;
+            }
         }
 
         false

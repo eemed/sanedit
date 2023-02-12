@@ -36,10 +36,7 @@ impl Terminal {
     pub fn draw_cell(&mut self, cell: &Cell, x: usize, y: usize) -> Result<()> {
         if let Some(written) = self.written.get(y).map(|row| row.get(x)).flatten() {
             if written != cell {
-                if cell.style != self.brush {
-                    self.set_style(cell.style)?;
-                }
-
+                self.set_style(cell.style)?;
                 self.goto(x, y)?;
                 write!(self.out, "{}", cell)?;
                 self.written[y][x] = cell.clone();
@@ -55,6 +52,9 @@ impl Terminal {
     }
 
     pub fn set_style(&mut self, style: Style) -> Result<()> {
+        if self.brush == style {
+            return Ok(());
+        }
         self.set_text_style(style.text_style)?;
         self.set_color(style.bg, true)?;
         self.set_color(style.fg, false)?;

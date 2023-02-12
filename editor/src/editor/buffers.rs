@@ -1,8 +1,8 @@
+mod buffer;
+
 use slotmap::SlotMap;
 
-use self::buffer::{Buffer, BufferId};
-
-pub(crate) mod buffer;
+pub(crate) use self::buffer::{Buffer, BufferId};
 
 #[derive(Debug, Default)]
 pub(crate) struct Buffers {

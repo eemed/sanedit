@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use super::Cell;
+use super::Redraw;
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
 pub struct Prompt {
@@ -9,16 +9,28 @@ pub struct Prompt {
     // Cursor position on input
     cursor: usize,
     options: Vec<String>,
+    selected: Option<usize>,
 }
 
 impl Prompt {
-    pub fn new(message: &str, input: &str, cursor: usize, options: Vec<&str>) -> Prompt {
+    pub fn new(
+        message: &str,
+        input: &str,
+        cursor: usize,
+        options: Vec<&str>,
+        selected: Option<usize>,
+    ) -> Prompt {
         Prompt {
             message: message.to_string(),
             input: input.to_string(),
             cursor,
             options: options.into_iter().map(|opt| opt.into()).collect(),
+            selected,
         }
+    }
+
+    pub fn selected(&self) -> Option<usize> {
+        self.selected
     }
 
     pub fn message(&self) -> &str {
@@ -35,5 +47,11 @@ impl Prompt {
 
     pub fn options(&self) -> Vec<&str> {
         self.options.iter().map(|opt| opt.as_str()).collect()
+    }
+}
+
+impl From<Prompt> for Redraw {
+    fn from(value: Prompt) -> Self {
+        Redraw::Prompt(value)
     }
 }

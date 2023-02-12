@@ -58,7 +58,7 @@ impl Prompt {
         self.prev_grapheme();
         let start = self.cursor;
         self.input.replace_range(start..end, "");
-        // completion_calculate_matches(&mut prompt.completion, &prompt.userinput);
+        self.completion.match_options(&self.input);
     }
 
     pub fn next_completion(&mut self) {
@@ -98,8 +98,17 @@ impl Prompt {
         self.completion.match_options(&self.input);
     }
 
-    pub fn options(&self) -> Vec<&str> {
-        self.completion.matches()
+    pub fn matches_window(&self, count: usize, offset: usize) -> Vec<&str> {
+        self.completion.matches_window(count, offset)
+    }
+
+    pub fn selected(&self) -> Option<(usize, &str)> {
+        self.completion.selected()
+    }
+
+    pub fn selected_pos(&self) -> Option<usize> {
+        let (pos, _) = self.completion.selected()?;
+        Some(pos)
     }
 }
 

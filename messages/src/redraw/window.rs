@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use super::{Cell, Point};
+use super::{Cell, Point, Redraw};
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug)]
 pub struct Window {
@@ -22,5 +22,11 @@ impl Window {
 
     pub fn primary_cursor(&self) -> Point {
         self.primary_cursor
+    }
+}
+
+impl From<Window> for Redraw {
+    fn from(value: Window) -> Self {
+        Redraw::Window(value)
     }
 }

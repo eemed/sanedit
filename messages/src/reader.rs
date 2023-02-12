@@ -51,11 +51,10 @@ where
                 Ok(Some(msg)) => {
                     return Some(msg);
                 }
-                Ok(None) => {
-                    if let Err(_e) = self.read_more_to_buf() {
-                        return None;
-                    }
-                }
+                Ok(None) => match self.read_more_to_buf() {
+                    Ok(0) | Err(_) => return None,
+                    Ok(n) => log::info!("read {n} bytes, {}", self.buf.len()),
+                },
                 Err(_e) => {
                     self.buf.advance(1);
                 }

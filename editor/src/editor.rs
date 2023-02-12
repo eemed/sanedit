@@ -1,4 +1,4 @@
-mod buffers;
+pub(crate) mod buffers;
 pub(crate) mod jobs;
 mod keymap;
 mod themes;
@@ -22,7 +22,7 @@ use tokio::sync::mpsc::Receiver;
 use crate::actions::prompt;
 use crate::actions::text;
 use crate::actions::Action;
-use crate::editor::buffers::buffer::Buffer;
+use crate::editor::buffers::Buffer;
 use crate::events::ToEditor;
 use crate::server::ClientHandle;
 use crate::server::ClientId;
@@ -99,6 +99,12 @@ impl Editor {
     fn on_client_connected(&mut self, handle: ClientHandle) {
         log::info!("Client connected: {:?}, id: {:?}", handle.info, handle.id);
         self.clients.insert(handle.id, handle);
+    }
+
+    pub fn open_new_buffer(&mut self, id: ClientId, buf: Buffer) {
+        let bid = self.buffers.insert(buf);
+        let (win, _) = self.get_win_buf_mut(id);
+        win.change_buffer(bid);
     }
 
     fn send_to_client(&mut self, id: ClientId, msg: ClientMessage) {
@@ -196,6 +202,10 @@ impl Editor {
         // Clear keys buffer, and handle them separately
         let events = mem::replace(&mut self.keys, vec![]);
         for event in events {
+            if event.alt_pressed() || event.control_pressed() {
+                continue;
+            }
+
             match event.key() {
                 Char(ch) => {
                     let mut buf = [0u8; 4];
@@ -227,23 +237,20 @@ impl Editor {
 
     pub fn handle_job_msg(&mut self, msg: FromJobs) {
         match msg {
-            FromJobs::Progress(id, progress) => {
-                log::info!("Job {id} progress.");
-                match progress {
-                    JobProgress::Output(out) => {
-                        if let Some((client_id, on_output)) = self.jobs.on_output_handler(&id) {
-                            (on_output)(self, client_id, out);
-                            self.redraw(client_id);
-                        }
-                    }
-                    JobProgress::Error(out) => {
-                        if let Some((client_id, on_error)) = self.jobs.on_error_handler(&id) {
-                            (on_error)(self, client_id, out);
-                            self.redraw(client_id);
-                        }
+            FromJobs::Progress(id, progress) => match progress {
+                JobProgress::Output(out) => {
+                    if let Some((client_id, on_output)) = self.jobs.on_output_handler(&id) {
+                        (on_output)(self, client_id, out);
+                        self.redraw(client_id);
                     }
                 }
-            }
+                JobProgress::Error(out) => {
+                    if let Some((client_id, on_error)) = self.jobs.on_error_handler(&id) {
+                        (on_error)(self, client_id, out);
+                        self.redraw(client_id);
+                    }
+                }
+            },
             FromJobs::Ok(id) => {
                 log::info!("Job {id} succesful.");
                 self.jobs.job_done(&id);

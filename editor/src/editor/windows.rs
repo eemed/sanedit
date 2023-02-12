@@ -1,7 +1,7 @@
 mod window;
 use std::collections::HashMap;
 
-use super::buffers::buffer::BufferId;
+use super::buffers::BufferId;
 use crate::server::ClientId;
 pub(crate) use window::*;
 

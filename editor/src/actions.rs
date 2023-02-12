@@ -3,16 +3,18 @@ pub(crate) mod movement;
 pub(crate) mod prompt;
 pub(crate) mod text;
 pub(crate) mod jobs;
+pub(crate) mod window;
 
 use std::{fmt, sync::Arc};
 
 use crate::{editor::Editor, server::ClientId};
 
-use self::editor::quit;
+use self::editor::*;
 use self::movement::*;
 use self::prompt::*;
 use self::text::*;
 use self::jobs::*;
+use self::window::*;
 
 macro_rules! action_list {
     ( $($name:ident,)*) => {
@@ -75,6 +77,8 @@ impl Action {
         end_of_buffer,
         next_visual_line,
         prev_visual_line,
+        scroll_up,
+        scroll_down,
 
         prompt_next_grapheme,
         prompt_prev_grapheme,

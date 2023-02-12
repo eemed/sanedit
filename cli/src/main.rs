@@ -1,7 +1,7 @@
 mod logging;
 
 use core::time;
-use std::{path::PathBuf, thread};
+use std::{path::PathBuf, sync::mpsc, thread};
 
 use clap::{Parser, Subcommand};
 use sanedit_editor::Address;
@@ -30,14 +30,16 @@ fn main() {
     let editor_join =
         thread::spawn(|| sanedit_editor::run_sync(vec![Address::UnixDomainSocket(s)]));
 
-    thread::sleep(time::Duration::from_millis(100));
-
-    match UnixDomainSocketClient::connect(socket) {
-        Ok(client) => {
-            client.run();
-        }
-        Err(e) => {
-            log::info!("Error connecting to socket: {}", e);
+    // TODO impl signal from server when its ready
+    loop {
+        match UnixDomainSocketClient::connect(socket.clone()) {
+            Ok(client) => {
+                client.run();
+                break;
+            }
+            Err(e) => {
+                log::info!("Error connecting to socket: {}", e);
+            }
         }
     }
 

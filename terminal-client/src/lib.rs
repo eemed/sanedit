@@ -33,7 +33,7 @@ where
     let input_sender = tx.clone();
     let input_join = thread::spawn(|| input::run_loop(input_sender));
 
-    let read_sender = tx.clone();
+    let read_sender = tx;
     let read_join = thread::spawn(|| run_read_loop(read, read_sender));
 
     while let Ok(msg) = rx.recv() {
@@ -67,11 +67,13 @@ fn run_read_loop<R>(read: R, sender: mpsc::Sender<ClientInternalMessage>)
 where
     R: io::Read + Clone + Send + 'static,
 {
-    let mut reader: Reader<_, ClientMessage> = Reader::new(read);
+    let reader: Reader<_, ClientMessage> = Reader::new(read);
 
     for msg in reader {
-        if let Err(e) = sender.send(ClientInternalMessage::FromServer(msg)) {
+        if let Err(_e) = sender.send(ClientInternalMessage::FromServer(msg)) {
             break;
         }
     }
+
+    let _ = sender.send(ClientInternalMessage::Bye);
 }

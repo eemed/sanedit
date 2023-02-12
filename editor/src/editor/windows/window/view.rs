@@ -1,9 +1,11 @@
 use sanedit_buffer::piece_tree::{next_grapheme, PieceTreeSlice};
-use sanedit_messages::redraw::{self, Point, Size, Style, Theme, ThemeField};
+use sanedit_messages::redraw::{
+    self, Point, Prompt, Redraw, Size, Statusline, Style, Theme, ThemeField,
+};
 
 use crate::common::char::{Char, DisplayOptions, GraphemeCategory, Replacement};
 use crate::common::eol::EOL;
-use crate::editor::buffers::buffer::Buffer;
+use crate::editor::buffers::Buffer;
 use crate::editor::windows::window::{Cursor, Cursors};
 
 use super::Window;
@@ -60,16 +62,27 @@ impl From<Char> for Cell {
 /// as well as implement movements which operate on visual information.
 #[derive(Debug)]
 pub(crate) struct View {
+    /// offset to view start
     offset: usize,
+    /// after drawn updated to the last position in view, exclusive
     end: usize,
+    /// Cells to hold drawn data
     cells: Vec<Vec<Cell>>,
+    /// Primary cursor point in cells
     primary_cursor: Point,
+    /// Width of view
     width: usize,
+    /// Height of view
     height: usize,
+    /// Wether this view is out of date, and needs to be redrawn to
+    /// represent current state.
     needs_redraw: bool,
 
     /// Display options which were used to draw this view
     display_options: DisplayOptions,
+
+    /// Wether this view has changed and should be sent to clients again
+    has_changed: bool,
 }
 
 impl View {
@@ -83,10 +96,11 @@ impl View {
             height,
             needs_redraw: true,
             display_options: DisplayOptions::default(),
+            has_changed: true,
         }
     }
 
-    pub fn clear(&mut self) {
+    fn clear(&mut self) {
         self.cells = vec![vec![Cell::default(); self.width]; self.height];
         self.needs_redraw = true;
     }
@@ -229,16 +243,21 @@ impl View {
         }
     }
 
-    pub fn redraw(&mut self, buf: &Buffer, win: &Window) {
+    pub fn redraw(&mut self, win: &Window, buf: &Buffer) {
+        if !self.needs_redraw {
+            return;
+        }
+
         self.display_options = win.options.display.clone();
         let cursors = win.cursors();
         self.clear();
         self.draw_cells(buf);
         self.draw_cursors(cursors);
         self.needs_redraw = false;
+        self.has_changed = true;
     }
 
-    pub fn scroll_down(&mut self, buf: &Buffer, cursors: &Cursors) {
+    pub fn scroll_down(&mut self, win: &Window, buf: &Buffer) {
         if self.end == buf.len() {
             return;
         }
@@ -257,10 +276,10 @@ impl View {
             self.draw_line(&slice, &mut pos, &mut line, &mut col);
         }
 
-        self.draw_cursors(cursors);
+        self.draw_cursors(win.cursors());
     }
 
-    pub fn scroll_up(&mut self, buf: &Buffer, cursors: &Cursors) {
+    pub fn scroll_up(&mut self, win: &Window, buf: &Buffer) {
         if self.offset == 0 {
             return;
         }
@@ -354,6 +373,23 @@ impl View {
     pub fn invalidate(&mut self) {
         self.needs_redraw = true;
     }
+
+    pub fn draw_window(
+        &mut self,
+        win: &Window,
+        buf: &Buffer,
+        theme: &Theme,
+    ) -> Option<redraw::Window> {
+        self.redraw(win, buf);
+
+        if !self.has_changed {
+            return None;
+        }
+
+        let win = draw_window(self, theme);
+        self.has_changed = false;
+        Some(win)
+    }
 }
 
 impl Default for View {
@@ -362,7 +398,7 @@ impl Default for View {
     }
 }
 
-pub(crate) fn draw_into_window(view: &View, theme: &Theme) -> redraw::Window {
+fn draw_window(view: &View, theme: &Theme) -> redraw::Window {
     let def = theme
         .get(ThemeField::Default.into())
         .unwrap_or(Style::default());
@@ -416,29 +452,40 @@ fn draw_trailing_whitespace(grid: &mut Vec<Vec<redraw::Cell>>, view: &View, them
     for (line, row) in view.cells.iter().enumerate() {}
 }
 
+pub(crate) fn draw_statusline(win: &Window, buf: &Buffer) -> Statusline {
+    let line = match win.message.as_ref() {
+        Some(msg) => format!("{}", msg.message),
+        None => format!("{}", buf.name()),
+    };
+
+    Statusline::new(line.as_str())
+}
+
 #[cfg(test)]
 mod test {
-    use crate::editor::buffers::buffer::Buffer;
+    use std::mem;
+
+    use crate::editor::buffers::buffer::{Buffer, BufferId};
 
     use super::*;
 
     #[test]
     fn tabs() {
         let width = 80;
-        let opts = DisplayOptions::default();
         let mut buf = Buffer::new();
         buf.append("\tHello\tWorld");
 
-        let mut view = View::new(width, 1);
-        view.redraw(&buf.slice(..), &Cursors::default(), &opts);
+        let mut window = Window::new(BufferId::default(), width, 1);
+        let mut view = mem::take(&mut window.view);
+        view.redraw(&buf, &window);
 
-        println!("{}", "-".repeat(width));
-        for row in &view.cells {
-            for cell in row {
-                print!("{}", cell.char().display());
-            }
-            println!("");
-        }
-        println!("{}", "-".repeat(width));
+        // println!("{}", "-".repeat(width));
+        // for row in &view.cells {
+        //     for cell in row {
+        //         print!("{}", cell.char().display());
+        //     }
+        //     println!("");
+        // }
+        // println!("{}", "-".repeat(width));
     }
 }

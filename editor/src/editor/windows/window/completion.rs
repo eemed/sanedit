@@ -67,23 +67,23 @@ impl Completion {
 
         let ignore_case = input
             .chars()
-            .fold(false, |acc, ch| acc && ch.is_ascii_lowercase());
+            .fold(true, |acc, ch| acc && ch.is_ascii_lowercase());
 
         for opt in opts.into_iter() {
             if let Some(_) = matches_with(&opt, &input, ignore_case) {
-                // let len = opt.len();
-                // let ins_idx = self
-                //     .matched
-                //     .binary_search_by(|res| {
-                //         use std::cmp::Ordering;
-                //         match res.len().cmp(&len) {
-                //             Ordering::Less => Ordering::Less,
-                //             Ordering::Greater => Ordering::Greater,
-                //             Ordering::Equal => res.cmp(&opt),
-                //         }
-                //     })
-                //     .unwrap_or_else(|x| x);
-                self.matched.push(opt);
+                let len = opt.len();
+                let ins_idx = self
+                    .matched
+                    .binary_search_by(|res| {
+                        use std::cmp::Ordering;
+                        match res.len().cmp(&len) {
+                            Ordering::Less => Ordering::Less,
+                            Ordering::Greater => Ordering::Greater,
+                            Ordering::Equal => res.cmp(&opt),
+                        }
+                    })
+                    .unwrap_or_else(|x| x);
+                self.matched.insert(ins_idx, opt);
             } else {
                 self.options.push(opt);
             }

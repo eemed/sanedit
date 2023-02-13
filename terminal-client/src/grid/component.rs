@@ -106,6 +106,7 @@ fn into_cells_with_theme(string: &str, themefield: ThemeField, ctx: &UIContext) 
     while cells.len() < ctx.width {
         cells.push(Cell::default());
     }
+
     while cells.len() > ctx.width {
         cells.pop();
     }

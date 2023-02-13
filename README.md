@@ -87,4 +87,3 @@ the editor and draw the screen.
 ### view
 
 Used to draw editor state.
-

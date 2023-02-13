@@ -1,4 +1,7 @@
-use sanedit_buffer::piece_tree::{next_grapheme, PieceTreeSlice};
+use std::collections::VecDeque;
+use std::ops::Range;
+
+use sanedit_buffer::piece_tree::{next_grapheme, prev_grapheme, PieceTreeSlice};
 use sanedit_messages::redraw::{
     self, Point, Prompt, Redraw, Size, Statusline, Style, Theme, ThemeField,
 };
@@ -62,14 +65,10 @@ impl From<Char> for Cell {
 /// as well as implement movements which operate on visual information.
 #[derive(Debug)]
 pub(crate) struct View {
-    /// offset to view start
-    offset: usize,
-    /// after drawn updated to the last position in view, exclusive
-    end: usize,
+    /// buffer range
+    range: Range<usize>,
     /// Cells to hold drawn data
-    cells: Vec<Vec<Cell>>,
-    /// Primary cursor point in cells
-    primary_cursor: Point,
+    cells: VecDeque<Vec<Cell>>,
     /// Width of view
     width: usize,
     /// Height of view
@@ -88,10 +87,8 @@ pub(crate) struct View {
 impl View {
     pub fn new(width: usize, height: usize) -> View {
         View {
-            offset: 0,
-            end: 0,
-            cells: vec![vec![Cell::default(); width]; height],
-            primary_cursor: Point::default(),
+            range: 0..0,
+            cells: Self::make_default_cells(width, height),
             width,
             height,
             needs_redraw: true,
@@ -100,8 +97,17 @@ impl View {
         }
     }
 
+    fn make_default_cells(width: usize, height: usize) -> VecDeque<Vec<Cell>> {
+        let row = vec![Cell::default(); width];
+        let mut cells = VecDeque::with_capacity(height);
+        for _ in 0..height {
+            cells.push_back(row.clone());
+        }
+        cells
+    }
+
     fn clear(&mut self) {
-        self.cells = vec![vec![Cell::default(); self.width]; self.height];
+        self.cells = Self::make_default_cells(self.width, self.height);
         self.needs_redraw = true;
     }
 
@@ -113,7 +119,8 @@ impl View {
         self.height
     }
 
-    /// Advance line and col in the grid by amount
+    /// Advance line and col in the grid by amount, May advance past self.height
+    /// lines, but will not advance past self.width columns
     fn grid_advance(&mut self, line: &mut usize, col: &mut usize, amount: usize) {
         for _ in 0..amount {
             *col += 1;
@@ -125,27 +132,28 @@ impl View {
         }
     }
 
-    fn grid_advance_backwards(&mut self, line: &mut usize, col: &mut usize, amount: usize) {
+    // Tries to advance line and col backwards, if 0,0 is encoutered returns
+    // false
+    fn grid_advance_backwards(&mut self, line: &mut usize, col: &mut usize, amount: usize) -> bool {
         for _ in 0..amount {
             if *col == 0 {
-                *line -= 1;
+                if *line == 0 {
+                    return false;
+                }
+
+                *line = line.saturating_sub(1);
                 *col = self.width.saturating_sub(1);
             }
 
             *col -= 1;
         }
-    }
 
-    fn draw_cursors(&mut self, cursors: &Cursors) {
-        let primary = cursors.primary();
-        self.primary_cursor = self
-            .cursor_cell_pos(primary)
-            .expect("Primary cursor not in view");
+        true
     }
 
     fn cursor_cell_pos(&mut self, cursor: &Cursor) -> Option<Point> {
         // Cursor is always on a character or at the end of file
-        let mut pos = self.offset;
+        let mut pos = self.range.start;
         for (line, row) in self.cells.iter().enumerate() {
             for (col, cell) in row.iter().enumerate() {
                 match cell {
@@ -169,7 +177,7 @@ impl View {
     }
 
     fn draw_cells(&mut self, buf: &Buffer) {
-        let slice = buf.slice(self.offset..);
+        let slice = buf.slice(self.range.start..);
         let mut pos = 0;
         let mut line = 0;
         let mut col = 0;
@@ -182,9 +190,10 @@ impl View {
             self.cells[line][col] = Cell::EOF;
         }
 
-        self.end = pos;
+        self.range = self.range.start..pos;
     }
 
+    /// Draw a line into self.cells backwards
     fn draw_line_backwards(
         &mut self,
         slice: &PieceTreeSlice,
@@ -192,25 +201,39 @@ impl View {
         line: &mut usize,
         col: &mut usize,
     ) {
+        let mut buf = Vec::with_capacity(self.width);
         let cur = *line;
+        let start_line = *line;
+        let start_pos = *pos;
 
-        while let Some(grapheme) = next_grapheme(&slice, *pos) {
+        while let Some(grapheme) = prev_grapheme(&slice, *pos) {
             let grapheme_len = grapheme.len();
+            let is_eol = EOL::is_eol(&grapheme);
             let ch = Char::new(grapheme, *col, &self.display_options);
             let ch_width = ch.width();
             let cell = ch.into();
 
-            self.cells[*line][*col] = cell;
+            if is_eol && *pos != start_pos {
+                break;
+            }
+
+            buf.push(cell);
             *pos -= grapheme_len;
 
-            self.grid_advance_backwards(line, col, ch_width);
-
-            if cur != *line {
+            if !self.grid_advance_backwards(line, col, ch_width) || cur != *line {
                 break;
             }
         }
+
+        // TODO Realign buf if it contains tabs it may shrink
+        // when more stuff is added
+
+        for (i, cell) in buf.into_iter().rev().enumerate() {
+            self.cells[start_line][i] = cell;
+        }
     }
 
+    /// Draw a line into self.cells
     fn draw_line(
         &mut self,
         slice: &PieceTreeSlice,
@@ -252,59 +275,62 @@ impl View {
         let cursors = win.cursors();
         self.clear();
         self.draw_cells(buf);
-        self.draw_cursors(cursors);
         self.needs_redraw = false;
         self.has_changed = true;
     }
 
     pub fn scroll_down(&mut self, win: &Window, buf: &Buffer) {
-        if self.end == buf.len() {
+        let first_line_len = self
+            .cells
+            .get(0)
+            .map(|row| row.iter().fold(0, |acc, cell| acc + cell.grapheme_len()))
+            .unwrap_or(0);
+        if first_line_len + self.range.start == buf.len() {
             return;
         }
 
-        // TODO better way?
-        self.cells.remove(0);
-        self.cells.push(vec![Cell::default(); self.width]);
+        self.has_changed = true;
+        let _ = self.cells.pop_front();
+        self.cells.push_back(vec![Cell::default(); self.width]);
 
-        let slice = buf.slice(self.end..);
+        let slice = buf.slice(self.range.end..);
         let last_line = self.height - 1;
         let mut pos = 0;
         let mut line = last_line;
         let mut col = 0;
 
-        while pos != buf.len() && line < self.height {
-            self.draw_line(&slice, &mut pos, &mut line, &mut col);
-        }
-
-        self.draw_cursors(win.cursors());
+        self.draw_line(&slice, &mut pos, &mut line, &mut col);
+        self.range = self.range.start + first_line_len..self.range.end + pos;
     }
 
     pub fn scroll_up(&mut self, win: &Window, buf: &Buffer) {
-        if self.offset == 0 {
+        if self.range.start == 0 {
             return;
         }
 
-        // TODO better way?
-        self.cells.pop();
-        self.cells.insert(0, vec![Cell::default(); self.width]);
+        self.has_changed = true;
+        let last_line = self.cells.pop_back();
+        let last_line_len = last_line
+            .map(|row| row.iter().fold(0, |acc, cell| acc + cell.grapheme_len()))
+            .unwrap_or(0);
+        self.cells.push_front(vec![Cell::default(); self.width]);
 
-        let slice = buf.slice(..self.offset);
-        let mut pos = self.offset;
+        let slice = buf.slice(..self.range.start);
+        let mut pos = self.range.start;
         let mut line = 0;
         let mut col = self.width.saturating_sub(1);
 
-        todo!()
-
-        // self.draw_cursors(cursors);
+        self.draw_line_backwards(&slice, &mut pos, &mut line, &mut col);
+        self.range = pos..self.range.end - last_line_len;
     }
 
-    pub fn offset(&self) -> usize {
-        self.offset
+    pub fn range(&self) -> Range<usize> {
+        self.range.clone()
     }
 
     /// wether this view includes the buffer start
     pub fn at_start(&self) -> bool {
-        self.offset == 0
+        self.range.start == 0
     }
 
     /// wether this view includes the buffer end
@@ -314,17 +340,13 @@ impl View {
             .fold(true, |acc, cell| acc && matches!(cell, Cell::Empty))
     }
 
-    pub fn set_view_offset(&mut self, offset: usize) {
-        self.offset = offset;
+    pub fn set_offset(&mut self, offset: usize) {
+        self.range.start = offset;
         self.needs_redraw = true;
     }
 
     pub fn needs_redraw(&self) -> bool {
         self.needs_redraw
-    }
-
-    pub fn primary_cursor(&self) -> Point {
-        self.primary_cursor
     }
 
     pub fn last_non_empty_cell(&self, line: usize) -> Option<Point> {
@@ -340,7 +362,7 @@ impl View {
     }
 
     pub fn pos_at_point(&self, point: Point) -> Option<usize> {
-        let mut pos = self.offset;
+        let mut pos = self.range.start;
         for (y, row) in self.cells.iter().enumerate() {
             for (x, cell) in row.iter().enumerate() {
                 match cell {
@@ -363,10 +385,78 @@ impl View {
         None
     }
 
+    pub fn point_at_pos(&self, pos: usize) -> Option<Point> {
+        let mut cur = self.range.start;
+
+        for (y, row) in self.cells.iter().enumerate() {
+            for (x, cell) in row.iter().enumerate() {
+                if !matches!(cell, Cell::Empty) {
+                    if cur == pos {
+                        return Some(Point { x, y });
+                    }
+                }
+
+                if let Cell::Char { ch } = cell {
+                    cur += ch.grapheme_len();
+                }
+            }
+        }
+
+        None
+    }
+
+    /// Align view so that pos is shown
+    pub fn align_to_show(&mut self, pos: usize, win: &Window, buf: &Buffer) {
+        // // Make sure offset is inside buffer range
+        // if win.offset > buf.len() {
+        //     win.offset = buf.len();
+        //     win.offset = scroll_prev_line((win, buf));
+        // }
+
+        // let mut view = WindowCells::new((win, buf));
+        // let cursor = win.cursor.pos();
+        // let Range { start, end } = view.buf_range;
+        // if cursor >= start && end > cursor {
+        //     return;
+        // }
+
+        // let cursor_was_ahead = end <= cursor;
+        // let mut did_move = false;
+
+        // // Set view to cursor line start
+        // if cursor < start || end <= cursor {
+        //     win.offset = start_of_line(buf, cursor);
+        //     view = WindowCells::new((win, buf));
+        //     did_move = true;
+        // }
+
+        // // If still not in view set view to cursor position
+        // let Range { start, end } = view.buf_range;
+        // if cursor < start || end <= cursor {
+        //     win.offset = cursor;
+        //     did_move = true;
+        // }
+
+        // // scroll until current line is at bottom
+        // if did_move && cursor_was_ahead {
+        //     let mut amount = win.size.height.get();
+
+        //     // If last grapheme is eol we need to show one empty line
+        //     // even though there is nothing there
+        //     if cursor == buf.len() && ends_with_eol(buf) {
+        //         amount -= 1;
+        //     }
+
+        //     for _ in 0..amount {
+        //         win.offset = scroll_prev_line((&win, &buf));
+        //     }
+        // }
+    }
+
     pub fn resize(&mut self, size: Size) {
         self.width = size.width;
         self.height = size.height;
-        self.cells = vec![vec![Cell::default(); self.width]; self.height];
+        self.cells = Self::make_default_cells(size.width, size.height);
         self.needs_redraw = true;
     }
 
@@ -382,11 +472,11 @@ impl View {
     ) -> Option<redraw::Window> {
         self.redraw(win, buf);
 
-        if !self.has_changed {
-            return None;
-        }
+        // if !self.has_changed {
+        //     return None;
+        // }
 
-        let win = draw_window(self, theme);
+        let win = draw_window(self, win, theme);
         self.has_changed = false;
         Some(win)
     }
@@ -398,7 +488,7 @@ impl Default for View {
     }
 }
 
-fn draw_window(view: &View, theme: &Theme) -> redraw::Window {
+fn draw_window(view: &View, win: &Window, theme: &Theme) -> redraw::Window {
     let def = theme
         .get(ThemeField::Default.into())
         .unwrap_or(Style::default());
@@ -422,7 +512,10 @@ fn draw_window(view: &View, theme: &Theme) -> redraw::Window {
     draw_end_of_buffer(&mut grid, view, theme);
     draw_trailing_whitespace(&mut grid, view, theme);
 
-    redraw::Window::new(grid, view.primary_cursor)
+    let cursor = view
+        .point_at_pos(win.cursors().primary().pos())
+        .expect("cursor not at view");
+    redraw::Window::new(grid, cursor)
 }
 
 fn draw_end_of_buffer(grid: &mut Vec<Vec<redraw::Cell>>, view: &View, theme: &Theme) {

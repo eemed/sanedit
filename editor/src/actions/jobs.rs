@@ -36,7 +36,7 @@ async fn list_files(mut send: JobProgressSender, dir: PathBuf) -> bool {
                     let name: String = stripped.to_string_lossy().into();
                     entries.push(name);
 
-                    if entries.len() > 100 {
+                    if entries.len() > 2000 {
                         send.send(JobProgress::Output(mem::take(&mut entries)))
                             .await;
                     }

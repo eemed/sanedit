@@ -46,7 +46,11 @@ pub(crate) fn end_of_buffer(editor: &mut Editor, id: ClientId) {
 
 pub(crate) fn prev_visual_line(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.get_win_buf_mut(id);
-    let cursor_point = win.view().primary_cursor();
+    let cursor_pos = win.cursors().primary().pos();
+    let cursor_point = win
+        .view()
+        .point_at_pos(cursor_pos)
+        .expect("cursor not in view");
     let cursor_at_start = cursor_point.y == 0;
     let view_at_start = win.view().at_start();
 
@@ -67,7 +71,11 @@ pub(crate) fn prev_visual_line(editor: &mut Editor, id: ClientId) {
 // up and do so. returns wether cursor was moved.
 fn prev_visual_line_impl(editor: &mut Editor, id: ClientId) -> bool {
     let (win, _buf) = editor.get_win_buf_mut(id);
-    let cursor_point = win.view().primary_cursor();
+    let cursor_pos = win.cursors().primary().pos();
+    let cursor_point = win
+        .view()
+        .point_at_pos(cursor_pos)
+        .expect("cursor not in view");
     if cursor_point.y == 0 {
         return false;
     }
@@ -98,7 +106,11 @@ fn prev_visual_line_impl(editor: &mut Editor, id: ClientId) -> bool {
 
 pub(crate) fn next_visual_line(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.get_win_buf_mut(id);
-    let cursor_point = win.view().primary_cursor();
+    let cursor_pos = win.cursors().primary().pos();
+    let cursor_point = win
+        .view()
+        .point_at_pos(cursor_pos)
+        .expect("cursor not in view");
     let last_line = win.view().height().saturating_sub(1);
     let cursor_at_end = cursor_point.y == last_line;
     let view_at_end = win.view().at_end();
@@ -119,7 +131,11 @@ pub(crate) fn next_visual_line(editor: &mut Editor, id: ClientId) {
 // scrolled down and do so. returns wether cursor was moved.
 fn next_visual_line_impl(editor: &mut Editor, id: ClientId) -> bool {
     let (win, buf) = editor.get_win_buf_mut(id);
-    let cursor_point = win.view().primary_cursor();
+    let cursor_pos = win.cursors().primary().pos();
+    let cursor_point = win
+        .view()
+        .point_at_pos(cursor_pos)
+        .expect("cursor not in view");
     let last_line = win.view().height().saturating_sub(1);
     let target_line = cmp::min(last_line, cursor_point.y + 1);
 

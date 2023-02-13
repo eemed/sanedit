@@ -88,17 +88,40 @@ impl Window {
 
     pub fn scroll_down(&mut self, buf: &Buffer) {
         debug_assert!(buf.id == self.buf, "Provided a wrong buffer to window");
-        todo!()
+        let mut view = mem::take(&mut self.view);
+        view.scroll_down(self, buf);
+        self.view = view;
+
+        let primary = self.cursors.primary_mut();
+        let range = self.view.range();
+        if primary.pos() < range.start {
+            primary.goto(range.start);
+        }
+
+        log::info!("View range: {range:?}, {}", primary.pos());
     }
 
     pub fn scroll_up(&mut self, buf: &Buffer) {
         debug_assert!(buf.id == self.buf, "Provided a wrong buffer to window");
-        todo!()
+        let mut view = mem::take(&mut self.view);
+        view.scroll_up(self, buf);
+        self.view = view;
+
+        let primary = self.cursors.primary_mut();
+        let range = self.view.range();
+        if primary.pos() > range.end {
+            primary.goto(range.end);
+        }
+
+        log::info!("View range: {range:?}, {}", primary.pos());
     }
 
-    ///  sets window offset so that primary cursor is visible in the drawn view.
-    pub fn view_to_cursor(&mut self) {
-        todo!()
+    /// sets window offset so that primary cursor is visible in the drawn view.
+    pub fn view_to_cursor(&mut self, buf: &Buffer) {
+        let cursor = self.primary_cursor().pos();
+        let mut view = mem::take(&mut self.view);
+        view.align_to_show(cursor, self, buf);
+        self.view = view;
     }
 
     pub fn buffer_id(&self) -> BufferId {

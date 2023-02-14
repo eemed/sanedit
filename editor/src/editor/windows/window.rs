@@ -9,6 +9,7 @@ mod view;
 
 use std::mem;
 
+use sanedit_buffer::piece_tree::prev_grapheme_boundary;
 use sanedit_messages::redraw::{Redraw, Size, Theme};
 
 use crate::editor::buffers::{Buffer, BufferId};
@@ -98,7 +99,7 @@ impl Window {
             primary.goto(range.start);
         }
 
-        log::info!("View range: {range:?}, {}", primary.pos());
+        log::info!("View down range: {range:?}, {}", primary.pos());
     }
 
     pub fn scroll_up(&mut self, buf: &Buffer) {
@@ -109,11 +110,12 @@ impl Window {
 
         let primary = self.cursors.primary_mut();
         let range = self.view.range();
-        if primary.pos() > range.end {
-            primary.goto(range.end);
+        if primary.pos() >= range.end {
+            let prev = prev_grapheme_boundary(&buf.slice(..), range.end);
+            primary.goto(prev);
         }
 
-        log::info!("View range: {range:?}, {}", primary.pos());
+        log::info!("View up range: {range:?}, {}", primary.pos());
     }
 
     /// sets window offset so that primary cursor is visible in the drawn view.

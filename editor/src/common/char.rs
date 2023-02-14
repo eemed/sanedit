@@ -20,7 +20,7 @@ pub(crate) struct Char {
 }
 
 impl Char {
-    pub fn new(grapheme: PieceTreeSlice, column: usize, options: &DisplayOptions) -> Char {
+    pub fn new(grapheme: &PieceTreeSlice, column: usize, options: &DisplayOptions) -> Char {
         grapheme_to_char(grapheme, column, options)
     }
 
@@ -97,9 +97,9 @@ impl Default for DisplayOptions {
 }
 
 #[inline]
-fn grapheme_to_char(slice: PieceTreeSlice, column: usize, options: &DisplayOptions) -> Char {
+fn grapheme_to_char(slice: &PieceTreeSlice, column: usize, options: &DisplayOptions) -> Char {
     let buf_range = Some(slice.start()..slice.end());
-    let grapheme = String::from(&slice);
+    let grapheme = String::from(slice);
 
     // is tab
     if grapheme == "\t" {
@@ -214,7 +214,7 @@ mod test {
         let mut pt = PieceTree::new();
         pt.insert_str(0, "❤️");
         let slice = pt.slice(..);
-        let ch = Char::new(slice, 0, &DisplayOptions::default());
+        let ch = Char::new(&slice, 0, &DisplayOptions::default());
         assert_eq!("❤️", ch.display());
     }
 
@@ -223,7 +223,7 @@ mod test {
         let mut pt = PieceTree::new();
         pt.insert(0, b"\0");
         let slice = pt.slice(..);
-        let ch = Char::new(slice, 0, &DisplayOptions::default());
+        let ch = Char::new(&slice, 0, &DisplayOptions::default());
         assert_eq!("\0", ch.display());
     }
 
@@ -232,7 +232,7 @@ mod test {
         let mut pt = PieceTree::new();
         pt.insert(0, b"\xFF");
         let slice = pt.slice(..);
-        let ch = Char::new(slice, 0, &DisplayOptions::default());
+        let ch = Char::new(&slice, 0, &DisplayOptions::default());
         assert_eq!("\u{fffd}", ch.display());
     }
 
@@ -250,7 +250,7 @@ mod test {
             }
             first
         };
-        let ch = Char::new(slice, 0, &DisplayOptions::default());
+        let ch = Char::new(&slice, 0, &DisplayOptions::default());
         assert_eq!(&expected, ch.display());
     }
 
@@ -260,7 +260,7 @@ mod test {
         pt.insert_str(0, "\u{00A0}");
         let slice = pt.slice(..);
         let opts = DisplayOptions::default();
-        let ch = Char::new(slice, 0, &opts);
+        let ch = Char::new(&slice, 0, &opts);
         let expected = opts
             .replacements
             .get(&Replacement::NonBreakingSpace)

@@ -13,11 +13,13 @@ impl<'a> PieceTreeSlice<'a> {
         PieceTreeSlice { range, pt }
     }
 
+    /// Start of slice in buffer
     #[inline]
     pub fn start(&self) -> usize {
         self.range.start
     }
 
+    /// End of slice in buffer
     #[inline]
     pub fn end(&self) -> usize {
         self.range.end

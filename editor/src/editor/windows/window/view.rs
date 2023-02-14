@@ -119,38 +119,6 @@ impl View {
         self.height
     }
 
-    /// Advance line and col in the grid by amount, May advance past self.height
-    /// lines, but will not advance past self.width columns
-    fn grid_advance(&mut self, line: &mut usize, col: &mut usize, amount: usize) {
-        for _ in 0..amount {
-            *col += 1;
-
-            if *col == self.width {
-                *line += 1;
-                *col = 0;
-            }
-        }
-    }
-
-    // Tries to advance line and col backwards, if 0,0 is encoutered returns
-    // false
-    fn grid_advance_backwards(&mut self, line: &mut usize, col: &mut usize, amount: usize) -> bool {
-        for _ in 0..amount {
-            if *col == 0 {
-                if *line == 0 {
-                    return false;
-                }
-
-                *line = line.saturating_sub(1);
-                *col = self.width.saturating_sub(1);
-            }
-
-            *col -= 1;
-        }
-
-        true
-    }
-
     fn cursor_cell_pos(&mut self, cursor: &Cursor) -> Option<Point> {
         // Cursor is always on a character or at the end of file
         let mut pos = self.range.start;
@@ -180,90 +148,91 @@ impl View {
         let slice = buf.slice(self.range.start..);
         let mut pos = 0;
         let mut line = 0;
-        let mut col = 0;
 
-        while pos != buf.len() && line < self.height {
-            self.draw_line(&slice, &mut pos, &mut line, &mut col);
-        }
-
-        if pos == buf.len() {
-            self.cells[line][col] = Cell::EOF;
+        while line < self.height && !self.draw_line(&slice, line, &mut pos) {
+            line += 1;
         }
 
         self.range = self.range.start..pos;
     }
 
-    /// Draw a line into self.cells backwards
+    /// Draw a line into self.cells backwards, returns true if pos reaches 0
+    ///
+    /// Fills a line backwards until EOL or the line is full.
+    /// NOTE: if pos reaches 0 when drawing backwards a full redraw may be
+    /// needed, if the position we start to draw backwards is not EOL. Otherwise
+    /// the line will be shorter eventhough more could fit to the line.
     fn draw_line_backwards(
         &mut self,
         slice: &PieceTreeSlice,
+        line: usize,
         pos: &mut usize,
-        line: &mut usize,
-        col: &mut usize,
-    ) {
-        let mut buf = Vec::with_capacity(self.width);
-        let cur = *line;
-        let start_line = *line;
-        let start_pos = *pos;
+    ) -> bool {
+        let mut graphemes = VecDeque::with_capacity(self.width);
 
         while let Some(grapheme) = prev_grapheme(&slice, *pos) {
-            let grapheme_len = grapheme.len();
             let is_eol = EOL::is_eol(&grapheme);
-            let ch = Char::new(grapheme, *col, &self.display_options);
-            let ch_width = ch.width();
-            let cell = ch.into();
 
-            if is_eol && *pos != start_pos {
+            if is_eol && !graphemes.is_empty() {
                 break;
             }
 
-            buf.push(cell);
-            *pos -= grapheme_len;
+            // Must be recalculated because we are pushing elements to the front
+            let line_len = graphemes.iter().fold(0, |col, grapheme| {
+                let ch = Char::new(grapheme, col, &self.display_options);
+                col + ch.width()
+            });
 
-            if !self.grid_advance_backwards(line, col, ch_width) || cur != *line {
+            if line_len >= self.width {
                 break;
             }
+
+            *pos -= grapheme.len();
+            graphemes.push_front(grapheme);
         }
 
-        // TODO Realign buf if it contains tabs it may shrink
-        // when more stuff is added
+        graphemes.into_iter().fold(0, |col, grapheme| {
+            let ch = Char::new(&grapheme, col, &self.display_options);
+            let width = ch.width();
+            self.cells[line][col] = ch.into();
+            col + width
+        });
 
-        for (i, cell) in buf.into_iter().rev().enumerate() {
-            self.cells[start_line][i] = cell;
-        }
+        *pos == 0
     }
 
-    /// Draw a line into self.cells
-    fn draw_line(
-        &mut self,
-        slice: &PieceTreeSlice,
-        pos: &mut usize,
-        line: &mut usize,
-        col: &mut usize,
-    ) {
-        let cur = *line;
+    /// Draw a line into self.cells, returns true if EOF was written.
+    ///
+    /// If char does not fit to current line, no madeup representation will be
+    /// made for it.
+    fn draw_line(&mut self, slice: &PieceTreeSlice, line: usize, pos: &mut usize) -> bool {
+        let mut col = 0;
+        let mut is_eol = false;
 
         while let Some(grapheme) = next_grapheme(&slice, *pos) {
-            let grapheme_len = grapheme.len();
-            let is_eol = EOL::is_eol(&grapheme);
-            let ch = Char::new(grapheme, *col, &self.display_options);
+            is_eol = EOL::is_eol(&grapheme);
+            let ch = Char::new(&grapheme, col, &self.display_options);
             let ch_width = ch.width();
-            let cell = ch.into();
 
-            self.cells[*line][*col] = cell;
-            *pos += grapheme_len;
-
-            if is_eol {
-                *line += 1;
-                *col = 0;
-            } else {
-                self.grid_advance(line, col, ch_width);
+            if col + ch_width > self.width {
+                break;
             }
 
-            if cur != *line {
+            self.cells[line][col] = ch.into();
+            col += ch_width;
+            *pos += grapheme.len();
+
+            if is_eol {
                 break;
             }
         }
+
+        if !is_eol && *pos == slice.len() {
+            self.cells[line][col] = Cell::EOF;
+            return true;
+        }
+
+        false
     }
 
     pub fn redraw(&mut self, win: &Window, buf: &Buffer) {
@@ -280,12 +249,12 @@ impl View {
     }
 
     pub fn scroll_down(&mut self, win: &Window, buf: &Buffer) {
-        let first_line_len = self
+        let top_line_len = self
             .cells
             .get(0)
             .map(|row| row.iter().fold(0, |acc, cell| acc + cell.grapheme_len()))
             .unwrap_or(0);
-        if first_line_len + self.range.start == buf.len() {
+        if top_line_len + self.range.start == buf.len() {
             return;
         }
 
@@ -296,11 +265,9 @@ impl View {
         let slice = buf.slice(self.range.end..);
         let last_line = self.height - 1;
         let mut pos = 0;
-        let mut line = last_line;
-        let mut col = 0;
 
-        self.draw_line(&slice, &mut pos, &mut line, &mut col);
-        self.range = self.range.start + first_line_len..self.range.end + pos;
+        self.draw_line(&slice, last_line, &mut pos);
+        self.range = self.range.start + top_line_len..self.range.end + pos;
     }
 
     pub fn scroll_up(&mut self, win: &Window, buf: &Buffer) {
@@ -317,10 +284,8 @@ impl View {
 
         let slice = buf.slice(..self.range.start);
         let mut pos = self.range.start;
-        let mut line = 0;
-        let mut col = self.width.saturating_sub(1);
 
-        self.draw_line_backwards(&slice, &mut pos, &mut line, &mut col);
+        self.draw_line_backwards(&slice, 0, &mut pos);
         self.range = pos..self.range.end - last_line_len;
     }
 
@@ -472,6 +437,11 @@ impl View {
     ) -> Option<redraw::Window> {
         self.redraw(win, buf);
 
+        log::info!(
+            "View down range: {:?}, {}",
+            self.range,
+            win.cursors().primary().pos()
+        );
         // if !self.has_changed {
         //     return None;
         // }

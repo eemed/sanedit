@@ -119,6 +119,7 @@ pub(crate) fn next_visual_line(editor: &mut Editor, id: ClientId) {
         return;
     }
 
+    // Make sure we have atleast one extra line to down to
     if cursor_at_end && !view_at_end {
         win.scroll_down(buf);
     }

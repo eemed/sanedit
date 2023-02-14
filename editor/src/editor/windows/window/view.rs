@@ -156,12 +156,16 @@ impl View {
         self.range = self.range.start..pos;
     }
 
-    /// Draw a line into self.cells backwards, returns true if pos reaches 0
+    /// Draw a line into self.cells backwards, Fills a line backwards until EOL
+    /// or the line is full.
     ///
-    /// Fills a line backwards until EOL or the line is full.
-    /// NOTE: if pos reaches 0 when drawing backwards a full redraw may be
-    /// needed, if the position we start to draw backwards is not EOL. Otherwise
-    /// the line will be shorter eventhough more could fit to the line.
+    /// returns true if full redraw is required instead. This redraw should be
+    /// started at pos
+    ///
+    /// EXPLANATION: if pos reaches 0 or EOL is found when drawing backwards a
+    /// full redraw is needed , if the position we start to draw backwards is
+    /// not EOL (so we have a wrapped line). Otherwise the line will be shorter eventhough
+    /// more could fit to the line.
     fn draw_line_backwards(
         &mut self,
         slice: &PieceTreeSlice,
@@ -169,9 +173,10 @@ impl View {
         pos: &mut usize,
     ) -> bool {
         let mut graphemes = VecDeque::with_capacity(self.width);
+        let mut is_eol = false;
 
         while let Some(grapheme) = prev_grapheme(&slice, *pos) {
-            let is_eol = EOL::is_eol(&grapheme);
+             is_eol = EOL::is_eol(&grapheme);
 
             if is_eol && !graphemes.is_empty() {
                 break;
@@ -198,7 +203,8 @@ impl View {
             col + width
         });
 
-        *pos == 0
+        // TODO return (pos == 0 || last was eol) && start was not eol
+        *pos == 0 || is_eol
     }
 
     /// Draw a line into self.cells, returns true if EOF was written.
@@ -285,8 +291,9 @@ impl View {
         let slice = buf.slice(..self.range.start);
         let mut pos = self.range.start;
 
-        self.draw_line_backwards(&slice, 0, &mut pos);
+        self.needs_redraw = self.draw_line_backwards(&slice, 0, &mut pos);
         self.range = pos..self.range.end - last_line_len;
+        self.redraw(win, buf);
     }
 
     pub fn range(&self) -> Range<usize> {

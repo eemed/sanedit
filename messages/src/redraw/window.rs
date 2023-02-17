@@ -20,6 +20,18 @@ impl Window {
         &self.cells
     }
 
+    pub fn draw(&self) -> &Vec<Vec<Cell>> {
+        &self.cells
+    }
+
+    pub fn patch(&mut self, patch: WindowPatch) {
+        todo!()
+    }
+
+    pub fn diff(&self, other: &Window) -> WindowPatch {
+        todo!()
+    }
+
     pub fn primary_cursor(&self) -> Point {
         self.primary_cursor
     }
@@ -30,3 +42,13 @@ impl From<Window> for Redraw {
         Redraw::Window(value)
     }
 }
+
+
+#[derive(Serialize, Deserialize, PartialEq, Eq, Debug)]
+pub struct WindowPatch(WindowUpdateInner);
+
+impl WindowPatch {
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Eq, Debug)]
+enum WindowUpdateInner {}

@@ -44,7 +44,16 @@ where
                     break;
                 }
             }
-            ToServer(msg) => {
+            ToServer(mut msg) => {
+                match msg {
+                    Message::Resize(size) => {
+                        ui.resize(size);
+                        let win_size = ui.window_size();
+                        msg = Message::Resize(win_size);
+                    }
+                    _ => {}
+                }
+
                 if let Err(e) = writer.write(msg) {
                     log::error!("Client failed to send event to server");
                     break;

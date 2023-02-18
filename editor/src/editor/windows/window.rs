@@ -14,7 +14,6 @@ use sanedit_messages::redraw::{Redraw, Size, Theme};
 
 use crate::editor::buffers::{Buffer, BufferId};
 
-use self::prompt_view::PromptView;
 pub(crate) use self::{
     cursors::{Cursor, Cursors},
     message::{Message, Severity},
@@ -33,7 +32,6 @@ pub(crate) struct Window {
     cursors: Cursors,
     mode: Mode,
     pub prompt: Prompt,
-    pub prompt_view: PromptView,
     pub options: WindowOptions,
 }
 
@@ -45,7 +43,6 @@ impl Window {
             message: None,
             cursors: Cursors::default(),
             prompt: Prompt::default(),
-            prompt_view: PromptView::default(),
             options: WindowOptions::default(),
             mode: Mode::Normal,
         }
@@ -177,10 +174,7 @@ impl Window {
     }
 
     fn redraw_prompt(&mut self, theme: &Theme) -> Option<Redraw> {
-        let mut prompt = mem::take(&mut self.prompt_view);
-        let redraw = prompt.draw_prompt(self, theme).map(|prompt| prompt.into());
-        self.prompt_view = prompt;
-        redraw
+        self.prompt.redraw(&self.options)
     }
 
     fn redraw_view(&mut self, buf: &Buffer, theme: &Theme) -> Option<Redraw> {

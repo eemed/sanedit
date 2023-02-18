@@ -24,7 +24,20 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug)]
 pub enum Redraw {
-    Window(Window),
-    Statusline(Statusline),
+    /// First draw for window and statusline
+    Init(Window, Statusline),
+    /// Window updated
+    WindowUpdate(WindowDiff),
+    /// Statusline updated
+    StatuslineUpdate(StatuslineDiff),
+
+    // Statusline and window cannot currently be closed so they do not have a
+    // close redraw event
+
+    /// Prompt opened
     Prompt(Prompt),
+    /// Prompt updated
+    PromptUpdate(PromptDiff),
+    /// Prompt closed
+    ClosePrompt,
 }

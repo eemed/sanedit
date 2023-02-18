@@ -30,6 +30,7 @@ impl Terminal {
     }
 
     pub fn resize(&mut self, width: usize, height: usize) {
+        // Just clear on resize
         self.written = vec![vec![Cell::default(); width]; height];
     }
 

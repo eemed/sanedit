@@ -48,10 +48,29 @@ impl Prompt {
     pub fn options(&self) -> Vec<&str> {
         self.options.iter().map(|opt| opt.as_str()).collect()
     }
+
+    pub fn update(&mut self, diff: PromptDiff) {
+        *self = diff.prompt;
+    }
+
+    pub fn diff(&self, other: &Prompt) -> Option<PromptDiff> {
+        if self == other {
+            return None;
+        }
+
+        Some(PromptDiff {
+            prompt: other.clone(),
+        })
+    }
 }
 
 impl From<Prompt> for Redraw {
     fn from(value: Prompt) -> Self {
         Redraw::Prompt(value)
     }
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Eq, Debug)]
+pub struct PromptDiff {
+    prompt: Prompt,
 }

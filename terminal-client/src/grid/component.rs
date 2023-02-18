@@ -1,14 +1,14 @@
 use sanedit_messages::redraw::{
-    Cell, IntoCells, Point, Prompt, Statusline, Style, ThemeField, Window,
+    Cell, IntoCells, Point, Prompt, Statusline, Style, ThemeField, Window, Size,
 };
 
 use crate::ui::UIContext;
 
 pub(crate) trait Component {
     fn position(&self, ctx: &UIContext) -> Point;
-    fn draw(&mut self, ctx: &UIContext) -> Vec<Vec<Cell>>;
+    fn draw(&self, ctx: &UIContext) -> Vec<Vec<Cell>>;
     fn cursor(&self, ctx: &UIContext) -> Option<Point>;
-    // fn size(&self) -> Size;
+    fn size(&self, ctx: &UIContext) -> Size;
 }
 
 impl Component for Window {
@@ -16,7 +16,7 @@ impl Component for Window {
         Point { x: 0, y: 1 }
     }
 
-    fn draw(&mut self, ctx: &UIContext) -> Vec<Vec<Cell>> {
+    fn draw(&self, ctx: &UIContext) -> Vec<Vec<Cell>> {
         self.cells().clone()
     }
 
@@ -25,6 +25,10 @@ impl Component for Window {
         let pos = self.position(ctx);
         Some(cursor + pos)
     }
+
+    fn size(&self, ctx: &UIContext) -> Size {
+        Size { width: ctx.width, height: ctx.height - 1 }
+    }
 }
 
 impl Component for Statusline {
@@ -32,13 +36,17 @@ impl Component for Statusline {
         Point { x: 0, y: 0 }
     }
 
-    fn draw(&mut self, ctx: &UIContext) -> Vec<Vec<Cell>> {
+    fn draw(&self, ctx: &UIContext) -> Vec<Vec<Cell>> {
         let line = into_cells_with_theme(self.line(), ThemeField::Statusline, ctx);
         vec![line]
     }
 
     fn cursor(&self, ctx: &UIContext) -> Option<Point> {
         None
+    }
+
+    fn size(&self, ctx: &UIContext) -> Size {
+        Size { width: ctx.width, height: 1 }
     }
 }
 
@@ -47,7 +55,7 @@ impl Component for Prompt {
         Point { x: 0, y: 0 }
     }
 
-    fn draw(&mut self, ctx: &UIContext) -> Vec<Vec<Cell>> {
+    fn draw(&self, ctx: &UIContext) -> Vec<Vec<Cell>> {
         // TODO merge styles
         let a = ctx.theme.get(ThemeField::PromptDefault.into());
         let b = ctx.theme.get(ThemeField::PromptMessage.into());
@@ -91,6 +99,11 @@ impl Component for Prompt {
             x: point.x + cursor_col,
             y: point.y,
         })
+    }
+
+    fn size(&self, ctx: &UIContext) -> Size {
+        todo!()
+        // Size { width: ctx.width, height: 1 }
     }
 }
 

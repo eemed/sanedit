@@ -3,46 +3,47 @@ mod component;
 use core::fmt;
 use std::mem;
 
-use sanedit_messages::redraw::{Cell, Point};
+use sanedit_messages::redraw::{Cell, Point, Prompt, Statusline, Window};
 
 use crate::ui::UIContext;
 
 pub(crate) use self::component::Component;
 
 pub(crate) struct Grid {
-    width: usize,
-    height: usize,
-    components: Vec<Box<dyn Component>>,
+    pub window: Window,
+    pub statusline: Statusline,
+    pub prompt: Option<Prompt>,
 }
 
 impl fmt::Debug for Grid {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Grid")
-            .field("width", &self.width)
-            .field("height", &self.height)
-            .finish_non_exhaustive()
+        f.debug_struct("Grid").finish_non_exhaustive()
     }
 }
 
 impl Grid {
-    pub fn new(width: usize, height: usize) -> Grid {
+    pub fn new() -> Grid {
         Grid {
-            width,
-            height,
-            components: Vec::new(),
+            window: Window::default(),
+            statusline: Statusline::default(),
+            prompt: None,
         }
-    }
-
-    pub fn push_component(&mut self, comp: impl Component + 'static) {
-        self.components.push(Box::new(comp));
     }
 
     pub fn draw(&mut self, ctx: &UIContext) -> (Vec<Vec<Cell>>, Point) {
         let mut cursor = Point::default();
-        let mut canvas: Vec<Vec<Cell>> = vec![vec![Cell::default(); self.width]; self.height];
-        let components = mem::take(&mut self.components);
+        let mut cells: Vec<Vec<Cell>> = vec![vec![Cell::default(); ctx.width]; ctx.height];
+        let components: Vec<&dyn Component> = {
+            let mut comps: Vec<&dyn Component> = Vec::new();
+            comps.push(&self.window);
+            comps.push(&self.statusline);
+            if let Some(ref prompt) = self.prompt {
+                comps.push(prompt);
+            }
+            comps
+        };
 
-        for mut component in components.into_iter() {
+        for component in components.into_iter() {
             if let Some(cur) = component.cursor(ctx) {
                 cursor = cur;
             }
@@ -53,13 +54,13 @@ impl Grid {
                 for (col, cell) in row.into_iter().enumerate() {
                     let x = top_left.x + col;
                     let y = top_left.y + line;
-                    if x < self.width && y < self.height {
-                        canvas[y][x] = cell;
+                    if x < ctx.width && y < ctx.height {
+                        cells[y][x] = cell;
                     }
                 }
             }
         }
 
-        (canvas, cursor)
+        (cells, cursor)
     }
 }

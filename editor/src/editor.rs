@@ -39,6 +39,7 @@ use self::windows::Windows;
 
 pub(crate) struct Editor {
     clients: HashMap<ClientId, ClientHandle>,
+    draw_contexts: HashMap<ClientId, DrawContext>,
     windows: Windows,
     buffers: Buffers,
     jobs: Jobs,
@@ -54,6 +55,7 @@ impl Editor {
     fn new(jobs_handle: JobsHandle) -> Editor {
         Editor {
             clients: HashMap::default(),
+            draw_contexts: HashMap::default(),
             windows: Windows::default(),
             buffers: Buffers::default(),
             jobs: Jobs::new(jobs_handle),
@@ -134,6 +136,8 @@ impl Editor {
                 };
                 self.send_to_client(id, ClientMessage::Hello);
                 self.send_to_client(id, ClientMessage::Theme(theme));
+
+                self.redraw(id);
             }
             Message::KeyEvent(key_event) => self.handle_key_event(id, key_event),
             Message::MouseEvent(_) => {}

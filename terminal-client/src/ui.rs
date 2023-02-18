@@ -1,14 +1,15 @@
 mod context;
 
-use std::io;
-
 use anyhow::Result;
 use sanedit_messages::{
-    redraw::{Cell, Redraw, Size, Theme},
-    ClientMessage, Message, Writer,
+    redraw::{Redraw, Size},
+    ClientMessage,
 };
 
-use crate::{grid::Grid, terminal::Terminal};
+use crate::{
+    grid::{Component, Grid},
+    terminal::Terminal,
+};
 
 pub use self::context::UIContext;
 
@@ -25,9 +26,17 @@ impl UI {
         let height = terminal.height();
         Ok(UI {
             terminal,
-            grid: Grid::new(width, height),
+            grid: Grid::new(),
             context: UIContext::new(width, height),
         })
+    }
+
+    pub fn window_size(&self) -> Size {
+        self.grid.window.size(&self.context)
+    }
+
+    pub fn resize(&mut self, size: Size) {
+        self.terminal.resize(size.width, size.height);
     }
 
     pub fn handle_message(&mut self, msg: ClientMessage) -> bool {
@@ -48,17 +57,26 @@ impl UI {
 
     fn handle_redraw(&mut self, msg: Redraw) {
         match msg {
-            Redraw::Window(win) => {
-                log::info!("Redraw window");
-                self.grid.push_component(win);
+            Redraw::Init(win, statusline) => {
+                self.grid.window = win;
+                self.grid.statusline = statusline;
             }
-            Redraw::Statusline(line) => {
-                log::info!("Redraw statusline");
-                self.grid.push_component(line);
+            Redraw::WindowUpdate(diff) => {
+                self.grid.window.update(diff);
+            }
+            Redraw::StatuslineUpdate(diff) => {
+                self.grid.statusline.update(diff);
             }
             Redraw::Prompt(prompt) => {
-                log::info!("Redraw prompt");
-                self.grid.push_component(prompt);
+                self.grid.prompt = Some(prompt);
+            }
+            Redraw::PromptUpdate(diff) => {
+                if let Some(ref mut prompt) = self.grid.prompt {
+                    prompt.update(diff);
+                }
+            }
+            Redraw::ClosePrompt => {
+                self.grid.prompt = None;
             }
         }
     }

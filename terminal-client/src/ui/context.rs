@@ -1,4 +1,4 @@
-use sanedit_messages::redraw::Theme;
+use sanedit_messages::redraw::{Theme, ThemeField, Style};
 
 #[derive(Debug)]
 pub struct UIContext {
@@ -14,5 +14,9 @@ impl UIContext {
             width,
             height,
         }
+    }
+
+    pub fn style(&self, field: &ThemeField) -> Style {
+        self.theme.get(field.into()).unwrap_or(Style::default())
     }
 }

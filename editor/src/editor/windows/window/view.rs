@@ -79,9 +79,6 @@ pub(crate) struct View {
 
     /// Display options which were used to draw this view
     pub options: DisplayOptions,
-
-    /// Wether this view has changed and should be sent to clients again
-    has_changed: bool,
 }
 
 impl View {
@@ -93,7 +90,6 @@ impl View {
             height,
             needs_redraw: true,
             options: DisplayOptions::default(),
-            has_changed: true,
         }
     }
 
@@ -245,16 +241,14 @@ impl View {
         false
     }
 
-    pub fn redraw(&mut self, win: &Window, buf: &Buffer) {
+    pub fn draw(&mut self, win: &Window, buf: &Buffer) {
         if !self.needs_redraw {
             return;
         }
 
-        let cursors = win.cursors();
         self.clear();
         self.draw_cells(buf);
         self.needs_redraw = false;
-        self.has_changed = true;
     }
 
     pub fn scroll_down(&mut self, win: &Window, buf: &Buffer) {
@@ -267,7 +261,6 @@ impl View {
             return;
         }
 
-        self.has_changed = true;
         let _ = self.cells.pop_front();
         self.cells.push_back(vec![Cell::default(); self.width]);
 
@@ -284,7 +277,6 @@ impl View {
             return;
         }
 
-        self.has_changed = true;
         let last_line = self.cells.pop_back();
         let last_line_len = last_line
             .map(|row| row.iter().fold(0, |acc, cell| acc + cell.grapheme_len()))
@@ -296,7 +288,7 @@ impl View {
 
         self.needs_redraw = self.draw_line_backwards(&slice, 0, &mut pos);
         self.range = pos..self.range.end - last_line_len;
-        self.redraw(win, buf);
+        self.draw(win, buf);
     }
 
     pub fn range(&self) -> Range<usize> {
@@ -381,7 +373,7 @@ impl View {
     }
 
     /// Align view so that pos is shown
-    pub fn align_to_show(&mut self, pos: usize, win: &Window, buf: &Buffer) {
+    pub fn view_to(&mut self, pos: usize, win: &Window, buf: &Buffer) {
         // // Make sure offset is inside buffer range
         // if win.offset > buf.len() {
         //     win.offset = buf.len();
@@ -462,7 +454,7 @@ mod test {
 
         let mut window = Window::new(BufferId::default(), width, 1);
         let mut view = mem::take(&mut window.view);
-        view.redraw(&buf, &window);
+        view.draw(&buf, &window);
 
         // println!("{}", "-".repeat(width));
         // for row in &view.cells {

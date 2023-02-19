@@ -4,7 +4,7 @@ use std::mem;
 
 use super::{Color, TextStyle};
 
-#[derive(Serialize, Deserialize,Debug, PartialEq, Eq, Clone, Copy, Default)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Copy, Default)]
 pub struct Style {
     pub text_style: Option<TextStyle>,
     pub bg: Option<Color>,
@@ -17,21 +17,14 @@ impl Style {
     }
 }
 
-pub fn merge_cell_styles(styles: &[Option<Style>]) -> Option<Style> {
-    styles.into_iter().cloned().fold(None, merge_2_cell_styles)
+pub fn merge_cell_styles(styles: &[Style]) -> Style {
+    styles
+        .into_iter()
+        .cloned()
+        .fold(Style::default(), merge_2_cell_styles)
 }
 
-fn merge_2_cell_styles(one: Option<Style>, two: Option<Style>) -> Option<Style> {
-    if one.is_none() {
-        return two;
-    }
-    if two.is_none() {
-        return one;
-    }
-
-    let mut one = one.unwrap();
-    let two = two.unwrap();
-
+fn merge_2_cell_styles(mut one: Style, two: Style) -> Style {
     if let Some(bg) = two.bg {
         one.bg = Some(bg);
     }
@@ -44,5 +37,5 @@ fn merge_2_cell_styles(one: Option<Style>, two: Option<Style>) -> Option<Style> 
         one.text_style = Some(s);
     }
 
-    Some(one)
+    one
 }

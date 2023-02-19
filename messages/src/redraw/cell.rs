@@ -20,6 +20,15 @@ pub struct Cell {
     pub style: Style,
 }
 
+impl Cell {
+    pub fn with_style(style: Style) -> Cell {
+        Cell {
+            text: String::from(" "),
+            style,
+        }
+    }
+}
+
 impl Default for Cell {
     fn default() -> Self {
         Cell {

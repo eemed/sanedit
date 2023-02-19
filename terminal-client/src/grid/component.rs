@@ -1,5 +1,5 @@
 use sanedit_messages::redraw::{
-    Cell, IntoCells, Point, Prompt, Statusline, Style, ThemeField, Window, Size,
+    Cell, IntoCells, Point, Prompt, Size, Statusline, Style, ThemeField, Window,
 };
 
 use crate::ui::UIContext;
@@ -27,7 +27,10 @@ impl Component for Window {
     }
 
     fn size(&self, ctx: &UIContext) -> Size {
-        Size { width: ctx.width, height: ctx.height - 1 }
+        Size {
+            width: ctx.width,
+            height: ctx.height - 1,
+        }
     }
 }
 
@@ -37,7 +40,8 @@ impl Component for Statusline {
     }
 
     fn draw(&self, ctx: &UIContext) -> Vec<Vec<Cell>> {
-        let line = into_cells_with_theme(self.line(), ThemeField::Statusline, ctx);
+        let line = into_cells_with_theme_pad(self.line(), &ThemeField::Statusline, ctx);
+
         vec![line]
     }
 
@@ -46,7 +50,10 @@ impl Component for Statusline {
     }
 
     fn size(&self, ctx: &UIContext) -> Size {
-        Size { width: ctx.width, height: 1 }
+        Size {
+            width: ctx.width,
+            height: 1,
+        }
     }
 }
 
@@ -56,16 +63,33 @@ impl Component for Prompt {
     }
 
     fn draw(&self, ctx: &UIContext) -> Vec<Vec<Cell>> {
-        // TODO merge styles
-        let a = ctx.theme.get(ThemeField::PromptDefault.into());
-        let b = ctx.theme.get(ThemeField::PromptMessage.into());
-        let style = sanedit_messages::redraw::merge_cell_styles(&[a, b]);
-        let mut message = into_cells_with_style_no_pad(self.message(), style.unwrap(), ctx);
-        // let colon = into_cells_with_theme_no_pad(": ", ThemeField::PromptMessage, ctx);
-        // let input = into_cells_with_theme_no_pad(self.input(), ThemeField::PromptUserInput, ctx);
+        let style = ctx
+            .theme
+            .get(ThemeField::PromptDefault.into())
+            .unwrap_or(Style::default());
+        let msg_style = {
+            let msg = ctx
+                .theme
+                .get(ThemeField::PromptMessage.into())
+                .unwrap_or(Style::default());
+            sanedit_messages::redraw::merge_cell_styles(&[style, msg])
+        };
 
-        // message.extend(colon);
-        // message.extend(input);
+        let input_style = {
+            let input = ctx
+                .theme
+                .get(ThemeField::PromptUserInput.into())
+                .unwrap_or(Style::default());
+            sanedit_messages::redraw::merge_cell_styles(&[style, input])
+        };
+
+        let mut message = into_cells_with_style(self.message(), msg_style, ctx);
+        let colon = into_cells_with_style(": ", msg_style, ctx);
+        let input = into_cells_with_style(self.input(), input_style, ctx);
+        message.extend(colon);
+        message.extend(input);
+
+        pad_line(&mut message, style, ctx);
 
         let mut prompt = vec![message];
         let opts: Vec<Vec<Cell>> = self
@@ -78,7 +102,7 @@ impl Component for Prompt {
                 } else {
                     ThemeField::PromptCompletion
                 };
-                let cells = into_cells_with_theme(opt, field, ctx);
+                let cells = into_cells_with_theme_pad(opt, &field, ctx);
                 cells
             })
             .collect();
@@ -107,25 +131,31 @@ impl Component for Prompt {
     }
 }
 
-fn into_cells_with_style_no_pad(string: &str, style: Style, ctx: &UIContext) -> Vec<Cell> {
+fn into_cells_with_style(string: &str, style: Style, ctx: &UIContext) -> Vec<Cell> {
     let mut cells = string.into_cells();
     cells.iter_mut().for_each(|cell| cell.style = style);
     cells
 }
 
-fn into_cells_with_theme(string: &str, themefield: ThemeField, ctx: &UIContext) -> Vec<Cell> {
+fn into_cells_with_theme(string: &str, themefield: &ThemeField, ctx: &UIContext) -> Vec<Cell> {
     let mut cells = string.into_cells();
+    let style = ctx.style(&themefield);
+    cells.iter_mut().for_each(|cell| cell.style = style);
+    cells
+}
 
+fn into_cells_with_theme_pad(string: &str, themefield: &ThemeField, ctx: &UIContext) -> Vec<Cell> {
+    let mut cells = into_cells_with_theme(string, themefield, ctx);
+    pad_line(&mut cells, ctx.style(themefield), ctx);
+    cells
+}
+
+fn pad_line(cells: &mut Vec<Cell>, style: Style, ctx: &UIContext) {
     while cells.len() < ctx.width {
-        cells.push(Cell::default());
+        cells.push(Cell::with_style(style.clone()));
     }
 
     while cells.len() > ctx.width {
         cells.pop();
     }
-
-    cells
-        .iter_mut()
-        .for_each(|cell| cell.style = ctx.theme.get(themefield.into()).unwrap_or(Style::default()));
-    cells
 }

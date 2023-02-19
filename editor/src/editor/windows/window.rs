@@ -125,7 +125,7 @@ impl Window {
     pub fn view_to_cursor(&mut self, buf: &Buffer) {
         let cursor = self.primary_cursor().pos();
         let mut view = mem::take(&mut self.view);
-        view.align_to_show(cursor, self, buf);
+        view.view_to(cursor, self, buf);
         self.view = view;
     }
 
@@ -160,5 +160,11 @@ impl Window {
 
     pub fn message(&self) -> Option<&Message> {
         self.message.as_ref()
+    }
+
+    pub fn draw_view(&mut self, buf: &Buffer) {
+        let mut view = mem::take(&mut self.view);
+        view.draw(self, buf);
+        self.view = view;
     }
 }

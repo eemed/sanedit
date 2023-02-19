@@ -28,6 +28,8 @@ impl Window {
         *self = diff.window;
     }
 
+    /// Return a diff of self and other
+    /// When this diff is applied to self using update, self == other
     pub fn diff(&self, other: &Window) -> Option<WindowDiff> {
         if self == other {
             return None;
@@ -43,13 +45,13 @@ impl Window {
     }
 }
 
-impl From<Window> for Redraw {
-    fn from(value: Window) -> Self {
-        Redraw::Window(value)
-    }
-}
-
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug)]
 pub struct WindowDiff {
     window: Window,
+}
+
+impl From<WindowDiff> for Redraw {
+    fn from(diff: WindowDiff) -> Self {
+        Redraw::WindowUpdate(diff)
+    }
 }

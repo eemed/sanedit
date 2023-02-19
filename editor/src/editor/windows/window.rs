@@ -4,15 +4,17 @@ mod message;
 mod mode;
 mod options;
 mod prompt;
-mod prompt_view;
 mod view;
 
 use std::mem;
 
 use sanedit_buffer::piece_tree::prev_grapheme_boundary;
-use sanedit_messages::redraw::{Redraw, Size, Theme};
+use sanedit_messages::redraw::Size;
 
-use crate::editor::buffers::{Buffer, BufferId};
+use crate::{
+    common::char::DisplayOptions,
+    editor::buffers::{Buffer, BufferId},
+};
 
 pub(crate) use self::{
     cursors::{Cursor, Cursors},
@@ -21,7 +23,7 @@ pub(crate) use self::{
     options::WindowOptions,
     prompt::Prompt,
     prompt::PromptAction,
-    view::View,
+    view::{Cell, View},
 };
 
 #[derive(Debug)]
@@ -46,6 +48,10 @@ impl Window {
             options: WindowOptions::default(),
             mode: Mode::Normal,
         }
+    }
+
+    pub fn display_options(&self) -> &DisplayOptions {
+        &self.view.options
     }
 
     pub fn change_buffer(&mut self, bid: BufferId) {
@@ -152,35 +158,7 @@ impl Window {
         &self.cursors
     }
 
-    pub fn redraw(&mut self, buf: &Buffer, theme: &Theme) -> Vec<Redraw> {
-        let mut redraw = vec![];
-        match self.mode {
-            Mode::Normal => {
-                if let Some(win) = self.redraw_view(buf, theme) {
-                    redraw.push(win);
-                }
-
-                let statusline = view::draw_statusline(self, buf);
-                redraw.push(statusline.into());
-            }
-            Mode::Prompt => {
-                if let Some(prompt) = self.redraw_prompt(theme) {
-                    redraw.push(prompt);
-                }
-            }
-        }
-
-        redraw
-    }
-
-    fn redraw_prompt(&mut self, theme: &Theme) -> Option<Redraw> {
-        self.prompt.redraw(&self.options)
-    }
-
-    fn redraw_view(&mut self, buf: &Buffer, theme: &Theme) -> Option<Redraw> {
-        let mut view = mem::take(&mut self.view);
-        let redraw = view.draw_window(self, buf, theme).map(|view| view.into());
-        self.view = view;
-        redraw
+    pub fn message(&self) -> Option<&Message> {
+        self.message.as_ref()
     }
 }

@@ -11,9 +11,9 @@ pub(crate) struct Windows {
 }
 
 impl Windows {
-    pub fn new_window(&mut self, id: ClientId, buf: BufferId, width: usize, height: usize) {
+pub fn new_window(&mut self, id: ClientId, buf: BufferId, width: usize, height: usize) -> &Window{
         self.windows.insert(id, Window::new(buf, width, height));
-        // TODO return anything?
+        self.get(id).unwrap()
     }
 
     pub fn get(&self, id: ClientId) -> Option<&Window> {

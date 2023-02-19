@@ -78,7 +78,7 @@ pub(crate) struct View {
     needs_redraw: bool,
 
     /// Display options which were used to draw this view
-    display_options: DisplayOptions,
+    pub options: DisplayOptions,
 
     /// Wether this view has changed and should be sent to clients again
     has_changed: bool,
@@ -92,9 +92,13 @@ impl View {
             width,
             height,
             needs_redraw: true,
-            display_options: DisplayOptions::default(),
+            options: DisplayOptions::default(),
             has_changed: true,
         }
+    }
+
+    pub fn cells(&self) -> &VecDeque<Vec<Cell>> {
+        &self.cells
     }
 
     fn make_default_cells(width: usize, height: usize) -> VecDeque<Vec<Cell>> {
@@ -176,7 +180,7 @@ impl View {
         let mut is_eol = false;
 
         while let Some(grapheme) = prev_grapheme(&slice, *pos) {
-             is_eol = EOL::is_eol(&grapheme);
+            is_eol = EOL::is_eol(&grapheme);
 
             if is_eol && !graphemes.is_empty() {
                 break;
@@ -184,7 +188,7 @@ impl View {
 
             // Must be recalculated because we are pushing elements to the front
             let line_len = graphemes.iter().fold(0, |col, grapheme| {
-                let ch = Char::new(grapheme, col, &self.display_options);
+                let ch = Char::new(grapheme, col, &self.options);
                 col + ch.width()
             });
 
@@ -197,7 +201,7 @@ impl View {
         }
 
         graphemes.into_iter().fold(0, |col, grapheme| {
-            let ch = Char::new(&grapheme, col, &self.display_options);
+            let ch = Char::new(&grapheme, col, &self.options);
             let width = ch.width();
             self.cells[line][col] = ch.into();
             col + width
@@ -217,7 +221,7 @@ impl View {
 
         while let Some(grapheme) = next_grapheme(&slice, *pos) {
             is_eol = EOL::is_eol(&grapheme);
-            let ch = Char::new(&grapheme, col, &self.display_options);
+            let ch = Char::new(&grapheme, col, &self.options);
             let ch_width = ch.width();
 
             if col + ch_width > self.width {
@@ -246,7 +250,6 @@ impl View {
             return;
         }
 
-        self.display_options = win.options.display.clone();
         let cursors = win.cursors();
         self.clear();
         self.draw_cells(buf);
@@ -435,100 +438,12 @@ impl View {
     pub fn invalidate(&mut self) {
         self.needs_redraw = true;
     }
-
-    pub fn draw_window(
-        &mut self,
-        win: &Window,
-        buf: &Buffer,
-        theme: &Theme,
-    ) -> Option<redraw::Window> {
-        self.redraw(win, buf);
-
-        log::info!(
-            "View down range: {:?}, {}",
-            self.range,
-            win.cursors().primary().pos()
-        );
-        // if !self.has_changed {
-        //     return None;
-        // }
-
-        let win = draw_window(self, win, theme);
-        self.has_changed = false;
-        Some(win)
-    }
 }
 
 impl Default for View {
     fn default() -> Self {
         View::new(0, 0)
     }
-}
-
-fn draw_window(view: &View, win: &Window, theme: &Theme) -> redraw::Window {
-    let def = theme
-        .get(ThemeField::Default.into())
-        .unwrap_or(Style::default());
-    let mut grid = vec![
-        vec![
-            redraw::Cell {
-                text: " ".into(),
-                style: def
-            };
-            view.width()
-        ];
-        view.height()
-    ];
-
-    for (line, row) in view.cells.iter().enumerate() {
-        for (col, cell) in row.iter().enumerate() {
-            grid[line][col] = cell.char().map(|ch| ch.display()).unwrap_or(" ").into();
-        }
-    }
-
-    draw_end_of_buffer(&mut grid, view, theme);
-    draw_trailing_whitespace(&mut grid, view, theme);
-
-    let cursor = view
-        .point_at_pos(win.cursors().primary().pos())
-        .expect("cursor not at view");
-    redraw::Window::new(grid, cursor)
-}
-
-fn draw_end_of_buffer(grid: &mut Vec<Vec<redraw::Cell>>, view: &View, theme: &Theme) {
-    let eob = theme
-        .get(ThemeField::EndOfBuffer.into())
-        .unwrap_or(Style::default());
-    for (line, row) in view.cells.iter().enumerate() {
-        let is_empty = row
-            .iter()
-            .fold(true, |acc, cell| acc && matches!(cell, Cell::Empty));
-        if is_empty {
-            if let Some(rep) = view
-                .display_options
-                .replacements
-                .get(&Replacement::BufferEnd)
-            {
-                grid[line][0] = redraw::Cell {
-                    text: rep.as_str().into(),
-                    style: eob,
-                };
-            }
-        }
-    }
-}
-
-fn draw_trailing_whitespace(grid: &mut Vec<Vec<redraw::Cell>>, view: &View, theme: &Theme) {
-    for (line, row) in view.cells.iter().enumerate() {}
-}
-
-pub(crate) fn draw_statusline(win: &Window, buf: &Buffer) -> Statusline {
-    let line = match win.message.as_ref() {
-        Some(msg) => format!("{}", msg.message),
-        None => format!("{}", buf.name()),
-    };
-
-    Statusline::new(line.as_str())
 }
 
 #[cfg(test)]

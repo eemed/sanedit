@@ -33,13 +33,13 @@ impl Statusline {
     }
 }
 
-impl From<Statusline> for Redraw {
-    fn from(value: Statusline) -> Self {
-        Redraw::Statusline(value)
-    }
-}
-
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug)]
 pub struct StatuslineDiff {
     line: Statusline,
+}
+
+impl From<StatuslineDiff> for Redraw {
+    fn from(diff: StatuslineDiff) -> Self {
+        Redraw::StatuslineUpdate(diff)
+    }
 }

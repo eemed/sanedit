@@ -22,6 +22,7 @@ use tokio::sync::mpsc::Receiver;
 use crate::actions::prompt;
 use crate::actions::text;
 use crate::actions::Action;
+use crate::draw::DrawState;
 use crate::editor::buffers::Buffer;
 use crate::events::ToEditor;
 use crate::server::ClientHandle;
@@ -39,7 +40,7 @@ use self::windows::Windows;
 
 pub(crate) struct Editor {
     clients: HashMap<ClientId, ClientHandle>,
-    draw_contexts: HashMap<ClientId, DrawContext>,
+    draw_states: HashMap<ClientId, DrawState>,
     windows: Windows,
     buffers: Buffers,
     jobs: Jobs,
@@ -55,7 +56,7 @@ impl Editor {
     fn new(jobs_handle: JobsHandle) -> Editor {
         Editor {
             clients: HashMap::default(),
-            draw_contexts: HashMap::default(),
+            draw_states: HashMap::default(),
             windows: Windows::default(),
             buffers: Buffers::default(),
             jobs: Jobs::new(jobs_handle),
@@ -123,29 +124,44 @@ impl Editor {
         log::info!("Message {:?} from client {:?}", msg, id);
         match msg {
             Message::Hello(size) => {
-                let bid = self.buffers.insert(Buffer::default());
-                self.windows.new_window(id, bid, size.width, size.height);
-
-                let win = self.windows.get(id).expect("Window not present");
-                let theme = {
-                    let theme_name = &win.options.display.theme;
-                    self.themes
-                        .get(theme_name.as_str())
-                        .expect("Theme not present")
-                        .clone()
-                };
-                self.send_to_client(id, ClientMessage::Hello);
-                self.send_to_client(id, ClientMessage::Theme(theme));
-
-                self.redraw(id);
+                self.handle_hello(id, size);
+                return;
             }
             Message::KeyEvent(key_event) => self.handle_key_event(id, key_event),
             Message::MouseEvent(_) => {}
             Message::Resize(size) => self.handle_resize(id, size),
-            Message::Bye => {}
+            Message::Bye => {
+                self.quit();
+                return;
+            }
         }
 
         self.redraw(id);
+    }
+
+    fn handle_hello(&mut self, id: ClientId, size: Size) {
+        // Create buffer and window
+        let bid = self.buffers.insert(Buffer::default());
+        let win = self.windows.new_window(id, bid, size.width, size.height);
+        let buf = self.buffers.get(bid).expect("Buffer not present");
+        let theme = {
+            let theme_name = &win.display_options().theme;
+            self.themes
+                .get(theme_name.as_str())
+                .expect("Theme not present")
+                .clone()
+        };
+
+        // Create draw state and send out initial draw
+        let (draw, messages) = DrawState::new(win, buf, &theme);
+        self.draw_states.insert(id, draw);
+
+        self.send_to_client(id, ClientMessage::Hello);
+        self.send_to_client(id, ClientMessage::Theme(theme));
+        for msg in messages {
+            self.send_to_client(id, ClientMessage::Redraw(msg));
+        }
+        self.send_to_client(id, ClientMessage::Flush);
     }
 
     fn handle_resize(&mut self, id: ClientId, size: Size) {
@@ -154,6 +170,10 @@ impl Editor {
     }
 
     fn redraw(&mut self, id: ClientId) {
+        let draw = self
+            .draw_states
+            .get_mut(&id)
+            .expect("Client window is closed");
         let win = self.windows.get_mut(id).expect("Client window is closed");
         let buf = self
             .buffers
@@ -161,18 +181,17 @@ impl Editor {
             .expect("Window referencing non existent buffer");
 
         let theme = {
-            let theme_name = &win.options.display.theme;
+            let theme_name = &win.display_options().theme;
             self.themes
                 .get(theme_name.as_str())
                 .expect("Theme not present")
         };
-        let messages = win.redraw(buf, theme);
 
+        let messages = draw.redraw(win, buf, theme);
         if !messages.is_empty() {
             for msg in messages {
                 self.send_to_client(id, ClientMessage::Redraw(msg));
             }
-
             self.send_to_client(id, ClientMessage::Flush);
         }
     }

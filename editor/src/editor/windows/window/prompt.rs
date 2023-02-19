@@ -17,9 +17,6 @@ pub(crate) struct Prompt {
 
     /// Callback called on confirm
     on_confirm: PromptAction,
-
-    /// Used to track scroll position when drawing prompt
-    scroll_offset: usize,
 }
 
 impl Prompt {
@@ -30,7 +27,6 @@ impl Prompt {
             cursor: 0,
             completion: Completion::new(must_complete),
             on_confirm,
-            scroll_offset: 0,
         }
     }
 
@@ -114,29 +110,6 @@ impl Prompt {
     pub fn selected_pos(&self) -> Option<usize> {
         let (pos, _) = self.completion.selected()?;
         Some(pos)
-    }
-
-    pub fn redraw(&mut self, options: &WindowOptions) -> Option<Redraw> {
-        self.scroll_offset = {
-            let selected = self.selected_pos().unwrap_or(0);
-            if selected >= self.scroll_offset + options.prompt_completions {
-                // Make selected the bottom most completion, +1 to actually show
-                // the selected completion
-                selected - options.prompt_completions + 1
-            } else {
-                cmp::min(self.scroll_offset, selected)
-            }
-        };
-
-        let msg = self.message();
-        let input = self.input();
-        let cursor = self.cursor();
-        let selected_relative_pos = self.selected_pos().map(|pos| pos - self.scroll_offset);
-        let options = self.matches_window(options.prompt_completions, self.scroll_offset);
-        let prompt =
-            Some(redraw::Prompt::new(msg, input, cursor, options, selected_relative_pos).into());
-
-        prompt
     }
 }
 

@@ -1,8 +1,10 @@
+use core::fmt;
+
 use serde::{Deserialize, Serialize};
 
 use super::{Cell, Point, Redraw};
 
-#[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Default, Clone)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Default, Clone)]
 pub struct Window {
     cells: Vec<Vec<Cell>>,
     primary_cursor: Point,
@@ -42,6 +44,21 @@ impl Window {
 
     pub fn primary_cursor(&self) -> Point {
         self.primary_cursor
+    }
+}
+
+impl fmt::Debug for Window {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "===Grid===")?;
+        for row in self.cells.iter() {
+            write!(f, "\"")?;
+            for cell in row.iter() {
+                write!(f, "{}", cell.text)?;
+            }
+            writeln!(f, "\"")?;
+        }
+        write!(f, "==========")?;
+        Ok(())
     }
 }
 

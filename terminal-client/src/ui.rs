@@ -36,6 +36,8 @@ impl UI {
     }
 
     pub fn resize(&mut self, size: Size) {
+        self.context.width = size.width;
+        self.context.height = size.height;
         self.terminal.resize(size.width, size.height);
     }
 

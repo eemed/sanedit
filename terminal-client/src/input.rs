@@ -6,7 +6,6 @@ use sanedit_messages::{redraw::Size, Key, KeyEvent, KeyMods, Message, MouseEvent
 
 use crate::message::ClientInternalMessage;
 
-const POLL_DURATION: Duration = Duration::from_millis(100);
 const RE_RESIZE_POLL_DURATION: Duration = Duration::from_millis(100);
 
 pub(crate) fn run_loop(mut sender: mpsc::Sender<ClientInternalMessage>) {
@@ -20,10 +19,8 @@ pub(crate) fn run_loop(mut sender: mpsc::Sender<ClientInternalMessage>) {
 
 pub(crate) fn run_loop_impl(sender: &mut mpsc::Sender<ClientInternalMessage>) -> Result<()> {
     loop {
-        if poll(POLL_DURATION)? {
-            let event = read()?;
-            process_input_event(event, sender)?;
-        }
+        let event = read()?;
+        process_input_event(event, sender)?;
     }
 }
 

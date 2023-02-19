@@ -242,6 +242,7 @@ impl View {
     }
 
     pub fn draw(&mut self, win: &Window, buf: &Buffer) {
+        log::info!("Draw view {}", self.needs_redraw);
         if !self.needs_redraw {
             return;
         }
@@ -421,6 +422,10 @@ impl View {
     }
 
     pub fn resize(&mut self, size: Size) {
+        log::info!("Resize view {size:?}");
+        if size.width == self.width && size.height == self.height {
+            return;
+        }
         self.width = size.width;
         self.height = size.height;
         self.cells = Self::make_default_cells(size.width, size.height);

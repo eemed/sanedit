@@ -1,7 +1,12 @@
 use std::io::{stdout, BufWriter, Stdout, Write};
 
 use anyhow::Result;
-use crossterm::{cursor, event::*, execute, queue, style, terminal::*};
+use crossterm::{
+    cursor,
+    event::*,
+    execute, queue, style,
+    terminal::{self, *},
+};
 use sanedit_messages::redraw::{Cell, Color, Style, TextStyle};
 
 pub struct Terminal {
@@ -29,9 +34,11 @@ impl Terminal {
         })
     }
 
-    pub fn resize(&mut self, width: usize, height: usize) {
+    pub fn resize(&mut self, width: usize, height: usize) -> Result<()> {
         // Just clear on resize
         self.written = vec![vec![Cell::default(); width]; height];
+        write!(self.out, "{}", Clear(ClearType::All))?;
+        Ok(())
     }
 
     pub fn draw_cell(&mut self, cell: &Cell, x: usize, y: usize) -> Result<()> {

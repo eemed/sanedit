@@ -1,7 +1,6 @@
 mod component;
 
 use core::fmt;
-use std::mem;
 
 use sanedit_messages::redraw::{Cell, Point, Prompt, Statusline, Window};
 

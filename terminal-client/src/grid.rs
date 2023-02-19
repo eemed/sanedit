@@ -60,6 +60,7 @@ impl Grid {
             }
         }
 
+        // log::info!("{:?}", self.window);
         (cells, cursor)
     }
 }

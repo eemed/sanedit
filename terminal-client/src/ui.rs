@@ -94,11 +94,4 @@ impl UI {
         self.terminal.goto(cursor.x, cursor.y);
         self.terminal.flush();
     }
-
-    pub fn size(&self) -> Size {
-        Size {
-            width: self.terminal.width(),
-            height: self.terminal.height(),
-        }
-    }
 }

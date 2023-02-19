@@ -30,13 +30,30 @@ pub(crate) fn draw_window(
 
     for (line, row) in view.cells().iter().enumerate() {
         for (col, cell) in row.iter().enumerate() {
-            grid[line][col] = cell.char().map(|ch| ch.display()).unwrap_or(" ").into();
+            if cell.width() == 0 {
+                continue;
+            }
+
+            // Has to be char because it has width
+            let ch = cell.char().unwrap();
+            grid[line][col] = redraw::Cell {
+                text: ch.display().into(),
+                style: def,
+            };
+
+            for i in 1..cell.width() {
+                grid[line][col + i] = redraw::Cell {
+                    text: String::new(),
+                    style: def,
+                };
+            }
         }
     }
 
     draw_end_of_buffer(&mut grid, view, theme);
     draw_trailing_whitespace(&mut grid, view, theme);
 
+    log::info!("Curosr at {}", cursors.primary().pos());
     let cursor = view
         .point_at_pos(cursors.primary().pos())
         .expect("cursor not at view");
@@ -44,9 +61,13 @@ pub(crate) fn draw_window(
 }
 
 fn draw_end_of_buffer(grid: &mut Vec<Vec<redraw::Cell>>, view: &View, theme: &Theme) {
+    let def = theme
+        .get(ThemeField::Default.into())
+        .unwrap_or(Style::default());
     let eob = theme
         .get(ThemeField::EndOfBuffer.into())
         .unwrap_or(Style::default());
+    let style = redraw::merge_cell_styles(&[def, eob]);
     for (line, row) in view.cells().iter().enumerate() {
         let is_empty = row
             .iter()
@@ -55,7 +76,7 @@ fn draw_end_of_buffer(grid: &mut Vec<Vec<redraw::Cell>>, view: &View, theme: &Th
             if let Some(rep) = view.options.replacements.get(&Replacement::BufferEnd) {
                 grid[line][0] = redraw::Cell {
                     text: rep.as_str().into(),
-                    style: eob,
+                    style,
                 };
             }
         }

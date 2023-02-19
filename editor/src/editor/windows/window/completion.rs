@@ -13,6 +13,8 @@ pub(crate) struct Completion {
 
     // Wether the completion must be one of the candidates
     pub(crate) must_complete: bool,
+
+    pub smartcase: bool,
 }
 
 impl Completion {
@@ -22,6 +24,7 @@ impl Completion {
             matched: vec![],
             selected: None,
             must_complete,
+            smartcase: true,
         }
     }
 
@@ -65,9 +68,10 @@ impl Completion {
         let mut opts = mem::take(&mut self.matched);
         opts.extend(mem::take(&mut self.options));
 
-        let ignore_case = input
-            .chars()
-            .fold(true, |acc, ch| acc && ch.is_ascii_lowercase());
+        let ignore_case = self.smartcase
+            && input.chars().fold(true, |acc, ch| {
+                acc && (!ch.is_ascii_alphabetic() || ch.is_ascii_lowercase())
+            });
 
         for opt in opts.into_iter() {
             if let Some(_) = matches_with(&opt, &input, ignore_case) {

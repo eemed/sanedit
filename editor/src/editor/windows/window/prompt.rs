@@ -1,11 +1,10 @@
-use std::{cmp, sync::Arc};
+use std::sync::Arc;
 
-use sanedit_messages::redraw::{self, Redraw};
 use unicode_segmentation::UnicodeSegmentation;
 
 use crate::{editor::Editor, server::ClientId};
 
-use super::{completion::Completion, WindowOptions};
+use super::completion::Completion;
 
 pub(crate) type PromptAction = Arc<dyn Fn(&mut Editor, ClientId, &str) + Send + Sync>;
 

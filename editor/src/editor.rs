@@ -9,6 +9,7 @@ use sanedit_messages::redraw::Theme;
 use sanedit_messages::ClientMessage;
 use sanedit_messages::KeyEvent;
 use sanedit_messages::Message;
+use sanedit_messages::MouseEvent;
 
 use std::collections::HashMap;
 use std::env;
@@ -19,6 +20,7 @@ use std::path::PathBuf;
 use tokio::io;
 use tokio::sync::mpsc::Receiver;
 
+use crate::actions;
 use crate::actions::prompt;
 use crate::actions::text;
 use crate::actions::Action;
@@ -128,7 +130,7 @@ impl Editor {
                 return;
             }
             Message::KeyEvent(key_event) => self.handle_key_event(id, key_event),
-            Message::MouseEvent(_) => {}
+            Message::MouseEvent(mouse_event) => self.handle_mouse_event(id, mouse_event),
             Message::Resize(size) => self.handle_resize(id, size),
             Message::Bye => {
                 self.quit();
@@ -165,8 +167,16 @@ impl Editor {
     }
 
     fn handle_resize(&mut self, id: ClientId, size: Size) {
-        let win = self.windows.get_mut(id).expect("Client window is closed");
-        win.resize(size);
+        let (win, buf) = self.get_win_buf_mut(id);
+        win.resize(size, buf);
+    }
+
+    fn handle_mouse_event(&mut self, id: ClientId, event: MouseEvent) {
+        // TODO keybindings
+        match event {
+            MouseEvent::ScrollDown => actions::window::scroll_down_n(self, id, 3),
+            MouseEvent::ScrollUp => actions::window::scroll_up_n(self, id, 3),
+        }
     }
 
     fn redraw(&mut self, id: ClientId) {

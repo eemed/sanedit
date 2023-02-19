@@ -150,7 +150,7 @@ fn gruvbox() -> Theme {
             PromptCompletionSelected.into(),
             Style {
                 text_style: None,
-                bg: bg_0.into(),
+                bg: bg_1.into(),
                 fg: orange_light.into(),
             },
         );

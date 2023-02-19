@@ -91,7 +91,12 @@ impl Window {
     }
 
     pub fn scroll_down(&mut self, buf: &Buffer) {
-        debug_assert!(buf.id == self.buf, "Provided a wrong buffer to window");
+        debug_assert!(
+            buf.id == self.buf,
+            "Invalid buffer provided to window got id {:?}, expected {:?}",
+            buf.id,
+            self.buf
+        );
         let mut view = mem::take(&mut self.view);
         view.scroll_down(self, buf);
         self.view = view;
@@ -106,7 +111,12 @@ impl Window {
     }
 
     pub fn scroll_up(&mut self, buf: &Buffer) {
-        debug_assert!(buf.id == self.buf, "Provided a wrong buffer to window");
+        debug_assert!(
+            buf.id == self.buf,
+            "Invalid buffer provided to window got id {:?}, expected {:?}",
+            buf.id,
+            self.buf
+        );
         let mut view = mem::take(&mut self.view);
         view.scroll_up(self, buf);
         self.view = view;
@@ -123,6 +133,12 @@ impl Window {
 
     /// sets window offset so that primary cursor is visible in the drawn view.
     pub fn view_to_cursor(&mut self, buf: &Buffer) {
+        debug_assert!(
+            buf.id == self.buf,
+            "Invalid buffer provided to window got id {:?}, expected {:?}",
+            buf.id,
+            self.buf
+        );
         let cursor = self.primary_cursor().pos();
         let mut view = mem::take(&mut self.view);
         view.view_to(cursor, self, buf);
@@ -137,8 +153,15 @@ impl Window {
         &self.view
     }
 
-    pub fn resize(&mut self, size: Size) {
+    pub fn resize(&mut self, size: Size, buf: &Buffer) {
+        debug_assert!(
+            buf.id == self.buf,
+            "Invalid buffer provided to window got id {:?}, expected {:?}",
+            buf.id,
+            self.buf
+        );
         self.view.resize(size);
+        self.view_to_cursor(buf);
     }
 
     pub fn mode(&self) -> Mode {
@@ -163,6 +186,12 @@ impl Window {
     }
 
     pub fn draw_view(&mut self, buf: &Buffer) {
+        debug_assert!(
+            buf.id == self.buf,
+            "Invalid buffer provided to window got id {:?}, expected {:?}",
+            buf.id,
+            self.buf
+        );
         let mut view = mem::take(&mut self.view);
         view.draw(self, buf);
         self.view = view;

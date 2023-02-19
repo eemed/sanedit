@@ -50,6 +50,7 @@ pub(crate) enum GraphemeCategory {
     Whitespace,
     Word,
     Punctuation,
+    ControlCode,
 
     #[default]
     Unknown,
@@ -99,7 +100,7 @@ impl Default for DisplayOptions {
 #[inline]
 fn grapheme_to_char(slice: &PieceTreeSlice, column: usize, options: &DisplayOptions) -> Char {
     let buf_range = Some(slice.start()..slice.end());
-    let grapheme = String::from(slice);
+    let mut grapheme = String::from(slice);
 
     // is tab
     if grapheme == "\t" {
@@ -109,9 +110,18 @@ fn grapheme_to_char(slice: &PieceTreeSlice, column: usize, options: &DisplayOpti
     if EOL::is_eol_bytes(&grapheme) {
         return eol_to_char(grapheme, buf_range, options);
     }
+
     // TODO is nbsp
 
-    let width = UnicodeWidthStr::width(grapheme.as_str()).max(1);
+    let single_char = grapheme.chars().count() == 1;
+    if single_char {
+        let ch = grapheme.chars().next().unwrap();
+        if ch.is_control() {
+            return control_to_char(grapheme, buf_range);
+        }
+    }
+
+    let width = grapheme.width().max(1);
 
     Char {
         display: None,
@@ -171,6 +181,74 @@ fn eol_to_char(
         grapheme_range: buf_range,
         grapheme,
     }
+}
+
+fn control_to_char(grapheme: String, buf_range: Option<Range<usize>>) -> Char {
+    let ch = grapheme.chars().next().unwrap();
+    // C0 control codes or ascii control codes
+    if ch.is_ascii_control() {
+        return ascii_control_to_char(grapheme, buf_range).unwrap();
+    }
+
+    // C1 control codes, unicode control codes of form [0xc2, xx]
+    let hex: String = format!("<{:02x}>", grapheme.as_bytes()[1]);
+    let width = hex.width();
+
+    Char {
+        display: Some(hex.into()),
+        width,
+        grapheme_range: buf_range,
+        grapheme: grapheme.into(),
+    }
+}
+
+fn ascii_control_to_char(grapheme: String, buf_range: Option<Range<usize>>) -> Option<Char> {
+    let byte = grapheme.bytes().next()?;
+    let rep = match byte {
+        0 => "^@",
+        1 => "^A",
+        2 => "^B",
+        3 => "^C",
+        4 => "^D",
+        5 => "^E",
+        6 => "^F",
+        7 => "^G",
+        8 => "^H",
+        9 => "^I",
+        10 => "^J",
+        11 => "^K",
+        12 => "^L",
+        13 => "^M",
+        14 => "^N",
+        15 => "^O",
+        16 => "^P",
+        17 => "^Q",
+        18 => "^R",
+        19 => "^S",
+        20 => "^T",
+        21 => "^U",
+        22 => "^V",
+        23 => "^W",
+        24 => "^X",
+        25 => "^Y",
+        26 => "^Z",
+        27 => "^[",
+        28 => "^\\",
+        29 => "^]",
+        30 => "^^",
+        31 => "^_",
+        127 => "^?",
+        _ => unreachable!("non ascii control char"),
+    };
+
+    let width = rep.width();
+
+    Some(Char {
+        display: Some(rep.into()),
+        width,
+        grapheme_range: buf_range,
+        grapheme: grapheme.into(),
+    })
 }
 
 #[inline(always)]

@@ -9,6 +9,7 @@ pub(crate) fn next_grapheme(editor: &mut Editor, id: ClientId) {
     let cursor = win.primary_cursor_mut();
     let pos = common::movement::next_grapheme_boundary(&buf.slice(..), cursor.pos());
     cursor.goto(pos);
+    win.view_to_cursor(buf);
 }
 
 pub(crate) fn prev_grapheme(editor: &mut Editor, id: ClientId) {
@@ -16,6 +17,7 @@ pub(crate) fn prev_grapheme(editor: &mut Editor, id: ClientId) {
     let cursor = win.primary_cursor_mut();
     let pos = common::movement::prev_grapheme_boundary(&buf.slice(..), cursor.pos());
     cursor.goto(pos);
+    win.view_to_cursor(buf);
 }
 
 pub(crate) fn start_of_line(editor: &mut Editor, id: ClientId) {
@@ -23,6 +25,7 @@ pub(crate) fn start_of_line(editor: &mut Editor, id: ClientId) {
     let cursor = win.primary_cursor_mut();
     let pos = common::movement::start_of_line(&buf.slice(..), cursor.pos());
     cursor.goto_with_col(pos, 0);
+    win.view_to_cursor(buf);
 }
 
 pub(crate) fn end_of_line(editor: &mut Editor, id: ClientId) {
@@ -30,18 +33,21 @@ pub(crate) fn end_of_line(editor: &mut Editor, id: ClientId) {
     let cursor = win.primary_cursor_mut();
     let pos = common::movement::end_of_line(&buf.slice(..), cursor.pos());
     cursor.goto_with_col(pos, usize::MAX);
+    win.view_to_cursor(buf);
 }
 
 pub(crate) fn start_of_buffer(editor: &mut Editor, id: ClientId) {
-    let (win, _buf) = editor.get_win_buf_mut(id);
+    let (win, buf) = editor.get_win_buf_mut(id);
     let cursor = win.primary_cursor_mut();
     cursor.goto(0);
+    win.view_to_cursor(buf);
 }
 
 pub(crate) fn end_of_buffer(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.get_win_buf_mut(id);
     let cursor = win.primary_cursor_mut();
     cursor.goto(buf.len());
+    win.view_to_cursor(buf);
 }
 
 pub(crate) fn prev_visual_line(editor: &mut Editor, id: ClientId) {

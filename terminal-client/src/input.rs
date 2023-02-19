@@ -68,7 +68,7 @@ fn process_input_event(
         Mouse(mouse_event) => {
             let msg: Option<Message> = match mouse_event.kind {
                 MouseEventKind::ScrollDown => Some(MouseEvent::ScrollDown.into()),
-                MouseEventKind::ScrollUp => Some(MouseEvent::ScrollDown.into()),
+                MouseEventKind::ScrollUp => Some(MouseEvent::ScrollUp.into()),
                 _ => None,
             };
 

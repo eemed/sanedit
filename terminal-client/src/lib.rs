@@ -26,7 +26,7 @@ where
     let (tx, rx) = mpsc::channel();
 
     writer
-        .write(Message::Hello(ui.size()))
+        .write(Message::Hello(ui.window_size()))
         .expect("Failed to send hello");
 
     // Input thread

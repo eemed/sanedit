@@ -1,5 +1,4 @@
 mod change;
-mod detect;
 mod options;
 mod snapshots;
 

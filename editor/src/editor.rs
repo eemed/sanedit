@@ -3,6 +3,7 @@ pub(crate) mod jobs;
 mod keymap;
 mod themes;
 pub(crate) mod windows;
+mod options;
 
 use sanedit_messages::redraw::Size;
 use sanedit_messages::redraw::Theme;
@@ -36,6 +37,7 @@ use crate::server::JobsHandle;
 use self::buffers::Buffers;
 use self::jobs::Jobs;
 use self::keymap::Keymap;
+use self::options::EditorOptions;
 use self::windows::Mode;
 use self::windows::Window;
 use self::windows::Windows;
@@ -52,6 +54,7 @@ pub(crate) struct Editor {
     is_running: bool,
     working_dir: PathBuf,
     themes: HashMap<String, Theme>,
+    pub options: EditorOptions,
 }
 
 impl Editor {
@@ -68,6 +71,7 @@ impl Editor {
             is_running: true,
             working_dir: env::current_dir().expect("Cannot get current working directory."),
             themes: themes::default_themes(),
+            options: EditorOptions::default(),
         }
     }
 
@@ -174,8 +178,14 @@ impl Editor {
     fn handle_mouse_event(&mut self, id: ClientId, event: MouseEvent) {
         // TODO keybindings
         match event {
-            MouseEvent::ScrollDown => actions::window::scroll_down_n(self, id, 3),
-            MouseEvent::ScrollUp => actions::window::scroll_up_n(self, id, 3),
+            MouseEvent::ScrollDown => {
+                let (win, buf) = self.get_win_buf_mut(id);
+                win.scroll_down_n(buf, 3);
+            }
+            MouseEvent::ScrollUp => {
+                let (win, buf) = self.get_win_buf_mut(id);
+                win.scroll_up_n(buf, 3);
+            }
         }
     }
 

@@ -1,5 +1,5 @@
 use sanedit_messages::redraw::{
-    Cell, IntoCells, Point, Prompt, Size, Statusline, Style, ThemeField, Window,
+    merge_cell_styles, Cell, IntoCells, Point, Prompt, Size, Statusline, Style, ThemeField, Window,
 };
 
 use crate::ui::UIContext;
@@ -63,7 +63,7 @@ impl Component for Prompt {
     }
 
     fn draw(&self, ctx: &UIContext) -> Vec<Vec<Cell>> {
-        let style = ctx
+        let default_style = ctx
             .theme
             .get(ThemeField::PromptDefault.into())
             .unwrap_or(Style::default());
@@ -72,7 +72,7 @@ impl Component for Prompt {
                 .theme
                 .get(ThemeField::PromptMessage.into())
                 .unwrap_or(Style::default());
-            sanedit_messages::redraw::merge_cell_styles(&[style, msg])
+            merge_cell_styles(&[default_style, msg])
         };
 
         let input_style = {
@@ -80,7 +80,7 @@ impl Component for Prompt {
                 .theme
                 .get(ThemeField::PromptUserInput.into())
                 .unwrap_or(Style::default());
-            sanedit_messages::redraw::merge_cell_styles(&[style, input])
+            merge_cell_styles(&[default_style, input])
         };
 
         let mut message = into_cells_with_style(self.message(), msg_style, ctx);
@@ -89,7 +89,7 @@ impl Component for Prompt {
         message.extend(colon);
         message.extend(input);
 
-        pad_line(&mut message, style, ctx);
+        pad_line(&mut message, default_style, ctx);
 
         let mut prompt = vec![message];
         let opts: Vec<Vec<Cell>> = self
@@ -102,8 +102,11 @@ impl Component for Prompt {
                 } else {
                     ThemeField::PromptCompletion
                 };
-                let cells = into_cells_with_theme_pad(opt, &field, ctx);
-                cells
+                let style = {
+                    let sel = ctx.style(&field);
+                    merge_cell_styles(&[default_style, sel])
+                };
+                into_cells_with_style_pad(opt, style, ctx)
             })
             .collect();
         prompt.extend(opts);
@@ -134,6 +137,12 @@ impl Component for Prompt {
 fn into_cells_with_style(string: &str, style: Style, ctx: &UIContext) -> Vec<Cell> {
     let mut cells = string.into_cells();
     cells.iter_mut().for_each(|cell| cell.style = style);
+    cells
+}
+
+fn into_cells_with_style_pad(string: &str, style: Style, ctx: &UIContext) -> Vec<Cell> {
+    let mut cells = into_cells_with_style(string, style, ctx);
+    pad_line(&mut cells, style, ctx);
     cells
 }
 

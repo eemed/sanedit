@@ -90,15 +90,18 @@ impl Window {
         self.cursors.primary_mut()
     }
 
-    pub fn scroll_down(&mut self, buf: &Buffer) {
+    pub fn scroll_down_n(&mut self, buf: &Buffer, n: usize) {
         debug_assert!(
             buf.id == self.buf,
             "Invalid buffer provided to window got id {:?}, expected {:?}",
             buf.id,
             self.buf
         );
+
         let mut view = mem::take(&mut self.view);
-        view.scroll_down(self, buf);
+        for _ in 0..n {
+            view.scroll_down(self, buf);
+        }
         self.view = view;
 
         let primary = self.cursors.primary_mut();
@@ -110,7 +113,7 @@ impl Window {
         log::info!("View down range: {range:?}, {}", primary.pos());
     }
 
-    pub fn scroll_up(&mut self, buf: &Buffer) {
+    pub fn scroll_up_n(&mut self, buf: &Buffer, n: usize) {
         debug_assert!(
             buf.id == self.buf,
             "Invalid buffer provided to window got id {:?}, expected {:?}",
@@ -118,7 +121,9 @@ impl Window {
             self.buf
         );
         let mut view = mem::take(&mut self.view);
-        view.scroll_up(self, buf);
+        for _ in 0..n {
+            view.scroll_up(self, buf);
+        }
         self.view = view;
 
         let primary = self.cursors.primary_mut();

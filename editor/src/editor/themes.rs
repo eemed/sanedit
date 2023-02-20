@@ -150,66 +150,10 @@ fn gruvbox() -> Theme {
             PromptCompletionSelected.into(),
             Style {
                 text_style: None,
-                bg: bg_1.into(),
+                bg: bg_2.into(),
                 fg: orange_light.into(),
             },
         );
     }
     theme
-
-    //     statusline = { bg = bg_2, fg = fg_2 },
-    //     end_of_buffer = { fg = bg_3 },
-    //     symbols = { fg = bg_3 },
-    //     selection = { bg = bg_3 },
-
-    //     info = { fg = bg_1, bg = blue_light },
-    //     warn = { fg = bg_1, bg = yellow_light },
-    //     error = { fg = bg_1, bg = red_light },
-
-    //     prompt_default = { bg = bg_1, fg = fg_1 },
-    //     prompt_message = { fg = yellow_light },
-    //     prompt_user_input = { fg = fg_1 },
-    //     prompt_completion = { },
-    //     prompt_completion_selected = { fg = orange_light },
-
-    // local gruvbox = {
-    //     default = { bg = bg_0, fg = fg_0 },
-
-    //     string = { fg = green_light },
-    //     variable = { fg = purple_light },
-    //     identifier = { fg = orange_light },
-    //     comment = { fg = aqua },
-    //     operator = { fg = purple_light },
-    //     ["function"] = { fg = green_light },
-    //     ["type"] = { fg = yellow_light },
-    //     keyword = { fg = red_light },
-    //     label = { fg = red_light },
-
-    //     constant = { fg = red },
-    //     number = { fg = red },
-
-    //     preprocessor = { fg = aqua_light },
-    //     tag = { fg = red },
-    //     class = { fg = red },
-    //     definition = { fg = red },
-    //     regex = { fg = red },
-
-    //     -- Makefile
-    //     -- target = { fg = red },
-
-    //     statusline = { bg = bg_2, fg = fg_2 },
-    //     end_of_buffer = { fg = bg_3 },
-    //     symbols = { fg = bg_3 },
-    //     selection = { bg = bg_3 },
-
-    //     info = { fg = bg_1, bg = blue_light },
-    //     warn = { fg = bg_1, bg = yellow_light },
-    //     error = { fg = bg_1, bg = red_light },
-
-    //     prompt_default = { bg = bg_1, fg = fg_1 },
-    //     prompt_message = { fg = yellow_light },
-    //     prompt_user_input = { fg = fg_1 },
-    //     prompt_completion = { },
-    //     prompt_completion_selected = { fg = orange_light },
-    // }
 }

@@ -3,7 +3,7 @@ pub(crate) mod jobs;
 mod keymap;
 mod themes;
 pub(crate) mod windows;
-mod options;
+pub(crate) mod options;
 
 use sanedit_messages::redraw::Size;
 use sanedit_messages::redraw::Theme;
@@ -21,7 +21,6 @@ use std::path::PathBuf;
 use tokio::io;
 use tokio::sync::mpsc::Receiver;
 
-use crate::actions;
 use crate::actions::prompt;
 use crate::actions::text;
 use crate::actions::Action;

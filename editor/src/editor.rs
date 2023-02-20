@@ -112,6 +112,7 @@ impl Editor {
     pub fn open_new_buffer(&mut self, id: ClientId, buf: Buffer) {
         let bid = self.buffers.insert(buf);
         let (win, _) = self.get_win_buf_mut(id);
+        // TODO what to do with old buffer
         win.change_buffer(bid);
     }
 

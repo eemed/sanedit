@@ -1,8 +1,10 @@
 use std::{
-    fs,
+    fs::{self, File},
     io::{self, Read},
     path::{Path, PathBuf},
 };
+
+use crate::editor::{buffers::Buffer, options::EditorOptions};
 
 use super::eol::EOL;
 
@@ -47,3 +49,12 @@ pub(crate) fn detect_encoding(buf: &[u8]) -> &'static encoding_rs::Encoding {
 pub(crate) fn detect_line_ending(buf: &[u8]) -> EOL {
     todo!()
 }
+
+/// Decode the file to utf8 in memory, return buffer
+pub(crate) fn file_decode_utf8() {}
+
+/// Decode the file to utf8 to a temp file, return buffer
+pub(crate) fn big_file_decode_utf8() {}
+
+/// decode a file to utf8 to a writer
+pub(crate) fn decode_to_utf8() {}

@@ -6,14 +6,17 @@ mod options;
 mod prompt;
 mod view;
 
-use std::mem;
+use std::{mem, path::Path};
 
 use sanedit_buffer::piece_tree::prev_grapheme_boundary;
 use sanedit_messages::redraw::Size;
 
 use crate::{
     common::char::DisplayOptions,
-    editor::buffers::{Buffer, BufferId},
+    editor::{
+        buffers::{Buffer, BufferId},
+        options::EditorOptions,
+    },
 };
 
 pub(crate) use self::{
@@ -54,10 +57,12 @@ impl Window {
         &self.view.options
     }
 
-    pub fn change_buffer(&mut self, bid: BufferId) {
+    pub fn change_buffer(&mut self, bid: BufferId) -> BufferId {
+        let old = self.buf;
         let width = self.view.width();
         let height = self.view.height();
         *self = Window::new(bid, width, height);
+        old
     }
 
     pub fn info_msg(&mut self, message: String) {
@@ -200,5 +205,57 @@ impl Window {
         let mut view = mem::take(&mut self.view);
         view.draw(self, buf);
         self.view = view;
+    }
+
+    pub fn open_file(&mut self, path: impl AsRef<Path>, options: &EditorOptions) {
+        // let path = path.as_ref();
+        // match FileMetadata::try_from(path) {
+        //     Ok(m) => {
+        //         let EditorOptions {
+        //             big_file_threshold_bytes,
+        //             convert,
+        //             convert_big,
+        //             ..
+        //         } = editor.options;
+        //         let is_utf8 = m.encoding == encoding_rs::UTF_8;
+        //         let is_big = m.size >= editor.options.big_file_threshold_bytes;
+
+        //         match (is_utf8, is_big) {
+        //             (false, true) => {
+        //                 // according to convert_big, to temp file
+        //                 match convert_big {
+        //                     Convert::Always => todo!(),
+        //                     Convert::Ask => todo!(),
+        //                     Convert::Never => todo!(),
+        //                 }
+        //             }
+        //             (false, false) => {
+        //                 // according to convert_small, in memory
+        //                 match convert {
+        //                     Convert::Always => todo!(),
+        //                     Convert::Ask => todo!(),
+        //                     Convert::Never => todo!(),
+        //                 }
+        //             }
+        //             (true, true) => {
+        //                 // Open file backed buffer
+        //             }
+        //             (true, false) => {
+        //                 // Open in memory buffer
+        //                 let file = File::open(path).expect("Failed to read file {path:?}");
+        //                 let buf = Buffer::from_reader(file).expect("Failed to read file {input}");
+        //             }
+        //         }
+        //     }
+        //     Err(e) => {
+        //         log::error!(
+        //             "Failed to read file {} metadata {}",
+        //             path.to_string_lossy(),
+        //             e
+        //         );
+        //     }
+        // }
+
+        todo!()
     }
 }

@@ -66,7 +66,7 @@ pub(crate) fn prev_visual_line(editor: &mut Editor, id: ClientId) {
 
     if cursor_at_start && !view_at_start {
         // We are at the top line already, but view can be scrolled up
-        win.scroll_up(buf);
+        win.scroll_up_n(buf, 1);
     }
 
     prev_visual_line_impl(editor, id);
@@ -127,7 +127,7 @@ pub(crate) fn next_visual_line(editor: &mut Editor, id: ClientId) {
 
     // Make sure we have atleast one extra line to down to
     if cursor_at_end && !view_at_end {
-        win.scroll_down(buf);
+        win.scroll_down_n(buf, 1);
     }
 
     next_visual_line_impl(editor, id);

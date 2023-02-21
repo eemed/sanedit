@@ -6,7 +6,7 @@ use crate::{editor::Editor, server::ClientId};
 
 use super::completion::Completion;
 
-pub(crate) type PromptAction = Arc<dyn Fn(&mut Editor, ClientId, &str) + Send + Sync>;
+pub(crate) type PromptAction = Box<dyn FnOnce(&mut Editor, ClientId, &str) + Send + Sync>;
 
 pub(crate) struct Prompt {
     message: String,
@@ -69,8 +69,12 @@ impl Prompt {
         self.completion.select_prev();
     }
 
-    pub fn action(&self) -> &PromptAction {
-        &self.on_confirm
+    pub fn execute_action(self, editor: &mut Editor, id: ClientId) {
+        let input = self
+            .selected()
+            .map(|(_, item)| item.to_string())
+            .unwrap_or(self.input);
+        (self.on_confirm)(editor, id, &input)
     }
 
     pub fn input(&self) -> &str {
@@ -114,7 +118,7 @@ impl Prompt {
 
 impl Default for Prompt {
     fn default() -> Self {
-        Prompt::new("", Arc::new(|_, _, _| {}), false)
+        Prompt::new("", Box::new(|_, _, _| {}), false)
     }
 }
 

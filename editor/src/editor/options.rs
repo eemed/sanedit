@@ -1,5 +1,5 @@
-/// Describes when to convert files from utf8 to other encodings.
-#[derive(Debug)]
+/// Describes when to convert files from other encodings to utf8.
+#[derive(Debug, Clone, Copy)]
 pub enum Convert {
     Always,
     Ask,
@@ -18,7 +18,7 @@ impl Default for EditorOptions {
     fn default() -> Self {
         EditorOptions {
             big_file_threshold_bytes: 100 * 1024 * 1024, // 100MB
-            convert: Convert::Always,
+            convert: Convert::Ask,
             convert_big: Convert::Ask,
         }
     }

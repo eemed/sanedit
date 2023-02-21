@@ -1,13 +1,7 @@
-use std::{
-    mem,
-    path::{Path, PathBuf},
-    sync::Arc,
-    time::Duration,
-};
+use std::{mem, path::PathBuf, sync::Arc};
 
-use futures::{future::LocalBoxFuture, Future, FutureExt};
 use tokio::{
-    fs::{self, DirEntry},
+    fs::{self},
     io,
 };
 
@@ -18,7 +12,7 @@ use crate::{
 
 use super::prompt;
 
-async fn list_files(mut send: JobProgressSender, dir: PathBuf) -> bool {
+async fn list_files(send: JobProgressSender, dir: PathBuf) -> bool {
     async fn read_recursive(mut send: JobProgressSender, base: PathBuf) -> io::Result<()> {
         let mut entries: Vec<String> = Vec::new();
         let mut stack: Vec<PathBuf> = Vec::new();

@@ -47,7 +47,6 @@ impl DrawState {
                     redraw.push(Redraw::ClosePrompt);
                 }
 
-        log::info!("D state");
                 win.draw_view(buf);
                 let view = win.view();
                 let cursors = win.cursors();

@@ -1,9 +1,9 @@
 pub(crate) mod buffers;
 pub(crate) mod jobs;
 mod keymap;
+pub(crate) mod options;
 mod themes;
 pub(crate) mod windows;
-pub(crate) mod options;
 
 use sanedit_messages::redraw::Size;
 use sanedit_messages::redraw::Theme;
@@ -22,8 +22,10 @@ use tokio::io;
 use tokio::sync::mpsc::Receiver;
 
 use crate::actions::prompt;
+use crate::actions::prompt::prompt_file_conversion;
 use crate::actions::text;
 use crate::actions::Action;
+use crate::common::file::FileMetadata;
 use crate::draw::DrawState;
 use crate::editor::buffers::Buffer;
 use crate::events::ToEditor;
@@ -36,6 +38,7 @@ use crate::server::JobsHandle;
 use self::buffers::Buffers;
 use self::jobs::Jobs;
 use self::keymap::Keymap;
+use self::options::Convert;
 use self::options::EditorOptions;
 use self::windows::Mode;
 use self::windows::Window;
@@ -109,11 +112,31 @@ impl Editor {
         self.clients.insert(handle.id, handle);
     }
 
-    pub fn open_new_buffer(&mut self, id: ClientId, buf: Buffer) {
+    /// Put buffer to buffers list and open it in client 'id':s window
+    pub fn open_buffer(&mut self, id: ClientId, buf: Buffer) {
         let bid = self.buffers.insert(buf);
         let (win, _) = self.get_win_buf_mut(id);
         // TODO what to do with old buffer
-        win.change_buffer(bid);
+        win.open_buffer(bid);
+    }
+
+    /// Open a file in client 'id':s window
+    pub fn open_file(&mut self, id: ClientId, path: impl AsRef<Path>) -> io::Result<()> {
+        let file = FileMetadata::new(path, &self.options)?;
+        if !file.is_utf8() {
+            match file.convert {
+                Convert::Always => todo!(),
+                Convert::Ask => {
+                    prompt_file_conversion(self, id, file);
+                    return Ok(());
+                },
+                Convert::Never => todo!(),
+            }
+        }
+
+        let buf = Buffer::from_utf8_file(file)?;
+        self.open_buffer(id, buf);
+        Ok(())
     }
 
     fn send_to_client(&mut self, id: ClientId, msg: ClientMessage) {

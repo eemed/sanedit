@@ -116,8 +116,14 @@ impl Editor {
     pub fn open_buffer(&mut self, id: ClientId, buf: Buffer) {
         let bid = self.buffers.insert(buf);
         let (win, _) = self.get_win_buf_mut(id);
-        // TODO what to do with old buffer
-        win.open_buffer(bid);
+        // TODO check if buffer is not saved and what to do if it is not
+
+        let old = win.open_buffer(bid);
+        // Remove if unused
+        let is_used = self.windows.iter().any(|(_, win)| win.buffer_id() == old);
+        if !is_used {
+            self.buffers.remove(old);
+        }
     }
 
     /// Open a file in client 'id':s window
@@ -129,7 +135,7 @@ impl Editor {
                 Convert::Ask => {
                     prompt_file_conversion(self, id, file);
                     return Ok(());
-                },
+                }
                 Convert::Never => todo!(),
             }
         }

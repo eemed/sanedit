@@ -11,7 +11,13 @@ pub(crate) struct Windows {
 }
 
 impl Windows {
-pub fn new_window(&mut self, id: ClientId, buf: BufferId, width: usize, height: usize) -> &mut Window{
+    pub fn new_window(
+        &mut self,
+        id: ClientId,
+        buf: BufferId,
+        width: usize,
+        height: usize,
+    ) -> &mut Window {
         self.windows.insert(id, Window::new(buf, width, height));
         self.get_mut(id).unwrap()
     }
@@ -26,5 +32,13 @@ pub fn new_window(&mut self, id: ClientId, buf: BufferId, width: usize, height: 
 
     pub fn remove(&mut self, id: ClientId) -> Option<Window> {
         self.windows.remove(&id)
+    }
+
+    pub fn iter(&self) -> std::collections::hash_map::Iter<ClientId, Window> {
+        self.windows.iter()
+    }
+
+    pub fn iter_mut(&mut self) -> std::collections::hash_map::IterMut<ClientId, Window> {
+        self.windows.iter_mut()
     }
 }

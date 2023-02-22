@@ -12,7 +12,7 @@ use sanedit_buffer::piece_tree::prev_grapheme_boundary;
 use sanedit_messages::redraw::Size;
 
 use crate::{
-    common::{char::DisplayOptions, file::FileMetadata},
+    common::{char::DisplayOptions, file::File},
     editor::{
         buffers::{Buffer, BufferId},
         options::EditorOptions,

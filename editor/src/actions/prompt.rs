@@ -1,8 +1,9 @@
-use std::{mem, path::PathBuf, sync::Arc};
+use std::{mem, path::PathBuf};
 
 use crate::{
-    common::file::FileMetadata,
+    common::file::File,
     editor::{
+        buffers::Buffer,
         windows::{Prompt, PromptAction},
         Editor,
     },
@@ -18,20 +19,23 @@ fn is_yes(input: &str) -> bool {
     }
 }
 
-pub(crate) fn prompt_file_conversion(editor: &mut Editor, id: ClientId, file: FileMetadata) {
-    let action: PromptAction = Box::new(|editor, id, input| {
-        let yes = is_yes(input);
-        if yes {
-            log::info!("TODO do convert")
-        }
-    });
+pub(crate) fn prompt_file_conversion(editor: &mut Editor, id: ClientId, mut file: File) {
     let msg = format!(
         "File {} is not UTF-8, Convert? (Y/n)",
-        file.path
+        file.path()
             .file_name()
             .expect("cannot get filename")
             .to_string_lossy()
     );
+    let action: PromptAction = Box::new(move |editor, id, input| {
+        if is_yes(input) {
+            file.decode_to_utf8();
+        }
+
+        if let Ok(buf) = Buffer::from_file(file) {
+            editor.open_buffer(id, buf);
+        }
+    });
     let prompt = Prompt::new(&msg, action, false);
     let (win, buf) = editor.get_win_buf_mut(id);
     win.open_prompt(prompt);

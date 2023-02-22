@@ -25,7 +25,7 @@ use crate::actions::prompt;
 use crate::actions::prompt::prompt_file_conversion;
 use crate::actions::text;
 use crate::actions::Action;
-use crate::common::file::FileMetadata;
+use crate::common::file::File;
 use crate::draw::DrawState;
 use crate::editor::buffers::Buffer;
 use crate::events::ToEditor;
@@ -116,7 +116,8 @@ impl Editor {
     pub fn open_buffer(&mut self, id: ClientId, buf: Buffer) {
         let bid = self.buffers.insert(buf);
         let (win, _) = self.get_win_buf_mut(id);
-        // TODO check if buffer is not saved and what to do if it is not
+        // TODO check if buffer is not saved and what to do if it is not, prompt
+        // save or auto save?
 
         let old = win.open_buffer(bid);
         // Remove if unused
@@ -128,19 +129,22 @@ impl Editor {
 
     /// Open a file in client 'id':s window
     pub fn open_file(&mut self, id: ClientId, path: impl AsRef<Path>) -> io::Result<()> {
-        let file = FileMetadata::new(path, &self.options)?;
+        let mut file = File::new(path, &self.options)?;
         if !file.is_utf8() {
-            match file.convert {
-                Convert::Always => todo!(),
+            match file.convert() {
+                Convert::Always => {
+                    // TODO check fail
+                    file.decode_to_utf8();
+                }
                 Convert::Ask => {
                     prompt_file_conversion(self, id, file);
                     return Ok(());
                 }
-                Convert::Never => todo!(),
+                Convert::Never => {}
             }
         }
 
-        let buf = Buffer::from_utf8_file(file)?;
+        let buf = Buffer::from_file(file)?;
         self.open_buffer(id, buf);
         Ok(())
     }

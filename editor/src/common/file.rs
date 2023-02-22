@@ -8,17 +8,27 @@ use crate::editor::options::{Convert, EditorOptions};
 
 use super::eol::EOL;
 
-pub(crate) struct FileMetadata {
-    pub path: PathBuf,
-    pub encoding: &'static encoding_rs::Encoding,
-    pub eol: EOL,
-    pub size: u64,
-    pub is_big: bool,
-    pub convert: Convert,
+#[derive(Debug)]
+pub(crate) enum UTF8File {
+    Memory(Vec<u8>),
+    File(PathBuf),
 }
 
-impl FileMetadata {
-    pub fn new(path: impl AsRef<Path>, options: &EditorOptions) -> io::Result<FileMetadata> {
+#[derive(Debug)]
+pub(crate) struct File {
+    path: PathBuf,
+    encoding: &'static encoding_rs::Encoding,
+    eol: EOL,
+    size: u64,
+    is_big: bool,
+    convert: Convert,
+
+    /// If this file was converted to UTF-8, stores the data.
+    pub converted: Option<UTF8File>,
+}
+
+impl File {
+    pub fn new(path: impl AsRef<Path>, options: &EditorOptions) -> io::Result<File> {
         let path = path.as_ref();
         let mut file = fs::File::open(path)?;
         let metadata = file.metadata()?;
@@ -38,40 +48,103 @@ impl FileMetadata {
         let is_big = *big_file_threshold_bytes <= size;
         let convert = if is_big { *convert_big } else { *convert };
 
-        let file_metadata = FileMetadata {
+        let file_metadata = File {
             path: path.into(),
             encoding,
             eol,
             size,
             is_big,
             convert,
+            converted: None,
         };
 
         Ok(file_metadata)
+    }
+
+    pub fn path(&self) -> &Path {
+        &self.path
+    }
+
+    pub fn eol(&self) -> EOL {
+        self.eol
+    }
+
+    pub fn size(&self) -> u64 {
+        self.size
+    }
+
+    pub fn convert(&self) -> Convert {
+        self.convert
+    }
+
+    pub fn is_big(&self) -> bool {
+        self.is_big
+    }
+
+    pub fn encoding(&self) -> &'static encoding_rs::Encoding {
+        self.encoding
     }
 
     pub fn is_utf8(&self) -> bool {
         self.encoding == encoding_rs::UTF_8
     }
 
-    pub fn convert_to_utf8(&mut self) {
-        if self.is_utf8() {
-            return;
+    pub fn is_converted(&self) -> bool {
+        self.converted.is_some()
+    }
+
+    /// Decodes the file to UTF-8. Big files are converted to a temp file and
+    /// small files are converted in memory.
+    pub fn decode_to_utf8(&mut self) -> io::Result<()> {
+        if self.is_utf8() || self.is_converted() {
+            return Ok(());
         }
 
         if self.is_big {
-            big_file_decode_utf8();
+            // TODO get temp file dir
+            // self.decode_to_utf8_file()
+            Ok(())
         } else {
-            file_decode_utf8();
+            self.decode_to_utf8_vec()
         }
     }
+
+    /// Decode the file to utf8 to a temp file
+    pub fn decode_to_utf8_file(&mut self, to: impl AsRef<Path>) -> io::Result<()> {
+        if self.is_utf8() || self.is_converted() {
+            return Ok(());
+        }
+
+        let path = to.as_ref().to_path_buf();
+        let mut input = fs::File::open(&self.path)?;
+        let mut output = fs::File::create(&path)?;
+        let (read, written) = decode_to_utf8(input, self.encoding, &mut output)?;
+        if read as u64 != self.size {
+            todo!("Failed to decode to file");
+        }
+
+        self.converted = Some(UTF8File::File(path));
+
+        Ok(())
+    }
+
+    /// Decode the file to utf8 in memory, return buffer
+    pub fn decode_to_utf8_vec(&mut self) -> io::Result<()> {
+        if self.is_utf8() || self.is_converted() {
+            return Ok(());
+        }
+
+        let mut input = fs::File::open(&self.path)?;
+        let mut output = Vec::new();
+        let (read, written) = decode_to_utf8(input, self.encoding, &mut output)?;
+        if read as u64 != self.size {
+            todo!("Failed to decode to buffer");
+        }
+
+        self.converted = Some(UTF8File::Memory(output));
+        Ok(())
+    }
 }
-
-/// Decode the file to utf8 in memory, return buffer
-pub(crate) fn file_decode_utf8() {}
-
-/// Decode the file to utf8 to a temp file, return buffer
-pub(crate) fn big_file_decode_utf8() {}
 
 /// decode a file to utf8 to a writer
 pub(crate) fn decode_to_utf8<R: io::Read, W: io::Write>(

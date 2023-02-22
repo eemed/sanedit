@@ -4,15 +4,14 @@ mod snapshots;
 
 use std::{
     borrow::Cow,
-    fs::{self, File},
-    io,
+    fs, io,
     ops::RangeBounds,
     path::{Path, PathBuf},
 };
 
 use sanedit_buffer::piece_tree::{PieceTree, PieceTreeSlice};
 
-use crate::common::file::FileMetadata;
+use crate::common::file::File;
 
 use self::{change::Change, options::BufferOptions, snapshots::Snapshots};
 
@@ -54,17 +53,16 @@ impl Buffer {
         }
     }
 
-    pub fn from_utf8_file(file: FileMetadata) -> io::Result<Buffer> {
-        debug_assert!(file.is_utf8());
-        if file.is_big {
+    pub fn from_file(file: File) -> io::Result<Buffer> {
+        if file.is_big() {
             Self::file_backed(file)
         } else {
             Self::in_memory(file)
         }
     }
 
-    fn file_backed(file: FileMetadata) -> io::Result<Buffer> {
-        let file = fs::File::open(&file.path)?;
+    fn file_backed(file: File) -> io::Result<Buffer> {
+        let file = fs::File::open(file.path())?;
         let pt = PieceTree::from_file(file)?;
         let snapshot = pt.snapshot();
         Ok(Buffer {
@@ -79,8 +77,8 @@ impl Buffer {
         })
     }
 
-    fn in_memory(file: FileMetadata) -> io::Result<Buffer> {
-        let file = fs::File::open(&file.path)?;
+    fn in_memory(file: File) -> io::Result<Buffer> {
+        let file = fs::File::open(file.path())?;
         Self::from_reader(file)
     }
 

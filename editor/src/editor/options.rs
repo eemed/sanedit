@@ -1,4 +1,4 @@
-/// Describes when to convert files from other encodings to utf8.
+/// Describes when to convert files from other encodings to UTF-8
 #[derive(Debug, Clone, Copy)]
 pub enum Convert {
     Always,

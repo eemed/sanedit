@@ -1,4 +1,5 @@
 use std::{
+    borrow::Cow,
     fs,
     io::{self, Read},
     path::{Path, PathBuf},
@@ -6,7 +7,7 @@ use std::{
 
 use crate::editor::options::{Convert, EditorOptions};
 
-use super::eol::EOL;
+use super::{dirs::tmp_dir, eol::EOL};
 
 #[derive(Debug)]
 pub(crate) enum UTF8File {
@@ -101,9 +102,18 @@ impl File {
         }
 
         if self.is_big {
-            // TODO get temp file dir
-            // self.decode_to_utf8_file()
-            Ok(())
+            let tmp_path = {
+                let mut tmp = tmp_dir().ok_or(io::Error::from(io::ErrorKind::NotFound))?;
+                let filename = self
+                    .path
+                    .components()
+                    .map(|c| c.as_os_str().to_string_lossy())
+                    .collect::<Vec<Cow<'_, str>>>()
+                    .join("-");
+                tmp.push(filename);
+                tmp
+            };
+            self.decode_to_utf8_file(&tmp_path)
         } else {
             self.decode_to_utf8_vec()
         }
@@ -116,7 +126,7 @@ impl File {
         }
 
         let path = to.as_ref().to_path_buf();
-        let mut input = fs::File::open(&self.path)?;
+        let input = fs::File::open(&self.path)?;
         let mut output = fs::File::create(&path)?;
         let (read, written) = decode_to_utf8(input, self.encoding, &mut output)?;
         if read as u64 != self.size {
@@ -134,7 +144,7 @@ impl File {
             return Ok(());
         }
 
-        let mut input = fs::File::open(&self.path)?;
+        let input = fs::File::open(&self.path)?;
         let mut output = Vec::new();
         let (read, written) = decode_to_utf8(input, self.encoding, &mut output)?;
         if read as u64 != self.size {

@@ -10,6 +10,12 @@ pub(crate) enum EOL {
 }
 
 impl EOL {
+    #[cfg(target_os = "windows")]
+    const DEFAULT_EOL: EOL = EOL::CRLF;
+
+    #[cfg(not(target_os = "windows"))]
+    const DEFAULT_EOL: EOL = EOL::LF;
+
     pub fn as_str(&self) -> &str {
         match self {
             EOL::LF => "\n",
@@ -28,12 +34,6 @@ impl EOL {
 
 impl Default for EOL {
     fn default() -> Self {
-        #[cfg(target_os = "windows")]
-        const DEFAULT_EOL: EOL = EOL::CRLF;
-
-        #[cfg(not(target_os = "windows"))]
-        const DEFAULT_EOL: EOL = EOL::LF;
-
-        DEFAULT_EOL
+        Self::DEFAULT_EOL
     }
 }

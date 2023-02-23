@@ -12,6 +12,8 @@ pub(crate) struct Grid {
     pub window: Window,
     pub statusline: Statusline,
     pub prompt: Option<Prompt>,
+
+    cells: Vec<Vec<Cell>>,
 }
 
 impl fmt::Debug for Grid {
@@ -26,12 +28,28 @@ impl Grid {
             window: Window::default(),
             statusline: Statusline::default(),
             prompt: None,
+            cells: vec![vec![]],
         }
     }
 
-    pub fn draw(&mut self, ctx: &UIContext) -> (Vec<Vec<Cell>>, Point) {
+    pub fn reset_grid(&mut self, width: usize, height: usize) {
+        let h = self.cells.len();
+        let w = self.cells.get(0).map(|row| row.len()).unwrap_or(0);
+        if w != width || height != h {
+            self.cells = vec![vec![Cell::default(); width]; height];
+            return;
+        }
+
+        for row in self.cells.iter_mut() {
+            for cell in row.iter_mut() {
+                *cell = Cell::default();
+            }
+        }
+    }
+
+    pub fn draw(&mut self, ctx: &UIContext) -> (&Vec<Vec<Cell>>, Point) {
         let mut cursor = Point::default();
-        let mut cells: Vec<Vec<Cell>> = vec![vec![Cell::default(); ctx.width]; ctx.height];
+        self.reset_grid(ctx.width, ctx.height);
         let components: Vec<&dyn Component> = {
             let mut comps: Vec<&dyn Component> = Vec::new();
             comps.push(&self.window);
@@ -54,13 +72,13 @@ impl Grid {
                     let x = top_left.x + col;
                     let y = top_left.y + line;
                     if x < ctx.width && y < ctx.height {
-                        cells[y][x] = cell;
+                        self.cells[y][x] = cell;
                     }
                 }
             }
         }
 
         // log::info!("{:?}", self.window);
-        (cells, cursor)
+        (&self.cells, cursor)
     }
 }

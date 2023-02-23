@@ -54,6 +54,8 @@ impl Buffer {
     }
 
     pub fn from_file(file: File) -> io::Result<Buffer> {
+        // TODO if file is converted create buffer to tmp dir and
+        // save to other dir.
         if file.is_big() {
             Self::file_backed(file)
         } else {

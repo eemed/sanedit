@@ -107,6 +107,7 @@ impl Window {
         for _ in 0..n {
             view.scroll_down(self, buf);
         }
+        view.draw(self, buf);
         self.view = view;
 
         let primary = self.cursors.primary_mut();
@@ -129,6 +130,7 @@ impl Window {
         for _ in 0..n {
             view.scroll_up(self, buf);
         }
+        view.draw(self, buf);
         self.view = view;
 
         let primary = self.cursors.primary_mut();

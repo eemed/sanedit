@@ -8,42 +8,36 @@ use crate::common::char::{Char, DisplayOptions};
 use crate::common::eol::EOL;
 use crate::common::movement::start_of_line;
 use crate::editor::buffers::Buffer;
-use crate::editor::windows::window::Cursor;
 
 use super::Window;
 
 #[derive(Debug, Clone)]
 pub(crate) enum Cell {
     Empty,
-    EOF, // End of file where cursor can be placed
-    Char {
-        ch: Char,
-        // style: Style,
-    },
+    Continue, // Continuation of a previous char
+    EOF,      // End of file where cursor can be placed
+    Char { ch: Char },
 }
 
 impl Cell {
     pub fn char(&self) -> Option<&Char> {
         match self {
-            Cell::Empty => None,
-            Cell::EOF => None,
             Cell::Char { ch } => Some(ch),
+            _ => None,
         }
     }
 
     pub fn width(&self) -> usize {
         match self {
-            Cell::Empty => 0,
-            Cell::EOF => 0,
             Cell::Char { ch } => ch.width(),
+            _ => 0,
         }
     }
 
     pub fn grapheme_len(&self) -> usize {
         match self {
-            Cell::Empty => 0,
-            Cell::EOF => 0,
             Cell::Char { ch } => ch.grapheme_len(),
+            _ => 0,
         }
     }
 }
@@ -107,6 +101,11 @@ impl View {
 
     fn clear(&mut self) {
         self.cells = Self::make_default_cells(self.width, self.height);
+        for row in self.cells.iter_mut() {
+            for cell in row.iter_mut() {
+                *cell = Cell::default();
+            }
+        }
         self.needs_redraw = true;
     }
 
@@ -116,31 +115,6 @@ impl View {
 
     pub fn height(&self) -> usize {
         self.height
-    }
-
-    fn cursor_cell_pos(&mut self, cursor: &Cursor) -> Option<Point> {
-        // Cursor is always on a character or at the end of file
-        let mut pos = self.range.start;
-        for (line, row) in self.cells.iter().enumerate() {
-            for (col, cell) in row.iter().enumerate() {
-                match cell {
-                    Cell::Empty => {}
-                    Cell::EOF => {
-                        if cursor.pos() == pos {
-                            return Some(Point { x: col, y: line });
-                        }
-                    }
-                    Cell::Char { ch } => {
-                        if cursor.pos() == pos {
-                            return Some(Point { x: col, y: line });
-                        }
-                        pos += ch.grapheme_len();
-                    }
-                }
-            }
-        }
-
-        None
     }
 
     fn draw_cells(&mut self, buf: &Buffer) {
@@ -165,17 +139,11 @@ impl View {
     /// full redraw is needed , if the position we start to draw backwards is
     /// not EOL (so we have a wrapped line). Otherwise the line will be shorter eventhough
     /// more could fit to the line.
-    fn draw_line_backwards(
-        &mut self,
-        slice: &PieceTreeSlice,
-        line: usize,
-        pos: &mut usize,
-    ) -> bool {
+    fn draw_line_backwards(&mut self, slice: &PieceTreeSlice, line: usize, pos: &mut usize) {
         let mut graphemes = VecDeque::with_capacity(self.width);
-        let mut is_eol = false;
 
         while let Some(grapheme) = prev_grapheme(&slice, *pos) {
-            is_eol = EOL::is_eol(&grapheme);
+            let is_eol = EOL::is_eol(&grapheme);
 
             if is_eol && !graphemes.is_empty() {
                 break;
@@ -203,9 +171,6 @@ impl View {
             self.cells[line][col] = ch.into();
             col + width
         });
-
-        // TODO return (pos == 0 || last was eol) && start was not eol
-        *pos == 0 || is_eol
     }
 
     /// Draw a line into self.cells, returns true if EOF was written.
@@ -226,6 +191,11 @@ impl View {
             }
 
             self.cells[line][col] = ch.into();
+
+            for i in 1..ch_width {
+                self.cells[line][col + i] = Cell::Continue;
+            }
+
             col += ch_width;
             *pos += grapheme.len();
 
@@ -268,7 +238,6 @@ impl View {
 
         self.range.start += top_line_len;
         self.needs_redraw = true;
-        self.draw(win, buf);
 
         // let _ = self.cells.pop_front();
         // self.cells.push_back(vec![Cell::default(); self.width]);
@@ -282,17 +251,16 @@ impl View {
     }
 
     pub fn scroll_up(&mut self, win: &Window, buf: &Buffer) {
-        self.draw(win, buf);
         if self.range.start == 0 {
             return;
         }
+        self.draw(win, buf);
 
         let slice = buf.slice(..self.range.start);
         let mut pos = self.range.start;
         self.draw_line_backwards(&slice, 0, &mut pos);
         self.range.start = pos;
         self.needs_redraw = true;
-        self.draw(win, buf);
 
         // let last_line = self.cells.pop_back();
         // let last_line_len = last_line
@@ -347,6 +315,7 @@ impl View {
 
     pub fn pos_at_point(&self, point: Point) -> Option<usize> {
         let mut pos = self.range.start;
+        let mut last_ch_pos = None;
         for (y, row) in self.cells.iter().enumerate() {
             for (x, cell) in row.iter().enumerate() {
                 match cell {
@@ -355,10 +324,16 @@ impl View {
                             return Some(pos);
                         }
                     }
+                    Cell::Continue => {
+                        if point.y == y && point.x == x {
+                            return last_ch_pos;
+                        }
+                    }
                     Cell::Char { ch } => {
                         if point.y == y && point.x == x {
                             return Some(pos);
                         }
+                        last_ch_pos = Some(pos);
                         pos += ch.grapheme_len();
                     }
                     _ => {}
@@ -374,7 +349,7 @@ impl View {
 
         for (y, row) in self.cells.iter().enumerate() {
             for (x, cell) in row.iter().enumerate() {
-                if !matches!(cell, Cell::Empty) {
+                if !matches!(cell, Cell::Empty | Cell::Continue) {
                     if cur == pos {
                         return Some(Point { x, y });
                     }

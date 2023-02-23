@@ -53,7 +53,6 @@ pub(crate) fn draw_window(
     draw_end_of_buffer(&mut grid, view, theme);
     draw_trailing_whitespace(&mut grid, view, theme);
 
-    log::info!("Curosr at {}", cursors.primary().pos());
     let cursor = view
         .point_at_pos(cursors.primary().pos())
         .expect("cursor not at view");

@@ -108,6 +108,7 @@ fn prev_visual_line_impl(editor: &mut Editor, id: ClientId) -> bool {
             y: target_line,
         })
         .unwrap_or(0);
+        log::info!("POS {pos}");
     win.primary_cursor_mut().goto_with_col(pos, target_col);
     true
 }

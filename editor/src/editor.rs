@@ -22,7 +22,6 @@ use tokio::io;
 use tokio::sync::mpsc::Receiver;
 
 use crate::actions::prompt;
-use crate::actions::prompt::prompt_file_conversion;
 use crate::actions::text;
 use crate::actions::Action;
 use crate::common::file::File;
@@ -38,7 +37,6 @@ use crate::server::JobsHandle;
 use self::buffers::Buffers;
 use self::jobs::Jobs;
 use self::keymap::Keymap;
-use self::options::Convert;
 use self::options::EditorOptions;
 use self::windows::Mode;
 use self::windows::Window;
@@ -130,20 +128,6 @@ impl Editor {
     /// Open a file in client 'id':s window
     pub fn open_file(&mut self, id: ClientId, path: impl AsRef<Path>) -> io::Result<()> {
         let mut file = File::new(path, &self.options)?;
-        if !file.is_utf8() {
-            match file.convert() {
-                Convert::Always => {
-                    // TODO check fail
-                    file.decode_to_utf8();
-                }
-                Convert::Ask => {
-                    prompt_file_conversion(self, id, file);
-                    return Ok(());
-                }
-                Convert::Never => {}
-            }
-        }
-
         let buf = Buffer::from_file(file)?;
         self.open_buffer(id, buf);
         Ok(())

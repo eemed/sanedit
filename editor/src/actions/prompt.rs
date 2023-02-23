@@ -19,28 +19,6 @@ fn is_yes(input: &str) -> bool {
     }
 }
 
-pub(crate) fn prompt_file_conversion(editor: &mut Editor, id: ClientId, mut file: File) {
-    let msg = format!(
-        "File {} is not UTF-8, Convert? (Y/n)",
-        file.path()
-            .file_name()
-            .expect("cannot get filename")
-            .to_string_lossy()
-    );
-    let action: PromptAction = Box::new(move |editor, id, input| {
-        if is_yes(input) {
-            file.decode_to_utf8();
-        }
-
-        if let Ok(buf) = Buffer::from_file(file) {
-            editor.open_buffer(id, buf);
-        }
-    });
-    let prompt = Prompt::new(&msg, action, false);
-    let (win, buf) = editor.get_win_buf_mut(id);
-    win.open_prompt(prompt);
-}
-
 pub(crate) fn prompt_open_file(editor: &mut Editor, id: ClientId) {
     let action: PromptAction = Box::new(|editor, id, input| {
         let path = PathBuf::from(input);

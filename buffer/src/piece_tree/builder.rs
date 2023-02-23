@@ -16,7 +16,7 @@ impl PieceTreeBuilder {
 
     pub fn build(self) -> PieceTree {
         let orig_buf = OriginalBuffer::Memory { bytes: self.buf };
-        PieceTree::from_original_buffer(orig_buf).unwrap()
+        PieceTree::from_original_buffer(orig_buf)
     }
 }
 

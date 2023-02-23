@@ -38,8 +38,7 @@ pub(crate) struct Buffer {
 
 impl Buffer {
     pub fn new() -> Buffer {
-        let mut pt = PieceTree::new();
-        // pt.append("Scratch buffer");
+        let pt = PieceTree::new();
         let snapshot = pt.snapshot();
         Buffer {
             id: BufferId::default(),
@@ -54,8 +53,6 @@ impl Buffer {
     }
 
     pub fn from_file(file: File) -> io::Result<Buffer> {
-        // TODO if file is converted create buffer to tmp dir and
-        // save to other dir.
         if file.is_big() {
             Self::file_backed(file)
         } else {
@@ -65,7 +62,7 @@ impl Buffer {
 
     fn file_backed(file: File) -> io::Result<Buffer> {
         let file = fs::File::open(file.path())?;
-        let pt = PieceTree::from_file(file)?;
+        let pt = PieceTree::from_file(file);
         let snapshot = pt.snapshot();
         Ok(Buffer {
             id: BufferId::default(),

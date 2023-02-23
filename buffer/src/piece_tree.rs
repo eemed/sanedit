@@ -71,7 +71,7 @@ impl PieceTree {
     #[inline]
     pub fn new() -> PieceTree {
         let orig_buf = OriginalBuffer::new();
-        Self::from_original_buffer(orig_buf).unwrap()
+        Self::from_original_buffer(orig_buf)
     }
 
     /// Create a new piece tree from a reader.
@@ -79,15 +79,15 @@ impl PieceTree {
     #[inline]
     pub fn from_reader<R: io::Read>(reader: R) -> io::Result<PieceTree> {
         let orig_buf = OriginalBuffer::from_reader(reader)?;
-        Self::from_original_buffer(orig_buf)
+        Ok(Self::from_original_buffer(orig_buf))
     }
 
     /// Create a new piece tree from a file.
     /// The whole file is not read into memory at any time.
     /// Windowing is used instead which only reads a part of the file.
     #[inline]
-    pub fn from_file(file: File) -> io::Result<PieceTree> {
-        let orig_buf = OriginalBuffer::from_file(file)?;
+    pub fn from_file(file: File) -> PieceTree {
+        let orig_buf = OriginalBuffer::from_file(file);
         Self::from_original_buffer(orig_buf)
     }
 
@@ -166,7 +166,7 @@ impl PieceTree {
     }
 
     #[inline]
-    fn from_original_buffer(orig_buf: OriginalBuffer) -> io::Result<PieceTree> {
+    fn from_original_buffer(orig_buf: OriginalBuffer) -> PieceTree {
         let add_buf = AddBuffer::new();
         let mut pieces = Tree::new();
 
@@ -176,14 +176,12 @@ impl PieceTree {
             pieces.insert(0, piece);
         }
 
-        let pt = PieceTree {
+        PieceTree {
             orig: orig_buf,
             add: add_buf,
             tree: pieces,
             len: ob_len,
-        };
-
-        Ok(pt)
+        }
     }
 
     #[inline]

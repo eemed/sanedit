@@ -109,8 +109,10 @@ impl OriginalBuffer {
         Ok(OriginalBuffer::Memory { bytes })
     }
 
-    pub fn from_file(_file: File) -> io::Result<OriginalBuffer> {
-        todo!()
+    pub fn from_file(file: File) -> OriginalBuffer {
+        let file = RefCell::new(file);
+        let cache = RefCell::new(Rc::new((0, vec![])));
+        OriginalBuffer::File { file, cache }
     }
 
     #[inline(always)]

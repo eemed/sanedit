@@ -204,8 +204,10 @@ impl Window {
             buf.id,
             self.buf
         );
+        let primary_pos = self.cursors.primary().pos();
         let mut view = mem::take(&mut self.view);
         view.draw(self, buf);
+        view.view_to(primary_pos, self, buf);
         self.view = view;
     }
 }

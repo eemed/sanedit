@@ -44,7 +44,6 @@ impl<'a> Bytes<'a> {
             .as_ref()
             .map(|(_, chunk)| chunk.as_ref().len())
             .unwrap_or(0);
-        // let pos = if chunk.is_some() { at } else { 0 };
         let pos = chunk.as_ref().map(|(pos, _)| at - pos).unwrap_or(0);
         Bytes {
             chunk,

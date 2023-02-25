@@ -91,21 +91,21 @@ pub(crate) fn next_word_start(slice: &PieceTreeSlice, mut pos: usize) -> usize {
 }
 
 pub(crate) fn prev_word_start(slice: &PieceTreeSlice, mut pos: usize) -> usize {
-    let mut next: Option<GraphemeCategory> = None;
+    let mut cat: Option<GraphemeCategory> = None;
 
     // TODO dont allocate
     while let Some(g) = prev_grapheme(slice, pos) {
         let string = String::from(&g);
-        let cat = grapheme_category(&string);
+        let prev = grapheme_category(&string);
 
-        if let Some(next) = next {
-            if next.is_word_break(&cat) {
+        if let Some(cat) = cat {
+            if cat.is_word_break(&prev) {
                 return pos;
             }
         }
 
         pos -= g.len();
-        next = Some(cat);
+        cat = Some(prev);
     }
 
     0

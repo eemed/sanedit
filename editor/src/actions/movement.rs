@@ -48,8 +48,6 @@ pub(crate) fn end_of_buffer(editor: &mut Editor, id: ClientId) {
     let cursor = win.primary_cursor_mut();
     cursor.goto(buf.len());
     win.view_to_cursor(buf);
-    let height = win.view().height();
-    win.scroll_up_n(buf, height.saturating_sub(1));
 }
 
 pub(crate) fn prev_visual_line(editor: &mut Editor, id: ClientId) {

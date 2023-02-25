@@ -91,7 +91,6 @@ impl Window {
     }
 
     pub fn primary_cursor_mut(&mut self) -> &mut Cursor {
-        self.view.invalidate();
         self.cursors.primary_mut()
     }
 
@@ -135,7 +134,7 @@ impl Window {
 
         let primary = self.cursors.primary_mut();
         let range = self.view.range();
-        if primary.pos() >= range.end {
+        if primary.pos() >= range.end && range.end != buf.len() {
             let prev = prev_grapheme_boundary(&buf.slice(..), range.end);
             primary.goto(prev);
         }

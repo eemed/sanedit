@@ -66,9 +66,6 @@ pub(crate) struct View {
     width: usize,
     /// Height of view
     height: usize,
-    /// Wether this view is out of date, and needs to be redrawn to
-    /// represent current state.
-    needs_redraw: bool,
 
     /// Display options which were used to draw this view
     pub options: DisplayOptions,
@@ -81,7 +78,6 @@ impl View {
             cells: Self::make_default_cells(width, height),
             width,
             height,
-            needs_redraw: true,
             options: DisplayOptions::default(),
         }
     }
@@ -106,7 +102,6 @@ impl View {
                 *cell = Cell::default();
             }
         }
-        self.needs_redraw = true;
     }
 
     pub fn width(&self) -> usize {
@@ -213,20 +208,12 @@ impl View {
     }
 
     pub fn draw(&mut self, win: &Window, buf: &Buffer) {
-        log::info!("Draw view {}", self.needs_redraw);
-        if !self.needs_redraw {
-            return;
-        }
-
         self.clear();
         self.draw_cells(buf);
-        self.needs_redraw = false;
         log::info!("Draw view end {:?}", self.range);
     }
 
     pub fn scroll_down(&mut self, win: &Window, buf: &Buffer) {
-        self.draw(win, buf);
-
         let top_line_len = self
             .cells
             .get(0)
@@ -237,43 +224,17 @@ impl View {
         }
 
         self.range.start += top_line_len;
-        self.needs_redraw = true;
-
-        // let _ = self.cells.pop_front();
-        // self.cells.push_back(vec![Cell::default(); self.width]);
-
-        // let slice = buf.slice(self.range.end..);
-        // let last_line = self.height - 1;
-        // let mut pos = 0;
-
-        // self.draw_line(&slice, last_line, &mut pos);
-        // self.range = self.range.start + top_line_len..self.range.end + pos;
     }
 
     pub fn scroll_up(&mut self, win: &Window, buf: &Buffer) {
         if self.range.start == 0 {
             return;
         }
-        self.draw(win, buf);
 
         let slice = buf.slice(..self.range.start);
         let mut pos = self.range.start;
         self.draw_line_backwards(&slice, 0, &mut pos);
         self.range.start = pos;
-        self.needs_redraw = true;
-
-        // let last_line = self.cells.pop_back();
-        // let last_line_len = last_line
-        //     .map(|row| row.iter().fold(0, |acc, cell| acc + cell.grapheme_len()))
-        //     .unwrap_or(0);
-        // self.cells.push_front(vec![Cell::default(); self.width]);
-
-        // let slice = buf.slice(..self.range.start);
-        // let mut pos = self.range.start;
-
-        // self.needs_redraw = self.draw_line_backwards(&slice, 0, &mut pos);
-        // self.range = pos..self.range.end - last_line_len;
-        // self.draw(win, buf);
     }
 
     pub fn range(&self) -> Range<usize> {
@@ -294,11 +255,6 @@ impl View {
 
     pub fn set_offset(&mut self, offset: usize) {
         self.range.start = offset;
-        self.needs_redraw = true;
-    }
-
-    pub fn needs_redraw(&self) -> bool {
-        self.needs_redraw
     }
 
     pub fn last_non_empty_cell(&self, line: usize) -> Option<Point> {
@@ -366,51 +322,31 @@ impl View {
 
     /// Align view so that pos is shown
     pub fn view_to(&mut self, pos: usize, win: &Window, buf: &Buffer) {
-        self.draw(win, buf);
+        let start = self.range.start;
 
         // Make sure offset is inside buffer range
         if self.range.start > buf.len() {
-            self.range.start = buf.len();
-            self.needs_redraw = true;
-            self.scroll_up(win, buf);
+            self.set_offset(buf.len());
             self.draw(win, buf);
         }
 
-        // let mut view = WindowCells::new((win, buf));
-        if pos >= self.range.start && self.range.end > pos {
+        let at_eof = buf.len() == pos && self.range.end == buf.len();
+        let in_view = pos >= self.range.start && self.range.end > pos;
+        if in_view || at_eof {
             return;
         }
 
-        let cursor_was_ahead = self.range.end <= pos;
-
-        // Set view to cursor line start
-        if pos < self.range.start || self.range.end <= pos {
-            self.range.start = start_of_line(&buf.slice(..), pos);
-            self.needs_redraw = true;
-            self.draw(win, buf);
-        }
+        // // Set view to cursor line start
+        // if pos < self.range.start || self.range.end <= pos {
+        //     self.range.start = start_of_line(&buf.slice(..), pos);
+        //     self.draw(win, buf);
+        // }
 
         // If still not in view set view to cursor position
         if pos < self.range.start || self.range.end <= pos {
             self.range.start = pos;
-            self.needs_redraw = true;
             self.draw(win, buf);
         }
-
-        // scroll until current line is at bottom
-        // if did_move && cursor_was_ahead {
-        //     let mut amount = win.size.height.get();
-
-        //     // If last grapheme is eol we need to show one empty line
-        //     // even though there is nothing there
-        //     if pos == buf.len() && ends_with_eol(buf) {
-        //         amount -= 1;
-        //     }
-
-        //     for _ in 0..amount {
-        //         self.range.start = scroll_prev_line((&win, &buf));
-        //     }
-        // }
     }
 
     pub fn resize(&mut self, size: Size) {
@@ -421,11 +357,6 @@ impl View {
         self.width = size.width;
         self.height = size.height;
         self.cells = Self::make_default_cells(size.width, size.height);
-        self.needs_redraw = true;
-    }
-
-    pub fn invalidate(&mut self) {
-        self.needs_redraw = true;
     }
 }
 

@@ -55,6 +55,11 @@ pub enum Address {
 }
 
 pub fn run_sync(addrs: Vec<Address>) {
+    // TODO
+    // block on server setup (acceptors are fully set up)
+    // start editor thread and return handle to it
+    // this way server is setup when call returns and client can directly cann
+    // connect
     match Runtime::new() {
         Ok(rt) => rt.block_on(async { run(addrs).await }),
         Err(e) => log::info!("Error creating runtime: {}", e),

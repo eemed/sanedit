@@ -79,6 +79,8 @@ impl Action {
         prev_visual_line,
         next_word_start,
         prev_word_start,
+        next_paragraph,
+        prev_paragraph,
         scroll_up,
         scroll_down,
 

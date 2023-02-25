@@ -45,6 +45,9 @@ impl Keymap {
              "alt+w", Action::next_word_start,
              "alt+W", Action::prev_word_start,
 
+             "alt+p", Action::next_paragraph,
+             "alt+P", Action::prev_paragraph,
+
              "alt+s", Action::scroll_down,
              "alt+S", Action::scroll_up,
 

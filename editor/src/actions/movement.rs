@@ -189,3 +189,19 @@ pub(crate) fn prev_word_start(editor: &mut Editor, id: ClientId) {
     cursor.goto(pos);
     win.view_to_cursor(buf);
 }
+
+pub(crate) fn next_paragraph(editor: &mut Editor, id: ClientId) {
+    let (win, buf) = editor.get_win_buf_mut(id);
+    let cursor = win.primary_cursor_mut();
+    let pos = common::movement::next_paragraph(&buf.slice(..), cursor.pos());
+    cursor.goto(pos);
+    win.view_to_cursor(buf);
+}
+
+pub(crate) fn prev_paragraph(editor: &mut Editor, id: ClientId) {
+    let (win, buf) = editor.get_win_buf_mut(id);
+    let cursor = win.primary_cursor_mut();
+    let pos = common::movement::prev_paragraph(&buf.slice(..), cursor.pos());
+    cursor.goto(pos);
+    win.view_to_cursor(buf);
+}

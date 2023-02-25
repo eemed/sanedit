@@ -253,7 +253,7 @@ impl View {
             .fold(true, |acc, cell| acc && matches!(cell, Cell::Empty))
     }
 
-    pub fn set_offset(&mut self, offset: usize) {
+    pub fn set_offset(&mut self, offset: usize, win: &Window, buf: &Buffer) {
         self.range.start = offset;
     }
 
@@ -326,15 +326,35 @@ impl View {
 
         // Make sure offset is inside buffer range
         if self.range.start > buf.len() {
-            self.set_offset(buf.len());
+            self.set_offset(buf.len(), win, buf);
+        }
+
+        let over = self.range.end <= pos;
+        let under = pos < self.range.start;
+
+        if under || over {
+            self.range.start = pos;
             self.draw(win, buf);
         }
 
-        let at_eof = buf.len() == pos && self.range.end == buf.len();
-        let in_view = pos >= self.range.start && self.range.end > pos;
-        if in_view || at_eof {
-            return;
+        // If we are nearby scroll to it
+        const NEAR_BYTES: usize = 1024;
+        if pos.saturating_sub(self.range.end) <= NEAR_BYTES {
+            while pos > self.range.end {
+                self.scroll_down(win, buf);
+            }
         }
+
+        if over {
+            // Scroll so we are at bottom
+            log::info!("Helo")
+        }
+
+        // let at_eof = buf.len() == pos && self.range.end == buf.len();
+        // let in_view = pos >= self.range.start && self.range.end > pos;
+        // if in_view || at_eof {
+        //     return;
+        // }
 
         // // Set view to cursor line start
         // if pos < self.range.start || self.range.end <= pos {
@@ -343,10 +363,7 @@ impl View {
         // }
 
         // If still not in view set view to cursor position
-        if pos < self.range.start || self.range.end <= pos {
-            self.range.start = pos;
-            self.draw(win, buf);
-        }
+
     }
 
     pub fn resize(&mut self, size: Size) {

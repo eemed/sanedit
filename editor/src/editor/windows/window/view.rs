@@ -451,7 +451,7 @@ mod test {
 
         let mut window = Window::new(BufferId::default(), width, 1);
         let mut view = mem::take(&mut window.view);
-        view.draw(&buf, &window);
+        view.draw(&window, &buf);
 
         // println!("{}", "-".repeat(width));
         // for row in &view.cells {

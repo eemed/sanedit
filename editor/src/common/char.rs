@@ -118,7 +118,10 @@ fn grapheme_to_char(slice: &PieceTreeSlice, column: usize, options: &DisplayOpti
         return eol_to_char(grapheme, buf_range, options);
     }
 
-    // TODO is nbsp
+    // is nbsp
+    if grapheme == "\u{00A0}" {
+        return nbsp_to_char(grapheme, buf_range, options);
+    }
 
     let single_char = grapheme.chars().count() == 1;
     if single_char {
@@ -178,6 +181,26 @@ fn eol_to_char(
     let display = options
         .replacements
         .get(&Replacement::EOL)
+        .cloned()
+        .unwrap_or_else(|| String::from(" "));
+    let width = display.width();
+
+    Char {
+        display: Some(display),
+        width,
+        grapheme_range: buf_range,
+        grapheme,
+    }
+}
+
+fn nbsp_to_char(
+    grapheme: String,
+    buf_range: Option<Range<usize>>,
+    options: &DisplayOptions,
+) -> Char {
+    let display = options
+        .replacements
+        .get(&Replacement::NonBreakingSpace)
         .cloned()
         .unwrap_or_else(|| String::from(" "));
     let width = display.width();
@@ -258,52 +281,13 @@ fn ascii_control_to_char(grapheme: String, buf_range: Option<Range<usize>>) -> O
     })
 }
 
-// pub(crate) fn grapheme_category2(grapheme: &PieceTreeSlice) -> GraphemeCategory {
-//     if grapheme
-//         .chars()
-//         .fold(true, |acc, ch| acc && (ch.is_alphanumeric() || ch == '_'))
-//     {
-//         return GraphemeCategory::Word;
-//     }
-
-//     if grapheme
-//         .chars()
-//         .fold(true, |acc, ch| acc && ch.is_whitespace())
-//     {
-//         return GraphemeCategory::Whitespace;
-//     }
-
-//     if grapheme.chars().count() == 1 {
-//         let ch = grapheme.chars().next().unwrap();
-//         if ch.is_ascii() && !ch.is_alphanumeric() {
-//             return GraphemeCategory::Punctuation;
-//         }
-
-//         if ch.is_control() {
-//             return GraphemeCategory::ControlCode;
-//         }
-//     }
-
-//     if EOL::is_eol_bytes(grapheme) {
-//         return GraphemeCategory::EOL;
-//     }
-
-//     GraphemeCategory::Unknown
-// }
-
 #[inline(always)]
 pub(crate) fn grapheme_category(grapheme: &str) -> GraphemeCategory {
-    if grapheme
-        .chars()
-        .fold(true, |acc, ch| acc && (ch.is_alphanumeric() || ch == '_'))
-    {
+    if grapheme.chars().all(|ch| ch.is_alphanumeric() || ch == '_') {
         return GraphemeCategory::Word;
     }
 
-    if grapheme
-        .chars()
-        .fold(true, |acc, ch| acc && ch.is_whitespace())
-    {
+    if grapheme.chars().all(|ch| ch.is_whitespace()) {
         return GraphemeCategory::Whitespace;
     }
 
@@ -346,7 +330,7 @@ mod test {
         pt.insert(0, b"\0");
         let slice = pt.slice(..);
         let ch = Char::new(&slice, 0, &DisplayOptions::default());
-        assert_eq!("\0", ch.display());
+        assert_eq!("^@", ch.display());
     }
 
     #[test]

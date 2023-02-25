@@ -122,6 +122,22 @@ pub(crate) fn next_paragraph(slice: &PieceTreeSlice, mut pos: usize) -> usize {
         pos += g.len();
     }
 
+    next_blank_line(slice, pos)
+}
+
+pub(crate) fn prev_paragraph(slice: &PieceTreeSlice, mut pos: usize) -> usize {
+    while let Some(g) = prev_grapheme(slice, pos) {
+        let eol = EOL::is_eol(&g);
+        if !eol {
+            break;
+        }
+        pos -= g.len();
+    }
+
+    prev_blank_line(slice, pos)
+}
+
+pub(crate) fn next_blank_line(slice: &PieceTreeSlice, mut pos: usize) -> usize {
     pos = next_line_start(slice, pos);
 
     while let Some(g) = next_grapheme(slice, pos) {
@@ -135,15 +151,7 @@ pub(crate) fn next_paragraph(slice: &PieceTreeSlice, mut pos: usize) -> usize {
     slice.len()
 }
 
-pub(crate) fn prev_paragraph(slice: &PieceTreeSlice, mut pos: usize) -> usize {
-    while let Some(g) = prev_grapheme(slice, pos) {
-        let eol = EOL::is_eol(&g);
-        if !eol {
-            break;
-        }
-        pos -= g.len();
-    }
-
+pub(crate) fn prev_blank_line(slice: &PieceTreeSlice, mut pos: usize) -> usize {
     pos = prev_line_start(slice, pos);
 
     while let Some(g) = next_grapheme(slice, pos) {

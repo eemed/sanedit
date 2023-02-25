@@ -42,6 +42,9 @@ impl Keymap {
              "alt+l", Action::next_visual_line,
              "alt+L", Action::prev_visual_line,
 
+             "alt+w", Action::next_word_start,
+             "alt+W", Action::prev_word_start,
+
              "alt+s", Action::scroll_down,
              "alt+S", Action::scroll_up,
 

@@ -108,7 +108,7 @@ fn prev_visual_line_impl(editor: &mut Editor, id: ClientId) -> bool {
             y: target_line,
         })
         .unwrap_or(0);
-        log::info!("POS {pos}");
+    log::info!("POS {pos}");
     win.primary_cursor_mut().goto_with_col(pos, target_col);
     true
 }
@@ -172,4 +172,20 @@ fn next_visual_line_impl(editor: &mut Editor, id: ClientId) -> bool {
 
     win.primary_cursor_mut().goto_with_col(pos, cursor_col);
     true
+}
+
+pub(crate) fn next_word_start(editor: &mut Editor, id: ClientId) {
+    let (win, buf) = editor.get_win_buf_mut(id);
+    let cursor = win.primary_cursor_mut();
+    let pos = common::movement::next_word_start(&buf.slice(..), cursor.pos());
+    cursor.goto(pos);
+    win.view_to_cursor(buf);
+}
+
+pub(crate) fn prev_word_start(editor: &mut Editor, id: ClientId) {
+    let (win, buf) = editor.get_win_buf_mut(id);
+    let cursor = win.primary_cursor_mut();
+    let pos = common::movement::prev_word_start(&buf.slice(..), cursor.pos());
+    cursor.goto(pos);
+    win.view_to_cursor(buf);
 }

@@ -56,6 +56,13 @@ pub(crate) enum GraphemeCategory {
     Unknown,
 }
 
+impl GraphemeCategory {
+    pub fn is_word_break(&self, prev: &GraphemeCategory) -> bool {
+        use GraphemeCategory::*;
+        prev != self && matches!(self, Word | Punctuation)
+    }
+}
+
 #[derive(Debug, Hash, Eq, PartialEq, Clone)]
 #[repr(usize)]
 pub(crate) enum Replacement {
@@ -251,10 +258,46 @@ fn ascii_control_to_char(grapheme: String, buf_range: Option<Range<usize>>) -> O
     })
 }
 
+// pub(crate) fn grapheme_category2(grapheme: &PieceTreeSlice) -> GraphemeCategory {
+//     if grapheme
+//         .chars()
+//         .fold(true, |acc, ch| acc && (ch.is_alphanumeric() || ch == '_'))
+//     {
+//         return GraphemeCategory::Word;
+//     }
+
+//     if grapheme
+//         .chars()
+//         .fold(true, |acc, ch| acc && ch.is_whitespace())
+//     {
+//         return GraphemeCategory::Whitespace;
+//     }
+
+//     if grapheme.chars().count() == 1 {
+//         let ch = grapheme.chars().next().unwrap();
+//         if ch.is_ascii() && !ch.is_alphanumeric() {
+//             return GraphemeCategory::Punctuation;
+//         }
+
+//         if ch.is_control() {
+//             return GraphemeCategory::ControlCode;
+//         }
+//     }
+
+//     if EOL::is_eol_bytes(grapheme) {
+//         return GraphemeCategory::EOL;
+//     }
+
+//     GraphemeCategory::Unknown
+// }
+
 #[inline(always)]
 pub(crate) fn grapheme_category(grapheme: &str) -> GraphemeCategory {
-    if EOL::is_eol_bytes(grapheme) {
-        return GraphemeCategory::EOL;
+    if grapheme
+        .chars()
+        .fold(true, |acc, ch| acc && (ch.is_alphanumeric() || ch == '_'))
+    {
+        return GraphemeCategory::Word;
     }
 
     if grapheme
@@ -264,18 +307,19 @@ pub(crate) fn grapheme_category(grapheme: &str) -> GraphemeCategory {
         return GraphemeCategory::Whitespace;
     }
 
-    if grapheme
-        .chars()
-        .fold(true, |acc, ch| acc && (ch.is_alphanumeric() || ch == '_'))
-    {
-        return GraphemeCategory::Word;
-    }
-
     if grapheme.chars().count() == 1 {
-        let char = grapheme.chars().next().unwrap();
-        if char.is_ascii() && !char.is_alphanumeric() {
+        let ch = grapheme.chars().next().unwrap();
+        if ch.is_ascii() && !ch.is_alphanumeric() {
             return GraphemeCategory::Punctuation;
         }
+
+        if ch.is_control() {
+            return GraphemeCategory::ControlCode;
+        }
+    }
+
+    if EOL::is_eol_bytes(grapheme) {
+        return GraphemeCategory::EOL;
     }
 
     GraphemeCategory::Unknown

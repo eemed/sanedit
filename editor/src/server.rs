@@ -57,11 +57,7 @@ pub enum Address {
     Tcp(SocketAddr),
 }
 
-pub(crate) struct Setup {
-    pub jobs_handle: JobsHandle,
-}
-
-async fn setup(addrs: Vec<Address>, handle: EditorHandle) -> Setup {
+async fn listen(addrs: Vec<Address>, handle: EditorHandle) {
     for addr in addrs.into_iter() {
         let notify = Arc::new(Notify::new());
         let n = notify.clone();
@@ -81,10 +77,6 @@ async fn setup(addrs: Vec<Address>, handle: EditorHandle) -> Setup {
 
         notify.notified().await;
     }
-
-    let jobs_handle = spawn_jobs(handle).await;
-
-    Setup { jobs_handle }
 }
 
 pub fn run_sync(addrs: Vec<Address>) -> Option<thread::JoinHandle<()>> {
@@ -93,13 +85,14 @@ pub fn run_sync(addrs: Vec<Address>) -> Option<thread::JoinHandle<()>> {
         sender: send,
         next_id: Default::default(),
     };
-    let cloned = handle.clone();
     let rt = Runtime::new().ok()?;
-    let setup = rt.block_on(async move { setup(addrs, cloned).await });
+    let cloned = handle.clone();
+    rt.block_on(async move { listen(addrs, cloned).await });
 
     let join = thread::spawn(move || {
-        let _rt = rt;
-        if let Err(e) = editor::main_loop(setup, recv) {
+        let jobs_handle = rt.block_on(async { spawn_jobs(handle).await });
+
+        if let Err(e) = editor::main_loop(jobs_handle, recv) {
             log::error!("Oops {}.", e);
         }
     });

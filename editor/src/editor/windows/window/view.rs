@@ -329,6 +329,11 @@ impl View {
             self.draw(buf);
         }
 
+        // At end
+        if self.range.end == buf.len() && pos == buf.len() {
+            return;
+        }
+
         // After
         if self.range.end <= pos {
             self.set_offset(pos);

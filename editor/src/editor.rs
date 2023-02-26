@@ -33,7 +33,6 @@ use crate::server::ClientId;
 use crate::server::FromJobs;
 use crate::server::JobProgress;
 use crate::server::JobsHandle;
-use crate::server::Setup;
 
 use self::buffers::Buffers;
 use self::jobs::Jobs;
@@ -339,8 +338,11 @@ impl Editor {
 /// Execute editor logic, getting each message from the passed receiver.
 /// Editor uses client handles to communicate to clients. Client handles are
 /// sent using the provided reciver.
-pub(crate) fn main_loop(setup: Setup, mut recv: Receiver<ToEditor>) -> Result<(), io::Error> {
-    let mut editor = Editor::new(setup.jobs_handle);
+pub(crate) fn main_loop(
+    jobs_handle: JobsHandle,
+    mut recv: Receiver<ToEditor>,
+) -> Result<(), io::Error> {
+    let mut editor = Editor::new(jobs_handle);
 
     while let Some(msg) = recv.blocking_recv() {
         match msg {

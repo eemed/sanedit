@@ -19,7 +19,10 @@ use std::{
 use tokio::{
     net::unix::SocketAddr,
     runtime::Runtime,
-    sync::mpsc::{channel, Sender},
+    sync::{
+        mpsc::{channel, Sender},
+        Notify,
+    },
 };
 
 use crate::{editor, events::ToEditor};
@@ -54,60 +57,52 @@ pub enum Address {
     Tcp(SocketAddr),
 }
 
-pub fn run_sync(addrs: Vec<Address>) {
-    // TODO
-    // block on server setup (acceptors are fully set up)
-    // start editor thread and return handle to it
-    // this way server is setup when call returns and client can directly cann
-    // connect
-    match Runtime::new() {
-        Ok(rt) => rt.block_on(async { run(addrs).await }),
-        Err(e) => log::info!("Error creating runtime: {}", e),
-    }
+pub(crate) struct Setup {
+    pub jobs_handle: JobsHandle,
 }
 
-/// Run the editor.
-/// Spawn connection acceptor tasks and the main editor loop task
-/// The acceptor then spawns a new task for each client connection.
-pub async fn run(addrs: Vec<Address>) {
+async fn setup(addrs: Vec<Address>, handle: EditorHandle) -> Setup {
+    for addr in addrs.into_iter() {
+        let notify = Arc::new(Notify::new());
+        let n = notify.clone();
+        let h = handle.clone();
+        match addr {
+            Address::UnixDomainSocket(addr) => {
+                tokio::spawn(async move {
+                    accept::unix::accept_loop(addr, h, n).await;
+                });
+            }
+            Address::Tcp(addr) => {
+                tokio::spawn(async move {
+                    accept::tcp::accept_loop(addr, h, n).await;
+                });
+            }
+        }
+
+        notify.notified().await;
+    }
+
+    let jobs_handle = spawn_jobs(handle).await;
+
+    Setup { jobs_handle }
+}
+
+pub fn run_sync(addrs: Vec<Address>) -> Option<thread::JoinHandle<()>> {
     let (send, recv) = channel(CHANNEL_SIZE);
     let handle = EditorHandle {
         sender: send,
         next_id: Default::default(),
     };
+    let cloned = handle.clone();
+    let rt = Runtime::new().ok()?;
+    let setup = rt.block_on(async move { setup(addrs, cloned).await });
 
-    let jobs_handle = spawn_jobs(handle.clone()).await;
-    let join = thread::spawn(|| {
-        let res = editor::main_loop(jobs_handle, recv);
-        match res {
-            Ok(()) => {}
-            Err(err) => {
-                log::error!("Oops {}.", err);
-            }
+    let join = thread::spawn(move || {
+        let _rt = rt;
+        if let Err(e) = editor::main_loop(setup, recv) {
+            log::error!("Oops {}.", e);
         }
     });
 
-    for addr in addrs.into_iter() {
-        let h = handle.clone();
-        match addr {
-            Address::UnixDomainSocket(addr) => {
-                tokio::spawn(async move {
-                    accept::unix::accept_loop(addr, h).await;
-                });
-            }
-            Address::Tcp(addr) => {
-                tokio::spawn(async move {
-                    accept::tcp::accept_loop(addr, h).await;
-                });
-            }
-        }
-    }
-
-    join.join().unwrap();
+    Some(join)
 }
-
-// /// Spawn editor loop, and return a handle to it and the task join handle
-// fn spawn_editor_loop(jobs_handle: JobsHandle) -> (ServerHandle, std::thread::JoinHandle<()>) {
-
-//     (handle, join)
-// }

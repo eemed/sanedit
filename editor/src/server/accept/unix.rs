@@ -2,11 +2,11 @@ use crate::{
     events::ToEditor,
     server::{client, EditorHandle},
 };
-use std::{fs, path::PathBuf};
-use tokio::{io, net::UnixListener};
+use std::{fs, path::PathBuf, sync::Arc};
+use tokio::{io, net::UnixListener, sync::Notify};
 
-pub(crate) async fn accept_loop(addr: PathBuf, mut handle: EditorHandle) {
-    let res = unix_domain_socket_loop(addr, handle.clone()).await;
+pub(crate) async fn accept_loop(addr: PathBuf, mut handle: EditorHandle, notify: Arc<Notify>) {
+    let res = unix_domain_socket_loop(addr, handle.clone(), notify).await;
 
     match res {
         Ok(()) => {}
@@ -16,7 +16,11 @@ pub(crate) async fn accept_loop(addr: PathBuf, mut handle: EditorHandle) {
     }
 }
 
-async fn unix_domain_socket_loop(path: PathBuf, handle: EditorHandle) -> Result<(), io::Error> {
+async fn unix_domain_socket_loop(
+    path: PathBuf,
+    handle: EditorHandle,
+    notify: Arc<Notify>,
+) -> Result<(), io::Error> {
     let listen = match UnixListener::bind(&path) {
         Ok(listen) => listen,
         Err(e) => match e.kind() {
@@ -28,8 +32,10 @@ async fn unix_domain_socket_loop(path: PathBuf, handle: EditorHandle) -> Result<
         },
     };
 
+    notify.notify_one();
+
     loop {
-        let (conn, addr) = listen.accept().await?;
+        let (conn, _addr) = listen.accept().await?;
         let id = handle.next_id();
 
         let data = client::unix::ClientInfo {

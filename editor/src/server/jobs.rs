@@ -1,11 +1,17 @@
 use core::fmt::Debug;
 use std::{
+    collections::HashMap,
+    fmt::Display,
     pin::Pin,
-    sync::atomic::{AtomicUsize, Ordering}, fmt::Display,
+    sync::{
+        atomic::{AtomicUsize, Ordering},
+        Arc,
+    },
 };
 
 use futures::Future;
-use tokio::sync::mpsc;
+use parking_lot::Mutex;
+use tokio::{sync::mpsc, task::JoinHandle};
 
 use crate::events::ToEditor;
 
@@ -15,7 +21,6 @@ use super::{EditorHandle, CHANNEL_SIZE};
 pub(crate) struct JobId {
     id: usize,
 }
-
 
 impl JobId {
     pub fn next() -> JobId {
@@ -102,8 +107,12 @@ pub(crate) struct JobsHandle {
 }
 
 impl JobsHandle {
-    pub fn run_job(&mut self, job: Job) -> Result<(), mpsc::error::SendError<ToJobs>> {
+    pub fn run(&mut self, job: Job) -> Result<(), mpsc::error::SendError<ToJobs>> {
         self.send.blocking_send(ToJobs::New(job))
+    }
+
+    pub fn stop(&mut self, id: &JobId) -> Result<(), mpsc::error::SendError<ToJobs>> {
+        self.send.blocking_send(ToJobs::Stop(*id))
     }
 }
 
@@ -120,6 +129,8 @@ pub(crate) async fn spawn_jobs(editor_handle: EditorHandle) -> JobsHandle {
 
 // Runs jobs in tokio runtime.
 async fn jobs_loop(mut recv: mpsc::Receiver<ToJobs>, handle: EditorHandle) {
+    let task_handles: Arc<Mutex<HashMap<JobId, JoinHandle<()>>>> = Arc::new(Mutex::new(HashMap::new()));
+
     while let Some(msg) = recv.recv().await {
         match msg {
             ToJobs::New(job) => {
@@ -130,6 +141,7 @@ async fn jobs_loop(mut recv: mpsc::Receiver<ToJobs>, handle: EditorHandle) {
                 };
                 let job_future = (job.fun)(progress_handle);
                 let mut h = handle.clone();
+                let fut_jobs = task_handles.clone();
                 let future = async move {
                     let success = job_future.await;
                     let msg = if success {
@@ -138,11 +150,21 @@ async fn jobs_loop(mut recv: mpsc::Receiver<ToJobs>, handle: EditorHandle) {
                         FromJobs::Fail(id)
                     };
                     h.send(ToEditor::Jobs(msg)).await;
+
+                    let mut map = fut_jobs.lock();
+                    map.remove(&id);
                 };
-                tokio::spawn(future);
+
+                let join = tokio::spawn(future);
+                let mut map = task_handles.lock();
+                map.insert(id, join);
             }
             ToJobs::Stop(id) => {
-                // TODO implement stop mechanism for jobs
+                let mut map = task_handles.lock();
+                if let Some(join) = map.remove(&id) {
+                    log::info!("Task stopped");
+                    join.abort();
+                }
             }
         }
     }

@@ -20,20 +20,32 @@ fn is_yes(input: &str) -> bool {
 }
 
 pub(crate) fn prompt_open_file(editor: &mut Editor, id: ClientId) {
-    let action: PromptAction = Box::new(|editor, id, input| {
-        let path = PathBuf::from(input);
-        editor.open_file(id, path);
+    let job_id = jobs::list_files_provide_completions(editor, id);
+    let action: PromptAction = Box::new(move |editor, id, input, aborted| {
+        editor.jobs_mut().stop(&job_id);
+
+        if !aborted {
+            let path = PathBuf::from(input);
+            editor.open_file(id, path);
+        }
     });
     let prompt = Prompt::new("Open a file", action, false);
     let (win, buf) = editor.get_win_buf_mut(id);
     win.open_prompt(prompt);
-
-    jobs::list_files_provide_completions(editor, id);
 }
 
 pub(crate) fn prompt_close(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.get_win_buf_mut(id);
+    let prompt = mem::take(&mut win.prompt);
     win.close_prompt();
+    prompt.abort(editor, id);
+}
+
+pub(crate) fn prompt_confirm(editor: &mut Editor, id: ClientId) {
+    let (win, buf) = editor.get_win_buf_mut(id);
+    let prompt = mem::take(&mut win.prompt);
+    win.close_prompt();
+    prompt.run(editor, id);
 }
 
 pub(crate) fn prompt_next_grapheme(editor: &mut Editor, id: ClientId) {
@@ -59,13 +71,6 @@ pub(crate) fn prompt_insert_char_at_cursor(editor: &mut Editor, id: ClientId, ch
 pub(crate) fn prompt_remove_grapheme_after_cursor(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.get_win_buf_mut(id);
     win.prompt.remove_grapheme_after_cursor();
-}
-
-pub(crate) fn prompt_confirm(editor: &mut Editor, id: ClientId) {
-    let (win, buf) = editor.get_win_buf_mut(id);
-    let prompt = mem::take(&mut win.prompt);
-    win.close_prompt();
-    prompt.execute_action(editor, id);
 }
 
 pub(crate) fn prompt_next_completion(editor: &mut Editor, id: ClientId) {

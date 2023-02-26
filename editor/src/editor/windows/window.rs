@@ -6,17 +6,14 @@ mod options;
 mod prompt;
 mod view;
 
-use std::{mem, path::Path};
+use std::{mem, ops::Range};
 
 use sanedit_buffer::piece_tree::prev_grapheme_boundary;
 use sanedit_messages::redraw::Size;
 
 use crate::{
-    common::{char::DisplayOptions, file::File},
-    editor::{
-        buffers::{Buffer, BufferId},
-        options::EditorOptions,
-    },
+    common::char::DisplayOptions,
+    editor::buffers::{Buffer, BufferId},
 };
 
 pub(crate) use self::{
@@ -102,20 +99,16 @@ impl Window {
             self.buf
         );
 
-        let mut view = mem::take(&mut self.view);
-        for _ in 0..n {
-            view.scroll_down(self, buf);
-        }
-        view.draw(self, buf);
-        self.view = view;
+        self.view.scroll_down_n(buf, n);
+        self.view.draw(buf);
 
         let primary = self.cursors.primary_mut();
-        let range = self.view.range();
-        if primary.pos() < range.start {
-            primary.goto(range.start);
+        let Range { start, end } = self.view.range();
+        if primary.pos() < start {
+            primary.goto(start);
         }
 
-        log::info!("View down range: {range:?}, {}", primary.pos());
+        log::info!("View down range: {start}..{end}, {}", primary.pos());
     }
 
     pub fn scroll_up_n(&mut self, buf: &Buffer, n: usize) {
@@ -125,21 +118,17 @@ impl Window {
             buf.id,
             self.buf
         );
-        let mut view = mem::take(&mut self.view);
-        for _ in 0..n {
-            view.scroll_up(self, buf);
-        }
-        view.draw(self, buf);
-        self.view = view;
+        self.view.scroll_up_n(buf, n);
+        self.view.draw(buf);
 
         let primary = self.cursors.primary_mut();
-        let range = self.view.range();
-        if primary.pos() >= range.end && range.end != buf.len() {
-            let prev = prev_grapheme_boundary(&buf.slice(..), range.end);
+        let Range { start, end } = self.view.range();
+        if primary.pos() >= end && end != buf.len() {
+            let prev = prev_grapheme_boundary(&buf.slice(..), end);
             primary.goto(prev);
         }
 
-        log::info!("View up range: {range:?}, {}", primary.pos());
+        log::info!("View up range: {start}..{end}, {}", primary.pos());
     }
 
     /// sets window offset so that primary cursor is visible in the drawn view.
@@ -151,9 +140,7 @@ impl Window {
             self.buf
         );
         let cursor = self.primary_cursor().pos();
-        let mut view = mem::take(&mut self.view);
-        view.view_to(cursor, self, buf);
-        self.view = view;
+        self.view.view_to(cursor, buf);
     }
 
     pub fn buffer_id(&self) -> BufferId {
@@ -162,6 +149,11 @@ impl Window {
 
     pub fn view(&self) -> &View {
         &self.view
+    }
+
+    pub fn set_offset(&mut self, offset: usize, buf: &Buffer) {
+        self.view.set_offset(offset);
+        self.view.draw(buf);
     }
 
     pub fn resize(&mut self, size: Size, buf: &Buffer) {
@@ -204,9 +196,112 @@ impl Window {
             self.buf
         );
         let primary_pos = self.cursors.primary().pos();
-        let mut view = mem::take(&mut self.view);
-        view.draw(self, buf);
-        view.view_to(primary_pos, self, buf);
-        self.view = view;
+        self.view.draw(buf);
+        self.view.view_to(primary_pos, buf);
     }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    fn to_str(row: &Vec<Cell>) -> String {
+        let mut string = String::new();
+        for cell in row {
+            if let Some(ch) = cell.char() {
+                string.push_str(ch.grapheme());
+            }
+        }
+        string
+    }
+
+    fn view_lines(win: &Window) -> Vec<String> {
+        win.view().cells().iter().map(to_str).collect()
+    }
+
+    fn wrapped_line_view() -> (Window, Buffer) {
+        let mut buf = Buffer::new();
+        buf.insert(
+            0,
+            "this is a long line that will not fit\nthis is another long line that will not fit into the view\nthis is the third line that is longer than the view",
+        );
+        let mut win = Window::new(buf.id, 10, 3);
+        win.draw_view(&buf);
+        (win, buf)
+    }
+
+    fn ten_line() -> (Window, Buffer) {
+        let mut buf = Buffer::new();
+        buf.insert(
+            0,
+            "one\ntwo\nthree\nfour\nfive\nsix\nseven\neight\nnine\nten",
+        );
+        let mut win = Window::new(buf.id, 80, 3);
+        win.draw_view(&buf);
+        (win, buf)
+    }
+
+    #[test]
+    fn scroll_up() {
+        let (mut win, buf) = ten_line();
+        win.set_offset(14, &buf);
+        assert_eq!(vec!["four\n", "five\n", "six\n"], view_lines(&win));
+        win.scroll_up_n(&buf, 2);
+        assert_eq!(vec!["two\n", "three\n", "four\n"], view_lines(&win));
+    }
+
+    #[test]
+    fn scroll_up_wrapped() {
+        let (mut win, buf) = wrapped_line_view();
+        win.set_offset(52, &buf);
+        assert_eq!(
+            vec!["r long lin", "e that wil", "l not fit "],
+            view_lines(&win)
+        );
+
+        win.scroll_up_n(&buf, 1);
+
+        assert_eq!(
+            vec!["s is anoth", "er long li", "ne that wi"],
+            view_lines(&win)
+        );
+
+        win.scroll_up_n(&buf, 1);
+        assert_eq!(
+            vec!["this is an", "other long", " line that"],
+            view_lines(&win)
+        );
+    }
+
+    #[test]
+    fn scroll_down() {
+        let (mut win, buf) = ten_line();
+        win.scroll_down_n(&buf, 2);
+        assert_eq!(vec!["three\n", "four\n", "five\n"], view_lines(&win));
+    }
+
+    #[test]
+    fn scroll_down_wrapped() {
+        let (mut win, buf) = wrapped_line_view();
+        win.scroll_down_n(&buf, 2);
+        assert_eq!(
+            vec!["that will ", "not fit\n", "this is an"],
+            view_lines(&win)
+        );
+    }
+
+    #[test]
+    fn view_to_after() {
+        // let (mut win, buf) = wrapped_line_view();
+        // assert_eq!(vec!["", "", ""], view_lines(&win));
+    }
+
+    #[test]
+    fn view_to_after_small() {}
+
+    #[test]
+    fn view_to_before() {}
+
+    #[test]
+    fn view_to_before_small() {}
 }

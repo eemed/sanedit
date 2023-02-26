@@ -6,10 +6,7 @@ use sanedit_messages::redraw::{Point, Size};
 
 use crate::common::char::{Char, DisplayOptions};
 use crate::common::eol::EOL;
-use crate::common::movement::start_of_line;
 use crate::editor::buffers::Buffer;
-
-use super::Window;
 
 #[derive(Debug, Clone)]
 pub(crate) enum Cell {
@@ -126,14 +123,6 @@ impl View {
 
     /// Draw a line into self.cells backwards, Fills a line backwards until EOL
     /// or the line is full.
-    ///
-    /// returns true if full redraw is required instead. This redraw should be
-    /// started at pos
-    ///
-    /// EXPLANATION: if pos reaches 0 or EOL is found when drawing backwards a
-    /// full redraw is needed , if the position we start to draw backwards is
-    /// not EOL (so we have a wrapped line). Otherwise the line will be shorter eventhough
-    /// more could fit to the line.
     fn draw_line_backwards(&mut self, slice: &PieceTreeSlice, line: usize, pos: &mut usize) {
         let mut graphemes = VecDeque::with_capacity(self.width);
 
@@ -207,33 +196,45 @@ impl View {
         false
     }
 
-    pub fn draw(&mut self, win: &Window, buf: &Buffer) {
+    pub fn draw(&mut self, buf: &Buffer) {
         self.clear();
         self.draw_cells(buf);
         log::info!("Draw view end {:?}", self.range);
     }
 
-    pub fn scroll_down(&mut self, win: &Window, buf: &Buffer) {
-        let top_line_len = self
-            .cells
+    pub fn top_line_len(&self) -> usize {
+        self.cells
             .get(0)
             .map(|row| row.iter().fold(0, |acc, cell| acc + cell.grapheme_len()))
-            .unwrap_or(0);
-        if top_line_len + self.range.start == buf.len() {
+            .unwrap_or(0)
+    }
+
+    pub fn scroll_down_n(&mut self, buf: &Buffer, n: usize) {
+        if self.top_line_len() + self.range.start == buf.len() {
             return;
         }
 
-        self.range.start += top_line_len;
+        let slice = buf.slice(self.range.start..);
+        let mut pos = 0;
+        // Just use line 0 as buffer
+        for _ in 0..n {
+            self.draw_line(&slice, 0, &mut pos);
+        }
+
+        self.range.start += pos;
     }
 
-    pub fn scroll_up(&mut self, win: &Window, buf: &Buffer) {
+    pub fn scroll_up_n(&mut self, buf: &Buffer, n: usize) {
         if self.range.start == 0 {
             return;
         }
 
         let slice = buf.slice(..self.range.start);
         let mut pos = self.range.start;
-        self.draw_line_backwards(&slice, 0, &mut pos);
+        for _ in 0..n {
+            // Just use line 0 as buffer
+            self.draw_line_backwards(&slice, 0, &mut pos);
+        }
         self.range.start = pos;
     }
 
@@ -253,7 +254,7 @@ impl View {
             .fold(true, |acc, cell| acc && matches!(cell, Cell::Empty))
     }
 
-    pub fn set_offset(&mut self, offset: usize, win: &Window, buf: &Buffer) {
+    pub fn set_offset(&mut self, offset: usize) {
         self.range.start = offset;
     }
 
@@ -321,49 +322,36 @@ impl View {
     }
 
     /// Align view so that pos is shown
-    pub fn view_to(&mut self, pos: usize, win: &Window, buf: &Buffer) {
-        let start = self.range.start;
-
+    pub fn view_to(&mut self, pos: usize, buf: &Buffer) {
         // Make sure offset is inside buffer range
         if self.range.start > buf.len() {
-            self.set_offset(buf.len(), win, buf);
+            self.set_offset(buf.len());
+            self.draw(buf);
         }
 
-        let over = self.range.end <= pos;
-        let under = pos < self.range.start;
-
-        if under || over {
-            self.range.start = pos;
-            self.draw(win, buf);
+        // After
+        if self.range.end <= pos {
+            self.set_offset(pos);
+            self.draw(buf);
+            self.scroll_up_n(buf, self.height().saturating_sub(1));
+            self.draw(buf);
         }
 
-        // If we are nearby scroll to it
-        const NEAR_BYTES: usize = 1024;
-        if pos.saturating_sub(self.range.end) <= NEAR_BYTES {
-            while pos > self.range.end {
-                self.scroll_down(win, buf);
+        // Before
+        if pos < self.range.start {
+            self.set_offset(pos);
+            self.draw(buf);
+
+            // Scroll up so line is shown, instead of starting at pos.
+            self.scroll_up_n(buf, 1);
+            self.draw(buf);
+
+            // Scroll back down if pos is not at the top line
+            if pos >= self.range.start + self.top_line_len() {
+                self.scroll_down_n(buf, 1);
+                self.draw(buf);
             }
         }
-
-        if over {
-            // Scroll so we are at bottom
-            log::info!("Helo")
-        }
-
-        // let at_eof = buf.len() == pos && self.range.end == buf.len();
-        // let in_view = pos >= self.range.start && self.range.end > pos;
-        // if in_view || at_eof {
-        //     return;
-        // }
-
-        // // Set view to cursor line start
-        // if pos < self.range.start || self.range.end <= pos {
-        //     self.range.start = start_of_line(&buf.slice(..), pos);
-        //     self.draw(win, buf);
-        // }
-
-        // If still not in view set view to cursor position
-
     }
 
     pub fn resize(&mut self, size: Size) {
@@ -380,34 +368,5 @@ impl View {
 impl Default for View {
     fn default() -> Self {
         View::new(0, 0)
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use std::mem;
-
-    use crate::editor::buffers::{Buffer, BufferId};
-
-    use super::*;
-
-    #[test]
-    fn tabs() {
-        let width = 80;
-        let mut buf = Buffer::new();
-        buf.append("\tHello\tWorld");
-
-        let mut window = Window::new(BufferId::default(), width, 1);
-        let mut view = mem::take(&mut window.view);
-        view.draw(&window, &buf);
-
-        // println!("{}", "-".repeat(width));
-        // for row in &view.cells {
-        //     for cell in row {
-        //         print!("{}", cell.char().display());
-        //     }
-        //     println!("");
-        // }
-        // println!("{}", "-".repeat(width));
     }
 }

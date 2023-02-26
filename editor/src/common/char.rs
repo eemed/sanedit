@@ -42,6 +42,10 @@ impl Char {
     pub fn grapheme_category(&self) -> GraphemeCategory {
         grapheme_category(&self.grapheme)
     }
+
+    pub fn grapheme(&self) -> &str {
+        &self.grapheme
+    }
 }
 
 #[derive(PartialEq, Default, Clone, Copy, Debug, Hash)]

@@ -7,7 +7,7 @@ use tokio::{
 
 use crate::{
     editor::{jobs::AsyncJob, Editor},
-    server::{ClientId, JobFutureFn, JobProgress, JobProgressSender},
+    server::{ClientId, JobFutureFn, JobProgress, JobProgressSender, JobId},
 };
 
 use super::prompt;
@@ -49,7 +49,7 @@ async fn list_files(send: JobProgressSender, dir: PathBuf) -> bool {
     read_recursive(send, dir).await.is_ok()
 }
 
-pub(crate) fn list_files_provide_completions(editor: &mut Editor, id: ClientId) {
+pub(crate) fn list_files_provide_completions(editor: &mut Editor, id: ClientId) -> JobId {
     let fun: JobFutureFn = {
         let cwd = editor.working_dir().to_path_buf();
         Box::new(move |send| Box::pin(list_files(send, cwd)))
@@ -57,5 +57,7 @@ pub(crate) fn list_files_provide_completions(editor: &mut Editor, id: ClientId) 
     let jobs = editor.jobs_mut();
     let on_output = Arc::new(prompt::provide_completions);
     let job = AsyncJob::new(id, fun, Some(on_output), None);
-    jobs.run_job(job);
+    let id = job.id();
+    jobs.run(job);
+    id
 }

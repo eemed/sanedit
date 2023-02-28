@@ -27,21 +27,14 @@ fn main() {
 
     let socket = PathBuf::from("/tmp/sanedit");
     let s = socket.clone();
-    let editor_join =
-        thread::spawn(|| sanedit_editor::run_sync(vec![Address::UnixDomainSocket(s)]));
+    let join = sanedit_editor::run_sync(vec![Address::UnixDomainSocket(s)]);
 
-    // TODO impl signal from server when its ready
-    loop {
+    if let Some(join) = join {
         match UnixDomainSocketClient::connect(socket.clone()) {
-            Ok(client) => {
-                client.run();
-                break;
-            }
-            Err(e) => {
-                log::info!("Error connecting to socket: {}", e);
-            }
+            Ok(client) => client.run(),
+            Err(e) => log::info!("Error connecting to socket: {}", e),
         }
-    }
 
-    editor_join.join().unwrap();
+        join.join().unwrap()
+    }
 }

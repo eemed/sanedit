@@ -35,6 +35,7 @@ use crate::server::JobProgress;
 use crate::server::JobsHandle;
 
 use self::buffers::Buffers;
+use self::jobs::AsyncJob;
 use self::jobs::Jobs;
 use self::keymap::Keymap;
 use self::options::EditorOptions;
@@ -313,11 +314,11 @@ impl Editor {
             },
             FromJobs::Ok(id) => {
                 log::info!("Job {id} succesful.");
-                self.jobs.job_done(&id);
+                self.jobs.done(&id);
             }
             FromJobs::Fail(id) => {
                 log::info!("Job {id} failed.");
-                self.jobs.job_done(&id);
+                self.jobs.done(&id);
             }
         }
     }

@@ -1,12 +1,10 @@
-use std::sync::Arc;
-
 use unicode_segmentation::UnicodeSegmentation;
 
 use crate::{editor::Editor, server::ClientId};
 
 use super::completion::Completion;
 
-pub(crate) type PromptAction = Box<dyn FnOnce(&mut Editor, ClientId, &str) + Send + Sync>;
+pub(crate) type PromptAction = Box<dyn FnOnce(&mut Editor, ClientId, &str, bool) + Send + Sync>;
 
 pub(crate) struct Prompt {
     message: String,
@@ -14,18 +12,17 @@ pub(crate) struct Prompt {
     cursor: usize,
     completion: Completion,
 
-    /// Callback called on confirm
-    on_confirm: PromptAction,
+    on_exit: PromptAction,
 }
 
 impl Prompt {
-    pub fn new(message: &str, on_confirm: PromptAction, must_complete: bool) -> Prompt {
+    pub fn new(message: &str, on_exit: PromptAction, must_complete: bool) -> Prompt {
         Prompt {
             message: String::from(message),
             input: String::new(),
             cursor: 0,
             completion: Completion::new(must_complete),
-            on_confirm,
+            on_exit,
         }
     }
 
@@ -69,12 +66,20 @@ impl Prompt {
         self.completion.select_prev();
     }
 
-    pub fn execute_action(self, editor: &mut Editor, id: ClientId) {
+    pub fn abort(self, editor: &mut Editor, id: ClientId) {
+        self.execute(editor, id, true)
+    }
+
+    pub fn run(self, editor: &mut Editor, id: ClientId) {
+        self.execute(editor, id, false)
+    }
+
+    fn execute(self, editor: &mut Editor, id: ClientId, aborted: bool) {
         let input = self
             .selected()
             .map(|(_, item)| item.to_string())
             .unwrap_or(self.input);
-        (self.on_confirm)(editor, id, &input)
+        (self.on_exit)(editor, id, &input, aborted)
     }
 
     pub fn input(&self) -> &str {
@@ -118,7 +123,7 @@ impl Prompt {
 
 impl Default for Prompt {
     fn default() -> Self {
-        Prompt::new("", Box::new(|_, _, _| {}), false)
+        Prompt::new("", Box::new(|_, _, _, _| {}), false)
     }
 }
 

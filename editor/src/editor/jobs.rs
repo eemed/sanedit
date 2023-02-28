@@ -30,6 +30,10 @@ impl AsyncJob {
             },
         }
     }
+
+    pub fn id(&self) -> JobId {
+        self.job.id()
+    }
 }
 
 /// Holds progress functions and the client id that initiated this job.
@@ -61,14 +65,14 @@ impl Jobs {
         }
     }
 
-    pub fn run_job(&mut self, job: AsyncJob) {
+    pub fn run(&mut self, job: AsyncJob) {
         let AsyncJob {
             job,
             progress_handlers,
         } = job;
         let id = job.id();
         // Send the job to be ran
-        self.handle.run_job(job);
+        self.handle.run(job);
         // Register progress handlers
         self.running.insert(id, progress_handlers);
     }
@@ -85,7 +89,13 @@ impl Jobs {
         Some((prog.client_id, on_error))
     }
 
-    pub fn job_done(&mut self, id: &JobId) {
+    pub fn stop(&mut self, id: &JobId) {
+        if let Some(_job) = self.running.remove(id) {
+            let _ = self.handle.stop(id);
+        }
+    }
+
+    pub fn done(&mut self, id: &JobId) {
         self.running.remove(id);
     }
 }

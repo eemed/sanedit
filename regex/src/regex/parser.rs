@@ -43,6 +43,10 @@ impl<'a> Parser<'a> {
                     let ast = self.parsed.pop().expect("? no ast to pop");
                     self.parsed.push(Ast::Question(Box::new(ast)));
                 }
+                Some('(') => {
+                }
+                Some(')') => {
+                }
                 Some(ch) => {
                     self.eat();
                     self.parsed.push(Ast::Char(ch));
@@ -127,6 +131,21 @@ mod test {
     #[test]
     fn parse_star() {
         let ast = parse("a*b");
+        assert!(matches!(ast, Ast::Concat(..)));
+        let chars = get!(ast, Ast::Concat(v) => v);
+        match &chars[..] {
+            [s, b] => {
+                let a = get!(s, Ast::Star(p) => p);
+                assert!(matches!(*a, Ast::Char('a')));
+                assert!(matches!(b, Ast::Char('b')));
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    #[test]
+    fn parse_or() {
+        let ast = parse("aa|bb");
         assert!(matches!(ast, Ast::Concat(..)));
         let chars = get!(ast, Ast::Concat(v) => v);
         match &chars[..] {

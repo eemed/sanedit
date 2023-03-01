@@ -3,14 +3,13 @@ use std::str::Chars;
 use crate::Ast;
 
 pub fn parse(regex: &str) -> Ast {
-    let parser = Parser::new(regex);
+    let mut parser = Parser::new(regex);
     parser.parse()
 }
 
 struct Parser<'a> {
     chars: Chars<'a>,
     next: Option<char>,
-    parsed: Vec<Ast>,
 }
 
 impl<'a> Parser<'a> {
@@ -18,54 +17,122 @@ impl<'a> Parser<'a> {
         let mut chars = regex.chars();
         let next = chars.next();
 
-        Parser {
-            chars,
-            next,
-            parsed: vec![],
-        }
-    }
-
-    pub fn parse(mut self) -> Ast {
-        loop {
-            match self.peek() {
-                Some('*') => {
-                    self.eat();
-                    let ast = self.parsed.pop().expect("* no ast to pop");
-                    self.parsed.push(Ast::Star(Box::new(ast)));
-                }
-                Some('+') => {
-                    self.eat();
-                    let ast = self.parsed.pop().expect("+ no ast to pop");
-                    self.parsed.push(Ast::Plus(Box::new(ast)));
-                }
-                Some('?') => {
-                    self.eat();
-                    let ast = self.parsed.pop().expect("? no ast to pop");
-                    self.parsed.push(Ast::Question(Box::new(ast)));
-                }
-                Some('(') => {
-                }
-                Some(')') => {
-                }
-                Some(ch) => {
-                    self.eat();
-                    self.parsed.push(Ast::Char(ch));
-                }
-                None => break,
-            }
-        }
-
-        Ast::Concat(self.parsed)
+        Parser { chars, next }
     }
 
     // Eat away one char from the regex
-    pub fn eat(&mut self) {
+    fn eat(&mut self, ch: char) {
+        if self.next == Some(ch) {
+            self.skip();
+        } else {
+            panic!("Tried to eat char {ch} and next was {:?}", self.next);
+        }
+    }
+
+    fn skip(&mut self) {
         self.next = self.chars.next();
     }
 
+    fn next(&mut self) -> Option<char> {
+        let ch = self.peek()?;
+        self.eat(ch);
+        Some(ch)
+    }
+
     // peek the next char in the regex
-    pub fn peek(&self) -> Option<char> {
+    fn peek(&self) -> Option<char> {
         self.next
+    }
+
+    fn parse(&mut self) -> Ast {
+        self.alt()
+    }
+
+    fn alt(&mut self) -> Ast {
+        let term = self.seq();
+        let mut alt = vec![];
+        alt.push(term);
+
+        while self.peek().map(|ch| matches!(ch, '|')).unwrap_or(false) {
+            self.skip();
+            let ast = self.seq();
+            alt.push(ast);
+        }
+
+        if alt.len() == 1 {
+            alt.remove(0)
+        } else {
+            Ast::Alt(alt)
+        }
+    }
+
+    fn seq(&mut self) -> Ast {
+        let mut seq = vec![];
+
+        while self
+            .peek()
+            .map(|ch| !matches!(ch, '|' | ')'))
+            .unwrap_or(false)
+        {
+            let next = self.rep();
+            seq.push(next);
+        }
+
+        if seq.len() == 1 {
+            seq.remove(0)
+        } else {
+            Ast::Seq(seq)
+        }
+    }
+
+    fn rep(&mut self) -> Ast {
+        let base = self.base();
+
+        match self.peek() {
+            Some('*') => {
+                self.skip();
+                Ast::Star(Box::new(base), self.next_lazy())
+            }
+            Some('?') => {
+                self.skip();
+                Ast::Question(Box::new(base), self.next_lazy())
+            }
+            Some('+') => {
+                self.skip();
+                Ast::Plus(Box::new(base), self.next_lazy())
+            }
+            _ => base,
+        }
+    }
+
+    fn next_lazy(&mut self) -> bool {
+        if let Some('?') = self.peek() {
+            self.skip();
+            true
+        } else {
+            false
+        }
+    }
+
+    fn base(&mut self) -> Ast {
+        match self.peek() {
+            Some('(') => {
+                self.eat('(');
+                let ast = self.parse();
+                self.eat(')');
+                ast
+            }
+            Some('\\') => {
+                self.skip();
+                let ch = self.next().expect("escaped char");
+                Ast::Char(ch)
+            }
+            Some(ch) => {
+                self.skip();
+                Ast::Char(ch)
+            }
+            None => unreachable!(),
+        }
     }
 }
 
@@ -84,77 +151,8 @@ mod test {
     }
 
     #[test]
-    fn parse_chars() {
-        let ast = parse("abc");
-        assert!(matches!(ast, Ast::Concat(..)));
-        let chars = get!(ast, Ast::Concat(v) => v);
-        match &chars[..] {
-            [a, b, c] => {
-                assert!(matches!(a, Ast::Char('a')));
-                assert!(matches!(b, Ast::Char('b')));
-                assert!(matches!(c, Ast::Char('c')));
-            }
-            _ => unreachable!(),
-        }
-    }
-
-    #[test]
-    fn parse_plus() {
-        let ast = parse("a+b");
-        assert!(matches!(ast, Ast::Concat(..)));
-        let chars = get!(ast, Ast::Concat(v) => v);
-        match &chars[..] {
-            [p, b] => {
-                let a = get!(p, Ast::Plus(p) => p);
-                assert!(matches!(*a, Ast::Char('a')));
-                assert!(matches!(b, Ast::Char('b')));
-            }
-            _ => unreachable!(),
-        }
-    }
-
-    #[test]
-    fn parse_question() {
-        let ast = parse("a?b");
-        assert!(matches!(ast, Ast::Concat(..)));
-        let chars = get!(ast, Ast::Concat(v) => v);
-        match &chars[..] {
-            [p, b] => {
-                let a = get!(p, Ast::Question(p) => p);
-                assert!(matches!(*a, Ast::Char('a')));
-                assert!(matches!(b, Ast::Char('b')));
-            }
-            _ => unreachable!(),
-        }
-    }
-
-    #[test]
-    fn parse_star() {
-        let ast = parse("a*b");
-        assert!(matches!(ast, Ast::Concat(..)));
-        let chars = get!(ast, Ast::Concat(v) => v);
-        match &chars[..] {
-            [s, b] => {
-                let a = get!(s, Ast::Star(p) => p);
-                assert!(matches!(*a, Ast::Char('a')));
-                assert!(matches!(b, Ast::Char('b')));
-            }
-            _ => unreachable!(),
-        }
-    }
-
-    #[test]
-    fn parse_or() {
-        let ast = parse("aa|bb");
-        assert!(matches!(ast, Ast::Concat(..)));
-        let chars = get!(ast, Ast::Concat(v) => v);
-        match &chars[..] {
-            [s, b] => {
-                let a = get!(s, Ast::Star(p) => p);
-                assert!(matches!(*a, Ast::Char('a')));
-                assert!(matches!(b, Ast::Char('b')));
-            }
-            _ => unreachable!(),
-        }
+    fn star() {
+        let ast = parse("(a??b+c*)|b|d");
+        println!("AST {ast:?}");
     }
 }

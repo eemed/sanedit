@@ -50,8 +50,7 @@ impl<'a> Parser<'a> {
 
     fn alt(&mut self) -> Ast {
         let term = self.seq();
-        let mut alt = vec![];
-        alt.push(term);
+        let mut alt = vec![term];
 
         while self.peek().map(|ch| matches!(ch, '|')).unwrap_or(false) {
             self.skip();
@@ -101,6 +100,7 @@ impl<'a> Parser<'a> {
                 self.skip();
                 Ast::Plus(Box::new(base), self.next_lazy())
             }
+            // Some('{') => {} {2}
             _ => base,
         }
     }
@@ -127,6 +127,8 @@ impl<'a> Parser<'a> {
                 let ch = self.next().expect("escaped char");
                 Ast::Char(ch)
             }
+            // Some('.') => {} any char
+            // Some('[') => {} [a-z]
             Some(ch) => {
                 self.skip();
                 Ast::Char(ch)

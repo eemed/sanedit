@@ -153,7 +153,7 @@ mod test {
     }
 
     #[test]
-    fn star() {
+    fn complex() {
         let ast = parse("(a??b+c*)|b|d");
         println!("AST {ast:?}");
     }

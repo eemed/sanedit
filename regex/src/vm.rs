@@ -4,9 +4,9 @@ mod thread;
 
 use std::mem;
 
-use crate::{vm::inst::Inst, cursor::CharCursor};
+use crate::{cursor::CharCursor, vm::inst::Inst};
 
-use self::{program::Program, thread::ThreadSet, inst::InstPtr};
+use self::{inst::InstPtr, program::Program, thread::ThreadSet};
 
 // TODO input
 pub fn thompson_vm(program: Program, input: impl CharCursor) {
@@ -24,13 +24,14 @@ pub fn thompson_vm(program: Program, input: impl CharCursor) {
                     return;
                 }
                 Char(inst_ch) => {
-                    // if(*sp != pc->c)
-                    //     break;
+                    if ch != inst_ch {
+                        break;
+                    }
                     new.add_thread(*pc + 1)
-                },
+                }
                 Jmp(x) => {
                     current.add_thread(x);
-                },
+                }
                 Split(x, y) => {
                     current.add_thread(x);
                     current.add_thread(y);

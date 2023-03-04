@@ -1,7 +1,5 @@
 mod parser;
 
-use crate::Ast;
-
 pub struct Regex {
 }
 

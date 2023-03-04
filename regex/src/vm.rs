@@ -2,45 +2,44 @@ mod inst;
 mod program;
 mod thread;
 
-use crate::vm::inst::Inst;
+use std::mem;
 
-use self::{program::Program, thread::ThreadSet};
+use crate::{vm::inst::Inst, cursor::CharCursor};
+
+use self::{program::Program, thread::ThreadSet, inst::InstPtr};
 
 // TODO input
-pub fn thompson_vm(program: Program) {
+pub fn thompson_vm(program: Program, input: impl CharCursor) {
     let len = program.len();
     let mut pc: InstPtr = 0;
     // sp
     let mut current = ThreadSet::with_capacity(len);
     let mut new = ThreadSet::with_capacity(len);
 
-    // For each char in input
-
-    for pc in current.iter() {
-        use Inst::*;
-        match &program[*pc] {
-            Match => {
-                return;
+    while let Some(ch) = input.next() {
+        for pc in current.iter() {
+            use Inst::*;
+            match &program[*pc] {
+                Match => {
+                    return;
+                }
+                Char(inst_ch) => {
+                    // if(*sp != pc->c)
+                    //     break;
+                    new.add_thread(*pc + 1)
+                },
+                Jmp(x) => {
+                    current.add_thread(x);
+                },
+                Split(x, y) => {
+                    current.add_thread(x);
+                    current.add_thread(y);
+                }
             }
-            Char(inst_ch) => {
-                // if(*sp != pc->c)
-                //     break;
-                nlist.add_thread(*pc + 1)
-            },
-            Jmp(x) => {
-                current.add_thread(x);
-            },
-            Split(x, y) => {
-                current.add_thread(x);
-                current.add_thread(y);
-            }
+            mem::swap(&mut current, &mut new);
+            new.clear();
         }
-        mem::swap(&mut current, &mut new);
-        new.clear();
     }
-
-
-    // }
 }
 
 // int thompsonvm(Inst *prog, char *input)

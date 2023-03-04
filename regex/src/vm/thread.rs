@@ -9,7 +9,15 @@ pub struct ThreadSet {
 }
 
 impl ThreadSet {
-    pub fn add_thread(thread: Thread) {
+    pub fn with_capacity(cap: usize) -> ThreadSet {
+        ThreadSet { threads: HashSet::with_capacity(cap) }
+    }
+
+    pub fn add_thread(&mut self, thread: Thread) {
         self.threads.insert(thread);
+    }
+
+    pub fn clear(&mut self) {
+        self.threads.clear();
     }
 }

@@ -1,3 +1,16 @@
-use super::inst::Inst;
+use std::ops::Deref;
 
-pub(crate) type Program = Vec<Inst>;
+use super::inst::{Inst, InstPtr};
+
+pub(crate) struct Program {
+    start: InstPtr,
+    insts: Vec<Inst>,
+}
+
+impl Deref for Program {
+    type Target = Vec<Inst>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.insts
+    }
+}

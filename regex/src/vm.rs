@@ -8,7 +8,7 @@ pub(crate) use program::Program;
 
 use std::mem;
 
-use crate::cursor::CharCursor;
+use crate::cursor::Cursor;
 
 use self::inst::Inst;
 use self::thread::ThreadSet;
@@ -16,9 +16,8 @@ use self::thread::ThreadSet;
 pub(crate) struct VM;
 
 impl VM {
-
     /// Run a program on thompsons vm
-    pub(crate) fn thompson(program: &Program, input: &mut impl CharCursor) {
+    pub(crate) fn thompson(program: &Program, input: &mut impl Cursor) {
         let len = program.len();
         // sp
         let mut current = ThreadSet::with_capacity(len);
@@ -26,7 +25,7 @@ impl VM {
 
         current.add_thread(0);
 
-        while let Some(ch) = input.next() {
+        while let Some(byte) = input.next() {
             let mut i = 0;
             while i < current.len() {
                 use Inst::*;
@@ -36,8 +35,8 @@ impl VM {
                     Match => {
                         return;
                     }
-                    Char(inst_ch) => {
-                        if ch != *inst_ch {
+                    Byte(inst_byte) => {
+                        if byte != *inst_byte {
                             break;
                         }
                         new.add_thread(pc + 1)

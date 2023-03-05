@@ -1,7 +1,7 @@
-pub type InstPtr = usize;
+pub(crate) type InstPtr = usize;
 
 /// Instructions executed by vms
-pub enum Inst {
+pub(crate) enum Inst {
     Match,
     Char(char),
     Jmp(InstPtr),

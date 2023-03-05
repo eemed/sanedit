@@ -2,9 +2,9 @@ use std::ops::Index;
 
 use super::inst::InstPtr;
 
-pub type Thread = InstPtr;
+pub(crate) type Thread = InstPtr;
 
-pub struct ThreadSet {
+pub(crate) struct ThreadSet {
     threads: SparseSet,
 }
 

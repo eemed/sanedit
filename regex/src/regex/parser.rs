@@ -2,18 +2,19 @@ use std::str::Chars;
 
 use super::ast::Ast;
 
-pub fn parse(regex: &str) -> Ast {
-    let mut parser = Parser::new(regex);
-    parser.parse()
-}
-
-struct Parser<'a> {
+pub(crate) struct Parser<'a> {
     chars: Chars<'a>,
     next: Option<char>,
 }
 
 impl<'a> Parser<'a> {
-    pub fn new(regex: &'a str) -> Parser<'a> {
+    /// Parse a regex pattern to an AST
+    pub fn parse(regex: &str) -> Ast {
+        let mut parser = Parser::new(regex);
+        parser.expr()
+    }
+
+    fn new(regex: &'a str) -> Parser<'a> {
         let mut chars = regex.chars();
         let next = chars.next();
 
@@ -44,7 +45,7 @@ impl<'a> Parser<'a> {
         self.next
     }
 
-    fn parse(&mut self) -> Ast {
+    fn expr(&mut self) -> Ast {
         self.alt()
     }
 
@@ -118,7 +119,7 @@ impl<'a> Parser<'a> {
         match self.peek() {
             Some('(') => {
                 self.eat('(');
-                let ast = self.parse();
+                let ast = self.expr();
                 self.eat(')');
                 ast
             }
@@ -154,7 +155,7 @@ mod test {
 
     #[test]
     fn complex() {
-        let ast = parse("(a??b+c*)|b|d");
+        let ast = Parser::parse("(a??b+c*)|b|d");
         println!("AST {ast:?}");
     }
 }

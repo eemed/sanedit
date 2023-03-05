@@ -1,50 +1,61 @@
+mod compiler;
 mod inst;
 mod program;
 mod thread;
 
+pub(crate) use compiler::Compiler;
+pub(crate) use program::Program;
+
 use std::mem;
 
-use crate::{cursor::CharCursor, vm::inst::Inst};
+use crate::cursor::CharCursor;
 
-use self::{inst::InstPtr, program::Program, thread::ThreadSet};
+use self::inst::Inst;
+use self::thread::ThreadSet;
 
-pub fn thompson_vm(program: Program, mut input: impl CharCursor) {
-    let len = program.len();
-    // sp
-    let mut current = ThreadSet::with_capacity(len);
-    let mut new = ThreadSet::with_capacity(len);
+pub(crate) struct VM;
 
-    current.add_thread(0);
+impl VM {
 
-    while let Some(ch) = input.next() {
-        let mut i = 0;
-        while i < current.len() {
-            use Inst::*;
+    /// Run a program on thompsons vm
+    pub(crate) fn thompson(program: &Program, input: &mut impl CharCursor) {
+        let len = program.len();
+        // sp
+        let mut current = ThreadSet::with_capacity(len);
+        let mut new = ThreadSet::with_capacity(len);
 
-            let pc = current[i];
-            match &program[pc] {
-                Match => {
-                    return;
-                }
-                Char(inst_ch) => {
-                    if ch != *inst_ch {
-                        break;
+        current.add_thread(0);
+
+        while let Some(ch) = input.next() {
+            let mut i = 0;
+            while i < current.len() {
+                use Inst::*;
+
+                let pc = current[i];
+                match &program[pc] {
+                    Match => {
+                        return;
                     }
-                    new.add_thread(pc + 1)
+                    Char(inst_ch) => {
+                        if ch != *inst_ch {
+                            break;
+                        }
+                        new.add_thread(pc + 1)
+                    }
+                    Jmp(x) => {
+                        current.add_thread(*x);
+                    }
+                    Split(x, y) => {
+                        current.add_thread(*x);
+                        current.add_thread(*y);
+                    }
                 }
-                Jmp(x) => {
-                    current.add_thread(*x);
-                }
-                Split(x, y) => {
-                    current.add_thread(*x);
-                    current.add_thread(*y);
-                }
-            }
 
-            i += 1;
+                i += 1;
+            }
+            mem::swap(&mut current, &mut new);
+            new.clear();
         }
-        mem::swap(&mut current, &mut new);
-        new.clear();
     }
 }
 

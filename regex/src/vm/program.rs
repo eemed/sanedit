@@ -1,3 +1,3 @@
 use super::inst::Inst;
 
-pub type Program = Vec<Inst>;
+pub(crate) type Program = Vec<Inst>;

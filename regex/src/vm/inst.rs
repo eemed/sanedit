@@ -1,16 +1,4 @@
-// enum {    /* Inst.opcode */
-//         Char,
-//         Match,
-//         Jmp,
-//         Split
-// };
-
-// struct Inst {
-//    int opcode;
-//    int c;
-//    Inst *x;
-//    Inst *y;
-// };
+pub type InstPtr = usize;
 
 /// Instructions executed by vms
 pub enum Inst {
@@ -19,5 +7,3 @@ pub enum Inst {
     Jmp(InstPtr),
     Split(InstPtr, InstPtr),
 }
-
-pub type InstPtr = usize;

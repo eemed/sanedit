@@ -1,4 +1,5 @@
 mod parser;
+mod ast;
 
 pub struct Regex {
 }

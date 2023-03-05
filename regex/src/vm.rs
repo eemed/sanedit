@@ -8,38 +8,43 @@ use crate::{cursor::CharCursor, vm::inst::Inst};
 
 use self::{inst::InstPtr, program::Program, thread::ThreadSet};
 
-// TODO input
-pub fn thompson_vm(program: Program, input: impl CharCursor) {
+pub fn thompson_vm(program: Program, mut input: impl CharCursor) {
     let len = program.len();
-    let mut pc: InstPtr = 0;
     // sp
     let mut current = ThreadSet::with_capacity(len);
     let mut new = ThreadSet::with_capacity(len);
 
+    current.add_thread(0);
+
     while let Some(ch) = input.next() {
-        for pc in current.iter() {
+        let mut i = 0;
+        while i < current.len() {
             use Inst::*;
-            match &program[*pc] {
+
+            let pc = current[i];
+            match &program[pc] {
                 Match => {
                     return;
                 }
                 Char(inst_ch) => {
-                    if ch != inst_ch {
+                    if ch != *inst_ch {
                         break;
                     }
-                    new.add_thread(*pc + 1)
+                    new.add_thread(pc + 1)
                 }
                 Jmp(x) => {
-                    current.add_thread(x);
+                    current.add_thread(*x);
                 }
                 Split(x, y) => {
-                    current.add_thread(x);
-                    current.add_thread(y);
+                    current.add_thread(*x);
+                    current.add_thread(*y);
                 }
             }
-            mem::swap(&mut current, &mut new);
-            new.clear();
+
+            i += 1;
         }
+        mem::swap(&mut current, &mut new);
+        new.clear();
     }
 }
 

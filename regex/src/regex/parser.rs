@@ -1,6 +1,6 @@
 use std::str::Chars;
 
-use crate::Ast;
+use super::ast::Ast;
 
 pub fn parse(regex: &str) -> Ast {
     let mut parser = Parser::new(regex);

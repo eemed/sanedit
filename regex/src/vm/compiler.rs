@@ -34,8 +34,8 @@ impl Compiler {
 
     fn expr(&mut self, ast: &Ast) -> Frag {
         match ast {
-            Ast::Seq(left, right) => self.seq(left, right),
-            Ast::Alt(left, right) => self.alt(left, right),
+            Ast::Seq(seq) => self.seq(seq),
+            Ast::Alt(alt) => self.alt(alt),
             Ast::Char(ch) => self.char(*ch),
             Ast::Star(ast, lazy) => self.star(ast),
             Ast::Question(ast, lazy) => self.question(ast),
@@ -43,38 +43,54 @@ impl Compiler {
         }
     }
 
-    fn seq(&mut self, left: &Ast, right: &Ast) -> Frag {
+    fn seq(&mut self, asts: &[Ast]) -> Frag {
         // e1e2
         //     codes for e1
         //     codes for e2
-        let frag = self.expr(left);
-        self.expr(right);
-        frag
+        let mut asts = asts.iter();
+        let mut first = self.expr(asts.next().unwrap());
+        for ast in asts {
+            self.expr(ast);
+        }
+
+        first
     }
 
-    fn alt(&mut self, left: &Ast, right: &Ast) -> Frag {
+    fn alt(&mut self, asts: &[Ast]) -> Frag {
         // split L1, L2
         // L1: codes for e1
         //     jmp L3
         // L2: codes for e2
         // L3:
 
-        let next = self.next_pos() + 1;
-        let split = self.push_inst(Inst::Split(next, 0));
-        let lfrag = self.expr(left);
-        let jmp = self.push_inst(Inst::Jmp(0));
-        let rfrag = self.expr(right);
+        let split = self.push_inst(Inst::Split(vec![]));
 
-        if let Inst::Split(_, b) = &mut self.insts[split] {
-            *b = rfrag.start;
+        let mut frags = Vec::with_capacity(asts.len());
+        let mut jumps = Vec::with_capacity(asts.len());
+        let mut asts = asts.iter().peekable();
+
+        while let Some(ast) = asts.next() {
+            frags.push(self.expr(ast));
+            if asts.peek().is_some() {
+                jumps.push(self.push_inst(Inst::Jmp(0)));
+            }
         }
 
-        let next = self.next_pos();
-        if let Inst::Jmp(a) = &mut self.insts[jmp] {
-            *a = next;
+        if let Inst::Split(split) = &mut self.insts[split] {
+            *split = frags.iter().map(|f| f.start).collect();
         }
 
-        lfrag
+        let end = self.next_pos();
+        for jmp in jumps {
+            if let Inst::Jmp(jmp) = &mut self.insts[jmp] {
+                *jmp = end;
+            }
+        }
+
+        Frag {
+            start: split,
+            ends: Vec::new(),
+        }
     }
 
     fn char(&mut self, ch: char) -> Frag {
@@ -96,13 +112,12 @@ impl Compiler {
         // L2: codes for e
         // jmp L1
         // L3:
-        let l1 = self.push_inst(Inst::Split(0, 0));
+        let l1 = self.push_inst(Inst::Split(vec![]));
         let frag = self.expr(ast);
         let jmp = self.push_inst(Inst::Jmp(l1));
         let l3 = self.next_pos();
-        if let Inst::Split(a, b) = &mut self.insts[l1] {
-            *a = frag.start;
-            *b = l3;
+        if let Inst::Split(split) = &mut self.insts[l1] {
+            *split = vec![frag.start, l3];
         }
         Frag {
             start: l1,
@@ -115,12 +130,11 @@ impl Compiler {
         // L1: codes for e
         // L2:
 
-        let pos = self.push_inst(Inst::Split(0, 0));
+        let pos = self.push_inst(Inst::Split(vec![]));
         let frag = self.expr(ast);
         let l2 = self.next_pos();
-        if let Inst::Split(a, b) = &mut self.insts[pos] {
-            *a = frag.start;
-            *b = l2;
+        if let Inst::Split(split) = &mut self.insts[pos] {
+            *split = vec![frag.start, l2];
         }
         Frag {
             start: pos,
@@ -135,7 +149,7 @@ impl Compiler {
 
         let frag = self.expr(ast);
         let l3 = self.next_pos() + 1;
-        self.push_inst(Inst::Split(frag.start, l3));
+        self.push_inst(Inst::Split(vec![frag.start, l3]));
         frag
     }
 

@@ -51,28 +51,37 @@ impl<'a> Parser<'a> {
 
     fn alt(&mut self) -> Ast {
         let term = self.seq();
+        let mut alt = vec![term];
 
-        if self.peek().map(|ch| matches!(ch, '|')).unwrap_or(false) {
+        while self.peek().map(|ch| matches!(ch, '|')).unwrap_or(false) {
             self.skip();
             let ast = self.seq();
-            Ast::Alt(term.into(), ast.into())
+            alt.push(ast);
+        }
+
+        if alt.len() == 1 {
+            alt.remove(0)
         } else {
-            term
+            Ast::Alt(alt)
         }
     }
 
     fn seq(&mut self) -> Ast {
-        let term = self.rep();
+        let mut seq = vec![];
 
-        if self
+        while self
             .peek()
             .map(|ch| !matches!(ch, '|' | ')'))
             .unwrap_or(false)
         {
             let next = self.rep();
-            Ast::Seq(term.into(), next.into())
+            seq.push(next);
+        }
+
+        if seq.len() == 1 {
+            seq.remove(0)
         } else {
-            term
+            Ast::Seq(seq)
         }
     }
 

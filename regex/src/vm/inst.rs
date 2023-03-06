@@ -6,5 +6,5 @@ pub(crate) enum Inst {
     Match,
     Byte(u8),
     Jmp(InstIndex),
-    Split(InstIndex, InstIndex),
+    Split(Vec<InstIndex>),
 }

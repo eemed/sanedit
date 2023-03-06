@@ -44,9 +44,10 @@ impl VM {
                     Jmp(x) => {
                         current.add_thread(*x);
                     }
-                    Split(x, y) => {
-                        current.add_thread(*x);
-                        current.add_thread(*y);
+                    Split(splits) => {
+                        for split in splits {
+                            current.add_thread(*split);
+                        }
                     }
                 }
 

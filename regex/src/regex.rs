@@ -1,10 +1,13 @@
 mod ast;
 mod parser;
 
-use self::parser::Parser;
+pub(crate) use self::parser::Parser;
 pub(crate) use ast::Ast;
 
-use crate::{vm::{Program, Compiler, VM}, cursor::Cursor};
+use crate::{
+    cursor::Cursor,
+    vm::{Compiler, Program, VM},
+};
 
 pub struct Regex {
     program: Program,
@@ -13,7 +16,7 @@ pub struct Regex {
 impl Regex {
     pub fn new(regex: &str) -> Regex {
         let ast = Parser::parse(regex);
-        let program = Compiler::compile(ast);
+        let program = Compiler::compile(&ast);
         Regex { program }
     }
 

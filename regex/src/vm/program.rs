@@ -1,10 +1,10 @@
 use std::ops::Deref;
 
-use super::inst::{Inst, InstPtr};
+use super::inst::{Inst, InstIndex};
 
 pub(crate) struct Program {
-    start: InstPtr,
-    insts: Vec<Inst>,
+    pub start: InstIndex,
+    pub insts: Vec<Inst>,
 }
 
 impl Deref for Program {

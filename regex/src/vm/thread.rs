@@ -1,8 +1,8 @@
 use std::ops::Index;
 
-use super::inst::InstPtr;
+use super::inst::InstIndex;
 
-pub(crate) type Thread = InstPtr;
+pub(crate) type Thread = InstIndex;
 
 pub(crate) struct ThreadSet {
     threads: SparseSet,

@@ -43,3 +43,9 @@ impl<'a> Cursor for StringCursor<'a> {
         Some(byte)
     }
 }
+
+impl<'a> From<&'a str> for StringCursor<'a> {
+    fn from(s: &'a str) -> Self {
+        Self::new(s)
+    }
+}

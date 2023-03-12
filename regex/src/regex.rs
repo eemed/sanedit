@@ -20,7 +20,23 @@ impl Regex {
         Regex { program }
     }
 
-    pub fn matches(&self, input: &mut impl Cursor) {
-        VM::thompson(&self.program, input);
+    pub fn find(&self, input: &mut impl Cursor) -> bool {
+        VM::thompson(&self.program, input)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::cursor::StringCursor;
+
+    use super::*;
+
+    #[test]
+    fn simple() {
+        let mut text: StringCursor = "bca".into();
+        let regex = Regex::new("car?");
+        println!("{:?}", regex.program);
+        let matched = regex.find(&mut text);
+        assert!(matched);
     }
 }

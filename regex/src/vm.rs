@@ -17,15 +17,16 @@ pub(crate) struct VM;
 
 impl VM {
     /// Run a program on thompsons vm
-    pub(crate) fn thompson(program: &Program, input: &mut impl Cursor) {
+    pub(crate) fn thompson(program: &Program, input: &mut impl Cursor) -> bool {
         let len = program.len();
         // sp
         let mut current = ThreadSet::with_capacity(len);
         let mut new = ThreadSet::with_capacity(len);
 
-        current.add_thread(0);
+        loop {
+            current.add_thread(program.start);
+            let byte = input.next();
 
-        while let Some(byte) = input.next() {
             let mut i = 0;
             while i < current.len() {
                 use Inst::*;
@@ -33,13 +34,12 @@ impl VM {
                 let pc = current[i];
                 match &program[pc] {
                     Match => {
-                        return;
+                        return true;
                     }
                     Byte(inst_byte) => {
-                        if byte != *inst_byte {
-                            break;
+                        if byte == Some(*inst_byte) {
+                            new.add_thread(pc + 1)
                         }
-                        new.add_thread(pc + 1)
                     }
                     Jmp(x) => {
                         current.add_thread(*x);
@@ -53,9 +53,16 @@ impl VM {
 
                 i += 1;
             }
+
+            if byte == None {
+                break;
+            }
+
             mem::swap(&mut current, &mut new);
             new.clear();
         }
+
+        false
     }
 }
 

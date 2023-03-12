@@ -6,7 +6,7 @@ pub(crate) use ast::Ast;
 
 use crate::{
     cursor::Cursor,
-    vm::{Compiler, Program, VM},
+    vm::{Compiler, Program, VMResult, VM},
 };
 
 pub struct Regex {
@@ -21,7 +21,9 @@ impl Regex {
     }
 
     pub fn find(&self, input: &mut impl Cursor) -> bool {
-        VM::thompson(&self.program, input)
+        let result = VM::thompson(&self.program, input);
+        println!("Result: {result:?}");
+        matches!(result, VMResult::Match { .. })
     }
 }
 
@@ -33,7 +35,7 @@ mod test {
 
     #[test]
     fn simple() {
-        let mut text: StringCursor = "bca".into();
+        let mut text: StringCursor = "ca".into();
         let regex = Regex::new("car?");
         println!("{:?}", regex.program);
         let matched = regex.find(&mut text);

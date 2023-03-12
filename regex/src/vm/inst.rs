@@ -7,4 +7,5 @@ pub(crate) enum Inst {
     Byte(u8),
     Jmp(InstIndex),
     Split(Vec<InstIndex>),
+    Save(usize),
 }

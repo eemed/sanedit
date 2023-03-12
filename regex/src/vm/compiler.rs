@@ -14,14 +14,14 @@ pub(crate) struct Frag {
 
 pub(crate) struct Compiler {
     insts: Vec<Inst>,
+    group: usize,
 }
 
 impl Compiler {
     /// Compile AST to a program that can be executed on the vm
     pub fn compile(ast: &Ast) -> Program {
         let mut compiler = Compiler::new();
-        let frag = compiler.expr(ast);
-        let n = compiler.push_inst(Inst::Match);
+        let frag = compiler.do_compile(ast);
         Program {
             start: frag.start,
             insts: mem::take(&mut compiler.insts),
@@ -29,7 +29,25 @@ impl Compiler {
     }
 
     fn new() -> Compiler {
-        Compiler { insts: Vec::new() }
+        Compiler {
+            insts: Vec::new(),
+            group: 0,
+        }
+    }
+
+    fn do_compile(&mut self, ast: &Ast) -> Frag {
+        // TODO Add substring searching by prepending .*? insts to the start
+
+        // Extract matched range by wrapping it on save instructions
+        self.group += 1;
+
+        let start = self.push_inst(Inst::Save(0));
+        let mut frag = self.expr(ast);
+        self.push_inst(Inst::Save(1));
+
+        let _ = self.push_inst(Inst::Match);
+        frag.start = start;
+        frag
     }
 
     fn expr(&mut self, ast: &Ast) -> Frag {
@@ -40,6 +58,7 @@ impl Compiler {
             Ast::Star(ast, lazy) => self.star(ast),
             Ast::Question(ast, lazy) => self.question(ast),
             Ast::Plus(ast, lazy) => self.plus(ast),
+            Ast::Group(ast) => self.group(ast),
         }
     }
 
@@ -153,6 +172,18 @@ impl Compiler {
         frag
     }
 
+    fn group(&mut self, ast: &Ast) -> Frag {
+        let group = self.group * 2;
+        self.group += 1;
+
+        let save = self.push_inst(Inst::Save(group));
+        let mut frag = self.expr(ast);
+        self.push_inst(Inst::Save(group + 1));
+
+        frag.start = save;
+        frag
+    }
+
     fn push_inst(&mut self, inst: Inst) -> InstIndex {
         let n = self.insts.len();
         self.insts.push(inst);
@@ -184,7 +215,7 @@ mod test {
 
     #[test]
     fn alt() {
-        let regex = "a|b|c";
+        let regex = "a|(b|c)";
         let ast = Parser::parse(regex);
         let program = Compiler::compile(&ast);
         println!("-------- Begin program '{regex}' ---------");

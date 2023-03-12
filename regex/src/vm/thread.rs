@@ -41,7 +41,7 @@ struct SparseSet {
     sparse: Box<[usize]>,
 
     /// Holds the elements
-    dense: Vec<usize>,
+    dense: Vec<Thread>,
 }
 
 impl SparseSet {
@@ -52,7 +52,7 @@ impl SparseSet {
         }
     }
 
-    pub fn insert(&mut self, item: usize) {
+    fn insert(&mut self, item: usize) {
         if self.contains(item) {
             return;
         }
@@ -62,7 +62,7 @@ impl SparseSet {
         self.sparse[item] = n;
     }
 
-    pub fn contains(&self, item: usize) -> bool {
+    fn contains(&self, item: usize) -> bool {
         let n = self.sparse[item];
         self.dense.get(n) == Some(&item)
     }

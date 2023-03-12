@@ -8,6 +8,15 @@ pub(crate) struct Program {
     pub insts: Vec<Inst>,
 }
 
+impl Program {
+    pub fn slot_count(&self) -> usize {
+        self.insts
+            .iter()
+            .filter(|inst| matches!(inst, Inst::Save(..)))
+            .count()
+    }
+}
+
 impl Deref for Program {
     type Target = Vec<Inst>;
 

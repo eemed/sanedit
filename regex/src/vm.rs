@@ -1,6 +1,7 @@
 mod compiler;
 mod inst;
 mod program;
+mod slots;
 mod thread;
 
 pub(crate) use compiler::Compiler;
@@ -11,20 +12,31 @@ use std::mem;
 use crate::cursor::Cursor;
 
 use self::inst::Inst;
+use self::slots::Slots;
 use self::thread::ThreadSet;
+
+#[derive(Debug)]
+pub enum VMResult {
+    /// The first pair is the whole match, and the rest are capturing groups
+    /// used in the regex.
+    Match(Vec<(usize, usize)>),
+    NoMatch,
+}
 
 pub(crate) struct VM;
 
 impl VM {
     /// Run a program on thompsons vm
-    pub(crate) fn thompson(program: &Program, input: &mut impl Cursor) -> bool {
+    pub(crate) fn thompson(program: &Program, input: &mut impl Cursor) -> VMResult {
         let len = program.len();
-        // sp
         let mut current = ThreadSet::with_capacity(len);
         let mut new = ThreadSet::with_capacity(len);
+        let mut slots = Slots::new(program.slot_count(), len);
+
+        current.add_thread(program.start);
 
         loop {
-            current.add_thread(program.start);
+            let pos = input.pos();
             let byte = input.next();
 
             let mut i = 0;
@@ -34,27 +46,36 @@ impl VM {
                 let pc = current[i];
                 match &program[pc] {
                     Match => {
-                        return true;
+                        let groups = slots.get_as_pairs(pc);
+                        return VMResult::Match(groups);
                     }
                     Byte(inst_byte) => {
                         if byte == Some(*inst_byte) {
-                            new.add_thread(pc + 1)
+                            new.add_thread(pc + 1);
+                            slots.copy(pc, pc + 1);
                         }
                     }
                     Jmp(x) => {
                         current.add_thread(*x);
+                        slots.copy(pc, *x);
                     }
                     Split(splits) => {
                         for split in splits {
                             current.add_thread(*split);
+                            slots.copy(pc, *split);
                         }
+                    }
+                    Save(slot) => {
+                        slots.get(pc)[*slot] = Some(pos);
+                        current.add_thread(pc + 1);
+                        slots.copy(pc, pc + 1);
                     }
                 }
 
                 i += 1;
             }
 
-            if byte == None {
+            if byte.is_none() {
                 break;
             }
 
@@ -62,43 +83,6 @@ impl VM {
             new.clear();
         }
 
-        false
+        VMResult::NoMatch
     }
 }
-
-// int thompsonvm(Inst *prog, char *input)
-// {
-//     int len;
-//     ThreadList *clist, *nlist;
-//     Inst *pc;
-//     char *sp;
-
-//     len = proglen(prog);  /* # of instructions */
-//     clist = threadlist(len);
-//     nlist = threadlist(len);
-
-//     addthread(clist, thread(prog));
-//     for(sp=input; *sp; sp++){
-//         for(i=0; i<clist.n; i++){
-//             pc = clist.t[i].pc;
-//             switch(pc->opcode){
-//                 case Char:
-//                     if(*sp != pc->c)
-//                         break;
-//                     addthread(nlist, thread(pc+1));
-//                     break;
-//                 case Match:
-//                     return 1;
-//                 case Jmp:
-//                     addthread(clist, thread(pc->x));
-//                     break;
-//                 case Split:
-//                     addthread(clist, thread(pc->x));
-//                     addthread(clist, thread(pc->y));
-//                     break;
-//             }
-//         }
-//         swap(clist, nlist);
-//         clear(nlist);
-//     }
-// }

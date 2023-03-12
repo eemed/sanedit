@@ -3,6 +3,7 @@ pub trait Cursor {
     fn at_end(&self) -> bool;
     fn next(&mut self) -> Option<u8>;
     fn prev(&mut self) -> Option<u8>;
+    fn pos(&self) -> usize;
 }
 
 pub(crate) struct StringCursor<'a> {
@@ -41,6 +42,10 @@ impl<'a> Cursor for StringCursor<'a> {
         self.pos = self.pos.saturating_sub(1);
         let byte = bytes[self.pos];
         Some(byte)
+    }
+
+    fn pos(&self) -> usize {
+        self.pos
     }
 }
 

@@ -121,14 +121,14 @@ impl<'a> Parser<'a> {
                 self.eat('(');
                 let ast = self.expr();
                 self.eat(')');
-                ast
+                Ast::Group(ast.into())
             }
             Some('\\') => {
                 self.skip();
                 let ch = self.next().expect("escaped char");
                 Ast::Char(ch)
             }
-            // Some('.') => {} any char
+            // Some('.') => {} any char, needs char classes
             // Some('[') => {} [a-z]
             Some(ch) => {
                 self.skip();

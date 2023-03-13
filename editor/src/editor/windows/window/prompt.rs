@@ -4,7 +4,7 @@ use crate::{editor::Editor, server::ClientId};
 
 use super::completion::Completion;
 
-pub(crate) type PromptAction = Box<dyn FnOnce(&mut Editor, ClientId, &str, bool) + Send + Sync>;
+pub(crate) type PromptAction = Box<dyn Fn(&mut Editor, ClientId, &str) + Send + Sync>;
 
 pub(crate) struct Prompt {
     message: String,
@@ -12,17 +12,22 @@ pub(crate) struct Prompt {
     cursor: usize,
     completion: Completion,
 
-    on_exit: PromptAction,
+    /// Called when prompt is confirmed,
+    on_confirm: Option<PromptAction>,
+
+    /// Called if prompt is aborted
+    on_abort: Option<PromptAction>,
 }
 
 impl Prompt {
-    pub fn new(message: &str, on_exit: PromptAction, must_complete: bool) -> Prompt {
+    pub fn new(message: &str, must_complete: bool) -> Prompt {
         Prompt {
             message: String::from(message),
             input: String::new(),
             cursor: 0,
             completion: Completion::new(must_complete),
-            on_exit,
+            on_confirm: None,
+            on_abort: None,
         }
     }
 
@@ -66,20 +71,24 @@ impl Prompt {
         self.completion.select_prev();
     }
 
-    pub fn abort(self, editor: &mut Editor, id: ClientId) {
-        self.execute(editor, id, true)
-    }
-
-    pub fn run(self, editor: &mut Editor, id: ClientId) {
-        self.execute(editor, id, false)
-    }
-
-    fn execute(self, editor: &mut Editor, id: ClientId, aborted: bool) {
+    pub fn confirm(self, editor: &mut Editor, id: ClientId) {
         let input = self
             .selected()
             .map(|(_, item)| item.to_string())
             .unwrap_or(self.input);
-        (self.on_exit)(editor, id, &input, aborted)
+        if let Some(on_confirm) = self.on_confirm {
+            (on_confirm)(editor, id, &input)
+        }
+    }
+
+    pub fn abort(self, editor: &mut Editor, id: ClientId) {
+        let input = self
+            .selected()
+            .map(|(_, item)| item.to_string())
+            .unwrap_or(self.input);
+        if let Some(on_abort) = self.on_abort {
+            (on_abort)(editor, id, &input)
+        }
     }
 
     pub fn input(&self) -> &str {
@@ -119,11 +128,25 @@ impl Prompt {
         let (pos, _) = self.completion.selected()?;
         Some(pos)
     }
+
+    pub fn on_confirm(mut self, action: PromptAction) -> Self {
+        self.on_confirm = Some(action);
+        self
+    }
+
+    pub fn on_abort(mut self, action: PromptAction) -> Self {
+        self.on_abort = Some(action);
+        self
+    }
+
+    // pub fn on_input(&mut self, action: PromptAction) {
+    //     self.on_input = Some(action);
+    // }
 }
 
 impl Default for Prompt {
     fn default() -> Self {
-        Prompt::new("", Box::new(|_, _, _, _| {}), false)
+        Prompt::new("", false)
     }
 }
 

@@ -6,7 +6,7 @@ mod options;
 mod prompt;
 mod view;
 
-use std::{mem, ops::Range};
+use std::ops::Range;
 
 use sanedit_buffer::piece_tree::prev_grapheme_boundary;
 use sanedit_messages::redraw::Size;

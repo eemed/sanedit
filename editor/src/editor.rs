@@ -35,7 +35,6 @@ use crate::server::JobProgress;
 use crate::server::JobsHandle;
 
 use self::buffers::Buffers;
-use self::jobs::AsyncJob;
 use self::jobs::Jobs;
 use self::keymap::Keymap;
 use self::options::EditorOptions;

@@ -37,7 +37,7 @@ use crate::server::JobsHandle;
 use self::buffers::Buffers;
 use self::jobs::Jobs;
 use self::keymap::Keymap;
-use self::options::EditorOptions;
+use self::options::Options;
 use self::windows::Mode;
 use self::windows::Window;
 use self::windows::Windows;
@@ -54,7 +54,7 @@ pub(crate) struct Editor {
     is_running: bool,
     working_dir: PathBuf,
     themes: HashMap<String, Theme>,
-    pub options: EditorOptions,
+    pub options: Options,
 }
 
 impl Editor {
@@ -71,7 +71,7 @@ impl Editor {
             is_running: true,
             working_dir: env::current_dir().expect("Cannot get current working directory."),
             themes: themes::default_themes(),
-            options: EditorOptions::default(),
+            options: Options::default(),
         }
     }
 

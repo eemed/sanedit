@@ -13,7 +13,7 @@ use sanedit_buffer::piece_tree::{PieceTree, PieceTreeSlice};
 
 use crate::common::file::File;
 
-use self::{change::Change, options::BufferOptions, snapshots::Snapshots};
+use self::{change::Change, options::Options, snapshots::Snapshots};
 
 slotmap::new_key_type!(
     pub(crate) struct BufferId;
@@ -29,7 +29,7 @@ pub(crate) struct Buffer {
     last_saved_snapshot: usize,
 
     is_modified: bool,
-    options: BufferOptions,
+    options: Options,
     last_change: Option<Change>,
 
     /// Path used for saving the file.
@@ -45,7 +45,7 @@ impl Buffer {
             pt,
             is_modified: false,
             snapshots: Snapshots::new(snapshot),
-            options: BufferOptions::default(),
+            options: Options::default(),
             path: None,
             last_change: None,
             last_saved_snapshot: 0,
@@ -69,7 +69,7 @@ impl Buffer {
             pt,
             is_modified: false,
             snapshots: Snapshots::new(snapshot),
-            options: BufferOptions::default(),
+            options: Options::default(),
             path: None,
             last_change: None,
             last_saved_snapshot: 0,
@@ -89,7 +89,7 @@ impl Buffer {
             pt,
             is_modified: false,
             snapshots: Snapshots::new(snapshot),
-            options: BufferOptions::default(),
+            options: Options::default(),
             path: None,
             last_change: None,
             last_saved_snapshot: 0,
@@ -131,7 +131,7 @@ impl Buffer {
         self.pt.slice(range)
     }
 
-    pub fn options(&self) -> &BufferOptions {
+    pub fn options(&self) -> &Options {
         &self.options
     }
 }

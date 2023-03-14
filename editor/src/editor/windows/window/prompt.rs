@@ -1,6 +1,9 @@
 use unicode_segmentation::UnicodeSegmentation;
 
-use crate::{editor::Editor, server::ClientId};
+use crate::{
+    editor::{keymap::Keymap, Editor},
+    server::ClientId,
+};
 
 use super::completion::Completion;
 
@@ -12,11 +15,12 @@ pub(crate) struct Prompt {
     cursor: usize,
     completion: Completion,
 
-    /// Called when prompt is confirmed,
+    /// Called when prompt is confirmed (enter)
     on_confirm: Option<PromptAction>,
 
-    /// Called if prompt is aborted
+    /// Called if prompt is aborted (ctrl-c)
     on_abort: Option<PromptAction>,
+    pub keymap: Keymap,
 }
 
 impl Prompt {
@@ -28,7 +32,23 @@ impl Prompt {
             completion: Completion::new(must_complete),
             on_confirm: None,
             on_abort: None,
+            keymap: Keymap::default_prompt(),
         }
+    }
+
+    pub fn on_confirm(mut self, action: PromptAction) -> Self {
+        self.on_confirm = Some(action);
+        self
+    }
+
+    pub fn on_abort(mut self, action: PromptAction) -> Self {
+        self.on_abort = Some(action);
+        self
+    }
+
+    pub fn keymap(mut self, map: Keymap) -> Self {
+        self.keymap = map;
+        self
     }
 
     pub fn message(&self) -> &str {
@@ -128,20 +148,6 @@ impl Prompt {
         let (pos, _) = self.completion.selected()?;
         Some(pos)
     }
-
-    pub fn on_confirm(mut self, action: PromptAction) -> Self {
-        self.on_confirm = Some(action);
-        self
-    }
-
-    pub fn on_abort(mut self, action: PromptAction) -> Self {
-        self.on_abort = Some(action);
-        self
-    }
-
-    // pub fn on_input(&mut self, action: PromptAction) {
-    //     self.on_input = Some(action);
-    // }
 }
 
 impl Default for Prompt {

@@ -5,6 +5,8 @@ mod mode;
 mod options;
 mod prompt;
 mod view;
+mod overlay;
+mod search;
 
 use std::ops::Range;
 
@@ -16,11 +18,12 @@ use crate::{
     editor::buffers::{Buffer, BufferId},
 };
 
+use self::overlay::Overlay;
 pub(crate) use self::{
     cursors::{Cursor, Cursors},
     message::{Message, Severity},
     mode::Mode,
-    options::WindowOptions,
+    options::Options,
     prompt::Prompt,
     prompt::PromptAction,
     view::{Cell, View},
@@ -32,9 +35,13 @@ pub(crate) struct Window {
     view: View,
     message: Option<Message>,
     cursors: Cursors,
-    mode: Mode,
+
+    overlays: Vec<Overlay>,
+    // When overlays are implemented, these two should be removed
     pub prompt: Prompt,
-    pub options: WindowOptions,
+    mode: Mode,
+
+    pub options: Options,
 }
 
 impl Window {
@@ -45,7 +52,8 @@ impl Window {
             message: None,
             cursors: Cursors::default(),
             prompt: Prompt::default(),
-            options: WindowOptions::default(),
+            options: Options::default(),
+            overlays: Vec::new(),
             mode: Mode::Normal,
         }
     }

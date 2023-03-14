@@ -1,7 +1,7 @@
 use crate::common::eol::EOL;
 
 #[derive(Debug)]
-pub(crate) struct BufferOptions {
+pub(crate) struct Options {
     pub(crate) eol: EOL,
     /// How many spaces for a tab character, note that tab does not always have
     /// width `tab_width` because sometimes tabs are used to align stuff, so it
@@ -13,9 +13,9 @@ pub(crate) struct BufferOptions {
     pub(crate) tab_spaces: Option<usize>,
 }
 
-impl Default for BufferOptions {
+impl Default for Options {
     fn default() -> Self {
-        BufferOptions {
+        Options {
             eol: EOL::default(),
             tabstop: 8,
             tab_spaces: Some(4),

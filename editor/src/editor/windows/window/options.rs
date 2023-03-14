@@ -1,11 +1,11 @@
 #[derive(Debug)]
-pub(crate) struct WindowOptions {
+pub(crate) struct Options {
     pub prompt_completions: usize,
 }
 
-impl Default for WindowOptions {
+impl Default for Options {
     fn default() -> Self {
-        WindowOptions {
+        Options {
             prompt_completions: 10,
         }
     }

@@ -2,11 +2,11 @@ use std::cmp;
 
 use sanedit_messages::redraw;
 
-use crate::editor::windows::{Prompt, WindowOptions};
+use crate::editor::windows::{Prompt, Options};
 
 pub(crate) fn draw_prompt(
     prompt: &Prompt,
-    options: &WindowOptions,
+    options: &Options,
     scroll_offset: &mut usize,
 ) -> redraw::Prompt {
     *scroll_offset = {

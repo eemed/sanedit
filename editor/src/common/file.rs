@@ -5,7 +5,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use crate::editor::options::EditorOptions;
+use crate::editor::options::Options;
 
 use super::{dirs::tmp_dir, eol::EOL};
 
@@ -24,7 +24,7 @@ pub(crate) struct File {
 }
 
 impl File {
-    pub fn new(path: impl AsRef<Path>, options: &EditorOptions) -> io::Result<File> {
+    pub fn new(path: impl AsRef<Path>, options: &Options) -> io::Result<File> {
         let path = path.as_ref();
         let mut file = fs::File::open(path)?;
         let metadata = file.metadata()?;
@@ -34,7 +34,7 @@ impl File {
         let read = file.read(&mut buf)?;
         let eol = detect_line_ending(&buf[..read]);
 
-        let EditorOptions {
+        let Options {
             big_file_threshold_bytes,
             ..
         } = options;

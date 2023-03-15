@@ -48,8 +48,6 @@ pub(crate) struct Editor {
     windows: Windows,
     buffers: Buffers,
     jobs: Jobs,
-    keymap: Keymap,
-    prompt_keymap: Keymap,
     keys: Vec<KeyEvent>,
     is_running: bool,
     working_dir: PathBuf,
@@ -65,8 +63,6 @@ impl Editor {
             windows: Windows::default(),
             buffers: Buffers::default(),
             jobs: Jobs::new(jobs_handle),
-            keymap: Keymap::default_normal(),
-            prompt_keymap: Keymap::default_prompt(),
             keys: Vec::default(),
             is_running: true,
             working_dir: env::current_dir().expect("Cannot get current working directory."),
@@ -235,10 +231,7 @@ impl Editor {
 
     fn get_bound_action(&mut self, id: ClientId) -> Option<Action> {
         let (win, _buf) = self.get_win_buf(id);
-        let keymap = match win.mode() {
-            Mode::Normal => &self.keymap,
-            Mode::Prompt => &self.prompt_keymap,
-        };
+        let keymap = win.keymap();
 
         match keymap.get(&self.keys) {
             keymap::KeymapResult::Matched(action) => Some(action),

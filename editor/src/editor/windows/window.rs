@@ -1,12 +1,12 @@
 mod completion;
 mod cursors;
+mod layer;
 mod message;
 mod mode;
 mod options;
 mod prompt;
-mod view;
-mod overlay;
 mod search;
+mod view;
 
 use std::ops::Range;
 
@@ -15,10 +15,13 @@ use sanedit_messages::redraw::Size;
 
 use crate::{
     common::char::DisplayOptions,
-    editor::buffers::{Buffer, BufferId},
+    editor::{
+        buffers::{Buffer, BufferId},
+        keymap::Keymap,
+    },
 };
 
-use self::overlay::Overlay;
+use self::layer::Layer;
 pub(crate) use self::{
     cursors::{Cursor, Cursors},
     message::{Message, Severity},
@@ -36,7 +39,8 @@ pub(crate) struct Window {
     message: Option<Message>,
     cursors: Cursors,
 
-    overlays: Vec<Overlay>,
+    keymap: Keymap,
+    layers: Vec<Layer>,
     // When overlays are implemented, these two should be removed
     pub prompt: Prompt,
     mode: Mode,
@@ -51,9 +55,10 @@ impl Window {
             view: View::new(width, height),
             message: None,
             cursors: Cursors::default(),
+            keymap: Keymap::default_normal(),
             prompt: Prompt::default(),
             options: Options::default(),
-            overlays: Vec::new(),
+            layers: Vec::new(),
             mode: Mode::Normal,
         }
     }
@@ -89,6 +94,10 @@ impl Window {
             severity: Severity::Error,
             message,
         });
+    }
+
+    pub fn clear_msg(&mut self) {
+        self.message = None;
     }
 
     pub fn primary_cursor(&self) -> &Cursor {
@@ -180,12 +189,18 @@ impl Window {
     }
 
     pub fn open_prompt(&mut self, prompt: Prompt) {
-        self.prompt = prompt;
-        self.mode = Mode::Prompt;
+        self.layers.push(Layer::Prompt(prompt));
+
+        // self.prompt = prompt;
+        // self.mode = Mode::Prompt;
     }
 
     pub fn close_prompt(&mut self) {
-        self.mode = Mode::Normal;
+        if let Some(Layer::Prompt(..)) = self.layers.iter().last() {
+            self.layers.pop();
+        }
+
+        // self.mode = Mode::Normal;
     }
 
     pub fn cursors(&self) -> &Cursors {
@@ -206,6 +221,35 @@ impl Window {
         let primary_pos = self.cursors.primary().pos();
         self.view.draw(buf);
         self.view.view_to(primary_pos, buf);
+    }
+
+    pub fn keymap(&self) -> &Keymap {
+        for layer in &self.layers {
+            if let Some(kmap) = layer.keymap() {
+                return kmap;
+            }
+        }
+
+        &self.keymap
+    }
+
+    // If there was no binding for a key, it will be converted to a &str and
+    // handled here
+    pub fn handle_insert(&mut self, buf: &mut Buffer, text: &str) {
+        for layer in &mut self.layers {
+            if layer.handle_insert(text) {
+                return;
+            }
+        }
+
+        self.insert_at_cursor(buf, text);
+    }
+
+    fn insert_at_cursor(&mut self, buf: &mut Buffer, text: &str) {
+        let cursor = self.primary_cursor_mut();
+        let cursor_pos = cursor.pos();
+        buf.insert(cursor_pos, text);
+        cursor.goto(cursor_pos + text.len());
     }
 }
 

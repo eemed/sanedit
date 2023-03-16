@@ -1,6 +1,4 @@
-use sanedit_messages::{redraw::Window, KeyEvent};
-
-use crate::editor::{buffers::Buffer, keymap::Keymap};
+use crate::editor::keymap::Keymap;
 
 use super::{search::Search, Prompt};
 
@@ -17,10 +15,19 @@ pub(crate) enum Layer {
 
 impl Layer {
     pub fn keymap(&self) -> Option<&Keymap> {
-        None
+        match self {
+            Layer::Prompt(p) => Some(p.keymap()),
+            Layer::Search(s) => None,
+        }
     }
 
     pub fn handle_insert(&mut self, text: &str) -> bool {
-        false
+        match self {
+            Layer::Prompt(p) => {
+                p.insert_at_cursor(text);
+                true
+            }
+            _ => false,
+        }
     }
 }

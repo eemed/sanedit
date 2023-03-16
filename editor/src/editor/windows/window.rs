@@ -2,7 +2,6 @@ mod completion;
 mod cursors;
 mod layer;
 mod message;
-mod mode;
 mod options;
 mod prompt;
 mod search;
@@ -21,15 +20,14 @@ use crate::{
     },
 };
 
-use self::layer::Layer;
 pub(crate) use self::{
     cursors::{Cursor, Cursors},
     message::{Message, Severity},
-    mode::Mode,
     options::Options,
     prompt::Prompt,
     prompt::PromptAction,
     view::{Cell, View},
+    layer::Layer,
 };
 
 #[derive(Debug)]
@@ -41,10 +39,6 @@ pub(crate) struct Window {
 
     keymap: Keymap,
     layers: Vec<Layer>,
-    // When overlays are implemented, these two should be removed
-    pub prompt: Prompt,
-    mode: Mode,
-
     pub options: Options,
 }
 
@@ -56,10 +50,9 @@ impl Window {
             message: None,
             cursors: Cursors::default(),
             keymap: Keymap::default_normal(),
-            prompt: Prompt::default(),
+            // prompt: Prompt::default(),
             options: Options::default(),
             layers: Vec::new(),
-            mode: Mode::Normal,
         }
     }
 
@@ -184,25 +177,6 @@ impl Window {
         self.view_to_cursor(buf);
     }
 
-    pub fn mode(&self) -> Mode {
-        self.mode
-    }
-
-    pub fn open_prompt(&mut self, prompt: Prompt) {
-        self.layers.push(Layer::Prompt(prompt));
-
-        // self.prompt = prompt;
-        // self.mode = Mode::Prompt;
-    }
-
-    pub fn close_prompt(&mut self) {
-        if let Some(Layer::Prompt(..)) = self.layers.iter().last() {
-            self.layers.pop();
-        }
-
-        // self.mode = Mode::Normal;
-    }
-
     pub fn cursors(&self) -> &Cursors {
         &self.cursors
     }
@@ -250,6 +224,31 @@ impl Window {
         let cursor_pos = cursor.pos();
         buf.insert(cursor_pos, text);
         cursor.goto(cursor_pos + text.len());
+    }
+
+    pub fn layers(&self) -> &[Layer] {
+        self.layers.as_slice()
+    }
+
+    pub fn prompt(&mut self) -> Option<&mut Prompt> {
+        if let Some(Layer::Prompt(ref mut p)) = self.layers.iter_mut().last() {
+            Some(p)
+        } else {
+            None
+        }
+    }
+
+    pub fn open_prompt(&mut self, prompt: Prompt) {
+        self.layers.push(Layer::Prompt(prompt));
+    }
+
+    pub fn close_prompt(&mut self) -> Option<Prompt> {
+        let is_prompt = matches!(self.layers.iter().last(), Some(Layer::Prompt(..)));
+        if let Layer::Prompt(prompt) = self.layers.pop()? {
+            Some(prompt)
+        } else {
+            None
+        }
     }
 }
 

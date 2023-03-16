@@ -21,8 +21,6 @@ use std::path::PathBuf;
 use tokio::io;
 use tokio::sync::mpsc::Receiver;
 
-use crate::actions::prompt;
-use crate::actions::text;
 use crate::actions::Action;
 use crate::common::file::File;
 use crate::draw::DrawState;
@@ -36,9 +34,7 @@ use crate::server::JobsHandle;
 
 use self::buffers::Buffers;
 use self::jobs::Jobs;
-use self::keymap::Keymap;
 use self::options::Options;
-use self::windows::Mode;
 use self::windows::Window;
 use self::windows::Windows;
 
@@ -123,7 +119,7 @@ impl Editor {
 
     /// Open a file in client 'id':s window
     pub fn open_file(&mut self, id: ClientId, path: impl AsRef<Path>) -> io::Result<()> {
-        let mut file = File::new(path, &self.options)?;
+        let file = File::new(path, &self.options)?;
         let buf = Buffer::from_file(file)?;
         self.open_buffer(id, buf);
         Ok(())
@@ -279,13 +275,8 @@ impl Editor {
     }
 
     fn handle_insert(&mut self, id: ClientId, text: &str) {
-        let (win, _buf) = self.get_win_buf(id);
-
-        // Where to send input
-        match win.mode() {
-            Mode::Normal => text::insert_at_cursor(self, id, text),
-            Mode::Prompt => prompt::prompt_insert_at_cursor(self, id, text),
-        }
+        let (win, buf) = self.get_win_buf_mut(id);
+        win.handle_insert(buf, text);
     }
 
     pub fn handle_job_msg(&mut self, msg: FromJobs) {

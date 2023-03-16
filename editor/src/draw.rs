@@ -6,7 +6,7 @@ use sanedit_messages::redraw::{self, Redraw, Theme};
 
 use crate::editor::{
     buffers::Buffer,
-    windows::{Mode, Window},
+    windows::{Layer, Window},
 };
 
 use self::{prompt::draw_prompt, statusline::draw_statusline, window::draw_window};
@@ -40,42 +40,48 @@ impl DrawState {
 
     pub fn redraw(&mut self, win: &mut Window, buf: &Buffer, theme: &Theme) -> Vec<Redraw> {
         let mut redraw: Vec<Redraw> = vec![];
-        match win.mode() {
-            Mode::Normal => {
-                if self.prompt.take().is_some() {
-                    self.prompt_scroll_offset = 0;
-                    redraw.push(Redraw::ClosePrompt);
-                }
 
-                win.draw_view(buf);
-                let view = win.view();
-                let cursors = win.cursors();
-                let window = draw_window(view, cursors, buf, theme);
-                if let Some(diff) = self.window.diff(&window) {
-                    redraw.push(diff.into());
-                    self.window = window;
-                }
-
-                let statusline = draw_statusline(win, buf);
-                if let Some(diff) = self.statusline.diff(&statusline) {
-                    redraw.push(diff.into());
-                    self.statusline = statusline;
-                }
-            }
-            Mode::Prompt => {
-                let prompt = draw_prompt(&win.prompt, &win.options, &mut self.prompt_scroll_offset);
-                match self.prompt.as_mut() {
-                    Some(prev) => {
-                        if let Some(diff) = prev.diff(&prompt) {
-                            redraw.push(diff.into());
-                            *prev = prompt;
+        let layers = win.layers();
+        for layer in layers {
+            match layer {
+                Layer::Prompt(prompt) => {
+                    let prompt = draw_prompt(prompt, &win.options, &mut self.prompt_scroll_offset);
+                    match self.prompt.as_mut() {
+                        Some(prev) => {
+                            if let Some(diff) = prev.diff(&prompt) {
+                                redraw.push(diff.into());
+                                *prev = prompt;
+                            }
+                        }
+                        None => {
+                            redraw.push(Redraw::Prompt(prompt.clone()));
+                            self.prompt = Some(prompt);
                         }
                     }
-                    None => {
-                        redraw.push(Redraw::Prompt(prompt.clone()));
-                        self.prompt = Some(prompt);
-                    }
                 }
+                Layer::Search(_) => todo!(),
+            }
+        }
+
+        if layers.is_empty() {
+            if self.prompt.take().is_some() {
+                self.prompt_scroll_offset = 0;
+                redraw.push(Redraw::ClosePrompt);
+            }
+
+            win.draw_view(buf);
+            let view = win.view();
+            let cursors = win.cursors();
+            let window = draw_window(view, cursors, buf, theme);
+            if let Some(diff) = self.window.diff(&window) {
+                redraw.push(diff.into());
+                self.window = window;
+            }
+
+            let statusline = draw_statusline(win, buf);
+            if let Some(diff) = self.statusline.diff(&statusline) {
+                redraw.push(diff.into());
+                self.statusline = statusline;
             }
         }
 

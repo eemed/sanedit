@@ -24,16 +24,21 @@ pub(crate) struct Prompt {
 }
 
 impl Prompt {
-    pub fn new(message: &str, must_complete: bool) -> Prompt {
+    pub fn new(message: &str) -> Prompt {
         Prompt {
             message: String::from(message),
             input: String::new(),
             cursor: 0,
-            completion: Completion::new(must_complete),
+            completion: Completion::new(false),
             on_confirm: None,
             on_abort: None,
             keymap: Keymap::default_prompt(),
         }
+    }
+
+    pub fn must_complete(mut self) -> Self {
+        self.completion.must_complete = true;
+        self
     }
 
     pub fn on_confirm(mut self, action: PromptAction) -> Self {
@@ -46,9 +51,13 @@ impl Prompt {
         self
     }
 
-    pub fn keymap(mut self, map: Keymap) -> Self {
+    pub fn set_keymap(mut self, map: Keymap) -> Self {
         self.keymap = map;
         self
+    }
+
+    pub fn keymap(&self) -> &Keymap {
+        &self.keymap
     }
 
     pub fn message(&self) -> &str {
@@ -152,7 +161,7 @@ impl Prompt {
 
 impl Default for Prompt {
     fn default() -> Self {
-        Prompt::new("", false)
+        Prompt::new("")
     }
 }
 

@@ -9,7 +9,8 @@ use super::{
 pub struct Bytes<'a> {
     range: Range<usize>,
     chunks: Chunks<'a>,
-    chunk: Option<(usize, Chunk<'a>)>,
+    chunk: Option<Chunk<'a>>,
+    chunk_pos: usize,
     chunk_len: usize, // cache chunk len to improve next performance about from 1.7ns to about 1.1ns ~30%.
     pos: usize,       // Position relative to the current chunk.
 }
@@ -20,10 +21,13 @@ impl<'a> Bytes<'a> {
         let chunks = Chunks::new(pt, at);
         let chunk = chunks.get();
         let pos = chunk.as_ref().map(|(pos, _)| at - pos).unwrap_or(0);
-        let chunk_len = chunk.as_ref().map(|(_, c)| c.as_ref().len()).unwrap_or(0);
+        let chunk_pos = chunk.as_ref().map(|(p, _)| *p).unwrap_or(pt.len());
+        let chunk = chunk.map(|(_, c)| c);
+        let chunk_len = chunk.as_ref().map(|c| c.as_ref().len()).unwrap_or(0);
         Bytes {
             chunk,
             chunks,
+            chunk_pos,
             chunk_len,
             pos,
             range: 0..pt.len(),
@@ -40,14 +44,17 @@ impl<'a> Bytes<'a> {
         );
         let chunks = Chunks::new_from_slice(pt, at, range.clone());
         let chunk = chunks.get();
+        let chunk_pos = chunk.as_ref().map(|(p, _)| *p).unwrap_or(range.end);
+        let pos = chunk.as_ref().map(|(pos, _)| at - pos).unwrap_or(0);
+        let chunk = chunk.map(|(_, c)| c);
         let chunk_len = chunk
             .as_ref()
-            .map(|(_, chunk)| chunk.as_ref().len())
+            .map(|c| c.as_ref().len())
             .unwrap_or(0);
-        let pos = chunk.as_ref().map(|(pos, _)| at - pos).unwrap_or(0);
         Bytes {
             chunk,
             chunks,
+            chunk_pos,
             chunk_len,
             pos,
             range,
@@ -58,19 +65,20 @@ impl<'a> Bytes<'a> {
     pub fn next(&mut self) -> Option<u8> {
         if self.pos >= self.chunk_len {
             self.pos = 0;
-            let (chunk, len): (Option<(usize, Chunk)>, usize) = self
+            let (chunk, pos, len): (Option<Chunk>, usize, usize) = self
                 .chunks
                 .next()
                 .map(|(pos, chunk)| {
                     let len = chunk.as_ref().len();
-                    (Some((pos, chunk)), len)
+                    (Some(chunk), pos, len)
                 })
-                .unwrap_or((None, 0));
+                .unwrap_or((None, self.range.end, 0));
             self.chunk = chunk;
+            self.chunk_pos = pos;
             self.chunk_len = len;
         }
 
-        let chunk = self.chunk.as_ref()?.1.as_ref();
+        let chunk = self.chunk.as_ref()?.as_ref();
         let byte = chunk[self.pos];
         self.pos += 1;
         Some(byte)
@@ -81,26 +89,22 @@ impl<'a> Bytes<'a> {
         if self.pos != 0 {
             self.pos -= 1;
         } else {
-            let chunk = self.chunks.prev()?;
-            let len = chunk.1.as_ref().len();
+            let (pos, chunk) = self.chunks.prev()?;
+            let len = chunk.as_ref().len();
             self.pos = len.saturating_sub(1);
+            self.chunk_pos = pos;
             self.chunk_len = len;
             self.chunk = Some(chunk);
         }
 
-        let chunk = self.chunk.as_ref()?.1.as_ref();
+        let chunk = self.chunk.as_ref()?.as_ref();
         let byte = chunk[self.pos];
         Some(byte)
     }
 
     #[inline]
     pub fn pos(&self) -> usize {
-        let chunk_pos = self
-            .chunk
-            .as_ref()
-            .map(|(pos, _)| *pos)
-            .unwrap_or(self.range.end);
-        chunk_pos + self.pos
+        self.chunk_pos + self.pos
     }
 }
 
@@ -139,13 +143,19 @@ mod test {
         pt.insert_str(0, "foo");
         let mut bytes = pt.bytes_at(pt.len());
 
+        assert_eq!(bytes.pos(), pt.len());
         assert!(bytes.next().is_none());
         assert_eq!(as_byte("o"), bytes.prev());
+        assert_eq!(2, bytes.pos());
         assert_eq!(as_byte("o"), bytes.prev());
+        assert_eq!(1, bytes.pos());
         assert_eq!(as_byte("f"), bytes.prev());
+        assert_eq!(0, bytes.pos());
         assert!(bytes.prev().is_none());
         assert!(bytes.prev().is_none());
         assert!(bytes.prev().is_none());
+
+        assert_eq!(0, bytes.pos());
         assert_eq!(as_byte("f"), bytes.next());
     }
 
@@ -176,9 +186,13 @@ mod test {
         pt.insert_str(0, "foo");
         let mut bytes = pt.bytes_at(3);
 
+        assert_eq!(3, bytes.pos());
         assert_eq!(as_byte("o"), bytes.prev());
+        assert_eq!(2, bytes.pos());
         assert_eq!(as_byte("o"), bytes.prev());
+        assert_eq!(1, bytes.pos());
         assert_eq!(as_byte("f"), bytes.prev());
+        assert_eq!(0, bytes.pos());
     }
 
     #[test]

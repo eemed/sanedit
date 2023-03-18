@@ -265,17 +265,20 @@ pub(crate) mod chars2 {
             Chars2 { bytes, decoder: Decoder::new() }
         }
 
-        pub fn next(&mut self) -> Option<char> {
+        pub fn next(&mut self) -> Option<(usize, usize, char)> {
             use DecodeResult::*;
+            let start = self.bytes.pos();
             loop {
                 let byte = self.bytes.next()?;
 
                 match self.decoder.next(byte) {
                     Char(ch) => {
-                        return Some(ch)
+                        let end = self.bytes.pos();
+                        return Some((start, end, ch))
                     }
                     Invalid => {
-                        return Some(REPLACEMENT_CHAR);
+                        let end = self.bytes.pos();
+                        return Some((start, end, REPLACEMENT_CHAR));
                     }
                     Incomplete => {},
                 }

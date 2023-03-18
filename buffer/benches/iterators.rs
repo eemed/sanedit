@@ -1,7 +1,7 @@
 use std::{io, path::PathBuf};
 
 use criterion::{criterion_group, criterion_main, Criterion};
-use sanedit_buffer::piece_tree::{PieceTree, Chars2};
+use sanedit_buffer::piece_tree::{Chars2, PieceTree};
 
 fn bytes(c: &mut Criterion) {
     c.bench_function("bytes_next", |bench| {

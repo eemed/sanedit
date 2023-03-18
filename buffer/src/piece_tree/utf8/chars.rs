@@ -162,42 +162,59 @@ pub(crate) mod chars2 {
     use crate::piece_tree::{Bytes, PieceTree};
 
     const ACCEPT: u32 = 0;
-    const REJECT: u32 = 1;
+    const REJECT: u32 = 12;
 
+    // The first part of the table maps bytes to character classes that
+    // to reduce the size of the transition table and create bitmasks.
     #[rustfmt::skip]
     const CHAR_CLASSES: [u8; 256] = [
-      0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, // 00..1f
-      0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, // 20..3f
-      0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, // 40..5f
-      0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, // 60..7f
-      1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9, // 80..9f
-      7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7, // a0..bf
-      8,8,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2, // c0..df
-      0xa,0x3,0x3,0x3,0x3,0x3,0x3,0x3,0x3,0x3,0x3,0x3,0x3,0x4,0x3,0x3, // e0..ef
-      0xb,0x6,0x6,0x6,0x5,0x8,0x8,0x8,0x8,0x8,0x8,0x8,0x8,0x8,0x8,0x8, // f0..ff
+         0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+         0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+         0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+         0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+         1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,  9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,
+         7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,  7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,
+         8,8,2,2,2,2,2,2,2,2,2,2,2,2,2,2,  2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,
+        10,3,3,3,3,3,3,3,3,3,3,3,3,4,3,3, 11,6,6,6,5,8,8,8,8,8,8,8,8,8,8,8,
     ];
 
+    // The second part is a transition table that maps a combination
+    // of a state of the automaton and a character class to a state.
     #[rustfmt::skip]
-    const TRANSITIONS: [u8; 144] = [
-      0x0,0x1,0x2,0x3,0x5,0x8,0x7,0x1,0x1,0x1,0x4,0x6,0x1,0x1,0x1,0x1, // s0..s0
-      1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,1,1,1,1,1,0,1,0,1,1,1,1,1,1, // s1..s2
-      1,2,1,1,1,1,1,2,1,2,1,1,1,1,1,1,1,1,1,1,1,1,1,2,1,1,1,1,1,1,1,1, // s3..s4
-      1,2,1,1,1,1,1,1,1,2,1,1,1,1,1,1,1,1,1,1,1,1,1,3,1,3,1,1,1,1,1,1, // s5..s6
-      1,3,1,1,1,1,1,3,1,3,1,1,1,1,1,1,1,3,1,1,1,1,1,1,1,1,1,1,1,1,1,1, // s7..s8
+    const TRANSITIONS: [u8; 108] = [
+        0, 12,24,36,60,96,84,12,12,12,48,72, 12,12,12,12,12,12,12,12,12,12,12,12,
+        12, 0,12,12,12,12,12, 0,12, 0,12,12, 12,24,12,12,12,12,12,24,12,24,12,12,
+        12,12,12,12,12,12,12,24,12,12,12,12, 12,24,12,12,12,12,12,12,12,24,12,12,
+        12,12,12,12,12,12,12,36,12,36,12,12, 12,36,12,12,12,12,12,36,12,36,12,12,
+        12,36,12,12,12,12,12,12,12,12,12,12,
     ];
 
-    fn decode(state: &mut u32, cp: &mut u32, byte: u32) -> u32 {
-        let t = CHAR_CLASSES[byte as usize];
+    const TRANSITIONS_BACKWARDS: [u8; 84] = [
+         0,24,12,12,12,12,12,24,12,24,12,12,  0,24,12,12,12,12,12,24,12,24,12,12,
+        12,36, 0,12,12,12,12,48,12,36,12,12, 12,60,12, 0, 0,12,12,72,12,72,12,12,
+        12,60,12, 0,12,12,12,72,12,72, 0,12, 12,12,12,12,12, 0, 0,12,12,12,12,12,
+        12,12,12,12,12,12,12,12,12,12,12, 0,
+    ];
+
+    // https://bjoern.hoehrmann.de/utf-8/decoder/dfa/
+    fn decode(state: &mut u32, cp: &mut u32, byte: u8) -> u32 {
+        let byte = byte as u32;
+        let class = CHAR_CLASSES[byte as usize];
         if *state != ACCEPT {
             *cp = (byte & 0x3f) | (*cp << 6);
         } else {
-            *cp = (0xff >> t) & byte;
+            *cp = (0xff >> class) & byte;
         }
-        *state = TRANSITIONS[(*state * 16 + (t as u32)) as usize] as u32;
+        *state = TRANSITIONS[(*state + (class as u32)) as usize] as u32;
         *state
     }
 
-    // https://bjoern.hoehrmann.de/utf-8/decoder/dfa/
+    pub enum DecodeResult {
+        Char(char),
+        Invalid,
+        Incomplete,
+    }
+
     #[derive(Debug, Clone)]
     struct Decoder {
         state: u32,
@@ -207,7 +224,7 @@ pub(crate) mod chars2 {
     impl Decoder {
         pub fn new() -> Decoder {
             Decoder {
-                state: 0,
+                state: ACCEPT,
                 cp: 0,
             }
         }
@@ -221,7 +238,7 @@ pub(crate) mod chars2 {
                 return Char(ch);
             }
 
-            match decode(&mut self.state, &mut self.cp, byte as u32) {
+            match decode(&mut self.state, &mut self.cp, byte) {
                 ACCEPT => {
                     // Automaton ensures this is safe
                     let ch = unsafe { char::from_u32_unchecked(self.cp) };
@@ -233,12 +250,63 @@ pub(crate) mod chars2 {
         }
     }
 
+    // https://gershnik.github.io/2021/03/24/reverse-utf8-decoding.html
+    fn decode_last(state: &mut u32, cp: &mut u32, shift: &mut u32, collect: &mut u32, byte: u8) -> u32 {
+        let byte = byte as u32;
+        let class = CHAR_CLASSES[byte as usize];
+        *state = TRANSITIONS_BACKWARDS[(*state + class as u32) as usize] as u32;
 
-    pub enum DecodeResult {
-        Char(char),
-        Invalid,
-        Incomplete,
+        if *state <= REJECT {
+            *collect |= ((0xff >> class) & byte) << *shift;
+            *cp = *collect;
+            *shift = 0;
+            *collect = 0;
+        } else {
+            *collect |= (byte & 0x3f) << *shift;
+            *shift += 6;
+        }
+
+        *state
     }
+
+    #[derive(Debug, Clone)]
+    struct DecoderRev {
+        state: u32,
+        cp: u32,
+        shift: u32,
+        collect: u32,
+    }
+
+    impl DecoderRev {
+        pub fn new() -> DecoderRev {
+            DecoderRev {
+                state: ACCEPT,
+                cp: 0,
+                shift: 0,
+                collect: 0,
+            }
+        }
+
+        pub fn prev(&mut self, byte: u8) -> DecodeResult {
+            use DecodeResult::*;
+
+            if self.state == ACCEPT && byte.is_ascii() {
+                let ch = unsafe { char::from_u32_unchecked(byte as u32) };
+                return Char(ch);
+            }
+
+            match decode_last(&mut self.state, &mut self.cp, &mut self.shift, &mut self.collect, byte) {
+                ACCEPT => {
+                    // Automaton ensures this is safe
+                    let ch = unsafe { char::from_u32_unchecked(self.cp) };
+                    Char(ch)
+                },
+                REJECT => Invalid,
+                _ => Incomplete,
+            }
+        }
+    }
+
 
     #[derive(Debug, Clone)]
     pub struct Chars2<'a> {
@@ -289,6 +357,7 @@ pub(crate) mod chars2 {
     #[cfg(test)]
     mod test {
         use super::*;
+
         #[test]
         fn decode_test() {
             use DecodeResult::*;
@@ -298,6 +367,28 @@ pub(crate) mod chars2 {
             println!("-- RESULT --");
             for b in bytes {
                 match decoder.next(*b) {
+                    Char(ch) => {
+                        print!("{ch}")
+                    }
+                    Invalid => {
+                        print!("\u{FFFD}");
+                    }
+                    Incomplete => {},
+                }
+            }
+            println!("");
+            println!("-- -- --");
+        }
+
+        #[test]
+        fn decode_test_last() {
+            use DecodeResult::*;
+
+            let mut decoder = DecoderRev::new();
+            let bytes = b"hello \xc2\xA7b";
+            println!("-- RESULT BACK --");
+            for b in bytes.iter().rev() {
+                match decoder.prev(*b) {
                     Char(ch) => {
                         print!("{ch}")
                     }

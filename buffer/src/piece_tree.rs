@@ -12,8 +12,8 @@ use std::ops::{Bound, RangeBounds};
 
 use self::tree::pieces::Pieces;
 use self::tree::Tree;
-use self::utf8::chars::Chars;
 pub use self::utf8::chars::chars2::Chars2;
+use self::utf8::chars::Chars;
 use crate::piece_tree::buffers::BufferKind;
 use crate::piece_tree::chunks::Chunks;
 use crate::piece_tree::tree::piece::Piece;

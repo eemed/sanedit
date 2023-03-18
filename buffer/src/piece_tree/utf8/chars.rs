@@ -156,12 +156,16 @@ fn is_leading_or_invalid_utf8_byte(b: u8) -> bool {
     (b & 0b1100_0000) != 0b1000_0000
 }
 
-mod dfa {
-    const ACCEPT: u8 = 0;
-    const REJECT: u8 = 1;
+pub(crate) mod chars2 {
+    use super::REPLACEMENT_CHAR;
+    use std::ops::Range;
+    use crate::piece_tree::{Bytes, PieceTree};
+
+    const ACCEPT: u32 = 0;
+    const REJECT: u32 = 1;
 
     #[rustfmt::skip]
-    const UTF8D: [u8; 400] = [
+    const CHAR_CLASSES: [u8; 256] = [
       0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, // 00..1f
       0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, // 20..3f
       0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, // 40..5f
@@ -171,6 +175,10 @@ mod dfa {
       8,8,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2, // c0..df
       0xa,0x3,0x3,0x3,0x3,0x3,0x3,0x3,0x3,0x3,0x3,0x3,0x3,0x4,0x3,0x3, // e0..ef
       0xb,0x6,0x6,0x6,0x5,0x8,0x8,0x8,0x8,0x8,0x8,0x8,0x8,0x8,0x8,0x8, // f0..ff
+    ];
+
+    #[rustfmt::skip]
+    const TRANSITIONS: [u8; 144] = [
       0x0,0x1,0x2,0x3,0x5,0x8,0x7,0x1,0x1,0x1,0x4,0x6,0x1,0x1,0x1,0x1, // s0..s0
       1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,1,1,1,1,1,0,1,0,1,1,1,1,1,1, // s1..s2
       1,2,1,1,1,1,1,2,1,2,1,1,1,1,1,1,1,1,1,1,1,1,1,2,1,1,1,1,1,1,1,1, // s3..s4
@@ -178,28 +186,128 @@ mod dfa {
       1,3,1,1,1,1,1,3,1,3,1,1,1,1,1,1,1,3,1,1,1,1,1,1,1,1,1,1,1,1,1,1, // s7..s8
     ];
 
-    fn decode(state: &mut u32, codep: &mut u32, byte: u32) -> u32 {
-        let t = UTF8D[byte as usize];
-        if *state != ACCEPT as u32 {
-            *codep = (byte & 0x3f) | (*codep << 6);
+    fn decode(state: &mut u32, cp: &mut u32, byte: u32) -> u32 {
+        let t = CHAR_CLASSES[byte as usize];
+        if *state != ACCEPT {
+            *cp = (byte & 0x3f) | (*cp << 6);
         } else {
-            *codep = (0xff >> t) & byte;
+            *cp = (0xff >> t) & byte;
         }
-        *state = UTF8D[(256 + *state * 16 + (t as u32)) as usize] as u32;
-        return *state;
+        *state = TRANSITIONS[(*state * 16 + (t as u32)) as usize] as u32;
+        *state
     }
 
-    // uint32_t inline
-    // decode(uint32_t* state, uint32_t* codep, uint32_t byte) {
-    //   uint32_t type = utf8d[byte];
+    // https://bjoern.hoehrmann.de/utf-8/decoder/dfa/
+    #[derive(Debug, Clone)]
+    struct Decoder {
+        state: u32,
+        cp: u32,
+    }
 
-    //   *codep = (*state != UTF8_ACCEPT) ?
-    //     (byte & 0x3fu) | (*codep << 6) :
-    //     (0xff >> type) & (byte);
+    impl Decoder {
+        pub fn new() -> Decoder {
+            Decoder {
+                state: 0,
+                cp: 0,
+            }
+        }
 
-    //   *state = utf8d[256 + *state*16 + type];
-    //   return *state;
-    // }
+        pub fn next(&mut self, byte: u8) -> DecodeResult {
+            use DecodeResult::*;
+
+            // ~12% better performance for ascii
+            if self.state == ACCEPT && byte.is_ascii() {
+                let ch = unsafe { char::from_u32_unchecked(byte as u32) };
+                return Char(ch);
+            }
+
+            match decode(&mut self.state, &mut self.cp, byte as u32) {
+                ACCEPT => {
+                    // Automaton ensures this is safe
+                    let ch = unsafe { char::from_u32_unchecked(self.cp) };
+                    Char(ch)
+                },
+                REJECT => Invalid,
+                _ => Incomplete,
+            }
+        }
+    }
+
+
+    pub enum DecodeResult {
+        Char(char),
+        Invalid,
+        Incomplete,
+    }
+
+    #[derive(Debug, Clone)]
+    pub struct Chars2<'a> {
+        bytes: Bytes<'a>,
+        decoder: Decoder,
+    }
+
+    impl<'a> Chars2<'a> {
+        #[inline]
+        pub fn new(pt: &'a PieceTree, at: usize) -> Chars2<'a> {
+            let bytes = Bytes::new(pt, at);
+            Chars2 { bytes, decoder: Decoder::new() }
+        }
+
+        #[inline]
+        pub(crate) fn new_from_slice(pt: &'a PieceTree, at: usize, range: Range<usize>) -> Chars2<'a> {
+            debug_assert!(
+                range.end - range.start >= at,
+                "Attempting to index {} over slice len {} ",
+                at,
+                range.end - range.start,
+            );
+            let bytes = Bytes::new_from_slice(pt, at, range);
+            Chars2 { bytes, decoder: Decoder::new() }
+        }
+
+        pub fn next(&mut self) -> Option<char> {
+            use DecodeResult::*;
+            loop {
+                let byte = self.bytes.next()?;
+
+                match self.decoder.next(byte) {
+                    Char(ch) => {
+                        return Some(ch)
+                    }
+                    Invalid => {
+                        return Some(REPLACEMENT_CHAR);
+                    }
+                    Incomplete => {},
+                }
+            }
+        }
+    }
+
+    #[cfg(test)]
+    mod test {
+        use super::*;
+        #[test]
+        fn decode_test() {
+            use DecodeResult::*;
+
+            let mut decoder = Decoder::new();
+            let bytes = b"hello \xc2\xA7b";
+            println!("-- RESULT --");
+            for b in bytes {
+                match decoder.next(*b) {
+                    Char(ch) => {
+                        print!("{ch}")
+                    }
+                    Invalid => {
+                        print!("\u{FFFD}");
+                    }
+                    Incomplete => {},
+                }
+            }
+            println!("");
+            println!("-- -- --");
+        }
+    }
 }
 
 #[cfg(test)]

@@ -7,4 +7,5 @@ members = [
     "messages",
     "regex",
     "terminal-client",
+    "ucd",
 ]

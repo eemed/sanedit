@@ -158,8 +158,8 @@ fn is_leading_or_invalid_utf8_byte(b: u8) -> bool {
 
 pub(crate) mod chars2 {
     use super::REPLACEMENT_CHAR;
-    use std::ops::Range;
     use crate::piece_tree::{Bytes, PieceTree};
+    use std::ops::Range;
 
     const ACCEPT: u32 = 0;
     const REJECT: u32 = 12;
@@ -190,10 +190,10 @@ pub(crate) mod chars2 {
     ];
 
     const TRANSITIONS_BACKWARDS: [u8; 84] = [
-         0,24,12,12,12,12,12,24,12,24,12,12,  0,24,12,12,12,12,12,24,12,24,12,12,
-        12,36, 0,12,12,12,12,48,12,36,12,12, 12,60,12, 0, 0,12,12,72,12,72,12,12,
-        12,60,12, 0,12,12,12,72,12,72, 0,12, 12,12,12,12,12, 0, 0,12,12,12,12,12,
-        12,12,12,12,12,12,12,12,12,12,12, 0,
+        0, 24, 12, 12, 12, 12, 12, 24, 12, 24, 12, 12, 0, 24, 12, 12, 12, 12, 12, 24, 12, 24, 12,
+        12, 12, 36, 0, 12, 12, 12, 12, 48, 12, 36, 12, 12, 12, 60, 12, 0, 0, 12, 12, 72, 12, 72,
+        12, 12, 12, 60, 12, 0, 12, 12, 12, 72, 12, 72, 0, 12, 12, 12, 12, 12, 12, 0, 0, 12, 12, 12,
+        12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 0,
     ];
 
     // https://bjoern.hoehrmann.de/utf-8/decoder/dfa/
@@ -243,7 +243,7 @@ pub(crate) mod chars2 {
                     // Automaton ensures this is safe
                     let ch = unsafe { char::from_u32_unchecked(self.cp) };
                     Char(ch)
-                },
+                }
                 REJECT => Invalid,
                 _ => Incomplete,
             }
@@ -251,7 +251,13 @@ pub(crate) mod chars2 {
     }
 
     // https://gershnik.github.io/2021/03/24/reverse-utf8-decoding.html
-    fn decode_last(state: &mut u32, cp: &mut u32, shift: &mut u32, collect: &mut u32, byte: u8) -> u32 {
+    fn decode_last(
+        state: &mut u32,
+        cp: &mut u32,
+        shift: &mut u32,
+        collect: &mut u32,
+        byte: u8,
+    ) -> u32 {
         let byte = byte as u32;
         let class = CHAR_CLASSES[byte as usize];
         *state = TRANSITIONS_BACKWARDS[(*state + class as u32) as usize] as u32;
@@ -295,34 +301,48 @@ pub(crate) mod chars2 {
                 return Char(ch);
             }
 
-            match decode_last(&mut self.state, &mut self.cp, &mut self.shift, &mut self.collect, byte) {
+            match decode_last(
+                &mut self.state,
+                &mut self.cp,
+                &mut self.shift,
+                &mut self.collect,
+                byte,
+            ) {
                 ACCEPT => {
                     // Automaton ensures this is safe
                     let ch = unsafe { char::from_u32_unchecked(self.cp) };
                     Char(ch)
-                },
+                }
                 REJECT => Invalid,
                 _ => Incomplete,
             }
         }
     }
 
-
     #[derive(Debug, Clone)]
     pub struct Chars2<'a> {
         bytes: Bytes<'a>,
         decoder: Decoder,
+        decoder_rev: DecoderRev,
     }
 
     impl<'a> Chars2<'a> {
         #[inline]
         pub fn new(pt: &'a PieceTree, at: usize) -> Chars2<'a> {
             let bytes = Bytes::new(pt, at);
-            Chars2 { bytes, decoder: Decoder::new() }
+            Chars2 {
+                bytes,
+                decoder: Decoder::new(),
+                decoder_rev: DecoderRev::new(),
+            }
         }
 
         #[inline]
-        pub(crate) fn new_from_slice(pt: &'a PieceTree, at: usize, range: Range<usize>) -> Chars2<'a> {
+        pub(crate) fn new_from_slice(
+            pt: &'a PieceTree,
+            at: usize,
+            range: Range<usize>,
+        ) -> Chars2<'a> {
             debug_assert!(
                 range.end - range.start >= at,
                 "Attempting to index {} over slice len {} ",
@@ -330,25 +350,69 @@ pub(crate) mod chars2 {
                 range.end - range.start,
             );
             let bytes = Bytes::new_from_slice(pt, at, range);
-            Chars2 { bytes, decoder: Decoder::new() }
+            Chars2 {
+                bytes,
+                decoder: Decoder::new(),
+                decoder_rev: DecoderRev::new(),
+            }
         }
 
         pub fn next(&mut self) -> Option<(usize, usize, char)> {
             use DecodeResult::*;
             let start = self.bytes.pos();
             loop {
-                let byte = self.bytes.next()?;
+                let byte = match self.bytes.next() {
+                    Some(b) => b,
+                    None => {
+                        let end = self.bytes.pos();
+                        if start != end {
+                            return Some((start, end, REPLACEMENT_CHAR));
+                        } else {
+                            return None;
+                        }
+                    }
+                };
 
                 match self.decoder.next(byte) {
                     Char(ch) => {
                         let end = self.bytes.pos();
-                        return Some((start, end, ch))
+                        return Some((start, end, ch));
                     }
                     Invalid => {
                         let end = self.bytes.pos();
                         return Some((start, end, REPLACEMENT_CHAR));
                     }
-                    Incomplete => {},
+                    Incomplete => {}
+                }
+            }
+        }
+
+        pub fn prev(&mut self) -> Option<(usize, usize, char)> {
+            use DecodeResult::*;
+            let end = self.bytes.pos();
+            loop {
+                let byte = match self.bytes.prev() {
+                    Some(b) => b,
+                    None => {
+                        let start = self.bytes.pos();
+                        if start != end {
+                            return Some((start, end, REPLACEMENT_CHAR));
+                        } else {
+                            return None;
+                        }
+                    }
+                };
+
+                match self.decoder_rev.prev(byte) {
+                    Char(ch) => {
+                        let start = self.bytes.pos();
+                        return Some((start, end, ch));
+                    }
+                    Invalid => {
+                        let start = self.bytes.pos();
+                        return Some((start, end, REPLACEMENT_CHAR));
+                    }
+                    Incomplete => {}
                 }
             }
         }
@@ -373,7 +437,7 @@ pub(crate) mod chars2 {
                     Invalid => {
                         print!("\u{FFFD}");
                     }
-                    Incomplete => {},
+                    Incomplete => {}
                 }
             }
             println!("");
@@ -395,7 +459,7 @@ pub(crate) mod chars2 {
                     Invalid => {
                         print!("\u{FFFD}");
                     }
-                    Incomplete => {},
+                    Incomplete => {}
                 }
             }
             println!("");

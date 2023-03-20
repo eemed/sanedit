@@ -171,6 +171,44 @@ pub fn prev_grapheme<'a>(slice: &'a PieceTreeSlice, pos: usize) -> Option<PieceT
     Some(slice.slice(start..end))
 }
 
+mod graphemes2 {
+    use std::ops::Range;
+
+    use crate::piece_tree::{utf8::chars::Chars, PieceTree, PieceTreeSlice};
+
+    pub struct Graphemes<'a> {
+        pos: usize,
+        chars: Chars<'a>,
+    }
+
+    impl<'a> Graphemes<'a> {
+        #[inline]
+        pub(crate) fn new(pt: &'a PieceTree, at: usize) -> Graphemes<'a> {
+            let chars = Chars::new(pt, at);
+            Graphemes { pos: at, chars }
+        }
+
+        #[inline]
+        pub(crate) fn new_from_slice(
+            pt: &'a PieceTree,
+            at: usize,
+            range: Range<usize>,
+        ) -> Graphemes<'a> {
+            let pos = range.start + at;
+            let chars = Chars::new_from_slice(pt, at, range);
+            Graphemes { pos: at, chars }
+        }
+
+        pub fn prev(&mut self) -> Option<PieceTreeSlice> {
+            todo!()
+        }
+
+        pub fn next(&mut self) -> Option<PieceTreeSlice> {
+            todo!()
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use crate::piece_tree::PieceTree;

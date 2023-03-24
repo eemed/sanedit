@@ -18,24 +18,24 @@ function usage {
 function clean {
     rm -rf "$UCD_DIR"
     rm -rf $LOG_FILE
-    cargo clean
+    (cd crates && cargo clean)
 }
 
 function release {
-    cargo build --release
+    (cd crates && cargo build --release)
 }
 
 function run {
     release
-    cargo run --release
+    (cd crates && cargo run --release)
 }
 
 function run-test {
-    cargo test
+    (cd crates && cargo test)
 }
 
 function debug {
-    RUST_BACKTRACE=1 cargo run
+    (cd crates && RUST_BACKTRACE=1 cargo run)
 }
 
 function tail-log {
@@ -55,10 +55,10 @@ function download-ucd {
 
 function run-ucd-generate {
     download-ucd
-    ucd-generate word-break "$UCD_DIR" --enum > ucd/src/word_break.rs
-    ucd-generate sentence-break "$UCD_DIR" --enum > ucd/src/sentence_break.rs
-    ucd-generate grapheme-cluster-break "$UCD_DIR" --enum > ucd/src/grapheme_break.rs
-    ucd-generate general-category "$UCD_DIR" --enum > ucd/src/general_category.rs
+    ucd-generate word-break "$UCD_DIR" --enum > crates/ucd/src/word_break.rs
+    ucd-generate sentence-break "$UCD_DIR" --enum > crates/ucd/src/sentence_break.rs
+    ucd-generate grapheme-cluster-break "$UCD_DIR" --enum > crates/ucd/src/grapheme_break.rs
+    ucd-generate general-category "$UCD_DIR" --enum > crates/ucd/src/general_category.rs
 }
 
 case "$1" in

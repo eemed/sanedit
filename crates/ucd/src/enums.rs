@@ -1,3 +1,4 @@
+#[derive(Debug)]
 #[repr(u8)]
 pub enum GraphemeBreak {
     CR = 0,
@@ -13,4 +14,5 @@ pub enum GraphemeBreak {
     T,
     V,
     ZWJ,
+    Any,
 }

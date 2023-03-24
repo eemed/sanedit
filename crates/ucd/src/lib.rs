@@ -8,14 +8,17 @@ mod enums;
 
 pub use enums::GraphemeBreak;
 
-pub fn grapheme_break(ch: char) -> Option<GraphemeBreak> {
-    let pos = search_table(
+pub fn grapheme_break(ch: char) -> GraphemeBreak {
+    search_table(
         ch,
         grapheme_break::GRAPHEME_CLUSTER_BREAK,
-    )?;
-    // SAFETY: index is from GRAPHEME_CLUSTER_BREAK_ENUM and GraphemeBreak is
-    // just a rust enum version of it with repr(u8)
-    Some( unsafe { std::mem::transmute(pos) })
+    )
+    .map(|pos| {
+        // SAFETY: index is from GRAPHEME_CLUSTER_BREAK_ENUM and GraphemeBreak is
+        // just a rust enum version of it with repr(u8)
+        unsafe { std::mem::transmute(pos) }
+    })
+    .unwrap_or(GraphemeBreak::Any)
 }
 
 fn search_table(
@@ -26,9 +29,9 @@ fn search_table(
     let pos = table
         .binary_search_by(|(start, end, _)| {
             if ch < *start {
-                Ordering::Less
-            } else if *end < ch {
                 Ordering::Greater
+            } else if *end < ch {
+                Ordering::Less
             } else {
                 Ordering::Equal
             }
@@ -36,4 +39,15 @@ fn search_table(
         .ok()?;
     let (_, _, enum_pos) = &table[pos];
     Some(*enum_pos)
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn ascii() {
+        let gb = grapheme_break('a');
+        println!("GB {gb:?}");
+    }
 }

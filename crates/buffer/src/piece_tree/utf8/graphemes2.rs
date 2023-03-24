@@ -45,8 +45,8 @@ fn is_break(before: char, after: char) -> BreakResult {
     use sanedit_ucd::GraphemeBreak::*;
     use BreakResult::*;
 
-    let before = sanedit_ucd::grapheme_break(before).expect("a");
-    let after = sanedit_ucd::grapheme_break(after).expect("b");
+    let before = sanedit_ucd::grapheme_break(before);
+    let after = sanedit_ucd::grapheme_break(after);
 
     // TODO ascii performance improvement?
     // TODO investigate performance if these are in a table?

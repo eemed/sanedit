@@ -4,20 +4,24 @@ mod general_category;
 mod grapheme_break;
 mod sentence_break;
 mod word_break;
+mod enums;
 
-pub fn grapheme_break(ch: char) -> Option<&'static str> {
-    search_table(
+pub use enums::GraphemeBreak;
+
+pub fn grapheme_break(ch: char) -> Option<GraphemeBreak> {
+    let pos = search_table(
         ch,
         grapheme_break::GRAPHEME_CLUSTER_BREAK,
-        grapheme_break::GRAPHEME_CLUSTER_BREAK_ENUM,
-    )
+    )?;
+    // SAFETY: index is from GRAPHEME_CLUSTER_BREAK_ENUM and GraphemeBreak is
+    // just a rust enum version of it with repr(u8)
+    Some( unsafe { std::mem::transmute(pos) })
 }
 
 fn search_table(
     ch: char,
     table: &'static [(u32, u32, u8)],
-    enum_table: &'static [&'static str],
-) -> Option<&'static str> {
+) -> Option<u8> {
     let ch = ch as u32;
     let pos = table
         .binary_search_by(|(start, end, _)| {
@@ -31,6 +35,5 @@ fn search_table(
         })
         .ok()?;
     let (_, _, enum_pos) = &table[pos];
-    let kind = &enum_table[(*enum_pos) as usize];
-    Some(kind)
+    Some(*enum_pos)
 }

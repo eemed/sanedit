@@ -39,7 +39,6 @@ fn is_break(before: char, after: char) -> BreakResult {
     let before_gb = sanedit_ucd::grapheme_break(before);
     let after_gb = sanedit_ucd::grapheme_break(after);
 
-    // TODO ascii performance improvement?
     // TODO investigate performance if these are in a table?
     match (before_gb, after_gb) {
         (CR, LF) => NoBreak,              // GB 3
@@ -69,11 +68,11 @@ enum BreakResult {
     Break,
     NoBreak,
 
-    /// NoBreak preceeded with extPic Extend*
+    /// Do not break within emoji modifier sequences or emoji zwj sequences.
     /// GB11    \p{Extended_Pictographic} Extend* ZWJ   ×   \p{Extended_Pictographic}
     Emoji,
 
-    /// NoBreak if even amount of RI preceeding this or none
+    /// Do not break within emoji flag sequences. That is, do not break between regional indicator (RI) symbols if there is an odd number of RI characters before the break point.
     /// GB12    sot (RI RI)* RI     ×   RI
     /// GB13    [^RI] (RI RI)* RI   ×   RI
     Regional,

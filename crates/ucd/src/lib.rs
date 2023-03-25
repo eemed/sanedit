@@ -11,6 +11,7 @@ pub use enums::GraphemeBreak;
 pub use enums::Property;
 
 pub fn grapheme_break(ch: char) -> GraphemeBreak {
+    // TODO ascii performance improvement?
     table_search(ch, grapheme_break::GRAPHEME_CLUSTER_BREAK)
         .map(|pos| {
             // SAFETY: index is from GRAPHEME_CLUSTER_BREAK_ENUM and GraphemeBreak is

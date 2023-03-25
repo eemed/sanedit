@@ -1,4 +1,4 @@
-use crate::{editor::Editor, server::ClientId, common};
+use crate::{common, editor::Editor, server::ClientId};
 
 pub(crate) fn remove_grapheme_after_cursor(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.get_win_buf_mut(id);

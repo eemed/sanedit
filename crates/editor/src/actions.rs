@@ -1,8 +1,8 @@
 pub(crate) mod editor;
+pub(crate) mod jobs;
 pub(crate) mod movement;
 pub(crate) mod prompt;
 pub(crate) mod text;
-pub(crate) mod jobs;
 pub(crate) mod window;
 
 use std::{fmt, sync::Arc};
@@ -10,10 +10,10 @@ use std::{fmt, sync::Arc};
 use crate::{editor::Editor, server::ClientId};
 
 use self::editor::*;
+use self::jobs::*;
 use self::movement::*;
 use self::prompt::*;
 use self::text::*;
-use self::jobs::*;
 use self::window::*;
 
 macro_rules! action_list {

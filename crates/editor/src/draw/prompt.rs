@@ -2,7 +2,7 @@ use std::cmp;
 
 use sanedit_messages::redraw;
 
-use crate::editor::windows::{Prompt, Options};
+use crate::editor::windows::{Options, Prompt};
 
 pub(crate) fn draw_prompt(
     prompt: &Prompt,

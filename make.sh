@@ -8,6 +8,7 @@ function usage {
     echo "Available commands:"
     echo "    release      - create a release build"
     echo "    run          - run in release mode"
+    echo "    format       - run formatter"
     echo "    test         - run all tests"
     echo "    debug        - run in debug mode"
     echo "    tail-log     - tail logs ($LOG_FILE) when running"
@@ -59,7 +60,14 @@ function run-ucd-generate {
     ucd-generate sentence-break "$UCD_DIR" --enum > crates/ucd/src/sentence_break.rs
     ucd-generate grapheme-cluster-break "$UCD_DIR" --enum > crates/ucd/src/grapheme_break.rs
     ucd-generate general-category "$UCD_DIR" --enum > crates/ucd/src/general_category.rs
+    ucd-generate property-bool /tmp/ucd-15.0.0/ --include Extended_Pictographic > crates/ucd/src/properties.rs
+    run-format
 }
+
+function run-format {
+    (cd crates && cargo fmt)
+}
+
 
 case "$1" in
     "release")
@@ -79,6 +87,9 @@ case "$1" in
         ;;
     "ucd-generate")
         run-ucd-generate
+        ;;
+    "format")
+        run-format
         ;;
     "clean")
         clean

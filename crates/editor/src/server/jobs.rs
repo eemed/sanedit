@@ -129,7 +129,8 @@ pub(crate) async fn spawn_jobs(editor_handle: EditorHandle) -> JobsHandle {
 
 // Runs jobs in tokio runtime.
 async fn jobs_loop(mut recv: mpsc::Receiver<ToJobs>, handle: EditorHandle) {
-    let task_handles: Arc<Mutex<HashMap<JobId, JoinHandle<()>>>> = Arc::new(Mutex::new(HashMap::new()));
+    let task_handles: Arc<Mutex<HashMap<JobId, JoinHandle<()>>>> =
+        Arc::new(Mutex::new(HashMap::new()));
 
     while let Some(msg) = recv.recv().await {
         match msg {

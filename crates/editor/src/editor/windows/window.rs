@@ -22,12 +22,12 @@ use crate::{
 
 pub(crate) use self::{
     cursors::{Cursor, Cursors},
+    layer::Layer,
     message::{Message, Severity},
     options::Options,
     prompt::Prompt,
     prompt::PromptAction,
     view::{Cell, View},
-    layer::Layer,
 };
 
 #[derive(Debug)]

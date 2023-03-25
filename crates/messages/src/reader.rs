@@ -53,8 +53,7 @@ where
                 }
                 Ok(None) => match self.read_more_to_buf() {
                     Ok(0) | Err(_) => return None,
-                    _ => {}
-                    // Ok(n) => log::info!("read {n} bytes, {}", self.buf.len()),
+                    _ => {} // Ok(n) => log::info!("read {n} bytes, {}", self.buf.len()),
                 },
                 Err(_e) => {
                     self.buf.advance(1);

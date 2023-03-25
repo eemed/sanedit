@@ -33,7 +33,6 @@ pub enum Redraw {
 
     // Statusline and window cannot currently be closed so they do not have a
     // close redraw event
-
     /// Prompt opened
     Prompt(Prompt),
     /// Prompt updated

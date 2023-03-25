@@ -1,4 +1,4 @@
-use sanedit_messages::redraw::{Theme, ThemeField, Style};
+use sanedit_messages::redraw::{Style, Theme, ThemeField};
 
 #[derive(Debug)]
 pub struct UIContext {

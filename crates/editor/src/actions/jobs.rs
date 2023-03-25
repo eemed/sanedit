@@ -7,7 +7,7 @@ use tokio::{
 
 use crate::{
     editor::{jobs::AsyncJob, Editor},
-    server::{ClientId, JobFutureFn, JobProgress, JobProgressSender, JobId},
+    server::{ClientId, JobFutureFn, JobId, JobProgress, JobProgressSender},
 };
 
 use super::prompt;

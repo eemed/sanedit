@@ -8,7 +8,7 @@ pub fn next_grapheme_boundary(slice: &PieceTreeSlice, pos: usize) -> usize {
     match (current, after) {
         (Some((_, _, a)), Some((_, _, b))) => {
             todo!()
-        },
+        }
         (None, None) => slice.end(),
         (Some(_), None) => slice.end(),
         (None, Some(_)) => unreachable!(),
@@ -51,22 +51,21 @@ fn is_break(before: char, after: char) -> BreakResult {
     // TODO ascii performance improvement?
     // TODO investigate performance if these are in a table?
     match (before, after) {
-        (CR, LF) => NoBreak, // GB 3
-        (Control | CR | LF, _) => Break, // GB 4
-        (_, Control | CR | LF) => Break, // GB 5
+        (CR, LF) => NoBreak,              // GB 3
+        (Control | CR | LF, _) => Break,  // GB 4
+        (_, Control | CR | LF) => Break,  // GB 5
         (L, L | V | LV | LVT) => NoBreak, // GB 6
-        (LV | V, V | T) => NoBreak, // GB 7
-        (LVT | T, T) => NoBreak, // GB 8
-        (_, Extend | ZWJ) => NoBreak, // GB 9
-        (_, SpacingMark) => NoBreak, // GB 9a
-        (Prepend, _) => NoBreak, // GB 9b
+        (LV | V, V | T) => NoBreak,       // GB 7
+        (LVT | T, T) => NoBreak,          // GB 8
+        (_, Extend | ZWJ) => NoBreak,     // GB 9
+        (_, SpacingMark) => NoBreak,      // GB 9a
+        (Prepend, _) => NoBreak,          // GB 9b
         // GB 11
         // GB 12
         // GB 13
         (_, _) => Break, // GB 999
     }
 }
-
 
 enum BreakResult {
     Break,

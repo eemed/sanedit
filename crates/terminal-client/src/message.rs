@@ -1,4 +1,4 @@
-use sanedit_messages::{Message, ClientMessage};
+use sanedit_messages::{ClientMessage, Message};
 
 #[derive(Debug)]
 pub(crate) enum ClientInternalMessage {

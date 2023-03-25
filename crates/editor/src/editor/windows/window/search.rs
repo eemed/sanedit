@@ -11,5 +11,4 @@ pub struct Search {
     select: bool,
 }
 
-impl Search {
-}
+impl Search {}

@@ -75,7 +75,6 @@ pub struct PromptDiff {
     prompt: Prompt,
 }
 
-
 impl From<PromptDiff> for Redraw {
     fn from(diff: PromptDiff) -> Self {
         Redraw::PromptUpdate(diff)

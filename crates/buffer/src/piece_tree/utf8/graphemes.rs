@@ -2,20 +2,6 @@ use smallvec::SmallVec4;
 
 use crate::piece_tree::slice::PieceTreeSlice;
 
-// IDEA: implement StreamingGraphemeCursor, which does not know its position.
-//
-// next_boundary(chunk: &str, at_start: bool) -> BoundaryResult;
-// prev_boundary(chunk: &str, at_start: bool) -> BoundaryResult;
-// provide_context(chunk: &str, at_start: bool);
-//
-// Benefits:
-//   * We do not need whole grapheme in memory.
-// Cons:
-//   * More complex.
-// Unsolved:
-//   * We still need all chars yielded by chars_at in memory to convert indices
-//   back to piece tree indices?
-
 enum BoundaryResult {
     /// No boundary because we are at the end
     AtEnd,
@@ -169,44 +155,6 @@ pub fn prev_grapheme<'a>(slice: &'a PieceTreeSlice, pos: usize) -> Option<PieceT
     }
 
     Some(slice.slice(start..end))
-}
-
-mod graphemes2 {
-    use std::ops::Range;
-
-    use crate::piece_tree::{utf8::chars::Chars, PieceTree, PieceTreeSlice};
-
-    pub struct Graphemes<'a> {
-        pos: usize,
-        chars: Chars<'a>,
-    }
-
-    impl<'a> Graphemes<'a> {
-        #[inline]
-        pub(crate) fn new(pt: &'a PieceTree, at: usize) -> Graphemes<'a> {
-            let chars = Chars::new(pt, at);
-            Graphemes { pos: at, chars }
-        }
-
-        #[inline]
-        pub(crate) fn new_from_slice(
-            pt: &'a PieceTree,
-            at: usize,
-            range: Range<usize>,
-        ) -> Graphemes<'a> {
-            let pos = range.start + at;
-            let chars = Chars::new_from_slice(pt, at, range);
-            Graphemes { pos: at, chars }
-        }
-
-        pub fn prev(&mut self) -> Option<PieceTreeSlice> {
-            todo!()
-        }
-
-        pub fn next(&mut self) -> Option<PieceTreeSlice> {
-            todo!()
-        }
-    }
 }
 
 #[cfg(test)]

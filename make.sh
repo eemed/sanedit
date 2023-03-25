@@ -1,6 +1,6 @@
 #!/bin/bash
 
-LOG_FILE="/tmp/eemedit.log"
+LOG_FILE="/tmp/sanedit.log"
 UCD_VERSION=15.0.0
 UCD_DIR="/tmp/ucd-$UCD_VERSION"
 
@@ -60,7 +60,7 @@ function run-ucd-generate {
     ucd-generate sentence-break "$UCD_DIR" --enum > crates/ucd/src/sentence_break.rs
     ucd-generate grapheme-cluster-break "$UCD_DIR" --enum > crates/ucd/src/grapheme_break.rs
     ucd-generate general-category "$UCD_DIR" --enum > crates/ucd/src/general_category.rs
-    ucd-generate property-bool /tmp/ucd-15.0.0/ --include Extended_Pictographic > crates/ucd/src/properties.rs
+    ucd-generate property-bool "$UCD_DIR" --include Extended_Pictographic > crates/ucd/src/properties.rs
     run-format
 }
 

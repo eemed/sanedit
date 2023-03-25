@@ -1,15 +1,17 @@
-use std::cmp::Ordering;
-
 mod enums;
 mod general_category;
 mod grapheme_break;
+mod properties;
 mod sentence_break;
 mod word_break;
 
+use std::cmp::Ordering;
+
 pub use enums::GraphemeBreak;
+pub use enums::Property;
 
 pub fn grapheme_break(ch: char) -> GraphemeBreak {
-    search_table(ch, grapheme_break::GRAPHEME_CLUSTER_BREAK)
+    table_search(ch, grapheme_break::GRAPHEME_CLUSTER_BREAK)
         .map(|pos| {
             // SAFETY: index is from GRAPHEME_CLUSTER_BREAK_ENUM and GraphemeBreak is
             // just a rust enum version of it with repr(u8)
@@ -18,7 +20,22 @@ pub fn grapheme_break(ch: char) -> GraphemeBreak {
         .unwrap_or(GraphemeBreak::Any)
 }
 
-fn search_table(ch: char, table: &'static [(u32, u32, u8)]) -> Option<u8> {
+fn table_contains(ch: char, table: &'static [(u32, u32)]) -> bool {
+    let ch = ch as u32;
+    table
+        .binary_search_by(|(start, end, _)| {
+            if ch < *start {
+                Ordering::Greater
+            } else if *end < ch {
+                Ordering::Less
+            } else {
+                Ordering::Equal
+            }
+        })
+        .is_ok()
+}
+
+fn table_search(ch: char, table: &'static [(u32, u32, u8)]) -> Option<u8> {
     let ch = ch as u32;
     let pos = table
         .binary_search_by(|(start, end, _)| {

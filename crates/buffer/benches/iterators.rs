@@ -1,7 +1,9 @@
 use std::{io, path::PathBuf};
 
 use criterion::{criterion_group, criterion_main, Criterion};
-use sanedit_buffer::piece_tree::{Chars2, PieceTree, next_grapheme_boundary, next_grapheme_boundary2};
+use sanedit_buffer::piece_tree::{
+    next_grapheme_boundary, next_grapheme_boundary2, Chars2, PieceTree,
+};
 
 fn bytes(c: &mut Criterion) {
     c.bench_function("bytes_next", |bench| {
@@ -62,6 +64,18 @@ fn chars(c: &mut Criterion) {
         });
     });
 
+    c.bench_function("new_chars_create_10_000", |bench| {
+        let large = io::Cursor::new(include_str!("large.txt"));
+        let mut pt = PieceTree::from_reader(large).unwrap();
+        for _ in 0..10_000 {
+            pt.insert_str(0, "A");
+        }
+
+        bench.iter(move || {
+            let _iter = Chars2::new(&pt, 0);
+        });
+    });
+
     c.bench_function("new_chars_next", |bench| {
         let large = io::Cursor::new(include_str!("large.txt"));
         let pt = PieceTree::from_reader(large).unwrap();
@@ -75,7 +89,6 @@ fn chars(c: &mut Criterion) {
         });
     });
 }
-
 
 fn graphemes(c: &mut Criterion) {
     c.bench_function("grapheme_boundary_next", |bench| {

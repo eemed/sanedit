@@ -6,7 +6,7 @@ use log4rs::append::file::FileAppender;
 use log4rs::config::{Appender, Config, Root};
 use log4rs::encode::pattern::PatternEncoder;
 
-const LOG_FILE: &str = "/tmp/eemedit.log";
+const LOG_FILE: &str = "/tmp/sanedit.log";
 const LOG_LEVEL: LevelFilter = LevelFilter::Debug;
 
 pub fn setup() {

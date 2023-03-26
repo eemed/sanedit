@@ -1,38 +1,75 @@
-use sanedit_ucd::Property;
+use sanedit_ucd::{GraphemeBreak, Property};
 
 use crate::piece_tree::PieceTreeSlice;
 
-pub fn next_grapheme_boundary(slice: &PieceTreeSlice, pos: usize) -> usize {
-    use BreakResult::*;
+use super::chars::Chars;
 
+pub fn next_grapheme_boundary(slice: &PieceTreeSlice, pos: usize) -> usize {
     let mut chars = slice.chars_at(pos);
     let mut current = chars.next();
     let mut after = chars.next();
 
     loop {
         match (current, after) {
-            (Some((_, _, a)), Some((start, _, b))) => {
-                match is_break(a, b) {
-                    Break => start,
-                    Emoji => todo!(),
-                    Regional => todo!(),
-                    NoBreak => todo!(),
+            (Some((first, _, a)), Some((second, _, b))) => {
+                if is_break(slice, first, a, b) {
+                    return second;
                 }
 
                 // Progress forward
                 current = after;
                 after = chars.next();
             }
-            (None, None) => slice.end(),
-            (Some(_), None) => slice.end(),
+            (None, None) => return slice.len(),
+            (Some(_), None) => return slice.len(),
             (None, Some(_)) => unreachable!(),
         }
     }
 }
 
+pub fn prev_grapheme_boundary(slice: &PieceTreeSlice, pos: usize) -> usize {
+    let mut chars = slice.chars_at(pos);
+    let mut after = chars.prev();
+    let mut current = chars.prev();
+
+    loop {
+        match (current, after) {
+            (Some((first, _, a)), Some((second, _, b))) => {
+                if is_break(slice, first, a, b) {
+                    return second;
+                }
+
+                // Progress backwards
+                after = current;
+                current = chars.next();
+            }
+            (None, None) => return 0,
+            (Some(_), None) => return 0,
+            (None, Some(_)) => unreachable!(),
+        }
+    }
+}
+
+fn is_break(slice: &PieceTreeSlice, start: usize, a: char, b: char) -> bool {
+    use BreakResult::*;
+
+    match pair_break(a, b) {
+        Break => true,
+        Emoji => {
+            let mut before = slice.chars_at(start);
+            is_break_emoji(&mut before)
+        }
+        Regional => {
+            let mut before = slice.chars_at(start);
+            is_break_regional(&mut before)
+        }
+        NoBreak => false,
+    }
+}
+
 // https://www.unicode.org/reports/tr29/
 /// Check if a grapheme break exists between the two characters
-fn is_break(before: char, after: char) -> BreakResult {
+fn pair_break(before: char, after: char) -> BreakResult {
     use sanedit_ucd::GraphemeBreak::*;
     use BreakResult::*;
 
@@ -52,8 +89,7 @@ fn is_break(before: char, after: char) -> BreakResult {
         (Prepend, _) => NoBreak,          // GB 9b
         (ZWJ, _) => {
             // GB 11
-            let is_ext_pic = Property::ExtendedPictographic.check(after);
-            if is_ext_pic {
+            if Property::ExtendedPictographic.check(after) {
                 Emoji
             } else {
                 NoBreak
@@ -62,6 +98,29 @@ fn is_break(before: char, after: char) -> BreakResult {
         (RegionalIndicator, RegionalIndicator) => Regional, // GB12, GB13
         (_, _) => Break,                                    // GB 999
     }
+}
+
+fn is_break_emoji(iter: &mut Chars) -> bool {
+    while let Some((_, _, ch)) = iter.prev() {
+        match sanedit_ucd::grapheme_break(ch) {
+            GraphemeBreak::Extend => {}
+            _ => return !Property::ExtendedPictographic.check(ch),
+        }
+    }
+
+    true
+}
+
+fn is_break_regional(iter: &mut Chars) -> bool {
+    let mut ri_count = 0;
+    while let Some((_, _, ch)) = iter.prev() {
+        match sanedit_ucd::grapheme_break(ch) {
+            GraphemeBreak::RegionalIndicator => ri_count += 1,
+            _ => return (ri_count % 2) != 0,
+        }
+    }
+
+    true
 }
 
 enum BreakResult {
@@ -76,4 +135,42 @@ enum BreakResult {
     /// GB12    sot (RI RI)* RI     ×   RI
     /// GB13    [^RI] (RI RI)* RI   ×   RI
     Regional,
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::piece_tree::PieceTree;
+
+    #[test]
+    fn next_grapheme_boundary_multi_byte() {
+        let mut pt = PieceTree::new();
+        const CONTENT: &str = "❤🤍🥳❤️간÷나는산다⛄😮‍💨🇫🇮";
+        pt.insert_str(0, CONTENT);
+
+        let boundaries = [3, 7, 11, 17, 20, 22, 25, 28, 31, 34, 37, 48, 56, 56];
+        let mut pos = 0;
+        let slice = pt.slice(..);
+
+        for boundary in boundaries {
+            pos = next_grapheme_boundary(&slice, pos);
+            assert_eq!(boundary, pos);
+        }
+    }
+
+    #[test]
+    fn next_grapheme_boundary_multi_byte_slice() {
+        let mut pt = PieceTree::new();
+        const CONTENT: &str = "❤🤍🥳❤️간÷나는산다⛄";
+        pt.insert_str(0, CONTENT);
+
+        let boundaries = [1, 2, 6, 12, 15];
+        let mut pos = 0;
+        let slice = pt.slice(5..20);
+
+        for boundary in boundaries {
+            pos = next_grapheme_boundary(&slice, pos);
+            assert_eq!(boundary, pos);
+        }
+    }
 }

@@ -28,6 +28,8 @@ pub use utf8::graphemes::{
     next_grapheme, next_grapheme_boundary, prev_grapheme, prev_grapheme_boundary,
 };
 
+pub use utf8::graphemes2::next_grapheme_boundary as next_grapheme_boundary2;
+
 /// A Snapshot of the piece tree.
 //
 // Takes a snapshot of the current tree.

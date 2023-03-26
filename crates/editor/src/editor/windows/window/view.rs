@@ -199,7 +199,7 @@ impl View {
     pub fn draw(&mut self, buf: &Buffer) {
         self.clear();
         self.draw_cells(buf);
-        log::info!("Draw view end {:?}", self.range);
+        log::info!("Draw view {:?}", self.range);
     }
 
     pub fn top_line_len(&self) -> usize {

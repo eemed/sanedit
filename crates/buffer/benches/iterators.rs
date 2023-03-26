@@ -2,13 +2,11 @@ use std::{io, path::PathBuf};
 
 use criterion::{criterion_group, criterion_main, Criterion};
 use sanedit_buffer::piece_tree::{
-    next_grapheme_boundary, next_grapheme_boundary2, Chars2, PieceTree,
+    next_grapheme_boundary, Chars, next_grapheme_boundary2, PieceTree,
 };
 
 fn bytes(c: &mut Criterion) {
     c.bench_function("bytes_next", |bench| {
-        // let pt = PieceTreeBytes::from_path(&PathBuf::from("benches/large.txt")).unwrap();
-
         let large = io::Cursor::new(include_str!("large.txt"));
         let pt = PieceTree::from_reader(large).unwrap();
 
@@ -22,8 +20,6 @@ fn bytes(c: &mut Criterion) {
     });
 
     c.bench_function("bytes_prev", |bench| {
-        // let pt = PieceTreeBytes::from_path(&PathBuf::from("benches/large.txt")).unwrap();
-
         let large = io::Cursor::new(include_str!("large.txt"));
         let pt = PieceTree::from_reader(large).unwrap();
 
@@ -64,7 +60,7 @@ fn chars(c: &mut Criterion) {
         });
     });
 
-    c.bench_function("new_chars_create_10_000", |bench| {
+    c.bench_function("chars_create_10_000", |bench| {
         let large = io::Cursor::new(include_str!("large.txt"));
         let mut pt = PieceTree::from_reader(large).unwrap();
         for _ in 0..10_000 {
@@ -72,20 +68,7 @@ fn chars(c: &mut Criterion) {
         }
 
         bench.iter(move || {
-            let _iter = Chars2::new(&pt, 0);
-        });
-    });
-
-    c.bench_function("new_chars_next", |bench| {
-        let large = io::Cursor::new(include_str!("large.txt"));
-        let pt = PieceTree::from_reader(large).unwrap();
-
-        let iter = Chars2::new(&pt, 0);
-        let mut i = iter.clone();
-        bench.iter(move || {
-            if i.next().is_none() {
-                i = iter.clone();
-            }
+            let _iter = Chars::new(&pt, 0);
         });
     });
 }

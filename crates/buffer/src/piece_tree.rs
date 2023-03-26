@@ -12,14 +12,13 @@ use std::ops::{Bound, RangeBounds};
 
 use self::tree::pieces::Pieces;
 use self::tree::Tree;
-pub use self::utf8::chars::chars2::Chars2;
-use self::utf8::chars::Chars;
 use crate::piece_tree::buffers::BufferKind;
 use crate::piece_tree::chunks::Chunks;
 use crate::piece_tree::tree::piece::Piece;
 use buffers::AddBuffer;
 use buffers::OriginalBuffer;
 
+pub use self::utf8::chars::Chars;
 pub use self::slice::PieceTreeSlice;
 pub use crate::cursor_iterator::CursorIterator;
 pub use crate::piece_tree::bytes::Bytes;

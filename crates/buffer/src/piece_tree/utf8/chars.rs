@@ -32,13 +32,14 @@ const TRANSITIONS: [u8; 108] = [
 ];
 
 const TRANSITIONS_BACKWARDS: [u8; 84] = [
-    0, 24, 12, 12, 12, 12, 12, 24, 12, 24, 12, 12, 0, 24, 12, 12, 12, 12, 12, 24, 12, 24, 12,
-    12, 12, 36, 0, 12, 12, 12, 12, 48, 12, 36, 12, 12, 12, 60, 12, 0, 0, 12, 12, 72, 12, 72,
-    12, 12, 12, 60, 12, 0, 12, 12, 12, 72, 12, 72, 0, 12, 12, 12, 12, 12, 12, 0, 0, 12, 12, 12,
-    12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 0,
+    0, 24, 12, 12, 12, 12, 12, 24, 12, 24, 12, 12, 0, 24, 12, 12, 12, 12, 12, 24, 12, 24, 12, 12,
+    12, 36, 0, 12, 12, 12, 12, 48, 12, 36, 12, 12, 12, 60, 12, 0, 0, 12, 12, 72, 12, 72, 12, 12,
+    12, 60, 12, 0, 12, 12, 12, 72, 12, 72, 0, 12, 12, 12, 12, 12, 12, 0, 0, 12, 12, 12, 12, 12, 12,
+    12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 0,
 ];
 
 // https://bjoern.hoehrmann.de/utf-8/decoder/dfa/
+#[inline]
 fn decode(state: &mut u32, cp: &mut u32, byte: u8) -> u32 {
     let byte = byte as u32;
     let class = CHAR_CLASSES[byte as usize];
@@ -75,10 +76,10 @@ impl Decoder {
         use DecodeResult::*;
 
         // ~12% better performance for ascii
-        if self.state == ACCEPT && byte.is_ascii() {
-            let ch = unsafe { char::from_u32_unchecked(byte as u32) };
-            return Char(ch);
-        }
+        // if self.state == ACCEPT && byte.is_ascii() {
+        //     let ch = unsafe { char::from_u32_unchecked(byte as u32) };
+        //     return Char(ch);
+        // }
 
         match decode(&mut self.state, &mut self.cp, byte) {
             ACCEPT => {
@@ -86,20 +87,24 @@ impl Decoder {
                 let ch = unsafe { char::from_u32_unchecked(self.cp) };
                 Char(ch)
             }
-            REJECT => Invalid,
+            REJECT => {
+                self.reset();
+                Invalid
+            }
             _ => Incomplete,
         }
+    }
+
+    #[inline]
+    fn reset(&mut self) {
+        self.state = ACCEPT;
+        self.cp = 0;
     }
 }
 
 // https://gershnik.github.io/2021/03/24/reverse-utf8-decoding.html
-fn decode_last(
-    state: &mut u32,
-    cp: &mut u32,
-    shift: &mut u32,
-    collect: &mut u32,
-    byte: u8,
-) -> u32 {
+#[inline]
+fn decode_rev(state: &mut u32, cp: &mut u32, shift: &mut u32, collect: &mut u32, byte: u8) -> u32 {
     let byte = byte as u32;
     let class = CHAR_CLASSES[byte as usize];
     *state = TRANSITIONS_BACKWARDS[(*state + class as u32) as usize] as u32;
@@ -138,12 +143,12 @@ impl DecoderRev {
     pub fn prev(&mut self, byte: u8) -> DecodeResult {
         use DecodeResult::*;
 
-        if self.state == ACCEPT && byte.is_ascii() {
-            let ch = unsafe { char::from_u32_unchecked(byte as u32) };
-            return Char(ch);
-        }
+        // if self.state == ACCEPT && byte.is_ascii() {
+        //     let ch = unsafe { char::from_u32_unchecked(byte as u32) };
+        //     return Char(ch);
+        // }
 
-        match decode_last(
+        match decode_rev(
             &mut self.state,
             &mut self.cp,
             &mut self.shift,
@@ -155,9 +160,20 @@ impl DecoderRev {
                 let ch = unsafe { char::from_u32_unchecked(self.cp) };
                 Char(ch)
             }
-            REJECT => Invalid,
+            REJECT => {
+                self.reset();
+                Invalid
+            }
             _ => Incomplete,
         }
+    }
+
+    #[inline]
+    pub fn reset(&mut self) {
+        self.state = ACCEPT;
+        self.cp = 0;
+        self.shift = 0;
+        self.collect = 0;
     }
 }
 
@@ -182,11 +198,7 @@ impl<'a> Chars<'a> {
     }
 
     #[inline]
-    pub(crate) fn new_from_slice(
-        pt: &'a PieceTree,
-        at: usize,
-        range: Range<usize>,
-    ) -> Chars<'a> {
+    pub(crate) fn new_from_slice(pt: &'a PieceTree, at: usize, range: Range<usize>) -> Chars<'a> {
         debug_assert!(
             range.end - range.start >= at,
             "Attempting to index {} over slice len {} ",
@@ -205,6 +217,7 @@ impl<'a> Chars<'a> {
     pub fn next(&mut self) -> Option<(usize, usize, char)> {
         use DecodeResult::*;
         let start = self.bytes.pos();
+
         loop {
             let byte = match self.bytes.next() {
                 Some(b) => b,
@@ -224,7 +237,14 @@ impl<'a> Chars<'a> {
                     return Some((start, end, ch));
                 }
                 Invalid => {
-                    let end = self.bytes.pos();
+                    // We may have a valid prefix of utf8.
+                    // Replace it with one replacement character.
+                    let mut end = self.bytes.pos();
+                    let read_len = end - start;
+                    if read_len > 1 {
+                        self.bytes.prev();
+                        end -= 1;
+                    }
                     return Some((start, end, REPLACEMENT_CHAR));
                 }
                 Incomplete => {}
@@ -258,48 +278,39 @@ impl<'a> Chars<'a> {
 
             match self.decoder_rev.prev(byte) {
                 Char(ch) => {
-                    println!("OK: {}", self.bytes.pos());
                     let start = self.bytes.pos();
                     return Some((start, end, ch));
                 }
                 Invalid => {
-                    println!("INVALID: {}, {}", self.bytes.pos(), is_leading_or_invalid_utf8_byte(byte));
+                    // We have a valid suffix of a utf8 sequence.
+                    // But not a valid codepoint.
+                    //
+                    // To handle errors like the forward automaton, determine
+                    // utf8 sequence length from the first byte.
+                    // If the length is in range [0,4] and we have read less than length
+                    // we have a valid utf8 prefix and replace the whole
+                    // prefix with one replacement character.
+                    //
+                    // Otherwise replace every byte with its own replacement
+                    // character, as a valid suffix contains only continuation
+                    // bytes start with 10 they definitely are not valid lead
+                    // bytes.
                     let start = self.bytes.pos();
-                    self.rev_invalid_count = (end - start).saturating_sub(1);
-                    return Some((end.saturating_sub(1), end, REPLACEMENT_CHAR));
+                    let seq_len = byte.count_ones() as usize;
+                    let read_len = end - start;
+
+                    if read_len < seq_len && seq_len <= 4 {
+                        return Some((start, end, REPLACEMENT_CHAR));
+                    } else {
+                        self.rev_invalid_count = read_len.saturating_sub(1);
+                        return Some((end.saturating_sub(1), end, REPLACEMENT_CHAR));
+                    }
                 }
-                Incomplete => {
-                    println!("INCOMPL: {}", self.bytes.pos());
-                }
+                Incomplete => {}
             }
         }
     }
 }
-
-#[inline(always)]
-fn is_leading_or_invalid_utf8_byte(b: u8) -> bool {
-    // In the ASCII case, the most significant bit is never set. The leading
-    // byte of a 2/3/4-byte sequence always has the top two most significant
-    // bits set. For bytes that can never appear anywhere in valid UTF-8, this
-    // also returns true, since every such byte has its two most significant
-    // bits set:
-    //
-    //     \xC0 :: 11000000
-    //     \xC1 :: 11000001
-    //     \xF5 :: 11110101
-    //     \xF6 :: 11110110
-    //     \xF7 :: 11110111
-    //     \xF8 :: 11111000
-    //     \xF9 :: 11111001
-    //     \xFA :: 11111010
-    //     \xFB :: 11111011
-    //     \xFC :: 11111100
-    //     \xFD :: 11111101
-    //     \xFE :: 11111110
-    //     \xFF :: 11111111
-    (b & 0b1100_0000) != 0b1000_0000
-}
-
 
 #[cfg(test)]
 mod test {
@@ -368,6 +379,7 @@ mod test {
 
         let slice = pt.slice(1..);
         let mut chars = slice.chars();
+
         assert_eq!(Some((0, 1, REPLACEMENT_CHAR)), chars.next());
         assert_eq!(Some((1, 2, 'a')), chars.next());
         assert_eq!(Some((2, 3, 'b')), chars.next());

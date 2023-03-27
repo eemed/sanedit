@@ -69,7 +69,7 @@ impl<'a> Bytes<'a> {
                     let len = chunk.as_ref().len();
                     (Some(chunk), pos, len)
                 })
-                .unwrap_or((None, self.range.end, 0));
+                .unwrap_or((None, self.range.len(), 0));
             self.chunk = chunk;
             self.chunk_pos = pos;
             self.chunk_len = len;
@@ -200,10 +200,12 @@ mod test {
         let slice = pt.slice(2..);
         let mut bytes = slice.bytes();
 
+        assert_eq!(0, bytes.pos());
         assert_eq!(as_byte("o"), bytes.next());
         assert_eq!(as_byte("b"), bytes.next());
         assert_eq!(as_byte("a"), bytes.next());
         assert_eq!(as_byte("r"), bytes.next());
+        assert_eq!(slice.len(), bytes.pos());
         assert_eq!(None, bytes.next());
     }
 

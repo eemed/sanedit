@@ -180,7 +180,7 @@ mod test {
         const CONTENT: &str = "❤🤍🥳❤️간÷나는산다⛄😮‍💨🇫🇮";
         pt.insert_str(0, CONTENT);
 
-        let boundaries = [0, 3, 7, 11, 17, 20, 22, 25, 28, 31, 34, 37, 48];
+        let boundaries = [0, 0, 3, 7, 11, 17, 20, 22, 25, 28, 31, 34, 37, 48];
         let slice = pt.slice(..);
         let mut pos = slice.len();
 

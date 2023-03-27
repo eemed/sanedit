@@ -257,8 +257,14 @@ impl<'a> Chars<'a> {
             let byte = match self.bytes.prev() {
                 Some(b) => b,
                 None => {
-                    let start = self.bytes.pos();
-                    if start != end {
+                    let mut start = self.bytes.pos();
+                    let read_len = end - start;
+                    // We for sure have an invalid utf8 prefix
+                    for _ in 1..read_len {
+                        self.bytes.next();
+                        start += 1;
+                    }
+                    if read_len > 0 {
                         return Some((start, end, REPLACEMENT_CHAR));
                     } else {
                         return None;
@@ -288,7 +294,7 @@ impl<'a> Chars<'a> {
                     let mut start = self.bytes.pos();
                     let seq_len = byte.count_ones() as usize;
                     let read_len = end - start;
-                    let valid_prefix = read_len < seq_len && seq_len <= 4;
+                    let valid_prefix = read_len < seq_len && seq_len >= 2 && seq_len <= 4;
 
                     if !valid_prefix {
                         for _ in 1..read_len {

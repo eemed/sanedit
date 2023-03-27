@@ -182,7 +182,6 @@ pub struct Chars<'a> {
     bytes: Bytes<'a>,
     decoder: Decoder,
     decoder_rev: DecoderRev,
-    rev_invalid_count: usize,
 }
 
 impl<'a> Chars<'a> {
@@ -193,7 +192,6 @@ impl<'a> Chars<'a> {
             bytes,
             decoder: Decoder::new(),
             decoder_rev: DecoderRev::new(),
-            rev_invalid_count: 0,
         }
     }
 
@@ -210,7 +208,6 @@ impl<'a> Chars<'a> {
             bytes,
             decoder: Decoder::new(),
             decoder_rev: DecoderRev::new(),
-            rev_invalid_count: 0,
         }
     }
 
@@ -255,13 +252,6 @@ impl<'a> Chars<'a> {
     pub fn prev(&mut self) -> Option<(usize, usize, char)> {
         use DecodeResult::*;
 
-        if self.rev_invalid_count != 0 {
-            let end = self.bytes.pos() + self.rev_invalid_count;
-            let start = end.saturating_sub(1);
-            self.rev_invalid_count -= 1;
-            return Some((start, end, REPLACEMENT_CHAR));
-        }
-
         let end = self.bytes.pos();
         loop {
             let byte = match self.bytes.prev() {
@@ -295,16 +285,19 @@ impl<'a> Chars<'a> {
                     // character, as a valid suffix contains only continuation
                     // bytes start with 10 they definitely are not valid lead
                     // bytes.
-                    let start = self.bytes.pos();
+                    let mut start = self.bytes.pos();
                     let seq_len = byte.count_ones() as usize;
                     let read_len = end - start;
+                    let valid_prefix = read_len < seq_len && seq_len <= 4;
 
-                    if read_len < seq_len && seq_len <= 4 {
-                        return Some((start, end, REPLACEMENT_CHAR));
-                    } else {
-                        self.rev_invalid_count = read_len.saturating_sub(1);
-                        return Some((end.saturating_sub(1), end, REPLACEMENT_CHAR));
+                    if !valid_prefix {
+                        for _ in 1..read_len {
+                            self.bytes.next();
+                            start += 1;
+                        }
                     }
+
+                    return Some((start, end, REPLACEMENT_CHAR));
                 }
                 Incomplete => {}
             }

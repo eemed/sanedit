@@ -770,7 +770,7 @@ pub(crate) mod test {
                 space += 10;
                 if let Node::Internal(node) = node.as_ref() {
                     print(&node.right, space);
-                    log::debug!(
+                    println!(
                         "{}{:?}, {:?}, {:?}",
                         " ".repeat(space - 10),
                         node.color,
@@ -781,12 +781,12 @@ pub(crate) mod test {
                 }
             }
 
-            log::debug!(
+            println!(
                 " =========== TREE LOG {:?} =============",
                 is_valid_tree(self)
             );
             print(&self.root, 0);
-            log::debug!(" =========== TREE END =============");
+            println!(" =========== TREE END =============");
         }
     }
 

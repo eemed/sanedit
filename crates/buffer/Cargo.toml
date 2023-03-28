@@ -7,9 +7,6 @@ edition = "2021"
 
 [dependencies]
 sanedit-ucd = { path = "../ucd" }
-log = "0.4.14"
-smallvec = "0.1"
-unicode-segmentation = "1.9"
 
 [dev-dependencies]
 rand = "0.7"

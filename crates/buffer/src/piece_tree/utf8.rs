@@ -1,6 +1,5 @@
 pub(crate) mod chars;
 pub(crate) mod graphemes;
-pub(crate) mod graphemes2;
 
 use super::{slice::PieceTreeSlice, PieceTree};
 

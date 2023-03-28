@@ -76,10 +76,10 @@ impl Decoder {
         use DecodeResult::*;
 
         // ~12% better performance for ascii
-        // if self.state == ACCEPT && byte.is_ascii() {
-        //     let ch = unsafe { char::from_u32_unchecked(byte as u32) };
-        //     return Char(ch);
-        // }
+        if self.state == ACCEPT && byte.is_ascii() {
+            let ch = unsafe { char::from_u32_unchecked(byte as u32) };
+            return Char(ch);
+        }
 
         match decode(&mut self.state, &mut self.cp, byte) {
             ACCEPT => {
@@ -143,10 +143,10 @@ impl DecoderRev {
     pub fn prev(&mut self, byte: u8) -> DecodeResult {
         use DecodeResult::*;
 
-        // if self.state == ACCEPT && byte.is_ascii() {
-        //     let ch = unsafe { char::from_u32_unchecked(byte as u32) };
-        //     return Char(ch);
-        // }
+        if self.state == ACCEPT && byte.is_ascii() {
+            let ch = unsafe { char::from_u32_unchecked(byte as u32) };
+            return Char(ch);
+        }
 
         match decode_rev(
             &mut self.state,

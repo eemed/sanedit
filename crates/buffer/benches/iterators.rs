@@ -1,8 +1,8 @@
-use std::{io, path::PathBuf};
+use std::io;
 
 use criterion::{criterion_group, criterion_main, Criterion};
 use sanedit_buffer::piece_tree::{
-    next_grapheme_boundary, Chars, next_grapheme_boundary2, PieceTree, prev_grapheme_boundary2, prev_grapheme_boundary,
+    next_grapheme_boundary, prev_grapheme_boundary, Chars, PieceTree,
 };
 
 fn bytes(c: &mut Criterion) {

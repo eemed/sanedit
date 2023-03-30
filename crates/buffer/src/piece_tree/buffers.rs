@@ -88,8 +88,11 @@ pub(crate) enum OriginalBuffer {
     // blocks and cached. The Rc pointer is cloned to the slices given out, so
     // we can change the cache here and the slice will hold the block alive.
     File {
-        file: RefCell<File>,                  // File handle to read data from
-        cache: RefCell<Rc<(usize, Vec<u8>)>>, // Stores a block of data read from the file
+        file_len: usize,
+        file: RefCell<File>, // File handle to read data from
+        cache_start: usize,
+        cache: Box<[u8]>,
+        cache_ptrs: Vec<(usize, usize)>, // List of pointers to (offset, length) pairs
     },
     Memory {
         bytes: Vec<u8>,

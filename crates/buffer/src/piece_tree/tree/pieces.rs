@@ -7,6 +7,51 @@ use crate::piece_tree::PieceTree;
 
 pub(crate) type Pieces<'a> = BoundedPieceIter<'a>;
 
+/// Piece iterator that can be bounded to a buffer range, and splits large
+/// pieces to multiple smaller pieces if the buffer is file backed.
+///
+/// If the buffer is file backed we need to split the initial massive piece into
+/// smaller manageable pieces that can be read to memory in a reasonable amount
+/// of time
+#[derive(Debug, Clone)]
+pub(crate) struct SplittingBoundedPieceIter<'a> {
+    iter: BoundedPieceIter<'a>,
+}
+
+impl<'a> SplittingBoundedPieceIter<'a> {
+    const MAX_PIECE_SIZE: usize = 64 * 1024; // 64kb
+
+    #[inline]
+    pub fn new(pt: &'a PieceTree, at: usize) -> SplittingBoundedPieceIter<'a> {
+        todo!()
+    }
+
+    #[inline]
+    pub fn new_from_slice(
+        pt: &'a PieceTree,
+        at: usize,
+        range: Range<usize>,
+    ) -> SplittingBoundedPieceIter<'a> {
+        todo!()
+    }
+
+    #[inline]
+    pub fn get(&self) -> Option<(usize, Piece)> {
+        todo!()
+    }
+
+    #[inline]
+    pub fn next(&mut self) -> Option<(usize, Piece)> {
+        todo!()
+    }
+
+    #[inline]
+    pub fn prev(&mut self) -> Option<(usize, Piece)> {
+        todo!()
+    }
+}
+
+/// Piece iterator that can be bounded to a buffer range
 #[derive(Debug, Clone)]
 pub(crate) struct BoundedPieceIter<'a> {
     range: Range<usize>,

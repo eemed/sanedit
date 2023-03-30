@@ -346,16 +346,3 @@ impl Default for PieceTree {
         PieceTree::new()
     }
 }
-
-// #[cfg(test)]
-// mod test {
-//     use super::*;
-
-//     #[test]
-//     fn graphemes_at() {
-//         let mut pt = PieceTreeBytes::new_empty();
-//         pt.insert_str(0, "§");
-
-//         pt.graphemes_at(1);
-//     }
-// }

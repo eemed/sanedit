@@ -92,8 +92,8 @@ impl<'a> SplittingBoundedPieceIter<'a> {
     #[inline]
     pub fn prev(&mut self) -> Option<(usize, Piece)> {
         if self.piece == 0 {
-            self.pieces.clear();
             let (pos, piece) = self.iter.prev()?;
+            self.pieces.clear();
             Self::split_piece(&mut self.pieces, pos, piece);
             self.piece = self.pieces.len().saturating_sub(1);
         } else {
@@ -495,10 +495,69 @@ pub(crate) mod test {
         assert_eq!(add_piece(0, 0, max), pieces.prev());
         assert_eq!(None, pieces.prev());
         assert_eq!(add_piece(0, 0, max), pieces.get());
-
     }
 
     #[test]
     fn split2() {
+        let max = SplittingBoundedPieceIter::MAX_PIECE_SIZE;
+        let mut pt = PieceTree::new();
+        let string = {
+            let mut string = String::new();
+            string.push_str(&"a".repeat(max));
+            string.push_str(&"b".repeat(max / 2));
+            string
+        };
+        pt.insert_str(0, &string);
+        pt.insert_str(0, "a");
+        pt.insert_str(0, &string);
+        pt.insert_str(0, "a");
+        let mut pieces = SplittingBoundedPieceIter::new(&pt, 0);
+
+        assert_eq!(
+            add_piece(0, max + max / 2 + max + max / 2 + 1, 1),
+            pieces.get()
+        );
+
+        assert_eq!(add_piece(1, max + max / 2 + 1, max), pieces.next());
+        assert_eq!(
+            add_piece(max + 1, max + max / 2 + max + 1, max / 2),
+            pieces.next()
+        );
+        assert_eq!(
+            add_piece(max + max / 2 + 1, max + max / 2, 1),
+            pieces.next()
+        );
+        assert_eq!(add_piece(max + max / 2 + 2, 0, max), pieces.next());
+        assert_eq!(
+            add_piece(max + max + max / 2 + 2, max, max / 2),
+            pieces.next()
+        );
+        assert_eq!(None, pieces.next());
+        assert_eq!(None, pieces.get());
+
+        assert_eq!(
+            add_piece(max + max + max / 2 + 2, max, max / 2),
+            pieces.prev()
+        );
+        assert_eq!(add_piece(max + max / 2 + 2, 0, max), pieces.prev());
+        assert_eq!(
+            add_piece(max + max / 2 + 1, max + max / 2, 1),
+            pieces.prev()
+        );
+        assert_eq!(
+            add_piece(max + 1, max + max / 2 + max + 1, max / 2),
+            pieces.prev()
+        );
+        assert_eq!(add_piece(1, max + max / 2 + 1, max), pieces.prev());
+        assert_eq!(
+            add_piece(0, max + max / 2 + max + max / 2 + 1, 1),
+            pieces.prev()
+        );
+        assert_eq!(None, pieces.prev());
+
+        assert_eq!(
+            add_piece(0, max + max / 2 + max + max / 2 + 1, 1),
+            pieces.get()
+        );
     }
 }

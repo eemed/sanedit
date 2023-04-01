@@ -1,3 +1,4 @@
+use std::cmp;
 use std::ops::Range;
 
 use super::node::internal_node::InternalNode;
@@ -16,14 +17,26 @@ pub(crate) type Pieces<'a> = BoundedPieceIter<'a>;
 #[derive(Debug, Clone)]
 pub(crate) struct SplittingBoundedPieceIter<'a> {
     iter: BoundedPieceIter<'a>,
+    pieces: Vec<(usize, Piece)>,
+    piece: usize,
 }
 
 impl<'a> SplittingBoundedPieceIter<'a> {
-    const MAX_PIECE_SIZE: usize = 64 * 1024; // 64kb
+    pub const MAX_PIECE_SIZE: usize = 64 * 1024; // 64kb
 
     #[inline]
     pub fn new(pt: &'a PieceTree, at: usize) -> SplittingBoundedPieceIter<'a> {
-        todo!()
+        let iter = BoundedPieceIter::new(pt, at);
+        let mut pieces = Vec::new();
+        if let Some((pos, piece)) = iter.get() {
+            Self::split_piece(&mut pieces, pos, piece);
+        }
+
+        SplittingBoundedPieceIter {
+            iter,
+            pieces,
+            piece: 0,
+        }
     }
 
     #[inline]
@@ -32,22 +45,62 @@ impl<'a> SplittingBoundedPieceIter<'a> {
         at: usize,
         range: Range<usize>,
     ) -> SplittingBoundedPieceIter<'a> {
-        todo!()
+        let iter = BoundedPieceIter::new_from_slice(pt, at, range);
+        let mut pieces = Vec::new();
+        if let Some((pos, piece)) = iter.get() {
+            Self::split_piece(&mut pieces, pos, piece);
+        }
+        SplittingBoundedPieceIter {
+            iter,
+            pieces,
+            piece: 0,
+        }
+    }
+
+    fn split_piece(pieces: &mut Vec<(usize, Piece)>, mut pos: usize, mut piece: Piece) {
+        while piece.len > Self::MAX_PIECE_SIZE {
+            let left = piece.split_right(Self::MAX_PIECE_SIZE);
+            pieces.push((pos, left));
+            pos += Self::MAX_PIECE_SIZE;
+        }
+
+        if piece.len != 0 {
+            pieces.push((pos, piece));
+        }
     }
 
     #[inline]
     pub fn get(&self) -> Option<(usize, Piece)> {
-        todo!()
+        self.pieces.get(self.piece).cloned()
     }
 
     #[inline]
     pub fn next(&mut self) -> Option<(usize, Piece)> {
-        todo!()
+        let next = self.piece + 1;
+        if next < self.pieces.len() {
+            self.piece = next;
+        } else {
+            self.piece = 0;
+            self.pieces.clear();
+            let (pos, piece) = self.iter.next()?;
+            Self::split_piece(&mut self.pieces, pos, piece);
+        }
+
+        self.get()
     }
 
     #[inline]
     pub fn prev(&mut self) -> Option<(usize, Piece)> {
-        todo!()
+        if self.piece == 0 {
+            self.pieces.clear();
+            let (pos, piece) = self.iter.prev()?;
+            Self::split_piece(&mut self.pieces, pos, piece);
+            self.piece = self.pieces.len().saturating_sub(1);
+        } else {
+            self.piece -= 1;
+        }
+
+        self.get()
     }
 }
 
@@ -415,5 +468,37 @@ pub(crate) mod test {
         assert_eq!(add_piece(0, 6, 3), pieces.prev());
         assert_eq!(None, pieces.prev());
         assert_eq!(add_piece(0, 6, 3), pieces.get());
+    }
+
+    #[test]
+    fn split1() {
+        let max = SplittingBoundedPieceIter::MAX_PIECE_SIZE;
+        let mut pt = PieceTree::new();
+        let string = {
+            let mut string = String::new();
+            string.push_str(&"a".repeat(max));
+            string.push_str(&"b".repeat(max));
+            string.push_str(&"c".repeat(max / 2));
+            string
+        };
+        pt.insert_str(0, &string);
+        let mut pieces = SplittingBoundedPieceIter::new(&pt, 0);
+
+        assert_eq!(add_piece(0, 0, max), pieces.get());
+        assert_eq!(add_piece(max, max, max), pieces.next());
+        assert_eq!(add_piece(max * 2, max * 2, max / 2), pieces.next());
+        assert_eq!(None, pieces.next());
+        assert_eq!(None, pieces.get());
+
+        assert_eq!(add_piece(max * 2, max * 2, max / 2), pieces.prev());
+        assert_eq!(add_piece(max, max, max), pieces.prev());
+        assert_eq!(add_piece(0, 0, max), pieces.prev());
+        assert_eq!(None, pieces.prev());
+        assert_eq!(add_piece(0, 0, max), pieces.get());
+
+    }
+
+    #[test]
+    fn split2() {
     }
 }

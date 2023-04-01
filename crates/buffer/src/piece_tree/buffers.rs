@@ -114,8 +114,9 @@ impl OriginalBuffer {
 
     pub fn from_file(file: File) -> OriginalBuffer {
         let file = RefCell::new(file);
-        let cache = RefCell::new(Rc::new((0, vec![])));
-        OriginalBuffer::File { file, cache }
+        // let cache = RefCell::new(Rc::new((0, vec![])));
+        // OriginalBuffer::File { file, cache }
+        todo!()
     }
 
     #[inline(always)]
@@ -131,21 +132,22 @@ impl OriginalBuffer {
                 Ok(bytes)
             }
             File { cache, .. } => {
-                {
-                    let c = cache.borrow();
-                    let (cache_pos, cache_bytes) = c.as_ref();
+                todo!()
+                // {
+                //     let c = cache.borrow();
+                //     let (cache_pos, cache_bytes) = c.as_ref();
 
-                    if *cache_pos <= start && end <= *cache_pos + cache_bytes.len() {
-                        let bytes = ByteSlice::File {
-                            start: start - cache_pos,
-                            end: end - cache_pos,
-                            bytes: c.clone(),
-                        };
-                        return Ok(bytes);
-                    }
-                }
+                //     if *cache_pos <= start && end <= *cache_pos + cache_bytes.len() {
+                //         let bytes = ByteSlice::File {
+                //             start: start - cache_pos,
+                //             end: end - cache_pos,
+                //             bytes: c.clone(),
+                //         };
+                //         return Ok(bytes);
+                //     }
+                // }
 
-                self.read_from_file(start, end)
+                // self.read_from_file(start, end)
             }
         }
     }
@@ -155,42 +157,43 @@ impl OriginalBuffer {
         const MIN_BUFFER_SIZE: usize = 1024 * 1024;
 
         match self {
-            OriginalBuffer::File { file, cache } => {
-                let mut file = file.borrow_mut();
-                // Read at minimum MIN_BUFFER_SIZE
-                let read_len = cmp::max(MIN_BUFFER_SIZE, end - start);
-                let read_pos = {
-                    // Balance the read so that requested chunk is in the middle
-                    // p
-                    // |---------------------------|
-                    //      diff      |------------|
-                    //                start        end
-                    let p = end.saturating_sub(read_len);
-                    let diff = start - p;
+            OriginalBuffer::File { file, .. } => {
+                todo!()
+                // let mut file = file.borrow_mut();
+                // // Read at minimum MIN_BUFFER_SIZE
+                // let read_len = cmp::max(MIN_BUFFER_SIZE, end - start);
+                // let read_pos = {
+                //     // Balance the read so that requested chunk is in the middle
+                //     // p
+                //     // |---------------------------|
+                //     //      diff      |------------|
+                //     //                start        end
+                //     let p = end.saturating_sub(read_len);
+                //     let diff = start - p;
 
-                    p + diff / 2
-                };
-                // let file_len = file.metadata()?.len() as usize;
+                //     p + diff / 2
+                // };
+                // // let file_len = file.metadata()?.len() as usize;
 
-                file.seek(SeekFrom::Start(read_pos as u64))?;
-                let mut bytes = Vec::with_capacity(read_len);
-                let read = file
-                    .by_ref()
-                    .take(read_len as u64)
-                    .read_to_end(&mut bytes)?;
-                // if read == 0 {
-                // }
+                // file.seek(SeekFrom::Start(read_pos as u64))?;
+                // let mut bytes = Vec::with_capacity(read_len);
+                // let read = file
+                //     .by_ref()
+                //     .take(read_len as u64)
+                //     .read_to_end(&mut bytes)?;
+                // // if read == 0 {
+                // // }
 
-                let chunk = Rc::new((read_pos, bytes));
-                let mut c = cache.borrow_mut();
-                *c = chunk.clone();
+                // let chunk = Rc::new((read_pos, bytes));
+                // let mut c = cache.borrow_mut();
+                // *c = chunk.clone();
 
-                let bytes = ByteSlice::File {
-                    start: read_pos,
-                    end: read_pos + read,
-                    bytes: chunk,
-                };
-                Ok(bytes)
+                // let bytes = ByteSlice::File {
+                //     start: read_pos,
+                //     end: read_pos + read,
+                //     bytes: chunk,
+                // };
+                // Ok(bytes)
             }
             _ => unreachable!(),
         }

@@ -6,7 +6,7 @@ use std::{
     ops::Range,
 };
 
-use super::tree::pieces::MAX_PIECE_SIZE;
+use crate::piece_tree::FILE_BACKED_MAX_PIECE_SIZE;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) enum BufferKind {
@@ -27,7 +27,7 @@ pub(crate) struct Cache {
 
 impl Cache {
     pub fn new() -> Cache {
-        const FILE_CACHE_SIZE: usize = MAX_PIECE_SIZE * 10;
+        const FILE_CACHE_SIZE: usize = FILE_BACKED_MAX_PIECE_SIZE * 10;
         Cache {
             cache: [0u8; FILE_CACHE_SIZE].into(),
             cache_ptrs: Vec::new(),

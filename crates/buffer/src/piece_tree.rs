@@ -6,6 +6,7 @@ pub(crate) mod slice;
 pub(crate) mod tree;
 pub(crate) mod utf8;
 
+use std::cmp;
 use std::fs::File;
 use std::io::{self, Write};
 use std::ops::{Bound, RangeBounds};
@@ -28,6 +29,8 @@ pub use utf8::graphemes::next_grapheme;
 pub use utf8::graphemes::next_grapheme_boundary;
 pub use utf8::graphemes::prev_grapheme;
 pub use utf8::graphemes::prev_grapheme_boundary;
+
+pub(crate) const FILE_BACKED_MAX_PIECE_SIZE: usize = 1024 * 64;
 
 /// A Snapshot of the piece tree.
 //
@@ -172,17 +175,31 @@ impl PieceTree {
         let add_buf = AddBuffer::new();
         let mut pieces = Tree::new();
 
-        let ob_len = orig_buf.len();
-        if ob_len > 0 {
-            let piece = Piece::new(BufferKind::Original, 0, ob_len);
-            pieces.insert(0, piece);
+        if !orig_buf.is_empty() {
+            if orig_buf.is_file_backed() {
+                // Split into multiple pieces if file backed.
+                // This prevents reading very large chunks into memory.
+                let mut pos = 0;
+                let mut len = orig_buf.len();
+                while len != 0 {
+                    let plen = cmp::min(FILE_BACKED_MAX_PIECE_SIZE, len);
+                    let piece = Piece::new(BufferKind::Original, pos, plen);
+                    pieces.insert(pos, piece);
+
+                    len -= plen;
+                    pos += plen;
+                }
+            } else {
+                let piece = Piece::new(BufferKind::Original, 0, orig_buf.len());
+                pieces.insert(0, piece);
+            }
         }
 
         PieceTree {
+            len: orig_buf.len(),
             orig: orig_buf,
             add: add_buf,
             tree: pieces,
-            len: ob_len,
         }
     }
 

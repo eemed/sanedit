@@ -1,4 +1,4 @@
-use std::ops::{Range, RangeBounds};
+use std::ops::Range;
 
 use super::{
     buffers::{BufferKind, ByteSlice},
@@ -13,18 +13,6 @@ impl<'a> AsRef<[u8]> for Chunk<'a> {
     #[inline(always)]
     fn as_ref(&self) -> &[u8] {
         self.0.as_ref()
-    }
-}
-
-impl<'a> From<&[u8]> for Chunk<'a> {
-    fn from(_: &[u8]) -> Self {
-        todo!()
-    }
-}
-
-impl<'a> Chunk<'a> {
-    pub fn slice<R: RangeBounds<usize>>(&self, range: R) -> Chunk<'a> {
-        Chunk(self.0.slice(range))
     }
 }
 
@@ -72,21 +60,25 @@ impl<'a> Chunks<'a> {
 #[inline(always)]
 fn read_piece<'a>(pt: &'a PieceTree, piece: &Piece) -> Option<Chunk<'a>> {
     match piece.kind {
-        BufferKind::Add => Some(Chunk(ByteSlice::Memory {
-            bytes: &pt.add[piece.pos..piece.pos + piece.len],
-        })),
-        BufferKind::Original => Some(Chunk(pt.orig.slice(piece.pos..piece.pos + piece.len).ok()?)),
+        BufferKind::Add => {
+            let bytes = &pt.add[piece.pos..piece.pos + piece.len];
+            Some(Chunk(bytes.into()))
+        }
+        BufferKind::Original => {
+            let bytes = pt.orig.slice(piece.pos..piece.pos + piece.len).ok()?;
+            Some(Chunk(bytes))
+        }
     }
 }
 
 #[cfg(test)]
 mod test {
+    use std::borrow::Cow;
+
     use super::*;
 
     fn chunk(pos: usize, string: &str) -> Option<(usize, Chunk)> {
-        let bytes = ByteSlice::Memory {
-            bytes: string.as_ref(),
-        };
+        let bytes: Cow<'_, [u8]> = string.as_bytes().into();
         Some((pos, Chunk(bytes)))
     }
 

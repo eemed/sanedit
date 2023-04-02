@@ -18,16 +18,16 @@ use crate::piece_tree::tree::piece::Piece;
 use buffers::AddBuffer;
 use buffers::OriginalBuffer;
 
-pub use self::utf8::chars::Chars;
 pub use self::slice::PieceTreeSlice;
+pub use self::utf8::chars::Chars;
 pub use crate::cursor_iterator::CursorIterator;
 pub use crate::piece_tree::bytes::Bytes;
 pub use builder::PieceTreeBuilder;
 
 pub use utf8::graphemes::next_grapheme;
 pub use utf8::graphemes::next_grapheme_boundary;
-pub use utf8::graphemes::prev_grapheme_boundary;
 pub use utf8::graphemes::prev_grapheme;
+pub use utf8::graphemes::prev_grapheme_boundary;
 
 /// A Snapshot of the piece tree.
 //
@@ -322,6 +322,11 @@ impl PieceTree {
     #[inline]
     pub fn chars_at(&self, at: usize) -> Chars {
         Chars::new(self, at)
+    }
+
+    #[inline]
+    pub fn is_file_backed(&self) -> bool {
+        self.orig.is_file_backed()
     }
 }
 

@@ -1,11 +1,12 @@
 use std::{
+    borrow::Cow,
     cell::RefCell,
-    cmp,
     fs::File,
     io::{self, Read, Seek, SeekFrom},
-    ops::{Range, RangeBounds},
-    rc::Rc,
+    ops::Range,
 };
+
+use super::tree::pieces::MAX_PIECE_SIZE;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) enum BufferKind {
@@ -13,86 +14,59 @@ pub(crate) enum BufferKind {
     Original,
 }
 
-#[derive(Debug, Clone)]
-pub(crate) enum ByteSlice<'a> {
-    Memory {
-        bytes: &'a [u8],
-    },
-    File {
-        start: usize,                // Start of this slice
-        end: usize,                  // End of this slice
-        bytes: Rc<(usize, Vec<u8>)>, // Stores a block of data read from the file
-    },
-}
-
-impl<'a> ByteSlice<'a> {
-    pub fn slice<R: RangeBounds<usize>>(&self, range: R) -> ByteSlice<'a> {
-        let mut me = self.clone();
-        let range_start = match range.start_bound() {
-            std::ops::Bound::Included(i) => *i,
-            std::ops::Bound::Excluded(i) => *i + 1,
-            std::ops::Bound::Unbounded => 0,
-        };
-
-        let range_end = match range.end_bound() {
-            std::ops::Bound::Included(i) => *i + 1,
-            std::ops::Bound::Excluded(i) => *i,
-            std::ops::Bound::Unbounded => self.as_ref().len(),
-        };
-
-        match &mut me {
-            ByteSlice::Memory { bytes } => {
-                *bytes = &bytes[range_start..range_end];
-            }
-            ByteSlice::File { start, end, bytes } => {
-                *start = range_start;
-                *end = range_end;
-
-                debug_assert!(bytes.1.len() < *end);
-            }
-        }
-
-        me
-    }
-}
-
-impl<'a> AsRef<[u8]> for ByteSlice<'a> {
-    #[inline(always)]
-    fn as_ref(&self) -> &[u8] {
-        match self {
-            ByteSlice::Memory { bytes } => bytes,
-            ByteSlice::File { start, end, bytes } => &bytes.1[*start..*end],
-        }
-    }
-}
-
-impl<'a> PartialEq for ByteSlice<'a> {
-    fn eq(&self, other: &Self) -> bool {
-        let bytes = self.as_ref();
-        let other = other.as_ref();
-        bytes.eq(other)
-    }
-}
-
-impl<'a> From<&'a [u8]> for ByteSlice<'a> {
-    fn from(bytes: &'a [u8]) -> Self {
-        ByteSlice::Memory { bytes }
-    }
-}
-
+pub(crate) type ByteSlice<'a> = Cow<'a, [u8]>;
 pub(crate) type AddBuffer = Vec<u8>;
+
+#[derive(Debug)]
+pub(crate) struct Cache {
+    cache: Box<[u8]>,
+    /// List of pointers to cache. (cache_offset, buf_offset, length) tuples
+    cache_ptrs: Vec<(usize, usize, usize)>,
+    next: usize,
+}
+
+impl Cache {
+    pub fn new() -> Cache {
+        const FILE_CACHE_SIZE: usize = MAX_PIECE_SIZE * 10;
+        Cache {
+            cache: [0u8; FILE_CACHE_SIZE].into(),
+            cache_ptrs: Vec::new(),
+            next: 0,
+        }
+    }
+
+    fn get(&self, start: usize, end: usize) -> Option<&[u8]> {
+        for (pos, bpos, len) in &self.cache_ptrs {
+            if *bpos <= start && end <= bpos + len {
+                return Some(self.cache[*pos..pos + len].into());
+            }
+        }
+
+        None
+    }
+
+    fn find_space_for(&mut self, bpos: usize, len: usize) -> &mut [u8] {
+        let start = self.next;
+        let end = start + len;
+        self.next += len;
+
+        self.cache_ptrs.retain(|(s, _, l)| {
+            let e = s + l;
+            !(start <= e && *s <= end)
+        });
+        self.cache_ptrs.push((start, bpos, len));
+
+        &mut self.cache[start..end]
+    }
+}
 
 #[derive(Debug)]
 pub(crate) enum OriginalBuffer {
     // Uses a backing file to read the data from. The file data is read in
-    // blocks and cached. The Rc pointer is cloned to the slices given out, so
-    // we can change the cache here and the slice will hold the block alive.
+    // blocks and cached.
     File {
-        file_len: usize,
         file: RefCell<File>, // File handle to read data from
-        cache_start: usize,
-        cache: Box<[u8]>,
-        cache_ptrs: Vec<(usize, usize)>, // List of pointers to (offset, length) pairs
+        cache: RefCell<Cache>,
     },
     Memory {
         bytes: Vec<u8>,
@@ -113,89 +87,32 @@ impl OriginalBuffer {
     }
 
     pub fn from_file(file: File) -> OriginalBuffer {
-        let file = RefCell::new(file);
-        // let cache = RefCell::new(Rc::new((0, vec![])));
-        // OriginalBuffer::File { file, cache }
-        todo!()
+        OriginalBuffer::File {
+            file: RefCell::new(file),
+            cache: RefCell::new(Cache::new()),
+        }
     }
 
     #[inline(always)]
     pub fn slice(&self, range: Range<usize>) -> io::Result<ByteSlice<'_>> {
         use OriginalBuffer::*;
-        let Range { start, end } = range;
-
         match self {
-            Memory { bytes } => {
-                let bytes = ByteSlice::Memory {
-                    bytes: &bytes[range],
-                };
-                Ok(bytes)
+            Memory { bytes } => Ok(bytes[range].into()),
+            File { cache, file } => {
+                let Range { start, end } = range;
+                if let Some(bytes) = cache.borrow().get(start, end) {
+                    return Ok(bytes.to_vec().into());
+                }
+
+                let mut cache = cache.borrow_mut();
+                let mut file = file.borrow_mut();
+
+                let buf = cache.find_space_for(start, range.len());
+                file.seek(SeekFrom::Start(start as u64))?;
+                file.read_exact(buf)?;
+
+                Ok(buf.to_vec().into())
             }
-            File { cache, .. } => {
-                todo!()
-                // {
-                //     let c = cache.borrow();
-                //     let (cache_pos, cache_bytes) = c.as_ref();
-
-                //     if *cache_pos <= start && end <= *cache_pos + cache_bytes.len() {
-                //         let bytes = ByteSlice::File {
-                //             start: start - cache_pos,
-                //             end: end - cache_pos,
-                //             bytes: c.clone(),
-                //         };
-                //         return Ok(bytes);
-                //     }
-                // }
-
-                // self.read_from_file(start, end)
-            }
-        }
-    }
-
-    #[inline]
-    fn read_from_file(&self, start: usize, end: usize) -> io::Result<ByteSlice<'_>> {
-        const MIN_BUFFER_SIZE: usize = 1024 * 1024;
-
-        match self {
-            OriginalBuffer::File { file, .. } => {
-                todo!()
-                // let mut file = file.borrow_mut();
-                // // Read at minimum MIN_BUFFER_SIZE
-                // let read_len = cmp::max(MIN_BUFFER_SIZE, end - start);
-                // let read_pos = {
-                //     // Balance the read so that requested chunk is in the middle
-                //     // p
-                //     // |---------------------------|
-                //     //      diff      |------------|
-                //     //                start        end
-                //     let p = end.saturating_sub(read_len);
-                //     let diff = start - p;
-
-                //     p + diff / 2
-                // };
-                // // let file_len = file.metadata()?.len() as usize;
-
-                // file.seek(SeekFrom::Start(read_pos as u64))?;
-                // let mut bytes = Vec::with_capacity(read_len);
-                // let read = file
-                //     .by_ref()
-                //     .take(read_len as u64)
-                //     .read_to_end(&mut bytes)?;
-                // // if read == 0 {
-                // // }
-
-                // let chunk = Rc::new((read_pos, bytes));
-                // let mut c = cache.borrow_mut();
-                // *c = chunk.clone();
-
-                // let bytes = ByteSlice::File {
-                //     start: read_pos,
-                //     end: read_pos + read,
-                //     bytes: chunk,
-                // };
-                // Ok(bytes)
-            }
-            _ => unreachable!(),
         }
     }
 

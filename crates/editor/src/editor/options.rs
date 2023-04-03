@@ -7,7 +7,8 @@ pub(crate) struct Options {
 impl Default for Options {
     fn default() -> Self {
         Options {
-            big_file_threshold_bytes: 100 * 1024 * 1024, // 100MB
+            // big_file_threshold_bytes: 100 * 1024 * 1024, // 100MB
+            big_file_threshold_bytes: 1024 * 1024, // 1MB
         }
     }
 }

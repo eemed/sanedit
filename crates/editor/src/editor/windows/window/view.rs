@@ -129,19 +129,19 @@ impl View {
         while let Some(grapheme) = prev_grapheme(&slice, *pos) {
             let is_eol = EOL::is_eol(&grapheme);
 
-            if is_eol && !graphemes.is_empty() {
-                break;
-            }
-
             // Must be recalculated because we are pushing elements to the front
             let line_len = graphemes.iter().fold(0, |col, grapheme| {
                 let ch = Char::new(grapheme, col, &self.options);
                 col + ch.width()
             });
 
-            if line_len > self.width {
+            if line_len >= self.width {
                 // Take one off to fit line
                 graphemes.pop_front();
+                break;
+            }
+
+            if is_eol && !graphemes.is_empty() {
                 break;
             }
 

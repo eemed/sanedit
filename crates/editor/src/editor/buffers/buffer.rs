@@ -61,6 +61,7 @@ impl Buffer {
     }
 
     fn file_backed(file: File) -> io::Result<Buffer> {
+        log::debug!("New file backed buf");
         let file = fs::File::open(file.path())?;
         let pt = PieceTree::from_file(file);
         let snapshot = pt.snapshot();
@@ -77,6 +78,7 @@ impl Buffer {
     }
 
     fn in_memory(file: File) -> io::Result<Buffer> {
+        log::debug!("New buf");
         let file = fs::File::open(file.path())?;
         Self::from_reader(file)
     }

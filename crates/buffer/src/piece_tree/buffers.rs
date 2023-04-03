@@ -26,10 +26,11 @@ pub(crate) struct Cache {
 }
 
 impl Cache {
+    const FILE_CACHE_SIZE: usize = FILE_BACKED_MAX_PIECE_SIZE * 10;
+
     pub fn new() -> Cache {
-        const FILE_CACHE_SIZE: usize = FILE_BACKED_MAX_PIECE_SIZE * 10;
         Cache {
-            cache: [0u8; FILE_CACHE_SIZE].into(),
+            cache: [0u8; Self::FILE_CACHE_SIZE].into(),
             cache_ptrs: Vec::new(),
             next: 0,
         }
@@ -46,9 +47,13 @@ impl Cache {
     }
 
     fn find_space_for(&mut self, bpos: usize, len: usize) -> &mut [u8] {
-        let start = self.next;
-        let end = start + len;
-        self.next += len;
+        let mut start = self.next;
+        let mut end = start + len;
+        if Self::FILE_CACHE_SIZE < end {
+            start = 0;
+            end = len;
+        }
+        self.next = end;
 
         self.cache_ptrs.retain(|(s, _, l)| {
             let e = s + l;

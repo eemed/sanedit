@@ -9,25 +9,25 @@ vars:
 
 tasks:
   build-release:
-    desc: Build a release version
+    desc: Build a release build
     dir: crates
     cmds:
       - cargo build --release
 
   run-release:
-    desc: Build and run the release version
+    desc: Build and run the release build
     dir: crates
     cmds:
       - cargo run --release
 
   build:
-    desc: Build a debug version
+    desc: Build a debug build
     dir: crates
     cmds:
       - cargo build
 
   run:
-    desc: Build and run the debug version
+    desc: Build and run the debug build
     dir: crates
     cmds:
       - cargo run

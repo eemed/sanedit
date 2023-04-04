@@ -1,0 +1,102 @@
+# https://taskfile.dev
+
+version: '3'
+
+vars:
+  LOG_FILE: /tmp/sanedit.log
+  UCD_VERSION: 15.0.0
+  UCD_DIR: /tmp/ucd-{{ .UCD_VERSION }}
+
+tasks:
+  build-release:
+    desc: Build a release version
+    dir: crates
+    cmds:
+      - cargo build --release
+
+  run-release:
+    desc: Build and run the release version
+    dir: crates
+    cmds:
+      - cargo run --release
+
+  build:
+    desc: Build a debug version
+    dir: crates
+    cmds:
+      - cargo build
+
+  run:
+    desc: Build and run the debug version
+    dir: crates
+    cmds:
+      - cargo run
+    env:
+      RUST_BACKTRACE: 1
+
+  test:
+    desc: Run tests
+    dir: crates
+    cmds:
+      - cargo test
+
+  bench:
+    desc: Run benchmarks
+    dir: crates
+    cmds:
+      - cargo bench
+
+  tail-log:
+    desc: Tail the log file
+    dir: crates
+    cmds:
+      - touch {{ .LOG_FILE }}
+      - tail -f {{ .LOG_FILE }}
+
+  download-ucd:
+    desc: Download unicode character database
+    internal: true
+    cmds:
+      - rm -rf {{ .UCD_DIR }}
+      - mkdir -p {{ .UCD_DIR }}
+      - cd {{ .UCD_DIR }} && curl -LO https://www.unicode.org/Public/zipped/{{ .UCD_VERSION }}/UCD.zip
+      - unzip {{ .UCD_DIR }}/UCD.zip -d {{ .UCD_DIR }}
+    status:
+      - test -d {{ .UCD_DIR }}
+
+  run-ucd-generate:
+    desc: Generate UCD tables to the ucd crate
+    internal: true
+    dir: crates/ucd/src
+    cmds:
+      - ucd-generate word-break {{ .UCD_DIR }} --enum > word_break.rs
+      - ucd-generate sentence-break {{ .UCD_DIR }} --enum > sentence_break.rs
+      - ucd-generate grapheme-cluster-break {{ .UCD_DIR }} --enum > grapheme_break.rs
+      - ucd-generate general-category {{ .UCD_DIR }} --enum > general_category.rs
+      - ucd-generate property-bool {{ .UCD_DIR }} --include Extended_Pictographic > properties.rs
+
+  regenerate-ucd:
+    desc: Regenerate unicode tables in the ucd crate
+    cmds:
+      - task: download-ucd
+      - task: run-ucd-generate
+      - task: format
+
+  format:
+    desc: Run code formatter
+    dir: crates
+    cmds:
+      - cargo fmt
+
+  clean:
+    desc: Clean up working directories
+    dir: crates
+    cmds:
+      - rm -rf {{ .UCD_DIR }}
+      - rm -rf {{ .LOG_FILE }}
+      - cargo clean
+
+  default:
+    cmds:
+      - task -l
+    silent: true

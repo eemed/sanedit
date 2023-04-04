@@ -122,10 +122,9 @@ impl<'a, B: AsRef<[u8]>> PartialEq<B> for PieceTreeSlice<'a> {
             if chunk_bytes != &other[..chunk_len] {
                 return false;
             }
+
             other = &other[chunk_len..];
-
             total += chunk_len;
-
             pos_chunk = chunks.next();
         }
 

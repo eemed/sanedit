@@ -39,7 +39,7 @@ impl Cache {
     fn get(&self, start: usize, end: usize) -> Option<&[u8]> {
         for (pos, bpos, len) in &self.cache_ptrs {
             if *bpos <= start && end <= bpos + len {
-                return Some(self.cache[*pos..pos + len].into());
+                return Some(self.cache[*pos..pos + end - start].into());
             }
         }
 

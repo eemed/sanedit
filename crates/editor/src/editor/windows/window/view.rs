@@ -338,7 +338,7 @@ impl View {
         if self.range.end <= pos {
             self.set_offset(pos);
             self.draw(buf);
-            self.scroll_up_n(buf, self.height().saturating_sub(1));
+            self.scroll_up_n(buf, self.height().saturating_sub(2));
             self.draw(buf);
         }
 

@@ -110,7 +110,7 @@ impl Window {
         );
 
         self.view.scroll_down_n(buf, n);
-        self.view.draw(buf);
+        self.view.redraw(buf);
 
         let primary = self.cursors.primary_mut();
         let Range { start, end } = self.view.range();
@@ -129,7 +129,7 @@ impl Window {
             self.buf
         );
         self.view.scroll_up_n(buf, n);
-        self.view.draw(buf);
+        self.view.redraw(buf);
 
         let primary = self.cursors.primary_mut();
         let Range { start, end } = self.view.range();
@@ -163,7 +163,7 @@ impl Window {
 
     pub fn set_offset(&mut self, offset: usize, buf: &Buffer) {
         self.view.set_offset(offset);
-        self.view.draw(buf);
+        self.view.redraw(buf);
     }
 
     pub fn resize(&mut self, size: Size, buf: &Buffer) {
@@ -185,7 +185,7 @@ impl Window {
         self.message.as_ref()
     }
 
-    pub fn draw_view(&mut self, buf: &Buffer) {
+    pub fn redraw_view(&mut self, buf: &Buffer) {
         debug_assert!(
             buf.id == self.buf,
             "Invalid buffer provided to window got id {:?}, expected {:?}",
@@ -193,7 +193,7 @@ impl Window {
             self.buf
         );
         let primary_pos = self.cursors.primary().pos();
-        self.view.draw(buf);
+        self.view.redraw(buf);
         self.view.view_to(primary_pos, buf);
     }
 
@@ -277,7 +277,7 @@ mod test {
             "this is a long line that will not fit\nthis is another long line that will not fit into the view\nthis is the third line that is longer than the view",
         );
         let mut win = Window::new(buf.id, 10, 3);
-        win.draw_view(&buf);
+        win.redraw_view(&buf);
         (win, buf)
     }
 
@@ -288,7 +288,7 @@ mod test {
             "one\ntwo\nthree\nfour\nfive\nsix\nseven\neight\nnine\nten",
         );
         let mut win = Window::new(buf.id, 80, 3);
-        win.draw_view(&buf);
+        win.redraw_view(&buf);
         (win, buf)
     }
 

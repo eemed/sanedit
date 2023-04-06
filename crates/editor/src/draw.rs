@@ -22,7 +22,7 @@ pub(crate) struct DrawState {
 
 impl DrawState {
     pub fn new(win: &mut Window, buf: &Buffer, theme: &Theme) -> (DrawState, Vec<Redraw>) {
-        win.draw_view(buf);
+        win.redraw_view(buf);
 
         let view = win.view();
         let cursors = win.cursors();
@@ -69,7 +69,7 @@ impl DrawState {
                 redraw.push(Redraw::ClosePrompt);
             }
 
-            win.draw_view(buf);
+            win.redraw_view(buf);
             let view = win.view();
             let cursors = win.cursors();
             let window = draw_window(view, cursors, buf, theme);

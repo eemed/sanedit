@@ -66,6 +66,7 @@ pub(crate) struct View {
 
     /// Display options which were used to draw this view
     pub options: DisplayOptions,
+    needs_redraw: bool,
 }
 
 impl View {
@@ -76,6 +77,7 @@ impl View {
             width,
             height,
             options: DisplayOptions::default(),
+            needs_redraw: true,
         }
     }
 
@@ -196,7 +198,14 @@ impl View {
         false
     }
 
-    pub fn draw(&mut self, buf: &Buffer) {
+    pub fn redraw(&mut self, buf: &Buffer) {
+        if self.needs_redraw {
+            self.draw(buf);
+        }
+    }
+
+    fn draw(&mut self, buf: &Buffer) {
+        self.needs_redraw = false;
         self.clear();
         self.draw_cells(buf);
         log::info!("Draw view {:?}", self.range);
@@ -222,6 +231,7 @@ impl View {
         }
 
         self.range.start += pos;
+        self.needs_redraw = true;
     }
 
     pub fn scroll_up_n(&mut self, buf: &Buffer, n: usize) {
@@ -236,6 +246,7 @@ impl View {
             self.draw_line_backwards(&slice, 0, &mut pos);
         }
         self.range.start = pos;
+        self.needs_redraw = true;
     }
 
     pub fn range(&self) -> Range<usize> {
@@ -323,10 +334,11 @@ impl View {
 
     /// Align view so that pos is shown
     pub fn view_to(&mut self, pos: usize, buf: &Buffer) {
+        self.redraw(buf);
+
         // Make sure offset is inside buffer range
         if self.range.start > buf.len() {
             self.set_offset(buf.len());
-            self.draw(buf);
         }
 
         // At end
@@ -367,6 +379,7 @@ impl View {
         self.width = size.width;
         self.height = size.height;
         self.cells = Self::make_default_cells(size.width, size.height);
+        self.needs_redraw = true;
     }
 }
 

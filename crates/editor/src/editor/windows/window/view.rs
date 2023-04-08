@@ -208,7 +208,6 @@ impl View {
         self.needs_redraw = false;
         self.clear();
         self.draw_cells(buf);
-        log::info!("Draw view {:?}", self.range);
     }
 
     pub fn top_line_len(&self) -> usize {

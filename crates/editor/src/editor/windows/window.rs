@@ -23,6 +23,7 @@ use crate::{
 pub(crate) use self::{
     cursors::{Cursor, Cursors},
     layer::Layer,
+    search::Search,
     message::{Message, Severity},
     options::Options,
     prompt::Prompt,
@@ -50,7 +51,6 @@ impl Window {
             message: None,
             cursors: Cursors::default(),
             keymap: Keymap::default_normal(),
-            // prompt: Prompt::default(),
             options: Options::default(),
             layers: Vec::new(),
         }
@@ -113,12 +113,10 @@ impl Window {
         self.view.redraw(buf);
 
         let primary = self.cursors.primary_mut();
-        let Range { start, end } = self.view.range();
+        let Range { start, .. } = self.view.range();
         if primary.pos() < start {
             primary.goto(start);
         }
-
-        log::info!("View down range: {start}..{end}, {}", primary.pos());
     }
 
     pub fn scroll_up_n(&mut self, buf: &Buffer, n: usize) {
@@ -132,13 +130,11 @@ impl Window {
         self.view.redraw(buf);
 
         let primary = self.cursors.primary_mut();
-        let Range { start, end } = self.view.range();
+        let Range { end, .. } = self.view.range();
         if primary.pos() >= end && end != buf.len() {
             let prev = prev_grapheme_boundary(&buf.slice(..), end);
             primary.goto(prev);
         }
-
-        log::info!("View up range: {start}..{end}, {}", primary.pos());
     }
 
     /// sets window offset so that primary cursor is visible in the drawn view.
@@ -244,8 +240,31 @@ impl Window {
 
     pub fn close_prompt(&mut self) -> Option<Prompt> {
         let is_prompt = matches!(self.layers.iter().last(), Some(Layer::Prompt(..)));
-        if let Layer::Prompt(prompt) = self.layers.pop()? {
-            Some(prompt)
+        if is_prompt {
+            if let Layer::Prompt(prompt) = self.layers.pop()? {
+                return Some(prompt);
+            }
+        }
+        None
+    }
+
+    pub fn open_search(&mut self, search: Search) {
+        self.layers.push(Layer::Search(search));
+    }
+
+    pub fn close_search(&mut self) -> Option<Search> {
+        let is_search = matches!(self.layers.iter().last(), Some(Layer::Search(..)));
+        if is_search {
+            if let Layer::Search(search) = self.layers.pop()? {
+                return Some(search);
+            }
+        }
+        None
+    }
+
+    pub fn search(&mut self) -> Option<&mut Search> {
+        if let Some(Layer::Search(ref mut s)) = self.layers.iter_mut().last() {
+            Some(s)
         } else {
             None
         }

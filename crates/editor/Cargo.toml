@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 sanedit-messages = { path = "../messages" }
 sanedit-buffer = { path = "../buffer" }
+sanedit-regex = { path = "../regex" }
 
 # General
 lazy_static = "1.4.0"

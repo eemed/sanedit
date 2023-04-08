@@ -52,6 +52,7 @@ impl Keymap {
              "alt+S", Action::scroll_up,
 
              "ctrl+o", Action::prompt_open_file,
+             "ctrl+f", Action::search_open,
         );
 
         map
@@ -71,6 +72,23 @@ impl Keymap {
              "tab", Action::prompt_next_completion,
              "btab", Action::prompt_prev_completion,
              "enter", Action::prompt_confirm,
+        );
+
+        map
+    }
+
+    pub fn default_search() -> Keymap {
+        let mut map = Keymap {
+            root: KeyTrie::default(),
+        };
+
+        #[rustfmt::skip]
+        map!(map,
+             "ctrl+c", Action::search_close,
+             "backspace", Action::search_remove_grapheme_after_cursor,
+             "left", Action::search_prev_grapheme,
+             "right", Action::search_next_grapheme,
+             "enter", Action::search_confirm,
         );
 
         map

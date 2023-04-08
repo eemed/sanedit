@@ -2,6 +2,7 @@ pub(crate) mod editor;
 pub(crate) mod jobs;
 pub(crate) mod movement;
 pub(crate) mod prompt;
+pub(crate) mod search;
 pub(crate) mod text;
 pub(crate) mod window;
 
@@ -13,6 +14,7 @@ use self::editor::*;
 use self::jobs::*;
 use self::movement::*;
 use self::prompt::*;
+use self::search::*;
 use self::text::*;
 use self::window::*;
 
@@ -92,6 +94,13 @@ impl Action {
         prompt_prev_completion,
         prompt_close,
         prompt_open_file,
+
+        search_open,
+        search_next_grapheme,
+        search_prev_grapheme,
+        search_remove_grapheme_after_cursor,
+        search_confirm,
+        search_close,
     );
 }
 

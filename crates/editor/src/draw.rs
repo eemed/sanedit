@@ -1,4 +1,5 @@
 mod prompt;
+mod search;
 mod statusline;
 mod window;
 
@@ -9,7 +10,7 @@ use crate::editor::{
     windows::{Layer, Window},
 };
 
-use self::{prompt::draw_prompt, statusline::draw_statusline, window::draw_window};
+use self::{prompt::draw_prompt, statusline::draw_statusline, window::draw_window, search::draw_search};
 
 pub(crate) struct DrawState {
     /// Used to track scroll position when drawing prompt
@@ -59,7 +60,21 @@ impl DrawState {
                         }
                     }
                 }
-                Layer::Search(_) => todo!(),
+                Layer::Search(search) => {
+                    let search = draw_search(search, &win.options);
+                    match self.prompt.as_mut() {
+                        Some(prev) => {
+                            if let Some(diff) = prev.diff(&search) {
+                                redraw.push(diff.into());
+                                *prev = search;
+                            }
+                        }
+                        None => {
+                            redraw.push(Redraw::Prompt(search.clone()));
+                            self.prompt = Some(search);
+                        }
+                    }
+                }
             }
         }
 

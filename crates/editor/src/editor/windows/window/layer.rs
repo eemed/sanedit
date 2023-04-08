@@ -17,7 +17,7 @@ impl Layer {
     pub fn keymap(&self) -> Option<&Keymap> {
         match self {
             Layer::Prompt(p) => Some(p.keymap()),
-            Layer::Search(s) => None,
+            Layer::Search(s) => Some(s.keymap()),
         }
     }
 
@@ -27,7 +27,10 @@ impl Layer {
                 p.insert_at_cursor(text);
                 true
             }
-            _ => false,
+            Layer::Search(s) => {
+                s.prompt_mut().insert_at_cursor(text);
+                true
+            }
         }
     }
 }

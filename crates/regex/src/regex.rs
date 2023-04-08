@@ -6,7 +6,7 @@ pub(crate) use ast::Ast;
 
 use crate::{
     cursor::Cursor,
-    vm::{Compiler, Program, VMResult, VM},
+    vm::{Compiler, Program, VM},
 };
 
 pub struct Regex {
@@ -14,17 +14,27 @@ pub struct Regex {
 }
 
 impl Regex {
-    pub fn new(regex: &str) -> Regex {
-        let ast = Parser::parse(regex);
+    pub fn new(pattern: &str) -> Regex {
+        let ast = Parser::parse(pattern);
         let program = Compiler::compile(&ast);
         Regex { program }
     }
 
-    pub fn find(&self, input: &mut impl Cursor) -> bool {
-        let result = VM::thompson(&self.program, input);
-        println!("Result: {result:?}");
-        matches!(result, VMResult::Match { .. })
+    pub fn new_literal(literal: &str) -> Regex {
+        todo!()
     }
+
+    pub fn find(&self, input: &mut impl Cursor) -> RegexResult {
+        VM::thompson(&self.program, input)
+    }
+}
+
+#[derive(Debug)]
+pub enum RegexResult {
+    /// The first pair is the whole match, and the rest are capturing groups
+    /// used in the regex.
+    Match(Vec<(usize, usize)>),
+    NoMatch,
 }
 
 #[cfg(test)]

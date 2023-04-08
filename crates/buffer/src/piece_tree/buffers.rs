@@ -1,6 +1,7 @@
 use std::{
     borrow::Cow,
     cell::RefCell,
+    cmp,
     fs::File,
     io::{self, Read, Seek, SeekFrom},
     ops::Range,
@@ -39,7 +40,9 @@ impl Cache {
     fn get(&self, start: usize, end: usize) -> Option<&[u8]> {
         for (pos, bpos, len) in &self.cache_ptrs {
             if *bpos <= start && end <= bpos + len {
-                return Some(self.cache[*pos..pos + end - start].into());
+                let s = pos + start - bpos;
+                let e = s + end - start;
+                return Some(self.cache[s..e].into());
             }
         }
 
@@ -109,12 +112,21 @@ impl OriginalBuffer {
                     return Ok(bytes.to_vec().into());
                 }
 
+                let len = self.len();
                 let mut cache = cache.borrow_mut();
                 let mut file = file.borrow_mut();
 
-                let buf = cache.find_space_for(start, range.len());
-                file.seek(SeekFrom::Start(start as u64))?;
-                file.read_exact(buf)?;
+                let buf = {
+                    let block = start - (start % FILE_BACKED_MAX_PIECE_SIZE);
+                    let size = cmp::min(len, block + FILE_BACKED_MAX_PIECE_SIZE) - block;
+                    let buf = cache.find_space_for(block, size);
+                    file.seek(SeekFrom::Start(block as u64))?;
+                    file.read_exact(buf)?;
+
+                    let s = start - block;
+                    let e = s + end - start;
+                    &buf[s..e]
+                };
 
                 Ok(buf.to_vec().into())
             }

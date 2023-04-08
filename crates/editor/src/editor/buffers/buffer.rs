@@ -1,4 +1,5 @@
 mod change;
+mod cursor;
 mod options;
 mod snapshots;
 
@@ -10,10 +11,11 @@ use std::{
 };
 
 use sanedit_buffer::piece_tree::{PieceTree, PieceTreeSlice};
+use sanedit_regex::Cursor;
 
 use crate::common::file::File;
 
-use self::{change::Change, options::Options, snapshots::Snapshots};
+use self::{change::Change, cursor::BufferCursor, options::Options, snapshots::Snapshots};
 
 slotmap::new_key_type!(
     pub(crate) struct BufferId;
@@ -62,7 +64,8 @@ impl Buffer {
 
     fn file_backed(file: File) -> io::Result<Buffer> {
         log::debug!("New file backed buf");
-        let file = fs::File::open(file.path())?;
+        let path = file.path().canonicalize()?;
+        let file = fs::File::open(&path)?;
         let pt = PieceTree::from_file(file);
         let snapshot = pt.snapshot();
         Ok(Buffer {
@@ -71,7 +74,7 @@ impl Buffer {
             is_modified: false,
             snapshots: Snapshots::new(snapshot),
             options: Options::default(),
-            path: None,
+            path: Some(path),
             last_change: None,
             last_saved_snapshot: 0,
         })
@@ -79,8 +82,11 @@ impl Buffer {
 
     fn in_memory(file: File) -> io::Result<Buffer> {
         log::debug!("New buf");
-        let file = fs::File::open(file.path())?;
-        Self::from_reader(file)
+        let path = file.path().canonicalize()?;
+        let file = fs::File::open(&path)?;
+        let mut buf = Self::from_reader(file)?;
+        buf.path = Some(path);
+        Ok(buf)
     }
 
     fn from_reader<R: io::Read>(reader: R) -> io::Result<Buffer> {
@@ -135,6 +141,10 @@ impl Buffer {
 
     pub fn options(&self) -> &Options {
         &self.options
+    }
+
+    pub fn cursor<'a>(&'a self) -> impl Cursor + 'a {
+        BufferCursor::new(&self.pt)
     }
 }
 

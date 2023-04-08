@@ -136,7 +136,6 @@ impl Editor {
     }
 
     fn handle_message(&mut self, id: ClientId, msg: Message) {
-        log::info!("Message {:?} from client {:?}", msg, id);
         match msg {
             Message::Hello(size) => {
                 self.handle_hello(id, size);

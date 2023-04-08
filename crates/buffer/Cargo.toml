@@ -7,6 +7,7 @@ edition = "2021"
 
 [dependencies]
 sanedit-ucd = { path = "../ucd" }
+# log = "0.4"
 
 [dev-dependencies]
 rand = "0.7"

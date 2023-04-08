@@ -10,24 +10,17 @@ pub(crate) use program::Program;
 use std::mem;
 
 use crate::cursor::Cursor;
+use crate::regex::RegexResult;
 
 use self::inst::Inst;
 use self::slots::Slots;
 use self::thread::ThreadSet;
 
-#[derive(Debug)]
-pub enum VMResult {
-    /// The first pair is the whole match, and the rest are capturing groups
-    /// used in the regex.
-    Match(Vec<(usize, usize)>),
-    NoMatch,
-}
-
 pub(crate) struct VM;
 
 impl VM {
-    /// Run a program on thompsons vm
-    pub(crate) fn thompson(program: &Program, input: &mut impl Cursor) -> VMResult {
+    /// Run a program on thompsons NFA simulation VM
+    pub(crate) fn thompson(program: &Program, input: &mut impl Cursor) -> RegexResult {
         let len = program.len();
         let mut current = ThreadSet::with_capacity(len);
         let mut new = ThreadSet::with_capacity(len);
@@ -47,7 +40,7 @@ impl VM {
                 match &program[pc] {
                     Match => {
                         let groups = slots.get_as_pairs(pc);
-                        return VMResult::Match(groups);
+                        return RegexResult::Match(groups);
                     }
                     Byte(inst_byte) => {
                         if byte == Some(*inst_byte) {
@@ -83,6 +76,6 @@ impl VM {
             new.clear();
         }
 
-        VMResult::NoMatch
+        RegexResult::NoMatch
     }
 }

@@ -2,7 +2,7 @@ use criterion::{criterion_group, criterion_main, Criterion};
 use regex::Regex;
 
 fn compilation(c: &mut Criterion) {
-    c.bench_function("compile_simple", |bench| {
+    c.bench_function("compile_car?", |bench| {
         bench.iter(move || {
             let regex = Regex::new("car?");
         });

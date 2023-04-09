@@ -117,6 +117,10 @@ impl<'a> Parser<'a> {
 
     fn base(&mut self) -> Ast {
         match self.peek() {
+            Some('.') => {
+                self.skip();
+                Ast::Any
+            }
             Some('(') => {
                 self.eat('(');
                 let ast = self.expr();
@@ -128,7 +132,6 @@ impl<'a> Parser<'a> {
                 let ch = self.next().expect("escaped char");
                 Ast::Char(ch)
             }
-            // Some('.') => {} any char, needs char classes
             // Some('[') => {} [a-z]
             Some(ch) => {
                 self.skip();

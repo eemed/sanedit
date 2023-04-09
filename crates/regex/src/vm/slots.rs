@@ -23,7 +23,7 @@ impl Slots {
             }
         } else {
             let (head, tail) = self.slots.split_at_mut(to + 1);
-            let from = &tail[to - from - 1];
+            let from = &tail[from - to - 1];
             let to = &mut head[to];
 
             for i in 0..to.len() {

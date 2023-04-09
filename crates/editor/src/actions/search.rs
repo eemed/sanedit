@@ -22,7 +22,7 @@ pub(crate) fn search_open(editor: &mut Editor, id: ClientId) {
                     .iter()
                     .map(|(start, end)| {
                         let slice = buf.slice(start..end);
-                        String::from(&slice)
+                        format!("{start}..{end} -- '{}'", String::from(&slice))
                     })
                     .collect();
                 log::info!("Search: match {:?}", matches);

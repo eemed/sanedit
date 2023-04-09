@@ -48,6 +48,14 @@ impl VM {
                             slots.copy(pc, pc + 1);
                         }
                     }
+                    ByteRange(range) => {
+                        if let Some(ref byte) = byte {
+                            if range.contains(byte) {
+                                new.add_thread(pc + 1);
+                                slots.copy(pc, pc + 1);
+                            }
+                        }
+                    }
                     Jmp(x) => {
                         current.add_thread(*x);
                         slots.copy(pc, *x);

@@ -1,14 +1,20 @@
 mod ast;
 mod parser;
 
+use std::ops::Range;
+
 pub(crate) use self::parser::Parser;
 pub(crate) use ast::Ast;
 
 use crate::{
     cursor::Cursor,
-    vm::{Compiler, Program, VM},
+    vm::{Compiler, Program, VMResult, VM},
 };
 
+// TODO: Parse into postfix notation to avoid stack overflows of recursive
+// descent parser. Compile postfix notation to instructions.
+//
+// Implement DFA to run simpler searches faster?
 pub struct Regex {
     program: Program,
 }
@@ -20,21 +26,49 @@ impl Regex {
         Regex { program }
     }
 
-    pub fn new_literal(literal: &str) -> Regex {
-        todo!()
-    }
-
-    pub fn find(&self, input: &mut impl Cursor) -> RegexResult {
-        VM::thompson(&self.program, input)
+    /// Find the first match in input
+    pub fn find(&self, input: &mut impl Cursor) -> Option<Match> {
+        match VM::thompson(&self.program, input) {
+            VMResult::Match(m) => Some(m),
+            _ => None,
+        }
     }
 }
 
 #[derive(Debug)]
-pub enum RegexResult {
-    /// The first pair is the whole match, and the rest are capturing groups
-    /// used in the regex.
-    Match(Vec<(usize, usize)>),
-    NoMatch,
+pub struct Match {
+    range: Range<usize>,
+    captures: Vec<Match>,
+}
+
+impl Match {
+    pub(crate) fn from_groups(mut groups: Vec<(usize, usize)>) -> Match {
+        let (start, end) = groups.remove(0);
+        let captures = groups
+            .into_iter()
+            .map(|(start, end)| Match {
+                range: start..end,
+                captures: Vec::new(),
+            })
+            .collect();
+
+        Match {
+            range: start..end,
+            captures,
+        }
+    }
+
+    pub fn start(&self) -> usize {
+        self.range.start
+    }
+
+    pub fn end(&self) -> usize {
+        self.range.end
+    }
+
+    pub fn captures(&self) -> &[Match] {
+        &self.captures
+    }
 }
 
 #[cfg(test)]

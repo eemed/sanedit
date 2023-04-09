@@ -14,20 +14,24 @@ pub(crate) fn search_open(editor: &mut Editor, id: ClientId) {
         let regex = Regex::new(input);
         let mut cursor = buf.cursor();
 
-        use sanedit_regex::RegexResult::*;
-
-        match regex.find(&mut cursor) {
-            Match(groups) => {
-                let matches: Vec<String> = groups
-                    .iter()
-                    .map(|(start, end)| {
-                        let slice = buf.slice(start..end);
-                        format!("{start}..{end} -- '{}'", String::from(&slice))
-                    })
-                    .collect();
-                log::info!("Search: match {:?}", matches);
-            }
-            NoMatch => log::info!("Search: no match"),
+        if let Some(m) = regex.find(&mut cursor) {
+            let start = m.start();
+            let end = m.end();
+            let slice = buf.slice(start..end);
+            let mtch = format!("{start}..{end} -- '{}'", String::from(&slice));
+            let captures: Vec<String> = m
+                .captures()
+                .iter()
+                .map(|cap| {
+                    let start = cap.start();
+                    let end = cap.end();
+                    let slice = buf.slice(start..end);
+                    format!("{start}..{end} -- '{}'", String::from(&slice))
+                })
+                .collect();
+            log::info!("Search: match {mtch}, captures {captures:?}");
+        } else {
+            log::info!("Search: no match");
         }
     });
     let on_abort: PromptAction = Box::new(move |editor, id, input| {});

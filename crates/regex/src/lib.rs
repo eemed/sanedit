@@ -2,5 +2,5 @@ mod cursor;
 mod regex;
 mod vm;
 
-pub use crate::regex::{Regex, RegexResult};
+pub use crate::regex::{Regex, Match};
 pub use cursor::Cursor;

@@ -4,7 +4,6 @@ use std::ops::Deref;
 use super::inst::{Inst, InstIndex};
 
 pub(crate) struct Program {
-    pub start: InstIndex,
     pub insts: Vec<Inst>,
 }
 
@@ -27,7 +26,7 @@ impl Deref for Program {
 
 impl fmt::Debug for Program {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(f, "-- Begin program -- start {} --", self.start)?;
+        writeln!(f, "-- Begin program --")?;
 
         for (i, inst) in self.iter().enumerate() {
             writeln!(f, "{i:02}: {inst:?}")?;

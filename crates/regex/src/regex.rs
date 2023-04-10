@@ -1,14 +1,13 @@
-mod ast;
-mod parser;
+pub(crate) mod ast;
+pub(crate) mod parser;
 
 use std::ops::Range;
 
-pub(crate) use self::parser::Parser;
-pub(crate) use ast::Ast;
+use self::parser::regex_to_postfix;
 
 use crate::{
     cursor::Cursor,
-    vm::{Compiler, Program, VMResult, VM},
+    vm::{Program, VMResult, VM},
 };
 
 // TODO: Parse into postfix notation to avoid stack overflows of recursive
@@ -21,8 +20,8 @@ pub struct Regex {
 
 impl Regex {
     pub fn new(pattern: &str) -> Regex {
-        let ast = Parser::parse(pattern);
-        let program = Compiler::compile(&ast);
+        let postfix = regex_to_postfix(pattern);
+        let program = Program::try_from(postfix).unwrap();
         Regex { program }
     }
 

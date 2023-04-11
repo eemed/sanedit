@@ -81,6 +81,10 @@ impl View {
         }
     }
 
+    pub fn invalidate(&mut self) {
+        self.needs_redraw = true;
+    }
+
     pub fn cells(&self) -> &VecDeque<Vec<Cell>> {
         &self.cells
     }

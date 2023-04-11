@@ -66,7 +66,7 @@ impl Keymap {
         #[rustfmt::skip]
         map!(map,
              "ctrl+c", Action::prompt_close,
-             "backspace", Action::prompt_remove_grapheme_after_cursor,
+             "backspace", Action::prompt_remove_grapheme_before_cursor,
              "left", Action::prompt_prev_grapheme,
              "right", Action::prompt_next_grapheme,
              "tab", Action::prompt_next_completion,
@@ -85,7 +85,7 @@ impl Keymap {
         #[rustfmt::skip]
         map!(map,
              "ctrl+c", Action::search_close,
-             "backspace", Action::search_remove_grapheme_after_cursor,
+             "backspace", Action::search_remove_grapheme_before_cursor,
              "left", Action::search_prev_grapheme,
              "right", Action::search_next_grapheme,
              "enter", Action::search_confirm,

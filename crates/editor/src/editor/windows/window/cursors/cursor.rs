@@ -1,5 +1,7 @@
 use std::{cmp, ops::Range};
 
+use crate::editor::buffers::Buffer;
+
 #[derive(Debug)]
 pub(crate) struct Cursor {
     /// Position in buffer
@@ -10,6 +12,8 @@ pub(crate) struct Cursor {
 
     /// Selection anchor. Selected range is formed from this position and the current `pos`
     anchor: Option<usize>,
+
+    unanchor_on_move: bool,
 }
 
 impl Cursor {
@@ -18,6 +22,7 @@ impl Cursor {
             pos,
             col: None,
             anchor: None,
+            unanchor_on_move: false,
         }
     }
 
@@ -32,19 +37,32 @@ impl Cursor {
     pub fn goto(&mut self, pos: usize) {
         self.pos = pos;
         self.col = None;
+
+        if self.unanchor_on_move {
+            self.unanchor();
+        }
     }
 
     pub fn goto_with_col(&mut self, pos: usize, col: usize) {
         self.pos = pos;
         self.col = Some(col);
+
+        if self.unanchor_on_move {
+            self.unanchor();
+        }
     }
 
     pub fn anchor(&mut self) {
         self.anchor = Some(self.pos);
     }
 
-    pub fn disanchor(&mut self) {
+    pub fn unanchor(&mut self) {
+        self.unanchor_on_move = false;
         self.anchor = None;
+    }
+
+    pub fn set_unanchor_on_move(&mut self) {
+        self.unanchor_on_move = true;
     }
 
     pub fn selection(&self) -> Option<Range<usize>> {
@@ -52,6 +70,17 @@ impl Cursor {
         let min = cmp::min(self.pos, anchor);
         let max = cmp::max(self.pos, anchor);
         Some(min..max)
+    }
+
+    /// Remove the selected text from the buffer and restore cursor to non
+    /// selecting.
+    pub fn remove_selection(&mut self, buf: &mut Buffer) {
+        if let Some(sel) = self.selection() {
+            let Range { start, .. } = sel;
+            buf.remove(sel);
+            self.unanchor();
+            self.goto(start);
+        }
     }
 }
 

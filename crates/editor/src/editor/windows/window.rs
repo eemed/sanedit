@@ -23,11 +23,11 @@ use crate::{
 pub(crate) use self::{
     cursors::{Cursor, Cursors},
     layer::Layer,
-    search::Search,
     message::{Message, Severity},
     options::Options,
     prompt::Prompt,
     prompt::PromptAction,
+    search::Search,
     view::{Cell, View},
 };
 
@@ -157,6 +157,10 @@ impl Window {
         &self.view
     }
 
+    pub fn invalidate_view(&mut self) {
+        self.view.invalidate();
+    }
+
     pub fn set_offset(&mut self, offset: usize, buf: &Buffer) {
         self.view.set_offset(offset);
         self.view.redraw(buf);
@@ -203,27 +207,21 @@ impl Window {
         &self.keymap
     }
 
-    // If there was no binding for a key, it will be converted to a &str and
-    // handled here
-    pub fn handle_insert(&mut self, buf: &mut Buffer, text: &str) {
-        for layer in &mut self.layers {
-            if layer.handle_insert(text) {
-                return;
-            }
-        }
-
-        self.insert_at_cursor(buf, text);
-    }
-
-    fn insert_at_cursor(&mut self, buf: &mut Buffer, text: &str) {
+    pub fn insert_at_cursor(&mut self, buf: &mut Buffer, text: &str) {
         let cursor = self.primary_cursor_mut();
+        cursor.remove_selection(buf);
         let cursor_pos = cursor.pos();
         buf.insert(cursor_pos, text);
         cursor.goto(cursor_pos + text.len());
+        self.invalidate_view();
     }
 
     pub fn layers(&self) -> &[Layer] {
         self.layers.as_slice()
+    }
+
+    pub fn layers_mut(&mut self) -> &mut [Layer] {
+        self.layers.as_mut_slice()
     }
 
     pub fn prompt(&mut self) -> Option<&mut Prompt> {

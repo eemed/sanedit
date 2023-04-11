@@ -1,53 +1,73 @@
 use std::cmp;
 
+use sanedit_buffer::piece_tree::PieceTreeSlice;
 use sanedit_messages::redraw::Point;
 
 use crate::{common, editor::Editor, server::ClientId};
 
-pub(crate) fn next_grapheme(editor: &mut Editor, id: ClientId) {
+fn do_move<F: Fn(&PieceTreeSlice, usize) -> usize>(
+    editor: &mut Editor,
+    id: ClientId,
+    f: F,
+    col: Option<usize>,
+) {
     let (win, buf) = editor.get_win_buf_mut(id);
     let cursor = win.primary_cursor_mut();
-    let pos = common::movement::next_grapheme_boundary(&buf.slice(..), cursor.pos());
-    cursor.goto(pos);
+    let pos = f(&buf.slice(..), cursor.pos());
+    if let Some(col) = col {
+        cursor.goto_with_col(pos, col);
+    } else {
+        cursor.goto(pos);
+    }
     win.view_to_cursor(buf);
+}
+
+fn do_move_static(editor: &mut Editor, id: ClientId, pos: usize, col: Option<usize>) {
+    do_move(editor, id, |_, _| pos, col);
+}
+
+pub(crate) fn next_grapheme(editor: &mut Editor, id: ClientId) {
+    do_move(editor, id, common::movement::next_grapheme_boundary, None);
 }
 
 pub(crate) fn prev_grapheme(editor: &mut Editor, id: ClientId) {
-    let (win, buf) = editor.get_win_buf_mut(id);
-    let cursor = win.primary_cursor_mut();
-    let pos = common::movement::prev_grapheme_boundary(&buf.slice(..), cursor.pos());
-    cursor.goto(pos);
-    win.view_to_cursor(buf);
+    do_move(editor, id, common::movement::prev_grapheme_boundary, None);
 }
 
 pub(crate) fn start_of_line(editor: &mut Editor, id: ClientId) {
-    let (win, buf) = editor.get_win_buf_mut(id);
-    let cursor = win.primary_cursor_mut();
-    let pos = common::movement::start_of_line(&buf.slice(..), cursor.pos());
-    cursor.goto_with_col(pos, 0);
-    win.view_to_cursor(buf);
+    do_move(editor, id, common::movement::start_of_line, Some(0));
 }
 
 pub(crate) fn end_of_line(editor: &mut Editor, id: ClientId) {
-    let (win, buf) = editor.get_win_buf_mut(id);
-    let cursor = win.primary_cursor_mut();
-    let pos = common::movement::end_of_line(&buf.slice(..), cursor.pos());
-    cursor.goto_with_col(pos, usize::MAX);
-    win.view_to_cursor(buf);
+    do_move(editor, id, common::movement::end_of_line, Some(usize::MAX));
 }
 
 pub(crate) fn start_of_buffer(editor: &mut Editor, id: ClientId) {
-    let (win, buf) = editor.get_win_buf_mut(id);
-    let cursor = win.primary_cursor_mut();
-    cursor.goto(0);
-    win.view_to_cursor(buf);
+    do_move_static(editor, id, 0, None);
 }
 
 pub(crate) fn end_of_buffer(editor: &mut Editor, id: ClientId) {
-    let (win, buf) = editor.get_win_buf_mut(id);
-    let cursor = win.primary_cursor_mut();
-    cursor.goto(buf.len());
-    win.view_to_cursor(buf);
+    let blen = {
+        let (win, buf) = editor.get_win_buf(id);
+        buf.len()
+    };
+    do_move_static(editor, id, blen, None);
+}
+
+pub(crate) fn next_word_start(editor: &mut Editor, id: ClientId) {
+    do_move(editor, id, common::movement::next_word_start, None);
+}
+
+pub(crate) fn prev_word_start(editor: &mut Editor, id: ClientId) {
+    do_move(editor, id, common::movement::prev_word_start, None);
+}
+
+pub(crate) fn next_paragraph(editor: &mut Editor, id: ClientId) {
+    do_move(editor, id, common::movement::next_paragraph, None);
+}
+
+pub(crate) fn prev_paragraph(editor: &mut Editor, id: ClientId) {
+    do_move(editor, id, common::movement::prev_paragraph, None);
 }
 
 pub(crate) fn prev_visual_line(editor: &mut Editor, id: ClientId) {
@@ -169,36 +189,4 @@ fn next_visual_line_impl(editor: &mut Editor, id: ClientId) -> bool {
 
     win.primary_cursor_mut().goto_with_col(pos, cursor_col);
     true
-}
-
-pub(crate) fn next_word_start(editor: &mut Editor, id: ClientId) {
-    let (win, buf) = editor.get_win_buf_mut(id);
-    let cursor = win.primary_cursor_mut();
-    let pos = common::movement::next_word_start(&buf.slice(..), cursor.pos());
-    cursor.goto(pos);
-    win.view_to_cursor(buf);
-}
-
-pub(crate) fn prev_word_start(editor: &mut Editor, id: ClientId) {
-    let (win, buf) = editor.get_win_buf_mut(id);
-    let cursor = win.primary_cursor_mut();
-    let pos = common::movement::prev_word_start(&buf.slice(..), cursor.pos());
-    cursor.goto(pos);
-    win.view_to_cursor(buf);
-}
-
-pub(crate) fn next_paragraph(editor: &mut Editor, id: ClientId) {
-    let (win, buf) = editor.get_win_buf_mut(id);
-    let cursor = win.primary_cursor_mut();
-    let pos = common::movement::next_paragraph(&buf.slice(..), cursor.pos());
-    cursor.goto(pos);
-    win.view_to_cursor(buf);
-}
-
-pub(crate) fn prev_paragraph(editor: &mut Editor, id: ClientId) {
-    let (win, buf) = editor.get_win_buf_mut(id);
-    let cursor = win.primary_cursor_mut();
-    let pos = common::movement::prev_paragraph(&buf.slice(..), cursor.pos());
-    cursor.goto(pos);
-    win.view_to_cursor(buf);
 }

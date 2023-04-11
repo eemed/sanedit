@@ -88,7 +88,7 @@ impl Action {
 
         prompt_next_grapheme,
         prompt_prev_grapheme,
-        prompt_remove_grapheme_after_cursor,
+        prompt_remove_grapheme_before_cursor,
         prompt_confirm,
         prompt_next_completion,
         prompt_prev_completion,
@@ -98,7 +98,7 @@ impl Action {
         search_open,
         search_next_grapheme,
         search_prev_grapheme,
-        search_remove_grapheme_after_cursor,
+        search_remove_grapheme_before_cursor,
         search_confirm,
         search_close,
     );

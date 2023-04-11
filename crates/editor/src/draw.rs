@@ -10,7 +10,9 @@ use crate::editor::{
     windows::{Layer, Window},
 };
 
-use self::{prompt::draw_prompt, statusline::draw_statusline, window::draw_window, search::draw_search};
+use self::{
+    prompt::draw_prompt, search::draw_search, statusline::draw_statusline, window::draw_window,
+};
 
 pub(crate) struct DrawState {
     /// Used to track scroll position when drawing prompt
@@ -41,6 +43,26 @@ impl DrawState {
 
     pub fn redraw(&mut self, win: &mut Window, buf: &Buffer, theme: &Theme) -> Vec<Redraw> {
         let mut redraw: Vec<Redraw> = vec![];
+
+        if self.prompt.take().is_some() {
+            self.prompt_scroll_offset = 0;
+            redraw.push(Redraw::ClosePrompt);
+        }
+
+        win.redraw_view(buf);
+        let view = win.view();
+        let cursors = win.cursors();
+        let window = draw_window(view, cursors, buf, theme);
+        if let Some(diff) = self.window.diff(&window) {
+            redraw.push(diff.into());
+            self.window = window;
+        }
+
+        let statusline = draw_statusline(win, buf);
+        if let Some(diff) = self.statusline.diff(&statusline) {
+            redraw.push(diff.into());
+            self.statusline = statusline;
+        }
 
         let layers = win.layers();
         for layer in layers {
@@ -75,28 +97,6 @@ impl DrawState {
                         }
                     }
                 }
-            }
-        }
-
-        if layers.is_empty() {
-            if self.prompt.take().is_some() {
-                self.prompt_scroll_offset = 0;
-                redraw.push(Redraw::ClosePrompt);
-            }
-
-            win.redraw_view(buf);
-            let view = win.view();
-            let cursors = win.cursors();
-            let window = draw_window(view, cursors, buf, theme);
-            if let Some(diff) = self.window.diff(&window) {
-                redraw.push(diff.into());
-                self.window = window;
-            }
-
-            let statusline = draw_statusline(win, buf);
-            if let Some(diff) = self.statusline.diff(&statusline) {
-                redraw.push(diff.into());
-                self.statusline = statusline;
             }
         }
 

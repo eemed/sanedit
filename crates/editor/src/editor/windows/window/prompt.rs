@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use unicode_segmentation::UnicodeSegmentation;
 
 use crate::{
@@ -7,7 +9,7 @@ use crate::{
 
 use super::completion::Completion;
 
-pub(crate) type PromptAction = Box<dyn Fn(&mut Editor, ClientId, &str) + Send + Sync>;
+pub(crate) type PromptAction = Rc<dyn Fn(&mut Editor, ClientId, &str) + Send + Sync>;
 
 pub(crate) struct Prompt {
     message: String,
@@ -15,11 +17,15 @@ pub(crate) struct Prompt {
     cursor: usize,
     completion: Completion,
 
-    /// Called when prompt is confirmed (enter)
+    /// Called when prompt is confirmed
     on_confirm: Option<PromptAction>,
 
-    /// Called if prompt is aborted (ctrl-c)
+    /// Called if prompt is aborted
     on_abort: Option<PromptAction>,
+
+    /// Called if input is modified
+    on_input: Option<PromptAction>,
+
     pub keymap: Keymap,
 }
 
@@ -32,6 +38,7 @@ impl Prompt {
             completion: Completion::new(false),
             on_confirm: None,
             on_abort: None,
+            on_input: None,
             keymap: Keymap::default_prompt(),
         }
     }
@@ -48,6 +55,11 @@ impl Prompt {
 
     pub fn on_abort(mut self, action: PromptAction) -> Self {
         self.on_abort = Some(action);
+        self
+    }
+
+    pub fn on_input(mut self, action: PromptAction) -> Self {
+        self.on_input = Some(action);
         self
     }
 
@@ -84,7 +96,7 @@ impl Prompt {
         self.cursor = last;
     }
 
-    pub fn remove_grapheme_after_cursor(&mut self) {
+    pub fn remove_grapheme_before_cursor(&mut self) {
         let end = self.cursor;
         self.prev_grapheme();
         let start = self.cursor;
@@ -118,6 +130,12 @@ impl Prompt {
         if let Some(on_abort) = self.on_abort {
             (on_abort)(editor, id, &input)
         }
+    }
+
+    pub fn get_on_input(&self) -> Option<(PromptAction, String)> {
+        let on_input = self.on_input.clone()?;
+        let input = self.input.clone();
+        Some((on_input, input))
     }
 
     pub fn input(&self) -> &str {

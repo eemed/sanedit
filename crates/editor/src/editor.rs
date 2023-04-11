@@ -1,4 +1,5 @@
 pub(crate) mod buffers;
+mod hooks;
 pub(crate) mod jobs;
 mod keymap;
 pub(crate) mod options;
@@ -21,6 +22,7 @@ use std::path::PathBuf;
 use tokio::io;
 use tokio::sync::mpsc::Receiver;
 
+use crate::actions;
 use crate::actions::Action;
 use crate::common::file::File;
 use crate::draw::DrawState;
@@ -33,6 +35,7 @@ use crate::server::JobProgress;
 use crate::server::JobsHandle;
 
 use self::buffers::Buffers;
+use self::hooks::Hooks;
 use self::jobs::Jobs;
 use self::options::Options;
 use self::windows::Window;
@@ -44,6 +47,7 @@ pub(crate) struct Editor {
     windows: Windows,
     buffers: Buffers,
     jobs: Jobs,
+    hooks: Hooks,
     keys: Vec<KeyEvent>,
     is_running: bool,
     working_dir: PathBuf,
@@ -59,6 +63,7 @@ impl Editor {
             windows: Windows::default(),
             buffers: Buffers::default(),
             jobs: Jobs::new(jobs_handle),
+            hooks: Hooks::default(),
             keys: Vec::default(),
             is_running: true,
             working_dir: env::current_dir().expect("Cannot get current working directory."),
@@ -254,28 +259,24 @@ impl Editor {
                 continue;
             }
 
+            use actions::text::insert;
             match event.key() {
                 Char(ch) => {
                     let mut buf = [0u8; 4];
                     let string = ch.encode_utf8(&mut buf);
-                    self.handle_insert(id, string);
+                    insert(self, id, string);
                 }
-                Tab => self.handle_insert(id, "\t"),
+                Tab => insert(self, id, "\t"),
                 Enter => {
                     let eol = {
                         let (_, buf) = self.get_win_buf(id);
                         buf.options().eol
                     };
-                    self.handle_insert(id, eol.as_str());
+                    insert(self, id, eol.as_str());
                 }
                 _ => {}
             }
         }
-    }
-
-    fn handle_insert(&mut self, id: ClientId, text: &str) {
-        let (win, buf) = self.get_win_buf_mut(id);
-        win.handle_insert(buf, text);
     }
 
     pub fn handle_job_msg(&mut self, msg: FromJobs) {

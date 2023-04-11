@@ -35,6 +35,11 @@ impl Search {
         self
     }
 
+    pub fn on_input(mut self, action: PromptAction) -> Self {
+        self.prompt = self.prompt.on_input(action);
+        self
+    }
+
     pub fn prompt(&self) -> &Prompt {
         &self.prompt
     }

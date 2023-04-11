@@ -1,10 +1,10 @@
-use sanedit_messages::redraw::{self, Style, Theme, ThemeField};
+use sanedit_messages::redraw::{self, Point, Style, Theme, ThemeField};
 
 use crate::{
     common::char::Replacement,
     editor::{
         buffers::Buffer,
-        windows::{Cell, Cursors, View},
+        windows::{Cell, Cursor, Cursors, View},
     },
 };
 
@@ -52,11 +52,44 @@ pub(crate) fn draw_window(
 
     draw_end_of_buffer(&mut grid, view, theme);
     draw_trailing_whitespace(&mut grid, view, theme);
-
-    let cursor = view
-        .point_at_pos(cursors.primary().pos())
-        .expect("cursor not at view");
+    let cursor = draw_primary_cursor(&mut grid, cursors.primary(), view, theme);
     redraw::Window::new(grid, cursor)
+}
+
+fn draw_primary_cursor(
+    grid: &mut Vec<Vec<redraw::Cell>>,
+    cursor: &Cursor,
+    view: &View,
+    theme: &Theme,
+) -> Point {
+    let def = theme
+        .get(ThemeField::Default.into())
+        .unwrap_or(Style::default());
+    let sel = theme
+        .get(ThemeField::Selection.into())
+        .unwrap_or(Style::default());
+    let style = redraw::merge_cell_styles(&[def, sel]);
+
+    if let Some(sel) = cursor.selection() {
+        let mut pos = view.range().start;
+
+        for (line, row) in view.cells().iter().enumerate() {
+            for (col, cell) in row.iter().enumerate() {
+                if !matches!(cell, Cell::Empty) && sel.contains(&pos) {
+                    grid[line][col].style = style;
+                }
+
+                pos += cell.grapheme_len();
+
+                if sel.end < pos {
+                    break;
+                }
+            }
+        }
+    }
+
+    view.point_at_pos(cursor.pos())
+        .expect("Primary cursor not in view")
 }
 
 fn draw_end_of_buffer(grid: &mut Vec<Vec<redraw::Cell>>, view: &View, theme: &Theme) {

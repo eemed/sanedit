@@ -4,7 +4,6 @@ mod program;
 mod slots;
 mod thread;
 
-pub(crate) use compiler::Compiler;
 pub(crate) use program::Program;
 
 use std::mem;
@@ -40,7 +39,7 @@ impl VM {
         let mut new = ThreadSet::with_capacity(len);
         let mut slots = Slots::new(program.slot_count(), len);
 
-        current.add_thread(program.start);
+        current.add_thread(0);
 
         loop {
             let pos = input.pos();
@@ -71,14 +70,18 @@ impl VM {
                         }
                     }
                     Jmp(x) => {
-                        current.add_thread(*x);
-                        slots.copy(pc, *x);
+                        let x = (pc as isize + *x) as usize;
+                        current.add_thread(x);
+                        slots.copy(pc, x);
                     }
-                    Split(splits) => {
-                        for split in splits {
-                            current.add_thread(*split);
-                            slots.copy(pc, *split);
-                        }
+                    Split(x, y) => {
+                        let x = (pc as isize + *x) as usize;
+                        current.add_thread(x);
+                        slots.copy(pc, x);
+
+                        let y = (pc as isize + *y) as usize;
+                        current.add_thread(y);
+                        slots.copy(pc, y);
                     }
                     Save(slot) => {
                         slots.get(pc)[*slot] = Some(pos);

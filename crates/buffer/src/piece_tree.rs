@@ -182,7 +182,7 @@ impl PieceTree {
                 let mut pos = 0;
                 let mut len = orig_buf.len();
                 while len != 0 {
-                    let plen = cmp::min(FILE_BACKED_MAX_PIECE_SIZE, len);
+                    let plen = len.min(FILE_BACKED_MAX_PIECE_SIZE);
                     let piece = Piece::new(BufferKind::Original, pos, plen);
                     pieces.insert(pos, piece);
 

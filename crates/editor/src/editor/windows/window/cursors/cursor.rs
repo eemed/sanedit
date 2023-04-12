@@ -51,8 +51,8 @@ impl Cursor {
 
     pub fn selection(&self) -> Option<Range<usize>> {
         let anchor = self.anchor?;
-        let min = cmp::min(self.pos, anchor);
-        let max = cmp::max(self.pos, anchor);
+        let min = self.pos.min(anchor);
+        let max = self.pos.max(anchor);
         Some(min..max)
     }
 

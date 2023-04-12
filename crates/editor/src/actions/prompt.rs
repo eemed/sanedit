@@ -1,4 +1,4 @@
-use std::{mem, path::PathBuf, rc::Rc};
+use std::{path::PathBuf, rc::Rc};
 
 use crate::{
     editor::{

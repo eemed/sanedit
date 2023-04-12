@@ -13,7 +13,7 @@ use sanedit_buffer::piece_tree::prev_grapheme_boundary;
 use sanedit_messages::redraw::Size;
 
 use crate::{
-    common::char::DisplayOptions,
+    common::{char::DisplayOptions, movement},
     editor::{
         buffers::{Buffer, BufferId},
         keymap::Keymap,
@@ -207,12 +207,44 @@ impl Window {
         &self.keymap
     }
 
-    pub fn insert_at_cursor(&mut self, buf: &mut Buffer, text: &str) {
+    fn remove_cursor_selection(&mut self, buf: &mut Buffer) -> bool {
         let cursor = self.primary_cursor_mut();
-        cursor.remove_selection(buf);
+        if let Some(sel) = cursor.take_selection() {
+            cursor.goto(sel.start);
+            buf.remove(sel);
+            self.invalidate_view();
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn insert_at_cursor(&mut self, buf: &mut Buffer, text: &str) {
+        self.remove_cursor_selection(buf);
+        let cursor = self.primary_cursor_mut();
         let cursor_pos = cursor.pos();
         buf.insert(cursor_pos, text);
         cursor.goto(cursor_pos + text.len());
+        self.invalidate_view();
+    }
+
+    pub fn remove_grapheme_after_cursor(&mut self, buf: &mut Buffer) {
+        if self.remove_cursor_selection(buf) {
+            return;
+        }
+        let cursor = self.primary_cursor_mut();
+        let pos = movement::next_grapheme_boundary(&buf.slice(..), cursor.pos());
+        buf.remove(cursor.pos()..pos);
+        self.invalidate_view();
+    }
+
+    pub fn remove_grapheme_before_cursor(&mut self, buf: &mut Buffer) {
+        if self.remove_cursor_selection(buf) {
+            return;
+        }
+        let cursor = self.primary_cursor_mut();
+        let pos = movement::prev_grapheme_boundary(&buf.slice(..), cursor.pos());
+        buf.remove(pos..cursor.pos());
         self.invalidate_view();
     }
 

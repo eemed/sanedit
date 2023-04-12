@@ -1,26 +1,21 @@
 use crate::{
     common,
-    editor::{windows::Layer, Editor},
+    editor::{
+        buffers::Buffer,
+        windows::{Layer, Window},
+        Editor,
+    },
     server::ClientId,
 };
 
 pub(crate) fn remove_grapheme_after_cursor(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.get_win_buf_mut(id);
-    let cursor = win.primary_cursor_mut();
-    cursor.remove_selection(buf);
-    let pos = common::movement::next_grapheme_boundary(&buf.slice(..), cursor.pos());
-    buf.remove(cursor.pos()..pos);
-    win.invalidate_view();
+    win.remove_grapheme_after_cursor(buf);
 }
 
 pub(crate) fn remove_grapheme_before_cursor(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.get_win_buf_mut(id);
-    let cursor = win.primary_cursor_mut();
-    cursor.remove_selection(buf);
-    let pos = common::movement::prev_grapheme_boundary(&buf.slice(..), cursor.pos());
-    buf.remove(pos..cursor.pos());
-    cursor.goto(pos);
-    win.invalidate_view();
+    win.remove_grapheme_before_cursor(buf);
 }
 
 pub(crate) fn undo(editor: &mut Editor, id: ClientId) {}

@@ -1,9 +1,6 @@
 use std::{mem, path::PathBuf, sync::Arc};
 
-use tokio::{
-    fs::{self},
-    io,
-};
+use tokio::{fs, io};
 
 use crate::{
     editor::{jobs::AsyncJob, Editor},

@@ -48,7 +48,6 @@ pub(crate) fn search_open(editor: &mut Editor, id: ClientId) {
             cursor.goto(m.start());
             cursor.anchor();
             cursor.goto(m.end());
-            cursor.set_unanchor_on_move();
         }
     });
     let search = Search::new("Search")

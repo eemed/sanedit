@@ -97,7 +97,7 @@ fn prev_visual_line_impl(editor: &mut Editor, id: ClientId) -> bool {
         .map(|point| point.x)
         .unwrap_or(0);
     // Column where there exists a character
-    let col = cmp::min(max_col, target_col);
+    let col = target_col.min(max_col);
 
     let pos = win
         .view()
@@ -144,7 +144,7 @@ fn next_visual_line_impl(editor: &mut Editor, id: ClientId) -> bool {
         .point_at_pos(cursor_pos)
         .expect("cursor not in view");
     let last_line = win.view().height().saturating_sub(1);
-    let target_line = cmp::min(last_line, cursor_point.y + 1);
+    let target_line = cmp::min(cursor_point.y + 1, last_line);
 
     let max_col = match win
         .view()
@@ -157,7 +157,7 @@ fn next_visual_line_impl(editor: &mut Editor, id: ClientId) -> bool {
     };
 
     let cursor_col = win.primary_cursor().column().unwrap_or(cursor_point.x);
-    let col = cmp::min(max_col, cursor_col);
+    let col = cursor_col.min(max_col);
 
     let pos = win
         .view()

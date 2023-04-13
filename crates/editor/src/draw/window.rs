@@ -88,6 +88,7 @@ fn draw_primary_cursor(
         }
     }
 
+    log::info!("Cursor at: {}, view_at: {:?}", cursor.pos(), view.range());
     view.point_at_pos(cursor.pos())
         .expect("Primary cursor not in view")
 }

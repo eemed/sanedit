@@ -6,6 +6,7 @@ use sanedit_messages::redraw::{Point, Size};
 
 use crate::common::char::{Char, DisplayOptions};
 use crate::common::eol::EOL;
+use crate::common::movement::prev_line_start;
 use crate::editor::buffers::Buffer;
 
 #[derive(Debug, Clone)]
@@ -127,42 +128,6 @@ impl View {
         self.range = self.range.start..self.range.start + pos;
     }
 
-    /// Draw a line into self.cells backwards, Fills a line backwards until EOL
-    /// or the line is full.
-    fn draw_line_backwards(&mut self, slice: &PieceTreeSlice, line: usize, pos: &mut usize) {
-        let mut graphemes = VecDeque::with_capacity(self.width);
-
-        while let Some(grapheme) = prev_grapheme(&slice, *pos) {
-            let is_eol = EOL::is_eol(&grapheme);
-
-            // Must be recalculated because we are pushing elements to the front
-            let line_len = graphemes.iter().fold(0, |col, grapheme| {
-                let ch = Char::new(grapheme, col, &self.options);
-                col + ch.width()
-            });
-
-            if line_len >= self.width {
-                // Take one off to fit line
-                graphemes.pop_front();
-                break;
-            }
-
-            if is_eol && !graphemes.is_empty() {
-                break;
-            }
-
-            *pos -= grapheme.len();
-            graphemes.push_front(grapheme);
-        }
-
-        graphemes.into_iter().fold(0, |col, grapheme| {
-            let ch = Char::new(&grapheme, col, &self.options);
-            let width = ch.width();
-            self.cells[line][col] = ch.into();
-            col + width
-        });
-    }
-
     /// Draw a line into self.cells, returns true if EOF was written.
     ///
     /// If char does not fit to current line, no madeup representation will be
@@ -214,40 +179,91 @@ impl View {
         self.draw_cells(buf);
     }
 
-    pub fn top_line_len(&self) -> usize {
+    pub fn line_len(&self, line: usize) -> usize {
         self.cells
-            .get(0)
+            .get(line)
             .map(|row| row.iter().fold(0, |acc, cell| acc + cell.grapheme_len()))
             .unwrap_or(0)
     }
 
-    pub fn scroll_down_n(&mut self, buf: &Buffer, n: usize) {
-        if self.top_line_len() + self.range.start == buf.len() {
+    pub fn scroll_down_n(&mut self, buf: &Buffer, mut n: usize) {
+        self.redraw(buf);
+        if self.range.end >= buf.len() {
             return;
         }
 
-        let slice = buf.slice(self.range.start..);
-        let mut pos = 0;
-        // Just use line 0 as buffer
-        for _ in 0..n {
-            self.draw_line(&slice, 0, &mut pos);
+        if n >= self.height {
+            self.range.start = self.range.end;
+            self.needs_redraw = true;
+            return;
         }
 
-        self.range.start += pos;
-        self.needs_redraw = true;
+        let mut line = 0;
+        while n > 0 {
+            let len = self.line_len(line);
+            self.range.start += len;
+            self.needs_redraw = true;
+            n -= 1;
+            line += 1;
+        }
     }
 
-    pub fn scroll_up_n(&mut self, buf: &Buffer, n: usize) {
-        if self.range.start == 0 {
+    pub fn last_non_empty_line(&self) -> usize {
+        let mut line = self.height.saturating_sub(1);
+        loop {
+            if let Some(_) = self.last_non_empty_cell(line) {
+                return line;
+            }
+
+            line -= 1;
+        }
+    }
+
+    pub fn line_width(&self, line: usize) -> usize {
+        let mut width = 0;
+        let line = &self.cells[line];
+
+        for cell in line {
+            if matches!(cell, Cell::Empty) {
+                break;
+            }
+
+            width += cell.width();
+        }
+
+        width
+    }
+
+    pub fn scroll_up_n(&mut self, buf: &Buffer, mut n: usize) {
+        self.redraw(buf);
+
+        if n == 0 || self.range.start == 0 {
             return;
         }
 
-        let slice = buf.slice(..self.range.start);
+        // Go up until we find newlines,
+        // but stop at a maximum if there are no lines.
         let mut pos = self.range.start;
-        for _ in 0..n {
-            // Just use line 0 as buffer
-            self.draw_line_backwards(&slice, 0, &mut pos);
+        let min = pos.saturating_sub(self.height * self.width);
+        let slice = buf.slice(..pos);
+
+        while let Some(grapheme) = prev_grapheme(&slice, pos) {
+            let is_eol = EOL::is_eol(&grapheme);
+            if is_eol && pos != self.range.start {
+                n -= 1;
+
+                if n == 0 {
+                    break;
+                }
+            }
+
+            pos -= grapheme.len();
+
+            if min >= pos {
+                break;
+            }
         }
+
         self.range.start = pos;
         self.needs_redraw = true;
     }
@@ -270,6 +286,7 @@ impl View {
 
     pub fn set_offset(&mut self, offset: usize) {
         self.range.start = offset;
+        self.needs_redraw = true;
     }
 
     pub fn last_non_empty_cell(&self, line: usize) -> Option<Point> {
@@ -335,9 +352,18 @@ impl View {
         None
     }
 
+    pub fn start(&self) -> usize {
+        self.range.start
+    }
+
+    pub fn end(&self) -> usize {
+        self.range.end
+    }
+
     /// Align view so that pos is shown
     pub fn view_to(&mut self, pos: usize, buf: &Buffer) {
         self.redraw(buf);
+        log::debug!("view to {pos} {:?}", self.range);
 
         // Make sure offset is inside buffer range
         if self.range.start > buf.len() {
@@ -349,28 +375,24 @@ impl View {
             return;
         }
 
-        // After
-        if self.range.end <= pos {
+        if pos < self.start() || self.end() <= pos {
             self.set_offset(pos);
-            self.draw(buf);
-            self.scroll_up_n(buf, self.height().saturating_sub(2));
+            self.scroll_up_n(buf, self.height() / 2);
             self.draw(buf);
         }
 
-        // Before
-        if pos < self.range.start {
+        if pos < self.start() || self.end() <= pos {
+            self.set_offset(pos);
+            let min = pos.saturating_sub(self.width() * self.height());
+            let slice = &buf.slice(min..);
+            // TODO slice.len() does not work as expected.
+            self.range.start = min + prev_line_start(&slice, slice.len().saturating_sub(1));
+            self.draw(buf);
+        }
+
+        if pos < self.start() || self.end() <= pos {
             self.set_offset(pos);
             self.draw(buf);
-
-            // Scroll up so line is shown, instead of starting at pos.
-            self.scroll_up_n(buf, 1);
-            self.draw(buf);
-
-            // Scroll back down if pos is not at the top line
-            if pos >= self.range.start + self.top_line_len() {
-                self.scroll_down_n(buf, 1);
-                self.draw(buf);
-            }
         }
     }
 

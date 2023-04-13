@@ -31,7 +31,7 @@ impl Cache {
 
     pub fn new() -> Cache {
         Cache {
-            cache: [0u8; Self::FILE_CACHE_SIZE].into(),
+            cache: vec![0u8; Self::FILE_CACHE_SIZE].into(),
             cache_ptrs: Vec::new(),
             next: 0,
         }

@@ -11,6 +11,7 @@ pub(crate) struct Search {
 
     /// Wether to select the matches or not
     select: bool,
+    stop_at_first_match: bool,
 }
 
 impl Search {
@@ -22,6 +23,7 @@ impl Search {
             prompt,
             is_regex: true,
             select: true,
+            stop_at_first_match: true
         }
     }
 

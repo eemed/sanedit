@@ -6,7 +6,6 @@ pub(crate) mod slice;
 pub(crate) mod tree;
 pub(crate) mod utf8;
 
-use std::cmp;
 use std::fs::File;
 use std::io::{self, Write};
 use std::ops::{Bound, RangeBounds};
@@ -30,7 +29,7 @@ pub use utf8::graphemes::next_grapheme_boundary;
 pub use utf8::graphemes::prev_grapheme;
 pub use utf8::graphemes::prev_grapheme_boundary;
 
-pub(crate) const FILE_BACKED_MAX_PIECE_SIZE: usize = 1024 * 64;
+pub(crate) const FILE_BACKED_MAX_PIECE_SIZE: usize = 1024 * 256;
 
 /// A Snapshot of the piece tree.
 //

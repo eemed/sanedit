@@ -409,7 +409,6 @@ impl View {
     /// Align view so that pos is shown
     pub fn view_to(&mut self, pos: usize, buf: &Buffer) {
         self.redraw(buf);
-        let at_end = pos == buf.len();
 
         // Scroll to position if its nearby
         let max = (self.height() / 2) * self.width();

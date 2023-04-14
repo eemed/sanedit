@@ -57,7 +57,6 @@ pub(crate) fn next_line_start(slice: &PieceTreeSlice, mut pos: usize) -> usize {
 }
 
 pub(crate) fn prev_line_start(slice: &PieceTreeSlice, mut pos: usize) -> usize {
-    log::info!("prev");
     while let Some(g) = prev_grapheme(slice, pos) {
         pos -= g.len();
         let eol = EOL::is_eol(&g);
@@ -66,7 +65,6 @@ pub(crate) fn prev_line_start(slice: &PieceTreeSlice, mut pos: usize) -> usize {
             break;
         }
     }
-    log::info!("prev2");
 
     start_of_line(slice, pos)
 }

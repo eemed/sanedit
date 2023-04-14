@@ -96,6 +96,11 @@ tasks:
       - rm -rf {{ .LOG_FILE }}
       - cargo clean
 
+  kill:
+    desc: Kill debug run process
+    cmds: 
+      - ps aux | grep -i target/debug/sane | awk '{ print $2 }' | xargs kill -9
+
   default:
     cmds:
       - task -l

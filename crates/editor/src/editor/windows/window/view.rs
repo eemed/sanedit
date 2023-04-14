@@ -1,3 +1,4 @@
+use std::cmp::min;
 use std::collections::VecDeque;
 use std::ops::Range;
 
@@ -188,9 +189,6 @@ impl View {
 
     pub fn scroll_down_n(&mut self, buf: &Buffer, mut n: usize) {
         self.redraw(buf);
-        if self.range.end >= buf.len() {
-            return;
-        }
 
         if n >= self.height {
             self.range.start = self.range.end;
@@ -201,6 +199,9 @@ impl View {
         let mut line = 0;
         while n > 0 {
             let len = self.line_len(line);
+            if len == 0 {
+                break;
+            }
             self.range.start += len;
             self.needs_redraw = true;
             n -= 1;
@@ -289,6 +290,7 @@ impl View {
         self.needs_redraw = true;
     }
 
+    // TODO remove
     pub fn last_non_empty_cell(&self, line: usize) -> Option<Point> {
         let mut last = None;
         let row = &self.cells[line];
@@ -360,28 +362,78 @@ impl View {
         self.range.end
     }
 
+    /// If distance is small we can scroll to the next position
+    fn scroll_to(&mut self, pos: usize, buf: &Buffer) {
+        let at_end = pos == buf.len();
+
+        while pos < self.start() {
+            self.scroll_up_n(buf, 1);
+            self.draw(buf);
+        }
+
+        while !self.is_visible(pos, at_end) {
+            self.scroll_down_n(buf, 1);
+            self.draw(buf);
+        }
+    }
+
+    /// How much to move to be able to show pos in view
+    fn offset_from(&self, pos: usize) -> usize {
+        if self.range.contains(&pos) {
+            return 0;
+        }
+
+        if pos < self.start() {
+            self.start() - pos
+        } else {
+            pos - self.end()
+        }
+    }
+
+    fn has_eof(&self) -> bool {
+        let last = self.height().saturating_sub(1);
+        self.cells[last]
+            .iter()
+            .fold(true, |acc, c| acc && matches!(c, Cell::Empty | Cell::EOF))
+    }
+
+    /// Check wether the position is visible.
+    pub fn is_visible(&self, pos: usize, at_eof: bool) -> bool {
+        if at_eof {
+            self.has_eof()
+        } else {
+            self.range.contains(&pos)
+        }
+    }
+
     /// Align view so that pos is shown
     pub fn view_to(&mut self, pos: usize, buf: &Buffer) {
         self.redraw(buf);
-        log::debug!("view to {pos} {:?}", self.range);
+        let at_end = pos == buf.len();
 
-        // Make sure offset is inside buffer range
-        if self.range.start > buf.len() {
-            self.set_offset(buf.len());
+        log::debug!(
+            "view to {pos} Range: {:?}, buf len: {}, at_end: {at_end}, has_eof: {}",
+            self.range,
+            buf.len(),
+            self.has_eof(),
+        );
+
+        // Scroll to position if its nearby
+        let max = (self.height() / 2) * self.width();
+        let offset = self.offset_from(pos);
+        if offset != 0 && offset <= max {
+            self.scroll_to(pos, buf);
         }
 
-        // At end
-        if self.range.end == buf.len() && pos == buf.len() {
-            return;
-        }
-
-        if pos < self.start() || self.end() <= pos {
+        // Goto position and scroll it to the middle
+        if !self.is_visible(pos, at_end) {
             self.set_offset(pos);
             self.scroll_up_n(buf, self.height() / 2);
             self.draw(buf);
         }
 
-        if pos < self.start() || self.end() <= pos {
+        // Goto position and scroll until the whole line is visible
+        if !self.is_visible(pos, at_end) {
             self.set_offset(pos);
             let min = pos.saturating_sub(self.width() * self.height());
             let slice = &buf.slice(min..);
@@ -390,10 +442,12 @@ impl View {
             self.draw(buf);
         }
 
-        if pos < self.start() || self.end() <= pos {
+        // Just set the position
+        if !self.is_visible(pos, at_end) {
             self.set_offset(pos);
             self.draw(buf);
         }
+        log::debug!("view to done {pos} {:?}", self.range);
     }
 
     pub fn resize(&mut self, size: Size) {

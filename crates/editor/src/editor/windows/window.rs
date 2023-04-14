@@ -130,9 +130,10 @@ impl Window {
         self.view.redraw(buf);
 
         let primary = self.cursors.primary_mut();
-        let Range { end, .. } = self.view.range();
-        if primary.pos() >= end && end != buf.len() {
-            let prev = prev_grapheme_boundary(&buf.slice(..), end);
+        let pos = primary.pos();
+        let at_end = pos == buf.len();
+        if !self.view.is_visible(pos, at_end) {
+            let prev = prev_grapheme_boundary(&buf.slice(..), self.view.end());
             primary.goto(prev);
         }
     }
@@ -245,6 +246,7 @@ impl Window {
         let cursor = self.primary_cursor_mut();
         let pos = movement::prev_grapheme_boundary(&buf.slice(..), cursor.pos());
         buf.remove(pos..cursor.pos());
+        cursor.goto(pos);
         self.invalidate_view();
     }
 

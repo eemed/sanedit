@@ -1,5 +1,4 @@
 use std::{
-    borrow::Cow,
     fs,
     io::{self, Read},
     path::{Path, PathBuf},
@@ -8,12 +7,6 @@ use std::{
 use crate::editor::options::Options;
 
 use super::{dirs::tmp_dir, eol::EOL};
-
-#[derive(Debug)]
-pub(crate) enum UTF8File {
-    Memory(Vec<u8>),
-    File(PathBuf),
-}
 
 #[derive(Debug)]
 pub(crate) struct File {
@@ -30,7 +23,7 @@ impl File {
         let metadata = file.metadata()?;
         let size = metadata.len();
 
-        let mut buf = [0u8; 2048];
+        let mut buf = [0u8; 4096];
         let read = file.read(&mut buf)?;
         let eol = detect_line_ending(&buf[..read]);
 

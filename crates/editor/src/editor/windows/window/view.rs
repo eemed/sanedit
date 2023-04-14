@@ -175,9 +175,9 @@ impl View {
     }
 
     fn draw(&mut self, buf: &Buffer) {
-        self.needs_redraw = false;
         self.clear();
         self.draw_cells(buf);
+        self.needs_redraw = false;
     }
 
     pub fn line_len(&self, line: usize) -> usize {
@@ -362,16 +362,18 @@ impl View {
         self.range.end
     }
 
+    pub fn contains(&self, pos: usize) -> bool {
+        self.range.contains(&pos)
+    }
+
     /// If distance is small we can scroll to the next position
     fn scroll_to(&mut self, pos: usize, buf: &Buffer) {
-        let at_end = pos == buf.len();
-
         while pos < self.start() {
             self.scroll_up_n(buf, 1);
             self.draw(buf);
         }
 
-        while !self.is_visible(pos, at_end) {
+        while !self.is_visible(pos) {
             self.scroll_down_n(buf, 1);
             self.draw(buf);
         }
@@ -379,7 +381,7 @@ impl View {
 
     /// How much to move to be able to show pos in view
     fn offset_from(&self, pos: usize) -> usize {
-        if self.range.contains(&pos) {
+        if self.contains(pos) {
             return 0;
         }
 
@@ -398,12 +400,10 @@ impl View {
     }
 
     /// Check wether the position is visible.
-    pub fn is_visible(&self, pos: usize, at_eof: bool) -> bool {
-        if at_eof {
-            self.has_eof()
-        } else {
-            self.range.contains(&pos)
-        }
+    pub fn is_visible(&self, pos: usize) -> bool {
+        // pos is visible if it is in the buffer range or we are at the end of
+        // the file and the view is currently showing that eof.
+        self.contains(pos) || (pos == self.end() && self.has_eof())
     }
 
     /// Align view so that pos is shown
@@ -421,19 +421,19 @@ impl View {
         // Scroll to position if its nearby
         let max = (self.height() / 2) * self.width();
         let offset = self.offset_from(pos);
-        if offset != 0 && offset <= max {
+        if offset <= max {
             self.scroll_to(pos, buf);
         }
 
         // Goto position and scroll it to the middle
-        if !self.is_visible(pos, at_end) {
+        if !self.is_visible(pos) {
             self.set_offset(pos);
             self.scroll_up_n(buf, self.height() / 2);
             self.draw(buf);
         }
 
         // Goto position and scroll until the whole line is visible
-        if !self.is_visible(pos, at_end) {
+        if !self.is_visible(pos) {
             self.set_offset(pos);
             let min = pos.saturating_sub(self.width() * self.height());
             let slice = &buf.slice(min..);
@@ -443,7 +443,7 @@ impl View {
         }
 
         // Just set the position
-        if !self.is_visible(pos, at_end) {
+        if !self.is_visible(pos) {
             self.set_offset(pos);
             self.draw(buf);
         }

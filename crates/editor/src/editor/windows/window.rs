@@ -131,8 +131,7 @@ impl Window {
 
         let primary = self.cursors.primary_mut();
         let pos = primary.pos();
-        let at_end = pos == buf.len();
-        if !self.view.is_visible(pos, at_end) {
+        if !self.view.is_visible(pos) {
             let prev = prev_grapheme_boundary(&buf.slice(..), self.view.end());
             primary.goto(prev);
         }
@@ -160,11 +159,6 @@ impl Window {
 
     pub fn invalidate_view(&mut self) {
         self.view.invalidate();
-    }
-
-    pub fn set_offset(&mut self, offset: usize, buf: &Buffer) {
-        self.view.set_offset(offset);
-        self.view.redraw(buf);
     }
 
     pub fn resize(&mut self, size: Size, buf: &Buffer) {

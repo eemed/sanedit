@@ -23,7 +23,7 @@ impl Search {
             prompt,
             is_regex: true,
             select: true,
-            stop_at_first_match: true
+            stop_at_first_match: true,
         }
     }
 

@@ -44,7 +44,7 @@ impl<'a> Bytes<'a> {
         );
         let chunks = Chunks::new_from_slice(pt, at, range.clone());
         let chunk = chunks.get();
-        let chunk_pos = chunk.as_ref().map(|(p, _)| *p).unwrap_or(range.end);
+        let chunk_pos = chunk.as_ref().map(|(p, _)| *p).unwrap_or(range.len());
         let pos = chunk.as_ref().map(|(pos, _)| at - pos).unwrap_or(0);
         let chunk = chunk.map(|(_, c)| c);
         let chunk_len = chunk.as_ref().map(|c| c.as_ref().len()).unwrap_or(0);

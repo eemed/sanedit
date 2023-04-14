@@ -411,13 +411,6 @@ impl View {
         self.redraw(buf);
         let at_end = pos == buf.len();
 
-        log::debug!(
-            "view to {pos} Range: {:?}, buf len: {}, at_end: {at_end}, has_eof: {}",
-            self.range,
-            buf.len(),
-            self.has_eof(),
-        );
-
         // Scroll to position if its nearby
         let max = (self.height() / 2) * self.width();
         let offset = self.offset_from(pos);
@@ -437,8 +430,7 @@ impl View {
             self.set_offset(pos);
             let min = pos.saturating_sub(self.width() * self.height());
             let slice = &buf.slice(min..);
-            // TODO slice.len() does not work as expected.
-            self.range.start = min + prev_line_start(&slice, slice.len().saturating_sub(1));
+            self.range.start = min + prev_line_start(&slice, slice.len());
             self.draw(buf);
         }
 
@@ -447,7 +439,6 @@ impl View {
             self.set_offset(pos);
             self.draw(buf);
         }
-        log::debug!("view to done {pos} {:?}", self.range);
     }
 
     pub fn resize(&mut self, size: Size) {

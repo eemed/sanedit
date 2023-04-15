@@ -12,9 +12,9 @@ pub struct Style {
 }
 
 impl Style {
-    pub fn invert(&mut self) {
-        mem::swap(&mut self.bg, &mut self.fg);
-    }
+    // pub fn invert(&mut self) {
+    //     mem::swap(&mut self.bg, &mut self.fg);
+    // }
 
     /// use self as a base style and apply overrides
     pub fn override_with(&mut self, style: &Style) {

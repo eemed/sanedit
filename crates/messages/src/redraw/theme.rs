@@ -61,7 +61,9 @@ impl Theme {
         let mut iter = path.iter().peekable();
         let mut cur = Style::default();
 
+        log::info!("Get: {path:?}");
         while let Some(comp) = iter.next() {
+            log::info!("Override with {comp}: {:?}", node.style());
             cur.override_with(node.style());
 
             if iter.peek().is_none() {
@@ -154,7 +156,7 @@ impl AsRef<str> for ThemeField {
 
 #[cfg(test)]
 mod test {
-    use crate::redraw::Color;
+    use crate::redraw::{Color, Rgb};
 
     use super::*;
 
@@ -195,6 +197,58 @@ mod test {
                 text_style: None,
                 bg: Some(Color::Black),
                 fg: Some(Color::White),
+            })
+        );
+    }
+
+    #[test]
+    fn insert_get2() {
+        let mut theme = Theme::default();
+        theme.insert(
+            "window",
+            Style {
+                text_style: None,
+                bg: Some(Color::Black),
+                fg: Some(Color::White),
+            },
+        );
+        theme.insert(
+            "window.cursor",
+            Style {
+                text_style: None,
+                fg: Some(Color::Rgb(Rgb {
+                    red: 1,
+                    green: 1,
+                    blue: 1,
+                })),
+                bg: None,
+            },
+        );
+
+        let style = theme.get("window");
+        assert_eq!(
+            style,
+            Some(Style {
+                text_style: None,
+                bg: Some(Color::Rgb(Rgb {
+                    red: 1,
+                    green: 1,
+                    blue: 1
+                })),
+                fg: None,
+            })
+        );
+        let style = theme.get("window.cursor");
+        assert_eq!(
+            style,
+            Some(Style {
+                text_style: None,
+                bg: Some(Color::Black),
+                fg: Some(Color::Rgb(Rgb {
+                    red: 1,
+                    green: 1,
+                    blue: 1
+                })),
             })
         );
     }

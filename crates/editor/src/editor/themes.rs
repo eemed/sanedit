@@ -157,3 +157,16 @@ fn gruvbox() -> Theme {
     }
     theme
 }
+
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn get() {
+        let theme = gruvbox();
+        let style = theme.get(ThemeField::EndOfBuffer);
+        assert_eq!(style, None);
+    }
+}

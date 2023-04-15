@@ -1,3 +1,5 @@
+use core::fmt;
+
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -22,11 +24,22 @@ impl Color {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Copy)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Copy)]
 pub struct Rgb {
     pub(crate) red: u8,
     pub(crate) green: u8,
     pub(crate) blue: u8,
+}
+
+impl fmt::Debug for Rgb {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Rgb")
+            .field("red", &self.red)
+            .field("green", &self.green)
+            .field("blue", &self.blue)
+            .field("(hex)", &self.name())
+            .finish()
+    }
 }
 
 impl Rgb {

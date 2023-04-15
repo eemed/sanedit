@@ -46,7 +46,7 @@ tasks:
     cmds:
       - cargo bench
 
-  tail-log:
+  tail:
     desc: Tail the log file
     dir: crates
     cmds:

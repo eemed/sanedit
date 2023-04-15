@@ -41,60 +41,44 @@ pub(crate) fn prompt_open_file(editor: &mut Editor, id: ClientId) {
 
 pub(crate) fn prompt_close(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.get_win_buf_mut(id);
-    if let Some(prompt) = win.close_prompt() {
-        prompt.abort(editor, id);
-    }
+    win.close_prompt().abort(editor, id);
 }
 
 pub(crate) fn prompt_confirm(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.get_win_buf_mut(id);
-    if let Some(prompt) = win.close_prompt() {
-        prompt.confirm(editor, id);
-    }
+    win.close_prompt().confirm(editor, id);
 }
 
 pub(crate) fn prompt_next_grapheme(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.get_win_buf_mut(id);
-    if let Some(prompt) = win.prompt() {
-        prompt.next_grapheme();
-    }
+    win.prompt_mut().next_grapheme();
 }
 
 pub(crate) fn prompt_prev_grapheme(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.get_win_buf_mut(id);
-    if let Some(prompt) = win.prompt() {
-        prompt.prev_grapheme();
-    }
+    win.prompt_mut().prev_grapheme();
 }
 
 pub(crate) fn prompt_remove_grapheme_before_cursor(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.get_win_buf_mut(id);
-    if let Some(prompt) = win.prompt() {
-        prompt.remove_grapheme_before_cursor();
-    }
+    win.prompt_mut().remove_grapheme_before_cursor();
 
-    if let Some((on_input, input)) = win.prompt().map(|p| p.get_on_input()).flatten() {
+    if let Some((on_input, input)) = win.prompt_mut().get_on_input() {
         (on_input)(editor, id, &input);
     }
 }
 
 pub(crate) fn prompt_next_completion(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.get_win_buf_mut(id);
-    if let Some(prompt) = win.prompt() {
-        prompt.next_completion();
-    }
+    win.prompt_mut().next_completion();
 }
 
 pub(crate) fn prompt_prev_completion(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.get_win_buf_mut(id);
-    if let Some(prompt) = win.prompt() {
-        prompt.prev_completion();
-    }
+    win.prompt_mut().prev_completion();
 }
 
 pub(crate) fn provide_completions(editor: &mut Editor, id: ClientId, completions: Vec<String>) {
     let (win, buf) = editor.get_win_buf_mut(id);
-    if let Some(prompt) = win.prompt() {
-        prompt.provide_completions(completions);
-    }
+    win.prompt_mut().provide_completions(completions);
 }

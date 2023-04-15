@@ -55,6 +55,12 @@ impl Search {
     }
 }
 
+impl Default for Search {
+    fn default() -> Self {
+        Search::new("")
+    }
+}
+
 impl From<Search> for Prompt {
     fn from(search: Search) -> Self {
         search.prompt

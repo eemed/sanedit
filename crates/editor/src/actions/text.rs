@@ -1,10 +1,5 @@
 use crate::{
-    common,
-    editor::{
-        buffers::Buffer,
-        windows::{Layer, Window},
-        Editor,
-    },
+    editor::{windows::Focus, Editor},
     server::ClientId,
 };
 
@@ -25,26 +20,15 @@ pub(crate) fn redo(editor: &mut Editor, id: ClientId) {}
 pub(crate) fn insert(editor: &mut Editor, id: ClientId, text: &str) {
     let (win, buf) = editor.get_win_buf_mut(id);
 
-    // Find possible layer that wants the key
-    use Layer::*;
-    for layer in win.layers_mut() {
-        if layer.handle_insert(text) {
-            match layer {
-                Prompt(p) => {
-                    if let Some((on_input, input)) = p.get_on_input() {
-                        (on_input)(editor, id, &input);
-                    }
-                }
-                Search(s) => {
-                    if let Some((on_input, input)) = s.prompt().get_on_input() {
-                        (on_input)(editor, id, &input);
-                    }
-                }
-            }
-
-            return;
+    match win.focus() {
+        Focus::Search => {
+            win.search_mut().prompt_mut().insert_at_cursor(text);
+        }
+        Focus::Prompt => {
+            win.prompt_mut().insert_at_cursor(text);
+        }
+        Focus::Window => {
+            win.insert_at_cursor(buf, text);
         }
     }
-
-    win.insert_at_cursor(buf, text);
 }

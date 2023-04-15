@@ -7,7 +7,7 @@ use sanedit_messages::redraw::{self, Redraw, Theme};
 
 use crate::editor::{
     buffers::Buffer,
-    windows::{Layer, Window},
+    windows::{Focus, Window},
 };
 
 use self::{
@@ -50,6 +50,7 @@ impl DrawState {
         }
 
         win.redraw_view(buf);
+
         let view = win.view();
         let cursors = win.cursors();
         let window = draw_window(view, cursors, buf, theme);
@@ -64,40 +65,40 @@ impl DrawState {
             self.statusline = statusline;
         }
 
-        let layers = win.layers();
-        for layer in layers {
-            match layer {
-                Layer::Prompt(prompt) => {
-                    let prompt = draw_prompt(prompt, &win.options, &mut self.prompt_scroll_offset);
-                    match self.prompt.as_mut() {
-                        Some(prev) => {
-                            if let Some(diff) = prev.diff(&prompt) {
-                                redraw.push(diff.into());
-                                *prev = prompt;
-                            }
-                        }
-                        None => {
-                            redraw.push(Redraw::Prompt(prompt.clone()));
-                            self.prompt = Some(prompt);
+        match win.focus() {
+            Focus::Search => {
+                let search = win.search();
+                let search = draw_search(search, &win.options);
+                match self.prompt.as_mut() {
+                    Some(prev) => {
+                        if let Some(diff) = prev.diff(&search) {
+                            redraw.push(diff.into());
+                            *prev = search;
                         }
                     }
-                }
-                Layer::Search(search) => {
-                    let search = draw_search(search, &win.options);
-                    match self.prompt.as_mut() {
-                        Some(prev) => {
-                            if let Some(diff) = prev.diff(&search) {
-                                redraw.push(diff.into());
-                                *prev = search;
-                            }
-                        }
-                        None => {
-                            redraw.push(Redraw::Prompt(search.clone()));
-                            self.prompt = Some(search);
-                        }
+                    None => {
+                        redraw.push(Redraw::Prompt(search.clone()));
+                        self.prompt = Some(search);
                     }
                 }
             }
+            Focus::Prompt => {
+                let prompt = win.prompt();
+                let prompt = draw_prompt(prompt, &win.options, &mut self.prompt_scroll_offset);
+                match self.prompt.as_mut() {
+                    Some(prev) => {
+                        if let Some(diff) = prev.diff(&prompt) {
+                            redraw.push(diff.into());
+                            *prev = prompt;
+                        }
+                    }
+                    None => {
+                        redraw.push(Redraw::Prompt(prompt.clone()));
+                        self.prompt = Some(prompt);
+                    }
+                }
+            }
+            Focus::Window => {}
         }
 
         redraw

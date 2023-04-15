@@ -1,13 +1,13 @@
 mod completion;
 mod cursors;
-mod layer;
+mod focus;
 mod message;
 mod options;
 mod prompt;
 mod search;
 mod view;
 
-use std::ops::Range;
+use std::{mem, ops::Range};
 
 use sanedit_buffer::piece_tree::prev_grapheme_boundary;
 use sanedit_messages::redraw::Size;
@@ -22,7 +22,7 @@ use crate::{
 
 pub(crate) use self::{
     cursors::{Cursor, Cursors},
-    layer::Layer,
+    focus::Focus,
     message::{Message, Severity},
     options::Options,
     prompt::Prompt,
@@ -39,7 +39,9 @@ pub(crate) struct Window {
     cursors: Cursors,
 
     keymap: Keymap,
-    layers: Vec<Layer>,
+    focus: Focus,
+    search: Search,
+    prompt: Prompt,
     pub options: Options,
 }
 
@@ -52,8 +54,14 @@ impl Window {
             cursors: Cursors::default(),
             keymap: Keymap::default_normal(),
             options: Options::default(),
-            layers: Vec::new(),
+            search: Search::default(),
+            prompt: Prompt::default(),
+            focus: Focus::Window,
         }
+    }
+
+    pub fn focus(&self) -> Focus {
+        self.focus
     }
 
     pub fn display_options(&self) -> &DisplayOptions {
@@ -193,13 +201,11 @@ impl Window {
     }
 
     pub fn keymap(&self) -> &Keymap {
-        for layer in &self.layers {
-            if let Some(kmap) = layer.keymap() {
-                return kmap;
-            }
+        match self.focus {
+            Focus::Search => self.search.prompt().keymap(),
+            Focus::Prompt => self.prompt.keymap(),
+            Focus::Window => &self.keymap,
         }
-
-        &self.keymap
     }
 
     fn remove_cursor_selection(&mut self, buf: &mut Buffer) -> bool {
@@ -244,56 +250,40 @@ impl Window {
         self.invalidate_view();
     }
 
-    pub fn layers(&self) -> &[Layer] {
-        self.layers.as_slice()
+    pub fn prompt_mut(&mut self) -> &mut Prompt {
+        &mut self.prompt
     }
 
-    pub fn layers_mut(&mut self) -> &mut [Layer] {
-        self.layers.as_mut_slice()
-    }
-
-    pub fn prompt(&mut self) -> Option<&mut Prompt> {
-        if let Some(Layer::Prompt(ref mut p)) = self.layers.iter_mut().last() {
-            Some(p)
-        } else {
-            None
-        }
+    pub fn prompt(&self) -> &Prompt {
+        &self.prompt
     }
 
     pub fn open_prompt(&mut self, prompt: Prompt) {
-        self.layers.push(Layer::Prompt(prompt));
+        self.prompt = prompt;
+        self.focus = Focus::Prompt;
     }
 
-    pub fn close_prompt(&mut self) -> Option<Prompt> {
-        let is_prompt = matches!(self.layers.iter().last(), Some(Layer::Prompt(..)));
-        if is_prompt {
-            if let Layer::Prompt(prompt) = self.layers.pop()? {
-                return Some(prompt);
-            }
-        }
-        None
+    pub fn close_prompt(&mut self) -> Prompt {
+        self.focus = Focus::Window;
+        mem::take(&mut self.prompt)
     }
 
     pub fn open_search(&mut self, search: Search) {
-        self.layers.push(Layer::Search(search));
+        self.search = search;
+        self.focus = Focus::Search;
     }
 
-    pub fn close_search(&mut self) -> Option<Search> {
-        let is_search = matches!(self.layers.iter().last(), Some(Layer::Search(..)));
-        if is_search {
-            if let Layer::Search(search) = self.layers.pop()? {
-                return Some(search);
-            }
-        }
-        None
+    pub fn close_search(&mut self) -> Search {
+        self.focus = Focus::Window;
+        mem::take(&mut self.search)
     }
 
-    pub fn search(&mut self) -> Option<&mut Search> {
-        if let Some(Layer::Search(ref mut s)) = self.layers.iter_mut().last() {
-            Some(s)
-        } else {
-            None
-        }
+    pub fn search_mut(&mut self) -> &mut Search {
+        &mut self.search
+    }
+
+    pub fn search(&self) -> &Search {
+        &self.search
     }
 }
 
@@ -340,7 +330,8 @@ mod test {
     #[test]
     fn scroll_up() {
         let (mut win, buf) = ten_line();
-        win.set_offset(14, &buf);
+        win.view.set_offset(14);
+        win.view.redraw(&buf);
         assert_eq!(vec!["four\n", "five\n", "six\n"], view_lines(&win));
         win.scroll_up_n(&buf, 2);
         assert_eq!(vec!["two\n", "three\n", "four\n"], view_lines(&win));
@@ -349,7 +340,8 @@ mod test {
     #[test]
     fn scroll_up_wrapped() {
         let (mut win, buf) = wrapped_line_view();
-        win.set_offset(52, &buf);
+        win.view.set_offset(52);
+        win.view.redraw(&buf);
         assert_eq!(
             vec!["r long lin", "e that wil", "l not fit "],
             view_lines(&win)

@@ -14,19 +14,8 @@ pub(crate) fn draw_window(
     buf: &Buffer,
     theme: &Theme,
 ) -> redraw::Window {
-    let def = theme
-        .get(ThemeField::Default.into())
-        .unwrap_or(Style::default());
-    let mut grid = vec![
-        vec![
-            redraw::Cell {
-                text: " ".into(),
-                style: def
-            };
-            view.width()
-        ];
-        view.height()
-    ];
+    let style = theme.get(ThemeField::Default).unwrap_or(Style::default());
+    let mut grid = vec![vec![redraw::Cell::with_style(style); view.width()]; view.height()];
 
     for (line, row) in view.cells().iter().enumerate() {
         for (col, cell) in row.iter().enumerate() {
@@ -38,13 +27,13 @@ pub(crate) fn draw_window(
             let ch = cell.char().unwrap();
             grid[line][col] = redraw::Cell {
                 text: ch.display().into(),
-                style: def,
+                style,
             };
 
             for i in 1..cell.width() {
                 grid[line][col + i] = redraw::Cell {
                     text: String::new(),
-                    style: def,
+                    style,
                 };
             }
         }
@@ -56,19 +45,22 @@ pub(crate) fn draw_window(
     redraw::Window::new(grid, cursor)
 }
 
+fn draw_cursors(
+    grid: &mut Vec<Vec<redraw::Cell>>,
+    cursors: &Cursors,
+    view: &View,
+    theme: &Theme,
+) -> Point {
+    todo!()
+}
+
 fn draw_primary_cursor(
     grid: &mut Vec<Vec<redraw::Cell>>,
     cursor: &Cursor,
     view: &View,
     theme: &Theme,
 ) -> Point {
-    let def = theme
-        .get(ThemeField::Default.into())
-        .unwrap_or(Style::default());
-    let sel = theme
-        .get(ThemeField::Selection.into())
-        .unwrap_or(Style::default());
-    let style = redraw::merge_cell_styles(&[def, sel]);
+    let style = theme.get(ThemeField::Selection).unwrap_or(Style::default());
 
     if let Some(sel) = cursor.selection() {
         let mut pos = view.range().start;
@@ -93,13 +85,9 @@ fn draw_primary_cursor(
 }
 
 fn draw_end_of_buffer(grid: &mut Vec<Vec<redraw::Cell>>, view: &View, theme: &Theme) {
-    let def = theme
-        .get(ThemeField::Default.into())
+    let style = theme
+        .get(ThemeField::EndOfBuffer)
         .unwrap_or(Style::default());
-    let eob = theme
-        .get(ThemeField::EndOfBuffer.into())
-        .unwrap_or(Style::default());
-    let style = redraw::merge_cell_styles(&[def, eob]);
     for (line, row) in view.cells().iter().enumerate() {
         let is_empty = row
             .iter()

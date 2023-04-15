@@ -48,40 +48,40 @@ fn gruvbox() -> Theme {
     let mut theme = Theme::new("gruvbox");
     {
         use ThemeField::*;
-        theme.set(
-            Default.into(),
+        theme.insert(
+            Default,
             Style {
                 text_style: None,
                 bg: bg_0.into(),
                 fg: fg_0.into(),
             },
         );
-        theme.set(
-            Statusline.into(),
+        theme.insert(
+            Statusline,
             Style {
                 text_style: None,
                 bg: bg_2.into(),
                 fg: fg_2.into(),
             },
         );
-        theme.set(
-            EndOfBuffer.into(),
+        theme.insert(
+            EndOfBuffer,
             Style {
                 text_style: None,
                 bg: None,
                 fg: bg_3.into(),
             },
         );
-        theme.set(
-            Symbols.into(),
+        theme.insert(
+            Symbols,
             Style {
                 text_style: None,
                 bg: None,
                 fg: bg_3.into(),
             },
         );
-        theme.set(
-            Selection.into(),
+        theme.insert(
+            Selection,
             Style {
                 text_style: None,
                 bg: bg_3.into(),
@@ -89,24 +89,24 @@ fn gruvbox() -> Theme {
             },
         );
 
-        theme.set(
-            Info.into(),
+        theme.insert(
+            Info,
             Style {
                 text_style: None,
                 bg: blue_light.into(),
                 fg: bg_1.into(),
             },
         );
-        theme.set(
-            Warn.into(),
+        theme.insert(
+            Warn,
             Style {
                 text_style: None,
                 bg: yellow_light.into(),
                 fg: bg_1.into(),
             },
         );
-        theme.set(
-            Error.into(),
+        theme.insert(
+            Error,
             Style {
                 text_style: None,
                 bg: red_light.into(),
@@ -114,40 +114,40 @@ fn gruvbox() -> Theme {
             },
         );
 
-        theme.set(
-            PromptDefault.into(),
+        theme.insert(
+            PromptDefault,
             Style {
                 text_style: None,
                 bg: bg_1.into(),
                 fg: fg_1.into(),
             },
         );
-        theme.set(
-            PromptMessage.into(),
+        theme.insert(
+            PromptMessage,
             Style {
                 text_style: None,
                 bg: None,
                 fg: yellow_light.into(),
             },
         );
-        theme.set(
-            PromptUserInput.into(),
+        theme.insert(
+            PromptUserInput,
             Style {
                 text_style: None,
                 bg: None,
                 fg: fg_1.into(),
             },
         );
-        theme.set(
-            PromptCompletion.into(),
+        theme.insert(
+            PromptCompletion,
             Style {
                 text_style: None,
                 bg: None,
                 fg: None,
             },
         );
-        theme.set(
-            PromptCompletionSelected.into(),
+        theme.insert(
+            PromptCompletionSelected,
             Style {
                 text_style: None,
                 bg: bg_2.into(),

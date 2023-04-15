@@ -72,7 +72,7 @@ impl Editor {
         }
     }
 
-    pub fn get_win_buf(&self, id: ClientId) -> (&Window, &Buffer) {
+    pub fn win_buf(&self, id: ClientId) -> (&Window, &Buffer) {
         let win = self.windows.get(id).expect("no win for cliend id {id}");
         let bid = win.buffer_id();
         let buf = self
@@ -82,7 +82,7 @@ impl Editor {
         (win, buf)
     }
 
-    pub fn get_win_buf_mut(&mut self, id: ClientId) -> (&mut Window, &mut Buffer) {
+    pub fn win_buf_mut(&mut self, id: ClientId) -> (&mut Window, &mut Buffer) {
         let win = self.windows.get_mut(id).expect("no win for cliend id {id}");
         let bid = win.buffer_id();
         let buf = self
@@ -110,7 +110,7 @@ impl Editor {
     /// Put buffer to buffers list and open it in client 'id':s window
     pub fn open_buffer(&mut self, id: ClientId, buf: Buffer) {
         let bid = self.buffers.insert(buf);
-        let (win, _) = self.get_win_buf_mut(id);
+        let (win, _) = self.win_buf_mut(id);
         // TODO check if buffer is not saved and what to do if it is not, prompt
         // save or auto save?
 
@@ -184,7 +184,7 @@ impl Editor {
     }
 
     fn handle_resize(&mut self, id: ClientId, size: Size) {
-        let (win, buf) = self.get_win_buf_mut(id);
+        let (win, buf) = self.win_buf_mut(id);
         win.resize(size, buf);
     }
 
@@ -192,11 +192,11 @@ impl Editor {
         // TODO keybindings
         match event {
             MouseEvent::ScrollDown => {
-                let (win, buf) = self.get_win_buf_mut(id);
+                let (win, buf) = self.win_buf_mut(id);
                 win.scroll_down_n(buf, 3);
             }
             MouseEvent::ScrollUp => {
-                let (win, buf) = self.get_win_buf_mut(id);
+                let (win, buf) = self.win_buf_mut(id);
                 win.scroll_up_n(buf, 3);
             }
         }
@@ -230,7 +230,7 @@ impl Editor {
     }
 
     fn get_bound_action(&mut self, id: ClientId) -> Option<Action> {
-        let (win, _buf) = self.get_win_buf(id);
+        let (win, _buf) = self.win_buf(id);
         let keymap = win.keymap();
 
         match keymap.get(&self.keys) {
@@ -269,7 +269,7 @@ impl Editor {
                 Tab => insert(self, id, "\t"),
                 Enter => {
                     let eol = {
-                        let (_, buf) = self.get_win_buf(id);
+                        let (_, buf) = self.win_buf(id);
                         buf.options().eol
                     };
                     insert(self, id, eol.as_str());

@@ -11,7 +11,7 @@ fn do_move<F: Fn(&PieceTreeSlice, usize) -> usize>(
     f: F,
     col: Option<usize>,
 ) {
-    let (win, buf) = editor.get_win_buf_mut(id);
+    let (win, buf) = editor.win_buf_mut(id);
     let cursor = win.primary_cursor_mut();
     let pos = f(&buf.slice(..), cursor.pos());
     if let Some(col) = col {
@@ -48,7 +48,7 @@ pub(crate) fn start_of_buffer(editor: &mut Editor, id: ClientId) {
 
 pub(crate) fn end_of_buffer(editor: &mut Editor, id: ClientId) {
     let blen = {
-        let (win, buf) = editor.get_win_buf(id);
+        let (win, buf) = editor.win_buf(id);
         buf.len()
     };
     do_move_static(editor, id, blen, None);
@@ -71,7 +71,7 @@ pub(crate) fn prev_paragraph(editor: &mut Editor, id: ClientId) {
 }
 
 pub(crate) fn prev_visual_line(editor: &mut Editor, id: ClientId) {
-    let (win, buf) = editor.get_win_buf_mut(id);
+    let (win, buf) = editor.win_buf_mut(id);
     let cursor_pos = win.cursors().primary().pos();
     let cursor_point = win
         .view()
@@ -96,7 +96,7 @@ pub(crate) fn prev_visual_line(editor: &mut Editor, id: ClientId) {
 // Before using this you should check if the view can be scrolled
 // up and do so. returns wether cursor was moved.
 fn prev_visual_line_impl(editor: &mut Editor, id: ClientId) -> bool {
-    let (win, _buf) = editor.get_win_buf_mut(id);
+    let (win, _buf) = editor.win_buf_mut(id);
     let cursor_pos = win.cursors().primary().pos();
     let cursor_point = win
         .view()
@@ -131,7 +131,7 @@ fn prev_visual_line_impl(editor: &mut Editor, id: ClientId) -> bool {
 }
 
 pub(crate) fn next_visual_line(editor: &mut Editor, id: ClientId) {
-    let (win, buf) = editor.get_win_buf_mut(id);
+    let (win, buf) = editor.win_buf_mut(id);
     let cursor_pos = win.cursors().primary().pos();
     let cursor_point = win
         .view()
@@ -157,7 +157,7 @@ pub(crate) fn next_visual_line(editor: &mut Editor, id: ClientId) {
 //  Before using this you should check if the view can be
 // scrolled down and do so. returns wether cursor was moved.
 fn next_visual_line_impl(editor: &mut Editor, id: ClientId) -> bool {
-    let (win, buf) = editor.get_win_buf_mut(id);
+    let (win, buf) = editor.win_buf_mut(id);
     let cursor_pos = win.cursors().primary().pos();
     let cursor_point = win
         .view()

@@ -17,6 +17,6 @@ impl UIContext {
     }
 
     pub fn style(&self, field: &ThemeField) -> Style {
-        self.theme.get(field.into()).unwrap_or(Style::default())
+        self.theme.get(field).unwrap_or(Style::default())
     }
 }

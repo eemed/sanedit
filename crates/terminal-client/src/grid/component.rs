@@ -1,5 +1,5 @@
 use sanedit_messages::redraw::{
-    merge_cell_styles, Cell, IntoCells, Point, Prompt, Size, Statusline, Style, ThemeField, Window,
+    Cell, IntoCells, Point, Prompt, Size, Statusline, Style, ThemeField, Window,
 };
 
 use crate::ui::UIContext;
@@ -65,23 +65,17 @@ impl Component for Prompt {
     fn draw(&self, ctx: &UIContext) -> Vec<Vec<Cell>> {
         let default_style = ctx
             .theme
-            .get(ThemeField::PromptDefault.into())
+            .get(ThemeField::PromptDefault)
             .unwrap_or(Style::default());
-        let msg_style = {
-            let msg = ctx
-                .theme
-                .get(ThemeField::PromptMessage.into())
-                .unwrap_or(Style::default());
-            merge_cell_styles(&[default_style, msg])
-        };
+        let msg_style = ctx
+            .theme
+            .get(ThemeField::PromptMessage)
+            .unwrap_or(Style::default());
 
-        let input_style = {
-            let input = ctx
-                .theme
-                .get(ThemeField::PromptUserInput.into())
-                .unwrap_or(Style::default());
-            merge_cell_styles(&[default_style, input])
-        };
+        let input_style = ctx
+            .theme
+            .get(ThemeField::PromptUserInput)
+            .unwrap_or(Style::default());
 
         let mut message = into_cells_with_style(self.message(), msg_style, ctx);
         let colon = into_cells_with_style(": ", msg_style, ctx);
@@ -102,10 +96,7 @@ impl Component for Prompt {
                 } else {
                     ThemeField::PromptCompletion
                 };
-                let style = {
-                    let sel = ctx.style(&field);
-                    merge_cell_styles(&[default_style, sel])
-                };
+                let style = ctx.style(&field);
                 into_cells_with_style_pad(opt, style, ctx)
             })
             .collect();

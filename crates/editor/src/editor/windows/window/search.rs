@@ -1,10 +1,18 @@
 use crate::editor::keymap::Keymap;
 
-use super::{Prompt, PromptAction};
+use super::{PAction, Prompt, SetPrompt};
+
+pub(crate) struct SetSearch {
+    pub prompt: SetPrompt,
+
+    pub is_regex: bool,
+    pub select: bool,
+    pub stop_at_first_match: bool,
+}
 
 #[derive(Debug)]
 pub(crate) struct Search {
-    prompt: Prompt,
+    pub prompt: Prompt,
 
     /// Wether to search using regex or not
     is_regex: bool,
@@ -17,7 +25,7 @@ pub(crate) struct Search {
 impl Search {
     pub fn new(msg: &str) -> Search {
         let mut prompt = Prompt::new(msg);
-        prompt.keymap = Keymap::default_search();
+        prompt.keymap = Keymap::search();
 
         Search {
             prompt,
@@ -27,31 +35,18 @@ impl Search {
         }
     }
 
-    pub fn on_confirm(mut self, action: PromptAction) -> Self {
-        self.prompt = self.prompt.on_confirm(action);
-        self
-    }
+    pub fn set(&mut self, set: SetSearch) {
+        let SetSearch {
+            prompt,
+            is_regex,
+            select,
+            stop_at_first_match,
+        } = set;
 
-    pub fn on_abort(mut self, action: PromptAction) -> Self {
-        self.prompt = self.prompt.on_abort(action);
-        self
-    }
-
-    pub fn on_input(mut self, action: PromptAction) -> Self {
-        self.prompt = self.prompt.on_input(action);
-        self
-    }
-
-    pub fn prompt(&self) -> &Prompt {
-        &self.prompt
-    }
-
-    pub fn prompt_mut(&mut self) -> &mut Prompt {
-        &mut self.prompt
-    }
-
-    pub fn keymap(&self) -> &Keymap {
-        self.prompt.keymap()
+        self.prompt.set(prompt);
+        self.is_regex = is_regex;
+        self.select = select;
+        self.stop_at_first_match = stop_at_first_match;
     }
 }
 

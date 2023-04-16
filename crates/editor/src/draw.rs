@@ -67,7 +67,7 @@ impl DrawState {
 
         match win.focus() {
             Focus::Search => {
-                let search = win.search();
+                let search = &win.search;
                 let search = draw_search(search, &win.options);
                 match self.prompt.as_mut() {
                     Some(prev) => {
@@ -83,7 +83,7 @@ impl DrawState {
                 }
             }
             Focus::Prompt => {
-                let prompt = win.prompt();
+                let prompt = &win.prompt;
                 let prompt = draw_prompt(prompt, &win.options, &mut self.prompt_scroll_offset);
                 match self.prompt.as_mut() {
                     Some(prev) => {

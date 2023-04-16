@@ -4,14 +4,14 @@ use sanedit_regex::Regex;
 
 use crate::{
     editor::{
-        windows::{Prompt, PromptAction, Search},
+        windows::{Focus, PAction, SetPrompt, SetSearch},
         Editor,
     },
     server::ClientId,
 };
 
 pub(crate) fn search_open(editor: &mut Editor, id: ClientId) {
-    let on_confirm: PromptAction = Rc::new(move |editor, id, input| {
+    let on_confirm: PAction = Rc::new(move |editor, id, input| {
         let (win, buf) = editor.win_buf_mut(id);
         let regex = Regex::new(input);
         let mut cursor = buf.cursor();
@@ -36,8 +36,8 @@ pub(crate) fn search_open(editor: &mut Editor, id: ClientId) {
             log::info!("Search: no match");
         }
     });
-    let on_abort: PromptAction = Rc::new(move |editor, id, input| {});
-    let on_input: PromptAction = Rc::new(move |editor, id, input| {
+    let on_abort: PAction = Rc::new(move |editor, id, input| {});
+    let on_input: PAction = Rc::new(move |editor, id, input| {
         let (win, buf) = editor.win_buf_mut(id);
         let regex = Regex::new(input);
         let mut cursor = buf.cursor();
@@ -50,43 +50,72 @@ pub(crate) fn search_open(editor: &mut Editor, id: ClientId) {
             cursor.goto(m.end());
         }
     });
-    let search = Search::new("Search")
-        .on_confirm(on_confirm)
-        .on_abort(on_abort)
-        .on_input(on_input);
+    let set = SetSearch {
+        prompt: SetPrompt {
+            message: "Search".into(),
+            on_confirm: Some(on_confirm),
+            on_abort: Some(on_abort),
+            on_input: Some(on_input),
+            keymap: None,
+        },
+        is_regex: true,
+        select: false,
+        stop_at_first_match: true,
+    };
     let (win, buf) = editor.win_buf_mut(id);
-    win.open_search(search);
+    win.search.set(set);
+    win.focus = Focus::Search;
 }
 
 pub(crate) fn search_close(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
-    let search = win.close_search();
-    let prompt: Prompt = search.into();
-    prompt.abort(editor, id);
+    if let Some(on_abort) = win.search.prompt.on_abort.clone() {
+        let input = win.search.prompt.input();
+        (on_abort)(editor, id, &input)
+    }
+
+    let (win, buf) = editor.win_buf_mut(id);
+    win.focus = Focus::Window;
 }
 
 pub(crate) fn search_confirm(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
-    let search = win.close_search();
-    let prompt: Prompt = search.into();
-    prompt.confirm(editor, id);
+    if let Some(on_confirm) = win.search.prompt.on_confirm.clone() {
+        let input = win.search.prompt.input();
+        win.search.prompt.history.push(&input);
+        (on_confirm)(editor, id, &input)
+    }
+
+    let (win, buf) = editor.win_buf_mut(id);
+    win.focus = Focus::Window;
 }
 
 pub(crate) fn search_next_grapheme(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
-    win.search_mut().prompt_mut().next_grapheme();
+    win.search.prompt.next_grapheme();
 }
 
 pub(crate) fn search_prev_grapheme(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
-    win.search_mut().prompt_mut().prev_grapheme();
+    win.search.prompt.prev_grapheme();
 }
 
 pub(crate) fn search_remove_grapheme_before_cursor(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
-    win.search_mut().prompt_mut().remove_grapheme_before_cursor();
+    win.search.prompt.remove_grapheme_before_cursor();
 
-    if let Some((on_input, input)) = win.search_mut().prompt().get_on_input() {
-        (on_input)(editor, id, &input);
+    if let Some(on_input) = win.search.prompt.on_input.clone() {
+        let input = win.search.prompt.input();
+        (on_input)(editor, id, &input)
     }
+}
+
+pub(crate) fn search_history_next(editor: &mut Editor, id: ClientId) {
+    let (win, buf) = editor.win_buf_mut(id);
+    win.search.prompt.history_next();
+}
+
+pub(crate) fn search_history_prev(editor: &mut Editor, id: ClientId) {
+    let (win, buf) = editor.win_buf_mut(id);
+    win.search.prompt.history_prev();
 }

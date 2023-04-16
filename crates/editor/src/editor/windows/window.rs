@@ -25,9 +25,11 @@ pub(crate) use self::{
     focus::Focus,
     message::{Message, Severity},
     options::Options,
+    prompt::PAction,
     prompt::Prompt,
-    prompt::PromptAction,
+    prompt::SetPrompt,
     search::Search,
+    search::SetSearch,
     view::{Cell, View},
 };
 
@@ -39,9 +41,9 @@ pub(crate) struct Window {
     cursors: Cursors,
 
     keymap: Keymap,
-    focus: Focus,
-    search: Search,
-    prompt: Prompt,
+    pub focus: Focus,
+    pub search: Search,
+    pub prompt: Prompt,
     pub options: Options,
 }
 
@@ -52,7 +54,7 @@ impl Window {
             view: View::new(width, height),
             message: None,
             cursors: Cursors::default(),
-            keymap: Keymap::default_normal(),
+            keymap: Keymap::window(),
             options: Options::default(),
             search: Search::default(),
             prompt: Prompt::default(),
@@ -202,8 +204,8 @@ impl Window {
 
     pub fn keymap(&self) -> &Keymap {
         match self.focus {
-            Focus::Search => self.search.prompt().keymap(),
-            Focus::Prompt => self.prompt.keymap(),
+            Focus::Search => &self.search.prompt.keymap,
+            Focus::Prompt => &self.prompt.keymap,
             Focus::Window => &self.keymap,
         }
     }
@@ -248,42 +250,6 @@ impl Window {
         buf.remove(pos..cursor.pos());
         cursor.goto(pos);
         self.invalidate_view();
-    }
-
-    pub fn prompt_mut(&mut self) -> &mut Prompt {
-        &mut self.prompt
-    }
-
-    pub fn prompt(&self) -> &Prompt {
-        &self.prompt
-    }
-
-    pub fn open_prompt(&mut self, prompt: Prompt) {
-        self.prompt = prompt;
-        self.focus = Focus::Prompt;
-    }
-
-    pub fn close_prompt(&mut self) -> Prompt {
-        self.focus = Focus::Window;
-        mem::take(&mut self.prompt)
-    }
-
-    pub fn open_search(&mut self, search: Search) {
-        self.search = search;
-        self.focus = Focus::Search;
-    }
-
-    pub fn close_search(&mut self) -> Search {
-        self.focus = Focus::Window;
-        mem::take(&mut self.search)
-    }
-
-    pub fn search_mut(&mut self) -> &mut Search {
-        &mut self.search
-    }
-
-    pub fn search(&self) -> &Search {
-        &self.search
     }
 }
 

@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::{collections::VecDeque, rc::Rc};
 
 use unicode_segmentation::UnicodeSegmentation;
 
@@ -9,24 +9,89 @@ use crate::{
 
 use super::completion::Completion;
 
-pub(crate) type PromptAction = Rc<dyn Fn(&mut Editor, ClientId, &str) + Send + Sync>;
+pub(crate) struct SetPrompt {
+    pub(crate) message: String,
+    pub(crate) on_confirm: Option<PAction>,
+    pub(crate) on_abort: Option<PAction>,
+    pub(crate) on_input: Option<PAction>,
+    pub(crate) keymap: Option<Keymap>,
+}
+
+pub(crate) type PAction = Rc<dyn Fn(&mut Editor, ClientId, &str) + Send + Sync>;
+
+pub(crate) struct History {
+    items: VecDeque<String>,
+    limit: usize,
+    pos: Option<usize>,
+}
+
+impl History {
+    pub fn new(limit: usize) -> History {
+        History {
+            items: VecDeque::with_capacity(limit),
+            limit,
+            pos: None,
+        }
+    }
+
+    pub fn reset(&mut self) {
+        self.pos = None;
+    }
+
+    pub fn get(&self) -> Option<&str> {
+        let pos = self.pos?;
+        self.items.get(pos).map(|s| s.as_str())
+    }
+
+    pub fn push(&mut self, item: &str) {
+        while self.items.len() >= self.limit {
+            self.items.pop_front();
+        }
+
+        self.items.push_back(item.into());
+    }
+
+    pub fn next(&mut self) -> Option<&str> {
+        let pos = self.pos? + 1;
+        if pos >= self.items.len() {
+            self.pos = None;
+        } else {
+            self.pos = Some(pos);
+        }
+
+        self.get()
+    }
+
+    pub fn prev(&mut self) -> Option<&str> {
+        let pos = self.pos.unwrap_or(self.items.len());
+        if pos > 0 {
+            self.pos = Some(pos - 1);
+        } else {
+            self.pos = None;
+        }
+
+        self.get()
+    }
+}
 
 pub(crate) struct Prompt {
-    message: String,
+    pub message: String,
+
     input: String,
     cursor: usize,
     completion: Completion,
 
     /// Called when prompt is confirmed
-    on_confirm: Option<PromptAction>,
+    pub on_confirm: Option<PAction>,
 
-    /// Called if prompt is aborted
-    on_abort: Option<PromptAction>,
+    /// Called when prompt is aborted
+    pub on_abort: Option<PAction>,
 
-    /// Called if input is modified
-    on_input: Option<PromptAction>,
-
+    /// Called when input is modified
+    pub on_input: Option<PAction>,
     pub keymap: Keymap,
+
+    pub history: History,
 }
 
 impl Prompt {
@@ -39,41 +104,37 @@ impl Prompt {
             on_confirm: None,
             on_abort: None,
             on_input: None,
-            keymap: Keymap::default_prompt(),
+            keymap: Keymap::prompt(),
+            history: History::new(100),
         }
+    }
+
+    pub fn set(&mut self, new: SetPrompt) {
+        let SetPrompt {
+            message,
+            on_confirm,
+            on_abort,
+            on_input,
+            keymap,
+        } = new;
+
+        self.message = message;
+        self.on_confirm = on_confirm;
+        self.on_abort = on_abort;
+        self.on_input = on_input;
+
+        if let Some(kmap) = keymap {
+            self.keymap = kmap;
+        }
+
+        self.history.reset();
+        self.input = String::new();
+        self.cursor = 0;
     }
 
     pub fn must_complete(mut self) -> Self {
         self.completion.must_complete = true;
         self
-    }
-
-    pub fn on_confirm(mut self, action: PromptAction) -> Self {
-        self.on_confirm = Some(action);
-        self
-    }
-
-    pub fn on_abort(mut self, action: PromptAction) -> Self {
-        self.on_abort = Some(action);
-        self
-    }
-
-    pub fn on_input(mut self, action: PromptAction) -> Self {
-        self.on_input = Some(action);
-        self
-    }
-
-    pub fn set_keymap(mut self, map: Keymap) -> Self {
-        self.keymap = map;
-        self
-    }
-
-    pub fn keymap(&self) -> &Keymap {
-        &self.keymap
-    }
-
-    pub fn message(&self) -> &str {
-        &self.message
     }
 
     pub fn next_grapheme(&mut self) {
@@ -112,34 +173,10 @@ impl Prompt {
         self.completion.select_prev();
     }
 
-    pub fn confirm(self, editor: &mut Editor, id: ClientId) {
-        let input = self
-            .selected()
+    pub fn input(&self) -> String {
+        self.selected()
             .map(|(_, item)| item.to_string())
-            .unwrap_or(self.input);
-        if let Some(on_confirm) = self.on_confirm {
-            (on_confirm)(editor, id, &input)
-        }
-    }
-
-    pub fn abort(self, editor: &mut Editor, id: ClientId) {
-        let input = self
-            .selected()
-            .map(|(_, item)| item.to_string())
-            .unwrap_or(self.input);
-        if let Some(on_abort) = self.on_abort {
-            (on_abort)(editor, id, &input)
-        }
-    }
-
-    pub fn get_on_input(&self) -> Option<(PromptAction, String)> {
-        let on_input = self.on_input.clone()?;
-        let input = self.input.clone();
-        Some((on_input, input))
-    }
-
-    pub fn input(&self) -> &str {
-        &self.input
+            .unwrap_or(self.input.clone())
     }
 
     pub fn cursor(&self) -> usize {
@@ -174,6 +211,32 @@ impl Prompt {
     pub fn selected_pos(&self) -> Option<usize> {
         let (pos, _) = self.completion.selected()?;
         Some(pos)
+    }
+
+    pub fn history_next(&mut self) {
+        match self.history.next() {
+            Some(item) => {
+                self.cursor = item.len();
+                self.input = item.into();
+            }
+            None => {
+                self.cursor = 0;
+                self.input = String::new();
+            }
+        }
+    }
+
+    pub fn history_prev(&mut self) {
+        match self.history.prev() {
+            Some(item) => {
+                self.cursor = item.len();
+                self.input = item.into();
+            }
+            None => {
+                self.cursor = 0;
+                self.input = String::new();
+            }
+        }
     }
 }
 

@@ -94,6 +94,8 @@ impl Action {
         prompt_prev_completion,
         prompt_close,
         prompt_open_file,
+        prompt_history_next,
+        prompt_history_prev,
 
         search_open,
         search_next_grapheme,
@@ -101,6 +103,8 @@ impl Action {
         search_remove_grapheme_before_cursor,
         search_confirm,
         search_close,
+        search_history_next,
+        search_history_prev,
     );
 }
 

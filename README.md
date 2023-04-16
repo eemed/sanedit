@@ -11,11 +11,18 @@ Inspiration taken from vim, kakoune, emacs, neovim and vis.
 
 ## Notes
 
-Sometimes server quits and client cannot get exit event.
-Make internal events for the client side, and send exit event if writing to server fails.
-just quit the main thread and the rest should follow, no need for atomic graceful shutdown.
+* Prompt history
+* Search
+* Saving
+* syntax highlighting using pest
+* shell access
 
-Handle resizing
+### Later
+
+* Prompt complete funcs, not just pick from precomputed options but actually
+  complete the term
+* File picker performance?
+* Regex char classes?
 
 ## Crates
 

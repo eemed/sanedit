@@ -20,10 +20,10 @@ pub(crate) fn draw_prompt(
         }
     };
 
-    let msg = prompt.message();
+    let msg = &prompt.message;
     let input = prompt.input();
     let cursor = prompt.cursor();
     let selected_relative_pos = prompt.selected_pos().map(|pos| pos - *scroll_offset);
     let options = prompt.matches_window(options.prompt_completions, *scroll_offset);
-    redraw::Prompt::new(msg, input, cursor, options, selected_relative_pos).into()
+    redraw::Prompt::new(msg, &input, cursor, options, selected_relative_pos).into()
 }

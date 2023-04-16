@@ -1,9 +1,9 @@
 pub(crate) mod buffers;
-mod hooks;
+pub(crate) mod hooks;
 pub(crate) mod jobs;
-mod keymap;
+pub(crate) mod keymap;
 pub(crate) mod options;
-mod themes;
+pub(crate) mod themes;
 pub(crate) mod windows;
 
 use sanedit_messages::redraw::Size;

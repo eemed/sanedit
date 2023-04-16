@@ -1,4 +1,3 @@
-pub(crate) mod ast;
 pub(crate) mod parser;
 
 use std::ops::Range;

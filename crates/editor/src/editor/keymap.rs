@@ -18,7 +18,7 @@ pub(crate) struct Keymap {
 }
 
 impl Keymap {
-    pub fn default_normal() -> Keymap {
+    pub fn window() -> Keymap {
         let mut map = Keymap {
             root: KeyTrie::default(),
         };
@@ -58,7 +58,7 @@ impl Keymap {
         map
     }
 
-    pub fn default_prompt() -> Keymap {
+    pub fn prompt() -> Keymap {
         let mut map = Keymap {
             root: KeyTrie::default(),
         };
@@ -72,12 +72,14 @@ impl Keymap {
              "tab", Action::prompt_next_completion,
              "btab", Action::prompt_prev_completion,
              "enter", Action::prompt_confirm,
+             "up", Action::prompt_history_prev,
+             "down", Action::prompt_history_next,
         );
 
         map
     }
 
-    pub fn default_search() -> Keymap {
+    pub fn search() -> Keymap {
         let mut map = Keymap {
             root: KeyTrie::default(),
         };
@@ -89,6 +91,8 @@ impl Keymap {
              "left", Action::search_prev_grapheme,
              "right", Action::search_next_grapheme,
              "enter", Action::search_confirm,
+             "up", Action::search_history_prev,
+             "down", Action::search_history_next,
         );
 
         map

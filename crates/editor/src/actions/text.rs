@@ -22,10 +22,10 @@ pub(crate) fn insert(editor: &mut Editor, id: ClientId, text: &str) {
 
     match win.focus() {
         Focus::Search => {
-            win.search_mut().prompt_mut().insert_at_cursor(text);
+            win.search.prompt.insert_at_cursor(text);
         }
         Focus::Prompt => {
-            win.prompt_mut().insert_at_cursor(text);
+            win.prompt.insert_at_cursor(text);
         }
         Focus::Window => {
             win.insert_at_cursor(buf, text);

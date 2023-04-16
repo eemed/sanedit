@@ -2,7 +2,7 @@ use sanedit_buffer::piece_tree::{self, next_grapheme, prev_grapheme, PieceTreeSl
 
 use crate::common::char::grapheme_category;
 
-use super::char::GraphemeCategory;
+use super::char::{is_word_break, GraphemeCategory};
 use super::eol::EOL;
 
 pub(crate) fn next_grapheme_boundary(slice: &PieceTreeSlice, pos: usize) -> usize {
@@ -78,7 +78,7 @@ pub(crate) fn next_word_start(slice: &PieceTreeSlice, mut pos: usize) -> usize {
         let cat = grapheme_category(&string);
 
         if let Some(ref prev) = prev {
-            if cat.is_word_break(prev) {
+            if is_word_break(prev, &cat) {
                 return pos;
             }
         }
@@ -99,7 +99,7 @@ pub(crate) fn prev_word_start(slice: &PieceTreeSlice, mut pos: usize) -> usize {
         let prev = grapheme_category(&string);
 
         if let Some(cat) = cat {
-            if cat.is_word_break(&prev) {
+            if is_word_break(&prev, &cat) {
                 return pos;
             }
         }

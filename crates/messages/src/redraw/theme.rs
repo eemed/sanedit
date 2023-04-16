@@ -23,21 +23,12 @@ impl Theme {
     pub fn insert<S: AsRef<str>>(&mut self, path: S, nstyle: Style) {
         let path: Vec<&str> = path.as_ref().split(Self::SEPARATOR).collect();
         let mut node = &mut self.node;
-        let mut iter = path.iter().peekable();
 
-        while let Some(comp) = iter.next() {
-            if iter.peek().is_none() {
-                node.set_style(nstyle);
-                return;
-            }
-
+        for comp in path {
             match node {
                 ThemeNode::Node { nodes, .. } => {
                     let entry = nodes.entry(comp.to_string());
-                    node = entry.or_insert_with(|| ThemeNode::Node {
-                        style: Style::default(),
-                        nodes: HashMap::default(),
-                    });
+                    node = entry.or_insert_with(|| ThemeNode::Leaf(Style::default()));
                 }
                 ThemeNode::Leaf(style) => {
                     let mut nodes = HashMap::default();
@@ -48,35 +39,29 @@ impl Theme {
                     };
 
                     if let ThemeNode::Node { nodes, .. } = node {
-                        node = nodes.get_mut(*comp).unwrap();
+                        node = nodes.get_mut(comp).unwrap();
                     }
                 }
             }
         }
+
+        node.set_style(nstyle);
     }
 
     pub fn get<S: AsRef<str>>(&self, path: S) -> Option<Style> {
         let path: Vec<&str> = path.as_ref().split(Self::SEPARATOR).collect();
         let mut node = &self.node;
-        let mut iter = path.iter().peekable();
-        let mut cur = Style::default();
+        let mut cur = node.style().clone();
 
-        log::info!("Get: {path:?}");
-        while let Some(comp) = iter.next() {
-            log::info!("Override with {comp}: {:?}", node.style());
-            cur.override_with(node.style());
-
-            if iter.peek().is_none() {
-                return Some(cur);
-            }
-
+        for comp in path {
             match node {
                 ThemeNode::Node { nodes, .. } => node = nodes.get(&comp.to_string())?,
                 ThemeNode::Leaf(_) => return None,
             }
+            cur.override_with(node.style());
         }
 
-        None
+        Some(cur)
     }
 }
 

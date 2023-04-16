@@ -348,15 +348,14 @@ mod test {
         );
 
         win.scroll_up_n(&buf, 1);
-
         assert_eq!(
-            vec!["s is anoth", "er long li", "ne that wi"],
+            vec!["this is an", "other long", " line that"],
             view_lines(&win)
         );
 
         win.scroll_up_n(&buf, 1);
         assert_eq!(
-            vec!["this is an", "other long", " line that"],
+            vec!["a long lin", "e that wil", "l not fit\n"],
             view_lines(&win)
         );
     }

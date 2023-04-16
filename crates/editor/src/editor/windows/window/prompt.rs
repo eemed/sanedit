@@ -19,10 +19,17 @@ pub(crate) struct SetPrompt {
 
 pub(crate) type PAction = Rc<dyn Fn(&mut Editor, ClientId, &str) + Send + Sync>;
 
+#[derive(Debug, Clone, Copy)]
+enum Pos {
+    First,
+    Last,
+    Index(usize),
+}
+
 pub(crate) struct History {
     items: VecDeque<String>,
     limit: usize,
-    pos: Option<usize>,
+    pos: Pos,
 }
 
 impl History {
@@ -30,44 +37,63 @@ impl History {
         History {
             items: VecDeque::with_capacity(limit),
             limit,
-            pos: None,
+            pos: Pos::First,
         }
     }
 
     pub fn reset(&mut self) {
-        self.pos = None;
+        self.pos = Pos::First;
     }
 
     pub fn get(&self) -> Option<&str> {
-        let pos = self.pos?;
-        self.items.get(pos).map(|s| s.as_str())
+        match self.pos {
+            Pos::Index(n) => self.items.get(n).map(|s| s.as_str()),
+            _ => None,
+        }
     }
 
     pub fn push(&mut self, item: &str) {
+        self.items.retain(|i| i != item);
+
         while self.items.len() >= self.limit {
-            self.items.pop_front();
+            self.items.pop_back();
         }
 
-        self.items.push_back(item.into());
+        self.items.push_front(item.into());
     }
 
     pub fn next(&mut self) -> Option<&str> {
-        let pos = self.pos? + 1;
-        if pos >= self.items.len() {
-            self.pos = None;
-        } else {
-            self.pos = Some(pos);
+        match self.pos {
+            Pos::Last => {
+                if !self.items.is_empty() {
+                    self.pos = Pos::Index(self.items.len() - 1);
+                }
+            }
+            Pos::Index(n) => {
+                self.pos = if n > 0 { Pos::Index(n - 1) } else { Pos::First };
+            }
+            _ => {}
         }
 
         self.get()
     }
 
     pub fn prev(&mut self) -> Option<&str> {
-        let pos = self.pos.unwrap_or(self.items.len());
-        if pos > 0 {
-            self.pos = Some(pos - 1);
-        } else {
-            self.pos = None;
+        match self.pos {
+            Pos::First => {
+                if !self.items.is_empty() {
+                    self.pos = Pos::Index(0);
+                }
+            }
+            Pos::Index(n) => {
+                let pos = n + 1;
+                self.pos = if pos < self.items.len() {
+                    Pos::Index(pos)
+                } else {
+                    Pos::Last
+                };
+            }
+            _ => {}
         }
 
         self.get()

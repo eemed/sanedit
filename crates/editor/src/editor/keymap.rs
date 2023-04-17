@@ -53,6 +53,7 @@ impl Keymap {
 
              "ctrl+o", Action::prompt_open_file,
              "ctrl+f", Action::search_open,
+             "ctrl+h", Action::search_clear_matches,
         );
 
         map

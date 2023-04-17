@@ -1,6 +1,8 @@
+use sanedit_regex::Match;
+
 use crate::editor::keymap::Keymap;
 
-use super::{PAction, Prompt, SetPrompt};
+use super::{Prompt, SetPrompt};
 
 pub(crate) struct SetSearch {
     pub prompt: SetPrompt,
@@ -13,6 +15,7 @@ pub(crate) struct SetSearch {
 #[derive(Debug)]
 pub(crate) struct Search {
     pub prompt: Prompt,
+    pub matches: Vec<Match>,
 
     /// Wether to search using regex or not
     is_regex: bool,
@@ -29,8 +32,9 @@ impl Search {
 
         Search {
             prompt,
+            matches: vec![],
             is_regex: true,
-            select: true,
+            select: false,
             stop_at_first_match: true,
         }
     }
@@ -47,6 +51,11 @@ impl Search {
         self.is_regex = is_regex;
         self.select = select;
         self.stop_at_first_match = stop_at_first_match;
+        self.matches = vec![];
+    }
+
+    pub fn select(&self) -> bool {
+        self.select
     }
 }
 

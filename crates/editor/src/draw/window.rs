@@ -1,20 +1,17 @@
 use sanedit_messages::redraw::{self, Point, Style, Theme, ThemeField};
+use sanedit_regex::Match;
 
 use crate::{
-    common::char::Replacement,
+    common::{char::Replacement, range::RangeUtils},
     editor::{
         buffers::Buffer,
-        windows::{Cell, Cursor, Cursors, View},
+        windows::{Cell, Cursor, Cursors, View, Window},
     },
 };
 
-pub(crate) fn draw_window(
-    view: &View,
-    cursors: &Cursors,
-    buf: &Buffer,
-    theme: &Theme,
-) -> redraw::Window {
+pub(crate) fn draw_window(win: &Window, buf: &Buffer, theme: &Theme) -> redraw::Window {
     let style = theme.get(ThemeField::Default).unwrap_or(Style::default());
+    let view = win.view();
     let mut grid = vec![vec![redraw::Cell::with_style(style); view.width()]; view.height()];
 
     for (line, row) in view.cells().iter().enumerate() {
@@ -39,10 +36,43 @@ pub(crate) fn draw_window(
         }
     }
 
+    let cursors = win.cursors();
+    let matches = &win.search.matches;
+
     draw_end_of_buffer(&mut grid, view, theme);
     draw_trailing_whitespace(&mut grid, view, theme);
+    draw_search_highlights(&mut grid, matches, view, theme);
     let cursor = draw_primary_cursor(&mut grid, cursors.primary(), view, theme);
     redraw::Window::new(grid, cursor)
+}
+
+fn draw_search_highlights(
+    grid: &mut Vec<Vec<redraw::Cell>>,
+    matches: &[Match],
+    view: &View,
+    theme: &Theme,
+) {
+    let style = theme.get(ThemeField::Selection).unwrap_or(Style::default());
+
+    let vrange = view.range();
+    for m in matches {
+        let mrange = m.range();
+        if !vrange.overlaps(&mrange) {
+            continue;
+        }
+
+        // TODO optimize
+        let mut pos = vrange.start;
+        for (line, row) in view.cells().iter().enumerate() {
+            for (col, cell) in row.iter().enumerate() {
+                if !matches!(cell, Cell::Empty) && mrange.contains(&pos) {
+                    grid[line][col].style = style;
+                }
+
+                pos += cell.grapheme_len();
+            }
+        }
+    }
 }
 
 fn draw_cursors(

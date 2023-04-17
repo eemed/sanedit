@@ -105,6 +105,7 @@ impl Action {
         search_close,
         search_history_next,
         search_history_prev,
+        search_clear_matches,
     );
 }
 

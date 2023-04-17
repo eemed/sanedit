@@ -56,6 +56,10 @@ impl Match {
         }
     }
 
+    pub fn range(&self) -> Range<usize> {
+        self.range.clone()
+    }
+
     pub fn start(&self) -> usize {
         self.range.start
     }

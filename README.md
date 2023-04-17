@@ -11,11 +11,10 @@ Inspiration taken from vim, kakoune, emacs, neovim and vis.
 
 ## Notes
 
-* Prompt history
 * Search
 * Saving
-* syntax highlighting using pest
-* shell access
+* Syntax highlighting using pest
+* Shell access
 
 ### Later
 

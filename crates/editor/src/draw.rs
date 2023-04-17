@@ -27,9 +27,7 @@ impl DrawState {
     pub fn new(win: &mut Window, buf: &Buffer, theme: &Theme) -> (DrawState, Vec<Redraw>) {
         win.redraw_view(buf);
 
-        let view = win.view();
-        let cursors = win.cursors();
-        let window = draw_window(view, cursors, buf, theme);
+        let window = draw_window(win, buf, theme);
         let statusline = draw_statusline(win, buf);
         let state = DrawState {
             prompt_scroll_offset: 0,
@@ -51,9 +49,7 @@ impl DrawState {
 
         win.redraw_view(buf);
 
-        let view = win.view();
-        let cursors = win.cursors();
-        let window = draw_window(view, cursors, buf, theme);
+        let window = draw_window(win, buf, theme);
         if let Some(diff) = self.window.diff(&window) {
             redraw.push(diff.into());
             self.window = window;

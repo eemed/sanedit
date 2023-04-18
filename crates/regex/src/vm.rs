@@ -17,6 +17,7 @@ use self::thread::ThreadSet;
 
 #[derive(Debug)]
 pub(crate) enum VMResult {
+    All(Vec<Match>),
     /// The first pair is the whole match, and the rest are capturing groups
     /// used in the regex.
     Match(Match),
@@ -33,7 +34,11 @@ pub(crate) struct VM;
 
 impl VM {
     /// Run a program on thompsons NFA simulation VM
-    pub(crate) fn thompson(program: &Program, input: &mut impl Cursor) -> VMResult {
+    pub(crate) fn thompson(
+        program: &Program,
+        input: &mut impl Cursor,
+        stop_at_first_match: bool,
+    ) -> VMResult {
         let len = program.len();
         let mut current = ThreadSet::with_capacity(len);
         let mut new = ThreadSet::with_capacity(len);

@@ -11,9 +11,16 @@ Inspiration taken from vim, kakoune, emacs, neovim and vis.
 
 ## Notes
 
-* Search
-* Saving
+* Search no regex
+* Search selection
+* Search multiple matches
+* Undo
+* Saving (copy from eemedit)
+* Selecting text
+* Pairs (copy from eemedit)
 * Syntax highlighting using pest
+* Movement linewise
+
 * Shell access
 
 ### Later
@@ -22,6 +29,7 @@ Inspiration taken from vim, kakoune, emacs, neovim and vis.
   complete the term
 * File picker performance?
 * Regex char classes?
+* Try out typst for docs
 
 ## Crates
 

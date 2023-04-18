@@ -1,4 +1,5 @@
 pub(crate) mod parser;
+mod error;
 
 use std::ops::Range;
 
@@ -9,9 +10,6 @@ use crate::{
     vm::{Program, VMResult, VM},
 };
 
-// TODO: Parse into postfix notation to avoid stack overflows of recursive
-// descent parser. Compile postfix notation to instructions.
-//
 // Implement DFA to run simpler searches faster?
 pub struct Regex {
     program: Program,
@@ -26,8 +24,15 @@ impl Regex {
 
     /// Find the first match in input
     pub fn find(&self, input: &mut impl Cursor) -> Option<Match> {
-        match VM::thompson(&self.program, input) {
+        match VM::thompson(&self.program, input, true) {
             VMResult::Match(m) => Some(m),
+            _ => None,
+        }
+    }
+
+    pub fn find_all(&self, input: &mut impl Cursor) -> Option<Vec<Match>> {
+        match VM::thompson(&self.program, input, false) {
+            VMResult::All(matches) => Some(matches),
             _ => None,
         }
     }

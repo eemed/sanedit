@@ -1,5 +1,6 @@
 use sanedit_messages::redraw::{
-    Cell, IntoCells, Point, Prompt, Size, Statusline, Style, ThemeField, Window,
+    Cell, Cursor, CursorStyle, IntoCells, Point, Prompt, Size, Statusline, Style, ThemeField,
+    Window,
 };
 
 use crate::ui::UIContext;
@@ -7,7 +8,7 @@ use crate::ui::UIContext;
 pub(crate) trait Component {
     fn position(&self, ctx: &UIContext) -> Point;
     fn draw(&self, ctx: &UIContext) -> Vec<Vec<Cell>>;
-    fn cursor(&self, ctx: &UIContext) -> Option<Point>;
+    fn cursor(&self, ctx: &UIContext) -> Option<Cursor>;
     fn size(&self, ctx: &UIContext) -> Size;
 }
 
@@ -20,10 +21,13 @@ impl Component for Window {
         self.cells().clone()
     }
 
-    fn cursor(&self, ctx: &UIContext) -> Option<Point> {
-        let cursor = self.primary_cursor();
+    fn cursor(&self, ctx: &UIContext) -> Option<Cursor> {
+        let cursor = self.cursor();
         let pos = self.position(ctx);
-        Some(cursor + pos)
+        Some(Cursor {
+            point: cursor.point + pos,
+            style: cursor.style,
+        })
     }
 
     fn size(&self, ctx: &UIContext) -> Size {
@@ -45,7 +49,7 @@ impl Component for Statusline {
         vec![line]
     }
 
-    fn cursor(&self, ctx: &UIContext) -> Option<Point> {
+    fn cursor(&self, ctx: &UIContext) -> Option<Cursor> {
         None
     }
 
@@ -104,7 +108,7 @@ impl Component for Prompt {
         prompt
     }
 
-    fn cursor(&self, ctx: &UIContext) -> Option<Point> {
+    fn cursor(&self, ctx: &UIContext) -> Option<Cursor> {
         let point = self.position(ctx);
         let cursor_col = {
             let input_cells_before_cursor =
@@ -113,9 +117,12 @@ impl Component for Prompt {
             let extra = 2; // ": "
             msg_len + extra + input_cells_before_cursor
         };
-        Some(Point {
-            x: point.x + cursor_col,
-            y: point.y,
+        Some(Cursor {
+            point: Point {
+                x: point.x + cursor_col,
+                y: point.y,
+            },
+            style: CursorStyle::Line(true),
         })
     }
 

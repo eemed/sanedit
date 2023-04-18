@@ -1,7 +1,5 @@
 use serde::{Deserialize, Serialize};
 
-use std::mem;
-
 use super::{Color, TextStyle};
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Copy, Default)]

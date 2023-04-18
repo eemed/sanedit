@@ -7,7 +7,7 @@ use crossterm::{
     execute, queue, style,
     terminal::{self, *},
 };
-use sanedit_messages::redraw::{Cell, Color, Style, TextStyle};
+use sanedit_messages::redraw::{Cell, Color, CursorStyle, Style, TextStyle};
 
 pub struct Terminal {
     out: BufWriter<Stdout>,
@@ -51,6 +51,23 @@ impl Terminal {
             }
         }
 
+        Ok(())
+    }
+
+    pub fn set_cursor_style(&mut self, style: CursorStyle) -> Result<()> {
+        if style.blink() {
+            queue!(self.out, cursor::EnableBlinking)?;
+        } else {
+            queue!(self.out, cursor::DisableBlinking)?;
+        }
+
+        let cshape = match style {
+            CursorStyle::Block(_) => cursor::CursorShape::Block,
+            CursorStyle::Underline(_) => cursor::CursorShape::UnderScore,
+            CursorStyle::Line(_) => cursor::CursorShape::Line,
+        };
+
+        queue!(self.out, cursor::SetCursorShape(cshape))?;
         Ok(())
     }
 

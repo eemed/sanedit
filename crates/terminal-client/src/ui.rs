@@ -2,7 +2,7 @@ mod context;
 
 use anyhow::Result;
 use sanedit_messages::{
-    redraw::{Redraw, Size},
+    redraw::{Point, Redraw, Size},
     ClientMessage,
 };
 
@@ -91,7 +91,9 @@ impl UI {
             }
         }
 
-        self.terminal.goto(cursor.x, cursor.y);
+        let Point { x, y } = cursor.point;
+        self.terminal.set_cursor_style(cursor.style);
+        self.terminal.goto(x, y);
         self.terminal.flush();
     }
 }

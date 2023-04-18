@@ -2,20 +2,17 @@ use core::fmt;
 
 use serde::{Deserialize, Serialize};
 
-use super::{Cell, Point, Redraw};
+use super::{Cell, Cursor, Redraw};
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Default, Clone)]
 pub struct Window {
     cells: Vec<Vec<Cell>>,
-    primary_cursor: Point,
+    cursor: Cursor,
 }
 
 impl Window {
-    pub fn new(cells: Vec<Vec<Cell>>, primary_cursor: Point) -> Window {
-        Window {
-            cells,
-            primary_cursor,
-        }
+    pub fn new(cells: Vec<Vec<Cell>>, cursor: Cursor) -> Window {
+        Window { cells, cursor }
     }
 
     pub fn cells(&self) -> &Vec<Vec<Cell>> {
@@ -42,8 +39,8 @@ impl Window {
         })
     }
 
-    pub fn primary_cursor(&self) -> Point {
-        self.primary_cursor
+    pub fn cursor(&self) -> Cursor {
+        self.cursor
     }
 }
 

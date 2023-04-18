@@ -1,6 +1,4 @@
-use std::{cmp, ops::Range};
-
-use crate::editor::buffers::Buffer;
+use std::ops::Range;
 
 #[derive(Debug)]
 pub(crate) struct Cursor {

@@ -106,6 +106,9 @@ impl Action {
         search_history_next,
         search_history_prev,
         search_clear_matches,
+        search_toggle_regex,
+        search_toggle_select,
+        search_toggle_match_all,
     );
 }
 

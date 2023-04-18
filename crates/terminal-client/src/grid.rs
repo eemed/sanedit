@@ -2,7 +2,7 @@ mod component;
 
 use core::fmt;
 
-use sanedit_messages::redraw::{Cell, Point, Prompt, Statusline, Window};
+use sanedit_messages::redraw::{Cell, Cursor, CursorStyle, Point, Prompt, Statusline, Window};
 
 use crate::ui::UIContext;
 
@@ -47,8 +47,8 @@ impl Grid {
         }
     }
 
-    pub fn draw(&mut self, ctx: &UIContext) -> (&Vec<Vec<Cell>>, Point) {
-        let mut cursor = Point::default();
+    pub fn draw(&mut self, ctx: &UIContext) -> (&Vec<Vec<Cell>>, Cursor) {
+        let mut cursor = Cursor::default();
         self.reset_grid(ctx.width, ctx.height);
         let components: Vec<&dyn Component> = {
             let mut comps: Vec<&dyn Component> = Vec::new();

@@ -1,4 +1,4 @@
-use sanedit_messages::redraw::{self, Point, Style, Theme, ThemeField};
+use sanedit_messages::redraw::{self, CursorStyle, Point, Style, Theme, ThemeField};
 use sanedit_regex::Match;
 
 use crate::{
@@ -89,7 +89,7 @@ fn draw_primary_cursor(
     cursor: &Cursor,
     view: &View,
     theme: &Theme,
-) -> Point {
+) -> redraw::Cursor {
     let style = theme.get(ThemeField::Selection).unwrap_or(Style::default());
 
     if let Some(sel) = cursor.selection() {
@@ -110,8 +110,19 @@ fn draw_primary_cursor(
         }
     }
 
-    view.point_at_pos(cursor.pos())
-        .expect("Primary cursor not in view")
+    let has_selection = cursor.selection().is_some();
+    let cstyle = if has_selection {
+        CursorStyle::Line(false)
+    } else {
+        CursorStyle::Block(true)
+    };
+    let point = view
+        .point_at_pos(cursor.pos())
+        .expect("Primary cursor not in view");
+    redraw::Cursor {
+        style: cstyle,
+        point,
+    }
 }
 
 fn draw_end_of_buffer(grid: &mut Vec<Vec<redraw::Cell>>, view: &View, theme: &Theme) {

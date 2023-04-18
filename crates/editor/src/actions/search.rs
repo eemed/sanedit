@@ -4,7 +4,7 @@ use sanedit_regex::Regex;
 
 use crate::{
     editor::{
-        windows::{Focus, PAction, SetPrompt, SetSearch},
+        windows::{Focus, PAction, Search, SetPrompt, SetSearch},
         Editor,
     },
     server::ClientId,
@@ -65,6 +65,8 @@ pub(crate) fn search_open(editor: &mut Editor, id: ClientId) {
         if let Some(m) = regex.find(&mut cursor) {
             log::info!("match {m:?}");
             win.search.matches = vec![m];
+        } else {
+            win.search.matches = vec![];
         }
     });
     let set = SetSearch {
@@ -81,6 +83,7 @@ pub(crate) fn search_open(editor: &mut Editor, id: ClientId) {
     };
     let (win, buf) = editor.win_buf_mut(id);
     win.search.set(set);
+    win.search.prompt.message = format_search_msg(&win.search);
     win.focus = Focus::Search;
 }
 
@@ -140,4 +143,43 @@ pub(crate) fn search_history_prev(editor: &mut Editor, id: ClientId) {
 pub(crate) fn search_clear_matches(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     win.search.matches.clear();
+}
+
+pub(crate) fn search_toggle_regex(editor: &mut Editor, id: ClientId) {
+    let (win, buf) = editor.win_buf_mut(id);
+    win.search.is_regex = !win.search.is_regex;
+    win.search.prompt.message = format_search_msg(&win.search);
+}
+
+pub(crate) fn search_toggle_select(editor: &mut Editor, id: ClientId) {
+    let (win, buf) = editor.win_buf_mut(id);
+    win.search.select = !win.search.select;
+    win.search.prompt.message = format_search_msg(&win.search);
+}
+
+pub(crate) fn search_toggle_match_all(editor: &mut Editor, id: ClientId) {
+    let (win, buf) = editor.win_buf_mut(id);
+    win.search.stop_at_first_match = !win.search.stop_at_first_match;
+    win.search.prompt.message = format_search_msg(&win.search);
+}
+
+fn format_search_msg(search: &Search) -> String {
+    let mut flags = Vec::new();
+    if search.is_regex {
+        flags.push("r");
+    }
+
+    if search.select {
+        flags.push("s");
+    }
+
+    if !search.stop_at_first_match {
+        flags.push("a");
+    }
+
+    if !flags.is_empty() {
+        format!("Search ({})", flags.join(", "))
+    } else {
+        format!("Search")
+    }
 }

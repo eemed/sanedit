@@ -18,11 +18,11 @@ pub(crate) struct Search {
     pub matches: Vec<Match>,
 
     /// Wether to search using regex or not
-    is_regex: bool,
+    pub is_regex: bool,
 
     /// Wether to select the matches or not
-    select: bool,
-    stop_at_first_match: bool,
+    pub select: bool,
+    pub stop_at_first_match: bool,
 }
 
 impl Search {

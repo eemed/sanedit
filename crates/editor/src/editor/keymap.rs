@@ -94,6 +94,10 @@ impl Keymap {
              "enter", Action::search_confirm,
              "up", Action::search_history_prev,
              "down", Action::search_history_next,
+
+             "ctrl+r", Action::search_toggle_regex,
+             "ctrl+s", Action::search_toggle_select,
+             "ctrl+a", Action::search_toggle_match_all,
         );
 
         map

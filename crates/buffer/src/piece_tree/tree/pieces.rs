@@ -248,7 +248,7 @@ pub(crate) mod test {
     #[test]
     fn piece_one() {
         let mut pt = PieceTree::new();
-        pt.insert_str(0, "foobar");
+        pt.insert(0, "foobar");
         let mut pieces = PieceIter::new(&pt, 0);
 
         assert_eq!(add_piece(0, 0, 6), pieces.get());
@@ -263,9 +263,9 @@ pub(crate) mod test {
     #[test]
     fn pieces() {
         let mut pt = PieceTree::new();
-        pt.insert_str(0, "baz");
-        pt.insert_str(0, "bar");
-        pt.insert_str(0, "foo");
+        pt.insert(0, "baz");
+        pt.insert(0, "bar");
+        pt.insert(0, "foo");
         let mut pieces = PieceIter::new(&pt, 0);
 
         assert_eq!(add_piece(0, 6, 3), pieces.get());
@@ -283,9 +283,9 @@ pub(crate) mod test {
     #[test]
     fn at_middle() {
         let mut pt = PieceTree::new();
-        pt.insert_str(0, "baz");
-        pt.insert_str(0, "bar");
-        pt.insert_str(0, "foo");
+        pt.insert(0, "baz");
+        pt.insert(0, "bar");
+        pt.insert(0, "foo");
         let mut pieces = PieceIter::new(&pt, 5);
 
         assert_eq!(add_piece(3, 3, 3), pieces.get());
@@ -296,9 +296,9 @@ pub(crate) mod test {
     #[test]
     fn at_max() {
         let mut pt = PieceTree::new();
-        pt.insert_str(0, "baz");
-        pt.insert_str(0, "bar");
-        pt.insert_str(0, "foo");
+        pt.insert(0, "baz");
+        pt.insert(0, "bar");
+        pt.insert(0, "foo");
         let pieces = PieceIter::new(&pt, pt.len);
 
         assert_eq!(None, pieces.get());
@@ -307,8 +307,8 @@ pub(crate) mod test {
     #[test]
     fn length_1() {
         let mut pt = PieceTree::new();
-        pt.insert_str(0, "hello");
-        pt.insert_str(4, " ");
+        pt.insert(0, "hello");
+        pt.insert(4, " ");
         let mut pieces = PieceIter::new(&pt, 0);
 
         assert_eq!(add_piece(0, 0, 4), pieces.get());
@@ -319,9 +319,9 @@ pub(crate) mod test {
     #[test]
     fn bounded1() {
         let mut pt = PieceTree::new();
-        pt.insert_str(0, "baz"); // pos 6, buf 0
-        pt.insert_str(0, "bar"); // pos 3, buf 3
-        pt.insert_str(0, "foo"); // pos 0, buf 6
+        pt.insert(0, "baz"); // pos 6, buf 0
+        pt.insert(0, "bar"); // pos 3, buf 3
+        pt.insert(0, "foo"); // pos 0, buf 6
         let mut pieces = BoundedPieceIter::new_from_slice(&pt, 0, 2..7); // fo(obarb)az
 
         assert_eq!(add_piece(0, 8, 1), pieces.get()); // o
@@ -339,9 +339,9 @@ pub(crate) mod test {
     #[test]
     fn bounded2() {
         let mut pt = PieceTree::new();
-        pt.insert_str(0, "baz");
-        pt.insert_str(0, "bar");
-        pt.insert_str(0, "foo");
+        pt.insert(0, "baz");
+        pt.insert(0, "bar");
+        pt.insert(0, "foo");
         let mut pieces = BoundedPieceIter::new_from_slice(&pt, 0, 3..6);
 
         assert_eq!(add_piece(0, 3, 3), pieces.get());
@@ -355,9 +355,9 @@ pub(crate) mod test {
     #[test]
     fn bounded3() {
         let mut pt = PieceTree::new();
-        pt.insert_str(0, "baz"); // pos 6, buf 0
-        pt.insert_str(0, "bar"); // pos 3, buf 3
-        pt.insert_str(0, "foo"); // pos 0, buf 6
+        pt.insert(0, "baz"); // pos 6, buf 0
+        pt.insert(0, "bar"); // pos 3, buf 3
+        pt.insert(0, "foo"); // pos 0, buf 6
         let mut pieces = BoundedPieceIter::new_from_slice(&pt, 0, 0..pt.len());
 
         assert_eq!(add_piece(0, 6, 3), pieces.get()); // foo

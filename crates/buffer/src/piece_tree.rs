@@ -202,11 +202,35 @@ impl PieceTree {
         }
     }
 
-    #[inline]
-    pub fn insert_str(&mut self, pos: usize, string: &str) {
-        self.insert(pos, string.as_bytes());
+    /// Insert the same bytes to multiple places at once
+    /// This helps with piece tree fragmentation, if the same bytes are inserted
+    /// multiple times.
+    ///
+    /// The bytes are appended to add buffer once and just referenced multiple
+    /// times. This allows for example multiple cursors to append to existing
+    /// pieces if insertions are sequential.
+    ///
+    /// If multiple cursors inserted bytes using insert() instead, each
+    /// insertion would create a new piece because the content in add buffer
+    /// would not be sequential. Creating M x N pieces where M is the number of
+    /// cursors and N is the number of edits characters.
+    pub fn insert_multi<B: AsRef<[u8]>>(&mut self, positions: &[usize], bytes: B) {
+        let bytes = bytes.as_ref();
+        if bytes.is_empty() {
+            return;
+        }
+
+        let bpos = self.add.len();
+        self.add.extend_from_slice(bytes);
+
+        let piece = Piece::new(BufferKind::Add, bpos, bytes.len());
+        self.len += piece.len;
+
+        // self.tree.insert(pos, piece);
+        todo!()
     }
 
+    /// Insert bytes to a position
     pub fn insert<B: AsRef<[u8]>>(&mut self, pos: usize, bytes: B) {
         debug_assert!(
             pos <= self.len,
@@ -233,7 +257,7 @@ impl PieceTree {
     pub fn insert_char(&mut self, pos: usize, ch: char) {
         let mut buf = [0; 4];
         let string = ch.encode_utf8(&mut buf);
-        self.insert_str(pos, string);
+        self.insert(pos, string);
     }
 
     #[inline]

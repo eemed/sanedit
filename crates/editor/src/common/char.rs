@@ -320,7 +320,7 @@ mod test {
     #[test]
     fn emoji() {
         let mut pt = PieceTree::new();
-        pt.insert_str(0, "❤️");
+        pt.insert(0, "❤️");
         let slice = pt.slice(..);
         let ch = Char::new(&slice, 0, &DisplayOptions::default());
         assert_eq!("❤️", ch.display());
@@ -347,7 +347,7 @@ mod test {
     #[test]
     fn tab() {
         let mut pt = PieceTree::new();
-        pt.insert_str(0, "\t");
+        pt.insert(0, "\t");
         let slice = pt.slice(..);
         let opts = DisplayOptions::default();
         let expected = {
@@ -365,7 +365,7 @@ mod test {
     #[test]
     fn non_breaking_space() {
         let mut pt = PieceTree::new();
-        pt.insert_str(0, "\u{00A0}");
+        pt.insert(0, "\u{00A0}");
         let slice = pt.slice(..);
         let opts = DisplayOptions::default();
         let ch = Char::new(&slice, 0, &opts);

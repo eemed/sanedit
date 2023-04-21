@@ -374,7 +374,7 @@ mod test {
     #[test]
     fn middle_of_char() {
         let mut pt = PieceTree::new();
-        pt.insert_str(0, "§ab");
+        pt.insert(0, "§ab");
 
         let slice = pt.slice(1..);
         let mut chars = slice.chars();
@@ -389,7 +389,7 @@ mod test {
     fn multi_byte() {
         let mut pt = PieceTree::new();
         const CONTENT: &str = "❤🤍🥳❤️간÷나는산다⛄";
-        pt.insert_str(0, CONTENT);
+        pt.insert(0, CONTENT);
         let mut chars = pt.chars();
 
         assert_eq!(Some((0, 3, '❤')), chars.next());
@@ -411,7 +411,7 @@ mod test {
     fn multi_byte_slice() {
         let mut pt = PieceTree::new();
         const CONTENT: &str = "❤🤍🥳❤️간÷나는산다⛄";
-        pt.insert_str(0, CONTENT);
+        pt.insert(0, CONTENT);
         let slice = pt.slice(5..20);
         let mut chars = slice.chars();
 
@@ -428,7 +428,7 @@ mod test {
     fn multi_byte_slice_prev() {
         let mut pt = PieceTree::new();
         const CONTENT: &str = "❤🤍🥳❤️간÷나는산다⛄";
-        pt.insert_str(0, CONTENT);
+        pt.insert(0, CONTENT);
         let slice = pt.slice(5..20);
         let mut chars = slice.chars_at(slice.len());
 

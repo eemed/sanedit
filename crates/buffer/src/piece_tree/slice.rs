@@ -155,8 +155,8 @@ mod test {
     #[test]
     fn partial_eq() {
         let mut pt = PieceTree::new();
-        pt.insert_str(0, "world");
-        pt.insert_str(0, "hello ");
+        pt.insert(0, "world");
+        pt.insert(0, "hello ");
 
         let slice = pt.slice(3..9);
         let result = "lo wor";
@@ -168,8 +168,8 @@ mod test {
     #[test]
     fn partial_eq_unbounded() {
         let mut pt = PieceTree::new();
-        pt.insert_str(0, "world");
-        pt.insert_str(0, "hello ");
+        pt.insert(0, "world");
+        pt.insert(0, "hello ");
 
         let slice = pt.slice(..);
         let result = "hello world";
@@ -181,8 +181,8 @@ mod test {
     #[test]
     fn partial_ne() {
         let mut pt = PieceTree::new();
-        pt.insert_str(0, "world");
-        pt.insert_str(0, "hello ");
+        pt.insert(0, "world");
+        pt.insert(0, "hello ");
 
         let slice = pt.slice(6..);
         let result = " worl";

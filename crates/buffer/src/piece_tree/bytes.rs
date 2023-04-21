@@ -123,7 +123,7 @@ mod test {
     #[test]
     fn bytes_next() {
         let mut pt = PieceTree::new();
-        pt.insert_str(0, "foo");
+        pt.insert(0, "foo");
         let mut bytes = pt.bytes();
 
         assert_eq!(as_byte("f"), bytes.next());
@@ -137,7 +137,7 @@ mod test {
     #[test]
     fn bytes_prev() {
         let mut pt = PieceTree::new();
-        pt.insert_str(0, "foo");
+        pt.insert(0, "foo");
         let mut bytes = pt.bytes_at(pt.len());
 
         assert_eq!(bytes.pos(), pt.len());
@@ -159,7 +159,7 @@ mod test {
     #[test]
     fn bytes_back_and_forth() {
         let mut pt = PieceTree::new();
-        pt.insert_str(0, "foo");
+        pt.insert(0, "foo");
         let mut bytes = pt.bytes();
 
         assert_eq!(Some(b'f'), bytes.next());
@@ -179,8 +179,8 @@ mod test {
     #[test]
     fn bytes_start_middle() {
         let mut pt = PieceTree::new();
-        pt.insert_str(0, "bar");
-        pt.insert_str(0, "foo");
+        pt.insert(0, "bar");
+        pt.insert(0, "foo");
         let mut bytes = pt.bytes_at(3);
 
         assert_eq!(3, bytes.pos());
@@ -195,8 +195,8 @@ mod test {
     #[test]
     fn bytes_slice() {
         let mut pt = PieceTree::new();
-        pt.insert_str(0, "bar");
-        pt.insert_str(0, "foo");
+        pt.insert(0, "bar");
+        pt.insert(0, "foo");
         let slice = pt.slice(2..);
         let mut bytes = slice.bytes();
 
@@ -212,8 +212,8 @@ mod test {
     #[test]
     fn bytes_slice_prev() {
         let mut pt = PieceTree::new();
-        pt.insert_str(0, "bar");
-        pt.insert_str(0, "foo");
+        pt.insert(0, "bar");
+        pt.insert(0, "foo");
         let slice = pt.slice(2..);
         let mut bytes = slice.bytes_at(slice.len());
 

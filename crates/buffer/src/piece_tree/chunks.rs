@@ -85,8 +85,8 @@ mod test {
     #[test]
     fn next_start() {
         let mut pt = PieceTree::new();
-        pt.insert_str(0, "bar");
-        pt.insert_str(0, "foo");
+        pt.insert(0, "bar");
+        pt.insert(0, "foo");
 
         let mut chunks = pt.chunks();
 
@@ -101,8 +101,8 @@ mod test {
     #[test]
     fn prev_end() {
         let mut pt = PieceTree::new();
-        pt.insert_str(0, "bar");
-        pt.insert_str(0, "foo");
+        pt.insert(0, "bar");
+        pt.insert(0, "foo");
 
         let mut chunks = pt.chunks_at(pt.len);
 
@@ -118,8 +118,8 @@ mod test {
     #[test]
     fn next_prev() {
         let mut pt = PieceTree::new();
-        pt.insert_str(0, "bar");
-        pt.insert_str(0, "foo");
+        pt.insert(0, "bar");
+        pt.insert(0, "foo");
 
         let mut chunks = pt.chunks();
 
@@ -131,8 +131,8 @@ mod test {
     #[test]
     fn prev_next() {
         let mut pt = PieceTree::new();
-        pt.insert_str(0, "bar");
-        pt.insert_str(0, "foo");
+        pt.insert(0, "bar");
+        pt.insert(0, "foo");
 
         let mut chunks = pt.chunks_at(pt.len);
 

@@ -64,7 +64,7 @@ fn chars(c: &mut Criterion) {
         let large = io::Cursor::new(include_str!("large.txt"));
         let mut pt = PieceTree::from_reader(large).unwrap();
         for _ in 0..10_000 {
-            pt.insert_str(0, "A");
+            pt.insert(0, "A");
         }
 
         bench.iter(move || {
@@ -142,7 +142,7 @@ fn chunks(c: &mut Criterion) {
         let large = io::Cursor::new(include_str!("large.txt"));
         let mut pt = PieceTree::from_reader(large).unwrap();
         for _ in 0..10_000 {
-            pt.insert_str(0, "A");
+            pt.insert(0, "A");
         }
         let chunks = pt.chunks();
         let mut chks = chunks.clone();
@@ -157,7 +157,7 @@ fn chunks(c: &mut Criterion) {
         let large = io::Cursor::new(include_str!("large.txt"));
         let mut pt = PieceTree::from_reader(large).unwrap();
         for _ in 0..10_000 {
-            pt.insert_str(0, "A");
+            pt.insert(0, "A");
         }
         let chunks = pt.chunks();
         let mut chks = chunks.clone();
@@ -172,7 +172,7 @@ fn chunks(c: &mut Criterion) {
         let large = io::Cursor::new(include_str!("large.txt"));
         let mut pt = PieceTree::from_reader(large).unwrap();
         for _ in 0..100_000 {
-            pt.insert_str(0, "A");
+            pt.insert(0, "A");
         }
         let chunks = pt.chunks();
         let mut chks = chunks.clone();
@@ -187,7 +187,7 @@ fn chunks(c: &mut Criterion) {
         let large = io::Cursor::new(include_str!("large.txt"));
         let mut pt = PieceTree::from_reader(large).unwrap();
         for _ in 0..100_000 {
-            pt.insert_str(0, "A");
+            pt.insert(0, "A");
         }
         let chunks = pt.chunks();
         let mut chks = chunks.clone();

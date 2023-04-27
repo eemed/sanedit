@@ -1,9 +1,9 @@
 use super::{inst::Inst, program::Program};
 
-use crate::regex::parser::{Postfix, PF};
+use crate::{regex::parser::{Postfix, PF}, RegexError};
 
 impl TryFrom<Postfix> for Program {
-    type Error = String;
+    type Error = RegexError;
 
     fn try_from(postfix: Postfix) -> Result<Self, Self::Error> {
         use PF::*;

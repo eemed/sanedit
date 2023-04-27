@@ -23,6 +23,7 @@ pub(crate) struct Search {
     /// Wether to select the matches or not
     pub select: bool,
     pub stop_at_first_match: bool,
+    pub is_valid_regex: bool,
 }
 
 impl Search {
@@ -33,9 +34,10 @@ impl Search {
         Search {
             prompt,
             matches: vec![],
-            is_regex: true,
+            is_regex: false,
             select: false,
             stop_at_first_match: true,
+            is_valid_regex: true,
         }
     }
 
@@ -51,6 +53,7 @@ impl Search {
         self.is_regex = is_regex;
         self.select = select;
         self.stop_at_first_match = stop_at_first_match;
+        self.is_valid_regex = true;
         self.matches = vec![];
     }
 

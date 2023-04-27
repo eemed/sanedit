@@ -1,14 +1,14 @@
-pub(crate) mod parser;
 mod error;
+pub(crate) mod parser;
 
 use std::ops::Range;
 
-use self::parser::regex_to_postfix;
-
+use self::parser::{literal_to_postfix, regex_to_postfix};
 use crate::{
     cursor::Cursor,
     vm::{Program, VMResult, VM},
 };
+pub use error::RegexError;
 
 // Implement DFA to run simpler searches faster?
 pub struct Regex {
@@ -16,8 +16,14 @@ pub struct Regex {
 }
 
 impl Regex {
-    pub fn new(pattern: &str) -> Regex {
+    pub fn new(pattern: &str) -> Result<Regex, RegexError> {
         let postfix = regex_to_postfix(pattern);
+        let program = Program::try_from(postfix)?;
+        Ok(Regex { program })
+    }
+
+    pub fn new_literal(string: &str) -> Regex {
+        let postfix = literal_to_postfix(string);
         let program = Program::try_from(postfix).unwrap();
         Regex { program }
     }

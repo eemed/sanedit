@@ -18,6 +18,19 @@ struct Paren {
     nparen: usize,
 }
 
+pub(crate) fn literal_to_postfix(string: &str) -> Postfix {
+    let mut buf = Vec::new();
+    for (i, ch) in string.chars().enumerate() {
+        buf.push(PF::Char(ch));
+
+        if i % 2 == 0 && i != 0 {
+            buf.push(PF::Seq);
+        }
+    }
+
+    buf
+}
+
 pub(crate) fn regex_to_postfix(re: &str) -> Postfix {
     let mut buf = Vec::new();
     let mut parens = Vec::new();

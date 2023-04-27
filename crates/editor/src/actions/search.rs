@@ -4,80 +4,28 @@ use sanedit_regex::Regex;
 
 use crate::{
     editor::{
-        windows::{Focus, PAction, Search, SetPrompt, SetSearch},
+        buffers::Buffer,
+        windows::{Focus, PAction, Search, SetPrompt, SetSearch, Window},
         Editor,
     },
     server::ClientId,
 };
 
 pub(crate) fn search_open(editor: &mut Editor, id: ClientId) {
-    let on_confirm: PAction = Rc::new(move |editor, id, input| {
-        let (win, buf) = editor.win_buf_mut(id);
-        if win.search.select() {
-            let regex = Regex::new(input);
-            let mut cursor = buf.cursor();
-
-            if let Some(m) = regex.find(&mut cursor) {
-                let cursor = win.primary_cursor_mut();
-                cursor.unanchor();
-                cursor.goto(m.start());
-                cursor.anchor();
-                cursor.goto(m.end());
-            }
-        }
-
-        // if let Some(m) = regex.find(&mut cursor) {
-        //     let start = m.start();
-        //     let end = m.end();
-        //     let slice = buf.slice(start..end);
-        //     let mtch = format!("{start}..{end} -- '{}'", String::from(&slice));
-        //     let captures: Vec<String> = m
-        //         .captures()
-        //         .iter()
-        //         .map(|cap| {
-        //             let start = cap.start();
-        //             let end = cap.end();
-        //             let slice = buf.slice(start..end);
-        //             format!("{start}..{end} -- '{}'", String::from(&slice))
-        //         })
-        //         .collect();
-        //     win.search.matches = vec![m];
-        //     log::info!("Search: match {mtch}, captures {captures:?}");
-        //     // let cursor = win.primary_cursor_mut();
-        //     // cursor.unanchor();
-        //     // cursor.goto(m.start());
-        //     // cursor.anchor();
-        //     // cursor.goto(m.end());
-        // } else {
-        //     log::info!("Search: no match");
-        // }
-    });
+    let on_confirm: PAction = Rc::new(move |editor, id, input| {});
     let on_abort: PAction = Rc::new(move |editor, id, input| {
         let (win, buf) = editor.win_buf_mut(id);
         win.search.matches.clear();
-    });
-    let on_input: PAction = Rc::new(move |editor, id, input| {
-        let (win, buf) = editor.win_buf_mut(id);
-        let regex = Regex::new(input);
-        let mut cursor = buf.cursor();
-
-        log::info!("on input");
-        if let Some(m) = regex.find(&mut cursor) {
-            log::info!("match {m:?}");
-            win.search.matches = vec![m];
-        } else {
-            win.search.matches = vec![];
-        }
     });
     let set = SetSearch {
         prompt: SetPrompt {
             message: "Search".into(),
             on_confirm: Some(on_confirm),
             on_abort: Some(on_abort),
-            on_input: Some(on_input),
+            on_input: Some(Rc::new(search)),
             keymap: None,
         },
-        is_regex: true,
+        is_regex: false,
         select: false,
         stop_at_first_match: true,
     };
@@ -181,5 +129,45 @@ fn format_search_msg(search: &Search) -> String {
         format!("Search ({})", flags.join(", "))
     } else {
         format!("Search")
+    }
+}
+
+fn search(editor: &mut Editor, id: ClientId, input: &str) {
+    let (win, buf) = editor.win_buf_mut(id);
+    search_impl(win, buf, input);
+}
+
+fn search_impl(win: &mut Window, buf: &Buffer, input: &str) {
+    let regex = if win.search.is_regex {
+        if let Ok(regex) = Regex::new(input) {
+            regex
+        } else {
+            log::info!("invalid regex");
+            return;
+        }
+    } else {
+        Regex::new_literal(input)
+    };
+
+    regex_search(win, buf, regex);
+}
+
+fn regex_search(win: &mut Window, buf: &Buffer, regex: Regex) {
+    let mut cursor = buf.cursor();
+
+    if let Some(m) = regex.find(&mut cursor) {
+        log::info!("match {m:?}");
+
+        if win.search.select {
+            let cursor = win.primary_cursor_mut();
+            cursor.unanchor();
+            cursor.goto(m.start());
+            cursor.anchor();
+            cursor.goto(m.end());
+        }
+
+        win.search.matches = vec![m];
+    } else {
+        win.search.matches = vec![];
     }
 }

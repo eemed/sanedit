@@ -11,8 +11,7 @@ Inspiration taken from vim, kakoune, emacs, neovim and vis.
 
 ## Notes
 
-* Search no regex
-* Search selection
+* Search next/prev match
 * Search multiple matches
 * Undo
 * Saving (copy from eemedit)

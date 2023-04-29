@@ -6,6 +6,7 @@ mod options;
 mod prompt;
 mod search;
 mod view;
+mod locations;
 
 use std::ops::Range;
 

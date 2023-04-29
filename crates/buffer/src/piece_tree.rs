@@ -41,6 +41,7 @@ pub struct Snapshot {
     pub(crate) len: usize,
 }
 
+// TODO does not work with multiple insert
 /// A mark that tracks a position in text.
 /// It can be retrieved anytime if the position has not been deleted
 #[derive(Debug, Clone, Copy)]
@@ -214,7 +215,7 @@ impl PieceTree {
     /// insertion would create a new piece because the content in add buffer
     /// would not be sequential. Creating M x N pieces where M is the number of
     /// cursors and N is the number of edits characters.
-    pub fn insert_multi<B: AsRef<[u8]>>(&mut self, positions: &[usize], bytes: B) {
+    fn insert_multi<B: AsRef<[u8]>>(&mut self, positions: &[usize], bytes: B) {
         let bytes = bytes.as_ref();
         if bytes.is_empty() {
             return;

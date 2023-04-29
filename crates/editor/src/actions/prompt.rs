@@ -20,7 +20,7 @@ fn is_yes(input: &str) -> bool {
 pub(crate) fn prompt_open_file(editor: &mut Editor, id: ClientId) {
     let job_id = jobs::list_files_provide_completions(editor, id);
     let on_confirm: PAction = Rc::new(move |editor, id, input| {
-        editor.jobs_mut().stop(&job_id);
+        editor.jobs.stop(&job_id);
         let path = PathBuf::from(input);
         if editor.open_file(id, path).is_err() {
             let (win, _buf) = editor.win_buf_mut(id);
@@ -29,7 +29,7 @@ pub(crate) fn prompt_open_file(editor: &mut Editor, id: ClientId) {
         }
     });
     let on_abort: PAction = Rc::new(move |editor, id, input| {
-        editor.jobs_mut().stop(&job_id);
+        editor.jobs.stop(&job_id);
     });
 
     let set = SetPrompt {

@@ -46,6 +46,9 @@ pub(crate) fn search_close(editor: &mut Editor, id: ClientId) {
     win.focus = Focus::Window;
 }
 
+pub(crate) fn search_confirm_all(editor: &mut Editor, id: ClientId) {
+}
+
 pub(crate) fn search_confirm(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     if let Some(on_confirm) = win.search.prompt.on_confirm.clone() {

@@ -5,6 +5,7 @@ pub(crate) mod prompt;
 pub(crate) mod search;
 pub(crate) mod text;
 pub(crate) mod window;
+pub(crate) mod hooks;
 
 use std::{fmt, sync::Arc};
 

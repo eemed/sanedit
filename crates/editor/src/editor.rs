@@ -46,12 +46,13 @@ pub(crate) struct Editor {
     draw_states: HashMap<ClientId, DrawState>,
     windows: Windows,
     buffers: Buffers,
-    jobs: Jobs,
-    hooks: Hooks,
     keys: Vec<KeyEvent>,
     is_running: bool,
     working_dir: PathBuf,
     themes: HashMap<String, Theme>,
+
+    pub jobs: Jobs,
+    pub hooks: Hooks,
     pub options: Options,
 }
 
@@ -308,10 +309,6 @@ impl Editor {
 
     fn is_running(&self) -> bool {
         self.is_running
-    }
-
-    pub fn jobs_mut(&mut self) -> &mut Jobs {
-        &mut self.jobs
     }
 
     pub fn working_dir(&self) -> &Path {

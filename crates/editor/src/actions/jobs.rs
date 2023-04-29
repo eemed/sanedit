@@ -51,7 +51,7 @@ pub(crate) fn list_files_provide_completions(editor: &mut Editor, id: ClientId) 
         let cwd = editor.working_dir().to_path_buf();
         Box::new(move |send| Box::pin(list_files(send, cwd)))
     };
-    let jobs = editor.jobs_mut();
+    let jobs = &mut editor.jobs;
     let on_output = Arc::new(prompt::provide_completions);
     let job = AsyncJob::new(id, fun, Some(on_output), None);
     let id = job.id();

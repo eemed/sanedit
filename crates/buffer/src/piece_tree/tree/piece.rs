@@ -7,18 +7,34 @@ use crate::piece_tree::buffers::BufferKind;
 pub(crate) struct Piece {
     /// are we indexing add buffer or read only buffer
     pub(crate) kind: BufferKind,
+
     /// index in buffer
     pub(crate) pos: usize,
     /// Length in bytes
     pub(crate) len: usize,
+
+    /// This is used when the same buffer part is used multiple times, so kind, pos, and len
+    /// are the same. count can be used to identify a piece from other same
+    /// pieces allowing piece to represent the same region but with its own id.
+    pub(crate) count: u32,
 }
 
 impl Piece {
-    pub fn new(buf_type: BufferKind, index: usize, len: usize) -> Self {
+    pub fn new(kind: BufferKind, pos: usize, len: usize) -> Self {
         Piece {
-            kind: buf_type,
-            pos: index,
+            kind,
+            pos,
             len,
+            count: 0,
+        }
+    }
+
+    pub fn new_with_count(kind: BufferKind, pos: usize, len: usize, count: u32) -> Self {
+        Piece {
+            kind,
+            pos,
+            len,
+            count,
         }
     }
 
@@ -32,7 +48,7 @@ impl Piece {
 
         self.len = offset;
 
-        Piece::new(self.kind, right_start, right_len)
+        Piece::new_with_count(self.kind, right_start, right_len, self.count)
     }
 
     /// Split the piece at offset from the piece start.

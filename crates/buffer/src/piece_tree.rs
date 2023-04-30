@@ -48,6 +48,7 @@ pub struct Snapshot {
 pub struct Mark {
     pub(crate) kind: BufferKind,
     pub(crate) pos: usize,
+    pub(crate) count: u32,
 }
 
 /// Byte buffer
@@ -133,6 +134,7 @@ impl PieceTree {
         Mark {
             kind: piece.kind,
             pos: piece.pos + off,
+            count: piece.count,
         }
     }
 
@@ -144,7 +146,11 @@ impl PieceTree {
         let mut piece = pieces.get();
 
         while let Some((p_pos, p)) = piece {
-            if p.kind == mark.kind && p.pos <= mark.pos && mark.pos < p.pos + p.len {
+            if p.kind == mark.kind
+                && p.pos <= mark.pos
+                && mark.pos < p.pos + p.len
+                && mark.count == p.count
+            {
                 let off = mark.pos - p.pos;
                 return Some(p_pos + off);
             }
@@ -224,8 +230,8 @@ impl PieceTree {
         let bpos = self.add.len();
         self.add.extend_from_slice(bytes);
 
-        let piece = Piece::new(BufferKind::Add, bpos, bytes.len());
-        self.len += piece.len;
+        // let piece = Piece::new(BufferKind::Add, bpos, bytes.len());
+        // self.len += piece.len;
 
         // self.tree.insert(pos, piece);
         todo!()

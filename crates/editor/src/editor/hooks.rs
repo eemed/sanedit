@@ -1,20 +1,24 @@
-use std::{collections::HashMap, mem};
+use std::{
+    collections::HashMap,
+    mem,
+    sync::atomic::{Ordering, AtomicUsize},
+};
 
 use crate::actions::{Action, ActionFunction};
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub(crate) enum Hook {
-    BufWritePre,
-    BufWritePost,
+    InsertChar,
+    RemoveChar,
 }
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
-pub(crate) struct HookId(u32);
+pub(crate) struct HookId(usize);
 
 impl HookId {
     pub fn next() -> HookId {
-        static NEXT_ID: u32 = 0;
-        let id = mem::replace(&mut NEXT_ID, NEXT_ID + 1);
+        static NEXT_ID: AtomicUsize = AtomicUsize::new(0);
+        let id = NEXT_ID.fetch_add(1, Ordering::Relaxed);
         HookId(id)
     }
 }
@@ -51,11 +55,11 @@ impl Hooks {
 
     /// Get all actions to run for a hook
     pub fn get(&self, hook: Hook) -> Vec<Action> {
-        let ids = self.hook_types.get(&hook).unwrap_or(&vec![]);
+        let ids = self.hook_types.get(&hook).cloned().unwrap_or(vec![]);
 
         let mut result = Vec::with_capacity(ids.len());
         for id in ids {
-            let hook = self.hooks[id];
+            let hook = self.hooks[&id].clone();
             result.push(hook);
         }
         result
@@ -68,7 +72,8 @@ impl Default for Hooks {
             hook_types: HashMap::new(),
             hooks: HashMap::new(),
         };
-        hooks.register(Hook::BufWritePre, Action::search_clear_matches);
+        hooks.register(Hook::InsertChar, Action::search_clear_matches);
+        hooks.register(Hook::RemoveChar, Action::search_clear_matches);
 
         hooks
     }

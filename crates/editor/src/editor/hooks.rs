@@ -1,15 +1,14 @@
 use std::{
     collections::HashMap,
-    mem,
-    sync::atomic::{Ordering, AtomicUsize},
+    sync::atomic::{AtomicUsize, Ordering},
 };
 
-use crate::actions::{Action, ActionFunction};
+use crate::actions::Action;
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub(crate) enum Hook {
-    InsertChar,
-    RemoveChar,
+    InsertCharPre,
+    RemoveCharPre,
 }
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
@@ -72,8 +71,8 @@ impl Default for Hooks {
             hook_types: HashMap::new(),
             hooks: HashMap::new(),
         };
-        hooks.register(Hook::InsertChar, Action::search_clear_matches);
-        hooks.register(Hook::RemoveChar, Action::search_clear_matches);
+        hooks.register(Hook::InsertCharPre, Action::search_clear_matches);
+        hooks.register(Hook::RemoveCharPre, Action::search_clear_matches);
 
         hooks
     }

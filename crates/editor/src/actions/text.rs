@@ -1,14 +1,18 @@
 use crate::{
-    editor::{windows::Focus, Editor},
+    editor::{hooks::Hook, windows::Focus, Editor},
     server::ClientId,
 };
 
+use super::hooks::run_hook;
+
 pub(crate) fn remove_grapheme_after_cursor(editor: &mut Editor, id: ClientId) {
+    run_hook(editor, id, Hook::RemoveCharPre);
     let (win, buf) = editor.win_buf_mut(id);
     win.remove_grapheme_after_cursor(buf);
 }
 
 pub(crate) fn remove_grapheme_before_cursor(editor: &mut Editor, id: ClientId) {
+    run_hook(editor, id, Hook::RemoveCharPre);
     let (win, buf) = editor.win_buf_mut(id);
     win.remove_grapheme_before_cursor(buf);
 }
@@ -36,6 +40,8 @@ pub(crate) fn insert(editor: &mut Editor, id: ClientId, text: &str) {
             }
         }
         Focus::Window => {
+            run_hook(editor, id, Hook::InsertCharPre);
+            let (win, buf) = editor.win_buf_mut(id);
             win.insert_at_cursor(buf, text);
         }
     }

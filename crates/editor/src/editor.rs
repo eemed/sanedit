@@ -109,7 +109,7 @@ impl Editor {
         self.clients.insert(handle.id, handle);
     }
 
-    /// Put buffer to buffers list and open it in client 'id':s window
+    /// Put buffer to buffers list and open it in window
     pub fn open_buffer(&mut self, id: ClientId, buf: Buffer) {
         let bid = self.buffers.insert(buf);
         let (win, _) = self.win_buf_mut(id);
@@ -124,7 +124,7 @@ impl Editor {
         }
     }
 
-    /// Open a file in client 'id':s window
+    /// Open a file in window
     pub fn open_file(&mut self, id: ClientId, path: impl AsRef<Path>) -> io::Result<()> {
         let file = File::new(path, &self.options)?;
         let buf = Buffer::from_file(file)?;

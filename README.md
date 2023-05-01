@@ -13,9 +13,10 @@ Inspiration taken from vim, kakoune, emacs, neovim and vis.
 
 * Search next/prev match
 * Search multiple matches
+* Multicursor
+* Locations on a list
 * Undo
 * Saving (copy from eemedit)
-* Selecting text
 * Pairs (copy from eemedit)
 * Syntax highlighting using pest
 * Movement linewise

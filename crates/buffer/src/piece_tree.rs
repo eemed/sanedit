@@ -6,6 +6,7 @@ pub(crate) mod slice;
 pub(crate) mod tree;
 pub(crate) mod utf8;
 
+use std::cmp;
 use std::fs::File;
 use std::io::{self, Write};
 use std::ops::{Bound, RangeBounds};
@@ -41,11 +42,11 @@ pub struct Snapshot {
     pub(crate) len: usize,
 }
 
-// TODO does not work with multiple insert
 /// A mark that tracks a position in text.
 /// It can be retrieved anytime if the position has not been deleted
 #[derive(Debug, Clone, Copy)]
 pub struct Mark {
+    pub(crate) orig: usize,
     pub(crate) kind: BufferKind,
     pub(crate) pos: usize,
     pub(crate) count: u32,
@@ -132,6 +133,7 @@ impl PieceTree {
             .unwrap_or_else(|| panic!("Cannot find a piece for position {}", pos));
         let off = pos - p_pos;
         Mark {
+            orig: pos,
             kind: piece.kind,
             pos: piece.pos + off,
             count: piece.count,
@@ -139,9 +141,10 @@ impl PieceTree {
     }
 
     /// Get a buffer position from a mark.
-    /// If the buffer position has been deleted returns None.
+    /// If the buffer position has been deleted returns the original mark
+    /// position.
     #[inline]
-    pub fn mark_to_pos(&self, mark: &Mark) -> Option<usize> {
+    pub fn mark_to_pos(&self, mark: &Mark) -> usize {
         let mut pieces = Pieces::new(self, 0);
         let mut piece = pieces.get();
 
@@ -152,12 +155,12 @@ impl PieceTree {
                 && mark.count == p.count
             {
                 let off = mark.pos - p.pos;
-                return Some(p_pos + off);
+                return p_pos + off;
             }
             piece = pieces.next();
         }
 
-        None
+        cmp::min(mark.orig, self.len)
     }
 
     pub fn write_to<W: Write>(&self, mut writer: W) -> io::Result<usize> {
@@ -221,7 +224,7 @@ impl PieceTree {
     /// insertion would create a new piece because the content in add buffer
     /// would not be sequential. Creating M x N pieces where M is the number of
     /// cursors and N is the number of edits characters.
-    fn insert_multi<B: AsRef<[u8]>>(&mut self, positions: &[usize], bytes: B) {
+    pub fn insert_multi<B: AsRef<[u8]>>(&mut self, positions: &mut [usize], bytes: B) {
         let bytes = bytes.as_ref();
         if bytes.is_empty() {
             return;
@@ -230,11 +233,14 @@ impl PieceTree {
         let bpos = self.add.len();
         self.add.extend_from_slice(bytes);
 
-        // let piece = Piece::new(BufferKind::Add, bpos, bytes.len());
-        // self.len += piece.len;
+        // Sort and insert in reverse so positions do not change
+        positions.sort();
 
-        // self.tree.insert(pos, piece);
-        todo!()
+        for (count, pos) in positions.iter().rev().enumerate() {
+            let piece = Piece::new_with_count(BufferKind::Add, bpos, bytes.len(), count as u32);
+            self.len += piece.len;
+            self.tree.insert(*pos, piece);
+        }
     }
 
     /// Insert bytes to a position

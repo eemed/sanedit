@@ -54,7 +54,6 @@ impl Search {
         self.select = select;
         self.stop_at_first_match = stop_at_first_match;
         self.is_valid_regex = true;
-        self.matches = vec![];
     }
 
     pub fn select(&self) -> bool {

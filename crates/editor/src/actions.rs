@@ -4,8 +4,9 @@ pub(crate) mod movement;
 pub(crate) mod prompt;
 pub(crate) mod search;
 pub(crate) mod text;
-pub(crate) mod window;
+pub(crate) mod view;
 pub(crate) mod hooks;
+pub(crate) mod cursors;
 
 use std::{fmt, sync::Arc};
 
@@ -17,7 +18,8 @@ use self::movement::*;
 use self::prompt::*;
 use self::search::*;
 use self::text::*;
-use self::window::*;
+use self::view::*;
+use self::cursors::*;
 
 macro_rules! action_list {
     ( $($name:ident,)*) => {
@@ -109,7 +111,6 @@ impl Action {
         search_clear_matches,
         search_toggle_regex,
         search_toggle_select,
-        search_toggle_match_all,
     );
 }
 

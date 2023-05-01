@@ -12,6 +12,7 @@ use sanedit_messages::ClientMessage;
 use sanedit_messages::KeyEvent;
 use sanedit_messages::Message;
 use sanedit_messages::MouseEvent;
+use sanedit_messages::MouseEventKind;
 
 use std::collections::HashMap;
 use std::env;
@@ -191,15 +192,16 @@ impl Editor {
 
     fn handle_mouse_event(&mut self, id: ClientId, event: MouseEvent) {
         // TODO keybindings
-        match event {
-            MouseEvent::ScrollDown => {
+        match event.kind {
+            MouseEventKind::ScrollDown => {
                 let (win, buf) = self.win_buf_mut(id);
                 win.scroll_down_n(buf, 3);
             }
-            MouseEvent::ScrollUp => {
+            MouseEventKind::ScrollUp => {
                 let (win, buf) = self.win_buf_mut(id);
                 win.scroll_up_n(buf, 3);
             }
+            _ => {}
         }
     }
 

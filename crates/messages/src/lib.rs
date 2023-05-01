@@ -11,7 +11,7 @@ mod writer;
 
 pub use codec::BinCodec;
 pub use key::{try_parse_keyevents, Key, KeyEvent, KeyMods};
-pub use mouse::MouseEvent;
+pub use mouse::{MouseButton, MouseEvent, MouseEventKind};
 pub use reader::Reader;
 use redraw::{Redraw, Size, Theme};
 use serde::{Deserialize, Serialize};

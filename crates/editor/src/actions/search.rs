@@ -14,8 +14,6 @@ use crate::{
 pub(crate) fn search_open(editor: &mut Editor, id: ClientId) {
     let on_confirm: PAction = Rc::new(move |editor, id, input| {});
     let on_abort: PAction = Rc::new(move |editor, id, input| {
-        let (win, buf) = editor.win_buf_mut(id);
-        win.search.matches.clear();
     });
     let set = SetSearch {
         prompt: SetPrompt {
@@ -105,12 +103,6 @@ pub(crate) fn search_toggle_regex(editor: &mut Editor, id: ClientId) {
 pub(crate) fn search_toggle_select(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     win.search.select = !win.search.select;
-    win.search.prompt.message = format_search_msg(&win.search);
-}
-
-pub(crate) fn search_toggle_match_all(editor: &mut Editor, id: ClientId) {
-    let (win, buf) = editor.win_buf_mut(id);
-    win.search.stop_at_first_match = !win.search.stop_at_first_match;
     win.search.prompt.message = format_search_msg(&win.search);
 }
 

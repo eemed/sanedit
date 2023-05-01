@@ -1,8 +1,10 @@
 use std::{sync::mpsc, time::Duration};
 
 use anyhow::Result;
-use crossterm::event::{poll, read, KeyCode, KeyModifiers, MouseEventKind};
-use sanedit_messages::{redraw::Size, Key, KeyEvent, KeyMods, Message, MouseEvent};
+use crossterm::event::{poll, read, KeyCode, KeyModifiers};
+use sanedit_messages::{
+    redraw::Size, Key, KeyEvent, KeyMods, Message, MouseButton, MouseEvent, MouseEventKind,
+};
 
 use crate::message::ClientInternalMessage;
 
@@ -66,14 +68,8 @@ fn process_input_event(
             )?;
         }
         Mouse(mouse_event) => {
-            let msg: Option<Message> = match mouse_event.kind {
-                MouseEventKind::ScrollDown => Some(MouseEvent::ScrollDown.into()),
-                MouseEventKind::ScrollUp => Some(MouseEvent::ScrollUp.into()),
-                _ => None,
-            };
-
-            if let Some(msg) = msg {
-                sender.send(msg.into())?;
+            if let Some(msg) = convert_mouse_event(mouse_event) {
+                sender.send(Message::MouseEvent(msg).into())?;
             }
         }
     }
@@ -103,15 +99,50 @@ pub(crate) fn convert_key_event(key: crossterm::event::KeyEvent) -> sanedit_mess
         KeyCode::Null => Key::Unknown,
     };
 
+    let mut mods = convert_mods(&key.modifiers);
+
+    KeyEvent::new(plain_key, mods)
+}
+
+fn convert_mods(modifiers: &KeyModifiers) -> KeyMods {
     let mut mods = KeyMods::empty();
 
-    if key.modifiers.contains(KeyModifiers::ALT) {
+    if modifiers.contains(KeyModifiers::ALT) {
         mods |= KeyMods::ALT;
     }
 
-    if key.modifiers.contains(KeyModifiers::CONTROL) {
+    if modifiers.contains(KeyModifiers::CONTROL) {
         mods |= KeyMods::CONTROL;
     }
 
-    KeyEvent::new(plain_key, mods)
+    mods
+}
+
+pub(crate) fn convert_mouse_event(
+    event: crossterm::event::MouseEvent,
+) -> Option<sanedit_messages::MouseEvent> {
+    let kind = match event.kind {
+        crossterm::event::MouseEventKind::Down(b) => {
+            MouseEventKind::ButtonDown(convert_mouse_button(b))
+        }
+        crossterm::event::MouseEventKind::Up(b) => {
+            MouseEventKind::ButtonUp(convert_mouse_button(b))
+        }
+        crossterm::event::MouseEventKind::ScrollDown => MouseEventKind::ScrollDown,
+        crossterm::event::MouseEventKind::ScrollUp => MouseEventKind::ScrollUp,
+        crossterm::event::MouseEventKind::Drag(b) => return None,
+        crossterm::event::MouseEventKind::Moved => return None,
+    };
+
+    let mods = convert_mods(&event.modifiers);
+
+    Some(MouseEvent { kind, mods })
+}
+
+fn convert_mouse_button(btn: crossterm::event::MouseButton) -> MouseButton {
+    match btn {
+        crossterm::event::MouseButton::Left => MouseButton::Left,
+        crossterm::event::MouseButton::Right => MouseButton::Right,
+        crossterm::event::MouseButton::Middle => MouseButton::Middle,
+    }
 }

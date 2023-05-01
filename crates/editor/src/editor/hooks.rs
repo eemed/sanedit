@@ -7,7 +7,9 @@ use crate::actions::Action;
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub(crate) enum Hook {
+    /// Before a character is inserted into the buffer
     InsertCharPre,
+    /// Before a character is removed from the buffer
     RemoveCharPre,
 }
 

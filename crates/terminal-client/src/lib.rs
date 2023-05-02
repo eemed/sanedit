@@ -53,8 +53,14 @@ where
                     }
                     Message::MouseEvent(ref mut ev) => {
                         let position = ui.window_position();
+                        let size = ui.window_size();
                         let point = &mut ev.point;
-                        if point.x < position.x || point.y < position.y {
+
+                        if point.x < position.x
+                            || point.x >= position.x + size.width
+                            || point.y < position.y
+                            || point.y >= position.y + size.height
+                        {
                             continue;
                         }
                         ev.point = ev.point - position;

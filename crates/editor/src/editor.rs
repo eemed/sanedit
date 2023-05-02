@@ -11,6 +11,7 @@ use sanedit_messages::redraw::Theme;
 use sanedit_messages::ClientMessage;
 use sanedit_messages::KeyEvent;
 use sanedit_messages::Message;
+use sanedit_messages::MouseButton;
 use sanedit_messages::MouseEvent;
 use sanedit_messages::MouseEventKind;
 
@@ -39,6 +40,7 @@ use self::buffers::Buffers;
 use self::hooks::Hooks;
 use self::jobs::Jobs;
 use self::options::Options;
+use self::windows::Cursor;
 use self::windows::Window;
 use self::windows::Windows;
 
@@ -200,6 +202,12 @@ impl Editor {
             MouseEventKind::ScrollUp => {
                 let (win, buf) = self.win_buf_mut(id);
                 win.scroll_up_n(buf, 3);
+            }
+            MouseEventKind::ButtonDown(MouseButton::Left) => {
+                let (win, buf) = self.win_buf_mut(id);
+                if let Some(pos) = win.view().pos_at_point(event.point) {
+                    win.cursors.push(Cursor::new(pos));
+                }
             }
             _ => {}
         }

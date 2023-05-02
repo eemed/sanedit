@@ -3,7 +3,8 @@ use std::{sync::mpsc, time::Duration};
 use anyhow::Result;
 use crossterm::event::{poll, read, KeyCode, KeyModifiers};
 use sanedit_messages::{
-    redraw::Size, Key, KeyEvent, KeyMods, Message, MouseButton, MouseEvent, MouseEventKind,
+    redraw::{Point, Size},
+    Key, KeyEvent, KeyMods, Message, MouseButton, MouseEvent, MouseEventKind,
 };
 
 use crate::message::ClientInternalMessage;
@@ -130,13 +131,17 @@ pub(crate) fn convert_mouse_event(
         }
         crossterm::event::MouseEventKind::ScrollDown => MouseEventKind::ScrollDown,
         crossterm::event::MouseEventKind::ScrollUp => MouseEventKind::ScrollUp,
-        crossterm::event::MouseEventKind::Drag(b) => return None,
+        crossterm::event::MouseEventKind::Drag(_b) => return None,
         crossterm::event::MouseEventKind::Moved => return None,
     };
 
     let mods = convert_mods(&event.modifiers);
+    let point = Point {
+        x: event.column as usize,
+        y: event.row as usize,
+    };
 
-    Some(MouseEvent { kind, mods })
+    Some(MouseEvent { kind, mods, point })
 }
 
 fn convert_mouse_button(btn: crossterm::event::MouseButton) -> MouseButton {

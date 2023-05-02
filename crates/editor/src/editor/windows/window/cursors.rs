@@ -17,13 +17,21 @@ impl Cursors {
         &mut self.cursors[0]
     }
 
-    pub fn cursors(&mut self) -> &mut [Cursor] {
+    pub fn secondary_cursors(&self) -> &[Cursor] {
+        &self.cursors[1..]
+    }
+
+    pub fn cursors(&mut self) -> &[Cursor] {
+        &self.cursors
+    }
+
+    pub fn cursors_mut(&mut self) -> &mut [Cursor] {
         &mut self.cursors
     }
 
     /// Add a new cursor
-    pub fn add(&mut self, cursor: Cursor) {
-        todo!()
+    pub fn push(&mut self, cursor: Cursor) {
+        self.cursors.push(cursor);
     }
 
     /// Remove cursor at position pos

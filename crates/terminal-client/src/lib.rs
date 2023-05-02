@@ -51,6 +51,14 @@ where
                         let win_size = ui.window_size();
                         msg = Message::Resize(win_size);
                     }
+                    Message::MouseEvent(ref mut ev) => {
+                        let position = ui.window_position();
+                        let point = &mut ev.point;
+                        if point.x < position.x || point.y < position.y {
+                            continue;
+                        }
+                        ev.point = ev.point - position;
+                    }
                     _ => {}
                 }
 

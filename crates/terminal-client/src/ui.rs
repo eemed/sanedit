@@ -31,6 +31,10 @@ impl UI {
         })
     }
 
+    pub fn window_position(&self) -> Point {
+        self.grid.window.position(&self.context)
+    }
+
     pub fn window_size(&self) -> Size {
         self.grid.window.size(&self.context)
     }

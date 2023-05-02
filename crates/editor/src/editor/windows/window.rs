@@ -1,12 +1,12 @@
 mod completion;
 mod cursors;
 mod focus;
+mod locations;
 mod message;
 mod options;
 mod prompt;
 mod search;
 mod view;
-mod locations;
 
 use std::ops::Range;
 
@@ -39,9 +39,9 @@ pub(crate) struct Window {
     buf: BufferId,
     view: View,
     message: Option<Message>,
-    cursors: Cursors,
 
     keymap: Keymap,
+    pub cursors: Cursors,
     pub focus: Focus,
     pub search: Search,
     pub prompt: Prompt,
@@ -110,6 +110,10 @@ impl Window {
 
     pub fn primary_cursor_mut(&mut self) -> &mut Cursor {
         self.cursors.primary_mut()
+    }
+
+    pub fn cursors(&self) -> &Cursors {
+        &self.cursors
     }
 
     pub fn scroll_down_n(&mut self, buf: &Buffer, n: usize) {
@@ -181,10 +185,6 @@ impl Window {
         );
         self.view.resize(size);
         self.view_to_cursor(buf);
-    }
-
-    pub fn cursors(&self) -> &Cursors {
-        &self.cursors
     }
 
     pub fn message(&self) -> Option<&Message> {

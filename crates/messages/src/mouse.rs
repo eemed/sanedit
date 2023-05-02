@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{KeyMods, Message};
+use crate::{KeyMods, Message, redraw::Point};
 
 #[derive(Serialize, Deserialize, Debug, Hash, PartialEq, Eq, Clone)]
 pub enum MouseButton {
@@ -21,6 +21,7 @@ pub enum MouseEventKind {
 pub struct MouseEvent {
     pub kind: MouseEventKind,
     pub mods: KeyMods,
+    pub point: Point,
 }
 
 impl From<MouseEvent> for Message {

@@ -1,3 +1,5 @@
+use std::ops::Range;
+
 use sanedit_messages::redraw::{self, CursorStyle, Point, Style, Theme, ThemeField};
 use sanedit_regex::Match;
 
@@ -42,6 +44,7 @@ pub(crate) fn draw_window(win: &Window, buf: &Buffer, theme: &Theme) -> redraw::
     draw_end_of_buffer(&mut grid, view, theme);
     draw_trailing_whitespace(&mut grid, view, theme);
     draw_search_highlights(&mut grid, matches, view, theme);
+    draw_secondary_cursors(&mut grid, cursors, view, theme);
     let cursor = draw_primary_cursor(&mut grid, cursors.primary(), view, theme);
     redraw::Window::new(grid, cursor)
 }
@@ -75,13 +78,45 @@ fn draw_search_highlights(
     }
 }
 
-fn draw_cursors(
+fn draw_secondary_cursors(
     grid: &mut Vec<Vec<redraw::Cell>>,
     cursors: &Cursors,
     view: &View,
     theme: &Theme,
-) -> Point {
-    todo!()
+) {
+    let style = theme.get(ThemeField::Selection).unwrap_or(Style::default());
+
+    for cursor in cursors.secondary_cursors() {
+        if !view.contains(cursor.pos()) {
+            continue;
+        }
+
+        let area = cursor.selection().unwrap_or(cursor.pos()..cursor.pos() + 1);
+        highlight_area(grid, area, view, style);
+    }
+}
+
+fn highlight_area(
+    grid: &mut Vec<Vec<redraw::Cell>>,
+    area: Range<usize>,
+    view: &View,
+    hlstyle: Style,
+) {
+    let mut pos = view.range().start;
+
+    for (line, row) in view.cells().iter().enumerate() {
+        for (col, cell) in row.iter().enumerate() {
+            if !matches!(cell, Cell::Empty) && area.contains(&pos) {
+                grid[line][col].style = hlstyle;
+            }
+
+            pos += cell.grapheme_len();
+
+            if area.end < pos {
+                break;
+            }
+        }
+    }
 }
 
 fn draw_primary_cursor(
@@ -92,22 +127,8 @@ fn draw_primary_cursor(
 ) -> redraw::Cursor {
     let style = theme.get(ThemeField::Selection).unwrap_or(Style::default());
 
-    if let Some(sel) = cursor.selection() {
-        let mut pos = view.range().start;
-
-        for (line, row) in view.cells().iter().enumerate() {
-            for (col, cell) in row.iter().enumerate() {
-                if !matches!(cell, Cell::Empty) && sel.contains(&pos) {
-                    grid[line][col].style = style;
-                }
-
-                pos += cell.grapheme_len();
-
-                if sel.end < pos {
-                    break;
-                }
-            }
-        }
+    if let Some(area) = cursor.selection() {
+        highlight_area(grid, area, view, style);
     }
 
     let has_selection = cursor.selection().is_some();

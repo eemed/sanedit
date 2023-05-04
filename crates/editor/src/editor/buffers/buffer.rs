@@ -127,6 +127,10 @@ impl Buffer {
         self.pt.insert(pos, bytes)
     }
 
+    pub fn insert_multi<B: AsRef<[u8]>>(&mut self, pos: &mut [usize], bytes: B) {
+        self.pt.insert_multi(pos, bytes)
+    }
+
     pub fn insert_char(&mut self, pos: usize, ch: char) {
         self.pt.insert_char(pos, ch)
     }

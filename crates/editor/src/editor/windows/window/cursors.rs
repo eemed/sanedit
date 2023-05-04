@@ -4,24 +4,31 @@ pub(crate) use cursor::Cursor;
 
 #[derive(Debug)]
 pub(crate) struct Cursors {
-    // Cursror at index 0 is the primary cursor
+    /// Sorted list of cursors based on their positions
     cursors: Vec<Cursor>,
+    primary: usize,
 }
 
 impl Cursors {
+    pub fn len(&self) -> usize {
+        self.cursors.len()
+    }
+
     pub fn primary(&self) -> &Cursor {
-        &self.cursors[0]
+        &self.cursors[self.primary]
     }
 
     pub fn primary_mut(&mut self) -> &mut Cursor {
-        &mut self.cursors[0]
+        &mut self.cursors[self.primary]
     }
 
-    pub fn secondary_cursors(&self) -> &[Cursor] {
-        &self.cursors[1..]
+    pub fn start_selection(&mut self) {
+        for cursor in &mut self.cursors {
+            cursor.anchor();
+        }
     }
 
-    pub fn cursors(&mut self) -> &[Cursor] {
+    pub fn cursors(&self) -> &[Cursor] {
         &self.cursors
     }
 
@@ -31,7 +38,11 @@ impl Cursors {
 
     /// Add a new cursor
     pub fn push(&mut self, cursor: Cursor) {
-        self.cursors.push(cursor);
+        let pos = self
+            .cursors
+            .binary_search_by(|c| c.pos().cmp(&cursor.pos()))
+            .unwrap_or_else(|n| n);
+        self.cursors.insert(pos, cursor);
     }
 
     /// Remove cursor at position pos
@@ -52,6 +63,7 @@ impl Default for Cursors {
     fn default() -> Self {
         Cursors {
             cursors: vec![Cursor::default()],
+            primary: 0,
         }
     }
 }

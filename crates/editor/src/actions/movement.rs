@@ -12,12 +12,13 @@ fn do_move<F: Fn(&PieceTreeSlice, usize) -> usize>(
     col: Option<usize>,
 ) {
     let (win, buf) = editor.win_buf_mut(id);
-    let cursor = win.primary_cursor_mut();
-    let pos = f(&buf.slice(..), cursor.pos());
-    if let Some(col) = col {
-        cursor.goto_with_col(pos, col);
-    } else {
-        cursor.goto(pos);
+    for cursor in win.cursors.cursors_mut() {
+        let pos = f(&buf.slice(..), cursor.pos());
+        if let Some(col) = col {
+            cursor.goto_with_col(pos, col);
+        } else {
+            cursor.goto(pos);
+        }
     }
     win.view_to_cursor(buf);
 }

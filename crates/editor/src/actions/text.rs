@@ -42,7 +42,7 @@ pub(crate) fn insert(editor: &mut Editor, id: ClientId, text: &str) {
         Focus::Window => {
             run_hook(editor, id, Hook::InsertCharPre);
             let (win, buf) = editor.win_buf_mut(id);
-            win.insert_at_cursor(buf, text);
+            win.insert_at_cursors(buf, text);
         }
     }
 }

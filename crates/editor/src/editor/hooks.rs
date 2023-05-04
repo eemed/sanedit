@@ -1,6 +1,9 @@
 use std::{
     collections::HashMap,
-    sync::atomic::{AtomicUsize, Ordering},
+    sync::{
+        atomic::{AtomicUsize, Ordering},
+        Arc,
+    },
 };
 
 use crate::actions::Action;
@@ -11,6 +14,7 @@ pub(crate) enum Hook {
     InsertCharPre,
     /// Before a character is removed from the buffer
     RemoveCharPre,
+    CursorMoved,
 }
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
@@ -75,6 +79,16 @@ impl Default for Hooks {
         };
         hooks.register(Hook::InsertCharPre, Action::search_clear_matches);
         hooks.register(Hook::RemoveCharPre, Action::search_clear_matches);
+        hooks.register(
+            Hook::CursorMoved,
+            Action::Dynamic {
+                name: "merge overlapping curosrs".into(),
+                fun: Arc::new(|editor, id| {
+                    let (win, buf) = editor.win_buf_mut(id);
+                    win.cursors.merge_overlapping();
+                }),
+            },
+        );
 
         hooks
     }

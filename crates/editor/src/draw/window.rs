@@ -86,7 +86,7 @@ fn draw_secondary_cursors(
 ) {
     let style = theme.get(ThemeField::Selection).unwrap_or(Style::default());
 
-    for cursor in cursors.secondary_cursors() {
+    for cursor in cursors.cursors() {
         if !view.contains(cursor.pos()) {
             continue;
         }

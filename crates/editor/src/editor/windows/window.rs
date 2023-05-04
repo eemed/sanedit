@@ -211,7 +211,8 @@ impl Window {
         }
     }
 
-    fn remove_cursor_selection(&mut self, buf: &mut Buffer) -> bool {
+    fn remove_cursor_selections(&mut self, buf: &mut Buffer) -> bool {
+        // TODO multicursor
         let cursor = self.primary_cursor_mut();
         if let Some(sel) = cursor.take_selection() {
             cursor.goto(sel.start);
@@ -223,17 +224,23 @@ impl Window {
         }
     }
 
-    pub fn insert_at_cursor(&mut self, buf: &mut Buffer, text: &str) {
-        self.remove_cursor_selection(buf);
-        let cursor = self.primary_cursor_mut();
-        let cursor_pos = cursor.pos();
-        buf.insert(cursor_pos, text);
-        cursor.goto(cursor_pos + text.len());
+    pub fn insert_at_cursors(&mut self, buf: &mut Buffer, text: &str) {
+        self.remove_cursor_selections(buf);
+        let mut poss: Vec<usize> = self.cursors.cursors().iter().map(|c| c.pos()).collect();
+        buf.insert_multi(&mut poss, text);
+
+        let mut inserted = 0;
+        for cursor in self.cursors.cursors_mut() {
+            let cursor_pos = cursor.pos() + inserted;
+            cursor.goto(cursor_pos + text.len());
+            inserted += text.len();
+        }
+
         self.invalidate_view();
     }
 
     pub fn remove_grapheme_after_cursor(&mut self, buf: &mut Buffer) {
-        if self.remove_cursor_selection(buf) {
+        if self.remove_cursor_selections(buf) {
             return;
         }
         let cursor = self.primary_cursor_mut();
@@ -243,7 +250,7 @@ impl Window {
     }
 
     pub fn remove_grapheme_before_cursor(&mut self, buf: &mut Buffer) {
-        if self.remove_cursor_selection(buf) {
+        if self.remove_cursor_selections(buf) {
             return;
         }
         let cursor = self.primary_cursor_mut();

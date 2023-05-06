@@ -1,6 +1,9 @@
-use serde::{Deserialize, Serialize};
+use core::fmt;
 
-use super::{Color, TextStyle};
+use serde::{Deserialize, Serialize};
+use thiserror::Error;
+
+use super::{Color, HexStringError, TextStyle};
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Copy, Default)]
 pub struct Style {
@@ -28,4 +31,32 @@ impl Style {
             self.text_style = Some(s);
         }
     }
+
+    pub fn from_str(string: &str) -> Result<Style, StyleError> {
+        let splits: Vec<&str> = string.splitn(3, ",").collect();
+        if splits.len() < 3 {
+            return Err(StyleError::Split);
+        }
+
+        // bg, fg, other
+        let bg = Color::from_str(splits[0]).ok();
+        let fg = Color::from_str(splits[1]).ok();
+        let rest = splits[2];
+
+        // TODO attrs
+        Ok(Style {
+            bg,
+            fg,
+            text_style: None,
+        })
+    }
+}
+
+#[derive(Error, Debug)]
+pub enum StyleError {
+    #[error("Failed to parse color")]
+    ColorError(#[from] HexStringError),
+
+    #[error("Too few splits, the format is bg,fg,attr[,attr]*")]
+    Split,
 }

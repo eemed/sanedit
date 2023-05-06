@@ -67,19 +67,9 @@ impl Component for Prompt {
     }
 
     fn draw(&self, ctx: &UIContext) -> Vec<Vec<Cell>> {
-        let default_style = ctx
-            .theme
-            .get(ThemeField::PromptDefault)
-            .unwrap_or(Style::default());
-        let msg_style = ctx
-            .theme
-            .get(ThemeField::PromptMessage)
-            .unwrap_or(Style::default());
-
-        let input_style = ctx
-            .theme
-            .get(ThemeField::PromptUserInput)
-            .unwrap_or(Style::default());
+        let default_style = ctx.theme.get(ThemeField::PromptDefault);
+        let msg_style = ctx.theme.get(ThemeField::PromptMessage);
+        let input_style = ctx.theme.get(ThemeField::PromptUserInput);
 
         let mut message = into_cells_with_style(self.message(), msg_style, ctx);
         let colon = into_cells_with_style(": ", msg_style, ctx);

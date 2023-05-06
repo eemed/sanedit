@@ -5,6 +5,7 @@ use sanedit_messages::redraw::{Color, Style, Theme, ThemeField};
 pub(crate) fn default_themes() -> HashMap<String, Theme> {
     let mut map = HashMap::new();
     map.insert("gruvbox".into(), gruvbox());
+    map.insert("default".into(), default());
     map
 }
 
@@ -155,5 +156,23 @@ fn gruvbox() -> Theme {
             },
         );
     }
+    theme
+}
+
+fn default() -> Theme {
+    use ThemeField::*;
+
+    let mut theme = Theme::new("default");
+    theme.insert(Default, Style::from_str("#2c2c2c,#cccccc,").unwrap());
+    theme.insert(EndOfBuffer, Style::from_str(",#666666,").unwrap());
+    theme.insert(Statusline, Style::from_str("#262626,#adadad,").unwrap());
+    theme.insert(Selection, Style::from_str("#3d3d3d,,").unwrap());
+
+    theme.insert(PromptDefault, Style::from_str("#2c2c2c,#adadad,").unwrap());
+    theme.insert(PromptUserInput, Style::from_str(",,").unwrap());
+    theme.insert(PromptMessage, Style::from_str(",#e5df82,").unwrap());
+    theme.insert(PromptCompletionSelected, Style::from_str("#363636,#dc8052,").unwrap());
+    theme.insert(PromptCompletion, Style::from_str("#303030,,").unwrap());
+
     theme
 }

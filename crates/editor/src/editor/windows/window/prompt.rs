@@ -199,7 +199,11 @@ impl Prompt {
         self.completion.select_prev();
     }
 
-    pub fn input(&self) -> String {
+    pub fn input(&self) -> &str {
+        &self.input
+    }
+
+    pub fn input_or_selected(&self) -> String {
         self.selected()
             .map(|(_, item)| item.to_string())
             .unwrap_or(self.input.clone())

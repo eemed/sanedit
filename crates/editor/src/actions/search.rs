@@ -36,7 +36,7 @@ pub(crate) fn search_open(editor: &mut Editor, id: ClientId) {
 pub(crate) fn search_close(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     if let Some(on_abort) = win.search.prompt.on_abort.clone() {
-        let input = win.search.prompt.input();
+        let input = win.search.prompt.input_or_selected();
         (on_abort)(editor, id, &input)
     }
 
@@ -50,7 +50,7 @@ pub(crate) fn search_confirm_all(editor: &mut Editor, id: ClientId) {
 pub(crate) fn search_confirm(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     if let Some(on_confirm) = win.search.prompt.on_confirm.clone() {
-        let input = win.search.prompt.input();
+        let input = win.search.prompt.input_or_selected();
         win.search.prompt.history.push(&input);
         (on_confirm)(editor, id, &input)
     }
@@ -74,7 +74,7 @@ pub(crate) fn search_remove_grapheme_before_cursor(editor: &mut Editor, id: Clie
     win.search.prompt.remove_grapheme_before_cursor();
 
     if let Some(on_input) = win.search.prompt.on_input.clone() {
-        let input = win.search.prompt.input();
+        let input = win.search.prompt.input().to_string();
         (on_input)(editor, id, &input)
     }
 }

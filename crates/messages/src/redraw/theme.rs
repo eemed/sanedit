@@ -48,20 +48,26 @@ impl Theme {
         node.set_style(nstyle);
     }
 
-    pub fn get<S: AsRef<str>>(&self, path: S) -> Option<Style> {
+    pub fn get<S: AsRef<str>>(&self, path: S) -> Style {
         let path: Vec<&str> = path.as_ref().split(Self::SEPARATOR).collect();
         let mut node = &self.node;
         let mut cur = node.style().clone();
 
         for comp in path {
             match node {
-                ThemeNode::Node { nodes, .. } => node = nodes.get(&comp.to_string())?,
-                ThemeNode::Leaf(_) => return None,
+                ThemeNode::Node { nodes, .. } => {
+                    if let Some(n) = nodes.get(&comp.to_string()) {
+                        node = n;
+                    } else {
+                        break;
+                    }
+                }
+                ThemeNode::Leaf(_) => break,
             }
             cur.override_with(node.style());
         }
 
-        Some(cur)
+        cur
     }
 }
 

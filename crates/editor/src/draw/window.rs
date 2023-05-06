@@ -12,7 +12,7 @@ use crate::{
 };
 
 pub(crate) fn draw_window(win: &Window, buf: &Buffer, theme: &Theme) -> redraw::Window {
-    let style = theme.get(ThemeField::Default).unwrap_or(Style::default());
+    let style = theme.get(ThemeField::Default);
     let view = win.view();
     let mut grid = vec![vec![redraw::Cell::with_style(style); view.width()]; view.height()];
 
@@ -55,7 +55,7 @@ fn draw_search_highlights(
     view: &View,
     theme: &Theme,
 ) {
-    let style = theme.get(ThemeField::Selection).unwrap_or(Style::default());
+    let style = theme.get(ThemeField::Selection);
 
     let vrange = view.range();
     for m in matches {
@@ -84,7 +84,7 @@ fn draw_secondary_cursors(
     view: &View,
     theme: &Theme,
 ) {
-    let style = theme.get(ThemeField::Selection).unwrap_or(Style::default());
+    let style = theme.get(ThemeField::Selection);
 
     for cursor in cursors.cursors() {
         if !view.contains(cursor.pos()) {
@@ -125,7 +125,7 @@ fn draw_primary_cursor(
     view: &View,
     theme: &Theme,
 ) -> redraw::Cursor {
-    let style = theme.get(ThemeField::Selection).unwrap_or(Style::default());
+    let style = theme.get(ThemeField::Selection);
 
     if let Some(area) = cursor.selection() {
         highlight_area(grid, area, view, style);
@@ -148,8 +148,7 @@ fn draw_primary_cursor(
 
 fn draw_end_of_buffer(grid: &mut Vec<Vec<redraw::Cell>>, view: &View, theme: &Theme) {
     let style = theme
-        .get(ThemeField::EndOfBuffer)
-        .unwrap_or(Style::default());
+        .get(ThemeField::EndOfBuffer);
     for (line, row) in view.cells().iter().enumerate() {
         let is_empty = row
             .iter()

@@ -48,7 +48,7 @@ pub(crate) fn prompt_open_file(editor: &mut Editor, id: ClientId) {
 pub(crate) fn prompt_close(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     if let Some(on_abort) = win.prompt.on_abort.clone() {
-        let input = win.prompt.input();
+        let input = win.prompt.input_or_selected();
         (on_abort)(editor, id, &input)
     }
 
@@ -59,7 +59,7 @@ pub(crate) fn prompt_close(editor: &mut Editor, id: ClientId) {
 pub(crate) fn prompt_confirm(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     if let Some(on_confirm) = win.prompt.on_confirm.clone() {
-        let input = win.prompt.input();
+        let input = win.prompt.input_or_selected();
         win.prompt.history.push(&input);
         (on_confirm)(editor, id, &input)
     }
@@ -83,7 +83,7 @@ pub(crate) fn prompt_remove_grapheme_before_cursor(editor: &mut Editor, id: Clie
     win.prompt.remove_grapheme_before_cursor();
 
     if let Some(on_input) = win.prompt.on_input.clone() {
-        let input = win.prompt.input();
+        let input = win.prompt.input().to_string();
         (on_input)(editor, id, &input)
     }
 }

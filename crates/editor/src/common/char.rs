@@ -89,16 +89,22 @@ impl Default for DisplayOptions {
     fn default() -> Self {
         use Replacement::*;
 
+        const DEFAULT: [(Replacement, &'static str); 6] = [
+            (Tab, "→"),
+            (TabFill, " "),
+            (EOL, " "),
+            (BufferEnd, "~"),
+            (TrailingWhitespace, "•"),
+            (NonBreakingSpace, "•"),
+        ];
+
         let mut replacements = HashMap::new();
-        replacements.insert(Tab, "→".into());
-        replacements.insert(TabFill, " ".into());
-        replacements.insert(EOL, " ".into());
-        replacements.insert(BufferEnd, "~".into());
-        replacements.insert(TrailingWhitespace, "•".into());
-        replacements.insert(NonBreakingSpace, "•".into());
+        for (rep, s) in DEFAULT {
+            replacements.insert(rep, s.into());
+        }
 
         DisplayOptions {
-            theme: "gruvbox".into(),
+            theme: "default".into(),
             tabstop: 8,
             line_width: 80,
             replacements,

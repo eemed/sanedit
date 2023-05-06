@@ -238,8 +238,8 @@ impl Window {
 
         let mut inserted = 0;
         for cursor in self.cursors.cursors_mut() {
-            let cursor_pos = cursor.pos() + inserted;
-            cursor.goto(cursor_pos + text.len());
+            let cpos = cursor.pos() + inserted;
+            cursor.goto(cpos + text.len());
             inserted += text.len();
         }
 
@@ -264,7 +264,7 @@ impl Window {
         self.invalidate_view();
     }
 
-    pub fn remove_grapheme_before_cursor(&mut self, buf: &mut Buffer) {
+    pub fn remove_grapheme_before_cursors(&mut self, buf: &mut Buffer) {
         if self.remove_cursor_selections(buf) {
             return;
         }

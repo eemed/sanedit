@@ -10,6 +10,7 @@ use sanedit_messages::redraw::Size;
 use sanedit_messages::redraw::Theme;
 use sanedit_messages::ClientMessage;
 use sanedit_messages::KeyEvent;
+use sanedit_messages::KeyMods;
 use sanedit_messages::Message;
 use sanedit_messages::MouseButton;
 use sanedit_messages::MouseEvent;
@@ -25,6 +26,7 @@ use tokio::io;
 use tokio::sync::mpsc::Receiver;
 
 use crate::actions;
+use crate::actions::cursors;
 use crate::actions::Action;
 use crate::common::file::File;
 use crate::draw::DrawState;
@@ -205,8 +207,10 @@ impl Editor {
             }
             MouseEventKind::ButtonDown(MouseButton::Left) => {
                 let (win, buf) = self.win_buf_mut(id);
-                if let Some(pos) = win.view().pos_at_point(event.point) {
-                    win.cursors.push(Cursor::new(pos));
+                if event.mods.contains(KeyMods::CONTROL) {
+                    cursors::new_cursor_to_point(self, id, event.point);
+                } else if event.mods.is_empty() {
+                    cursors::goto_position(self, id, event.point);
                 }
             }
             _ => {}

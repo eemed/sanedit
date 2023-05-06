@@ -50,7 +50,10 @@ impl Cursors {
 
     /// Remove all cursors except the primary one
     pub fn remove_secondary_cursors(&mut self) {
-        todo!()
+        let cursor = self.cursors.swap_remove(self.primary);
+        self.cursors.clear();
+        self.cursors.push(cursor);
+        self.primary = 0;
     }
 
     /// Merge overlapping cursors into one

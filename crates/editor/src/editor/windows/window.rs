@@ -212,16 +212,23 @@ impl Window {
     }
 
     fn remove_cursor_selections(&mut self, buf: &mut Buffer) -> bool {
-        // TODO multicursor
-        let cursor = self.primary_cursor_mut();
-        if let Some(sel) = cursor.take_selection() {
-            cursor.goto(sel.start);
-            buf.remove(sel);
-            self.invalidate_view();
-            true
-        } else {
-            false
+        let mut removed = 0;
+        for cursor in self.cursors.cursors_mut() {
+            if let Some(mut sel) = cursor.take_selection() {
+                sel.start -= removed;
+                sel.end -= removed;
+
+                removed += sel.len();
+                cursor.goto(sel.start);
+                buf.remove(sel);
+            }
         }
+
+        if removed != 0 {
+            self.invalidate_view();
+        }
+
+        removed != 0
     }
 
     pub fn insert_at_cursors(&mut self, buf: &mut Buffer, text: &str) {
@@ -239,13 +246,21 @@ impl Window {
         self.invalidate_view();
     }
 
-    pub fn remove_grapheme_after_cursor(&mut self, buf: &mut Buffer) {
+    pub fn remove_grapheme_after_cursors(&mut self, buf: &mut Buffer) {
         if self.remove_cursor_selections(buf) {
             return;
         }
-        let cursor = self.primary_cursor_mut();
-        let pos = movement::next_grapheme_boundary(&buf.slice(..), cursor.pos());
-        buf.remove(cursor.pos()..pos);
+
+        let mut removed = 0;
+        for cursor in self.cursors.cursors_mut() {
+            let cpos = cursor.pos() - removed;
+            let pos = movement::next_grapheme_boundary(&buf.slice(..), cpos);
+
+            cursor.goto(cpos);
+            buf.remove(cpos..pos);
+            removed += pos - cpos;
+        }
+
         self.invalidate_view();
     }
 
@@ -253,10 +268,17 @@ impl Window {
         if self.remove_cursor_selections(buf) {
             return;
         }
-        let cursor = self.primary_cursor_mut();
-        let pos = movement::prev_grapheme_boundary(&buf.slice(..), cursor.pos());
-        buf.remove(pos..cursor.pos());
-        cursor.goto(pos);
+
+        let mut removed = 0;
+        for cursor in self.cursors.cursors_mut() {
+            let cpos = cursor.pos() - removed;
+            let pos = movement::prev_grapheme_boundary(&buf.slice(..), cpos);
+
+            cursor.goto(pos);
+            buf.remove(pos..cpos);
+            removed += cpos - pos;
+        }
+
         self.invalidate_view();
     }
 }

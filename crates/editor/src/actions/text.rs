@@ -8,7 +8,7 @@ use super::hooks::run_hook;
 pub(crate) fn remove_grapheme_after_cursor(editor: &mut Editor, id: ClientId) {
     run_hook(editor, id, Hook::RemoveCharPre);
     let (win, buf) = editor.win_buf_mut(id);
-    win.remove_grapheme_after_cursor(buf);
+    win.remove_grapheme_after_cursors(buf);
 }
 
 pub(crate) fn remove_grapheme_before_cursor(editor: &mut Editor, id: ClientId) {

@@ -162,6 +162,9 @@ fn gruvbox() -> Theme {
 fn default() -> Theme {
     use ThemeField::*;
 
+    // orange #dc8052
+    // green  #e5df82
+    // blue   #86b9b9
     let mut theme = Theme::new("default");
     theme.insert(Default, Style::from_str("#2c2c2c,#cccccc,").unwrap());
     theme.insert(EndOfBuffer, Style::from_str(",#666666,").unwrap());

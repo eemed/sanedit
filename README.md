@@ -11,15 +11,14 @@ Inspiration taken from vim, kakoune, emacs, neovim and vis.
 
 ## Notes
 
-* Search next/prev match
-* Search multiple matches
 * Multicursor
+* Search multiple matches
+* Search next/prev match
 * Locations on a list
 * Undo
 * Saving (copy from eemedit)
 * Pairs (copy from eemedit)
 * Syntax highlighting using pest
-* Movement linewise
 
 * Shell access
 

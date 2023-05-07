@@ -2,7 +2,7 @@ use sanedit_buffer::piece_tree::{self, next_grapheme, prev_grapheme, PieceTreeSl
 
 use crate::common::char::grapheme_category;
 
-use super::char::{is_word_break, GraphemeCategory};
+use super::char::{is_word_break, Char, DisplayOptions, GraphemeCategory};
 use super::eol::EOL;
 
 pub(crate) fn next_grapheme_boundary(slice: &PieceTreeSlice, pos: usize) -> usize {
@@ -14,7 +14,6 @@ pub(crate) fn prev_grapheme_boundary(slice: &PieceTreeSlice, pos: usize) -> usiz
 }
 
 pub(crate) fn start_of_line(slice: &PieceTreeSlice, mut pos: usize) -> usize {
-    // TODO use bytes for more efficient impl
     let mut grapheme = piece_tree::prev_grapheme(slice, pos);
     while let Some(g) = grapheme {
         if EOL::is_eol(&g) {
@@ -28,7 +27,6 @@ pub(crate) fn start_of_line(slice: &PieceTreeSlice, mut pos: usize) -> usize {
 }
 
 pub(crate) fn end_of_line(slice: &PieceTreeSlice, mut pos: usize) -> usize {
-    // TODO use bytes for more efficient impl
     let mut grapheme = piece_tree::next_grapheme(slice, pos);
     while let Some(g) = grapheme {
         if EOL::is_eol(&g) {
@@ -72,7 +70,6 @@ pub(crate) fn prev_line_start(slice: &PieceTreeSlice, mut pos: usize) -> usize {
 pub(crate) fn next_word_start(slice: &PieceTreeSlice, mut pos: usize) -> usize {
     let mut prev: Option<GraphemeCategory> = None;
 
-    // TODO dont allocate
     while let Some(g) = next_grapheme(slice, pos) {
         let string = String::from(&g);
         let cat = grapheme_category(&string);
@@ -93,7 +90,6 @@ pub(crate) fn next_word_start(slice: &PieceTreeSlice, mut pos: usize) -> usize {
 pub(crate) fn prev_word_start(slice: &PieceTreeSlice, mut pos: usize) -> usize {
     let mut cat: Option<GraphemeCategory> = None;
 
-    // TODO dont allocate
     while let Some(g) = prev_grapheme(slice, pos) {
         let string = String::from(&g);
         let prev = grapheme_category(&string);
@@ -164,3 +160,24 @@ pub(crate) fn prev_blank_line(slice: &PieceTreeSlice, mut pos: usize) -> usize {
 
     0
 }
+
+pub(crate) fn width_at_pos(slice: &PieceTreeSlice, pos: usize, opts: &DisplayOptions) -> usize {
+    const WIDTH_READ_MAX: usize = 1024 * 64;
+
+    let at = pos;
+    let pos = pos.saturating_sub(WIDTH_READ_MAX);
+    let diff = at - pos;
+    let subslice = slice.slice(pos..);
+    let mut start = prev_line_start(&subslice, pos);
+    let mut col = 0;
+
+    while let Some(g) = next_grapheme(&subslice, start) {
+        let ch = Char::new(&g, col, opts);
+        col += ch.width();
+        start += ch.grapheme_len();
+    }
+
+    start + diff
+}
+
+// pub(crate) fn pos_at_width(slice: &PieceTreeSlice, width: usize) -> usize {}

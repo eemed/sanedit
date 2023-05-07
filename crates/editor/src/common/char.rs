@@ -112,6 +112,7 @@ impl Default for DisplayOptions {
     }
 }
 
+
 #[inline]
 fn grapheme_to_char(slice: &PieceTreeSlice, column: usize, options: &DisplayOptions) -> Char {
     let buf_range = Some(slice.start()..slice.end());

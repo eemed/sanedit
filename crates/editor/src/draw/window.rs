@@ -55,7 +55,7 @@ fn draw_search_highlights(
     view: &View,
     theme: &Theme,
 ) {
-    let style = theme.get(ThemeField::Selection);
+    let style = theme.get(ThemeField::Match);
 
     let vrange = view.range();
     for m in matches {

@@ -82,6 +82,8 @@ impl Action {
         end_of_buffer,
         next_visual_line,
         prev_visual_line,
+        next_line,
+        prev_line,
         next_word_start,
         prev_word_start,
         next_paragraph,

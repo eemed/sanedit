@@ -191,3 +191,11 @@ fn next_visual_line_impl(editor: &mut Editor, id: ClientId) -> bool {
     win.primary_cursor_mut().goto_with_col(pos, cursor_col);
     true
 }
+
+pub(crate) fn next_line(editor: &mut Editor, id: ClientId) {
+    do_move(editor, id, common::movement::next_line_start, None);
+}
+
+pub(crate) fn prev_line(editor: &mut Editor, id: ClientId) {
+    do_move(editor, id, common::movement::prev_line_start, None);
+}

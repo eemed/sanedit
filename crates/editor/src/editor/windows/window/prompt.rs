@@ -156,6 +156,7 @@ impl Prompt {
         self.history.reset();
         self.input = String::new();
         self.cursor = 0;
+        self.completion = Completion::new();
     }
 
     pub fn next_grapheme(&mut self) {

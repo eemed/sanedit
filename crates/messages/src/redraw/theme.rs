@@ -110,6 +110,8 @@ pub enum ThemeField {
     EndOfBuffer,
     Symbols,
 
+    Match,
+
     Info,
     Warn,
     Error,
@@ -131,6 +133,7 @@ impl AsRef<str> for ThemeField {
             Selection => "window.selection",
             EndOfBuffer => "window.eob",
             Symbols => "window.symbols",
+            Match => "window.match",
 
             Info => "info",
             Warn => "warn",

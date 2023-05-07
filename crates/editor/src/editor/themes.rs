@@ -171,6 +171,7 @@ fn default() -> Theme {
     theme.insert(EndOfBuffer, Style::from_str(",#666666,").unwrap());
     theme.insert(Statusline, Style::from_str("#262626,#adadad,").unwrap());
     theme.insert(Selection, Style::from_str("#3a5c84,#a5b9d2,").unwrap());
+    theme.insert(Match, Style::from_str("#4c535b,,").unwrap());
 
     theme.insert(PromptDefault, Style::from_str("#262626,#adadad,").unwrap());
     theme.insert(PromptUserInput, Style::from_str(",,").unwrap());

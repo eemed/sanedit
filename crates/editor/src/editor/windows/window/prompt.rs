@@ -126,7 +126,7 @@ impl Prompt {
             message: String::from(message),
             input: String::new(),
             cursor: 0,
-            completion: Completion::new(false),
+            completion: Completion::new(),
             on_confirm: None,
             on_abort: None,
             on_input: None,
@@ -156,11 +156,6 @@ impl Prompt {
         self.history.reset();
         self.input = String::new();
         self.cursor = 0;
-    }
-
-    pub fn must_complete(mut self) -> Self {
-        self.completion.must_complete = true;
-        self
     }
 
     pub fn next_grapheme(&mut self) {

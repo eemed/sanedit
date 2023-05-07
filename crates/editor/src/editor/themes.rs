@@ -165,17 +165,18 @@ fn default() -> Theme {
     // orange #dc8052
     // green  #e5df82
     // blue   #86b9b9
+    // selection bg blue #3a5c84 fg blue #a5b9d2
     let mut theme = Theme::new("default");
     theme.insert(Default, Style::from_str("#2c2c2c,#cccccc,").unwrap());
     theme.insert(EndOfBuffer, Style::from_str(",#666666,").unwrap());
     theme.insert(Statusline, Style::from_str("#262626,#adadad,").unwrap());
-    theme.insert(Selection, Style::from_str("#3d3d3d,,").unwrap());
+    theme.insert(Selection, Style::from_str("#3a5c84,#a5b9d2,").unwrap());
 
-    theme.insert(PromptDefault, Style::from_str("#2c2c2c,#adadad,").unwrap());
+    theme.insert(PromptDefault, Style::from_str("#262626,#adadad,").unwrap());
     theme.insert(PromptUserInput, Style::from_str(",,").unwrap());
     theme.insert(PromptMessage, Style::from_str(",#e5df82,").unwrap());
     theme.insert(PromptCompletionSelected, Style::from_str("#363636,#dc8052,").unwrap());
-    theme.insert(PromptCompletion, Style::from_str("#303030,,").unwrap());
+    theme.insert(PromptCompletion, Style::from_str(",,").unwrap());
 
     theme
 }

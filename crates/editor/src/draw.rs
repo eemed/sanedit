@@ -42,7 +42,7 @@ impl DrawState {
     pub fn redraw(&mut self, win: &mut Window, buf: &Buffer, theme: &Theme) -> Vec<Redraw> {
         let mut redraw: Vec<Redraw> = vec![];
 
-        if self.prompt.take().is_some() {
+        if win.focus() != Focus::Prompt && self.prompt.take().is_some() {
             self.prompt_scroll_offset = 0;
             redraw.push(Redraw::ClosePrompt);
         }

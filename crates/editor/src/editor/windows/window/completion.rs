@@ -1,4 +1,4 @@
-use std::{cmp, mem};
+use std::mem;
 
 #[derive(Debug, Default)]
 pub(crate) struct Completion {
@@ -11,32 +11,34 @@ pub(crate) struct Completion {
     /// Currently selected completion index from `matched`
     pub(crate) selected: Option<usize>,
 
-    // Wether the completion must be one of the candidates
-    pub(crate) must_complete: bool,
-
     pub smartcase: bool,
 }
 
 impl Completion {
-    pub fn new(must_complete: bool) -> Completion {
+    pub fn new() -> Completion {
         Completion {
             options: vec![],
             matched: vec![],
             selected: None,
-            must_complete,
             smartcase: true,
         }
     }
 
     pub fn select_next(&mut self) {
         if self.matched.is_empty() {
-            return;
+            self.selected = None;
         }
 
-        if let Some(sel) = self.selected.as_mut() {
-            *sel = cmp::min(self.matched.len().saturating_sub(1), *sel + 1);
-        } else {
-            self.selected = Some(0);
+        match self.selected {
+            Some(n) => {
+                let is_last = n == self.matched.len() - 1;
+                if is_last {
+                    self.selected = None;
+                } else {
+                    self.selected = Some(n + 1);
+                }
+            }
+            None => self.selected = Some(0),
         }
     }
 
@@ -44,11 +46,17 @@ impl Completion {
         if self.matched.is_empty() {
             return;
         }
-        if let Some(sel) = self.selected.as_mut() {
-            *sel = sel.saturating_sub(1);
-        } else {
-            let last = self.matched.len().saturating_sub(1);
-            self.selected = Some(last);
+
+        match self.selected {
+            Some(n) => {
+                let is_first = n == 0;
+                if is_first {
+                    self.selected = None;
+                } else {
+                    self.selected = Some(n - 1);
+                }
+            }
+            None => self.selected = Some(self.matched.len() - 1),
         }
     }
 

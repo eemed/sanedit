@@ -104,7 +104,7 @@ impl Default for DisplayOptions {
         }
 
         DisplayOptions {
-            theme: "default".into(),
+            theme: "rosepine".into(),
             tabstop: 8,
             line_width: 80,
             replacements,

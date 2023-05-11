@@ -6,6 +6,8 @@ pub(crate) fn default_themes() -> HashMap<String, Theme> {
     let mut map = HashMap::new();
     map.insert("gruvbox".into(), gruvbox());
     map.insert("default".into(), default());
+    map.insert("rosepine".into(), rosepine());
+    map.insert("rosepine_dawn".into(), rosepine_dawn());
     map
 }
 
@@ -176,8 +178,52 @@ fn default() -> Theme {
     theme.insert(PromptDefault, Style::from_str("#262626,#adadad,").unwrap());
     theme.insert(PromptUserInput, Style::from_str(",,").unwrap());
     theme.insert(PromptMessage, Style::from_str(",#e5df82,").unwrap());
-    theme.insert(PromptCompletionSelected, Style::from_str("#363636,#dc8052,").unwrap());
+    theme.insert(
+        PromptCompletionSelected,
+        Style::from_str("#363636,#dc8052,").unwrap(),
+    );
     theme.insert(PromptCompletion, Style::from_str(",,").unwrap());
 
+    theme
+}
+
+/// Rosepine moon variant https://rosepinetheme.com/palette/ingredients/
+fn rosepine() -> Theme {
+    use ThemeField::*;
+
+    let base = "#232136";
+    let surface = "#2a273f";
+    let overlay = "#393552";
+    let muted = "#6e6a86";
+    let subtle = "#908caa";
+    let text = "#e0def4";
+    let love = "#eb6f92";
+    let gold = "#f6c177";
+    let rose = "#ebbcba";
+    let pine = "#31748f";
+    let foam = "#9ccfd8";
+    let iris = "#c4a7e7";
+    let hl_low = "#2a283e";
+    let hl_med = "#44415a";
+    let hl_high = "#56526e";
+
+    let mut theme = Theme::new("rosepine");
+    theme.insert(
+        Default,
+        Style::from_str(&format!("{base},{text},")).unwrap(),
+    );
+    theme.insert(EndOfBuffer, Style::from_str(&format!(",{hl_med},")).unwrap());
+    theme.insert(
+        Statusline,
+        Style::from_str(&format!("{hl_low},{subtle},")).unwrap(),
+    );
+    theme.insert(Selection, Style::from_str(&format!("{rose},{base},")).unwrap());
+    theme.insert(Match, Style::from_str(&format!("{iris},{base},")).unwrap());
+
+    theme.insert(PromptDefault, Style::from_str(&format!("{surface},{text},")).unwrap());
+    // theme.insert(PromptUserInput, Style::from_str(",,").unwrap());
+    theme.insert(PromptMessage, Style::from_str(&format!(",{gold},")).unwrap());
+    theme.insert(PromptCompletionSelected, Style::from_str(&format!("{overlay},{iris},")).unwrap());
+    theme.insert(PromptCompletion, Style::from_str(&format!(",{subtle},")).unwrap());
     theme
 }

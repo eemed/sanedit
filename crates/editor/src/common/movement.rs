@@ -161,23 +161,50 @@ pub(crate) fn prev_blank_line(slice: &PieceTreeSlice, mut pos: usize) -> usize {
     0
 }
 
-pub(crate) fn width_at_pos(slice: &PieceTreeSlice, pos: usize, opts: &DisplayOptions) -> usize {
-    const WIDTH_READ_MAX: usize = 1024 * 64;
-
-    let at = pos;
-    let pos = pos.saturating_sub(WIDTH_READ_MAX);
-    let diff = at - pos;
-    let subslice = slice.slice(pos..);
-    let mut start = prev_line_start(&subslice, pos);
-    let mut col = 0;
-
-    while let Some(g) = next_grapheme(&subslice, start) {
-        let ch = Char::new(&g, col, opts);
-        col += ch.width();
-        start += ch.grapheme_len();
-    }
-
-    start + diff
+pub(crate) fn next_line(slice: &PieceTreeSlice, mut pos: usize, opts: &DisplayOptions) -> usize {
+    let width = width_at_pos(slice, pos, opts);
+    pos = next_line_start(slice, pos);
+    pos_at_width(slice, pos, width, opts)
 }
 
-// pub(crate) fn pos_at_width(slice: &PieceTreeSlice, width: usize) -> usize {}
+pub(crate) fn prev_line(slice: &PieceTreeSlice, mut pos: usize, opts: &DisplayOptions) -> usize {
+    let width = width_at_pos(slice, pos, opts);
+    pos = prev_line_start(slice, pos);
+    pos_at_width(slice, pos, width, opts)
+}
+
+pub(crate) fn width_at_pos(slice: &PieceTreeSlice, mut pos: usize, opts: &DisplayOptions) -> usize {
+    pos = start_of_line(slice, pos);
+    let mut col = 0;
+
+    while let Some(g) = next_grapheme(&slice, pos) {
+        let ch = Char::new(&g, col, opts);
+        col += ch.width();
+        pos += ch.grapheme_len();
+    }
+
+    col
+}
+
+/// Assumes slice start is at width = 0
+pub(crate) fn pos_at_width(
+    slice: &PieceTreeSlice,
+    mut pos: usize,
+    width: usize,
+    opts: &DisplayOptions,
+) -> usize {
+    pos = start_of_line(slice, pos);
+    let mut col = 0;
+
+    while let Some(g) = next_grapheme(&slice, pos) {
+        let ch = Char::new(&g, col, opts);
+        col += ch.width();
+        pos += ch.grapheme_len();
+
+        if col >= width {
+            break;
+        }
+    }
+
+    pos
+}

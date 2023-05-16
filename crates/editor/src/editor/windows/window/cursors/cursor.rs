@@ -1,6 +1,6 @@
 use std::ops::Range;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub(crate) struct Cursor {
     /// Position in buffer
     pos: usize,

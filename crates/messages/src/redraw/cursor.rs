@@ -1,9 +1,11 @@
 use serde::{Deserialize, Serialize};
 
-use super::{CursorStyle, Point};
+use super::{Color, CursorShape, Point};
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Copy, Default)]
 pub struct Cursor {
-    pub style: CursorStyle,
+    pub bg: Option<Color>,
+    pub fg: Option<Color>,
+    pub shape: CursorShape,
     pub point: Point,
 }

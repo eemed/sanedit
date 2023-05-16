@@ -1,6 +1,7 @@
 use sanedit_buffer::piece_tree::{self, next_grapheme, prev_grapheme, PieceTreeSlice};
 
 use crate::common::char::grapheme_category;
+use crate::editor::windows::Cursor;
 
 use super::char::{is_word_break, Char, DisplayOptions, GraphemeCategory};
 use super::eol::EOL;
@@ -161,24 +162,45 @@ pub(crate) fn prev_blank_line(slice: &PieceTreeSlice, mut pos: usize) -> usize {
     0
 }
 
-pub(crate) fn next_line(slice: &PieceTreeSlice, mut pos: usize, opts: &DisplayOptions) -> usize {
-    let width = width_at_pos(slice, pos, opts);
-    pos = next_line_start(slice, pos);
-    pos_at_width(slice, pos, width, opts)
+pub(crate) fn next_line(
+    slice: &PieceTreeSlice,
+    cursor: &Cursor,
+    opts: &DisplayOptions,
+) -> (usize, usize) {
+    let cpos = cursor.pos();
+    let width = cursor
+        .column()
+        .unwrap_or_else(|| width_at_pos(slice, cpos, opts));
+    let pos = next_line_start(slice, cpos);
+    let npos = pos_at_width(slice, pos, width, opts);
+    (npos, width)
 }
 
-pub(crate) fn prev_line(slice: &PieceTreeSlice, mut pos: usize, opts: &DisplayOptions) -> usize {
-    let width = width_at_pos(slice, pos, opts);
-    pos = prev_line_start(slice, pos);
-    pos_at_width(slice, pos, width, opts)
+pub(crate) fn prev_line(
+    slice: &PieceTreeSlice,
+    cursor: &Cursor,
+    opts: &DisplayOptions,
+) -> (usize, usize) {
+    let cpos = cursor.pos();
+    let width = cursor
+        .column()
+        .unwrap_or_else(|| width_at_pos(slice, cpos, opts));
+    let pos = prev_line_start(slice, cpos);
+    let npos = pos_at_width(slice, pos, width, opts);
+    (npos, width)
 }
 
-pub(crate) fn width_at_pos(slice: &PieceTreeSlice, mut pos: usize, opts: &DisplayOptions) -> usize {
-    pos = start_of_line(slice, pos);
+pub(crate) fn width_at_pos(slice: &PieceTreeSlice, pos: usize, opts: &DisplayOptions) -> usize {
+    let target = pos;
+    let mut pos = start_of_line(slice, pos);
     let mut col = 0;
 
     while let Some(g) = next_grapheme(&slice, pos) {
-        let ch = Char::new(&g, col, opts);
+        let mut ch = Char::new(&g, col, opts);
+        if pos >= target {
+            break;
+        }
+
         col += ch.width();
         pos += ch.grapheme_len();
     }
@@ -186,24 +208,26 @@ pub(crate) fn width_at_pos(slice: &PieceTreeSlice, mut pos: usize, opts: &Displa
     col
 }
 
-/// Assumes slice start is at width = 0
+/// returns the position at width + the width at the position
 pub(crate) fn pos_at_width(
     slice: &PieceTreeSlice,
-    mut pos: usize,
+    pos: usize,
     width: usize,
     opts: &DisplayOptions,
 ) -> usize {
-    pos = start_of_line(slice, pos);
+    let mut pos = start_of_line(slice, pos);
     let mut col = 0;
 
     while let Some(g) = next_grapheme(&slice, pos) {
-        let ch = Char::new(&g, col, opts);
-        col += ch.width();
-        pos += ch.grapheme_len();
-
-        if col >= width {
+        let mut ch = Char::new(&g, col, opts);
+        if col + ch.width() > width {
             break;
         }
+        if EOL::is_eol(&g) {
+            break;
+        }
+        col += ch.width();
+        pos += ch.grapheme_len();
     }
 
     pos

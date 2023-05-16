@@ -1,6 +1,6 @@
 use std::ops::Range;
 
-use sanedit_messages::redraw::{self, CursorStyle, Point, Style, Theme, ThemeField};
+use sanedit_messages::redraw::{self, CursorShape, Style, Theme, ThemeField};
 use sanedit_regex::Match;
 
 use crate::{
@@ -84,14 +84,23 @@ fn draw_secondary_cursors(
     view: &View,
     theme: &Theme,
 ) {
-    let style = theme.get(ThemeField::Selection);
-
     for cursor in cursors.cursors() {
+        if cursor == cursors.primary() {
+            continue;
+        }
+
         if !view.contains(cursor.pos()) {
             continue;
         }
 
-        let area = cursor.selection().unwrap_or(cursor.pos()..cursor.pos() + 1);
+        let selection = cursor.selection();
+        let (area, style) = match cursor.selection() {
+            Some(s) => (s, theme.get(ThemeField::Selection)),
+            None => (
+                cursor.pos()..cursor.pos() + 1,
+                theme.get(ThemeField::Cursor),
+            ),
+        };
         highlight_area(grid, area, view, style);
     }
 }
@@ -132,23 +141,25 @@ fn draw_primary_cursor(
     }
 
     let has_selection = cursor.selection().is_some();
-    let cstyle = if has_selection {
-        CursorStyle::Line(false)
+    let shape = if has_selection {
+        CursorShape::Line(false)
     } else {
-        CursorStyle::Block(true)
+        CursorShape::Block(true)
     };
     let point = view
         .point_at_pos(cursor.pos())
         .expect("Primary cursor not in view");
+    let style = theme.get(ThemeField::PrimaryCursor);
     redraw::Cursor {
-        style: cstyle,
+        bg: style.bg,
+        fg: style.fg,
+        shape,
         point,
     }
 }
 
 fn draw_end_of_buffer(grid: &mut Vec<Vec<redraw::Cell>>, view: &View, theme: &Theme) {
-    let style = theme
-        .get(ThemeField::EndOfBuffer);
+    let style = theme.get(ThemeField::EndOfBuffer);
     for (line, row) in view.cells().iter().enumerate() {
         let is_empty = row
             .iter()

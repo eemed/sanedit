@@ -1,5 +1,5 @@
 use sanedit_messages::redraw::{
-    Cell, Cursor, CursorStyle, IntoCells, Point, Prompt, Size, Statusline, Style, ThemeField,
+    Cell, Cursor, CursorShape, IntoCells, Point, Prompt, Size, Statusline, Style, ThemeField,
     Window,
 };
 
@@ -22,12 +22,10 @@ impl Component for Window {
     }
 
     fn cursor(&self, ctx: &UIContext) -> Option<Cursor> {
-        let cursor = self.cursor();
+        let mut cursor = self.cursor();
         let pos = self.position(ctx);
-        Some(Cursor {
-            point: cursor.point + pos,
-            style: cursor.style,
-        })
+        cursor.point = cursor.point + pos;
+        Some(cursor)
     }
 
     fn size(&self, ctx: &UIContext) -> Size {
@@ -107,12 +105,15 @@ impl Component for Prompt {
             let extra = 2; // ": "
             msg_len + extra + input_cells_before_cursor
         };
+        let style = ctx.theme.get(ThemeField::Default);
         Some(Cursor {
+            bg: style.fg,
+            fg: style.bg,
             point: Point {
                 x: point.x + cursor_col,
                 y: point.y,
             },
-            style: CursorStyle::Line(true),
+            shape: CursorShape::Line(true),
         })
     }
 

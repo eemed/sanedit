@@ -109,6 +109,8 @@ pub enum ThemeField {
     Selection,
     EndOfBuffer,
     Symbols,
+    Cursor,
+    PrimaryCursor,
 
     Match,
 
@@ -130,7 +132,9 @@ impl AsRef<str> for ThemeField {
         match self {
             Default => "window",
             Statusline => "window.statusline",
-            Selection => "window.selection",
+            Selection => "window.cursor.selection",
+            Cursor => "window.cursor",
+            PrimaryCursor => "window.cursor.primary",
             EndOfBuffer => "window.eob",
             Symbols => "window.symbols",
             Match => "window.match",

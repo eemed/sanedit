@@ -7,7 +7,6 @@ pub(crate) fn default_themes() -> HashMap<String, Theme> {
     map.insert("gruvbox".into(), gruvbox());
     map.insert("default".into(), default());
     map.insert("rosepine".into(), rosepine());
-    map.insert("rosepine_dawn".into(), rosepine_dawn());
     map
 }
 
@@ -217,7 +216,11 @@ fn rosepine() -> Theme {
         Statusline,
         Style::from_str(&format!("{hl_low},{subtle},")).unwrap(),
     );
+
     theme.insert(Selection, Style::from_str(&format!("{rose},{base},")).unwrap());
+    theme.insert(Cursor, Style::from_str(&format!("{subtle},{base},")).unwrap());
+    theme.insert(PrimaryCursor, Style::from_str(&format!("{text},{base},")).unwrap());
+
     theme.insert(Match, Style::from_str(&format!("{iris},{base},")).unwrap());
 
     theme.insert(PromptDefault, Style::from_str(&format!("{surface},{text},")).unwrap());

@@ -81,7 +81,6 @@ pub(crate) enum Replacement {
 pub(crate) struct DisplayOptions {
     pub theme: String,
     pub tabstop: usize,
-    pub line_width: usize,
     pub replacements: HashMap<Replacement, String>,
 }
 
@@ -106,7 +105,6 @@ impl Default for DisplayOptions {
         DisplayOptions {
             theme: "rosepine".into(),
             tabstop: 8,
-            line_width: 80,
             replacements,
         }
     }

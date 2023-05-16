@@ -2,7 +2,7 @@ mod component;
 
 use core::fmt;
 
-use sanedit_messages::redraw::{Cell, Cursor, CursorStyle, Point, Prompt, Statusline, Window};
+use sanedit_messages::redraw::{Cell, Cursor, CursorShape, Point, Prompt, Statusline, Window};
 
 use crate::ui::UIContext;
 

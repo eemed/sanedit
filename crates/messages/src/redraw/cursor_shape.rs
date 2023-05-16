@@ -1,24 +1,24 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Copy)]
-pub enum CursorStyle {
+pub enum CursorShape {
     Block(bool),
     Underline(bool),
     Line(bool),
 }
 
-impl CursorStyle {
+impl CursorShape {
     pub fn blink(&self) -> bool {
         match self {
-            CursorStyle::Block(b) => *b,
-            CursorStyle::Underline(b) => *b,
-            CursorStyle::Line(b) => *b,
+            CursorShape::Block(b) => *b,
+            CursorShape::Underline(b) => *b,
+            CursorShape::Line(b) => *b,
         }
     }
 }
 
-impl Default for CursorStyle {
+impl Default for CursorShape {
     fn default() -> Self {
-        CursorStyle::Block(false)
+        CursorShape::Block(false)
     }
 }

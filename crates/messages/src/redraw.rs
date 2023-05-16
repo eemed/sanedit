@@ -1,7 +1,7 @@
 mod cell;
 mod color;
 mod cursor;
-mod cursor_style;
+mod cursor_shape;
 mod point;
 mod prompt;
 mod size;
@@ -14,7 +14,7 @@ mod window;
 pub use cell::*;
 pub use color::*;
 pub use cursor::*;
-pub use cursor_style::*;
+pub use cursor_shape::*;
 pub use point::*;
 pub use prompt::*;
 pub use size::*;

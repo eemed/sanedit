@@ -5,25 +5,20 @@ use sanedit_messages::redraw::Point;
 
 use crate::{
     common::{self, char::DisplayOptions},
-    editor::Editor,
+    editor::{Editor, windows::Cursor},
     server::ClientId,
 };
 
-fn do_move_width<F: Fn(&PieceTreeSlice, usize, &DisplayOptions) -> usize>(
+fn do_move_line<F: Fn(&PieceTreeSlice, &Cursor, &DisplayOptions) -> (usize, usize)>(
     editor: &mut Editor,
     id: ClientId,
     f: F,
-    col: Option<usize>,
 ) {
     let (win, buf) = editor.win_buf_mut(id);
     let opts = win.display_options().clone();
     for cursor in win.cursors.cursors_mut() {
-        let pos = f(&buf.slice(..), cursor.pos(), &opts);
-        if let Some(col) = col {
-            cursor.goto_with_col(pos, col);
-        } else {
-            cursor.goto(pos);
-        }
+        let (pos, col) = f(&buf.slice(..), cursor, &opts);
+        cursor.goto_with_col(pos, col);
     }
     win.view_to_cursor(buf);
 }
@@ -216,9 +211,9 @@ fn next_visual_line_impl(editor: &mut Editor, id: ClientId) -> bool {
 }
 
 pub(crate) fn next_line(editor: &mut Editor, id: ClientId) {
-    do_move_width(editor, id, common::movement::next_line, None);
+    do_move_line(editor, id, common::movement::next_line);
 }
 
 pub(crate) fn prev_line(editor: &mut Editor, id: ClientId) {
-    do_move_width(editor, id, common::movement::prev_line, None);
+    do_move_line(editor, id, common::movement::prev_line);
 }

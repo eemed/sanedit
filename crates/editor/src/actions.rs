@@ -1,17 +1,21 @@
+pub(crate) mod cursors;
 pub(crate) mod editor;
+pub(crate) mod hooks;
 pub(crate) mod jobs;
 pub(crate) mod movement;
 pub(crate) mod prompt;
 pub(crate) mod search;
 pub(crate) mod text;
 pub(crate) mod view;
-pub(crate) mod hooks;
-pub(crate) mod cursors;
+
+#[cfg(test)]
+pub(crate) mod tests;
 
 use std::{fmt, sync::Arc};
 
 use crate::{editor::Editor, server::ClientId};
 
+use self::cursors::*;
 use self::editor::*;
 use self::jobs::*;
 use self::movement::*;
@@ -19,7 +23,6 @@ use self::prompt::*;
 use self::search::*;
 use self::text::*;
 use self::view::*;
-use self::cursors::*;
 
 macro_rules! action_list {
     ( $($name:ident,)*) => {

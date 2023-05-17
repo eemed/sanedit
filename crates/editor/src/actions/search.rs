@@ -13,8 +13,7 @@ use crate::{
 
 pub(crate) fn search_open(editor: &mut Editor, id: ClientId) {
     let on_confirm: PAction = Rc::new(move |editor, id, input| {});
-    let on_abort: PAction = Rc::new(move |editor, id, input| {
-    });
+    let on_abort: PAction = Rc::new(move |editor, id, input| {});
     let set = SetSearch {
         prompt: SetPrompt {
             message: "Search".into(),
@@ -44,8 +43,7 @@ pub(crate) fn search_close(editor: &mut Editor, id: ClientId) {
     win.focus = Focus::Window;
 }
 
-pub(crate) fn search_confirm_all(editor: &mut Editor, id: ClientId) {
-}
+pub(crate) fn search_confirm_all(editor: &mut Editor, id: ClientId) {}
 
 pub(crate) fn search_confirm(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);

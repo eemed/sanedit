@@ -6,7 +6,7 @@ pub trait Cursor {
     fn pos(&self) -> usize;
 }
 
-pub(crate) struct StringCursor<'a> {
+pub struct StringCursor<'a> {
     pos: usize,
     string: &'a str,
 }

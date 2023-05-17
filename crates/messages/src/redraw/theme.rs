@@ -159,7 +159,7 @@ mod test {
     use super::*;
 
     #[test]
-    fn insert_get() {
+    fn merge() {
         let mut theme = Theme::default();
         theme.insert(
             "window.cursor",
@@ -181,26 +181,26 @@ mod test {
         let style = theme.get("window");
         assert_eq!(
             style,
-            Some(Style {
+            Style {
                 text_style: None,
                 bg: Some(Color::Black),
                 fg: None,
-            })
+            }
         );
 
         let style = theme.get("window.cursor");
         assert_eq!(
             style,
-            Some(Style {
+            Style {
                 text_style: None,
                 bg: Some(Color::Black),
                 fg: Some(Color::White),
-            })
+            }
         );
     }
 
     #[test]
-    fn insert_get2() {
+    fn latest_matched() {
         let mut theme = Theme::default();
         theme.insert(
             "window",
@@ -210,6 +210,29 @@ mod test {
                 fg: Some(Color::White),
             },
         );
+        let style = theme.get("window.cursor");
+        assert_eq!(
+            style,
+            Style {
+                text_style: None,
+                bg: Some(Color::Black),
+                fg: Some(Color::White),
+            }
+        );
+    }
+
+    #[test]
+    fn merge_override() {
+        let mut theme = Theme::default();
+        theme.insert(
+            "window",
+            Style {
+                text_style: None,
+                bg: Some(Color::Black),
+                fg: Some(Color::White),
+            },
+        );
+
         theme.insert(
             "window.cursor",
             Style {
@@ -226,20 +249,16 @@ mod test {
         let style = theme.get("window");
         assert_eq!(
             style,
-            Some(Style {
+            Style {
                 text_style: None,
-                bg: Some(Color::Rgb(Rgb {
-                    red: 1,
-                    green: 1,
-                    blue: 1
-                })),
-                fg: None,
-            })
+                bg: Some(Color::Black),
+                fg: Some(Color::White),
+            }
         );
         let style = theme.get("window.cursor");
         assert_eq!(
             style,
-            Some(Style {
+            Style {
                 text_style: None,
                 bg: Some(Color::Black),
                 fg: Some(Color::Rgb(Rgb {
@@ -247,7 +266,7 @@ mod test {
                     green: 1,
                     blue: 1
                 })),
-            })
+            }
         );
     }
 }

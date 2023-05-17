@@ -254,7 +254,7 @@ fn remove_rec(
 
 // /// Find a node at `index` in the tree.
 // #[inline]
-// pub(crate) fn find_node_at(tree: &Tree, pos: usize) -> (Vec<&InternalNode>, usize) {
+// pub(crate) fn find_node_at(tree: &Tree, usize) -> (Vec<&InternalNode>, usize) {
 //     if tree.root.is_leaf() {
 //         return (vec![], 0);
 //     }
@@ -266,8 +266,8 @@ fn remove_rec(
 
 // fn find_node_rec<'a>(
 //     node: &'a Node,
-//     mut pos: usize,
-//     mut cur_pos: usize,
+//     mut usize,
+//     mut cur_usize,
 //     stack: &mut Vec<&'a InternalNode>,
 // ) -> usize {
 //     if let Node::Internal(n) = node {
@@ -319,30 +319,9 @@ pub(crate) mod test {
 
         assert_eq!(0, pos);
         assert_eq!(3, stack.len());
-        assert_eq!(
-            Piece {
-                kind: BufferKind::Add,
-                pos: 16,
-                len: 2
-            },
-            stack[0].piece
-        );
-        assert_eq!(
-            Piece {
-                kind: BufferKind::Add,
-                pos: 5,
-                len: 2
-            },
-            stack[1].piece
-        );
-        assert_eq!(
-            Piece {
-                kind: BufferKind::Add,
-                pos: 0,
-                len: 2
-            },
-            stack[2].piece
-        );
+        assert_eq!(Piece::new(BufferKind::Add, 16, 2), stack[0].piece);
+        assert_eq!(Piece::new(BufferKind::Add, 5, 2), stack[1].piece);
+        assert_eq!(Piece::new(BufferKind::Add, 0, 2), stack[2].piece);
     }
 
     #[test]
@@ -352,38 +331,10 @@ pub(crate) mod test {
 
         assert_eq!(9, pos);
         assert_eq!(4, stack.len());
-        assert_eq!(
-            Piece {
-                kind: BufferKind::Add,
-                pos: 16,
-                len: 2
-            },
-            stack[0].piece
-        );
-        assert_eq!(
-            Piece {
-                kind: BufferKind::Add,
-                pos: 12,
-                len: 2
-            },
-            stack[1].piece
-        );
-        assert_eq!(
-            Piece {
-                kind: BufferKind::Add,
-                pos: 18,
-                len: 2
-            },
-            stack[2].piece
-        );
-        assert_eq!(
-            Piece {
-                kind: BufferKind::Add,
-                pos: 20,
-                len: 2
-            },
-            stack[3].piece
-        );
+        assert_eq!(Piece::new(BufferKind::Add, 16, 2), stack[0].piece);
+        assert_eq!(Piece::new(BufferKind::Add, 12, 2), stack[1].piece);
+        assert_eq!(Piece::new(BufferKind::Add, 18, 2), stack[2].piece);
+        assert_eq!(Piece::new(BufferKind::Add, 20, 2), stack[3].piece);
     }
 
     #[test]
@@ -393,30 +344,9 @@ pub(crate) mod test {
 
         assert_eq!(17, pos);
         assert_eq!(3, stack.len());
-        assert_eq!(
-            Piece {
-                kind: BufferKind::Add,
-                pos: 16,
-                len: 2
-            },
-            stack[0].piece
-        );
-        assert_eq!(
-            Piece {
-                kind: BufferKind::Add,
-                pos: 12,
-                len: 2
-            },
-            stack[1].piece
-        );
-        assert_eq!(
-            Piece {
-                kind: BufferKind::Add,
-                pos: 10,
-                len: 2
-            },
-            stack[2].piece
-        );
+        assert_eq!(Piece::new(BufferKind::Add, 16, 2), stack[0].piece);
+        assert_eq!(Piece::new(BufferKind::Add, 12, 2), stack[1].piece);
+        assert_eq!(Piece::new(BufferKind::Add, 10, 2), stack[2].piece);
     }
 
     #[test]
@@ -648,7 +578,7 @@ pub(crate) mod test {
     // fn bug_finder() {
     //     use rand::random;
     //     fn make_tree(
-    //         p_len: usize,
+    //         p_usize,
     //     ) -> (Tree, ByteBuffer, ByteBuffer) {
     //         let mut tree = Tree::default();
     //         let orig_buf = ByteBuffer::default();
@@ -679,7 +609,7 @@ pub(crate) mod test {
     //         if let Err(e) = is_valid_tree(&tree) {
     //             println!("=========== ERROR ===============");
     //             tree.print_in_order();
-    //             println!("ERROR: {}, seed: {}, round: {}", e, seed, round);
+    //             println!("ERROR: {), seed: {}, round: {}", e, seed, round);
     //             assert!(false);
     //         }
 

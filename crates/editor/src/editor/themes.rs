@@ -211,22 +211,46 @@ fn rosepine() -> Theme {
         Default,
         Style::from_str(&format!("{base},{text},")).unwrap(),
     );
-    theme.insert(EndOfBuffer, Style::from_str(&format!(",{hl_med},")).unwrap());
+    theme.insert(
+        EndOfBuffer,
+        Style::from_str(&format!(",{hl_med},")).unwrap(),
+    );
     theme.insert(
         Statusline,
         Style::from_str(&format!("{hl_low},{subtle},")).unwrap(),
     );
 
-    theme.insert(Selection, Style::from_str(&format!("{rose},{base},")).unwrap());
-    theme.insert(Cursor, Style::from_str(&format!("{subtle},{base},")).unwrap());
-    theme.insert(PrimaryCursor, Style::from_str(&format!("{text},{base},")).unwrap());
+    theme.insert(
+        Selection,
+        Style::from_str(&format!("{rose},{base},")).unwrap(),
+    );
+    theme.insert(
+        Cursor,
+        Style::from_str(&format!("{subtle},{base},")).unwrap(),
+    );
+    theme.insert(
+        PrimaryCursor,
+        Style::from_str(&format!("{text},{base},")).unwrap(),
+    );
 
     theme.insert(Match, Style::from_str(&format!("{iris},{base},")).unwrap());
 
-    theme.insert(PromptDefault, Style::from_str(&format!("{surface},{text},")).unwrap());
+    theme.insert(
+        PromptDefault,
+        Style::from_str(&format!("{surface},{text},")).unwrap(),
+    );
     // theme.insert(PromptUserInput, Style::from_str(",,").unwrap());
-    theme.insert(PromptMessage, Style::from_str(&format!(",{gold},")).unwrap());
-    theme.insert(PromptCompletionSelected, Style::from_str(&format!("{overlay},{iris},")).unwrap());
-    theme.insert(PromptCompletion, Style::from_str(&format!(",{subtle},")).unwrap());
+    theme.insert(
+        PromptMessage,
+        Style::from_str(&format!(",{gold},")).unwrap(),
+    );
+    theme.insert(
+        PromptCompletionSelected,
+        Style::from_str(&format!("{overlay},{iris},")).unwrap(),
+    );
+    theme.insert(
+        PromptCompletion,
+        Style::from_str(&format!(",{subtle},")).unwrap(),
+    );
     theme
 }

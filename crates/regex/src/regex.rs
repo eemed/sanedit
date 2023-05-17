@@ -83,18 +83,3 @@ impl Match {
         &self.captures
     }
 }
-
-#[cfg(test)]
-mod test {
-    use crate::cursor::StringCursor;
-
-    use super::*;
-
-    #[test]
-    fn simple() {
-        let mut text: StringCursor = "ca".into();
-        let regex = Regex::new("car?");
-        println!("{:?}", regex.program);
-        let matched = regex.find(&mut text);
-    }
-}

@@ -30,14 +30,14 @@ impl Regex {
 
     /// Find the first match in input
     pub fn find(&self, input: &mut impl Cursor) -> Option<Match> {
-        match VM::thompson(&self.program, input, true) {
+        match VM::pike(&self.program, input, true) {
             VMResult::Match(m) => Some(m),
             _ => None,
         }
     }
 
     pub fn find_all(&self, input: &mut impl Cursor) -> Option<Vec<Match>> {
-        match VM::thompson(&self.program, input, false) {
+        match VM::pike(&self.program, input, false) {
             VMResult::All(matches) => Some(matches),
             _ => None,
         }

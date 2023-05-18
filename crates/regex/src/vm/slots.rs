@@ -13,6 +13,10 @@ impl Slots {
     }
 
     pub fn copy(&mut self, from: usize, to: usize) {
+        if from == to {
+            return;
+        }
+
         if from < to {
             let (head, tail) = self.slots.split_at_mut(from + 1);
             let to = &mut tail[to - from - 1];

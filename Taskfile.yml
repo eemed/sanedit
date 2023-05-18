@@ -139,6 +139,12 @@ tasks:
     cmds:
       - typst watch impl-notes.typ implementation-notes.pdf
 
+  docs:open:
+    desc: Open documentation pdf
+    dir: docs
+    cmds:
+      - gio open implementation-notes.pdf
+
   default:
     cmds:
       - task -l

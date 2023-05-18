@@ -6,3 +6,4 @@ flamegraph.svg
 perf.data*
 *.ignore
 testfiles
+docs/images/*.png

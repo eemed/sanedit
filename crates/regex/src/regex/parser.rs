@@ -152,6 +152,5 @@ mod test {
     #[test]
     fn simple() {
         let postfix = regex_to_postfix("cat|(dog)");
-        println!("Pfix {postfix:?}");
     }
 }

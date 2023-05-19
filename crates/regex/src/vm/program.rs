@@ -1,7 +1,7 @@
 use core::fmt;
 use std::ops::Deref;
 
-use super::inst::{Inst, InstIndex};
+use super::inst::Inst;
 
 pub(crate) struct Program {
     pub insts: Vec<Inst>,

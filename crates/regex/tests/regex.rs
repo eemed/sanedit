@@ -1,15 +1,19 @@
 use sanedit_regex::{Regex, StringCursor};
 
 #[test]
-fn question() {
-    let mut text: StringCursor = "cab".into();
-
+fn question_no_match() {
     let regex = Regex::new("car?").unwrap();
+    let mut text: StringCursor = "cab".into();
     let matched = regex.find(&mut text);
     assert!(matched.is_some());
     let matched = matched.unwrap();
     assert_eq!(0..2, matched.range());
 
+}
+
+#[test]
+fn question_match() {
+    let regex = Regex::new("car?").unwrap();
     let mut text: StringCursor = "carb".into();
     let matched = regex.find(&mut text);
     assert!(matched.is_some());

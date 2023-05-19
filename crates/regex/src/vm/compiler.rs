@@ -98,9 +98,9 @@ impl TryFrom<Postfix> for Program {
                     let l3 = 1;
                     insts.append(&mut e);
                     if lazy {
-                        insts.push(Inst::Split(l1, l3));
-                    } else {
                         insts.push(Inst::Split(l3, l1));
+                    } else {
+                        insts.push(Inst::Split(l1, l3));
                     }
 
                     blocks.push(insts);
@@ -117,9 +117,9 @@ impl TryFrom<Postfix> for Program {
                     let l1 = 1;
                     let l2 = l1 + e.len() as isize;
                     if lazy {
-                        insts.push(Inst::Split(l1, l2));
-                    } else {
                         insts.push(Inst::Split(l2, l1));
+                    } else {
+                        insts.push(Inst::Split(l1, l2));
                     }
                     insts.append(&mut e);
 
@@ -164,11 +164,6 @@ mod test {
         let regex = "ab(.*)";
         let postfix = regex_to_postfix(regex);
         if let Ok(prog) = Program::try_from(postfix) {
-            println!("-------- Begin program '{regex}' ---------");
-            for (i, inst) in prog.iter().enumerate() {
-                println!("{i:02}: {inst:?}");
-            }
-            println!("-------- end program ---------");
         }
     }
 

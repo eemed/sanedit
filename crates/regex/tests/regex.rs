@@ -8,7 +8,6 @@ fn question_no_match() {
     assert!(matched.is_some());
     let matched = matched.unwrap();
     assert_eq!(0..2, matched.range());
-
 }
 
 #[test]

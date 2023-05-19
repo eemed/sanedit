@@ -163,8 +163,7 @@ mod test {
     fn simple() {
         let regex = "ab(.*)";
         let postfix = regex_to_postfix(regex);
-        if let Ok(prog) = Program::try_from(postfix) {
-        }
+        if let Ok(prog) = Program::try_from(postfix) {}
     }
 
     // #[test]

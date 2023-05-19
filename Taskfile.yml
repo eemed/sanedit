@@ -88,7 +88,7 @@ tasks:
       - task: format
 
   format:
-    desc: Run code formatter
+    desc: Run code formatter on all files
     dir: crates
     cmds:
       - cargo fmt
@@ -109,15 +109,10 @@ tasks:
   install-pre-commit-hook:
     internal: true
     cmds:
-      - echo "task pre-commit" > {{ .PRECOMMIT_FILE }}
+      - cp hooks/pre-commit {{ .PRECOMMIT_FILE }}
       - chmod +x {{ .PRECOMMIT_FILE }}
     status:
       - test -f {{ .PRECOMMIT_FILE }}
-
-  pre-commit:
-    desc: Run pre-commit operations
-    cmds:
-      - task: format
 
   docs:images:
     internal: true

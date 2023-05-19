@@ -93,6 +93,12 @@ tasks:
     cmds:
       - cargo fmt
 
+  check:
+    desc: Run code checks on all files
+    dir: crates
+    cmds:
+      - cargo fmt --check
+
   clean:
     desc: Clean up working directories
     dir: crates
@@ -117,7 +123,7 @@ tasks:
   pre-commit:
     desc: Run pre-commit operations
     cmds:
-      - task: format
+      - task: check
 
   docs:images:
     internal: true

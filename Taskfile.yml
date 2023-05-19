@@ -109,10 +109,15 @@ tasks:
   install-pre-commit-hook:
     internal: true
     cmds:
-      - cp hooks/pre-commit {{ .PRECOMMIT_FILE }}
+      - echo "task pre-commit" > {{ .PRECOMMIT_FILE }}
       - chmod +x {{ .PRECOMMIT_FILE }}
     status:
       - test -f {{ .PRECOMMIT_FILE }}
+
+  pre-commit:
+    desc: Run pre-commit operations
+    cmds:
+      - task: format
 
   docs:images:
     internal: true

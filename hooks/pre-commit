@@ -1,31 +1,24 @@
 #!/bin/bash
 # Regexp for grep to only choose some file extensions for formatting
 exts="\.\(rs\)$"
+files=`git diff --cached --name-only --diff-filter=ACMR | grep $exts`
 
-# The formatter to use
-formatter="cargo fmt -- "
-
-# # Check availability of the formatter
-# if [ -z "$formatter" ]
-# then
-#   1>&2 echo "$formatter not found. Pre-commit formatting will not be done."
-#   exit 0
-# fi
+task format
 
 # Format staged files
-for file in `git diff --cached --name-only --diff-filter=ACMR | grep $exts`
+for file in files
 do
-  echo "Formatting $file"
+  # echo "Formatting $file"
   # Get the file from index
-  git show ":$file" > "$file.tmp"
+  # git show ":$file" > "$file.tmp"
   # Format it
-  "$formatter" -i "$file.tmp"
+  # "$formatter" -i "$file.tmp"
   # Create a blob object from the formatted file
-  hash=`git hash-object -w "$file.tmp"`
+  hash=`git hash-object -w "$file"`
   # Add it back to index
   git update-index --add --cacheinfo 100644 "$hash" "$file"
   # Remove the tmp file
-  rm "$file.tmp"
+  # rm "$file.tmp"
 done
 
 # If no files left in index after formatting - fail

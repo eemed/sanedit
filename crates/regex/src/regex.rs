@@ -5,8 +5,8 @@ use std::ops::Range;
 
 use self::parser::{literal_to_postfix, regex_to_postfix};
 use crate::{
-         cursor::Cursor,
-    vm::{Program, VMResult, VM},
+            cursor::Cursor,
+              vm::{Program, VMResult, VM},
 };
 pub use error::RegexError;
 

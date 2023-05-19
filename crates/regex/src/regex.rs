@@ -1,11 +1,12 @@
 mod error;
 pub(crate) mod parser;
 
+use std::mem;
 use std::ops::Range;
 
 use self::parser::{literal_to_postfix, regex_to_postfix};
 use crate::{
-      cursor::Cursor,
+    cursor::Cursor,
     vm::{Program, VMResult, VM},
 };
 pub use error::RegexError;

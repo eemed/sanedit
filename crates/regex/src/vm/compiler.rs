@@ -155,14 +155,14 @@ impl TryFrom<Postfix> for Program {
 
 #[cfg(test)]
 mod test {
-    use crate::regex::parser::regex_to_postfix;
+    use crate::regex::parser::regex2postfix;
 
     use super::*;
 
     #[test]
     fn simple() {
         let regex = "ab(.*)";
-        let postfix = regex_to_postfix(regex);
+        let postfix = regex2postfix(regex);
         if let Ok(prog) = Program::try_from(postfix) {}
     }
 

@@ -3,7 +3,7 @@ pub(crate) mod parser;
 
 use std::ops::Range;
 
-use self::parser::{literal_to_postfix, regex_to_postfix};
+use self::parser::{literal_to_postfix, regex2postfix};
 use crate::{
     cursor::Cursor,
     vm::{Program, VMResult, VM},
@@ -17,7 +17,7 @@ pub struct Regex {
 
 impl Regex {
     pub fn new(pattern: &str) -> Result<Regex, RegexError> {
-        let postfix = regex_to_postfix(pattern);
+        let postfix = regex2postfix(pattern);
         let program = Program::try_from(postfix)?;
         Ok(Regex { program })
     }

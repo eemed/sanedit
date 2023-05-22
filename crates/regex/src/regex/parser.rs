@@ -37,6 +37,87 @@ pub(crate) fn literal_to_postfix(string: &str) -> Postfix {
     buf
 }
 
+#[derive(Debug)]
+pub enum Op {
+    Paren(usize),
+    Or,
+    Seq,
+}
+
+impl TryFrom<Op> for PF {
+    type Error = String;
+
+    fn try_from(value: Op) -> Result<Self, Self::Error> {
+        match value {
+            Op::Paren(_) => todo!(),
+            Op::Or => Ok(PF::Or),
+            Op::Seq => Ok(PF::Seq),
+        }
+    }
+}
+
+// https://en.wikipedia.org/wiki/Shunting_yard_algorithm
+//
+// shunting yard algorithm used as a base but extended to handle postfix
+// operators and create the missing sequence infix operators.
+pub(crate) fn shunting_yard(re: &str) -> Postfix {
+    use PF::*;
+    let mut operators = Vec::new();
+    let mut output = Vec::new();
+    let mut nparen = 0;
+    let mut lastch = None;
+    let mut chars = re.chars().peekable();
+
+    while let Some(ch) = chars.next() {
+        // create infix sequence operators between atoms
+        let lastatom = lastch.map(|ch| !matches!(ch, '|' | '(')).unwrap_or(false);
+        let atom = !matches!(ch, '|' | ')' | '*' | '?' | '+');
+        if lastatom && atom {
+            operators.push(Op::Seq);
+        }
+
+        match ch {
+            '(' => {
+                operators.push(Op::Paren(nparen));
+                output.push(Save(nparen * 2));
+                nparen += 1;
+            }
+            ')' => {
+                while let Some(op) = operators.pop() {
+                    if let Op::Paren(n) = op {
+                        output.push(Save(n * 2 + 1));
+                        break;
+                    }
+                    output.push(op.try_into().unwrap());
+                }
+            }
+            '|' => operators.push(Op::Or),
+            '.' => output.push(Any),
+            '*' => {
+                let lazy = chars.next_if(|ch| matches!(ch, '?')).is_some();
+                output.push(Star(lazy));
+            }
+            '+' => {
+                let lazy = chars.next_if(|ch| matches!(ch, '?')).is_some();
+                output.push(Plus(lazy));
+            }
+            '?' => {
+                let lazy = chars.next_if(|ch| matches!(ch, '?')).is_some();
+                output.push(Question(lazy));
+            }
+            _ => output.push(Char(ch)),
+        }
+
+        lastch = Some(ch);
+    }
+
+    while let Some(op) = operators.pop() {
+        output.push(op.try_into().unwrap());
+    }
+
+    output
+}
+
 pub(crate) fn regex2postfix(re: &str) -> Postfix {
     let mut buf = Vec::new();
     let mut parens = Vec::new();
@@ -203,83 +284,6 @@ fn regex_to_postfix(
     }
 }
 
-pub enum Operator {
-    Paren(usize),
-    Or,
-    Seq,
-}
-
-impl TryFrom<Operator> for PF {
-    type Error = String;
-
-    fn try_from(value: Operator) -> Result<Self, Self::Error> {
-        match value {
-            Operator::Paren(_) => todo!(),
-            Operator::Or => Ok(PF::Or),
-            Operator::Seq => Ok(PF::Seq),
-        }
-    }
-}
-
-// https://en.wikipedia.org/wiki/Shunting_yard_algorithm
-pub(crate) fn shunting_yard(re: &str) -> Postfix {
-    let mut operators = Vec::new();
-    let mut output = Vec::new();
-    let mut nparen = 0;
-    let mut last_was_atom = false;
-
-    for ch in re.chars() {
-        use Operator::*;
-        let mut is_atom = !matches!(ch, '|' | ')' | '*');
-
-        if is_atom && last_was_atom {
-            println!("INSERT");
-            operators.push(Seq);
-        }
-        println!("CH: {ch} isatom: {is_atom}, last_was: {last_was_atom}");
-
-        match ch {
-            '(' => {
-                operators.push(Paren(nparen));
-                output.push(PF::Save(nparen * 2));
-                nparen += 1;
-                is_atom = false;
-            }
-            ')' => {
-                while let Some(op) = operators.pop() {
-                    if let Paren(n) = op {
-                        output.push(PF::Save(n * 2 + 1));
-                        is_atom = true;
-                        break;
-                    }
-                    output.push(op.try_into().unwrap());
-                }
-            }
-            '|' => {
-                operators.push(Or);
-            }
-            '.' => {
-                output.push(PF::Any);
-            }
-            '*' => {
-                output.push(PF::Star(false));
-                is_atom = true;
-            }
-            _ => {
-                output.push(PF::Char(ch));
-            }
-        }
-
-        last_was_atom = is_atom;
-    }
-
-    // while let Some(op) = operators.pop() {
-    //     output.push(op.try_into().unwrap());
-    // }
-
-    output
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
@@ -287,7 +291,8 @@ mod test {
     #[test]
     fn simple() {
         // let regex = "a(b|c)*d[a-zE]f";
-        let regex = "a(b|c)*d";
+        // let regex = "a(b|c)*d";
+        let regex = "a(b|c)*d??abc";
         println!("----- {regex} --------");
         let postfix = shunting_yard(regex);
         println!("SYA: {postfix:?}");

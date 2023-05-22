@@ -206,6 +206,7 @@ fn regex_to_postfix(
 pub enum Operator {
     Paren(usize),
     Or,
+    Seq,
 }
 
 impl TryFrom<Operator> for PF {
@@ -215,6 +216,7 @@ impl TryFrom<Operator> for PF {
         match value {
             Operator::Paren(_) => todo!(),
             Operator::Or => Ok(PF::Or),
+            Operator::Seq => Ok(PF::Seq),
         }
     }
 }
@@ -224,20 +226,30 @@ pub(crate) fn shunting_yard(re: &str) -> Postfix {
     let mut operators = Vec::new();
     let mut output = Vec::new();
     let mut nparen = 0;
+    let mut last_was_atom = false;
 
     for ch in re.chars() {
         use Operator::*;
+        let mut is_atom = !matches!(ch, '|' | ')' | '*');
+
+        if is_atom && last_was_atom {
+            println!("INSERT");
+            operators.push(Seq);
+        }
+        println!("CH: {ch} isatom: {is_atom}, last_was: {last_was_atom}");
 
         match ch {
             '(' => {
                 operators.push(Paren(nparen));
                 output.push(PF::Save(nparen * 2));
                 nparen += 1;
+                is_atom = false;
             }
             ')' => {
                 while let Some(op) = operators.pop() {
                     if let Paren(n) = op {
                         output.push(PF::Save(n * 2 + 1));
+                        is_atom = true;
                         break;
                     }
                     output.push(op.try_into().unwrap());
@@ -251,16 +263,19 @@ pub(crate) fn shunting_yard(re: &str) -> Postfix {
             }
             '*' => {
                 output.push(PF::Star(false));
+                is_atom = true;
             }
             _ => {
                 output.push(PF::Char(ch));
             }
         }
+
+        last_was_atom = is_atom;
     }
 
-    while let Some(op) = operators.pop() {
-        output.push(op.try_into().unwrap());
-    }
+    // while let Some(op) = operators.pop() {
+    //     output.push(op.try_into().unwrap());
+    // }
 
     output
 }

@@ -16,7 +16,12 @@ impl TryFrom<Postfix> for Program {
             match p {
                 Any => {
                     let mut insts = Vec::new();
-                    insts.push(Inst::ByteRange(0..u8::MAX));
+                    insts.push(Inst::ByteRange(0, u8::MAX));
+                    blocks.push(insts);
+                }
+                Range(start, end) => {
+                    let mut insts = Vec::new();
+                    insts.push(Inst::ByteRange(start, end));
                     blocks.push(insts);
                 }
                 Char(ch) => {
@@ -140,7 +145,7 @@ impl TryFrom<Postfix> for Program {
         // 01: ByteRange(0..255)
         // 02: Jmp(0)
         insts.push(Inst::Split(3, 1));
-        insts.push(Inst::ByteRange(0..u8::MAX));
+        insts.push(Inst::ByteRange(0, u8::MAX));
         insts.push(Inst::Jmp(-2));
 
         // add whole match extraction
@@ -155,15 +160,14 @@ impl TryFrom<Postfix> for Program {
 
 #[cfg(test)]
 mod test {
-    use crate::regex::parser::regex2postfix;
 
     use super::*;
 
     #[test]
     fn simple() {
-        let regex = "ab(.*)";
-        let postfix = regex2postfix(regex);
-        if let Ok(prog) = Program::try_from(postfix) {}
+        // let regex = "ab(.*)";
+        // let postfix = regex2postfix(regex);
+        // if let Ok(prog) = Program::try_from(postfix) {}
     }
 
     // #[test]

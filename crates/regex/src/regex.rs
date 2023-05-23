@@ -3,7 +3,7 @@ pub(crate) mod parser;
 
 use std::ops::Range;
 
-use self::parser::{literal_to_postfix, regex2postfix, shunting_yard};
+use self::parser::{literal_to_postfix, shunting_yard};
 use crate::{
     cursor::Cursor,
     vm::{Program, VMResult, VM},

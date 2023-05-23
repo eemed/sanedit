@@ -1,5 +1,3 @@
-use std::ops::Range;
-
 pub(crate) type InstIndex = usize;
 pub(crate) type InstOffset = isize;
 
@@ -8,7 +6,7 @@ pub(crate) type InstOffset = isize;
 pub(crate) enum Inst {
     Match,
     Byte(u8),
-    ByteRange(Range<u8>),
+    ByteRange(u8, u8),
     Jmp(InstOffset),
     Split(InstOffset, InstOffset),
     Save(usize),

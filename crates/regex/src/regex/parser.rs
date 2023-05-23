@@ -1,6 +1,8 @@
+use std::{iter::Peekable, str::Chars};
+
 pub(crate) type Postfix = Vec<PF>;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) enum PF {
     Char(char),
     Seq,
@@ -10,18 +12,8 @@ pub(crate) enum PF {
     Question(bool),
     Save(usize),
     Any,
-}
-
-impl PF {
-    fn is_atom(&self) -> bool {
-        matches!(self, PF::Char(_) | PF::Any)
-    }
-}
-
-struct Saved {
-    natom: usize,
-    nalt: usize,
-    nparen: usize,
+    Range(u8, u8),
+    // Range(char, char),
 }
 
 pub(crate) fn literal_to_postfix(string: &str) -> Postfix {
@@ -70,6 +62,7 @@ pub(crate) fn shunting_yard(re: &str) -> Postfix {
 
     while let Some(ch) = chars.next() {
         // create infix sequence operators between atoms
+        // TODO escapes \)
         let lastatom = lastch.map(|ch| !matches!(ch, '|' | '(')).unwrap_or(false);
         let atom = !matches!(ch, '|' | ')' | '*' | '?' | '+');
         if lastatom && atom {
@@ -90,6 +83,11 @@ pub(crate) fn shunting_yard(re: &str) -> Postfix {
                     }
                     output.push(op.try_into().unwrap());
                 }
+            }
+            '[' => {
+                // [a-z]
+                let mut pf = shunting_yard_list(&mut chars);
+                output.append(&mut pf);
             }
             '|' => operators.push(Op::Or),
             '.' => output.push(Any),
@@ -118,170 +116,40 @@ pub(crate) fn shunting_yard(re: &str) -> Postfix {
     output
 }
 
-pub(crate) fn regex2postfix(re: &str) -> Postfix {
-    let mut buf = Vec::new();
-    let mut parens = Vec::new();
-    let mut group = None;
-    let mut nparen = 0;
-    let mut natom = 0;
-    let mut nalt = 0;
+fn shunting_yard_list(chars: &mut Peekable<Chars>) -> Postfix {
+    use PF::*;
+    let mut operators = Vec::new();
+    let mut output = Vec::new();
 
-    for ch in re.chars() {
-        if group.is_none() {
-            regex_to_postfix(
-                &mut buf,
-                &mut parens,
-                &mut group,
-                &mut nparen,
-                &mut natom,
-                &mut nalt,
-                ch,
-            );
+    while let Some(ch) = chars.next() {
+        if ch == ']' {
+            break;
         }
 
-        if group.is_some() {}
-    }
-
-    debug_assert!(parens.is_empty());
-    debug_assert!(natom != 0);
-
-    natom -= 1;
-    while natom > 0 {
-        buf.push(PF::Seq);
-        natom -= 1;
-    }
-    while nalt > 0 {
-        buf.push(PF::Or);
-        nalt -= 1;
-    }
-
-    buf
-}
-
-fn regex_to_postfix_group(
-    buf: &mut Vec<PF>,
-    parens: &mut Vec<Saved>,
-    group: &mut Option<Saved>,
-    nparen: &mut usize,
-    natom: &mut usize,
-    nalt: &mut usize,
-    ch: char,
-) {
-}
-
-fn regex_to_postfix(
-    buf: &mut Vec<PF>,
-    parens: &mut Vec<Saved>,
-    group: &mut Option<Saved>,
-    nparen: &mut usize,
-    natom: &mut usize,
-    nalt: &mut usize,
-    ch: char,
-) {
-    // let mut buf = Vec::new();
-    // let mut parens = Vec::new();
-    // let mut groups = Vec::new();
-    // let mut nparen = 0;
-    // let mut natom = 0;
-    // let mut nalt = 0;
-
-    // for ch in re.chars() {
-    match ch {
-        '(' => {
-            if *natom > 1 {
-                *natom -= 1;
-                buf.push(PF::Seq);
-            }
-            buf.push(PF::Save(*nparen * 2));
-            let paren = Saved {
-                natom: *natom,
-                nalt: *nalt,
-                nparen: *nparen,
-            };
-            *nparen += 1;
-            *natom = 0;
-            *nalt = 0;
-            parens.push(paren);
+        if !output.is_empty() {
+            operators.push(Op::Or);
         }
-        '|' => {
-            debug_assert!(*natom != 0);
-            *natom -= 1;
-            while *natom > 0 {
-                buf.push(PF::Seq);
-                *natom -= 1;
-            }
-            *nalt += 1;
-        }
-        ')' => {
-            debug_assert!(!parens.is_empty());
-            debug_assert!(*natom != 0);
-            *natom -= 1;
-            while *natom > 0 {
-                buf.push(PF::Seq);
-                *natom -= 1;
-            }
-            while *nalt > 0 {
-                buf.push(PF::Or);
-                *nalt -= 1;
-            }
 
-            let last = parens.pop().expect("no parens found");
-
-            buf.push(PF::Save((last.nparen * 2) + 1));
-            *natom = last.natom;
-            *nalt = last.nalt;
-            *natom += 1;
-        }
-        '*' => {
-            debug_assert!(*natom != 0);
-            buf.push(PF::Star(false));
-        }
-        '+' => {
-            debug_assert!(*natom != 0);
-            buf.push(PF::Plus(false));
-        }
-        '?' => {
-            debug_assert!(*natom != 0);
-
-            if let Some(last) = buf.pop() {
-                match last {
-                    PF::Star(false) => buf.push(PF::Star(true)),
-                    PF::Plus(false) => buf.push(PF::Plus(true)),
-                    PF::Question(false) => buf.push(PF::Question(true)),
-                    _ => {
-                        buf.push(last);
-                        buf.push(PF::Question(false));
-                    }
-                }
+        let has_dash = chars.next_if(|ch| matches!(ch, '-')).is_some();
+        if has_dash {
+            if let Some(end) = chars.next_if(|ch| !matches!(ch, ']')) {
+                let start = ch as u8;
+                let end = end as u8;
+                output.push(Range(start, end));
             } else {
-                buf.push(PF::Question(false));
+                output.push(Char(ch));
+                output.push(Char('-'));
             }
-        }
-        '.' => {
-            if *natom > 1 {
-                *natom -= 1;
-                buf.push(PF::Seq);
-            }
-            buf.push(PF::Any);
-            *natom += 1;
-        }
-        '[' => {
-            let saved = Saved {
-                natom: *natom,
-                nalt: *nalt,
-                nparen: *nparen,
-            };
-            *group = Some(saved);
-        }
-        _ => {
-            if *natom > 1 {
-                *natom -= 1;
-                buf.push(PF::Seq);
-            }
-            buf.push(PF::Char(ch));
-            *natom += 1;
+        } else {
+            output.push(Char(ch));
         }
     }
+
+    while let Some(op) = operators.pop() {
+        output.push(op.try_into().unwrap());
+    }
+
+    output
 }
 
 #[cfg(test)]
@@ -292,12 +160,13 @@ mod test {
     fn simple() {
         // let regex = "a(b|c)*d[a-zE]f";
         // let regex = "a(b|c)*d";
-        let regex = "a(b|c)*d??abc";
+        // let regex = "a(b|c)*d??abc";
+        let regex = "a[a-z-]d";
         println!("----- {regex} --------");
         let postfix = shunting_yard(regex);
-        println!("SYA: {postfix:?}");
+        println!("{postfix:?}");
 
-        let postfix = regex2postfix(regex);
-        println!("NPF: {postfix:?}");
+        // let postfix = regex2postfix(regex);
+        // println!("NPF: {postfix:?}");
     }
 }

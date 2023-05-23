@@ -109,9 +109,9 @@ impl VM {
                             add_thread(&mut new, pc + 1, pos + 1, program, &mut slots);
                         }
                     }
-                    ByteRange(range) => {
+                    ByteRange(start, end) => {
                         if let Some(ref byte) = byte {
-                            if range.contains(byte) {
+                            if start <= byte && byte <= end {
                                 slots.copy(pc, pc + 1);
                                 add_thread(&mut new, pc + 1, pos + 1, program, &mut slots);
                             }

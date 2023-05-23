@@ -2,7 +2,7 @@ pub(crate) type InstIndex = usize;
 pub(crate) type InstOffset = isize;
 
 /// Instructions executed by vms
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) enum Inst {
     Match,
     Byte(u8),

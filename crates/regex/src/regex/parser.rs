@@ -13,6 +13,7 @@ pub(crate) enum PF {
     Save(usize),
     Any,
     Range(u8, u8),
+    Repeat(u32),
     // Range(char, char),
 }
 
@@ -60,9 +61,8 @@ pub(crate) fn shunting_yard(re: &str) -> Postfix {
     let mut lastch = None;
     let mut chars = re.chars().peekable();
 
-    while let Some(ch) = chars.next() {
+    while let Some(mut ch) = chars.next() {
         // create infix sequence operators between atoms
-        // TODO escapes \)
         let lastatom = lastch.map(|ch| !matches!(ch, '|' | '(')).unwrap_or(false);
         let atom = !matches!(ch, '|' | ')' | '*' | '?' | '+');
         if lastatom && atom {
@@ -70,6 +70,26 @@ pub(crate) fn shunting_yard(re: &str) -> Postfix {
         }
 
         match ch {
+            '{' => {
+                let mut num = String::new();
+                while let Some(ch) = chars.next() {
+                    if ch == '}' {
+                        break;
+                    }
+
+                    num.push(ch);
+                }
+
+                ch = '}';
+                let num: u32 = num.parse().expect("Failed to parse repeat number");
+                output.push(Repeat(num));
+            }
+            '\\' => {
+                if let Some(next) = chars.next() {
+                    ch = next;
+                    output.push(Char(next));
+                }
+            }
             '(' => {
                 operators.push(Op::Paren(nparen));
                 output.push(Save(nparen * 2));
@@ -85,7 +105,6 @@ pub(crate) fn shunting_yard(re: &str) -> Postfix {
                 }
             }
             '[' => {
-                // [a-z]
                 let mut pf = shunting_yard_list(&mut chars);
                 output.append(&mut pf);
             }
@@ -161,7 +180,7 @@ mod test {
         // let regex = "a(b|c)*d[a-zE]f";
         // let regex = "a(b|c)*d";
         // let regex = "a(b|c)*d??abc";
-        let regex = "a[a-z-]d";
+        let regex = "a\\({2}[a-z-]d";
         println!("----- {regex} --------");
         let postfix = shunting_yard(regex);
         println!("{postfix:?}");

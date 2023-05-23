@@ -65,6 +65,16 @@ impl TryFrom<Postfix> for Program {
 
                     blocks.push(insts);
                 }
+                Repeat(n) => {
+                    let e = blocks.pop().unwrap();
+                    let mut insts = Vec::with_capacity(e.len() * n as usize);
+
+                    for _ in 0..n {
+                        insts.extend_from_slice(&e);
+                    }
+
+                    blocks.push(insts);
+                }
                 Star(lazy) => {
                     // L1: split L2, L3
                     // L2: codes for e

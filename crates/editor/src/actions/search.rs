@@ -22,7 +22,6 @@ pub(crate) fn search_open(editor: &mut Editor, id: ClientId) {
             on_input: Some(Rc::new(search)),
             keymap: None,
         },
-        is_regex: false,
         select: false,
         stop_at_first_match: true,
     };

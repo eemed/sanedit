@@ -87,6 +87,7 @@ impl VM {
         let mut slots = Slots::new(program.slot_count(), len);
 
         add_thread(&mut current, 0, 0, program, &mut slots);
+        println!("PROG: {program:?}, current: {current:?}");
 
         loop {
             let pos = input.pos();
@@ -97,8 +98,10 @@ impl VM {
                 use Inst::*;
 
                 let pc = current[i];
+                println!("INS: {:?}, pc: {pc} byte/pos: {byte:?}/{pos}", &program[pc]);
                 match &program[pc] {
                     Match => {
+                        println!("MATCH: {pos}");
                         saved_pc = pc;
                         matched = true;
                         current.clear();

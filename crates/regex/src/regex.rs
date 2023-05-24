@@ -1,5 +1,6 @@
 mod error;
 pub(crate) mod parser;
+mod parser2;
 
 use std::ops::Range;
 
@@ -17,7 +18,7 @@ pub struct Regex {
 
 impl Regex {
     pub fn new(pattern: &str) -> Result<Regex, RegexError> {
-        let postfix = shunting_yard(pattern);
+        let postfix = shunting_yard(pattern).expect("parse error");
         let program = Program::try_from(postfix)?;
         Ok(Regex { program })
     }

@@ -1,4 +1,18 @@
-use std::{iter::Peekable, str::Chars};
+use std::{
+    iter::Peekable,
+    str::{CharIndices, Chars},
+};
+
+#[derive(Debug)]
+pub struct ParseError {
+    pos: usize,
+    kind: ParseErrorKind,
+}
+
+#[derive(Debug)]
+pub enum ParseErrorKind {
+    Number,
+}
 
 pub(crate) type Postfix = Vec<PF>;
 
@@ -53,15 +67,15 @@ impl TryFrom<Op> for PF {
 //
 // shunting yard algorithm used as a base but extended to handle postfix
 // operators and create the missing sequence infix operators.
-pub(crate) fn shunting_yard(re: &str) -> Postfix {
+pub(crate) fn shunting_yard(re: &str) -> Result<Postfix, ParseError> {
     use PF::*;
     let mut operators = Vec::new();
     let mut output = Vec::new();
     let mut nparen = 0;
     let mut lastch = None;
-    let mut chars = re.chars().peekable();
+    let mut chars = re.char_indices().peekable();
 
-    while let Some(mut ch) = chars.next() {
+    while let Some((pos, mut ch)) = chars.next() {
         // create infix sequence operators between atoms
         let lastatom = lastch.map(|ch| !matches!(ch, '|' | '(')).unwrap_or(false);
         let atom = !matches!(ch, '|' | ')' | '*' | '?' | '+');
@@ -72,7 +86,7 @@ pub(crate) fn shunting_yard(re: &str) -> Postfix {
         match ch {
             '{' => {
                 let mut num = String::new();
-                while let Some(ch) = chars.next() {
+                while let Some((_, ch)) = chars.next() {
                     if ch == '}' {
                         break;
                     }
@@ -81,11 +95,14 @@ pub(crate) fn shunting_yard(re: &str) -> Postfix {
                 }
 
                 ch = '}';
-                let num: u32 = num.parse().expect("Failed to parse repeat number");
+                let num = num.parse::<u32>().map_err(|_e| ParseError {
+                    pos,
+                    kind: ParseErrorKind::Number,
+                })?;
                 output.push(Repeat(num));
             }
             '\\' => {
-                if let Some(next) = chars.next() {
+                if let Some((_, next)) = chars.next() {
                     ch = next;
                     output.push(Char(next));
                 }
@@ -105,21 +122,21 @@ pub(crate) fn shunting_yard(re: &str) -> Postfix {
                 }
             }
             '[' => {
-                let mut pf = shunting_yard_list(&mut chars);
+                let mut pf = shunting_yard_list(&mut chars)?;
                 output.append(&mut pf);
             }
             '|' => operators.push(Op::Or),
             '.' => output.push(Any),
             '*' => {
-                let lazy = chars.next_if(|ch| matches!(ch, '?')).is_some();
+                let lazy = chars.next_if(|(_, ch)| matches!(ch, '?')).is_some();
                 output.push(Star(lazy));
             }
             '+' => {
-                let lazy = chars.next_if(|ch| matches!(ch, '?')).is_some();
+                let lazy = chars.next_if(|(_, ch)| matches!(ch, '?')).is_some();
                 output.push(Plus(lazy));
             }
             '?' => {
-                let lazy = chars.next_if(|ch| matches!(ch, '?')).is_some();
+                let lazy = chars.next_if(|(_, ch)| matches!(ch, '?')).is_some();
                 output.push(Question(lazy));
             }
             _ => output.push(Char(ch)),
@@ -132,15 +149,15 @@ pub(crate) fn shunting_yard(re: &str) -> Postfix {
         output.push(op.try_into().unwrap());
     }
 
-    output
+    Ok(output)
 }
 
-fn shunting_yard_list(chars: &mut Peekable<Chars>) -> Postfix {
+fn shunting_yard_list(chars: &mut Peekable<CharIndices>) -> Result<Postfix, ParseError> {
     use PF::*;
     let mut operators = Vec::new();
     let mut output = Vec::new();
 
-    while let Some(ch) = chars.next() {
+    while let Some((pos, ch)) = chars.next() {
         if ch == ']' {
             break;
         }
@@ -149,9 +166,9 @@ fn shunting_yard_list(chars: &mut Peekable<Chars>) -> Postfix {
             operators.push(Op::Or);
         }
 
-        let has_dash = chars.next_if(|ch| matches!(ch, '-')).is_some();
+        let has_dash = chars.next_if(|(_, ch)| matches!(ch, '-')).is_some();
         if has_dash {
-            if let Some(end) = chars.next_if(|ch| !matches!(ch, ']')) {
+            if let Some((_, end)) = chars.next_if(|(_, ch)| !matches!(ch, ']')) {
                 let start = ch as u8;
                 let end = end as u8;
                 output.push(Range(start, end));
@@ -168,7 +185,7 @@ fn shunting_yard_list(chars: &mut Peekable<Chars>) -> Postfix {
         output.push(op.try_into().unwrap());
     }
 
-    output
+    Ok(output)
 }
 
 #[cfg(test)]
@@ -180,7 +197,9 @@ mod test {
         // let regex = "a(b|c)*d[a-zE]f";
         // let regex = "a(b|c)*d";
         // let regex = "a(b|c)*d??abc";
-        let regex = "a\\({2}[a-z-]d";
+        // let regex = "a\\({2}[a-z-]d";
+        // let regex = "a+z|a";
+        let regex = "(a+z|a)+(z+a)*";
         println!("----- {regex} --------");
         let postfix = shunting_yard(regex);
         println!("{postfix:?}");

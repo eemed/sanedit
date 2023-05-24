@@ -4,6 +4,7 @@ use super::inst::InstIndex;
 
 pub(crate) type Thread = InstIndex;
 
+#[derive(Debug)]
 pub(crate) struct ThreadSet {
     threads: SparseSet,
 }
@@ -36,6 +37,7 @@ impl Index<usize> for ThreadSet {
     }
 }
 
+#[derive(Debug)]
 struct SparseSet {
     /// Holds the indices
     sparse: Box<[usize]>,

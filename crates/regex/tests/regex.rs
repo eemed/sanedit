@@ -1,6 +1,14 @@
 use sanedit_regex::{Regex, StringCursor};
 
 #[test]
+fn aplus() {
+    let regex = Regex::new("a+z|a").unwrap();
+    let mut text: StringCursor = "aaaaaaaa".into();
+    let matched = regex.find(&mut text);
+    println!("{matched:?}");
+}
+
+#[test]
 fn question_no_match() {
     let regex = Regex::new("car?").unwrap();
     let mut text: StringCursor = "cab".into();

@@ -77,27 +77,23 @@ impl Cursors {
 
         self.cursors.sort();
 
-        let as_ranges: Vec<Range<usize>> = self
-            .cursors
-            .iter()
-            .map(|c| c.selection().unwrap_or(c.pos()..c.pos() + 1))
-            .collect();
+        for i in (1..self.cursors.len()).rev() {
+            let cur = {
+                let cursor = &self.cursors[i - 1];
+                cursor.selection().unwrap_or(cursor.pos()..cursor.pos() + 1)
+            };
 
-        let mut delete = vec![];
-        for i in 1..as_ranges.len() {
-            let cur = &as_ranges[i];
-            let prev = &as_ranges[i - 1];
+            let next = {
+                let cursor = &self.cursors[i];
+                cursor.selection().unwrap_or(cursor.pos()..cursor.pos() + 1)
+            };
 
-            if cur.overlaps(prev) {
-                delete.push(i);
-                let prev = &mut self.cursors[i - 1];
-                prev.extend_to_include(cur);
+            if cur.overlaps(&next) {
+                self.cursors.remove(i);
+                let cur = &mut self.cursors[i - 1];
+                cur.extend_to_include(&next);
             }
         }
-
-        delete.into_iter().rev().for_each(|i| {
-            self.cursors.remove(i);
-        });
     }
 }
 

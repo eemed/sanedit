@@ -1,6 +1,8 @@
-use std::ops::Range;
+use std::{cmp, ops::Range};
 
-#[derive(Debug, PartialEq)]
+use crate::common::range::RangeUtils;
+
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub(crate) struct Cursor {
     /// Position in buffer
     pos: usize,
@@ -58,6 +60,34 @@ impl Cursor {
         let sel = self.selection()?;
         self.unanchor();
         Some(sel)
+    }
+
+    /// Extend this cursor to cover the specified range.
+    /// If the range is a single value this will not convert the
+    /// cursor into an selection.
+    pub fn extend_to_include(&mut self, other: &Range<usize>) {
+        let sel = self.selection().unwrap_or(self.pos()..self.pos() + 1);
+        if sel.includes(other) {
+            return;
+        }
+
+        if self.anchor.is_some() {
+            if let Some(anc) = self.anchor.as_mut() {
+                let min = if *anc < self.pos { anc } else { &mut self.pos };
+                *min = other.start;
+            }
+
+            if let Some(anc) = self.anchor.as_mut() {
+                let max = if *anc < self.pos { &mut self.pos } else { anc };
+                *max = other.end;
+            }
+            return;
+        }
+
+        let min = cmp::min(other.start, self.pos);
+        let max = cmp::max(other.end, self.pos);
+        self.pos = min;
+        self.anchor = Some(max);
     }
 
     // /// Remove the selected text from the buffer and restore cursor to non

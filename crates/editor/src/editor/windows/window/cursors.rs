@@ -1,6 +1,10 @@
 mod cursor;
 
+use std::ops::Range;
+
 pub(crate) use cursor::Cursor;
+
+use crate::common::range::RangeUtils;
 
 #[derive(Debug)]
 pub(crate) struct Cursors {
@@ -45,6 +49,15 @@ impl Cursors {
         self.cursors.insert(pos, cursor);
     }
 
+    pub fn push_primary(&mut self, cursor: Cursor) {
+        let pos = self
+            .cursors
+            .binary_search_by(|c| c.pos().cmp(&cursor.pos()))
+            .unwrap_or_else(|n| n);
+        self.cursors.insert(pos, cursor);
+        self.primary = pos;
+    }
+
     /// Remove cursor at position pos
     pub fn remove(&mut self, pos: usize) {}
 
@@ -58,7 +71,33 @@ impl Cursors {
 
     /// Merge overlapping cursors into one
     pub fn merge_overlapping(&mut self) {
-        todo!()
+        if self.cursors.len() <= 1 {
+            return;
+        }
+
+        self.cursors.sort();
+
+        let as_ranges: Vec<Range<usize>> = self
+            .cursors
+            .iter()
+            .map(|c| c.selection().unwrap_or(c.pos()..c.pos() + 1))
+            .collect();
+
+        let mut delete = vec![];
+        for i in 1..as_ranges.len() {
+            let cur = &as_ranges[i];
+            let prev = &as_ranges[i - 1];
+
+            if cur.overlaps(prev) {
+                delete.push(i);
+                let prev = &mut self.cursors[i - 1];
+                prev.extend_to_include(cur);
+            }
+        }
+
+        delete.into_iter().rev().for_each(|i| {
+            self.cursors.remove(i);
+        });
     }
 }
 

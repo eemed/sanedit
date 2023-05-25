@@ -82,7 +82,7 @@ impl Default for Hooks {
         hooks.register(
             Hook::CursorMoved,
             Action::Dynamic {
-                name: "merge overlapping curosrs".into(),
+                name: "merge overlapping cursors".into(),
                 fun: Arc::new(|editor, id| {
                     let (win, buf) = editor.win_buf_mut(id);
                     win.cursors.merge_overlapping();

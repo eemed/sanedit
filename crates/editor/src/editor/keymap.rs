@@ -54,6 +54,10 @@ impl Keymap {
              "ctrl+o", Action::prompt_open_file,
              "ctrl+f", Action::search_open,
              "ctrl+h", Action::search_clear_matches,
+
+             "esc", Action::remove_secondary_cursors,
+             "alt+down", Action::new_cursor_next_line,
+             "alt+up", Action::new_cursor_prev_line,
         );
 
         map

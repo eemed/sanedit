@@ -115,6 +115,10 @@ impl Action {
         search_history_prev,
         search_clear_matches,
         search_toggle_select,
+
+        remove_secondary_cursors,
+        new_cursor_next_line,
+        new_cursor_prev_line,
     );
 }
 

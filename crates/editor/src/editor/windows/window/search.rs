@@ -1,4 +1,4 @@
-use sanedit_regex::Match;
+use std::ops::Range;
 
 use crate::editor::keymap::Keymap;
 
@@ -14,7 +14,7 @@ pub(crate) struct SetSearch {
 #[derive(Debug)]
 pub(crate) struct Search {
     pub prompt: Prompt,
-    pub matches: Vec<Match>,
+    pub matches: Vec<Range<usize>>,
 
     // /// Wether to search using regex or not
     // pub is_regex: bool,

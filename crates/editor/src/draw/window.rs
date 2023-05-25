@@ -51,7 +51,7 @@ pub(crate) fn draw_window(win: &Window, buf: &Buffer, theme: &Theme) -> redraw::
 
 fn draw_search_highlights(
     grid: &mut Vec<Vec<redraw::Cell>>,
-    matches: &[Match],
+    matches: &[Range<usize>],
     view: &View,
     theme: &Theme,
 ) {
@@ -59,8 +59,7 @@ fn draw_search_highlights(
 
     let vrange = view.range();
     for m in matches {
-        let mrange = m.range();
-        if !vrange.overlaps(&mrange) {
+        if !vrange.overlaps(&m) {
             continue;
         }
 
@@ -68,7 +67,7 @@ fn draw_search_highlights(
         let mut pos = vrange.start;
         for (line, row) in view.cells().iter().enumerate() {
             for (col, cell) in row.iter().enumerate() {
-                if !matches!(cell, Cell::Empty) && mrange.contains(&pos) {
+                if !matches!(cell, Cell::Empty) && m.contains(&pos) {
                     grid[line][col].style = style;
                 }
 

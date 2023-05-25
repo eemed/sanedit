@@ -1,4 +1,7 @@
-use std::ops::{Bound, Range, RangeBounds};
+use std::{
+    io::{self, Write},
+    ops::{Bound, Range, RangeBounds},
+};
 
 use super::{chunks::Chunks, utf8::chars::Chars, Bytes, PieceTree};
 
@@ -102,6 +105,15 @@ impl<'a> PieceTreeSlice<'a> {
 
         self.pt.slice(start..end)
     }
+
+    /// Returns a slice reader implementing `io::Read`.
+    #[inline]
+    pub fn reader(&'a self) -> SliceReader<'a> {
+        SliceReader {
+            chunks: self.chunks(),
+            pos: 0,
+        }
+    }
 }
 
 impl<'a, B: AsRef<[u8]>> PartialEq<B> for PieceTreeSlice<'a> {
@@ -145,6 +157,31 @@ impl<'a> From<&PieceTreeSlice<'a>> for Vec<u8> {
         }
 
         bytes
+    }
+}
+
+#[derive(Debug)]
+pub struct SliceReader<'a> {
+    chunks: Chunks<'a>,
+    pos: usize,
+}
+
+impl<'a> io::Read for SliceReader<'a> {
+    fn read(&mut self, mut buf: &mut [u8]) -> io::Result<usize> {
+        if let Some((_pos, chunk)) = self.chunks.get() {
+            let bytes = chunk.as_ref();
+            let written = buf.write(&bytes[self.pos..])?;
+
+            self.pos += written;
+            if self.pos >= bytes.len() {
+                self.chunks.next();
+                self.pos = 0;
+            }
+
+            Ok(written)
+        } else {
+            Ok(0)
+        }
     }
 }
 

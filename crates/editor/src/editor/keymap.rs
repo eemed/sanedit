@@ -96,7 +96,7 @@ impl Keymap {
              "up", Action::search_history_prev,
              "down", Action::search_history_next,
 
-             "ctrl+r", Action::search_toggle_regex,
+             // "ctrl+r", Action::search_toggle_regex,
              "ctrl+s", Action::search_toggle_select,
         );
 

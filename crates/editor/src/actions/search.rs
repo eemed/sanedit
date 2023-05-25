@@ -3,6 +3,7 @@ use std::rc::Rc;
 use sanedit_regex::Regex;
 
 use crate::{
+    common::searcher::Searcher,
     editor::{
         buffers::Buffer,
         windows::{Focus, PAction, Search, SetPrompt, SetSearch, Window},
@@ -91,11 +92,11 @@ pub(crate) fn search_clear_matches(editor: &mut Editor, id: ClientId) {
     win.search.matches.clear();
 }
 
-pub(crate) fn search_toggle_regex(editor: &mut Editor, id: ClientId) {
-    let (win, buf) = editor.win_buf_mut(id);
-    win.search.is_regex = !win.search.is_regex;
-    win.search.prompt.message = format_search_msg(&win.search);
-}
+// pub(crate) fn search_toggle_regex(editor: &mut Editor, id: ClientId) {
+//     let (win, buf) = editor.win_buf_mut(id);
+//     win.search.is_regex = !win.search.is_regex;
+//     win.search.prompt.message = format_search_msg(&win.search);
+// }
 
 pub(crate) fn search_toggle_select(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
@@ -105,9 +106,9 @@ pub(crate) fn search_toggle_select(editor: &mut Editor, id: ClientId) {
 
 fn format_search_msg(search: &Search) -> String {
     let mut flags = Vec::new();
-    if search.is_regex {
-        flags.push("r");
-    }
+    // if search.is_regex {
+    //     flags.push("r");
+    // }
 
     if search.select {
         flags.push("s");
@@ -130,36 +131,59 @@ fn search(editor: &mut Editor, id: ClientId, input: &str) {
 }
 
 fn search_impl(win: &mut Window, buf: &Buffer, input: &str) {
-    let regex = if win.search.is_regex {
-        if let Ok(regex) = Regex::new(input) {
-            regex
-        } else {
-            log::info!("invalid regex");
-            return;
-        }
-    } else {
-        Regex::new_literal(input)
-    };
-
-    regex_search(win, buf, regex);
-}
-
-fn regex_search(win: &mut Window, buf: &Buffer, regex: Regex) {
-    let mut cursor = buf.cursor();
-
-    if let Some(m) = regex.find(&mut cursor) {
-        log::info!("match {m:?}");
-
-        if win.search.select {
-            let cursor = win.primary_cursor_mut();
-            cursor.unanchor();
-            cursor.goto(m.start());
-            cursor.anchor();
-            cursor.goto(m.end());
-        }
-
-        win.search.matches = vec![m];
-    } else {
+    let mut searcher = Searcher::new(buf.slice(..));
+    if input.is_empty() {
         win.search.matches = vec![];
+        return;
     }
+
+    match searcher.find(input) {
+        Some(mat) => {
+            log::info!("match {mat:?}");
+
+            if win.search.select {
+                let cursor = win.primary_cursor_mut();
+                cursor.unanchor();
+                cursor.goto(mat.start);
+                cursor.anchor();
+                cursor.goto(mat.end);
+            }
+
+            win.search.matches = vec![mat];
+        }
+        None => win.search.matches = vec![],
+    }
+
+    // let regex = if win.search.is_regex {
+    //     if let Ok(regex) = Regex::new(input) {
+    //         regex
+    //     } else {
+    //         log::info!("invalid regex");
+    //         return;
+    //     }
+    // } else {
+    //     Regex::new_literal(input)
+    // };
+
+    // regex_search(win, buf, regex);
 }
+
+// fn regex_search(win: &mut Window, buf: &Buffer, regex: Regex) {
+//     let mut cursor = buf.cursor();
+
+//     if let Some(m) = regex.find(&mut cursor) {
+//         log::info!("match {m:?}");
+
+//         if win.search.select {
+//             let cursor = win.primary_cursor_mut();
+//             cursor.unanchor();
+//             cursor.goto(m.start());
+//             cursor.anchor();
+//             cursor.goto(m.end());
+//         }
+
+//         win.search.matches = vec![m];
+//     } else {
+//         win.search.matches = vec![];
+//     }
+// }

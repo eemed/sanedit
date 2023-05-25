@@ -19,7 +19,7 @@ use crate::piece_tree::tree::piece::Piece;
 use buffers::AddBuffer;
 use buffers::OriginalBuffer;
 
-pub use self::slice::PieceTreeSlice;
+pub use self::slice::{PieceTreeSlice, SliceReader};
 pub use self::utf8::chars::Chars;
 pub use crate::cursor_iterator::CursorIterator;
 pub use crate::piece_tree::bytes::Bytes;

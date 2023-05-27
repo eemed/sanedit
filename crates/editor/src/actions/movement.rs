@@ -85,6 +85,14 @@ pub(crate) fn prev_word_start(editor: &mut Editor, id: ClientId) {
     do_move(editor, id, common::movement::prev_word_start, None);
 }
 
+pub(crate) fn next_word_end(editor: &mut Editor, id: ClientId) {
+    do_move(editor, id, common::movement::next_word_end, None);
+}
+
+pub(crate) fn prev_word_end(editor: &mut Editor, id: ClientId) {
+    do_move(editor, id, common::movement::prev_word_end, None);
+}
+
 pub(crate) fn next_paragraph(editor: &mut Editor, id: ClientId) {
     do_move(editor, id, common::movement::next_paragraph, None);
 }

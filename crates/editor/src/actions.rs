@@ -89,6 +89,8 @@ impl Action {
         prev_line,
         next_word_start,
         prev_word_start,
+        next_word_end,
+        prev_word_end,
         next_paragraph,
         prev_paragraph,
         scroll_up,

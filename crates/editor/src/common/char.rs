@@ -3,6 +3,7 @@ use std::ops::Range;
 
 use sanedit_buffer::piece_tree::PieceTreeSlice;
 
+use smallvec::SmallVec;
 use unicode_width::UnicodeWidthStr;
 
 use super::eol::EOL;
@@ -39,10 +40,6 @@ impl Char {
             .unwrap_or(0)
     }
 
-    pub fn grapheme_category(&self) -> GraphemeCategory {
-        grapheme_category(&self.grapheme)
-    }
-
     pub fn grapheme(&self) -> &str {
         &self.grapheme
     }
@@ -60,9 +57,16 @@ pub(crate) enum GraphemeCategory {
     Unknown,
 }
 
+#[inline(always)]
 pub(crate) fn is_word_break(prev: &GraphemeCategory, next: &GraphemeCategory) -> bool {
     use GraphemeCategory::*;
     prev != next && matches!(next, Word | Punctuation)
+}
+
+#[inline(always)]
+pub(crate) fn is_word_break_end(prev: &GraphemeCategory, next: &GraphemeCategory) -> bool {
+    use GraphemeCategory::*;
+    prev != next && matches!(prev, Word | Punctuation)
 }
 
 #[derive(Debug, Hash, Eq, PartialEq, Clone)]
@@ -288,17 +292,27 @@ fn ascii_control_to_char(grapheme: String, buf_range: Option<Range<usize>>) -> O
 }
 
 #[inline(always)]
-pub(crate) fn grapheme_category(grapheme: &str) -> GraphemeCategory {
-    if grapheme.chars().all(|ch| ch.is_alphanumeric() || ch == '_') {
+pub(crate) fn grapheme_category(grapheme: &PieceTreeSlice) -> GraphemeCategory {
+    let chars = {
+        // read chars to a buf for easier handling
+        let mut chars: SmallVec<[char; 4]> = smallvec::SmallVec::new();
+        let mut iter = grapheme.chars();
+        while let Some((_, _, ch)) = iter.next() {
+            chars.push(ch);
+        }
+        chars
+    };
+
+    if chars.iter().all(|ch| ch.is_alphanumeric() || *ch == '_') {
         return GraphemeCategory::Word;
     }
 
-    if grapheme.chars().all(|ch| ch.is_whitespace()) {
+    if chars.iter().all(|ch| ch.is_whitespace()) {
         return GraphemeCategory::Whitespace;
     }
 
-    if grapheme.chars().count() == 1 {
-        let ch = grapheme.chars().next().unwrap();
+    if chars.len() == 1 {
+        let ch = chars[0];
         if ch.is_ascii() && !ch.is_alphanumeric() {
             return GraphemeCategory::Punctuation;
         }
@@ -308,7 +322,7 @@ pub(crate) fn grapheme_category(grapheme: &str) -> GraphemeCategory {
         }
     }
 
-    if EOL::is_eol_bytes(grapheme) {
+    if EOL::is_eol(grapheme) {
         return GraphemeCategory::EOL;
     }
 

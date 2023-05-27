@@ -3,7 +3,7 @@ use sanedit_buffer::piece_tree::{self, next_grapheme, prev_grapheme, PieceTreeSl
 use crate::common::char::grapheme_category;
 use crate::editor::windows::Cursor;
 
-use super::char::{is_word_break, Char, DisplayOptions, GraphemeCategory};
+use super::char::{is_word_break, is_word_break_end, Char, DisplayOptions, GraphemeCategory};
 use super::eol::EOL;
 
 pub(crate) fn next_grapheme_boundary(slice: &PieceTreeSlice, pos: usize) -> usize {
@@ -68,12 +68,13 @@ pub(crate) fn prev_line_start(slice: &PieceTreeSlice, mut pos: usize) -> usize {
     start_of_line(slice, pos)
 }
 
+/// Find next word start, this will move even if we currently are on a word
+/// start.
 pub(crate) fn next_word_start(slice: &PieceTreeSlice, mut pos: usize) -> usize {
     let mut prev: Option<GraphemeCategory> = None;
 
     while let Some(g) = next_grapheme(slice, pos) {
-        let string = String::from(&g);
-        let cat = grapheme_category(&string);
+        let cat = grapheme_category(&g);
 
         if let Some(ref prev) = prev {
             if is_word_break(prev, &cat) {
@@ -88,12 +89,13 @@ pub(crate) fn next_word_start(slice: &PieceTreeSlice, mut pos: usize) -> usize {
     slice.len()
 }
 
+/// Find previous word start, this will move even if we currently are on a word
+/// start.
 pub(crate) fn prev_word_start(slice: &PieceTreeSlice, mut pos: usize) -> usize {
     let mut cat: Option<GraphemeCategory> = None;
 
     while let Some(g) = prev_grapheme(slice, pos) {
-        let string = String::from(&g);
-        let prev = grapheme_category(&string);
+        let prev = grapheme_category(&g);
 
         if let Some(cat) = cat {
             if is_word_break(&prev, &cat) {
@@ -106,6 +108,78 @@ pub(crate) fn prev_word_start(slice: &PieceTreeSlice, mut pos: usize) -> usize {
     }
 
     0
+}
+
+pub(crate) fn on_word_start(slice: &PieceTreeSlice, mut pos: usize) -> bool {
+    let prev = prev_grapheme(slice, pos);
+    let next = next_grapheme(slice, pos);
+
+    match (prev, next) {
+        (Some(p), Some(n)) => {
+            let p = grapheme_category(&p);
+            let n = grapheme_category(&n);
+            is_word_break(&p, &n)
+        }
+        _ => false,
+    }
+}
+
+pub(crate) fn next_word_end(slice: &PieceTreeSlice, mut pos: usize) -> usize {
+    let mut prev: Option<(GraphemeCategory, usize)> = None;
+    if let Some(g) = next_grapheme(slice, pos) {
+        pos += g.len();
+    }
+
+    while let Some(g) = next_grapheme(slice, pos) {
+        let cat = grapheme_category(&g);
+
+        if let Some((ref prev, len)) = prev {
+            if is_word_break_end(prev, &cat) {
+                return pos - len;
+            }
+        }
+
+        pos += g.len();
+        prev = Some((cat, g.len()));
+    }
+
+    slice.len()
+}
+
+pub(crate) fn prev_word_end(slice: &PieceTreeSlice, mut pos: usize) -> usize {
+    let mut cat: Option<GraphemeCategory> = None;
+    if let Some(g) = prev_grapheme(slice, pos) {
+        pos += g.len();
+    }
+
+    while let Some(g) = prev_grapheme(slice, pos) {
+        let prev = grapheme_category(&g);
+        pos -= g.len();
+
+        if let Some(cat) = cat {
+            if is_word_break_end(&prev, &cat) {
+                return pos;
+            }
+        }
+
+        cat = Some(prev);
+    }
+
+    0
+}
+
+pub(crate) fn on_word_end(slice: &PieceTreeSlice, mut pos: usize) -> bool {
+    let prev = prev_grapheme(slice, pos);
+    let next = next_grapheme(slice, pos);
+
+    match (prev, next) {
+        (Some(p), Some(n)) => {
+            let p = grapheme_category(&p);
+            let n = grapheme_category(&n);
+            is_word_break_end(&p, &n)
+        }
+        _ => false,
+    }
 }
 
 pub(crate) fn next_paragraph(slice: &PieceTreeSlice, mut pos: usize) -> usize {

@@ -36,14 +36,17 @@ impl Keymap {
              "alt+b", Action::end_of_buffer,
              "alt+B", Action::start_of_buffer,
 
-             "alt+e", Action::end_of_line,
-             "alt+E", Action::start_of_line,
+             "alt+l", Action::end_of_line,
+             "alt+L", Action::start_of_line,
 
-             "alt+l", Action::next_visual_line,
-             "alt+L", Action::prev_visual_line,
+             // "alt+l", Action::next_visual_line,
+             // "alt+L", Action::prev_visual_line,
 
              "alt+w", Action::next_word_start,
              "alt+W", Action::prev_word_start,
+
+             "alt+e", Action::next_word_end,
+             "alt+E", Action::prev_word_end,
 
              "alt+p", Action::next_paragraph,
              "alt+P", Action::prev_paragraph,

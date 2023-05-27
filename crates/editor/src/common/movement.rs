@@ -1,3 +1,5 @@
+use std::ops::Range;
+
 use sanedit_buffer::piece_tree::{self, next_grapheme, prev_grapheme, PieceTreeSlice};
 
 use crate::common::char::grapheme_category;
@@ -305,4 +307,9 @@ pub(crate) fn pos_at_width(
     }
 
     pos
+}
+
+/// Returns the range of the word that includes position pos
+pub(crate) fn word_at_pos(slice: &PieceTreeSlice, pos: usize) -> Option<Range<usize>> {
+    todo!()
 }

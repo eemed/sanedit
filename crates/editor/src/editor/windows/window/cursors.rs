@@ -95,6 +95,12 @@ impl Cursors {
             }
         }
     }
+
+    pub fn swap_selection_dir(&mut self) {
+        for cur in &mut self.cursors {
+            cur.swap_selection_dir();
+        }
+    }
 }
 
 impl Default for Cursors {

@@ -1,4 +1,4 @@
-use std::{cmp, ops::Range};
+use std::{cmp, mem, ops::Range};
 
 use crate::common::range::RangeUtils;
 
@@ -20,6 +20,14 @@ impl Cursor {
             pos,
             col: None,
             anchor: None,
+        }
+    }
+
+    pub fn new_select(range: &Range<usize>) -> Cursor {
+        Cursor {
+            pos: range.end,
+            col: None,
+            anchor: Some(range.start),
         }
     }
 
@@ -88,6 +96,12 @@ impl Cursor {
         let max = cmp::max(other.end, self.pos);
         self.pos = min;
         self.anchor = Some(max);
+    }
+
+    pub fn swap_selection_dir(&mut self) {
+        if let Some(anc) = &mut self.anchor {
+            mem::swap(anc, &mut self.pos);
+        }
     }
 
     // /// Remove the selected text from the buffer and restore cursor to non

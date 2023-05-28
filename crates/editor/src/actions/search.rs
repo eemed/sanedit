@@ -3,7 +3,7 @@ use std::rc::Rc;
 use sanedit_regex::Regex;
 
 use crate::{
-    common::searcher::Searcher,
+    common,
     editor::{
         buffers::Buffer,
         windows::{Focus, PAction, Search, SetPrompt, SetSearch, Window},
@@ -131,13 +131,12 @@ fn search(editor: &mut Editor, id: ClientId, input: &str) {
 }
 
 fn search_impl(win: &mut Window, buf: &Buffer, input: &str) {
-    let mut searcher = Searcher::new(buf.slice(..));
     if input.is_empty() {
         win.search.matches = vec![];
         return;
     }
 
-    match searcher.find(input) {
+    match common::search::search(input.as_bytes(), &buf.slice(..)) {
         Some(mat) => {
             log::info!("match {mat:?}");
 

@@ -61,6 +61,8 @@ impl Keymap {
              "esc", Action::remove_secondary_cursors,
              "alt+down", Action::new_cursor_next_line,
              "alt+up", Action::new_cursor_prev_line,
+             "ctrl+d", Action::new_cursor_to_next_search_match,
+             "ctrl+l", Action::new_cursors_to_all_search_matches,
         );
 
         map

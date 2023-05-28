@@ -57,16 +57,22 @@ pub(crate) enum GraphemeCategory {
     Unknown,
 }
 
+impl GraphemeCategory {
+    #[inline(always)]
+    pub fn is_word(&self) -> bool {
+        use GraphemeCategory::*;
+        matches!(self, Word | Punctuation)
+    }
+}
+
 #[inline(always)]
 pub(crate) fn is_word_break(prev: &GraphemeCategory, next: &GraphemeCategory) -> bool {
-    use GraphemeCategory::*;
-    prev != next && matches!(next, Word | Punctuation)
+    prev != next && next.is_word()
 }
 
 #[inline(always)]
 pub(crate) fn is_word_break_end(prev: &GraphemeCategory, next: &GraphemeCategory) -> bool {
-    use GraphemeCategory::*;
-    prev != next && matches!(prev, Word | Punctuation)
+    prev != next && prev.is_word()
 }
 
 #[derive(Debug, Hash, Eq, PartialEq, Clone)]

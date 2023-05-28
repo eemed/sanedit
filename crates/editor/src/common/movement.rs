@@ -7,6 +7,7 @@ use crate::editor::windows::Cursor;
 
 use super::char::{is_word_break, is_word_break_end, Char, DisplayOptions, GraphemeCategory};
 use super::eol::EOL;
+use super::text::{pos_at_width, width_at_pos};
 
 pub(crate) fn next_grapheme_boundary(slice: &PieceTreeSlice, pos: usize) -> usize {
     piece_tree::next_grapheme_boundary(slice, pos)
@@ -112,25 +113,9 @@ pub(crate) fn prev_word_start(slice: &PieceTreeSlice, mut pos: usize) -> usize {
     0
 }
 
-pub(crate) fn on_word_start(slice: &PieceTreeSlice, mut pos: usize) -> bool {
-    let prev = prev_grapheme(slice, pos);
-    let next = next_grapheme(slice, pos);
-
-    match (prev, next) {
-        (Some(p), Some(n)) => {
-            let p = grapheme_category(&p);
-            let n = grapheme_category(&n);
-            is_word_break(&p, &n)
-        }
-        _ => false,
-    }
-}
-
 pub(crate) fn next_word_end(slice: &PieceTreeSlice, mut pos: usize) -> usize {
     let mut prev: Option<(GraphemeCategory, usize)> = None;
-    if let Some(g) = next_grapheme(slice, pos) {
-        pos += g.len();
-    }
+    pos = next_grapheme_boundary(slice, pos);
 
     while let Some(g) = next_grapheme(slice, pos) {
         let cat = grapheme_category(&g);
@@ -168,20 +153,6 @@ pub(crate) fn prev_word_end(slice: &PieceTreeSlice, mut pos: usize) -> usize {
     }
 
     0
-}
-
-pub(crate) fn on_word_end(slice: &PieceTreeSlice, mut pos: usize) -> bool {
-    let prev = prev_grapheme(slice, pos);
-    let next = next_grapheme(slice, pos);
-
-    match (prev, next) {
-        (Some(p), Some(n)) => {
-            let p = grapheme_category(&p);
-            let n = grapheme_category(&n);
-            is_word_break_end(&p, &n)
-        }
-        _ => false,
-    }
 }
 
 pub(crate) fn next_paragraph(slice: &PieceTreeSlice, mut pos: usize) -> usize {
@@ -264,52 +235,4 @@ pub(crate) fn prev_line(
     let pos = prev_line_start(slice, cpos);
     let npos = pos_at_width(slice, pos, width, opts);
     (npos, width)
-}
-
-pub(crate) fn width_at_pos(slice: &PieceTreeSlice, pos: usize, opts: &DisplayOptions) -> usize {
-    let target = pos;
-    let mut pos = start_of_line(slice, pos);
-    let mut col = 0;
-
-    while let Some(g) = next_grapheme(&slice, pos) {
-        let mut ch = Char::new(&g, col, opts);
-        if pos >= target {
-            break;
-        }
-
-        col += ch.width();
-        pos += ch.grapheme_len();
-    }
-
-    col
-}
-
-/// returns the position at width + the width at the position
-pub(crate) fn pos_at_width(
-    slice: &PieceTreeSlice,
-    pos: usize,
-    width: usize,
-    opts: &DisplayOptions,
-) -> usize {
-    let mut pos = start_of_line(slice, pos);
-    let mut col = 0;
-
-    while let Some(g) = next_grapheme(&slice, pos) {
-        let mut ch = Char::new(&g, col, opts);
-        if col + ch.width() > width {
-            break;
-        }
-        if EOL::is_eol(&g) {
-            break;
-        }
-        col += ch.width();
-        pos += ch.grapheme_len();
-    }
-
-    pos
-}
-
-/// Returns the range of the word that includes position pos
-pub(crate) fn word_at_pos(slice: &PieceTreeSlice, pos: usize) -> Option<Range<usize>> {
-    todo!()
 }

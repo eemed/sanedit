@@ -3,7 +3,7 @@ use sanedit_messages::redraw::Point;
 use crate::{
     common::{
         movement::{next_line, prev_line},
-        search::{search, search_all},
+        search::search,
     },
     editor::{windows::Cursor, Editor},
     server::ClientId,
@@ -47,18 +47,18 @@ pub(crate) fn new_cursors_to_all_search_matches(editor: &mut Editor, id: ClientI
     let last_search = win.search.prompt.input();
     let ppos = win.cursors.primary().pos();
 
-    if let Some(mut mat) = search_all(last_search.as_bytes(), &buf.slice(ppos..)) {
-        mat.start += ppos;
-        mat.end += ppos;
+    // if let Some(mut mat) = search_all(last_search.as_bytes(), &buf.slice(ppos..)) {
+    //     mat.start += ppos;
+    //     mat.end += ppos;
 
-        let selecting = win.primary_cursor().selection().is_none();
-        if selecting {
-            let cursor = win.cursors.primary_mut();
-            *cursor = Cursor::new_select(&mat);
-        } else {
-            win.cursors.push_primary(Cursor::new_select(&mat));
-        }
-    }
+    //     let selecting = win.primary_cursor().selection().is_none();
+    //     if selecting {
+    //         let cursor = win.cursors.primary_mut();
+    //         *cursor = Cursor::new_select(&mat);
+    //     } else {
+    //         win.cursors.push_primary(Cursor::new_select(&mat));
+    //     }
+    // }
 }
 
 pub(crate) fn new_cursor_to_point(editor: &mut Editor, id: ClientId, point: Point) {
@@ -89,4 +89,19 @@ pub(crate) fn remove_secondary_cursors(editor: &mut Editor, id: ClientId) {
 pub(crate) fn swap_selection_dir(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     win.cursors.swap_selection_dir();
+}
+
+pub(crate) fn remove_cursor(editor: &mut Editor, id: ClientId) {
+    let (win, buf) = editor.win_buf_mut(id);
+    win.cursors.remove_primary();
+}
+
+pub(crate) fn next_cursor(editor: &mut Editor, id: ClientId) {
+    let (win, buf) = editor.win_buf_mut(id);
+    win.cursors.primary_next();
+}
+
+pub(crate) fn prev_cursor(editor: &mut Editor, id: ClientId) {
+    let (win, buf) = editor.win_buf_mut(id);
+    win.cursors.primary_prev();
 }

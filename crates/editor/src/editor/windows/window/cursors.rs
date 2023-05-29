@@ -101,6 +101,34 @@ impl Cursors {
             cur.swap_selection_dir();
         }
     }
+
+    pub fn primary_next(&mut self) {
+        if self.primary + 1 < self.cursors.len() {
+            self.primary += 1;
+        } else {
+            self.primary = 0;
+        }
+    }
+
+    pub fn primary_prev(&mut self) {
+        if self.primary == 0 {
+            self.primary = self.cursors.len() - 1;
+        } else {
+            self.primary -= 1;
+        }
+    }
+
+    pub fn remove_primary(&mut self) {
+        if self.cursors.len() < 2 {
+            return;
+        }
+
+        self.cursors.remove(self.primary);
+        // Wrap to start otherwise goto next == do nothing
+        if self.primary >= self.cursors.len() {
+            self.primary = 0;
+        }
+    }
 }
 
 impl Default for Cursors {

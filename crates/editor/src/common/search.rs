@@ -3,6 +3,7 @@ use std::ops::Range;
 
 use sanedit_buffer::piece_tree::{PieceTreeSlice, SliceReader};
 
+#[derive(Debug)]
 pub(crate) struct Searcher {
     ac: AhoCorasick,
 }
@@ -14,8 +15,8 @@ impl Searcher {
         }
     }
 
-    pub fn find_iter<'s, 'a: 's>(&'a mut self, slice: &'s PieceTreeSlice) -> SearchIter<'s> {
-        let mut iter = self
+    pub fn find_iter<'s, 'a: 's>(&'a self, slice: &'s PieceTreeSlice) -> SearchIter<'s> {
+        let iter = self
             .ac
             .try_stream_find_iter(slice.reader())
             .expect("Failed to create stream iter");
@@ -31,23 +32,25 @@ impl<'a> Iterator for SearchIter<'a> {
     type Item = Range<usize>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.inner.next()?.ok()
+        let next = self.inner.next()?;
+        let mat = next.ok()?;
+        Some(mat.range())
     }
 }
 
-pub(crate) fn search(needle: &[u8], slice: &PieceTreeSlice) -> Option<Range<usize>> {
-    if needle.is_empty() {
-        return None;
-    }
+// pub(crate) fn search(needle: &[u8], slice: &PieceTreeSlice) -> Option<Range<usize>> {
+//     if needle.is_empty() {
+//         return None;
+//     }
 
-    let ac = AhoCorasick::new([needle]).unwrap();
-    let mut iter = ac
-        .try_stream_find_iter(slice.reader())
-        .expect("Failed to create stream iter");
-    let mat = iter.next()?.expect("failed to get match");
-    let range = mat.span().range();
-    Some(range)
-}
+//     let ac = AhoCorasick::new([needle]).unwrap();
+//     let mut iter = ac
+//         .try_stream_find_iter(slice.reader())
+//         .expect("Failed to create stream iter");
+//     let mat = iter.next()?.expect("failed to get match");
+//     let range = mat.span().range();
+//     Some(range)
+// }
 
 // pub(crate) fn search_iter<'n, 's>(
 //     needle: &'n [u8],

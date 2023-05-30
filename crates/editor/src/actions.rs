@@ -117,16 +117,18 @@ impl Action {
         search_history_prev,
         search_clear_matches,
         search_toggle_select,
+        search_next_match,
+        search_prev_match,
 
-        remove_secondary_cursors,
-        new_cursor_next_line,
-        new_cursor_prev_line,
-        new_cursor_to_next_search_match,
-        new_cursors_to_all_search_matches,
-        swap_selection_dir,
-        next_cursor,
-        prev_cursor,
-        remove_cursor,
+        cursor_remove_secondary,
+        cursor_new_next_line,
+        cursor_new_prev_line,
+        cursor_new_to_next_search_match,
+        cursor_new_to_all_search_matches,
+        cursor_swap_selection_dir,
+        cursor_next,
+        cursor_prev,
+        cursor_remove,
     );
 }
 

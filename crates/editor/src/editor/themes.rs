@@ -233,7 +233,10 @@ fn rosepine() -> Theme {
         Style::from_str(&format!("{text},{base},")).unwrap(),
     );
 
-    theme.insert(Match, Style::from_str(&format!("{iris},{base},")).unwrap());
+    theme.insert(
+        Match,
+        Style::from_str(&format!("{iris},{overlay},")).unwrap(),
+    );
 
     theme.insert(
         PromptDefault,

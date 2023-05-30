@@ -58,11 +58,11 @@ impl Keymap {
              "ctrl+f", Action::search_open,
              "ctrl+h", Action::search_clear_matches,
 
-             "esc", Action::remove_secondary_cursors,
-             "alt+down", Action::new_cursor_next_line,
-             "alt+up", Action::new_cursor_prev_line,
-             "ctrl+d", Action::new_cursor_to_next_search_match,
-             "ctrl+l", Action::new_cursors_to_all_search_matches,
+             "esc", Action::cursor_remove_secondary,
+             "alt+down", Action::cursor_new_next_line,
+             "alt+up", Action::cursor_new_prev_line,
+             "ctrl+d", Action::cursor_new_to_next_search_match,
+             "ctrl+l", Action::cursor_new_to_all_search_matches,
         );
 
         map

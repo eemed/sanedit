@@ -210,7 +210,7 @@ impl Editor {
                 if event.mods.contains(KeyMods::CONTROL) {
                     cursors::new_cursor_to_point(self, id, event.point);
                 } else if event.mods.is_empty() {
-                    cursors::goto_position(self, id, event.point);
+                    cursors::cursor_goto_position(self, id, event.point);
                 }
             }
             _ => {}

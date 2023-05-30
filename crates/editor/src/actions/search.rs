@@ -1,12 +1,10 @@
 use std::rc::Rc;
 
-use sanedit_regex::Regex;
-
 use crate::{
-    common,
+    common::{self, search::Searcher},
     editor::{
         buffers::Buffer,
-        windows::{Focus, PAction, Search, SetPrompt, SetSearch, Window},
+        windows::{Cursor, Focus, PAction, Search, SetPrompt, SetSearch, Window},
         Editor,
     },
     server::ClientId,
@@ -104,6 +102,14 @@ pub(crate) fn search_toggle_select(editor: &mut Editor, id: ClientId) {
     win.search.prompt.message = format_search_msg(&win.search);
 }
 
+pub(crate) fn search_next_match(editor: &mut Editor, id: ClientId) {
+    todo!()
+}
+
+pub(crate) fn search_prev_match(editor: &mut Editor, id: ClientId) {
+    todo!()
+}
+
 fn format_search_msg(search: &Search) -> String {
     let mut flags = Vec::new();
     // if search.is_regex {
@@ -127,31 +133,34 @@ fn format_search_msg(search: &Search) -> String {
 
 fn search(editor: &mut Editor, id: ClientId, input: &str) {
     let (win, buf) = editor.win_buf_mut(id);
-    search_impl(win, buf, input);
-}
-
-fn search_impl(win: &mut Window, buf: &Buffer, input: &str) {
     if input.is_empty() {
-        win.search.matches = vec![];
+        win.search.matches.clear();
         return;
     }
 
-    match common::search::search(input.as_bytes(), &buf.slice(..)) {
+    let searcher = Searcher::new(input.as_bytes());
+    let slice = buf.slice(..);
+    let mut iter = searcher.find_iter(&slice);
+    match iter.next() {
         Some(mat) => {
             log::info!("match {mat:?}");
 
-            if win.search.select {
-                let cursor = win.primary_cursor_mut();
-                cursor.unanchor();
+            let select = win.search.select;
+            let cursor = win.primary_cursor_mut();
+            if select {
+                *cursor = Cursor::new_select(&mat);
+            } else {
                 cursor.goto(mat.start);
-                cursor.anchor();
-                cursor.goto(mat.end);
             }
 
-            win.search.matches = vec![mat];
+            win.search.matches.clear();
+            win.search.matches.push(mat);
         }
-        None => win.search.matches = vec![],
+        None => win.search.matches.clear(),
     }
+}
+
+fn search_impl(win: &mut Window, buf: &Buffer, input: &str) {
 
     // let regex = if win.search.is_regex {
     //     if let Ok(regex) = Regex::new(input) {

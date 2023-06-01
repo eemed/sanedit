@@ -2,42 +2,10 @@ use std::ops::Range;
 
 use sanedit_buffer::piece_tree::{Bytes, PieceTreeSlice};
 
-// fn kmp_search(slice: &PieceTreeSlice, pat: &[u8]) -> Option<Range<usize>> {
-//     let m = pat.len();
-//     let n = slice.len();
-//     let lps = kmp_precompute(pat);
+// TODO boyer-moore algo is faster http://igm.univ-mlv.fr/~lecroq/string/node14.html#SECTION00140
+// it needs a sliding window of patterns length. Is it still faster even though
+// we are copying all the text we are comparing?
 
-//     let mut bytes = slice.bytes();
-//     let mut byte = bytes.next()?;
-//     let mut i = 0;
-//     let mut j = 0;
-
-//     while n - i >= m - j {
-//         if pat[j] == byte {
-//             j += 1;
-//             i += 1;
-//             if let Some(b) = bytes.next() {
-//                 byte = b;
-//             }
-//         }
-
-//         if j == m {
-//             return Some(i - j..i);
-//             // j = lps[j - 1];
-//         } else if pat[j] != byte {
-//             if j != 0 {
-//                 j = lps[j - 1];
-//             } else {
-//                 i += 1;
-//                 byte = bytes.next()?;
-//             }
-//         }
-//     }
-
-//     None
-// }
-
-// --------------------
 #[derive(Debug)]
 pub(crate) struct SearcherRev {
     lps: Vec<usize>,
@@ -53,45 +21,6 @@ impl SearcherRev {
         }
     }
 
-    fn kmp_precompute_rev(pat: &[u8]) -> Vec<usize> {
-        if pat.len() == 0 {
-            return vec![];
-        }
-
-        let m = pat.len();
-        let mut lps = vec![0; m];
-        lps[m - 1] = 0;
-
-        let mut len = m - 1;
-        let mut i = m - 2;
-
-        loop {
-            if pat[i] == pat[len] {
-                len -= 1;
-                lps[i] = m - 1 - len;
-
-                if i == 0 {
-                    break;
-                } else {
-                    i -= 1;
-                }
-            } else {
-                if len != m - 1 {
-                    len = lps[len + 1];
-                } else {
-                    lps[i] = 0;
-                    if i == 0 {
-                        break;
-                    } else {
-                        i -= 1;
-                    }
-                }
-            }
-        }
-
-        lps
-    }
-
     pub fn find_iter<'b, 'a: 'b>(&'b self, slice: &'a PieceTreeSlice) -> SearchIterRev<'a, 'b> {
         SearchIterRev::new(slice, &self.pat, &self.lps)
     }
@@ -102,7 +31,6 @@ pub(crate) struct SearchIterRev<'a, 'b> {
     lps: &'b [usize], // longest proper prefix which is also a suffix
     bytes: Bytes<'a>,
     byte: u8,
-    n: usize,
     i: usize,
     j: usize,
 }
@@ -121,7 +49,6 @@ impl<'a, 'b> SearchIterRev<'a, 'b> {
             pat,
             bytes,
             byte,
-            n: slice.len(),
             i: slice.len(),
             j: 0,
         }
@@ -138,7 +65,6 @@ impl<'a, 'b> Iterator for SearchIterRev<'a, 'b> {
             lps,
             bytes,
             byte,
-            n,
             i,
             j,
         } = self;

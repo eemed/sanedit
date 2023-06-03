@@ -83,6 +83,72 @@ impl SearcherBM {
 
         true
     }
+
+    fn iter<'a, 'b: 'a>(&'a self, slice: &'b PieceTreeSlice) -> SearchBMIter<'a, 'b> {
+        SearchBMIter::new(&self.pattern, &self.bad_char, &self.good_suffix, slice)
+    }
+}
+
+#[derive(Debug)]
+struct SearchBMIter<'a, 'b> {
+    pattern: &'a [u8],
+    bad_char: &'a [usize],
+    good_suffix: &'a [usize],
+    slice_len: usize,
+    bytes: Bytes<'b>,
+    i: usize,
+}
+
+impl<'a, 'b> SearchBMIter<'a, 'b> {
+    pub fn new(
+        pattern: &'a [u8],
+        bad_char: &'a [usize],
+        good_suffix: &[usize],
+        slice: &'b PieceTreeSlice,
+    ) {
+        SearchBMIter {
+            pattern,
+            bad_char,
+            good_suffix,
+            slice_len: slice.len(),
+            bytes: slice.bytes(),
+            i: pattern.len() - 1,
+        }
+    }
+}
+
+impl<'a, 'b> Iterator for SearchBMIter<'a, 'b> {
+    type Item = Range<usize>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let SearchBMIter {
+            pattern,
+            bad_char,
+            good_suffix,
+            slice_len,
+            bytes,
+            i,
+        } = self;
+
+        while *i < *slice_len {
+            let matches = true;
+
+            for j in (0..pattern.len()).rev() {
+                if bytes.byte_at(i) != pattern[i] {
+                    matches = false;
+                    break;
+                }
+                i -= 1;
+            }
+
+            if matches {
+                // match
+                // return i + 1;
+            }
+
+            i += max(bad_char[bytes.byte_at(i)], good_suffix[j]);
+        }
+    }
 }
 
 #[cfg(test)]

@@ -1,4 +1,4 @@
-use std::ops::Range;
+use std::ops::{Index, Range};
 
 use super::{
     chunks::{Chunk, Chunks},
@@ -102,6 +102,38 @@ impl<'a> Bytes<'a> {
     #[inline]
     pub fn pos(&self) -> usize {
         self.chunk_pos + self.pos
+    }
+
+    pub fn byte_at(&self, pos: usize) -> u8 {
+        let spos = self.pos();
+
+        // If currently on position
+        if spos == pos {
+            return self.next().unwrap();
+        }
+
+        // If previous byte is the one we need
+        if spos != 0 && spos - 1 == pos {
+            return self.prev().unwrap();
+        }
+
+        while self.pos() < pos {
+            self.next();
+        }
+
+        while self.pos() > pos {
+            self.prev();
+        }
+
+        self.next().unwrap()
+    }
+}
+
+impl<'a> Index<usize> for Bytes<'a> {
+    type Output = u8;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        todo!()
     }
 }
 

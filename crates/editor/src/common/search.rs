@@ -1,10 +1,129 @@
-use std::ops::Range;
+use std::{cmp::min, ops::Range};
 
 use sanedit_buffer::piece_tree::{Bytes, PieceTreeSlice};
 
 // TODO boyer-moore algo is faster http://igm.univ-mlv.fr/~lecroq/string/node14.html#SECTION00140
 // it needs a sliding window of patterns length. Is it still faster even though
 // we are copying all the text we are comparing?
+
+#[derive(Debug)]
+pub(crate) struct SearcherBM {
+    pattern: Vec<u8>,
+    bad_char: [usize; 256],
+    good_suffix: Box<[usize]>,
+}
+
+impl SearcherBM {
+    pub fn new(pattern: &[u8]) -> SearcherBM {
+        // https://go.dev/src/strings/search.go
+        SearcherBM {
+            bad_char: Self::build_bad_char_table(pattern),
+            good_suffix: Self::build_good_suffix_table(pattern),
+            pattern: pattern.into(),
+        }
+    }
+
+    fn build_bad_char_table(pattern: &[u8]) -> [usize; 256] {
+        let mut table = [pattern.len(); 256];
+        let last = pattern.len() - 1;
+
+        for i in 0..last {
+            table[pattern[i] as usize] = last - i;
+        }
+
+        table
+    }
+
+    fn build_good_suffix_table(pattern: &[u8]) -> Box<[usize]> {
+        let mut table: Box<[usize]> = vec![0; pattern.len()].into();
+        let last = pattern.len() - 1;
+
+        let mut last_prefix = last;
+        for i in (0..=last).rev() {
+            if Self::has_prefix(pattern, &pattern[i + 1..]) {
+                last_prefix = i + 1;
+            }
+            table[i] = last_prefix + last - i;
+        }
+
+        for i in 0..last {
+            let len_suffix = Self::longest_common_suffix(pattern, &pattern[1..i + 1]);
+            if pattern[i - len_suffix] != pattern[last - len_suffix] {
+                table[last - len_suffix] = len_suffix + last - i;
+            }
+        }
+
+        table
+    }
+
+    fn longest_common_suffix(pattern: &[u8], other: &[u8]) -> usize {
+        let plen = pattern.len();
+        let olen = other.len();
+        let both = min(plen, olen);
+
+        for i in 0..both {
+            if pattern[plen - 1 - i] != other[olen - 1 - i] {
+                return i;
+            }
+        }
+
+        both
+    }
+
+    fn has_prefix(pattern: &[u8], prefix: &[u8]) -> bool {
+        if pattern.len() < prefix.len() {
+            return false;
+        }
+
+        for i in 0..prefix.len() {
+            if pattern[i] != prefix[i] {
+                return false;
+            }
+        }
+
+        true
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use sanedit_buffer::piece_tree::PieceTree;
+
+    use super::*;
+
+    #[test]
+    fn kmp() {
+        let mut pt = PieceTree::new();
+        pt.insert(
+            0,
+            "world. This is another world. In another universe. Other worldy creatures. world",
+        );
+
+        let searcher = Searcher::new(b"world");
+        let slice = pt.slice(..);
+        let mut iter = searcher.find_iter(&slice);
+
+        while let Some(it) = iter.next() {
+            println!("FW: {it:?}");
+        }
+
+        // let searcher = Searcher::new(b"aaaa");
+        // println!("LPS: {:?}", searcher.lps);
+
+        // let rsearcher = SearcherRev::new(b"aaaa");
+        let rsearcher = SearcherRev::new(b"world");
+        let mut iter = rsearcher.find_iter(&slice);
+
+        while let Some(it) = iter.next() {
+            println!("BW: {it:?}");
+        }
+    }
+}
+
+// ###############################
+// ###############################
+// ###############################
+// ###############################
 
 #[derive(Debug)]
 pub(crate) struct SearcherRev {
@@ -217,40 +336,5 @@ impl<'a, 'b> Iterator for SearchIter<'a, 'b> {
         }
 
         None
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use sanedit_buffer::piece_tree::PieceTree;
-
-    use super::*;
-
-    #[test]
-    fn kmp() {
-        let mut pt = PieceTree::new();
-        pt.insert(
-            0,
-            "world. This is another world. In another universe. Other worldy creatures. world",
-        );
-
-        let searcher = Searcher::new(b"world");
-        let slice = pt.slice(..);
-        let mut iter = searcher.find_iter(&slice);
-
-        while let Some(it) = iter.next() {
-            println!("FW: {it:?}");
-        }
-
-        // let searcher = Searcher::new(b"aaaa");
-        // println!("LPS: {:?}", searcher.lps);
-
-        // let rsearcher = SearcherRev::new(b"aaaa");
-        let rsearcher = SearcherRev::new(b"world");
-        let mut iter = rsearcher.find_iter(&slice);
-
-        while let Some(it) = iter.next() {
-            println!("BW: {it:?}");
-        }
     }
 }

@@ -105,7 +105,6 @@ impl<'a> Bytes<'a> {
     }
 
     pub fn at(&mut self, pos: usize) -> u8 {
-        println!("AT: {pos}");
         let spos = self.pos();
 
         // If currently on position

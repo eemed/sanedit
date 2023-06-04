@@ -14,7 +14,6 @@ pub(crate) struct SearcherBM {
 
 impl SearcherBM {
     pub fn new(pattern: &[u8]) -> SearcherBM {
-        // https://go.dev/src/strings/search.go
         SearcherBM {
             bad_char: Self::build_bad_char_table(pattern),
             good_suffix: Self::build_good_suffix_table(pattern),
@@ -87,6 +86,10 @@ impl SearcherBM {
 
     fn iter<'a, 'b: 'a>(&'a self, slice: &'b PieceTreeSlice) -> SearchBMIter<'a, 'b> {
         SearchBMIter::new(&self.pattern, &self.bad_char, &self.good_suffix, slice)
+    }
+
+    fn iter_rev<'a, 'b: 'a>(&'a self, slice: &'b PieceTreeSlice) -> SearchBMIterRev<'a, 'b> {
+        SearchBMIterRev::new(&self.pattern, &self.bad_char, &self.good_suffix, slice)
     }
 }
 
@@ -162,6 +165,78 @@ impl<'a, 'b> Iterator for SearchBMIter<'a, 'b> {
     }
 }
 
+#[derive(Debug)]
+struct SearchBMIterRev<'a, 'b> {
+    pattern: &'a [u8],
+    bad_char: &'a [usize],
+    good_suffix: &'a [usize],
+    slice_len: usize,
+    bytes: Bytes<'b>,
+    i: usize,
+}
+
+impl<'a, 'b> SearchBMIterRev<'a, 'b> {
+    pub fn new(
+        pattern: &'a [u8],
+        bad_char: &'a [usize],
+        good_suffix: &'a [usize],
+        slice: &'b PieceTreeSlice,
+    ) -> SearchBMIterRev<'a, 'b> {
+        SearchBMIterRev {
+            pattern,
+            bad_char,
+            good_suffix,
+            slice_len: slice.len(),
+            bytes: slice.bytes(),
+            i: slice.len().saturating_sub(pattern.len()),
+        }
+    }
+}
+
+impl<'a, 'b> Iterator for SearchBMIterRev<'a, 'b> {
+    type Item = Range<usize>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let SearchBMIterRev {
+            pattern,
+            bad_char,
+            good_suffix,
+            slice_len,
+            bytes,
+            i,
+        } = self;
+
+        let m = pattern.len();
+        let n = *slice_len;
+
+        while *i < n {
+            let mut j = m - 1;
+            let mut mat = None;
+
+            while bytes.at(n - *i - 1) == pattern[j] {
+                if j == 0 {
+                    mat = Some(*i..*i + m);
+                    *i += m;
+                    break;
+                }
+
+                j -= 1;
+                *i -= 1;
+            }
+
+            if *i < n {
+                *i += max(bad_char[bytes.at(n - *i - 1) as usize], good_suffix[j]);
+            }
+
+            if mat.is_some() {
+                return mat;
+            }
+        }
+
+        None
+    }
+}
+
 #[cfg(test)]
 mod test {
     use sanedit_buffer::piece_tree::PieceTree;
@@ -190,6 +265,22 @@ mod test {
 
         while let Some(it) = iter.next() {
             println!("BM-F: {it:?}");
+        }
+
+        let searcher = SearcherRev::new(b"world");
+        let slice = pt.slice(..);
+        let mut iter = searcher.find_iter(&slice);
+
+        while let Some(it) = iter.next() {
+            println!("KMP-B: {it:?}");
+        }
+
+        let searcher = SearcherBM::new(b"world");
+        let slice = pt.slice(..);
+        let mut iter = searcher.iter_rev(&slice);
+
+        while let Some(it) = iter.next() {
+            println!("BM-B: {it:?}");
         }
 
         // let searcher = Searcher::new(b"aaaa");

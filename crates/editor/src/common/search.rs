@@ -5,10 +5,6 @@ use std::{
 
 use sanedit_buffer::piece_tree::{Bytes, PieceTreeSlice};
 
-// TODO boyer-moore algo is faster http://igm.univ-mlv.fr/~lecroq/string/node14.html#SECTION00140
-// it needs a sliding window of patterns length. Is it still faster even though
-// we are copying all the text we are comparing?
-
 #[derive(Debug)]
 pub(crate) struct SearcherBM {
     pattern: Vec<u8>,
@@ -40,44 +36,42 @@ impl SearcherBM {
     fn build_good_suffix_table(pattern: &[u8]) -> Box<[usize]> {
         let mut table: Box<[usize]> = vec![0; pattern.len()].into();
         let last = pattern.len() - 1;
+        let mut last_prefix = last;
 
-        let mut last_prefix = pattern.len();
         for i in (0..=last).rev() {
-            if Self::has_prefix(pattern, &pattern[i + 1..]) {
+            if Self::is_prefix(pattern, &pattern[i + 1..]) {
                 last_prefix = i + 1;
             }
-            table[last - i] = last_prefix + last - i;
+            table[i] = last_prefix + last - i;
         }
 
         for i in 0..last {
-            let slen = Self::suffix_len(pattern, i);
-            table[slen] = last - i + slen;
+            let slen = Self::common_suffix_len(pattern, &pattern[1..i + 1]);
+            if pattern[i - slen] != pattern[last - slen] {
+                table[last - slen] = last + slen - i;
+            }
         }
 
         table
     }
 
-    fn suffix_len(pattern: &[u8], p: usize) -> usize {
-        let mut len = 0;
-        let mut i = p;
-        let mut j = pattern.len() - 1;
+    fn common_suffix_len(pattern: &[u8], other: &[u8]) -> usize {
+        let mut i = 0;
+        let plen = pattern.len();
+        let olen = other.len();
 
-        while pattern[i] == pattern[j] {
-            len += 1;
-
-            if i == 0 {
+        while i < plen && i < olen {
+            if pattern[plen - 1 - i] != other[olen - 1 - i] {
                 break;
-            } else {
-                i -= 1;
             }
 
-            j -= 1;
+            i += 1;
         }
 
-        len
+        i
     }
 
-    fn has_prefix(pattern: &[u8], prefix: &[u8]) -> bool {
+    fn is_prefix(pattern: &[u8], prefix: &[u8]) -> bool {
         if pattern.len() < prefix.len() {
             return false;
         }
@@ -103,7 +97,7 @@ struct SearchBMIter<'a, 'b> {
     good_suffix: &'a [usize],
     slice_len: usize,
     bytes: Bytes<'b>,
-    i: i64,
+    i: usize,
 }
 
 impl<'a, 'b> SearchBMIter<'a, 'b> {
@@ -119,13 +113,13 @@ impl<'a, 'b> SearchBMIter<'a, 'b> {
             good_suffix,
             slice_len: slice.len(),
             bytes: slice.bytes(),
-            i: (pattern.len() - 1) as i64,
+            i: pattern.len() - 1,
         }
     }
 }
 
 impl<'a, 'b> Iterator for SearchBMIter<'a, 'b> {
-    type Item = Range<i64>;
+    type Item = Range<usize>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let SearchBMIter {
@@ -138,32 +132,30 @@ impl<'a, 'b> Iterator for SearchBMIter<'a, 'b> {
         } = self;
 
         let m = pattern.len();
+        let n = *slice_len;
 
-        while *i < *slice_len as i64 {
-            let mut j = (m - 1) as i64;
+        while *i < n {
+            let mut j = m - 1;
+            let mut mat = None;
 
-            while bytes.byte_at(*i as usize) == pattern[j as usize] {
+            while bytes.at(*i) == pattern[j] {
                 if j == 0 {
-                    let mat = *i..*i + m as i64;
-                    *i += if *i + (m as i64) < *slice_len as i64 {
-                        max(
-                            bad_char[bytes.byte_at(*i as usize + m) as usize],
-                            1, // good_suffix[j as usize],
-                        ) as i64
-                    } else {
-                        m as i64
-                    };
-                    return Some(mat);
+                    mat = Some(*i..*i + m);
+                    *i += m;
+                    break;
                 }
 
                 j -= 1;
                 *i -= 1;
             }
 
-            *i += max(
-                bad_char[bytes.byte_at(*i as usize) as usize],
-                1, // good_suffix[j as usize],
-            ) as i64;
+            if *i < n {
+                *i += max(bad_char[bytes.at(*i) as usize], good_suffix[j]);
+            }
+
+            if mat.is_some() {
+                return mat;
+            }
         }
 
         None
@@ -181,7 +173,7 @@ mod test {
         let mut pt = PieceTree::new();
         pt.insert(
             0,
-            "world. This is another world. In another universe. Other worldy creatures. world",
+            "world. This is another world. In another universe. Other worldy creatures. worl orld world",
         );
 
         let searcher = Searcher::new(b"world");

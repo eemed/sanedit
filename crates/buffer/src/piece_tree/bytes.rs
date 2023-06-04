@@ -104,7 +104,7 @@ impl<'a> Bytes<'a> {
         self.chunk_pos + self.pos
     }
 
-    pub fn byte_at(&self, pos: usize) -> u8 {
+    pub fn byte_at(&mut self, pos: usize) -> u8 {
         let spos = self.pos();
 
         // If currently on position

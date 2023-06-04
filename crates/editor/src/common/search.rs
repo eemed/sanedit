@@ -1,4 +1,7 @@
-use std::{cmp::min, ops::Range};
+use std::{
+    cmp::{max, min},
+    ops::Range,
+};
 
 use sanedit_buffer::piece_tree::{Bytes, PieceTreeSlice};
 
@@ -103,9 +106,9 @@ impl<'a, 'b> SearchBMIter<'a, 'b> {
     pub fn new(
         pattern: &'a [u8],
         bad_char: &'a [usize],
-        good_suffix: &[usize],
+        good_suffix: &'a [usize],
         slice: &'b PieceTreeSlice,
-    ) {
+    ) -> SearchBMIter<'a, 'b> {
         SearchBMIter {
             pattern,
             bad_char,
@@ -131,23 +134,32 @@ impl<'a, 'b> Iterator for SearchBMIter<'a, 'b> {
         } = self;
 
         while *i < *slice_len {
-            let matches = true;
+            let mut matches = true;
+            let mut j = pattern.len() - 1;
 
-            for j in (0..pattern.len()).rev() {
-                if bytes.byte_at(i) != pattern[i] {
+            loop {
+                if bytes.byte_at(*i) != pattern[j] {
                     matches = false;
                     break;
                 }
-                i -= 1;
+                *i -= 1;
+
+                if j == 0 {
+                    break;
+                } else {
+                    j -= 1;
+                }
             }
+
+            let mat = *i + 1..*i + 1 + pattern.len();
+            *i += max(bad_char[bytes.byte_at(*i) as usize], good_suffix[j]);
 
             if matches {
-                // match
-                // return i + 1;
+                return Some(mat);
             }
-
-            i += max(bad_char[bytes.byte_at(i)], good_suffix[j]);
         }
+
+        None
     }
 }
 

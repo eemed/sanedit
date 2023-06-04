@@ -41,36 +41,40 @@ impl SearcherBM {
         let mut table: Box<[usize]> = vec![0; pattern.len()].into();
         let last = pattern.len() - 1;
 
-        let mut last_prefix = last;
+        let mut last_prefix = pattern.len();
         for i in (0..=last).rev() {
             if Self::has_prefix(pattern, &pattern[i + 1..]) {
                 last_prefix = i + 1;
             }
-            table[i] = last_prefix + last - i;
+            table[last - i] = last_prefix + last - i;
         }
 
         for i in 0..last {
-            let len_suffix = Self::longest_common_suffix(pattern, &pattern[1..i + 1]);
-            if pattern[i - len_suffix] != pattern[last - len_suffix] {
-                table[last - len_suffix] = len_suffix + last - i;
-            }
+            let slen = Self::suffix_len(pattern, i);
+            table[slen] = last - i + slen;
         }
 
         table
     }
 
-    fn longest_common_suffix(pattern: &[u8], other: &[u8]) -> usize {
-        let plen = pattern.len();
-        let olen = other.len();
-        let both = min(plen, olen);
+    fn suffix_len(pattern: &[u8], p: usize) -> usize {
+        let mut len = 0;
+        let mut i = p;
+        let mut j = pattern.len() - 1;
 
-        for i in 0..both {
-            if pattern[plen - 1 - i] != other[olen - 1 - i] {
-                return i;
+        while pattern[i] == pattern[j] {
+            len += 1;
+
+            if i == 0 {
+                break;
+            } else {
+                i -= 1;
             }
+
+            j -= 1;
         }
 
-        both
+        len
     }
 
     fn has_prefix(pattern: &[u8], prefix: &[u8]) -> bool {
@@ -99,7 +103,7 @@ struct SearchBMIter<'a, 'b> {
     good_suffix: &'a [usize],
     slice_len: usize,
     bytes: Bytes<'b>,
-    i: usize,
+    i: i64,
 }
 
 impl<'a, 'b> SearchBMIter<'a, 'b> {
@@ -115,13 +119,13 @@ impl<'a, 'b> SearchBMIter<'a, 'b> {
             good_suffix,
             slice_len: slice.len(),
             bytes: slice.bytes(),
-            i: pattern.len() - 1,
+            i: (pattern.len() - 1) as i64,
         }
     }
 }
 
 impl<'a, 'b> Iterator for SearchBMIter<'a, 'b> {
-    type Item = Range<usize>;
+    type Item = Range<i64>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let SearchBMIter {
@@ -133,30 +137,33 @@ impl<'a, 'b> Iterator for SearchBMIter<'a, 'b> {
             i,
         } = self;
 
-        while *i < *slice_len {
-            let mut matches = true;
-            let mut j = pattern.len() - 1;
+        let m = pattern.len();
 
-            loop {
-                if bytes.byte_at(*i) != pattern[j] {
-                    matches = false;
-                    break;
-                }
-                *i -= 1;
+        while *i < *slice_len as i64 {
+            let mut j = (m - 1) as i64;
 
+            while bytes.byte_at(*i as usize) == pattern[j as usize] {
                 if j == 0 {
-                    break;
-                } else {
-                    j -= 1;
+                    let mat = *i..*i + m as i64;
+                    *i += if *i + (m as i64) < *slice_len as i64 {
+                        max(
+                            bad_char[bytes.byte_at(*i as usize + m) as usize],
+                            1, // good_suffix[j as usize],
+                        ) as i64
+                    } else {
+                        m as i64
+                    };
+                    return Some(mat);
                 }
+
+                j -= 1;
+                *i -= 1;
             }
 
-            let mat = *i + 1..*i + 1 + pattern.len();
-            *i += max(bad_char[bytes.byte_at(*i) as usize], good_suffix[j]);
-
-            if matches {
-                return Some(mat);
-            }
+            *i += max(
+                bad_char[bytes.byte_at(*i as usize) as usize],
+                1, // good_suffix[j as usize],
+            ) as i64;
         }
 
         None
@@ -170,7 +177,7 @@ mod test {
     use super::*;
 
     #[test]
-    fn kmp() {
+    fn boyer_moore() {
         let mut pt = PieceTree::new();
         pt.insert(
             0,
@@ -182,19 +189,27 @@ mod test {
         let mut iter = searcher.find_iter(&slice);
 
         while let Some(it) = iter.next() {
-            println!("FW: {it:?}");
+            println!("KMP-F: {it:?}");
+        }
+
+        let searcher = SearcherBM::new(b"world");
+        let slice = pt.slice(..);
+        let mut iter = searcher.iter(&slice);
+
+        while let Some(it) = iter.next() {
+            println!("BM-F: {it:?}");
         }
 
         // let searcher = Searcher::new(b"aaaa");
         // println!("LPS: {:?}", searcher.lps);
 
         // let rsearcher = SearcherRev::new(b"aaaa");
-        let rsearcher = SearcherRev::new(b"world");
-        let mut iter = rsearcher.find_iter(&slice);
+        // let rsearcher = SearcherRev::new(b"world");
+        // let mut iter = rsearcher.find_iter(&slice);
 
-        while let Some(it) = iter.next() {
-            println!("BW: {it:?}");
-        }
+        // while let Some(it) = iter.next() {
+        //     println!("BW: {it:?}");
+        // }
     }
 }
 

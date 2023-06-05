@@ -1,7 +1,8 @@
 use std::ops::Range;
 
-use sanedit_buffer::piece_tree::{
-    next_grapheme, next_grapheme_boundary, prev_grapheme, PieceTreeSlice,
+use sanedit_buffer::{
+    utf8::{next_grapheme, next_grapheme_boundary, prev_grapheme},
+    PieceTreeSlice,
 };
 
 use super::{

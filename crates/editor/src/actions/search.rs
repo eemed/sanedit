@@ -1,7 +1,8 @@
 use std::rc::Rc;
 
+use sanedit_buffer::Searcher;
+
 use crate::{
-    common::{self, search::Searcher},
     editor::{
         buffers::Buffer,
         windows::{Cursor, Focus, PAction, Search, SetPrompt, SetSearch, Window},

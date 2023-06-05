@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::ops::Range;
 
-use sanedit_buffer::piece_tree::PieceTreeSlice;
+use sanedit_buffer::PieceTreeSlice;
 
 use smallvec::SmallVec;
 use unicode_width::UnicodeWidthStr;

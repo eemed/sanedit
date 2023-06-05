@@ -1,4 +1,4 @@
-use sanedit_buffer::piece_tree::PieceTreeSlice;
+use sanedit_buffer::PieceTreeSlice;
 use strum::IntoEnumIterator;
 use strum_macros::{AsRefStr, EnumIter};
 

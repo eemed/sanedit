@@ -1,4 +1,4 @@
-use sanedit_buffer::piece_tree::Mark;
+use sanedit_buffer::Mark;
 
 pub struct Locations(Vec<Location>);
 

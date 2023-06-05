@@ -1,6 +1,6 @@
 use std::cmp;
 
-use sanedit_buffer::piece_tree::PieceTreeSlice;
+use sanedit_buffer::PieceTreeSlice;
 use sanedit_messages::redraw::Point;
 
 use crate::{

@@ -19,16 +19,9 @@ use crate::piece_tree::tree::piece::Piece;
 use buffers::AddBuffer;
 use buffers::OriginalBuffer;
 
-pub use self::slice::{PieceTreeSlice, SliceReader};
-pub use self::utf8::chars::Chars;
-pub use crate::cursor_iterator::CursorIterator;
-pub use crate::piece_tree::bytes::Bytes;
-pub use builder::PieceTreeBuilder;
-
-pub use utf8::graphemes::next_grapheme;
-pub use utf8::graphemes::next_grapheme_boundary;
-pub use utf8::graphemes::prev_grapheme;
-pub use utf8::graphemes::prev_grapheme_boundary;
+use self::slice::PieceTreeSlice;
+use self::utf8::chars::Chars;
+use crate::piece_tree::bytes::Bytes;
 
 pub(crate) const FILE_BACKED_MAX_PIECE_SIZE: usize = 1024 * 256;
 

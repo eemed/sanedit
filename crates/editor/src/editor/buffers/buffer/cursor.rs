@@ -1,4 +1,4 @@
-use sanedit_buffer::piece_tree::{Bytes, PieceTree, PieceTreeSlice};
+use sanedit_buffer::{Bytes, PieceTree};
 use sanedit_regex::Cursor;
 
 #[derive(Debug)]

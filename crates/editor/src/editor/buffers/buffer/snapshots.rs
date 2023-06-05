@@ -1,6 +1,6 @@
 use std::time;
 
-use sanedit_buffer::piece_tree::Snapshot;
+use sanedit_buffer::Snapshot;
 
 /// Snapshots contains snapshots of buffer contents that can be used as undo and
 /// redo points.

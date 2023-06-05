@@ -58,8 +58,8 @@ impl<'a> Bytes<'a> {
         }
     }
 
-    #[inline]
-    pub fn next(&mut self) -> Option<u8> {
+    #[inline(always)]
+    fn get(&mut self) -> Option<u8> {
         if self.pos >= self.chunk_len {
             self.pos = 0;
             let (chunk, pos, len): (Option<Chunk>, usize, usize) = self
@@ -77,6 +77,12 @@ impl<'a> Bytes<'a> {
 
         let chunk = self.chunk.as_ref()?.as_ref();
         let byte = chunk[self.pos];
+        Some(byte)
+    }
+
+    #[inline]
+    pub fn next(&mut self) -> Option<u8> {
+        let byte = self.get()?;
         self.pos += 1;
         Some(byte)
     }
@@ -104,19 +110,17 @@ impl<'a> Bytes<'a> {
         self.chunk_pos + self.pos
     }
 
+    /// Get byte at a position. This will iterate the iterator to the specific
+    /// byte requested.
     pub fn at(&mut self, pos: usize) -> u8 {
-        let spos = self.pos();
+        debug_assert!(
+            pos <= self.range.len(),
+            "Indexing out of slice: pos {pos}, slice len: {}",
+            self.range.len(),
+        );
 
-        // If currently on position
-        if spos == pos {
-            return self.next().unwrap();
-        }
-
-        // If previous byte is the one we need
-        if spos != 0 && spos - 1 == pos {
-            return self.prev().unwrap();
-        }
-
+        // TODO: if the requested position is far away from current position,
+        // instead of scrolling to it, just recreate self?
         while self.pos() < pos {
             self.next();
         }
@@ -125,15 +129,7 @@ impl<'a> Bytes<'a> {
             self.prev();
         }
 
-        self.next().unwrap()
-    }
-}
-
-impl<'a> Index<usize> for Bytes<'a> {
-    type Output = u8;
-
-    fn index(&self, index: usize) -> &Self::Output {
-        todo!()
+        self.get().unwrap()
     }
 }
 

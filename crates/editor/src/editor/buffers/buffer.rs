@@ -10,7 +10,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use sanedit_buffer::piece_tree::{PieceTree, PieceTreeSlice};
+use sanedit_buffer::{PieceTree, PieceTreeSlice};
 use sanedit_regex::Cursor;
 
 use crate::common::file::File;

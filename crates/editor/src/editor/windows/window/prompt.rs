@@ -17,6 +17,8 @@ pub(crate) struct SetPrompt {
     pub(crate) keymap: Option<Keymap>,
 }
 
+/// Prompt action, similar to a normal `ActionFunction` but also takes the
+/// prompt input as a additional parameter
 pub(crate) type PAction = Rc<dyn Fn(&mut Editor, ClientId, &str) + Send + Sync>;
 
 #[derive(Debug, Clone, Copy)]

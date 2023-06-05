@@ -103,17 +103,25 @@ impl Terminal {
     fn set_text_style(&mut self, style: Option<TextStyle>) -> Result<()> {
         if let Some(style) = style {
             let mut attrs = style::Attributes::default();
+
             if style.contains(TextStyle::BOLD) {
                 attrs.set(style::Attribute::Bold);
+            } else {
+                attrs.unset(style::Attribute::Bold);
             }
 
             if style.contains(TextStyle::UNDERLINE) {
                 attrs.set(style::Attribute::Underlined);
+            } else {
+                attrs.unset(style::Attribute::Underlined);
             }
 
             if style.contains(TextStyle::ITALIC) {
                 attrs.set(style::Attribute::Italic);
+            } else {
+                attrs.unset(style::Attribute::Italic);
             }
+
             queue!(self.out, style::SetAttributes(attrs))?;
         } else {
             queue!(self.out, style::SetAttribute(style::Attribute::Reset))?;

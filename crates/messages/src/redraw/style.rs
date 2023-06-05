@@ -38,16 +38,14 @@ impl Style {
             return Err(StyleError::Split);
         }
 
-        // bg, fg, other
         let bg = Color::from_str(splits[0]).ok();
         let fg = Color::from_str(splits[1]).ok();
-        let rest = splits[2];
+        let text_style = TextStyle::from_str(splits[2]);
 
-        // TODO attrs
         Ok(Style {
             bg,
             fg,
-            text_style: None,
+            text_style: Some(text_style),
         })
     }
 }

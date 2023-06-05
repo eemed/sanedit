@@ -113,7 +113,7 @@ impl Default for DisplayOptions {
         }
 
         DisplayOptions {
-            theme: "rosepine".into(),
+            theme: "yui".into(),
             tabstop: 8,
             replacements,
         }

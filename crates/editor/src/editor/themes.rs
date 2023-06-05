@@ -7,6 +7,7 @@ pub(crate) fn default_themes() -> HashMap<String, Theme> {
     map.insert("gruvbox".into(), gruvbox());
     map.insert("default".into(), default());
     map.insert("rosepine".into(), rosepine());
+    map.insert("yui".into(), yui());
     map
 }
 
@@ -255,5 +256,85 @@ fn rosepine() -> Theme {
         PromptCompletion,
         Style::from_str(&format!(",{subtle},")).unwrap(),
     );
+    theme
+}
+
+fn yui() -> Theme {
+    use ThemeField::*;
+    let black2 = "#7f726c";
+    let black3 = "#b4aba7";
+    let black = "#635954";
+    let black4 = "#292523";
+    let green_background = "#e8ffd1";
+    let green_foreground = "#408000";
+    let orange = "#E44C22";
+    let red_background = "#ffe0e0";
+    let red_foreground = "#a7111d";
+    let yellow_background = "#f9ffa3";
+    let yellow_foreground = "#7b6a3d";
+    let purple5 = "#DCD7F9";
+    let purple4 = "#cdc5f6";
+    let purple3 = "#7864e8";
+    let purple = "#5137e1";
+    let purple2 = "#371ec8";
+    let blue_background = "#e0f3ff";
+    let blue_foreground = "#00588f";
+    let white5 = "#fbfaf9";
+    let white = "#efeae5";
+    let white2 = "#e8e0d9";
+    let white3 = "#dcd1c6";
+    let white4 = "#cfbfb0";
+    let cyan = "#007575";
+
+    let mut theme = Theme::new("yui");
+    theme.insert(
+        Default,
+        Style::from_str(&format!("{white},{black},")).unwrap(),
+    );
+    theme.insert(
+        EndOfBuffer,
+        Style::from_str(&format!(",{black3},")).unwrap(),
+    );
+    theme.insert(
+        Statusline,
+        Style::from_str(&format!("{black},{white},bold")).unwrap(),
+    );
+
+    theme.insert(
+        Selection,
+        Style::from_str(&format!("{purple4},{purple2},")).unwrap(),
+    );
+    theme.insert(
+        Cursor,
+        Style::from_str(&format!("{purple4},{purple2},")).unwrap(),
+    );
+    theme.insert(
+        PrimaryCursor,
+        Style::from_str(&format!("{purple5},{purple},")).unwrap(),
+    );
+
+    theme.insert(
+        Match,
+        Style::from_str(&format!("{purple5},{purple},")).unwrap(),
+    );
+
+    theme.insert(
+        PromptDefault,
+        Style::from_str(&format!("{white2},{black},")).unwrap(),
+    );
+
+    theme.insert(
+        PromptCompletionSelected,
+        Style::from_str(&format!("{purple4},{purple2},")).unwrap(),
+    );
+    // // theme.insert(PromptUserInput, Style::from_str(",,").unwrap());
+    // theme.insert(
+    //     PromptMessage,
+    //     Style::from_str(&format!(",{orange},")).unwrap(),
+    // );
+    // theme.insert(
+    //     PromptCompletion,
+    //     Style::from_str(&format!(",{subtle},")).unwrap(),
+    // );
     theme
 }

@@ -2,7 +2,7 @@ use std::{path::PathBuf, rc::Rc};
 
 use crate::{
     editor::{
-        windows::{Focus, PAction, SetPrompt},
+        windows::{Focus, PAction, Prompt},
         Editor,
     },
     server::ClientId,
@@ -32,16 +32,10 @@ pub(crate) fn prompt_open_file(editor: &mut Editor, id: ClientId) {
         editor.jobs.stop(&job_id);
     });
 
-    let set = SetPrompt {
-        message: "Open a file".into(),
-        on_confirm: Some(on_confirm),
-        on_abort: Some(on_abort),
-        on_input: None,
-        keymap: None,
-    };
-
     let (win, buf) = editor.win_buf_mut(id);
-    win.prompt.set(set);
+    win.prompt = Prompt::new("Open a file");
+    win.prompt.on_confirm = Some(on_confirm);
+    win.prompt.on_abort = Some(on_abort);
     win.focus = Focus::Prompt;
 }
 

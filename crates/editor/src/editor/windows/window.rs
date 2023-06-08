@@ -28,9 +28,8 @@ pub(crate) use self::{
     options::Options,
     prompt::PAction,
     prompt::Prompt,
-    prompt::SetPrompt,
     search::Search,
-    search::SetSearch,
+    search::SearchDirection,
     view::{Cell, View},
 };
 

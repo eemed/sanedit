@@ -304,14 +304,11 @@ fn yui() -> Theme {
         Selection,
         Style::from_str(&format!("{purple4},{purple2},")).unwrap(),
     );
-    theme.insert(
-        Cursor,
-        Style::from_str(&format!("{purple4},{purple2},")).unwrap(),
-    );
-    theme.insert(
-        PrimaryCursor,
-        Style::from_str(&format!("{purple5},{purple},")).unwrap(),
-    );
+    theme.insert(Cursor, Style::from_str(&format!("{white4},,")).unwrap());
+    // theme.insert(
+    //     PrimaryCursor,
+    //     Style::from_str(&format!("{orange},{white},")).unwrap(),
+    // );
 
     theme.insert(
         Match,
@@ -320,21 +317,18 @@ fn yui() -> Theme {
 
     theme.insert(
         PromptDefault,
-        Style::from_str(&format!("{white2},{black},")).unwrap(),
+        Style::from_str(&format!("{black2},{white},")).unwrap(),
     );
 
     theme.insert(
         PromptCompletionSelected,
         Style::from_str(&format!("{purple4},{purple2},")).unwrap(),
     );
-    // // theme.insert(PromptUserInput, Style::from_str(",,").unwrap());
-    // theme.insert(
-    //     PromptMessage,
-    //     Style::from_str(&format!(",{orange},")).unwrap(),
-    // );
-    // theme.insert(
-    //     PromptCompletion,
-    //     Style::from_str(&format!(",{subtle},")).unwrap(),
-    // );
+    // theme.insert(PromptUserInput, Style::from_str(",,").unwrap());
+    theme.insert(PromptMessage, Style::from_str(&format!(",,bold")).unwrap());
+    theme.insert(
+        PromptCompletion,
+        Style::from_str(&format!("{white3},{black},")).unwrap(),
+    );
     theme
 }

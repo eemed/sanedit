@@ -1,6 +1,6 @@
 mod cursor;
 
-use std::ops::Range;
+use std::{cmp::min, ops::Range};
 
 pub(crate) use cursor::Cursor;
 
@@ -94,6 +94,8 @@ impl Cursors {
                 cur.extend_to_include(&next);
             }
         }
+
+        self.primary = min(self.primary, self.cursors.len() - 1);
     }
 
     pub fn swap_selection_dir(&mut self) {
@@ -112,6 +114,7 @@ impl Cursors {
 
     pub fn primary_prev(&mut self) {
         if self.primary == 0 {
+            // Wrap to end
             self.primary = self.cursors.len() - 1;
         } else {
             self.primary -= 1;
@@ -124,7 +127,7 @@ impl Cursors {
         }
 
         self.cursors.remove(self.primary);
-        // Wrap to start otherwise goto next == do nothing
+        // Wrap to start
         if self.primary >= self.cursors.len() {
             self.primary = 0;
         }

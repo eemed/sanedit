@@ -9,14 +9,6 @@ use crate::{
 
 use super::completion::Completion;
 
-pub(crate) struct SetPrompt {
-    pub(crate) message: String,
-    pub(crate) on_confirm: Option<PAction>,
-    pub(crate) on_abort: Option<PAction>,
-    pub(crate) on_input: Option<PAction>,
-    pub(crate) keymap: Option<Keymap>,
-}
-
 /// Prompt action, similar to a normal `ActionFunction` but also takes the
 /// prompt input as a additional parameter
 pub(crate) type PAction = Rc<dyn Fn(&mut Editor, ClientId, &str) + Send + Sync>;
@@ -136,31 +128,6 @@ impl Prompt {
             history: History::new(100),
         }
     }
-
-    pub fn set(&mut self, new: SetPrompt) {
-        let SetPrompt {
-            message,
-            on_confirm,
-            on_abort,
-            on_input,
-            keymap,
-        } = new;
-
-        self.message = message;
-        self.on_confirm = on_confirm;
-        self.on_abort = on_abort;
-        self.on_input = on_input;
-
-        if let Some(kmap) = keymap {
-            self.keymap = kmap;
-        }
-
-        self.history.reset();
-        self.input = String::new();
-        self.cursor = 0;
-        self.completion = Completion::new();
-    }
-
     pub fn next_grapheme(&mut self) {
         let mut graphemes = self.input.grapheme_indices(true);
         graphemes.position(|(pos, _)| pos == self.cursor);

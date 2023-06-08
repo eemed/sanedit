@@ -2,13 +2,12 @@ use std::ops::Range;
 
 use crate::editor::keymap::Keymap;
 
-use super::{Prompt, SetPrompt};
+use super::Prompt;
 
-pub(crate) struct SetSearch {
-    pub prompt: SetPrompt,
-    // pub is_regex: bool,
-    pub select: bool,
-    pub stop_at_first_match: bool,
+#[derive(Debug, Clone, Copy)]
+pub(crate) enum SearchDirection {
+    Backward,
+    Forward,
 }
 
 #[derive(Debug)]
@@ -16,12 +15,7 @@ pub(crate) struct Search {
     pub prompt: Prompt,
     pub matches: Vec<Range<usize>>,
 
-    // /// Wether to search using regex or not
-    // pub is_regex: bool,
-    // pub is_valid_regex: bool,
-    /// Wether to select the matches or not
-    pub select: bool,
-    pub stop_at_first_match: bool,
+    pub direction: SearchDirection,
 }
 
 impl Search {
@@ -32,25 +26,8 @@ impl Search {
         Search {
             prompt,
             matches: vec![],
-            select: false,
-            stop_at_first_match: true,
+            direction: SearchDirection::Forward,
         }
-    }
-
-    pub fn set(&mut self, set: SetSearch) {
-        let SetSearch {
-            prompt,
-            select,
-            stop_at_first_match,
-        } = set;
-
-        self.prompt.set(prompt);
-        self.select = select;
-        self.stop_at_first_match = stop_at_first_match;
-    }
-
-    pub fn select(&self) -> bool {
-        self.select
     }
 }
 

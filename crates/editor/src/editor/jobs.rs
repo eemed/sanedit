@@ -1,7 +1,7 @@
 use core::fmt;
 use std::{collections::HashMap, sync::Arc};
 
-use crate::server::{self, ClientId, FromJobs, JobFutureFn, JobId, JobProgress, JobsHandle};
+use crate::server::{self, ClientId, JobFutureFn, JobId, JobsHandle};
 
 use super::Editor;
 

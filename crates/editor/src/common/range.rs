@@ -10,7 +10,7 @@ pub(crate) trait RangeUtils {
 
 impl<T: PartialOrd> RangeUtils for Range<T> {
     fn overlaps(&self, other: &Self) -> bool {
-        self.start <= other.end && other.start <= self.end
+        self.start < other.end && other.start < self.end
     }
 
     fn includes(&self, other: &Self) -> bool {

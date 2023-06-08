@@ -55,7 +55,7 @@ impl Keymap {
              "alt+S", Action::scroll_up,
 
              "ctrl+o", Action::prompt_open_file,
-             "ctrl+f", Action::search_open,
+             "ctrl+f", Action::search_forward,
              "ctrl+h", Action::search_clear_matches,
 
              "esc", Action::cursor_remove_secondary,
@@ -63,6 +63,9 @@ impl Keymap {
              "alt+up", Action::cursor_new_prev_line,
              "ctrl+d", Action::cursor_new_to_next_search_match,
              "ctrl+l", Action::cursor_new_to_all_search_matches,
+
+             "alt+n", Action::search_next_match,
+             "alt+N", Action::search_prev_match,
         );
 
         map
@@ -106,7 +109,7 @@ impl Keymap {
              "down", Action::search_history_next,
 
              // "ctrl+r", Action::search_toggle_regex,
-             "ctrl+s", Action::search_toggle_select,
+             // "ctrl+s", Action::search_toggle_select,
         );
 
         map

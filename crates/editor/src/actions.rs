@@ -107,7 +107,8 @@ impl Action {
         prompt_history_next,
         prompt_history_prev,
 
-        search_open,
+        search_forward,
+        search_backward,
         search_next_grapheme,
         search_prev_grapheme,
         search_remove_grapheme_before_cursor,
@@ -116,7 +117,6 @@ impl Action {
         search_history_next,
         search_history_prev,
         search_clear_matches,
-        search_toggle_select,
         search_next_match,
         search_prev_match,
 

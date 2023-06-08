@@ -4,30 +4,24 @@ use sanedit_buffer::Searcher;
 
 use crate::{
     editor::{
-        buffers::Buffer,
-        windows::{Cursor, Focus, PAction, Search, SetPrompt, SetSearch, Window},
+        windows::{Focus, Search, SearchDirection},
         Editor,
     },
     server::ClientId,
 };
 
-pub(crate) fn search_open(editor: &mut Editor, id: ClientId) {
-    let on_confirm: PAction = Rc::new(move |editor, id, input| {});
-    let on_abort: PAction = Rc::new(move |editor, id, input| {});
-    let set = SetSearch {
-        prompt: SetPrompt {
-            message: "Search".into(),
-            on_confirm: Some(on_confirm),
-            on_abort: Some(on_abort),
-            on_input: Some(Rc::new(search)),
-            keymap: None,
-        },
-        select: false,
-        stop_at_first_match: true,
-    };
+pub(crate) fn search_forward(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
-    win.search.set(set);
-    win.search.prompt.message = format_search_msg(&win.search);
+    win.search = Search::new("Search");
+    win.search.prompt.on_confirm = Some(Rc::new(search));
+    win.focus = Focus::Search;
+}
+
+pub(crate) fn search_backward(editor: &mut Editor, id: ClientId) {
+    let (win, buf) = editor.win_buf_mut(id);
+    win.search = Search::new("BSearch");
+    win.search.direction = SearchDirection::Backward;
+    win.search.prompt.on_confirm = Some(Rc::new(search));
     win.focus = Focus::Search;
 }
 
@@ -91,45 +85,18 @@ pub(crate) fn search_clear_matches(editor: &mut Editor, id: ClientId) {
     win.search.matches.clear();
 }
 
-// pub(crate) fn search_toggle_regex(editor: &mut Editor, id: ClientId) {
-//     let (win, buf) = editor.win_buf_mut(id);
-//     win.search.is_regex = !win.search.is_regex;
-//     win.search.prompt.message = format_search_msg(&win.search);
-// }
-
-pub(crate) fn search_toggle_select(editor: &mut Editor, id: ClientId) {
-    let (win, buf) = editor.win_buf_mut(id);
-    win.search.select = !win.search.select;
-    win.search.prompt.message = format_search_msg(&win.search);
-}
-
 pub(crate) fn search_next_match(editor: &mut Editor, id: ClientId) {
-    todo!()
+    let (win, _buf) = editor.win_buf_mut(id);
+    win.search.direction = SearchDirection::Forward;
+    let input = win.search.prompt.input().to_string();
+    search(editor, id, &input);
 }
 
 pub(crate) fn search_prev_match(editor: &mut Editor, id: ClientId) {
-    todo!()
-}
-
-fn format_search_msg(search: &Search) -> String {
-    let mut flags = Vec::new();
-    // if search.is_regex {
-    //     flags.push("r");
-    // }
-
-    if search.select {
-        flags.push("s");
-    }
-
-    if !search.stop_at_first_match {
-        flags.push("a");
-    }
-
-    if !flags.is_empty() {
-        format!("Search ({})", flags.join(", "))
-    } else {
-        format!("Search")
-    }
+    let (win, _buf) = editor.win_buf_mut(id);
+    win.search.direction = SearchDirection::Backward;
+    let input = win.search.prompt.input().to_string();
+    search(editor, id, &input);
 }
 
 fn search(editor: &mut Editor, id: ClientId, input: &str) {
@@ -139,60 +106,33 @@ fn search(editor: &mut Editor, id: ClientId, input: &str) {
         return;
     }
 
+    let cpos = win.cursors.primary().pos();
     let searcher = Searcher::new(input.as_bytes());
-    let slice = buf.slice(..);
-    let mut iter = searcher.find_iter(&slice);
-    match iter.next() {
-        Some(mat) => {
-            log::info!("match {mat:?}");
+    let (slice, mat) = match win.search.direction {
+        SearchDirection::Forward => {
+            let slice = buf.slice(cpos..);
+            let mut iter = searcher.find_iter(&slice);
+            let mat = iter.next();
+            (slice, mat)
+        }
+        SearchDirection::Backward => {
+            let slice = buf.slice(..cpos);
+            let mut iter = searcher.find_iter(&slice);
+            let mat = iter.next_back();
+            (slice, mat)
+        }
+    };
 
-            let select = win.search.select;
+    match mat {
+        Some(mut mat) => {
+            mat.start += slice.start();
+            mat.end += slice.start();
+
             let cursor = win.primary_cursor_mut();
-            if select {
-                *cursor = Cursor::new_select(&mat);
-            } else {
-                cursor.goto(mat.start);
-            }
-
+            cursor.goto(mat.start);
             win.search.matches.clear();
             win.search.matches.push(mat);
         }
         None => win.search.matches.clear(),
     }
 }
-
-fn search_impl(win: &mut Window, buf: &Buffer, input: &str) {
-
-    // let regex = if win.search.is_regex {
-    //     if let Ok(regex) = Regex::new(input) {
-    //         regex
-    //     } else {
-    //         log::info!("invalid regex");
-    //         return;
-    //     }
-    // } else {
-    //     Regex::new_literal(input)
-    // };
-
-    // regex_search(win, buf, regex);
-}
-
-// fn regex_search(win: &mut Window, buf: &Buffer, regex: Regex) {
-//     let mut cursor = buf.cursor();
-
-//     if let Some(m) = regex.find(&mut cursor) {
-//         log::info!("match {m:?}");
-
-//         if win.search.select {
-//             let cursor = win.primary_cursor_mut();
-//             cursor.unanchor();
-//             cursor.goto(m.start());
-//             cursor.anchor();
-//             cursor.goto(m.end());
-//         }
-
-//         win.search.matches = vec![m];
-//     } else {
-//         win.search.matches = vec![];
-//     }
-// }

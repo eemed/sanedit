@@ -13,7 +13,7 @@ pub(crate) enum SearchDirection {
 #[derive(Debug)]
 pub(crate) struct Search {
     pub prompt: Prompt,
-    pub matches: Vec<Range<usize>>,
+    pub cmatch: Option<Range<usize>>,
 
     pub direction: SearchDirection,
 }
@@ -25,7 +25,7 @@ impl Search {
 
         Search {
             prompt,
-            matches: vec![],
+            cmatch: None,
             direction: SearchDirection::Forward,
         }
     }

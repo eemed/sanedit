@@ -1,4 +1,4 @@
-use std::{cmp::min, rc::Rc};
+use std::rc::Rc;
 
 use sanedit_buffer::{Searcher, SearcherRev};
 
@@ -82,14 +82,22 @@ pub(crate) fn search_history_prev(editor: &mut Editor, id: ClientId) {
 
 pub(crate) fn search_clear_matches(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
-    win.search.matches.clear();
+    win.search.cmatch = None;
 }
 
 pub(crate) fn search_next_match(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     win.search.direction = SearchDirection::Forward;
     let input = win.search.prompt.input().to_string();
-    let pos = min(win.cursors.primary().pos() + 1, buf.len());
+    let pos = {
+        let mut pos = win.cursors.primary().pos();
+        if let Some(ref cmat) = win.search.cmatch {
+            if cmat.contains(&pos) {
+                pos = cmat.end
+            }
+        }
+        pos
+    };
     search_impl(editor, id, &input, pos);
 }
 
@@ -110,7 +118,7 @@ fn search(editor: &mut Editor, id: ClientId, input: &str) {
 fn search_impl(editor: &mut Editor, id: ClientId, input: &str, pos: usize) {
     let (win, buf) = editor.win_buf_mut(id);
     if input.is_empty() {
-        win.search.matches.clear();
+        win.search.cmatch = None;
         return;
     }
 
@@ -138,11 +146,10 @@ fn search_impl(editor: &mut Editor, id: ClientId, input: &str, pos: usize) {
 
             let cursor = win.primary_cursor_mut();
             cursor.goto(mat.start);
-            win.search.matches.clear();
-            win.search.matches.push(mat);
+            win.search.cmatch = Some(mat);
         }
         None => {
-            win.search.matches.clear();
+            win.search.cmatch = None;
         }
     }
 }

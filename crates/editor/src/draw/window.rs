@@ -39,11 +39,12 @@ pub(crate) fn draw_window(win: &Window, buf: &Buffer, theme: &Theme) -> redraw::
     }
 
     let cursors = win.cursors();
-    let matches = &win.search.matches;
 
     draw_end_of_buffer(&mut grid, view, theme);
     draw_trailing_whitespace(&mut grid, view, theme);
-    draw_search_highlights(&mut grid, matches, view, theme);
+    if let Some(cmat) = win.search.cmatch.as_ref().cloned() {
+        draw_search_highlights(&mut grid, &[cmat], view, theme);
+    }
     draw_secondary_cursors(&mut grid, cursors, view, theme);
     let cursor = draw_primary_cursor(&mut grid, cursors.primary(), view, theme);
     redraw::Window::new(grid, cursor)

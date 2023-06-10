@@ -303,6 +303,7 @@ impl<'a, 'b> Iterator for SearchIterRev<'a, 'b> {
                 *i += 1;
             }
 
+            // TODO: use good suffix table too
             *i = i.saturating_sub(max(bad_char[bytes.at(*i) as usize], 1));
 
             if mat.is_some() {

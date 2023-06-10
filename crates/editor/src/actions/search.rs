@@ -1,6 +1,6 @@
-use std::rc::Rc;
+use std::{cmp::min, rc::Rc};
 
-use sanedit_buffer::Searcher;
+use sanedit_buffer::{Searcher, SearcherRev};
 
 use crate::{
     editor::{
@@ -86,10 +86,11 @@ pub(crate) fn search_clear_matches(editor: &mut Editor, id: ClientId) {
 }
 
 pub(crate) fn search_next_match(editor: &mut Editor, id: ClientId) {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, buf) = editor.win_buf_mut(id);
     win.search.direction = SearchDirection::Forward;
     let input = win.search.prompt.input().to_string();
-    search(editor, id, &input);
+    let pos = min(win.cursors.primary().pos() + 1, buf.len());
+    search_impl(editor, id, &input, pos);
 }
 
 pub(crate) fn search_prev_match(editor: &mut Editor, id: ClientId) {
@@ -101,24 +102,31 @@ pub(crate) fn search_prev_match(editor: &mut Editor, id: ClientId) {
 
 fn search(editor: &mut Editor, id: ClientId, input: &str) {
     let (win, buf) = editor.win_buf_mut(id);
+    let cpos = win.cursors.primary().pos();
+
+    search_impl(editor, id, input, cpos);
+}
+
+fn search_impl(editor: &mut Editor, id: ClientId, input: &str, pos: usize) {
+    let (win, buf) = editor.win_buf_mut(id);
     if input.is_empty() {
         win.search.matches.clear();
         return;
     }
 
-    let cpos = win.cursors.primary().pos();
-    let searcher = Searcher::new(input.as_bytes());
     let (slice, mat) = match win.search.direction {
         SearchDirection::Forward => {
-            let slice = buf.slice(cpos..);
+            let searcher = Searcher::new(input.as_bytes());
+            let slice = buf.slice(pos..);
             let mut iter = searcher.find_iter(&slice);
             let mat = iter.next();
             (slice, mat)
         }
         SearchDirection::Backward => {
-            let slice = buf.slice(..cpos);
+            let searcher = SearcherRev::new(input.as_bytes());
+            let slice = buf.slice(..pos);
             let mut iter = searcher.find_iter(&slice);
-            let mat = iter.next_back();
+            let mat = iter.next();
             (slice, mat)
         }
     };
@@ -133,6 +141,8 @@ fn search(editor: &mut Editor, id: ClientId, input: &str) {
             win.search.matches.clear();
             win.search.matches.push(mat);
         }
-        None => win.search.matches.clear(),
+        None => {
+            win.search.matches.clear();
+        }
     }
 }

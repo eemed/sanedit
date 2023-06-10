@@ -1,10 +1,8 @@
+use sanedit_buffer::SearcherRev;
 use sanedit_messages::redraw::Point;
 
 use crate::{
-    common::{
-        movement::{next_line, prev_line},
-        search::Searcher,
-    },
+    common::movement::{next_line, prev_line},
     editor::{windows::Cursor, Editor},
     server::ClientId,
 };
@@ -28,7 +26,7 @@ pub(crate) fn cursor_new_to_next_search_match(editor: &mut Editor, id: ClientId)
     let last_search = win.search.prompt.input();
     let ppos = win.cursors.primary().pos();
 
-    let searcher = Searcher::new(last_search.as_bytes());
+    let searcher = SearcherRev::new(last_search.as_bytes());
     let slice = buf.slice(ppos..);
     let mut iter = searcher.find_iter(&slice);
     if let Some(mut mat) = iter.next() {

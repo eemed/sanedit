@@ -337,7 +337,7 @@ pub(crate) fn grapheme_category(grapheme: &PieceTreeSlice) -> GraphemeCategory {
 
 #[cfg(test)]
 mod test {
-    use sanedit_buffer::piece_tree::PieceTree;
+    use sanedit_buffer::PieceTree;
 
     use super::*;
 

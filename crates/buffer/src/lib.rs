@@ -7,7 +7,7 @@ pub use piece_tree::{
     PieceTree, Snapshot,
 };
 
-pub use search::{SearchIter, Searcher};
+pub use search::{SearchIter, SearchIterRev, Searcher, SearcherRev};
 
 pub mod utf8 {
     use super::*;

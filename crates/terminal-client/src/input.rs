@@ -100,7 +100,7 @@ pub(crate) fn convert_key_event(key: crossterm::event::KeyEvent) -> sanedit_mess
         KeyCode::Null => Key::Unknown,
     };
 
-    let mut mods = convert_mods(&key.modifiers);
+    let mods = convert_mods(&key.modifiers);
 
     KeyEvent::new(plain_key, mods)
 }
@@ -114,6 +114,10 @@ fn convert_mods(modifiers: &KeyModifiers) -> KeyMods {
 
     if modifiers.contains(KeyModifiers::CONTROL) {
         mods |= KeyMods::CONTROL;
+    }
+
+    if modifiers.contains(KeyModifiers::SHIFT) {
+        mods |= KeyMods::SHIFT;
     }
 
     mods

@@ -187,7 +187,7 @@ impl SearcherRev {
 
     fn build_good_suffix_table(pattern: &[u8]) -> Box<[usize]> {
         let mut table: Box<[usize]> = vec![0; pattern.len()].into();
-        let last = pattern.len() - 1;
+        let last = pattern.len().saturating_sub(1);
         let mut last_prefix = last;
 
         for i in (0..=last).rev() {

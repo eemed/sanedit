@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::{mem, rc::Rc};
 
 use sanedit_buffer::{Searcher, SearcherRev};
 
@@ -36,7 +36,9 @@ pub(crate) fn search_close(editor: &mut Editor, id: ClientId) {
     win.focus = Focus::Window;
 }
 
-pub(crate) fn search_confirm_all(editor: &mut Editor, id: ClientId) {}
+pub(crate) fn search_confirm_all(editor: &mut Editor, id: ClientId) {
+    log::info!("Hello world");
+}
 
 pub(crate) fn search_confirm(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
@@ -87,25 +89,23 @@ pub(crate) fn search_clear_matches(editor: &mut Editor, id: ClientId) {
 
 pub(crate) fn search_next_match(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
-    win.search.direction = SearchDirection::Forward;
     let input = win.search.prompt.input().to_string();
-    let pos = {
-        let mut pos = win.cursors.primary().pos();
-        if let Some(ref cmat) = win.search.cmatch {
-            if cmat.contains(&pos) {
-                pos = cmat.end
-            }
-        }
-        pos
-    };
-    search_impl(editor, id, &input, pos);
+    search(editor, id, &input);
 }
 
 pub(crate) fn search_prev_match(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
-    win.search.direction = SearchDirection::Backward;
     let input = win.search.prompt.input().to_string();
+
+    // search to opposite direction
+    let dir = &mut win.search.direction;
+    *dir = dir.opposite();
+
     search(editor, id, &input);
+
+    let (win, _buf) = editor.win_buf_mut(id);
+    let dir = &mut win.search.direction;
+    *dir = dir.opposite();
 }
 
 fn search(editor: &mut Editor, id: ClientId, input: &str) {
@@ -115,11 +115,21 @@ fn search(editor: &mut Editor, id: ClientId, input: &str) {
     search_impl(editor, id, input, cpos);
 }
 
-fn search_impl(editor: &mut Editor, id: ClientId, input: &str, pos: usize) {
+fn search_impl(editor: &mut Editor, id: ClientId, input: &str, mut pos: usize) {
     let (win, buf) = editor.win_buf_mut(id);
     if input.is_empty() {
         win.search.cmatch = None;
         return;
+    }
+
+    // If previous match move to the appropriate position
+    if let Some(ref cmat) = win.search.cmatch {
+        if cmat.contains(&pos) {
+            match win.search.direction {
+                SearchDirection::Backward => pos = cmat.start,
+                SearchDirection::Forward => pos = cmat.end,
+            }
+        }
     }
 
     let (slice, mat) = match win.search.direction {

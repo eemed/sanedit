@@ -10,6 +10,16 @@ pub(crate) enum SearchDirection {
     Forward,
 }
 
+impl SearchDirection {
+    pub fn opposite(&self) -> SearchDirection {
+        use SearchDirection::*;
+        match self {
+            Backward => Forward,
+            Forward => Backward,
+        }
+    }
+}
+
 #[derive(Debug)]
 pub(crate) struct Search {
     pub prompt: Prompt,

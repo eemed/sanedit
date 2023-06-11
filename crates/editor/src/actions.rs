@@ -113,6 +113,7 @@ impl Action {
         search_prev_grapheme,
         search_remove_grapheme_before_cursor,
         search_confirm,
+        search_confirm_all,
         search_close,
         search_history_next,
         search_history_prev,

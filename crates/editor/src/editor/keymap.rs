@@ -56,6 +56,7 @@ impl Keymap {
 
              "ctrl+o", Action::prompt_open_file,
              "ctrl+f", Action::search_forward,
+             "ctrl+g", Action::search_backward,
              "ctrl+h", Action::search_clear_matches,
 
              "esc", Action::cursor_remove_secondary,
@@ -104,7 +105,8 @@ impl Keymap {
              "left", Action::search_prev_grapheme,
              "right", Action::search_next_grapheme,
              "enter", Action::search_confirm,
-             // "alt+enter", Action::search_confirm_all,
+             "ctrl+enter", Action::search_confirm_all,
+             "alt+enter", Action::search_confirm_all,
              "up", Action::search_history_prev,
              "down", Action::search_history_next,
 

@@ -8,6 +8,7 @@ bitflags! {
     pub struct KeyMods: u8 {
         const CONTROL = 0b00_00_01;
         const ALT = 0b00_00_10;
+        const SHIFT = 0b00_01_00;
     }
 }
 
@@ -78,7 +79,12 @@ impl fmt::Display for KeyEvent {
             "".to_string()
         };
 
-        // TODO
+        let shift = if self.mods.contains(KeyMods::SHIFT) {
+            format!("shift{}", KEY_SEPARATOR)
+        } else {
+            "".to_string()
+        };
+
         let key = match self.key {
             Key::Char(ch) => ch.to_string(),
             Key::F(n) => format!("F{}", n),
@@ -101,7 +107,7 @@ impl fmt::Display for KeyEvent {
             _ => "???".to_string(),
         };
 
-        f.write_fmt(format_args!("{}{}{}", ctrl, alt, key))
+        f.write_fmt(format_args!("{}{}{}{}", ctrl, alt, shift, key))
     }
 }
 
@@ -132,9 +138,17 @@ impl TryFrom<&str> for KeyEvent {
                     mods |= KeyMods::CONTROL;
                     continue;
                 }
+                "shift" => {
+                    mods |= KeyMods::SHIFT;
+                    continue;
+                }
                 token => {
                     let key = if token.chars().count() == 1 {
-                        Key::Char(token.chars().next().unwrap())
+                        let ch = token.chars().next().unwrap();
+                        if ch.is_uppercase() {
+                            mods |= KeyMods::SHIFT;
+                        }
+                        Key::Char(ch)
                     } else {
                         match token {
                             "enter" => Key::Enter,

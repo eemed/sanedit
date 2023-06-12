@@ -1,6 +1,6 @@
 use sanedit_messages::redraw::{
-    Cell, Cursor, CursorShape, IntoCells, Point, Prompt, Size, Statusline, Style, ThemeField,
-    Window,
+    Cell, Cursor, CursorShape, IntoCells, Point, Prompt, Severity, Size, StatusMessage, Statusline,
+    Style, ThemeField, Window,
 };
 
 use crate::ui::UIContext;
@@ -42,8 +42,8 @@ impl Component for Statusline {
     }
 
     fn draw(&self, ctx: &UIContext) -> Vec<Vec<Cell>> {
+        log::info!("draw statusline: {}", self.line());
         let line = into_cells_with_theme_pad(self.line(), &ThemeField::Statusline, ctx);
-
         vec![line]
     }
 
@@ -120,6 +120,33 @@ impl Component for Prompt {
     fn size(&self, ctx: &UIContext) -> Size {
         todo!()
         // Size { width: ctx.width, height: 1 }
+    }
+}
+
+impl Component for StatusMessage {
+    fn position(&self, ctx: &UIContext) -> Point {
+        Point { x: 0, y: 0 }
+    }
+
+    fn draw(&self, ctx: &UIContext) -> Vec<Vec<Cell>> {
+        let field = match self.severity {
+            Severity::Info => ThemeField::Info,
+            Severity::Warn => ThemeField::Warn,
+            Severity::Error => ThemeField::Error,
+        };
+        let line = into_cells_with_theme_pad(&self.message, &field, ctx);
+        vec![line]
+    }
+
+    fn cursor(&self, ctx: &UIContext) -> Option<Cursor> {
+        None
+    }
+
+    fn size(&self, ctx: &UIContext) -> Size {
+        Size {
+            width: ctx.width,
+            height: 1,
+        }
     }
 }
 

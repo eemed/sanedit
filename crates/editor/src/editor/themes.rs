@@ -330,5 +330,18 @@ fn yui() -> Theme {
         PromptCompletion,
         Style::from_str(&format!("{white3},{black},")).unwrap(),
     );
+
+    theme.insert(
+        Info,
+        Style::from_str(&format!("{blue_background},{blue_foreground},")).unwrap(),
+    );
+    theme.insert(
+        Warn,
+        Style::from_str(&format!("{yellow_background},{yellow_foreground},")).unwrap(),
+    );
+    theme.insert(
+        Error,
+        Style::from_str(&format!("{red_background},{red_foreground},")).unwrap(),
+    );
     theme
 }

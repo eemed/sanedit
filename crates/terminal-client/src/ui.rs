@@ -3,7 +3,7 @@ mod context;
 use anyhow::Result;
 use sanedit_messages::{
     redraw::{Point, Redraw, Size, Style},
-    ClientMessage,
+    ClientMessage, Message,
 };
 
 use crate::{
@@ -26,7 +26,7 @@ impl UI {
         let height = terminal.height();
         Ok(UI {
             terminal,
-            grid: Grid::new(),
+            grid: Grid::new(width, height),
             context: UIContext::new(width, height),
         })
     }
@@ -43,6 +43,12 @@ impl UI {
         self.context.width = size.width;
         self.context.height = size.height;
         self.terminal.resize(size.width, size.height);
+        self.grid.resize(size.width, size.height);
+    }
+
+    /// Called when client will send input to server
+    pub fn on_send_input(&mut self, msg: &Message) {
+        self.grid.msg = None;
     }
 
     pub fn handle_message(&mut self, msg: ClientMessage) -> bool {
@@ -83,6 +89,9 @@ impl UI {
             }
             Redraw::ClosePrompt => {
                 self.grid.prompt = None;
+            }
+            Redraw::StatusMessage(msg) => {
+                self.grid.msg = Some(msg);
             }
         }
     }

@@ -1,12 +1,12 @@
 mod cursor;
 
-use std::{cmp::min, ops::Range};
+use std::cmp::min;
 
 pub(crate) use cursor::Cursor;
 
 use crate::common::range::RangeUtils;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) struct Cursors {
     /// Sorted list of cursors based on their positions
     cursors: Vec<Cursor>,

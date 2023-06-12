@@ -6,7 +6,7 @@ use std::{
 
 use crate::editor::options::Options;
 
-use super::{dirs::tmp_dir, eol::EOL};
+use super::eol::EOL;
 
 #[derive(Debug)]
 pub(crate) struct File {

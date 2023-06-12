@@ -2,7 +2,7 @@ use std::{cmp, mem, ops::Range};
 
 use crate::common::range::RangeUtils;
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub(crate) struct Cursor {
     /// Position in buffer
     pos: usize,

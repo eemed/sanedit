@@ -95,6 +95,7 @@ impl Action {
         prev_paragraph,
         scroll_up,
         scroll_down,
+        save,
 
         prompt_next_grapheme,
         prompt_prev_grapheme,

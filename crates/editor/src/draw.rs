@@ -19,6 +19,7 @@ pub(crate) struct DrawState {
     prompt_scroll_offset: usize,
     // Previously drawn
     prompt: Option<redraw::Prompt>,
+    msg: Option<redraw::StatusMessage>,
     statusline: redraw::Statusline,
     window: redraw::Window,
 }
@@ -34,33 +35,53 @@ impl DrawState {
             prompt: None,
             statusline: statusline.clone(),
             window: window.clone(),
+            msg: None,
         };
 
         (state, vec![Redraw::Init(window, statusline)])
     }
 
-    pub fn redraw(&mut self, win: &mut Window, buf: &Buffer, theme: &Theme) -> Vec<Redraw> {
+    pub fn redraw(&mut self, win: &Window, buf: &Buffer, theme: &Theme) -> Vec<Redraw> {
         let mut redraw: Vec<Redraw> = vec![];
 
+        // Close prompt if not focused anymore
         if win.focus() != Focus::Prompt && self.prompt.take().is_some() {
             self.prompt_scroll_offset = 0;
             redraw.push(Redraw::ClosePrompt);
         }
 
-        win.redraw_view(buf);
-
+        // Window
         let window = draw_window(win, buf, theme);
         if let Some(diff) = self.window.diff(&window) {
             redraw.push(diff.into());
             self.window = window;
         }
 
+        // Statusline
         let statusline = draw_statusline(win, buf);
         if let Some(diff) = self.statusline.diff(&statusline) {
             redraw.push(diff.into());
             self.statusline = statusline;
         }
 
+        // Message
+        match (win.message().cloned(), self.msg.clone()) {
+            (Some(m), None) => {
+                redraw.push(m.clone().into());
+                self.msg = Some(m);
+            }
+            (Some(m1), Some(m2)) => {
+                if m1 != m2 {
+                    redraw.push(m1.clone().into());
+                    self.msg = Some(m1);
+                }
+            }
+            _ => {
+                self.msg = None;
+            }
+        }
+
+        // Temporary focus
         match win.focus() {
             Focus::Search => {
                 let search = &win.search;

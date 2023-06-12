@@ -26,6 +26,7 @@ impl Keymap {
         #[rustfmt::skip]
         map!(map,
              "ctrl+c", Action::quit,
+             "ctrl+s", Action::save,
              "up", Action::prev_line,
              "down", Action::next_line,
              "left", Action::prev_grapheme,

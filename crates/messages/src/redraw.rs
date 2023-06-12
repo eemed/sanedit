@@ -5,6 +5,7 @@ mod cursor_shape;
 mod point;
 mod prompt;
 mod size;
+mod status_message;
 mod statusline;
 mod style;
 mod text_style;
@@ -18,6 +19,7 @@ pub use cursor_shape::*;
 pub use point::*;
 pub use prompt::*;
 pub use size::*;
+pub use status_message::*;
 pub use statusline::*;
 pub use style::*;
 pub use text_style::*;
@@ -32,6 +34,7 @@ pub enum Redraw {
     Init(Window, Statusline),
     /// Window updated
     WindowUpdate(WindowDiff),
+
     /// Statusline updated
     StatuslineUpdate(StatuslineDiff),
 
@@ -43,4 +46,7 @@ pub enum Redraw {
     PromptUpdate(PromptDiff),
     /// Prompt closed
     ClosePrompt,
+
+    /// Status messages
+    StatusMessage(StatusMessage),
 }

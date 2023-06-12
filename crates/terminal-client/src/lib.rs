@@ -45,6 +45,8 @@ where
                 }
             }
             ToServer(mut msg) => {
+                ui.on_send_input(&msg);
+
                 match msg {
                     Message::Resize(size) => {
                         ui.resize(size);

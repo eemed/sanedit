@@ -2,7 +2,9 @@ mod component;
 
 use core::fmt;
 
-use sanedit_messages::redraw::{Cell, Cursor, CursorShape, Point, Prompt, Statusline, Window};
+use sanedit_messages::redraw::{
+    Cell, Cursor, CursorShape, Point, Prompt, StatusMessage, Statusline, Window,
+};
 
 use crate::ui::UIContext;
 
@@ -12,34 +14,42 @@ pub(crate) struct Grid {
     pub window: Window,
     pub statusline: Statusline,
     pub prompt: Option<Prompt>,
+    pub msg: Option<StatusMessage>,
 
     cells: Vec<Vec<Cell>>,
 }
 
 impl fmt::Debug for Grid {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Grid").finish_non_exhaustive()
+        writeln!(f, "===Grid===")?;
+        for row in self.cells.iter() {
+            write!(f, "\"")?;
+            for cell in row.iter() {
+                write!(f, "{}", cell.text)?;
+            }
+            writeln!(f, "\"")?;
+        }
+        write!(f, "==========")?;
+        Ok(())
     }
 }
 
 impl Grid {
-    pub fn new() -> Grid {
+    pub fn new(width: usize, height: usize) -> Grid {
         Grid {
             window: Window::default(),
             statusline: Statusline::default(),
             prompt: None,
-            cells: vec![vec![]],
+            msg: None,
+            cells: vec![vec![Cell::default(); width]; height],
         }
     }
 
-    pub fn reset_grid(&mut self, width: usize, height: usize) {
-        let h = self.cells.len();
-        let w = self.cells.get(0).map(|row| row.len()).unwrap_or(0);
-        if w != width || height != h {
-            self.cells = vec![vec![Cell::default(); width]; height];
-            return;
-        }
+    pub fn resize(&mut self, width: usize, height: usize) {
+        self.cells = vec![vec![Cell::default(); width]; height];
+    }
 
+    pub fn clear(&mut self) {
         for row in self.cells.iter_mut() {
             for cell in row.iter_mut() {
                 *cell = Cell::default();
@@ -48,14 +58,18 @@ impl Grid {
     }
 
     pub fn draw(&mut self, ctx: &UIContext) -> (&Vec<Vec<Cell>>, Cursor) {
+        self.clear();
+
         let mut cursor = Cursor::default();
-        self.reset_grid(ctx.width, ctx.height);
         let components: Vec<&dyn Component> = {
             let mut comps: Vec<&dyn Component> = Vec::new();
             comps.push(&self.window);
             comps.push(&self.statusline);
             if let Some(ref prompt) = self.prompt {
                 comps.push(prompt);
+            }
+            if let Some(ref msg) = self.msg {
+                comps.push(msg);
             }
             comps
         };
@@ -78,7 +92,7 @@ impl Grid {
             }
         }
 
-        // log::info!("{:?}", self.window);
+        // log::info!("{:?}", self);
         (&self.cells, cursor)
     }
 }

@@ -23,7 +23,6 @@ fn do_move_line<F: Fn(&PieceTreeSlice, &Cursor, &DisplayOptions) -> (usize, usiz
         cursor.goto_with_col(pos, col);
     }
     win.view_to_cursor(buf);
-    run_hook(editor, id, Hook::CursorMoved);
 }
 
 fn do_move<F: Fn(&PieceTreeSlice, usize) -> usize>(
@@ -42,7 +41,6 @@ fn do_move<F: Fn(&PieceTreeSlice, usize) -> usize>(
         }
     }
     win.view_to_cursor(buf);
-    run_hook(editor, id, Hook::CursorMoved);
 }
 
 fn do_move_static(editor: &mut Editor, id: ClientId, pos: usize, col: Option<usize>) {

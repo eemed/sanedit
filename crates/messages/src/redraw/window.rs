@@ -46,7 +46,7 @@ impl Window {
 
 impl fmt::Debug for Window {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(f, "===Grid===")?;
+        writeln!(f, "===Window===")?;
         for row in self.cells.iter() {
             write!(f, "\"")?;
             for cell in row.iter() {

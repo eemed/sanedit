@@ -27,10 +27,12 @@ use tokio::sync::mpsc::Receiver;
 
 use crate::actions;
 use crate::actions::cursors;
+use crate::actions::hooks::run_hook;
 use crate::actions::Action;
 use crate::common::file::File;
 use crate::draw::DrawState;
 use crate::editor::buffers::Buffer;
+use crate::editor::hooks::Hook;
 use crate::events::ToEditor;
 use crate::server::ClientHandle;
 use crate::server::ClientId;
@@ -152,13 +154,20 @@ impl Editor {
                 self.handle_hello(id, size);
                 return;
             }
-            Message::KeyEvent(key_event) => self.handle_key_event(id, key_event),
-            Message::MouseEvent(mouse_event) => self.handle_mouse_event(id, mouse_event),
-            Message::Resize(size) => self.handle_resize(id, size),
             Message::Bye => {
                 self.quit();
                 return;
             }
+            _ => {}
+        }
+
+        run_hook(self, id, Hook::OnMessagePre);
+
+        match msg {
+            Message::KeyEvent(key_event) => self.handle_key_event(id, key_event),
+            Message::MouseEvent(mouse_event) => self.handle_mouse_event(id, mouse_event),
+            Message::Resize(size) => self.handle_resize(id, size),
+            _ => {}
         }
 
         self.redraw(id);
@@ -235,6 +244,8 @@ impl Editor {
                 .expect("Theme not present")
         };
 
+        win.redraw_view(buf);
+
         let messages = draw.redraw(win, buf, theme);
         if !messages.is_empty() {
             for msg in messages {
@@ -260,6 +271,7 @@ impl Editor {
 
         // Add key to buffer
         self.keys.push(event);
+        run_hook(self, id, Hook::KeyPressedPre);
 
         // Handle key bindings
         if let Some(mut action) = self.get_bound_action(id) {

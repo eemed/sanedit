@@ -24,8 +24,7 @@ pub(crate) fn prompt_open_file(editor: &mut Editor, id: ClientId) {
         let path = PathBuf::from(input);
         if editor.open_file(id, path).is_err() {
             let (win, _buf) = editor.win_buf_mut(id);
-            // TODO clear messages, somewhere
-            // win.warn_msg("Failed to open file".into());
+            win.warn_msg("Failed to open file");
         }
     });
     let on_abort: PAction = Rc::new(move |editor, id, input| {

@@ -150,6 +150,20 @@ impl Buffer {
     pub fn cursor<'a>(&'a self) -> impl Cursor + 'a {
         BufferCursor::new(&self.pt)
     }
+
+    pub fn save(&self) -> Result<(), io::Error> {
+        log::info!("SAVE");
+        debug_assert!(!self.pt.is_file_backed());
+
+        let path = self
+            .path
+            .as_ref()
+            .ok_or(io::Error::from(io::ErrorKind::NotFound))?;
+        log::info!("SAVING to {:?}", path);
+        let file = fs::File::create(&path)?;
+        self.pt.write_to(file)?;
+        Ok(())
+    }
 }
 
 impl Default for Buffer {

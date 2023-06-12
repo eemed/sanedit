@@ -2,7 +2,6 @@ mod completion;
 mod cursors;
 mod focus;
 mod locations;
-mod message;
 mod options;
 mod prompt;
 mod search;
@@ -11,7 +10,7 @@ mod view;
 use std::ops::Range;
 
 use sanedit_buffer::utf8::prev_grapheme_boundary;
-use sanedit_messages::redraw::Size;
+use sanedit_messages::redraw::{Severity, Size, StatusMessage};
 
 use crate::{
     common::{char::DisplayOptions, movement},
@@ -24,7 +23,6 @@ use crate::{
 pub(crate) use self::{
     cursors::{Cursor, Cursors},
     focus::Focus,
-    message::{Message, Severity},
     options::Options,
     prompt::PAction,
     prompt::Prompt,
@@ -37,7 +35,7 @@ pub(crate) use self::{
 pub(crate) struct Window {
     buf: BufferId,
     view: View,
-    message: Option<Message>,
+    message: Option<StatusMessage>,
 
     keymap: Keymap,
     pub cursors: Cursors,
@@ -78,24 +76,24 @@ impl Window {
         old
     }
 
-    pub fn info_msg(&mut self, message: String) {
-        self.message = Some(Message {
+    pub fn info_msg(&mut self, message: &str) {
+        self.message = Some(StatusMessage {
             severity: Severity::Info,
-            message,
+            message: message.into(),
         });
     }
 
-    pub fn warn_msg(&mut self, message: String) {
-        self.message = Some(Message {
+    pub fn warn_msg(&mut self, message: &str) {
+        self.message = Some(StatusMessage {
             severity: Severity::Warn,
-            message,
+            message: message.into(),
         });
     }
 
-    pub fn error_msg(&mut self, message: String) {
-        self.message = Some(Message {
+    pub fn error_msg(&mut self, message: &str) {
+        self.message = Some(StatusMessage {
             severity: Severity::Error,
-            message,
+            message: message.into(),
         });
     }
 
@@ -186,7 +184,7 @@ impl Window {
         self.view_to_cursor(buf);
     }
 
-    pub fn message(&self) -> Option<&Message> {
+    pub fn message(&self) -> Option<&StatusMessage> {
         self.message.as_ref()
     }
 

@@ -159,7 +159,7 @@ fn search_impl(editor: &mut Editor, id: ClientId, input: &str, mut pos: usize) {
             win.search.cmatch = Some(mat);
         }
         None => {
-            win.search.cmatch = None;
+            win.warn_msg("No match found.");
         }
     }
 }

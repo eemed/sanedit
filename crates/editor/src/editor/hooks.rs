@@ -15,6 +15,12 @@ pub(crate) enum Hook {
     /// Before a character is removed from the buffer
     RemoveCharPre,
     CursorMoved,
+
+    /// Before client keyevent is processed
+    KeyPressedPre,
+
+    /// Before client message is processed
+    OnMessagePre,
 }
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
@@ -86,6 +92,16 @@ impl Default for Hooks {
                 fun: Arc::new(|editor, id| {
                     let (win, buf) = editor.win_buf_mut(id);
                     win.cursors.merge_overlapping();
+                }),
+            },
+        );
+        hooks.register(
+            Hook::OnMessagePre,
+            Action::Dynamic {
+                name: "clear messages".into(),
+                fun: Arc::new(|editor, id| {
+                    let (win, buf) = editor.win_buf_mut(id);
+                    win.clear_msg();
                 }),
             },
         );

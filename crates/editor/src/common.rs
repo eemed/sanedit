@@ -3,6 +3,7 @@ pub(crate) mod dirs;
 pub(crate) mod eol;
 pub(crate) mod file;
 pub(crate) mod movement;
+pub(crate) mod pairs;
 pub(crate) mod range;
 pub(crate) mod search;
 pub(crate) mod text;

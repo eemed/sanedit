@@ -154,7 +154,10 @@ impl TryFrom<&str> for KeyEvent {
                             "enter" => Key::Enter,
                             "esc" => Key::Esc,
                             "tab" => Key::Tab,
-                            "btab" | "backtab" => Key::BackTab,
+                            "btab" | "backtab" => {
+                                mods |= KeyMods::SHIFT;
+                                Key::BackTab
+                            }
                             "insert" => Key::Insert,
                             "delete" => Key::Delete,
                             "home" => Key::Home,

@@ -1,4 +1,4 @@
-use std::{mem, rc::Rc};
+use std::rc::Rc;
 
 use sanedit_buffer::{Searcher, SearcherRev};
 

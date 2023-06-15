@@ -23,31 +23,39 @@ fn direction_and_pair(byte: u8) -> Option<(SearchDirection, u8)> {
     None
 }
 
-fn next(dir: SearchDirection, bytes: &mut Bytes) -> Option<u8> {
-    match dir {
-        SearchDirection::Backward => bytes.prev(),
-        SearchDirection::Forward => bytes.next(),
-    }
-}
-
 /// Find matching pair for char at pos
 pub(crate) fn matching_pair(slice: &PieceTreeSlice, pos: usize) -> Option<usize> {
-    let bytes = slice.bytes_at(pos);
+    let mut bytes = slice.bytes_at(pos);
     let byte = bytes.at(pos);
-
     let (dir, pair) = direction_and_pair(byte)?;
-
+    let mut cpos = pos;
     let mut opening_count = 0;
-    while let Some(b) = next(dir, &mut bytes) {
-        if b == pair {
-            if opening_count == 0 {
-                return Some(bytes.pos());
-            } else {
-                opening_count -= 1;
+
+    loop {
+        match dir {
+            SearchDirection::Backward => {
+                if cpos == 0 {
+                    break;
+                }
+
+                cpos -= 1;
+            }
+            SearchDirection::Forward => {
+                cpos += 1;
+
+                if cpos >= slice.len() {
+                    break;
+                }
             }
         }
 
-        if b == byte {
+        let b = bytes.at(cpos);
+
+        if b == pair && opening_count == 0 {
+            return Some(cpos);
+        } else if b == pair {
+            opening_count -= 1;
+        } else if b == byte {
             opening_count += 1;
         }
     }

@@ -4,7 +4,7 @@ use crate::editor::keymap::Keymap;
 
 use super::Prompt;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum SearchDirection {
     Backward,
     Forward,

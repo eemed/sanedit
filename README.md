@@ -14,13 +14,10 @@ Inspiration taken from vim, kakoune, emacs, neovim and vis.
 * Better regex support
 * Multicursor
 * Search multiple matches
-* Search next/prev match
 * Locations on a list
 * Undo
 * Saving (copy from eemedit)
-* Pairs (copy from eemedit)
 * Syntax highlighting using pest
-
 * Shell access
 
 ### Later

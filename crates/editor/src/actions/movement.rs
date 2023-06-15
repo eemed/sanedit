@@ -9,8 +9,6 @@ use crate::{
     server::ClientId,
 };
 
-use super::hooks::run_hook;
-
 fn do_move_line<F: Fn(&PieceTreeSlice, &Cursor, &DisplayOptions) -> (usize, usize)>(
     editor: &mut Editor,
     id: ClientId,
@@ -226,4 +224,13 @@ pub(crate) fn next_line(editor: &mut Editor, id: ClientId) {
 
 pub(crate) fn prev_line(editor: &mut Editor, id: ClientId) {
     do_move_line(editor, id, common::movement::prev_line);
+}
+
+pub(crate) fn goto_matching_pair(editor: &mut Editor, id: ClientId) {
+    let (win, buf) = editor.win_buf_mut(id);
+    let pos = win.cursors.primary().pos();
+    let slice = buf.slice(..);
+    if let Some(pos) = common::pairs::matching_pair(&slice, pos) {
+        do_move_static(editor, id, pos, None);
+    }
 }

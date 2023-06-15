@@ -95,6 +95,7 @@ impl Action {
         prev_paragraph,
         scroll_up,
         scroll_down,
+        goto_matching_pair,
         save,
 
         prompt_next_grapheme,

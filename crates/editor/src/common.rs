@@ -2,6 +2,7 @@ pub(crate) mod char;
 pub(crate) mod dirs;
 pub(crate) mod eol;
 pub(crate) mod file;
+pub(crate) mod indent;
 pub(crate) mod movement;
 pub(crate) mod pairs;
 pub(crate) mod range;

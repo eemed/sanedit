@@ -154,6 +154,7 @@ fn search_impl(editor: &mut Editor, id: ClientId, input: &str, mut pos: usize) {
             mat.start += slice.start();
             mat.end += slice.start();
 
+            log::info!("Match: {mat:?}");
             let cursor = win.primary_cursor_mut();
             cursor.goto(mat.start);
             win.search.cmatch = Some(mat);

@@ -178,7 +178,7 @@ impl SearcherRev {
     fn build_bad_char_table(pattern: &[u8]) -> [usize; 256] {
         let mut table = [pattern.len(); 256];
 
-        for i in 0..pattern.len() {
+        for i in (0..pattern.len()).rev() {
             table[pattern[i] as usize] = i;
         }
 
@@ -187,33 +187,32 @@ impl SearcherRev {
 
     fn build_good_suffix_table(pattern: &[u8]) -> Box<[usize]> {
         let mut table: Box<[usize]> = vec![0; pattern.len()].into();
-        let last = pattern.len().saturating_sub(1);
-        let mut last_prefix = last;
+        let mut last_suffix = 0;
 
-        for i in (0..=last).rev() {
-            if Self::is_prefix(pattern, &pattern[i + 1..]) {
-                last_prefix = i + 1;
+        for i in 0..pattern.len() {
+            if Self::is_suffix(pattern, &pattern[..i]) {
+                last_suffix = i;
             }
-            table[i] = last_prefix + last - i;
+            table[i] = last_suffix + i;
         }
 
-        for i in 0..last {
-            let slen = Self::common_suffix_len(pattern, &pattern[1..i + 1]);
-            if pattern[i - slen] != pattern[last - slen] {
-                table[last - slen] = last + slen - i;
-            }
+        for i in (1..pattern.len()).rev() {
+            let slen = Self::common_prefix_len(pattern, &pattern[i..]);
+            // if pattern[slen] != pattern[slen] {
+            table[slen] = pattern.len() + slen + i;
+            // }
         }
 
         table
     }
 
-    fn common_suffix_len(pattern: &[u8], other: &[u8]) -> usize {
+    fn common_prefix_len(pattern: &[u8], other: &[u8]) -> usize {
         let mut i = 0;
         let plen = pattern.len();
         let olen = other.len();
 
         while i < plen && i < olen {
-            if pattern[plen - 1 - i] != other[olen - 1 - i] {
+            if pattern[i] != other[i] {
                 break;
             }
 
@@ -223,13 +222,13 @@ impl SearcherRev {
         i
     }
 
-    fn is_prefix(pattern: &[u8], prefix: &[u8]) -> bool {
-        if pattern.len() < prefix.len() {
+    fn is_suffix(pattern: &[u8], suffix: &[u8]) -> bool {
+        if pattern.len() < suffix.len() {
             return false;
         }
 
-        for i in 0..prefix.len() {
-            if pattern[i] != prefix[i] {
+        for i in 0..suffix.len() {
+            if pattern[pattern.len() - 1 - i] != suffix[suffix.len() - 1 - i] {
                 return false;
             }
         }
@@ -277,6 +276,7 @@ impl<'a, 'b> Iterator for SearchIterRev<'a, 'b> {
         let SearchIterRev {
             pattern,
             bad_char,
+            good_suffix,
             bytes,
             i,
             ..
@@ -289,13 +289,14 @@ impl<'a, 'b> Iterator for SearchIterRev<'a, 'b> {
         }
 
         loop {
+            // println!("i: {i}");
             let mut j = 0;
             let mut mat = None;
 
             while bytes.at(*i) == pattern[j] {
                 if j == m - 1 {
                     mat = Some(*i + 1 - m..*i + 1);
-                    *i = i.saturating_sub(m);
+                    *i = i.saturating_sub(m) + 1;
                     break;
                 }
 
@@ -303,8 +304,10 @@ impl<'a, 'b> Iterator for SearchIterRev<'a, 'b> {
                 *i += 1;
             }
 
+            // println!("i2: {i}, bc: {}", bad_char[bytes.at(*i) as usize]);
             // TODO: use good suffix table too
             *i = i.saturating_sub(max(bad_char[bytes.at(*i) as usize], 1));
+            // *i = i.saturating_sub(max(bad_char[bytes.at(*i) as usize], good_suffix[j]));
 
             if mat.is_some() {
                 return mat;
@@ -343,6 +346,61 @@ mod test {
         let slice = pt.slice(..);
         let mut iter = searcher.find_iter(&slice);
 
+        while let Some(it) = iter.next() {
+            println!("BM-B: {it:?}");
+        }
+    }
+
+    #[test]
+    fn boyer_moore_2() {
+        let mut pt = PieceTree::new();
+        pt.insert(
+            0,
+            "mod enums;
+mod general_category;
+mod grapheme_break;
+mod properties;
+mod sentence_break;
+mod word_break;
+
+use std::cmp::Ordering;
+
+pub use enums::GraphemeBreak;
+pub use enums::Property;
+
+pub fn grapheme_break(ch: char) -> GraphemeBreak {
+    // Optimization for ascii
+    // First entries in the GRAPHEME_CLUSTER_BREAK table
+    // (0, 9, 1),     => Control
+    // (10, 10, 4),   => LF
+    // (11, 12, 1),   => Control
+    // (13, 13, 0),   => CR
+    // (14, 31, 1),   => Control
+    // (127, 159, 1), => Control
+    let num = ch as u32;
+    if num <= 126 {
+        if num >= 32 {
+            GraphemeBreak::Any
+        } else if num == 10 {
+            GraphemeBreak::LF",
+        );
+
+        let searcher = Searcher::new(b"GraphemeBreak");
+        let slice = pt.slice(..);
+        let mut iter = searcher.find_iter(&slice);
+
+        println!("Searcher: {searcher:?}");
+        while let Some(it) = iter.next() {
+            println!("BM-F: {it:?}");
+        }
+
+        println!("==========================");
+
+        let searcher = SearcherRev::new(b"GraphemeBreak");
+        let slice = pt.slice(..);
+        let mut iter = searcher.find_iter(&slice);
+
+        println!("SearcherRev: {searcher:?}");
         while let Some(it) = iter.next() {
             println!("BM-B: {it:?}");
         }

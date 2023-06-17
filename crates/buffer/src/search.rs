@@ -41,11 +41,12 @@ impl Searcher {
             table[i] = last_prefix + last - i;
         }
 
+        println!("GST: {:?}", table);
         for i in 0..last {
-            let slen = Self::common_suffix_len(pattern, &pattern[1..i + 1]);
-            if pattern[i - slen] != pattern[last - slen] {
-                table[last - slen] = last + slen - i;
-            }
+            let slen = Self::common_suffix_len(pattern, &pattern[..i + 1]);
+            // if pattern[i - slen] != pattern[last - slen] {
+            table[last - slen] = last + slen - i;
+            // }
         }
 
         table
@@ -193,13 +194,16 @@ impl SearcherRev {
             if Self::is_suffix(pattern, &pattern[..i]) {
                 last_suffix = i;
             }
-            table[i] = last_suffix + i;
+            table[i] = pattern.len() - last_suffix + i;
         }
 
-        for i in (1..pattern.len()).rev() {
+        println!("GST REV: {:?}", table);
+        for i in 1..pattern.len() {
             let slen = Self::common_prefix_len(pattern, &pattern[i..]);
             // if pattern[slen] != pattern[slen] {
-            table[slen] = pattern.len() + slen + i;
+            // println!("slen: {slen}, i: {i}, plen: {}", pattern.len());
+            table[slen] = pattern.len() + slen - i;
+            // pattern.len() - 1 + i;
             // }
         }
 
@@ -306,8 +310,8 @@ impl<'a, 'b> Iterator for SearchIterRev<'a, 'b> {
 
             // println!("i2: {i}, bc: {}", bad_char[bytes.at(*i) as usize]);
             // TODO: use good suffix table too
-            *i = i.saturating_sub(max(bad_char[bytes.at(*i) as usize], 1));
-            // *i = i.saturating_sub(max(bad_char[bytes.at(*i) as usize], good_suffix[j]));
+            // *i = i.saturating_sub(max(bad_char[bytes.at(*i) as usize], 1));
+            *i = i.saturating_sub(max(bad_char[bytes.at(*i) as usize], good_suffix[j]));
 
             if mat.is_some() {
                 return mat;
@@ -385,24 +389,30 @@ pub fn grapheme_break(ch: char) -> GraphemeBreak {
             GraphemeBreak::LF",
         );
 
-        let searcher = Searcher::new(b"GraphemeBreak");
+        let needle = b"GraphemeBreak";
+        let searcher = Searcher::new(needle);
         let slice = pt.slice(..);
         let mut iter = searcher.find_iter(&slice);
 
+        println!("needle_len: {}", needle.len());
         println!("Searcher: {searcher:?}");
-        while let Some(it) = iter.next() {
-            println!("BM-F: {it:?}");
-        }
+        assert_eq!(Some(146..159), iter.next());
+        assert_eq!(Some(222..235), iter.next());
+        assert_eq!(Some(593..606), iter.next());
+        assert_eq!(Some(654..667), iter.next());
+        assert_eq!(None, iter.next());
 
         println!("==========================");
 
-        let searcher = SearcherRev::new(b"GraphemeBreak");
+        let searcher = SearcherRev::new(needle);
         let slice = pt.slice(..);
         let mut iter = searcher.find_iter(&slice);
 
         println!("SearcherRev: {searcher:?}");
-        while let Some(it) = iter.next() {
-            println!("BM-B: {it:?}");
-        }
+        assert_eq!(Some(654..667), iter.next());
+        assert_eq!(Some(593..606), iter.next());
+        assert_eq!(Some(222..235), iter.next());
+        assert_eq!(Some(146..159), iter.next());
+        assert_eq!(None, iter.next());
     }
 }

@@ -42,7 +42,6 @@ impl Component for Statusline {
     }
 
     fn draw(&self, ctx: &UIContext) -> Vec<Vec<Cell>> {
-        log::info!("draw statusline: {}", self.line());
         let line = into_cells_with_theme_pad(self.line(), &ThemeField::Statusline, ctx);
         vec![line]
     }

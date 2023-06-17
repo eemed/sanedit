@@ -41,7 +41,7 @@ impl Searcher {
             table[i] = last_prefix + last - i;
         }
 
-        println!("GST: {:?}", table);
+        // println!("GST: {:?}", table);
         for i in 0..last {
             let slen = Self::common_suffix_len(pattern, &pattern[..i + 1]);
             // if pattern[i - slen] != pattern[last - slen] {
@@ -197,7 +197,6 @@ impl SearcherRev {
             table[i] = pattern.len() - last_suffix + i;
         }
 
-        println!("GST REV: {:?}", table);
         for i in 1..pattern.len() {
             let slen = Self::common_prefix_len(pattern, &pattern[i..]);
             // if pattern[slen] != pattern[slen] {
@@ -329,6 +328,15 @@ mod test {
     use super::*;
 
     #[test]
+    fn good_suffix() {
+        let needle = b"abcabcd";
+        let searcher = Searcher::new(needle);
+        println!("Searcher: {searcher:?}");
+        let searcher = SearcherRev::new(needle);
+        println!("Searcher: {searcher:?}");
+    }
+
+    #[test]
     fn boyer_moore() {
         let mut pt = PieceTree::new();
         pt.insert(
@@ -340,9 +348,10 @@ mod test {
         let slice = pt.slice(..);
         let mut iter = searcher.find_iter(&slice);
 
-        while let Some(it) = iter.next() {
-            println!("BM-F: {it:?}");
-        }
+        println!("Searcher: {searcher:?}");
+        // while let Some(it) = iter.next() {
+        //     println!("BM-F: {it:?}");
+        // }
 
         println!("==========================");
 
@@ -350,13 +359,14 @@ mod test {
         let slice = pt.slice(..);
         let mut iter = searcher.find_iter(&slice);
 
-        while let Some(it) = iter.next() {
-            println!("BM-B: {it:?}");
-        }
+        println!("SearcherRev: {searcher:?}");
+        // while let Some(it) = iter.next() {
+        //     println!("BM-B: {it:?}");
+        // }
     }
 
     #[test]
-    fn boyer_moore_2() {
+    fn search_grapheme_break() {
         let mut pt = PieceTree::new();
         pt.insert(
             0,
@@ -394,21 +404,16 @@ pub fn grapheme_break(ch: char) -> GraphemeBreak {
         let slice = pt.slice(..);
         let mut iter = searcher.find_iter(&slice);
 
-        println!("needle_len: {}", needle.len());
-        println!("Searcher: {searcher:?}");
         assert_eq!(Some(146..159), iter.next());
         assert_eq!(Some(222..235), iter.next());
         assert_eq!(Some(593..606), iter.next());
         assert_eq!(Some(654..667), iter.next());
         assert_eq!(None, iter.next());
 
-        println!("==========================");
-
         let searcher = SearcherRev::new(needle);
         let slice = pt.slice(..);
         let mut iter = searcher.find_iter(&slice);
 
-        println!("SearcherRev: {searcher:?}");
         assert_eq!(Some(654..667), iter.next());
         assert_eq!(Some(593..606), iter.next());
         assert_eq!(Some(222..235), iter.next());

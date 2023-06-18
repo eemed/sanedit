@@ -10,9 +10,6 @@ sanedit-messages = { path = "../messages" }
 sanedit-buffer = { path = "../buffer" }
 sanedit-regex = { path = "../regex" }
 
-# Syntax highlighting
-pest = "2.6"
-
 # General
 log         = "0.4"
 parking_lot = "0.12.0"

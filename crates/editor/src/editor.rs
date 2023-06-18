@@ -227,6 +227,8 @@ impl Editor {
     }
 
     fn redraw(&mut self, id: ClientId) {
+        run_hook(self, id, Hook::OnDrawPre);
+
         let draw = self
             .draw_states
             .get_mut(&id)

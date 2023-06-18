@@ -6,7 +6,7 @@ use std::{
     },
 };
 
-use crate::actions::Action;
+use crate::{actions::Action, common::highlight::highlight};
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub(crate) enum Hook {
@@ -21,6 +21,8 @@ pub(crate) enum Hook {
 
     /// Before client message is processed
     OnMessagePre,
+
+    OnDrawPre,
 }
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
@@ -102,6 +104,17 @@ impl Default for Hooks {
                 fun: Arc::new(|editor, id| {
                     let (win, buf) = editor.win_buf_mut(id);
                     win.clear_msg();
+                }),
+            },
+        );
+        hooks.register(
+            Hook::OnDrawPre,
+            Action::Dynamic {
+                name: "higlighting".into(),
+                fun: Arc::new(|editor, id| {
+                    let (win, buf) = editor.win_buf_mut(id);
+                    let slice = buf.slice(..);
+                    highlight(&slice);
                 }),
             },
         );

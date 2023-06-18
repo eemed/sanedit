@@ -20,6 +20,7 @@ use crate::{
     },
 };
 
+use self::completion::Completion;
 pub(crate) use self::{
     cursors::{Cursor, Cursors},
     focus::Focus,
@@ -36,8 +37,9 @@ pub(crate) struct Window {
     buf: BufferId,
     view: View,
     message: Option<StatusMessage>,
-
     keymap: Keymap,
+
+    pub completion: Completion,
     pub cursors: Cursors,
     pub focus: Focus,
     pub search: Search,

@@ -1,7 +1,12 @@
 use std::mem;
 
+use sanedit_messages::redraw::Point;
+
 #[derive(Debug, Default)]
 pub(crate) struct Completion {
+    /// Where to popup the completion
+    pub(crate) point: Point,
+
     /// All completion options
     pub(crate) options: Vec<String>,
     /// Currently matched completions. Completions are juggled between this and
@@ -17,6 +22,7 @@ pub(crate) struct Completion {
 impl Completion {
     pub fn new() -> Completion {
         Completion {
+            point: Point::default(),
             options: vec![],
             matched: vec![],
             selected: None,

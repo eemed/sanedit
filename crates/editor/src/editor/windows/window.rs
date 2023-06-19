@@ -53,6 +53,7 @@ impl Window {
             buf,
             view: View::new(width, height),
             message: None,
+            completion: Completion::default(),
             cursors: Cursors::default(),
             keymap: Keymap::window(),
             options: Options::default(),

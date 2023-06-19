@@ -10,6 +10,7 @@ use std::cmp;
 use std::fs::File;
 use std::io::{self, Write};
 use std::ops::{Bound, RangeBounds};
+use std::sync::Arc;
 
 use self::tree::pieces::Pieces;
 use self::tree::Tree;
@@ -60,8 +61,8 @@ pub struct Mark {
 /// modifying the tree and still holding snaphots.
 #[derive(Debug)]
 pub struct PieceTree {
-    pub(crate) orig: OriginalBuffer,
-    pub(crate) add: AddBuffer,
+    pub(crate) orig: Arc<OriginalBuffer>,
+    pub(crate) add: Arc<AddBuffer>,
     pub(crate) tree: Tree,
     pub(crate) len: usize,
 }
@@ -199,7 +200,7 @@ impl PieceTree {
 
         PieceTree {
             len: orig_buf.len(),
-            orig: orig_buf,
+            orig: Arc::new(orig_buf),
             add: add_buf,
             tree: pieces,
         }

@@ -4,7 +4,7 @@ pub(crate) mod piece;
 pub(crate) mod pieces;
 
 use std::ops::Range;
-use std::rc::Rc;
+use std::sync::Arc;
 
 use self::color::Color;
 use self::node::internal_node::InternalNode;
@@ -15,7 +15,7 @@ use super::buffers::BufferKind;
 
 #[derive(Clone, Debug)]
 pub(crate) struct Tree {
-    pub(crate) root: Rc<Node>,
+    pub(crate) root: Arc<Node>,
     pub(crate) node_count: usize,
 }
 
@@ -23,7 +23,7 @@ impl Tree {
     #[inline]
     pub fn new() -> Tree {
         Tree {
-            root: Rc::new(Node::Leaf),
+            root: Arc::new(Node::Leaf),
             node_count: 0,
         }
     }
@@ -112,7 +112,7 @@ impl Tree {
 ///     inserted byte count
 ///     inserted line count
 fn insert_rec(
-    node: &mut Rc<Node>,
+    node: &mut Arc<Node>,
     mut index: usize, // Index in buffer
     piece: Piece,     // Piece to insert
     at_root: bool,
@@ -120,12 +120,12 @@ fn insert_rec(
     if node.is_leaf() {
         let ins_bytes = piece.len;
         let node_color = if at_root { Color::Black } else { Color::Red };
-        *node = Rc::new(Node::new(node_color, piece));
+        *node = Arc::new(Node::new(node_color, piece));
 
         return (1, ins_bytes);
     }
 
-    let node = Rc::make_mut(node).internal().unwrap();
+    let node = Arc::make_mut(node).internal().unwrap();
     let node_left_len = node.left_subtree_len;
     let node_piece = &node.piece;
 
@@ -186,7 +186,7 @@ fn insert_rec(
 ///     Wether the whole node was removed.
 ///     Optional piece to insert if a piece split was needed.
 fn remove_rec(
-    node: &mut Rc<Node>,
+    node: &mut Arc<Node>,
     mut index: usize, // Remove buffer position
     len: usize,       // Remove length
     at_root: bool,
@@ -196,7 +196,7 @@ fn remove_rec(
     }
 
     // Get to the internal node
-    let node_ref = Rc::make_mut(node);
+    let node_ref = Arc::make_mut(node);
     let n = node_ref.internal().unwrap();
     let n_left_len = n.left_subtree_len;
     let n_piece_len = n.piece.len;
@@ -245,7 +245,7 @@ fn remove_rec(
         if let Node::Internal(n) = node_ref {
             n.color = Color::Black;
         } else {
-            *node = Rc::new(Node::Leaf);
+            *node = Arc::new(Node::Leaf);
         }
     }
 
@@ -677,7 +677,7 @@ pub(crate) mod test {
     impl Tree {
         #[allow(dead_code)]
         pub(crate) fn print_in_order(&self) {
-            fn print(node: &Rc<Node>, mut space: usize) {
+            fn print(node: &Arc<Node>, mut space: usize) {
                 space += 10;
                 if let Node::Internal(node) = node.as_ref() {
                     print(&node.right, space);
@@ -696,7 +696,7 @@ pub(crate) mod test {
 
         #[allow(dead_code)]
         pub(crate) fn log_in_order(&self) {
-            fn print(node: &Rc<Node>, mut space: usize) {
+            fn print(node: &Arc<Node>, mut space: usize) {
                 space += 10;
                 if let Node::Internal(node) = node.as_ref() {
                     print(&node.right, space);
@@ -720,8 +720,8 @@ pub(crate) mod test {
         }
     }
 
-    fn is_black_height_balanced(node: &Rc<Node>) -> bool {
-        fn black_height(node: &Rc<Node>) -> Result<usize, ()> {
+    fn is_black_height_balanced(node: &Arc<Node>) -> bool {
+        fn black_height(node: &Arc<Node>) -> Result<usize, ()> {
             match node.as_ref() {
                 Node::Leaf => Ok(1),
                 Node::BBLeaf => Ok(2),
@@ -740,8 +740,8 @@ pub(crate) mod test {
         black_height(node).is_ok()
     }
 
-    fn left_subtree_lengths_match(node: &Rc<Node>) -> bool {
-        fn subtree_len(node: &Rc<Node>) -> Result<usize, ()> {
+    fn left_subtree_lengths_match(node: &Arc<Node>) -> bool {
+        fn subtree_len(node: &Arc<Node>) -> Result<usize, ()> {
             match node.as_ref() {
                 Node::Leaf => Ok(0),
                 Node::BBLeaf => Ok(0),
@@ -760,7 +760,7 @@ pub(crate) mod test {
         subtree_len(node).is_ok()
     }
 
-    fn red_nodes_have_black_children(node: &Rc<Node>) -> bool {
+    fn red_nodes_have_black_children(node: &Arc<Node>) -> bool {
         let self_ok = if node.color() == Color::Red {
             let node = if let Node::Internal(n) = node.as_ref() {
                 n

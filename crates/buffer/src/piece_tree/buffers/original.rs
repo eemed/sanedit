@@ -7,6 +7,8 @@ use std::{
     sync::{Mutex, RwLock},
 };
 
+use super::ByteSlice;
+
 #[derive(Debug)]
 pub(crate) struct Cache {
     cache: Box<[u8]>,

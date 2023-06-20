@@ -62,7 +62,7 @@ pub struct Mark {
 #[derive(Debug)]
 pub struct PieceTree {
     pub(crate) orig: Arc<OriginalBuffer>,
-    pub(crate) add: Arc<AddBuffer>,
+    pub(crate) add: AddBuffer,
     pub(crate) tree: Tree,
     pub(crate) len: usize,
 }

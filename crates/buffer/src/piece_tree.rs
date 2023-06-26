@@ -12,7 +12,7 @@ use std::io::{self, Write};
 use std::ops::{Bound, RangeBounds};
 use std::sync::Arc;
 
-use self::buffers::AddBufferReader;
+use self::buffers::{AddBufferReader, AddBufferWriter};
 use self::tree::pieces::Pieces;
 use self::tree::Tree;
 use crate::piece_tree::buffers::{AppendResult, BufferKind};
@@ -411,6 +411,11 @@ impl Default for PieceTree {
     fn default() -> Self {
         PieceTree::new()
     }
+}
+
+struct PieceTree2 {
+    writer: AddBufferWriter,
+    pt: ReadOnlyPieceTree,
 }
 
 #[derive(Clone)]

@@ -1,15 +1,15 @@
 use std::ops::{Bound, Range, RangeBounds};
 
-use super::{chunks::Chunks, utf8::chars::Chars, Bytes, PieceTree};
+use super::{chunks::Chunks, utf8::chars::Chars, Bytes, PieceTree, ReadOnlyPieceTree};
 
 #[derive(Debug, Clone)]
 pub struct PieceTreeSlice<'a> {
     range: Range<usize>,
-    pt: &'a PieceTree,
+    pt: &'a ReadOnlyPieceTree,
 }
 
 impl<'a> PieceTreeSlice<'a> {
-    pub(crate) fn new(pt: &'a PieceTree, range: Range<usize>) -> PieceTreeSlice {
+    pub(crate) fn new(pt: &'a ReadOnlyPieceTree, range: Range<usize>) -> PieceTreeSlice {
         PieceTreeSlice { range, pt }
     }
 

@@ -3,7 +3,7 @@ use std::ops::Range;
 use super::node::internal_node::InternalNode;
 use super::node::Node;
 use super::piece::Piece;
-use crate::piece_tree::PieceTree;
+use crate::piece_tree::{PieceTree, ReadOnlyPieceTree};
 
 pub(crate) type Pieces<'a> = BoundedPieceIter<'a>;
 
@@ -16,7 +16,7 @@ pub(crate) struct BoundedPieceIter<'a> {
 
 impl<'a> BoundedPieceIter<'a> {
     #[inline]
-    pub fn new(pt: &'a PieceTree, at: usize) -> BoundedPieceIter<'a> {
+    pub fn new(pt: &'a ReadOnlyPieceTree, at: usize) -> BoundedPieceIter<'a> {
         let iter = PieceIter::new(pt, at);
         BoundedPieceIter {
             range: 0..pt.len(),
@@ -25,7 +25,7 @@ impl<'a> BoundedPieceIter<'a> {
     }
     #[inline]
     pub fn new_from_slice(
-        pt: &'a PieceTree,
+        pt: &'a ReadOnlyPieceTree,
         at: usize,
         range: Range<usize>,
     ) -> BoundedPieceIter<'a> {
@@ -95,14 +95,14 @@ impl<'a> BoundedPieceIter<'a> {
 /// Traverse pieces in the tree, in order
 #[derive(Debug, Clone)]
 pub(crate) struct PieceIter<'a> {
-    pt: &'a PieceTree,
+    pt: &'a ReadOnlyPieceTree,
     stack: Vec<&'a InternalNode>,
     pos: usize, // Current piece pos in buffer
 }
 
 impl<'a> PieceIter<'a> {
     #[inline]
-    pub(crate) fn new(pt: &'a PieceTree, at: usize) -> Self {
+    pub(crate) fn new(pt: &'a ReadOnlyPieceTree, at: usize) -> Self {
         // Be empty at pt.len
         let (stack, pos) = if at == pt.len {
             (Vec::with_capacity(pt.tree.max_height()), at)

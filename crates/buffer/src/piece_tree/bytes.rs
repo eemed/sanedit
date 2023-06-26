@@ -1,8 +1,8 @@
-use std::ops::{Index, Range};
+use std::ops::Range;
 
 use super::{
     chunks::{Chunk, Chunks},
-    PieceTree,
+    ReadOnlyPieceTree,
 };
 
 #[derive(Debug, Clone)]
@@ -17,7 +17,7 @@ pub struct Bytes<'a> {
 
 impl<'a> Bytes<'a> {
     #[inline]
-    pub(crate) fn new(pt: &'a PieceTree, at: usize) -> Bytes<'a> {
+    pub(crate) fn new(pt: &'a ReadOnlyPieceTree, at: usize) -> Bytes<'a> {
         let chunks = Chunks::new(pt, at);
         let chunk = chunks.get();
         let pos = chunk.as_ref().map(|(pos, _)| at - pos).unwrap_or(0);
@@ -35,7 +35,11 @@ impl<'a> Bytes<'a> {
     }
 
     #[inline]
-    pub(crate) fn new_from_slice(pt: &'a PieceTree, at: usize, range: Range<usize>) -> Bytes<'a> {
+    pub(crate) fn new_from_slice(
+        pt: &'a ReadOnlyPieceTree,
+        at: usize,
+        range: Range<usize>,
+    ) -> Bytes<'a> {
         debug_assert!(
             range.end - range.start >= at,
             "Attempting to index {} over slice len {} ",
@@ -135,6 +139,8 @@ impl<'a> Bytes<'a> {
 
 #[cfg(test)]
 mod test {
+    use crate::PieceTree;
+
     use super::*;
 
     fn as_byte(string: &str) -> Option<u8> {

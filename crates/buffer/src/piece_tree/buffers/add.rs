@@ -9,8 +9,6 @@ use std::{
     },
 };
 
-use super::ByteSlice;
-
 // Idea is to create a array of pointers to blocks of data.
 // The blocks of data grow in the powers of two and are allocated as needed.
 // The blocks of data are called buckets.
@@ -67,48 +65,16 @@ macro_rules! array {
     }};
 }
 
-#[derive(Debug)]
-pub(crate) struct AddBuffer {
-    writer: AddBufferWriter,
-    reader: AddBufferReader,
-}
+pub(crate) fn create_add_buffer_reader_writer() -> (AddBufferReader, AddBufferWriter) {
+    let list = Arc::new(List {
+        len: AtomicUsize::new(0),
+        buckets: array!(|_| Bucket::default(); BUCKET_COUNT),
+    });
 
-impl AddBuffer {
-    pub fn new() -> AddBuffer {
-        let list = Arc::new(List {
-            len: AtomicUsize::new(0),
-            buckets: array!(|_| Bucket::default(); BUCKET_COUNT),
-        });
+    let writer = AddBufferWriter { list: list.clone() };
+    let reader = AddBufferReader { list };
 
-        let writer = AddBufferWriter { list: list.clone() };
-        let reader = AddBufferReader { list };
-
-        AddBuffer { writer, reader }
-    }
-
-    pub fn len(&self) -> usize {
-        self.reader.list.len.load(Ordering::Relaxed)
-    }
-
-    /// Append to add buffer.
-    /// This will only append the amount we can guarantee are contiguous.
-    /// This will ensure you can slice the buffer from these points later using
-    /// slice, and no copying will be done.
-    ///
-    /// This is used to create separate pieces in the tree when the data cannot be
-    /// contiguous in memory.
-    pub fn append(&mut self, bytes: &[u8]) -> AppendResult {
-        self.writer.append(bytes)
-    }
-
-    pub fn slice<'a>(&'a self, range: Range<usize>) -> ByteSlice<'a> {
-        let bytes = self.reader.slice(range);
-        bytes.into()
-    }
-
-    pub fn reader(&self) -> AddBufferReader {
-        todo!()
-    }
+    (reader, writer)
 }
 
 pub(crate) enum AppendResult {

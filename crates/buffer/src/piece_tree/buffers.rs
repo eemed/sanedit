@@ -10,7 +10,6 @@ pub(crate) enum BufferKind {
 }
 
 pub(crate) type ByteSlice<'a> = Cow<'a, [u8]>;
-// pub(crate) type AddBuffer = Vec<u8>;
 
-pub(crate) use add::{AddBuffer, AddBufferReader, AddBufferWriter, AppendResult};
+pub(crate) use add::{create_reader_writer, AddBufferReader, AddBufferWriter, AppendResult};
 pub(crate) use original::OriginalBuffer;

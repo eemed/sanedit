@@ -61,8 +61,8 @@ impl<'a> Chunks<'a> {
 fn read_piece<'a>(pt: &'a PieceTree, piece: &Piece) -> Option<Chunk<'a>> {
     match piece.kind {
         BufferKind::Add => {
-            let bytes = &pt.add[piece.pos..piece.pos + piece.len];
-            Some(Chunk(bytes.into()))
+            let bytes = pt.add.slice(piece.pos..piece.pos + piece.len);
+            Some(Chunk(bytes))
         }
         BufferKind::Original => {
             let bytes = pt.orig.slice(piece.pos..piece.pos + piece.len).ok()?;

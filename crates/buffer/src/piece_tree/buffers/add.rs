@@ -69,8 +69,8 @@ macro_rules! array {
 
 #[derive(Debug)]
 pub(crate) struct AddBuffer {
-    writer: Writer,
-    reader: Reader,
+    writer: AddBufferWriter,
+    reader: AddBufferReader,
 }
 
 impl AddBuffer {
@@ -80,8 +80,8 @@ impl AddBuffer {
             buckets: array!(|_| Bucket::default(); BUCKET_COUNT),
         });
 
-        let writer = Writer { list: list.clone() };
-        let reader = Reader { list };
+        let writer = AddBufferWriter { list: list.clone() };
+        let reader = AddBufferReader { list };
 
         AddBuffer { writer, reader }
     }
@@ -97,16 +97,16 @@ impl AddBuffer {
     ///
     /// This is used to create separate pieces in the tree when the data cannot be
     /// contiguous in memory.
-    pub fn append(&self, bytes: &[u8]) -> AppendResult {
+    pub fn append(&mut self, bytes: &[u8]) -> AppendResult {
         self.writer.append(bytes)
     }
 
     pub fn slice<'a>(&'a self, range: Range<usize>) -> ByteSlice<'a> {
         let bytes = self.reader.slice(range);
-        ByteSlice::Borrowed(bytes)
+        bytes.into()
     }
 
-    pub fn reader(&self) -> Reader {
+    pub fn reader(&self) -> AddBufferReader {
         todo!()
     }
 }
@@ -119,11 +119,11 @@ pub(crate) enum AppendResult {
 }
 
 #[derive(Debug)]
-pub(crate) struct Writer {
+pub(crate) struct AddBufferWriter {
     list: Arc<List>,
 }
 
-impl Writer {
+impl AddBufferWriter {
     pub fn append(&self, bytes: &[u8]) -> AppendResult {
         let len = self.list.len.load(Ordering::Relaxed);
         let loc = BucketLocation::of(len);
@@ -154,18 +154,21 @@ impl Writer {
     }
 }
 
-#[derive(Debug)]
-pub(crate) struct Reader {
+#[derive(Debug, Clone)]
+pub(crate) struct AddBufferReader {
     list: Arc<List>,
 }
 
-impl Reader {
+impl AddBufferReader {
     pub fn slice(&self, range: Range<usize>) -> &[u8] {
         // TODO assert we dont read past len
         let loc = BucketLocation::of(range.start);
-        let bucket = &self.list.buckets[loc.bucket];
-        let bucket = unsafe { (*bucket.get()).as_ref() };
-        let bucket = bucket.unwrap();
+        let bucket = {
+            let bucket: &UnsafeCell<Option<Box<[u8]>>> = &self.list.buckets[loc.bucket];
+            let bucket: Option<&Box<[u8]>> = unsafe { (*bucket.get()).as_ref() };
+            let bucket: &Box<[u8]> = bucket.unwrap();
+            bucket
+        };
         let brange = loc.pos..loc.pos + range.len();
         &bucket[brange]
     }

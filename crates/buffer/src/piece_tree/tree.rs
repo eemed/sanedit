@@ -42,8 +42,8 @@ impl Tree {
 
     /// Insert piece `piece` to tree at index `index`.
     #[inline]
-    pub fn insert(&mut self, pos: usize, piece: Piece) {
-        let (nodes_inserted, ..) = insert_rec(&mut self.root, pos, piece, true);
+    pub fn insert(&mut self, pos: usize, piece: Piece, allow_append: bool) {
+        let (nodes_inserted, ..) = insert_rec(&mut self.root, pos, piece, true, allow_append);
         self.node_count += nodes_inserted;
     }
 
@@ -64,7 +64,7 @@ impl Tree {
             if let Some(p) = ins_p {
                 removed_bytes -= p.len;
 
-                let (nodes_inserted, _) = insert_rec(&mut self.root, range.start, p, true);
+                let (nodes_inserted, _) = insert_rec(&mut self.root, range.start, p, true, true);
                 self.node_count += nodes_inserted;
             }
         }
@@ -116,6 +116,7 @@ fn insert_rec(
     mut index: usize, // Index in buffer
     piece: Piece,     // Piece to insert
     at_root: bool,
+    allow_append: bool,
 ) -> (usize, usize) {
     if node.is_leaf() {
         let ins_bytes = piece.len;
@@ -130,7 +131,7 @@ fn insert_rec(
     let node_piece = &node.piece;
 
     let (nodes_added, ins_bytes) = if node_left_len > index {
-        let ret = insert_rec(&mut node.left, index, piece, false);
+        let ret = insert_rec(&mut node.left, index, piece, false, allow_append);
 
         node.left_subtree_len += ret.1;
         ret
@@ -142,7 +143,10 @@ fn insert_rec(
         (1, ins_bytes)
     } else if node_left_len + node_piece.len == index {
         // Append?
-        if node_piece.kind == BufferKind::Add && node_piece.pos + node_piece.len == piece.pos {
+        if allow_append
+            && node_piece.kind == BufferKind::Add
+            && node_piece.pos + node_piece.len == piece.pos
+        {
             node.piece.len += piece.len;
             (0, piece.len)
         } else {
@@ -166,7 +170,7 @@ fn insert_rec(
         // node_left_len + node_piece_len < index
         // Go right
         index -= node_left_len + node_piece.len;
-        insert_rec(&mut node.right, index, piece, false)
+        insert_rec(&mut node.right, index, piece, false, allow_append)
     };
 
     if nodes_added > 0 {

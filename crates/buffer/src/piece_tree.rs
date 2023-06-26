@@ -12,9 +12,10 @@ use std::io::{self, Write};
 use std::ops::{Bound, RangeBounds};
 use std::sync::Arc;
 
+use self::buffers::AddBufferReader;
 use self::tree::pieces::Pieces;
 use self::tree::Tree;
-use crate::piece_tree::buffers::BufferKind;
+use crate::piece_tree::buffers::{AppendResult, BufferKind};
 use crate::piece_tree::chunks::Chunks;
 use crate::piece_tree::tree::piece::Piece;
 use buffers::AddBuffer;
@@ -187,14 +188,14 @@ impl PieceTree {
                 while len != 0 {
                     let plen = len.min(FILE_BACKED_MAX_PIECE_SIZE);
                     let piece = Piece::new(BufferKind::Original, pos, plen);
-                    pieces.insert(pos, piece);
+                    pieces.insert(pos, piece, true);
 
                     len -= plen;
                     pos += plen;
                 }
             } else {
                 let piece = Piece::new(BufferKind::Original, 0, orig_buf.len());
-                pieces.insert(0, piece);
+                pieces.insert(0, piece, true);
             }
         }
 
@@ -219,21 +220,28 @@ impl PieceTree {
     /// would not be sequential. Creating M x N pieces where M is the number of
     /// cursors and N is the number of edits characters.
     pub fn insert_multi<B: AsRef<[u8]>>(&mut self, positions: &mut [usize], bytes: B) {
-        let bytes = bytes.as_ref();
+        let mut bytes = bytes.as_ref();
         if bytes.is_empty() {
             return;
         }
 
-        let bpos = self.add.len();
-        self.add.extend_from_slice(bytes);
-
         // Sort and insert in reverse so positions do not change
         positions.sort();
 
-        for (count, pos) in positions.iter().rev().enumerate() {
-            let piece = Piece::new_with_count(BufferKind::Add, bpos, bytes.len(), count as u32);
-            self.len += piece.len;
-            self.tree.insert(*pos, piece);
+        while !bytes.is_empty() {
+            let bpos = self.add.len();
+            let (n, can_append) = match self.add.append(bytes) {
+                AppendResult::NewBlock(n) => (n, false),
+                AppendResult::Append(n) => (n, true),
+            };
+
+            for (count, pos) in positions.iter().rev().enumerate() {
+                let piece = Piece::new_with_count(BufferKind::Add, bpos, bytes.len(), count as u32);
+                self.len += piece.len;
+                self.tree.insert(*pos, piece, can_append);
+            }
+
+            bytes = &bytes[n..];
         }
     }
 
@@ -246,18 +254,24 @@ impl PieceTree {
             self.len
         );
 
-        let bytes = bytes.as_ref();
+        let mut bytes = bytes.as_ref();
         if bytes.is_empty() {
             return;
         }
 
-        let bpos = self.add.len();
-        self.add.extend_from_slice(bytes);
+        while !bytes.is_empty() {
+            let bpos = self.add.len();
+            let (n, can_append) = match self.add.append(bytes) {
+                AppendResult::NewBlock(n) => (n, false),
+                AppendResult::Append(n) => (n, true),
+            };
 
-        let piece = Piece::new(BufferKind::Add, bpos, bytes.len());
-        self.len += piece.len;
+            let piece = Piece::new(BufferKind::Add, bpos, bytes.len());
+            self.len += piece.len;
+            self.tree.insert(pos, piece, can_append);
 
-        self.tree.insert(pos, piece);
+            bytes = &bytes[n..];
+        }
     }
 
     #[inline]
@@ -397,4 +411,12 @@ impl Default for PieceTree {
     fn default() -> Self {
         PieceTree::new()
     }
+}
+
+#[derive(Clone)]
+struct ReadOnlyPieceTree {
+    pub(crate) orig: Arc<OriginalBuffer>,
+    pub(crate) add: AddBufferReader,
+    pub(crate) tree: Tree,
+    pub(crate) len: usize,
 }

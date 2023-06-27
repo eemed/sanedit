@@ -3,7 +3,7 @@ use std::ops::Range;
 use super::node::internal_node::InternalNode;
 use super::node::Node;
 use super::piece::Piece;
-use crate::piece_tree::{PieceTree, ReadOnlyPieceTree};
+use crate::piece_tree::ReadOnlyPieceTree;
 
 pub(crate) type Pieces<'a> = BoundedPieceIter<'a>;
 

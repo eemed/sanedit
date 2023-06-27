@@ -77,6 +77,7 @@ pub(crate) fn create_add_buffer_reader_writer() -> (AddBufferReader, AddBufferWr
     (reader, writer)
 }
 
+#[derive(Debug, PartialEq)]
 pub(crate) enum AppendResult {
     /// Allocated a new block and appended usize bytes to it.
     NewBlock(usize),
@@ -231,5 +232,20 @@ mod test {
             },
             BucketLocation::of(16385)
         );
+    }
+
+    #[test]
+    fn append() {
+        let (_aread, awrite) = create_add_buffer_reader_writer();
+        let mut bytes = b"a".repeat(BUCKET_START_POS + 10);
+
+        assert_eq!(
+            AppendResult::NewBlock(BUCKET_START_POS),
+            awrite.append(&bytes)
+        );
+        bytes = bytes[BUCKET_START_POS..].to_vec();
+
+        assert_eq!(AppendResult::NewBlock(10), awrite.append(&bytes));
+        assert_eq!(AppendResult::Append(10), awrite.append(&bytes));
     }
 }

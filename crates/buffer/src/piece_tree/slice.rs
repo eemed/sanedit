@@ -1,6 +1,6 @@
 use std::ops::{Bound, Range, RangeBounds};
 
-use super::{chunks::Chunks, utf8::chars::Chars, Bytes, PieceTree, ReadOnlyPieceTree};
+use super::{chunks::Chunks, utf8::chars::Chars, Bytes, ReadOnlyPieceTree};
 
 #[derive(Debug, Clone)]
 pub struct PieceTreeSlice<'a> {

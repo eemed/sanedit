@@ -1,5 +1,5 @@
 use std::mem;
-use std::rc::Rc;
+use std::sync::Arc;
 
 use crate::piece_tree::tree::color::Color;
 use crate::piece_tree::tree::piece::Piece;
@@ -9,8 +9,8 @@ use super::Node;
 /// Internal node in the red black tree.
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct InternalNode {
-    pub(crate) left: Rc<Node>,
-    pub(crate) right: Rc<Node>,
+    pub(crate) left: Arc<Node>,
+    pub(crate) right: Arc<Node>,
     pub(crate) color: Color,
 
     /// Data in the tree
@@ -22,8 +22,8 @@ pub(crate) struct InternalNode {
 impl InternalNode {
     pub fn new(color: Color, piece: Piece) -> InternalNode {
         InternalNode {
-            left: Rc::new(Node::Leaf),
-            right: Rc::new(Node::Leaf),
+            left: Arc::new(Node::Leaf),
+            right: Arc::new(Node::Leaf),
             color,
             piece,
             left_subtree_len: 0,
@@ -37,10 +37,10 @@ impl InternalNode {
         if self.left.color() == BB || self.right.color() == BB {
             self.blacken();
 
-            let left = Rc::make_mut(&mut self.left);
+            let left = Arc::make_mut(&mut self.left);
             left.redden();
 
-            let right = Rc::make_mut(&mut self.right);
+            let right = Arc::make_mut(&mut self.right);
             right.redden();
         }
 
@@ -58,30 +58,30 @@ impl InternalNode {
     }
 
     #[inline]
-    pub fn take_left(&mut self) -> Rc<Node> {
-        mem::replace(&mut self.left, Rc::new(Node::Leaf))
+    pub fn take_left(&mut self) -> Arc<Node> {
+        mem::replace(&mut self.left, Arc::new(Node::Leaf))
     }
 
     #[inline]
-    pub fn take_right(&mut self) -> Rc<Node> {
-        mem::replace(&mut self.right, Rc::new(Node::Leaf))
+    pub fn take_right(&mut self) -> Arc<Node> {
+        mem::replace(&mut self.right, Arc::new(Node::Leaf))
     }
 
     pub fn insert_left(&mut self, piece: Piece) {
         fn ins_right(node: &mut InternalNode, piece: Piece) {
-            let right = Rc::make_mut(&mut node.right);
+            let right = Arc::make_mut(&mut node.right);
             match right {
                 Node::Internal(r) => {
                     ins_right(r, piece);
                     r.balance();
                 }
                 _ => {
-                    node.right = Rc::new(InternalNode::new(Color::Red, piece).into());
+                    node.right = Arc::new(InternalNode::new(Color::Red, piece).into());
                 }
             }
         }
 
-        let left = Rc::make_mut(&mut self.left);
+        let left = Arc::make_mut(&mut self.left);
 
         match left {
             Node::Internal(l) => {
@@ -89,7 +89,7 @@ impl InternalNode {
                 l.balance();
             }
             _ => {
-                self.left = Rc::new(InternalNode::new(Color::Red, piece).into());
+                self.left = Arc::new(InternalNode::new(Color::Red, piece).into());
             }
         }
     }
@@ -98,26 +98,26 @@ impl InternalNode {
         fn ins_left(node: &mut InternalNode, piece: Piece) {
             node.left_subtree_len += piece.len;
 
-            let left = Rc::make_mut(&mut node.left);
+            let left = Arc::make_mut(&mut node.left);
             match left {
                 Node::Internal(l) => {
                     ins_left(l, piece);
                     l.balance();
                 }
                 _ => {
-                    node.left = Rc::new(InternalNode::new(Color::Red, piece).into());
+                    node.left = Arc::new(InternalNode::new(Color::Red, piece).into());
                 }
             }
         }
 
-        let right = Rc::make_mut(&mut self.right);
+        let right = Arc::make_mut(&mut self.right);
         match right {
             Node::Internal(r) => {
                 ins_left(r, piece);
                 r.balance();
             }
             _ => {
-                self.right = Rc::new(InternalNode::new(Color::Red, piece).into());
+                self.right = Arc::new(InternalNode::new(Color::Red, piece).into());
             }
         }
     }
@@ -128,7 +128,7 @@ impl InternalNode {
         use Color::{Black as B, NegativeBlack as NB, Red as R};
 
         #[inline]
-        fn internal_color(n: &Rc<Node>) -> Option<Color> {
+        fn internal_color(n: &Arc<Node>) -> Option<Color> {
             match n.as_ref() {
                 Node::Internal(n) => Some(n.color),
                 _ => None,
@@ -136,7 +136,7 @@ impl InternalNode {
         }
 
         #[inline]
-        fn internal_tree_colors(n: &Rc<Node>) -> (Option<Color>, Option<Color>, Option<Color>) {
+        fn internal_tree_colors(n: &Arc<Node>) -> (Option<Color>, Option<Color>, Option<Color>) {
             match n.as_ref() {
                 Node::Internal(n) => {
                     let left = internal_color(&n.left);
@@ -168,9 +168,9 @@ impl InternalNode {
                 //  / \
                 // a   b
                 let mut y_ptr = self.take_left();
-                let y = Rc::make_mut(&mut y_ptr).internal().unwrap();
+                let y = Arc::make_mut(&mut y_ptr).internal().unwrap();
                 let mut x_ptr = y.take_left();
-                let x = Rc::make_mut(&mut x_ptr).internal().unwrap();
+                let x = Arc::make_mut(&mut x_ptr).internal().unwrap();
 
                 self.color.redden();
                 y.color = B;
@@ -195,9 +195,9 @@ impl InternalNode {
                 //      / \
                 //     b   c
                 let mut x_ptr = self.take_left();
-                let x = Rc::make_mut(&mut x_ptr).internal().unwrap();
+                let x = Arc::make_mut(&mut x_ptr).internal().unwrap();
                 let mut y_ptr = x.take_right();
-                let y = Rc::make_mut(&mut y_ptr).internal().unwrap();
+                let y = Arc::make_mut(&mut y_ptr).internal().unwrap();
 
                 self.redden();
                 x.color = B;
@@ -226,9 +226,9 @@ impl InternalNode {
                 //      / \
                 //     b   c
                 let mut z_ptr = self.take_right();
-                let z = Rc::make_mut(&mut z_ptr).internal().unwrap();
+                let z = Arc::make_mut(&mut z_ptr).internal().unwrap();
                 let mut y_ptr = z.take_left();
-                let y = Rc::make_mut(&mut y_ptr).internal().unwrap();
+                let y = Arc::make_mut(&mut y_ptr).internal().unwrap();
 
                 self.color.redden();
                 z.color = B;
@@ -255,9 +255,9 @@ impl InternalNode {
                 //           /  \
                 //          c    d
                 let mut y_ptr = self.take_right();
-                let y = Rc::make_mut(&mut y_ptr).internal().unwrap();
+                let y = Arc::make_mut(&mut y_ptr).internal().unwrap();
                 let mut z_ptr = y.take_right();
-                let z = Rc::make_mut(&mut z_ptr).internal().unwrap();
+                let z = Arc::make_mut(&mut z_ptr).internal().unwrap();
 
                 self.color.redden();
                 y.color = B;
@@ -284,11 +284,11 @@ impl InternalNode {
                 //      b   c d    e                 d    e
                 //
                 let mut z_ptr = self.take_right();
-                let z = Rc::make_mut(&mut z_ptr).internal().unwrap();
+                let z = Arc::make_mut(&mut z_ptr).internal().unwrap();
                 let mut y_ptr = z.take_left();
-                let y = Rc::make_mut(&mut y_ptr).internal().unwrap();
+                let y = Arc::make_mut(&mut y_ptr).internal().unwrap();
                 let mut w_ptr = z.take_right();
-                let w = Rc::make_mut(&mut w_ptr).internal().unwrap();
+                let w = Arc::make_mut(&mut w_ptr).internal().unwrap();
 
                 self.color = B;
                 z.color = B;
@@ -321,11 +321,11 @@ impl InternalNode {
                 // a'  b' b   c            a'   b'
                 //
                 let mut x_ptr = self.take_left();
-                let x = Rc::make_mut(&mut x_ptr).internal().unwrap();
+                let x = Arc::make_mut(&mut x_ptr).internal().unwrap();
                 let mut w_ptr = x.take_left();
-                let w = Rc::make_mut(&mut w_ptr).internal().unwrap();
+                let w = Arc::make_mut(&mut w_ptr).internal().unwrap();
                 let mut y_ptr = x.take_right();
-                let y = Rc::make_mut(&mut y_ptr).internal().unwrap();
+                let y = Arc::make_mut(&mut y_ptr).internal().unwrap();
 
                 self.color = B;
                 x.color = B;

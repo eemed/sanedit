@@ -30,6 +30,16 @@ tasks:
     cmds:
       - cargo build
 
+  run:flamegraph:
+    desc: Build and run the release build and produce a flamegraph
+    dir: crates
+    deps: [install-pre-commit-hook]
+    env:
+      CARGO_PROFILE_RELEASE_DEBUG: true
+    cmds:
+      - echo -1 | sudo tee /proc/sys/kernel/perf_event_paranoid
+      - cargo flamegraph --dev --open
+
   run:
     desc: Build and run the debug build
     dir: crates

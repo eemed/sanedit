@@ -1,7 +1,7 @@
 pub(crate) mod internal_node;
 
 use std::mem;
-use std::rc::Rc;
+use std::sync::Arc;
 
 use self::internal_node::InternalNode;
 use super::color::Color;
@@ -79,7 +79,7 @@ impl Node {
                 (true, false) => {
                     if n.color == Color::Black && n.right.color() == Color::Red {
                         let mut right = n.take_right();
-                        let right = Rc::make_mut(&mut right).internal().unwrap();
+                        let right = Arc::make_mut(&mut right).internal().unwrap();
                         mem::swap(n, right);
                         n.color = Color::Black;
                     }
@@ -87,13 +87,13 @@ impl Node {
                 (false, true) => {
                     if n.color == Color::Black && n.left.color() == Color::Red {
                         let mut left = n.take_left();
-                        let left = Rc::make_mut(&mut left).internal().unwrap();
+                        let left = Arc::make_mut(&mut left).internal().unwrap();
                         mem::swap(n, left);
                         n.color = Color::Black;
                     }
                 }
                 (false, false) => {
-                    let left = Rc::make_mut(&mut n.left);
+                    let left = Arc::make_mut(&mut n.left);
                     let piece = left.remove_max();
                     n.left_subtree_len -= piece.len;
                     n.piece = piece;
@@ -115,7 +115,7 @@ impl Node {
                         piece
                     } else {
                         // Recurse into child
-                        let right = Rc::make_mut(&mut n.right);
+                        let right = Arc::make_mut(&mut n.right);
                         let piece = rec(right);
                         n.bubble();
                         piece

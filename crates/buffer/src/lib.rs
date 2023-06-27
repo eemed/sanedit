@@ -4,7 +4,7 @@ mod search;
 
 pub use piece_tree::{
     builder::PieceTreeBuilder, bytes::Bytes, chunks::Chunks, slice::PieceTreeSlice, Mark,
-    PieceTree, Snapshot,
+    PieceTree, ReadOnlyPieceTree,
 };
 
 pub use search::{SearchIter, SearchIterRev, Searcher, SearcherRev};

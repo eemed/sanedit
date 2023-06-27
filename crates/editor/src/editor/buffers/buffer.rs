@@ -10,7 +10,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use sanedit_buffer::{PieceTree, PieceTreeSlice};
+use sanedit_buffer::{PieceTree, PieceTreeSlice, ReadOnlyPieceTree};
 use sanedit_regex::Cursor;
 
 use crate::common::file::File;
@@ -41,7 +41,7 @@ pub(crate) struct Buffer {
 impl Buffer {
     pub fn new() -> Buffer {
         let pt = PieceTree::new();
-        let snapshot = pt.snapshot();
+        let snapshot = pt.read_only_copy();
         Buffer {
             id: BufferId::default(),
             pt,
@@ -67,7 +67,7 @@ impl Buffer {
         let path = file.path().canonicalize()?;
         let file = fs::File::open(&path)?;
         let pt = PieceTree::from_file(file);
-        let snapshot = pt.snapshot();
+        let snapshot = pt.read_only_copy();
         Ok(Buffer {
             id: BufferId::default(),
             pt,
@@ -91,7 +91,7 @@ impl Buffer {
 
     fn from_reader<R: io::Read>(reader: R) -> io::Result<Buffer> {
         let pt = PieceTree::from_reader(reader)?;
-        let snapshot = pt.snapshot();
+        let snapshot = pt.read_only_copy();
         Ok(Buffer {
             id: BufferId::default(),
             pt,
@@ -163,6 +163,10 @@ impl Buffer {
         let file = fs::File::create(&path)?;
         self.pt.write_to(file)?;
         Ok(())
+    }
+
+    pub fn read_only_copy(&self) -> ReadOnlyPieceTree {
+        self.pt.read_only_copy()
     }
 }
 

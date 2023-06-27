@@ -4,7 +4,7 @@ pub(crate) mod piece;
 pub(crate) mod pieces;
 
 use std::ops::Range;
-use std::rc::Rc;
+use std::sync::Arc;
 
 use self::color::Color;
 use self::node::internal_node::InternalNode;
@@ -15,7 +15,7 @@ use super::buffers::BufferKind;
 
 #[derive(Clone, Debug)]
 pub(crate) struct Tree {
-    pub(crate) root: Rc<Node>,
+    pub(crate) root: Arc<Node>,
     pub(crate) node_count: usize,
 }
 
@@ -23,7 +23,7 @@ impl Tree {
     #[inline]
     pub fn new() -> Tree {
         Tree {
-            root: Rc::new(Node::Leaf),
+            root: Arc::new(Node::Leaf),
             node_count: 0,
         }
     }
@@ -42,8 +42,8 @@ impl Tree {
 
     /// Insert piece `piece` to tree at index `index`.
     #[inline]
-    pub fn insert(&mut self, pos: usize, piece: Piece) {
-        let (nodes_inserted, ..) = insert_rec(&mut self.root, pos, piece, true);
+    pub fn insert(&mut self, pos: usize, piece: Piece, allow_append: bool) {
+        let (nodes_inserted, ..) = insert_rec(&mut self.root, pos, piece, true, allow_append);
         self.node_count += nodes_inserted;
     }
 
@@ -64,7 +64,7 @@ impl Tree {
             if let Some(p) = ins_p {
                 removed_bytes -= p.len;
 
-                let (nodes_inserted, _) = insert_rec(&mut self.root, range.start, p, true);
+                let (nodes_inserted, _) = insert_rec(&mut self.root, range.start, p, true, true);
                 self.node_count += nodes_inserted;
             }
         }
@@ -112,25 +112,26 @@ impl Tree {
 ///     inserted byte count
 ///     inserted line count
 fn insert_rec(
-    node: &mut Rc<Node>,
+    node: &mut Arc<Node>,
     mut index: usize, // Index in buffer
     piece: Piece,     // Piece to insert
     at_root: bool,
+    allow_append: bool,
 ) -> (usize, usize) {
     if node.is_leaf() {
         let ins_bytes = piece.len;
         let node_color = if at_root { Color::Black } else { Color::Red };
-        *node = Rc::new(Node::new(node_color, piece));
+        *node = Arc::new(Node::new(node_color, piece));
 
         return (1, ins_bytes);
     }
 
-    let node = Rc::make_mut(node).internal().unwrap();
+    let node = Arc::make_mut(node).internal().unwrap();
     let node_left_len = node.left_subtree_len;
     let node_piece = &node.piece;
 
     let (nodes_added, ins_bytes) = if node_left_len > index {
-        let ret = insert_rec(&mut node.left, index, piece, false);
+        let ret = insert_rec(&mut node.left, index, piece, false, allow_append);
 
         node.left_subtree_len += ret.1;
         ret
@@ -142,7 +143,10 @@ fn insert_rec(
         (1, ins_bytes)
     } else if node_left_len + node_piece.len == index {
         // Append?
-        if node_piece.kind == BufferKind::Add && node_piece.pos + node_piece.len == piece.pos {
+        if allow_append
+            && node_piece.kind == BufferKind::Add
+            && node_piece.pos + node_piece.len == piece.pos
+        {
             node.piece.len += piece.len;
             (0, piece.len)
         } else {
@@ -166,7 +170,7 @@ fn insert_rec(
         // node_left_len + node_piece_len < index
         // Go right
         index -= node_left_len + node_piece.len;
-        insert_rec(&mut node.right, index, piece, false)
+        insert_rec(&mut node.right, index, piece, false, allow_append)
     };
 
     if nodes_added > 0 {
@@ -186,7 +190,7 @@ fn insert_rec(
 ///     Wether the whole node was removed.
 ///     Optional piece to insert if a piece split was needed.
 fn remove_rec(
-    node: &mut Rc<Node>,
+    node: &mut Arc<Node>,
     mut index: usize, // Remove buffer position
     len: usize,       // Remove length
     at_root: bool,
@@ -196,7 +200,7 @@ fn remove_rec(
     }
 
     // Get to the internal node
-    let node_ref = Rc::make_mut(node);
+    let node_ref = Arc::make_mut(node);
     let n = node_ref.internal().unwrap();
     let n_left_len = n.left_subtree_len;
     let n_piece_len = n.piece.len;
@@ -245,7 +249,7 @@ fn remove_rec(
         if let Node::Internal(n) = node_ref {
             n.color = Color::Black;
         } else {
-            *node = Rc::new(Node::Leaf);
+            *node = Arc::new(Node::Leaf);
         }
     }
 
@@ -307,15 +311,12 @@ pub(crate) mod test {
     use rand_chacha::rand_core::{RngCore, SeedableRng};
 
     use super::*;
-    use crate::piece_tree::{
-        buffers::{AddBuffer, OriginalBuffer},
-        PieceTree,
-    };
+    use crate::piece_tree::PieceTree;
 
     #[test]
     fn find_node_start() {
         let pt = complex_tree();
-        let (stack, pos) = pt.tree.find_node(0);
+        let (stack, pos) = pt.tree().find_node(0);
 
         assert_eq!(0, pos);
         assert_eq!(3, stack.len());
@@ -327,7 +328,7 @@ pub(crate) mod test {
     #[test]
     fn find_node_middle() {
         let pt = complex_tree();
-        let (stack, pos) = pt.tree.find_node(pt.len / 2);
+        let (stack, pos) = pt.tree().find_node(pt.len() / 2);
 
         assert_eq!(9, pos);
         assert_eq!(4, stack.len());
@@ -340,7 +341,7 @@ pub(crate) mod test {
     #[test]
     fn find_node_end() {
         let pt = complex_tree();
-        let (stack, pos) = pt.tree.find_node(pt.len);
+        let (stack, pos) = pt.tree().find_node(pt.len());
 
         assert_eq!(17, pos);
         assert_eq!(3, stack.len());
@@ -354,9 +355,9 @@ pub(crate) mod test {
         let mut pt = PieceTree::new();
 
         pt.insert(0, "abcde");
-        assert_eq!(Ok(()), is_valid_tree(&pt.tree));
+        assert_eq!(Ok(()), is_valid_tree(pt.tree()));
         pt.insert(0, "ab");
-        assert_eq!(Ok(()), is_valid_tree(&pt.tree));
+        assert_eq!(Ok(()), is_valid_tree(pt.tree()));
     }
 
     #[test]
@@ -364,9 +365,9 @@ pub(crate) mod test {
         let mut pt = PieceTree::new();
 
         pt.insert(0, "abcde");
-        assert_eq!(Ok(()), is_valid_tree(&pt.tree));
+        assert_eq!(Ok(()), is_valid_tree(pt.tree()));
         pt.insert(2, "ab");
-        assert_eq!(Ok(()), is_valid_tree(&pt.tree));
+        assert_eq!(Ok(()), is_valid_tree(pt.tree()));
     }
 
     #[test]
@@ -374,64 +375,64 @@ pub(crate) mod test {
         let mut pt = PieceTree::new();
 
         pt.insert(0, "abcde");
-        assert_eq!(Ok(()), is_valid_tree(&pt.tree));
+        assert_eq!(Ok(()), is_valid_tree(pt.tree()));
         pt.insert(5, "ab");
-        assert_eq!(Ok(()), is_valid_tree(&pt.tree));
+        assert_eq!(Ok(()), is_valid_tree(pt.tree()));
     }
 
     #[test]
     fn remove_left_child() {
         let mut pt = simple_tree();
         pt.remove(0..1);
-        assert_eq!(Ok(()), is_valid_tree(&pt.tree));
+        assert_eq!(Ok(()), is_valid_tree(pt.tree()));
     }
 
     #[test]
     fn remove_right_child() {
         let mut pt = simple_tree();
         pt.remove(2..3);
-        assert_eq!(Ok(()), is_valid_tree(&pt.tree));
+        assert_eq!(Ok(()), is_valid_tree(pt.tree()));
     }
 
     #[test]
     fn remove_root() {
         let mut pt = simple_tree();
         pt.remove(1..2);
-        assert_eq!(Ok(()), is_valid_tree(&pt.tree));
+        assert_eq!(Ok(()), is_valid_tree(pt.tree()));
     }
 
     #[test]
     fn remove_start() {
         let mut pt = one_piece_tree();
         pt.remove(0..5);
-        assert_eq!(Ok(()), is_valid_tree(&pt.tree));
+        assert_eq!(Ok(()), is_valid_tree(pt.tree()));
     }
 
     #[test]
     fn remove_middle() {
         let mut pt = one_piece_tree();
         pt.remove(2..7);
-        assert_eq!(Ok(()), is_valid_tree(&pt.tree));
+        assert_eq!(Ok(()), is_valid_tree(pt.tree()));
     }
 
     #[test]
     fn remove_end() {
         let mut pt = one_piece_tree();
         pt.remove(5..);
-        assert_eq!(Ok(()), is_valid_tree(&pt.tree));
+        assert_eq!(Ok(()), is_valid_tree(pt.tree()));
     }
 
     #[test]
     fn remove_over_whole_piece() {
         let mut pt = PieceTree::new();
         pt.insert(0, "ab");
-        pt.add.extend_from_slice(b"123");
+        pt.add_writer.append(b"123");
         pt.insert(2, "cd");
-        pt.add.extend_from_slice(b"123");
+        pt.add_writer.append(b"123");
         pt.insert(4, "ef");
 
         pt.remove(1..4);
-        assert_eq!(Ok(()), is_valid_tree(&pt.tree));
+        assert_eq!(Ok(()), is_valid_tree(pt.tree()));
     }
 
     #[test]
@@ -440,13 +441,13 @@ pub(crate) mod test {
 
         pt.remove(0..1);
 
-        assert_eq!(Ok(()), is_valid_tree(&pt.tree));
-        assert!(!pt.tree.root.is_leaf());
+        assert_eq!(Ok(()), is_valid_tree(pt.tree()));
+        assert!(!pt.tree().root.is_leaf());
 
         pt.remove(0..1);
 
-        assert_eq!(Ok(()), is_valid_tree(&pt.tree));
-        assert!(!pt.tree.root.is_leaf());
+        assert_eq!(Ok(()), is_valid_tree(pt.tree()));
+        assert!(!pt.tree().root.is_leaf());
     }
 
     #[test]
@@ -455,13 +456,13 @@ pub(crate) mod test {
 
         pt.remove(4..5);
 
-        assert_eq!(Ok(()), is_valid_tree(&pt.tree));
-        assert!(!pt.tree.root.is_leaf());
+        assert_eq!(Ok(()), is_valid_tree(pt.tree()));
+        assert!(!pt.tree().root.is_leaf());
 
         pt.remove(4..5);
 
-        assert_eq!(Ok(()), is_valid_tree(&pt.tree));
-        assert!(!pt.tree.root.is_leaf());
+        assert_eq!(Ok(()), is_valid_tree(pt.tree()));
+        assert!(!pt.tree().root.is_leaf());
     }
 
     #[test]
@@ -470,13 +471,13 @@ pub(crate) mod test {
 
         pt.remove(1..2);
 
-        assert_eq!(Ok(()), is_valid_tree(&pt.tree));
-        assert!(!pt.tree.root.is_leaf());
+        assert_eq!(Ok(()), is_valid_tree(pt.tree()));
+        assert!(!pt.tree().root.is_leaf());
 
         pt.remove(1..2);
 
-        assert_eq!(Ok(()), is_valid_tree(&pt.tree));
-        assert!(!pt.tree.root.is_leaf());
+        assert_eq!(Ok(()), is_valid_tree(pt.tree()));
+        assert!(!pt.tree().root.is_leaf());
     }
 
     #[test]
@@ -485,13 +486,13 @@ pub(crate) mod test {
 
         pt.remove(1..8);
 
-        assert_eq!(Ok(()), is_valid_tree(&pt.tree));
-        assert!(!pt.tree.root.is_leaf());
+        assert_eq!(Ok(()), is_valid_tree(pt.tree()));
+        assert!(!pt.tree().root.is_leaf());
 
         pt.remove(1..8);
 
-        assert_eq!(Ok(()), is_valid_tree(&pt.tree));
-        assert!(!pt.tree.root.is_leaf());
+        assert_eq!(Ok(()), is_valid_tree(pt.tree()));
+        assert!(!pt.tree().root.is_leaf());
     }
 
     #[test]
@@ -502,7 +503,7 @@ pub(crate) mod test {
             let pos = pt.len() / 2;
             pt.remove(pos..pos + 1);
 
-            assert_eq!(Ok(()), is_valid_tree(&pt.tree));
+            assert_eq!(Ok(()), is_valid_tree(pt.tree()));
         }
     }
 
@@ -514,7 +515,7 @@ pub(crate) mod test {
             let pos = 0;
             pt.remove(pos..pos + 1);
 
-            assert_eq!(Ok(()), is_valid_tree(&pt.tree));
+            assert_eq!(Ok(()), is_valid_tree(pt.tree()));
         }
     }
 
@@ -526,7 +527,7 @@ pub(crate) mod test {
             let pos = pt.len().saturating_sub(2);
             pt.remove(pos..pos + 1);
 
-            assert_eq!(Ok(()), is_valid_tree(&pt.tree));
+            assert_eq!(Ok(()), is_valid_tree(pt.tree()));
         }
     }
 
@@ -534,7 +535,7 @@ pub(crate) mod test {
     fn remove_complex_whole() {
         let mut pt = complex_tree();
         pt.remove(0..pt.len());
-        assert_eq!(Ok(()), is_valid_tree(&pt.tree));
+        assert_eq!(Ok(()), is_valid_tree(pt.tree()));
     }
 
     #[test]
@@ -547,7 +548,7 @@ pub(crate) mod test {
             let pos = pt.len().saturating_sub(2);
             pt.remove(pos..pos + 1);
 
-            assert_eq!(Ok(()), is_valid_tree(&pt.tree));
+            assert_eq!(Ok(()), is_valid_tree(pt.tree()));
         }
     }
 
@@ -570,7 +571,7 @@ pub(crate) mod test {
             let end = (start + 15).min(tree_len);
             pt.remove(start..end);
             tree_len -= end - start;
-            assert_eq!(Ok(()), is_valid_tree(&pt.tree));
+            assert_eq!(Ok(()), is_valid_tree(pt.tree()));
         }
     }
 
@@ -635,19 +636,19 @@ pub(crate) mod test {
         // Put pieces in order
         for i in pieces.iter() {
             pt.insert(*i, i.to_string().as_bytes());
-            pt.add.extend_from_slice(b"waste");
+            pt.add_writer.append(b"waste");
         }
 
-        assert_eq!(Ok(()), is_valid_tree(&pt.tree));
-        assert_eq!(3, pt.tree.node_count);
+        assert_eq!(Ok(()), is_valid_tree(pt.tree()));
+        assert_eq!(3, pt.tree().node_count);
         pt
     }
 
     fn one_piece_tree() -> PieceTree {
         let mut pt = PieceTree::new();
         pt.insert(0, "abcdefghij");
-        assert_eq!(Ok(()), is_valid_tree(&pt.tree));
-        assert_eq!(1, pt.tree.node_count);
+        assert_eq!(Ok(()), is_valid_tree(pt.tree()));
+        assert_eq!(1, pt.tree().node_count);
         pt
     }
 
@@ -658,7 +659,7 @@ pub(crate) mod test {
         pt.insert(2, "ab");
 
         // create gap
-        pt.add.extend_from_slice(b"123");
+        pt.add_writer.append(b"123");
 
         pt.insert(7, "ab");
         pt.insert(7, "ab");
@@ -667,9 +668,9 @@ pub(crate) mod test {
         pt.insert(9, "ab");
         pt.insert(9, "ab");
 
-        assert_eq!(Ok(()), is_valid_tree(&pt.tree));
-        assert!(!pt.tree.root.is_leaf());
-        assert_eq!(9, pt.tree.node_count);
+        assert_eq!(Ok(()), is_valid_tree(pt.tree()));
+        assert!(!pt.tree().root.is_leaf());
+        assert_eq!(9, pt.tree().node_count);
 
         pt
     }
@@ -677,7 +678,7 @@ pub(crate) mod test {
     impl Tree {
         #[allow(dead_code)]
         pub(crate) fn print_in_order(&self) {
-            fn print(node: &Rc<Node>, mut space: usize) {
+            fn print(node: &Arc<Node>, mut space: usize) {
                 space += 10;
                 if let Node::Internal(node) = node.as_ref() {
                     print(&node.right, space);
@@ -696,7 +697,7 @@ pub(crate) mod test {
 
         #[allow(dead_code)]
         pub(crate) fn log_in_order(&self) {
-            fn print(node: &Rc<Node>, mut space: usize) {
+            fn print(node: &Arc<Node>, mut space: usize) {
                 space += 10;
                 if let Node::Internal(node) = node.as_ref() {
                     print(&node.right, space);
@@ -720,8 +721,8 @@ pub(crate) mod test {
         }
     }
 
-    fn is_black_height_balanced(node: &Rc<Node>) -> bool {
-        fn black_height(node: &Rc<Node>) -> Result<usize, ()> {
+    fn is_black_height_balanced(node: &Arc<Node>) -> bool {
+        fn black_height(node: &Arc<Node>) -> Result<usize, ()> {
             match node.as_ref() {
                 Node::Leaf => Ok(1),
                 Node::BBLeaf => Ok(2),
@@ -740,8 +741,8 @@ pub(crate) mod test {
         black_height(node).is_ok()
     }
 
-    fn left_subtree_lengths_match(node: &Rc<Node>) -> bool {
-        fn subtree_len(node: &Rc<Node>) -> Result<usize, ()> {
+    fn left_subtree_lengths_match(node: &Arc<Node>) -> bool {
+        fn subtree_len(node: &Arc<Node>) -> Result<usize, ()> {
             match node.as_ref() {
                 Node::Leaf => Ok(0),
                 Node::BBLeaf => Ok(0),
@@ -760,7 +761,7 @@ pub(crate) mod test {
         subtree_len(node).is_ok()
     }
 
-    fn red_nodes_have_black_children(node: &Rc<Node>) -> bool {
+    fn red_nodes_have_black_children(node: &Arc<Node>) -> bool {
         let self_ok = if node.color() == Color::Red {
             let node = if let Node::Internal(n) = node.as_ref() {
                 n

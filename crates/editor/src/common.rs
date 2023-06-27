@@ -7,3 +7,4 @@ pub(crate) mod movement;
 pub(crate) mod pairs;
 pub(crate) mod range;
 pub(crate) mod text;
+pub(crate) mod window;

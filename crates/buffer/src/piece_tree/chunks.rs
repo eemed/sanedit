@@ -3,7 +3,7 @@ use std::ops::Range;
 use super::{
     buffers::{BufferKind, ByteSlice},
     tree::{piece::Piece, pieces::Pieces},
-    PieceTree,
+    ReadOnlyPieceTree,
 };
 
 #[derive(Debug, Clone, PartialEq)]
@@ -18,19 +18,23 @@ impl<'a> AsRef<[u8]> for Chunk<'a> {
 
 #[derive(Debug, Clone)]
 pub struct Chunks<'a> {
-    pt: &'a PieceTree,
+    pt: &'a ReadOnlyPieceTree,
     pieces: Pieces<'a>,
 }
 
 impl<'a> Chunks<'a> {
     #[inline]
-    pub fn new(pt: &'a PieceTree, at: usize) -> Chunks<'a> {
+    pub(crate) fn new(pt: &'a ReadOnlyPieceTree, at: usize) -> Chunks<'a> {
         let pieces = Pieces::new(pt, at);
         Chunks { pt, pieces }
     }
 
     #[inline]
-    pub fn new_from_slice(pt: &'a PieceTree, at: usize, range: Range<usize>) -> Chunks<'a> {
+    pub(crate) fn new_from_slice(
+        pt: &'a ReadOnlyPieceTree,
+        at: usize,
+        range: Range<usize>,
+    ) -> Chunks<'a> {
         let pieces = Pieces::new_from_slice(pt, at, range);
         Chunks { pt, pieces }
     }
@@ -58,10 +62,10 @@ impl<'a> Chunks<'a> {
 }
 
 #[inline(always)]
-fn read_piece<'a>(pt: &'a PieceTree, piece: &Piece) -> Option<Chunk<'a>> {
+fn read_piece<'a>(pt: &'a ReadOnlyPieceTree, piece: &Piece) -> Option<Chunk<'a>> {
     match piece.kind {
         BufferKind::Add => {
-            let bytes = &pt.add[piece.pos..piece.pos + piece.len];
+            let bytes = pt.add.slice(piece.pos..piece.pos + piece.len);
             Some(Chunk(bytes.into()))
         }
         BufferKind::Original => {
@@ -74,6 +78,8 @@ fn read_piece<'a>(pt: &'a PieceTree, piece: &Piece) -> Option<Chunk<'a>> {
 #[cfg(test)]
 mod test {
     use std::borrow::Cow;
+
+    use crate::PieceTree;
 
     use super::*;
 
@@ -104,7 +110,7 @@ mod test {
         pt.insert(0, "bar");
         pt.insert(0, "foo");
 
-        let mut chunks = pt.chunks_at(pt.len);
+        let mut chunks = pt.chunks_at(pt.len());
 
         assert_eq!(None, chunks.get());
 
@@ -134,7 +140,7 @@ mod test {
         pt.insert(0, "bar");
         pt.insert(0, "foo");
 
-        let mut chunks = pt.chunks_at(pt.len);
+        let mut chunks = pt.chunks_at(pt.len());
 
         assert_eq!(None, chunks.get());
         assert_eq!(chunk(3, "bar"), chunks.prev());

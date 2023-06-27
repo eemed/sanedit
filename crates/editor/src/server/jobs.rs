@@ -54,8 +54,8 @@ impl JobProgressSender {
     }
 }
 
-pub(crate) type PinnedFuture = Pin<Box<dyn Future<Output = bool> + Send + Sync>>;
-pub(crate) type JobFutureFn = Box<dyn FnOnce(JobProgressSender) -> PinnedFuture + Send + Sync>;
+pub(crate) type PinnedFuture = Pin<Box<dyn Future<Output = bool> + Send>>;
+pub(crate) type JobFutureFn = Box<dyn FnOnce(JobProgressSender) -> PinnedFuture + Send>;
 
 pub(crate) struct Job {
     id: JobId,

@@ -6,6 +6,7 @@
   #name
   #v(0.2em)
 ]
+#set heading(numbering: "1.1")
 
 // Blue undelined links
 #show link: name => box[

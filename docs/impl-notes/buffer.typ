@@ -15,7 +15,7 @@ This means the buffer content is not contiguous in memory.
 Then a piece tree is a piece table that stores the pieces in a red-black tree.
 The nodes contain left subtree length (in bytes) so we can search for a bytes
 offset in $O(log(n))$ where $n$ is the number of pieces in the tree. Rust provides
-easy access to cow functionality using `Rc::make_mut` which is used in the tree.
+easy access to cow functionality using `Arc::make_mut` which is used in the tree.
 It allows us to take lightweight snapshots of the tree, which can then be
 restored. This is a built in solution for undoing changes. The snapshots are
 lightweight as the trees can share nodes, new nodes are only created if
@@ -27,11 +27,14 @@ For more information on piece trees see
 
 
 This implementation operates on bytes and does not guarantee that the content is
-valid UTF-8. The bytes are decoded to UTF-8 when needed. Line counts could also
-be cached to nodes (like left subtree byte length) to provide a fast line
-search, but this implementation opts of that so we do not need to read the whole
-file on load. This means opening large files should be as fast as opening small
-ones.
+valid UTF-8. The bytes are decoded to UTF-8 when needed using
+#link("https://bjoern.hoehrmann.de/utf-8/decoder/dfa/")[DFA method by Bjoern
+Hoehrmann].
+
+Line counts could also be cached to nodes (like left subtree byte
+length) to provide a fast line search, but this implementation opts of that so
+we do not need to read the whole file on load. This means opening large files
+should be as fast as opening small ones.
 
 == Piece tree is good at
 
@@ -92,3 +95,28 @@ the mark implementation. To identify the pieces from one another we need to add
 a `count` field. The `count` field is the index of the multiple positions array
 we got at the function call. Now the pieces can again be uniquely identified and
 the mark implementation is happy.
+
+== Reading buffer in a different thread while making changes in another
+
+The buffer supports reading it while other thread is making changes.
+This is useful because now the buffer contents can be used with asynchronous
+jobs. For example we could send a job to save a large buffers contents on the
+background or syntax highlight the buffer.
+
+The functionality is achieved using copy-on-write provided by
+`Arc::make_mut`. This ensures the copies on different threads share most of the
+tree. Original buffer is already thread safe as it is never modified. Add buffer
+is implemented by allocating buckets of size $2^x$ that never move.
+Preallocating the buckets has a problem when inserting text to the add buffer,
+there can be a gap, meaning the contents are not contiguous in memory. To ensure
+we do not slice non-contiguous data while reading the tree, the pieces are
+always separate when appending to the add buffer cannot be done contiguously.
+
+
+== Searching
+
+Searching the buffer should be fast and with possibly gigabyte sized buffers
+searching should be supported forwards and backwards. The search algorithm used
+here is Boyer Moore. Boyer Moore is good at searching text that has a large
+alphabet and not much repeating. It runs in sub-linear time in the best case,
+and the performance increases as the length of the searched term increases.

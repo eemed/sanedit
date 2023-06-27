@@ -2,8 +2,14 @@ use sanedit_buffer::SearcherRev;
 use sanedit_messages::redraw::Point;
 
 use crate::{
-    common::movement::{next_line, prev_line},
-    editor::{windows::Cursor, Editor},
+    common::{
+        movement::{next_line, prev_line},
+        window::pos_at_point,
+    },
+    editor::{
+        windows::{Cursor, Window},
+        Editor,
+    },
     server::ClientId,
 };
 
@@ -64,22 +70,23 @@ pub(crate) fn cursor_new_to_all_search_matches(editor: &mut Editor, id: ClientId
 
 pub(crate) fn new_cursor_to_point(editor: &mut Editor, id: ClientId, point: Point) {
     let (win, buf) = editor.win_buf_mut(id);
-    if let Some(pos) = win.view().pos_at_point(point) {
+    if let Some(pos) = pos_at_point(win, point) {
         win.cursors.push(Cursor::new(pos));
+    }
+}
+
+pub(crate) fn cursor_goto_position(editor: &mut Editor, id: ClientId, point: Point) {
+    let (win, buf) = editor.win_buf_mut(id);
+    win.cursors.remove_secondary_cursors();
+    if let Some(pos) = pos_at_point(win, point) {
+        win.cursors.primary_mut().goto(pos);
+        return;
     }
 }
 
 pub(crate) fn cursor_start_selection(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     win.cursors.start_selection();
-}
-
-pub(crate) fn cursor_goto_position(editor: &mut Editor, id: ClientId, point: Point) {
-    let (win, buf) = editor.win_buf_mut(id);
-    win.cursors.remove_secondary_cursors();
-    if let Some(pos) = win.view().pos_at_point(point) {
-        win.cursors.primary_mut().goto(pos);
-    }
 }
 
 pub(crate) fn cursor_remove_secondary(editor: &mut Editor, id: ClientId) {

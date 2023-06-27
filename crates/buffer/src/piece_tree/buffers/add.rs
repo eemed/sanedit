@@ -156,6 +156,8 @@ struct List {
     buckets: [Bucket; BUCKET_COUNT],
 }
 
+unsafe impl Sync for List {}
+
 #[derive(Debug, PartialEq)]
 struct BucketLocation {
     /// Index of the bucket in the list
@@ -170,6 +172,8 @@ struct BucketLocation {
 
 impl BucketLocation {
     pub fn of(pos: usize) -> BucketLocation {
+        debug_assert!(pos < usize::MAX - BUCKET_START_POS);
+
         let pos = pos + BUCKET_START_POS;
         let bucket = (usize::BITS - pos.leading_zeros()) as usize;
         let bucket_len = 1 << bucket.saturating_sub(1);

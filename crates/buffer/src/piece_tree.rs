@@ -483,6 +483,3 @@ impl From<&ReadOnlyPieceTree> for Vec<u8> {
         bytes
     }
 }
-
-unsafe impl Sync for ReadOnlyPieceTree {}
-unsafe impl Send for ReadOnlyPieceTree {}

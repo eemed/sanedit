@@ -311,15 +311,12 @@ pub(crate) mod test {
     use rand_chacha::rand_core::{RngCore, SeedableRng};
 
     use super::*;
-    use crate::piece_tree::{
-        buffers::{AddBuffer, OriginalBuffer},
-        PieceTree,
-    };
+    use crate::piece_tree::PieceTree;
 
     #[test]
     fn find_node_start() {
         let pt = complex_tree();
-        let (stack, pos) = pt.tree.find_node(0);
+        let (stack, pos) = pt.tree().find_node(0);
 
         assert_eq!(0, pos);
         assert_eq!(3, stack.len());
@@ -331,7 +328,7 @@ pub(crate) mod test {
     #[test]
     fn find_node_middle() {
         let pt = complex_tree();
-        let (stack, pos) = pt.tree.find_node(pt.len / 2);
+        let (stack, pos) = pt.tree().find_node(pt.len() / 2);
 
         assert_eq!(9, pos);
         assert_eq!(4, stack.len());
@@ -344,7 +341,7 @@ pub(crate) mod test {
     #[test]
     fn find_node_end() {
         let pt = complex_tree();
-        let (stack, pos) = pt.tree.find_node(pt.len);
+        let (stack, pos) = pt.tree().find_node(pt.len());
 
         assert_eq!(17, pos);
         assert_eq!(3, stack.len());
@@ -358,9 +355,9 @@ pub(crate) mod test {
         let mut pt = PieceTree::new();
 
         pt.insert(0, "abcde");
-        assert_eq!(Ok(()), is_valid_tree(&pt.tree));
+        assert_eq!(Ok(()), is_valid_tree(pt.tree()));
         pt.insert(0, "ab");
-        assert_eq!(Ok(()), is_valid_tree(&pt.tree));
+        assert_eq!(Ok(()), is_valid_tree(pt.tree()));
     }
 
     #[test]
@@ -368,9 +365,9 @@ pub(crate) mod test {
         let mut pt = PieceTree::new();
 
         pt.insert(0, "abcde");
-        assert_eq!(Ok(()), is_valid_tree(&pt.tree));
+        assert_eq!(Ok(()), is_valid_tree(pt.tree()));
         pt.insert(2, "ab");
-        assert_eq!(Ok(()), is_valid_tree(&pt.tree));
+        assert_eq!(Ok(()), is_valid_tree(pt.tree()));
     }
 
     #[test]
@@ -378,64 +375,64 @@ pub(crate) mod test {
         let mut pt = PieceTree::new();
 
         pt.insert(0, "abcde");
-        assert_eq!(Ok(()), is_valid_tree(&pt.tree));
+        assert_eq!(Ok(()), is_valid_tree(pt.tree()));
         pt.insert(5, "ab");
-        assert_eq!(Ok(()), is_valid_tree(&pt.tree));
+        assert_eq!(Ok(()), is_valid_tree(pt.tree()));
     }
 
     #[test]
     fn remove_left_child() {
         let mut pt = simple_tree();
         pt.remove(0..1);
-        assert_eq!(Ok(()), is_valid_tree(&pt.tree));
+        assert_eq!(Ok(()), is_valid_tree(pt.tree()));
     }
 
     #[test]
     fn remove_right_child() {
         let mut pt = simple_tree();
         pt.remove(2..3);
-        assert_eq!(Ok(()), is_valid_tree(&pt.tree));
+        assert_eq!(Ok(()), is_valid_tree(pt.tree()));
     }
 
     #[test]
     fn remove_root() {
         let mut pt = simple_tree();
         pt.remove(1..2);
-        assert_eq!(Ok(()), is_valid_tree(&pt.tree));
+        assert_eq!(Ok(()), is_valid_tree(pt.tree()));
     }
 
     #[test]
     fn remove_start() {
         let mut pt = one_piece_tree();
         pt.remove(0..5);
-        assert_eq!(Ok(()), is_valid_tree(&pt.tree));
+        assert_eq!(Ok(()), is_valid_tree(pt.tree()));
     }
 
     #[test]
     fn remove_middle() {
         let mut pt = one_piece_tree();
         pt.remove(2..7);
-        assert_eq!(Ok(()), is_valid_tree(&pt.tree));
+        assert_eq!(Ok(()), is_valid_tree(pt.tree()));
     }
 
     #[test]
     fn remove_end() {
         let mut pt = one_piece_tree();
         pt.remove(5..);
-        assert_eq!(Ok(()), is_valid_tree(&pt.tree));
+        assert_eq!(Ok(()), is_valid_tree(pt.tree()));
     }
 
     #[test]
     fn remove_over_whole_piece() {
         let mut pt = PieceTree::new();
         pt.insert(0, "ab");
-        pt.add.extend_from_slice(b"123");
+        pt.add_writer.append(b"123");
         pt.insert(2, "cd");
-        pt.add.extend_from_slice(b"123");
+        pt.add_writer.append(b"123");
         pt.insert(4, "ef");
 
         pt.remove(1..4);
-        assert_eq!(Ok(()), is_valid_tree(&pt.tree));
+        assert_eq!(Ok(()), is_valid_tree(pt.tree()));
     }
 
     #[test]
@@ -444,13 +441,13 @@ pub(crate) mod test {
 
         pt.remove(0..1);
 
-        assert_eq!(Ok(()), is_valid_tree(&pt.tree));
-        assert!(!pt.tree.root.is_leaf());
+        assert_eq!(Ok(()), is_valid_tree(pt.tree()));
+        assert!(!pt.tree().root.is_leaf());
 
         pt.remove(0..1);
 
-        assert_eq!(Ok(()), is_valid_tree(&pt.tree));
-        assert!(!pt.tree.root.is_leaf());
+        assert_eq!(Ok(()), is_valid_tree(pt.tree()));
+        assert!(!pt.tree().root.is_leaf());
     }
 
     #[test]
@@ -459,13 +456,13 @@ pub(crate) mod test {
 
         pt.remove(4..5);
 
-        assert_eq!(Ok(()), is_valid_tree(&pt.tree));
-        assert!(!pt.tree.root.is_leaf());
+        assert_eq!(Ok(()), is_valid_tree(pt.tree()));
+        assert!(!pt.tree().root.is_leaf());
 
         pt.remove(4..5);
 
-        assert_eq!(Ok(()), is_valid_tree(&pt.tree));
-        assert!(!pt.tree.root.is_leaf());
+        assert_eq!(Ok(()), is_valid_tree(pt.tree()));
+        assert!(!pt.tree().root.is_leaf());
     }
 
     #[test]
@@ -474,13 +471,13 @@ pub(crate) mod test {
 
         pt.remove(1..2);
 
-        assert_eq!(Ok(()), is_valid_tree(&pt.tree));
-        assert!(!pt.tree.root.is_leaf());
+        assert_eq!(Ok(()), is_valid_tree(pt.tree()));
+        assert!(!pt.tree().root.is_leaf());
 
         pt.remove(1..2);
 
-        assert_eq!(Ok(()), is_valid_tree(&pt.tree));
-        assert!(!pt.tree.root.is_leaf());
+        assert_eq!(Ok(()), is_valid_tree(pt.tree()));
+        assert!(!pt.tree().root.is_leaf());
     }
 
     #[test]
@@ -489,13 +486,13 @@ pub(crate) mod test {
 
         pt.remove(1..8);
 
-        assert_eq!(Ok(()), is_valid_tree(&pt.tree));
-        assert!(!pt.tree.root.is_leaf());
+        assert_eq!(Ok(()), is_valid_tree(pt.tree()));
+        assert!(!pt.tree().root.is_leaf());
 
         pt.remove(1..8);
 
-        assert_eq!(Ok(()), is_valid_tree(&pt.tree));
-        assert!(!pt.tree.root.is_leaf());
+        assert_eq!(Ok(()), is_valid_tree(pt.tree()));
+        assert!(!pt.tree().root.is_leaf());
     }
 
     #[test]
@@ -506,7 +503,7 @@ pub(crate) mod test {
             let pos = pt.len() / 2;
             pt.remove(pos..pos + 1);
 
-            assert_eq!(Ok(()), is_valid_tree(&pt.tree));
+            assert_eq!(Ok(()), is_valid_tree(pt.tree()));
         }
     }
 
@@ -518,7 +515,7 @@ pub(crate) mod test {
             let pos = 0;
             pt.remove(pos..pos + 1);
 
-            assert_eq!(Ok(()), is_valid_tree(&pt.tree));
+            assert_eq!(Ok(()), is_valid_tree(pt.tree()));
         }
     }
 
@@ -530,7 +527,7 @@ pub(crate) mod test {
             let pos = pt.len().saturating_sub(2);
             pt.remove(pos..pos + 1);
 
-            assert_eq!(Ok(()), is_valid_tree(&pt.tree));
+            assert_eq!(Ok(()), is_valid_tree(pt.tree()));
         }
     }
 
@@ -538,7 +535,7 @@ pub(crate) mod test {
     fn remove_complex_whole() {
         let mut pt = complex_tree();
         pt.remove(0..pt.len());
-        assert_eq!(Ok(()), is_valid_tree(&pt.tree));
+        assert_eq!(Ok(()), is_valid_tree(pt.tree()));
     }
 
     #[test]
@@ -551,7 +548,7 @@ pub(crate) mod test {
             let pos = pt.len().saturating_sub(2);
             pt.remove(pos..pos + 1);
 
-            assert_eq!(Ok(()), is_valid_tree(&pt.tree));
+            assert_eq!(Ok(()), is_valid_tree(pt.tree()));
         }
     }
 
@@ -574,7 +571,7 @@ pub(crate) mod test {
             let end = (start + 15).min(tree_len);
             pt.remove(start..end);
             tree_len -= end - start;
-            assert_eq!(Ok(()), is_valid_tree(&pt.tree));
+            assert_eq!(Ok(()), is_valid_tree(pt.tree()));
         }
     }
 
@@ -639,19 +636,19 @@ pub(crate) mod test {
         // Put pieces in order
         for i in pieces.iter() {
             pt.insert(*i, i.to_string().as_bytes());
-            pt.add.extend_from_slice(b"waste");
+            pt.add_writer.append(b"waste");
         }
 
-        assert_eq!(Ok(()), is_valid_tree(&pt.tree));
-        assert_eq!(3, pt.tree.node_count);
+        assert_eq!(Ok(()), is_valid_tree(pt.tree()));
+        assert_eq!(3, pt.tree().node_count);
         pt
     }
 
     fn one_piece_tree() -> PieceTree {
         let mut pt = PieceTree::new();
         pt.insert(0, "abcdefghij");
-        assert_eq!(Ok(()), is_valid_tree(&pt.tree));
-        assert_eq!(1, pt.tree.node_count);
+        assert_eq!(Ok(()), is_valid_tree(pt.tree()));
+        assert_eq!(1, pt.tree().node_count);
         pt
     }
 
@@ -662,7 +659,7 @@ pub(crate) mod test {
         pt.insert(2, "ab");
 
         // create gap
-        pt.add.extend_from_slice(b"123");
+        pt.add_writer.append(b"123");
 
         pt.insert(7, "ab");
         pt.insert(7, "ab");
@@ -671,9 +668,9 @@ pub(crate) mod test {
         pt.insert(9, "ab");
         pt.insert(9, "ab");
 
-        assert_eq!(Ok(()), is_valid_tree(&pt.tree));
-        assert!(!pt.tree.root.is_leaf());
-        assert_eq!(9, pt.tree.node_count);
+        assert_eq!(Ok(()), is_valid_tree(pt.tree()));
+        assert!(!pt.tree().root.is_leaf());
+        assert_eq!(9, pt.tree().node_count);
 
         pt
     }

@@ -1,5 +1,5 @@
 use std::{
-    cell::{RefCell, UnsafeCell},
+    cell::UnsafeCell,
     cmp::min,
     io::Write,
     ops::Range,
@@ -118,6 +118,10 @@ impl AddBufferWriter {
             AppendResult::Append(nwrite)
         }
     }
+
+    pub fn len(&self) -> usize {
+        self.list.len.load(Ordering::Relaxed)
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -137,6 +141,10 @@ impl AddBufferReader {
         };
         let brange = loc.pos..loc.pos + range.len();
         &bucket[brange]
+    }
+
+    pub fn len(&self) -> usize {
+        self.list.len.load(Ordering::Relaxed)
     }
 }
 
@@ -219,13 +227,5 @@ mod test {
             },
             BucketLocation::of(16385)
         );
-    }
-
-    #[test]
-    fn append() {
-        let add = AddBuffer::new();
-        let bytes = b"abba";
-        add.append(bytes);
-        println!("LEN {}", add.len());
     }
 }

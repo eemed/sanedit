@@ -186,7 +186,7 @@ pub struct Chars<'a> {
 
 impl<'a> Chars<'a> {
     #[inline]
-    pub fn new(pt: &'a ReadOnlyPieceTree, at: usize) -> Chars<'a> {
+    pub(crate) fn new(pt: &'a ReadOnlyPieceTree, at: usize) -> Chars<'a> {
         let bytes = Bytes::new(pt, at);
         Chars {
             bytes,

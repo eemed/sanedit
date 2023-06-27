@@ -1,9 +1,11 @@
+use std::sync::Arc;
+
 use crate::{
-    editor::{hooks::Hook, windows::Focus, Editor},
-    server::ClientId,
+    editor::{hooks::Hook, jobs::AsyncJob, windows::Focus, Editor},
+    server::{ClientId, JobFutureFn},
 };
 
-use super::hooks::run_hook;
+use super::{hooks::run_hook, jobs};
 
 pub(crate) fn remove_grapheme_after_cursor(editor: &mut Editor, id: ClientId) {
     run_hook(editor, id, Hook::RemoveCharPre);

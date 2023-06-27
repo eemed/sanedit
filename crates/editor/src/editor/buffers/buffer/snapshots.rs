@@ -1,6 +1,6 @@
 use std::time;
 
-use sanedit_buffer::Snapshot;
+use sanedit_buffer::ReadOnlyPieceTree;
 
 /// Snapshots contains snapshots of buffer contents that can be used as undo and
 /// redo points.
@@ -11,14 +11,14 @@ pub(crate) struct Snapshots {
 }
 
 impl Snapshots {
-    pub fn new(initial: Snapshot) -> Snapshots {
+    pub fn new(initial: ReadOnlyPieceTree) -> Snapshots {
         Snapshots {
             current: 0,
             snapshots: vec![Node::new(initial, 0)],
         }
     }
 
-    pub fn insert(&mut self, snapshot: Snapshot) {
+    pub fn insert(&mut self, snapshot: ReadOnlyPieceTree) {
         let next_idx = self.snapshots.len();
         let mut node = Node::new(snapshot, next_idx);
         node.children.push(self.current);
@@ -27,14 +27,14 @@ impl Snapshots {
         self.current = next_idx;
     }
 
-    pub fn undo(&mut self) -> Option<Snapshot> {
+    pub fn undo(&mut self) -> Option<ReadOnlyPieceTree> {
         let node = self.snapshots.get(self.current)?;
         // Latest has largest index
         let latest = node.children.iter().max()?;
         self.snapshots.get(*latest).map(|n| n.snapshot.clone())
     }
 
-    pub fn redo(&mut self) -> Option<Snapshot> {
+    pub fn redo(&mut self) -> Option<ReadOnlyPieceTree> {
         let node = self.snapshots.get(self.current)?;
         // Latest has largest index
         let latest = node.parents.iter().max()?;
@@ -45,14 +45,14 @@ impl Snapshots {
 #[derive(Debug, Clone)]
 struct Node {
     pub(crate) idx: usize,
-    pub(crate) snapshot: Snapshot,
+    pub(crate) snapshot: ReadOnlyPieceTree,
     pub(crate) timestamp: time::Instant,
     children: Vec<usize>,
     parents: Vec<usize>,
 }
 
 impl Node {
-    pub fn new(snapshot: Snapshot, idx: usize) -> Node {
+    pub fn new(snapshot: ReadOnlyPieceTree, idx: usize) -> Node {
         Node {
             idx,
             snapshot,

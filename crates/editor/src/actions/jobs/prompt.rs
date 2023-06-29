@@ -4,10 +4,7 @@ use tokio::{fs, io};
 
 use crate::{
     actions::prompt,
-    editor::{
-        jobs::{Job, JobProgressFn},
-        Editor,
-    },
+    editor::{jobs::Job, Editor},
     server::{ClientId, JobFutureFn, JobId, JobProgress, JobProgressSender},
 };
 
@@ -54,14 +51,12 @@ pub(crate) fn list_files_provide_completions(editor: &mut Editor, id: ClientId) 
         Box::new(move |send| Box::pin(list_files(send, cwd)))
     };
     let jobs = &mut editor.jobs;
-    let a = |editor, id, out: Box<dyn Any>| {
+    let on_output = Arc::new(|editor: &mut Editor, id: ClientId, out: Box<dyn Any>| {
         if let Ok(output) = out.downcast::<Vec<String>>() {
             prompt::provide_completions(editor, id, *output);
         }
-    };
-    let on_output: JobProgressFn = Box::new(a);
-    // let job = Job::new(id, fun, Some(on_output), None);
-    let job = Job::new(id, fun, None, None);
+    });
+    let job = Job::new(id, fun, Some(on_output), None);
     let id = job.id();
     jobs.run(job);
     id

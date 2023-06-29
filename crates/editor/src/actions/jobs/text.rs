@@ -23,8 +23,6 @@ pub(crate) fn log_buffer_after_timeout(editor: &mut Editor, id: ClientId) -> Job
         Box::new(move |_send| Box::pin(log_buffer(ropt)))
     };
     let jobs = &mut editor.jobs;
-    let job = Job::new(id, fun, None, None);
-    let id = job.id();
-    jobs.run(job);
-    id
+    let job = Job::new(id, fun);
+    jobs.request(job)
 }

@@ -10,25 +10,30 @@ pub(crate) type JobProgressFn = Arc<dyn Fn(&mut Editor, ClientId, Box<dyn Any>) 
 /// Holds the job itself that will be sent, and client side job data too.
 pub(crate) struct Job {
     job: server::JobRequest,
-    progress_handlers: ProgressHandlers,
+    handlers: ProgressHandlers,
 }
 
 impl Job {
-    pub fn new(
-        id: ClientId,
-        fun: JobFutureFn,
-        on_output: Option<JobProgressFn>,
-        on_error: Option<JobProgressFn>,
-    ) -> Job {
+    pub fn new(id: ClientId, fun: JobFutureFn) -> Job {
         let server_job = server::JobRequest::new(fun);
         Job {
             job: server_job,
-            progress_handlers: ProgressHandlers {
+            handlers: ProgressHandlers {
                 client_id: id,
-                on_error,
-                on_output,
+                on_error: None,
+                on_output: None,
             },
         }
+    }
+
+    pub fn on_output(mut self, fun: JobProgressFn) -> Self {
+        self.handlers.on_output = Some(fun);
+        self
+    }
+
+    pub fn on_error(mut self, fun: JobProgressFn) -> Self {
+        self.handlers.on_error = Some(fun);
+        self
     }
 
     pub fn id(&self) -> JobId {
@@ -65,16 +70,17 @@ impl Jobs {
         }
     }
 
-    pub fn run(&mut self, job: Job) {
+    pub fn request(&mut self, job: Job) -> JobId {
         let Job {
             job,
-            progress_handlers,
+            handlers: progress_handlers,
         } = job;
         let id = job.id();
         // Send the job to be ran
-        self.handle.run(job);
+        self.handle.request(job);
         // Register progress handlers
         self.running.insert(id, progress_handlers);
+        id
     }
 
     pub fn on_output_handler(&self, id: &JobId) -> Option<(ClientId, JobProgressFn)> {

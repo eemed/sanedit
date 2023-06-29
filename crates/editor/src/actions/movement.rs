@@ -5,7 +5,7 @@ use sanedit_messages::redraw::Point;
 
 use crate::{
     common::{self, char::DisplayOptions},
-    editor::{hooks::Hook, windows::Cursor, Editor},
+    editor::{windows::Cursor, Editor},
     server::ClientId,
 };
 

@@ -2,9 +2,7 @@ mod component;
 
 use core::fmt;
 
-use sanedit_messages::redraw::{
-    Cell, Cursor, CursorShape, Point, Prompt, StatusMessage, Statusline, Window,
-};
+use sanedit_messages::redraw::{Cell, Cursor, Prompt, StatusMessage, Statusline, Window};
 
 use crate::ui::UIContext;
 
@@ -17,21 +15,7 @@ pub(crate) struct Grid {
     pub msg: Option<StatusMessage>,
 
     cells: Vec<Vec<Cell>>,
-}
-
-impl fmt::Debug for Grid {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(f, "===Grid===")?;
-        for row in self.cells.iter() {
-            write!(f, "\"")?;
-            for cell in row.iter() {
-                write!(f, "{}", cell.text)?;
-            }
-            writeln!(f, "\"")?;
-        }
-        write!(f, "==========")?;
-        Ok(())
-    }
+    cursor: Cursor,
 }
 
 impl Grid {
@@ -42,6 +26,7 @@ impl Grid {
             prompt: None,
             msg: None,
             cells: vec![vec![Cell::default(); width]; height],
+            cursor: Cursor::default(),
         }
     }
 
@@ -57,42 +42,57 @@ impl Grid {
         }
     }
 
-    pub fn draw(&mut self, ctx: &UIContext) -> (&Vec<Vec<Cell>>, Cursor) {
-        self.clear();
+    fn draw_component(
+        comp: &dyn Component,
+        ctx: &UIContext,
+        cursor: &mut Cursor,
+        cells: &mut Vec<Vec<Cell>>,
+    ) {
+        if let Some(cur) = comp.cursor(ctx) {
+            *cursor = cur;
+        }
 
-        let mut cursor = Cursor::default();
-        let components: Vec<&dyn Component> = {
-            let mut comps: Vec<&dyn Component> = Vec::new();
-            comps.push(&self.window);
-            comps.push(&self.statusline);
-            if let Some(ref prompt) = self.prompt {
-                comps.push(prompt);
-            }
-            if let Some(ref msg) = self.msg {
-                comps.push(msg);
-            }
-            comps
-        };
-
-        for component in components.into_iter() {
-            if let Some(cur) = component.cursor(ctx) {
-                cursor = cur;
-            }
-
-            let top_left = component.position(ctx);
-            let grid = component.draw(ctx);
-            for (line, row) in grid.into_iter().enumerate() {
-                for (col, cell) in row.into_iter().enumerate() {
-                    let x = top_left.x + col;
-                    let y = top_left.y + line;
-                    if x < ctx.width && y < ctx.height {
-                        self.cells[y][x] = cell;
-                    }
+        let top_left = comp.position(ctx);
+        let grid = comp.draw(ctx);
+        for (line, row) in grid.into_iter().enumerate() {
+            for (col, cell) in row.into_iter().enumerate() {
+                let x = top_left.x + col;
+                let y = top_left.y + line;
+                if x < ctx.width && y < ctx.height {
+                    cells[y][x] = cell;
                 }
             }
         }
+    }
 
-        // log::info!("{:?}", self);
-        (&self.cells, cursor)
+    pub fn draw(&mut self, ctx: &UIContext) -> (&Vec<Vec<Cell>>, Cursor) {
+        self.clear();
+
+        Self::draw_component(&self.window, ctx, &mut self.cursor, &mut self.cells);
+        Self::draw_component(&self.statusline, ctx, &mut self.cursor, &mut self.cells);
+
+        if let Some(ref prompt) = self.prompt {
+            Self::draw_component(prompt, ctx, &mut self.cursor, &mut self.cells);
+        }
+        if let Some(ref msg) = self.msg {
+            Self::draw_component(msg, ctx, &mut self.cursor, &mut self.cells);
+        }
+
+        (&self.cells, self.cursor)
+    }
+}
+
+impl fmt::Debug for Grid {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "===Grid===")?;
+        for row in self.cells.iter() {
+            write!(f, "\"")?;
+            for cell in row.iter() {
+                write!(f, "{}", cell.text)?;
+            }
+            writeln!(f, "\"")?;
+        }
+        write!(f, "==========")?;
+        Ok(())
     }
 }

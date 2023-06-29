@@ -41,7 +41,6 @@ async fn list_files(send: JobProgressSender, dir: PathBuf) -> bool {
         Ok(())
     }
 
-    log::info!("List files");
     read_recursive(send, dir).await.is_ok()
 }
 
@@ -56,8 +55,6 @@ pub(crate) fn list_files_provide_completions(editor: &mut Editor, id: ClientId) 
             prompt::provide_completions(editor, id, *output);
         }
     });
-    let job = Job::new(id, fun, Some(on_output), None);
-    let id = job.id();
-    jobs.run(job);
-    id
+    let job = Job::new(id, fun).on_output(on_output);
+    jobs.request(job)
 }

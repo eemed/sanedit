@@ -1,4 +1,4 @@
-use core::fmt::Debug;
+use core::fmt::{self, Debug};
 use std::{
     any::Any,
     collections::HashMap,
@@ -55,12 +55,24 @@ impl JobProgressSender {
     }
 }
 
+/// A Pinned future that resolves into an boolean indicating wether it succeeded
+/// or failed
 pub(crate) type PinnedFuture = Pin<Box<dyn Future<Output = bool> + Send>>;
+
+/// a function that can be ran once, which produces the async future to be ran.
 pub(crate) type JobFutureFn = Box<dyn FnOnce(JobProgressSender) -> PinnedFuture + Send>;
 
 pub(crate) struct JobRequest {
     id: JobId,
     fun: JobFutureFn,
+}
+
+impl fmt::Debug for JobRequest {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("JobRequest")
+            .field("id", &self.id)
+            .finish_non_exhaustive()
+    }
 }
 
 impl JobRequest {
@@ -76,19 +88,16 @@ impl JobRequest {
     }
 }
 
-impl Debug for JobRequest {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        todo!()
-    }
-}
-
 #[derive(Debug)]
 pub(crate) enum ToJobs {
+    /// Request a new job to ran
     Request(JobRequest),
+    /// Request to stop a job
     Stop(JobId),
 }
 
-/// Used to report job progress. Basically stdout and stderr.
+/// Used to report job progress. Basically stdout and stderr, but with any
+/// struct
 #[derive(Debug)]
 pub(crate) enum JobProgress {
     Output(Box<dyn Any + Send>),
@@ -97,8 +106,14 @@ pub(crate) enum JobProgress {
 
 #[derive(Debug)]
 pub(crate) enum FromJobs {
+    /// Sent when a job has made progress.
     Progress(JobId, JobProgress),
+
+    /// Sent when a job succeeds.
     Completed(JobId),
+
+    /// Sent when a job fails. Errors should be reported using
+    /// `FromJobs::Progress` using `JobProgress::Error` variant.
     Failed(JobId),
 }
 
@@ -108,7 +123,7 @@ pub(crate) struct JobsHandle {
 }
 
 impl JobsHandle {
-    pub fn run(&mut self, job: JobRequest) -> Result<(), mpsc::error::SendError<ToJobs>> {
+    pub fn request(&mut self, job: JobRequest) -> Result<(), mpsc::error::SendError<ToJobs>> {
         self.send.blocking_send(ToJobs::Request(job))
     }
 
@@ -164,7 +179,6 @@ async fn jobs_loop(mut recv: mpsc::Receiver<ToJobs>, handle: EditorHandle) {
             ToJobs::Stop(id) => {
                 let mut map = task_handles.lock();
                 if let Some(join) = map.remove(&id) {
-                    log::info!("Task stopped");
                     join.abort();
                 }
             }

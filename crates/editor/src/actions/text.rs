@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use crate::{
-    editor::{hooks::Hook, jobs::AsyncJob, windows::Focus, Editor},
+    editor::{hooks::Hook, jobs::Job, windows::Focus, Editor},
     server::{ClientId, JobFutureFn},
 };
 

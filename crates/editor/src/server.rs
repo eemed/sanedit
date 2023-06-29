@@ -4,7 +4,7 @@ mod jobs;
 
 pub(crate) use client::*;
 pub(crate) use jobs::{
-    FromJobs, Job, JobFutureFn, JobId, JobProgress, JobProgressSender, JobsHandle,
+    FromJobs, JobFutureFn, JobId, JobProgress, JobProgressSender, JobRequest, JobsHandle,
 };
 
 use std::{

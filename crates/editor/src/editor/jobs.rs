@@ -1,27 +1,27 @@
 use core::fmt;
-use std::{collections::HashMap, sync::Arc};
+use std::{any::Any, collections::HashMap, sync::Arc};
 
 use crate::server::{self, ClientId, JobFutureFn, JobId, JobsHandle};
 
 use super::Editor;
 
-pub(crate) type JobProgressFn = Arc<dyn Fn(&mut Editor, ClientId, Vec<String>) + Send + Sync>;
+pub(crate) type JobProgressFn = Arc<dyn Fn(&mut Editor, ClientId, Box<dyn Any>) + Send>;
 
 /// Holds the job itself that will be sent, and client side job data too.
-pub(crate) struct AsyncJob {
-    job: server::Job,
+pub(crate) struct Job {
+    job: server::JobRequest,
     progress_handlers: ProgressHandlers,
 }
 
-impl AsyncJob {
+impl Job {
     pub fn new(
         id: ClientId,
         fun: JobFutureFn,
         on_output: Option<JobProgressFn>,
         on_error: Option<JobProgressFn>,
-    ) -> AsyncJob {
-        let server_job = server::Job::new(fun);
-        AsyncJob {
+    ) -> Job {
+        let server_job = server::JobRequest::new(fun);
+        Job {
             job: server_job,
             progress_handlers: ProgressHandlers {
                 client_id: id,
@@ -65,8 +65,8 @@ impl Jobs {
         }
     }
 
-    pub fn run(&mut self, job: AsyncJob) {
-        let AsyncJob {
+    pub fn run(&mut self, job: Job) {
+        let Job {
             job,
             progress_handlers,
         } = job;

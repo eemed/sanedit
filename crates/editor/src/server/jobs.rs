@@ -1,5 +1,6 @@
 use core::fmt::Debug;
 use std::{
+    any::Any,
     collections::HashMap,
     fmt::Display,
     pin::Pin,
@@ -57,14 +58,14 @@ impl JobProgressSender {
 pub(crate) type PinnedFuture = Pin<Box<dyn Future<Output = bool> + Send>>;
 pub(crate) type JobFutureFn = Box<dyn FnOnce(JobProgressSender) -> PinnedFuture + Send>;
 
-pub(crate) struct Job {
+pub(crate) struct JobRequest {
     id: JobId,
     fun: JobFutureFn,
 }
 
-impl Job {
-    pub fn new(fun: JobFutureFn) -> Job {
-        Job {
+impl JobRequest {
+    pub fn new(fun: JobFutureFn) -> JobRequest {
+        JobRequest {
             id: JobId::next(),
             fun,
         }
@@ -75,7 +76,7 @@ impl Job {
     }
 }
 
-impl Debug for Job {
+impl Debug for JobRequest {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         todo!()
     }
@@ -83,22 +84,22 @@ impl Debug for Job {
 
 #[derive(Debug)]
 pub(crate) enum ToJobs {
-    New(Job),
+    Request(JobRequest),
     Stop(JobId),
 }
 
 /// Used to report job progress. Basically stdout and stderr.
 #[derive(Debug)]
 pub(crate) enum JobProgress {
-    Output(Vec<String>),
-    Error(Vec<String>),
+    Output(Box<dyn Any + Send>),
+    Error(Box<dyn Any + Send>),
 }
 
 #[derive(Debug)]
 pub(crate) enum FromJobs {
     Progress(JobId, JobProgress),
-    Ok(JobId),
-    Fail(JobId),
+    Completed(JobId),
+    Failed(JobId),
 }
 
 #[derive(Debug)]
@@ -107,8 +108,8 @@ pub(crate) struct JobsHandle {
 }
 
 impl JobsHandle {
-    pub fn run(&mut self, job: Job) -> Result<(), mpsc::error::SendError<ToJobs>> {
-        self.send.blocking_send(ToJobs::New(job))
+    pub fn run(&mut self, job: JobRequest) -> Result<(), mpsc::error::SendError<ToJobs>> {
+        self.send.blocking_send(ToJobs::Request(job))
     }
 
     pub fn stop(&mut self, id: &JobId) -> Result<(), mpsc::error::SendError<ToJobs>> {
@@ -134,7 +135,7 @@ async fn jobs_loop(mut recv: mpsc::Receiver<ToJobs>, handle: EditorHandle) {
 
     while let Some(msg) = recv.recv().await {
         match msg {
-            ToJobs::New(job) => {
+            ToJobs::Request(job) => {
                 let id = job.id;
                 let progress_handle = JobProgressSender {
                     id,
@@ -146,9 +147,9 @@ async fn jobs_loop(mut recv: mpsc::Receiver<ToJobs>, handle: EditorHandle) {
                 let future = async move {
                     let success = job_future.await;
                     let msg = if success {
-                        FromJobs::Ok(id)
+                        FromJobs::Completed(id)
                     } else {
-                        FromJobs::Fail(id)
+                        FromJobs::Failed(id)
                     };
                     h.send(ToEditor::Jobs(msg)).await;
 

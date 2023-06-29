@@ -325,11 +325,11 @@ impl Editor {
                     }
                 }
             },
-            FromJobs::Ok(id) => {
+            FromJobs::Completed(id) => {
                 log::info!("Job {id} succesful.");
                 self.jobs.done(&id);
             }
-            FromJobs::Fail(id) => {
+            FromJobs::Failed(id) => {
                 log::info!("Job {id} failed.");
                 self.jobs.done(&id);
             }

@@ -79,6 +79,12 @@ impl PieceTree {
     }
 
     #[inline]
+    pub fn mmap(file: File) -> io::Result<PieceTree> {
+        let orig_buf = OriginalBuffer::mmap(file)?;
+        Ok(Self::from_original_buffer(orig_buf))
+    }
+
+    #[inline]
     fn from_original_buffer(orig: OriginalBuffer) -> PieceTree {
         let orig = Arc::new(orig);
         let (aread, awrite) = create_add_buffer_reader_writer();

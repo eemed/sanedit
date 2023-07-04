@@ -91,6 +91,7 @@ pub(crate) fn prev_word_end(editor: &mut Editor, id: ClientId) {
 
 pub(crate) fn next_paragraph(editor: &mut Editor, id: ClientId) {
     do_move(editor, id, common::movement::next_paragraph, None);
+    log::info!("done");
 }
 
 pub(crate) fn prev_paragraph(editor: &mut Editor, id: ClientId) {

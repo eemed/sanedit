@@ -66,7 +66,7 @@ impl Buffer {
         log::debug!("New file backed buf");
         let path = file.path().canonicalize()?;
         let file = fs::File::open(&path)?;
-        let pt = PieceTree::from_file(file);
+        let pt = PieceTree::mmap(file)?;
         let snapshot = pt.read_only_copy();
         Ok(Buffer {
             id: BufferId::default(),

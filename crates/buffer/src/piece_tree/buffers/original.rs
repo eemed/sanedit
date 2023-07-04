@@ -1,61 +1,78 @@
 use crate::piece_tree::FILE_BACKED_MAX_PIECE_SIZE;
 use std::{
     cmp,
+    collections::VecDeque,
     fs::File,
     io::{self, Read, Seek, SeekFrom},
     ops::Range,
-    sync::{Mutex, RwLock},
+    sync::{Arc, Mutex, RwLock},
 };
 
 use super::ByteSlice;
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct OriginalBufferSlice {
+    ptr: Arc<[u8]>,
+    offset: usize,
+    len: usize,
+}
+
+impl AsRef<[u8]> for OriginalBufferSlice {
+    fn as_ref(&self) -> &[u8] {
+        &self.ptr[self.offset..self.offset + self.len]
+    }
+}
+
+impl OriginalBufferSlice {
+    pub fn slice(&mut self, range: Range<usize>) {
+        self.offset += range.start;
+        self.len = range.len();
+    }
+}
+
 #[derive(Debug)]
 pub(crate) struct Cache {
-    cache: Box<[u8]>,
-    /// List of pointers to cache. (cache_offset, buf_offset, length) tuples
-    cache_ptrs: Vec<(usize, usize, usize)>,
-    next: usize,
+    /// List of pointers to cache. (buf_offset, length) tuples
+    cache_ptrs: VecDeque<(usize, Arc<[u8]>)>,
 }
 
 impl Cache {
-    const FILE_CACHE_SIZE: usize = FILE_BACKED_MAX_PIECE_SIZE * 10;
+    const CACHE_SIZE: usize = 10;
 
     pub fn new() -> Cache {
         Cache {
-            cache: vec![0u8; Self::FILE_CACHE_SIZE].into(),
-            cache_ptrs: Vec::new(),
-            next: 0,
+            cache_ptrs: VecDeque::new(),
         }
     }
 
-    fn get(&self, start: usize, end: usize) -> Option<&[u8]> {
-        for (pos, bpos, len) in &self.cache_ptrs {
-            if *bpos <= start && end <= bpos + len {
-                let s = pos + start - bpos;
+    fn get(&self, start: usize, end: usize) -> Option<OriginalBufferSlice> {
+        for (off, ptr) in &self.cache_ptrs {
+            if *off <= start && end <= off + ptr.len() {
+                let s = start - off;
                 let e = s + end - start;
-                return Some(self.cache[s..e].into());
+                return Some(OriginalBufferSlice {
+                    ptr: ptr.clone(),
+                    offset: s,
+                    len: e - s,
+                });
             }
         }
 
         None
     }
 
-    fn find_space_for(&mut self, bpos: usize, len: usize) -> &mut [u8] {
-        let mut start = self.next;
-        let mut end = start + len;
-        if Self::FILE_CACHE_SIZE < end {
-            start = 0;
-            end = len;
+    fn push(&mut self, off: usize, ptr: Arc<[u8]>) -> OriginalBufferSlice {
+        while self.cache_ptrs.len() >= Self::CACHE_SIZE {
+            self.cache_ptrs.pop_front();
         }
-        self.next = end;
 
-        self.cache_ptrs.retain(|(s, _, l)| {
-            let e = s + l;
-            start >= e || *s >= end
-        });
-        self.cache_ptrs.push((start, bpos, len));
+        self.cache_ptrs.push_back((off, ptr.clone()));
 
-        &mut self.cache[start..end]
+        OriginalBufferSlice {
+            offset: 0,
+            len: ptr.len(),
+            ptr,
+        }
     }
 }
 
@@ -69,6 +86,9 @@ pub(crate) enum OriginalBuffer {
     },
     Memory {
         bytes: Vec<u8>,
+    },
+    Mmap {
+        map: memmap::Mmap,
     },
 }
 
@@ -93,19 +113,26 @@ impl OriginalBuffer {
         }
     }
 
+    #[inline]
+    pub fn mmap(file: File) -> io::Result<OriginalBuffer> {
+        let mmap = unsafe { memmap::Mmap::map(&file)? };
+        Ok(OriginalBuffer::Mmap { map: mmap })
+    }
+
     #[inline(always)]
     pub fn slice(&self, range: Range<usize>) -> io::Result<ByteSlice<'_>> {
         use OriginalBuffer::*;
         match self {
             Memory { bytes } => Ok(bytes[range].into()),
+            Mmap { map } => Ok(map[range].into()),
             File { cache, file } => {
                 let Range { start, end } = range;
                 {
                     let ro_cache = cache
                         .read()
                         .map_err(|_| io::Error::from(io::ErrorKind::Other))?;
-                    if let Some(bytes) = ro_cache.get(start, end) {
-                        return Ok(bytes.to_vec().into());
+                    if let Some(slice) = ro_cache.get(start, end) {
+                        return Ok(slice.into());
                     }
                 }
 
@@ -121,21 +148,18 @@ impl OriginalBuffer {
                     let block = start - (start % FILE_BACKED_MAX_PIECE_SIZE);
                     let size = cmp::min(len, block + FILE_BACKED_MAX_PIECE_SIZE) - block;
 
-                    log::info!(
-                        "Want {start}..{end}, Reading {block}..{} to cache..",
-                        block + size
-                    );
-
-                    let buf = cache.find_space_for(block, size);
+                    let mut buf: Box<[u8]> = vec![0u8; size].into();
                     file.seek(SeekFrom::Start(block as u64))?;
-                    file.read_exact(buf)?;
+                    file.read_exact(&mut buf)?;
+                    let mut buf = cache.push(block, Arc::from(buf));
 
                     let s = start - block;
                     let e = s + end - start;
-                    &buf[s..e]
+                    buf.slice(s..e);
+                    buf
                 };
 
-                Ok(buf.to_vec().into())
+                Ok(buf.into())
             }
         }
     }
@@ -152,6 +176,7 @@ impl OriginalBuffer {
                 }
             }
             Memory { bytes } => bytes.len(),
+            Mmap { map } => map.len(),
         }
     }
 

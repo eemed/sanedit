@@ -51,7 +51,7 @@ impl Cache {
 
         self.cache_ptrs.retain(|(s, _, l)| {
             let e = s + l;
-            !(start <= e && *s <= end)
+            start >= e || *s >= end
         });
         self.cache_ptrs.push((start, bpos, len));
 
@@ -85,6 +85,7 @@ impl OriginalBuffer {
         Ok(OriginalBuffer::Memory { bytes })
     }
 
+    #[inline]
     pub fn from_file(file: File) -> OriginalBuffer {
         OriginalBuffer::File {
             file: Mutex::new(file),
@@ -119,6 +120,12 @@ impl OriginalBuffer {
                 let buf = {
                     let block = start - (start % FILE_BACKED_MAX_PIECE_SIZE);
                     let size = cmp::min(len, block + FILE_BACKED_MAX_PIECE_SIZE) - block;
+
+                    log::info!(
+                        "Want {start}..{end}, Reading {block}..{} to cache..",
+                        block + size
+                    );
+
                     let buf = cache.find_space_for(block, size);
                     file.seek(SeekFrom::Start(block as u64))?;
                     file.read_exact(buf)?;

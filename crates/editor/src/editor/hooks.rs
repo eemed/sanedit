@@ -92,7 +92,7 @@ impl Default for Hooks {
             Action::Dynamic {
                 name: "merge overlapping cursors".into(),
                 fun: Arc::new(|editor, id| {
-                    let (win, buf) = editor.win_buf_mut(id);
+                    let (win, _buf) = editor.win_buf_mut(id);
                     win.cursors.merge_overlapping();
                 }),
             },
@@ -102,7 +102,7 @@ impl Default for Hooks {
             Action::Dynamic {
                 name: "clear messages".into(),
                 fun: Arc::new(|editor, id| {
-                    let (win, buf) = editor.win_buf_mut(id);
+                    let (win, _buf) = editor.win_buf_mut(id);
                     win.clear_msg();
                 }),
             },

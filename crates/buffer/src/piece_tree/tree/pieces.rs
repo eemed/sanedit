@@ -230,6 +230,7 @@ impl<'a> PieceIter<'a> {
 #[cfg(test)]
 pub(crate) mod test {
     use crate::piece_tree::buffers::BufferKind;
+    use crate::PieceTree;
 
     use super::*;
 

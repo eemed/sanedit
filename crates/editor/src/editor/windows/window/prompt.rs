@@ -11,7 +11,7 @@ use super::completion::Completion;
 
 /// Prompt action, similar to a normal `ActionFunction` but also takes the
 /// prompt input as a additional parameter
-pub(crate) type PAction = Rc<dyn Fn(&mut Editor, ClientId, &str) + Send + Sync>;
+pub(crate) type PromptAction = Rc<dyn Fn(&mut Editor, ClientId, &str) + Send + Sync>;
 
 #[derive(Debug, Clone, Copy)]
 enum Pos {
@@ -102,13 +102,13 @@ pub(crate) struct Prompt {
     completion: Completion,
 
     /// Called when prompt is confirmed
-    pub on_confirm: Option<PAction>,
+    pub on_confirm: Option<PromptAction>,
 
     /// Called when prompt is aborted
-    pub on_abort: Option<PAction>,
+    pub on_abort: Option<PromptAction>,
 
     /// Called when input is modified
-    pub on_input: Option<PAction>,
+    pub on_input: Option<PromptAction>,
     pub keymap: Keymap,
 
     pub history: History,

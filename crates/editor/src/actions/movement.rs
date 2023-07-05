@@ -67,7 +67,7 @@ pub(crate) fn start_of_buffer(editor: &mut Editor, id: ClientId) {
 
 pub(crate) fn end_of_buffer(editor: &mut Editor, id: ClientId) {
     let blen = {
-        let (win, buf) = editor.win_buf(id);
+        let (_win, buf) = editor.win_buf(id);
         buf.len()
     };
     do_move_static(editor, id, blen, None);

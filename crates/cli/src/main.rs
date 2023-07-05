@@ -1,9 +1,8 @@
 mod logging;
 
-use core::time;
-use std::{path::PathBuf, sync::mpsc, thread};
+use std::path::PathBuf;
 
-use clap::{Parser, Subcommand};
+use clap::Parser;
 use sanedit_editor::Address;
 use sanedit_terminal_client::unix::UnixDomainSocketClient;
 
@@ -23,7 +22,7 @@ fn main() {
     logging::setup();
 
     // Just run everything from here for now
-    let cli = Cli::parse();
+    let _cli = Cli::parse();
 
     let socket = PathBuf::from("/tmp/sanedit");
     let s = socket.clone();

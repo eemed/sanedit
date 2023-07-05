@@ -150,7 +150,7 @@ impl<'a> From<&PieceTreeSlice<'a>> for Vec<u8> {
 
 #[cfg(test)]
 mod test {
-    use super::*;
+    use crate::PieceTree;
 
     #[test]
     fn partial_eq() {

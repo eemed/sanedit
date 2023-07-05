@@ -60,7 +60,7 @@ impl File {
     }
 }
 
-pub(crate) fn detect_line_ending(buf: &[u8]) -> EOL {
+pub(crate) fn detect_line_ending(_buf: &[u8]) -> EOL {
     // TODO proper detection
     EOL::default()
 }

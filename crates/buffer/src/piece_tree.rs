@@ -284,7 +284,7 @@ impl PieceTree {
     }
 
     #[inline]
-    pub fn write_to<W: Write>(&self, mut writer: W) -> io::Result<usize> {
+    pub fn write_to<W: Write>(&self, writer: W) -> io::Result<usize> {
         self.pt.write_to(writer)
     }
 

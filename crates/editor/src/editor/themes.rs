@@ -12,41 +12,41 @@ pub(crate) fn default_themes() -> HashMap<String, Theme> {
 }
 
 fn gruvbox() -> Theme {
-    let red = Color::from_hex("#cc241d").unwrap();
+    let _red = Color::from_hex("#cc241d").unwrap();
     let red_light = Color::from_hex("#fb4934").unwrap();
 
-    let green = Color::from_hex("#98971a").unwrap();
-    let green_light = Color::from_hex("#b8bb26").unwrap();
+    let _green = Color::from_hex("#98971a").unwrap();
+    let _green_light = Color::from_hex("#b8bb26").unwrap();
 
-    let yellow = Color::from_hex("#d79921").unwrap();
+    let _yellow = Color::from_hex("#d79921").unwrap();
     let yellow_light = Color::from_hex("#fabd2f").unwrap();
 
-    let blue = Color::from_hex("#458588").unwrap();
+    let _blue = Color::from_hex("#458588").unwrap();
     let blue_light = Color::from_hex("#83a598").unwrap();
 
-    let purple = Color::from_hex("#b16286").unwrap();
-    let purple_light = Color::from_hex("#d3869b").unwrap();
+    let _purple = Color::from_hex("#b16286").unwrap();
+    let _purple_light = Color::from_hex("#d3869b").unwrap();
 
-    let aqua = Color::from_hex("#689d6a").unwrap();
-    let aqua_light = Color::from_hex("#8ec07c").unwrap();
+    let _aqua = Color::from_hex("#689d6a").unwrap();
+    let _aqua_light = Color::from_hex("#8ec07c").unwrap();
 
-    let gray = Color::from_hex("#a89984").unwrap();
-    let gray_light = Color::from_hex("#928374").unwrap();
+    let _gray = Color::from_hex("#a89984").unwrap();
+    let _gray_light = Color::from_hex("#928374").unwrap();
 
-    let orange = Color::from_hex("#d65d0e").unwrap();
+    let _orange = Color::from_hex("#d65d0e").unwrap();
     let orange_light = Color::from_hex("#fe8019").unwrap();
 
     let bg_0 = Color::from_hex("#282828").unwrap();
     let bg_1 = Color::from_hex("#3c3836").unwrap();
     let bg_2 = Color::from_hex("#504945").unwrap();
     let bg_3 = Color::from_hex("#665c54").unwrap();
-    let bg_4 = Color::from_hex("#7c6f64").unwrap();
+    let _bg_4 = Color::from_hex("#7c6f64").unwrap();
 
     let fg_0 = Color::from_hex("#fbf1c7").unwrap();
     let fg_1 = Color::from_hex("#ebdbb2").unwrap();
     let fg_2 = Color::from_hex("#d5c4a1").unwrap();
-    let fg_3 = Color::from_hex("#bdae93").unwrap();
-    let fg_4 = Color::from_hex("#a89984").unwrap();
+    let _fg_3 = Color::from_hex("#bdae93").unwrap();
+    let _fg_4 = Color::from_hex("#a89984").unwrap();
 
     let mut theme = Theme::new("gruvbox");
     {
@@ -194,18 +194,18 @@ fn rosepine() -> Theme {
     let base = "#232136";
     let surface = "#2a273f";
     let overlay = "#393552";
-    let muted = "#6e6a86";
+    let _muted = "#6e6a86";
     let subtle = "#908caa";
     let text = "#e0def4";
-    let love = "#eb6f92";
+    let _love = "#eb6f92";
     let gold = "#f6c177";
     let rose = "#ebbcba";
-    let pine = "#31748f";
-    let foam = "#9ccfd8";
+    let _pine = "#31748f";
+    let _foam = "#9ccfd8";
     let iris = "#c4a7e7";
     let hl_low = "#2a283e";
     let hl_med = "#44415a";
-    let hl_high = "#56526e";
+    let _hl_high = "#56526e";
 
     let mut theme = Theme::new("rosepine");
     theme.insert(
@@ -264,27 +264,27 @@ fn yui() -> Theme {
     let black2 = "#7f726c";
     let black3 = "#b4aba7";
     let black = "#635954";
-    let black4 = "#292523";
-    let green_background = "#e8ffd1";
-    let green_foreground = "#408000";
-    let orange = "#E44C22";
+    let _black4 = "#292523";
+    let _green_background = "#e8ffd1";
+    let _green_foreground = "#408000";
+    let _orange = "#E44C22";
     let red_background = "#ffe0e0";
     let red_foreground = "#a7111d";
     let yellow_background = "#f9ffa3";
     let yellow_foreground = "#7b6a3d";
     let purple5 = "#DCD7F9";
     let purple4 = "#cdc5f6";
-    let purple3 = "#7864e8";
+    let _purple3 = "#7864e8";
     let purple = "#5137e1";
     let purple2 = "#371ec8";
     let blue_background = "#e0f3ff";
     let blue_foreground = "#00588f";
-    let white5 = "#fbfaf9";
+    let _white5 = "#fbfaf9";
     let white = "#efeae5";
-    let white2 = "#e8e0d9";
+    let _white2 = "#e8e0d9";
     let white3 = "#dcd1c6";
     let white4 = "#cfbfb0";
-    let cyan = "#007575";
+    let _cyan = "#007575";
 
     let mut theme = Theme::new("yui");
     theme.insert(

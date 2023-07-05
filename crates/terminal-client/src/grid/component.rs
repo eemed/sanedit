@@ -13,11 +13,11 @@ pub(crate) trait Component {
 }
 
 impl Component for Window {
-    fn position(&self, ctx: &UIContext) -> Point {
+    fn position(&self, _ctx: &UIContext) -> Point {
         Point { x: 0, y: 1 }
     }
 
-    fn draw(&self, ctx: &UIContext) -> Vec<Vec<Cell>> {
+    fn draw(&self, _ctx: &UIContext) -> Vec<Vec<Cell>> {
         self.cells().clone()
     }
 
@@ -37,7 +37,7 @@ impl Component for Window {
 }
 
 impl Component for Statusline {
-    fn position(&self, ctx: &UIContext) -> Point {
+    fn position(&self, _ctx: &UIContext) -> Point {
         Point { x: 0, y: 0 }
     }
 
@@ -46,7 +46,7 @@ impl Component for Statusline {
         vec![line]
     }
 
-    fn cursor(&self, ctx: &UIContext) -> Option<Cursor> {
+    fn cursor(&self, _ctx: &UIContext) -> Option<Cursor> {
         None
     }
 
@@ -59,7 +59,7 @@ impl Component for Statusline {
 }
 
 impl Component for Prompt {
-    fn position(&self, ctx: &UIContext) -> Point {
+    fn position(&self, _ctx: &UIContext) -> Point {
         Point { x: 0, y: 0 }
     }
 
@@ -116,14 +116,14 @@ impl Component for Prompt {
         })
     }
 
-    fn size(&self, ctx: &UIContext) -> Size {
+    fn size(&self, _ctx: &UIContext) -> Size {
         todo!()
         // Size { width: ctx.width, height: 1 }
     }
 }
 
 impl Component for StatusMessage {
-    fn position(&self, ctx: &UIContext) -> Point {
+    fn position(&self, _ctx: &UIContext) -> Point {
         Point { x: 0, y: 0 }
     }
 
@@ -137,7 +137,7 @@ impl Component for StatusMessage {
         vec![line]
     }
 
-    fn cursor(&self, ctx: &UIContext) -> Option<Cursor> {
+    fn cursor(&self, _ctx: &UIContext) -> Option<Cursor> {
         None
     }
 
@@ -149,7 +149,7 @@ impl Component for StatusMessage {
     }
 }
 
-fn into_cells_with_style(string: &str, style: Style, ctx: &UIContext) -> Vec<Cell> {
+fn into_cells_with_style(string: &str, style: Style, _ctx: &UIContext) -> Vec<Cell> {
     let mut cells = string.into_cells();
     cells.iter_mut().for_each(|cell| cell.style = style);
     cells

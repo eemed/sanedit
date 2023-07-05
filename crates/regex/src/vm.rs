@@ -6,7 +6,6 @@ mod thread;
 
 pub(crate) use program::Program;
 
-use std::collections::VecDeque;
 use std::mem;
 
 use crate::cursor::Cursor;
@@ -37,7 +36,7 @@ impl VM {
     pub(crate) fn pike(
         program: &Program,
         input: &mut impl Cursor,
-        stop_at_first_match: bool,
+        _stop_at_first_match: bool,
     ) -> VMResult {
         fn add_thread(
             list: &mut ThreadSet,

@@ -17,7 +17,7 @@ pub(crate) fn width_at_pos(slice: &PieceTreeSlice, pos: usize, opts: &DisplayOpt
     let mut col = 0;
 
     while let Some(g) = next_grapheme(&slice, pos) {
-        let mut ch = Char::new(&g, col, opts);
+        let ch = Char::new(&g, col, opts);
         if pos >= target {
             break;
         }
@@ -40,7 +40,7 @@ pub(crate) fn pos_at_width(
     let mut col = 0;
 
     while let Some(g) = next_grapheme(&slice, pos) {
-        let mut ch = Char::new(&g, col, opts);
+        let ch = Char::new(&g, col, opts);
         if col + ch.width() > width {
             break;
         }
@@ -68,7 +68,7 @@ pub(crate) fn on_word_end(slice: &PieceTreeSlice, mut pos: usize) -> bool {
     }
 }
 
-pub(crate) fn on_word_start(slice: &PieceTreeSlice, mut pos: usize) -> bool {
+pub(crate) fn on_word_start(slice: &PieceTreeSlice, pos: usize) -> bool {
     let prev = prev_grapheme(slice, pos).as_ref().map(grapheme_category);
     let next = next_grapheme(slice, pos).as_ref().map(grapheme_category);
 

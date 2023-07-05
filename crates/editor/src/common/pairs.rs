@@ -1,4 +1,4 @@
-use sanedit_buffer::{Bytes, PieceTreeSlice};
+use sanedit_buffer::PieceTreeSlice;
 
 use crate::editor::windows::SearchDirection;
 

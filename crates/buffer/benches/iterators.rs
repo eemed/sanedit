@@ -2,7 +2,7 @@ use std::io;
 
 use criterion::{criterion_group, criterion_main, Criterion};
 use sanedit_buffer::{
-    utf8::{next_grapheme_boundary, prev_grapheme_boundary, Chars},
+    utf8::{next_grapheme_boundary, prev_grapheme_boundary},
     PieceTree,
 };
 
@@ -69,7 +69,7 @@ fn chars(c: &mut Criterion) {
         }
 
         bench.iter(move || {
-            let _iter = Chars::new(&pt, 0);
+            let _iter = pt.chars();
         });
     });
 }

@@ -59,7 +59,7 @@ impl Cursors {
     }
 
     /// Remove cursor at position pos
-    pub fn remove(&mut self, pos: usize) {}
+    pub fn remove(&mut self, _pos: usize) {}
 
     /// Remove all cursors except the primary one
     pub fn remove_secondary_cursors(&mut self) {

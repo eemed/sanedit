@@ -1,7 +1,6 @@
 use std::ops::Range;
 
 use sanedit_messages::redraw::{self, CursorShape, Style, Theme, ThemeField};
-use sanedit_regex::Match;
 
 use crate::{
     common::{char::Replacement, range::RangeUtils},
@@ -11,7 +10,7 @@ use crate::{
     },
 };
 
-pub(crate) fn draw_window(win: &Window, buf: &Buffer, theme: &Theme) -> redraw::Window {
+pub(crate) fn draw_window(win: &Window, _buf: &Buffer, theme: &Theme) -> redraw::Window {
     let style = theme.get(ThemeField::Default);
     let view = win.view();
     let mut grid = vec![vec![redraw::Cell::with_style(style); view.width()]; view.height()];
@@ -93,7 +92,7 @@ fn draw_secondary_cursors(
             continue;
         }
 
-        let selection = cursor.selection();
+        let _selection = cursor.selection();
         let (area, style) = match cursor.selection() {
             Some(s) => (s, theme.get(ThemeField::Selection)),
             None => (
@@ -175,6 +174,6 @@ fn draw_end_of_buffer(grid: &mut Vec<Vec<redraw::Cell>>, view: &View, theme: &Th
     }
 }
 
-fn draw_trailing_whitespace(grid: &mut Vec<Vec<redraw::Cell>>, view: &View, theme: &Theme) {
-    for (line, row) in view.cells().iter().enumerate() {}
+fn draw_trailing_whitespace(_grid: &mut Vec<Vec<redraw::Cell>>, view: &View, _theme: &Theme) {
+    for (_line, _row) in view.cells().iter().enumerate() {}
 }

@@ -44,7 +44,7 @@ use self::buffers::Buffers;
 use self::hooks::Hooks;
 use self::jobs::Jobs;
 use self::options::Options;
-use self::windows::Cursor;
+
 use self::windows::Window;
 use self::windows::Windows;
 
@@ -215,7 +215,7 @@ impl Editor {
                 win.scroll_up_n(buf, 3);
             }
             MouseEventKind::ButtonDown(MouseButton::Left) => {
-                let (win, buf) = self.win_buf_mut(id);
+                let (_win, _buf) = self.win_buf_mut(id);
                 if event.mods.contains(KeyMods::CONTROL) {
                     cursors::new_cursor_to_point(self, id, event.point);
                 } else if event.mods.is_empty() {

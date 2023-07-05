@@ -141,15 +141,13 @@ impl<'a> Bytes<'a> {
 mod test {
     use crate::PieceTree;
 
-    use super::*;
-
     fn as_byte(string: &str) -> Option<u8> {
         Some(string.as_bytes()[0])
     }
 
     #[test]
     fn bytes_empty() {
-        let mut pt = PieceTree::new();
+        let pt = PieceTree::new();
         let mut bytes = pt.bytes();
         assert_eq!(None, bytes.next());
     }

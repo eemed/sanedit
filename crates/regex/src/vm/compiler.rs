@@ -171,8 +171,6 @@ impl TryFrom<Postfix> for Program {
 #[cfg(test)]
 mod test {
 
-    use super::*;
-
     #[test]
     fn simple() {
         // let regex = "ab(.*)";

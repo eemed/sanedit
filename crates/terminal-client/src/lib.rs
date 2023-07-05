@@ -16,7 +16,7 @@ use message::ClientInternalMessage;
 // We have 2 tasks that need to be running
 // Input thread: polls inputs and writes them to the server.
 // Logic thread: Reacts to server messages, draws screen.
-pub fn run<R, W>(read: R, mut write: W)
+pub fn run<R, W>(read: R, write: W)
 where
     R: io::Read + Clone + Send + 'static,
     W: io::Write + 'static,
@@ -31,10 +31,10 @@ where
 
     // Input thread
     let input_sender = tx.clone();
-    let input_join = thread::spawn(|| input::run_loop(input_sender));
+    let _input_join = thread::spawn(|| input::run_loop(input_sender));
 
     let read_sender = tx;
-    let read_join = thread::spawn(|| run_read_loop(read, read_sender));
+    let _read_join = thread::spawn(|| run_read_loop(read, read_sender));
 
     while let Ok(msg) = rx.recv() {
         use ClientInternalMessage::*;
@@ -70,7 +70,7 @@ where
                     _ => {}
                 }
 
-                if let Err(e) = writer.write(msg) {
+                if let Err(_e) = writer.write(msg) {
                     log::error!("Client failed to send event to server");
                     break;
                 }

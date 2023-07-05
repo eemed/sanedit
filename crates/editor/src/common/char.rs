@@ -123,7 +123,7 @@ impl Default for DisplayOptions {
 #[inline]
 fn grapheme_to_char(slice: &PieceTreeSlice, column: usize, options: &DisplayOptions) -> Char {
     let buf_range = Some(slice.start()..slice.end());
-    let mut grapheme = String::from(slice);
+    let grapheme = String::from(slice);
 
     // is tab
     if grapheme == "\t" {

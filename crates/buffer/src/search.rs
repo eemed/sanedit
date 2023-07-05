@@ -346,7 +346,7 @@ mod test {
 
         let searcher = Searcher::new(b"world");
         let slice = pt.slice(..);
-        let mut iter = searcher.find_iter(&slice);
+        let _iter = searcher.find_iter(&slice);
 
         println!("Searcher: {searcher:?}");
         // while let Some(it) = iter.next() {
@@ -357,7 +357,7 @@ mod test {
 
         let searcher = SearcherRev::new(b"world");
         let slice = pt.slice(..);
-        let mut iter = searcher.find_iter(&slice);
+        let _iter = searcher.find_iter(&slice);
 
         println!("SearcherRev: {searcher:?}");
         // while let Some(it) = iter.next() {

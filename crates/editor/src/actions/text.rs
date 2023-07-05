@@ -17,12 +17,12 @@ pub(crate) fn remove_grapheme_before_cursor(editor: &mut Editor, id: ClientId) {
     win.remove_grapheme_before_cursors(buf);
 }
 
-pub(crate) fn undo(editor: &mut Editor, id: ClientId) {}
+pub(crate) fn undo(_editor: &mut Editor, _id: ClientId) {}
 
-pub(crate) fn redo(editor: &mut Editor, id: ClientId) {}
+pub(crate) fn redo(_editor: &mut Editor, _id: ClientId) {}
 
 pub(crate) fn insert(editor: &mut Editor, id: ClientId, text: &str) {
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, _buf) = editor.win_buf_mut(id);
 
     match win.focus() {
         Focus::Search => {

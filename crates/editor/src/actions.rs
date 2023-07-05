@@ -17,7 +17,7 @@ use crate::{editor::Editor, server::ClientId};
 
 use self::cursors::*;
 use self::editor::*;
-use self::jobs::*;
+
 use self::movement::*;
 use self::prompt::*;
 use self::search::*;
@@ -67,8 +67,8 @@ impl Action {
 
     pub fn execute(&mut self, editor: &mut Editor, id: ClientId) {
         match self {
-            Action::Dynamic { name, fun } => (fun)(editor, id),
-            Action::Static { name, fun } => (fun)(editor, id),
+            Action::Dynamic { name: _, fun } => (fun)(editor, id),
+            Action::Static { name: _, fun } => (fun)(editor, id),
         }
     }
 
@@ -138,8 +138,8 @@ impl Action {
 impl fmt::Debug for Action {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Action::Dynamic { name, fun } => write!(f, "{}", name),
-            Action::Static { name, fun } => write!(f, "{}", name),
+            Action::Dynamic { name, fun: _ } => write!(f, "{}", name),
+            Action::Static { name, fun: _ } => write!(f, "{}", name),
         }
     }
 }

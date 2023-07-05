@@ -77,14 +77,13 @@ fn read_piece<'a>(pt: &'a ReadOnlyPieceTree, piece: &Piece) -> Option<Chunk<'a>>
 
 #[cfg(test)]
 mod test {
-    use std::borrow::Cow;
 
     use crate::PieceTree;
 
     use super::*;
 
     fn chunk(pos: usize, string: &str) -> Option<(usize, Chunk)> {
-        let bytes: Cow<'_, [u8]> = string.as_bytes().into();
+        let bytes = string.as_bytes().into();
         Some((pos, Chunk(bytes)))
     }
 

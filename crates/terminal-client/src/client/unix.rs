@@ -1,12 +1,4 @@
-use std::{
-    io,
-    os::unix::net::UnixStream,
-    path::Path,
-    sync::mpsc::{self, Sender},
-    thread,
-};
-
-use crate::input;
+use std::{io, os::unix::net::UnixStream, path::Path};
 
 #[derive(Debug)]
 struct UnixDomainSocket(UnixStream);

@@ -1,7 +1,4 @@
-use std::{
-    iter::Peekable,
-    str::{CharIndices, Chars},
-};
+use std::{iter::Peekable, str::CharIndices};
 
 #[derive(Debug)]
 pub struct ParseError {
@@ -157,7 +154,7 @@ fn shunting_yard_list(chars: &mut Peekable<CharIndices>) -> Result<Postfix, Pars
     let mut operators = Vec::new();
     let mut output = Vec::new();
 
-    while let Some((pos, ch)) = chars.next() {
+    while let Some((_pos, ch)) = chars.next() {
         if ch == ']' {
             break;
         }

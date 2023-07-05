@@ -47,7 +47,7 @@ impl UI {
     }
 
     /// Called when client will send input to server
-    pub fn on_send_input(&mut self, msg: &Message) {
+    pub fn on_send_input(&mut self, _msg: &Message) {
         self.grid.msg = None;
     }
 

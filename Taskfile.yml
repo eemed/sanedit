@@ -13,6 +13,8 @@ tasks:
     desc: Build a release build
     dir: crates
     deps: [install-pre-commit-hook]
+    env:
+      CARGO_PROFILE_RELEASE_DEBUG: true
     cmds:
       - cargo build --release
 
@@ -33,12 +35,14 @@ tasks:
   run:flamegraph:
     desc: Build and run the release build and produce a flamegraph
     dir: crates
-    deps: [install-pre-commit-hook]
+    deps: [install-pre-commit-hook, release:build]
     env:
       CARGO_PROFILE_RELEASE_DEBUG: true
     cmds:
+      - rm -rf perf.data* flamegraph.svg
       - echo -1 | sudo tee /proc/sys/kernel/perf_event_paranoid
-      - cargo flamegraph --dev --open
+      - cargo flamegraph --no-inline --root --verbose
+
 
   run:
     desc: Build and run the debug build
@@ -101,6 +105,7 @@ tasks:
     desc: Run code formatter on all files
     dir: crates
     cmds:
+      - cargo fix --workspace --allow-dirty --allow-staged
       - cargo fmt
 
   check:
@@ -120,7 +125,7 @@ tasks:
   debug:kill:
     desc: Kill debug run process
     cmds:
-      - ps aux | grep -i target/debug/sane | awk '{ print $2 }' | xargs kill -9
+      - ps aux | grep target | grep sane | awk '{ print $2 }' | xargs kill -9
 
   install-pre-commit-hook:
     internal: true

@@ -9,6 +9,7 @@ use crate::{
     server::ClientId,
 };
 
+#[inline]
 fn do_move_line<F: Fn(&PieceTreeSlice, &Cursor, &DisplayOptions) -> (usize, usize)>(
     editor: &mut Editor,
     id: ClientId,
@@ -23,6 +24,7 @@ fn do_move_line<F: Fn(&PieceTreeSlice, &Cursor, &DisplayOptions) -> (usize, usiz
     win.view_to_cursor(buf);
 }
 
+#[inline]
 fn do_move<F: Fn(&PieceTreeSlice, usize) -> usize>(
     editor: &mut Editor,
     id: ClientId,
@@ -41,6 +43,7 @@ fn do_move<F: Fn(&PieceTreeSlice, usize) -> usize>(
     win.view_to_cursor(buf);
 }
 
+#[inline]
 fn do_move_static(editor: &mut Editor, id: ClientId, pos: usize, col: Option<usize>) {
     do_move(editor, id, |_, _| pos, col);
 }

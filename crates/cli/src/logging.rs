@@ -34,7 +34,7 @@ pub fn setup() {
 
     let file_appender = FileAppender::builder()
         .encoder(Box::new(PatternEncoder::new(
-            "{l} {d(%H:%M:%S)} {f}:{L} {m}{n}",
+            "{l} {d(%H:%M:%S.%3f)} {f}:{L} {m}{n}",
         )))
         .build(LOG_FILE)
         .unwrap();

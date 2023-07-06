@@ -1,5 +1,7 @@
 use sanedit_buffer::utf8;
 use sanedit_buffer::PieceTreeSlice;
+use sanedit_buffer::Searcher;
+use sanedit_buffer::SearcherRev;
 
 use crate::common::char::grapheme_category;
 use crate::editor::windows::Cursor;
@@ -42,17 +44,22 @@ pub(crate) fn end_of_line(slice: &PieceTreeSlice, mut pos: usize) -> usize {
     pos
 }
 
-pub(crate) fn next_line_start(slice: &PieceTreeSlice, mut pos: usize) -> usize {
+pub(crate) fn next_line_start(slice: &PieceTreeSlice, pos: usize) -> usize {
     let start = pos;
 
-    while let Some(g) = utf8::next_grapheme(slice, pos) {
-        pos += g.len();
-        let eol = EOL::is_eol(&g);
-
-        if eol {
-            return pos;
-        }
+    let s = slice.slice(pos..);
+    if let Some(n) = find_next(&s, b"\n") {
+        return n;
     }
+
+    // while let Some(g) = utf8::next_grapheme(slice, pos) {
+    //     pos += g.len();
+    //     let eol = EOL::is_eol(&g);
+
+    //     if eol {
+    //         return pos;
+    //     }
+    // }
 
     start_of_line(slice, start)
 }
@@ -178,6 +185,20 @@ pub(crate) fn prev_paragraph(slice: &PieceTreeSlice, mut pos: usize) -> usize {
     }
 
     prev_blank_line(slice, pos)
+}
+
+fn find_next(slice: &PieceTreeSlice, pattern: &[u8]) -> Option<usize> {
+    let searcher = Searcher::new(pattern);
+    let mut iter = searcher.find_iter(slice);
+    let mat = iter.next()?;
+    Some(mat.start)
+}
+
+fn find_prev(slice: &PieceTreeSlice, pattern: &[u8]) -> Option<usize> {
+    let searcher = SearcherRev::new(pattern);
+    let mut iter = searcher.find_iter(slice);
+    let mat = iter.next()?;
+    Some(mat.start)
 }
 
 pub(crate) fn next_blank_line(slice: &PieceTreeSlice, mut pos: usize) -> usize {

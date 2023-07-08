@@ -1,4 +1,4 @@
-use std::ops::Range;
+use std::{io, ops::Range};
 
 use super::{
     chunks::{Chunk, Chunks},
@@ -134,6 +134,12 @@ impl<'a> Bytes<'a> {
         }
 
         self.get().unwrap()
+    }
+}
+
+impl<'a> io::Read for Bytes<'a> {
+    fn read(&mut self, _buf: &mut [u8]) -> io::Result<usize> {
+        todo!()
     }
 }
 

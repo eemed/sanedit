@@ -8,6 +8,8 @@ edition = "2021"
 [dependencies]
 sanedit-ucd = { path = "../ucd" }
 memmap = "0.7"
+lazy_static = "1.4"
+aho-corasick = "1"
 log = "0.4"
 
 [dev-dependencies]

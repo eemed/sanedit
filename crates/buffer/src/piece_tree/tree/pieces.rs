@@ -4,6 +4,7 @@ use super::node::internal_node::InternalNode;
 use super::node::Node;
 use super::piece::Piece;
 use crate::piece_tree::ReadOnlyPieceTree;
+use crate::PieceTreeSlice;
 
 pub(crate) type Pieces<'a> = BoundedPieceIter<'a>;
 
@@ -24,13 +25,12 @@ impl<'a> BoundedPieceIter<'a> {
         }
     }
     #[inline]
-    pub(crate) fn new_from_slice(
-        pt: &'a ReadOnlyPieceTree,
-        at: usize,
-        range: Range<usize>,
-    ) -> BoundedPieceIter<'a> {
-        let iter = PieceIter::new(pt, range.start + at);
-        BoundedPieceIter { range, iter }
+    pub(crate) fn new_from_slice(slice: &PieceTreeSlice<'a>, at: usize) -> BoundedPieceIter<'a> {
+        let iter = PieceIter::new(slice.pt, slice.start() + at);
+        BoundedPieceIter {
+            range: slice.range.clone(),
+            iter,
+        }
     }
 
     #[inline]
@@ -323,7 +323,7 @@ pub(crate) mod test {
         pt.insert(0, "baz"); // pos 6, buf 0
         pt.insert(0, "bar"); // pos 3, buf 3
         pt.insert(0, "foo"); // pos 0, buf 6
-        let mut pieces = BoundedPieceIter::new_from_slice(&pt.pt, 0, 2..7); // fo(obarb)az
+        let mut pieces = BoundedPieceIter::new_from_slice(&pt.slice(2..7), 0); // fo(obarb)az
 
         assert_eq!(add_piece(0, 8, 1), pieces.get()); // o
         assert_eq!(add_piece(1, 3, 3), pieces.next()); // bar
@@ -343,7 +343,7 @@ pub(crate) mod test {
         pt.insert(0, "baz");
         pt.insert(0, "bar");
         pt.insert(0, "foo");
-        let mut pieces = BoundedPieceIter::new_from_slice(&pt.pt, 0, 3..6);
+        let mut pieces = BoundedPieceIter::new_from_slice(&pt.slice(3..6), 0);
 
         assert_eq!(add_piece(0, 3, 3), pieces.get());
         assert_eq!(None, pieces.next());
@@ -359,7 +359,7 @@ pub(crate) mod test {
         pt.insert(0, "baz"); // pos 6, buf 0
         pt.insert(0, "bar"); // pos 3, buf 3
         pt.insert(0, "foo"); // pos 0, buf 6
-        let mut pieces = BoundedPieceIter::new_from_slice(&pt.pt, 0, 0..pt.len());
+        let mut pieces = BoundedPieceIter::new_from_slice(&pt.slice(..), 0);
 
         assert_eq!(add_piece(0, 6, 3), pieces.get()); // foo
         assert_eq!(add_piece(3, 3, 3), pieces.next()); // bar

@@ -1,6 +1,7 @@
-use std::ops::Range;
-
-use crate::piece_tree::{Bytes, ReadOnlyPieceTree};
+use crate::{
+    piece_tree::{Bytes, ReadOnlyPieceTree},
+    PieceTreeSlice,
+};
 
 const REPLACEMENT_CHAR: char = '\u{FFFD}';
 const ACCEPT: u32 = 0;
@@ -196,18 +197,14 @@ impl<'a> Chars<'a> {
     }
 
     #[inline]
-    pub(crate) fn new_from_slice(
-        pt: &'a ReadOnlyPieceTree,
-        at: usize,
-        range: Range<usize>,
-    ) -> Chars<'a> {
+    pub(crate) fn new_from_slice(slice: &PieceTreeSlice<'a>, at: usize) -> Chars<'a> {
         debug_assert!(
-            range.end - range.start >= at,
+            slice.len() >= at,
             "Attempting to index {} over slice len {} ",
             at,
-            range.end - range.start,
+            slice.len(),
         );
-        let bytes = Bytes::new_from_slice(pt, at, range);
+        let bytes = Bytes::new_from_slice(slice, at);
         Chars {
             bytes,
             decoder: Decoder::new(),

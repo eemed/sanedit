@@ -1,4 +1,4 @@
-use std::ops::Range;
+use crate::PieceTreeSlice;
 
 use super::{
     buffers::{BufferKind, ByteSlice},
@@ -30,12 +30,9 @@ impl<'a> Chunks<'a> {
     }
 
     #[inline]
-    pub(crate) fn new_from_slice(
-        pt: &'a ReadOnlyPieceTree,
-        at: usize,
-        range: Range<usize>,
-    ) -> Chunks<'a> {
-        let pieces = Pieces::new_from_slice(pt, at, range);
+    pub(crate) fn new_from_slice(slice: &PieceTreeSlice<'a>, at: usize) -> Chunks<'a> {
+        let pt = slice.pt;
+        let pieces = Pieces::new_from_slice(slice, at);
         Chunks { pt, pieces }
     }
 

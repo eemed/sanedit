@@ -8,8 +8,8 @@ use super::{
 
 #[derive(Debug, Clone)]
 pub struct PieceTreeSlice<'a> {
-    range: Range<usize>,
-    pt: &'a ReadOnlyPieceTree,
+    pub(crate) range: Range<usize>,
+    pub(crate) pt: &'a ReadOnlyPieceTree,
 }
 
 impl<'a> PieceTreeSlice<'a> {
@@ -52,7 +52,7 @@ impl<'a> PieceTreeSlice<'a> {
             self.start() + pos,
             self.pt.len
         );
-        Bytes::new_from_slice(self.pt, pos, self.range.clone())
+        Bytes::new_from_slice(&self, pos)
     }
 
     #[inline]
@@ -68,7 +68,7 @@ impl<'a> PieceTreeSlice<'a> {
             self.start() + pos,
             self.pt.len
         );
-        Chunks::new_from_slice(self.pt, pos, self.range.clone())
+        Chunks::new_from_slice(&self, pos)
     }
 
     #[inline]
@@ -84,7 +84,7 @@ impl<'a> PieceTreeSlice<'a> {
             self.start() + pos,
             self.pt.len
         );
-        Chars::new_from_slice(self.pt, pos, self.range.clone())
+        Chars::new_from_slice(&self, pos)
     }
 
     #[inline]
@@ -114,7 +114,7 @@ impl<'a> PieceTreeSlice<'a> {
 
     #[inline]
     pub fn lines_at(&self, pos: usize) -> Lines {
-        Lines::new_from_slice(self.pt, pos, self.range.clone())
+        Lines::new_from_slice(&self, pos)
     }
 }
 

@@ -1,5 +1,7 @@
 use std::{io, ops::Range};
 
+use crate::PieceTreeSlice;
+
 use super::{
     chunks::{Chunk, Chunks},
     ReadOnlyPieceTree,
@@ -35,20 +37,17 @@ impl<'a> Bytes<'a> {
     }
 
     #[inline]
-    pub(crate) fn new_from_slice(
-        pt: &'a ReadOnlyPieceTree,
-        at: usize,
-        range: Range<usize>,
-    ) -> Bytes<'a> {
+    pub(crate) fn new_from_slice(slice: &PieceTreeSlice<'a>, at: usize) -> Bytes<'a> {
         debug_assert!(
-            range.end - range.start >= at,
+            slice.len() >= at,
             "Attempting to index {} over slice len {} ",
             at,
-            range.end - range.start,
+            slice.len(),
         );
-        let chunks = Chunks::new_from_slice(pt, at, range.clone());
+        let srange = slice.range.clone();
+        let chunks = Chunks::new_from_slice(&slice, at);
         let chunk = chunks.get();
-        let chunk_pos = chunk.as_ref().map(|(p, _)| *p).unwrap_or(range.len());
+        let chunk_pos = chunk.as_ref().map(|(p, _)| *p).unwrap_or(srange.len());
         let pos = chunk.as_ref().map(|(pos, _)| at - pos).unwrap_or(0);
         let chunk = chunk.map(|(_, c)| c);
         let chunk_len = chunk.as_ref().map(|c| c.as_ref().len()).unwrap_or(0);
@@ -58,7 +57,7 @@ impl<'a> Bytes<'a> {
             chunk_pos,
             chunk_len,
             pos,
-            range,
+            range: srange,
         }
     }
 

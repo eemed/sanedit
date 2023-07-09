@@ -1,82 +1,30 @@
+mod eol;
+
 use std::ops::Range;
 
 use crate::{Bytes, PieceTreeSlice, ReadOnlyPieceTree};
-use aho_corasick::{
-    automaton::{Automaton, StateID},
-    nfa::contiguous::NFA,
-    Anchored,
-};
+use aho_corasick::{automaton::Automaton, nfa::contiguous::NFA, Anchored};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum EndOfLine {
-    LF,   // LF: Line Feed, U+000A (UTF-8 in hex: 0A)
-    VT,   // VT: Vertical Tab, U+000B (UTF-8 in hex: 0B)
-    FF,   // FF: Form Feed, U+000C (UTF-8 in hex: 0C)
-    CR,   // CR: Carriage Return, U+000D (UTF-8 in hex: 0D)
-    CRLF, // CR+LF: CR (U+000D) followed by LF (U+000A) (UTF-8 in hex: 0D 0A)
-    NEL,  // NEL: Next Line, U+0085 (UTF-8 in hex: C2 85)
-    LS,   // LS: Line Separator, U+2028 (UTF-8 in hex: E2 80 A8)
-    PS,   // PS: Paragraph Separator, U+2029 (UTF-8 in hex: E2 80 A9)
-}
+use self::eol::EndOfLine;
 
-impl EndOfLine {
-    pub fn is_eol<B: AsRef<[u8]>>(bytes: B) -> bool {
-        let _bytes = bytes.as_ref();
-        todo!()
-    }
+const LF: u8 = 0x0A;
+const CR: u8 = 0x0D;
+const ANC: Anchored = Anchored::No;
+const EOLS: [EndOfLine; 7] = [
+    EndOfLine::LF,
+    EndOfLine::VT,
+    EndOfLine::FF,
+    EndOfLine::CR,
+    EndOfLine::NEL,
+    EndOfLine::LS,
+    EndOfLine::PS,
+    // Missing CRLF on purpose, handled separately
+];
 
-    pub fn is_slice_eol(_slice: &PieceTreeSlice) -> bool {
-        todo!()
-    }
-}
-
-impl AsRef<str> for EndOfLine {
-    fn as_ref(&self) -> &str {
-        use EndOfLine::*;
-
-        match self {
-            LF => "\u{000A}",
-            VT => "\u{000B}",
-            FF => "\u{000C}",
-            CR => "\u{000D}",
-            CRLF => "\u{000D}\u{000A}",
-            NEL => "\u{0085}",
-            LS => "\u{2028}",
-            PS => "\u{2029}",
-        }
-    }
-}
-
-impl AsRef<[u8]> for EndOfLine {
-    fn as_ref(&self) -> &[u8] {
-        let string: &str = self.as_ref();
-        string.as_bytes()
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct Lines<'a> {
-    nfa_rev: NFA,
-    nfa: NFA,
-    state: StateID,
-    state_rev: StateID,
-    bytes: Bytes<'a>,
-    pt: &'a ReadOnlyPieceTree,
-}
-
-impl<'a> Lines<'a> {
-    const EOLS: [EndOfLine; 7] = [
-        EndOfLine::LF,
-        EndOfLine::VT,
-        EndOfLine::FF,
-        EndOfLine::CR,
-        EndOfLine::NEL,
-        EndOfLine::LS,
-        EndOfLine::PS,
-    ];
-
-    fn build_rev() -> NFA {
-        let eol_rev: Vec<Vec<u8>> = Self::EOLS
+lazy_static! {
+    static ref NFA_FWD: NFA = NFA::new(EOLS).unwrap();
+    static ref NFA_BWD: NFA = {
+        let eol_rev: Vec<Vec<u8>> = EOLS
             .into_iter()
             .map(|eol| {
                 let bytes: &[u8] = eol.as_ref();
@@ -84,45 +32,111 @@ impl<'a> Lines<'a> {
             })
             .collect();
         NFA::new(eol_rev).unwrap()
-    }
+    };
+}
 
-    pub fn new(pt: &'a ReadOnlyPieceTree, at: usize) -> Lines {
-        let nfa = NFA::new(Self::EOLS).unwrap();
-        let nfa_rev = Self::build_rev();
-        let state = nfa.start_state(Anchored::No).unwrap();
-        let state_rev = nfa_rev.start_state(Anchored::No).unwrap();
-        let bytes = Bytes::new(pt, at);
-        Lines {
-            pt,
-            bytes,
-            nfa,
-            nfa_rev,
-            state_rev,
-            state,
+#[inline]
+pub fn start_of_line(slice: &PieceTreeSlice, pos: usize) -> usize {
+    let mut bytes = slice.bytes_at(pos);
+    match nfa_prev_eol(&mut bytes) {
+        Some(m) => m.range.start,
+        None => 0,
+    }
+}
+
+#[inline]
+pub fn end_of_line(slice: &PieceTreeSlice, pos: usize) -> usize {
+    let mut bytes = slice.bytes_at(pos);
+    match nfa_next_eol(&mut bytes) {
+        Some(m) => {
+            let crlf = m.eol == EndOfLine::CR && bytes.get().map(|b| b == LF).unwrap_or(false);
+
+            if crlf {
+                m.range.end + 1
+            } else {
+                m.range.end
+            }
+        }
+        None => 0,
+    }
+}
+
+fn nfa_next_eol(bytes: &mut Bytes) -> Option<EOLMatch> {
+    let mut state = NFA_FWD.start_state(ANC).unwrap();
+    loop {
+        let byte = bytes.next()?;
+        state = NFA_FWD.next_state(ANC, state, byte);
+
+        if NFA_FWD.is_match(state) {
+            let pat = NFA_FWD.match_pattern(state, 0);
+            let plen = NFA_FWD.pattern_len(pat);
+            let pos = bytes.pos();
+            return Some(EOLMatch {
+                eol: EOLS[pat.as_usize()],
+                range: pos - plen..pos,
+            });
         }
     }
+}
 
-    pub fn new_from_slice(pt: &'a ReadOnlyPieceTree, at: usize, range: Range<usize>) -> Lines {
-        let nfa = NFA::new(Self::EOLS).unwrap();
-        let nfa_rev = Self::build_rev();
-        let state = nfa.start_state(Anchored::No).unwrap();
-        let state_rev = nfa_rev.start_state(Anchored::No).unwrap();
-        let bytes = Bytes::new_from_slice(pt, at, range);
-        Lines {
-            pt,
-            bytes,
-            nfa,
-            nfa_rev,
-            state,
-            state_rev,
+fn nfa_prev_eol(bytes: &mut Bytes) -> Option<EOLMatch> {
+    let mut state = NFA_BWD.start_state(ANC).unwrap();
+    loop {
+        let byte = bytes.prev()?;
+        state = NFA_BWD.next_state(ANC, state, byte);
+
+        if NFA_BWD.is_match(state) {
+            let pat = NFA_BWD.match_pattern(state, 0);
+            let plen = NFA_BWD.pattern_len(pat);
+            let pos = bytes.pos();
+            return Some(EOLMatch {
+                eol: EOLS[pat.as_usize()],
+                range: pos..pos + plen,
+            });
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Lines<'a> {
+    bytes: Bytes<'a>,
+    slice: PieceTreeSlice<'a>,
+}
+
+impl<'a> Lines<'a> {
+    #[inline]
+    pub fn new(pt: &'a ReadOnlyPieceTree, at: usize) -> Lines {
+        let slice = pt.slice(..);
+        let bytes = Bytes::new(pt, at);
+        let mut lines = Lines { slice, bytes };
+        lines.goto_bol();
+        lines
+    }
+
+    #[inline]
+    pub fn new_from_slice(slice: &PieceTreeSlice<'a>, at: usize) -> Lines<'a> {
+        let slice = slice.clone();
+        let bytes = Bytes::new_from_slice(&slice, at);
+        let mut lines = Lines { slice, bytes };
+        lines.goto_bol();
+        lines
+    }
+
+    #[inline]
+    fn goto_bol(&mut self) {
+        if self.bytes.pos() == self.slice.len() {
+            return;
+        }
+
+        if let Some(m) = nfa_prev_eol(&mut self.bytes) {
+            self.bytes.at(m.range.end);
         }
     }
 
     pub fn next(&mut self) -> Option<PieceTreeSlice> {
-        const LF: u8 = 0x0A;
         let start = self.bytes.pos();
 
-        match self.nfa_next() {
+        match nfa_next_eol(&mut self.bytes) {
             Some(mat) => {
                 let crlf =
                     mat.eol == EndOfLine::CR && self.bytes.get().map(|b| b == LF).unwrap_or(false);
@@ -135,7 +149,7 @@ impl<'a> Lines<'a> {
                     mat.range.end
                 };
 
-                Some(self.pt.slice(start..end))
+                Some(self.slice.slice(start..end))
             }
             None => {
                 let end = self.bytes.pos();
@@ -143,47 +157,39 @@ impl<'a> Lines<'a> {
                     // At end
                     None
                 } else {
-                    Some(self.pt.slice(start..end))
+                    Some(self.slice.slice(start..end))
                 }
             }
         }
     }
 
-    fn nfa_next(&mut self) -> Option<EOLMatch> {
-        loop {
-            let byte = self.bytes.next()?;
-            self.state = self.nfa.next_state(Anchored::No, self.state, byte);
-
-            if self.nfa.is_match(self.state) {
-                let pat = self.nfa.match_pattern(self.state, 0);
-                let plen = self.nfa.pattern_len(pat);
-                let pos = self.bytes.pos();
-                return Some(EOLMatch {
-                    eol: Self::EOLS[pat.as_usize()],
-                    range: pos - plen..pos,
-                });
-            }
-        }
-    }
-
     pub fn prev(&mut self) -> Option<PieceTreeSlice> {
-        const CR: u8 = 0x0D;
         let end = self.bytes.pos();
 
-        match self.nfa_next() {
+        // Skip over previous eol
+        // if self.bytes.pos() != self.slice.len() {
+        if let Some(m) = nfa_prev_eol(&mut self.bytes) {
+            // Handle crlf
+            if m.eol == EndOfLine::LF {
+                if let Some(b) = self.bytes.prev() {
+                    if b != CR {
+                        self.bytes.prev();
+                    }
+                }
+            }
+        }
+        // }
+
+        match nfa_prev_eol(&mut self.bytes) {
             Some(mat) => {
-                let crlf =
-                    mat.eol == EndOfLine::LF && self.bytes.get().map(|b| b == CR).unwrap_or(false);
+                let start = mat.range.end;
 
-                let start = if crlf {
-                    // Advance over lf
+                // Move bytes to start of line
+                for _ in 0..mat.range.len() {
                     self.bytes.next();
-                    mat.range.start - 1
-                } else {
-                    mat.range.start
-                };
+                }
 
-                Some(self.pt.slice(start..end))
+                Some(self.slice.slice(start..end))
             }
             None => {
                 let start = self.bytes.pos();
@@ -191,30 +197,14 @@ impl<'a> Lines<'a> {
                     // At start
                     None
                 } else {
-                    Some(self.pt.slice(start..end))
+                    Some(self.slice.slice(start..end))
                 }
-            }
-        }
-    }
-
-    fn nfa_prev(&mut self) -> Option<EOLMatch> {
-        loop {
-            let byte = self.bytes.prev()?;
-            self.state_rev = self.nfa_rev.next_state(Anchored::No, self.state_rev, byte);
-
-            if self.nfa_rev.is_match(self.state_rev) {
-                let pat = self.nfa_rev.match_pattern(self.state_rev, 0);
-                let plen = self.nfa_rev.pattern_len(pat);
-                let pos = self.bytes.pos();
-                return Some(EOLMatch {
-                    eol: Self::EOLS[pat.as_usize()],
-                    range: pos..pos + plen,
-                });
             }
         }
     }
 }
 
+#[derive(Debug)]
 struct EOLMatch {
     eol: EndOfLine,
     range: Range<usize>,
@@ -227,23 +217,100 @@ mod test {
     #[test]
     fn lines_next() {
         let mut pt = PieceTree::new();
-        pt.insert(0, b"Hello\nworld\r\nthis");
+        pt.insert(0, "foo\u{000A}bar\u{000B}baz\u{000C}this\u{000D}is\u{000D}\u{000A}another\u{0085}line\u{2028}boing\u{2029}\u{000A}");
 
         let mut lines = pt.lines();
-        while let Some(line) = lines.next() {
-            println!("LINE: {:?}", String::from(&line))
-        }
+
+        assert_eq!(
+            lines.next().as_ref().map(String::from),
+            Some("foo\u{000A}".to_string())
+        );
+
+        assert_eq!(
+            lines.next().as_ref().map(String::from),
+            Some("bar\u{000B}".to_string())
+        );
+        assert_eq!(
+            lines.next().as_ref().map(String::from),
+            Some("baz\u{000C}".to_string())
+        );
+        assert_eq!(
+            lines.next().as_ref().map(String::from),
+            Some("this\u{000D}".to_string())
+        );
+        assert_eq!(
+            lines.next().as_ref().map(String::from),
+            Some("is\u{000D}\u{000A}".to_string())
+        );
+        assert_eq!(
+            lines.next().as_ref().map(String::from),
+            Some("another\u{0085}".to_string())
+        );
+        assert_eq!(
+            lines.next().as_ref().map(String::from),
+            Some("line\u{2028}".to_string())
+        );
+        assert_eq!(
+            lines.next().as_ref().map(String::from),
+            Some("boing\u{2029}".to_string())
+        );
+        assert_eq!(
+            lines.next().as_ref().map(String::from),
+            Some("\u{000A}".to_string())
+        );
+
+        assert!(lines.next().is_none());
     }
 
     #[test]
     fn lines_prev() {
         let mut pt = PieceTree::new();
-        pt.insert(0, b"Hello\nworld\r\nthis");
+        pt.insert(0, "foo\u{000A}bar\u{000B}baz\u{000C}this\u{000D}is\u{000D}\u{000A}another\u{0085}line\u{2028}boing\u{2029}\u{000A}");
 
         let mut lines = pt.lines_at(pt.len());
-        while let Some(line) = lines.prev() {
-            println!("LINE: {:?}", String::from(&line))
+
+        while let Some(l) = lines.prev() {
+            println!("line: {:?}", String::from(&l));
         }
+
+        // assert_eq!(
+        //     lines.prev().as_ref().map(String::from),
+        //     Some("\u{000A}".to_string())
+        // );
+        // assert_eq!(
+        //     lines.prev().as_ref().map(String::from),
+        //     Some("boing\u{2029}".to_string())
+        // );
+        // assert_eq!(
+        //     lines.prev().as_ref().map(String::from),
+        //     Some("line\u{2028}".to_string())
+        // );
+        // assert_eq!(
+        //     lines.prev().as_ref().map(String::from),
+        //     Some("another\u{0085}".to_string())
+        // );
+        // assert_eq!(
+        //     lines.prev().as_ref().map(String::from),
+        //     Some("is\u{000D}\u{000A}".to_string())
+        // );
+        // assert_eq!(
+        //     lines.prev().as_ref().map(String::from),
+        //     Some("this\u{000D}".to_string())
+        // );
+        // assert_eq!(
+        //     lines.prev().as_ref().map(String::from),
+        //     Some("baz\u{000C}".to_string())
+        // );
+        // assert_eq!(
+        //     lines.prev().as_ref().map(String::from),
+        //     Some("bar\u{000B}".to_string())
+        // );
+        // assert_eq!(
+        //     lines.prev().as_ref().map(String::from),
+        //     Some("foo\u{000A}".to_string())
+        // );
+
+        // assert!(lines.prev().is_none());
     }
 
     #[test]

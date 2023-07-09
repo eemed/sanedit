@@ -1,6 +1,10 @@
 use std::ops::{Bound, Range, RangeBounds};
 
-use super::{chunks::Chunks, utf8::chars::Chars, Bytes, ReadOnlyPieceTree};
+use super::{
+    chunks::Chunks,
+    utf8::{chars::Chars, lines::Lines},
+    Bytes, ReadOnlyPieceTree,
+};
 
 #[derive(Debug, Clone)]
 pub struct PieceTreeSlice<'a> {
@@ -101,6 +105,16 @@ impl<'a> PieceTreeSlice<'a> {
         let end = self.range.start + sub_end;
 
         self.pt.slice(start..end)
+    }
+
+    #[inline]
+    pub fn lines(&self) -> Lines {
+        self.lines_at(0)
+    }
+
+    #[inline]
+    pub fn lines_at(&self, pos: usize) -> Lines {
+        Lines::new_from_slice(self.pt, pos, self.range.clone())
     }
 }
 

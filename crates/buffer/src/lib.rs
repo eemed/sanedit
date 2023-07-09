@@ -1,3 +1,6 @@
+#[macro_use]
+extern crate lazy_static;
+
 mod cursor_iterator;
 mod piece_tree;
 mod search;

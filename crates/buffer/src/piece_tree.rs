@@ -18,6 +18,7 @@ use self::tree::Tree;
 use crate::piece_tree::buffers::{AppendResult, BufferKind};
 use crate::piece_tree::chunks::Chunks;
 use crate::piece_tree::tree::piece::Piece;
+use crate::piece_tree::utf8::lines::Lines;
 use buffers::OriginalBuffer;
 
 use self::slice::PieceTreeSlice;
@@ -261,6 +262,16 @@ impl PieceTree {
     }
 
     #[inline]
+    pub fn lines(&self) -> Lines {
+        self.pt.lines()
+    }
+
+    #[inline]
+    pub fn lines_at(&self, pos: usize) -> Lines {
+        self.pt.lines_at(pos)
+    }
+
+    #[inline]
     pub fn is_file_backed(&self) -> bool {
         self.pt.is_file_backed()
     }
@@ -386,6 +397,22 @@ impl ReadOnlyPieceTree {
     #[inline]
     pub fn chars_at(&self, at: usize) -> Chars {
         Chars::new(self, at)
+    }
+
+    #[inline]
+    pub fn lines(&self) -> Lines {
+        self.lines_at(0)
+    }
+
+    #[inline]
+    pub fn lines_at(&self, pos: usize) -> Lines {
+        debug_assert!(
+            pos <= self.len,
+            "lines_at: Attempting to index {} over buffer len {}",
+            pos,
+            self.len
+        );
+        Lines::new(self, pos)
     }
 
     #[inline]

@@ -63,7 +63,7 @@ impl<'a> Bytes<'a> {
     }
 
     #[inline(always)]
-    fn get(&mut self) -> Option<u8> {
+    pub(crate) fn get(&mut self) -> Option<u8> {
         if self.pos >= self.chunk_len {
             self.pos = 0;
             let (chunk, pos, len): (Option<Chunk>, usize, usize) = self

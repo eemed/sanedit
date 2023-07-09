@@ -101,6 +101,7 @@ fn nfa_prev_eol(bytes: &mut Bytes) -> Option<EOLMatch> {
 pub struct Lines<'a> {
     bytes: Bytes<'a>,
     slice: PieceTreeSlice<'a>,
+    at_end: bool,
 }
 
 impl<'a> Lines<'a> {
@@ -108,7 +109,11 @@ impl<'a> Lines<'a> {
     pub fn new(pt: &'a ReadOnlyPieceTree, at: usize) -> Lines {
         let slice = pt.slice(..);
         let bytes = Bytes::new(pt, at);
-        let mut lines = Lines { slice, bytes };
+        let mut lines = Lines {
+            at_end: bytes.pos() == slice.len(),
+            slice,
+            bytes,
+        };
         lines.goto_bol();
         lines
     }
@@ -117,7 +122,11 @@ impl<'a> Lines<'a> {
     pub fn new_from_slice(slice: &PieceTreeSlice<'a>, at: usize) -> Lines<'a> {
         let slice = slice.clone();
         let bytes = Bytes::new_from_slice(&slice, at);
-        let mut lines = Lines { slice, bytes };
+        let mut lines = Lines {
+            at_end: bytes.pos() == slice.len(),
+            slice,
+            bytes,
+        };
         lines.goto_bol();
         lines
     }
@@ -129,6 +138,7 @@ impl<'a> Lines<'a> {
         }
 
         if let Some(m) = nfa_prev_eol(&mut self.bytes) {
+            self.at_end = false;
             self.bytes.at(m.range.end);
         }
     }
@@ -153,10 +163,10 @@ impl<'a> Lines<'a> {
             }
             None => {
                 let end = self.bytes.pos();
-                if start == end {
-                    // At end
+                if start == end && self.at_end {
                     None
                 } else {
+                    self.at_end = start == end;
                     Some(self.slice.slice(start..end))
                 }
             }
@@ -167,18 +177,19 @@ impl<'a> Lines<'a> {
         let end = self.bytes.pos();
 
         // Skip over previous eol
-        // if self.bytes.pos() != self.slice.len() {
-        if let Some(m) = nfa_prev_eol(&mut self.bytes) {
-            // Handle crlf
-            if m.eol == EndOfLine::LF {
-                if let Some(b) = self.bytes.prev() {
-                    if b != CR {
-                        self.bytes.prev();
+        if !self.at_end {
+            if let Some(m) = nfa_prev_eol(&mut self.bytes) {
+                // Handle crlf
+                if m.eol == EndOfLine::LF {
+                    if let Some(b) = self.bytes.prev() {
+                        if b != CR {
+                            self.bytes.next();
+                        }
                     }
                 }
             }
         }
-        // }
+        self.at_end = false;
 
         match nfa_prev_eol(&mut self.bytes) {
             Some(mat) => {
@@ -258,6 +269,10 @@ mod test {
             lines.next().as_ref().map(String::from),
             Some("\u{000A}".to_string())
         );
+        assert_eq!(
+            lines.next().as_ref().map(String::from),
+            Some("".to_string())
+        );
 
         assert!(lines.next().is_none());
     }
@@ -269,48 +284,48 @@ mod test {
 
         let mut lines = pt.lines_at(pt.len());
 
-        while let Some(l) = lines.prev() {
-            println!("line: {:?}", String::from(&l));
-        }
+        assert_eq!(
+            lines.prev().as_ref().map(String::from),
+            Some("".to_string())
+        );
+        assert_eq!(
+            lines.prev().as_ref().map(String::from),
+            Some("\u{000A}".to_string())
+        );
+        assert_eq!(
+            lines.prev().as_ref().map(String::from),
+            Some("boing\u{2029}".to_string())
+        );
+        assert_eq!(
+            lines.prev().as_ref().map(String::from),
+            Some("line\u{2028}".to_string())
+        );
+        assert_eq!(
+            lines.prev().as_ref().map(String::from),
+            Some("another\u{0085}".to_string())
+        );
+        assert_eq!(
+            lines.prev().as_ref().map(String::from),
+            Some("is\u{000D}\u{000A}".to_string())
+        );
+        assert_eq!(
+            lines.prev().as_ref().map(String::from),
+            Some("this\u{000D}".to_string())
+        );
+        assert_eq!(
+            lines.prev().as_ref().map(String::from),
+            Some("baz\u{000C}".to_string())
+        );
+        assert_eq!(
+            lines.prev().as_ref().map(String::from),
+            Some("bar\u{000B}".to_string())
+        );
+        assert_eq!(
+            lines.prev().as_ref().map(String::from),
+            Some("foo\u{000A}".to_string())
+        );
 
-        // assert_eq!(
-        //     lines.prev().as_ref().map(String::from),
-        //     Some("\u{000A}".to_string())
-        // );
-        // assert_eq!(
-        //     lines.prev().as_ref().map(String::from),
-        //     Some("boing\u{2029}".to_string())
-        // );
-        // assert_eq!(
-        //     lines.prev().as_ref().map(String::from),
-        //     Some("line\u{2028}".to_string())
-        // );
-        // assert_eq!(
-        //     lines.prev().as_ref().map(String::from),
-        //     Some("another\u{0085}".to_string())
-        // );
-        // assert_eq!(
-        //     lines.prev().as_ref().map(String::from),
-        //     Some("is\u{000D}\u{000A}".to_string())
-        // );
-        // assert_eq!(
-        //     lines.prev().as_ref().map(String::from),
-        //     Some("this\u{000D}".to_string())
-        // );
-        // assert_eq!(
-        //     lines.prev().as_ref().map(String::from),
-        //     Some("baz\u{000C}".to_string())
-        // );
-        // assert_eq!(
-        //     lines.prev().as_ref().map(String::from),
-        //     Some("bar\u{000B}".to_string())
-        // );
-        // assert_eq!(
-        //     lines.prev().as_ref().map(String::from),
-        //     Some("foo\u{000A}".to_string())
-        // );
-
-        // assert!(lines.prev().is_none());
+        assert!(lines.prev().is_none());
     }
 
     #[test]

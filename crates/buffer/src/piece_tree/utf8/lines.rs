@@ -166,7 +166,7 @@ impl<'a> Lines<'a> {
                 if start == end && self.at_end {
                     None
                 } else {
-                    self.at_end = start == end;
+                    self.at_end = end == self.slice.len();
                     Some(self.slice.slice(start..end))
                 }
             }
@@ -335,10 +335,17 @@ mod test {
             0,
             b"foobarbaz\r\nHello world this is a long line with a lot of text\r\nthis",
         );
-
         let mut lines = pt.lines_at(25);
-        while let Some(line) = lines.next() {
-            println!("LINE: {:?}", String::from(&line))
-        }
+
+        assert_eq!(
+            lines.next().as_ref().map(String::from),
+            Some("Hello world this is a long line with a lot of text\r\n".to_string())
+        );
+        assert_eq!(
+            lines.next().as_ref().map(String::from),
+            Some("this".to_string())
+        );
+
+        assert!(lines.next().is_none());
     }
 }

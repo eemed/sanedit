@@ -1,4 +1,6 @@
 use sanedit_buffer::utf8;
+use sanedit_buffer::utf8::EndOfLine;
+use sanedit_buffer::Bytes;
 use sanedit_buffer::PieceTreeSlice;
 use sanedit_buffer::Searcher;
 use sanedit_buffer::SearcherRev;
@@ -7,7 +9,6 @@ use crate::common::char::grapheme_category;
 use crate::editor::windows::Cursor;
 
 use super::char::{is_word_break, is_word_break_end, DisplayOptions, GraphemeCategory};
-use super::eol::EOL;
 use super::text::{pos_at_width, width_at_pos};
 
 #[inline]
@@ -30,7 +31,11 @@ pub(crate) fn end_of_line(slice: &PieceTreeSlice, pos: usize) -> usize {
 
 pub(crate) fn start_of_line(slice: &PieceTreeSlice, pos: usize) -> usize {
     let mut bytes = slice.bytes_at(pos);
-    match utf8::prev_eol(&mut bytes) {
+    bytes_start_of_line(&mut bytes)
+}
+
+fn bytes_start_of_line(bytes: &mut Bytes) -> usize {
+    match utf8::prev_eol(bytes) {
         Some(m) => m.range.end,
         None => 0,
     }
@@ -57,8 +62,9 @@ pub(crate) fn prev_line_start(slice: &PieceTreeSlice, pos: usize) -> usize {
 /// start.
 pub(crate) fn next_word_start(slice: &PieceTreeSlice, mut pos: usize) -> usize {
     let mut prev: Option<GraphemeCategory> = None;
+    let mut graphemes = slice.graphemes_at(pos);
 
-    while let Some(g) = utf8::next_grapheme(slice, pos) {
+    while let Some(g) = graphemes.next() {
         let cat = grapheme_category(&g);
 
         if let Some(ref prev) = prev {
@@ -78,8 +84,9 @@ pub(crate) fn next_word_start(slice: &PieceTreeSlice, mut pos: usize) -> usize {
 /// start.
 pub(crate) fn prev_word_start(slice: &PieceTreeSlice, mut pos: usize) -> usize {
     let mut cat: Option<GraphemeCategory> = None;
+    let mut graphemes = slice.graphemes_at(pos);
 
-    while let Some(g) = utf8::prev_grapheme(slice, pos) {
+    while let Some(g) = graphemes.prev() {
         let prev = grapheme_category(&g);
 
         if let Some(cat) = cat {
@@ -97,9 +104,10 @@ pub(crate) fn prev_word_start(slice: &PieceTreeSlice, mut pos: usize) -> usize {
 
 pub(crate) fn next_word_end(slice: &PieceTreeSlice, mut pos: usize) -> usize {
     let mut prev: Option<(GraphemeCategory, usize)> = None;
-    pos = next_grapheme_boundary(slice, pos);
+    let mut graphemes = slice.graphemes_at(pos);
+    pos += graphemes.next().map(|g| g.len()).unwrap_or(0);
 
-    while let Some(g) = utf8::next_grapheme(slice, pos) {
+    while let Some(g) = graphemes.next() {
         let cat = grapheme_category(&g);
 
         if let Some((ref prev, len)) = prev {
@@ -117,11 +125,10 @@ pub(crate) fn next_word_end(slice: &PieceTreeSlice, mut pos: usize) -> usize {
 
 pub(crate) fn prev_word_end(slice: &PieceTreeSlice, mut pos: usize) -> usize {
     let mut cat: Option<GraphemeCategory> = None;
-    if let Some(g) = utf8::prev_grapheme(slice, pos) {
-        pos += g.len();
-    }
+    let mut graphemes = slice.graphemes_at(pos);
+    pos += graphemes.next().map(|g| g.len()).unwrap_or(0);
 
-    while let Some(g) = utf8::prev_grapheme(slice, pos) {
+    while let Some(g) = graphemes.prev() {
         let prev = grapheme_category(&g);
         pos -= g.len();
 
@@ -137,31 +144,45 @@ pub(crate) fn prev_word_end(slice: &PieceTreeSlice, mut pos: usize) -> usize {
     0
 }
 
-pub(crate) fn next_paragraph(slice: &PieceTreeSlice, mut pos: usize) -> usize {
-    pos = start_of_line(slice, pos);
+pub(crate) fn next_paragraph(slice: &PieceTreeSlice, pos: usize) -> usize {
+    let mut lines = slice.lines_at(pos);
 
-    // Skip immediate eols
-    while let Some(g) = utf8::next_grapheme(slice, pos) {
-        let eol = EOL::is_eol(&g);
-        if !eol {
+    // Skip all empty lines
+    while let Some(line) = lines.next() {
+        if !EndOfLine::is_slice_eol(&line) {
             break;
         }
-        pos += g.len();
     }
 
-    next_blank_line(slice, pos)
+    // Skip all content lines
+    while let Some(line) = lines.next() {
+        if EndOfLine::is_slice_eol(&line) {
+            return line.start();
+        }
+    }
+
+    slice.len()
 }
 
-pub(crate) fn prev_paragraph(slice: &PieceTreeSlice, mut pos: usize) -> usize {
-    while let Some(g) = utf8::prev_grapheme(slice, pos) {
-        let eol = EOL::is_eol(&g);
-        if !eol {
+pub(crate) fn prev_paragraph(slice: &PieceTreeSlice, pos: usize) -> usize {
+    let mut lines = slice.lines_at(pos);
+    lines.next();
+
+    // Skip all empty lines
+    while let Some(line) = lines.prev() {
+        if !EndOfLine::is_slice_eol(&line) {
             break;
         }
-        pos -= g.len();
     }
 
-    prev_blank_line(slice, pos)
+    // Skip all content lines
+    while let Some(line) = lines.prev() {
+        if EndOfLine::is_slice_eol(&line) {
+            return line.start();
+        }
+    }
+
+    0
 }
 
 fn find_next(slice: &PieceTreeSlice, pattern: &[u8]) -> Option<usize> {

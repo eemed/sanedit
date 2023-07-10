@@ -5,7 +5,7 @@ use std::ops::Range;
 use crate::{Bytes, PieceTreeSlice, ReadOnlyPieceTree};
 use aho_corasick::{automaton::Automaton, nfa::contiguous::NFA, Anchored};
 
-use self::eol::EndOfLine;
+pub use self::eol::EndOfLine;
 
 const LF: u8 = 0x0A;
 const CR: u8 = 0x0D;

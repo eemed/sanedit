@@ -1,8 +1,8 @@
-use crate::common::eol::EOL;
+use sanedit_buffer::utf8::EndOfLine;
 
 #[derive(Debug)]
 pub(crate) struct Options {
-    pub(crate) eol: EOL,
+    pub(crate) eol: EndOfLine,
     /// How many spaces for a tab character, note that tab does not always have
     /// width `tab_width` because sometimes tabs are used to align stuff, so it
     /// is "elastic" calculated tabstop - (col % tabstop).
@@ -16,7 +16,7 @@ pub(crate) struct Options {
 impl Default for Options {
     fn default() -> Self {
         Options {
-            eol: EOL::default(),
+            eol: EndOfLine::default(),
             tabstop: 8,
             tab_spaces: Some(4),
         }

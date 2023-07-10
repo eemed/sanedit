@@ -75,6 +75,33 @@ fn chars(c: &mut Criterion) {
 }
 
 fn graphemes(c: &mut Criterion) {
+    c.bench_function("grapheme_iterator_next", |bench| {
+        let large = io::Cursor::new(include_str!("large.txt"));
+        let pt = PieceTree::from_reader(large).unwrap();
+        let slice = pt.slice(..);
+        let iter = slice.graphemes_at(0);
+        let mut graphemes = iter.clone();
+
+        bench.iter(move || {
+            if graphemes.next().is_none() {
+                graphemes = iter.clone();
+            }
+        });
+    });
+    c.bench_function("grapheme_iterator_prev", |bench| {
+        let large = io::Cursor::new(include_str!("large.txt"));
+        let pt = PieceTree::from_reader(large).unwrap();
+        let slice = pt.slice(..);
+        let iter = slice.graphemes_at(slice.len());
+        let mut graphemes = iter.clone();
+
+        bench.iter(move || {
+            if graphemes.prev().is_none() {
+                graphemes = iter.clone();
+            }
+        });
+    });
+
     c.bench_function("grapheme_boundary_next", |bench| {
         let large = io::Cursor::new(include_str!("large.txt"));
         let pt = PieceTree::from_reader(large).unwrap();

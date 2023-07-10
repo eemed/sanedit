@@ -2,7 +2,7 @@ use std::ops::{Bound, Range, RangeBounds};
 
 use super::{
     chunks::Chunks,
-    utf8::{chars::Chars, lines::Lines},
+    utf8::{chars::Chars, graphemes::Graphemes, lines::Lines},
     Bytes, ReadOnlyPieceTree,
 };
 
@@ -115,6 +115,16 @@ impl<'a> PieceTreeSlice<'a> {
     #[inline]
     pub fn lines_at(&self, pos: usize) -> Lines {
         Lines::new_from_slice(&self, pos)
+    }
+
+    #[inline]
+    pub fn graphemes(&self) -> Graphemes {
+        self.graphemes_at(0)
+    }
+
+    #[inline]
+    pub fn graphemes_at(&self, pos: usize) -> Graphemes {
+        Graphemes::new_from_slice(&self, pos)
     }
 }
 

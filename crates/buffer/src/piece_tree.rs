@@ -15,6 +15,7 @@ use std::sync::Arc;
 use self::buffers::{create_add_buffer_reader_writer, AddBufferReader, AddBufferWriter};
 use self::tree::pieces::Pieces;
 use self::tree::Tree;
+use self::utf8::graphemes::Graphemes;
 use crate::piece_tree::buffers::{AppendResult, BufferKind};
 use crate::piece_tree::chunks::Chunks;
 use crate::piece_tree::tree::piece::Piece;
@@ -272,6 +273,16 @@ impl PieceTree {
     }
 
     #[inline]
+    pub fn graphemes(&self) -> Graphemes {
+        self.pt.graphemes()
+    }
+
+    #[inline]
+    pub fn graphemes_at(&self, pos: usize) -> Graphemes {
+        self.pt.graphemes_at(pos)
+    }
+
+    #[inline]
     pub fn is_file_backed(&self) -> bool {
         self.pt.is_file_backed()
     }
@@ -413,6 +424,22 @@ impl ReadOnlyPieceTree {
             self.len
         );
         Lines::new(self, pos)
+    }
+
+    #[inline]
+    pub fn graphemes(&self) -> Graphemes {
+        self.graphemes_at(0)
+    }
+
+    #[inline]
+    pub fn graphemes_at(&self, pos: usize) -> Graphemes {
+        debug_assert!(
+            pos <= self.len,
+            "graphemes_at: Attempting to index {} over buffer len {}",
+            pos,
+            self.len
+        );
+        Graphemes::new(self, pos)
     }
 
     #[inline]

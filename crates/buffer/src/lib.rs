@@ -17,7 +17,7 @@ pub mod utf8 {
 
     pub use piece_tree::utf8::{
         chars::Chars,
-        graphemes::{next_grapheme, next_grapheme_boundary, prev_grapheme, prev_grapheme_boundary},
-        lines::{next_eol, prev_eol, EOLMatch, Lines},
+        graphemes::{next_grapheme_boundary, prev_grapheme_boundary, Graphemes},
+        lines::{next_eol, prev_eol, EOLMatch, EndOfLine, Lines},
     };
 }

@@ -1,6 +1,6 @@
 use crate::{properties, table_contains};
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 #[repr(u8)]
 pub enum GraphemeBreak {
     CR = 0,

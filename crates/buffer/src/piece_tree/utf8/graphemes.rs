@@ -1,124 +1,182 @@
-use sanedit_ucd::{GraphemeBreak, Property};
+use sanedit_ucd::{grapheme_break, GraphemeBreak, Property};
 
-use crate::piece_tree::PieceTreeSlice;
+use crate::{piece_tree::PieceTreeSlice, ReadOnlyPieceTree};
 
 use super::chars::Chars;
 
-#[inline]
-pub fn prev_grapheme<'a>(slice: &'a PieceTreeSlice, pos: usize) -> Option<PieceTreeSlice<'a>> {
-    let end = pos;
-    let start = prev_grapheme_boundary(slice, pos);
-    if start == end {
-        return None;
-    }
-
-    Some(slice.slice(start..end))
-}
-
-#[inline]
-pub fn next_grapheme<'a>(slice: &'a PieceTreeSlice, pos: usize) -> Option<PieceTreeSlice<'a>> {
-    let start = pos;
-    let end = next_grapheme_boundary(slice, pos);
-    if start == end {
-        return None;
-    }
-
-    Some(slice.slice(start..end))
-}
-
+/// Utility function to quickly return the next grapheme boundary
+/// If more iterations are needed using the `Graphemes` iterator is more
+/// efficient.
 pub fn next_grapheme_boundary(slice: &PieceTreeSlice, pos: usize) -> usize {
-    let mut chars = slice.chars_at(pos);
-    let mut current = chars.next();
-    let mut after = chars.next();
-
-    loop {
-        match (current, after) {
-            (Some((first, _, a)), Some((second, _, b))) => {
-                if is_break(slice, first, a, b) {
-                    return second;
-                }
-
-                // Progress forward
-                current = after;
-                after = chars.next();
-            }
-            (None, None) => return slice.len(),
-            (Some(_), None) => return slice.len(),
-            (None, Some(_)) => unreachable!(),
-        }
+    let mut graphemes = slice.graphemes_at(pos);
+    match graphemes.next() {
+        Some(g) => pos + g.len(),
+        _ => slice.len(),
     }
 }
 
+/// Utility function to quickly return the prev grapheme boundary
+/// If more iterations are needed using the `Graphemes` iterator is more
+/// efficient.
 pub fn prev_grapheme_boundary(slice: &PieceTreeSlice, pos: usize) -> usize {
-    let mut chars = slice.chars_at(pos);
-    let mut after = chars.prev();
-    let mut current = chars.prev();
+    let mut graphemes = slice.graphemes_at(pos);
+    match graphemes.prev() {
+        Some(g) => pos - g.len(),
+        _ => 0,
+    }
+}
 
-    loop {
-        match (current, after) {
-            (Some((first, _, a)), Some((second, _, b))) => {
-                if is_break(slice, first, a, b) {
-                    return second;
+#[derive(Debug, Clone)]
+struct Char {
+    start: usize,
+    end: usize,
+    ch: char,
+    gbreak: GraphemeBreak,
+}
+
+impl Char {
+    pub fn new(ch: (usize, usize, char)) -> Char {
+        Char {
+            start: ch.0,
+            end: ch.1,
+            ch: ch.2,
+            gbreak: grapheme_break(ch.2),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Graphemes<'a> {
+    slice: PieceTreeSlice<'a>,
+    chars: Chars<'a>,
+    /// Used for next iteration
+    prev: Option<Char>,
+    /// Wether we have returned the last element or not
+    at_end: bool,
+
+    // Used for prev iteration
+    next: Option<Char>,
+    /// Wether we have returned the first element or not
+    at_start: bool,
+
+    last_call_fwd: Option<bool>,
+}
+
+impl<'a> Graphemes<'a> {
+    pub(crate) fn new(pt: &'a ReadOnlyPieceTree, at: usize) -> Graphemes<'a> {
+        let chars = Chars::new(pt, at);
+        Graphemes {
+            slice: pt.slice(..),
+            chars,
+            prev: None,
+            next: None,
+            at_start: at == 0,
+            at_end: at == pt.len(),
+            last_call_fwd: None,
+        }
+    }
+
+    pub(crate) fn new_from_slice(slice: &PieceTreeSlice<'a>, at: usize) -> Graphemes<'a> {
+        debug_assert!(
+            slice.len() >= at,
+            "Attempting to index {} over slice len {} ",
+            at,
+            slice.len(),
+        );
+        let chars = Chars::new_from_slice(slice, at);
+        Graphemes {
+            slice: slice.clone(),
+            chars,
+            prev: None,
+            next: None,
+            at_start: at == 0,
+            at_end: at == slice.len(),
+            last_call_fwd: None,
+        }
+    }
+
+    pub fn next(&mut self) -> Option<PieceTreeSlice> {
+        if self.last_call_fwd == Some(false) {
+            self.chars.next();
+        }
+        self.last_call_fwd = Some(true);
+        self.at_start = false;
+
+        let mut current = self
+            .prev
+            .take()
+            .or_else(|| self.chars.next().map(Char::new));
+        let mut after = self.chars.next().map(Char::new);
+        let start = current.as_ref().map(|c| c.start).unwrap_or(0);
+
+        loop {
+            match (current, after) {
+                (Some(c), Some(a)) => {
+                    if is_break(&self.slice, &c, &a) {
+                        let range = start..a.start;
+                        self.prev = Some(a);
+                        return Some(self.slice.slice(range));
+                    }
+
+                    current = Some(a);
+                    after = self.chars.next().map(Char::new);
                 }
+                (Some(_), None) => {
+                    if self.at_end {
+                        return None;
+                    }
 
-                // Progress backwards
-                after = current;
-                current = chars.prev();
-            }
-            (None, None) => return 0,
-            (None, Some(_)) => return 0,
-            (Some(_), None) => unreachable!(),
-        }
-    }
-}
-
-fn is_break(slice: &PieceTreeSlice, start: usize, a: char, b: char) -> bool {
-    use BreakResult::*;
-
-    match pair_break(a, b) {
-        Break => true,
-        Emoji => {
-            let mut before = slice.chars_at(start);
-            is_break_emoji(&mut before)
-        }
-        Regional => {
-            let mut before = slice.chars_at(start);
-            is_break_regional(&mut before)
-        }
-        NoBreak => false,
-    }
-}
-
-// https://www.unicode.org/reports/tr29/
-/// Check if a grapheme break exists between the two characters
-fn pair_break(before: char, after: char) -> BreakResult {
-    use sanedit_ucd::GraphemeBreak::*;
-    use BreakResult::*;
-
-    let before_gb = sanedit_ucd::grapheme_break(before);
-    let after_gb = sanedit_ucd::grapheme_break(after);
-
-    // TODO investigate performance if these are in a table?
-    match (before_gb, after_gb) {
-        (CR, LF) => NoBreak,              // GB 3
-        (Control | CR | LF, _) => Break,  // GB 4
-        (_, Control | CR | LF) => Break,  // GB 5
-        (L, L | V | LV | LVT) => NoBreak, // GB 6
-        (LV | V, V | T) => NoBreak,       // GB 7
-        (LVT | T, T) => NoBreak,          // GB 8
-        (_, Extend | ZWJ) => NoBreak,     // GB 9
-        (_, SpacingMark) => NoBreak,      // GB 9a
-        (Prepend, _) => NoBreak,          // GB 9b
-        (ZWJ, _) => {
-            // GB 11
-            if Property::ExtendedPictographic.check(after) {
-                Emoji
-            } else {
-                NoBreak
+                    self.prev = None;
+                    self.at_end = true;
+                    return Some(self.slice.slice(start..self.slice.len()));
+                }
+                (None, None) => return None,
+                (None, Some(_)) => unreachable!(),
             }
         }
-        (RegionalIndicator, RegionalIndicator) => Regional, // GB12, GB13
-        (_, _) => Break,                                    // GB 999
+    }
+
+    pub fn prev(&mut self) -> Option<PieceTreeSlice> {
+        if self.last_call_fwd == Some(true) {
+            self.chars.prev();
+            self.prev = None;
+        }
+        self.last_call_fwd = Some(false);
+        self.at_end = false;
+
+        let mut after = self
+            .next
+            .take()
+            .or_else(|| self.chars.prev().map(Char::new));
+
+        let mut current = self.chars.prev().map(Char::new);
+        let end = after.as_ref().map(|a| a.end).unwrap_or(self.slice.len());
+
+        loop {
+            match (current, after) {
+                (Some(c), Some(a)) => {
+                    if is_break(&self.slice, &c, &a) {
+                        let range = a.start..end;
+                        self.next = Some(c);
+                        return Some(self.slice.slice(range));
+                    }
+
+                    after = Some(c);
+                    current = self.chars.prev().map(Char::new);
+                }
+                (None, Some(_)) => {
+                    if self.at_start {
+                        return None;
+                    }
+
+                    self.next = None;
+                    self.at_start = true;
+                    return Some(self.slice.slice(0..end));
+                }
+                (None, None) => return None,
+                (Some(_), None) => unreachable!(),
+            }
+        }
     }
 }
 
@@ -159,10 +217,126 @@ enum BreakResult {
     Regional,
 }
 
+fn is_break(slice: &PieceTreeSlice, before: &Char, after: &Char) -> bool {
+    use BreakResult::*;
+
+    match pair_break(before, after) {
+        Break => true,
+        Emoji => {
+            let mut before = slice.chars_at(before.start);
+            is_break_emoji(&mut before)
+        }
+        Regional => {
+            let mut before = slice.chars_at(before.start);
+            is_break_regional(&mut before)
+        }
+        NoBreak => false,
+    }
+}
+
+// https://www.unicode.org/reports/tr29/
+/// Check if a grapheme break exists between the two characters
+fn pair_break(before: &Char, after: &Char) -> BreakResult {
+    use sanedit_ucd::GraphemeBreak::*;
+    use BreakResult::*;
+
+    match (before.gbreak, after.gbreak) {
+        (CR, LF) => NoBreak,              // GB 3
+        (Control | CR | LF, _) => Break,  // GB 4
+        (_, Control | CR | LF) => Break,  // GB 5
+        (L, L | V | LV | LVT) => NoBreak, // GB 6
+        (LV | V, V | T) => NoBreak,       // GB 7
+        (LVT | T, T) => NoBreak,          // GB 8
+        (_, Extend | ZWJ) => NoBreak,     // GB 9
+        (_, SpacingMark) => NoBreak,      // GB 9a
+        (Prepend, _) => NoBreak,          // GB 9b
+        (ZWJ, _) => {
+            // GB 11
+            if Property::ExtendedPictographic.check(after.ch) {
+                Emoji
+            } else {
+                NoBreak
+            }
+        }
+        (RegionalIndicator, RegionalIndicator) => Regional, // GB12, GB13
+        (_, _) => Break,                                    // GB 999
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
     use crate::piece_tree::PieceTree;
+
+    #[test]
+    fn grapheme_iter_next() {
+        let mut pt = PieceTree::new();
+        const CONTENT: &str = "❤🤍🥳❤️간÷나는산다⛄😮‍💨🇫🇮";
+        pt.insert(0, CONTENT);
+
+        let boundaries = [3, 7, 11, 17, 20, 22, 25, 28, 31, 34, 37, 48, 56, 56];
+        let slice = pt.slice(..);
+        let mut graphemes = slice.graphemes_at(0);
+        let mut pos = 0;
+
+        for boundary in boundaries {
+            if let Some(g) = graphemes.next() {
+                pos += g.len();
+            }
+            assert_eq!(boundary, pos);
+        }
+    }
+
+    #[test]
+    fn grapheme_iter_prev() {
+        let mut pt = PieceTree::new();
+        const CONTENT: &str = "❤🤍🥳❤️간÷나는산다⛄😮‍💨🇫🇮";
+        pt.insert(0, CONTENT);
+
+        let boundaries = [0, 0, 3, 7, 11, 17, 20, 22, 25, 28, 31, 34, 37, 48];
+        let slice = pt.slice(..);
+        let mut graphemes = slice.graphemes_at(slice.len());
+        let mut pos = slice.len();
+
+        for boundary in boundaries.iter().rev() {
+            if let Some(g) = graphemes.prev() {
+                pos -= g.len();
+            }
+            assert_eq!(*boundary, pos);
+        }
+    }
+
+    #[test]
+    fn grapheme_iter_next_prev() {
+        let mut pt = PieceTree::new();
+        const CONTENT: &str = "❤🤍🥳❤️간÷나는산다⛄😮‍💨🇫🇮";
+        pt.insert(0, CONTENT);
+
+        let slice = pt.slice(..);
+        let mut graphemes = slice.graphemes_at(0);
+
+        println!("GN: {:?}", graphemes.next().as_ref().map(String::from));
+        println!("GN: {:?}", graphemes.next().as_ref().map(String::from));
+        println!("GN: {:?}", graphemes.next().as_ref().map(String::from));
+        println!("GP: {:?}", graphemes.prev().as_ref().map(String::from));
+        println!("GP: {:?}", graphemes.prev().as_ref().map(String::from));
+        println!("GN: {:?}", graphemes.next().as_ref().map(String::from));
+        println!("GN: {:?}", graphemes.next().as_ref().map(String::from));
+        println!("GN: {:?}", graphemes.next().as_ref().map(String::from));
+        todo!("Asserts");
+    }
+
+    #[test]
+    fn grapheme_iter_middle() {
+        let mut pt = PieceTree::new();
+        const CONTENT: &str = "❤🤍🥳❤️간÷나는산다⛄😮‍💨🇫🇮";
+        pt.insert(0, CONTENT);
+        let slice = pt.slice(..);
+        let mut graphemes = slice.graphemes_at(11);
+
+        println!("GN: {:?}", graphemes.next().as_ref().map(String::from));
+        todo!("Asserts");
+    }
 
     #[test]
     fn next_grapheme_boundary_multi_byte() {

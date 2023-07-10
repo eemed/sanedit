@@ -1,12 +1,11 @@
 use std::collections::VecDeque;
 use std::ops::Range;
 
-use sanedit_buffer::utf8::{next_grapheme, prev_grapheme};
+use sanedit_buffer::utf8::EndOfLine;
 use sanedit_buffer::PieceTreeSlice;
 use sanedit_messages::redraw::{Point, Size};
 
 use crate::common::char::{Char, DisplayOptions};
-use crate::common::eol::EOL;
 use crate::common::movement::prev_line_start;
 use crate::editor::buffers::Buffer;
 
@@ -136,9 +135,10 @@ impl View {
     fn draw_line(&mut self, slice: &PieceTreeSlice, line: usize, pos: &mut usize) -> bool {
         let mut col = 0;
         let mut is_eol = false;
+        let mut graphemes = slice.graphemes_at(*pos);
 
-        while let Some(grapheme) = next_grapheme(&slice, *pos) {
-            is_eol = EOL::is_eol(&grapheme);
+        while let Some(grapheme) = graphemes.next() {
+            is_eol = EndOfLine::is_slice_eol(&grapheme);
             let ch = Char::new(&grapheme, col, &self.options);
             let ch_width = ch.width();
 
@@ -247,9 +247,10 @@ impl View {
         let mut pos = self.range.start;
         let min = pos.saturating_sub(self.height * self.width);
         let slice = buf.slice(..pos);
+        let mut graphemes = slice.graphemes_at(slice.len());
 
-        while let Some(grapheme) = prev_grapheme(&slice, pos) {
-            let is_eol = EOL::is_eol(&grapheme);
+        while let Some(grapheme) = graphemes.prev() {
+            let is_eol = EndOfLine::is_slice_eol(&grapheme);
             if is_eol && pos != self.range.start {
                 n -= 1;
 

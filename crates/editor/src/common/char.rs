@@ -3,10 +3,9 @@ use std::ops::Range;
 
 use sanedit_buffer::PieceTreeSlice;
 
+use sanedit_buffer::utf8::EndOfLine;
 use smallvec::SmallVec;
 use unicode_width::UnicodeWidthStr;
-
-use super::eol::EOL;
 
 /// Representation of a grapheme cluster (clusters of codepoints we treat as one
 /// character) in the buffer.
@@ -130,7 +129,7 @@ fn grapheme_to_char(slice: &PieceTreeSlice, column: usize, options: &DisplayOpti
         return tab_to_char(grapheme, buf_range, column, options);
     }
     // is eol
-    if EOL::is_eol_bytes(&grapheme) {
+    if EndOfLine::is_eol(&grapheme) {
         return eol_to_char(grapheme, buf_range, options);
     }
 
@@ -328,7 +327,7 @@ pub(crate) fn grapheme_category(grapheme: &PieceTreeSlice) -> GraphemeCategory {
         }
     }
 
-    if EOL::is_eol(grapheme) {
+    if EndOfLine::is_slice_eol(grapheme) {
         return GraphemeCategory::EOL;
     }
 

@@ -302,7 +302,7 @@ impl Editor {
                         let (_, buf) = self.win_buf(id);
                         buf.options().eol
                     };
-                    insert(self, id, eol.as_str());
+                    insert(self, id, eol.as_ref());
                 }
                 _ => {}
             }

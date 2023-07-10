@@ -4,14 +4,14 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use crate::editor::options::Options;
+use sanedit_buffer::utf8::EndOfLine;
 
-use super::eol::EOL;
+use crate::editor::options::Options;
 
 #[derive(Debug)]
 pub(crate) struct File {
     path: PathBuf,
-    eol: EOL,
+    eol: EndOfLine,
     size: u64,
     is_big: bool,
 }
@@ -47,7 +47,7 @@ impl File {
         &self.path
     }
 
-    pub fn eol(&self) -> EOL {
+    pub fn eol(&self) -> EndOfLine {
         self.eol
     }
 
@@ -60,7 +60,7 @@ impl File {
     }
 }
 
-pub(crate) fn detect_line_ending(_buf: &[u8]) -> EOL {
+pub(crate) fn detect_line_ending(_buf: &[u8]) -> EndOfLine {
     // TODO proper detection
-    EOL::default()
+    EndOfLine::default()
 }

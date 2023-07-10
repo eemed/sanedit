@@ -9,11 +9,13 @@ mod view;
 
 use std::ops::Range;
 
-use sanedit_buffer::utf8::prev_grapheme_boundary;
 use sanedit_messages::redraw::{Severity, Size, StatusMessage};
 
 use crate::{
-    common::{char::DisplayOptions, movement},
+    common::{
+        char::DisplayOptions,
+        movement::{self, prev_grapheme_boundary},
+    },
     editor::{
         buffers::{Buffer, BufferId},
         keymap::Keymap,

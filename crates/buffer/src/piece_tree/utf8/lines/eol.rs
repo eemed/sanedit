@@ -1,4 +1,23 @@
+use std::collections::HashSet;
+
 use crate::PieceTreeSlice;
+
+lazy_static! {
+    static ref EOL_BYTES: HashSet<Vec<u8>> = {
+        use EndOfLine::*;
+
+        let mut set = HashSet::new();
+        set.insert(AsRef::<[u8]>::as_ref(&LF).into());
+        set.insert(AsRef::<[u8]>::as_ref(&VT).into());
+        set.insert(AsRef::<[u8]>::as_ref(&FF).into());
+        set.insert(AsRef::<[u8]>::as_ref(&CR).into());
+        set.insert(AsRef::<[u8]>::as_ref(&CRLF).into());
+        set.insert(AsRef::<[u8]>::as_ref(&NEL).into());
+        set.insert(AsRef::<[u8]>::as_ref(&LS).into());
+        set.insert(AsRef::<[u8]>::as_ref(&PS).into());
+        set
+    };
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum EndOfLine {
@@ -14,12 +33,12 @@ pub enum EndOfLine {
 
 impl EndOfLine {
     pub fn is_eol<B: AsRef<[u8]>>(bytes: B) -> bool {
-        let _bytes = bytes.as_ref();
-        todo!()
+        let bytes = bytes.as_ref();
+        EOL_BYTES.contains(bytes)
     }
 
-    pub fn is_slice_eol(_slice: &PieceTreeSlice) -> bool {
-        todo!()
+    pub fn is_slice_eol(slice: &PieceTreeSlice) -> bool {
+        EOL_BYTES.iter().any(|eol| slice == eol)
     }
 
     pub fn len(&self) -> usize {
@@ -49,5 +68,17 @@ impl AsRef<[u8]> for EndOfLine {
     fn as_ref(&self) -> &[u8] {
         let string: &str = self.as_ref();
         string.as_bytes()
+    }
+}
+
+impl Default for EndOfLine {
+    fn default() -> Self {
+        #[cfg(target_os = "windows")]
+        const DEFAULT_EOL: EndOfLine = EndOfLine::CRLF;
+
+        #[cfg(not(target_os = "windows"))]
+        const DEFAULT_EOL: EndOfLine = EndOfLine::LF;
+
+        DEFAULT_EOL
     }
 }

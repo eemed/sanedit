@@ -10,71 +10,47 @@ use super::char::{is_word_break, is_word_break_end, DisplayOptions, GraphemeCate
 use super::eol::EOL;
 use super::text::{pos_at_width, width_at_pos};
 
+#[inline]
 pub(crate) fn next_grapheme_boundary(slice: &PieceTreeSlice, pos: usize) -> usize {
     utf8::next_grapheme_boundary(slice, pos)
 }
 
+#[inline]
 pub(crate) fn prev_grapheme_boundary(slice: &PieceTreeSlice, pos: usize) -> usize {
     utf8::prev_grapheme_boundary(slice, pos)
 }
 
-pub(crate) fn start_of_line(slice: &PieceTreeSlice, mut pos: usize) -> usize {
-    let mut grapheme = utf8::prev_grapheme(slice, pos);
-    while let Some(g) = grapheme {
-        if EOL::is_eol(&g) {
-            return pos;
-        }
-        pos -= g.len();
-        grapheme = utf8::prev_grapheme(slice, pos);
+pub(crate) fn end_of_line(slice: &PieceTreeSlice, pos: usize) -> usize {
+    let mut bytes = slice.bytes_at(pos);
+    match utf8::next_eol(&mut bytes) {
+        Some(m) => m.range.start,
+        None => slice.len(),
     }
-
-    pos
 }
 
-pub(crate) fn end_of_line(slice: &PieceTreeSlice, mut pos: usize) -> usize {
-    let mut grapheme = utf8::next_grapheme(slice, pos);
-    while let Some(g) = grapheme {
-        if EOL::is_eol(&g) {
-            return pos;
-        }
-        pos += g.len();
-        grapheme = utf8::next_grapheme(slice, pos);
+pub(crate) fn start_of_line(slice: &PieceTreeSlice, pos: usize) -> usize {
+    let mut bytes = slice.bytes_at(pos);
+    match utf8::prev_eol(&mut bytes) {
+        Some(m) => m.range.end,
+        None => 0,
     }
-
-    pos
 }
 
 pub(crate) fn next_line_start(slice: &PieceTreeSlice, pos: usize) -> usize {
-    let start = pos;
-
-    let s = slice.slice(pos..);
-    if let Some(n) = find_next(&s, b"\n") {
-        return n;
+    let mut bytes = slice.bytes_at(pos);
+    match utf8::next_eol(&mut bytes) {
+        Some(m) => m.range.end,
+        None => slice.len(),
     }
-
-    // while let Some(g) = utf8::next_grapheme(slice, pos) {
-    //     pos += g.len();
-    //     let eol = EOL::is_eol(&g);
-
-    //     if eol {
-    //         return pos;
-    //     }
-    // }
-
-    start_of_line(slice, start)
 }
 
-pub(crate) fn prev_line_start(slice: &PieceTreeSlice, mut pos: usize) -> usize {
-    while let Some(g) = utf8::prev_grapheme(slice, pos) {
-        pos -= g.len();
-        let eol = EOL::is_eol(&g);
-
-        if eol {
-            break;
-        }
+pub(crate) fn prev_line_start(slice: &PieceTreeSlice, pos: usize) -> usize {
+    let mut bytes = slice.bytes_at(pos);
+    utf8::prev_eol(&mut bytes);
+    match utf8::prev_eol(&mut bytes) {
+        Some(m) => m.range.end,
+        None => 0,
     }
-
-    start_of_line(slice, pos)
 }
 
 /// Find next word start, this will move even if we currently are on a word
@@ -164,6 +140,7 @@ pub(crate) fn prev_word_end(slice: &PieceTreeSlice, mut pos: usize) -> usize {
 pub(crate) fn next_paragraph(slice: &PieceTreeSlice, mut pos: usize) -> usize {
     pos = start_of_line(slice, pos);
 
+    // Skip immediate eols
     while let Some(g) = utf8::next_grapheme(slice, pos) {
         let eol = EOL::is_eol(&g);
         if !eol {
@@ -201,29 +178,33 @@ fn find_prev(slice: &PieceTreeSlice, pattern: &[u8]) -> Option<usize> {
     Some(mat.start)
 }
 
-pub(crate) fn next_blank_line(slice: &PieceTreeSlice, mut pos: usize) -> usize {
-    pos = next_line_start(slice, pos);
+pub(crate) fn next_blank_line(slice: &PieceTreeSlice, pos: usize) -> usize {
+    let mut bytes = slice.bytes_at(pos);
+    utf8::next_eol(&mut bytes);
 
-    while let Some(g) = utf8::next_grapheme(slice, pos) {
-        let eol = EOL::is_eol(&g);
-        if eol {
-            return pos;
+    let mut target = bytes.pos();
+    while let Some(mat) = utf8::next_eol(&mut bytes) {
+        if mat.range.start == target {
+            return target;
         }
-        pos = next_line_start(slice, pos);
+
+        target = mat.range.end;
     }
 
     slice.len()
 }
 
-pub(crate) fn prev_blank_line(slice: &PieceTreeSlice, mut pos: usize) -> usize {
-    pos = prev_line_start(slice, pos);
+pub(crate) fn prev_blank_line(slice: &PieceTreeSlice, pos: usize) -> usize {
+    let mut bytes = slice.bytes_at(pos);
+    utf8::prev_eol(&mut bytes);
 
-    while let Some(g) = utf8::next_grapheme(slice, pos) {
-        let eol = EOL::is_eol(&g);
-        if eol || pos == 0 {
-            return pos;
+    let mut target = bytes.pos();
+    while let Some(mat) = utf8::prev_eol(&mut bytes) {
+        if mat.range.end == target {
+            return target;
         }
-        pos = prev_line_start(slice, pos);
+
+        target = mat.range.start;
     }
 
     0

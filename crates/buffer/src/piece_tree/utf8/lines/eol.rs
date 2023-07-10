@@ -21,6 +21,11 @@ impl EndOfLine {
     pub fn is_slice_eol(_slice: &PieceTreeSlice) -> bool {
         todo!()
     }
+
+    pub fn len(&self) -> usize {
+        let string: &str = self.as_ref();
+        string.len()
+    }
 }
 
 impl AsRef<str> for EndOfLine {

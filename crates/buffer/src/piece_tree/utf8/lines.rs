@@ -35,33 +35,9 @@ lazy_static! {
     };
 }
 
-#[inline]
-pub fn start_of_line(slice: &PieceTreeSlice, pos: usize) -> usize {
-    let mut bytes = slice.bytes_at(pos);
-    match nfa_prev_eol(&mut bytes) {
-        Some(m) => m.range.start,
-        None => 0,
-    }
-}
-
-#[inline]
-pub fn end_of_line(slice: &PieceTreeSlice, pos: usize) -> usize {
-    let mut bytes = slice.bytes_at(pos);
-    match nfa_next_eol(&mut bytes) {
-        Some(m) => {
-            let crlf = m.eol == EndOfLine::CR && bytes.get().map(|b| b == LF).unwrap_or(false);
-
-            if crlf {
-                m.range.end + 1
-            } else {
-                m.range.end
-            }
-        }
-        None => 0,
-    }
-}
-
-fn nfa_next_eol(bytes: &mut Bytes) -> Option<EOLMatch> {
+/// Advances bytes iterator to the next end of line and over it.
+/// If an EOL is found returns the form of eol and the range it spans over.
+pub fn next_eol(bytes: &mut Bytes) -> Option<EOLMatch> {
     let mut state = NFA_FWD.start_state(ANC).unwrap();
     loop {
         let byte = bytes.next()?;
@@ -69,17 +45,28 @@ fn nfa_next_eol(bytes: &mut Bytes) -> Option<EOLMatch> {
 
         if NFA_FWD.is_match(state) {
             let pat = NFA_FWD.match_pattern(state, 0);
-            let plen = NFA_FWD.pattern_len(pat);
-            let pos = bytes.pos();
+            let mut eol = EOLS[pat.as_usize()];
+
+            let crlf = eol == EndOfLine::CR && bytes.get().map(|b| b == LF).unwrap_or(false);
+            if crlf {
+                // Advance over lf
+                bytes.next();
+                eol = EndOfLine::CRLF;
+            }
+
+            let end = bytes.pos();
+
             return Some(EOLMatch {
-                eol: EOLS[pat.as_usize()],
-                range: pos - plen..pos,
+                eol,
+                range: end - eol.len()..end,
             });
         }
     }
 }
 
-fn nfa_prev_eol(bytes: &mut Bytes) -> Option<EOLMatch> {
+/// Advances bytes iterator to the previous end of line and over it.
+/// If an EOL is found returns the form of eol and the range it spans over.
+pub fn prev_eol(bytes: &mut Bytes) -> Option<EOLMatch> {
     let mut state = NFA_BWD.start_state(ANC).unwrap();
     loop {
         let byte = bytes.prev()?;
@@ -87,11 +74,23 @@ fn nfa_prev_eol(bytes: &mut Bytes) -> Option<EOLMatch> {
 
         if NFA_BWD.is_match(state) {
             let pat = NFA_BWD.match_pattern(state, 0);
-            let plen = NFA_BWD.pattern_len(pat);
-            let pos = bytes.pos();
+            let mut eol = EOLS[pat.as_usize()];
+
+            if eol == EndOfLine::LF {
+                if let Some(b) = bytes.prev() {
+                    if b == CR {
+                        eol = EndOfLine::CRLF;
+                    } else {
+                        bytes.next();
+                    }
+                }
+            }
+
+            let start = bytes.pos();
+
             return Some(EOLMatch {
-                eol: EOLS[pat.as_usize()],
-                range: pos..pos + plen,
+                eol,
+                range: start..start + eol.len(),
             });
         }
     }
@@ -137,7 +136,7 @@ impl<'a> Lines<'a> {
             return;
         }
 
-        if let Some(m) = nfa_prev_eol(&mut self.bytes) {
+        if let Some(m) = prev_eol(&mut self.bytes) {
             self.at_end = false;
             self.bytes.at(m.range.end);
         }
@@ -146,21 +145,8 @@ impl<'a> Lines<'a> {
     pub fn next(&mut self) -> Option<PieceTreeSlice> {
         let start = self.bytes.pos();
 
-        match nfa_next_eol(&mut self.bytes) {
-            Some(mat) => {
-                let crlf =
-                    mat.eol == EndOfLine::CR && self.bytes.get().map(|b| b == LF).unwrap_or(false);
-
-                let end = if crlf {
-                    // Advance over lf
-                    self.bytes.next();
-                    mat.range.end + 1
-                } else {
-                    mat.range.end
-                };
-
-                Some(self.slice.slice(start..end))
-            }
+        match next_eol(&mut self.bytes) {
+            Some(mat) => Some(self.slice.slice(start..mat.range.end)),
             None => {
                 let end = self.bytes.pos();
                 if start == end && self.at_end {
@@ -178,20 +164,11 @@ impl<'a> Lines<'a> {
 
         // Skip over previous eol
         if !self.at_end {
-            if let Some(m) = nfa_prev_eol(&mut self.bytes) {
-                // Handle crlf
-                if m.eol == EndOfLine::LF {
-                    if let Some(b) = self.bytes.prev() {
-                        if b != CR {
-                            self.bytes.next();
-                        }
-                    }
-                }
-            }
+            prev_eol(&mut self.bytes);
         }
         self.at_end = false;
 
-        match nfa_prev_eol(&mut self.bytes) {
+        match prev_eol(&mut self.bytes) {
             Some(mat) => {
                 let start = mat.range.end;
 
@@ -216,9 +193,9 @@ impl<'a> Lines<'a> {
 }
 
 #[derive(Debug)]
-struct EOLMatch {
-    eol: EndOfLine,
-    range: Range<usize>,
+pub struct EOLMatch {
+    pub eol: EndOfLine,
+    pub range: Range<usize>,
 }
 
 #[cfg(test)]

@@ -1,8 +1,14 @@
+use std::ops::Range;
+
 use sanedit_buffer::{utf8::EndOfLine, PieceTreeSlice};
 
+use crate::common::movement::next_grapheme_boundary;
+
 use super::{
-    char::{Char, DisplayOptions},
-    movement::start_of_line,
+    char::{
+        grapheme_category, is_word_break, is_word_break_end, Char, DisplayOptions, GraphemeCategory,
+    },
+    movement::{next_word_end, prev_word_start, start_of_line},
 };
 
 pub(crate) fn width_at_pos(slice: &PieceTreeSlice, pos: usize, opts: &DisplayOptions) -> usize {
@@ -50,52 +56,87 @@ pub(crate) fn pos_at_width(
     pos
 }
 
-// pub(crate) fn on_word_end(slice: &PieceTreeSlice, mut pos: usize) -> bool {
-//     let prev = next_grapheme(slice, pos);
-//     pos += prev.as_ref().map_or(0, PieceTreeSlice::len);
-//     let next = next_grapheme(slice, pos);
+pub(crate) fn on_word_end(
+    prev: (usize, GraphemeCategory),
+    next: Option<(usize, GraphemeCategory)>,
+    pos: usize,
+    slice_len: usize,
+) -> bool {
+    match (prev, next) {
+        ((_, p), Some((_, n))) => is_word_break_end(&p, &n),
+        ((len, _), _) => pos + len == slice_len,
+    }
+}
 
-//     match (prev, next) {
-//         (Some(p), Some(n)) => {
-//             let p = grapheme_category(&p);
-//             let n = grapheme_category(&n);
-//             is_word_break_end(&p, &n)
-//         }
-//         _ => pos == slice.len(),
-//     }
-// }
+pub(crate) fn on_word_start(
+    prev: Option<(usize, GraphemeCategory)>,
+    next: (usize, GraphemeCategory),
+    pos: usize,
+) -> bool {
+    match (prev, next) {
+        (Some((_, p)), (_, n)) => is_word_break(&p, &n),
+        _ => pos == 0,
+    }
+}
 
-// pub(crate) fn on_word_start(slice: &PieceTreeSlice, pos: usize) -> bool {
-//     let prev = prev_grapheme(slice, pos).as_ref().map(grapheme_category);
-//     let next = next_grapheme(slice, pos).as_ref().map(grapheme_category);
+/// Returns the range of the word that includes position pos
+pub(crate) fn word_at_pos(slice: &PieceTreeSlice, pos: usize) -> Option<Range<usize>> {
+    let make_pair = |slice: PieceTreeSlice| {
+        let len = slice.len();
+        let cat = grapheme_category(&slice);
+        (len, cat)
+    };
+    let mut graphemes = slice.graphemes_at(pos);
 
-//     match (prev, next) {
-//         (Some(p), Some(n)) => is_word_break(&p, &n),
-//         _ => pos == 0,
-//     }
-// }
+    let before = if graphemes.prev().is_none() {
+        None
+    } else {
+        graphemes.next().map(make_pair)
+    };
+    let current = graphemes.next().map(make_pair)?;
+    let after = graphemes.next().map(make_pair);
 
-// /// Returns the range of the word that includes position pos
-// pub(crate) fn word_at_pos(slice: &PieceTreeSlice, pos: usize) -> Option<Range<usize>> {
-//     let cat = next_grapheme(slice, pos).as_ref().map(grapheme_category)?;
-//     if !cat.is_word() {
-//         return None;
-//     }
+    if !current.1.is_word() {
+        return None;
+    }
 
-//     let start = if on_word_start(slice, pos) {
-//         pos
-//     } else {
-//         prev_word_start(slice, pos)
-//     };
+    let start = {
+        let mut start = pos;
+        if !on_word_start(before, current, pos) {
+            start = prev_word_start(slice, pos);
+        }
+        start
+    };
 
-//     let end = {
-//         let end = if on_word_end(slice, pos) {
-//             pos
-//         } else {
-//             next_word_end(slice, pos)
-//         };
-//         next_grapheme_boundary(slice, end)
-//     };
+    let end = {
+        let mut end = pos;
+        if !on_word_end(current, after, pos, slice.len()) {
+            end = next_word_end(slice, pos);
+        }
+        next_grapheme_boundary(slice, end)
+    };
 
-//     Some(start..end)
-// }
+    Some(start..end)
+
+    // let cat = graphemes.next().as_ref().map(grapheme_category)?;
+    // if !cat.is_word() {
+    //     return None;
+    // }
+
+    // let start = if on_word_start(slice, pos) {
+    //     pos
+    // } else {
+    //     prev_word_start(slice, pos)
+    // };
+
+    // let end = {
+    //     let end = if on_word_end(slice, pos) {
+    //         pos
+    //     } else {
+    //         next_word_end(slice, pos)
+    //     };
+    //     next_grapheme_boundary(slice, end)
+    // };
+
+    // Some(start..end)
+}

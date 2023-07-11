@@ -7,8 +7,6 @@ pub(crate) enum BufferKind {
     Original,
 }
 
-// pub(crate) type ByteSlice<'a> = Cow<'a, [u8]>;
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum ByteSlice<'a> {
     Ref(&'a [u8]),

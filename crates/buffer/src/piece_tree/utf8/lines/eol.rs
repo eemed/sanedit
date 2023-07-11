@@ -38,7 +38,20 @@ impl EndOfLine {
     }
 
     pub fn is_slice_eol(slice: &PieceTreeSlice) -> bool {
-        EOL_BYTES.iter().any(|eol| slice == eol)
+        const MAX_EOL_LEN: usize = 3;
+        if slice.len() > MAX_EOL_LEN {
+            return false;
+        }
+
+        let mut buf = [0u8; MAX_EOL_LEN];
+        let mut bytes = slice.bytes();
+        let mut i = 0;
+        while let Some(byte) = bytes.next() {
+            buf[i] = byte;
+            i += 1;
+        }
+
+        Self::is_eol(&buf[..i])
     }
 
     pub fn len(&self) -> usize {

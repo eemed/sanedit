@@ -30,7 +30,9 @@ pub use window::*;
 
 use serde::{Deserialize, Serialize};
 
-/// Trait to diff objects and apply them back into the object
+use crate::ClientMessage;
+
+/// Trait to diff objects and apply them back into the struct
 pub trait Diffable {
     type Diff;
 
@@ -41,16 +43,16 @@ pub trait Diffable {
     fn update(&mut self, diff: Self::Diff);
 }
 
-pub enum Component<D, F: Diffable<Diff = D>> {
+/// Component sent to the client. Components can be opened, updated and closed.
+/// Updating is done through diffs to reduce data sent.
+#[derive(Serialize, Deserialize, PartialEq, Eq, Debug)]
+pub enum Component<F, D>
+where
+    F: Diffable<Diff = D>,
+{
     Open(F),
     Update(D),
     Close,
-}
-
-impl<D, F: Diffable<Diff = D>> From<F> for Component<D, F> {
-    fn from(value: F) -> Self {
-        Self::Open(value)
-    }
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug)]
@@ -65,18 +67,17 @@ pub enum Redraw {
     /// Statusline updated
     StatuslineUpdate(StatuslineDiff),
 
-    Prompt(Prompt),
-    PromptUpdate(PromptDiff),
-    ClosePrompt,
-
-    Completion(Completion),
-    CompletionUpdate(completion::Difference),
-    CloseCompletion,
-
-    // Completion2(Component<Completion, completion::Difference>),
+    Prompt(Component<Prompt, prompt::Difference>),
+    Completion(Component<Completion, completion::Difference>),
     // Prompt2(Component<Prompt, PromptDiff>),
     // Window2(Component<Window, WindowDiff>),
     // Statusline2(Component<Statusline, StatuslineDiff>),
     /// Status messages
     StatusMessage(StatusMessage),
+}
+
+impl From<Redraw> for ClientMessage {
+    fn from(value: Redraw) -> Self {
+        ClientMessage::Redraw(value)
+    }
 }

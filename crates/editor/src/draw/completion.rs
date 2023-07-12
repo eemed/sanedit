@@ -1,28 +1,30 @@
 use std::cmp;
 
-use sanedit_messages::redraw;
+use sanedit_messages::redraw::{self, Redraw};
 
-use crate::editor::windows::{Completion, Options};
+use crate::editor::windows::Completion;
 
-pub(crate) fn draw_completion(
-    completion: &Completion,
-    options: &Options,
-    scroll_offset: &mut usize,
-) -> redraw::Completion {
-    *scroll_offset = {
+use super::DrawContext;
+
+pub(crate) fn draw(completion: &Completion, ctx: &mut DrawContext) -> Redraw {
+    let compl_count = ctx.win.options.completions;
+    let offset = &mut ctx.state.compl_scroll_offset;
+    *offset = {
         let selected = completion.selected_pos().unwrap_or(0);
-        if selected >= *scroll_offset + options.prompt_completions {
+        if selected >= *offset + compl_count {
             // Make selected the bottom most completion, +1 to actually show
             // the selected completion
-            selected - options.prompt_completions + 1
+            selected - compl_count + 1
         } else {
-            cmp::min(*scroll_offset, selected)
+            cmp::min(*offset, selected)
         }
     };
-    let selected_relative_pos = completion.selected_pos().map(|pos| pos - *scroll_offset);
-    let options = completion.matches_window(options.prompt_completions, *scroll_offset);
+    let selected_relative_pos = completion.selected_pos().map(|pos| pos - *offset);
+    let options = completion.matches_window(compl_count, *offset);
+
     redraw::Completion {
         options: options.into_iter().map(String::from).collect(),
         selected: selected_relative_pos,
     }
+    .into()
 }

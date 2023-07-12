@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use super::Redraw;
+use super::{Component, Diffable, Redraw};
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
 pub struct Prompt {
@@ -48,35 +48,39 @@ impl Prompt {
     pub fn options(&self) -> Vec<&str> {
         self.options.iter().map(|opt| opt.as_str()).collect()
     }
+}
 
-    pub fn update(&mut self, diff: PromptDiff) {
-        *self = diff.prompt;
-    }
+impl Diffable for Prompt {
+    type Diff = Difference;
 
-    pub fn diff(&self, other: &Prompt) -> Option<PromptDiff> {
+    fn diff(&self, other: &Self) -> Option<Self::Diff> {
         if self == other {
             return None;
         }
 
-        Some(PromptDiff {
+        Some(Difference {
             prompt: other.clone(),
         })
+    }
+
+    fn update(&mut self, diff: Self::Diff) {
+        *self = diff.prompt;
     }
 }
 
 impl From<Prompt> for Redraw {
     fn from(value: Prompt) -> Self {
-        Redraw::Prompt(value)
+        Redraw::Prompt(Component::Open(value))
     }
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug)]
-pub struct PromptDiff {
+pub struct Difference {
     prompt: Prompt,
 }
 
-impl From<PromptDiff> for Redraw {
-    fn from(diff: PromptDiff) -> Self {
-        Redraw::PromptUpdate(diff)
+impl From<Difference> for Redraw {
+    fn from(diff: Difference) -> Self {
+        Redraw::Prompt(Component::Update(diff))
     }
 }

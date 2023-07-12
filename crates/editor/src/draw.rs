@@ -4,22 +4,20 @@ mod search;
 mod statusline;
 mod window;
 
-use sanedit_messages::redraw::{self, Redraw, Theme};
+use sanedit_messages::redraw::{self, Component, Diffable, Redraw, Theme};
 
 use crate::editor::{
     buffers::Buffer,
     windows::{Focus, Window},
 };
 
-use self::{
-    completion::draw_completion, prompt::draw_prompt, search::draw_search,
-    statusline::draw_statusline, window::draw_window,
-};
+use self::{statusline::draw_statusline, window::draw_window};
 
-struct DrawContext<'a, 'b> {
+pub(crate) struct DrawContext<'a, 'b> {
     win: &'a Window,
     buf: &'a Buffer,
-    start: &'b mut DrawState,
+    theme: &'a Theme,
+    state: &'b mut DrawState,
 }
 
 pub(crate) struct DrawState {
@@ -28,7 +26,6 @@ pub(crate) struct DrawState {
     compl_scroll_offset: usize,
     // Previously drawn
     prompt: Option<redraw::Prompt>,
-    completion: Option<redraw::Completion>,
     msg: Option<redraw::StatusMessage>,
     statusline: redraw::Statusline,
     window: redraw::Window,
@@ -44,7 +41,6 @@ impl DrawState {
             prompt_scroll_offset: 0,
             compl_scroll_offset: 0,
             prompt: None,
-            completion: None,
             statusline: statusline.clone(),
             window: window.clone(),
             msg: None,
@@ -56,15 +52,14 @@ impl DrawState {
     pub fn redraw(&mut self, win: &Window, buf: &Buffer, theme: &Theme) -> Vec<Redraw> {
         let mut redraw: Vec<Redraw> = vec![];
 
-        // Close prompt if not focused anymore
-        if win.focus() != Focus::Prompt && self.prompt.take().is_some() {
+        if win.focus != Focus::Prompt {
             self.prompt_scroll_offset = 0;
-            redraw.push(Redraw::ClosePrompt);
+            redraw.push(Redraw::Prompt(Component::Close));
         }
 
-        if win.focus() != Focus::Completion && self.completion.take().is_some() {
+        if win.focus != Focus::Completion {
             self.compl_scroll_offset = 0;
-            redraw.push(Redraw::CloseCompletion);
+            redraw.push(Redraw::Completion(Component::Close));
         }
 
         // Window
@@ -98,57 +93,27 @@ impl DrawState {
             }
         }
 
-        // Temporary focus
+        let mut ctx = DrawContext {
+            win,
+            buf,
+            theme,
+            state: self,
+        };
+
         match win.focus() {
             Focus::Search => {
-                let search = &win.search;
-                let search = draw_search(search, &win.options);
-                match self.prompt.as_mut() {
-                    Some(prev) => {
-                        if let Some(diff) = prev.diff(&search) {
-                            redraw.push(diff.into());
-                            *prev = search;
-                        }
-                    }
-                    None => {
-                        redraw.push(Redraw::Prompt(search.clone()));
-                        self.prompt = Some(search);
-                    }
-                }
+                let current = search::draw(&win.search, &mut ctx);
+                redraw.push(current);
             }
             Focus::Prompt => {
-                let prompt = &win.prompt;
-                let prompt = draw_prompt(prompt, &win.options, &mut self.prompt_scroll_offset);
-                match self.prompt.as_mut() {
-                    Some(prev) => {
-                        if let Some(diff) = prev.diff(&prompt) {
-                            redraw.push(diff.into());
-                            *prev = prompt;
-                        }
-                    }
-                    None => {
-                        redraw.push(Redraw::Prompt(prompt.clone()));
-                        self.prompt = Some(prompt);
-                    }
-                }
+                let current = prompt::draw(&win.prompt, &mut ctx);
+                redraw.push(current);
             }
-            Focus::Window => {}
             Focus::Completion => {
-                let compl = &win.completion;
-                let compl = draw_completion(compl, &win.options, &mut self.prompt_scroll_offset);
-                match self.completion.as_mut() {
-                    Some(prev) => {
-                        if let Some(diff) = prev.diff(&compl) {
-                            redraw.push(diff.into());
-                            *prev = compl;
-                        }
-                    }
-                    None => {
-                        redraw.push(Redraw::Completion(compl.clone()));
-                        self.completion = Some(compl);
-                    }
-                }
+                let current = completion::draw(&win.completion, &mut ctx);
+                redraw.push(current);
             }
+            _ => {}
         }
 
         redraw

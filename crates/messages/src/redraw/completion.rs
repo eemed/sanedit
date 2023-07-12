@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use super::{Diffable, Redraw};
+use super::{Component, Diffable, Redraw};
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
 pub struct Completion {
@@ -11,7 +11,7 @@ pub struct Completion {
 impl Diffable for Completion {
     type Diff = Difference;
 
-    fn diff(&self, other: Self) -> Self::Diff {
+    fn diff(&self, other: &Self) -> Option<Self::Diff> {
         if self == other {
             return None;
         }
@@ -22,25 +22,13 @@ impl Diffable for Completion {
     }
 
     fn update(&mut self, diff: Self::Diff) {
-        todo!()
-    }
-}
-
-impl Completion {
-    pub fn diff(&self, other: &Completion) -> Option<Difference> {
-        if self == other {
-            return None;
-        }
-
-        Some(Difference {
-            full: other.clone(),
-        })
+        *self = diff.full
     }
 }
 
 impl From<Completion> for Redraw {
     fn from(value: Completion) -> Self {
-        Redraw::Completion(value)
+        Redraw::Completion(Component::Open(value))
     }
 }
 
@@ -51,6 +39,6 @@ pub struct Difference {
 
 impl From<Difference> for Redraw {
     fn from(value: Difference) -> Self {
-        Redraw::CompletionUpdate(value)
+        Redraw::Completion(Component::Update(value))
     }
 }

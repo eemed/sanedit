@@ -1,8 +1,10 @@
-use sanedit_messages::redraw;
+use sanedit_messages::redraw::{self, Redraw};
 
-use crate::editor::windows::{Options, Search};
+use crate::editor::windows::Search;
 
-pub(crate) fn draw_search(search: &Search, _options: &Options) -> redraw::Prompt {
+use super::DrawContext;
+
+pub(crate) fn draw(search: &Search, _ctx: &mut DrawContext) -> Redraw {
     let prompt = &search.prompt;
     let msg = &prompt.message;
     let input = prompt.input();

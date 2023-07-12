@@ -1,3 +1,4 @@
+mod draw;
 pub(crate) mod tcp;
 pub(crate) mod unix;
 
@@ -13,6 +14,8 @@ use tokio::{
 use tokio_util::codec::{FramedRead, FramedWrite};
 
 use crate::events::{FromEditor, ToEditor};
+
+use self::draw::ClientDrawState;
 
 use super::EditorHandle;
 
@@ -62,12 +65,20 @@ async fn conn_write(
     write: impl AsyncWrite,
     mut server_recv: Receiver<FromEditor>,
 ) -> Result<(), io::Error> {
+    let mut state = ClientDrawState::default();
     let codec: BinCodec<ClientMessage> = BinCodec::new();
     let mut write = Box::pin(FramedWrite::new(write, codec));
 
     while let Some(msg) = server_recv.recv().await {
         match msg {
-            FromEditor::Message(msg) => {
+            FromEditor::Message(mut msg) => {
+                if let ClientMessage::Redraw(redraw) = msg {
+                    match state.handle_redraw(redraw) {
+                        Some(new_redraw) => msg = new_redraw.into(),
+                        None => continue,
+                    }
+                }
+
                 if let Err(e) = write.send(msg).await {
                     log::error!("conn_write error: {}", e);
                     break;

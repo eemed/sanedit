@@ -2,12 +2,12 @@ mod context;
 
 use anyhow::Result;
 use sanedit_messages::{
-    redraw::{Point, Redraw, Size, Style},
+    redraw::{Point, Size, Style},
     ClientMessage, Message,
 };
 
 use crate::{
-    grid::{Component, Grid},
+    grid::{Drawable, Grid},
     terminal::Terminal,
 };
 
@@ -56,7 +56,7 @@ impl UI {
         match msg {
             ClientMessage::Hello => {}
             ClientMessage::Theme(theme) => self.context.theme = theme,
-            ClientMessage::Redraw(msg) => self.handle_redraw(msg),
+            ClientMessage::Redraw(msg) => self.grid.handle_redraw(msg),
             ClientMessage::Flush => self.flush(),
             ClientMessage::Bye => {
                 log::info!("UI got bye, exiting.");
@@ -65,42 +65,6 @@ impl UI {
         }
 
         false
-    }
-
-    fn handle_redraw(&mut self, msg: Redraw) {
-        match msg {
-            Redraw::Init(win, statusline) => {
-                self.grid.window = win;
-                self.grid.statusline = statusline;
-            }
-            Redraw::WindowUpdate(diff) => {
-                self.grid.window.update(diff);
-            }
-            Redraw::StatuslineUpdate(diff) => {
-                self.grid.statusline.update(diff);
-            }
-            Redraw::Prompt(prompt) => {
-                self.grid.prompt = Some(prompt);
-            }
-            Redraw::PromptUpdate(diff) => {
-                if let Some(ref mut prompt) = self.grid.prompt {
-                    prompt.update(diff);
-                }
-            }
-            Redraw::ClosePrompt => {
-                self.grid.prompt = None;
-            }
-            Redraw::StatusMessage(msg) => {
-                self.grid.msg = Some(msg);
-            }
-            Redraw::Completion(compl) => {
-                log::info!("COMPLE: {compl:?}");
-            }
-            Redraw::CompletionUpdate(diff) => {
-                log::info!("compl update");
-            }
-            Redraw::CloseCompletion => {}
-        }
     }
 
     fn flush(&mut self) {

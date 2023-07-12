@@ -1,12 +1,14 @@
-mod component;
+mod drawable;
 
 use core::fmt;
 
-use sanedit_messages::redraw::{Cell, Cursor, Prompt, StatusMessage, Statusline, Window};
+use sanedit_messages::redraw::{
+    Cell, Component, Cursor, Diffable, Prompt, Redraw, StatusMessage, Statusline, Window,
+};
 
 use crate::ui::UIContext;
 
-pub(crate) use self::component::Component;
+pub(crate) use self::drawable::Drawable;
 
 pub(crate) struct Grid {
     pub window: Window,
@@ -30,6 +32,36 @@ impl Grid {
         }
     }
 
+    pub fn handle_redraw(&mut self, msg: Redraw) {
+        match msg {
+            Redraw::Init(win, statusline) => {
+                self.window = win;
+                self.statusline = statusline;
+            }
+            Redraw::WindowUpdate(diff) => {
+                self.window.update(diff);
+            }
+            Redraw::StatuslineUpdate(diff) => {
+                self.statusline.update(diff);
+            }
+            Redraw::StatusMessage(msg) => {
+                self.msg = Some(msg);
+            }
+            Redraw::Prompt(comp) => match comp {
+                Component::Open(prompt) => self.prompt = Some(prompt),
+                Component::Update(diff) => {
+                    if let Some(ref mut prompt) = self.prompt {
+                        prompt.update(diff);
+                    }
+                }
+                Component::Close => self.prompt = None,
+            },
+            Redraw::Completion(c) => {
+                log::info!("Completion2 {c:?}");
+            }
+        }
+    }
+
     pub fn resize(&mut self, width: usize, height: usize) {
         self.cells = vec![vec![Cell::default(); width]; height];
     }
@@ -42,18 +74,18 @@ impl Grid {
         }
     }
 
-    fn draw_component(
-        comp: &dyn Component,
+    fn draw_drawable(
+        drawable: &dyn Drawable,
         ctx: &UIContext,
         cursor: &mut Cursor,
         cells: &mut Vec<Vec<Cell>>,
     ) {
-        if let Some(cur) = comp.cursor(ctx) {
+        if let Some(cur) = drawable.cursor(ctx) {
             *cursor = cur;
         }
 
-        let top_left = comp.position(ctx);
-        let grid = comp.draw(ctx);
+        let top_left = drawable.position(ctx);
+        let grid = drawable.draw(ctx);
         for (line, row) in grid.into_iter().enumerate() {
             for (col, cell) in row.into_iter().enumerate() {
                 let x = top_left.x + col;
@@ -68,14 +100,14 @@ impl Grid {
     pub fn draw(&mut self, ctx: &UIContext) -> (&Vec<Vec<Cell>>, Cursor) {
         self.clear();
 
-        Self::draw_component(&self.window, ctx, &mut self.cursor, &mut self.cells);
-        Self::draw_component(&self.statusline, ctx, &mut self.cursor, &mut self.cells);
+        Self::draw_drawable(&self.window, ctx, &mut self.cursor, &mut self.cells);
+        Self::draw_drawable(&self.statusline, ctx, &mut self.cursor, &mut self.cells);
 
         if let Some(ref prompt) = self.prompt {
-            Self::draw_component(prompt, ctx, &mut self.cursor, &mut self.cells);
+            Self::draw_drawable(prompt, ctx, &mut self.cursor, &mut self.cells);
         }
         if let Some(ref msg) = self.msg {
-            Self::draw_component(msg, ctx, &mut self.cursor, &mut self.cells);
+            Self::draw_drawable(msg, ctx, &mut self.cursor, &mut self.cells);
         }
 
         (&self.cells, self.cursor)

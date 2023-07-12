@@ -5,14 +5,14 @@ use sanedit_messages::redraw::{
 
 use crate::ui::UIContext;
 
-pub(crate) trait Component {
+pub(crate) trait Drawable {
     fn position(&self, ctx: &UIContext) -> Point;
     fn draw(&self, ctx: &UIContext) -> Vec<Vec<Cell>>;
     fn cursor(&self, ctx: &UIContext) -> Option<Cursor>;
     fn size(&self, ctx: &UIContext) -> Size;
 }
 
-impl Component for Window {
+impl Drawable for Window {
     fn position(&self, _ctx: &UIContext) -> Point {
         Point { x: 0, y: 1 }
     }
@@ -36,7 +36,7 @@ impl Component for Window {
     }
 }
 
-impl Component for Statusline {
+impl Drawable for Statusline {
     fn position(&self, _ctx: &UIContext) -> Point {
         Point { x: 0, y: 0 }
     }
@@ -58,7 +58,7 @@ impl Component for Statusline {
     }
 }
 
-impl Component for Prompt {
+impl Drawable for Prompt {
     fn position(&self, _ctx: &UIContext) -> Point {
         Point { x: 0, y: 0 }
     }
@@ -122,7 +122,7 @@ impl Component for Prompt {
     }
 }
 
-impl Component for StatusMessage {
+impl Drawable for StatusMessage {
     fn position(&self, _ctx: &UIContext) -> Point {
         Point { x: 0, y: 0 }
     }

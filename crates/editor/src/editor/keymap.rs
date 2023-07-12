@@ -69,6 +69,8 @@ impl Keymap {
              "alt+n", Action::search_next_match,
              "alt+N", Action::search_prev_match,
              "alt+m", Action::goto_matching_pair,
+
+             "alt+k", Action::complete,
         );
 
         map

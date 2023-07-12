@@ -13,11 +13,11 @@ members = [
 [profile.release]
 # TODO investigate good tradeoff between size and speed
 # LLVM's inline threshold
-# opt-level = 3 uses 275
+opt-level = 3 # uses 275
 # opt-level = 2 uses 225
 # opt-level = "s" uses 75
 # opt-level = "z" uses 25
-opt-level = 'z'     # Optimize for size
+# opt-level = 'z'     # Optimize for size
 lto = true          # Enable link-time optimization
 codegen-units = 1   # Reduce number of codegen units to increase optimizations
 panic = 'abort'     # Abort on panic

@@ -1,3 +1,4 @@
+mod completion;
 mod prompt;
 mod search;
 mod statusline;
@@ -11,14 +12,23 @@ use crate::editor::{
 };
 
 use self::{
-    prompt::draw_prompt, search::draw_search, statusline::draw_statusline, window::draw_window,
+    completion::draw_completion, prompt::draw_prompt, search::draw_search,
+    statusline::draw_statusline, window::draw_window,
 };
+
+struct DrawContext<'a, 'b> {
+    win: &'a Window,
+    buf: &'a Buffer,
+    start: &'b mut DrawState,
+}
 
 pub(crate) struct DrawState {
     /// Used to track scroll position when drawing prompt
     prompt_scroll_offset: usize,
+    compl_scroll_offset: usize,
     // Previously drawn
     prompt: Option<redraw::Prompt>,
+    completion: Option<redraw::Completion>,
     msg: Option<redraw::StatusMessage>,
     statusline: redraw::Statusline,
     window: redraw::Window,
@@ -32,7 +42,9 @@ impl DrawState {
         let statusline = draw_statusline(win, buf);
         let state = DrawState {
             prompt_scroll_offset: 0,
+            compl_scroll_offset: 0,
             prompt: None,
+            completion: None,
             statusline: statusline.clone(),
             window: window.clone(),
             msg: None,
@@ -48,6 +60,11 @@ impl DrawState {
         if win.focus() != Focus::Prompt && self.prompt.take().is_some() {
             self.prompt_scroll_offset = 0;
             redraw.push(Redraw::ClosePrompt);
+        }
+
+        if win.focus() != Focus::Completion && self.completion.take().is_some() {
+            self.compl_scroll_offset = 0;
+            redraw.push(Redraw::CloseCompletion);
         }
 
         // Window
@@ -116,6 +133,22 @@ impl DrawState {
                 }
             }
             Focus::Window => {}
+            Focus::Completion => {
+                let compl = &win.completion;
+                let compl = draw_completion(compl, &win.options, &mut self.prompt_scroll_offset);
+                match self.completion.as_mut() {
+                    Some(prev) => {
+                        if let Some(diff) = prev.diff(&compl) {
+                            redraw.push(diff.into());
+                            *prev = compl;
+                        }
+                    }
+                    None => {
+                        redraw.push(Redraw::Completion(compl.clone()));
+                        self.completion = Some(compl);
+                    }
+                }
+            }
         }
 
         redraw

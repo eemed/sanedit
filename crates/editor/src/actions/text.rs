@@ -44,6 +44,7 @@ pub(crate) fn insert(editor: &mut Editor, id: ClientId, text: &str) {
             let (win, buf) = editor.win_buf_mut(id);
             win.insert_at_cursors(buf, text);
         }
+        Focus::Completion => {}
     }
 }
 

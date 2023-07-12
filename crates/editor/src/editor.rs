@@ -217,7 +217,7 @@ impl Editor {
             MouseEventKind::ButtonDown(MouseButton::Left) => {
                 let (_win, _buf) = self.win_buf_mut(id);
                 if event.mods.contains(KeyMods::CONTROL) {
-                    cursors::new_cursor_to_point(self, id, event.point);
+                    cursors::cursor_new_to_point(self, id, event.point);
                 } else if event.mods.is_empty() {
                     cursors::cursor_goto_position(self, id, event.point);
                 }

@@ -22,8 +22,8 @@ use crate::{
     },
 };
 
-use self::completion::Completion;
 pub(crate) use self::{
+    completion::Completion,
     cursors::{Cursor, Cursors},
     focus::Focus,
     options::Options,
@@ -210,6 +210,7 @@ impl Window {
             Focus::Search => &self.search.prompt.keymap,
             Focus::Prompt => &self.prompt.keymap,
             Focus::Window => &self.keymap,
+            Focus::Completion => &self.keymap,
         }
     }
 

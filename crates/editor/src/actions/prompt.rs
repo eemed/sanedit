@@ -18,7 +18,7 @@ fn is_yes(input: &str) -> bool {
 }
 
 pub(crate) fn prompt_open_file(editor: &mut Editor, id: ClientId) {
-    let job_id = jobs::list_files_provide_completions(editor, id);
+    let job_id = jobs::list_files_prompt_provide_completions(editor, id);
     let on_confirm: PromptAction = Rc::new(move |editor, id, input| {
         editor.jobs.stop(&job_id);
         let path = PathBuf::from(input);
@@ -91,7 +91,11 @@ pub(crate) fn prompt_prev_completion(editor: &mut Editor, id: ClientId) {
     win.prompt.prev_completion();
 }
 
-pub(crate) fn provide_completions(editor: &mut Editor, id: ClientId, completions: Vec<String>) {
+pub(crate) fn prompt_provide_completions(
+    editor: &mut Editor,
+    id: ClientId,
+    completions: Vec<String>,
+) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.prompt.provide_completions(completions);
 }

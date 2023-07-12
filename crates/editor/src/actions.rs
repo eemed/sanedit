@@ -1,3 +1,4 @@
+pub(crate) mod completion;
 pub(crate) mod cursors;
 pub(crate) mod editor;
 pub(crate) mod hooks;
@@ -15,9 +16,9 @@ use std::{fmt, sync::Arc};
 
 use crate::{editor::Editor, server::ClientId};
 
+use self::completion::*;
 use self::cursors::*;
 use self::editor::*;
-
 use self::movement::*;
 use self::prompt::*;
 use self::search::*;
@@ -132,6 +133,8 @@ impl Action {
         cursor_next,
         cursor_prev,
         cursor_remove,
+
+        complete,
     );
 }
 

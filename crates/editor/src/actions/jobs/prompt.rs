@@ -3,7 +3,7 @@ use std::{any::Any, mem, path::PathBuf, sync::Arc};
 use tokio::{fs, io};
 
 use crate::{
-    actions::prompt,
+    actions::prompt::prompt_provide_completions,
     editor::{jobs::Job, Editor},
     server::{ClientId, JobFutureFn, JobId, JobProgress, JobProgressSender},
 };
@@ -44,7 +44,7 @@ async fn list_files(send: JobProgressSender, dir: PathBuf) -> bool {
     read_recursive(send, dir).await.is_ok()
 }
 
-pub(crate) fn list_files_provide_completions(editor: &mut Editor, id: ClientId) -> JobId {
+pub(crate) fn list_files_prompt_provide_completions(editor: &mut Editor, id: ClientId) -> JobId {
     let fun: JobFutureFn = {
         let cwd = editor.working_dir().to_path_buf();
         Box::new(move |send| Box::pin(list_files(send, cwd)))
@@ -52,7 +52,7 @@ pub(crate) fn list_files_provide_completions(editor: &mut Editor, id: ClientId) 
     let jobs = &mut editor.jobs;
     let on_output = Arc::new(|editor: &mut Editor, id: ClientId, out: Box<dyn Any>| {
         if let Ok(output) = out.downcast::<Vec<String>>() {
-            prompt::provide_completions(editor, id, *output);
+            prompt_provide_completions(editor, id, *output);
         }
     });
     let job = Job::new(id, fun).on_output(on_output);

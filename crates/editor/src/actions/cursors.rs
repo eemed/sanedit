@@ -65,7 +65,7 @@ pub(crate) fn cursor_new_to_all_search_matches(editor: &mut Editor, id: ClientId
     // }
 }
 
-pub(crate) fn new_cursor_to_point(editor: &mut Editor, id: ClientId, point: Point) {
+pub(crate) fn cursor_new_to_point(editor: &mut Editor, id: ClientId, point: Point) {
     let (win, _buf) = editor.win_buf_mut(id);
     if let Some(pos) = pos_at_point(win, point) {
         win.cursors.push(Cursor::new(pos));

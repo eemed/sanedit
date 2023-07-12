@@ -93,6 +93,13 @@ impl UI {
             Redraw::StatusMessage(msg) => {
                 self.grid.msg = Some(msg);
             }
+            Redraw::Completion(compl) => {
+                log::info!("COMPLE: {compl:?}");
+            }
+            Redraw::CompletionUpdate(diff) => {
+                log::info!("compl update");
+            }
+            Redraw::CloseCompletion => {}
         }
     }
 

@@ -3,4 +3,5 @@ pub(crate) enum Focus {
     Search,
     Prompt,
     Window,
+    Completion,
 }

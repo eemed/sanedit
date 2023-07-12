@@ -108,6 +108,10 @@ impl Completion {
         }
     }
 
+    pub fn selected_pos(&self) -> Option<usize> {
+        self.selected
+    }
+
     pub fn selected(&self) -> Option<(usize, &str)> {
         let sel = self.selected?;
         let opt = self.matched.get(sel)?;

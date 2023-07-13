@@ -1,3 +1,6 @@
+#[macro_use]
+extern crate sanedit_macros;
+
 pub(crate) mod actions;
 pub(crate) mod common;
 pub(crate) mod draw;

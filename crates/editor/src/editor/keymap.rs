@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use sanedit_messages::{try_parse_keyevents, KeyEvent};
 
-use crate::actions::Action;
+use crate::actions::{movement, Action};
 
 macro_rules! map {
     ($keymap:ident, $($mapping: expr, $action:expr),+,) => {
@@ -27,30 +27,30 @@ impl Keymap {
         map!(map,
              "ctrl+c", Action::quit,
              "ctrl+s", Action::save,
-             "up", Action::prev_line,
-             "down", Action::next_line,
-             "left", Action::prev_grapheme,
-             "right", Action::next_grapheme,
+             "up", movement::prev_line,
+             "down", movement::next_line,
+             "left", movement::prev_grapheme,
+             "right", movement::next_grapheme,
              "backspace", Action::remove_grapheme_before_cursor,
              "delete", Action::remove_grapheme_after_cursor,
 
-             "alt+b", Action::end_of_buffer,
-             "alt+B", Action::start_of_buffer,
+             "alt+b", movement::end_of_buffer,
+             "alt+B", movement::start_of_buffer,
 
-             "alt+l", Action::end_of_line,
-             "alt+L", Action::start_of_line,
+             "alt+l", movement::end_of_line,
+             "alt+L", movement::start_of_line,
 
              // "alt+l", Action::next_visual_line,
              // "alt+L", Action::prev_visual_line,
 
-             "alt+w", Action::next_word_start,
-             "alt+W", Action::prev_word_start,
+             "alt+w", movement::next_word_start,
+             "alt+W", movement::prev_word_start,
 
-             "alt+e", Action::next_word_end,
-             "alt+E", Action::prev_word_end,
+             "alt+e", movement::next_word_end,
+             "alt+E", movement::prev_word_end,
 
-             "alt+p", Action::next_paragraph,
-             "alt+P", Action::prev_paragraph,
+             "alt+p", movement::next_paragraph,
+             "alt+P", movement::prev_paragraph,
 
              "alt+s", Action::scroll_down,
              "alt+S", Action::scroll_up,
@@ -68,7 +68,7 @@ impl Keymap {
 
              "alt+n", Action::search_next_match,
              "alt+N", Action::search_prev_match,
-             "alt+m", Action::goto_matching_pair,
+             "alt+m", movement::goto_matching_pair,
 
              "alt+k", Action::complete,
         );

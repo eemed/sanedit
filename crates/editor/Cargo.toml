@@ -9,6 +9,7 @@ edition = "2021"
 sanedit-messages = { path = "../messages" }
 sanedit-buffer = { path = "../buffer" }
 sanedit-regex = { path = "../regex" }
+sanedit-macros = { path = "../macros" }
 
 # General
 log         = "0.4"

@@ -19,7 +19,7 @@ use crate::{editor::Editor, server::ClientId};
 use self::completion::*;
 use self::cursors::*;
 use self::editor::*;
-use self::movement::*;
+
 use self::prompt::*;
 use self::search::*;
 use self::text::*;
@@ -53,6 +53,12 @@ pub(crate) enum Action {
         name: &'static str,
         fun: fn(&mut Editor, ClientId),
     },
+    NewStatic {
+        name: &'static str,
+        module: &'static str,
+        fun: fn(&mut Editor, ClientId),
+        desc: &'static str,
+    },
 }
 
 impl Action {
@@ -70,33 +76,22 @@ impl Action {
         match self {
             Action::Dynamic { name: _, fun } => (fun)(editor, id),
             Action::Static { name: _, fun } => (fun)(editor, id),
+            Action::NewStatic {
+                name: _,
+                module: _,
+                fun,
+                desc: _,
+            } => (fun)(editor, id),
         }
     }
 
     #[rustfmt::skip]
     action_list!(
         quit,
-        next_grapheme,
-        prev_grapheme,
         remove_grapheme_after_cursor,
         remove_grapheme_before_cursor,
-        start_of_line,
-        end_of_line,
-        start_of_buffer,
-        end_of_buffer,
-        next_visual_line,
-        prev_visual_line,
-        next_line,
-        prev_line,
-        next_word_start,
-        prev_word_start,
-        next_word_end,
-        prev_word_end,
-        next_paragraph,
-        prev_paragraph,
         scroll_up,
         scroll_down,
-        goto_matching_pair,
         save,
 
         prompt_next_grapheme,
@@ -143,6 +138,12 @@ impl fmt::Debug for Action {
         match self {
             Action::Dynamic { name, fun: _ } => write!(f, "{}", name),
             Action::Static { name, fun: _ } => write!(f, "{}", name),
+            Action::NewStatic {
+                name,
+                module: _,
+                fun: _,
+                desc: _,
+            } => write!(f, "{}", name),
         }
     }
 }

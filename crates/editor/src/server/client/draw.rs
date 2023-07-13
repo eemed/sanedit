@@ -19,6 +19,16 @@ macro_rules! diffable_open {
     }};
 }
 
+macro_rules! diffable_close {
+    ($field:expr) => {{
+        if $field.is_none() {
+            return None;
+        }
+
+        $field = None;
+    }};
+}
+
 macro_rules! if_changed {
     ($field:expr, $item:ident) => {{
         let old = mem::replace(&mut $field, Some($item));
@@ -48,13 +58,13 @@ impl ClientDrawState {
 
         match redraw {
             Completion(Open(compl)) => diffable_open!(self.completion, compl),
-            Completion(Close) => self.completion = None,
+            Completion(Close) => diffable_close!(self.completion),
             Prompt(Open(prompt)) => diffable_open!(self.prompt, prompt),
-            Prompt(Close) => self.prompt = None,
+            Prompt(Close) => diffable_close!(self.prompt),
             Window(Open(win)) => diffable_open!(self.window, win),
-            Window(Close) => self.window = None,
+            Window(Close) => diffable_close!(self.window),
             Statusline(Open(status)) => diffable_open!(self.statusline, status),
-            Statusline(Close) => self.statusline = None,
+            Statusline(Close) => diffable_close!(self.statusline),
             StatusMessage(msg) => if_changed!(self.msg, msg),
             _ => {}
         }

@@ -48,39 +48,33 @@ fn do_move_static(editor: &mut Editor, id: ClientId, pos: usize, col: Option<usi
     do_move(editor, id, |_, _| pos, col);
 }
 
-// TODO would this be better?
-// actions.movement.next_grapheme
-//
-// #[action("Goto next character")]
-// fn bla() {}
-//
-// =>
-//
-// struct Movements {}
-// impl Movements {
-// const next_grapheme;
-// }
-pub(crate) fn next_grapheme(editor: &mut Editor, id: ClientId) {
+#[action("Move cursor(s) to the next character")]
+fn next_grapheme(editor: &mut Editor, id: ClientId) {
     do_move(editor, id, common::movement::next_grapheme_boundary, None);
 }
 
-pub(crate) fn prev_grapheme(editor: &mut Editor, id: ClientId) {
+#[action("Move cursor(s) to the previous character")]
+fn prev_grapheme(editor: &mut Editor, id: ClientId) {
     do_move(editor, id, common::movement::prev_grapheme_boundary, None);
 }
 
-pub(crate) fn start_of_line(editor: &mut Editor, id: ClientId) {
+#[action("Move cursor(s) to the start of the line")]
+fn start_of_line(editor: &mut Editor, id: ClientId) {
     do_move(editor, id, common::movement::start_of_line, Some(0));
 }
 
-pub(crate) fn end_of_line(editor: &mut Editor, id: ClientId) {
+#[action("Move cursor(s) to the end of the line")]
+fn end_of_line(editor: &mut Editor, id: ClientId) {
     do_move(editor, id, common::movement::end_of_line, Some(usize::MAX));
 }
 
-pub(crate) fn start_of_buffer(editor: &mut Editor, id: ClientId) {
+#[action("Move cursor(s) to the first character in the buffer")]
+fn start_of_buffer(editor: &mut Editor, id: ClientId) {
     do_move_static(editor, id, 0, None);
 }
 
-pub(crate) fn end_of_buffer(editor: &mut Editor, id: ClientId) {
+#[action("Move cursor(s) to the last character in the buffer")]
+fn end_of_buffer(editor: &mut Editor, id: ClientId) {
     let blen = {
         let (_win, buf) = editor.win_buf(id);
         buf.len()
@@ -88,31 +82,38 @@ pub(crate) fn end_of_buffer(editor: &mut Editor, id: ClientId) {
     do_move_static(editor, id, blen, None);
 }
 
-pub(crate) fn next_word_start(editor: &mut Editor, id: ClientId) {
+#[action("Move cursor(s) to the start of the next word")]
+fn next_word_start(editor: &mut Editor, id: ClientId) {
     do_move(editor, id, common::movement::next_word_start, None);
 }
 
-pub(crate) fn prev_word_start(editor: &mut Editor, id: ClientId) {
+#[action("Move cursor(s) to the start of the previous word")]
+fn prev_word_start(editor: &mut Editor, id: ClientId) {
     do_move(editor, id, common::movement::prev_word_start, None);
 }
 
-pub(crate) fn next_word_end(editor: &mut Editor, id: ClientId) {
+#[action("Move cursor(s) to the end of the next word")]
+fn next_word_end(editor: &mut Editor, id: ClientId) {
     do_move(editor, id, common::movement::next_word_end, None);
 }
 
-pub(crate) fn prev_word_end(editor: &mut Editor, id: ClientId) {
+#[action("Move cursor(s) to the end of the previous word")]
+fn prev_word_end(editor: &mut Editor, id: ClientId) {
     do_move(editor, id, common::movement::prev_word_end, None);
 }
 
-pub(crate) fn next_paragraph(editor: &mut Editor, id: ClientId) {
+#[action("Move cursor(s) to the next paragraph")]
+fn next_paragraph(editor: &mut Editor, id: ClientId) {
     do_move(editor, id, common::movement::next_paragraph, None);
     log::info!("done");
 }
 
-pub(crate) fn prev_paragraph(editor: &mut Editor, id: ClientId) {
+#[action("Move cursor(s) to the previous paragraph")]
+fn prev_paragraph(editor: &mut Editor, id: ClientId) {
     do_move(editor, id, common::movement::prev_paragraph, None);
 }
 
+#[action("Move cursor(s) to the previous visual line")]
 pub(crate) fn prev_visual_line(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     let cursor_pos = win.cursors().primary().pos();
@@ -173,7 +174,8 @@ fn prev_visual_line_impl(editor: &mut Editor, id: ClientId) -> bool {
     true
 }
 
-pub(crate) fn next_visual_line(editor: &mut Editor, id: ClientId) {
+#[action("Move cursor(s) to the next visual line")]
+fn next_visual_line(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     let cursor_pos = win.cursors().primary().pos();
     let cursor_point = win
@@ -234,15 +236,18 @@ fn next_visual_line_impl(editor: &mut Editor, id: ClientId) -> bool {
     true
 }
 
-pub(crate) fn next_line(editor: &mut Editor, id: ClientId) {
+#[action("Move cursor(s) to the next line")]
+fn next_line(editor: &mut Editor, id: ClientId) {
     do_move_line(editor, id, common::movement::next_line);
 }
 
-pub(crate) fn prev_line(editor: &mut Editor, id: ClientId) {
+#[action("Move cursor(s) to the previous line")]
+fn prev_line(editor: &mut Editor, id: ClientId) {
     do_move_line(editor, id, common::movement::prev_line);
 }
 
-pub(crate) fn goto_matching_pair(editor: &mut Editor, id: ClientId) {
+#[action("Move cursor(s) to matching bracket pair")]
+fn goto_matching_pair(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     let pos = win.cursors.primary().pos();
     let slice = buf.slice(..);

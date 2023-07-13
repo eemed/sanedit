@@ -8,6 +8,7 @@ members = [
     "regex",
     "terminal-client",
     "ucd",
+    "macros",
 ]
 
 [profile.release]

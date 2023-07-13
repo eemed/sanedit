@@ -2,45 +2,29 @@ use core::fmt;
 
 use serde::{Deserialize, Serialize};
 
-use super::{Cell, Cursor, Redraw};
+use super::{Cell, Component, Cursor, Diffable, Redraw};
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Default, Clone)]
 pub struct Window {
-    cells: Vec<Vec<Cell>>,
-    cursor: Cursor,
+    pub cells: Vec<Vec<Cell>>,
+    pub cursor: Cursor,
 }
 
-impl Window {
-    pub fn new(cells: Vec<Vec<Cell>>, cursor: Cursor) -> Window {
-        Window { cells, cursor }
-    }
+impl Diffable for Window {
+    type Diff = Difference;
 
-    pub fn cells(&self) -> &Vec<Vec<Cell>> {
-        &self.cells
-    }
-
-    pub fn draw(&self) -> &Vec<Vec<Cell>> {
-        &self.cells
-    }
-
-    pub fn update(&mut self, diff: WindowDiff) {
-        *self = diff.window;
-    }
-
-    /// Return a diff of self and other
-    /// When this diff is applied to self using update, self == other
-    pub fn diff(&self, other: &Window) -> Option<WindowDiff> {
+    fn diff(&self, other: &Self) -> Option<Self::Diff> {
         if self == other {
             return None;
         }
 
-        Some(WindowDiff {
+        Some(Difference {
             window: other.clone(),
         })
     }
 
-    pub fn cursor(&self) -> Cursor {
-        self.cursor
+    fn update(&mut self, diff: Self::Diff) {
+        *self = diff.window;
     }
 }
 
@@ -59,13 +43,19 @@ impl fmt::Debug for Window {
     }
 }
 
+impl From<Window> for Redraw {
+    fn from(value: Window) -> Self {
+        Redraw::Window(Component::Open(value))
+    }
+}
+
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug)]
-pub struct WindowDiff {
+pub struct Difference {
     window: Window,
 }
 
-impl From<WindowDiff> for Redraw {
-    fn from(diff: WindowDiff) -> Self {
-        Redraw::WindowUpdate(diff)
+impl From<Difference> for Redraw {
+    fn from(diff: Difference) -> Self {
+        Redraw::Window(Component::Update(diff))
     }
 }

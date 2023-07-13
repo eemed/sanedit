@@ -1,16 +1,22 @@
 use std::ops::Range;
 
-use sanedit_messages::redraw::{self, CursorShape, Style, Theme, ThemeField};
+use sanedit_messages::redraw::{self, CursorShape, Redraw, Style, Theme, ThemeField};
 
 use crate::{
     common::{char::Replacement, range::RangeUtils},
-    editor::{
-        buffers::Buffer,
-        windows::{Cell, Cursor, Cursors, View, Window},
-    },
+    editor::windows::{Cell, Cursor, Cursors, View},
 };
 
-pub(crate) fn draw_window(win: &Window, _buf: &Buffer, theme: &Theme) -> redraw::Window {
+use super::DrawContext;
+
+pub(crate) fn draw(ctx: &mut DrawContext) -> Redraw {
+    let DrawContext {
+        win,
+        buf: _,
+        theme,
+        state: _,
+    } = ctx;
+
     let style = theme.get(ThemeField::Default);
     let view = win.view();
     let mut grid = vec![vec![redraw::Cell::with_style(style); view.width()]; view.height()];
@@ -46,7 +52,12 @@ pub(crate) fn draw_window(win: &Window, _buf: &Buffer, theme: &Theme) -> redraw:
     }
     draw_secondary_cursors(&mut grid, cursors, view, theme);
     let cursor = draw_primary_cursor(&mut grid, cursors.primary(), view, theme);
-    redraw::Window::new(grid, cursor)
+
+    redraw::Window {
+        cells: grid,
+        cursor,
+    }
+    .into()
 }
 
 fn draw_search_highlights(

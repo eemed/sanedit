@@ -23,6 +23,7 @@ pub(crate) fn draw(completion: &Completion, ctx: &mut DrawContext) -> Redraw {
     let options = completion.matches_window(compl_count, *offset);
 
     redraw::Completion {
+        point: completion.point,
         options: options.into_iter().map(String::from).collect(),
         selected: selected_relative_pos,
     }

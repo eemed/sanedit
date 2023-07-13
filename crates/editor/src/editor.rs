@@ -357,9 +357,7 @@ pub(crate) fn main_loop(
     while let Some(msg) = recv.blocking_recv() {
         match msg {
             ToEditor::NewClient(handle) => editor.on_client_connected(handle),
-            ToEditor::Jobs(msg) => {
-                editor.handle_job_msg(msg);
-            }
+            ToEditor::Jobs(msg) => editor.handle_job_msg(msg),
             ToEditor::Message(id, msg) => editor.handle_message(id, msg),
             ToEditor::FatalError(e) => {
                 log::info!("Fatal error: {}", e);

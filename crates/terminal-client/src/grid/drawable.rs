@@ -18,11 +18,11 @@ impl Drawable for Window {
     }
 
     fn draw(&self, _ctx: &UIContext) -> Vec<Vec<Cell>> {
-        self.cells().clone()
+        self.cells.clone()
     }
 
     fn cursor(&self, ctx: &UIContext) -> Option<Cursor> {
-        let mut cursor = self.cursor();
+        let mut cursor = self.cursor;
         let pos = self.position(ctx);
         cursor.point = cursor.point + pos;
         Some(cursor)
@@ -42,7 +42,7 @@ impl Drawable for Statusline {
     }
 
     fn draw(&self, ctx: &UIContext) -> Vec<Vec<Cell>> {
-        let line = into_cells_with_theme_pad(self.line(), &ThemeField::Statusline, ctx);
+        let line = into_cells_with_theme_pad(&self.line, &ThemeField::Statusline, ctx);
         vec![line]
     }
 
@@ -68,9 +68,9 @@ impl Drawable for Prompt {
         let msg_style = ctx.theme.get(ThemeField::PromptMessage);
         let input_style = ctx.theme.get(ThemeField::PromptUserInput);
 
-        let mut message = into_cells_with_style(self.message(), msg_style, ctx);
+        let mut message = into_cells_with_style(&self.message, msg_style, ctx);
         let colon = into_cells_with_style(": ", msg_style, ctx);
-        let input = into_cells_with_style(self.input(), input_style, ctx);
+        let input = into_cells_with_style(&self.input, input_style, ctx);
         message.extend(colon);
         message.extend(input);
 
@@ -78,11 +78,11 @@ impl Drawable for Prompt {
 
         let mut prompt = vec![message];
         let opts: Vec<Vec<Cell>> = self
-            .options()
+            .options
             .iter()
             .enumerate()
             .map(|(i, opt)| {
-                let field = if Some(i) == self.selected() {
+                let field = if Some(i) == self.selected {
                     ThemeField::PromptCompletionSelected
                 } else {
                     ThemeField::PromptCompletion
@@ -98,9 +98,8 @@ impl Drawable for Prompt {
     fn cursor(&self, ctx: &UIContext) -> Option<Cursor> {
         let point = self.position(ctx);
         let cursor_col = {
-            let input_cells_before_cursor =
-                self.input()[..self.cursor_in_input()].into_cells().len();
-            let msg_len = self.message().into_cells().len();
+            let input_cells_before_cursor = self.input[..self.cursor].into_cells().len();
+            let msg_len = self.message.into_cells().len();
             let extra = 2; // ": "
             msg_len + extra + input_cells_before_cursor
         };

@@ -1,9 +1,10 @@
 use serde::{Deserialize, Serialize};
 
-use super::{Component, Diffable, Redraw};
+use super::{Component, Diffable, Point, Redraw};
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
 pub struct Completion {
+    pub point: Point,
     pub options: Vec<String>,
     pub selected: Option<usize>,
 }

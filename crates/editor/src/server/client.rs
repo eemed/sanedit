@@ -72,6 +72,10 @@ async fn conn_write(
     while let Some(msg) = server_recv.recv().await {
         match msg {
             FromEditor::Message(mut msg) => {
+                // TODO move diffing away from here? This basically acts as a
+                // middleware to diff changes before they are sent to the
+                // client. Diffing is done here so editor can just send stuff
+                // without diffing all the changes itself.
                 if let ClientMessage::Redraw(redraw) = msg {
                     match state.handle_redraw(redraw) {
                         Some(new_redraw) => msg = new_redraw.into(),

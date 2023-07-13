@@ -6,8 +6,16 @@ use super::DrawContext;
 
 pub(crate) fn draw(search: &Search, _ctx: &mut DrawContext) -> Redraw {
     let prompt = &search.prompt;
-    let msg = &prompt.message;
-    let input = prompt.input();
+    let msg = prompt.message.clone();
+    let input = prompt.input().into();
     let cursor = prompt.cursor();
-    redraw::Prompt::new(msg, &input, cursor, vec![], None).into()
+
+    redraw::Prompt {
+        message: msg,
+        input,
+        cursor,
+        options: vec![],
+        selected: None,
+    }
+    .into()
 }

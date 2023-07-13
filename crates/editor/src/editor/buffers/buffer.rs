@@ -169,6 +169,10 @@ impl Buffer {
     pub fn read_only_copy(&self) -> ReadOnlyPieceTree {
         self.pt.read_only_copy()
     }
+
+    pub fn is_modified(&self) -> bool {
+        self.is_modified
+    }
 }
 
 impl Default for Buffer {

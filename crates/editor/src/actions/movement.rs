@@ -48,6 +48,18 @@ fn do_move_static(editor: &mut Editor, id: ClientId, pos: usize, col: Option<usi
     do_move(editor, id, |_, _| pos, col);
 }
 
+// TODO would this be better?
+// actions.movement.next_grapheme
+//
+// #[action("Goto next character")]
+// fn bla() {}
+//
+// =>
+//
+// struct Movements {}
+// impl Movements {
+// const next_grapheme;
+// }
 pub(crate) fn next_grapheme(editor: &mut Editor, id: ClientId) {
     do_move(editor, id, common::movement::next_grapheme_boundary, None);
 }

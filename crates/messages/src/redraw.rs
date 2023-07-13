@@ -57,22 +57,10 @@ where
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug)]
 pub enum Redraw {
-    // Statusline and window cannot currently be closed so they do not have a
-    // close redraw event
-    /// First draw for window and statusline
-    Init(Window, Statusline),
-    /// Window updated
-    WindowUpdate(WindowDiff),
-
-    /// Statusline updated
-    StatuslineUpdate(StatuslineDiff),
-
+    Window(Component<Window, window::Difference>),
+    Statusline(Component<Statusline, statusline::Difference>),
     Prompt(Component<Prompt, prompt::Difference>),
     Completion(Component<Completion, completion::Difference>),
-    // Prompt2(Component<Prompt, PromptDiff>),
-    // Window2(Component<Window, WindowDiff>),
-    // Statusline2(Component<Statusline, StatuslineDiff>),
-    /// Status messages
     StatusMessage(StatusMessage),
 }
 

@@ -4,6 +4,34 @@ use sanedit_messages::redraw::{
     Completion, Component, Diffable, Prompt, Redraw, StatusMessage, Statusline, Window,
 };
 
+macro_rules! diffable_open {
+    ($field:expr, $item:ident) => {{
+        let mut old = mem::replace(&mut $field, Some($item));
+        let current = $field.as_ref().unwrap();
+
+        match old {
+            Some(ref mut old) => {
+                let diff = old.diff(current)?;
+                return Some(diff.into());
+            }
+            None => return Some(current.clone().into()),
+        }
+    }};
+}
+
+macro_rules! if_changed {
+    ($field:expr, $item:ident) => {{
+        let old = mem::replace(&mut $field, Some($item));
+        let current = $field.as_ref().unwrap();
+
+        if old.as_ref() != Some(current) {
+            return Some(current.clone().into());
+        } else {
+            return None;
+        }
+    }};
+}
+
 #[derive(Default, Debug)]
 pub(crate) struct ClientDrawState {
     pub(crate) prompt: Option<Prompt>,
@@ -15,33 +43,19 @@ pub(crate) struct ClientDrawState {
 
 impl ClientDrawState {
     pub fn handle_redraw(&mut self, redraw: Redraw) -> Option<Redraw> {
+        use Component::*;
+        use Redraw::*;
+
         match redraw {
-            Redraw::Completion(Component::Open(compl)) => {
-                let mut old = mem::replace(&mut self.completion, Some(compl));
-                let current = self.completion.as_ref().unwrap();
-
-                match old {
-                    Some(ref mut old) => {
-                        let diff = old.diff(current)?;
-                        return Some(diff.into());
-                    }
-                    None => return Some(current.clone().into()),
-                }
-            }
-            Redraw::Completion(Component::Close) => self.completion = None,
-            Redraw::Prompt(Component::Open(prompt)) => {
-                let mut old = mem::replace(&mut self.prompt, Some(prompt));
-                let current = self.prompt.as_ref().unwrap();
-
-                match old {
-                    Some(ref mut old) => {
-                        let diff = old.diff(current)?;
-                        return Some(diff.into());
-                    }
-                    None => return Some(current.clone().into()),
-                }
-            }
-            Redraw::Prompt(Component::Close) => self.prompt = None,
+            Completion(Open(compl)) => diffable_open!(self.completion, compl),
+            Completion(Close) => self.completion = None,
+            Prompt(Open(prompt)) => diffable_open!(self.prompt, prompt),
+            Prompt(Close) => self.prompt = None,
+            Window(Open(win)) => diffable_open!(self.window, win),
+            Window(Close) => self.window = None,
+            Statusline(Open(status)) => diffable_open!(self.statusline, status),
+            Statusline(Close) => self.statusline = None,
+            StatusMessage(msg) => if_changed!(self.msg, msg),
             _ => {}
         }
 

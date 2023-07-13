@@ -1,8 +1,14 @@
-use sanedit_messages::redraw::Statusline;
+use sanedit_messages::redraw::{Redraw, Statusline};
 
-use crate::editor::{buffers::Buffer, windows::Window};
+use super::DrawContext;
 
-pub(crate) fn draw_statusline(_win: &Window, buf: &Buffer) -> Statusline {
-    let line = format!("{}", buf.name());
-    Statusline::new(line.as_str())
+pub(crate) fn draw(ctx: &mut DrawContext) -> Redraw {
+    let buf = ctx.buf;
+
+    let mut line = format!("{}", buf.name());
+    if buf.is_modified() {
+        line.push_str("*");
+    }
+
+    Statusline { line }.into()
 }

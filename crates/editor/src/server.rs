@@ -93,7 +93,7 @@ pub fn run_sync(addrs: Vec<Address>) -> Option<thread::JoinHandle<()>> {
         let jobs_handle = rt.block_on(async { spawn_jobs(handle).await });
 
         if let Err(e) = editor::main_loop(jobs_handle, recv) {
-            log::error!("Oops {}.", e);
+            log::error!("Editor main loop exited with error {}.", e);
         }
     });
 

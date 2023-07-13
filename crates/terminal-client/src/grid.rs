@@ -33,32 +33,33 @@ impl Grid {
     }
 
     pub fn handle_redraw(&mut self, msg: Redraw) {
+        use Component::*;
+        use Redraw::*;
+
         match msg {
-            Redraw::Init(win, statusline) => {
-                self.window = win;
-                self.statusline = statusline;
-            }
-            Redraw::WindowUpdate(diff) => {
-                self.window.update(diff);
-            }
-            Redraw::StatuslineUpdate(diff) => {
-                self.statusline.update(diff);
-            }
-            Redraw::StatusMessage(msg) => {
-                self.msg = Some(msg);
-            }
-            Redraw::Prompt(comp) => match comp {
-                Component::Open(prompt) => self.prompt = Some(prompt),
-                Component::Update(diff) => {
+            Window(comp) => match comp {
+                Open(win) => self.window = win,
+                Update(diff) => self.window.update(diff),
+                Close => {}
+            },
+            Statusline(comp) => match comp {
+                Open(status) => self.statusline = status,
+                Update(diff) => self.statusline.update(diff),
+                Close => {}
+            },
+            Prompt(comp) => match comp {
+                Open(prompt) => self.prompt = Some(prompt),
+                Update(diff) => {
                     if let Some(ref mut prompt) = self.prompt {
                         prompt.update(diff);
                     }
                 }
-                Component::Close => self.prompt = None,
+                Close => self.prompt = None,
             },
-            Redraw::Completion(c) => {
+            Completion(c) => {
                 log::info!("Completion2 {c:?}");
             }
+            StatusMessage(msg) => self.msg = Some(msg),
         }
     }
 

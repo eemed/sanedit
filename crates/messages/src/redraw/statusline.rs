@@ -1,45 +1,43 @@
 use serde::{Deserialize, Serialize};
 
-use super::Redraw;
+use super::{Component, Diffable, Redraw};
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone, Default)]
 pub struct Statusline {
-    line: String,
+    pub line: String,
 }
 
-impl Statusline {
-    pub fn new(line: &str) -> Statusline {
-        Statusline {
-            line: line.to_string(),
-        }
-    }
+impl Diffable for Statusline {
+    type Diff = Difference;
 
-    pub fn line(&self) -> &str {
-        &self.line
-    }
-
-    pub fn update(&mut self, diff: StatuslineDiff) {
-        *self = diff.line;
-    }
-
-    pub fn diff(&self, other: &Statusline) -> Option<StatuslineDiff> {
+    fn diff(&self, other: &Self) -> Option<Self::Diff> {
         if self.line == other.line {
             return None;
         }
 
-        Some(StatuslineDiff {
+        Some(Difference {
             line: other.clone(),
         })
+    }
+
+    fn update(&mut self, diff: Self::Diff) {
+        *self = diff.line;
+    }
+}
+
+impl From<Statusline> for Redraw {
+    fn from(status: Statusline) -> Self {
+        Redraw::Statusline(Component::Open(status))
     }
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug)]
-pub struct StatuslineDiff {
+pub struct Difference {
     line: Statusline,
 }
 
-impl From<StatuslineDiff> for Redraw {
-    fn from(diff: StatuslineDiff) -> Self {
-        Redraw::StatuslineUpdate(diff)
+impl From<Difference> for Redraw {
+    fn from(diff: Difference) -> Self {
+        Redraw::Statusline(Component::Update(diff))
     }
 }

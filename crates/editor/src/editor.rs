@@ -27,7 +27,7 @@ use tokio::sync::mpsc::Receiver;
 
 use crate::actions;
 use crate::actions::cursors;
-use crate::actions::hooks::run_hook;
+use crate::actions::hooks::execute;
 use crate::actions::Action;
 use crate::common::file::File;
 use crate::draw::DrawState;
@@ -161,7 +161,7 @@ impl Editor {
             _ => {}
         }
 
-        run_hook(self, id, Hook::OnMessagePre);
+        execute(self, id, Hook::OnMessagePre);
 
         match msg {
             Message::KeyEvent(key_event) => self.handle_key_event(id, key_event),
@@ -217,9 +217,9 @@ impl Editor {
             MouseEventKind::ButtonDown(MouseButton::Left) => {
                 let (_win, _buf) = self.win_buf_mut(id);
                 if event.mods.contains(KeyMods::CONTROL) {
-                    cursors::cursor_new_to_point(self, id, event.point);
+                    cursors::new_to_point(self, id, event.point);
                 } else if event.mods.is_empty() {
-                    cursors::cursor_goto_position(self, id, event.point);
+                    cursors::goto_position(self, id, event.point);
                 }
             }
             _ => {}
@@ -227,7 +227,7 @@ impl Editor {
     }
 
     fn redraw(&mut self, id: ClientId) {
-        run_hook(self, id, Hook::OnDrawPre);
+        execute(self, id, Hook::OnDrawPre);
 
         let draw = self
             .draw_states
@@ -273,7 +273,7 @@ impl Editor {
 
         // Add key to buffer
         self.keys.push(event);
-        run_hook(self, id, Hook::KeyPressedPre);
+        execute(self, id, Hook::KeyPressedPre);
 
         // Handle key bindings
         if let Some(mut action) = self.get_bound_action(id) {

@@ -3,16 +3,18 @@ use crate::{
     server::ClientId,
 };
 
-use super::hooks::run_hook;
+use super::hooks::execute;
 
-pub(crate) fn remove_grapheme_after_cursor(editor: &mut Editor, id: ClientId) {
-    run_hook(editor, id, Hook::RemoveCharPre);
+#[action("Remove character after cursor")]
+fn remove_grapheme_after_cursor(editor: &mut Editor, id: ClientId) {
+    execute(editor, id, Hook::RemoveCharPre);
     let (win, buf) = editor.win_buf_mut(id);
     win.remove_grapheme_after_cursors(buf);
 }
 
-pub(crate) fn remove_grapheme_before_cursor(editor: &mut Editor, id: ClientId) {
-    run_hook(editor, id, Hook::RemoveCharPre);
+#[action("Remove character before cursor")]
+fn remove_grapheme_before_cursor(editor: &mut Editor, id: ClientId) {
+    execute(editor, id, Hook::RemoveCharPre);
     let (win, buf) = editor.win_buf_mut(id);
     win.remove_grapheme_before_cursors(buf);
 }
@@ -40,7 +42,7 @@ pub(crate) fn insert(editor: &mut Editor, id: ClientId, text: &str) {
             }
         }
         Focus::Window => {
-            run_hook(editor, id, Hook::InsertCharPre);
+            execute(editor, id, Hook::InsertCharPre);
             let (win, buf) = editor.win_buf_mut(id);
             win.insert_at_cursors(buf, text);
         }
@@ -48,7 +50,8 @@ pub(crate) fn insert(editor: &mut Editor, id: ClientId, text: &str) {
     }
 }
 
-pub(crate) fn save(editor: &mut Editor, id: ClientId) {
+#[action("Save file")]
+fn save(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     if let Err(e) = buf.save() {
         win.error_msg("Saving failed: {e}");

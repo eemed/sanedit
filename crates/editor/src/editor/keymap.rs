@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use sanedit_messages::{try_parse_keyevents, KeyEvent};
 
-use crate::actions::{movement, Action};
+use crate::actions::{completion, cursors, editor, movement, prompt, search, text, view, Action};
 
 macro_rules! map {
     ($keymap:ident, $($mapping: expr, $action:expr),+,) => {
@@ -25,14 +25,14 @@ impl Keymap {
 
         #[rustfmt::skip]
         map!(map,
-             "ctrl+c", Action::quit,
-             "ctrl+s", Action::save,
+             "ctrl+c", editor::quit,
+             "ctrl+s", text::save,
              "up", movement::prev_line,
              "down", movement::next_line,
              "left", movement::prev_grapheme,
              "right", movement::next_grapheme,
-             "backspace", Action::remove_grapheme_before_cursor,
-             "delete", Action::remove_grapheme_after_cursor,
+             "backspace", text::remove_grapheme_before_cursor,
+             "delete", text::remove_grapheme_after_cursor,
 
              "alt+b", movement::end_of_buffer,
              "alt+B", movement::start_of_buffer,
@@ -52,25 +52,25 @@ impl Keymap {
              "alt+p", movement::next_paragraph,
              "alt+P", movement::prev_paragraph,
 
-             "alt+s", Action::scroll_down,
-             "alt+S", Action::scroll_up,
+             "alt+s", view::scroll_down,
+             "alt+S", view::scroll_up,
 
-             "ctrl+o", Action::prompt_open_file,
-             "ctrl+f", Action::search_forward,
-             "ctrl+g", Action::search_backward,
-             "ctrl+h", Action::search_clear_matches,
+             "ctrl+o", prompt::open_file,
+             "ctrl+f", search::forward,
+             "ctrl+g", search::backward,
+             "ctrl+h", search::clear_matches,
 
-             "esc", Action::cursor_remove_secondary,
-             "alt+down", Action::cursor_new_next_line,
-             "alt+up", Action::cursor_new_prev_line,
-             "ctrl+d", Action::cursor_new_to_next_search_match,
-             "ctrl+l", Action::cursor_new_to_all_search_matches,
+             "esc", cursors::remove_secondary,
+             "alt+down", cursors::new_next_line,
+             "alt+up", cursors::new_prev_line,
+             "ctrl+d", cursors::new_to_next_search_match,
+             "ctrl+l", cursors::new_to_all_search_matches,
 
-             "alt+n", Action::search_next_match,
-             "alt+N", Action::search_prev_match,
+             "alt+n", search::next_match,
+             "alt+N", search::prev_match,
              "alt+m", movement::goto_matching_pair,
 
-             "alt+k", Action::complete,
+             "alt+k", completion::complete,
         );
 
         map
@@ -83,15 +83,15 @@ impl Keymap {
 
         #[rustfmt::skip]
         map!(map,
-             "ctrl+c", Action::prompt_close,
-             "backspace", Action::prompt_remove_grapheme_before_cursor,
-             "left", Action::prompt_prev_grapheme,
-             "right", Action::prompt_next_grapheme,
-             "tab", Action::prompt_next_completion,
-             "btab", Action::prompt_prev_completion,
-             "enter", Action::prompt_confirm,
-             "up", Action::prompt_history_prev,
-             "down", Action::prompt_history_next,
+             "ctrl+c", prompt::close,
+             "backspace", prompt::remove_grapheme_before_cursor,
+             "left", prompt::prev_grapheme,
+             "right", prompt::next_grapheme,
+             "tab", prompt::next_completion,
+             "btab", prompt::prev_completion,
+             "enter", prompt::confirm,
+             "up", prompt::history_prev,
+             "down", prompt::history_next,
         );
 
         map
@@ -104,18 +104,18 @@ impl Keymap {
 
         #[rustfmt::skip]
         map!(map,
-             "ctrl+c", Action::search_close,
-             "backspace", Action::search_remove_grapheme_before_cursor,
-             "left", Action::search_prev_grapheme,
-             "right", Action::search_next_grapheme,
-             "enter", Action::search_confirm,
-             "ctrl+enter", Action::search_confirm_all,
-             "alt+enter", Action::search_confirm_all,
-             "up", Action::search_history_prev,
-             "down", Action::search_history_next,
+             "ctrl+c", search::close,
+             "backspace", search::remove_grapheme_before_cursor,
+             "left", search::prev_grapheme,
+             "right", search::next_grapheme,
+             "enter", search::confirm,
+             "ctrl+enter", search::confirm_all,
+             "alt+enter", search::confirm_all,
+             "up", search::history_prev,
+             "down", search::history_next,
 
-             // "ctrl+r", Action::search_toggle_regex,
-             // "ctrl+s", Action::search_toggle_select,
+             // "ctrl+r", search::toggle_regex,
+             // "ctrl+s", search::toggle_select,
         );
 
         map

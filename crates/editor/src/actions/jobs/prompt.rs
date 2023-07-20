@@ -3,7 +3,7 @@ use std::{any::Any, mem, path::PathBuf, sync::Arc};
 use tokio::{fs, io};
 
 use crate::{
-    actions::prompt::prompt_provide_completions,
+    actions::prompt,
     editor::{jobs::Job, Editor},
     server::{ClientId, JobFutureFn, JobId, JobProgress, JobProgressSender},
 };
@@ -52,7 +52,7 @@ pub(crate) fn list_files_prompt_provide_completions(editor: &mut Editor, id: Cli
     let jobs = &mut editor.jobs;
     let on_output = Arc::new(|editor: &mut Editor, id: ClientId, out: Box<dyn Any>| {
         if let Ok(output) = out.downcast::<Vec<String>>() {
-            prompt_provide_completions(editor, id, *output);
+            prompt::provide_completions(editor, id, *output);
         }
     });
     let job = Job::new(id, fun).on_output(on_output);

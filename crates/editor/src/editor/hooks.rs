@@ -6,7 +6,7 @@ use std::{
     },
 };
 
-use crate::actions::Action;
+use crate::actions::{search, Action};
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub(crate) enum Hook {
@@ -85,8 +85,8 @@ impl Default for Hooks {
             hook_types: HashMap::new(),
             hooks: HashMap::new(),
         };
-        hooks.register(Hook::InsertCharPre, Action::search_clear_matches);
-        hooks.register(Hook::RemoveCharPre, Action::search_clear_matches);
+        hooks.register(Hook::InsertCharPre, search::clear_matches);
+        hooks.register(Hook::RemoveCharPre, search::clear_matches);
         hooks.register(
             Hook::CursorMoved,
             Action::Dynamic {

@@ -10,14 +10,16 @@ use crate::{
     server::ClientId,
 };
 
-pub(crate) fn search_forward(editor: &mut Editor, id: ClientId) {
+#[action("Search forward")]
+fn forward(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.search = Search::new("Search");
     win.search.prompt.on_confirm = Some(Rc::new(search));
     win.focus = Focus::Search;
 }
 
-pub(crate) fn search_backward(editor: &mut Editor, id: ClientId) {
+#[action("Search backwards")]
+fn backward(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.search = Search::new("BSearch");
     win.search.direction = SearchDirection::Backward;
@@ -25,7 +27,8 @@ pub(crate) fn search_backward(editor: &mut Editor, id: ClientId) {
     win.focus = Focus::Search;
 }
 
-pub(crate) fn search_close(editor: &mut Editor, id: ClientId) {
+#[action("Close search")]
+fn close(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     if let Some(on_abort) = win.search.prompt.on_abort.clone() {
         let input = win.search.prompt.input_or_selected();
@@ -36,11 +39,13 @@ pub(crate) fn search_close(editor: &mut Editor, id: ClientId) {
     win.focus = Focus::Window;
 }
 
-pub(crate) fn search_confirm_all(_editor: &mut Editor, _id: ClientId) {
+#[action("Find all matches")]
+fn confirm_all(_editor: &mut Editor, _id: ClientId) {
     log::info!("Hello world");
 }
 
-pub(crate) fn search_confirm(editor: &mut Editor, id: ClientId) {
+#[action("Find next match")]
+fn confirm(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     if let Some(on_confirm) = win.search.prompt.on_confirm.clone() {
         let input = win.search.prompt.input_or_selected();
@@ -52,17 +57,20 @@ pub(crate) fn search_confirm(editor: &mut Editor, id: ClientId) {
     win.focus = Focus::Window;
 }
 
-pub(crate) fn search_next_grapheme(editor: &mut Editor, id: ClientId) {
+#[action("Move cursor one character right")]
+fn next_grapheme(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.search.prompt.next_grapheme();
 }
 
-pub(crate) fn search_prev_grapheme(editor: &mut Editor, id: ClientId) {
+#[action("Move cursor one character left")]
+fn prev_grapheme(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.search.prompt.prev_grapheme();
 }
 
-pub(crate) fn search_remove_grapheme_before_cursor(editor: &mut Editor, id: ClientId) {
+#[action("Remove character before cursor")]
+fn remove_grapheme_before_cursor(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.search.prompt.remove_grapheme_before_cursor();
 
@@ -72,28 +80,33 @@ pub(crate) fn search_remove_grapheme_before_cursor(editor: &mut Editor, id: Clie
     }
 }
 
-pub(crate) fn search_history_next(editor: &mut Editor, id: ClientId) {
+#[action("Select next history entry")]
+fn history_next(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.search.prompt.history_next();
 }
 
-pub(crate) fn search_history_prev(editor: &mut Editor, id: ClientId) {
+#[action("Select previous history entry")]
+fn history_prev(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.search.prompt.history_prev();
 }
 
-pub(crate) fn search_clear_matches(editor: &mut Editor, id: ClientId) {
+#[action("Clear match highlighting")]
+fn clear_matches(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.search.cmatch = None;
 }
 
-pub(crate) fn search_next_match(editor: &mut Editor, id: ClientId) {
+#[action("Goto next match")]
+fn next_match(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     let input = win.search.prompt.input().to_string();
     search(editor, id, &input);
 }
 
-pub(crate) fn search_prev_match(editor: &mut Editor, id: ClientId) {
+#[action("Goto previous match")]
+fn prev_match(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     let input = win.search.prompt.input().to_string();
 

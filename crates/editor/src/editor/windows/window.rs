@@ -17,7 +17,7 @@ use crate::{
         movement::{self, prev_grapheme_boundary},
     },
     editor::{
-        buffers::{Buffer, BufferId, SnapshotData},
+        buffers::{Buffer, BufferId, SnapshotData, SortedRanges},
         keymap::Keymap,
     },
 };
@@ -215,6 +215,14 @@ impl Window {
     }
 
     fn remove_cursor_selections(&mut self, buf: &mut Buffer) -> bool {
+        let selections: SortedRanges = (&self.cursors).into();
+        if selections.is_empty() {
+            return false;
+        }
+
+        buf.remove_multi(selections);
+        self.store_snapshot_data(buf);
+
         let mut removed = 0;
         for cursor in self.cursors.cursors_mut() {
             if let Some(mut sel) = cursor.take_selection() {
@@ -223,25 +231,17 @@ impl Window {
 
                 removed += sel.len();
                 cursor.goto(sel.start);
-                buf.remove(sel);
             }
         }
 
-        if removed != 0 {
-            self.invalidate_view();
-        }
-
-        removed != 0
-    }
-
-    fn get_data(&self) -> SnapshotData {
-        todo!()
+        self.invalidate_view();
+        true
     }
 
     pub fn insert_at_cursors(&mut self, buf: &mut Buffer, text: &str) {
         self.remove_cursor_selections(buf);
-        let mut poss: Vec<usize> = self.cursors.cursors().iter().map(|c| c.pos()).collect();
-        buf.insert_multi(&mut poss, text);
+        buf.insert_multi((&self.cursors).into(), text);
+        self.store_snapshot_data(buf);
 
         let mut inserted = 0;
         for cursor in self.cursors.cursors_mut() {
@@ -279,8 +279,7 @@ impl Window {
                 self.invalidate_view();
             }
             Ok(None) => {
-                // Try to keep current cursors
-                self.cursors.keep_in_range(0..buf.len() + 1);
+                self.cursors = Cursors::default();
                 self.invalidate_view();
             }
             Err(msg) => self.warn_msg(msg),
@@ -295,8 +294,7 @@ impl Window {
                 self.invalidate_view();
             }
             Ok(None) => {
-                // Try to keep current cursors
-                self.cursors.keep_in_range(0..buf.len() + 1);
+                self.cursors = Cursors::default();
                 self.invalidate_view();
             }
             Err(msg) => self.warn_msg(msg),
@@ -324,13 +322,27 @@ impl Window {
             return;
         }
 
+        let ranges: SortedRanges = {
+            let mut ranges = vec![];
+
+            for cursor in self.cursors.cursors_mut() {
+                let cpos = cursor.pos();
+                let pos = movement::prev_grapheme_boundary(&buf.slice(..), cpos);
+                ranges.push(pos..cpos);
+            }
+
+            ranges.into()
+        };
+
+        buf.remove_multi(ranges);
+        self.store_snapshot_data(buf);
+
         let mut removed = 0;
         for cursor in self.cursors.cursors_mut() {
             let cpos = cursor.pos() - removed;
             let pos = movement::prev_grapheme_boundary(&buf.slice(..), cpos);
 
             cursor.goto(pos);
-            buf.remove(pos..cpos);
             removed += cpos - pos;
         }
 

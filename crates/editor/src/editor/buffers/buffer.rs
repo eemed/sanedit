@@ -2,6 +2,7 @@ mod change;
 mod cursor;
 mod options;
 mod snapshots;
+mod sorted;
 
 use std::{
     borrow::Cow,
@@ -10,7 +11,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use sanedit_buffer::{PieceTree, PieceTreeSlice, ReadOnlyPieceTree};
+use sanedit_buffer::{PieceTree, PieceTreeSlice, ReadOnlyPieceTree, SortedPositions};
 use sanedit_regex::Cursor;
 
 use crate::common::file::File;
@@ -22,10 +23,13 @@ use self::{
     snapshots::Snapshots,
 };
 pub(crate) use snapshots::SnapshotData;
+pub(crate) use sorted::SortedRanges;
 
 slotmap::new_key_type!(
     pub(crate) struct BufferId;
 );
+
+pub(crate) type BufferRange = Range<usize>;
 
 #[derive(Debug)]
 pub(crate) struct Buffer {
@@ -132,9 +136,18 @@ impl Buffer {
         self.last_change.as_ref()
     }
 
-    fn prepare_change(&mut self, kind: ChangeKind) -> Change {
-        let last_kind = self.last_change.as_ref().map(|c| &c.kind);
-        let change = Change::new(last_kind, kind, self.is_modified);
+    fn prepare_change(&mut self, kind: ChangeKind, ranges: SortedRanges) -> Change {
+        self.prepare_change_impl(kind, ranges, true)
+    }
+
+    fn prepare_change_impl(
+        &mut self,
+        kind: ChangeKind,
+        ranges: SortedRanges,
+        allow_undo_point: bool,
+    ) -> Change {
+        let last = self.last_change.as_ref();
+        let change = Change::new(last, self.is_modified, allow_undo_point, kind, ranges);
 
         if change.needs_undo_point {
             let snap = self.pt.read_only_copy();
@@ -145,37 +158,31 @@ impl Buffer {
     }
 
     pub fn undo(&mut self) -> Result<Option<SnapshotData>, &str> {
-        if !self.snapshots.has_undo() {
-            return Err("No more undo points");
+        let change = self.prepare_change(ChangeKind::Undo, vec![].into());
+        if let Some(node) = self.snapshots.undo() {
+            self.is_modified = node.idx != self.last_saved_snapshot;
+            self.last_change = change.into();
+            self.pt.restore(node.snapshot);
+            Ok(node.data)
+        } else {
+            Err("No more undo points")
         }
-
-        let change = self.prepare_change(ChangeKind::Undo);
-        let node = self.snapshots.undo().unwrap();
-        self.is_modified = node.idx != self.last_saved_snapshot;
-        self.last_change = change.into();
-        self.pt.restore(node.snapshot);
-        Ok(node.data)
     }
 
     pub fn redo(&mut self) -> Result<Option<SnapshotData>, &str> {
-        if !self.snapshots.has_redo() {
-            return Err("No more redo points");
+        let change = self.prepare_change(ChangeKind::Redo, vec![].into());
+        if let Some(node) = self.snapshots.redo() {
+            self.is_modified = node.idx != self.last_saved_snapshot;
+            self.last_change = change.into();
+            self.pt.restore(node.snapshot);
+            Ok(node.data)
+        } else {
+            Err("No more redo points")
         }
-
-        let change = self.prepare_change(ChangeKind::Redo);
-        let node = self.snapshots.redo().unwrap();
-        self.is_modified = node.idx != self.last_saved_snapshot;
-        self.last_change = change.into();
-        self.pt.restore(node.snapshot);
-        Ok(node.data)
     }
 
     pub fn remove(&mut self, range: Range<usize>) {
-        let kind = ChangeKind::Remove {
-            pos: range.start,
-            len: range.len(),
-        };
-        let change = self.prepare_change(kind);
+        let change = self.prepare_change(ChangeKind::Remove, vec![range.clone()].into());
 
         self.pt.remove(range);
         self.is_modified = true;
@@ -183,25 +190,31 @@ impl Buffer {
     }
 
     pub fn append<B: AsRef<[u8]>>(&mut self, bytes: B) {
-        self.pt.insert(self.pt.len(), bytes);
+        self.insert_multi(self.pt.len().into(), bytes)
     }
 
     pub fn insert<B: AsRef<[u8]>>(&mut self, pos: usize, bytes: B) {
-        let bytes = bytes.as_ref();
-        let kind = ChangeKind::insert(pos, bytes);
-        let change = self.prepare_change(kind);
+        self.insert_multi(pos.into(), bytes)
+    }
 
-        self.pt.insert(pos, bytes);
+    pub fn insert_multi<B: AsRef<[u8]>>(&mut self, pos: SortedPositions, bytes: B) {
+        let bytes = bytes.as_ref();
+        let kind = ChangeKind::insert(bytes);
+        let ranges: Vec<BufferRange> = pos.iter().map(|pos| *pos..pos + bytes.len()).collect();
+        let change = self.prepare_change(kind, ranges.into());
+
+        self.pt.insert_multi(pos, bytes);
         self.is_modified = true;
         self.last_change = change.into();
     }
 
-    pub fn insert_multi<B: AsRef<[u8]>>(&mut self, pos: &mut [usize], bytes: B) {
-        let bytes = bytes.as_ref();
-        let kind = ChangeKind::insert(pos[0], bytes);
-        let change = self.prepare_change(kind);
+    pub fn remove_multi(&mut self, ranges: SortedRanges) {
+        let change = self.prepare_change(ChangeKind::Remove, ranges);
 
-        self.pt.insert_multi(pos, bytes);
+        for change in change.positions.iter().rev() {
+            self.pt.remove(change.clone());
+        }
+
         self.is_modified = true;
         self.last_change = change.into();
     }

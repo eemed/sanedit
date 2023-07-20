@@ -2,6 +2,7 @@ pub(crate) mod buffers;
 pub(crate) mod builder;
 pub(crate) mod bytes;
 pub(crate) mod chunks;
+pub(crate) mod positions;
 pub(crate) mod slice;
 pub(crate) mod tree;
 pub(crate) mod utf8;
@@ -25,6 +26,7 @@ use buffers::OriginalBuffer;
 use self::slice::PieceTreeSlice;
 use self::utf8::chars::Chars;
 use crate::piece_tree::bytes::Bytes;
+pub use positions::SortedPositions;
 
 pub(crate) const FILE_BACKED_MAX_PIECE_SIZE: usize = 1024 * 256;
 
@@ -135,14 +137,11 @@ impl PieceTree {
     /// insertion would create a new piece because the content in add buffer
     /// would not be sequential. Creating M x N pieces where M is the number of
     /// cursors and N is the number of edits characters.
-    pub fn insert_multi<B: AsRef<[u8]>>(&mut self, positions: &mut [usize], bytes: B) {
+    pub fn insert_multi<B: AsRef<[u8]>>(&mut self, positions: SortedPositions, bytes: B) {
         let mut bytes = bytes.as_ref();
         if bytes.is_empty() {
             return;
         }
-
-        // Sort and insert in reverse so positions do not change
-        positions.sort();
 
         while !bytes.is_empty() {
             let bpos = self.add_writer.len();

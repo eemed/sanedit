@@ -1,10 +1,11 @@
 mod cursor;
 
-use std::{cmp::min, ops::Range};
+use std::cmp::min;
 
 pub(crate) use cursor::Cursor;
+use sanedit_buffer::SortedPositions;
 
-use crate::common::range::RangeUtils;
+use crate::{common::range::RangeUtils, editor::buffers::SortedRanges};
 
 #[derive(Debug, Clone)]
 pub(crate) struct Cursors {
@@ -132,25 +133,6 @@ impl Cursors {
             self.primary = 0;
         }
     }
-
-    /// Keep cursors in this range. If all the cursors would be cleared keep one
-    /// at the start of this range.
-    pub fn keep_in_range(&mut self, range: Range<usize>) {
-        self.cursors.retain(|cursor| {
-            if let Some(sel) = cursor.selection() {
-                range.includes(&sel)
-            } else {
-                range.contains(&cursor.pos())
-            }
-        });
-
-        if self.cursors.is_empty() {
-            self.push_primary(Cursor::new(range.start));
-        }
-
-        // Ensure primary is in range
-        self.primary = self.primary.min(self.cursors.len().saturating_sub(1));
-    }
 }
 
 impl Default for Cursors {
@@ -159,5 +141,28 @@ impl Default for Cursors {
             cursors: vec![Cursor::default()],
             primary: 0,
         }
+    }
+}
+
+impl From<&Cursors> for SortedPositions<'static> {
+    /// Crate Sorted ranges from all of the cursors selections
+    fn from(cursors: &Cursors) -> Self {
+        let positions: Vec<usize> = cursors.cursors().iter().map(|c| c.pos()).collect();
+        positions.into()
+    }
+}
+
+impl From<&Cursors> for SortedRanges {
+    /// Crate Sorted ranges from all of the cursors selections
+    fn from(cursors: &Cursors) -> Self {
+        let mut selections = vec![];
+
+        for cursor in cursors.cursors() {
+            if let Some(sel) = cursor.selection() {
+                selections.push(sel);
+            }
+        }
+
+        selections.into()
     }
 }

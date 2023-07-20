@@ -74,6 +74,7 @@ impl Keymap {
 
              "ctrl+z", text::undo,
              "ctrl+r", text::redo,
+             "ctrl+b", cursors::start_selection,
         );
 
         map

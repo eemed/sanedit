@@ -17,7 +17,7 @@ use crate::{
         movement::{self, prev_grapheme_boundary},
     },
     editor::{
-        buffers::{Buffer, BufferId},
+        buffers::{Buffer, BufferId, SnapshotData},
         keymap::Keymap,
     },
 };
@@ -234,6 +234,10 @@ impl Window {
         removed != 0
     }
 
+    fn get_data(&self) -> SnapshotData {
+        todo!()
+    }
+
     pub fn insert_at_cursors(&mut self, buf: &mut Buffer, text: &str) {
         self.remove_cursor_selections(buf);
         let mut poss: Vec<usize> = self.cursors.cursors().iter().map(|c| c.pos()).collect();
@@ -268,21 +272,51 @@ impl Window {
     }
 
     pub fn undo(&mut self, buf: &mut Buffer) {
-        if buf.undo() {
-            self.cursors.keep_in_range(0..buf.len() + 1);
-            self.invalidate_view();
-        } else {
-            self.warn_msg("No more undo points");
+        match buf.undo() {
+            Ok(Some(sdata)) => {
+                self.cursors = sdata.cursors;
+                self.view.set_offset(sdata.view_offset);
+                self.invalidate_view();
+            }
+            Ok(None) => {
+                // Try to keep current cursors
+                self.cursors.keep_in_range(0..buf.len() + 1);
+                self.invalidate_view();
+            }
+            Err(msg) => self.warn_msg(msg),
         }
     }
 
     pub fn redo(&mut self, buf: &mut Buffer) {
-        if buf.redo() {
-            self.cursors.keep_in_range(0..buf.len() + 1);
-            self.invalidate_view();
-        } else {
-            self.warn_msg("No more redo points");
+        match buf.redo() {
+            Ok(Some(sdata)) => {
+                self.cursors = sdata.cursors;
+                self.view.set_offset(sdata.view_offset);
+                self.invalidate_view();
+            }
+            Ok(None) => {
+                // Try to keep current cursors
+                self.cursors.keep_in_range(0..buf.len() + 1);
+                self.invalidate_view();
+            }
+            Err(msg) => self.warn_msg(msg),
         }
+    }
+
+    fn store_snapshot_data(&self, buf: &mut Buffer) {
+        let created_undo_point = buf
+            .last_change()
+            .map(|ch| ch.needs_undo_point)
+            .unwrap_or(false);
+        if !created_undo_point {
+            return;
+        }
+
+        let sdata = SnapshotData {
+            cursors: self.cursors.clone(),
+            view_offset: self.view.start(),
+        };
+        buf.store_snapshot_data(sdata);
     }
 
     pub fn remove_grapheme_before_cursors(&mut self, buf: &mut Buffer) {

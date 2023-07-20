@@ -1,39 +1,64 @@
-use std::ops::{Range, RangeBounds};
-
 use sanedit_buffer::utf8::EndOfLine;
 
+/// Describes what changed in the buffer when the change was made.
 #[derive(Debug, Clone)]
-pub(crate) enum Change {
+pub(crate) struct Change {
+    pub(crate) needs_undo_point: bool,
+    pub(crate) kind: ChangeKind,
+}
+
+impl Change {
+    pub fn new(prev: Option<&ChangeKind>, next: ChangeKind, is_modified: bool) -> Change {
+        let needs_undo_point = needs_undo_point(prev, &next, is_modified);
+        Change {
+            kind: next,
+            needs_undo_point,
+        }
+    }
+}
+
+fn needs_undo_point(prev: Option<&ChangeKind>, next: &ChangeKind, is_modified: bool) -> bool {
+    use ChangeKind::*;
+
+    if !is_modified || prev.is_none() {
+        return false;
+    }
+
+    match (prev.unwrap(), next) {
+        (
+            Insert {
+                pos: ppos,
+                len: plen,
+                ..
+            },
+            Insert { pos, eol, .. },
+        ) => {
+            let pend = ppos + plen;
+            *eol || pend != *pos
+        }
+        (Remove { pos: ppos, .. }, Remove { pos, len }) => {
+            let end = pos + len;
+            *ppos != end
+        }
+        (Redo | Undo, _) => false,
+        (_, Insert { eol, .. }) => *eol,
+        _ => true,
+    }
+}
+
+#[derive(Debug, Clone)]
+pub(crate) enum ChangeKind {
     Insert { pos: usize, len: usize, eol: bool },
     Remove { pos: usize, len: usize },
     Undo,
     Redo,
 }
 
-impl Change {
-    pub fn remove<R: RangeBounds<usize>>(range: R, buf: Range<usize>) -> Change {
-        use std::ops::Bound::*;
-        let start = match range.start_bound() {
-            Included(n) => *n,
-            Excluded(n) => *n + 1,
-            Unbounded => 0,
-        };
-        let end = match range.end_bound() {
-            Included(n) => *n + 1,
-            Excluded(n) => *n,
-            Unbounded => buf.end,
-        };
-
-        Change::Remove {
-            pos: start,
-            len: end - start,
-        }
-    }
-
-    pub fn insert<B: AsRef<[u8]>>(pos: usize, bytes: B) -> Change {
+impl ChangeKind {
+    pub fn insert<B: AsRef<[u8]>>(pos: usize, bytes: B) -> ChangeKind {
         let bytes = bytes.as_ref();
         let eol = EndOfLine::is_eol(bytes);
         let len = bytes.len();
-        Change::Insert { pos, len, eol }
+        ChangeKind::Insert { pos, len, eol }
     }
 }

@@ -1,6 +1,12 @@
-use std::time;
-
 use sanedit_buffer::ReadOnlyPieceTree;
+
+use crate::editor::windows::Cursors;
+
+#[derive(Debug, Clone)]
+pub(crate) struct SnapshotData {
+    pub(crate) cursors: Cursors,
+    pub(crate) view_offset: usize,
+}
 
 /// Snapshots contains snapshots of buffer contents that can be used as undo and
 /// redo points.
@@ -27,22 +33,40 @@ impl Snapshots {
         self.current = next_idx;
     }
 
-    pub fn undo(&mut self) -> Option<SnapshotNode> {
+    fn undo_index(&self) -> Option<usize> {
         let node = self.snapshots.get(self.current)?;
-        // Latest has largest index
-        let latest = node.previous.iter().max()?;
-        let node = self.snapshots.get(*latest)?;
+        node.previous.iter().max().cloned()
+    }
+
+    pub fn undo(&mut self) -> Option<SnapshotNode> {
+        let latest = self.undo_index()?;
+        let node = self.snapshots.get(latest)?;
         self.current = node.idx;
         node.clone().into()
     }
 
-    pub fn redo(&mut self) -> Option<SnapshotNode> {
+    fn redo_index(&self) -> Option<usize> {
         let node = self.snapshots.get(self.current)?;
-        // Latest has largest index
-        let latest = node.next.iter().max()?;
-        let node = self.snapshots.get(*latest)?;
+        node.next.iter().max().cloned()
+    }
+
+    pub fn redo(&mut self) -> Option<SnapshotNode> {
+        let latest = self.redo_index()?;
+        let node = self.snapshots.get(latest)?;
         self.current = node.idx;
         node.clone().into()
+    }
+
+    pub fn has_redo(&self) -> bool {
+        self.redo_index().is_some()
+    }
+
+    pub fn has_undo(&self) -> bool {
+        self.undo_index().is_some()
+    }
+
+    pub fn set_current_data(&mut self, sdata: SnapshotData) {
+        self.snapshots[self.current].data = Some(sdata);
     }
 }
 
@@ -50,9 +74,11 @@ impl Snapshots {
 pub(crate) struct SnapshotNode {
     pub(crate) idx: usize,
     pub(crate) snapshot: ReadOnlyPieceTree,
-    pub(crate) timestamp: time::Instant,
     previous: Vec<usize>,
     next: Vec<usize>,
+
+    /// Extra data we can save to a snapshot
+    pub(crate) data: Option<SnapshotData>,
 }
 
 impl SnapshotNode {
@@ -60,9 +86,10 @@ impl SnapshotNode {
         SnapshotNode {
             idx,
             snapshot,
-            timestamp: time::Instant::now(),
             previous: vec![],
             next: vec![],
+
+            data: None,
         }
     }
 }

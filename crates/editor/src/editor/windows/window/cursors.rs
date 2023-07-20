@@ -133,8 +133,8 @@ impl Cursors {
         }
     }
 
-    // Keep cursors in this range. If all the cursors would be cleared keep one
-    // at the start of this range.
+    /// Keep cursors in this range. If all the cursors would be cleared keep one
+    /// at the start of this range.
     pub fn keep_in_range(&mut self, range: Range<usize>) {
         self.cursors.retain(|cursor| {
             if let Some(sel) = cursor.selection() {

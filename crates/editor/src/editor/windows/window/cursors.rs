@@ -1,6 +1,6 @@
 mod cursor;
 
-use std::cmp::min;
+use std::{cmp::min, ops::Range};
 
 pub(crate) use cursor::Cursor;
 
@@ -131,6 +131,25 @@ impl Cursors {
         if self.primary >= self.cursors.len() {
             self.primary = 0;
         }
+    }
+
+    // Keep cursors in this range. If all the cursors would be cleared keep one
+    // at the start of this range.
+    pub fn keep_in_range(&mut self, range: Range<usize>) {
+        self.cursors.retain(|cursor| {
+            if let Some(sel) = cursor.selection() {
+                range.includes(&sel)
+            } else {
+                range.contains(&cursor.pos())
+            }
+        });
+
+        if self.cursors.is_empty() {
+            self.push_primary(Cursor::new(range.start));
+        }
+
+        // Ensure primary is in range
+        self.primary = self.primary.min(self.cursors.len().saturating_sub(1));
     }
 }
 

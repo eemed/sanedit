@@ -65,7 +65,6 @@ impl ClientDrawState {
             Window(Close) => diffable_close!(self.window),
             Statusline(Open(status)) => diffable_open!(self.statusline, status),
             Statusline(Close) => diffable_close!(self.statusline),
-            StatusMessage(msg) => if_changed!(self.msg, msg),
             _ => {}
         }
 

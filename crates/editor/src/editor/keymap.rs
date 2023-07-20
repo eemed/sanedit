@@ -71,6 +71,9 @@ impl Keymap {
              "alt+m", movement::goto_matching_pair,
 
              "alt+k", completion::complete,
+
+             "ctrl+z", text::undo,
+             "ctrl+r", text::redo,
         );
 
         map

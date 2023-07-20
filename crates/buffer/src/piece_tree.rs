@@ -331,6 +331,11 @@ impl PieceTree {
     }
 
     #[inline]
+    pub fn restore(&mut self, ro: ReadOnlyPieceTree) {
+        self.pt = ro;
+    }
+
+    #[inline]
     pub(crate) fn tree(&self) -> &Tree {
         &self.pt.tree
     }

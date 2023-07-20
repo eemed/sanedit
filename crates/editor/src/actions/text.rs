@@ -19,9 +19,17 @@ fn remove_grapheme_before_cursor(editor: &mut Editor, id: ClientId) {
     win.remove_grapheme_before_cursors(buf);
 }
 
-pub(crate) fn undo(_editor: &mut Editor, _id: ClientId) {}
+#[action("Undo a change")]
+pub(crate) fn undo(editor: &mut Editor, id: ClientId) {
+    let (win, buf) = editor.win_buf_mut(id);
+    win.undo(buf);
+}
 
-pub(crate) fn redo(_editor: &mut Editor, _id: ClientId) {}
+#[action("Redo a change")]
+pub(crate) fn redo(editor: &mut Editor, id: ClientId) {
+    let (win, buf) = editor.win_buf_mut(id);
+    win.redo(buf);
+}
 
 pub(crate) fn insert(editor: &mut Editor, id: ClientId, text: &str) {
     let (win, _buf) = editor.win_buf_mut(id);

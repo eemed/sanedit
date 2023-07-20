@@ -267,6 +267,24 @@ impl Window {
         self.invalidate_view();
     }
 
+    pub fn undo(&mut self, buf: &mut Buffer) {
+        if buf.undo() {
+            self.cursors.keep_in_range(0..buf.len() + 1);
+            self.invalidate_view();
+        } else {
+            self.warn_msg("No more undo points");
+        }
+    }
+
+    pub fn redo(&mut self, buf: &mut Buffer) {
+        if buf.redo() {
+            self.cursors.keep_in_range(0..buf.len() + 1);
+            self.invalidate_view();
+        } else {
+            self.warn_msg("No more redo points");
+        }
+    }
+
     pub fn remove_grapheme_before_cursors(&mut self, buf: &mut Buffer) {
         if self.remove_cursor_selections(buf) {
             return;

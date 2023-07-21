@@ -2,7 +2,9 @@ mod buffer;
 
 use slotmap::SlotMap;
 
-pub(crate) use self::buffer::{Buffer, BufferId, SnapshotData, SortedRanges};
+pub(crate) use self::buffer::{
+    Buffer, BufferId, Change, ChangeKind, SnapshotData, SnapshotId, SortedRanges,
+};
 
 #[derive(Debug, Default)]
 pub(crate) struct Buffers {

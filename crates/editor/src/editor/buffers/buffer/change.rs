@@ -1,11 +1,16 @@
 use sanedit_buffer::utf8::EndOfLine;
 
-use super::SortedRanges;
+use super::{SnapshotData, SnapshotId, SortedRanges};
 
 /// Describes what changed in the buffer when the change was made.
 #[derive(Debug, Clone)]
 pub(crate) struct Change {
-    pub(crate) undo_point: Option<usize>,
+    /// Created snapshot position
+    pub(crate) created_snapshot: Option<SnapshotId>,
+
+    /// If kind redo or undo the stored snapshot data.
+    pub(crate) restored_snapshot: Option<SnapshotData>,
+
     pub(crate) positions: SortedRanges,
     pub(crate) kind: ChangeKind,
 }
@@ -20,11 +25,12 @@ impl Change {
     ) -> (Change, bool) {
         let needs_undo_point =
             allow_undo_point && needs_undo_point(prev, is_modified, &kind, &ranges);
-        log::info!("NEEDS UNDO {kind:?}, needs_undo_point: {needs_undo_point}");
+        log::info!("NW: {needs_undo_point}");
         let change = Change {
             kind,
             positions: ranges,
-            undo_point: None,
+            created_snapshot: None,
+            restored_snapshot: None,
         };
         (change, needs_undo_point)
     }
@@ -82,6 +88,7 @@ fn needs_undo_point(
 
             false
         }
+        (_, Redo) => false,
         (Redo | Undo, _) => false,
         _ => true,
     }

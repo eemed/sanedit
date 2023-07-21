@@ -9,6 +9,7 @@ mod view;
 
 use std::ops::Range;
 
+use sanedit_buffer::SortedPositions;
 use sanedit_messages::redraw::{Severity, Size, StatusMessage};
 
 use crate::{
@@ -214,14 +215,34 @@ impl Window {
         }
     }
 
+    fn snapshot_data(&self) -> SnapshotData {
+        SnapshotData {
+            cursors: self.cursors.clone(),
+            view_offset: self.view.start(),
+        }
+    }
+
+    fn remove(&mut self, buf: &mut Buffer, ranges: &SortedRanges) {
+        let change = buf.remove_multi(ranges);
+        if let Some(id) = change.created_snapshot {
+            buf.store_snapshot_data(id, self.snapshot_data());
+        }
+    }
+
+    fn insert(&mut self, buf: &mut Buffer, positions: &SortedPositions, text: &str) {
+        let change = buf.insert_multi(positions, text);
+        if let Some(id) = change.created_snapshot {
+            buf.store_snapshot_data(id, self.snapshot_data());
+        }
+    }
+
     fn remove_cursor_selections(&mut self, buf: &mut Buffer) -> bool {
         let selections: SortedRanges = (&self.cursors).into();
         if selections.is_empty() {
             return false;
         }
 
-        buf.remove_multi(&selections);
-        self.store_snapshot_data(buf);
+        self.remove(buf, &selections);
 
         let mut removed = 0;
         for cursor in self.cursors.cursors_mut() {
@@ -240,8 +261,7 @@ impl Window {
 
     pub fn insert_at_cursors(&mut self, buf: &mut Buffer, text: &str) {
         self.remove_cursor_selections(buf);
-        buf.insert_multi((&self.cursors).into(), text);
-        self.store_snapshot_data(buf);
+        self.insert(buf, &(&self.cursors).into(), text);
 
         let mut inserted = 0;
         for cursor in self.cursors.cursors_mut() {
@@ -273,15 +293,22 @@ impl Window {
 
     pub fn undo(&mut self, buf: &mut Buffer) {
         match buf.undo() {
-            Ok(Some(sdata)) => {
-                self.store_snapshot_data(buf);
-                self.cursors = sdata.cursors;
-                self.view.set_offset(sdata.view_offset);
-                self.invalidate_view();
-            }
-            Ok(None) => {
-                self.store_snapshot_data(buf);
-                self.cursors = Cursors::default();
+            Ok(change) => {
+                let created_snapshot = change.created_snapshot;
+                let restored_snapshot = change.restored_snapshot.clone();
+
+                if let Some(id) = created_snapshot {
+                    buf.store_snapshot_data(id, self.snapshot_data());
+                }
+
+                if let Some(ref sdata) = restored_snapshot {
+                    self.cursors = sdata.cursors.clone();
+                    self.view.set_offset(sdata.view_offset);
+                } else {
+                    self.cursors = Cursors::default();
+                    self.view.set_offset(0);
+                }
+
                 self.invalidate_view();
             }
             Err(msg) => self.warn_msg(msg),
@@ -290,36 +317,26 @@ impl Window {
 
     pub fn redo(&mut self, buf: &mut Buffer) {
         match buf.redo() {
-            Ok(Some(sdata)) => {
-                self.cursors = sdata.cursors;
-                self.view.set_offset(sdata.view_offset);
-                self.invalidate_view();
-            }
-            Ok(None) => {
-                self.cursors = Cursors::default();
+            Ok(change) => {
+                let created_snapshot = change.created_snapshot;
+                let restored_snapshot = change.restored_snapshot.clone();
+
+                if let Some(id) = created_snapshot {
+                    buf.store_snapshot_data(id, self.snapshot_data());
+                }
+
+                if let Some(ref sdata) = restored_snapshot {
+                    self.cursors = sdata.cursors.clone();
+                    self.view.set_offset(sdata.view_offset);
+                } else {
+                    self.cursors = Cursors::default();
+                    self.view.set_offset(0);
+                }
+
                 self.invalidate_view();
             }
             Err(msg) => self.warn_msg(msg),
         }
-    }
-
-    /// Stores view_offsets and cursor positions to snapshot if it was created
-    /// by the last change in the buffer
-    /// This should be called after and edit is made.
-    fn store_snapshot_data(&self, buf: &mut Buffer) {
-        let mut f = || {
-            let last = buf.last_change()?;
-            let idx = last.undo_point?;
-            let sdata = SnapshotData {
-                cursors: self.cursors.clone(),
-                view_offset: self.view.start(),
-            };
-
-            buf.store_snapshot_data(idx, sdata);
-            Some(())
-        };
-
-        f();
     }
 
     pub fn remove_grapheme_before_cursors(&mut self, buf: &mut Buffer) {
@@ -339,8 +356,7 @@ impl Window {
             ranges.into()
         };
 
-        buf.remove_multi(&ranges);
-        self.store_snapshot_data(buf);
+        self.remove(buf, &ranges);
 
         let mut removed = 0;
         for (i, range) in ranges.iter().enumerate() {

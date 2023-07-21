@@ -137,7 +137,7 @@ impl PieceTree {
     /// insertion would create a new piece because the content in add buffer
     /// would not be sequential. Creating M x N pieces where M is the number of
     /// cursors and N is the number of edits characters.
-    pub fn insert_multi<B: AsRef<[u8]>>(&mut self, positions: SortedPositions, bytes: B) {
+    pub fn insert_multi<B: AsRef<[u8]>>(&mut self, positions: &SortedPositions, bytes: B) {
         let mut bytes = bytes.as_ref();
         if bytes.is_empty() {
             return;

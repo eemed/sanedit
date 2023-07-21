@@ -8,11 +8,13 @@ pub(crate) struct SnapshotData {
     pub(crate) view_offset: usize,
 }
 
+pub(crate) type SnapshotId = usize;
+
 /// Snapshots contains snapshots of buffer contents that can be used as undo and
 /// redo points.
 #[derive(Debug)]
 pub(crate) struct Snapshots {
-    current: usize,
+    current: SnapshotId,
     snapshots: Vec<SnapshotNode>,
 }
 
@@ -24,52 +26,50 @@ impl Snapshots {
         }
     }
 
-    pub fn insert(&mut self, snapshot: ReadOnlyPieceTree) -> usize {
-        let next_idx = self.snapshots.len();
-        let mut node = SnapshotNode::new(snapshot, next_idx);
+    pub fn insert(&mut self, snapshot: ReadOnlyPieceTree) -> SnapshotId {
+        let next_pos = self.snapshots.len();
+        let mut node = SnapshotNode::new(snapshot, next_pos);
         node.previous.push(self.current);
-        self.snapshots[self.current].next.push(next_idx);
+        self.snapshots[self.current].next.push(next_pos);
         self.snapshots.push(node);
-        self.current = next_idx;
-        log::info!("insert new: {next_idx}");
+        self.current = next_pos;
         self.current
     }
 
-    fn undo_index(&self) -> Option<usize> {
+    fn undo_pos(&self) -> Option<SnapshotId> {
         let node = self.snapshots.get(self.current)?;
         node.previous.iter().max().cloned()
     }
 
     pub fn undo(&mut self) -> Option<SnapshotNode> {
-        let latest = self.undo_index()?;
+        let latest = self.undo_pos()?;
         let node = self.snapshots.get(latest)?;
-        self.current = node.idx;
+        self.current = node.id;
         node.clone().into()
     }
 
-    fn redo_index(&self) -> Option<usize> {
+    fn redo_pos(&self) -> Option<SnapshotId> {
         let node = self.snapshots.get(self.current)?;
         node.next.iter().max().cloned()
     }
 
     pub fn redo(&mut self) -> Option<SnapshotNode> {
-        let latest = self.redo_index()?;
+        let latest = self.redo_pos()?;
         let node = self.snapshots.get(latest)?;
-        self.current = node.idx;
+        self.current = node.id;
         node.clone().into()
     }
 
     pub fn has_redo(&self) -> bool {
-        self.redo_index().is_some()
+        self.redo_pos().is_some()
     }
 
     pub fn has_undo(&self) -> bool {
-        self.undo_index().is_some()
+        self.undo_pos().is_some()
     }
 
-    pub fn set_data(&mut self, idx: usize, sdata: SnapshotData) {
-        log::info!("set data: {idx}");
-        if let Some(snap) = self.snapshots.get_mut(idx) {
+    pub fn set_data(&mut self, id: SnapshotId, sdata: SnapshotData) {
+        if let Some(snap) = self.snapshots.get_mut(id) {
             snap.data = Some(sdata);
         }
     }
@@ -77,19 +77,19 @@ impl Snapshots {
 
 #[derive(Debug, Clone)]
 pub(crate) struct SnapshotNode {
-    pub(crate) idx: usize,
+    pub(crate) id: SnapshotId,
     pub(crate) snapshot: ReadOnlyPieceTree,
-    previous: Vec<usize>,
-    next: Vec<usize>,
+    previous: Vec<SnapshotId>,
+    next: Vec<SnapshotId>,
 
     /// Extra data we can save to a snapshot
     pub(crate) data: Option<SnapshotData>,
 }
 
 impl SnapshotNode {
-    pub fn new(snapshot: ReadOnlyPieceTree, idx: usize) -> SnapshotNode {
+    pub fn new(snapshot: ReadOnlyPieceTree, id: SnapshotId) -> SnapshotNode {
         SnapshotNode {
-            idx,
+            id,
             snapshot,
             previous: vec![],
             next: vec![],

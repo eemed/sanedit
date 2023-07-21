@@ -100,7 +100,7 @@ tasks:
     desc: Run code formatter on all files
     dir: crates
     cmds:
-      - cargo fix --workspace --allow-dirty --allow-staged
+      # - cargo fix --workspace --allow-dirty --allow-staged
       - cargo fmt
 
   check:

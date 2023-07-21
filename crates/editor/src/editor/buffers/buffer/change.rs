@@ -5,7 +5,7 @@ use super::SortedRanges;
 /// Describes what changed in the buffer when the change was made.
 #[derive(Debug, Clone)]
 pub(crate) struct Change {
-    pub(crate) needs_undo_point: bool,
+    pub(crate) undo_point: Option<usize>,
     pub(crate) positions: SortedRanges,
     pub(crate) kind: ChangeKind,
 }
@@ -17,16 +17,16 @@ impl Change {
         allow_undo_point: bool,
         kind: ChangeKind,
         ranges: SortedRanges,
-    ) -> Change {
+    ) -> (Change, bool) {
         let needs_undo_point =
             allow_undo_point && needs_undo_point(prev, is_modified, &kind, &ranges);
+        log::info!("NEEDS UNDO {kind:?}, needs_undo_point: {needs_undo_point}");
         let change = Change {
             kind,
-            needs_undo_point,
             positions: ranges,
+            undo_point: None,
         };
-        log::info!("new change: {allow_undo_point}, {change:?}");
-        change
+        (change, needs_undo_point)
     }
 }
 
@@ -37,10 +37,6 @@ fn needs_undo_point(
     ranges: &SortedRanges,
 ) -> bool {
     use ChangeKind::*;
-
-    if is_modified && prev.is_none() {
-        return true;
-    }
 
     if !is_modified || prev.is_none() {
         return false;
@@ -67,7 +63,6 @@ fn needs_undo_point(
 
             false
         }
-
         (Remove, Remove) => {
             if prev.positions.len() != ranges.len() {
                 return true;
@@ -78,8 +73,7 @@ fn needs_undo_point(
                 let prang = &prev.positions[i];
                 let crang = &ranges[i];
 
-                log::info!("REM REM: {prang:?} -- {crang:?}");
-                if crang.end != prang.start + rem {
+                if prang.start != crang.end + rem {
                     return true;
                 }
 

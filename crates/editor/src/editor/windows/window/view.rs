@@ -135,6 +135,7 @@ impl View {
     fn draw_line(&mut self, slice: &PieceTreeSlice, line: usize, pos: &mut usize) -> bool {
         let mut col = 0;
         let mut is_eol = false;
+        // TODO optimize
         let mut graphemes = slice.graphemes_at(*pos);
 
         while let Some(grapheme) = graphemes.next() {

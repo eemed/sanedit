@@ -220,7 +220,7 @@ impl Window {
             return false;
         }
 
-        buf.remove_multi(selections);
+        buf.remove_multi(&selections);
         self.store_snapshot_data(buf);
 
         let mut removed = 0;
@@ -274,11 +274,13 @@ impl Window {
     pub fn undo(&mut self, buf: &mut Buffer) {
         match buf.undo() {
             Ok(Some(sdata)) => {
+                self.store_snapshot_data(buf);
                 self.cursors = sdata.cursors;
                 self.view.set_offset(sdata.view_offset);
                 self.invalidate_view();
             }
             Ok(None) => {
+                self.store_snapshot_data(buf);
                 self.cursors = Cursors::default();
                 self.invalidate_view();
             }
@@ -301,20 +303,23 @@ impl Window {
         }
     }
 
+    /// Stores view_offsets and cursor positions to snapshot if it was created
+    /// by the last change in the buffer
+    /// This should be called after and edit is made.
     fn store_snapshot_data(&self, buf: &mut Buffer) {
-        let created_undo_point = buf
-            .last_change()
-            .map(|ch| ch.needs_undo_point)
-            .unwrap_or(false);
-        if !created_undo_point {
-            return;
-        }
+        let mut f = || {
+            let last = buf.last_change()?;
+            let idx = last.undo_point?;
+            let sdata = SnapshotData {
+                cursors: self.cursors.clone(),
+                view_offset: self.view.start(),
+            };
 
-        let sdata = SnapshotData {
-            cursors: self.cursors.clone(),
-            view_offset: self.view.start(),
+            buf.store_snapshot_data(idx, sdata);
+            Some(())
         };
-        buf.store_snapshot_data(sdata);
+
+        f();
     }
 
     pub fn remove_grapheme_before_cursors(&mut self, buf: &mut Buffer) {
@@ -334,16 +339,14 @@ impl Window {
             ranges.into()
         };
 
-        buf.remove_multi(ranges);
+        buf.remove_multi(&ranges);
         self.store_snapshot_data(buf);
 
         let mut removed = 0;
-        for cursor in self.cursors.cursors_mut() {
-            let cpos = cursor.pos() - removed;
-            let pos = movement::prev_grapheme_boundary(&buf.slice(..), cpos);
-
-            cursor.goto(pos);
-            removed += cpos - pos;
+        for (i, range) in ranges.iter().enumerate() {
+            let cursor = &mut self.cursors.cursors_mut()[i];
+            cursor.goto(range.start - removed);
+            removed += range.len();
         }
 
         self.invalidate_view();

@@ -24,13 +24,15 @@ impl Snapshots {
         }
     }
 
-    pub fn insert(&mut self, snapshot: ReadOnlyPieceTree) {
+    pub fn insert(&mut self, snapshot: ReadOnlyPieceTree) -> usize {
         let next_idx = self.snapshots.len();
         let mut node = SnapshotNode::new(snapshot, next_idx);
         node.previous.push(self.current);
         self.snapshots[self.current].next.push(next_idx);
         self.snapshots.push(node);
         self.current = next_idx;
+        log::info!("insert new: {next_idx}");
+        self.current
     }
 
     fn undo_index(&self) -> Option<usize> {
@@ -65,8 +67,11 @@ impl Snapshots {
         self.undo_index().is_some()
     }
 
-    pub fn set_current_data(&mut self, sdata: SnapshotData) {
-        self.snapshots[self.current].data = Some(sdata);
+    pub fn set_data(&mut self, idx: usize, sdata: SnapshotData) {
+        log::info!("set data: {idx}");
+        if let Some(snap) = self.snapshots.get_mut(idx) {
+            snap.data = Some(sdata);
+        }
     }
 }
 

@@ -126,9 +126,9 @@ impl Buffer {
         self.pt.len()
     }
 
-    /// Stores snapshot data to the snapshot that we are currently on
-    pub fn store_snapshot_data(&mut self, sdata: SnapshotData) {
-        self.snapshots.set_current_data(sdata)
+    /// Stores snapshot data to the snapshot at idx
+    pub fn store_snapshot_data(&mut self, idx: usize, sdata: SnapshotData) {
+        self.snapshots.set_data(idx, sdata)
     }
 
     /// Get the last change done to buffer
@@ -147,11 +147,13 @@ impl Buffer {
         allow_undo_point: bool,
     ) -> Change {
         let last = self.last_change.as_ref();
-        let change = Change::new(last, self.is_modified, allow_undo_point, kind, ranges);
+        let (mut change, create_undo_point) =
+            Change::new(last, self.is_modified, allow_undo_point, kind, ranges);
 
-        if change.needs_undo_point {
+        if create_undo_point {
             let snap = self.pt.read_only_copy();
-            self.snapshots.insert(snap);
+            let idx = self.snapshots.insert(snap);
+            change.undo_point = Some(idx);
         }
 
         change
@@ -170,15 +172,16 @@ impl Buffer {
     }
 
     pub fn redo(&mut self) -> Result<Option<SnapshotData>, &str> {
-        let change = self.prepare_change(ChangeKind::Redo, vec![].into());
-        if let Some(node) = self.snapshots.redo() {
-            self.is_modified = node.idx != self.last_saved_snapshot;
-            self.last_change = change.into();
-            self.pt.restore(node.snapshot);
-            Ok(node.data)
-        } else {
-            Err("No more redo points")
+        if !self.snapshots.has_redo() {
+            return Err("No more redo points");
         }
+
+        let change = self.prepare_change(ChangeKind::Redo, vec![].into());
+        let node = self.snapshots.redo().unwrap();
+        self.is_modified = node.idx != self.last_saved_snapshot;
+        self.last_change = change.into();
+        self.pt.restore(node.snapshot);
+        Ok(node.data)
     }
 
     pub fn remove(&mut self, range: Range<usize>) {
@@ -208,8 +211,8 @@ impl Buffer {
         self.last_change = change.into();
     }
 
-    pub fn remove_multi(&mut self, ranges: SortedRanges) {
-        let change = self.prepare_change(ChangeKind::Remove, ranges);
+    pub fn remove_multi(&mut self, ranges: &SortedRanges) {
+        let change = self.prepare_change(ChangeKind::Remove, ranges.clone());
 
         for change in change.positions.iter().rev() {
             self.pt.remove(change.clone());

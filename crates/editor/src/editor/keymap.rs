@@ -125,6 +125,18 @@ impl Keymap {
         map
     }
 
+    pub fn completion() -> Keymap {
+        let mut map = Keymap {
+            root: KeyTrie::default(),
+        };
+
+        // #[rustfmt::skip]
+        // map!(map,
+        // );
+
+        map
+    }
+
     /// Get a binding result for events.
     /// The result may be
     /// Matched => found a binding for events and its action

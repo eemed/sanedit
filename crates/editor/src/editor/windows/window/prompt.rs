@@ -1,4 +1,6 @@
-use std::{collections::VecDeque, rc::Rc};
+mod history;
+
+use std::rc::Rc;
 
 use unicode_segmentation::UnicodeSegmentation;
 
@@ -7,99 +9,20 @@ use crate::{
     server::ClientId,
 };
 
-use super::completion::Completion;
+use self::history::History;
+
+use super::completion::Selector;
 
 /// Prompt action, similar to a normal `ActionFunction` but also takes the
 /// prompt input as a additional parameter
 pub(crate) type PromptAction = Rc<dyn Fn(&mut Editor, ClientId, &str) + Send + Sync>;
-
-#[derive(Debug, Clone, Copy)]
-enum Pos {
-    First,
-    Last,
-    Index(usize),
-}
-
-pub(crate) struct History {
-    items: VecDeque<String>,
-    limit: usize,
-    pos: Pos,
-}
-
-impl History {
-    pub fn new(limit: usize) -> History {
-        History {
-            items: VecDeque::with_capacity(limit),
-            limit,
-            pos: Pos::First,
-        }
-    }
-
-    pub fn reset(&mut self) {
-        self.pos = Pos::First;
-    }
-
-    pub fn get(&self) -> Option<&str> {
-        match self.pos {
-            Pos::Index(n) => self.items.get(n).map(|s| s.as_str()),
-            _ => None,
-        }
-    }
-
-    pub fn push(&mut self, item: &str) {
-        self.items.retain(|i| i != item);
-
-        while self.items.len() >= self.limit {
-            self.items.pop_back();
-        }
-
-        self.items.push_front(item.into());
-    }
-
-    pub fn next(&mut self) -> Option<&str> {
-        match self.pos {
-            Pos::Last => {
-                if !self.items.is_empty() {
-                    self.pos = Pos::Index(self.items.len() - 1);
-                }
-            }
-            Pos::Index(n) => {
-                self.pos = if n > 0 { Pos::Index(n - 1) } else { Pos::First };
-            }
-            _ => {}
-        }
-
-        self.get()
-    }
-
-    pub fn prev(&mut self) -> Option<&str> {
-        match self.pos {
-            Pos::First => {
-                if !self.items.is_empty() {
-                    self.pos = Pos::Index(0);
-                }
-            }
-            Pos::Index(n) => {
-                let pos = n + 1;
-                self.pos = if pos < self.items.len() {
-                    Pos::Index(pos)
-                } else {
-                    Pos::Last
-                };
-            }
-            _ => {}
-        }
-
-        self.get()
-    }
-}
 
 pub(crate) struct Prompt {
     pub message: String,
 
     input: String,
     cursor: usize,
-    completion: Completion,
+    selector: Selector,
 
     /// Called when prompt is confirmed
     pub on_confirm: Option<PromptAction>,
@@ -120,7 +43,7 @@ impl Prompt {
             message: String::from(message),
             input: String::new(),
             cursor: 0,
-            completion: Completion::new(),
+            selector: Selector::new(),
             on_confirm: None,
             on_abort: None,
             on_input: None,
@@ -153,15 +76,15 @@ impl Prompt {
         self.prev_grapheme();
         let start = self.cursor;
         self.input.replace_range(start..end, "");
-        self.completion.match_options(&self.input);
+        self.selector.match_options(&self.input);
     }
 
     pub fn next_completion(&mut self) {
-        self.completion.select_next();
+        self.selector.select_next();
     }
 
     pub fn prev_completion(&mut self) {
-        self.completion.select_prev();
+        self.selector.select_prev();
     }
 
     pub fn input(&self) -> &str {
@@ -181,30 +104,30 @@ impl Prompt {
     pub fn insert_at_cursor(&mut self, string: &str) {
         self.input.insert_str(self.cursor, string);
         self.cursor += string.len();
-        self.completion.match_options(&self.input);
+        self.selector.match_options(&self.input);
     }
 
     pub fn insert_char_at_cursor(&mut self, ch: char) {
         self.input.insert(self.cursor, ch);
         self.cursor += ch.len_utf8();
-        self.completion.match_options(&self.input);
+        self.selector.match_options(&self.input);
     }
 
     pub fn provide_completions(&mut self, completions: Vec<String>) {
-        self.completion.provide_options(completions);
-        self.completion.match_options(&self.input);
+        self.selector.provide_options(completions);
+        self.selector.match_options(&self.input);
     }
 
     pub fn matches_window(&self, count: usize, offset: usize) -> Vec<&str> {
-        self.completion.matches_window(count, offset)
+        self.selector.matches_window(count, offset)
     }
 
     pub fn selected(&self) -> Option<(usize, &str)> {
-        self.completion.selected()
+        self.selector.selected()
     }
 
     pub fn selected_pos(&self) -> Option<usize> {
-        let (pos, _) = self.completion.selected()?;
+        let (pos, _) = self.selector.selected()?;
         Some(pos)
     }
 
@@ -247,7 +170,7 @@ impl std::fmt::Debug for Prompt {
             .field("message", &self.message)
             .field("input", &self.input)
             .field("cursor", &self.cursor)
-            .field("completions", &self.completion)
+            .field("completions", &self.selector)
             .finish_non_exhaustive()
     }
 }

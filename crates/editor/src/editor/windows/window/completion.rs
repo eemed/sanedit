@@ -1,136 +1,54 @@
-use std::mem;
+mod selector;
 
 use sanedit_messages::redraw::Point;
 
 use crate::editor::keymap::Keymap;
 
-#[derive(Debug, Default)]
-pub(crate) struct CompletionWindow {
+pub(crate) use selector::Selector;
+
+#[derive(Debug)]
+pub(crate) struct Completion {
     pub(crate) point: Point,
     pub(crate) keymap: Keymap,
-    pub(crate) completion: Completion,
-}
-
-#[derive(Debug, Default)]
-pub(crate) struct Completion {
-    /// All completion options
-    pub(crate) options: Vec<String>,
-    /// Currently matched completions. Completions are juggled between this and
-    /// `all` depending on wether they are matched or not
-    pub(crate) matched: Vec<String>,
-
-    /// Currently selected completion index from `matched`
-    pub(crate) selected: Option<usize>,
-
-    pub smartcase: bool,
+    pub(crate) selector: Selector,
 }
 
 impl Completion {
     pub fn new() -> Completion {
-        Completion {
-            options: vec![],
-            matched: vec![],
-            selected: None,
-            smartcase: true,
-        }
+        Completion::default()
     }
 
     pub fn select_next(&mut self) {
-        if self.matched.is_empty() {
-            self.selected = None;
-        }
-
-        match self.selected {
-            Some(n) => {
-                let is_last = n == self.matched.len() - 1;
-                if is_last {
-                    self.selected = None;
-                } else {
-                    self.selected = Some(n + 1);
-                }
-            }
-            None => self.selected = Some(0),
-        }
+        self.selector.select_next()
     }
 
     pub fn select_prev(&mut self) {
-        if self.matched.is_empty() {
-            return;
-        }
-
-        match self.selected {
-            Some(n) => {
-                let is_first = n == 0;
-                if is_first {
-                    self.selected = None;
-                } else {
-                    self.selected = Some(n - 1);
-                }
-            }
-            None => self.selected = Some(self.matched.len() - 1),
-        }
+        self.selector.select_prev()
     }
 
     pub fn provide_options(&mut self, options: Vec<String>) {
-        self.options.extend(options);
+        self.selector.provide_options(options)
     }
 
     pub fn match_options(&mut self, input: &str) {
-        fn matches_with(string: &str, input: &str, ignore_case: bool) -> Option<usize> {
-            if ignore_case {
-                string.to_ascii_lowercase().find(input)
-            } else {
-                string.find(input)
-            }
-        }
-
-        let mut opts = mem::take(&mut self.matched);
-        opts.extend(mem::take(&mut self.options));
-
-        let ignore_case = self.smartcase
-            && input.chars().fold(true, |acc, ch| {
-                acc && (!ch.is_ascii_alphabetic() || ch.is_ascii_lowercase())
-            });
-
-        for opt in opts.into_iter() {
-            if let Some(_) = matches_with(&opt, &input, ignore_case) {
-                let len = opt.len();
-                let ins_idx = self
-                    .matched
-                    .binary_search_by(|res| {
-                        use std::cmp::Ordering;
-                        match res.len().cmp(&len) {
-                            Ordering::Less => Ordering::Less,
-                            Ordering::Greater => Ordering::Greater,
-                            Ordering::Equal => res.cmp(&opt),
-                        }
-                    })
-                    .unwrap_or_else(|x| x);
-                self.matched.insert(ins_idx, opt);
-            } else {
-                self.options.push(opt);
-            }
-        }
+        self.selector.match_options(input)
     }
 
     pub fn selected_pos(&self) -> Option<usize> {
-        self.selected
+        self.selector.selected_pos()
     }
 
-    pub fn selected(&self) -> Option<(usize, &str)> {
-        let sel = self.selected?;
-        let opt = self.matched.get(sel)?;
-        Some((sel, opt.as_str()))
-    }
-
-    /// Returns less than or equal to count matches around selection,
-    /// selection is positioned at the selected_offset index.
     pub fn matches_window(&self, count: usize, offset: usize) -> Vec<&str> {
-        self.matched
-            .iter()
-            .skip(offset)
-            .take(count)
-            .map(|s| s.as_str())
-            .collect()
+        self.selector.matches_window(count, offset)
+    }
+}
+
+impl Default for Completion {
+    fn default() -> Self {
+        Completion {
+            point: Point::default(),
+            keymap: Keymap::completion(),
+            selector: Selector::default(),
+        }
     }
 }

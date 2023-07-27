@@ -1,6 +1,6 @@
 use sanedit_messages::redraw::{
-    Cell, Cursor, CursorShape, IntoCells, Point, Prompt, Severity, Size, StatusMessage, Statusline,
-    Style, ThemeField, Window,
+    Cell, Completion, Cursor, CursorShape, IntoCells, Point, Prompt, Severity, Size, StatusMessage,
+    Statusline, Style, ThemeField, Window,
 };
 
 use crate::ui::UIContext;
@@ -74,7 +74,7 @@ impl Drawable for Prompt {
         message.extend(colon);
         message.extend(input);
 
-        pad_line(&mut message, default_style, ctx);
+        pad_line(&mut message, default_style, ctx.width);
 
         let mut prompt = vec![message];
         let opts: Vec<Vec<Cell>> = self
@@ -148,6 +148,41 @@ impl Drawable for StatusMessage {
     }
 }
 
+impl Drawable for Completion {
+    fn position(&self, ctx: &UIContext) -> Point {
+        self.point + Point { x: 0, y: 2 }
+        // TODO if no room try upwards
+    }
+
+    fn draw(&self, ctx: &UIContext) -> Vec<Vec<Cell>> {
+        let size = self.size(ctx);
+
+        self.options
+            .iter()
+            .enumerate()
+            .map(|(i, opt)| {
+                let style = if Some(i) == self.selected {
+                    ctx.style(&ThemeField::PromptCompletionSelected)
+                } else {
+                    ctx.style(&ThemeField::PromptCompletion)
+                };
+
+                into_cells_with_theme_pad_with(opt, &style, size.width)
+            })
+            .collect()
+    }
+
+    fn cursor(&self, ctx: &UIContext) -> Option<Cursor> {
+        None
+    }
+
+    fn size(&self, ctx: &UIContext) -> Size {
+        let width = self.options.iter().map(|i| i.len()).max().unwrap_or(1);
+        let height = self.options.len();
+        Size { width, height }
+    }
+}
+
 fn into_cells_with_style(string: &str, style: Style, _ctx: &UIContext) -> Vec<Cell> {
     let mut cells = string.into_cells();
     cells.iter_mut().for_each(|cell| cell.style = style);
@@ -156,7 +191,7 @@ fn into_cells_with_style(string: &str, style: Style, _ctx: &UIContext) -> Vec<Ce
 
 fn into_cells_with_style_pad(string: &str, style: Style, ctx: &UIContext) -> Vec<Cell> {
     let mut cells = into_cells_with_style(string, style, ctx);
-    pad_line(&mut cells, style, ctx);
+    pad_line(&mut cells, style, ctx.width);
     cells
 }
 
@@ -169,16 +204,28 @@ fn into_cells_with_theme(string: &str, themefield: &ThemeField, ctx: &UIContext)
 
 fn into_cells_with_theme_pad(string: &str, themefield: &ThemeField, ctx: &UIContext) -> Vec<Cell> {
     let mut cells = into_cells_with_theme(string, themefield, ctx);
-    pad_line(&mut cells, ctx.style(themefield), ctx);
+    pad_line(&mut cells, ctx.style(themefield), ctx.width);
     cells
 }
 
-fn pad_line(cells: &mut Vec<Cell>, style: Style, ctx: &UIContext) {
-    while cells.len() < ctx.width {
+fn into_cells_with_theme_with(string: &str, style: &Style) -> Vec<Cell> {
+    let mut cells = string.into_cells();
+    cells.iter_mut().for_each(|cell| cell.style = style.clone());
+    cells
+}
+
+fn into_cells_with_theme_pad_with(string: &str, style: &Style, width: usize) -> Vec<Cell> {
+    let mut cells = into_cells_with_theme_with(string, style);
+    pad_line(&mut cells, style.clone(), width);
+    cells
+}
+
+fn pad_line(cells: &mut Vec<Cell>, style: Style, width: usize) {
+    while cells.len() < width {
         cells.push(Cell::with_style(style.clone()));
     }
 
-    while cells.len() > ctx.width {
+    while cells.len() > width {
         cells.pop();
     }
 }

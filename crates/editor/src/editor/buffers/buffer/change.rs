@@ -25,7 +25,6 @@ impl Change {
     ) -> (Change, bool) {
         let needs_undo_point =
             allow_undo_point && needs_undo_point(prev, is_modified, &kind, &ranges);
-        log::info!("NW: {needs_undo_point}");
         let change = Change {
             kind,
             positions: ranges,

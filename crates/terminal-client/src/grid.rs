@@ -3,7 +3,8 @@ mod drawable;
 use core::fmt;
 
 use sanedit_messages::redraw::{
-    Cell, Component, Cursor, Diffable, Prompt, Redraw, StatusMessage, Statusline, Window,
+    Cell, Completion, Component, Cursor, Diffable, Prompt, Redraw, StatusMessage, Statusline,
+    Window,
 };
 
 use crate::ui::UIContext;
@@ -12,6 +13,7 @@ pub(crate) use self::drawable::Drawable;
 
 pub(crate) struct Grid {
     pub window: Window,
+    pub completion: Option<Completion>,
     pub statusline: Statusline,
     pub prompt: Option<Prompt>,
     pub msg: Option<StatusMessage>,
@@ -24,6 +26,7 @@ impl Grid {
     pub fn new(width: usize, height: usize) -> Grid {
         Grid {
             window: Window::default(),
+            completion: None,
             statusline: Statusline::default(),
             prompt: None,
             msg: None,
@@ -56,9 +59,15 @@ impl Grid {
                 }
                 Close => self.prompt = None,
             },
-            Completion(c) => {
-                log::info!("Completion2 {c:?}");
-            }
+            Completion(comp) => match comp {
+                Open(compl) => self.completion = Some(compl),
+                Update(diff) => {
+                    if let Some(ref mut compl) = self.completion {
+                        compl.update(diff);
+                    }
+                }
+                Close => self.completion = None,
+            },
             StatusMessage(msg) => self.msg = Some(msg),
         }
     }
@@ -106,6 +115,9 @@ impl Grid {
 
         if let Some(ref prompt) = self.prompt {
             Self::draw_drawable(prompt, ctx, &mut self.cursor, &mut self.cells);
+        }
+        if let Some(ref compl) = self.completion {
+            Self::draw_drawable(compl, ctx, &mut self.cursor, &mut self.cells);
         }
         if let Some(ref msg) = self.msg {
             Self::draw_drawable(msg, ctx, &mut self.cursor, &mut self.cells);

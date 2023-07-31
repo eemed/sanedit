@@ -1,4 +1,8 @@
-use std::{any::Any, path::PathBuf, sync::Arc};
+use std::{
+    any::Any,
+    path::PathBuf,
+    sync::{atomic::AtomicBool, Arc},
+};
 
 use tokio::{
     fs, io,
@@ -50,15 +54,14 @@ async fn list_files_task(dir: PathBuf, out: JobProgressSender, term_in: Receiver
     log::info!("list_files_task");
     let (opt_out, opt_in) = channel(CHANNEL_SIZE);
 
-    // Spawn file listing task
-    tokio::spawn(async { read_dir(opt_out, dir).await });
-
     // handle term changes while options are coming in
     handler(out, opt_in, term_in).await;
 
     log::info!("list_files_task done");
     true
 }
+
+type WorkFn = Arc<dyn Fn(Sender<FromWorker>, AtomicBool)>;
 
 /// Reads options and filter term from channels and send good results to
 /// progress
@@ -86,7 +89,13 @@ async fn handler(
     true
 }
 
-enum ToWorker {}
-enum FromWorker {}
+enum ToWorker {
+    Work(WorkFn),
+    Stop,
+}
+
+enum FromWorker {
+    MoreWork,
+}
 
 async fn worker(recv: Receiver<ToWorker>, send: Sender<FromWorker>) {}

@@ -4,6 +4,7 @@ use std::{
     sync::{atomic::AtomicBool, Arc},
 };
 
+use crossbeam::deque::{Injector, Worker};
 use tokio::{
     fs, io,
     sync::mpsc::{channel, Receiver, Sender},
@@ -71,9 +72,33 @@ async fn handler(
     mut term_in: Receiver<String>,
 ) -> bool {
     log::info!("handler");
-    const WORKER_COUNT: usize = 10;
-    let (to, to_rx) = channel::<ToWorker>(CHANNEL_SIZE);
-    let (from, from_rx) = channel::<FromWorker>(CHANNEL_SIZE);
+    const WORKER_COUNT: usize = 5;
+    const BATCH_SIZE: usize = 512;
+
+    let injector = Injector::<Arc<[String]>>::new();
+    let worker1 = Worker::<Arc<[String]>>::new_fifo();
+    let worker2 = Worker::<Arc<[String]>>::new_fifo();
+
+    let stealers = [worker1.stealer(), worker2.stealer()];
+
+    tokio::spawn(async move { worker1.pop() });
+    tokio::spawn(async move { worker2.pop() });
+
+    tokio::spawn(async move {
+        let mut options: Vec<Arc<[String]>> = vec![];
+        let mut block: Vec<String> = vec![];
+
+        while let Some(opt) = opt_in.recv().await {
+            block.push(opt);
+
+            if block.len() >= BATCH_SIZE {
+                let ablock: Arc<[String]> = block.into();
+                injector.push(ablock.clone());
+                options.push(ablock);
+                block = vec![];
+            }
+        }
+    });
 
     // Task to read options into array
     // when BATCH size options have arrived assign the matching work to a worker
@@ -81,16 +106,16 @@ async fn handler(
     // them to out
     //
     // if term changes stop the workers and give them the new term
-    while let Some(term) = term_in.recv().await {
-        log::info!("TERM: {term}");
-    }
+    // while let Some(term) = term_in.recv().await {
+    //     log::info!("TERM: {term}");
+    // }
 
     log::info!("handler done");
     true
 }
 
 enum ToWorker {
-    Work(WorkFn),
+    Work,
     Stop,
 }
 

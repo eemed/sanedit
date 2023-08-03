@@ -15,6 +15,7 @@ sanedit-macros = { path = "../macros" }
 log         = "0.4"
 parking_lot = "0.12.0"
 dirs        = "4.0.0"  # Used to get easy access to different directories, tmp, config etc.
+crossbeam    = "0.8"
 
 # Good helper macros for enums
 strum        = "0.23"

@@ -1,10 +1,9 @@
 use std::{
     any::Any,
     path::PathBuf,
-    sync::{atomic::AtomicBool, Arc},
+    sync::{atomic::AtomicBool, mpsc, Arc},
 };
 
-use crossbeam::deque::{Injector, Worker};
 use tokio::{
     fs, io,
     sync::mpsc::{channel, Receiver, Sender},
@@ -68,36 +67,32 @@ type WorkFn = Arc<dyn Fn(Sender<FromWorker>, AtomicBool)>;
 /// progress
 async fn handler(
     out: JobProgressSender,
-    mut opt_in: Receiver<String>,
-    mut term_in: Receiver<String>,
+    mut opt_in: mpsc::Receiver<String>,
+    mut term_in: mpsc::Receiver<String>,
 ) -> bool {
     log::info!("handler");
     const WORKER_COUNT: usize = 5;
     const BATCH_SIZE: usize = 512;
 
-    let injector = Injector::<Arc<[String]>>::new();
-    let worker1 = Worker::<Arc<[String]>>::new_fifo();
-    let worker2 = Worker::<Arc<[String]>>::new_fifo();
+    rayon::scope(move |s| {
+        // Spawn option receiver
+        s.spawn(move |s1| {
+            let mut options: Vec<Arc<[String]>> = vec![];
+            let mut block: Vec<String> = vec![];
 
-    let stealers = [worker1.stealer(), worker2.stealer()];
+            while let Ok(opt) = opt_in.recv() {
+                block.push(opt);
 
-    tokio::spawn(async move { worker1.pop() });
-    tokio::spawn(async move { worker2.pop() });
+                if block.len() >= BATCH_SIZE {
+                    let ablock: Arc<[String]> = block.into();
+                    options.push(ablock.clone());
+                    block = vec![];
 
-    tokio::spawn(async move {
-        let mut options: Vec<Arc<[String]>> = vec![];
-        let mut block: Vec<String> = vec![];
-
-        while let Some(opt) = opt_in.recv().await {
-            block.push(opt);
-
-            if block.len() >= BATCH_SIZE {
-                let ablock: Arc<[String]> = block.into();
-                injector.push(ablock.clone());
-                options.push(ablock);
-                block = vec![];
+                    // Spawn processing task
+                    s1.spawn(|_| {});
+                }
             }
-        }
+        });
     });
 
     // Task to read options into array

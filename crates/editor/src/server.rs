@@ -18,7 +18,7 @@ use std::{
 
 use tokio::{
     net::unix::SocketAddr,
-    runtime::Runtime,
+    runtime::{Builder, Runtime},
     sync::{
         mpsc::{channel, Sender},
         Notify,
@@ -85,7 +85,8 @@ pub fn run_sync(addrs: Vec<Address>) -> Option<thread::JoinHandle<()>> {
         sender: send,
         next_id: Default::default(),
     };
-    let rt = Runtime::new().ok()?;
+    let rt = Builder::new_current_thread().build().ok()?;
+    // let rt = Runtime::new().ok()?;
     let cloned = handle.clone();
     rt.block_on(async move { listen(addrs, cloned).await });
 

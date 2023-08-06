@@ -27,6 +27,7 @@ fn open_file(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.prompt = Prompt::new("Open a file");
     win.prompt.on_input = Some(Rc::new(move |editor, id, input| {
+        log::info!("Send input");
         let _ = tx.blocking_send(input.into());
     }));
     win.prompt.on_confirm = Some(Rc::new(move |editor, id, input| {

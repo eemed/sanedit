@@ -11,6 +11,7 @@ pub(crate) async fn accept_loop(addr: PathBuf, mut handle: EditorHandle, notify:
     match res {
         Ok(()) => {}
         Err(err) => {
+            log::error!("unix domain socket accept loop failure: {}", err);
             handle.send(ToEditor::FatalError(err)).await;
         }
     }

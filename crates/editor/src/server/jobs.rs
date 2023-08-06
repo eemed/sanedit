@@ -135,16 +135,13 @@ impl JobsHandle {
 pub(crate) async fn spawn_jobs(editor_handle: EditorHandle) -> JobsHandle {
     let (tx, rx) = mpsc::channel(CHANNEL_SIZE);
     let handle = JobsHandle { send: tx };
-
-    tokio::spawn(async {
-        jobs_loop(rx, editor_handle).await;
-    });
-
+    tokio::spawn(jobs_loop(rx, editor_handle));
     handle
 }
 
 // Runs jobs in tokio runtime.
 async fn jobs_loop(mut recv: mpsc::Receiver<ToJobs>, handle: EditorHandle) {
+    log::info!("jobs loop");
     let task_handles: Arc<Mutex<HashMap<JobId, JoinHandle<()>>>> =
         Arc::new(Mutex::new(HashMap::new()));
 

@@ -51,6 +51,11 @@ impl Prompt {
             history: History::new(100),
         }
     }
+
+    pub fn reset_selector(&mut self) {
+        self.selector = Selector::new();
+    }
+
     pub fn next_grapheme(&mut self) {
         let mut graphemes = self.input.grapheme_indices(true);
         graphemes.position(|(pos, _)| pos == self.cursor);
@@ -115,7 +120,7 @@ impl Prompt {
 
     pub fn provide_completions(&mut self, completions: Vec<String>) {
         self.selector.provide_options(completions);
-        self.selector.match_options(&self.input);
+        // self.selector.match_options(&self.input);
     }
 
     pub fn matches_window(&self, count: usize, offset: usize) -> Vec<&str> {

@@ -53,6 +53,15 @@ impl JobProgressSender {
             .send(ToEditor::Jobs(FromJobs::Progress(self.id, progress)))
             .await
     }
+
+    pub fn blocking_send(
+        &mut self,
+        progress: JobProgress,
+    ) -> Result<(), mpsc::error::SendError<ToEditor>> {
+        self.handle
+            .sender
+            .blocking_send(ToEditor::Jobs(FromJobs::Progress(self.id, progress)))
+    }
 }
 
 /// A Pinned future that resolves into an boolean indicating wether it succeeded

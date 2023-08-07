@@ -63,7 +63,8 @@ impl Selector {
     }
 
     pub fn provide_options(&mut self, options: Vec<String>) {
-        self.options.extend(options);
+        log::info!("provide {options:?}");
+        self.matched.extend(options);
     }
 
     pub fn match_options(&mut self, input: &str) {

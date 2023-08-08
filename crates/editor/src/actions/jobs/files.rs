@@ -1,4 +1,9 @@
-use std::{any::Any, mem, path::PathBuf, sync::Arc};
+use std::{
+    any::Any,
+    mem,
+    path::PathBuf,
+    sync::{mpsc, Arc},
+};
 
 use tokio::{
     fs, io,
@@ -63,7 +68,7 @@ async fn list_files_task(dir: PathBuf, out: JobProgressSender, term_in: Receiver
     log::info!("list_files_task: {dir:?}");
     let (opt_out, opt_in) = channel(CHANNEL_SIZE);
 
-    let (a, b) = tokio::join!(read_dir(opt_out, dir), handler(out, opt_in, term_in));
+    let (a, b) = tokio::join!(read_dir(opt_out, dir), matcher(out, opt_in, term_in));
 
     log::info!("list_files_task done");
     a && b
@@ -71,71 +76,93 @@ async fn list_files_task(dir: PathBuf, out: JobProgressSender, term_in: Receiver
 
 /// Reads options and filter term from channels and send good results to
 /// progress
-async fn handler(
+async fn matcher(
     mut out: JobProgressSender,
     mut opt_in: Receiver<String>,
     mut term_in: Receiver<String>,
 ) -> bool {
     log::info!("handler");
-    const WORKER_COUNT: usize = 5;
     const BATCH_SIZE: usize = 512;
+    let worker_count = rayon::current_num_threads();
+    let (sender, receiver) = mpsc::channel::<FromWorker>();
+    let mut options: Vec<Arc<[String]>> = vec![];
+    let mut block: Vec<String> = vec![];
 
+    rayon::scope(move |s| {
+        while let Some(opt) = opt_in.blocking_recv() {
+            block.push(opt);
+
+            if block.len() >= BATCH_SIZE {
+                let ablock: Arc<[String]> = block.into();
+                options.push(ablock.clone());
+                block = vec![];
+
+                // Spawn processing task
+                let job = BatchJob {
+                    term: pterm.clone(),
+                    batch: ablock,
+                    out: out.clone(),
+                };
+                s1.spawn(move |_| worker(job));
+            }
+        }
+    });
     // Task to read options into array
     // when BATCH size options have arrived assign the matching work to a worker
     // thread. Worker thread reports back only the succesful matches and we send
     // them to out
     //
     // if term changes stop the workers and give them the new term
-    while let Some(term) = term_in.recv().await {
-        log::info!("new term: {term}");
-        out.send(JobProgress::Output(Box::new(MatcherResult::Reset)))
-            .await;
+    // while let Some(term) = term_in.recv().await {
+    //     log::info!("new term: {term}");
+    //     out.send(JobProgress::Output(Box::new(MatcherResult::Reset)))
+    //         .await;
 
-        let pterm: Arc<String> = term.into();
-        let oin = &mut opt_in;
-        let out = &out;
+    //     let pterm: Arc<String> = term.into();
+    //     let oin = &mut opt_in;
+    //     let out = &out;
 
-        rayon::scope(move |s| {
-            // Spawn option receiver
-            s.spawn(move |s1| {
-                let mut options: Vec<Arc<[String]>> = vec![];
-                let mut block: Vec<String> = vec![];
+    //     rayon::scope(move |s| {
+    //         // Spawn option receiver
+    //         s.spawn(move |s1| {
+    //             let mut options: Vec<Arc<[String]>> = vec![];
+    //             let mut block: Vec<String> = vec![];
 
-                while let Some(opt) = oin.blocking_recv() {
-                    block.push(opt);
+    //             while let Some(opt) = oin.blocking_recv() {
+    //                 block.push(opt);
 
-                    if block.len() >= BATCH_SIZE {
-                        let ablock: Arc<[String]> = block.into();
-                        options.push(ablock.clone());
-                        block = vec![];
+    //                 if block.len() >= BATCH_SIZE {
+    //                     let ablock: Arc<[String]> = block.into();
+    //                     options.push(ablock.clone());
+    //                     block = vec![];
 
-                        // Spawn processing task
-                        let job = BatchJob {
-                            term: pterm.clone(),
-                            batch: ablock,
-                            out: out.clone(),
-                        };
-                        s1.spawn(move |_| worker(job));
-                    }
-                }
+    //                     // Spawn processing task
+    //                     let job = BatchJob {
+    //                         term: pterm.clone(),
+    //                         batch: ablock,
+    //                         out: out.clone(),
+    //                     };
+    //                     s1.spawn(move |_| worker(job));
+    //                 }
+    //             }
 
-                if block.len() >= BATCH_SIZE {
-                    let ablock: Arc<[String]> = block.into();
-                    options.push(ablock.clone());
+    //             if block.len() >= BATCH_SIZE {
+    //                 let ablock: Arc<[String]> = block.into();
+    //                 options.push(ablock.clone());
 
-                    // Spawn processing task
-                    let job = BatchJob {
-                        term: pterm.clone(),
-                        batch: ablock,
-                        out: out.clone(),
-                    };
-                    s1.spawn(move |_| worker(job));
-                }
-            });
-        });
+    //                 // Spawn processing task
+    //                 let job = BatchJob {
+    //                     term: pterm.clone(),
+    //                     batch: ablock,
+    //                     out: out.clone(),
+    //                 };
+    //                 s1.spawn(move |_| worker(job));
+    //             }
+    //         });
+    //     });
 
-        log::info!("calculated");
-    }
+    //     log::info!("calculated");
+    // }
 
     log::info!("handler done");
     true
@@ -147,13 +174,20 @@ struct BatchJob {
     out: JobProgressSender,
 }
 
+enum FromWorker {
+    Done(Vec<String>),
+}
+
+enum ToWorker {
+    Job(BatchJob),
+}
+
 pub(crate) enum MatcherResult {
     Reset,
     Options(Vec<String>),
 }
 
-fn worker(mut job: BatchJob) {
-    log::info!("New worker");
+fn worker(out: mpsc::Sender<FromWorker>, mut recv: mpsc::Receiver<ToWorker>) {
     fn matches(string: &str, input: &str, ignore_case: bool) -> Option<usize> {
         if ignore_case {
             string.to_ascii_lowercase().find(input)
@@ -162,16 +196,44 @@ fn worker(mut job: BatchJob) {
         }
     }
 
-    let mut ok = vec![];
-    let term = job.term.as_ref();
-    for opt in job.batch.iter() {
-        if opt.find(term).is_some() {
-            ok.push(opt.clone());
+    while let Ok(msg) = recv.recv() {
+        use ToWorker::*;
+        match msg {
+            Job(job) => {
+                let mut ok = vec![];
+                let term = job.term.as_ref();
+                for opt in job.batch.iter() {
+                    if opt.find(term).is_some() {
+                        ok.push(opt.clone());
+                    }
+                }
+
+                out.send(FromWorker::Done(ok));
+            }
         }
     }
-
-    if !ok.is_empty() {
-        let prog = JobProgress::Output(Box::new(MatcherResult::Options(ok)));
-        job.out.blocking_send(prog);
-    }
 }
+
+// fn worker(mut job: BatchJob) {
+//     log::info!("New worker");
+//     fn matches(string: &str, input: &str, ignore_case: bool) -> Option<usize> {
+//         if ignore_case {
+//             string.to_ascii_lowercase().find(input)
+//         } else {
+//             string.find(input)
+//         }
+//     }
+
+//     let mut ok = vec![];
+//     let term = job.term.as_ref();
+//     for opt in job.batch.iter() {
+//         if opt.find(term).is_some() {
+//             ok.push(opt.clone());
+//         }
+//     }
+
+//     if !ok.is_empty() {
+//         let prog = JobProgress::Output(Box::new(MatcherResult::Options(ok)));
+//         job.out.blocking_send(prog);
+//     }
+// }

@@ -2,6 +2,7 @@ use std::{
     cell::UnsafeCell,
     cmp::min,
     io::Write,
+    mem::MaybeUninit,
     ops::Range,
     sync::{
         atomic::{AtomicUsize, Ordering},
@@ -12,6 +13,7 @@ use std::{
 // Idea is to create a array of pointers to blocks of data.
 // The blocks of data grow in the powers of two and are allocated as needed.
 // The blocks of data are called buckets.
+pub(crate) type Candidate = String;
 
 // To ensure we dont need to split content
 // alot in the beginning, start straight from bucket 14 => 2^14 => 16kb bucket
@@ -65,17 +67,17 @@ macro_rules! array {
     }};
 }
 
-pub(crate) struct AddBuffer;
+pub(crate) struct Candidates;
 
-impl AddBuffer {
-    pub fn new() -> (AddBufferReader, AddBufferWriter) {
+impl Candidates {
+    pub fn new() -> (Reader, Writer) {
         let list = Arc::new(List {
             len: AtomicUsize::new(0),
             buckets: array!(|_| Bucket::default(); BUCKET_COUNT),
         });
 
-        let writer = AddBufferWriter { list: list.clone() };
-        let reader = AddBufferReader { list };
+        let writer = Writer { list: list.clone() };
+        let reader = Reader { list };
 
         (reader, writer)
     }
@@ -90,12 +92,12 @@ pub(crate) enum AppendResult {
 }
 
 #[derive(Debug)]
-pub(crate) struct AddBufferWriter {
+pub(crate) struct Writer {
     list: Arc<List>,
 }
 
-impl AddBufferWriter {
-    pub fn append(&self, bytes: &[u8]) -> AppendResult {
+impl Writer {
+    pub fn append_impl(&self, items: Vec<Candidate>) {
         let len = self.list.len.load(Ordering::Relaxed);
         let loc = BucketLocation::of(len);
         let bucket = &self.list.buckets[loc.bucket];
@@ -130,18 +132,18 @@ impl AddBufferWriter {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct AddBufferReader {
+pub(crate) struct Reader {
     list: Arc<List>,
 }
 
-impl AddBufferReader {
-    pub fn slice(&self, range: Range<usize>) -> &[u8] {
+impl Reader {
+    pub fn slice(&self, range: Range<usize>) -> &[Candidate] {
         // TODO assert we dont read past len
         let loc = BucketLocation::of(range.start);
         let bucket = {
-            let bucket: &UnsafeCell<Option<Box<[u8]>>> = &self.list.buckets[loc.bucket];
-            let bucket: Option<&Box<[u8]>> = unsafe { (*bucket.get()).as_ref() };
-            let bucket: &Box<[u8]> = bucket.unwrap();
+            let bucket: &UnsafeCell<Option<Box<[Candidate]>>> = &self.list.buckets[loc.bucket];
+            let bucket: Option<&Box<[Candidate]>> = unsafe { (*bucket.get()).as_ref() };
+            let bucket: &Box<[Candidate]> = bucket.unwrap();
             bucket
         };
         let brange = loc.pos..loc.pos + range.len();
@@ -153,7 +155,7 @@ impl AddBufferReader {
     }
 }
 
-type Bucket = UnsafeCell<Option<Box<[u8]>>>;
+type Bucket = UnsafeCell<Option<Box<[MaybeUninit<Candidate>]>>>;
 
 #[derive(Debug)]
 struct List {
@@ -192,64 +194,5 @@ impl BucketLocation {
             bucket_len,
             pos,
         }
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    #[test]
-    fn location() {
-        assert_eq!(
-            BucketLocation {
-                bucket: 0,
-                bucket_len: 1 << BUCKET_START,
-                pos: 0
-            },
-            BucketLocation::of(0)
-        );
-
-        assert_eq!(
-            BucketLocation {
-                bucket: 0,
-                bucket_len: 1 << BUCKET_START,
-                pos: 200
-            },
-            BucketLocation::of(200)
-        );
-
-        assert_eq!(
-            BucketLocation {
-                bucket: 1,
-                bucket_len: 1 << (BUCKET_START + 1),
-                pos: 0
-            },
-            BucketLocation::of(16384)
-        );
-
-        assert_eq!(
-            BucketLocation {
-                bucket: 1,
-                bucket_len: 1 << (BUCKET_START + 1),
-                pos: 1
-            },
-            BucketLocation::of(16385)
-        );
-    }
-
-    #[test]
-    fn append() {
-        let (_aread, awrite) = AddBuffer::new();
-        let mut bytes = b"a".repeat(BUCKET_START_POS + 10);
-
-        assert_eq!(
-            AppendResult::NewBlock(BUCKET_START_POS),
-            awrite.append(&bytes)
-        );
-        bytes = bytes[BUCKET_START_POS..].to_vec();
-
-        assert_eq!(AppendResult::NewBlock(10), awrite.append(&bytes));
-        assert_eq!(AppendResult::Append(10), awrite.append(&bytes));
     }
 }

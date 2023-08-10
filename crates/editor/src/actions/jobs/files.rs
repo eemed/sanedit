@@ -98,12 +98,12 @@ async fn matcher(
                 block = vec![];
 
                 // Spawn processing task
-                let job = BatchJob {
-                    term: pterm.clone(),
-                    batch: ablock,
-                    out: out.clone(),
-                };
-                s1.spawn(move |_| worker(job));
+                // let job = BatchJob {
+                //     term: pterm.clone(),
+                //     batch: ablock,
+                //     out: out.clone(),
+                // };
+                // s1.spawn(move |_| worker(job));
             }
         }
     });

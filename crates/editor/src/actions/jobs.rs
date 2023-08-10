@@ -1,4 +1,5 @@
 mod files;
+mod matcher;
 mod prompt;
 mod text;
 

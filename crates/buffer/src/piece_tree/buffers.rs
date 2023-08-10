@@ -1,6 +1,11 @@
 mod add;
 mod original;
 
+pub(crate) use add::{AddBuffer, AddBufferReader, AddBufferWriter, AppendResult};
+pub(crate) use original::OriginalBuffer;
+
+use self::original::OriginalBufferSlice;
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) enum BufferKind {
     Add,
@@ -33,10 +38,3 @@ impl<'a> From<OriginalBufferSlice> for ByteSlice<'a> {
         ByteSlice::Original(value)
     }
 }
-
-pub(crate) use add::{
-    create_add_buffer_reader_writer, AddBufferReader, AddBufferWriter, AppendResult,
-};
-pub(crate) use original::OriginalBuffer;
-
-use self::original::OriginalBufferSlice;

@@ -2,6 +2,8 @@ use std::{
     cell::UnsafeCell,
     cmp::min,
     io::Write,
+    marker::PhantomData,
+    mem::{self, MaybeUninit},
     ops::Range,
     sync::{
         atomic::{AtomicUsize, Ordering},
@@ -65,17 +67,19 @@ macro_rules! array {
     }};
 }
 
-pub(crate) struct AddBuffer;
+pub struct Appendlist<T> {
+    _phantom: PhantomData<T>,
+}
 
-impl AddBuffer {
-    pub fn new() -> (AddBufferReader, AddBufferWriter) {
+impl<T> Appendlist<T> {
+    pub fn new() -> (Reader<T>, Writer<T>) {
         let list = Arc::new(List {
             len: AtomicUsize::new(0),
             buckets: array!(|_| Bucket::default(); BUCKET_COUNT),
         });
 
-        let writer = AddBufferWriter { list: list.clone() };
-        let reader = AddBufferReader { list };
+        let writer = Writer { list: list.clone() };
+        let reader = Reader { list };
 
         (reader, writer)
     }
@@ -90,12 +94,12 @@ pub(crate) enum AppendResult {
 }
 
 #[derive(Debug)]
-pub(crate) struct AddBufferWriter {
-    list: Arc<List>,
+pub struct Writer<T> {
+    list: Arc<List<T>>,
 }
 
-impl AddBufferWriter {
-    pub fn append(&self, bytes: &[u8]) -> AppendResult {
+impl<T: Copy> Writer<T> {
+    fn append_copy_impl(&self, items: &[T]) -> AppendResult {
         let len = self.list.len.load(Ordering::Relaxed);
         let loc = BucketLocation::of(len);
         let bucket = &self.list.buckets[loc.bucket];
@@ -104,16 +108,55 @@ impl AddBufferWriter {
         let alloc = bucket.is_none();
 
         if alloc {
-            *bucket = Some(vec![0u8; loc.bucket_len].into());
+            let mut items = Vec::with_capacity(loc.bucket_len);
+            for _ in 0..loc.bucket_len {
+                items.push(MaybeUninit::uninit());
+            }
+            *bucket = Some(items.into());
         }
 
         // SAFETY: we just allocated it if it was not there
         let bucket = bucket.as_mut().unwrap();
-        let mut slice = &mut bucket[loc.pos..];
-        let nwrite = min(slice.len(), bytes.len());
-        slice
-            .write_all(&bytes[..nwrite])
-            .expect("Failed to write bytes to bucket");
+        let slice = &mut bucket[loc.pos..];
+        let nwrite = min(slice.len(), items.len());
+        for i in 0..nwrite {
+            slice[i] = MaybeUninit::new(items[i]);
+        }
+
+        self.list.len.store(len + nwrite, Ordering::Release);
+
+        if alloc {
+            AppendResult::NewBlock(nwrite)
+        } else {
+            AppendResult::Append(nwrite)
+        }
+    }
+}
+
+impl<T> Writer<T> {
+    fn append_impl(&self, mut items: Vec<T>) -> AppendResult {
+        let len = self.list.len.load(Ordering::Relaxed);
+        let loc = BucketLocation::of(len);
+        let bucket = &self.list.buckets[loc.bucket];
+        // SAFETY: we are the only writer, and readers will not read after len
+        let bucket = unsafe { &mut *bucket.get() };
+        let alloc = bucket.is_none();
+
+        if alloc {
+            let mut items = Vec::with_capacity(loc.bucket_len);
+            for _ in 0..loc.bucket_len {
+                items.push(MaybeUninit::uninit());
+            }
+            *bucket = Some(items.into());
+        }
+
+        // SAFETY: we just allocated it if it was not there
+        let bucket = bucket.as_mut().unwrap();
+        let slice = &mut bucket[loc.pos..];
+        let nwrite = min(slice.len(), items.len());
+        for i in (0..nwrite).rev() {
+            slice[i] = MaybeUninit::new(items.pop().unwrap());
+        }
 
         self.list.len.store(len + nwrite, Ordering::Release);
 
@@ -130,22 +173,24 @@ impl AddBufferWriter {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct AddBufferReader {
-    list: Arc<List>,
+pub struct Reader<T> {
+    list: Arc<List<T>>,
 }
 
-impl AddBufferReader {
-    pub fn slice(&self, range: Range<usize>) -> &[u8] {
+impl<T> Reader<T> {
+    pub fn slice(&self, range: Range<usize>) -> &[T] {
         // TODO assert we dont read past len
         let loc = BucketLocation::of(range.start);
         let bucket = {
-            let bucket: &UnsafeCell<Option<Box<[u8]>>> = &self.list.buckets[loc.bucket];
-            let bucket: Option<&Box<[u8]>> = unsafe { (*bucket.get()).as_ref() };
-            let bucket: &Box<[u8]> = bucket.unwrap();
+            let bucket: &UnsafeCell<Option<Box<[MaybeUninit<T>]>>> = &self.list.buckets[loc.bucket];
+            let bucket: Option<&Box<[MaybeUninit<T>]>> = unsafe { (*bucket.get()).as_ref() };
+            let bucket: &Box<[MaybeUninit<T>]> = bucket.unwrap();
             bucket
         };
         let brange = loc.pos..loc.pos + range.len();
-        &bucket[brange]
+        // SAFETY: TODO not safe, must assert we are not past len, or bucket
+        // boundaries
+        unsafe { mem::transmute(&bucket[brange]) }
     }
 
     pub fn len(&self) -> usize {
@@ -153,15 +198,27 @@ impl AddBufferReader {
     }
 }
 
-type Bucket = UnsafeCell<Option<Box<[u8]>>>;
-
-#[derive(Debug)]
-struct List {
-    len: AtomicUsize,
-    buckets: [Bucket; BUCKET_COUNT],
+struct Chunks<T> {
+    list: Arc<List<T>>,
+    bucket: usize,
 }
 
-unsafe impl Sync for List {}
+impl<T> Chunks<T> {
+    pub fn next(&mut self) -> Option<&[T]> {
+        // TODO return the bucket and continue if it was not null
+        None
+    }
+}
+
+type Bucket<T> = UnsafeCell<Option<Box<[MaybeUninit<T>]>>>;
+
+#[derive(Debug)]
+struct List<T> {
+    len: AtomicUsize,
+    buckets: [Bucket<T>; BUCKET_COUNT],
+}
+
+unsafe impl<T> Sync for List<T> {}
 
 #[derive(Debug, PartialEq)]
 struct BucketLocation {
@@ -176,7 +233,7 @@ struct BucketLocation {
 }
 
 impl BucketLocation {
-    pub fn of(pos: usize) -> BucketLocation {
+    fn of(pos: usize) -> BucketLocation {
         debug_assert!(pos < usize::MAX - BUCKET_START_POS);
 
         let pos = pos + BUCKET_START_POS;
@@ -192,64 +249,5 @@ impl BucketLocation {
             bucket_len,
             pos,
         }
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    #[test]
-    fn location() {
-        assert_eq!(
-            BucketLocation {
-                bucket: 0,
-                bucket_len: 1 << BUCKET_START,
-                pos: 0
-            },
-            BucketLocation::of(0)
-        );
-
-        assert_eq!(
-            BucketLocation {
-                bucket: 0,
-                bucket_len: 1 << BUCKET_START,
-                pos: 200
-            },
-            BucketLocation::of(200)
-        );
-
-        assert_eq!(
-            BucketLocation {
-                bucket: 1,
-                bucket_len: 1 << (BUCKET_START + 1),
-                pos: 0
-            },
-            BucketLocation::of(16384)
-        );
-
-        assert_eq!(
-            BucketLocation {
-                bucket: 1,
-                bucket_len: 1 << (BUCKET_START + 1),
-                pos: 1
-            },
-            BucketLocation::of(16385)
-        );
-    }
-
-    #[test]
-    fn append() {
-        let (_aread, awrite) = AddBuffer::new();
-        let mut bytes = b"a".repeat(BUCKET_START_POS + 10);
-
-        assert_eq!(
-            AppendResult::NewBlock(BUCKET_START_POS),
-            awrite.append(&bytes)
-        );
-        bytes = bytes[BUCKET_START_POS..].to_vec();
-
-        assert_eq!(AppendResult::NewBlock(10), awrite.append(&bytes));
-        assert_eq!(AppendResult::Append(10), awrite.append(&bytes));
     }
 }

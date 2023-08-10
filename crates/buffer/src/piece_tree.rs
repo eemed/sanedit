@@ -13,7 +13,7 @@ use std::io::{self, Write};
 use std::ops::{Bound, RangeBounds};
 use std::sync::Arc;
 
-use self::buffers::{create_add_buffer_reader_writer, AddBufferReader, AddBufferWriter};
+use self::buffers::{AddBuffer, AddBufferReader, AddBufferWriter};
 use self::tree::pieces::Pieces;
 use self::tree::Tree;
 use self::utf8::graphemes::Graphemes;
@@ -91,7 +91,7 @@ impl PieceTree {
     #[inline]
     fn from_original_buffer(orig: OriginalBuffer) -> PieceTree {
         let orig = Arc::new(orig);
-        let (aread, awrite) = create_add_buffer_reader_writer();
+        let (aread, awrite) = AddBuffer::new();
         let mut pieces = Tree::new();
 
         if !orig.is_empty() {

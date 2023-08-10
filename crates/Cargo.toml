@@ -9,6 +9,7 @@ members = [
     "terminal-client",
     "ucd",
     "macros",
+    "utils",
 ]
 
 [profile.release]

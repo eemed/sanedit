@@ -8,7 +8,7 @@ use std::sync::{
 
 use parking_lot::RwLock;
 
-pub(crate) type Candidate = String;
+use self::candidates::{Candidate, Candidates, Reader};
 
 pub(crate) enum CandidateMessage {
     Many(Box<[Candidate]>),
@@ -22,40 +22,36 @@ impl From<String> for CandidateMessage {
 }
 
 pub(crate) struct Matcher {
-    // reader: Candidates,
+    reader: Reader,
 }
 
 impl Matcher {
-    pub const BATCH_SIZE: usize = 512;
-
     // Create a new matcher.
     pub fn new(chan: Receiver<CandidateMessage>) -> Matcher {
-        let candidates = Arc::new(RwLock::new(vec![]));
+        let (reader, writer) = Candidates::new();
 
         rayon::spawn(move || {
-            let candidates = candidates.clone();
-
             while let Ok(msg) = chan.recv() {
                 match msg {
-                    CandidateMessage::Many(cans) => {
-                        let candidates = candidates.write();
-                        for can in cans.into_iter() {
-                            candidates.push(*can);
-                        }
-                    }
-                    CandidateMessage::One(can) => {
-                        let candidates = candidates.write();
-                        candidates.push(can);
-                    }
+                    CandidateMessage::Many(cans) => cans.into_iter().for_each(|can| {
+                        writer.append(*can);
+                    }),
+                    CandidateMessage::One(can) => writer.append(can),
                 }
             }
         });
 
-        Matcher {}
+        Matcher { reader }
     }
 
     /// Match the candidates with the term. Returns a receiver where the results
     /// can be read from.
     /// Dropping the receiver stops the matching process.
-    pub fn do_match(&mut self, term: String) -> Receiver<String> {}
+    pub fn do_match(&mut self, term: String) -> Receiver<String> {
+        // TODO: what to do if more candidates are still coming? wait and block?
+        //
+        // Batch candidates to 512 sized blocks
+        // Send each block to an executor
+        // Get the results and send to receiver
+    }
 }

@@ -167,6 +167,31 @@ impl<T> Writer<T> {
         }
     }
 
+    pub fn append(&self, item: T) {
+        let len = self.list.len.load(Ordering::Relaxed);
+        let loc = BucketLocation::of(len);
+        let bucket = &self.list.buckets[loc.bucket];
+        // SAFETY: we are the only writer, and readers will not read after len
+        let bucket = unsafe { &mut *bucket.get() };
+        let alloc = bucket.is_none();
+
+        if alloc {
+            let mut vec = Vec::with_capacity(loc.bucket_len);
+            for _ in 0..loc.bucket_len {
+                vec.push(MaybeUninit::uninit());
+            }
+            *bucket = Some(vec.into());
+        }
+
+        // SAFETY: we just allocated it if it was not there
+        let bucket = bucket.as_mut().unwrap();
+        let mut slice = &mut bucket[loc.pos..];
+        // let nwrite = min(slice.len(), bytes.len());
+        slice[0] = MaybeUninit::new(item);
+
+        self.list.len.store(len + 1, Ordering::Release);
+    }
+
     pub fn len(&self) -> usize {
         self.list.len.load(Ordering::Relaxed)
     }

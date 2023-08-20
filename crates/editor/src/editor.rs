@@ -227,6 +227,7 @@ impl Editor {
     }
 
     fn redraw(&mut self, id: ClientId) {
+        log::info!("Redraw");
         execute(self, id, Hook::OnDrawPre);
 
         let draw = self

@@ -1,16 +1,16 @@
 use std::{path::PathBuf, rc::Rc};
 
-use tokio::sync::mpsc::{channel, Receiver, Sender};
+use tokio::sync::mpsc::channel;
 
 use crate::{
     editor::{
-        windows::{Focus, Prompt, PromptAction},
+        windows::{Focus, Prompt},
         Editor,
     },
     server::ClientId,
 };
 
-use super::jobs;
+use super::jobs::{self, CHANNEL_SIZE};
 
 fn is_yes(input: &str) -> bool {
     match input {
@@ -21,22 +21,25 @@ fn is_yes(input: &str) -> bool {
 
 #[action("Open a file")]
 fn open_file(editor: &mut Editor, id: ClientId) {
-    let (tx, rx) = channel::<String>(jobs::CHANNEL_SIZE);
+    let (tx, rx) = channel(CHANNEL_SIZE);
     let job = jobs::list_files(editor, id, rx);
 
     let (win, _buf) = editor.win_buf_mut(id);
     win.prompt = Prompt::new("Open a file");
     win.prompt.on_input = Some(Rc::new(move |editor, id, input| {
-        log::info!("Send input");
         let _ = tx.blocking_send(input.into());
     }));
     win.prompt.on_confirm = Some(Rc::new(move |editor, id, input| {
-        log::info!("CONFIRM");
         let (win, _buf) = editor.win_buf_mut(id);
         win.prompt.on_input = None;
+        let path = PathBuf::from(input);
+
+        if let Err(e) = editor.open_file(id, &path) {
+            let (win, _buf) = editor.win_buf_mut(id);
+            win.warn_msg(&format!("Failed to open file {input}"))
+        }
     }));
     win.prompt.on_abort = Some(Rc::new(move |editor, id, input| {
-        log::info!("ABORT");
         let (win, _buf) = editor.win_buf_mut(id);
         win.prompt.on_input = None;
     }));
@@ -44,28 +47,6 @@ fn open_file(editor: &mut Editor, id: ClientId) {
 
     editor.jobs.request(job);
 }
-
-// #[action("Open a file")]
-// fn open_file(editor: &mut Editor, id: ClientId) {
-//     let job_id = jobs::list_files_prompt_provide_completions(editor, id);
-//     let on_confirm: PromptAction = Rc::new(move |editor, id, input| {
-//         editor.jobs.stop(&job_id);
-//         let path = PathBuf::from(input);
-//         if editor.open_file(id, path).is_err() {
-//             let (win, _buf) = editor.win_buf_mut(id);
-//             win.warn_msg("Failed to open file");
-//         }
-//     });
-//     let on_abort: PromptAction = Rc::new(move |editor, _id, _input| {
-//         editor.jobs.stop(&job_id);
-//     });
-
-//     let (win, _buf) = editor.win_buf_mut(id);
-//     win.prompt = Prompt::new("Open a file");
-//     win.prompt.on_confirm = Some(on_confirm);
-//     win.prompt.on_abort = Some(on_abort);
-//     win.focus = Focus::Prompt;
-// }
 
 #[action("Close prompt")]
 fn close(editor: &mut Editor, id: ClientId) {

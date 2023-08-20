@@ -1,17 +1,21 @@
 use std::{
     cmp::min,
     sync::{
-        atomic::{AtomicBool, AtomicUsize, Ordering},
-        mpsc::{self, Receiver, Sender},
+        atomic::{AtomicBool, Ordering},
         Arc,
     },
 };
 
-use parking_lot::RwLock;
 use sanedit_utils::appendlist::{Appendlist, Reader};
+use tokio::sync::mpsc::{channel, Receiver};
+
+use crate::server::{JobProgress, JobProgressSender};
+
+use super::CHANNEL_SIZE;
 
 type Candidate = String;
 
+#[derive(Debug)]
 pub(crate) enum CandidateMessage {
     Many(Box<[Candidate]>),
     One(Candidate),
@@ -20,6 +24,16 @@ pub(crate) enum CandidateMessage {
 impl From<String> for CandidateMessage {
     fn from(value: String) -> Self {
         CandidateMessage::One(value)
+    }
+}
+
+pub(crate) trait MatcherReceiver<T> {
+    fn recv(&mut self) -> Option<T>;
+}
+
+impl<T> MatcherReceiver<T> for Receiver<T> {
+    fn recv(&mut self) -> Option<T> {
+        self.blocking_recv()
     }
 }
 
@@ -32,13 +46,16 @@ impl Matcher {
     const BATCH_SIZE: usize = 512;
 
     // Create a new matcher.
-    pub fn new(chan: Receiver<CandidateMessage>) -> Matcher {
+    pub fn new<T>(mut chan: T) -> Matcher
+    where
+        T: MatcherReceiver<CandidateMessage> + Send + 'static,
+    {
         let (reader, writer) = Appendlist::<Candidate>::new();
         let candidates_done = Arc::new(AtomicBool::new(false));
         let done = candidates_done.clone();
 
         rayon::spawn(move || {
-            while let Ok(msg) = chan.recv() {
+            while let Some(msg) = chan.recv() {
                 match msg {
                     CandidateMessage::Many(cans) => cans.into_iter().for_each(|can| {
                         writer.append(can.clone());
@@ -59,17 +76,18 @@ impl Matcher {
     /// Match the candidates with the term. Returns a receiver where the results
     /// can be read from.
     /// Dropping the receiver stops the matching process.
-    pub fn do_match(&mut self, term: String) -> Receiver<String> {
+    pub fn do_match(&mut self, term: &str) -> Receiver<String> {
+        log::info!("do_match");
         // TODO: what to do if more candidates are still coming? wait and block?
         //
         // Batch candidates to 512 sized blocks
         // Send each block to an executor
         // Get the results and send to receiver
 
-        let (out, rx) = mpsc::channel::<String>();
+        let (out, rx) = channel::<String>(CHANNEL_SIZE);
         let reader = self.reader.clone();
         let candidates_done = self.candidates_done.clone();
-        let term = Arc::new(term);
+        let term: Arc<String> = Arc::new(term.into());
         let mut available = reader.len();
         let mut taken = 0;
         let stop = Arc::new(AtomicBool::new(false));
@@ -102,7 +120,7 @@ impl Matcher {
                     let candidates = reader.slice(batch);
                     for (i, can) in candidates.into_iter().enumerate() {
                         if matches_with(&can, &term, false).is_some() {
-                            if out.send(can.clone()).is_err() {
+                            if out.blocking_send(can.clone()).is_err() {
                                 stop.store(true, Ordering::Release);
                             }
                         }
@@ -124,6 +142,55 @@ fn matches_with(string: &str, input: &str, ignore_case: bool) -> Option<usize> {
     } else {
         string.find(input)
     }
+}
+
+pub(crate) enum MatcherResult {
+    Reset,
+    Options(Vec<String>),
+}
+
+/// Reads options and filter term from channels and send good results to
+/// progress
+pub(crate) async fn matcher(
+    mut out: JobProgressSender,
+    opt_in: Receiver<CandidateMessage>,
+    mut term_in: Receiver<String>,
+) -> bool {
+    fn spawn(mut out: JobProgressSender, mut rx: Receiver<String>) -> tokio::task::JoinHandle<()> {
+        tokio::spawn(async move {
+            while let Some(res) = rx.recv().await {
+                if let Err(_e) = out
+                    .send(JobProgress::Output(Box::new(MatcherResult::Options(vec![
+                        res,
+                    ]))))
+                    .await
+                {
+                    break;
+                }
+            }
+        })
+    }
+
+    let mut matcher = Matcher::new(opt_in);
+    let rx = matcher.do_match("");
+    let mut recv = spawn(out.clone(), rx);
+
+    while let Some(term) = term_in.recv().await {
+        recv.abort();
+        let _ = recv.await;
+
+        if let Err(_e) = out
+            .send(JobProgress::Output(Box::new(MatcherResult::Reset)))
+            .await
+        {
+            break;
+        }
+
+        let rx = matcher.do_match(&term);
+        recv = spawn(out.clone(), rx);
+    }
+
+    true
 }
 
 #[cfg(test)]

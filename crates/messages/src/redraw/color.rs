@@ -86,7 +86,7 @@ impl Rgb {
     }
 
     pub fn name(&self) -> String {
-        format!("#{:x}{:x}{:x}", self.red, self.green, self.blue)
+        format!("#{:02x}{:02x}{:02x}", self.red, self.green, self.blue)
     }
 
     pub fn get(&self) -> (u8, u8, u8) {

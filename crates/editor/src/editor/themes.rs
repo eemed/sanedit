@@ -16,29 +16,28 @@ fn default() -> Theme {
         theme.insert(field, Style::from_str(style).unwrap());
     };
 
-    // DIFF RED #df5f5f
-    // DIFF GREEN #5faf5f
-    // DIFF YELLOW #dfaf87
+    // OSRS theme
+    // BG       #014CC0
+    // BG DARK  #B8A282
+    // FG       #014CC0
+    // BROWN FG #936039
+    // BLUE FG  #014CC0
+    // RED FG   #C02614
+    // GRAY FG  #4C4C4C
     //
-    // DIFF BLUE #87B7DE
+    // GREEN BG  #C3E8A3
+    // GREEN BG2 #BBEE91
+    // GREEN FG #3C780A
     //
-    // GREEN #008700
-    // BLUE #005faf
-    // RED #df0000
-    // PURPLE #8700df
-    // CYAN #005f5f
-    // DARK RED #af5f5f
-    // DARK GREEN #00875f
-    // COMMENT GRAY #606060
-    //
-    // DARK #8C8C8C
-    // dark gray #878787
-    // #bcbcbc
-    // #4e4e4e
+    // RARITY
+    // BLUE   #AFEEEE
+    // GREEN  #56E156
+    // YELLOW #FFED4C
+    // ORANGE #FF863C
 
-    ins(Default, "#d8d8d8,#080808,");
-    ins(Statusline, "#a8a8a8,,bold");
-    ins(EndOfBuffer, ",#878787,");
+    ins(Default, "#D8CCB4,#000000,");
+    ins(Statusline, "#C0A886,,bold");
+    ins(EndOfBuffer, ",#4C4C4C,");
     ins(Selection, ",#8700df,");
     ins(Match, "#5faf5f,,");
     ins(Symbols, ",#606060,");

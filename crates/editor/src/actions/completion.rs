@@ -46,5 +46,4 @@ fn prev(editor: &mut Editor, id: ClientId) {
 pub(crate) fn provide(editor: &mut Editor, id: ClientId, completions: Vec<String>) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.completion.provide_options(completions);
-    win.completion.match_options("");
 }

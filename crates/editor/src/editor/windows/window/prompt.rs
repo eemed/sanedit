@@ -81,7 +81,6 @@ impl Prompt {
         self.prev_grapheme();
         let start = self.cursor;
         self.input.replace_range(start..end, "");
-        self.selector.match_options(&self.input);
     }
 
     pub fn next_completion(&mut self) {
@@ -109,13 +108,11 @@ impl Prompt {
     pub fn insert_at_cursor(&mut self, string: &str) {
         self.input.insert_str(self.cursor, string);
         self.cursor += string.len();
-        self.selector.match_options(&self.input);
     }
 
     pub fn insert_char_at_cursor(&mut self, ch: char) {
         self.input.insert(self.cursor, ch);
         self.cursor += ch.len_utf8();
-        self.selector.match_options(&self.input);
     }
 
     pub fn provide_completions(&mut self, completions: Vec<String>) {

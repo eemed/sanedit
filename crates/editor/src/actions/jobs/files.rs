@@ -1,4 +1,4 @@
-use std::{any::Any, mem, path::PathBuf, sync::Arc};
+use std::{any::Any, path::PathBuf, sync::Arc};
 
 use tokio::{
     fs, io,
@@ -6,12 +6,9 @@ use tokio::{
 };
 
 use crate::{
-    actions::{
-        jobs::matcher::{matcher, Matcher},
-        prompt,
-    },
+    actions::{jobs::matcher::matcher, prompt},
     editor::{jobs::Job, Editor},
-    server::{ClientId, JobFutureFn, JobProgress, JobProgressSender},
+    server::{ClientId, JobFutureFn, JobProgressSender},
 };
 
 use super::matcher::{CandidateMessage, MatcherResult};
@@ -19,20 +16,30 @@ use super::matcher::{CandidateMessage, MatcherResult};
 pub(crate) const CHANNEL_SIZE: usize = 64;
 
 async fn read_dir(out: Sender<CandidateMessage>, dir: PathBuf) -> bool {
-    fn spawn(out: Sender<CandidateMessage>, dir: PathBuf) {
-        tokio::spawn(read_dir(out, dir));
+    fn spawn(out: Sender<CandidateMessage>, dir: PathBuf, strip: usize) {
+        tokio::spawn(read_recursive(out, dir, strip));
     }
 
-    async fn read_recursive(out: Sender<CandidateMessage>, dir: PathBuf) -> io::Result<()> {
+    async fn read_recursive(
+        out: Sender<CandidateMessage>,
+        dir: PathBuf,
+        strip: usize,
+    ) -> io::Result<()> {
         let mut rdir = fs::read_dir(&dir).await?;
         while let Ok(Some(entry)) = rdir.next_entry().await {
             let path = entry.path();
             let metadata = entry.metadata().await?;
             if metadata.is_dir() {
-                spawn(out.clone(), path)
+                spawn(out.clone(), path, strip)
             } else {
-                let stripped = path.strip_prefix(&dir).unwrap();
-                let name: String = stripped.to_string_lossy().into();
+                let path = path
+                    .components()
+                    .skip(strip)
+                    .fold(PathBuf::new(), |mut acc, comp| {
+                        acc.push(comp);
+                        acc
+                    });
+                let name: String = path.to_string_lossy().into();
                 let _ = out.send(CandidateMessage::One(name)).await;
             }
         }
@@ -40,7 +47,8 @@ async fn read_dir(out: Sender<CandidateMessage>, dir: PathBuf) -> bool {
         Ok(())
     }
 
-    read_recursive(out, dir).await.is_ok()
+    let strip = dir.components().count();
+    read_recursive(out, dir, strip).await.is_ok()
 }
 
 pub(crate) fn list_files(editor: &mut Editor, id: ClientId, term_in: Receiver<String>) -> Job {

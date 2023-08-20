@@ -1,5 +1,6 @@
 use std::{
     cmp::min,
+    mem,
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc,
@@ -158,16 +159,29 @@ pub(crate) async fn matcher(
 ) -> bool {
     fn spawn(mut out: JobProgressSender, mut rx: Receiver<String>) -> tokio::task::JoinHandle<()> {
         tokio::spawn(async move {
+            const BLOCK_SIZE: usize = 256;
+            let mut opts: Vec<String> = Vec::with_capacity(BLOCK_SIZE);
+
             while let Some(res) = rx.recv().await {
-                if let Err(_e) = out
-                    .send(JobProgress::Output(Box::new(MatcherResult::Options(vec![
-                        res,
-                    ]))))
-                    .await
-                {
-                    break;
+                opts.push(res);
+
+                if opts.len() >= BLOCK_SIZE {
+                    if let Err(_e) = out
+                        .send(JobProgress::Output(Box::new(MatcherResult::Options(
+                            mem::take(&mut opts),
+                        ))))
+                        .await
+                    {
+                        break;
+                    }
                 }
             }
+
+            let _ = out
+                .send(JobProgress::Output(Box::new(MatcherResult::Options(
+                    mem::take(&mut opts),
+                ))))
+                .await;
         })
     }
 

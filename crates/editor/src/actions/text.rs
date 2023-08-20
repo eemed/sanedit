@@ -62,7 +62,7 @@ pub(crate) fn insert(editor: &mut Editor, id: ClientId, text: &str) {
 fn save(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     if let Err(e) = buf.save() {
-        win.error_msg("Saving failed: {e}");
+        win.error_msg(&format!("Saving failed: {e}"));
         log::error!("Failed to save buffer {}", e);
     }
 }

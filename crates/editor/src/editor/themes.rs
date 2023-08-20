@@ -17,9 +17,12 @@ fn default() -> Theme {
     };
 
     // OSRS theme
-    // BG       #014CC0
-    // BG DARK  #B8A282
-    // FG       #014CC0
+    // BG       #E2DBC8
+    // BG DARK  #D8CCB4
+    // BG DARK  #D0BD97
+    // BG DARK2 #C0A886
+    // BG DARK3 #B8A282
+    //
     // BROWN FG #936039
     // BLUE FG  #014CC0
     // RED FG   #C02614
@@ -27,31 +30,32 @@ fn default() -> Theme {
     //
     // GREEN BG  #C3E8A3
     // GREEN BG2 #BBEE91
-    // GREEN FG #3C780A
+    // GREEN FG  #3C780A
     //
     // RARITY
     // BLUE   #AFEEEE
     // GREEN  #56E156
     // YELLOW #FFED4C
     // ORANGE #FF863C
+    // RED    #FF6262
 
-    ins(Default, "#D8CCB4,#000000,");
-    ins(Statusline, "#C0A886,,bold");
+    ins(Default, "#E2DBC8,#000000,");
+    ins(Statusline, "#B8A282,,bold");
     ins(EndOfBuffer, ",#4C4C4C,");
     ins(Selection, ",#8700df,");
-    ins(Match, "#5faf5f,,");
+    ins(Match, "#91bbee,,");
     ins(Symbols, ",#606060,");
-    ins(Cursor, "#87B7DE,,");
+    ins(Cursor, "#9691ee,,");
     ins(PrimaryCursor, ",,");
 
-    ins(PromptDefault, "#a8a8a8,#080808,");
+    ins(PromptDefault, "#B8A282,#000000,");
     ins(PromptUserInput, ",,");
     ins(PromptMessage, ",,bold");
-    ins(PromptCompletionSelected, "#5faf5f,,");
-    ins(PromptCompletion, "#bcbcbc,,");
+    ins(PromptCompletionSelected, "#91bbee,,");
+    ins(PromptCompletion, "#D8CCB4,,");
 
-    ins(Info, "#87B7DE,#080808,");
-    ins(Warn, "#dfaf87,#080808,");
-    ins(Error, "#df5f5f,#080808,");
+    ins(Info, "#9aeaea,#000000,");
+    ins(Warn, "#ebb87b,#000000,");
+    ins(Error, "#eb817b,#000000,");
     theme
 }

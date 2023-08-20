@@ -1,11 +1,7 @@
-use std::mem;
-
 /// Selects one item from a list of options.
 /// Options can be filtered down using an input string.
 #[derive(Debug, Default)]
 pub(crate) struct Selector {
-    /// All completion options
-    pub(crate) options: Vec<String>,
     /// Currently matched completions. Completions are juggled between this and
     /// `all` depending on wether they are matched or not
     pub(crate) matched: Vec<String>,
@@ -19,7 +15,6 @@ pub(crate) struct Selector {
 impl Selector {
     pub fn new() -> Selector {
         Selector {
-            options: vec![],
             matched: vec![],
             selected: None,
             smartcase: true,
@@ -63,46 +58,7 @@ impl Selector {
     }
 
     pub fn provide_options(&mut self, options: Vec<String>) {
-        log::info!("provide {options:?}");
         self.matched.extend(options);
-    }
-
-    pub fn match_options(&mut self, input: &str) {
-        fn matches_with(string: &str, input: &str, ignore_case: bool) -> Option<usize> {
-            if ignore_case {
-                string.to_ascii_lowercase().find(input)
-            } else {
-                string.find(input)
-            }
-        }
-
-        let mut opts = mem::take(&mut self.matched);
-        opts.extend(mem::take(&mut self.options));
-
-        let ignore_case = self.smartcase
-            && input.chars().fold(true, |acc, ch| {
-                acc && (!ch.is_ascii_alphabetic() || ch.is_ascii_lowercase())
-            });
-
-        for opt in opts.into_iter() {
-            if let Some(_) = matches_with(&opt, &input, ignore_case) {
-                let len = opt.len();
-                let ins_idx = self
-                    .matched
-                    .binary_search_by(|res| {
-                        use std::cmp::Ordering;
-                        match res.len().cmp(&len) {
-                            Ordering::Less => Ordering::Less,
-                            Ordering::Greater => Ordering::Greater,
-                            Ordering::Equal => res.cmp(&opt),
-                        }
-                    })
-                    .unwrap_or_else(|x| x);
-                self.matched.insert(ins_idx, opt);
-            } else {
-                self.options.push(opt);
-            }
-        }
     }
 
     pub fn selected_pos(&self) -> Option<usize> {

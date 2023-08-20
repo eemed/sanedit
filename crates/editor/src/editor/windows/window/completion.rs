@@ -30,10 +30,6 @@ impl Completion {
         self.selector.provide_options(options)
     }
 
-    pub fn match_options(&mut self, input: &str) {
-        self.selector.match_options(input)
-    }
-
     pub fn selected_pos(&self) -> Option<usize> {
         self.selector.selected_pos()
     }

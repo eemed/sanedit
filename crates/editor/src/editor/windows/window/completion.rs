@@ -27,7 +27,7 @@ impl Completion {
     }
 
     pub fn provide_options(&mut self, options: Vec<String>) {
-        self.selector.provide_options(options)
+        // self.selector.provide_options(options)
     }
 
     pub fn selected_pos(&self) -> Option<usize> {

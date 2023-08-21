@@ -1,10 +1,13 @@
+use std::{cmp::min, mem};
+
+use crate::common::matcher::Match;
+
 /// Selects one item from a list of options.
 /// Options can be filtered down using an input string.
 #[derive(Debug, Default)]
 pub(crate) struct Selector {
-    /// Currently matched completions. Completions are juggled between this and
-    /// `all` depending on wether they are matched or not
-    pub(crate) matched: Vec<String>,
+    /// Currently matched completions.
+    pub(crate) matched: Vec<Match>,
 
     /// Currently selected index from `matched`
     pub(crate) selected: Option<usize>,
@@ -57,8 +60,34 @@ impl Selector {
         }
     }
 
-    pub fn provide_options(&mut self, options: Vec<String>) {
-        self.matched.extend(options);
+    pub fn provide_options(&mut self, matches: Vec<Match>) {
+        // Merge the two arrays by comparing score
+        let cap = matches.len() + self.matched.len();
+        let old = mem::replace(&mut self.matched, Vec::with_capacity(cap));
+
+        let n = min(old.len(), matches.len());
+        let mut i = 0;
+        let mut j = 0;
+
+        while i < n && j < n {
+            if old[i].score() < matches[j].score() {
+                self.matched.push(old[i].clone());
+                i += 1;
+            } else {
+                self.matched.push(matches[j].clone());
+                j += 1;
+            }
+        }
+
+        while i < old.len() {
+            self.matched.push(old[i].clone());
+            i += 1;
+        }
+
+        while j < matches.len() {
+            self.matched.push(matches[j].clone());
+            j += 1;
+        }
     }
 
     pub fn selected_pos(&self) -> Option<usize> {

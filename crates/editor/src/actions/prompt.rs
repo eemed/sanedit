@@ -3,6 +3,7 @@ use std::{path::PathBuf, rc::Rc};
 use tokio::sync::mpsc::channel;
 
 use crate::{
+    common::matcher::Match,
     editor::{
         windows::{Focus, Prompt},
         Editor,
@@ -10,7 +11,7 @@ use crate::{
     server::ClientId,
 };
 
-use super::jobs::{self, CHANNEL_SIZE};
+use super::jobs;
 
 fn is_yes(input: &str) -> bool {
     match input {
@@ -21,6 +22,8 @@ fn is_yes(input: &str) -> bool {
 
 #[action("Open a file")]
 fn open_file(editor: &mut Editor, id: ClientId) {
+    const CHANNEL_SIZE: usize = 64;
+
     let (tx, rx) = channel(CHANNEL_SIZE);
     let job = jobs::list_files(editor, id, rx);
 
@@ -108,7 +111,7 @@ fn prev_completion(editor: &mut Editor, id: ClientId) {
     win.prompt.prev_completion();
 }
 
-pub(crate) fn provide_completions(editor: &mut Editor, id: ClientId, completions: Vec<String>) {
+pub(crate) fn provide_completions(editor: &mut Editor, id: ClientId, completions: Vec<Match>) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.prompt.provide_completions(completions);
 }

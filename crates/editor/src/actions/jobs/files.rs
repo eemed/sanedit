@@ -7,13 +7,15 @@ use tokio::{
 
 use crate::{
     actions::{jobs::matcher::matcher, prompt},
+    common::matcher::{CandidateMessage, Match},
     editor::{jobs::Job, Editor},
     server::{ClientId, JobFutureFn, JobProgressSender},
 };
 
-use super::matcher::{CandidateMessage, MatcherResult};
-
-pub(crate) const CHANNEL_SIZE: usize = 64;
+pub(crate) enum MatcherResult {
+    Reset,
+    Matches(Vec<Match>),
+}
 
 async fn read_dir(out: Sender<CandidateMessage>, dir: PathBuf) -> bool {
     fn spawn(out: Sender<CandidateMessage>, dir: PathBuf, strip: usize) {
@@ -61,7 +63,7 @@ pub(crate) fn list_files(editor: &mut Editor, id: ClientId, term_in: Receiver<St
                     let (win, buf) = editor.win_buf_mut(id);
                     win.prompt.reset_selector();
                 }
-                MatcherResult::Options(opts) => prompt::provide_completions(editor, id, opts),
+                MatcherResult::Matches(opts) => prompt::provide_completions(editor, id, opts),
                 _ => {}
             }
         }
@@ -71,6 +73,8 @@ pub(crate) fn list_files(editor: &mut Editor, id: ClientId, term_in: Receiver<St
 }
 
 async fn list_files_task(dir: PathBuf, out: JobProgressSender, term_in: Receiver<String>) -> bool {
+    const CHANNEL_SIZE: usize = 64;
+
     let (opt_out, opt_in) = channel(CHANNEL_SIZE);
     let (a, b) = tokio::join!(read_dir(opt_out, dir), matcher(out, opt_in, term_in));
     a && b

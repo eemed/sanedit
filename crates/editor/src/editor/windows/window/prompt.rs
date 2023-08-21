@@ -5,6 +5,7 @@ use std::rc::Rc;
 use unicode_segmentation::UnicodeSegmentation;
 
 use crate::{
+    common::matcher::Match,
     editor::{keymap::Keymap, Editor},
     server::ClientId,
 };
@@ -115,9 +116,8 @@ impl Prompt {
         self.cursor += ch.len_utf8();
     }
 
-    pub fn provide_completions(&mut self, completions: Vec<String>) {
+    pub fn provide_completions(&mut self, completions: Vec<Match>) {
         self.selector.provide_options(completions);
-        // self.selector.match_options(&self.input);
     }
 
     pub fn matches_window(&self, count: usize, offset: usize) -> Vec<&str> {

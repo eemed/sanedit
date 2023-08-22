@@ -1,7 +1,6 @@
 use std::{
     cell::UnsafeCell,
     cmp::min,
-    io::Write,
     marker::PhantomData,
     mem::{self, MaybeUninit},
     ops::Range,
@@ -185,7 +184,7 @@ impl<T> Writer<T> {
 
         // SAFETY: we just allocated it if it was not there
         let bucket = bucket.as_mut().unwrap();
-        let mut slice = &mut bucket[loc.pos..];
+        let slice = &mut bucket[loc.pos..];
         // let nwrite = min(slice.len(), bytes.len());
         slice[0] = MaybeUninit::new(item);
 
@@ -204,7 +203,7 @@ pub struct Reader<T> {
 
 impl<T> Reader<T> {
     pub fn slice(&self, range: Range<usize>) -> &[T] {
-        // TODO assert we dont read past len
+        // TODO assert we dont read over bucket boundaries
         let loc = BucketLocation::of(range.start);
         let bucket = {
             let bucket: &UnsafeCell<Option<Box<[MaybeUninit<T>]>>> = &self.list.buckets[loc.bucket];
@@ -213,25 +212,11 @@ impl<T> Reader<T> {
             bucket
         };
         let brange = loc.pos..loc.pos + range.len();
-        // SAFETY: TODO not safe, must assert we are not past len, or bucket
-        // boundaries
         unsafe { mem::transmute(&bucket[brange]) }
     }
 
     pub fn len(&self) -> usize {
         self.list.len.load(Ordering::Relaxed)
-    }
-}
-
-struct Chunks<T> {
-    list: Arc<List<T>>,
-    bucket: usize,
-}
-
-impl<T> Chunks<T> {
-    pub fn next(&mut self) -> Option<&[T]> {
-        // TODO return the bucket and continue if it was not null
-        None
     }
 }
 

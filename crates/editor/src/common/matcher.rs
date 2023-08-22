@@ -7,6 +7,7 @@ use std::{
     },
 };
 
+use futures::Future;
 use sanedit_utils::appendlist::{Appendlist, Reader};
 use tokio::sync::mpsc::{channel, Receiver};
 
@@ -26,11 +27,11 @@ impl From<String> for CandidateMessage {
 }
 
 /// Trait used to receive candidates using various receiver implementations
-pub(crate) trait MatcherReceiver<T> {
+pub(crate) trait MatchOptionReceiver<T> {
     fn recv(&mut self) -> Option<T>;
 }
 
-/// Matched candidates
+/// A matched and scored candidate
 #[derive(Debug, Clone)]
 pub(crate) struct Match {
     value: String,
@@ -47,6 +48,22 @@ impl Match {
     }
 }
 
+/// Receiver for the match results
+#[derive(Debug)]
+pub(crate) struct MatchReceiver {
+    receiver: Receiver<Match>,
+}
+
+impl MatchReceiver {
+    pub fn blocking_recv(&mut self) -> Option<Match> {
+        self.receiver.blocking_recv()
+    }
+
+    pub async fn recv(&mut self) -> Option<Match> {
+        self.receiver.recv().await
+    }
+}
+
 /// Matches options to a term
 pub(crate) struct Matcher {
     reader: Reader<Candidate>,
@@ -54,13 +71,13 @@ pub(crate) struct Matcher {
 }
 
 impl Matcher {
-    const BATCH_SIZE: usize = 512;
-    const CHANNEL_SIZE: usize = 64;
+    const BATCH_SIZE: usize = 1024;
+    const CHANNEL_SIZE: usize = 1 << 14;
 
     // Create a new matcher.
     pub fn new<T>(mut chan: T) -> Matcher
     where
-        T: MatcherReceiver<CandidateMessage> + Send + 'static,
+        T: MatchOptionReceiver<CandidateMessage> + Send + 'static,
     {
         let (reader, writer) = Appendlist::<Candidate>::new();
         let candidates_done = Arc::new(AtomicBool::new(false));
@@ -91,13 +108,12 @@ impl Matcher {
     /// Match the candidates with the term. Returns a receiver where the results
     /// can be read from in chunks.
     /// Dropping the receiver stops the matching process.
-    /// Returns a tokio receiver to support awaiting in async contexts.
-    pub fn do_match(&mut self, term: &str) -> Receiver<Vec<Match>> {
+    pub fn do_match(&mut self, term: &str) -> MatchReceiver {
         // Batch candidates to 512 sized blocks
         // Send each block to an executor
         // Get the results and send to receiver
 
-        let (out, rx) = channel::<Vec<Match>>(Self::CHANNEL_SIZE);
+        let (out, rx) = channel::<Match>(Self::CHANNEL_SIZE);
         let reader = self.reader.clone();
         let candidates_done = self.candidates_done.clone();
         let term: Arc<String> = Arc::new(term.into());
@@ -130,25 +146,18 @@ impl Matcher {
                         return;
                     }
 
-                    let mut matches: Vec<Match> = Vec::with_capacity(Self::BATCH_SIZE);
                     let candidates = reader.slice(batch);
-                    // Find matches
-                    for (i, can) in candidates.into_iter().enumerate() {
+                    for can in candidates.into_iter() {
                         if matches_with(&can, &term, false).is_some() {
+                            // TODO: scoring algorithm
                             let mat = Match {
                                 score: can.len() as u32,
                                 value: can.clone(),
                             };
-                            matches.push(mat);
+                            if out.blocking_send(mat).is_err() {
+                                stop.store(true, Ordering::Release);
+                            }
                         }
-                    }
-
-                    // Sort matches by score
-                    matches.sort_by(|a, b| a.score.cmp(&b.score));
-
-                    // Send out batch
-                    if out.blocking_send(matches).is_err() {
-                        stop.store(true, Ordering::Release);
                     }
                 });
             } else {
@@ -157,7 +166,7 @@ impl Matcher {
             }
         });
 
-        rx
+        MatchReceiver { receiver: rx }
     }
 }
 

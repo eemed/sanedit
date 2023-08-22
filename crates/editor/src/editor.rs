@@ -227,7 +227,6 @@ impl Editor {
     }
 
     fn redraw(&mut self, id: ClientId) {
-        log::info!("Redraw");
         execute(self, id, Hook::OnDrawPre);
 
         let draw = self
@@ -246,8 +245,6 @@ impl Editor {
                 .get(theme_name.as_str())
                 .expect("Theme not present")
         };
-
-        win.redraw_view(buf);
 
         let messages = draw.redraw(win, buf, theme);
         if !messages.is_empty() {
@@ -343,6 +340,10 @@ impl Editor {
 
     pub fn working_dir(&self) -> &Path {
         &self.working_dir
+    }
+
+    pub fn draw_state(&mut self, id: ClientId) -> &mut DrawState {
+        self.draw_states.get_mut(&id).unwrap()
     }
 }
 

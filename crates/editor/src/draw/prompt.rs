@@ -8,7 +8,7 @@ use super::DrawContext;
 
 pub(crate) fn draw(prompt: &Prompt, ctx: &mut DrawContext) -> Redraw {
     let compl_count = ctx.win.options.completions;
-    let offset = &mut ctx.state.compl_scroll_offset;
+    let offset = &mut ctx.state.prompt_scroll_offset;
     *offset = {
         let selected = prompt.selected_pos().unwrap_or(0);
         if selected >= *offset + compl_count {

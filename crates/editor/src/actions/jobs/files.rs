@@ -7,15 +7,12 @@ use tokio::{
 
 use crate::{
     actions::{jobs::matcher::matcher, prompt},
-    common::matcher::{CandidateMessage, Match},
+    common::matcher::CandidateMessage,
     editor::{jobs::Job, Editor},
     server::{ClientId, JobFutureFn, JobProgressSender},
 };
 
-pub(crate) enum MatcherResult {
-    Reset,
-    Matches(Vec<Match>),
-}
+use super::MatcherResult;
 
 async fn read_dir(out: Sender<CandidateMessage>, dir: PathBuf) -> bool {
     fn spawn(out: Sender<CandidateMessage>, dir: PathBuf, strip: usize) {
@@ -57,14 +54,16 @@ pub(crate) fn list_files(editor: &mut Editor, id: ClientId, term_in: Receiver<St
     let dir = editor.working_dir().to_path_buf();
     let fun: JobFutureFn = { Box::new(move |send| Box::pin(list_files_task(dir, send, term_in))) };
     let on_output = Arc::new(|editor: &mut Editor, id: ClientId, out: Box<dyn Any>| {
+        let draw = editor.draw_state(id);
+        draw.no_redraw_window();
+
         if let Ok(output) = out.downcast::<MatcherResult>() {
             match *output {
                 MatcherResult::Reset => {
-                    let (win, buf) = editor.win_buf_mut(id);
+                    let (win, _buf) = editor.win_buf_mut(id);
                     win.prompt.reset_selector();
                 }
                 MatcherResult::Matches(opts) => prompt::provide_completions(editor, id, opts),
-                _ => {}
             }
         }
     });

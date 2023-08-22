@@ -29,7 +29,6 @@ pub(crate) use self::{
     focus::Focus,
     options::Options,
     prompt::Prompt,
-    prompt::PromptAction,
     search::Search,
     search::SearchDirection,
     view::{Cell, View},

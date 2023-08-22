@@ -4,6 +4,8 @@ mod search;
 mod statusline;
 mod window;
 
+use std::mem;
+
 use sanedit_messages::redraw::{Component, Redraw, Theme};
 
 use crate::editor::{
@@ -22,6 +24,7 @@ pub(crate) struct DrawState {
     /// Used to track scroll position when drawing prompt
     prompt_scroll_offset: usize,
     compl_scroll_offset: usize,
+    redraw_window: bool,
 }
 
 impl DrawState {
@@ -31,6 +34,7 @@ impl DrawState {
         let mut state = DrawState {
             prompt_scroll_offset: 0,
             compl_scroll_offset: 0,
+            redraw_window: true,
         };
 
         let mut ctx = DrawContext {
@@ -46,7 +50,7 @@ impl DrawState {
         (state, vec![window, statusline])
     }
 
-    pub fn redraw(&mut self, win: &Window, buf: &Buffer, theme: &Theme) -> Vec<Redraw> {
+    pub fn redraw(&mut self, win: &mut Window, buf: &Buffer, theme: &Theme) -> Vec<Redraw> {
         let mut redraw: Vec<Redraw> = vec![];
 
         // Send close if not focused
@@ -60,6 +64,11 @@ impl DrawState {
             redraw.push(Redraw::Completion(Component::Close));
         }
 
+        let draw_win = mem::replace(&mut self.redraw_window, true);
+        if draw_win {
+            win.redraw_view(buf);
+        }
+
         let mut ctx = DrawContext {
             win,
             buf,
@@ -67,8 +76,10 @@ impl DrawState {
             state: self,
         };
 
-        let window = window::draw(&mut ctx);
-        redraw.push(window);
+        if draw_win {
+            let window = window::draw(&mut ctx);
+            redraw.push(window);
+        }
 
         let statusline = statusline::draw(&mut ctx);
         redraw.push(statusline);
@@ -94,5 +105,9 @@ impl DrawState {
         }
 
         redraw
+    }
+
+    pub fn no_redraw_window(&mut self) {
+        self.redraw_window = false;
     }
 }

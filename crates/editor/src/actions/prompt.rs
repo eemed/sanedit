@@ -11,7 +11,7 @@ use crate::{
     server::ClientId,
 };
 
-use super::jobs;
+use super::jobs::{self, Matches};
 
 fn is_yes(input: &str) -> bool {
     match input {
@@ -111,7 +111,7 @@ fn prev_completion(editor: &mut Editor, id: ClientId) {
     win.prompt.prev_completion();
 }
 
-pub(crate) fn provide_completions(editor: &mut Editor, id: ClientId, completions: Vec<Match>) {
+pub(crate) fn provide_completions(editor: &mut Editor, id: ClientId, completions: Matches) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.prompt.provide_completions(completions);
 }

@@ -1,6 +1,6 @@
 use std::{cmp::min, mem};
 
-use crate::common::matcher::Match;
+use crate::{actions::jobs::Matches, common::matcher::Match};
 
 /// Selects one item from a list of options.
 /// Options can be filtered down using an input string.
@@ -60,7 +60,7 @@ impl Selector {
         }
     }
 
-    pub fn provide_options(&mut self, matches: Vec<Match>) {
+    pub fn provide_options(&mut self, matches: Matches) {
         // Merge the two arrays by comparing score
         let cap = matches.len() + self.matched.len();
         let old = mem::replace(&mut self.matched, Vec::with_capacity(cap));

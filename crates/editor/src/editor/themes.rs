@@ -28,6 +28,8 @@ fn default() -> Theme {
     // RED FG   #C02614
     // GRAY FG  #4C4C4C
     //
+    // BROWN BORDER #94866D
+    //
     // GREEN BG  #C3E8A3
     // GREEN BG2 #BBEE91
     // GREEN FG  #3C780A

@@ -145,20 +145,38 @@ fn search_impl(editor: &mut Editor, id: ClientId, input: &str, mut pos: usize) {
         }
     }
 
-    let (slice, mat) = match win.search.direction {
+    let (slice, mat, wrap) = match win.search.direction {
         SearchDirection::Forward => {
             let searcher = Searcher::new(input.as_bytes());
-            let slice = buf.slice(pos..);
+            let mut slice = buf.slice(pos..);
             let mut iter = searcher.find_iter(&slice);
-            let mat = iter.next();
-            (slice, mat)
+            let mut mat = iter.next();
+            let mut wrap = false;
+
+            // Wrap if no match
+            if mat.is_none() {
+                slice = buf.slice(..);
+                iter = searcher.find_iter(&slice);
+                mat = iter.next();
+                wrap = true;
+            }
+            (slice, mat, wrap)
         }
         SearchDirection::Backward => {
             let searcher = SearcherRev::new(input.as_bytes());
-            let slice = buf.slice(..pos);
+            let mut slice = buf.slice(..pos);
             let mut iter = searcher.find_iter(&slice);
-            let mat = iter.next();
-            (slice, mat)
+            let mut mat = iter.next();
+            let mut wrap = false;
+
+            // Wrap if no match
+            if mat.is_none() {
+                slice = buf.slice(..);
+                iter = searcher.find_iter(&slice);
+                mat = iter.next();
+                wrap = true;
+            }
+            (slice, mat, wrap)
         }
     };
 
@@ -167,10 +185,17 @@ fn search_impl(editor: &mut Editor, id: ClientId, input: &str, mut pos: usize) {
             mat.start += slice.start();
             mat.end += slice.start();
 
-            log::info!("Match: {mat:?}");
             let cursor = win.primary_cursor_mut();
             cursor.goto(mat.start);
             win.search.cmatch = Some(mat);
+
+            if wrap {
+                if win.search.direction == SearchDirection::Forward {
+                    win.info_msg("Wrapped to beginning");
+                } else {
+                    win.info_msg("Wrapped to end");
+                }
+            }
         }
         None => {
             win.warn_msg("No match found.");

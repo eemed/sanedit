@@ -135,7 +135,7 @@ impl View {
     fn draw_line(&mut self, slice: &PieceTreeSlice, line: usize, pos: &mut usize) -> bool {
         let mut col = 0;
         let mut is_eol = false;
-        // TODO optimize
+        // TODO optimize so only one graphemes is created when drawing
         let mut graphemes = slice.graphemes_at(*pos);
 
         while let Some(grapheme) = graphemes.next() {
@@ -208,32 +208,6 @@ impl View {
             n -= 1;
             line += 1;
         }
-    }
-
-    pub fn last_non_empty_line(&self) -> usize {
-        let mut line = self.height.saturating_sub(1);
-        loop {
-            if let Some(_) = self.last_non_empty_cell(line) {
-                return line;
-            }
-
-            line -= 1;
-        }
-    }
-
-    pub fn line_width(&self, line: usize) -> usize {
-        let mut width = 0;
-        let line = &self.cells[line];
-
-        for cell in line {
-            if matches!(cell, Cell::Empty) {
-                break;
-            }
-
-            width += cell.width();
-        }
-
-        width
     }
 
     pub fn scroll_up_n(&mut self, buf: &Buffer, mut n: usize) {

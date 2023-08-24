@@ -82,6 +82,10 @@ impl Searcher {
     pub fn find_iter<'a, 'b: 'a>(&'a self, slice: &'b PieceTreeSlice) -> SearchIter<'a, 'b> {
         SearchIter::new(&self.pattern, &self.bad_char, &self.good_suffix, slice)
     }
+
+    pub fn pattern_len(&self) -> usize {
+        self.pattern.len()
+    }
 }
 
 #[derive(Debug)]
@@ -234,6 +238,10 @@ impl SearcherRev {
 
     pub fn find_iter<'a, 'b: 'a>(&'a self, slice: &'b PieceTreeSlice) -> SearchIterRev<'a, 'b> {
         SearchIterRev::new(&self.pattern, &self.bad_char, &self.good_suffix, slice)
+    }
+
+    pub fn pattern_len(&self) -> usize {
+        self.pattern.len()
     }
 }
 

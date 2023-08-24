@@ -14,6 +14,27 @@ use crate::{
 
 use super::MatcherResult;
 
+pub(crate) fn list_files(editor: &mut Editor, id: ClientId, term_in: Receiver<String>) -> Job {
+    let dir = editor.working_dir().to_path_buf();
+    let fun: JobFutureFn = { Box::new(move |send| Box::pin(list_files_task(dir, send, term_in))) };
+    let on_output = Arc::new(|editor: &mut Editor, id: ClientId, out: Box<dyn Any>| {
+        let draw = editor.draw_state(id);
+        draw.no_redraw_window();
+
+        if let Ok(output) = out.downcast::<MatcherResult>() {
+            match *output {
+                MatcherResult::Reset => {
+                    let (win, _buf) = editor.win_buf_mut(id);
+                    win.prompt.reset_selector();
+                }
+                MatcherResult::Matches(opts) => prompt::provide_completions(editor, id, opts),
+            }
+        }
+    });
+    let on_error = Arc::new(|editor: &mut Editor, id: ClientId, out: Box<dyn Any>| {});
+    Job::new(id, fun).on_output(on_output).on_error(on_error)
+}
+
 async fn read_dir(out: Sender<CandidateMessage>, dir: PathBuf) -> bool {
     fn spawn(out: Sender<CandidateMessage>, dir: PathBuf, strip: usize) {
         tokio::spawn(read_recursive(out, dir, strip));
@@ -48,27 +69,6 @@ async fn read_dir(out: Sender<CandidateMessage>, dir: PathBuf) -> bool {
 
     let strip = dir.components().count();
     read_recursive(out, dir, strip).await.is_ok()
-}
-
-pub(crate) fn list_files(editor: &mut Editor, id: ClientId, term_in: Receiver<String>) -> Job {
-    let dir = editor.working_dir().to_path_buf();
-    let fun: JobFutureFn = { Box::new(move |send| Box::pin(list_files_task(dir, send, term_in))) };
-    let on_output = Arc::new(|editor: &mut Editor, id: ClientId, out: Box<dyn Any>| {
-        let draw = editor.draw_state(id);
-        draw.no_redraw_window();
-
-        if let Ok(output) = out.downcast::<MatcherResult>() {
-            match *output {
-                MatcherResult::Reset => {
-                    let (win, _buf) = editor.win_buf_mut(id);
-                    win.prompt.reset_selector();
-                }
-                MatcherResult::Matches(opts) => prompt::provide_completions(editor, id, opts),
-            }
-        }
-    });
-    let on_error = Arc::new(|editor: &mut Editor, id: ClientId, out: Box<dyn Any>| {});
-    Job::new(id, fun).on_output(on_output).on_error(on_error)
 }
 
 async fn list_files_task(dir: PathBuf, out: JobProgressSender, term_in: Receiver<String>) -> bool {

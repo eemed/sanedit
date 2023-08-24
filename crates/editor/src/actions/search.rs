@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::{cmp::min, rc::Rc};
 
 use sanedit_buffer::{Searcher, SearcherRev};
 
@@ -148,35 +148,38 @@ fn search_impl(editor: &mut Editor, id: ClientId, input: &str, mut pos: usize) {
     let (slice, mat, wrap) = match win.search.direction {
         SearchDirection::Forward => {
             let searcher = Searcher::new(input.as_bytes());
-            let mut slice = buf.slice(pos..);
+            let blen = buf.len();
+            let slice = buf.slice(pos..);
             let mut iter = searcher.find_iter(&slice);
-            let mut mat = iter.next();
-            let mut wrap = false;
+            let mat = iter.next();
 
             // Wrap if no match
             if mat.is_none() {
-                slice = buf.slice(..);
-                iter = searcher.find_iter(&slice);
-                mat = iter.next();
-                wrap = true;
+                let last = min(blen, pos + searcher.pattern_len() - 1);
+                let slice = buf.slice(..last);
+                let mut iter = searcher.find_iter(&slice);
+                let mat = iter.next();
+                (slice, mat, true)
+            } else {
+                (slice, mat, false)
             }
-            (slice, mat, wrap)
         }
         SearchDirection::Backward => {
             let searcher = SearcherRev::new(input.as_bytes());
-            let mut slice = buf.slice(..pos);
+            let slice = buf.slice(..pos);
             let mut iter = searcher.find_iter(&slice);
-            let mut mat = iter.next();
-            let mut wrap = false;
+            let mat = iter.next();
 
             // Wrap if no match
             if mat.is_none() {
-                slice = buf.slice(..);
-                iter = searcher.find_iter(&slice);
-                mat = iter.next();
-                wrap = true;
+                let first = pos.saturating_sub(searcher.pattern_len() - 1);
+                let slice = buf.slice(first..);
+                let mut iter = searcher.find_iter(&slice);
+                let mat = iter.next();
+                (slice, mat, true)
+            } else {
+                (slice, mat, false)
             }
-            (slice, mat, wrap)
         }
     };
 

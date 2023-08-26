@@ -35,6 +35,14 @@ pub(crate) fn list_files(editor: &mut Editor, id: ClientId, term_in: Receiver<St
     Job::new(id, fun).on_output(on_output).on_error(on_error)
 }
 
+async fn list_files_task(dir: PathBuf, out: JobProgressSender, term_in: Receiver<String>) -> bool {
+    const CHANNEL_SIZE: usize = 64;
+
+    let (opt_out, opt_in) = channel(CHANNEL_SIZE);
+    let (a, b) = tokio::join!(read_dir(opt_out, dir), matcher(out, opt_in, term_in));
+    a && b
+}
+
 async fn read_dir(out: Sender<CandidateMessage>, dir: PathBuf) -> bool {
     fn spawn(out: Sender<CandidateMessage>, dir: PathBuf, strip: usize) {
         tokio::spawn(read_recursive(out, dir, strip));
@@ -69,12 +77,4 @@ async fn read_dir(out: Sender<CandidateMessage>, dir: PathBuf) -> bool {
 
     let strip = dir.components().count();
     read_recursive(out, dir, strip).await.is_ok()
-}
-
-async fn list_files_task(dir: PathBuf, out: JobProgressSender, term_in: Receiver<String>) -> bool {
-    const CHANNEL_SIZE: usize = 64;
-
-    let (opt_out, opt_in) = channel(CHANNEL_SIZE);
-    let (a, b) = tokio::join!(read_dir(opt_out, dir), matcher(out, opt_in, term_in));
-    a && b
 }

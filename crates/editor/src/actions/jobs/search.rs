@@ -14,6 +14,8 @@ enum SearchResult {
 }
 
 pub(crate) fn search(editor: &mut Editor, id: ClientId, term_in: Receiver<String>) -> Job {
+    // REMINDER: view cannot currently change when searching but if it does in the
+    // future need to handle view range changes.
     let (win, buf) = editor.win_buf_mut(id);
     let dir = win.search.direction;
     let ropt = buf.read_only_copy();

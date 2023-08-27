@@ -1,5 +1,11 @@
+use std::{io, path::PathBuf, rc::Rc};
+
 use crate::{
-    editor::{hooks::Hook, windows::Focus, Editor},
+    editor::{
+        hooks::Hook,
+        windows::{Focus, Prompt},
+        Editor,
+    },
     server::ClientId,
 };
 
@@ -61,8 +67,26 @@ pub(crate) fn insert(editor: &mut Editor, id: ClientId, text: &str) {
 #[action("Save file")]
 fn save(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
-    if let Err(e) = buf.save() {
-        win.error_msg(&format!("Saving failed: {e}"));
-        log::error!("Failed to save buffer {}", e);
+    let Err(e) = buf.save() else { return };
+    match e.kind() {
+        io::ErrorKind::NotFound => save_as_action_impl(editor, id),
+        _ => {
+            win.error_msg(&format!("Saving failed: {e}"));
+        }
     }
+}
+
+#[action("Prompt filename and save file")]
+fn save_as(editor: &mut Editor, id: ClientId) {
+    let (win, _buf) = editor.win_buf_mut(id);
+    win.prompt = Prompt::new("Save as");
+    win.prompt.on_confirm = Some(Rc::new(|editor, id, path| {
+        let (win, buf) = editor.win_buf_mut(id);
+        buf.set_path(PathBuf::from(path));
+
+        if let Err(e) = buf.save() {
+            win.error_msg(&format!("Saving failed: {e}"));
+        }
+    }));
+    win.focus = Focus::Prompt;
 }

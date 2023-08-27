@@ -16,6 +16,8 @@ use crate::{
 fn async_view_matches(editor: &mut Editor, id: ClientId) {
     const CHANNEL_SIZE: usize = 64;
     let (tx, rx) = channel(CHANNEL_SIZE);
+
+    let (win, _buf) = editor.win_buf_mut(id);
     win.search.prompt.on_input = Some(Rc::new(move |editor, id, input| {
         let _ = tx.blocking_send(input.into());
     }));

@@ -231,6 +231,10 @@ impl Buffer {
         self.is_modified = true;
     }
 
+    pub fn path(&self) -> Option<&Path> {
+        self.path.as_ref().map(|p| p.as_path())
+    }
+
     pub fn slice<R: RangeBounds<usize>>(&self, range: R) -> PieceTreeSlice {
         self.pt.slice(range)
     }
@@ -243,17 +247,16 @@ impl Buffer {
         BufferCursor::new(&self.pt)
     }
 
-    pub fn save(&self) -> Result<(), io::Error> {
-        log::info!("SAVE");
+    /// Save buffer to a file, will overwrite existing file at path.
+    pub fn save(&mut self) -> Result<(), io::Error> {
         debug_assert!(!self.pt.is_file_backed());
-
         let path = self
             .path
             .as_ref()
-            .ok_or(io::Error::from(io::ErrorKind::NotFound))?;
-        log::info!("SAVING to {:?}", path);
+            .ok_or(io::Error::new(io::ErrorKind::NotFound, "path not set"))?;
         let file = fs::File::create(&path)?;
         self.pt.write_to(file)?;
+        self.is_modified = false;
         Ok(())
     }
 

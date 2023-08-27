@@ -7,6 +7,7 @@ use super::chars::Chars;
 /// Utility function to quickly return the next grapheme boundary
 /// If more iterations are needed using the `Graphemes` iterator is more
 /// efficient.
+#[inline]
 pub fn next_grapheme_boundary(slice: &PieceTreeSlice, pos: usize) -> usize {
     let mut graphemes = slice.graphemes_at(pos);
     match graphemes.next() {
@@ -18,6 +19,7 @@ pub fn next_grapheme_boundary(slice: &PieceTreeSlice, pos: usize) -> usize {
 /// Utility function to quickly return the prev grapheme boundary
 /// If more iterations are needed using the `Graphemes` iterator is more
 /// efficient.
+#[inline]
 pub fn prev_grapheme_boundary(slice: &PieceTreeSlice, pos: usize) -> usize {
     let mut graphemes = slice.graphemes_at(pos);
     match graphemes.prev() {

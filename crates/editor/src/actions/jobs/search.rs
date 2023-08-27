@@ -46,13 +46,14 @@ async fn search_impl(
     let mut handle: Option<JoinHandle<()>> = None;
 
     while let Some(term) = term_in.recv().await {
+        log::info!("term: {term}, view: {view:?}");
         if term.is_empty() {
             continue;
         }
 
         if let Some(h) = handle.take() {
             h.abort();
-            h.await;
+            let _ = h.await;
         }
 
         let pt = ropt.clone();
@@ -67,21 +68,35 @@ async fn search_impl(
             match dir {
                 SearchDirection::Forward => {
                     let searcher = Searcher::new(term);
-                    let mut iter = searcher.find_iter(&slice);
-                    let matches: Vec<Range<usize>> = iter.collect();
-                    out.send(JobProgress::Output(Box::new(SearchResult::Matches(
-                        matches,
-                    ))))
-                    .await;
+                    let iter = searcher.find_iter(&slice);
+                    let matches: Vec<Range<usize>> = iter
+                        .map(|mut range| {
+                            range.start += start;
+                            range.end += start;
+                            range
+                        })
+                        .collect();
+                    let _ = out
+                        .send(JobProgress::Output(Box::new(SearchResult::Matches(
+                            matches,
+                        ))))
+                        .await;
                 }
                 SearchDirection::Backward => {
                     let searcher = SearcherRev::new(term);
-                    let mut iter = searcher.find_iter(&slice);
-                    let matches: Vec<Range<usize>> = iter.collect();
-                    out.send(JobProgress::Output(Box::new(SearchResult::Matches(
-                        matches,
-                    ))))
-                    .await;
+                    let iter = searcher.find_iter(&slice);
+                    let matches: Vec<Range<usize>> = iter
+                        .map(|mut range| {
+                            range.start += start;
+                            range.end += start;
+                            range
+                        })
+                        .collect();
+                    let _ = out
+                        .send(JobProgress::Output(Box::new(SearchResult::Matches(
+                            matches,
+                        ))))
+                        .await;
                 }
             };
         });

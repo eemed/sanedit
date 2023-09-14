@@ -85,7 +85,7 @@ impl<T> Appendlist<T> {
 }
 
 #[derive(Debug, PartialEq)]
-pub(crate) enum AppendResult {
+pub enum AppendResult {
     /// Allocated a new block and appended usize bytes to it.
     NewBlock(usize),
     /// Appended usize bytes to an existing block.
@@ -98,7 +98,7 @@ pub struct Writer<T> {
 }
 
 impl<T: Copy> Writer<T> {
-    fn append_copy_impl(&self, items: &[T]) -> AppendResult {
+    pub fn append_slice(&self, items: &[T]) -> AppendResult {
         let len = self.list.len.load(Ordering::Relaxed);
         let loc = BucketLocation::of(len);
         let bucket = &self.list.buckets[loc.bucket];
@@ -133,7 +133,7 @@ impl<T: Copy> Writer<T> {
 }
 
 impl<T> Writer<T> {
-    fn append_impl(&self, mut items: Vec<T>) -> AppendResult {
+    pub fn append_vec(&self, mut items: Vec<T>) -> AppendResult {
         let len = self.list.len.load(Ordering::Relaxed);
         let loc = BucketLocation::of(len);
         let bucket = &self.list.buckets[loc.bucket];

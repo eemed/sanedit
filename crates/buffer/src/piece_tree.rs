@@ -6,6 +6,7 @@ pub(crate) mod positions;
 pub(crate) mod slice;
 pub(crate) mod tree;
 pub(crate) mod utf8;
+pub(crate) mod write;
 
 use std::cmp;
 use std::fs::File;
@@ -145,7 +146,7 @@ impl PieceTree {
 
         while !bytes.is_empty() {
             let bpos = self.add_writer.len();
-            let (n, can_append) = match self.add_writer.append(bytes) {
+            let (n, can_append) = match self.add_writer.append_slice(bytes) {
                 AppendResult::NewBlock(n) => (n, false),
                 AppendResult::Append(n) => (n, true),
             };
@@ -176,7 +177,7 @@ impl PieceTree {
 
         while !bytes.is_empty() {
             let bpos = self.add_writer.len();
-            let (n, can_append) = match self.add_writer.append(bytes) {
+            let (n, can_append) = match self.add_writer.append_slice(bytes) {
                 AppendResult::NewBlock(n) => (n, false),
                 AppendResult::Append(n) => (n, true),
             };

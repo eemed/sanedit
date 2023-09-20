@@ -40,13 +40,11 @@ fn calculate_write_operations(pt: &ReadOnlyPieceTree) -> Vec<WriteOp> {
     let mut pcs = Vec::new();
     let mut pieces = Pieces::new(pt, 0);
     while let Some((pos, piece)) = pieces.next() {
-        let target = pos..pos + piece.len;
-        //
-        // if piece is from original buffer and
-        //
-        // if piece.kind == BufferKind::Original {
-        // }
+        if piece.kind == BufferKind::Original && pt.orig.is_in_file(pos, &piece) {
+            continue;
+        }
 
+        let target = pos..pos + piece.len;
         pcs.push(Overwrite {
             source: piece,
             target,

@@ -14,8 +14,9 @@ enum WriteOp {
 }
 
 struct Overwrite {
-    source: Piece,
-    target: Range<usize>,
+    piece: Piece,
+    source: usize,
+    target: usize,
 }
 
 pub fn write_in_place(pt: &ReadOnlyPieceTree) -> io::Result<()> {

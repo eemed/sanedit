@@ -3,7 +3,7 @@ use std::mem;
 use crate::piece_tree::buffers::BufferKind;
 
 /// Piece describes an index and byte length in a buffer.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct Piece {
     /// are we indexing add buffer or read only buffer
     pub(crate) kind: BufferKind,

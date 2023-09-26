@@ -66,7 +66,7 @@ fn read_piece<'a>(pt: &'a ReadOnlyPieceTree, piece: &Piece) -> Option<Chunk<'a>>
             Some(Chunk(bytes.into()))
         }
         BufferKind::Original => {
-            let bytes = pt.orig.slice(piece.pos..piece.pos + piece.len).ok()?;
+            let bytes = pt.orig.slice(piece.pos..piece.pos + piece.len);
             Some(Chunk(bytes))
         }
     }
@@ -74,10 +74,8 @@ fn read_piece<'a>(pt: &'a ReadOnlyPieceTree, piece: &Piece) -> Option<Chunk<'a>>
 
 #[cfg(test)]
 mod test {
-
-    use crate::PieceTree;
-
     use super::*;
+    use crate::PieceTree;
 
     fn chunk(pos: usize, string: &str) -> Option<(usize, Chunk)> {
         let bytes = string.as_bytes().into();

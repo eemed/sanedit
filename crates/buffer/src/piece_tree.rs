@@ -74,15 +74,6 @@ impl PieceTree {
         Ok(Self::from_original_buffer(orig_buf))
     }
 
-    /// Create a new piece tree from a file.
-    /// The whole file is not read into memory at any time.
-    /// Windowing is used instead which only reads a part of the file.
-    #[inline]
-    pub fn from_file(file: File) -> PieceTree {
-        let orig_buf = OriginalBuffer::from_file(file);
-        Self::from_original_buffer(orig_buf)
-    }
-
     #[inline]
     pub fn mmap(file: File) -> io::Result<PieceTree> {
         let orig_buf = OriginalBuffer::mmap(file)?;
@@ -499,6 +490,10 @@ impl ReadOnlyPieceTree {
         }
 
         cmp::min(mark.orig, self.len)
+    }
+
+    pub fn write_in_place(&mut self) -> io::Result<()> {
+        Ok(())
     }
 
     pub fn write_to<W: Write>(&self, mut writer: W) -> io::Result<usize> {

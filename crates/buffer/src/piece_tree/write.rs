@@ -1,6 +1,9 @@
-use std::{io, ops::Range, path::Path};
+use std::{cmp::Ordering, io, ops::Range, path::Path};
 
-use crate::{piece_tree::buffers::BufferKind, ReadOnlyPieceTree};
+use crate::{
+    piece_tree::{buffers::BufferKind, tree::pieces::PieceIter},
+    ReadOnlyPieceTree,
+};
 
 use super::tree::{
     piece::{self, Piece},
@@ -15,14 +18,72 @@ enum WriteOp {
 
 struct Overwrite {
     piece: Piece,
-    source: usize,
     target: usize,
+}
+
+impl Overwrite {
+    fn kind(&self) -> BufferKind {
+        self.piece.kind
+    }
+
+    fn depends_on(&self) -> Option<Range<usize>> {
+        match self.piece.kind {
+            BufferKind::Add => None,
+            BufferKind::Original => {
+                let pos = self.piece.pos;
+                let len = self.piece.len;
+                Some(pos..pos + len)
+            }
+        }
+    }
+
+    fn target(&self) -> Range<usize> {
+        self.target..self.target + self.piece.len
+    }
 }
 
 pub fn write_in_place(pt: &ReadOnlyPieceTree) -> io::Result<()> {
     if !pt.is_file_backed() {
-        todo!()
+        return Err(io::Error::new(
+            io::ErrorKind::Unsupported,
+            "piecetree is not file backed",
+        ));
     }
+
+    // let olen = pt.orig.len();
+    // let nlen = pt.len();
+
+    // if olen < nlen {
+    //     // extend
+    // }
+
+    // if nlen < olen {
+    //     // truncate
+    // }
+
+    let mut ows = Vec::with_capacity(pt.piece_count());
+    let mut iter = PieceIter::new(pt, 0);
+    while let Some((pos, piece)) = iter.next() {
+        if piece.kind == BufferKind::Original && piece.pos == pos {
+            continue;
+        }
+
+        ows.push(Overwrite { piece, target: pos });
+    }
+
+    ows.sort_by(|a, b| {
+        use BufferKind::*;
+        match (a.kind(), b.kind()) {
+            (Add, Original) => Ordering::Greater,
+            (Original, Add) => Ordering::Less,
+            (Add, Add) => {
+                let apos = a.piece.pos;
+                let bpos = b.piece.pos;
+                apos.cmp(&bpos)
+            }
+            (Original, Original) => {}
+        }
+    });
 
     todo!()
 
@@ -37,20 +98,10 @@ pub fn write_in_place(pt: &ReadOnlyPieceTree) -> io::Result<()> {
     // piece -> orig
 }
 
-fn calculate_write_operations(pt: &ReadOnlyPieceTree) -> Vec<WriteOp> {
-    let mut pcs = Vec::new();
-    let mut pieces = Pieces::new(pt, 0);
-    while let Some((pos, piece)) = pieces.next() {
-        if piece.kind == BufferKind::Original && pt.orig.is_in_file(pos, &piece) {
-            continue;
-        }
+#[cfg(test)]
+mod test {
+    use super::*;
 
-        let target = pos..pos + piece.len;
-        pcs.push(Overwrite {
-            source: piece,
-            target,
-        })
-    }
-
-    todo!()
+    #[test]
+    fn write_ops() {}
 }

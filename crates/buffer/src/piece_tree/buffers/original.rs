@@ -1,29 +1,10 @@
-mod original2;
+use std::{fs::File, io, ops::Range};
 
-use std::{collections::BTreeMap, fs::File, io, ops::Range};
+use crate::piece_tree::buffers::ByteSlice;
 
-use crate::piece_tree::{buffers::ByteSlice, tree::piece::Piece};
-pub(crate) use original2::OriginalBufferSlice;
-
-enum Block {
-    // File { },
-    Mmap { map: memmap::Mmap },
-    Memory { bytes: Vec<u8> },
-}
-
-impl Block {
-    pub fn slice(&self, range: Range<usize>) -> &[u8] {
-        match self {
-            Block::Mmap { map } => &map[range],
-            Block::Memory { bytes } => &bytes[range],
-        }
-    }
-}
-
-type Blocks = BTreeMap<usize, Block>;
-
+#[derive(Debug)]
 pub(crate) enum OriginalBuffer {
-    FileBacked { blocks: Blocks, len: usize },
+    FileBacked { map: memmap::Mmap },
     Memory { bytes: Vec<u8> },
 }
 
@@ -41,36 +22,17 @@ impl OriginalBuffer {
     }
 
     #[inline]
-    pub fn from_file(file: File) -> OriginalBuffer {
-        todo!()
-    }
-
-    #[inline]
     pub fn mmap(file: File) -> io::Result<OriginalBuffer> {
-        let mmap = unsafe { memmap::Mmap::map(&file)? };
-        let len = mmap.len();
-        let block = Block::Mmap { map: mmap };
-        let mut blocks = Blocks::new();
-        blocks.insert(0, block);
-        Ok(OriginalBuffer::FileBacked { blocks, len })
+        let map = unsafe { memmap::Mmap::map(&file)? };
+        Ok(OriginalBuffer::FileBacked { map })
     }
 
     #[inline(always)]
-    pub fn slice(&self, range: Range<usize>) -> io::Result<ByteSlice<'_>> {
+    pub fn slice(&self, range: Range<usize>) -> ByteSlice<'_> {
         use OriginalBuffer::*;
         match self {
-            Memory { bytes } => Ok(bytes[range].into()),
-            FileBacked { blocks, len } => {
-                let mut iter = blocks.range(range).peekable();
-                let (pos, block) = iter.next().unwrap();
-                let is_multi_block = iter.peek().is_some();
-
-                if is_multi_block {
-                    todo!()
-                } else {
-                    Ok(block.slice(range).into())
-                }
-            }
+            Memory { bytes } => bytes[range].into(),
+            FileBacked { map } => map[range].into(),
         }
     }
 
@@ -78,7 +40,7 @@ impl OriginalBuffer {
     pub fn len(&self) -> usize {
         use OriginalBuffer::*;
         match self {
-            FileBacked { blocks, len } => *len,
+            FileBacked { map } => map.len(),
             Memory { bytes } => bytes.len(),
         }
     }
@@ -95,16 +57,5 @@ impl OriginalBuffer {
             FileBacked { .. } => true,
             _ => false,
         }
-    }
-
-    /// Returns the length of the backing file if file backed
-    pub fn file_len(&self) -> usize {
-        0
-    }
-
-    /// Wether the content the piece is referring to is written in the backing
-    /// file at position pos
-    pub fn is_in_file(pos: usize, piece: &Piece) -> bool {
-        false
     }
 }

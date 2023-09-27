@@ -47,6 +47,18 @@ impl Overwrite {
     }
 }
 
+/// Writes a file backed piece tree in place.
+///
+/// Good:
+///      1. If only replaced or appended bytes, saving will be very fast
+///      2. No need for additional disk space as no copy is created
+///
+/// Bad:
+///      1. If io error occurs while saving the file will be left in an
+///         incomplete state
+///      2. Probably slower than writing a copy if insert/remove operations are
+///         in the beginning portion of the file
+///      3. Previously created undo points/marks cannot be used anymore
 pub fn write_in_place(pt: &ReadOnlyPieceTree) -> io::Result<()> {
     if !pt.is_file_backed() {
         return Err(io::Error::new(

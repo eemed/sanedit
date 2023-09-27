@@ -2,11 +2,11 @@ pub(crate) mod buffers;
 pub(crate) mod builder;
 pub(crate) mod bytes;
 pub(crate) mod chunks;
+pub(crate) mod inplace;
 pub(crate) mod positions;
 pub(crate) mod slice;
 pub(crate) mod tree;
 pub(crate) mod utf8;
-pub(crate) mod write;
 
 use std::cmp;
 use std::fs::File;

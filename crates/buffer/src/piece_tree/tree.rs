@@ -426,9 +426,9 @@ pub(crate) mod test {
     fn remove_over_whole_piece() {
         let mut pt = PieceTree::new();
         pt.insert(0, "ab");
-        pt.add_writer.append(b"123");
+        pt.add_writer.append_slice(b"123");
         pt.insert(2, "cd");
-        pt.add_writer.append(b"123");
+        pt.add_writer.append_slice(b"123");
         pt.insert(4, "ef");
 
         pt.remove(1..4);
@@ -636,7 +636,7 @@ pub(crate) mod test {
         // Put pieces in order
         for i in pieces.iter() {
             pt.insert(*i, i.to_string().as_bytes());
-            pt.add_writer.append(b"waste");
+            pt.add_writer.append_slice(b"waste");
         }
 
         assert_eq!(Ok(()), is_valid_tree(pt.tree()));
@@ -659,7 +659,7 @@ pub(crate) mod test {
         pt.insert(2, "ab");
 
         // create gap
-        pt.add_writer.append(b"123");
+        pt.add_writer.append_slice(b"123");
 
         pt.insert(7, "ab");
         pt.insert(7, "ab");

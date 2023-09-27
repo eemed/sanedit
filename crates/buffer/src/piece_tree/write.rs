@@ -1,24 +1,29 @@
-use std::{cmp::Ordering, io, ops::Range, path::Path};
+use std::{fmt, io, ops::Range};
 
 use crate::{
     piece_tree::{buffers::BufferKind, tree::pieces::PieceIter},
     ReadOnlyPieceTree,
 };
 
-use super::tree::{
-    piece::{self, Piece},
-    pieces::Pieces,
-};
+use super::tree::piece::Piece;
 
-enum WriteOp {
-    ExtendFileTo { size: usize },
-    TruncateFileTo { size: usize },
-    Overwrite,
+#[derive(Debug)]
+enum Write {
+    Extend(usize),
+    Truncate(usize),
+    Overwrite(Overwrite),
 }
 
+#[derive(PartialEq)]
 struct Overwrite {
     piece: Piece,
     target: usize,
+}
+
+impl fmt::Debug for Overwrite {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?} => {:?}", self.depends_on(), self.target())
+    }
 }
 
 impl Overwrite {
@@ -50,58 +55,112 @@ pub fn write_in_place(pt: &ReadOnlyPieceTree) -> io::Result<()> {
         ));
     }
 
-    // let olen = pt.orig.len();
-    // let nlen = pt.len();
+    let ops = in_place_write_ops(pt);
+    do_write_in_place(ops)
+}
 
-    // if olen < nlen {
-    //     // extend
-    // }
+fn find_non_depended_target(ows: &Vec<Overwrite>) -> usize {
+    for (i, ow) in ows.iter().enumerate() {
+        let mut good = true;
 
-    // if nlen < olen {
-    //     // truncate
-    // }
+        for (j, other) in ows.iter().enumerate() {
+            let Range { start, end } = ow.target();
+            let Range {
+                start: dstart,
+                end: dend,
+            } = other.depends_on().unwrap();
 
-    let mut ows = Vec::with_capacity(pt.piece_count());
-    let mut iter = PieceIter::new(pt, 0);
-    while let Some((pos, piece)) = iter.next() {
-        if piece.kind == BufferKind::Original && piece.pos == pos {
-            continue;
+            if i != j && start < dend && dstart < end {
+                good = false;
+                break;
+            }
         }
 
-        ows.push(Overwrite { piece, target: pos });
+        if good {
+            return i;
+        }
     }
 
-    ows.sort_by(|a, b| {
-        use BufferKind::*;
-        match (a.kind(), b.kind()) {
-            (Add, Original) => Ordering::Greater,
-            (Original, Add) => Ordering::Less,
-            (Add, Add) => {
-                let apos = a.piece.pos;
-                let bpos = b.piece.pos;
-                apos.cmp(&bpos)
+    unreachable!("Cannot find a overwrite with target that does not overlap with other overwrites dependencies");
+}
+
+fn in_place_write_ops(pt: &ReadOnlyPieceTree) -> Vec<Write> {
+    let mut adds = Vec::with_capacity(pt.piece_count());
+    let mut origs = Vec::with_capacity(pt.piece_count());
+    let mut iter = PieceIter::new(pt, 0);
+    let mut ppiece = iter.get();
+
+    while let Some((pos, piece)) = ppiece {
+        match piece.kind {
+            BufferKind::Add => adds.push(Overwrite { piece, target: pos }),
+            BufferKind::Original => {
+                if piece.pos != pos {
+                    origs.push(Overwrite { piece, target: pos });
+                }
             }
-            (Original, Original) => {}
         }
-    });
 
-    todo!()
+        ppiece = iter.next();
+    }
 
-    // If pt.orig file backed
-    // => dependency graph
-    // => to write operations
-    // => write to file
-    //
-    // otherwise just use normal impl pt.write_to
-    //
-    //
-    // piece -> orig
+    let olen = pt.orig.len();
+    let nlen = pt.len();
+
+    let mut result = Vec::with_capacity(pt.piece_count());
+    if olen < nlen {
+        result.push(Write::Extend(nlen))
+    }
+
+    // Sort the results, so that targets do not step on dependencies
+    while !origs.is_empty() {
+        let pos = find_non_depended_target(&origs);
+        let ow = origs.remove(pos);
+        result.push(Write::Overwrite(ow));
+    }
+
+    result.extend(adds.into_iter().map(|item| Write::Overwrite(item)));
+
+    if nlen < olen {
+        result.push(Write::Truncate(nlen))
+    }
+
+    result
+}
+
+fn do_write_in_place(ops: Vec<Write>) -> io::Result<()> {
+    for op in ops {
+        use Write::*;
+        match op {
+            Extend(size) => todo!(),
+            Truncate(size) => todo!(),
+            Overwrite(ow) => todo!(),
+        }
+    }
+
+    Ok(())
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::PieceTree;
+    use std::{fs::File, path::PathBuf};
 
     #[test]
-    fn write_ops() {}
+    fn write_ops() {
+        let path = PathBuf::from("../../test-files/lorem.txt");
+        let file = File::open(&path).unwrap();
+        let mut pt = PieceTree::mmap(file).unwrap();
+        // pt.insert(0, "a");
+        // pt.remove(0..10);
+        pt.insert(60, "abba");
+        pt.insert(30, "a");
+        pt.remove(35..40);
+        pt.insert(70, "a");
+        let ows = in_place_write_ops(&pt.pt);
+
+        for ow in ows {
+            println!("{ow:?}",);
+        }
+    }
 }

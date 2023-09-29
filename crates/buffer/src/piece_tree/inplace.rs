@@ -1,4 +1,4 @@
-use std::{fmt, io, ops::Range};
+use std::{fmt, fs::File, io, ops::Range, path::Path};
 
 use crate::{
     piece_tree::{buffers::BufferKind, tree::pieces::PieceIter},
@@ -9,8 +9,7 @@ use super::tree::piece::Piece;
 
 #[derive(Debug)]
 enum Write {
-    Extend(usize),
-    Truncate(usize),
+    Size(usize),
     Overwrite(Overwrite),
 }
 
@@ -67,8 +66,9 @@ pub fn write_in_place(pt: &ReadOnlyPieceTree) -> io::Result<()> {
         ));
     }
 
+    let path = pt.orig.file_path();
     let ops = in_place_write_ops(pt);
-    do_write_in_place(ops)
+    do_write_in_place(path, ops)
 }
 
 fn find_non_depended_target(ows: &Vec<Overwrite>) -> usize {
@@ -120,7 +120,7 @@ fn in_place_write_ops(pt: &ReadOnlyPieceTree) -> Vec<Write> {
 
     let mut result = Vec::with_capacity(pt.piece_count());
     if olen < nlen {
-        result.push(Write::Extend(nlen))
+        result.push(Write::Size(nlen))
     }
 
     // Sort the results, so that targets do not step on dependencies
@@ -133,19 +133,43 @@ fn in_place_write_ops(pt: &ReadOnlyPieceTree) -> Vec<Write> {
     result.extend(adds.into_iter().map(|item| Write::Overwrite(item)));
 
     if nlen < olen {
-        result.push(Write::Truncate(nlen))
+        result.push(Write::Size(nlen))
     }
 
     result
 }
 
-fn do_write_in_place(ops: Vec<Write>) -> io::Result<()> {
-    for op in ops {
-        use Write::*;
-        match op {
-            Extend(size) => todo!(),
-            Truncate(size) => todo!(),
-            Overwrite(ow) => todo!(),
+fn do_write_in_place(path: &Path, ops: Vec<Write>) -> io::Result<()> {
+    let mut iter = ops.into_iter();
+    let mut op = iter.next();
+
+    while op.is_some() {
+        // Handle extending and truncating
+        while let Some(Write::Size(size)) = op {
+            let mut file = File::options().append(true).open(path)?;
+            file.set_len(size as u64)?;
+            op = iter.next();
+        }
+
+        // Handle overwriting the file
+        let mut file = None;
+        while let Some(Write::Overwrite(ow)) = op {
+            if file.is_none() {
+                file = Some(File::options().read(true).write(true).open(path)?);
+            }
+
+            let file = file.as_mut().unwrap();
+
+            match ow.kind() {
+                BufferKind::Add => {
+                    todo!()
+                }
+                BufferKind::Original => {
+                    todo!()
+                }
+            }
+
+            op = iter.next();
         }
     }
 

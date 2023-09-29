@@ -12,6 +12,7 @@ use std::cmp;
 use std::fs::File;
 use std::io::{self, Write};
 use std::ops::{Bound, RangeBounds};
+use std::path::Path;
 use std::sync::Arc;
 
 use self::buffers::{AddBuffer, AddBufferReader, AddBufferWriter};
@@ -75,8 +76,8 @@ impl PieceTree {
     }
 
     #[inline]
-    pub fn mmap(file: File) -> io::Result<PieceTree> {
-        let orig_buf = OriginalBuffer::mmap(file)?;
+    pub fn mmap<P: AsRef<Path>>(path: P) -> io::Result<PieceTree> {
+        let orig_buf = OriginalBuffer::mmap(path)?;
         Ok(Self::from_original_buffer(orig_buf))
     }
 

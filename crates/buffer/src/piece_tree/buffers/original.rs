@@ -1,10 +1,15 @@
-use std::{fs::File, io, ops::Range};
+use std::{
+    fs::File,
+    io,
+    ops::Range,
+    path::{Path, PathBuf},
+};
 
 use crate::piece_tree::buffers::ByteSlice;
 
 #[derive(Debug)]
 pub(crate) enum OriginalBuffer {
-    FileBacked { map: memmap::Mmap },
+    FileBacked { map: memmap::Mmap, path: PathBuf },
     Memory { bytes: Vec<u8> },
 }
 
@@ -22,9 +27,14 @@ impl OriginalBuffer {
     }
 
     #[inline]
-    pub fn mmap(file: File) -> io::Result<OriginalBuffer> {
+    pub fn mmap<P: AsRef<Path>>(path: P) -> io::Result<OriginalBuffer> {
+        let path = path.as_ref();
+        let file = File::open(path)?;
         let map = unsafe { memmap::Mmap::map(&file)? };
-        Ok(OriginalBuffer::FileBacked { map })
+        Ok(OriginalBuffer::FileBacked {
+            map,
+            path: path.into(),
+        })
     }
 
     #[inline(always)]
@@ -32,7 +42,7 @@ impl OriginalBuffer {
         use OriginalBuffer::*;
         match self {
             Memory { bytes } => bytes[range].into(),
-            FileBacked { map } => map[range].into(),
+            FileBacked { map, .. } => map[range].into(),
         }
     }
 
@@ -40,7 +50,7 @@ impl OriginalBuffer {
     pub fn len(&self) -> usize {
         use OriginalBuffer::*;
         match self {
-            FileBacked { map } => map.len(),
+            FileBacked { map, .. } => map.len(),
             Memory { bytes } => bytes.len(),
         }
     }
@@ -56,6 +66,15 @@ impl OriginalBuffer {
         match self {
             FileBacked { .. } => true,
             _ => false,
+        }
+    }
+
+    #[inline]
+    pub fn file_path(&self) -> &Path {
+        use OriginalBuffer::*;
+        match self {
+            FileBacked { path, .. } => path,
+            _ => unreachable!("no file path for memory buffer"),
         }
     }
 }

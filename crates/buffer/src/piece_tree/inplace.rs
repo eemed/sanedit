@@ -1,4 +1,11 @@
-use std::{fmt, fs::File, io, ops::Range, path::Path};
+use std::{
+    cmp::{max, min},
+    fmt,
+    fs::File,
+    io::{self, Read, Seek, SeekFrom, Write},
+    ops::Range,
+    path::Path,
+};
 
 use crate::{
     piece_tree::{buffers::BufferKind, tree::pieces::PieceIter},
@@ -8,7 +15,7 @@ use crate::{
 use super::tree::piece::Piece;
 
 #[derive(Debug)]
-enum Write {
+enum WriteOp {
     Size(usize),
     Overwrite(Overwrite),
 }
@@ -46,18 +53,6 @@ impl Overwrite {
     }
 }
 
-/// Writes a file backed piece tree in place.
-///
-/// Good:
-///      1. If only replaced or appended bytes, saving will be very fast
-///      2. No need for additional disk space as no copy is created
-///
-/// Bad:
-///      1. If io error occurs while saving the file will be left in an
-///         incomplete state
-///      2. Probably slower than writing a copy if insert/remove operations are
-///         in the beginning portion of the file
-///      3. Previously created undo points/marks cannot be used anymore
 pub fn write_in_place(pt: &ReadOnlyPieceTree) -> io::Result<()> {
     if !pt.is_file_backed() {
         return Err(io::Error::new(
@@ -66,9 +61,8 @@ pub fn write_in_place(pt: &ReadOnlyPieceTree) -> io::Result<()> {
         ));
     }
 
-    let path = pt.orig.file_path();
     let ops = in_place_write_ops(pt);
-    do_write_in_place(path, ops)
+    do_write_in_place(pt, ops)
 }
 
 fn find_non_depended_target(ows: &Vec<Overwrite>) -> usize {
@@ -96,7 +90,7 @@ fn find_non_depended_target(ows: &Vec<Overwrite>) -> usize {
     unreachable!("Cannot find a overwrite with target that does not overlap with other overwrites dependencies");
 }
 
-fn in_place_write_ops(pt: &ReadOnlyPieceTree) -> Vec<Write> {
+fn in_place_write_ops(pt: &ReadOnlyPieceTree) -> Vec<WriteOp> {
     let mut adds = Vec::with_capacity(pt.piece_count());
     let mut origs = Vec::with_capacity(pt.piece_count());
     let mut iter = PieceIter::new(pt, 0);
@@ -120,40 +114,41 @@ fn in_place_write_ops(pt: &ReadOnlyPieceTree) -> Vec<Write> {
 
     let mut result = Vec::with_capacity(pt.piece_count());
     if olen < nlen {
-        result.push(Write::Size(nlen))
+        result.push(WriteOp::Size(nlen))
     }
 
     // Sort the results, so that targets do not step on dependencies
     while !origs.is_empty() {
         let pos = find_non_depended_target(&origs);
         let ow = origs.remove(pos);
-        result.push(Write::Overwrite(ow));
+        result.push(WriteOp::Overwrite(ow));
     }
 
-    result.extend(adds.into_iter().map(|item| Write::Overwrite(item)));
+    result.extend(adds.into_iter().map(|item| WriteOp::Overwrite(item)));
 
     if nlen < olen {
-        result.push(Write::Size(nlen))
+        result.push(WriteOp::Size(nlen))
     }
 
     result
 }
 
-fn do_write_in_place(path: &Path, ops: Vec<Write>) -> io::Result<()> {
+fn do_write_in_place(pt: &ReadOnlyPieceTree, ops: Vec<WriteOp>) -> io::Result<()> {
     let mut iter = ops.into_iter();
     let mut op = iter.next();
+    let path = pt.orig.file_path();
 
     while op.is_some() {
         // Handle extending and truncating
-        while let Some(Write::Size(size)) = op {
-            let mut file = File::options().append(true).open(path)?;
+        while let Some(WriteOp::Size(size)) = op {
+            let file = File::options().append(true).open(path)?;
             file.set_len(size as u64)?;
             op = iter.next();
         }
 
         // Handle overwriting the file
         let mut file = None;
-        while let Some(Write::Overwrite(ow)) = op {
+        while let Some(WriteOp::Overwrite(ow)) = op {
             if file.is_none() {
                 file = Some(File::options().read(true).write(true).open(path)?);
             }
@@ -162,10 +157,66 @@ fn do_write_in_place(path: &Path, ops: Vec<Write>) -> io::Result<()> {
 
             match ow.kind() {
                 BufferKind::Add => {
-                    todo!()
+                    let start = ow.target().start;
+                    file.seek(SeekFrom::Start(start as u64))?;
+                    let range = ow.piece.range();
+                    let bytes = pt.add.slice(range);
+                    file.write_all(bytes)?;
                 }
                 BufferKind::Original => {
-                    todo!()
+                    let deps = ow.depends_on().unwrap();
+                    let target = ow.target();
+                    let overlaps = deps.start < target.end && target.start < deps.end;
+
+                    if overlaps {
+                        const SIZE: usize = 1024 * 128;
+                        let mut buf = [0; SIZE];
+                        let mut nbuf;
+                        let up = target.start < deps.start;
+                        // Deps len == target len
+                        let len = target.len();
+                        let mut written = 0;
+
+                        // TODO use mmap that already exists?
+                        if up {
+                            // Moving chunk up
+                            let mut rpos = deps.start;
+                            let mut wpos = target.start;
+
+                            while written < target.len() {
+                                file.seek(SeekFrom::Start(rpos as u64))?;
+                                let bmax = min(deps.len() - written, SIZE);
+                                nbuf = file.read(&mut buf[..bmax])?;
+                                rpos += nbuf;
+
+                                file.seek(SeekFrom::Start(wpos as u64))?;
+                                file.write(&mut buf[..nbuf])?;
+                                wpos += nbuf;
+                                written += nbuf;
+                            }
+                        } else {
+                            // Moving chunk down
+                            let mut rpos = deps.end;
+                            let mut wpos = target.end;
+
+                            while written < len {
+                                let bmax = min(len - written, SIZE);
+                                file.seek(SeekFrom::Start((rpos - bmax) as u64))?;
+                                nbuf = file.read(&mut buf[..bmax])?;
+                                rpos -= nbuf;
+
+                                file.seek(SeekFrom::Start((wpos - nbuf) as u64))?;
+                                file.write(&mut buf[..nbuf])?;
+                                wpos -= nbuf;
+                                written += nbuf;
+                            }
+                        }
+                    } else {
+                        file.seek(SeekFrom::Start(target.start as u64))?;
+                        let range = ow.piece.range();
+                        let bytes = pt.orig.slice(range);
+                        file.write_all(bytes.as_ref())?;
+                    }
                 }
             }
 
@@ -185,8 +236,7 @@ mod test {
     #[test]
     fn write_ops() {
         let path = PathBuf::from("../../test-files/lorem.txt");
-        let file = File::open(&path).unwrap();
-        let mut pt = PieceTree::mmap(file).unwrap();
+        let mut pt = PieceTree::mmap(path).unwrap();
         // pt.insert(0, "a");
         // pt.remove(0..10);
         pt.insert(60, "abba");

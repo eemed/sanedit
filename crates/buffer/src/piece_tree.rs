@@ -302,6 +302,22 @@ impl PieceTree {
         self.pt.write_to(writer)
     }
 
+    /// Writes the file in place if the buffer is file backed
+    ///
+    /// Good:
+    ///      1. If only replaced or appended bytes, saving will be very fast
+    ///      2. No need for additional disk space as no copy is created
+    ///
+    /// Bad:
+    ///      1. If io error occurs while saving the file will be left in an
+    ///         incomplete state
+    ///      2. Probably slower than writing a copy if insert/remove operations are
+    ///         in the beginning portion of the file
+    ///      3. Previously created undo points/marks cannot be used anymore
+    pub fn write_in_place(&mut self) -> io::Result<()> {
+        inplace::write_in_place(&self.pt)
+    }
+
     #[inline]
     pub fn len(&self) -> usize {
         self.pt.len()

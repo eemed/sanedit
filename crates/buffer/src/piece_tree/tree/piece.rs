@@ -1,4 +1,4 @@
-use std::mem;
+use std::{mem, ops::Range};
 
 use crate::piece_tree::buffers::BufferKind;
 
@@ -57,5 +57,10 @@ impl Piece {
     pub fn split_right(&mut self, offset: usize) -> Piece {
         let right = self.split_left(offset);
         mem::replace(self, right)
+    }
+
+    /// Returns the range this piece references
+    pub fn range(&self) -> Range<usize> {
+        self.pos..self.pos + self.len
     }
 }

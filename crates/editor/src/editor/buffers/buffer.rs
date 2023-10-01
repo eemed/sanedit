@@ -36,6 +36,8 @@ pub(crate) struct Buffer {
     snapshots: Snapshots,
     last_saved_snapshot: SnapshotId,
 
+    /// Set while an async process is saving the file
+    is_saving: bool,
     is_modified: bool,
     options: Options,
     last_change: Option<Change>,
@@ -51,6 +53,7 @@ impl Buffer {
         Buffer {
             id: BufferId::default(),
             pt,
+            is_saving: false,
             is_modified: false,
             snapshots: Snapshots::new(snapshot),
             options: Options::default(),
@@ -76,6 +79,7 @@ impl Buffer {
         Ok(Buffer {
             id: BufferId::default(),
             pt,
+            is_saving: false,
             is_modified: false,
             snapshots: Snapshots::new(snapshot),
             options: Options::default(),
@@ -100,6 +104,7 @@ impl Buffer {
         Ok(Buffer {
             id: BufferId::default(),
             pt,
+            is_saving: false,
             is_modified: false,
             snapshots: Snapshots::new(snapshot),
             options: Options::default(),
@@ -245,25 +250,38 @@ impl Buffer {
         BufferCursor::new(&self.pt)
     }
 
-    /// Save buffer to a file, will overwrite existing file at path.
-    pub fn save(&mut self) -> Result<(), io::Error> {
-        debug_assert!(!self.pt.is_file_backed());
-        let path = self
-            .path
-            .as_ref()
-            .ok_or(io::Error::new(io::ErrorKind::NotFound, "path not set"))?;
-        let file = fs::File::create(&path)?;
-        self.pt.write_to(file)?;
-        self.is_modified = false;
-        Ok(())
-    }
-
     pub fn read_only_copy(&self) -> ReadOnlyPieceTree {
         self.pt.read_only_copy()
     }
 
     pub fn is_modified(&self) -> bool {
         self.is_modified
+    }
+
+    /// Called when async succesfully saved a copy of the file
+    pub fn save_rename(&mut self, copy: &Path) -> io::Result<()> {
+        let path = self
+            .path()
+            .ok_or::<io::Error>(io::ErrorKind::NotFound.into())?;
+        fs::rename(copy, path)?;
+        self.is_saving = false;
+        Ok(())
+    }
+
+    /// Called when async failed saving
+    pub fn save_failed(&mut self) {
+        self.is_saving = false;
+        self.is_modified = true;
+    }
+
+    /// Called when async is starting saving
+    pub fn start_saving(&mut self) {
+        self.is_modified = false;
+        self.is_saving = true;
+    }
+
+    pub fn is_saving(&self) -> bool {
+        self.is_saving
     }
 }
 

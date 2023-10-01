@@ -3,6 +3,7 @@ use std::{
     io,
     ops::Range,
     path::{Path, PathBuf},
+    sync::atomic::AtomicBool,
 };
 
 use crate::piece_tree::buffers::ByteSlice;
@@ -77,4 +78,6 @@ impl OriginalBuffer {
             _ => unreachable!("no file path for memory buffer"),
         }
     }
+
+    pub fn swap_backing_file<P: AsRef<Path>>(&self, path: P) {}
 }

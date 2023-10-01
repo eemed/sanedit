@@ -302,7 +302,11 @@ impl PieceTree {
         self.pt.write_to(writer)
     }
 
+    ///
     /// Writes the file in place if the buffer is file backed
+    ///
+    /// UNSAFETY: All previously created ReadOnlyPieceTrees cannot be used
+    /// anymore.
     ///
     /// Good:
     ///      1. If only replaced or appended bytes, saving will be very fast
@@ -314,7 +318,7 @@ impl PieceTree {
     ///      2. Probably slower than writing a copy if insert/remove operations are
     ///         in the beginning portion of the file
     ///      3. Previously created undo points/marks cannot be used anymore
-    pub fn write_in_place(&mut self) -> io::Result<()> {
+    pub unsafe fn write_in_place(self) -> io::Result<()> {
         inplace::write_in_place(&self.pt)
     }
 

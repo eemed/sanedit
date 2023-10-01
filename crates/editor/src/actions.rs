@@ -43,7 +43,7 @@ impl Action {
         }
     }
 
-    pub fn execute(&mut self, editor: &mut Editor, id: ClientId) {
+    pub fn execute(&self, editor: &mut Editor, id: ClientId) {
         match self {
             Action::Dynamic { name: _, fun } => (fun)(editor, id),
             Action::Static {

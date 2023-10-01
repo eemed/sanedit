@@ -9,7 +9,7 @@ use crate::{
     server::ClientId,
 };
 
-use super::hooks::execute;
+use super::{hooks::execute, jobs, Action};
 
 #[action("Remove character after cursor")]
 fn remove_grapheme_after_cursor(editor: &mut Editor, id: ClientId) {
@@ -66,12 +66,19 @@ pub(crate) fn insert(editor: &mut Editor, id: ClientId, text: &str) {
 
 #[action("Save file")]
 fn save(editor: &mut Editor, id: ClientId) {
-    let (win, buf) = editor.win_buf_mut(id);
-    let Err(e) = buf.save() else { return };
-    match e.kind() {
-        io::ErrorKind::NotFound => save_as_action_impl(editor, id),
-        _ => {
-            win.error_msg(&format!("Saving failed: {e}"));
+    let (_win, buf) = editor.win_buf_mut(id);
+    if buf.path().is_none() {
+        save_as.execute(editor, id);
+        return;
+    }
+
+    match jobs::save_file(editor, id) {
+        Ok(job) => {
+            editor.jobs.request(job);
+        }
+        Err(e) => {
+            let (win, buf) = editor.win_buf_mut(id);
+            win.error_msg(&format!("Failed to save buffer {}, {e:?}", buf.name()));
         }
     }
 }
@@ -81,12 +88,9 @@ fn save_as(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.prompt = Prompt::new("Save as");
     win.prompt.on_confirm = Some(Rc::new(|editor, id, path| {
-        let (win, buf) = editor.win_buf_mut(id);
+        let (_win, buf) = editor.win_buf_mut(id);
         buf.set_path(PathBuf::from(path));
-
-        if let Err(e) = buf.save() {
-            win.error_msg(&format!("Saving failed: {e}"));
-        }
+        save.execute(editor, id);
     }));
     win.focus = Focus::Prompt;
 }

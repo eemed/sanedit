@@ -9,31 +9,21 @@ pub(crate) type JobProgressFn = Arc<dyn Fn(&mut Editor, ClientId, Box<dyn Any>) 
 
 /// Holds the job itself that will be sent, and client side job data too.
 pub(crate) struct Job {
+    client_id: ClientId,
     job: server::JobRequest,
-    handlers: ProgressHandlers,
+    pub on_error: Option<JobProgressFn>,
+    pub on_output: Option<JobProgressFn>,
 }
 
 impl Job {
     pub fn new(id: ClientId, fun: JobFutureFn) -> Job {
         let server_job = server::JobRequest::new(fun);
         Job {
+            client_id: id,
             job: server_job,
-            handlers: ProgressHandlers {
-                client_id: id,
-                on_error: None,
-                on_output: None,
-            },
+            on_error: None,
+            on_output: None,
         }
-    }
-
-    pub fn on_output(mut self, fun: JobProgressFn) -> Self {
-        self.handlers.on_output = Some(fun);
-        self
-    }
-
-    pub fn on_error(mut self, fun: JobProgressFn) -> Self {
-        self.handlers.on_error = Some(fun);
-        self
     }
 
     pub fn id(&self) -> JobId {
@@ -42,24 +32,22 @@ impl Job {
 }
 
 /// Holds progress functions and the client id that initiated this job.
-pub(crate) struct ProgressHandlers {
+pub(crate) struct Handlers {
     pub client_id: ClientId,
     pub on_error: Option<JobProgressFn>,
     pub on_output: Option<JobProgressFn>,
 }
 
-impl fmt::Debug for ProgressHandlers {
+impl fmt::Debug for Handlers {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("progress_handlers")
-            .field("client_id", &self.client_id)
-            .finish_non_exhaustive()
+        f.debug_struct("Handlers").finish_non_exhaustive()
     }
 }
 
 #[derive(Debug)]
 pub(crate) struct Jobs {
     handle: JobsHandle,
-    running: HashMap<JobId, ProgressHandlers>,
+    running: HashMap<JobId, Handlers>,
 }
 
 impl Jobs {
@@ -73,13 +61,20 @@ impl Jobs {
     pub fn request(&mut self, job: Job) -> JobId {
         let Job {
             job,
-            handlers: progress_handlers,
+            on_error,
+            on_output,
+            client_id,
         } = job;
         let id = job.id();
         // Send the job to be ran
         self.handle.request(job);
-        // Register progress handlers
-        self.running.insert(id, progress_handlers);
+
+        let handlers = Handlers {
+            client_id,
+            on_error,
+            on_output,
+        };
+        self.running.insert(id, handlers);
         id
     }
 

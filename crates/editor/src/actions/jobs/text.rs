@@ -28,36 +28,43 @@ pub(crate) fn save_file(editor: &mut Editor, id: ClientId) -> io::Result<Job> {
         buf.start_saving();
         Box::new(move |send| Box::pin(save(send, ropt, target)))
     };
+    let mut job = Job::new(id, fun);
 
-    let on_output = Arc::new(|editor: &mut Editor, id: ClientId, out: Box<dyn Any>| {
-        let (win, buf) = editor.win_buf_mut(id);
-        if let Ok(tmp) = out.downcast::<PathBuf>() {
-            // TODO: if buf was file backed, swap the files around so original
-            // is in tmp and use that as backing file instead. this needs to be
-            // done 1 time only. After that the saving is done normally
-            //
-            // buf.save_rename_file_backed() ?? that does this or just do it in
-            // save_rename
-            match buf.save_rename(&*tmp) {
-                Ok(_) => win.info_msg(&format!("Buffer {} saved", buf.name())),
-                Err(e) => win.error_msg(&format!("Failed to save buffer {}, {e:?}", buf.name())),
+    job.on_output = Some(Arc::new(
+        |editor: &mut Editor, id: ClientId, out: Box<dyn Any>| {
+            let (win, buf) = editor.win_buf_mut(id);
+            if let Ok(tmp) = out.downcast::<PathBuf>() {
+                // TODO: if buf was file backed, swap the files around so original
+                // is in tmp and use that as backing file instead. this needs to be
+                // done 1 time only. After that the saving is done normally
+                //
+                // buf.save_rename_file_backed() ?? that does this or just do it in
+                // save_rename
+                match buf.save_rename(&*tmp) {
+                    Ok(_) => win.info_msg(&format!("Buffer {} saved", buf.name())),
+                    Err(e) => {
+                        win.error_msg(&format!("Failed to save buffer {}, {e:?}", buf.name()))
+                    }
+                }
             }
-        }
-    });
+        },
+    ));
 
-    let on_error = Arc::new(|editor: &mut Editor, id: ClientId, out: Box<dyn Any>| {
-        let (win, buf) = editor.win_buf_mut(id);
-        if let Ok(e) = out.downcast::<String>() {
-            buf.save_failed();
-            let msg = match buf.path() {
-                Some(fpath) => format!("Error while renaming file {fpath:?}, {e:?}"),
-                None => format!("Path not set for buffer {}", buf.name()),
-            };
-            win.error_msg(&msg);
-        }
-    });
+    job.on_error = Some(Arc::new(
+        |editor: &mut Editor, id: ClientId, out: Box<dyn Any>| {
+            let (win, buf) = editor.win_buf_mut(id);
+            if let Ok(e) = out.downcast::<String>() {
+                buf.save_failed();
+                let msg = match buf.path() {
+                    Some(fpath) => format!("Error while renaming file {fpath:?}, {e:?}"),
+                    None => format!("Path not set for buffer {}", buf.name()),
+                };
+                win.error_msg(&msg);
+            }
+        },
+    ));
 
-    Ok(Job::new(id, fun).on_output(on_output).on_error(on_error))
+    Ok(job)
 }
 
 async fn save(mut send: JobProgressSender, ropt: ReadOnlyPieceTree, to: PathBuf) -> bool {

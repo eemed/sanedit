@@ -17,22 +17,27 @@ use super::MatcherResult;
 pub(crate) fn list_files(editor: &mut Editor, id: ClientId, term_in: Receiver<String>) -> Job {
     let dir = editor.working_dir().to_path_buf();
     let fun: JobFutureFn = { Box::new(move |send| Box::pin(list_files_task(dir, send, term_in))) };
-    let on_output = Arc::new(|editor: &mut Editor, id: ClientId, out: Box<dyn Any>| {
-        let draw = editor.draw_state(id);
-        draw.no_redraw_window();
+    let mut job = Job::new(id, fun);
+    job.on_output = Some(Arc::new(
+        |editor: &mut Editor, id: ClientId, out: Box<dyn Any>| {
+            let draw = editor.draw_state(id);
+            draw.no_redraw_window();
 
-        if let Ok(output) = out.downcast::<MatcherResult>() {
-            match *output {
-                MatcherResult::Reset => {
-                    let (win, _buf) = editor.win_buf_mut(id);
-                    win.prompt.reset_selector();
+            if let Ok(output) = out.downcast::<MatcherResult>() {
+                match *output {
+                    MatcherResult::Reset => {
+                        let (win, _buf) = editor.win_buf_mut(id);
+                        win.prompt.reset_selector();
+                    }
+                    MatcherResult::Matches(opts) => prompt::provide_completions(editor, id, opts),
                 }
-                MatcherResult::Matches(opts) => prompt::provide_completions(editor, id, opts),
             }
-        }
-    });
-    let on_error = Arc::new(|editor: &mut Editor, id: ClientId, out: Box<dyn Any>| {});
-    Job::new(id, fun).on_output(on_output).on_error(on_error)
+        },
+    ));
+    job.on_error = Some(Arc::new(
+        |editor: &mut Editor, id: ClientId, out: Box<dyn Any>| {},
+    ));
+    job
 }
 
 async fn list_files_task(dir: PathBuf, out: JobProgressSender, term_in: Receiver<String>) -> bool {

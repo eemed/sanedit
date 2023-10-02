@@ -4,7 +4,11 @@ use sanedit_buffer::{ReadOnlyPieceTree, Searcher, SearcherRev};
 use tokio::{sync::mpsc::Receiver, task::JoinHandle};
 
 use crate::{
-    editor::{jobs::Job, windows::SearchDirection, Editor},
+    editor::{
+        jobs::{Job, JobProgressFn},
+        windows::SearchDirection,
+        Editor,
+    },
     server::{ClientId, JobFutureFn, JobProgress, JobProgressSender},
 };
 
@@ -23,17 +27,21 @@ pub(crate) fn search(editor: &mut Editor, id: ClientId, term_in: Receiver<String
 
     let fun: JobFutureFn =
         { Box::new(move |send| Box::pin(search_impl(dir, ropt, view, send, term_in))) };
-    let on_output = Arc::new(|editor: &mut Editor, id: ClientId, out: Box<dyn Any>| {
-        if let Ok(output) = out.downcast::<SearchResult>() {
-            let (win, _buf) = editor.win_buf_mut(id);
-            match *output {
-                SearchResult::Matches(matches) => win.search.hl_matches = matches,
-                SearchResult::Reset => win.search.hl_matches.clear(),
+    let mut job = Job::new(id, fun);
+
+    job.on_output = Some(Arc::new(
+        |editor: &mut Editor, id: ClientId, out: Box<dyn Any>| {
+            if let Ok(output) = out.downcast::<SearchResult>() {
+                let (win, _buf) = editor.win_buf_mut(id);
+                match *output {
+                    SearchResult::Matches(matches) => win.search.hl_matches = matches,
+                    SearchResult::Reset => win.search.hl_matches.clear(),
+                }
             }
-        }
-    });
-    let on_error = Arc::new(|editor: &mut Editor, id: ClientId, out: Box<dyn Any>| {});
-    Job::new(id, fun).on_output(on_output).on_error(on_error)
+        },
+    ));
+
+    job
 }
 
 async fn search_impl(

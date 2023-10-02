@@ -9,7 +9,6 @@ pub(crate) mod tree;
 pub(crate) mod utf8;
 
 use std::cmp;
-use std::fs::File;
 use std::io::{self, Write};
 use std::ops::{Bound, RangeBounds};
 use std::path::Path;

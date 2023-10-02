@@ -260,11 +260,17 @@ impl Buffer {
 
     /// Called when async succesfully saved a copy of the file
     pub fn save_rename(&mut self, copy: &Path) -> io::Result<()> {
-        let path = self
-            .path()
-            .ok_or::<io::Error>(io::ErrorKind::NotFound.into())?;
-        fs::rename(copy, path)?;
         self.is_saving = false;
+
+        if self.pt.is_file_backed() {
+            todo!()
+        } else {
+            let path = self
+                .path()
+                .ok_or::<io::Error>(io::ErrorKind::NotFound.into())?;
+            fs::rename(copy, path)?;
+        }
+
         Ok(())
     }
 

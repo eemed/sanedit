@@ -1,3 +1,5 @@
+use std::any::Any;
+
 use super::{BoxedJob, JobId};
 
 pub(crate) enum ToJobs {
@@ -9,12 +11,12 @@ pub(crate) enum ToJobs {
 
 #[derive(Debug)]
 pub(crate) enum FromJobs {
-    // /// Sent when a job has made progress.
-    // Progress(JobId, JobProgress),
+    /// Message from a job. Could be anything.
+    Message(JobId, Box<dyn Any + Send>),
+
     /// Sent when a job succeeds.
     Succesful(JobId),
 
-    /// Sent when a job fails. Errors should be reported using
-    /// `FromJobs::Progress` using `JobProgress::Error` variant.
-    Failed(JobId),
+    /// Sent when a job fails with a reason why it failed.
+    Failed(JobId, String),
 }

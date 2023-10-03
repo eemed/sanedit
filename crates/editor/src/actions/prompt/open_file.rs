@@ -9,11 +9,12 @@ use crate::{
     actions::prompt,
     common::matcher::CandidateMessage,
     editor::{
+        jobs::Talkative,
         // jobs::Job,
         windows::{Focus, Prompt},
         Editor,
     },
-    server::ClientId,
+    server::{ClientId, Job},
 };
 
 const CHANNEL_SIZE: usize = 64;
@@ -45,72 +46,104 @@ fn open_file(editor: &mut Editor, id: ClientId) {
     // win.focus = Focus::Prompt;
 
     // editor.jobs.request(job);
+
+    log::info!("Open file");
+    let path = editor.working_dir().to_path_buf();
+    let job = OpenFile { id, path };
+    editor.jobs.request(job);
+    log::info!("Open file done");
 }
 
-// fn list_files(editor: &mut Editor, id: ClientId, term_in: Receiver<String>) -> Job {
-//     let dir = editor.working_dir().to_path_buf();
-//     let fun: JobFutureFn = { Box::new(move |send| Box::pin(list_files_task(dir, send, term_in))) };
-//     let mut job = Job::new(id, fun);
-//     job.on_output = Some(Arc::new(
-//         |editor: &mut Editor, id: ClientId, out: Box<dyn Any>| {
-//             let draw = editor.draw_state(id);
-//             draw.no_redraw_window();
+enum OpenFileMessage {
+    ResetOptions,
+}
 
-//             if let Ok(output) = out.downcast::<MatcherResult>() {
-//                 match *output {
-//                     MatcherResult::Reset => {
-//                         let (win, _buf) = editor.win_buf_mut(id);
-//                         win.prompt.reset_selector();
-//                     }
-//                     MatcherResult::Matches(opts) => prompt::provide_completions(editor, id, opts),
-//                 }
-//             }
-//         },
-//     ));
-//     job.on_error = Some(Arc::new(
-//         |editor: &mut Editor, id: ClientId, out: Box<dyn Any>| {},
-//     ));
-//     job
-// }
+#[derive(Clone)]
+struct OpenFile {
+    id: ClientId,
+    path: PathBuf,
+}
 
-// async fn list_files_task(dir: PathBuf, out: JobProgressSender, term_in: Receiver<String>) -> bool {
-//     let (opt_out, opt_in) = channel(CHANNEL_SIZE);
-//     let (a, b) = tokio::join!(read_dir(opt_out, dir), matcher(out, opt_in, term_in));
-//     a && b
-// }
+impl OpenFile {
+    async fn read_directory_recursive(dir: PathBuf, osend: Sender<String>) {
+        fn spawn(dir: PathBuf, osend: Sender<String>, strip: usize) {
+            tokio::spawn(read_recursive(dir, osend, strip));
+        }
 
-// async fn read_dir(out: Sender<CandidateMessage>, dir: PathBuf) -> bool {
-//     fn spawn(out: Sender<CandidateMessage>, dir: PathBuf, strip: usize) {
-//         tokio::spawn(read_recursive(out, dir, strip));
-//     }
+        async fn read_recursive(
+            dir: PathBuf,
+            osend: Sender<String>,
+            strip: usize,
+        ) -> io::Result<()> {
+            let mut rdir = fs::read_dir(&dir).await?;
+            while let Ok(Some(entry)) = rdir.next_entry().await {
+                let path = entry.path();
+                let metadata = entry.metadata().await?;
+                if metadata.is_dir() {
+                    spawn(path, osend.clone(), strip)
+                } else {
+                    let path =
+                        path.components()
+                            .skip(strip)
+                            .fold(PathBuf::new(), |mut acc, comp| {
+                                acc.push(comp);
+                                acc
+                            });
+                    let name: String = path.to_string_lossy().into();
+                    let _ = osend.send(name).await;
+                }
+            }
 
-//     async fn read_recursive(
-//         out: Sender<CandidateMessage>,
-//         dir: PathBuf,
-//         strip: usize,
-//     ) -> io::Result<()> {
-//         let mut rdir = fs::read_dir(&dir).await?;
-//         while let Ok(Some(entry)) = rdir.next_entry().await {
-//             let path = entry.path();
-//             let metadata = entry.metadata().await?;
-//             if metadata.is_dir() {
-//                 spawn(out.clone(), path, strip)
-//             } else {
-//                 let path = path
-//                     .components()
-//                     .skip(strip)
-//                     .fold(PathBuf::new(), |mut acc, comp| {
-//                         acc.push(comp);
-//                         acc
-//                     });
-//                 let name: String = path.to_string_lossy().into();
-//                 let _ = out.send(CandidateMessage::One(name)).await;
-//             }
-//         }
+            Ok(())
+        }
 
-//         Ok(())
-//     }
+        let strip = dir.components().count();
+        let _ = read_recursive(dir, osend, strip).await;
+    }
+}
 
-//     let strip = dir.components().count();
-//     read_recursive(out, dir, strip).await.is_ok()
-// }
+impl Job for OpenFile {
+    fn run(&self, ctx: &crate::server::JobContext) -> crate::server::JobResult {
+        log::info!("Running openfile job..");
+        let ctx = ctx.clone();
+        let dir = self.path.clone();
+
+        let fut = async move {
+            log::info!("Running openfile job async block..");
+            let (tsend, trecv) = channel::<String>(CHANNEL_SIZE);
+            let (osend, orecv) = channel::<String>(CHANNEL_SIZE);
+            Self::read_directory_recursive(dir, osend).await;
+            // TODO: send required channels through ctx.send
+            // atleast tsend needs to be sent to get the input updates
+            //
+            // let (a, b) = tokio::join!(
+            //     Self::read_directory_recursive(dir, opt_out),
+            //     matcher(out, opt_in, term_in)
+            // );
+            Ok(())
+        };
+
+        Box::pin(fut)
+    }
+
+    fn box_clone(&self) -> crate::server::BoxedJob {
+        Box::new((*self).clone())
+    }
+}
+
+impl Talkative for OpenFile {
+    fn on_message(&self, editor: &mut Editor, msg: Box<dyn Any>) {
+        let draw = editor.draw_state(self.id);
+        draw.no_redraw_window();
+
+        // if let Ok(output) = out.downcast::<MatcherResult>() {
+        //     match *output {
+        //         MatcherResult::Reset => {
+        //             let (win, _buf) = editor.win_buf_mut(id);
+        //             win.prompt.reset_selector();
+        //         }
+        //         MatcherResult::Matches(opts) => prompt::provide_completions(editor, id, opts),
+        //     }
+        // }
+    }
+}

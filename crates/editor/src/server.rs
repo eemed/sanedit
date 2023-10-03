@@ -3,7 +3,7 @@ mod client;
 mod jobs;
 
 pub(crate) use client::*;
-pub(crate) use jobs::{BoxedJob, FromJobs, Job, JobContext, JobId, JobResult, JobsHandle};
+pub(crate) use jobs::{BoxedJob, FromJobs, Job, JobContext, JobId, JobResult, JobsHandle, ToJobs};
 
 use std::{
     borrow::Cow,

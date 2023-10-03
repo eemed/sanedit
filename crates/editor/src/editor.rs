@@ -308,28 +308,20 @@ impl Editor {
     }
 
     pub fn handle_job_msg(&mut self, msg: FromJobs) {
+        use FromJobs::*;
         match msg {
-            //         FromJobs::Progress(id, progress) => match progress {
-            //             JobProgress::Output(out) => {
-            //                 if let Some((client_id, on_output)) = self.jobs.on_output_handler(&id) {
-            //                     (on_output)(self, client_id, out);
-            //                     self.redraw(client_id);
-            //                 }
-            //             }
-            //             JobProgress::Error(out) => {
-            //                 if let Some((client_id, on_error)) = self.jobs.on_error_handler(&id) {
-            //                     (on_error)(self, client_id, out);
-            //                     self.redraw(client_id);
-            //                 }
-            //             }
-            //         },
-            FromJobs::Succesful(id) => {
-                log::info!("Job {id} succesful.");
-                // self.jobs.done(&id);
+            Message(id, msg) => {
+                if let Some(prog) = self.jobs.get(id) {
+                    prog.on_message(self, msg);
+                }
             }
-            FromJobs::Failed(id) => {
-                log::info!("Job {id} failed.");
-                // self.jobs.done(&id);
+            Succesful(id) => {
+                log::info!("Job {id} succesful.");
+                self.jobs.done(id);
+            }
+            Failed(id, reason) => {
+                log::info!("Job {id} failed because {}.", reason);
+                self.jobs.done(id);
             }
         }
     }

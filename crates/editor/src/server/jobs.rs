@@ -32,14 +32,14 @@ pub(crate) use id::*;
 pub(crate) type JobsHandle = mpsc::Sender<ToJobs>;
 /// A job that can be sent to other threads
 pub(crate) type BoxedJob = Box<dyn Job + Send + Sync>;
-pub(crate) type JobResult = BoxFuture<'static, Result<String, ()>>;
+pub(crate) type JobResult = BoxFuture<'static, Result<(), String>>;
 
 /// Jobs that can be ran on async runner
 pub(crate) trait Job {
     /// Run the job.
     /// This should return the async future to run the job.
     /// This should not block for a long time
-    fn run(&self, ctx: JobContext) -> JobResult;
+    fn run(&self, ctx: &JobContext) -> JobResult;
 
     /// Clone the job and transform it into sendable form
     fn box_clone(&self) -> BoxedJob;
@@ -55,7 +55,7 @@ pub(crate) async fn spawn_jobs(editor_handle: EditorHandle) -> JobsHandle {
 // Runs jobs in tokio runtime.
 async fn jobs_loop(mut recv: mpsc::Receiver<ToJobs>, handle: EditorHandle) {
     let (tx, mut rx) = channel(CHANNEL_SIZE);
-    let context = JobContext {
+    let mut context = InternalJobContext {
         editor: handle,
         internal: tx,
     };
@@ -63,21 +63,21 @@ async fn jobs_loop(mut recv: mpsc::Receiver<ToJobs>, handle: EditorHandle) {
 
     tokio::select!(
         Some(msg) = rx.recv() => {
-            use InternalJobsMessage::*;
-            let _ = match msg {
-                Succesful(id) => jobs.remove(&id),
-                Failed(id) => jobs.remove(&id),
-            };
+            let id = msg.id();
+            jobs.remove(&id);
+            context.editor.send(ToEditor::Jobs(msg.into()));
         },
         Some(msg) = recv.recv() => {
             use ToJobs::*;
             match msg {
                 Request(id, job) => {
-                    let mut ctx = context.clone();
+                    let mut ctx: JobContext = context.clone().into();
                     let task = async move {
-                        let _ = match job.run(ctx.clone()).await {
+                        let result = job.run(&ctx).await;
+                        let mut ctx: InternalJobContext = ctx.into();
+                        let _ = match result {
                             Ok(_) => ctx.success(id).await,
-                            Err(_) => ctx.failure(id).await,
+                            Err(reason) => ctx.failure(id, reason).await,
                         };
                     };
 

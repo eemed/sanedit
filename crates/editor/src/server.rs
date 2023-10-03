@@ -3,9 +3,7 @@ mod client;
 mod jobs;
 
 pub(crate) use client::*;
-pub(crate) use jobs::{
-    FromJobs, JobFutureFn, JobId, JobProgress, JobProgressSender, JobRequest, JobsHandle,
-};
+pub(crate) use jobs::{BoxedJob, FromJobs, Job, JobContext, JobId, JobResult, JobsHandle};
 
 use std::{
     borrow::Cow,

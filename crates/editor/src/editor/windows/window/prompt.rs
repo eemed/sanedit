@@ -5,7 +5,7 @@ use std::rc::Rc;
 use unicode_segmentation::UnicodeSegmentation;
 
 use crate::{
-    actions::jobs::Matches,
+    // actions::jobs::Matches,
     common::matcher::Match,
     editor::{keymap::Keymap, Editor},
     server::ClientId,
@@ -17,7 +17,7 @@ use super::completion::Selector;
 
 /// Prompt action, similar to a normal `ActionFunction` but also takes the
 /// prompt input as a additional parameter
-pub(crate) type PromptAction = Rc<dyn Fn(&mut Editor, ClientId, &str) + Send + Sync>;
+pub(crate) type PromptAction = Rc<dyn Fn(&mut Editor, ClientId, &str)>;
 
 pub(crate) struct Prompt {
     pub message: String,
@@ -117,9 +117,9 @@ impl Prompt {
         self.cursor += ch.len_utf8();
     }
 
-    pub fn provide_completions(&mut self, completions: Matches) {
-        self.selector.provide_options(completions);
-    }
+    // pub fn provide_completions(&mut self, completions: Matches) {
+    //     self.selector.provide_options(completions);
+    // }
 
     pub fn matches_window(&self, count: usize, offset: usize) -> Vec<&str> {
         self.selector.matches_window(count, offset)

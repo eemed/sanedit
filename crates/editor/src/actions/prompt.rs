@@ -1,7 +1,9 @@
-use std::{path::PathBuf, rc::Rc};
+mod open_file;
 
+use std::{path::PathBuf, rc::Rc};
 use tokio::sync::mpsc::channel;
 
+// use super::jobs::{self, Matches};
 use crate::{
     common::matcher::Match,
     editor::{
@@ -10,45 +12,13 @@ use crate::{
     },
     server::ClientId,
 };
-
-use super::jobs::{self, Matches};
+pub(crate) use open_file::open_file;
 
 fn is_yes(input: &str) -> bool {
     match input {
         "y" | "Y" | "yes" => true,
         _ => false,
     }
-}
-
-#[action("Open a file")]
-fn open_file(editor: &mut Editor, id: ClientId) {
-    const CHANNEL_SIZE: usize = 64;
-
-    let (tx, rx) = channel(CHANNEL_SIZE);
-    let job = jobs::list_files(editor, id, rx);
-
-    let (win, _buf) = editor.win_buf_mut(id);
-    win.prompt = Prompt::new("Open a file");
-    win.prompt.on_input = Some(Rc::new(move |editor, id, input| {
-        let _ = tx.blocking_send(input.into());
-    }));
-    win.prompt.on_confirm = Some(Rc::new(move |editor, id, input| {
-        let (win, _buf) = editor.win_buf_mut(id);
-        win.prompt.on_input = None;
-        let path = PathBuf::from(input);
-
-        if let Err(e) = editor.open_file(id, &path) {
-            let (win, _buf) = editor.win_buf_mut(id);
-            win.warn_msg(&format!("Failed to open file {input}"))
-        }
-    }));
-    win.prompt.on_abort = Some(Rc::new(move |editor, id, input| {
-        let (win, _buf) = editor.win_buf_mut(id);
-        win.prompt.on_input = None;
-    }));
-    win.focus = Focus::Prompt;
-
-    editor.jobs.request(job);
 }
 
 #[action("Close prompt")]
@@ -111,10 +81,10 @@ fn prev_completion(editor: &mut Editor, id: ClientId) {
     win.prompt.prev_completion();
 }
 
-pub(crate) fn provide_completions(editor: &mut Editor, id: ClientId, completions: Matches) {
-    let (win, _buf) = editor.win_buf_mut(id);
-    win.prompt.provide_completions(completions);
-}
+// pub(crate) fn provide_completions(editor: &mut Editor, id: ClientId, completions: Matches) {
+//     let (win, _buf) = editor.win_buf_mut(id);
+//     win.prompt.provide_completions(completions);
+// }
 
 #[action("Select the next entry from history")]
 fn history_next(editor: &mut Editor, id: ClientId) {

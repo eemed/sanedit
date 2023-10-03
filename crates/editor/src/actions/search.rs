@@ -4,7 +4,7 @@ use sanedit_buffer::{Searcher, SearcherRev};
 use tokio::sync::mpsc::channel;
 
 use crate::{
-    actions::jobs,
+    // actions::jobs,
     editor::{
         windows::{Focus, Search, SearchDirection},
         Editor,
@@ -15,14 +15,14 @@ use crate::{
 /// setups async job to handle matches within the view range.
 fn async_view_matches(editor: &mut Editor, id: ClientId) {
     const CHANNEL_SIZE: usize = 64;
-    let (tx, rx) = channel(CHANNEL_SIZE);
+    // let (tx, rx) = channel(CHANNEL_SIZE);
 
-    let (win, _buf) = editor.win_buf_mut(id);
-    win.search.prompt.on_input = Some(Rc::new(move |editor, id, input| {
-        let _ = tx.blocking_send(input.into());
-    }));
-    let job = jobs::search(editor, id, rx);
-    editor.jobs.request(job);
+    // let (win, _buf) = editor.win_buf_mut(id);
+    // win.search.prompt.on_input = Some(Rc::new(move |editor, id, input| {
+    //     let _ = tx.blocking_send(input.into());
+    // }));
+    // let job = jobs::search(editor, id, rx);
+    // editor.jobs.request(job);
 }
 
 #[action("Search forward")]

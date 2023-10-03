@@ -9,7 +9,7 @@ use crate::{
     server::ClientId,
 };
 
-use super::{hooks::execute, jobs, Action};
+use super::{hooks::execute, Action};
 
 #[action("Remove character after cursor")]
 fn remove_grapheme_after_cursor(editor: &mut Editor, id: ClientId) {
@@ -66,21 +66,21 @@ pub(crate) fn insert(editor: &mut Editor, id: ClientId, text: &str) {
 
 #[action("Save file")]
 fn save(editor: &mut Editor, id: ClientId) {
-    let (_win, buf) = editor.win_buf_mut(id);
-    if buf.path().is_none() {
-        save_as.execute(editor, id);
-        return;
-    }
+    // let (_win, buf) = editor.win_buf_mut(id);
+    // if buf.path().is_none() {
+    //     save_as.execute(editor, id);
+    //     return;
+    // }
 
-    match jobs::save_file(editor, id) {
-        Ok(job) => {
-            editor.jobs.request(job);
-        }
-        Err(e) => {
-            let (win, buf) = editor.win_buf_mut(id);
-            win.error_msg(&format!("Failed to save buffer {}, {e:?}", buf.name()));
-        }
-    }
+    // match jobs::save_file(editor, id) {
+    //     Ok(job) => {
+    //         editor.jobs.request(job);
+    //     }
+    //     Err(e) => {
+    //         let (win, buf) = editor.win_buf_mut(id);
+    //         win.error_msg(&format!("Failed to save buffer {}, {e:?}", buf.name()));
+    //     }
+    // }
 }
 
 #[action("Prompt filename and save file")]

@@ -37,7 +37,7 @@ use crate::events::ToEditor;
 use crate::server::ClientHandle;
 use crate::server::ClientId;
 use crate::server::FromJobs;
-use crate::server::JobProgress;
+// use crate::server::JobProgress;
 use crate::server::JobsHandle;
 
 use self::buffers::Buffers;
@@ -309,27 +309,27 @@ impl Editor {
 
     pub fn handle_job_msg(&mut self, msg: FromJobs) {
         match msg {
-            FromJobs::Progress(id, progress) => match progress {
-                JobProgress::Output(out) => {
-                    if let Some((client_id, on_output)) = self.jobs.on_output_handler(&id) {
-                        (on_output)(self, client_id, out);
-                        self.redraw(client_id);
-                    }
-                }
-                JobProgress::Error(out) => {
-                    if let Some((client_id, on_error)) = self.jobs.on_error_handler(&id) {
-                        (on_error)(self, client_id, out);
-                        self.redraw(client_id);
-                    }
-                }
-            },
-            FromJobs::Completed(id) => {
+            //         FromJobs::Progress(id, progress) => match progress {
+            //             JobProgress::Output(out) => {
+            //                 if let Some((client_id, on_output)) = self.jobs.on_output_handler(&id) {
+            //                     (on_output)(self, client_id, out);
+            //                     self.redraw(client_id);
+            //                 }
+            //             }
+            //             JobProgress::Error(out) => {
+            //                 if let Some((client_id, on_error)) = self.jobs.on_error_handler(&id) {
+            //                     (on_error)(self, client_id, out);
+            //                     self.redraw(client_id);
+            //                 }
+            //             }
+            //         },
+            FromJobs::Succesful(id) => {
                 log::info!("Job {id} succesful.");
-                self.jobs.done(&id);
+                // self.jobs.done(&id);
             }
             FromJobs::Failed(id) => {
                 log::info!("Job {id} failed.");
-                self.jobs.done(&id);
+                // self.jobs.done(&id);
             }
         }
     }

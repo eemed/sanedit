@@ -1,22 +1,18 @@
+mod options;
+
 use std::{cmp::min, mem};
 
 use sanedit_utils::sorted_vec::SortedVec;
 
 use crate::common::matcher::Match;
 
-// #[derive(Debug, Clone)]
-// pub(crate) struct Option {
-//     score: usize,
-//     opt: String,
-// }
-
-// pub(crate) type Options = SortedVec<'static, Option>;
+pub(crate) use options::*;
 
 /// Selects one item from a list of options.
 /// Options can be filtered down using an input string.
 #[derive(Debug, Default)]
 pub(crate) struct Selector {
-    pub(crate) options: Vec<String>,
+    pub(crate) options: Options,
 
     /// Currently selected index from `options`
     pub(crate) selected: Option<usize>,
@@ -25,7 +21,7 @@ pub(crate) struct Selector {
 impl Selector {
     pub fn new() -> Selector {
         Selector {
-            options: vec![],
+            options: SortedVec::new(),
             selected: None,
         }
     }

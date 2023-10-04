@@ -89,7 +89,7 @@ pub(crate) fn remove_grapheme_before_cursor(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.prompt.remove_grapheme_before_cursor();
 
-    if let Some(on_input) = win.prompt.on_input.clone() {
+    if let Some(on_input) = win.prompt.get_on_input() {
         let input = win.prompt.input().to_string();
         (on_input)(editor, id, &input)
     }

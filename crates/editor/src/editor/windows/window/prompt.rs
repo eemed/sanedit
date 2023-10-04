@@ -14,7 +14,7 @@ use crate::{
 
 use self::history::History;
 
-use super::completion::Selector;
+use super::selector::Selector;
 
 /// Prompt action, similar to a normal `ActionFunction` but also takes the
 /// prompt input as a additional parameter
@@ -34,7 +34,7 @@ pub(crate) struct Prompt {
     pub on_abort: Option<PromptAction>,
 
     /// Called when input is modified
-    pub on_input: Option<PromptAction>,
+    on_input: Option<PromptAction>,
     pub keymap: Keymap,
 
     pub history: History,
@@ -53,6 +53,18 @@ impl Prompt {
             keymap: Keymap::prompt(),
             history: History::new(100),
         }
+    }
+
+    pub fn on_input<F>(mut self, fun: F) -> Self
+    where
+        F: Fn(&mut Editor, ClientId, &str) + 'static,
+    {
+        self.on_input = Some(Rc::new(fun));
+        self
+    }
+
+    pub fn get_on_input(&self) -> Option<PromptAction> {
+        self.on_input.clone()
     }
 
     pub fn reset_selector(&mut self) {

@@ -74,9 +74,9 @@ impl OpenFile {
         let _ = read_recursive(dir, osend, strip).await;
     }
 
-    async fn send_matched_options(ctx: JobContext, mut mrecv: Receiver<MatchedOptions>) {
+    async fn send_matched_options(mut ctx: JobContext, mut mrecv: Receiver<MatchedOptions>) {
         while let Some(opts) = mrecv.recv().await {
-            ctx.send(OpenFileMessage::Progress(opts));
+            ctx.send(OpenFileMessage::Progress(opts)).await;
         }
     }
 }
@@ -84,7 +84,7 @@ impl OpenFile {
 impl Job for OpenFile {
     fn run(&self, ctx: &JobContext) -> JobResult {
         log::info!("Running openfile job..");
-        let ctx = ctx.clone();
+        let mut ctx = ctx.clone();
         let dir = self.path.clone();
 
         let fut = async move {
@@ -92,7 +92,7 @@ impl Job for OpenFile {
             let (osend, orecv) = channel::<String>(CHANNEL_SIZE);
             let (msend, mrecv) = channel::<MatchedOptions>(CHANNEL_SIZE);
 
-            ctx.send(OpenFileMessage::Init(tsend));
+            ctx.send(OpenFileMessage::Init(tsend)).await;
 
             tokio::join!(
                 Self::read_directory_recursive(dir, osend),

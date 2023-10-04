@@ -43,14 +43,14 @@ pub(crate) fn insert(editor: &mut Editor, id: ClientId, text: &str) {
     match win.focus() {
         Focus::Search => {
             win.search.prompt.insert_at_cursor(text);
-            if let Some(on_input) = win.search.prompt.on_input.clone() {
+            if let Some(on_input) = win.search.prompt.get_on_input() {
                 let input = win.search.prompt.input_or_selected();
                 (on_input)(editor, id, &input)
             }
         }
         Focus::Prompt => {
             win.prompt.insert_at_cursor(text);
-            if let Some(on_input) = win.prompt.on_input.clone() {
+            if let Some(on_input) = win.prompt.get_on_input() {
                 let input = win.prompt.input_or_selected();
                 (on_input)(editor, id, &input)
             }

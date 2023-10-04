@@ -1,33 +1,42 @@
 use std::ops::Index;
 
 /// A vector that is always sorted
-#[derive(Debug, Clone)]
-pub enum SortedVec<'a, T: Ord> {
-    Ref(&'a [T]),
-    Owned(Vec<T>),
+#[derive(Default, Debug, Clone)]
+pub struct SortedVec<T: Ord> {
+    items: Vec<T>,
 }
 
-impl<'a, T: Ord + Clone> SortedVec<'a, T> {
-    pub fn from_unsorted(positions: &'a [T]) -> SortedVec<'a, T> {
-        if is_sorted(positions) {
-            Self::Ref(positions)
-        } else {
-            let mut positions = positions.to_vec();
-            positions.sort();
-            Self::Owned(positions)
-        }
+impl<'a, T: Ord + Clone> SortedVec<T> {
+    pub fn from_unsorted(items: &'a [T]) -> SortedVec<T> {
+        let mut items = items.to_vec();
+        items.sort();
+        SortedVec { items }
     }
 }
 
-impl<'a, T: Ord> SortedVec<'a, T> {
+impl<'a, T: Ord> SortedVec<T> {
+    pub fn new() -> SortedVec<T> {
+        SortedVec { items: Vec::new() }
+    }
+
+    pub fn get(&self, i: usize) -> Option<&T> {
+        self.items.get(i)
+    }
+
     pub fn iter(&self) -> std::slice::Iter<T> {
-        match self {
-            SortedVec::Ref(poss) => poss.iter(),
-            SortedVec::Owned(poss) => poss.iter(),
-        }
+        self.items.iter()
     }
 
-    pub fn merge<'b>(&mut self, other: SortedVec<'b, T>) {
+    pub fn is_empty(&self) -> bool {
+        self.items.is_empty()
+    }
+
+    pub fn len(&self) -> usize {
+        self.items.len()
+    }
+
+    pub fn merge(&mut self, other: SortedVec<T>) {
+        todo!()
         // // Merge the two arrays by comparing score
         // let cap = opts.len() + self.options.len();
         // let old = mem::replace(&mut self.options, Vec::with_capacity(cap));
@@ -58,48 +67,29 @@ impl<'a, T: Ord> SortedVec<'a, T> {
     }
 }
 
-impl<'a, T: Ord> Index<usize> for SortedVec<'a, T> {
+impl<T: Ord> Index<usize> for SortedVec<T> {
     type Output = T;
 
     fn index(&self, i: usize) -> &Self::Output {
-        match self {
-            SortedVec::Ref(opts) => &opts[i],
-            SortedVec::Owned(opts) => &opts[i],
-        }
+        &self.items[i]
     }
 }
 
-impl<'a, T: Ord + Clone> From<&'a [T]> for SortedVec<'a, T> {
-    fn from(arr: &'a [T]) -> Self {
+impl<T: Ord + Clone> From<&[T]> for SortedVec<T> {
+    fn from(arr: &[T]) -> Self {
         Self::from_unsorted(arr)
     }
 }
 
-impl<'a, T: Ord> From<Vec<T>> for SortedVec<'a, T> {
-    fn from(mut arr: Vec<T>) -> Self {
-        arr.sort();
-        Self::Owned(arr)
+impl<T: Ord> From<Vec<T>> for SortedVec<T> {
+    fn from(mut items: Vec<T>) -> Self {
+        items.sort();
+        SortedVec { items }
     }
 }
 
-impl<'a, T: Ord> From<T> for SortedVec<'a, T> {
+impl<T: Ord> From<T> for SortedVec<T> {
     fn from(value: T) -> Self {
-        Self::Owned(vec![value])
+        SortedVec { items: vec![value] }
     }
-}
-
-fn is_sorted<T: Ord>(arr: &[T]) -> bool {
-    let mut min = None;
-
-    for item in arr {
-        if let Some(min) = min {
-            if min > item {
-                return false;
-            }
-        }
-
-        min = Some(item);
-    }
-
-    true
 }

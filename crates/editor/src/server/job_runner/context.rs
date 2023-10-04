@@ -15,11 +15,12 @@ pub(crate) struct JobContext {
 }
 
 impl JobContext {
-    pub fn send<A: Any + Send>(&mut self, any: A) {
+    pub async fn send<A: Any + Send>(&mut self, any: A) {
         let any = Box::new(any);
         self.inner
             .editor
-            .send(ToEditor::Jobs(FromJobs::Message(self.id, any)));
+            .send(ToEditor::Jobs(FromJobs::Message(self.id, any)))
+            .await;
     }
 }
 
@@ -69,8 +70,9 @@ mod internal {
     }
 
     impl InternalJobContext {
-        pub fn into_job_context(self, id: JobId) -> JobContext {
-            JobContext { id, inner: self }
+        pub fn to_job_context(&self, id: JobId) -> JobContext {
+            let inner = self.clone();
+            JobContext { id, inner }
         }
 
         pub async fn success(&mut self, id: JobId) -> Result<(), SendError<InternalJobsMessage>> {

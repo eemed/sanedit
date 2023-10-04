@@ -93,7 +93,7 @@ fn remove_grapheme_before_cursor(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.search.prompt.remove_grapheme_before_cursor();
 
-    if let Some(on_input) = win.search.prompt.on_input.clone() {
+    if let Some(on_input) = win.search.prompt.get_on_input() {
         let input = win.search.prompt.input().to_string();
         (on_input)(editor, id, &input)
     }

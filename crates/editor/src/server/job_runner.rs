@@ -65,13 +65,13 @@ async fn jobs_loop(mut recv: mpsc::Receiver<ToJobs>, handle: EditorHandle) {
         Some(msg) = rx.recv() => {
             let id = msg.id();
             jobs.remove(&id);
-            context.editor.send(ToEditor::Jobs(msg.into()));
+            context.editor.send(ToEditor::Jobs(msg.into())).await;
         },
         Some(msg) = recv.recv() => {
             use ToJobs::*;
             match msg {
                 Request(id, job) => {
-                    let mut ctx = context.clone().into_job_context(id);
+                    let mut ctx = context.to_job_context(id);
                     let task = async move {
                         let result = job.run(&ctx).await;
                         let mut ctx: InternalJobContext = ctx.into();

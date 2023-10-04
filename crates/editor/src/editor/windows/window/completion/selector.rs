@@ -1,18 +1,25 @@
 use std::{cmp::min, mem};
 
+use sanedit_utils::sorted_vec::SortedVec;
+
 use crate::common::matcher::Match;
+
+// #[derive(Debug, Clone)]
+// pub(crate) struct Option {
+//     score: usize,
+//     opt: String,
+// }
+
+// pub(crate) type Options = SortedVec<'static, Option>;
 
 /// Selects one item from a list of options.
 /// Options can be filtered down using an input string.
 #[derive(Debug, Default)]
 pub(crate) struct Selector {
-    /// all options
-    pub(crate) options: Vec<Match>,
+    pub(crate) options: Vec<String>,
 
     /// Currently selected index from `options`
     pub(crate) selected: Option<usize>,
-
-    pub smartcase: bool,
 }
 
 impl Selector {
@@ -20,7 +27,6 @@ impl Selector {
         Selector {
             options: vec![],
             selected: None,
-            smartcase: true,
         }
     }
 
@@ -60,21 +66,21 @@ impl Selector {
         }
     }
 
-    // pub fn provide_options(&mut self, matches: Matches) {
+    // pub fn provide_options(&mut self, opts: Options) {
     //     // Merge the two arrays by comparing score
-    //     let cap = matches.len() + self.options.len();
+    //     let cap = opts.len() + self.options.len();
     //     let old = mem::replace(&mut self.options, Vec::with_capacity(cap));
 
-    //     let n = min(old.len(), matches.len());
+    //     let n = min(old.len(), opts.len());
     //     let mut i = 0;
     //     let mut j = 0;
 
     //     while i < n && j < n {
-    //         if old[i].score() < matches[j].score() {
+    //         if old[i].score() < opts[j].score() {
     //             self.options.push(old[i].clone());
     //             i += 1;
     //         } else {
-    //             self.options.push(matches[j].clone());
+    //             self.options.push(opts[j].clone());
     //             j += 1;
     //         }
     //     }
@@ -84,8 +90,8 @@ impl Selector {
     //         i += 1;
     //     }
 
-    //     while j < matches.len() {
-    //         self.options.push(matches[j].clone());
+    //     while j < opts.len() {
+    //         self.options.push(opts[j].clone());
     //         j += 1;
     //     }
     // }

@@ -1,10 +1,9 @@
-mod open_file;
-
 use std::{path::PathBuf, rc::Rc};
 use tokio::sync::mpsc::channel;
 
 // use super::jobs::{self, Matches};
 use crate::{
+    actions::jobs::OpenFile,
     common::matcher::Match,
     editor::{
         windows::{Focus, Prompt},
@@ -12,13 +11,40 @@ use crate::{
     },
     server::ClientId,
 };
-pub(crate) use open_file::open_file;
 
-fn is_yes(input: &str) -> bool {
-    match input {
-        "y" | "Y" | "yes" => true,
-        _ => false,
-    }
+#[action("Open a file")]
+fn open_file(editor: &mut Editor, id: ClientId) {
+    // let (tx, rx) = channel(CHANNEL_SIZE);
+    // let job = list_files(editor, id, rx);
+    // let (win, _buf) = editor.win_buf_mut(id);
+
+    // win.prompt = Prompt::new("Open a file");
+    // win.prompt.on_input = Some(Rc::new(move |editor, id, input| {
+    //     let _ = tx.blocking_send(input.into());
+    // }));
+    // win.prompt.on_confirm = Some(Rc::new(move |editor, id, input| {
+    //     let (win, _buf) = editor.win_buf_mut(id);
+    //     win.prompt.on_input = None;
+    //     let path = PathBuf::from(input);
+
+    //     if let Err(e) = editor.open_file(id, &path) {
+    //         let (win, _buf) = editor.win_buf_mut(id);
+    //         win.warn_msg(&format!("Failed to open file {input}"))
+    //     }
+    // }));
+    // win.prompt.on_abort = Some(Rc::new(move |editor, id, input| {
+    //     let (win, _buf) = editor.win_buf_mut(id);
+    //     win.prompt.on_input = None;
+    // }));
+    // win.focus = Focus::Prompt;
+
+    // editor.jobs.request(job);
+
+    log::info!("Open file");
+    let path = editor.working_dir().to_path_buf();
+    let job = OpenFile::new(id, path);
+    editor.job_broker.request(job);
+    log::info!("Open file done");
 }
 
 #[action("Close prompt")]

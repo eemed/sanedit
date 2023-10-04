@@ -71,7 +71,7 @@ async fn jobs_loop(mut recv: mpsc::Receiver<ToJobs>, handle: EditorHandle) {
             use ToJobs::*;
             match msg {
                 Request(id, job) => {
-                    let mut ctx: JobContext = context.clone().into();
+                    let mut ctx = context.clone().into_job_context(id);
                     let task = async move {
                         let result = job.run(&ctx).await;
                         let mut ctx: InternalJobContext = ctx.into();

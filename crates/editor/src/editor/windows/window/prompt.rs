@@ -2,6 +2,7 @@ mod history;
 
 use std::rc::Rc;
 
+use sanedit_utils::sorted_vec::SortedVec;
 use unicode_segmentation::UnicodeSegmentation;
 
 use crate::{
@@ -117,11 +118,11 @@ impl Prompt {
         self.cursor += ch.len_utf8();
     }
 
-    // pub fn provide_completions(&mut self, completions: Matches) {
+    // pub fn provide_options(&mut self, opts: Options) {
     //     self.selector.provide_options(completions);
     // }
 
-    pub fn matches_window(&self, count: usize, offset: usize) -> Vec<&str> {
+    pub fn options_window(&self, count: usize, offset: usize) -> Vec<&str> {
         self.selector.matches_window(count, offset)
     }
 

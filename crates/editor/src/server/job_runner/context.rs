@@ -10,21 +10,16 @@ pub(crate) use internal::*;
 /// editor.
 #[derive(Clone)]
 pub(crate) struct JobContext {
+    id: JobId,
     inner: InternalJobContext,
 }
 
 impl JobContext {
-    pub fn send<A: Any + Send>(&mut self, id: JobId, any: A) {
+    pub fn send<A: Any + Send>(&mut self, any: A) {
         let any = Box::new(any);
         self.inner
             .editor
-            .send(ToEditor::Jobs(FromJobs::Message(id, any)));
-    }
-}
-
-impl From<InternalJobContext> for JobContext {
-    fn from(inner: InternalJobContext) -> Self {
-        JobContext { inner }
+            .send(ToEditor::Jobs(FromJobs::Message(self.id, any)));
     }
 }
 
@@ -35,7 +30,7 @@ impl From<JobContext> for InternalJobContext {
 }
 
 mod internal {
-    use super::JobId;
+    use super::{JobContext, JobId};
     use crate::{
         events::ToEditor,
         server::{EditorHandle, FromJobs},
@@ -74,6 +69,10 @@ mod internal {
     }
 
     impl InternalJobContext {
+        pub fn into_job_context(self, id: JobId) -> JobContext {
+            JobContext { id, inner: self }
+        }
+
         pub async fn success(&mut self, id: JobId) -> Result<(), SendError<InternalJobsMessage>> {
             self.internal
                 .send(InternalJobsMessage::Succesful(id))

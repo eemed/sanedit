@@ -1,9 +1,11 @@
 mod accept;
 mod client;
-mod jobs;
+mod job_runner;
 
 pub(crate) use client::*;
-pub(crate) use jobs::{BoxedJob, FromJobs, Job, JobContext, JobId, JobResult, JobsHandle, ToJobs};
+pub(crate) use job_runner::{
+    BoxedJob, FromJobs, Job, JobContext, JobId, JobResult, JobsHandle, ToJobs,
+};
 
 use std::{
     borrow::Cow,
@@ -27,7 +29,7 @@ use tokio::{
 
 use crate::{editor, events::ToEditor};
 
-use self::jobs::spawn_jobs;
+use self::job_runner::spawn_jobs;
 
 /// Channel buffer size for tokio channels
 pub(crate) const CHANNEL_SIZE: usize = 64;

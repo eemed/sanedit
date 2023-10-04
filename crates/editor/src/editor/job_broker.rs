@@ -4,27 +4,27 @@ use crate::server::{ClientId, Job, JobId, JobsHandle, ToJobs};
 
 use super::Editor;
 
-/// A job that can talk back to the editor.
-pub(crate) trait Talkative: Job {
+/// A job that keeps in touch (can send messages back) with the editor
+pub(crate) trait KeepInTouch: Job {
     /// Ran when the job sends the message back to the editor
     fn on_message(&self, editor: &mut Editor, msg: Box<dyn Any>);
 }
 
-impl fmt::Debug for dyn Talkative {
+impl fmt::Debug for dyn KeepInTouch {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "progressable job")
+        write!(f, "keep in touch job")
     }
 }
 
 #[derive(Debug)]
-pub(crate) struct Jobs {
+pub(crate) struct JobBroker {
     handle: JobsHandle,
-    jobs: HashMap<JobId, Rc<dyn Talkative>>,
+    jobs: HashMap<JobId, Rc<dyn KeepInTouch>>,
 }
 
-impl Jobs {
-    pub fn new(handle: JobsHandle) -> Jobs {
-        Jobs {
+impl JobBroker {
+    pub fn new(handle: JobsHandle) -> JobBroker {
+        JobBroker {
             handle,
             jobs: HashMap::new(),
         }
@@ -38,8 +38,8 @@ impl Jobs {
         id
     }
 
-    /// Request a talkative job to be ran.
-    pub fn request<T: Talkative + 'static>(&mut self, task: T) -> JobId {
+    /// Request a job to be ran, tahat
+    pub fn request<T: KeepInTouch + 'static>(&mut self, task: T) -> JobId {
         let job = task.box_clone();
         let id = JobId::next();
         let talkative = Rc::new(task);
@@ -52,7 +52,7 @@ impl Jobs {
         self.jobs.remove(&id);
     }
 
-    pub fn get(&self, id: JobId) -> Option<Rc<dyn Talkative>> {
+    pub fn get(&self, id: JobId) -> Option<Rc<dyn KeepInTouch>> {
         self.jobs.get(&id).cloned()
     }
 }

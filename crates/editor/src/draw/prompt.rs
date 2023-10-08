@@ -20,7 +20,7 @@ pub(crate) fn draw(prompt: &Prompt, ctx: &mut DrawContext) -> Redraw {
         }
     };
 
-    let msg = prompt.message.clone();
+    let msg = prompt.message().to_string();
     let input = prompt.input().into();
     let cursor = prompt.cursor();
     let selected_relative_pos = prompt.selected_pos().map(|pos| pos - *offset);

@@ -21,7 +21,7 @@ use super::selector::Selector;
 pub(crate) type PromptAction = Rc<dyn Fn(&mut Editor, ClientId, &str)>;
 
 pub(crate) struct Prompt {
-    pub message: String,
+    message: String,
 
     input: String,
     cursor: usize,
@@ -65,6 +65,10 @@ impl Prompt {
 
     pub fn get_on_input(&self) -> Option<PromptAction> {
         self.on_input.clone()
+    }
+
+    pub fn message(&self) -> &str {
+        &self.message
     }
 
     pub fn reset_selector(&mut self) {

@@ -32,6 +32,7 @@ pub(crate) use self::{
     prompt::Prompt,
     search::Search,
     search::SearchDirection,
+    selector::*,
     view::{Cell, View},
 };
 

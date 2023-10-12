@@ -4,8 +4,6 @@ use std::{cmp::min, mem};
 
 use sanedit_utils::sorted_vec::SortedVec;
 
-use crate::common::matcher::Match;
-
 pub(crate) use options::*;
 
 /// Selects one item from a list of options.
@@ -62,35 +60,36 @@ impl Selector {
         }
     }
 
-    // pub fn provide_options(&mut self, opts: Options) {
-    //     // Merge the two arrays by comparing score
-    //     let cap = opts.len() + self.options.len();
-    //     let old = mem::replace(&mut self.options, Vec::with_capacity(cap));
+    pub fn provide_options(&mut self, opts: Options) {
+        // Merge the two arrays by comparing score
+        let cap = opts.len() + self.options.len();
+        log::info!("CAP: {cap}");
+        let old = mem::replace(&mut self.options, SortedVec::with_capacity(cap));
 
-    //     let n = min(old.len(), opts.len());
-    //     let mut i = 0;
-    //     let mut j = 0;
+        let n = min(old.len(), opts.len());
+        let mut i = 0;
+        let mut j = 0;
 
-    //     while i < n && j < n {
-    //         if old[i].score() < opts[j].score() {
-    //             self.options.push(old[i].clone());
-    //             i += 1;
-    //         } else {
-    //             self.options.push(opts[j].clone());
-    //             j += 1;
-    //         }
-    //     }
+        while i < n && j < n {
+            if old[i].score() < opts[j].score() {
+                self.options.push(old[i].clone());
+                i += 1;
+            } else {
+                self.options.push(opts[j].clone());
+                j += 1;
+            }
+        }
 
-    //     while i < old.len() {
-    //         self.options.push(old[i].clone());
-    //         i += 1;
-    //     }
+        while i < old.len() {
+            self.options.push(old[i].clone());
+            i += 1;
+        }
 
-    //     while j < opts.len() {
-    //         self.options.push(opts[j].clone());
-    //         j += 1;
-    //     }
-    // }
+        while j < opts.len() {
+            self.options.push(opts[j].clone());
+            j += 1;
+        }
+    }
 
     pub fn selected_pos(&self) -> Option<usize> {
         self.selected

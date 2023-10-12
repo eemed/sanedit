@@ -19,6 +19,12 @@ impl<'a, T: Ord> SortedVec<T> {
         SortedVec { items: Vec::new() }
     }
 
+    pub fn with_capacity(cap: usize) -> SortedVec<T> {
+        SortedVec {
+            items: Vec::with_capacity(cap),
+        }
+    }
+
     pub fn get(&self, i: usize) -> Option<&T> {
         self.items.get(i)
     }
@@ -33,6 +39,11 @@ impl<'a, T: Ord> SortedVec<T> {
 
     pub fn len(&self) -> usize {
         self.items.len()
+    }
+
+    pub fn push(&mut self, item: T) {
+        let pos = self.items.binary_search(&item).unwrap_or_else(|e| e);
+        self.items.insert(pos, item);
     }
 
     pub fn merge(&mut self, other: SortedVec<T>) {

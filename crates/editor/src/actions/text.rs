@@ -86,11 +86,10 @@ fn save(editor: &mut Editor, id: ClientId) {
 #[action("Prompt filename and save file")]
 fn save_as(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
-    win.prompt = Prompt::new("Save as");
-    win.prompt.on_confirm = Some(Rc::new(|editor, id, path| {
+    win.prompt = Prompt::new("Save as").on_confirm(|editor, id, path| {
         let (_win, buf) = editor.win_buf_mut(id);
         buf.set_path(PathBuf::from(path));
         save.execute(editor, id);
-    }));
+    });
     win.focus = Focus::Prompt;
 }

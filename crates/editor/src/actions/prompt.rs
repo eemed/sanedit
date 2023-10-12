@@ -14,43 +14,27 @@ use crate::{
 
 #[action("Open a file")]
 fn open_file(editor: &mut Editor, id: ClientId) {
-    // let (tx, rx) = channel(CHANNEL_SIZE);
-    // let job = list_files(editor, id, rx);
-    // let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = editor.win_buf_mut(id);
 
-    // win.prompt = Prompt::new("Open a file");
-    // win.prompt.on_input = Some(Rc::new(move |editor, id, input| {
-    //     let _ = tx.blocking_send(input.into());
-    // }));
-    // win.prompt.on_confirm = Some(Rc::new(move |editor, id, input| {
-    //     let (win, _buf) = editor.win_buf_mut(id);
-    //     win.prompt.on_input = None;
-    //     let path = PathBuf::from(input);
+    win.prompt = Prompt::new("Open a file").on_confirm(move |editor, id, input| {
+        let path = PathBuf::from(input);
 
-    //     if let Err(e) = editor.open_file(id, &path) {
-    //         let (win, _buf) = editor.win_buf_mut(id);
-    //         win.warn_msg(&format!("Failed to open file {input}"))
-    //     }
-    // }));
-    // win.prompt.on_abort = Some(Rc::new(move |editor, id, input| {
-    //     let (win, _buf) = editor.win_buf_mut(id);
-    //     win.prompt.on_input = None;
-    // }));
-    // win.focus = Focus::Prompt;
+        if let Err(e) = editor.open_file(id, &path) {
+            let (win, _buf) = editor.win_buf_mut(id);
+            win.warn_msg(&format!("Failed to open file {input}"))
+        }
+    });
+    win.focus = Focus::Prompt;
 
-    // editor.jobs.request(job);
-
-    log::info!("Open file");
     let path = editor.working_dir().to_path_buf();
     let job = OpenFile::new(id, path);
     editor.job_broker.request(job);
-    log::info!("Open file done");
 }
 
 #[action("Close prompt")]
 fn close(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
-    if let Some(on_abort) = win.prompt.on_abort.clone() {
+    if let Some(on_abort) = win.prompt.get_on_abort() {
         let input = win.prompt.input_or_selected();
         (on_abort)(editor, id, &input)
     }
@@ -62,9 +46,9 @@ fn close(editor: &mut Editor, id: ClientId) {
 #[action("Confirm selection")]
 fn confirm(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
-    if let Some(on_confirm) = win.prompt.on_confirm.clone() {
+    if let Some(on_confirm) = win.prompt.get_on_confirm() {
+        win.prompt.save_to_history();
         let input = win.prompt.input_or_selected();
-        win.prompt.history.push(&input);
         (on_confirm)(editor, id, &input)
     }
 

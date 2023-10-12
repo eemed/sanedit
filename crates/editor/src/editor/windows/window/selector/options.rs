@@ -4,11 +4,15 @@ pub(crate) type Options = SortedVec<Opt>;
 
 #[derive(Debug, Clone, Default)]
 pub(crate) struct Opt {
-    score: u32,
-    opt: String,
+    pub(super) score: u32,
+    pub(super) opt: String,
 }
 
 impl Opt {
+    pub fn new(opt: String, score: u32) -> Opt {
+        Opt { opt, score }
+    }
+
     pub fn as_str(&self) -> &str {
         self.as_str()
     }

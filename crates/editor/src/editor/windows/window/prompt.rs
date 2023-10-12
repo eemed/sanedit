@@ -14,7 +14,7 @@ use crate::{
 
 use self::history::History;
 
-use super::selector::Selector;
+use super::selector::{Options, Selector};
 
 /// Prompt action, similar to a normal `ActionFunction` but also takes the
 /// prompt input as a additional parameter
@@ -28,16 +28,16 @@ pub(crate) struct Prompt {
     selector: Selector,
 
     /// Called when prompt is confirmed
-    pub on_confirm: Option<PromptAction>,
+    on_confirm: Option<PromptAction>,
 
     /// Called when prompt is aborted
-    pub on_abort: Option<PromptAction>,
+    on_abort: Option<PromptAction>,
 
     /// Called when input is modified
     on_input: Option<PromptAction>,
     pub keymap: Keymap,
 
-    pub history: History,
+    history: History,
 }
 
 impl Prompt {
@@ -63,15 +63,51 @@ impl Prompt {
         self
     }
 
+    pub fn set_on_input<F>(&mut self, fun: F)
+    where
+        F: Fn(&mut Editor, ClientId, &str) + 'static,
+    {
+        self.on_input = Some(Rc::new(fun));
+    }
+
     pub fn get_on_input(&self) -> Option<PromptAction> {
         self.on_input.clone()
+    }
+
+    pub fn save_to_history(&mut self) {
+        let input = self.input_or_selected();
+        self.history.push(&input);
+    }
+
+    pub fn on_confirm<F>(mut self, fun: F) -> Self
+    where
+        F: Fn(&mut Editor, ClientId, &str) + 'static,
+    {
+        self.on_confirm = Some(Rc::new(fun));
+        self
+    }
+
+    pub fn get_on_confirm(&self) -> Option<PromptAction> {
+        self.on_confirm.clone()
+    }
+
+    pub fn on_abort<F>(mut self, fun: F) -> Self
+    where
+        F: Fn(&mut Editor, ClientId, &str) + 'static,
+    {
+        self.on_abort = Some(Rc::new(fun));
+        self
+    }
+
+    pub fn get_on_abort(&self) -> Option<PromptAction> {
+        self.on_abort.clone()
     }
 
     pub fn message(&self) -> &str {
         &self.message
     }
 
-    pub fn reset_selector(&mut self) {
+    pub fn clear_options(&mut self) {
         self.selector = Selector::new();
     }
 
@@ -134,9 +170,9 @@ impl Prompt {
         self.cursor += ch.len_utf8();
     }
 
-    // pub fn provide_options(&mut self, opts: Options) {
-    //     self.selector.provide_options(completions);
-    // }
+    pub fn provide_options(&mut self, opts: Options) {
+        self.selector.provide_options(opts);
+    }
 
     pub fn options_window(&self, count: usize, offset: usize) -> Vec<&str> {
         self.selector.matches_window(count, offset)

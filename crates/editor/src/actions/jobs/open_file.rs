@@ -1,4 +1,4 @@
-use std::{any::Any, path::PathBuf, rc::Rc, sync::Arc};
+use std::{any::Any, path::PathBuf};
 
 use tokio::{
     fs, io,
@@ -6,12 +6,8 @@ use tokio::{
 };
 
 use crate::{
-    actions::{jobs::match_options, prompt},
-    editor::{
-        job_broker::KeepInTouch,
-        windows::{Focus, Prompt},
-        Editor,
-    },
+    actions::jobs::match_options,
+    editor::{job_broker::KeepInTouch, windows::Opt, Editor},
     server::{BoxedJob, ClientId, Job, JobContext, JobResult},
 };
 
@@ -121,11 +117,17 @@ impl KeepInTouch for OpenFile {
             use OpenFileMessage::*;
             match *msg {
                 Init(sender) => {
-                    // Send current input + set on_input
+                    win.prompt.set_on_input(move |editor, id, input| {
+                        let _ = sender.blocking_send(input.to_string());
+                    });
                 }
-                Progress(_) => {
-                    // do appropriate action to options
-                }
+                Progress(opts) => match opts {
+                    MatchedOptions::ClearAll => win.prompt.clear_options(),
+                    MatchedOptions::Options(opts) => {
+                        let opts: Vec<Opt> = opts.into_iter().map(|mat| Opt::from(mat)).collect();
+                        win.prompt.provide_options(opts.into());
+                    }
+                },
             }
         }
     }

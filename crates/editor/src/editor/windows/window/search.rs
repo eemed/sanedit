@@ -1,8 +1,11 @@
 use std::ops::Range;
 
-use crate::editor::keymap::Keymap;
+use crate::{
+    editor::{keymap::Keymap, Editor},
+    server::ClientId,
+};
 
-use super::Prompt;
+use super::{prompt::PromptAction, Prompt};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum SearchDirection {
@@ -40,6 +43,22 @@ impl Search {
             cmatch: None,
             direction: SearchDirection::Forward,
         }
+    }
+
+    pub fn on_confirm<F>(mut self, fun: F) -> Self
+    where
+        F: Fn(&mut Editor, ClientId, &str) + 'static,
+    {
+        self.prompt = self.prompt.on_confirm(fun);
+        self
+    }
+
+    pub fn get_on_confirm(&self) -> Option<PromptAction> {
+        self.prompt.get_on_confirm()
+    }
+
+    pub fn save_to_history(&mut self) {
+        self.prompt.save_to_history();
     }
 }
 

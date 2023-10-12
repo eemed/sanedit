@@ -2,10 +2,7 @@ use std::mem;
 
 use tokio::sync::mpsc::{Receiver, Sender};
 
-use crate::{
-    common::matcher::{Match, MatchReceiver, Matcher},
-    server::JobContext,
-};
+use crate::common::matcher::{Match, MatchReceiver, Matcher};
 
 #[derive(Debug)]
 pub(crate) enum MatchedOptions {
@@ -28,15 +25,14 @@ pub(crate) async fn match_options(
                 matches.push(res);
 
                 if matches.len() >= MAX_SIZE {
-                    break;
-                    // let opts = mem::take(&mut matches);
-                    // if !out.send().await {
-                    //     break;
-                    // }
+                    let opts = mem::take(&mut matches);
+                    if let Err(_) = out.send(MatchedOptions::Options(opts)).await {
+                        break;
+                    }
                 }
             }
 
-            // send(&mut out, &mut matches).await;
+            let _ = out.send(MatchedOptions::Options(matches)).await;
         })
     }
 
@@ -48,12 +44,9 @@ pub(crate) async fn match_options(
         join.abort();
         let _ = join.await;
 
-        // if let Err(_e) = out
-        //     .send(JobProgress::Output(Box::new(MatcherResult::Reset)))
-        //     .await
-        // {
-        //     break;
-        // }
+        if let Err(_e) = out.send(MatchedOptions::ClearAll).await {
+            break;
+        }
 
         let recv = matcher.do_match(&term);
         join = spawn(out.clone(), recv);

@@ -1,7 +1,6 @@
-use std::{cmp::min, rc::Rc};
+use std::cmp::min;
 
 use sanedit_buffer::{Searcher, SearcherRev};
-use tokio::sync::mpsc::channel;
 
 use crate::{
     // actions::jobs,
@@ -28,8 +27,7 @@ fn async_view_matches(editor: &mut Editor, id: ClientId) {
 #[action("Search forward")]
 fn forward(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
-    win.search = Search::new("Search");
-    win.search.prompt.on_confirm = Some(Rc::new(search));
+    win.search = Search::new("Search").on_confirm(search);
     win.focus = Focus::Search;
 
     async_view_matches(editor, id);
@@ -38,9 +36,8 @@ fn forward(editor: &mut Editor, id: ClientId) {
 #[action("Search backwards")]
 fn backward(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
-    win.search = Search::new("BSearch");
+    win.search = Search::new("BSearch").on_confirm(search);
     win.search.direction = SearchDirection::Backward;
-    win.search.prompt.on_confirm = Some(Rc::new(search));
     win.focus = Focus::Search;
 
     async_view_matches(editor, id);
@@ -49,7 +46,7 @@ fn backward(editor: &mut Editor, id: ClientId) {
 #[action("Close search")]
 fn close(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
-    if let Some(on_abort) = win.search.prompt.on_abort.clone() {
+    if let Some(on_abort) = win.search.prompt.get_on_abort() {
         let input = win.search.prompt.input_or_selected();
         (on_abort)(editor, id, &input)
     }
@@ -66,9 +63,9 @@ fn confirm_all(_editor: &mut Editor, _id: ClientId) {
 #[action("Find next match")]
 fn confirm(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
-    if let Some(on_confirm) = win.search.prompt.on_confirm.clone() {
+    if let Some(on_confirm) = win.search.get_on_confirm() {
+        win.search.save_to_history();
         let input = win.search.prompt.input_or_selected();
-        win.search.prompt.history.push(&input);
         (on_confirm)(editor, id, &input)
     }
 

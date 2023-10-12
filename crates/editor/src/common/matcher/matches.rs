@@ -1,3 +1,5 @@
+use crate::editor::windows::Opt;
+
 /// A matched and scored candidate
 #[derive(Debug, Clone)]
 pub(crate) struct Match {
@@ -32,5 +34,11 @@ impl PartialOrd for Match {
 impl Ord for Match {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.score.cmp(&other.score)
+    }
+}
+
+impl From<Match> for Opt {
+    fn from(mat: Match) -> Self {
+        Opt::new(mat.value, mat.score)
     }
 }

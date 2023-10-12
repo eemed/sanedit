@@ -20,7 +20,7 @@ use std::{
 
 use tokio::{
     net::unix::SocketAddr,
-    runtime::{Builder, Runtime},
+    runtime::Runtime,
     sync::{
         mpsc::{channel, Sender},
         Notify,
@@ -117,14 +117,15 @@ pub fn run_sync(addrs: Vec<Address>) -> Option<thread::JoinHandle<()>> {
     let rt = Runtime::new().ok()?;
     rt.block_on(listen(addrs, handle.clone()));
 
-    let join = thread::spawn(move || {
-        // tokio runtime is moved here, it is killed when the editor main loop exits
-        let jobs_handle = rt.block_on(spawn_jobs(handle));
+    thread::Builder::new()
+        .name("sanedit".into())
+        .spawn(move || {
+            // tokio runtime is moved here, it is killed when the editor main loop exits
+            let jobs_handle = rt.block_on(spawn_jobs(handle));
 
-        if let Err(e) = editor::main_loop(jobs_handle, recv) {
-            log::error!("Editor main loop exited with error {}.", e);
-        }
-    });
-
-    Some(join)
+            if let Err(e) = editor::main_loop(jobs_handle, recv) {
+                log::error!("Editor main loop exited with error {}.", e);
+            }
+        })
+        .ok()
 }

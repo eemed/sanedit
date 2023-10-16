@@ -27,7 +27,10 @@ fn async_view_matches(editor: &mut Editor, id: ClientId) {
 #[action("Search forward")]
 fn forward(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
-    win.search = Search::new("Search").on_confirm(search);
+    win.search = Search::builder()
+        .prompt("Search")
+        .on_confirm(search)
+        .build();
     win.focus = Focus::Search;
 
     async_view_matches(editor, id);
@@ -36,7 +39,10 @@ fn forward(editor: &mut Editor, id: ClientId) {
 #[action("Search backwards")]
 fn backward(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
-    win.search = Search::new("BSearch").on_confirm(search);
+    win.search = Search::builder()
+        .prompt("Backward search")
+        .on_confirm(search)
+        .build();
     win.search.direction = SearchDirection::Backward;
     win.focus = Focus::Search;
 
@@ -46,7 +52,7 @@ fn backward(editor: &mut Editor, id: ClientId) {
 #[action("Close search")]
 fn close(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
-    if let Some(on_abort) = win.search.prompt.get_on_abort() {
+    if let Some(on_abort) = win.search.prompt.on_abort() {
         let input = win.search.prompt.input_or_selected();
         (on_abort)(editor, id, &input)
     }
@@ -63,7 +69,7 @@ fn confirm_all(_editor: &mut Editor, _id: ClientId) {
 #[action("Find next match")]
 fn confirm(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
-    if let Some(on_confirm) = win.search.get_on_confirm() {
+    if let Some(on_confirm) = win.search.on_confirm() {
         win.search.save_to_history();
         let input = win.search.prompt.input_or_selected();
         (on_confirm)(editor, id, &input)
@@ -90,7 +96,7 @@ fn remove_grapheme_before_cursor(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.search.prompt.remove_grapheme_before_cursor();
 
-    if let Some(on_input) = win.search.prompt.get_on_input() {
+    if let Some(on_input) = win.search.prompt.on_input() {
         let input = win.search.prompt.input().to_string();
         (on_input)(editor, id, &input)
     }

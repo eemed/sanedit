@@ -43,14 +43,14 @@ pub(crate) fn insert(editor: &mut Editor, id: ClientId, text: &str) {
     match win.focus() {
         Focus::Search => {
             win.search.prompt.insert_at_cursor(text);
-            if let Some(on_input) = win.search.prompt.get_on_input() {
+            if let Some(on_input) = win.search.prompt.on_input() {
                 let input = win.search.prompt.input_or_selected();
                 (on_input)(editor, id, &input)
             }
         }
         Focus::Prompt => {
             win.prompt.insert_at_cursor(text);
-            if let Some(on_input) = win.prompt.get_on_input() {
+            if let Some(on_input) = win.prompt.on_input() {
                 let input = win.prompt.input_or_selected();
                 (on_input)(editor, id, &input)
             }
@@ -86,10 +86,13 @@ fn save(editor: &mut Editor, id: ClientId) {
 #[action("Prompt filename and save file")]
 fn save_as(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
-    win.prompt = Prompt::new("Save as").on_confirm(|editor, id, path| {
-        let (_win, buf) = editor.win_buf_mut(id);
-        buf.set_path(PathBuf::from(path));
-        save.execute(editor, id);
-    });
+    win.prompt = Prompt::builder()
+        .prompt("Save as")
+        .on_confirm(|editor, id, path| {
+            let (_win, buf) = editor.win_buf_mut(id);
+            buf.set_path(PathBuf::from(path));
+            save.execute(editor, id);
+        })
+        .build();
     win.focus = Focus::Prompt;
 }

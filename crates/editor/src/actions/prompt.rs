@@ -16,14 +16,17 @@ use crate::{
 fn open_file(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
 
-    win.prompt = Prompt::new("Open a file").on_confirm(move |editor, id, input| {
-        let path = PathBuf::from(input);
+    win.prompt = Prompt::builder()
+        .prompt("Open a file")
+        .on_confirm(move |editor, id, input| {
+            let path = PathBuf::from(input);
 
-        if let Err(e) = editor.open_file(id, &path) {
-            let (win, _buf) = editor.win_buf_mut(id);
-            win.warn_msg(&format!("Failed to open file {input}"))
-        }
-    });
+            if let Err(e) = editor.open_file(id, &path) {
+                let (win, _buf) = editor.win_buf_mut(id);
+                win.warn_msg(&format!("Failed to open file {input}"))
+            }
+        })
+        .build();
     win.focus = Focus::Prompt;
 
     let path = editor.working_dir().to_path_buf();
@@ -34,7 +37,7 @@ fn open_file(editor: &mut Editor, id: ClientId) {
 #[action("Close prompt")]
 fn close(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
-    if let Some(on_abort) = win.prompt.get_on_abort() {
+    if let Some(on_abort) = win.prompt.on_abort() {
         let input = win.prompt.input_or_selected();
         (on_abort)(editor, id, &input)
     }
@@ -46,7 +49,7 @@ fn close(editor: &mut Editor, id: ClientId) {
 #[action("Confirm selection")]
 fn confirm(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
-    if let Some(on_confirm) = win.prompt.get_on_confirm() {
+    if let Some(on_confirm) = win.prompt.on_confirm() {
         win.prompt.save_to_history();
         let input = win.prompt.input_or_selected();
         (on_confirm)(editor, id, &input)
@@ -73,7 +76,7 @@ pub(crate) fn remove_grapheme_before_cursor(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.prompt.remove_grapheme_before_cursor();
 
-    if let Some(on_input) = win.prompt.get_on_input() {
+    if let Some(on_input) = win.prompt.on_input() {
         let input = win.prompt.input().to_string();
         (on_input)(editor, id, &input)
     }

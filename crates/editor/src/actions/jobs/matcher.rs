@@ -14,9 +14,12 @@ pub(crate) enum MatchedOptions {
 pub(crate) async fn match_options(
     orecv: Receiver<String>,
     mut trecv: Receiver<String>,
-    out: Sender<MatchedOptions>,
+    msend: Sender<MatchedOptions>,
 ) {
-    fn spawn(out: Sender<MatchedOptions>, mut recv: MatchReceiver) -> tokio::task::JoinHandle<()> {
+    fn spawn(
+        msend: Sender<MatchedOptions>,
+        mut recv: MatchReceiver,
+    ) -> tokio::task::JoinHandle<()> {
         tokio::spawn(async move {
             const MAX_SIZE: usize = 256;
             let mut matches = Vec::with_capacity(MAX_SIZE);
@@ -26,29 +29,29 @@ pub(crate) async fn match_options(
 
                 if matches.len() >= MAX_SIZE {
                     let opts = mem::take(&mut matches);
-                    if let Err(_) = out.send(MatchedOptions::Options(opts)).await {
+                    if let Err(_) = msend.send(MatchedOptions::Options(opts)).await {
                         break;
                     }
                 }
             }
 
-            let _ = out.send(MatchedOptions::Options(matches)).await;
+            let _ = msend.send(MatchedOptions::Options(matches)).await;
         })
     }
 
     let mut matcher = Matcher::new(orecv);
     let recv = matcher.do_match("");
-    let mut join = spawn(out.clone(), recv);
+    let mut join = spawn(msend.clone(), recv);
 
     while let Some(term) = trecv.recv().await {
         join.abort();
         let _ = join.await;
 
-        if let Err(_e) = out.send(MatchedOptions::ClearAll).await {
+        if let Err(_e) = msend.send(MatchedOptions::ClearAll).await {
             break;
         }
 
         let recv = matcher.do_match(&term);
-        join = spawn(out.clone(), recv);
+        join = spawn(msend.clone(), recv);
     }
 }

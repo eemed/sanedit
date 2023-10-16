@@ -1,6 +1,6 @@
 mod history;
 
-use std::rc::Rc;
+use std::{num::NonZeroUsize, rc::Rc};
 
 use sanedit_utils::sorted_vec::SortedVec;
 use unicode_segmentation::UnicodeSegmentation;
@@ -16,14 +16,26 @@ use self::history::History;
 
 use super::selector::{Options, Selector};
 
-#[derive(Default)]
 pub(crate) struct PromptBuilder {
     message: Option<String>,
     on_confirm: Option<PromptAction>,
     on_input: Option<PromptAction>,
     on_abort: Option<PromptAction>,
     keymap: Option<Keymap>,
-    history_size: usize,
+    history_size: NonZeroUsize,
+}
+
+impl Default for PromptBuilder {
+    fn default() -> Self {
+        PromptBuilder {
+            message: None,
+            on_confirm: None,
+            on_input: None,
+            on_abort: None,
+            keymap: None,
+            history_size: NonZeroUsize::new(100).unwrap(),
+        }
+    }
 }
 
 impl PromptBuilder {
@@ -61,7 +73,7 @@ impl PromptBuilder {
         self
     }
 
-    pub fn history_size(mut self, size: usize) -> Self {
+    pub fn history_size(mut self, size: NonZeroUsize) -> Self {
         self.history_size = size;
         self
     }
@@ -84,7 +96,7 @@ impl PromptBuilder {
             on_abort,
             on_input,
             keymap: keymap.unwrap_or(Keymap::prompt()),
-            history: History::new(history_size),
+            history: History::new(history_size.get()),
         }
     }
 }

@@ -1,4 +1,4 @@
-use std::ops::Range;
+use std::{num::NonZeroUsize, ops::Range};
 
 use crate::{
     editor::{keymap::Keymap, Editor},
@@ -72,7 +72,7 @@ impl SearchBuilder {
         self
     }
 
-    pub fn history_size(mut self, size: usize) -> Self {
+    pub fn history_size(mut self, size: NonZeroUsize) -> Self {
         self.prompt = self.prompt.history_size(size);
         self
     }

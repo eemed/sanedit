@@ -30,6 +30,8 @@ pub(crate) fn draw(prompt: &Prompt, ctx: &mut DrawContext) -> Redraw {
         .map(|m| m.into())
         .collect();
 
+    log::info!("Options: {:?}", options);
+
     redraw::Prompt {
         input,
         cursor,

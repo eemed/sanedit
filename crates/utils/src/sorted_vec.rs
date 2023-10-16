@@ -1,4 +1,4 @@
-use std::ops::Index;
+use std::{cmp::min, mem, ops::Index};
 
 /// A vector that is always sorted
 #[derive(Default, Debug, Clone)]
@@ -46,35 +46,50 @@ impl<'a, T: Ord> SortedVec<T> {
         self.items.insert(pos, item);
     }
 
+    pub fn into_iter(self) -> std::vec::IntoIter<T> {
+        self.items.into_iter()
+    }
+
     pub fn merge(&mut self, other: SortedVec<T>) {
-        todo!()
-        // // Merge the two arrays by comparing score
-        // let cap = opts.len() + self.options.len();
-        // let old = mem::replace(&mut self.options, Vec::with_capacity(cap));
+        let cap = other.len() + self.items.len();
+        let items = mem::replace(&mut self.items, Vec::with_capacity(cap));
 
-        // let n = min(old.len(), opts.len());
-        // let mut i = 0;
-        // let mut j = 0;
+        let mut iiter = items.into_iter();
+        let mut oiter = other.into_iter();
 
-        // while i < n && j < n {
-        //     if old[i].score() < opts[j].score() {
-        //         self.options.push(old[i].clone());
-        //         i += 1;
-        //     } else {
-        //         self.options.push(opts[j].clone());
-        //         j += 1;
-        //     }
-        // }
+        let mut iitem = iiter.next();
+        let mut oitem = oiter.next();
 
-        // while i < old.len() {
-        //     self.options.push(old[i].clone());
-        //     i += 1;
-        // }
+        loop {
+            match (iitem, oitem) {
+                (Some(ii), Some(oi)) => {
+                    if ii < oi {
+                        self.items.push(ii);
+                        iitem = iiter.next();
+                        oitem = Some(oi);
+                    } else {
+                        self.items.push(oi);
+                        iitem = Some(ii);
+                        oitem = oiter.next();
+                    }
+                }
+                (i, o) => {
+                    iitem = i;
+                    oitem = o;
+                    break;
+                }
+            }
+        }
 
-        // while j < opts.len() {
-        //     self.options.push(opts[j].clone());
-        //     j += 1;
-        // }
+        while let Some(ii) = iitem {
+            self.items.push(ii);
+            iitem = iiter.next();
+        }
+
+        while let Some(oi) = oitem {
+            self.items.push(oi);
+            oitem = oiter.next();
+        }
     }
 }
 

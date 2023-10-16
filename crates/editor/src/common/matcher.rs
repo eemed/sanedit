@@ -52,7 +52,6 @@ impl Matcher {
     /// can be read from in chunks.
     /// Dropping the receiver stops the matching process.
     pub fn do_match(&mut self, term: &str) -> MatchReceiver {
-        log::info!("do_match");
         // Batch candidates to 512 sized blocks
         // Send each block to an executor
         // Get the results and send to receiver
@@ -65,7 +64,6 @@ impl Matcher {
         let mut taken = 0;
         let stop = Arc::new(AtomicBool::new(false));
 
-        log::info!("do_match spawn");
         rayon::spawn(move || loop {
             if stop.load(Ordering::Relaxed) {
                 break;
@@ -77,7 +75,6 @@ impl Matcher {
             }
 
             if available >= taken + Self::BATCH_SIZE || all_read {
-                log::info!("do_match spawned");
                 let size = min(available - taken, Self::BATCH_SIZE);
                 let batch = taken..taken + size;
                 taken += size;
@@ -88,7 +85,6 @@ impl Matcher {
                 let term = term.clone();
 
                 rayon::spawn(move || {
-                    log::info!("do_match spawned worker");
                     if stop.load(Ordering::Relaxed) {
                         return;
                     }

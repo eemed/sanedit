@@ -61,34 +61,7 @@ impl Selector {
     }
 
     pub fn provide_options(&mut self, opts: Options) {
-        // Merge the two arrays by comparing score
-        let cap = opts.len() + self.options.len();
-        log::info!("CAP: {cap}");
-        let old = mem::replace(&mut self.options, SortedVec::with_capacity(cap));
-
-        let n = min(old.len(), opts.len());
-        let mut i = 0;
-        let mut j = 0;
-
-        while i < n && j < n {
-            if old[i].score() < opts[j].score() {
-                self.options.push(old[i].clone());
-                i += 1;
-            } else {
-                self.options.push(opts[j].clone());
-                j += 1;
-            }
-        }
-
-        while i < old.len() {
-            self.options.push(old[i].clone());
-            i += 1;
-        }
-
-        while j < opts.len() {
-            self.options.push(opts[j].clone());
-            j += 1;
-        }
+        self.options.merge(opts);
     }
 
     pub fn selected_pos(&self) -> Option<usize> {

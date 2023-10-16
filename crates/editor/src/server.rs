@@ -32,7 +32,7 @@ use crate::{editor, events::ToEditor};
 use self::job_runner::spawn_jobs;
 
 /// Channel buffer size for tokio channels
-pub(crate) const CHANNEL_SIZE: usize = 64;
+pub(crate) const CHANNEL_SIZE: usize = 256;
 
 /// Editor handle allows us to communicate with the editor
 #[derive(Clone, Debug)]

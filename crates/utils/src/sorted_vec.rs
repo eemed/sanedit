@@ -73,23 +73,20 @@ impl<'a, T: Ord> SortedVec<T> {
                         oitem = oiter.next();
                     }
                 }
-                (i, o) => {
-                    iitem = i;
-                    oitem = o;
+                (Some(ii), _) => {
+                    self.items.push(ii);
                     break;
                 }
+                (_, Some(oi)) => {
+                    self.items.push(oi);
+                    break;
+                }
+                _ => break,
             }
         }
 
-        while let Some(ii) = iitem {
-            self.items.push(ii);
-            iitem = iiter.next();
-        }
-
-        while let Some(oi) = oitem {
-            self.items.push(oi);
-            oitem = oiter.next();
-        }
+        self.items.extend(iiter);
+        self.items.extend(oiter);
     }
 }
 

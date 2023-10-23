@@ -21,9 +21,6 @@ use std::env;
 use std::mem;
 use std::path::Path;
 use std::path::PathBuf;
-use std::thread::sleep;
-use std::thread::Thread;
-use std::time::Duration;
 
 use tokio::io;
 use tokio::sync::mpsc::Receiver;
@@ -207,6 +204,7 @@ impl Editor {
     }
 
     fn handle_mouse_event(&mut self, id: ClientId, event: MouseEvent) {
+        log::info!("{event:?}");
         // TODO keybindings
         match event.kind {
             MouseEventKind::ScrollDown => {
@@ -269,7 +267,7 @@ impl Editor {
     }
 
     fn handle_key_event(&mut self, id: ClientId, event: KeyEvent) {
-        log::info!("GOT: {event:?}");
+        log::info!("{event:?}");
         use sanedit_messages::Key::*;
 
         // Add key to buffer
@@ -316,6 +314,8 @@ impl Editor {
             Message(id, msg) => {
                 if let Some(prog) = self.job_broker.get(id) {
                     prog.on_message(self, msg);
+                    let cid = prog.client_id();
+                    self.redraw(cid);
                 }
             }
             Succesful(id) => {

@@ -2,12 +2,9 @@ mod history;
 
 use std::{num::NonZeroUsize, rc::Rc};
 
-use sanedit_utils::sorted_vec::SortedVec;
 use unicode_segmentation::UnicodeSegmentation;
 
 use crate::{
-    // actions::jobs::Matches,
-    common::matcher::Match,
     editor::{keymap::Keymap, Editor},
     server::ClientId,
 };

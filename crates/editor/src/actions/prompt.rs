@@ -1,10 +1,7 @@
-use std::{path::PathBuf, rc::Rc};
-use tokio::sync::mpsc::channel;
+use std::path::PathBuf;
 
-// use super::jobs::{self, Matches};
 use crate::{
     actions::jobs::OpenFile,
-    common::matcher::Match,
     editor::{
         windows::{Focus, Prompt},
         Editor,
@@ -19,7 +16,6 @@ fn open_file(editor: &mut Editor, id: ClientId) {
     win.prompt = Prompt::builder()
         .prompt("Open a file")
         .on_confirm(move |editor, id, input| {
-            log::info!("on confirm");
             let path = PathBuf::from(input);
 
             if let Err(e) = editor.open_file(id, &path) {
@@ -49,13 +45,10 @@ fn close(editor: &mut Editor, id: ClientId) {
 
 #[action("Confirm selection")]
 fn confirm(editor: &mut Editor, id: ClientId) {
-    log::info!("confirm");
     let (win, _buf) = editor.win_buf_mut(id);
     if let Some(on_confirm) = win.prompt.on_confirm() {
-        log::info!("confirm2");
         win.prompt.save_to_history();
         let input = win.prompt.input_or_selected();
-        log::info!("confirm3");
         (on_confirm)(editor, id, &input)
     }
 

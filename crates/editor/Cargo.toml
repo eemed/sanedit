@@ -16,7 +16,10 @@ sanedit-utils = { path = "../utils" }
 log         = "0.4"
 parking_lot = "0.12.0"
 dirs        = "4.0.0"  # Used to get easy access to different directories, tmp, config etc.
-rayon    = "1.7"
+rayon       = "1.7"
+
+# Parse like Bourne shell
+shellwords = "1.1.0"
 
 # Good helper macros for enums
 strum        = "0.23"

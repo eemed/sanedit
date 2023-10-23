@@ -8,6 +8,7 @@ use super::Editor;
 pub(crate) trait KeepInTouch: Job {
     /// Ran when the job sends the message back to the editor
     fn on_message(&self, editor: &mut Editor, msg: Box<dyn Any>);
+    fn client_id(&self) -> ClientId;
 }
 
 impl fmt::Debug for dyn KeepInTouch {

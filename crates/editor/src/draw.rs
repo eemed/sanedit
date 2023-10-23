@@ -25,6 +25,7 @@ pub(crate) struct DrawState {
     prompt_scroll_offset: usize,
     compl_scroll_offset: usize,
     redraw_window: bool,
+    redraw: bool,
 }
 
 impl DrawState {
@@ -35,6 +36,7 @@ impl DrawState {
             prompt_scroll_offset: 0,
             compl_scroll_offset: 0,
             redraw_window: true,
+            redraw: true,
         };
 
         let mut ctx = DrawContext {
@@ -52,6 +54,11 @@ impl DrawState {
 
     pub fn redraw(&mut self, win: &mut Window, buf: &Buffer, theme: &Theme) -> Vec<Redraw> {
         let mut redraw: Vec<Redraw> = vec![];
+
+        let draw = mem::replace(&mut self.redraw, true);
+        if !draw {
+            return redraw;
+        }
 
         // Send close if not focused
         if win.focus != Focus::Prompt {
@@ -105,6 +112,10 @@ impl DrawState {
         }
 
         redraw
+    }
+
+    pub fn no_redraw(&mut self) {
+        self.redraw = false;
     }
 
     pub fn no_redraw_window(&mut self) {

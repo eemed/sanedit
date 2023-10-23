@@ -10,10 +10,11 @@ use super::{
     Prompt,
 };
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum SearchDirection {
-    Backward,
+    #[default]
     Forward,
+    Backward,
 }
 
 impl SearchDirection {
@@ -26,15 +27,22 @@ impl SearchDirection {
     }
 }
 
-#[derive(Default)]
 pub(crate) struct SearchBuilder {
     prompt: PromptBuilder,
-    direction: Option<SearchDirection>,
+    direction: SearchDirection,
 }
 
 impl SearchBuilder {
-    pub fn direction(mut self, dir: SearchDirection) -> Self {
-        self.direction = Some(dir);
+    pub fn new() -> SearchBuilder {
+        let prompt = Prompt::builder().keymap(Keymap::search());
+        SearchBuilder {
+            prompt,
+            direction: SearchDirection::Forward,
+        }
+    }
+
+    pub fn backward(mut self) -> Self {
+        self.direction = SearchDirection::Backward;
         self
     }
 
@@ -84,7 +92,7 @@ impl SearchBuilder {
             prompt: prompt.build(),
             hl_matches: vec![],
             cmatch: None,
-            direction: direction.expect("SearchBuilder is missing direction!"),
+            direction,
         }
     }
 }
@@ -112,7 +120,7 @@ impl Search {
     }
 
     pub fn builder() -> SearchBuilder {
-        SearchBuilder::default()
+        SearchBuilder::new()
     }
 
     pub fn on_confirm(&self) -> Option<PromptAction> {

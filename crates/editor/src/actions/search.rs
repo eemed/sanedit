@@ -3,7 +3,7 @@ use std::cmp::min;
 use sanedit_buffer::{Searcher, SearcherRev};
 
 use crate::{
-    // actions::jobs,
+    actions::jobs,
     editor::{
         windows::{Focus, Search, SearchDirection},
         Editor,
@@ -12,16 +12,12 @@ use crate::{
 };
 
 /// setups async job to handle matches within the view range.
-fn async_view_matches(editor: &mut Editor, id: ClientId) {
-    const CHANNEL_SIZE: usize = 64;
-    // let (tx, rx) = channel(CHANNEL_SIZE);
-
-    // let (win, _buf) = editor.win_buf_mut(id);
-    // win.search.prompt.on_input = Some(Rc::new(move |editor, id, input| {
-    //     let _ = tx.blocking_send(input.into());
-    // }));
-    // let job = jobs::search(editor, id, rx);
-    // editor.jobs.request(job);
+fn async_view_matches(editor: &mut Editor, id: ClientId, term: &str) {
+    let (win, buf) = editor.win_buf_mut(id);
+    let pt = buf.read_only_copy();
+    let view = win.view().range();
+    let job = jobs::Search::forward(id, term, pt, view);
+    editor.job_broker.request(job);
 }
 
 #[action("Search forward")]
@@ -30,10 +26,9 @@ fn forward(editor: &mut Editor, id: ClientId) {
     win.search = Search::builder()
         .prompt("Search")
         .on_confirm(search)
+        .on_input(async_view_matches)
         .build();
     win.focus = Focus::Search;
-
-    async_view_matches(editor, id);
 }
 
 #[action("Search backwards")]
@@ -41,12 +36,11 @@ fn backward(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.search = Search::builder()
         .prompt("Backward search")
+        .backward()
         .on_confirm(search)
+        .on_input(async_view_matches)
         .build();
-    win.search.direction = SearchDirection::Backward;
     win.focus = Focus::Search;
-
-    async_view_matches(editor, id);
 }
 
 #[action("Close search")]
@@ -68,6 +62,7 @@ fn confirm_all(_editor: &mut Editor, _id: ClientId) {
 
 #[action("Find next match")]
 fn confirm(editor: &mut Editor, id: ClientId) {
+    log::info!("confirm search");
     let (win, _buf) = editor.win_buf_mut(id);
     if let Some(on_confirm) = win.search.on_confirm() {
         win.search.save_to_history();
@@ -144,6 +139,7 @@ fn prev_match(editor: &mut Editor, id: ClientId) {
 }
 
 fn search(editor: &mut Editor, id: ClientId, input: &str) {
+    log::info!("SS");
     let (win, _buf) = editor.win_buf_mut(id);
     let cpos = win.cursors.primary().pos();
 

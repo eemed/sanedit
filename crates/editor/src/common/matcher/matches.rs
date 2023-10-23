@@ -1,4 +1,4 @@
-use crate::editor::windows::Opt;
+use crate::editor::windows::SelectorOption;
 
 /// A matched and scored candidate
 #[derive(Debug, Clone)]
@@ -37,8 +37,8 @@ impl Ord for Match {
     }
 }
 
-impl From<Match> for Opt {
+impl From<Match> for SelectorOption {
     fn from(mat: Match) -> Self {
-        Opt::new(mat.value, mat.score)
+        SelectorOption::new(mat.value, mat.score)
     }
 }

@@ -7,13 +7,11 @@ use tokio::{
 
 use crate::{
     actions::jobs::match_options,
-    editor::{job_broker::KeepInTouch, windows::Opt, Editor},
+    editor::{job_broker::KeepInTouch, windows::SelectorOption, Editor},
     server::{BoxedJob, ClientId, Job, JobContext, JobResult},
 };
 
-use super::MatchedOptions;
-
-const CHANNEL_SIZE: usize = 64;
+use super::{MatchedOptions, CHANNEL_SIZE};
 
 enum OpenFileMessage {
     Init(Sender<String>),
@@ -79,7 +77,6 @@ impl OpenFile {
 
 impl Job for OpenFile {
     fn run(&self, ctx: &JobContext) -> JobResult {
-        log::info!("Running openfile job..");
         let mut ctx = ctx.clone();
         let dir = self.path.clone();
 
@@ -120,15 +117,23 @@ impl KeepInTouch for OpenFile {
                     win.prompt.set_on_input(move |editor, id, input| {
                         let _ = sender.blocking_send(input.to_string());
                     });
+                    win.prompt.clear_options();
                 }
                 Progress(opts) => match opts {
                     MatchedOptions::ClearAll => win.prompt.clear_options(),
                     MatchedOptions::Options(opts) => {
-                        let opts: Vec<Opt> = opts.into_iter().map(|mat| Opt::from(mat)).collect();
+                        let opts: Vec<SelectorOption> = opts
+                            .into_iter()
+                            .map(|mat| SelectorOption::from(mat))
+                            .collect();
                         win.prompt.provide_options(opts.into());
                     }
                 },
             }
         }
+    }
+
+    fn client_id(&self) -> ClientId {
+        self.client_id
     }
 }

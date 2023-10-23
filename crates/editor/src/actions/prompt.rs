@@ -1,9 +1,7 @@
-use std::{path::PathBuf, rc::Rc};
-
-use tokio::sync::mpsc::channel;
+use std::path::PathBuf;
 
 use crate::{
-    common::matcher::Match,
+    actions::jobs::OpenFile,
     editor::{
         windows::{Focus, Prompt},
         Editor,
@@ -11,50 +9,32 @@ use crate::{
     server::ClientId,
 };
 
-use super::jobs::{self, Matches};
-
-fn is_yes(input: &str) -> bool {
-    match input {
-        "y" | "Y" | "yes" => true,
-        _ => false,
-    }
-}
-
 #[action("Open a file")]
 fn open_file(editor: &mut Editor, id: ClientId) {
-    const CHANNEL_SIZE: usize = 64;
-
-    let (tx, rx) = channel(CHANNEL_SIZE);
-    let job = jobs::list_files(editor, id, rx);
-
     let (win, _buf) = editor.win_buf_mut(id);
-    win.prompt = Prompt::new("Open a file");
-    win.prompt.on_input = Some(Rc::new(move |editor, id, input| {
-        let _ = tx.blocking_send(input.into());
-    }));
-    win.prompt.on_confirm = Some(Rc::new(move |editor, id, input| {
-        let (win, _buf) = editor.win_buf_mut(id);
-        win.prompt.on_input = None;
-        let path = PathBuf::from(input);
 
-        if let Err(e) = editor.open_file(id, &path) {
-            let (win, _buf) = editor.win_buf_mut(id);
-            win.warn_msg(&format!("Failed to open file {input}"))
-        }
-    }));
-    win.prompt.on_abort = Some(Rc::new(move |editor, id, input| {
-        let (win, _buf) = editor.win_buf_mut(id);
-        win.prompt.on_input = None;
-    }));
+    win.prompt = Prompt::builder()
+        .prompt("Open a file")
+        .on_confirm(move |editor, id, input| {
+            let path = PathBuf::from(input);
+
+            if let Err(e) = editor.open_file(id, &path) {
+                let (win, _buf) = editor.win_buf_mut(id);
+                win.warn_msg(&format!("Failed to open file {input}"))
+            }
+        })
+        .build();
     win.focus = Focus::Prompt;
 
-    editor.jobs.request(job);
+    let path = editor.working_dir().to_path_buf();
+    let job = OpenFile::new(id, path);
+    editor.job_broker.request(job);
 }
 
 #[action("Close prompt")]
 fn close(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
-    if let Some(on_abort) = win.prompt.on_abort.clone() {
+    if let Some(on_abort) = win.prompt.on_abort() {
         let input = win.prompt.input_or_selected();
         (on_abort)(editor, id, &input)
     }
@@ -66,9 +46,9 @@ fn close(editor: &mut Editor, id: ClientId) {
 #[action("Confirm selection")]
 fn confirm(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
-    if let Some(on_confirm) = win.prompt.on_confirm.clone() {
+    if let Some(on_confirm) = win.prompt.on_confirm() {
+        win.prompt.save_to_history();
         let input = win.prompt.input_or_selected();
-        win.prompt.history.push(&input);
         (on_confirm)(editor, id, &input)
     }
 
@@ -93,7 +73,7 @@ pub(crate) fn remove_grapheme_before_cursor(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.prompt.remove_grapheme_before_cursor();
 
-    if let Some(on_input) = win.prompt.on_input.clone() {
+    if let Some(on_input) = win.prompt.on_input() {
         let input = win.prompt.input().to_string();
         (on_input)(editor, id, &input)
     }
@@ -111,10 +91,10 @@ fn prev_completion(editor: &mut Editor, id: ClientId) {
     win.prompt.prev_completion();
 }
 
-pub(crate) fn provide_completions(editor: &mut Editor, id: ClientId, completions: Matches) {
-    let (win, _buf) = editor.win_buf_mut(id);
-    win.prompt.provide_completions(completions);
-}
+// pub(crate) fn provide_completions(editor: &mut Editor, id: ClientId, completions: Matches) {
+//     let (win, _buf) = editor.win_buf_mut(id);
+//     win.prompt.provide_completions(completions);
+// }
 
 #[action("Select the next entry from history")]
 fn history_next(editor: &mut Editor, id: ClientId) {

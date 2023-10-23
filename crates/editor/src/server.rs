@@ -1,10 +1,10 @@
 mod accept;
 mod client;
-mod jobs;
+mod job_runner;
 
 pub(crate) use client::*;
-pub(crate) use jobs::{
-    FromJobs, JobFutureFn, JobId, JobProgress, JobProgressSender, JobRequest, JobsHandle,
+pub(crate) use job_runner::{
+    BoxedJob, FromJobs, Job, JobContext, JobId, JobResult, JobsHandle, ToJobs,
 };
 
 use std::{
@@ -20,7 +20,7 @@ use std::{
 
 use tokio::{
     net::unix::SocketAddr,
-    runtime::{Builder, Runtime},
+    runtime::Runtime,
     sync::{
         mpsc::{channel, Sender},
         Notify,
@@ -29,10 +29,10 @@ use tokio::{
 
 use crate::{editor, events::ToEditor};
 
-use self::jobs::spawn_jobs;
+use self::job_runner::spawn_jobs;
 
 /// Channel buffer size for tokio channels
-pub(crate) const CHANNEL_SIZE: usize = 64;
+pub(crate) const CHANNEL_SIZE: usize = 256;
 
 /// Editor handle allows us to communicate with the editor
 #[derive(Clone, Debug)]
@@ -117,14 +117,15 @@ pub fn run_sync(addrs: Vec<Address>) -> Option<thread::JoinHandle<()>> {
     let rt = Runtime::new().ok()?;
     rt.block_on(listen(addrs, handle.clone()));
 
-    let join = thread::spawn(move || {
-        // tokio runtime is moved here, it is killed when the editor main loop exits
-        let jobs_handle = rt.block_on(spawn_jobs(handle));
+    thread::Builder::new()
+        .name("sanedit".into())
+        .spawn(move || {
+            // tokio runtime is moved here, it is killed when the editor main loop exits
+            let jobs_handle = rt.block_on(spawn_jobs(handle));
 
-        if let Err(e) = editor::main_loop(jobs_handle, recv) {
-            log::error!("Editor main loop exited with error {}.", e);
-        }
-    });
-
-    Some(join)
+            if let Err(e) = editor::main_loop(jobs_handle, recv) {
+                log::error!("Editor main loop exited with error {}.", e);
+            }
+        })
+        .ok()
 }

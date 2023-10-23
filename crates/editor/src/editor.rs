@@ -1,6 +1,6 @@
 pub(crate) mod buffers;
 pub(crate) mod hooks;
-pub(crate) mod jobs;
+pub(crate) mod job_broker;
 pub(crate) mod keymap;
 pub(crate) mod options;
 pub(crate) mod themes;
@@ -27,7 +27,7 @@ use tokio::sync::mpsc::Receiver;
 
 use crate::actions;
 use crate::actions::cursors;
-use crate::actions::hooks::execute;
+use crate::actions::hooks::run;
 use crate::actions::Action;
 use crate::common::file::File;
 use crate::draw::DrawState;
@@ -37,12 +37,12 @@ use crate::events::ToEditor;
 use crate::server::ClientHandle;
 use crate::server::ClientId;
 use crate::server::FromJobs;
-use crate::server::JobProgress;
+// use crate::server::JobProgress;
 use crate::server::JobsHandle;
 
 use self::buffers::Buffers;
 use self::hooks::Hooks;
-use self::jobs::Jobs;
+use self::job_broker::JobBroker;
 use self::options::Options;
 
 use self::windows::Window;
@@ -58,7 +58,7 @@ pub(crate) struct Editor {
     working_dir: PathBuf,
     themes: HashMap<String, Theme>,
 
-    pub jobs: Jobs,
+    pub job_broker: JobBroker,
     pub hooks: Hooks,
     pub options: Options,
 }
@@ -70,7 +70,7 @@ impl Editor {
             draw_states: HashMap::default(),
             windows: Windows::default(),
             buffers: Buffers::default(),
-            jobs: Jobs::new(jobs_handle),
+            job_broker: JobBroker::new(jobs_handle),
             hooks: Hooks::default(),
             keys: Vec::default(),
             is_running: true,
@@ -161,7 +161,7 @@ impl Editor {
             _ => {}
         }
 
-        execute(self, id, Hook::OnMessagePre);
+        run(self, id, Hook::OnMessagePre);
 
         match msg {
             Message::KeyEvent(key_event) => self.handle_key_event(id, key_event),
@@ -204,6 +204,7 @@ impl Editor {
     }
 
     fn handle_mouse_event(&mut self, id: ClientId, event: MouseEvent) {
+        log::info!("{event:?}");
         // TODO keybindings
         match event.kind {
             MouseEventKind::ScrollDown => {
@@ -227,7 +228,7 @@ impl Editor {
     }
 
     fn redraw(&mut self, id: ClientId) {
-        execute(self, id, Hook::OnDrawPre);
+        run(self, id, Hook::OnDrawPre);
 
         let draw = self
             .draw_states
@@ -266,12 +267,12 @@ impl Editor {
     }
 
     fn handle_key_event(&mut self, id: ClientId, event: KeyEvent) {
-        log::info!("GOT: {event:?}");
+        log::info!("{event:?}");
         use sanedit_messages::Key::*;
 
         // Add key to buffer
         self.keys.push(event);
-        execute(self, id, Hook::KeyPressedPre);
+        run(self, id, Hook::KeyPressedPre);
 
         // Handle key bindings
         if let Some(mut action) = self.get_bound_action(id) {
@@ -308,28 +309,22 @@ impl Editor {
     }
 
     pub fn handle_job_msg(&mut self, msg: FromJobs) {
+        use FromJobs::*;
         match msg {
-            FromJobs::Progress(id, progress) => match progress {
-                JobProgress::Output(out) => {
-                    if let Some((client_id, on_output)) = self.jobs.on_output_handler(&id) {
-                        (on_output)(self, client_id, out);
-                        self.redraw(client_id);
-                    }
+            Message(id, msg) => {
+                if let Some(prog) = self.job_broker.get(id) {
+                    prog.on_message(self, msg);
+                    let cid = prog.client_id();
+                    self.redraw(cid);
                 }
-                JobProgress::Error(out) => {
-                    if let Some((client_id, on_error)) = self.jobs.on_error_handler(&id) {
-                        (on_error)(self, client_id, out);
-                        self.redraw(client_id);
-                    }
-                }
-            },
-            FromJobs::Completed(id) => {
-                log::info!("Job {id} succesful.");
-                self.jobs.done(&id);
             }
-            FromJobs::Failed(id) => {
-                log::info!("Job {id} failed.");
-                self.jobs.done(&id);
+            Succesful(id) => {
+                log::info!("Job {id} succesful.");
+                self.job_broker.done(id);
+            }
+            Failed(id, reason) => {
+                log::info!("Job {id} failed because {}.", reason);
+                self.job_broker.done(id);
             }
         }
     }

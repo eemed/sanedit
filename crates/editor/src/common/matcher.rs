@@ -1,107 +1,50 @@
+mod matches;
+mod receiver;
+
 use std::{
     cmp::min,
-    mem,
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc,
     },
 };
 
-use futures::Future;
 use sanedit_utils::appendlist::{Appendlist, Reader};
-use tokio::sync::mpsc::{channel, Receiver};
+use tokio::sync::mpsc::channel;
 
-pub(crate) type Candidate = String;
-
-/// Used to provide options to the matcher
-#[derive(Debug)]
-pub(crate) enum CandidateMessage {
-    Many(Box<[Candidate]>),
-    One(Candidate),
-}
-
-impl From<String> for CandidateMessage {
-    fn from(value: String) -> Self {
-        CandidateMessage::One(value)
-    }
-}
-
-/// Trait used to receive candidates using various receiver implementations
-pub(crate) trait MatchOptionReceiver<T> {
-    fn recv(&mut self) -> Option<T>;
-}
-
-/// A matched and scored candidate
-#[derive(Debug, Clone)]
-pub(crate) struct Match {
-    value: String,
-    score: u32,
-}
-
-impl Match {
-    pub fn as_str(&self) -> &str {
-        self.value.as_str()
-    }
-
-    pub fn score(&self) -> u32 {
-        self.score
-    }
-}
-
-/// Receiver for the match results
-#[derive(Debug)]
-pub(crate) struct MatchReceiver {
-    receiver: Receiver<Match>,
-}
-
-impl MatchReceiver {
-    pub fn blocking_recv(&mut self) -> Option<Match> {
-        self.receiver.blocking_recv()
-    }
-
-    pub async fn recv(&mut self) -> Option<Match> {
-        self.receiver.recv().await
-    }
-}
+pub(crate) use matches::*;
+pub(crate) use receiver::*;
 
 /// Matches options to a term
 pub(crate) struct Matcher {
-    reader: Reader<Candidate>,
-    candidates_done: Arc<AtomicBool>,
+    reader: Reader<String>,
+    all_opts_read: Arc<AtomicBool>,
 }
 
 impl Matcher {
     const BATCH_SIZE: usize = 1024;
-    const CHANNEL_SIZE: usize = 1 << 14;
+    const CHANNEL_SIZE: usize = 1024;
 
     // Create a new matcher.
     pub fn new<T>(mut chan: T) -> Matcher
     where
-        T: MatchOptionReceiver<CandidateMessage> + Send + 'static,
+        T: MatchOptionReceiver<String> + Send + 'static,
     {
-        let (reader, writer) = Appendlist::<Candidate>::new();
-        let candidates_done = Arc::new(AtomicBool::new(false));
-        let done = candidates_done.clone();
+        let (reader, writer) = Appendlist::<String>::new();
+        let all_opts_read = Arc::new(AtomicBool::new(false));
+        let all_read = all_opts_read.clone();
 
         rayon::spawn(move || {
             while let Some(msg) = chan.recv() {
-                match msg {
-                    CandidateMessage::Many(mut cans) => {
-                        for i in 0..cans.len() {
-                            let can = mem::take(&mut cans[i]);
-                            writer.append(can);
-                        }
-                    }
-                    CandidateMessage::One(can) => writer.append(can),
-                }
+                writer.append(msg);
             }
 
-            done.store(true, Ordering::Release);
+            all_read.store(true, Ordering::Release);
         });
 
         Matcher {
             reader,
-            candidates_done,
+            all_opts_read,
         }
     }
 
@@ -115,7 +58,7 @@ impl Matcher {
 
         let (out, rx) = channel::<Match>(Self::CHANNEL_SIZE);
         let reader = self.reader.clone();
-        let candidates_done = self.candidates_done.clone();
+        let all_opts_read = self.all_opts_read.clone();
         let term: Arc<String> = Arc::new(term.into());
         let mut available = reader.len();
         let mut taken = 0;
@@ -126,12 +69,12 @@ impl Matcher {
                 break;
             }
 
-            let cdone = candidates_done.load(Ordering::Relaxed);
-            if cdone && available <= taken {
+            let all_read = all_opts_read.load(Ordering::Relaxed);
+            if all_read && available <= taken {
                 break;
             }
 
-            if available >= taken + Self::BATCH_SIZE || cdone {
+            if available >= taken + Self::BATCH_SIZE || all_read {
                 let size = min(available - taken, Self::BATCH_SIZE);
                 let batch = taken..taken + size;
                 taken += size;

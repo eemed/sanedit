@@ -1,11 +1,13 @@
-mod files;
+// Contains different jobs to run in tokio runtime
 mod matcher;
-mod prompt;
+mod open_file;
 mod search;
-mod text;
+mod shell;
+// mod text;
 
-pub(crate) use files::*;
+pub(crate) const CHANNEL_SIZE: usize = 64;
+
 pub(crate) use matcher::*;
-pub(crate) use prompt::*;
+pub(crate) use open_file::*;
 pub(crate) use search::*;
-pub(crate) use text::*;
+pub(crate) use shell::*;

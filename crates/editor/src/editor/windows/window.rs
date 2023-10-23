@@ -5,6 +5,7 @@ mod locations;
 mod options;
 mod prompt;
 mod search;
+mod selector;
 mod view;
 
 use std::ops::Range;
@@ -31,6 +32,7 @@ pub(crate) use self::{
     prompt::Prompt,
     search::Search,
     search::SearchDirection,
+    selector::*,
     view::{Cell, View},
 };
 

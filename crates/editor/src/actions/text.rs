@@ -9,18 +9,18 @@ use crate::{
     server::ClientId,
 };
 
-use super::{hooks::execute, jobs, Action};
+use super::{hooks::run, Action};
 
 #[action("Remove character after cursor")]
 fn remove_grapheme_after_cursor(editor: &mut Editor, id: ClientId) {
-    execute(editor, id, Hook::RemoveCharPre);
+    run(editor, id, Hook::RemoveCharPre);
     let (win, buf) = editor.win_buf_mut(id);
     win.remove_grapheme_after_cursors(buf);
 }
 
 #[action("Remove character before cursor")]
 fn remove_grapheme_before_cursor(editor: &mut Editor, id: ClientId) {
-    execute(editor, id, Hook::RemoveCharPre);
+    run(editor, id, Hook::RemoveCharPre);
     let (win, buf) = editor.win_buf_mut(id);
     win.remove_grapheme_before_cursors(buf);
 }
@@ -43,20 +43,20 @@ pub(crate) fn insert(editor: &mut Editor, id: ClientId, text: &str) {
     match win.focus() {
         Focus::Search => {
             win.search.prompt.insert_at_cursor(text);
-            if let Some(on_input) = win.search.prompt.on_input.clone() {
+            if let Some(on_input) = win.search.prompt.on_input() {
                 let input = win.search.prompt.input_or_selected();
                 (on_input)(editor, id, &input)
             }
         }
         Focus::Prompt => {
             win.prompt.insert_at_cursor(text);
-            if let Some(on_input) = win.prompt.on_input.clone() {
+            if let Some(on_input) = win.prompt.on_input() {
                 let input = win.prompt.input_or_selected();
                 (on_input)(editor, id, &input)
             }
         }
         Focus::Window => {
-            execute(editor, id, Hook::InsertCharPre);
+            run(editor, id, Hook::InsertCharPre);
             let (win, buf) = editor.win_buf_mut(id);
             win.insert_at_cursors(buf, text);
         }
@@ -66,31 +66,33 @@ pub(crate) fn insert(editor: &mut Editor, id: ClientId, text: &str) {
 
 #[action("Save file")]
 fn save(editor: &mut Editor, id: ClientId) {
-    let (_win, buf) = editor.win_buf_mut(id);
-    if buf.path().is_none() {
-        save_as.execute(editor, id);
-        return;
-    }
+    // let (_win, buf) = editor.win_buf_mut(id);
+    // if buf.path().is_none() {
+    //     save_as.execute(editor, id);
+    //     return;
+    // }
 
-    match jobs::save_file(editor, id) {
-        Ok(job) => {
-            editor.jobs.request(job);
-        }
-        Err(e) => {
-            let (win, buf) = editor.win_buf_mut(id);
-            win.error_msg(&format!("Failed to save buffer {}, {e:?}", buf.name()));
-        }
-    }
+    // match jobs::save_file(editor, id) {
+    //     Ok(job) => {
+    //         editor.jobs.request(job);
+    //     }
+    //     Err(e) => {
+    //         let (win, buf) = editor.win_buf_mut(id);
+    //         win.error_msg(&format!("Failed to save buffer {}, {e:?}", buf.name()));
+    //     }
+    // }
 }
 
 #[action("Prompt filename and save file")]
 fn save_as(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
-    win.prompt = Prompt::new("Save as");
-    win.prompt.on_confirm = Some(Rc::new(|editor, id, path| {
-        let (_win, buf) = editor.win_buf_mut(id);
-        buf.set_path(PathBuf::from(path));
-        save.execute(editor, id);
-    }));
+    win.prompt = Prompt::builder()
+        .prompt("Save as")
+        .on_confirm(|editor, id, path| {
+            let (_win, buf) = editor.win_buf_mut(id);
+            buf.set_path(PathBuf::from(path));
+            save.execute(editor, id);
+        })
+        .build();
     win.focus = Focus::Prompt;
 }

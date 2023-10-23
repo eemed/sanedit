@@ -1,116 +1,142 @@
-use std::{any::Any, cmp::min, ops::Range, sync::Arc};
+use std::{any::Any, cmp::min, ops::Range};
 
 use sanedit_buffer::{ReadOnlyPieceTree, Searcher, SearcherRev};
-use tokio::{sync::mpsc::Receiver, task::JoinHandle};
+use tokio::sync::mpsc::{channel, Receiver, Sender};
 
 use crate::{
-    editor::{
-        jobs::{Job, JobProgressFn},
-        windows::SearchDirection,
-        Editor,
-    },
-    server::{ClientId, JobFutureFn, JobProgress, JobProgressSender},
+    editor::{job_broker::KeepInTouch, windows::SearchDirection, Editor},
+    server::{ClientId, Job, JobContext},
 };
 
-enum SearchResult {
+use super::CHANNEL_SIZE;
+
+enum SearchMessage {
     Matches(Vec<Range<usize>>),
-    Reset,
 }
 
-pub(crate) fn search(editor: &mut Editor, id: ClientId, term_in: Receiver<String>) -> Job {
-    // REMINDER: view cannot currently change when searching but if it does in the
-    // future need to handle view range changes.
-    let (win, buf) = editor.win_buf_mut(id);
-    let dir = win.search.direction;
-    let ropt = buf.read_only_copy();
-    let view = win.view().range();
-
-    let fun: JobFutureFn =
-        { Box::new(move |send| Box::pin(search_impl(dir, ropt, view, send, term_in))) };
-    let mut job = Job::new(id, fun);
-
-    job.on_output = Some(Arc::new(
-        |editor: &mut Editor, id: ClientId, out: Box<dyn Any>| {
-            if let Ok(output) = out.downcast::<SearchResult>() {
-                let (win, _buf) = editor.win_buf_mut(id);
-                match *output {
-                    SearchResult::Matches(matches) => win.search.hl_matches = matches,
-                    SearchResult::Reset => win.search.hl_matches.clear(),
-                }
-            }
-        },
-    ));
-
-    job
-}
-
-async fn search_impl(
-    dir: SearchDirection,
+#[derive(Clone)]
+pub(crate) struct Search {
+    client_id: ClientId,
+    term: String,
     ropt: ReadOnlyPieceTree,
-    view: Range<usize>,
-    out: JobProgressSender,
-    mut term_in: Receiver<String>,
-) -> bool {
-    let mut handle: Option<JoinHandle<()>> = None;
+    range: Range<usize>,
+    dir: SearchDirection,
+}
 
-    while let Some(term) = term_in.recv().await {
-        log::info!("term: {term}, view: {view:?}");
-        if term.is_empty() {
-            continue;
+impl Search {
+    pub fn forward(
+        id: ClientId,
+        term: &str,
+        ropt: ReadOnlyPieceTree,
+        range: Range<usize>,
+    ) -> Search {
+        Search {
+            client_id: id,
+            term: term.into(),
+            ropt,
+            range,
+            dir: SearchDirection::Forward,
         }
-
-        if let Some(h) = handle.take() {
-            h.abort();
-            let _ = h.await;
-        }
-
-        let pt = ropt.clone();
-        let mut out = out.clone();
-
-        let join = tokio::spawn(async move {
-            let term = term.as_bytes();
-            let start = view.start.saturating_sub(term.len());
-            let end = min(pt.len(), view.end + term.len());
-            let slice = pt.slice(start..end);
-
-            match dir {
-                SearchDirection::Forward => {
-                    let searcher = Searcher::new(term);
-                    let iter = searcher.find_iter(&slice);
-                    let matches: Vec<Range<usize>> = iter
-                        .map(|mut range| {
-                            range.start += start;
-                            range.end += start;
-                            range
-                        })
-                        .collect();
-                    let _ = out
-                        .send(JobProgress::Output(Box::new(SearchResult::Matches(
-                            matches,
-                        ))))
-                        .await;
-                }
-                SearchDirection::Backward => {
-                    let searcher = SearcherRev::new(term);
-                    let iter = searcher.find_iter(&slice);
-                    let matches: Vec<Range<usize>> = iter
-                        .map(|mut range| {
-                            range.start += start;
-                            range.end += start;
-                            range
-                        })
-                        .collect();
-                    let _ = out
-                        .send(JobProgress::Output(Box::new(SearchResult::Matches(
-                            matches,
-                        ))))
-                        .await;
-                }
-            };
-        });
-
-        handle = Some(join);
     }
 
-    true
+    pub fn backward(
+        id: ClientId,
+        term: &str,
+        ropt: ReadOnlyPieceTree,
+        range: Range<usize>,
+    ) -> Search {
+        Search {
+            client_id: id,
+            term: term.into(),
+            ropt,
+            range,
+            dir: SearchDirection::Backward,
+        }
+    }
+
+    async fn search_impl(
+        msend: Sender<Vec<Range<usize>>>,
+        dir: SearchDirection,
+        term: String,
+        pt: ReadOnlyPieceTree,
+        range: Range<usize>,
+    ) {
+        let term = term.as_bytes();
+        let start = range.start.saturating_sub(term.len());
+        let end = min(pt.len(), range.end + term.len());
+        let slice = pt.slice(start..end);
+
+        match dir {
+            SearchDirection::Forward => {
+                let searcher = Searcher::new(term);
+                let iter = searcher.find_iter(&slice);
+                let matches: Vec<Range<usize>> = iter
+                    .map(|mut range| {
+                        range.start += start;
+                        range.end += start;
+                        range
+                    })
+                    .collect();
+                let _ = msend.send(matches).await;
+            }
+            SearchDirection::Backward => {
+                let searcher = SearcherRev::new(term);
+                let iter = searcher.find_iter(&slice);
+                let matches: Vec<Range<usize>> = iter
+                    .map(|mut range| {
+                        range.start += start;
+                        range.end += start;
+                        range
+                    })
+                    .collect();
+                let _ = msend.send(matches).await;
+            }
+        };
+    }
+
+    async fn send_matches(mut ctx: JobContext, mut mrecv: Receiver<Vec<Range<usize>>>) {
+        while let Some(opts) = mrecv.recv().await {
+            ctx.send(SearchMessage::Matches(opts)).await;
+        }
+    }
+}
+
+impl Job for Search {
+    fn run(&self, ctx: &crate::server::JobContext) -> crate::server::JobResult {
+        let mut ctx = ctx.clone();
+        let term = self.term.clone();
+        let pt = self.ropt.clone();
+        let range = self.range.clone();
+        let dir = self.dir.clone();
+
+        let fut = async move {
+            let (msend, mrecv) = channel::<Vec<Range<usize>>>(CHANNEL_SIZE);
+            tokio::join!(
+                Self::search_impl(msend, dir, term, pt, range),
+                Self::send_matches(ctx, mrecv),
+            );
+            Ok(())
+        };
+
+        Box::pin(fut)
+    }
+
+    fn box_clone(&self) -> crate::server::BoxedJob {
+        Box::new((*self).clone())
+    }
+}
+
+impl KeepInTouch for Search {
+    fn on_message(&self, editor: &mut Editor, msg: Box<dyn Any>) {
+        if let Ok(output) = msg.downcast::<SearchMessage>() {
+            let (win, _buf) = editor.win_buf_mut(self.client_id);
+            match *output {
+                SearchMessage::Matches(matches) => win.search.hl_matches = matches,
+            }
+        }
+    }
+
+    fn client_id(&self) -> ClientId {
+        self.client_id
+    }
 }

@@ -1,7 +1,6 @@
-use std::{cmp::min, rc::Rc};
+use std::cmp::min;
 
 use sanedit_buffer::{Searcher, SearcherRev};
-use tokio::sync::mpsc::channel;
 
 use crate::{
     actions::jobs,
@@ -13,43 +12,41 @@ use crate::{
 };
 
 /// setups async job to handle matches within the view range.
-fn async_view_matches(editor: &mut Editor, id: ClientId) {
-    const CHANNEL_SIZE: usize = 64;
-    let (tx, rx) = channel(CHANNEL_SIZE);
-
-    let (win, _buf) = editor.win_buf_mut(id);
-    win.search.prompt.on_input = Some(Rc::new(move |editor, id, input| {
-        let _ = tx.blocking_send(input.into());
-    }));
-    let job = jobs::search(editor, id, rx);
-    editor.jobs.request(job);
+fn async_view_matches(editor: &mut Editor, id: ClientId, term: &str) {
+    let (win, buf) = editor.win_buf_mut(id);
+    let pt = buf.read_only_copy();
+    let view = win.view().range();
+    let job = jobs::Search::forward(id, term, pt, view);
+    editor.job_broker.request(job);
 }
 
 #[action("Search forward")]
 fn forward(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
-    win.search = Search::new("Search");
-    win.search.prompt.on_confirm = Some(Rc::new(search));
+    win.search = Search::builder()
+        .prompt("Search")
+        .on_confirm(search)
+        .on_input(async_view_matches)
+        .build();
     win.focus = Focus::Search;
-
-    async_view_matches(editor, id);
 }
 
 #[action("Search backwards")]
 fn backward(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
-    win.search = Search::new("BSearch");
-    win.search.direction = SearchDirection::Backward;
-    win.search.prompt.on_confirm = Some(Rc::new(search));
+    win.search = Search::builder()
+        .prompt("Backward search")
+        .backward()
+        .on_confirm(search)
+        .on_input(async_view_matches)
+        .build();
     win.focus = Focus::Search;
-
-    async_view_matches(editor, id);
 }
 
 #[action("Close search")]
 fn close(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
-    if let Some(on_abort) = win.search.prompt.on_abort.clone() {
+    if let Some(on_abort) = win.search.prompt.on_abort() {
         let input = win.search.prompt.input_or_selected();
         (on_abort)(editor, id, &input)
     }
@@ -65,10 +62,11 @@ fn confirm_all(_editor: &mut Editor, _id: ClientId) {
 
 #[action("Find next match")]
 fn confirm(editor: &mut Editor, id: ClientId) {
+    log::info!("confirm search");
     let (win, _buf) = editor.win_buf_mut(id);
-    if let Some(on_confirm) = win.search.prompt.on_confirm.clone() {
+    if let Some(on_confirm) = win.search.on_confirm() {
+        win.search.save_to_history();
         let input = win.search.prompt.input_or_selected();
-        win.search.prompt.history.push(&input);
         (on_confirm)(editor, id, &input)
     }
 
@@ -93,7 +91,7 @@ fn remove_grapheme_before_cursor(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.search.prompt.remove_grapheme_before_cursor();
 
-    if let Some(on_input) = win.search.prompt.on_input.clone() {
+    if let Some(on_input) = win.search.prompt.on_input() {
         let input = win.search.prompt.input().to_string();
         (on_input)(editor, id, &input)
     }
@@ -141,6 +139,7 @@ fn prev_match(editor: &mut Editor, id: ClientId) {
 }
 
 fn search(editor: &mut Editor, id: ClientId, input: &str) {
+    log::info!("SS");
     let (win, _buf) = editor.win_buf_mut(id);
     let cpos = win.cursors.primary().pos();
 

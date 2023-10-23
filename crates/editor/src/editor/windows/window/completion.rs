@@ -1,10 +1,8 @@
-mod selector;
-
 use sanedit_messages::redraw::Point;
 
 use crate::editor::keymap::Keymap;
 
-pub(crate) use selector::Selector;
+use super::selector::Selector;
 
 #[derive(Debug)]
 pub(crate) struct Completion {

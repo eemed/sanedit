@@ -1,42 +1,125 @@
 mod history;
 
-use std::rc::Rc;
+use std::{num::NonZeroUsize, rc::Rc};
 
 use unicode_segmentation::UnicodeSegmentation;
 
 use crate::{
-    actions::jobs::Matches,
-    common::matcher::Match,
     editor::{keymap::Keymap, Editor},
     server::ClientId,
 };
 
 use self::history::History;
 
-use super::completion::Selector;
+use super::selector::{Options, Selector};
+
+pub(crate) struct PromptBuilder {
+    message: Option<String>,
+    on_confirm: Option<PromptAction>,
+    on_input: Option<PromptAction>,
+    on_abort: Option<PromptAction>,
+    keymap: Option<Keymap>,
+    history_size: NonZeroUsize,
+}
+
+impl Default for PromptBuilder {
+    fn default() -> Self {
+        PromptBuilder {
+            message: None,
+            on_confirm: None,
+            on_input: None,
+            on_abort: None,
+            keymap: None,
+            history_size: NonZeroUsize::new(100).unwrap(),
+        }
+    }
+}
+
+impl PromptBuilder {
+    pub fn prompt(mut self, msg: &str) -> Self {
+        self.message = Some(msg.to_string());
+        self
+    }
+
+    pub fn on_input<F>(mut self, fun: F) -> Self
+    where
+        F: Fn(&mut Editor, ClientId, &str) + 'static,
+    {
+        self.on_input = Some(Rc::new(fun));
+        self
+    }
+
+    pub fn on_abort<F>(mut self, fun: F) -> Self
+    where
+        F: Fn(&mut Editor, ClientId, &str) + 'static,
+    {
+        self.on_abort = Some(Rc::new(fun));
+        self
+    }
+
+    pub fn on_confirm<F>(mut self, fun: F) -> Self
+    where
+        F: Fn(&mut Editor, ClientId, &str) + 'static,
+    {
+        self.on_confirm = Some(Rc::new(fun));
+        self
+    }
+
+    pub fn keymap(mut self, keymap: Keymap) -> Self {
+        self.keymap = Some(keymap);
+        self
+    }
+
+    pub fn history_size(mut self, size: NonZeroUsize) -> Self {
+        self.history_size = size;
+        self
+    }
+
+    pub fn build(mut self) -> Prompt {
+        let PromptBuilder {
+            message,
+            on_confirm,
+            on_input,
+            on_abort,
+            keymap,
+            history_size,
+        } = self;
+        Prompt {
+            message: message.unwrap_or(String::new()),
+            input: String::new(),
+            cursor: 0,
+            selector: Selector::default(),
+            on_confirm,
+            on_abort,
+            on_input,
+            keymap: keymap.unwrap_or(Keymap::prompt()),
+            history: History::new(history_size.get()),
+        }
+    }
+}
 
 /// Prompt action, similar to a normal `ActionFunction` but also takes the
 /// prompt input as a additional parameter
-pub(crate) type PromptAction = Rc<dyn Fn(&mut Editor, ClientId, &str) + Send + Sync>;
+pub(crate) type PromptAction = Rc<dyn Fn(&mut Editor, ClientId, &str)>;
 
 pub(crate) struct Prompt {
-    pub message: String,
+    message: String,
 
     input: String,
     cursor: usize,
     selector: Selector,
 
     /// Called when prompt is confirmed
-    pub on_confirm: Option<PromptAction>,
+    on_confirm: Option<PromptAction>,
 
     /// Called when prompt is aborted
-    pub on_abort: Option<PromptAction>,
+    on_abort: Option<PromptAction>,
 
     /// Called when input is modified
-    pub on_input: Option<PromptAction>,
+    on_input: Option<PromptAction>,
     pub keymap: Keymap,
 
-    pub history: History,
+    history: History,
 }
 
 impl Prompt {
@@ -54,7 +137,39 @@ impl Prompt {
         }
     }
 
-    pub fn reset_selector(&mut self) {
+    pub fn builder() -> PromptBuilder {
+        PromptBuilder::default()
+    }
+
+    pub fn set_on_input<F>(&mut self, fun: F)
+    where
+        F: Fn(&mut Editor, ClientId, &str) + 'static,
+    {
+        self.on_input = Some(Rc::new(fun));
+    }
+
+    pub fn on_input(&self) -> Option<PromptAction> {
+        self.on_input.clone()
+    }
+
+    pub fn on_confirm(&self) -> Option<PromptAction> {
+        self.on_confirm.clone()
+    }
+
+    pub fn on_abort(&self) -> Option<PromptAction> {
+        self.on_abort.clone()
+    }
+
+    pub fn save_to_history(&mut self) {
+        let input = self.input_or_selected();
+        self.history.push(&input);
+    }
+
+    pub fn message(&self) -> &str {
+        &self.message
+    }
+
+    pub fn clear_options(&mut self) {
         self.selector = Selector::new();
     }
 
@@ -117,11 +232,11 @@ impl Prompt {
         self.cursor += ch.len_utf8();
     }
 
-    pub fn provide_completions(&mut self, completions: Matches) {
-        self.selector.provide_options(completions);
+    pub fn provide_options(&mut self, opts: Options) {
+        self.selector.provide_options(opts);
     }
 
-    pub fn matches_window(&self, count: usize, offset: usize) -> Vec<&str> {
+    pub fn options_window(&self, count: usize, offset: usize) -> Vec<&str> {
         self.selector.matches_window(count, offset)
     }
 

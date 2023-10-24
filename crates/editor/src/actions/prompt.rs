@@ -9,6 +9,8 @@ use crate::{
     server::ClientId,
 };
 
+use super::jobs::ShellCommand;
+
 #[action("Open a file")]
 fn open_file(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
@@ -106,4 +108,18 @@ fn history_next(editor: &mut Editor, id: ClientId) {
 fn history_prev(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.prompt.history_prev();
+}
+
+#[action("Run a shell command")]
+fn shell_command(editor: &mut Editor, id: ClientId) {
+    let (win, _buf) = editor.win_buf_mut(id);
+
+    win.prompt = Prompt::builder()
+        .prompt("Command")
+        .on_confirm(move |editor, id, input| {
+            let job = ShellCommand::new(id, input);
+            editor.job_broker.request(job);
+        })
+        .build();
+    win.focus = Focus::Prompt;
 }

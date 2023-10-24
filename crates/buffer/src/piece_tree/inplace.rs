@@ -1,10 +1,9 @@
 use std::{
-    cmp::{max, min},
+    cmp::min,
     fmt,
     fs::File,
     io::{self, Read, Seek, SeekFrom, Write},
     ops::Range,
-    path::Path,
 };
 
 use crate::{
@@ -141,7 +140,7 @@ fn do_write_in_place(pt: &ReadOnlyPieceTree, ops: Vec<WriteOp>) -> io::Result<()
     while op.is_some() {
         // Handle extending and truncating
         while let Some(WriteOp::Size(size)) = op {
-            let file = File::options().append(true).open(path)?;
+            let file = File::options().append(true).open(&path)?;
             file.set_len(size as u64)?;
             op = iter.next();
         }
@@ -150,7 +149,7 @@ fn do_write_in_place(pt: &ReadOnlyPieceTree, ops: Vec<WriteOp>) -> io::Result<()
         let mut file = None;
         while let Some(WriteOp::Overwrite(ow)) = op {
             if file.is_none() {
-                file = Some(File::options().read(true).write(true).open(path)?);
+                file = Some(File::options().read(true).write(true).open(&path)?);
             }
 
             let file = file.as_mut().unwrap();
@@ -214,7 +213,7 @@ fn do_write_in_place(pt: &ReadOnlyPieceTree, ops: Vec<WriteOp>) -> io::Result<()
                     } else {
                         file.seek(SeekFrom::Start(target.start as u64))?;
                         let range = ow.piece.range();
-                        let bytes = pt.orig.slice(range);
+                        let bytes = pt.orig.slice(range)?;
                         file.write_all(bytes.as_ref())?;
                     }
                 }
@@ -236,7 +235,7 @@ mod test {
     #[test]
     fn write_ops() {
         let path = PathBuf::from("../../test-files/lorem.txt");
-        let mut pt = PieceTree::mmap(path).unwrap();
+        let mut pt = PieceTree::from_path(path).unwrap();
         // pt.insert(0, "a");
         // pt.remove(0..10);
         pt.insert(60, "abba");

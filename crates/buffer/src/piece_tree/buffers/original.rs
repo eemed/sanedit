@@ -1,17 +1,35 @@
+mod cache;
+mod slice;
+
 use std::{
+    cmp::min,
     fs::File,
-    io,
+    io::{self, Read, Seek, SeekFrom, Write},
     ops::Range,
     path::{Path, PathBuf},
-    sync::atomic::AtomicBool,
+    sync::{Arc, Mutex, RwLock},
 };
 
-use crate::piece_tree::buffers::ByteSlice;
+use crate::piece_tree::{buffers::ByteSlice, FILE_BACKED_MAX_PIECE_SIZE};
+
+use self::cache::Cache;
+pub(crate) use slice::OriginalBufferSlice;
+
+#[derive(Debug)]
+pub(crate) struct PathFile {
+    file: File,
+    path: PathBuf,
+}
 
 #[derive(Debug)]
 pub(crate) enum OriginalBuffer {
-    FileBacked { map: memmap::Mmap, path: PathBuf },
-    Memory { bytes: Vec<u8> },
+    File {
+        file: Mutex<PathFile>,
+        cache: RwLock<Cache>,
+    },
+    Memory {
+        bytes: Vec<u8>,
+    },
 }
 
 impl OriginalBuffer {
@@ -28,22 +46,59 @@ impl OriginalBuffer {
     }
 
     #[inline]
-    pub fn mmap<P: AsRef<Path>>(path: P) -> io::Result<OriginalBuffer> {
+    pub fn from_path<P: AsRef<Path>>(path: P) -> io::Result<OriginalBuffer> {
         let path = path.as_ref();
         let file = File::open(path)?;
-        let map = unsafe { memmap::Mmap::map(&file)? };
-        Ok(OriginalBuffer::FileBacked {
-            map,
-            path: path.into(),
+        Ok(OriginalBuffer::File {
+            file: Mutex::new(PathFile {
+                file,
+                path: path.into(),
+            }),
+            cache: RwLock::new(Cache::new()),
         })
     }
 
     #[inline(always)]
-    pub fn slice(&self, range: Range<usize>) -> ByteSlice<'_> {
+    pub fn slice(&self, range: Range<usize>) -> io::Result<ByteSlice<'_>> {
         use OriginalBuffer::*;
         match self {
-            Memory { bytes } => bytes[range].into(),
-            FileBacked { map, .. } => map[range].into(),
+            Memory { bytes } => Ok(bytes[range].into()),
+            File { cache, file } => {
+                let Range { start, end } = range;
+                {
+                    let ro_cache = cache
+                        .read()
+                        .map_err(|_| io::Error::from(io::ErrorKind::Other))?;
+                    if let Some(slice) = ro_cache.get(start, end) {
+                        return Ok(slice.into());
+                    }
+                }
+
+                let len = self.len();
+                let mut cache = cache
+                    .write()
+                    .map_err(|_| io::Error::from(io::ErrorKind::Other))?;
+                let mut pfile = file
+                    .lock()
+                    .map_err(|_| io::Error::from(io::ErrorKind::Other))?;
+
+                let buf = {
+                    let block = start - (start % FILE_BACKED_MAX_PIECE_SIZE);
+                    let size = min(len, block + FILE_BACKED_MAX_PIECE_SIZE) - block;
+
+                    let mut buf: Box<[u8]> = vec![0u8; size].into();
+                    pfile.file.seek(SeekFrom::Start(block as u64))?;
+                    pfile.file.read_exact(&mut buf)?;
+                    let mut buf = cache.push(block, Arc::from(buf));
+
+                    let s = start - block;
+                    let e = s + end - start;
+                    buf.slice(s..e);
+                    buf
+                };
+
+                Ok(buf.into())
+            }
         }
     }
 
@@ -51,7 +106,13 @@ impl OriginalBuffer {
     pub fn len(&self) -> usize {
         use OriginalBuffer::*;
         match self {
-            FileBacked { map, .. } => map.len(),
+            File { file, .. } => {
+                if let Ok(pfile) = file.lock() {
+                    pfile.file.metadata().map(|m| m.len()).unwrap_or(0) as usize
+                } else {
+                    0
+                }
+            }
             Memory { bytes } => bytes.len(),
         }
     }
@@ -65,19 +126,40 @@ impl OriginalBuffer {
     pub fn is_file_backed(&self) -> bool {
         use OriginalBuffer::*;
         match self {
-            FileBacked { .. } => true,
+            File { .. } => true,
             _ => false,
         }
     }
 
     #[inline]
-    pub fn file_path(&self) -> &Path {
+    pub fn file_path(&self) -> PathBuf {
         use OriginalBuffer::*;
         match self {
-            FileBacked { path, .. } => path,
+            File { file, .. } => {
+                if let Ok(pfile) = file.lock() {
+                    pfile.path.clone()
+                } else {
+                    unreachable!("failed to lock backing file");
+                }
+            }
             _ => unreachable!("no file path for memory buffer"),
         }
     }
 
-    pub fn swap_backing_file<P: AsRef<Path>>(&self, path: P) {}
+    pub fn swap_backing_file<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
+        match self {
+            OriginalBuffer::File { file, .. } => {
+                if let Ok(mut pfile) = file.lock() {
+                    pfile.path = path.as_ref().into();
+                    pfile.file = File::open(path)?;
+                    Ok(())
+                } else {
+                    unreachable!("failed to lock backing file");
+                }
+            }
+            OriginalBuffer::Memory { bytes } => {
+                unreachable!("cannot swap backing file on memory buffer")
+            }
+        }
+    }
 }

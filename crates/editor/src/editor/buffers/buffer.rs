@@ -74,7 +74,7 @@ impl Buffer {
     fn file_backed(file: File) -> io::Result<Buffer> {
         log::debug!("New file backed buf");
         let path = file.path().canonicalize()?;
-        let pt = PieceTree::mmap(&path)?;
+        let pt = PieceTree::from_path(&path)?;
         let snapshot = pt.read_only_copy();
         Ok(Buffer {
             id: BufferId::default(),

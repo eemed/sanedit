@@ -66,7 +66,7 @@ fn read_piece<'a>(pt: &'a ReadOnlyPieceTree, piece: &Piece) -> Option<Chunk<'a>>
             Some(Chunk(bytes.into()))
         }
         BufferKind::Original => {
-            let bytes = pt.orig.slice(piece.pos..piece.pos + piece.len);
+            let bytes = pt.orig.slice(piece.pos..piece.pos + piece.len).ok()?;
             Some(Chunk(bytes))
         }
     }

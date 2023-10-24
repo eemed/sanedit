@@ -75,8 +75,8 @@ impl PieceTree {
     }
 
     #[inline]
-    pub fn mmap<P: AsRef<Path>>(path: P) -> io::Result<PieceTree> {
-        let orig_buf = OriginalBuffer::mmap(path)?;
+    pub fn from_path<P: AsRef<Path>>(path: P) -> io::Result<PieceTree> {
+        let orig_buf = OriginalBuffer::from_path(path)?;
         Ok(Self::from_original_buffer(orig_buf))
     }
 

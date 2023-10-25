@@ -27,21 +27,22 @@ impl Job for ShellCommand {
         let mut ctx = ctx.clone();
         let command = self.command.clone();
 
+        // TODO on unix create pty to run the command on
         let fut = async move {
-            if let Ok(cmd) = shellwords::split(&command) {
-                if let Some((cmd, opts)) = cmd.split_first() {
-                    if let Ok(mut child) =
-                        Command::new(cmd).args(opts).stdout(Stdio::null()).spawn()
-                    {
-                        if let Ok(status) = child.wait().await {
-                            log::info!(
-                                "Ran '{}', Output: {}",
-                                cmd,
-                                status.success(),
-                                // std::str::from_utf8(&output.stdout).unwrap()
-                            )
-                        }
-                    }
+            if let Ok(mut child) = Command::new("/bin/bash")
+                .args(&["-c", &command])
+                .stdin(Stdio::null())
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped())
+                .spawn()
+            {
+                if let Ok(output) = child.wait_with_output().await {
+                    log::info!(
+                        "Ran '{}', stdout: {}, stderr: {}",
+                        command,
+                        std::str::from_utf8(&output.stdout).unwrap(),
+                        std::str::from_utf8(&output.stderr).unwrap(),
+                    )
                 }
             }
             Ok(())

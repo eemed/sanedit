@@ -214,8 +214,10 @@ pub(crate) fn draw_line_numbers(ctx: &DrawContext) -> LineNumbers {
                 .map(|line| !line.is_empty() && line.end() <= pos)
                 .unwrap_or(false);
             if on_next_line {
-                lnr += 1;
                 line = lines.next();
+                if line.is_some() {
+                    lnr += 1;
+                }
             } else {
                 break;
             }

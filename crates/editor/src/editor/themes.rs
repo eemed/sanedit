@@ -51,6 +51,7 @@ fn default() -> Theme {
     ins(PrimaryCursor, ",,");
 
     ins(PromptDefault, "#B8A282,#000000,");
+    ins(Gutter, "#B8A282,,bold");
     ins(PromptUserInput, ",,");
     ins(PromptMessage, ",,bold");
     ins(PromptCompletionSelected, "#91bbee,,");

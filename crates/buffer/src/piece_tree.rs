@@ -264,6 +264,11 @@ impl PieceTree {
     }
 
     #[inline]
+    pub fn line_at(&self, pos: usize) -> usize {
+        self.pt.line_at(pos)
+    }
+
+    #[inline]
     pub fn graphemes(&self) -> Graphemes {
         self.pt.graphemes()
     }
@@ -440,6 +445,17 @@ impl ReadOnlyPieceTree {
             self.len
         );
         Lines::new(self, pos)
+    }
+
+    #[inline]
+    pub fn line_at(&self, pos: usize) -> usize {
+        debug_assert!(
+            pos <= self.len,
+            "line_at: Attempting to index {} over buffer len {}",
+            pos,
+            self.len
+        );
+        self.slice(..).line_at(pos)
     }
 
     #[inline]

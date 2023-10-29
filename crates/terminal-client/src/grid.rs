@@ -1,4 +1,5 @@
 mod drawable;
+mod gutter;
 
 use core::fmt;
 
@@ -10,6 +11,7 @@ use sanedit_messages::redraw::{
 use crate::ui::UIContext;
 
 pub(crate) use self::drawable::Drawable;
+use self::gutter::Gutter;
 
 pub(crate) struct Grid {
     pub window: Window,
@@ -17,6 +19,7 @@ pub(crate) struct Grid {
     pub statusline: Statusline,
     pub prompt: Option<Prompt>,
     pub msg: Option<StatusMessage>,
+    pub gutter: Option<Gutter>,
 
     cells: Vec<Vec<Cell>>,
     cursor: Cursor,
@@ -30,12 +33,13 @@ impl Grid {
             statusline: Statusline::default(),
             prompt: None,
             msg: None,
+            gutter: None,
             cells: vec![vec![Cell::default(); width]; height],
             cursor: Cursor::default(),
         }
     }
 
-    pub fn handle_redraw(&mut self, msg: Redraw) {
+    pub fn handle_redraw(&mut self, ctx: &mut UIContext, msg: Redraw) {
         use Component::*;
         use Redraw::*;
 
@@ -69,6 +73,11 @@ impl Grid {
                 Close => self.completion = None,
             },
             StatusMessage(msg) => self.msg = Some(msg),
+            LineNumbers(numbers) => {
+                let gutter = Gutter::new(numbers);
+                ctx.gutter_size = gutter.width();
+                self.gutter = gutter.into()
+            }
         }
     }
 
@@ -113,6 +122,9 @@ impl Grid {
         Self::draw_drawable(&self.window, ctx, &mut self.cursor, &mut self.cells);
         Self::draw_drawable(&self.statusline, ctx, &mut self.cursor, &mut self.cells);
 
+        if let Some(ref gutter) = self.gutter {
+            Self::draw_drawable(gutter, ctx, &mut self.cursor, &mut self.cells);
+        }
         if let Some(ref prompt) = self.prompt {
             Self::draw_drawable(prompt, ctx, &mut self.cursor, &mut self.cells);
         }

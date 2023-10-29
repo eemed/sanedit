@@ -1,6 +1,9 @@
-use std::ops::Range;
+use std::{
+    collections::{HashSet, VecDeque},
+    ops::Range,
+};
 
-use sanedit_messages::redraw::{self, CursorShape, Redraw, Style, Theme, ThemeField};
+use sanedit_messages::redraw::{self, CursorShape, LineNumbers, Style, Theme, ThemeField};
 
 use crate::{
     common::{char::Replacement, range::RangeUtils},
@@ -9,7 +12,7 @@ use crate::{
 
 use super::DrawContext;
 
-pub(crate) fn draw(ctx: &mut DrawContext) -> Redraw {
+pub(crate) fn draw(ctx: &mut DrawContext) -> redraw::Window {
     let DrawContext {
         win,
         buf: _,
@@ -55,7 +58,6 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> Redraw {
         cells: grid,
         cursor,
     }
-    .into()
 }
 
 fn draw_search_highlights(
@@ -185,4 +187,46 @@ fn draw_end_of_buffer(grid: &mut Vec<Vec<redraw::Cell>>, view: &View, theme: &Th
 
 fn draw_trailing_whitespace(_grid: &mut Vec<Vec<redraw::Cell>>, view: &View, _theme: &Theme) {
     for (_line, _row) in view.cells().iter().enumerate() {}
+}
+
+pub(crate) fn draw_line_numbers(ctx: &DrawContext) -> LineNumbers {
+    let DrawContext {
+        win,
+        buf,
+        theme,
+        state: _,
+    } = ctx;
+
+    let range = win.view().range();
+    let slice = buf.slice(range.clone());
+    let mut lines = slice.lines();
+    let mut line = lines.next();
+
+    let view = win.view();
+    let mut pos = view.start();
+    let mut lnr = buf.slice(..).line_at(view.start()) + 1;
+    let mut lnrs = vec![];
+
+    for row in view.cells() {
+        loop {
+            let on_next_line = line
+                .as_ref()
+                .map(|line| !line.is_empty() && line.end() <= pos)
+                .unwrap_or(false);
+            if on_next_line {
+                lnr += 1;
+                line = lines.next();
+            } else {
+                break;
+            }
+        }
+
+        for cell in row {
+            pos += cell.grapheme_len();
+        }
+
+        lnrs.push(lnr);
+    }
+
+    lnrs
 }

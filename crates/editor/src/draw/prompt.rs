@@ -1,12 +1,12 @@
 use std::cmp;
 
-use sanedit_messages::redraw::{self, Redraw};
+use sanedit_messages::redraw;
 
 use crate::editor::windows::Prompt;
 
 use super::DrawContext;
 
-pub(crate) fn draw(prompt: &Prompt, ctx: &mut DrawContext) -> Redraw {
+pub(crate) fn draw(prompt: &Prompt, ctx: &mut DrawContext) -> redraw::Prompt {
     let compl_count = ctx.win.options.completions;
     let offset = &mut ctx.state.prompt_scroll_offset;
     *offset = {
@@ -37,5 +37,4 @@ pub(crate) fn draw(prompt: &Prompt, ctx: &mut DrawContext) -> Redraw {
         message: msg,
         selected: selected_relative_pos,
     }
-    .into()
 }

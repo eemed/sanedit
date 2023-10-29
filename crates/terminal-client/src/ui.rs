@@ -56,7 +56,9 @@ impl UI {
         match msg {
             ClientMessage::Hello => {}
             ClientMessage::Theme(theme) => self.context.theme = theme,
-            ClientMessage::Redraw(msg) => self.grid.handle_redraw(msg),
+            ClientMessage::Redraw(msg) => {
+                self.grid.handle_redraw(&mut self.context, msg);
+            }
             ClientMessage::Flush => self.flush(),
             ClientMessage::Bye => {
                 log::info!("UI got bye, exiting.");

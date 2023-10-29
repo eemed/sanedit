@@ -3,6 +3,7 @@ mod color;
 mod completion;
 mod cursor;
 mod cursor_shape;
+mod line_numbers;
 mod point;
 mod prompt;
 mod size;
@@ -18,6 +19,7 @@ pub use color::*;
 pub use completion::*;
 pub use cursor::*;
 pub use cursor_shape::*;
+pub use line_numbers::*;
 pub use point::*;
 pub use prompt::*;
 pub use size::*;
@@ -62,6 +64,7 @@ pub enum Redraw {
     Prompt(Component<Prompt, prompt::Difference>),
     Completion(Component<Completion, completion::Difference>),
     StatusMessage(StatusMessage),
+    LineNumbers(LineNumbers),
 }
 
 impl From<Redraw> for ClientMessage {

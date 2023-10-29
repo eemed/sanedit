@@ -46,8 +46,8 @@ impl DrawState {
             state: &mut state,
         };
 
-        let window = window::draw(&mut ctx);
-        let statusline = statusline::draw(&mut ctx);
+        let window = window::draw(&mut ctx).into();
+        let statusline = statusline::draw(&mut ctx).into();
 
         (state, vec![window, statusline])
     }
@@ -72,6 +72,7 @@ impl DrawState {
         }
 
         let draw_win = mem::replace(&mut self.redraw_window, true);
+        let draw_lnr = draw_win && win.options.show_linenumbers;
         if draw_win {
             win.redraw_view(buf);
         }
@@ -85,10 +86,16 @@ impl DrawState {
 
         if draw_win {
             let window = window::draw(&mut ctx);
-            redraw.push(window);
+            if draw_lnr {
+                let lnrs = window::draw_line_numbers(&ctx);
+                redraw.push(lnrs.into());
+                redraw.push(window.into());
+            } else {
+                redraw.push(window.into());
+            }
         }
 
-        let statusline = statusline::draw(&mut ctx);
+        let statusline = statusline::draw(&mut ctx).into();
         redraw.push(statusline);
 
         if let Some(msg) = win.message() {
@@ -97,15 +104,15 @@ impl DrawState {
 
         match win.focus() {
             Focus::Search => {
-                let current = search::draw(&win.search, &mut ctx);
+                let current = search::draw(&win.search, &mut ctx).into();
                 redraw.push(current);
             }
             Focus::Prompt => {
-                let current = prompt::draw(&win.prompt, &mut ctx);
+                let current = prompt::draw(&win.prompt, &mut ctx).into();
                 redraw.push(current);
             }
             Focus::Completion => {
-                let current = completion::draw(&win.completion, &mut ctx);
+                let current = completion::draw(&win.completion, &mut ctx).into();
                 redraw.push(current);
             }
             _ => {}

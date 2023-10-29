@@ -111,6 +111,7 @@ pub enum ThemeField {
     Symbols,
     Cursor,
     PrimaryCursor,
+    Gutter,
 
     Match,
 
@@ -135,6 +136,7 @@ impl AsRef<str> for ThemeField {
             Selection => "window.cursor.selection",
             Cursor => "window.cursor",
             PrimaryCursor => "window.cursor.primary",
+            Gutter => "window.gutter",
             EndOfBuffer => "window.eob",
             Symbols => "window.symbols",
             Match => "window.match",

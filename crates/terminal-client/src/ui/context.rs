@@ -5,6 +5,7 @@ pub struct UIContext {
     pub theme: Theme,
     pub width: usize,
     pub height: usize,
+    pub gutter_size: usize,
 }
 
 impl UIContext {
@@ -13,6 +14,7 @@ impl UIContext {
             theme: Theme::default(),
             width,
             height,
+            gutter_size: 0,
         }
     }
 

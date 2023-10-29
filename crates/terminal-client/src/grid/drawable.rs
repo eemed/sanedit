@@ -5,6 +5,8 @@ use sanedit_messages::redraw::{
 
 use crate::ui::UIContext;
 
+use super::gutter::Gutter;
+
 pub(crate) trait Drawable {
     fn position(&self, ctx: &UIContext) -> Point;
     fn draw(&self, ctx: &UIContext) -> Vec<Vec<Cell>>;
@@ -13,8 +15,11 @@ pub(crate) trait Drawable {
 }
 
 impl Drawable for Window {
-    fn position(&self, _ctx: &UIContext) -> Point {
-        Point { x: 0, y: 1 }
+    fn position(&self, ctx: &UIContext) -> Point {
+        Point {
+            x: ctx.gutter_size,
+            y: 1,
+        }
     }
 
     fn draw(&self, _ctx: &UIContext) -> Vec<Vec<Cell>> {
@@ -30,7 +35,7 @@ impl Drawable for Window {
 
     fn size(&self, ctx: &UIContext) -> Size {
         Size {
-            width: ctx.width,
+            width: ctx.width - ctx.gutter_size,
             height: ctx.height - 1,
         }
     }
@@ -180,6 +185,48 @@ impl Drawable for Completion {
         let width = self.options.iter().map(|i| i.len()).max().unwrap_or(1);
         let height = self.options.len();
         Size { width, height }
+    }
+}
+
+impl Drawable for Gutter {
+    fn position(&self, ctx: &crate::ui::UIContext) -> sanedit_messages::redraw::Point {
+        Point { x: 0, y: 1 }
+    }
+
+    fn draw(&self, ctx: &crate::ui::UIContext) -> Vec<Vec<sanedit_messages::redraw::Cell>> {
+        const SEP: &str = "│";
+        let mut cells = vec![];
+        let mut prev = None;
+
+        for lnum in self.nums.iter() {
+            let same_line = prev.map(|p| p == lnum).unwrap_or(false);
+
+            let gutter = if same_line {
+                format!("{}{}", " ".repeat(self.width), SEP)
+            } else {
+                format!("{: <width$}{}", lnum.to_string(), SEP, width = self.width)
+            };
+
+            cells.push(into_cells_with_style(
+                &gutter,
+                ctx.theme.get(ThemeField::Gutter),
+                ctx,
+            ));
+            prev = lnum.into();
+        }
+
+        cells
+    }
+
+    fn cursor(&self, ctx: &crate::ui::UIContext) -> Option<sanedit_messages::redraw::Cursor> {
+        None
+    }
+
+    fn size(&self, ctx: &crate::ui::UIContext) -> sanedit_messages::redraw::Size {
+        Size {
+            width: self.width + 1,
+            height: ctx.height - 1,
+        }
     }
 }
 

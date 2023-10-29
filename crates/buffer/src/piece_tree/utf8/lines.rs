@@ -96,6 +96,18 @@ pub fn prev_eol(bytes: &mut Bytes) -> Option<EOLMatch> {
     }
 }
 
+pub(crate) fn line_at(slice: &PieceTreeSlice, pos: usize) -> usize {
+    let mut line = 0;
+    let slice = slice.slice(..pos);
+    let mut bytes = slice.bytes();
+
+    while let Some(_) = next_eol(&mut bytes) {
+        line += 1;
+    }
+
+    line
+}
+
 #[derive(Debug, Clone)]
 pub struct Lines<'a> {
     bytes: Bytes<'a>,

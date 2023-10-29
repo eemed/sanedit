@@ -1,8 +1,8 @@
-use sanedit_messages::redraw::{Redraw, Statusline};
+use sanedit_messages::redraw::{self, Statusline};
 
 use super::DrawContext;
 
-pub(crate) fn draw(ctx: &mut DrawContext) -> Redraw {
+pub(crate) fn draw(ctx: &mut DrawContext) -> redraw::Statusline {
     let buf = ctx.buf;
 
     let mut line = format!("{} ", buf.name());
@@ -13,5 +13,5 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> Redraw {
         line.push_str("(s)");
     }
 
-    Statusline { line }.into()
+    Statusline { line }
 }

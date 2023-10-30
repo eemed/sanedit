@@ -1,5 +1,6 @@
 pub(crate) mod client;
-mod grid;
+mod rectangle;
+// mod grid;
 pub(crate) mod input;
 pub(crate) mod message;
 pub(crate) mod terminal;
@@ -26,7 +27,7 @@ where
     let (tx, rx) = mpsc::channel();
 
     writer
-        .write(Message::Hello(ui.window_size()))
+        .write(Message::Hello(ui.window_rect().size()))
         .expect("Failed to send hello");
 
     // Input thread
@@ -50,12 +51,14 @@ where
                 match msg {
                     Message::Resize(size) => {
                         ui.resize(size);
-                        let win_size = ui.window_size();
-                        msg = Message::Resize(win_size);
+                        let rect = ui.window_rect();
+                        // msg = Message::Resize(win_size);
                     }
                     Message::MouseEvent(ref mut ev) => {
-                        let position = ui.window_position();
-                        let size = ui.window_size();
+                        let win = ui.window_rect();
+                        let position = win.position();
+                        let size = win.size();
+                        let rect = ui.window_rect();
                         let point = &mut ev.point;
 
                         if point.x < position.x

@@ -7,13 +7,13 @@ use sanedit_messages::{
 };
 
 use crate::{
-    grid::{Drawable, Grid},
+    rectangle::{Grid, Rect},
     terminal::Terminal,
 };
 
 pub use self::context::UIContext;
 
-pub struct UI {
+pub(crate) struct UI {
     terminal: Terminal,
     grid: Grid,
     context: UIContext,
@@ -27,28 +27,22 @@ impl UI {
         Ok(UI {
             terminal,
             grid: Grid::new(width, height),
-            context: UIContext::new(width, height),
+            context: UIContext::new(),
         })
     }
 
-    pub fn window_position(&self) -> Point {
-        self.grid.window.position(&self.context)
-    }
-
-    pub fn window_size(&self) -> Size {
-        self.grid.window.size(&self.context)
+    pub fn window_rect(&self) -> Rect {
+        self.grid.window_rect()
     }
 
     pub fn resize(&mut self, size: Size) {
-        self.context.width = size.width;
-        self.context.height = size.height;
         self.terminal.resize(size.width, size.height);
         self.grid.resize(size.width, size.height);
     }
 
     /// Called when client will send input to server
     pub fn on_send_input(&mut self, _msg: &Message) {
-        self.grid.msg = None;
+        // self.grid.msg = None;
     }
 
     pub fn handle_message(&mut self, msg: ClientMessage) -> bool {
@@ -57,7 +51,7 @@ impl UI {
             ClientMessage::Hello => {}
             ClientMessage::Theme(theme) => self.context.theme = theme,
             ClientMessage::Redraw(msg) => {
-                self.grid.handle_redraw(&mut self.context, msg);
+                self.grid.handle_redraw(&self.context, msg);
             }
             ClientMessage::Flush => self.flush(),
             ClientMessage::Bye => {

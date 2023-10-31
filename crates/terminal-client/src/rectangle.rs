@@ -9,7 +9,7 @@ use crate::ui::UIContext;
 pub(crate) struct Grid {
     window: Rectangle<Window>,
     statusline: Rectangle<Statusline>,
-
+    // gutter: Option<Rectangle<()>>,
     drawn: Vec<Vec<Cell>>,
     cursor: Cursor,
 }
@@ -96,7 +96,7 @@ impl Grid {
         cells: &mut Vec<Vec<Cell>>,
     ) {
         let rect = drawable.rect.clone();
-        if let Some(cur) = drawable.inner.cursor() {
+        if let Some(cur) = drawable.cursor() {
             *cursor = cur;
             cursor.point = cursor.point + rect.position();
         }
@@ -104,7 +104,7 @@ impl Grid {
         let top_left = rect.position();
         let mut grid = rect.grid();
         let mut g: Vec<&mut [Cell]> = grid.iter_mut().map(|v| v.as_mut_slice()).collect();
-        drawable.inner.draw(&mut g);
+        drawable.draw(&mut g);
 
         for (line, row) in grid.into_iter().enumerate() {
             for (col, cell) in row.into_iter().enumerate() {

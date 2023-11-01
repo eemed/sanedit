@@ -12,7 +12,7 @@ impl UIContext {
         }
     }
 
-    pub fn style(&self, field: &ThemeField) -> Style {
+    pub fn style(&self, field: ThemeField) -> Style {
         self.theme.get(field)
     }
 }

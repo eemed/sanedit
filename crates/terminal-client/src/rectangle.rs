@@ -1,4 +1,4 @@
-use std::cmp::min;
+use std::{cmp::min, mem};
 
 use sanedit_messages::redraw::{
     Cell, Component, Cursor, CursorShape, Diffable, IntoCells, Point, Prompt, Redraw, Size,
@@ -57,10 +57,10 @@ impl Grid {
             },
             Prompt(comp) => match comp {
                 Open(prompt) => {
-                    self.prompt = Some(Rectangle::new(
-                        prompt,
-                        Rect::centered(self.size.width, self.size.height),
-                    ));
+                    let mut rectangle =
+                        Rectangle::new(prompt, Rect::centered(self.size.width, self.size.height));
+                    rectangle.border(Border::Box);
+                    self.prompt = Some(rectangle);
                 }
                 Update(diff) => {
                     if let Some(ref mut prompt) = self.prompt {
@@ -141,16 +141,157 @@ impl Grid {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+pub(crate) enum Border {
+    Box,
+    Margin,
+}
+
+impl Border {
+    pub fn top_left(&self) -> &str {
+        match self {
+            Border::Box => "┌",
+            Border::Margin => " ",
+        }
+    }
+
+    pub fn top_right(&self) -> &str {
+        match self {
+            Border::Box => "┐",
+            Border::Margin => " ",
+        }
+    }
+
+    pub fn bottom_right(&self) -> &str {
+        match self {
+            Border::Box => "┘",
+            Border::Margin => " ",
+        }
+    }
+
+    pub fn bottom_left(&self) -> &str {
+        match self {
+            Border::Box => "└",
+            Border::Margin => " ",
+        }
+    }
+
+    pub fn bottom(&self) -> &str {
+        match self {
+            Border::Box => "─",
+            Border::Margin => " ",
+        }
+    }
+
+    pub fn top(&self) -> &str {
+        match self {
+            Border::Box => "─",
+            Border::Margin => " ",
+        }
+    }
+
+    pub fn left(&self) -> &str {
+        match self {
+            Border::Box => "│",
+            Border::Margin => " ",
+        }
+    }
+
+    pub fn right(&self) -> &str {
+        match self {
+            Border::Box => "│",
+            Border::Margin => " ",
+        }
+    }
+}
+
 pub(crate) struct Rectangle<T>
 where
     T: Drawable,
 {
     inner: T,
     rect: Rect,
+    border: Option<Border>,
+}
+
+impl<T: Drawable> Rectangle<T> {
+    fn border(&mut self, border: Border) {
+        self.border = Some(border);
+    }
+
+    /// Draw border and return inner cells to draw to
+    fn draw_border<'a, 'b>(
+        border: Border,
+        style: Style,
+        mut cells: &'a mut [&'b mut [Cell]],
+    ) -> &'a mut [&'b mut [Cell]] {
+        let size = size(cells);
+
+        if size.width <= 2 && size.height <= 2 {
+            return cells;
+        }
+
+        // Top and bottom
+        for i in 1..size.width {
+            cells[0][i] = Cell {
+                text: border.top().into(),
+                style,
+            };
+            cells[size.height - 1][i] = Cell {
+                text: border.bottom().into(),
+                style,
+            };
+        }
+
+        // Sides
+        for i in 1..size.height {
+            cells[i][0] = Cell {
+                text: border.left().into(),
+                style,
+            };
+            cells[i][size.width - 1] = Cell {
+                text: border.right().into(),
+                style,
+            };
+        }
+
+        // corners
+        cells[0][0] = Cell {
+            text: border.top_left().into(),
+            style,
+        };
+
+        cells[size.height - 1][0] = Cell {
+            text: border.bottom_left().into(),
+            style,
+        };
+
+        cells[0][size.width - 1] = Cell {
+            text: border.top_right().into(),
+            style,
+        };
+
+        cells[size.height - 1][size.width - 1] = Cell {
+            text: border.bottom_right().into(),
+            style,
+        };
+
+        cells = &mut cells[1..size.height - 1];
+        for i in 0..cells.len() {
+            let line = mem::replace(&mut cells[i], &mut []);
+            let width = line.len();
+            cells[i] = &mut line[1..width - 1];
+        }
+        cells
+    }
 }
 
 impl<T: Drawable> Drawable for Rectangle<T> {
-    fn draw(&self, ctx: &UIContext, cells: &mut [&mut [Cell]]) {
+    fn draw(&self, ctx: &UIContext, mut cells: &mut [&mut [Cell]]) {
+        if let Some(border) = self.border {
+            cells = Self::draw_border(border, self.inner.border_style(ctx), cells);
+        }
+
         self.inner.draw(ctx, cells);
     }
 
@@ -161,7 +302,11 @@ impl<T: Drawable> Drawable for Rectangle<T> {
 
 impl<T: Drawable> Rectangle<T> {
     pub fn new(t: T, rect: Rect) -> Rectangle<T> {
-        Rectangle { inner: t, rect }
+        Rectangle {
+            inner: t,
+            rect,
+            border: None,
+        }
     }
 }
 
@@ -309,6 +454,10 @@ impl Rect {
 pub(crate) trait Drawable {
     fn draw(&self, ctx: &UIContext, cells: &mut [&mut [Cell]]);
     fn cursor(&self, ctx: &UIContext) -> Option<Cursor>;
+
+    fn border_style(&self, ctx: &UIContext) -> Style {
+        ctx.style(ThemeField::Default)
+    }
 }
 
 impl Drawable for Window {
@@ -349,6 +498,10 @@ impl Drawable for Statusline {
 }
 
 impl Drawable for Prompt {
+    fn border_style(&self, ctx: &UIContext) -> Style {
+        ctx.theme.get(ThemeField::PromptDefault)
+    }
+
     fn draw(&self, ctx: &UIContext, cells: &mut [&mut [Cell]]) {
         let size = size(cells);
         let default_style = ctx.theme.get(ThemeField::PromptDefault);

@@ -53,8 +53,9 @@ fn default() -> Theme {
     ins(PromptDefault, "#B8A282,#000000,");
     ins(Gutter, ",#4C4C4C,bold");
     ins(PromptUserInput, ",,");
-    ins(PromptMessage, ",,bold");
-    ins(PromptCompletionSelected, "#91bbee,,");
+    ins(PromptTitle, ",#000000,,bold");
+    ins(PromptMessage, ",#4C4C4C,bold");
+    ins(PromptCompletionSelected, "#BBEE91,,");
     ins(PromptCompletion, "#D8CCB4,,");
 
     ins(Info, "#9aeaea,#000000,");

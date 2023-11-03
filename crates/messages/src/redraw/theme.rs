@@ -120,6 +120,7 @@ pub enum ThemeField {
     Error,
 
     PromptDefault,
+    PromptTitle,
     PromptMessage,
     PromptUserInput,
     PromptCompletion,
@@ -146,6 +147,7 @@ impl AsRef<str> for ThemeField {
             Error => "error",
 
             PromptDefault => "prompt",
+            PromptTitle => "prompt.title",
             PromptMessage => "prompt.message",
             PromptUserInput => "prompt.userinput",
             PromptCompletion => "prompt.completion",

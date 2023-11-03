@@ -57,9 +57,8 @@ impl Grid {
             },
             Prompt(comp) => match comp {
                 Open(prompt) => {
-                    let mut rectangle =
+                    let rectangle =
                         Rectangle::new(prompt, Rect::centered(self.size.width, self.size.height));
-                    rectangle.border(Border::Box);
                     self.prompt = Some(rectangle);
                 }
                 Update(diff) => {
@@ -211,87 +210,76 @@ where
 {
     inner: T,
     rect: Rect,
-    border: Option<Border>,
 }
 
-impl<T: Drawable> Rectangle<T> {
-    fn border(&mut self, border: Border) {
-        self.border = Some(border);
+/// Draw border and return inner cells to draw to
+fn draw_border<'a, 'b>(
+    border: Border,
+    style: Style,
+    mut cells: &'a mut [&'b mut [Cell]],
+) -> &'a mut [&'b mut [Cell]] {
+    let size = size(cells);
+
+    if size.width <= 2 && size.height <= 2 {
+        return cells;
     }
 
-    /// Draw border and return inner cells to draw to
-    fn draw_border<'a, 'b>(
-        border: Border,
-        style: Style,
-        mut cells: &'a mut [&'b mut [Cell]],
-    ) -> &'a mut [&'b mut [Cell]] {
-        let size = size(cells);
-
-        if size.width <= 2 && size.height <= 2 {
-            return cells;
-        }
-
-        // Top and bottom
-        for i in 1..size.width {
-            cells[0][i] = Cell {
-                text: border.top().into(),
-                style,
-            };
-            cells[size.height - 1][i] = Cell {
-                text: border.bottom().into(),
-                style,
-            };
-        }
-
-        // Sides
-        for i in 1..size.height {
-            cells[i][0] = Cell {
-                text: border.left().into(),
-                style,
-            };
-            cells[i][size.width - 1] = Cell {
-                text: border.right().into(),
-                style,
-            };
-        }
-
-        // corners
-        cells[0][0] = Cell {
-            text: border.top_left().into(),
+    // Top and bottom
+    for i in 1..size.width {
+        cells[0][i] = Cell {
+            text: border.top().into(),
             style,
         };
-
-        cells[size.height - 1][0] = Cell {
-            text: border.bottom_left().into(),
+        cells[size.height - 1][i] = Cell {
+            text: border.bottom().into(),
             style,
         };
-
-        cells[0][size.width - 1] = Cell {
-            text: border.top_right().into(),
-            style,
-        };
-
-        cells[size.height - 1][size.width - 1] = Cell {
-            text: border.bottom_right().into(),
-            style,
-        };
-
-        cells = &mut cells[1..size.height - 1];
-        for i in 0..cells.len() {
-            let line = mem::replace(&mut cells[i], &mut []);
-            let width = line.len();
-            cells[i] = &mut line[1..width - 1];
-        }
-        cells
     }
+
+    // Sides
+    for i in 1..size.height {
+        cells[i][0] = Cell {
+            text: border.left().into(),
+            style,
+        };
+        cells[i][size.width - 1] = Cell {
+            text: border.right().into(),
+            style,
+        };
+    }
+
+    // corners
+    cells[0][0] = Cell {
+        text: border.top_left().into(),
+        style,
+    };
+
+    cells[size.height - 1][0] = Cell {
+        text: border.bottom_left().into(),
+        style,
+    };
+
+    cells[0][size.width - 1] = Cell {
+        text: border.top_right().into(),
+        style,
+    };
+
+    cells[size.height - 1][size.width - 1] = Cell {
+        text: border.bottom_right().into(),
+        style,
+    };
+
+    cells = &mut cells[1..size.height - 1];
+    for i in 0..cells.len() {
+        let line = mem::replace(&mut cells[i], &mut []);
+        let width = line.len();
+        cells[i] = &mut line[1..width - 1];
+    }
+    cells
 }
 
 impl<T: Drawable> Drawable for Rectangle<T> {
-    fn draw(&self, ctx: &UIContext, mut cells: &mut [&mut [Cell]]) {
-        if let Some(border) = self.border {
-            cells = Self::draw_border(border, self.inner.border_style(ctx), cells);
-        }
-
+    fn draw(&self, ctx: &UIContext, cells: &mut [&mut [Cell]]) {
         self.inner.draw(ctx, cells);
     }
 
@@ -302,11 +290,7 @@ impl<T: Drawable> Drawable for Rectangle<T> {
 
 impl<T: Drawable> Rectangle<T> {
     pub fn new(t: T, rect: Rect) -> Rectangle<T> {
-        Rectangle {
-            inner: t,
-            rect,
-            border: None,
-        }
+        Rectangle { inner: t, rect }
     }
 }
 
@@ -454,10 +438,6 @@ impl Rect {
 pub(crate) trait Drawable {
     fn draw(&self, ctx: &UIContext, cells: &mut [&mut [Cell]]);
     fn cursor(&self, ctx: &UIContext) -> Option<Cursor>;
-
-    fn border_style(&self, ctx: &UIContext) -> Style {
-        ctx.style(ThemeField::Default)
-    }
 }
 
 impl Drawable for Window {
@@ -498,25 +478,31 @@ impl Drawable for Statusline {
 }
 
 impl Drawable for Prompt {
-    fn border_style(&self, ctx: &UIContext) -> Style {
-        ctx.theme.get(ThemeField::PromptDefault)
-    }
-
-    fn draw(&self, ctx: &UIContext, cells: &mut [&mut [Cell]]) {
-        let size = size(cells);
+    fn draw(&self, ctx: &UIContext, mut cells: &mut [&mut [Cell]]) {
+        let wsize = size(cells);
         let default_style = ctx.theme.get(ThemeField::PromptDefault);
-        let msg_style = ctx.theme.get(ThemeField::PromptMessage);
         let input_style = ctx.theme.get(ThemeField::PromptUserInput);
-        let pcompl = ctx.theme.get(ThemeField::PromptCompletion);
 
+        if wsize.height > 2 {
+            let title =
+                into_cells_with_style(&self.message, ctx.theme.get(ThemeField::PromptTitle));
+            let title = center_pad(title, default_style, wsize.width);
+            put_line(title, 0, cells);
+
+            let mut message =
+                into_cells_with_style(" > ", ctx.theme.get(ThemeField::PromptMessage));
+            let input = into_cells_with_style(&self.input, input_style);
+            message.extend(input);
+            pad_line(&mut message, default_style, wsize.width);
+            put_line(message, 1, cells);
+        }
+
+        cells = &mut cells[2..];
+
+        let pcompl = ctx.theme.get(ThemeField::PromptCompletion);
         set_style(cells, pcompl);
-        let mut message = into_cells_with_style(&self.message, msg_style);
-        let colon = into_cells_with_style(": ", msg_style);
-        let input = into_cells_with_style(&self.input, input_style);
-        message.extend(colon);
-        message.extend(input);
-        pad_line(&mut message, default_style, size.width);
-        put_line(message, 0, cells);
+        cells = draw_border(Border::Margin, pcompl, cells);
+        let wsize = size(cells);
 
         self.options.iter().enumerate().for_each(|(i, opt)| {
             let field = if Some(i) == self.selected {
@@ -525,20 +511,15 @@ impl Drawable for Prompt {
                 ThemeField::PromptCompletion
             };
             let style = ctx.style(field);
-            put_line(
-                into_cells_with_style_pad(opt, style, size.width),
-                i + 1,
-                cells,
-            );
+            put_line(into_cells_with_style_pad(opt, style, wsize.width), i, cells);
         });
     }
 
     fn cursor(&self, ctx: &UIContext) -> Option<Cursor> {
         let cursor_col = {
             let input_cells_before_cursor = self.input[..self.cursor].into_cells().len();
-            let msg_len = self.message.into_cells().len();
-            let extra = 2; // ": "
-            msg_len + extra + input_cells_before_cursor
+            let extra = 3; // " > "
+            extra + input_cells_before_cursor
         };
         let style = ctx.theme.get(ThemeField::Default);
         Some(Cursor {
@@ -546,7 +527,7 @@ impl Drawable for Prompt {
             fg: style.bg,
             point: Point {
                 x: cursor_col,
-                y: 0,
+                y: 1,
             },
             shape: CursorShape::Line(true),
         })
@@ -606,4 +587,12 @@ fn set_style(target: &mut [&mut [Cell]], style: Style) {
             cell.style = style.clone();
         }
     }
+}
+
+fn center_pad(message: Vec<Cell>, pad_style: Style, width: usize) -> Vec<Cell> {
+    let pad = (width.saturating_sub(message.len())) / 2;
+    let mut result = into_cells_with_style(&" ".repeat(pad), pad_style);
+    result.extend(message);
+    pad_line(&mut result, pad_style, width);
+    result
 }

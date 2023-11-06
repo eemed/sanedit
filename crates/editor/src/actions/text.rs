@@ -1,6 +1,7 @@
 use std::{io, path::PathBuf, rc::Rc};
 
 use crate::{
+    common::dirs::{tmp_dir, tmp_file},
     editor::{
         hooks::Hook,
         windows::{Focus, Prompt},
@@ -9,7 +10,7 @@ use crate::{
     server::ClientId,
 };
 
-use super::{hooks::run, Action};
+use super::{hooks::run, jobs, Action};
 
 #[action("Remove character after cursor")]
 fn remove_grapheme_after_cursor(editor: &mut Editor, id: ClientId) {
@@ -66,21 +67,22 @@ pub(crate) fn insert(editor: &mut Editor, id: ClientId, text: &str) {
 
 #[action("Save file")]
 fn save(editor: &mut Editor, id: ClientId) {
-    // let (_win, buf) = editor.win_buf_mut(id);
-    // if buf.path().is_none() {
-    //     save_as.execute(editor, id);
-    //     return;
-    // }
+    let (_win, buf) = editor.win_buf_mut(id);
+    if buf.path().is_none() {
+        save_as.execute(editor, id);
+        return;
+    }
 
-    // match jobs::save_file(editor, id) {
-    //     Ok(job) => {
-    //         editor.jobs.request(job);
-    //     }
-    //     Err(e) => {
-    //         let (win, buf) = editor.win_buf_mut(id);
-    //         win.error_msg(&format!("Failed to save buffer {}, {e:?}", buf.name()));
-    //     }
-    // }
+    let ropt = buf.read_only_copy();
+    let target = match tmp_file() {
+        Some(tmp) => tmp,
+        None => return,
+    };
+
+    let (_win, buf) = editor.win_buf_mut(id);
+    buf.start_saving();
+    let job = jobs::Save::new(id, ropt, target);
+    editor.job_broker.request(job);
 }
 
 #[action("Prompt filename and save file")]

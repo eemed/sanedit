@@ -1,92 +1,74 @@
-use std::{any::Any, io, path::PathBuf, sync::Arc};
+use std::{fs, path::PathBuf};
 
 use sanedit_buffer::ReadOnlyPieceTree;
 use tokio::{fs::File, io::AsyncWriteExt};
 
 use crate::{
-    common::dirs::tmp_dir,
-    editor::{jobs::Job, Editor},
-    server::{ClientId, JobFutureFn, JobProgress, JobProgressSender},
+    editor::{job_broker::KeepInTouch, Editor},
+    server::{BoxedJob, ClientId, Job, JobContext, JobResult},
 };
 
-pub(crate) fn save_file(editor: &mut Editor, id: ClientId) -> io::Result<Job> {
-    let target = {
-        let (_, buf) = editor.win_buf_mut(id);
-        let name: &str = &buf.name();
-        let mut tmp = tmp_dir().ok_or(io::Error::new(
-            io::ErrorKind::NotFound,
-            "temporary directory not found",
-        ))?;
-
-        tmp.push(PathBuf::from(name));
-        tmp
-    };
-
-    let fun: JobFutureFn = {
-        let (_, buf) = editor.win_buf_mut(id);
-        let ropt = buf.read_only_copy();
-        buf.start_saving();
-        Box::new(move |send| Box::pin(save(send, ropt, target)))
-    };
-    let mut job = Job::new(id, fun);
-
-    job.on_output = Some(Arc::new(
-        |editor: &mut Editor, id: ClientId, out: Box<dyn Any>| {
-            let (win, buf) = editor.win_buf_mut(id);
-            if let Ok(tmp) = out.downcast::<PathBuf>() {
-                // TODO: if buf was file backed, swap the files around so original
-                // is in tmp and use that as backing file instead. this needs to be
-                // done 1 time only. After that the saving is done normally
-                //
-                // buf.save_rename_file_backed() ?? that does this or just do it in
-                // save_rename
-                match buf.save_rename(&*tmp) {
-                    Ok(_) => win.info_msg(&format!("Buffer {} saved", buf.name())),
-                    Err(e) => {
-                        win.error_msg(&format!("Failed to save buffer {}, {e:?}", buf.name()))
-                    }
-                }
-            }
-        },
-    ));
-
-    job.on_error = Some(Arc::new(
-        |editor: &mut Editor, id: ClientId, out: Box<dyn Any>| {
-            let (win, buf) = editor.win_buf_mut(id);
-            if let Ok(e) = out.downcast::<String>() {
-                buf.save_failed();
-                let msg = match buf.path() {
-                    Some(fpath) => format!("Error while renaming file {fpath:?}, {e:?}"),
-                    None => format!("Path not set for buffer {}", buf.name()),
-                };
-                win.error_msg(&msg);
-            }
-        },
-    ));
-
-    Ok(job)
+#[derive(Clone)]
+pub(crate) struct Save {
+    client_id: ClientId,
+    buf: ReadOnlyPieceTree,
+    to: PathBuf,
 }
 
-async fn save(mut send: JobProgressSender, ropt: ReadOnlyPieceTree, to: PathBuf) -> bool {
-    async fn save_impl(ropt: ReadOnlyPieceTree, to: PathBuf) -> Result<(), tokio::io::Error> {
-        let mut file = File::create(&to).await?;
-
-        let mut chunks = ropt.chunks();
-        let mut chunk = chunks.get();
-        while let Some((_, chk)) = chunk {
-            let bytes = chk.as_ref();
-            file.write(bytes).await?;
-            chunk = chunks.next();
+impl Save {
+    pub fn new(id: ClientId, buf: ReadOnlyPieceTree, to: PathBuf) -> Save {
+        Save {
+            client_id: id,
+            buf,
+            to,
         }
+    }
+}
 
-        file.flush().await?;
-        Ok(())
+impl Job for Save {
+    fn run(&self, ctx: &JobContext) -> JobResult {
+        let buf = self.buf.clone();
+        let to = self.to.clone();
+
+        let fut = async move {
+            let mut file = File::create(&to).await?;
+
+            let mut chunks = buf.chunks();
+            let mut chunk = chunks.get();
+            while let Some((_, chk)) = chunk {
+                let bytes = chk.as_ref();
+                file.write(bytes).await?;
+                chunk = chunks.next();
+            }
+
+            file.flush().await?;
+            Ok(())
+        };
+
+        Box::pin(fut)
     }
 
-    use JobProgress::*;
-    let msg = match save_impl(ropt, to.clone()).await {
-        Ok(_) => Output(Box::new(to)),
-        Err(e) => Error(Box::new(e.to_string())),
-    };
-    send.send(msg).await.is_ok()
+    fn box_clone(&self) -> BoxedJob {
+        Box::new((*self).clone())
+    }
+}
+
+impl KeepInTouch for Save {
+    fn client_id(&self) -> ClientId {
+        self.client_id
+    }
+
+    fn on_success(&self, editor: &mut Editor) {
+        let (_win, buf) = editor.win_buf_mut(self.client_id);
+        if let Err(e) = buf.save_succesful(&self.to) {
+            log::error!("Failed to save file to {:?}: {e}", self.to);
+            // cleanup file
+            let _ = fs::remove_file(&self.to);
+        }
+    }
+
+    fn on_failure(&self, editor: &mut Editor, reason: &str) {
+        let (_win, buf) = editor.win_buf_mut(self.client_id);
+        buf.save_failed();
+    }
 }

@@ -11,7 +11,7 @@ pub(crate) mod utf8;
 use std::cmp;
 use std::io::{self, Write};
 use std::ops::{Bound, RangeBounds};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use self::buffers::{AddBuffer, AddBufferReader, AddBufferWriter};
@@ -306,6 +306,17 @@ impl PieceTree {
         self.pt.write_to(writer)
     }
 
+    /// If the buffer is file backed, renames the backing file to another one.
+    #[inline]
+    pub fn rename_backing_file<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
+        self.pt.orig.rename_backing_file(path)
+    }
+
+    #[inline]
+    pub fn backing_file(&self) -> Option<PathBuf> {
+        self.pt.orig.file_path()
+    }
+
     ///
     /// Writes the file in place if the buffer is file backed
     ///
@@ -322,7 +333,7 @@ impl PieceTree {
     ///      2. Probably slower than writing a copy if insert/remove operations are
     ///         in the beginning portion of the file
     ///      3. Previously created undo points/marks cannot be used anymore
-    pub unsafe fn write_in_place(self) -> io::Result<()> {
+    unsafe fn write_in_place(self) -> io::Result<()> {
         inplace::write_in_place(&self.pt)
     }
 

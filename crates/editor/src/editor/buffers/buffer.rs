@@ -14,7 +14,7 @@ use std::{
 use sanedit_buffer::{PieceTree, PieceTreeSlice, ReadOnlyPieceTree, SortedPositions};
 use sanedit_regex::Cursor;
 
-use crate::common::file::File;
+use crate::common::{dirs::tmp_file, file::File};
 
 use self::{cursor::BufferCursor, options::Options, snapshots::Snapshots};
 pub(crate) use change::{Change, ChangeKind};
@@ -258,19 +258,37 @@ impl Buffer {
         self.is_modified
     }
 
-    /// Called when async succesfully saved a copy of the file
     pub fn save_rename(&mut self, copy: &Path) -> io::Result<()> {
-        self.is_saving = false;
+        let path = self.path().ok_or::<io::Error>(io::Error::new(
+            io::ErrorKind::NotFound,
+            "no buffer file path",
+        ))?;
 
+        // Rename backing file if it is the same as our path
         if self.pt.is_file_backed() {
-            todo!()
-        } else {
-            let path = self
-                .path()
-                .ok_or::<io::Error>(io::ErrorKind::NotFound.into())?;
-            fs::rename(copy, path)?;
+            let backing = self.pt.backing_file().ok_or::<io::Error>(io::Error::new(
+                io::ErrorKind::NotFound,
+                "no backing file path",
+            ))?;
+            if backing == path {
+                // TODO handle this on drop
+                let temp = tmp_file()
+                    .ok_or::<io::Error>(io::Error::new(io::ErrorKind::NotFound, "no tmp file"))?;
+                self.pt.rename_backing_file(&temp)?;
+            }
         }
 
+        // TODO does not work across mount points
+        fs::rename(copy, path)?;
+
+        self.is_modified = false;
+        Ok(())
+    }
+
+    /// Called when async succesfully saved a copy of the file
+    pub fn save_succesful(&mut self, copy: &Path) -> io::Result<()> {
+        self.is_saving = false;
+        self.save_rename(copy)?;
         Ok(())
     }
 

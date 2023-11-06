@@ -1,8 +1,8 @@
 use std::{cmp::min, mem};
 
 use sanedit_messages::redraw::{
-    Cell, Component, Cursor, CursorShape, Diffable, IntoCells, Point, Prompt, Redraw, Size,
-    Statusline, Style, ThemeField, Window,
+    Cell, Component, Cursor, CursorShape, Diffable, IntoCells, Point, Prompt, PromptType, Redraw,
+    Size, Statusline, Style, ThemeField, Window,
 };
 
 use crate::ui::UIContext;
@@ -57,8 +57,16 @@ impl Grid {
             },
             Prompt(comp) => match comp {
                 Open(prompt) => {
-                    let rectangle =
-                        Rectangle::new(prompt, Rect::centered(self.size.width, self.size.height));
+                    let rectangle = match prompt.ptype {
+                        PromptType::Oneline => {
+                            let statusline = self.statusline.rect.clone();
+                            Rectangle::new(prompt, statusline)
+                        }
+                        PromptType::Overlay => Rectangle::new(
+                            prompt,
+                            Rect::top_center(self.size.width, self.size.height),
+                        ),
+                    };
                     self.prompt = Some(rectangle);
                 }
                 Update(diff) => {
@@ -212,10 +220,9 @@ where
     rect: Rect,
 }
 
-/// Draw border and return inner cells to draw to
-fn draw_border<'a, 'b>(
+fn draw_border_with_style<'a, 'b, F: Fn(usize, usize) -> Style>(
     border: Border,
-    style: Style,
+    get_style: F,
     mut cells: &'a mut [&'b mut [Cell]],
 ) -> &'a mut [&'b mut [Cell]] {
     let size = size(cells);
@@ -228,11 +235,11 @@ fn draw_border<'a, 'b>(
     for i in 1..size.width {
         cells[0][i] = Cell {
             text: border.top().into(),
-            style,
+            style: get_style(0, i),
         };
         cells[size.height - 1][i] = Cell {
             text: border.bottom().into(),
-            style,
+            style: get_style(size.height - 1, i),
         };
     }
 
@@ -240,33 +247,33 @@ fn draw_border<'a, 'b>(
     for i in 1..size.height {
         cells[i][0] = Cell {
             text: border.left().into(),
-            style,
+            style: get_style(i, 0),
         };
         cells[i][size.width - 1] = Cell {
             text: border.right().into(),
-            style,
+            style: get_style(i, size.width),
         };
     }
 
     // corners
     cells[0][0] = Cell {
         text: border.top_left().into(),
-        style,
+        style: get_style(0, 0),
     };
 
     cells[size.height - 1][0] = Cell {
         text: border.bottom_left().into(),
-        style,
+        style: get_style(size.height - 1, 0),
     };
 
     cells[0][size.width - 1] = Cell {
         text: border.top_right().into(),
-        style,
+        style: get_style(0, size.width - 1),
     };
 
     cells[size.height - 1][size.width - 1] = Cell {
         text: border.bottom_right().into(),
-        style,
+        style: get_style(size.height - 1, size.width - 1),
     };
 
     cells = &mut cells[1..size.height - 1];
@@ -276,6 +283,15 @@ fn draw_border<'a, 'b>(
         cells[i] = &mut line[1..width - 1];
     }
     cells
+}
+
+/// Draw border and return inner cells to draw to
+fn draw_border<'a, 'b>(
+    border: Border,
+    style: Style,
+    cells: &'a mut [&'b mut [Cell]],
+) -> &'a mut [&'b mut [Cell]] {
+    draw_border_with_style(border, |_, _| style, cells)
 }
 
 impl<T: Drawable> Drawable for Rectangle<T> {
@@ -343,6 +359,20 @@ pub(crate) struct Rect {
 
 impl Rect {
     pub fn new(x: usize, y: usize, width: usize, height: usize) -> Rect {
+        Rect {
+            x,
+            y,
+            width,
+            height,
+        }
+    }
+
+    pub fn top_center(width: usize, height: usize) -> Rect {
+        let width = width / 2;
+        let height = height / 2;
+        let x = width / 2;
+        let y = height / 4;
+
         Rect {
             x,
             y,
@@ -483,54 +513,92 @@ impl Drawable for Prompt {
         let default_style = ctx.theme.get(ThemeField::PromptDefault);
         let input_style = ctx.theme.get(ThemeField::PromptUserInput);
 
-        if wsize.height > 2 {
-            let title =
-                into_cells_with_style(&self.message, ctx.theme.get(ThemeField::PromptTitle));
-            let title = center_pad(title, default_style, wsize.width);
-            put_line(title, 0, cells);
+        match self.ptype {
+            PromptType::Oneline => {
+                let mut message =
+                    into_cells_with_style(&self.message, ctx.theme.get(ThemeField::PromptTitle));
+                let colon = into_cells_with_style(": ", ctx.theme.get(ThemeField::PromptTitle));
+                let input = into_cells_with_style(&self.input, input_style);
+                message.extend(colon);
+                message.extend(input);
+                pad_line(&mut message, default_style, wsize.width);
+                put_line(message, 0, cells);
+            }
+            PromptType::Overlay => {
+                if wsize.height > 2 {
+                    let title = into_cells_with_style(
+                        &self.message,
+                        ctx.theme.get(ThemeField::PromptTitle),
+                    );
+                    let title = center_pad(title, default_style, wsize.width);
+                    put_line(title, 0, cells);
 
-            let mut message =
-                into_cells_with_style(" > ", ctx.theme.get(ThemeField::PromptMessage));
-            let input = into_cells_with_style(&self.input, input_style);
-            message.extend(input);
-            pad_line(&mut message, default_style, wsize.width);
-            put_line(message, 1, cells);
+                    let mut message =
+                        into_cells_with_style(" > ", ctx.theme.get(ThemeField::PromptMessage));
+                    let input = into_cells_with_style(&self.input, input_style);
+                    message.extend(input);
+                    pad_line(&mut message, default_style, wsize.width);
+                    put_line(message, 1, cells);
+                }
+
+                cells = &mut cells[2..];
+
+                let pcompl = ctx.theme.get(ThemeField::PromptCompletion);
+                set_style(cells, pcompl);
+                cells = draw_border(Border::Margin, pcompl, cells);
+                let wsize = size(cells);
+
+                self.options.iter().enumerate().for_each(|(i, opt)| {
+                    let field = if Some(i) == self.selected {
+                        ThemeField::PromptCompletionSelected
+                    } else {
+                        ThemeField::PromptCompletion
+                    };
+                    let style = ctx.style(field);
+                    put_line(into_cells_with_style_pad(opt, style, wsize.width), i, cells);
+                });
+            }
         }
-
-        cells = &mut cells[2..];
-
-        let pcompl = ctx.theme.get(ThemeField::PromptCompletion);
-        set_style(cells, pcompl);
-        cells = draw_border(Border::Margin, pcompl, cells);
-        let wsize = size(cells);
-
-        self.options.iter().enumerate().for_each(|(i, opt)| {
-            let field = if Some(i) == self.selected {
-                ThemeField::PromptCompletionSelected
-            } else {
-                ThemeField::PromptCompletion
-            };
-            let style = ctx.style(field);
-            put_line(into_cells_with_style_pad(opt, style, wsize.width), i, cells);
-        });
     }
 
     fn cursor(&self, ctx: &UIContext) -> Option<Cursor> {
-        let cursor_col = {
-            let input_cells_before_cursor = self.input[..self.cursor].into_cells().len();
-            let extra = 3; // " > "
-            extra + input_cells_before_cursor
-        };
-        let style = ctx.theme.get(ThemeField::Default);
-        Some(Cursor {
-            bg: style.fg,
-            fg: style.bg,
-            point: Point {
-                x: cursor_col,
-                y: 1,
-            },
-            shape: CursorShape::Line(true),
-        })
+        match self.ptype {
+            PromptType::Oneline => {
+                let cursor_col = {
+                    let input_cells_before_cursor = self.input[..self.cursor].into_cells().len();
+                    let msg = self.message.chars().count();
+                    let extra = 2; // ": "
+                    msg + extra + input_cells_before_cursor
+                };
+                let style = ctx.theme.get(ThemeField::Default);
+                Some(Cursor {
+                    bg: style.fg,
+                    fg: style.bg,
+                    point: Point {
+                        x: cursor_col,
+                        y: 0,
+                    },
+                    shape: CursorShape::Line(true),
+                })
+            }
+            PromptType::Overlay => {
+                let cursor_col = {
+                    let input_cells_before_cursor = self.input[..self.cursor].into_cells().len();
+                    let extra = 3; // " > "
+                    extra + input_cells_before_cursor
+                };
+                let style = ctx.theme.get(ThemeField::Default);
+                Some(Cursor {
+                    bg: style.fg,
+                    fg: style.bg,
+                    point: Point {
+                        x: cursor_col,
+                        y: 1,
+                    },
+                    shape: CursorShape::Line(true),
+                })
+            }
+        }
     }
 }
 

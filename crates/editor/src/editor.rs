@@ -320,10 +320,20 @@ impl Editor {
             }
             Succesful(id) => {
                 log::info!("Job {id} succesful.");
+                if let Some(prog) = self.job_broker.get(id) {
+                    prog.on_success(self);
+                    let cid = prog.client_id();
+                    self.redraw(cid);
+                }
                 self.job_broker.done(id);
             }
             Failed(id, reason) => {
                 log::info!("Job {id} failed because {}.", reason);
+                if let Some(prog) = self.job_broker.get(id) {
+                    prog.on_failure(self, &reason);
+                    let cid = prog.client_id();
+                    self.redraw(cid);
+                }
                 self.job_broker.done(id);
             }
         }

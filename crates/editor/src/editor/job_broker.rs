@@ -7,7 +7,9 @@ use super::Editor;
 /// A job that keeps in touch (can send messages back) with the editor
 pub(crate) trait KeepInTouch: Job {
     /// Ran when the job sends the message back to the editor
-    fn on_message(&self, editor: &mut Editor, msg: Box<dyn Any>);
+    fn on_message(&self, editor: &mut Editor, msg: Box<dyn Any>) {}
+    fn on_success(&self, editor: &mut Editor) {}
+    fn on_failure(&self, editor: &mut Editor, reason: &str) {}
     fn client_id(&self) -> ClientId;
 }
 

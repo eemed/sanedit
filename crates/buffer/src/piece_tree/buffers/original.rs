@@ -3,7 +3,7 @@ mod slice;
 
 use std::{
     cmp::min,
-    fs::File,
+    fs::{self, File},
     io::{self, Read, Seek, SeekFrom, Write},
     ops::Range,
     path::{Path, PathBuf},
@@ -132,33 +132,35 @@ impl OriginalBuffer {
     }
 
     #[inline]
-    pub fn file_path(&self) -> PathBuf {
+    pub fn file_path(&self) -> Option<PathBuf> {
         use OriginalBuffer::*;
         match self {
             File { file, .. } => {
                 if let Ok(pfile) = file.lock() {
-                    pfile.path.clone()
+                    Some(pfile.path.clone())
                 } else {
-                    unreachable!("failed to lock backing file");
+                    None
                 }
             }
-            _ => unreachable!("no file path for memory buffer"),
+            _ => None,
         }
     }
 
-    pub fn swap_backing_file<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
+    pub fn rename_backing_file<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
         match self {
             OriginalBuffer::File { file, .. } => {
                 if let Ok(mut pfile) = file.lock() {
-                    pfile.path = path.as_ref().into();
-                    pfile.file = File::open(path)?;
+                    let target = path.as_ref();
+                    fs::rename(&pfile.path, target)?;
+                    pfile.path = target.into();
+                    pfile.file = File::open(target)?;
                     Ok(())
                 } else {
                     unreachable!("failed to lock backing file");
                 }
             }
             OriginalBuffer::Memory { bytes } => {
-                unreachable!("cannot swap backing file on memory buffer")
+                unreachable!("cannot rename backing file on memory buffer")
             }
         }
     }

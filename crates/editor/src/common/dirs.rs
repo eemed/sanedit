@@ -25,3 +25,11 @@ pub(crate) fn tmp_dir() -> Option<PathBuf> {
 
     Some(tmp)
 }
+
+pub(crate) fn tmp_file() -> Option<PathBuf> {
+    let id = uuid::Uuid::new_v4();
+    let mut result = tmp_dir()?;
+    result.push(PathBuf::from(id.to_string()));
+    log::info!("tmp file: {result:?}");
+    Some(result)
+}

@@ -1,6 +1,6 @@
 use std::cmp;
 
-use sanedit_messages::redraw;
+use sanedit_messages::redraw::{self, PromptType};
 
 use crate::editor::windows::Prompt;
 
@@ -36,5 +36,6 @@ pub(crate) fn draw(prompt: &Prompt, ctx: &mut DrawContext) -> redraw::Prompt {
         options,
         message: msg,
         selected: selected_relative_pos,
+        ptype: PromptType::Overlay,
     }
 }

@@ -135,7 +135,7 @@ fn in_place_write_ops(pt: &ReadOnlyPieceTree) -> Vec<WriteOp> {
 fn do_write_in_place(pt: &ReadOnlyPieceTree, ops: Vec<WriteOp>) -> io::Result<()> {
     let mut iter = ops.into_iter();
     let mut op = iter.next();
-    let path = pt.orig.file_path();
+    let path = pt.orig.file_path().unwrap();
 
     while op.is_some() {
         // Handle extending and truncating

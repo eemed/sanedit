@@ -18,7 +18,7 @@ pub(crate) use id::*;
 pub(crate) type JobsHandle = mpsc::Sender<ToJobs>;
 /// A job that can be sent to other threads
 pub(crate) type BoxedJob = Box<dyn Job + Send + Sync>;
-pub(crate) type JobResult = BoxFuture<'static, Result<(), String>>;
+pub(crate) type JobResult = BoxFuture<'static, anyhow::Result<()>>;
 
 /// Jobs that can be ran on async runner
 pub(crate) trait Job {
@@ -58,13 +58,13 @@ async fn jobs_loop(mut recv: mpsc::Receiver<ToJobs>, handle: EditorHandle) {
                 use ToJobs::*;
                 match msg {
                     Request(id, job) => {
-                        let mut ctx = context.to_job_context(id);
+                        let ctx = context.to_job_context(id);
                         let task = async move {
                             let result = job.run(&ctx).await;
                             let mut ctx: InternalJobContext = ctx.into();
                             let _ = match result {
                                 Ok(_) => ctx.success(id).await,
-                                Err(reason) => ctx.failure(id, reason).await,
+                                Err(reason) => ctx.failure(id, reason.to_string()).await,
                             };
                         };
 

@@ -1,4 +1,4 @@
-use sanedit_messages::redraw;
+use sanedit_messages::redraw::{self, PromptType};
 
 use crate::editor::windows::Search;
 
@@ -16,5 +16,6 @@ pub(crate) fn draw(search: &Search, _ctx: &mut DrawContext) -> redraw::Prompt {
         cursor,
         options: vec![],
         selected: None,
+        ptype: PromptType::Oneline,
     }
 }

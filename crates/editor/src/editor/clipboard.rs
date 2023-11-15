@@ -1,4 +1,4 @@
-use anyhow::anyhow;
+use anyhow::ensure;
 use anyhow::Result;
 
 pub(crate) trait Clipboard {
@@ -17,10 +17,7 @@ pub(crate) struct XClip;
 
 impl XClip {
     pub fn new() -> Result<XClip> {
-        if !is_executable("xclip") {
-            return Err(anyhow!("xclip not executable"));
-        }
-
+        ensure!(is_executable("xclip"), "xclip not executable");
         Ok(XClip)
     }
 }

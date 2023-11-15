@@ -1,4 +1,5 @@
 pub(crate) mod buffers;
+pub(crate) mod clipboard;
 pub(crate) mod hooks;
 pub(crate) mod job_broker;
 pub(crate) mod keymap;

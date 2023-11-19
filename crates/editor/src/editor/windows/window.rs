@@ -20,6 +20,7 @@ use crate::{
     },
     editor::{
         buffers::{Buffer, BufferId, SnapshotData, SortedRanges},
+        clipboard::{Clipboard, DefaultClipboard},
         keymap::Keymap,
     },
 };
@@ -42,6 +43,7 @@ pub(crate) struct Window {
     view: View,
     message: Option<StatusMessage>,
     keymap: Keymap,
+    pub clipboard: Box<dyn Clipboard>,
 
     pub completion: Completion,
     pub cursors: Cursors,
@@ -57,6 +59,7 @@ impl Window {
             buf,
             view: View::new(width, height),
             message: None,
+            clipboard: DefaultClipboard::new(),
             completion: Completion::default(),
             cursors: Cursors::default(),
             keymap: Keymap::window(),

@@ -1,3 +1,9 @@
+use std::fmt;
+use std::io::Write;
+use std::process::Command;
+use std::process::Stdio;
+
+use anyhow::anyhow;
 use anyhow::ensure;
 use anyhow::Result;
 
@@ -11,9 +17,9 @@ macro_rules! try_clipboard {
     };
 }
 
-pub(crate) trait Clipboard {
+pub(crate) trait Clipboard: fmt::Debug {
     fn copy(&mut self, text: &str);
-    fn paste(&mut self) -> Option<String>;
+    fn paste(&mut self) -> Result<String>;
 }
 
 pub(crate) struct DefaultClipboard;
@@ -21,13 +27,13 @@ impl DefaultClipboard {
     #[cfg(unix)]
     pub fn new() -> Box<dyn Clipboard> {
         try_clipboard!(XClip);
-        try_clipboard!(XSel);
 
         // Fallback
         Box::new(Internal::new())
     }
 }
 
+#[derive(Debug)]
 pub(crate) struct Internal {
     content: Option<String>,
 }
@@ -43,11 +49,12 @@ impl Clipboard for Internal {
         self.content = Some(text.into());
     }
 
-    fn paste(&mut self) -> Option<String> {
-        self.content.clone()
+    fn paste(&mut self) -> Result<String> {
+        self.content.clone().ok_or(anyhow!("No content"))
     }
 }
 
+#[derive(Debug)]
 pub(crate) struct XClip;
 
 impl XClip {
@@ -59,39 +66,31 @@ impl XClip {
 
 impl Clipboard for XClip {
     fn copy(&mut self, text: &str) {
-        // xclip -in -selection clipboard
-        // clip from stdin
-        todo!()
+        let mut child = Command::new("xclip")
+            .args(["-in", "-selection", "clipboard"])
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .spawn()
+            .expect("Failed to spawn xclip process");
+
+        let mut stdin = child.stdin.take().expect("Failed to open stdin");
+        let _ = stdin.write_all(text.as_bytes());
+        drop(stdin);
+        child.wait().expect("Failed to execute xclip");
     }
 
-    fn paste(&mut self) -> Option<String> {
-        // xclip -out -selection clipboard
-        todo!()
-    }
-}
-
-pub(crate) struct XSel;
-impl XSel {
-    pub fn new() -> Result<XSel> {
-        ensure!(is_executable("xsel"), "xsel not executable");
-        Ok(XSel)
-    }
-}
-
-impl Clipboard for XSel {
-    fn copy(&mut self, text: &str) {
-        todo!()
-    }
-
-    fn paste(&mut self) -> Option<String> {
-        todo!()
+    fn paste(&mut self) -> Result<String> {
+        let output = Command::new("xclip")
+            .args(["-out", "-selection", "clipboard"])
+            .stdin(Stdio::null())
+            .stdout(Stdio::piped())
+            .output()
+            .expect("Failed to execute xclip");
+        let pasted = String::from_utf8(output.stdout)?;
+        Ok(pasted)
     }
 }
 
 fn is_executable(cmd: &str) -> bool {
-    todo!()
-}
-
-fn execute(cmd: &str) -> Result<String> {
-    todo!()
+    which::which(cmd).is_ok()
 }

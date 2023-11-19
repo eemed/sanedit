@@ -98,3 +98,26 @@ fn save_as(editor: &mut Editor, id: ClientId) {
         .build();
     win.focus = Focus::Prompt;
 }
+
+#[action("Copy selection to clipboard")]
+fn copy(editor: &mut Editor, id: ClientId) {
+    // TODO multi cursor
+    let (win, buf) = editor.win_buf_mut(id);
+    let cursor = win.cursors.primary_mut();
+    if let Some(sel) = cursor.selection() {
+        let text = String::from(&buf.slice(sel));
+        log::info!("copy in");
+        win.clipboard.copy(&text);
+        log::info!("copy out");
+        cursor.unanchor();
+    }
+}
+
+#[action("Paste from clipboard")]
+fn paste(editor: &mut Editor, id: ClientId) {
+    // TODO multi cursor
+    let (win, _buf) = editor.win_buf_mut(id);
+    if let Ok(text) = win.clipboard.paste() {
+        insert(editor, id, &text);
+    }
+}

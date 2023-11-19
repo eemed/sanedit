@@ -25,7 +25,7 @@ impl Keymap {
 
         #[rustfmt::skip]
         map!(map,
-             "ctrl+c", editor::quit,
+             "ctrl+q", editor::quit,
              "ctrl+s", text::save,
              "up", movement::prev_line,
              "down", movement::next_line,
@@ -33,6 +33,10 @@ impl Keymap {
              "right", movement::next_grapheme,
              "backspace", text::remove_grapheme_before_cursor,
              "delete", text::remove_grapheme_after_cursor,
+
+             "ctrl+c", text::copy,
+             "ctrl+v", text::paste,
+             // "ctrl+x", Action::next_visual_line,
 
              "alt+b", movement::end_of_buffer,
              "alt+B", movement::start_of_buffer,

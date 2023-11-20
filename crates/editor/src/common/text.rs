@@ -1,6 +1,9 @@
-use std::ops::Range;
+use std::{io, ops::Range};
 
-use sanedit_buffer::{utf8::EndOfLine, PieceTreeSlice};
+use sanedit_buffer::{
+    utf8::{prev_eol, EndOfLine},
+    PieceTree, PieceTreeSlice,
+};
 
 use crate::common::movement::next_grapheme_boundary;
 
@@ -117,26 +120,41 @@ pub(crate) fn word_at_pos(slice: &PieceTreeSlice, pos: usize) -> Option<Range<us
     };
 
     Some(start..end)
+}
 
-    // let cat = graphemes.next().as_ref().map(grapheme_category)?;
-    // if !cat.is_word() {
-    //     return None;
-    // }
+pub(crate) fn strip_eol(slice: &mut PieceTreeSlice) {
+    let mut bytes = slice.bytes_at(slice.len());
+    if let Some(mat) = prev_eol(&mut bytes) {
+        let end = slice.len() - mat.eol.len();
+        *slice = slice.slice(..end);
+    }
+}
 
-    // let start = if on_word_start(slice, pos) {
-    //     pos
-    // } else {
-    //     prev_word_start(slice, pos)
-    // };
+pub(crate) fn as_lines(text: &str) -> Vec<String> {
+    let pt = PieceTree::from_reader(io::Cursor::new(text)).unwrap();
+    let mut lines = pt.lines();
+    let mut result = vec![];
 
-    // let end = {
-    //     let end = if on_word_end(slice, pos) {
-    //         pos
-    //     } else {
-    //         next_word_end(slice, pos)
-    //     };
-    //     next_grapheme_boundary(slice, end)
-    // };
+    while let Some(mut line) = lines.next() {
+        if line.is_empty() {
+            continue;
+        }
+        strip_eol(&mut line);
+        let sline = String::from(&line);
+        result.push(sline);
+    }
 
-    // Some(start..end)
+    result
+}
+
+pub(crate) fn to_line(lines: Vec<String>, eol: EndOfLine) -> String {
+    let mut result = String::new();
+    for line in lines {
+        if !result.is_empty() {
+            result.push_str(eol.as_ref());
+        }
+        result.push_str(&line);
+    }
+
+    result
 }

@@ -8,15 +8,16 @@ mod search;
 mod selector;
 mod view;
 
-use std::ops::Range;
+use std::{io, ops::Range};
 
-use sanedit_buffer::SortedPositions;
+use sanedit_buffer::{PieceTree, SortedPositions};
 use sanedit_messages::redraw::{Severity, Size, StatusMessage};
 
 use crate::{
     common::{
         char::DisplayOptions,
         movement::{self, prev_grapheme_boundary},
+        text::{as_lines, to_line},
     },
     editor::{
         buffers::{Buffer, BufferId, SnapshotData, SortedRanges},
@@ -261,6 +262,56 @@ impl Window {
 
         self.invalidate_view();
         true
+    }
+
+    pub fn copy_to_clipboard(&mut self, buf: &Buffer) {
+        let mut lines = vec![];
+        for cursor in self.cursors.cursors_mut() {
+            if let Some(sel) = cursor.selection() {
+                let text = String::from(&buf.slice(sel));
+                lines.push(text);
+                cursor.unanchor();
+            }
+        }
+
+        let line = to_line(lines, buf.options().eol);
+        self.clipboard.copy(&line);
+    }
+
+    fn insert_to_each_cursor(&mut self, buf: &mut Buffer, texts: Vec<String>) {
+        debug_assert!(
+            texts.len() == self.cursors.len(),
+            "Cursors {} and texts {} count mismatch",
+            self.cursors.len(),
+            texts.len()
+        );
+
+        self.remove_cursor_selections(buf);
+
+        let mut inserted = 0;
+        for (i, cursor) in self.cursors.cursors_mut().iter_mut().enumerate() {
+            let text = &texts[i];
+            let cpos = cursor.pos() + inserted;
+            buf.insert(cpos, text);
+            cursor.goto(cpos + text.len());
+            inserted += text.len();
+        }
+
+        self.invalidate_view();
+    }
+
+    pub fn paste_from_clipboard(&mut self, buf: &mut Buffer) {
+        if let Ok(text) = self.clipboard.paste() {
+            let lines = as_lines(text.as_str());
+            let clen = self.cursors.cursors().len();
+            let llen = lines.len();
+
+            if clen == llen {
+                self.insert_to_each_cursor(buf, lines);
+            } else {
+                self.insert_at_cursors(buf, &text);
+            }
+        }
     }
 
     pub fn insert_at_cursors(&mut self, buf: &mut Buffer, text: &str) {

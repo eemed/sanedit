@@ -10,9 +10,9 @@ use crate::actions::{search, Action};
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub(crate) enum Hook {
-    /// Before a character is inserted into the buffer
-    InsertCharPre,
-    /// Before a character is removed from the buffer
+    /// Before a text is inserted into the buffer
+    InsertPre,
+    /// Before a text is removed from the buffer
     RemoveCharPre,
     CursorMoved,
 
@@ -85,7 +85,7 @@ impl Default for Hooks {
             hook_types: HashMap::new(),
             hooks: HashMap::new(),
         };
-        hooks.register(Hook::InsertCharPre, search::clear_matches);
+        hooks.register(Hook::InsertPre, search::clear_matches);
         hooks.register(Hook::RemoveCharPre, search::clear_matches);
         hooks.register(
             Hook::CursorMoved,

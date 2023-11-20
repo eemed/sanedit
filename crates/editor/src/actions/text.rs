@@ -1,5 +1,7 @@
 use std::{io, path::PathBuf, rc::Rc};
 
+use sanedit_buffer::PieceTree;
+
 use crate::{
     common::dirs::{tmp_dir, tmp_file},
     editor::{
@@ -57,7 +59,7 @@ pub(crate) fn insert(editor: &mut Editor, id: ClientId, text: &str) {
             }
         }
         Focus::Window => {
-            run(editor, id, Hook::InsertCharPre);
+            run(editor, id, Hook::InsertPre);
             let (win, buf) = editor.win_buf_mut(id);
             win.insert_at_cursors(buf, text);
         }
@@ -101,23 +103,12 @@ fn save_as(editor: &mut Editor, id: ClientId) {
 
 #[action("Copy selection to clipboard")]
 fn copy(editor: &mut Editor, id: ClientId) {
-    // TODO multi cursor
     let (win, buf) = editor.win_buf_mut(id);
-    let cursor = win.cursors.primary_mut();
-    if let Some(sel) = cursor.selection() {
-        let text = String::from(&buf.slice(sel));
-        log::info!("copy in");
-        win.clipboard.copy(&text);
-        log::info!("copy out");
-        cursor.unanchor();
-    }
+    win.copy_to_clipboard(buf);
 }
 
 #[action("Paste from clipboard")]
 fn paste(editor: &mut Editor, id: ClientId) {
-    // TODO multi cursor
-    let (win, _buf) = editor.win_buf_mut(id);
-    if let Ok(text) = win.clipboard.paste() {
-        insert(editor, id, &text);
-    }
+    let (win, buf) = editor.win_buf_mut(id);
+    win.paste_from_clipboard(buf);
 }

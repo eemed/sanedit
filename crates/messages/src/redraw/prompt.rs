@@ -17,6 +17,7 @@ pub struct Prompt {
     pub options: Vec<String>,
     pub selected: Option<usize>,
     pub ptype: PromptType,
+    pub max_completions: usize,
 }
 
 impl Diffable for Prompt {

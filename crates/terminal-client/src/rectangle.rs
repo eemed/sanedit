@@ -1,8 +1,11 @@
-use std::{cmp::min, mem};
+use std::{
+    cmp::{max, min},
+    mem,
+};
 
 use sanedit_messages::redraw::{
     Cell, Component, Cursor, CursorShape, Diffable, IntoCells, Point, Prompt, PromptType, Redraw,
-    Size, Statusline, Style, ThemeField, Window,
+    Severity, Size, StatusMessage, Statusline, Style, ThemeField, Window,
 };
 
 use crate::ui::UIContext;
@@ -13,6 +16,7 @@ pub(crate) struct Grid {
     statusline: Rectangle<Statusline>,
     // gutter: Option<Rectangle<()>>,
     prompt: Option<Rectangle<Prompt>>,
+    msg: Option<Rectangle<StatusMessage>>,
 
     drawn: Vec<Vec<Cell>>,
     cursor: Cursor,
@@ -34,10 +38,15 @@ impl Grid {
             window: Rectangle::new(Window::default(), window),
             statusline: Rectangle::new(Statusline::default(), statusline),
             prompt: None,
+            msg: None,
 
             drawn: vec![vec![Cell::default(); width]; height],
             cursor: Cursor::default(),
         }
+    }
+
+    pub fn on_send_input(&mut self) {
+        self.msg = None;
     }
 
     pub fn handle_redraw(&mut self, ctx: &UIContext, msg: Redraw) {
@@ -62,10 +71,19 @@ impl Grid {
                             let statusline = self.statusline.rect.clone();
                             Rectangle::new(prompt, statusline)
                         }
-                        PromptType::Overlay => Rectangle::new(
-                            prompt,
-                            Rect::top_center(self.size.width, self.size.height),
-                        ),
+                        PromptType::Overlay => {
+                            // TODO magic number 4, padding top + bottom
+                            let mut rect = Rect::top_center(self.size.width, self.size.height);
+                            let required = prompt.max_completions + 4;
+                            if rect.height < required {
+                                rect.y = 0;
+                                rect.height = required.min(self.size.height);
+                                Rectangle::new(prompt, rect)
+                            } else {
+                                rect.height = min(rect.height, required);
+                                Rectangle::new(prompt, rect)
+                            }
+                        }
                     };
                     self.prompt = Some(rectangle);
                 }
@@ -76,6 +94,15 @@ impl Grid {
                 }
                 Close => self.prompt = None,
             },
+            StatusMessage(msg) => {
+                let rect = Rect {
+                    x: 0,
+                    y: 0,
+                    width: self.size.width,
+                    height: 1,
+                };
+                self.msg = Some(Rectangle::new(msg, rect));
+            }
             _ => {} // Completion(comp) => match comp {
                     //     Open(compl) => self.completion = Some(compl),
                     //     Update(diff) => {
@@ -85,7 +112,6 @@ impl Grid {
                     //     }
                     //     Close => self.completion = None,
                     // },
-                    // StatusMessage(msg) => self.msg = Some(msg),
                     // LineNumbers(numbers) => {
                     //     let gutter = Gutter::new(numbers);
                     //     ctx.gutter_size = gutter.width();
@@ -94,7 +120,10 @@ impl Grid {
         }
     }
 
-    pub fn resize(&mut self, width: usize, height: usize) {}
+    pub fn resize(&mut self, width: usize, height: usize) {
+        *self = Grid::new(width, height);
+        // TODO popups
+    }
 
     pub fn window_rect(&self) -> Rect {
         self.window.rect.clone()
@@ -367,6 +396,8 @@ impl Rect {
         }
     }
 
+    pub fn prompt_overlay(width: usize, height: usize, maxheight: usize) {}
+
     pub fn top_center(width: usize, height: usize) -> Rect {
         let width = width / 2;
         let height = height / 2;
@@ -547,16 +578,21 @@ impl Drawable for Prompt {
                 set_style(cells, pcompl);
                 cells = draw_border(Border::Margin, pcompl, cells);
                 let wsize = size(cells);
+                let max_opts = wsize.height;
 
-                self.options.iter().enumerate().for_each(|(i, opt)| {
-                    let field = if Some(i) == self.selected {
-                        ThemeField::PromptCompletionSelected
-                    } else {
-                        ThemeField::PromptCompletion
-                    };
-                    let style = ctx.style(field);
-                    put_line(into_cells_with_style_pad(opt, style, wsize.width), i, cells);
-                });
+                self.options
+                    .iter()
+                    .take(max_opts)
+                    .enumerate()
+                    .for_each(|(i, opt)| {
+                        let field = if Some(i) == self.selected {
+                            ThemeField::PromptCompletionSelected
+                        } else {
+                            ThemeField::PromptCompletion
+                        };
+                        let style = ctx.style(field);
+                        put_line(into_cells_with_style_pad(opt, style, wsize.width), i, cells);
+                    });
             }
         }
     }
@@ -599,6 +635,28 @@ impl Drawable for Prompt {
                 })
             }
         }
+    }
+}
+
+impl Drawable for StatusMessage {
+    fn draw(&self, ctx: &UIContext, cells: &mut [&mut [Cell]]) {
+        let field = match self.severity {
+            Severity::Info => ThemeField::Info,
+            Severity::Warn => ThemeField::Warn,
+            Severity::Error => ThemeField::Error,
+        };
+        let style = ctx.style(field);
+        let width = cells.get(0).map(|c| c.len()).unwrap_or(0);
+        for (i, cell) in into_cells_with_theme_pad_with(&self.message, &style, width)
+            .into_iter()
+            .enumerate()
+        {
+            cells[0][i] = cell;
+        }
+    }
+
+    fn cursor(&self, ctx: &UIContext) -> Option<Cursor> {
+        None
     }
 }
 

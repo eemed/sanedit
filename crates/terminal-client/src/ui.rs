@@ -42,13 +42,14 @@ impl UI {
 
     /// Called when client will send input to server
     pub fn on_send_input(&mut self, _msg: &Message) {
-        // self.grid.msg = None;
+        self.grid.on_send_input();
     }
 
     pub fn handle_message(&mut self, msg: ClientMessage) -> bool {
         // log::info!("Client got message: {:?}", msg);
         match msg {
             ClientMessage::Hello => {}
+            ClientMessage::SetOption(_) => {}
             ClientMessage::Theme(theme) => self.context.theme = theme,
             ClientMessage::Redraw(msg) => {
                 self.grid.handle_redraw(&self.context, msg);

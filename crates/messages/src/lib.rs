@@ -5,6 +5,7 @@
 mod codec;
 mod key;
 mod mouse;
+mod option;
 mod reader;
 pub mod redraw;
 mod writer;
@@ -12,6 +13,7 @@ mod writer;
 pub use codec::BinCodec;
 pub use key::{try_parse_keyevents, Key, KeyEvent, KeyMods};
 pub use mouse::{MouseButton, MouseEvent, MouseEventKind};
+pub use option::Option;
 pub use reader::Reader;
 use redraw::{Redraw, Size, Theme};
 use serde::{Deserialize, Serialize};
@@ -24,6 +26,7 @@ pub enum ClientMessage {
     Hello,
     Theme(Theme),
     Redraw(Redraw),
+    SetOption(Option),
     Flush,
     Bye,
 }

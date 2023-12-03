@@ -17,5 +17,6 @@ pub(crate) fn draw(search: &Search, _ctx: &mut DrawContext) -> redraw::Prompt {
         options: vec![],
         selected: None,
         ptype: PromptType::Oneline,
+        max_completions: 0,
     }
 }

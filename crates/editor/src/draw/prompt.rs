@@ -37,5 +37,6 @@ pub(crate) fn draw(prompt: &Prompt, ctx: &mut DrawContext) -> redraw::Prompt {
         message: msg,
         selected: selected_relative_pos,
         ptype: PromptType::Overlay,
+        max_completions: compl_count,
     }
 }

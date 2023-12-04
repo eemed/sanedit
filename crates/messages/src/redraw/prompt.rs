@@ -3,9 +3,9 @@ use serde::{Deserialize, Serialize};
 use super::{Component, Diffable, Redraw};
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
-pub enum PromptType {
-    Oneline,
-    Overlay,
+pub enum Source {
+    Search,
+    Prompt,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
@@ -16,7 +16,7 @@ pub struct Prompt {
     pub cursor: usize,
     pub options: Vec<String>,
     pub selected: Option<usize>,
-    pub ptype: PromptType,
+    pub source: Source,
     pub max_completions: usize,
 }
 

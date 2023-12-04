@@ -4,8 +4,8 @@ use std::{
 };
 
 use sanedit_messages::redraw::{
-    Cell, Component, Cursor, CursorShape, Diffable, IntoCells, Point, Prompt, PromptType, Redraw,
-    Severity, Size, StatusMessage, Statusline, Style, ThemeField, Window,
+    Cell, Component, Cursor, CursorShape, Diffable, IntoCells, Point, Prompt, Redraw, Severity,
+    Size, Source, StatusMessage, Statusline, Style, ThemeField, Window,
 };
 
 use crate::ui::UIContext;
@@ -15,7 +15,7 @@ pub(crate) struct Grid {
     window: Rectangle<Window>,
     statusline: Rectangle<Statusline>,
     // gutter: Option<Rectangle<()>>,
-    prompt: Option<Rectangle<Prompt>>,
+    prompt: Option<Rectangle<CustomPrompt>>,
     msg: Option<Rectangle<StatusMessage>>,
 
     drawn: Vec<Vec<Cell>>,
@@ -66,30 +66,35 @@ impl Grid {
             },
             Prompt(comp) => match comp {
                 Open(prompt) => {
-                    let rectangle = match prompt.ptype {
-                        PromptType::Oneline => {
-                            let statusline = self.statusline.rect.clone();
-                            Rectangle::new(prompt, statusline)
-                        }
-                        PromptType::Overlay => {
-                            // TODO magic number 4, padding top + bottom
-                            let mut rect = Rect::top_center(self.size.width, self.size.height);
-                            let required = prompt.max_completions + 4;
-                            if rect.height < required {
-                                rect.y = 0;
-                                rect.height = required.min(self.size.height);
-                                Rectangle::new(prompt, rect)
+                    let olay = Rect::top_center(self.size.width, self.size.height);
+                    let required = prompt.max_completions + 4;
+                    let style = match prompt.source {
+                        Source::Search => PromptStyle::Oneline,
+                        Source::Prompt => {
+                            if olay.height < required {
+                                PromptStyle::Oneline
                             } else {
-                                rect.height = min(rect.height, required);
-                                Rectangle::new(prompt, rect)
+                                PromptStyle::Overlay
                             }
                         }
                     };
-                    self.prompt = Some(rectangle);
+                    let rect = match style {
+                        PromptStyle::Oneline => {
+                            let mut rect = self.statusline.rect.clone();
+                            rect.height = min(required, self.size.height);
+                            Rectangle::new(CustomPrompt { prompt, style }, rect)
+                        }
+                        PromptStyle::Overlay => {
+                            let mut olay = olay;
+                            olay.height = min(olay.height, required);
+                            Rectangle::new(CustomPrompt { prompt, style }, olay)
+                        }
+                    };
+                    self.prompt = Some(rect);
                 }
                 Update(diff) => {
                     if let Some(ref mut prompt) = self.prompt {
-                        prompt.inner.update(diff);
+                        prompt.inner.prompt.update(diff);
                     }
                 }
                 Close => self.prompt = None,
@@ -241,12 +246,42 @@ impl Border {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+enum PromptStyle {
+    /// Simple one line prompt with options on another lines
+    Oneline,
+    /// An overlay window
+    Overlay,
+}
+
+#[derive(Debug)]
+struct CustomPrompt {
+    style: PromptStyle,
+    prompt: Prompt,
+}
+
 pub(crate) struct Rectangle<T>
 where
     T: Drawable,
 {
     inner: T,
     rect: Rect,
+}
+
+impl<T: Drawable> Rectangle<T> {
+    pub fn new(t: T, rect: Rect) -> Rectangle<T> {
+        Rectangle { inner: t, rect }
+    }
+}
+
+impl<T: Drawable> Drawable for Rectangle<T> {
+    fn draw(&self, ctx: &UIContext, cells: &mut [&mut [Cell]]) {
+        self.inner.draw(ctx, cells);
+    }
+
+    fn cursor(&self, ctx: &UIContext) -> Option<Cursor> {
+        self.inner.cursor(ctx)
+    }
 }
 
 fn draw_border_with_style<'a, 'b, F: Fn(usize, usize) -> Style>(
@@ -321,22 +356,6 @@ fn draw_border<'a, 'b>(
     cells: &'a mut [&'b mut [Cell]],
 ) -> &'a mut [&'b mut [Cell]] {
     draw_border_with_style(border, |_, _| style, cells)
-}
-
-impl<T: Drawable> Drawable for Rectangle<T> {
-    fn draw(&self, ctx: &UIContext, cells: &mut [&mut [Cell]]) {
-        self.inner.draw(ctx, cells);
-    }
-
-    fn cursor(&self, ctx: &UIContext) -> Option<Cursor> {
-        self.inner.cursor(ctx)
-    }
-}
-
-impl<T: Drawable> Rectangle<T> {
-    pub fn new(t: T, rect: Rect) -> Rectangle<T> {
-        Rectangle { inner: t, rect }
-    }
 }
 
 pub(crate) enum SplitPoint {
@@ -538,27 +557,29 @@ impl Drawable for Statusline {
     }
 }
 
-impl Drawable for Prompt {
+impl Drawable for CustomPrompt {
     fn draw(&self, ctx: &UIContext, mut cells: &mut [&mut [Cell]]) {
         let wsize = size(cells);
         let default_style = ctx.theme.get(ThemeField::PromptDefault);
         let input_style = ctx.theme.get(ThemeField::PromptUserInput);
 
-        match self.ptype {
-            PromptType::Oneline => {
-                let mut message =
-                    into_cells_with_style(&self.message, ctx.theme.get(ThemeField::PromptTitle));
+        match self.style {
+            PromptStyle::Oneline => {
+                let mut message = into_cells_with_style(
+                    &self.prompt.message,
+                    ctx.theme.get(ThemeField::PromptTitle),
+                );
                 let colon = into_cells_with_style(": ", ctx.theme.get(ThemeField::PromptTitle));
-                let input = into_cells_with_style(&self.input, input_style);
+                let input = into_cells_with_style(&self.prompt.input, input_style);
                 message.extend(colon);
                 message.extend(input);
                 pad_line(&mut message, default_style, wsize.width);
                 put_line(message, 0, cells);
             }
-            PromptType::Overlay => {
+            PromptStyle::Overlay => {
                 if wsize.height > 2 {
                     let title = into_cells_with_style(
-                        &self.message,
+                        &self.prompt.message,
                         ctx.theme.get(ThemeField::PromptTitle),
                     );
                     let title = center_pad(title, default_style, wsize.width);
@@ -566,7 +587,7 @@ impl Drawable for Prompt {
 
                     let mut message =
                         into_cells_with_style(" > ", ctx.theme.get(ThemeField::PromptMessage));
-                    let input = into_cells_with_style(&self.input, input_style);
+                    let input = into_cells_with_style(&self.prompt.input, input_style);
                     message.extend(input);
                     pad_line(&mut message, default_style, wsize.width);
                     put_line(message, 1, cells);
@@ -580,12 +601,13 @@ impl Drawable for Prompt {
                 let wsize = size(cells);
                 let max_opts = wsize.height;
 
-                self.options
+                self.prompt
+                    .options
                     .iter()
                     .take(max_opts)
                     .enumerate()
                     .for_each(|(i, opt)| {
-                        let field = if Some(i) == self.selected {
+                        let field = if Some(i) == self.prompt.selected {
                             ThemeField::PromptCompletionSelected
                         } else {
                             ThemeField::PromptCompletion
@@ -598,11 +620,12 @@ impl Drawable for Prompt {
     }
 
     fn cursor(&self, ctx: &UIContext) -> Option<Cursor> {
-        match self.ptype {
-            PromptType::Oneline => {
+        match self.style {
+            PromptStyle::Oneline => {
                 let cursor_col = {
-                    let input_cells_before_cursor = self.input[..self.cursor].into_cells().len();
-                    let msg = self.message.chars().count();
+                    let input_cells_before_cursor =
+                        self.prompt.input[..self.prompt.cursor].into_cells().len();
+                    let msg = self.prompt.message.chars().count();
                     let extra = 2; // ": "
                     msg + extra + input_cells_before_cursor
                 };
@@ -617,9 +640,10 @@ impl Drawable for Prompt {
                     shape: CursorShape::Line(true),
                 })
             }
-            PromptType::Overlay => {
+            PromptStyle::Overlay => {
                 let cursor_col = {
-                    let input_cells_before_cursor = self.input[..self.cursor].into_cells().len();
+                    let input_cells_before_cursor =
+                        self.prompt.input[..self.prompt.cursor].into_cells().len();
                     let extra = 3; // " > "
                     extra + input_cells_before_cursor
                 };

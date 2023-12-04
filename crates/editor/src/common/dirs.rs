@@ -27,6 +27,7 @@ pub(crate) fn tmp_dir() -> Option<PathBuf> {
 }
 
 pub(crate) fn tmp_file() -> Option<PathBuf> {
+    // TODO another way without uuids?
     let id = uuid::Uuid::new_v4();
     let mut result = tmp_dir()?;
     result.push(PathBuf::from(id.to_string()));

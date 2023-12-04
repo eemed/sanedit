@@ -1,6 +1,7 @@
 use std::{
     cmp::{max, min},
     mem,
+    ops::{Deref, DerefMut},
 };
 
 use sanedit_messages::redraw::{
@@ -126,8 +127,29 @@ impl Grid {
     }
 
     pub fn resize(&mut self, width: usize, height: usize) {
-        *self = Grid::new(width, height);
-        // TODO popups
+        if let Some(ref mut prompt) = self.prompt {
+            let rect = &mut prompt.rect;
+            rect.width = min(rect.width, width);
+            rect.height = min(rect.height, height);
+            rect.x = 0;
+            rect.y = 0;
+            prompt.inner.style = PromptStyle::Oneline;
+        }
+
+        if let Some(ref mut msg) = self.msg {
+            let rect = &mut msg.rect;
+            rect.width = min(rect.width, width);
+            rect.height = min(rect.height, height);
+            rect.x = 0;
+            rect.y = 0;
+        }
+
+        let rect = &mut self.statusline.rect;
+        rect.width = min(rect.width, width);
+
+        let rect = &mut self.window.rect;
+        rect.width = min(rect.width, width);
+        rect.height = min(rect.width, height);
     }
 
     pub fn window_rect(&self) -> Rect {
@@ -156,14 +178,17 @@ impl Grid {
 
         let top_left = rect.position();
         let mut grid = rect.grid();
-        let mut g: Vec<&mut [Cell]> = grid.iter_mut().map(|v| v.as_mut_slice()).collect();
+        let mut g: Vec<&mut [CCell]> = grid.iter_mut().map(|v| v.as_mut_slice()).collect();
         drawable.draw(ctx, &mut g);
 
         for (line, row) in grid.into_iter().enumerate() {
             for (col, cell) in row.into_iter().enumerate() {
+                if cell.is_transparent {
+                    continue;
+                }
                 let x = top_left.x + col;
                 let y = top_left.y + line;
-                cells[y][x] = cell;
+                cells[y][x] = cell.cell;
             }
         }
     }
@@ -275,7 +300,7 @@ impl<T: Drawable> Rectangle<T> {
 }
 
 impl<T: Drawable> Drawable for Rectangle<T> {
-    fn draw(&self, ctx: &UIContext, cells: &mut [&mut [Cell]]) {
+    fn draw(&self, ctx: &UIContext, cells: &mut [&mut [CCell]]) {
         self.inner.draw(ctx, cells);
     }
 
@@ -287,8 +312,8 @@ impl<T: Drawable> Drawable for Rectangle<T> {
 fn draw_border_with_style<'a, 'b, F: Fn(usize, usize) -> Style>(
     border: Border,
     get_style: F,
-    mut cells: &'a mut [&'b mut [Cell]],
-) -> &'a mut [&'b mut [Cell]] {
+    mut cells: &'a mut [&'b mut [CCell]],
+) -> &'a mut [&'b mut [CCell]] {
     let size = size(cells);
 
     if size.width <= 2 && size.height <= 2 {
@@ -300,11 +325,13 @@ fn draw_border_with_style<'a, 'b, F: Fn(usize, usize) -> Style>(
         cells[0][i] = Cell {
             text: border.top().into(),
             style: get_style(0, i),
-        };
+        }
+        .into();
         cells[size.height - 1][i] = Cell {
             text: border.bottom().into(),
             style: get_style(size.height - 1, i),
-        };
+        }
+        .into();
     }
 
     // Sides
@@ -312,33 +339,39 @@ fn draw_border_with_style<'a, 'b, F: Fn(usize, usize) -> Style>(
         cells[i][0] = Cell {
             text: border.left().into(),
             style: get_style(i, 0),
-        };
+        }
+        .into();
         cells[i][size.width - 1] = Cell {
             text: border.right().into(),
             style: get_style(i, size.width),
-        };
+        }
+        .into();
     }
 
     // corners
     cells[0][0] = Cell {
         text: border.top_left().into(),
         style: get_style(0, 0),
-    };
+    }
+    .into();
 
     cells[size.height - 1][0] = Cell {
         text: border.bottom_left().into(),
         style: get_style(size.height - 1, 0),
-    };
+    }
+    .into();
 
     cells[0][size.width - 1] = Cell {
         text: border.top_right().into(),
         style: get_style(0, size.width - 1),
-    };
+    }
+    .into();
 
     cells[size.height - 1][size.width - 1] = Cell {
         text: border.bottom_right().into(),
         style: get_style(size.height - 1, size.width - 1),
-    };
+    }
+    .into();
 
     cells = &mut cells[1..size.height - 1];
     for i in 0..cells.len() {
@@ -353,8 +386,8 @@ fn draw_border_with_style<'a, 'b, F: Fn(usize, usize) -> Style>(
 fn draw_border<'a, 'b>(
     border: Border,
     style: Style,
-    cells: &'a mut [&'b mut [Cell]],
-) -> &'a mut [&'b mut [Cell]] {
+    cells: &'a mut [&'b mut [CCell]],
+) -> &'a mut [&'b mut [CCell]] {
     draw_border_with_style(border, |_, _| style, cells)
 }
 
@@ -459,8 +492,8 @@ impl Rect {
         }
     }
 
-    pub fn grid(&self) -> Vec<Vec<Cell>> {
-        vec![vec![Cell::default(); self.width]; self.height]
+    pub fn grid(&self) -> Vec<Vec<CCell>> {
+        vec![vec![CCell::transparent(); self.width]; self.height]
     }
 
     pub fn split_off(&mut self, split: Split) -> Rect {
@@ -516,12 +549,12 @@ impl Rect {
 }
 
 pub(crate) trait Drawable {
-    fn draw(&self, ctx: &UIContext, cells: &mut [&mut [Cell]]);
+    fn draw(&self, ctx: &UIContext, cells: &mut [&mut [CCell]]);
     fn cursor(&self, ctx: &UIContext) -> Option<Cursor>;
 }
 
 impl Drawable for Window {
-    fn draw(&self, ctx: &UIContext, cells: &mut [&mut [Cell]]) {
+    fn draw(&self, ctx: &UIContext, cells: &mut [&mut [CCell]]) {
         let width = min(
             cells.get(0).map(|c| c.len()).unwrap_or(0),
             self.cells.get(0).map(|c| c.len()).unwrap_or(0),
@@ -530,7 +563,7 @@ impl Drawable for Window {
 
         for x in 0..width {
             for y in 0..height {
-                cells[y][x] = self.cells[y][x].clone();
+                cells[y][x] = self.cells[y][x].clone().into();
             }
         }
     }
@@ -541,7 +574,7 @@ impl Drawable for Window {
 }
 
 impl Drawable for Statusline {
-    fn draw(&self, ctx: &UIContext, cells: &mut [&mut [Cell]]) {
+    fn draw(&self, ctx: &UIContext, cells: &mut [&mut [CCell]]) {
         let style = ctx.style(ThemeField::Statusline);
         let width = cells.get(0).map(|c| c.len()).unwrap_or(0);
         for (i, cell) in into_cells_with_theme_pad_with(&self.line, &style, width)
@@ -558,7 +591,7 @@ impl Drawable for Statusline {
 }
 
 impl Drawable for CustomPrompt {
-    fn draw(&self, ctx: &UIContext, mut cells: &mut [&mut [Cell]]) {
+    fn draw(&self, ctx: &UIContext, mut cells: &mut [&mut [CCell]]) {
         let wsize = size(cells);
         let default_style = ctx.theme.get(ThemeField::PromptDefault);
         let input_style = ctx.theme.get(ThemeField::PromptUserInput);
@@ -663,7 +696,7 @@ impl Drawable for CustomPrompt {
 }
 
 impl Drawable for StatusMessage {
-    fn draw(&self, ctx: &UIContext, cells: &mut [&mut [Cell]]) {
+    fn draw(&self, ctx: &UIContext, cells: &mut [&mut [CCell]]) {
         let field = match self.severity {
             Severity::Info => ThemeField::Info,
             Severity::Warn => ThemeField::Warn,
@@ -684,33 +717,37 @@ impl Drawable for StatusMessage {
     }
 }
 
-fn into_cells_with_style(string: &str, style: Style) -> Vec<Cell> {
-    let mut cells = string.into_cells();
+fn into_cells(string: &str) -> Vec<CCell> {
+    string.chars().map(|ch| CCell::from(ch)).collect()
+}
+
+fn into_cells_with_style(string: &str, style: Style) -> Vec<CCell> {
+    let mut cells = into_cells(string);
     cells.iter_mut().for_each(|cell| cell.style = style);
     cells
 }
 
-fn into_cells_with_style_pad(string: &str, style: Style, width: usize) -> Vec<Cell> {
+fn into_cells_with_style_pad(string: &str, style: Style, width: usize) -> Vec<CCell> {
     let mut cells = into_cells_with_style(string, style);
     pad_line(&mut cells, style, width);
     cells
 }
 
-fn into_cells_with_theme_pad_with(string: &str, style: &Style, width: usize) -> Vec<Cell> {
+fn into_cells_with_theme_pad_with(string: &str, style: &Style, width: usize) -> Vec<CCell> {
     let mut cells = into_cells_with_theme_with(string, style);
     pad_line(&mut cells, style.clone(), width);
     cells
 }
 
-fn into_cells_with_theme_with(string: &str, style: &Style) -> Vec<Cell> {
-    let mut cells = string.into_cells();
+fn into_cells_with_theme_with(string: &str, style: &Style) -> Vec<CCell> {
+    let mut cells = into_cells(string);
     cells.iter_mut().for_each(|cell| cell.style = style.clone());
     cells
 }
 
-fn pad_line(cells: &mut Vec<Cell>, style: Style, width: usize) {
+fn pad_line(cells: &mut Vec<CCell>, style: Style, width: usize) {
     while cells.len() < width {
-        cells.push(Cell::with_style(style.clone()));
+        cells.push(CCell::with_style(style.clone()));
     }
 
     while cells.len() > width {
@@ -718,20 +755,20 @@ fn pad_line(cells: &mut Vec<Cell>, style: Style, width: usize) {
     }
 }
 
-fn size(cells: &mut [&mut [Cell]]) -> Size {
+fn size(cells: &mut [&mut [CCell]]) -> Size {
     let height = cells.len();
     let width = cells.get(0).map(|line| line.len()).unwrap_or(0);
 
     Size { width, height }
 }
 
-fn put_line(line: Vec<Cell>, pos: usize, target: &mut [&mut [Cell]]) {
+fn put_line(line: Vec<CCell>, pos: usize, target: &mut [&mut [CCell]]) {
     for (i, cell) in line.into_iter().enumerate() {
         target[pos][i] = cell;
     }
 }
 
-fn set_style(target: &mut [&mut [Cell]], style: Style) {
+fn set_style(target: &mut [&mut [CCell]], style: Style) {
     for line in target.iter_mut() {
         for cell in line.iter_mut() {
             cell.style = style.clone();
@@ -739,10 +776,71 @@ fn set_style(target: &mut [&mut [Cell]], style: Style) {
     }
 }
 
-fn center_pad(message: Vec<Cell>, pad_style: Style, width: usize) -> Vec<Cell> {
+fn center_pad(message: Vec<CCell>, pad_style: Style, width: usize) -> Vec<CCell> {
     let pad = (width.saturating_sub(message.len())) / 2;
     let mut result = into_cells_with_style(&" ".repeat(pad), pad_style);
     result.extend(message);
     pad_line(&mut result, pad_style, width);
     result
+}
+
+#[derive(Debug, Clone)]
+pub struct CCell {
+    is_transparent: bool,
+    cell: Cell,
+}
+
+impl CCell {
+    pub fn transparent() -> CCell {
+        CCell {
+            is_transparent: true,
+            cell: Cell::default(),
+        }
+    }
+
+    pub fn from(ch: char) -> CCell {
+        CCell {
+            is_transparent: false,
+            cell: Cell::from(ch),
+        }
+    }
+
+    pub fn with_style(style: Style) -> CCell {
+        CCell {
+            is_transparent: false,
+            cell: Cell::with_style(style),
+        }
+    }
+}
+
+impl Default for CCell {
+    fn default() -> Self {
+        CCell {
+            is_transparent: false,
+            cell: Cell::default(),
+        }
+    }
+}
+
+impl Deref for CCell {
+    type Target = Cell;
+
+    fn deref(&self) -> &Self::Target {
+        &self.cell
+    }
+}
+
+impl DerefMut for CCell {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.cell
+    }
+}
+
+impl From<Cell> for CCell {
+    fn from(value: Cell) -> Self {
+        CCell {
+            is_transparent: false,
+            cell: value,
+        }
+    }
 }

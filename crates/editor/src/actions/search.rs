@@ -113,6 +113,7 @@ fn history_prev(editor: &mut Editor, id: ClientId) {
 fn clear_matches(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.search.cmatch = None;
+    win.search.hl_matches.clear();
 }
 
 #[action("Goto next match")]

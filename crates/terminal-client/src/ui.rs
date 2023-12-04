@@ -38,6 +38,7 @@ impl UI {
     pub fn resize(&mut self, size: Size) {
         self.terminal.resize(size.width, size.height);
         self.grid.resize(size.width, size.height);
+        // self.flush();
     }
 
     /// Called when client will send input to server

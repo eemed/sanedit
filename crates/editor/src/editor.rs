@@ -202,6 +202,7 @@ impl Editor {
     fn handle_resize(&mut self, id: ClientId, size: Size) {
         let (win, buf) = self.win_buf_mut(id);
         win.resize(size, buf);
+        // TODO implement full redraw
     }
 
     fn handle_mouse_event(&mut self, id: ClientId, event: MouseEvent) {

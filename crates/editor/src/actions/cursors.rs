@@ -1,4 +1,4 @@
-use sanedit_buffer::SearcherRev;
+use sanedit_buffer::Searcher;
 use sanedit_messages::redraw::Point;
 
 use crate::{
@@ -32,41 +32,42 @@ fn new_to_next_search_match(editor: &mut Editor, id: ClientId) {
     let last_search = win.search.prompt.input();
     let ppos = win.cursors.primary().pos();
 
-    let searcher = SearcherRev::new(last_search.as_bytes());
+    let searcher = Searcher::new(last_search.as_bytes());
     let slice = buf.slice(ppos..);
     let mut iter = searcher.find_iter(&slice);
     if let Some(mut mat) = iter.next() {
         mat.start += ppos;
         mat.end += ppos;
 
-        let selecting = win.primary_cursor().selection().is_none();
+        let selecting = win.primary_cursor().selection().is_some();
         if selecting {
+            win.cursors.push_primary(Cursor::new_select(&mat));
+        } else {
             let cursor = win.cursors.primary_mut();
             *cursor = Cursor::new_select(&mat);
-        } else {
-            win.cursors.push_primary(Cursor::new_select(&mat));
         }
     }
 }
 
 #[action("Create a new cursor on each search match")]
 fn new_to_all_search_matches(editor: &mut Editor, id: ClientId) {
-    let (win, _buf) = editor.win_buf_mut(id);
-    let _last_search = win.search.prompt.input();
-    let _ppos = win.cursors.primary().pos();
+    let (win, buf) = editor.win_buf_mut(id);
+    // win.cursors.remove_secondary_cursors();
 
-    // if let Some(mut mat) = search_all(last_search.as_bytes(), &buf.slice(ppos..)) {
-    //     mat.start += ppos;
-    //     mat.end += ppos;
+    let last_search = win.search.prompt.input();
+    let searcher = Searcher::new(last_search.as_bytes());
+    let slice = buf.slice(..);
+    let mut iter = searcher.find_iter(&slice);
 
-    //     let selecting = win.primary_cursor().selection().is_none();
-    //     if selecting {
-    //         let cursor = win.cursors.primary_mut();
-    //         *cursor = Cursor::new_select(&mat);
-    //     } else {
-    //         win.cursors.push_primary(Cursor::new_select(&mat));
-    //     }
-    // }
+    while let Some(mat) = iter.next() {
+        let selecting = win.primary_cursor().selection().is_some();
+        if selecting {
+            win.cursors.push_primary(Cursor::new_select(&mat));
+        } else {
+            let cursor = win.cursors.primary_mut();
+            *cursor = Cursor::new_select(&mat);
+        }
+    }
 }
 
 pub(crate) fn new_to_point(editor: &mut Editor, id: ClientId, point: Point) {

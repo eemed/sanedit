@@ -1,5 +1,5 @@
 use std::{
-    cmp::{max, min},
+    cmp::min,
     mem,
     ops::{Deref, DerefMut},
 };
@@ -127,29 +127,7 @@ impl Grid {
     }
 
     pub fn resize(&mut self, width: usize, height: usize) {
-        if let Some(ref mut prompt) = self.prompt {
-            let rect = &mut prompt.rect;
-            rect.width = min(rect.width, width);
-            rect.height = min(rect.height, height);
-            rect.x = 0;
-            rect.y = 0;
-            prompt.inner.style = PromptStyle::Oneline;
-        }
-
-        if let Some(ref mut msg) = self.msg {
-            let rect = &mut msg.rect;
-            rect.width = min(rect.width, width);
-            rect.height = min(rect.height, height);
-            rect.x = 0;
-            rect.y = 0;
-        }
-
-        let rect = &mut self.statusline.rect;
-        rect.width = min(rect.width, width);
-
-        let rect = &mut self.window.rect;
-        rect.width = min(rect.width, width);
-        rect.height = min(rect.width, height);
+        *self = Grid::new(width, height);
     }
 
     pub fn window_rect(&self) -> Rect {
@@ -608,6 +586,24 @@ impl Drawable for CustomPrompt {
                 message.extend(input);
                 pad_line(&mut message, default_style, wsize.width);
                 put_line(message, 0, cells);
+
+                cells = &mut cells[1..];
+                let wsize = size(cells);
+                let max_opts = wsize.height;
+                self.prompt
+                    .options
+                    .iter()
+                    .take(max_opts)
+                    .enumerate()
+                    .for_each(|(i, opt)| {
+                        let field = if Some(i) == self.prompt.selected {
+                            ThemeField::PromptCompletionSelected
+                        } else {
+                            ThemeField::PromptCompletion
+                        };
+                        let style = ctx.style(field);
+                        put_line(into_cells_with_style_pad(opt, style, wsize.width), i, cells);
+                    });
             }
             PromptStyle::Overlay => {
                 if wsize.height > 2 {

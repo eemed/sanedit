@@ -1,6 +1,5 @@
 pub(crate) mod client;
-mod rectangle;
-// mod grid;
+mod grid;
 pub(crate) mod input;
 pub(crate) mod message;
 pub(crate) mod terminal;

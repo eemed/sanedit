@@ -7,7 +7,7 @@ use sanedit_messages::{
 };
 
 use crate::{
-    rectangle::{Grid, Rect},
+    grid::{Grid, Rect},
     terminal::Terminal,
 };
 
@@ -32,7 +32,7 @@ impl UI {
     }
 
     pub fn window_rect(&self) -> Rect {
-        self.grid.window_rect()
+        self.grid.window_area()
     }
 
     pub fn resize(&mut self, size: Size) {

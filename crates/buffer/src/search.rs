@@ -323,7 +323,7 @@ mod test {
     use super::*;
 
     #[test]
-    fn search_grapheme_break() {
+    fn search_fwd() {
         let mut pt = PieceTree::new();
         pt.insert(
             0,
@@ -376,5 +376,38 @@ pub fn grapheme_break(ch: char) -> GraphemeBreak {
         assert_eq!(Some(222..235), iter.next());
         assert_eq!(Some(146..159), iter.next());
         assert_eq!(None, iter.next());
+    }
+
+    #[test]
+    fn search_fwd2() {
+        let mut pt = PieceTree::new();
+
+        let mut pt = PieceTree::new();
+        pt.insert(
+            0,
+            "[package]
+name = \"sanedit-ucd\"
+version = \"0.1.0\"
+edition = \"2021\"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+
+[dev-dependencies]
+criterion = { version = \"0.3\", features = [\"html_reports\"] }
+
+[[bench]]
+name = \"grapheme_break\"
+harness = false",
+        );
+
+        let needle = b"dependencies";
+        let searcher = Searcher::new(needle);
+        let slice = pt.slice(..);
+        let mut iter = searcher.find_iter(&slice);
+        while let Some(mat) = iter.next() {
+            println!("MAT: {mat:?}");
+        }
     }
 }

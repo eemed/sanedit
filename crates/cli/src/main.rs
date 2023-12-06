@@ -1,6 +1,11 @@
 mod logging;
 
-use std::{path::PathBuf, thread, time::Duration};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+    thread,
+    time::Duration,
+};
 
 use clap::Parser;
 use sanedit_editor::Address;
@@ -24,16 +29,27 @@ fn main() {
     // Just run everything from here for now
     let _cli = Cli::parse();
 
-    let socket = PathBuf::from("/tmp/sanedit");
-    let s = socket.clone();
-    let join = sanedit_editor::run_sync(vec![Address::UnixDomainSocket(s)]);
-
-    if let Some(join) = join {
-        match UnixDomainSocketClient::connect(socket.clone()) {
-            Ok(client) => client.run(),
-            Err(e) => log::info!("Error connecting to socket: {}", e),
+    let socket = PathBuf::from("/tmp/sanedit.sock");
+    let exists = socket.try_exists().unwrap_or(false);
+    if exists {
+        // if socket already exists try to connect
+        connect(&socket);
+    } else {
+        // If no socket startup server
+        let s = socket.clone();
+        let join = sanedit_editor::run_sync(vec![Address::UnixDomainSocket(s)]);
+        if let Some(join) = join {
+            connect(&socket);
+            join.join().unwrap()
         }
 
-        join.join().unwrap()
+        let _ = fs::remove_file(socket);
+    }
+}
+
+fn connect(socket: &Path) {
+    match UnixDomainSocketClient::connect(socket) {
+        Ok(client) => client.run(),
+        Err(e) => log::info!("Error connecting to socket: {}", e),
     }
 }

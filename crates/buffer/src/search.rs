@@ -135,26 +135,18 @@ impl<'a, 'b> Iterator for SearchIter<'a, 'b> {
 
         while *i < n {
             let mut j = m - 1;
-            let mut mat = None;
 
             while bytes.at(*i) == pattern[j] {
                 if j == 0 {
-                    mat = Some(*i..*i + m);
                     *i += m;
-                    break;
+                    return Some(*i - m..*i);
                 }
 
                 j -= 1;
                 *i -= 1;
             }
 
-            if *i < n {
-                *i += max(bad_char[bytes.at(*i) as usize], good_suffix[j]);
-            }
-
-            if mat.is_some() {
-                return mat;
-            }
+            *i += max(bad_char[bytes.at(*i) as usize], good_suffix[j]);
         }
 
         None
@@ -200,7 +192,7 @@ impl SearcherRev {
 
         for i in 1..pattern.len() {
             let slen = Self::common_prefix_len(pattern, &pattern[i..]);
-            table[slen] = pattern.len() + slen - i;
+            table[slen] = pattern.len() - i;
         }
 
         table
@@ -285,34 +277,28 @@ impl<'a, 'b> Iterator for SearchIterRev<'a, 'b> {
         } = self;
 
         let m = pattern.len();
+        let mut check0 = false;
 
-        if *i == 0 {
-            return None;
-        }
-
-        loop {
+        while *i != 0 || check0 {
             let mut j = 0;
-            let mut mat = None;
 
             while bytes.at(*i) == pattern[j] {
                 if j == m - 1 {
-                    mat = Some(*i + 1 - m..*i + 1);
-                    *i = i.saturating_sub(m) + 1;
-                    break;
+                    let end = *i + 1;
+                    let start = end - m;
+                    *i = i.saturating_sub(m);
+                    return Some(start..end);
                 }
 
                 j += 1;
                 *i += 1;
             }
 
+            check0 = *i != 0;
             *i = i.saturating_sub(max(bad_char[bytes.at(*i) as usize], good_suffix[j]));
-
-            if mat.is_some() {
-                return mat;
-            } else if *i == 0 {
-                return None;
-            }
         }
+
+        None
     }
 }
 
@@ -324,90 +310,55 @@ mod test {
 
     #[test]
     fn search_fwd() {
-        let mut pt = PieceTree::new();
-        pt.insert(
-            0,
-            "mod enums;
-mod general_category;
-mod grapheme_break;
-mod properties;
-mod sentence_break;
-mod word_break;
-
-use std::cmp::Ordering;
-
-pub use enums::GraphemeBreak;
-pub use enums::Property;
-
-pub fn grapheme_break(ch: char) -> GraphemeBreak {
-    // Optimization for ascii
-    // First entries in the GRAPHEME_CLUSTER_BREAK table
-    // (0, 9, 1),     => Control
-    // (10, 10, 4),   => LF
-    // (11, 12, 1),   => Control
-    // (13, 13, 0),   => CR
-    // (14, 31, 1),   => Control
-    // (127, 159, 1), => Control
-    let num = ch as u32;
-    if num <= 126 {
-        if num >= 32 {
-            GraphemeBreak::Any
-        } else if num == 10 {
-            GraphemeBreak::LF",
-        );
-
-        let needle = b"GraphemeBreak";
-        let searcher = Searcher::new(needle);
-        let slice = pt.slice(..);
-        let mut iter = searcher.find_iter(&slice);
-
-        assert_eq!(Some(146..159), iter.next());
-        assert_eq!(Some(222..235), iter.next());
-        assert_eq!(Some(593..606), iter.next());
-        assert_eq!(Some(654..667), iter.next());
-        assert_eq!(None, iter.next());
-
-        let searcher = SearcherRev::new(needle);
-        let slice = pt.slice(..);
-        let mut iter = searcher.find_iter(&slice);
-
-        assert_eq!(Some(654..667), iter.next());
-        assert_eq!(Some(593..606), iter.next());
-        assert_eq!(Some(222..235), iter.next());
-        assert_eq!(Some(146..159), iter.next());
-        assert_eq!(None, iter.next());
-    }
-
-    #[test]
-    fn search_fwd2() {
-        let mut pt = PieceTree::new();
-
-        let mut pt = PieceTree::new();
-        pt.insert(
-            0,
-            "[package]
-name = \"sanedit-ucd\"
-version = \"0.1.0\"
-edition = \"2021\"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[dependencies]
-
-[dev-dependencies]
-criterion = { version = \"0.3\", features = [\"html_reports\"] }
-
-[[bench]]
-name = \"grapheme_break\"
-harness = false",
-        );
+        let pt = PieceTree::from("[dependencies][dev-dependencies]");
 
         let needle = b"dependencies";
         let searcher = Searcher::new(needle);
         let slice = pt.slice(..);
         let mut iter = searcher.find_iter(&slice);
-        while let Some(mat) = iter.next() {
-            println!("MAT: {mat:?}");
-        }
+        assert_eq!(Some(1..13), iter.next());
+        assert_eq!(Some(19..31), iter.next());
+        assert_eq!(None, iter.next());
+    }
+
+    #[test]
+    fn search_fwd2() {
+        let pt = PieceTree::from("dependenciesdependencies");
+
+        let needle = b"dependencies";
+        let searcher = Searcher::new(needle);
+        let slice = pt.slice(..);
+        let mut iter = searcher.find_iter(&slice);
+        assert_eq!(Some(0..12), iter.next());
+        assert_eq!(Some(12..24), iter.next());
+        assert_eq!(None, iter.next());
+    }
+
+    #[test]
+    fn search_bwd() {
+        let pt = PieceTree::from("[dependencies][dev-dependencies]");
+
+        let needle = b"dependencies";
+        let searcher = SearcherRev::new(needle);
+        let slice = pt.slice(..);
+        let mut iter = searcher.find_iter(&slice);
+
+        assert_eq!(Some(19..31), iter.next());
+        assert_eq!(Some(1..13), iter.next());
+        assert_eq!(None, iter.next());
+    }
+
+    #[test]
+    fn search_bwd2() {
+        let pt = PieceTree::from("dependenciesdependencies");
+
+        let needle = b"dependencies";
+        let searcher = SearcherRev::new(needle);
+        let slice = pt.slice(..);
+        let mut iter = searcher.find_iter(&slice);
+
+        assert_eq!(Some(12..24), iter.next());
+        assert_eq!(Some(0..12), iter.next());
+        assert_eq!(None, iter.next());
     }
 }

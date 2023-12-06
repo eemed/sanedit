@@ -575,6 +575,12 @@ impl ReadOnlyPieceTree {
     }
 }
 
+impl From<&str> for PieceTree {
+    fn from(value: &str) -> Self {
+        PieceTree::from_reader(io::Cursor::new(value)).unwrap()
+    }
+}
+
 impl From<&ReadOnlyPieceTree> for Vec<u8> {
     fn from(pt: &ReadOnlyPieceTree) -> Self {
         let mut bytes = Vec::with_capacity(pt.len());

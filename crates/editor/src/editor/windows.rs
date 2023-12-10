@@ -41,4 +41,18 @@ impl Windows {
     pub fn iter_mut(&mut self) -> std::collections::hash_map::IterMut<ClientId, Window> {
         self.windows.iter_mut()
     }
+
+    pub fn find_clients_with_buf(&self, bid: BufferId) -> Vec<ClientId> {
+        self.windows
+            .iter()
+            .filter(|(_, win)| win.buffer_id() == bid)
+            .map(|(cid, _)| *cid)
+            .collect()
+    }
+
+    pub fn bid(&self, cid: ClientId) -> Option<BufferId> {
+        let win = self.windows.get(&cid)?;
+        let bid = win.buffer_id();
+        Some(bid)
+    }
 }

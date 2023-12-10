@@ -41,6 +41,7 @@ use crate::server::FromJobs;
 // use crate::server::JobProgress;
 use crate::server::JobsHandle;
 
+use self::buffers::BufferId;
 use self::buffers::Buffers;
 use self::hooks::Hooks;
 use self::job_broker::JobBroker;
@@ -116,9 +117,8 @@ impl Editor {
         self.clients.insert(handle.id, handle);
     }
 
-    /// Put buffer to buffers list and open it in window
-    pub fn open_buffer(&mut self, id: ClientId, buf: Buffer) {
-        let bid = self.buffers.insert(buf);
+    /// Open a buffer in window
+    fn open_buffer(&mut self, id: ClientId, bid: BufferId) {
         let (win, _) = self.win_buf_mut(id);
         // TODO check if buffer is not saved and what to do if it is not, prompt
         // save or auto save?
@@ -133,9 +133,19 @@ impl Editor {
 
     /// Open a file in window
     pub fn open_file(&mut self, id: ClientId, path: impl AsRef<Path>) -> io::Result<()> {
-        let file = File::new(path, &self.options)?;
-        let buf = Buffer::from_file(file)?;
-        self.open_buffer(id, buf);
+        let path = path.as_ref().canonicalize()?;
+
+        // Use existing if possible
+        let bid = match self.buffers.find(&path) {
+            Some(bid) => bid,
+            None => {
+                let file = File::new(&path, &self.options)?;
+                let buf = Buffer::from_file(file)?;
+                self.buffers.insert(buf)
+            }
+        };
+        self.open_buffer(id, bid);
+
         Ok(())
     }
 
@@ -171,7 +181,7 @@ impl Editor {
             _ => {}
         }
 
-        self.redraw(id);
+        self.redraw_all(id);
     }
 
     fn handle_hello(&mut self, id: ClientId, size: Size) {
@@ -202,7 +212,6 @@ impl Editor {
     fn handle_resize(&mut self, id: ClientId, size: Size) {
         let (win, buf) = self.win_buf_mut(id);
         win.resize(size, buf);
-        // TODO implement full redraw
     }
 
     fn handle_mouse_event(&mut self, id: ClientId, event: MouseEvent) {
@@ -229,7 +238,18 @@ impl Editor {
         }
     }
 
+    /// Redraw all windows that use the same buffer as `id`
+    fn redraw_all(&mut self, id: ClientId) {
+        if let Some(bid) = self.windows.bid(id) {
+            for cid in self.windows.find_clients_with_buf(bid) {
+                self.redraw(cid);
+            }
+        }
+    }
+
+    /// redraw a window
     fn redraw(&mut self, id: ClientId) {
+        log::info!("redraw client: {id:?}");
         run(self, id, Hook::OnDrawPre);
 
         let draw = self
@@ -277,7 +297,7 @@ impl Editor {
         run(self, id, Hook::KeyPressedPre);
 
         // Handle key bindings
-        if let Some(mut action) = self.get_bound_action(id) {
+        if let Some(action) = self.get_bound_action(id) {
             self.keys.clear();
             action.execute(self, id);
             return;

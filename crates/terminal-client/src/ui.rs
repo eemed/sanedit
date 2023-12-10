@@ -49,7 +49,6 @@ impl UI {
     }
 
     pub fn handle_message(&mut self, msg: ClientMessage) -> bool {
-        // log::info!("Client got message: {:?}", msg);
         match msg {
             ClientMessage::Hello => {}
             ClientMessage::SetOption(_) => {}
@@ -57,7 +56,10 @@ impl UI {
             ClientMessage::Redraw(msg) => {
                 self.grid.handle_redraw(&self.context, msg);
             }
-            ClientMessage::Flush => self.flush(),
+            ClientMessage::Flush => {
+                log::info!("UI flush");
+                self.flush();
+            }
             ClientMessage::Bye => {
                 log::info!("UI got bye, exiting.");
                 return true;

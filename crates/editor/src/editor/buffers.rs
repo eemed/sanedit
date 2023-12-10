@@ -1,5 +1,7 @@
 mod buffer;
 
+use std::path::Path;
+
 use slotmap::SlotMap;
 
 pub(crate) use self::buffer::{
@@ -28,5 +30,20 @@ impl Buffers {
 
     pub fn remove(&mut self, id: BufferId) -> Option<Buffer> {
         self.buffers.remove(id)
+    }
+
+    /// Find buffer with a save path
+    pub fn find(&self, path: impl AsRef<Path>) -> Option<BufferId> {
+        let path = path.as_ref();
+
+        for (id, buf) in self.buffers.iter() {
+            if let Some(bpath) = buf.path() {
+                if bpath == path {
+                    return Some(id);
+                }
+            }
+        }
+
+        None
     }
 }

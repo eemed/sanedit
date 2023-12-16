@@ -2,7 +2,7 @@ use crate::{actions::*, editor::keymap::KeyTrie, map};
 
 use super::{KeyMappings, Keymap};
 
-struct DefaultKeyMappings;
+pub(crate) struct DefaultKeyMappings;
 
 impl KeyMappings for DefaultKeyMappings {
     fn window() -> Keymap {
@@ -68,6 +68,7 @@ impl KeyMappings for DefaultKeyMappings {
              "ctrl+b", cursors::start_selection,
 
              "alt+r", prompt::shell_command,
+             "alt+x", cursors::select_line,
         );
 
         map
@@ -114,6 +115,14 @@ impl KeyMappings for DefaultKeyMappings {
              // "ctrl+r", search::toggle_regex,
              // "ctrl+s", search::toggle_select,
         );
+
+        map
+    }
+
+    fn completion() -> Keymap {
+        let mut map = Keymap {
+            root: KeyTrie::default(),
+        };
 
         map
     }

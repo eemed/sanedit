@@ -1,7 +1,10 @@
 use std::{num::NonZeroUsize, ops::Range};
 
 use crate::{
-    editor::{keymap::Keymap, Editor},
+    editor::{
+        keymap::{DefaultKeyMappings, KeyMappings, Keymap},
+        Editor,
+    },
     server::ClientId,
 };
 
@@ -34,7 +37,7 @@ pub(crate) struct SearchBuilder {
 
 impl SearchBuilder {
     pub fn new() -> SearchBuilder {
-        let prompt = Prompt::builder().keymap(Keymap::search());
+        let prompt = Prompt::builder().keymap(DefaultKeyMappings::search());
         SearchBuilder {
             prompt,
             direction: SearchDirection::Forward,
@@ -109,7 +112,7 @@ pub(crate) struct Search {
 impl Search {
     pub fn new(msg: &str) -> Search {
         let mut prompt = Prompt::new(msg);
-        prompt.keymap = Keymap::search();
+        prompt.keymap = DefaultKeyMappings::search();
 
         Search {
             prompt,

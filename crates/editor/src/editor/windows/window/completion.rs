@@ -1,6 +1,6 @@
 use sanedit_messages::redraw::Point;
 
-use crate::editor::keymap::Keymap;
+use crate::editor::keymap::{DefaultKeyMappings, KeyMappings, Keymap};
 
 use super::selector::Selector;
 
@@ -41,7 +41,7 @@ impl Default for Completion {
     fn default() -> Self {
         Completion {
             point: Point::default(),
-            keymap: Keymap::completion(),
+            keymap: DefaultKeyMappings::completion(),
             selector: Selector::default(),
         }
     }

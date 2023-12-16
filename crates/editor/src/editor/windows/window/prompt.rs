@@ -5,7 +5,10 @@ use std::{num::NonZeroUsize, rc::Rc};
 use unicode_segmentation::UnicodeSegmentation;
 
 use crate::{
-    editor::{keymap::Keymap, Editor},
+    editor::{
+        keymap::{DefaultKeyMappings, KeyMappings, Keymap},
+        Editor,
+    },
     server::ClientId,
 };
 
@@ -92,7 +95,7 @@ impl PromptBuilder {
             on_confirm,
             on_abort,
             on_input,
-            keymap: keymap.unwrap_or(Keymap::prompt()),
+            keymap: keymap.unwrap_or(DefaultKeyMappings::prompt()),
             history: History::new(history_size.get()),
         }
     }
@@ -132,7 +135,7 @@ impl Prompt {
             on_confirm: None,
             on_abort: None,
             on_input: None,
-            keymap: Keymap::prompt(),
+            keymap: DefaultKeyMappings::prompt(),
             history: History::new(100),
         }
     }

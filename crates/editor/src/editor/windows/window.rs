@@ -8,9 +8,9 @@ mod search;
 mod selector;
 mod view;
 
-use std::{io, ops::Range};
+use std::ops::Range;
 
-use sanedit_buffer::{PieceTree, SortedPositions};
+use sanedit_buffer::SortedPositions;
 use sanedit_messages::redraw::{Severity, Size, StatusMessage};
 
 use crate::{
@@ -22,7 +22,7 @@ use crate::{
     editor::{
         buffers::{Buffer, BufferId, SnapshotData, SortedRanges},
         clipboard::{Clipboard, DefaultClipboard},
-        keymap::Keymap,
+        keymap::{DefaultKeyMappings, KeyMappings, Keymap},
     },
 };
 
@@ -63,7 +63,7 @@ impl Window {
             clipboard: DefaultClipboard::new(),
             completion: Completion::default(),
             cursors: Cursors::default(),
-            keymap: Keymap::window(),
+            keymap: DefaultKeyMappings::window(),
             options: Options::default(),
             search: Search::default(),
             prompt: Prompt::default(),
@@ -421,6 +421,10 @@ impl Window {
         }
 
         self.invalidate_view();
+    }
+
+    pub fn set_keymap(mappings: impl KeyMappings) {
+        todo!()
     }
 }
 

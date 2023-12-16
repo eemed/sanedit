@@ -3,7 +3,7 @@ use sanedit_messages::redraw::Point;
 
 use crate::{
     common::{
-        movement::{next_line, prev_line},
+        movement::{end_of_line, next_line, next_line_start, prev_line, start_of_line},
         window::pos_at_point,
     },
     editor::{windows::Cursor, Editor},
@@ -81,8 +81,9 @@ pub(crate) fn goto_position(editor: &mut Editor, id: ClientId, point: Point) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.cursors.remove_secondary_cursors();
     if let Some(pos) = pos_at_point(win, point) {
-        win.cursors.primary_mut().goto(pos);
-        return;
+        let primary = win.cursors.primary_mut();
+        primary.unanchor();
+        primary.goto(pos);
     }
 }
 
@@ -120,4 +121,23 @@ fn next(editor: &mut Editor, id: ClientId) {
 fn prev(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.cursors.primary_prev();
+}
+
+#[action("Make previous cursor primary")]
+fn select_line(editor: &mut Editor, id: ClientId) {
+    let (win, buf) = editor.win_buf_mut(id);
+    // TODO hooks?
+    for cursor in win.cursors.cursors_mut() {
+        let slice = buf.slice(..);
+        let pos = cursor.pos();
+        let start = start_of_line(&slice, pos);
+        let end = next_line_start(&slice, pos);
+        if start == end {
+            continue;
+        }
+
+        cursor.goto(start);
+        cursor.anchor();
+        cursor.goto(end);
+    }
 }

@@ -1,15 +1,25 @@
+mod default;
+
 use std::collections::HashMap;
 
-use sanedit_messages::{try_parse_keyevents, KeyEvent};
+use sanedit_messages::KeyEvent;
 
 use crate::actions::{completion, cursors, editor, movement, prompt, search, text, view, Action};
 
+#[macro_export]
 macro_rules! map {
     ($keymap:ident, $($mapping: expr, $action:expr),+,) => {
+        use sanedit_messages::{try_parse_keyevents};
         $(
             $keymap.bind(&try_parse_keyevents($mapping).unwrap(), $action);
          )*
     }
+}
+
+pub(crate) trait KeyMappings {
+    fn window() -> Keymap;
+    fn prompt() -> Keymap;
+    fn search() -> Keymap;
 }
 
 #[derive(Debug, Clone)]
@@ -81,6 +91,7 @@ impl Keymap {
              "ctrl+b", cursors::start_selection,
 
              "alt+r", prompt::shell_command,
+             "alt+x", cursors::select_line,
         );
 
         map

@@ -13,7 +13,7 @@ pub(crate) enum Hook {
     /// Before a text is inserted into the buffer
     InsertPre,
     /// Before a text is removed from the buffer
-    RemoveCharPre,
+    RemovePre,
     CursorMoved,
 
     /// Before client keyevent is processed
@@ -86,7 +86,7 @@ impl Default for Hooks {
             hooks: HashMap::new(),
         };
         hooks.register(Hook::InsertPre, search::clear_matches);
-        hooks.register(Hook::RemoveCharPre, search::clear_matches);
+        hooks.register(Hook::RemovePre, search::clear_matches);
         hooks.register(
             Hook::CursorMoved,
             Action::Dynamic {
@@ -107,6 +107,20 @@ impl Default for Hooks {
                 }),
             },
         );
+
+        {
+            let fun = Action::Dynamic {
+                name: "fix cursors".into(),
+                fun: Arc::new(|editor, id| {
+                    let (win, _buf) = editor.win_buf_mut(id);
+                    // TODO fix windows that are affected by a
+                    // chagne to this windows buffer
+                }),
+            };
+
+            hooks.register(Hook::InsertPre, fun.clone());
+            hooks.register(Hook::RemovePre, fun);
+        }
 
         hooks
     }

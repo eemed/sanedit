@@ -16,14 +16,14 @@ use super::{hooks::run, jobs, Action};
 
 #[action("Remove character after cursor")]
 fn remove_grapheme_after_cursor(editor: &mut Editor, id: ClientId) {
-    run(editor, id, Hook::RemoveCharPre);
+    run(editor, id, Hook::RemovePre);
     let (win, buf) = editor.win_buf_mut(id);
     win.remove_grapheme_after_cursors(buf);
 }
 
 #[action("Remove character before cursor")]
 fn remove_grapheme_before_cursor(editor: &mut Editor, id: ClientId) {
-    run(editor, id, Hook::RemoveCharPre);
+    run(editor, id, Hook::RemovePre);
     let (win, buf) = editor.win_buf_mut(id);
     win.remove_grapheme_before_cursors(buf);
 }

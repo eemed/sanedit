@@ -76,7 +76,6 @@ impl DrawState {
         if draw_win {
             // TODO invalidate only if buffer has changed
             // move to hook once its done
-            win.invalidate_view();
             win.redraw_view(buf);
         }
 

@@ -1,3 +1,4 @@
+/// Sorted vec of usize or a reference to a slice of sorted usizes
 #[derive(Debug, Clone)]
 pub enum SortedPositions<'a> {
     Ref(&'a [usize]),

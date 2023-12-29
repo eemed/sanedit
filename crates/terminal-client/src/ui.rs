@@ -57,7 +57,6 @@ impl UI {
                 self.grid.handle_redraw(&self.context, msg);
             }
             ClientMessage::Flush => {
-                log::info!("UI flush");
                 self.flush();
             }
             ClientMessage::Bye => {

@@ -54,6 +54,13 @@ impl Action {
             } => (fun)(editor, id),
         }
     }
+
+    pub fn name(&self) -> &str {
+        match self {
+            Action::Dynamic { name, .. } => name,
+            Action::Static { name, .. } => name,
+        }
+    }
 }
 
 impl fmt::Debug for Action {

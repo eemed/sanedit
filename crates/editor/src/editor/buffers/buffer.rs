@@ -25,6 +25,7 @@ slotmap::new_key_type!(
     pub(crate) struct BufferId;
 );
 
+/// A range in the buffer
 pub(crate) type BufferRange = Range<usize>;
 
 #[derive(Debug)]
@@ -130,26 +131,19 @@ impl Buffer {
         self.snapshots.set_data(id, sdata)
     }
 
+    pub fn snapshot_data(&self, id: SnapshotId) -> Option<SnapshotData> {
+        self.snapshots.get_data(id)
+    }
+
     /// Get the last change done to buffer
     pub fn last_change(&self) -> Option<&Change> {
         self.last_change.as_ref()
     }
 
-    fn prepare_change(&mut self, kind: ChangeKind, ranges: SortedRanges) -> Change {
-        self.prepare_change_impl(kind, ranges, true)
-    }
-
-    fn prepare_change_impl(
-        &mut self,
-        kind: ChangeKind,
-        ranges: SortedRanges,
-        allow_undo_point: bool,
-    ) -> Change {
+    /// Creates undo point if it is needed
+    fn create_undo_point(&mut self, mut change: Change) -> Change {
         let last = self.last_change.as_ref();
-        let (mut change, create_undo_point) =
-            Change::new(last, self.is_modified, allow_undo_point, kind, ranges);
-
-        if create_undo_point {
+        if change.needs_undo_point(last) {
             let snap = self.pt.read_only_copy();
             let id = self.snapshots.insert(snap);
             change.created_snapshot = Some(id);
@@ -159,9 +153,11 @@ impl Buffer {
     }
 
     pub fn undo(&mut self) -> Result<&Change, &str> {
-        let mut change = self.prepare_change(ChangeKind::Undo, vec![].into());
+        let change = Change::undo();
+        let mut change = self.create_undo_point(change);
+
         if let Some(node) = self.snapshots.undo() {
-            change.restored_snapshot = node.data;
+            change.restored_snapshot = Some(node.id);
             self.is_modified = node.id != self.last_saved_snapshot;
             self.last_change = change.into();
             self.pt.restore(node.snapshot);
@@ -174,9 +170,11 @@ impl Buffer {
     }
 
     pub fn redo(&mut self) -> Result<&Change, &str> {
-        let mut change = self.prepare_change(ChangeKind::Redo, vec![].into());
+        let change = Change::redo();
+        let mut change = self.create_undo_point(change);
+
         if let Some(node) = self.snapshots.redo() {
-            change.restored_snapshot = node.data;
+            change.restored_snapshot = Some(node.id);
             self.is_modified = node.id != self.last_saved_snapshot;
             self.last_change = change.into();
             self.pt.restore(node.snapshot);
@@ -189,12 +187,8 @@ impl Buffer {
     }
 
     pub fn remove(&mut self, range: Range<usize>) -> &Change {
-        let change = self.prepare_change(ChangeKind::Remove, vec![range.clone()].into());
-
-        self.pt.remove(range);
-        self.is_modified = true;
-        self.last_change = change.into();
-        self.last_change.as_ref().unwrap()
+        let ranges = vec![range.clone()].into();
+        self.remove_multi(&ranges)
     }
 
     pub fn append<B: AsRef<[u8]>>(&mut self, bytes: B) -> &Change {
@@ -207,9 +201,9 @@ impl Buffer {
 
     pub fn insert_multi<B: AsRef<[u8]>>(&mut self, pos: &SortedPositions, bytes: B) -> &Change {
         let bytes = bytes.as_ref();
-        let kind = ChangeKind::insert(bytes);
         let ranges: Vec<BufferRange> = pos.iter().map(|pos| *pos..pos + bytes.len()).collect();
-        let change = self.prepare_change(kind, ranges.into());
+        let change = Change::insert(&ranges.into(), bytes);
+        let change = self.create_undo_point(change);
 
         self.pt.insert_multi(pos, bytes);
         self.is_modified = true;
@@ -218,10 +212,11 @@ impl Buffer {
     }
 
     pub fn remove_multi(&mut self, ranges: &SortedRanges) -> &Change {
-        let change = self.prepare_change(ChangeKind::Remove, ranges.clone());
+        let change = Change::remove(ranges);
+        let change = self.create_undo_point(change);
 
-        for change in change.positions.iter().rev() {
-            self.pt.remove(change.clone());
+        for range in ranges.iter().rev() {
+            self.pt.remove(range.clone());
         }
 
         self.is_modified = true;

@@ -20,7 +20,7 @@ use crate::{
         text::{as_lines, to_line},
     },
     editor::{
-        buffers::{Buffer, BufferId, SnapshotData, SortedRanges},
+        buffers::{Buffer, BufferId, ChangeKind, SnapshotData, SortedRanges},
         clipboard::{Clipboard, DefaultClipboard},
         keymap::{DefaultKeyMappings, KeyMappings, Keymap},
     },
@@ -180,7 +180,7 @@ impl Window {
         &self.view
     }
 
-    pub fn invalidate_view(&mut self) {
+    pub fn invalidate(&mut self) {
         self.view.invalidate();
     }
 
@@ -206,6 +206,7 @@ impl Window {
             buf.id,
             self.buf
         );
+
         let primary_pos = self.cursors.primary().pos();
         self.view.redraw(buf);
         self.view.view_to(primary_pos, buf);
@@ -220,7 +221,7 @@ impl Window {
         }
     }
 
-    fn snapshot_data(&self) -> SnapshotData {
+    fn create_snapshot_data(&self) -> SnapshotData {
         SnapshotData {
             cursors: self.cursors.clone(),
             view_offset: self.view.start(),
@@ -230,14 +231,14 @@ impl Window {
     fn remove(&mut self, buf: &mut Buffer, ranges: &SortedRanges) {
         let change = buf.remove_multi(ranges);
         if let Some(id) = change.created_snapshot {
-            buf.store_snapshot_data(id, self.snapshot_data());
+            buf.store_snapshot_data(id, self.create_snapshot_data());
         }
     }
 
     fn insert(&mut self, buf: &mut Buffer, positions: &SortedPositions, text: &str) {
         let change = buf.insert_multi(positions, text);
         if let Some(id) = change.created_snapshot {
-            buf.store_snapshot_data(id, self.snapshot_data());
+            buf.store_snapshot_data(id, self.create_snapshot_data());
         }
     }
 
@@ -260,7 +261,7 @@ impl Window {
             }
         }
 
-        self.invalidate_view();
+        self.invalidate();
         true
     }
 
@@ -297,7 +298,7 @@ impl Window {
             inserted += text.len();
         }
 
-        self.invalidate_view();
+        self.invalidate();
     }
 
     pub fn paste_from_clipboard(&mut self, buf: &mut Buffer) {
@@ -315,6 +316,7 @@ impl Window {
     }
 
     pub fn insert_at_cursors(&mut self, buf: &mut Buffer, text: &str) {
+        // TODO use a replace operation instead if removing
         self.remove_cursor_selections(buf);
         self.insert(buf, &(&self.cursors).into(), text);
 
@@ -325,7 +327,7 @@ impl Window {
             inserted += text.len();
         }
 
-        self.invalidate_view();
+        self.invalidate();
     }
 
     pub fn remove_grapheme_after_cursors(&mut self, buf: &mut Buffer) {
@@ -343,52 +345,55 @@ impl Window {
             removed += pos - cpos;
         }
 
-        self.invalidate_view();
+        self.invalidate();
     }
 
     pub fn undo(&mut self, buf: &mut Buffer) {
         match buf.undo() {
             Ok(change) => {
-                let created_snapshot = change.created_snapshot;
-                let restored_snapshot = change.restored_snapshot.clone();
+                let created = change.created_snapshot;
+                let restored = change.restored_snapshot;
 
-                if let Some(id) = created_snapshot {
-                    buf.store_snapshot_data(id, self.snapshot_data());
+                if let Some(id) = created {
+                    buf.store_snapshot_data(id, self.create_snapshot_data());
                 }
 
-                if let Some(ref sdata) = restored_snapshot {
-                    self.cursors = sdata.cursors.clone();
-                    self.view.set_offset(sdata.view_offset);
-                } else {
-                    self.cursors = Cursors::default();
-                    self.view.set_offset(0);
+                if let Some(restored) = restored {
+                    let data = buf.snapshot_data(restored);
+                    self.restore(data);
                 }
 
-                self.invalidate_view();
+                self.invalidate();
             }
             Err(msg) => self.warn_msg(msg),
+        }
+    }
+
+    fn restore(&mut self, restored: Option<SnapshotData>) {
+        if let Some(ref sdata) = restored {
+            self.cursors = sdata.cursors.clone();
+            self.view.set_offset(sdata.view_offset);
+        } else {
+            self.cursors = Cursors::default();
+            self.view.set_offset(0);
         }
     }
 
     pub fn redo(&mut self, buf: &mut Buffer) {
         match buf.redo() {
             Ok(change) => {
-                let created_snapshot = change.created_snapshot;
-                let restored_snapshot = change.restored_snapshot.clone();
-
-                if let Some(id) = created_snapshot {
-                    buf.store_snapshot_data(id, self.snapshot_data());
+                let created = change.created_snapshot;
+                let restored = change.restored_snapshot;
+                if let Some(id) = created {
+                    buf.store_snapshot_data(id, self.create_snapshot_data());
                 }
 
-                if let Some(ref sdata) = restored_snapshot {
-                    self.cursors = sdata.cursors.clone();
-                    self.view.set_offset(sdata.view_offset);
-                } else {
-                    self.cursors = Cursors::default();
-                    self.view.set_offset(0);
+                if let Some(restored) = restored {
+                    let data = buf.snapshot_data(restored);
+                    self.restore(data);
                 }
 
-                self.invalidate_view();
+                self.invalidate();
             }
             Err(msg) => self.warn_msg(msg),
         }
@@ -420,7 +425,7 @@ impl Window {
             removed += range.len();
         }
 
-        self.invalidate_view();
+        self.invalidate();
     }
 
     pub fn set_keymap(mappings: impl KeyMappings) {

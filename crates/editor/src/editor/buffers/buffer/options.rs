@@ -4,7 +4,7 @@ use sanedit_buffer::utf8::EndOfLine;
 pub(crate) struct Options {
     pub(crate) eol: EndOfLine,
     /// How many spaces for a tab character, note that tab does not always have
-    /// width `tab_width` because sometimes tabs are used to align stuff, so it
+    /// width `tab_width` because tabs are used to align stuff, so it
     /// is "elastic" calculated tabstop - (col % tabstop).
     pub(crate) tabstop: u8,
 

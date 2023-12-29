@@ -73,6 +73,11 @@ impl Snapshots {
             snap.data = Some(sdata);
         }
     }
+
+    pub fn get_data(&self, id: SnapshotId) -> Option<SnapshotData> {
+        let node = self.snapshots.get(id)?;
+        node.data.clone()
+    }
 }
 
 #[derive(Debug, Clone)]

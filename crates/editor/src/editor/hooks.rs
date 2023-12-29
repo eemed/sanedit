@@ -19,6 +19,9 @@ pub(crate) enum Hook {
     /// Before client keyevent is processed
     KeyPressedPre,
 
+    /// After buffer changed
+    BufChanged,
+
     /// Before client message is processed
     OnMessagePre,
 
@@ -90,7 +93,7 @@ impl Default for Hooks {
         hooks.register(
             Hook::CursorMoved,
             Action::Dynamic {
-                name: "merge overlapping cursors".into(),
+                name: "Merge overlapping cursors".into(),
                 fun: Arc::new(|editor, id| {
                     let (win, _buf) = editor.win_buf_mut(id);
                     win.cursors.merge_overlapping();
@@ -100,7 +103,7 @@ impl Default for Hooks {
         hooks.register(
             Hook::OnMessagePre,
             Action::Dynamic {
-                name: "clear messages".into(),
+                name: "Clear messages".into(),
                 fun: Arc::new(|editor, id| {
                     let (win, _buf) = editor.win_buf_mut(id);
                     win.clear_msg();
@@ -108,19 +111,25 @@ impl Default for Hooks {
             },
         );
 
-        {
-            let fun = Action::Dynamic {
-                name: "fix cursors".into(),
+        hooks.register(
+            Hook::BufChanged,
+            Action::Dynamic {
+                name: "Fix windows".into(),
                 fun: Arc::new(|editor, id| {
-                    let (win, _buf) = editor.win_buf_mut(id);
-                    // TODO fix windows that are affected by a
-                    // chagne to this windows buffer
-                }),
-            };
+                    let (_win, buf) = editor.win_buf(id);
+                    let clients = editor.windows.find_clients_with_buf();
 
-            hooks.register(Hook::InsertPre, fun.clone());
-            hooks.register(Hook::RemovePre, fun);
-        }
+                    if let Some(change) = buf.last_change().cloned() {
+                        for client in clients {
+                            let (win, buf) = editor.win_buf(client);
+                            // Move cursors according to the last change
+                            // if they still are not in view just go to closest
+                            // position
+                        }
+                    }
+                }),
+            },
+        );
 
         hooks
     }

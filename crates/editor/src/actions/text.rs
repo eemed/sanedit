@@ -19,6 +19,7 @@ fn remove_grapheme_after_cursor(editor: &mut Editor, id: ClientId) {
     run(editor, id, Hook::RemovePre);
     let (win, buf) = editor.win_buf_mut(id);
     win.remove_grapheme_after_cursors(buf);
+    run(editor, id, Hook::BufChanged);
 }
 
 #[action("Remove character before cursor")]
@@ -26,18 +27,21 @@ fn remove_grapheme_before_cursor(editor: &mut Editor, id: ClientId) {
     run(editor, id, Hook::RemovePre);
     let (win, buf) = editor.win_buf_mut(id);
     win.remove_grapheme_before_cursors(buf);
+    run(editor, id, Hook::BufChanged);
 }
 
 #[action("Undo a change")]
 pub(crate) fn undo(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     win.undo(buf);
+    run(editor, id, Hook::BufChanged);
 }
 
 #[action("Redo a change")]
 pub(crate) fn redo(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     win.redo(buf);
+    run(editor, id, Hook::BufChanged);
 }
 
 pub(crate) fn insert(editor: &mut Editor, id: ClientId, text: &str) {
@@ -62,6 +66,7 @@ pub(crate) fn insert(editor: &mut Editor, id: ClientId, text: &str) {
             run(editor, id, Hook::InsertPre);
             let (win, buf) = editor.win_buf_mut(id);
             win.insert_at_cursors(buf, text);
+            run(editor, id, Hook::BufChanged);
         }
         Focus::Completion => {}
     }

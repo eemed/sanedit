@@ -82,6 +82,10 @@ impl View {
         }
     }
 
+    pub fn is_invalid(&self) -> bool {
+        self.needs_redraw
+    }
+
     pub fn invalidate(&mut self) {
         self.needs_redraw = true;
     }

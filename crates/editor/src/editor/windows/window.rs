@@ -168,6 +168,7 @@ impl Window {
             buf.id,
             self.buf
         );
+        self.cursors.ensure_in_range(0..buf.len());
         let cursor = self.primary_cursor().pos();
         self.view.view_to(cursor, buf);
     }
@@ -207,6 +208,7 @@ impl Window {
             self.buf
         );
 
+        self.cursors.ensure_in_range(0..buf.len());
         let primary_pos = self.cursors.primary().pos();
         self.view.redraw(buf);
         self.view.view_to(primary_pos, buf);

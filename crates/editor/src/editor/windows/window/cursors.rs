@@ -60,7 +60,9 @@ impl Cursors {
     }
 
     /// Remove cursor at position pos
-    pub fn remove(&mut self, _pos: usize) {}
+    pub fn remove(&mut self, _pos: usize) {
+        todo!()
+    }
 
     /// Remove all cursors except the primary one
     pub fn remove_secondary_cursors(&mut self) {
@@ -97,6 +99,12 @@ impl Cursors {
         }
 
         self.primary = min(self.primary, self.cursors.len() - 1);
+    }
+
+    pub fn ensure_in_range(&mut self, range: Range<usize>) {
+        for cursor in &mut self.cursors {
+            cursor.ensure_in_range(range)
+        }
     }
 
     pub fn swap_selection_dir(&mut self) {

@@ -122,9 +122,9 @@ impl Default for Hooks {
                     if let Some(change) = buf.last_change().cloned() {
                         for client in clients {
                             let (win, buf) = editor.win_buf(client);
-                            // Move cursors according to the last change
-                            // if they still are not in view just go to closest
-                            // position
+                            win.cursors.remove_secondary_cursors();
+                            win.cursors.primary_mut().unanchor();
+                            win.view_to_cursor();
                         }
                     }
                 }),

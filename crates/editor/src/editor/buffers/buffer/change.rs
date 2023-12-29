@@ -11,10 +11,6 @@ pub(crate) enum ChangeKind {
     Remove {
         removed: SortedRanges,
     },
-    Replace {
-        removed: SortedRanges,
-        inserted: SortedRanges,
-    },
     Undo,
     Redo,
 }
@@ -53,10 +49,6 @@ impl Change {
                 removed: ranges.clone(),
             },
         }
-    }
-
-    pub fn replace(remove: &SortedRanges, insert: &SortedRanges, bytes: &[u8]) -> Change {
-        todo!()
     }
 
     pub fn undo() -> Change {

@@ -70,6 +70,18 @@ impl Cursor {
         Some(sel)
     }
 
+    pub fn ensure_in_range(&mut self, range: Range<usize>) {
+        if self.pos > range.end {
+            self.pos = range.end
+        }
+
+        if let Some(ref mut anc) = self.anchor {
+            if *anc > range.end {
+                *anc = range.end
+            }
+        }
+    }
+
     /// Extend this cursor to cover the specified range.
     /// If the range is a single value this will not convert the
     /// cursor into an selection.

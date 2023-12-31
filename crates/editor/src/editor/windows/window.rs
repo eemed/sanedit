@@ -168,9 +168,36 @@ impl Window {
             buf.id,
             self.buf
         );
-        self.cursors.ensure_in_range(0..buf.len());
         let cursor = self.primary_cursor().pos();
         self.view.view_to(cursor, buf);
+    }
+
+    /// Called when buffer is changed in the background and we should correct
+    /// this window.
+    pub fn on_buffer_changed(&mut self, buf: &Buffer) {
+        // Remove cursors
+        self.cursors.remove_secondary_cursors();
+        self.cursors.primary_mut().unanchor();
+
+        // Ensure cursor in buf range
+        self.cursors.ensure_in_range(0..buf.len());
+
+        // Ensure cursor in buf grapheme boundary
+        let mut primary = self.cursors.primary();
+        let ppos = primary.pos();
+        let slice = buf.slice(..);
+        let mut graphemes = slice.graphemes_at(ppos);
+        let npos = graphemes
+            .next()
+            .map(|slice| slice.start())
+            .unwrap_or(buf.len());
+        if ppos != npos {
+            primary.goto(npos);
+        }
+
+        // Redraw view
+        self.view.invalidate();
+        self.view.redraw(buf);
     }
 
     pub fn buffer_id(&self) -> BufferId {

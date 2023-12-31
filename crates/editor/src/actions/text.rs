@@ -1,6 +1,4 @@
-use std::{io, path::PathBuf, rc::Rc};
-
-use sanedit_buffer::PieceTree;
+use std::path::PathBuf;
 
 use crate::{
     common::dirs::{tmp_dir, tmp_file},
@@ -75,21 +73,23 @@ pub(crate) fn insert(editor: &mut Editor, id: ClientId, text: &str) {
 #[action("Save file")]
 fn save(editor: &mut Editor, id: ClientId) {
     let (_win, buf) = editor.win_buf_mut(id);
-    if buf.path().is_none() {
-        save_as.execute(editor, id);
-        return;
+    match buf.path() {
+        Some(path) => {
+            let ropt = buf.read_only_copy();
+            let target = match tmp_file2(id, path) {
+                Some(tmp) => tmp,
+                None => return,
+            };
+
+            let (_win, buf) = editor.win_buf_mut(id);
+            buf.start_saving();
+            let job = jobs::Save::new(id, ropt, target);
+            editor.job_broker.request(job);
+        }
+        None => {
+            save_as.execute(editor, id);
+        }
     }
-
-    let ropt = buf.read_only_copy();
-    let target = match tmp_file() {
-        Some(tmp) => tmp,
-        None => return,
-    };
-
-    let (_win, buf) = editor.win_buf_mut(id);
-    buf.start_saving();
-    let job = jobs::Save::new(id, ropt, target);
-    editor.job_broker.request(job);
 }
 
 #[action("Prompt filename and save file")]
@@ -116,4 +116,5 @@ fn copy(editor: &mut Editor, id: ClientId) {
 fn paste(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     win.paste_from_clipboard(buf);
+    run(editor, id, Hook::BufChanged);
 }

@@ -22,6 +22,12 @@ use super::EditorHandle;
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub(crate) struct ClientId(pub(crate) usize);
 
+impl From<ClientId> for String {
+    fn from(value: ClientId) -> Self {
+        value.0.to_string()
+    }
+}
+
 /// Client handle allows us to communicate with the client
 #[derive(Debug)]
 pub(crate) struct ClientHandle {

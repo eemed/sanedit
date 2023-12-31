@@ -1,5 +1,7 @@
 use std::{fs, path::PathBuf};
 
+use crate::server::ClientId;
+
 pub(crate) const ENV_PREFIX: &str = "SANE";
 
 const TMP_DIR: &str = "tmp";
@@ -32,5 +34,18 @@ pub(crate) fn tmp_file() -> Option<PathBuf> {
     let mut result = tmp_dir()?;
     result.push(PathBuf::from(id.to_string()));
     log::info!("tmp file: {result:?}");
+    Some(result)
+}
+
+pub(crate) fn tmp_file2(id: ClientId, name: &str) -> Option<PathBuf> {
+    let mut result = tmp_dir()?;
+    let mut fname = {
+        let n = String::from(id);
+        n.push_str("-");
+        n.push_str(name);
+        n
+    };
+    let fpath = PathBuf::from(fname);
+    result.push(fpath);
     Some(result)
 }

@@ -1,6 +1,6 @@
 mod cursor;
 
-use std::cmp::min;
+use std::{cmp::min, ops::Range};
 
 pub(crate) use cursor::Cursor;
 use sanedit_buffer::SortedPositions;
@@ -103,7 +103,7 @@ impl Cursors {
 
     pub fn ensure_in_range(&mut self, range: Range<usize>) {
         for cursor in &mut self.cursors {
-            cursor.ensure_in_range(range)
+            cursor.ensure_in_range(range.clone())
         }
     }
 

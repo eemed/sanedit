@@ -183,7 +183,7 @@ impl Window {
         self.cursors.ensure_in_range(0..buf.len());
 
         // Ensure cursor in buf grapheme boundary
-        let mut primary = self.cursors.primary();
+        let primary = self.cursors.primary_mut();
         let ppos = primary.pos();
         let slice = buf.slice(..);
         let mut graphemes = slice.graphemes_at(ppos);

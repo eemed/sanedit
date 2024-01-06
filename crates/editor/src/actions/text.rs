@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use crate::{
-    common::dirs::{tmp_dir, tmp_file},
+    common::dirs::tmp_file,
     editor::{
         hooks::Hook,
         windows::{Focus, Prompt},
@@ -76,7 +76,7 @@ fn save(editor: &mut Editor, id: ClientId) {
     match buf.path() {
         Some(path) => {
             let ropt = buf.read_only_copy();
-            let target = match tmp_file2(id, path) {
+            let target = match tmp_file() {
                 Some(tmp) => tmp,
                 None => return,
             };

@@ -126,7 +126,7 @@ impl Default for Hooks {
                         }
 
                         let (win, buf) = editor.win_buf_mut(client);
-                        win.buffer_changed(buf);
+                        win.on_buffer_changed(buf);
                     }
                 }),
             },

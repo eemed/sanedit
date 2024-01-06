@@ -123,7 +123,7 @@ fn prev(editor: &mut Editor, id: ClientId) {
     win.cursors.primary_prev();
 }
 
-#[action("Make previous cursor primary")]
+#[action("Select line")]
 fn select_line(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     // TODO hooks?

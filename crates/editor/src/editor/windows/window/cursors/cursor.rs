@@ -57,6 +57,11 @@ impl Cursor {
         self.anchor = None;
     }
 
+    pub fn select(&mut self, range: Range<usize>) {
+        self.anchor = Some(range.start);
+        self.pos = range.end;
+    }
+
     pub fn selection(&self) -> Option<Range<usize>> {
         let anchor = self.anchor?;
         let min = self.pos.min(anchor);

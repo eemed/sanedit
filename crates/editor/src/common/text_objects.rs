@@ -1,4 +1,4 @@
-use sanedit_buffer::PieceTreeSlice;
+use sanedit_buffer::{utf8::Graphemes, Bytes, PieceTreeSlice, Searcher, SearcherRev};
 
 use crate::editor::buffers::{Buffer, BufferRange};
 
@@ -10,22 +10,15 @@ use crate::editor::buffers::{Buffer, BufferRange};
 ///     start   - starting character to find
 ///     end     - ending character to find
 ///     include - whether to include starting and ending chars in the range
-///     nested  - whether to look for nested structures eg. | { { } } would
-///     include the inner brackets in the resulting range or not
 ///
 /// Contains special logic when ch is a bracket
 pub(crate) fn find_range(
     slice: &PieceTreeSlice,
     pos: usize,
-    start: char,
-    end: char,
+    start: &str,
+    end: &str,
     include: bool,
-    nested: bool,
 ) -> Option<BufferRange> {
-    let mut nest = 0;
-    let mut cpos = pos;
-    let mut bytes = slice.bytes_at(cpos);
-
     // Search forward for a start or end
     // if end is found => search backwards from pos for a forward
     // if start is found => continue forward to search for an end

@@ -7,6 +7,7 @@ pub(crate) mod movement;
 pub(crate) mod prompt;
 pub(crate) mod search;
 pub(crate) mod text;
+pub(crate) mod text_objects;
 pub(crate) mod view;
 
 #[cfg(test)]

@@ -42,24 +42,29 @@ fn default() -> Theme {
     // RED    #FF6262
 
     ins(Default, "#E2DBC8,#000000,");
-    ins(Statusline, "#B8A282,,bold");
-    ins(EndOfBuffer, ",#4C4C4C,");
-    ins(Selection, ",#8700df,");
+    ins(Statusline, "#402e32,#e8dcc4,");
+    ins(EndOfBuffer, ",#7f755f,");
+    ins(Selection, "#ff8c5a,,");
     ins(Match, "#91bbee,,");
     ins(Symbols, ",#606060,");
-    ins(Cursor, "#9691ee,,");
-    ins(PrimaryCursor, ",,");
+    ins(Cursor, "#457e67,,");
+    ins(PrimaryCursor, "#016a61,,");
 
-    ins(PromptDefault, "#B8A282,#000000,");
+    ins(PromptDefault, "#769890,#000000,");
+    ins(PromptMessage, ",,bold");
+    ins(PromptUserInput, ",#000000,");
+
     ins(Gutter, ",#4C4C4C,bold");
-    ins(PromptUserInput, ",,");
-    ins(PromptTitle, ",#000000,,bold");
-    ins(PromptMessage, ",#4C4C4C,bold");
-    ins(PromptCompletionSelected, "#BBEE91,,");
-    ins(PromptCompletion, "#D8CCB4,,");
+    ins(PromptCompletionSelected, "#ff8c5a,,");
+    ins(PromptCompletion, "#d8ccb4,#000000,");
 
-    ins(Info, "#9aeaea,#000000,");
-    ins(Warn, "#ebb87b,#000000,");
-    ins(Error, "#eb817b,#000000,");
+    ins(PromptOlayDefault, ",,");
+    ins(PromptOlayTitle, ",,bold");
+    ins(PromptOlayUserInput, ",,");
+    ins(PromptOlayMessage, ",,bold");
+
+    ins(Info, "#00917e,#000000,");
+    ins(Warn, "#ff8c5a,#000000,");
+    ins(Error, "#c0564a,#000000,");
     theme
 }

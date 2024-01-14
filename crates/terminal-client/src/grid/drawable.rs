@@ -65,13 +65,12 @@ impl Drawable for CustomPrompt {
 
         match self.style {
             PromptStyle::Oneline => {
-                let mut message = into_cells_with_style(
-                    &self.prompt.message,
-                    ctx.theme.get(ThemeField::PromptTitle),
-                );
-                let colon = into_cells_with_style(": ", ctx.theme.get(ThemeField::PromptTitle));
-                let input = into_cells_with_style(&self.prompt.input, input_style);
+                let message_style = ctx.theme.get(ThemeField::PromptMessage);
+                let mut message = into_cells_with_style(&self.prompt.message, message_style);
+                let colon = into_cells_with_style(": ", message_style);
                 message.extend(colon);
+
+                let input = into_cells_with_style(&self.prompt.input, input_style);
                 message.extend(input);
                 pad_line(&mut message, default_style, wsize.width);
                 put_line(message, 0, cells);
@@ -95,24 +94,31 @@ impl Drawable for CustomPrompt {
                     });
             }
             PromptStyle::Overlay => {
-                if wsize.height > 2 {
-                    let title = into_cells_with_style(
-                        &self.prompt.message,
-                        ctx.theme.get(ThemeField::PromptTitle),
-                    );
-                    let title = center_pad(title, default_style, wsize.width);
+                const TITLE_HEIGHT: usize = 2;
+                if wsize.height > TITLE_HEIGHT {
+                    // Title
+                    let title_style = ctx.theme.get(ThemeField::PromptOlayTitle);
+                    let title = into_cells_with_style(&self.prompt.message, title_style);
+                    let title = center_pad(title, title_style, wsize.width);
                     put_line(title, 0, cells);
 
-                    let mut message =
-                        into_cells_with_style(" > ", ctx.theme.get(ThemeField::PromptMessage));
+                    // Empty line
+                    // let mut line = vec![];
+                    // pad_line(&mut line, input_style, wsize.width);
+                    // put_line(line, 1, cells);
+
+                    // Message
+                    let message_style = ctx.theme.get(ThemeField::PromptOlayMessage);
+                    let mut message = into_cells_with_style(" > ", message_style);
                     let input = into_cells_with_style(&self.prompt.input, input_style);
                     message.extend(input);
-                    pad_line(&mut message, default_style, wsize.width);
+                    pad_line(&mut message, message_style, wsize.width);
                     put_line(message, 1, cells);
                 }
 
-                cells = &mut cells[2..];
+                cells = &mut cells[TITLE_HEIGHT..];
 
+                // Options
                 let pcompl = ctx.theme.get(ThemeField::PromptCompletion);
                 set_style(cells, pcompl);
                 cells = draw_border(Border::Margin, pcompl, cells);

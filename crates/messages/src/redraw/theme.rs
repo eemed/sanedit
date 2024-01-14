@@ -120,11 +120,15 @@ pub enum ThemeField {
     Error,
 
     PromptDefault,
-    PromptTitle,
     PromptMessage,
     PromptUserInput,
     PromptCompletion,
     PromptCompletionSelected,
+
+    PromptOlayDefault,
+    PromptOlayTitle,
+    PromptOlayUserInput,
+    PromptOlayMessage,
 }
 
 impl AsRef<str> for ThemeField {
@@ -147,11 +151,15 @@ impl AsRef<str> for ThemeField {
             Error => "error",
 
             PromptDefault => "prompt",
-            PromptTitle => "prompt.title",
             PromptMessage => "prompt.message",
             PromptUserInput => "prompt.userinput",
             PromptCompletion => "prompt.completion",
             PromptCompletionSelected => "prompt.completion.selected",
+
+            PromptOlayDefault => "prompt.overlay",
+            PromptOlayTitle => "prompt.overlay.title",
+            PromptOlayUserInput => "prompt.overlay.userinput",
+            PromptOlayMessage => "prompt.overlay.message",
         }
     }
 }

@@ -42,24 +42,24 @@ fn default() -> Theme {
     // RED    #FF6262
 
     ins(Default, "#E2DBC8,#000000,");
-    ins(Statusline, "#402e32,#e8dcc4,");
+    ins(Statusline, "#896b60,#2a130d,");
     ins(EndOfBuffer, ",#7f755f,");
-    ins(Selection, "#ff8c5a,,");
-    ins(Match, "#91bbee,,");
+    ins(Selection, "#fa9e64,,");
+    ins(Match, "#C0A886,,");
     ins(Symbols, ",#606060,");
-    ins(Cursor, "#457e67,,");
+    ins(Cursor, "#a4ac86,,");
     ins(PrimaryCursor, "#016a61,,");
 
-    ins(PromptDefault, "#769890,#000000,");
+    ins(PromptDefault, "#656d4a,#000000,");
     ins(PromptMessage, ",,bold");
     ins(PromptUserInput, ",#000000,");
 
     ins(Gutter, ",#4C4C4C,bold");
-    ins(PromptCompletionSelected, "#ff8c5a,,");
+    ins(PromptCompletionSelected, "#fa9e64,,");
     ins(PromptCompletion, "#d8ccb4,#000000,");
 
-    ins(PromptOlayDefault, ",,");
-    ins(PromptOlayTitle, ",,bold");
+    ins(PromptOlayDefault, ",#000000,");
+    ins(PromptOlayTitle, ",#232d19,bold");
     ins(PromptOlayUserInput, ",,");
     ins(PromptOlayMessage, ",,bold");
 

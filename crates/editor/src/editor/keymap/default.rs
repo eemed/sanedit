@@ -71,6 +71,7 @@ impl KeyMappings for DefaultKeyMappings {
              "alt+x", cursors::select_line,
 
              "ctrl+x", text_objects::select_curly,
+             "ctrl+p", prompt::command_palette,
         );
 
         map

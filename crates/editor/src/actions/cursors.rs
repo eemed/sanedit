@@ -3,7 +3,7 @@ use sanedit_messages::redraw::Point;
 
 use crate::{
     common::{
-        movement::{end_of_line, next_line, next_line_start, prev_line, start_of_line},
+        movement::{next_line, next_line_start, prev_line, start_of_line},
         window::pos_at_point,
     },
     editor::{windows::Cursor, Editor},

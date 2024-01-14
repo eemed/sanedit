@@ -77,7 +77,6 @@ impl Search {
                         range
                     })
                     .collect();
-                log::info!("Sending: start: {start}, end: {end}, range: {range:?}, {matches:?}");
                 let _ = msend.send(matches).await;
             }
             SearchDirection::Backward => {

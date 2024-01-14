@@ -1,0 +1,108 @@
+use std::{any::Any, sync::Arc};
+
+use tokio::sync::mpsc::{channel, Receiver, Sender};
+
+use crate::{
+    actions::jobs::{match_options, MatchedOptions, CHANNEL_SIZE},
+    editor::{job_broker::KeepInTouch, windows::SelectorOption, Editor},
+    server::{BoxedJob, ClientId, Job, JobContext, JobResult},
+};
+
+enum MatcherMessage {
+    Init(Sender<String>),
+    Progress(MatchedOptions),
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct StaticMatcher {
+    client_id: ClientId,
+    opts: Arc<Vec<String>>,
+}
+
+impl StaticMatcher {
+    pub fn new(cid: ClientId, opts: Vec<String>) -> StaticMatcher {
+        StaticMatcher {
+            client_id: cid,
+            opts: Arc::new(opts),
+        }
+    }
+
+    async fn send_options(opts: Arc<Vec<String>>, osend: Sender<String>) {
+        for opt in opts.iter() {
+            let _ = osend.send(opt.clone()).await;
+        }
+    }
+
+    async fn send_matched_options(mut ctx: JobContext, mut mrecv: Receiver<MatchedOptions>) {
+        while let Some(msg) = mrecv.recv().await {
+            ctx.send(MatcherMessage::Progress(msg)).await;
+        }
+    }
+}
+
+impl Job for StaticMatcher {
+    fn run(&self, ctx: &JobContext) -> JobResult {
+        let opts = self.opts.clone();
+        let mut ctx = ctx.clone();
+
+        let fut = async move {
+            let (tsend, trecv) = channel::<String>(CHANNEL_SIZE);
+            let (osend, orecv) = channel::<String>(CHANNEL_SIZE);
+            let (msend, mrecv) = channel::<MatchedOptions>(CHANNEL_SIZE);
+
+            ctx.send(MatcherMessage::Init(tsend)).await;
+
+            tokio::join!(
+                Self::send_options(opts, osend),
+                match_options(orecv, trecv, msend),
+                Self::send_matched_options(ctx, mrecv),
+            );
+
+            Ok(())
+        };
+
+        Box::pin(fut)
+    }
+
+    fn box_clone(&self) -> BoxedJob {
+        Box::new((*self).clone())
+    }
+}
+
+impl KeepInTouch for StaticMatcher {
+    fn client_id(&self) -> ClientId {
+        self.client_id
+    }
+
+    fn on_message(&self, editor: &mut Editor, msg: Box<dyn Any>) {
+        let draw = editor.draw_state(self.client_id);
+        draw.no_redraw_window();
+
+        if let Ok(msg) = msg.downcast::<MatcherMessage>() {
+            let (win, buf) = editor.win_buf_mut(self.client_id);
+            use MatcherMessage::*;
+            match *msg {
+                Init(sender) => {
+                    win.prompt.set_on_input(move |editor, id, input| {
+                        let _ = sender.blocking_send(input.to_string());
+                    });
+                    win.prompt.clear_options();
+                }
+                Progress(opts) => match opts {
+                    MatchedOptions::ClearAll => win.prompt.clear_options(),
+                    MatchedOptions::Options(opts) => {
+                        let opts: Vec<SelectorOption> = opts
+                            .into_iter()
+                            .map(|mat| SelectorOption::from(mat))
+                            .collect();
+                        win.prompt.provide_options(opts.into());
+                    }
+                },
+            }
+        }
+    }
+
+    fn on_success(&self, editor: &mut Editor) {}
+
+    fn on_failure(&self, editor: &mut Editor, reason: &str) {}
+}

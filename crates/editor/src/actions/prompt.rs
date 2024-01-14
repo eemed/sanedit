@@ -1,7 +1,9 @@
+mod commands;
+
 use std::path::PathBuf;
 
 use crate::{
-    actions::jobs::OpenFile,
+    actions::{jobs::OpenFile, prompt::commands::get_action_by_name},
     editor::{
         windows::{Focus, Prompt},
         Editor,
@@ -9,7 +11,27 @@ use crate::{
     server::ClientId,
 };
 
-use super::jobs::ShellCommand;
+use super::jobs::{ShellCommand, StaticMatcher};
+
+#[action("Command palette")]
+fn command_palette(editor: &mut Editor, id: ClientId) {
+    let (win, _buf) = editor.win_buf_mut(id);
+
+    win.prompt = Prompt::builder()
+        .prompt("Command")
+        .on_confirm(move |editor, id, input| {
+            log::info!("Command palette with {input}");
+            match get_action_by_name(input) {
+                Some(action) => action.execute(editor, id),
+                None => log::error!("No action with name {input}"),
+            }
+        })
+        .build();
+    win.focus = Focus::Prompt;
+
+    let job = StaticMatcher::new(id, commands::command_palette());
+    editor.job_broker.request(job);
+}
 
 #[action("Open a file")]
 fn open_file(editor: &mut Editor, id: ClientId) {
@@ -36,26 +58,24 @@ fn open_file(editor: &mut Editor, id: ClientId) {
 #[action("Close prompt")]
 fn close(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
+    win.focus = Focus::Window;
+
     if let Some(on_abort) = win.prompt.on_abort() {
         let input = win.prompt.input_or_selected();
         (on_abort)(editor, id, &input)
     }
-
-    let (win, _buf) = editor.win_buf_mut(id);
-    win.focus = Focus::Window;
 }
 
 #[action("Confirm selection")]
 fn confirm(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
+    win.focus = Focus::Window;
+
     if let Some(on_confirm) = win.prompt.on_confirm() {
         win.prompt.save_to_history();
         let input = win.prompt.input_or_selected();
         (on_confirm)(editor, id, &input)
     }
-
-    let (win, _buf) = editor.win_buf_mut(id);
-    win.focus = Focus::Window;
 }
 
 #[action("Move cursor one character right")]

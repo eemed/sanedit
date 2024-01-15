@@ -9,12 +9,18 @@ pub enum Source {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
+pub struct PromptOption {
+    pub name: String,
+    pub description: String,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
 pub struct Prompt {
     pub message: String,
     pub input: String,
     /// Cursor position on input
     pub cursor: usize,
-    pub options: Vec<String>,
+    pub options: Vec<PromptOption>,
     pub selected: Option<usize>,
     pub source: Source,
     pub max_completions: usize,

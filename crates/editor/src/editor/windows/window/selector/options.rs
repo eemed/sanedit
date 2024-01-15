@@ -1,3 +1,4 @@
+use sanedit_messages::redraw::PromptOption;
 use sanedit_utils::sorted_vec::SortedVec;
 
 pub(crate) type Options = SortedVec<SelectorOption>;
@@ -5,16 +6,24 @@ pub(crate) type Options = SortedVec<SelectorOption>;
 #[derive(Debug, Clone, Default)]
 pub(crate) struct SelectorOption {
     pub(super) score: u32,
-    pub(super) opt: String,
+    /// Underlying option
+    pub(super) value: String,
+
+    /// Additional description of the option
+    pub(crate) description: String,
 }
 
 impl SelectorOption {
     pub fn new(opt: String, score: u32) -> SelectorOption {
-        SelectorOption { opt, score }
+        SelectorOption {
+            value: opt.clone(),
+            score,
+            description: String::new(),
+        }
     }
 
-    pub fn as_str(&self) -> &str {
-        self.opt.as_str()
+    pub fn value(&self) -> &str {
+        self.value.as_str()
     }
 
     pub fn score(&self) -> u32 {
@@ -39,5 +48,14 @@ impl PartialOrd for SelectorOption {
 impl Ord for SelectorOption {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.score.cmp(&other.score)
+    }
+}
+
+impl From<SelectorOption> for PromptOption {
+    fn from(opt: SelectorOption) -> Self {
+        PromptOption {
+            name: opt.value,
+            description: opt.description,
+        }
     }
 }

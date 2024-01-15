@@ -3,7 +3,7 @@ mod commands;
 use std::path::PathBuf;
 
 use crate::{
-    actions::{jobs::OpenFile, prompt::commands::get_action_by_name},
+    actions::{jobs::OpenFile, prompt::commands::find_action},
     editor::{
         windows::{Focus, Prompt},
         Editor,
@@ -19,17 +19,14 @@ fn command_palette(editor: &mut Editor, id: ClientId) {
 
     win.prompt = Prompt::builder()
         .prompt("Command")
-        .on_confirm(move |editor, id, input| {
-            log::info!("Command palette with {input}");
-            match get_action_by_name(input) {
-                Some(action) => action.execute(editor, id),
-                None => log::error!("No action with name {input}"),
-            }
+        .on_confirm(move |editor, id, input| match find_action(input) {
+            Some(action) => action.execute(editor, id),
+            None => log::error!("No action with name {input}"),
         })
         .build();
     win.focus = Focus::Prompt;
 
-    let job = StaticMatcher::new(id, commands::command_palette());
+    let job = StaticMatcher::new(id, commands::command_palette(), commands::format_match);
     editor.job_broker.request(job);
 }
 

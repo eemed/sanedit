@@ -62,6 +62,13 @@ impl Action {
             Action::Static { name, .. } => name,
         }
     }
+
+    pub fn description(&self) -> &str {
+        match self {
+            Action::Dynamic { name, .. } => name,
+            Action::Static { desc, .. } => desc,
+        }
+    }
 }
 
 impl fmt::Debug for Action {

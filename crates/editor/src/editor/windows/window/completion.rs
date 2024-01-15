@@ -33,7 +33,11 @@ impl Completion {
     }
 
     pub fn matches_window(&self, count: usize, offset: usize) -> Vec<&str> {
-        self.selector.matches_window(count, offset)
+        self.selector
+            .matches_window(count, offset)
+            .iter()
+            .map(|m| m.value())
+            .collect()
     }
 }
 

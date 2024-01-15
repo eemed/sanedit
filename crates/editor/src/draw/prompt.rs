@@ -27,7 +27,7 @@ pub(crate) fn draw(prompt: &Prompt, ctx: &mut DrawContext) -> redraw::Prompt {
     let options = prompt
         .options_window(compl_count, *offset)
         .into_iter()
-        .map(|m| m.into())
+        .map(|m| m.clone().into())
         .collect();
 
     redraw::Prompt {

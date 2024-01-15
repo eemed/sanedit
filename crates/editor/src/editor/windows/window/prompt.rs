@@ -14,7 +14,10 @@ use crate::{
 
 use self::history::History;
 
-use super::selector::{Options, Selector};
+use super::{
+    selector::{Options, Selector},
+    SelectorOption,
+};
 
 pub(crate) struct PromptBuilder {
     message: Option<String>,
@@ -239,7 +242,7 @@ impl Prompt {
         self.selector.provide_options(opts);
     }
 
-    pub fn options_window(&self, count: usize, offset: usize) -> Vec<&str> {
+    pub fn options_window(&self, count: usize, offset: usize) -> Vec<&SelectorOption> {
         self.selector.matches_window(count, offset)
     }
 

@@ -4,6 +4,7 @@ use tokio::sync::mpsc::{channel, Receiver, Sender};
 
 use crate::{
     actions::jobs::{match_options, MatchedOptions, CHANNEL_SIZE},
+    common::matcher::Match,
     editor::{job_broker::KeepInTouch, windows::SelectorOption, Editor},
     server::{BoxedJob, ClientId, Job, JobContext, JobResult},
 };
@@ -17,13 +18,19 @@ enum MatcherMessage {
 pub(crate) struct StaticMatcher {
     client_id: ClientId,
     opts: Arc<Vec<String>>,
+    formatter: Arc<fn(&Editor, ClientId, Match) -> SelectorOption>,
 }
 
 impl StaticMatcher {
-    pub fn new(cid: ClientId, opts: Vec<String>) -> StaticMatcher {
+    pub fn new(
+        cid: ClientId,
+        opts: Vec<String>,
+        f: fn(&Editor, ClientId, Match) -> SelectorOption,
+    ) -> StaticMatcher {
         StaticMatcher {
             client_id: cid,
             opts: Arc::new(opts),
+            formatter: Arc::new(f),
         }
     }
 
@@ -79,7 +86,7 @@ impl KeepInTouch for StaticMatcher {
         draw.no_redraw_window();
 
         if let Ok(msg) = msg.downcast::<MatcherMessage>() {
-            let (win, buf) = editor.win_buf_mut(self.client_id);
+            let (win, _buf) = editor.win_buf_mut(self.client_id);
             use MatcherMessage::*;
             match *msg {
                 Init(sender) => {
@@ -93,8 +100,9 @@ impl KeepInTouch for StaticMatcher {
                     MatchedOptions::Options(opts) => {
                         let opts: Vec<SelectorOption> = opts
                             .into_iter()
-                            .map(|mat| SelectorOption::from(mat))
+                            .map(|mat| (self.formatter)(editor, self.client_id, mat))
                             .collect();
+                        let (win, _buf) = editor.win_buf_mut(self.client_id);
                         win.prompt.provide_options(opts.into());
                     }
                 },

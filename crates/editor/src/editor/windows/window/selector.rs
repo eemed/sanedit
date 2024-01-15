@@ -71,17 +71,12 @@ impl Selector {
     pub fn selected(&self) -> Option<(usize, &str)> {
         let sel = self.selected?;
         let opt = self.options.get(sel)?;
-        Some((sel, opt.as_str()))
+        Some((sel, opt.value()))
     }
 
     /// Returns less than or equal to count matches around selection,
     /// selection is positioned at the selected_offset index.
-    pub fn matches_window(&self, count: usize, offset: usize) -> Vec<&str> {
-        self.options
-            .iter()
-            .skip(offset)
-            .take(count)
-            .map(|s| s.as_str())
-            .collect()
+    pub fn matches_window(&self, count: usize, offset: usize) -> Vec<&SelectorOption> {
+        self.options.iter().skip(offset).take(count).collect()
     }
 }

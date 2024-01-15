@@ -123,6 +123,7 @@ pub enum ThemeField {
     PromptMessage,
     PromptUserInput,
     PromptCompletion,
+    PromptCompletionDescription,
     PromptCompletionSelected,
 
     PromptOlayDefault,
@@ -154,6 +155,7 @@ impl AsRef<str> for ThemeField {
             PromptMessage => "prompt.message",
             PromptUserInput => "prompt.userinput",
             PromptCompletion => "prompt.completion",
+            PromptCompletionDescription => "prompt.completion.description",
             PromptCompletionSelected => "prompt.completion.selected",
 
             PromptOlayDefault => "prompt.overlay",

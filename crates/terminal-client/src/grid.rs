@@ -5,14 +5,13 @@ mod drawable;
 mod prompt;
 mod rect;
 
-use std::{cmp::min, mem};
+use std::mem;
 
 use sanedit_messages::redraw::{
-    Cell, Component, Cursor, Diffable, Prompt, Redraw, Size, Source, StatusMessage, Statusline,
-    Window,
+    Cell, Component, Cursor, Diffable, Redraw, Size, StatusMessage, Statusline, Window,
 };
 
-use crate::{grid::prompt::PromptStyle, ui::UIContext};
+use crate::ui::UIContext;
 
 pub(crate) use self::rect::{Rect, Split};
 use self::{

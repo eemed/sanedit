@@ -90,7 +90,11 @@ impl Drawable for CustomPrompt {
                             ThemeField::PromptCompletion
                         };
                         let style = ctx.style(field);
-                        put_line(into_cells_with_style_pad(opt, style, wsize.width), i, cells);
+                        put_line(
+                            into_cells_with_style_pad(&opt.name, style, wsize.width),
+                            i,
+                            cells,
+                        );
                     });
             }
             PromptStyle::Overlay => {
@@ -137,7 +141,16 @@ impl Drawable for CustomPrompt {
                             ThemeField::PromptCompletion
                         };
                         let style = ctx.style(field);
-                        put_line(into_cells_with_style_pad(opt, style, wsize.width), i, cells);
+                        let msg = {
+                            let mut result = opt.name.to_string();
+                            result.push_str(&opt.description);
+                            result
+                        };
+                        put_line(
+                            into_cells_with_style_pad(&msg, style, wsize.width),
+                            i,
+                            cells,
+                        );
                     });
             }
         }

@@ -6,6 +6,7 @@ use crate::common::matcher::Match;
 use crate::editor::windows::SelectorOption;
 use lazy_static::lazy_static;
 
+// TODO
 lazy_static! {
     static ref COMMANDS2: HashMap<u32, &'static str> = {
         let mut m = HashMap::new();

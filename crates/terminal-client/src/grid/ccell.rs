@@ -134,3 +134,27 @@ pub(crate) fn center_pad(message: Vec<CCell>, pad_style: Style, width: usize) ->
     pad_line(&mut result, pad_style, width);
     result
 }
+
+pub(crate) fn format_option(
+    msg: &str,
+    desc: &str,
+    mstyle: Style,
+    dstyle: Style,
+    width: usize,
+) -> Vec<CCell> {
+    let mut prefix = msg.to_string();
+    prefix.push(' ');
+
+    // Fill space between
+    let mut len = prefix.len() + desc.len();
+    while len < width {
+        prefix.push(' ');
+        len += 1;
+    }
+
+    let mut result = into_cells_with_style(&prefix, mstyle);
+    let desc = into_cells_with_style(desc, dstyle);
+    result.extend(desc);
+    result.truncate(width);
+    result
+}

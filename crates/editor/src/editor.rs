@@ -280,7 +280,7 @@ impl Editor {
 
     fn get_bound_action(&mut self, id: ClientId) -> Option<Action> {
         let (win, _buf) = self.win_buf(id);
-        let keymap = win.keymap();
+        let keymap = win.focus_keymap();
 
         match keymap.get(&self.keys) {
             keymap::KeymapResult::Matched(action) => Some(action),

@@ -4,7 +4,7 @@ use sanedit_messages::redraw::{
     Cursor, CursorShape, IntoCells, Point, Severity, StatusMessage, Statusline, ThemeField, Window,
 };
 
-use crate::ui::UIContext;
+use crate::{grid::ccell::format_option, ui::UIContext};
 
 use super::{
     border::{draw_border, Border},
@@ -135,19 +135,22 @@ impl Drawable for CustomPrompt {
                     .take(max_opts)
                     .enumerate()
                     .for_each(|(i, opt)| {
-                        let field = if Some(i) == self.prompt.selected {
-                            ThemeField::PromptCompletionSelected
+                        let (field, dfield) = if Some(i) == self.prompt.selected {
+                            (
+                                ThemeField::PromptCompletionSelected,
+                                ThemeField::PromptCompletionSelectedDescription,
+                            )
                         } else {
-                            ThemeField::PromptCompletion
+                            (
+                                ThemeField::PromptCompletion,
+                                ThemeField::PromptCompletionDescription,
+                            )
                         };
                         let style = ctx.style(field);
-                        let msg = {
-                            let mut result = opt.name.to_string();
-                            result.push_str(&opt.description);
-                            result
-                        };
+                        let dstyle = ctx.style(dfield);
+
                         put_line(
-                            into_cells_with_style_pad(&msg, style, wsize.width),
+                            format_option(&opt.name, &opt.description, style, dstyle, wsize.width),
                             i,
                             cells,
                         );

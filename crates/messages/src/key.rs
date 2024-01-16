@@ -183,6 +183,19 @@ impl TryFrom<&str> for KeyEvent {
     }
 }
 
+pub fn keyevents_to_string(events: &[KeyEvent]) -> String {
+    let mut result = String::new();
+    for event in events {
+        if !result.is_empty() {
+            result.push_str(KEY_PRESS_SEPARATOR);
+        }
+
+        let es = format!("{}", event);
+        result.push_str(&es);
+    }
+    result
+}
+
 pub fn try_parse_keyevents(string: &str) -> Result<Vec<KeyEvent>, String> {
     let key_events = string.split(KEY_PRESS_SEPARATOR);
 

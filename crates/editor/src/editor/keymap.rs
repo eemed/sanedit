@@ -44,6 +44,12 @@ impl Keymap {
     pub fn bind(&mut self, events: &[KeyEvent], action: Action) {
         self.root.bind(events, action);
     }
+
+    /// Find the keybinding mapped to action with name
+    pub fn find_bound_key(&self, name: &str) -> Option<Vec<KeyEvent>> {
+        let root = &self.root.root;
+        root.find_bound_key(name)
+    }
 }
 
 #[derive(Debug)]
@@ -143,6 +149,28 @@ impl KeyTrieNode {
                 }
 
                 KeymapResult::NotFound
+            }
+        }
+    }
+
+    fn find_bound_key(&self, name: &str) -> Option<Vec<KeyEvent>> {
+        match self {
+            KeyTrieNode::Leaf { action } => {
+                if action.name() == name {
+                    Some(vec![])
+                } else {
+                    None
+                }
+            }
+            KeyTrieNode::Node { map } => {
+                for (ev, n) in map {
+                    if let Some(mut events) = n.find_bound_key(name) {
+                        events.insert(0, ev.clone());
+                        return Some(events);
+                    }
+                }
+
+                None
             }
         }
     }

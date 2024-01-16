@@ -11,7 +11,7 @@ pub mod redraw;
 mod writer;
 
 pub use codec::BinCodec;
-pub use key::{try_parse_keyevents, Key, KeyEvent, KeyMods};
+pub use key::{keyevents_to_string, try_parse_keyevents, Key, KeyEvent, KeyMods};
 pub use mouse::{MouseButton, MouseEvent, MouseEventKind};
 pub use option::Option;
 pub use reader::Reader;

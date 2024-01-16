@@ -242,6 +242,11 @@ impl Window {
     }
 
     pub fn keymap(&self) -> &Keymap {
+        &self.keymap
+    }
+
+    /// Return the currently focused elements keymap
+    pub fn focus_keymap(&self) -> &Keymap {
         match self.focus {
             Focus::Search => &self.search.prompt.keymap,
             Focus::Prompt => &self.prompt.keymap,

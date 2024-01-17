@@ -60,7 +60,7 @@ impl KeyEvent {
 }
 
 /// Separator for different key presses.
-pub(crate) const KEY_PRESS_SEPARATOR: &str = "-";
+pub(crate) const KEY_PRESS_SEPARATOR: &str = " ";
 
 /// Separator for different keys in a single key press.
 pub(crate) const KEY_SEPARATOR: &str = "+";

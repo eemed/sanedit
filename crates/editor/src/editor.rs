@@ -34,6 +34,7 @@ use crate::common::file::File;
 use crate::draw::DrawState;
 use crate::editor::buffers::Buffer;
 use crate::editor::hooks::Hook;
+use crate::editor::keymap::KeymapResult;
 use crate::events::ToEditor;
 use crate::server::ClientHandle;
 use crate::server::ClientId;
@@ -278,16 +279,6 @@ impl Editor {
         }
     }
 
-    fn get_bound_action(&mut self, id: ClientId) -> Option<Action> {
-        let (win, _buf) = self.win_buf(id);
-        let keymap = win.focus_keymap();
-
-        match keymap.get(&self.keys) {
-            keymap::KeymapResult::Matched(action) => Some(action),
-            _ => None,
-        }
-    }
-
     fn handle_key_event(&mut self, id: ClientId, event: KeyEvent) {
         log::info!("{event:?}");
         use sanedit_messages::Key::*;
@@ -297,10 +288,16 @@ impl Editor {
         run(self, id, Hook::KeyPressedPre);
 
         // Handle key bindings
-        if let Some(action) = self.get_bound_action(id) {
-            self.keys.clear();
-            action.execute(self, id);
-            return;
+        let (win, _buf) = self.win_buf(id);
+        let keymap = win.focus_keymap();
+        match keymap.get(&self.keys) {
+            KeymapResult::Matched(action) => {
+                self.keys.clear();
+                action.execute(self, id);
+                return;
+            }
+            KeymapResult::Pending => return,
+            KeymapResult::NotFound => {}
         }
 
         // Clear keys buffer, and handle them separately

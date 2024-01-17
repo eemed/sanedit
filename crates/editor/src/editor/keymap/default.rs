@@ -70,8 +70,19 @@ impl KeyMappings for DefaultKeyMappings {
              "alt+r", prompt::shell_command,
              "alt+x", cursors::select_line,
 
-             "ctrl+x", text_objects::select_curly,
              "ctrl+p", prompt::command_palette,
+
+             "alt+o c", text_objects::select_in_curly,
+             "alt+o C", text_objects::select_curly,
+
+             "alt+o b", text_objects::select_in_parens,
+             "alt+o B", text_objects::select_parens,
+
+             "alt+o r", text_objects::select_in_square,
+             "alt+o R", text_objects::select_square,
+
+             "alt+o a", text_objects::select_in_angle,
+             "alt+o A", text_objects::select_angle,
         );
 
         map

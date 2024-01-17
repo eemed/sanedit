@@ -7,6 +7,12 @@ use sanedit_messages::keyevents_to_string;
 pub(crate) const COMMANDS: &[Action] = &[
     editor::quit,
 
+    text::save,
+    text::copy,
+    text::paste,
+    text::undo,
+    text::redo,
+
     prompt::open_file,
     prompt::shell_command,
 
@@ -31,6 +37,18 @@ pub(crate) const COMMANDS: &[Action] = &[
     cursors::new_prev_line,
     cursors::new_to_next_search_match,
     cursors::new_to_all_search_matches,
+
+    view::scroll_up,
+    view::scroll_down,
+
+    text_objects::select_parens,
+    text_objects::select_in_parens,
+    text_objects::select_square,
+    text_objects::select_in_square,
+    text_objects::select_curly,
+    text_objects::select_in_curly,
+    text_objects::select_angle,
+    text_objects::select_in_angle,
 ];
 
 pub(crate) fn command_palette() -> Vec<String> {

@@ -3,8 +3,6 @@ mod logging;
 use std::{
     fs,
     path::{Path, PathBuf},
-    thread,
-    time::Duration,
 };
 
 use clap::Parser;

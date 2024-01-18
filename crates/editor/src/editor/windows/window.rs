@@ -134,12 +134,6 @@ impl Window {
 
         self.view.scroll_down_n(buf, n);
         self.view.redraw(buf);
-
-        let primary = self.cursors.primary_mut();
-        let Range { start, .. } = self.view.range();
-        if primary.pos() < start {
-            primary.goto(start);
-        }
     }
 
     pub fn scroll_up_n(&mut self, buf: &Buffer, n: usize) {
@@ -151,13 +145,6 @@ impl Window {
         );
         self.view.scroll_up_n(buf, n);
         self.view.redraw(buf);
-
-        let primary = self.cursors.primary_mut();
-        let pos = primary.pos();
-        if !self.view.is_visible(pos) {
-            let prev = prev_grapheme_boundary(&buf.slice(..), self.view.end());
-            primary.goto(prev);
-        }
     }
 
     /// sets window offset so that primary cursor is visible in the drawn view.
@@ -236,9 +223,9 @@ impl Window {
         );
 
         self.cursors.ensure_in_range(0..buf.len());
-        let primary_pos = self.cursors.primary().pos();
+        // let primary_pos = self.cursors.primary().pos();
         self.view.redraw(buf);
-        self.view.view_to(primary_pos, buf);
+        // self.view.view_to(primary_pos, buf);
     }
 
     pub fn keymap(&self) -> &Keymap {

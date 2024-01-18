@@ -30,7 +30,7 @@ pub(crate) struct Grid {
     msg: Option<Canvas<StatusMessage>>,
 
     drawn: Vec<Vec<Cell>>,
-    cursor: Cursor,
+    cursor: Option<Cursor>,
 }
 
 impl Grid {
@@ -52,7 +52,7 @@ impl Grid {
             msg: None,
 
             drawn: vec![vec![Cell::default(); width]; height],
-            cursor: Cursor::default(),
+            cursor: None,
         }
     }
 
@@ -143,18 +143,20 @@ impl Grid {
                 *cell = Cell::default();
             }
         }
+
+        self.cursor = None;
     }
 
     fn draw_drawable<D: Drawable>(
         drawable: &Canvas<D>,
         ctx: &UIContext,
-        cursor: &mut Cursor,
+        cursor: &mut Option<Cursor>,
         cells: &mut Vec<Vec<Cell>>,
     ) {
         let rect = drawable.area().clone();
-        if let Some(cur) = drawable.cursor(ctx) {
-            *cursor = cur;
-            cursor.point = cursor.point + rect.position();
+        if let Some(mut cur) = drawable.cursor(ctx) {
+            cur.point = cur.point + rect.position();
+            *cursor = Some(cur);
         }
 
         let top_left = rect.position();
@@ -174,7 +176,7 @@ impl Grid {
         }
     }
 
-    pub fn draw(&mut self, ctx: &UIContext) -> (&Vec<Vec<Cell>>, Cursor) {
+    pub fn draw(&mut self, ctx: &UIContext) -> (&Vec<Vec<Cell>>, Option<Cursor>) {
         self.clear();
 
         Self::draw_drawable(&self.window, ctx, &mut self.cursor, &mut self.drawn);

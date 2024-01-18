@@ -76,14 +76,21 @@ impl UI {
             }
         }
 
-        let Point { x, y } = cursor.point;
-        self.terminal.set_style(Style {
-            text_style: None,
-            bg: cursor.bg,
-            fg: cursor.fg,
-        });
-        self.terminal.set_cursor_style(cursor.shape);
-        self.terminal.goto(x, y);
+        if let Some(cursor) = cursor {
+            log::info!("cursor: {:?}", cursor);
+            self.terminal.show_cursor();
+            let Point { x, y } = cursor.point;
+            self.terminal.set_style(Style {
+                text_style: None,
+                bg: cursor.bg,
+                fg: cursor.fg,
+            });
+            self.terminal.set_cursor_style(cursor.shape);
+            self.terminal.goto(x, y);
+        } else {
+            self.terminal.hide_cursor();
+        }
+
         self.terminal.flush();
     }
 }

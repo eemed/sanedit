@@ -8,6 +8,7 @@ pub struct Terminal {
     out: BufWriter<Stdout>,
     written: Vec<Vec<Cell>>,
     brush: Style,
+    cursor_shown: bool,
 }
 
 impl Terminal {
@@ -26,6 +27,7 @@ impl Terminal {
             out: BufWriter::with_capacity(4096_000, stdout),
             written: vec![vec![Cell::default(); width]; height],
             brush: Style::default(),
+            cursor_shown: false,
         })
     }
 
@@ -46,6 +48,22 @@ impl Terminal {
             }
         }
 
+        Ok(())
+    }
+
+    pub fn show_cursor(&mut self) -> Result<()> {
+        if !self.cursor_shown {
+            queue!(self.out, cursor::Show)?;
+            self.cursor_shown = true;
+        }
+        Ok(())
+    }
+
+    pub fn hide_cursor(&mut self) -> Result<()> {
+        if self.cursor_shown {
+            queue!(self.out, cursor::Hide)?;
+            self.cursor_shown = false;
+        }
         Ok(())
     }
 

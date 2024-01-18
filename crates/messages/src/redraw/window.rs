@@ -7,7 +7,7 @@ use super::{Cell, Component, Cursor, Diffable, Redraw};
 #[derive(Serialize, Deserialize, PartialEq, Eq, Default, Clone)]
 pub struct Window {
     pub cells: Vec<Vec<Cell>>,
-    pub cursor: Cursor,
+    pub cursor: Option<Cursor>,
 }
 
 impl Diffable for Window {

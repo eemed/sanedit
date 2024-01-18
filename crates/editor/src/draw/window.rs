@@ -1,7 +1,4 @@
-use std::{
-    collections::{HashSet, VecDeque},
-    ops::Range,
-};
+use std::ops::Range;
 
 use sanedit_messages::redraw::{self, CursorShape, LineNumbers, Style, Theme, ThemeField};
 
@@ -143,7 +140,7 @@ fn draw_primary_cursor(
     cursor: &Cursor,
     view: &View,
     theme: &Theme,
-) -> redraw::Cursor {
+) -> Option<redraw::Cursor> {
     let style = theme.get(ThemeField::Selection);
 
     if let Some(area) = cursor.selection() {
@@ -156,9 +153,7 @@ fn draw_primary_cursor(
     } else {
         CursorShape::Block(true)
     };
-    let point = view
-        .point_at_pos(cursor.pos())
-        .expect("Primary cursor not in view");
+    let point = view.point_at_pos(cursor.pos())?;
     let style = theme.get(ThemeField::PrimaryCursor);
     redraw::Cursor {
         bg: style.bg,
@@ -166,6 +161,7 @@ fn draw_primary_cursor(
         shape,
         point,
     }
+    .into()
 }
 
 fn draw_end_of_buffer(grid: &mut Vec<Vec<redraw::Cell>>, view: &View, theme: &Theme) {

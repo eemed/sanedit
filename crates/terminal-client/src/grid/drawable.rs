@@ -36,7 +36,7 @@ impl Drawable for Window {
     }
 
     fn cursor(&self, ctx: &UIContext) -> Option<Cursor> {
-        Some(self.cursor)
+        self.cursor
     }
 }
 

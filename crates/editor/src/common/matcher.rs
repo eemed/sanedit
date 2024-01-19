@@ -2,7 +2,9 @@ mod matches;
 mod receiver;
 
 use std::{
+    borrow::Cow,
     cmp::min,
+    ops::Range,
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc,
@@ -59,7 +61,11 @@ impl Matcher {
         let (out, rx) = channel::<Match>(Self::CHANNEL_SIZE);
         let reader = self.reader.clone();
         let all_opts_read = self.all_opts_read.clone();
-        let term: Arc<String> = Arc::new(term.into());
+        let case_sensitive = term.chars().any(|ch| ch.is_uppercase());
+        // Split term by whitespace and use the resulting terms as independent
+        // searches
+        let terms: Vec<String> = term.split_whitespace().map(String::from).collect();
+        let terms: Arc<Vec<String>> = Arc::new(terms);
         let mut available = reader.len();
         let mut taken = 0;
         let stop = Arc::new(AtomicBool::new(false));
@@ -83,8 +89,7 @@ impl Matcher {
                 let out = out.clone();
                 let stop = stop.clone();
                 let reader = reader.clone();
-                let term = term.clone();
-                let case_sensitive = term.chars().any(|ch| ch.is_uppercase());
+                let terms = terms.clone();
 
                 rayon::spawn(move || {
                     if stop.load(Ordering::Relaxed) {
@@ -93,12 +98,12 @@ impl Matcher {
 
                     let candidates = reader.slice(batch);
                     for can in candidates.into_iter() {
-                        if let Some(start) = matches_with(&can, &term, case_sensitive) {
+                        if let Some(ranges) = matches_with(&can, &terms, case_sensitive) {
                             // TODO: scoring algorithm
                             let mat = Match {
                                 score: can.len() as u32,
                                 value: can.clone(),
-                                ranges: vec![start..start + term.len()],
+                                ranges,
                             };
 
                             if out.blocking_send(mat).is_err() {
@@ -117,10 +122,22 @@ impl Matcher {
     }
 }
 
-fn matches_with(string: &str, input: &str, case_sensitive: bool) -> Option<usize> {
-    if !case_sensitive {
-        string.to_lowercase().find(input)
+fn matches_with(
+    string: &str,
+    terms: &Arc<Vec<String>>,
+    case_sensitive: bool,
+) -> Option<Vec<Range<usize>>> {
+    let string: Cow<str> = if !case_sensitive {
+        Cow::from(string.to_lowercase())
     } else {
-        string.find(input)
+        Cow::from(string)
+    };
+
+    let mut matches = vec![];
+    for term in terms.iter() {
+        let start = string.find(term)?;
+        matches.push(start..start + term.len());
     }
+
+    Some(matches)
 }

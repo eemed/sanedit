@@ -77,7 +77,6 @@ impl UI {
         }
 
         if let Some(cursor) = cursor {
-            log::info!("cursor: {:?}", cursor);
             self.terminal.show_cursor();
             let Point { x, y } = cursor.point;
             self.terminal.set_style(Style {

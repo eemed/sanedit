@@ -70,6 +70,7 @@ impl Matcher {
             }
 
             let all_read = all_opts_read.load(Ordering::Relaxed);
+            // If we are done reading all available options
             if all_read && available <= taken {
                 break;
             }
@@ -83,6 +84,7 @@ impl Matcher {
                 let stop = stop.clone();
                 let reader = reader.clone();
                 let term = term.clone();
+                let case_sensitive = term.chars().any(|ch| ch.is_uppercase());
 
                 rayon::spawn(move || {
                     if stop.load(Ordering::Relaxed) {
@@ -91,12 +93,14 @@ impl Matcher {
 
                     let candidates = reader.slice(batch);
                     for can in candidates.into_iter() {
-                        if matches_with(&can, &term, false).is_some() {
+                        if let Some(start) = matches_with(&can, &term, case_sensitive) {
                             // TODO: scoring algorithm
                             let mat = Match {
                                 score: can.len() as u32,
                                 value: can.clone(),
+                                ranges: vec![start..start + term.len()],
                             };
+
                             if out.blocking_send(mat).is_err() {
                                 stop.store(true, Ordering::Release);
                             }
@@ -113,9 +117,9 @@ impl Matcher {
     }
 }
 
-fn matches_with(string: &str, input: &str, ignore_case: bool) -> Option<usize> {
-    if ignore_case {
-        string.to_ascii_lowercase().find(input)
+fn matches_with(string: &str, input: &str, case_sensitive: bool) -> Option<usize> {
+    if !case_sensitive {
+        string.to_lowercase().find(input)
     } else {
         string.find(input)
     }

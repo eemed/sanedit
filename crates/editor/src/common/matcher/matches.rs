@@ -1,10 +1,17 @@
+use std::ops::Range;
+
 use crate::editor::windows::SelectorOption;
 
 /// A matched and scored candidate
 #[derive(Debug, Clone)]
 pub(crate) struct Match {
+    /// Matched value
     pub(crate) value: String,
+    /// Score of the match
     pub(crate) score: u32,
+
+    /// Ranges of value string that were matched
+    pub(crate) ranges: Vec<Range<usize>>,
 }
 
 impl Match {
@@ -14,6 +21,10 @@ impl Match {
 
     pub fn score(&self) -> u32 {
         self.score
+    }
+
+    pub fn ranges(&self) -> &[Range<usize>] {
+        &self.ranges
     }
 }
 

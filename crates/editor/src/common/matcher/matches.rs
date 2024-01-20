@@ -50,6 +50,6 @@ impl Ord for Match {
 
 impl From<Match> for SelectorOption {
     fn from(mat: Match) -> Self {
-        SelectorOption::new(mat.value, mat.score)
+        SelectorOption::new(mat.value, mat.ranges, mat.score)
     }
 }

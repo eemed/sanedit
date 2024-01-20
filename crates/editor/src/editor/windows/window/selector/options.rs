@@ -1,3 +1,5 @@
+use std::ops::Range;
+
 use sanedit_messages::redraw::PromptOption;
 use sanedit_utils::sorted_vec::SortedVec;
 
@@ -9,16 +11,20 @@ pub(crate) struct SelectorOption {
     /// Underlying option
     pub(super) value: String,
 
+    /// Matched ranges
+    pub(super) matches: Vec<Range<usize>>,
+
     /// Additional description of the option
     pub(crate) description: String,
 }
 
 impl SelectorOption {
-    pub fn new(opt: String, score: u32) -> SelectorOption {
+    pub fn new(opt: String, matches: Vec<Range<usize>>, score: u32) -> SelectorOption {
         SelectorOption {
             value: opt.clone(),
             score,
             description: String::new(),
+            matches,
         }
     }
 
@@ -28,6 +34,10 @@ impl SelectorOption {
 
     pub fn score(&self) -> u32 {
         self.score
+    }
+
+    pub fn matches(&self) -> &[Range<usize>] {
+        &self.matches
     }
 }
 
@@ -56,6 +66,7 @@ impl From<SelectorOption> for PromptOption {
         PromptOption {
             name: opt.value,
             description: opt.description,
+            matches: opt.matches,
         }
     }
 }

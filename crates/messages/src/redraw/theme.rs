@@ -124,8 +124,10 @@ pub enum ThemeField {
     PromptUserInput,
     PromptCompletion,
     PromptCompletionDescription,
+    PromptCompletionMatch,
     PromptCompletionSelected,
     PromptCompletionSelectedDescription,
+    PromptCompletionSelectedMatch,
 
     PromptOlayDefault,
     PromptOlayTitle,
@@ -157,8 +159,10 @@ impl AsRef<str> for ThemeField {
             PromptUserInput => "prompt.userinput",
             PromptCompletion => "prompt.completion",
             PromptCompletionDescription => "prompt.completion.description",
+            PromptCompletionMatch => "prompt.completion.match",
             PromptCompletionSelected => "prompt.completion.selected",
             PromptCompletionSelectedDescription => "prompt.completion.selected.description",
+            PromptCompletionSelectedMatch => "prompt.completion.selected.match",
 
             PromptOlayDefault => "prompt.overlay",
             PromptOlayTitle => "prompt.overlay.title",

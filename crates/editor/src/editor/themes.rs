@@ -57,8 +57,10 @@ fn default() -> Theme {
     ins(Gutter, ",#4C4C4C,bold");
     ins(PromptCompletionSelected, "#fa9e64,,");
     ins(PromptCompletionSelectedDescription, ",,");
+    ins(PromptCompletionSelectedMatch, ",#b0463a,");
     ins(PromptCompletion, "#d8ccb4,#000000,");
     ins(PromptCompletionDescription, ",#7f755f,");
+    ins(PromptCompletionMatch, ",#b0463a,");
 
     ins(PromptOlayDefault, ",#000000,");
     ins(PromptOlayTitle, ",#232d19,bold");

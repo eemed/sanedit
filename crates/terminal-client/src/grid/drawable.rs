@@ -90,11 +90,21 @@ impl Drawable for CustomPrompt {
                             ThemeField::PromptCompletion
                         };
                         let style = ctx.style(field);
-                        put_line(
-                            into_cells_with_style_pad(&opt.name, style, wsize.width),
-                            i,
-                            cells,
-                        );
+                        let mstyle = ctx.style(field);
+                        let mut line = into_cells_with_style_pad(&opt.name, style, wsize.width);
+
+                        // Highlight matches
+                        for mat in &opt.matches {
+                            let mut pos = 0;
+                            for cell in &mut line {
+                                if mat.contains(&pos) {
+                                    cell.style = mstyle;
+                                }
+                                pos += cell.cell.text.len();
+                            }
+                        }
+
+                        put_line(line, i, cells);
                     });
             }
             PromptStyle::Overlay => {
@@ -135,25 +145,38 @@ impl Drawable for CustomPrompt {
                     .take(max_opts)
                     .enumerate()
                     .for_each(|(i, opt)| {
-                        let (field, dfield) = if Some(i) == self.prompt.selected {
+                        let (field, dfield, mfield) = if Some(i) == self.prompt.selected {
                             (
                                 ThemeField::PromptCompletionSelected,
                                 ThemeField::PromptCompletionSelectedDescription,
+                                ThemeField::PromptCompletionSelectedMatch,
                             )
                         } else {
                             (
                                 ThemeField::PromptCompletion,
                                 ThemeField::PromptCompletionDescription,
+                                ThemeField::PromptCompletionMatch,
                             )
                         };
                         let style = ctx.style(field);
                         let dstyle = ctx.style(dfield);
+                        let mstyle = ctx.style(mfield);
 
-                        put_line(
-                            format_option(&opt.name, &opt.description, style, dstyle, wsize.width),
-                            i,
-                            cells,
-                        );
+                        let mut line =
+                            format_option(&opt.name, &opt.description, style, dstyle, wsize.width);
+
+                        // Highlight matches
+                        for mat in &opt.matches {
+                            let mut pos = 0;
+                            for cell in &mut line {
+                                if mat.contains(&pos) {
+                                    cell.style = mstyle;
+                                }
+                                pos += cell.cell.text.len();
+                            }
+                        }
+
+                        put_line(line, i, cells);
                     });
             }
         }

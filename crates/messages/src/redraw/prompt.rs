@@ -1,3 +1,5 @@
+use std::ops::Range;
+
 use serde::{Deserialize, Serialize};
 
 use super::{Component, Diffable, Redraw};
@@ -11,6 +13,7 @@ pub enum Source {
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
 pub struct PromptOption {
     pub name: String,
+    pub matches: Vec<Range<usize>>,
     pub description: String,
 }
 

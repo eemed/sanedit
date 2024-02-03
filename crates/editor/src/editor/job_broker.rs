@@ -55,6 +55,11 @@ impl JobBroker {
         self.jobs.remove(&id);
     }
 
+    pub fn stop(&mut self, id: JobId) {
+        let _ = self.handle.blocking_send(ToJobs::Stop(id));
+        self.done(id);
+    }
+
     pub fn get(&self, id: JobId) -> Option<Rc<dyn KeepInTouch>> {
         self.jobs.get(&id).cloned()
     }

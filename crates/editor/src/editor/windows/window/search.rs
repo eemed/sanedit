@@ -126,7 +126,7 @@ impl Search {
         SearchBuilder::new()
     }
 
-    pub fn on_confirm(&self) -> Option<PromptAction> {
+    pub fn on_confirm(&mut self) -> Option<PromptAction> {
         self.prompt.on_confirm()
     }
 

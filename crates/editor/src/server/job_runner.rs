@@ -74,6 +74,7 @@ async fn jobs_loop(mut recv: mpsc::Receiver<ToJobs>, handle: EditorHandle) {
                     Stop(id) => {
                         if let Some(join) = jobs.remove(&id) {
                             join.abort();
+                            log::info!("Job {id} stopped");
                         }
                     }
                 }

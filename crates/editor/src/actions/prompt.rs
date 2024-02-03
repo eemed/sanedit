@@ -1,6 +1,6 @@
 mod commands;
 
-use std::path::PathBuf;
+use std::{mem, path::PathBuf};
 
 use crate::{
     actions::{jobs::OpenFile, prompt::commands::find_action},
@@ -17,6 +17,8 @@ use super::jobs::{ShellCommand, StaticMatcher};
 fn command_palette(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
 
+    let job = StaticMatcher::new(id, commands::command_palette(), commands::format_match);
+
     win.prompt = Prompt::builder()
         .prompt("Command")
         .on_confirm(move |editor, id, input| match find_action(input) {
@@ -26,12 +28,14 @@ fn command_palette(editor: &mut Editor, id: ClientId) {
         .build();
     win.focus = Focus::Prompt;
 
-    let job = StaticMatcher::new(id, commands::command_palette(), commands::format_match);
     editor.job_broker.request(job);
 }
 
 #[action("Open a file")]
 fn open_file(editor: &mut Editor, id: ClientId) {
+    let path = editor.working_dir().to_path_buf();
+    let job = OpenFile::new(id, path);
+    let jid = editor.job_broker.request(job);
     let (win, _buf) = editor.win_buf_mut(id);
 
     win.prompt = Prompt::builder()
@@ -44,12 +48,9 @@ fn open_file(editor: &mut Editor, id: ClientId) {
                 win.warn_msg(&format!("Failed to open file {input}"))
             }
         })
+        .background_job(jid)
         .build();
     win.focus = Focus::Prompt;
-
-    let path = editor.working_dir().to_path_buf();
-    let job = OpenFile::new(id, path);
-    editor.job_broker.request(job);
 }
 
 #[action("Close prompt")]
@@ -60,6 +61,11 @@ fn close(editor: &mut Editor, id: ClientId) {
     if let Some(on_abort) = win.prompt.on_abort() {
         let input = win.prompt.input_or_selected();
         (on_abort)(editor, id, &input)
+    }
+
+    let (win, _buf) = editor.win_buf_mut(id);
+    if let Some(id) = win.prompt.background_job() {
+        editor.job_broker.stop(id);
     }
 }
 
@@ -72,6 +78,11 @@ fn confirm(editor: &mut Editor, id: ClientId) {
         win.prompt.save_to_history();
         let input = win.prompt.input_or_selected();
         (on_confirm)(editor, id, &input)
+    }
+
+    let (win, _buf) = editor.win_buf_mut(id);
+    if let Some(id) = win.prompt.background_job() {
+        editor.job_broker.stop(id);
     }
 }
 

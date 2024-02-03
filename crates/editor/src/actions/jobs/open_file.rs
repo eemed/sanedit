@@ -77,6 +77,7 @@ impl OpenFile {
 
 impl Job for OpenFile {
     fn run(&self, ctx: &JobContext) -> JobResult {
+        log::info!("openfile");
         let mut ctx = ctx.clone();
         let dir = self.path.clone();
 

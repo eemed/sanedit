@@ -133,6 +133,7 @@ fn matches_with(
         Cow::from(string)
     };
 
+    // TODO unicode casefolding
     let mut matches = vec![];
     for term in terms.iter() {
         let start = string.find(term)?;

@@ -61,6 +61,7 @@ impl Grid {
     }
 
     pub fn handle_redraw(&mut self, ctx: &UIContext, msg: Redraw) {
+        log::info!("redraw");
         use Component::*;
         use Redraw::*;
 

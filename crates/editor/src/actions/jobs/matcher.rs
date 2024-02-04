@@ -29,6 +29,7 @@ pub(crate) async fn match_options(
 
                 if matches.len() >= MAX_SIZE {
                     let opts = mem::take(&mut matches);
+                    log::info!("Sending results");
                     if let Err(_) = msend.send(MatchedOptions::Options(opts)).await {
                         break;
                     }

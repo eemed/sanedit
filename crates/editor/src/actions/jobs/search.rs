@@ -102,8 +102,7 @@ impl Search {
 }
 
 impl Job for Search {
-    fn run(&self, ctx: &crate::server::JobContext) -> crate::server::JobResult {
-        let mut ctx = ctx.clone();
+    fn run(&self, mut ctx: JobContext) -> crate::server::JobResult {
         let term = self.term.clone();
         let pt = self.ropt.clone();
         let range = self.range.clone();

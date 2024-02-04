@@ -2,13 +2,16 @@ use std::{any::Any, path::PathBuf};
 
 use tokio::{
     fs, io,
-    sync::mpsc::{channel, Receiver, Sender},
+    sync::{
+        broadcast,
+        mpsc::{channel, Receiver, Sender},
+    },
 };
 
 use crate::{
     actions::jobs::match_options,
     editor::{job_broker::KeepInTouch, windows::SelectorOption, Editor},
-    server::{BoxedJob, ClientId, Job, JobContext, JobResult},
+    server::{BoxedJob, ClientId, Job, JobContext, JobId, JobResponseSender, JobResult},
 };
 
 use super::{MatchedOptions, CHANNEL_SIZE};
@@ -32,22 +35,34 @@ impl OpenFile {
         }
     }
 
-    async fn read_directory_recursive(dir: PathBuf, osend: Sender<String>) {
-        fn spawn(dir: PathBuf, osend: Sender<String>, strip: usize) {
-            tokio::spawn(read_recursive(dir, osend, strip));
+    async fn read_directory_recursive(
+        dir: PathBuf,
+        osend: Sender<String>,
+        kill: broadcast::Sender<()>,
+    ) {
+        fn spawn(dir: PathBuf, osend: Sender<String>, strip: usize, kill: broadcast::Sender<()>) {
+            tokio::spawn(async move {
+                let mut krecv = kill.subscribe();
+
+                tokio::select! {
+                     _ = read_recursive(dir, osend, strip, kill) => {}
+                     _ = krecv.recv() => {}
+                }
+            });
         }
 
         async fn read_recursive(
             dir: PathBuf,
             osend: Sender<String>,
             strip: usize,
+            kill: broadcast::Sender<()>,
         ) -> io::Result<()> {
             let mut rdir = fs::read_dir(&dir).await?;
             while let Ok(Some(entry)) = rdir.next_entry().await {
                 let path = entry.path();
                 let metadata = entry.metadata().await?;
                 if metadata.is_dir() {
-                    spawn(path, osend.clone(), strip)
+                    spawn(path, osend.clone(), strip, kill.clone());
                 } else {
                     let path =
                         path.components()
@@ -65,33 +80,59 @@ impl OpenFile {
         }
 
         let strip = dir.components().count();
-        let _ = read_recursive(dir, osend, strip).await;
+        let mut krecv = kill.subscribe();
+
+        tokio::select! {
+             _ = read_recursive(dir, osend, strip, kill) => {}
+             _ = krecv.recv() => {}
+        }
     }
 
-    async fn send_matched_options(mut ctx: JobContext, mut mrecv: Receiver<MatchedOptions>) {
+    async fn send_matched_options(
+        id: JobId,
+        mut sender: JobResponseSender,
+        mut mrecv: Receiver<MatchedOptions>,
+    ) {
         while let Some(opts) = mrecv.recv().await {
-            ctx.send(OpenFileMessage::Progress(opts)).await;
+            sender.send(id, OpenFileMessage::Progress(opts)).await;
         }
     }
 }
 
 impl Job for OpenFile {
-    fn run(&self, ctx: &JobContext) -> JobResult {
-        log::info!("openfile");
-        let mut ctx = ctx.clone();
+    fn run(&self, ctx: JobContext) -> JobResult {
         let dir = self.path.clone();
 
         let fut = async move {
+            let JobContext {
+                id,
+                kill,
+                mut sender,
+            } = ctx;
+
+            // Kill channel
+            let (ksend, _krecv) = broadcast::channel(1);
+            // Term channel
             let (tsend, trecv) = channel::<String>(CHANNEL_SIZE);
+            // Options channel
             let (osend, orecv) = channel::<String>(CHANNEL_SIZE);
+            // Messages channel
             let (msend, mrecv) = channel::<MatchedOptions>(CHANNEL_SIZE);
 
-            ctx.send(OpenFileMessage::Init(tsend)).await;
+            sender.send(id, OpenFileMessage::Init(tsend)).await;
+
+            // Broadcast the kill signal to the directory reader tasks to kill
+            // them all
+            let ksend2 = ksend.clone();
+            tokio::spawn(async move {
+                let _ = kill.await;
+                let _ = ksend2.send(());
+            });
 
             tokio::join!(
-                Self::read_directory_recursive(dir, osend),
+                Self::read_directory_recursive(dir, osend, ksend),
                 match_options(orecv, trecv, msend),
-                Self::send_matched_options(ctx, mrecv),
+                Self::send_matched_options(id, sender, mrecv),
             );
 
             Ok(())

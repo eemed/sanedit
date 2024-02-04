@@ -1,96 +1,101 @@
 use std::any::Any;
 
-use super::{events::FromJobs, JobId};
-use crate::{events::ToEditor, server::EditorHandle};
-use tokio::sync::mpsc::Sender;
+use crate::events::ToEditor;
+use crate::server::{EditorHandle, FromJobs};
+use tokio::sync::{
+    mpsc::{error::SendError, Sender},
+    oneshot,
+};
 
-pub(crate) use internal::*;
+use super::JobId;
 
 /// Job context used to provide jobs the means to communicate back to the
 /// editor.
-#[derive(Clone)]
 pub(crate) struct JobContext {
-    id: JobId,
-    inner: InternalJobContext,
+    pub id: JobId,
+    pub kill: oneshot::Receiver<()>,
+    pub sender: JobResponseSender,
 }
 
 impl JobContext {
     pub async fn send<A: Any + Send>(&mut self, any: A) {
         let any = Box::new(any);
-        self.inner
+        self.sender
             .editor
             .send(ToEditor::Jobs(FromJobs::Message(self.id, any)))
             .await;
     }
 }
 
-impl From<JobContext> for InternalJobContext {
-    fn from(ctx: JobContext) -> Self {
-        ctx.inner
+/// Used for internal messaging when the job is completed
+pub(super) enum JobsMessage {
+    Succesful(JobId),
+    Failed(JobId, String),
+}
+
+impl JobsMessage {
+    pub fn id(&self) -> JobId {
+        match self {
+            JobsMessage::Succesful(id) => *id,
+            JobsMessage::Failed(id, _) => *id,
+        }
     }
 }
 
-mod internal {
-    use super::{JobContext, JobId};
-    use crate::{
-        events::ToEditor,
-        server::{EditorHandle, FromJobs},
-    };
-    use tokio::sync::mpsc::{error::SendError, Sender};
-
-    /// Used for internal messaging when the job is completed
-    pub(crate) enum InternalJobsMessage {
-        Succesful(JobId),
-        Failed(JobId, String),
-    }
-
-    impl InternalJobsMessage {
-        pub fn id(&self) -> JobId {
-            match self {
-                InternalJobsMessage::Succesful(id) => *id,
-                InternalJobsMessage::Failed(id, _) => *id,
-            }
+impl From<JobsMessage> for FromJobs {
+    fn from(value: JobsMessage) -> Self {
+        match value {
+            JobsMessage::Succesful(id) => FromJobs::Succesful(id),
+            JobsMessage::Failed(id, reason) => FromJobs::Failed(id, reason),
         }
     }
+}
 
-    impl From<InternalJobsMessage> for FromJobs {
-        fn from(value: InternalJobsMessage) -> Self {
-            match value {
-                InternalJobsMessage::Succesful(id) => FromJobs::Succesful(id),
-                InternalJobsMessage::Failed(id, reason) => FromJobs::Failed(id, reason),
-            }
-        }
+/// Job context used to communicate back to editor
+#[derive(Clone)]
+pub(crate) struct JobResponseSender {
+    pub(super) editor: EditorHandle,
+    pub(super) internal: Sender<JobsMessage>,
+}
+
+impl JobResponseSender {
+    pub(super) fn to_job_context(&self, id: JobId) -> (oneshot::Sender<()>, JobContext) {
+        let (tx, rx) = oneshot::channel();
+        let sender = self.clone();
+        (
+            tx,
+            JobContext {
+                id,
+                sender,
+                kill: rx,
+            },
+        )
     }
 
-    /// Job context used to communicate internally
-    #[derive(Clone)]
-    pub(crate) struct InternalJobContext {
-        pub(crate) editor: EditorHandle,
-        pub(crate) internal: Sender<InternalJobsMessage>,
+    pub(super) async fn success(&mut self, id: JobId) -> Result<(), SendError<JobsMessage>> {
+        self.internal.send(JobsMessage::Succesful(id)).await?;
+        Ok(())
     }
 
-    impl InternalJobContext {
-        pub fn to_job_context(&self, id: JobId) -> JobContext {
-            let inner = self.clone();
-            JobContext { id, inner }
-        }
+    pub(super) async fn failure(
+        &mut self,
+        id: JobId,
+        reason: String,
+    ) -> Result<(), SendError<JobsMessage>> {
+        self.internal.send(JobsMessage::Failed(id, reason)).await?;
+        Ok(())
+    }
 
-        pub async fn success(&mut self, id: JobId) -> Result<(), SendError<InternalJobsMessage>> {
-            self.internal
-                .send(InternalJobsMessage::Succesful(id))
-                .await?;
-            Ok(())
-        }
+    pub async fn send<A: Any + Send>(&mut self, id: JobId, any: A) {
+        let any = Box::new(any);
+        self.editor
+            .send(ToEditor::Jobs(FromJobs::Message(id, any)))
+            .await;
+    }
+}
 
-        pub async fn failure(
-            &mut self,
-            id: JobId,
-            reason: String,
-        ) -> Result<(), SendError<InternalJobsMessage>> {
-            self.internal
-                .send(InternalJobsMessage::Failed(id, reason))
-                .await?;
-            Ok(())
-        }
+impl From<JobContext> for JobResponseSender {
+    fn from(ctx: JobContext) -> Self {
+        ctx.sender
     }
 }

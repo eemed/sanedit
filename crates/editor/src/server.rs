@@ -4,7 +4,7 @@ mod job_runner;
 
 pub(crate) use client::*;
 pub(crate) use job_runner::{
-    BoxedJob, FromJobs, Job, JobContext, JobId, JobResult, JobsHandle, ToJobs,
+    BoxedJob, FromJobs, Job, JobContext, JobId, JobResponseSender, JobResult, JobsHandle, ToJobs,
 };
 
 use std::{

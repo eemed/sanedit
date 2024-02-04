@@ -48,9 +48,8 @@ impl StaticMatcher {
 }
 
 impl Job for StaticMatcher {
-    fn run(&self, ctx: &JobContext) -> JobResult {
+    fn run(&self, mut ctx: JobContext) -> JobResult {
         let opts = self.opts.clone();
-        let mut ctx = ctx.clone();
 
         let fut = async move {
             let (tsend, trecv) = channel::<String>(CHANNEL_SIZE);

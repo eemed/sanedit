@@ -25,7 +25,7 @@ pub(crate) trait Job {
     /// Run the job.
     /// This should return the async future to run the job.
     /// This should not block for a long time
-    fn run(&self, ctx: &JobContext) -> JobResult;
+    fn run(&self, ctx: JobContext) -> JobResult;
 
     /// Clone the job and transform it into sendable form
     fn box_clone(&self) -> BoxedJob;
@@ -41,7 +41,7 @@ pub(crate) async fn spawn_jobs(editor_handle: EditorHandle) -> JobsHandle {
 // Runs jobs in tokio runtime.
 async fn jobs_loop(mut recv: mpsc::Receiver<ToJobs>, handle: EditorHandle) {
     let (tx, mut rx) = channel(CHANNEL_SIZE);
-    let mut context = InternalJobContext {
+    let mut context = JobResponseSender {
         editor: handle,
         internal: tx,
     };
@@ -58,22 +58,24 @@ async fn jobs_loop(mut recv: mpsc::Receiver<ToJobs>, handle: EditorHandle) {
                 use ToJobs::*;
                 match msg {
                     Request(id, job) => {
-                        let ctx = context.to_job_context(id);
+                        let mut ictx = context.clone();
+                        let (kill, ctx) = ictx.to_job_context(id);
                         let task = async move {
-                            let result = job.run(&ctx).await;
-                            let mut ctx: InternalJobContext = ctx.into();
+                            let result = job.run(ctx).await;
                             let _ = match result {
-                                Ok(_) => ctx.success(id).await,
-                                Err(reason) => ctx.failure(id, reason.to_string()).await,
+                                Ok(_) => ictx.success(id).await,
+                                Err(reason) => ictx.failure(id, reason.to_string()).await,
                             };
                         };
 
                         let join = tokio::spawn(task);
-                        jobs.insert(id, join);
+                        jobs.insert(id, (kill, join));
                     }
                     Stop(id) => {
-                        if let Some(join) = jobs.remove(&id) {
+                        if let Some((kill, join)) = jobs.remove(&id) {
+                            let _ = kill.send(());
                             join.abort();
+                            let _ = join.await;
                             log::info!("Job {id} stopped");
                         }
                     }

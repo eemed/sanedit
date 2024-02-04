@@ -26,7 +26,7 @@ impl Save {
 }
 
 impl Job for Save {
-    fn run(&self, ctx: &JobContext) -> JobResult {
+    fn run(&self, mut ctx: JobContext) -> JobResult {
         let buf = self.buf.clone();
         let to = self.to.clone();
 

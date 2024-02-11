@@ -74,6 +74,7 @@ async fn conn_write(
     let mut state = ClientDrawState::default();
     let codec: BinCodec<ClientMessage> = BinCodec::new();
     let mut write = Box::pin(FramedWrite::new(write, codec));
+    let mut needs_flush = false;
 
     while let Some(msg) = server_recv.recv().await {
         match msg {
@@ -82,11 +83,23 @@ async fn conn_write(
                 // middleware to diff changes before they are sent to the
                 // client. Diffing is done here so editor can just send stuff
                 // without diffing all the changes itself.
-                if let ClientMessage::Redraw(redraw) = msg {
-                    match state.handle_redraw(redraw) {
-                        Some(new_redraw) => msg = new_redraw.into(),
+
+                match msg {
+                    ClientMessage::Redraw(redraw) => match state.handle_redraw(redraw) {
+                        Some(new_redraw) => {
+                            msg = new_redraw.into();
+                            needs_flush = true;
+                        }
                         None => continue,
+                    },
+                    ClientMessage::Flush => {
+                        if !needs_flush {
+                            continue;
+                        }
+
+                        needs_flush = false;
                     }
+                    _ => {}
                 }
 
                 if let Err(e) = write.send(msg).await {

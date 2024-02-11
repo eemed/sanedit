@@ -67,7 +67,6 @@ impl UI {
     }
 
     fn flush(&mut self) {
-        log::info!("flush");
         let (cells, cursor) = self.grid.draw(&self.context);
         for (line, row) in cells.iter().enumerate() {
             for (col, cell) in row.iter().enumerate() {

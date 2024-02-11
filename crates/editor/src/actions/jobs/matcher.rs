@@ -34,7 +34,14 @@ pub(crate) async fn match_options(
             let mut last_sent = Instant::now();
 
             loop {
-                match timeout(limit, recv.recv()).await {
+                let result = if matches.is_empty() {
+                    let received = recv.recv().await;
+                    Ok(received)
+                } else {
+                    timeout(limit, recv.recv()).await
+                };
+
+                match result {
                     Ok(Some(res)) => {
                         matches.push(res);
 

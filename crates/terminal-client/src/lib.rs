@@ -43,7 +43,6 @@ where
                 if ui.handle_message(msg) {
                     break;
                 }
-                log::info!("handled");
             }
             ToServer(mut msg) => {
                 ui.on_send_input(&msg);

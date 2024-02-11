@@ -21,6 +21,7 @@ pub(crate) use receiver::*;
 pub(crate) struct Matcher {
     reader: Reader<String>,
     all_opts_read: Arc<AtomicBool>,
+    previous: Arc<AtomicBool>,
 }
 
 impl Matcher {
@@ -47,6 +48,7 @@ impl Matcher {
         Matcher {
             reader,
             all_opts_read,
+            previous: Arc::new(AtomicBool::new(false)),
         }
     }
 
@@ -54,10 +56,13 @@ impl Matcher {
     /// can be read from in chunks.
     /// Dropping the receiver stops the matching process.
     pub fn do_match(&mut self, term: &str) -> MatchReceiver {
+        // Cancel possible previous search
+        self.previous.store(true, Ordering::Release);
+        self.previous = Arc::new(AtomicBool::new(false));
+
         // Batch candidates to 512 sized blocks
         // Send each block to an executor
         // Get the results and send to receiver
-
         let (out, rx) = channel::<Match>(Self::CHANNEL_SIZE);
         let reader = self.reader.clone();
         let all_opts_read = self.all_opts_read.clone();
@@ -68,7 +73,7 @@ impl Matcher {
         let terms: Arc<Vec<String>> = Arc::new(terms);
         let mut available = reader.len();
         let mut taken = 0;
-        let stop = Arc::new(AtomicBool::new(false));
+        let stop = self.previous.clone();
 
         rayon::spawn(move || loop {
             if stop.load(Ordering::Relaxed) {
@@ -108,6 +113,7 @@ impl Matcher {
 
                             if out.blocking_send(mat).is_err() {
                                 stop.store(true, Ordering::Release);
+                                return;
                             }
                         }
                     }

@@ -61,7 +61,6 @@ impl Grid {
     }
 
     pub fn handle_redraw(&mut self, ctx: &UIContext, msg: Redraw) {
-        log::info!("redraw");
         use Component::*;
         use Redraw::*;
 
@@ -80,7 +79,6 @@ impl Grid {
             Prompt(comp) => match comp {
                 Open(prompt) => self.prompt = Some(open_prompt(width, height, prompt)),
                 Update(diff) => {
-                    log::info!("update prompt");
                     if let Some(ref mut prompt) = self.prompt {
                         prompt.drawable().prompt.update(diff);
                     }

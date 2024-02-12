@@ -27,6 +27,10 @@ impl Cell {
             style,
         }
     }
+
+    pub fn is_blank(&self) -> bool {
+        self.text.chars().all(char::is_whitespace)
+    }
 }
 
 impl Default for Cell {

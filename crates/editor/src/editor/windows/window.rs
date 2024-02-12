@@ -349,6 +349,7 @@ impl Window {
         }
 
         self.invalidate();
+        self.view_to_cursor(buf);
     }
 
     pub fn remove_grapheme_after_cursors(&mut self, buf: &mut Buffer) {
@@ -367,6 +368,7 @@ impl Window {
         }
 
         self.invalidate();
+        self.view_to_cursor(buf);
     }
 
     pub fn undo(&mut self, buf: &mut Buffer) {
@@ -447,6 +449,7 @@ impl Window {
         }
 
         self.invalidate();
+        self.view_to_cursor(buf);
     }
 
     pub fn set_keymap(mappings: impl KeyMappings) {

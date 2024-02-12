@@ -49,7 +49,7 @@ pub(crate) fn insert(editor: &mut Editor, id: ClientId, text: &str) {
         Focus::Search => {
             win.search.prompt.insert_at_cursor(text);
             if let Some(on_input) = win.search.prompt.on_input() {
-                let input = win.prompt.input().to_string();
+                let input = win.search.prompt.input().to_string();
                 (on_input)(editor, id, &input)
             }
         }

@@ -58,14 +58,14 @@ fn close(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.focus = Focus::Window;
 
-    if let Some(on_abort) = win.prompt.on_abort() {
-        let input = win.prompt.input_or_selected();
-        (on_abort)(editor, id, &input)
+    if let Some(id) = win.prompt.background_job() {
+        editor.job_broker.stop(id);
     }
 
     let (win, _buf) = editor.win_buf_mut(id);
-    if let Some(id) = win.prompt.background_job() {
-        editor.job_broker.stop(id);
+    if let Some(on_abort) = win.prompt.on_abort() {
+        let input = win.prompt.input_or_selected();
+        (on_abort)(editor, id, &input)
     }
 }
 
@@ -74,15 +74,15 @@ fn confirm(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.focus = Focus::Window;
 
+    if let Some(id) = win.prompt.background_job() {
+        editor.job_broker.stop(id);
+    }
+
+    let (win, _buf) = editor.win_buf_mut(id);
     if let Some(on_confirm) = win.prompt.on_confirm() {
         win.prompt.save_to_history();
         let input = win.prompt.input_or_selected();
         (on_confirm)(editor, id, &input)
-    }
-
-    let (win, _buf) = editor.win_buf_mut(id);
-    if let Some(id) = win.prompt.background_job() {
-        editor.job_broker.stop(id);
     }
 }
 

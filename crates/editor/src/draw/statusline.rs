@@ -3,15 +3,23 @@ use sanedit_messages::redraw::{self, Statusline};
 use super::DrawContext;
 
 pub(crate) fn draw(ctx: &mut DrawContext) -> redraw::Statusline {
-    let buf = ctx.buf;
+    let DrawContext { win, buf, .. } = ctx;
 
-    let mut line = format!("{} ", buf.name());
+    let mut left = format!("{} ", buf.name());
     if buf.is_modified() {
-        line.push_str("*");
+        left.push_str("*");
     }
     if buf.is_saving() {
-        line.push_str("(s)");
+        left.push_str("(s)");
     }
 
-    Statusline { line }
+    let cursor = win.primary_cursor();
+    let cpos = cursor.pos();
+    let blen = buf.len();
+    let right = format!(
+        "{}% {cpos}/{blen}",
+        (blen as f64 / cpos.max(1) as f64).floor()
+    );
+
+    Statusline { left, right }
 }

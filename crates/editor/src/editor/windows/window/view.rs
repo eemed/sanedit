@@ -121,11 +121,67 @@ impl View {
     }
 
     fn draw_cells(&mut self, buf: &Buffer) {
+        // self.draw_old(buf);
+
+        let slice = buf.slice(self.range.start..);
+        let mut pos = 0;
+        let mut line = 0;
+        let mut col = 0;
+        let mut is_eol = false;
+        let mut graphemes = slice.graphemes_at(pos);
+
+        while let Some(grapheme) = graphemes.next() {
+            is_eol = EndOfLine::is_slice_eol(&grapheme);
+            let ch = Char::new(&grapheme, col, &self.options);
+            let ch_width = ch.width();
+
+            // If we cannot fit this character, go to next line
+            if col + ch_width > self.width {
+                if line + 1 >= self.height {
+                    break;
+                }
+
+                line += 1;
+                col = 0;
+            }
+
+            self.cells[line][col] = ch.into();
+
+            // Do not fill next characters
+            // if current character is larger than 1 cell
+            for i in 1..ch_width {
+                self.cells[line][col + i] = Cell::Continue;
+            }
+
+            // Increment pos, col once we have written the character to grid
+            col += ch_width;
+            pos += grapheme.len();
+
+            // Goto next line if eol
+            if is_eol {
+                if line + 1 >= self.height {
+                    break;
+                }
+                line += 1;
+                col = 0;
+            }
+        }
+
+        // Add in EOF if we have space
+        if col < self.width && pos == slice.len() {
+            self.cells[line][col] = Cell::EOF;
+        }
+
+        self.range = self.range.start..self.range.start + pos;
+    }
+
+    // TODO remove old implementation once confident enough with the new one
+    fn draw_old(&mut self, buf: &Buffer) {
         let slice = buf.slice(self.range.start..);
         let mut pos = 0;
         let mut line = 0;
 
-        while line < self.height && !self.draw_line(&slice, line, &mut pos) {
+        while line < self.height && !self.draw_line_old(&slice, line, &mut pos) {
             line += 1;
         }
 
@@ -136,7 +192,7 @@ impl View {
     ///
     /// If char does not fit to current line, no madeup representation will be
     /// made for it.
-    fn draw_line(&mut self, slice: &PieceTreeSlice, line: usize, pos: &mut usize) -> bool {
+    fn draw_line_old(&mut self, slice: &PieceTreeSlice, line: usize, pos: &mut usize) -> bool {
         let mut col = 0;
         let mut is_eol = false;
         // TODO optimize so only one graphemes is created when drawing

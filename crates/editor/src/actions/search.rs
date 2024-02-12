@@ -62,7 +62,6 @@ fn confirm_all(_editor: &mut Editor, _id: ClientId) {
 
 #[action("Find next match")]
 fn confirm(editor: &mut Editor, id: ClientId) {
-    log::info!("confirm search");
     let (win, _buf) = editor.win_buf_mut(id);
     if let Some(on_confirm) = win.search.on_confirm() {
         win.search.save_to_history();
@@ -140,7 +139,6 @@ fn prev_match(editor: &mut Editor, id: ClientId) {
 }
 
 fn search(editor: &mut Editor, id: ClientId, input: &str) {
-    log::info!("SS");
     let (win, _buf) = editor.win_buf_mut(id);
     let cpos = win.cursors.primary().pos();
 
@@ -218,6 +216,8 @@ fn search_impl(editor: &mut Editor, id: ClientId, input: &str, mut pos: usize) {
                     win.info_msg("Wrapped to end");
                 }
             }
+
+            win.view_to_cursor(buf);
         }
         None => {
             win.warn_msg("No match found.");

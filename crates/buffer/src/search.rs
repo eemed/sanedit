@@ -11,6 +11,7 @@ pub struct Searcher {
 
 impl Searcher {
     pub fn new(pattern: &[u8]) -> Searcher {
+        debug_assert!(pattern.len() != 0, "Searcher pattern is empty");
         Searcher {
             bad_char: Self::build_bad_char_table(pattern),
             good_suffix: Self::build_good_suffix_table(pattern),
@@ -162,6 +163,7 @@ pub struct SearcherRev {
 
 impl SearcherRev {
     pub fn new(pattern: &[u8]) -> SearcherRev {
+        debug_assert!(pattern.len() != 0, "SearcherRev pattern is empty");
         SearcherRev {
             bad_char: Self::build_bad_char_table(pattern),
             good_suffix: Self::build_good_suffix_table(pattern),

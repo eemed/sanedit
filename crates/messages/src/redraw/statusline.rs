@@ -4,14 +4,15 @@ use super::{Component, Diffable, Redraw};
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone, Default)]
 pub struct Statusline {
-    pub line: String,
+    pub left: String,
+    pub right: String,
 }
 
 impl Diffable for Statusline {
     type Diff = Difference;
 
     fn diff(&self, other: &Self) -> Option<Self::Diff> {
-        if self.line == other.line {
+        if self.left == other.left && self.right == other.right {
             return None;
         }
 

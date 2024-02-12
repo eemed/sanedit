@@ -44,11 +44,20 @@ impl Drawable for Statusline {
     fn draw(&self, ctx: &UIContext, cells: &mut [&mut [CCell]]) {
         let style = ctx.style(ThemeField::Statusline);
         let width = cells.get(0).map(|c| c.len()).unwrap_or(0);
-        for (i, cell) in into_cells_with_theme_pad_with(&self.line, &style, width)
-            .into_iter()
-            .enumerate()
-        {
+        let left = into_cells_with_theme_pad_with(&self.left, &style, width);
+        for (i, cell) in left.into_iter().enumerate() {
             cells[0][i] = cell;
+        }
+
+        let right = into_cells_with_style(&self.right, style);
+        for (i, cell) in right.into_iter().rev().enumerate() {
+            let pos = width - 1 - i;
+            let c = &mut cells[0][pos];
+            if c.is_blank() {
+                *c = cell;
+            } else {
+                break;
+            }
         }
     }
 

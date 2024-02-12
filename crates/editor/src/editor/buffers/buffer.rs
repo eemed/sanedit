@@ -73,7 +73,7 @@ impl Buffer {
     }
 
     fn file_backed(file: File) -> io::Result<Buffer> {
-        log::debug!("New file backed buf");
+        log::debug!("creating file backed buffer");
         let path = file.path().canonicalize()?;
         let pt = PieceTree::from_path(&path)?;
         let snapshot = pt.read_only_copy();
@@ -91,7 +91,7 @@ impl Buffer {
     }
 
     fn in_memory(file: File) -> io::Result<Buffer> {
-        log::debug!("New buf");
+        log::debug!("creating in memory buffer");
         let path = file.path().canonicalize()?;
         let file = fs::File::open(&path)?;
         let mut buf = Self::from_reader(file)?;

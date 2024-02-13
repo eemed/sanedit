@@ -4,6 +4,10 @@ use bytes::{Buf, BufMut, BytesMut};
 use serde::{Deserialize, Serialize};
 use tokio_util::codec::{Decoder, Encoder};
 
+// TODO: encode serialized sizes too
+// this enables deserialize to know how long the message received is
+// This allows us to not try deserialization aimlessly
+
 pub struct BinCodec<T> {
     phantom: PhantomData<T>,
 }
@@ -64,6 +68,7 @@ where
 
     fn encode(&mut self, item: T, dst: &mut BytesMut) -> Result<(), Self::Error> {
         let size = bincode::serialized_size(&item)? as usize;
+        log::info!("Serialized size: {size}");
         dst.reserve(size);
         bincode::serialize_into(dst.writer(), &item)
     }

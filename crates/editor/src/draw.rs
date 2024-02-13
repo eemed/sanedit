@@ -53,6 +53,7 @@ impl DrawState {
     }
 
     pub fn redraw(&mut self, win: &mut Window, buf: &Buffer, theme: &Theme) -> Vec<Redraw> {
+        log::info!("editor redraw");
         let mut redraw: Vec<Redraw> = vec![];
 
         let draw = mem::replace(&mut self.redraw, true);
@@ -120,6 +121,7 @@ impl DrawState {
             _ => {}
         }
 
+        log::info!("editor redraw done");
         redraw
     }
 

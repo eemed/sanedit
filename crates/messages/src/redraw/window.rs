@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{Cell, Component, Cursor, Diffable, Redraw};
 
+// TODO optimize size
 #[derive(Serialize, Deserialize, PartialEq, Eq, Default, Clone)]
 pub struct Window {
     pub cells: Vec<Vec<Cell>>,
@@ -14,6 +15,14 @@ impl Diffable for Window {
     type Diff = Difference;
 
     fn diff(&self, other: &Self) -> Option<Self::Diff> {
+        log::info!(
+            "WDiff style len: {}",
+            16 * other.cells.len() * other.cells[0].len()
+        );
+        log::info!(
+            "WDiff text len: {}",
+            24 * other.cells.len() * other.cells[0].len()
+        );
         if self == other {
             return None;
         }

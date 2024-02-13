@@ -27,7 +27,7 @@ pub(crate) fn width_at_pos(slice: &PieceTreeSlice, pos: usize, opts: &DisplayOpt
         }
 
         col += ch.width();
-        pos += ch.grapheme_len();
+        pos += ch.grapheme().len();
     }
 
     col
@@ -53,7 +53,7 @@ pub(crate) fn pos_at_width(
             break;
         }
         col += ch.width();
-        pos += ch.grapheme_len();
+        pos += ch.grapheme().len();
     }
 
     pos

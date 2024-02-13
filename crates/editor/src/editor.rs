@@ -216,7 +216,6 @@ impl Editor {
     }
 
     fn handle_mouse_event(&mut self, id: ClientId, event: MouseEvent) {
-        log::info!("{event:?}");
         // TODO keybindings
         match event.kind {
             MouseEventKind::ScrollDown => {
@@ -279,7 +278,6 @@ impl Editor {
     }
 
     fn handle_key_event(&mut self, id: ClientId, event: KeyEvent) {
-        log::info!("{event:?}");
         use sanedit_messages::Key::*;
 
         // Add key to buffer

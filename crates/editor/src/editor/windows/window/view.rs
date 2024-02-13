@@ -34,7 +34,7 @@ impl Cell {
 
     pub fn grapheme_len(&self) -> usize {
         match self {
-            Cell::Char { ch } => ch.grapheme_len(),
+            Cell::Char { ch } => ch.grapheme().len(),
             _ => 0,
         }
     }
@@ -360,7 +360,7 @@ impl View {
                             return Some(pos);
                         }
                         last_ch_pos = Some(pos);
-                        pos += ch.grapheme_len();
+                        pos += ch.grapheme().len();
                     }
                     _ => {}
                 }
@@ -382,7 +382,7 @@ impl View {
                 }
 
                 if let Cell::Char { ch } = cell {
-                    cur += ch.grapheme_len();
+                    cur += ch.grapheme().len();
                 }
             }
         }

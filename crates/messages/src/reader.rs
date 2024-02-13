@@ -32,8 +32,9 @@ where
     /// Read more bytes to the internal buffer from the provided reader.
     #[inline]
     fn read_more_to_buf(&mut self) -> io::Result<usize> {
-        let mut read_buf = [0u8; 1024 * 8];
+        let mut read_buf = [0u8; 1024 * 1024];
         let size = self.read.read(&mut read_buf)?;
+        log::info!("read {size} bytes");
         self.buf.extend(&read_buf[..size]);
         Ok(size)
     }

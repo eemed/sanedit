@@ -105,7 +105,6 @@ fn prev_word_end(editor: &mut Editor, id: ClientId) {
 #[action("Move cursor(s) to the next paragraph")]
 fn next_paragraph(editor: &mut Editor, id: ClientId) {
     do_move(editor, id, common::movement::next_paragraph, None);
-    log::info!("done");
 }
 
 #[action("Move cursor(s) to the previous paragraph")]

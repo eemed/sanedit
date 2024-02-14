@@ -1,12 +1,12 @@
+use byteorder::{BigEndian, ByteOrder, WriteBytesExt};
 use std::{io, marker::PhantomData};
 
+use bincode::Options;
 use bytes::{Buf, BufMut, BytesMut};
 use serde::{Deserialize, Serialize};
 use tokio_util::codec::{Decoder, Encoder};
 
-// TODO: encode serialized sizes too
-// this enables deserialize to know how long the message received is
-// This allows us to not try deserialization aimlessly
+const U32_BYTES: usize = 4;
 
 pub struct BinCodec<T> {
     phantom: PhantomData<T>,
@@ -20,6 +20,46 @@ where
         BinCodec {
             phantom: PhantomData::default(),
         }
+    }
+
+    fn decode_fill_size<R: io::Read>(
+        read: &mut R,
+        src: &mut BytesMut,
+        size: usize,
+    ) -> io::Result<usize> {
+        if src.len() >= size {
+            return Ok(0);
+        }
+
+        let mut total = 0;
+
+        if src.capacity() < size {
+            src.reserve(size - src.capacity());
+        }
+
+        let mut rest = src.split_off(src.len());
+        let restlen = rest.capacity();
+        // SAFETY: Never reading unwritten bytes
+        // and capacity is already reserved for us
+        unsafe { rest.set_len(restlen) }
+
+        while src.len() < size {
+            let n = read.read(&mut rest[..])?;
+            total += n;
+            let good = rest.split_to(n);
+            src.unsplit(good);
+        }
+
+        Ok(total)
+    }
+
+    /// Read enough bytes from read to src to be able to decode an item
+    pub fn decode_fill<R: io::Read>(read: &mut R, src: &mut BytesMut) -> io::Result<usize> {
+        let first = Self::decode_fill_size(read, src, U32_BYTES)?;
+        let size = BigEndian::read_u32(&src[..U32_BYTES]) as usize;
+        let second = Self::decode_fill_size(read, src, size + U32_BYTES)?;
+
+        Ok(first + second)
     }
 }
 
@@ -41,22 +81,26 @@ where
     type Error = bincode::Error;
 
     fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
-        match bincode::deserialize::<T>(src) {
-            Ok(item) => {
-                let size = bincode::serialized_size(&item)? as usize;
-                src.advance(size);
-                Ok(Some(item))
-            }
-            Err(e) => {
-                if let bincode::ErrorKind::Io(io) = e.as_ref() {
-                    if let io::ErrorKind::UnexpectedEof = io.kind() {
-                        return Ok(None);
-                    }
-                }
-
-                Err(e)
-            }
+        if src.remaining() < U32_BYTES {
+            return Ok(None);
         }
+
+        let size = BigEndian::read_u32(&src[..U32_BYTES]) as usize;
+        if src.remaining() < U32_BYTES + size {
+            return Ok(None);
+        }
+
+        src.advance(U32_BYTES);
+
+        let item = bincode::options()
+            .with_big_endian()
+            .with_fixint_encoding()
+            .allow_trailing_bytes()
+            .with_limit(u32::MAX as u64)
+            .deserialize::<T>(src)?;
+
+        src.advance(size);
+        Ok(Some(item))
     }
 }
 
@@ -67,9 +111,22 @@ where
     type Error = bincode::Error;
 
     fn encode(&mut self, item: T, dst: &mut BytesMut) -> Result<(), Self::Error> {
-        let size = bincode::serialized_size(&item)? as usize;
-        log::info!("Serialized size: {size}");
-        dst.reserve(size);
-        bincode::serialize_into(dst.writer(), &item)
+        let bcode = bincode::options()
+            .with_big_endian()
+            .with_fixint_encoding()
+            .with_limit(u32::MAX as u64);
+
+        let size = bcode.serialized_size(&item)? as u32;
+        let total = U32_BYTES + size as usize;
+        let available = dst.capacity() - dst.len();
+        let missing = available.saturating_sub(total);
+        if missing != 0 {
+            dst.reserve(missing);
+        }
+
+        let mut writer = dst.writer();
+
+        writer.write_u32::<BigEndian>(size)?;
+        bcode.serialize_into(writer, &item)
     }
 }

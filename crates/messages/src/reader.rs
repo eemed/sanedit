@@ -28,16 +28,6 @@ where
             codec: BinCodec::new(),
         }
     }
-
-    /// Read more bytes to the internal buffer from the provided reader.
-    #[inline]
-    fn read_more_to_buf(&mut self) -> io::Result<usize> {
-        let mut read_buf = [0u8; 1024 * 1024];
-        let size = self.read.read(&mut read_buf)?;
-        log::info!("read {size} bytes");
-        self.buf.extend(&read_buf[..size]);
-        Ok(size)
-    }
 }
 
 impl<R: io::Read, T> Iterator for Reader<R, T>
@@ -47,18 +37,17 @@ where
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        loop {
-            match self.codec.decode(&mut self.buf) {
-                Ok(Some(msg)) => {
-                    return Some(msg);
-                }
-                Ok(None) => match self.read_more_to_buf() {
-                    Ok(0) | Err(_) => return None,
-                    _ => {} // Ok(n) => log::info!("read {n} bytes, {}", self.buf.len()),
-                },
-                Err(_e) => {
-                    self.buf.advance(1);
-                }
+        BinCodec::<T>::decode_fill(&mut self.read, &mut self.buf).ok()?;
+
+        match self.codec.decode(&mut self.buf) {
+            Ok(Some(msg)) => {
+                return Some(msg);
+            }
+            Ok(None) => unreachable!("BinCodec::<T>::decode_fill not working as intended"),
+            Err(_e) => {
+                // Try to advance and retry
+                self.buf.advance(1);
+                self.next()
             }
         }
     }

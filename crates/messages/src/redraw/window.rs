@@ -15,14 +15,6 @@ impl Diffable for Window {
     type Diff = Difference;
 
     fn diff(&self, other: &Self) -> Option<Self::Diff> {
-        log::info!(
-            "WDiff style len: {}",
-            16 * other.cells.len() * other.cells[0].len()
-        );
-        log::info!(
-            "WDiff text len: {}",
-            24 * other.cells.len() * other.cells[0].len()
-        );
         if self == other {
             return None;
         }

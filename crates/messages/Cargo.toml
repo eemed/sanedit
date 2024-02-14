@@ -14,4 +14,5 @@ thiserror = "1.0"
 tokio-util = { version = "0.7", features = ["codec"] }
 strum        = "0.23"
 strum_macros = "0.23"
+byteorder = "1"
 log = "0.4"

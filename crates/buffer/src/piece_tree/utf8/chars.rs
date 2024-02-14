@@ -310,30 +310,6 @@ impl<'a> Chars<'a> {
             }
         }
     }
-
-    /// Grapheme clusters need access to the next element to be able to
-    /// determine wether or not to break here. Peek functions are some
-    /// inefficient method of doing so without advancing the iterator.
-    /// TODO is there a better way?
-    pub(crate) fn peek_next(&mut self) -> Option<(usize, usize, char)> {
-        let res = self.next();
-
-        if res.is_some() {
-            self.prev();
-        }
-
-        res
-    }
-
-    pub(crate) fn peek_prev(&mut self) -> Option<(usize, usize, char)> {
-        let res = self.prev();
-
-        if res.is_some() {
-            self.next();
-        }
-
-        res
-    }
 }
 
 #[cfg(test)]

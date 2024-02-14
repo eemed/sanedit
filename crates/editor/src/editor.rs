@@ -278,6 +278,7 @@ impl Editor {
     }
 
     fn handle_key_event(&mut self, id: ClientId, event: KeyEvent) {
+        log::info!("Editor got {event}");
         use sanedit_messages::Key::*;
 
         // Add key to buffer

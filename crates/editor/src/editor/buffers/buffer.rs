@@ -1,5 +1,4 @@
 mod change;
-mod cursor;
 mod options;
 mod snapshots;
 mod sorted;
@@ -12,11 +11,10 @@ use std::{
 };
 
 use sanedit_buffer::{PieceTree, PieceTreeSlice, ReadOnlyPieceTree, SortedPositions};
-use sanedit_regex::Cursor;
 
 use crate::common::{dirs::tmp_file, file::File};
 
-use self::{cursor::BufferCursor, options::Options, snapshots::Snapshots};
+use self::{options::Options, snapshots::Snapshots};
 pub(crate) use change::{Change, ChangeKind};
 pub(crate) use snapshots::{SnapshotData, SnapshotId};
 pub(crate) use sorted::SortedRanges;
@@ -239,10 +237,6 @@ impl Buffer {
 
     pub fn options(&self) -> &Options {
         &self.options
-    }
-
-    pub fn cursor<'a>(&'a self) -> impl Cursor + 'a {
-        BufferCursor::new(&self.pt)
     }
 
     pub fn read_only_copy(&self) -> ReadOnlyPieceTree {

@@ -1,6 +1,13 @@
-use crate::{common::text_objects::find_range, editor::Editor, server::ClientId};
+use crate::{
+    common::text_objects::find_range,
+    editor::{hooks::Hook, Editor},
+    server::ClientId,
+};
+
+use super::hooks;
 
 fn select_impl(editor: &mut Editor, id: ClientId, start: &str, end: &str, include: bool) {
+    let mut changed = false;
     let (win, buf) = editor.win_buf_mut(id);
     let slice = buf.slice(..);
 
@@ -11,10 +18,15 @@ fn select_impl(editor: &mut Editor, id: ClientId, start: &str, end: &str, includ
         if let Some(range) = range {
             if !range.is_empty() {
                 cursor.select(range);
+                changed = true;
             }
         }
     }
-    win.view_to_cursor(buf);
+
+    if changed {
+        win.view_to_cursor(buf);
+        hooks::run(editor, id, Hook::CursorMoved);
+    }
 }
 
 #[action("Select in curly brackets")]

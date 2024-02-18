@@ -134,12 +134,12 @@ fn matches_with(
     case_sensitive: bool,
 ) -> Option<Vec<Range<usize>>> {
     let string: Cow<str> = if !case_sensitive {
-        Cow::from(string.to_lowercase())
+        // TODO unicode casefolding?
+        Cow::from(string.to_ascii_lowercase())
     } else {
         Cow::from(string)
     };
 
-    // TODO unicode casefolding
     let mut matches = vec![];
     for term in terms.iter() {
         let start = string.find(term)?;

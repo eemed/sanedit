@@ -41,8 +41,6 @@ answers why certain design decisions were made.
 
 #include "impl-notes/message.typ"
 
-#include "impl-notes/regex.typ"
-
 #include "impl-notes/terminal-client.typ"
 
 #include "impl-notes/ucd.typ"

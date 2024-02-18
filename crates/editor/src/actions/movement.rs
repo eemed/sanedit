@@ -5,9 +5,11 @@ use sanedit_messages::redraw::Point;
 
 use crate::{
     common::{self, char::DisplayOptions},
-    editor::{windows::Cursor, Editor},
+    editor::{hooks::Hook, windows::Cursor, Editor},
     server::ClientId,
 };
+
+use super::hooks;
 
 #[inline]
 fn do_move_line<F: Fn(&PieceTreeSlice, &Cursor, &DisplayOptions) -> (usize, usize)>(
@@ -15,13 +17,22 @@ fn do_move_line<F: Fn(&PieceTreeSlice, &Cursor, &DisplayOptions) -> (usize, usiz
     id: ClientId,
     f: F,
 ) {
+    let mut changed = false;
+
     let (win, buf) = editor.win_buf_mut(id);
     let opts = win.display_options().clone();
     for cursor in win.cursors.cursors_mut() {
+        let opos = cursor.pos();
         let (pos, col) = f(&buf.slice(..), cursor, &opts);
         cursor.goto_with_col(pos, col);
+
+        changed |= cursor.pos() != opos;
     }
-    win.view_to_cursor(buf);
+
+    if changed {
+        win.view_to_cursor(buf);
+        hooks::run(editor, id, Hook::CursorMoved);
+    }
 }
 
 #[inline]
@@ -31,16 +42,24 @@ fn do_move<F: Fn(&PieceTreeSlice, usize) -> usize>(
     f: F,
     col: Option<usize>,
 ) {
+    let mut changed = false;
+
     let (win, buf) = editor.win_buf_mut(id);
     for cursor in win.cursors.cursors_mut() {
+        let opos = cursor.pos();
         let pos = f(&buf.slice(..), cursor.pos());
         if let Some(col) = col {
             cursor.goto_with_col(pos, col);
         } else {
             cursor.goto(pos);
         }
+        changed |= cursor.pos() != opos;
     }
-    win.view_to_cursor(buf);
+
+    if changed {
+        win.view_to_cursor(buf);
+        hooks::run(editor, id, Hook::CursorMoved);
+    }
 }
 
 #[inline]

@@ -1,6 +1,6 @@
 # sanedit
 
-Text editor to learn about text buffers, syntax highlighting, regex (automata),
+Text editor to learn about text buffers, syntax highlighting,
 client-server architecture (using tokio) and data structures (red-black tree).
 
 The editor uses client server architecture. Each client is an editor window, and

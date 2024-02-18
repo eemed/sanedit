@@ -126,7 +126,6 @@ impl KeyMappings for DefaultKeyMappings {
              "up", search::history_prev,
              "down", search::history_next,
 
-             // "ctrl+r", search::toggle_regex,
              // "ctrl+s", search::toggle_select,
         );
 

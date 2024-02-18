@@ -8,7 +8,6 @@ edition = "2021"
 [dependencies]
 sanedit-messages = { path = "../messages" }
 sanedit-buffer = { path = "../buffer" }
-sanedit-regex = { path = "../regex" }
 sanedit-macros = { path = "../macros" }
 sanedit-utils = { path = "../utils" }
 

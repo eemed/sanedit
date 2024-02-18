@@ -5,7 +5,6 @@ members = [
     "cli",
     "editor",
     "messages",
-    "regex",
     "terminal-client",
     "ucd",
     "macros",

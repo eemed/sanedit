@@ -29,7 +29,6 @@ use tokio::sync::mpsc::Receiver;
 use crate::actions;
 use crate::actions::cursors;
 use crate::actions::hooks::run;
-use crate::actions::Action;
 use crate::common::file::File;
 use crate::draw::DrawState;
 use crate::editor::buffers::Buffer;
@@ -103,6 +102,21 @@ impl Editor {
         (win, buf)
     }
 
+    pub fn quit_client(&mut self, id: ClientId) {
+        let _ = self.send_to_client(id, ClientMessage::Bye.into());
+
+        if let Some(win) = self.windows.remove(id) {
+            let old = win.buffer_id();
+            let is_used = self.windows.iter().any(|(_, win)| win.buffer_id() == old);
+            if !is_used {
+                self.buffers.remove(old);
+            }
+        }
+
+        self.draw_states.remove(&id);
+        self.clients.remove(&id);
+    }
+
     pub fn quit(&mut self) {
         let client_ids: Vec<ClientId> = self.clients.iter().map(|(id, _)| *id).collect();
         for id in client_ids {
@@ -164,10 +178,6 @@ impl Editor {
         match msg {
             Message::Hello(size) => {
                 self.handle_hello(id, size);
-                return;
-            }
-            Message::Bye => {
-                self.quit();
                 return;
             }
             _ => {}
@@ -240,6 +250,11 @@ impl Editor {
 
     /// Redraw all windows that use the same buffer as `id`
     fn redraw_all(&mut self, id: ClientId) {
+        // Editor is closed or client is closed
+        if !self.is_running || !self.clients.contains_key(&id) {
+            return;
+        }
+
         if let Some(bid) = self.windows.bid(id) {
             for cid in self.windows.find_clients_with_buf(bid) {
                 self.redraw(cid);
@@ -332,7 +347,7 @@ impl Editor {
                 if let Some(prog) = self.job_broker.get(id) {
                     prog.on_message(self, msg);
                     let cid = prog.client_id();
-                    self.redraw(cid);
+                    self.redraw_all(cid);
                 }
             }
             Succesful(id) => {
@@ -340,7 +355,7 @@ impl Editor {
                 if let Some(prog) = self.job_broker.get(id) {
                     prog.on_success(self);
                     let cid = prog.client_id();
-                    self.redraw(cid);
+                    self.redraw_all(cid);
                 }
                 self.job_broker.done(id);
             }
@@ -349,7 +364,7 @@ impl Editor {
                 if let Some(prog) = self.job_broker.get(id) {
                     prog.on_failure(self, &reason);
                     let cid = prog.client_id();
-                    self.redraw(cid);
+                    self.redraw_all(cid);
                 }
                 self.job_broker.done(id);
             }

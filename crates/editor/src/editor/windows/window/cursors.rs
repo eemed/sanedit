@@ -91,6 +91,7 @@ impl Cursors {
                 cursor.selection().unwrap_or(cursor.pos()..cursor.pos() + 1)
             };
 
+            log::info!("Comparing: {cur:?}, to: {next:?}");
             if cur.overlaps(&next) {
                 self.cursors.remove(i);
                 let cur = &mut self.cursors[i - 1];

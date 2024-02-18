@@ -116,7 +116,6 @@ impl Default for Hooks {
             Action::Dynamic {
                 name: "Fix windows".into(),
                 fun: Arc::new(|editor, id| {
-                    log::info!("bchanged");
                     let (_win, buf) = editor.win_buf(id);
                     let clients = editor.windows.find_clients_with_buf(buf.id);
 

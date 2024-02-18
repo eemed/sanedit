@@ -121,7 +121,6 @@ impl DrawState {
             _ => {}
         }
 
-        log::info!("editor redraw done");
         redraw
     }
 

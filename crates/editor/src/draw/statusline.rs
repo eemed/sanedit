@@ -18,7 +18,7 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> redraw::Statusline {
     let blen = buf.len();
     let right = format!(
         "{}% {cpos}/{blen}",
-        (blen as f64 / cpos.max(1) as f64).floor()
+        ((cpos as f64 / blen.max(1) as f64) * 100.0).floor()
     );
 
     Statusline { left, right }

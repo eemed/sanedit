@@ -4,7 +4,7 @@ mod slice;
 use std::{
     cmp::min,
     fs::{self, File},
-    io::{self, Read, Seek, SeekFrom, Write},
+    io::{self, Read, Seek, SeekFrom},
     ops::Range,
     path::{Path, PathBuf},
     sync::{Arc, Mutex, RwLock},

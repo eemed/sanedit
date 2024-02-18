@@ -186,6 +186,10 @@ impl Grid {
             Self::draw_drawable(prompt, ctx, &mut self.cursor, &mut self.drawn);
         }
 
+        if let Some(ref msg) = self.msg {
+            Self::draw_drawable(msg, ctx, &mut self.cursor, &mut self.drawn);
+        }
+
         (&self.drawn, self.cursor)
     }
 }

@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::ops::Range;
 
 use sanedit_buffer::PieceTreeSlice;
 
@@ -12,9 +13,14 @@ use unicode_width::UnicodeWidthStr;
 /// converted to the format we want the user to see.
 #[derive(Debug, Default, Clone, PartialEq, Hash)]
 pub(crate) struct Char {
-    display: Option<String>,
+    /// The displayed thing
+    display: String,
+
+    /// Width of the displayed string
     width: usize,
-    grapheme: String,
+
+    /// Length of the thing we are displaying in buffer
+    len_in_buffer: usize,
 }
 
 impl Char {
@@ -22,20 +28,16 @@ impl Char {
         grapheme_to_char(grapheme, column, options)
     }
 
-    /// Returns the width of the display string.
     pub fn width(&self) -> usize {
         self.width
     }
 
-    /// Get display string, may be the original grapheme or a custom
-    /// representation
     pub fn display(&self) -> &str {
-        self.display.as_ref().unwrap_or(&self.grapheme)
+        &self.display
     }
 
-    /// Get the underlying grapheme from buffer
-    pub fn grapheme(&self) -> &str {
-        &self.grapheme
+    pub fn len_in_buffer(&self) -> usize {
+        self.len_in_buffer
     }
 }
 
@@ -116,40 +118,41 @@ impl Default for DisplayOptions {
 
 #[inline]
 fn grapheme_to_char(slice: &PieceTreeSlice, column: usize, options: &DisplayOptions) -> Char {
+    let blen = slice.len();
     let grapheme = String::from(slice);
 
     // is tab
     if grapheme == "\t" {
-        return tab_to_char(grapheme, column, options);
+        return tab_to_char(blen, column, options);
     }
     // is eol
     if EndOfLine::is_eol(&grapheme) {
-        return eol_to_char(grapheme, options);
+        return eol_to_char(blen, options);
     }
 
     // is nbsp
     if grapheme == "\u{00A0}" {
-        return nbsp_to_char(grapheme, options);
+        return nbsp_to_char(blen, options);
     }
 
     let single_char = grapheme.chars().count() == 1;
     if single_char {
         let ch = grapheme.chars().next().unwrap();
         if ch.is_control() {
-            return control_to_char(grapheme);
+            return control_to_char(grapheme, blen);
         }
     }
 
     let width = grapheme.width().max(1);
 
     Char {
-        display: None,
+        display: grapheme,
         width,
-        grapheme,
+        len_in_buffer: blen,
     }
 }
 
-fn tab_to_char(grapheme: String, column: usize, options: &DisplayOptions) -> Char {
+fn tab_to_char(blen: usize, column: usize, options: &DisplayOptions) -> Char {
     // Calculate tab based on current visual column
     let width = options.tabstop - (column % options.tabstop);
     let first = options
@@ -169,13 +172,13 @@ fn tab_to_char(grapheme: String, column: usize, options: &DisplayOptions) -> Cha
     }
 
     Char {
-        display: Some(display),
+        display,
         width,
-        grapheme,
+        len_in_buffer: blen,
     }
 }
 
-fn eol_to_char(grapheme: String, options: &DisplayOptions) -> Char {
+fn eol_to_char(blen: usize, options: &DisplayOptions) -> Char {
     let display = options
         .replacements
         .get(&Replacement::EOL)
@@ -184,13 +187,13 @@ fn eol_to_char(grapheme: String, options: &DisplayOptions) -> Char {
     let width = display.width();
 
     Char {
-        display: Some(display),
+        display,
         width,
-        grapheme,
+        len_in_buffer: blen,
     }
 }
 
-fn nbsp_to_char(grapheme: String, options: &DisplayOptions) -> Char {
+fn nbsp_to_char(blen: usize, options: &DisplayOptions) -> Char {
     let display = options
         .replacements
         .get(&Replacement::NonBreakingSpace)
@@ -199,17 +202,17 @@ fn nbsp_to_char(grapheme: String, options: &DisplayOptions) -> Char {
     let width = display.width();
 
     Char {
-        display: Some(display),
+        display,
         width,
-        grapheme,
+        len_in_buffer: blen,
     }
 }
 
-fn control_to_char(grapheme: String) -> Char {
+fn control_to_char(grapheme: String, blen: usize) -> Char {
     let ch = grapheme.chars().next().unwrap();
     // C0 control codes or ascii control codes
     if ch.is_ascii_control() {
-        return ascii_control_to_char(grapheme).unwrap();
+        return ascii_control_to_char(grapheme, blen).unwrap();
     }
 
     // C1 control codes, unicode control codes of form [0xc2, xx]
@@ -217,13 +220,13 @@ fn control_to_char(grapheme: String) -> Char {
     let width = hex.width();
 
     Char {
-        display: Some(hex.into()),
+        display: hex.into(),
         width,
-        grapheme: grapheme.into(),
+        len_in_buffer: blen,
     }
 }
 
-fn ascii_control_to_char(grapheme: String) -> Option<Char> {
+fn ascii_control_to_char(grapheme: String, blen: usize) -> Option<Char> {
     let byte = grapheme.bytes().next()?;
     let rep = match byte {
         0 => "^@",
@@ -265,9 +268,9 @@ fn ascii_control_to_char(grapheme: String) -> Option<Char> {
     let width = rep.width();
 
     Some(Char {
-        display: Some(rep.into()),
+        display: rep.into(),
         width,
-        grapheme: grapheme.into(),
+        len_in_buffer: blen,
     })
 }
 

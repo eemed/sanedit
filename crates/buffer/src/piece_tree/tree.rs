@@ -71,6 +71,7 @@ impl Tree {
     }
 
     pub fn find_node(&self, mut target: usize) -> (Vec<&InternalNode>, usize) {
+        // log::info!("Find node at {target}");
         let mut pos = 0;
         let mut stack = Vec::with_capacity(self.max_height());
         let mut node = self.root.as_ref();

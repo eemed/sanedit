@@ -90,8 +90,8 @@ impl DrawState {
         if draw_win {
             let window = window::draw(&mut ctx);
             if draw_lnr {
-                let lnrs = window::draw_line_numbers(&ctx);
-                redraw.push(lnrs.into());
+                // let lnrs = window::draw_line_numbers(&ctx);
+                // redraw.push(lnrs.into());
                 redraw.push(window.into());
             } else {
                 redraw.push(window.into());

@@ -79,7 +79,7 @@ fn draw_search_highlights(
                     grid[line][col].style = style;
                 }
 
-                pos += cell.grapheme_len();
+                pos += cell.len_in_buffer();
             }
         }
     }
@@ -126,7 +126,7 @@ fn highlight_area(
                 grid[line][col].style = hlstyle;
             }
 
-            pos += cell.grapheme_len();
+            pos += cell.len_in_buffer();
 
             if area.end < pos {
                 break;
@@ -220,7 +220,7 @@ pub(crate) fn draw_line_numbers(ctx: &DrawContext) -> LineNumbers {
         }
 
         for cell in row {
-            pos += cell.grapheme_len();
+            pos += cell.len_in_buffer();
         }
 
         lnrs.push(lnr);

@@ -465,7 +465,7 @@ mod test {
         let mut string = String::new();
         for cell in row {
             if let Some(ch) = cell.char() {
-                string.push_str(ch.grapheme());
+                string.push_str(ch.display());
             }
         }
         string

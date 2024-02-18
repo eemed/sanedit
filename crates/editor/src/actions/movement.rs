@@ -57,6 +57,7 @@ fn do_move<F: Fn(&PieceTreeSlice, usize) -> usize>(
     }
 
     if changed {
+        log::info!("moved to: {}", win.primary_cursor().pos());
         win.view_to_cursor(buf);
         hooks::run(editor, id, Hook::CursorMoved);
     }

@@ -53,7 +53,6 @@ impl DrawState {
     }
 
     pub fn redraw(&mut self, win: &mut Window, buf: &Buffer, theme: &Theme) -> Vec<Redraw> {
-        log::info!("editor redraw");
         let mut redraw: Vec<Redraw> = vec![];
 
         let draw = mem::replace(&mut self.redraw, true);
@@ -75,8 +74,6 @@ impl DrawState {
         let draw_win = mem::replace(&mut self.redraw_window, true);
         let draw_lnr = draw_win && win.options.show_linenumbers;
         if draw_win {
-            // TODO invalidate only if buffer has changed
-            // move to hook once its done
             win.redraw_view(buf);
         }
 
@@ -88,6 +85,7 @@ impl DrawState {
         };
 
         if draw_win {
+            log::info!("Editor draw window");
             let window = window::draw(&mut ctx);
             if draw_lnr {
                 // let lnrs = window::draw_line_numbers(&ctx);

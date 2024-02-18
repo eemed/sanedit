@@ -29,6 +29,7 @@ use tokio::sync::mpsc::Receiver;
 use crate::actions;
 use crate::actions::cursors;
 use crate::actions::hooks::run;
+use crate::actions::jobs::SyntaxHighlighter;
 use crate::common::file::File;
 use crate::draw::DrawState;
 use crate::editor::buffers::Buffer;
@@ -193,6 +194,14 @@ impl Editor {
         }
 
         self.redraw_all(id);
+
+        // ---TEST---
+        let win = self.windows.get(id).unwrap();
+        let range = win.view().range();
+        let ropt = self.buffers.get(win.buffer_id()).unwrap().read_only_copy();
+        self.job_broker
+            .request(SyntaxHighlighter::new(id, ropt, range));
+        // ---TEST---
     }
 
     fn handle_hello(&mut self, id: ClientId, size: Size) {

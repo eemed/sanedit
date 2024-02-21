@@ -4,10 +4,11 @@ members = [
     "buffer",
     "cli",
     "editor",
+    "macros",
     "messages",
+    "parser",
     "terminal-client",
     "ucd",
-    "macros",
     "utils",
 ]
 

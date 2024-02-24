@@ -3,6 +3,7 @@ use anyhow::Result;
 
 use crate::input::Input;
 
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub(crate) enum Token {
     Assign,
     ZeroOrMore,
@@ -15,6 +16,8 @@ pub(crate) enum Token {
     LParen,
     RParen,
     Quote,
+    EOF,
+    End,
 }
 
 pub(crate) struct Lexer<I: Input> {
@@ -22,6 +25,10 @@ pub(crate) struct Lexer<I: Input> {
 }
 
 impl<I: Input> Lexer<I> {
+    pub fn new(input: I) -> Lexer<I> {
+        Self { input }
+    }
+
     fn skip_whitespace(&mut self) -> Result<()> {
         while let Some(ch) = self.input.peek() {
             if ch.is_whitespace() {
@@ -31,6 +38,10 @@ impl<I: Input> Lexer<I> {
             }
         }
         Ok(())
+    }
+
+    pub fn pos(&self) -> usize {
+        self.input.pos()
     }
 
     fn consume(&mut self, s: &str) -> Result<()> {
@@ -46,7 +57,11 @@ impl<I: Input> Lexer<I> {
         while let Some(ch) = self.input.peek() {
             if ch.is_alphabetic() {
                 result.push(ch);
+            } else {
+                break;
             }
+
+            self.input.consume(ch)?;
         }
 
         if result.is_empty() {
@@ -70,7 +85,7 @@ impl<I: Input> Lexer<I> {
 
         let ch = match self.input.peek() {
             Some(ch) => ch,
-            None => bail!("Unexpected end of input"),
+            None => return Ok(Token::EOF),
         };
 
         match ch {
@@ -109,6 +124,10 @@ impl<I: Input> Lexer<I> {
             ')' => {
                 self.advance()?;
                 return Ok(Token::RParen);
+            }
+            ';' => {
+                self.advance()?;
+                return Ok(Token::End);
             }
             _ => {
                 if ch.is_alphabetic() {

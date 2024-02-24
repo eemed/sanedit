@@ -51,37 +51,33 @@ impl<I: Input> Parser<I> {
     }
 
     fn rule(&mut self) -> Result<Rule> {
+        println!("rule");
         let rule = self.rule_single()?;
 
         match self.token {
-            Token::ZeroOrMore => {
-                self.consume(Token::ZeroOrMore)?;
-                Ok(Rule::Repetion(0, u32::MAX, Box::new(rule)))
-            }
-            Token::OneOrMore => {
-                self.consume(Token::OneOrMore)?;
-                Ok(Rule::Repetion(1, u32::MAX, Box::new(rule)))
-            }
-            Token::Optional => {
-                self.consume(Token::Optional)?;
-                Ok(Rule::Repetion(0, 1, Box::new(rule)))
-            }
             Token::Choice => self.choice(rule),
             _ => self.sequence(rule),
         }
     }
 
     fn sequence(&mut self, rule: Rule) -> Result<Rule> {
+        println!("seq {rule:?}");
         let mut rules = match rule {
             Rule::Sequence(rules) => rules,
             _ => vec![rule],
         };
 
         loop {
+            let start = self.lex.token_count();
             match self.rule() {
                 Ok(r) => rules.push(r),
                 Err(e) => {
-                    break;
+                    let end = self.lex.token_count();
+                    if start == end {
+                        break;
+                    } else {
+                        return Err(e);
+                    }
                 }
             }
         }
@@ -94,6 +90,7 @@ impl<I: Input> Parser<I> {
     }
 
     fn choice(&mut self, rule: Rule) -> Result<Rule> {
+        println!("choice");
         let mut rules = match rule {
             Rule::Choice(rules) => rules,
             _ => vec![rule],
@@ -104,10 +101,16 @@ impl<I: Input> Parser<I> {
                 break;
             }
 
+            let start = self.lex.token_count();
             match self.rule() {
                 Ok(r) => rules.push(r),
                 Err(e) => {
-                    break;
+                    let end = self.lex.token_count();
+                    if start == end {
+                        break;
+                    } else {
+                        return Err(e);
+                    }
                 }
             }
         }
@@ -116,31 +119,52 @@ impl<I: Input> Parser<I> {
     }
 
     fn rule_single(&mut self) -> Result<Rule> {
-        match &self.token {
+        println!("rule_single: {:?}", self.token);
+        // Prefix + rule
+        let mut rule = match &self.token {
             Token::And => todo!(),
             Token::Not => {
                 self.consume(Token::Not)?;
                 let rule = self.rule()?;
-                Ok(Rule::Not(Box::new(rule)))
+                Rule::Not(Box::new(rule))
             }
             Token::LParen => {
                 self.consume(Token::LParen)?;
                 let rule = self.rule()?;
                 self.consume(Token::RParen)?;
-                Ok(rule)
+                rule
             }
             Token::Quote => {
                 self.consume(Token::Quote)?;
                 let literal = self.text()?;
                 self.consume(Token::Quote)?;
-                Ok(Rule::Literal(literal))
+                Rule::Literal(literal)
             }
             Token::Text(_) => {
                 let text = self.text()?;
-                Ok(Rule::Ref(text))
+                Rule::Ref(text)
             }
             _ => bail!("Unexpected token {:?} while parsing rule", self.token),
+        };
+
+        // postfix
+        match self.token {
+            Token::ZeroOrMore => {
+                self.consume(Token::ZeroOrMore)?;
+                rule = Rule::Repetion(0, u32::MAX, Box::new(rule))
+            }
+            Token::OneOrMore => {
+                self.consume(Token::OneOrMore)?;
+                rule = Rule::Repetion(1, u32::MAX, Box::new(rule))
+            }
+            Token::Optional => {
+                self.consume(Token::Optional)?;
+                rule = Rule::Repetion(0, 1, Box::new(rule));
+            }
+            _ => {}
         }
+
+        Ok(rule)
     }
 
     /// Consumes the provided token if it matches current token and advances to
@@ -165,14 +189,11 @@ impl<I: Input> Parser<I> {
     }
 
     fn text(&mut self) -> Result<String> {
+        let pos = self.lex.pos();
         match self.skip()? {
             Token::Text(s) => Ok(s),
             tok => {
-                bail!(
-                    "Expected an identifier but got {:?}, at {}",
-                    tok,
-                    self.lex.pos()
-                )
+                bail!("Expected an identifier but got {:?}, at {pos}", tok,)
             }
         }
     }

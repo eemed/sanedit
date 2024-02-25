@@ -10,7 +10,7 @@ use anyhow::Result;
 use super::lexer::Lexer;
 use super::lexer::Token;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 enum Rule {
     Literal(String),
     Repetion(u32, u32, Box<Rule>),
@@ -20,6 +20,13 @@ enum Rule {
     And(Box<Rule>),
     Ref(String),
 }
+
+// Operator      Priority
+// (e)           5
+// e*, e+, e?    4
+// &e, !e        3
+// e1 e2         2
+// e1 / e2       1
 
 struct Parser<I: Input> {
     lex: Lexer<I>,
@@ -45,31 +52,20 @@ impl<I: Input> Parser<I> {
         let name = self.text()?;
         self.consume(Token::Assign)?;
         let rule = self.rule()?;
-        println!("Parsed: {name}: {rule:?}");
         self.consume(Token::End)?;
         Ok((name, rule))
     }
 
     fn rule(&mut self) -> Result<Rule> {
-        println!("rule");
-        let rule = self.rule_single()?;
-
-        match self.token {
-            Token::Choice => self.choice(rule),
-            _ => self.sequence(rule),
-        }
+        self.choice()
     }
 
-    fn sequence(&mut self, rule: Rule) -> Result<Rule> {
-        println!("seq {rule:?}");
-        let mut rules = match rule {
-            Rule::Sequence(rules) => rules,
-            _ => vec![rule],
-        };
+    fn sequence(&mut self) -> Result<Rule> {
+        let mut rules = vec![];
 
         loop {
             let start = self.lex.token_count();
-            match self.rule() {
+            match self.rule_single() {
                 Ok(r) => rules.push(r),
                 Err(e) => {
                     let end = self.lex.token_count();
@@ -89,20 +85,12 @@ impl<I: Input> Parser<I> {
         }
     }
 
-    fn choice(&mut self, rule: Rule) -> Result<Rule> {
-        println!("choice");
-        let mut rules = match rule {
-            Rule::Choice(rules) => rules,
-            _ => vec![rule],
-        };
+    fn choice(&mut self) -> Result<Rule> {
+        let mut rules = vec![];
 
         loop {
-            if let Err(_) = self.consume(Token::Choice) {
-                break;
-            }
-
             let start = self.lex.token_count();
-            match self.rule() {
+            match self.sequence() {
                 Ok(r) => rules.push(r),
                 Err(e) => {
                     let end = self.lex.token_count();
@@ -113,13 +101,16 @@ impl<I: Input> Parser<I> {
                     }
                 }
             }
+
+            if let Err(_) = self.consume(Token::Choice) {
+                break;
+            }
         }
 
         Ok(Rule::Choice(rules))
     }
 
     fn rule_single(&mut self) -> Result<Rule> {
-        println!("rule_single: {:?}", self.token);
         // Prefix + rule
         let mut rule = match &self.token {
             Token::And => todo!(),
@@ -134,6 +125,11 @@ impl<I: Input> Parser<I> {
                 self.consume(Token::RParen)?;
                 rule
             }
+            // Token::LBracket => {
+            //     self.consume(Token::LParen)?;
+            //     let rule = self.rule()?;
+            //     self.consume(Token::RParen)?;
+            // }
             Token::Quote => {
                 self.consume(Token::Quote)?;
                 let literal = self.text()?;
@@ -204,11 +200,67 @@ mod test {
     use super::*;
     use crate::input::StringInput;
 
+    fn print_rules(map: HashMap<String, Rule>) -> String {
+        let mut result = String::new();
+        let mut rules: Vec<(String, Rule)> = map.into_iter().collect();
+        rules.sort_by(|(a, _), (b, _)| a.cmp(b));
+
+        for (name, rule) in rules {
+            let srule = format!("{}: {};\n", name, print_rule(&rule));
+            result.push_str(&srule);
+        }
+        result
+    }
+
+    fn print_rule(rule: &Rule) -> String {
+        match rule {
+            Rule::Literal(l) => format!("\"{}\"", l),
+            Rule::Repetion(n, m, r) => {
+                let mark = match (n, m) {
+                    (0, 1) => "?",
+                    (0, _) => "*",
+                    (1, _) => "+",
+                    _ => unreachable!("no such repetition"),
+                };
+                format!("({}){}", print_rule(r), mark)
+            }
+            Rule::Choice(choices) => {
+                let mut result = String::new();
+                for (i, choice) in choices.iter().enumerate() {
+                    if i != 0 {
+                        result.push_str(" | ");
+                    }
+
+                    result.push_str(&print_rule(choice));
+                }
+
+                result
+            }
+            Rule::Sequence(seq) => {
+                let mut result = String::new();
+                for (i, choice) in seq.iter().enumerate() {
+                    if i != 0 {
+                        result.push_str(" ");
+                    }
+
+                    result.push_str(&print_rule(choice));
+                }
+
+                result
+            }
+            Rule::Not(r) => format!("!({})", print_rule(r)),
+            Rule::And(r) => format!("&({})", print_rule(r)),
+            Rule::Ref(r) => r.clone(),
+        }
+    }
+
     #[test]
     fn calc() {
         let peg = include_str!("../../pegs/calc.peg");
         let input = StringInput::new(peg);
-        let res = Parser::parse(input);
-        println!("res: {res:?}");
+        match Parser::parse(input) {
+            Ok(rules) => println!("==== Created rules ====\n{}", print_rules(rules)),
+            Err(e) => println!("Failed to create rules: {e}"),
+        }
     }
 }

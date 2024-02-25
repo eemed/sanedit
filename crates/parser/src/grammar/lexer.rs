@@ -21,11 +21,16 @@ pub(crate) enum Token {
     Quote,
     EOF,
     End,
+    LBracket,
+    RBracket,
+    Char(char),
+    Range,
 }
 
 pub(crate) struct Lexer<I: Input> {
     input: I,
-    queue: VecDeque<Token>,
+    in_quote: bool,
+    in_brackets: bool,
     token_count: usize,
 }
 
@@ -33,7 +38,8 @@ impl<I: Input> Lexer<I> {
     pub fn new(input: I) -> Lexer<I> {
         Self {
             input,
-            queue: VecDeque::new(),
+            in_quote: false,
+            in_brackets: false,
             token_count: 0,
         }
     }
@@ -102,7 +108,6 @@ impl<I: Input> Lexer<I> {
             };
 
             if ch == until {
-                self.advance()?;
                 break;
             }
 
@@ -124,11 +129,15 @@ impl<I: Input> Lexer<I> {
     }
 
     fn next_impl(&mut self) -> Result<Token> {
-        if !self.queue.is_empty() {
-            return Ok(self.queue.pop_front().unwrap());
+        self.skip_whitespace()?;
+
+        if self.in_quote {
+            return self.quote();
         }
 
-        self.skip_whitespace()?;
+        if self.in_brackets {
+            return self.brackets();
+        }
 
         let ch = match self.input.peek() {
             Some(ch) => ch,
@@ -136,8 +145,8 @@ impl<I: Input> Lexer<I> {
         };
 
         match ch {
-            '<' => {
-                self.consume("<-")?;
+            ':' => {
+                self.advance()?;
                 return Ok(Token::Assign);
             }
             '*' => {
@@ -166,11 +175,13 @@ impl<I: Input> Lexer<I> {
             }
             '"' => {
                 self.advance()?;
-                let string = self.consume_string_until('"')?;
-                self.queue.push_back(Token::Text(string));
-                self.queue.push_back(Token::Quote);
+                self.in_quote = true;
                 return Ok(Token::Quote);
             }
+            // '[' => {
+            //     self.advance()?;
+            //     return Ok(Token::LBracket);
+            // }
             '(' => {
                 self.advance()?;
                 return Ok(Token::LParen);
@@ -192,5 +203,54 @@ impl<I: Input> Lexer<I> {
         }
 
         bail!("Unexpected char {ch} at {}", self.input.pos());
+    }
+
+    fn quote(&mut self) -> Result<Token> {
+        let ch = match self.input.peek() {
+            Some(ch) => ch,
+            None => return Ok(Token::EOF),
+        };
+
+        match ch {
+            '"' => {
+                self.advance()?;
+                self.in_quote = false;
+                return Ok(Token::Quote);
+            }
+            _ => {
+                let string = self.consume_string_until('"')?;
+                return Ok(Token::Text(string));
+            }
+        }
+    }
+
+    fn brackets(&mut self) -> Result<Token> {
+        let ch = match self.input.peek() {
+            Some(ch) => ch,
+            None => return Ok(Token::EOF),
+        };
+
+        match ch {
+            ']' => {
+                self.advance()?;
+                self.in_quote = false;
+                return Ok(Token::RBracket);
+            }
+            '.' => {
+                self.advance()?;
+
+                if let Some(n) = self.input.peek() {
+                    if n == '.' {
+                        self.advance()?;
+                        return Ok(Token::Range);
+                    }
+                }
+
+                Ok(Token::Char('.'))
+            }
+            ch => {
+                return Ok(Token::Char(ch));
+            }
+        }
     }
 }

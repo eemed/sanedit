@@ -1,5 +1,3 @@
-use std::collections::VecDeque;
-
 use anyhow::bail;
 use anyhow::Result;
 
@@ -27,6 +25,7 @@ pub(crate) enum Token {
     Range,
 }
 
+#[derive(Debug)]
 pub(crate) struct Lexer<I: Input> {
     input: I,
     in_quote: bool,

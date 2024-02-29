@@ -1,18 +1,35 @@
 use std::collections::HashMap;
 use std::mem;
-use std::rc::Rc;
 
 use crate::input::Input;
+use crate::input::StringInput;
 use anyhow::bail;
 use anyhow::Result;
 
 use super::lexer::Lexer;
 use super::lexer::Token;
 
+pub(crate) fn parse_rules_from_str(input: &str) -> Result<Box<[Rule]>> {
+    let sinput = StringInput::new(input);
+    parse_rules(sinput)
+}
+
+pub(crate) fn parse_rules<I: Input>(input: I) -> Result<Box<[Rule]>> {
+    let mut lex = Lexer::new(input);
+    let token = lex.next()?;
+    let mut parser = GrammarParser {
+        lex,
+        token,
+        clauses: vec![],
+        indices: HashMap::new(),
+    };
+    parser.parse()
+}
+
 #[derive(Debug, Clone)]
 pub(crate) struct Rule {
     name: String,
-    clause: Rc<Clause>,
+    clause: Clause,
 }
 
 #[derive(Debug, Clone)]
@@ -23,7 +40,7 @@ pub(crate) enum Clause {
     FollowedBy(Box<Clause>),
     NotFollowedBy(Box<Clause>),
     CharSequence(String),
-    Ref(String),
+    Ref(usize),
     Nothing,
 }
 
@@ -38,32 +55,37 @@ pub(crate) enum Clause {
 pub(crate) struct GrammarParser<I: Input> {
     lex: Lexer<I>,
     token: Token,
+
+    clauses: Vec<Rule>,
+    indices: HashMap<String, usize>,
 }
 
 impl<I: Input> GrammarParser<I> {
-    fn parse(input: I) -> Result<Vec<Clause>> {
-        let mut lex = Lexer::new(input);
-        let token = lex.next()?;
-        let mut parser = GrammarParser { lex, token };
+    fn parse(mut self) -> Result<Box<[Rule]>> {
+        while self.token != Token::EOF {
+            let rule = self.rule()?;
 
-        let mut map = HashMap::new();
-        while parser.token != Token::EOF {
-            let (name, clause) = parser.rule()?;
-            map.insert(name, clause);
+            match self.indices.get(&rule.name) {
+                Some(i) => {
+                    self.clauses[*i] = rule;
+                }
+                None => {
+                    let i = self.clauses.len();
+                    self.indices.insert(rule.name.clone(), i);
+                    self.clauses.push(rule);
+                }
+            }
         }
 
-        todo!()
-        // parser.parsed.sort_by(|a, b| a.name.cmp(&b.name));
-        // let rules = mem::take(&mut parser.parsed);
-        // Ok(rules)
+        Ok(self.clauses.into())
     }
 
-    fn rule(&mut self) -> Result<(String, Clause)> {
+    fn rule(&mut self) -> Result<Rule> {
         let name = self.text()?;
         self.consume(Token::Assign)?;
         let clause = self.clauses()?;
         self.consume(Token::End)?;
-        Ok((name, clause))
+        Ok(Rule { name, clause })
     }
 
     fn clauses(&mut self) -> Result<Clause> {
@@ -156,7 +178,19 @@ impl<I: Input> GrammarParser<I> {
             }
             Token::Text(_) => {
                 let ref_rule = self.text()?;
-                Clause::Ref(ref_rule)
+                match self.indices.get(&ref_rule) {
+                    Some(i) => Clause::Ref(*i),
+                    None => {
+                        let i = self.clauses.len();
+                        let rrule = Rule {
+                            name: ref_rule,
+                            clause: Clause::Nothing,
+                        };
+                        self.indices.insert(rrule.name.clone(), i);
+                        self.clauses.push(rrule);
+                        Clause::Ref(i)
+                    }
+                }
             }
             _ => bail!("Unexpected token {:?} while parsing rule", self.token),
         };
@@ -223,13 +257,11 @@ impl<I: Input> GrammarParser<I> {
 mod test {
     use super::*;
 
-    fn print_rules(map: HashMap<String, Clause>) -> String {
+    fn print_rules(rules: &[Rule]) -> String {
         let mut result = String::new();
-        let mut rules: Vec<(String, Clause)> = map.into_iter().collect();
-        rules.sort_by(|(a, _), (b, _)| a.cmp(b));
 
-        for (name, rule) in rules {
-            let srule = format!("{}: {};\n", name, print_rule(&rule));
+        for (i, rule) in rules.iter().enumerate() {
+            let srule = format!("{i}: {}: {};\n", &rule.name, print_rule(&rule.clause));
             result.push_str(&srule);
         }
         result
@@ -264,7 +296,7 @@ mod test {
             }
             Clause::NotFollowedBy(r) => format!("!({})", print_rule(r)),
             Clause::FollowedBy(r) => format!("&({})", print_rule(r)),
-            Clause::Ref(r) => r.clone(),
+            Clause::Ref(r) => format!("r\"{r}\""),
             Clause::OneOrMore(r) => format!("({})*", print_rule(r)),
             Clause::Nothing => format!("()"),
         }
@@ -274,7 +306,7 @@ mod test {
     fn calc() {
         let peg = include_str!("../../pegs/calc.peg");
         match parse_rules_from_str(peg) {
-            Ok(rules) => println!("==== Created rules ====\n{}", print_rules(rules)),
+            Ok(rules) => println!("==== Created rules ====\n{}", print_rules(&rules)),
             Err(e) => println!("Failed to create rules: {e}"),
         }
     }

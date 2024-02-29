@@ -18,7 +18,7 @@ pub struct PikaParser {
 
 impl PikaParser {
     pub fn new(grammar: &str) -> Result<PikaParser, ParseError> {
-        match grammar::parse_from_str(grammar) {
+        match grammar::parse_rules_from_str(grammar) {
             Ok(rules) => {
                 let parser = PikaParser { rules };
                 Ok(parser)

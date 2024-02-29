@@ -1,5 +1,5 @@
 Expr:     Sum;
-Sum:      Product (("+" | "-") Product)*;
-Product:  Power (("*" | "/") Power)*;
+Sum:      Product (("+" / "-") Product)*;
+Product:  Power (("*" / "/") Power)*;
 Power:    Value ("^" Power)?;
-Value:    ("0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9")+ | "(" Expr ")";
+Value:    ("0" / "1" / "2" / "3" / "4" / "5" / "6" / "7" / "8" / "9")+ / "(" Expr ")";

@@ -160,7 +160,7 @@ impl<I: Input> Lexer<I> {
                 self.advance()?;
                 return Ok(Token::OneOrMore);
             }
-            '|' => {
+            '/' => {
                 self.advance()?;
                 return Ok(Token::Choice);
             }

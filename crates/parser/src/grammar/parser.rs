@@ -28,8 +28,8 @@ pub(crate) fn parse_rules<I: Input>(input: I) -> Result<Box<[Rule]>> {
 
 #[derive(Debug, Clone)]
 pub(crate) struct Rule {
-    name: String,
-    clause: Clause,
+    pub(crate) name: String,
+    pub(crate) clause: Clause,
 }
 
 #[derive(Debug, Clone)]
@@ -42,6 +42,20 @@ pub(crate) enum Clause {
     CharSequence(String),
     Ref(usize),
     Nothing,
+}
+
+impl Clause {
+    fn is_terminal(&self) -> bool {
+        use Clause::*;
+        match self {
+            Nothing | CharSequence(_) => true,
+            _ => false,
+        }
+    }
+
+    fn is_nothing(&self) -> bool {
+        matches!(self, Clause::Nothing)
+    }
 }
 
 // Operator      Priority

@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::fmt;
 use std::mem;
 
 use crate::input::Input;
@@ -32,6 +33,12 @@ pub(crate) struct Rule {
     pub(crate) clause: Clause,
 }
 
+impl fmt::Display for Rule {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}: {}", self.name, self.clause)
+    }
+}
+
 #[derive(Debug, Clone)]
 pub(crate) enum Clause {
     OneOrMore(Box<Clause>),
@@ -44,8 +51,45 @@ pub(crate) enum Clause {
     Nothing,
 }
 
+impl fmt::Display for Clause {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Clause::CharSequence(l) => write!(f, "\"{}\"", l),
+            Clause::Choice(choices) => {
+                let mut result = String::new();
+                for (i, choice) in choices.iter().enumerate() {
+                    if i != 0 {
+                        result.push_str(" / ");
+                    }
+
+                    result.push_str(&format!("{}", choice));
+                }
+
+                write!(f, "{}", result)
+            }
+            Clause::Sequence(seq) => {
+                let mut result = String::new();
+                for (i, choice) in seq.iter().enumerate() {
+                    if i != 0 {
+                        result.push_str(" ");
+                    }
+
+                    result.push_str(&format!("{}", choice));
+                }
+
+                write!(f, "{}", result)
+            }
+            Clause::NotFollowedBy(r) => write!(f, "!({})", r),
+            Clause::FollowedBy(r) => write!(f, "&({})", r),
+            Clause::Ref(r) => write!(f, "r\"{r}\""),
+            Clause::OneOrMore(r) => write!(f, "({})*", r),
+            Clause::Nothing => write!(f, "()"),
+        }
+    }
+}
+
 impl Clause {
-    fn is_terminal(&self) -> bool {
+    pub fn is_terminal(&self) -> bool {
         use Clause::*;
         match self {
             Nothing | CharSequence(_) => true,
@@ -53,7 +97,7 @@ impl Clause {
         }
     }
 
-    fn is_nothing(&self) -> bool {
+    pub fn is_nothing(&self) -> bool {
         matches!(self, Clause::Nothing)
     }
 }

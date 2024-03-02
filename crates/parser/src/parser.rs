@@ -1,6 +1,6 @@
 mod memotable;
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{BinaryHeap, HashMap, HashSet};
 
 use thiserror::Error;
 
@@ -10,6 +10,13 @@ use crate::{
 };
 
 use self::memotable::MemoTable;
+
+struct PikaRule {
+    topo_order: usize,
+    /// Links to parent rules that reference this rule
+    parents: Vec<usize>,
+    rule: Rule,
+}
 
 #[derive(Error, Debug)]
 pub enum ParseError {
@@ -29,6 +36,7 @@ impl PikaParser {
         match grammar::parse_rules_from_str(grammar) {
             Ok(rules) => {
                 let topo = topological_order(0, &rules);
+                println!("Topo: {topo:?}");
                 let parser = PikaParser {
                     rules,
                     topological_order: topo,
@@ -41,42 +49,55 @@ impl PikaParser {
 
     pub fn parse(&mut self, input: &str) {
         let mut memo = MemoTable::new();
+        // Max priority queue
+        let mut queue = BinaryHeap::<usize>::new();
+        // TODO these should be
+        let terminals: Vec<usize> = self
+            .rules
+            .iter()
+            .enumerate()
+            .filter(|(i, r)| {
+                let clause = &r.clause;
+                clause.is_terminal() && !clause.is_nothing()
+            })
+            .map(|(i, _)| i)
+            .collect();
 
-        for ch in input.chars().rev() {}
+        // Match from terminals up
+        for ch in input.chars().rev() {
+            queue.extend(&terminals);
+
+            while let Some(i) = queue.pop() {
+
+                // var memoKey = new MemoKey(clause, startPos);
+                // var match = clause.match(memoTable, memoKey, input);
+                // memoTable.addMatch(memoKey, match, priorityQueue);
+            }
+        }
     }
 }
 
 fn topological_order(first: usize, rules: &[Rule]) -> Box<[usize]> {
-    // TODO use recursion
-    //
-    // let mut postorder = vec![];
-    // let mut visited = vec![false; rules.len()];
-    // let mut stack = vec![];
-    // stack.push(first);
+    let mut visited: Box<[bool]> = vec![false; rules.len()].into();
+    let mut result = vec![];
+    topo_rec(first, rules, &mut visited, &mut result);
+    let res: Box<[usize]> = result.into();
+    print_in_order(rules, &res);
+    res
+}
 
-    // while !stack.is_empty() {
-    //     // Peek
-    //     let cur = stack.last().copied().unwrap();
-    //     let mut tail = true;
+fn topo_rec(idx: usize, rules: &[Rule], visited: &mut Box<[bool]>, result: &mut Vec<usize>) {
+    if visited[idx] {
+        return;
+    }
 
-    //     let rule = &rules[cur];
-    //     let refs = find_refs(&rule.clause);
-    //     for r in refs {
-    //         if !visited[r] {
-    //             tail = false;
-    //             visited[r] = true;
-    //             stack.push(r);
-    //             break;
-    //         }
-    //     }
-
-    //     if tail {
-    //         stack.pop();
-    //         postorder.push(cur)
-    //     }
-    // }
-
-    // postorder.into()
+    visited[idx] = true;
+    let rule = &rules[idx];
+    let refs = find_refs(&rule.clause);
+    for r in refs {
+        topo_rec(r, rules, visited, result);
+    }
+    result.push(idx);
 }
 
 fn find_refs(clause: &Clause) -> HashSet<usize> {
@@ -93,5 +114,23 @@ fn find_refs(clause: &Clause) -> HashSet<usize> {
             set
         }
         _ => HashSet::new(),
+    }
+}
+
+fn print_in_order(rules: &[Rule], order: &[usize]) {
+    for or in order {
+        let rule = &rules[*or];
+        println!("{}: {}", *or, rule);
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn parser_calc() {
+        let peg = include_str!("../pegs/calc.peg");
+        let parser = PikaParser::new(peg);
     }
 }

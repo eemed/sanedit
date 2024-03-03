@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+#[derive(Debug)]
 pub(crate) struct MemoTable {
     table: HashMap<MemoKey, Match>,
 }
@@ -15,16 +16,19 @@ impl MemoTable {
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub(crate) struct MemoKey {
     /// Rule index
-    rule: usize,
+    pub rule: usize,
     /// Input start position
-    start: usize,
+    pub start: usize,
 }
 
 impl MemoKey {}
 
+#[derive(Debug)]
 pub(crate) struct Match {
+    pub key: MemoKey,
+
     /// Length of the match
-    len: usize,
+    pub len: usize,
 }
 
 impl Match {}

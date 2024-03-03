@@ -1,3 +1,4 @@
+Calc:     Expr+;
 Expr:     Sum;
 Sum:      Product (("+" / "-") Product)*;
 Product:  Power (("*" / "/") Power)*;

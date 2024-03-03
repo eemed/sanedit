@@ -1,11 +1,15 @@
+mod rule;
+
 use std::collections::HashMap;
-use std::fmt;
 use std::mem;
 
 use crate::input::Input;
 use crate::input::StringInput;
 use anyhow::bail;
 use anyhow::Result;
+
+pub(crate) use self::rule::Rule;
+pub(crate) use self::rule::RuleDefinition;
 
 use super::lexer::Lexer;
 use super::lexer::Token;
@@ -25,81 +29,6 @@ pub(crate) fn parse_rules<I: Input>(input: I) -> Result<Box<[Rule]>> {
         indices: HashMap::new(),
     };
     parser.parse()
-}
-
-#[derive(Debug, Clone)]
-pub(crate) struct Rule {
-    pub(crate) name: String,
-    pub(crate) clause: Clause,
-}
-
-impl fmt::Display for Rule {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}: {}", self.name, self.clause)
-    }
-}
-
-#[derive(Debug, Clone)]
-pub(crate) enum Clause {
-    OneOrMore(Box<Clause>),
-    Choice(Vec<Clause>),
-    Sequence(Vec<Clause>),
-    FollowedBy(Box<Clause>),
-    NotFollowedBy(Box<Clause>),
-    CharSequence(String),
-    Ref(usize),
-    Nothing,
-}
-
-impl fmt::Display for Clause {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Clause::CharSequence(l) => write!(f, "\"{}\"", l),
-            Clause::Choice(choices) => {
-                let mut result = String::new();
-                for (i, choice) in choices.iter().enumerate() {
-                    if i != 0 {
-                        result.push_str(" / ");
-                    }
-
-                    result.push_str(&format!("{}", choice));
-                }
-
-                write!(f, "{}", result)
-            }
-            Clause::Sequence(seq) => {
-                let mut result = String::new();
-                for (i, choice) in seq.iter().enumerate() {
-                    if i != 0 {
-                        result.push_str(" ");
-                    }
-
-                    result.push_str(&format!("{}", choice));
-                }
-
-                write!(f, "{}", result)
-            }
-            Clause::NotFollowedBy(r) => write!(f, "!({})", r),
-            Clause::FollowedBy(r) => write!(f, "&({})", r),
-            Clause::Ref(r) => write!(f, "r\"{r}\""),
-            Clause::OneOrMore(r) => write!(f, "({})*", r),
-            Clause::Nothing => write!(f, "()"),
-        }
-    }
-}
-
-impl Clause {
-    pub fn is_terminal(&self) -> bool {
-        use Clause::*;
-        match self {
-            Nothing | CharSequence(_) => true,
-            _ => false,
-        }
-    }
-
-    pub fn is_nothing(&self) -> bool {
-        matches!(self, Clause::Nothing)
-    }
 }
 
 // Operator      Priority
@@ -143,14 +72,14 @@ impl<I: Input> GrammarParser<I> {
         self.consume(Token::Assign)?;
         let clause = self.clauses()?;
         self.consume(Token::End)?;
-        Ok(Rule { name, clause })
+        Ok(Rule { name, def: clause })
     }
 
-    fn clauses(&mut self) -> Result<Clause> {
+    fn clauses(&mut self) -> Result<RuleDefinition> {
         self.choice()
     }
 
-    fn choice(&mut self) -> Result<Clause> {
+    fn choice(&mut self) -> Result<RuleDefinition> {
         let mut rules = vec![];
 
         loop {
@@ -173,13 +102,13 @@ impl<I: Input> GrammarParser<I> {
         }
 
         if rules.len() > 1 {
-            Ok(Clause::Choice(rules))
+            Ok(RuleDefinition::Choice(rules))
         } else {
             Ok(rules.pop().unwrap())
         }
     }
 
-    fn sequence(&mut self) -> Result<Clause> {
+    fn sequence(&mut self) -> Result<RuleDefinition> {
         let mut rules = vec![];
 
         loop {
@@ -198,24 +127,24 @@ impl<I: Input> GrammarParser<I> {
         }
 
         if rules.len() > 1 {
-            Ok(Clause::Sequence(rules))
+            Ok(RuleDefinition::Sequence(rules))
         } else {
             Ok(rules.pop().unwrap())
         }
     }
 
-    fn clause(&mut self) -> Result<Clause> {
+    fn clause(&mut self) -> Result<RuleDefinition> {
         // Prefix + rule
         let mut rule = match &self.token {
             Token::And => {
                 self.consume(Token::And)?;
                 let rule = self.clauses()?;
-                Clause::FollowedBy(rule.into())
+                RuleDefinition::FollowedBy(rule.into())
             }
             Token::Not => {
                 self.consume(Token::Not)?;
                 let rule = self.clauses()?;
-                Clause::NotFollowedBy(rule.into())
+                RuleDefinition::NotFollowedBy(rule.into())
             }
             Token::LParen => {
                 self.consume(Token::LParen)?;
@@ -232,21 +161,21 @@ impl<I: Input> GrammarParser<I> {
                 self.consume(Token::Quote)?;
                 let literal = self.text()?;
                 self.consume(Token::Quote)?;
-                Clause::CharSequence(literal)
+                RuleDefinition::CharSequence(literal)
             }
             Token::Text(_) => {
                 let ref_rule = self.text()?;
                 match self.indices.get(&ref_rule) {
-                    Some(i) => Clause::Ref(*i),
+                    Some(i) => RuleDefinition::Ref(*i),
                     None => {
                         let i = self.clauses.len();
                         let rrule = Rule {
                             name: ref_rule,
-                            clause: Clause::Nothing,
+                            def: RuleDefinition::Nothing,
                         };
                         self.indices.insert(rrule.name.clone(), i);
                         self.clauses.push(rrule);
-                        Clause::Ref(i)
+                        RuleDefinition::Ref(i)
                     }
                 }
             }
@@ -258,20 +187,20 @@ impl<I: Input> GrammarParser<I> {
             Token::ZeroOrMore => {
                 self.consume(Token::ZeroOrMore)?;
                 let mut choices = Vec::with_capacity(2);
-                choices.push(Clause::OneOrMore(rule.into()));
-                choices.push(Clause::Nothing);
-                rule = Clause::Choice(choices)
+                choices.push(RuleDefinition::OneOrMore(rule.into()));
+                choices.push(RuleDefinition::Nothing);
+                rule = RuleDefinition::Choice(choices)
             }
             Token::OneOrMore => {
                 self.consume(Token::OneOrMore)?;
-                rule = Clause::OneOrMore(rule.into())
+                rule = RuleDefinition::OneOrMore(rule.into())
             }
             Token::Optional => {
                 self.consume(Token::Optional)?;
                 let mut choices = Vec::with_capacity(2);
                 choices.push(rule);
-                choices.push(Clause::Nothing);
-                rule = Clause::Choice(choices)
+                choices.push(RuleDefinition::Nothing);
+                rule = RuleDefinition::Choice(choices)
             }
             _ => {}
         }
@@ -319,16 +248,16 @@ mod test {
         let mut result = String::new();
 
         for (i, rule) in rules.iter().enumerate() {
-            let srule = format!("{i}: {}: {};\n", &rule.name, print_rule(&rule.clause));
+            let srule = format!("{i}: {}: {};\n", &rule.name, print_rule(&rule.def));
             result.push_str(&srule);
         }
         result
     }
 
-    fn print_rule(rule: &Clause) -> String {
+    fn print_rule(rule: &RuleDefinition) -> String {
         match rule {
-            Clause::CharSequence(l) => format!("\"{}\"", l),
-            Clause::Choice(choices) => {
+            RuleDefinition::CharSequence(l) => format!("\"{}\"", l),
+            RuleDefinition::Choice(choices) => {
                 let mut result = String::new();
                 for (i, choice) in choices.iter().enumerate() {
                     if i != 0 {
@@ -340,7 +269,7 @@ mod test {
 
                 result
             }
-            Clause::Sequence(seq) => {
+            RuleDefinition::Sequence(seq) => {
                 let mut result = String::new();
                 for (i, choice) in seq.iter().enumerate() {
                     if i != 0 {
@@ -352,11 +281,11 @@ mod test {
 
                 result
             }
-            Clause::NotFollowedBy(r) => format!("!({})", print_rule(r)),
-            Clause::FollowedBy(r) => format!("&({})", print_rule(r)),
-            Clause::Ref(r) => format!("r\"{r}\""),
-            Clause::OneOrMore(r) => format!("({})*", print_rule(r)),
-            Clause::Nothing => format!("()"),
+            RuleDefinition::NotFollowedBy(r) => format!("!({})", print_rule(r)),
+            RuleDefinition::FollowedBy(r) => format!("&({})", print_rule(r)),
+            RuleDefinition::Ref(r) => format!("r\"{r}\""),
+            RuleDefinition::OneOrMore(r) => format!("({})*", print_rule(r)),
+            RuleDefinition::Nothing => format!("()"),
         }
     }
 

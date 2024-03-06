@@ -15,7 +15,7 @@ use crate::{
 
 use self::{
     memotable::{Match, MemoKey, MemoTable},
-    rule::{preprocess_rules, PikaRule},
+    rule::PikaRule,
 };
 
 #[derive(Error, Debug)]

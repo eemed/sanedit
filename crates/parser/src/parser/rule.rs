@@ -119,6 +119,7 @@ impl fmt::Display for Clause {
             CharSequence(l) => write!(f, "\"{}\"", l),
             Choice => {
                 let mut result = String::new();
+                result.push_str("(");
                 for (i, choice) in self.sub.iter().enumerate() {
                     if i != 0 {
                         result.push_str(" / ");
@@ -126,11 +127,13 @@ impl fmt::Display for Clause {
 
                     result.push_str(&format!("{}", choice));
                 }
+                result.push_str(")");
 
                 write!(f, "{}", result)
             }
             Sequence => {
                 let mut result = String::new();
+                result.push_str("(");
                 for (i, choice) in self.sub.iter().enumerate() {
                     if i != 0 {
                         result.push_str(" ");
@@ -138,6 +141,7 @@ impl fmt::Display for Clause {
 
                     result.push_str(&format!("{}", choice));
                 }
+                result.push_str(")");
 
                 write!(f, "{}", result)
             }
@@ -167,46 +171,48 @@ fn all_clauses(rules: &[Rule]) {
         match dedup.get(&key) {
             Some(c) => c.clone(),
             None => {
+                let mid = *id;
+                *id += 1;
                 let clause = match def {
                     RuleDefinition::Choice(v) => {
                         let subs = v
                             .iter()
                             .map(|rd| rec_def(rd, rules, dedup, id, referenced, terminals))
                             .collect();
-                        Clause::choice(*id, subs)
+                        Clause::choice(mid, subs)
                     }
                     RuleDefinition::Sequence(v) => {
                         let subs = v
                             .iter()
                             .map(|rd| rec_def(rd, rules, dedup, id, referenced, terminals))
                             .collect();
-                        Clause::sequence(*id, subs)
+                        Clause::sequence(mid, subs)
                     }
                     RuleDefinition::OneOrMore(r) => Clause::one_or_more(
-                        *id,
+                        mid,
                         rec_def(r, rules, dedup, id, referenced, terminals),
                     ),
                     RuleDefinition::FollowedBy(r) => Clause::followed_by(
-                        *id,
+                        mid,
                         rec_def(r, rules, dedup, id, referenced, terminals),
                     ),
                     RuleDefinition::NotFollowedBy(r) => Clause::not_followed_by(
-                        *id,
+                        mid,
                         rec_def(r, rules, dedup, id, referenced, terminals),
                     ),
-                    RuleDefinition::CharSequence(s) => Clause::char_sequence(*id, s.clone()),
+                    RuleDefinition::CharSequence(s) => Clause::char_sequence(mid, s.clone()),
                     RuleDefinition::Ref(r) => {
                         referenced.insert(*r);
-                        Clause::reference(*id, *r)
+                        Clause::reference(mid, *r)
                     }
-                    RuleDefinition::Nothing => Clause::nothing(*id),
+                    RuleDefinition::Nothing => Clause::nothing(mid),
                 };
+                println!("Clause: {}: {}", clause.id, clause);
 
                 if def.is_terminal() {
                     terminals.push(clause.clone());
                 }
 
-                *id += 1;
                 dedup.insert(key, clause.clone());
 
                 clause
@@ -236,6 +242,10 @@ fn all_clauses(rules: &[Rule]) {
         );
     }
 
+    // for cl in dedup.values() {
+    //     println!("CL: {}: {}", cl.id, cl);
+    // }
+
     // Sort clauses topologically
     sort_topologically(&by_rule, &referenced, terminals, dedup.len())
 }
@@ -260,13 +270,13 @@ fn sort_topologically(
     // Find possible cycle head clauses
     let cycles = find_cycle_head_clauses(&top, by_rule, total_clauses);
 
-    for t in &top {
-        println!("TOP: {t}");
-    }
+    // for t in &top {
+    //     println!("TOP: {t}");
+    // }
 
-    for c in &cycles {
-        println!("CYCLE: {c}");
-    }
+    // for c in &cycles {
+    //     println!("CYCLE: {c}");
+    // }
 
     let mut roots: HashSet<Rc<Clause>> = HashSet::new();
     roots.extend(top);
@@ -353,12 +363,11 @@ fn topological_clause_order(
 
     // Then the rest
     for root in roots {
-        println!("Root: {}", root);
         topo_clauses_rec(root, by_rule, &mut visited, &mut result);
     }
 
+    // Not the same as len because refs are not in all clauses
     let clauses = result.len();
-    println!("len: {len}, clauses: {clauses}");
     // order = len - i because we are using a max heap instead of min heap
     result
         .into_iter()
@@ -377,20 +386,17 @@ fn topo_clauses_rec(
     result: &mut Vec<Rc<Clause>>,
 ) {
     if let ClauseKind::Ref(i) = me.kind {
-        let sub = &by_rule[i];
-        topo_clauses_rec(sub, by_rule, visited, result);
+        topo_clauses_rec(&by_rule[i], by_rule, visited, result);
         return;
     }
 
     let i = me.id as usize;
     if visited[i] {
-        println!("{}: Done", me,);
         return;
     }
 
     visited[i] = true;
 
-    println!("{}: {:?} with {} subclauses", me, me.kind, me.sub.len());
     for sub in &me.sub {
         topo_clauses_rec(sub, by_rule, visited, result);
     }
@@ -435,160 +441,3 @@ impl PartialOrd for PikaRule {
         self.topo_order.partial_cmp(&other.topo_order)
     }
 }
-
-// /// Detect cycles in the rules and break them.
-// /// Sort the rules into topological order
-// pub(super) fn preprocess_rules(rules: Box<[Rule]>) -> (Box<[PikaRule]>, Box<[RuleDefinition]>) {
-//     // Generally helper functions return arrays where the index is the rule
-//     // index and the result is whatever is placed on that index.
-//     let top = find_top_rules(&rules);
-//     let cycles = detect_cycles(&rules);
-
-//     let mut roots: Vec<usize> = vec![];
-//     roots.extend(top);
-//     roots.extend(cycles);
-
-//     let order = topological_order(&roots, &rules);
-//     let mut parents = find_parents(&rules);
-
-//     let len = rules.len();
-//     let prules: Vec<PikaRule> = rules
-//         .into_vec()
-//         .into_iter()
-//         .enumerate()
-//         .map(|(i, r)| PikaRule {
-//             idx: i,
-//             parents: mem::take(&mut parents[i]),
-//             // We are using max heap instead of min heap
-//             topo_order: len - order[i],
-//             rule: r,
-//         })
-//         .collect();
-
-//     (prules.into(), [].into())
-// }
-
-// /// Find rules that refer to us
-// fn find_parents(rules: &[Rule]) -> Vec<Vec<usize>> {
-//     let mut result = vec![];
-
-//     for i in 0..rules.len() {
-//         let mut found = vec![];
-
-//         for (j, r) in rules.iter().enumerate() {
-//             if r.def.has_direct_ref(i) {
-//                 found.push(j);
-//             }
-//         }
-
-//         result.push(found);
-//     }
-
-//     result
-// }
-
-// /// Find rules that are not referenced by other rules.
-// fn find_top_rules(rules: &[Rule]) -> HashSet<usize> {
-//     let mut result = HashSet::new();
-
-//     'top: for i in 0..rules.len() {
-//         for (j, r) in rules.iter().enumerate() {
-//             if i == j {
-//                 continue;
-//             }
-
-//             if r.def.has_direct_ref(i) {
-//                 continue 'top;
-//             }
-//         }
-
-//         result.insert(i);
-//     }
-
-//     result
-// }
-
-// /// Detect cycles in rules and return their head indices
-// fn detect_cycles(rules: &[Rule]) -> HashSet<usize> {
-//     let mut result = HashSet::new();
-//     let mut visited: Box<[bool]> = vec![false; rules.len()].into();
-//     let mut finished: Box<[bool]> = vec![false; rules.len()].into();
-
-//     for i in 0..rules.len() {
-//         detect_cycles_rec(i, rules, &mut visited, &mut finished, &mut result);
-//     }
-
-//     result
-// }
-
-// fn detect_cycles_rec(
-//     i: usize,
-//     rules: &[Rule],
-//     visited: &mut [bool],
-//     finished: &mut [bool],
-//     result: &mut HashSet<usize>,
-// ) {
-//     visited[i] = true;
-//     let rule = &rules[i];
-//     let refs = find_refs(&rule.def);
-//     for re in refs {
-//         if visited[re] {
-//             result.insert(re);
-//         } else if !finished[re] {
-//             detect_cycles_rec(re, rules, visited, finished, result);
-//         }
-//     }
-//     visited[i] = false;
-//     finished[i] = true;
-// }
-
-// /// Sort rules to topological order
-// fn topological_order(roots: &[usize], rules: &[Rule]) -> Box<[usize]> {
-//     let mut visited: Box<[bool]> = vec![false; rules.len()].into();
-//     let mut result: Box<[usize]> = vec![0; rules.len()].into();
-//     let mut count = 0;
-
-//     for root in roots {
-//         topo_rec(*root, rules, &mut visited, &mut result, &mut count);
-//     }
-
-//     result.into()
-// }
-
-// fn topo_rec(
-//     me: usize,
-//     rules: &[Rule],
-//     visited: &mut [bool],
-//     result: &mut [usize],
-//     count: &mut usize,
-// ) {
-//     if visited[me] {
-//         return;
-//     }
-
-//     visited[me] = true;
-//     let rule = &rules[me];
-//     let refs = find_refs(&rule.def);
-//     for r in refs {
-//         topo_rec(r, rules, visited, result, count);
-//     }
-//     result[me] = *count;
-//     *count += 1;
-// }
-
-// fn find_refs(clause: &RuleDefinition) -> HashSet<usize> {
-//     use RuleDefinition::*;
-//     match clause {
-//         OneOrMore(r) | FollowedBy(r) | NotFollowedBy(r) => find_refs(r),
-//         Choice(v) | Sequence(v) => v.iter().fold(HashSet::new(), |mut acc, c| {
-//             acc.extend(&find_refs(c));
-//             acc
-//         }),
-//         Ref(i) => {
-//             let mut set = HashSet::new();
-//             set.insert(*i);
-//             set
-//         }
-//         _ => HashSet::new(),
-//     }
-// }

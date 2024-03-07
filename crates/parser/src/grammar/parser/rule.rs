@@ -64,6 +64,7 @@ impl fmt::Display for RuleDefinition {
             RuleDefinition::CharSequence(l) => write!(f, "\"{}\"", l),
             RuleDefinition::Choice(choices) => {
                 let mut result = String::new();
+                result.push_str("(");
                 for (i, choice) in choices.iter().enumerate() {
                     if i != 0 {
                         result.push_str(" / ");
@@ -71,11 +72,13 @@ impl fmt::Display for RuleDefinition {
 
                     result.push_str(&format!("{}", choice));
                 }
+                result.push_str(")");
 
                 write!(f, "{}", result)
             }
             RuleDefinition::Sequence(seq) => {
                 let mut result = String::new();
+                result.push_str("(");
                 for (i, choice) in seq.iter().enumerate() {
                     if i != 0 {
                         result.push_str(" ");
@@ -83,6 +86,7 @@ impl fmt::Display for RuleDefinition {
 
                     result.push_str(&format!("{}", choice));
                 }
+                result.push_str(")");
 
                 write!(f, "{}", result)
             }

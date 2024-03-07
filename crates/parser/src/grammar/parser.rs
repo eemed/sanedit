@@ -259,18 +259,21 @@ mod test {
             RuleDefinition::CharSequence(l) => format!("\"{}\"", l),
             RuleDefinition::Choice(choices) => {
                 let mut result = String::new();
+                result.push_str("(");
                 for (i, choice) in choices.iter().enumerate() {
                     if i != 0 {
-                        result.push_str(" | ");
+                        result.push_str(" / ");
                     }
 
                     result.push_str(&print_rule(choice));
                 }
+                result.push_str(")");
 
                 result
             }
             RuleDefinition::Sequence(seq) => {
                 let mut result = String::new();
+                result.push_str("(");
                 for (i, choice) in seq.iter().enumerate() {
                     if i != 0 {
                         result.push_str(" ");
@@ -278,6 +281,7 @@ mod test {
 
                     result.push_str(&print_rule(choice));
                 }
+                result.push_str(")");
 
                 result
             }
@@ -290,7 +294,7 @@ mod test {
     }
 
     #[test]
-    fn calc() {
+    fn grammar_calc() {
         let peg = include_str!("../../pegs/calc.peg");
         match parse_rules_from_str(peg) {
             Ok(rules) => println!("==== Created rules ====\n{}", print_rules(&rules)),

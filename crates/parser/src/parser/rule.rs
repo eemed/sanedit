@@ -15,7 +15,6 @@ pub(super) enum ClauseKind {
     NotFollowedBy,
     CharSequence(String),
     Nothing,
-    Ref(usize),
 }
 
 #[derive(Debug, Clone)]
@@ -27,9 +26,9 @@ pub(super) struct SortedClause {
 
 #[derive(Debug, Clone)]
 pub(super) struct Clause {
-    pub(super) id: u32,
+    pub(super) id: usize,
     pub(super) kind: ClauseKind,
-    pub(super) sub: Vec<Rc<Clause>>,
+    pub(super) sub: Vec<usize>,
 }
 
 impl PartialEq for Clause {
@@ -47,68 +46,60 @@ impl std::hash::Hash for Clause {
 }
 
 impl Clause {
-    pub fn one_or_more(id: u32, sub: Rc<Clause>) -> Rc<Clause> {
-        Rc::new(Clause {
+    pub fn one_or_more(id: usize, sub: usize) -> Clause {
+        Clause {
             id,
             kind: ClauseKind::OneOrMore,
             sub: vec![sub],
-        })
+        }
     }
 
-    pub fn sequence(id: u32, sub: Vec<Rc<Clause>>) -> Rc<Clause> {
-        Rc::new(Clause {
+    pub fn sequence(id: usize, sub: Vec<usize>) -> Clause {
+        Clause {
             id,
             kind: ClauseKind::Sequence,
             sub,
-        })
+        }
     }
 
-    pub fn choice(id: u32, sub: Vec<Rc<Clause>>) -> Rc<Clause> {
-        Rc::new(Clause {
+    pub fn choice(id: usize, sub: Vec<usize>) -> Clause {
+        Clause {
             id,
             kind: ClauseKind::Choice,
             sub,
-        })
+        }
     }
 
-    pub fn followed_by(id: u32, sub: Rc<Clause>) -> Rc<Clause> {
-        Rc::new(Clause {
+    pub fn followed_by(id: usize, sub: usize) -> Clause {
+        Clause {
             id,
             kind: ClauseKind::FollowedBy,
             sub: vec![sub],
-        })
+        }
     }
 
-    pub fn not_followed_by(id: u32, sub: Rc<Clause>) -> Rc<Clause> {
-        Rc::new(Clause {
+    pub fn not_followed_by(id: usize, sub: usize) -> Clause {
+        Clause {
             id,
             kind: ClauseKind::NotFollowedBy,
             sub: vec![sub],
-        })
+        }
     }
 
-    pub fn nothing(id: u32) -> Rc<Clause> {
-        Rc::new(Clause {
+    pub fn nothing(id: usize) -> Clause {
+        Clause {
             id,
             kind: ClauseKind::Nothing,
             sub: vec![],
-        })
+        }
     }
 
-    pub fn char_sequence(id: u32, string: String) -> Rc<Clause> {
-        Rc::new(Clause {
+    pub fn char_sequence(id: usize, string: String) -> Clause {
+        Clause {
             id,
             kind: ClauseKind::CharSequence(string),
             sub: vec![],
-        })
-    }
-
-    pub fn reference(id: u32, r: usize) -> Rc<Clause> {
-        Rc::new(Clause {
-            id,
-            kind: ClauseKind::Ref(r),
-            sub: vec![],
-        })
+        }
     }
 }
 
@@ -147,7 +138,6 @@ impl fmt::Display for Clause {
             }
             NotFollowedBy => write!(f, "!({})", self.sub[0]),
             FollowedBy => write!(f, "&({})", self.sub[0]),
-            Ref(r) => write!(f, "r\"{r}\""),
             OneOrMore => write!(f, "({})+", self.sub[0]),
             Nothing => write!(f, "()"),
         }
@@ -162,60 +152,67 @@ fn all_clauses(rules: &[Rule]) {
     fn rec_def(
         def: &RuleDefinition,
         rules: &[Rule],
-        dedup: &mut HashMap<String, Rc<Clause>>,
-        id: &mut u32,
-        referenced: &mut HashSet<usize>,
-        terminals: &mut Vec<Rc<Clause>>,
-    ) -> Rc<Clause> {
+        dedup: &mut HashMap<String, usize>,
+        clauses: &mut Vec<Clause>,
+    ) -> usize {
         let key = format!("{def}");
         match dedup.get(&key) {
-            Some(c) => c.clone(),
+            Some(c) => {
+                // TODO if encounters a placeholder we should parse this anyway
+                // TODO how to determine placeholder?
+                c.clone()
+            }
             None => {
-                let mid = *id;
-                *id += 1;
+                let mid = clauses.len();
+                clauses.push(Clause::nothing(mid));
+
                 let clause = match def {
                     RuleDefinition::Choice(v) => {
                         let subs = v
                             .iter()
-                            .map(|rd| rec_def(rd, rules, dedup, id, referenced, terminals))
+                            .map(|rd| rec_def(rd, rules, dedup, clauses))
                             .collect();
                         Clause::choice(mid, subs)
                     }
                     RuleDefinition::Sequence(v) => {
                         let subs = v
                             .iter()
-                            .map(|rd| rec_def(rd, rules, dedup, id, referenced, terminals))
+                            .map(|rd| rec_def(rd, rules, dedup, clauses))
                             .collect();
                         Clause::sequence(mid, subs)
                     }
-                    RuleDefinition::OneOrMore(r) => Clause::one_or_more(
-                        mid,
-                        rec_def(r, rules, dedup, id, referenced, terminals),
-                    ),
-                    RuleDefinition::FollowedBy(r) => Clause::followed_by(
-                        mid,
-                        rec_def(r, rules, dedup, id, referenced, terminals),
-                    ),
-                    RuleDefinition::NotFollowedBy(r) => Clause::not_followed_by(
-                        mid,
-                        rec_def(r, rules, dedup, id, referenced, terminals),
-                    ),
+                    RuleDefinition::OneOrMore(r) => {
+                        Clause::one_or_more(mid, rec_def(r, rules, dedup, clauses))
+                    }
+                    RuleDefinition::FollowedBy(r) => {
+                        Clause::followed_by(mid, rec_def(r, rules, dedup, clauses))
+                    }
+                    RuleDefinition::NotFollowedBy(r) => {
+                        Clause::not_followed_by(mid, rec_def(r, rules, dedup, clauses))
+                    }
                     RuleDefinition::CharSequence(s) => Clause::char_sequence(mid, s.clone()),
                     RuleDefinition::Ref(r) => {
-                        referenced.insert(*r);
-                        Clause::reference(mid, *r)
+                        let ref_rule = &rules[*r];
+                        let rkey = format!("{}", ref_rule.def);
+
+                        match dedup.get(&rkey) {
+                            Some(m) => return *m,
+                            None => {
+                                // Create placeholder if doesnt exist
+                                clauses.push(Clause::nothing(mid));
+                                dedup.insert(rkey, mid);
+                                return mid;
+                            }
+                        }
                     }
                     RuleDefinition::Nothing => Clause::nothing(mid),
                 };
                 println!("Clause: {}: {}", clause.id, clause);
 
-                if def.is_terminal() {
-                    terminals.push(clause.clone());
-                }
+                clauses[mid] = clause;
+                dedup.insert(key, mid);
 
-                dedup.insert(key, clause.clone());
-
-                clause
+                mid
             }
         }
     }

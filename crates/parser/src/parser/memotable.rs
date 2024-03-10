@@ -1,17 +1,6 @@
 use std::collections::HashMap;
 
-#[derive(Debug)]
-pub(crate) struct MemoTable {
-    table: HashMap<MemoKey, Match>,
-}
-
-impl MemoTable {
-    pub fn new() -> MemoTable {
-        MemoTable {
-            table: HashMap::new(),
-        }
-    }
-}
+pub(crate) type MemoTable = HashMap<MemoKey, Match>;
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub(crate) struct MemoKey {

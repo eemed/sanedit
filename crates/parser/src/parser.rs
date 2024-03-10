@@ -10,7 +10,7 @@ use thiserror::Error;
 
 use crate::{
     grammar::{self, Rule, RuleDefinition},
-    parser::rule::preprocess_rules,
+    parser::rule::{preprocess_rules, ClauseKind},
 };
 
 use self::{
@@ -27,17 +27,16 @@ pub enum ParseError {
 // https://arxiv.org/pdf/2005.06444.pdf
 #[derive(Debug)]
 pub struct PikaParser {
-    rules: Box<[Clause]>,
+    clauses: Box<[Clause]>,
 }
 
 impl PikaParser {
     pub fn new(grammar: &str) -> Result<PikaParser, ParseError> {
         match grammar::parse_rules_from_str(grammar) {
             Ok(rules) => {
-                let prules = preprocess_rules(&rules);
-                todo!()
-                // let parser = PikaParser { rules:  };
-                // Ok(parser)
+                let clauses = preprocess_rules(&rules);
+                let parser = PikaParser { clauses };
+                Ok(parser)
             }
             Err(e) => Err(ParseError::Grammar(e.to_string())),
         }
@@ -47,72 +46,112 @@ impl PikaParser {
         let mut memo = MemoTable::new();
         // Max priority queue
         let mut queue = BinaryHeap::new();
-        // TODO these should be
-        let terminals: Vec<&Clause> = self
-            .rules
+        let terminals: Vec<(usize, &Clause)> = self
+            .clauses
             .iter()
-            .filter(|c| c.is_terminal() && !c.is_nothing())
+            .enumerate()
+            .filter(|(_, c)| c.is_terminal() && !c.is_nothing())
             .collect();
 
-        let len = input.chars().count();
+        let len = input.len();
 
         // Match from terminals up
-        for (i, ch) in input.chars().rev().enumerate() {
-            let pos = len - i;
+        for pos in (0..len).rev() {
             terminals.iter().for_each(|p| queue.push(*p));
 
-            while let Some(clause) = queue.pop() {
+            while let Some((i, clause)) = queue.pop() {
                 let key = MemoKey {
-                    clause: clause.order,
+                    clause: i,
                     start: pos,
                 };
 
-                // if let Some(mat) = self.try_match(key, &memo, input) {}
-
-                // var memoKey = new MemoKey(clause, startPos);
-                // var match = clause.match(memoTable, memoKey, input);
-                // memoTable.addMatch(memoKey, match, priorityQueue);
+                if let Some(mat) = self.try_match(key, &memo, input) {
+                    memo.insert(key, mat);
+                    let parents: Vec<(usize, &Clause)> = clause
+                        .parents
+                        .iter()
+                        .map(|i| (*i, &self.clauses[*i]))
+                        .collect();
+                    queue.extend(parents);
+                }
             }
         }
+
+        println!("Memo: {memo:?}");
     }
 
-    // fn try_match(&self, key: MemoKey, memo: &MemoTable, input: &str) -> Option<Match> {
-    //     let mut rule = &self.rules[key.rule];
-    //     let clause = &rule.rule.def;
+    fn try_match(&self, key: MemoKey, memo: &MemoTable, input: &str) -> Option<Match> {
+        use ClauseKind::*;
 
-    //     use RuleDefinition::*;
-    //     match clause {
-    //         OneOrMore(_) => todo!(),
-    //         Choice(_) => todo!(),
-    //         Sequence(seq) => {
-    //             let mut pos = key.start;
-    //             for clause in seq {}
-    //             todo!()
-    //         }
-    //         FollowedBy(_) => todo!(),
-    //         NotFollowedBy(_) => todo!(),
-    //         CharSequence(seq) => {
-    //             let max = min(key.start + seq.len(), input.len());
-    //             let slice = &input[key.start..max];
-    //             if slice == seq {
-    //                 Some(Match {
-    //                     key,
-    //                     len: seq.len(),
-    //                 })
-    //             } else {
-    //                 None
-    //             }
-    //         }
-    //         Ref(r) => {
-    //             let mkey = MemoKey {
-    //                 rule: *r,
-    //                 start: key.start,
-    //             };
-    //             self.try_match(mkey, memo, input)
-    //         }
-    //         Nothing => Some(Match { key, len: 0 }),
-    //     }
-    // }
+        let clause = &self.clauses[key.clause];
+        match &clause.kind {
+            OneOrMore => {
+                let sub = clause.sub[0];
+                let skey = MemoKey {
+                    clause: sub,
+                    start: key.start,
+                };
+                let mat = memo.get(&skey)?;
+                let tail_key = MemoKey {
+                    clause: key.clause,
+                    start: key.start + mat.len,
+                };
+
+                match memo.get(&tail_key) {
+                    Some(t) => Some(Match {
+                        key,
+                        len: mat.len + t.len,
+                    }),
+                    None => Some(Match { key, len: mat.len }),
+                }
+            }
+            Choice => {
+                let pos = key.start;
+                for sub in &clause.sub {
+                    let skey = MemoKey {
+                        clause: *sub,
+                        start: pos,
+                    };
+                    if let Some(mat) = memo.get(&skey) {
+                        return Some(Match { key, len: mat.len });
+                    }
+                }
+
+                None
+            }
+            Sequence => {
+                let mut pos = key.start;
+                for sub in &clause.sub {
+                    let skey = MemoKey {
+                        clause: *sub,
+                        start: pos,
+                    };
+                    let mat = memo.get(&skey)?;
+                    pos += mat.len;
+                }
+
+                Some(Match {
+                    key,
+                    len: pos - key.start,
+                })
+            }
+            CharSequence(seq) => {
+                let max = min(key.start + seq.len(), input.len());
+                let slice = &input[key.start..max];
+                if slice == seq {
+                    Some(Match {
+                        key,
+                        len: seq.len(),
+                    })
+                } else {
+                    None
+                }
+            }
+            Nothing => Some(Match { key, len: 0 }),
+            FollowedBy => todo!(),
+            NotFollowedBy => todo!(),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -123,7 +162,7 @@ mod test {
     fn parser_calc() {
         let peg = include_str!("../pegs/calc.peg");
         let parser = PikaParser::new(peg);
-        // assert!(parser.is_ok());
-        // parser.unwrap().parse("1 + 2");
+        assert!(parser.is_ok());
+        parser.unwrap().parse("1 + 2");
     }
 }

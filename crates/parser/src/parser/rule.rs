@@ -238,7 +238,7 @@ impl Clause {
     }
 }
 
-pub(crate) fn preprocess_rules(rules: &[Rule]) -> Vec<Clause> {
+pub(super) fn preprocess_rules(rules: &[Rule]) -> Box<[Clause]> {
     fn rec(
         def: &RuleDefinition,
         rules: &[Rule],
@@ -302,14 +302,7 @@ pub(crate) fn preprocess_rules(rules: &[Rule]) -> Vec<Clause> {
         idx
     }
 
-    // Deduplicate identical clauses using hashmap
     let mut dedup = HashMap::new();
-    // Collect indicies of rules that are referenced in some clause
-    // let mut referenced: HashSet<usize> = HashSet::new();
-    // Collect clauses by rule, each index corresponds to a rule
-    // let mut by_rule: Box<[Rc<Clause>]> = vec![Clause::nothing(0); rules.len()].into();
-
-    // let mut terminals: Vec<Rc<Clause>> = vec![];
     let mut clauses: Vec<Clause> = vec![];
     let mut starts = HashSet::new();
 
@@ -321,26 +314,64 @@ pub(crate) fn preprocess_rules(rules: &[Rule]) -> Vec<Clause> {
 
     // println!("Starts: {starts:?}");
 
-    // Sort clauses topologically
     sort_topologically(starts, &mut clauses);
+    determine_can_match_zero(&mut clauses);
+    setup_seed_parents(&mut clauses);
 
+    clauses.into()
+}
+
+fn setup_seed_parents(clauses: &mut [Clause]) {
+    for i in 0..clauses.len() {
+        let clause = &mut clauses[i];
+        let subs = mem::take(&mut clause.sub);
+
+        match &clause.kind {
+            ClauseKind::Sequence => {
+                for s in &subs {
+                    let clause = &mut clauses[*s];
+                    clause.parents.push(i);
+
+                    if !clause.can_match_zero {
+                        break;
+                    }
+                }
+            }
+            _ => {
+                for s in &subs {
+                    let clause = &mut clauses[*s];
+                    clause.parents.push(i);
+                }
+            }
+        };
+
+        let clause = &mut clauses[i];
+        clause.sub = subs;
+    }
+}
+
+fn determine_can_match_zero(clauses: &mut [Clause]) {
     let mut cont = true;
     while cont {
+        cont = false;
+
         for i in 0..clauses.len() {
-            todo!()
+            let clause = &clauses[i];
+            let old = clause.can_match_zero;
+
+            let new = match &clause.kind {
+                ClauseKind::Choice => clause.sub.iter().any(|i| (&clauses[*i]).can_match_zero),
+                ClauseKind::CharSequence(s) => s.is_empty(),
+                ClauseKind::Nothing => true,
+                _ => clause.sub.iter().all(|i| (&clauses[*i]).can_match_zero),
+            };
+
+            cont |= old != new;
+
+            let clause = &mut clauses[i];
+            clause.can_match_zero = new;
         }
     }
-
-    // Setup parents
-    // for i in 0..clauses.len() {
-    //     let subs = mem::take(&mut clauses[i].sub);
-    //     for sub in &subs {
-    //         clauses[*sub].parents.push(i);
-    //     }
-    //     clauses[i].sub = subs;
-    // }
-
-    clauses
 }
 
 fn sort_topologically(starts: HashSet<usize>, clauses: &mut [Clause]) {
@@ -356,8 +387,8 @@ fn sort_topologically(starts: HashSet<usize>, clauses: &mut [Clause]) {
 
     let cycles = find_cycle_head_clauses(&top, starts, &clauses);
 
-    println!("Top: {top:?}");
-    println!("Cycles: {cycles:?}");
+    // println!("Top: {top:?}");
+    // println!("Cycles: {cycles:?}");
 
     let mut roots = top;
     roots.union(cycles);

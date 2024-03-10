@@ -10,12 +10,12 @@ use thiserror::Error;
 
 use crate::{
     grammar::{self, Rule, RuleDefinition},
-    parser::rule::preprocess_rules2,
+    parser::rule::preprocess_rules,
 };
 
 use self::{
     memotable::{Match, MemoKey, MemoTable},
-    rule::PikaRule,
+    rule::{Clause, PikaRule},
 };
 
 #[derive(Error, Debug)]
@@ -27,14 +27,14 @@ pub enum ParseError {
 // https://arxiv.org/pdf/2005.06444.pdf
 #[derive(Debug)]
 pub struct PikaParser {
-    rules: Box<[PikaRule]>,
+    rules: Box<[Clause]>,
 }
 
 impl PikaParser {
     pub fn new(grammar: &str) -> Result<PikaParser, ParseError> {
         match grammar::parse_rules_from_str(grammar) {
             Ok(rules) => {
-                let prules = preprocess_rules2(rules);
+                let prules = preprocess_rules(&rules);
                 todo!()
                 // let parser = PikaParser { rules:  };
                 // Ok(parser)
@@ -43,41 +43,38 @@ impl PikaParser {
         }
     }
 
-    // pub fn parse(&self, input: &str) {
-    //     let mut memo = MemoTable::new();
-    //     // Max priority queue
-    //     let mut queue = BinaryHeap::new();
-    //     // TODO these should be
-    //     let terminals: Vec<&PikaRule> = self
-    //         .rules
-    //         .iter()
-    //         .filter(|r| {
-    //             let clause = &r.rule.def;
-    //             clause.has_no_refs() && !clause.is_nothing()
-    //         })
-    //         .collect();
+    pub fn parse(&self, input: &str) {
+        let mut memo = MemoTable::new();
+        // Max priority queue
+        let mut queue = BinaryHeap::new();
+        // TODO these should be
+        let terminals: Vec<&Clause> = self
+            .rules
+            .iter()
+            .filter(|c| c.is_terminal() && !c.is_nothing())
+            .collect();
 
-    //     let len = input.chars().count();
+        let len = input.chars().count();
 
-    //     // Match from terminals up
-    //     for (i, ch) in input.chars().rev().enumerate() {
-    //         let pos = len - i;
-    //         terminals.iter().for_each(|p| queue.push(*p));
+        // Match from terminals up
+        for (i, ch) in input.chars().rev().enumerate() {
+            let pos = len - i;
+            terminals.iter().for_each(|p| queue.push(*p));
 
-    //         while let Some(rule) = queue.pop() {
-    //             let key = MemoKey {
-    //                 rule: rule.idx,
-    //                 start: pos,
-    //             };
+            while let Some(clause) = queue.pop() {
+                let key = MemoKey {
+                    clause: clause.order,
+                    start: pos,
+                };
 
-    //             if let Some(mat) = self.try_match(key, &memo, input) {}
+                // if let Some(mat) = self.try_match(key, &memo, input) {}
 
-    //             // var memoKey = new MemoKey(clause, startPos);
-    //             // var match = clause.match(memoTable, memoKey, input);
-    //             // memoTable.addMatch(memoKey, match, priorityQueue);
-    //         }
-    //     }
-    // }
+                // var memoKey = new MemoKey(clause, startPos);
+                // var match = clause.match(memoTable, memoKey, input);
+                // memoTable.addMatch(memoKey, match, priorityQueue);
+            }
+        }
+    }
 
     // fn try_match(&self, key: MemoKey, memo: &MemoTable, input: &str) -> Option<Match> {
     //     let mut rule = &self.rules[key.rule];

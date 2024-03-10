@@ -15,8 +15,7 @@ impl MemoTable {
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub(crate) struct MemoKey {
-    /// Rule index
-    pub rule: usize,
+    pub clause: usize,
     /// Input start position
     pub start: usize,
 }

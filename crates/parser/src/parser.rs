@@ -1,56 +1,54 @@
+mod clause;
 mod memotable;
-mod rule;
+mod preprocess;
+mod set;
 
-use std::{
-    cmp::min,
-    collections::{BinaryHeap, HashMap, HashSet},
-};
+use std::{cmp::min, collections::BinaryHeap};
 
 use thiserror::Error;
 
-use crate::{
-    grammar::{self, Rule, RuleDefinition},
-    parser::rule::{preprocess_rules, ClauseKind},
-};
+use crate::{grammar, parser::clause::ClauseKind};
 
 use self::{
+    clause::Clause,
     memotable::{Match, MemoKey, MemoTable},
-    rule::{Clause, PikaRule},
+    preprocess::{preprocess_rules, Clauses},
 };
 
 #[derive(Error, Debug)]
 pub enum ParseError {
     #[error("Failed to parse grammar: {0}")]
     Grammar(String),
+
+    #[error("Failed to preprocess rules: {0}")]
+    Preprocess(String),
 }
 
 // https://arxiv.org/pdf/2005.06444.pdf
 #[derive(Debug)]
 pub struct PikaParser {
-    clauses: Box<[Clause]>,
+    preproc: Clauses,
 }
 
 impl PikaParser {
     pub fn new(grammar: &str) -> Result<PikaParser, ParseError> {
-        match grammar::parse_rules_from_str(grammar) {
-            Ok(rules) => {
-                let clauses = preprocess_rules(&rules);
-                let parser = PikaParser { clauses };
-                Ok(parser)
-            }
-            Err(e) => Err(ParseError::Grammar(e.to_string())),
-        }
+        let rules = grammar::parse_rules_from_str(grammar)
+            .map_err(|o| ParseError::Grammar(o.to_string()))?;
+        let clauses =
+            preprocess_rules(&rules).map_err(|o| ParseError::Preprocess(o.to_string()))?;
+        let parser = PikaParser { preproc: clauses };
+        Ok(parser)
     }
 
     pub fn parse(&self, input: &str) {
-        let mut memo = MemoTable::new();
+        let mut memo = MemoTable::new(&self.preproc.clauses);
         // Max priority queue
         let mut queue = BinaryHeap::new();
-        let terminals: Vec<(usize, &Clause)> = self
+        let terminals: Vec<&Clause> = self
+            .preproc
             .clauses
             .iter()
-            .enumerate()
-            .filter(|(_, c)| c.is_terminal() && !c.is_nothing())
+            .filter(|c| c.is_terminal() && !c.is_nothing())
             .collect();
 
         let len = input.len();
@@ -59,31 +57,38 @@ impl PikaParser {
         for pos in (0..len).rev() {
             terminals.iter().for_each(|p| queue.push(*p));
 
-            while let Some((i, clause)) = queue.pop() {
+            while let Some(clause) = queue.pop() {
+                let i = clause.idx;
                 let key = MemoKey {
                     clause: i,
                     start: pos,
                 };
 
                 if let Some(mat) = self.try_match(key, &memo, input) {
-                    memo.insert(key, mat);
-                    let parents: Vec<(usize, &Clause)> = clause
-                        .parents
-                        .iter()
-                        .map(|i| (*i, &self.clauses[*i]))
-                        .collect();
-                    queue.extend(parents);
+                    let updated = memo.insert(key, mat);
+                    for parent in clause.parents.iter().map(|i| &self.preproc.clauses[*i]) {
+                        if updated || parent.can_match_zero {
+                            queue.push(parent);
+                        }
+                    }
                 }
             }
         }
 
-        println!("Memo: {memo:?}");
+        for clause in self.preproc.clauses.iter().enumerate() {
+            println!("Clause: {clause:?}");
+        }
+
+        for (i, names) in &self.preproc.names {
+            println!("Rule: {i}: {names:?}");
+            memo.to_ast(*i, input);
+        }
     }
 
     fn try_match(&self, key: MemoKey, memo: &MemoTable, input: &str) -> Option<Match> {
         use ClauseKind::*;
 
-        let clause = &self.clauses[key.clause];
+        let clause = &self.preproc.clauses[key.clause];
         match &clause.kind {
             OneOrMore => {
                 let sub = clause.sub[0];
@@ -161,8 +166,14 @@ mod test {
     #[test]
     fn parser_calc() {
         let peg = include_str!("../pegs/calc.peg");
-        let parser = PikaParser::new(peg);
-        assert!(parser.is_ok());
-        parser.unwrap().parse("1 + 2");
+        let parser = PikaParser::new(peg).unwrap();
+        parser.parse("1+2");
+    }
+
+    #[test]
+    fn parser_simple() {
+        let peg = include_str!("../pegs/simple.peg");
+        let parser = PikaParser::new(peg).unwrap();
+        parser.parse("0+0");
     }
 }

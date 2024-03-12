@@ -20,6 +20,7 @@ pub(crate) enum RuleDefinition {
     FollowedBy(Box<RuleDefinition>),
     NotFollowedBy(Box<RuleDefinition>),
     CharSequence(String),
+    CharRange(char, char),
     Ref(usize),
     Nothing,
 }
@@ -28,7 +29,7 @@ impl RuleDefinition {
     pub fn is_terminal(&self) -> bool {
         use RuleDefinition::*;
         match self {
-            Nothing | CharSequence(_) => true,
+            Nothing | CharSequence(_) | CharRange(_, _) => true,
             _ => false,
         }
     }
@@ -36,31 +37,12 @@ impl RuleDefinition {
     pub fn is_nothing(&self) -> bool {
         matches!(self, RuleDefinition::Nothing)
     }
-
-    /// Recursively check if this clause contais refs to another rule
-    pub fn has_direct_ref(&self, to: usize) -> bool {
-        use RuleDefinition::*;
-        match self {
-            Sequence(clauses) | Choice(clauses) => {
-                for sub in clauses {
-                    if sub.has_direct_ref(to) {
-                        return true;
-                    }
-                }
-
-                false
-            }
-            FollowedBy(r) | NotFollowedBy(r) | OneOrMore(r) => r.has_direct_ref(to),
-            Ref(t) => *t == to,
-            CharSequence(_) => false,
-            Nothing => false,
-        }
-    }
 }
 
 impl fmt::Display for RuleDefinition {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            RuleDefinition::CharRange(a, b) => write!(f, "[{}..{}]", a, b),
             RuleDefinition::CharSequence(l) => write!(f, "\"{}\"", l),
             RuleDefinition::Choice(choices) => {
                 let mut result = String::new();

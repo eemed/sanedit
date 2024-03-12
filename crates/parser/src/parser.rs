@@ -75,12 +75,7 @@ impl PikaParser {
             }
         }
 
-        for clause in self.preproc.clauses.iter().enumerate() {
-            println!("Clause: {clause:?}");
-        }
-
         for (i, names) in &self.preproc.names {
-            println!("Rule: {i}: {names:?}");
             memo.to_ast(*i, input);
         }
     }
@@ -155,6 +150,17 @@ impl PikaParser {
             Nothing => Some(Match { key, len: 0 }),
             FollowedBy => todo!(),
             NotFollowedBy => todo!(),
+            CharRange(a, b) => {
+                let ch = &input[key.start..].chars().next().unwrap();
+                if a <= ch && ch <= b {
+                    Some(Match {
+                        key,
+                        len: ch.len_utf8(),
+                    })
+                } else {
+                    None
+                }
+            }
         }
     }
 }
@@ -167,13 +173,20 @@ mod test {
     fn parser_calc() {
         let peg = include_str!("../pegs/calc.peg");
         let parser = PikaParser::new(peg).unwrap();
-        parser.parse("1+2");
+        parser.parse("( 1 + 2 ) * 4");
     }
 
     #[test]
     fn parser_simple() {
         let peg = include_str!("../pegs/simple.peg");
         let parser = PikaParser::new(peg).unwrap();
-        parser.parse("0+0");
+        parser.parse("1+2^2");
+    }
+
+    #[test]
+    fn parser_json() {
+        let peg = include_str!("../pegs/json.peg");
+        let parser = PikaParser::new(peg).unwrap();
+        parser.parse("{\"account\":\"bon\",\"age\":3,\"children\":[1,2,3]}");
     }
 }

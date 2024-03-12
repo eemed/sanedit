@@ -23,42 +23,25 @@ pub(super) fn preprocess_rules(rules: &[Rule]) -> anyhow::Result<Clauses> {
         clauses: &mut Vec<Clause>,
     ) -> usize {
         let mut cdef = def;
+        // Dereference any refs
         while let RuleDefinition::Ref(r) = cdef {
             let rrule = &rules[*r];
             cdef = &rrule.def;
         }
 
         let key = format!("{cdef}");
-        // let key = format!("{def}");
-        // Try key, rule ref key, or create new
-        let idx = dedup
-            .get(&key)
-            .copied()
-            // .or({
-            //     if let RuleDefinition::Ref(r) = def {
-            //         let rrule = &rules[*r];
-            //         let rkey = format!("{}", rrule.def);
-            //         dedup.get(&rkey).copied()
-            //     } else {
-            //         None
-            //     }
-            // })
-            .unwrap_or_else(|| {
-                let id = clauses.len();
-                clauses.push(Clause::placeholder());
-                id
-            });
+        let idx = dedup.get(&key).copied().unwrap_or_else(|| {
+            let id = clauses.len();
+            clauses.push(Clause::placeholder());
+            dedup.insert(key, id);
+            id
+        });
 
-        println!(
-            "Rule {def}, key: {key}, idx: {idx}, dedup: {:?}",
-            dedup.get(&key)
-        );
         let clause = &clauses[idx];
         if !clause.is_placeholder() || matches!(def, RuleDefinition::Ref(_)) {
             // Already parsed or a reference that will be parsed in the future
             return idx;
         }
-        dedup.insert(key.clone(), idx);
 
         let mut clause = match def {
             RuleDefinition::Choice(v) => {
@@ -75,20 +58,8 @@ pub(super) fn preprocess_rules(rules: &[Rule]) -> anyhow::Result<Clauses> {
                 Clause::not_followed_by(rec(r, rules, dedup, clauses))
             }
             RuleDefinition::CharSequence(s) => Clause::char_sequence(s.clone()),
-            // RuleDefinition::Ref(_) => {
-            //     println!(
-            //         "REFRule {def}, key: {key}, idx: {idx}, dedup: {:?}",
-            //         dedup.get(&key)
-            //     );
-            //     // let rrule = &rules[*r];
-            //     // let rkey = format!("{}", rrule.def);
-            //     // match dedup.get(&key) {
-            //     //     Some(m) => return *m,
-            //     //     None => Clause::placeholder(),
-            //     // }
-            //     Clause::placeholder()
-            // }
             RuleDefinition::Nothing => Clause::nothing(),
+            RuleDefinition::CharRange(a, b) => Clause::char_range(*a, *b),
             _ => unreachable!("Encountered unexpected rule definition: {def}"),
         };
 
@@ -173,6 +144,7 @@ fn determine_can_match_zero(clauses: &mut [Clause]) {
             let new = match &clause.kind {
                 ClauseKind::Choice => clause.sub.iter().any(|i| (&clauses[*i]).can_match_zero),
                 ClauseKind::CharSequence(s) => s.is_empty(),
+                ClauseKind::CharRange(a, b) => a > b,
                 ClauseKind::Nothing => true,
                 _ => clause.sub.iter().all(|i| (&clauses[*i]).can_match_zero),
             };

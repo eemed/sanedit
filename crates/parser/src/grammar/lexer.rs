@@ -26,10 +26,16 @@ pub(crate) enum Token {
 }
 
 #[derive(Debug)]
+enum State {
+    Normal,
+    Quote,
+    Bracket,
+}
+
+#[derive(Debug)]
 pub(crate) struct Lexer<I: Input> {
     input: I,
-    in_quote: bool,
-    in_brackets: bool,
+    state: State,
     token_count: usize,
 }
 
@@ -37,8 +43,7 @@ impl<I: Input> Lexer<I> {
     pub fn new(input: I) -> Lexer<I> {
         Self {
             input,
-            in_quote: false,
-            in_brackets: false,
+            state: State::Normal,
             token_count: 0,
         }
     }
@@ -89,6 +94,25 @@ impl<I: Input> Lexer<I> {
         Ok(result)
     }
 
+    fn consume_hex(&mut self) -> Result<String> {
+        let mut result = String::new();
+        while let Some(ch) = self.input.peek() {
+            if ch.is_ascii_hexdigit() {
+                result.push(ch);
+            } else {
+                break;
+            }
+
+            self.input.consume(ch)?;
+        }
+
+        if result.is_empty() {
+            bail!("Failed to parse string at {}", self.input.pos());
+        }
+
+        Ok(result)
+    }
+
     fn advance(&mut self) -> Result<()> {
         if let Some(ch) = self.input.peek() {
             self.input.consume(ch)?;
@@ -100,18 +124,24 @@ impl<I: Input> Lexer<I> {
 
     fn consume_string_until(&mut self, until: char) -> Result<String> {
         let mut result = String::new();
+        let mut prev_escape = false;
         loop {
             let ch = match self.input.peek() {
                 Some(ch) => ch,
                 None => bail!("Failed to consume string at {}", self.input.pos()),
             };
+            let escape = ch == '\\';
 
-            if ch == until {
+            if !prev_escape && ch == until {
                 break;
             }
 
             self.advance()?;
-            result.push(ch);
+            if !escape || prev_escape {
+                result.push(ch);
+            }
+
+            prev_escape = escape;
         }
 
         if result.is_empty() {
@@ -122,22 +152,19 @@ impl<I: Input> Lexer<I> {
     }
 
     pub fn next(&mut self) -> Result<Token> {
-        let tok = self.next_impl()?;
+        self.skip_whitespace()?;
+
+        let tok = match self.state {
+            State::Normal => self.normal()?,
+            State::Quote => self.quote()?,
+            State::Bracket => self.brackets()?,
+        };
+
         self.token_count += 1;
         Ok(tok)
     }
 
-    fn next_impl(&mut self) -> Result<Token> {
-        self.skip_whitespace()?;
-
-        if self.in_quote {
-            return self.quote();
-        }
-
-        if self.in_brackets {
-            return self.brackets();
-        }
-
+    fn normal(&mut self) -> Result<Token> {
         let ch = match self.input.peek() {
             Some(ch) => ch,
             None => return Ok(Token::EOF),
@@ -174,13 +201,14 @@ impl<I: Input> Lexer<I> {
             }
             '"' => {
                 self.advance()?;
-                self.in_quote = true;
+                self.state = State::Quote;
                 return Ok(Token::Quote);
             }
-            // '[' => {
-            //     self.advance()?;
-            //     return Ok(Token::LBracket);
-            // }
+            '[' => {
+                self.advance()?;
+                self.state = State::Bracket;
+                return Ok(Token::LBracket);
+            }
             '(' => {
                 self.advance()?;
                 return Ok(Token::LParen);
@@ -192,6 +220,11 @@ impl<I: Input> Lexer<I> {
             ';' => {
                 self.advance()?;
                 return Ok(Token::End);
+            }
+            '#' => {
+                self.consume_string_until('\n')?;
+                self.advance()?;
+                return self.next();
             }
             _ => {
                 if ch.is_alphabetic() {
@@ -213,7 +246,7 @@ impl<I: Input> Lexer<I> {
         match ch {
             '"' => {
                 self.advance()?;
-                self.in_quote = false;
+                self.state = State::Normal;
                 return Ok(Token::Quote);
             }
             _ => {
@@ -232,8 +265,17 @@ impl<I: Input> Lexer<I> {
         match ch {
             ']' => {
                 self.advance()?;
-                self.in_quote = false;
+                self.state = State::Normal;
                 return Ok(Token::RBracket);
+            }
+            'x' => {
+                self.advance()?;
+                let hex = self.consume_hex()?;
+                let num = u32::from_str_radix(&hex, 16)?;
+                match char::from_u32(num) {
+                    Some(c) => Ok(Token::Char(c)),
+                    None => bail!("Cannot convert hex {hex} to char"),
+                }
             }
             '.' => {
                 self.advance()?;
@@ -248,6 +290,7 @@ impl<I: Input> Lexer<I> {
                 Ok(Token::Char('.'))
             }
             ch => {
+                self.advance()?;
                 return Ok(Token::Char(ch));
             }
         }

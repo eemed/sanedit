@@ -152,11 +152,12 @@ impl<I: Input> GrammarParser<I> {
                 self.consume(Token::RParen)?;
                 rule
             }
-            // Token::LBracket => {
-            //     self.consume(Token::LParen)?;
-            //     let rule = self.rule()?;
-            //     self.consume(Token::RParen)?;
-            // }
+            Token::LBracket => {
+                self.consume(Token::LBracket)?;
+                let rule = self.char_range()?;
+                self.consume(Token::RBracket)?;
+                rule
+            }
             Token::Quote => {
                 self.consume(Token::Quote)?;
                 let literal = self.text()?;
@@ -234,9 +235,26 @@ impl<I: Input> GrammarParser<I> {
         match self.skip()? {
             Token::Text(s) => Ok(s),
             tok => {
-                bail!("Expected an identifier but got {:?}, at {pos}", tok,)
+                bail!("Expected a string but got {:?}, at {pos}", tok,)
             }
         }
+    }
+
+    fn char(&mut self) -> Result<char> {
+        let pos = self.lex.pos();
+        match self.skip()? {
+            Token::Char(c) => Ok(c),
+            tok => {
+                bail!("Expected a character but got {:?}, at {pos}", tok,)
+            }
+        }
+    }
+
+    fn char_range(&mut self) -> Result<RuleDefinition> {
+        let a = self.char()?;
+        self.consume(Token::Range)?;
+        let b = self.char()?;
+        Ok(RuleDefinition::CharRange(a, b))
     }
 }
 
@@ -290,6 +308,7 @@ mod test {
             RuleDefinition::Ref(r) => format!("r\"{r}\""),
             RuleDefinition::OneOrMore(r) => format!("({})*", print_rule(r)),
             RuleDefinition::Nothing => format!("()"),
+            RuleDefinition::CharRange(_, _) => todo!(),
         }
     }
 

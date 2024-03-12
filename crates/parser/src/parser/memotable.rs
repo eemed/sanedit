@@ -1,7 +1,4 @@
-use std::{
-    collections::{BTreeMap, HashMap},
-    ops::{Deref, DerefMut},
-};
+use std::collections::{BTreeMap, HashMap};
 
 use super::clause::Clause;
 

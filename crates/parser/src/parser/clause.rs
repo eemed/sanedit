@@ -6,6 +6,7 @@ pub(crate) enum ClauseKind {
     FollowedBy,
     NotFollowedBy,
     CharSequence(String),
+    CharRange(char, char),
     Nothing,
 }
 
@@ -91,6 +92,13 @@ impl Clause {
         clause.kind = ClauseKind::CharSequence(string);
         clause
     }
+
+    pub fn char_range(from: char, to: char) -> Clause {
+        let mut clause = Clause::nothing();
+        clause.kind = ClauseKind::CharRange(from, to);
+        clause
+    }
+
     pub fn placeholder() -> Clause {
         let mut clause = Clause::nothing();
         clause.sub.push(0);
@@ -102,9 +110,11 @@ impl Clause {
     }
 
     pub fn is_terminal(&self) -> bool {
+        use ClauseKind::*;
         match self.kind {
-            ClauseKind::CharSequence(_) => true,
-            ClauseKind::Nothing => true,
+            CharSequence(_) => true,
+            CharRange(_, _) => true,
+            Nothing => true,
             _ => false,
         }
     }

@@ -1,3 +1,4 @@
+mod ast;
 mod clause;
 mod memotable;
 mod preprocess;
@@ -41,7 +42,7 @@ impl PikaParser {
     }
 
     pub fn parse(&self, input: &str) {
-        let mut memo = MemoTable::new(&self.preproc.clauses);
+        let mut memo = MemoTable::new(&self.preproc.clauses, &self.preproc.names);
         // Max priority queue
         let mut queue = BinaryHeap::new();
         let terminals: Vec<&Clause> = self
@@ -75,7 +76,7 @@ impl PikaParser {
             }
         }
 
-        for (i, names) in &self.preproc.names {
+        for i in &self.preproc.top {
             memo.to_ast(*i, input);
         }
     }
@@ -101,8 +102,13 @@ impl PikaParser {
                     Some(t) => Some(Match {
                         key,
                         len: mat.len + t.len,
+                        sub: vec![skey, tail_key],
                     }),
-                    None => Some(Match { key, len: mat.len }),
+                    None => Some(Match {
+                        key,
+                        len: mat.len,
+                        sub: vec![skey],
+                    }),
                 }
             }
             Choice => {
@@ -113,13 +119,18 @@ impl PikaParser {
                         start: pos,
                     };
                     if let Some(mat) = memo.get(&skey) {
-                        return Some(Match { key, len: mat.len });
+                        return Some(Match {
+                            key,
+                            len: mat.len,
+                            sub: vec![skey],
+                        });
                     }
                 }
 
                 None
             }
             Sequence => {
+                let mut subs = Vec::with_capacity(clause.sub.len());
                 let mut pos = key.start;
                 for sub in &clause.sub {
                     let skey = MemoKey {
@@ -127,36 +138,32 @@ impl PikaParser {
                         start: pos,
                     };
                     let mat = memo.get(&skey)?;
+                    subs.push(skey);
                     pos += mat.len;
                 }
 
                 Some(Match {
                     key,
                     len: pos - key.start,
+                    sub: subs,
                 })
             }
             CharSequence(seq) => {
                 let max = min(key.start + seq.len(), input.len());
                 let slice = &input[key.start..max];
                 if slice == seq {
-                    Some(Match {
-                        key,
-                        len: seq.len(),
-                    })
+                    Some(Match::terminal(key, seq.len()))
                 } else {
                     None
                 }
             }
-            Nothing => Some(Match { key, len: 0 }),
+            Nothing => Some(Match::empty(key)),
             FollowedBy => todo!(),
             NotFollowedBy => todo!(),
             CharRange(a, b) => {
                 let ch = &input[key.start..].chars().next().unwrap();
                 if a <= ch && ch <= b {
-                    Some(Match {
-                        key,
-                        len: ch.len_utf8(),
-                    })
+                    Some(Match::terminal(key, ch.len_utf8()))
                 } else {
                     None
                 }
@@ -187,6 +194,6 @@ mod test {
     fn parser_json() {
         let peg = include_str!("../pegs/json.peg");
         let parser = PikaParser::new(peg).unwrap();
-        parser.parse("{\"account\":\"bon\",\"age\":3,\"children\":[1,2,3]}");
+        parser.parse(" {\"account\":\"bon\",\n\"age\":3.2, \r\n\"children\" : [  1, 2,3] } ");
     }
 }

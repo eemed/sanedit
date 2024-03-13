@@ -14,6 +14,14 @@ pub(crate) use self::rule::RuleDefinition;
 use super::lexer::Lexer;
 use super::lexer::Token;
 
+#[derive(Debug, Hash, PartialEq, Eq)]
+struct LowercaseString(String);
+impl From<&str> for LowercaseString {
+    fn from(value: &str) -> Self {
+        LowercaseString(value.to_lowercase())
+    }
+}
+
 pub(crate) fn parse_rules_from_str(input: &str) -> Result<Box<[Rule]>> {
     let sinput = StringInput::new(input);
     parse_rules(sinput)
@@ -44,21 +52,22 @@ pub(crate) struct GrammarParser<I: Input> {
     token: Token,
 
     clauses: Vec<Rule>,
-    indices: HashMap<String, usize>,
+    indices: HashMap<LowercaseString, usize>,
 }
 
 impl<I: Input> GrammarParser<I> {
     fn parse(mut self) -> Result<Box<[Rule]>> {
         while self.token != Token::EOF {
             let rule = self.rule()?;
+            let key = rule.name.as_str().into();
 
-            match self.indices.get(&rule.name) {
+            match self.indices.get(&key) {
                 Some(i) => {
                     self.clauses[*i] = rule;
                 }
                 None => {
                     let i = self.clauses.len();
-                    self.indices.insert(rule.name.clone(), i);
+                    self.indices.insert(key, i);
                     self.clauses.push(rule);
                 }
             }
@@ -154,7 +163,7 @@ impl<I: Input> GrammarParser<I> {
             }
             Token::LBracket => {
                 self.consume(Token::LBracket)?;
-                let rule = self.char_range()?;
+                let rule = self.brackets()?;
                 self.consume(Token::RBracket)?;
                 rule
             }
@@ -166,7 +175,9 @@ impl<I: Input> GrammarParser<I> {
             }
             Token::Text(_) => {
                 let ref_rule = self.text()?;
-                match self.indices.get(&ref_rule) {
+                let key = ref_rule.as_str().into();
+
+                match self.indices.get(&key) {
                     Some(i) => RuleDefinition::Ref(*i),
                     None => {
                         let i = self.clauses.len();
@@ -174,7 +185,7 @@ impl<I: Input> GrammarParser<I> {
                             name: ref_rule,
                             def: RuleDefinition::Nothing,
                         };
-                        self.indices.insert(rrule.name.clone(), i);
+                        self.indices.insert(key, i);
                         self.clauses.push(rrule);
                         RuleDefinition::Ref(i)
                     }
@@ -248,6 +259,64 @@ impl<I: Input> GrammarParser<I> {
                 bail!("Expected a character but got {:?}, at {pos}", tok,)
             }
         }
+    }
+
+    fn brackets(&mut self) -> Result<RuleDefinition> {
+        let mut choices = vec![];
+        let mut range = false;
+        while self.token != Token::RBracket {
+            println!("Token: {:?}", self.token);
+            match &self.token {
+                Token::Char(ch) => {
+                    if range {
+                        range = false;
+                        let a = choices
+                            .last()
+                            .map(|r| match r {
+                                RuleDefinition::CharSequence(c) => {
+                                    let mut iter = c.chars();
+                                    let c = iter.next()?;
+                                    if iter.next().is_some() {
+                                        None
+                                    } else {
+                                        Some(c)
+                                    }
+                                }
+                                _ => None,
+                            })
+                            .flatten();
+                        match a {
+                            Some(a) => {
+                                choices.pop();
+                                choices.push(RuleDefinition::CharRange(a, *ch));
+                            }
+                            None => bail!(
+                                "Tried to create range with invalid character at: {}",
+                                self.lex.pos()
+                            ),
+                        }
+                    } else {
+                        choices.push(RuleDefinition::CharSequence(ch.to_string()));
+                    }
+
+                    self.skip()?;
+                }
+                Token::Range => {
+                    if range {
+                        bail!("Found another range separator at {}", self.lex.pos());
+                    }
+                    self.consume(Token::Range)?;
+                    range = true;
+                }
+                _ => bail!(
+                    "Encountered {:?} while in brackets at {}",
+                    self.token,
+                    self.lex.pos()
+                ),
+            }
+        }
+
+        Ok(RuleDefinition::Choice(choices))
     }
 
     fn char_range(&mut self) -> Result<RuleDefinition> {

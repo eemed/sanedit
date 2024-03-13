@@ -1,17 +1,19 @@
 use std::collections::{BTreeMap, HashMap};
 
-use super::clause::Clause;
+use super::{ast::ASTNode, clause::Clause};
 
 #[derive(Debug)]
 pub(crate) struct MemoTable<'a> {
     table: HashMap<MemoKey, Match>,
-    clauses: &'a [Clause],
+    pub(crate) clauses: &'a [Clause],
+    pub(crate) names: &'a HashMap<usize, Vec<String>>,
 }
 
 impl<'a> MemoTable<'a> {
-    pub fn new(clauses: &'a [Clause]) -> MemoTable<'a> {
+    pub fn new(clauses: &'a [Clause], names: &'a HashMap<usize, Vec<String>>) -> MemoTable<'a> {
         MemoTable {
             table: HashMap::new(),
+            names,
             clauses,
         }
     }
@@ -33,10 +35,7 @@ impl<'a> MemoTable<'a> {
             None => {
                 let clause = &self.clauses[key.clause];
                 if clause.can_match_zero {
-                    Some(Match {
-                        key: key.clone(),
-                        len: 0,
-                    })
+                    Some(Match::empty(key.clone()))
                 } else {
                     None
                 }
@@ -46,10 +45,13 @@ impl<'a> MemoTable<'a> {
 
     pub fn to_ast(&self, clause: usize, input: &str) {
         for mat in self.non_overlapping_matches(clause) {
-            let start = mat.key.start;
-            let end = start + mat.len;
-            // println!("Match: {mat:?}");
-            println!("Matched text: {}", &input[start..end]);
+            // let start = mat.key.start;
+            // let end = start + mat.len;
+            // println!("Matched text: {:?}", &input[start..end]);
+
+            println!("--------------------------------");
+            let ast = ASTNode::from_match(&mat.key, self);
+            ast.print(input);
         }
     }
 
@@ -111,6 +113,24 @@ pub(crate) struct Match {
 
     /// Length of the match
     pub len: usize,
+
+    pub sub: Vec<MemoKey>,
 }
 
-impl Match {}
+impl Match {
+    pub fn empty(key: MemoKey) -> Match {
+        Match {
+            key,
+            len: 0,
+            sub: vec![],
+        }
+    }
+
+    pub fn terminal(key: MemoKey, len: usize) -> Match {
+        Match {
+            key,
+            len,
+            sub: vec![],
+        }
+    }
+}

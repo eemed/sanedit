@@ -25,7 +25,7 @@ pub(crate) enum Token {
     Range,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 enum State {
     Normal,
     Quote,
@@ -49,6 +49,10 @@ impl<I: Input> Lexer<I> {
     }
 
     fn skip_whitespace(&mut self) -> Result<()> {
+        if self.state == State::Bracket {
+            return Ok(());
+        }
+
         while let Some(ch) = self.input.peek() {
             if ch.is_whitespace() {
                 self.input.consume(ch)?;
@@ -78,7 +82,7 @@ impl<I: Input> Lexer<I> {
     fn consume_string(&mut self) -> Result<String> {
         let mut result = String::new();
         while let Some(ch) = self.input.peek() {
-            if ch.is_alphabetic() {
+            if Self::allowed_in_string(ch) {
                 result.push(ch);
             } else {
                 break;
@@ -226,8 +230,8 @@ impl<I: Input> Lexer<I> {
                 self.advance()?;
                 return self.next();
             }
-            _ => {
-                if ch.is_alphabetic() {
+            c => {
+                if Self::allowed_in_string(c) {
                     let string = self.consume_string()?;
                     return Ok(Token::Text(string));
                 }
@@ -235,6 +239,11 @@ impl<I: Input> Lexer<I> {
         }
 
         bail!("Unexpected char {ch} at {}", self.input.pos());
+    }
+
+    fn allowed_in_string(ch: char) -> bool {
+        let allowed = ['-', '_'];
+        ch.is_alphabetic() || allowed.contains(&ch)
     }
 
     fn quote(&mut self) -> Result<Token> {
@@ -268,13 +277,39 @@ impl<I: Input> Lexer<I> {
                 self.state = State::Normal;
                 return Ok(Token::RBracket);
             }
-            'x' => {
+            '\\' => {
                 self.advance()?;
-                let hex = self.consume_hex()?;
-                let num = u32::from_str_radix(&hex, 16)?;
-                match char::from_u32(num) {
-                    Some(c) => Ok(Token::Char(c)),
-                    None => bail!("Cannot convert hex {hex} to char"),
+                match self.input.peek() {
+                    Some('n') => {
+                        self.advance()?;
+                        Ok(Token::Char('\n'))
+                    }
+                    Some('t') => {
+                        self.advance()?;
+                        Ok(Token::Char('\t'))
+                    }
+                    Some('r') => {
+                        self.advance()?;
+                        Ok(Token::Char('\r'))
+                    }
+                    Some(']') => {
+                        self.advance()?;
+                        Ok(Token::Char(']'))
+                    }
+                    Some('x') => {
+                        self.advance()?;
+                        let hex = self.consume_hex()?;
+                        let num = u32::from_str_radix(&hex, 16)?;
+                        match char::from_u32(num) {
+                            Some(c) => Ok(Token::Char(c)),
+                            None => bail!("Cannot convert hex {hex} to char"),
+                        }
+                    }
+                    Some(c) => bail!("Expected escaped char but got {c}, at {}", self.input.pos()),
+                    None => bail!(
+                        "Expected escaped char but got Nothing, at {}",
+                        self.input.pos()
+                    ),
                 }
             }
             '.' => {

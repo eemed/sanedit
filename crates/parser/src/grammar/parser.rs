@@ -14,14 +14,6 @@ pub(crate) use self::rule::RuleDefinition;
 use super::lexer::Lexer;
 use super::lexer::Token;
 
-#[derive(Debug, Hash, PartialEq, Eq)]
-struct LowercaseString(String);
-impl From<&str> for LowercaseString {
-    fn from(value: &str) -> Self {
-        LowercaseString(value.to_lowercase())
-    }
-}
-
 pub(crate) fn parse_rules_from_str(input: &str) -> Result<Box<[Rule]>> {
     let sinput = StringInput::new(input);
     parse_rules(sinput)
@@ -52,22 +44,21 @@ pub(crate) struct GrammarParser<I: Input> {
     token: Token,
 
     clauses: Vec<Rule>,
-    indices: HashMap<LowercaseString, usize>,
+    indices: HashMap<String, usize>,
 }
 
 impl<I: Input> GrammarParser<I> {
     fn parse(mut self) -> Result<Box<[Rule]>> {
         while self.token != Token::EOF {
             let rule = self.rule()?;
-            let key = rule.name.as_str().into();
 
-            match self.indices.get(&key) {
+            match self.indices.get(&rule.name) {
                 Some(i) => {
                     self.clauses[*i] = rule;
                 }
                 None => {
                     let i = self.clauses.len();
-                    self.indices.insert(key, i);
+                    self.indices.insert(rule.name.clone(), i);
                     self.clauses.push(rule);
                 }
             }
@@ -175,17 +166,16 @@ impl<I: Input> GrammarParser<I> {
             }
             Token::Text(_) => {
                 let ref_rule = self.text()?;
-                let key = ref_rule.as_str().into();
 
-                match self.indices.get(&key) {
+                match self.indices.get(&ref_rule) {
                     Some(i) => RuleDefinition::Ref(*i),
                     None => {
                         let i = self.clauses.len();
                         let rrule = Rule {
-                            name: ref_rule,
+                            name: ref_rule.clone(),
                             def: RuleDefinition::Nothing,
                         };
-                        self.indices.insert(key, i);
+                        self.indices.insert(ref_rule, i);
                         self.clauses.push(rrule);
                         RuleDefinition::Ref(i)
                     }

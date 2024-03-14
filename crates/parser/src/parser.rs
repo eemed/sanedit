@@ -76,9 +76,8 @@ impl PikaParser {
             }
         }
 
-        for i in &self.preproc.top {
-            memo.to_ast(*i, input);
-        }
+        let ast = memo.to_ast();
+        ast.print(input);
     }
 
     fn try_match(&self, key: MemoKey, memo: &MemoTable, input: &str) -> Option<Match> {
@@ -192,6 +191,13 @@ mod test {
 
     #[test]
     fn parser_json() {
+        let peg = include_str!("../pegs/json.peg");
+        let parser = PikaParser::new(peg).unwrap();
+        parser.parse(" {\"account\":\"bon\",\n\"age\":3.2, \r\n\"children\" : [  1, 2,3] } ");
+    }
+
+    #[test]
+    fn parser_invalid_json() {
         let peg = include_str!("../pegs/json.peg");
         let parser = PikaParser::new(peg).unwrap();
         parser.parse(" {\"account\":\"bon\",\n\"age\":3.2, \r\n\"children\" : [  1, 2,3] } ");

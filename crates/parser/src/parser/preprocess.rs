@@ -13,7 +13,6 @@ use super::{
 pub(crate) struct Clauses {
     pub(crate) names: HashMap<usize, Vec<String>>,
     pub(crate) clauses: Box<[Clause]>,
-    pub(crate) top: Vec<usize>,
 }
 
 pub(super) fn preprocess_rules(rules: &[Rule]) -> anyhow::Result<Clauses> {
@@ -98,30 +97,9 @@ pub(super) fn preprocess_rules(rules: &[Rule]) -> anyhow::Result<Clauses> {
 
     validate(&clauses)?;
 
-    let top = {
-        let top: Set = {
-            let mut all = Set::new_all(clauses.len());
-            for c in &*clauses {
-                for s in &c.sub {
-                    all.remove(*s);
-                }
-            }
-            all
-        };
-
-        let cycles = find_cycle_head_clauses(&top, &rule_starts, &clauses);
-
-        // println!("Top: {top:?}");
-        // println!("Cycles: {cycles:?}");
-
-        let mut roots = top;
-        roots.union(cycles);
-        roots.to_vec()
-    };
     Ok(Clauses {
         names,
         clauses: clauses.into(),
-        top,
     })
 }
 

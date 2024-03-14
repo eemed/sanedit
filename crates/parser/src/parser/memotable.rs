@@ -43,16 +43,19 @@ impl<'a> MemoTable<'a> {
         }
     }
 
-    pub fn to_ast(&self, clause: usize, input: &str) {
-        for mat in self.non_overlapping_matches(clause) {
-            // let start = mat.key.start;
-            // let end = start + mat.len;
-            // println!("Matched text: {:?}", &input[start..end]);
+    pub fn to_ast(&self) -> ASTNode {
+        let mut len = 0;
+        let mut ckey = None;
 
-            println!("--------------------------------");
-            let ast = ASTNode::from_match(&mat.key, self);
-            ast.print(input);
+        for (key, mat) in &self.table {
+            if mat.len > len {
+                len = mat.len;
+                ckey = Some(key);
+            }
         }
+
+        let k = ckey.expect("No longest match found");
+        ASTNode::from_match(k, self)
     }
 
     fn non_overlapping_matches(&self, clause: usize) -> Vec<&Match> {

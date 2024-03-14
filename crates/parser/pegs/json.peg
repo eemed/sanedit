@@ -1,16 +1,16 @@
 # TODO ignore whitespace with options?
 
-value: _ (Object / Array / Number / String / True / False / Null) _;
-Object: "{" _ Member (_ "," _ Member)* _ "}";
-Member: String _ ":" Value;
+WHITESPACE: [ \t\r\n];
 
-Array: "[" _ Value  (_ "," _ Value )* _ "]";
+value:  object / array / number / string / true / false / null;
+object: "{" member ("," member)* "}";
+member: string ":" value;
 
-Number: "-"? Integer ("." [0..9]+)?;
-String: Quote ([\x20..\x21] / [\x23..\x5b] / [\x5d..\x10ffff])* Quote;
-True: "true";
-False: "false";
+array: "[" value ("," value )* "]";
+
+number: "-"? integer ("." [0..9]+)?;
+string: quote ([\x20..\x21] / [\x23..\x5b] / [\x5d..\x10ffff])* quote;
+true: "true";
+false: "false";
 integer: "0" / [1..9] [0..9]*;
 quote: "\"";
-
-_: [ \t\r\n]*;

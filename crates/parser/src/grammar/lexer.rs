@@ -6,6 +6,7 @@ use crate::input::Position;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub(crate) enum Token {
+    Annotation,
     Assign,
     ZeroOrMore,
     OneOrMore,
@@ -175,7 +176,11 @@ impl<I: Input> Lexer<I> {
         };
 
         match ch {
-            ':' => {
+            '@' => {
+                self.advance()?;
+                return Ok(Token::Annotation);
+            }
+            '=' => {
                 self.advance()?;
                 return Ok(Token::Assign);
             }

@@ -24,25 +24,15 @@ impl ASTNode {
         node
     }
 
-    fn show(names: &Vec<String>) -> bool {
-        names
-            .iter()
-            .all(|n| n.chars().next().map(|c| c.is_uppercase()).unwrap_or(false))
-    }
-
     fn rec(node: &mut ASTNode, key: &MemoKey, memo: &MemoTable) {
         let mat = memo.get(key).unwrap();
         for sub in &mat.sub {
             let smat = memo.get(sub).unwrap();
-            match memo.names.get(&smat.key.clause) {
-                Some(names) => {
-                    if Self::show(names) {
-                        node.sub.push(ASTNode::from_match(&smat.key, memo))
-                    } else {
-                        Self::rec(node, &smat.key, memo)
-                    }
-                }
-                None => Self::rec(node, &smat.key, memo),
+            let show = memo.clauses[smat.key.clause].show;
+            if show {
+                node.sub.push(ASTNode::from_match(&smat.key, memo))
+            } else {
+                Self::rec(node, &smat.key, memo)
             }
         }
     }

@@ -2,6 +2,7 @@ mod ast;
 mod clause;
 mod memotable;
 mod preprocess;
+mod ranges;
 mod set;
 
 use std::{cmp::min, collections::BinaryHeap};

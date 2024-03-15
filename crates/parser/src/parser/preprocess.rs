@@ -2,7 +2,7 @@ use std::{collections::HashMap, mem};
 
 use anyhow::bail;
 
-use crate::grammar::{Rule, RuleDefinition};
+use crate::grammar::{Annotation, Rule, RuleDefinition};
 
 use super::{
     clause::{Clause, ClauseKind},
@@ -75,8 +75,17 @@ pub(super) fn preprocess_rules(rules: &[Rule]) -> anyhow::Result<Clauses> {
 
     for rule in rules {
         let rid = rec(&rule.def, rules, &mut dedup, &mut clauses);
+
+        if rule.annotations.contains(&Annotation::Show) {
+            clauses[rid].show = true;
+        }
+
         let val: &mut Vec<String> = names.entry(rid).or_default();
         val.push(rule.name.clone());
+    }
+
+    for rule in rules.iter() {
+        println!("{} = {}", rule.name, rule.def.format(&rules));
     }
 
     let rule_starts = {

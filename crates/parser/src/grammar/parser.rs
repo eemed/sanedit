@@ -8,6 +8,7 @@ use crate::input::StringInput;
 use anyhow::bail;
 use anyhow::Result;
 
+pub(crate) use self::rule::Annotation;
 pub(crate) use self::rule::Rule;
 pub(crate) use self::rule::RuleDefinition;
 
@@ -25,7 +26,7 @@ pub(crate) fn parse_rules<I: Input>(input: I) -> Result<Box<[Rule]>> {
     let mut parser = GrammarParser {
         lex,
         token,
-        clauses: vec![],
+        rules: vec![],
         indices: HashMap::new(),
     };
     parser.parse()
@@ -43,7 +44,7 @@ pub(crate) struct GrammarParser<I: Input> {
     lex: Lexer<I>,
     token: Token,
 
-    clauses: Vec<Rule>,
+    rules: Vec<Rule>,
     indices: HashMap<String, usize>,
 }
 
@@ -54,28 +55,94 @@ impl<I: Input> GrammarParser<I> {
 
             match self.indices.get(&rule.name) {
                 Some(i) => {
-                    self.clauses[*i] = rule;
+                    self.rules[*i] = rule;
                 }
                 None => {
-                    let i = self.clauses.len();
+                    let i = self.rules.len();
                     self.indices.insert(rule.name.clone(), i);
-                    self.clauses.push(rule);
+                    self.rules.push(rule);
                 }
             }
         }
 
-        Ok(self.clauses.into())
+        self.apply_annotations()?;
+
+        Ok(self.rules.into())
+    }
+
+    fn apply_annotations(&mut self) -> Result<()> {
+        const WHITESPACE_RULE: &str = "WHITESPACE";
+        let ws_ann = self
+            .rules
+            .iter()
+            .any(|r| r.annotations.contains(&Annotation::Whitespaced));
+
+        // Apply whitespaced
+        if ws_ann {
+            use RuleDefinition::*;
+            let i = match self.indices.get(WHITESPACE_RULE) {
+                Some(i) => *i,
+                None => bail!("WHITESPACE rule required when using annotation @whitespaced"),
+            };
+            let ws_rule = &self.rules[i];
+            let ws_def = ws_rule.def.clone().into();
+            let ws_zom = Choice(vec![OneOrMore(ws_def), Nothing]);
+
+            let len = self.rules.len();
+            for rule in &mut self.rules {
+                if rule.annotations.contains(&Annotation::Whitespaced) {
+                    rule.apply_whitespaced(len);
+                }
+            }
+
+            self.rules.push(Rule {
+                name: "WS*".into(),
+                def: ws_zom,
+                annotations: vec![],
+            });
+        }
+
+        Ok(())
+    }
+
+    fn annotation(&mut self) -> Result<Option<String>> {
+        if self.token == Token::Annotation {
+            self.consume(Token::Annotation)?;
+            let text = self.text()?;
+            Ok(Some(text))
+        } else {
+            Ok(None)
+        }
+    }
+
+    fn annotations(&mut self) -> Result<Vec<Annotation>> {
+        let mut anns = vec![];
+        while let Some(ann) = self.annotation()? {
+            match ann.as_str() {
+                "whitespaced" => anns.push(Annotation::Whitespaced),
+                "show" => anns.push(Annotation::Show),
+                a => bail!("Unexpected annotation {a}"),
+            }
+        }
+
+        Ok(anns)
     }
 
     fn rule(&mut self) -> Result<Rule> {
+        let annotations = self.annotations()?;
         let name = self.text()?;
         self.consume(Token::Assign)?;
-        let clause = self.clauses()?;
+        let def = self.rule_def()?;
         self.consume(Token::End)?;
-        Ok(Rule { name, def: clause })
+        let rule = Rule {
+            name,
+            annotations,
+            def,
+        };
+        Ok(rule)
     }
 
-    fn clauses(&mut self) -> Result<RuleDefinition> {
+    fn rule_def(&mut self) -> Result<RuleDefinition> {
         self.choice()
     }
 
@@ -138,17 +205,17 @@ impl<I: Input> GrammarParser<I> {
         let mut rule = match &self.token {
             Token::And => {
                 self.consume(Token::And)?;
-                let rule = self.clauses()?;
+                let rule = self.rule_def()?;
                 RuleDefinition::FollowedBy(rule.into())
             }
             Token::Not => {
                 self.consume(Token::Not)?;
-                let rule = self.clauses()?;
+                let rule = self.rule_def()?;
                 RuleDefinition::NotFollowedBy(rule.into())
             }
             Token::LParen => {
                 self.consume(Token::LParen)?;
-                let rule = self.clauses()?;
+                let rule = self.rule_def()?;
                 self.consume(Token::RParen)?;
                 rule
             }
@@ -170,13 +237,14 @@ impl<I: Input> GrammarParser<I> {
                 match self.indices.get(&ref_rule) {
                     Some(i) => RuleDefinition::Ref(*i),
                     None => {
-                        let i = self.clauses.len();
+                        let i = self.rules.len();
                         let rrule = Rule {
                             name: ref_rule.clone(),
                             def: RuleDefinition::Nothing,
+                            annotations: vec![],
                         };
                         self.indices.insert(ref_rule, i);
-                        self.clauses.push(rrule);
+                        self.rules.push(rrule);
                         RuleDefinition::Ref(i)
                     }
                 }

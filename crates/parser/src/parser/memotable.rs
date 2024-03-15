@@ -1,6 +1,9 @@
-use std::collections::{BTreeMap, HashMap};
+use std::{
+    collections::{BTreeMap, HashMap},
+    ops::Range,
+};
 
-use super::{ast::ASTNode, clause::Clause};
+use super::{ast::ASTNode, clause::Clause, ranges::Ranges};
 
 #[derive(Debug)]
 pub(crate) struct MemoTable<'a> {
@@ -43,12 +46,27 @@ impl<'a> MemoTable<'a> {
         }
     }
 
+    fn syntax_errors(&self, len: usize) -> Ranges {
+        let mut matched = Ranges::new();
+        for clause in self.clauses {
+            if clause.show {
+                for mat in self.non_overlapping_matches(clause.idx) {
+                    matched.push(mat.key.start..mat.key.start + mat.len);
+                }
+            }
+        }
+        matched.invert(0..len);
+        matched
+    }
+
     pub fn to_ast(&self) -> ASTNode {
         let mut len = 0;
         let mut ckey = None;
 
         for (key, mat) in &self.table {
-            if mat.len > len {
+            let show = self.clauses[key.clause].show;
+
+            if show && mat.len > len {
                 len = mat.len;
                 ckey = Some(key);
             }

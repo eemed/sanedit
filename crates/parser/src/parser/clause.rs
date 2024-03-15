@@ -12,6 +12,7 @@ pub(crate) enum ClauseKind {
 
 #[derive(Debug, Clone)]
 pub(crate) struct Clause {
+    pub(crate) show: bool,
     pub(crate) idx: usize,
     pub(crate) order: usize,
     pub(crate) kind: ClauseKind,
@@ -43,6 +44,7 @@ impl Ord for Clause {
 impl Clause {
     pub fn nothing() -> Clause {
         Clause {
+            show: false,
             idx: 0,
             order: 0,
             kind: ClauseKind::Nothing,

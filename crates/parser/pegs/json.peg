@@ -1,16 +1,39 @@
-# TODO ignore whitespace with options?
+#
+# Annotations:
+#    @show        show the rule in the generated AST
+#    @whitespaced convert the rule to a form that allows whitespace in between every element.
+#                 a special WHITESPACE rule defines what is considered whitespace.
+#                 Example:
+#                     Original:   array = "["             value (              ","            value )*             "]";
+#                     Generated:  array = "[" WHITESPACE* value ( WHITESPACE* "," WHITESPACE* value )* WHITESPACE* "]";
+#
+#
+WHITESPACE = [ \t\r\n];
+_ = WHITESPACE*;
 
-WHITESPACE: [ \t\r\n];
+json = _ value _;
+value =  object / array / number / string / true / false / null;
 
-value:  object / array / number / string / true / false / null;
-object: "{" member ("," member)* "}";
-member: string ":" value;
+@show
+@whitespaced
+object = "{" member ("," member)* "}";
 
-array: "[" value ("," value )* "]";
+@show
+@whitespaced
+member = string ":" value;
 
-number: "-"? integer ("." [0..9]+)?;
-string: quote ([\x20..\x21] / [\x23..\x5b] / [\x5d..\x10ffff])* quote;
-true: "true";
-false: "false";
-integer: "0" / [1..9] [0..9]*;
-quote: "\"";
+@show
+@whitespaced
+array = "[" value ("," value )* "]";
+
+@show
+string = quote ([\x20..\x21] / [\x23..\x5b] / [\x5d..\x10ffff])* quote;
+
+@show
+number = "-"? integer ("." [0..9]+)?;
+
+true = "true";
+false = "false";
+null = "null";
+integer = "0" / [1..9] [0..9]*;
+quote = "\"";

@@ -5,7 +5,8 @@ use crate::server::ClientId;
 pub(crate) const ENV_PREFIX: &str = "SANE";
 
 const TMP_DIR: &str = "tmp";
-const SANE_DIR: &str = "sane";
+pub(crate) const SANE_DIR: &str = "sane";
+pub(crate) const FILETYPE_DIR: &str = "filetype";
 
 pub(crate) fn config_dir() -> Option<PathBuf> {
     let config = dirs::config_dir()?;

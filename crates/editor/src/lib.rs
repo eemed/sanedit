@@ -6,7 +6,7 @@ pub(crate) mod common;
 pub(crate) mod draw;
 pub(crate) mod editor;
 pub(crate) mod events;
-pub(crate) mod grammars;
+pub(crate) mod grammar;
 pub(crate) mod server;
 
-pub use server::{run_sync, Address};
+pub use server::{run_sync, Address, StartOptions};

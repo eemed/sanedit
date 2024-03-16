@@ -34,6 +34,12 @@ use self::job_runner::spawn_jobs;
 /// Channel buffer size for tokio channels
 pub(crate) const CHANNEL_SIZE: usize = 256;
 
+#[derive(Clone, Debug)]
+pub struct StartOptions {
+    pub open_files: Vec<PathBuf>,
+    pub config_dir: Option<PathBuf>,
+}
+
 /// Editor handle allows us to communicate with the editor
 #[derive(Clone, Debug)]
 pub(crate) struct EditorHandle {
@@ -108,7 +114,7 @@ async fn listen(addrs: Vec<Address>, handle: EditorHandle) {
     }
 }
 
-pub fn run_sync(addrs: Vec<Address>) -> Option<thread::JoinHandle<()>> {
+pub fn run_sync(addrs: Vec<Address>, opts: StartOptions) -> Option<thread::JoinHandle<()>> {
     let (send, recv) = channel(CHANNEL_SIZE);
     let handle = EditorHandle {
         sender: send,
@@ -123,7 +129,7 @@ pub fn run_sync(addrs: Vec<Address>) -> Option<thread::JoinHandle<()>> {
             // tokio runtime is moved here, it is killed when the editor main loop exits
             let jobs_handle = rt.block_on(spawn_jobs(handle));
 
-            if let Err(e) = editor::main_loop(jobs_handle, recv) {
+            if let Err(e) = editor::main_loop(jobs_handle, recv, opts) {
                 log::error!("Editor main loop exited with error {}.", e);
             }
         })

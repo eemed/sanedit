@@ -6,7 +6,7 @@ use std::{
 };
 
 use clap::Parser;
-use sanedit_editor::Address;
+use sanedit_editor::{Address, StartOptions};
 use sanedit_terminal_client::unix::UnixDomainSocketClient;
 
 #[derive(Parser)]
@@ -19,13 +19,21 @@ struct Cli {
     /// Turn debugging information on
     #[arg(short, long)]
     debug: bool,
+
+    #[arg(value_name = "DIRECTORY")]
+    config_dir: Option<PathBuf>,
 }
 
 fn main() {
     logging::setup();
 
-    // Just run everything from here for now
-    let _cli = Cli::parse();
+    let cli = Cli::parse();
+    let open_files = cli.file.clone().map(|f| vec![f]).unwrap_or(vec![]);
+    let config_dir = cli.config_dir.clone();
+    let start_opts = StartOptions {
+        open_files,
+        config_dir,
+    };
 
     let socket = PathBuf::from("/tmp/sanedit.sock");
     let exists = socket.try_exists().unwrap_or(false);
@@ -35,7 +43,8 @@ fn main() {
     } else {
         // If no socket startup server
         let s = socket.clone();
-        let join = sanedit_editor::run_sync(vec![Address::UnixDomainSocket(s)]);
+        let addrs = vec![Address::UnixDomainSocket(s)];
+        let join = sanedit_editor::run_sync(addrs, start_opts);
         if let Some(join) = join {
             connect(&socket);
             join.join().unwrap()

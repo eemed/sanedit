@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use super::{ast::ASTNode, clause::Clause};
+use super::{ast::AST, clause::Clause};
 
 #[derive(Debug)]
 pub(crate) struct MemoTable<'a> {
@@ -43,12 +43,11 @@ impl<'a> MemoTable<'a> {
         }
     }
 
-    pub fn to_ast(&self, len: usize) -> ASTNode {
-        ASTNode::new(self, len)
+    pub fn to_ast(&self, len: usize) -> AST {
+        AST::new(self, len)
     }
 
     pub fn best_match_at(&self, at: usize) -> Option<&Match> {
-        println!("bmatch at: {at}");
         let mut result = None;
         let mut prox = usize::MAX;
         let mut len = 0;

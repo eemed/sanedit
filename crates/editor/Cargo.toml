@@ -10,6 +10,7 @@ sanedit-messages = { path = "../messages" }
 sanedit-buffer = { path = "../buffer" }
 sanedit-macros = { path = "../macros" }
 sanedit-utils = { path = "../utils" }
+sanedit-parser = { path = "../parser" }
 
 # General
 log         = "0.4"
@@ -43,7 +44,3 @@ unicode-width = "0.1"
 unicode-segmentation = "1.9"
 
 which = "5.0.0"
-
-# Syntax highlighting
-pest = "2"
-pest_derive = "2"

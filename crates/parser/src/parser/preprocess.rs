@@ -84,10 +84,6 @@ pub(super) fn preprocess_rules(rules: &[Rule]) -> anyhow::Result<Clauses> {
         val.push(rule.name.clone());
     }
 
-    for rule in rules.iter() {
-        println!("{} = {}", rule.name, rule.def.format(&rules));
-    }
-
     let rule_starts = {
         let mut set = Set::new(clauses.len());
         for v in names.keys() {
@@ -99,11 +95,6 @@ pub(super) fn preprocess_rules(rules: &[Rule]) -> anyhow::Result<Clauses> {
     sort_topologically(&rule_starts, &mut clauses);
     determine_can_match_zero(&mut clauses);
     setup_seed_parents(&mut clauses);
-
-    for cl in &clauses {
-        println!("Clause: {cl:?}");
-    }
-
     validate(&clauses)?;
 
     Ok(Clauses {
@@ -178,10 +169,6 @@ fn sort_topologically(rule_starts: &Set, clauses: &mut [Clause]) {
     };
 
     let cycles = find_cycle_head_clauses(&top, rule_starts, &clauses);
-
-    // println!("Top: {top:?}");
-    // println!("Cycles: {cycles:?}");
-
     let mut roots = top;
     roots.union(cycles);
 

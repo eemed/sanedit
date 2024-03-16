@@ -7,4 +7,4 @@ perf.data*
 *.ignore
 testfiles
 docs/images/*.png
-crates/sample*
+crates/samples

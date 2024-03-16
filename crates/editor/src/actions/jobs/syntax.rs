@@ -1,28 +1,31 @@
-use std::{any::Any, ops::Range};
+use std::{any::Any, ops::Range, sync::Arc};
 
-use pest::{error::InputLocation, Parser};
 use sanedit_buffer::ReadOnlyPieceTree;
 
 use crate::{
     editor::{job_broker::KeepInTouch, Editor},
-    grammars::{
-        self,
-        json::{JsonParser, Rule},
-    },
+    grammar::Grammar,
     server::{ClientId, Job, JobContext, JobResult},
 };
 
 #[derive(Clone)]
 pub(crate) struct SyntaxHighlighter {
     client_id: ClientId,
+    grammar: Arc<Grammar>,
     ropt: ReadOnlyPieceTree,
     range: Range<usize>,
 }
 
 impl SyntaxHighlighter {
-    pub fn new(id: ClientId, ropt: ReadOnlyPieceTree, range: Range<usize>) -> Self {
+    pub fn new(
+        id: ClientId,
+        grammar: Arc<Grammar>,
+        ropt: ReadOnlyPieceTree,
+        range: Range<usize>,
+    ) -> Self {
         SyntaxHighlighter {
             client_id: id,
+            grammar,
             ropt,
             range,
         }
@@ -33,47 +36,49 @@ impl Job for SyntaxHighlighter {
     fn run(&self, ctx: JobContext) -> JobResult {
         let pt = self.ropt.clone();
         let range = self.range.clone();
+        let grammar = self.grammar.clone();
 
         let fut = async move {
-            let slice = pt.slice(range);
-            let content = String::from(&slice);
-            let mut start = 0;
+            let ast = grammar.parse(&pt.slice(..));
+            log::info!("ast: {}", ast.print_string(&String::from(&pt.slice(..))));
 
-            match JsonParser::parse(Rule::value, &content[start..]) {
-                Ok(pairs) => {
-                    pairs.flatten().for_each(|pair| {
-                        log::info!("Rule:    {:?}", pair.as_rule());
-                        log::info!("Span:    {:?}", pair.as_span());
-                    });
-                    // pairs.tokens().for_each(|tok| {
-                    //     log::info!("Token: {tok:?}");
-                    // });
-                    // for pair in pairs {
-                    //     // A pair is a combination of the rule which matched and a span of input
-                    //     log::info!("Rule:    {:?}", pair.as_rule());
-                    //     log::info!("Span:    {:?}", pair.as_span());
-                    //     // log::info!("Text:    {}", pair.as_str());
+            // let mut start = 0;
 
-                    //     // A pair can be converted to an iterator of the tokens which make it up:
-                    //     for inner_pair in pair.into_inner() {
-                    //         log::info!("Rule:    {:?}", inner_pair.as_rule());
-                    //         log::info!("Span:    {:?}", inner_pair.as_span());
-                    //     }
-                    // }
-                }
-                Err(e) => {
-                    // let at = match e.location {
-                    //     InputLocation::Pos(start) => start + 1,
-                    //     InputLocation::Span((start, end)) => end,
-                    // };
-                    // start = at;
-                    log::info!("parsing failed: {e}");
+            // match JsonParser::parse(Rule::value, &content[start..]) {
+            //     Ok(pairs) => {
+            //         pairs.flatten().for_each(|pair| {
+            //             log::info!("Rule:    {:?}", pair.as_rule());
+            //             log::info!("Span:    {:?}", pair.as_span());
+            //         });
+            //         // pairs.tokens().for_each(|tok| {
+            //         //     log::info!("Token: {tok:?}");
+            //         // });
+            //         // for pair in pairs {
+            //         //     // A pair is a combination of the rule which matched and a span of input
+            //         //     log::info!("Rule:    {:?}", pair.as_rule());
+            //         //     log::info!("Span:    {:?}", pair.as_span());
+            //         //     // log::info!("Text:    {}", pair.as_str());
 
-                    // if at >= content.len() {
-                    //     break;
-                    // }
-                }
-            }
+            //         //     // A pair can be converted to an iterator of the tokens which make it up:
+            //         //     for inner_pair in pair.into_inner() {
+            //         //         log::info!("Rule:    {:?}", inner_pair.as_rule());
+            //         //         log::info!("Span:    {:?}", inner_pair.as_span());
+            //         //     }
+            //         // }
+            //     }
+            //     Err(e) => {
+            //         // let at = match e.location {
+            //         //     InputLocation::Pos(start) => start + 1,
+            //         //     InputLocation::Span((start, end)) => end,
+            //         // };
+            //         // start = at;
+            //         log::info!("parsing failed: {e}");
+
+            //         // if at >= content.len() {
+            //         //     break;
+            //         // }
+            //     }
+            // }
 
             // let (msend, mrecv) = channel::<Vec<Range<usize>>>(CHANNEL_SIZE);
             // tokio::join!(

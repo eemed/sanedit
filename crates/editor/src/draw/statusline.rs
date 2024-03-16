@@ -1,5 +1,7 @@
 use sanedit_messages::redraw::{self, Statusline};
 
+use crate::editor::buffers::Filetype;
+
 use super::DrawContext;
 
 pub(crate) fn draw(ctx: &mut DrawContext) -> redraw::Statusline {
@@ -16,8 +18,13 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> redraw::Statusline {
     let cursor = win.primary_cursor();
     let cpos = cursor.pos();
     let blen = buf.len();
+    let ft = buf
+        .filetype
+        .as_ref()
+        .map(Filetype::as_str)
+        .unwrap_or("no filetype");
     let right = format!(
-        "{}% {cpos}/{blen}",
+        "{ft} | {}% {cpos}/{blen}",
         ((cpos as f64 / blen.max(1) as f64) * 100.0).floor()
     );
 

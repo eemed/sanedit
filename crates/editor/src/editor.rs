@@ -22,6 +22,7 @@ use std::env;
 use std::mem;
 use std::path::Path;
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use tokio::io;
 use tokio::sync::mpsc::Receiver;
@@ -36,9 +37,11 @@ use crate::editor::buffers::Buffer;
 use crate::editor::hooks::Hook;
 use crate::editor::keymap::KeymapResult;
 use crate::events::ToEditor;
+use crate::grammar::Grammar;
 use crate::server::ClientHandle;
 use crate::server::ClientId;
 use crate::server::FromJobs;
+use crate::StartOptions;
 // use crate::server::JobProgress;
 use crate::server::JobsHandle;
 
@@ -59,6 +62,7 @@ pub(crate) struct Editor {
     keys: Vec<KeyEvent>,
     is_running: bool,
     working_dir: PathBuf,
+    config_dir: PathBuf,
     themes: HashMap<String, Theme>,
 
     pub job_broker: JobBroker,
@@ -77,10 +81,19 @@ impl Editor {
             hooks: Hooks::default(),
             keys: Vec::default(),
             is_running: true,
+            config_dir: dirs::config_dir().expect("Cannot find config dir"),
             working_dir: env::current_dir().expect("Cannot get current working directory."),
             themes: themes::default_themes(),
             options: Options::default(),
         }
+    }
+
+    pub fn configure(&mut self, mut opts: StartOptions) {
+        if let Some(cd) = opts.config_dir.take() {
+            self.config_dir = cd;
+        }
+
+        log::info!("config dir: {:?}", self.config_dir);
     }
 
     pub fn win_buf(&self, id: ClientId) -> (&Window, &Buffer) {
@@ -198,9 +211,17 @@ impl Editor {
         // ---TEST---
         let win = self.windows.get(id).unwrap();
         let range = win.view().range();
-        let ropt = self.buffers.get(win.buffer_id()).unwrap().read_only_copy();
-        self.job_broker
-            .request(SyntaxHighlighter::new(id, ropt, range));
+        let buf = self.buffers.get(win.buffer_id()).unwrap();
+        let ropt = buf.read_only_copy();
+        if let Some(ft) = &buf.filetype {
+            match Grammar::for_filetype(ft, &self.config_dir) {
+                Ok(g) => {
+                    self.job_broker
+                        .request(SyntaxHighlighter::new(id, Arc::new(g), ropt, range));
+                }
+                Err(e) => log::error!("{}", e),
+            }
+        }
         // ---TEST---
     }
 
@@ -399,8 +420,10 @@ impl Editor {
 pub(crate) fn main_loop(
     jobs_handle: JobsHandle,
     mut recv: Receiver<ToEditor>,
+    opts: StartOptions,
 ) -> Result<(), io::Error> {
     let mut editor = Editor::new(jobs_handle);
+    editor.configure(opts);
 
     while let Some(msg) = recv.blocking_recv() {
         match msg {

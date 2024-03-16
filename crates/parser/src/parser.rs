@@ -4,12 +4,13 @@ mod memotable;
 mod preprocess;
 mod set;
 
-use std::{cmp::min, collections::BinaryHeap};
+use std::{cmp::min, collections::BinaryHeap, io};
 
 use thiserror::Error;
 
-use crate::{grammar, parser::clause::ClauseKind};
+use crate::{grammar, input::Reader, parser::clause::ClauseKind};
 
+pub use self::ast::AST;
 use self::{
     clause::Clause,
     memotable::{Match, MemoKey, MemoTable},
@@ -32,7 +33,16 @@ pub struct PikaParser {
 }
 
 impl PikaParser {
-    pub fn new(grammar: &str) -> Result<PikaParser, ParseError> {
+    pub fn new<R: io::Read>(read: R) -> Result<PikaParser, ParseError> {
+        let input = Reader::new(read);
+        let rules = grammar::parse_rules(input).map_err(|o| ParseError::Grammar(o.to_string()))?;
+        let clauses =
+            preprocess_rules(&rules).map_err(|o| ParseError::Preprocess(o.to_string()))?;
+        let parser = PikaParser { preproc: clauses };
+        Ok(parser)
+    }
+
+    pub fn from_str(grammar: &str) -> Result<PikaParser, ParseError> {
         let rules = grammar::parse_rules_from_str(grammar)
             .map_err(|o| ParseError::Grammar(o.to_string()))?;
         let clauses =
@@ -41,7 +51,7 @@ impl PikaParser {
         Ok(parser)
     }
 
-    pub fn parse(&self, input: &str) {
+    pub fn parse(&self, input: &str) -> AST {
         let mut memo = MemoTable::new(&self.preproc.clauses, &self.preproc.names);
         // Max priority queue
         let mut queue = BinaryHeap::new();
@@ -77,8 +87,7 @@ impl PikaParser {
         }
 
         let len = input.len();
-        let ast = memo.to_ast(len);
-        ast.print(input);
+        memo.to_ast(len)
     }
 
     fn try_match(&self, key: MemoKey, memo: &MemoTable, input: &str) -> Option<Match> {
@@ -179,28 +188,28 @@ mod test {
     #[test]
     fn parser_calc() {
         let peg = include_str!("../pegs/calc.peg");
-        let parser = PikaParser::new(peg).unwrap();
+        let parser = PikaParser::from_str(peg).unwrap();
         parser.parse("( 1 + 2 ) * 4");
     }
 
     #[test]
     fn parser_simple() {
         let peg = include_str!("../pegs/simple.peg");
-        let parser = PikaParser::new(peg).unwrap();
+        let parser = PikaParser::from_str(peg).unwrap();
         parser.parse("1+2^2");
     }
 
     #[test]
     fn parser_json() {
         let peg = include_str!("../pegs/json.peg");
-        let parser = PikaParser::new(peg).unwrap();
+        let parser = PikaParser::from_str(peg).unwrap();
         parser.parse(" {\"account\":\"bon\",\n\"age\":3.2, \r\n\"children\" : [  1, 2,3], \"allow-children\": true } ");
     }
 
     #[test]
     fn parser_invalid_json() {
         let peg = include_str!("../pegs/json.peg");
-        let parser = PikaParser::new(peg).unwrap();
+        let parser = PikaParser::from_str(peg).unwrap();
         parser.parse(" {\"account\":\"bon\",\n\"age\":3.2 \r\n\"children\" : [  1, 2,3], \"allow-children\": true } ");
     }
 }

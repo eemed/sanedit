@@ -323,7 +323,6 @@ impl<I: Input> GrammarParser<I> {
         let mut choices = vec![];
         let mut range = false;
         while self.token != Token::RBracket {
-            println!("Token: {:?}", self.token);
             match &self.token {
                 Token::Char(ch) => {
                     if range {

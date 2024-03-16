@@ -45,7 +45,7 @@ tasks:
     deps: [install-pre-commit-hook]
     cmds:
       - rm -rf /tmp/sanedit.sock
-      - cargo run
+      - cargo run -- -- --config-dir ../runtime/config
     env:
       RUST_BACKTRACE: 1
 

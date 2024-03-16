@@ -1,4 +1,5 @@
 mod change;
+mod filetype;
 mod options;
 mod snapshots;
 mod sorted;
@@ -16,6 +17,7 @@ use crate::common::{dirs::tmp_file, file::File};
 
 use self::{options::Options, snapshots::Snapshots};
 pub(crate) use change::{Change, ChangeKind};
+pub(crate) use filetype::Filetype;
 pub(crate) use snapshots::{SnapshotData, SnapshotId};
 pub(crate) use sorted::SortedRanges;
 
@@ -29,6 +31,7 @@ pub(crate) type BufferRange = Range<usize>;
 #[derive(Debug)]
 pub(crate) struct Buffer {
     pub(crate) id: BufferId,
+    pub(crate) filetype: Option<Filetype>,
 
     pt: PieceTree,
     /// Snapshots of the piecetree, used for undo
@@ -51,6 +54,7 @@ impl Buffer {
         let snapshot = pt.read_only_copy();
         Buffer {
             id: BufferId::default(),
+            filetype: None,
             pt,
             is_saving: false,
             is_modified: false,
@@ -75,9 +79,11 @@ impl Buffer {
         let path = file.path().canonicalize()?;
         let pt = PieceTree::from_path(&path)?;
         let snapshot = pt.read_only_copy();
+        let filetype = Filetype::determine(&path);
         Ok(Buffer {
             id: BufferId::default(),
             pt,
+            filetype,
             is_saving: false,
             is_modified: false,
             snapshots: Snapshots::new(snapshot),
@@ -93,6 +99,7 @@ impl Buffer {
         let path = file.path().canonicalize()?;
         let file = fs::File::open(&path)?;
         let mut buf = Self::from_reader(file)?;
+        buf.filetype = Filetype::determine(&path);
         buf.path = Some(path);
         Ok(buf)
     }
@@ -103,6 +110,7 @@ impl Buffer {
         Ok(Buffer {
             id: BufferId::default(),
             pt,
+            filetype: None,
             is_saving: false,
             is_modified: false,
             snapshots: Snapshots::new(snapshot),

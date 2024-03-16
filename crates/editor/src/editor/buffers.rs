@@ -5,7 +5,8 @@ use std::path::Path;
 use slotmap::SlotMap;
 
 pub(crate) use self::buffer::{
-    Buffer, BufferId, BufferRange, Change, ChangeKind, SnapshotData, SnapshotId, SortedRanges,
+    Buffer, BufferId, BufferRange, Change, ChangeKind, Filetype, SnapshotData, SnapshotId,
+    SortedRanges,
 };
 
 #[derive(Debug, Default)]

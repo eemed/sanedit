@@ -42,44 +42,6 @@ impl Job for SyntaxHighlighter {
             let ast = grammar.parse(&pt.slice(..));
             log::info!("ast: {}", ast.print_string(&String::from(&pt.slice(..))));
 
-            // let mut start = 0;
-
-            // match JsonParser::parse(Rule::value, &content[start..]) {
-            //     Ok(pairs) => {
-            //         pairs.flatten().for_each(|pair| {
-            //             log::info!("Rule:    {:?}", pair.as_rule());
-            //             log::info!("Span:    {:?}", pair.as_span());
-            //         });
-            //         // pairs.tokens().for_each(|tok| {
-            //         //     log::info!("Token: {tok:?}");
-            //         // });
-            //         // for pair in pairs {
-            //         //     // A pair is a combination of the rule which matched and a span of input
-            //         //     log::info!("Rule:    {:?}", pair.as_rule());
-            //         //     log::info!("Span:    {:?}", pair.as_span());
-            //         //     // log::info!("Text:    {}", pair.as_str());
-
-            //         //     // A pair can be converted to an iterator of the tokens which make it up:
-            //         //     for inner_pair in pair.into_inner() {
-            //         //         log::info!("Rule:    {:?}", inner_pair.as_rule());
-            //         //         log::info!("Span:    {:?}", inner_pair.as_span());
-            //         //     }
-            //         // }
-            //     }
-            //     Err(e) => {
-            //         // let at = match e.location {
-            //         //     InputLocation::Pos(start) => start + 1,
-            //         //     InputLocation::Span((start, end)) => end,
-            //         // };
-            //         // start = at;
-            //         log::info!("parsing failed: {e}");
-
-            //         // if at >= content.len() {
-            //         //     break;
-            //         // }
-            //     }
-            // }
-
             // let (msend, mrecv) = channel::<Vec<Range<usize>>>(CHANNEL_SIZE);
             // tokio::join!(
             //     Self::search_impl(msend, dir, term, pt, range),

@@ -1,9 +1,6 @@
-use std::{
-    collections::{BTreeMap, HashMap},
-    ops::Range,
-};
+use std::collections::HashMap;
 
-use super::{ast::ASTNode, clause::Clause, ranges::Ranges};
+use super::{ast::ASTNode, clause::Clause};
 
 #[derive(Debug)]
 pub(crate) struct MemoTable<'a> {
@@ -46,76 +43,49 @@ impl<'a> MemoTable<'a> {
         }
     }
 
-    fn syntax_errors(&self, len: usize) -> Ranges {
-        let mut matched = Ranges::new();
-        for clause in self.clauses {
-            if clause.show {
-                for mat in self.non_overlapping_matches(clause.idx) {
-                    matched.push(mat.key.start..mat.key.start + mat.len);
+    pub fn to_ast(&self, len: usize) -> ASTNode {
+        ASTNode::new(self, len)
+    }
+
+    pub fn best_match_at(&self, at: usize) -> Option<&Match> {
+        println!("bmatch at: {at}");
+        let mut result = None;
+        let mut prox = usize::MAX;
+        let mut len = 0;
+
+        // TODO optimize
+        for (key, mat) in &self.table {
+            if key.start < at {
+                continue;
+            }
+            let show = self.clauses[key.clause].show;
+            if !show {
+                continue;
+            }
+            let proximity = key.start - at;
+
+            if proximity < prox {
+                result = Some(mat);
+                prox = proximity;
+                len = mat.len;
+            } else if proximity == prox {
+                if mat.len > len {
+                    result = Some(mat);
+                    len = mat.len;
+                } else if mat.len == len {
+                    let cur = self.clauses[key.clause].order;
+                    let prev = result
+                        .as_ref()
+                        .map(|r| self.clauses[r.key.clause].order)
+                        .unwrap_or(usize::MAX);
+                    if cur < prev {
+                        result = Some(mat);
+                    }
                 }
             }
         }
-        matched.invert(0..len);
-        matched
-    }
-
-    pub fn to_ast(&self) -> ASTNode {
-        let mut len = 0;
-        let mut ckey = None;
-
-        for (key, mat) in &self.table {
-            let show = self.clauses[key.clause].show;
-
-            if show && mat.len > len {
-                len = mat.len;
-                ckey = Some(key);
-            }
-        }
-
-        let k = ckey.expect("No longest match found");
-        ASTNode::from_match(k, self)
-    }
-
-    fn non_overlapping_matches(&self, clause: usize) -> Vec<&Match> {
-        let matches = self.all_matches(clause);
-        let mut result = Vec::new();
-
-        for mut i in 0..matches.len() {
-            let mat = matches[i];
-            let start = mat.key.start;
-            let end = start + mat.len;
-            result.push(mat);
-
-            while i < matches.len() - 1 && matches[i + 1].key.start < end {
-                i += 1;
-            }
-        }
 
         result
-    }
-
-    fn all_matches(&self, clause: usize) -> Vec<&Match> {
-        let mut result = Vec::new();
-
-        for (key, mat) in &self.table {
-            if key.clause == clause {
-                result.push(mat);
-            }
-        }
-
-        result
-    }
-
-    fn to_map(&self, clause: usize) -> BTreeMap<usize, &Match> {
-        let mut map = BTreeMap::new();
-
-        for (key, mat) in &self.table {
-            if key.clause == clause {
-                map.insert(key.start, mat);
-            }
-        }
-
-        map
     }
 }
 

@@ -2,7 +2,6 @@ mod ast;
 mod clause;
 mod memotable;
 mod preprocess;
-mod ranges;
 mod set;
 
 use std::{cmp::min, collections::BinaryHeap};
@@ -77,7 +76,8 @@ impl PikaParser {
             }
         }
 
-        let ast = memo.to_ast();
+        let len = input.len();
+        let ast = memo.to_ast(len);
         ast.print(input);
     }
 
@@ -194,13 +194,13 @@ mod test {
     fn parser_json() {
         let peg = include_str!("../pegs/json.peg");
         let parser = PikaParser::new(peg).unwrap();
-        parser.parse(" {\"account\":\"bon\",\n\"age\":3.2, \r\n\"children\" : [  1, 2,3] } ");
+        parser.parse(" {\"account\":\"bon\",\n\"age\":3.2, \r\n\"children\" : [  1, 2,3], \"allow-children\": true } ");
     }
 
     #[test]
     fn parser_invalid_json() {
         let peg = include_str!("../pegs/json.peg");
         let parser = PikaParser::new(peg).unwrap();
-        parser.parse(" {\"account\":\"bon\",\n\"age\":3.2, \r\n\"children\" : [  1, 2,3] } ");
+        parser.parse(" {\"account\":\"bon\",\n\"age\":3.2 \r\n\"children\" : [  1, 2,3], \"allow-children\": true } ");
     }
 }

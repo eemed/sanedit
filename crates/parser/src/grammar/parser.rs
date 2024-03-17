@@ -23,7 +23,7 @@ pub(crate) fn parse_rules_from_str(input: &str) -> Result<Box<[Rule]>> {
 pub(crate) fn parse_rules<I: Input>(input: I) -> Result<Box<[Rule]>> {
     let mut lex = Lexer::new(input);
     let token = lex.next()?;
-    let mut parser = GrammarParser {
+    let parser = GrammarParser {
         lex,
         token,
         rules: vec![],

@@ -66,8 +66,8 @@ impl Rule {
                 }
                 OneOrMore(m) => rec(m, ws),
                 Choice(v) => v.iter_mut().for_each(|r| rec(r, ws)),
-                // FollowedBy(_) => todo!(),
-                // NotFollowedBy(_) => todo!(),
+                FollowedBy(m) => rec(m, ws),
+                NotFollowedBy(m) => rec(m, ws),
                 _ => {}
             }
         }

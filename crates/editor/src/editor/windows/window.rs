@@ -24,6 +24,7 @@ use crate::{
         clipboard::{Clipboard, DefaultClipboard},
         keymap::{DefaultKeyMappings, KeyMappings, Keymap},
     },
+    syntax::SyntaxParseResult,
 };
 
 pub(crate) use self::{
@@ -454,6 +455,15 @@ impl Window {
 
     pub fn set_keymap(mappings: impl KeyMappings) {
         todo!()
+    }
+
+    pub fn on_syntax_parsed(&mut self, result: SyntaxParseResult) {
+        if result.bid != self.buf {
+            self.view.syntax = SyntaxParseResult::default();
+            return;
+        }
+
+        self.view.syntax = result;
     }
 }
 

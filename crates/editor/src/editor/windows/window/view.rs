@@ -2,12 +2,12 @@ use std::collections::VecDeque;
 use std::ops::Range;
 
 use sanedit_buffer::utf8::EndOfLine;
-use sanedit_buffer::PieceTreeSlice;
 use sanedit_messages::redraw::{Point, Size};
 
 use crate::common::char::{Char, DisplayOptions};
 use crate::common::movement::prev_line_start;
 use crate::editor::buffers::Buffer;
+use crate::syntax::SyntaxParseResult;
 
 #[derive(Debug, Clone)]
 pub(crate) enum Cell {
@@ -68,6 +68,7 @@ pub(crate) struct View {
     /// Display options which were used to draw this view
     pub options: DisplayOptions,
     needs_redraw: bool,
+    pub(super) syntax: SyntaxParseResult,
 }
 
 impl View {
@@ -79,6 +80,7 @@ impl View {
             height,
             options: DisplayOptions::default(),
             needs_redraw: true,
+            syntax: SyntaxParseResult::default(),
         }
     }
 
@@ -430,6 +432,10 @@ impl View {
         self.height = size.height;
         self.cells = Self::make_default_cells(size.width, size.height);
         self.needs_redraw = true;
+    }
+
+    pub fn syntax(&self) -> &SyntaxParseResult {
+        &self.syntax
     }
 }
 

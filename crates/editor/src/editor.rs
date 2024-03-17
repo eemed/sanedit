@@ -22,7 +22,6 @@ use std::env;
 use std::mem;
 use std::path::Path;
 use std::path::PathBuf;
-use std::sync::Arc;
 
 use tokio::io;
 use tokio::sync::mpsc::Receiver;
@@ -30,20 +29,20 @@ use tokio::sync::mpsc::Receiver;
 use crate::actions;
 use crate::actions::cursors;
 use crate::actions::hooks::run;
-use crate::actions::jobs::SyntaxHighlighter;
+use crate::actions::jobs::SyntaxParser;
 use crate::common::file::File;
 use crate::draw::DrawState;
 use crate::editor::buffers::Buffer;
 use crate::editor::hooks::Hook;
 use crate::editor::keymap::KeymapResult;
 use crate::events::ToEditor;
-use crate::grammar::Grammar;
 use crate::server::ClientHandle;
 use crate::server::ClientId;
 use crate::server::FromJobs;
 use crate::StartOptions;
 // use crate::server::JobProgress;
 use crate::server::JobsHandle;
+use crate::syntax::Syntaxes;
 
 use self::buffers::BufferId;
 use self::buffers::Buffers;
@@ -58,6 +57,7 @@ pub(crate) struct Editor {
     clients: HashMap<ClientId, ClientHandle>,
     draw_states: HashMap<ClientId, DrawState>,
     windows: Windows,
+    syntaxes: Syntaxes,
     buffers: Buffers,
     keys: Vec<KeyEvent>,
     is_running: bool,
@@ -75,6 +75,7 @@ impl Editor {
         Editor {
             clients: HashMap::default(),
             draw_states: HashMap::default(),
+            syntaxes: Syntaxes::default(),
             windows: Windows::default(),
             buffers: Buffers::default(),
             job_broker: JobBroker::new(jobs_handle),
@@ -214,10 +215,10 @@ impl Editor {
         let buf = self.buffers.get(win.buffer_id()).unwrap();
         let ropt = buf.read_only_copy();
         if let Some(ft) = &buf.filetype {
-            match Grammar::for_filetype(ft, &self.config_dir) {
-                Ok(g) => {
+            match self.syntaxes.for_filetype(ft, &self.config_dir) {
+                Ok(s) => {
                     self.job_broker
-                        .request(SyntaxHighlighter::new(id, Arc::new(g), ropt, range));
+                        .request(SyntaxParser::new(id, buf.id, s, ropt, range));
                 }
                 Err(e) => log::error!("{}", e),
             }

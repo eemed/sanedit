@@ -1,20 +1,25 @@
 use std::collections::HashMap;
 
-use super::{ast::AST, clause::Clause};
+use crate::PikaParser;
+
+use super::{
+    ast::AST,
+    clause::{Clause, ClauseKind},
+};
 
 #[derive(Debug)]
-pub(crate) struct MemoTable<'a> {
+pub(crate) struct MemoTable<'a, 'b> {
     table: HashMap<MemoKey, Match>,
-    pub(crate) clauses: &'a [Clause],
-    pub(crate) names: &'a HashMap<usize, Vec<String>>,
+    pub(crate) parser: &'a PikaParser,
+    pub(crate) input: &'b str,
 }
 
-impl<'a> MemoTable<'a> {
-    pub fn new(clauses: &'a [Clause], names: &'a HashMap<usize, Vec<String>>) -> MemoTable<'a> {
+impl<'a, 'b> MemoTable<'a, 'b> {
+    pub fn new(parser: &'a PikaParser, input: &'b str) -> MemoTable<'a, 'b> {
         MemoTable {
             table: HashMap::new(),
-            names,
-            clauses,
+            parser,
+            input,
         }
     }
 
@@ -33,8 +38,10 @@ impl<'a> MemoTable<'a> {
         match self.table.get(key) {
             Some(m) => Some(m.clone()),
             None => {
-                let clause = &self.clauses[key.clause];
-                if clause.can_match_zero {
+                let clause = &self.parser.preproc.clauses[key.clause];
+                if clause.kind == ClauseKind::NotFollowedBy {
+                    self.parser.try_match(*key, self, self.input)
+                } else if clause.can_match_zero {
                     Some(Match::empty(key.clone()))
                 } else {
                     None
@@ -51,13 +58,14 @@ impl<'a> MemoTable<'a> {
         let mut result = None;
         let mut prox = usize::MAX;
         let mut len = 0;
+        let clauses = &self.parser.preproc.clauses;
 
         // TODO optimize
         for (key, mat) in &self.table {
             if key.start < at {
                 continue;
             }
-            let show = self.clauses[key.clause].show;
+            let show = clauses[key.clause].show;
             if !show {
                 continue;
             }
@@ -72,10 +80,10 @@ impl<'a> MemoTable<'a> {
                     result = Some(mat);
                     len = mat.len;
                 } else if mat.len == len {
-                    let cur = self.clauses[key.clause].order;
+                    let cur = clauses[key.clause].order;
                     let prev = result
                         .as_ref()
-                        .map(|r| self.clauses[r.key.clause].order)
+                        .map(|r| clauses[r.key.clause].order)
                         .unwrap_or(usize::MAX);
                     if cur < prev {
                         result = Some(mat);

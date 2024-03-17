@@ -45,6 +45,7 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> redraw::Window {
 
     let cursors = win.cursors();
 
+    draw_syntax(&mut grid, view, theme);
     draw_end_of_buffer(&mut grid, view, theme);
     draw_trailing_whitespace(&mut grid, view, theme);
     draw_search_highlights(&mut grid, &win.search.hl_matches, view, theme);
@@ -54,6 +55,33 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> redraw::Window {
     redraw::Window {
         cells: grid,
         cursor,
+    }
+}
+
+fn draw_syntax(grid: &mut Vec<Vec<redraw::Cell>>, view: &View, theme: &Theme) {
+    let syntax = view.syntax();
+    let vrange = view.range();
+
+    for span in &syntax.highlights {
+        let srange = &span.range;
+        if !vrange.overlaps(srange) {
+            continue;
+        }
+        const HL_PREFIX: &str = "window.view.";
+        let style = theme.get(HL_PREFIX.to_owned() + &span.name);
+        log::info!("Found: {}", span.name);
+
+        // TODO optimize
+        let mut pos = vrange.start;
+        for (line, row) in view.cells().iter().enumerate() {
+            for (col, cell) in row.iter().enumerate() {
+                if !matches!(cell, Cell::Empty) && srange.contains(&pos) {
+                    grid[line][col].style = style;
+                }
+
+                pos += cell.len_in_buffer();
+            }
+        }
     }
 }
 

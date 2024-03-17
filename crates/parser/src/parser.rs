@@ -52,7 +52,7 @@ impl PikaParser {
     }
 
     pub fn parse(&self, input: &str) -> AST {
-        let mut memo = MemoTable::new(&self.preproc.clauses, &self.preproc.names);
+        let mut memo = MemoTable::new(&self, input);
         // Max priority queue
         let mut queue = BinaryHeap::new();
         let terminals: Vec<&Clause> = self
@@ -90,7 +90,7 @@ impl PikaParser {
         memo.to_ast(len)
     }
 
-    fn try_match(&self, key: MemoKey, memo: &MemoTable, input: &str) -> Option<Match> {
+    pub(crate) fn try_match(&self, key: MemoKey, memo: &MemoTable, input: &str) -> Option<Match> {
         use ClauseKind::*;
 
         let clause = &self.preproc.clauses[key.clause];
@@ -167,8 +167,32 @@ impl PikaParser {
                 }
             }
             Nothing => Some(Match::empty(key)),
-            FollowedBy => todo!(),
-            NotFollowedBy => todo!(),
+            FollowedBy => {
+                let sub = clause.sub[0];
+                let skey = MemoKey {
+                    clause: sub,
+                    start: key.start,
+                };
+                let _mat = memo.get(&skey)?;
+                Some(Match::empty(key))
+            }
+            NotFollowedBy => {
+                let sub = clause.sub[0];
+                let skey = MemoKey {
+                    clause: sub,
+                    start: key.start,
+                };
+
+                let mat = memo
+                    .get(&skey)
+                    .or_else(|| self.try_match(skey, memo, input));
+
+                if mat.is_none() {
+                    Some(Match::empty(key))
+                } else {
+                    None
+                }
+            }
             CharRange(a, b) => {
                 let ch = &input[key.start..].chars().next().unwrap();
                 if a <= ch && ch <= b {
@@ -203,13 +227,17 @@ mod test {
     fn parser_json() {
         let peg = include_str!("../pegs/json.peg");
         let parser = PikaParser::from_str(peg).unwrap();
-        parser.parse(" {\"account\":\"bon\",\n\"age\":3.2, \r\n\"children\" : [  1, 2,3], \"allow-children\": true } ");
+        let input = " {\"account\":\"bon\",\n\"age\":3.2, \r\n\"children\" : [  1, 2,3], \"allow-children\": true } ";
+        let ast = parser.parse(input);
+        ast.print(input);
     }
 
     #[test]
     fn parser_invalid_json() {
         let peg = include_str!("../pegs/json.peg");
         let parser = PikaParser::from_str(peg).unwrap();
-        parser.parse(" {\"account\":\"bon\",\n\"age\":3.2 \r\n\"children\" : [  1, 2,3], \"allow-children\": true } ");
+        let input = " {\"account\":\"bon\",\n\"age\":3.2 \r\n\"children\" : [  1, 2,3], \"allow-children\": true } ";
+        let ast = parser.parse(input);
+        ast.print(input);
     }
 }

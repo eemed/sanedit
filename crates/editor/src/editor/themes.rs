@@ -70,5 +70,11 @@ fn default() -> Theme {
     ins(Info, "#00917e,#000000,");
     ins(Warn, "#ff8c5a,#000000,");
     ins(Error, "#c0564a,#000000,");
+
+    ins(String, ",#936039,");
+    ins(Constant, ",#014CC0,");
+    ins(Identifier, ",#014CC0,");
+    ins(Number, ",#014CC0,");
+
     theme
 }

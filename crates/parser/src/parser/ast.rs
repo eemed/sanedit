@@ -1,6 +1,8 @@
+use std::ops::Range;
+
 use super::memotable::{Match, MemoKey, MemoTable};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct AST {
     label: String,
     start: usize,
@@ -10,7 +12,7 @@ pub struct AST {
 
 impl AST {
     pub(crate) fn new(memo: &MemoTable, len: usize) -> AST {
-        const ERROR_LABEL: &str = "ERROR";
+        const ERROR_LABEL: &str = "error";
         let mut pos = 0;
         let mut roots = vec![];
 
@@ -54,7 +56,22 @@ impl AST {
     }
 
     pub(crate) fn from_match(mat: &Match, memo: &MemoTable) -> AST {
+        fn rec(node: &mut AST, key: &MemoKey, memo: &MemoTable) {
+            let mat = memo.get(key).unwrap();
+            for sub in &mat.sub {
+                let smat = memo.get(sub).unwrap();
+                let show = memo.parser.preproc.clauses[smat.key.clause].show;
+                if show {
+                    node.sub.push(AST::from_match(&smat, memo))
+                } else {
+                    rec(node, &smat.key, memo)
+                }
+            }
+        }
+
         let name = memo
+            .parser
+            .preproc
             .names
             .get(&mat.key.clause)
             .map(|n| n.get(0))
@@ -69,56 +86,66 @@ impl AST {
             sub: vec![],
         };
 
-        Self::rec(&mut node, &mat.key, memo);
+        rec(&mut node, &mat.key, memo);
         node
     }
 
-    fn rec(node: &mut AST, key: &MemoKey, memo: &MemoTable) {
-        let mat = memo.get(key).unwrap();
-        for sub in &mat.sub {
-            let smat = memo.get(sub).unwrap();
-            let show = memo.clauses[smat.key.clause].show;
-            if show {
-                node.sub.push(AST::from_match(&smat, memo))
-            } else {
-                Self::rec(node, &smat.key, memo)
+    pub fn print(&self, input: &str) {
+        fn print_rec(node: &AST, input: &str, level: usize) {
+            println!(
+                "{}{}: {:?}",
+                " ".repeat(level),
+                node.label,
+                &input[node.start..node.start + node.len]
+            );
+            for s in &node.sub {
+                print_rec(s, input, level + 2);
             }
         }
-    }
 
-    pub fn print(&self, input: &str) {
-        Self::print_rec(self, input, 0);
-    }
-
-    fn print_rec(node: &AST, input: &str, level: usize) {
-        println!(
-            "{}{}: {:?}",
-            " ".repeat(level),
-            node.label,
-            &input[node.start..node.start + node.len]
-        );
-        for s in &node.sub {
-            Self::print_rec(s, input, level + 2);
-        }
+        print_rec(self, input, 0);
     }
 
     pub fn print_string(&self, input: &str) -> String {
-        Self::print_string_rec(self, input, 0)
-    }
+        fn print_string_rec(node: &AST, input: &str, level: usize) -> String {
+            let mut res = format!(
+                "{}{}: {:?}",
+                " ".repeat(level),
+                node.label,
+                &input[node.start..node.start + node.len]
+            );
+            for s in &node.sub {
+                let next = print_string_rec(s, input, level + 2);
+                res.push_str("\n");
+                res.push_str(&next);
+            }
 
-    fn print_string_rec(node: &AST, input: &str, level: usize) -> String {
-        let mut res = format!(
-            "{}{}: {:?}",
-            " ".repeat(level),
-            node.label,
-            &input[node.start..node.start + node.len]
-        );
-        for s in &node.sub {
-            let next = Self::print_string_rec(s, input, level + 2);
-            res.push_str("\n");
-            res.push_str(&next);
+            res
         }
 
-        res
+        print_string_rec(self, input, 0)
+    }
+
+    pub fn flatten(&self) -> Vec<AST> {
+        let mut stack = vec![];
+        let mut result = vec![];
+        stack.push(self);
+
+        while let Some(n) = stack.pop() {
+            for sub in &n.sub {
+                stack.push(sub);
+            }
+            result.push(n.clone());
+        }
+
+        result
+    }
+
+    pub fn name(&self) -> &str {
+        &self.label
+    }
+
+    pub fn range(&self) -> Range<usize> {
+        self.start..self.start + self.len
     }
 }

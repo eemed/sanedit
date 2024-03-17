@@ -97,10 +97,24 @@ pub(super) fn preprocess_rules(rules: &[Rule]) -> anyhow::Result<Clauses> {
     setup_seed_parents(&mut clauses);
     validate(&clauses)?;
 
+    // debug_print(&rules, &clauses);
+
     Ok(Clauses {
         names,
         clauses: clauses.into(),
     })
+}
+
+fn debug_print(rules: &[Rule], clauses: &[Clause]) {
+    println!("----- Rules ------");
+    for rule in rules {
+        println!("{}", rule);
+    }
+
+    println!("----- Clauses ------");
+    for clause in clauses {
+        println!("{:?}", clause);
+    }
 }
 
 fn setup_seed_parents(clauses: &mut [Clause]) {

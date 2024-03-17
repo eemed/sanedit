@@ -115,6 +115,11 @@ pub enum ThemeField {
 
     Match,
 
+    String,
+    Constant,
+    Identifier,
+    Number,
+
     Info,
     Warn,
     Error,
@@ -150,9 +155,14 @@ impl AsRef<str> for ThemeField {
             Symbols => "window.symbols",
             Match => "window.match",
 
-            Info => "info",
-            Warn => "warn",
-            Error => "error",
+            Info => "window.view.info",
+            Warn => "window.view.warn",
+            Error => "window.view.error",
+
+            String => "window.view.string",
+            Constant => "window.view.constant",
+            Identifier => "window.view.identifier",
+            Number => "window.view.number",
 
             PromptDefault => "prompt",
             PromptMessage => "prompt.message",

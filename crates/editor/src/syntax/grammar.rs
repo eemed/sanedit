@@ -8,6 +8,7 @@ use crate::{common::dirs::FILETYPE_DIR, editor::buffers::Filetype};
 
 #[derive(Debug)]
 pub(crate) struct Grammar {
+    // HASH
     parser: PikaParser,
 }
 

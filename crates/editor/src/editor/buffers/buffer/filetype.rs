@@ -1,6 +1,6 @@
 use std::path::Path;
 
-#[derive(Debug, PartialEq, Eq, Ord, PartialOrd, Clone)]
+#[derive(Debug, Hash, PartialEq, Eq, Ord, PartialOrd, Clone)]
 pub struct Filetype {
     name: String,
 }

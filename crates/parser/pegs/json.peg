@@ -7,7 +7,7 @@
 #                     Original:   array = "["             value (              ","            value )*             "]";
 #                     Generated:  array = "[" WHITESPACE* value ( WHITESPACE* "," WHITESPACE* value )* WHITESPACE* "]";
 #
-#
+
 WHITESPACE = [ \t\r\n];
 _ = WHITESPACE*;
 

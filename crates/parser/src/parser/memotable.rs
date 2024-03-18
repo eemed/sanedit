@@ -65,8 +65,8 @@ impl<'a, 'b> MemoTable<'a, 'b> {
             if key.start < at {
                 continue;
             }
-            let show = clauses[key.clause].show;
-            if !show {
+            let clause = &clauses[key.clause];
+            if !clause.show {
                 continue;
             }
             let proximity = key.start - at;

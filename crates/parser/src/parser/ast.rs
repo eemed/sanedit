@@ -30,8 +30,8 @@ impl AST {
             }
 
             let node = Self::from_match(&mat, memo);
-            pos += node.len;
             roots.push(node);
+            pos += mat.len;
         }
 
         if pos != len {

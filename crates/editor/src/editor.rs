@@ -16,12 +16,14 @@ use sanedit_messages::Message;
 use sanedit_messages::MouseButton;
 use sanedit_messages::MouseEvent;
 use sanedit_messages::MouseEventKind;
+use tokio::sync::Notify;
 
 use std::collections::HashMap;
 use std::env;
 use std::mem;
 use std::path::Path;
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use tokio::io;
 use tokio::sync::mpsc::Receiver;
@@ -39,10 +41,9 @@ use crate::events::ToEditor;
 use crate::server::ClientHandle;
 use crate::server::ClientId;
 use crate::server::FromJobs;
-use crate::StartOptions;
-// use crate::server::JobProgress;
 use crate::server::JobsHandle;
 use crate::syntax::Syntaxes;
+use crate::StartOptions;
 
 use self::buffers::BufferId;
 use self::buffers::Buffers;
@@ -52,6 +53,11 @@ use self::options::Options;
 
 use self::windows::Window;
 use self::windows::Windows;
+use lazy_static::lazy_static;
+
+lazy_static! {
+    pub static ref REDRAW_NOTIFY: Arc<Notify> = Notify::const_new().into();
+}
 
 pub(crate) struct Editor {
     clients: HashMap<ClientId, ClientHandle>,
@@ -82,7 +88,7 @@ impl Editor {
             hooks: Hooks::default(),
             keys: Vec::default(),
             is_running: true,
-            config_dir: dirs::config_dir().expect("Cannot find config dir"),
+            config_dir: dirs::config_dir().expect("Cannot find config directory."),
             working_dir: env::current_dir().expect("Cannot get current working directory."),
             themes: themes::default_themes(),
             options: Options::default(),
@@ -93,8 +99,6 @@ impl Editor {
         if let Some(cd) = opts.config_dir.take() {
             self.config_dir = cd;
         }
-
-        log::info!("config dir: {:?}", self.config_dir);
     }
 
     pub fn win_buf(&self, id: ClientId) -> (&Window, &Buffer) {
@@ -207,7 +211,8 @@ impl Editor {
             _ => {}
         }
 
-        self.redraw_all(id);
+        // TODO optimize
+        redraw!();
 
         // ---TEST---
         let win = self.windows.get(id).unwrap();
@@ -279,8 +284,16 @@ impl Editor {
         }
     }
 
+    fn redraw_all(&mut self) {
+        let clients: Vec<ClientId> = self.clients.keys().cloned().collect();
+
+        for cid in clients {
+            self.redraw(cid);
+        }
+    }
+
     /// Redraw all windows that use the same buffer as `id`
-    fn redraw_all(&mut self, id: ClientId) {
+    fn redraw(&mut self, id: ClientId) {
         // Editor is closed or client is closed
         if !self.is_running || !self.clients.contains_key(&id) {
             return;
@@ -288,13 +301,13 @@ impl Editor {
 
         if let Some(bid) = self.windows.bid(id) {
             for cid in self.windows.find_clients_with_buf(bid) {
-                self.redraw(cid);
+                self.redraw_client(cid);
             }
         }
     }
 
     /// redraw a window
-    fn redraw(&mut self, id: ClientId) {
+    fn redraw_client(&mut self, id: ClientId) {
         run(self, id, Hook::OnDrawPre);
 
         let draw = self
@@ -377,16 +390,12 @@ impl Editor {
             Message(id, msg) => {
                 if let Some(prog) = self.job_broker.get(id) {
                     prog.on_message(self, msg);
-                    let cid = prog.client_id();
-                    self.redraw_all(cid);
                 }
             }
             Succesful(id) => {
                 log::info!("Job {id} succesful.");
                 if let Some(prog) = self.job_broker.get(id) {
                     prog.on_success(self);
-                    let cid = prog.client_id();
-                    self.redraw_all(cid);
                 }
                 self.job_broker.done(id);
             }
@@ -394,8 +403,6 @@ impl Editor {
                 log::info!("Job {id} failed because {}.", reason);
                 if let Some(prog) = self.job_broker.get(id) {
                     prog.on_failure(self, &reason);
-                    let cid = prog.client_id();
-                    self.redraw_all(cid);
                 }
                 self.job_broker.done(id);
             }
@@ -431,6 +438,7 @@ pub(crate) fn main_loop(
             ToEditor::NewClient(handle) => editor.on_client_connected(handle),
             ToEditor::Jobs(msg) => editor.handle_job_msg(msg),
             ToEditor::Message(id, msg) => editor.handle_message(id, msg),
+            ToEditor::Redraw => editor.redraw_all(),
             ToEditor::FatalError(e) => {
                 log::info!("Fatal error: {}", e);
                 break;

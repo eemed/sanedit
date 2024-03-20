@@ -1,6 +1,7 @@
 mod accept;
 mod client;
 mod job_runner;
+mod redraw;
 
 pub(crate) use client::*;
 pub(crate) use job_runner::{
@@ -29,7 +30,7 @@ use tokio::{
 
 use crate::{editor, events::ToEditor};
 
-use self::job_runner::spawn_jobs;
+use self::{job_runner::spawn_jobs, redraw::redraw_debouncer};
 
 /// Channel buffer size for tokio channels
 pub(crate) const CHANNEL_SIZE: usize = 256;
@@ -126,6 +127,8 @@ pub fn run_sync(addrs: Vec<Address>, opts: StartOptions) -> Option<thread::JoinH
     thread::Builder::new()
         .name("sanedit".into())
         .spawn(move || {
+            rt.spawn(redraw_debouncer(handle.clone()));
+
             // tokio runtime is moved here, it is killed when the editor main loop exits
             let jobs_handle = rt.block_on(spawn_jobs(handle));
 

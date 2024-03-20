@@ -169,6 +169,7 @@ impl KeepInTouch for OpenFile {
                             .map(|mat| SelectorOption::from(mat))
                             .collect();
                         win.prompt.provide_options(opts.into());
+                        redraw!();
                     }
                 },
             }

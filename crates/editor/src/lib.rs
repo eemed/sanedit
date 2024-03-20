@@ -1,6 +1,12 @@
 #[macro_use]
 extern crate sanedit_macros;
 
+macro_rules! redraw {
+    () => {{
+        crate::editor::REDRAW_NOTIFY.notify_one();
+    }};
+}
+
 pub(crate) mod actions;
 pub(crate) mod common;
 pub(crate) mod draw;

@@ -274,7 +274,6 @@ impl View {
         self.needs_redraw = true;
     }
 
-    // TODO remove
     pub fn last_non_empty_cell(&self, line: usize) -> Option<Point> {
         let mut last = None;
         let row = &self.cells[line];

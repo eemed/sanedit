@@ -21,13 +21,13 @@ digit           = [0..9];
 integer         = "-"? [1..9] digit*;
 float           = integer "." digit+;
 boolean         = ("true" / "false");
-datetime        = ([1..9] digit digit digit) "-";
-                   (digit digit) "-";
-                   (digit digit) "T";
-                   (digit digit) ":";
-                   (digit digit) ":";
-                   (digit digit);
-                   ("." digit+)?;
+datetime        = ([1..9] digit digit digit) "-"
+                   (digit digit) "-"
+                   (digit digit) "T"
+                   (digit digit) ":"
+                   (digit digit) ":"
+                   (digit digit)
+                   ("." digit+)?
                    "Z";
 
 @whitespaced

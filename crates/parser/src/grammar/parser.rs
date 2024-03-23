@@ -1,6 +1,7 @@
 mod rule;
 
 use std::collections::HashMap;
+use std::collections::HashSet;
 use std::mem;
 
 use crate::input::Input;
@@ -28,9 +29,13 @@ pub(crate) fn parse_rules<I: Input>(input: I) -> Result<Box<[Rule]>> {
         token,
         rules: vec![],
         indices: HashMap::new(),
+        seen: HashSet::new(),
     };
     parser.parse()
 }
+
+pub(crate) const CHAR_MIN: char = '\u{0}';
+pub(crate) const CHAR_MAX: char = '\u{10ffff}';
 
 // Operator      Priority
 // (e)           5
@@ -44,14 +49,21 @@ pub(crate) struct GrammarParser<I: Input> {
     lex: Lexer<I>,
     token: Token,
 
+    /// Seen rules, used to identify rules that are referenced but not defined
+    seen: HashSet<String>,
+    /// All the parsed rules
     rules: Vec<Rule>,
+    /// Map from rule name to its index
     indices: HashMap<String, usize>,
 }
 
 impl<I: Input> GrammarParser<I> {
     fn parse(mut self) -> Result<Box<[Rule]>> {
+        // TODO: We should transform any NotFollowedBy(NotFollowedBy(..)) to FollowedBy(..)
+
         while self.token != Token::EOF {
             let rule = self.rule()?;
+            self.seen.insert(rule.name.clone());
 
             match self.indices.get(&rule.name) {
                 Some(i) => {
@@ -66,8 +78,19 @@ impl<I: Input> GrammarParser<I> {
         }
 
         self.apply_annotations()?;
+        self.validate()?;
 
         Ok(self.rules.into())
+    }
+
+    fn validate(&mut self) -> Result<()> {
+        for rule in &self.rules {
+            if !self.seen.contains(&rule.name) {
+                bail!("Referenced non existent rule: {}", rule.name);
+            }
+        }
+
+        Ok(())
     }
 
     fn apply_annotations(&mut self) -> Result<()> {
@@ -95,11 +118,13 @@ impl<I: Input> GrammarParser<I> {
                 }
             }
 
+            const WS_NAME: &str = "WS*";
             self.rules.push(Rule {
-                name: "WS*".into(),
+                name: WS_NAME.into(),
                 def: ws_zom,
                 annotations: vec![],
             });
+            self.seen.insert(WS_NAME.into());
         }
 
         Ok(())
@@ -231,6 +256,10 @@ impl<I: Input> GrammarParser<I> {
                 self.consume(Token::Quote)?;
                 RuleDefinition::CharSequence(literal)
             }
+            Token::AnyChar => {
+                self.consume(Token::AnyChar)?;
+                RuleDefinition::CharRange(CHAR_MIN, CHAR_MAX)
+            }
             Token::Text(_) => {
                 let ref_rule = self.text()?;
 
@@ -322,6 +351,11 @@ impl<I: Input> GrammarParser<I> {
     fn brackets(&mut self) -> Result<RuleDefinition> {
         let mut choices = vec![];
         let mut range = false;
+        let negate = self.token == Token::Negate;
+        if negate {
+            self.skip()?;
+        }
+
         while self.token != Token::RBracket {
             match &self.token {
                 Token::Char(ch) => {
@@ -371,6 +405,40 @@ impl<I: Input> GrammarParser<I> {
                     self.lex.pos()
                 ),
             }
+        }
+
+        if negate {
+            let mut inverted = vec![];
+            for choice in &choices {
+                match choice {
+                    RuleDefinition::CharSequence(a) => {
+                        let ch = a.chars().next().unwrap();
+                        let next = char::from_u32(ch as u32 + 1);
+
+                        if let Some(n) = next {
+                            inverted.push(CHAR_MIN..ch);
+                            inverted.push(n..CHAR_MAX);
+                        } else {
+                            inverted.push(CHAR_MIN..ch);
+                        }
+                    }
+                    RuleDefinition::CharRange(a, b) => {
+                        let start = CHAR_MIN..*a;
+                        let end = *b..CHAR_MAX;
+                        if !start.is_empty() {
+                            inverted.push(start.start..start.end);
+                        }
+
+                        if !end.is_empty() {
+                            inverted.push(end.start..end.end);
+                        }
+                    }
+                    _ => unreachable!(),
+                }
+            }
+
+            // TODO optimize
+            bail!("deduplicate inverted ranges")
         }
 
         Ok(RuleDefinition::Choice(choices))

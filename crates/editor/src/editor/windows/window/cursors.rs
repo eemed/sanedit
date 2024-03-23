@@ -3,7 +3,6 @@ mod cursor;
 use std::{cmp::min, ops::Range};
 
 pub(crate) use cursor::Cursor;
-use sanedit_buffer::SortedPositions;
 
 use crate::{common::range::RangeUtils, editor::buffers::SortedRanges};
 
@@ -153,8 +152,7 @@ impl Default for Cursors {
     }
 }
 
-impl From<&Cursors> for SortedPositions<'static> {
-    /// Crate Sorted ranges from all of the cursors selections
+impl From<&Cursors> for Vec<usize> {
     fn from(cursors: &Cursors) -> Self {
         let positions: Vec<usize> = cursors.cursors().iter().map(|c| c.pos()).collect();
         positions.into()

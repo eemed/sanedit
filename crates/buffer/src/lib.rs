@@ -1,13 +1,12 @@
 #[macro_use]
 extern crate lazy_static;
 
-mod cursor_iterator;
 mod piece_tree;
 mod search;
 
 pub use piece_tree::{
     builder::PieceTreeBuilder, bytes::Bytes, chunks::Chunks, slice::PieceTreeSlice, Mark,
-    PieceTree, ReadOnlyPieceTree, SortedPositions,
+    PieceTree, ReadOnlyPieceTree,
 };
 
 pub use search::{SearchIter, SearchIterRev, Searcher, SearcherRev};

@@ -3,11 +3,11 @@ pub(crate) mod builder;
 pub(crate) mod bytes;
 pub(crate) mod chunks;
 pub(crate) mod inplace;
-pub(crate) mod positions;
 pub(crate) mod slice;
 pub(crate) mod tree;
 pub(crate) mod utf8;
 
+use std::borrow::Cow;
 use std::cmp;
 use std::io::{self, Write};
 use std::ops::{Bound, RangeBounds};
@@ -15,6 +15,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use self::buffers::{AddBuffer, AddBufferReader, AddBufferWriter};
+use self::inplace::write_in_place;
 use self::tree::pieces::Pieces;
 use self::tree::Tree;
 use self::utf8::graphemes::Graphemes;
@@ -27,7 +28,6 @@ use buffers::OriginalBuffer;
 use self::slice::PieceTreeSlice;
 use self::utf8::chars::Chars;
 use crate::piece_tree::bytes::Bytes;
-pub use positions::SortedPositions;
 
 pub(crate) const FILE_BACKED_MAX_PIECE_SIZE: usize = 1024 * 256;
 
@@ -129,11 +129,19 @@ impl PieceTree {
     /// insertion would create a new piece because the content in add buffer
     /// would not be sequential. Creating M x N pieces where M is the number of
     /// cursors and N is the number of edits characters.
-    pub fn insert_multi<B: AsRef<[u8]>>(&mut self, positions: &SortedPositions, bytes: B) {
+    pub fn insert_multi<B: AsRef<[u8]>>(&mut self, positions: &[usize], bytes: B) {
         let mut bytes = bytes.as_ref();
         if bytes.is_empty() {
             return;
         }
+
+        let positions: Cow<[usize]> = if is_sorted(positions) {
+            positions.into()
+        } else {
+            let mut poss: Vec<usize> = positions.into();
+            poss.sort();
+            poss.into()
+        };
 
         while !bytes.is_empty() {
             let bpos = self.add_writer.len();
@@ -332,9 +340,9 @@ impl PieceTree {
     ///         incomplete state
     ///      2. Probably slower than writing a copy if insert/remove operations are
     ///         in the beginning portion of the file
-    ///      3. Previously created undo points/marks cannot be used anymore
-    unsafe fn write_in_place(self) -> io::Result<()> {
-        inplace::write_in_place(&self.pt)
+    ///      3. Previously created read only copies/marks cannot be used anymore
+    unsafe fn write_in_place(&self) -> io::Result<()> {
+        self.pt.write_in_place()
     }
 
     #[inline]
@@ -539,8 +547,24 @@ impl ReadOnlyPieceTree {
         cmp::min(mark.orig, self.len)
     }
 
-    pub fn write_in_place(&mut self) -> io::Result<()> {
-        Ok(())
+    ///
+    /// Writes the file in place if the buffer is file backed
+    ///
+    /// UNSAFETY: All previously created ReadOnlyPieceTrees cannot be used
+    /// anymore.
+    ///
+    /// Good:
+    ///      1. If only replaced or appended bytes, saving will be very fast
+    ///      2. No need for additional disk space as no copy is created
+    ///
+    /// Bad:
+    ///      1. If io error occurs while saving the file will be left in an
+    ///         incomplete state
+    ///      2. Probably slower than writing a copy if insert/remove operations are
+    ///         in the beginning portion of the file
+    ///      3. Previously created read only copies/marks cannot be used anymore
+    pub unsafe fn write_in_place(&self) -> io::Result<()> {
+        write_in_place(&self)
     }
 
     pub fn write_to<W: Write>(&self, mut writer: W) -> io::Result<usize> {
@@ -595,4 +619,18 @@ impl From<&ReadOnlyPieceTree> for Vec<u8> {
 
         bytes
     }
+}
+
+fn is_sorted(arr: &[usize]) -> bool {
+    let mut min = 0;
+
+    for item in arr {
+        if min > *item {
+            return false;
+        }
+
+        min = *item;
+    }
+
+    true
 }

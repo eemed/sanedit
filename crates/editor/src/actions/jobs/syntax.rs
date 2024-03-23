@@ -65,6 +65,7 @@ impl KeepInTouch for SyntaxParser {
         if let Ok(output) = msg.downcast::<SyntaxParseResult>() {
             let (win, _buf) = editor.win_buf_mut(self.client_id);
             win.on_syntax_parsed(*output);
+            redraw!();
         }
     }
 

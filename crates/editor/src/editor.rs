@@ -211,7 +211,6 @@ impl Editor {
             _ => {}
         }
 
-        // TODO optimize
         redraw!();
 
         // ---TEST---

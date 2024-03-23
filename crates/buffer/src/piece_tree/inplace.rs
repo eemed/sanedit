@@ -56,7 +56,7 @@ pub fn write_in_place(pt: &ReadOnlyPieceTree) -> io::Result<()> {
     if !pt.is_file_backed() {
         return Err(io::Error::new(
             io::ErrorKind::Unsupported,
-            "piecetree is not file backed",
+            "PieceTree is not file backed",
         ));
     }
 

@@ -30,7 +30,7 @@ impl Match {
 
 impl PartialEq for Match {
     fn eq(&self, other: &Self) -> bool {
-        self.score == other.score
+        (self.score, &self.value) == (other.score, &other.value)
     }
 }
 
@@ -38,13 +38,13 @@ impl Eq for Match {}
 
 impl PartialOrd for Match {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        self.score.partial_cmp(&other.score)
+        (self.score, &self.value).partial_cmp(&(other.score, &other.value))
     }
 }
 
 impl Ord for Match {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.score.cmp(&other.score)
+        (self.score, &self.value).cmp(&(other.score, &other.value))
     }
 }
 

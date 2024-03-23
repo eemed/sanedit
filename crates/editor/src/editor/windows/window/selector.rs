@@ -1,7 +1,5 @@
 mod options;
 
-use std::{cmp::min, mem};
-
 use sanedit_utils::sorted_vec::SortedVec;
 
 pub(crate) use options::*;

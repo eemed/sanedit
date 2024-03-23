@@ -24,6 +24,8 @@ pub(crate) enum Token {
     RBracket,
     Char(char),
     Range,
+    AnyChar,
+    Negate,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -176,6 +178,10 @@ impl<I: Input> Lexer<I> {
         };
 
         match ch {
+            '.' => {
+                self.advance()?;
+                return Ok(Token::AnyChar);
+            }
             '@' => {
                 self.advance()?;
                 return Ok(Token::Annotation);
@@ -282,6 +288,10 @@ impl<I: Input> Lexer<I> {
                 self.state = State::Normal;
                 return Ok(Token::RBracket);
             }
+            '^' => {
+                self.advance()?;
+                return Ok(Token::Negate);
+            }
             '\\' => {
                 self.advance()?;
                 match self.input.peek() {
@@ -300,6 +310,18 @@ impl<I: Input> Lexer<I> {
                     Some(']') => {
                         self.advance()?;
                         Ok(Token::Char(']'))
+                    }
+                    Some('.') => {
+                        self.advance()?;
+                        Ok(Token::Char('.'))
+                    }
+                    Some('[') => {
+                        self.advance()?;
+                        Ok(Token::Char('['))
+                    }
+                    Some('^') => {
+                        self.advance()?;
+                        Ok(Token::Char('^'))
                     }
                     Some('x') => {
                         self.advance()?;

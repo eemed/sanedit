@@ -8,19 +8,16 @@ mod search;
 mod selector;
 mod view;
 
-use std::ops::Range;
-
-use sanedit_buffer::SortedPositions;
 use sanedit_messages::redraw::{Severity, Size, StatusMessage};
 
 use crate::{
     common::{
         char::DisplayOptions,
-        movement::{self, prev_grapheme_boundary},
+        movement,
         text::{as_lines, to_line},
     },
     editor::{
-        buffers::{Buffer, BufferId, ChangeKind, SnapshotData, SortedRanges},
+        buffers::{Buffer, BufferId, SnapshotData, SortedRanges},
         clipboard::{Clipboard, DefaultClipboard},
         keymap::{DefaultKeyMappings, KeyMappings, Keymap},
     },
@@ -257,7 +254,7 @@ impl Window {
         }
     }
 
-    fn insert(&mut self, buf: &mut Buffer, positions: &SortedPositions, text: &str) {
+    fn insert(&mut self, buf: &mut Buffer, positions: &[usize], text: &str) {
         let change = buf.insert_multi(positions, text);
         if let Some(id) = change.created_snapshot {
             buf.store_snapshot_data(id, self.create_snapshot_data());
@@ -340,7 +337,8 @@ impl Window {
     pub fn insert_at_cursors(&mut self, buf: &mut Buffer, text: &str) {
         // TODO use a replace operation instead if removing
         self.remove_cursor_selections(buf);
-        self.insert(buf, &(&self.cursors).into(), text);
+        let positions: Vec<usize> = (&self.cursors).into();
+        self.insert(buf, &positions, text);
 
         let mut inserted = 0;
         for cursor in self.cursors.cursors_mut() {

@@ -43,7 +43,7 @@ impl SelectorOption {
 
 impl PartialEq for SelectorOption {
     fn eq(&self, other: &Self) -> bool {
-        self.score == other.score
+        (self.score, &self.value) == (other.score, &other.value)
     }
 }
 
@@ -51,13 +51,13 @@ impl Eq for SelectorOption {}
 
 impl PartialOrd for SelectorOption {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        self.score.partial_cmp(&other.score)
+        (self.score, &self.value).partial_cmp(&(other.score, &other.value))
     }
 }
 
 impl Ord for SelectorOption {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.score.cmp(&other.score)
+        (self.score, &self.value).cmp(&(other.score, &other.value))
     }
 }
 

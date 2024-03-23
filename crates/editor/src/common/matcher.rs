@@ -104,9 +104,8 @@ impl Matcher {
                     let candidates = reader.slice(batch);
                     for can in candidates.into_iter() {
                         if let Some(ranges) = matches_with(&can, &terms, case_sensitive) {
-                            // TODO: scoring algorithm
                             let mat = Match {
-                                score: can.len() as u32,
+                                score: score(can.as_str(), &ranges),
                                 value: can.clone(),
                                 ranges,
                             };
@@ -126,6 +125,16 @@ impl Matcher {
 
         MatchReceiver { receiver: rx }
     }
+}
+
+// Score a match
+fn score(opt: &str, ranges: &[Range<usize>]) -> u32 {
+    // Closest match first
+    // Shortest item first
+    ranges
+        .get(0)
+        .map(|f| f.start as u32)
+        .unwrap_or(opt.len() as u32)
 }
 
 fn matches_with(

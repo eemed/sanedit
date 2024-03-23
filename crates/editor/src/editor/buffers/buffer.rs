@@ -11,7 +11,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use sanedit_buffer::{PieceTree, PieceTreeSlice, ReadOnlyPieceTree, SortedPositions};
+use sanedit_buffer::{PieceTree, PieceTreeSlice, ReadOnlyPieceTree};
 
 use crate::common::{dirs::tmp_file, file::File};
 
@@ -198,14 +198,14 @@ impl Buffer {
     }
 
     pub fn append<B: AsRef<[u8]>>(&mut self, bytes: B) -> &Change {
-        self.insert_multi(&self.pt.len().into(), bytes)
+        self.insert_multi(&[self.pt.len()], bytes)
     }
 
     pub fn insert<B: AsRef<[u8]>>(&mut self, pos: usize, bytes: B) -> &Change {
-        self.insert_multi(&pos.into(), bytes)
+        self.insert_multi(&[pos], bytes)
     }
 
-    pub fn insert_multi<B: AsRef<[u8]>>(&mut self, pos: &SortedPositions, bytes: B) -> &Change {
+    pub fn insert_multi<B: AsRef<[u8]>>(&mut self, pos: &[usize], bytes: B) -> &Change {
         let bytes = bytes.as_ref();
         let ranges: Vec<BufferRange> = pos.iter().map(|pos| *pos..pos + bytes.len()).collect();
         let change = Change::insert(&ranges.into(), bytes);

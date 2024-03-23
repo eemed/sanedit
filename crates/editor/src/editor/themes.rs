@@ -75,6 +75,7 @@ fn default() -> Theme {
     ins(Constant, ",#014CC0,");
     ins(Identifier, ",#014CC0,");
     ins(Number, ",#014CC0,");
+    ins(Comment, ",#7f755f,");
 
     theme
 }

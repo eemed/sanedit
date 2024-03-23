@@ -103,6 +103,7 @@ impl KeepInTouch for StaticMatcher {
                             .collect();
                         let (win, _buf) = editor.win_buf_mut(self.client_id);
                         win.prompt.provide_options(opts.into());
+                        redraw!();
                     }
                 },
             }

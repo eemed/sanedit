@@ -1,9 +1,4 @@
-use std::{
-    collections::HashMap,
-    ops::Range,
-    path::{Path, PathBuf},
-    sync::Arc,
-};
+use std::{collections::HashMap, ops::Range, path::Path, sync::Arc};
 
 use sanedit_buffer::ReadOnlyPieceTree;
 use sanedit_parser::AST;
@@ -21,17 +16,21 @@ pub(crate) struct Syntaxes {
 
 impl Syntaxes {
     pub fn for_filetype(&mut self, ft: &Filetype, conf_dir: &Path) -> anyhow::Result<Syntax> {
-        match self.syntaxes.get(ft) {
-            Some(s) => Ok(s.clone()),
-            None => {
-                let grammar = Grammar::for_filetype(ft, conf_dir)?;
-                let syntax = Syntax {
-                    grammar: Arc::new(grammar),
-                };
-                self.syntaxes.insert(ft.clone(), syntax.clone());
-                Ok(syntax)
+        if let Some(s) = self.syntaxes.get(ft) {
+            if let Ok(stime) = Grammar::filetype_modified_at(ft, conf_dir) {
+                if s.grammar.file_modified_at() == &stime {
+                    return Ok(s.clone());
+                }
             }
         }
+
+        log::debug!("Reloading syntax for {}", ft.as_str());
+        let grammar = Grammar::for_filetype(ft, conf_dir)?;
+        let syntax = Syntax {
+            grammar: Arc::new(grammar),
+        };
+        self.syntaxes.insert(ft.clone(), syntax.clone());
+        Ok(syntax)
     }
 }
 

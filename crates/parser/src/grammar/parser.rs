@@ -200,6 +200,10 @@ impl<I: Input> GrammarParser<I> {
             }
         }
 
+        if rules.is_empty() {
+            bail!("Failed to create choice at: {}", self.lex.pos())
+        }
+
         if rules.len() > 1 {
             Ok(RuleDefinition::Choice(rules))
         } else {
@@ -223,6 +227,10 @@ impl<I: Input> GrammarParser<I> {
                     }
                 }
             }
+        }
+
+        if rules.is_empty() {
+            bail!("Failed to create sequence at: {}", self.lex.pos())
         }
 
         if rules.len() > 1 {

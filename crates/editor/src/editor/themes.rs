@@ -23,6 +23,8 @@ fn default() -> Theme {
     // BG DARK2 #C0A886
     // BG DARK3 #B8A282
     //
+    // BG DARK4 #896b60
+    //
     // BROWN FG #936039
     // BLUE FG  #014CC0
     // RED FG   #C02614
@@ -42,9 +44,9 @@ fn default() -> Theme {
     // RED    #FF6262
 
     ins(Default, "#E2DBC8,#000000,");
-    ins(Statusline, "#896b60,#2a130d,");
+    ins(Statusline, "#B8A282,#2a130d,");
     ins(EndOfBuffer, ",#7f755f,");
-    ins(Selection, "#fa9e64,,");
+    ins(Selection, "#efb679,,");
     ins(Match, "#C0A886,,");
     ins(Symbols, ",#606060,");
     ins(Cursor, "#a4ac86,,");
@@ -55,7 +57,7 @@ fn default() -> Theme {
     ins(PromptUserInput, ",#000000,");
 
     ins(Gutter, ",#4C4C4C,bold");
-    ins(PromptCompletionSelected, "#fa9e64,,");
+    ins(PromptCompletionSelected, "#efb679,,");
     ins(PromptCompletionSelectedDescription, ",,");
     ins(PromptCompletionSelectedMatch, ",#b0463a,");
     ins(PromptCompletion, "#d8ccb4,#000000,");
@@ -72,11 +74,11 @@ fn default() -> Theme {
     ins(Error, "#c0564a,#000000,");
 
     ins(String, ",#3C780A,");
-    ins(Constant, ",#014CC0,");
-    ins(Identifier, ",#936039,");
-    ins(Number, ",#014CC0,");
-    // ins(Comment, ",#7f755f,");
-    ins(Comment, "#D8CCB4,,");
+    ins(Constant, ",#244B4A,");
+    ins(Identifier, ",#835029,");
+    ins(Number, ",#4C4C4C,");
+    ins(Comment, ",#194a7a,");
+    ins(Operator, ",#244B4A,");
 
     theme
 }

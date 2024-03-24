@@ -120,6 +120,7 @@ pub enum ThemeField {
     Identifier,
     Number,
     Comment,
+    Operator,
 
     Info,
     Warn,
@@ -165,6 +166,7 @@ impl AsRef<str> for ThemeField {
             Identifier => "window.view.identifier",
             Number => "window.view.number",
             Comment => "window.view.comment",
+            Operator => "window.view.operator",
 
             PromptDefault => "prompt",
             PromptMessage => "prompt.message",

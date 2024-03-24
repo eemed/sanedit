@@ -2,15 +2,17 @@
 document        = key_group*;
 key_group       = header_line? value_line+ ignore;
 
-header_line     = ignore "[" key_name "]" line_end;
+@show
+@alias(header)
+header_line     = ignore "["+ key_name "]"+ line_end;
 
 @show
 @alias(identifier)
 key_name        = key_segment ("." key_segment)*;
-key_segment     = [^\[\]\.]+;
+key_segment     = [^\[\]\.\n\r]+;
 
 value_line      = ignore name ws "=" ws value line_end;
-name            = (!space .)+;
+name            = (!space !nl .)+;
 value           = string / datetime / float / integer / boolean / array;
 
 @show

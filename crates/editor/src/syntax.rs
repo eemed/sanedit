@@ -49,6 +49,7 @@ impl Syntax {
     ) -> SyntaxParseResult {
         let slice = ropt.slice(..);
         let ast = self.grammar.parse(&slice);
+        log::debug!("{}", ast.print_string(&String::from(&slice)));
         let spans = ast.flatten().into_iter().map(Span::from).collect();
 
         SyntaxParseResult {

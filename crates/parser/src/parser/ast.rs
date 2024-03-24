@@ -74,8 +74,6 @@ impl AST {
             .preproc
             .names
             .get(&mat.key.clause)
-            .map(|n| n.get(0))
-            .flatten()
             .map(String::as_str)
             .unwrap_or("<unkown>");
 

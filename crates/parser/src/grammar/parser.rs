@@ -8,6 +8,7 @@ use crate::input::Input;
 use crate::input::StringInput;
 use anyhow::bail;
 use anyhow::Result;
+use sanedit_utils::ranges::OverlappingRanges;
 
 pub(crate) use self::rule::Annotation;
 pub(crate) use self::rule::Rule;
@@ -59,8 +60,6 @@ pub(crate) struct GrammarParser<I: Input> {
 
 impl<I: Input> GrammarParser<I> {
     fn parse(mut self) -> Result<Box<[Rule]>> {
-        // TODO: We should transform any NotFollowedBy(NotFollowedBy(..)) to FollowedBy(..)
-
         while self.token != Token::EOF {
             let rule = self.rule()?;
             self.seen.insert(rule.name.clone());
@@ -130,11 +129,18 @@ impl<I: Input> GrammarParser<I> {
         Ok(())
     }
 
-    fn annotation(&mut self) -> Result<Option<String>> {
+    fn annotation(&mut self) -> Result<Option<(String, String)>> {
         if self.token == Token::Annotation {
             self.consume(Token::Annotation)?;
-            let text = self.text()?;
-            Ok(Some(text))
+            let ann = self.text()?;
+
+            let mut specifiers = String::new();
+            if self.token == Token::LParen {
+                self.consume(Token::LParen)?;
+                specifiers = self.text()?;
+                self.consume(Token::RParen)?;
+            }
+            Ok(Some((ann, specifiers)))
         } else {
             Ok(None)
         }
@@ -142,10 +148,11 @@ impl<I: Input> GrammarParser<I> {
 
     fn annotations(&mut self) -> Result<Vec<Annotation>> {
         let mut anns = vec![];
-        while let Some(ann) = self.annotation()? {
+        while let Some((ann, specifiers)) = self.annotation()? {
             match ann.as_str() {
                 "whitespaced" => anns.push(Annotation::Whitespaced),
                 "show" => anns.push(Annotation::Show),
+                "alias" => anns.push(Annotation::Alias(specifiers)),
                 a => bail!("Unexpected annotation {a}"),
             }
         }
@@ -230,12 +237,12 @@ impl<I: Input> GrammarParser<I> {
         let mut rule = match &self.token {
             Token::And => {
                 self.consume(Token::And)?;
-                let rule = self.rule_def()?;
+                let rule = self.clause()?;
                 RuleDefinition::FollowedBy(rule.into())
             }
             Token::Not => {
                 self.consume(Token::Not)?;
-                let rule = self.rule_def()?;
+                let rule = self.clause()?;
                 RuleDefinition::NotFollowedBy(rule.into())
             }
             Token::LParen => {
@@ -408,37 +415,33 @@ impl<I: Input> GrammarParser<I> {
         }
 
         if negate {
-            let mut inverted = vec![];
+            let mut ranges = OverlappingRanges::default();
             for choice in &choices {
                 match choice {
                     RuleDefinition::CharSequence(a) => {
                         let ch = a.chars().next().unwrap();
-                        let next = char::from_u32(ch as u32 + 1);
-
-                        if let Some(n) = next {
-                            inverted.push(CHAR_MIN..ch);
-                            inverted.push(n..CHAR_MAX);
-                        } else {
-                            inverted.push(CHAR_MIN..ch);
-                        }
+                        let ch = ch as usize;
+                        ranges.add(ch..ch + 1);
                     }
                     RuleDefinition::CharRange(a, b) => {
-                        let start = CHAR_MIN..*a;
-                        let end = *b..CHAR_MAX;
-                        if !start.is_empty() {
-                            inverted.push(start.start..start.end);
-                        }
-
-                        if !end.is_empty() {
-                            inverted.push(end.start..end.end);
-                        }
+                        ranges.add(*a as usize..*b as usize + 1);
                     }
                     _ => unreachable!(),
                 }
             }
 
-            // TODO optimize
-            bail!("deduplicate inverted ranges")
+            ranges.invert(CHAR_MIN as usize..CHAR_MAX as usize + 1);
+            choices.clear();
+
+            for range in ranges.iter() {
+                let start = char::from_u32(range.start as u32);
+                let end = char::from_u32(range.end as u32 - 1);
+
+                match (start, end) {
+                    (Some(a), Some(b)) => choices.push(RuleDefinition::CharRange(a, b)),
+                    _ => bail!("Failed to convert ranges back to char ranges"),
+                }
+            }
         }
 
         Ok(RuleDefinition::Choice(choices))

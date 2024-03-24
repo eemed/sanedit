@@ -11,7 +11,7 @@ use super::{
 
 #[derive(Debug)]
 pub(crate) struct Clauses {
-    pub(crate) names: HashMap<usize, Vec<String>>,
+    pub(crate) names: HashMap<usize, String>,
     pub(crate) clauses: Box<[Clause]>,
 }
 
@@ -80,8 +80,8 @@ pub(super) fn preprocess_rules(rules: &[Rule]) -> anyhow::Result<Clauses> {
             clauses[rid].show = true;
         }
 
-        let val: &mut Vec<String> = names.entry(rid).or_default();
-        val.push(rule.name.clone());
+        let val: &mut String = names.entry(rid).or_default();
+        *val = rule.name();
     }
 
     let rule_starts = {
@@ -92,17 +92,31 @@ pub(super) fn preprocess_rules(rules: &[Rule]) -> anyhow::Result<Clauses> {
         set
     };
 
+    solve_not_followed_by(&mut clauses);
     sort_topologically(&rule_starts, &mut clauses);
     determine_can_match_zero(&mut clauses);
     setup_seed_parents(&mut clauses);
     validate(&clauses)?;
 
     // debug_print(&rules, &clauses);
+    // debug_log(&rules, &clauses);
 
     Ok(Clauses {
         names,
         clauses: clauses.into(),
     })
+}
+
+fn debug_log(rules: &[Rule], clauses: &[Clause]) {
+    log::debug!("----- Rules ------");
+    for rule in rules {
+        log::debug!("{}", rule);
+    }
+
+    log::debug!("----- Clauses ------");
+    for clause in clauses {
+        log::debug!("{:?}", clause);
+    }
 }
 
 fn debug_print(rules: &[Rule], clauses: &[Clause]) {
@@ -114,6 +128,56 @@ fn debug_print(rules: &[Rule], clauses: &[Clause]) {
     println!("----- Clauses ------");
     for clause in clauses {
         println!("{:?}", clause);
+    }
+}
+
+fn solve_not_followed_by(clauses: &mut [Clause]) {
+    let mut changed = true;
+    while changed {
+        for i in 0..clauses.len() {
+            changed = false;
+
+            let clause = &clauses[i];
+            match clause.kind {
+                ClauseKind::FollowedBy => {
+                    let change = {
+                        let sub = clause.sub[0];
+                        let subcl = &clauses[sub];
+                        if subcl.kind == ClauseKind::NotFollowedBy {
+                            Some(subcl.sub[0])
+                        } else {
+                            None
+                        }
+                    };
+
+                    if let Some(sub) = change {
+                        let clause = &mut clauses[i];
+                        clause.kind = ClauseKind::NotFollowedBy;
+                        clause.sub[0] = sub;
+                        changed = true;
+                    }
+                }
+                ClauseKind::NotFollowedBy => {
+                    let change = {
+                        let sub = clause.sub[0];
+                        let subcl = &clauses[sub];
+                        if subcl.kind == ClauseKind::NotFollowedBy {
+                            Some(subcl.sub[0])
+                        } else {
+                            None
+                        }
+                    };
+
+                    if let Some(sub) = change {
+                        let clause = &mut clauses[i];
+                        clause.kind = ClauseKind::FollowedBy;
+                        clause.sub[0] = sub;
+                        changed = true;
+                    }
+                }
+                _ => {}
+            }
+        }
     }
 }
 
@@ -160,6 +224,7 @@ fn determine_can_match_zero(clauses: &mut [Clause]) {
                 ClauseKind::CharSequence(s) => s.is_empty(),
                 ClauseKind::CharRange(a, b) => a > b,
                 ClauseKind::Nothing => true,
+                ClauseKind::NotFollowedBy => true,
                 _ => clause.sub.iter().all(|i| (&clauses[*i]).can_match_zero),
             };
 

@@ -1,8 +1,14 @@
+@show
 document        = key_group*;
 key_group       = header_line? value_line+ ignore;
+
 header_line     = ignore "[" key_name "]" line_end;
+
+@show
+@alias(identifier)
 key_name        = key_segment ("." key_segment)*;
 key_segment     = [^\[\]\.]+;
+
 value_line      = ignore name ws "=" ws value line_end;
 name            = (!space .)+;
 value           = string / datetime / float / integer / boolean / array;
@@ -13,13 +19,19 @@ array           = (empty_array / string_array / datetime_array / float_array / i
 @show
 string          = "\"" ("\\" escape_char / [^"])* "\"";
 
-@show
-number          = integer / float;
-
 escape_char     = "0" / "t" / "n" / "r" / "\"" / "\\";
 digit           = [0..9];
+
+@show
+@alias(number)
 integer         = "-"? [1..9] digit*;
+
+@show
+@alias(number)
 float           = integer "." digit+;
+
+@show
+@alias(constant)
 boolean         = ("true" / "false");
 datetime        = ([1..9] digit digit digit) "-"
                    (digit digit) "-"
@@ -34,27 +46,31 @@ datetime        = ([1..9] digit digit digit) "-"
 empty_array     = "[" "]";
 
 @whitespaced
-string_array    = "[" string   ("," string)*   "]";
+string_array    = "[" string   ("," string)*  ","? "]";
 
 @whitespaced
-integer_array   = "[" integer  ("," integer)*  "]";
+integer_array   = "[" integer  ("," integer)* ","? "]";
 
 @whitespaced
-float_array     = "[" float    ("," float)*    "]";
+float_array     = "[" float    ("," float)*   ","? "]";
 
 @whitespaced
-boolean_array   = "[" boolean  ("," boolean)*  "]";
+boolean_array   = "[" boolean  ("," boolean)*  ","? "]";
 
 @whitespaced
-datetime_array  = "[" datetime ("," datetime)* "]";
+datetime_array  = "[" datetime ("," datetime)* ","? "]";
 
 @whitespaced
-array_array     = "[" array ("," array)* "]";
+array_array     = "[" array ("," array)*  ","? "]";
 
 line_end        = ws comment? !(!nl .);
 ignore          = (comment / space / nl)*;
-comment         = "#" (!nl .)*;
+
+
 ws              = space*;
-WHITESPACE      = space;
+WHITESPACE      = space / nl;
 space           = [ \t];
+
+@show
+comment         = "#" (!nl .)*;
 nl              = "\r\n" / "\r" / "\n";

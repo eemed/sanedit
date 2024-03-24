@@ -1,4 +1,4 @@
-use std::{cmp::min, mem, ops::Index};
+use std::{mem, ops::Index};
 
 /// A vector that is always sorted
 #[derive(Default, Debug, Clone)]

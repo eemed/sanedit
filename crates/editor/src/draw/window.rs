@@ -69,7 +69,6 @@ fn draw_syntax(grid: &mut Vec<Vec<redraw::Cell>>, view: &View, theme: &Theme) {
         }
         const HL_PREFIX: &str = "window.view.";
         let style = theme.get(HL_PREFIX.to_owned() + &span.name);
-        log::info!("Found: {}", span.name);
 
         // TODO optimize
         let mut pos = vrange.start;

@@ -137,7 +137,7 @@ impl<I: Input> Lexer<I> {
                 Some(ch) => ch,
                 None => bail!("Failed to consume string at {}", self.input.pos()),
             };
-            let escape = ch == '\\';
+            let escape = !prev_escape && ch == '\\';
 
             if !prev_escape && ch == until {
                 break;
@@ -145,7 +145,16 @@ impl<I: Input> Lexer<I> {
 
             self.advance()?;
             if !escape || prev_escape {
-                result.push(ch);
+                if prev_escape {
+                    match ch {
+                        't' => result.push('\t'),
+                        'r' => result.push('\r'),
+                        'n' => result.push('\n'),
+                        _ => result.push(ch),
+                    }
+                } else {
+                    result.push(ch)
+                }
             }
 
             prev_escape = escape;
@@ -322,6 +331,10 @@ impl<I: Input> Lexer<I> {
                     Some('^') => {
                         self.advance()?;
                         Ok(Token::Char('^'))
+                    }
+                    Some('\\') => {
+                        self.advance()?;
+                        Ok(Token::Char('\\'))
                     }
                     Some('x') => {
                         self.advance()?;

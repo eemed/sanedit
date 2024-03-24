@@ -4,6 +4,7 @@ use std::{fmt, mem};
 pub(crate) enum Annotation {
     Whitespaced,
     Show,
+    Alias(String),
 }
 
 #[derive(Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Clone)]
@@ -13,6 +14,17 @@ pub(crate) struct Rule {
     pub(crate) def: RuleDefinition,
 }
 impl Rule {
+    pub fn name(&self) -> String {
+        for ann in &self.annotations {
+            match ann {
+                Annotation::Alias(name) => return name.clone(),
+                _ => {}
+            }
+        }
+
+        self.name.clone()
+    }
+
     pub fn apply_whitespaced(&mut self, ws: usize) {
         fn repetition_insert_head(def: &mut RuleDefinition, ws: usize) {
             match def {

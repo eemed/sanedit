@@ -11,7 +11,6 @@ pub(crate) async fn redraw_debouncer(mut handle: EditorHandle) {
         // Wait one notification, send it immediately
         REDRAW_NOTIFY.notified().await;
         handle.send(ToEditor::Redraw).await;
-        log::info!("redraw 1");
 
         // Then update 30fps until we hit timeout without any messages
         let target = Duration::from_millis(1000 / 30);
@@ -23,14 +22,12 @@ pub(crate) async fn redraw_debouncer(mut handle: EditorHandle) {
                 .unwrap_or(target);
             match timeout(limit, REDRAW_NOTIFY.notified()).await {
                 Ok(_) => {
-                    log::info!("notififed");
                     if received_at.is_none() {
                         received_at = Some(Instant::now());
                     }
                 }
                 Err(_) => {
                     if received_at.is_some() {
-                        log::info!("redraw 2");
                         received_at = None;
                         handle.send(ToEditor::Redraw).await;
                     } else {

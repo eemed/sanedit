@@ -83,6 +83,8 @@ impl KeyMappings for DefaultKeyMappings {
 
              "alt+o a", text_objects::select_in_angle,
              "alt+o A", text_objects::select_angle,
+
+             "alt+z", window::reload,
         );
 
         map

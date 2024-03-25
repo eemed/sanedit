@@ -47,6 +47,7 @@ use crate::StartOptions;
 
 use self::buffers::BufferId;
 use self::buffers::Buffers;
+use self::buffers::Filetype;
 use self::hooks::Hooks;
 use self::job_broker::JobBroker;
 use self::options::Options;
@@ -63,14 +64,14 @@ pub(crate) struct Editor {
     clients: HashMap<ClientId, ClientHandle>,
     draw_states: HashMap<ClientId, DrawState>,
     windows: Windows,
-    syntaxes: Syntaxes,
     buffers: Buffers,
     keys: Vec<KeyEvent>,
     is_running: bool,
-    working_dir: PathBuf,
-    config_dir: PathBuf,
     themes: HashMap<String, Theme>,
 
+    pub working_dir: PathBuf,
+    pub config_dir: PathBuf,
+    pub syntaxes: Syntaxes,
     pub job_broker: JobBroker,
     pub hooks: Hooks,
     pub options: Options,
@@ -219,7 +220,7 @@ impl Editor {
         let buf = self.buffers.get(win.buffer_id()).unwrap();
         let ropt = buf.read_only_copy();
         if let Some(ft) = &buf.filetype {
-            match self.syntaxes.for_filetype(ft, &self.config_dir) {
+            match self.syntaxes.get_or_load(ft, &self.config_dir) {
                 Ok(s) => {
                     self.job_broker
                         .request(SyntaxParser::new(id, buf.id, s, ropt, range));
@@ -418,6 +419,22 @@ impl Editor {
 
     pub fn draw_state(&mut self, id: ClientId) -> &mut DrawState {
         self.draw_states.get_mut(&id).unwrap()
+    }
+
+    pub fn reload(&mut self, id: ClientId) {
+        // editor.syntaxes.
+        let (win, buf) = self.win_buf(id);
+        let bid = win.buffer_id();
+        let width = win.view().width();
+        let height = win.view().width();
+
+        // Reload syntax
+        if let Some(ft) = buf.filetype.clone() {
+            let _ = self.syntaxes.load(&ft, self.config_dir.as_path());
+        }
+
+        let (win, buf) = self.win_buf_mut(id);
+        *win = Window::new(bid, width, height);
     }
 }
 

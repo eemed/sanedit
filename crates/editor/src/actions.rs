@@ -9,6 +9,7 @@ pub(crate) mod search;
 pub(crate) mod text;
 pub(crate) mod text_objects;
 pub(crate) mod view;
+pub(crate) mod window;
 
 #[cfg(test)]
 pub(crate) mod tests;

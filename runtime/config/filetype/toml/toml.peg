@@ -13,7 +13,7 @@ key_segment     = [^\[\]\.\n\r]+;
 
 value_line      = ignore name ws "=" ws value line_end;
 name            = (!space !nl .)+;
-value           = string / datetime / float / integer / boolean / array;
+value           = string / datetime / float / integer / boolean / array / object;
 
 @show
 array           = (empty_array / string_array / datetime_array / float_array / integer_array / boolean_array / array_array);
@@ -43,6 +43,13 @@ datetime        = ([1..9] digit digit digit) "-"
                    (digit digit)
                    ("." digit+)?
                    "Z";
+
+@show
+@whitespaced
+object           = "{" object_value? ("," object_value)* ","? "}";
+
+@whitespaced
+object_value = name "=" value;
 
 @whitespaced
 empty_array     = "[" "]";

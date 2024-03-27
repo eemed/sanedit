@@ -8,7 +8,6 @@ pub(crate) mod themes;
 pub(crate) mod windows;
 
 use sanedit_messages::redraw::Size;
-use sanedit_messages::redraw::Theme;
 use sanedit_messages::ClientMessage;
 use sanedit_messages::KeyEvent;
 use sanedit_messages::KeyMods;
@@ -32,6 +31,7 @@ use crate::actions;
 use crate::actions::cursors;
 use crate::actions::hooks::run;
 use crate::actions::jobs::SyntaxParser;
+use crate::common::dirs::ConfigDirectory;
 use crate::common::file::File;
 use crate::draw::DrawState;
 use crate::editor::buffers::Buffer;
@@ -47,11 +47,11 @@ use crate::StartOptions;
 
 use self::buffers::BufferId;
 use self::buffers::Buffers;
-use self::buffers::Filetype;
 use self::hooks::Hooks;
 use self::job_broker::JobBroker;
 use self::options::Options;
 
+use self::themes::Themes;
 use self::windows::Window;
 use self::windows::Windows;
 use lazy_static::lazy_static;
@@ -67,10 +67,10 @@ pub(crate) struct Editor {
     buffers: Buffers,
     keys: Vec<KeyEvent>,
     is_running: bool,
-    themes: HashMap<String, Theme>,
 
+    pub themes: Themes,
     pub working_dir: PathBuf,
-    pub config_dir: PathBuf,
+    pub config_dir: ConfigDirectory,
     pub syntaxes: Syntaxes,
     pub job_broker: JobBroker,
     pub hooks: Hooks,
@@ -89,17 +89,25 @@ impl Editor {
             hooks: Hooks::default(),
             keys: Vec::default(),
             is_running: true,
-            config_dir: dirs::config_dir().expect("Cannot find config directory."),
+            config_dir: ConfigDirectory::default(),
             working_dir: env::current_dir().expect("Cannot get current working directory."),
-            themes: themes::default_themes(),
+            themes: Themes::default(),
             options: Options::default(),
         }
     }
 
     pub fn configure(&mut self, mut opts: StartOptions) {
         if let Some(cd) = opts.config_dir.take() {
+            let cd = ConfigDirectory::new(&cd);
             self.config_dir = cd;
+            self.syntaxes = Syntaxes::new(&self.config_dir.filetype_dir());
+            self.themes = Themes::new(&self.config_dir.theme_dir());
         }
+    }
+
+    /// Ran after the startup configuration is complete
+    pub fn on_startup(&mut self) {
+        self.themes.load_all();
     }
 
     pub fn win_buf(&self, id: ClientId) -> (&Window, &Buffer) {
@@ -184,10 +192,10 @@ impl Editor {
         Ok(())
     }
 
-    fn send_to_client(&mut self, id: ClientId, msg: ClientMessage) {
+    pub fn send_to_client(&mut self, id: ClientId, msg: ClientMessage) {
         if let Err(_e) = self.clients[&id].send.blocking_send(msg.into()) {
             log::info!(
-                "Server failed to send reponse for client {:?}, removing from client map",
+                "Server failed to send to client {:?}, removing from client map",
                 id
             );
             self.clients.remove(&id);
@@ -220,7 +228,7 @@ impl Editor {
         let buf = self.buffers.get(win.buffer_id()).unwrap();
         let ropt = buf.read_only_copy();
         if let Some(ft) = &buf.filetype {
-            match self.syntaxes.get_or_load(ft, &self.config_dir) {
+            match self.syntaxes.get(ft) {
                 Ok(s) => {
                     self.job_broker
                         .request(SyntaxParser::new(id, buf.id, s, ropt, range));
@@ -422,19 +430,20 @@ impl Editor {
     }
 
     pub fn reload(&mut self, id: ClientId) {
-        // editor.syntaxes.
+        // Reload theme
         let (win, buf) = self.win_buf(id);
-        let bid = win.buffer_id();
-        let width = win.view().width();
-        let height = win.view().width();
+        let theme = win.view().options.theme.clone();
+        let _ = self.themes.load(&theme);
 
         // Reload syntax
+        let (win, buf) = self.win_buf(id);
         if let Some(ft) = buf.filetype.clone() {
-            let _ = self.syntaxes.load(&ft, self.config_dir.as_path());
+            let _ = self.syntaxes.load(&ft);
         }
 
+        // Reload window
         let (win, buf) = self.win_buf_mut(id);
-        *win = Window::new(bid, width, height);
+        win.reload();
     }
 }
 
@@ -448,6 +457,7 @@ pub(crate) fn main_loop(
 ) -> Result<(), io::Error> {
     let mut editor = Editor::new(jobs_handle);
     editor.configure(opts);
+    editor.on_startup();
 
     while let Some(msg) = recv.blocking_recv() {
         match msg {

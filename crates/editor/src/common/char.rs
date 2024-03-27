@@ -7,6 +7,8 @@ use sanedit_buffer::utf8::EndOfLine;
 use smallvec::SmallVec;
 use unicode_width::UnicodeWidthStr;
 
+use crate::editor::themes::DEFAULT_THEME;
+
 /// Representation of a grapheme cluster (clusters of codepoints we treat as one
 /// character) in the buffer.
 /// This is a separate type to distinguish graphemes that have already been
@@ -109,7 +111,7 @@ impl Default for DisplayOptions {
         }
 
         DisplayOptions {
-            theme: "default".into(),
+            theme: DEFAULT_THEME.into(),
             tabstop: 8,
             replacements,
         }

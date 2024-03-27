@@ -2,6 +2,8 @@ mod commands;
 
 use std::{mem, path::PathBuf};
 
+use sanedit_messages::ClientMessage;
+
 use crate::{
     actions::{jobs::OpenFile, prompt::commands::find_action},
     editor::{
@@ -12,6 +14,41 @@ use crate::{
 };
 
 use super::jobs::{ShellCommand, StaticMatcher};
+
+#[action("Select theme")]
+fn select_theme(editor: &mut Editor, id: ClientId) {
+    let themes = editor
+        .themes
+        .names()
+        .into_iter()
+        .map(String::from)
+        .collect();
+    let (win, _buf) = editor.win_buf_mut(id);
+
+    let job = StaticMatcher::new_default(id, themes);
+
+    win.prompt = Prompt::builder()
+        .prompt("Select theme")
+        .on_confirm(move |editor, id, input| match editor.themes.get(input) {
+            Ok(t) => {
+                let theme = t.clone();
+                let (win, _buf) = editor.win_buf_mut(id);
+                win.set_display_options(|opts| {
+                    opts.theme = input.into();
+                });
+
+                editor.send_to_client(id, ClientMessage::Theme(theme));
+            }
+            Err(_) => {
+                let (win, _buf) = editor.win_buf_mut(id);
+                win.warn_msg(&format!("No such theme '{}'", input));
+            }
+        })
+        .build();
+    win.focus = Focus::Prompt;
+
+    editor.job_broker.request(job);
+}
 
 #[action("Command palette")]
 fn command_palette(editor: &mut Editor, id: ClientId) {

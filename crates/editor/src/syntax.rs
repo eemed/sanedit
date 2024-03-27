@@ -1,41 +1,65 @@
-use std::{collections::HashMap, ops::Range, path::Path, sync::Arc};
+use std::{
+    collections::HashMap,
+    ops::Range,
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 
-use anyhow::bail;
 use sanedit_buffer::ReadOnlyPieceTree;
 use sanedit_parser::AST;
 
-use crate::editor::buffers::{BufferId, Filetype};
+use crate::{
+    common::dirs::ConfigDirectory,
+    editor::buffers::{BufferId, Filetype},
+};
 
 use self::grammar::Grammar;
 
 mod grammar;
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub(crate) struct Syntaxes {
+    filetype_dir: PathBuf,
     syntaxes: HashMap<Filetype, Syntax>,
 }
 
 impl Syntaxes {
-    pub fn get_or_load(&mut self, ft: &Filetype, conf_dir: &Path) -> anyhow::Result<Syntax> {
-        match self.syntaxes.get(ft) {
-            Some(s) => Ok(s.clone()),
-            None => self.load(ft, conf_dir),
+    pub fn new(ft_dir: &Path) -> Syntaxes {
+        Syntaxes {
+            filetype_dir: ft_dir.into(),
+            syntaxes: HashMap::new(),
         }
     }
 
-    pub fn load(&mut self, ft: &Filetype, conf_dir: &Path) -> anyhow::Result<Syntax> {
-        let grammar = Grammar::for_filetype(ft, conf_dir)?;
+    pub fn get(&mut self, ft: &Filetype) -> anyhow::Result<Syntax> {
+        match self.syntaxes.get(ft) {
+            Some(s) => Ok(s.clone()),
+            None => self.load(ft),
+        }
+    }
+
+    pub fn load(&mut self, ft: &Filetype) -> anyhow::Result<Syntax> {
+        let peg = {
+            let mut conf = self.filetype_dir.clone();
+            conf.push(ft.as_str());
+            conf.push(format!("{}.peg", ft.as_str()));
+            conf
+        };
+        let grammar = Grammar::from_path(&peg)?;
         let syntax = Syntax {
             grammar: Arc::new(grammar),
         };
         self.syntaxes.insert(ft.clone(), syntax.clone());
         Ok(syntax)
     }
+}
 
-    pub fn get(&mut self, ft: &Filetype) -> anyhow::Result<Syntax> {
-        match self.syntaxes.get(ft) {
-            Some(s) => Ok(s.clone()),
-            None => bail!("No syntax loaded for filetype {}", ft.as_str()),
+impl Default for Syntaxes {
+    fn default() -> Self {
+        let ft_dir = ConfigDirectory::default().filetype_dir();
+        Syntaxes {
+            filetype_dir: ft_dir,
+            syntaxes: HashMap::new(),
         }
     }
 }

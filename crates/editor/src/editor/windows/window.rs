@@ -39,9 +39,9 @@ pub(crate) use self::{
 #[derive(Debug)]
 pub(crate) struct Window {
     buf: BufferId,
-    view: View,
     message: Option<StatusMessage>,
     keymap: Keymap,
+    view: View,
     pub clipboard: Box<dyn Clipboard>,
 
     pub completion: Completion,
@@ -73,15 +73,33 @@ impl Window {
         self.focus
     }
 
+    pub fn reload(&mut self) {
+        self.focus = Focus::Window;
+        self.view.set_offset(0);
+        self.view.invalidate();
+        self.cursors = Cursors::default();
+        self.search = Search::default();
+        self.prompt = Prompt::default();
+        self.message = None;
+        self.clipboard = DefaultClipboard::new();
+        self.completion = Completion::default();
+    }
+
+    pub fn set_display_options<F>(&mut self, f: F)
+    where
+        F: FnOnce(&mut DisplayOptions) -> (),
+    {
+        f(&mut self.view.options);
+    }
+
     pub fn display_options(&self) -> &DisplayOptions {
         &self.view.options
     }
 
     pub fn open_buffer(&mut self, bid: BufferId) -> BufferId {
         let old = self.buf;
-        let width = self.view.width();
-        let height = self.view.height();
-        *self = Window::new(bid, width, height);
+        self.buf = bid;
+        self.reload();
         old
     }
 

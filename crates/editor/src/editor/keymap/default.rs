@@ -84,7 +84,8 @@ impl KeyMappings for DefaultKeyMappings {
              "alt+o a", text_objects::select_in_angle,
              "alt+o A", text_objects::select_angle,
 
-             "alt+z", window::reload,
+             "f5", window::reload,
+             "f4", prompt::select_theme,
         );
 
         map

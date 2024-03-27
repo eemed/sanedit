@@ -44,3 +44,5 @@ unicode-width = "0.1"
 unicode-segmentation = "1.9"
 
 which = "5.0.0"
+
+toml = "0.8"

@@ -153,7 +153,7 @@ impl AsRef<str> for ThemeField {
             Cursor => "window.cursor",
             PrimaryCursor => "window.cursor.primary",
             Gutter => "window.gutter",
-            EndOfBuffer => "window.eob",
+            EndOfBuffer => "window.end_of_buffer",
             Symbols => "window.symbols",
             Match => "window.match",
 

@@ -1,0 +1,73 @@
+# BG       #E2DBC8
+# BG DARK  #D8CCB4
+# BG DARK  #D0BD97
+# BG DARK2 #C0A886
+# BG DARK3 #B8A282
+#
+# BG DARK4 #896b60
+#
+# BROWN FG #936039
+# BLUE FG  #014CC0
+# RED FG   #C02614
+# GRAY FG  #4C4C4C
+#
+# BROWN BORDER #94866D
+#
+# GREEN BG  #C3E8A3
+# GREEN BG2 #BBEE91
+# GREEN FG  #3C780A
+#
+# RARITY
+# BLUE   #AFEEEE
+# GREEN  #56E156
+# YELLOW #FFED4C
+# ORANGE #FF863C
+# RED    #FF6262
+
+name = "oldschool"
+
+[colors.window]
+default = "#E2DBC8,#000000,"
+statusline = "#B8A282,#2a130d,"
+gutter = ",#4C4C4C,bold"
+end_of_buffer = ",#7f755f,"
+symbols = ",#606060,"
+match = "#C0A886,,"
+
+[colors.window.cursor]
+default = "#a4ac86,,"
+selection = "#efb679,,"
+primary = "#016a61,,"
+
+[colors.window.view]
+info = "#00917e,#000000,"
+warn = "#ff8c5a,#000000,"
+error = "#c0564a,#000000,"
+
+string =  ",#3C780A,"
+constant = ",#244B4A,"
+identifier = ",#835029,"
+number = ",#4C4C4C,"
+comment = ",#194a7a,"
+operator =  ",#244B4A,"
+
+[colors.prompt]
+default = "#656d4a,#000000,"
+message = ",,bold"
+userinput = ",#000000,"
+
+[colors.prompt.overlay]
+default = ",#000000,"
+title = ",#232d19,bold"
+message = ",,bold"
+userinput = ""
+
+[colors.prompt.completion]
+default = "#d8ccb4,#000000,"
+description = ",#7f755f,"
+match = ",#b0463a,"
+
+[colors.prompt.completion.selected]
+default = "#efb679,,"
+description = ""
+match = ",#b0463a,"

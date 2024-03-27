@@ -1,4 +1,4 @@
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) struct Options {
     pub prompt_completions: usize,
     pub completions: usize,

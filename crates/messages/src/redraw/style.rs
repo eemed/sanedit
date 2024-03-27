@@ -32,6 +32,14 @@ impl Style {
 
     /// Parse a style from a string of form "bg,fg,text_styles[,tex_styles]"
     pub fn from_str(string: &str) -> Result<Style, StyleError> {
+        if string.is_empty() {
+            return Ok(Style {
+                text_style: None,
+                bg: None,
+                fg: None,
+            });
+        }
+
         let splits: Vec<&str> = string.splitn(3, ",").collect();
         if splits.len() < 3 {
             return Err(StyleError::Split);

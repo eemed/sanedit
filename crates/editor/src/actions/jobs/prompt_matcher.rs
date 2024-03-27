@@ -34,6 +34,14 @@ impl StaticMatcher {
         }
     }
 
+    pub fn new_default(cid: ClientId, opts: Vec<String>) -> StaticMatcher {
+        StaticMatcher {
+            client_id: cid,
+            opts: Arc::new(opts),
+            formatter: Arc::new(|_, _, m| SelectorOption::from(m)),
+        }
+    }
+
     async fn send_options(opts: Arc<Vec<String>>, osend: Sender<String>) {
         for opt in opts.iter() {
             let _ = osend.send(opt.clone()).await;

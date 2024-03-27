@@ -149,6 +149,25 @@ impl TryFrom<&str> for KeyEvent {
                             mods |= KeyMods::SHIFT;
                         }
                         Key::Char(ch)
+                    } else if token.starts_with("f") || token.starts_with("F") {
+                        let mut chars = token.chars();
+                        // skip f
+                        chars.next();
+
+                        let string = chars.fold(String::new(), |mut acc, c| {
+                            acc.push(c);
+                            acc
+                        });
+
+                        match u8::from_str_radix(&string, 10) {
+                            Ok(fkey) => Key::F(fkey),
+                            Err(_) => {
+                                return Err(format!(
+                                    "Failed to parse function keybinding number {}",
+                                    token
+                                ))
+                            }
+                        }
                     } else {
                         match token {
                             "enter" => Key::Enter,

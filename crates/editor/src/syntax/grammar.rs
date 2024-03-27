@@ -4,37 +4,21 @@ use anyhow::bail;
 use sanedit_buffer::PieceTreeSlice;
 use sanedit_parser::{PikaParser, AST};
 
-use crate::{common::dirs::FILETYPE_DIR, editor::buffers::Filetype};
-
 #[derive(Debug)]
 pub(crate) struct Grammar {
     parser: PikaParser,
 }
 
 impl Grammar {
-    pub fn for_filetype(filetype: &Filetype, conf_dir: &Path) -> anyhow::Result<Grammar> {
-        let ft = filetype.as_str();
-        let peg = {
-            let mut conf = conf_dir.to_path_buf();
-            conf.push(FILETYPE_DIR);
-            conf.push(ft);
-            conf.push(format!("{}.peg", ft));
-            conf
-        };
+    pub fn from_path(peg: &Path) -> anyhow::Result<Grammar> {
         let file = match File::open(&peg) {
             Ok(f) => f,
-            Err(e) => bail!(
-                "Grammar PEG file error for filetype {}: {e}",
-                filetype.as_str()
-            ),
+            Err(e) => bail!("Failed to read PEG file: {:?}", peg),
         };
 
         match PikaParser::new(file) {
             Ok(p) => Ok(Grammar { parser: p }),
-            Err(e) => bail!(
-                "Grammar PEG failed to load for filetype {}: {e}",
-                filetype.as_str()
-            ),
+            Err(e) => bail!("Failed to create grammar from PEG file: {:?}: {e}", peg),
         }
     }
 

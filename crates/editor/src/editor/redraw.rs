@@ -1,10 +1,22 @@
-use std::time::{Duration, Instant};
+use std::{
+    sync::Arc,
+    time::{Duration, Instant},
+};
 
-use tokio::time::timeout;
+use tokio::{sync::Notify, time::timeout};
 
-use crate::{editor::REDRAW_NOTIFY, events::ToEditor};
+use crate::events::ToEditor;
 
 use super::EditorHandle;
+use lazy_static::lazy_static;
+
+lazy_static! {
+    static ref REDRAW_NOTIFY: Arc<Notify> = Notify::const_new().into();
+}
+
+pub(crate) fn redraw() {
+    REDRAW_NOTIFY.notify_one();
+}
 
 pub(crate) async fn redraw_debouncer(mut handle: EditorHandle) {
     loop {

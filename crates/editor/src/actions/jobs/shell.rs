@@ -4,7 +4,8 @@ use tokio::process::Command;
 
 use crate::{
     editor::job_broker::KeepInTouch,
-    server::{ClientId, Job, JobContext},
+    job_runner::{BoxedJob, Job, JobContext, JobResult},
+    server::ClientId,
 };
 
 #[derive(Clone)]
@@ -23,7 +24,7 @@ impl ShellCommand {
 }
 
 impl Job for ShellCommand {
-    fn run(&self, mut ctx: JobContext) -> crate::server::JobResult {
+    fn run(&self, mut ctx: JobContext) -> JobResult {
         let command = self.command.clone();
 
         // TODO on unix create pty to run the command on
@@ -50,7 +51,7 @@ impl Job for ShellCommand {
         Box::pin(fut)
     }
 
-    fn box_clone(&self) -> crate::server::BoxedJob {
+    fn box_clone(&self) -> BoxedJob {
         Box::new((*self).clone())
     }
 }

@@ -1,12 +1,7 @@
 mod accept;
 mod client;
-mod job_runner;
-mod redraw;
 
 pub(crate) use client::*;
-pub(crate) use job_runner::{
-    BoxedJob, FromJobs, Job, JobContext, JobId, JobResponseSender, JobResult, JobsHandle, ToJobs,
-};
 
 use std::{
     borrow::Cow,
@@ -16,21 +11,14 @@ use std::{
         atomic::{AtomicUsize, Ordering},
         Arc,
     },
-    thread,
 };
 
 use tokio::{
     net::unix::SocketAddr,
-    runtime::Runtime,
-    sync::{
-        mpsc::{channel, Sender},
-        Notify,
-    },
+    sync::{mpsc::Sender, Notify},
 };
 
-use crate::{editor, events::ToEditor};
-
-use self::{job_runner::spawn_jobs, redraw::redraw_debouncer};
+use crate::events::ToEditor;
 
 /// Channel buffer size for tokio channels
 pub(crate) const CHANNEL_SIZE: usize = 256;
@@ -44,8 +32,8 @@ pub struct StartOptions {
 /// Editor handle allows us to communicate with the editor
 #[derive(Clone, Debug)]
 pub(crate) struct EditorHandle {
-    sender: Sender<ToEditor>,
-    next_id: Arc<AtomicUsize>,
+    pub(crate) sender: Sender<ToEditor>,
+    pub(crate) next_id: Arc<AtomicUsize>,
 }
 
 impl EditorHandle {
@@ -93,7 +81,7 @@ impl Address {
     }
 }
 
-async fn listen(addrs: Vec<Address>, handle: EditorHandle) {
+pub(crate) async fn spawn_listeners(addrs: Vec<Address>, handle: EditorHandle) {
     for addr in addrs.into_iter() {
         let addr_ready = Arc::new(Notify::new());
 
@@ -115,26 +103,26 @@ async fn listen(addrs: Vec<Address>, handle: EditorHandle) {
     }
 }
 
-pub fn run_sync(addrs: Vec<Address>, opts: StartOptions) -> Option<thread::JoinHandle<()>> {
-    let (send, recv) = channel(CHANNEL_SIZE);
-    let handle = EditorHandle {
-        sender: send,
-        next_id: Default::default(),
-    };
-    let rt = Runtime::new().ok()?;
-    rt.block_on(listen(addrs, handle.clone()));
+// pub fn run_sync(addrs: Vec<Address>, opts: StartOptions) -> Option<thread::JoinHandle<()>> {
+//     let (send, recv) = channel(CHANNEL_SIZE);
+//     let handle = EditorHandle {
+//         sender: send,
+//         next_id: Default::default(),
+//     };
+//     let rt = Runtime::new().ok()?;
+//     rt.block_on(spawn_listeners(addrs, handle.clone()));
 
-    thread::Builder::new()
-        .name("sanedit".into())
-        .spawn(move || {
-            rt.spawn(redraw_debouncer(handle.clone()));
+//     thread::Builder::new()
+//         .name("sanedit".into())
+//         .spawn(move || {
+//             rt.spawn(redraw_debouncer(handle.clone()));
 
-            // tokio runtime is moved here, it is killed when the editor main loop exits
-            let jobs_handle = rt.block_on(spawn_jobs(handle));
+//             // tokio runtime is moved here, it is killed when the editor main loop exits
+//             let jobs_handle = rt.block_on(spawn_jobs(handle));
 
-            if let Err(e) = editor::main_loop(jobs_handle, recv, opts) {
-                log::error!("Editor main loop exited with error {}.", e);
-            }
-        })
-        .ok()
-}
+//             if let Err(e) = editor::main_loop(handle, recv, opts) {
+//                 log::error!("Editor main loop exited with error {}.", e);
+//             }
+//         })
+//         .ok()
+// }

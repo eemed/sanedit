@@ -5,8 +5,9 @@ use tokio::sync::mpsc::{channel, Receiver, Sender};
 use crate::{
     actions::jobs::{match_options, MatchedOptions, CHANNEL_SIZE},
     common::matcher::Match,
-    editor::{job_broker::KeepInTouch, windows::SelectorOption, Editor},
-    server::{BoxedJob, ClientId, Job, JobContext, JobResult},
+    editor::{job_broker::KeepInTouch, redraw::redraw, windows::SelectorOption, Editor},
+    job_runner::{BoxedJob, Job, JobContext, JobResult},
+    server::ClientId,
 };
 
 enum MatcherMessage {
@@ -111,7 +112,7 @@ impl KeepInTouch for StaticMatcher {
                             .collect();
                         let (win, _buf) = editor.win_buf_mut(self.client_id);
                         win.prompt.provide_options(opts.into());
-                        redraw!();
+                        redraw();
                     }
                 },
             }

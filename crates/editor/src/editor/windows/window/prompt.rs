@@ -1,6 +1,6 @@
 mod history;
 
-use std::{mem, num::NonZeroUsize, rc::Rc};
+use std::{num::NonZeroUsize, rc::Rc};
 
 use unicode_segmentation::UnicodeSegmentation;
 
@@ -9,7 +9,8 @@ use crate::{
         keymap::{DefaultKeyMappings, KeyMappings, Keymap},
         Editor,
     },
-    server::{ClientId, JobId},
+    job_runner::JobId,
+    server::ClientId,
 };
 
 use self::history::History;

@@ -5,7 +5,8 @@ use tokio::{fs::File, io::AsyncWriteExt};
 
 use crate::{
     editor::{job_broker::KeepInTouch, Editor},
-    server::{BoxedJob, ClientId, Job, JobContext, JobResult},
+    job_runner::{BoxedJob, Job, JobContext, JobResult},
+    server::ClientId,
 };
 
 #[derive(Clone)]

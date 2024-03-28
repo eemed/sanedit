@@ -4,6 +4,7 @@ pub(crate) mod hooks;
 pub(crate) mod job_broker;
 pub(crate) mod keymap;
 pub(crate) mod options;
+pub(crate) mod redraw;
 pub(crate) mod syntax;
 pub(crate) mod themes;
 pub(crate) mod windows;
@@ -16,14 +17,12 @@ use sanedit_messages::Message;
 use sanedit_messages::MouseButton;
 use sanedit_messages::MouseEvent;
 use sanedit_messages::MouseEventKind;
-use tokio::sync::Notify;
 
 use std::collections::HashMap;
 use std::env;
 use std::mem;
 use std::path::Path;
 use std::path::PathBuf;
-use std::sync::Arc;
 
 use tokio::io;
 use tokio::sync::mpsc::Receiver;
@@ -39,11 +38,14 @@ use crate::editor::buffers::Buffer;
 use crate::editor::hooks::Hook;
 use crate::editor::keymap::KeymapResult;
 use crate::events::ToEditor;
+use crate::job_runner::spawn_job_runner;
+use crate::job_runner::FromJobs;
+use crate::job_runner::JobsHandle;
 use crate::server::ClientHandle;
 use crate::server::ClientId;
-use crate::server::FromJobs;
-use crate::server::JobsHandle;
+use crate::server::EditorHandle;
 use crate::StartOptions;
+use crate::RUNTIME;
 
 use self::buffers::BufferId;
 use self::buffers::Buffers;
@@ -51,15 +53,12 @@ use self::hooks::Hooks;
 use self::job_broker::JobBroker;
 use self::options::Options;
 
+use self::redraw::redraw;
+use self::redraw::redraw_debouncer;
 use self::syntax::Syntaxes;
 use self::themes::Themes;
 use self::windows::Window;
 use self::windows::Windows;
-use lazy_static::lazy_static;
-
-lazy_static! {
-    pub static ref REDRAW_NOTIFY: Arc<Notify> = Notify::const_new().into();
-}
 
 pub(crate) struct Editor {
     clients: HashMap<ClientId, ClientHandle>,
@@ -221,7 +220,7 @@ impl Editor {
             _ => {}
         }
 
-        redraw!();
+        redraw();
 
         // ---TEST---
         let win = self.windows.get(id).unwrap();
@@ -452,10 +451,13 @@ impl Editor {
 /// Editor uses client handles to communicate to clients. Client handles are
 /// sent using the provided reciver.
 pub(crate) fn main_loop(
-    jobs_handle: JobsHandle,
+    handle: EditorHandle,
     mut recv: Receiver<ToEditor>,
     opts: StartOptions,
 ) -> Result<(), io::Error> {
+    RUNTIME.spawn(redraw_debouncer(handle.clone()));
+    let jobs_handle = RUNTIME.block_on(spawn_job_runner(handle.clone()));
+
     let mut editor = Editor::new(jobs_handle);
     editor.configure(opts);
     editor.on_startup();

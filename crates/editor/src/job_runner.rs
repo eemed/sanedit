@@ -32,7 +32,7 @@ pub(crate) trait Job {
 }
 
 /// Spawn a job runner
-pub(crate) async fn spawn_jobs(editor_handle: EditorHandle) -> JobsHandle {
+pub(crate) async fn spawn_job_runner(editor_handle: EditorHandle) -> JobsHandle {
     let (tx, rx) = mpsc::channel(CHANNEL_SIZE);
     tokio::spawn(jobs_loop(rx, editor_handle));
     tx

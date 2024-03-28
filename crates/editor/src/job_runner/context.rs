@@ -1,13 +1,13 @@
 use std::any::Any;
 
 use crate::events::ToEditor;
-use crate::server::{EditorHandle, FromJobs};
+use crate::server::EditorHandle;
 use tokio::sync::{
     mpsc::{error::SendError, Sender},
     oneshot,
 };
 
-use super::JobId;
+use super::{FromJobs, JobId};
 
 /// Job context used to provide jobs the means to communicate back to the
 /// editor.

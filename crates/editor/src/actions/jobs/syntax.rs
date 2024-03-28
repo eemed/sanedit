@@ -6,10 +6,12 @@ use crate::{
     editor::{
         buffers::BufferId,
         job_broker::KeepInTouch,
+        redraw::redraw,
         syntax::{Syntax, SyntaxParseResult},
         Editor,
     },
-    server::{ClientId, Job, JobContext, JobResult},
+    job_runner::{BoxedJob, Job, JobContext, JobResult},
+    server::ClientId,
 };
 
 #[derive(Clone)]
@@ -55,7 +57,7 @@ impl Job for SyntaxParser {
         Box::pin(fut)
     }
 
-    fn box_clone(&self) -> crate::server::BoxedJob {
+    fn box_clone(&self) -> BoxedJob {
         Box::new((*self).clone())
     }
 }
@@ -69,7 +71,7 @@ impl KeepInTouch for SyntaxParser {
         if let Ok(output) = msg.downcast::<SyntaxParseResult>() {
             let (win, _buf) = editor.win_buf_mut(self.client_id);
             win.on_syntax_parsed(*output);
-            redraw!();
+            redraw();
         }
     }
 

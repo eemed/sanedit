@@ -1,6 +1,7 @@
 use std::{any::Any, collections::HashMap, fmt, rc::Rc};
 
-use crate::server::{ClientId, Job, JobId, JobsHandle, ToJobs};
+use crate::job_runner::{Job, JobId, JobsHandle, ToJobs};
+use crate::server::ClientId;
 
 use super::Editor;
 

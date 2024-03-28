@@ -10,8 +10,9 @@ use tokio::{
 
 use crate::{
     actions::jobs::match_options,
-    editor::{job_broker::KeepInTouch, windows::SelectorOption, Editor},
-    server::{BoxedJob, ClientId, Job, JobContext, JobId, JobResponseSender, JobResult},
+    editor::{job_broker::KeepInTouch, redraw::redraw, windows::SelectorOption, Editor},
+    job_runner::{BoxedJob, Job, JobContext, JobId, JobResponseSender, JobResult},
+    server::ClientId,
 };
 
 use super::{MatchedOptions, CHANNEL_SIZE};
@@ -169,7 +170,7 @@ impl KeepInTouch for OpenFile {
                             .map(|mat| SelectorOption::from(mat))
                             .collect();
                         win.prompt.provide_options(opts.into());
-                        redraw!();
+                        redraw();
                     }
                 },
             }

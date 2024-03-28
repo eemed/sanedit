@@ -5,7 +5,8 @@ use tokio::sync::mpsc::{channel, Receiver, Sender};
 
 use crate::{
     editor::{job_broker::KeepInTouch, windows::SearchDirection, Editor},
-    server::{ClientId, Job, JobContext},
+    job_runner::{BoxedJob, Job, JobContext, JobResult},
+    server::ClientId,
 };
 
 use super::CHANNEL_SIZE;
@@ -102,7 +103,7 @@ impl Search {
 }
 
 impl Job for Search {
-    fn run(&self, mut ctx: JobContext) -> crate::server::JobResult {
+    fn run(&self, mut ctx: JobContext) -> JobResult {
         let term = self.term.clone();
         let pt = self.ropt.clone();
         let range = self.range.clone();
@@ -120,7 +121,7 @@ impl Job for Search {
         Box::pin(fut)
     }
 
-    fn box_clone(&self) -> crate::server::BoxedJob {
+    fn box_clone(&self) -> BoxedJob {
         Box::new((*self).clone())
     }
 }

@@ -3,9 +3,13 @@ use std::{any::Any, ops::Range};
 use sanedit_buffer::ReadOnlyPieceTree;
 
 use crate::{
-    editor::{buffers::BufferId, job_broker::KeepInTouch, Editor},
+    editor::{
+        buffers::BufferId,
+        job_broker::KeepInTouch,
+        syntax::{Syntax, SyntaxParseResult},
+        Editor,
+    },
     server::{ClientId, Job, JobContext, JobResult},
-    syntax::{Syntax, SyntaxParseResult},
 };
 
 #[derive(Clone)]

@@ -20,8 +20,8 @@ use crate::{
         buffers::{Buffer, BufferId, SnapshotData, SortedRanges},
         clipboard::{Clipboard, DefaultClipboard},
         keymap::{DefaultKeyMappings, KeyMappings, Keymap},
+        syntax::SyntaxParseResult,
     },
-    syntax::SyntaxParseResult,
 };
 
 pub(crate) use self::{
@@ -85,11 +85,8 @@ impl Window {
         self.completion = Completion::default();
     }
 
-    pub fn set_display_options<F>(&mut self, f: F)
-    where
-        F: FnOnce(&mut DisplayOptions) -> (),
-    {
-        f(&mut self.view.options);
+    pub fn display_options_mut(&mut self) -> &mut DisplayOptions {
+        &mut self.view.options
     }
 
     pub fn display_options(&self) -> &DisplayOptions {

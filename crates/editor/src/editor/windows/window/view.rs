@@ -7,7 +7,7 @@ use sanedit_messages::redraw::{Point, Size};
 use crate::common::char::{Char, DisplayOptions};
 use crate::common::movement::prev_line_start;
 use crate::editor::buffers::Buffer;
-use crate::syntax::SyntaxParseResult;
+use crate::editor::syntax::SyntaxParseResult;
 
 #[derive(Debug, Clone)]
 pub(crate) enum Cell {

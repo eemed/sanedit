@@ -33,10 +33,7 @@ fn select_theme(editor: &mut Editor, id: ClientId) {
             Ok(t) => {
                 let theme = t.clone();
                 let (win, _buf) = editor.win_buf_mut(id);
-                win.set_display_options(|opts| {
-                    opts.theme = input.into();
-                });
-
+                win.display_options_mut().theme = input.into();
                 editor.send_to_client(id, ClientMessage::Theme(theme));
             }
             Err(_) => {

@@ -4,6 +4,7 @@ pub(crate) mod hooks;
 pub(crate) mod job_broker;
 pub(crate) mod keymap;
 pub(crate) mod options;
+pub(crate) mod syntax;
 pub(crate) mod themes;
 pub(crate) mod windows;
 
@@ -42,7 +43,6 @@ use crate::server::ClientHandle;
 use crate::server::ClientId;
 use crate::server::FromJobs;
 use crate::server::JobsHandle;
-use crate::syntax::Syntaxes;
 use crate::StartOptions;
 
 use self::buffers::BufferId;
@@ -51,6 +51,7 @@ use self::hooks::Hooks;
 use self::job_broker::JobBroker;
 use self::options::Options;
 
+use self::syntax::Syntaxes;
 use self::themes::Themes;
 use self::windows::Window;
 use self::windows::Windows;

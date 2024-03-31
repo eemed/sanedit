@@ -43,23 +43,22 @@ pub(super) fn preprocess_rules(rules: &[Rule]) -> anyhow::Result<Clauses> {
             return idx;
         }
 
+        use RuleDefinition::*;
         let mut clause = match def {
-            RuleDefinition::Choice(v) => {
+            Choice(v) => {
                 let subs = v.iter().map(|rd| rec(rd, rules, dedup, clauses)).collect();
                 Clause::choice(subs)
             }
-            RuleDefinition::Sequence(v) => {
+            Sequence(v) => {
                 let subs = v.iter().map(|rd| rec(rd, rules, dedup, clauses)).collect();
                 Clause::sequence(subs)
             }
-            RuleDefinition::OneOrMore(r) => Clause::one_or_more(rec(r, rules, dedup, clauses)),
-            RuleDefinition::FollowedBy(r) => Clause::followed_by(rec(r, rules, dedup, clauses)),
-            RuleDefinition::NotFollowedBy(r) => {
-                Clause::not_followed_by(rec(r, rules, dedup, clauses))
-            }
-            RuleDefinition::CharSequence(s) => Clause::char_sequence(s.clone()),
-            RuleDefinition::Nothing => Clause::nothing(),
-            RuleDefinition::CharRange(a, b) => Clause::char_range(*a, *b),
+            OneOrMore(r) => Clause::one_or_more(rec(r, rules, dedup, clauses)),
+            FollowedBy(r) => Clause::followed_by(rec(r, rules, dedup, clauses)),
+            NotFollowedBy(r) => Clause::not_followed_by(rec(r, rules, dedup, clauses)),
+            CharSequence(s) => Clause::char_sequence(s.clone()),
+            Nothing => Clause::nothing(),
+            CharRange(a, b) => Clause::char_range(*a, *b),
             _ => unreachable!("Encountered unexpected rule definition: {def}"),
         };
 

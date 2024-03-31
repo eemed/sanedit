@@ -7,11 +7,15 @@ pub struct Filetype {
 
 impl Filetype {
     pub fn determine(path: &Path) -> Option<Filetype> {
-        // match filename {
-        // }
-        //
-        let ext = path.extension()?;
-        let ftype = ext.to_string_lossy();
+        let fname = path.file_name()?;
+        let fname = fname.to_string_lossy();
+        let ftype = match fname.as_ref() {
+            "Cargo.lock" => "toml".into(),
+            _ => {
+                let ext = path.extension()?;
+                ext.to_string_lossy()
+            }
+        };
 
         Some(Filetype { name: ftype.into() })
     }

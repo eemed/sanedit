@@ -64,16 +64,10 @@ impl Themes {
 
         let content = std::fs::read_to_string(theme)?;
         let config = content.parse::<Table>()?;
-        let name = config
-            .get("name")
-            .map(Value::as_str)
-            .flatten()
-            .context("Theme {name} has no name")?;
 
-        let mut theme = Theme::new(name);
+        let mut theme = Theme::new(theme_name);
         for (key, val) in config.iter() {
             match key.as_str() {
-                "name" => {}
                 "colors" => {
                     let map = flatten_colors(val)?;
                     for (k, v) in map {
@@ -147,6 +141,11 @@ fn default_theme() -> Theme {
     ins(PromptCompletionSelectedMatch, ",#ff0000,");
     ins(PromptCompletionMatch, ",#ff0000,");
     ins(PromptCompletionSelected, "#dddddd,#000000,");
+
+    ins(Identifier, ",#ff0000,");
+    ins(Constant, ",#0000ff,");
+    ins(Number, ",#0000ff,");
+    ins(String, ",#00ff00,");
 
     theme
 }

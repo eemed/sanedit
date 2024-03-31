@@ -141,3 +141,9 @@ fn select_line(editor: &mut Editor, id: ClientId) {
         cursor.goto(end);
     }
 }
+
+#[action("Merge overlapping cursors")]
+fn merge_overlapping_cursors(editor: &mut Editor, id: ClientId) {
+    let (win, _buf) = editor.win_buf_mut(id);
+    win.cursors.merge_overlapping();
+}

@@ -6,6 +6,7 @@ mod set;
 
 use std::{cmp::min, collections::BinaryHeap, io};
 
+use smallvec::SmallVec;
 use thiserror::Error;
 
 use crate::{grammar, input::Reader, parser::clause::ClauseKind};
@@ -111,12 +112,12 @@ impl PikaParser {
                     Some(t) => Some(Match {
                         key,
                         len: mat.len + t.len,
-                        sub: vec![skey, tail_key],
+                        sub: SmallVec::from_slice(&[skey, tail_key]),
                     }),
                     None => Some(Match {
                         key,
                         len: mat.len,
-                        sub: vec![skey],
+                        sub: SmallVec::from_slice(&[skey]),
                     }),
                 }
             }
@@ -131,7 +132,7 @@ impl PikaParser {
                         return Some(Match {
                             key,
                             len: mat.len,
-                            sub: vec![skey],
+                            sub: SmallVec::from_slice(&[skey]),
                         });
                     }
                 }
@@ -139,7 +140,7 @@ impl PikaParser {
                 None
             }
             Sequence => {
-                let mut subs = Vec::with_capacity(clause.sub.len());
+                let mut subs = SmallVec::with_capacity(clause.sub.len());
                 let mut pos = key.start;
                 for sub in &clause.sub {
                     let skey = MemoKey {

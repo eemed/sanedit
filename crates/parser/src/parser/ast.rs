@@ -47,7 +47,7 @@ impl AST {
             roots.pop().unwrap()
         } else {
             AST {
-                label: "<root>".into(),
+                label: "root".into(),
                 start: 0,
                 len,
                 sub: roots,
@@ -56,6 +56,7 @@ impl AST {
     }
 
     pub(crate) fn from_match(mat: &Match, memo: &MemoTable) -> AST {
+        // TODO recursion to iterative
         fn rec(node: &mut AST, key: &MemoKey, memo: &MemoTable) {
             let mat = memo.get(key).unwrap();
             for sub in &mat.sub {
@@ -125,8 +126,8 @@ impl AST {
     }
 
     pub fn flatten(&self) -> Vec<AST> {
-        let mut stack = vec![];
-        let mut result = vec![];
+        let mut stack = Vec::with_capacity(1024);
+        let mut result = Vec::with_capacity(4096);
         stack.push(self);
 
         while let Some(n) = stack.pop() {

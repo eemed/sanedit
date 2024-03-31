@@ -8,6 +8,8 @@ edition = "2021"
 [dependencies]
 sanedit-utils = { path = "../utils" }
 
-anyhow      = "1.0"
-thiserror   = "1.0"
-log         = "0.4"
+rustc-hash = "1.1"
+smallvec   = "1"
+anyhow     = "1.0"
+thiserror  = "1.0"
+log        = "0.4"

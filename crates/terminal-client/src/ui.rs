@@ -52,7 +52,9 @@ impl UI {
         match msg {
             ClientMessage::Hello => {}
             ClientMessage::SetOption(_) => {}
-            ClientMessage::Theme(theme) => self.context.theme = theme,
+            ClientMessage::Theme(theme) => {
+                self.context.theme = theme;
+            }
             ClientMessage::Redraw(msg) => {
                 self.grid.handle_redraw(&self.context, msg);
             }

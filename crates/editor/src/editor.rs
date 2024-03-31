@@ -138,6 +138,10 @@ impl Editor {
         (win, buf)
     }
 
+    pub fn windows(&self) -> &Windows {
+        &self.windows
+    }
+
     pub fn quit_client(&mut self, id: ClientId) {
         let _ = self.send_to_client(id, ClientMessage::Bye.into());
 
@@ -180,6 +184,8 @@ impl Editor {
         if !is_used {
             self.buffers.remove(old);
         }
+
+        run(self, id, Hook::BufOpened);
     }
 
     /// Open a file in window
@@ -229,22 +235,6 @@ impl Editor {
         }
 
         redraw();
-
-        // ---TEST---
-        let win = self.windows.get(id).unwrap();
-        let range = win.view().range();
-        let buf = self.buffers.get(win.buffer_id()).unwrap();
-        let ropt = buf.read_only_copy();
-        if let Some(ft) = &buf.filetype {
-            match self.syntaxes.get(ft) {
-                Ok(s) => {
-                    self.job_broker
-                        .request(SyntaxParser::new(id, buf.id, s, ropt, range));
-                }
-                Err(e) => log::error!("{}", e),
-            }
-        }
-        // ---TEST---
     }
 
     fn handle_hello(&mut self, id: ClientId, size: Size) {
@@ -441,7 +431,9 @@ impl Editor {
         // Reload theme
         let (win, buf) = self.win_buf(id);
         let theme = win.view().options.theme.clone();
-        let _ = self.themes.load(&theme);
+        if let Ok(theme) = self.themes.load(&theme).cloned() {
+            self.send_to_client(id, ClientMessage::Theme(theme))
+        }
 
         // Reload syntax
         let (win, buf) = self.win_buf(id);
@@ -452,6 +444,8 @@ impl Editor {
         // Reload window
         let (win, buf) = self.win_buf_mut(id);
         win.reload();
+
+        run(self, id, Hook::Reload);
     }
 }
 

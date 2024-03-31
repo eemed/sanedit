@@ -1,15 +1,13 @@
-use std::collections::HashMap;
+use rustc_hash::FxHashMap;
+use smallvec::SmallVec;
 
 use crate::PikaParser;
 
-use super::{
-    ast::AST,
-    clause::{Clause, ClauseKind},
-};
+use super::{ast::AST, clause::ClauseKind};
 
 #[derive(Debug)]
 pub(crate) struct MemoTable<'a, 'b> {
-    table: HashMap<MemoKey, Match>,
+    table: FxHashMap<MemoKey, Match>,
     pub(crate) parser: &'a PikaParser,
     pub(crate) input: &'b str,
 }
@@ -17,7 +15,7 @@ pub(crate) struct MemoTable<'a, 'b> {
 impl<'a, 'b> MemoTable<'a, 'b> {
     pub fn new(parser: &'a PikaParser, input: &'b str) -> MemoTable<'a, 'b> {
         MemoTable {
-            table: HashMap::new(),
+            table: FxHashMap::default(),
             parser,
             input,
         }
@@ -112,7 +110,7 @@ pub(crate) struct Match {
     /// Length of the match
     pub len: usize,
 
-    pub sub: Vec<MemoKey>,
+    pub sub: SmallVec<[MemoKey; 2]>,
 }
 
 impl Match {
@@ -120,7 +118,7 @@ impl Match {
         Match {
             key,
             len: 0,
-            sub: vec![],
+            sub: SmallVec::new(),
         }
     }
 
@@ -128,7 +126,7 @@ impl Match {
         Match {
             key,
             len,
-            sub: vec![],
+            sub: SmallVec::new(),
         }
     }
 }

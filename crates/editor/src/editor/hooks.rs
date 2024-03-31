@@ -1,12 +1,9 @@
 use std::{
     collections::HashMap,
-    sync::{
-        atomic::{AtomicUsize, Ordering},
-        Arc,
-    },
+    sync::atomic::{AtomicUsize, Ordering},
 };
 
-use crate::actions::{search, Action};
+use crate::actions::{Action, *};
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub(crate) enum Hook {
@@ -21,11 +18,13 @@ pub(crate) enum Hook {
 
     /// After buffer changed
     BufChanged,
+    BufOpened,
 
     /// Before client message is processed
     OnMessagePre,
 
     OnDrawPre,
+    Reload,
 }
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
@@ -84,52 +83,21 @@ impl Hooks {
 
 impl Default for Hooks {
     fn default() -> Self {
+        use Hook::*;
+
         let mut hooks = Hooks {
             hook_types: HashMap::new(),
             hooks: HashMap::new(),
         };
-        hooks.register(Hook::InsertPre, search::clear_matches);
-        hooks.register(Hook::RemovePre, search::clear_matches);
-        hooks.register(
-            Hook::CursorMoved,
-            Action::Dynamic {
-                name: "Merge overlapping cursors".into(),
-                fun: Arc::new(|editor, id| {
-                    let (win, _buf) = editor.win_buf_mut(id);
-                    win.cursors.merge_overlapping();
-                }),
-            },
-        );
-        hooks.register(
-            Hook::OnMessagePre,
-            Action::Dynamic {
-                name: "Clear messages".into(),
-                fun: Arc::new(|editor, id| {
-                    let (win, _buf) = editor.win_buf_mut(id);
-                    win.clear_msg();
-                }),
-            },
-        );
+        hooks.register(InsertPre, search::clear_matches);
+        hooks.register(RemovePre, search::clear_matches);
+        hooks.register(BufChanged, window::sync_windows);
+        hooks.register(CursorMoved, cursors::merge_overlapping_cursors);
 
-        hooks.register(
-            Hook::BufChanged,
-            Action::Dynamic {
-                name: "Fix windows".into(),
-                fun: Arc::new(|editor, id| {
-                    let (_win, buf) = editor.win_buf(id);
-                    let clients = editor.windows.find_clients_with_buf(buf.id);
-
-                    for client in clients {
-                        if client == id {
-                            continue;
-                        }
-
-                        let (win, buf) = editor.win_buf_mut(client);
-                        win.on_buffer_changed(buf);
-                    }
-                }),
-            },
-        );
+        hooks.register(OnMessagePre, window::clear_messages);
+        hooks.register(BufOpened, syntax::parse_syntax);
+        hooks.register(BufChanged, syntax::parse_syntax);
+        hooks.register(Reload, syntax::parse_syntax);
 
         hooks
     }

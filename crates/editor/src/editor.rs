@@ -27,8 +27,6 @@ use std::path::PathBuf;
 use tokio::io;
 use tokio::sync::mpsc::Receiver;
 
-use lazy_static::lazy_static;
-
 use crate::actions;
 use crate::actions::cursors;
 use crate::actions::hooks::run;
@@ -43,11 +41,11 @@ use crate::events::ToEditor;
 use crate::job_runner::spawn_job_runner;
 use crate::job_runner::FromJobs;
 use crate::job_runner::JobsHandle;
+use crate::runtime;
 use crate::server::ClientHandle;
 use crate::server::ClientId;
 use crate::server::EditorHandle;
 use crate::StartOptions;
-use crate::RUNTIME;
 
 use self::buffers::BufferId;
 use self::buffers::Buffers;
@@ -457,8 +455,8 @@ pub(crate) fn main_loop(
     mut recv: Receiver<ToEditor>,
     opts: StartOptions,
 ) -> Result<(), io::Error> {
-    RUNTIME.spawn(redraw_debouncer(handle.clone()));
-    let jobs_handle = RUNTIME.block_on(spawn_job_runner(handle.clone()));
+    runtime().spawn(redraw_debouncer(handle.clone()));
+    let jobs_handle = runtime().block_on(spawn_job_runner(handle.clone()));
 
     let mut editor = Editor::new(jobs_handle);
     editor.configure(opts);

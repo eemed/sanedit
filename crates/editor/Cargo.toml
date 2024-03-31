@@ -18,14 +18,6 @@ parking_lot = "0.12.0"
 dirs        = "4.0.0"  # Used to get easy access to different directories, tmp, config etc.
 rayon       = "1.7"
 uuid = { version = "1.5.0", features = ["v4"] }
-lazy_static = "1.4"
-
-# Parse like Bourne shell
-shellwords = "1.1.0"
-
-# Good helper macros for enums
-strum        = "0.23"
-strum_macros = "0.23"
 
 # Error handling
 anyhow      = "1.0"
@@ -43,6 +35,8 @@ smallvec = "0.1"
 unicode-width = "0.1"
 unicode-segmentation = "1.9"
 
+# Used to detect clipboard commands, TODO probably replace with something more
+# lightweight
 which = "5.0.0"
 
 toml = "0.8"

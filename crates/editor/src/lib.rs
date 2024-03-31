@@ -9,16 +9,15 @@ pub(crate) mod events;
 pub(crate) mod job_runner;
 pub(crate) mod server;
 
-use std::thread;
-
-use lazy_static::lazy_static;
+use std::{sync::OnceLock, thread};
 
 pub use server::{Address, StartOptions};
 use server::{EditorHandle, CHANNEL_SIZE};
 use tokio::{runtime::Runtime, sync::mpsc::channel};
 
-lazy_static! {
-    pub(crate) static ref RUNTIME: Runtime = Runtime::new().ok().unwrap();
+pub(crate) fn runtime() -> &'static Runtime {
+    static RUNTIME: OnceLock<Runtime> = OnceLock::new();
+    RUNTIME.get_or_init(|| Runtime::new().ok().unwrap())
 }
 
 pub fn run_sync(addrs: Vec<Address>, opts: StartOptions) -> Option<thread::JoinHandle<()>> {
@@ -27,7 +26,7 @@ pub fn run_sync(addrs: Vec<Address>, opts: StartOptions) -> Option<thread::JoinH
         sender: send,
         next_id: Default::default(),
     };
-    RUNTIME.block_on(server::spawn_listeners(addrs, handle.clone()));
+    runtime().block_on(server::spawn_listeners(addrs, handle.clone()));
 
     thread::Builder::new()
         .name("sanedit".into())

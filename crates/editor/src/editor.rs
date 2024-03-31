@@ -41,7 +41,7 @@ use crate::events::ToEditor;
 use crate::job_runner::spawn_job_runner;
 use crate::job_runner::FromJobs;
 use crate::job_runner::JobsHandle;
-use crate::runtime;
+use crate::runtime::TokioRuntime;
 use crate::server::ClientHandle;
 use crate::server::ClientId;
 use crate::server::EditorHandle;
@@ -68,6 +68,7 @@ pub(crate) struct Editor {
     keys: Vec<KeyEvent>,
     is_running: bool,
 
+    pub runtime: TokioRuntime,
     pub themes: Themes,
     pub working_dir: PathBuf,
     pub config_dir: ConfigDirectory,
@@ -78,8 +79,15 @@ pub(crate) struct Editor {
 }
 
 impl Editor {
-    fn new(jobs_handle: JobsHandle) -> Editor {
+    fn new(runtime: TokioRuntime) -> Editor {
+        let handle = runtime.editor_handle();
+        // Spawn redraw debouncer
+        runtime.spawn(redraw_debouncer(handle.clone()));
+        // Spawn job runner
+        let jobs_handle = runtime.block_on(spawn_job_runner(handle));
+
         Editor {
+            runtime,
             clients: HashMap::default(),
             draw_states: HashMap::default(),
             syntaxes: Syntaxes::default(),
@@ -451,14 +459,11 @@ impl Editor {
 /// Editor uses client handles to communicate to clients. Client handles are
 /// sent using the provided reciver.
 pub(crate) fn main_loop(
-    handle: EditorHandle,
+    runtime: TokioRuntime,
     mut recv: Receiver<ToEditor>,
     opts: StartOptions,
 ) -> Result<(), io::Error> {
-    runtime().spawn(redraw_debouncer(handle.clone()));
-    let jobs_handle = runtime().block_on(spawn_job_runner(handle.clone()));
-
-    let mut editor = Editor::new(jobs_handle);
+    let mut editor = Editor::new(runtime);
     editor.configure(opts);
     editor.on_startup();
 

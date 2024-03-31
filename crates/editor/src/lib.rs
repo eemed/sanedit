@@ -7,18 +7,15 @@ pub(crate) mod draw;
 pub(crate) mod editor;
 pub(crate) mod events;
 pub(crate) mod job_runner;
+pub(crate) mod runtime;
 pub(crate) mod server;
 
-use std::{sync::OnceLock, thread};
+use std::thread;
 
+use runtime::TokioRuntime;
 pub use server::{Address, StartOptions};
 use server::{EditorHandle, CHANNEL_SIZE};
-use tokio::{runtime::Runtime, sync::mpsc::channel};
-
-pub(crate) fn runtime() -> &'static Runtime {
-    static RUNTIME: OnceLock<Runtime> = OnceLock::new();
-    RUNTIME.get_or_init(|| Runtime::new().ok().unwrap())
-}
+use tokio::sync::mpsc::channel;
 
 pub fn run_sync(addrs: Vec<Address>, opts: StartOptions) -> Option<thread::JoinHandle<()>> {
     let (send, recv) = channel(CHANNEL_SIZE);
@@ -26,12 +23,15 @@ pub fn run_sync(addrs: Vec<Address>, opts: StartOptions) -> Option<thread::JoinH
         sender: send,
         next_id: Default::default(),
     };
-    runtime().block_on(server::spawn_listeners(addrs, handle.clone()));
+
+    // Start listening before starting the editor
+    let runtime = TokioRuntime::new(handle.clone());
+    runtime.block_on(server::spawn_listeners(addrs, handle));
 
     thread::Builder::new()
         .name("sanedit".into())
         .spawn(move || {
-            if let Err(e) = editor::main_loop(handle, recv, opts) {
+            if let Err(e) = editor::main_loop(runtime, recv, opts) {
                 log::error!("Editor main loop exited with error {}.", e);
             }
         })

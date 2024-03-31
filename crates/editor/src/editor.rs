@@ -27,6 +27,8 @@ use std::path::PathBuf;
 use tokio::io;
 use tokio::sync::mpsc::Receiver;
 
+use lazy_static::lazy_static;
+
 use crate::actions;
 use crate::actions::cursors;
 use crate::actions::hooks::run;

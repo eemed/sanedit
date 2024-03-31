@@ -1,6 +1,6 @@
 mod eol;
 
-use std::ops::Range;
+use std::{ops::Range, sync::OnceLock};
 
 use crate::{Bytes, PieceTreeSlice, ReadOnlyPieceTree};
 use aho_corasick::{automaton::Automaton, nfa::contiguous::NFA, Anchored};
@@ -21,9 +21,14 @@ const EOLS: [EndOfLine; 7] = [
     // Missing CRLF on purpose, handled separately
 ];
 
-lazy_static! {
-    static ref NFA_FWD: NFA = NFA::new(EOLS).unwrap();
-    static ref NFA_BWD: NFA = {
+fn nfa_bwd() -> &'static NFA {
+    static NFA: OnceLock<NFA> = OnceLock::new();
+    NFA.get_or_init(|| NFA::new(EOLS).unwrap())
+}
+
+fn nfa_fwd() -> &'static NFA {
+    static NFA: OnceLock<NFA> = OnceLock::new();
+    NFA.get_or_init(|| {
         let eol_rev: Vec<Vec<u8>> = EOLS
             .into_iter()
             .map(|eol| {
@@ -32,19 +37,20 @@ lazy_static! {
             })
             .collect();
         NFA::new(eol_rev).unwrap()
-    };
+    })
 }
 
 /// Advances bytes iterator to the next end of line and over it.
 /// If an EOL is found returns the form of eol and the range it spans over.
 pub fn next_eol(bytes: &mut Bytes) -> Option<EOLMatch> {
-    let mut state = NFA_FWD.start_state(ANC).unwrap();
+    let nfa = nfa_fwd();
+    let mut state = nfa.start_state(ANC).unwrap();
     loop {
         let byte = bytes.next()?;
-        state = NFA_FWD.next_state(ANC, state, byte);
+        state = nfa.next_state(ANC, state, byte);
 
-        if NFA_FWD.is_match(state) {
-            let pat = NFA_FWD.match_pattern(state, 0);
+        if nfa.is_match(state) {
+            let pat = nfa.match_pattern(state, 0);
             let mut eol = EOLS[pat.as_usize()];
 
             let crlf = eol == EndOfLine::CR && bytes.get().map(|b| b == LF).unwrap_or(false);
@@ -67,13 +73,14 @@ pub fn next_eol(bytes: &mut Bytes) -> Option<EOLMatch> {
 /// Advances bytes iterator to the previous end of line and over it.
 /// If an EOL is found returns the form of eol and the range it spans over.
 pub fn prev_eol(bytes: &mut Bytes) -> Option<EOLMatch> {
-    let mut state = NFA_BWD.start_state(ANC).unwrap();
+    let nfa = nfa_bwd();
+    let mut state = nfa.start_state(ANC).unwrap();
     loop {
         let byte = bytes.prev()?;
-        state = NFA_BWD.next_state(ANC, state, byte);
+        state = nfa.next_state(ANC, state, byte);
 
-        if NFA_BWD.is_match(state) {
-            let pat = NFA_BWD.match_pattern(state, 0);
+        if nfa.is_match(state) {
+            let pat = nfa.match_pattern(state, 0);
             let mut eol = EOLS[pat.as_usize()];
 
             if eol == EndOfLine::LF {

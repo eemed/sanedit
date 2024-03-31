@@ -1,9 +1,10 @@
-use std::collections::HashSet;
+use std::{collections::HashSet, sync::OnceLock};
 
 use crate::PieceTreeSlice;
 
-lazy_static! {
-    static ref EOL_BYTES: HashSet<Vec<u8>> = {
+fn eol_bytes() -> &'static HashSet<Vec<u8>> {
+    static SET: OnceLock<HashSet<Vec<u8>>> = OnceLock::new();
+    SET.get_or_init(|| {
         use EndOfLine::*;
 
         let mut set = HashSet::new();
@@ -16,7 +17,7 @@ lazy_static! {
         set.insert(AsRef::<[u8]>::as_ref(&LS).into());
         set.insert(AsRef::<[u8]>::as_ref(&PS).into());
         set
-    };
+    })
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -34,7 +35,7 @@ pub enum EndOfLine {
 impl EndOfLine {
     pub fn is_eol<B: AsRef<[u8]>>(bytes: B) -> bool {
         let bytes = bytes.as_ref();
-        EOL_BYTES.contains(bytes)
+        eol_bytes().contains(bytes)
     }
 
     pub fn is_slice_eol(slice: &PieceTreeSlice) -> bool {

@@ -10,21 +10,19 @@ pub(crate) mod job_runner;
 pub(crate) mod runtime;
 pub(crate) mod server;
 
-use std::thread;
+use std::{sync::mpsc::channel, thread};
 
 use runtime::TokioRuntime;
 pub use server::{Address, StartOptions};
 use server::{EditorHandle, CHANNEL_SIZE};
-use tokio::sync::mpsc::channel;
 
 pub fn run_sync(addrs: Vec<Address>, opts: StartOptions) -> Option<thread::JoinHandle<()>> {
-    let (send, recv) = channel(CHANNEL_SIZE);
+    let (send, recv) = channel();
     let handle = EditorHandle {
         sender: send,
         next_id: Default::default(),
     };
 
-    // Start listening before starting the editor
     let runtime = TokioRuntime::new(handle.clone());
     runtime.block_on(server::spawn_listeners(addrs, handle));
 

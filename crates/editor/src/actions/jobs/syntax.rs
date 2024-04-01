@@ -6,7 +6,6 @@ use crate::{
     editor::{
         buffers::BufferId,
         job_broker::KeepInTouch,
-        redraw::redraw,
         syntax::{Syntax, SyntaxParseResult},
         Editor,
     },
@@ -50,7 +49,7 @@ impl Job for SyntaxParser {
 
         let fut = async move {
             let ast = syntax.parse(bid, &pt, range);
-            ctx.send(ast).await;
+            ctx.send(ast);
             Ok(())
         };
 
@@ -70,8 +69,8 @@ impl KeepInTouch for SyntaxParser {
     fn on_message(&self, editor: &mut Editor, msg: Box<dyn Any>) {
         if let Ok(output) = msg.downcast::<SyntaxParseResult>() {
             let (win, _buf) = editor.win_buf_mut(self.client_id);
-            win.on_syntax_parsed(*output);
-            redraw();
+            *win.syntax_result() = *output;
+            *win.syntax_job() = None;
         }
     }
 

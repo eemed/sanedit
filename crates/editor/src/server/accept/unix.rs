@@ -6,13 +6,14 @@ use std::{fs, path::PathBuf, sync::Arc};
 use tokio::{io, net::UnixListener, sync::Notify};
 
 pub(crate) async fn accept_loop(addr: PathBuf, mut handle: EditorHandle, notify: Arc<Notify>) {
-    let res = unix_domain_socket_loop(addr, handle.clone(), notify).await;
+    let h = handle.clone();
+    let res = unix_domain_socket_loop(addr, h, notify).await;
 
     match res {
         Ok(()) => {}
         Err(err) => {
             log::error!("unix domain socket accept loop failure: {}", err);
-            handle.send(ToEditor::FatalError(err)).await;
+            handle.send(ToEditor::FatalError(err));
         }
     }
 }

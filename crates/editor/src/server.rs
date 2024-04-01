@@ -9,14 +9,12 @@ use std::{
     path::PathBuf,
     sync::{
         atomic::{AtomicUsize, Ordering},
+        mpsc::Sender,
         Arc,
     },
 };
 
-use tokio::{
-    net::unix::SocketAddr,
-    sync::{mpsc::Sender, Notify},
-};
+use tokio::{net::unix::SocketAddr, sync::Notify};
 
 use crate::events::ToEditor;
 
@@ -37,8 +35,8 @@ pub(crate) struct EditorHandle {
 }
 
 impl EditorHandle {
-    pub async fn send(&mut self, msg: ToEditor) {
-        if self.sender.send(msg).await.is_err() {
+    pub fn send(&mut self, msg: ToEditor) {
+        if self.sender.send(msg).is_err() {
             panic!("Main loop has shut down.");
         }
     }
@@ -102,27 +100,3 @@ pub(crate) async fn spawn_listeners(addrs: Vec<Address>, handle: EditorHandle) {
         log::info!("Server listening at {display}");
     }
 }
-
-// pub fn run_sync(addrs: Vec<Address>, opts: StartOptions) -> Option<thread::JoinHandle<()>> {
-//     let (send, recv) = channel(CHANNEL_SIZE);
-//     let handle = EditorHandle {
-//         sender: send,
-//         next_id: Default::default(),
-//     };
-//     let rt = Runtime::new().ok()?;
-//     rt.block_on(spawn_listeners(addrs, handle.clone()));
-
-//     thread::Builder::new()
-//         .name("sanedit".into())
-//         .spawn(move || {
-//             rt.spawn(redraw_debouncer(handle.clone()));
-
-//             // tokio runtime is moved here, it is killed when the editor main loop exits
-//             let jobs_handle = rt.block_on(spawn_jobs(handle));
-
-//             if let Err(e) = editor::main_loop(handle, recv, opts) {
-//                 log::error!("Editor main loop exited with error {}.", e);
-//             }
-//         })
-//         .ok()
-// }

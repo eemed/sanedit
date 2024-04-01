@@ -66,9 +66,7 @@ async fn run_client(
     };
 
     // Send client handle to the server
-    info.server_handle
-        .send(ToEditor::NewClient(my_handle))
-        .await;
+    info.server_handle.send(ToEditor::NewClient(my_handle));
 
     let res = client_loop(server_recv, info).await;
     match res {

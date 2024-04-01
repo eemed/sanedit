@@ -12,7 +12,6 @@ use crate::{
 pub(crate) enum ToEditor {
     NewClient(ClientHandle),
     Jobs(FromJobs),
-    Redraw,
     Message(ClientId, Message),
     FatalError(io::Error),
 }

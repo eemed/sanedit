@@ -18,12 +18,11 @@ pub(crate) struct JobContext {
 }
 
 impl JobContext {
-    pub async fn send<A: Any + Send>(&mut self, any: A) {
+    pub fn send<A: Any + Send>(&mut self, any: A) {
         let any = Box::new(any);
         self.sender
             .editor
-            .send(ToEditor::Jobs(FromJobs::Message(self.id, any)))
-            .await;
+            .send(ToEditor::Jobs(FromJobs::Message(self.id, any)));
     }
 }
 
@@ -86,11 +85,9 @@ impl JobResponseSender {
         Ok(())
     }
 
-    pub async fn send<A: Any + Send>(&mut self, id: JobId, any: A) {
+    pub fn send<A: Any + Send>(&mut self, id: JobId, any: A) {
         let any = Box::new(any);
-        self.editor
-            .send(ToEditor::Jobs(FromJobs::Message(id, any)))
-            .await;
+        self.editor.send(ToEditor::Jobs(FromJobs::Message(id, any)));
     }
 }
 

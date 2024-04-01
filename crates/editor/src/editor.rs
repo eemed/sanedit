@@ -4,7 +4,6 @@ pub(crate) mod hooks;
 pub(crate) mod job_broker;
 pub(crate) mod keymap;
 pub(crate) mod options;
-pub(crate) mod redraw;
 pub(crate) mod syntax;
 pub(crate) mod themes;
 pub(crate) mod windows;
@@ -23,14 +22,15 @@ use std::env;
 use std::mem;
 use std::path::Path;
 use std::path::PathBuf;
+use std::sync::mpsc::Receiver;
+use std::time::Duration;
+use std::time::Instant;
 
 use tokio::io;
-use tokio::sync::mpsc::Receiver;
 
 use crate::actions;
 use crate::actions::cursors;
 use crate::actions::hooks::run;
-use crate::actions::jobs::SyntaxParser;
 use crate::common::dirs::ConfigDirectory;
 use crate::common::file::File;
 use crate::draw::DrawState;
@@ -40,11 +40,9 @@ use crate::editor::keymap::KeymapResult;
 use crate::events::ToEditor;
 use crate::job_runner::spawn_job_runner;
 use crate::job_runner::FromJobs;
-use crate::job_runner::JobsHandle;
 use crate::runtime::TokioRuntime;
 use crate::server::ClientHandle;
 use crate::server::ClientId;
-use crate::server::EditorHandle;
 use crate::StartOptions;
 
 use self::buffers::BufferId;
@@ -53,8 +51,6 @@ use self::hooks::Hooks;
 use self::job_broker::JobBroker;
 use self::options::Options;
 
-use self::redraw::redraw;
-use self::redraw::redraw_debouncer;
 use self::syntax::Syntaxes;
 use self::themes::Themes;
 use self::windows::Window;
@@ -81,8 +77,6 @@ pub(crate) struct Editor {
 impl Editor {
     fn new(runtime: TokioRuntime) -> Editor {
         let handle = runtime.editor_handle();
-        // Spawn redraw debouncer
-        runtime.spawn(redraw_debouncer(handle.clone()));
         // Spawn job runner
         let jobs_handle = runtime.block_on(spawn_job_runner(handle));
 
@@ -233,8 +227,6 @@ impl Editor {
             Message::Resize(size) => self.handle_resize(id, size),
             _ => {}
         }
-
-        redraw();
     }
 
     fn handle_hello(&mut self, id: ClientId, size: Size) {
@@ -291,6 +283,7 @@ impl Editor {
     }
 
     fn redraw_all(&mut self) {
+        log::info!("Redraw all");
         let clients: Vec<ClientId> = self.clients.keys().cloned().collect();
 
         for cid in clients {
@@ -454,27 +447,47 @@ impl Editor {
 /// sent using the provided reciver.
 pub(crate) fn main_loop(
     runtime: TokioRuntime,
-    mut recv: Receiver<ToEditor>,
+    recv: Receiver<ToEditor>,
     opts: StartOptions,
 ) -> Result<(), io::Error> {
     let mut editor = Editor::new(runtime);
     editor.configure(opts);
     editor.on_startup();
 
-    while let Some(msg) = recv.blocking_recv() {
-        match msg {
-            ToEditor::NewClient(handle) => editor.on_client_connected(handle),
-            ToEditor::Jobs(msg) => editor.handle_job_msg(msg),
-            ToEditor::Message(id, msg) => editor.handle_message(id, msg),
-            ToEditor::Redraw => editor.redraw_all(),
-            ToEditor::FatalError(e) => {
-                log::info!("Fatal error: {}", e);
-                break;
-            }
-        }
+    let framerate = Duration::from_millis(1000 / 30);
+    let mut redraw = Instant::now();
+    let mut was_previously_redrawn = false;
 
-        if !editor.is_running() {
-            break;
+    while editor.is_running {
+        match recv.recv_timeout(framerate) {
+            Ok(msg) => {
+                was_previously_redrawn = false;
+
+                use ToEditor::*;
+                match msg {
+                    NewClient(handle) => editor.on_client_connected(handle),
+                    Jobs(msg) => editor.handle_job_msg(msg),
+                    Message(id, msg) => editor.handle_message(id, msg),
+                    FatalError(e) => {
+                        log::info!("Fatal error: {}", e);
+                        break;
+                    }
+                }
+
+                let now = Instant::now();
+                if now.duration_since(redraw) > framerate {
+                    was_previously_redrawn = true;
+                    redraw = Instant::now();
+                    editor.redraw_all();
+                }
+            }
+            Err(_) => {
+                if !was_previously_redrawn {
+                    was_previously_redrawn = true;
+                    redraw = Instant::now();
+                    editor.redraw_all();
+                }
+            }
         }
     }
 

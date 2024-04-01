@@ -64,21 +64,39 @@ fn draw_syntax(grid: &mut Vec<Vec<redraw::Cell>>, view: &View, theme: &Theme) {
 
     for span in &syntax.highlights {
         let srange = &span.range;
+        // if srange.start >= vrange.end {
+        //     break;
+        // }
         if !vrange.overlaps(srange) {
             continue;
         }
         const HL_PREFIX: &str = "window.view.";
         let style = theme.get(HL_PREFIX.to_owned() + &span.name);
 
-        // TODO optimize
-        let mut pos = vrange.start;
-        for (line, row) in view.cells().iter().enumerate() {
+        draw_hl(grid, view, style, srange);
+    }
+}
+
+fn draw_hl(grid: &mut Vec<Vec<redraw::Cell>>, view: &View, style: Style, range: &Range<usize>) {
+    let vrange = view.range();
+    if !vrange.overlaps(range) {
+        return;
+    }
+
+    let mut pos = vrange.start;
+    if let Some(point) = view.point_at_pos(pos) {
+        for (i, row) in view.cells().iter().skip(point.y).enumerate() {
+            let line = point.y + i;
             for (col, cell) in row.iter().enumerate() {
-                if !matches!(cell, Cell::Empty) && srange.contains(&pos) {
+                if !matches!(cell, Cell::Empty) && range.contains(&pos) {
                     grid[line][col].style = style;
                 }
 
                 pos += cell.len_in_buffer();
+            }
+
+            if pos >= range.end {
+                break;
             }
         }
     }
@@ -98,17 +116,7 @@ fn draw_search_highlights(
             continue;
         }
 
-        // TODO optimize
-        let mut pos = vrange.start;
-        for (line, row) in view.cells().iter().enumerate() {
-            for (col, cell) in row.iter().enumerate() {
-                if !matches!(cell, Cell::Empty) && m.contains(&pos) {
-                    grid[line][col].style = style;
-                }
-
-                pos += cell.len_in_buffer();
-            }
-        }
+        draw_hl(grid, view, style, m);
     }
 }
 
@@ -135,30 +143,7 @@ fn draw_secondary_cursors(
                 theme.get(ThemeField::Cursor),
             ),
         };
-        highlight_area(grid, area, view, style);
-    }
-}
-
-fn highlight_area(
-    grid: &mut Vec<Vec<redraw::Cell>>,
-    area: Range<usize>,
-    view: &View,
-    hlstyle: Style,
-) {
-    let mut pos = view.range().start;
-
-    for (line, row) in view.cells().iter().enumerate() {
-        for (col, cell) in row.iter().enumerate() {
-            if !matches!(cell, Cell::Empty) && area.contains(&pos) {
-                grid[line][col].style = hlstyle;
-            }
-
-            pos += cell.len_in_buffer();
-
-            if area.end < pos {
-                break;
-            }
-        }
+        draw_hl(grid, view, style, &area);
     }
 }
 
@@ -171,7 +156,7 @@ fn draw_primary_cursor(
     let style = theme.get(ThemeField::Selection);
 
     if let Some(area) = cursor.selection() {
-        highlight_area(grid, area, view, style);
+        draw_hl(grid, view, style, &area);
     }
 
     let has_selection = cursor.selection().is_some();

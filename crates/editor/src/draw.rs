@@ -85,7 +85,6 @@ impl DrawState {
         };
 
         if draw_win {
-            log::info!("Editor draw window");
             let window = window::draw(&mut ctx);
             if draw_lnr {
                 // let lnrs = window::draw_line_numbers(&ctx);

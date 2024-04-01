@@ -8,6 +8,7 @@ use crate::common::char::{Char, DisplayOptions};
 use crate::common::movement::prev_line_start;
 use crate::editor::buffers::Buffer;
 use crate::editor::syntax::SyntaxParseResult;
+use crate::job_runner::JobId;
 
 #[derive(Debug, Clone)]
 pub(crate) enum Cell {
@@ -68,7 +69,9 @@ pub(crate) struct View {
     /// Display options which were used to draw this view
     pub options: DisplayOptions,
     needs_redraw: bool,
+
     pub(super) syntax: SyntaxParseResult,
+    pub(super) syntax_job: Option<JobId>,
 }
 
 impl View {
@@ -81,6 +84,7 @@ impl View {
             options: DisplayOptions::default(),
             needs_redraw: true,
             syntax: SyntaxParseResult::default(),
+            syntax_job: None,
         }
     }
 
@@ -107,7 +111,6 @@ impl View {
     }
 
     fn clear(&mut self) {
-        self.cells = Self::make_default_cells(self.width, self.height);
         for row in self.cells.iter_mut() {
             for cell in row.iter_mut() {
                 *cell = Cell::default();

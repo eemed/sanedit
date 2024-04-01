@@ -76,6 +76,7 @@ impl Syntax {
         ropt: &ReadOnlyPieceTree,
         view: Range<usize>,
     ) -> SyntaxParseResult {
+        log::info!("parsing");
         let slice = ropt.slice(..);
         let ast = self.grammar.parse(&slice);
         // log::debug!("{}", ast.print_string(&String::from(&slice)));

@@ -97,7 +97,7 @@ impl Search {
 
     async fn send_matches(mut ctx: JobContext, mut mrecv: Receiver<Vec<Range<usize>>>) {
         while let Some(opts) = mrecv.recv().await {
-            ctx.send(SearchMessage::Matches(opts)).await;
+            ctx.send(SearchMessage::Matches(opts));
         }
     }
 }

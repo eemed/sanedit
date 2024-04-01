@@ -55,7 +55,7 @@ async fn conn_read(
     while let Some(msg) = read.next().await {
         match msg {
             Ok(msg) => {
-                server_handle.send(ToEditor::Message(id, msg)).await;
+                server_handle.send(ToEditor::Message(id, msg));
             }
             Err(e) => {
                 log::info!("conn_read error: {}", e);

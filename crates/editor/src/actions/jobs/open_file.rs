@@ -10,7 +10,7 @@ use tokio::{
 
 use crate::{
     actions::jobs::match_options,
-    editor::{job_broker::KeepInTouch, redraw::redraw, windows::SelectorOption, Editor},
+    editor::{job_broker::KeepInTouch, windows::SelectorOption, Editor},
     job_runner::{BoxedJob, Job, JobContext, JobId, JobResponseSender, JobResult},
     server::ClientId,
 };
@@ -95,7 +95,7 @@ impl OpenFile {
         mut mrecv: Receiver<MatchedOptions>,
     ) {
         while let Some(opts) = mrecv.recv().await {
-            sender.send(id, OpenFileMessage::Progress(opts)).await;
+            sender.send(id, OpenFileMessage::Progress(opts));
         }
     }
 }
@@ -120,7 +120,7 @@ impl Job for OpenFile {
             // Messages channel
             let (msend, mrecv) = channel::<MatchedOptions>(CHANNEL_SIZE);
 
-            sender.send(id, OpenFileMessage::Init(tsend)).await;
+            sender.send(id, OpenFileMessage::Init(tsend));
 
             // Broadcast the kill signal to the directory reader tasks to kill
             // them all
@@ -165,12 +165,9 @@ impl KeepInTouch for OpenFile {
                 Progress(opts) => match opts {
                     MatchedOptions::ClearAll => win.prompt.clear_options(),
                     MatchedOptions::Options(opts) => {
-                        let opts: Vec<SelectorOption> = opts
-                            .into_iter()
-                            .map(|mat| SelectorOption::from(mat))
-                            .collect();
+                        let opts: Vec<SelectorOption> =
+                            opts.into_iter().map(SelectorOption::from).collect();
                         win.prompt.provide_options(opts.into());
-                        redraw();
                     }
                 },
             }

@@ -22,6 +22,7 @@ use crate::{
         keymap::{DefaultKeyMappings, KeyMappings, Keymap},
         syntax::SyntaxParseResult,
     },
+    job_runner::JobId,
 };
 
 pub(crate) use self::{
@@ -470,13 +471,12 @@ impl Window {
         todo!()
     }
 
-    pub fn on_syntax_parsed(&mut self, result: SyntaxParseResult) {
-        if result.bid != self.buf {
-            self.view.syntax = SyntaxParseResult::default();
-            return;
-        }
+    pub fn syntax_result(&mut self) -> &mut SyntaxParseResult {
+        &mut self.view.syntax
+    }
 
-        self.view.syntax = result;
+    pub fn syntax_job(&mut self) -> &mut Option<JobId> {
+        &mut self.view.syntax_job
     }
 }
 

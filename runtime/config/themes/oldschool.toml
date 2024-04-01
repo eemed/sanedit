@@ -33,7 +33,7 @@ userinput = ",#000000,"
 
 [colors.prompt.overlay]
 default = ",#000000,"
-title = ",#232d19,bold"
+title = ",#1d1d1d,bold"
 message = ",,bold"
 userinput = ""
 

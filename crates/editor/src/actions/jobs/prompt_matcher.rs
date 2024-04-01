@@ -5,7 +5,7 @@ use tokio::sync::mpsc::{channel, Receiver, Sender};
 use crate::{
     actions::jobs::{match_options, MatchedOptions, CHANNEL_SIZE},
     common::matcher::Match,
-    editor::{job_broker::KeepInTouch, redraw::redraw, windows::SelectorOption, Editor},
+    editor::{job_broker::KeepInTouch, windows::SelectorOption, Editor},
     job_runner::{BoxedJob, Job, JobContext, JobResult},
     server::ClientId,
 };
@@ -51,7 +51,7 @@ impl StaticMatcher {
 
     async fn send_matched_options(mut ctx: JobContext, mut mrecv: Receiver<MatchedOptions>) {
         while let Some(msg) = mrecv.recv().await {
-            ctx.send(MatcherMessage::Progress(msg)).await;
+            ctx.send(MatcherMessage::Progress(msg));
         }
     }
 }
@@ -65,7 +65,7 @@ impl Job for StaticMatcher {
             let (osend, orecv) = channel::<String>(CHANNEL_SIZE);
             let (msend, mrecv) = channel::<MatchedOptions>(CHANNEL_SIZE);
 
-            ctx.send(MatcherMessage::Init(tsend)).await;
+            ctx.send(MatcherMessage::Init(tsend));
 
             tokio::join!(
                 Self::send_options(opts, osend),
@@ -112,7 +112,6 @@ impl KeepInTouch for StaticMatcher {
                             .collect();
                         let (win, _buf) = editor.win_buf_mut(self.client_id);
                         win.prompt.provide_options(opts.into());
-                        redraw();
                     }
                 },
             }

@@ -75,10 +75,16 @@ pub(crate) async fn match_options(
     }
 
     let mut matcher = Matcher::new(orecv);
-    let recv = matcher.do_match("");
+    let mut term = String::new();
+    let recv = matcher.do_match(&term);
     let mut join = spawn(msend.clone(), recv);
 
-    while let Some(term) = trecv.recv().await {
+    while let Some(t) = trecv.recv().await {
+        if term == t {
+            continue;
+        }
+        term = t;
+
         join.abort();
         let _ = join.await;
 

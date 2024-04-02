@@ -7,7 +7,7 @@ use crate::server::ClientId;
 
 use super::Editor;
 
-pub(crate) use cpu::{CPUJob, WrappedCPUJob};
+pub(crate) use cpu::CPUJob;
 
 /// A job that keeps in touch (can send messages back) with the editor
 pub(crate) trait KeepInTouch {
@@ -39,7 +39,7 @@ impl JobBroker {
     }
 
     /// Run a job in the background
-    pub fn run_job<T>(&mut self, job: T) -> JobId
+    pub fn run<T>(&mut self, job: T) -> JobId
     where
         T: Job + Send + Sync + Clone + 'static,
     {

@@ -5,7 +5,7 @@ use tokio::sync::mpsc::{channel, Receiver, Sender};
 
 use crate::{
     editor::{job_broker::KeepInTouch, windows::SearchDirection, Editor},
-    job_runner::{BoxedJob, Job, JobContext, JobResult},
+    job_runner::{Job, JobContext, JobResult},
     server::ClientId,
 };
 

@@ -6,7 +6,7 @@ use crate::{
     actions::jobs::{match_options, MatchedOptions, CHANNEL_SIZE},
     common::matcher::Match,
     editor::{job_broker::KeepInTouch, windows::SelectorOption, Editor},
-    job_runner::{BoxedJob, Job, JobContext, JobResult},
+    job_runner::{Job, JobContext, JobResult},
     server::ClientId,
 };
 

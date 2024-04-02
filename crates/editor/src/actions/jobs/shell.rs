@@ -4,7 +4,7 @@ use tokio::process::Command;
 
 use crate::{
     editor::job_broker::KeepInTouch,
-    job_runner::{BoxedJob, Job, JobContext, JobResult},
+    job_runner::{Job, JobContext, JobResult},
     server::ClientId,
 };
 

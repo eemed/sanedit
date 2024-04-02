@@ -5,7 +5,7 @@ use tokio::{fs::File, io::AsyncWriteExt};
 
 use crate::{
     editor::{job_broker::KeepInTouch, Editor},
-    job_runner::{BoxedJob, Job, JobContext, JobResult},
+    job_runner::{Job, JobContext, JobResult},
     server::ClientId,
 };
 

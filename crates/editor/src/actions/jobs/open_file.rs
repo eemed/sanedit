@@ -11,7 +11,7 @@ use tokio::{
 use crate::{
     actions::jobs::match_options,
     editor::{job_broker::KeepInTouch, windows::SelectorOption, Editor},
-    job_runner::{BoxedJob, Job, JobContext, JobId, JobResponseSender, JobResult},
+    job_runner::{Job, JobContext, JobId, JobResponseSender, JobResult},
     server::ClientId,
 };
 

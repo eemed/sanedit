@@ -5,11 +5,11 @@ use sanedit_buffer::ReadOnlyPieceTree;
 use crate::{
     editor::{
         buffers::BufferId,
-        job_broker::KeepInTouch,
+        job_broker::{CPUJob, KeepInTouch},
         syntax::{Syntax, SyntaxParseResult},
         Editor,
     },
-    job_runner::{BoxedJob, Job, JobContext, JobResult},
+    job_runner::JobContext,
     server::ClientId,
 };
 
@@ -40,24 +40,11 @@ impl SyntaxParser {
     }
 }
 
-impl Job for SyntaxParser {
-    fn run(&self, mut ctx: JobContext) -> JobResult {
-        let bid = self.bid.clone();
-        let pt = self.ropt.clone();
-        let range = self.range.clone();
-        let syntax = self.syntax.clone();
-
-        let fut = async move {
-            let ast = syntax.parse(bid, &pt, range);
-            ctx.send(ast);
-            Ok(())
-        };
-
-        Box::pin(fut)
-    }
-
-    fn box_clone(&self) -> BoxedJob {
-        Box::new((*self).clone())
+impl CPUJob for SyntaxParser {
+    fn run(&self, mut ctx: JobContext) -> anyhow::Result<()> {
+        let ast = self.syntax.parse(self.bid, &self.ropt, self.range.clone());
+        ctx.send(ast);
+        Ok(())
     }
 }
 

@@ -78,10 +78,6 @@ impl Job for StaticMatcher {
 
         Box::pin(fut)
     }
-
-    fn box_clone(&self) -> BoxedJob {
-        Box::new((*self).clone())
-    }
 }
 
 impl KeepInTouch for StaticMatcher {

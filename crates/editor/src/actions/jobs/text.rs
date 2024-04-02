@@ -48,10 +48,6 @@ impl Job for Save {
 
         Box::pin(fut)
     }
-
-    fn box_clone(&self) -> BoxedJob {
-        Box::new((*self).clone())
-    }
 }
 
 impl KeepInTouch for Save {

@@ -50,10 +50,6 @@ impl Job for ShellCommand {
 
         Box::pin(fut)
     }
-
-    fn box_clone(&self) -> BoxedJob {
-        Box::new((*self).clone())
-    }
 }
 
 impl KeepInTouch for ShellCommand {

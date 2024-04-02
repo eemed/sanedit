@@ -26,9 +26,6 @@ pub(crate) trait Job {
     /// This should return the async future to run the job.
     /// This should not block for a long time
     fn run(&self, ctx: JobContext) -> JobResult;
-
-    /// Clone the job and transform it into sendable form
-    fn box_clone(&self) -> BoxedJob;
 }
 
 /// Spawn a job runner

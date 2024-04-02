@@ -1,6 +1,6 @@
 mod commands;
 
-use std::{mem, path::PathBuf};
+use std::path::PathBuf;
 
 use sanedit_messages::ClientMessage;
 

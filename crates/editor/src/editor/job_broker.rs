@@ -5,11 +5,9 @@ use std::{any::Any, collections::HashMap, fmt, rc::Rc};
 use crate::job_runner::{Job, JobId, JobsHandle, ToJobs};
 use crate::server::ClientId;
 
-use self::cpu::CPU;
-
 use super::Editor;
 
-pub(crate) use cpu::CPUJob;
+pub(crate) use cpu::{CPUJob, WrappedCPUJob};
 
 /// A job that keeps in touch (can send messages back) with the editor
 pub(crate) trait KeepInTouch {
@@ -40,8 +38,8 @@ impl JobBroker {
         }
     }
 
-    /// Request a job that runs in the background
-    pub fn request_job<T>(&mut self, job: T) -> JobId
+    /// Run a job in the background
+    pub fn run_job<T>(&mut self, job: T) -> JobId
     where
         T: Job + Send + Sync + Clone + 'static,
     {
@@ -51,19 +49,7 @@ impl JobBroker {
         id
     }
 
-    pub fn request_cpu<T>(&mut self, task: T) -> JobId
-    where
-        T: CPUJob + Send + Sync + KeepInTouch + 'static,
-    {
-        let job = Box::new(CPU::new(task.clone()));
-        let id = JobId::next();
-        let talkative = Rc::new(task);
-        self.jobs.insert(id, talkative);
-        let _ = self.handle.blocking_send(ToJobs::Request(id, job));
-        id
-    }
-
-    /// Request a job to be ran, tahat
+    /// Request a job to be ran
     pub fn request<T>(&mut self, task: T) -> JobId
     where
         T: Job + Send + Sync + Clone + KeepInTouch + 'static,

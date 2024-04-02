@@ -1,5 +1,5 @@
 use crate::{
-    editor::{syntax::SyntaxParseResult, Editor},
+    editor::{job_broker::CPUJob, syntax::SyntaxParseResult, Editor},
     server::ClientId,
 };
 
@@ -24,7 +24,7 @@ pub(crate) fn parse_syntax(editor: &mut Editor, id: ClientId) {
         if let Ok(s) = editor.syntaxes.get(&ft) {
             let jid = editor
                 .job_broker
-                .request_cpu(SyntaxParser::new(id, bid, s, ropt, range));
+                .request(SyntaxParser::new(id, bid, s, ropt, range));
 
             let (win, buf) = editor.win_buf_mut(id);
             *win.syntax_job() = jid.into();

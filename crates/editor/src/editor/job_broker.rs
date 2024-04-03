@@ -28,6 +28,10 @@ impl fmt::Debug for dyn KeepInTouch {
 pub(crate) struct JobBroker {
     handle: JobsHandle,
     jobs: HashMap<JobId, Rc<dyn KeepInTouch>>,
+
+    /// Slots to store one job id that should be cancelled before another one
+    /// with the same client id + string combo is requested.
+    slots: HashMap<(ClientId, String), JobId>,
 }
 
 impl JobBroker {
@@ -35,6 +39,7 @@ impl JobBroker {
         JobBroker {
             handle,
             jobs: HashMap::new(),
+            slots: HashMap::new(),
         }
     }
 
@@ -47,6 +52,20 @@ impl JobBroker {
         let id = JobId::next();
         let _ = self.handle.blocking_send(ToJobs::Request(id, job));
         id
+    }
+
+    pub fn request_slot<T>(&mut self, id: ClientId, name: &str, task: T) -> JobId
+    where
+        T: Job + Send + Sync + Clone + KeepInTouch + 'static,
+    {
+        let key = (id, name.to_string());
+        if let Some(jid) = self.slots.remove(&key) {
+            self.stop(jid);
+        }
+
+        let jid = self.request(task);
+        self.slots.insert(key, jid);
+        jid
     }
 
     /// Request a job to be ran
@@ -67,6 +86,10 @@ impl JobBroker {
     }
 
     pub fn stop(&mut self, id: JobId) {
+        if !self.jobs.contains_key(&id) {
+            return;
+        }
+
         let _ = self.handle.blocking_send(ToJobs::Stop(id));
         self.done(id);
     }

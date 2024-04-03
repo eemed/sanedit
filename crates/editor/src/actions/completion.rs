@@ -18,11 +18,11 @@ fn complete(editor: &mut Editor, id: ClientId) {
 
     win.focus = Focus::Completion;
 
-    provide(
-        editor,
-        id,
-        vec!["hello".into(), "world".into(), "foo".into(), "bar".into()],
-    );
+    // provide(
+    //     editor,
+    //     id,
+    //     vec!["hello".into(), "world".into(), "foo".into(), "bar".into()],
+    // );
 }
 
 #[action("Confirm completion")]
@@ -41,9 +41,4 @@ fn next(editor: &mut Editor, id: ClientId) {
 fn prev(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.completion.select_prev();
-}
-
-pub(crate) fn provide(editor: &mut Editor, id: ClientId, completions: Vec<String>) {
-    let (win, _buf) = editor.win_buf_mut(id);
-    win.completion.provide_options(completions);
 }

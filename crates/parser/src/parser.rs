@@ -9,7 +9,7 @@ use std::{cmp::min, collections::BinaryHeap, io};
 use smallvec::SmallVec;
 use thiserror::Error;
 
-use crate::{grammar, input::Reader, parser::clause::ClauseKind};
+use crate::{grammar, parser::clause::ClauseKind};
 
 pub use self::ast::AST;
 use self::{
@@ -35,8 +35,7 @@ pub struct PikaParser {
 
 impl PikaParser {
     pub fn new<R: io::Read>(read: R) -> Result<PikaParser, ParseError> {
-        let input = Reader::new(read);
-        let rules = grammar::parse_rules(input).map_err(|o| ParseError::Grammar(o.to_string()))?;
+        let rules = grammar::parse_rules(read).map_err(|o| ParseError::Grammar(o.to_string()))?;
         let clauses =
             preprocess_rules(&rules).map_err(|o| ParseError::Preprocess(o.to_string()))?;
         let parser = PikaParser { preproc: clauses };

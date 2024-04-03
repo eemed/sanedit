@@ -2,10 +2,9 @@ mod rule;
 
 use std::collections::HashMap;
 use std::collections::HashSet;
+use std::io;
 use std::mem;
 
-use crate::input::Input;
-use crate::input::StringInput;
 use anyhow::bail;
 use anyhow::Result;
 use sanedit_utils::ranges::OverlappingRanges;
@@ -18,12 +17,12 @@ use super::lexer::Lexer;
 use super::lexer::Token;
 
 pub(crate) fn parse_rules_from_str(input: &str) -> Result<Box<[Rule]>> {
-    let sinput = StringInput::new(input);
+    let sinput = io::Cursor::new(input);
     parse_rules(sinput)
 }
 
-pub(crate) fn parse_rules<I: Input>(input: I) -> Result<Box<[Rule]>> {
-    let mut lex = Lexer::new(input);
+pub(crate) fn parse_rules<R: io::Read>(read: R) -> Result<Box<[Rule]>> {
+    let mut lex = Lexer::new(read);
     let token = lex.next()?;
     let parser = GrammarParser {
         lex,
@@ -46,8 +45,8 @@ pub(crate) const CHAR_MAX: char = '\u{10ffff}';
 // e1 / e2       1
 
 #[derive(Debug)]
-pub(crate) struct GrammarParser<I: Input> {
-    lex: Lexer<I>,
+pub(crate) struct GrammarParser<R: io::Read> {
+    lex: Lexer<R>,
     token: Token,
 
     /// Seen rules, used to identify rules that are referenced but not defined
@@ -58,7 +57,7 @@ pub(crate) struct GrammarParser<I: Input> {
     indices: HashMap<String, usize>,
 }
 
-impl<I: Input> GrammarParser<I> {
+impl<R: io::Read> GrammarParser<R> {
     fn parse(mut self) -> Result<Box<[Rule]>> {
         while self.token != Token::EOF {
             let rule = self.rule()?;

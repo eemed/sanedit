@@ -49,17 +49,18 @@ impl UI {
     }
 
     pub fn handle_message(&mut self, msg: ClientMessage) -> bool {
+        use ClientMessage::*;
         match msg {
-            ClientMessage::Hello => {}
-            ClientMessage::SetOption(_) => {}
-            ClientMessage::Theme(theme) => {
+            Hello => {}
+            SetOption(_) => {}
+            Theme(theme) => {
                 self.context.theme = theme;
             }
-            ClientMessage::Redraw(msg) => {
+            Redraw(msg) => {
                 self.grid.handle_redraw(&self.context, msg);
             }
-            ClientMessage::Flush => self.flush(),
-            ClientMessage::Bye => {
+            Flush => self.flush(),
+            Bye => {
                 log::info!("UI got bye, exiting.");
                 return true;
             }

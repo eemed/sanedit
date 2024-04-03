@@ -2,7 +2,7 @@ use sanedit_messages::redraw::Point;
 
 use crate::editor::keymap::{DefaultKeyMappings, KeyMappings, Keymap};
 
-use super::selector::Selector;
+use super::selector::{Options, Selector};
 
 #[derive(Debug)]
 pub(crate) struct Completion {
@@ -24,8 +24,8 @@ impl Completion {
         self.selector.select_prev()
     }
 
-    pub fn provide_options(&mut self, options: Vec<String>) {
-        // self.selector.provide_options(options)
+    pub fn provide_options(&mut self, options: Options) {
+        self.selector.provide_options(options)
     }
 
     pub fn selected_pos(&self) -> Option<usize> {

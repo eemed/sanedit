@@ -1,8 +1,10 @@
+use std::io;
+
 use anyhow::bail;
 use anyhow::Result;
 
-use crate::input::Input;
-use crate::input::Position;
+use super::reader::Position;
+use super::reader::Reader;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub(crate) enum Token {
@@ -36,16 +38,16 @@ enum State {
 }
 
 #[derive(Debug)]
-pub(crate) struct Lexer<I: Input> {
-    input: I,
+pub(crate) struct Lexer<R: io::Read> {
+    read: Reader<R>,
     state: State,
     token_count: usize,
 }
 
-impl<I: Input> Lexer<I> {
-    pub fn new(input: I) -> Lexer<I> {
+impl<R: io::Read> Lexer<R> {
+    pub fn new(input: R) -> Lexer<R> {
         Self {
-            input,
+            read: Reader::new(input),
             state: State::Normal,
             token_count: 0,
         }
@@ -56,9 +58,9 @@ impl<I: Input> Lexer<I> {
             return Ok(());
         }
 
-        while let Some(ch) = self.input.peek() {
+        while let Some(ch) = self.read.peek() {
             if ch.is_whitespace() {
-                self.input.consume(ch)?;
+                self.read.consume(ch)?;
             } else {
                 break;
             }
@@ -67,7 +69,7 @@ impl<I: Input> Lexer<I> {
     }
 
     pub fn pos(&self) -> Position {
-        self.input.pos()
+        self.read.pos()
     }
 
     pub fn token_count(&self) -> usize {
@@ -77,25 +79,25 @@ impl<I: Input> Lexer<I> {
     fn consume(&mut self, s: &str) -> Result<()> {
         let chars = s.chars();
         for ch in chars {
-            self.input.consume(ch)?;
+            self.read.consume(ch)?;
         }
         Ok(())
     }
 
     fn consume_string(&mut self) -> Result<String> {
         let mut result = String::new();
-        while let Some(ch) = self.input.peek() {
+        while let Some(ch) = self.read.peek() {
             if Self::allowed_in_string(ch) {
                 result.push(ch);
             } else {
                 break;
             }
 
-            self.input.consume(ch)?;
+            self.read.consume(ch)?;
         }
 
         if result.is_empty() {
-            bail!("Failed to parse string at {}", self.input.pos());
+            bail!("Failed to parse string at {}", self.read.pos());
         }
 
         Ok(result)
@@ -103,29 +105,29 @@ impl<I: Input> Lexer<I> {
 
     fn consume_hex(&mut self) -> Result<String> {
         let mut result = String::new();
-        while let Some(ch) = self.input.peek() {
+        while let Some(ch) = self.read.peek() {
             if ch.is_ascii_hexdigit() {
                 result.push(ch);
             } else {
                 break;
             }
 
-            self.input.consume(ch)?;
+            self.read.consume(ch)?;
         }
 
         if result.is_empty() {
-            bail!("Failed to parse string at {}", self.input.pos());
+            bail!("Failed to parse string at {}", self.read.pos());
         }
 
         Ok(result)
     }
 
     fn advance(&mut self) -> Result<()> {
-        if let Some(ch) = self.input.peek() {
-            self.input.consume(ch)?;
+        if let Some(ch) = self.read.peek() {
+            self.read.consume(ch)?;
             Ok(())
         } else {
-            bail!("Failed to advance at {}", self.input.pos());
+            bail!("Failed to advance at {}", self.read.pos());
         }
     }
 
@@ -133,9 +135,9 @@ impl<I: Input> Lexer<I> {
         let mut result = String::new();
         let mut prev_escape = false;
         loop {
-            let ch = match self.input.peek() {
+            let ch = match self.read.peek() {
                 Some(ch) => ch,
-                None => bail!("Failed to consume string at {}", self.input.pos()),
+                None => bail!("Failed to consume string at {}", self.read.pos()),
             };
             let escape = !prev_escape && ch == '\\';
 
@@ -161,7 +163,7 @@ impl<I: Input> Lexer<I> {
         }
 
         if result.is_empty() {
-            bail!("Failed to parse string at {}", self.input.pos());
+            bail!("Failed to parse string at {}", self.read.pos());
         }
 
         Ok(result)
@@ -181,7 +183,7 @@ impl<I: Input> Lexer<I> {
     }
 
     fn normal(&mut self) -> Result<Token> {
-        let ch = match self.input.peek() {
+        let ch = match self.read.peek() {
             Some(ch) => ch,
             None => return Ok(Token::EOF),
         };
@@ -258,7 +260,7 @@ impl<I: Input> Lexer<I> {
             }
         }
 
-        bail!("Unexpected char {ch} at {}", self.input.pos());
+        bail!("Unexpected char {ch} at {}", self.read.pos());
     }
 
     fn allowed_in_string(ch: char) -> bool {
@@ -267,7 +269,7 @@ impl<I: Input> Lexer<I> {
     }
 
     fn quote(&mut self) -> Result<Token> {
-        let ch = match self.input.peek() {
+        let ch = match self.read.peek() {
             Some(ch) => ch,
             None => return Ok(Token::EOF),
         };
@@ -286,7 +288,7 @@ impl<I: Input> Lexer<I> {
     }
 
     fn brackets(&mut self) -> Result<Token> {
-        let ch = match self.input.peek() {
+        let ch = match self.read.peek() {
             Some(ch) => ch,
             None => return Ok(Token::EOF),
         };
@@ -303,7 +305,7 @@ impl<I: Input> Lexer<I> {
             }
             '\\' => {
                 self.advance()?;
-                match self.input.peek() {
+                match self.read.peek() {
                     Some('n') => {
                         self.advance()?;
                         Ok(Token::Char('\n'))
@@ -345,17 +347,17 @@ impl<I: Input> Lexer<I> {
                             None => bail!("Cannot convert hex {hex} to char"),
                         }
                     }
-                    Some(c) => bail!("Expected escaped char but got {c}, at {}", self.input.pos()),
+                    Some(c) => bail!("Expected escaped char but got {c}, at {}", self.read.pos()),
                     None => bail!(
                         "Expected escaped char but got Nothing, at {}",
-                        self.input.pos()
+                        self.read.pos()
                     ),
                 }
             }
             '.' => {
                 self.advance()?;
 
-                if let Some(n) = self.input.peek() {
+                if let Some(n) = self.read.peek() {
                     if n == '.' {
                         self.advance()?;
                         return Ok(Token::Range);

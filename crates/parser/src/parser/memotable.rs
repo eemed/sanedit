@@ -1,19 +1,19 @@
 use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
 
-use crate::PikaParser;
+use crate::{CharReader, PikaParser};
 
 use super::{ast::AST, clause::ClauseKind};
 
 #[derive(Debug)]
-pub(crate) struct MemoTable<'a, 'b> {
+pub(crate) struct MemoTable<'a, 'b, B: CharReader> {
     table: FxHashMap<MemoKey, Match>,
     pub(crate) parser: &'a PikaParser,
-    pub(crate) input: &'b str,
+    pub(crate) input: &'b B,
 }
 
-impl<'a, 'b> MemoTable<'a, 'b> {
-    pub fn new(parser: &'a PikaParser, input: &'b str) -> MemoTable<'a, 'b> {
+impl<'a, 'b, B: CharReader> MemoTable<'a, 'b, B> {
+    pub fn new(parser: &'a PikaParser, input: &'b B) -> MemoTable<'a, 'b, B> {
         MemoTable {
             table: FxHashMap::default(),
             parser,

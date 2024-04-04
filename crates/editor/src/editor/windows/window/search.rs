@@ -21,7 +21,7 @@ pub(crate) enum SearchDirection {
 }
 
 impl SearchDirection {
-    pub fn opposite(&self) -> SearchDirection {
+    pub fn reverse(&self) -> SearchDirection {
         use SearchDirection::*;
         match self {
             Backward => Forward,

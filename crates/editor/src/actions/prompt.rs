@@ -67,13 +67,14 @@ fn command_palette(editor: &mut Editor, id: ClientId) {
 
 #[action("Open a file")]
 fn open_file(editor: &mut Editor, id: ClientId) {
+    const PROMPT_MESSAGE: &str = "Open a file";
     let path = editor.working_dir().to_path_buf();
     let job = OpenFile::new(id, path);
-    let jid = editor.job_broker.request(job);
+    editor.job_broker.request_slot(id, PROMPT_MESSAGE, job);
     let (win, _buf) = editor.win_buf_mut(id);
 
     win.prompt = Prompt::builder()
-        .prompt("Open a file")
+        .prompt(PROMPT_MESSAGE)
         .on_confirm(move |editor, id, input| {
             let path = PathBuf::from(input);
 
@@ -82,7 +83,6 @@ fn open_file(editor: &mut Editor, id: ClientId) {
                 win.warn_msg(&format!("Failed to open file {input}"))
             }
         })
-        .background_job(jid)
         .build();
     win.focus = Focus::Prompt;
 }
@@ -92,9 +92,8 @@ fn close(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.focus = Focus::Window;
 
-    if let Some(id) = win.prompt.background_job() {
-        editor.job_broker.stop(id);
-    }
+    let slotname = win.prompt.message().to_string();
+    editor.job_broker.stop_slot(id, &slotname);
 
     let (win, _buf) = editor.win_buf_mut(id);
     if let Some(on_abort) = win.prompt.on_abort() {
@@ -108,9 +107,8 @@ fn confirm(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.focus = Focus::Window;
 
-    if let Some(id) = win.prompt.background_job() {
-        editor.job_broker.stop(id);
-    }
+    let slotname = win.prompt.message().to_string();
+    editor.job_broker.stop_slot(id, &slotname);
 
     let (win, _buf) = editor.win_buf_mut(id);
     if let Some(on_confirm) = win.prompt.on_confirm() {

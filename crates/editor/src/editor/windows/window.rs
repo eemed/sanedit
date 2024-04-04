@@ -474,10 +474,6 @@ impl Window {
     pub fn syntax_result(&mut self) -> &mut SyntaxParseResult {
         &mut self.view.syntax
     }
-
-    pub fn syntax_job(&mut self) -> &mut Option<JobId> {
-        &mut self.view.syntax_job
-    }
 }
 
 #[cfg(test)]

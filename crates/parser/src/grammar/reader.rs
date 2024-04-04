@@ -1,6 +1,6 @@
 use std::{
     fmt,
-    io::{self, BufReader, Read},
+    io::{self, BufRead, BufReader},
 };
 
 use anyhow::bail;
@@ -20,53 +20,41 @@ impl fmt::Display for Position {
 #[derive(Debug)]
 pub(crate) struct Reader<T: io::Read> {
     pos: Position,
-    next: Option<char>,
     read: BufReader<T>,
+    line: String,
 }
 
 impl<T: io::Read> Reader<T> {
     pub fn new(read: T) -> Reader<T> {
-        let mut me = Reader {
+        Reader {
             pos: Position { line: 0, col: 0 },
-            next: None,
             read: BufReader::new(read),
-        };
-        me.read_next_char();
-        me
+            line: String::new(),
+        }
     }
 
-    fn read_next_char(&mut self) {
-        self.next = None;
-
-        let mut buf = [0; 1];
-        if let Err(_) = self.read.read_exact(&mut buf) {
-            return;
+    fn take_next(&mut self) -> Option<char> {
+        if self.line.is_empty() {
+            let _ = self.read.read_line(&mut self.line);
         }
 
-        let n = buf[0].leading_ones();
-        match n {
-            0 => self.next = char::from_u32(buf[0] as u32),
-            2 | 3 | 4 => {
-                let mut big = [0; 4];
-                big[0] = buf[0];
-
-                if let Err(_) = self.read.read_exact(&mut big[1..n as usize]) {
-                    return;
-                }
-                self.next = char::from_u32(big[0] as u32);
-            }
-            _ => {}
-        }
+        let ch = self.line.chars().next()?;
+        self.line = self.line.split_off(ch.len_utf8());
+        Some(ch)
     }
 }
 
 impl<T: io::Read> Reader<T> {
     pub fn peek(&mut self) -> Option<char> {
-        self.next
+        if self.line.is_empty() {
+            let _ = self.read.read_line(&mut self.line);
+        }
+
+        self.line.chars().peekable().peek().copied()
     }
 
     pub fn consume(&mut self, ch: char) -> anyhow::Result<()> {
-        match self.next {
+        match self.take_next() {
             Some(got) => {
                 if got != ch {
                     bail!("Tried to consume {} but was {} at {}", ch, got, self.pos());
@@ -78,8 +66,6 @@ impl<T: io::Read> Reader<T> {
                 } else {
                     self.pos.col += 1;
                 }
-
-                self.read_next_char();
             }
             None => {
                 bail!("Tried to consume {ch} but input ended at {}", self.pos());

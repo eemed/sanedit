@@ -4,12 +4,12 @@ mod memotable;
 mod preprocess;
 mod set;
 
-use std::{cmp::min, collections::BinaryHeap, io};
+use std::{collections::BinaryHeap, io};
 
 use smallvec::SmallVec;
 use thiserror::Error;
 
-use crate::{grammar, parser::clause::ClauseKind};
+use crate::{grammar, parser::clause::ClauseKind, CharReader};
 
 pub use self::ast::AST;
 use self::{
@@ -25,6 +25,9 @@ pub enum ParseError {
 
     #[error("Failed to preprocess rules: {0}")]
     Preprocess(String),
+
+    #[error("Failed to parse: {0}")]
+    Parse(String),
 }
 
 // https://arxiv.org/pdf/2005.06444.pdf
@@ -51,8 +54,8 @@ impl PikaParser {
         Ok(parser)
     }
 
-    pub fn parse(&self, input: &str) -> AST {
-        let mut memo = MemoTable::new(&self, input);
+    pub fn parse<B: CharReader>(&self, reader: B) -> Result<AST, ParseError> {
+        let mut memo = MemoTable::new(&self, &reader);
         // Max priority queue
         let mut queue = BinaryHeap::new();
         let terminals: Vec<&Clause> = self
@@ -62,10 +65,16 @@ impl PikaParser {
             .filter(|c| c.is_terminal() && !c.is_nothing())
             .collect();
 
-        let len = input.len();
+        let len = reader.len();
+        let mut pos = len;
 
-        // Match from terminals up
-        for pos in (0..len).rev() {
+        for ch in reader.chars_rev() {
+            pos -= ch.len_utf8();
+
+            if reader.stop() {
+                return Err(ParseError::Parse("Stopped".into()));
+            }
+
             terminals.iter().for_each(|p| queue.push(*p));
 
             while let Some(clause) = queue.pop() {
@@ -75,7 +84,7 @@ impl PikaParser {
                     start: pos,
                 };
 
-                if let Some(mat) = self.try_match(key, &memo, input) {
+                if let Some(mat) = self.try_match(key, &memo, &reader) {
                     let updated = memo.insert(key, mat);
                     for parent in clause.parents.iter().map(|i| &self.preproc.clauses[*i]) {
                         if updated || parent.can_match_zero {
@@ -86,11 +95,15 @@ impl PikaParser {
             }
         }
 
-        let len = input.len();
-        memo.to_ast(len)
+        Ok(memo.to_ast(len))
     }
 
-    pub(crate) fn try_match(&self, key: MemoKey, memo: &MemoTable, input: &str) -> Option<Match> {
+    pub(crate) fn try_match<B: CharReader>(
+        &self,
+        key: MemoKey,
+        memo: &MemoTable<B>,
+        reader: &B,
+    ) -> Option<Match> {
         use ClauseKind::*;
 
         let clause = &self.preproc.clauses[key.clause];
@@ -158,9 +171,7 @@ impl PikaParser {
                 })
             }
             CharSequence(seq) => {
-                let max = min(key.start + seq.len(), input.len());
-                let slice = &input[key.start..max];
-                if slice == seq {
+                if reader.matches(key.start, &seq) {
                     Some(Match::terminal(key, seq.len()))
                 } else {
                     None
@@ -185,7 +196,7 @@ impl PikaParser {
 
                 let mat = memo
                     .get(&skey)
-                    .or_else(|| self.try_match(skey, memo, input));
+                    .or_else(|| self.try_match(skey, memo, reader));
 
                 if mat.is_none() {
                     Some(Match::empty(key))
@@ -194,7 +205,7 @@ impl PikaParser {
                 }
             }
             CharRange(a, b) => {
-                let ch = &input[key.start..].chars().next().unwrap();
+                let ch = &reader.chars_at(key.start).next()?;
                 if a <= ch && ch <= b {
                     Some(Match::terminal(key, ch.len_utf8()))
                 } else {
@@ -228,7 +239,7 @@ mod test {
         let peg = include_str!("../pegs/json.peg");
         let parser = PikaParser::from_str(peg).unwrap();
         let input = " {\"account\":\"bon\",\n\"age\":3.2, \r\n\"children\" : [  1, 2,3], \"allow-children\": true } ";
-        let ast = parser.parse(input);
+        let ast = parser.parse(input).unwrap();
         ast.print(input);
     }
 
@@ -237,7 +248,7 @@ mod test {
         let peg = include_str!("../pegs/json.peg");
         let parser = PikaParser::from_str(peg).unwrap();
         let input = " {\"account\":\"bon\",\n\"age\":3.2 \r\n\"children\" : [  1, 2,3], \"allow-children\": true } ";
-        let ast = parser.parse(input);
+        let ast = parser.parse(input).unwrap();
         ast.print(input);
     }
 }

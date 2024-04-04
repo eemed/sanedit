@@ -75,18 +75,18 @@ impl Syntax {
         bid: BufferId,
         ropt: &ReadOnlyPieceTree,
         view: Range<usize>,
-    ) -> SyntaxParseResult {
+    ) -> anyhow::Result<SyntaxParseResult> {
         log::info!("parsing");
         let slice = ropt.slice(..);
-        let ast = self.grammar.parse(&slice);
+        let ast = self.grammar.parse(&slice)?;
         // log::debug!("{}", ast.print_string(&String::from(&slice)));
         let spans = ast.flatten().into_iter().map(Span::from).collect();
 
-        SyntaxParseResult {
+        Ok(SyntaxParseResult {
             bid,
             kind: ParseKind::Full,
             highlights: spans,
-        }
+        })
     }
 }
 

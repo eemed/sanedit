@@ -42,7 +42,9 @@ impl SyntaxParser {
 
 impl CPUJob for SyntaxParser {
     fn run(&self, mut ctx: JobContext) -> anyhow::Result<()> {
-        let ast = self.syntax.parse(self.bid, &self.ropt, self.range.clone());
+        let ast = self
+            .syntax
+            .parse(self.bid, &self.ropt, self.range.clone())?;
         ctx.send(ast);
         Ok(())
     }
@@ -57,7 +59,6 @@ impl KeepInTouch for SyntaxParser {
         if let Ok(output) = msg.downcast::<SyntaxParseResult>() {
             let (win, _buf) = editor.win_buf_mut(self.client_id);
             *win.syntax_result() = *output;
-            *win.syntax_job() = None;
         }
     }
 

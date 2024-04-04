@@ -22,8 +22,35 @@ impl Grammar {
         }
     }
 
-    pub fn parse(&self, slice: &PieceTreeSlice) -> AST {
+    pub fn parse(&self, slice: &PieceTreeSlice) -> Result<AST, sanedit_parser::ParseError> {
+        // TODO impl
         let content = String::from(slice);
-        self.parser.parse(&content)
+        self.parser.parse(content.as_str())
     }
 }
+
+// struct PTCharIter<'a> {
+//     slice: PieceTreeSlice<'a>,
+// }
+
+// impl<'a> CharReader for PTCharIter<'a> {
+//     type I;
+
+//     type O;
+
+//     fn len(&self) -> usize {
+//         todo!()
+//     }
+
+//     fn stop(&self) -> bool {
+//         todo!()
+//     }
+
+//     fn chars_rev(&self) -> Self::I {
+//         todo!()
+//     }
+
+//     fn chars_at(&self, at: usize) -> Self::O {
+//         todo!()
+//     }
+// }

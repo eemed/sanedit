@@ -129,13 +129,13 @@ fn prev_match(editor: &mut Editor, id: ClientId) {
 
     // search to opposite direction
     let dir = &mut win.search.direction;
-    *dir = dir.opposite();
+    *dir = dir.reverse();
 
     search(editor, id, &input);
 
     let (win, _buf) = editor.win_buf_mut(id);
     let dir = &mut win.search.direction;
-    *dir = dir.opposite();
+    *dir = dir.reverse();
 }
 
 fn search(editor: &mut Editor, id: ClientId, input: &str) {

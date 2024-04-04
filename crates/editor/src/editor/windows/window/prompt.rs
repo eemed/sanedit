@@ -9,7 +9,6 @@ use crate::{
         keymap::{DefaultKeyMappings, KeyMappings, Keymap},
         Editor,
     },
-    job_runner::JobId,
     server::ClientId,
 };
 
@@ -27,7 +26,6 @@ pub(crate) struct PromptBuilder {
     on_abort: Option<PromptAction>,
     keymap: Option<Keymap>,
     history_size: NonZeroUsize,
-    background_job: Option<JobId>,
 }
 
 impl Default for PromptBuilder {
@@ -39,7 +37,6 @@ impl Default for PromptBuilder {
             on_abort: None,
             keymap: None,
             history_size: NonZeroUsize::new(100).unwrap(),
-            background_job: None,
         }
     }
 }
@@ -74,11 +71,6 @@ impl PromptBuilder {
         self
     }
 
-    pub fn background_job(mut self, id: JobId) -> Self {
-        self.background_job = id.into();
-        self
-    }
-
     pub fn keymap(mut self, keymap: Keymap) -> Self {
         self.keymap = Some(keymap);
         self
@@ -97,7 +89,6 @@ impl PromptBuilder {
             on_abort,
             keymap,
             history_size,
-            background_job,
         } = self;
         Prompt {
             message: message.unwrap_or(String::new()),
@@ -109,7 +100,6 @@ impl PromptBuilder {
             on_input,
             keymap: keymap.unwrap_or(DefaultKeyMappings::prompt()),
             history: History::new(history_size.get()),
-            background_job,
         }
     }
 }
@@ -134,7 +124,6 @@ pub(crate) struct Prompt {
     /// Called when input is modified
     on_input: Option<PromptAction>,
 
-    background_job: Option<JobId>,
     pub keymap: Keymap,
 
     history: History,
@@ -152,7 +141,6 @@ impl Prompt {
             on_input: None,
             keymap: DefaultKeyMappings::prompt(),
             history: History::new(100),
-            background_job: None,
         }
     }
 
@@ -186,10 +174,6 @@ impl Prompt {
 
     pub fn message(&self) -> &str {
         &self.message
-    }
-
-    pub fn background_job(&self) -> Option<JobId> {
-        self.background_job
     }
 
     pub fn clear_options(&mut self) {

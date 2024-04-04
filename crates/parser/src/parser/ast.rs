@@ -1,5 +1,7 @@
 use std::ops::Range;
 
+use crate::CharReader;
+
 use super::memotable::{Match, MemoKey, MemoTable};
 
 #[derive(Debug, Clone)]
@@ -11,7 +13,7 @@ pub struct AST {
 }
 
 impl AST {
-    pub(crate) fn new(memo: &MemoTable, len: usize) -> AST {
+    pub(crate) fn new<R: CharReader>(memo: &MemoTable<R>, len: usize) -> AST {
         const ERROR_LABEL: &str = "error";
         let mut pos = 0;
         let mut roots = vec![];
@@ -55,9 +57,9 @@ impl AST {
         }
     }
 
-    pub(crate) fn from_match(mat: &Match, memo: &MemoTable) -> AST {
+    pub(crate) fn from_match<R: CharReader>(mat: &Match, memo: &MemoTable<R>) -> AST {
         // TODO recursion to iterative
-        fn rec(node: &mut AST, key: &MemoKey, memo: &MemoTable) {
+        fn rec<B: CharReader>(node: &mut AST, key: &MemoKey, memo: &MemoTable<B>) {
             let mat = memo.get(key).unwrap();
             for sub in &mat.sub {
                 let smat = memo.get(sub).unwrap();

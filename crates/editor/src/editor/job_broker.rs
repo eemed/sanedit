@@ -9,7 +9,7 @@ use super::Editor;
 
 pub(crate) use cpu::CPUJob;
 
-/// A job that keeps in touch (can send messages back) with the editor
+/// A job that can send messages back to the editor
 pub(crate) trait KeepInTouch {
     /// Ran when the job sends the message back to the editor
     fn on_message(&self, editor: &mut Editor, msg: Box<dyn Any>) {}
@@ -54,15 +54,15 @@ impl JobBroker {
         id
     }
 
+    /// Request a job to be ran in a slot.
+    /// If the slot (id, name) pair already contains a job stop it.
     pub fn request_slot<T>(&mut self, id: ClientId, name: &str, task: T) -> JobId
     where
         T: Job + Send + Sync + Clone + KeepInTouch + 'static,
     {
-        let key = (id, name.to_string());
-        if let Some(jid) = self.slots.remove(&key) {
-            self.stop(jid);
-        }
+        self.stop_slot(id, name);
 
+        let key = (id, name.to_string());
         let jid = self.request(task);
         self.slots.insert(key, jid);
         jid
@@ -85,13 +85,17 @@ impl JobBroker {
         self.jobs.remove(&id);
     }
 
-    pub fn stop(&mut self, id: JobId) {
-        if !self.jobs.contains_key(&id) {
-            return;
+    pub fn stop_slot(&mut self, id: ClientId, name: &str) {
+        let key = (id, name.to_string());
+        if let Some(jid) = self.slots.remove(&key) {
+            self.stop(jid);
         }
+    }
 
-        let _ = self.handle.blocking_send(ToJobs::Stop(id));
-        self.done(id);
+    pub fn stop(&mut self, id: JobId) {
+        if let Some(_) = self.jobs.remove(&id) {
+            let _ = self.handle.blocking_send(ToJobs::Stop(id));
+        }
     }
 
     pub fn get(&self, id: JobId) -> Option<Rc<dyn KeepInTouch>> {

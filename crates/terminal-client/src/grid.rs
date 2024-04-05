@@ -5,10 +5,11 @@ mod drawable;
 mod prompt;
 mod rect;
 
-use std::mem;
+use std::{cmp::max, mem};
 
 use sanedit_messages::redraw::{
-    Cell, Component, Cursor, Diffable, Redraw, Size, StatusMessage, Statusline, Window,
+    Cell, Completion, Component, Cursor, Diffable, Point, Redraw, Size, StatusMessage, Statusline,
+    Window,
 };
 
 use crate::ui::UIContext;
@@ -28,6 +29,7 @@ pub(crate) struct Grid {
     // gutter: Option<Rectangle<()>>,
     prompt: Option<Canvas<CustomPrompt>>,
     msg: Option<Canvas<StatusMessage>>,
+    completion: Option<Canvas<Completion>>,
 
     drawn: Vec<Vec<Cell>>,
     cursor: Option<Cursor>,
@@ -50,6 +52,7 @@ impl Grid {
             statusline: Canvas::new(Statusline::default(), statusline),
             prompt: None,
             msg: None,
+            completion: None,
 
             drawn: vec![vec![Cell::default(); width]; height],
             cursor: None,
@@ -94,16 +97,30 @@ impl Grid {
                 };
                 self.msg = Some(Canvas::new(msg, rect));
             }
-            _ => {} // Completion(comp) => match comp {
-                    //     Open(compl) => self.completion = Some(compl),
-                    //     Update(diff) => {
-                    //         if let Some(ref mut compl) = self.completion {
-                    //             compl.update(diff);
-                    //         }
-                    //     }
-                    //     Close => self.completion = None,
-                    // },
-                    // LineNumbers(numbers) => {
+            Completion(comp) => match comp {
+                Open(compl) => {
+                    let Point { x, y } = compl.point;
+                    let width = compl
+                        .options
+                        .iter()
+                        .fold(0, |mut acc, o| max(acc, o.chars().count()));
+                    let height = compl.options.len();
+                    let rect = Rect {
+                        x,
+                        y,
+                        width,
+                        height,
+                    };
+                    self.completion = Some(Canvas::new(compl, rect));
+                }
+                Update(diff) => {
+                    if let Some(ref mut compl) = self.completion {
+                        compl.drawable().update(diff);
+                    }
+                }
+                Close => self.completion = None,
+            },
+            _ => {} // LineNumbers(numbers) => {
                     //     let gutter = Gutter::new(numbers);
                     //     ctx.gutter_size = gutter.width();
                     //     self.gutter = gutter.into()
@@ -188,6 +205,10 @@ impl Grid {
 
         if let Some(ref msg) = self.msg {
             Self::draw_drawable(msg, ctx, &mut self.cursor, &mut self.drawn);
+        }
+
+        if let Some(ref compl) = self.completion {
+            Self::draw_drawable(compl, ctx, &mut self.cursor, &mut self.drawn);
         }
 
         (&self.drawn, self.cursor)

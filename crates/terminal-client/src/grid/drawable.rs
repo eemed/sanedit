@@ -1,7 +1,8 @@
 use std::cmp::min;
 
 use sanedit_messages::redraw::{
-    Cursor, CursorShape, IntoCells, Point, Severity, StatusMessage, Statusline, ThemeField, Window,
+    Completion, Cursor, CursorShape, IntoCells, Point, Severity, StatusMessage, Statusline,
+    ThemeField, Window,
 };
 
 use crate::{grid::ccell::format_option, ui::UIContext};
@@ -59,6 +60,31 @@ impl Drawable for Statusline {
                 break;
             }
         }
+    }
+
+    fn cursor(&self, ctx: &UIContext) -> Option<Cursor> {
+        None
+    }
+}
+
+impl Drawable for Completion {
+    fn draw(&self, ctx: &UIContext, cells: &mut [&mut [CCell]]) {
+        let wsize = size(cells);
+        let max_opts = wsize.height;
+        self.options
+            .iter()
+            .take(max_opts)
+            .enumerate()
+            .for_each(|(i, opt)| {
+                let field = if Some(i) == self.selected {
+                    ThemeField::PromptCompletionSelected
+                } else {
+                    ThemeField::PromptCompletion
+                };
+                let style = ctx.style(field);
+                let line = into_cells_with_style_pad(&opt, style, wsize.width);
+                put_line(line, i, cells);
+            });
     }
 
     fn cursor(&self, ctx: &UIContext) -> Option<Cursor> {

@@ -1,6 +1,6 @@
 use crate::{
     editor::{
-        windows::{Completion, Focus},
+        windows::{Completion, Focus, SelectorOption},
         Editor,
     },
     server::ClientId,
@@ -18,11 +18,12 @@ fn complete(editor: &mut Editor, id: ClientId) {
 
     win.focus = Focus::Completion;
 
-    // provide(
-    //     editor,
-    //     id,
-    //     vec!["hello".into(), "world".into(), "foo".into(), "bar".into()],
-    // );
+    let opts: Vec<SelectorOption> = ["hello", "world", "longer line"]
+        .into_iter()
+        .enumerate()
+        .map(|(i, s)| SelectorOption::new(s.to_string(), vec![], i as u32))
+        .collect();
+    win.completion.provide_options(opts.into());
 }
 
 #[action("Confirm completion")]

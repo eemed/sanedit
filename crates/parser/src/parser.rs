@@ -9,7 +9,7 @@ use std::{collections::BinaryHeap, io};
 use smallvec::SmallVec;
 use thiserror::Error;
 
-use crate::{grammar, parser::clause::ClauseKind, CharReader};
+use crate::{byte_reader::ByteReader, grammar, parser::clause::ClauseKind};
 
 pub use self::ast::AST;
 use self::{
@@ -54,7 +54,7 @@ impl PikaParser {
         Ok(parser)
     }
 
-    pub fn parse<B: CharReader>(&self, reader: B) -> Result<AST, ParseError> {
+    pub fn parse<B: ByteReader>(&self, reader: B) -> Result<AST, ParseError> {
         let mut memo = MemoTable::new(&self, &reader);
         // Max priority queue
         let mut queue = BinaryHeap::new();
@@ -66,11 +66,8 @@ impl PikaParser {
             .collect();
 
         let len = reader.len();
-        let mut pos = len;
 
-        for ch in reader.chars_rev() {
-            pos -= ch.len_utf8();
-
+        for pos in (0..reader.len()).rev() {
             if reader.stop() {
                 return Err(ParseError::Parse("Stopped".into()));
             }
@@ -98,7 +95,7 @@ impl PikaParser {
         Ok(memo.to_ast(len))
     }
 
-    pub(crate) fn try_match<B: CharReader>(
+    pub(crate) fn try_match<B: ByteReader>(
         &self,
         key: MemoKey,
         memo: &MemoTable<B>,
@@ -171,7 +168,7 @@ impl PikaParser {
                 })
             }
             CharSequence(seq) => {
-                if reader.matches(key.start, &seq) {
+                if reader.matches(key.start, seq.as_bytes()) {
                     Some(Match::terminal(key, seq.len()))
                 } else {
                     None
@@ -205,9 +202,8 @@ impl PikaParser {
                 }
             }
             CharRange(a, b) => {
-                let ch = &reader.chars_at(key.start).next()?;
-                if a <= ch && ch <= b {
-                    Some(Match::terminal(key, ch.len_utf8()))
+                if let Some(size) = reader.char_between(key.start, *a, *b) {
+                    Some(Match::terminal(key, size))
                 } else {
                     None
                 }

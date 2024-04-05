@@ -22,11 +22,8 @@ pub(crate) fn parse_rules_from_str(input: &str) -> Result<Box<[Rule]>> {
 }
 
 pub(crate) fn parse_rules<R: io::Read>(read: R) -> Result<Box<[Rule]>> {
-    log::info!("new");
     let mut lex = Lexer::new(read);
-    log::info!("new2");
     let token = lex.next()?;
-    log::info!("new4");
     let parser = GrammarParser {
         lex,
         token,

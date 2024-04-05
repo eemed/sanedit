@@ -39,6 +39,45 @@ const TRANSITIONS_BACKWARDS: [u8; 84] = [
     12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 0,
 ];
 
+/// utf8 decode next scalar value
+pub fn decode_utf8(bytes: &[u8]) -> (Option<char>, usize) {
+    if bytes.is_empty() {
+        return (None, 0);
+    }
+    let mut decoder = Decoder::new();
+    let mut pos = 0;
+    loop {
+        use DecodeResult::*;
+        match decoder.next(bytes[pos]) {
+            Char(ch) => return (Some(ch), pos + 1),
+            Invalid => return (None, pos + 1),
+            Incomplete => {
+                pos += 1;
+                if pos >= bytes.len() {
+                    return (None, bytes.len());
+                }
+            }
+        }
+    }
+}
+
+pub fn decode_utf8_iter(mut bytes: impl Iterator<Item = u8>) -> (Option<char>, usize) {
+    let mut decoder = Decoder::new();
+    let mut size = 0;
+    while let Some(b) = bytes.next() {
+        size += 1;
+
+        use DecodeResult::*;
+        match decoder.next(b) {
+            Char(ch) => return (Some(ch), size),
+            Invalid => return (None, size),
+            Incomplete => {}
+        }
+    }
+
+    (None, size)
+}
+
 // https://bjoern.hoehrmann.de/utf-8/decoder/dfa/
 #[inline]
 fn decode(state: &mut u32, cp: &mut u32, byte: u8) -> u32 {

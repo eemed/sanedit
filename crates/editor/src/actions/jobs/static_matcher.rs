@@ -4,13 +4,13 @@ use tokio::sync::mpsc::{channel, Receiver, Sender};
 
 use crate::{
     actions::jobs::{match_options, MatchedOptions, CHANNEL_SIZE},
-    common::matcher::Match,
+    common::matcher::{default_match_fn, Match, MatchFn},
     editor::{job_broker::KeepInTouch, windows::SelectorOption, Editor},
     job_runner::{Job, JobContext, JobResult},
     server::ClientId,
 };
 
-enum MatcherMessage {
+pub(crate) enum MatcherMessage {
     Init(Sender<String>),
     Progress(MatchedOptions),
 }
@@ -19,27 +19,22 @@ enum MatcherMessage {
 pub(crate) struct StaticMatcher {
     client_id: ClientId,
     opts: Arc<Vec<String>>,
-    formatter: Arc<fn(&Editor, ClientId, Match) -> SelectorOption>,
+    on_message: fn(&mut Editor, ClientId, MatcherMessage),
+    match_fn: MatchFn,
 }
 
 impl StaticMatcher {
     pub fn new(
         cid: ClientId,
         opts: Vec<String>,
-        f: fn(&Editor, ClientId, Match) -> SelectorOption,
+        on_message: fn(&mut Editor, ClientId, MatcherMessage),
+        match_fn: MatchFn,
     ) -> StaticMatcher {
         StaticMatcher {
             client_id: cid,
             opts: Arc::new(opts),
-            formatter: Arc::new(f),
-        }
-    }
-
-    pub fn new_default(cid: ClientId, opts: Vec<String>) -> StaticMatcher {
-        StaticMatcher {
-            client_id: cid,
-            opts: Arc::new(opts),
-            formatter: Arc::new(|_, _, m| SelectorOption::from(m)),
+            on_message,
+            match_fn,
         }
     }
 
@@ -69,7 +64,7 @@ impl Job for StaticMatcher {
 
             tokio::join!(
                 Self::send_options(opts, osend),
-                match_options(orecv, trecv, msend),
+                match_options(orecv, trecv, msend, default_match_fn),
                 Self::send_matched_options(ctx, mrecv),
             );
 
@@ -86,31 +81,9 @@ impl KeepInTouch for StaticMatcher {
     }
 
     fn on_message(&self, editor: &mut Editor, msg: Box<dyn Any>) {
-        let draw = editor.draw_state(self.client_id);
-        draw.no_redraw_window();
-
         if let Ok(msg) = msg.downcast::<MatcherMessage>() {
-            let (win, _buf) = editor.win_buf_mut(self.client_id);
-            use MatcherMessage::*;
-            match *msg {
-                Init(sender) => {
-                    win.prompt.set_on_input(move |editor, id, input| {
-                        let _ = sender.blocking_send(input.to_string());
-                    });
-                    win.prompt.clear_options();
-                }
-                Progress(opts) => match opts {
-                    MatchedOptions::ClearAll => win.prompt.clear_options(),
-                    MatchedOptions::Options(opts) => {
-                        let opts: Vec<SelectorOption> = opts
-                            .into_iter()
-                            .map(|mat| (self.formatter)(editor, self.client_id, mat))
-                            .collect();
-                        let (win, _buf) = editor.win_buf_mut(self.client_id);
-                        win.prompt.provide_options(opts.into());
-                    }
-                },
-            }
+            let id = self.client_id();
+            (self.on_message)(editor, id, *msg);
         }
     }
 

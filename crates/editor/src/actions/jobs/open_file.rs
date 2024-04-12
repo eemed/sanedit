@@ -10,6 +10,7 @@ use tokio::{
 
 use crate::{
     actions::jobs::match_options,
+    common::matcher::default_match_fn,
     editor::{job_broker::KeepInTouch, windows::SelectorOption, Editor},
     job_runner::{Job, JobContext, JobId, JobResponseSender, JobResult},
     server::ClientId,
@@ -132,7 +133,7 @@ impl Job for OpenFile {
 
             tokio::join!(
                 Self::read_directory_recursive(dir, osend, ksend),
-                match_options(orecv, trecv, msend),
+                match_options(orecv, trecv, msend, default_match_fn),
                 Self::send_matched_options(id, sender, mrecv),
             );
 

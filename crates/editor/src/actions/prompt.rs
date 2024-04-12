@@ -5,15 +5,19 @@ use std::path::PathBuf;
 use sanedit_messages::ClientMessage;
 
 use crate::{
-    actions::{jobs::OpenFile, prompt::commands::find_action},
+    actions::{
+        jobs::{MatchedOptions, OpenFile},
+        prompt::commands::find_action,
+    },
+    common::matcher,
     editor::{
-        windows::{Focus, Prompt},
+        windows::{Focus, Prompt, SelectorOption},
         Editor,
     },
     server::ClientId,
 };
 
-use super::jobs::{ShellCommand, StaticMatcher};
+use super::jobs::{MatcherMessage, ShellCommand, StaticMatcher};
 
 #[action("Select theme")]
 fn select_theme(editor: &mut Editor, id: ClientId) {
@@ -25,7 +29,7 @@ fn select_theme(editor: &mut Editor, id: ClientId) {
         .collect();
     let (win, _buf) = editor.win_buf_mut(id);
 
-    let job = StaticMatcher::new_default(id, themes);
+    let job = StaticMatcher::new(id, themes, prompt_on_message, matcher::default_match_fn);
 
     win.prompt = Prompt::builder()
         .prompt("Select theme")
@@ -51,7 +55,12 @@ fn select_theme(editor: &mut Editor, id: ClientId) {
 fn command_palette(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
 
-    let job = StaticMatcher::new(id, commands::command_palette(), commands::format_match);
+    let job = StaticMatcher::new(
+        id,
+        commands::command_palette(),
+        commands::on_message,
+        matcher::default_match_fn,
+    );
 
     win.prompt = Prompt::builder()
         .prompt("Command")
@@ -182,4 +191,30 @@ fn shell_command(editor: &mut Editor, id: ClientId) {
         })
         .build();
     win.focus = Focus::Prompt;
+}
+
+fn prompt_on_message(editor: &mut Editor, id: ClientId, msg: MatcherMessage) {
+    use MatcherMessage::*;
+
+    let draw = editor.draw_state(id);
+    draw.no_redraw_window();
+
+    let (win, _buf) = editor.win_buf_mut(id);
+    match msg {
+        Init(sender) => {
+            win.prompt.set_on_input(move |editor, id, input| {
+                let _ = sender.blocking_send(input.to_string());
+            });
+            win.prompt.clear_options();
+        }
+        Progress(opts) => match opts {
+            MatchedOptions::ClearAll => win.prompt.clear_options(),
+            MatchedOptions::Options(opts) => {
+                let opts: Vec<SelectorOption> =
+                    opts.into_iter().map(SelectorOption::from).collect();
+                let (win, _buf) = editor.win_buf_mut(id);
+                win.prompt.provide_options(opts.into());
+            }
+        },
+    }
 }

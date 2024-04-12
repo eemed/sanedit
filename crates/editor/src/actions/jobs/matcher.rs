@@ -5,7 +5,7 @@ use tokio::{
     time::{timeout, Instant},
 };
 
-use crate::common::matcher::{Match, MatchReceiver, Matcher};
+use crate::common::matcher::{Match, MatchFn, MatchReceiver, Matcher};
 
 #[derive(Debug)]
 pub(crate) enum MatchedOptions {
@@ -18,6 +18,7 @@ pub(crate) async fn match_options(
     orecv: Receiver<String>,
     mut trecv: Receiver<String>,
     msend: Sender<MatchedOptions>,
+    match_fn: MatchFn,
 ) {
     fn spawn(
         msend: Sender<MatchedOptions>,
@@ -75,6 +76,8 @@ pub(crate) async fn match_options(
     }
 
     let mut matcher = Matcher::new(orecv);
+    matcher.set_match_fn(match_fn);
+
     let mut term = String::new();
     let recv = matcher.do_match(&term);
     let mut join = spawn(msend.clone(), recv);

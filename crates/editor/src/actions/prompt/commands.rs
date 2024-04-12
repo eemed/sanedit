@@ -1,3 +1,4 @@
+use crate::actions::jobs::{MatchedOptions, MatcherMessage};
 use crate::actions::*;
 use crate::common::matcher::Match;
 use crate::editor::windows::SelectorOption;
@@ -77,4 +78,32 @@ pub(crate) fn find_action(name: &str) -> Option<Action> {
     }
 
     None
+}
+
+pub(crate) fn on_message(editor: &mut Editor, id: ClientId, msg: MatcherMessage) {
+    use MatcherMessage::*;
+
+    let draw = editor.draw_state(id);
+    draw.no_redraw_window();
+
+    let (win, _buf) = editor.win_buf_mut(id);
+    match msg {
+        Init(sender) => {
+            win.prompt.set_on_input(move |editor, id, input| {
+                let _ = sender.blocking_send(input.to_string());
+            });
+            win.prompt.clear_options();
+        }
+        Progress(opts) => match opts {
+            MatchedOptions::ClearAll => win.prompt.clear_options(),
+            MatchedOptions::Options(opts) => {
+                let opts: Vec<SelectorOption> = opts
+                    .into_iter()
+                    .map(|mat| format_match(editor, id, mat))
+                    .collect();
+                let (win, _buf) = editor.win_buf_mut(id);
+                win.prompt.provide_options(opts.into());
+            }
+        },
+    }
 }

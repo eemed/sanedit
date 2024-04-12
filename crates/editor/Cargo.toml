@@ -39,3 +39,4 @@ unicode-segmentation = "1.9"
 which = "5.0.0"
 
 toml = "0.8"
+rustc-hash = "1.1"

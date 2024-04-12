@@ -22,6 +22,7 @@ pub(crate) struct Matcher {
     reader: Reader<String>,
     all_opts_read: Arc<AtomicBool>,
     previous: Arc<AtomicBool>,
+    match_fn: MatchFn,
 }
 
 impl Matcher {
@@ -49,7 +50,12 @@ impl Matcher {
             reader,
             all_opts_read,
             previous: Arc::new(AtomicBool::new(false)),
+            match_fn: default_match_fn,
         }
+    }
+
+    pub fn set_match_fn(&mut self, f: MatchFn) {
+        self.match_fn = f;
     }
 
     /// Match the candidates with the term. Returns a receiver where the results
@@ -74,6 +80,7 @@ impl Matcher {
         let mut available = reader.len();
         let mut taken = 0;
         let stop = self.previous.clone();
+        let mfun = self.match_fn;
 
         rayon::spawn(move || loop {
             if stop.load(Ordering::Relaxed) {
@@ -103,7 +110,7 @@ impl Matcher {
 
                     let candidates = reader.slice(batch);
                     for can in candidates.into_iter() {
-                        if let Some(ranges) = matches_with(&can, &terms, case_sensitive) {
+                        if let Some(ranges) = matches_with(&can, &terms, case_sensitive, mfun) {
                             let mat = Match {
                                 score: score(can.as_str(), &ranges),
                                 value: can.clone(),
@@ -141,6 +148,7 @@ fn matches_with(
     string: &str,
     terms: &Arc<Vec<String>>,
     case_sensitive: bool,
+    f: fn(&str, &str) -> Option<Range<usize>>,
 ) -> Option<Vec<Range<usize>>> {
     let string: Cow<str> = if !case_sensitive {
         // TODO unicode casefolding?
@@ -151,9 +159,28 @@ fn matches_with(
 
     let mut matches = vec![];
     for term in terms.iter() {
-        let start = string.find(term)?;
-        matches.push(start..start + term.len());
+        let range = (f)(&string, term)?;
+        matches.push(range);
     }
 
     Some(matches)
+}
+
+pub(crate) type MatchFn = fn(&str, &str) -> Option<Range<usize>>;
+
+/// Default match function
+/// matches if term is found anywhere on the searched string
+pub(crate) fn default_match_fn(me: &str, term: &str) -> Option<Range<usize>> {
+    let start = me.find(term)?;
+    Some(start..start + term.len())
+}
+
+/// Prefix match function
+/// matches only if searched string starts with term
+pub(crate) fn prefix_match_fn(me: &str, term: &str) -> Option<Range<usize>> {
+    if me.starts_with(term) {
+        Some(0..term.len())
+    } else {
+        None
+    }
 }

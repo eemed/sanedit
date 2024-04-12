@@ -1,6 +1,7 @@
 mod border;
 mod canvas;
 mod ccell;
+mod completion;
 mod drawable;
 mod prompt;
 mod rect;
@@ -12,7 +13,7 @@ use sanedit_messages::redraw::{
     Window,
 };
 
-use crate::ui::UIContext;
+use crate::{grid::completion::open_completion, ui::UIContext};
 
 pub(crate) use self::rect::{Rect, Split};
 use self::{
@@ -98,21 +99,7 @@ impl Grid {
                 self.msg = Some(Canvas::new(msg, rect));
             }
             Completion(comp) => match comp {
-                Open(compl) => {
-                    let Point { x, y } = compl.point;
-                    let width = compl
-                        .options
-                        .iter()
-                        .fold(0, |mut acc, o| max(acc, o.chars().count()));
-                    let height = compl.options.len();
-                    let rect = Rect {
-                        x,
-                        y,
-                        width,
-                        height,
-                    };
-                    self.completion = Some(Canvas::new(compl, rect));
-                }
+                Open(compl) => self.completion = Some(open_completion(self.window_area(), compl)),
                 Update(diff) => {
                     if let Some(ref mut compl) = self.completion {
                         compl.drawable().update(diff);
@@ -120,7 +107,8 @@ impl Grid {
                 }
                 Close => self.completion = None,
             },
-            _ => {} // LineNumbers(numbers) => {
+            _ => {} //
+                    // LineNumbers(numbers) => {
                     //     let gutter = Gutter::new(numbers);
                     //     ctx.gutter_size = gutter.width();
                     //     self.gutter = gutter.into()

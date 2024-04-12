@@ -1,6 +1,15 @@
-use std::str::Chars;
+use std::{any::Any, str::Chars, sync::Arc};
 
-use crate::server::ClientId;
+use tokio::sync::mpsc::{channel, Receiver, Sender};
+
+use crate::{
+    common::matcher::Match,
+    editor::{job_broker::KeepInTouch, windows::SelectorOption, Editor},
+    job_runner::{Job, JobContext, JobResult},
+    server::ClientId,
+};
+
+use super::{MatchedOptions, CHANNEL_SIZE};
 
 enum MatcherMessage {
     Init(Sender<String>),
@@ -108,16 +117,94 @@ impl KeepInTouch for PrefixMatcher {
 }
 
 #[derive(Debug)]
+struct Trie {
+    root: TrieNode,
+}
+
+impl Trie {
+    fn new() -> Trie {
+        Trie {
+            root: TrieNode::new('\0'),
+        }
+    }
+
+    pub fn insert(&mut self, item: &str) {
+        let mut chars = item.chars();
+        self.root.insert(&mut chars);
+    }
+
+    pub fn get(&self, item: &str) -> Vec<String> {
+        let mut chars = item.chars();
+        self.root.get(&mut chars)
+    }
+}
+
+#[derive(Debug)]
 struct TrieNode {
+    ch: char,
     end: bool,
-    children: HashMap<char, TrieNode>,
+    children: Vec<TrieNode>,
 }
 
 impl TrieNode {
-    pub fn get(&self, term: &str) -> Vec<String> {
-        let mut chars = term.chars();
-        self.get_char(&mut chars)
+    fn new(ch: char) -> TrieNode {
+        TrieNode {
+            ch,
+            end: false,
+            children: vec![],
+        }
     }
 
-    fn get_char(&self, chars: &mut Chars) -> Vec<String> {}
+    pub fn insert(&mut self, chars: &mut Chars) {
+        let mut node = self;
+        while let Some(c) = chars.next() {
+            node = self
+                .children
+                .iter_mut()
+                .find(|child| child.ch == c)
+                .unwrap_or_else(|| {
+                    let node = TrieNode::new(c);
+                    let pos = self.children.len();
+                    self.children.push(node);
+                    &mut self.children[pos]
+                });
+        }
+
+        node.end = true;
+    }
+
+    fn find_node(&self, chars: &mut Chars) -> Option<&TrieNode> {
+        let mut node = self;
+        while let Some(c) = chars.next() {
+            node = self.children.iter().find(|child| child.ch == c)?;
+        }
+
+        Some(node)
+    }
+
+    pub fn get(&self, chars: &mut Chars) -> Vec<String> {
+        match self.find_node(chars) {
+            Some(n) => {
+                let mut results = vec![];
+                let mut buf = String::new();
+                n.find_results(&mut buf, &mut results);
+                results
+            }
+            None => vec![],
+        }
+    }
+
+    fn find_results(&self, path: &mut String, results: &mut Vec<String>) {
+        path.push(self.ch);
+
+        if self.end {
+            results.push(path.clone());
+        }
+
+        for child in &mut self.children {
+            child.find_results(path, results);
+        }
+
+        path.pop();
+    }
 }

@@ -1,10 +1,32 @@
-# sanedit
+# SanEdit
 
-Text editor to learn about text buffers, syntax highlighting,
-client-server architecture (using tokio) and data structures (red-black tree).
+## TODO
 
-The editor uses client server architecture. Each client is an editor window, and
-managing the windows is left to the operating systems window manager (see
-kakoune).
+* Implement syntax parse stopping
+* Implement completion
+* Add completion options from syntax parse
+* Implement goto last buffer
+* Implement goto line
+* Implement goto percentage
+* Fix TODO optimize
+* Implement select around using parse result
+* Implement indentation logic
+    * Smart tab
+    * Snippets?
 
-Inspiration taken from vim, kakoune, emacs, neovim and vis.
+* Add regex to searching/selecting
+* Fix syntax highlighting flicker
+
+* Add log buffer directly to editor
+* Remove or improve shell access
+* Remove uuid dependency
+* Test out saving in place
+* Create config file
+
+* Start using the thing and see whats wrong
+
+## Future
+
+* LSP
+    * Needs installation mechanism => complex
+

@@ -72,6 +72,7 @@ impl Matcher {
         let all_opts_read = self.all_opts_read.clone();
         let case_sensitive = term.chars().any(|ch| ch.is_uppercase());
         let strat = self.strategy;
+        let match_fn = strat.get();
 
         // Apply strategy to term
         // Split term by whitespace and use the resulting terms as independent
@@ -116,9 +117,7 @@ impl Matcher {
 
                     let candidates = reader.slice(batch);
                     for can in candidates.into_iter() {
-                        if let Some(ranges) =
-                            matches_with(&can, &terms, case_sensitive, strat.get())
-                        {
+                        if let Some(ranges) = matches_with(&can, &terms, case_sensitive, match_fn) {
                             let mat = Match {
                                 score: score(can.as_str(), &ranges),
                                 value: can.clone(),

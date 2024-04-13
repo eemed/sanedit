@@ -5,6 +5,7 @@ use std::{num::NonZeroUsize, rc::Rc};
 use unicode_segmentation::UnicodeSegmentation;
 
 use crate::{
+    actions::jobs::{MatchedOptions, MatcherMessage},
     editor::{
         keymap::{DefaultKeyMappings, KeyMappings, Keymap},
         Editor,
@@ -146,6 +147,32 @@ impl Prompt {
 
     pub fn builder() -> PromptBuilder {
         PromptBuilder::default()
+    }
+
+    pub fn matcher_result_handler(editor: &mut Editor, id: ClientId, msg: MatcherMessage) {
+        use MatcherMessage::*;
+
+        let draw = editor.draw_state(id);
+        draw.no_redraw_window();
+
+        let (win, _buf) = editor.win_buf_mut(id);
+        match msg {
+            Init(sender) => {
+                win.prompt.set_on_input(move |editor, id, input| {
+                    let _ = sender.blocking_send(input.to_string());
+                });
+                win.prompt.clear_options();
+            }
+            Progress(opts) => match opts {
+                MatchedOptions::ClearAll => win.prompt.clear_options(),
+                MatchedOptions::Options(opts) => {
+                    let opts: Vec<SelectorOption> =
+                        opts.into_iter().map(SelectorOption::from).collect();
+                    let (win, _buf) = editor.win_buf_mut(id);
+                    win.prompt.provide_options(opts.into());
+                }
+            },
+        }
     }
 
     pub fn set_on_input<F>(&mut self, fun: F)

@@ -1,27 +1,25 @@
 mod commands;
 
-use std::path::PathBuf;
+use std::{path::PathBuf, sync::Arc};
 
 use sanedit_messages::ClientMessage;
 
 use crate::{
-    actions::{
-        jobs::{MatchedOptions, OpenFile},
-        prompt::commands::find_action,
-    },
-    common::matcher,
+    actions::jobs::FileOptionProvider,
     editor::{
-        windows::{Focus, Prompt, SelectorOption},
+        windows::{Focus, Prompt},
         Editor,
     },
     server::ClientId,
 };
 
-use super::jobs::{MatcherMessage, ShellCommand, StaticMatcher};
+use self::commands::find_action;
+
+use super::jobs::{MatcherJob, ShellCommand};
 
 #[action("Select theme")]
 fn select_theme(editor: &mut Editor, id: ClientId) {
-    let themes = editor
+    let themes: Vec<String> = editor
         .themes
         .names()
         .into_iter()
@@ -29,7 +27,10 @@ fn select_theme(editor: &mut Editor, id: ClientId) {
         .collect();
     let (win, _buf) = editor.win_buf_mut(id);
 
-    let job = StaticMatcher::new(id, themes, prompt_on_message, matcher::default_match_fn);
+    let job = MatcherJob::builder(id)
+        .options(Arc::new(themes))
+        .handler(Prompt::matcher_result_handler)
+        .build();
 
     win.prompt = Prompt::builder()
         .prompt("Select theme")
@@ -55,12 +56,10 @@ fn select_theme(editor: &mut Editor, id: ClientId) {
 fn command_palette(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
 
-    let job = StaticMatcher::new(
-        id,
-        commands::command_palette(),
-        commands::on_message,
-        matcher::default_match_fn,
-    );
+    let job = MatcherJob::builder(id)
+        .options(Arc::new(commands::command_palette()))
+        .handler(commands::matcher_result_handler)
+        .build();
 
     win.prompt = Prompt::builder()
         .prompt("Command")
@@ -78,7 +77,10 @@ fn command_palette(editor: &mut Editor, id: ClientId) {
 fn open_file(editor: &mut Editor, id: ClientId) {
     const PROMPT_MESSAGE: &str = "Open a file";
     let path = editor.working_dir().to_path_buf();
-    let job = OpenFile::new(id, path);
+    let job = MatcherJob::builder(id)
+        .options(FileOptionProvider::new(&path))
+        .handler(Prompt::matcher_result_handler)
+        .build();
     editor.job_broker.request_slot(id, PROMPT_MESSAGE, job);
     let (win, _buf) = editor.win_buf_mut(id);
 
@@ -162,11 +164,6 @@ fn prev_completion(editor: &mut Editor, id: ClientId) {
     win.prompt.prev_completion();
 }
 
-// pub(crate) fn provide_completions(editor: &mut Editor, id: ClientId, completions: Matches) {
-//     let (win, _buf) = editor.win_buf_mut(id);
-//     win.prompt.provide_completions(completions);
-// }
-
 #[action("Select the next entry from history")]
 fn history_next(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
@@ -191,30 +188,4 @@ fn shell_command(editor: &mut Editor, id: ClientId) {
         })
         .build();
     win.focus = Focus::Prompt;
-}
-
-fn prompt_on_message(editor: &mut Editor, id: ClientId, msg: MatcherMessage) {
-    use MatcherMessage::*;
-
-    let draw = editor.draw_state(id);
-    draw.no_redraw_window();
-
-    let (win, _buf) = editor.win_buf_mut(id);
-    match msg {
-        Init(sender) => {
-            win.prompt.set_on_input(move |editor, id, input| {
-                let _ = sender.blocking_send(input.to_string());
-            });
-            win.prompt.clear_options();
-        }
-        Progress(opts) => match opts {
-            MatchedOptions::ClearAll => win.prompt.clear_options(),
-            MatchedOptions::Options(opts) => {
-                let opts: Vec<SelectorOption> =
-                    opts.into_iter().map(SelectorOption::from).collect();
-                let (win, _buf) = editor.win_buf_mut(id);
-                win.prompt.provide_options(opts.into());
-            }
-        },
-    }
 }

@@ -1,6 +1,7 @@
-use std::{collections::HashMap, mem};
+use std::mem;
 
 use anyhow::bail;
+use rustc_hash::FxHashMap;
 
 use crate::grammar::{Annotation, Rule, RuleDefinition};
 
@@ -11,7 +12,7 @@ use super::{
 
 #[derive(Debug)]
 pub(crate) struct Clauses {
-    pub(crate) names: HashMap<usize, String>,
+    pub(crate) names: FxHashMap<usize, String>,
     pub(crate) clauses: Box<[Clause]>,
 }
 
@@ -19,7 +20,7 @@ pub(super) fn preprocess_rules(rules: &[Rule]) -> anyhow::Result<Clauses> {
     fn rec(
         def: &RuleDefinition,
         rules: &[Rule],
-        dedup: &mut HashMap<String, usize>,
+        dedup: &mut FxHashMap<String, usize>,
         clauses: &mut Vec<Clause>,
     ) -> usize {
         let mut cdef = def;
@@ -68,9 +69,9 @@ pub(super) fn preprocess_rules(rules: &[Rule]) -> anyhow::Result<Clauses> {
         idx
     }
 
-    let mut dedup = HashMap::new();
+    let mut dedup = FxHashMap::default();
     let mut clauses: Vec<Clause> = vec![];
-    let mut names = HashMap::new();
+    let mut names = FxHashMap::default();
 
     for rule in rules {
         let rid = rec(&rule.def, rules, &mut dedup, &mut clauses);

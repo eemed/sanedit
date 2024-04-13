@@ -1,5 +1,4 @@
-use std::collections::HashMap;
-
+use rustc_hash::FxHashMap;
 use serde::{Deserialize, Serialize};
 
 use crate::redraw::Style;
@@ -31,7 +30,7 @@ impl Theme {
                     node = entry.or_insert_with(|| ThemeNode::Leaf(Style::default()));
                 }
                 ThemeNode::Leaf(style) => {
-                    let mut nodes = HashMap::default();
+                    let mut nodes = FxHashMap::default();
                     nodes.insert(comp.to_string(), ThemeNode::Leaf(Style::default()));
                     *node = ThemeNode::Node {
                         style: style.clone(),
@@ -75,7 +74,7 @@ impl Theme {
 pub enum ThemeNode {
     Node {
         style: Style,
-        nodes: HashMap<String, ThemeNode>,
+        nodes: FxHashMap<String, ThemeNode>,
     },
     Leaf(Style),
 }

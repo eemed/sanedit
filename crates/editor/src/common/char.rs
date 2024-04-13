@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::ops::Range;
 
+use rustc_hash::FxHashMap;
 use sanedit_buffer::PieceTreeSlice;
 
 use sanedit_buffer::utf8::EndOfLine;
@@ -89,7 +90,7 @@ pub(crate) enum Replacement {
 pub(crate) struct DisplayOptions {
     pub theme: String,
     pub tabstop: usize,
-    pub replacements: HashMap<Replacement, String>,
+    pub replacements: FxHashMap<Replacement, String>,
 }
 
 impl Default for DisplayOptions {
@@ -105,7 +106,7 @@ impl Default for DisplayOptions {
             (NonBreakingSpace, "•"),
         ];
 
-        let mut replacements = HashMap::new();
+        let mut replacements = FxHashMap::default();
         for (rep, s) in DEFAULT {
             replacements.insert(rep, s.into());
         }

@@ -80,7 +80,7 @@ pub(crate) fn find_action(name: &str) -> Option<Action> {
     None
 }
 
-pub(crate) fn on_message(editor: &mut Editor, id: ClientId, msg: MatcherMessage) {
+pub(crate) fn matcher_result_handler(editor: &mut Editor, id: ClientId, msg: MatcherMessage) {
     use MatcherMessage::*;
 
     let draw = editor.draw_state(id);

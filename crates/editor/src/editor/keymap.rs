@@ -1,7 +1,6 @@
 mod default;
 
-use std::collections::HashMap;
-
+use rustc_hash::FxHashMap;
 use sanedit_messages::KeyEvent;
 
 use crate::actions::Action;
@@ -78,7 +77,7 @@ impl Default for KeyTrie {
     fn default() -> Self {
         KeyTrie {
             root: KeyTrieNode::Node {
-                map: HashMap::new(),
+                map: FxHashMap::default(),
             },
         }
     }
@@ -86,8 +85,12 @@ impl Default for KeyTrie {
 
 #[derive(Debug, Clone)]
 enum KeyTrieNode {
-    Leaf { action: Action },
-    Node { map: HashMap<KeyEvent, KeyTrieNode> },
+    Leaf {
+        action: Action,
+    },
+    Node {
+        map: FxHashMap<KeyEvent, KeyTrieNode>,
+    },
 }
 
 impl KeyTrieNode {
@@ -97,7 +100,7 @@ impl KeyTrieNode {
             Leaf { action: _ } => {
                 if events.first().is_some() {
                     let mut node = Node {
-                        map: HashMap::new(),
+                        map: FxHashMap::default(),
                     };
                     node.bind(&events[1..], new_action);
                     *self = node;
@@ -113,7 +116,7 @@ impl KeyTrieNode {
                         node.bind(&events[1..], new_action);
                     } else {
                         let mut node = Node {
-                            map: HashMap::new(),
+                            map: FxHashMap::default(),
                         };
                         node.bind(&events[1..], new_action);
                         map.insert(event.clone(), node);

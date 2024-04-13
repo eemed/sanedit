@@ -2,9 +2,8 @@ mod context;
 mod events;
 mod id;
 
-use std::collections::HashMap;
-
 use futures::future::BoxFuture;
+use rustc_hash::FxHashMap;
 use tokio::sync::mpsc::{self, channel};
 
 use crate::events::ToEditor;
@@ -42,7 +41,7 @@ async fn jobs_loop(mut recv: mpsc::Receiver<ToJobs>, handle: EditorHandle) {
         editor: handle,
         internal: tx,
     };
-    let mut jobs = HashMap::new();
+    let mut jobs = FxHashMap::default();
 
     loop {
         tokio::select!(

@@ -8,6 +8,7 @@ use crate::server::ClientId;
 use super::Editor;
 
 pub(crate) use cpu::CPUJob;
+use rustc_hash::FxHashMap;
 
 /// A job that can send messages back to the editor
 pub(crate) trait KeepInTouch {
@@ -27,19 +28,19 @@ impl fmt::Debug for dyn KeepInTouch {
 #[derive(Debug)]
 pub(crate) struct JobBroker {
     handle: JobsHandle,
-    jobs: HashMap<JobId, Rc<dyn KeepInTouch>>,
+    jobs: FxHashMap<JobId, Rc<dyn KeepInTouch>>,
 
     /// Slots to store one job id that should be cancelled before another one
     /// with the same client id + string combo is requested.
-    slots: HashMap<(ClientId, String), JobId>,
+    slots: FxHashMap<(ClientId, String), JobId>,
 }
 
 impl JobBroker {
     pub fn new(handle: JobsHandle) -> JobBroker {
         JobBroker {
             handle,
-            jobs: HashMap::new(),
-            slots: HashMap::new(),
+            jobs: FxHashMap::default(),
+            slots: FxHashMap::default(),
         }
     }
 

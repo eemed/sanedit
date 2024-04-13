@@ -1,13 +1,13 @@
 mod window;
-use std::collections::HashMap;
 
 use super::buffers::BufferId;
 use crate::server::ClientId;
+use rustc_hash::FxHashMap;
 pub(crate) use window::*;
 
 #[derive(Debug, Default)]
 pub(crate) struct Windows {
-    windows: HashMap<ClientId, Window>,
+    windows: FxHashMap<ClientId, Window>,
 }
 
 impl Windows {

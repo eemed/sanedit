@@ -1,5 +1,6 @@
 mod matches;
 mod receiver;
+mod strategy;
 
 use std::{
     borrow::Cow,
@@ -16,13 +17,14 @@ use tokio::sync::mpsc::channel;
 
 pub(crate) use matches::*;
 pub(crate) use receiver::*;
+pub(crate) use strategy::*;
 
 /// Matches options to a term
 pub(crate) struct Matcher {
     reader: Reader<String>,
     all_opts_read: Arc<AtomicBool>,
     previous: Arc<AtomicBool>,
-    match_fn: MatchFn,
+    strategy: MatchStrategy,
 }
 
 impl Matcher {
@@ -30,7 +32,7 @@ impl Matcher {
     const CHANNEL_SIZE: usize = 1024;
 
     // Create a new matcher.
-    pub fn new<T>(mut chan: T) -> Matcher
+    pub fn new<T>(mut chan: T, strategy: MatchStrategy) -> Matcher
     where
         T: MatchOptionReceiver<String> + Send + 'static,
     {
@@ -50,12 +52,8 @@ impl Matcher {
             reader,
             all_opts_read,
             previous: Arc::new(AtomicBool::new(false)),
-            match_fn: default_match_fn,
+            strategy,
         }
-    }
-
-    pub fn set_match_fn(&mut self, f: MatchFn) {
-        self.match_fn = f;
     }
 
     /// Match the candidates with the term. Returns a receiver where the results
@@ -73,14 +71,22 @@ impl Matcher {
         let reader = self.reader.clone();
         let all_opts_read = self.all_opts_read.clone();
         let case_sensitive = term.chars().any(|ch| ch.is_uppercase());
+        let strat = self.strategy;
+
+        // Apply strategy to term
         // Split term by whitespace and use the resulting terms as independent
         // searches
-        let terms: Vec<String> = term.split_whitespace().map(String::from).collect();
-        let terms: Arc<Vec<String>> = Arc::new(terms);
+        let terms: Arc<Vec<String>> = {
+            if strat.split() {
+                let terms = term.split_whitespace().map(String::from).collect();
+                Arc::new(terms)
+            } else {
+                Arc::new(vec![term.into()])
+            }
+        };
         let mut available = reader.len();
         let mut taken = 0;
         let stop = self.previous.clone();
-        let mfun = self.match_fn;
 
         rayon::spawn(move || loop {
             if stop.load(Ordering::Relaxed) {
@@ -110,7 +116,9 @@ impl Matcher {
 
                     let candidates = reader.slice(batch);
                     for can in candidates.into_iter() {
-                        if let Some(ranges) = matches_with(&can, &terms, case_sensitive, mfun) {
+                        if let Some(ranges) =
+                            matches_with(&can, &terms, case_sensitive, strat.get())
+                        {
                             let mat = Match {
                                 score: score(can.as_str(), &ranges),
                                 value: can.clone(),
@@ -164,23 +172,4 @@ fn matches_with(
     }
 
     Some(matches)
-}
-
-pub(crate) type MatchFn = fn(&str, &str) -> Option<Range<usize>>;
-
-/// Default match function
-/// matches if term is found anywhere on the searched string
-pub(crate) fn default_match_fn(me: &str, term: &str) -> Option<Range<usize>> {
-    let start = me.find(term)?;
-    Some(start..start + term.len())
-}
-
-/// Prefix match function
-/// matches only if searched string starts with term
-pub(crate) fn prefix_match_fn(me: &str, term: &str) -> Option<Range<usize>> {
-    if me.starts_with(term) {
-        Some(0..term.len())
-    } else {
-        None
-    }
 }

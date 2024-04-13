@@ -61,8 +61,4 @@ impl KeepInTouch for SyntaxParser {
             *win.syntax_result() = *output;
         }
     }
-
-    fn on_success(&self, editor: &mut Editor) {}
-
-    fn on_failure(&self, editor: &mut Editor, reason: &str) {}
 }

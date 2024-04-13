@@ -3,6 +3,8 @@ use std::{
     sync::atomic::{AtomicUsize, Ordering},
 };
 
+use rustc_hash::FxHashMap;
+
 use crate::actions::{Action, *};
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
@@ -39,8 +41,8 @@ impl HookId {
 }
 
 pub(crate) struct Hooks {
-    hook_types: HashMap<Hook, Vec<HookId>>,
-    hooks: HashMap<HookId, Action>,
+    hook_types: FxHashMap<Hook, Vec<HookId>>,
+    hooks: FxHashMap<HookId, Action>,
 }
 
 impl Hooks {
@@ -86,8 +88,8 @@ impl Default for Hooks {
         use Hook::*;
 
         let mut hooks = Hooks {
-            hook_types: HashMap::new(),
-            hooks: HashMap::new(),
+            hook_types: FxHashMap::default(),
+            hooks: FxHashMap::default(),
         };
         hooks.register(InsertPre, search::clear_matches);
         hooks.register(RemovePre, search::clear_matches);

@@ -8,7 +8,7 @@ use super::jobs::SyntaxParser;
 #[action("Parse buffer syntax")]
 pub(crate) fn parse_syntax(editor: &mut Editor, id: ClientId) {
     const JOB_NAME: &str = "parse-syntax";
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, _buf) = editor.win_buf_mut(id);
 
     // Clear syntax
     *win.syntax_result() = SyntaxParseResult::default();

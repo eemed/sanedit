@@ -1,6 +1,7 @@
 use std::{collections::HashSet, fmt};
 
 use bitflags::bitflags;
+use rustc_hash::FxHashSet;
 use serde::{Deserialize, Serialize};
 
 bitflags! {
@@ -117,7 +118,7 @@ impl TryFrom<&str> for KeyEvent {
     fn try_from(string: &str) -> Result<KeyEvent, String> {
         let keys = string.split(KEY_SEPARATOR);
         let mut mods = KeyMods::empty();
-        let mut seen = HashSet::new();
+        let mut seen = FxHashSet::default();
 
         for token in keys {
             if seen.contains(&token) {

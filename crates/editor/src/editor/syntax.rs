@@ -1,10 +1,10 @@
 use std::{
-    collections::HashMap,
     ops::Range,
     path::{Path, PathBuf},
     sync::Arc,
 };
 
+use rustc_hash::FxHashMap;
 use sanedit_buffer::ReadOnlyPieceTree;
 use sanedit_parser::AST;
 
@@ -20,14 +20,14 @@ mod grammar;
 #[derive(Debug)]
 pub(crate) struct Syntaxes {
     filetype_dir: PathBuf,
-    syntaxes: HashMap<Filetype, Syntax>,
+    syntaxes: FxHashMap<Filetype, Syntax>,
 }
 
 impl Syntaxes {
     pub fn new(ft_dir: &Path) -> Syntaxes {
         Syntaxes {
             filetype_dir: ft_dir.into(),
-            syntaxes: HashMap::new(),
+            syntaxes: FxHashMap::default(),
         }
     }
 
@@ -59,7 +59,7 @@ impl Default for Syntaxes {
         let ft_dir = ConfigDirectory::default().filetype_dir();
         Syntaxes {
             filetype_dir: ft_dir,
-            syntaxes: HashMap::new(),
+            syntaxes: FxHashMap::default(),
         }
     }
 }

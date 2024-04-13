@@ -1,11 +1,11 @@
 use std::{
     borrow::Cow,
-    collections::HashMap,
     fs,
     path::{Path, PathBuf},
 };
 
 use anyhow::{bail, Context};
+use rustc_hash::FxHashMap;
 use sanedit_messages::redraw::{Style, Theme, ThemeField};
 use toml::{Table, Value};
 
@@ -16,12 +16,12 @@ pub(crate) const DEFAULT_THEME: &str = "default";
 #[derive(Debug)]
 pub(crate) struct Themes {
     theme_dir: PathBuf,
-    themes: HashMap<String, Theme>,
+    themes: FxHashMap<String, Theme>,
 }
 
 impl Themes {
     pub fn new(path: &Path) -> Themes {
-        let mut themes = HashMap::new();
+        let mut themes = FxHashMap::default();
         themes.insert(DEFAULT_THEME.into(), default_theme());
 
         Themes {
@@ -86,14 +86,14 @@ impl Themes {
 impl Default for Themes {
     fn default() -> Self {
         let theme_dir = ConfigDirectory::default().theme_dir();
-        let mut themes = HashMap::new();
+        let mut themes = FxHashMap::default();
         themes.insert(DEFAULT_THEME.into(), default_theme());
         Themes { theme_dir, themes }
     }
 }
 
-fn flatten_colors(table: &Value) -> anyhow::Result<HashMap<String, Style>> {
-    fn rec(path: &str, cur: &Value, result: &mut HashMap<String, Style>) -> anyhow::Result<()> {
+fn flatten_colors(table: &Value) -> anyhow::Result<FxHashMap<String, Style>> {
+    fn rec(path: &str, cur: &Value, result: &mut FxHashMap<String, Style>) -> anyhow::Result<()> {
         match cur {
             Value::String(s) => match Style::from_str(s) {
                 Ok(style) => {
@@ -122,7 +122,7 @@ fn flatten_colors(table: &Value) -> anyhow::Result<HashMap<String, Style>> {
         }
     }
 
-    let mut result = HashMap::new();
+    let mut result = FxHashMap::default();
     rec("", table, &mut result)?;
     Ok(result)
 }

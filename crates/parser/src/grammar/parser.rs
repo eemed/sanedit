@@ -1,12 +1,12 @@
 mod rule;
 
-use std::collections::HashMap;
-use std::collections::HashSet;
 use std::io;
 use std::mem;
 
 use anyhow::bail;
 use anyhow::Result;
+use rustc_hash::FxHashMap;
+use rustc_hash::FxHashSet;
 use sanedit_utils::ranges::OverlappingRanges;
 
 pub(crate) use self::rule::Annotation;
@@ -28,8 +28,8 @@ pub(crate) fn parse_rules<R: io::Read>(read: R) -> Result<Box<[Rule]>> {
         lex,
         token,
         rules: vec![],
-        indices: HashMap::new(),
-        seen: HashSet::new(),
+        indices: FxHashMap::default(),
+        seen: FxHashSet::default(),
     };
     parser.parse()
 }
@@ -50,11 +50,11 @@ pub(crate) struct GrammarParser<R: io::Read> {
     token: Token,
 
     /// Seen rules, used to identify rules that are referenced but not defined
-    seen: HashSet<String>,
+    seen: FxHashSet<String>,
     /// All the parsed rules
     rules: Vec<Rule>,
     /// Map from rule name to its index
-    indices: HashMap<String, usize>,
+    indices: FxHashMap<String, usize>,
 }
 
 impl<R: io::Read> GrammarParser<R> {

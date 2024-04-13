@@ -10,7 +10,7 @@ use crate::{
     server::ClientId,
 };
 
-use super::{hooks::run, jobs, Action};
+use super::{hooks::run, jobs};
 
 #[action("Remove character after cursor")]
 fn remove_grapheme_after_cursor(editor: &mut Editor, id: ClientId) {
@@ -45,28 +45,29 @@ pub(crate) fn redo(editor: &mut Editor, id: ClientId) {
 pub(crate) fn insert(editor: &mut Editor, id: ClientId, text: &str) {
     let (win, _buf) = editor.win_buf_mut(id);
 
+    use Focus::*;
     match win.focus() {
-        Focus::Search => {
+        Search => {
             win.search.prompt.insert_at_cursor(text);
             if let Some(on_input) = win.search.prompt.on_input() {
                 let input = win.search.prompt.input().to_string();
                 (on_input)(editor, id, &input)
             }
         }
-        Focus::Prompt => {
+        Prompt => {
             win.prompt.insert_at_cursor(text);
             if let Some(on_input) = win.prompt.on_input() {
                 let input = win.prompt.input().to_string();
                 (on_input)(editor, id, &input)
             }
         }
-        Focus::Window => {
+        Window => {
             run(editor, id, Hook::InsertPre);
             let (win, buf) = editor.win_buf_mut(id);
             win.insert_at_cursors(buf, text);
             run(editor, id, Hook::BufChanged);
         }
-        Focus::Completion => {}
+        Completion => {}
     }
 }
 

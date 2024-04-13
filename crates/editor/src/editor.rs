@@ -8,6 +8,7 @@ pub(crate) mod syntax;
 pub(crate) mod themes;
 pub(crate) mod windows;
 
+use rustc_hash::FxHashMap;
 use sanedit_messages::redraw::Size;
 use sanedit_messages::ClientMessage;
 use sanedit_messages::KeyEvent;
@@ -17,7 +18,6 @@ use sanedit_messages::MouseButton;
 use sanedit_messages::MouseEvent;
 use sanedit_messages::MouseEventKind;
 
-use std::collections::HashMap;
 use std::env;
 use std::mem;
 use std::path::Path;
@@ -57,8 +57,8 @@ use self::windows::Window;
 use self::windows::Windows;
 
 pub(crate) struct Editor {
-    clients: HashMap<ClientId, ClientHandle>,
-    draw_states: HashMap<ClientId, DrawState>,
+    clients: FxHashMap<ClientId, ClientHandle>,
+    draw_states: FxHashMap<ClientId, DrawState>,
     windows: Windows,
     buffers: Buffers,
     keys: Vec<KeyEvent>,
@@ -82,8 +82,8 @@ impl Editor {
 
         Editor {
             runtime,
-            clients: HashMap::default(),
-            draw_states: HashMap::default(),
+            clients: FxHashMap::default(),
+            draw_states: FxHashMap::default(),
             syntaxes: Syntaxes::default(),
             windows: Windows::default(),
             buffers: Buffers::default(),

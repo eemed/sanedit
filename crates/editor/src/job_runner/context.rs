@@ -3,8 +3,8 @@ use std::any::Any;
 use crate::events::ToEditor;
 use crate::server::EditorHandle;
 use tokio::sync::{
+    broadcast,
     mpsc::{error::SendError, Sender},
-    oneshot,
 };
 
 use super::{FromJobs, JobId};
@@ -13,7 +13,7 @@ use super::{FromJobs, JobId};
 /// editor.
 pub(crate) struct JobContext {
     pub id: JobId,
-    pub kill: oneshot::Receiver<()>,
+    pub kill: broadcast::Sender<()>,
     pub sender: JobResponseSender,
 }
 
@@ -58,15 +58,15 @@ pub(crate) struct JobResponseSender {
 }
 
 impl JobResponseSender {
-    pub(super) fn to_job_context(&self, id: JobId) -> (oneshot::Sender<()>, JobContext) {
-        let (tx, rx) = oneshot::channel();
+    pub(super) fn to_job_context(&self, id: JobId) -> (broadcast::Sender<()>, JobContext) {
+        let (tx, rx) = broadcast::channel(1);
         let sender = self.clone();
         (
-            tx,
+            tx.clone(),
             JobContext {
                 id,
                 sender,
-                kill: rx,
+                kill: tx,
             },
         )
     }

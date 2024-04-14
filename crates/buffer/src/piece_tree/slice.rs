@@ -40,12 +40,12 @@ impl<'a> PieceTreeSlice<'a> {
     }
 
     #[inline]
-    pub fn bytes(&self) -> Bytes {
+    pub fn bytes(&self) -> Bytes<'a> {
         self.bytes_at(0)
     }
 
     #[inline]
-    pub fn bytes_at(&self, pos: usize) -> Bytes {
+    pub fn bytes_at(&self, pos: usize) -> Bytes<'a> {
         debug_assert!(
             self.start() + pos <= self.pt.len,
             "bytes_at: Attempting to index {} over buffer len {}",
@@ -56,12 +56,12 @@ impl<'a> PieceTreeSlice<'a> {
     }
 
     #[inline]
-    pub fn chunks(&self) -> Chunks {
+    pub fn chunks(&self) -> Chunks<'a> {
         self.chunks_at(0)
     }
 
     #[inline]
-    pub fn chunks_at(&self, pos: usize) -> Chunks {
+    pub fn chunks_at(&self, pos: usize) -> Chunks<'a> {
         debug_assert!(
             self.start() + pos <= self.pt.len,
             "chunks_at: Attempting to index {} over buffer len {}",
@@ -72,12 +72,12 @@ impl<'a> PieceTreeSlice<'a> {
     }
 
     #[inline]
-    pub fn chars(&self) -> Chars {
+    pub fn chars(&self) -> Chars<'a> {
         self.chars_at(0)
     }
 
     #[inline]
-    pub fn chars_at(&self, pos: usize) -> Chars {
+    pub fn chars_at(&self, pos: usize) -> Chars<'a> {
         debug_assert!(
             self.start() + pos <= self.pt.len,
             "chars_at: Attempting to index {} over buffer len {}",
@@ -108,12 +108,12 @@ impl<'a> PieceTreeSlice<'a> {
     }
 
     #[inline]
-    pub fn lines(&self) -> Lines {
+    pub fn lines(&self) -> Lines<'a> {
         self.lines_at(0)
     }
 
     #[inline]
-    pub fn lines_at(&self, pos: usize) -> Lines {
+    pub fn lines_at(&self, pos: usize) -> Lines<'a> {
         Lines::new_from_slice(&self, pos)
     }
 
@@ -123,12 +123,12 @@ impl<'a> PieceTreeSlice<'a> {
     }
 
     #[inline]
-    pub fn graphemes(&self) -> Graphemes {
+    pub fn graphemes(&self) -> Graphemes<'a> {
         self.graphemes_at(0)
     }
 
     #[inline]
-    pub fn graphemes_at(&self, pos: usize) -> Graphemes {
+    pub fn graphemes_at(&self, pos: usize) -> Graphemes<'a> {
         Graphemes::new_from_slice(&self, pos)
     }
 }

@@ -11,11 +11,11 @@ pub trait ByteReader {
     /// Wether to stop parsing and return an error
     fn stop(&self) -> bool;
 
-    fn slice(&self, range: Range<usize>) -> Self::I;
+    fn iter(&self, range: Range<usize>) -> Self::I;
 
     fn matches(&self, at: usize, exp: &[u8]) -> bool {
         let max = min(at + exp.len(), self.len());
-        let mut bytes = self.slice(at..max);
+        let mut bytes = self.iter(at..max);
         for e in exp {
             match bytes.next() {
                 Some(ch) => {
@@ -32,7 +32,7 @@ pub trait ByteReader {
 
     fn char_between(&self, at: usize, start: char, end: char) -> Option<usize> {
         let max = min(at + 4, self.len());
-        let bytes = self.slice(at..max);
+        let bytes = self.iter(at..max);
         let (ch, size) = decode_utf8_iter(bytes);
         let ch = ch?;
 
@@ -55,7 +55,7 @@ impl<'a> ByteReader for &'a str {
         false
     }
 
-    fn slice(&self, range: Range<usize>) -> Self::I {
+    fn iter(&self, range: Range<usize>) -> Self::I {
         self[range].bytes()
     }
 }

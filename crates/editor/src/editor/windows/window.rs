@@ -8,6 +8,8 @@ mod search;
 mod selector;
 mod view;
 
+use std::mem;
+
 use sanedit_messages::redraw::{Severity, Size, StatusMessage};
 
 use crate::{
@@ -22,7 +24,6 @@ use crate::{
         keymap::{DefaultKeyMappings, KeyMappings, Keymap},
         syntax::SyntaxParseResult,
     },
-    job_runner::JobId,
 };
 
 pub(crate) use self::{
@@ -39,7 +40,8 @@ pub(crate) use self::{
 
 #[derive(Debug)]
 pub(crate) struct Window {
-    buf: BufferId,
+    bid: BufferId,
+    prev_buf_data: Option<(BufferId, SnapshotData)>,
     message: Option<StatusMessage>,
     keymap: Keymap,
     view: View,
@@ -54,9 +56,10 @@ pub(crate) struct Window {
 }
 
 impl Window {
-    pub fn new(buf: BufferId, width: usize, height: usize) -> Window {
+    pub fn new(bid: BufferId, width: usize, height: usize) -> Window {
         Window {
-            buf,
+            bid,
+            prev_buf_data: None,
             view: View::new(width, height),
             message: None,
             clipboard: DefaultClipboard::new(),
@@ -95,10 +98,27 @@ impl Window {
     }
 
     pub fn open_buffer(&mut self, bid: BufferId) -> BufferId {
-        let old = self.buf;
-        self.buf = bid;
+        let old = self.bid;
+        let odata = self.create_snapshot_data();
+        self.prev_buf_data = Some((old, odata));
+        self.bid = bid;
         self.reload();
         old
+    }
+
+    pub fn goto_prev_buffer(&mut self) -> bool {
+        match mem::take(&mut self.prev_buf_data) {
+            Some((pbid, pdata)) => {
+                let old = self.bid;
+                let odata = self.create_snapshot_data();
+                self.prev_buf_data = Some((old, odata));
+
+                self.bid = pbid;
+                self.restore(pdata);
+                true
+            }
+            None => false,
+        }
     }
 
     pub fn info_msg(&mut self, message: &str) {
@@ -140,10 +160,10 @@ impl Window {
 
     pub fn scroll_down_n(&mut self, buf: &Buffer, n: usize) {
         debug_assert!(
-            buf.id == self.buf,
+            buf.id == self.bid,
             "Invalid buffer provided to window got id {:?}, expected {:?}",
             buf.id,
-            self.buf
+            self.bid
         );
 
         self.view.scroll_down_n(buf, n);
@@ -152,10 +172,10 @@ impl Window {
 
     pub fn scroll_up_n(&mut self, buf: &Buffer, n: usize) {
         debug_assert!(
-            buf.id == self.buf,
+            buf.id == self.bid,
             "Invalid buffer provided to window got id {:?}, expected {:?}",
             buf.id,
-            self.buf
+            self.bid
         );
         self.view.scroll_up_n(buf, n);
         self.view.redraw(buf);
@@ -164,10 +184,10 @@ impl Window {
     /// sets window offset so that primary cursor is visible in the drawn view.
     pub fn view_to_cursor(&mut self, buf: &Buffer) {
         debug_assert!(
-            buf.id == self.buf,
+            buf.id == self.bid,
             "Invalid buffer provided to window got id {:?}, expected {:?}",
             buf.id,
-            self.buf
+            self.bid
         );
         let cursor = self.primary_cursor().pos();
         self.view.view_to(cursor, buf);
@@ -202,7 +222,11 @@ impl Window {
     }
 
     pub fn buffer_id(&self) -> BufferId {
-        self.buf
+        self.bid
+    }
+
+    pub fn prev_buffer_id(&self) -> Option<BufferId> {
+        self.prev_buf_data.as_ref().map(|(a, _)| a).copied()
     }
 
     pub fn view(&self) -> &View {
@@ -215,10 +239,10 @@ impl Window {
 
     pub fn resize(&mut self, size: Size, buf: &Buffer) {
         debug_assert!(
-            buf.id == self.buf,
+            buf.id == self.bid,
             "Invalid buffer provided to window got id {:?}, expected {:?}",
             buf.id,
-            self.buf
+            self.bid
         );
         self.view.resize(size);
         self.view_to_cursor(buf);
@@ -230,10 +254,10 @@ impl Window {
 
     pub fn redraw_view(&mut self, buf: &Buffer) {
         debug_assert!(
-            buf.id == self.buf,
+            buf.id == self.bid,
             "Invalid buffer provided to window got id {:?}, expected {:?}",
             buf.id,
-            self.buf
+            self.bid
         );
 
         self.cursors.ensure_in_range(0..buf.len());
@@ -397,8 +421,11 @@ impl Window {
                 }
 
                 if let Some(restored) = restored {
-                    let data = buf.snapshot_data(restored);
-                    self.restore(data);
+                    if let Some(data) = buf.snapshot_data(restored) {
+                        self.restore(data);
+                    } else {
+                        self.reload();
+                    }
                 }
 
                 self.invalidate();
@@ -407,14 +434,10 @@ impl Window {
         }
     }
 
-    fn restore(&mut self, restored: Option<SnapshotData>) {
-        if let Some(ref sdata) = restored {
-            self.cursors = sdata.cursors.clone();
-            self.view.set_offset(sdata.view_offset);
-        } else {
-            self.cursors = Cursors::default();
-            self.view.set_offset(0);
-        }
+    fn restore(&mut self, sdata: SnapshotData) {
+        self.cursors = sdata.cursors.clone();
+        self.view.set_offset(sdata.view_offset);
+        self.invalidate();
     }
 
     pub fn redo(&mut self, buf: &mut Buffer) {
@@ -427,8 +450,11 @@ impl Window {
                 }
 
                 if let Some(restored) = restored {
-                    let data = buf.snapshot_data(restored);
-                    self.restore(data);
+                    if let Some(data) = buf.snapshot_data(restored) {
+                        self.restore(data);
+                    } else {
+                        self.reload()
+                    }
                 }
 
                 self.invalidate();

@@ -1,4 +1,9 @@
-use crate::{editor::Editor, server::ClientId};
+use crate::{
+    editor::{hooks::Hook, Editor},
+    server::ClientId,
+};
+
+use super::hooks;
 
 #[action("Reload the current window")]
 fn reload(editor: &mut Editor, id: ClientId) {
@@ -23,5 +28,15 @@ fn sync_windows(editor: &mut Editor, id: ClientId) {
 
         let (win, buf) = editor.win_buf_mut(client);
         win.on_buffer_changed(buf);
+    }
+}
+
+#[action("Goto previous buffer")]
+fn goto_prev_buffer(editor: &mut Editor, id: ClientId) {
+    let (win, buf) = editor.win_buf_mut(id);
+    if win.goto_prev_buffer() {
+        hooks::run(editor, id, Hook::BufOpened)
+    } else {
+        win.warn_msg("No previous buffer");
     }
 }

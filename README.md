@@ -2,17 +2,15 @@
 
 ## TODO
 
-* Implement syntax parse stopping
 * Implement completion
 * Add completion options from syntax parse
-* Implement goto last buffer
 * Implement goto line
 * Implement goto percentage
 * Fix TODO optimize
+    * Optimize parser
 * Implement select around using parse result
 * Implement indentation logic
     * Smart tab
-    * Snippets?
 
 * Add regex to searching/selecting
 * Fix syntax highlighting flicker
@@ -29,4 +27,5 @@
 
 * LSP
     * Needs installation mechanism => complex
+* Snippets
 

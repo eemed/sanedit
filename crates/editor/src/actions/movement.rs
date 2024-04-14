@@ -1,4 +1,4 @@
-use std::cmp;
+use std::cmp::{self, max};
 
 use sanedit_buffer::PieceTreeSlice;
 use sanedit_messages::redraw::Point;
@@ -273,3 +273,21 @@ fn goto_matching_pair(editor: &mut Editor, id: ClientId) {
         do_move_static(editor, id, pos, None);
     }
 }
+
+// fn goto_line(editor: &mut Editor, id: ClientId, line: usize) {
+//     let (win, buf) = editor.win_buf_mut(id);
+//     let slice = buf.slice(..);
+//     let mut lines = slice.lines();
+//     for _ in 1..max(line, 1) {
+//         lines.next();
+//     }
+
+//     if let Some(line) = lines.next() {
+//     }
+// }
+
+// fn goto_offset() {
+// }
+//
+// fn goto_percentage() {
+// }

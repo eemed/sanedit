@@ -7,6 +7,7 @@ use std::{
 use rustc_hash::FxHashMap;
 use sanedit_buffer::ReadOnlyPieceTree;
 use sanedit_parser::AST;
+use tokio::sync::broadcast;
 
 use crate::{
     common::dirs::ConfigDirectory,
@@ -75,10 +76,11 @@ impl Syntax {
         bid: BufferId,
         ropt: &ReadOnlyPieceTree,
         view: Range<usize>,
+        kill: broadcast::Receiver<()>,
     ) -> anyhow::Result<SyntaxParseResult> {
         log::info!("parsing");
         let slice = ropt.slice(..);
-        let ast = self.grammar.parse(&slice)?;
+        let ast = self.grammar.parse(&slice, kill)?;
         // log::debug!("{}", ast.print_string(&String::from(&slice)));
         let spans = ast.flatten().into_iter().map(Span::from).collect();
 

@@ -1,8 +1,9 @@
 use std::{fs::File, path::Path};
 
 use anyhow::bail;
-use sanedit_buffer::PieceTreeSlice;
-use sanedit_parser::{PikaParser, AST};
+use sanedit_buffer::{Bytes, PieceTreeSlice};
+use sanedit_parser::{ByteReader, PikaParser, AST};
+use tokio::sync::broadcast;
 
 #[derive(Debug)]
 pub(crate) struct Grammar {
@@ -22,35 +23,49 @@ impl Grammar {
         }
     }
 
-    pub fn parse(&self, slice: &PieceTreeSlice) -> Result<AST, sanedit_parser::ParseError> {
-        // TODO impl
-        let content = String::from(slice);
-        self.parser.parse(content.as_str())
+    pub fn parse(
+        &self,
+        slice: &PieceTreeSlice,
+        kill: broadcast::Receiver<()>,
+    ) -> Result<AST, sanedit_parser::ParseError> {
+        let reader = PTReader {
+            pt: slice.clone(),
+            kill,
+        };
+        self.parser.parse(reader)
     }
 }
 
-// struct PTCharIter<'a> {
-//     slice: PieceTreeSlice<'a>,
-// }
+struct PTIter<'a>(Bytes<'a>);
+impl<'a> Iterator for PTIter<'a> {
+    type Item = u8;
 
-// impl<'a> CharReader for PTCharIter<'a> {
-//     type I;
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.next()
+    }
+}
 
-//     type O;
+// TODO optimize, check performance using a bytes iterator
+// and just cloning it, and limiting to a range
+struct PTReader<'a> {
+    pt: PieceTreeSlice<'a>,
+    kill: broadcast::Receiver<()>,
+}
 
-//     fn len(&self) -> usize {
-//         todo!()
-//     }
+impl<'a> ByteReader for PTReader<'a> {
+    type I = PTIter<'a>;
 
-//     fn stop(&self) -> bool {
-//         todo!()
-//     }
+    fn len(&self) -> usize {
+        self.pt.len()
+    }
 
-//     fn chars_rev(&self) -> Self::I {
-//         todo!()
-//     }
+    fn stop(&self) -> bool {
+        !self.kill.is_empty()
+    }
 
-//     fn chars_at(&self, at: usize) -> Self::O {
-//         todo!()
-//     }
-// }
+    fn iter(&self, range: std::ops::Range<usize>) -> Self::I {
+        let slice = self.pt.slice(range);
+        let bytes = slice.bytes();
+        PTIter(bytes)
+    }
+}

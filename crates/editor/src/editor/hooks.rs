@@ -17,6 +17,8 @@ pub(crate) enum Hook {
 
     /// After buffer changed
     BufChanged,
+
+    /// After buffer opened in a window
     BufOpened,
 
     /// Before client message is processed

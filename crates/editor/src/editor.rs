@@ -174,7 +174,10 @@ impl Editor {
 
         let old = win.open_buffer(bid);
         // Remove if unused
-        let is_used = self.windows.iter().any(|(_, win)| win.buffer_id() == old);
+        let is_used = self
+            .windows
+            .iter()
+            .any(|(_, win)| win.buffer_id() == old || win.prev_buffer_id() == Some(old));
         if !is_used {
             self.buffers.remove(old);
         }

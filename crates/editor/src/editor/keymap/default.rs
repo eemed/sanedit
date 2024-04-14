@@ -86,6 +86,7 @@ impl KeyMappings for DefaultKeyMappings {
 
              "f5", window::reload,
              "f4", prompt::select_theme,
+             "f2", window::goto_prev_buffer,
         );
 
         map

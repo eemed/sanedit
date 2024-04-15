@@ -8,7 +8,10 @@ mod search;
 mod selector;
 mod view;
 
-use std::mem;
+use std::{
+    cmp::{max, min},
+    mem,
+};
 
 use sanedit_messages::redraw::{Severity, Size, StatusMessage};
 
@@ -193,13 +196,29 @@ impl Window {
         self.view.view_to(cursor, buf);
     }
 
-    /// Called when buffer is changed in the background and we should correct
-    /// this window.
-    pub fn on_buffer_changed(&mut self, buf: &Buffer) {
-        // Remove cursors
-        self.cursors.remove_secondary_cursors();
-        self.cursors.primary_mut().unanchor();
+    /// Move primary cursor to line and the view
+    pub fn goto_line(&mut self, line: usize, buf: &Buffer) {
+        let slice = buf.slice(..);
+        let mut lines = slice.lines();
+        for _ in 1..max(line, 1) {
+            lines.next();
+        }
 
+        let offset = lines.next().map(|line| line.start()).unwrap_or(buf.len());
+        self.goto_offset(offset, buf);
+    }
+
+    /// Move primary cursor to offset and the view too
+    pub fn goto_offset(&mut self, offset: usize, buf: &Buffer) {
+        let offset = min(offset, buf.len());
+        let primary = self.cursors.primary_mut();
+        primary.goto(offset);
+
+        self.ensure_cursor_on_grapheme_boundary(buf);
+        self.view_to_cursor(buf);
+    }
+
+    pub fn ensure_cursor_on_grapheme_boundary(&mut self, buf: &Buffer) {
         // Ensure cursor in buf range
         self.cursors.ensure_in_range(0..buf.len());
 
@@ -214,7 +233,18 @@ impl Window {
             .unwrap_or(buf.len());
         if ppos != npos {
             primary.goto(npos);
+            self.view.invalidate();
         }
+    }
+
+    /// Called when buffer is changed in the background and we should correct
+    /// this window.
+    pub fn on_buffer_changed(&mut self, buf: &Buffer) {
+        // Remove cursors
+        self.cursors.remove_secondary_cursors();
+        self.cursors.primary_mut().unanchor();
+
+        self.ensure_cursor_on_grapheme_boundary(buf);
 
         // Redraw view
         self.view.invalidate();

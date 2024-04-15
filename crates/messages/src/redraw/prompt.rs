@@ -6,8 +6,12 @@ use super::{Component, Diffable, Redraw};
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
 pub enum Source {
+    /// Search prompt
     Search,
+    /// A prompt with completions
     Prompt,
+    /// A simple prompt / yes no questions
+    Simple,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]

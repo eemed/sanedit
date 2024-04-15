@@ -4,8 +4,6 @@
 
 * Implement completion
 * Add completion options from syntax parse
-* Implement goto line
-* Implement goto percentage
 * Fix TODO optimize
     * Optimize parser
 * Implement select around using parse result

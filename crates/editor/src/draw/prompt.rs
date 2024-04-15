@@ -29,6 +29,11 @@ pub(crate) fn draw(prompt: &Prompt, ctx: &mut DrawContext) -> redraw::Prompt {
         .into_iter()
         .map(|m| m.clone().into())
         .collect();
+    let source = if prompt.is_simple() {
+        Source::Simple
+    } else {
+        Source::Prompt
+    };
 
     redraw::Prompt {
         input,
@@ -36,7 +41,7 @@ pub(crate) fn draw(prompt: &Prompt, ctx: &mut DrawContext) -> redraw::Prompt {
         options,
         message: msg,
         selected: selected_relative_pos,
-        source: Source::Prompt,
+        source,
         max_completions: compl_count,
     }
 }

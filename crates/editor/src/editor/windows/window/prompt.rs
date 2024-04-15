@@ -27,6 +27,7 @@ pub(crate) struct PromptBuilder {
     on_abort: Option<PromptAction>,
     keymap: Option<Keymap>,
     history_size: NonZeroUsize,
+    simple: bool,
 }
 
 impl Default for PromptBuilder {
@@ -38,6 +39,7 @@ impl Default for PromptBuilder {
             on_abort: None,
             keymap: None,
             history_size: NonZeroUsize::new(100).unwrap(),
+            simple: false,
         }
     }
 }
@@ -45,6 +47,11 @@ impl Default for PromptBuilder {
 impl PromptBuilder {
     pub fn prompt(mut self, msg: &str) -> Self {
         self.message = Some(msg.to_string());
+        self
+    }
+
+    pub fn simple(mut self) -> Self {
+        self.simple = true;
         self
     }
 
@@ -90,6 +97,7 @@ impl PromptBuilder {
             on_abort,
             keymap,
             history_size,
+            simple,
         } = self;
         Prompt {
             message: message.unwrap_or(String::new()),
@@ -101,6 +109,7 @@ impl PromptBuilder {
             on_input,
             keymap: keymap.unwrap_or(DefaultKeyMappings::prompt()),
             history: History::new(history_size.get()),
+            simple,
         }
     }
 }
@@ -128,6 +137,7 @@ pub(crate) struct Prompt {
     pub keymap: Keymap,
 
     history: History,
+    simple: bool,
 }
 
 impl Prompt {
@@ -142,6 +152,7 @@ impl Prompt {
             on_input: None,
             keymap: DefaultKeyMappings::prompt(),
             history: History::new(100),
+            simple: false,
         }
     }
 
@@ -308,6 +319,10 @@ impl Prompt {
             }
         }
     }
+
+    pub fn is_simple(&self) -> bool {
+        self.simple
+    }
 }
 
 impl Default for Prompt {
@@ -323,6 +338,7 @@ impl std::fmt::Debug for Prompt {
             .field("input", &self.input)
             .field("cursor", &self.cursor)
             .field("completions", &self.selector)
+            .field("simple", &self.simple)
             .finish_non_exhaustive()
     }
 }

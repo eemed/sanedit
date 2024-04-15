@@ -1,12 +1,13 @@
 mod commands;
 
-use std::{path::PathBuf, sync::Arc};
+use std::{cmp::min, path::PathBuf, sync::Arc};
 
 use sanedit_messages::ClientMessage;
 
 use crate::{
     actions::jobs::FileOptionProvider,
     editor::{
+        hooks::Hook,
         windows::{Focus, Prompt},
         Editor,
     },
@@ -15,7 +16,10 @@ use crate::{
 
 use self::commands::find_action;
 
-use super::jobs::{MatcherJob, ShellCommand};
+use super::{
+    hooks,
+    jobs::{MatcherJob, ShellCommand},
+};
 
 #[action("Select theme")]
 fn select_theme(editor: &mut Editor, id: ClientId) {
@@ -182,9 +186,48 @@ fn shell_command(editor: &mut Editor, id: ClientId) {
 
     win.prompt = Prompt::builder()
         .prompt("Command")
+        .simple()
         .on_confirm(move |editor, id, input| {
             let job = ShellCommand::new(id, input);
             editor.job_broker.request(job);
+        })
+        .build();
+    win.focus = Focus::Prompt;
+}
+
+#[action("Goto a line")]
+fn goto_line(editor: &mut Editor, id: ClientId) {
+    let (win, _buf) = editor.win_buf_mut(id);
+
+    win.prompt = Prompt::builder()
+        .prompt("Line")
+        .simple()
+        .on_confirm(move |editor, id, input| {
+            if let Ok(num) = input.parse::<usize>() {
+                let (win, buf) = editor.win_buf_mut(id);
+                win.goto_line(num, buf);
+                hooks::run(editor, id, Hook::CursorMoved);
+            }
+        })
+        .build();
+    win.focus = Focus::Prompt;
+}
+
+#[action("Goto a percentage")]
+fn goto_percentage(editor: &mut Editor, id: ClientId) {
+    let (win, _buf) = editor.win_buf_mut(id);
+
+    win.prompt = Prompt::builder()
+        .prompt("Percentage")
+        .simple()
+        .on_confirm(move |editor, id, input| {
+            if let Ok(mut num) = input.parse::<usize>() {
+                num = min(100, num);
+                let (win, buf) = editor.win_buf_mut(id);
+                let offset = num * buf.len() / 100;
+                win.goto_offset(offset, buf);
+                hooks::run(editor, id, Hook::CursorMoved);
+            }
         })
         .build();
     win.focus = Focus::Prompt;

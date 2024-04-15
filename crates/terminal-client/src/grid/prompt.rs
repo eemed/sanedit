@@ -19,6 +19,7 @@ pub struct CustomPrompt {
 }
 
 pub(crate) fn open_prompt(width: usize, height: usize, prompt: Prompt) -> Canvas<CustomPrompt> {
+    use Source::*;
     // Try to fit overlay prompt
     // magic number: overlay paddings 3 + prompt 1 + options + extra space so we
     // dont attach to window sides 6
@@ -29,12 +30,14 @@ pub(crate) fn open_prompt(width: usize, height: usize, prompt: Prompt) -> Canvas
     let olay_height = prompt.max_completions + 3 + 1;
     let oneline_min_height = prompt.max_completions + 1;
     let style = match prompt.source {
-        Source::Search => PromptStyle::Oneline,
-        Source::Prompt => {
+        Search | Simple => PromptStyle::Oneline,
+        Prompt => {
+            use PromptStyle::*;
+
             if height < olay_min_height {
-                PromptStyle::Oneline
+                Oneline
             } else {
-                PromptStyle::Overlay
+                Overlay
             }
         }
     };

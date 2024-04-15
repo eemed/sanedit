@@ -55,6 +55,11 @@ fn new_to_all_search_matches(editor: &mut Editor, id: ClientId) {
     // win.cursors.remove_secondary_cursors();
 
     let last_search = win.search.prompt.input();
+    if last_search.is_empty() {
+        win.warn_msg("No last search term");
+        return;
+    }
+
     let searcher = Searcher::new(last_search.as_bytes());
     let slice = buf.slice(..);
     let mut iter = searcher.find_iter(&slice);

@@ -33,11 +33,15 @@ tasks:
   flamegraph:
     desc: Build and run with release build and produce a flamegraph of the session
     dir: crates
-    deps: [install-pre-commit-hook]
+    deps: [flamegraph:prepare, install-pre-commit-hook]
     cmds:
       - rm -rf perf.data* flamegraph.svg
-      - echo 0 | sudo tee /proc/sys/kernel/perf_event_paranoid
       - cargo flamegraph --profile perf --verbose --bin sane -- -- --config-dir ../runtime/config
+
+  flamegraph:prepare:
+    desc: Prepare to capture using perf
+    cmds:
+      - echo 0 | sudo tee /proc/sys/kernel/perf_event_paranoid
 
   run:
     desc: Build and run the debug build

@@ -517,8 +517,8 @@ mod test {
     }
 
     #[test]
-    fn grammar_calc() {
-        let peg = include_str!("../../pegs/calc.peg");
+    fn grammar_json() {
+        let peg = include_str!("../../pegs/json.peg");
         match parse_rules_from_str(peg) {
             Ok(rules) => println!("==== Created rules ====\n{}", print_rules(&rules)),
             Err(e) => println!("Failed to create rules: {e}"),

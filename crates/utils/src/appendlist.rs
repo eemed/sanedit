@@ -119,7 +119,7 @@ impl<T: Copy> Writer<T> {
         let slice = &mut bucket[loc.pos..];
         let nwrite = min(slice.len(), items.len());
         for i in 0..nwrite {
-            slice[i] = MaybeUninit::new(items[i]);
+            slice[i].write(items[i]);
         }
 
         self.list.len.store(len + nwrite, Ordering::Release);
@@ -154,7 +154,7 @@ impl<T> Writer<T> {
         let slice = &mut bucket[loc.pos..];
         let nwrite = min(slice.len(), items.len());
         for i in (0..nwrite).rev() {
-            slice[i] = MaybeUninit::new(items.pop().unwrap());
+            slice[i].write(items.pop().unwrap());
         }
 
         self.list.len.store(len + nwrite, Ordering::Release);
@@ -186,7 +186,7 @@ impl<T> Writer<T> {
         let bucket = bucket.as_mut().unwrap();
         let slice = &mut bucket[loc.pos..];
         // let nwrite = min(slice.len(), bytes.len());
-        slice[0] = MaybeUninit::new(item);
+        slice[0].write(item);
 
         self.list.len.store(len + 1, Ordering::Release);
     }

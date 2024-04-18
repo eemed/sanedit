@@ -45,7 +45,7 @@ pub trait ByteReader {
 }
 
 impl<'a> ByteReader for &'a str {
-    type I = Bytes<'a>;
+    type I = std::iter::Copied<std::slice::Iter<'a, u8>>;
 
     fn len(&self) -> usize {
         self.as_bytes().len()
@@ -56,6 +56,6 @@ impl<'a> ByteReader for &'a str {
     }
 
     fn iter(&self, range: Range<usize>) -> Self::I {
-        self[range].bytes()
+        self.as_bytes()[range].iter().copied()
     }
 }

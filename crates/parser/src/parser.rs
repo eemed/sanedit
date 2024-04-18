@@ -4,9 +4,8 @@ mod memotable;
 mod preprocess;
 mod set;
 
-use std::{collections::BinaryHeap, io};
+use std::{borrow::Cow, collections::BinaryHeap, io};
 
-use smallvec::SmallVec;
 use thiserror::Error;
 
 use crate::{byte_reader::ByteReader, grammar, parser::clause::ClauseKind};
@@ -72,7 +71,9 @@ impl PikaParser {
                 return Err(ParseError::Parse("Stopped".into()));
             }
 
-            terminals.iter().for_each(|p| queue.push(*p));
+            for terminal in terminals.iter() {
+                queue.push(*terminal);
+            }
 
             while let Some(clause) = queue.pop() {
                 let i = clause.idx;
@@ -121,12 +122,12 @@ impl PikaParser {
                     Some(t) => Some(Match {
                         key,
                         len: mat.len + t.len,
-                        sub: SmallVec::from_slice(&[skey, tail_key]),
+                        sub: [skey, tail_key].into(),
                     }),
                     None => Some(Match {
                         key,
                         len: mat.len,
-                        sub: SmallVec::from_slice(&[skey]),
+                        sub: [skey].into(),
                     }),
                 }
             }
@@ -141,7 +142,7 @@ impl PikaParser {
                         return Some(Match {
                             key,
                             len: mat.len,
-                            sub: SmallVec::from_slice(&[skey]),
+                            sub: [skey].into(),
                         });
                     }
                 }
@@ -149,7 +150,7 @@ impl PikaParser {
                 None
             }
             Sequence => {
-                let mut subs = SmallVec::with_capacity(clause.sub.len());
+                let mut subs = Vec::with_capacity(clause.sub.len());
                 let mut pos = key.start;
                 for sub in &clause.sub {
                     let skey = MemoKey {
@@ -193,7 +194,7 @@ impl PikaParser {
 
                 let mat = memo
                     .get(&skey)
-                    .or_else(|| self.try_match(skey, memo, reader));
+                    .or_else(|| self.try_match(skey, memo, reader).map(Cow::Owned));
 
                 if mat.is_none() {
                     Some(Match::empty(key))
@@ -212,23 +213,38 @@ impl PikaParser {
     }
 }
 
+mod parse_lex {
+    use super::*;
+
+    impl PikaParser {
+        pub fn parse_lex(&self, input: &str) {}
+
+        fn lex<B: ByteReader>(&self, reader: B) -> MemoTable<B> {
+            let clauses = &self.preproc.clauses;
+            let lex_terminals: Vec<&Clause> =
+                clauses.iter().filter(|c| c.should_lex(clauses)).collect();
+            let len = reader.len();
+            let mut pos = 0;
+            let mut queue = BinaryHeap::new();
+
+            while let Some(i) = queue.pop() {
+                // Try all lex_terminals
+                // match greedily => if repetition, try until failure
+                // queue all positions to MIN heap
+                // if no match pos + 1
+                // if match insert to table and pos + match len
+                //
+                // TODO wont there be duplicates?
+            }
+
+            todo!()
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
-
-    #[test]
-    fn parser_calc() {
-        let peg = include_str!("../pegs/calc.peg");
-        let parser = PikaParser::from_str(peg).unwrap();
-        parser.parse("( 1 + 2 ) * 4");
-    }
-
-    #[test]
-    fn parser_simple() {
-        let peg = include_str!("../pegs/simple.peg");
-        let parser = PikaParser::from_str(peg).unwrap();
-        parser.parse("1+2^2");
-    }
 
     #[test]
     fn parser_json() {
@@ -246,5 +262,14 @@ mod test {
         let input = " {\"account\":\"bon\",\n\"age\":3.2 \r\n\"children\" : [  1, 2,3], \"allow-children\": true } ";
         let ast = parser.parse(input).unwrap();
         ast.print(input);
+    }
+
+    #[test]
+    fn parse_large_json() {
+        let peg = include_str!("../pegs/json.peg");
+        let content = include_str!("../benches/large.json");
+
+        let parser = PikaParser::new(std::io::Cursor::new(peg)).unwrap();
+        parser.parse(content).unwrap();
     }
 }

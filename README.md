@@ -7,12 +7,12 @@
 * Fix TODO optimize
     * Optimize parser
 * Implement select around using parse result
-* Implement indentation logic
-    * Smart tab
 
 * Add regex to searching/selecting
 * Fix syntax highlighting flicker
 
+* Implement indentation logic
+    * Smart tab
 * Add log buffer directly to editor
 * Remove or improve shell access
 * Remove uuid dependency

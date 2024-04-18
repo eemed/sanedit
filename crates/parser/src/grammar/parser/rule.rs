@@ -43,14 +43,6 @@ impl Rule {
             }
         }
 
-        fn is_repetition(def: &RuleDefinition) -> bool {
-            match def {
-                RuleDefinition::OneOrMore(_) => true,
-                RuleDefinition::Choice(c) => c.len() == 2 && c[1] == RuleDefinition::Nothing,
-                _ => false,
-            }
-        }
-
         fn rec(to: &mut RuleDefinition, ws: usize) {
             use RuleDefinition::*;
             match to {
@@ -66,7 +58,7 @@ impl Rule {
                     let mut i = 1;
                     while i < seq.len() {
                         let rdef = &mut seq[i];
-                        if is_repetition(rdef) {
+                        if rdef.is_repetition() {
                             repetition_insert_head(rdef, ws);
                         } else {
                             seq.insert(i, RuleDefinition::Ref(ws));
@@ -112,6 +104,14 @@ impl RuleDefinition {
         use RuleDefinition::*;
         match self {
             Nothing | CharSequence(_) | CharRange(_, _) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_repetition(&self) -> bool {
+        match self {
+            RuleDefinition::OneOrMore(_) => true,
+            RuleDefinition::Choice(c) => c.len() == 2 && c[1] == RuleDefinition::Nothing,
             _ => false,
         }
     }

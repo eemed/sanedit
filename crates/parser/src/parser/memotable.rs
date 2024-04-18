@@ -1,5 +1,6 @@
+use std::borrow::Cow;
+
 use rustc_hash::FxHashMap;
-use smallvec::SmallVec;
 
 use crate::{byte_reader::ByteReader, PikaParser};
 
@@ -32,15 +33,17 @@ impl<'a, 'b, B: ByteReader> MemoTable<'a, 'b, B> {
         true
     }
 
-    pub fn get(&self, key: &MemoKey) -> Option<Match> {
+    pub fn get(&self, key: &MemoKey) -> Option<Cow<Match>> {
         match self.table.get(key) {
-            Some(m) => Some(m.clone()),
+            Some(m) => Some(Cow::Borrowed(m)),
             None => {
                 let clause = &self.parser.preproc.clauses[key.clause];
                 if clause.kind == ClauseKind::NotFollowedBy {
-                    self.parser.try_match(*key, self, self.input)
+                    self.parser
+                        .try_match(*key, self, self.input)
+                        .map(Cow::Owned)
                 } else if clause.can_match_zero {
-                    Some(Match::empty(key.clone()))
+                    Some(Cow::Owned(Match::empty(key.clone())))
                 } else {
                     None
                 }
@@ -52,6 +55,7 @@ impl<'a, 'b, B: ByteReader> MemoTable<'a, 'b, B> {
         AST::new(self, len)
     }
 
+    #[inline(never)]
     pub fn best_match_at(&self, at: usize) -> Option<&Match> {
         let mut result = None;
         let mut prox = usize::MAX;
@@ -101,8 +105,6 @@ pub(crate) struct MemoKey {
     pub start: usize,
 }
 
-impl MemoKey {}
-
 #[derive(Debug, Clone)]
 pub(crate) struct Match {
     pub key: MemoKey,
@@ -110,7 +112,7 @@ pub(crate) struct Match {
     /// Length of the match
     pub len: usize,
 
-    pub sub: SmallVec<[MemoKey; 2]>,
+    pub sub: Vec<MemoKey>,
 }
 
 impl Match {
@@ -118,7 +120,7 @@ impl Match {
         Match {
             key,
             len: 0,
-            sub: SmallVec::new(),
+            sub: Vec::new(),
         }
     }
 
@@ -126,7 +128,7 @@ impl Match {
         Match {
             key,
             len,
-            sub: SmallVec::new(),
+            sub: Vec::new(),
         }
     }
 }

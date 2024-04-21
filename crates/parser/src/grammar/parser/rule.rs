@@ -1,4 +1,4 @@
-use std::{fmt, mem};
+use std::fmt;
 
 #[derive(Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub(crate) enum Annotation {
@@ -27,17 +27,18 @@ impl Rule {
 
     pub fn apply_whitespaced(&mut self, ws: usize) {
         fn repetition_insert_head(def: &mut RuleDefinition, ws: usize) {
+            use RuleDefinition::*;
             match def {
-                RuleDefinition::OneOrMore(r) => repetition_insert_head(r, ws),
-                RuleDefinition::Choice(c) => {
+                Optional(r) | ZeroOrMore(r) | OneOrMore(r) => repetition_insert_head(r, ws),
+                Choice(c) => {
                     let f = &mut c[0];
                     repetition_insert_head(f, ws);
                 }
-                RuleDefinition::Sequence(s) => {
+                Sequence(s) => {
                     s.insert(0, RuleDefinition::Ref(ws));
                 }
                 c => {
-                    let cur = mem::replace(c, RuleDefinition::Nothing);
+                    let cur = c.clone();
                     *c = RuleDefinition::Sequence(vec![RuleDefinition::Ref(ws), cur]);
                 }
             }
@@ -61,7 +62,7 @@ impl Rule {
                         if rdef.is_repetition() {
                             repetition_insert_head(rdef, ws);
                         } else {
-                            seq.insert(i, RuleDefinition::Ref(ws));
+                            seq.insert(i, Ref(ws));
                             i += 1;
                         }
 
@@ -69,6 +70,8 @@ impl Rule {
                     }
                 }
                 OneOrMore(m) => rec(m, ws),
+                Optional(m) => rec(m, ws),
+                ZeroOrMore(m) => rec(m, ws),
                 Choice(v) => v.iter_mut().for_each(|r| rec(r, ws)),
                 FollowedBy(m) => rec(m, ws),
                 NotFollowedBy(m) => rec(m, ws),
@@ -88,6 +91,8 @@ impl fmt::Display for Rule {
 
 #[derive(Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub(crate) enum RuleDefinition {
+    Optional(Box<RuleDefinition>),
+    ZeroOrMore(Box<RuleDefinition>),
     OneOrMore(Box<RuleDefinition>),
     Choice(Vec<RuleDefinition>),
     Sequence(Vec<RuleDefinition>),
@@ -96,35 +101,31 @@ pub(crate) enum RuleDefinition {
     CharSequence(String),
     CharRange(char, char),
     Ref(usize),
-    Nothing,
 }
 
 impl RuleDefinition {
     pub fn is_terminal(&self) -> bool {
         use RuleDefinition::*;
         match self {
-            Nothing | CharSequence(_) | CharRange(_, _) => true,
+            CharSequence(_) | CharRange(_, _) => true,
             _ => false,
         }
     }
 
     pub fn is_repetition(&self) -> bool {
+        use RuleDefinition::*;
         match self {
-            RuleDefinition::OneOrMore(_) => true,
-            RuleDefinition::Choice(c) => c.len() == 2 && c[1] == RuleDefinition::Nothing,
+            OneOrMore(_) | Optional(_) | ZeroOrMore(_) => true,
             _ => false,
         }
     }
 
-    pub fn is_nothing(&self) -> bool {
-        matches!(self, RuleDefinition::Nothing)
-    }
-
     pub fn format(&self, rules: &[Rule]) -> String {
+        use RuleDefinition::*;
         match self {
-            RuleDefinition::CharRange(a, b) => format!("[{}..{}]", a, b),
-            RuleDefinition::CharSequence(l) => format!("{:?}", l),
-            RuleDefinition::Choice(choices) => {
+            CharRange(a, b) => format!("[{}..{}]", a, b),
+            CharSequence(l) => format!("{:?}", l),
+            Choice(choices) => {
                 let mut result = String::new();
                 result.push_str("(");
                 for (i, choice) in choices.iter().enumerate() {
@@ -138,7 +139,7 @@ impl RuleDefinition {
 
                 result
             }
-            RuleDefinition::Sequence(seq) => {
+            Sequence(seq) => {
                 let mut result = String::new();
                 result.push_str("(");
                 for (i, choice) in seq.iter().enumerate() {
@@ -152,24 +153,26 @@ impl RuleDefinition {
 
                 result
             }
-            RuleDefinition::NotFollowedBy(r) => format!("!({})", r.format(rules)),
-            RuleDefinition::FollowedBy(r) => format!("&({})", r.format(rules)),
-            RuleDefinition::Ref(r) => {
+            NotFollowedBy(r) => format!("!({})", r.format(rules)),
+            FollowedBy(r) => format!("&({})", r.format(rules)),
+            Ref(r) => {
                 let rule = &rules[*r].name;
                 format!("{}", rule)
             }
-            RuleDefinition::OneOrMore(r) => format!("({})+", r.format(rules)),
-            RuleDefinition::Nothing => format!("()"),
+            OneOrMore(r) => format!("({})+", r.format(rules)),
+            Optional(r) => format!("({})?", r.format(rules)),
+            ZeroOrMore(r) => format!("({})*", r.format(rules)),
         }
     }
 }
 
 impl fmt::Display for RuleDefinition {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use RuleDefinition::*;
         match self {
-            RuleDefinition::CharRange(a, b) => write!(f, "[{}..{}]", a, b),
-            RuleDefinition::CharSequence(l) => write!(f, "{:?}", l),
-            RuleDefinition::Choice(choices) => {
+            CharRange(a, b) => write!(f, "[{}..{}]", a, b),
+            CharSequence(l) => write!(f, "{:?}", l),
+            Choice(choices) => {
                 let mut result = String::new();
                 result.push_str("(");
                 for (i, choice) in choices.iter().enumerate() {
@@ -183,7 +186,7 @@ impl fmt::Display for RuleDefinition {
 
                 write!(f, "{}", result)
             }
-            RuleDefinition::Sequence(seq) => {
+            Sequence(seq) => {
                 let mut result = String::new();
                 result.push_str("(");
                 for (i, choice) in seq.iter().enumerate() {
@@ -197,11 +200,12 @@ impl fmt::Display for RuleDefinition {
 
                 write!(f, "{}", result)
             }
-            RuleDefinition::NotFollowedBy(r) => write!(f, "!({})", r),
-            RuleDefinition::FollowedBy(r) => write!(f, "&({})", r),
-            RuleDefinition::Ref(r) => write!(f, "r\"{r}\""),
-            RuleDefinition::OneOrMore(r) => write!(f, "({})+", r),
-            RuleDefinition::Nothing => write!(f, "()"),
+            NotFollowedBy(r) => write!(f, "!({})", r),
+            FollowedBy(r) => write!(f, "&({})", r),
+            Ref(r) => write!(f, "r\"{r}\""),
+            OneOrMore(r) => write!(f, "({})+", r),
+            Optional(r) => write!(f, "({})?", r),
+            ZeroOrMore(r) => write!(f, "({})*", r),
         }
     }
 }

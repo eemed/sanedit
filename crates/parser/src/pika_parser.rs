@@ -8,7 +8,7 @@ use std::{borrow::Cow, collections::BinaryHeap, io};
 
 use thiserror::Error;
 
-use crate::{byte_reader::ByteReader, grammar, parser::clause::ClauseKind};
+use crate::{byte_reader::ByteReader, grammar, pika_parser::clause::ClauseKind};
 
 pub use self::ast::AST;
 use self::{
@@ -209,35 +209,6 @@ impl PikaParser {
                     None
                 }
             }
-        }
-    }
-}
-
-mod parse_lex {
-    use super::*;
-
-    impl PikaParser {
-        pub fn parse_lex(&self, input: &str) {}
-
-        fn lex<B: ByteReader>(&self, reader: B) -> MemoTable<B> {
-            let clauses = &self.preproc.clauses;
-            let lex_terminals: Vec<&Clause> =
-                clauses.iter().filter(|c| c.should_lex(clauses)).collect();
-            let len = reader.len();
-            let mut pos = 0;
-            let mut queue = BinaryHeap::new();
-
-            while let Some(i) = queue.pop() {
-                // Try all lex_terminals
-                // match greedily => if repetition, try until failure
-                // queue all positions to MIN heap
-                // if no match pos + 1
-                // if match insert to table and pos + match len
-                //
-                // TODO wont there be duplicates?
-            }
-
-            todo!()
         }
     }
 }

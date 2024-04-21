@@ -1,8 +1,9 @@
-mod byte_reader;
 pub(crate) mod grammar;
-mod parser;
+
+mod byte_reader;
+mod pika_parser;
 
 pub use byte_reader::ByteReader;
-pub use parser::ParseError;
-pub use parser::PikaParser;
-pub use parser::AST;
+pub use pika_parser::ParseError;
+pub use pika_parser::PikaParser;
+pub use pika_parser::AST;

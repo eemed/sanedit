@@ -23,9 +23,11 @@ pub(super) fn preprocess_rules(rules: &[Rule]) -> anyhow::Result<Clauses> {
         dedup: &mut FxHashMap<String, usize>,
         clauses: &mut Vec<Clause>,
     ) -> usize {
+        use RuleDefinition::*;
+
         let mut cdef = def;
         // Dereference any refs
-        while let RuleDefinition::Ref(r) = cdef {
+        while let Ref(r) = cdef {
             let rrule = &rules[*r];
             cdef = &rrule.def;
         }
@@ -39,12 +41,11 @@ pub(super) fn preprocess_rules(rules: &[Rule]) -> anyhow::Result<Clauses> {
         });
 
         let clause = &clauses[idx];
-        if !clause.is_placeholder() || matches!(def, RuleDefinition::Ref(_)) {
+        if !clause.is_placeholder() || matches!(def, Ref(_)) {
             // Already parsed or a reference that will be parsed in the future
             return idx;
         }
 
-        use RuleDefinition::*;
         let mut clause = match def {
             Choice(v) => {
                 let subs = v.iter().map(|rd| rec(rd, rules, dedup, clauses)).collect();
@@ -58,8 +59,18 @@ pub(super) fn preprocess_rules(rules: &[Rule]) -> anyhow::Result<Clauses> {
             FollowedBy(r) => Clause::followed_by(rec(r, rules, dedup, clauses)),
             NotFollowedBy(r) => Clause::not_followed_by(rec(r, rules, dedup, clauses)),
             CharSequence(s) => Clause::char_sequence(s.clone()),
-            Nothing => Clause::nothing(),
             CharRange(a, b) => Clause::char_range(*a, *b),
+            Optional(r) => {
+                let sub = rec(r, rules, dedup, clauses);
+                // One or Nothing
+                Clause::choice(vec![sub, 0])
+            }
+            ZeroOrMore(r) => {
+                let rule = r.clone();
+                let plus = rec(&RuleDefinition::OneOrMore(rule), rules, dedup, clauses);
+                // OneOrMore or Nothing
+                Clause::choice(vec![plus, 0])
+            }
             _ => unreachable!("Encountered unexpected rule definition: {def}"),
         };
 
@@ -72,6 +83,9 @@ pub(super) fn preprocess_rules(rules: &[Rule]) -> anyhow::Result<Clauses> {
     let mut dedup = FxHashMap::default();
     let mut clauses: Vec<Clause> = vec![];
     let mut names = FxHashMap::default();
+
+    // Push nothing as index 0
+    clauses.push(Clause::nothing());
 
     for rule in rules {
         let rid = rec(&rule.def, rules, &mut dedup, &mut clauses);
@@ -99,7 +113,7 @@ pub(super) fn preprocess_rules(rules: &[Rule]) -> anyhow::Result<Clauses> {
     validate(&clauses)?;
 
     // debug_print(&rules, &clauses);
-    // debug_log(&rules, &clauses);
+    debug_log(&rules, &clauses);
 
     Ok(Clauses {
         names,
@@ -219,12 +233,13 @@ fn determine_can_match_zero(clauses: &mut [Clause]) {
             let clause = &clauses[i];
             let old = clause.can_match_zero;
 
+            use ClauseKind::*;
             let new = match &clause.kind {
-                ClauseKind::Choice => clause.sub.iter().any(|i| (&clauses[*i]).can_match_zero),
-                ClauseKind::CharSequence(s) => s.is_empty(),
-                ClauseKind::CharRange(a, b) => a > b,
-                ClauseKind::Nothing => true,
-                ClauseKind::NotFollowedBy => true,
+                Choice => clause.sub.iter().any(|i| (&clauses[*i]).can_match_zero),
+                CharSequence(s) => s.is_empty(),
+                CharRange(a, b) => a > b,
+                Nothing => true,
+                NotFollowedBy => true,
                 _ => clause.sub.iter().all(|i| (&clauses[*i]).can_match_zero),
             };
 

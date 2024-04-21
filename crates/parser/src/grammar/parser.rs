@@ -107,7 +107,7 @@ impl<R: io::Read> GrammarParser<R> {
             };
             let ws_rule = &self.rules[i];
             let ws_def = ws_rule.def.clone().into();
-            let ws_zom = Choice(vec![OneOrMore(ws_def), Nothing]);
+            let ws_zom = ZeroOrMore(ws_def);
 
             let len = self.rules.len();
             for rule in &mut self.rules {
@@ -283,7 +283,7 @@ impl<R: io::Read> GrammarParser<R> {
                         let i = self.rules.len();
                         let rrule = Rule {
                             name: ref_rule.clone(),
-                            def: RuleDefinition::Nothing,
+                            def: RuleDefinition::Ref(0),
                             annotations: vec![],
                         };
                         self.indices.insert(ref_rule, i);
@@ -299,10 +299,7 @@ impl<R: io::Read> GrammarParser<R> {
         match self.token {
             Token::ZeroOrMore => {
                 self.consume(Token::ZeroOrMore)?;
-                let mut choices = Vec::with_capacity(2);
-                choices.push(RuleDefinition::OneOrMore(rule.into()));
-                choices.push(RuleDefinition::Nothing);
-                rule = RuleDefinition::Choice(choices)
+                rule = RuleDefinition::ZeroOrMore(rule.into());
             }
             Token::OneOrMore => {
                 self.consume(Token::OneOrMore)?;
@@ -310,10 +307,7 @@ impl<R: io::Read> GrammarParser<R> {
             }
             Token::Optional => {
                 self.consume(Token::Optional)?;
-                let mut choices = Vec::with_capacity(2);
-                choices.push(rule);
-                choices.push(RuleDefinition::Nothing);
-                rule = RuleDefinition::Choice(choices)
+                rule = RuleDefinition::Optional(rule.into());
             }
             _ => {}
         }
@@ -477,9 +471,10 @@ mod test {
     }
 
     fn print_rule(rule: &RuleDefinition) -> String {
+        use RuleDefinition::*;
         match rule {
-            RuleDefinition::CharSequence(l) => format!("\"{}\"", l),
-            RuleDefinition::Choice(choices) => {
+            CharSequence(l) => format!("\"{}\"", l),
+            Choice(choices) => {
                 let mut result = String::new();
                 result.push_str("(");
                 for (i, choice) in choices.iter().enumerate() {
@@ -493,7 +488,7 @@ mod test {
 
                 result
             }
-            RuleDefinition::Sequence(seq) => {
+            Sequence(seq) => {
                 let mut result = String::new();
                 result.push_str("(");
                 for (i, choice) in seq.iter().enumerate() {
@@ -507,12 +502,13 @@ mod test {
 
                 result
             }
-            RuleDefinition::NotFollowedBy(r) => format!("!({})", print_rule(r)),
-            RuleDefinition::FollowedBy(r) => format!("&({})", print_rule(r)),
-            RuleDefinition::Ref(r) => format!("r\"{r}\""),
-            RuleDefinition::OneOrMore(r) => format!("({})*", print_rule(r)),
-            RuleDefinition::Nothing => format!("()"),
-            RuleDefinition::CharRange(_, _) => todo!(),
+            NotFollowedBy(r) => format!("!({})", print_rule(r)),
+            FollowedBy(r) => format!("&({})", print_rule(r)),
+            Ref(r) => format!("r\"{r}\""),
+            OneOrMore(r) => format!("({})+", print_rule(r)),
+            CharRange(a, b) => format!("[{a}..{b}]"),
+            Optional(r) => format!("({})?", print_rule(r)),
+            ZeroOrMore(r) => format!("({})*", print_rule(r)),
         }
     }
 

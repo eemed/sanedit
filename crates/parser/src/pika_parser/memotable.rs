@@ -43,7 +43,7 @@ impl<'a, 'b, B: ByteReader> MemoTable<'a, 'b, B> {
                         .try_match(*key, self, self.input)
                         .map(Cow::Owned)
                 } else if clause.can_match_zero {
-                    Some(Cow::Owned(Match::empty(key.clone())))
+                    Some(Cow::Owned(Match::empty()))
                 } else {
                     None
                 }
@@ -55,8 +55,7 @@ impl<'a, 'b, B: ByteReader> MemoTable<'a, 'b, B> {
         AST::new(self, len)
     }
 
-    #[inline(never)]
-    pub fn best_match_at(&self, at: usize) -> Option<&Match> {
+    pub fn best_match_at(&self, at: usize) -> Option<(&MemoKey, &Match)> {
         let mut result = None;
         let mut prox = usize::MAX;
         let mut len = 0;
@@ -74,23 +73,24 @@ impl<'a, 'b, B: ByteReader> MemoTable<'a, 'b, B> {
             let proximity = key.start - at;
 
             if proximity < prox {
-                result = Some(mat);
+                result = Some((key, mat));
                 prox = proximity;
                 len = mat.len;
             } else if proximity == prox {
                 if mat.len > len {
-                    result = Some(mat);
+                    result = Some((key, mat));
                     len = mat.len;
-                } else if mat.len == len {
-                    let cur = clauses[key.clause].order;
-                    let prev = result
-                        .as_ref()
-                        .map(|r| clauses[r.key.clause].order)
-                        .unwrap_or(usize::MAX);
-                    if cur < prev {
-                        result = Some(mat);
-                    }
                 }
+                // else if mat.len == len {
+                // let cur = clauses[key.clause].order;
+                // let prev = result
+                //     .as_ref()
+                //     .map(|r| clauses[r.key.clause].order)
+                //     .unwrap_or(usize::MAX);
+                // if cur < prev {
+                //     result = Some(mat);
+                // }
+                // }
             }
         }
 
@@ -107,8 +107,6 @@ pub(crate) struct MemoKey {
 
 #[derive(Debug, Clone)]
 pub(crate) struct Match {
-    pub key: MemoKey,
-
     /// Length of the match
     pub len: usize,
 
@@ -116,17 +114,15 @@ pub(crate) struct Match {
 }
 
 impl Match {
-    pub fn empty(key: MemoKey) -> Match {
+    pub fn empty() -> Match {
         Match {
-            key,
             len: 0,
             sub: Vec::new(),
         }
     }
 
-    pub fn terminal(key: MemoKey, len: usize) -> Match {
+    pub fn terminal(len: usize) -> Match {
         Match {
-            key,
             len,
             sub: Vec::new(),
         }

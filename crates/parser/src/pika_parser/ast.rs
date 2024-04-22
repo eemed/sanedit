@@ -18,9 +18,9 @@ impl AST {
         let mut pos = 0;
         let mut roots = vec![];
 
-        while let Some(mat) = memo.best_match_at(pos) {
+        while let Some((key, mat)) = memo.best_match_at(pos) {
             // If we left a gap, create error node
-            let start = mat.key.start;
+            let start = key.start;
             if start != pos {
                 roots.push(AST {
                     label: ERROR_LABEL.into(),
@@ -31,7 +31,7 @@ impl AST {
                 pos += start - pos;
             }
 
-            let node = Self::from_match(&mat, memo);
+            let node = Self::from_match(key, &mat, memo);
             roots.push(node);
             pos += mat.len;
         }
@@ -57,17 +57,21 @@ impl AST {
         }
     }
 
-    pub(crate) fn from_match<R: ByteReader>(mat: &Match, memo: &MemoTable<R>) -> AST {
+    pub(crate) fn from_match<R: ByteReader>(
+        key: &MemoKey,
+        mat: &Match,
+        memo: &MemoTable<R>,
+    ) -> AST {
         // TODO recursion to iterative
         fn rec<B: ByteReader>(node: &mut AST, key: &MemoKey, memo: &MemoTable<B>) {
             let mat = memo.get(key).unwrap();
             for sub in &mat.sub {
                 let smat = memo.get(sub).unwrap();
-                let show = memo.parser.preproc.clauses[smat.key.clause].show;
+                let show = memo.parser.preproc.clauses[sub.clause].show;
                 if show {
-                    node.sub.push(AST::from_match(&smat, memo))
+                    node.sub.push(AST::from_match(sub, &smat, memo))
                 } else {
-                    rec(node, &smat.key, memo)
+                    rec(node, sub, memo)
                 }
             }
         }
@@ -76,18 +80,18 @@ impl AST {
             .parser
             .preproc
             .names
-            .get(&mat.key.clause)
+            .get(&key.clause)
             .map(String::as_str)
             .unwrap_or("<unkown>");
 
         let mut node = AST {
             label: name.into(),
-            start: mat.key.start,
+            start: key.start,
             len: mat.len,
             sub: vec![],
         };
 
-        rec(&mut node, &mat.key, memo);
+        rec(&mut node, key, memo);
         node
     }
 

@@ -120,12 +120,10 @@ impl PikaParser {
 
                 match memo.get(&tail_key) {
                     Some(t) => Some(Match {
-                        key,
                         len: mat.len + t.len,
                         sub: [skey, tail_key].into(),
                     }),
                     None => Some(Match {
-                        key,
                         len: mat.len,
                         sub: [skey].into(),
                     }),
@@ -140,7 +138,6 @@ impl PikaParser {
                     };
                     if let Some(mat) = memo.get(&skey) {
                         return Some(Match {
-                            key,
                             len: mat.len,
                             sub: [skey].into(),
                         });
@@ -163,19 +160,18 @@ impl PikaParser {
                 }
 
                 Some(Match {
-                    key,
                     len: pos - key.start,
                     sub: subs,
                 })
             }
             CharSequence(seq) => {
                 if reader.matches(key.start, seq.as_bytes()) {
-                    Some(Match::terminal(key, seq.len()))
+                    Some(Match::terminal(seq.len()))
                 } else {
                     None
                 }
             }
-            Nothing => Some(Match::empty(key)),
+            Nothing => Some(Match::empty()),
             FollowedBy => {
                 let sub = clause.sub[0];
                 let skey = MemoKey {
@@ -183,7 +179,7 @@ impl PikaParser {
                     start: key.start,
                 };
                 let _mat = memo.get(&skey)?;
-                Some(Match::empty(key))
+                Some(Match::empty())
             }
             NotFollowedBy => {
                 let sub = clause.sub[0];
@@ -197,14 +193,14 @@ impl PikaParser {
                     .or_else(|| self.try_match(skey, memo, reader).map(Cow::Owned));
 
                 if mat.is_none() {
-                    Some(Match::empty(key))
+                    Some(Match::empty())
                 } else {
                     None
                 }
             }
             CharRange(a, b) => {
                 if let Some(size) = reader.char_between(key.start, *a, *b) {
-                    Some(Match::terminal(key, size))
+                    Some(Match::terminal(size))
                 } else {
                     None
                 }

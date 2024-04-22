@@ -462,7 +462,8 @@ pub(crate) fn main_loop(
     let mut was_previously_redrawn = false;
 
     while editor.is_running {
-        match recv.recv_timeout(framerate) {
+        // match recv.recv_timeout(framerate) {
+        match recv.recv() {
             Ok(msg) => {
                 was_previously_redrawn = false;
 
@@ -477,19 +478,20 @@ pub(crate) fn main_loop(
                     }
                 }
 
-                let now = Instant::now();
-                if now.duration_since(redraw) > framerate {
-                    was_previously_redrawn = true;
-                    redraw = Instant::now();
-                    editor.redraw_all();
-                }
+                editor.redraw_all();
+                // let now = Instant::now();
+                // if now.duration_since(redraw) > framerate {
+                //     was_previously_redrawn = true;
+                //     redraw = Instant::now();
+                //     editor.redraw_all();
+                // }
             }
             Err(_) => {
-                if !was_previously_redrawn {
-                    was_previously_redrawn = true;
-                    redraw = Instant::now();
-                    editor.redraw_all();
-                }
+                // if !was_previously_redrawn {
+                //     was_previously_redrawn = true;
+                //     redraw = Instant::now();
+                //     editor.redraw_all();
+                // }
             }
         }
     }

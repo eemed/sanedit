@@ -124,26 +124,4 @@ impl Clause {
     pub fn is_nothing(&self) -> bool {
         matches!(self.kind, ClauseKind::Nothing)
     }
-
-    pub fn should_lex(&self, clauses: &[Clause]) -> bool {
-        use ClauseKind::*;
-        match self.kind {
-            OneOrMore => {
-                let sub = &clauses[self.sub[0]];
-                sub.is_terminal()
-            }
-            Choice => {
-                if self.sub.len() != 2 {
-                    return false;
-                }
-                // Is repetition
-                let first = &clauses[self.sub[0]];
-                let second = &clauses[self.sub[1]];
-                first.is_terminal() && second.is_nothing()
-            }
-            CharSequence(_) => true,
-            CharRange(_, _) => true,
-            _ => false,
-        }
-    }
 }

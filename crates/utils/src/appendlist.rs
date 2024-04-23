@@ -3,7 +3,7 @@ use std::{
     cmp::min,
     marker::PhantomData,
     mem::{self, MaybeUninit},
-    ops::Range,
+    ops::{Index, Range},
     sync::{
         atomic::{AtomicUsize, Ordering},
         Arc,
@@ -215,8 +215,27 @@ impl<T> Reader<T> {
         unsafe { mem::transmute(&bucket[brange]) }
     }
 
+    pub fn get(&self, idx: usize) -> Option<&T> {
+        let loc = BucketLocation::of(idx);
+        let bucket = {
+            let bucket: &UnsafeCell<Option<Box<[MaybeUninit<T>]>>> = &self.list.buckets[loc.bucket];
+            let bucket: Option<&Box<[MaybeUninit<T>]>> = unsafe { (*bucket.get()).as_ref() };
+            let bucket: &Box<[MaybeUninit<T>]> = bucket.unwrap();
+            bucket
+        };
+        unsafe { mem::transmute(&bucket[loc.pos]) }
+    }
+
     pub fn len(&self) -> usize {
         self.list.len.load(Ordering::Relaxed)
+    }
+}
+
+impl<T> Index<usize> for Reader<T> {
+    type Output = T;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        self.get(index).unwrap()
     }
 }
 

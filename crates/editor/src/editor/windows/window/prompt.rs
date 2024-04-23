@@ -2,6 +2,7 @@ mod history;
 
 use std::{num::NonZeroUsize, rc::Rc};
 
+use sanedit_utils::sorted_vec::SortedVec;
 use unicode_segmentation::UnicodeSegmentation;
 
 use crate::{
@@ -277,7 +278,7 @@ impl Prompt {
         self.cursor += ch.len_utf8();
     }
 
-    pub fn provide_options(&mut self, opts: Options) {
+    pub fn provide_options(&mut self, opts: SortedVec<SelectorOption>) {
         self.selector.provide_options(opts);
     }
 

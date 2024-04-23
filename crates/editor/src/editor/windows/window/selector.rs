@@ -1,8 +1,7 @@
 mod options;
 
-use sanedit_utils::sorted_vec::SortedVec;
-
 pub(crate) use options::*;
+use sanedit_utils::sorted_vec::SortedVec;
 
 /// Selects one item from a list of options.
 /// Options can be filtered down using an input string.
@@ -17,7 +16,7 @@ pub(crate) struct Selector {
 impl Selector {
     pub fn new() -> Selector {
         Selector {
-            options: SortedVec::new(),
+            options: Options::default(),
             selected: None,
         }
     }
@@ -58,8 +57,8 @@ impl Selector {
         }
     }
 
-    pub fn provide_options(&mut self, opts: Options) {
-        self.options.merge(opts);
+    pub fn provide_options(&mut self, opts: SortedVec<SelectorOption>) {
+        self.options.push(opts)
     }
 
     pub fn selected_pos(&self) -> Option<usize> {

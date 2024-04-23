@@ -1,5 +1,4 @@
 mod matches;
-mod merger;
 mod receiver;
 mod strategy;
 
@@ -17,7 +16,6 @@ use sanedit_utils::appendlist::{Appendlist, Reader};
 use tokio::sync::mpsc::channel;
 
 pub(crate) use matches::*;
-pub(crate) use merger::*;
 pub(crate) use receiver::*;
 pub(crate) use strategy::*;
 

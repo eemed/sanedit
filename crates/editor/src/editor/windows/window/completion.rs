@@ -1,8 +1,9 @@
 use sanedit_messages::redraw::Point;
+use sanedit_utils::sorted_vec::SortedVec;
 
 use crate::editor::keymap::{DefaultKeyMappings, KeyMappings, Keymap};
 
-use super::selector::{Options, Selector};
+use super::{selector::Selector, SelectorOption};
 
 #[derive(Debug)]
 pub(crate) struct Completion {
@@ -24,7 +25,7 @@ impl Completion {
         self.selector.select_prev()
     }
 
-    pub fn provide_options(&mut self, options: Options) {
+    pub fn provide_options(&mut self, options: SortedVec<SelectorOption>) {
         self.selector.provide_options(options)
     }
 

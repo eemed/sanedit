@@ -74,6 +74,13 @@ impl Selector {
     /// Returns less than or equal to count matches around selection,
     /// selection is positioned at the selected_offset index.
     pub fn matches_window(&self, count: usize, offset: usize) -> Vec<&SelectorOption> {
-        self.options.iter().skip(offset).take(count).collect()
+        let mut results = Vec::with_capacity(count);
+        for i in offset..offset + count {
+            if let Some(item) = self.options.get(i) {
+                results.push(item);
+            }
+        }
+
+        results
     }
 }

@@ -1,12 +1,21 @@
-use std::ops::Range;
+use std::{cell::RefCell, ops::Range, rc::Rc};
 
 use sanedit_messages::redraw::PromptOption;
 use sanedit_utils::sorted_vec::SortedVec;
 
 #[derive(Debug, Default)]
+struct MergedOptions {
+    /// Currently processed options, cursor for each sorted vec
+    cursors: Vec<usize>,
+    /// Indices to Options->options
+    merged: Vec<(usize, usize)>,
+}
+
+#[derive(Debug, Default)]
 pub(crate) struct Options {
-    chunks: Vec<SortedVec<SelectorOption>>,
+    options: Vec<SortedVec<SelectorOption>>,
     total: usize,
+    interior: Rc<RefCell<MergedOptions>>,
 }
 
 impl Options {
@@ -16,11 +25,11 @@ impl Options {
 
     pub fn push(&mut self, opts: SortedVec<SelectorOption>) {
         self.total += opts.len();
-        self.chunks.push(opts);
-    }
-
-    pub fn get(&self, idx: usize) -> Option<&SelectorOption> {
-        self.iter().skip(idx).next()
+        self.options.push(opts);
+        self.interior = Rc::new(RefCell::new(MergedOptions {
+            cursors: vec![0; self.options.len()],
+            merged: vec![],
+        }))
     }
 
     pub fn len(&self) -> usize {
@@ -31,57 +40,50 @@ impl Options {
         self.total == 0
     }
 
-    pub fn iter(&self) -> OptionIter {
-        OptionIter::new(&self.chunks)
+    pub fn get(&self, idx: usize) -> Option<&SelectorOption> {
+        self.merge_until(idx);
+        let interior = self.interior.borrow();
+        let (list, pos) = interior.merged.get(idx)?;
+        let item = &self.options[*list][*pos];
+        Some(item)
     }
-}
 
-#[derive(Debug)]
-pub(crate) struct OptionIter<'a> {
-    cursors: Vec<usize>,
-    chunks: &'a [SortedVec<SelectorOption>],
-}
+    /// Create one sorted list by merging the locally sorted lists
+    ///
+    /// To avoid always merging when options are requested.
+    /// The work done is saved using interior mutability
+    fn merge_until(&self, idx: usize) {
+        let mut interior = self.interior.borrow_mut();
+        for _ in interior.merged.len()..idx + 1 {
+            let len = interior.cursors.len();
+            // min element match and the list/cursor index
+            let mut min: Option<(usize, &SelectorOption)> = None;
 
-impl<'a> OptionIter<'a> {
-    pub fn new(chunks: &[SortedVec<SelectorOption>]) -> OptionIter {
-        let cursors = vec![0; chunks.len()];
-        OptionIter { cursors, chunks }
-    }
-}
+            for c in 0..len {
+                let list = &self.options[c];
+                let cursor = interior.cursors[c];
+                if cursor >= list.len() {
+                    continue;
+                }
+                let mat = &list[cursor];
+                let replace = min
+                    .as_ref()
+                    .map(|(_, small_match)| mat < small_match)
+                    .unwrap_or(true);
 
-impl<'a> Iterator for OptionIter<'a> {
-    type Item = &'a SelectorOption;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let len = self.cursors.len();
-        // min element match and the list/cursor index
-        let mut min: Option<(usize, &SelectorOption)> = None;
-
-        for c in 0..len {
-            let list = &self.chunks[c];
-            let cursor = self.cursors[c];
-            if cursor >= list.len() {
-                continue;
+                if replace {
+                    min = Some((c, mat));
+                }
             }
-            let mat = &list[cursor];
-            let replace = min
-                .as_ref()
-                .map(|(_, small_match)| mat < small_match)
-                .unwrap_or(true);
 
-            if replace {
-                min = Some((c, mat));
+            if let Some((idx, _)) = min {
+                let pos = (idx, interior.cursors[idx]);
+                interior.merged.push(pos);
+                interior.cursors[idx] += 1;
             }
         }
-
-        let (idx, mat) = min?;
-        self.cursors[idx] += 1;
-
-        Some(mat)
     }
 }
-
-// pub(crate) type Options = SortedVec<SelectorOption>;
 
 #[derive(Debug, Clone, Default)]
 pub(crate) struct SelectorOption {

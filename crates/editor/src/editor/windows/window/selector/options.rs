@@ -60,8 +60,10 @@ impl<'a> Iterator for OptionIter<'a> {
         for c in 0..len {
             let list = &self.chunks[c];
             let cursor = self.cursors[c];
+            if cursor >= list.len() {
+                continue;
+            }
             let mat = &list[cursor];
-
             let replace = min
                 .as_ref()
                 .map(|(_, small_match)| mat < small_match)

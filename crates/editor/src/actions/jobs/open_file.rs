@@ -1,4 +1,7 @@
-use std::path::{Path, PathBuf};
+use std::{
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 
 use futures::future::BoxFuture;
 use tokio::{
@@ -8,69 +11,89 @@ use tokio::{
 
 use super::OptionProvider;
 
+#[derive(Clone)]
+struct ReadDirContext {
+    osend: Sender<String>,
+    strip: usize,
+    kill: broadcast::Sender<()>,
+    ignore: Arc<Vec<String>>,
+}
+
 #[derive(Debug)]
 pub(crate) struct FileOptionProvider {
     path: PathBuf,
+    ignore: Arc<Vec<String>>,
 }
 
 impl FileOptionProvider {
-    pub fn new(path: &Path) -> FileOptionProvider {
+    pub fn new(path: &Path, ignore: &[String]) -> FileOptionProvider {
         FileOptionProvider {
             path: path.to_owned(),
+            ignore: Arc::new(ignore.into()),
+        }
+    }
+}
+
+fn spawn(dir: PathBuf, ctx: ReadDirContext) {
+    if let Some(fname) = dir.file_name().map(|fname| fname.to_string_lossy()) {
+        for ig in ctx.ignore.iter() {
+            if ig.as_str() == fname {
+                return;
+            }
         }
     }
 
-    async fn read_directory_recursive(
-        dir: PathBuf,
-        osend: Sender<String>,
-        kill: broadcast::Sender<()>,
-    ) {
-        fn spawn(dir: PathBuf, osend: Sender<String>, strip: usize, kill: broadcast::Sender<()>) {
-            tokio::spawn(async move {
-                let mut krecv = kill.subscribe();
-
-                tokio::select! {
-                     _ = read_recursive(dir, osend, strip, kill) => {}
-                     _ = krecv.recv() => {}
-                }
-            });
-        }
-
-        async fn read_recursive(
-            dir: PathBuf,
-            osend: Sender<String>,
-            strip: usize,
-            kill: broadcast::Sender<()>,
-        ) -> io::Result<()> {
-            let mut rdir = fs::read_dir(&dir).await?;
-            while let Ok(Some(entry)) = rdir.next_entry().await {
-                let path = entry.path();
-                let metadata = entry.metadata().await?;
-                if metadata.is_dir() {
-                    spawn(path, osend.clone(), strip, kill.clone());
-                } else {
-                    let path =
-                        path.components()
-                            .skip(strip)
-                            .fold(PathBuf::new(), |mut acc, comp| {
-                                acc.push(comp);
-                                acc
-                            });
-                    let name: String = path.to_string_lossy().into();
-                    let _ = osend.send(name).await;
-                }
-            }
-
-            Ok(())
-        }
-
-        let strip = dir.components().count();
-        let mut krecv = kill.subscribe();
+    tokio::spawn(async move {
+        let mut krecv = ctx.kill.subscribe();
 
         tokio::select! {
-             _ = read_recursive(dir, osend, strip, kill) => {}
+             _ = rec(dir, ctx) => {}
              _ = krecv.recv() => {}
         }
+    });
+}
+
+async fn rec(dir: PathBuf, ctx: ReadDirContext) -> io::Result<()> {
+    let mut rdir = fs::read_dir(&dir).await?;
+    while let Ok(Some(entry)) = rdir.next_entry().await {
+        let path = entry.path();
+        let metadata = entry.metadata().await?;
+        if metadata.is_dir() {
+            spawn(path, ctx.clone());
+        } else {
+            let path = path
+                .components()
+                .skip(ctx.strip)
+                .fold(PathBuf::new(), |mut acc, comp| {
+                    acc.push(comp);
+                    acc
+                });
+            let name: String = path.to_string_lossy().into();
+            let _ = ctx.osend.send(name).await;
+        }
+    }
+
+    Ok(())
+}
+
+async fn read_directory_recursive(
+    dir: PathBuf,
+    osend: Sender<String>,
+    ignore: Arc<Vec<String>>,
+    kill: broadcast::Sender<()>,
+) {
+    let strip = dir.components().count();
+    let mut krecv = kill.subscribe();
+    let ctx = ReadDirContext {
+        osend,
+        strip,
+        kill,
+        ignore,
+    };
+
+    tokio::select! {
+         _ = rec(dir, ctx) => {}
+         _ = krecv.recv() => {}
     }
 }
 
@@ -81,6 +104,11 @@ impl OptionProvider for FileOptionProvider {
         kill: broadcast::Sender<()>,
     ) -> BoxFuture<'static, ()> {
         let dir = self.path.clone();
-        Box::pin(Self::read_directory_recursive(dir, sender, kill))
+        Box::pin(read_directory_recursive(
+            dir,
+            sender,
+            self.ignore.clone(),
+            kill,
+        ))
     }
 }

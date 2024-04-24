@@ -80,9 +80,11 @@ fn command_palette(editor: &mut Editor, id: ClientId) {
 #[action("Open a file")]
 fn open_file(editor: &mut Editor, id: ClientId) {
     const PROMPT_MESSAGE: &str = "Open a file";
+    let (win, _buf) = editor.win_buf(id);
+    let ignore = &win.options.ignore_directories;
     let path = editor.working_dir().to_path_buf();
     let job = MatcherJob::builder(id)
-        .options(FileOptionProvider::new(&path))
+        .options(FileOptionProvider::new(&path, ignore))
         .handler(Prompt::matcher_result_handler)
         .build();
     editor.job_broker.request_slot(id, PROMPT_MESSAGE, job);

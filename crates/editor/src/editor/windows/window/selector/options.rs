@@ -13,10 +13,13 @@ struct MergedOptions {
 
 impl MergedOptions {
     pub fn clear(&mut self, n: usize) {
-        self.cursors.clear();
         self.merged.clear();
 
-        for _ in 0..n {
+        for i in 0..self.cursors.len() {
+            self.cursors[i] = 0;
+        }
+
+        while self.cursors.len() < n {
             self.cursors.push(0);
         }
     }

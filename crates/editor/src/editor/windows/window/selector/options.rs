@@ -11,11 +11,22 @@ struct MergedOptions {
     merged: Vec<(usize, usize)>,
 }
 
+impl MergedOptions {
+    pub fn clear(&mut self, n: usize) {
+        self.cursors.clear();
+        self.merged.clear();
+
+        for _ in 0..n {
+            self.cursors.push(0);
+        }
+    }
+}
+
 #[derive(Debug, Default)]
 pub(crate) struct Options {
     options: Vec<SortedVec<SelectorOption>>,
     total: usize,
-    interior: Rc<RefCell<MergedOptions>>,
+    interior: RefCell<MergedOptions>,
 }
 
 impl Options {
@@ -26,10 +37,10 @@ impl Options {
     pub fn push(&mut self, opts: SortedVec<SelectorOption>) {
         self.total += opts.len();
         self.options.push(opts);
-        self.interior = Rc::new(RefCell::new(MergedOptions {
-            cursors: vec![0; self.options.len()],
-            merged: vec![],
-        }))
+
+        let len = self.options.len();
+        let mut interior = self.interior.borrow_mut();
+        interior.clear(len);
     }
 
     pub fn len(&self) -> usize {

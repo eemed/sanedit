@@ -3,7 +3,10 @@ use std::mem;
 use anyhow::bail;
 use rustc_hash::FxHashMap;
 
-use crate::grammar::{Annotation, Rule, RuleDefinition};
+use crate::{
+    grammar::{Annotation, Rule, RuleDefinition},
+    pika_parser::clause::SubClause,
+};
 
 use super::{
     clause::{Clause, ClauseKind},
@@ -17,12 +20,22 @@ pub(crate) struct Clauses {
 }
 
 pub(super) fn preprocess_rules(rules: &[Rule]) -> anyhow::Result<Clauses> {
-    fn rec(
+    fn sub_rec(
         def: &RuleDefinition,
         rules: &[Rule],
         dedup: &mut FxHashMap<String, usize>,
         clauses: &mut Vec<Clause>,
-    ) -> usize {
+    ) -> SubClause {
+        rec(def, None, rules, dedup, clauses)
+    }
+
+    fn rec(
+        def: &RuleDefinition,
+        mut alias: Option<String>,
+        rules: &[Rule],
+        dedup: &mut FxHashMap<String, usize>,
+        clauses: &mut Vec<Clause>,
+    ) -> SubClause {
         use RuleDefinition::*;
 
         let mut cdef = def;
@@ -30,6 +43,13 @@ pub(super) fn preprocess_rules(rules: &[Rule]) -> anyhow::Result<Clauses> {
         while let Ref(r) = cdef {
             let rrule = &rules[*r];
             cdef = &rrule.def;
+
+            for ann in &rrule.annotations {
+                match ann {
+                    Annotation::Show(Some(n)) => alias = Some(n.clone()),
+                    _ => {}
+                }
+            }
         }
 
         let key = format!("{cdef}");
@@ -43,33 +63,41 @@ pub(super) fn preprocess_rules(rules: &[Rule]) -> anyhow::Result<Clauses> {
         let clause = &clauses[idx];
         if !clause.is_placeholder() || matches!(def, Ref(_)) {
             // Already parsed or a reference that will be parsed in the future
-            return idx;
+            let mut result = SubClause::new(idx);
+            result.alias = alias;
+            return result;
         }
 
         let mut clause = match def {
             Choice(v) => {
-                let subs = v.iter().map(|rd| rec(rd, rules, dedup, clauses)).collect();
+                let subs = v
+                    .iter()
+                    .map(|rd| sub_rec(rd, rules, dedup, clauses))
+                    .collect();
                 Clause::choice(subs)
             }
             Sequence(v) => {
-                let subs = v.iter().map(|rd| rec(rd, rules, dedup, clauses)).collect();
+                let subs = v
+                    .iter()
+                    .map(|rd| sub_rec(rd, rules, dedup, clauses))
+                    .collect();
                 Clause::sequence(subs)
             }
-            OneOrMore(r) => Clause::one_or_more(rec(r, rules, dedup, clauses)),
-            FollowedBy(r) => Clause::followed_by(rec(r, rules, dedup, clauses)),
-            NotFollowedBy(r) => Clause::not_followed_by(rec(r, rules, dedup, clauses)),
+            OneOrMore(r) => Clause::one_or_more(sub_rec(r, rules, dedup, clauses)),
+            FollowedBy(r) => Clause::followed_by(sub_rec(r, rules, dedup, clauses)),
+            NotFollowedBy(r) => Clause::not_followed_by(sub_rec(r, rules, dedup, clauses)),
             CharSequence(s) => Clause::char_sequence(s.clone()),
             CharRange(a, b) => Clause::char_range(*a, *b),
             Optional(r) => {
-                let sub = rec(r, rules, dedup, clauses);
+                let sub = sub_rec(r, rules, dedup, clauses);
                 // One or Nothing
-                Clause::choice(vec![sub, 0])
+                Clause::choice(vec![sub, SubClause::new(0)])
             }
             ZeroOrMore(r) => {
                 let rule = r.clone();
-                let plus = rec(&RuleDefinition::OneOrMore(rule), rules, dedup, clauses);
+                let plus = sub_rec(&RuleDefinition::OneOrMore(rule), rules, dedup, clauses);
                 // OneOrMore or Nothing
-                Clause::choice(vec![plus, 0])
+                Clause::choice(vec![plus, SubClause::new(0)])
             }
             _ => unreachable!("Encountered unexpected rule definition: {def}"),
         };
@@ -77,7 +105,9 @@ pub(super) fn preprocess_rules(rules: &[Rule]) -> anyhow::Result<Clauses> {
         clause.idx = idx;
         clauses[idx] = clause;
 
-        idx
+        let mut result = SubClause::new(idx);
+        result.alias = alias;
+        result
     }
 
     let mut dedup = FxHashMap::default();
@@ -88,14 +118,32 @@ pub(super) fn preprocess_rules(rules: &[Rule]) -> anyhow::Result<Clauses> {
     clauses.push(Clause::nothing());
 
     for rule in rules {
-        let rid = rec(&rule.def, rules, &mut dedup, &mut clauses);
+        let mut name = rule.name.clone();
+        let mut show = false;
 
-        if rule.annotations.contains(&Annotation::Show) {
-            clauses[rid].show = true;
+        for ann in &rule.annotations {
+            match ann {
+                Annotation::Show(nname) => {
+                    if let Some(n) = nname {
+                        name = n.clone();
+                    }
+                    show = true;
+                }
+                _ => {}
+            }
         }
 
-        let val: &mut String = names.entry(rid).or_default();
-        *val = rule.name();
+        let cl = rec(&rule.def, Some(name), rules, &mut dedup, &mut clauses);
+
+        clauses[cl.idx].show = show;
+        clauses[cl.idx].top = rule.top;
+
+        if rule.top {
+            log::info!("TOP: {rule:?}");
+        }
+
+        let val: &mut String = names.entry(cl.idx).or_default();
+        *val = rule.name.clone();
     }
 
     let rule_starts = {
@@ -113,7 +161,7 @@ pub(super) fn preprocess_rules(rules: &[Rule]) -> anyhow::Result<Clauses> {
     validate(&clauses)?;
 
     // debug_print(&rules, &clauses);
-    debug_log(&rules, &clauses);
+    // debug_log(&rules, &clauses);
 
     Ok(Clauses {
         names,
@@ -155,10 +203,10 @@ fn solve_not_followed_by(clauses: &mut [Clause]) {
             match clause.kind {
                 ClauseKind::FollowedBy => {
                     let change = {
-                        let sub = clause.sub[0];
-                        let subcl = &clauses[sub];
+                        let sub = &clause.sub[0];
+                        let subcl = &clauses[sub.idx];
                         if subcl.kind == ClauseKind::NotFollowedBy {
-                            Some(subcl.sub[0])
+                            Some(subcl.sub[0].clone())
                         } else {
                             None
                         }
@@ -173,10 +221,10 @@ fn solve_not_followed_by(clauses: &mut [Clause]) {
                 }
                 ClauseKind::NotFollowedBy => {
                     let change = {
-                        let sub = clause.sub[0];
-                        let subcl = &clauses[sub];
+                        let sub = &clause.sub[0];
+                        let subcl = &clauses[sub.idx];
                         if subcl.kind == ClauseKind::NotFollowedBy {
-                            Some(subcl.sub[0])
+                            Some(subcl.sub[0].clone())
                         } else {
                             None
                         }
@@ -203,7 +251,7 @@ fn setup_seed_parents(clauses: &mut [Clause]) {
         match &clause.kind {
             ClauseKind::Sequence => {
                 for s in &subs {
-                    let clause = &mut clauses[*s];
+                    let clause = &mut clauses[s.idx];
                     clause.parents.push(i);
 
                     if !clause.can_match_zero {
@@ -213,7 +261,7 @@ fn setup_seed_parents(clauses: &mut [Clause]) {
             }
             _ => {
                 for s in &subs {
-                    let clause = &mut clauses[*s];
+                    let clause = &mut clauses[s.idx];
                     clause.parents.push(i);
                 }
             }
@@ -235,12 +283,12 @@ fn determine_can_match_zero(clauses: &mut [Clause]) {
 
             use ClauseKind::*;
             let new = match &clause.kind {
-                Choice => clause.sub.iter().any(|i| (&clauses[*i]).can_match_zero),
+                Choice => clause.sub.iter().any(|i| (&clauses[i.idx]).can_match_zero),
                 CharSequence(s) => s.is_empty(),
                 CharRange(a, b) => a > b,
                 Nothing => true,
                 NotFollowedBy => true,
-                _ => clause.sub.iter().all(|i| (&clauses[*i]).can_match_zero),
+                _ => clause.sub.iter().all(|i| (&clauses[i.idx]).can_match_zero),
             };
 
             cont |= old != new;
@@ -256,7 +304,7 @@ fn sort_topologically(rule_starts: &Set, clauses: &mut [Clause]) {
         let mut all = Set::new_all(clauses.len());
         for c in &*clauses {
             for s in &c.sub {
-                all.remove(*s);
+                all.remove(s.idx);
             }
         }
         all
@@ -281,10 +329,10 @@ fn find_cycle_head_clauses(top: &Set, rule_starts: &Set, clauses: &[Clause]) -> 
 
         let clause = &clauses[i];
         for sub in &clause.sub {
-            if visited.contains(*sub) {
-                result.insert(sub.clone());
-            } else if !finished.contains(*sub) {
-                detect_clause_cycles_rec(*sub, clauses, visited, finished, result);
+            if visited.contains(sub.idx) {
+                result.insert(sub.idx);
+            } else if !finished.contains(sub.idx) {
+                detect_clause_cycles_rec(sub.idx, clauses, visited, finished, result);
             }
         }
 
@@ -348,7 +396,7 @@ fn topo_clauses_rec(i: usize, clauses: &mut [Clause], visited: &mut Set, order: 
     let clause = &mut clauses[i];
     let subs = mem::take(&mut clause.sub);
     for sub in &subs {
-        topo_clauses_rec(*sub, clauses, visited, order);
+        topo_clauses_rec(sub.idx, clauses, visited, order);
     }
 
     let clause = &mut clauses[i];

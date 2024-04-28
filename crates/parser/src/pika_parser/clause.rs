@@ -11,12 +11,25 @@ pub(crate) enum ClauseKind {
 }
 
 #[derive(Debug, Clone)]
+pub(crate) struct SubClause {
+    pub(crate) alias: Option<String>,
+    pub(crate) idx: usize,
+}
+
+impl SubClause {
+    pub fn new(idx: usize) -> SubClause {
+        SubClause { idx, alias: None }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub(crate) struct Clause {
+    pub(crate) top: bool,
     pub(crate) show: bool,
     pub(crate) idx: usize,
     pub(crate) order: usize,
     pub(crate) kind: ClauseKind,
-    pub(crate) sub: Vec<usize>,
+    pub(crate) sub: Vec<SubClause>,
     pub(crate) parents: Vec<usize>,
     pub(crate) can_match_zero: bool,
 }
@@ -42,8 +55,19 @@ impl Ord for Clause {
 }
 
 impl Clause {
+    pub fn get_sub(&self, clause: usize) -> Option<&SubClause> {
+        for sub in &self.sub {
+            if sub.idx == clause {
+                return Some(sub);
+            }
+        }
+
+        None
+    }
+
     pub fn nothing() -> Clause {
         Clause {
+            top: false,
             show: false,
             idx: 0,
             order: 0,
@@ -54,35 +78,35 @@ impl Clause {
         }
     }
 
-    pub fn one_or_more(sub: usize) -> Clause {
+    pub fn one_or_more(sub: SubClause) -> Clause {
         let mut clause = Clause::nothing();
         clause.kind = ClauseKind::OneOrMore;
         clause.sub.push(sub);
         clause
     }
 
-    pub fn sequence(sub: Vec<usize>) -> Clause {
+    pub fn sequence(sub: Vec<SubClause>) -> Clause {
         let mut clause = Clause::nothing();
         clause.kind = ClauseKind::Sequence;
         clause.sub = sub;
         clause
     }
 
-    pub fn choice(sub: Vec<usize>) -> Clause {
+    pub fn choice(sub: Vec<SubClause>) -> Clause {
         let mut clause = Clause::nothing();
         clause.kind = ClauseKind::Choice;
         clause.sub = sub;
         clause
     }
 
-    pub fn followed_by(sub: usize) -> Clause {
+    pub fn followed_by(sub: SubClause) -> Clause {
         let mut clause = Clause::nothing();
         clause.kind = ClauseKind::FollowedBy;
         clause.sub.push(sub);
         clause
     }
 
-    pub fn not_followed_by(sub: usize) -> Clause {
+    pub fn not_followed_by(sub: SubClause) -> Clause {
         let mut clause = Clause::nothing();
         clause.kind = ClauseKind::NotFollowedBy;
         clause.sub.push(sub);
@@ -103,7 +127,7 @@ impl Clause {
 
     pub fn placeholder() -> Clause {
         let mut clause = Clause::nothing();
-        clause.sub.push(0);
+        clause.sub.push(SubClause::new(0));
         clause
     }
 

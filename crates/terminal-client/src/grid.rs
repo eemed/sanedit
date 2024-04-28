@@ -6,11 +6,10 @@ mod drawable;
 mod prompt;
 mod rect;
 
-use std::{cmp::max, mem};
+use std::mem;
 
 use sanedit_messages::redraw::{
-    Cell, Completion, Component, Cursor, Diffable, Point, Redraw, Size, StatusMessage, Statusline,
-    Window,
+    Cell, Completion, Component, Cursor, Diffable, Redraw, Size, StatusMessage, Statusline, Window,
 };
 
 use crate::{grid::completion::open_completion, ui::UIContext};

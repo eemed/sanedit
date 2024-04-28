@@ -1,3 +1,8 @@
+@whitespaced
+rules = ws rule* ws;
+
+ws = (_ comment _)*;
+
 WHITESPACE = [ \t\r\n];
 _ = WHITESPACE*;
 
@@ -6,24 +11,20 @@ nl = "\r\n" / "\r" / "\n";
 @show
 comment = "#" (!nl .)* nl;
 
-@show
 @whitespaced
 rule = (_ annotation)* rule_name "=" def+ ";" _ ;
 
-@show
+@show(identifier)
 @whitespaced
-@alias(identifier)
 rule_name = id_chars+ &"=";
 
-@show
-@alias(constant)
+@show(constant)
 annotation = "@" [a..zA..Z_-]+ ("(" [a..zA..Z_-]+ ")")?;
 
 @whitespaced
 def = clause (op? clause)*;
 
-@show
-@alias(operator)
+@show(operator)
 op = "/";
 
 @whitespaced
@@ -41,12 +42,10 @@ escape_char     = "0" / "t" / "n" / "r" / "\"" / "\\";
 hex = "\\x" hex_digit+;
 hex_digit = [a..fA..F0..9];
 
-@show
-@alias(operator)
+@show(operator)
 postop = "?" / "*" / "+";
 
-@show
-@alias(operator)
+@show(operator)
 preop = "!" / "&";
 
 id_chars = [a..zA..Z_-];

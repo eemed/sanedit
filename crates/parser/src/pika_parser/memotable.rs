@@ -67,7 +67,7 @@ impl<'a, 'b, B: ByteReader> MemoTable<'a, 'b, B> {
                 continue;
             }
             let clause = &clauses[key.clause];
-            if !clause.show {
+            if !clause.top {
                 continue;
             }
             let proximity = key.start - at;

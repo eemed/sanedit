@@ -1,6 +1,6 @@
 use std::ops::Range;
 
-use crate::byte_reader::ByteReader;
+use crate::{byte_reader::ByteReader, pika_parser::clause::SubClause};
 
 use super::memotable::{Match, MemoKey, MemoTable};
 
@@ -31,7 +31,15 @@ impl AST {
                 pos += start - pos;
             }
 
-            let node = Self::from_match(key, &mat, memo);
+            let name = memo
+                .parser
+                .preproc
+                .names
+                .get(&key.clause)
+                .map(String::as_str)
+                .unwrap_or("<unkown>");
+
+            let node = Self::from_match(name.to_string(), key, &mat, memo);
             roots.push(node);
             pos += mat.len;
         }
@@ -58,31 +66,40 @@ impl AST {
     }
 
     pub(crate) fn from_match<R: ByteReader>(
+        name: String,
         key: &MemoKey,
         mat: &Match,
         memo: &MemoTable<R>,
     ) -> AST {
         // TODO recursion to iterative
         fn rec<B: ByteReader>(node: &mut AST, key: &MemoKey, memo: &MemoTable<B>) {
+            let clauses = &memo.parser.preproc.clauses;
             let mat = memo.get(key).unwrap();
+            let clause = &clauses[key.clause];
+
             for sub in &mat.sub {
+                let me = SubClause::new(key.clause);
+                let sclause = clause.get_sub(sub.clause).unwrap_or(&me);
                 let smat = memo.get(sub).unwrap();
-                let show = memo.parser.preproc.clauses[sub.clause].show;
+
+                let show = clauses[sub.clause].show;
+                let alias = sclause.alias.clone().unwrap_or_else(|| {
+                    memo.parser
+                        .preproc
+                        .names
+                        .get(&sub.clause)
+                        .map(String::as_str)
+                        .unwrap_or("unknown")
+                        .to_string()
+                });
+
                 if show {
-                    node.sub.push(AST::from_match(sub, &smat, memo))
+                    node.sub.push(AST::from_match(alias, sub, &smat, memo))
                 } else {
                     rec(node, sub, memo)
                 }
             }
         }
-
-        let name = memo
-            .parser
-            .preproc
-            .names
-            .get(&key.clause)
-            .map(String::as_str)
-            .unwrap_or("<unkown>");
 
         let mut node = AST {
             label: name.into(),

@@ -1,13 +1,10 @@
-@show
 document        = key_group*;
+
 key_group       = header_line? value_line+ ignore;
 
-@show
-@alias(header)
 header_line     = ignore "["+ key_name "]"+ line_end;
 
-@show
-@alias(identifier)
+@show(identifier)
 key_name        = key_segment ("." key_segment)*;
 key_segment     = [^\[\]\.\n\r]+;
 
@@ -15,7 +12,6 @@ value_line      = ignore name ws "=" ws value line_end;
 name            = (!space !nl .)+;
 value           = string / datetime / float / integer / boolean / array / object;
 
-@show
 array           = (empty_array / string_array / datetime_array / float_array / integer_array / boolean_array / array_array);
 
 @show
@@ -24,16 +20,13 @@ string          = "\"" ("\\" escape_char / [^"])* "\"";
 escape_char     = "0" / "t" / "n" / "r" / "\"" / "\\";
 digit           = [0..9];
 
-@show
-@alias(number)
+@show(number)
 integer         = "-"? [1..9] digit*;
 
-@show
-@alias(number)
+@show(number)
 float           = integer "." digit+;
 
-@show
-@alias(constant)
+@show(constant)
 boolean         = ("true" / "false");
 datetime        = ([1..9] digit digit digit) "-"
                    (digit digit) "-"
@@ -44,7 +37,6 @@ datetime        = ([1..9] digit digit digit) "-"
                    ("." digit+)?
                    "Z";
 
-@show
 @whitespaced
 object           = "{" object_value? ("," object_value)* ","? "}";
 

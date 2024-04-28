@@ -107,9 +107,9 @@ impl PikaParser {
         let clause = &self.preproc.clauses[key.clause];
         match &clause.kind {
             OneOrMore => {
-                let sub = clause.sub[0];
+                let sub = &clause.sub[0];
                 let skey = MemoKey {
-                    clause: sub,
+                    clause: sub.idx,
                     start: key.start,
                 };
                 let mat = memo.get(&skey)?;
@@ -133,7 +133,7 @@ impl PikaParser {
                 let pos = key.start;
                 for sub in &clause.sub {
                     let skey = MemoKey {
-                        clause: *sub,
+                        clause: sub.idx,
                         start: pos,
                     };
                     if let Some(mat) = memo.get(&skey) {
@@ -151,7 +151,7 @@ impl PikaParser {
                 let mut pos = key.start;
                 for sub in &clause.sub {
                     let skey = MemoKey {
-                        clause: *sub,
+                        clause: sub.idx,
                         start: pos,
                     };
                     let mat = memo.get(&skey)?;
@@ -173,18 +173,18 @@ impl PikaParser {
             }
             Nothing => Some(Match::empty()),
             FollowedBy => {
-                let sub = clause.sub[0];
+                let sub = &clause.sub[0];
                 let skey = MemoKey {
-                    clause: sub,
+                    clause: sub.idx,
                     start: key.start,
                 };
                 let _mat = memo.get(&skey)?;
                 Some(Match::empty())
             }
             NotFollowedBy => {
-                let sub = clause.sub[0];
+                let sub = &clause.sub[0];
                 let skey = MemoKey {
-                    clause: sub,
+                    clause: sub.idx,
                     start: key.start,
                 };
 

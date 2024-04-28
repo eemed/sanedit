@@ -121,6 +121,7 @@ impl<R: io::Read> GrammarParser<R> {
                 name: WS_NAME.into(),
                 def: ws_zom,
                 annotations: vec![],
+                top: false,
             });
             self.seen.insert(WS_NAME.into());
         }
@@ -128,15 +129,15 @@ impl<R: io::Read> GrammarParser<R> {
         Ok(())
     }
 
-    fn annotation(&mut self) -> Result<Option<(String, String)>> {
+    fn annotation(&mut self) -> Result<Option<(String, Option<String>)>> {
         if self.token == Token::Annotation {
             self.consume(Token::Annotation)?;
             let ann = self.text()?;
 
-            let mut specifiers = String::new();
+            let mut specifiers = None;
             if self.token == Token::LParen {
                 self.consume(Token::LParen)?;
-                specifiers = self.text()?;
+                specifiers = Some(self.text()?);
                 self.consume(Token::RParen)?;
             }
             Ok(Some((ann, specifiers)))
@@ -150,8 +151,7 @@ impl<R: io::Read> GrammarParser<R> {
         while let Some((ann, specifiers)) = self.annotation()? {
             match ann.as_str() {
                 "whitespaced" => anns.push(Annotation::Whitespaced),
-                "show" => anns.push(Annotation::Show),
-                "alias" => anns.push(Annotation::Alias(specifiers)),
+                "show" => anns.push(Annotation::Show(specifiers)),
                 a => bail!("Unexpected annotation {a}"),
             }
         }
@@ -160,12 +160,15 @@ impl<R: io::Read> GrammarParser<R> {
     }
 
     fn rule(&mut self) -> Result<Rule> {
+        let top = self.rules.is_empty();
         let annotations = self.annotations()?;
         let name = self.text()?;
         self.consume(Token::Assign)?;
         let def = self.rule_def()?;
         self.consume(Token::End)?;
+
         let rule = Rule {
+            top,
             name,
             annotations,
             def,
@@ -285,6 +288,7 @@ impl<R: io::Read> GrammarParser<R> {
                             name: ref_rule.clone(),
                             def: RuleDefinition::Ref(0),
                             annotations: vec![],
+                            top: false,
                         };
                         self.indices.insert(ref_rule, i);
                         self.rules.push(rrule);

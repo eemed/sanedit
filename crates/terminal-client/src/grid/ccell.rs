@@ -91,13 +91,13 @@ pub(crate) fn into_cells_with_theme_pad_with(
 
 pub(crate) fn into_cells_with_theme_with(string: &str, style: &Style) -> Vec<CCell> {
     let mut cells = into_cells(string);
-    cells.iter_mut().for_each(|cell| cell.style = style.clone());
+    cells.iter_mut().for_each(|cell| cell.style = *style);
     cells
 }
 
 pub(crate) fn pad_line(cells: &mut Vec<CCell>, style: Style, width: usize) {
     while cells.len() < width {
-        cells.push(CCell::with_style(style.clone()));
+        cells.push(CCell::with_style(style));
     }
 
     while cells.len() > width {
@@ -121,7 +121,7 @@ pub(crate) fn put_line(line: Vec<CCell>, pos: usize, target: &mut [&mut [CCell]]
 pub(crate) fn set_style(target: &mut [&mut [CCell]], style: Style) {
     for line in target.iter_mut() {
         for cell in line.iter_mut() {
-            cell.style = style.clone();
+            cell.style = style;
             cell.is_transparent = false;
         }
     }

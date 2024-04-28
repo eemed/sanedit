@@ -7,12 +7,11 @@
 #                     Original:   array = "["             value (              ","            value )*             "]";
 #                     Generated:  array = "[" WHITESPACE* value ( WHITESPACE* "," WHITESPACE* value )* WHITESPACE* "]";
 #
+document = _ value _;
 
 WHITESPACE = [ \t\r\n];
 _ = WHITESPACE*;
 
-@show
-document = _ value _;
 
 value =  object / array / number / string / constant;
 

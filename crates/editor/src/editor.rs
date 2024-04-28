@@ -434,7 +434,9 @@ impl Editor {
         // Reload syntax
         let (win, buf) = self.win_buf(id);
         if let Some(ft) = buf.filetype.clone() {
-            let _ = self.syntaxes.load(&ft);
+            if let Err(e) = self.syntaxes.load(&ft) {
+                log::error!("Failed to reload syntax: {e}");
+            }
         }
 
         // Reload window

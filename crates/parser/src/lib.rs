@@ -1,6 +1,7 @@
 pub(crate) mod grammar;
 
 mod byte_reader;
+mod parsing_machine;
 mod pika_parser;
 
 pub use byte_reader::ByteReader;

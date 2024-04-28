@@ -51,6 +51,10 @@ impl<'a, 'b, B: ByteReader> MemoTable<'a, 'b, B> {
         }
     }
 
+    pub fn len(&self) -> usize {
+        self.table.len()
+    }
+
     pub fn to_ast(&self, len: usize) -> AST {
         AST::new(self, len)
     }

@@ -296,6 +296,33 @@ impl Editor {
 
     /// Redraw all windows that use the same buffer as `id`
     fn redraw(&mut self, id: ClientId) {
+        {
+            if self.windows.contains(id) {
+                let (win, buf) = self.win_buf_mut(id);
+                win.redraw_view(buf);
+
+                let bid = buf.id;
+                let range = win.view().range();
+                let ropt = buf.read_only_copy();
+                let (s, r) = tokio::sync::broadcast::channel(1);
+
+                if let Some(ft) = buf.filetype.clone() {
+                    match self.syntaxes.get(&ft) {
+                        Ok(s) => match s.parse(bid, &ropt, range, r) {
+                            Ok(res) => {
+                                let (win, _buf) = self.win_buf_mut(id);
+                                *win.syntax_result() = res;
+                            }
+                            Err(e) => {
+                                log::error!("Failed to parse file: {e}");
+                            }
+                        },
+                        Err(e) => log::error!("Failed to load syntax for {}: {e}", ft.as_str()),
+                    }
+                }
+            }
+        }
+
         // Editor is closed or client is closed
         if !self.is_running || !self.clients.contains_key(&id) {
             return;
@@ -310,6 +337,7 @@ impl Editor {
 
     /// redraw a window
     fn redraw_client(&mut self, id: ClientId) {
+        log::info!("rd client");
         run(self, id, Hook::OnDrawPre);
 
         let draw = self

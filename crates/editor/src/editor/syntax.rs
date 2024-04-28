@@ -1,4 +1,5 @@
 use std::{
+    cmp::min,
     ops::Range,
     path::{Path, PathBuf},
     sync::Arc,
@@ -75,14 +76,28 @@ impl Syntax {
         &self,
         bid: BufferId,
         ropt: &ReadOnlyPieceTree,
-        view: Range<usize>,
+        mut view: Range<usize>,
         kill: broadcast::Receiver<()>,
     ) -> anyhow::Result<SyntaxParseResult> {
-        log::info!("parsing");
-        let slice = ropt.slice(..);
+        const MAX_HORIZON: usize = 1024 * 32;
+        view.end = min(view.end + MAX_HORIZON, ropt.len());
+        let start = view.start;
+        let slice = ropt.slice(view);
+
         let ast = self.grammar.parse(&slice, kill)?;
-        log::debug!("{}", ast.print_string(&String::from(&slice)));
-        let spans = ast.flatten().into_iter().map(Span::from).collect();
+        // log::debug!("{}", ast.print_string(&String::from(&slice)));
+        let spans = ast
+            .flatten()
+            .into_iter()
+            .map(|ast| {
+                let name = ast.name().to_string();
+                let mut range = ast.range();
+                range.start += start;
+                range.end += start;
+
+                Span { name, range }
+            })
+            .collect();
 
         Ok(SyntaxParseResult {
             bid,
@@ -111,12 +126,4 @@ pub enum ParseKind {
 pub(crate) struct Span {
     pub(crate) name: String,
     pub(crate) range: Range<usize>,
-}
-
-impl From<AST> for Span {
-    fn from(ast: AST) -> Self {
-        let name = ast.name().to_string();
-        let range = ast.range();
-        Span { name, range }
-    }
 }

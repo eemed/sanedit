@@ -34,6 +34,10 @@ impl Windows {
         self.windows.remove(&id)
     }
 
+    pub fn contains(&self, id: ClientId) -> bool {
+        self.windows.contains_key(&id)
+    }
+
     pub fn iter(&self) -> std::collections::hash_map::Iter<ClientId, Window> {
         self.windows.iter()
     }

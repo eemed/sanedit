@@ -138,10 +138,6 @@ pub(super) fn preprocess_rules(rules: &[Rule]) -> anyhow::Result<Clauses> {
         clauses[cl.idx].show = show;
         clauses[cl.idx].top = rule.top;
 
-        if rule.top {
-            log::info!("TOP: {rule:?}");
-        }
-
         let val: &mut String = names.entry(cl.idx).or_default();
         *val = rule.name.clone();
     }

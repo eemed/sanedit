@@ -93,6 +93,7 @@ impl PikaParser {
             }
         }
 
+        log::info!("Entries: {}", memo.len());
         Ok(memo.to_ast(len))
     }
 

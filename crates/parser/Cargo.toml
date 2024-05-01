@@ -12,6 +12,7 @@ sanedit-buffer = { path = "../buffer" }
 rustc-hash = "1.1"
 ahash      = "0.8"
 smallvec   = "1"
+bitvec     = "1"
 
 anyhow     = "1.0"
 thiserror  = "1.0"

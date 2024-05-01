@@ -1,12 +1,21 @@
 use std::io;
 
-use crate::grammar::{self, Rule};
+use bitvec::prelude::BitArray;
+use rustc_hash::FxHashMap;
+
+use crate::grammar::{self, Rule, RuleDefinition};
+
+type Addr = usize;
+type Set = BitArray;
 
 enum Operation {
-    Jump,
-    Char,
-    Commit,
-    Choice,
+    Jump(Addr),
+    Byte(u8),
+    Call(Addr),
+    Commit(Addr),
+    Choice(Vec<Addr>),
+    Any(usize),
+    Set(Set),
     Return,
     Fail,
     End,
@@ -18,29 +27,99 @@ struct Parser {}
 impl Parser {
     pub fn new<R: io::Read>(read: R) -> Parser {
         let rules = grammar::parse_rules(read).unwrap();
-        compile(&rules);
+        let mut compiler = Compiler::new(&rules);
+        compiler.compile();
         todo!()
     }
 }
 
-fn compile(rules: &[Rule]) {
-    let mut program = vec![];
+struct Compiler<'a> {
+    program: Vec<Operation>,
+    map: FxHashMap<usize, usize>,
+    rules: &'a [Rule],
 }
 
-fn compile_rec(rule: &Rule, rules: &[Rule]) {
-    use grammar::RuleDefinition::*;
+impl<'a> Compiler<'a> {
+    pub fn new(rules: &[Rule]) -> Compiler {
+        Compiler {
+            program: Vec::new(),
+            map: FxHashMap::default(),
+            rules,
+        }
+    }
 
-    match rule.def {
-        Optional(_) => todo!(),
-        ZeroOrMore(_) => todo!(),
-        OneOrMore(_) => todo!(),
-        Choice(_) => todo!(),
-        Sequence(_) => todo!(),
-        FollowedBy(_) => todo!(),
-        NotFollowedBy(_) => todo!(),
-        CharSequence(_) => todo!(),
-        CharRange(_, _) => todo!(),
-        Ref(_) => todo!(),
+    pub(crate) fn compile(mut self) -> Vec<Operation> {
+        for rule in self.rules {
+            if rule.top {
+                self.compile_rec(&rule.def);
+            }
+        }
+
+        self.program
+    }
+
+    fn push(&mut self, op: Operation) -> usize {
+        self.program.push(op);
+        self.program.len() - 1
+    }
+
+    fn compile_rec(&mut self, rule: &RuleDefinition) {
+        use grammar::RuleDefinition::*;
+
+        match rule {
+            Optional(rule) => todo!(),
+            ZeroOrMore(rule) => todo!(),
+            OneOrMore(rule) => todo!(),
+            Choice(rules) => {
+                //     Choice L1, L2, L3, ..., Li
+                //     <rule 1>
+                //     Commit Li
+                // L1: <rule 2>
+                //     Commit Li
+                // L2: <rule 3>
+                //     Commit Li
+                //   . . .
+                // Li: ...
+                let mut choices = vec![];
+                let choice_op = self.push(Operation::Choice(vec![]));
+                let mut commits = vec![];
+
+                for rule in rules {
+                    if !commits.is_empty() {
+                        choices.push(self.program.len());
+                    }
+                    self.compile_rec(rule);
+                    let commit = self.push(Operation::Commit(0));
+                    commits.push(commit);
+                }
+
+                self.program[choice_op] = Operation::Choice(choices);
+                let next = self.program.len();
+                for commit in commits {
+                    self.program[commit] = Operation::Commit(next);
+                }
+            }
+            Sequence(rules) => todo!(),
+            FollowedBy(rule) => todo!(),
+            NotFollowedBy(rule) => todo!(),
+            CharSequence(seq) => {
+                for byte in seq.as_bytes() {
+                    self.push(Operation::Byte(*byte));
+                }
+            }
+            CharRange(a, b) => todo!(),
+            Ref(idx) => match self.map.get(&idx) {
+                Some(i) => {
+                    self.push(Operation::Call(*i));
+                }
+                None => {
+                    let next = self.program.len();
+                    self.map.insert(*idx, next);
+                    let rule = &self.rules[*idx];
+                    self.compile_rec(&rule.def);
+                }
+            },
+        }
     }
 }
 
@@ -52,7 +131,9 @@ mod test {
     fn compiler() {
         let peg = include_str!("../pegs/json.peg");
         let rules = grammar::parse_rules(std::io::Cursor::new(peg)).unwrap();
-        compile(&rules);
+
+        let mut compiler = Compiler::new(&rules);
+        compiler.compile();
 
         // let parser = PikaParser::from_str(peg).unwrap();
         // let input = " {\"account\":\"bon\",\n\"age\":3.2, \r\n\"children\" : [  1, 2,3], \"allow-children\": true } ";

@@ -1,25 +1,63 @@
 use std::io;
+use std::ops::{Index, IndexMut};
 
-use bitvec::prelude::BitArray;
+use bitvec::prelude::*;
+use bitvec::{bitarr, prelude::BitArray, BitArr};
 use rustc_hash::FxHashMap;
 
 use crate::grammar::{self, Rule, RuleDefinition};
 
 type Addr = usize;
-type Set = BitArray;
+
+struct Set {
+    inner: BitArray<[u32; 8]>,
+}
+
+impl Set {
+    pub fn new() -> Set {
+        Set {
+            inner: bitarr![u32, Lsb0; 0; 256],
+        }
+    }
+
+    pub fn add(&mut self, n: u8) {
+        self.inner.set(n as usize, true);
+    }
+}
+
+impl Index<u8> for Set {
+    type Output = bool;
+
+    fn index(&self, index: u8) -> &Self::Output {
+        &self.inner[index as usize]
+    }
+}
+
+impl Index<usize> for Set {
+    type Output = bool;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.inner[index]
+    }
+}
 
 enum Operation {
     Jump(Addr),
     Byte(u8),
     Call(Addr),
     Commit(Addr),
-    Choice(Vec<Addr>),
+    Choice(Addr),
     Any(usize),
     Set(Set),
     Return,
     Fail,
     End,
     EndFail,
+    PartialCommit(Addr),
+    FailTwice,
+    Span(Set),
+    TestSetNoChoice(Set),
+    BackCommit(Addr),
 }
 
 struct Parser {}
@@ -63,51 +101,112 @@ impl<'a> Compiler<'a> {
         self.program.len() - 1
     }
 
+    fn compile_choice_rec(&mut self, rule: &RuleDefinition, rest: &[RuleDefinition]) {
+        //     Choice L1
+        //     <rule 1>
+        //     Commit L2
+        // L1: <rule 2>
+        // L2: ...
+        if rest.is_empty() {
+            self.compile_rec(rule);
+            return;
+        }
+
+        let choice = self.push(Operation::Choice(0));
+        self.compile_rec(rule);
+        let commit = self.push(Operation::Commit(0));
+        self.program[choice] = Operation::Choice(self.program.len());
+
+        let (next, nrest) = rest.split_first().unwrap();
+        self.compile_choice_rec(next, nrest);
+
+        self.program[commit] = Operation::Commit(self.program.len());
+    }
+
     fn compile_rec(&mut self, rule: &RuleDefinition) {
         use grammar::RuleDefinition::*;
 
         match rule {
-            Optional(rule) => todo!(),
-            ZeroOrMore(rule) => todo!(),
-            OneOrMore(rule) => todo!(),
-            Choice(rules) => {
-                //     Choice L1, L2, L3, ..., Li
-                //     <rule 1>
-                //     Commit Li
-                // L1: <rule 2>
-                //     Commit Li
-                // L2: <rule 3>
-                //     Commit Li
-                //   . . .
-                // Li: ...
-                let mut choices = vec![];
-                let choice_op = self.push(Operation::Choice(vec![]));
-                let mut commits = vec![];
-
-                for rule in rules {
-                    if !commits.is_empty() {
-                        choices.push(self.program.len());
-                    }
-                    self.compile_rec(rule);
-                    let commit = self.push(Operation::Commit(0));
-                    commits.push(commit);
-                }
-
-                self.program[choice_op] = Operation::Choice(choices);
+            Optional(rule) => {
+                let choice = self.push(Operation::Choice(0));
+                self.compile_rec(rule);
+                let next = self.program.len() + 1;
+                self.push(Operation::Commit(next));
+                self.program[choice] = Operation::Choice(next);
+            }
+            ZeroOrMore(rule) => {
+                // L1: Choice L2
+                //     <rule>
+                //     PartialCommit L1
+                // L2: ...
+                let choice = self.push(Operation::Choice(0));
+                self.compile_rec(rule);
+                self.push(Operation::PartialCommit(choice));
                 let next = self.program.len();
-                for commit in commits {
-                    self.program[commit] = Operation::Commit(next);
+                self.program[choice] = Operation::Choice(next);
+            }
+            OneOrMore(rule) => {
+                // One
+                self.compile_rec(rule);
+
+                // Zero or more
+                let choice = self.push(Operation::Choice(0));
+                self.compile_rec(rule);
+                self.push(Operation::PartialCommit(choice));
+                let next = self.program.len();
+                self.program[choice] = Operation::Choice(next);
+            }
+            Choice(rules) => {
+                let (first, rest) = rules.split_first().unwrap();
+                self.compile_choice_rec(first, rest)
+            }
+            Sequence(rules) => {
+                for rule in rules {
+                    self.compile_rec(rule);
                 }
             }
-            Sequence(rules) => todo!(),
-            FollowedBy(rule) => todo!(),
-            NotFollowedBy(rule) => todo!(),
+            FollowedBy(rule) => {
+                let choice = self.push(Operation::Choice(0));
+                self.compile_rec(rule);
+                let bcommit = self.push(Operation::BackCommit(0));
+                let fail = self.push(Operation::Fail);
+                self.program[choice] = Operation::Choice(fail);
+                let next = self.program.len();
+                self.program[bcommit] = Operation::BackCommit(next);
+            }
+            NotFollowedBy(rule) => {
+                let choice = self.push(Operation::Choice(0));
+                self.compile_rec(rule);
+                self.push(Operation::FailTwice);
+                let next = self.program.len();
+                self.program[choice] = Operation::Choice(next);
+            }
             CharSequence(seq) => {
                 for byte in seq.as_bytes() {
                     self.push(Operation::Byte(*byte));
                 }
             }
-            CharRange(a, b) => todo!(),
+            CharRange(a, b) => {
+                let mut autf = [0; 4];
+                let mut butf = [0; 4];
+
+                a.encode_utf8(&mut autf);
+                b.encode_utf8(&mut butf);
+
+                match (a.len_utf8(), b.len_utf8()) {
+                    (1, 1) => {
+                        let mut set = Set::new();
+                        for i in autf[0]..butf[0] {
+                            set.add(i);
+                        }
+
+                        self.push(Operation::Set(set));
+                    }
+                    _ => {
+                        // TODO
+                    }
+                }
+            }
             Ref(idx) => match self.map.get(&idx) {
                 Some(i) => {
                     self.push(Operation::Call(*i));

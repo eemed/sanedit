@@ -271,11 +271,11 @@ impl<R: io::Read> GrammarParser<R> {
                 self.consume(Token::Quote)?;
                 let literal = self.text()?;
                 self.consume(Token::Quote)?;
-                RuleDefinition::CharSequence(literal)
+                RuleDefinition::ByteSequence(literal.into())
             }
-            Token::AnyChar => {
-                self.consume(Token::AnyChar)?;
-                RuleDefinition::CharRange(CHAR_MIN, CHAR_MAX)
+            Token::Any => {
+                self.consume(Token::Any)?;
+                RuleDefinition::ByteAny
             }
             Token::Text(_) => {
                 let ref_rule = self.text()?;
@@ -370,14 +370,14 @@ impl<R: io::Read> GrammarParser<R> {
 
         while self.token != Token::RBracket {
             match &self.token {
-                Token::Char(ch) => {
+                Token::Byte(b) => {
                     if range {
                         range = false;
                         let a = choices
                             .last()
                             .map(|r| match r {
-                                RuleDefinition::CharSequence(c) => {
-                                    let mut iter = c.chars();
+                                RuleDefinition::ByteSequence(c) => {
+                                    let mut iter = c.iter();
                                     let c = iter.next()?;
                                     if iter.next().is_some() {
                                         None
@@ -391,7 +391,7 @@ impl<R: io::Read> GrammarParser<R> {
                         match a {
                             Some(a) => {
                                 choices.pop();
-                                choices.push(RuleDefinition::CharRange(a, *ch));
+                                choices.push(RuleDefinition::ByteRange(*a, *b));
                             }
                             None => bail!(
                                 "Tried to create range with invalid character at: {}",
@@ -399,7 +399,7 @@ impl<R: io::Read> GrammarParser<R> {
                             ),
                         }
                     } else {
-                        choices.push(RuleDefinition::CharSequence(ch.to_string()));
+                        choices.push(RuleDefinition::ByteSequence(vec![*b]));
                     }
 
                     self.skip()?;
@@ -420,15 +420,16 @@ impl<R: io::Read> GrammarParser<R> {
         }
 
         if negate {
+            // TODO
             let mut ranges = OverlappingRanges::default();
             for choice in &choices {
                 match choice {
-                    RuleDefinition::CharSequence(a) => {
+                    RuleDefinition::ByteSequence(a) => {
                         let ch = a.chars().next().unwrap();
                         let ch = ch as usize;
                         ranges.add(ch..ch + 1);
                     }
-                    RuleDefinition::CharRange(a, b) => {
+                    RuleDefinition::UTF8Range(a, b) => {
                         ranges.add(*a as usize..*b as usize + 1);
                     }
                     _ => unreachable!(),
@@ -443,7 +444,7 @@ impl<R: io::Read> GrammarParser<R> {
                 let end = char::from_u32(range.end as u32 - 1);
 
                 match (start, end) {
-                    (Some(a), Some(b)) => choices.push(RuleDefinition::CharRange(a, b)),
+                    (Some(a), Some(b)) => choices.push(RuleDefinition::UTF8Range(a, b)),
                     _ => bail!("Failed to convert ranges back to char ranges"),
                 }
             }
@@ -452,11 +453,11 @@ impl<R: io::Read> GrammarParser<R> {
         Ok(RuleDefinition::Choice(choices))
     }
 
-    fn char_range(&mut self) -> Result<RuleDefinition> {
+    fn utf8_range(&mut self) -> Result<RuleDefinition> {
         let a = self.char()?;
         self.consume(Token::Range)?;
         let b = self.char()?;
-        Ok(RuleDefinition::CharRange(a, b))
+        Ok(RuleDefinition::UTF8Range(a, b))
     }
 }
 
@@ -468,52 +469,10 @@ mod test {
         let mut result = String::new();
 
         for (i, rule) in rules.iter().enumerate() {
-            let srule = format!("{i}: {}: {};\n", &rule.name, print_rule(&rule.def));
+            let srule = format!("{i}: {}: {};\n", &rule.name, &rule.def);
             result.push_str(&srule);
         }
         result
-    }
-
-    fn print_rule(rule: &RuleDefinition) -> String {
-        use RuleDefinition::*;
-        match rule {
-            CharSequence(l) => format!("\"{}\"", l),
-            Choice(choices) => {
-                let mut result = String::new();
-                result.push_str("(");
-                for (i, choice) in choices.iter().enumerate() {
-                    if i != 0 {
-                        result.push_str(" / ");
-                    }
-
-                    result.push_str(&print_rule(choice));
-                }
-                result.push_str(")");
-
-                result
-            }
-            Sequence(seq) => {
-                let mut result = String::new();
-                result.push_str("(");
-                for (i, choice) in seq.iter().enumerate() {
-                    if i != 0 {
-                        result.push_str(" ");
-                    }
-
-                    result.push_str(&print_rule(choice));
-                }
-                result.push_str(")");
-
-                result
-            }
-            NotFollowedBy(r) => format!("!({})", print_rule(r)),
-            FollowedBy(r) => format!("&({})", print_rule(r)),
-            Ref(r) => format!("r\"{r}\""),
-            OneOrMore(r) => format!("({})+", print_rule(r)),
-            CharRange(a, b) => format!("[{a}..{b}]"),
-            Optional(r) => format!("({})?", print_rule(r)),
-            ZeroOrMore(r) => format!("({})*", print_rule(r)),
-        }
     }
 
     #[test]

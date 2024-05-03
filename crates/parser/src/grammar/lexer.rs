@@ -25,8 +25,9 @@ pub(crate) enum Token {
     LBracket,
     RBracket,
     Char(char),
+    Byte(u8),
     Range,
-    AnyChar,
+    Any,
     Negate,
 }
 
@@ -191,7 +192,7 @@ impl<R: io::Read> Lexer<R> {
         match ch {
             '.' => {
                 self.advance()?;
-                return Ok(Token::AnyChar);
+                return Ok(Token::Any);
             }
             '@' => {
                 self.advance()?;
@@ -338,13 +339,29 @@ impl<R: io::Read> Lexer<R> {
                         self.advance()?;
                         Ok(Token::Char('\\'))
                     }
-                    Some('x') => {
+                    Some('u') => {
                         self.advance()?;
                         let hex = self.consume_hex()?;
+                        if hex.len() != 4 {
+                            bail!("Unicode escape needs to have 4 hex digits");
+                        }
                         let num = u32::from_str_radix(&hex, 16)?;
                         match char::from_u32(num) {
                             Some(c) => Ok(Token::Char(c)),
-                            None => bail!("Cannot convert hex {hex} to char"),
+                            None => bail!("Cannot convert unicode {hex} to char"),
+                        }
+                    }
+                    Some('x') => {
+                        self.advance()?;
+                        let hex = self.consume_hex()?;
+                        if hex.len() > 2 {
+                            bail!("Hex only upto \\xff allowed");
+                        }
+                        let num = u32::from_str_radix(&hex, 16)?;
+                        if num < u8::MAX as u32 {
+                            Ok(Token::Byte(num as u8))
+                        } else {
+                            bail!("Cannot convert hex {hex} to char");
                         }
                     }
                     Some(c) => bail!("Expected escaped char but got {c}, at {}", self.read.pos()),

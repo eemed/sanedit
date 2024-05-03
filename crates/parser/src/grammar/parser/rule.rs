@@ -88,8 +88,11 @@ pub(crate) enum RuleDefinition {
     Sequence(Vec<RuleDefinition>),
     FollowedBy(Box<RuleDefinition>),
     NotFollowedBy(Box<RuleDefinition>),
-    CharSequence(String),
-    CharRange(char, char),
+    ByteSequence(Vec<u8>),
+    ByteRange(u8, u8),
+    ByteAny,
+    UTF8Range(char, char),
+    UTF8Any,
     Ref(usize),
 }
 
@@ -97,7 +100,7 @@ impl RuleDefinition {
     pub fn is_terminal(&self) -> bool {
         use RuleDefinition::*;
         match self {
-            CharSequence(_) | CharRange(_, _) => true,
+            ByteSequence(_) | ByteRange(_, _) | ByteAny | UTF8Any | UTF8Range(_, _) => true,
             _ => false,
         }
     }
@@ -113,8 +116,7 @@ impl RuleDefinition {
     pub fn format(&self, rules: &[Rule]) -> String {
         use RuleDefinition::*;
         match self {
-            CharRange(a, b) => format!("[{}..{}]", a, b),
-            CharSequence(l) => format!("{:?}", l),
+            Sequence(l) => format!("{:?}", l),
             Choice(choices) => {
                 let mut result = String::new();
                 result.push_str("(");
@@ -152,6 +154,11 @@ impl RuleDefinition {
             OneOrMore(r) => format!("({})+", r.format(rules)),
             Optional(r) => format!("({})?", r.format(rules)),
             ZeroOrMore(r) => format!("({})*", r.format(rules)),
+            UTF8Range(a, b) => format!("[\\u{:?}..\\u{:?}]", a, b),
+            ByteSequence(s) => format!("{:?}", s),
+            ByteRange(a, b) => format!("[{:?}..{:?}]", a, b),
+            ByteAny => format!("\\u."),
+            UTF8Any => format!("."),
         }
     }
 }
@@ -160,8 +167,8 @@ impl fmt::Display for RuleDefinition {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use RuleDefinition::*;
         match self {
-            CharRange(a, b) => write!(f, "[{}..{}]", a, b),
-            CharSequence(l) => write!(f, "{:?}", l),
+            UTF8Range(a, b) => write!(f, "[{}..{}]", a, b),
+            Sequence(l) => write!(f, "{:?}", l),
             Choice(choices) => {
                 let mut result = String::new();
                 result.push_str("(");
@@ -196,6 +203,10 @@ impl fmt::Display for RuleDefinition {
             OneOrMore(r) => write!(f, "({})+", r),
             Optional(r) => write!(f, "({})?", r),
             ZeroOrMore(r) => write!(f, "({})*", r),
+            ByteSequence(s) => write!(f, "{:?}", s),
+            ByteRange(a, b) => write!(f, "[{:?}..{:?}]", a, b),
+            ByteAny => write!(f, "\\u."),
+            UTF8Any => write!(f, "."),
         }
     }
 }

@@ -86,8 +86,8 @@ pub(super) fn preprocess_rules(rules: &[Rule]) -> anyhow::Result<Clauses> {
             OneOrMore(r) => Clause::one_or_more(sub_rec(r, rules, dedup, clauses)),
             FollowedBy(r) => Clause::followed_by(sub_rec(r, rules, dedup, clauses)),
             NotFollowedBy(r) => Clause::not_followed_by(sub_rec(r, rules, dedup, clauses)),
-            CharSequence(s) => Clause::char_sequence(s.clone()),
-            CharRange(a, b) => Clause::char_range(*a, *b),
+            Sequence(s) => Clause::char_sequence(s.clone()),
+            UTF8Range(a, b) => Clause::char_range(*a, *b),
             Optional(r) => {
                 let sub = sub_rec(r, rules, dedup, clauses);
                 // One or Nothing

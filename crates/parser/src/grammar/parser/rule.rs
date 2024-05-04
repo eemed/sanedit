@@ -165,7 +165,7 @@ impl fmt::Display for RuleDefinition {
         use RuleDefinition::*;
         match self {
             UTF8Range(a, b) => {
-                write!(f, "[{:02x}..{:02x}]", *a as u32, *b as u32)
+                write!(f, "[{}..{}]", a.escape_unicode(), b.escape_unicode())
             }
             Choice(choices) => {
                 let mut result = String::new();

@@ -382,7 +382,7 @@ impl<R: io::Read> GrammarParser<R> {
                                     if iter.next().is_some() {
                                         None
                                     } else {
-                                        Some(c)
+                                        Some(*c)
                                     }
                                 }
                                 _ => None,
@@ -391,10 +391,10 @@ impl<R: io::Read> GrammarParser<R> {
                         match a {
                             Some(a) => {
                                 choices.pop();
-                                choices.push(RuleDefinition::ByteRange(*a, *b));
+                                choices.push(RuleDefinition::ByteRange(a, *b));
                             }
                             None => bail!(
-                                "Tried to create range with invalid character at: {}",
+                                "Tried to create range with invalid byte at: {}",
                                 self.lex.pos()
                             ),
                         }
@@ -411,6 +411,37 @@ impl<R: io::Read> GrammarParser<R> {
                     self.consume(Token::Range)?;
                     range = true;
                 }
+                Token::Char(ch) => {
+                    if range {
+                        range = false;
+                        let a = choices
+                            .last()
+                            .map(|r| match r {
+                                RuleDefinition::ByteSequence(seq) => std::str::from_utf8(seq)
+                                    .ok()
+                                    .map(|s| s.chars().next())
+                                    .flatten(),
+                                _ => None,
+                            })
+                            .flatten();
+                        match a {
+                            Some(a) => {
+                                choices.pop();
+                                choices.push(RuleDefinition::UTF8Range(a, *ch));
+                            }
+                            None => bail!(
+                                "Tried to create range with invalid character at: {}",
+                                self.lex.pos()
+                            ),
+                        }
+                    } else {
+                        let mut buf = [0; 4];
+                        let utf8_ch = ch.encode_utf8(&mut buf);
+                        choices.push(RuleDefinition::ByteSequence(utf8_ch.as_bytes().into()));
+                    }
+
+                    self.skip()?;
+                }
                 _ => bail!(
                     "Encountered {:?} while in brackets at {}",
                     self.token,
@@ -420,44 +451,71 @@ impl<R: io::Read> GrammarParser<R> {
         }
 
         if negate {
-            // TODO
+            // If we have a single unicode element in choices assume unicode
+            let mut utf8 = false;
             let mut ranges = OverlappingRanges::default();
             for choice in &choices {
                 match choice {
-                    RuleDefinition::ByteSequence(a) => {
-                        let ch = a.chars().next().unwrap();
-                        let ch = ch as usize;
-                        ranges.add(ch..ch + 1);
+                    RuleDefinition::ByteSequence(seq) => {
+                        // Can be a char or byte
+                        utf8 |= seq.len() != 1;
+
+                        if utf8 {
+                            match std::str::from_utf8(seq)
+                                .map(|s| s.chars().next())
+                                .ok()
+                                .flatten()
+                            {
+                                Some(ch) => {
+                                    ranges.add(ch as usize..ch as usize + 1);
+                                }
+                                None => bail!(
+                                    "Failed to convert byte sequence {:?} to utf8 character at {}",
+                                    seq,
+                                    self.lex.pos()
+                                ),
+                            }
+                        } else {
+                            let byte = seq[0] as usize;
+                            ranges.add(byte..byte + 1);
+                        }
+                    }
+                    RuleDefinition::ByteRange(a, b) => {
+                        ranges.add(*a as usize..*b as usize + 1);
                     }
                     RuleDefinition::UTF8Range(a, b) => {
+                        utf8 = true;
                         ranges.add(*a as usize..*b as usize + 1);
                     }
                     _ => unreachable!(),
                 }
             }
 
-            ranges.invert(CHAR_MIN as usize..CHAR_MAX as usize + 1);
-            choices.clear();
+            if utf8 {
+                ranges.invert(CHAR_MIN as usize..CHAR_MAX as usize + 1);
+                choices.clear();
+                for range in ranges.iter() {
+                    let start = char::from_u32(range.start as u32);
+                    let end = char::from_u32(range.end as u32 - 1);
 
-            for range in ranges.iter() {
-                let start = char::from_u32(range.start as u32);
-                let end = char::from_u32(range.end as u32 - 1);
-
-                match (start, end) {
-                    (Some(a), Some(b)) => choices.push(RuleDefinition::UTF8Range(a, b)),
-                    _ => bail!("Failed to convert ranges back to char ranges"),
+                    match (start, end) {
+                        (Some(a), Some(b)) => choices.push(RuleDefinition::UTF8Range(a, b)),
+                        _ => bail!("Failed to convert ranges back to char ranges"),
+                    }
+                }
+            } else {
+                ranges.invert(u8::MIN as usize..u8::MAX as usize + 1);
+                choices.clear();
+                for range in ranges.iter() {
+                    choices.push(RuleDefinition::ByteRange(
+                        range.start as u8,
+                        range.end as u8,
+                    ));
                 }
             }
         }
 
         Ok(RuleDefinition::Choice(choices))
-    }
-
-    fn utf8_range(&mut self) -> Result<RuleDefinition> {
-        let a = self.char()?;
-        self.consume(Token::Range)?;
-        let b = self.char()?;
-        Ok(RuleDefinition::UTF8Range(a, b))
     }
 }
 

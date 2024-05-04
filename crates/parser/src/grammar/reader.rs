@@ -27,7 +27,7 @@ pub(crate) struct Reader<T: io::Read> {
 impl<T: io::Read> Reader<T> {
     pub fn new(read: T) -> Reader<T> {
         Reader {
-            pos: Position { line: 0, col: 0 },
+            pos: Position { line: 1, col: 0 },
             read: BufReader::new(read),
             line: String::new(),
         }

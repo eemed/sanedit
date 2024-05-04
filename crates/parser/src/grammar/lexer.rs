@@ -24,6 +24,7 @@ pub(crate) enum Token {
     End,
     LBracket,
     RBracket,
+    /// Character >= unicode 0080
     Char(char),
     Byte(u8),
     Range,
@@ -309,59 +310,70 @@ impl<R: io::Read> Lexer<R> {
                 match self.read.peek() {
                     Some('n') => {
                         self.advance()?;
-                        Ok(Token::Char('\n'))
+                        Ok(Token::Byte('\n' as u8))
                     }
                     Some('t') => {
                         self.advance()?;
-                        Ok(Token::Char('\t'))
+                        Ok(Token::Byte('\t' as u8))
                     }
                     Some('r') => {
                         self.advance()?;
-                        Ok(Token::Char('\r'))
+                        Ok(Token::Byte('\r' as u8))
                     }
                     Some(']') => {
                         self.advance()?;
-                        Ok(Token::Char(']'))
+                        Ok(Token::Byte(']' as u8))
                     }
                     Some('.') => {
                         self.advance()?;
-                        Ok(Token::Char('.'))
+                        Ok(Token::Byte('.' as u8))
                     }
                     Some('[') => {
                         self.advance()?;
-                        Ok(Token::Char('['))
+                        Ok(Token::Byte('[' as u8))
                     }
                     Some('^') => {
                         self.advance()?;
-                        Ok(Token::Char('^'))
+                        Ok(Token::Byte('^' as u8))
                     }
                     Some('\\') => {
                         self.advance()?;
-                        Ok(Token::Char('\\'))
+                        Ok(Token::Byte('\\' as u8))
                     }
                     Some('u') => {
                         self.advance()?;
                         let hex = self.consume_hex()?;
                         if hex.len() != 4 {
-                            bail!("Unicode escape needs to have 4 hex digits");
+                            bail!(
+                                "Unicode escape needs to have 4 hex digits: Got {} at {}",
+                                hex,
+                                self.read.pos()
+                            );
                         }
                         let num = u32::from_str_radix(&hex, 16)?;
                         match char::from_u32(num) {
                             Some(c) => Ok(Token::Char(c)),
-                            None => bail!("Cannot convert unicode {hex} to char"),
+                            None => bail!(
+                                "Cannot convert unicode {hex} to char at {}",
+                                self.read.pos()
+                            ),
                         }
                     }
                     Some('x') => {
                         self.advance()?;
                         let hex = self.consume_hex()?;
                         if hex.len() > 2 {
-                            bail!("Hex only upto \\xff allowed");
+                            bail!(
+                                "Hex only upto \\xff allowed: Got {} at: {}",
+                                hex,
+                                self.read.pos()
+                            );
                         }
                         let num = u32::from_str_radix(&hex, 16)?;
-                        if num < u8::MAX as u32 {
+                        if num <= u8::MAX as u32 {
                             Ok(Token::Byte(num as u8))
                         } else {
-                            bail!("Cannot convert hex {hex} to char");
+                            bail!("Cannot convert hex {hex} to char at {}", self.read.pos());
                         }
                     }
                     Some(c) => bail!("Expected escaped char but got {c}, at {}", self.read.pos()),
@@ -385,7 +397,11 @@ impl<R: io::Read> Lexer<R> {
             }
             ch => {
                 self.advance()?;
-                return Ok(Token::Char(ch));
+                if ch as u32 <= u8::MAX as u32 {
+                    return Ok(Token::Byte(ch as u8));
+                } else {
+                    return Ok(Token::Char(ch));
+                }
             }
         }
     }

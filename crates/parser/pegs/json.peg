@@ -42,7 +42,9 @@ number = "-"? integer ("." [0..9]+)?;
 @show
 constant = true / false / null;
 
-quoted_string = quote ([\x20..\x21] / [\x23..\x5b] / [\x5d..\x10ffff])* quote;
+# quoted_string = quote ([\x20..\x21] / [\x23..\x5b] / [\x5d..\u00ff])* quote;
+# quoted_string = quote ([\x20..\x21] / [\x23..\x5b] / [\x5d..\xff] / [\u0080..\u00ff])* quote;
+quoted_string = quote ([^\u0000..\u0019\u0022\u005c])* quote;
 true = "true";
 false = "false";
 null = "null";

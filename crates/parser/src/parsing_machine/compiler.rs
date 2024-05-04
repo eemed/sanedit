@@ -117,8 +117,8 @@ impl<'a> Compiler<'a> {
                 let next = self.program.len();
                 self.program[choice] = Operation::Choice(next);
             }
-            Sequence(seq) => {
-                for byte in seq.as_bytes() {
+            ByteSequence(seq) => {
+                for byte in seq {
                     self.push(Operation::Byte(*byte));
                 }
             }
@@ -154,6 +154,9 @@ impl<'a> Compiler<'a> {
                     self.compile_rec(&rule.def);
                 }
             },
+            ByteRange(_, _) => todo!(),
+            ByteAny => todo!(),
+            UTF8Any => todo!(),
         }
     }
 }

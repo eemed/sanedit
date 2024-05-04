@@ -1,4 +1,4 @@
-use std::{cmp::min, ops::Range, str::Bytes};
+use std::{cmp::min, ops::Range};
 
 use sanedit_buffer::utf8::decode_utf8_iter;
 

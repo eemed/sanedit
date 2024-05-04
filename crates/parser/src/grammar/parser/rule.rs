@@ -89,8 +89,10 @@ pub(crate) enum RuleDefinition {
     FollowedBy(Box<RuleDefinition>),
     NotFollowedBy(Box<RuleDefinition>),
     ByteSequence(Vec<u8>),
+    /// Inclusive byte range
     ByteRange(u8, u8),
     ByteAny,
+    /// Inclusive UTF8 range
     UTF8Range(char, char),
     UTF8Any,
     Ref(usize),
@@ -116,7 +118,6 @@ impl RuleDefinition {
     pub fn format(&self, rules: &[Rule]) -> String {
         use RuleDefinition::*;
         match self {
-            Sequence(l) => format!("{:?}", l),
             Choice(choices) => {
                 let mut result = String::new();
                 result.push_str("(");
@@ -154,11 +155,7 @@ impl RuleDefinition {
             OneOrMore(r) => format!("({})+", r.format(rules)),
             Optional(r) => format!("({})?", r.format(rules)),
             ZeroOrMore(r) => format!("({})*", r.format(rules)),
-            UTF8Range(a, b) => format!("[\\u{:?}..\\u{:?}]", a, b),
-            ByteSequence(s) => format!("{:?}", s),
-            ByteRange(a, b) => format!("[{:?}..{:?}]", a, b),
-            ByteAny => format!("\\u."),
-            UTF8Any => format!("."),
+            _ => format!("{}", self),
         }
     }
 }
@@ -167,8 +164,9 @@ impl fmt::Display for RuleDefinition {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use RuleDefinition::*;
         match self {
-            UTF8Range(a, b) => write!(f, "[{}..{}]", a, b),
-            Sequence(l) => write!(f, "{:?}", l),
+            UTF8Range(a, b) => {
+                write!(f, "[{:02x}..{:02x}]", *a as u32, *b as u32)
+            }
             Choice(choices) => {
                 let mut result = String::new();
                 result.push_str("(");
@@ -199,12 +197,12 @@ impl fmt::Display for RuleDefinition {
             }
             NotFollowedBy(r) => write!(f, "!({})", r),
             FollowedBy(r) => write!(f, "&({})", r),
-            Ref(r) => write!(f, "r\"{r}\""),
+            Ref(r) => write!(f, "<{r}>"),
             OneOrMore(r) => write!(f, "({})+", r),
             Optional(r) => write!(f, "({})?", r),
             ZeroOrMore(r) => write!(f, "({})*", r),
-            ByteSequence(s) => write!(f, "{:?}", s),
-            ByteRange(a, b) => write!(f, "[{:?}..{:?}]", a, b),
+            ByteSequence(s) => write!(f, "{:02x?}", s),
+            ByteRange(a, b) => write!(f, "[{:02x?}..{:02x?}]", a, b),
             ByteAny => write!(f, "\\u."),
             UTF8Any => write!(f, "."),
         }

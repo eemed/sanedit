@@ -44,3 +44,5 @@ answers why certain design decisions were made.
 #include "impl-notes/terminal-client.typ"
 
 #include "impl-notes/ucd.typ"
+
+#include "impl-notes/parser.typ"

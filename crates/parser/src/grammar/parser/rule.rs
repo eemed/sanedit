@@ -6,36 +6,37 @@ pub(crate) enum Annotation {
     Show(Option<String>),
 }
 
+/// A Rule with extra information about it
 #[derive(Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Clone)]
-pub(crate) struct Rule {
+pub(crate) struct RuleInfo {
     pub(crate) top: bool,
     pub(crate) annotations: Vec<Annotation>,
     pub(crate) name: String,
-    pub(crate) def: RuleDefinition,
+    pub(crate) rule: Rule,
 }
 
-impl Rule {
+impl RuleInfo {
     pub fn apply_whitespaced(&mut self, ws: usize) {
-        fn repetition_insert_head(def: &mut RuleDefinition, ws: usize) {
-            use RuleDefinition::*;
-            match def {
+        fn repetition_insert_head(rule: &mut Rule, ws: usize) {
+            use Rule::*;
+            match rule {
                 Optional(r) | ZeroOrMore(r) | OneOrMore(r) => repetition_insert_head(r, ws),
-                Choice(c) => {
-                    let f = &mut c[0];
-                    repetition_insert_head(f, ws);
+                Choice(rules) => {
+                    let first = &mut rules[0];
+                    repetition_insert_head(first, ws);
                 }
-                Sequence(s) => {
-                    s.insert(0, RuleDefinition::Ref(ws));
+                Sequence(rules) => {
+                    rules.insert(0, Rule::Ref(ws));
                 }
-                c => {
-                    let cur = c.clone();
-                    *c = RuleDefinition::Sequence(vec![RuleDefinition::Ref(ws), cur]);
+                crule => {
+                    let cur = crule.clone();
+                    *crule = Rule::Sequence(vec![Rule::Ref(ws), cur]);
                 }
             }
         }
 
-        fn rec(to: &mut RuleDefinition, ws: usize) {
-            use RuleDefinition::*;
+        fn rec(to: &mut Rule, ws: usize) {
+            use Rule::*;
             match to {
                 Sequence(seq) => {
                     for r in seq.iter_mut() {
@@ -59,64 +60,66 @@ impl Rule {
                         i += 1;
                     }
                 }
-                OneOrMore(m) => rec(m, ws),
-                Optional(m) => rec(m, ws),
-                ZeroOrMore(m) => rec(m, ws),
-                Choice(v) => v.iter_mut().for_each(|r| rec(r, ws)),
-                FollowedBy(m) => rec(m, ws),
-                NotFollowedBy(m) => rec(m, ws),
+                OneOrMore(rule) => rec(rule, ws),
+                Optional(rule) => rec(rule, ws),
+                ZeroOrMore(rule) => rec(rule, ws),
+                Choice(rules) => rules.iter_mut().for_each(|r| rec(r, ws)),
+                FollowedBy(rule) => rec(rule, ws),
+                NotFollowedBy(rule) => rec(rule, ws),
                 _ => {}
             }
         }
 
-        rec(&mut self.def, ws)
+        rec(&mut self.rule, ws)
     }
 }
 
-impl fmt::Display for Rule {
+impl fmt::Display for RuleInfo {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}: {}", self.name, self.def)
+        write!(f, "{}: {}", self.name, self.rule)
     }
 }
 
 #[derive(Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Clone)]
-pub(crate) enum RuleDefinition {
-    Optional(Box<RuleDefinition>),
-    ZeroOrMore(Box<RuleDefinition>),
-    OneOrMore(Box<RuleDefinition>),
-    Choice(Vec<RuleDefinition>),
-    Sequence(Vec<RuleDefinition>),
-    FollowedBy(Box<RuleDefinition>),
-    NotFollowedBy(Box<RuleDefinition>),
+pub(crate) enum Rule {
+    Optional(Box<Rule>),
+    ZeroOrMore(Box<Rule>),
+    OneOrMore(Box<Rule>),
+    Choice(Vec<Rule>),
+    Sequence(Vec<Rule>),
+    FollowedBy(Box<Rule>),
+    NotFollowedBy(Box<Rule>),
     ByteSequence(Vec<u8>),
-    /// Inclusive byte range
+    /// Inclusive byte range.
+    /// This is separate from UTF8Range to ease parser optimization
+    /// Technically it could be removed as UTF8Range covers all byte ranges this
+    /// can represent
     ByteRange(u8, u8),
     ByteAny,
     /// Inclusive UTF8 range
     UTF8Range(char, char),
-    UTF8Any,
     Ref(usize),
 }
 
-impl RuleDefinition {
+impl Rule {
     pub fn is_terminal(&self) -> bool {
-        use RuleDefinition::*;
+        use Rule::*;
         match self {
-            ByteSequence(_) | ByteRange(_, _) | ByteAny | UTF8Any | UTF8Range(_, _) => true,
+            ByteSequence(_) | ByteRange(_, _) | ByteAny | UTF8Range(_, _) => true,
             _ => false,
         }
     }
 
     pub fn is_repetition(&self) -> bool {
-        use RuleDefinition::*;
+        use Rule::*;
         match self {
             OneOrMore(_) | Optional(_) | ZeroOrMore(_) => true,
             _ => false,
         }
     }
 
-    pub fn format(&self, rules: &[Rule]) -> String {
-        use RuleDefinition::*;
+    pub fn format(&self, rules: &[RuleInfo]) -> String {
+        use Rule::*;
         match self {
             Choice(choices) => {
                 let mut result = String::new();
@@ -160,9 +163,9 @@ impl RuleDefinition {
     }
 }
 
-impl fmt::Display for RuleDefinition {
+impl fmt::Display for Rule {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use RuleDefinition::*;
+        use Rule::*;
         match self {
             UTF8Range(a, b) => {
                 write!(f, "[{}..{}]", a.escape_unicode(), b.escape_unicode())
@@ -203,8 +206,7 @@ impl fmt::Display for RuleDefinition {
             ZeroOrMore(r) => write!(f, "({})*", r),
             ByteSequence(s) => write!(f, "{:02x?}", s),
             ByteRange(a, b) => write!(f, "[{:02x?}..{:02x?}]", a, b),
-            ByteAny => write!(f, "\\u."),
-            UTF8Any => write!(f, "."),
+            ByteAny => write!(f, "."),
         }
     }
 }

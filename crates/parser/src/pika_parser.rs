@@ -6,8 +6,6 @@ mod set;
 
 use std::{borrow::Cow, collections::BinaryHeap, io};
 
-use thiserror::Error;
-
 use crate::{byte_reader::ByteReader, grammar, pika_parser::clause::ClauseKind};
 
 pub use self::ast::AST;
@@ -16,18 +14,6 @@ use self::{
     memotable::{Match, MemoKey, MemoTable},
     preprocess::{preprocess_rules, Clauses},
 };
-
-#[derive(Error, Debug)]
-pub enum ParseError {
-    #[error("Failed to parse grammar: {0}")]
-    Grammar(String),
-
-    #[error("Failed to preprocess rules: {0}")]
-    Preprocess(String),
-
-    #[error("Failed to parse: {0}")]
-    Parse(String),
-}
 
 // https://arxiv.org/pdf/2005.06444.pdf
 #[derive(Debug)]

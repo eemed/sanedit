@@ -343,9 +343,9 @@ impl<R: io::Read> Lexer<R> {
                     Some('u') => {
                         self.advance()?;
                         let hex = self.consume_hex()?;
-                        if hex.len() != 4 {
+                        if hex.len() > 6 {
                             bail!(
-                                "Unicode escape needs to have 4 hex digits: Got {} at {}",
+                                "UTF8 escape needs to have at most 6 hex digits: Got {} at {}",
                                 hex,
                                 self.read.pos()
                             );
@@ -353,10 +353,9 @@ impl<R: io::Read> Lexer<R> {
                         let num = u32::from_str_radix(&hex, 16)?;
                         match char::from_u32(num) {
                             Some(c) => Ok(Token::Char(c)),
-                            None => bail!(
-                                "Cannot convert unicode {hex} to char at {}",
-                                self.read.pos()
-                            ),
+                            None => {
+                                bail!("Cannot convert UTF8 {hex} to char at {}", self.read.pos())
+                            }
                         }
                     }
                     Some('x') => {

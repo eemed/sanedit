@@ -2,6 +2,7 @@ use super::set::Set;
 
 pub(crate) type Addr = usize;
 
+#[derive(Debug)]
 pub(crate) enum Operation {
     Jump(Addr),
     Byte(u8),
@@ -9,7 +10,7 @@ pub(crate) enum Operation {
     Commit(Addr),
     Choice(Addr),
     Any(usize),
-    UnicodeRange(char, char),
+    UTF8Range(char, char),
     Set(Set),
     Return,
     Fail,

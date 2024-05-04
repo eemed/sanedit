@@ -44,7 +44,7 @@ constant = true / false / null;
 
 # quoted_string = quote ([\x20..\x21] / [\x23..\x5b] / [\x5d..\u00ff])* quote;
 # quoted_string = quote ([\x20..\x21] / [\x23..\x5b] / [\x5d..\xff] / [\u0080..\u00ff])* quote;
-quoted_string = quote ([^\u0000..\u0019\u0022\u005c])* quote;
+quoted_string = quote ([^\u0..\u19\u22\u5c])* quote;
 true = "true";
 false = "false";
 null = "null";

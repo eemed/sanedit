@@ -11,17 +11,17 @@ use sanedit_utils::ranges::OverlappingRanges;
 
 pub(crate) use self::rule::Annotation;
 pub(crate) use self::rule::Rule;
-pub(crate) use self::rule::RuleDefinition;
+pub(crate) use self::rule::RuleInfo;
 
 use super::lexer::Lexer;
 use super::lexer::Token;
 
-pub(crate) fn parse_rules_from_str(input: &str) -> Result<Box<[Rule]>> {
+pub(crate) fn parse_rules_from_str(input: &str) -> Result<Box<[RuleInfo]>> {
     let sinput = io::Cursor::new(input);
     parse_rules(sinput)
 }
 
-pub(crate) fn parse_rules<R: io::Read>(read: R) -> Result<Box<[Rule]>> {
+pub(crate) fn parse_rules<R: io::Read>(read: R) -> Result<Box<[RuleInfo]>> {
     let mut lex = Lexer::new(read);
     let token = lex.next()?;
     let parser = GrammarParser {
@@ -52,13 +52,13 @@ pub(crate) struct GrammarParser<R: io::Read> {
     /// Seen rules, used to identify rules that are referenced but not defined
     seen: FxHashSet<String>,
     /// All the parsed rules
-    rules: Vec<Rule>,
+    rules: Vec<RuleInfo>,
     /// Map from rule name to its index
     indices: FxHashMap<String, usize>,
 }
 
 impl<R: io::Read> GrammarParser<R> {
-    fn parse(mut self) -> Result<Box<[Rule]>> {
+    fn parse(mut self) -> Result<Box<[RuleInfo]>> {
         while self.token != Token::EOF {
             let rule = self.rule()?;
             self.seen.insert(rule.name.clone());
@@ -100,13 +100,13 @@ impl<R: io::Read> GrammarParser<R> {
 
         // Apply whitespaced
         if ws_ann {
-            use RuleDefinition::*;
+            use Rule::*;
             let i = match self.indices.get(WHITESPACE_RULE) {
                 Some(i) => *i,
                 None => bail!("WHITESPACE rule required when using annotation @whitespaced"),
             };
             let ws_rule = &self.rules[i];
-            let ws_def = ws_rule.def.clone().into();
+            let ws_def = ws_rule.rule.clone().into();
             let ws_zom = ZeroOrMore(ws_def);
 
             let len = self.rules.len();
@@ -117,9 +117,9 @@ impl<R: io::Read> GrammarParser<R> {
             }
 
             const WS_NAME: &str = "WS*";
-            self.rules.push(Rule {
+            self.rules.push(RuleInfo {
                 name: WS_NAME.into(),
-                def: ws_zom,
+                rule: ws_zom,
                 annotations: vec![],
                 top: false,
             });
@@ -159,7 +159,7 @@ impl<R: io::Read> GrammarParser<R> {
         Ok(anns)
     }
 
-    fn rule(&mut self) -> Result<Rule> {
+    fn rule(&mut self) -> Result<RuleInfo> {
         let top = self.rules.is_empty();
         let annotations = self.annotations()?;
         let name = self.text()?;
@@ -167,20 +167,20 @@ impl<R: io::Read> GrammarParser<R> {
         let def = self.rule_def()?;
         self.consume(Token::End)?;
 
-        let rule = Rule {
+        let rule = RuleInfo {
             top,
             name,
             annotations,
-            def,
+            rule: def,
         };
         Ok(rule)
     }
 
-    fn rule_def(&mut self) -> Result<RuleDefinition> {
+    fn rule_def(&mut self) -> Result<Rule> {
         self.choice()
     }
 
-    fn choice(&mut self) -> Result<RuleDefinition> {
+    fn choice(&mut self) -> Result<Rule> {
         let mut rules = vec![];
 
         loop {
@@ -207,18 +207,18 @@ impl<R: io::Read> GrammarParser<R> {
         }
 
         if rules.len() > 1 {
-            Ok(RuleDefinition::Choice(rules))
+            Ok(Rule::Choice(rules))
         } else {
             Ok(rules.pop().unwrap())
         }
     }
 
-    fn sequence(&mut self) -> Result<RuleDefinition> {
+    fn sequence(&mut self) -> Result<Rule> {
         let mut rules = vec![];
 
         loop {
             let start = self.lex.token_count();
-            match self.clause() {
+            match self.simple_rule() {
                 Ok(r) => rules.push(r),
                 Err(e) => {
                     let end = self.lex.token_count();
@@ -236,24 +236,24 @@ impl<R: io::Read> GrammarParser<R> {
         }
 
         if rules.len() > 1 {
-            Ok(RuleDefinition::Sequence(rules))
+            Ok(Rule::Sequence(rules))
         } else {
             Ok(rules.pop().unwrap())
         }
     }
 
-    fn clause(&mut self) -> Result<RuleDefinition> {
+    fn simple_rule(&mut self) -> Result<Rule> {
         // Prefix + rule
         let mut rule = match &self.token {
             Token::And => {
                 self.consume(Token::And)?;
-                let rule = self.clause()?;
-                RuleDefinition::FollowedBy(rule.into())
+                let rule = self.simple_rule()?;
+                Rule::FollowedBy(rule.into())
             }
             Token::Not => {
                 self.consume(Token::Not)?;
-                let rule = self.clause()?;
-                RuleDefinition::NotFollowedBy(rule.into())
+                let rule = self.simple_rule()?;
+                Rule::NotFollowedBy(rule.into())
             }
             Token::LParen => {
                 self.consume(Token::LParen)?;
@@ -271,28 +271,28 @@ impl<R: io::Read> GrammarParser<R> {
                 self.consume(Token::Quote)?;
                 let literal = self.text()?;
                 self.consume(Token::Quote)?;
-                RuleDefinition::ByteSequence(literal.into())
+                Rule::ByteSequence(literal.into())
             }
             Token::Any => {
                 self.consume(Token::Any)?;
-                RuleDefinition::ByteAny
+                Rule::ByteAny
             }
             Token::Text(_) => {
                 let ref_rule = self.text()?;
 
                 match self.indices.get(&ref_rule) {
-                    Some(i) => RuleDefinition::Ref(*i),
+                    Some(i) => Rule::Ref(*i),
                     None => {
                         let i = self.rules.len();
-                        let rrule = Rule {
+                        let rrule = RuleInfo {
                             name: ref_rule.clone(),
-                            def: RuleDefinition::Ref(0),
+                            rule: Rule::Ref(0),
                             annotations: vec![],
                             top: false,
                         };
                         self.indices.insert(ref_rule, i);
                         self.rules.push(rrule);
-                        RuleDefinition::Ref(i)
+                        Rule::Ref(i)
                     }
                 }
             }
@@ -303,15 +303,15 @@ impl<R: io::Read> GrammarParser<R> {
         match self.token {
             Token::ZeroOrMore => {
                 self.consume(Token::ZeroOrMore)?;
-                rule = RuleDefinition::ZeroOrMore(rule.into());
+                rule = Rule::ZeroOrMore(rule.into());
             }
             Token::OneOrMore => {
                 self.consume(Token::OneOrMore)?;
-                rule = RuleDefinition::OneOrMore(rule.into())
+                rule = Rule::OneOrMore(rule.into())
             }
             Token::Optional => {
                 self.consume(Token::Optional)?;
-                rule = RuleDefinition::Optional(rule.into());
+                rule = Rule::Optional(rule.into());
             }
             _ => {}
         }
@@ -360,7 +360,7 @@ impl<R: io::Read> GrammarParser<R> {
         }
     }
 
-    fn brackets(&mut self) -> Result<RuleDefinition> {
+    fn brackets(&mut self) -> Result<Rule> {
         let mut choices = vec![];
         let mut range = false;
         let negate = self.token == Token::Negate;
@@ -373,25 +373,23 @@ impl<R: io::Read> GrammarParser<R> {
                 Token::Byte(b) => {
                     if range {
                         range = false;
-                        let a = choices
+                        let start = choices
                             .last()
-                            .map(|r| match r {
-                                RuleDefinition::ByteSequence(c) => {
-                                    let mut iter = c.iter();
-                                    let c = iter.next()?;
-                                    if iter.next().is_some() {
-                                        None
+                            .map(|rule| match rule {
+                                Rule::ByteSequence(bytes) => {
+                                    if bytes.len() == 1 {
+                                        Some(bytes[0])
                                     } else {
-                                        Some(*c)
+                                        None
                                     }
                                 }
                                 _ => None,
                             })
                             .flatten();
-                        match a {
+                        match start {
                             Some(a) => {
                                 choices.pop();
-                                choices.push(RuleDefinition::ByteRange(a, *b));
+                                choices.push(Rule::ByteRange(a, *b));
                             }
                             None => bail!(
                                 "Tried to create range with invalid byte at: {}",
@@ -399,7 +397,7 @@ impl<R: io::Read> GrammarParser<R> {
                             ),
                         }
                     } else {
-                        choices.push(RuleDefinition::ByteSequence(vec![*b]));
+                        choices.push(Rule::ByteSequence(vec![*b]));
                     }
 
                     self.skip()?;
@@ -414,20 +412,20 @@ impl<R: io::Read> GrammarParser<R> {
                 Token::Char(ch) => {
                     if range {
                         range = false;
-                        let a = choices
+                        let start = choices
                             .last()
-                            .map(|r| match r {
-                                RuleDefinition::ByteSequence(seq) => std::str::from_utf8(seq)
+                            .map(|rule| match rule {
+                                Rule::ByteSequence(seq) => std::str::from_utf8(seq)
                                     .ok()
                                     .map(|s| s.chars().next())
                                     .flatten(),
                                 _ => None,
                             })
                             .flatten();
-                        match a {
+                        match start {
                             Some(a) => {
                                 choices.pop();
-                                choices.push(RuleDefinition::UTF8Range(a, *ch));
+                                choices.push(Rule::UTF8Range(a, *ch));
                             }
                             None => bail!(
                                 "Tried to create range with invalid character at: {}",
@@ -437,7 +435,7 @@ impl<R: io::Read> GrammarParser<R> {
                     } else {
                         let mut buf = [0; 4];
                         let utf8_ch = ch.encode_utf8(&mut buf);
-                        choices.push(RuleDefinition::ByteSequence(utf8_ch.as_bytes().into()));
+                        choices.push(Rule::ByteSequence(utf8_ch.as_bytes().into()));
                     }
 
                     self.skip()?;
@@ -456,12 +454,12 @@ impl<R: io::Read> GrammarParser<R> {
             let mut ranges = OverlappingRanges::default();
             for choice in &choices {
                 match choice {
-                    RuleDefinition::ByteSequence(seq) => {
+                    Rule::ByteSequence(bytes) => {
                         // Can be a char or byte
-                        utf8 |= seq.len() != 1;
+                        utf8 |= bytes.len() != 1;
 
                         if utf8 {
-                            match std::str::from_utf8(seq)
+                            match std::str::from_utf8(bytes)
                                 .map(|s| s.chars().next())
                                 .ok()
                                 .flatten()
@@ -471,19 +469,19 @@ impl<R: io::Read> GrammarParser<R> {
                                 }
                                 None => bail!(
                                     "Failed to convert byte sequence {:?} to utf8 character at {}",
-                                    seq,
+                                    bytes,
                                     self.lex.pos()
                                 ),
                             }
                         } else {
-                            let byte = seq[0] as usize;
+                            let byte = bytes[0] as usize;
                             ranges.add(byte..byte + 1);
                         }
                     }
-                    RuleDefinition::ByteRange(a, b) => {
+                    Rule::ByteRange(a, b) => {
                         ranges.add(*a as usize..*b as usize + 1);
                     }
-                    RuleDefinition::UTF8Range(a, b) => {
+                    Rule::UTF8Range(a, b) => {
                         utf8 = true;
                         ranges.add(*a as usize..*b as usize + 1);
                     }
@@ -499,7 +497,7 @@ impl<R: io::Read> GrammarParser<R> {
                     let end = char::from_u32(range.end as u32 - 1);
 
                     match (start, end) {
-                        (Some(a), Some(b)) => choices.push(RuleDefinition::UTF8Range(a, b)),
+                        (Some(a), Some(b)) => choices.push(Rule::UTF8Range(a, b)),
                         _ => bail!("Failed to convert ranges back to char ranges"),
                     }
                 }
@@ -507,15 +505,12 @@ impl<R: io::Read> GrammarParser<R> {
                 ranges.invert(u8::MIN as usize..u8::MAX as usize + 1);
                 choices.clear();
                 for range in ranges.iter() {
-                    choices.push(RuleDefinition::ByteRange(
-                        range.start as u8,
-                        range.end as u8,
-                    ));
+                    choices.push(Rule::ByteRange(range.start as u8, range.end as u8));
                 }
             }
         }
 
-        Ok(RuleDefinition::Choice(choices))
+        Ok(Rule::Choice(choices))
     }
 }
 
@@ -523,11 +518,11 @@ impl<R: io::Read> GrammarParser<R> {
 mod test {
     use super::*;
 
-    fn print_rules(rules: &[Rule]) -> String {
+    fn print_rules(rules: &[RuleInfo]) -> String {
         let mut result = String::new();
 
         for (i, rule) in rules.iter().enumerate() {
-            let srule = format!("{i}: {}: {};\n", &rule.name, &rule.def);
+            let srule = format!("{i}: {}: {};\n", &rule.name, &rule.rule);
             result.push_str(&srule);
         }
         result

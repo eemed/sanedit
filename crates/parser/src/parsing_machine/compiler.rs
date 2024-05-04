@@ -1,35 +1,88 @@
 use rustc_hash::FxHashMap;
 
 use crate::{
-    grammar::{self, Rule, RuleDefinition},
+    grammar::{self, Rule, RuleInfo},
     parsing_machine::set::Set,
 };
 
 use super::op::Operation;
 
+pub(crate) struct Program {
+    pub(crate) program: Vec<Operation>,
+    names: FxHashMap<usize, String>,
+}
+
+impl std::fmt::Debug for Program {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for (i, op) in self.program.iter().enumerate() {
+            write!(f, "{i}: {op:?} ")?;
+
+            if let Some(name) = self.names.get(&i) {
+                write!(f, " <- {name}")?;
+            }
+            writeln!(f, "")?;
+        }
+
+        Ok(())
+    }
+}
+
 pub(crate) struct Compiler<'a> {
     program: Vec<Operation>,
-    map: FxHashMap<usize, usize>,
-    rules: &'a [Rule],
+    call_sites: Vec<(usize, usize)>,
+    rules: &'a [RuleInfo],
 }
 
 impl<'a> Compiler<'a> {
-    pub fn new(rules: &[Rule]) -> Compiler {
+    pub fn new(rules: &[RuleInfo]) -> Compiler {
         Compiler {
             program: Vec::new(),
-            map: FxHashMap::default(),
+            call_sites: Vec::new(),
             rules,
         }
     }
 
-    pub(crate) fn compile(mut self) -> Vec<Operation> {
-        for rule in self.rules {
-            if rule.top {
-                self.compile_rec(&rule.def);
+    pub(crate) fn compile(mut self) -> Program {
+        let top = {
+            let mut result = 0;
+            for (i, rule) in self.rules.iter().enumerate() {
+                if rule.top {
+                    result = i;
+                    break;
+                }
             }
+
+            result
+        };
+
+        // Push top rule call
+        let site = self.push(Operation::Call(0));
+        self.call_sites.push((top, site));
+        self.push(Operation::End);
+
+        let mut compile_addrs = vec![0; self.rules.len()];
+
+        // Compile all the other rules
+        for (i, rule) in self.rules.iter().enumerate() {
+            compile_addrs[i] = self.program.len();
+            self.compile_rec(&rule.rule);
+            self.push(Operation::Return);
         }
 
-        self.program
+        // Program addresses to names mapping
+        let mut names = FxHashMap::default();
+
+        // Set all call sites to their function addresses
+        for (rule, site) in &self.call_sites {
+            let addr = compile_addrs[*rule];
+            self.program[*site] = Operation::Call(addr);
+            names.insert(addr, self.rules[*rule].name.clone());
+        }
+
+        Program {
+            program: self.program,
+            names,
+        }
     }
 
     fn push(&mut self, op: Operation) -> usize {
@@ -37,7 +90,7 @@ impl<'a> Compiler<'a> {
         self.program.len() - 1
     }
 
-    fn compile_choice_rec(&mut self, rule: &RuleDefinition, rest: &[RuleDefinition]) {
+    fn compile_choice_rec(&mut self, rule: &Rule, rest: &[Rule]) {
         //     Choice L1
         //     <rule 1>
         //     Commit L2
@@ -59,8 +112,8 @@ impl<'a> Compiler<'a> {
         self.program[commit] = Operation::Commit(self.program.len());
     }
 
-    fn compile_rec(&mut self, rule: &RuleDefinition) {
-        use grammar::RuleDefinition::*;
+    fn compile_rec(&mut self, rule: &Rule) {
+        use grammar::Rule::*;
 
         match rule {
             Optional(rule) => {
@@ -71,13 +124,13 @@ impl<'a> Compiler<'a> {
                 self.program[choice] = Operation::Choice(next);
             }
             ZeroOrMore(rule) => {
-                // L1: Choice L2
-                //     <rule>
+                //     Choice L2
+                // L1: <rule>
                 //     PartialCommit L1
                 // L2: ...
                 let choice = self.push(Operation::Choice(0));
                 self.compile_rec(rule);
-                self.push(Operation::PartialCommit(choice));
+                self.push(Operation::PartialCommit(choice + 1));
                 let next = self.program.len();
                 self.program[choice] = Operation::Choice(next);
             }
@@ -94,7 +147,7 @@ impl<'a> Compiler<'a> {
             }
             Choice(rules) => {
                 let (first, rest) = rules.split_first().unwrap();
-                self.compile_choice_rec(first, rest)
+                self.compile_choice_rec(first, rest);
             }
             Sequence(rules) => {
                 for rule in rules {
@@ -123,40 +176,22 @@ impl<'a> Compiler<'a> {
                 }
             }
             UTF8Range(a, b) => {
-                let mut autf = [0; 4];
-                let mut butf = [0; 4];
-
-                a.encode_utf8(&mut autf);
-                b.encode_utf8(&mut butf);
-
-                match (a.len_utf8(), b.len_utf8()) {
-                    (1, 1) => {
-                        let mut set = Set::new();
-                        for i in autf[0]..butf[0] {
-                            set.add(i);
-                        }
-
-                        self.push(Operation::Set(set));
-                    }
-                    _ => {
-                        // TODO
-                    }
-                }
+                self.push(Operation::UTF8Range(*a, *b));
             }
-            Ref(idx) => match self.map.get(&idx) {
-                Some(i) => {
-                    self.push(Operation::Call(*i));
+            Ref(idx) => {
+                let site = self.push(Operation::Call(0));
+                self.call_sites.push((*idx, site));
+            }
+            ByteRange(a, b) => {
+                let mut set = Set::new();
+                for i in *a..=*b {
+                    set.add(i);
                 }
-                None => {
-                    let next = self.program.len();
-                    self.map.insert(*idx, next);
-                    let rule = &self.rules[*idx];
-                    self.compile_rec(&rule.def);
-                }
-            },
-            ByteRange(_, _) => todo!(),
-            ByteAny => todo!(),
-            UTF8Any => todo!(),
+                self.push(Operation::Set(set));
+            }
+            ByteAny => {
+                self.push(Operation::Set(Set::any()));
+            }
         }
     }
 }
@@ -165,17 +200,46 @@ impl<'a> Compiler<'a> {
 mod test {
     use super::*;
 
+    fn print_ops(ops: &[Operation]) {
+        println!("------ Operations ---------");
+        for (i, op) in ops.iter().enumerate() {
+            println!("{i}: {op:?}");
+        }
+    }
+
     #[test]
-    fn compiler() {
+    fn compile_json() {
         let peg = include_str!("../../pegs/json.peg");
         let rules = grammar::parse_rules(std::io::Cursor::new(peg)).unwrap();
 
         let mut compiler = Compiler::new(&rules);
-        compiler.compile();
+        let program = compiler.compile();
+        println!("Prog: {program:?}");
+    }
 
-        // let parser = PikaParser::from_str(peg).unwrap();
-        // let input = " {\"account\":\"bon\",\n\"age\":3.2, \r\n\"children\" : [  1, 2,3], \"allow-children\": true } ";
-        // let ast = parser.parse(input).unwrap();
-        // ast.print(input);
+    #[test]
+    fn compile_brackets() {
+        let peg = "WHITESPACE = [ \\t\\r\\n];";
+        let rules = grammar::parse_rules(std::io::Cursor::new(peg)).unwrap();
+
+        let mut compiler = Compiler::new(&rules);
+        let program = compiler.compile();
+
+        println!("Prog: {program:?}");
+    }
+
+    #[test]
+    fn compile_small() {
+        let peg = "
+            document = _ value _;
+            WHITESPACE = [ \\t\\r\\n];
+            _ = WHITESPACE*;
+            value = \"abba\";
+            ";
+        let rules = grammar::parse_rules(std::io::Cursor::new(peg)).unwrap();
+
+        let mut compiler = Compiler::new(&rules);
+        let program = compiler.compile();
+        println!("Prog: {program:?}");
     }
 }

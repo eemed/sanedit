@@ -13,6 +13,10 @@ pub trait ByteReader {
 
     fn iter(&self, range: Range<usize>) -> Self::I;
 
+    fn at(&self, at: usize) -> u8 {
+        self.iter(at..at + 1).next().unwrap()
+    }
+
     fn matches(&self, at: usize, exp: &[u8]) -> bool {
         let max = min(at + exp.len(), self.len());
         let mut bytes = self.iter(at..max);

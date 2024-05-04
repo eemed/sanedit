@@ -7,6 +7,12 @@ pub(crate) struct Set {
 }
 
 impl Set {
+    pub fn any() -> Set {
+        Set {
+            inner: bitarr![u32, Lsb0; u32::MAX; 256],
+        }
+    }
+
     pub fn new() -> Set {
         Set {
             inner: bitarr![u32, Lsb0; 0; 256],
@@ -31,5 +37,26 @@ impl Index<usize> for Set {
 
     fn index(&self, index: usize) -> &Self::Output {
         &self.inner[index]
+    }
+}
+
+impl std::fmt::Debug for Set {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("[")?;
+        let mut first = true;
+        for i in 0..256 {
+            if !self.inner[i] {
+                continue;
+            }
+
+            if first {
+                write!(f, "{i}")?;
+            } else {
+                write!(f, " {i}")?;
+            }
+
+            first = false;
+        }
+        f.write_str("]")
     }
 }

@@ -1,5 +1,5 @@
 use std::{
-    cmp::min,
+    cmp::{max, min},
     ops::Range,
     path::{Path, PathBuf},
     sync::Arc,
@@ -78,8 +78,13 @@ impl Syntax {
         mut view: Range<usize>,
         kill: broadcast::Receiver<()>,
     ) -> anyhow::Result<SyntaxParseResult> {
-        const MAX_HORIZON: usize = 1024 * 32;
-        view.start = view.start.saturating_sub(MAX_HORIZON);
+        // TODO try to match these to newlines
+        const HORIZON_TOP: usize = 1024 * 32;
+        const HORIZON_BOTTOM: usize = 1024;
+
+        view.start = view.start.saturating_sub(HORIZON_TOP);
+        view.end = min(ropt.len(), view.end + HORIZON_BOTTOM);
+
         let start = view.start;
         let slice = ropt.slice(view);
 
@@ -101,8 +106,6 @@ impl Syntax {
                 }
             })
             .collect();
-
-        log::info!("Spans: {:?}", spans);
 
         Ok(SyntaxParseResult {
             bid,

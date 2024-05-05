@@ -11,7 +11,7 @@ use std::io;
 use anyhow::bail;
 
 use crate::{
-    grammar::{self, RuleInfo},
+    grammar,
     parsing_machine::{
         compiler::Compiler,
         stack::{Stack, StackEntry},
@@ -43,9 +43,13 @@ impl Parser {
             .map_err(|err| ParseError::Preprocess(err.to_string()))?;
         // println!("---- Prgoram ----");
         // println!("{:?}", program);
+        let labels = rules
+            .into_iter()
+            .map(|rinfo| rinfo.display_name().into())
+            .collect();
 
         let parser = Parser {
-            labels: rules.into_iter().map(|rinfo| rinfo.name.clone()).collect(),
+            labels,
             program: program.program,
         };
         Ok(parser)
@@ -140,22 +144,21 @@ impl Parser {
                     }
                 },
                 Set(set) => {
-                    let sbyte = reader.at(sp);
-                    if set[sbyte] {
+                    if sp < slen && set[reader.at(sp)] {
                         ip += 1;
                         sp += 1;
                     } else {
                         state = State::Failure;
                     }
                 }
-                Return => match stack.pop().unwrap() {
-                    StackEntry::Return {
+                Return => match stack.pop_and_prop(&mut global_captures) {
+                    Some(StackEntry::Return {
                         addr, mut captures, ..
-                    } => {
+                    }) => {
                         ip = addr;
                         global_captures.append(&mut captures);
                     }
-                    _ => bail!("Invalid stack entry pop at return"),
+                    e => bail!("Invalid stack entry pop at return: {e:?}"),
                 },
                 Fail => {
                     state = State::Failure;
@@ -170,7 +173,7 @@ impl Parser {
                                 captures: vec![],
                             })
                         }
-                        _ => bail!("Invalid stack entry pop at partial commit"),
+                        e => bail!("Invalid stack entry pop at partial commit: {e:?}"),
                     }
 
                     ip = *l;
@@ -189,9 +192,9 @@ impl Parser {
                 End => return Ok(global_captures),
                 EndFail => bail!("Parsing failed"),
                 BackCommit(l) => {
-                    match stack.pop().unwrap() {
-                        StackEntry::Backtrack { spos, .. } => sp = spos,
-                        _ => bail!("Invalid stack entry pop at back commit"),
+                    match stack.pop_and_prop(&mut global_captures) {
+                        Some(StackEntry::Backtrack { spos, .. }) => sp = spos,
+                        e => bail!("Invalid stack entry pop at back commit: {e:?}"),
                     }
                     ip = *l;
                 }
@@ -205,8 +208,8 @@ impl Parser {
                     ip += 1;
                 }
                 CaptureEnd => {
-                    match stack.pop().unwrap() {
-                        StackEntry::Capture { mut capture } => {
+                    match stack.pop() {
+                        Some(StackEntry::Capture { mut capture }) => {
                             capture.len = sp - capture.start;
 
                             let cap_list = stack
@@ -216,7 +219,7 @@ impl Parser {
 
                             cap_list.push(capture);
                         }
-                        _ => bail!("Invalid stack entry pop at capture end"),
+                        e => bail!("Invalid stack entry pop at capture end: {e:?}"),
                     }
                     ip += 1;
                 }
@@ -237,30 +240,62 @@ mod test {
 
         let parser = Parser::new(std::io::Cursor::new(peg)).unwrap();
         let result = parser.parse(content);
-
-        match result {
-            Ok(_) => println!("accepted"),
-            Err(_) => println!("declined"),
-        }
+        assert!(result.is_ok(), "Parse failed with {result:?}");
     }
 
     #[test]
-    fn parse_simple() {
-        let peg = "
-            document = _ value _;
-            WHITESPACE = [ \\t\\r\\n];
-            _ = WHITESPACE*;
-            @show
-            value = \"abba\";
-            ";
-
-        let content = "\r\nabba";
+    fn parse_toml() {
+        let peg = include_str!("../pegs/toml.peg");
+        let content = include_str!("../benches/sample.toml");
 
         let parser = Parser::new(std::io::Cursor::new(peg)).unwrap();
         let result = parser.parse(content);
-        match result {
-            Ok(_) => println!("accepted"),
-            Err(_) => println!("declined"),
-        }
+        assert!(result.is_ok(), "Parse failed with {result:?}");
+    }
+
+    #[test]
+    fn parse_simple_1() {
+        let peg = "
+            name            = (!space !nl .)+;
+            space           = [ \\t];
+            nl              = \"\\r\\n\" / \"\\r\" / \"\\n\";
+            ";
+
+        let content = "abba";
+
+        let parser = Parser::new(std::io::Cursor::new(peg)).unwrap();
+        let result = parser.parse(content);
+        assert!(result.is_ok(), "Parse failed with {result:?}");
+    }
+
+    #[test]
+    fn parse_simple_2() {
+        let peg = "
+            string          = \"\\\"\" (\"\\\\\" escape_char / [^\"])* \"\\\"\";
+            escape_char     = \"0\" / \"t\" / \"n\" / \"r\" / \"\\\"\" / \"\\\\\";
+            ";
+
+        println!("{peg}");
+        let content = "\"registry+https://github.com/rust-lang/crates.io-index\"";
+
+        let parser = Parser::new(std::io::Cursor::new(peg)).unwrap();
+        let result = parser.parse(content);
+        assert!(result.is_ok(), "Parse failed with {result:?}");
+    }
+
+    #[test]
+    fn parse_not_followed() {
+        let peg = "
+
+            line_end        = comment? !(!nl .);
+            nl              = \"\\r\\n\" / \"\\r\" / \"\\n\";
+            comment         = \"#\" (!nl .)*;
+            ";
+
+        let content = "# abba\n";
+
+        let parser = Parser::new(std::io::Cursor::new(peg)).unwrap();
+        let result = parser.parse(content);
+        assert!(result.is_ok(), "Parse failed with {result:?}");
     }
 }

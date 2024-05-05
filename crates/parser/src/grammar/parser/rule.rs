@@ -16,6 +16,17 @@ pub(crate) struct RuleInfo {
 }
 
 impl RuleInfo {
+    pub fn display_name(&self) -> &str {
+        for ann in &self.annotations {
+            match ann {
+                Annotation::Show(Some(name)) => return name.as_str(),
+                _ => {}
+            }
+        }
+
+        &self.name
+    }
+
     pub fn show(&self) -> bool {
         self.annotations
             .iter()

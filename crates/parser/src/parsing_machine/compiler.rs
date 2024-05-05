@@ -157,7 +157,7 @@ impl<'a> Compiler<'a> {
                 // Zero or more
                 let choice = self.push(Operation::Choice(0));
                 self.compile_rec(rule);
-                self.push(Operation::PartialCommit(choice));
+                self.push(Operation::PartialCommit(choice + 1));
                 let next = self.program.len();
                 self.program[choice] = Operation::Choice(next);
             }
@@ -185,6 +185,13 @@ impl<'a> Compiler<'a> {
                 self.push(Operation::FailTwice);
                 let next = self.program.len();
                 self.program[choice] = Operation::Choice(next);
+
+                // let choice = self.push(Operation::Choice(0));
+                // self.compile_rec(rule);
+                // let next = self.program.len();
+                // self.push(Operation::Commit(next + 1));
+                // self.push(Operation::Fail);
+                // self.program[choice] = Operation::Choice(self.program.len());
             }
             ByteSequence(seq) => {
                 for byte in seq {
@@ -229,7 +236,17 @@ mod test {
         let rules = grammar::parse_rules(std::io::Cursor::new(peg)).unwrap();
 
         let mut compiler = Compiler::new(&rules);
-        let program = compiler.compile();
+        let program = compiler.compile().unwrap();
+        println!("{program:?}");
+    }
+
+    #[test]
+    fn compile_toml() {
+        let peg = include_str!("../../pegs/toml.peg");
+        let rules = grammar::parse_rules(std::io::Cursor::new(peg)).unwrap();
+
+        let mut compiler = Compiler::new(&rules);
+        let program = compiler.compile().unwrap();
         println!("{program:?}");
     }
 

@@ -505,7 +505,7 @@ impl<R: io::Read> GrammarParser<R> {
                 ranges.invert(u8::MIN as usize..u8::MAX as usize + 1);
                 choices.clear();
                 for range in ranges.iter() {
-                    choices.push(Rule::ByteRange(range.start as u8, range.end as u8));
+                    choices.push(Rule::ByteRange(range.start as u8, (range.end - 1) as u8));
                 }
             }
         }

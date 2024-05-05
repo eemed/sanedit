@@ -1,0 +1,77 @@
+document        = key_group*;
+
+key_group       = header_line? value_line+ ignore;
+
+header_line     = ignore "["+ key_name "]"+ line_end;
+
+@show(identifier)
+key_name        = key_segment ("." key_segment)*;
+key_segment     = [^\[\]\.\n\r]+;
+
+value_line      = ignore name ws "=" ws value line_end;
+name            = (!space !nl .)+;
+value           = string / datetime / float / integer / boolean / array / object;
+
+array           = (empty_array / string_array / datetime_array / float_array / integer_array / boolean_array / array_array);
+
+@show
+string          = "\"" ("\\" escape_char / [^"])* "\"";
+
+escape_char     = "0" / "t" / "n" / "r" / "\"" / "\\";
+digit           = [0..9];
+
+@show(number)
+integer         = "-"? [1..9] digit*;
+
+@show(number)
+float           = integer "." digit+;
+
+@show(constant)
+boolean         = ("true" / "false");
+datetime        = ([1..9] digit digit digit) "-"
+                   (digit digit) "-"
+                   (digit digit) "T"
+                   (digit digit) ":"
+                   (digit digit) ":"
+                   (digit digit)
+                   ("." digit+)?
+                   "Z";
+
+@whitespaced
+object           = "{" object_value? ("," object_value)* ","? "}";
+
+@whitespaced
+object_value = name "=" value;
+
+@whitespaced
+empty_array     = "[" "]";
+
+@whitespaced
+string_array    = "[" string   ("," string)*  ","? "]";
+
+@whitespaced
+integer_array   = "[" integer  ("," integer)* ","? "]";
+
+@whitespaced
+float_array     = "[" float    ("," float)*   ","? "]";
+
+@whitespaced
+boolean_array   = "[" boolean  ("," boolean)*  ","? "]";
+
+@whitespaced
+datetime_array  = "[" datetime ("," datetime)* ","? "]";
+
+@whitespaced
+array_array     = "[" array ("," array)*  ","? "]";
+
+line_end        = ws comment? !(!nl .);
+ignore          = (comment / space / nl)*;
+
+
+ws              = space*;
+WHITESPACE      = space / nl;
+space           = [ \t];
+
+@show
+comment         = "#" (!nl .)*;
+nl              = "\r\n" / "\r" / "\n";

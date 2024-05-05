@@ -107,4 +107,10 @@ impl Stack {
     pub fn last_mut(&mut self) -> Option<&mut StackEntry> {
         self.stack.last_mut()
     }
+
+    pub fn print(&self) {
+        for (i, op) in self.stack.iter().rev().enumerate() {
+            println!("{i}: {op:?}");
+        }
+    }
 }

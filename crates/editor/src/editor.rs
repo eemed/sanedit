@@ -337,7 +337,6 @@ impl Editor {
 
     /// redraw a window
     fn redraw_client(&mut self, id: ClientId) {
-        log::info!("rd client");
         run(self, id, Hook::OnDrawPre);
 
         let draw = self

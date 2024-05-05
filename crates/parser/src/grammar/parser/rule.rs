@@ -16,6 +16,12 @@ pub(crate) struct RuleInfo {
 }
 
 impl RuleInfo {
+    pub fn show(&self) -> bool {
+        self.annotations
+            .iter()
+            .any(|ann| matches!(ann, Annotation::Show(_)))
+    }
+
     pub fn apply_whitespaced(&mut self, ws: usize) {
         fn repetition_insert_head(rule: &mut Rule, ws: usize) {
             use Rule::*;

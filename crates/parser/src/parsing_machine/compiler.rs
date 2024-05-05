@@ -64,8 +64,23 @@ impl<'a> Compiler<'a> {
 
         // Compile all the other rules
         for (i, rule) in self.rules.iter().enumerate() {
+            let show = rule.show();
+
             compile_addrs[i] = self.program.len();
+
+            // Add capture if we want to show this in AST
+            if show {
+                self.push(Operation::CaptureBegin(i));
+            }
+
+            // Compile the rule
             self.compile_rec(&rule.rule);
+
+            if show {
+                self.push(Operation::CaptureEnd);
+            }
+
+            // Add a return op
             self.push(Operation::Return);
         }
 
@@ -214,7 +229,7 @@ mod test {
 
         let mut compiler = Compiler::new(&rules);
         let program = compiler.compile();
-        println!("Prog: {program:?}");
+        println!("{program:?}");
     }
 
     #[test]
@@ -225,7 +240,7 @@ mod test {
         let mut compiler = Compiler::new(&rules);
         let program = compiler.compile();
 
-        println!("Prog: {program:?}");
+        println!("{program:?}");
     }
 
     #[test]
@@ -234,12 +249,13 @@ mod test {
             document = _ value _;
             WHITESPACE = [ \\t\\r\\n];
             _ = WHITESPACE*;
+            @show
             value = \"abba\";
             ";
         let rules = grammar::parse_rules(std::io::Cursor::new(peg)).unwrap();
 
         let mut compiler = Compiler::new(&rules);
         let program = compiler.compile();
-        println!("Prog: {program:?}");
+        println!("{program:?}");
     }
 }

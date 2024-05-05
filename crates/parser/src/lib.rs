@@ -12,7 +12,7 @@ use thiserror::Error;
 // pub use pika_parser::PikaParser;
 // pub use pika_parser::AST;
 
-pub use parsing_machine::Parser;
+pub use parsing_machine::*;
 
 #[derive(Error, Debug)]
 pub enum ParseError {

@@ -1,6 +1,6 @@
 use super::set::Set;
 
-pub(crate) type CaptureID = usize;
+pub type CaptureID = usize;
 pub(crate) type Addr = usize;
 
 #[derive(Debug)]

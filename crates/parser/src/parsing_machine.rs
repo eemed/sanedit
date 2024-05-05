@@ -3,13 +3,18 @@ mod op;
 mod set;
 mod stack;
 
+pub use self::op::CaptureID;
+pub use self::stack::{Capture, CaptureList};
+
 use std::io;
 
+use anyhow::bail;
+
 use crate::{
-    grammar,
+    grammar::{self, RuleInfo},
     parsing_machine::{
         compiler::Compiler,
-        stack::{Capture, CaptureList, Stack, StackEntry},
+        stack::{Stack, StackEntry},
     },
     ByteReader, ParseError,
 };
@@ -24,6 +29,7 @@ enum State {
 
 #[derive(Debug)]
 pub struct Parser {
+    labels: Box<[String]>,
     program: Vec<Operation>,
 }
 
@@ -32,24 +38,29 @@ impl Parser {
         let rules =
             grammar::parse_rules(read).map_err(|err| ParseError::Grammar(err.to_string()))?;
         let compiler = Compiler::new(&rules);
-        let program = compiler.compile();
-        println!("---- Prgoram ----");
-        println!("{:?}", program);
+        let program = compiler
+            .compile()
+            .map_err(|err| ParseError::Preprocess(err.to_string()))?;
+        // println!("---- Prgoram ----");
+        // println!("{:?}", program);
 
         let parser = Parser {
+            labels: rules.into_iter().map(|rinfo| rinfo.name.clone()).collect(),
             program: program.program,
         };
         Ok(parser)
     }
-    pub fn parse<B: ByteReader>(&self, reader: B) -> bool {
-        let captures = self.parse_impl(reader);
 
-        println!("---- Captures ----");
-        println!("{captures:?}");
-        captures.is_some()
+    pub fn label_for(&self, id: CaptureID) -> &str {
+        &self.labels[id]
     }
 
-    fn parse_impl<B: ByteReader>(&self, reader: B) -> Option<CaptureList> {
+    pub fn parse<B: ByteReader>(&self, reader: B) -> Result<CaptureList, ParseError> {
+        self.do_parse(reader)
+            .map_err(|err| ParseError::Parse(err.to_string()))
+    }
+
+    fn do_parse<B: ByteReader>(&self, reader: B) -> anyhow::Result<CaptureList> {
         use Operation::*;
 
         let slen = reader.len();
@@ -71,14 +82,14 @@ impl Parser {
                             state = State::Normal;
                             break;
                         }
-                        None => return None,
+                        None => bail!("In failure state and backtrack stack is empty"),
                         _ => {}
                     }
                 }
             }
 
             let op = &self.program[ip];
-            println!("ip: {ip}, sp: {sp}, op: {op:?}");
+            // println!("ip: {ip}, sp: {sp}, op: {op:?}");
 
             match op {
                 Jump(l) => {
@@ -144,7 +155,7 @@ impl Parser {
                         ip = addr;
                         global_captures.append(&mut captures);
                     }
-                    _ => unreachable!("Invalid stack entry pop at return"),
+                    _ => bail!("Invalid stack entry pop at return"),
                 },
                 Fail => {
                     state = State::Failure;
@@ -159,7 +170,7 @@ impl Parser {
                                 captures: vec![],
                             })
                         }
-                        _ => unreachable!("Invalid stack entry pop at partial commit"),
+                        _ => bail!("Invalid stack entry pop at partial commit"),
                     }
 
                     ip = *l;
@@ -175,12 +186,12 @@ impl Parser {
 
                     ip += 1;
                 }
-                End => return Some(global_captures),
-                EndFail => return None,
+                End => return Ok(global_captures),
+                EndFail => bail!("Parsing failed"),
                 BackCommit(l) => {
                     match stack.pop().unwrap() {
                         StackEntry::Backtrack { spos, .. } => sp = spos,
-                        _ => unreachable!("Invalid stack entry pop at back commit"),
+                        _ => bail!("Invalid stack entry pop at back commit"),
                     }
                     ip = *l;
                 }
@@ -189,14 +200,13 @@ impl Parser {
                         id: *id,
                         start: sp,
                         len: 0,
-                        captures: vec![],
+                        sub_captures: vec![],
                     });
                     ip += 1;
                 }
                 CaptureEnd => {
                     match stack.pop().unwrap() {
                         StackEntry::Capture { mut capture } => {
-                            println!("Stack top: {:?}", stack.last_mut());
                             capture.len = sp - capture.start;
 
                             let cap_list = stack
@@ -206,12 +216,11 @@ impl Parser {
 
                             cap_list.push(capture);
                         }
-                        _ => unreachable!("Invalid stack entry pop at capture end"),
+                        _ => bail!("Invalid stack entry pop at capture end"),
                     }
-                    println!("Stack top after: {:?}", stack.last_mut());
                     ip += 1;
                 }
-                _ => unreachable!(),
+                _ => bail!("Unsupported operation {op:?}"),
             }
         }
     }
@@ -229,10 +238,9 @@ mod test {
         let parser = Parser::new(std::io::Cursor::new(peg)).unwrap();
         let result = parser.parse(content);
 
-        if result {
-            println!("accepted");
-        } else {
-            println!("declined");
+        match result {
+            Ok(_) => println!("accepted"),
+            Err(_) => println!("declined"),
         }
     }
 
@@ -250,6 +258,9 @@ mod test {
 
         let parser = Parser::new(std::io::Cursor::new(peg)).unwrap();
         let result = parser.parse(content);
-        println!("Result: {result}");
+        match result {
+            Ok(_) => println!("accepted"),
+            Err(_) => println!("declined"),
+        }
     }
 }

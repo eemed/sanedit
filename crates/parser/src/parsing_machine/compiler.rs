@@ -3,6 +3,7 @@ use rustc_hash::FxHashMap;
 use crate::{
     grammar::{self, Rule, RuleInfo},
     parsing_machine::set::Set,
+    ParseError,
 };
 
 use super::op::Operation;
@@ -42,7 +43,7 @@ impl<'a> Compiler<'a> {
         }
     }
 
-    pub(crate) fn compile(mut self) -> Program {
+    pub(crate) fn compile(mut self) -> anyhow::Result<Program> {
         let top = {
             let mut result = 0;
             for (i, rule) in self.rules.iter().enumerate() {
@@ -94,10 +95,10 @@ impl<'a> Compiler<'a> {
             names.insert(addr, self.rules[*rule].name.clone());
         }
 
-        Program {
+        Ok(Program {
             program: self.program,
             names,
-        }
+        })
     }
 
     fn push(&mut self, op: Operation) -> usize {

@@ -1,14 +1,42 @@
+use std::ops::Range;
+
 use super::op::{Addr, CaptureID};
 
 pub(crate) type SubjectPosition = usize;
-pub(crate) type CaptureList = Vec<Capture>;
+pub type CaptureList = Vec<Capture>;
 
 #[derive(Debug, Clone)]
-pub(crate) struct Capture {
+pub struct Capture {
     pub(crate) id: CaptureID,
     pub(crate) start: SubjectPosition,
     pub(crate) len: usize,
-    pub(crate) captures: CaptureList,
+    pub(crate) sub_captures: CaptureList,
+}
+
+impl Capture {
+    pub fn id(&self) -> CaptureID {
+        self.id
+    }
+
+    pub fn range(&self) -> Range<usize> {
+        self.start..self.start + self.len
+    }
+
+    pub fn sub_captures(&self) -> &CaptureList {
+        &self.sub_captures
+    }
+
+    pub fn flatten(&self) -> CaptureList {
+        let mut result = Vec::with_capacity(4096);
+
+        result.push(self.clone());
+
+        for cap in &self.sub_captures {
+            result.append(&mut cap.flatten());
+        }
+
+        result
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -36,7 +64,7 @@ impl StackEntry {
             StackEntry::Backtrack {
                 ref mut captures, ..
             } => captures,
-            StackEntry::Capture { capture } => &mut capture.captures,
+            StackEntry::Capture { capture } => &mut capture.sub_captures,
         }
     }
 }

@@ -7,7 +7,6 @@ use std::{
 
 use rustc_hash::FxHashMap;
 use sanedit_buffer::ReadOnlyPieceTree;
-use sanedit_parser::AST;
 use tokio::sync::broadcast;
 
 use crate::{
@@ -80,24 +79,30 @@ impl Syntax {
         kill: broadcast::Receiver<()>,
     ) -> anyhow::Result<SyntaxParseResult> {
         const MAX_HORIZON: usize = 1024 * 32;
-        view.end = min(view.end + MAX_HORIZON, ropt.len());
+        view.start = view.start.saturating_sub(MAX_HORIZON);
         let start = view.start;
         let slice = ropt.slice(view);
 
-        let ast = self.grammar.parse(&slice, kill)?;
-        // log::debug!("{}", ast.print_string(&String::from(&slice)));
-        let spans = ast
-            .flatten()
+        let captures = self.grammar.parse(&slice, kill)?;
+        let spans: Vec<Span> = captures
             .into_iter()
-            .map(|ast| {
-                let name = ast.name().to_string();
-                let mut range = ast.range();
+            .rev()
+            .map(|cap| cap.flatten())
+            .flatten()
+            .map(|cap| {
+                let name = self.grammar.label_for(cap.id());
+                let mut range = cap.range();
                 range.start += start;
                 range.end += start;
 
-                Span { name, range }
+                Span {
+                    name: name.into(),
+                    range,
+                }
             })
             .collect();
+
+        log::info!("Spans: {:?}", spans);
 
         Ok(SyntaxParseResult {
             bid,

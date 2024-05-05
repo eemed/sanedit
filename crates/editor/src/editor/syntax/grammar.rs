@@ -2,12 +2,12 @@ use std::{fs::File, path::Path};
 
 use anyhow::bail;
 use sanedit_buffer::{Bytes, PieceTreeSlice};
-use sanedit_parser::{ByteReader, PikaParser, AST};
+use sanedit_parser::{ByteReader, Capture, CaptureID, CaptureList, Parser};
 use tokio::sync::broadcast;
 
 #[derive(Debug)]
 pub(crate) struct Grammar {
-    parser: PikaParser,
+    parser: Parser,
 }
 
 impl Grammar {
@@ -17,17 +17,21 @@ impl Grammar {
             Err(e) => bail!("Failed to read PEG file: {:?}", peg),
         };
 
-        match PikaParser::new(file) {
+        match Parser::new(file) {
             Ok(p) => Ok(Grammar { parser: p }),
             Err(e) => bail!("Failed to create grammar from PEG file: {:?}: {e}", peg),
         }
+    }
+
+    pub fn label_for(&self, id: CaptureID) -> &str {
+        self.parser.label_for(id)
     }
 
     pub fn parse(
         &self,
         slice: &PieceTreeSlice,
         kill: broadcast::Receiver<()>,
-    ) -> Result<AST, sanedit_parser::ParseError> {
+    ) -> Result<CaptureList, sanedit_parser::ParseError> {
         let reader = PTReader {
             pt: slice.clone(),
             kill,

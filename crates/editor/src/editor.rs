@@ -308,7 +308,7 @@ impl Editor {
 
                 if let Some(ft) = buf.filetype.clone() {
                     match self.syntaxes.get(&ft) {
-                        Ok(s) => match s.parse(bid, &ropt, range, r) {
+                        Ok(syntax) => match syntax.parse(bid, &ropt, range, r) {
                             Ok(res) => {
                                 let (win, _buf) = self.win_buf_mut(id);
                                 *win.syntax_result() = res;

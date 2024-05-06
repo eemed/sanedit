@@ -1,5 +1,5 @@
 use std::{
-    cmp::{max, min},
+    cmp::min,
     ops::Range,
     path::{Path, PathBuf},
     sync::Arc,
@@ -79,8 +79,10 @@ impl Syntax {
         kill: broadcast::Receiver<()>,
     ) -> anyhow::Result<SyntaxParseResult> {
         // TODO try to match these to newlines
-        const HORIZON_TOP: usize = 1024 * 32;
-        const HORIZON_BOTTOM: usize = 1024;
+        // const HORIZON_TOP: usize = 1024 * 32;
+        // const HORIZON_BOTTOM: usize = 1024;
+        const HORIZON_TOP: usize = 0;
+        const HORIZON_BOTTOM: usize = 0;
 
         view.start = view.start.saturating_sub(HORIZON_TOP);
         view.end = min(ropt.len(), view.end + HORIZON_BOTTOM);

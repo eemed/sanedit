@@ -113,4 +113,10 @@ impl Stack {
             println!("{i}: {op:?}");
         }
     }
+
+    pub fn log(&self) {
+        for (i, op) in self.stack.iter().rev().enumerate() {
+            log::info!("{i}: {op:?}");
+        }
+    }
 }

@@ -41,8 +41,8 @@ impl Parser {
         let program = compiler
             .compile()
             .map_err(|err| ParseError::Preprocess(err.to_string()))?;
-        // println!("---- Prgoram ----");
-        // println!("{:?}", program);
+        log::info!("---- Prgoram ----");
+        log::info!("{:?}", program);
         let labels = rules
             .into_iter()
             .map(|rinfo| rinfo.display_name().into())
@@ -76,17 +76,74 @@ impl Parser {
         let mut stack: Stack = Stack::new();
         let mut global_captures = CaptureList::new();
 
+        // TODO Error recovery tries
+        let mut latest_fail: Option<(usize, CaptureList)> = None;
+
         loop {
             if state == State::Failure {
                 loop {
                     match stack.pop() {
-                        Some(StackEntry::Backtrack { addr, spos, .. }) => {
+                        Some(StackEntry::Backtrack {
+                            addr,
+                            spos,
+                            captures,
+                        }) => {
                             ip = addr;
                             sp = spos;
                             state = State::Normal;
                             break;
                         }
-                        None => bail!("In failure state and backtrack stack is empty"),
+                        // None => bail!("No stack entry to backtrack to");
+
+                        // TODO Error recovery tries
+                        Some(StackEntry::Return { captures, .. }) => match &mut latest_fail {
+                            Some((fsp, fcaps)) => {
+                                if captures.is_empty() {
+                                    continue;
+                                }
+
+                                let last_sp =
+                                    captures.last().map(|cap| cap.start + cap.len).unwrap();
+
+                                // log::info!(
+                                //     "RET Some: sp: {sp}, fsp: {fsp}, captures: {captures:?}"
+                                // );
+                                if last_sp < *fsp {
+                                    let mut caps = captures;
+                                    caps.append(fcaps);
+                                    *fcaps = caps;
+                                } else if sp > *fsp || sp == *fsp && captures.len() > fcaps.len() {
+                                    latest_fail = Some((sp, captures));
+                                }
+                            }
+                            None => {
+                                // log::info!("RET None: captures: {captures:?}");
+                                latest_fail = Some((sp, captures));
+                            }
+                        },
+
+                        None => match latest_fail.take() {
+                            Some((fsp, mut captures)) => {
+                                sp = captures
+                                    .last()
+                                    .map(|cap| cap.start + cap.len)
+                                    .unwrap_or(fsp)
+                                    + 1;
+                                ip = 0;
+                                state = State::Normal;
+
+                                global_captures.append(&mut captures);
+                                break;
+                            }
+                            None => {
+                                if global_captures.is_empty() {
+                                    bail!("No stack entry to backtrack to");
+                                } else {
+                                    return Ok(global_captures);
+                                }
+                            }
+                        },
+                        // END Error recovery tries
                         _ => {}
                     }
                 }

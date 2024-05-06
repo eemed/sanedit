@@ -29,17 +29,22 @@ Decided to implement a parser using PEG rules.
 
 === Pikaparsing
 
-The first parsing strategy tried
-was pikaparsing #link("https://arxiv.org/pdf/2005.06444")[pikaparsing]. The
-memory usage was too high and performance was not that good.
+The first parsing strategy tried was pikaparsing
+#link("https://arxiv.org/pdf/2005.06444")[pikaparsing].
+
+Error recovery was very good, as we could easily see the best match at a given position.
+The memory usage was too high and performance was not that good.
+
 
 === LPEG & GPEG
 
-LPEG library was a good fit and should be more performant than pikaparsing. Also
+LPEG library was a good fit and more performant than pikaparsing. Also
 found an improved version of LPEG called
 #link("https://zyedidia.github.io/notes/yedidia_thesis.pdf")[GPEG] that also
 supports incremental parsing. This is a good reference point for our own
 implementation of something similar.
+
+The only weakness is error recovery. It is theorized in the paper but not implemented.
 
 ==== UTF8
 

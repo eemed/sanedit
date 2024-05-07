@@ -12,7 +12,7 @@ nl = "\r\n" / "\r" / "\n";
 comment = "#" (!nl .)* nl;
 
 @whitespaced
-rule = (_ annotation)* rule_name "=" def+ ";" _ ;
+rule = ws (_ annotation)* rule_name "=" def+ ";" ws ;
 
 @show(identifier)
 @whitespaced

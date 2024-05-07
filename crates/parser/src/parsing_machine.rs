@@ -93,9 +93,6 @@ impl Parser {
                             state = State::Normal;
                             break;
                         }
-                        // None => bail!("No stack entry to backtrack to");
-
-                        // TODO Error recovery tries
                         Some(StackEntry::Return { captures, .. }) => match &mut latest_fail {
                             Some((fsp, fcaps)) => {
                                 if captures.is_empty() {
@@ -105,9 +102,6 @@ impl Parser {
                                 let last_sp =
                                     captures.last().map(|cap| cap.start + cap.len).unwrap();
 
-                                // log::info!(
-                                //     "RET Some: sp: {sp}, fsp: {fsp}, captures: {captures:?}"
-                                // );
                                 if last_sp < *fsp {
                                     let mut caps = captures;
                                     caps.append(fcaps);
@@ -116,12 +110,8 @@ impl Parser {
                                     latest_fail = Some((sp, captures));
                                 }
                             }
-                            None => {
-                                // log::info!("RET None: captures: {captures:?}");
-                                latest_fail = Some((sp, captures));
-                            }
+                            None => latest_fail = Some((sp, captures)),
                         },
-
                         None => match latest_fail.take() {
                             Some((fsp, mut captures)) => {
                                 sp = captures
@@ -143,7 +133,6 @@ impl Parser {
                                 }
                             }
                         },
-                        // END Error recovery tries
                         _ => {}
                     }
                 }

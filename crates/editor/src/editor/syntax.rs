@@ -84,9 +84,10 @@ impl Syntax {
         const HORIZON_TOP: usize = 0;
         const HORIZON_BOTTOM: usize = 0;
 
-        view.start = view.start.saturating_sub(HORIZON_TOP);
-        view.end = min(ropt.len(), view.end + HORIZON_BOTTOM);
+        // view.start = view.start.saturating_sub(HORIZON_TOP);
+        // view.end = min(ropt.len(), view.end + HORIZON_BOTTOM);
 
+        log::info!("View: {view:?}");
         let start = view.start;
         let slice = ropt.slice(view);
 

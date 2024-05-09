@@ -75,9 +75,7 @@ impl Parser {
         let mut state = State::Normal;
         let mut stack: Stack = Stack::new();
         let mut global_captures = CaptureList::new();
-
-        // TODO Error recovery tries
-        let mut latest_fail: Option<(usize, CaptureList)> = None;
+        let mut farthest_failure: Option<(usize, usize, CaptureList)> = None;
 
         loop {
             if state == State::Failure {
@@ -93,27 +91,31 @@ impl Parser {
                             state = State::Normal;
                             break;
                         }
-                        Some(StackEntry::Return { captures, .. }) => match &mut latest_fail {
-                            Some((fsp, fcaps)) => {
-                                if captures.is_empty() {
-                                    continue;
-                                }
+                        Some(StackEntry::Return { captures, addr }) => {
+                            match &mut farthest_failure {
+                                Some((fsp, a, fcaps)) => {
+                                    if captures.is_empty() {
+                                        continue;
+                                    }
 
-                                let last_sp =
-                                    captures.last().map(|cap| cap.start + cap.len).unwrap();
+                                    let last_sp =
+                                        captures.last().map(|cap| cap.start + cap.len).unwrap();
 
-                                if last_sp < *fsp {
-                                    let mut caps = captures;
-                                    caps.append(fcaps);
-                                    *fcaps = caps;
-                                } else if sp > *fsp || sp == *fsp && captures.len() > fcaps.len() {
-                                    latest_fail = Some((sp, captures));
+                                    if last_sp < *fsp {
+                                        let mut caps = captures;
+                                        caps.append(fcaps);
+                                        *fcaps = caps;
+                                    } else if sp > *fsp
+                                        || sp == *fsp && captures.len() > fcaps.len()
+                                    {
+                                        farthest_failure = Some((sp, addr, captures));
+                                    }
                                 }
+                                None => farthest_failure = Some((sp, addr, captures)),
                             }
-                            None => latest_fail = Some((sp, captures)),
-                        },
-                        None => match latest_fail.take() {
-                            Some((fsp, mut captures)) => {
+                        }
+                        None => match farthest_failure.take() {
+                            Some((fsp, a, mut captures)) => {
                                 sp = captures
                                     .last()
                                     .map(|cap| cap.start + cap.len)

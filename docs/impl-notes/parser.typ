@@ -58,3 +58,19 @@ written `[^\x20]` is expanded to `[\x00..\x19] / [\x21..\xff]`
 
 Note that all the sets are inclusive.
 
+
+==== Error Recovery
+
+Syntax error recovery using PEGs is hard.
+Parsing machine naturally fails when trying
+different choices to match. One option is to detect fails which should be
+corrected using recovery expresssions (other PEG expressions). These failure
+lables could be inserted by hand, but this is error prone. Some algorithms also
+exist to automatically insert these labels, but they usually add too many or too
+little labels.
+
+Another option is to let the parsing machine fail completely, when it encounters a syntax
+error and keep track of the longest position we were succesfully able to parse.
+This reliably finds syntax errors, but erases all of the parser state required
+to restart the parsing process after corrections. Copying the parser state
+(stack) is rather expensive and would slow down performance.

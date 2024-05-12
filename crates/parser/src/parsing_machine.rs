@@ -3,6 +3,7 @@ mod op;
 mod set;
 mod stack;
 
+use self::compiler::Program;
 pub use self::op::CaptureID;
 pub use self::stack::{Capture, CaptureList};
 
@@ -19,18 +20,33 @@ use crate::{
     ByteReader, ParseError,
 };
 
-use self::op::Operation;
+use self::op::{Addr, Operation};
+
+#[derive(Debug)]
+struct FailLocation {
+    ip: Addr,
+    stack: Stack,
+}
+
+#[derive(Debug)]
+struct FarthestFailure {
+    sp: usize,
+    fails: Vec<FailLocation>,
+    captures: CaptureList,
+    parent: Addr,
+}
 
 #[derive(Debug, PartialEq, Eq)]
 enum State {
     Normal,
     Failure,
+    Throw,
 }
 
 #[derive(Debug)]
 pub struct Parser {
     labels: Box<[String]>,
-    program: Vec<Operation>,
+    program: Program,
 }
 
 impl Parser {
@@ -43,20 +59,30 @@ impl Parser {
             .map_err(|err| ParseError::Preprocess(err.to_string()))?;
         log::info!("---- Prgoram ----");
         log::info!("{:?}", program);
+
+        // println!("---- Prgoram ----");
+        // println!("{:?}", program);
+
         let labels = rules
             .into_iter()
             .map(|rinfo| rinfo.display_name().into())
             .collect();
 
-        let parser = Parser {
-            labels,
-            program: program.program,
-        };
+        let parser = Parser { labels, program };
         Ok(parser)
     }
 
     pub fn label_for(&self, id: CaptureID) -> &str {
         &self.labels[id]
+    }
+
+    pub fn label_for_op(&self, op: Addr) -> &str {
+        self.program
+            .names
+            .range(..=op)
+            .next_back()
+            .expect("No name for op index {addr}")
+            .1
     }
 
     pub fn parse<B: ByteReader>(&self, reader: B) -> Result<CaptureList, ParseError> {
@@ -75,12 +101,12 @@ impl Parser {
         let mut state = State::Normal;
         let mut stack: Stack = Stack::new();
         let mut global_captures = CaptureList::new();
-        let mut farthest_failure: Option<(usize, usize, CaptureList)> = None;
+        let mut farthest_failure: Option<FarthestFailure> = None;
 
         loop {
-            if state == State::Failure {
-                loop {
-                    match stack.pop() {
+            while state != State::Normal {
+                match state {
+                    State::Failure => match stack.pop() {
                         Some(StackEntry::Backtrack {
                             addr,
                             spos,
@@ -91,56 +117,49 @@ impl Parser {
                             state = State::Normal;
                             break;
                         }
-                        Some(StackEntry::Return { captures, addr }) => {
-                            match &mut farthest_failure {
-                                Some((fsp, a, fcaps)) => {
-                                    if captures.is_empty() {
-                                        continue;
-                                    }
 
-                                    let last_sp =
-                                        captures.last().map(|cap| cap.start + cap.len).unwrap();
-
-                                    if last_sp < *fsp {
-                                        let mut caps = captures;
-                                        caps.append(fcaps);
-                                        *fcaps = caps;
-                                    } else if sp > *fsp
-                                        || sp == *fsp && captures.len() > fcaps.len()
-                                    {
-                                        farthest_failure = Some((sp, addr, captures));
-                                    }
-                                }
-                                None => farthest_failure = Some((sp, addr, captures)),
+                        None => {
+                            if global_captures.is_empty() {
+                                bail!("No stack entry to backtrack to");
+                            } else {
+                                return Ok(global_captures);
                             }
                         }
-                        None => match farthest_failure.take() {
-                            Some((fsp, a, mut captures)) => {
-                                sp = captures
-                                    .last()
-                                    .map(|cap| cap.start + cap.len)
-                                    .unwrap_or(fsp)
-                                    + 1;
-                                ip = 0;
+                        _ => {}
+                    },
+                    State::Throw => {
+                        match stack.pop() {
+                            Some(StackEntry::Backtrack {
+                                addr,
+                                spos,
+                                captures,
+                            }) => {
+                                ip = addr;
+                                sp = spos;
                                 state = State::Normal;
-
-                                global_captures.append(&mut captures);
                                 break;
                             }
-                            None => {
-                                if global_captures.is_empty() {
-                                    bail!("No stack entry to backtrack to");
-                                } else {
-                                    return Ok(global_captures);
-                                }
+                            Some(StackEntry::Capture { capture }) => {
+                                let ff = farthest_failure
+                                    .as_mut()
+                                    .expect("Exception thrown but farthest failure not set");
+                                ff.captures.push(capture);
                             }
-                        },
-                        _ => {}
+                            None => {
+                                let ff = farthest_failure
+                                    .take()
+                                    .expect("Exception thrown but farthest failure not set");
+                                unimplemented!("FF: {ff:?}");
+                                // TODO try to fix the exeption
+                            }
+                            _ => {}
+                        }
                     }
+                    _ => {}
                 }
             }
 
-            let op = &self.program[ip];
+            let op = &self.program.ops[ip];
             // println!("ip: {ip}, sp: {sp}, op: {op:?}");
 
             match op {
@@ -271,6 +290,54 @@ impl Parser {
                     }
                     ip += 1;
                 }
+                Catch(l) => {
+                    stack.push(StackEntry::Backtrack {
+                        addr: *l,
+                        spos: sp,
+                        captures: vec![],
+                    });
+                    ip += 1;
+                }
+                Throw => {
+                    match &mut farthest_failure {
+                        Some(ff) => {
+                            if sp > ff.sp {
+                                let cp = FailLocation {
+                                    ip,
+                                    stack: stack.clone(),
+                                };
+
+                                ff.sp = sp;
+                                ff.fails.clear();
+                                ff.fails.push(cp);
+                                ff.captures.clear();
+                                ff.parent = ip;
+                            } else if sp == ff.sp {
+                                let cp = FailLocation {
+                                    ip,
+                                    stack: stack.clone(),
+                                };
+                                ff.fails.push(cp);
+                            }
+                        }
+                        None => {
+                            let cp = FailLocation {
+                                ip,
+                                stack: stack.clone(),
+                            };
+                            let nff = FarthestFailure {
+                                sp,
+                                fails: vec![cp],
+                                captures: vec![],
+                                parent: ip,
+                            };
+                            farthest_failure = Some(nff);
+                        }
+                    }
+
+                    // println!("Throw: at: {},  ip: {ip}, sp: {sp}", self.label_for_op(ip));
+                    state = State::Throw;
+                }
                 _ => bail!("Unsupported operation {op:?}"),
             }
         }
@@ -295,6 +362,16 @@ mod test {
     fn parse_toml() {
         let peg = include_str!("../pegs/toml.peg");
         let content = include_str!("../benches/sample.toml");
+
+        let parser = Parser::new(std::io::Cursor::new(peg)).unwrap();
+        let result = parser.parse(content);
+        assert!(result.is_ok(), "Parse failed with {result:?}");
+    }
+
+    #[test]
+    fn parse_invalid_json() {
+        let peg = include_str!("../pegs/json.peg");
+        let content = "{ \"hello\": \"world\", \"another\": \"line }";
 
         let parser = Parser::new(std::io::Cursor::new(peg)).unwrap();
         let result = parser.parse(content);

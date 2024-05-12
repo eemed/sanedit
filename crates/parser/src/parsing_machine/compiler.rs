@@ -1,21 +1,20 @@
-use rustc_hash::FxHashMap;
+use std::collections::BTreeMap;
 
 use crate::{
     grammar::{self, Rule, RuleInfo},
     parsing_machine::set::Set,
-    ParseError,
 };
 
 use super::op::Operation;
 
 pub(crate) struct Program {
-    pub(crate) program: Vec<Operation>,
-    names: FxHashMap<usize, String>,
+    pub(crate) ops: Vec<Operation>,
+    pub(crate) names: BTreeMap<usize, String>,
 }
 
 impl std::fmt::Debug for Program {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        for (i, op) in self.program.iter().enumerate() {
+        for (i, op) in self.ops.iter().enumerate() {
             write!(f, "{i}: {op:?} ")?;
 
             if let Some(name) = self.names.get(&i) {
@@ -71,6 +70,7 @@ impl<'a> Compiler<'a> {
 
             // Add capture if we want to show this in AST
             if show {
+                self.push(Operation::Catch(0));
                 self.push(Operation::CaptureBegin(i));
             }
 
@@ -78,7 +78,15 @@ impl<'a> Compiler<'a> {
             self.compile_rec(&rule.rule);
 
             if show {
+                let begin = compile_addrs[i];
+
                 self.push(Operation::CaptureEnd);
+                self.push(Operation::Commit(0));
+                let throw = self.push(Operation::Throw);
+                let next = self.program.len();
+
+                self.program[begin] = Operation::Catch(throw);
+                self.program[next - 2] = Operation::Commit(next);
             }
 
             // Add a return op
@@ -86,7 +94,7 @@ impl<'a> Compiler<'a> {
         }
 
         // Program addresses to names mapping
-        let mut names = FxHashMap::default();
+        let mut names = BTreeMap::default();
 
         // Set all call sites to their function addresses
         for (rule, site) in &self.call_sites {
@@ -96,7 +104,7 @@ impl<'a> Compiler<'a> {
         }
 
         Ok(Program {
-            program: self.program,
+            ops: self.program,
             names,
         })
     }

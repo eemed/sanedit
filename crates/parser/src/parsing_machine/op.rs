@@ -28,4 +28,6 @@ pub(crate) enum Operation {
     TestAny(usize, Addr),
     CaptureBegin(CaptureID),
     CaptureEnd,
+    Throw,
+    Catch(Addr),
 }

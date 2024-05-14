@@ -1,6 +1,7 @@
+use crate::CaptureID;
+
 use super::set::Set;
 
-pub type CaptureID = usize;
 pub(crate) type Addr = usize;
 
 #[derive(Debug)]

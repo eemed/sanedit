@@ -1,11 +1,11 @@
+mod captures;
 mod compiler;
 mod op;
 mod set;
 mod stack;
 
+pub use self::captures::{Capture, CaptureID, CaptureList};
 use self::compiler::Program;
-pub use self::op::CaptureID;
-pub use self::stack::{Capture, CaptureList};
 
 use std::io;
 
@@ -22,6 +22,8 @@ use crate::{
 
 use self::op::{Addr, Operation};
 
+// https://github.com/roberto-ieru/LPeg/blob/master/lpvm.c
+
 #[derive(Debug)]
 struct FarthestFailure {
     sp: usize,
@@ -33,6 +35,8 @@ enum State {
     Normal,
     Failure,
 }
+
+pub(crate) type SubjectPosition = usize;
 
 #[derive(Debug)]
 pub struct Parser {
@@ -89,10 +93,15 @@ impl Parser {
         let mut ip = 0;
         // Subject pointer
         let mut sp = 0;
-        let mut state = State::Normal;
-        let mut stack: Stack = Stack::new();
-        let mut global_captures = CaptureList::new();
+        // Checkpoint
         let mut cp = 0;
+        // State to indicate failure
+        let mut state = State::Normal;
+        // Stack for backtracking, choices, returns
+        let mut stack: Stack = Stack::new();
+        // Parts of text to save
+        let mut captures = CaptureList::new();
+        let mut captop = 0;
 
         loop {
             let op = &self.program.ops[ip];
@@ -113,19 +122,19 @@ impl Parser {
                 Call(l) => {
                     stack.push(StackEntry::Return {
                         addr: ip + 1,
-                        captures: vec![],
+                        caplevel: 0,
                     });
                     ip = *l;
                 }
                 Commit(l) => {
-                    stack.pop_and_prop(&mut global_captures);
+                    stack.pop();
                     ip = *l;
                 }
                 Choice(l) => {
                     stack.push(StackEntry::Backtrack {
                         addr: *l,
                         spos: sp,
-                        captures: vec![],
+                        caplevel: captop,
                     });
                     ip += 1;
                 }
@@ -154,12 +163,9 @@ impl Parser {
                         state = State::Failure;
                     }
                 }
-                Return => match stack.pop_and_prop(&mut global_captures) {
-                    Some(StackEntry::Return {
-                        addr, mut captures, ..
-                    }) => {
+                Return => match stack.pop() {
+                    Some(StackEntry::Return { addr, .. }) => {
                         ip = addr;
-                        global_captures.append(&mut captures);
                     }
                     e => bail!("Invalid stack entry pop at return: {e:?}"),
                 },
@@ -167,14 +173,17 @@ impl Parser {
                     state = State::Failure;
                 }
                 PartialCommit(l) => {
-                    let entry = stack.pop_and_prop(&mut global_captures);
-                    match entry {
-                        Some(StackEntry::Backtrack { addr, .. }) => {
-                            stack.push(StackEntry::Backtrack {
-                                addr,
-                                spos: sp,
-                                captures: vec![],
-                            })
+                    let last = stack
+                        .last_mut()
+                        .expect("No stack entry to pop at partial commit");
+
+                    match last {
+                        StackEntry::Backtrack {
+                            addr,
+                            spos,
+                            caplevel,
+                        } => {
+                            *spos = sp;
                         }
                         e => bail!("Invalid stack entry pop at partial commit: {e:?}"),
                     }
@@ -192,38 +201,20 @@ impl Parser {
 
                     ip += 1;
                 }
-                End => return Ok(global_captures),
+                End => return Ok(captures),
                 EndFail => bail!("Parsing failed"),
                 BackCommit(l) => {
-                    match stack.pop_and_prop(&mut global_captures) {
+                    match stack.pop() {
                         Some(StackEntry::Backtrack { spos, .. }) => sp = spos,
                         e => bail!("Invalid stack entry pop at back commit: {e:?}"),
                     }
                     ip = *l;
                 }
                 CaptureBegin(id) => {
-                    stack.push_capture(Capture {
-                        id: *id,
-                        start: sp,
-                        len: 0,
-                        sub_captures: vec![],
-                    });
+                    captures.push(Capture::new(*id, sp));
                     ip += 1;
                 }
                 CaptureEnd => {
-                    match stack.pop() {
-                        Some(StackEntry::Capture { mut capture }) => {
-                            capture.len = sp - capture.start;
-
-                            let cap_list = stack
-                                .last_mut()
-                                .map(StackEntry::captures_mut)
-                                .unwrap_or(&mut global_captures);
-
-                            cap_list.push(capture);
-                        }
-                        e => bail!("Invalid stack entry pop at capture end: {e:?}"),
-                    }
                     ip += 1;
                 }
                 Checkpoint => {
@@ -237,13 +228,10 @@ impl Parser {
                 _ => bail!("Unsupported operation {op:?}"),
             }
 
+            // Recover from failure state
             while state != State::Normal {
                 match stack.pop() {
-                    Some(StackEntry::Backtrack {
-                        addr,
-                        spos,
-                        captures,
-                    }) => {
+                    Some(StackEntry::Backtrack { addr, spos, .. }) => {
                         if cp <= spos {
                             ip = addr;
                             sp = spos;
@@ -255,10 +243,10 @@ impl Parser {
                     }
 
                     None => {
-                        if global_captures.is_empty() {
+                        if captures.is_empty() {
                             bail!("No stack entry to backtrack to");
                         } else {
-                            return Ok(global_captures);
+                            return Ok(captures);
                         }
                     }
                     _ => {}

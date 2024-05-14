@@ -92,33 +92,9 @@ impl Parser {
         let mut state = State::Normal;
         let mut stack: Stack = Stack::new();
         let mut global_captures = CaptureList::new();
-        let mut farthest_failure: Option<FarthestFailure> = None;
+        let mut cp = 0;
 
         loop {
-            while state != State::Normal {
-                match stack.pop() {
-                    Some(StackEntry::Backtrack {
-                        addr,
-                        spos,
-                        captures,
-                    }) => {
-                        ip = addr;
-                        sp = spos;
-                        state = State::Normal;
-                        break;
-                    }
-
-                    None => {
-                        if global_captures.is_empty() {
-                            bail!("No stack entry to backtrack to");
-                        } else {
-                            return Ok(global_captures);
-                        }
-                    }
-                    _ => {}
-                }
-            }
-
             let op = &self.program.ops[ip];
             // println!("ip: {ip}, sp: {sp}, op: {op:?}");
 
@@ -251,35 +227,42 @@ impl Parser {
                     ip += 1;
                 }
                 Checkpoint => {
-                    // println!("Checkpoint: {}: sp: {sp}", self.label_for_op(ip));
-                    // stack.print();
-
-                    // for e in stack.iter() {
-                    //     match e {
-                    //         StackEntry::Backtrack { addr, spos, captures } => {
-                    //             if !captures.is_empty() {
-                    // println!("Checkpoint bt noempty: {}: sp: {sp}", self.label_for_op(ip));
-                    //             }
-                    //         }
-                    //         _ => {}
-                    //         // StackEntry::Capture { capture } => todo!(),
-                    //         // StackEntry::Return { addr, captures } => todo!(),
-                    //     }
-                    // }
-
-                    println!("");
-                    println!("+ Before sp: {sp}");
-                    stack.print();
-                    // stack.checkpoint(sp);
-                    // println!("");
-                    // println!("- After sp: {sp}");
-                    // stack.print();
+                    println!("Checkpoint: {}: sp: {sp}", self.label_for_op(ip));
+                    cp = sp;
 
                     // We are on the correct parse. No need for stack backtrack
                     // entries anymore
                     ip += 1;
                 }
                 _ => bail!("Unsupported operation {op:?}"),
+            }
+
+            while state != State::Normal {
+                match stack.pop() {
+                    Some(StackEntry::Backtrack {
+                        addr,
+                        spos,
+                        captures,
+                    }) => {
+                        if cp <= spos {
+                            ip = addr;
+                            sp = spos;
+                            state = State::Normal;
+                            break;
+                        } else {
+                            todo!("Recover at: cp: {cp} sp: {sp}, entry: addr: {addr}, sp: {spos}");
+                        }
+                    }
+
+                    None => {
+                        if global_captures.is_empty() {
+                            bail!("No stack entry to backtrack to");
+                        } else {
+                            return Ok(global_captures);
+                        }
+                    }
+                    _ => {}
+                }
             }
         }
     }

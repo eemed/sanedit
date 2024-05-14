@@ -56,13 +56,6 @@ pub(crate) enum StackEntry {
 }
 
 impl StackEntry {
-    pub fn is_backtrack_before(&self, pos: usize) -> bool {
-        match self {
-            StackEntry::Backtrack { spos, .. } => *spos < pos,
-            _ => false,
-        }
-    }
-
     pub fn captures_mut(&mut self) -> &mut CaptureList {
         match self {
             StackEntry::Return {
@@ -88,10 +81,6 @@ impl Stack {
 
     pub fn iter(&self) -> std::slice::Iter<StackEntry> {
         self.stack.iter()
-    }
-
-    pub fn checkpoint(&mut self, sp: usize) {
-        self.stack.retain(|e| !e.is_backtrack_before(sp))
     }
 
     pub fn push(&mut self, entry: StackEntry) {

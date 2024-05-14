@@ -307,10 +307,9 @@ impl Editor {
         let range = win.view().range();
         let ropt = buf.read_only_copy();
         let (s, r) = tokio::sync::broadcast::channel(1);
-        let Some(ft) = buf
-            .filetype
-            .clone()
-             else { return };
+        let Some(ft) = buf.filetype.clone() else {
+            return;
+        };
         let syntax = self.syntaxes.get(&ft);
 
         match syntax {

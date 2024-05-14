@@ -17,7 +17,7 @@ value =  object / array / number / string / constant;
 
 @show
 @whitespaced
-object = "{" member ~ ("," member)* "}";
+object = "{" ~ member ("," member)* "}";
 
 @show
 @whitespaced
@@ -33,7 +33,7 @@ string = quoted_string !":";
 
 @show
 @whitespaced
-array = "[" value ("," value )* "]";
+array = "[" ~ value ("," value )* "]";
 
 
 @show
@@ -44,7 +44,7 @@ constant = true / false / null;
 
 # quoted_string = quote ([\x20..\x21] / [\x23..\x5b] / [\x5d..\u00ff])* quote;
 # quoted_string = quote ([\x20..\x21] / [\x23..\x5b] / [\x5d..\xff] / [\u0080..\u00ff])* quote;
-quoted_string = quote ([^\u0..\u19\u22\u5c])* quote;
+quoted_string = quote ~ ([^\u0..\u19\u22\u5c])* quote;
 true = "true";
 false = "false";
 null = "null";

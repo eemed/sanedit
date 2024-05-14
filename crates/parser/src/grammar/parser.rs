@@ -277,6 +277,10 @@ impl<R: io::Read> GrammarParser<R> {
                 self.consume(Token::Any)?;
                 Rule::ByteAny
             }
+            Token::Checkpoint => {
+                self.consume(Token::Checkpoint)?;
+                Rule::Checkpoint
+            }
             Token::Text(_) => {
                 let ref_rule = self.text()?;
 

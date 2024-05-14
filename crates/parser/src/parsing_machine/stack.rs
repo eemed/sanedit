@@ -56,6 +56,13 @@ pub(crate) enum StackEntry {
 }
 
 impl StackEntry {
+    pub fn is_backtrack_before(&self, pos: usize) -> bool {
+        match self {
+            StackEntry::Backtrack { spos, .. } => *spos < pos,
+            _ => false,
+        }
+    }
+
     pub fn captures_mut(&mut self) -> &mut CaptureList {
         match self {
             StackEntry::Return {
@@ -69,97 +76,41 @@ impl StackEntry {
     }
 }
 
-// #[derive(Debug, Clone)]
-// pub(crate) struct Stack {
-//     stack: Vec<StackEntry>,
-// }
-
-// impl Stack {
-//     pub fn new() -> Stack {
-//         Stack { stack: vec![] }
-//     }
-
-//     pub fn push(&mut self, entry: StackEntry) {
-//         self.stack.push(entry);
-//     }
-
-//     pub fn push_capture(&mut self, capture: Capture) {
-//         self.stack.push(StackEntry::Capture { capture });
-//     }
-
-//     pub fn pop(&mut self) -> Option<StackEntry> {
-//         self.stack.pop()
-//     }
-
-//     pub fn pop_and_prop(&mut self, global: &mut CaptureList) -> Option<StackEntry> {
-//         let mut entry = self.stack.pop()?;
-
-//         let cap_list = self
-//             .stack
-//             .last_mut()
-//             .map(StackEntry::captures_mut)
-//             .unwrap_or(global);
-
-//         cap_list.append(entry.captures_mut());
-
-//         Some(entry)
-//     }
-
-//     pub fn last_mut(&mut self) -> Option<&mut StackEntry> {
-//         self.stack.last_mut()
-//     }
-
-//     pub fn print(&self) {
-//         for (i, op) in self.stack.iter().rev().enumerate() {
-//             println!("{i}: {op:?}");
-//         }
-//     }
-
-//     pub fn log(&self) {
-//         for (i, op) in self.stack.iter().rev().enumerate() {
-//             log::info!("{i}: {op:?}");
-//         }
-//     }
-// }
-
-use std::rc::Rc;
-
 #[derive(Debug, Clone)]
 pub(crate) struct Stack {
-    top: Option<Rc<Node>>,
+    stack: Vec<StackEntry>,
 }
 
 impl Stack {
     pub fn new() -> Stack {
-        Stack { top: None }
+        Stack { stack: vec![] }
+    }
+
+    pub fn iter(&self) -> std::slice::Iter<StackEntry> {
+        self.stack.iter()
+    }
+
+    pub fn checkpoint(&mut self, sp: usize) {
+        self.stack.retain(|e| !e.is_backtrack_before(sp))
     }
 
     pub fn push(&mut self, entry: StackEntry) {
-        let next = std::mem::take(&mut self.top);
-        let node = Rc::new(Node { entry, next });
-        self.top = Some(node);
-    }
-
-    pub fn pop(&mut self) -> Option<StackEntry> {
-        let node = std::mem::take(&mut self.top)?;
-        let Node { entry, mut next } = Rc::try_unwrap(node).unwrap_or_else(|a| Node::clone(&a));
-
-        self.top = std::mem::take(&mut next);
-        Some(entry)
+        self.stack.push(entry);
     }
 
     pub fn push_capture(&mut self, capture: Capture) {
-        self.push(StackEntry::Capture { capture });
+        self.stack.push(StackEntry::Capture { capture });
     }
 
-    pub fn last_mut(&mut self) -> Option<&mut StackEntry> {
-        self.top.as_mut().map(Rc::make_mut).map(|n| &mut n.entry)
+    pub fn pop(&mut self) -> Option<StackEntry> {
+        self.stack.pop()
     }
 
     pub fn pop_and_prop(&mut self, global: &mut CaptureList) -> Option<StackEntry> {
-        let mut entry = self.pop()?;
+        let mut entry = self.stack.pop()?;
 
         let cap_list = self
+            .stack
             .last_mut()
             .map(StackEntry::captures_mut)
             .unwrap_or(global);
@@ -169,20 +120,19 @@ impl Stack {
         Some(entry)
     }
 
-    pub fn print(&self) {
-        let mut i = 0;
-        let mut node = &self.top;
+    pub fn last_mut(&mut self) -> Option<&mut StackEntry> {
+        self.stack.last_mut()
+    }
 
-        while let Some(n) = node {
-            println!("{i}: {:?}", n.entry);
-            i += 1;
-            node = &n.next;
+    pub fn print(&self) {
+        for (i, op) in self.stack.iter().rev().enumerate() {
+            println!("{i}: {op:?}");
         }
     }
-}
 
-#[derive(Debug, Clone)]
-struct Node {
-    entry: StackEntry,
-    next: Option<Rc<Node>>,
+    pub fn log(&self) {
+        for (i, op) in self.stack.iter().rev().enumerate() {
+            log::info!("{i}: {op:?}");
+        }
+    }
 }

@@ -116,6 +116,7 @@ pub(crate) enum Rule {
     /// Inclusive UTF8 range
     UTF8Range(char, char),
     Ref(usize),
+    Checkpoint,
 }
 
 impl Rule {
@@ -224,6 +225,7 @@ impl fmt::Display for Rule {
             ByteSequence(s) => write!(f, "{:02x?}", s),
             ByteRange(a, b) => write!(f, "[{:02x?}..{:02x?}]", a, b),
             ByteAny => write!(f, "."),
+            Checkpoint => write!(f, "~"),
         }
     }
 }

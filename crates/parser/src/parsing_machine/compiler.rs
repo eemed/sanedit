@@ -70,7 +70,6 @@ impl<'a> Compiler<'a> {
 
             // Add capture if we want to show this in AST
             if show {
-                self.push(Operation::Catch(0));
                 self.push(Operation::CaptureBegin(i));
             }
 
@@ -78,15 +77,7 @@ impl<'a> Compiler<'a> {
             self.compile_rec(&rule.rule);
 
             if show {
-                let begin = compile_addrs[i];
-
                 self.push(Operation::CaptureEnd);
-                self.push(Operation::Commit(0));
-                let throw = self.push(Operation::Throw);
-                let next = self.program.len();
-
-                self.program[begin] = Operation::Catch(throw);
-                self.program[next - 2] = Operation::Commit(next);
             }
 
             // Add a return op
@@ -222,6 +213,9 @@ impl<'a> Compiler<'a> {
             }
             ByteAny => {
                 self.push(Operation::Set(Set::any()));
+            }
+            Checkpoint => {
+                self.push(Operation::Checkpoint);
             }
         }
     }

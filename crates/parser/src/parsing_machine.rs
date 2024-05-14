@@ -23,24 +23,15 @@ use crate::{
 use self::op::{Addr, Operation};
 
 #[derive(Debug)]
-struct FailLocation {
-    ip: Addr,
-    stack: Stack,
-}
-
-#[derive(Debug)]
 struct FarthestFailure {
     sp: usize,
-    fails: Vec<FailLocation>,
-    captures: CaptureList,
-    parent: Addr,
+    fails: Vec<usize>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
 enum State {
     Normal,
     Failure,
-    Throw,
 }
 
 #[derive(Debug)]
@@ -105,54 +96,23 @@ impl Parser {
 
         loop {
             while state != State::Normal {
-                match state {
-                    State::Failure => match stack.pop() {
-                        Some(StackEntry::Backtrack {
-                            addr,
-                            spos,
-                            captures,
-                        }) => {
-                            ip = addr;
-                            sp = spos;
-                            state = State::Normal;
-                            break;
-                        }
+                match stack.pop() {
+                    Some(StackEntry::Backtrack {
+                        addr,
+                        spos,
+                        captures,
+                    }) => {
+                        ip = addr;
+                        sp = spos;
+                        state = State::Normal;
+                        break;
+                    }
 
-                        None => {
-                            if global_captures.is_empty() {
-                                bail!("No stack entry to backtrack to");
-                            } else {
-                                return Ok(global_captures);
-                            }
-                        }
-                        _ => {}
-                    },
-                    State::Throw => {
-                        match stack.pop() {
-                            Some(StackEntry::Backtrack {
-                                addr,
-                                spos,
-                                captures,
-                            }) => {
-                                ip = addr;
-                                sp = spos;
-                                state = State::Normal;
-                                break;
-                            }
-                            Some(StackEntry::Capture { capture }) => {
-                                let ff = farthest_failure
-                                    .as_mut()
-                                    .expect("Exception thrown but farthest failure not set");
-                                ff.captures.push(capture);
-                            }
-                            None => {
-                                let ff = farthest_failure
-                                    .take()
-                                    .expect("Exception thrown but farthest failure not set");
-                                unimplemented!("FF: {ff:?}");
-                                // TODO try to fix the exeption
-                            }
-                            _ => {}
+                    None => {
+                        if global_captures.is_empty() {
+                            bail!("No stack entry to backtrack to");
+                        } else {
+                            return Ok(global_captures);
                         }
                     }
                     _ => {}
@@ -290,53 +250,34 @@ impl Parser {
                     }
                     ip += 1;
                 }
-                Catch(l) => {
-                    stack.push(StackEntry::Backtrack {
-                        addr: *l,
-                        spos: sp,
-                        captures: vec![],
-                    });
+                Checkpoint => {
+                    // println!("Checkpoint: {}: sp: {sp}", self.label_for_op(ip));
+                    // stack.print();
+
+                    // for e in stack.iter() {
+                    //     match e {
+                    //         StackEntry::Backtrack { addr, spos, captures } => {
+                    //             if !captures.is_empty() {
+                    // println!("Checkpoint bt noempty: {}: sp: {sp}", self.label_for_op(ip));
+                    //             }
+                    //         }
+                    //         _ => {}
+                    //         // StackEntry::Capture { capture } => todo!(),
+                    //         // StackEntry::Return { addr, captures } => todo!(),
+                    //     }
+                    // }
+
+                    println!("");
+                    println!("+ Before sp: {sp}");
+                    stack.print();
+                    // stack.checkpoint(sp);
+                    // println!("");
+                    // println!("- After sp: {sp}");
+                    // stack.print();
+
+                    // We are on the correct parse. No need for stack backtrack
+                    // entries anymore
                     ip += 1;
-                }
-                Throw => {
-                    match &mut farthest_failure {
-                        Some(ff) => {
-                            if sp > ff.sp {
-                                let cp = FailLocation {
-                                    ip,
-                                    stack: stack.clone(),
-                                };
-
-                                ff.sp = sp;
-                                ff.fails.clear();
-                                ff.fails.push(cp);
-                                ff.captures.clear();
-                                ff.parent = ip;
-                            } else if sp == ff.sp {
-                                let cp = FailLocation {
-                                    ip,
-                                    stack: stack.clone(),
-                                };
-                                ff.fails.push(cp);
-                            }
-                        }
-                        None => {
-                            let cp = FailLocation {
-                                ip,
-                                stack: stack.clone(),
-                            };
-                            let nff = FarthestFailure {
-                                sp,
-                                fails: vec![cp],
-                                captures: vec![],
-                                parent: ip,
-                            };
-                            farthest_failure = Some(nff);
-                        }
-                    }
-
-                    // println!("Throw: at: {},  ip: {ip}, sp: {sp}", self.label_for_op(ip));
-                    state = State::Throw;
                 }
                 _ => bail!("Unsupported operation {op:?}"),
             }

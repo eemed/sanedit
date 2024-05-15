@@ -95,8 +95,6 @@ impl Syntax {
         let spans: Vec<Span> = captures
             .into_iter()
             .rev()
-            .map(|cap| cap.flatten())
-            .flatten()
             .map(|cap| {
                 let name = self.grammar.label_for(cap.id());
                 let mut range = cap.range();

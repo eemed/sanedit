@@ -8,7 +8,6 @@ pub(crate) type Stack = Vec<StackEntry>;
 pub(crate) enum StackEntry {
     Return {
         addr: Addr,
-        caplevel: usize,
     },
     Backtrack {
         addr: Addr,

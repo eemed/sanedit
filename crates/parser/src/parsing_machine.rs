@@ -120,10 +120,7 @@ impl Parser {
                     }
                 }
                 Call(l) => {
-                    stack.push(StackEntry::Return {
-                        addr: ip + 1,
-                        caplevel: 0,
-                    });
+                    stack.push(StackEntry::Return { addr: ip + 1 });
                     ip = *l;
                 }
                 Commit(l) => {
@@ -184,6 +181,7 @@ impl Parser {
                             caplevel,
                         } => {
                             *spos = sp;
+                            *caplevel = captop;
                         }
                         e => bail!("Invalid stack entry pop at partial commit: {e:?}"),
                     }
@@ -205,24 +203,37 @@ impl Parser {
                 EndFail => bail!("Parsing failed"),
                 BackCommit(l) => {
                     match stack.pop() {
-                        Some(StackEntry::Backtrack { spos, .. }) => sp = spos,
+                        Some(StackEntry::Backtrack {
+                            addr,
+                            spos,
+                            caplevel,
+                        }) => {
+                            sp = spos;
+                            captop = caplevel;
+                        }
                         e => bail!("Invalid stack entry pop at back commit: {e:?}"),
                     }
                     ip = *l;
                 }
                 CaptureBegin(id) => {
                     captures.push(Capture::new(*id, sp));
+                    captop += 1;
                     ip += 1;
                 }
                 CaptureEnd => {
+                    // Find last unclosed capture
+                    let caps = &mut captures[..captop];
+                    for i in (0..caps.len()).rev() {
+                        let cap = &mut caps[i];
+                        if !cap.is_closed() {
+                            cap.close(sp);
+                            break;
+                        }
+                    }
                     ip += 1;
                 }
                 Checkpoint => {
-                    println!("Checkpoint: {}: sp: {sp}", self.label_for_op(ip));
                     cp = sp;
-
-                    // We are on the correct parse. No need for stack backtrack
-                    // entries anymore
                     ip += 1;
                 }
                 _ => bail!("Unsupported operation {op:?}"),
@@ -231,11 +242,17 @@ impl Parser {
             // Recover from failure state
             while state != State::Normal {
                 match stack.pop() {
-                    Some(StackEntry::Backtrack { addr, spos, .. }) => {
+                    Some(StackEntry::Backtrack {
+                        addr,
+                        spos,
+                        caplevel,
+                    }) => {
                         if cp <= spos {
+                            state = State::Normal;
                             ip = addr;
                             sp = spos;
-                            state = State::Normal;
+                            captop = caplevel;
+                            captures.truncate(captop);
                             break;
                         } else {
                             todo!("Recover at: cp: {cp} sp: {sp}, entry: addr: {addr}, sp: {spos}");
@@ -267,6 +284,7 @@ mod test {
 
         let parser = Parser::new(std::io::Cursor::new(peg)).unwrap();
         let result = parser.parse(content);
+        println!("Result: {result:?}");
         assert!(result.is_ok(), "Parse failed with {result:?}");
     }
 

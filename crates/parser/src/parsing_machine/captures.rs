@@ -1,3 +1,5 @@
+use std::ops::Range;
+
 use crate::SubjectPosition;
 
 pub type CaptureID = usize;
@@ -11,19 +13,30 @@ pub struct Capture {
 }
 
 impl Capture {
-    pub fn new(id: CaptureID, start: SubjectPosition) -> Capture {
+    pub(crate) fn new(id: CaptureID, start: SubjectPosition) -> Capture {
         Capture {
             id,
             start,
             len: None,
         }
     }
-
-    pub fn is_closed(&self) -> bool {
+    pub(crate) fn is_closed(&self) -> bool {
         self.len.is_some()
     }
 
-    pub fn close(&mut self, end: SubjectPosition) {
+    pub(crate) fn close(&mut self, end: SubjectPosition) {
         self.len = Some(end - self.start);
+    }
+
+    pub fn id(&self) -> CaptureID {
+        self.id
+    }
+
+    pub fn range(&self) -> Range<usize> {
+        let len = self
+            .len
+            .expect("Should not return a capture without length");
+
+        self.start..self.start + len
     }
 }

@@ -49,10 +49,10 @@ impl Node {
     }
 
     #[inline]
-    pub fn internal(&mut self) -> Option<&mut InternalNode> {
+    pub fn internal(&mut self) -> &mut InternalNode {
         match self {
-            Node::Internal(n) => Some(n),
-            _ => None,
+            Node::Internal(n) => n,
+            _ => panic!("internal() called on a leaf node"),
         }
     }
 
@@ -79,7 +79,7 @@ impl Node {
                 (true, false) => {
                     if n.color == Color::Black && n.right.color() == Color::Red {
                         let mut right = n.take_right();
-                        let right = Arc::make_mut(&mut right).internal().unwrap();
+                        let right = Arc::make_mut(&mut right).internal();
                         mem::swap(n, right);
                         n.color = Color::Black;
                     }
@@ -87,7 +87,7 @@ impl Node {
                 (false, true) => {
                     if n.color == Color::Black && n.left.color() == Color::Red {
                         let mut left = n.take_left();
-                        let left = Arc::make_mut(&mut left).internal().unwrap();
+                        let left = Arc::make_mut(&mut left).internal();
                         mem::swap(n, left);
                         n.color = Color::Black;
                     }

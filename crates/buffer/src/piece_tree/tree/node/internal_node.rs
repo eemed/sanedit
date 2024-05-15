@@ -168,9 +168,9 @@ impl InternalNode {
                 //  / \
                 // a   b
                 let mut y_ptr = self.take_left();
-                let y = Arc::make_mut(&mut y_ptr).internal().unwrap();
+                let y = Arc::make_mut(&mut y_ptr).internal();
                 let mut x_ptr = y.take_left();
-                let x = Arc::make_mut(&mut x_ptr).internal().unwrap();
+                let x = Arc::make_mut(&mut x_ptr).internal();
 
                 self.color.redden();
                 y.color = B;
@@ -195,9 +195,9 @@ impl InternalNode {
                 //      / \
                 //     b   c
                 let mut x_ptr = self.take_left();
-                let x = Arc::make_mut(&mut x_ptr).internal().unwrap();
+                let x = Arc::make_mut(&mut x_ptr).internal();
                 let mut y_ptr = x.take_right();
-                let y = Arc::make_mut(&mut y_ptr).internal().unwrap();
+                let y = Arc::make_mut(&mut y_ptr).internal();
 
                 self.redden();
                 x.color = B;
@@ -226,9 +226,9 @@ impl InternalNode {
                 //      / \
                 //     b   c
                 let mut z_ptr = self.take_right();
-                let z = Arc::make_mut(&mut z_ptr).internal().unwrap();
+                let z = Arc::make_mut(&mut z_ptr).internal();
                 let mut y_ptr = z.take_left();
-                let y = Arc::make_mut(&mut y_ptr).internal().unwrap();
+                let y = Arc::make_mut(&mut y_ptr).internal();
 
                 self.color.redden();
                 z.color = B;
@@ -255,9 +255,9 @@ impl InternalNode {
                 //           /  \
                 //          c    d
                 let mut y_ptr = self.take_right();
-                let y = Arc::make_mut(&mut y_ptr).internal().unwrap();
+                let y = Arc::make_mut(&mut y_ptr).internal();
                 let mut z_ptr = y.take_right();
-                let z = Arc::make_mut(&mut z_ptr).internal().unwrap();
+                let z = Arc::make_mut(&mut z_ptr).internal();
 
                 self.color.redden();
                 y.color = B;
@@ -284,11 +284,11 @@ impl InternalNode {
                 //      b   c d    e                 d    e
                 //
                 let mut z_ptr = self.take_right();
-                let z = Arc::make_mut(&mut z_ptr).internal().unwrap();
+                let z = Arc::make_mut(&mut z_ptr).internal();
                 let mut y_ptr = z.take_left();
-                let y = Arc::make_mut(&mut y_ptr).internal().unwrap();
+                let y = Arc::make_mut(&mut y_ptr).internal();
                 let mut w_ptr = z.take_right();
-                let w = Arc::make_mut(&mut w_ptr).internal().unwrap();
+                let w = Arc::make_mut(&mut w_ptr).internal();
 
                 self.color = B;
                 z.color = B;
@@ -321,11 +321,11 @@ impl InternalNode {
                 // a'  b' b   c            a'   b'
                 //
                 let mut x_ptr = self.take_left();
-                let x = Arc::make_mut(&mut x_ptr).internal().unwrap();
+                let x = Arc::make_mut(&mut x_ptr).internal();
                 let mut w_ptr = x.take_left();
-                let w = Arc::make_mut(&mut w_ptr).internal().unwrap();
+                let w = Arc::make_mut(&mut w_ptr).internal();
                 let mut y_ptr = x.take_right();
-                let y = Arc::make_mut(&mut y_ptr).internal().unwrap();
+                let y = Arc::make_mut(&mut y_ptr).internal();
 
                 self.color = B;
                 x.color = B;

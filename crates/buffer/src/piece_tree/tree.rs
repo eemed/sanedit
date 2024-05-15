@@ -127,7 +127,7 @@ fn insert_rec(
         return (1, ins_bytes);
     }
 
-    let node = Arc::make_mut(node).internal().unwrap();
+    let node = Arc::make_mut(node).internal();
     let node_left_len = node.left_subtree_len;
     let node_piece = &node.piece;
 
@@ -202,7 +202,7 @@ fn remove_rec(
 
     // Get to the internal node
     let node_ref = Arc::make_mut(node);
-    let n = node_ref.internal().unwrap();
+    let n = node_ref.internal();
     let n_left_len = n.left_subtree_len;
     let n_piece_len = n.piece.len;
 

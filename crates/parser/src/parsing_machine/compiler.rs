@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use crate::{
-    grammar::{self, Rule, RuleInfo},
+    grammar::{self, Rule, RuleInfo, Rules},
     parsing_machine::set::Set,
 };
 
@@ -30,11 +30,11 @@ impl std::fmt::Debug for Program {
 pub(crate) struct Compiler<'a> {
     program: Vec<Operation>,
     call_sites: Vec<(usize, usize)>,
-    rules: &'a [RuleInfo],
+    rules: &'a Rules,
 }
 
 impl<'a> Compiler<'a> {
-    pub fn new(rules: &[RuleInfo]) -> Compiler {
+    pub fn new(rules: &Rules) -> Compiler {
         Compiler {
             program: Vec::new(),
             call_sites: Vec::new(),

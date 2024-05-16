@@ -12,16 +12,17 @@ use sanedit_utils::ranges::OverlappingRanges;
 pub(crate) use self::rule::Annotation;
 pub(crate) use self::rule::Rule;
 pub(crate) use self::rule::RuleInfo;
+pub(crate) use self::rule::Rules;
 
 use super::lexer::Lexer;
 use super::lexer::Token;
 
-pub(crate) fn parse_rules_from_str(input: &str) -> Result<Box<[RuleInfo]>> {
+pub(crate) fn parse_rules_from_str(input: &str) -> Result<Rules> {
     let sinput = io::Cursor::new(input);
     parse_rules(sinput)
 }
 
-pub(crate) fn parse_rules<R: io::Read>(read: R) -> Result<Box<[RuleInfo]>> {
+pub(crate) fn parse_rules<R: io::Read>(read: R) -> Result<Rules> {
     let mut lex = Lexer::new(read);
     let token = lex.next()?;
     let parser = GrammarParser {
@@ -58,7 +59,7 @@ pub(crate) struct GrammarParser<R: io::Read> {
 }
 
 impl<R: io::Read> GrammarParser<R> {
-    fn parse(mut self) -> Result<Box<[RuleInfo]>> {
+    fn parse(mut self) -> Result<Rules> {
         while self.token != Token::EOF {
             let rule = self.rule()?;
             self.seen.insert(rule.name.clone());
@@ -78,7 +79,8 @@ impl<R: io::Read> GrammarParser<R> {
         self.apply_annotations()?;
         self.validate()?;
 
-        Ok(self.rules.into())
+        let rules = self.rules.into();
+        Ok(Rules::new(rules))
     }
 
     fn validate(&mut self) -> Result<()> {

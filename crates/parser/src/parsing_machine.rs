@@ -1,6 +1,7 @@
 mod captures;
 mod compiler;
 mod op;
+mod recovery;
 mod set;
 mod stack;
 
@@ -24,12 +25,6 @@ use self::op::{Addr, Operation};
 
 // https://github.com/roberto-ieru/LPeg/blob/master/lpvm.c
 
-#[derive(Debug)]
-struct FarthestFailure {
-    sp: usize,
-    fails: Vec<usize>,
-}
-
 #[derive(Debug, PartialEq, Eq)]
 enum State {
     Normal,
@@ -46,9 +41,18 @@ pub struct Parser {
 
 impl Parser {
     pub fn new<R: io::Read>(read: R) -> Result<Parser, ParseError> {
+        Self::create(read, false)
+    }
+
+    /// Create a parser that tries to recover from errors
+    pub fn new_with_recovery<R: io::Read>(read: R) -> Result<Parser, ParseError> {
+        Self::create(read, true)
+    }
+
+    fn create<R: io::Read>(read: R, enable_recovery: bool) -> Result<Parser, ParseError> {
         let rules =
             grammar::parse_rules(read).map_err(|err| ParseError::Grammar(err.to_string()))?;
-        let compiler = Compiler::new(&rules);
+        let compiler = Compiler::new(&rules, enable_recovery);
         let program = compiler
             .compile()
             .map_err(|err| ParseError::Preprocess(err.to_string()))?;
@@ -301,7 +305,7 @@ mod test {
     #[test]
     fn parse_invalid_json() {
         let peg = include_str!("../pegs/json.peg");
-        let content = "{ \"hello\": \"world\", \"another\": \"line }";
+        let content = "{ \"hello\": \"world, \"another\": \"line\" }";
 
         let parser = Parser::new(std::io::Cursor::new(peg)).unwrap();
         let result = parser.parse(content);

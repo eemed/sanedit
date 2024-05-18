@@ -31,6 +31,7 @@ pub(crate) fn parse_rules<R: io::Read>(read: R) -> Result<Rules> {
         rules: vec![],
         indices: FxHashMap::default(),
         seen: FxHashSet::default(),
+        cp: 0,
     };
     parser.parse()
 }
@@ -56,6 +57,8 @@ pub(crate) struct GrammarParser<R: io::Read> {
     rules: Vec<RuleInfo>,
     /// Map from rule name to its index
     indices: FxHashMap<String, usize>,
+
+    cp: usize,
 }
 
 impl<R: io::Read> GrammarParser<R> {
@@ -281,7 +284,9 @@ impl<R: io::Read> GrammarParser<R> {
             }
             Token::Checkpoint => {
                 self.consume(Token::Checkpoint)?;
-                Rule::Checkpoint
+                let cp = self.cp;
+                self.cp += 1;
+                Rule::Checkpoint(cp)
             }
             Token::Text(_) => {
                 let ref_rule = self.text()?;

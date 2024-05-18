@@ -52,7 +52,7 @@ impl std::fmt::Debug for Set {
             if first {
                 write!(f, "{i}")?;
             } else {
-                write!(f, " {i}")?;
+                write!(f, ", {i}")?;
             }
 
             first = false;

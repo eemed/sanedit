@@ -6,6 +6,7 @@ pub(crate) enum Annotation {
     Show(Option<String>),
 }
 
+/// Ordered set of rules, rules are identified by their indices
 #[derive(Debug)]
 pub(crate) struct Rules {
     rules: Box<[RuleInfo]>,
@@ -15,77 +16,16 @@ impl Rules {
     pub fn new(rules: Box<[RuleInfo]>) -> Rules {
         Rules { rules }
     }
-
-    pub fn first_set_of(&self, i: usize) -> Vec<Rule> {
-        let ri = &self.rules[i];
-
-        let mut result = vec![];
-        let mut seen: Box<[bool]> = vec![false; self.len()].into();
-        seen[i] = true;
-
-        first_rec(&ri.rule, self, &mut seen, &mut result);
-
-        result
-    }
-
-    pub fn ref_of(&self, i: usize) -> &RuleInfo {
-        &self.rules[i]
-    }
 }
 
 impl fmt::Display for Rules {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         for ri in self.rules.iter() {
-            write!(f, "{}: {}", &ri.name, ri.rule.format(&self.rules))?;
+            writeln!(f, "{}: {}", &ri.name, ri.rule.format(&self.rules))?;
         }
 
         Ok(())
     }
-}
-
-/// Pushes terminals to result and returns whether zero chars can match
-fn first_rec(rule: &Rule, rules: &Rules, seen: &mut [bool], result: &mut Vec<Rule>) -> bool {
-    use Rule::*;
-    let mut can_match_zero = false;
-
-    match rule {
-        OneOrMore(r) => {
-            can_match_zero |= first_rec(r, rules, seen, result);
-        }
-        ZeroOrMore(r) | Optional(r) => {
-            first_rec(r, rules, seen, result);
-            can_match_zero = true;
-        }
-        Choice(choice_rules) => {
-            for rule in choice_rules {
-                can_match_zero |= first_rec(rule, rules, seen, result);
-            }
-        }
-        Sequence(seq_rules) => {
-            for rule in seq_rules {
-                can_match_zero = first_rec(rule, rules, seen, result);
-                if !can_match_zero {
-                    break;
-                }
-            }
-        }
-        ByteSequence(s) => {
-            result.push(ByteSequence(vec![s[0]]));
-        }
-        ByteRange(_, _) | ByteAny | UTF8Range(_, _) => result.push(rule.clone()),
-        Ref(j) => {
-            if !seen[*j] {
-                seen[*j] = true;
-                let ri = rules.ref_of(*j);
-                can_match_zero |= first_rec(&ri.rule, rules, seen, result);
-            }
-        }
-        // FollowedBy(_) => todo!),
-        // NotFollowedBy(_) => todo!(),
-        _ => {}
-    }
-
-    can_match_zero
 }
 
 impl Deref for Rules {
@@ -197,7 +137,7 @@ pub(crate) enum Rule {
     /// Inclusive UTF8 range
     UTF8Range(char, char),
     Ref(usize),
-    Checkpoint,
+    Checkpoint(usize),
 }
 
 impl Rule {
@@ -303,10 +243,10 @@ impl fmt::Display for Rule {
             OneOrMore(r) => write!(f, "({})+", r),
             Optional(r) => write!(f, "({})?", r),
             ZeroOrMore(r) => write!(f, "({})*", r),
-            ByteSequence(s) => write!(f, "{:02x?}", s),
-            ByteRange(a, b) => write!(f, "[{:02x?}..{:02x?}]", a, b),
+            ByteSequence(s) => write!(f, "{:?}", s),
+            ByteRange(a, b) => write!(f, "[{:?}..{:?}]", a, b),
             ByteAny => write!(f, "."),
-            Checkpoint => write!(f, "~"),
+            Checkpoint(_) => write!(f, "~"),
         }
     }
 }

@@ -1,7 +1,10 @@
 use std::path::PathBuf;
 
 use crate::{
-    common::dirs::tmp_file,
+    common::{
+        cursors::{word_at_cursor, word_before_cursor},
+        dirs::tmp_file,
+    },
     editor::{
         hooks::Hook,
         windows::{Focus, Prompt},
@@ -31,15 +34,19 @@ fn remove_grapheme_before_cursor(editor: &mut Editor, id: ClientId) {
 #[action("Undo a change")]
 pub(crate) fn undo(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
-    win.undo(buf);
-    run(editor, id, Hook::BufChanged);
+    if win.undo(buf) {
+        run(editor, id, Hook::BufChanged);
+        run(editor, id, Hook::CursorMoved);
+    }
 }
 
 #[action("Redo a change")]
 pub(crate) fn redo(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
-    win.redo(buf);
-    run(editor, id, Hook::BufChanged);
+    if win.redo(buf) {
+        run(editor, id, Hook::BufChanged);
+        run(editor, id, Hook::CursorMoved);
+    }
 }
 
 pub(crate) fn insert(editor: &mut Editor, id: ClientId, text: &str) {
@@ -61,13 +68,12 @@ pub(crate) fn insert(editor: &mut Editor, id: ClientId, text: &str) {
                 (on_input)(editor, id, &input)
             }
         }
-        Window => {
+        Completion | Window => {
             run(editor, id, Hook::InsertPre);
             let (win, buf) = editor.win_buf_mut(id);
             win.insert_at_cursors(buf, text);
             run(editor, id, Hook::BufChanged);
         }
-        Completion => {}
     }
 }
 

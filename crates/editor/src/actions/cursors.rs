@@ -6,9 +6,11 @@ use crate::{
         movement::{next_line, next_line_start, prev_line, start_of_line},
         window::pos_at_point,
     },
-    editor::{windows::Cursor, Editor},
+    editor::{hooks::Hook, windows::Cursor, Editor},
     server::ClientId,
 };
+
+use super::hooks;
 
 #[action("Create a new cursor on the next line")]
 fn new_next_line(editor: &mut Editor, id: ClientId) {
@@ -89,6 +91,7 @@ pub(crate) fn goto_position(editor: &mut Editor, id: ClientId, point: Point) {
         let primary = win.cursors.primary_mut();
         primary.unanchor();
         primary.goto(pos);
+        hooks::run(editor, id, Hook::CursorMoved);
     }
 }
 

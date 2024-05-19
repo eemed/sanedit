@@ -1,15 +1,29 @@
+use std::rc::Rc;
+
 use sanedit_messages::redraw::Point;
 use sanedit_utils::sorted_vec::SortedVec;
 
-use crate::editor::keymap::{DefaultKeyMappings, KeyMappings, Keymap};
+use crate::{
+    actions::jobs::{MatchedOptions, MatcherMessage},
+    common::cursors::word_before_cursor,
+    editor::{
+        keymap::{DefaultKeyMappings, KeyMappings, Keymap},
+        Editor,
+    },
+    server::ClientId,
+};
 
 use super::{selector::Selector, SelectorOption};
 
-#[derive(Debug)]
+pub(crate) type CompletionAction = Rc<dyn Fn(&mut Editor, ClientId, &str)>;
+
 pub(crate) struct Completion {
     pub(crate) point: Point,
     pub(crate) keymap: Keymap,
     pub(crate) selector: Selector,
+
+    /// Called when input is modified.
+    pub(crate) on_input: Option<CompletionAction>,
 }
 
 impl Completion {
@@ -33,12 +47,51 @@ impl Completion {
         self.selector.selected_pos()
     }
 
+    pub fn clear_options(&mut self) {
+        self.selector = Selector::new();
+    }
+
     pub fn matches_window(&self, count: usize, offset: usize) -> Vec<&str> {
         self.selector
             .matches_window(count, offset)
             .iter()
             .map(|m| m.value())
             .collect()
+    }
+
+    pub fn matcher_result_handler(editor: &mut Editor, id: ClientId, msg: MatcherMessage) {
+        use MatcherMessage::*;
+
+        // let draw = editor.draw_state(id);
+        // draw.no_redraw_window();
+        //
+        log::info!("MSG: {msg:?}");
+
+        match msg {
+            Init(sender) => {
+                if let Some(word) = word_before_cursor(editor, id) {
+                    let _ = sender.blocking_send(word);
+                }
+
+                let (win, buf) = editor.win_buf_mut(id);
+                win.completion.on_input = Some(Rc::new(move |editor, id, input| {
+                    let _ = sender.blocking_send(input.to_string());
+                }));
+                win.completion.clear_options();
+            }
+            Progress(opts) => {
+                let (win, buf) = editor.win_buf_mut(id);
+                match opts {
+                    MatchedOptions::ClearAll => win.completion.clear_options(),
+                    MatchedOptions::Options(opts) => {
+                        let opts: Vec<SelectorOption> =
+                            opts.into_iter().map(SelectorOption::from).collect();
+                        let (win, _buf) = editor.win_buf_mut(id);
+                        win.completion.provide_options(opts.into());
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -48,6 +101,17 @@ impl Default for Completion {
             point: Point::default(),
             keymap: DefaultKeyMappings::completion(),
             selector: Selector::default(),
+            on_input: None,
         }
+    }
+}
+
+impl std::fmt::Debug for Completion {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Completion")
+            .field("point", &self.point)
+            .field("keymap", &self.keymap)
+            .field("selector", &self.selector)
+            .finish_non_exhaustive()
     }
 }

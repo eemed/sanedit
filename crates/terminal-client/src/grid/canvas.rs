@@ -20,6 +20,11 @@ impl<T: Drawable> Canvas<T> {
         }
     }
 
+    pub fn set_size(&mut self, width: usize, height: usize) {
+        self.area.width = width;
+        self.area.height = height;
+    }
+
     pub fn area(&self) -> Rect {
         self.area.clone()
     }

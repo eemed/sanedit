@@ -23,13 +23,15 @@ object = "{" member ("," member)* "}";
 @whitespaced
 member = identifier ":" value;
 
-@show
-@whitespaced
-identifier = quoted_string;
+identifier = quote identifier_inner quote;
 
-@show
-@whitespaced
-string = quoted_string;
+@show(identifier)
+identifier_inner = ([^\u0..\u19\u22\u5c])*;
+
+string = quote string_inner quote;
+
+@show(string)
+string_inner = ([^\u0..\u19\u22\u5c])*;
 
 @show
 @whitespaced
@@ -41,7 +43,6 @@ number = "-"? integer ("." [0..9]+)?;
 @show
 constant = true / false / null;
 
-quoted_string = quote ([^\u0..\u19\u22\u5c])* quote;
 true = "true";
 false = "false";
 null = "null";

@@ -43,11 +43,6 @@ impl Parser {
         Self::create(read)
     }
 
-    /// Create a parser that tries to recover from errors
-    pub fn new_with_recovery<R: io::Read>(read: R) -> Result<Parser, ParseError> {
-        Self::create(read)
-    }
-
     fn create<R: io::Read>(read: R) -> Result<Parser, ParseError> {
         let rules =
             grammar::parse_rules(read).map_err(|err| ParseError::Grammar(err.to_string()))?;
@@ -55,8 +50,8 @@ impl Parser {
         let program = compiler
             .compile()
             .map_err(|err| ParseError::Preprocess(err.to_string()))?;
-        log::info!("---- Prgoram ----");
-        log::info!("{:?}", program);
+        // log::info!("---- Prgoram ----");
+        // log::info!("{:?}", program);
 
         // println!("---- Prgoram ----");
         // println!("{:?}", program);

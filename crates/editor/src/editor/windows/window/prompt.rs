@@ -16,10 +16,7 @@ use crate::{
 
 use self::history::History;
 
-use super::{
-    selector::{Options, Selector},
-    SelectorOption,
-};
+use super::{selector::Selector, SelectorOption};
 
 pub(crate) struct PromptBuilder {
     message: Option<String>,
@@ -260,7 +257,7 @@ impl Prompt {
 
     pub fn input_or_selected(&self) -> String {
         self.selected()
-            .map(|(_, item)| item.to_string())
+            .map(|item| item.value().to_string())
             .unwrap_or(self.input.clone())
     }
 
@@ -286,13 +283,12 @@ impl Prompt {
         self.selector.matches_window(count, offset)
     }
 
-    pub fn selected(&self) -> Option<(usize, &str)> {
+    pub fn selected(&self) -> Option<&SelectorOption> {
         self.selector.selected()
     }
 
     pub fn selected_pos(&self) -> Option<usize> {
-        let (pos, _) = self.selector.selected()?;
-        Some(pos)
+        self.selector.selected_pos()
     }
 
     pub fn history_next(&mut self) {

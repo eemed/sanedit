@@ -138,9 +138,17 @@ impl KeyMappings for DefaultKeyMappings {
     }
 
     fn completion() -> Keymap {
-        let mut map = Keymap {
-            root: KeyTrie::default(),
-        };
+        let mut map = DefaultKeyMappings::window();
+
+        #[rustfmt::skip]
+        map!(map,
+             "tab", completion::next,
+             "btab", completion::prev,
+             "enter", completion::confirm,
+             "esc", completion::abort,
+
+             // "ctrl+s", search::toggle_select,
+        );
 
         map
     }

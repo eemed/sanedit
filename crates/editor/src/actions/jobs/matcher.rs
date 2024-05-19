@@ -6,6 +6,7 @@ use tokio::{
         broadcast,
         mpsc::{channel, Receiver, Sender},
     },
+    task::JoinHandle,
     time::{timeout, Instant},
 };
 
@@ -17,6 +18,7 @@ use crate::{
     server::ClientId,
 };
 
+#[derive(Debug)]
 pub(crate) enum MatcherMessage {
     Init(Sender<String>),
     Progress(MatchedOptions),
@@ -74,6 +76,7 @@ pub(crate) struct MatcherJobBuilder {
     opts: Arc<dyn OptionProvider>,
     strat: MatchStrategy,
     result_handler: MatchResultHandler,
+    immediate: bool,
 }
 
 impl MatcherJobBuilder {
@@ -83,6 +86,7 @@ impl MatcherJobBuilder {
             opts: Arc::new(Empty),
             strat: MatchStrategy::default(),
             result_handler: Empty::none_result_handler,
+            immediate: true,
         }
     }
 
@@ -101,12 +105,20 @@ impl MatcherJobBuilder {
         self
     }
 
+    /// Wether to immediately send all the options or wait for first term before
+    /// starting to process
+    pub fn immediate(mut self, enable: bool) -> Self {
+        self.immediate = enable;
+        self
+    }
+
     pub fn build(self) -> MatcherJob {
         let MatcherJobBuilder {
             cid,
             opts,
             strat,
             result_handler,
+            immediate,
         } = self;
 
         MatcherJob {
@@ -114,6 +126,7 @@ impl MatcherJobBuilder {
             strat,
             result_handler,
             opts,
+            immediate,
         }
     }
 }
@@ -134,6 +147,10 @@ pub(crate) struct MatcherJob {
 
     /// Handles match results
     result_handler: MatchResultHandler,
+
+    /// Wether to immediately send all the options or wait for first term before
+    /// starting to process
+    immediate: bool,
 }
 
 impl MatcherJob {
@@ -152,6 +169,7 @@ impl Job for MatcherJob {
     fn run(&self, mut ctx: JobContext) -> JobResult {
         let strat = self.strat.clone();
         let opts = self.opts.clone();
+        let immediate = self.immediate;
 
         let fut = async move {
             // Term channel
@@ -165,7 +183,7 @@ impl Job for MatcherJob {
 
             tokio::join!(
                 opts.provide(osend, ctx.kill.clone()),
-                match_options(orecv, trecv, msend, strat),
+                match_options(orecv, trecv, msend, strat, immediate),
                 Self::send_matched_options(ctx, mrecv),
             );
 
@@ -201,6 +219,7 @@ pub(crate) async fn match_options(
     mut trecv: Receiver<String>,
     msend: Sender<MatchedOptions>,
     strat: MatchStrategy,
+    immediate: bool,
 ) {
     fn spawn(
         msend: Sender<MatchedOptions>,
@@ -260,8 +279,13 @@ pub(crate) async fn match_options(
     let mut matcher = Matcher::new(orecv, strat);
 
     let mut term = String::new();
-    let recv = matcher.do_match(&term);
-    let mut join = spawn(msend.clone(), recv);
+    let mut join: Option<JoinHandle<()>> = if immediate {
+        let recv = matcher.do_match(&term);
+        let join = spawn(msend.clone(), recv);
+        Some(join)
+    } else {
+        None
+    };
 
     while let Some(t) = trecv.recv().await {
         if term == t {
@@ -269,14 +293,16 @@ pub(crate) async fn match_options(
         }
         term = t;
 
-        join.abort();
-        let _ = join.await;
+        if let Some(join) = join {
+            join.abort();
+            let _ = join.await;
+        }
 
         if let Err(_e) = msend.send(MatchedOptions::ClearAll).await {
             break;
         }
 
         let recv = matcher.do_match(&term);
-        join = spawn(msend.clone(), recv);
+        join = Some(spawn(msend.clone(), recv));
     }
 }

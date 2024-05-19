@@ -23,8 +23,6 @@ use std::mem;
 use std::path::Path;
 use std::path::PathBuf;
 use std::sync::mpsc::Receiver;
-use std::time::Duration;
-use std::time::Instant;
 
 use tokio::io;
 
@@ -306,7 +304,7 @@ impl Editor {
         let bid = buf.id;
         let range = win.view().range();
         let ropt = buf.read_only_copy();
-        let (s, r) = tokio::sync::broadcast::channel(1);
+        let (_s, r) = tokio::sync::broadcast::channel(1);
         let Some(ft) = buf.filetype.clone() else {
             return;
         };
@@ -443,10 +441,6 @@ impl Editor {
         }
     }
 
-    fn is_running(&self) -> bool {
-        self.is_running
-    }
-
     pub fn working_dir(&self) -> &Path {
         &self.working_dir
     }
@@ -491,15 +485,15 @@ pub(crate) fn main_loop(
     editor.configure(opts);
     editor.on_startup();
 
-    let framerate = Duration::from_millis(1000 / 30);
-    let mut redraw = Instant::now();
-    let mut was_previously_redrawn = false;
+    // let framerate = Duration::from_millis(1000 / 30);
+    // let mut redraw = Instant::now();
+    // let mut was_previously_redrawn = false;
 
     while editor.is_running {
         // match recv.recv_timeout(framerate) {
         match recv.recv() {
             Ok(msg) => {
-                was_previously_redrawn = false;
+                // was_previously_redrawn = false;
 
                 use ToEditor::*;
                 match msg {

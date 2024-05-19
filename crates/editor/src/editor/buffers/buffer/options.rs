@@ -7,10 +7,9 @@ pub(crate) struct Options {
     /// width `tab_width` because tabs are used to align stuff, so it
     /// is "elastic" calculated tabstop - (col % tabstop).
     pub(crate) tabstop: u8,
-
     // if some then when inserting a tab it is replaced by spaces
     // separate from tabstop because we might want to align something with tabs
-    pub(crate) tab_spaces: Option<usize>,
+    // pub(crate) tab_spaces: Option<usize>,
 }
 
 impl Default for Options {
@@ -18,7 +17,7 @@ impl Default for Options {
         Options {
             eol: EndOfLine::default(),
             tabstop: 8,
-            tab_spaces: Some(4),
+            // tab_spaces: Some(4),
         }
     }
 }

@@ -5,7 +5,7 @@ use sanedit_buffer::{
     PieceTree, PieceTreeSlice,
 };
 
-use crate::common::movement::next_grapheme_boundary;
+use crate::{common::movement::next_grapheme_boundary, editor::buffers::BufferRange};
 
 use super::{
     char::{
@@ -83,7 +83,7 @@ pub(crate) fn on_word_start(
 }
 
 /// Returns the range of the word that includes position pos
-pub(crate) fn word_at_pos(slice: &PieceTreeSlice, pos: usize) -> Option<Range<usize>> {
+pub(crate) fn word_at_pos(slice: &PieceTreeSlice, pos: usize) -> Option<BufferRange> {
     let make_pair = |slice: PieceTreeSlice| {
         let len = slice.len();
         let cat = grapheme_category(&slice);

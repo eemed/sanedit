@@ -1,4 +1,5 @@
 pub(crate) mod char;
+pub(crate) mod cursors;
 pub(crate) mod dirs;
 pub(crate) mod file;
 pub(crate) mod indent;

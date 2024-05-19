@@ -100,6 +100,10 @@ impl Default for Hooks {
         // hooks.register(BufChanged, syntax::parse_syntax);
         // hooks.register(Reload, syntax::parse_syntax);
 
+        // TODO handle registration only when needed?
+        hooks.register(CursorMoved, completion::abort);
+        hooks.register(BufChanged, completion::send_word);
+
         hooks
     }
 }

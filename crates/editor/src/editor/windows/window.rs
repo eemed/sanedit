@@ -306,7 +306,7 @@ impl Window {
             Focus::Search => &self.search.prompt.keymap,
             Focus::Prompt => &self.prompt.keymap,
             Focus::Window => &self.keymap,
-            Focus::Completion => &self.keymap,
+            Focus::Completion => &self.completion.keymap,
         }
     }
 
@@ -440,7 +440,7 @@ impl Window {
         self.view_to_cursor(buf);
     }
 
-    pub fn undo(&mut self, buf: &mut Buffer) {
+    pub fn undo(&mut self, buf: &mut Buffer) -> bool {
         match buf.undo() {
             Ok(change) => {
                 let created = change.created_snapshot;
@@ -459,8 +459,12 @@ impl Window {
                 }
 
                 self.invalidate();
+                true
             }
-            Err(msg) => self.warn_msg(msg),
+            Err(msg) => {
+                self.warn_msg(msg);
+                false
+            }
         }
     }
 
@@ -470,7 +474,7 @@ impl Window {
         self.invalidate();
     }
 
-    pub fn redo(&mut self, buf: &mut Buffer) {
+    pub fn redo(&mut self, buf: &mut Buffer) -> bool {
         match buf.redo() {
             Ok(change) => {
                 let created = change.created_snapshot;
@@ -488,8 +492,12 @@ impl Window {
                 }
 
                 self.invalidate();
+                true
             }
-            Err(msg) => self.warn_msg(msg),
+            Err(msg) => {
+                self.warn_msg(msg);
+                false
+            }
         }
     }
 

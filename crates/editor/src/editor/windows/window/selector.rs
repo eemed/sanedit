@@ -65,10 +65,9 @@ impl Selector {
         self.selected
     }
 
-    pub fn selected(&self) -> Option<(usize, &str)> {
+    pub fn selected(&self) -> Option<&SelectorOption> {
         let sel = self.selected?;
-        let opt = self.options.get(sel)?;
-        Some((sel, opt.value()))
+        self.options.get(sel)
     }
 
     /// Returns less than or equal to count matches around selection,

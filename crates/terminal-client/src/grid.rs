@@ -97,15 +97,23 @@ impl Grid {
                 };
                 self.msg = Some(Canvas::new(msg, rect));
             }
-            Completion(comp) => match comp {
-                Open(compl) => self.completion = Some(open_completion(self.window_area(), compl)),
-                Update(diff) => {
-                    if let Some(ref mut compl) = self.completion {
-                        compl.drawable().update(diff);
+            Completion(comp) => {
+                log::info!("UI compl: {comp:?}");
+                match comp {
+                    Open(compl) => {
+                        self.completion = Some(open_completion(self.window_area(), compl))
                     }
+                    Update(diff) => {
+                        if let Some(ref mut compl) = self.completion {
+                            let drawable = compl.drawable();
+                            drawable.update(diff);
+                            let Size { width, height } = drawable.preferred_size();
+                            compl.set_size(width, height);
+                        }
+                    }
+                    Close => self.completion = None,
                 }
-                Close => self.completion = None,
-            },
+            }
             _ => {} //
                     // LineNumbers(numbers) => {
                     //     let gutter = Gutter::new(numbers);

@@ -2,6 +2,7 @@ pub(crate) mod completion;
 pub(crate) mod cursors;
 pub(crate) mod editor;
 pub(crate) mod hooks;
+pub(crate) mod indent;
 pub(crate) mod jobs;
 pub(crate) mod movement;
 pub(crate) mod prompt;

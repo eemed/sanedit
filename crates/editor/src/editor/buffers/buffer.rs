@@ -13,7 +13,7 @@ use std::{
 
 use sanedit_buffer::{PieceTree, PieceTreeSlice, ReadOnlyPieceTree};
 
-use crate::common::{dirs::tmp_file, file::File};
+use crate::common::{dirs::tmp_file, file::File, indent::Indent};
 
 use self::{options::Options, snapshots::Snapshots};
 pub(crate) use change::{Change, ChangeKind};
@@ -32,6 +32,7 @@ pub(crate) type BufferRange = Range<usize>;
 pub(crate) struct Buffer {
     pub(crate) id: BufferId,
     pub(crate) filetype: Option<Filetype>,
+    pub(crate) options: Options,
 
     pt: PieceTree,
     /// Snapshots of the piecetree, used for undo
@@ -41,7 +42,6 @@ pub(crate) struct Buffer {
     /// Set while an async process is saving the file
     is_saving: bool,
     is_modified: bool,
-    options: Options,
     last_change: Option<Change>,
 
     /// Path used for saving the file.
@@ -241,10 +241,6 @@ impl Buffer {
 
     pub fn slice<R: RangeBounds<usize>>(&self, range: R) -> PieceTreeSlice {
         self.pt.slice(range)
-    }
-
-    pub fn options(&self) -> &Options {
-        &self.options
     }
 
     pub fn read_only_copy(&self) -> ReadOnlyPieceTree {

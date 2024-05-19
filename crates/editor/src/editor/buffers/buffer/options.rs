@@ -1,5 +1,7 @@
 use sanedit_buffer::utf8::EndOfLine;
 
+use crate::common::indent::{Indent, IndentKind};
+
 #[derive(Debug)]
 pub(crate) struct Options {
     pub(crate) eol: EndOfLine,
@@ -10,6 +12,9 @@ pub(crate) struct Options {
     // if some then when inserting a tab it is replaced by spaces
     // separate from tabstop because we might want to align something with tabs
     // pub(crate) tab_spaces: Option<usize>,
+
+    // How to indent stuff
+    pub(crate) indent: Indent,
 }
 
 impl Default for Options {
@@ -17,7 +22,7 @@ impl Default for Options {
         Options {
             eol: EndOfLine::default(),
             tabstop: 8,
-            // tab_spaces: Some(4),
+            indent: Indent::default(),
         }
     }
 }

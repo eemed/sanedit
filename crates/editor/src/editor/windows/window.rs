@@ -364,7 +364,7 @@ impl Window {
             }
         }
 
-        let line = to_line(lines, buf.options().eol);
+        let line = to_line(lines, buf.options.eol);
         self.clipboard.copy(&line);
     }
 

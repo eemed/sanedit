@@ -104,6 +104,8 @@ impl Default for Hooks {
         hooks.register(CursorMoved, completion::abort);
         hooks.register(BufChanged, completion::send_word);
 
+        hooks.register(BufOpened, indent::detect_indent);
+
         hooks
     }
 }

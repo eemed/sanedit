@@ -407,7 +407,7 @@ impl Editor {
                 Enter => {
                     let eol = {
                         let (_, buf) = self.win_buf(id);
-                        buf.options().eol
+                        buf.options.eol
                     };
                     insert(self, id, eol.as_ref());
                 }

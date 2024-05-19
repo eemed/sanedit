@@ -41,18 +41,18 @@ pub struct Parser {
 
 impl Parser {
     pub fn new<R: io::Read>(read: R) -> Result<Parser, ParseError> {
-        Self::create(read, false)
+        Self::create(read)
     }
 
     /// Create a parser that tries to recover from errors
     pub fn new_with_recovery<R: io::Read>(read: R) -> Result<Parser, ParseError> {
-        Self::create(read, true)
+        Self::create(read)
     }
 
-    fn create<R: io::Read>(read: R, enable_recovery: bool) -> Result<Parser, ParseError> {
+    fn create<R: io::Read>(read: R) -> Result<Parser, ParseError> {
         let rules =
             grammar::parse_rules(read).map_err(|err| ParseError::Grammar(err.to_string()))?;
-        let compiler = Compiler::new(&rules, enable_recovery);
+        let compiler = Compiler::new(&rules);
         let program = compiler
             .compile()
             .map_err(|err| ParseError::Preprocess(err.to_string()))?;
@@ -97,8 +97,6 @@ impl Parser {
         let mut ip = 0;
         // Subject pointer
         let mut sp = 0;
-        // Checkpoint
-        let mut cp = 0;
         // State to indicate failure
         let mut state = State::Normal;
         // Stack for backtracking, choices, returns
@@ -109,7 +107,6 @@ impl Parser {
 
         loop {
             let op = &self.program.ops[ip];
-            // println!("ip: {ip}, sp: {sp}, op: {op:?}");
 
             match op {
                 Jump(l) => {
@@ -236,10 +233,6 @@ impl Parser {
                     }
                     ip += 1;
                 }
-                Checkpoint => {
-                    cp = sp;
-                    ip += 1;
-                }
                 _ => bail!("Unsupported operation {op:?}"),
             }
 
@@ -251,16 +244,12 @@ impl Parser {
                         spos,
                         caplevel,
                     }) => {
-                        if cp <= spos {
-                            state = State::Normal;
-                            ip = addr;
-                            sp = spos;
-                            captop = caplevel;
-                            captures.truncate(captop);
-                            break;
-                        } else {
-                            todo!("Recover at: cp: {cp} sp: {sp}, entry: addr: {addr}, sp: {spos}");
-                        }
+                        state = State::Normal;
+                        ip = addr;
+                        sp = spos;
+                        captop = caplevel;
+                        captures.truncate(captop);
+                        break;
                     }
 
                     None => {

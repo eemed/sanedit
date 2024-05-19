@@ -87,14 +87,12 @@ impl Syntax {
         // view.start = view.start.saturating_sub(HORIZON_TOP);
         // view.end = min(ropt.len(), view.end + HORIZON_BOTTOM);
 
-        log::info!("View: {view:?}");
         let start = view.start;
         let slice = ropt.slice(view);
 
         let captures = self.grammar.parse(&slice, kill)?;
         let spans: Vec<Span> = captures
             .into_iter()
-            .rev()
             .map(|cap| {
                 let name = self.grammar.label_for(cap.id());
                 let mut range = cap.range();
@@ -110,7 +108,6 @@ impl Syntax {
 
         Ok(SyntaxParseResult {
             bid,
-            kind: ParseKind::Full,
             highlights: spans,
         })
     }
@@ -119,16 +116,7 @@ impl Syntax {
 #[derive(Debug, Default)]
 pub(crate) struct SyntaxParseResult {
     pub(crate) bid: BufferId,
-    pub(crate) kind: ParseKind,
     pub(crate) highlights: Vec<Span>,
-}
-
-#[derive(Debug, Default)]
-pub enum ParseKind {
-    #[default]
-    Unparsed,
-    Partial(Range<usize>),
-    Full,
 }
 
 #[derive(Debug)]

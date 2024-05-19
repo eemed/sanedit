@@ -1,7 +1,5 @@
 use std::collections::BTreeMap;
 
-use sanedit_utils::ranges::OverlappingRanges;
-
 use crate::{
     grammar::{self, Rule, Rules},
     parsing_machine::set::Set,
@@ -33,16 +31,14 @@ pub(crate) struct Compiler<'a> {
     program: Vec<Operation>,
     call_sites: Vec<(usize, usize)>,
     rules: &'a Rules,
-    enable_recovery: bool,
 }
 
 impl<'a> Compiler<'a> {
-    pub fn new(rules: &Rules, enable_recovery: bool) -> Compiler {
+    pub fn new(rules: &Rules) -> Compiler {
         Compiler {
             program: Vec::new(),
             call_sites: Vec::new(),
             rules,
-            enable_recovery,
         }
     }
 
@@ -98,85 +94,10 @@ impl<'a> Compiler<'a> {
             names.insert(addr, self.rules[*rule].name.clone());
         }
 
-        self.compile_recovery_rules();
-
         Ok(Program {
             ops: self.program,
             names,
         })
-    }
-
-    fn compile_recovery_rules(&mut self) {
-        if !self.enable_recovery {
-            return;
-        }
-
-        // Compile first set each rule
-        for i in 0..self.rules.len() {
-            let fset = self.rules.first_set_of(i);
-            let has_utf8 = fset.iter().any(|r| matches!(r, Rule::UTF8Range(_, _)));
-
-            if has_utf8 {
-                self.compile_utf8_first_set(fset);
-            } else {
-                self.compile_first_set(fset);
-            }
-        }
-    }
-
-    /// Compile first set negation when dealing with bytes and UTF8 ranges
-    fn compile_utf8_first_set(&mut self, fset: Vec<Rule>) {
-        use Rule::*;
-
-        let mut ranges = OverlappingRanges::default();
-        for rule in fset {
-            match rule {
-                ByteSequence(bytes) => {
-                    let byte = bytes[0] as usize;
-                    ranges.add(byte..byte + 1);
-                }
-                ByteRange(a, b) => {
-                    ranges.add(a as usize..b as usize + 1);
-                }
-                ByteAny => {
-                    ranges.add(0..256);
-                }
-                UTF8Range(a, b) => {
-                    ranges.add(a as usize..b as usize + 1);
-                }
-                _ => unreachable!(),
-            }
-        }
-
-        self.push(Operation::Return);
-    }
-
-    /// Compile first set negation when dealing with bytes
-    fn compile_first_set(&mut self, fset: Vec<Rule>) {
-        use Rule::*;
-
-        let mut set = Set::new();
-        for rule in fset {
-            match rule {
-                ByteSequence(bytes) => {
-                    let byte = bytes[0];
-                    set.add(byte);
-                }
-                ByteRange(a, b) => {
-                    for i in a..=b {
-                        set.add(i);
-                    }
-                }
-                ByteAny => {
-                    set = Set::any();
-                    break;
-                }
-                _ => unreachable!(),
-            }
-        }
-
-        self.push(Operation::Set(set));
-        self.push(Operation::Return);
     }
 
     fn push(&mut self, op: Operation) -> usize {
@@ -263,13 +184,6 @@ impl<'a> Compiler<'a> {
                 self.push(Operation::FailTwice);
                 let next = self.program.len();
                 self.program[choice] = Operation::Choice(next);
-
-                // let choice = self.push(Operation::Choice(0));
-                // self.compile_rec(rule);
-                // let next = self.program.len();
-                // self.push(Operation::Commit(next + 1));
-                // self.push(Operation::Fail);
-                // self.program[choice] = Operation::Choice(self.program.len());
             }
             ByteSequence(seq) => {
                 for byte in seq {
@@ -293,9 +207,6 @@ impl<'a> Compiler<'a> {
             ByteAny => {
                 self.push(Operation::Set(Set::any()));
             }
-            Checkpoint => {
-                self.push(Operation::Checkpoint);
-            }
         }
     }
 }
@@ -316,7 +227,7 @@ mod test {
         let peg = include_str!("../../pegs/json.peg");
         let rules = grammar::parse_rules(std::io::Cursor::new(peg)).unwrap();
 
-        let mut compiler = Compiler::new(&rules, false);
+        let mut compiler = Compiler::new(&rules);
         let program = compiler.compile().unwrap();
         println!("{program:?}");
     }
@@ -326,7 +237,7 @@ mod test {
         let peg = include_str!("../../pegs/toml.peg");
         let rules = grammar::parse_rules(std::io::Cursor::new(peg)).unwrap();
 
-        let mut compiler = Compiler::new(&rules, false);
+        let mut compiler = Compiler::new(&rules);
         let program = compiler.compile().unwrap();
         println!("{program:?}");
     }
@@ -336,7 +247,7 @@ mod test {
         let peg = "WHITESPACE = [ \\t\\r\\n];";
         let rules = grammar::parse_rules(std::io::Cursor::new(peg)).unwrap();
 
-        let mut compiler = Compiler::new(&rules, false);
+        let mut compiler = Compiler::new(&rules);
         let program = compiler.compile();
 
         println!("{program:?}");
@@ -353,7 +264,7 @@ mod test {
             ";
         let rules = grammar::parse_rules(std::io::Cursor::new(peg)).unwrap();
 
-        let mut compiler = Compiler::new(&rules, false);
+        let mut compiler = Compiler::new(&rules);
         let program = compiler.compile();
         println!("{program:?}");
     }
@@ -372,7 +283,7 @@ mod test {
         let rules = grammar::parse_rules(std::io::Cursor::new(peg)).unwrap();
         println!("{}", rules);
 
-        let mut compiler = Compiler::new(&rules, true);
+        let mut compiler = Compiler::new(&rules);
         let program = compiler.compile();
     }
 }

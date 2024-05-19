@@ -30,7 +30,6 @@ pub(crate) enum Token {
     Range,
     Any,
     Negate,
-    Checkpoint,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -195,10 +194,6 @@ impl<R: io::Read> Lexer<R> {
             '.' => {
                 self.advance()?;
                 return Ok(Token::Any);
-            }
-            '~' => {
-                self.advance()?;
-                return Ok(Token::Checkpoint);
             }
             '@' => {
                 self.advance()?;

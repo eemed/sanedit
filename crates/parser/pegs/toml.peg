@@ -1,4 +1,4 @@
-document        = key_group* !.;
+document        = (ws (key_group / string / .))* !.;
 
 key_group       = header_line? value_line+ ignore;
 

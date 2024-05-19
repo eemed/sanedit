@@ -1,7 +1,6 @@
 mod captures;
 mod compiler;
 mod op;
-mod recovery;
 mod set;
 mod stack;
 

@@ -1,4 +1,4 @@
-use sanedit_buffer::{utf8::prev_eol, Bytes, PieceTreeSlice, PieceTree};
+use sanedit_buffer::{utf8::prev_eol, Bytes, PieceTree, PieceTreeSlice};
 
 #[derive(Debug, Eq, PartialEq)]
 pub(crate) enum IndentKind {

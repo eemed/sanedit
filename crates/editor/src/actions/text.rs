@@ -4,6 +4,7 @@ use crate::{
     common::{
         cursors::{word_at_cursor, word_before_cursor},
         dirs::tmp_file,
+        indent::{at_indent, indent_at},
     },
     editor::{
         hooks::Hook,
@@ -123,5 +124,21 @@ fn copy(editor: &mut Editor, id: ClientId) {
 fn paste(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     win.paste_from_clipboard(buf);
+    run(editor, id, Hook::BufChanged);
+}
+
+#[action("Insert newline")]
+fn insert_newline(editor: &mut Editor, id: ClientId) {
+    run(editor, id, Hook::InsertPre);
+    let (win, buf) = editor.win_buf_mut(id);
+    win.insert_newline(buf);
+    run(editor, id, Hook::BufChanged);
+}
+
+#[action("Insert tab")]
+fn insert_tab(editor: &mut Editor, id: ClientId) {
+    run(editor, id, Hook::InsertPre);
+    let (win, buf) = editor.win_buf_mut(id);
+    win.insert_tab(buf);
     run(editor, id, Hook::BufChanged);
 }

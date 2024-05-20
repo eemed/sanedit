@@ -141,6 +141,10 @@ impl Cursors {
             self.primary = 0;
         }
     }
+
+    pub fn iter(&self) -> std::slice::Iter<Cursor> {
+        self.cursors.iter()
+    }
 }
 
 impl Default for Cursors {

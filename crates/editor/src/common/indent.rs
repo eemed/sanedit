@@ -1,18 +1,39 @@
-use sanedit_buffer::{utf8::prev_eol, Bytes, PieceTree, PieceTreeSlice};
+use sanedit_buffer::{
+    utf8::{prev_eol, EndOfLine},
+    Bytes, PieceTree, PieceTreeSlice,
+};
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Hash)]
+#[repr(u8)]
 pub(crate) enum IndentKind {
-    Space,
-    Tab,
+    Space = b' ',
+    Tab = b'\t',
 }
 
-#[derive(Debug)]
+impl IndentKind {
+    pub fn as_str(&self) -> &str {
+        match self {
+            IndentKind::Space => " ",
+            IndentKind::Tab => "\t",
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Hash)]
 pub(crate) struct Indent {
     pub(crate) n: usize,
     pub(crate) kind: IndentKind,
 }
 
 impl Indent {
+    pub fn get(&self, level: usize) -> String {
+        self.kind.as_str().repeat(level * self.n)
+    }
+
+    pub fn to_string(&self) -> String {
+        self.get(1)
+    }
+
     pub fn determine(slice: &PieceTreeSlice) -> Indent {
         let mut indents = vec![];
         let mut lines = slice.lines();
@@ -59,50 +80,46 @@ impl Default for Indent {
 }
 
 fn indent_from_bytes(bytes: &mut Bytes) -> Indent {
+    use IndentKind::*;
     let kind = bytes
         .next()
-        .map(|b| match b {
-            b'\t' => Some(IndentKind::Tab),
-            b' ' => Some(IndentKind::Space),
-            _ => None,
+        .map(|b| {
+            if b == Tab as u8 {
+                Some(Tab)
+            } else if b == Space as u8 {
+                Some(Space)
+            } else {
+                None
+            }
         })
         .flatten();
 
     match kind {
-        Some(IndentKind::Tab) => {
+        Some(Tab) => {
             let mut n = 1;
             while let Some(b) = bytes.next() {
-                if b == b'\t' {
+                if b == Tab as u8 {
                     n += 1;
                 } else {
                     break;
                 }
             }
 
-            Indent {
-                n,
-                kind: IndentKind::Tab,
-            }
+            Indent { n, kind: Tab }
         }
-        Some(IndentKind::Space) => {
+        Some(Space) => {
             let mut n = 1;
             while let Some(b) = bytes.next() {
-                if b == b' ' {
+                if b == Space as u8 {
                     n += 1;
                 } else {
                     break;
                 }
             }
 
-            Indent {
-                n,
-                kind: IndentKind::Space,
-            }
+            Indent { n, kind: Space }
         }
-        None => Indent {
-            n: 0,
-            kind: IndentKind::Space,
-        },
+        None => Indent { n: 0, kind: Space },
     }
 }
 
@@ -117,4 +134,11 @@ pub(crate) fn indent_at(slice: &PieceTreeSlice, pos: usize) -> Indent {
     }
 
     indent_from_bytes(&mut bytes)
+}
+
+/// If pos is at indentation = just indentation to the left of cursor
+pub(crate) fn at_indent(slice: &PieceTreeSlice, pos: usize) -> bool {
+    let mut bytes = slice.bytes_at(pos);
+    let indent = indent_at(slice, pos);
+    bytes.pos() == pos
 }

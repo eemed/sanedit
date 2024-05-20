@@ -88,6 +88,9 @@ impl KeyMappings for DefaultKeyMappings {
              "f4", prompt::select_theme,
              "f2", window::goto_prev_buffer,
              "f3", prompt::goto_percentage,
+
+             "enter", text::insert_newline,
+             "tab", text::insert_tab,
         );
 
         map

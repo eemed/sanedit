@@ -12,3 +12,9 @@ fn detect_indent(editor: &mut Editor, id: ClientId) {
     let indent = Indent::determine(&slice);
     buf.options.indent = indent;
 }
+
+#[action("Indent")]
+fn indent_line(editor: &mut Editor, id: ClientId) {}
+
+#[action("Dedent")]
+fn dedent_line(editor: &mut Editor, id: ClientId) {}

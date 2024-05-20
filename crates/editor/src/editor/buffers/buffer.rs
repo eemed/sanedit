@@ -205,6 +205,20 @@ impl Buffer {
         self.insert_multi(&[pos], bytes)
     }
 
+    // pub fn insert_multi_different<B: AsRef<[u8]>>(&mut self, pos: &[usize], bytes: &[B]) -> &Change {
+    //     debug_assert!(pos.len() == bytes.len(), "Positions and texts length mismatch");
+
+    //     let bytes = bytes.as_ref();
+    //     let ranges: Vec<BufferRange> = pos.iter().map(|pos| *pos..pos + bytes.len()).collect();
+    //     let change = Change::insert(&ranges.into(), bytes);
+    //     let change = self.create_undo_point(change);
+
+    //     self.pt.insert_multi(pos, bytes);
+    //     self.is_modified = true;
+    //     self.last_change = change.into();
+    //     self.last_change.as_ref().unwrap()
+    // }
+
     pub fn insert_multi<B: AsRef<[u8]>>(&mut self, pos: &[usize], bytes: B) -> &Change {
         let bytes = bytes.as_ref();
         let ranges: Vec<BufferRange> = pos.iter().map(|pos| *pos..pos + bytes.len()).collect();

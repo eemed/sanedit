@@ -55,6 +55,10 @@ impl EndOfLine {
         Self::is_eol(&buf[..i])
     }
 
+    pub fn as_str(&self) -> &str {
+        self.as_ref()
+    }
+
     pub fn len(&self) -> usize {
         let string: &str = self.as_ref();
         string.len()

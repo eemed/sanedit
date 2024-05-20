@@ -1,10 +1,10 @@
-use std::path::PathBuf;
+use std::{collections::btree_map::Range, path::PathBuf};
 
 use crate::{
     common::{
         cursors::{word_at_cursor, word_before_cursor},
         dirs::tmp_file,
-        indent::{at_indent, indent_at},
+        indent::{at_indent, indent_at, Indent},
     },
     editor::{
         hooks::Hook,
@@ -127,7 +127,7 @@ fn paste(editor: &mut Editor, id: ClientId) {
     run(editor, id, Hook::BufChanged);
 }
 
-#[action("Insert newline")]
+#[action("Insert a newline to each cursor")]
 fn insert_newline(editor: &mut Editor, id: ClientId) {
     run(editor, id, Hook::InsertPre);
     let (win, buf) = editor.win_buf_mut(id);
@@ -135,10 +135,18 @@ fn insert_newline(editor: &mut Editor, id: ClientId) {
     run(editor, id, Hook::BufChanged);
 }
 
-#[action("Insert tab")]
+#[action("Insert a tab to each cursor")]
 fn insert_tab(editor: &mut Editor, id: ClientId) {
     run(editor, id, Hook::InsertPre);
     let (win, buf) = editor.win_buf_mut(id);
     win.insert_tab(buf);
+    run(editor, id, Hook::BufChanged);
+}
+
+#[action("Insert a tab to each cursor")]
+fn backtab(editor: &mut Editor, id: ClientId) {
+    run(editor, id, Hook::InsertPre);
+    let (win, buf) = editor.win_buf_mut(id);
+    win.backtab(buf);
     run(editor, id, Hook::BufChanged);
 }

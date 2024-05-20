@@ -90,7 +90,8 @@ impl KeyMappings for DefaultKeyMappings {
              "f3", prompt::goto_percentage,
 
              "enter", text::insert_newline,
-             "tab", text::insert_tab,
+             "tab",   text::insert_tab,
+             "btab",  text::backtab,
         );
 
         map

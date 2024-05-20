@@ -12,6 +12,7 @@ use std::{
     cmp::{max, min},
     collections::{hash_map::Entry, HashMap},
     mem,
+    ops::Range,
 };
 
 use rustc_hash::FxHashMap;
@@ -20,7 +21,7 @@ use sanedit_messages::redraw::{Severity, Size, StatusMessage};
 use crate::{
     common::{
         char::DisplayOptions,
-        indent::{at_indent, indent_at, Indent},
+        indent::{at_indent, can_dedent, indent_at, Indent},
         movement,
         text::{as_lines, to_line},
     },
@@ -371,13 +372,14 @@ impl Window {
         self.clipboard.copy(&line);
     }
 
-    fn insert_to_each_cursor(&mut self, buf: &mut Buffer, texts: Vec<String>) {
+    pub fn insert_to_each_cursor(&mut self, buf: &mut Buffer, texts: Vec<String>) {
         debug_assert!(
             texts.len() == self.cursors.len(),
             "Cursors {} and texts {} count mismatch",
             self.cursors.len(),
             texts.len()
         );
+        // TODO make this one change instead of many
 
         self.remove_cursor_selections(buf);
 
@@ -405,62 +407,6 @@ impl Window {
                 self.insert_at_cursors(buf, &text);
             }
         }
-    }
-
-    pub fn insert_newline(&mut self, buf: &mut Buffer) {
-        // TODO optimize?
-        // let mut map = FxHashMap::default();
-        // self.cursors.iter().for_each(|c| {
-        //     let pos = c.pos();
-        //     let indent = indent_at(&slice, pos);
-        //     let entry: Entry<Indent, Vec<usize>> = map.entry(indent);
-        //     let val = entry.or_default();
-        //     val.push(pos);
-        // });
-
-        self.remove_cursor_selections(buf);
-        let positions: Vec<usize> = (&self.cursors).into();
-        let eol = buf.options.eol;
-        self.insert(buf, &positions, eol.as_ref());
-
-        let mut inserted = 0;
-        for cursor in self.cursors.cursors_mut() {
-            let cpos = cursor.pos() + inserted;
-            cursor.goto(cpos + eol.len());
-            inserted += eol.len();
-        }
-
-        let mut indents = vec![];
-        let mut inserted = 0;
-        let positions: Vec<usize> = (&self.cursors).into();
-        for cursor in positions {
-            let cpos = cursor + inserted;
-            let slice = buf.slice(..);
-            let indent = indent_at(&slice, cpos);
-
-            if indent.n != 0 {
-                let indent = indent.to_string();
-                self.insert(buf, &[cpos], &indent);
-                indents.push(indent);
-            }
-        }
-
-        self.invalidate();
-        self.view_to_cursor(buf);
-    }
-
-    pub fn insert_tab(&mut self, buf: &mut Buffer) {
-
-        // let (win, buf) = editor.win_buf_mut(id);
-        // let slice = buf.slice(..);
-        // let pos = win.cursors.primary().pos();
-        // let at_indent = at_indent(&slice, pos);
-        // if at_indent {
-        //     let indent =buf.options.indent.to_string();
-        //     win.insert_at_cursors(buf, &indent);
-        // } else {
-        //     win.insert_at_cursors(buf, '\t');
-        // }
     }
 
     pub fn insert_at_cursors(&mut self, buf: &mut Buffer, text: &str) {
@@ -571,12 +517,12 @@ impl Window {
 
             for cursor in self.cursors.cursors_mut() {
                 let cpos = cursor.pos();
-                let only_indent = at_indent(&slice, cpos);
-                let pos = if only_indent {
-                    // dedent
-                    cpos.saturating_sub(buf.options.indent.n)
-                } else {
-                    movement::prev_grapheme_boundary(&buf.slice(..), cpos)
+                let pos = match can_dedent(&slice, cpos) {
+                    Some(n) => {
+                        let n = min(n, buf.options.indent.n);
+                        cpos.saturating_sub(n)
+                    }
+                    None => movement::prev_grapheme_boundary(&buf.slice(..), cpos),
                 };
                 ranges.push(pos..cpos);
             }
@@ -603,6 +549,74 @@ impl Window {
 
     pub fn syntax_result(&mut self) -> &mut SyntaxParseResult {
         &mut self.view.syntax
+    }
+
+    pub fn insert_newline(&mut self, buf: &mut Buffer) {
+        // 1. Calculate indents
+        // 2. insert newlines + indent combo to each cursor
+        let eol = buf.options.eol;
+        let slice = buf.slice(..);
+        let texts: Vec<String> = self
+            .cursors()
+            .iter()
+            .map(|c| {
+                let indent = indent_at(&slice, c.pos());
+                format!("{}{}", eol.as_str(), indent.to_string())
+            })
+            .collect();
+
+        self.insert_to_each_cursor(buf, texts);
+    }
+
+    pub fn insert_tab(&mut self, buf: &mut Buffer) {
+        // TODO if selection indent all the lines
+        let slice = buf.slice(..);
+        let texts: Vec<String> = self
+            .cursors()
+            .iter()
+            .map(|c| {
+                let bindent = buf.options.indent;
+
+                match at_indent(&slice, c.pos()) {
+                    Some(mut indent) => {
+                        indent.n = indent.n % bindent.n;
+                        if indent.n == 0 {
+                            indent.n = bindent.n;
+                        }
+                        indent.to_string()
+                    }
+                    None => String::from("\t"),
+                }
+            })
+            .collect();
+        self.insert_to_each_cursor(buf, texts);
+    }
+
+    pub fn backtab(&mut self, buf: &mut Buffer) {
+        let slice = buf.slice(..);
+        let indent = buf.options.indent;
+        let ranges: SortedRanges = {
+            let mut ranges = vec![];
+            for cursor in self.cursors.iter() {
+                let pos = cursor.pos();
+                if let Some(dd) = can_dedent(&slice, pos) {
+                    let small = pos.saturating_sub(min(dd, indent.n));
+                    ranges.push(small..pos);
+                }
+            }
+            ranges.into()
+        };
+
+        self.remove(buf, &ranges);
+
+        let mut removed = 0;
+        for (i, range) in ranges.iter().enumerate() {
+            let cursor = &mut self.cursors.cursors_mut()[i];
+            cursor.goto(range.start - removed);
+            removed += range.len();
+        }
+
+        self.invalidate();
     }
 }
 

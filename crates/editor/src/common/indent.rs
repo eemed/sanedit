@@ -3,7 +3,7 @@ use sanedit_buffer::{
     Bytes, PieceTree, PieceTreeSlice,
 };
 
-#[derive(Debug, Eq, PartialEq, Hash)]
+#[derive(Debug, Eq, PartialEq, Hash, Copy, Clone)]
 #[repr(u8)]
 pub(crate) enum IndentKind {
     Space = b' ',
@@ -19,7 +19,7 @@ impl IndentKind {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]
 pub(crate) struct Indent {
     pub(crate) n: usize,
     pub(crate) kind: IndentKind,
@@ -123,6 +123,7 @@ fn indent_from_bytes(bytes: &mut Bytes) -> Indent {
     }
 }
 
+// TODO replace with at_indent
 /// Calculate indentation level at a line where pos resides
 pub(crate) fn indent_at(slice: &PieceTreeSlice, pos: usize) -> Indent {
     let mut bytes = slice.bytes_at(pos);
@@ -136,9 +137,49 @@ pub(crate) fn indent_at(slice: &PieceTreeSlice, pos: usize) -> Indent {
     indent_from_bytes(&mut bytes)
 }
 
-/// If pos is at indentation = just indentation to the left of cursor
-pub(crate) fn at_indent(slice: &PieceTreeSlice, pos: usize) -> bool {
+// TODO replace with at_indent
+/// Returns how much we can dedent the line from pos
+pub(crate) fn can_dedent(slice: &PieceTreeSlice, pos: usize) -> Option<usize> {
     let mut bytes = slice.bytes_at(pos);
-    let indent = indent_at(slice, pos);
-    bytes.pos() == pos
+    if let Some(eol) = prev_eol(&mut bytes) {
+        let len = eol.eol.len();
+        for _ in 0..len {
+            bytes.next();
+        }
+    }
+    let start = bytes.pos();
+    let at_start = bytes.pos() == pos;
+    if !at_start {
+        return None;
+    }
+
+    indent_from_bytes(&mut bytes);
+    if bytes.pos() != pos + 1 {
+        return None;
+    }
+
+    Some(pos - start)
+}
+
+/// If pos is at indentation = just indentation to the left of cursor
+/// returns the indentation left of cursor
+pub(crate) fn at_indent(slice: &PieceTreeSlice, pos: usize) -> Option<Indent> {
+    let mut bytes = slice.bytes_at(pos);
+    if let Some(eol) = prev_eol(&mut bytes) {
+        let len = eol.eol.len();
+        for _ in 0..len {
+            bytes.next();
+        }
+    }
+
+    let start = bytes.pos();
+    let mut indent = indent_from_bytes(&mut bytes);
+    let end = bytes.pos();
+
+    if !(start..end).contains(&pos) {
+        return None;
+    }
+
+    indent.n = pos - start;
+    Some(indent)
 }

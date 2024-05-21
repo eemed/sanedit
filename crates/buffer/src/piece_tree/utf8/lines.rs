@@ -21,12 +21,12 @@ const EOLS: [EndOfLine; 7] = [
     // Missing CRLF on purpose, handled separately
 ];
 
-fn nfa_bwd() -> &'static NFA {
+fn nfa_fwd() -> &'static NFA {
     static NFA: OnceLock<NFA> = OnceLock::new();
     NFA.get_or_init(|| NFA::new(EOLS).unwrap())
 }
 
-fn nfa_fwd() -> &'static NFA {
+fn nfa_bwd() -> &'static NFA {
     static NFA: OnceLock<NFA> = OnceLock::new();
     NFA.get_or_init(|| {
         let eol_rev: Vec<Vec<u8>> = EOLS
@@ -164,9 +164,11 @@ impl<'a> Lines<'a> {
     pub fn next(&mut self) -> Option<PieceTreeSlice> {
         let start = self.bytes.pos();
 
+        println!("Start: {start}");
         match next_eol(&mut self.bytes) {
             Some(mat) => Some(self.slice.slice(start..mat.range.end)),
             None => {
+                println!("none");
                 let end = self.bytes.pos();
                 if start == end && self.at_end {
                     None

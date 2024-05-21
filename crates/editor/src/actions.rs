@@ -13,9 +13,6 @@ pub(crate) mod text_objects;
 pub(crate) mod view;
 pub(crate) mod window;
 
-#[cfg(test)]
-pub(crate) mod tests;
-
 use std::{fmt, sync::Arc};
 
 use crate::{editor::Editor, server::ClientId};

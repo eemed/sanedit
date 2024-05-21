@@ -270,6 +270,14 @@ mod test {
     use super::*;
     use crate::piece_tree::PieceTree;
 
+    macro_rules! assert_str {
+        ($expect:expr, $slice:expr) => {{
+            let slice = $slice.expect("No grapheme present");
+            let actual = String::from(&slice);
+            assert_eq!($expect, actual);
+        }};
+    }
+
     #[test]
     fn grapheme_iter_next() {
         let mut pt = PieceTree::new();
@@ -317,15 +325,13 @@ mod test {
         let slice = pt.slice(..);
         let mut graphemes = slice.graphemes_at(0);
 
-        println!("GN: {:?}", graphemes.next().as_ref().map(String::from));
-        println!("GN: {:?}", graphemes.next().as_ref().map(String::from));
-        println!("GN: {:?}", graphemes.next().as_ref().map(String::from));
-        println!("GP: {:?}", graphemes.prev().as_ref().map(String::from));
-        println!("GP: {:?}", graphemes.prev().as_ref().map(String::from));
-        println!("GN: {:?}", graphemes.next().as_ref().map(String::from));
-        println!("GN: {:?}", graphemes.next().as_ref().map(String::from));
-        println!("GN: {:?}", graphemes.next().as_ref().map(String::from));
-        todo!("Asserts");
+        assert_str!("❤", graphemes.next());
+        assert_str!("🤍", graphemes.next());
+        assert_str!("🥳", graphemes.next());
+        assert_str!("🥳", graphemes.prev());
+        assert_str!("🤍", graphemes.prev());
+        assert_str!("🤍", graphemes.next());
+        assert_str!("🥳", graphemes.next());
     }
 
     #[test]
@@ -336,8 +342,7 @@ mod test {
         let slice = pt.slice(..);
         let mut graphemes = slice.graphemes_at(11);
 
-        println!("GN: {:?}", graphemes.next().as_ref().map(String::from));
-        todo!("Asserts");
+        assert_str!("❤️", graphemes.next());
     }
 
     #[test]

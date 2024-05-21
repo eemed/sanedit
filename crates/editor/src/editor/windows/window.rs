@@ -506,6 +506,8 @@ impl Window {
         }
     }
 
+    /// Remove a grapheme before the cursor, if at indentation
+    /// remove a block of it
     pub fn remove_grapheme_before_cursors(&mut self, buf: &mut Buffer) {
         if self.remove_cursor_selections(buf) {
             return;
@@ -556,6 +558,8 @@ impl Window {
         &mut self.view.syntax
     }
 
+    /// Insert a newline to each cursor
+    /// if originating line was indented also preserve the indentation
     pub fn insert_newline(&mut self, buf: &mut Buffer) {
         // 1. Calculate indents
         // 2. insert newlines + indent combo to each cursor
@@ -573,16 +577,19 @@ impl Window {
         self.insert_to_each_cursor(buf, texts);
     }
 
+    /// Indent all the lines with cursors or their selections
     pub fn indent_cursor_lines(&mut self, buf: &mut Buffer) {
         todo!()
     }
 
+    /// Dedent all the lines with cursors or their selections
     pub fn dedent_cursor_lines(&mut self, buf: &mut Buffer) {
         todo!()
     }
 
+    /// Insert a tab character
+    /// If cursor is at indentation, add an indentation block instead
     pub fn insert_tab(&mut self, buf: &mut Buffer) {
-        // TODO if selection indent all the lines
         let slice = buf.slice(..);
         let texts: Vec<String> = self
             .cursors()
@@ -602,6 +609,7 @@ impl Window {
         self.insert_to_each_cursor(buf, texts);
     }
 
+    /// If cursor is at indentation, try to dedent the line
     pub fn backtab(&mut self, buf: &mut Buffer) {
         let slice = buf.slice(..);
         let indmul = buf.options.indent.n;

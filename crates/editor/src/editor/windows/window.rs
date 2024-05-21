@@ -8,20 +8,20 @@ mod search;
 mod selector;
 mod view;
 
+#[cfg(test)]
+mod tests;
+
 use std::{
     cmp::{max, min},
-    collections::{hash_map::Entry, HashMap},
     mem,
-    ops::Range,
 };
 
-use rustc_hash::FxHashMap;
 use sanedit_messages::redraw::{Severity, Size, StatusMessage};
 
 use crate::{
     common::{
         char::DisplayOptions,
-        indent::{at_indent, can_dedent, indent_at, Indent},
+        indent::{indent_at_line, indent_at_pos},
         movement,
         text::{as_lines, to_line},
     },
@@ -514,13 +514,18 @@ impl Window {
         let slice = buf.slice(..);
         let ranges: SortedRanges = {
             let mut ranges = vec![];
+            let indmul = buf.options.indent.n;
 
             for cursor in self.cursors.cursors_mut() {
                 let cpos = cursor.pos();
-                let pos = match can_dedent(&slice, cpos) {
-                    Some(n) => {
-                        let n = min(n, buf.options.indent.n);
-                        cpos.saturating_sub(n)
+                let pos = match indent_at_pos(&slice, cpos) {
+                    Some(at) => {
+                        let n = at.dedent_to_multiple_of(indmul);
+                        if n == 0 {
+                            movement::prev_grapheme_boundary(&buf.slice(..), cpos)
+                        } else {
+                            cpos.saturating_sub(n)
+                        }
                     }
                     None => movement::prev_grapheme_boundary(&buf.slice(..), cpos),
                 };
@@ -560,12 +565,20 @@ impl Window {
             .cursors()
             .iter()
             .map(|c| {
-                let indent = indent_at(&slice, c.pos());
+                let indent = indent_at_line(&slice, c.pos());
                 format!("{}{}", eol.as_str(), indent.to_string())
             })
             .collect();
 
         self.insert_to_each_cursor(buf, texts);
+    }
+
+    pub fn indent_cursor_lines(&mut self, buf: &mut Buffer) {
+        todo!()
+    }
+
+    pub fn dedent_cursor_lines(&mut self, buf: &mut Buffer) {
+        todo!()
     }
 
     pub fn insert_tab(&mut self, buf: &mut Buffer) {
@@ -575,14 +588,11 @@ impl Window {
             .cursors()
             .iter()
             .map(|c| {
-                let bindent = buf.options.indent;
+                let indmul = buf.options.indent.n;
 
-                match at_indent(&slice, c.pos()) {
+                match indent_at_pos(&slice, c.pos()) {
                     Some(mut indent) => {
-                        indent.n = indent.n % bindent.n;
-                        if indent.n == 0 {
-                            indent.n = bindent.n;
-                        }
+                        indent.n = indent.indent_to_multiple_of(indmul);
                         indent.to_string()
                     }
                     None => String::from("\t"),
@@ -594,13 +604,19 @@ impl Window {
 
     pub fn backtab(&mut self, buf: &mut Buffer) {
         let slice = buf.slice(..);
-        let indent = buf.options.indent;
+        let indmul = buf.options.indent.n;
         let ranges: SortedRanges = {
             let mut ranges = vec![];
             for cursor in self.cursors.iter() {
                 let pos = cursor.pos();
-                if let Some(dd) = can_dedent(&slice, pos) {
-                    let small = pos.saturating_sub(min(dd, indent.n));
+                if let Some(at) = indent_at_pos(&slice, pos) {
+                    let n = at.dedent_to_multiple_of(indmul);
+                    // At start of line
+                    if n == 0 {
+                        continue;
+                    }
+
+                    let small = pos.saturating_sub(n);
                     ranges.push(small..pos);
                 }
             }
@@ -618,110 +634,4 @@ impl Window {
 
         self.invalidate();
     }
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    fn to_str(row: &Vec<Cell>) -> String {
-        let mut string = String::new();
-        for cell in row {
-            if let Some(ch) = cell.char() {
-                string.push_str(ch.display());
-            }
-        }
-        string
-    }
-
-    fn view_lines(win: &Window) -> Vec<String> {
-        win.view().cells().iter().map(to_str).collect()
-    }
-
-    fn wrapped_line_view() -> (Window, Buffer) {
-        let mut buf = Buffer::new();
-        buf.insert(
-            0,
-            "this is a long line that will not fit\nthis is another long line that will not fit into the view\nthis is the third line that is longer than the view",
-        );
-        let mut win = Window::new(buf.id, 10, 3);
-        win.redraw_view(&buf);
-        (win, buf)
-    }
-
-    fn ten_line() -> (Window, Buffer) {
-        let mut buf = Buffer::new();
-        buf.insert(
-            0,
-            "one\ntwo\nthree\nfour\nfive\nsix\nseven\neight\nnine\nten",
-        );
-        let mut win = Window::new(buf.id, 80, 3);
-        win.redraw_view(&buf);
-        (win, buf)
-    }
-
-    #[test]
-    fn scroll_up() {
-        let (mut win, buf) = ten_line();
-        win.view.set_offset(14);
-        win.view.redraw(&buf);
-        assert_eq!(vec!["four\n", "five\n", "six\n"], view_lines(&win));
-        win.scroll_up_n(&buf, 2);
-        assert_eq!(vec!["two\n", "three\n", "four\n"], view_lines(&win));
-    }
-
-    #[test]
-    fn scroll_up_wrapped() {
-        let (mut win, buf) = wrapped_line_view();
-        win.view.set_offset(52);
-        win.view.redraw(&buf);
-        assert_eq!(
-            vec!["r long lin", "e that wil", "l not fit "],
-            view_lines(&win)
-        );
-
-        win.scroll_up_n(&buf, 1);
-        assert_eq!(
-            vec!["this is an", "other long", " line that"],
-            view_lines(&win)
-        );
-
-        win.scroll_up_n(&buf, 1);
-        assert_eq!(
-            vec!["a long lin", "e that wil", "l not fit\n"],
-            view_lines(&win)
-        );
-    }
-
-    #[test]
-    fn scroll_down() {
-        let (mut win, buf) = ten_line();
-        win.scroll_down_n(&buf, 2);
-        assert_eq!(vec!["three\n", "four\n", "five\n"], view_lines(&win));
-    }
-
-    #[test]
-    fn scroll_down_wrapped() {
-        let (mut win, buf) = wrapped_line_view();
-        win.scroll_down_n(&buf, 2);
-        assert_eq!(
-            vec!["that will ", "not fit\n", "this is an"],
-            view_lines(&win)
-        );
-    }
-
-    #[test]
-    fn view_to_after() {
-        // let (mut win, buf) = wrapped_line_view();
-        // assert_eq!(vec!["", "", ""], view_lines(&win));
-    }
-
-    #[test]
-    fn view_to_after_small() {}
-
-    #[test]
-    fn view_to_before() {}
-
-    #[test]
-    fn view_to_before_small() {}
 }

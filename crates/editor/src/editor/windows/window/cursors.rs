@@ -145,6 +145,10 @@ impl Cursors {
     pub fn iter(&self) -> std::slice::Iter<Cursor> {
         self.cursors.iter()
     }
+
+    pub fn has_selections(&self) -> bool {
+        self.cursors.iter().any(|c| c.selection().is_some())
+    }
 }
 
 impl Default for Cursors {

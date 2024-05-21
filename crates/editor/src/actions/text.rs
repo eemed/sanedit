@@ -1,11 +1,7 @@
-use std::{collections::btree_map::Range, path::PathBuf};
+use std::path::PathBuf;
 
 use crate::{
-    common::{
-        cursors::{word_at_cursor, word_before_cursor},
-        dirs::tmp_file,
-        indent::{at_indent, indent_at, Indent},
-    },
+    common::dirs::tmp_file,
     editor::{
         hooks::Hook,
         windows::{Focus, Prompt},
@@ -139,7 +135,11 @@ fn insert_newline(editor: &mut Editor, id: ClientId) {
 fn insert_tab(editor: &mut Editor, id: ClientId) {
     run(editor, id, Hook::InsertPre);
     let (win, buf) = editor.win_buf_mut(id);
-    win.insert_tab(buf);
+    if win.cursors().has_selections() {
+        win.indent_cursor_lines(buf);
+    } else {
+        win.insert_tab(buf);
+    }
     run(editor, id, Hook::BufChanged);
 }
 
@@ -147,6 +147,10 @@ fn insert_tab(editor: &mut Editor, id: ClientId) {
 fn backtab(editor: &mut Editor, id: ClientId) {
     run(editor, id, Hook::InsertPre);
     let (win, buf) = editor.win_buf_mut(id);
-    win.backtab(buf);
+    if win.cursors().has_selections() {
+        win.dedent_cursor_lines(buf);
+    } else {
+        win.backtab(buf);
+    }
     run(editor, id, Hook::BufChanged);
 }

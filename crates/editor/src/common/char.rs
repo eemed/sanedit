@@ -1,6 +1,3 @@
-use std::collections::HashMap;
-use std::ops::Range;
-
 use rustc_hash::FxHashMap;
 use sanedit_buffer::PieceTreeSlice;
 

@@ -522,6 +522,7 @@ impl Window {
                 let cpos = cursor.pos();
                 let pos = match indent_at_pos(&slice, cpos) {
                     Some(at) => {
+                        log::info!("n: {at:?}");
                         let n = at.dedent_to_multiple_of(indmul);
                         if n == 0 {
                             movement::prev_grapheme_boundary(&buf.slice(..), cpos)

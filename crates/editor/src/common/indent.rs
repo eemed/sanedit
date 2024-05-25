@@ -38,7 +38,7 @@ impl Indent {
             res = n;
         }
 
-        n
+        res
     }
 
     /// How much this indentation would need to be removed so that it would be
@@ -145,7 +145,6 @@ fn indent_from_bytes(bytes: &mut Bytes) -> Indent {
     }
 }
 
-// TODO replace with at_indent
 /// Calculate indentation level at a line where pos resides
 pub(crate) fn indent_at_line(slice: &PieceTreeSlice, pos: usize) -> Indent {
     let mut bytes = slice.bytes_at(pos);
@@ -171,8 +170,8 @@ pub(crate) fn indent_at_pos(slice: &PieceTreeSlice, pos: usize) -> Option<Indent
     }
 
     let start = bytes.pos();
-    let mut indent = indent_from_bytes(&mut bytes);
-    let end = bytes.pos();
+    let indent = indent_from_bytes(&mut bytes);
+    let end = start + indent.n;
 
     if end == slice.len() {
         return Some(indent);
@@ -182,6 +181,5 @@ pub(crate) fn indent_at_pos(slice: &PieceTreeSlice, pos: usize) -> Option<Indent
         return None;
     }
 
-    indent.n = pos - start;
     Some(indent)
 }

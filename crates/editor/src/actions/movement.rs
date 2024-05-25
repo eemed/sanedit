@@ -1,4 +1,4 @@
-use std::cmp::{self, max};
+use std::cmp;
 
 use sanedit_buffer::PieceTreeSlice;
 use sanedit_messages::redraw::Point;

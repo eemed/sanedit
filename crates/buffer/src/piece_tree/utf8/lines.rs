@@ -164,11 +164,9 @@ impl<'a> Lines<'a> {
     pub fn next(&mut self) -> Option<PieceTreeSlice> {
         let start = self.bytes.pos();
 
-        println!("Start: {start}");
         match next_eol(&mut self.bytes) {
             Some(mat) => Some(self.slice.slice(start..mat.range.end)),
             None => {
-                println!("none");
                 let end = self.bytes.pos();
                 if start == end && self.at_end {
                     None

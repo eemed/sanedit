@@ -3,6 +3,28 @@ use std::{cmp, mem, ops::Range};
 use crate::common::range::RangeUtils;
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
+enum Anchor {
+    Range(usize, usize),
+    Position(usize),
+}
+
+impl Anchor {
+    pub fn min(&mut self) -> &mut usize {
+        match self {
+            Anchor::Range(a, _) => a,
+            Anchor::Position(p) => p,
+        }
+    }
+
+    pub fn max(&mut self) -> &mut usize {
+        match self {
+            Anchor::Range(_, b) => b,
+            Anchor::Position(p) => p,
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub(crate) struct Cursor {
     /// Position in buffer
     pos: usize,
@@ -11,7 +33,7 @@ pub(crate) struct Cursor {
     col: Option<usize>,
 
     /// Selection anchor. Selected range is formed from this position and the current `pos`
-    anchor: Option<usize>,
+    anchor: Option<Anchor>,
 }
 
 impl Cursor {
@@ -27,7 +49,7 @@ impl Cursor {
         Cursor {
             pos: range.end,
             col: None,
-            anchor: Some(range.start),
+            anchor: Some(Anchor::Position(range.start)),
         }
     }
 
@@ -49,8 +71,17 @@ impl Cursor {
         self.col = Some(col);
     }
 
+    pub fn set_column(&mut self, col: usize) {
+        self.col = Some(col);
+    }
+
+    pub fn anchor_range(&mut self, range: Range<usize>) {
+        let Range { start, end } = range;
+        self.anchor = Some(Anchor::Range(start, end));
+    }
+
     pub fn anchor(&mut self) {
-        self.anchor = Some(self.pos);
+        self.anchor = Some(Anchor::Position(self.pos));
     }
 
     pub fn unanchor(&mut self) {
@@ -58,15 +89,27 @@ impl Cursor {
     }
 
     pub fn select(&mut self, range: Range<usize>) {
-        self.anchor = Some(range.start);
+        self.anchor = Some(Anchor::Position(range.start));
         self.pos = range.end;
     }
 
     pub fn selection(&self) -> Option<Range<usize>> {
-        let anchor = self.anchor?;
-        let min = self.pos.min(anchor);
-        let max = self.pos.max(anchor);
-        Some(min..max)
+        match self.anchor.as_ref()? {
+            Anchor::Range(s, e) => {
+                if self.pos < *s {
+                    Some(self.pos..*e)
+                } else if *e < self.pos {
+                    Some(*s..self.pos)
+                } else {
+                    Some(*s..*e)
+                }
+            }
+            Anchor::Position(anc) => {
+                let min = self.pos.min(*anc);
+                let max = self.pos.max(*anc);
+                Some(min..max)
+            }
+        }
     }
 
     pub fn take_selection(&mut self) -> Option<Range<usize>> {
@@ -85,17 +128,25 @@ impl Cursor {
         }
 
         if let Some(ref mut anc) = self.anchor {
-            if *anc > range.end {
-                *anc = range.end
+            let max = anc.max();
+            if *max > range.end {
+                *max = range.end;
             }
 
-            if *anc < range.start {
-                *anc = range.start
+            let min = anc.min();
+            if *min < range.start {
+                *min = range.start;
             }
         }
     }
 
     pub fn to_range(&mut self, other: &Range<usize>) {
+        // Dont extend into a selection in not necessary
+        if other.len() == 1 && self.anchor.is_none() {
+            self.goto(other.start);
+            return;
+        }
+
         self.extend_to_include(other);
         self.shrink_to_range(other);
     }
@@ -109,29 +160,36 @@ impl Cursor {
             return;
         }
 
-        if self.anchor.is_some() {
-            if let Some(anc) = self.anchor.as_mut() {
-                let min = if *anc < self.pos { anc } else { &mut self.pos };
-                *min = other.start;
-            }
+        if let Some(anc) = self.anchor.as_mut() {
+            let amin = anc.min();
+            let min = if *amin < self.pos {
+                amin
+            } else {
+                &mut self.pos
+            };
+            *min = other.start;
 
-            if let Some(anc) = self.anchor.as_mut() {
-                let max = if *anc < self.pos { &mut self.pos } else { anc };
-                *max = other.end;
-            }
+            let amax = anc.max();
+            let max = if *amax < self.pos {
+                &mut self.pos
+            } else {
+                amax
+            };
+            *max = other.end;
             return;
         }
 
         let min = cmp::min(other.start, self.pos);
         let max = cmp::max(other.end, self.pos);
         self.pos = min;
-        self.anchor = Some(max);
+        self.anchor = Some(Anchor::Position(max));
     }
 
     pub fn swap_selection_dir(&mut self) {
-        if let Some(anc) = &mut self.anchor {
-            mem::swap(anc, &mut self.pos);
-        }
+        todo!()
+        // if let Some(anc) = &mut self.anchor {
+        //     mem::swap(anc, &mut self.pos);
+        // }
     }
 
     // /// Remove the selected text from the buffer and restore cursor to non

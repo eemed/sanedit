@@ -59,8 +59,6 @@ fn confirm(editor: &mut Editor, id: ClientId) {
 fn abort(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     win.focus = Focus::Window;
-
-    log::info!("abort compl");
 }
 
 #[action("Select next completion")]

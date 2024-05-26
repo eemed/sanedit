@@ -3,7 +3,7 @@ use sanedit_messages::redraw::Point;
 
 use crate::{
     common::{
-        movement::{next_line, next_line_start, prev_line, start_of_line},
+        movement::{end_of_line, next_line, next_line_start, prev_line, start_of_line},
         window::pos_at_point,
     },
     editor::{hooks::Hook, windows::Cursor, Editor},
@@ -134,19 +134,21 @@ fn prev(editor: &mut Editor, id: ClientId) {
 #[action("Select line")]
 fn select_line(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
-    // TODO hooks?
     for cursor in win.cursors.cursors_mut() {
         let slice = buf.slice(..);
         let pos = cursor.pos();
         let start = start_of_line(&slice, pos);
-        let end = next_line_start(&slice, pos);
+        let end = end_of_line(&slice, pos);
+        // let end = next_line_start(&slice, pos);
         if start == end {
             continue;
         }
 
-        cursor.goto(start);
-        cursor.anchor();
+        // cursor.goto(start);
+        // cursor.anchor();
+        cursor.anchor_range(start..end);
         cursor.goto(end);
+        cursor.set_column(usize::MAX);
     }
 }
 

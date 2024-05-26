@@ -346,12 +346,18 @@ impl Window {
 
         let mut removed = 0;
         for cursor in self.cursors.cursors_mut() {
-            if let Some(mut sel) = cursor.take_selection() {
-                sel.start -= removed;
-                sel.end -= removed;
+            let sel = cursor.take_selection();
+            let cpos = sel
+                .as_ref()
+                .map(|range| range.start)
+                .unwrap_or(cursor.pos());
+            cursor.goto(cpos - removed);
+
+            if let Some(sel) = sel {
+                // sel.start -= removed;
+                // sel.end -= removed;
 
                 removed += sel.len();
-                cursor.goto(sel.start);
             }
         }
 
@@ -576,7 +582,9 @@ impl Window {
                 let cstarts = selection_line_starts(buf, range);
                 starts.extend(cstarts);
             }
-            starts.into_iter().collect()
+            let mut vstarts: Vec<usize> = starts.into_iter().collect();
+            vstarts.sort();
+            vstarts
         };
 
         let indent = buf.options.indent.to_string();
@@ -593,6 +601,7 @@ impl Window {
             let len = count * indent.len();
             range.start += plen;
             range.end += plen + len;
+            log::info!("cursor: {cursor:?}, start: {starts:?}, pre: {pre}, plen: {plen}, count: {count}, len: {len}, range: {range:?}");
             cursor.to_range(&range);
         }
 

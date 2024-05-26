@@ -51,10 +51,14 @@ fn insert_tab_text() {
         kind: IndentKind::Space,
     };
 
+    win.insert_tab(&mut buf);
+    let lines = view_lines(&mut win, &buf);
+    assert_eq!(lines[0], "    hello".to_string());
+
     win.cursors.primary_mut().goto(buf.len());
     win.insert_tab(&mut buf);
     let lines = view_lines(&mut win, &buf);
-    assert_eq!(lines[0], "hello→  ".to_string());
+    assert_eq!(lines[0], "    hello→      ".to_string());
 }
 
 #[test]
@@ -73,34 +77,4 @@ fn backtab() {
     win.backtab(&mut buf);
     let lines = view_lines(&mut win, &buf);
     assert_eq!(lines[0], "".to_string());
-}
-
-#[test]
-fn remove_grapheme_before() {
-    let (mut win, mut buf) = with_buf("      a\na");
-    buf.options.indent = Indent {
-        n: 4,
-        kind: IndentKind::Space,
-    };
-
-    win.cursors.primary_mut().goto(buf.len());
-    win.remove_grapheme_before_cursors(&mut buf);
-    let lines = view_lines(&mut win, &buf);
-    assert_eq!(lines[0], "      a ");
-
-    win.remove_grapheme_before_cursors(&mut buf);
-    let lines = view_lines(&mut win, &buf);
-    assert_eq!(lines[0], "      a");
-
-    win.remove_grapheme_before_cursors(&mut buf);
-    let lines = view_lines(&mut win, &buf);
-    assert_eq!(lines[0], "      ");
-
-    win.remove_grapheme_before_cursors(&mut buf);
-    let lines = view_lines(&mut win, &buf);
-    assert_eq!(lines[0], "    ");
-
-    win.remove_grapheme_before_cursors(&mut buf);
-    let lines = view_lines(&mut win, &buf);
-    assert_eq!(lines[0], "");
 }

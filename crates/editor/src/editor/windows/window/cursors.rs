@@ -90,7 +90,6 @@ impl Cursors {
                 cursor.selection().unwrap_or(cursor.pos()..cursor.pos() + 1)
             };
 
-            log::info!("Comparing: {cur:?}, to: {next:?}");
             if cur.overlaps(&next) {
                 self.cursors.remove(i);
                 let cur = &mut self.cursors[i - 1];
@@ -101,9 +100,9 @@ impl Cursors {
         self.primary = min(self.primary, self.cursors.len() - 1);
     }
 
-    pub fn ensure_in_range(&mut self, range: Range<usize>) {
+    pub fn shrink_cursor_to_range(&mut self, range: Range<usize>) {
         for cursor in &mut self.cursors {
-            cursor.ensure_in_range(range.clone())
+            cursor.shrink_to_range(&range)
         }
     }
 

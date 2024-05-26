@@ -5,7 +5,10 @@ use sanedit_buffer::{
     PieceTree, PieceTreeSlice,
 };
 
-use crate::{common::movement::next_grapheme_boundary, editor::buffers::BufferRange};
+use crate::{
+    common::movement::next_grapheme_boundary,
+    editor::buffers::{Buffer, BufferRange},
+};
 
 use super::{
     char::{
@@ -157,4 +160,26 @@ pub(crate) fn to_line(lines: Vec<String>, eol: EndOfLine) -> String {
     }
 
     result
+}
+
+pub(crate) fn selection_line_starts(buf: &Buffer, sel: Range<usize>) -> Vec<usize> {
+    let mut starts = vec![];
+    let start = sel.start;
+    let slice = buf.slice(sel);
+    let mut lines = slice.lines();
+
+    let sol = start_of_line(&buf.slice(..), start);
+    if sol != start {
+        starts.push(sol);
+        // Skip first line
+        lines.next();
+    }
+
+    while let Some(line) = lines.next() {
+        if !line.is_empty() {
+            starts.push(line.start());
+        }
+    }
+
+    starts
 }

@@ -177,7 +177,7 @@ pub(crate) fn indent_at_pos(slice: &PieceTreeSlice, pos: usize) -> Option<Indent
         return Some(indent);
     }
 
-    if !(start..end).contains(&pos) {
+    if !(start..=end).contains(&pos) {
         return None;
     }
 

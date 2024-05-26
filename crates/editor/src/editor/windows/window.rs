@@ -16,14 +16,15 @@ use std::{
     mem,
 };
 
+use rustc_hash::FxHashSet;
 use sanedit_messages::redraw::{Severity, Size, StatusMessage};
 
 use crate::{
     common::{
         char::DisplayOptions,
         indent::{indent_at_line, indent_at_pos},
-        movement,
-        text::{as_lines, to_line},
+        movement::{self, start_of_line},
+        text::{as_lines, selection_line_starts, to_line},
     },
     editor::{
         buffers::{Buffer, BufferId, SnapshotData, SortedRanges},
@@ -224,7 +225,7 @@ impl Window {
 
     pub fn ensure_cursor_on_grapheme_boundary(&mut self, buf: &Buffer) {
         // Ensure cursor in buf range
-        self.cursors.ensure_in_range(0..buf.len());
+        self.cursors.shrink_cursor_to_range(0..buf.len());
 
         // Ensure cursor in buf grapheme boundary
         let primary = self.cursors.primary_mut();
@@ -294,7 +295,7 @@ impl Window {
             self.bid
         );
 
-        self.cursors.ensure_in_range(0..buf.len());
+        self.cursors.shrink_cursor_to_range(0..buf.len());
         // let primary_pos = self.cursors.primary().pos();
         self.view.redraw(buf);
         // self.view.view_to(primary_pos, buf);
@@ -513,25 +514,12 @@ impl Window {
             return;
         }
 
-        let slice = buf.slice(..);
         let ranges: SortedRanges = {
             let mut ranges = vec![];
-            let indmul = buf.options.indent.n;
 
             for cursor in self.cursors.cursors_mut() {
                 let cpos = cursor.pos();
-                let pos = match indent_at_pos(&slice, cpos) {
-                    Some(at) => {
-                        log::info!("n: {at:?}");
-                        let n = at.dedent_to_multiple_of(indmul);
-                        if n == 0 {
-                            movement::prev_grapheme_boundary(&buf.slice(..), cpos)
-                        } else {
-                            cpos.saturating_sub(n)
-                        }
-                    }
-                    None => movement::prev_grapheme_boundary(&buf.slice(..), cpos),
-                };
+                let pos = movement::prev_grapheme_boundary(&buf.slice(..), cpos);
                 ranges.push(pos..cpos);
             }
 
@@ -580,7 +568,35 @@ impl Window {
 
     /// Indent all the lines with cursors or their selections
     pub fn indent_cursor_lines(&mut self, buf: &mut Buffer) {
-        todo!()
+        let starts: Vec<usize> = {
+            let mut starts = FxHashSet::default();
+
+            for cursor in self.cursors.iter() {
+                let range = cursor.selection().unwrap_or(cursor.pos()..cursor.pos() + 1);
+                let cstarts = selection_line_starts(buf, range);
+                starts.extend(cstarts);
+            }
+            starts.into_iter().collect()
+        };
+
+        let indent = buf.options.indent.to_string();
+        buf.insert_multi(&starts, &indent);
+
+        for cursor in self.cursors.cursors_mut() {
+            let mut range = cursor.selection().unwrap_or(cursor.pos()..cursor.pos() + 1);
+            let pre = starts.iter().take_while(|cur| **cur < range.start).count();
+            let count = starts[pre..]
+                .iter()
+                .take_while(|cur| range.contains(cur))
+                .count();
+            let plen = pre * indent.len();
+            let len = count * indent.len();
+            range.start += plen;
+            range.end += plen + len;
+            cursor.to_range(&range);
+        }
+
+        self.invalidate();
     }
 
     /// Dedent all the lines with cursors or their selections

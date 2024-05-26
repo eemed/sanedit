@@ -75,16 +75,29 @@ impl Cursor {
         Some(sel)
     }
 
-    pub fn ensure_in_range(&mut self, range: Range<usize>) {
+    pub fn shrink_to_range(&mut self, range: &Range<usize>) {
         if self.pos > range.end {
             self.pos = range.end
+        }
+
+        if self.pos < range.start {
+            self.pos = range.start
         }
 
         if let Some(ref mut anc) = self.anchor {
             if *anc > range.end {
                 *anc = range.end
             }
+
+            if *anc < range.start {
+                *anc = range.start
+            }
         }
+    }
+
+    pub fn to_range(&mut self, other: &Range<usize>) {
+        self.extend_to_include(other);
+        self.shrink_to_range(other);
     }
 
     /// Extend this cursor to cover the specified range.

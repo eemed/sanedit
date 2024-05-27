@@ -52,12 +52,8 @@ impl Completion {
         self.selector = Selector::new();
     }
 
-    pub fn matches_window(&self, count: usize, offset: usize) -> Vec<&str> {
-        self.selector
-            .matches_window(count, offset)
-            .iter()
-            .map(|m| m.value())
-            .collect()
+    pub fn options_window(&self, count: usize, offset: usize) -> Vec<&SelectorOption> {
+        self.selector.matches_window(count, offset)
     }
 
     pub fn matcher_result_handler(editor: &mut Editor, id: ClientId, msg: MatcherMessage) {
@@ -88,6 +84,7 @@ impl Completion {
                     }
                     MatchedOptions::ClearAll => win.completion.clear_options(),
                     MatchedOptions::Options(opts) => {
+                        // TODO add descriptions
                         let opts: Vec<SelectorOption> =
                             opts.into_iter().map(SelectorOption::from).collect();
                         let (win, _buf) = editor.win_buf_mut(id);

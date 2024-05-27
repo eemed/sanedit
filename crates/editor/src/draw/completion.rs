@@ -1,6 +1,6 @@
 use std::cmp;
 
-use sanedit_messages::redraw;
+use sanedit_messages::redraw::{self, CompletionOption};
 
 use crate::editor::windows::Completion;
 
@@ -20,11 +20,26 @@ pub(crate) fn draw(completion: &Completion, ctx: &mut DrawContext) -> redraw::Co
         }
     };
     let selected_relative_pos = completion.selected_pos().map(|pos| pos - *offset);
-    let options = completion.matches_window(compl_count, *offset);
+    let options: Vec<CompletionOption> = completion
+        .options_window(compl_count, *offset)
+        .into_iter()
+        .map(|opt| CompletionOption {
+            name: opt.value().into(),
+            description: opt.description.clone(),
+        })
+        .collect();
+    let match_len = completion
+        .selector
+        .options
+        .get(0)
+        .map(|mat| mat.matches().get(0).map(|o| o.len()))
+        .flatten()
+        .unwrap_or(0);
 
     redraw::Completion {
         point: completion.point,
-        options: options.into_iter().map(String::from).collect(),
+        options,
         selected: selected_relative_pos,
+        query_len: match_len,
     }
 }

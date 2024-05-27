@@ -5,19 +5,29 @@ use serde::{Deserialize, Serialize};
 use super::{Component, Diffable, Point, Redraw, Size};
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
+pub struct CompletionOption {
+    pub name: String,
+    pub description: String,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
 pub struct Completion {
     pub point: Point,
-    pub options: Vec<String>,
+    pub options: Vec<CompletionOption>,
     pub selected: Option<usize>,
+    pub query_len: usize,
 }
 
 impl Completion {
     /// Size of completion where everything fits on screen
     pub fn preferred_size(&self) -> Size {
-        let width = self
-            .options
-            .iter()
-            .fold(0, |acc, o| max(acc, o.chars().count()));
+        let width = self.options.iter().fold(0, |acc, o| {
+            // name + " " + description
+            max(
+                acc,
+                o.name.chars().count() + 1 + o.description.chars().count(),
+            )
+        });
         let height = self.options.len();
         Size { width, height }
     }

@@ -104,6 +104,7 @@ pub(crate) fn matcher_result_handler(editor: &mut Editor, id: ClientId, msg: Mat
                 let (win, _buf) = editor.win_buf_mut(id);
                 win.prompt.provide_options(opts.into());
             }
+            _ => {}
         },
     }
 }

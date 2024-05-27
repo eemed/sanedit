@@ -1,5 +1,4 @@
 use std::{
-    cmp::min,
     ops::Range,
     path::{Path, PathBuf},
     sync::Arc,

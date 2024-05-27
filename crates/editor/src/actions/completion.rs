@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use crate::{
-    common::{cursors::word_before_cursor, matcher::*},
+    common::{cursors::non_whitespace_before_cursor, matcher::*},
     editor::{
         windows::{Completion, Focus},
         Editor,
@@ -22,6 +22,7 @@ fn complete(editor: &mut Editor, id: ClientId) {
     }
     win.focus = Focus::Completion;
 
+    log::info!("stax: {:?}", win.syntax_result().highlights);
     let opts: Vec<String> = win
         .syntax_result()
         .highlights
@@ -29,6 +30,7 @@ fn complete(editor: &mut Editor, id: ClientId) {
         .filter(|hl| hl.name == "identifier" || hl.name == "string")
         .map(|hl| String::from(&buf.slice(hl.range.clone())))
         .collect();
+    log::info!("Options: {:?}", win.syntax_result().highlights);
 
     let job = MatcherJob::builder(id)
         .strategy(MatchStrategy::Prefix)
@@ -82,8 +84,7 @@ fn send_word(editor: &mut Editor, id: ClientId) {
 
     let (win, buf) = editor.win_buf_mut(id);
     if let Some(fun) = win.completion.on_input.clone() {
-        if let Some(word) = word_before_cursor(editor, id) {
-            (fun)(editor, id, &word)
-        }
+        let word = non_whitespace_before_cursor(editor, id).unwrap_or(String::from(""));
+        (fun)(editor, id, &word);
     }
 }

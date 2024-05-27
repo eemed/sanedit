@@ -5,9 +5,10 @@ use sanedit_utils::sorted_vec::SortedVec;
 
 use crate::{
     actions::jobs::{MatchedOptions, MatcherMessage},
-    common::cursors::word_before_cursor,
+    common::cursors::non_whitespace_before_cursor,
     editor::{
         keymap::{DefaultKeyMappings, KeyMappings, Keymap},
+        windows::Focus,
         Editor,
     },
     server::ClientId,
@@ -65,13 +66,10 @@ impl Completion {
         // let draw = editor.draw_state(id);
         // draw.no_redraw_window();
         //
-        log::info!("MSG: {msg:?}");
-
         match msg {
             Init(sender) => {
-                if let Some(word) = word_before_cursor(editor, id) {
-                    let _ = sender.blocking_send(word);
-                }
+                let word = non_whitespace_before_cursor(editor, id).unwrap_or(String::from(""));
+                let _ = sender.blocking_send(word);
 
                 let (win, buf) = editor.win_buf_mut(id);
                 win.completion.on_input = Some(Rc::new(move |editor, id, input| {
@@ -82,6 +80,12 @@ impl Completion {
             Progress(opts) => {
                 let (win, buf) = editor.win_buf_mut(id);
                 match opts {
+                    MatchedOptions::Done => {
+                        if win.completion.selector.options.is_empty() {
+                            win.focus = Focus::Window;
+                            win.info_msg("No completion items");
+                        }
+                    }
                     MatchedOptions::ClearAll => win.completion.clear_options(),
                     MatchedOptions::Options(opts) => {
                         let opts: Vec<SelectorOption> =

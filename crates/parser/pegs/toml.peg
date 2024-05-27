@@ -1,4 +1,4 @@
-document        = (ws (key_group / string / .))* !.;
+document        = (ws (key_group / quoted_string / .))* !.;
 
 key_group       = header_line? value_line+ ignore;
 
@@ -10,13 +10,13 @@ key_segment     = [^\[\]\.\n\r]+;
 
 value_line      = ignore name ws "=" ws value line_end;
 name            = (!space !nl .)+;
-value           = string / datetime / float / integer / boolean / array / object;
+value           = quoted_string / datetime / float / integer / boolean / array / object;
 
 array           = (empty_array / string_array / datetime_array / float_array / integer_array / boolean_array / array_array);
+quoted_string    = "\"" string "\"";
 
 @show
-string          = "\"" ("\\" escape_char / [^"])* "\"";
-
+string          = ("\\" escape_char / [^"])*;
 escape_char     = "0" / "t" / "n" / "r" / "\"" / "\\";
 digit           = [0..9];
 
@@ -47,7 +47,7 @@ object_value = name "=" value;
 empty_array     = "[" "]";
 
 @whitespaced
-string_array    = "[" string   ("," string)*  ","? "]";
+string_array    = "[" quoted_string  ("," string)*  ","? "]";
 
 @whitespaced
 integer_array   = "[" integer  ("," integer)* ","? "]";

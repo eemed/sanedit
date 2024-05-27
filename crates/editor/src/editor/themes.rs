@@ -1,10 +1,9 @@
 use std::{
-    borrow::Cow,
     fs,
     path::{Path, PathBuf},
 };
 
-use anyhow::{bail, Context};
+use anyhow::bail;
 use rustc_hash::FxHashMap;
 use sanedit_messages::redraw::{Style, Theme, ThemeField};
 use toml::{Table, Value};

@@ -144,9 +144,8 @@ fn select_line(editor: &mut Editor, id: ClientId) {
             continue;
         }
 
-        // cursor.goto(start);
-        // cursor.anchor();
-        cursor.anchor_range(start..end);
+        cursor.goto(start);
+        cursor.anchor();
         cursor.goto(end);
         cursor.set_column(usize::MAX);
     }

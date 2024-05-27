@@ -180,6 +180,7 @@ impl Prompt {
                     let (win, _buf) = editor.win_buf_mut(id);
                     win.prompt.provide_options(opts.into());
                 }
+                _ => {}
             },
         }
     }

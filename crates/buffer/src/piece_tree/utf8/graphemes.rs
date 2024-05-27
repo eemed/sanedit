@@ -98,7 +98,7 @@ impl<'a> Graphemes<'a> {
     }
 
     pub fn next(&mut self) -> Option<PieceTreeSlice> {
-        if self.last_call_fwd == Some(false) {
+        if !self.at_start && self.last_call_fwd == Some(false) {
             self.chars.next();
         }
         self.last_call_fwd = Some(true);
@@ -335,6 +335,24 @@ mod test {
     }
 
     #[test]
+    fn grapheme_iter_prev_next() {
+        let mut pt = PieceTree::new();
+        const CONTENT: &str = "abba";
+        pt.insert(0, CONTENT);
+
+        let slice = pt.slice(..);
+        let mut graphemes = slice.graphemes_at(slice.len());
+
+        assert_str!("a", graphemes.prev());
+        assert_str!("b", graphemes.prev());
+        assert_str!("b", graphemes.prev());
+        assert_str!("a", graphemes.prev());
+        assert!(graphemes.prev().is_none());
+        assert!(graphemes.prev().is_none());
+        assert_str!("a", graphemes.next());
+    }
+
+    #[test]
     fn grapheme_iter_middle() {
         let mut pt = PieceTree::new();
         const CONTENT: &str = "❤🤍🥳❤️간÷나는산다⛄😮‍💨🇫🇮";
@@ -407,5 +425,24 @@ mod test {
             pos = prev_grapheme_boundary(&slice, pos);
             assert_eq!(*boundary, pos);
         }
+    }
+
+    #[test]
+    fn iter_prev_next() {
+        let mut pt = PieceTree::new();
+        const CONTENT: &str = "abba";
+        pt.insert(0, CONTENT);
+
+        let boundaries = [0, 0, 1, 2, 3];
+        let slice = pt.slice(..);
+        let mut pos = slice.len();
+
+        for boundary in boundaries.iter().rev() {
+            pos = prev_grapheme_boundary(&slice, pos);
+            assert_eq!(*boundary, pos);
+        }
+
+        pos = next_grapheme_boundary(&slice, pos);
+        assert_eq!(1, pos);
     }
 }

@@ -65,7 +65,7 @@ impl KeyMappings for DefaultKeyMappings {
 
              "ctrl+z", text::undo,
              "ctrl+r", text::redo,
-             "ctrl+b", cursors::start_selection,
+             "alt+v", cursors::start_selection,
 
              "alt+r", prompt::shell_command,
              "alt+x", cursors::select_line,

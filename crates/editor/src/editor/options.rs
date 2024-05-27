@@ -2,9 +2,6 @@
 pub(crate) struct Options {
     /// When filesize is over this threshold it is considered big
     pub big_file_threshold_bytes: u64,
-
-    /// Directories ignored when listing files
-    pub ignore_directories: Vec<String>,
 }
 
 impl Default for Options {
@@ -12,7 +9,6 @@ impl Default for Options {
         Options {
             // big_file_threshold_bytes: 100 * 1024 * 1024, // 100MB
             big_file_threshold_bytes: 1024 * 1024, // 1MB
-            ignore_directories: vec![],
         }
     }
 }

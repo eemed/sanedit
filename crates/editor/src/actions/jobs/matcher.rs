@@ -209,6 +209,7 @@ impl KeepInTouch for MatcherJob {
 
 #[derive(Debug)]
 pub(crate) enum MatchedOptions {
+    Done,
     ClearAll,
     Options(Vec<Match>),
 }
@@ -272,7 +273,10 @@ pub(crate) async fn match_options(
                 }
             }
 
-            let _ = msend.send(MatchedOptions::Options(matches)).await;
+            if !matches.is_empty() {
+                let _ = msend.send(MatchedOptions::Options(matches)).await;
+            }
+            let _ = msend.send(MatchedOptions::Done).await;
         })
     }
 
@@ -288,7 +292,7 @@ pub(crate) async fn match_options(
     };
 
     while let Some(t) = trecv.recv().await {
-        if term == t {
+        if term == t && join.is_some() {
             continue;
         }
         term = t;

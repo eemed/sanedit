@@ -1,6 +1,9 @@
 use crate::{editor::Editor, server::ClientId};
 
-use super::text::word_at_pos;
+use super::{
+    char::{grapheme_category, GraphemeCategory},
+    text::word_at_pos,
+};
 
 pub(crate) fn word_at_cursor(editor: &Editor, id: ClientId) -> Option<String> {
     let (win, buf) = editor.win_buf(id);
@@ -11,13 +14,20 @@ pub(crate) fn word_at_cursor(editor: &Editor, id: ClientId) -> Option<String> {
     Some(String::from(&word))
 }
 
-pub(crate) fn word_before_cursor(editor: &Editor, id: ClientId) -> Option<String> {
+pub(crate) fn non_whitespace_before_cursor(editor: &Editor, id: ClientId) -> Option<String> {
     let (win, buf) = editor.win_buf(id);
-    let cursor = win.cursors.primary().pos().saturating_sub(1);
+    let cursor = win.cursors.primary().pos();
     let slice = buf.slice(..);
-    log::info!("Word at: {cursor}");
-    let range = word_at_pos(&slice, cursor)?;
-    log::info!("range: {range:?}");
-    let word = buf.slice(range);
+    let mut start = cursor;
+    let mut graphemes = slice.graphemes_at(cursor);
+    while let Some(g) = graphemes.prev() {
+        use GraphemeCategory::*;
+        match grapheme_category(&g) {
+            EOL | Whitespace => break,
+            _ => start = g.start(),
+        }
+    }
+
+    let word = buf.slice(start..cursor);
     Some(String::from(&word))
 }

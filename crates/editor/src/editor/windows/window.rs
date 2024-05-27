@@ -23,7 +23,7 @@ use crate::{
     common::{
         char::DisplayOptions,
         indent::{indent_at_line, indent_at_pos},
-        movement::{self, start_of_line},
+        movement,
         text::{as_lines, selection_line_starts, to_line},
     },
     editor::{

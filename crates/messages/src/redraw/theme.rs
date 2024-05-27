@@ -111,6 +111,12 @@ pub enum ThemeField {
     Cursor,
     PrimaryCursor,
     Gutter,
+    Completion,
+    CompletionDescription,
+    CompletionMatch,
+    CompletionSelected,
+    CompletionSelectedDescription,
+    CompletionSelectedMatch,
 
     Match,
 
@@ -166,6 +172,13 @@ impl AsRef<str> for ThemeField {
             Number => "window.view.number",
             Comment => "window.view.comment",
             Operator => "window.view.operator",
+
+            Completion => "window.completion",
+            CompletionDescription => "window.completion.description",
+            CompletionMatch => "window.completion.match",
+            CompletionSelected => "window.completion.selected",
+            CompletionSelectedDescription => "window.completion.selected.description",
+            CompletionSelectedMatch => "window.completion.selected.match",
 
             PromptDefault => "prompt",
             PromptMessage => "prompt.message",

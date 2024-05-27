@@ -77,9 +77,9 @@ impl Drawable for Completion {
             .enumerate()
             .for_each(|(i, opt)| {
                 let field = if Some(i) == self.selected {
-                    ThemeField::PromptCompletionSelected
+                    ThemeField::CompletionSelected
                 } else {
-                    ThemeField::PromptCompletion
+                    ThemeField::Completion
                 };
                 let style = ctx.style(field);
                 let line = into_cells_with_style_pad(&opt, style, wsize.width);

@@ -1,6 +1,6 @@
 use crate::actions::jobs::{MatchedOptions, MatcherMessage};
 use crate::actions::*;
-use crate::common::matcher::Match;
+use crate::common::matcher::{Match, MatchOption};
 use crate::editor::windows::SelectorOption;
 use sanedit_messages::keyevents_to_string;
 
@@ -52,23 +52,33 @@ pub(crate) const COMMANDS: &[Action] = &[
     text_objects::select_in_angle,
 ];
 
-pub(crate) fn command_palette() -> Vec<String> {
+pub(crate) fn command_palette(editor: &Editor, id: ClientId) -> Vec<MatchOption> {
     let cmds = COMMANDS.to_vec();
     // Display descriptions in command palette
-    cmds.iter().map(|cmd| cmd.description().into()).collect()
+    cmds.iter()
+        .map(|action| {
+            let (win, _buf) = editor.win_buf(id);
+            let mut description = String::new();
+            if let Some(bind) = win.keymap().find_bound_key(action.name()) {
+                description = keyevents_to_string(&bind);
+            }
+            let value = action.description().into();
+            MatchOption { value, description }
+        })
+        .collect()
 }
 
-pub(crate) fn format_match(editor: &Editor, id: ClientId, mat: Match) -> SelectorOption {
-    let mut opt = SelectorOption::from(mat);
-    if let Some(action) = find_action(opt.value()) {
-        let (win, _buf) = editor.win_buf(id);
-        if let Some(bind) = win.keymap().find_bound_key(action.name()) {
-            opt.description = keyevents_to_string(&bind);
-        }
-    }
+// pub(crate) fn format_match(editor: &Editor, id: ClientId, mat: Match) -> SelectorOption {
+//     let mut opt = SelectorOption::from(mat);
+//     if let Some(action) = find_action(opt.value()) {
+//         let (win, _buf) = editor.win_buf(id);
+//         if let Some(bind) = win.keymap().find_bound_key(action.name()) {
+//             opt.description = keyevents_to_string(&bind);
+//         }
+//     }
 
-    opt
-}
+//     opt
+// }
 
 pub(crate) fn find_action(name: &str) -> Option<Action> {
     for cmd in COMMANDS {
@@ -97,10 +107,8 @@ pub(crate) fn matcher_result_handler(editor: &mut Editor, id: ClientId, msg: Mat
         Progress(opts) => match opts {
             MatchedOptions::ClearAll => win.prompt.clear_options(),
             MatchedOptions::Options(opts) => {
-                let opts: Vec<SelectorOption> = opts
-                    .into_iter()
-                    .map(|mat| format_match(editor, id, mat))
-                    .collect();
+                let opts: Vec<SelectorOption> =
+                    opts.into_iter().map(SelectorOption::from).collect();
                 let (win, _buf) = editor.win_buf_mut(id);
                 win.prompt.provide_options(opts.into());
             }

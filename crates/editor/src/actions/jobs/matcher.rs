@@ -12,7 +12,7 @@ use tokio::{
 
 use crate::{
     actions::jobs::CHANNEL_SIZE,
-    common::matcher::{Match, MatchReceiver, MatchStrategy, Matcher},
+    common::matcher::{Match, MatchOption, MatchReceiver, MatchStrategy, Matcher},
     editor::{job_broker::KeepInTouch, Editor},
     job_runner::{Job, JobContext, JobResult},
     server::ClientId,
@@ -28,7 +28,7 @@ pub(crate) enum MatcherMessage {
 pub(crate) trait OptionProvider: fmt::Debug + Sync + Send {
     fn provide(
         &self,
-        sender: Sender<String>,
+        sender: Sender<MatchOption>,
         kill: broadcast::Sender<()>,
     ) -> BoxFuture<'static, ()>;
 }
@@ -36,7 +36,27 @@ pub(crate) trait OptionProvider: fmt::Debug + Sync + Send {
 impl OptionProvider for Arc<Vec<String>> {
     fn provide(
         &self,
-        sender: Sender<String>,
+        sender: Sender<MatchOption>,
+        kill: broadcast::Sender<()>,
+    ) -> BoxFuture<'static, ()> {
+        let items = self.clone();
+
+        let fut = async move {
+            for opt in items.iter() {
+                if let Err(_) = sender.send(MatchOption::new(&opt)).await {
+                    break;
+                }
+            }
+        };
+
+        Box::pin(fut)
+    }
+}
+
+impl OptionProvider for Arc<Vec<MatchOption>> {
+    fn provide(
+        &self,
+        sender: Sender<MatchOption>,
         kill: broadcast::Sender<()>,
     ) -> BoxFuture<'static, ()> {
         let items = self.clone();
@@ -64,7 +84,7 @@ impl Empty {
 impl OptionProvider for Empty {
     fn provide(
         &self,
-        sender: Sender<String>,
+        sender: Sender<MatchOption>,
         kill: broadcast::Sender<()>,
     ) -> BoxFuture<'static, ()> {
         Box::pin(async {})
@@ -175,7 +195,7 @@ impl Job for MatcherJob {
             // Term channel
             let (tsend, trecv) = channel::<String>(CHANNEL_SIZE);
             // Options channel
-            let (osend, orecv) = channel::<String>(CHANNEL_SIZE);
+            let (osend, orecv) = channel::<MatchOption>(CHANNEL_SIZE);
             // Results channel
             let (msend, mrecv) = channel::<MatchedOptions>(CHANNEL_SIZE);
 
@@ -216,7 +236,7 @@ pub(crate) enum MatchedOptions {
 
 /// Reads options and filter term from channels and send results to progress
 pub(crate) async fn match_options(
-    orecv: Receiver<String>,
+    orecv: Receiver<MatchOption>,
     mut trecv: Receiver<String>,
     msend: Sender<MatchedOptions>,
     strat: MatchStrategy,

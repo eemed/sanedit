@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::{rc::Rc, sync::Arc};
 
 use sanedit_messages::redraw::Point;
 use sanedit_utils::sorted_vec::SortedVec;

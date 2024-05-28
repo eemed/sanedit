@@ -21,7 +21,7 @@ pub(crate) use strategy::*;
 
 /// Matches options to a term
 pub(crate) struct Matcher {
-    reader: Reader<String>,
+    reader: Reader<MatchOption>,
     all_opts_read: Arc<AtomicBool>,
     previous: Arc<AtomicBool>,
     strategy: MatchStrategy,
@@ -34,9 +34,9 @@ impl Matcher {
     // Create a new matcher.
     pub fn new<T>(mut chan: T, strategy: MatchStrategy) -> Matcher
     where
-        T: MatchOptionReceiver<String> + Send + 'static,
+        T: MatchOptionReceiver<MatchOption> + Send + 'static,
     {
-        let (reader, writer) = Appendlist::<String>::new();
+        let (reader, writer) = Appendlist::<MatchOption>::new();
         let all_opts_read = Arc::new(AtomicBool::new(false));
         let all_read = all_opts_read.clone();
 
@@ -117,10 +117,13 @@ impl Matcher {
 
                     let candidates = reader.slice(batch);
                     for can in candidates.into_iter() {
-                        if let Some(ranges) = matches_with(&can, &terms, case_sensitive, match_fn) {
+                        if let Some(ranges) =
+                            matches_with(&can.value, &terms, case_sensitive, match_fn)
+                        {
+                            log::info!("ranges: {ranges:?}");
                             let mat = Match {
-                                score: score(can.as_str(), &ranges),
-                                value: can.clone(),
+                                score: score(can.value.as_str(), &ranges),
+                                opt: can.clone(),
                                 ranges,
                             };
 

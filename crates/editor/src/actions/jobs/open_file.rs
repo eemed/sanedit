@@ -9,11 +9,13 @@ use tokio::{
     sync::{broadcast, mpsc::Sender},
 };
 
+use crate::common::matcher::MatchOption;
+
 use super::OptionProvider;
 
 #[derive(Clone)]
 struct ReadDirContext {
-    osend: Sender<String>,
+    osend: Sender<MatchOption>,
     strip: usize,
     kill: broadcast::Sender<()>,
     ignore: Arc<Vec<String>>,
@@ -69,7 +71,7 @@ async fn rec(dir: PathBuf, ctx: ReadDirContext) -> io::Result<()> {
                     acc
                 });
             let name: String = path.to_string_lossy().into();
-            let _ = ctx.osend.send(name).await;
+            let _ = ctx.osend.send(name.into()).await;
         }
     }
 
@@ -78,7 +80,7 @@ async fn rec(dir: PathBuf, ctx: ReadDirContext) -> io::Result<()> {
 
 async fn read_directory_recursive(
     dir: PathBuf,
-    osend: Sender<String>,
+    osend: Sender<MatchOption>,
     ignore: Arc<Vec<String>>,
     kill: broadcast::Sender<()>,
 ) {
@@ -100,7 +102,7 @@ async fn read_directory_recursive(
 impl OptionProvider for FileOptionProvider {
     fn provide(
         &self,
-        sender: Sender<String>,
+        sender: Sender<MatchOption>,
         kill: broadcast::Sender<()>,
     ) -> BoxFuture<'static, ()> {
         let dir = self.path.clone();

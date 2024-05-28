@@ -108,7 +108,10 @@ impl Grid {
                             let drawable = compl.drawable();
                             drawable.update(diff);
                             let Size { width, height } = drawable.preferred_size();
-                            compl.set_size(width, height);
+
+                            let area = compl.area_mut();
+                            area.width = width;
+                            area.height = height;
                         }
                     }
                     Close => self.completion = None,

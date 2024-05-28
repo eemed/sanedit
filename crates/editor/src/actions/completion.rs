@@ -22,15 +22,20 @@ fn complete(editor: &mut Editor, id: ClientId) {
     }
     win.focus = Focus::Completion;
 
-    log::info!("stax: {:?}", win.syntax_result().highlights);
-    let opts: Vec<String> = win
+    let opts: Vec<MatchOption> = win
         .syntax_result()
         .highlights
         .iter()
         .filter(|hl| hl.name == "identifier" || hl.name == "string")
-        .map(|hl| String::from(&buf.slice(hl.range.clone())))
+        .map(|hl| {
+            let compl = String::from(&buf.slice(hl.range.clone()));
+            let desc = hl.name.clone();
+            MatchOption {
+                value: compl,
+                description: desc,
+            }
+        })
         .collect();
-    log::info!("Options: {:?}", win.syntax_result().highlights);
 
     let job = MatcherJob::builder(id)
         .strategy(MatchStrategy::Prefix)

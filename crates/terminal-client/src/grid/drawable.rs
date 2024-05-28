@@ -76,13 +76,36 @@ impl Drawable for Completion {
             .take(max_opts)
             .enumerate()
             .for_each(|(i, opt)| {
-                let field = if Some(i) == self.selected {
-                    ThemeField::CompletionSelected
+                let (field, dfield, mfield) = if Some(i) == self.selected {
+                    (
+                        ThemeField::CompletionSelected,
+                        ThemeField::CompletionSelectedDescription,
+                        ThemeField::CompletionSelectedMatch,
+                    )
                 } else {
-                    ThemeField::Completion
+                    (
+                        ThemeField::Completion,
+                        ThemeField::CompletionDescription,
+                        ThemeField::CompletionMatch,
+                    )
                 };
                 let style = ctx.style(field);
-                let line = into_cells_with_style_pad(&opt, style, wsize.width);
+                let dstyle = ctx.style(dfield);
+                let mstyle = ctx.style(mfield);
+
+                let line = format_option(&opt.name, &opt.description, style, dstyle, wsize.width);
+
+                // // Highlight matches
+                // for mat in &opt.matches {
+                //     let mut pos = 0;
+                //     for cell in &mut line {
+                //         if mat.contains(&pos) {
+                //             cell.style = mstyle;
+                //         }
+                //         pos += cell.cell.text.len();
+                //     }
+                // }
+
                 put_line(line, i, cells);
             });
     }

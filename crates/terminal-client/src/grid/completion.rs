@@ -10,7 +10,7 @@ pub(crate) fn open_completion(win: Rect, compl: Completion) -> Canvas<Completion
 }
 
 fn below(win: Rect, compl: &Completion) -> Rect {
-    let Point { x, y } = compl.point + win.position() + Point { x: 0, y: 1 };
+    let Point { mut x, y } = compl.point + win.position() + Point { x: 0, y: 1 };
     let Size { width, height } = compl.preferred_size();
     Rect {
         x,
@@ -22,10 +22,12 @@ fn below(win: Rect, compl: &Completion) -> Rect {
 
 fn above(win: Rect, compl: &Completion) -> Rect {
     let Point { x, mut y } = compl.point + win.position();
-    let width = compl
-        .options
-        .iter()
-        .fold(0, |acc, o| max(acc, o.chars().count()));
+    let width = compl.options.iter().fold(0, |acc, o| {
+        max(
+            acc,
+            o.name.chars().count() + 1 + o.description.chars().count(),
+        )
+    });
     let height = compl.options.len();
     y -= compl.options.len();
 

@@ -36,6 +36,8 @@ pub(crate) fn draw(completion: &Completion, ctx: &mut DrawContext) -> redraw::Co
         .flatten()
         .unwrap_or(0);
 
+    log::info!("matchlen: {match_len}");
+
     redraw::Completion {
         point: completion.point,
         options,

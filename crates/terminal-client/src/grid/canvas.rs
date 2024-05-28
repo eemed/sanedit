@@ -20,9 +20,8 @@ impl<T: Drawable> Canvas<T> {
         }
     }
 
-    pub fn set_size(&mut self, width: usize, height: usize) {
-        self.area.width = width;
-        self.area.height = height;
+    pub fn area_mut(&mut self) -> &mut Rect {
+        &mut self.area
     }
 
     pub fn area(&self) -> Rect {

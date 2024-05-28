@@ -58,10 +58,11 @@ fn select_theme(editor: &mut Editor, id: ClientId) {
 
 #[action("Command palette")]
 fn command_palette(editor: &mut Editor, id: ClientId) {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let opts = Arc::new(commands::command_palette(editor, id));
 
+    let (win, _buf) = editor.win_buf_mut(id);
     let job = MatcherJob::builder(id)
-        .options(Arc::new(commands::command_palette()))
+        .options(opts)
         .handler(commands::matcher_result_handler)
         .build();
 

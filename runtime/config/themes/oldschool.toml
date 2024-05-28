@@ -26,13 +26,13 @@ comment = ",#355d8d,"
 operator =  ",#a84d1f,"
 
 [colors.window.completion]
-default = "#B8A282,#000000,"
-description = ",#7f755f,"
+default = "#B8A282,#2a130d,"
+description = ",#6f654f,"
 match = ",#b0463a,"
 
 [colors.window.completion.selected]
 default = "#efb679,,"
-description = ""
+description = ",#5a433d,"
 match = ",#b0463a,"
 
 
@@ -54,5 +54,5 @@ match = ",#b0463a,"
 
 [colors.prompt.completion.selected]
 default = "#efb679,,"
-description = ""
+description = ",#5a433d,"
 match = ",#b0463a,"

@@ -3,6 +3,8 @@ use std::{cell::RefCell, ops::Range, rc::Rc};
 use sanedit_messages::redraw::PromptOption;
 use sanedit_utils::sorted_vec::SortedVec;
 
+use crate::common::matcher::{Match, MatchOption};
+
 #[derive(Debug, Default)]
 struct MergedOptions {
     /// Currently processed options, cursor for each sorted vec

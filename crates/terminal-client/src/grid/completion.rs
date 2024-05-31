@@ -11,6 +11,7 @@ pub(crate) fn open_completion(win: Rect, compl: Completion) -> Canvas<Completion
 
 fn below(win: Rect, compl: &Completion) -> Rect {
     let Point { mut x, y } = compl.point + win.position() + Point { x: 0, y: 1 };
+    x = x.saturating_sub(compl.query_len);
     let Size { width, height } = compl.preferred_size();
     Rect {
         x,

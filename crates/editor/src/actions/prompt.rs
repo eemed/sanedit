@@ -51,7 +51,6 @@ fn select_theme(editor: &mut Editor, id: ClientId) {
             }
         })
         .build();
-    win.focus = Focus::Prompt;
 
     editor.job_broker.request(job);
 }
@@ -73,7 +72,6 @@ fn command_palette(editor: &mut Editor, id: ClientId) {
             None => log::error!("No action with name {input}"),
         })
         .build();
-    win.focus = Focus::Prompt;
 
     editor.job_broker.request(job);
 }

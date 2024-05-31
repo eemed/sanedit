@@ -20,7 +20,6 @@ fn complete(editor: &mut Editor, id: ClientId) {
     if let Some(point) = win.view().point_at_pos(cursor.pos()) {
         win.completion.point = point;
     }
-    win.focus = Focus::Completion;
 
     let opts: Vec<MatchOption> = win
         .syntax_result()
@@ -37,9 +36,10 @@ fn complete(editor: &mut Editor, id: ClientId) {
         })
         .collect();
 
+    let word = non_whitespace_before_cursor(editor, id).unwrap_or(String::from(""));
     let job = MatcherJob::builder(id)
         .strategy(MatchStrategy::Prefix)
-        .immediate(false)
+        .search(word)
         .options(Arc::new(opts))
         .handler(Completion::matcher_result_handler)
         .build();

@@ -84,6 +84,7 @@ impl Completion {
                     }
                     MatchedOptions::ClearAll => win.completion.clear_options(),
                     MatchedOptions::Options(opts) => {
+                        win.focus = Focus::Completion;
                         // TODO add descriptions
                         let opts: Vec<SelectorOption> =
                             opts.into_iter().map(SelectorOption::from).collect();

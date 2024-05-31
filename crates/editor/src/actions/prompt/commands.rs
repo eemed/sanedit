@@ -1,7 +1,7 @@
 use crate::actions::jobs::{MatchedOptions, MatcherMessage};
 use crate::actions::*;
 use crate::common::matcher::{Match, MatchOption};
-use crate::editor::windows::SelectorOption;
+use crate::editor::windows::{Focus, SelectorOption};
 use sanedit_messages::keyevents_to_string;
 
 #[rustfmt::skip]
@@ -107,6 +107,7 @@ pub(crate) fn matcher_result_handler(editor: &mut Editor, id: ClientId, msg: Mat
         Progress(opts) => match opts {
             MatchedOptions::ClearAll => win.prompt.clear_options(),
             MatchedOptions::Options(opts) => {
+                win.focus = Focus::Prompt;
                 let opts: Vec<SelectorOption> =
                     opts.into_iter().map(SelectorOption::from).collect();
                 let (win, _buf) = editor.win_buf_mut(id);

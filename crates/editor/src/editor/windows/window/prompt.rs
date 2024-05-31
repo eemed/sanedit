@@ -9,6 +9,7 @@ use crate::{
     actions::jobs::{MatchedOptions, MatcherMessage},
     editor::{
         keymap::{DefaultKeyMappings, KeyMappings, Keymap},
+        windows::Focus,
         Editor,
     },
     server::ClientId,
@@ -175,6 +176,7 @@ impl Prompt {
             Progress(opts) => match opts {
                 MatchedOptions::ClearAll => win.prompt.clear_options(),
                 MatchedOptions::Options(opts) => {
+                    win.focus = Focus::Prompt;
                     let opts: Vec<SelectorOption> =
                         opts.into_iter().map(SelectorOption::from).collect();
                     let (win, _buf) = editor.win_buf_mut(id);

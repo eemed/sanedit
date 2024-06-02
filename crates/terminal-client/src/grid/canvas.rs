@@ -39,10 +39,14 @@ impl<T: Drawable> Canvas<T> {
 
 impl<T: Drawable> Drawable for Canvas<T> {
     fn draw(&self, ctx: &UIContext, cells: &mut [&mut [CCell]]) {
-        self.inner.draw(ctx, cells);
+        let mut ctx = ctx.clone();
+        ctx.rect = self.area();
+        self.inner.draw(&ctx, cells);
     }
 
     fn cursor(&self, ctx: &UIContext) -> Option<Cursor> {
-        self.inner.cursor(ctx)
+        let mut ctx = ctx.clone();
+        ctx.rect = self.area();
+        self.inner.cursor(&ctx)
     }
 }

@@ -10,7 +10,7 @@ use crate::{grid::ccell::format_option, ui::UIContext};
 use super::{
     border::{draw_border, Border},
     ccell::{
-        center_pad, into_cells_with_style, into_cells_with_style_pad,
+        center_pad, format_completion, into_cells_with_style, into_cells_with_style_pad,
         into_cells_with_theme_pad_with, pad_line, put_line, set_style, size, CCell,
     },
     prompt::{CustomPrompt, PromptStyle},
@@ -76,35 +76,25 @@ impl Drawable for Completion {
             .take(max_opts)
             .enumerate()
             .for_each(|(i, opt)| {
-                let (field, dfield, mfield) = if Some(i) == self.selected {
+                let (field, dfield) = if Some(i) == self.selected {
                     (
                         ThemeField::CompletionSelected,
                         ThemeField::CompletionSelectedDescription,
-                        ThemeField::CompletionSelectedMatch,
                     )
                 } else {
-                    (
-                        ThemeField::Completion,
-                        ThemeField::CompletionDescription,
-                        ThemeField::CompletionMatch,
-                    )
+                    (ThemeField::Completion, ThemeField::CompletionDescription)
                 };
                 let style = ctx.style(field);
                 let dstyle = ctx.style(dfield);
-                let mstyle = ctx.style(mfield);
 
-                let line = format_option(&opt.name, &opt.description, style, dstyle, wsize.width);
-
-                // // Highlight matches
-                // for mat in &opt.matches {
-                //     let mut pos = 0;
-                //     for cell in &mut line {
-                //         if mat.contains(&pos) {
-                //             cell.style = mstyle;
-                //         }
-                //         pos += cell.cell.text.len();
-                //     }
-                // }
+                let line = format_completion(
+                    &opt.name,
+                    &opt.description,
+                    style,
+                    dstyle,
+                    wsize.width,
+                    ctx.rect.x != 0,
+                );
 
                 put_line(line, i, cells);
             });
@@ -226,7 +216,8 @@ impl Drawable for CustomPrompt {
                         // Highlight matches
                         for mat in &opt.matches {
                             let mut pos = 0;
-                            for cell in &mut line {
+                            // dont count padding
+                            for cell in &mut line[1..] {
                                 if mat.contains(&pos) {
                                     cell.style = mstyle;
                                 }

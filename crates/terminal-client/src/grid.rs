@@ -6,10 +6,11 @@ mod drawable;
 mod prompt;
 mod rect;
 
-use std::mem;
+use std::{mem, sync::Arc};
 
 use sanedit_messages::redraw::{
-    Cell, Completion, Component, Cursor, Diffable, Redraw, Size, StatusMessage, Statusline, Window,
+    Cell, Completion, Component, Cursor, Diffable, Redraw, Size, StatusMessage, Statusline, Theme,
+    Window,
 };
 
 use crate::{grid::completion::open_completion, ui::UIContext};
@@ -33,6 +34,7 @@ pub(crate) struct Grid {
 
     drawn: Vec<Vec<Cell>>,
     cursor: Option<Cursor>,
+    pub theme: Arc<Theme>,
 }
 
 impl Grid {
@@ -56,6 +58,7 @@ impl Grid {
 
             drawn: vec![vec![Cell::default(); width]; height],
             cursor: None,
+            theme: Arc::new(Theme::default()),
         }
     }
 
@@ -63,7 +66,7 @@ impl Grid {
         self.msg = None;
     }
 
-    pub fn handle_redraw(&mut self, ctx: &UIContext, msg: Redraw) {
+    pub fn handle_redraw(&mut self, msg: Redraw) {
         use Component::*;
         use Redraw::*;
 
@@ -159,12 +162,17 @@ impl Grid {
 
     fn draw_drawable<D: Drawable>(
         drawable: &Canvas<D>,
-        ctx: &UIContext,
+        theme: &Arc<Theme>,
         cursor: &mut Option<Cursor>,
         cells: &mut Vec<Vec<Cell>>,
     ) {
         let rect = drawable.area().clone();
-        if let Some(mut cur) = drawable.cursor(ctx) {
+        let ctx = UIContext {
+            theme: theme.clone(),
+            rect,
+        };
+
+        if let Some(mut cur) = drawable.cursor(&ctx) {
             cur.point = cur.point + rect.position();
             *cursor = Some(cur);
         }
@@ -172,7 +180,7 @@ impl Grid {
         let top_left = rect.position();
         let mut grid = rect.grid();
         let mut g: Vec<&mut [CCell]> = grid.iter_mut().map(|v| v.as_mut_slice()).collect();
-        drawable.draw(ctx, &mut g);
+        drawable.draw(&ctx, &mut g);
 
         for (line, row) in grid.into_iter().enumerate() {
             for (col, cell) in row.into_iter().enumerate() {
@@ -186,22 +194,23 @@ impl Grid {
         }
     }
 
-    pub fn draw(&mut self, ctx: &UIContext) -> (&Vec<Vec<Cell>>, Option<Cursor>) {
+    pub fn draw(&mut self) -> (&Vec<Vec<Cell>>, Option<Cursor>) {
         self.clear();
 
-        Self::draw_drawable(&self.window, ctx, &mut self.cursor, &mut self.drawn);
-        Self::draw_drawable(&self.statusline, ctx, &mut self.cursor, &mut self.drawn);
+        let t = &self.theme;
+        Self::draw_drawable(&self.window, t, &mut self.cursor, &mut self.drawn);
+        Self::draw_drawable(&self.statusline, t, &mut self.cursor, &mut self.drawn);
 
         if let Some(ref prompt) = self.prompt {
-            Self::draw_drawable(prompt, ctx, &mut self.cursor, &mut self.drawn);
+            Self::draw_drawable(prompt, t, &mut self.cursor, &mut self.drawn);
         }
 
         if let Some(ref msg) = self.msg {
-            Self::draw_drawable(msg, ctx, &mut self.cursor, &mut self.drawn);
+            Self::draw_drawable(msg, t, &mut self.cursor, &mut self.drawn);
         }
 
         if let Some(ref compl) = self.completion {
-            Self::draw_drawable(compl, ctx, &mut self.cursor, &mut self.drawn);
+            Self::draw_drawable(compl, t, &mut self.cursor, &mut self.drawn);
         }
 
         (&self.drawn, self.cursor)

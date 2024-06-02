@@ -120,6 +120,7 @@ impl Matcher {
                         if let Some(ranges) =
                             matches_with(&can.value, &terms, case_sensitive, match_fn)
                         {
+                            log::info!("ranges: {ranges:?}");
                             let mat = Match {
                                 score: score(can.value.as_str(), &ranges),
                                 opt: can.clone(),

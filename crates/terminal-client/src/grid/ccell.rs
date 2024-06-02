@@ -112,17 +112,6 @@ pub(crate) fn size(cells: &mut [&mut [CCell]]) -> Size {
     Size { width, height }
 }
 
-pub(crate) fn put_line_to_col(
-    line: Vec<CCell>,
-    pos: usize,
-    col: usize,
-    target: &mut [&mut [CCell]],
-) {
-    for (i, cell) in line.into_iter().enumerate() {
-        target[pos][i + col] = cell;
-    }
-}
-
 pub(crate) fn put_line(line: Vec<CCell>, pos: usize, target: &mut [&mut [CCell]]) {
     for (i, cell) in line.into_iter().enumerate() {
         target[pos][i] = cell;
@@ -146,26 +135,74 @@ pub(crate) fn center_pad(message: Vec<CCell>, pad_style: Style, width: usize) ->
     result
 }
 
+pub(crate) fn format_completion(
+    left: &str,
+    right: &str,
+    mstyle: Style,
+    dstyle: Style,
+    width: usize,
+    left_pad: bool,
+) -> Vec<CCell> {
+    let mut left = {
+        let mut res = String::new();
+        if left_pad {
+            res.push(' ');
+        }
+
+        res.push_str(left);
+        res.push(' ');
+        res
+    };
+
+    let right = {
+        let mut res = right.to_string();
+        res.push(' ');
+        res
+    };
+
+    // Fill space between
+    let mut len = left.len() + right.len();
+    while len < width {
+        left.push(' ');
+        len += 1;
+    }
+
+    let mut result = into_cells_with_style(&left, mstyle);
+    result.extend(into_cells_with_style(&right, dstyle));
+    result.truncate(width);
+    result
+}
+
 pub(crate) fn format_option(
-    msg: &str,
-    desc: &str,
+    left: &str,
+    right: &str,
     mstyle: Style,
     dstyle: Style,
     width: usize,
 ) -> Vec<CCell> {
-    let mut prefix = msg.to_string();
-    prefix.push(' ');
+    let mut left = {
+        let mut res = String::from(" ");
+        res.push_str(&left);
+        res.push(' ');
+        res
+    };
+
+    let right = {
+        let mut res = String::from("");
+        res.push_str(&right);
+        res.push(' ');
+        res
+    };
 
     // Fill space between
-    let mut len = prefix.len() + desc.len();
+    let mut len = left.len() + right.len();
     while len < width {
-        prefix.push(' ');
+        left.push(' ');
         len += 1;
     }
 
-    let mut result = into_cells_with_style(&prefix, mstyle);
-    let desc = into_cells_with_style(desc, dstyle);
-    result.extend(desc);
+    let mut result = into_cells_with_style(&left, mstyle);
+    result.extend(into_cells_with_style(&right, dstyle));
     result.truncate(width);
     result
 }

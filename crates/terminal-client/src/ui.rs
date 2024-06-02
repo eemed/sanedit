@@ -11,12 +11,11 @@ use crate::{
     terminal::Terminal,
 };
 
-pub use self::context::UIContext;
+pub(crate) use self::context::UIContext;
 
 pub(crate) struct UI {
     terminal: Terminal,
     grid: Grid,
-    context: UIContext,
 }
 
 impl UI {
@@ -27,7 +26,6 @@ impl UI {
         Ok(UI {
             terminal,
             grid: Grid::new(width, height),
-            context: UIContext::new(),
         })
     }
 
@@ -54,10 +52,10 @@ impl UI {
             Hello => {}
             SetOption(_) => {}
             Theme(theme) => {
-                self.context.theme = theme;
+                self.grid.theme = theme.into();
             }
             Redraw(msg) => {
-                self.grid.handle_redraw(&self.context, msg);
+                self.grid.handle_redraw(msg);
             }
             Flush => self.flush(),
             Bye => {
@@ -71,7 +69,7 @@ impl UI {
 
     fn flush(&mut self) {
         // log::info!("Flush ui");
-        let (cells, cursor) = self.grid.draw(&self.context);
+        let (cells, cursor) = self.grid.draw();
         for (line, row) in cells.iter().enumerate() {
             for (col, cell) in row.iter().enumerate() {
                 self.terminal.draw_cell(cell, col, line);

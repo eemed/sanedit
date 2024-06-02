@@ -96,7 +96,7 @@ pub(crate) struct MatcherJobBuilder {
     opts: Arc<dyn OptionProvider>,
     strat: MatchStrategy,
     result_handler: MatchResultHandler,
-    term: Option<String>,
+    search_term: String,
 }
 
 impl MatcherJobBuilder {
@@ -106,7 +106,7 @@ impl MatcherJobBuilder {
             opts: Arc::new(Empty),
             strat: MatchStrategy::default(),
             result_handler: Empty::none_result_handler,
-            term: None,
+            search_term: String::new(),
         }
     }
 
@@ -127,7 +127,7 @@ impl MatcherJobBuilder {
 
     /// Search term to use when starting matching
     pub fn search(mut self, term: String) -> Self {
-        self.term = Some(term);
+        self.search_term = term;
         self
     }
 
@@ -137,7 +137,7 @@ impl MatcherJobBuilder {
             opts,
             strat,
             result_handler,
-            term,
+            search_term,
         } = self;
 
         MatcherJob {
@@ -145,7 +145,7 @@ impl MatcherJobBuilder {
             strat,
             result_handler,
             opts,
-            term: term.unwrap_or(String::new()),
+            search_term,
         }
     }
 }
@@ -168,7 +168,7 @@ pub(crate) struct MatcherJob {
     result_handler: MatchResultHandler,
 
     /// Initial search term to use
-    term: String,
+    search_term: String,
 }
 
 impl MatcherJob {
@@ -187,7 +187,7 @@ impl Job for MatcherJob {
     fn run(&self, mut ctx: JobContext) -> JobResult {
         let strat = self.strat.clone();
         let opts = self.opts.clone();
-        let term = self.term.clone();
+        let term = self.search_term.clone();
 
         let fut = async move {
             // Term channel

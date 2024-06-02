@@ -118,6 +118,14 @@ impl Rect {
             }
         }
     }
+
+    /// Whether this rect fits inside other rect
+    pub fn fits_inside(&self, other: &Rect) -> bool {
+        other.x <= self.x
+            && other.y <= self.y
+            && other.x + other.width >= self.x + self.width
+            && other.y + other.height >= self.y + self.height
+    }
 }
 
 pub(crate) enum SplitPoint {

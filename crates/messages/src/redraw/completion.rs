@@ -22,11 +22,17 @@ impl Completion {
     /// Size of completion where everything fits on screen
     pub fn preferred_size(&self) -> Size {
         let width = self.options.iter().fold(0, |acc, o| {
-            // name + " " + description
-            max(
-                acc,
-                o.name.chars().count() + 1 + o.description.chars().count(),
-            )
+            // " " + name + " " (+ description + " ")
+            let mut len = 0;
+            len += 1;
+            len += o.name.chars().count();
+            len += 1;
+
+            if !o.description.is_empty() {
+                len += o.description.chars().count();
+                len += 1;
+            }
+            max(acc, len)
         });
         let height = self.options.len();
         Size { width, height }

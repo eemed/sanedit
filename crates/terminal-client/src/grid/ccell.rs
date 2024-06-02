@@ -112,6 +112,17 @@ pub(crate) fn size(cells: &mut [&mut [CCell]]) -> Size {
     Size { width, height }
 }
 
+pub(crate) fn put_line_to_col(
+    line: Vec<CCell>,
+    pos: usize,
+    col: usize,
+    target: &mut [&mut [CCell]],
+) {
+    for (i, cell) in line.into_iter().enumerate() {
+        target[pos][i + col] = cell;
+    }
+}
+
 pub(crate) fn put_line(line: Vec<CCell>, pos: usize, target: &mut [&mut [CCell]]) {
     for (i, cell) in line.into_iter().enumerate() {
         target[pos][i] = cell;

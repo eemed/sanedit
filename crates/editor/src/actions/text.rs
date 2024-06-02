@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use crate::{
-    common::dirs::tmp_file,
+    common::{cursors::non_whitespace_before_cursor, dirs::tmp_file, indent::indent_at_pos},
     editor::{
         hooks::Hook,
         windows::{Focus, Prompt},
@@ -10,7 +10,7 @@ use crate::{
     server::ClientId,
 };
 
-use super::{hooks::run, jobs};
+use super::{completion, hooks::run, jobs};
 
 #[action("Remove character after cursor")]
 fn remove_grapheme_after_cursor(editor: &mut Editor, id: ClientId) {
@@ -134,12 +134,20 @@ fn insert_newline(editor: &mut Editor, id: ClientId) {
 #[action("Insert a tab to each cursor")]
 fn insert_tab(editor: &mut Editor, id: ClientId) {
     run(editor, id, Hook::InsertPre);
+
     let (win, buf) = editor.win_buf_mut(id);
+    let slice = buf.slice(..);
     if win.cursors().has_selections() {
         win.indent_cursor_lines(buf);
+    } else if win.cursors.len() == 1 && indent_at_pos(&slice, win.cursors.primary().pos()).is_none()
+    {
+        // If single cursor not in indentation try completion
+        completion::complete.execute(editor, id);
     } else {
+        let (win, buf) = editor.win_buf_mut(id);
         win.insert_tab(buf);
     }
+
     run(editor, id, Hook::BufChanged);
 }
 

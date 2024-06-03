@@ -12,7 +12,7 @@ use std::io;
 use anyhow::bail;
 
 use crate::{
-    grammar,
+    grammar::{self, Annotation, Rules},
     parsing_machine::{
         compiler::Compiler,
         stack::{Stack, StackEntry},
@@ -34,16 +34,12 @@ pub(crate) type SubjectPosition = usize;
 
 #[derive(Debug)]
 pub struct Parser {
-    labels: Box<[String]>,
+    rules: Rules,
     program: Program,
 }
 
 impl Parser {
     pub fn new<R: io::Read>(read: R) -> Result<Parser, ParseError> {
-        Self::create(read)
-    }
-
-    fn create<R: io::Read>(read: R) -> Result<Parser, ParseError> {
         let rules =
             grammar::parse_rules(read).map_err(|err| ParseError::Grammar(err.to_string()))?;
         let compiler = Compiler::new(&rules);
@@ -56,17 +52,16 @@ impl Parser {
         // println!("---- Prgoram ----");
         // println!("{:?}", program);
 
-        let labels = rules
-            .into_iter()
-            .map(|rinfo| rinfo.display_name().into())
-            .collect();
-
-        let parser = Parser { labels, program };
+        let parser = Parser { rules, program };
         Ok(parser)
     }
 
     pub fn label_for(&self, id: CaptureID) -> &str {
-        &self.labels[id]
+        &self.rules[id].display_name()
+    }
+
+    pub fn annotations_for(&self, id: CaptureID) -> &[Annotation] {
+        &self.rules[id].annotations
     }
 
     pub fn label_for_op(&self, op: Addr) -> &str {

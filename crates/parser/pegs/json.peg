@@ -23,14 +23,18 @@ object = "{" member ("," member)* "}";
 @whitespaced
 member = identifier ":" value;
 
+@show
 identifier = quote identifier_inner quote;
 
 @show(identifier)
+@completion
 identifier_inner = ([^\u0..\u19\u22\u5c])*;
 
+@show
 string = quote string_inner quote;
 
 @show(string)
+@completion
 string_inner = ([^\u0..\u19\u22\u5c])*;
 
 @show

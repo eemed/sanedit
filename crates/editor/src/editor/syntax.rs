@@ -6,6 +6,7 @@ use std::{
 
 use rustc_hash::FxHashMap;
 use sanedit_buffer::ReadOnlyPieceTree;
+use sanedit_parser::Annotation;
 use tokio::sync::broadcast;
 
 use crate::{
@@ -77,6 +78,8 @@ impl Syntax {
         mut view: Range<usize>,
         kill: broadcast::Receiver<()>,
     ) -> anyhow::Result<SyntaxParseResult> {
+        const COMPLETION_ANNOTATION: &str = "completion";
+        const HIGHLIGHT_ANNOTATION: &str = "highlight";
         // TODO try to match these to newlines
         // const HORIZON_TOP: usize = 1024 * 32;
         // const HORIZON_BOTTOM: usize = 1024;
@@ -98,7 +101,19 @@ impl Syntax {
                 range.start += start;
                 range.end += start;
 
+                let anns = self.grammar.annotations_for(cap.id());
+                let completion = anns.iter().any(|ann| match ann {
+                    Annotation::Other(name, _spec) => name == COMPLETION_ANNOTATION,
+                    _ => false,
+                });
+                let hl = anns.iter().any(|ann| match ann {
+                    Annotation::Other(name, _spec) => name == HIGHLIGHT_ANNOTATION,
+                    _ => false,
+                });
+
                 Span {
+                    highlight: hl,
+                    completion,
                     name: name.into(),
                     range,
                 }
@@ -120,6 +135,28 @@ pub(crate) struct SyntaxParseResult {
 
 #[derive(Debug)]
 pub(crate) struct Span {
-    pub(crate) name: String,
-    pub(crate) range: Range<usize>,
+    name: String,
+    range: Range<usize>,
+    completion: bool,
+    highlight: bool,
+}
+
+impl Span {
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn range(&self) -> Range<usize> {
+        self.range.clone()
+    }
+
+    /// Wether this span is completion candidate
+    pub fn is_completion(&self) -> bool {
+        self.completion
+    }
+
+    /// Wether this span should be highlighted or not
+    pub fn highlight(&self) -> bool {
+        self.highlight || !self.completion
+    }
 }

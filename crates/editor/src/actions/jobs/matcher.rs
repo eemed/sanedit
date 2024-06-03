@@ -6,7 +6,6 @@ use tokio::{
         broadcast,
         mpsc::{channel, Receiver, Sender},
     },
-    task::JoinHandle,
     time::{timeout, Instant},
 };
 
@@ -228,8 +227,10 @@ impl KeepInTouch for MatcherJob {
 #[derive(Debug)]
 pub(crate) enum MatchedOptions {
     Done,
-    ClearAll,
-    Options(Vec<Match>),
+    Options {
+        matched: Vec<Match>,
+        clear_old: bool,
+    },
 }
 
 /// Reads options and filter term from channels and send results to progress
@@ -248,6 +249,7 @@ pub(crate) async fn match_options(
             // send matches once we have MAX_SIZE of them.
             const MAX_SIZE: usize = 256;
             let mut matches = Vec::with_capacity(MAX_SIZE);
+            let mut clear_old = true;
 
             // If matches come in slowly (large search) the MAX_SIZE will not be met.
             // Add in a time limit to send any matches
@@ -272,9 +274,16 @@ pub(crate) async fn match_options(
                             last_sent = now;
                             let opts = mem::take(&mut matches);
 
-                            if let Err(_) = msend.send(MatchedOptions::Options(opts)).await {
+                            if let Err(_) = msend
+                                .send(MatchedOptions::Options {
+                                    matched: opts,
+                                    clear_old,
+                                })
+                                .await
+                            {
                                 break;
                             }
+                            clear_old = false;
                         }
                     }
                     Err(_) => {
@@ -283,16 +292,28 @@ pub(crate) async fn match_options(
                         last_sent = Instant::now();
                         let opts = mem::take(&mut matches);
 
-                        if let Err(_) = msend.send(MatchedOptions::Options(opts)).await {
+                        if let Err(_) = msend
+                            .send(MatchedOptions::Options {
+                                matched: opts,
+                                clear_old,
+                            })
+                            .await
+                        {
                             break;
                         }
+                        clear_old = false;
                     }
                     Ok(None) => break,
                 }
             }
 
             if !matches.is_empty() {
-                let _ = msend.send(MatchedOptions::Options(matches)).await;
+                let _ = msend
+                    .send(MatchedOptions::Options {
+                        clear_old,
+                        matched: matches,
+                    })
+                    .await;
             }
             let _ = msend.send(MatchedOptions::Done).await;
         })
@@ -311,10 +332,6 @@ pub(crate) async fn match_options(
 
         join.abort();
         let _ = join.await;
-
-        if let Err(_e) = msend.send(MatchedOptions::ClearAll).await {
-            break;
-        }
 
         let recv = matcher.do_match(&term);
         join = spawn(msend.clone(), recv);

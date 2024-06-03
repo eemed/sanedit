@@ -9,7 +9,7 @@ use rustc_hash::FxHashMap;
 use rustc_hash::FxHashSet;
 use sanedit_utils::ranges::OverlappingRanges;
 
-pub(crate) use self::rule::Annotation;
+pub use self::rule::Annotation;
 pub(crate) use self::rule::Rule;
 pub(crate) use self::rule::RuleInfo;
 pub(crate) use self::rule::Rules;
@@ -157,7 +157,7 @@ impl<R: io::Read> GrammarParser<R> {
             match ann.as_str() {
                 "whitespaced" => anns.push(Annotation::Whitespaced),
                 "show" => anns.push(Annotation::Show(specifiers)),
-                a => bail!("Unexpected annotation {a}"),
+                _ => anns.push(Annotation::Other(ann, specifiers)),
             }
         }
 

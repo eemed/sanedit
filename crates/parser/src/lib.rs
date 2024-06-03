@@ -12,6 +12,7 @@ use thiserror::Error;
 // pub use pika_parser::PikaParser;
 // pub use pika_parser::AST;
 
+pub use grammar::Annotation;
 pub use parsing_machine::*;
 
 #[derive(Error, Debug)]

@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use crate::{
-    common::{cursors::non_whitespace_before_cursor, dirs::tmp_file, indent::indent_at_pos},
+    common::{cursors::word_before_cursor, dirs::tmp_file, indent::indent_at_pos},
     editor::{
         hooks::Hook,
         windows::{Focus, Prompt},

@@ -59,21 +59,22 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> redraw::Window {
 }
 
 fn draw_syntax(grid: &mut Vec<Vec<redraw::Cell>>, view: &View, theme: &Theme) {
+    const HL_PREFIX: &str = "window.view.";
     let syntax = view.syntax();
     let vrange = view.range();
 
     for span in &syntax.highlights {
-        let srange = &span.range;
-        // if srange.start >= vrange.end {
-        //     break;
-        // }
-        if !vrange.overlaps(srange) {
+        if !span.highlight() {
             continue;
         }
-        const HL_PREFIX: &str = "window.view.";
-        let style = theme.get(HL_PREFIX.to_owned() + &span.name);
 
-        draw_hl(grid, view, style, srange);
+        let srange = span.range();
+        if !vrange.overlaps(&srange) {
+            continue;
+        }
+        let style = theme.get(HL_PREFIX.to_owned() + span.name());
+
+        draw_hl(grid, view, style, &srange);
     }
 }
 

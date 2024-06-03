@@ -1,7 +1,9 @@
 use std::sync::Arc;
 
+use rustc_hash::FxHashSet;
+
 use crate::{
-    common::{cursors::non_whitespace_before_cursor, matcher::*},
+    common::{cursors::word_before_cursor, matcher::*},
     editor::{
         windows::{Completion, Focus},
         Editor,
@@ -21,22 +23,23 @@ fn complete(editor: &mut Editor, id: ClientId) {
         win.completion.point = point;
     }
 
-    let opts: Vec<MatchOption> = win
+    let opts: FxHashSet<MatchOption> = win
         .syntax_result()
         .highlights
         .iter()
-        .filter(|hl| hl.name == "identifier" || hl.name == "string")
+        .filter(|hl| hl.is_completion())
         .map(|hl| {
-            let compl = String::from(&buf.slice(hl.range.clone()));
-            let desc = hl.name.clone();
+            let compl = String::from(&buf.slice(hl.range()));
+            let desc = hl.name().to_string();
             MatchOption {
                 value: compl,
                 description: desc,
             }
         })
         .collect();
+    let opts: Vec<MatchOption> = opts.into_iter().collect();
 
-    let word = non_whitespace_before_cursor(editor, id).unwrap_or(String::from(""));
+    let word = word_before_cursor(editor, id).unwrap_or(String::from(""));
     let job = MatcherJob::builder(id)
         .strategy(MatchStrategy::Prefix)
         .search(word)
@@ -89,7 +92,7 @@ fn send_word(editor: &mut Editor, id: ClientId) {
 
     let (win, buf) = editor.win_buf_mut(id);
     if let Some(fun) = win.completion.on_input.clone() {
-        let word = non_whitespace_before_cursor(editor, id).unwrap_or(String::from(""));
+        let word = word_before_cursor(editor, id).unwrap_or(String::from(""));
         (fun)(editor, id, &word);
     }
 }

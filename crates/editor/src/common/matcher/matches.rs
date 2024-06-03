@@ -8,6 +8,20 @@ pub(crate) struct MatchOption {
     pub(crate) description: String,
 }
 
+impl std::hash::Hash for MatchOption {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.value.hash(state);
+    }
+}
+
+impl PartialEq for MatchOption {
+    fn eq(&self, other: &Self) -> bool {
+        self.value.eq(&other.value)
+    }
+}
+
+impl Eq for MatchOption {}
+
 impl MatchOption {
     pub fn new(value: &str) -> MatchOption {
         MatchOption {

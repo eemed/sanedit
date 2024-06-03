@@ -2,7 +2,7 @@ use std::{fs::File, path::Path};
 
 use anyhow::bail;
 use sanedit_buffer::{Bytes, PieceTreeSlice};
-use sanedit_parser::{ByteReader, Capture, CaptureID, CaptureList, Parser};
+use sanedit_parser::{Annotation, ByteReader, Capture, CaptureID, CaptureList, Parser};
 use tokio::sync::broadcast;
 
 #[derive(Debug)]
@@ -25,6 +25,10 @@ impl Grammar {
 
     pub fn label_for(&self, id: CaptureID) -> &str {
         self.parser.label_for(id)
+    }
+
+    pub fn annotations_for(&self, id: CaptureID) -> &[Annotation] {
+        self.parser.annotations_for(id)
     }
 
     pub fn parse(

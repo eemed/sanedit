@@ -105,11 +105,13 @@ pub(crate) fn matcher_result_handler(editor: &mut Editor, id: ClientId, msg: Mat
             win.prompt.clear_options();
         }
         Progress(opts) => match opts {
-            MatchedOptions::ClearAll => win.prompt.clear_options(),
-            MatchedOptions::Options(opts) => {
+            MatchedOptions::Options { matched, clear_old } => {
+                if clear_old {
+                    win.prompt.clear_options();
+                }
                 win.focus = Focus::Prompt;
                 let opts: Vec<SelectorOption> =
-                    opts.into_iter().map(SelectorOption::from).collect();
+                    matched.into_iter().map(SelectorOption::from).collect();
                 let (win, _buf) = editor.win_buf_mut(id);
                 win.prompt.provide_options(opts.into());
             }

@@ -10,7 +10,7 @@ pub struct Theme {
 }
 
 impl Theme {
-    pub const SEPARATOR: &str = ".";
+    pub const SEPARATOR: &'static str = ".";
 
     pub fn new(name: &str) -> Theme {
         Theme {

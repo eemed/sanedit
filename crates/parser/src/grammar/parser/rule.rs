@@ -1,9 +1,11 @@
 use std::{fmt, ops::Deref};
 
+/// Annotation a rule has in the peg grammar
 #[derive(Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Clone)]
-pub(crate) enum Annotation {
+pub enum Annotation {
     Whitespaced,
     Show(Option<String>),
+    Other(String, Option<String>),
 }
 
 /// Ordered set of rules, rules are identified by their indices

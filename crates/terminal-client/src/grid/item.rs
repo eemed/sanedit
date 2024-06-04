@@ -6,7 +6,10 @@ use crate::ui::UIContext;
 
 use super::{drawable::Drawable, CCell, Rect};
 
-pub(crate) struct Canvas<T>
+// TODO maybe use inner: Box<dyn Drawable>? so grid could handle
+// Map<Type, GridItem>
+/// Item that can be drawn to a part of the grid
+pub(crate) struct GridItem<T>
 where
     T: Drawable,
 {
@@ -14,9 +17,9 @@ where
     area: Rect,
 }
 
-impl<T: Drawable> Canvas<T> {
-    pub fn new(t: T, rect: Rect) -> Canvas<T> {
-        Canvas {
+impl<T: Drawable> GridItem<T> {
+    pub fn new(t: T, rect: Rect) -> GridItem<T> {
+        GridItem {
             inner: t,
             area: rect,
         }
@@ -39,7 +42,7 @@ impl<T: Drawable> Canvas<T> {
     }
 }
 
-impl<T: Drawable> Drawable for Canvas<T> {
+impl<T: Drawable> Drawable for GridItem<T> {
     fn draw(&self, ctx: &UIContext, cells: &mut [&mut [CCell]]) {
         let mut ctx = ctx.clone();
         ctx.rect = self.area();
@@ -53,7 +56,7 @@ impl<T: Drawable> Drawable for Canvas<T> {
     }
 }
 
-impl Canvas<Completion> {
+impl GridItem<Completion> {
     pub fn update(&mut self, win: Rect) {
         let Size { width, height } = self.inner.preferred_size();
         let minw = min(width, win.width);

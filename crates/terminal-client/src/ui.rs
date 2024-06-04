@@ -33,12 +33,13 @@ impl UI {
         self.grid.window_area()
     }
 
-    pub fn resize(&mut self, size: Size) {
-        self.terminal.resize(size.width, size.height);
+    pub fn resize(&mut self, size: Size) -> anyhow::Result<()> {
+        self.terminal.resize(size.width, size.height)?;
         self.grid.resize(size.width, size.height);
 
         // self.grid.draw(&self.context);
         // self.flush();
+        Ok(())
     }
 
     /// Called when client will send input to server

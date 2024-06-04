@@ -52,7 +52,10 @@ where
 
                 match msg {
                     Message::Resize(size) => {
-                        ui.resize(size);
+                        if let Err(e) = ui.resize(size) {
+                            log::error!("Failed to resize UI: {e}");
+                            break;
+                        }
                         let rect = ui.window_rect();
                         msg = Message::Resize(rect.size());
                     }

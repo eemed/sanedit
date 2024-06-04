@@ -1,8 +1,8 @@
 mod border;
-mod canvas;
 mod ccell;
 mod completion;
 mod drawable;
+mod item;
 mod prompt;
 mod rect;
 
@@ -17,20 +17,20 @@ use crate::{grid::completion::open_completion, ui::UIContext};
 
 pub(crate) use self::rect::{Rect, Split};
 use self::{
-    canvas::Canvas,
     ccell::CCell,
     drawable::Drawable,
+    item::GridItem,
     prompt::{open_prompt, CustomPrompt},
 };
 
 pub(crate) struct Grid {
     size: Size,
-    window: Canvas<Window>,
-    statusline: Canvas<Statusline>,
+    window: GridItem<Window>,
+    statusline: GridItem<Statusline>,
     // gutter: Option<Rectangle<()>>,
-    prompt: Option<Canvas<CustomPrompt>>,
-    msg: Option<Canvas<StatusMessage>>,
-    completion: Option<Canvas<Completion>>,
+    prompt: Option<GridItem<CustomPrompt>>,
+    msg: Option<GridItem<StatusMessage>>,
+    completion: Option<GridItem<Completion>>,
 
     drawn: Vec<Vec<Cell>>,
     cursor: Option<Cursor>,
@@ -50,8 +50,8 @@ impl Grid {
 
         Grid {
             size,
-            window: Canvas::new(Window::default(), window),
-            statusline: Canvas::new(Statusline::default(), statusline),
+            window: GridItem::new(Window::default(), window),
+            statusline: GridItem::new(Statusline::default(), statusline),
             prompt: None,
             msg: None,
             completion: None,
@@ -98,7 +98,7 @@ impl Grid {
                     width,
                     height: 1,
                 };
-                self.msg = Some(Canvas::new(msg, rect));
+                self.msg = Some(GridItem::new(msg, rect));
             }
             Completion(comp) => match comp {
                 Open(compl) => self.completion = Some(open_completion(self.window_area(), compl)),
@@ -129,7 +129,7 @@ impl Grid {
         *self = Grid::new(width, height);
 
         self.theme = theme;
-        self.statusline = Canvas::new(statusline, self.statusline.area());
+        self.statusline = GridItem::new(statusline, self.statusline.area());
 
         if let Some(prompt) = prompt {
             let prompt = prompt.get().prompt;
@@ -138,8 +138,8 @@ impl Grid {
 
         if let Some(msg) = msg {
             let msg = msg.get();
-            let canvas = Canvas::new(msg, self.statusline.area());
-            self.msg = canvas.into();
+            let item = GridItem::new(msg, self.statusline.area());
+            self.msg = item.into();
         }
     }
 
@@ -158,7 +158,7 @@ impl Grid {
     }
 
     fn draw_drawable<D: Drawable>(
-        drawable: &Canvas<D>,
+        drawable: &GridItem<D>,
         theme: &Arc<Theme>,
         cursor: &mut Option<Cursor>,
         cells: &mut Vec<Vec<Cell>>,

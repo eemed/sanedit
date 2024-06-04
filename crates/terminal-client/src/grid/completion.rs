@@ -2,25 +2,25 @@ use std::cmp::{max, min};
 
 use sanedit_messages::redraw::{Completion, Point, Size};
 
-use super::{canvas::Canvas, Rect};
+use super::{item::GridItem, Rect};
 
 const MIN_WIDTH: usize = 40;
 const MIN_HEIGHT: usize = 5;
 
-pub(crate) fn open_completion(win: Rect, compl: Completion) -> Canvas<Completion> {
+pub(crate) fn open_completion(win: Rect, compl: Completion) -> GridItem<Completion> {
     let mut below = below(win, &compl);
     if win.includes(&below) {
-        return Canvas::new(compl, below);
+        return GridItem::new(compl, below);
     }
 
     let above = above(win, &compl);
     if win.includes(&above) {
-        return Canvas::new(compl, above);
+        return GridItem::new(compl, above);
     }
 
     let fb = fallback(win, &compl);
 
-    Canvas::new(compl, fb)
+    GridItem::new(compl, fb)
 }
 
 fn fallback(win: Rect, compl: &Completion) -> Rect {

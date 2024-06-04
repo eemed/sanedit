@@ -2,7 +2,7 @@ use std::cmp::min;
 
 use sanedit_messages::redraw::{Prompt, Source};
 
-use super::{canvas::Canvas, Rect};
+use super::{item::GridItem, Rect};
 
 #[derive(Debug, Clone, Copy)]
 pub enum PromptStyle {
@@ -18,7 +18,7 @@ pub struct CustomPrompt {
     pub prompt: Prompt,
 }
 
-pub(crate) fn open_prompt(width: usize, height: usize, prompt: Prompt) -> Canvas<CustomPrompt> {
+pub(crate) fn open_prompt(width: usize, height: usize, prompt: Prompt) -> GridItem<CustomPrompt> {
     use Source::*;
     // Try to fit overlay prompt
     // magic number: overlay paddings 3 + prompt 1 + options + extra space so we
@@ -45,7 +45,7 @@ pub(crate) fn open_prompt(width: usize, height: usize, prompt: Prompt) -> Canvas
     match style {
         PromptStyle::Oneline => {
             let rect = Rect::new(0, 0, width, min(height, oneline_min_height));
-            Canvas::new(CustomPrompt { prompt, style }, rect)
+            GridItem::new(CustomPrompt { prompt, style }, rect)
         }
         PromptStyle::Overlay => {
             let width = width / 2;
@@ -53,7 +53,7 @@ pub(crate) fn open_prompt(width: usize, height: usize, prompt: Prompt) -> Canvas
             let extra = height - olay_height;
             let y = extra / 4;
             let rect = Rect::new(x, y, width, olay_height);
-            Canvas::new(CustomPrompt { prompt, style }, rect)
+            GridItem::new(CustomPrompt { prompt, style }, rect)
         }
     }
 }

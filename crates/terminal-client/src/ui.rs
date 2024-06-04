@@ -46,7 +46,7 @@ impl UI {
         self.grid.on_send_input();
     }
 
-    pub fn handle_message(&mut self, msg: ClientMessage) -> bool {
+    pub fn handle_message(&mut self, msg: ClientMessage) -> anyhow::Result<bool> {
         use ClientMessage::*;
         match msg {
             Hello => {}
@@ -57,39 +57,40 @@ impl UI {
             Redraw(msg) => {
                 self.grid.handle_redraw(msg);
             }
-            Flush => self.flush(),
+            Flush => self.flush()?,
             Bye => {
                 log::info!("UI got bye, exiting.");
-                return true;
+                return Ok(true);
             }
         }
 
-        false
+        Ok(false)
     }
 
-    fn flush(&mut self) {
+    fn flush(&mut self) -> anyhow::Result<()> {
         // log::info!("Flush ui");
         let (cells, cursor) = self.grid.draw();
         for (line, row) in cells.iter().enumerate() {
             for (col, cell) in row.iter().enumerate() {
-                self.terminal.draw_cell(cell, col, line);
+                self.terminal.draw_cell(cell, col, line)?;
             }
         }
 
         if let Some(cursor) = cursor {
-            self.terminal.show_cursor();
+            self.terminal.show_cursor()?;
             let Point { x, y } = cursor.point;
             self.terminal.set_style(Style {
                 text_style: None,
                 bg: cursor.bg,
                 fg: cursor.fg,
-            });
-            self.terminal.set_cursor_style(cursor.shape);
-            self.terminal.goto(x, y);
+            })?;
+            self.terminal.set_cursor_style(cursor.shape)?;
+            self.terminal.goto(x, y)?;
         } else {
-            self.terminal.hide_cursor();
+            self.terminal.hide_cursor()?;
         }
 
-        self.terminal.flush();
+        self.terminal.flush()?;
+        Ok(())
     }
 }

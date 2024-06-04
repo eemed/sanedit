@@ -1,4 +1,6 @@
-use sanedit_messages::redraw::Cursor;
+use std::cmp::min;
+
+use sanedit_messages::redraw::{self, Completion, Cursor, Diffable, Size};
 
 use crate::ui::UIContext;
 
@@ -48,5 +50,20 @@ impl<T: Drawable> Drawable for Canvas<T> {
         let mut ctx = ctx.clone();
         ctx.rect = self.area();
         self.inner.cursor(&ctx)
+    }
+}
+
+impl Canvas<Completion> {
+    pub fn update(&mut self, win: Rect) {
+        let Size { width, height } = self.inner.preferred_size();
+        let minw = min(width, win.width);
+        if self.area.width < minw {
+            self.area.width = minw;
+        }
+        if self.area.rightmost() > win.rightmost() {
+            self.area.x -= self.area.rightmost() - win.rightmost();
+        }
+
+        self.area.height = min(height, win.height - win.y);
     }
 }

@@ -39,11 +39,14 @@ where
     while let Ok(msg) = rx.recv() {
         use ClientInternalMessage::*;
         match msg {
-            FromServer(msg) => {
-                if ui.handle_message(msg) {
+            FromServer(msg) => match ui.handle_message(msg) {
+                Ok(false) => break,
+                Err(e) => {
+                    log::error!("UI failed to handle message: {e}");
                     break;
                 }
-            }
+                _ => {}
+            },
             ToServer(mut msg) => {
                 ui.on_send_input(&msg);
 

@@ -104,13 +104,8 @@ impl Grid {
                 Open(compl) => self.completion = Some(open_completion(self.window_area(), compl)),
                 Update(diff) => {
                     if let Some(ref mut compl) = self.completion {
-                        let drawable = compl.drawable();
-                        drawable.update(diff);
-                        let Size { width, height } = drawable.preferred_size();
-
-                        let area = compl.area_mut();
-                        area.width = width;
-                        area.height = height;
+                        compl.drawable().update(diff);
+                        compl.update(self.window.area());
                     }
                 }
                 Close => self.completion = None,
@@ -126,12 +121,14 @@ impl Grid {
 
     pub fn resize(&mut self, width: usize, height: usize) {
         // Keep externalized things
+        let theme = self.theme.clone();
         let prompt = mem::take(&mut self.prompt);
         let msg = mem::take(&mut self.msg);
         let statusline = self.statusline.drawable().clone();
 
         *self = Grid::new(width, height);
 
+        self.theme = theme;
         self.statusline = Canvas::new(statusline, self.statusline.area());
 
         if let Some(prompt) = prompt {

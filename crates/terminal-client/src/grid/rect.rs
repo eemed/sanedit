@@ -120,11 +120,21 @@ impl Rect {
     }
 
     /// Whether this rect fits inside other rect
-    pub fn fits_inside(&self, other: &Rect) -> bool {
-        other.x <= self.x
-            && other.y <= self.y
-            && other.x + other.width >= self.x + self.width
-            && other.y + other.height >= self.y + self.height
+    pub fn includes(&self, other: &Rect) -> bool {
+        self.x <= other.x
+            && self.y <= other.y
+            && self.x + self.width >= other.x + other.width
+            && self.y + self.height >= other.y + other.height
+    }
+
+    /// Rightmost position this rect reaches x + width
+    pub fn rightmost(&self) -> usize {
+        self.x + self.width
+    }
+
+    /// bottom position this rect reaches y + height
+    pub fn bottom(&self) -> usize {
+        self.y + self.height
     }
 }
 

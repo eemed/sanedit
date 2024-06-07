@@ -40,7 +40,7 @@ where
         use ClientInternalMessage::*;
         match msg {
             FromServer(msg) => match ui.handle_message(msg) {
-                Ok(false) => break,
+                Ok(true) => break,
                 Err(e) => {
                     log::error!("UI failed to handle message: {e}");
                     break;

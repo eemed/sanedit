@@ -119,7 +119,7 @@ impl Rect {
         }
     }
 
-    /// Whether this rect fits inside other rect
+    /// Whether this rect can include other rect
     pub fn includes(&self, other: &Rect) -> bool {
         self.x <= other.x
             && self.y <= other.y

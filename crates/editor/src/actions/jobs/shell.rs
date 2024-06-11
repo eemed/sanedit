@@ -1,4 +1,4 @@
-use std::process::Stdio;
+use std::{io, process::Stdio, sync::Arc};
 
 use tokio::process::Command;
 
@@ -21,6 +21,9 @@ impl ShellCommand {
             command: command.into(),
         }
     }
+
+    // pub fn input<I: Readable>(&mut self, input: I) {
+    // }
 }
 
 impl Job for ShellCommand {

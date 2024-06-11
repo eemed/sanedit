@@ -8,19 +8,22 @@ const MIN_WIDTH: usize = 40;
 const MIN_HEIGHT: usize = 5;
 
 pub(crate) fn open_completion(win: Rect, compl: Completion) -> GridItem<Completion> {
-    let mut below = below(win, &compl);
+    let rect = fit_completion(win, &compl);
+    GridItem::new(compl, rect)
+}
+
+pub(crate) fn fit_completion(win: Rect, compl: &Completion) -> Rect {
+    let below = below(win, &compl);
     if win.includes(&below) {
-        return GridItem::new(compl, below);
+        return below;
     }
 
     let above = above(win, &compl);
     if win.includes(&above) {
-        return GridItem::new(compl, above);
+        return above;
     }
 
-    let fb = fallback(win, &compl);
-
-    GridItem::new(compl, fb)
+    fallback(win, &compl)
 }
 
 fn fallback(win: Rect, compl: &Completion) -> Rect {

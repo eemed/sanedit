@@ -4,7 +4,11 @@ use sanedit_messages::redraw::{self, Completion, Cursor, Diffable, Size};
 
 use crate::ui::UIContext;
 
-use super::{drawable::Drawable, CCell, Rect};
+use super::{
+    completion::{fit_completion, open_completion},
+    drawable::Drawable,
+    CCell, Rect,
+};
 
 // TODO maybe use inner: Box<dyn Drawable>? so grid could handle
 // Map<Type, GridItem>
@@ -68,5 +72,9 @@ impl GridItem<Completion> {
         }
 
         self.area.height = min(height, win.height - win.y);
+
+        if !win.includes(&self.area) {
+            self.area = fit_completion(win, &self.inner);
+        }
     }
 }

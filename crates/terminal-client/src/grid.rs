@@ -177,7 +177,6 @@ impl Grid {
         let top_left = rect.position();
         let mut grid = rect.grid();
         let mut g: Vec<&mut [CCell]> = grid.iter_mut().map(|v| v.as_mut_slice()).collect();
-        log::info!("Drawing drawable: {:?}", ctx.rect);
         drawable.draw(&ctx, &mut g);
 
         for (line, row) in grid.into_iter().enumerate() {
@@ -194,7 +193,6 @@ impl Grid {
 
     pub fn draw(&mut self) -> (&Vec<Vec<Cell>>, Option<Cursor>) {
         self.clear();
-        log::info!("Draw window: {:?}", self.window_area());
 
         let t = &self.theme;
         Self::draw_drawable(&self.window, t, &mut self.cursor, &mut self.drawn);

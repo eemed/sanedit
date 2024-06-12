@@ -1,5 +1,6 @@
 use std::{io, process::Stdio, sync::Arc};
 
+use sanedit_buffer::ReadOnlyPieceTree;
 use tokio::process::Command;
 
 use crate::{
@@ -12,6 +13,7 @@ use crate::{
 pub(crate) struct ShellCommand {
     client_id: ClientId,
     command: String,
+    pipe_input: Option<ReadOnlyPieceTree>,
 }
 
 impl ShellCommand {
@@ -19,26 +21,35 @@ impl ShellCommand {
         ShellCommand {
             client_id,
             command: command.into(),
+            pipe_input: None,
         }
     }
 
-    // pub fn input<I: Readable>(&mut self, input: I) {
-    // }
+    pub fn pipe(mut self, ropt: ReadOnlyPieceTree) -> Self {
+        self.pipe_input = Some(ropt);
+        self
+    }
 }
 
 impl Job for ShellCommand {
     fn run(&self, mut ctx: JobContext) -> JobResult {
         let command = self.command.clone();
+        let ropt = self.pipe_input.clone();
 
-        // TODO on unix create pty to run the command on
         let fut = async move {
-            if let Ok(mut child) = Command::new("/bin/bash")
-                .args(&["-c", &command])
-                .stdin(Stdio::null())
+            let mut cmd = Command::new("/bin/sh");
+
+            cmd.args(&["-c", &command])
                 .stdout(Stdio::piped())
-                .stderr(Stdio::piped())
-                .spawn()
-            {
+                .stderr(Stdio::piped());
+
+            if ropt.is_some() {
+                cmd.stdin(Stdio::piped());
+            } else {
+                cmd.stdin(Stdio::null());
+            }
+
+            if let Ok(child) = cmd.spawn() {
                 if let Ok(output) = child.wait_with_output().await {
                     log::info!(
                         "Ran '{}', stdout: {}, stderr: {}",

@@ -18,7 +18,7 @@ use self::commands::find_action;
 
 use super::{
     hooks,
-    jobs::{MatcherJob, ShellCommand},
+    jobs::{MatcherJob, ShellCommand, TmuxShellCommand},
 };
 
 #[action("Select theme")]
@@ -189,7 +189,7 @@ fn shell_command(editor: &mut Editor, id: ClientId) {
         .prompt("Command")
         .simple()
         .on_confirm(move |editor, id, input| {
-            let job = ShellCommand::new(id, input);
+            let job = TmuxShellCommand::new(id, input);
             editor.job_broker.request(job);
         })
         .build();

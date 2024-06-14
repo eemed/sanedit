@@ -1,3 +1,5 @@
+mod tmux;
+
 use std::{io, process::Stdio, sync::Arc};
 
 use sanedit_buffer::ReadOnlyPieceTree;
@@ -8,6 +10,8 @@ use crate::{
     job_runner::{Job, JobContext, JobResult},
     server::ClientId,
 };
+
+pub(crate) use tmux::TmuxShellCommand;
 
 #[derive(Clone)]
 pub(crate) struct ShellCommand {
@@ -39,7 +43,7 @@ impl Job for ShellCommand {
         let fut = async move {
             let mut cmd = Command::new("/bin/sh");
 
-            cmd.args(&["-c", &command])
+            cmd.args(&["-c", &format!("setsid {}", command)])
                 .stdout(Stdio::piped())
                 .stderr(Stdio::piped());
 

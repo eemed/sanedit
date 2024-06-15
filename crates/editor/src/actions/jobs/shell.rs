@@ -1,6 +1,6 @@
 mod tmux;
 
-use std::{io, process::Stdio, sync::Arc};
+use std::process::Stdio;
 
 use sanedit_buffer::ReadOnlyPieceTree;
 use tokio::process::Command;
@@ -11,7 +11,7 @@ use crate::{
     server::ClientId,
 };
 
-pub(crate) use tmux::TmuxShellCommand;
+pub(crate) use tmux::*;
 
 #[derive(Clone)]
 pub(crate) struct ShellCommand {

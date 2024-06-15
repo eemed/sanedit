@@ -8,7 +8,7 @@ use crate::{
     actions::jobs::FileOptionProvider,
     editor::{
         hooks::Hook,
-        windows::{Focus, Prompt},
+        windows::{Executor, Focus, Prompt},
         Editor,
     },
     server::ClientId,
@@ -189,8 +189,18 @@ fn shell_command(editor: &mut Editor, id: ClientId) {
         .prompt("Command")
         .simple()
         .on_confirm(move |editor, id, input| {
-            let job = TmuxShellCommand::new(id, input);
-            editor.job_broker.request(job);
+            let (win, _buf) = editor.win_buf(id);
+            match &win.cmds.executor {
+                Executor::Tmux { pane } => {
+                    let mut job = TmuxShellCommand::new(id, &win.cmds.shell, input);
+                    if let Some(pane) = pane {
+                        job = job.pane(pane.clone());
+                    }
+
+                    editor.job_broker.request(job);
+                }
+                Executor::Buffer => todo!(),
+            }
         })
         .build();
     win.focus = Focus::Prompt;

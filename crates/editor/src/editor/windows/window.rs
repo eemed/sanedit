@@ -6,6 +6,7 @@ mod options;
 mod prompt;
 mod search;
 mod selector;
+mod shell;
 mod view;
 
 #[cfg(test)]
@@ -43,6 +44,7 @@ pub(crate) use self::{
     search::Search,
     search::SearchDirection,
     selector::*,
+    shell::*,
     view::{Cell, View},
 };
 
@@ -53,6 +55,8 @@ pub(crate) struct Window {
     message: Option<StatusMessage>,
     keymap: Keymap,
     view: View,
+
+    pub cmds: Commands,
     pub clipboard: Box<dyn Clipboard>,
 
     pub completion: Completion,
@@ -70,6 +74,7 @@ impl Window {
             prev_buf_data: None,
             view: View::new(width, height),
             message: None,
+            cmds: Commands::default(),
             clipboard: DefaultClipboard::new(),
             completion: Completion::default(),
             cursors: Cursors::default(),

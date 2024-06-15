@@ -40,7 +40,7 @@ pub(crate) use self::{
     cursors::{Cursor, Cursors},
     focus::Focus,
     options::Options,
-    prompt::Prompt,
+    prompt::*,
     search::Search,
     search::SearchDirection,
     selector::*,
@@ -64,6 +64,7 @@ pub(crate) struct Window {
     pub focus: Focus,
     pub search: Search,
     pub prompt: Prompt,
+    pub histories: [History; HistoryKind::variant_count()],
     pub options: Options,
 }
 
@@ -82,6 +83,7 @@ impl Window {
             options: Options::default(),
             search: Search::default(),
             prompt: Prompt::default(),
+            histories: [History::default(); HistoryKind::variant_count()],
             focus: Focus::Window,
         }
     }

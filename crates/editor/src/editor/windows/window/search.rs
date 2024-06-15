@@ -83,11 +83,6 @@ impl SearchBuilder {
         self
     }
 
-    pub fn history_size(mut self, size: NonZeroUsize) -> Self {
-        self.prompt = self.prompt.history_size(size);
-        self
-    }
-
     pub fn build(mut self) -> Search {
         let SearchBuilder { prompt, direction } = self;
 
@@ -128,10 +123,6 @@ impl Search {
 
     pub fn on_confirm(&mut self) -> Option<PromptAction> {
         self.prompt.on_confirm()
-    }
-
-    pub fn save_to_history(&mut self) {
-        self.prompt.save_to_history();
     }
 }
 

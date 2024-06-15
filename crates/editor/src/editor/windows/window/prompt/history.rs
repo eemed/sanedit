@@ -1,16 +1,28 @@
 use std::collections::VecDeque;
 
-#[derive(Debug, Clone, Copy)]
-enum Pos {
-    First,
-    Last,
-    Index(usize),
+#[derive(Debug, Clone, Eq, PartialEq)]
+#[repr(u8)]
+pub(crate) enum HistoryKind {
+    Command = 0,
 }
 
+impl HistoryKind {
+    pub const fn variant_count() -> usize {
+        1
+    }
+}
+
+#[derive(Debug)]
 pub(crate) struct History {
     items: VecDeque<String>,
     limit: usize,
     pos: Pos,
+}
+
+impl Default for History {
+    fn default() -> Self {
+        History::new(100)
+    }
 }
 
 impl History {
@@ -79,4 +91,11 @@ impl History {
 
         self.get()
     }
+}
+
+#[derive(Debug, Clone, Copy)]
+enum Pos {
+    First,
+    Last,
+    Index(usize),
 }

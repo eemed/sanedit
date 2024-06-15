@@ -64,8 +64,10 @@ fn confirm_all(_editor: &mut Editor, _id: ClientId) {
 fn confirm(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     if let Some(on_confirm) = win.search.on_confirm() {
-        win.search.save_to_history();
         let input = win.search.prompt.input_or_selected();
+        if let Some(hist) = win.search.prompt.history_index() {
+            win.histories[hist].push(&input);
+        }
         (on_confirm)(editor, id, &input)
     }
 
@@ -99,13 +101,19 @@ fn remove_grapheme_before_cursor(editor: &mut Editor, id: ClientId) {
 #[action("Select next history entry")]
 fn history_next(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
-    win.search.prompt.history_next();
+    if let Some(hist) = win.search.prompt.history_index() {
+        let item = win.histories[hist].next().unwrap_or("");
+        win.search.prompt.overwrite_input(item);
+    }
 }
 
 #[action("Select previous history entry")]
 fn history_prev(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
-    win.search.prompt.history_prev();
+    if let Some(hist) = win.search.prompt.history_index() {
+        let item = win.histories[hist].prev().unwrap_or("");
+        win.search.prompt.overwrite_input(item);
+    }
 }
 
 #[action("Clear match highlighting")]

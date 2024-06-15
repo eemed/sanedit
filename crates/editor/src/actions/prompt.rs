@@ -8,7 +8,7 @@ use crate::{
     actions::jobs::FileOptionProvider,
     editor::{
         hooks::Hook,
-        windows::{Executor, Focus, Prompt},
+        windows::{Executor, Focus, HistoryKind, Prompt},
         Editor,
     },
     server::ClientId,
@@ -128,8 +128,10 @@ fn confirm(editor: &mut Editor, id: ClientId) {
 
     let (win, _buf) = editor.win_buf_mut(id);
     if let Some(on_confirm) = win.prompt.on_confirm() {
-        win.prompt.save_to_history();
         let input = win.prompt.input_or_selected();
+        if let Some(hist) = win.prompt.history_index() {
+            win.histories[hist].push(&input);
+        }
         (on_confirm)(editor, id, &input)
     }
 }
@@ -172,13 +174,19 @@ fn prev_completion(editor: &mut Editor, id: ClientId) {
 #[action("Select the next entry from history")]
 fn history_next(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
-    win.prompt.history_next();
+    if let Some(hist) = win.prompt.history_index() {
+        let item = win.histories[hist].next().unwrap_or("");
+        win.prompt.overwrite_input(item);
+    }
 }
 
 #[action("Select the previous entry from history")]
 fn history_prev(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
-    win.prompt.history_prev();
+    if let Some(hist) = win.prompt.history_index() {
+        let item = win.histories[hist].prev().unwrap_or("");
+        win.prompt.overwrite_input(item);
+    }
 }
 
 #[action("Run a shell command")]
@@ -187,6 +195,7 @@ fn shell_command(editor: &mut Editor, id: ClientId) {
 
     win.prompt = Prompt::builder()
         .prompt("Command")
+        .history(HistoryKind::Command)
         .simple()
         .on_confirm(move |editor, id, input| {
             let (win, _buf) = editor.win_buf(id);

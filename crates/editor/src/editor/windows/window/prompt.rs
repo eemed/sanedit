@@ -1,6 +1,6 @@
 mod history;
 
-use std::{num::NonZeroUsize, rc::Rc};
+use std::rc::Rc;
 
 use sanedit_utils::sorted_vec::SortedVec;
 use unicode_segmentation::UnicodeSegmentation;
@@ -15,7 +15,7 @@ use crate::{
     server::ClientId,
 };
 
-use self::history::History;
+pub(crate) use self::history::*;
 
 use super::{selector::Selector, SelectorOption};
 
@@ -25,8 +25,8 @@ pub(crate) struct PromptBuilder {
     on_input: Option<PromptAction>,
     on_abort: Option<PromptAction>,
     keymap: Option<Keymap>,
-    history_size: NonZeroUsize,
     simple: bool,
+    history: Option<usize>,
 }
 
 impl Default for PromptBuilder {
@@ -37,8 +37,8 @@ impl Default for PromptBuilder {
             on_input: None,
             on_abort: None,
             keymap: None,
-            history_size: NonZeroUsize::new(100).unwrap(),
             simple: false,
+            history: None,
         }
     }
 }
@@ -51,6 +51,11 @@ impl PromptBuilder {
 
     pub fn simple(mut self) -> Self {
         self.simple = true;
+        self
+    }
+
+    pub fn history(mut self, hist: HistoryKind) -> Self {
+        self.history = Some(hist as usize);
         self
     }
 
@@ -83,11 +88,6 @@ impl PromptBuilder {
         self
     }
 
-    pub fn history_size(mut self, size: NonZeroUsize) -> Self {
-        self.history_size = size;
-        self
-    }
-
     pub fn build(mut self) -> Prompt {
         let PromptBuilder {
             message,
@@ -95,8 +95,8 @@ impl PromptBuilder {
             on_input,
             on_abort,
             keymap,
-            history_size,
             simple,
+            history,
         } = self;
         Prompt {
             message: message.unwrap_or(String::new()),
@@ -107,7 +107,7 @@ impl PromptBuilder {
             on_abort,
             on_input,
             keymap: keymap.unwrap_or(DefaultKeyMappings::prompt()),
-            history: History::new(history_size.get()),
+            history,
             simple,
         }
     }
@@ -135,7 +135,7 @@ pub(crate) struct Prompt {
 
     pub keymap: Keymap,
 
-    history: History,
+    history: Option<usize>,
     simple: bool,
 }
 
@@ -150,13 +150,17 @@ impl Prompt {
             on_abort: None,
             on_input: None,
             keymap: DefaultKeyMappings::prompt(),
-            history: History::new(100),
+            history: None,
             simple: false,
         }
     }
 
     pub fn builder() -> PromptBuilder {
         PromptBuilder::default()
+    }
+
+    pub fn history_index(&self) -> Option<usize> {
+        self.history
     }
 
     pub fn matcher_result_handler(editor: &mut Editor, id: ClientId, msg: MatcherMessage) {
@@ -207,11 +211,6 @@ impl Prompt {
 
     pub fn on_abort(&self) -> Option<PromptAction> {
         self.on_abort.clone()
-    }
-
-    pub fn save_to_history(&mut self) {
-        let input = self.input_or_selected();
-        self.history.push(&input);
     }
 
     pub fn message(&self) -> &str {
@@ -297,30 +296,9 @@ impl Prompt {
         self.selector.selected_pos()
     }
 
-    pub fn history_next(&mut self) {
-        match self.history.next() {
-            Some(item) => {
-                self.cursor = item.len();
-                self.input = item.into();
-            }
-            None => {
-                self.cursor = 0;
-                self.input = String::new();
-            }
-        }
-    }
-
-    pub fn history_prev(&mut self) {
-        match self.history.prev() {
-            Some(item) => {
-                self.cursor = item.len();
-                self.input = item.into();
-            }
-            None => {
-                self.cursor = 0;
-                self.input = String::new();
-            }
-        }
+    pub fn overwrite_input(&mut self, item: &str) {
+        self.cursor = item.len();
+        self.input = item.into();
     }
 
     pub fn is_simple(&self) -> bool {

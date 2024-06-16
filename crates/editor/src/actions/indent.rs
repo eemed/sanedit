@@ -14,7 +14,11 @@ fn detect_indent(editor: &mut Editor, id: ClientId) {
 }
 
 #[action("Indent cursor lines")]
-fn indent_line(editor: &mut Editor, id: ClientId) {}
+fn indent_line(editor: &mut Editor, id: ClientId) {
+    unimplemented!()
+}
 
 #[action("Dedent cursor lines")]
-fn dedent_line(editor: &mut Editor, id: ClientId) {}
+fn dedent_line(editor: &mut Editor, id: ClientId) {
+    unimplemented!()
+}

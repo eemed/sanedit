@@ -4,15 +4,16 @@ use std::collections::VecDeque;
 #[repr(u8)]
 pub(crate) enum HistoryKind {
     Command = 0,
+    Search = 1,
 }
 
 impl HistoryKind {
     pub const fn variant_count() -> usize {
-        1
+        2
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) struct History {
     items: VecDeque<String>,
     limit: usize,

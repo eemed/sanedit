@@ -85,9 +85,9 @@ impl KeyMappings for DefaultKeyMappings {
              "alt+o A", text_objects::select_angle,
 
              "f5", window::reload,
-             "f4", prompt::select_theme,
-             "f2", window::goto_prev_buffer,
-             "f3", prompt::goto_percentage,
+
+             "f2", editor::build_project,
+             "f1", editor::run_project,
 
              "enter", text::insert_newline,
              "tab",   text::insert_tab,
@@ -125,15 +125,15 @@ impl KeyMappings for DefaultKeyMappings {
 
         #[rustfmt::skip]
         map!(map,
-             "ctrl+c", search::close,
-             "backspace", search::remove_grapheme_before_cursor,
-             "left", search::prev_grapheme,
-             "right", search::next_grapheme,
-             "enter", search::confirm,
+             "ctrl+c", prompt::close,
+             "backspace", prompt::remove_grapheme_before_cursor,
+             "left", prompt::prev_grapheme,
+             "right", prompt::next_grapheme,
+             "enter", prompt::confirm,
              "ctrl+enter", search::confirm_all,
              "alt+enter", search::confirm_all,
-             "up", search::history_prev,
-             "down", search::history_next,
+             "up", prompt::history_prev,
+             "down", prompt::history_next,
 
              // "ctrl+s", search::toggle_select,
         );

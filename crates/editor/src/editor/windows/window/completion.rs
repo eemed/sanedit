@@ -87,7 +87,6 @@ impl Completion {
                             win.completion.clear_options();
                         }
                         win.focus = Focus::Completion;
-                        // TODO add descriptions
                         let opts: Vec<SelectorOption> =
                             matched.into_iter().map(SelectorOption::from).collect();
                         let (win, _buf) = editor.win_buf_mut(id);

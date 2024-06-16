@@ -88,7 +88,7 @@ impl PromptBuilder {
         self
     }
 
-    pub fn build(mut self) -> Prompt {
+    pub fn build(self) -> Prompt {
         let PromptBuilder {
             message,
             on_confirm,

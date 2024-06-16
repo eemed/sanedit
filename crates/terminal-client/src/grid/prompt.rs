@@ -19,6 +19,7 @@ pub struct CustomPrompt {
 }
 
 pub(crate) fn open_prompt(width: usize, height: usize, prompt: Prompt) -> GridItem<CustomPrompt> {
+    use PromptStyle::*;
     use Source::*;
     // Try to fit overlay prompt
     // magic number: overlay paddings 3 + prompt 1 + options + extra space so we
@@ -30,10 +31,8 @@ pub(crate) fn open_prompt(width: usize, height: usize, prompt: Prompt) -> GridIt
     let olay_height = prompt.max_completions + 3 + 1;
     let oneline_min_height = prompt.max_completions + 1;
     let style = match prompt.source {
-        Search | Simple => PromptStyle::Oneline,
+        Search | Simple => Oneline,
         Prompt => {
-            use PromptStyle::*;
-
             if height < olay_min_height {
                 Oneline
             } else {

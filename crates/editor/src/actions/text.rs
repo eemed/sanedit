@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use crate::{
-    common::{cursors::word_before_cursor, dirs::tmp_file, indent::indent_at_pos},
+    common::{dirs::tmp_file, indent::indent_at_pos},
     editor::{
         hooks::Hook,
         windows::{Focus, Prompt},
@@ -51,14 +51,7 @@ pub(crate) fn insert(editor: &mut Editor, id: ClientId, text: &str) {
 
     use Focus::*;
     match win.focus() {
-        Search => {
-            win.search.prompt.insert_at_cursor(text);
-            if let Some(on_input) = win.search.prompt.on_input() {
-                let input = win.search.prompt.input().to_string();
-                (on_input)(editor, id, &input)
-            }
-        }
-        Prompt => {
+        Search | Prompt => {
             win.prompt.insert_at_cursor(text);
             if let Some(on_input) = win.prompt.on_input() {
                 let input = win.prompt.input().to_string();

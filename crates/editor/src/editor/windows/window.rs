@@ -83,7 +83,7 @@ impl Window {
             options: Options::default(),
             search: Search::default(),
             prompt: Prompt::default(),
-            histories: [History::default(); HistoryKind::variant_count()],
+            histories: Default::default(),
             focus: Focus::Window,
         }
     }
@@ -315,8 +315,7 @@ impl Window {
     /// Return the currently focused elements keymap
     pub fn focus_keymap(&self) -> &Keymap {
         match self.focus {
-            Focus::Search => &self.search.prompt.keymap,
-            Focus::Prompt => &self.prompt.keymap,
+            Focus::Prompt | Focus::Search => &self.prompt.keymap,
             Focus::Window => &self.keymap,
             Focus::Completion => &self.completion.keymap,
         }

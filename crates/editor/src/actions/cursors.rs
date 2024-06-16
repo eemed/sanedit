@@ -3,7 +3,7 @@ use sanedit_messages::redraw::Point;
 
 use crate::{
     common::{
-        movement::{end_of_line, next_line, next_line_start, prev_line, start_of_line},
+        movement::{end_of_line, next_line, prev_line, start_of_line},
         window::pos_at_point,
     },
     editor::{hooks::Hook, windows::Cursor, Editor},
@@ -31,7 +31,7 @@ fn new_prev_line(editor: &mut Editor, id: ClientId) {
 #[action("Create a new cursor on the next search match")]
 fn new_to_next_search_match(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
-    let last_search = win.search.prompt.input();
+    let last_search = &win.search.last_search;
     let ppos = win.cursors.primary().pos();
 
     let searcher = Searcher::new(last_search.as_bytes());
@@ -56,7 +56,7 @@ fn new_to_all_search_matches(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     // win.cursors.remove_secondary_cursors();
 
-    let last_search = win.search.prompt.input();
+    let last_search = &win.search.last_search;
     if last_search.is_empty() {
         win.warn_msg("No last search term");
         return;

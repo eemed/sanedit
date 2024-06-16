@@ -1,12 +1,14 @@
 use crate::actions::jobs::{MatchedOptions, MatcherMessage};
 use crate::actions::*;
-use crate::common::matcher::{Match, MatchOption};
+use crate::common::matcher::MatchOption;
 use crate::editor::windows::{Focus, SelectorOption};
 use sanedit_messages::keyevents_to_string;
 
 #[rustfmt::skip]
 pub(crate) const COMMANDS: &[Action] = &[
     editor::quit,
+    editor::build_project,
+    editor::run_project,
 
     text::save,
     text::copy,
@@ -16,9 +18,14 @@ pub(crate) const COMMANDS: &[Action] = &[
 
     prompt::open_file,
     prompt::shell_command,
+    prompt::select_theme,
+    prompt::goto_line,
+    prompt::goto_percentage,
 
     search::forward,
     search::backward,
+    search::next_match,
+    search::prev_match,
 
     movement::start_of_buffer,
     movement::end_of_buffer,
@@ -38,9 +45,13 @@ pub(crate) const COMMANDS: &[Action] = &[
     cursors::new_prev_line,
     cursors::new_to_next_search_match,
     cursors::new_to_all_search_matches,
+    cursors::swap_selection_dir,
 
     view::scroll_up,
     view::scroll_down,
+
+    indent::indent_line,
+    indent::dedent_line,
 
     text_objects::select_parens,
     text_objects::select_in_parens,
@@ -50,6 +61,10 @@ pub(crate) const COMMANDS: &[Action] = &[
     text_objects::select_in_curly,
     text_objects::select_angle,
     text_objects::select_in_angle,
+
+    window::reload,
+    window::goto_prev_buffer,
+
 ];
 
 pub(crate) fn command_palette(editor: &Editor, id: ClientId) -> Vec<MatchOption> {
@@ -67,18 +82,6 @@ pub(crate) fn command_palette(editor: &Editor, id: ClientId) -> Vec<MatchOption>
         })
         .collect()
 }
-
-// pub(crate) fn format_match(editor: &Editor, id: ClientId, mat: Match) -> SelectorOption {
-//     let mut opt = SelectorOption::from(mat);
-//     if let Some(action) = find_action(opt.value()) {
-//         let (win, _buf) = editor.win_buf(id);
-//         if let Some(bind) = win.keymap().find_bound_key(action.name()) {
-//             opt.description = keyevents_to_string(&bind);
-//         }
-//     }
-
-//     opt
-// }
 
 pub(crate) fn find_action(name: &str) -> Option<Action> {
     for cmd in COMMANDS {

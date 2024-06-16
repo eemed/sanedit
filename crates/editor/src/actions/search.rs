@@ -5,7 +5,7 @@ use sanedit_buffer::{Searcher, SearcherRev};
 use crate::{
     actions::jobs,
     editor::{
-        windows::{Focus, Search, SearchDirection},
+        windows::{Focus, HistoryKind, Prompt, SearchDirection},
         Editor,
     },
     server::ClientId,
@@ -23,8 +23,10 @@ fn async_view_matches(editor: &mut Editor, id: ClientId, term: &str) {
 #[action("Search forward")]
 fn forward(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
-    win.search = Search::builder()
+    win.search.direction = SearchDirection::Forward;
+    win.prompt = Prompt::builder()
         .prompt("Search")
+        .history(HistoryKind::Search)
         .on_confirm(search)
         .on_input(async_view_matches)
         .build();
@@ -34,86 +36,19 @@ fn forward(editor: &mut Editor, id: ClientId) {
 #[action("Search backwards")]
 fn backward(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
-    win.search = Search::builder()
+    win.search.direction = SearchDirection::Backward;
+    win.prompt = Prompt::builder()
+        .history(HistoryKind::Search)
         .prompt("Backward search")
-        .backward()
         .on_confirm(search)
         .on_input(async_view_matches)
         .build();
     win.focus = Focus::Search;
 }
 
-#[action("Close search")]
-fn close(editor: &mut Editor, id: ClientId) {
-    let (win, _buf) = editor.win_buf_mut(id);
-    if let Some(on_abort) = win.search.prompt.on_abort() {
-        let input = win.search.prompt.input_or_selected();
-        (on_abort)(editor, id, &input)
-    }
-
-    let (win, _buf) = editor.win_buf_mut(id);
-    win.focus = Focus::Window;
-}
-
 #[action("Find all matches")]
 fn confirm_all(_editor: &mut Editor, _id: ClientId) {
     log::info!("Hello world");
-}
-
-#[action("Find next match")]
-fn confirm(editor: &mut Editor, id: ClientId) {
-    let (win, _buf) = editor.win_buf_mut(id);
-    if let Some(on_confirm) = win.search.on_confirm() {
-        let input = win.search.prompt.input_or_selected();
-        if let Some(hist) = win.search.prompt.history_index() {
-            win.histories[hist].push(&input);
-        }
-        (on_confirm)(editor, id, &input)
-    }
-
-    let (win, _buf) = editor.win_buf_mut(id);
-    win.focus = Focus::Window;
-}
-
-#[action("Move cursor one character right")]
-fn next_grapheme(editor: &mut Editor, id: ClientId) {
-    let (win, _buf) = editor.win_buf_mut(id);
-    win.search.prompt.next_grapheme();
-}
-
-#[action("Move cursor one character left")]
-fn prev_grapheme(editor: &mut Editor, id: ClientId) {
-    let (win, _buf) = editor.win_buf_mut(id);
-    win.search.prompt.prev_grapheme();
-}
-
-#[action("Remove character before cursor")]
-fn remove_grapheme_before_cursor(editor: &mut Editor, id: ClientId) {
-    let (win, _buf) = editor.win_buf_mut(id);
-    win.search.prompt.remove_grapheme_before_cursor();
-
-    if let Some(on_input) = win.search.prompt.on_input() {
-        let input = win.prompt.input().to_string();
-        (on_input)(editor, id, &input)
-    }
-}
-
-#[action("Select next history entry")]
-fn history_next(editor: &mut Editor, id: ClientId) {
-    let (win, _buf) = editor.win_buf_mut(id);
-    if let Some(hist) = win.search.prompt.history_index() {
-        let item = win.histories[hist].next().unwrap_or("");
-        win.search.prompt.overwrite_input(item);
-    }
-}
-
-#[action("Select previous history entry")]
-fn history_prev(editor: &mut Editor, id: ClientId) {
-    let (win, _buf) = editor.win_buf_mut(id);
-    if let Some(hist) = win.search.prompt.history_index() {
-        let item = win.histories[hist].prev().unwrap_or("");
-        win.search.prompt.overwrite_input(item);
-    }
 }
 
 #[action("Clear match highlighting")]
@@ -126,14 +61,14 @@ fn clear_matches(editor: &mut Editor, id: ClientId) {
 #[action("Goto next match")]
 fn next_match(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
-    let input = win.search.prompt.input().to_string();
+    let input = win.search.last_search.clone();
     search(editor, id, &input);
 }
 
 #[action("Goto previous match")]
 fn prev_match(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
-    let input = win.search.prompt.input().to_string();
+    let input = win.search.last_search.clone();
 
     // search to opposite direction
     let dir = &mut win.search.direction;
@@ -149,6 +84,7 @@ fn prev_match(editor: &mut Editor, id: ClientId) {
 fn search(editor: &mut Editor, id: ClientId, input: &str) {
     let (win, _buf) = editor.win_buf_mut(id);
     let cpos = win.cursors.primary().pos();
+    win.search.last_search = input.into();
 
     search_impl(editor, id, input, cpos);
 }

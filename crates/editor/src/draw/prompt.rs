@@ -19,6 +19,7 @@ pub(crate) fn draw(prompt: &Prompt, ctx: &mut DrawContext) -> redraw::Prompt {
             cmp::min(*offset, selected)
         }
     };
+    ctx.state.last_prompt = Some(prompt.message().to_string());
 
     let msg = prompt.message().to_string();
     let input = prompt.input().into();

@@ -8,7 +8,7 @@ use crate::{
     actions::jobs::FileOptionProvider,
     editor::{
         hooks::Hook,
-        windows::{Executor, Focus, HistoryKind, Prompt},
+        windows::{Focus, HistoryKind, Prompt},
         Editor,
     },
     server::ClientId,
@@ -16,10 +16,7 @@ use crate::{
 
 use self::commands::find_action;
 
-use super::{
-    hooks,
-    jobs::{MatcherJob, ShellCommand, TmuxShellCommand},
-};
+use super::{hooks, jobs::MatcherJob, shell};
 
 #[action("Select theme")]
 fn select_theme(editor: &mut Editor, id: ClientId) {
@@ -66,7 +63,7 @@ fn command_palette(editor: &mut Editor, id: ClientId) {
         .build();
 
     win.prompt = Prompt::builder()
-        .prompt("Command")
+        .prompt("Palette")
         .on_confirm(move |editor, id, input| match find_action(input) {
             Some(action) => action.execute(editor, id),
             None => log::error!("No action with name {input}"),
@@ -194,23 +191,10 @@ fn shell_command(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
 
     win.prompt = Prompt::builder()
-        .prompt("Command")
+        .prompt("Shell")
         .history(HistoryKind::Command)
         .simple()
-        .on_confirm(move |editor, id, input| {
-            let (win, _buf) = editor.win_buf(id);
-            match &win.cmds.executor {
-                Executor::Tmux { pane } => {
-                    let mut job = TmuxShellCommand::new(id, &win.cmds.shell, input);
-                    if let Some(pane) = pane {
-                        job = job.pane(pane.clone());
-                    }
-
-                    editor.job_broker.request(job);
-                }
-                Executor::Buffer => todo!(),
-            }
-        })
+        .on_confirm(shell::execute)
         .build();
     win.focus = Focus::Prompt;
 }

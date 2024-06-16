@@ -21,6 +21,9 @@ pub(crate) struct DrawContext<'a, 'b> {
 }
 
 pub(crate) struct DrawState {
+    /// Used to detect when prompt is different
+    last_prompt: Option<String>,
+
     /// Used to track scroll position when drawing prompt
     prompt_scroll_offset: usize,
     compl_scroll_offset: usize,
@@ -33,6 +36,7 @@ impl DrawState {
         win.redraw_view(buf);
 
         let mut state = DrawState {
+            last_prompt: None,
             prompt_scroll_offset: 0,
             compl_scroll_offset: 0,
             redraw_window: true,
@@ -61,8 +65,15 @@ impl DrawState {
         }
 
         // Send close if not focused
-        if win.focus != Focus::Prompt {
+        if win.focus != Focus::Prompt
+            || self
+                .last_prompt
+                .as_ref()
+                .map(|p| p == win.prompt.message())
+                .unwrap_or(false)
+        {
             self.prompt_scroll_offset = 0;
+            self.last_prompt = None;
             redraw.push(Redraw::Prompt(Component::Close));
         }
 
@@ -104,7 +115,7 @@ impl DrawState {
 
         match win.focus() {
             Focus::Search => {
-                let current = search::draw(&win.search, &mut ctx).into();
+                let current = search::draw(&win.prompt, &win.search, &mut ctx).into();
                 redraw.push(current);
             }
             Focus::Prompt => {

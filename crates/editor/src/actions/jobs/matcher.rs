@@ -307,14 +307,12 @@ pub(crate) async fn match_options(
                 }
             }
 
-            if !matches.is_empty() {
-                let _ = msend
-                    .send(MatchedOptions::Options {
-                        clear_old,
-                        matched: matches,
-                    })
-                    .await;
-            }
+            let _ = msend
+                .send(MatchedOptions::Options {
+                    clear_old,
+                    matched: matches,
+                })
+                .await;
             let _ = msend.send(MatchedOptions::Done).await;
         })
     }

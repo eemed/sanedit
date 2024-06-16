@@ -13,7 +13,7 @@ use std::{
 
 use sanedit_buffer::{PieceTree, PieceTreeSlice, ReadOnlyPieceTree};
 
-use crate::common::{dirs::tmp_file, file::File, indent::Indent};
+use crate::common::{dirs::tmp_file, file::File};
 
 use self::{options::Options, snapshots::Snapshots};
 pub(crate) use change::{Change, ChangeKind};
@@ -132,13 +132,14 @@ impl Buffer {
         self.pt.len()
     }
 
-    /// Stores snapshot data to the snapshot at pos
-    pub fn store_snapshot_data(&mut self, id: SnapshotId, sdata: SnapshotData) {
-        self.snapshots.set_data(id, sdata)
+    /// Get mutable access to extra data for a snapshot
+    pub fn snapshot_data_mut(&mut self, id: SnapshotId) -> Option<&mut SnapshotData> {
+        self.snapshots.data_mut(id)
     }
 
-    pub fn snapshot_data(&self, id: SnapshotId) -> Option<SnapshotData> {
-        self.snapshots.get_data(id)
+    /// Get access to extra data for a snapshot
+    pub fn snapshot_data(&self, id: SnapshotId) -> Option<&SnapshotData> {
+        self.snapshots.data(id)
     }
 
     /// Get the last change done to buffer

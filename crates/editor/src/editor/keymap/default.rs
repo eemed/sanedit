@@ -1,10 +1,21 @@
+use rustc_hash::FxHashMap;
+
 use crate::{actions::*, editor::keymap::KeyTrie, map};
 
-use super::{KeyMappings, Keymap};
+use super::{Keymap, KeymapKind};
 
 pub(crate) struct DefaultKeyMappings;
 
-impl KeyMappings for DefaultKeyMappings {
+impl DefaultKeyMappings {
+    pub fn keymaps() -> FxHashMap<KeymapKind, Keymap> {
+        let mut maps = FxHashMap::default();
+        maps.insert(KeymapKind::Window, Self::window());
+        maps.insert(KeymapKind::Prompt, Self::prompt());
+        maps.insert(KeymapKind::Search, Self::search());
+        maps.insert(KeymapKind::Completion, Self::completion());
+        maps
+    }
+
     fn window() -> Keymap {
         let mut map = Keymap {
             root: KeyTrie::default(),

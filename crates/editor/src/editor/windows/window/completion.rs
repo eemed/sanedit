@@ -1,4 +1,4 @@
-use std::{rc::Rc, sync::Arc};
+use std::rc::Rc;
 
 use sanedit_messages::redraw::Point;
 use sanedit_utils::sorted_vec::SortedVec;
@@ -6,11 +6,7 @@ use sanedit_utils::sorted_vec::SortedVec;
 use crate::{
     actions::jobs::{MatchedOptions, MatcherMessage},
     common::cursors::word_before_cursor,
-    editor::{
-        keymap::{DefaultKeyMappings, KeyMappings, Keymap},
-        windows::Focus,
-        Editor,
-    },
+    editor::{windows::Focus, Editor},
     server::ClientId,
 };
 
@@ -20,7 +16,6 @@ pub(crate) type CompletionAction = Rc<dyn Fn(&mut Editor, ClientId, &str)>;
 
 pub(crate) struct Completion {
     pub(crate) point: Point,
-    pub(crate) keymap: Keymap,
     pub(crate) selector: Selector,
 
     /// Called when input is modified.
@@ -102,7 +97,6 @@ impl Default for Completion {
     fn default() -> Self {
         Completion {
             point: Point::default(),
-            keymap: DefaultKeyMappings::completion(),
             selector: Selector::default(),
             on_input: None,
         }
@@ -113,7 +107,6 @@ impl std::fmt::Debug for Completion {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Completion")
             .field("point", &self.point)
-            .field("keymap", &self.keymap)
             .field("selector", &self.selector)
             .finish_non_exhaustive()
     }

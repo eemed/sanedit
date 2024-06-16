@@ -7,11 +7,7 @@ use unicode_segmentation::UnicodeSegmentation;
 
 use crate::{
     actions::jobs::{MatchedOptions, MatcherMessage},
-    editor::{
-        keymap::{DefaultKeyMappings, KeyMappings, Keymap},
-        windows::Focus,
-        Editor,
-    },
+    editor::{keymap::KeymapKind, windows::Focus, Editor},
     server::ClientId,
 };
 
@@ -24,9 +20,9 @@ pub(crate) struct PromptBuilder {
     on_confirm: Option<PromptAction>,
     on_input: Option<PromptAction>,
     on_abort: Option<PromptAction>,
-    keymap: Option<Keymap>,
+    keymap_kind: Option<KeymapKind>,
     simple: bool,
-    history: Option<usize>,
+    history_kind: Option<HistoryKind>,
 }
 
 impl Default for PromptBuilder {
@@ -36,9 +32,9 @@ impl Default for PromptBuilder {
             on_confirm: None,
             on_input: None,
             on_abort: None,
-            keymap: None,
+            keymap_kind: None,
             simple: false,
-            history: None,
+            history_kind: None,
         }
     }
 }
@@ -55,7 +51,7 @@ impl PromptBuilder {
     }
 
     pub fn history(mut self, hist: HistoryKind) -> Self {
-        self.history = Some(hist as usize);
+        self.history_kind = Some(hist);
         self
     }
 
@@ -83,8 +79,8 @@ impl PromptBuilder {
         self
     }
 
-    pub fn keymap(mut self, keymap: Keymap) -> Self {
-        self.keymap = Some(keymap);
+    pub fn keymap(mut self, keymap: KeymapKind) -> Self {
+        self.keymap_kind = Some(keymap);
         self
     }
 
@@ -94,22 +90,22 @@ impl PromptBuilder {
             on_confirm,
             on_input,
             on_abort,
-            keymap,
+            keymap_kind,
             simple,
-            history,
+            history_kind,
         } = self;
-        Prompt {
-            message: message.unwrap_or(String::new()),
-            input: String::new(),
-            cursor: 0,
-            selector: Selector::default(),
-            on_confirm,
-            on_abort,
-            on_input,
-            keymap: keymap.unwrap_or(DefaultKeyMappings::prompt()),
-            history,
-            simple,
+        let mut prompt = Prompt::new(&message.unwrap_or(String::new()));
+        prompt.on_confirm = on_confirm;
+        prompt.on_abort = on_abort;
+        prompt.on_input = on_input;
+        prompt.history_kind = history_kind;
+        prompt.simple = simple;
+
+        if let Some(kmap) = keymap_kind {
+            prompt.keymap_kind = kmap;
         }
+
+        prompt
     }
 }
 
@@ -133,9 +129,10 @@ pub(crate) struct Prompt {
     /// Called when input is modified
     on_input: Option<PromptAction>,
 
-    pub keymap: Keymap,
+    keymap_kind: KeymapKind,
 
-    history: Option<usize>,
+    history_kind: Option<HistoryKind>,
+    history_pos: HistoryPosition,
     simple: bool,
 }
 
@@ -149,8 +146,9 @@ impl Prompt {
             on_confirm: None,
             on_abort: None,
             on_input: None,
-            keymap: DefaultKeyMappings::prompt(),
-            history: None,
+            keymap_kind: KeymapKind::Prompt,
+            history_kind: None,
+            history_pos: HistoryPosition::First,
             simple: false,
         }
     }
@@ -159,8 +157,12 @@ impl Prompt {
         PromptBuilder::default()
     }
 
-    pub fn history_index(&self) -> Option<usize> {
-        self.history
+    pub fn keymap(&self) -> KeymapKind {
+        self.keymap_kind
+    }
+
+    pub fn history(&self) -> Option<HistoryKind> {
+        self.history_kind
     }
 
     pub fn matcher_result_handler(editor: &mut Editor, id: ClientId, msg: MatcherMessage) {
@@ -303,6 +305,45 @@ impl Prompt {
 
     pub fn is_simple(&self) -> bool {
         self.simple
+    }
+
+    pub fn history_next(&mut self, hist: &History) {
+        use HistoryPosition::*;
+
+        match self.history_pos {
+            First => {
+                if !hist.is_empty() {
+                    self.history_pos = Pos(0);
+                }
+            }
+            Pos(n) => {
+                let pos = n + 1;
+                self.history_pos = if pos < hist.len() { Pos(pos) } else { Last };
+            }
+            _ => {}
+        }
+
+        let item = hist.get(self.history_pos).unwrap_or("");
+        self.overwrite_input(item);
+    }
+
+    pub fn history_prev(&mut self, hist: &History) {
+        use HistoryPosition::*;
+
+        match self.history_pos {
+            Last => {
+                if !hist.is_empty() {
+                    self.history_pos = Pos(hist.len() - 1);
+                }
+            }
+            Pos(n) => {
+                self.history_pos = if n > 0 { Pos(n - 1) } else { First };
+            }
+            _ => {}
+        }
+
+        let item = hist.get(self.history_pos).unwrap_or("");
+        self.overwrite_input(item);
     }
 }
 

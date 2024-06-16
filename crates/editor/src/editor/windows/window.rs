@@ -17,7 +17,7 @@ use std::{
     mem,
 };
 
-use rustc_hash::FxHashSet;
+use rustc_hash::{FxHashMap, FxHashSet};
 use sanedit_messages::redraw::{Severity, Size, StatusMessage};
 
 use crate::{
@@ -30,7 +30,7 @@ use crate::{
     editor::{
         buffers::{Buffer, BufferId, SnapshotData, SortedRanges},
         clipboard::{Clipboard, DefaultClipboard},
-        keymap::{DefaultKeyMappings, KeyMappings, Keymap},
+        keymap::{DefaultKeyMappings, Keymap, KeymapKind},
         syntax::SyntaxParseResult,
     },
 };
@@ -51,9 +51,8 @@ pub(crate) use self::{
 #[derive(Debug)]
 pub(crate) struct Window {
     bid: BufferId,
-    prev_buf_data: Option<(BufferId, SnapshotData)>,
+    last_buf: Option<(BufferId, SnapshotData)>,
     message: Option<StatusMessage>,
-    keymap: Keymap,
     view: View,
 
     pub cmds: Commands,
@@ -64,7 +63,8 @@ pub(crate) struct Window {
     pub focus: Focus,
     pub search: Search,
     pub prompt: Prompt,
-    pub histories: [History; HistoryKind::variant_count()],
+    pub histories: FxHashMap<HistoryKind, History>,
+    pub keymaps: FxHashMap<KeymapKind, Keymap>,
     pub options: Options,
 }
 
@@ -72,18 +72,18 @@ impl Window {
     pub fn new(bid: BufferId, width: usize, height: usize) -> Window {
         Window {
             bid,
-            prev_buf_data: None,
+            last_buf: None,
             view: View::new(width, height),
             message: None,
             cmds: Commands::default(),
             clipboard: DefaultClipboard::new(),
             completion: Completion::default(),
             cursors: Cursors::default(),
-            keymap: DefaultKeyMappings::window(),
             options: Options::default(),
             search: Search::default(),
             prompt: Prompt::default(),
             histories: Default::default(),
+            keymaps: DefaultKeyMappings::keymaps(),
             focus: Focus::Window,
         }
     }
@@ -115,21 +115,21 @@ impl Window {
     pub fn open_buffer(&mut self, bid: BufferId) -> BufferId {
         let old = self.bid;
         let odata = self.create_snapshot_data();
-        self.prev_buf_data = Some((old, odata));
+        self.last_buf = Some((old, odata));
         self.bid = bid;
         self.reload();
         old
     }
 
     pub fn goto_prev_buffer(&mut self) -> bool {
-        match mem::take(&mut self.prev_buf_data) {
+        match mem::take(&mut self.last_buf) {
             Some((pbid, pdata)) => {
                 let old = self.bid;
                 let odata = self.create_snapshot_data();
-                self.prev_buf_data = Some((old, odata));
+                self.last_buf = Some((old, odata));
 
                 self.bid = pbid;
-                self.restore(pdata);
+                self.restore(&pdata);
                 true
             }
             None => false,
@@ -268,7 +268,7 @@ impl Window {
     }
 
     pub fn prev_buffer_id(&self) -> Option<BufferId> {
-        self.prev_buf_data.as_ref().map(|(a, _)| a).copied()
+        self.last_buf.as_ref().map(|(a, _)| a).copied()
     }
 
     pub fn view(&self) -> &View {
@@ -309,16 +309,23 @@ impl Window {
     }
 
     pub fn keymap(&self) -> &Keymap {
-        &self.keymap
+        self.keymaps
+            .get(&KeymapKind::Window)
+            .expect("No keymap for window")
     }
 
     /// Return the currently focused elements keymap
     pub fn focus_keymap(&self) -> &Keymap {
-        match self.focus {
-            Focus::Prompt | Focus::Search => &self.prompt.keymap,
-            Focus::Window => &self.keymap,
-            Focus::Completion => &self.completion.keymap,
-        }
+        use Focus::*;
+        let kind = match self.focus {
+            Search | Prompt => self.prompt.keymap(),
+            Focus::Window => KeymapKind::Window,
+            Focus::Completion => KeymapKind::Completion,
+        };
+
+        self.keymaps
+            .get(&kind)
+            .expect("No keymap found for kind: {kind:?}")
     }
 
     fn create_snapshot_data(&self) -> SnapshotData {
@@ -331,14 +338,14 @@ impl Window {
     fn remove(&mut self, buf: &mut Buffer, ranges: &SortedRanges) {
         let change = buf.remove_multi(ranges);
         if let Some(id) = change.created_snapshot {
-            buf.store_snapshot_data(id, self.create_snapshot_data());
+            *buf.snapshot_data_mut(id).unwrap() = self.create_snapshot_data();
         }
     }
 
     fn insert(&mut self, buf: &mut Buffer, positions: &[usize], text: &str) {
         let change = buf.insert_multi(positions, text);
         if let Some(id) = change.created_snapshot {
-            buf.store_snapshot_data(id, self.create_snapshot_data());
+            *buf.snapshot_data_mut(id).unwrap() = self.create_snapshot_data();
         }
     }
 
@@ -465,7 +472,7 @@ impl Window {
                 let restored = change.restored_snapshot;
 
                 if let Some(id) = created {
-                    buf.store_snapshot_data(id, self.create_snapshot_data());
+                    *buf.snapshot_data_mut(id).unwrap() = self.create_snapshot_data();
                 }
 
                 if let Some(restored) = restored {
@@ -486,7 +493,7 @@ impl Window {
         }
     }
 
-    fn restore(&mut self, sdata: SnapshotData) {
+    fn restore(&mut self, sdata: &SnapshotData) {
         self.cursors = sdata.cursors.clone();
         self.view.set_offset(sdata.view_offset);
         self.invalidate();
@@ -498,7 +505,7 @@ impl Window {
                 let created = change.created_snapshot;
                 let restored = change.restored_snapshot;
                 if let Some(id) = created {
-                    buf.store_snapshot_data(id, self.create_snapshot_data());
+                    *buf.snapshot_data_mut(id).unwrap() = self.create_snapshot_data();
                 }
 
                 if let Some(restored) = restored {
@@ -549,10 +556,6 @@ impl Window {
 
         self.invalidate();
         self.view_to_cursor(buf);
-    }
-
-    pub fn set_keymap(mappings: impl KeyMappings) {
-        todo!()
     }
 
     pub fn syntax_result(&mut self) -> &mut SyntaxParseResult {

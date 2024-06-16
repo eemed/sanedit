@@ -68,15 +68,25 @@ impl Snapshots {
         self.undo_pos().is_some()
     }
 
-    pub fn set_data(&mut self, id: SnapshotId, sdata: SnapshotData) {
-        if let Some(snap) = self.snapshots.get_mut(id) {
-            snap.data = Some(sdata);
-        }
+    // pub fn set_data(&mut self, id: SnapshotId, sdata: SnapshotData) {
+    //     if let Some(snap) = self.snapshots.get_mut(id) {
+    //         snap.data = Some(sdata);
+    //     }
+    // }
+
+    // pub fn get_data(&self, id: SnapshotId) -> Option<SnapshotData> {
+    //     let node = self.snapshots.get(id)?;
+    //     node.data.clone()
+    // }
+
+    pub fn data_mut(&mut self, id: SnapshotId) -> Option<&mut SnapshotData> {
+        let node = self.snapshots.get_mut(id)?;
+        node.data.as_mut()
     }
 
-    pub fn get_data(&self, id: SnapshotId) -> Option<SnapshotData> {
+    pub fn data(&self, id: SnapshotId) -> Option<&SnapshotData> {
         let node = self.snapshots.get(id)?;
-        node.data.clone()
+        node.data.as_ref()
     }
 }
 

@@ -17,11 +17,12 @@ macro_rules! map {
     }
 }
 
-pub(crate) trait KeyMappings {
-    fn window() -> Keymap;
-    fn prompt() -> Keymap;
-    fn search() -> Keymap;
-    fn completion() -> Keymap;
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
+pub(crate) enum KeymapKind {
+    Search,
+    Prompt,
+    Window,
+    Completion,
 }
 
 #[derive(Debug, Clone)]

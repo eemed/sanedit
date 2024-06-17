@@ -1,11 +1,12 @@
 mod commands;
+mod create_new_file;
 
 use std::{cmp::min, path::PathBuf, sync::Arc};
 
 use sanedit_messages::ClientMessage;
 
 use crate::{
-    actions::jobs::FileOptionProvider,
+    actions::jobs::{DirectoryOptionProvider, FileOptionProvider},
     editor::{
         hooks::Hook,
         windows::{Focus, HistoryKind, Prompt},
@@ -78,27 +79,19 @@ fn create_new_file(editor: &mut Editor, id: ClientId) {
     const PROMPT_MESSAGE: &str = "Create a new file";
     let (win, _buf) = editor.win_buf(id);
     let ignore = &win.options.ignore_directories;
-    todo!()
-    // let path = editor.working_dir().to_path_buf();
-    // let job = MatcherJob::builder(id)
-    //     .options(FileOptionProvider::new(&path, ignore))
-    //     .handler(Prompt::matcher_result_handler)
-    //     .build();
-    // editor.job_broker.request_slot(id, PROMPT_MESSAGE, job);
-    // let (win, _buf) = editor.win_buf_mut(id);
+    let path = editor.working_dir().to_path_buf();
+    let job = MatcherJob::builder(id)
+        .options(DirectoryOptionProvider::new(&path, ignore))
+        .handler(create_new_file::matcher_result_handler)
+        .build();
+    editor.job_broker.request_slot(id, PROMPT_MESSAGE, job);
+    let (win, _buf) = editor.win_buf_mut(id);
 
-    // win.prompt = Prompt::builder()
-    //     .prompt(PROMPT_MESSAGE)
-    //     .on_confirm(move |editor, id, input| {
-    //         let path = PathBuf::from(input);
-
-    //         if let Err(e) = editor.open_file(id, &path) {
-    //             let (win, _buf) = editor.win_buf_mut(id);
-    //             win.warn_msg(&format!("Failed to open file {input}"))
-    //         }
-    //     })
-    //     .build();
-    // win.focus = Focus::Prompt;
+    win.prompt = Prompt::builder()
+        .prompt(PROMPT_MESSAGE)
+        .on_confirm(create_new_file::on_confirm)
+        .build();
+    win.focus = Focus::Prompt;
 }
 
 #[action("Open a file")]

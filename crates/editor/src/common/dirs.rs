@@ -1,7 +1,11 @@
 use std::{
-    fs,
+    fs::{self, File, OpenOptions},
     path::{Path, PathBuf},
 };
+
+use rand::Rng;
+
+use crate::server::ClientId;
 
 pub(crate) const ENV_PREFIX: &str = "SANE";
 
@@ -67,9 +71,32 @@ pub(crate) fn tmp_dir() -> Option<PathBuf> {
     Some(tmp)
 }
 
-pub(crate) fn tmp_file() -> Option<PathBuf> {
-    let id = uuid::Uuid::new_v4();
-    let mut result = tmp_dir()?;
-    result.push(PathBuf::from(id.to_string()));
-    Some(result)
+// pub(crate) fn tmp_file() -> Option<PathBuf> {
+//     let id = uuid::Uuid::new_v4();
+//     let mut result = tmp_dir()?;
+//     result.push(PathBuf::from(id.to_string()));
+//     Some(result)
+// }
+
+pub(crate) fn tmp_file() -> Option<(PathBuf, File)> {
+    let mut rng = rand::thread_rng();
+    loop {
+        let rand: u32 = rng.gen();
+        let name = format!("tmp-file-{}", rand);
+        let mut path = tmp_dir()?;
+
+        path.push(PathBuf::from(name));
+
+        match OpenOptions::new().write(true).create_new(true).open(&path) {
+            Ok(f) => return Some((path, f)),
+            Err(e) => {
+                use std::io::ErrorKind::*;
+
+                match e.kind() {
+                    PermissionDenied => return None,
+                    _ => {}
+                }
+            }
+        }
+    }
 }

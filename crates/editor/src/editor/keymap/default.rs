@@ -68,6 +68,7 @@ impl DefaultKeyMappings {
              "ctrl+d", cursors::new_to_next_search_match,
              "ctrl+l", cursors::new_to_all_search_matches,
 
+
              "alt+n", search::next_match,
              "alt+N", search::prev_match,
              "alt+m", movement::goto_matching_pair,
@@ -78,10 +79,11 @@ impl DefaultKeyMappings {
              "ctrl+r", text::redo,
              "alt+v", cursors::start_selection,
 
-             "alt+r", prompt::shell_command,
              "alt+x", cursors::select_line,
 
+             "alt+r",  prompt::shell_command,
              "ctrl+p", prompt::command_palette,
+             "ctrl+n", prompt::create_new_file,
 
              "alt+o c", text_objects::select_in_curly,
              "alt+o C", text_objects::select_curly,

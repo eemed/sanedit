@@ -16,8 +16,8 @@ sanedit-parser = { path = "../parser" }
 log         = "0.4"
 dirs        = "4.0.0"  # Used to get easy access to different directories, tmp, config etc.
 rayon       = "1.7"
-uuid = { version = "1.5.0", features = ["v4"] }
-rustc-hash = "1.1"
+rustc-hash  = "1.1"
+rand        = "0.8.5"
 
 portable-pty = "0.8"
 

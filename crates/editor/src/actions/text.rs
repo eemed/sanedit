@@ -70,17 +70,17 @@ pub(crate) fn insert(editor: &mut Editor, id: ClientId, text: &str) {
 #[action("Save file")]
 fn save(editor: &mut Editor, id: ClientId) {
     let (_win, buf) = editor.win_buf_mut(id);
-    match buf.path() {
-        Some(path) => {
-            let ropt = buf.read_only_copy();
-            let target = match tmp_file() {
-                Some(tmp) => tmp,
-                None => return,
-            };
 
+    match buf.path() {
+        Some(_path) => {
+            if !buf.is_modified() {
+                return;
+            }
+
+            let ropt = buf.read_only_copy();
             let (_win, buf) = editor.win_buf_mut(id);
             buf.start_saving();
-            let job = jobs::Save::new(id, ropt, target);
+            let job = jobs::Save::new(id, ropt);
             editor.job_broker.request(job);
         }
         None => {

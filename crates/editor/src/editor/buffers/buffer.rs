@@ -206,20 +206,6 @@ impl Buffer {
         self.insert_multi(&[pos], bytes)
     }
 
-    // pub fn insert_multi_different<B: AsRef<[u8]>>(&mut self, pos: &[usize], bytes: &[B]) -> &Change {
-    //     debug_assert!(pos.len() == bytes.len(), "Positions and texts length mismatch");
-
-    //     let bytes = bytes.as_ref();
-    //     let ranges: Vec<BufferRange> = pos.iter().map(|pos| *pos..pos + bytes.len()).collect();
-    //     let change = Change::insert(&ranges.into(), bytes);
-    //     let change = self.create_undo_point(change);
-
-    //     self.pt.insert_multi(pos, bytes);
-    //     self.is_modified = true;
-    //     self.last_change = change.into();
-    //     self.last_change.as_ref().unwrap()
-    // }
-
     pub fn insert_multi<B: AsRef<[u8]>>(&mut self, pos: &[usize], bytes: B) -> &Change {
         let bytes = bytes.as_ref();
         let ranges: Vec<BufferRange> = pos.iter().map(|pos| *pos..pos + bytes.len()).collect();
@@ -279,10 +265,9 @@ impl Buffer {
                 "no backing file path",
             ))?;
             if backing == path {
-                // TODO handle this on drop
-                let temp = tmp_file()
+                let (path, _file) = tmp_file()
                     .ok_or::<io::Error>(io::Error::new(io::ErrorKind::NotFound, "no tmp file"))?;
-                self.pt.rename_backing_file(&temp)?;
+                self.pt.rename_backing_file(&path)?;
             }
         }
 
@@ -314,6 +299,24 @@ impl Buffer {
 
     pub fn is_saving(&self) -> bool {
         self.is_saving
+    }
+}
+
+impl Drop for Buffer {
+    fn drop(&mut self) {
+        if self.pt.is_file_backed() {
+            let path = self.path();
+            let bfpath = self.pt.backing_file();
+
+            match (path, bfpath) {
+                (Some(p), Some(bfp)) => {
+                    if p != bfp {
+                        let _ = fs::remove_file(bfp);
+                    }
+                }
+                _ => {}
+            }
+        }
     }
 }
 

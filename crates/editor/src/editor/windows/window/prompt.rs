@@ -157,7 +157,7 @@ impl Prompt {
         PromptBuilder::default()
     }
 
-    pub fn keymap(&self) -> KeymapKind {
+    pub fn keymap_kind(&self) -> KeymapKind {
         self.keymap_kind
     }
 

@@ -126,7 +126,7 @@ fn confirm(editor: &mut Editor, id: ClientId) {
     if let Some(on_confirm) = win.prompt.on_confirm() {
         let input = win.prompt.input_or_selected();
         if let Some(kind) = win.prompt.history() {
-            let history = win.histories.entry(kind).or_default();
+            let history = editor.histories.entry(kind).or_default();
             history.push(&input);
         }
         (on_confirm)(editor, id, &input)
@@ -170,20 +170,12 @@ fn prev_completion(editor: &mut Editor, id: ClientId) {
 
 #[action("Select the next entry from history")]
 fn history_next(editor: &mut Editor, id: ClientId) {
-    let (win, _buf) = editor.win_buf_mut(id);
-    if let Some(kind) = win.prompt.history() {
-        let history = win.histories.entry(kind).or_default();
-        win.prompt.history_next(history);
-    }
+    editor.prompt_history_next(id);
 }
 
 #[action("Select the previous entry from history")]
 fn history_prev(editor: &mut Editor, id: ClientId) {
-    let (win, _buf) = editor.win_buf_mut(id);
-    if let Some(kind) = win.prompt.history() {
-        let history = win.histories.entry(kind).or_default();
-        win.prompt.history_prev(history);
-    }
+    editor.prompt_history_prev(id);
 }
 
 #[action("Run a shell command")]

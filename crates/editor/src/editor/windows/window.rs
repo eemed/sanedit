@@ -17,7 +17,7 @@ use std::{
     mem,
 };
 
-use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_hash::FxHashSet;
 use sanedit_messages::redraw::{Severity, Size, StatusMessage};
 
 use crate::{
@@ -29,7 +29,6 @@ use crate::{
     },
     editor::{
         buffers::{Buffer, BufferId, SnapshotData, SortedRanges},
-        keymap::{DefaultKeyMappings, Keymap, KeymapKind},
         syntax::SyntaxParseResult,
     },
 };
@@ -53,14 +52,12 @@ pub(crate) struct Window {
     message: Option<StatusMessage>,
     view: View,
 
-    pub cmds: Commands,
+    pub shell_executor: Executor,
     pub completion: Completion,
     pub cursors: Cursors,
     pub focus: Focus,
     pub search: Search,
     pub prompt: Prompt,
-    pub histories: FxHashMap<HistoryKind, History>,
-    pub keymaps: FxHashMap<KeymapKind, Keymap>,
     pub options: Options,
 }
 
@@ -71,14 +68,12 @@ impl Window {
             last_buf: None,
             view: View::new(width, height),
             message: None,
-            cmds: Commands::default(),
+            shell_executor: Executor::default(),
             completion: Completion::default(),
             cursors: Cursors::default(),
             options: Options::default(),
             search: Search::default(),
             prompt: Prompt::default(),
-            histories: Default::default(),
-            keymaps: DefaultKeyMappings::keymaps(),
             focus: Focus::Window,
         }
     }
@@ -300,26 +295,6 @@ impl Window {
         // let primary_pos = self.cursors.primary().pos();
         self.view.redraw(buf);
         // self.view.view_to(primary_pos, buf);
-    }
-
-    pub fn keymap(&self) -> &Keymap {
-        self.keymaps
-            .get(&KeymapKind::Window)
-            .expect("No keymap for window")
-    }
-
-    /// Return the currently focused elements keymap
-    pub fn focus_keymap(&self) -> &Keymap {
-        use Focus::*;
-        let kind = match self.focus {
-            Search | Prompt => self.prompt.keymap(),
-            Focus::Window => KeymapKind::Window,
-            Focus::Completion => KeymapKind::Completion,
-        };
-
-        self.keymaps
-            .get(&kind)
-            .expect("No keymap found for kind: {kind:?}")
     }
 
     fn create_snapshot_data(&self) -> SnapshotData {

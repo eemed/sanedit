@@ -38,6 +38,7 @@ use crate::draw::DrawState;
 use crate::editor::buffers::Buffer;
 use crate::editor::hooks::Hook;
 use crate::editor::keymap::KeymapResult;
+use crate::editor::windows::Focus;
 use crate::events::ToEditor;
 use crate::job_runner::spawn_job_runner;
 use crate::job_runner::FromJobs;
@@ -52,10 +53,16 @@ use self::clipboard::Clipboard;
 use self::clipboard::DefaultClipboard;
 use self::hooks::Hooks;
 use self::job_broker::JobBroker;
+use self::keymap::DefaultKeyMappings;
+use self::keymap::Keymap;
+use self::keymap::KeymapKind;
 use self::options::Options;
 
+use self::filetree::Filetree;
 use self::syntax::Syntaxes;
 use self::themes::Themes;
+use self::windows::History;
+use self::windows::HistoryKind;
 use self::windows::Window;
 use self::windows::Windows;
 
@@ -75,8 +82,10 @@ pub(crate) struct Editor {
     pub job_broker: JobBroker,
     pub hooks: Hooks,
     pub options: Options,
-
     pub clipboard: Box<dyn Clipboard>,
+    pub histories: FxHashMap<HistoryKind, History>,
+    pub keymaps: FxHashMap<KeymapKind, Keymap>,
+    pub filetree: Filetree,
 }
 
 impl Editor {
@@ -100,7 +109,10 @@ impl Editor {
             working_dir: env::current_dir().expect("Cannot get current working directory."),
             themes: Themes::default(),
             options: Options::default(),
+            histories: Default::default(),
             clipboard: DefaultClipboard::new(),
+            filetree: Filetree::default(),
+            keymaps: DefaultKeyMappings::keymaps(),
         }
     }
 
@@ -385,8 +397,7 @@ impl Editor {
         run(self, id, Hook::KeyPressedPre);
 
         // Handle key bindings
-        let (win, _buf) = self.win_buf(id);
-        let keymap = win.focus_keymap();
+        let keymap = self.focus_keymap(id);
         match keymap.get(&self.keys) {
             KeymapResult::Matched(action) => {
                 self.keys.clear();
@@ -510,6 +521,44 @@ impl Editor {
 
         let line = to_line(lines, buf.options.eol);
         self.clipboard.copy(&line);
+    }
+
+    pub fn prompt_history_next(&mut self, id: ClientId) {
+        let win = self.windows.get_mut(id).expect("No window found");
+        if let Some(kind) = win.prompt.history() {
+            let history = self.histories.entry(kind).or_default();
+            win.prompt.history_next(history);
+        }
+    }
+
+    pub fn prompt_history_prev(&mut self, id: ClientId) {
+        let win = self.windows.get_mut(id).expect("No window found");
+        if let Some(kind) = win.prompt.history() {
+            let history = self.histories.entry(kind).or_default();
+            win.prompt.history_prev(history);
+        }
+    }
+
+    pub fn keymap(&self) -> &Keymap {
+        self.keymaps
+            .get(&KeymapKind::Window)
+            .expect("No keymap for window")
+    }
+
+    /// Return the currently focused elements keymap
+    pub fn focus_keymap(&self, id: ClientId) -> &Keymap {
+        use Focus::*;
+
+        let (win, buf) = self.win_buf(id);
+        let kind = match win.focus {
+            Search | Prompt => win.prompt.keymap_kind(),
+            Window => KeymapKind::Window,
+            Completion => KeymapKind::Completion,
+        };
+
+        self.keymaps
+            .get(&kind)
+            .expect("No keymap found for kind: {kind:?}")
     }
 }
 

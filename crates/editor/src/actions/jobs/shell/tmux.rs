@@ -87,7 +87,7 @@ impl KeepInTouch for TmuxShellCommand {
     fn on_message(&self, editor: &mut crate::editor::Editor, msg: Box<dyn std::any::Any>) {
         if let Ok(pane) = msg.downcast::<TmuxPane>() {
             let (win, _buf) = editor.win_buf_mut(self.client_id);
-            win.cmds.executor = Executor::Tmux { pane: Some(*pane) };
+            win.shell_executor = Executor::Tmux { pane: Some(*pane) };
         }
     }
 

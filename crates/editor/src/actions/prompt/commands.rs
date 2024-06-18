@@ -75,7 +75,7 @@ pub(crate) fn command_palette(editor: &Editor, id: ClientId) -> Vec<MatchOption>
         .map(|action| {
             let (win, _buf) = editor.win_buf(id);
             let mut description = String::new();
-            if let Some(bind) = win.keymap().find_bound_key(action.name()) {
+            if let Some(bind) = editor.keymap().find_bound_key(action.name()) {
                 description = keyevents_to_string(&bind);
             }
             let value = action.description().into();

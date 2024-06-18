@@ -4,6 +4,7 @@ pub(crate) struct Options {
     pub big_file_threshold_bytes: u64,
     pub project: ProjectOptions,
     pub ignore_directories: Vec<String>,
+    pub shell: String,
 }
 
 impl Default for Options {
@@ -13,6 +14,7 @@ impl Default for Options {
             big_file_threshold_bytes: 1024 * 1024, // 1MB
             project: ProjectOptions::default(),
             ignore_directories: vec![],
+            shell: "/bin/bash".into(),
         }
     }
 }

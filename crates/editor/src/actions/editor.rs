@@ -23,3 +23,13 @@ fn run_project(editor: &mut Editor, id: ClientId) {
     let cmd = editor.options.project.run_command.clone();
     shell::execute(editor, id, &cmd);
 }
+
+#[action("Copy selection to clipboard")]
+fn copy(editor: &mut Editor, id: ClientId) {
+    editor.copy_to_clipboard(id);
+}
+
+#[action("Paste from clipboard")]
+fn paste(editor: &mut Editor, id: ClientId) {
+    editor.paste_from_clipboard(id);
+}

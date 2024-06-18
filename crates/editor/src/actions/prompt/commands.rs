@@ -9,10 +9,11 @@ pub(crate) const COMMANDS: &[Action] = &[
     editor::quit,
     editor::build_project,
     editor::run_project,
+    editor::copy,
+    editor::paste,
 
     text::save,
-    text::copy,
-    text::paste,
+    text::save_as,
     text::undo,
     text::redo,
 

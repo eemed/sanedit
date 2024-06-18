@@ -1,12 +1,11 @@
 mod commands;
-mod create_new_file;
 
 use std::{cmp::min, path::PathBuf, sync::Arc};
 
 use sanedit_messages::ClientMessage;
 
 use crate::{
-    actions::jobs::{DirectoryOptionProvider, FileOptionProvider},
+    actions::jobs::FileOptionProvider,
     editor::{
         hooks::Hook,
         windows::{Focus, HistoryKind, Prompt},
@@ -72,26 +71,6 @@ fn command_palette(editor: &mut Editor, id: ClientId) {
         .build();
 
     editor.job_broker.request(job);
-}
-
-#[action("Create a new file")]
-fn create_new_file(editor: &mut Editor, id: ClientId) {
-    const PROMPT_MESSAGE: &str = "Create a new file";
-    let (win, _buf) = editor.win_buf(id);
-    let ignore = &win.options.ignore_directories;
-    let path = editor.working_dir().to_path_buf();
-    let job = MatcherJob::builder(id)
-        .options(DirectoryOptionProvider::new(&path, ignore))
-        .handler(create_new_file::matcher_result_handler)
-        .build();
-    editor.job_broker.request_slot(id, PROMPT_MESSAGE, job);
-    let (win, _buf) = editor.win_buf_mut(id);
-
-    win.prompt = Prompt::builder()
-        .prompt(PROMPT_MESSAGE)
-        .on_confirm(create_new_file::on_confirm)
-        .build();
-    win.focus = Focus::Prompt;
 }
 
 #[action("Open a file")]

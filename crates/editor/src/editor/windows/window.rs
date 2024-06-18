@@ -25,27 +25,25 @@ use crate::{
         char::DisplayOptions,
         indent::{indent_at_line, indent_at_pos},
         movement,
-        text::{as_lines, selection_line_starts, to_line},
+        text::selection_line_starts,
     },
     editor::{
         buffers::{Buffer, BufferId, SnapshotData, SortedRanges},
-        clipboard::{Clipboard, DefaultClipboard},
         keymap::{DefaultKeyMappings, Keymap, KeymapKind},
         syntax::SyntaxParseResult,
     },
 };
 
 pub(crate) use self::{
-    completion::Completion,
-    cursors::{Cursor, Cursors},
-    focus::Focus,
-    options::Options,
+    completion::*,
+    cursors::*,
+    focus::*,
+    options::*,
     prompt::*,
-    search::Search,
-    search::SearchDirection,
-    selector::*,
+    search::*,
+    selector::{Selector, SelectorOption},
     shell::*,
-    view::{Cell, View},
+    view::*,
 };
 
 #[derive(Debug)]
@@ -56,8 +54,6 @@ pub(crate) struct Window {
     view: View,
 
     pub cmds: Commands,
-    pub clipboard: Box<dyn Clipboard>,
-
     pub completion: Completion,
     pub cursors: Cursors,
     pub focus: Focus,
@@ -76,7 +72,6 @@ impl Window {
             view: View::new(width, height),
             message: None,
             cmds: Commands::default(),
-            clipboard: DefaultClipboard::new(),
             completion: Completion::default(),
             cursors: Cursors::default(),
             options: Options::default(),
@@ -100,7 +95,6 @@ impl Window {
         self.search = Search::default();
         self.prompt = Prompt::default();
         self.message = None;
-        self.clipboard = DefaultClipboard::new();
         self.completion = Completion::default();
     }
 
@@ -378,20 +372,6 @@ impl Window {
         true
     }
 
-    pub fn copy_to_clipboard(&mut self, buf: &Buffer) {
-        let mut lines = vec![];
-        for cursor in self.cursors.cursors_mut() {
-            if let Some(sel) = cursor.selection() {
-                let text = String::from(&buf.slice(sel));
-                lines.push(text);
-                cursor.unanchor();
-            }
-        }
-
-        let line = to_line(lines, buf.options.eol);
-        self.clipboard.copy(&line);
-    }
-
     pub fn insert_to_each_cursor(&mut self, buf: &mut Buffer, texts: Vec<String>) {
         debug_assert!(
             texts.len() == self.cursors.len(),
@@ -413,20 +393,6 @@ impl Window {
         }
 
         self.invalidate();
-    }
-
-    pub fn paste_from_clipboard(&mut self, buf: &mut Buffer) {
-        if let Ok(text) = self.clipboard.paste() {
-            let lines = as_lines(text.as_str());
-            let clen = self.cursors.cursors().len();
-            let llen = lines.len();
-
-            if clen == llen {
-                self.insert_to_each_cursor(buf, lines);
-            } else {
-                self.insert_at_cursors(buf, &text);
-            }
-        }
     }
 
     pub fn insert_at_cursors(&mut self, buf: &mut Buffer, text: &str) {

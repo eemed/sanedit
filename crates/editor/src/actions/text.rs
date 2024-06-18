@@ -89,7 +89,7 @@ fn save(editor: &mut Editor, id: ClientId) {
     }
 }
 
-#[action("Prompt filename and save file")]
+#[action("Save as")]
 fn save_as(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.prompt = Prompt::builder()
@@ -101,19 +101,6 @@ fn save_as(editor: &mut Editor, id: ClientId) {
         })
         .build();
     win.focus = Focus::Prompt;
-}
-
-#[action("Copy selection to clipboard")]
-fn copy(editor: &mut Editor, id: ClientId) {
-    let (win, buf) = editor.win_buf_mut(id);
-    win.copy_to_clipboard(buf);
-}
-
-#[action("Paste from clipboard")]
-fn paste(editor: &mut Editor, id: ClientId) {
-    let (win, buf) = editor.win_buf_mut(id);
-    win.paste_from_clipboard(buf);
-    run(editor, id, Hook::BufChanged);
 }
 
 #[action("Insert a newline to each cursor")]

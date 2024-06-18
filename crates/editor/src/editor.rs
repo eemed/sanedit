@@ -1,5 +1,6 @@
 pub(crate) mod buffers;
 pub(crate) mod clipboard;
+pub(crate) mod filetree;
 pub(crate) mod hooks;
 pub(crate) mod job_broker;
 pub(crate) mod keymap;
@@ -31,6 +32,8 @@ use crate::actions::cursors;
 use crate::actions::hooks::run;
 use crate::common::dirs::ConfigDirectory;
 use crate::common::file::File;
+use crate::common::text::as_lines;
+use crate::common::text::to_line;
 use crate::draw::DrawState;
 use crate::editor::buffers::Buffer;
 use crate::editor::hooks::Hook;
@@ -45,6 +48,8 @@ use crate::StartOptions;
 
 use self::buffers::BufferId;
 use self::buffers::Buffers;
+use self::clipboard::Clipboard;
+use self::clipboard::DefaultClipboard;
 use self::hooks::Hooks;
 use self::job_broker::JobBroker;
 use self::options::Options;
@@ -70,6 +75,8 @@ pub(crate) struct Editor {
     pub job_broker: JobBroker,
     pub hooks: Hooks,
     pub options: Options,
+
+    pub clipboard: Box<dyn Clipboard>,
 }
 
 impl Editor {
@@ -93,6 +100,7 @@ impl Editor {
             working_dir: env::current_dir().expect("Cannot get current working directory."),
             themes: Themes::default(),
             options: Options::default(),
+            clipboard: DefaultClipboard::new(),
         }
     }
 
@@ -470,6 +478,38 @@ impl Editor {
         win.reload();
 
         run(self, id, Hook::Reload);
+    }
+
+    pub fn paste_from_clipboard(&mut self, id: ClientId) {
+        if let Ok(text) = self.clipboard.paste() {
+            let (win, buf) = self.win_buf_mut(id);
+            let lines = as_lines(text.as_str());
+            let clen = win.cursors.cursors().len();
+            let llen = lines.len();
+
+            if clen == llen {
+                win.insert_to_each_cursor(buf, lines);
+            } else {
+                win.insert_at_cursors(buf, &text);
+            }
+        }
+
+        run(self, id, Hook::BufChanged);
+    }
+
+    pub fn copy_to_clipboard(&mut self, id: ClientId) {
+        let (win, buf) = self.win_buf_mut(id);
+        let mut lines = vec![];
+        for cursor in win.cursors.cursors_mut() {
+            if let Some(sel) = cursor.selection() {
+                let text = String::from(&buf.slice(sel));
+                lines.push(text);
+                cursor.unanchor();
+            }
+        }
+
+        let line = to_line(lines, buf.options.eol);
+        self.clipboard.copy(&line);
     }
 }
 

@@ -93,6 +93,7 @@ impl Editor {
         let handle = runtime.editor_handle();
         // Spawn job runner
         let jobs_handle = runtime.block_on(spawn_job_runner(handle));
+        let working_dir = env::current_dir().expect("Cannot get current working directory.");
 
         Editor {
             runtime,
@@ -106,12 +107,12 @@ impl Editor {
             keys: Vec::default(),
             is_running: true,
             config_dir: ConfigDirectory::default(),
-            working_dir: env::current_dir().expect("Cannot get current working directory."),
+            filetree: Filetree::new(&working_dir),
+            working_dir,
             themes: Themes::default(),
             options: Options::default(),
             histories: Default::default(),
             clipboard: DefaultClipboard::new(),
-            filetree: Filetree::default(),
             keymaps: DefaultKeyMappings::keymaps(),
         }
     }

@@ -2,7 +2,7 @@ use sanedit_buffer::ReadOnlyPieceTree;
 
 use crate::editor::windows::Cursors;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub(crate) struct SnapshotData {
     pub(crate) cursors: Cursors,
     pub(crate) view_offset: usize,
@@ -81,12 +81,12 @@ impl Snapshots {
 
     pub fn data_mut(&mut self, id: SnapshotId) -> Option<&mut SnapshotData> {
         let node = self.snapshots.get_mut(id)?;
-        node.data.as_mut()
+        Some(&mut node.data)
     }
 
     pub fn data(&self, id: SnapshotId) -> Option<&SnapshotData> {
         let node = self.snapshots.get(id)?;
-        node.data.as_ref()
+        Some(&node.data)
     }
 }
 
@@ -98,7 +98,7 @@ pub(crate) struct SnapshotNode {
     next: Vec<SnapshotId>,
 
     /// Extra data we can save to a snapshot
-    pub(crate) data: Option<SnapshotData>,
+    pub(crate) data: SnapshotData,
 }
 
 impl SnapshotNode {
@@ -109,7 +109,7 @@ impl SnapshotNode {
             previous: vec![],
             next: vec![],
 
-            data: None,
+            data: SnapshotData::default(),
         }
     }
 }

@@ -1,6 +1,6 @@
 use sanedit_buffer::utf8::EndOfLine;
 
-use super::{SnapshotData, SnapshotId, SortedRanges};
+use super::{SnapshotId, SortedRanges};
 
 #[derive(Debug, Clone)]
 pub(crate) enum ChangeKind {

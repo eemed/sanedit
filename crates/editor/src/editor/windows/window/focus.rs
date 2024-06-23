@@ -4,4 +4,5 @@ pub(crate) enum Focus {
     Prompt,
     Window,
     Completion,
+    Filetree,
 }

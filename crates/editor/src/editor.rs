@@ -380,7 +380,7 @@ impl Editor {
                 .expect("Theme not present")
         };
 
-        let messages = draw.redraw(win, buf, theme);
+        let messages = draw.redraw(win, buf, theme, &self.filetree);
         if !messages.is_empty() {
             for msg in messages {
                 self.send_to_client(id, ClientMessage::Redraw(msg));
@@ -555,6 +555,7 @@ impl Editor {
             Search | Prompt => win.prompt.keymap_kind(),
             Window => KeymapKind::Window,
             Completion => KeymapKind::Completion,
+            Filetree => KeymapKind::Window,
         };
 
         self.keymaps

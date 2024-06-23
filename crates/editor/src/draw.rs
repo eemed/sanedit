@@ -1,4 +1,5 @@
 mod completion;
+mod filetree;
 mod prompt;
 mod search;
 mod statusline;
@@ -10,6 +11,7 @@ use sanedit_messages::redraw::{Component, Redraw, Theme};
 
 use crate::editor::{
     buffers::Buffer,
+    filetree::Filetree,
     windows::{Focus, Window},
 };
 
@@ -56,7 +58,13 @@ impl DrawState {
         (state, vec![window, statusline])
     }
 
-    pub fn redraw(&mut self, win: &mut Window, buf: &Buffer, theme: &Theme) -> Vec<Redraw> {
+    pub fn redraw(
+        &mut self,
+        win: &mut Window,
+        buf: &Buffer,
+        theme: &Theme,
+        filetree: &Filetree,
+    ) -> Vec<Redraw> {
         let mut redraw: Vec<Redraw> = vec![];
 
         let draw = mem::replace(&mut self.redraw, true);
@@ -125,6 +133,9 @@ impl DrawState {
             Focus::Completion => {
                 let current = completion::draw(&win.completion, &mut ctx).into();
                 redraw.push(current);
+            }
+            Focus::Filetree => {
+                filetree::draw(filetree, &mut ctx);
             }
             _ => {}
         }

@@ -64,6 +64,7 @@ pub(crate) fn insert(editor: &mut Editor, id: ClientId, text: &str) {
             win.insert_at_cursors(buf, text);
             run(editor, id, Hook::BufChanged);
         }
+        Filetree => {}
     }
 }
 

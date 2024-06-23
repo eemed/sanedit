@@ -418,6 +418,7 @@ impl Window {
 
                 if let Some(restored) = restored {
                     if let Some(data) = buf.snapshot_data(restored) {
+                        log::info!("Restored");
                         self.restore(data);
                     } else {
                         self.reload();

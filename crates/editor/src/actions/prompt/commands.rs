@@ -66,6 +66,7 @@ pub(crate) const COMMANDS: &[Action] = &[
     window::reload,
     window::goto_prev_buffer,
 
+    filetree::show_filetree,
 ];
 
 pub(crate) fn command_palette(editor: &Editor, id: ClientId) -> Vec<MatchOption> {

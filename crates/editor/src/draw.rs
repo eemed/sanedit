@@ -25,7 +25,7 @@ pub(crate) struct DrawContext<'a, 'b> {
 pub(crate) struct DrawState {
     /// Used to detect when prompt is different
     last_prompt: Option<String>,
-
+    // last_focus
     /// Used to track scroll position when drawing prompt
     prompt_scroll_offset: usize,
     compl_scroll_offset: usize,
@@ -90,6 +90,10 @@ impl DrawState {
             redraw.push(Redraw::Completion(Component::Close));
         }
 
+        if win.focus != Focus::Filetree {
+            redraw.push(Redraw::Filetree(Component::Close));
+        }
+
         let draw_win = mem::replace(&mut self.redraw_window, true);
         let draw_lnr = draw_win && win.options.show_linenumbers;
         if draw_win {
@@ -135,7 +139,8 @@ impl DrawState {
                 redraw.push(current);
             }
             Focus::Filetree => {
-                filetree::draw(filetree, &mut ctx);
+                let current = filetree::draw(filetree, &mut ctx);
+                redraw.push(current);
             }
             _ => {}
         }

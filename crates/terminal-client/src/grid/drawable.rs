@@ -1,16 +1,19 @@
 use std::cmp::min;
 
 use sanedit_messages::redraw::{
-    Completion, Cursor, CursorShape, IntoCells, Point, Severity, StatusMessage, Statusline,
-    ThemeField, Window,
+    Completion, Cursor, CursorShape, Filetree, IntoCells, Point, Severity, StatusMessage,
+    Statusline, ThemeField, Window,
 };
 
-use crate::{grid::ccell::format_option, ui::UIContext};
+use crate::{
+    grid::{ccell::format_option, filetree},
+    ui::UIContext,
+};
 
 use super::{
     border::{draw_border, Border},
     ccell::{
-        center_pad, format_completion, into_cells_with_style, into_cells_with_style_pad,
+        center_pad, clear_all, format_completion, into_cells_with_style, into_cells_with_style_pad,
         into_cells_with_theme_pad_with, pad_line, put_line, set_style, size, CCell,
     },
     prompt::{CustomPrompt, PromptStyle},
@@ -288,6 +291,36 @@ impl Drawable for StatusMessage {
             .enumerate()
         {
             cells[0][i] = cell;
+        }
+    }
+
+    fn cursor(&self, ctx: &UIContext) -> Option<Cursor> {
+        None
+    }
+}
+
+impl Drawable for Filetree {
+    fn draw(&self, ctx: &UIContext, cells: &mut [&mut [CCell]]) {
+        let fill = ctx.style(ThemeField::Completion);
+        let name = ctx.style(ThemeField::Completion);
+        let extra = ctx.style(ThemeField::CompletionDescription);
+        let sel = ctx.style(ThemeField::Selection);
+
+        clear_all(cells, fill);
+
+        for (row, item) in self.items.iter().enumerate() {
+            if row >= cells.len() {
+                break;
+            }
+
+            let width = cells.get(0).map(|c| c.len()).unwrap_or(0);
+            let style = if row == self.selected { sel } else { name };
+            let mut titem = filetree::format_item(item, style, extra);
+            pad_line(&mut titem, style, width);
+
+            for (i, cell) in titem.into_iter().enumerate() {
+                cells[row][i] = cell;
+            }
         }
     }
 

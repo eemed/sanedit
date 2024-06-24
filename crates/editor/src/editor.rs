@@ -555,7 +555,7 @@ impl Editor {
             Search | Prompt => win.prompt.keymap_kind(),
             Window => KeymapKind::Window,
             Completion => KeymapKind::Completion,
-            Filetree => KeymapKind::Window,
+            Filetree => KeymapKind::Filetree,
         };
 
         self.keymaps

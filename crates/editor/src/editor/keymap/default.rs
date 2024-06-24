@@ -15,6 +15,7 @@ impl DefaultKeyMappings {
         maps.insert(Prompt, Self::prompt());
         maps.insert(Search, Self::search());
         maps.insert(Completion, Self::completion());
+        maps.insert(Filetree, Self::filetree());
         maps
     }
 
@@ -155,6 +156,20 @@ impl DefaultKeyMappings {
              "esc",   completion::abort,
 
              // "ctrl+s", search::toggle_select,
+        );
+
+        map
+    }
+
+    fn filetree() -> Keymap {
+        let mut map = DefaultKeyMappings::window();
+
+        #[rustfmt::skip]
+        map!(map,
+             "esc",   filetree::close_filetree,
+             "enter", filetree::confirm,
+             "up",    filetree::prev_entry,
+             "down",  filetree::next_entry,
         );
 
         map

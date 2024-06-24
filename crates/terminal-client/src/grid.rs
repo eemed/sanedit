@@ -2,6 +2,7 @@ mod border;
 mod ccell;
 mod completion;
 mod drawable;
+mod filetree;
 mod item;
 mod prompt;
 mod rect;
@@ -9,11 +10,14 @@ mod rect;
 use std::{mem, sync::Arc};
 
 use sanedit_messages::redraw::{
-    Cell, Completion, Component, Cursor, Diffable, Redraw, Size, StatusMessage, Statusline, Theme,
-    Window,
+    Cell, Completion, Component, Cursor, Diffable, Filetree, Redraw, Size, StatusMessage,
+    Statusline, Theme, Window,
 };
 
-use crate::{grid::completion::open_completion, ui::UIContext};
+use crate::{
+    grid::{completion::open_completion, filetree::open_filetree},
+    ui::UIContext,
+};
 
 pub(crate) use self::rect::{Rect, Split};
 use self::{
@@ -31,6 +35,7 @@ pub(crate) struct Grid {
     prompt: Option<GridItem<CustomPrompt>>,
     msg: Option<GridItem<StatusMessage>>,
     completion: Option<GridItem<Completion>>,
+    filetree: Option<GridItem<Filetree>>,
 
     drawn: Vec<Vec<Cell>>,
     cursor: Option<Cursor>,
@@ -55,6 +60,7 @@ impl Grid {
             prompt: None,
             msg: None,
             completion: None,
+            filetree: None,
 
             drawn: vec![vec![Cell::default(); width]; height],
             cursor: None,
@@ -109,6 +115,15 @@ impl Grid {
                     }
                 }
                 Close => self.completion = None,
+            },
+            Filetree(comp) => match comp {
+                Open(ft) => self.filetree = Some(open_filetree(self.window.area(), ft)),
+                Update(diff) => {
+                    if let Some(ref mut ft) = self.filetree {
+                        ft.drawable().update(diff);
+                    }
+                }
+                Close => self.filetree = None,
             },
             _ => {} //
                     // LineNumbers(numbers) => {
@@ -197,6 +212,10 @@ impl Grid {
         let t = &self.theme;
         Self::draw_drawable(&self.window, t, &mut self.cursor, &mut self.drawn);
         Self::draw_drawable(&self.statusline, t, &mut self.cursor, &mut self.drawn);
+
+        if let Some(ref ft) = self.filetree {
+            Self::draw_drawable(ft, t, &mut self.cursor, &mut self.drawn);
+        }
 
         if let Some(ref prompt) = self.prompt {
             Self::draw_drawable(prompt, t, &mut self.cursor, &mut self.drawn);

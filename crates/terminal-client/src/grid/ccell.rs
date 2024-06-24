@@ -63,6 +63,14 @@ impl From<Cell> for CCell {
     }
 }
 
+pub(crate) fn clear_all(cells: &mut [&mut [CCell]], style: Style) {
+    for row in cells {
+        for cell in row.iter_mut() {
+            *cell = CCell::with_style(style);
+        }
+    }
+}
+
 pub(crate) fn into_cells(string: &str) -> Vec<CCell> {
     string.chars().map(|ch| CCell::from(ch)).collect()
 }

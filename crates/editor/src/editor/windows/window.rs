@@ -59,6 +59,7 @@ pub(crate) struct Window {
     pub search: Search,
     pub prompt: Prompt,
     pub options: Options,
+    pub filetree_selection: usize,
 }
 
 impl Window {
@@ -75,6 +76,7 @@ impl Window {
             search: Search::default(),
             prompt: Prompt::default(),
             focus: Focus::Window,
+            filetree_selection: 0,
         }
     }
 

@@ -1,3 +1,5 @@
+use std::cmp::min;
+
 use crate::{
     editor::{windows::Focus, Editor},
     server::ClientId,
@@ -5,6 +7,44 @@ use crate::{
 
 #[action("Show filetree")]
 fn show_filetree(editor: &mut Editor, id: ClientId) {
+    let visible = editor.filetree.iter().count();
     let (win, buf) = editor.win_buf_mut(id);
+
+    win.filetree_selection = min(visible - 1, win.filetree_selection);
     win.focus = Focus::Filetree;
+}
+
+#[action("Next filetree entry")]
+fn confirm(editor: &mut Editor, id: ClientId) {
+    let (win, buf) = editor.win_buf(id);
+    let path = editor
+        .filetree
+        .iter()
+        .nth(win.filetree_selection)
+        .map(|f| f.path);
+
+    log::info!("Selection: {path:?}, index: {}", win.filetree_selection);
+    if let Some(path) = path {
+        editor.filetree.on_press(&path);
+    }
+}
+
+#[action("Next filetree entry")]
+fn next_entry(editor: &mut Editor, id: ClientId) {
+    let visible = editor.filetree.iter().count();
+
+    let (win, buf) = editor.win_buf_mut(id);
+    win.filetree_selection = min(visible - 1, win.filetree_selection + 1);
+}
+
+#[action("Previous filetree entry")]
+fn prev_entry(editor: &mut Editor, id: ClientId) {
+    let (win, buf) = editor.win_buf_mut(id);
+    win.filetree_selection = win.filetree_selection.saturating_sub(1);
+}
+
+#[action("Close filetree")]
+fn close_filetree(editor: &mut Editor, id: ClientId) {
+    let (win, buf) = editor.win_buf_mut(id);
+    win.focus = Focus::Window;
 }

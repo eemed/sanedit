@@ -23,6 +23,7 @@ pub(crate) enum KeymapKind {
     Prompt,
     Window,
     Completion,
+    Filetree,
 }
 
 #[derive(Debug, Clone)]

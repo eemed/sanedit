@@ -7,6 +7,7 @@ use super::DrawContext;
 pub(crate) fn draw(tree: &Filetree, ctx: &mut DrawContext) -> redraw::Redraw {
     let selected = ctx.win.filetree_selection;
     let mut items = vec![];
+
     for entry in tree.iter() {
         let kind = if entry.node.is_dir() {
             FileItemKind::Directory {
@@ -15,6 +16,7 @@ pub(crate) fn draw(tree: &Filetree, ctx: &mut DrawContext) -> redraw::Redraw {
         } else {
             FileItemKind::File
         };
+
         let item = FileItem {
             name: entry.name,
             kind,

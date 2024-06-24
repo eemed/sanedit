@@ -48,9 +48,11 @@ impl Filetree {
         tree
     }
 
-    pub fn on_press(&mut self, target: &Path) {
+    pub fn on_press(&mut self, target: &Path) -> PressResult {
         if let Ok(path) = target.strip_prefix(&self.root) {
-            self.node.on_press(path, target);
+            self.node.on_press(path, target)
+        } else {
+            PressResult::InvalidPath
         }
     }
 
@@ -106,13 +108,12 @@ impl Node {
         None
     }
 
-    fn on_press(&mut self, stack: &Path, target: &Path) {
+    fn on_press(&mut self, stack: &Path, target: &Path) -> PressResult {
         let mut n = self;
         let mut t = stack;
 
         if t.as_os_str().is_empty() {
-            n.on_press_item(target);
-            return;
+            return n.on_press_item(target);
         }
 
         while let Some((node, ntarget)) = n.child(t) {
@@ -120,22 +121,25 @@ impl Node {
             t = ntarget;
 
             if t.as_os_str().is_empty() {
-                n.on_press_item(target);
-                return;
+                return n.on_press_item(target);
             }
         }
+
+        PressResult::NotFound
     }
 
-    fn on_press_item(&mut self, target: &Path) {
+    pub fn on_press_item(&mut self, target: &Path) -> PressResult {
         match self {
-            Node::File => todo!("open file"),
+            Node::File => PressResult::IsFile,
             Node::Directory { expanded, .. } => {
                 if *expanded {
                     self.shrink();
+                    PressResult::Ok
+                } else if let Err(e) = self.expand(target) {
+                    log::error!("Failed to expand {target:?}: {e}");
+                    PressResult::ExpandError
                 } else {
-                    if let Err(e) = self.expand(target) {
-                        log::error!("Failed to expand {target:?}: {e}");
-                    }
+                    PressResult::Ok
                 }
             }
         }
@@ -143,15 +147,14 @@ impl Node {
 
     fn shrink(&mut self) {
         let Node::Directory { expanded, .. } = self else {
-            unreachable!("Tried to fill a file with directory entries");
+            unreachable!("Shrink called on a non directory entry");
         };
-        log::info!("shrink");
         *expanded = false;
     }
 
     fn expand(&mut self, target: &Path) -> anyhow::Result<()> {
         let Node::Directory { expanded, children } = self else {
-            unreachable!("Tried to fill a file with directory entries");
+            unreachable!("Expand called on a non directory entry: {:?}", target);
         };
         if mem::replace(expanded, true) {
             return Ok(());
@@ -179,6 +182,15 @@ impl Node {
 
         Ok(())
     }
+}
+
+#[derive(Debug)]
+pub(crate) enum PressResult {
+    IsFile,
+    NotFound,
+    Ok,
+    InvalidPath,
+    ExpandError,
 }
 
 #[derive(Debug)]

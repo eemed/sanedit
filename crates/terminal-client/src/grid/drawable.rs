@@ -19,9 +19,19 @@ use super::{
     prompt::{CustomPrompt, PromptStyle},
 };
 
+#[derive(Debug)]
+pub enum DrawCursor {
+    /// Hide cursor from view
+    Hide,
+    /// Show cursor
+    Show(Cursor),
+    /// Keep where ever the cursor is now
+    Ignore,
+}
+
 pub(crate) trait Drawable {
     fn draw(&self, ctx: &UIContext, cells: &mut [&mut [CCell]]);
-    fn cursor(&self, ctx: &UIContext) -> Option<Cursor>;
+    fn cursor(&self, ctx: &UIContext) -> DrawCursor;
 }
 
 impl Drawable for Window {
@@ -39,8 +49,11 @@ impl Drawable for Window {
         }
     }
 
-    fn cursor(&self, ctx: &UIContext) -> Option<Cursor> {
-        self.cursor
+    fn cursor(&self, ctx: &UIContext) -> DrawCursor {
+        match self.cursor {
+            Some(cursor) => DrawCursor::Show(cursor),
+            None => DrawCursor::Ignore,
+        }
     }
 }
 
@@ -65,8 +78,8 @@ impl Drawable for Statusline {
         }
     }
 
-    fn cursor(&self, ctx: &UIContext) -> Option<Cursor> {
-        None
+    fn cursor(&self, ctx: &UIContext) -> DrawCursor {
+        DrawCursor::Ignore
     }
 }
 
@@ -103,8 +116,8 @@ impl Drawable for Completion {
             });
     }
 
-    fn cursor(&self, ctx: &UIContext) -> Option<Cursor> {
-        None
+    fn cursor(&self, ctx: &UIContext) -> DrawCursor {
+        DrawCursor::Ignore
     }
 }
 
@@ -234,7 +247,7 @@ impl Drawable for CustomPrompt {
         }
     }
 
-    fn cursor(&self, ctx: &UIContext) -> Option<Cursor> {
+    fn cursor(&self, ctx: &UIContext) -> DrawCursor {
         match self.style {
             PromptStyle::Oneline => {
                 let cursor_col = {
@@ -245,7 +258,7 @@ impl Drawable for CustomPrompt {
                     msg + extra + input_cells_before_cursor
                 };
                 let style = ctx.theme.get(ThemeField::Default);
-                Some(Cursor {
+                DrawCursor::Show(Cursor {
                     bg: style.fg,
                     fg: style.bg,
                     point: Point {
@@ -263,7 +276,7 @@ impl Drawable for CustomPrompt {
                     extra + input_cells_before_cursor
                 };
                 let style = ctx.theme.get(ThemeField::Default);
-                Some(Cursor {
+                DrawCursor::Show(Cursor {
                     bg: style.fg,
                     fg: style.bg,
                     point: Point {
@@ -294,8 +307,8 @@ impl Drawable for StatusMessage {
         }
     }
 
-    fn cursor(&self, ctx: &UIContext) -> Option<Cursor> {
-        None
+    fn cursor(&self, ctx: &UIContext) -> DrawCursor {
+        DrawCursor::Ignore
     }
 }
 
@@ -324,7 +337,7 @@ impl Drawable for Filetree {
         }
     }
 
-    fn cursor(&self, ctx: &UIContext) -> Option<Cursor> {
-        None
+    fn cursor(&self, ctx: &UIContext) -> DrawCursor {
+        DrawCursor::Hide
     }
 }

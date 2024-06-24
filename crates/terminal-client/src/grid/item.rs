@@ -1,12 +1,12 @@
 use std::cmp::min;
 
-use sanedit_messages::redraw::{self, Completion, Cursor, Diffable, Size};
+use sanedit_messages::redraw::{Completion, Cursor, Size};
 
 use crate::ui::UIContext;
 
 use super::{
-    completion::{fit_completion, open_completion},
-    drawable::Drawable,
+    completion::fit_completion,
+    drawable::{DrawCursor, Drawable},
     CCell, Rect,
 };
 
@@ -53,7 +53,7 @@ impl<T: Drawable> Drawable for GridItem<T> {
         self.inner.draw(&ctx, cells);
     }
 
-    fn cursor(&self, ctx: &UIContext) -> Option<Cursor> {
+    fn cursor(&self, ctx: &UIContext) -> DrawCursor {
         let mut ctx = ctx.clone();
         ctx.rect = self.area();
         self.inner.cursor(&ctx)

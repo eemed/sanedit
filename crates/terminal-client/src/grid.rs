@@ -22,7 +22,7 @@ use crate::{
 pub(crate) use self::rect::{Rect, Split};
 use self::{
     ccell::CCell,
-    drawable::Drawable,
+    drawable::{DrawCursor, Drawable},
     item::GridItem,
     prompt::{open_prompt, CustomPrompt},
 };
@@ -184,9 +184,13 @@ impl Grid {
             rect,
         };
 
-        if let Some(mut cur) = drawable.cursor(&ctx) {
-            cur.point = cur.point + rect.position();
-            *cursor = Some(cur);
+        match drawable.cursor(&ctx) {
+            DrawCursor::Hide => *cursor = None,
+            DrawCursor::Show(mut cur) => {
+                cur.point = cur.point + rect.position();
+                *cursor = Some(cur);
+            }
+            DrawCursor::Ignore => {}
         }
 
         let top_left = rect.position();

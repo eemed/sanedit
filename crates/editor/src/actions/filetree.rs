@@ -1,7 +1,7 @@
 use std::cmp::min;
 
 use crate::{
-    editor::{windows::Focus, Editor},
+    editor::{filetree::PressResult, windows::Focus, Editor},
     server::ClientId,
 };
 
@@ -25,7 +25,12 @@ fn confirm(editor: &mut Editor, id: ClientId) {
 
     log::info!("Selection: {path:?}, index: {}", win.filetree_selection);
     if let Some(path) = path {
-        editor.filetree.on_press(&path);
+        if let PressResult::IsFile = editor.filetree.on_press(&path) {
+            if let Err(e) = editor.open_file(id, path) {
+                let (win, buf) = editor.win_buf_mut(id);
+                win.error_msg("Failed to open file {path:?}: {e}");
+            }
+        }
     }
 }
 

@@ -30,7 +30,7 @@ impl DefaultKeyMappings {
              "ctrl+c", editor::copy,
              "ctrl+v", editor::paste,
              "f2",     editor::build_project,
-             "f1",     editor::run_project,
+             "f3",     editor::run_project,
 
              "ctrl+s",    text::save,
              "backspace", text::remove_grapheme_before_cursor,
@@ -178,6 +178,8 @@ impl DefaultKeyMappings {
              "enter", filetree::confirm,
              "up",    filetree::prev_entry,
              "down",  filetree::next_entry,
+             "btab",  filetree::prev_entry,
+             "tab",   filetree::next_entry,
         );
 
         map

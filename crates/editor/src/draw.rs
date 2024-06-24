@@ -25,7 +25,7 @@ pub(crate) struct DrawContext<'a, 'b> {
 pub(crate) struct DrawState {
     /// Used to detect when prompt is different
     last_prompt: Option<String>,
-    // last_focus
+    last_focus: Option<Focus>,
     /// Used to track scroll position when drawing prompt
     prompt_scroll_offset: usize,
     compl_scroll_offset: usize,
@@ -39,6 +39,7 @@ impl DrawState {
 
         let mut state = DrawState {
             last_prompt: None,
+            last_focus: None,
             prompt_scroll_offset: 0,
             compl_scroll_offset: 0,
             redraw_window: true,
@@ -65,6 +66,7 @@ impl DrawState {
         theme: &Theme,
         filetree: &Filetree,
     ) -> Vec<Redraw> {
+        let focus_changed_from = |focus| self.last_focus == Some(focus) && focus != win.focus;
         let mut redraw: Vec<Redraw> = vec![];
 
         let draw = mem::replace(&mut self.redraw, true);
@@ -73,7 +75,7 @@ impl DrawState {
         }
 
         // Send close if not focused
-        if win.focus != Focus::Prompt
+        if focus_changed_from(Focus::Prompt)
             || self
                 .last_prompt
                 .as_ref()
@@ -85,12 +87,12 @@ impl DrawState {
             redraw.push(Redraw::Prompt(Component::Close));
         }
 
-        if win.focus != Focus::Completion {
+        if focus_changed_from(Focus::Completion) {
             self.compl_scroll_offset = 0;
             redraw.push(Redraw::Completion(Component::Close));
         }
 
-        if win.focus != Focus::Filetree {
+        if focus_changed_from(Focus::Filetree) {
             redraw.push(Redraw::Filetree(Component::Close));
         }
 
@@ -145,6 +147,7 @@ impl DrawState {
             _ => {}
         }
 
+        self.last_focus = Some(win.focus);
         redraw
     }
 

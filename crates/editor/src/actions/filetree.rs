@@ -23,7 +23,6 @@ fn confirm(editor: &mut Editor, id: ClientId) {
         .nth(win.filetree_selection)
         .map(|f| f.path);
 
-    log::info!("Selection: {path:?}, index: {}", win.filetree_selection);
     if let Some(path) = path {
         if let PressResult::IsFile = editor.filetree.on_press(&path) {
             if let Err(e) = editor.open_file(id, path) {

@@ -359,15 +359,14 @@ impl Editor {
         };
         let syntax = self.syntaxes.get(&ft);
 
-        match syntax {
-            Ok(syntax) => match syntax.parse(bid, &ropt, range, r) {
+        if let Ok(syntax) = syntax {
+            match syntax.parse(bid, &ropt, range, r) {
                 Ok(res) => {
                     let (win, _buf) = self.win_buf_mut(id);
                     *win.syntax_result() = res;
                 }
                 Err(e) => log::error!("Failed to parse file: {e}"),
-            },
-            Err(e) => log::error!("Failed to load syntax for {}: {e}", ft.as_str()),
+            }
         }
     }
 

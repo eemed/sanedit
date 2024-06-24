@@ -63,13 +63,7 @@ impl DrawState {
     }
 
     pub fn redraw(&mut self, ectx: EditorContext) -> Vec<Redraw> {
-        let EditorContext {
-            win,
-            buf,
-            theme,
-            working_dir,
-            filetree,
-        } = ectx;
+        let EditorContext { win, filetree, .. } = ectx;
         let focus_changed_from = |focus| self.last_focus == Some(focus) && focus != win.focus;
         let mut redraw: Vec<Redraw> = vec![];
 
@@ -99,12 +93,6 @@ impl DrawState {
         if focus_changed_from(Focus::Filetree) {
             redraw.push(Redraw::Filetree(Component::Close));
         }
-
-        // let draw_win = mem::replace(&mut self.redraw_window, true);
-        // let draw_lnr = draw_win && ectx.win.options.show_linenumbers;
-        // if draw_win {
-        //     win.redraw_view(buf);
-        // }
 
         let mut ctx = DrawContext {
             editor: ectx,

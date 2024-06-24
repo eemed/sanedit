@@ -7,15 +7,10 @@ use crate::{
     editor::windows::{Cell, Cursor, Cursors, View},
 };
 
-use super::DrawContext;
+use super::{DrawContext, EditorContext};
 
 pub(crate) fn draw(ctx: &mut DrawContext) -> redraw::Window {
-    let DrawContext {
-        win,
-        buf: _,
-        theme,
-        state: _,
-    } = ctx;
+    let EditorContext { win, theme, .. } = ctx.editor;
 
     let style = theme.get(ThemeField::Default);
     let view = win.view();
@@ -199,12 +194,7 @@ fn draw_trailing_whitespace(_grid: &mut Vec<Vec<redraw::Cell>>, view: &View, _th
 }
 
 pub(crate) fn draw_line_numbers(ctx: &DrawContext) -> LineNumbers {
-    let DrawContext {
-        win,
-        buf,
-        theme,
-        state: _,
-    } = ctx;
+    let EditorContext { win, buf, .. } = ctx.editor;
 
     let range = win.view().range();
     let slice = buf.slice(range.clone());

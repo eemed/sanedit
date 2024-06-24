@@ -35,6 +35,7 @@ use crate::common::file::File;
 use crate::common::text::as_lines;
 use crate::common::text::to_line;
 use crate::draw::DrawState;
+use crate::draw::EditorContext;
 use crate::editor::buffers::Buffer;
 use crate::editor::hooks::Hook;
 use crate::editor::keymap::KeymapResult;
@@ -251,6 +252,28 @@ impl Editor {
         }
     }
 
+    fn create_context(&mut self, id: ClientId) -> EditorContext {
+        let win = self.windows.get(id).expect("No window for {id}");
+        let buf = self
+            .buffers
+            .get(win.buffer_id())
+            .expect("No window for {id}");
+        let theme = {
+            let theme_name = &win.display_options().theme;
+            self.themes
+                .get(theme_name.as_str())
+                .expect("Theme not present")
+        };
+
+        EditorContext {
+            win,
+            buf,
+            theme,
+            working_dir: &self.working_dir,
+            filetree: &self.filetree,
+        }
+    }
+
     fn handle_hello(&mut self, id: ClientId, size: Size) {
         // Create buffer and window
         let bid = self.buffers.insert(Buffer::default());
@@ -264,8 +287,11 @@ impl Editor {
                 .clone()
         };
 
+        // Redraw view
+        win.redraw_view(buf);
+
         // Create draw state and send out initial draw
-        let (draw, messages) = DrawState::new(win, buf, &theme);
+        let (draw, messages) = DrawState::new(self.create_context(id));
         self.draw_states.insert(id, draw);
 
         self.send_to_client(id, ClientMessage::Hello);
@@ -282,18 +308,20 @@ impl Editor {
     }
 
     fn handle_mouse_event(&mut self, id: ClientId, event: MouseEvent) {
+        let (win, buf) = self.win_buf_mut(id);
+        if win.focus != Focus::Window {
+            return;
+        }
+
         // TODO keybindings
         match event.kind {
             MouseEventKind::ScrollDown => {
-                let (win, buf) = self.win_buf_mut(id);
                 win.scroll_down_n(buf, 3);
             }
             MouseEventKind::ScrollUp => {
-                let (win, buf) = self.win_buf_mut(id);
                 win.scroll_up_n(buf, 3);
             }
             MouseEventKind::ButtonDown(MouseButton::Left) => {
-                let (_win, _buf) = self.win_buf_mut(id);
                 if event.mods.contains(KeyMods::CONTROL) {
                     cursors::new_to_point(self, id, event.point);
                 } else if event.mods.is_empty() {
@@ -367,12 +395,12 @@ impl Editor {
             .draw_states
             .get_mut(&id)
             .expect("Client window is closed");
-        let win = self.windows.get_mut(id).expect("Client window is closed");
+
+        let win = self.windows.get_mut(id).expect("No window for {id}");
         let buf = self
             .buffers
             .get(win.buffer_id())
-            .expect("Window referencing non existent buffer");
-
+            .expect("No window for {id}");
         let theme = {
             let theme_name = &win.display_options().theme;
             self.themes
@@ -380,7 +408,20 @@ impl Editor {
                 .expect("Theme not present")
         };
 
-        let messages = draw.redraw(win, buf, theme, &self.filetree);
+        // Redraw view if needed
+        if mem::replace(&mut draw.redraw_window, true) {
+            win.redraw_view(buf);
+        }
+
+        let ctx = EditorContext {
+            win,
+            buf,
+            theme,
+            working_dir: &self.working_dir,
+            filetree: &self.filetree,
+        };
+
+        let messages = draw.redraw(ctx);
         if !messages.is_empty() {
             for msg in messages {
                 self.send_to_client(id, ClientMessage::Redraw(msg));

@@ -11,7 +11,7 @@ match = "#C0A886,,"
 [colors.window.cursor]
 default = "#a4ac86,,"
 selection = "#efb679,,"
-primary = "#016a61,,"
+primary = "#C0A886,,"
 
 [colors.window.view]
 info = "#00917e,#000000,"
@@ -56,3 +56,10 @@ match = ",#b0463a,"
 default = "#efb679,,"
 description = ",#5a433d,"
 match = ",#b0463a,"
+
+[colors.filetree]
+default = "#E2DBC8,#000000,"
+file = ""
+directory = ",#824b26,"
+markers = ",#355d8d,"
+selected = "#efb679,,"

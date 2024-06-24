@@ -1,11 +1,17 @@
 use sanedit_messages::redraw::{self, Statusline};
 
-use crate::editor::buffers::Filetype;
+use crate::editor::{buffers::Filetype, windows::Focus};
 
-use super::DrawContext;
+use super::{DrawContext, EditorContext};
 
 pub(crate) fn draw(ctx: &mut DrawContext) -> redraw::Statusline {
-    let DrawContext { win, buf, .. } = ctx;
+    let EditorContext { win, buf, .. } = ctx.editor;
+
+    if win.focus == Focus::Filetree {
+        let left = format!("File browser");
+        let right = format!("",);
+        return Statusline { left, right };
+    }
 
     let mut left = format!("{} ", buf.name());
     if buf.is_modified() {

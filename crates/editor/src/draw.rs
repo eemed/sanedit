@@ -5,7 +5,7 @@ mod search;
 mod statusline;
 mod window;
 
-use std::mem;
+use std::{mem, path::Path};
 
 use sanedit_messages::redraw::{Component, Redraw, Theme};
 
@@ -15,10 +15,16 @@ use crate::editor::{
     windows::{Focus, Window},
 };
 
+pub(crate) struct EditorContext<'a> {
+    pub(crate) win: &'a Window,
+    pub(crate) buf: &'a Buffer,
+    pub(crate) theme: &'a Theme,
+    pub(crate) working_dir: &'a Path,
+    pub(crate) filetree: &'a Filetree,
+}
+
 pub(crate) struct DrawContext<'a, 'b> {
-    win: &'a Window,
-    buf: &'a Buffer,
-    theme: &'a Theme,
+    editor: EditorContext<'a>,
     state: &'b mut DrawState,
 }
 
@@ -29,14 +35,13 @@ pub(crate) struct DrawState {
     /// Used to track scroll position when drawing prompt
     prompt_scroll_offset: usize,
     compl_scroll_offset: usize,
-    redraw_window: bool,
     redraw: bool,
+
+    pub(crate) redraw_window: bool,
 }
 
 impl DrawState {
-    pub fn new(win: &mut Window, buf: &Buffer, theme: &Theme) -> (DrawState, Vec<Redraw>) {
-        win.redraw_view(buf);
-
+    pub fn new(ectx: EditorContext) -> (DrawState, Vec<Redraw>) {
         let mut state = DrawState {
             last_prompt: None,
             last_focus: None,
@@ -47,9 +52,7 @@ impl DrawState {
         };
 
         let mut ctx = DrawContext {
-            win,
-            buf,
-            theme,
+            editor: ectx,
             state: &mut state,
         };
 
@@ -59,13 +62,14 @@ impl DrawState {
         (state, vec![window, statusline])
     }
 
-    pub fn redraw(
-        &mut self,
-        win: &mut Window,
-        buf: &Buffer,
-        theme: &Theme,
-        filetree: &Filetree,
-    ) -> Vec<Redraw> {
+    pub fn redraw(&mut self, ectx: EditorContext) -> Vec<Redraw> {
+        let EditorContext {
+            win,
+            buf,
+            theme,
+            working_dir,
+            filetree,
+        } = ectx;
         let focus_changed_from = |focus| self.last_focus == Some(focus) && focus != win.focus;
         let mut redraw: Vec<Redraw> = vec![];
 
@@ -96,28 +100,20 @@ impl DrawState {
             redraw.push(Redraw::Filetree(Component::Close));
         }
 
-        let draw_win = mem::replace(&mut self.redraw_window, true);
-        let draw_lnr = draw_win && win.options.show_linenumbers;
-        if draw_win {
-            win.redraw_view(buf);
-        }
+        // let draw_win = mem::replace(&mut self.redraw_window, true);
+        // let draw_lnr = draw_win && ectx.win.options.show_linenumbers;
+        // if draw_win {
+        //     win.redraw_view(buf);
+        // }
 
         let mut ctx = DrawContext {
-            win,
-            buf,
-            theme,
+            editor: ectx,
             state: self,
         };
 
-        if draw_win {
+        if ctx.state.redraw_window {
             let window = window::draw(&mut ctx);
-            if draw_lnr {
-                // let lnrs = window::draw_line_numbers(&ctx);
-                // redraw.push(lnrs.into());
-                redraw.push(window.into());
-            } else {
-                redraw.push(window.into());
-            }
+            redraw.push(window.into());
         }
 
         let statusline = statusline::draw(&mut ctx).into();

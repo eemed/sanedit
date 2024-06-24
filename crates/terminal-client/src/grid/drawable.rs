@@ -1,8 +1,8 @@
 use std::cmp::min;
 
 use sanedit_messages::redraw::{
-    Completion, Cursor, CursorShape, Filetree, IntoCells, Point, Severity, StatusMessage,
-    Statusline, ThemeField, Window,
+    Completion, Cursor, CursorShape, FileItemKind, Filetree, IntoCells, Point, Severity,
+    StatusMessage, Statusline, ThemeField, Window,
 };
 
 use crate::{
@@ -314,10 +314,11 @@ impl Drawable for StatusMessage {
 
 impl Drawable for Filetree {
     fn draw(&self, ctx: &UIContext, cells: &mut [&mut [CCell]]) {
-        let fill = ctx.style(ThemeField::Completion);
-        let name = ctx.style(ThemeField::Completion);
-        let extra = ctx.style(ThemeField::CompletionDescription);
-        let sel = ctx.style(ThemeField::Selection);
+        let fill = ctx.style(ThemeField::FiletreeDefault);
+        let file = ctx.style(ThemeField::FiletreeFile);
+        let dir = ctx.style(ThemeField::FiletreeDir);
+        let markers = ctx.style(ThemeField::FiletreeMarkers);
+        let sel = ctx.style(ThemeField::FiletreeSelected);
 
         clear_all(cells, fill);
 
@@ -327,9 +328,17 @@ impl Drawable for Filetree {
             }
 
             let width = cells.get(0).map(|c| c.len()).unwrap_or(0);
-            let style = if row == self.selected { sel } else { name };
-            let mut titem = filetree::format_item(item, style, extra);
-            pad_line(&mut titem, name, width);
+            let style = if row == self.selected {
+                sel
+            } else {
+                match item.kind {
+                    FileItemKind::Directory { expanded } => dir,
+                    FileItemKind::File => file,
+                }
+            };
+
+            let mut titem = filetree::format_item(item, style, markers);
+            pad_line(&mut titem, fill, width);
 
             for (i, cell) in titem.into_iter().enumerate() {
                 cells[row][i] = cell;

@@ -7,7 +7,7 @@ use crate::editor::windows::Completion;
 use super::DrawContext;
 
 pub(crate) fn draw(completion: &Completion, ctx: &mut DrawContext) -> redraw::Completion {
-    let compl_count = ctx.win.options.completions;
+    let compl_count = ctx.editor.win.options.completions;
     let offset = &mut ctx.state.compl_scroll_offset;
     *offset = {
         let selected = completion.selected_pos().unwrap_or(0);

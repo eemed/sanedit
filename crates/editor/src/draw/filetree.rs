@@ -5,7 +5,7 @@ use crate::editor::filetree::Filetree;
 use super::DrawContext;
 
 pub(crate) fn draw(tree: &Filetree, ctx: &mut DrawContext) -> redraw::Redraw {
-    let selected = ctx.win.filetree_selection;
+    let selected = ctx.editor.win.filetree_selection;
     let mut items = vec![];
 
     for entry in tree.iter() {

@@ -316,7 +316,7 @@ impl Drawable for Filetree {
             let width = cells.get(0).map(|c| c.len()).unwrap_or(0);
             let style = if row == self.selected { sel } else { name };
             let mut titem = filetree::format_item(item, style, extra);
-            pad_line(&mut titem, style, width);
+            pad_line(&mut titem, name, width);
 
             for (i, cell) in titem.into_iter().enumerate() {
                 cells[row][i] = cell;

@@ -107,6 +107,8 @@ impl DefaultKeyMappings {
 
         #[rustfmt::skip]
         map!(map,
+             "ctrl+q",      editor::quit,
+
              "ctrl+c",    prompt::close,
              "backspace", prompt::remove_grapheme_before_cursor,
              "left",      prompt::prev_grapheme,
@@ -128,6 +130,8 @@ impl DefaultKeyMappings {
 
         #[rustfmt::skip]
         map!(map,
+             "ctrl+q",      editor::quit,
+
             "ctrl+c",       prompt::close,
             "backspace",    prompt::remove_grapheme_before_cursor,
             "left",         prompt::prev_grapheme,
@@ -162,10 +166,14 @@ impl DefaultKeyMappings {
     }
 
     fn filetree() -> Keymap {
-        let mut map = DefaultKeyMappings::window();
+        let mut map = Keymap {
+            root: KeyTrie::default(),
+        };
 
         #[rustfmt::skip]
         map!(map,
+             "ctrl+q", editor::quit,
+
              "esc",   filetree::close_filetree,
              "enter", filetree::confirm,
              "up",    filetree::prev_entry,

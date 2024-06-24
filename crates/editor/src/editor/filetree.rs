@@ -43,20 +43,22 @@ impl Filetree {
         };
 
         // Expand the first level
-        tree.node.on_press(root.as_ref());
+        tree.on_press(root.as_ref());
 
         tree
     }
 
-    pub fn on_press(&mut self, path: &Path) {
-        self.node.on_press(path)
+    pub fn on_press(&mut self, target: &Path) {
+        if let Ok(path) = target.strip_prefix(&self.root) {
+            self.node.on_press(path, target);
+        }
     }
 
     pub fn iter(&self) -> FiletreeIterator {
         let root = self.root.file_name().unwrap_or(OsStr::new(""));
         FiletreeIterator {
             stack: vec![FiletreeEntry {
-                path: PathBuf::from(root),
+                path: self.root.clone(),
                 name: PathBuf::from(root),
                 node: &self.node,
                 level: 0,
@@ -104,13 +106,12 @@ impl Node {
         None
     }
 
-    /// On click of an entry
-    fn on_press(&mut self, target: &Path) {
+    fn on_press(&mut self, stack: &Path, target: &Path) {
         let mut n = self;
-        let mut t = target;
+        let mut t = stack;
 
-        if n.is_leaf() {
-            n.on_press_leaf(target);
+        if t.as_os_str().is_empty() {
+            n.on_press_item(target);
             return;
         }
 
@@ -118,18 +119,17 @@ impl Node {
             n = node;
             t = ntarget;
 
-            if n.is_leaf() {
-                n.on_press_leaf(target);
+            if t.as_os_str().is_empty() {
+                n.on_press_item(target);
                 return;
             }
         }
     }
 
-    fn on_press_leaf(&mut self, target: &Path) {
-        // TODO
+    fn on_press_item(&mut self, target: &Path) {
         match self {
             Node::File => todo!("open file"),
-            Node::Directory { expanded, children } => {
+            Node::Directory { expanded, .. } => {
                 if *expanded {
                     self.shrink();
                 } else {
@@ -141,28 +141,15 @@ impl Node {
         }
     }
 
-    /// Whether this node is a leaf, => a file or unexpanded directory
-    fn is_leaf(&self) -> bool {
-        match self {
-            Node::File => true,
-            Node::Directory { expanded, .. } => !expanded,
-        }
-    }
-
     fn shrink(&mut self) {
-        let Node::Directory { expanded, children } = self else {
+        let Node::Directory { expanded, .. } = self else {
             unreachable!("Tried to fill a file with directory entries");
         };
+        log::info!("shrink");
         *expanded = false;
     }
 
     fn expand(&mut self, target: &Path) -> anyhow::Result<()> {
-        fn read_entry(res: io::Result<std::fs::DirEntry>, base: &Path) -> anyhow::Result<PathBuf> {
-            let path = res?.path();
-            let stripped = path.strip_prefix(base)?;
-            Ok(stripped.to_path_buf())
-        }
-
         let Node::Directory { expanded, children } = self else {
             unreachable!("Tried to fill a file with directory entries");
         };
@@ -170,15 +157,20 @@ impl Node {
             return Ok(());
         }
 
+        if !children.is_empty() {
+            return Ok(());
+        }
+
         let paths = std::fs::read_dir(target)?
-            .map(|res| read_entry(res, target))
-            .collect::<anyhow::Result<Vec<_>>>()?;
+            .map(|res| res.map(|e| e.path()))
+            .collect::<Result<Vec<_>, io::Error>>()?;
 
         for path in paths {
+            let local = path.strip_prefix(target)?.to_path_buf();
             if path.is_dir() {
-                children.insert(FiletreePath::Directory(path), Node::dir());
+                children.insert(FiletreePath::Directory(local), Node::dir());
             } else {
-                children.insert(FiletreePath::File(path), Node::File);
+                children.insert(FiletreePath::File(local), Node::File);
             }
         }
 

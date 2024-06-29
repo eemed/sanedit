@@ -10,7 +10,7 @@ fn show_filetree(editor: &mut Editor, id: ClientId) {
     let visible = editor.filetree.iter().count();
     let (win, buf) = editor.win_buf_mut(id);
 
-    win.filetree_selection = min(visible - 1, win.filetree_selection);
+    win.ft_view.selection = min(visible - 1, win.ft_view.selection);
     win.focus = Focus::Filetree;
 }
 
@@ -20,7 +20,7 @@ fn confirm(editor: &mut Editor, id: ClientId) {
     let path = editor
         .filetree
         .iter()
-        .nth(win.filetree_selection)
+        .nth(win.ft_view.selection)
         .map(|f| f.path);
 
     if let Some(path) = path {
@@ -38,13 +38,17 @@ fn next_entry(editor: &mut Editor, id: ClientId) {
     let visible = editor.filetree.iter().count();
 
     let (win, buf) = editor.win_buf_mut(id);
-    win.filetree_selection = min(visible - 1, win.filetree_selection + 1);
+    win.ft_view.selection = min(visible - 1, win.ft_view.selection + 1);
+
+    // TODO ensure visible
 }
 
 #[action("Previous filetree entry")]
 fn prev_entry(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
-    win.filetree_selection = win.filetree_selection.saturating_sub(1);
+    win.ft_view.selection = win.ft_view.selection.saturating_sub(1);
+
+    // TODO ensure visible
 }
 
 #[action("Close filetree")]
@@ -52,3 +56,9 @@ fn close_filetree(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     win.focus = Focus::Window;
 }
+
+#[action("Scroll up filetree")]
+fn scroll_up(editor: &mut Editor, id: ClientId) {}
+
+#[action("Scroll up filetree")]
+fn scroll_down(editor: &mut Editor, id: ClientId) {}

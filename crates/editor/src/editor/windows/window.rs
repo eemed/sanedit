@@ -1,5 +1,6 @@
 mod completion;
 mod cursors;
+mod filetree;
 mod focus;
 mod locations;
 mod options;
@@ -33,6 +34,7 @@ use crate::{
     },
 };
 
+use self::filetree::FiletreeView;
 pub(crate) use self::{
     completion::*,
     cursors::*,
@@ -59,7 +61,7 @@ pub(crate) struct Window {
     pub search: Search,
     pub prompt: Prompt,
     pub options: Options,
-    pub filetree_selection: usize,
+    pub ft_view: FiletreeView,
 }
 
 impl Window {
@@ -76,7 +78,7 @@ impl Window {
             search: Search::default(),
             prompt: Prompt::default(),
             focus: Focus::Window,
-            filetree_selection: 0,
+            ft_view: FiletreeView::default(),
         }
     }
 

@@ -1,4 +1,4 @@
-use std::cmp::min;
+use std::cmp::{max, min};
 
 use sanedit_messages::redraw::{
     Completion, Cursor, CursorShape, FileItemKind, Filetree, IntoCells, Point, Severity,
@@ -16,6 +16,7 @@ use super::{
         center_pad, clear_all, format_completion, into_cells_with_style, into_cells_with_style_pad,
         into_cells_with_theme_pad_with, pad_line, put_line, set_style, size, CCell,
     },
+    filetree::CustomFiletree,
     prompt::{CustomPrompt, PromptStyle},
 };
 
@@ -312,7 +313,7 @@ impl Drawable for StatusMessage {
     }
 }
 
-impl Drawable for Filetree {
+impl Drawable for CustomFiletree {
     fn draw(&self, ctx: &UIContext, cells: &mut [&mut [CCell]]) {
         let fill = ctx.style(ThemeField::FiletreeDefault);
         let file = ctx.style(ThemeField::FiletreeFile);
@@ -322,13 +323,13 @@ impl Drawable for Filetree {
 
         clear_all(cells, fill);
 
-        for (row, item) in self.items.iter().enumerate() {
+        for (row, item) in self.ft.items.iter().skip(self.scroll).enumerate() {
             if row >= cells.len() {
                 break;
             }
 
             let width = cells.get(0).map(|c| c.len()).unwrap_or(0);
-            let style = if row == self.selected {
+            let style = if self.scroll + row == self.ft.selected {
                 sel
             } else {
                 match item.kind {

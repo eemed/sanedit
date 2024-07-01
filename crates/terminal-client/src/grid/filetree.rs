@@ -6,8 +6,14 @@ use super::{
     Rect,
 };
 
-pub(crate) fn open_filetree(win: Rect, ft: Filetree) -> GridItem<Filetree> {
-    GridItem::new(ft, win)
+#[derive(Debug)]
+pub(crate) struct CustomFiletree {
+    pub(crate) ft: Filetree,
+    pub(crate) scroll: usize,
+}
+
+pub(crate) fn open_filetree(win: Rect, ft: Filetree) -> GridItem<CustomFiletree> {
+    GridItem::new(CustomFiletree { ft, scroll: 0 }, win)
 }
 
 pub(crate) fn format_item(item: &FileItem, name: Style, extra: Style) -> Vec<CCell> {

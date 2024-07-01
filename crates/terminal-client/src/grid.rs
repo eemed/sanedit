@@ -10,8 +10,8 @@ mod rect;
 use std::{mem, sync::Arc};
 
 use sanedit_messages::redraw::{
-    Cell, Completion, Component, Cursor, Diffable, Filetree, Redraw, Size, StatusMessage,
-    Statusline, Theme, Window,
+    Cell, Completion, Component, Cursor, Diffable, Redraw, Size, StatusMessage, Statusline, Theme,
+    Window,
 };
 
 use crate::{
@@ -23,6 +23,7 @@ pub(crate) use self::rect::{Rect, Split};
 use self::{
     ccell::CCell,
     drawable::{DrawCursor, Drawable},
+    filetree::CustomFiletree,
     item::GridItem,
     prompt::{open_prompt, CustomPrompt},
 };
@@ -31,11 +32,10 @@ pub(crate) struct Grid {
     size: Size,
     window: GridItem<Window>,
     statusline: GridItem<Statusline>,
-    // gutter: Option<Rectangle<()>>,
     prompt: Option<GridItem<CustomPrompt>>,
     msg: Option<GridItem<StatusMessage>>,
     completion: Option<GridItem<Completion>>,
-    filetree: Option<GridItem<Filetree>>,
+    filetree: Option<GridItem<CustomFiletree>>,
 
     drawn: Vec<Vec<Cell>>,
     cursor: Option<Cursor>,
@@ -120,17 +120,13 @@ impl Grid {
                 Open(ft) => self.filetree = Some(open_filetree(self.window.area(), ft)),
                 Update(diff) => {
                     if let Some(ref mut ft) = self.filetree {
-                        ft.drawable().update(diff);
+                        ft.drawable().ft.update(diff);
+                        ft.update();
                     }
                 }
                 Close => self.filetree = None,
             },
-            _ => {} //
-                    // LineNumbers(numbers) => {
-                    //     let gutter = Gutter::new(numbers);
-                    //     ctx.gutter_size = gutter.width();
-                    //     self.gutter = gutter.into()
-                    // }
+            _ => {}
         }
     }
 

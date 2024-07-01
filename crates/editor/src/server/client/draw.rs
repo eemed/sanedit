@@ -1,7 +1,7 @@
 use std::mem;
 
 use sanedit_messages::redraw::{
-    Completion, Component, Diffable, Prompt, Redraw, StatusMessage, Statusline, Window,
+    Completion, Component, Diffable, Filetree, Prompt, Redraw, StatusMessage, Statusline, Window,
 };
 
 macro_rules! diffable_open {
@@ -49,6 +49,7 @@ pub(crate) struct ClientDrawState {
     pub(crate) msg: Option<StatusMessage>,
     pub(crate) statusline: Option<Statusline>,
     pub(crate) window: Option<Window>,
+    pub(crate) filetree: Option<Filetree>,
 }
 
 impl ClientDrawState {
@@ -65,6 +66,8 @@ impl ClientDrawState {
             Window(Close) => diffable_close!(self.window),
             Statusline(Open(status)) => diffable_open!(self.statusline, status),
             Statusline(Close) => diffable_close!(self.statusline),
+            Filetree(Open(ft)) => diffable_open!(self.filetree, ft),
+            Filetree(Close) => diffable_close!(self.filetree),
             _ => {}
         }
 

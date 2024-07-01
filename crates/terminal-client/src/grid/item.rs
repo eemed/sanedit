@@ -1,4 +1,4 @@
-use std::cmp::min;
+use std::cmp::{max, min};
 
 use sanedit_messages::redraw::{Completion, Cursor, Size};
 
@@ -7,6 +7,7 @@ use crate::ui::UIContext;
 use super::{
     completion::fit_completion,
     drawable::{DrawCursor, Drawable},
+    filetree::CustomFiletree,
     CCell, Rect,
 };
 
@@ -75,6 +76,20 @@ impl GridItem<Completion> {
 
         if !win.includes(&self.area) {
             self.area = fit_completion(win, &self.inner);
+        }
+    }
+}
+
+impl GridItem<CustomFiletree> {
+    pub fn update(&mut self) {
+        let height = self.area.height;
+        let cft = self.drawable();
+        let sel = cft.ft.selected;
+        let at_least = sel.saturating_sub(height.saturating_sub(1));
+        cft.scroll = max(cft.scroll, at_least);
+
+        if cft.scroll > sel {
+            cft.scroll = sel;
         }
     }
 }

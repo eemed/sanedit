@@ -156,3 +156,11 @@ fn merge_overlapping_cursors(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.cursors.merge_overlapping();
 }
+
+#[action("Restore single non selection cursor")]
+fn single_non_selecting(editor: &mut Editor, id: ClientId) {
+    remove_secondary.execute(editor, id);
+
+    let (win, _buf) = editor.win_buf_mut(id);
+    win.cursors.primary_mut().unanchor();
+}

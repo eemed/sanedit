@@ -346,6 +346,7 @@ impl Editor {
 
     /// Synchronously recalculates the syntax
     fn recalculate_syntax(&mut self, id: ClientId) {
+        log::info!("recalc sunt");
         if !self.windows.contains(id) {
             return;
         }
@@ -391,6 +392,7 @@ impl Editor {
 
     /// redraw a window
     fn redraw_client(&mut self, id: ClientId) {
+        log::info!("redraw client");
         run(self, id, Hook::OnDrawPre);
 
         let draw = self
@@ -410,10 +412,7 @@ impl Editor {
                 .expect("Theme not present")
         };
 
-        // Redraw view if needed
-        if mem::replace(&mut draw.redraw_window, true) {
-            win.redraw_view(buf);
-        }
+        win.redraw_view(buf);
 
         let ctx = EditorContext {
             win,

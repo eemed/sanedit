@@ -185,9 +185,15 @@ impl View {
     }
 
     fn draw(&mut self, buf: &Buffer) {
+        self.needs_redraw = false;
+
+        if self.range.start > buf.len() {
+            self.range.start = buf.len();
+            self.scroll_up_n(buf, self.height() / 2);
+        }
+
         self.clear();
         self.draw_cells(buf);
-        self.needs_redraw = false;
     }
 
     pub fn line_len_in_buffer(&self, line: usize) -> usize {

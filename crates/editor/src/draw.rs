@@ -100,7 +100,7 @@ impl DrawState {
             state: self,
         };
 
-        if ctx.state.redraw_window {
+        if mem::replace(&mut ctx.state.redraw_window, true) {
             let window = window::draw(&mut ctx);
             redraw.push(window.into());
         }

@@ -1,70 +1,18 @@
-document = (comment / top /assignment/ .)*;
+document = (comment / keyword / constant / unsafe / .)*;
 
-########## GENERAL
-
-@show(keyword)
 visibility = "pub(crate)" / "pub(super)" / "pub";
 
-############ TOP LEVEL
-@whitespaced
-top = visibility? (mod / use / function);
-
-############# MODULES
-@whitespaced
-mod = modk identifier ";";
-
-@whitespaced
-use = usek path ";";
-path = "::"? identifier ( "::" identifier)*;
+@show(identifier)
+keyword = start ("let" / "as" / "match" / "if" / "else" / "while" / "break") end;
 
 @show(keyword)
-usek = "use";
+constant = start (visibility / "mod" / "use" / "fn" / "impl") end;
 
-@show(keyword)
-modk = "mod";
-
-
-
-######### FUNCTION
-@whitespaced
-function = visibility? fn identifier "(" args ")" return? body;
-
-@whitespaced
-args = (identifier ":" type)*;
-
-@whitespaced
-body = "{" statement* "}";
-
-@whitespaced
-return = arr type;
+start = WHITESPACE;
+end = &(WHITESPACE / ";");
 
 @show(operator)
-arr = "->";
-
-@show(keyword)
-fn = "fn";
-
-####### TYPE
-@show
-type = ref? type_id ("<" type ">")?;
-ref = "&" lifetime? "mut"?;
-lifetime = "'" [a..zA..Z] [a..zA..Z0..9]*;
-type_id = [a..zA..Z] [a..zA..Z0..9]*;
-
-######### STATEMENTS
-statement = assignment;
-
-@whitespaced
-assignment = let identifier assign expr;
-
-@show(keyword)
-let = "let";
-identifier = [a..zA..Z] [a..zA..Z0..9-_]*;
-
-@show(operator)
-assign = "=";
-
-expr = (. !";" !"}") ";"?;
+unsafe = "unsafe";
 
 ########## COMMENTS
 @show

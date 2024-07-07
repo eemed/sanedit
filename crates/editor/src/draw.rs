@@ -74,6 +74,7 @@ impl DrawState {
 
         // Send close if not focused
         if focus_changed_from(Focus::Prompt)
+            || focus_changed_from(Focus::Search)
             || self
                 .last_prompt
                 .as_ref()
@@ -113,6 +114,7 @@ impl DrawState {
 
         match win.focus() {
             Focus::Search => {
+                log::info!("srch");
                 let current = search::draw(&win.prompt, &win.search, &mut ctx).into();
                 redraw.push(current);
             }

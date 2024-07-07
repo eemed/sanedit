@@ -9,6 +9,7 @@ pub(crate) mod syntax;
 pub(crate) mod themes;
 pub(crate) mod windows;
 
+use anyhow::bail;
 use rustc_hash::FxHashMap;
 use sanedit_messages::redraw::Size;
 use sanedit_messages::ClientMessage;
@@ -74,10 +75,10 @@ pub(crate) struct Editor {
     buffers: Buffers,
     keys: Vec<KeyEvent>,
     is_running: bool,
+    working_dir: PathBuf,
 
     pub runtime: TokioRuntime,
     pub themes: Themes,
-    pub working_dir: PathBuf,
     pub config_dir: ConfigDirectory,
     pub syntaxes: Syntaxes,
     pub job_broker: JobBroker,
@@ -207,6 +208,7 @@ impl Editor {
 
     /// Open a file in window
     pub fn open_file(&mut self, id: ClientId, path: impl AsRef<Path>) -> io::Result<()> {
+        log::info!("OPEN: {:?}", path.as_ref());
         let path = path.as_ref().canonicalize()?;
 
         // Use existing if possible
@@ -601,6 +603,16 @@ impl Editor {
         self.keymaps
             .get(&kind)
             .expect("No keymap found for kind: {kind:?}")
+    }
+
+    pub fn change_working_dir(&mut self, path: &Path) -> anyhow::Result<()> {
+        if !path.is_dir() {
+            bail!("Not a directory");
+        }
+
+        self.working_dir = path.into();
+        self.filetree = Filetree::new(&self.working_dir);
+        Ok(())
     }
 }
 

@@ -57,8 +57,8 @@ fn close_filetree(editor: &mut Editor, id: ClientId) {
     win.focus = Focus::Window;
 }
 
-#[action("Scroll up filetree")]
-fn scroll_up(editor: &mut Editor, id: ClientId) {}
+#[action("Search for an entry in filetree")]
+fn search_forward(editor: &mut Editor, id: ClientId) {}
 
-#[action("Scroll up filetree")]
-fn scroll_down(editor: &mut Editor, id: ClientId) {}
+#[action("Search for an entry in filetree backwards")]
+fn search_backwards(editor: &mut Editor, id: ClientId) {}

@@ -22,6 +22,7 @@ pub(crate) const COMMANDS: &[Action] = &[
     prompt::select_theme,
     prompt::goto_line,
     prompt::goto_percentage,
+    prompt::change_working_dir,
 
     search::forward,
     search::backward,

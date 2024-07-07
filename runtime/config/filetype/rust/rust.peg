@@ -1,0 +1,4 @@
+document = (keyword / .)*;
+
+@show(constant)
+keyword = "mod" / "pub" / "const" / "struct" / "use" / "enum" / "fn" / "impl" / "for";

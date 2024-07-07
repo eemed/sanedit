@@ -13,7 +13,10 @@ impl Filetype {
             "Cargo.lock" => "toml".into(),
             _ => {
                 let ext = path.extension()?;
-                ext.to_string_lossy()
+                match ext.to_str() {
+                    Some("rs") => "rust".into(),
+                    _ => ext.to_string_lossy(),
+                }
             }
         };
 

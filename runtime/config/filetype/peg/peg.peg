@@ -1,5 +1,5 @@
 @whitespaced
-rules = ws rule* ws;
+rules = ws (rule / .)* ws;
 
 ws = (_ comment _)*;
 
@@ -28,17 +28,22 @@ def = clause (op? clause)*;
 op = "/";
 
 @whitespaced
-clause = preop? (parens / brackets / id_chars+ / string) postop?;
+clause = preop? (parens / brackets / id_chars+ / string / dot) postop?;
+
+dot = ".";
 
 @whitespaced
 parens = "(" def ")";
 
 @whitespaced
-brackets = "[" ("\\" escape_char / [^\]])* "]";
+brackets = "[" negate? ("\\" escape_char / [^\]])* "]";
+
+@show(operator)
+negate = "^";
 
 @show
 string          = "\"" ("\\" escape_char / [^"])* "\"";
-escape_char     = "0" / "t" / "n" / "r" / "\"" / "\\";
+escape_char     = "0" / "t" / "n" / "r" / "\"" / "\\" / "]";
 hex = "\\x" hex_digit+;
 hex_digit = [a..fA..F0..9];
 

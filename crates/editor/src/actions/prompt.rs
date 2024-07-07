@@ -77,9 +77,9 @@ fn command_palette(editor: &mut Editor, id: ClientId) {
 fn open_file(editor: &mut Editor, id: ClientId) {
     const PROMPT_MESSAGE: &str = "Open a file";
     let ignore = editor.options.ignore_directories();
-    let path = editor.working_dir().to_path_buf();
+    let wd = editor.working_dir().to_path_buf();
     let job = MatcherJob::builder(id)
-        .options(FileOptionProvider::new(&path, &ignore))
+        .options(FileOptionProvider::new(&wd, &ignore))
         .handler(Prompt::matcher_result_handler)
         .build();
     editor.job_broker.request_slot(id, PROMPT_MESSAGE, job);
@@ -88,7 +88,11 @@ fn open_file(editor: &mut Editor, id: ClientId) {
     win.prompt = Prompt::builder()
         .prompt(PROMPT_MESSAGE)
         .on_confirm(move |editor, id, input| {
-            let path = PathBuf::from(input);
+            let path = {
+                let mut path = wd.clone();
+                path.push(input);
+                path
+            };
 
             if let Err(e) = editor.open_file(id, &path) {
                 let (win, _buf) = editor.win_buf_mut(id);
@@ -223,6 +227,25 @@ fn goto_percentage(editor: &mut Editor, id: ClientId) {
                 let offset = num * buf.len() / 100;
                 win.goto_offset(offset, buf);
                 hooks::run(editor, id, Hook::CursorMoved);
+            }
+        })
+        .build();
+    win.focus = Focus::Prompt;
+}
+
+#[action("Change working directory")]
+fn change_working_dir(editor: &mut Editor, id: ClientId) {
+    let wd = editor.working_dir().to_path_buf();
+    let (win, _buf) = editor.win_buf_mut(id);
+    win.prompt = Prompt::builder()
+        .prompt("Working directory")
+        .simple()
+        .input(&wd.to_string_lossy())
+        .on_confirm(move |e, id, input| {
+            let path = PathBuf::from(input);
+            if let Err(err) = e.change_working_dir(&path) {
+                let (win, _buf) = e.win_buf_mut(id);
+                win.warn_msg(&err.to_string());
             }
         })
         .build();

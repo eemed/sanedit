@@ -39,7 +39,10 @@ impl Default for ProjectOptions {
         ProjectOptions {
             build_command: "task build".into(),
             run_command: "task run".into(),
-            ignore_directories: vec!["target".into()],
+            ignore_directories: vec![".git", "target"]
+                .into_iter()
+                .map(String::from)
+                .collect(),
         }
     }
 }

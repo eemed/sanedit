@@ -23,6 +23,7 @@ pub(crate) struct PromptBuilder {
     keymap_kind: Option<KeymapKind>,
     simple: bool,
     history_kind: Option<HistoryKind>,
+    input: String,
 }
 
 impl Default for PromptBuilder {
@@ -35,6 +36,7 @@ impl Default for PromptBuilder {
             keymap_kind: None,
             simple: false,
             history_kind: None,
+            input: String::new(),
         }
     }
 }
@@ -47,6 +49,11 @@ impl PromptBuilder {
 
     pub fn simple(mut self) -> Self {
         self.simple = true;
+        self
+    }
+
+    pub fn input(mut self, input: &str) -> Self {
+        self.input = input.into();
         self
     }
 
@@ -93,6 +100,7 @@ impl PromptBuilder {
             keymap_kind,
             simple,
             history_kind,
+            input,
         } = self;
         let mut prompt = Prompt::new(&message.unwrap_or(String::new()));
         prompt.on_confirm = on_confirm;
@@ -100,6 +108,8 @@ impl PromptBuilder {
         prompt.on_input = on_input;
         prompt.history_kind = history_kind;
         prompt.simple = simple;
+        prompt.cursor = input.len();
+        prompt.input = input;
 
         if let Some(kmap) = keymap_kind {
             prompt.keymap_kind = kmap;

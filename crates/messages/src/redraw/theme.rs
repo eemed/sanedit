@@ -126,6 +126,8 @@ pub enum ThemeField {
     Number,
     Comment,
     Operator,
+    Type,
+    Keyword,
 
     Info,
     Warn,
@@ -178,6 +180,8 @@ impl AsRef<str> for ThemeField {
             Number => "window.view.number",
             Comment => "window.view.comment",
             Operator => "window.view.operator",
+            Type => "window.view.type",
+            Keyword => "window.view.keyword",
 
             Completion => "window.completion",
             CompletionDescription => "window.completion.description",

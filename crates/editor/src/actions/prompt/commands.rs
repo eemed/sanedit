@@ -11,6 +11,7 @@ pub(crate) const COMMANDS: &[Action] = &[
     editor::run_project,
     editor::copy,
     editor::paste,
+    editor::cut,
 
     text::save,
     text::save_as,

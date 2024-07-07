@@ -29,6 +29,7 @@ impl DefaultKeyMappings {
              "ctrl+q", editor::quit,
              "ctrl+c", editor::copy,
              "ctrl+v", editor::paste,
+             "ctrl+x", editor::cut,
              "f2",     editor::build_project,
              "f3",     editor::run_project,
 
@@ -84,7 +85,8 @@ impl DefaultKeyMappings {
 
              "alt+k", completion::complete,
 
-             "f5", window::reload,
+             "f5",    window::reload,
+             "alt+'", window::goto_prev_buffer,
 
              "alt+o c", text_objects::select_in_curly,
              "alt+o C", text_objects::select_curly,

@@ -322,7 +322,7 @@ impl Window {
         }
     }
 
-    fn remove_cursor_selections(&mut self, buf: &mut Buffer) -> bool {
+    pub fn remove_cursor_selections(&mut self, buf: &mut Buffer) -> bool {
         let selections: SortedRanges = (&self.cursors).into();
         if selections.is_empty() {
             return false;

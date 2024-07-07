@@ -1,6 +1,9 @@
-use crate::{editor::Editor, server::ClientId};
+use crate::{
+    editor::{hooks::Hook, Editor},
+    server::ClientId,
+};
 
-use super::shell;
+use super::{hooks::run, shell};
 
 #[action("Quit Sanedit")]
 fn quit(editor: &mut Editor, id: ClientId) {
@@ -32,4 +35,14 @@ fn copy(editor: &mut Editor, id: ClientId) {
 #[action("Paste from clipboard")]
 fn paste(editor: &mut Editor, id: ClientId) {
     editor.paste_from_clipboard(id);
+}
+
+#[action("Copy selection to clipboard and remove it")]
+fn cut(editor: &mut Editor, id: ClientId) {
+    editor.copy_to_clipboard(id);
+
+    run(editor, id, Hook::RemovePre);
+    let (win, buf) = editor.win_buf_mut(id);
+    win.remove_cursor_selections(buf);
+    run(editor, id, Hook::BufChanged);
 }

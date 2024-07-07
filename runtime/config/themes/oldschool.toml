@@ -19,11 +19,13 @@ warn = "#ff8c5a,#000000,"
 error = "#c0564a,#000000,"
 
 string =  ",#3C780A,"
-constant = ",#452F81,"
+constant = ",#4f3693,"
 identifier = ",#824b26,"
 number = ",#452F81,"
 comment = ",#355d8d,"
 operator =  ",#a84d1f,"
+type =  ",#824b26,"
+keyword = ",#014CC0,"
 
 [colors.window.completion]
 default = "#B8A282,#2a130d,"

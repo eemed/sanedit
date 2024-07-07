@@ -9,7 +9,6 @@ pub(crate) mod syntax;
 pub(crate) mod themes;
 pub(crate) mod windows;
 
-use anyhow::bail;
 use rustc_hash::FxHashMap;
 use sanedit_messages::redraw::Size;
 use sanedit_messages::ClientMessage;
@@ -121,10 +120,12 @@ impl Editor {
 
     pub fn configure(&mut self, mut opts: StartOptions) {
         if let Some(cd) = opts.config_dir.take() {
-            let cd = ConfigDirectory::new(&cd);
-            self.config_dir = cd;
-            self.syntaxes = Syntaxes::new(&self.config_dir.filetype_dir());
-            self.themes = Themes::new(&self.config_dir.theme_dir());
+            if let Ok(cd) = cd.canonicalize() {
+                let cd = ConfigDirectory::new(&cd);
+                self.config_dir = cd;
+                self.syntaxes = Syntaxes::new(&self.config_dir.filetype_dir());
+                self.themes = Themes::new(&self.config_dir.theme_dir());
+            }
         }
     }
 
@@ -558,7 +559,6 @@ impl Editor {
             if let Some(sel) = cursor.selection() {
                 let text = String::from(&buf.slice(sel));
                 lines.push(text);
-                cursor.unanchor();
             }
         }
 
@@ -606,10 +606,7 @@ impl Editor {
     }
 
     pub fn change_working_dir(&mut self, path: &Path) -> anyhow::Result<()> {
-        if !path.is_dir() {
-            bail!("Not a directory");
-        }
-
+        std::env::set_current_dir(path)?;
         self.working_dir = path.into();
         self.filetree = Filetree::new(&self.working_dir);
         Ok(())

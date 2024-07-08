@@ -15,8 +15,9 @@ use super::{jobs::MatcherJob, text};
 
 #[action("Open completion menu")]
 fn complete(editor: &mut Editor, id: ClientId) {
-    let (win, buf) = editor.win_buf_mut(id);
+    let word = word_before_cursor(editor, id).unwrap_or(String::from(""));
 
+    let (win, buf) = editor.win_buf_mut(id);
     win.completion = Completion::new();
     let cursor = win.primary_cursor();
     if let Some(point) = win.view().point_at_pos(cursor.pos()) {
@@ -30,16 +31,17 @@ fn complete(editor: &mut Editor, id: ClientId) {
         .filter(|hl| hl.is_completion())
         .map(|hl| {
             let compl = String::from(&buf.slice(hl.range()));
-            let desc = hl.name().to_string();
-            MatchOption {
-                value: compl,
-                description: desc,
-            }
+            let desc = hl.completion_category().unwrap_or(hl.name()).to_string();
+            (compl, desc)
+        })
+        .filter(|(compl, _)| compl != &word)
+        .map(|(compl, desc)| MatchOption {
+            value: compl,
+            description: desc,
         })
         .collect();
-    let opts: Vec<MatchOption> = opts.into_iter().collect();
 
-    let word = word_before_cursor(editor, id).unwrap_or(String::from(""));
+    let opts: Vec<MatchOption> = opts.into_iter().collect();
     let job = MatcherJob::builder(id)
         .strategy(MatchStrategy::Prefix)
         .search(word)

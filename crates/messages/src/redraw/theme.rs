@@ -128,6 +128,7 @@ pub enum ThemeField {
     Operator,
     Type,
     Keyword,
+    Preproc,
 
     Info,
     Warn,
@@ -182,6 +183,7 @@ impl AsRef<str> for ThemeField {
             Operator => "window.view.operator",
             Type => "window.view.type",
             Keyword => "window.view.keyword",
+            Preproc => "window.view.preproc",
 
             Completion => "window.completion",
             CompletionDescription => "window.completion.description",

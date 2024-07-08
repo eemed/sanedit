@@ -1,4 +1,5 @@
 use std::{
+    cmp::min,
     ops::Range,
     path::{Path, PathBuf},
     sync::Arc,
@@ -80,14 +81,12 @@ impl Syntax {
     ) -> anyhow::Result<SyntaxParseResult> {
         const COMPLETION_ANNOTATION: &str = "completion";
         const HIGHLIGHT_ANNOTATION: &str = "highlight";
-        // TODO try to match these to newlines
-        // const HORIZON_TOP: usize = 1024 * 32;
-        // const HORIZON_BOTTOM: usize = 1024;
-        const HORIZON_TOP: usize = 0;
-        const HORIZON_BOTTOM: usize = 0;
 
-        // view.start = view.start.saturating_sub(HORIZON_TOP);
-        // view.end = min(ropt.len(), view.end + HORIZON_BOTTOM);
+        // TODO try to match these to newlines
+        const HORIZON_TOP: usize = 1024 * 8;
+        const HORIZON_BOTTOM: usize = 1024;
+        view.start = view.start.saturating_sub(HORIZON_TOP);
+        view.end = min(ropt.len(), view.end + HORIZON_BOTTOM);
 
         let start = view.start;
         let slice = ropt.slice(view);
@@ -102,10 +101,15 @@ impl Syntax {
                 range.end += start;
 
                 let anns = self.grammar.annotations_for(cap.id());
-                let completion = anns.iter().any(|ann| match ann {
-                    Annotation::Other(name, _spec) => name == COMPLETION_ANNOTATION,
-                    _ => false,
-                });
+                let completion = anns
+                    .iter()
+                    .find_map(|ann| match ann {
+                        Annotation::Other(name, cname) if name == COMPLETION_ANNOTATION => {
+                            Some(cname.clone())
+                        }
+                        _ => None,
+                    })
+                    .flatten();
                 let hl = anns.iter().any(|ann| match ann {
                     Annotation::Other(name, _spec) => name == HIGHLIGHT_ANNOTATION,
                     _ => false,
@@ -137,7 +141,7 @@ pub(crate) struct SyntaxParseResult {
 pub(crate) struct Span {
     name: String,
     range: Range<usize>,
-    completion: bool,
+    completion: Option<String>,
     highlight: bool,
 }
 
@@ -152,11 +156,15 @@ impl Span {
 
     /// Wether this span is completion candidate
     pub fn is_completion(&self) -> bool {
-        self.completion
+        self.completion.is_some()
+    }
+
+    pub fn completion_category(&self) -> Option<&str> {
+        self.completion.as_ref().map(|s| s.as_str())
     }
 
     /// Wether this span should be highlighted or not
     pub fn highlight(&self) -> bool {
-        self.highlight || !self.completion
+        self.highlight || !self.is_completion()
     }
 }

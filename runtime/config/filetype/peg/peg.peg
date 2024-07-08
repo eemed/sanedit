@@ -1,8 +1,6 @@
 @whitespaced
 rules = ws (rule / .)* ws;
-
 ws = (_ comment _)*;
-
 WHITESPACE = [ \t\r\n];
 _ = WHITESPACE*;
 
@@ -14,12 +12,23 @@ comment = "#" (!nl .)* nl;
 @whitespaced
 rule = ws (_ annotation)* rule_name "=" def+ ";" ws ;
 
+@completion(rule)
+@highlight
 @show(identifier)
 @whitespaced
-rule_name = id_chars+ &"=";
+rule_name = id_chars+;
 
-@show(constant)
-annotation = "@" [a..zA..Z_-]+ ("(" [a..zA..Z_-]+ ")")?;
+
+@show(preproc)
+annotation = "@" annotation_name ("(" ann_spec ")")?;
+
+@show(type)
+ann_spec = [a..zA..Z_-]+;
+
+@completion(annotation)
+@highlight
+@show(keyword)
+annotation_name = [a..zA..Z_-]+;
 
 @whitespaced
 def = clause (op? clause)*;
@@ -40,6 +49,7 @@ brackets = "[" negate? ("\\" escape_char / [^\]])* "]";
 
 @show(operator)
 negate = "^";
+
 
 @show
 string          = "\"" ("\\" escape_char / [^"])* "\"";

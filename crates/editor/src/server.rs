@@ -25,6 +25,7 @@ pub(crate) const CHANNEL_SIZE: usize = 256;
 pub struct StartOptions {
     pub open_files: Vec<PathBuf>,
     pub config_dir: Option<PathBuf>,
+    pub working_dir: Option<PathBuf>,
 }
 
 /// Editor handle allows us to communicate with the editor

@@ -114,7 +114,6 @@ impl DrawState {
 
         match win.focus() {
             Focus::Search => {
-                log::info!("srch");
                 let current = search::draw(&win.prompt, &win.search, &mut ctx).into();
                 redraw.push(current);
             }

@@ -127,6 +127,12 @@ impl Editor {
                 self.themes = Themes::new(&self.config_dir.theme_dir());
             }
         }
+
+        if let Some(wd) = opts.working_dir.take() {
+            if let Ok(wd) = wd.canonicalize() {
+                let _ = self.change_working_dir(&wd);
+            }
+        }
     }
 
     /// Ran after the startup configuration is complete
@@ -209,7 +215,6 @@ impl Editor {
 
     /// Open a file in window
     pub fn open_file(&mut self, id: ClientId, path: impl AsRef<Path>) -> io::Result<()> {
-        log::info!("OPEN: {:?}", path.as_ref());
         let path = path.as_ref().canonicalize()?;
 
         // Use existing if possible
@@ -336,7 +341,6 @@ impl Editor {
     }
 
     fn redraw_all(&mut self) {
-        log::info!("Redraw all");
         let clients: Vec<ClientId> = self.clients.keys().cloned().collect();
 
         for cid in clients {
@@ -346,7 +350,6 @@ impl Editor {
 
     /// Synchronously recalculates the syntax
     fn recalculate_syntax(&mut self, id: ClientId) {
-        log::info!("recalc sunt");
         if !self.windows.contains(id) {
             return;
         }
@@ -392,7 +395,6 @@ impl Editor {
 
     /// redraw a window
     fn redraw_client(&mut self, id: ClientId) {
-        log::info!("redraw client");
         run(self, id, Hook::OnDrawPre);
 
         let draw = self
@@ -605,6 +607,7 @@ impl Editor {
     }
 
     pub fn change_working_dir(&mut self, path: &Path) -> anyhow::Result<()> {
+        log::info!("set wd");
         std::env::set_current_dir(path)?;
         self.working_dir = path.into();
         self.filetree = Filetree::new(&self.working_dir);

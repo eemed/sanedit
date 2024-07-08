@@ -24,9 +24,7 @@ fn remove_grapheme_after_cursor(editor: &mut Editor, id: ClientId) {
 fn remove_grapheme_before_cursor(editor: &mut Editor, id: ClientId) {
     run(editor, id, Hook::RemovePre);
     let (win, buf) = editor.win_buf_mut(id);
-    log::info!("rem bef");
     win.remove_grapheme_before_cursors(buf);
-    log::info!("rem bef done: {:?}\n{:?}", win.cursors(), win.view());
     run(editor, id, Hook::BufChanged);
 }
 

@@ -20,8 +20,13 @@ struct Cli {
     #[arg(short, long)]
     debug: bool,
 
-    #[arg(value_name = "DIRECTORY")]
+    /// Set configuration directory
+    #[arg(short, long, value_name = "DIRECTORY")]
     config_dir: Option<PathBuf>,
+
+    /// Set working directory
+    #[arg(short, long, value_name = "DIRECTORY")]
+    working_dir: Option<PathBuf>,
 }
 
 fn main() {
@@ -30,9 +35,11 @@ fn main() {
     let cli = Cli::parse();
     let open_files = cli.file.clone().map(|f| vec![f]).unwrap_or(vec![]);
     let config_dir = cli.config_dir.clone();
+    let working_dir = cli.working_dir.clone();
     let start_opts = StartOptions {
         open_files,
         config_dir,
+        working_dir,
     };
 
     let socket = PathBuf::from("/tmp/sanedit.sock");

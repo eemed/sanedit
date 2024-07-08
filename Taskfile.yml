@@ -36,7 +36,7 @@ tasks:
     deps: [flamegraph:prepare, install-pre-commit-hook]
     cmds:
       - rm -rf perf.data* flamegraph.svg
-      - cargo flamegraph --profile perf --verbose --bin sane -- -- --config-dir ../runtime/config
+      - cargo flamegraph --profile perf --verbose --bin sane -- --config-dir ../runtime/config
 
   flamegraph:prepare:
     desc: Prepare to capture using perf
@@ -49,7 +49,7 @@ tasks:
     deps: [install-pre-commit-hook]
     cmds:
       - rm -rf /tmp/sanedit.sock
-      - cargo run -- -- --config-dir ../runtime/config
+      - cargo run -- --config-dir ../runtime/config --working-dir ..
     env:
       RUST_BACKTRACE: 1
 

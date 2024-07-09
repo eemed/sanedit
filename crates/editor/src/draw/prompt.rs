@@ -11,6 +11,7 @@ pub(crate) fn draw(prompt: &Prompt, ctx: &mut DrawContext) -> redraw::Prompt {
     let offset = &mut ctx.state.prompt_scroll_offset;
     *offset = {
         let selected = prompt.selected_pos().unwrap_or(0);
+        log::info!("offset: {offset}, selected: {selected}");
         if selected >= *offset + compl_count {
             // Make selected the bottom most completion, +1 to actually show
             // the selected completion
@@ -19,6 +20,7 @@ pub(crate) fn draw(prompt: &Prompt, ctx: &mut DrawContext) -> redraw::Prompt {
             cmp::min(*offset, selected)
         }
     };
+    log::info!("new offset: {}", offset);
     ctx.state.last_prompt = Some(prompt.message().to_string());
 
     let msg = prompt.message().to_string();

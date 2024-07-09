@@ -11,7 +11,7 @@ use sanedit_parser::Annotation;
 use tokio::sync::broadcast;
 
 use crate::{
-    common::dirs::ConfigDirectory,
+    common::{dirs::ConfigDirectory, movement::prev_line},
     editor::buffers::{BufferId, Filetype},
 };
 
@@ -85,6 +85,9 @@ impl Syntax {
         // TODO try to match these to newlines
         const HORIZON_TOP: usize = 1024 * 8;
         const HORIZON_BOTTOM: usize = 1024;
+        // prev_line_start(view.start)
+        // next_line_start(view.start)
+
         view.start = view.start.saturating_sub(HORIZON_TOP);
         view.end = min(ropt.len(), view.end + HORIZON_BOTTOM);
 

@@ -1,7 +1,5 @@
 document        = (ws (key_group / string / .))* !.;
-
 key_group       = header_line? value_line+ ignore;
-
 header_line     = ignore "["+ key_name "]"+ line_end;
 
 @show(identifier)
@@ -21,7 +19,7 @@ string    = "\"" compl_string "\"";
 
 @show(string)
 @completion
-compl_string    = ("\\" escape_char / [^"])*;
+compl_string    = ("\\" escape_char / [^"\n])*;
 
 escape_char     = "0" / "t" / "n" / "r" / "\"" / "\\";
 digit           = [0..9];

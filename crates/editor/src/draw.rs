@@ -78,7 +78,7 @@ impl DrawState {
             || self
                 .last_prompt
                 .as_ref()
-                .map(|p| p == win.prompt.message())
+                .map(|p| p != win.prompt.message())
                 .unwrap_or(false)
         {
             self.prompt_scroll_offset = 0;

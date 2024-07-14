@@ -4,8 +4,10 @@ use sanedit_buffer::{Searcher, SearcherRev};
 
 use crate::{
     actions::jobs,
+    common::search::PTSearcher,
     editor::{
-        windows::{Focus, HistoryKind, Prompt, SearchDirection},
+        keymap::KeymapKind,
+        windows::{Focus, HistoryKind, Prompt, SearchDirection, SearchKind},
         Editor,
     },
     server::ClientId,
@@ -16,7 +18,11 @@ fn async_view_matches(editor: &mut Editor, id: ClientId, term: &str) {
     let (win, buf) = editor.win_buf_mut(id);
     let pt = buf.read_only_copy();
     let view = win.view().range();
-    let job = jobs::Search::forward(id, term, pt, view);
+    let dir = win.search.direction;
+    let kind = win.search.kind;
+
+    log::info!("Kind: {kind:?}");
+    let job = jobs::Search::new(id, term, pt, view, dir, kind);
     editor.job_broker.request(job);
 }
 
@@ -27,6 +33,7 @@ fn forward(editor: &mut Editor, id: ClientId) {
     win.prompt = Prompt::builder()
         .prompt("Search")
         .history(HistoryKind::Search)
+        .keymap(KeymapKind::Search)
         .on_confirm(search)
         .on_input(async_view_matches)
         .build();
@@ -39,6 +46,7 @@ fn backward(editor: &mut Editor, id: ClientId) {
     win.search.direction = SearchDirection::Backward;
     win.prompt = Prompt::builder()
         .history(HistoryKind::Search)
+        .keymap(KeymapKind::Search)
         .prompt("Backward search")
         .on_confirm(search)
         .on_input(async_view_matches)
@@ -81,6 +89,15 @@ fn prev_match(editor: &mut Editor, id: ClientId) {
     *dir = dir.reverse();
 }
 
+#[action("Toggle regex search")]
+fn toggle_regex(editor: &mut Editor, id: ClientId) {
+    let (win, _buf) = editor.win_buf_mut(id);
+    win.search.kind = match win.search.kind {
+        SearchKind::Regex => SearchKind::Smart,
+        _ => SearchKind::Regex,
+    };
+}
+
 fn search(editor: &mut Editor, id: ClientId, input: &str) {
     let (win, _buf) = editor.win_buf_mut(id);
     let cpos = win.cursors.primary().pos();
@@ -106,9 +123,10 @@ fn search_impl(editor: &mut Editor, id: ClientId, input: &str, mut pos: usize) {
         }
     }
 
-    let (slice, mat, wrap) = match win.search.direction {
+    let Ok(searcher) = PTSearcher::new(input, win.search.direction, win.search.kind) else { return };
+
+    let (start, mat, wrap) = match win.search.direction {
         SearchDirection::Forward => {
-            let searcher = Searcher::new(input.as_bytes());
             let blen = buf.len();
             let slice = buf.slice(pos..);
             let mut iter = searcher.find_iter(&slice);
@@ -116,42 +134,41 @@ fn search_impl(editor: &mut Editor, id: ClientId, input: &str, mut pos: usize) {
 
             // Wrap if no match
             if mat.is_none() {
-                let last = min(blen, pos + searcher.pattern_len() - 1);
+                let last = min(blen, pos + input.len() - 1);
                 let slice = buf.slice(..last);
                 let mut iter = searcher.find_iter(&slice);
                 let mat = iter.next();
-                (slice, mat, true)
+                (slice.start(), mat, true)
             } else {
-                (slice, mat, false)
+                (slice.start(), mat, false)
             }
         }
         SearchDirection::Backward => {
-            let searcher = SearcherRev::new(input.as_bytes());
             let slice = buf.slice(..pos);
             let mut iter = searcher.find_iter(&slice);
             let mat = iter.next();
 
             // Wrap if no match
             if mat.is_none() {
-                let first = pos.saturating_sub(searcher.pattern_len() - 1);
+                let first = pos.saturating_sub(input.len() - 1);
                 let slice = buf.slice(first..);
                 let mut iter = searcher.find_iter(&slice);
                 let mat = iter.next();
-                (slice, mat, true)
+                (slice.start(), mat, true)
             } else {
-                (slice, mat, false)
+                (slice.start(), mat, false)
             }
         }
     };
 
     match mat {
         Some(mut mat) => {
-            mat.start += slice.start();
-            mat.end += slice.start();
+            mat.range.start += start;
+            mat.range.end += start;
 
             let cursor = win.primary_cursor_mut();
-            cursor.goto(mat.start);
-            win.search.cmatch = Some(mat);
+            cursor.goto(mat.range.start);
+            win.search.cmatch = Some(mat.range);
 
             if wrap {
                 if win.search.direction == SearchDirection::Forward {

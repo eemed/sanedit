@@ -142,9 +142,7 @@ impl DefaultKeyMappings {
             "up",           prompt::history_prev,
             "down",         prompt::history_next,
 
-            "ctrl+enter",   search::confirm_all,
-            "alt+enter",    search::confirm_all,
-
+            "ctrl+r",        search::toggle_regex,
              // "ctrl+s", search::toggle_select,
         );
 

@@ -7,6 +7,7 @@ pub(crate) mod matcher;
 pub(crate) mod movement;
 pub(crate) mod pairs;
 pub(crate) mod range;
+pub(crate) mod search;
 pub(crate) mod text;
 pub(crate) mod text_objects;
 pub(crate) mod window;

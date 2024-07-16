@@ -95,6 +95,7 @@ fn toggle_regex(editor: &mut Editor, id: ClientId) {
     };
 }
 
+/// Execute a search from primary cursor position
 fn search(editor: &mut Editor, id: ClientId, input: &str) {
     let (win, _buf) = editor.win_buf_mut(id);
     let cpos = win.cursors.primary().pos();
@@ -103,6 +104,11 @@ fn search(editor: &mut Editor, id: ClientId, input: &str) {
     search_impl(editor, id, input, cpos);
 }
 
+/// Execute the search for input at position pos
+///
+/// The potential match is reported to win.search.current_match
+/// If no match is found current match is set to None
+///
 fn search_impl(editor: &mut Editor, id: ClientId, input: &str, mut pos: usize) {
     let (win, buf) = editor.win_buf_mut(id);
     if input.is_empty() {

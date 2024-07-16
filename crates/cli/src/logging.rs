@@ -3,7 +3,7 @@ use std::panic;
 
 use log::LevelFilter;
 use log4rs::append::file::FileAppender;
-use log4rs::config::{Appender, Config, Root};
+use log4rs::config::{Appender, Config, Logger, Root};
 use log4rs::encode::pattern::PatternEncoder;
 
 const LOG_FILE: &str = "/tmp/sanedit.log";
@@ -41,6 +41,7 @@ pub fn setup() {
 
     let config = Config::builder()
         .appender(Appender::builder().build("file-appender", Box::new(file_appender)))
+        .logger(Logger::builder().build("regex_cursor", LevelFilter::Off))
         .build(Root::builder().appender("file-appender").build(LOG_LEVEL))
         .unwrap();
 

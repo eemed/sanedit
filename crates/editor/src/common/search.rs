@@ -2,6 +2,10 @@ use std::ops::Range;
 
 use regex_cursor::{
     engines::meta::{FindMatches, Regex},
+    regex_automata::{
+        hybrid::dfa::{Cache, DFA},
+        nfa::thompson,
+    },
     Cursor, Input,
 };
 use sanedit_buffer::{
@@ -11,9 +15,17 @@ use sanedit_buffer::{
 use crate::editor::windows::{SearchDirection, SearchKind};
 
 pub(crate) enum PTSearcher {
-    Regex(Regex),
-    Forward(Searcher),
-    Backwards(SearcherRev),
+    /// Regex search
+    RegexFwd(Regex),
+
+    /// Backwards regex search
+    RegexBwd { bwd: DFA, fwd: DFA },
+
+    /// Forward search
+    Fwd(Searcher),
+
+    /// Backwards search
+    Bwd(SearcherRev),
 }
 
 impl PTSearcher {
@@ -21,43 +33,64 @@ impl PTSearcher {
         use SearchDirection::*;
         use SearchKind::*;
         match (dir, kind) {
-            (Forward, Regex) => Self::regex(term),
-            (Backward, Regex) => todo!("Just search fwd and yield backwards?"),
-            (Forward, _) => Ok(Self::forward(term)),
-            (Backward, _) => Ok(Self::backward(term)),
+            (Forward, Regex) => Self::regex_fwd(term),
+            (Backward, Regex) => Self::regex_bwd(term),
+            (Forward, _) => Ok(Self::fwd(term)),
+            (Backward, _) => Ok(Self::bwd(term)),
         }
     }
 
-    fn forward(term: &str) -> PTSearcher {
+    fn fwd(term: &str) -> PTSearcher {
         let searcher = Searcher::new(term.as_bytes());
-        PTSearcher::Forward(searcher)
+        PTSearcher::Fwd(searcher)
     }
 
-    fn backward(term: &str) -> PTSearcher {
+    fn bwd(term: &str) -> PTSearcher {
         let searcher = SearcherRev::new(term.as_bytes());
-        PTSearcher::Backwards(searcher)
+        PTSearcher::Bwd(searcher)
     }
 
-    fn regex(term: &str) -> anyhow::Result<PTSearcher> {
+    fn regex_fwd(term: &str) -> anyhow::Result<PTSearcher> {
         let searcher = Regex::new(term)?;
-        Ok(PTSearcher::Regex(searcher))
+        Ok(PTSearcher::RegexFwd(searcher))
+    }
+
+    fn regex_bwd(term: &str) -> anyhow::Result<PTSearcher> {
+        let dfa_fwd = DFA::builder()
+            .thompson(thompson::Config::new())
+            .build(term)?;
+        let dfa_bwd = DFA::builder()
+            .thompson(thompson::Config::new().reverse(true))
+            .build(term)?;
+        Ok(PTSearcher::RegexBwd {
+            bwd: dfa_bwd,
+            fwd: dfa_fwd,
+        })
     }
 
     pub fn find_iter<'a, 'b: 'a>(&'a self, slice: &'b PieceTreeSlice) -> MatchIter<'a, 'b> {
         match self {
-            PTSearcher::Regex(r) => {
-                let len = slice.len();
-                let chunks = slice.chunks();
-                let chunk = chunks.get();
-                let input = Input::new(PTRegexCursor { len, chunks, chunk });
+            PTSearcher::RegexFwd(r) => {
+                let input = to_input(slice);
                 let iter = r.find_iter(input);
                 MatchIter::Regex(iter)
             }
-            PTSearcher::Forward(s) => {
+            PTSearcher::RegexBwd { bwd, fwd } => {
+                let bwd_cache = bwd.create_cache();
+                let fwd_cache = fwd.create_cache();
+                MatchIter::RegexBwd {
+                    fwd,
+                    bwd,
+                    fwd_cache,
+                    bwd_cache,
+                    slice: slice.clone(),
+                }
+            }
+            PTSearcher::Fwd(s) => {
                 let iter = s.find_iter(slice);
                 MatchIter::Forward(iter)
             }
-            PTSearcher::Backwards(s) => {
+            PTSearcher::Bwd(s) => {
                 let iter = s.find_iter(slice);
                 MatchIter::Backwards(iter)
             }
@@ -77,6 +110,13 @@ impl SearchMatch {
 }
 
 pub(crate) enum MatchIter<'a, 'b> {
+    RegexBwd {
+        fwd: &'a DFA,
+        fwd_cache: Cache,
+        bwd: &'a DFA,
+        bwd_cache: Cache,
+        slice: PieceTreeSlice<'b>,
+    },
     Regex(FindMatches<'a, PTRegexCursor<'b>>),
     Forward(SearchIter<'a, 'b>),
     Backwards(SearchIterRev<'a, 'b>),
@@ -105,8 +145,55 @@ impl<'a, 'b> Iterator for MatchIter<'a, 'b> {
                     range: next.start..next.end,
                 })
             }
+            MatchIter::RegexBwd { .. } => match self.regex_bwd_next() {
+                Some(mat) => {
+                    let MatchIter::RegexBwd { slice, .. } = self else { unreachable!() };
+                    *slice = slice.slice(..mat.range.start);
+                    Some(mat)
+                }
+                None => {
+                    let MatchIter::RegexBwd { slice, .. } = self else { unreachable!() };
+                    *slice = slice.slice(0..0);
+                    None
+                }
+            },
         }
     }
+}
+
+impl<'a, 'b> MatchIter<'a, 'b> {
+    fn regex_bwd_next(&mut self) -> Option<SearchMatch> {
+        let MatchIter::RegexBwd { fwd, bwd, fwd_cache, bwd_cache, slice } = self else { unreachable!("Called regex_bwd_next without being the variant") };
+
+        // Find the start position of the match
+        let mut input = to_input(slice);
+        let start = regex_cursor::engines::hybrid::try_search_rev(bwd, bwd_cache, &mut input)
+            .ok()
+            .flatten()?;
+        let off = start.offset();
+
+        // Find the end position of the match
+        let match_slice = slice.slice(off..);
+        let mut finput = to_input(&match_slice);
+        let end = regex_cursor::engines::hybrid::try_search_fwd(fwd, fwd_cache, &mut finput)
+            .ok()
+            .flatten()?;
+        let end_off = end.offset();
+
+        let slice_start = slice.start() + off;
+        let slice_end = slice_start + end_off;
+
+        Some(SearchMatch {
+            range: slice_start..slice_end,
+        })
+    }
+}
+
+fn to_input<'s>(slice: &'s PieceTreeSlice) -> Input<PTRegexCursor<'s>> {
+    let len = slice.len();
+    let chunks = slice.chunks();
+    let chunk = chunks.get();
+    Input::new(PTRegexCursor { len, chunks, chunk })
 }
 
 pub(crate) struct PTRegexCursor<'a> {

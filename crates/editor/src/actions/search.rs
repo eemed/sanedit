@@ -1,7 +1,5 @@
 use std::cmp::min;
 
-use sanedit_buffer::{Searcher, SearcherRev};
-
 use crate::{
     actions::jobs,
     common::search::PTSearcher,
@@ -21,7 +19,6 @@ fn async_view_matches(editor: &mut Editor, id: ClientId, term: &str) {
     let dir = win.search.direction;
     let kind = win.search.kind;
 
-    log::info!("Kind: {kind:?}");
     let job = jobs::Search::new(id, term, pt, view, dir, kind);
     editor.job_broker.request(job);
 }
@@ -123,7 +120,7 @@ fn search_impl(editor: &mut Editor, id: ClientId, input: &str, mut pos: usize) {
         }
     }
 
-    let Ok(searcher) = PTSearcher::new(input, win.search.direction, win.search.kind) else { return };
+    let Ok(mut searcher) = PTSearcher::new(input, win.search.direction, win.search.kind) else { return };
 
     let (start, mat, wrap) = match win.search.direction {
         SearchDirection::Forward => {

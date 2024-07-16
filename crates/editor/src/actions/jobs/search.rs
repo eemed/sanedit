@@ -130,7 +130,7 @@ impl Search {
 
     async fn search(
         msend: Sender<Vec<Range<usize>>>,
-        searcher: PTSearcher,
+        mut searcher: PTSearcher,
         ropt: ReadOnlyPieceTree,
         view: Range<usize>,
     ) {

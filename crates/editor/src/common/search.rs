@@ -145,6 +145,8 @@ impl<'a, 'b> Iterator for MatchIter<'a, 'b> {
                     range: next.start..next.end,
                 })
             }
+            // Find next match and update slice to not search the same thing
+            // again
             MatchIter::RegexBwd { .. } => match self.regex_bwd_next() {
                 Some(mat) => {
                     let MatchIter::RegexBwd { slice, .. } = self else { unreachable!() };

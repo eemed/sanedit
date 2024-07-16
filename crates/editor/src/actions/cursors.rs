@@ -1,9 +1,9 @@
-use sanedit_buffer::Searcher;
 use sanedit_messages::redraw::Point;
 
 use crate::{
     common::{
         movement::{end_of_line, next_line, prev_line, start_of_line},
+        search::PTSearcher,
         window::pos_at_point,
     },
     editor::{hooks::Hook, windows::Cursor, Editor},
@@ -31,22 +31,23 @@ fn new_prev_line(editor: &mut Editor, id: ClientId) {
 #[action("Create a new cursor on the next search match")]
 fn new_to_next_search_match(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
-    let last_search = &win.search.last_search;
+    let Some(last_search) = win.search.last_search() else { return; };
     let ppos = win.cursors.primary().pos();
 
-    let searcher = Searcher::new(last_search.as_bytes());
+    let Ok(searcher) = PTSearcher::new(&last_search.term, last_search.dir, last_search.kind) else { return; };
     let slice = buf.slice(ppos..);
     let mut iter = searcher.find_iter(&slice);
-    if let Some(mut mat) = iter.next() {
-        mat.start += ppos;
-        mat.end += ppos;
+    if let Some(mat) = iter.next() {
+        let mut range = mat.range();
+        range.start += ppos;
+        range.end += ppos;
 
         let selecting = win.primary_cursor().selection().is_some();
         if selecting {
-            win.cursors.push_primary(Cursor::new_select(&mat));
+            win.cursors.push_primary(Cursor::new_select(&range));
         } else {
             let cursor = win.cursors.primary_mut();
-            *cursor = Cursor::new_select(&mat);
+            *cursor = Cursor::new_select(&range);
         }
     }
 }
@@ -56,23 +57,23 @@ fn new_to_all_search_matches(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     // win.cursors.remove_secondary_cursors();
 
-    let last_search = &win.search.last_search;
-    if last_search.is_empty() {
+    let Some(last_search) = win.search.last_search() else {
         win.warn_msg("No last search term");
         return;
-    }
+    };
 
-    let searcher = Searcher::new(last_search.as_bytes());
+    let Ok(searcher) = PTSearcher::new(&last_search.term, last_search.dir, last_search.kind) else { return; };
     let slice = buf.slice(..);
     let mut iter = searcher.find_iter(&slice);
 
     while let Some(mat) = iter.next() {
+        let range = mat.range();
         let selecting = win.primary_cursor().selection().is_some();
         if selecting {
-            win.cursors.push_primary(Cursor::new_select(&mat));
+            win.cursors.push_primary(Cursor::new_select(&range));
         } else {
             let cursor = win.cursors.primary_mut();
-            *cursor = Cursor::new_select(&mat);
+            *cursor = Cursor::new_select(&range);
         }
     }
 }

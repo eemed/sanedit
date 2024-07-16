@@ -59,22 +59,22 @@ fn confirm_all(_editor: &mut Editor, _id: ClientId) {
 #[action("Clear match highlighting")]
 fn clear_matches(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
-    win.search.cmatch = None;
+    win.search.current_match = None;
     win.search.hl_matches.clear();
 }
 
 #[action("Goto next match")]
 fn next_match(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
-    let input = win.search.last_search.clone();
+    let Some(input) = win.search.last_search_term().map(String::from) else { return; };
     search(editor, id, &input);
 }
 
 #[action("Goto previous match")]
 fn prev_match(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
-    let input = win.search.last_search.clone();
 
+    let Some(input) = win.search.last_search_term().map(String::from) else { return; };
     // search to opposite direction
     let dir = &mut win.search.direction;
     *dir = dir.reverse();
@@ -98,7 +98,7 @@ fn toggle_regex(editor: &mut Editor, id: ClientId) {
 fn search(editor: &mut Editor, id: ClientId, input: &str) {
     let (win, _buf) = editor.win_buf_mut(id);
     let cpos = win.cursors.primary().pos();
-    win.search.last_search = input.into();
+    win.search.save_last_search(input.into());
 
     search_impl(editor, id, input, cpos);
 }
@@ -106,21 +106,25 @@ fn search(editor: &mut Editor, id: ClientId, input: &str) {
 fn search_impl(editor: &mut Editor, id: ClientId, input: &str, mut pos: usize) {
     let (win, buf) = editor.win_buf_mut(id);
     if input.is_empty() {
-        win.search.cmatch = None;
         return;
     }
 
     // If previous match move to the appropriate position
-    if let Some(ref cmat) = win.search.cmatch {
-        if cmat.contains(&pos) {
+    if let Some(last_match) = win
+        .search
+        .last_search()
+        .map(|ls| ls.current_match.as_ref())
+        .flatten()
+    {
+        if last_match.contains(&pos) {
             match win.search.direction {
-                SearchDirection::Backward => pos = cmat.start,
-                SearchDirection::Forward => pos = cmat.end,
+                SearchDirection::Backward => pos = last_match.start,
+                SearchDirection::Forward => pos = last_match.end,
             }
         }
     }
 
-    let Ok(mut searcher) = PTSearcher::new(input, win.search.direction, win.search.kind) else { return };
+    let Ok(searcher) = PTSearcher::new(input, win.search.direction, win.search.kind) else { return };
 
     let (start, mat, wrap) = match win.search.direction {
         SearchDirection::Forward => {
@@ -165,7 +169,8 @@ fn search_impl(editor: &mut Editor, id: ClientId, input: &str, mut pos: usize) {
 
             let cursor = win.primary_cursor_mut();
             cursor.goto(mat.range.start);
-            win.search.cmatch = Some(mat.range);
+
+            win.search.current_match = Some(mat.range);
 
             if wrap {
                 if win.search.direction == SearchDirection::Forward {
@@ -178,6 +183,7 @@ fn search_impl(editor: &mut Editor, id: ClientId, input: &str, mut pos: usize) {
             win.view_to_cursor(buf);
         }
         None => {
+            win.search.current_match = None;
             win.warn_msg("No match found.");
         }
     }

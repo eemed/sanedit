@@ -39,6 +39,7 @@ use crate::draw::EditorContext;
 use crate::editor::buffers::Buffer;
 use crate::editor::hooks::Hook;
 use crate::editor::keymap::KeymapResult;
+use crate::editor::options::Config;
 use crate::editor::windows::Focus;
 use crate::events::ToEditor;
 use crate::job_runner::spawn_job_runner;
@@ -132,6 +133,17 @@ impl Editor {
             if let Ok(wd) = wd.canonicalize() {
                 let _ = self.change_working_dir(&wd);
             }
+        }
+
+        // TODO
+        match options::read_config(&self.config_dir.config()) {
+            Ok(toml) => {
+                log::info!("Ok: {toml:?}");
+
+                let Config { editor } = toml;
+                self.options = editor;
+            }
+            Err(e) => log::error!("ERROR reading config: {e}"),
         }
     }
 
@@ -607,7 +619,6 @@ impl Editor {
     }
 
     pub fn change_working_dir(&mut self, path: &Path) -> anyhow::Result<()> {
-        log::info!("set wd");
         std::env::set_current_dir(path)?;
         self.working_dir = path.into();
         self.filetree = Filetree::new(&self.working_dir);

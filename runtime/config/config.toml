@@ -1,0 +1,3 @@
+[editor]
+big_file_threshold_bytes = 100
+ignore_directories = [".git"]

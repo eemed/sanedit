@@ -1,8 +1,10 @@
+use serde::Deserialize;
+
 use std::cmp::min;
 
 use sanedit_buffer::{utf8::prev_eol, Bytes, PieceTreeSlice};
 
-#[derive(Debug, Eq, PartialEq, Hash, Copy, Clone)]
+#[derive(Debug, Eq, PartialEq, Hash, Copy, Clone, Deserialize)]
 #[repr(u8)]
 pub(crate) enum IndentKind {
     Space = b' ',
@@ -18,7 +20,7 @@ impl IndentKind {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]
+#[derive(Debug, PartialEq, Eq, Hash, Copy, Clone, Deserialize)]
 pub(crate) struct Indent {
     pub(crate) n: usize,
     pub(crate) kind: IndentKind,

@@ -13,6 +13,7 @@ const TMP_DIR: &str = "tmp";
 pub(crate) const SANE_DIR: &str = "sane";
 pub(crate) const FILETYPE_DIR: &str = "filetype";
 pub(crate) const THEME_DIR: &str = "themes";
+pub(crate) const CONFIG: &str = "config.toml";
 
 #[derive(Debug)]
 pub(crate) struct ConfigDirectory {
@@ -33,6 +34,12 @@ impl ConfigDirectory {
     pub fn theme_dir(&self) -> PathBuf {
         let mut base = self.dir.clone();
         base.push(THEME_DIR);
+        base
+    }
+
+    pub fn config(&self) -> PathBuf {
+        let mut base = self.dir.clone();
+        base.push(CONFIG);
         base
     }
 }

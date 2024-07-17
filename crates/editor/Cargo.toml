@@ -42,5 +42,6 @@ unicode-segmentation = "1.9"
 which = "5.0.0"
 
 toml = "0.8"
+serde = { version = "1.0", features = ["derive"] }
 
 regex-cursor = { version = "0.1", features = ["perf-inline"] }

@@ -1,4 +1,4 @@
-document = (comment / keyword / constant / unsafe / .)*;
+document = (comment / keyword / constant / unsafe / string / char / .)*;
 
 visibility = "pub(crate)" / "pub(super)" / "pub";
 
@@ -6,7 +6,14 @@ visibility = "pub(crate)" / "pub(super)" / "pub";
 keyword = start ("let" / "as" / "match" / "if" / "else" / "while" / "break" / "move") end;
 
 @show(keyword)
-constant = start (visibility / "mod" / "use" / "fn" / "impl") end;
+constant = start (visibility / "mod" / "use" / "fn" / "impl" / "struct" / "enum" / "const") end;
+
+@show(string)
+char = "'" . "'";
+@show
+string    = "\"" compl_string "\"";
+compl_string    = ("\\" escape_char / [^"\n])*;
+escape_char     = "0" / "t" / "n" / "r" / "\"" / "\\";
 
 start = WHITESPACE;
 end = &(WHITESPACE / ";");

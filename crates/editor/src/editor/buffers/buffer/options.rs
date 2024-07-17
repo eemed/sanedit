@@ -1,8 +1,15 @@
+use serde::Deserialize;
+
 use sanedit_buffer::utf8::EndOfLine;
 
-use crate::common::indent::{Indent, IndentKind};
+use crate::common::indent::Indent;
 
-#[derive(Debug)]
+fn eol_serializer() -> String {
+    todo!()
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(default)]
 pub(crate) struct Options {
     pub(crate) eol: EndOfLine,
     /// How many spaces for a tab character, note that tab does not always have

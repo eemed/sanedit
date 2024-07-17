@@ -1,4 +1,9 @@
-#[derive(Debug)]
+use std::{env, fs, io, path::Path};
+
+use serde::Deserialize;
+
+#[derive(Debug, Deserialize)]
+#[serde(default)]
 pub(crate) struct Options {
     /// When filesize is over this threshold it is considered big
     pub big_file_threshold_bytes: u64,
@@ -27,22 +32,48 @@ impl Options {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default, Deserialize)]
 pub(crate) struct ProjectOptions {
+    #[serde(default)]
     pub build_command: String,
+
+    #[serde(default)]
     pub run_command: String,
+
+    #[serde(default)]
     pub ignore_directories: Vec<String>,
 }
 
-impl Default for ProjectOptions {
-    fn default() -> Self {
-        ProjectOptions {
-            build_command: "task build".into(),
-            run_command: "task run".into(),
-            ignore_directories: vec![".git", "target"]
-                .into_iter()
-                .map(String::from)
-                .collect(),
+#[derive(Debug, Deserialize)]
+pub(crate) struct Config {
+    pub editor: Options,
+}
+
+pub(crate) const PROJECT_CONFIG: &str = "sanedit-project.toml";
+
+pub(crate) fn read_config(config: &Path) -> anyhow::Result<Config> {
+    let mut config = read_toml::<Config>(config)?;
+
+    let mut project_path = env::current_dir()?;
+    project_path.push(PROJECT_CONFIG);
+
+    match read_toml::<ProjectOptions>(&project_path) {
+        Ok(pc) => config.editor.project = pc,
+        Err(e) => {
+            log::error!("Failed to read project settings: {e}");
         }
     }
+
+    Ok(config)
+}
+
+fn read_toml<T: serde::de::DeserializeOwned>(toml: &Path) -> anyhow::Result<T> {
+    use io::Read;
+
+    let mut file = fs::File::open(toml)?;
+    let mut content = String::new();
+    file.read_to_string(&mut content)?;
+
+    let toml = toml::from_str::<T>(&content)?;
+    Ok(toml)
 }

@@ -7,7 +7,7 @@ use crate::editor::windows::Prompt;
 use super::DrawContext;
 
 pub(crate) fn draw(prompt: &Prompt, ctx: &mut DrawContext) -> redraw::Prompt {
-    let compl_count = ctx.editor.win.options.prompt_completions;
+    let compl_count = ctx.editor.win.options.max_prompt_completions;
     let offset = &mut ctx.state.prompt_scroll_offset;
     *offset = {
         let selected = prompt.selected_pos().unwrap_or(0);

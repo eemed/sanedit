@@ -1,5 +1,6 @@
 pub(crate) mod buffers;
 pub(crate) mod clipboard;
+pub(crate) mod config;
 pub(crate) mod filetree;
 pub(crate) mod hooks;
 pub(crate) mod job_broker;

@@ -1,3 +1,69 @@
+#
+# Sanedit configuration
+#
+# Configuration can be overridden using a sanedit-project.toml file in project
+# root. The file should be in the same format as this one and only found
+# configuration will be overridden.
+
 [editor]
+# Byte threshold when a file should be considered large and not loaded into memory
 big_file_threshold_bytes = 100
+# Ignore directories, will not be shown in filetree or open file dialog
 ignore_directories = [".git"]
+
+# Shell command to build the project
+build_command = ""
+
+# Shell command to run the project
+run_command = ""
+
+[window]
+# Maximum amount of prompt completions to show
+max_prompt_completions = 10
+
+# Maximum amount of completions to show
+max_completions = 10
+
+# TODO implement
+# Use EOL detection when opening a new buffer
+# Overrides file configuration
+detect_eol = true
+
+# TODO implement
+# Use indent detection when opening a new buffer
+# Overrides file configuration
+detect_indent = true
+
+[file]
+# Default EOL, overridden if detect_eol is set
+# Available options:
+#
+# LF: Line Feed, U+000A (UTF-8 in hex: 0A)
+# VT: Vertical Tab, U+000B (UTF-8 in hex: 0B)
+# FF: Form Feed, U+000C (UTF-8 in hex: 0C)
+# CR: Carriage Return, U+000D (UTF-8 in hex: 0D)
+# CRLF: CR (U+000D) followed by LF (U+000A) (UTF-8 in hex: 0D 0A)
+# NEL: Next Line, U+0085 (UTF-8 in hex: C2 85)
+# LS: Line Separator, U+2028 (UTF-8 in hex: E2 80 A8)
+# PS: Paragraph Separator, U+2029 (UTF-8 in hex: E2 80 A9)
+eol = "LF"
+
+# How long a tab character should be visually
+tabstop = 8
+
+# Indent options, overridden if detect_indent is set
+# Available options:
+# space: use spaces
+# tab: use tabs
+indent_kind = "space"
+
+# How many spaces to use for indenting if using spaces
+indent_count = 4
+
+#
+# Filetype overrides
+[filetype.rust]
+patterns = ["*.rs"]
+
+[filetype.toml]
+patterns = ["Cargo.lock"]

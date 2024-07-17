@@ -22,7 +22,10 @@ impl IndentKind {
 
 #[derive(Debug, PartialEq, Eq, Hash, Copy, Clone, Deserialize)]
 pub(crate) struct Indent {
+    #[serde(rename = "indent_count")]
     pub(crate) n: usize,
+
+    #[serde(rename = "indent")]
     pub(crate) kind: IndentKind,
 }
 

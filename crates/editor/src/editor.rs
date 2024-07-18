@@ -210,19 +210,20 @@ impl Editor {
         self.clients.insert(handle.id, handle);
     }
 
-    /// Open a buffer in window
-    fn open_buffer(&mut self, id: ClientId, bid: BufferId) {
-        let (win, _) = self.win_buf_mut(id);
+    /// Open an existing buffer in a window
+    pub fn open_buffer(&mut self, id: ClientId, bid: BufferId) {
+        let (win, buf) = self.win_buf_mut(id);
         // TODO check if buffer is not saved and what to do if it is not, prompt
         // save or auto save?
 
         let old = win.open_buffer(bid);
-        // Remove if unused
+        let is_modified = buf.is_modified();
         let is_used = self
             .windows
             .iter()
             .any(|(_, win)| win.buffer_id() == old || win.prev_buffer_id() == Some(old));
-        if !is_used {
+
+        if !is_modified && !is_used {
             self.buffers.remove(old);
         }
 

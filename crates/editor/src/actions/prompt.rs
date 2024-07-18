@@ -3,6 +3,7 @@ mod commands;
 use std::{cmp::min, path::PathBuf, sync::Arc};
 
 use sanedit_messages::ClientMessage;
+use sanedit_utils::idmap::{AsID, ID};
 
 use crate::{
     actions::jobs::FileOptionProvider,
@@ -110,7 +111,7 @@ fn open_buffer(editor: &mut Editor, id: ClientId) {
     let buffers: Vec<String> = editor
         .buffers()
         .iter()
-        .map(|(id, buf)| format!("{:?}: {}", id, buf.name()))
+        .map(|(bid, buf)| format!("{}: {}", bid.id(), buf.name()))
         .collect();
     let job = MatcherJob::builder(id)
         .options(Arc::new(buffers))
@@ -122,13 +123,12 @@ fn open_buffer(editor: &mut Editor, id: ClientId) {
     win.prompt = Prompt::builder()
         .prompt(PROMPT_MESSAGE)
         .on_confirm(move |editor, id, input| {
-            log::info!("input: {input}");
-            // let id = input.split(":").next();
-
-            // if let Err(e) = editor.open_file(id, &path) {
-            //     let (win, _buf) = editor.win_buf_mut(id);
-            //     win.warn_msg(&format!("Failed to open file {input}"))
-            // }
+            if let Some(bid) = input.split(":").next() {
+                if let Ok(bid) = bid.parse::<ID>() {
+                    let bid = BufferId::from(bid);
+                    editor.open_buffer(id, bid);
+                }
+            }
         })
         .build();
     win.focus = Focus::Prompt;

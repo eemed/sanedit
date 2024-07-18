@@ -1,10 +1,9 @@
 use std::{
+    collections::BTreeMap,
     marker::PhantomData,
     ops::{Index, IndexMut},
     sync::atomic::{AtomicU32, Ordering},
 };
-
-use rustc_hash::FxHashMap;
 
 #[macro_export]
 macro_rules! key_type {
@@ -21,6 +20,12 @@ macro_rules! key_type {
                 $name(id)
             }
         }
+
+        impl From<sanedit_utils::idmap::ID> for $name {
+            fn from(id: sanedit_utils::idmap::ID) -> $name {
+                $name(id)
+            }
+        }
     }
 }
 
@@ -32,10 +37,10 @@ pub trait AsID {
 pub type ID = u32;
 
 /// Map that stores values and returns their id.
-/// TODO?: IDs are not reused
+/// TODO?: IDs are not reused, should they?
 #[derive(Debug)]
 pub struct IdMap<K: AsID, V> {
-    map: FxHashMap<ID, V>,
+    map: BTreeMap<ID, V>,
     next_id: AtomicU32,
     _phantom: PhantomData<K>,
 }
@@ -83,7 +88,7 @@ impl<K: AsID, V> IndexMut<K> for IdMap<K, V> {
 }
 
 pub struct Iter<'a, K: AsID, V> {
-    iter: std::collections::hash_map::Iter<'a, ID, V>,
+    iter: std::collections::btree_map::Iter<'a, ID, V>,
     _phantom: PhantomData<K>,
 }
 
@@ -101,7 +106,7 @@ impl<'a, K: AsID, V> Iterator for Iter<'a, K, V> {
 impl<K: AsID, V> Default for IdMap<K, V> {
     fn default() -> Self {
         Self {
-            map: FxHashMap::default(),
+            map: BTreeMap::default(),
             next_id: AtomicU32::new(1),
             _phantom: PhantomData::default(),
         }

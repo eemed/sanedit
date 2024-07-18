@@ -12,6 +12,7 @@ use std::{
 };
 
 use sanedit_buffer::{PieceTree, PieceTreeSlice, ReadOnlyPieceTree};
+use sanedit_utils::{idmap, key_type};
 
 use crate::common::{dirs::tmp_file, file::File};
 
@@ -21,9 +22,7 @@ pub(crate) use filetype::Filetype;
 pub(crate) use snapshots::{SnapshotData, SnapshotId};
 pub(crate) use sorted::SortedRanges;
 
-slotmap::new_key_type!(
-    pub(crate) struct BufferId;
-);
+key_type!(pub(crate) BufferId);
 
 /// A range in the buffer
 pub(crate) type BufferRange = Range<usize>;

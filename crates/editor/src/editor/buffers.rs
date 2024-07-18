@@ -2,16 +2,15 @@ mod buffer;
 
 use std::path::Path;
 
-use slotmap::SlotMap;
+use sanedit_utils::idmap::{AsID, IdMap};
 
 pub(crate) use self::buffer::{
-    Buffer, BufferId, BufferRange, Change, ChangeKind, Filetype, SnapshotData, SnapshotId,
-    SortedRanges,
+    Buffer, BufferId, BufferRange, Filetype, SnapshotData, SortedRanges,
 };
 
 #[derive(Debug, Default)]
 pub(crate) struct Buffers {
-    buffers: SlotMap<BufferId, Buffer>,
+    buffers: IdMap<BufferId, Buffer>,
 }
 
 impl Buffers {
@@ -21,16 +20,20 @@ impl Buffers {
         id
     }
 
-    pub fn get(&self, id: BufferId) -> Option<&Buffer> {
-        self.buffers.get(id)
+    pub fn get(&self, bid: BufferId) -> Option<&Buffer> {
+        self.buffers.get(&bid)
     }
 
-    pub fn get_mut(&mut self, id: BufferId) -> Option<&mut Buffer> {
-        self.buffers.get_mut(id)
+    pub fn get_mut(&mut self, bid: BufferId) -> Option<&mut Buffer> {
+        self.buffers.get_mut(&bid)
     }
 
-    pub fn remove(&mut self, id: BufferId) -> Option<Buffer> {
-        self.buffers.remove(id)
+    pub fn remove(&mut self, bid: BufferId) -> Option<Buffer> {
+        self.buffers.remove(&bid)
+    }
+
+    pub fn iter(&self) -> sanedit_utils::idmap::Iter<BufferId, Buffer> {
+        self.buffers.iter()
     }
 
     /// Find buffer with a save path

@@ -62,8 +62,8 @@ indent_count = 4
 
 #
 # Filetype overrides
-[filetype.rust]
-patterns = ["*.rs"]
+# [filetype.rust]
+# patterns = ["*.rs"]
 
-[filetype.toml]
-patterns = ["Cargo.lock"]
+# [filetype.toml]
+# patterns = ["Cargo.lock"]

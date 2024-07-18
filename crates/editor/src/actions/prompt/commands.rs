@@ -19,6 +19,7 @@ pub(crate) const COMMANDS: &[Action] = &[
     text::redo,
 
     prompt::open_file,
+    prompt::open_buffer,
     prompt::shell_command,
     prompt::select_theme,
     prompt::goto_line,

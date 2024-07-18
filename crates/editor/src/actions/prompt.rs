@@ -7,6 +7,7 @@ use sanedit_messages::ClientMessage;
 use crate::{
     actions::jobs::FileOptionProvider,
     editor::{
+        buffers::BufferId,
         hooks::Hook,
         windows::{Focus, HistoryKind, Prompt},
         Editor,
@@ -98,6 +99,36 @@ fn open_file(editor: &mut Editor, id: ClientId) {
                 let (win, _buf) = editor.win_buf_mut(id);
                 win.warn_msg(&format!("Failed to open file {input}"))
             }
+        })
+        .build();
+    win.focus = Focus::Prompt;
+}
+
+#[action("Open a buffer")]
+fn open_buffer(editor: &mut Editor, id: ClientId) {
+    const PROMPT_MESSAGE: &str = "Open a buffer";
+    let buffers: Vec<String> = editor
+        .buffers()
+        .iter()
+        .map(|(id, buf)| format!("{:?}: {}", id, buf.name()))
+        .collect();
+    let job = MatcherJob::builder(id)
+        .options(Arc::new(buffers))
+        .handler(Prompt::matcher_result_handler)
+        .build();
+    editor.job_broker.request_slot(id, PROMPT_MESSAGE, job);
+    let (win, _buf) = editor.win_buf_mut(id);
+
+    win.prompt = Prompt::builder()
+        .prompt(PROMPT_MESSAGE)
+        .on_confirm(move |editor, id, input| {
+            log::info!("input: {input}");
+            // let id = input.split(":").next();
+
+            // if let Err(e) = editor.open_file(id, &path) {
+            //     let (win, _buf) = editor.win_buf_mut(id);
+            //     win.warn_msg(&format!("Failed to open file {input}"))
+            // }
         })
         .build();
     win.focus = Focus::Prompt;

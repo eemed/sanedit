@@ -40,7 +40,6 @@ use crate::draw::EditorContext;
 use crate::editor::buffers::Buffer;
 use crate::editor::hooks::Hook;
 use crate::editor::keymap::KeymapResult;
-use crate::editor::options::Config;
 use crate::editor::windows::Focus;
 use crate::events::ToEditor;
 use crate::job_runner::spawn_job_runner;
@@ -137,12 +136,12 @@ impl Editor {
         }
 
         // TODO
-        match options::read_config(&self.config_dir.config()) {
+        match config::read_config(&self.config_dir.config()) {
             Ok(toml) => {
                 log::info!("Ok: {toml:?}");
 
-                let Config { editor } = toml;
-                self.options = editor;
+                //                 let Config { editor } = toml;
+                //                 self.options = editor;
             }
             Err(e) => log::error!("ERROR reading config: {e}"),
         }
@@ -151,6 +150,10 @@ impl Editor {
     /// Ran after the startup configuration is complete
     pub fn on_startup(&mut self) {
         self.themes.load_all();
+    }
+
+    pub fn buffers(&self) -> &Buffers {
+        &self.buffers
     }
 
     pub fn win_buf(&self, id: ClientId) -> (&Window, &Buffer) {

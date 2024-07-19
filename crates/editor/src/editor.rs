@@ -38,6 +38,7 @@ use crate::common::text::to_line;
 use crate::draw::DrawState;
 use crate::draw::EditorContext;
 use crate::editor::buffers::Buffer;
+use crate::editor::config::Config;
 use crate::editor::hooks::Hook;
 use crate::editor::keymap::KeymapResult;
 use crate::editor::windows::Focus;
@@ -140,8 +141,8 @@ impl Editor {
             Ok(toml) => {
                 log::info!("Ok: {toml:?}");
 
-                //                 let Config { editor } = toml;
-                //                 self.options = editor;
+                let Config { editor, window } = toml;
+                self.options = editor;
             }
             Err(e) => log::error!("ERROR reading config: {e}"),
         }

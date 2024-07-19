@@ -1,8 +1,17 @@
-use sanedit_buffer::Mark;
+#[derive(Debug)]
+pub struct Locations {
+    locations: Vec<Location>,
+}
 
-pub struct Locations(Vec<Location>);
-
-pub struct Location {
-    mark: Mark,
-    message: String,
+#[derive(Debug)]
+pub enum Location {
+    Group {
+        name: String,
+        locations: Vec<Location>,
+    },
+    Item {
+        name: String,
+        line: Option<usize>,
+        column: Option<usize>,
+    },
 }

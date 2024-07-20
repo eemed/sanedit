@@ -1,6 +1,7 @@
 // Contains different jobs to run in tokio runtime
 mod directory_option_provider;
 mod file_option_provider;
+mod grep;
 mod matcher;
 mod search;
 mod shell;

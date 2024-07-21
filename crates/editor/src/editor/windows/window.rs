@@ -34,10 +34,13 @@ use crate::{
     },
 };
 
+use self::filetree::FiletreeView;
+
 pub(crate) use self::{
     completion::*,
     cursors::*,
     focus::*,
+    locations::*,
     options::*,
     prompt::*,
     search::*,
@@ -45,7 +48,6 @@ pub(crate) use self::{
     shell::*,
     view::*,
 };
-use self::{filetree::FiletreeView, locations::Locations};
 
 #[derive(Debug)]
 pub(crate) struct Window {

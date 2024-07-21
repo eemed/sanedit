@@ -12,6 +12,7 @@ use tokio::sync::mpsc::{channel, Receiver, Sender};
 
 use crate::actions::jobs::{OptionProvider, CHANNEL_SIZE};
 use crate::common::matcher::MatchOption;
+use crate::editor::windows::Location;
 use crate::{
     editor::{job_broker::KeepInTouch, Editor},
     job_runner::{Job, JobContext, JobResult},
@@ -40,7 +41,7 @@ impl Grep {
         }
     }
 
-    async fn grep(mut orecv: Receiver<MatchOption>, pattern: &str, msend: Sender<GrepMessage>) {
+    async fn grep(mut orecv: Receiver<MatchOption>, pattern: &str, msend: Sender<GrepResult>) {
         let searcher = SearcherBuilder::new()
             .binary_detection(BinaryDetection::quit(b'\x00'))
             .line_terminator(LineTerminator::byte(b'\n'))
@@ -87,7 +88,7 @@ impl Job for Grep {
             // Options channel
             let (osend, orecv) = channel::<MatchOption>(CHANNEL_SIZE);
             // Results channel
-            let (msend, mrecv) = channel::<GrepMessage>(CHANNEL_SIZE);
+            let (msend, mrecv) = channel::<GrepResult>(CHANNEL_SIZE);
 
             tokio::join!(
                 fopts.provide(osend, ctx.kill.clone()),
@@ -107,8 +108,13 @@ impl KeepInTouch for Grep {
     }
 
     fn on_message(&self, editor: &mut Editor, msg: Box<dyn Any>) {
-        if let Ok(msg) = msg.downcast::<GrepMessage>() {
-            todo!("handle grep results")
+        if let Ok(msg) = msg.downcast::<GrepResult>() {
+            let locations = msg.matches.into_iter().map(Location::from).collect();
+            let name = msg.path.to_string_lossy();
+            let location = Location::Group {
+                name: name.into(),
+                locations,
+            };
         }
     }
 }
@@ -117,19 +123,29 @@ impl KeepInTouch for Grep {
 struct GrepMatch {
     text: String,
     matches: Vec<Range<usize>>,
+    line: Option<u64>,
 }
 
-enum GrepMessage {
-    Result {
-        path: PathBuf,
-        matches: Vec<GrepMatch>,
-    },
+impl From<GrepMatch> for Location {
+    fn from(gmat: GrepMatch) -> Self {
+        Location::Item {
+            name: gmat.text,
+            line: gmat.line,
+            column: None,
+            highlights: gmat.matches,
+        }
+    }
+}
+
+struct GrepResult {
+    path: PathBuf,
+    matches: Vec<GrepMatch>,
 }
 
 #[derive(Debug)]
 struct ResultSender<'a> {
     matcher: &'a RegexMatcher,
-    sender: Sender<GrepMessage>,
+    sender: Sender<GrepResult>,
     path: &'a Path,
     matches: Vec<GrepMatch>,
 }
@@ -137,7 +153,7 @@ struct ResultSender<'a> {
 impl<'a> Sink for ResultSender<'a> {
     type Error = Box<dyn Error>;
 
-    fn matched(&mut self, _searcher: &Searcher, mat: &SinkMatch<'_>) -> Result<bool, Self::Error> {
+    fn matched(&mut self, searcher: &Searcher, mat: &SinkMatch<'_>) -> Result<bool, Self::Error> {
         let Ok(text) = std::str::from_utf8(mat.bytes()) else { return Ok(true); };
 
         let mut matches = vec![];
@@ -152,6 +168,7 @@ impl<'a> Sink for ResultSender<'a> {
             let gmat = GrepMatch {
                 text: text.to_string(),
                 matches,
+                line: mat.line_number(),
             };
 
             self.matches.push(gmat);
@@ -167,7 +184,7 @@ impl<'a> Sink for ResultSender<'a> {
     ) -> Result<(), Self::Error> {
         let matches = std::mem::take(&mut self.matches);
         if !matches.is_empty() {
-            let _ = self.sender.blocking_send(GrepMessage::Result {
+            let _ = self.sender.blocking_send(GrepResult {
                 path: self.path.to_path_buf(),
                 matches,
             });

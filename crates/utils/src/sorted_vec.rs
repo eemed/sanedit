@@ -1,20 +1,20 @@
 use std::{mem, ops::Index};
 
 /// A vector that is always sorted
-#[derive(Default, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct SortedVec<T: Ord> {
     items: Vec<T>,
 }
 
-impl<'a, T: Ord + Clone> SortedVec<T> {
-    pub fn from_unsorted(items: &'a [T]) -> SortedVec<T> {
+impl<T: Ord + Clone> SortedVec<T> {
+    pub fn from_unsorted(items: &[T]) -> SortedVec<T> {
         let mut items = items.to_vec();
         items.sort();
         SortedVec { items }
     }
 }
 
-impl<'a, T: Ord> SortedVec<T> {
+impl<T: Ord> SortedVec<T> {
     pub fn new() -> SortedVec<T> {
         SortedVec { items: Vec::new() }
     }
@@ -48,6 +48,10 @@ impl<'a, T: Ord> SortedVec<T> {
 
     pub fn into_iter(self) -> std::vec::IntoIter<T> {
         self.items.into_iter()
+    }
+
+    pub fn clear(&mut self) {
+        self.items.clear();
     }
 
     pub fn merge(&mut self, other: SortedVec<T>) {
@@ -114,5 +118,11 @@ impl<T: Ord> From<Vec<T>> for SortedVec<T> {
 impl<T: Ord> From<T> for SortedVec<T> {
     fn from(value: T) -> Self {
         SortedVec { items: vec![value] }
+    }
+}
+
+impl<T: Ord> Default for SortedVec<T> {
+    fn default() -> Self {
+        SortedVec { items: vec![] }
     }
 }

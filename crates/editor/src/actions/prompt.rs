@@ -18,7 +18,11 @@ use crate::{
 
 use self::commands::find_action;
 
-use super::{hooks, jobs::MatcherJob, shell};
+use super::{
+    hooks,
+    jobs::{Grep, MatcherJob},
+    shell,
+};
 
 #[action("Select theme")]
 fn select_theme(editor: &mut Editor, id: ClientId) {
@@ -278,6 +282,22 @@ fn change_working_dir(editor: &mut Editor, id: ClientId) {
                 let (win, _buf) = e.win_buf_mut(id);
                 win.warn_msg(&err.to_string());
             }
+        })
+        .build();
+    win.focus = Focus::Prompt;
+}
+
+#[action("Grep")]
+fn grep(editor: &mut Editor, id: ClientId) {
+    let (win, _buf) = editor.win_buf_mut(id);
+    win.prompt = Prompt::builder()
+        .prompt("Grep")
+        .simple()
+        .on_confirm(move |e, id, input| {
+            let ignore = e.options.ignore_directories();
+            let wd = e.working_dir();
+            let job = Grep::new(input, wd, &ignore, id);
+            e.job_broker.request(job);
         })
         .build();
     win.focus = Focus::Prompt;

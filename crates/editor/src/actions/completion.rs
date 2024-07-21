@@ -36,7 +36,7 @@ fn complete(editor: &mut Editor, id: ClientId) {
         })
         .filter(|(compl, _)| compl != &word)
         .map(|(compl, desc)| MatchOption {
-            value: compl,
+            value: compl.into(),
             description: desc,
         })
         .collect();

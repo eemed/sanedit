@@ -21,7 +21,7 @@ struct ReadDirContext {
     ignore: Arc<Vec<String>>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) struct FileOptionProvider {
     path: PathBuf,
     ignore: Arc<Vec<String>>,

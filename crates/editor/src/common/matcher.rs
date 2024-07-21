@@ -121,7 +121,7 @@ impl Matcher {
                             matches_with(&can.value, &terms, case_sensitive, match_fn)
                         {
                             let mat = Match {
-                                score: score(can.value.as_str(), &ranges),
+                                score: score(&can.value, &ranges),
                                 opt: can.clone(),
                                 ranges,
                             };
@@ -144,7 +144,7 @@ impl Matcher {
 }
 
 // Score a match
-fn score(opt: &str, ranges: &[Range<usize>]) -> u32 {
+fn score(opt: &[u8], ranges: &[Range<usize>]) -> u32 {
     // Closest match first
     // Shortest item first
     ranges
@@ -154,16 +154,20 @@ fn score(opt: &str, ranges: &[Range<usize>]) -> u32 {
 }
 
 fn matches_with(
-    string: &str,
+    bytes: &[u8],
     terms: &Arc<Vec<String>>,
     case_sensitive: bool,
     f: fn(&str, &str) -> Option<Range<usize>>,
 ) -> Option<Vec<Range<usize>>> {
-    let string: Cow<str> = if !case_sensitive {
-        // TODO unicode casefolding?
-        Cow::from(string.to_ascii_lowercase())
-    } else {
-        Cow::from(string)
+    let string: Cow<str> = {
+        let mut string = String::from_utf8_lossy(bytes);
+        if !case_sensitive {
+            // TODO unicode casefolding?
+            string.make_ascii_lowercase();
+            string
+        } else {
+            string
+        }
     };
 
     let mut matches = vec![];

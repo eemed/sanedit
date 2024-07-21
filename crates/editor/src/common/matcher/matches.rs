@@ -2,9 +2,11 @@ use std::ops::Range;
 
 use crate::editor::windows::SelectorOption;
 
+/// A generic match option that contains bytes.
+/// And a description of those bytes
 #[derive(Debug, Clone)]
 pub(crate) struct MatchOption {
-    pub(crate) value: String,
+    pub(crate) value: Vec<u8>,
     pub(crate) description: String,
 }
 
@@ -34,7 +36,7 @@ impl MatchOption {
 impl From<String> for MatchOption {
     fn from(value: String) -> Self {
         MatchOption {
-            value,
+            value: value.into(),
             description: String::new(),
         }
     }
@@ -53,10 +55,6 @@ pub(crate) struct Match {
 }
 
 impl Match {
-    pub fn as_str(&self) -> &str {
-        self.opt.value.as_str()
-    }
-
     pub fn score(&self) -> u32 {
         self.score
     }
@@ -88,7 +86,8 @@ impl Ord for Match {
 
 impl From<Match> for SelectorOption {
     fn from(mat: Match) -> Self {
-        let mut opt = SelectorOption::new(mat.opt.value, mat.ranges, mat.score);
+        let value = String::from_utf8_lossy(&mat.opt.value);
+        let mut opt = SelectorOption::new(value.into(), mat.ranges, mat.score);
         opt.description = mat.opt.description;
         opt
     }

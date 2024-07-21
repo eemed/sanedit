@@ -5,4 +5,5 @@ pub(crate) enum Focus {
     Window,
     Completion,
     Filetree,
+    Locations,
 }

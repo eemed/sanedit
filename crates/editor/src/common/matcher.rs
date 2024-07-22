@@ -19,7 +19,7 @@ pub(crate) use matches::*;
 pub(crate) use receiver::*;
 pub(crate) use strategy::*;
 
-/// Matches options to a term
+/// Matches options to a pattern
 pub(crate) struct Matcher {
     reader: Reader<MatchOption>,
     all_opts_read: Arc<AtomicBool>,
@@ -56,10 +56,10 @@ impl Matcher {
         }
     }
 
-    /// Match the candidates with the term. Returns a receiver where the results
+    /// Match the candidates with the pattern. Returns a receiver where the results
     /// can be read from in chunks.
     /// Dropping the receiver stops the matching process.
-    pub fn do_match(&mut self, term: &str) -> MatchReceiver {
+    pub fn do_match(&mut self, pattern: &str) -> MatchReceiver {
         // Cancel possible previous search
         self.previous.store(true, Ordering::Release);
         self.previous = Arc::new(AtomicBool::new(false));
@@ -70,19 +70,19 @@ impl Matcher {
         let (out, rx) = channel::<Match>(Self::CHANNEL_SIZE);
         let reader = self.reader.clone();
         let all_opts_read = self.all_opts_read.clone();
-        let case_sensitive = term.chars().any(|ch| ch.is_uppercase());
+        let case_sensitive = pattern.chars().any(|ch| ch.is_uppercase());
         let strat = self.strategy;
         let match_fn = strat.get();
 
-        // Apply strategy to term
-        // Split term by whitespace and use the resulting terms as independent
+        // Apply strategy to pattern
+        // Split pattern by whitespace and use the resulting patterns as independent
         // searches
-        let terms: Arc<Vec<String>> = {
+        let patterns: Arc<Vec<String>> = {
             if strat.split() {
-                let terms = term.split_whitespace().map(String::from).collect();
-                Arc::new(terms)
+                let patterns = pattern.split_whitespace().map(String::from).collect();
+                Arc::new(patterns)
             } else {
-                Arc::new(vec![term.into()])
+                Arc::new(vec![pattern.into()])
             }
         };
         let mut available = reader.len();
@@ -108,7 +108,7 @@ impl Matcher {
                 let out = out.clone();
                 let stop = stop.clone();
                 let reader = reader.clone();
-                let terms = terms.clone();
+                let patterns = patterns.clone();
 
                 rayon::spawn(move || {
                     if stop.load(Ordering::Relaxed) {
@@ -118,7 +118,7 @@ impl Matcher {
                     let candidates = reader.slice(batch);
                     for can in candidates.into_iter() {
                         if let Some(ranges) =
-                            matches_with(&can.value, &terms, case_sensitive, match_fn)
+                            matches_with(&can.value, &patterns, case_sensitive, match_fn)
                         {
                             let mat = Match {
                                 score: score(&can.value, &ranges),
@@ -153,26 +153,30 @@ fn score(opt: &[u8], ranges: &[Range<usize>]) -> u32 {
         .unwrap_or(opt.len() as u32)
 }
 
+fn get_pattern(bytes: &[u8], case_sensitive: bool) -> Cow<str> {
+    let string = String::from_utf8_lossy(bytes);
+    if case_sensitive {
+        return string;
+    }
+
+    let has_upper = string.chars().any(|ch| ch.is_ascii_uppercase());
+    if !has_upper {
+        return string;
+    }
+
+    Cow::from(string.to_ascii_lowercase())
+}
+
 fn matches_with(
     bytes: &[u8],
-    terms: &Arc<Vec<String>>,
+    patterns: &Arc<Vec<String>>,
     case_sensitive: bool,
     f: fn(&str, &str) -> Option<Range<usize>>,
 ) -> Option<Vec<Range<usize>>> {
-    let string: Cow<str> = {
-        let mut string = String::from_utf8_lossy(bytes);
-        if !case_sensitive {
-            // TODO unicode casefolding?
-            string.make_ascii_lowercase();
-            string
-        } else {
-            string
-        }
-    };
-
+    let string: Cow<str> = get_pattern(bytes, case_sensitive);
     let mut matches = vec![];
-    for term in terms.iter() {
-        let range = (f)(&string, term)?;
+    for pattern in patterns.iter() {
+        let range = (f)(&string, pattern)?;
         matches.push(range);
     }
 

@@ -1,0 +1,58 @@
+use std::ops::Range;
+
+use serde::{Deserialize, Serialize};
+
+use super::Diffable;
+
+/// Container to draw filesystem like structure
+/// Groups that contain other groups or items directly
+///
+/// This is used to describe filetree and locations
+///
+/// Note: The structure is not treelike instead the items contain a level
+/// property that tells at which level they should be displayed
+#[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
+pub struct Items {
+    pub items: Vec<Item>,
+    pub selected: usize,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
+pub enum ItemKind {
+    Group { expanded: bool },
+    Item,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
+pub struct Item {
+    pub name: String,
+    /// What to highlight in name if any
+    pub highlights: Vec<Range<usize>>,
+    /// Is this a group/folder or an item/file
+    pub kind: ItemKind,
+    /// What level this item resides on
+    pub level: usize,
+}
+
+impl Diffable for Items {
+    type Diff = Difference;
+
+    fn diff(&self, other: &Self) -> Option<Self::Diff> {
+        if self == other {
+            return None;
+        }
+
+        Some(Difference {
+            full: other.clone(),
+        })
+    }
+
+    fn update(&mut self, diff: Self::Diff) {
+        *self = diff.full
+    }
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
+pub struct Difference {
+    full: Items,
+}

@@ -24,6 +24,7 @@ pub(crate) enum KeymapKind {
     Window,
     Completion,
     Filetree,
+    Locations,
 }
 
 #[derive(Debug, Clone)]

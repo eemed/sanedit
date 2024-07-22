@@ -112,9 +112,12 @@ impl KeepInTouch for Grep {
             let locations = msg.matches.into_iter().map(Location::from).collect();
             let name = msg.path.to_string_lossy();
             let location = Location::Group {
+                expanded: false,
                 name: name.into(),
                 locations,
             };
+            let (win, _buf) = editor.win_buf_mut(self.client_id);
+            win.locations.push(location);
         }
     }
 }

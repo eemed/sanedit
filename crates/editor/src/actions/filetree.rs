@@ -39,16 +39,12 @@ fn next_entry(editor: &mut Editor, id: ClientId) {
 
     let (win, buf) = editor.win_buf_mut(id);
     win.ft_view.selection = min(visible - 1, win.ft_view.selection + 1);
-
-    // TODO ensure visible
 }
 
 #[action("Previous filetree entry")]
 fn prev_entry(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     win.ft_view.selection = win.ft_view.selection.saturating_sub(1);
-
-    // TODO ensure visible
 }
 
 #[action("Close filetree")]

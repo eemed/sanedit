@@ -1,10 +1,8 @@
 use std::{cmp::Ordering, ops::Range};
 
-use sanedit_utils::sorted_vec::SortedVec;
-
 #[derive(Debug, Default)]
 pub(crate) struct Locations {
-    locations: SortedVec<Location>,
+    locations: Vec<Location>,
 }
 
 impl Locations {
@@ -15,12 +13,17 @@ impl Locations {
     pub fn clear(&mut self) {
         self.locations.clear();
     }
+
+    pub fn iter(&self) -> LocationIter {
+        LocationIter::new(&self.locations)
+    }
 }
 
 #[derive(Debug)]
 pub(crate) enum Location {
     Group {
         name: String,
+        expanded: bool,
         locations: Vec<Location>,
     },
     Item {
@@ -29,6 +32,15 @@ pub(crate) enum Location {
         column: Option<u64>,
         highlights: Vec<Range<usize>>,
     },
+}
+
+impl Location {
+    pub fn name(&self) -> &str {
+        match self {
+            Location::Group { name, .. } => name,
+            Location::Item { name, .. } => name,
+        }
+    }
 }
 
 impl PartialEq for Location {
@@ -45,15 +57,12 @@ impl Eq for Location {}
 
 impl PartialOrd for Location {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        use Location::*;
         match (self, other) {
-            (Location::Group { name, .. }, Location::Group { name: oname, .. }) => {
-                name.partial_cmp(oname)
-            }
-            (Location::Group { .. }, Location::Item { .. }) => Some(Ordering::Greater),
-            (Location::Item { .. }, Location::Group { .. }) => Some(Ordering::Less),
-            (Location::Item { name, .. }, Location::Item { name: oname, .. }) => {
-                name.partial_cmp(oname)
-            }
+            (Group { name, .. }, Group { name: oname, .. }) => name.partial_cmp(oname),
+            (Group { .. }, Item { .. }) => Some(Ordering::Greater),
+            (Item { .. }, Group { .. }) => Some(Ordering::Less),
+            (Item { name, .. }, Item { name: oname, .. }) => name.partial_cmp(oname),
         }
     }
 }
@@ -61,5 +70,59 @@ impl PartialOrd for Location {
 impl Ord for Location {
     fn cmp(&self, other: &Self) -> Ordering {
         self.partial_cmp(other).unwrap()
+    }
+}
+
+#[derive(Debug)]
+pub(crate) struct LocationEntry<'a> {
+    pub(crate) loc: &'a Location,
+    pub(crate) level: usize,
+}
+
+#[derive(Debug)]
+pub(crate) struct LocationIter<'a> {
+    stack: Vec<LocationEntry<'a>>,
+}
+
+impl<'a> LocationIter<'a> {
+    fn new(locs: &'a [Location]) -> Self {
+        let mut stack = Vec::with_capacity(locs.len());
+
+        for loc in locs {
+            stack.push(LocationEntry { loc, level: 0 });
+        }
+
+        LocationIter { stack }
+    }
+}
+
+impl<'a> Iterator for LocationIter<'a> {
+    type Item = LocationEntry<'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        use Location::*;
+
+        let next = self.stack.pop()?;
+        if let LocationEntry {
+            loc:
+                Group {
+                    expanded,
+                    locations,
+                    ..
+                },
+            level,
+        } = next
+        {
+            if *expanded {
+                for loc in locations.iter() {
+                    self.stack.push(LocationEntry {
+                        loc,
+                        level: level + 1,
+                    });
+                }
+            }
+        }
+
+        Some(next)
     }
 }

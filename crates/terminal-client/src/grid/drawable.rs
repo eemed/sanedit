@@ -1,8 +1,8 @@
 use std::cmp::{max, min};
 
 use sanedit_messages::redraw::{
-    Completion, Cursor, CursorShape, FileItemKind, Filetree, IntoCells, Point, Severity,
-    StatusMessage, Statusline, ThemeField, Window,
+    Completion, Cursor, CursorShape, IntoCells, ItemKind, Items, Point, Severity, StatusMessage,
+    Statusline, ThemeField, Window,
 };
 
 use crate::{
@@ -333,8 +333,8 @@ impl Drawable for CustomFiletree {
                 sel
             } else {
                 match item.kind {
-                    FileItemKind::Directory { expanded } => dir,
-                    FileItemKind::File => file,
+                    ItemKind::Group { expanded } => dir,
+                    ItemKind::Item => file,
                 }
             };
 

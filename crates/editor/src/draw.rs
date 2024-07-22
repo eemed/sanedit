@@ -1,5 +1,6 @@
 mod completion;
 mod filetree;
+mod locations;
 mod prompt;
 mod search;
 mod statusline;

@@ -1,4 +1,7 @@
-use std::{mem, ops::Index};
+use std::{
+    mem,
+    ops::{Deref, Index},
+};
 
 /// A vector that is always sorted
 #[derive(Debug, Clone)]
@@ -124,5 +127,13 @@ impl<T: Ord> From<T> for SortedVec<T> {
 impl<T: Ord> Default for SortedVec<T> {
     fn default() -> Self {
         SortedVec { items: vec![] }
+    }
+}
+
+impl<T: Ord> Deref for SortedVec<T> {
+    type Target = [T];
+
+    fn deref(&self) -> &Self::Target {
+        &self.items
     }
 }

@@ -25,7 +25,7 @@ pub(crate) enum SearchKind {
     #[default]
     Smart,
 
-    /// Use the search term as a regex
+    /// Use the search pattern as a regex
     Regex,
 }
 
@@ -40,8 +40,8 @@ impl SearchKind {
 
 #[derive(Debug, Default)]
 pub(crate) struct LastSearch {
-    /// The searched term
-    pub term: String,
+    /// The searched pattern
+    pub pattern: String,
 
     pub kind: SearchKind,
     pub dir: SearchDirection,
@@ -65,9 +65,9 @@ pub(crate) struct Search {
 }
 
 impl Search {
-    pub fn save_last_search(&mut self, term: &str) {
+    pub fn save_last_search(&mut self, pattern: &str) {
         self.last_search = Some(LastSearch {
-            term: term.into(),
+            pattern: pattern.into(),
             kind: self.kind,
             dir: self.direction,
             current_match: self.current_match.clone(),
@@ -80,8 +80,8 @@ impl Search {
         self.last_search.as_ref()
     }
 
-    pub fn last_search_term(&self) -> Option<&str> {
-        self.last_search.as_ref().map(|ls| ls.term.as_str())
+    pub fn last_search_pattern(&self) -> Option<&str> {
+        self.last_search.as_ref().map(|ls| ls.pattern.as_str())
     }
 }
 

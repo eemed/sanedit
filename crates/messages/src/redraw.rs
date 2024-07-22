@@ -3,7 +3,7 @@ mod color;
 mod completion;
 mod cursor;
 mod cursor_shape;
-mod filetree;
+mod items;
 mod line_numbers;
 mod point;
 mod prompt;
@@ -20,7 +20,7 @@ pub use color::*;
 pub use completion::*;
 pub use cursor::*;
 pub use cursor_shape::*;
-pub use filetree::*;
+pub use items::*;
 pub use line_numbers::*;
 pub use point::*;
 pub use prompt::*;
@@ -65,7 +65,8 @@ pub enum Redraw {
     Statusline(Component<Statusline, statusline::Difference>),
     Prompt(Component<Prompt, prompt::Difference>),
     Completion(Component<Completion, completion::Difference>),
-    Filetree(Component<Filetree, filetree::Difference>),
+    Filetree(Component<Items, items::Difference>),
+    Locations(Component<Items, items::Difference>),
     StatusMessage(StatusMessage),
     LineNumbers(LineNumbers),
 }

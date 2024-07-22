@@ -34,7 +34,7 @@ fn new_to_next_search_match(editor: &mut Editor, id: ClientId) {
     let Some(last_search) = win.search.last_search() else { return; };
     let ppos = win.cursors.primary().pos();
 
-    let Ok(searcher) = PTSearcher::new(&last_search.term, last_search.dir, last_search.kind) else { return; };
+    let Ok(searcher) = PTSearcher::new(&last_search.pattern, last_search.dir, last_search.kind) else { return; };
     let slice = buf.slice(ppos..);
     let mut iter = searcher.find_iter(&slice);
     if let Some(mat) = iter.next() {
@@ -58,11 +58,11 @@ fn new_to_all_search_matches(editor: &mut Editor, id: ClientId) {
     // win.cursors.remove_secondary_cursors();
 
     let Some(last_search) = win.search.last_search() else {
-        win.warn_msg("No last search term");
+        win.warn_msg("No last search pattern");
         return;
     };
 
-    let Ok(searcher) = PTSearcher::new(&last_search.term, last_search.dir, last_search.kind) else { return; };
+    let Ok(searcher) = PTSearcher::new(&last_search.pattern, last_search.dir, last_search.kind) else { return; };
     let slice = buf.slice(..);
     let mut iter = searcher.find_iter(&slice);
 

@@ -12,14 +12,14 @@ use crate::{
 };
 
 /// setups async job to handle matches within the view range.
-fn async_view_matches(editor: &mut Editor, id: ClientId, term: &str) {
+fn async_view_matches(editor: &mut Editor, id: ClientId, pattern: &str) {
     let (win, buf) = editor.win_buf_mut(id);
     let pt = buf.read_only_copy();
     let view = win.view().range();
     let dir = win.search.direction;
     let kind = win.search.kind;
 
-    let job = jobs::Search::new(id, term, pt, view, dir, kind);
+    let job = jobs::Search::new(id, pattern, pt, view, dir, kind);
     editor.job_broker.request(job);
 }
 
@@ -66,7 +66,7 @@ fn clear_matches(editor: &mut Editor, id: ClientId) {
 #[action("Goto next match")]
 fn next_match(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
-    let Some(input) = win.search.last_search_term().map(String::from) else { return; };
+    let Some(input) = win.search.last_search_pattern().map(String::from) else { return; };
     search(editor, id, &input);
 }
 
@@ -74,7 +74,7 @@ fn next_match(editor: &mut Editor, id: ClientId) {
 fn prev_match(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
 
-    let Some(input) = win.search.last_search_term().map(String::from) else { return; };
+    let Some(input) = win.search.last_search_pattern().map(String::from) else { return; };
     // search to opposite direction
     let dir = &mut win.search.direction;
     *dir = dir.reverse();

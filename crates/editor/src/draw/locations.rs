@@ -1,23 +1,23 @@
 use sanedit_messages::redraw::{self, Component, Item, ItemKind};
 
-use crate::editor::filetree::Filetree;
+use crate::editor::windows::{Location, Locations};
 
 use super::DrawContext;
 
-pub(crate) fn draw(tree: &Filetree, ctx: &mut DrawContext) -> redraw::Redraw {
+pub(crate) fn draw(locs: &Locations, ctx: &mut DrawContext) -> redraw::Redraw {
     let selected = ctx.editor.win.ft_view.selection;
     let mut items = vec![];
 
-    for entry in tree.iter() {
-        let kind = if entry.node.is_dir() {
+    for entry in locs.iter() {
+        let kind = if let Location::Group { expanded, .. } = entry.loc {
             ItemKind::Group {
-                expanded: entry.node.is_dir_expanded(),
+                expanded: *expanded,
             }
         } else {
             ItemKind::Item
         };
 
-        let name = entry.name.to_string_lossy().to_string();
+        let name = entry.loc.name().to_string();
         let item = Item {
             name,
             kind,
@@ -28,5 +28,5 @@ pub(crate) fn draw(tree: &Filetree, ctx: &mut DrawContext) -> redraw::Redraw {
     }
 
     let items = redraw::Items { items, selected };
-    redraw::Redraw::Filetree(Component::Open(items))
+    redraw::Redraw::Locations(Component::Open(items))
 }

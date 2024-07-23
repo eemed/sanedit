@@ -96,6 +96,10 @@ impl DrawState {
             redraw.push(Redraw::Filetree(Component::Close));
         }
 
+        if focus_changed_from(Focus::Locations) {
+            redraw.push(Redraw::Locations(Component::Close));
+        }
+
         let mut ctx = DrawContext {
             editor: ectx,
             state: self,
@@ -128,6 +132,10 @@ impl DrawState {
             }
             Focus::Filetree => {
                 let current = filetree::draw(filetree, &mut ctx);
+                redraw.push(current);
+            }
+            Focus::Locations => {
+                let current = locations::draw(&win.locations, &mut ctx);
                 redraw.push(current);
             }
             _ => {}

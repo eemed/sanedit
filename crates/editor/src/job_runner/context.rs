@@ -51,7 +51,7 @@ impl From<JobsMessage> for FromJobs {
 }
 
 /// Job context used to communicate back to editor
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub(crate) struct JobResponseSender {
     pub(super) editor: EditorHandle,
     pub(super) internal: Sender<JobsMessage>,

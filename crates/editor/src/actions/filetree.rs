@@ -6,7 +6,7 @@ use crate::{
 };
 
 #[action("Show filetree")]
-fn show_filetree(editor: &mut Editor, id: ClientId) {
+fn show(editor: &mut Editor, id: ClientId) {
     let visible = editor.filetree.iter().count();
     let (win, buf) = editor.win_buf_mut(id);
 
@@ -48,7 +48,7 @@ fn prev_entry(editor: &mut Editor, id: ClientId) {
 }
 
 #[action("Close filetree")]
-fn close_filetree(editor: &mut Editor, id: ClientId) {
+fn close(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     win.focus = Focus::Window;
 }

@@ -1,52 +1,55 @@
 use crate::{
-    editor::{windows::Focus, Editor},
+    editor::{
+        windows::{Focus, Location},
+        Editor,
+    },
     server::ClientId,
 };
 
 #[action("Show locations")]
-fn show_filetree(editor: &mut Editor, id: ClientId) {
-    let visible = editor.filetree.iter().count();
+fn show(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
-
-    win.ft_view.selection = min(visible - 1, win.ft_view.selection);
     win.focus = Focus::Locations;
 }
 
 #[action("Close locations")]
-fn close_filetree(editor: &mut Editor, id: ClientId) {
+fn close(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     win.focus = Focus::Window;
 }
 
 #[action("Next location entry")]
 fn next_entry(editor: &mut Editor, id: ClientId) {
-    let visible = editor.filetree.iter().count();
-
     let (win, buf) = editor.win_buf_mut(id);
-    win.ft_view.selection = min(visible - 1, win.ft_view.selection + 1);
+    win.locations.select_next();
 }
 
 #[action("Previous location entry")]
 fn prev_entry(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
-    win.ft_view.selection = win.ft_view.selection.saturating_sub(1);
+    win.locations.select_prev();
 }
 
 #[action("Press location entry")]
 fn confirm(editor: &mut Editor, id: ClientId) {
-    let (win, buf) = editor.win_buf(id);
-    let path = editor
-        .filetree
-        .iter()
-        .nth(win.ft_view.selection)
-        .map(|f| f.path);
+    let (win, buf) = editor.win_buf_mut(id);
 
-    if let Some(path) = path {
-        if let PressResult::IsFile = editor.filetree.on_press(&path) {
-            if let Err(e) = editor.open_file(id, path) {
-                let (win, buf) = editor.win_buf_mut(id);
-                win.error_msg("Failed to open file {path:?}: {e}");
+    if let Some(sel) = win.locations.selected_mut() {
+        // TODO vec<u8>
+        match sel {
+            Location::Group {
+                name,
+                expanded,
+                locations,
+            } => {
+                *expanded = !*expanded;
             }
+            Location::Item {
+                name,
+                line,
+                column,
+                highlights,
+            } => log::info!("Open: {name}"),
         }
     }
 }

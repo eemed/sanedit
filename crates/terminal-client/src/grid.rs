@@ -2,8 +2,8 @@ mod border;
 mod ccell;
 mod completion;
 mod drawable;
-mod filetree;
 mod item;
+mod items;
 mod prompt;
 mod rect;
 
@@ -15,7 +15,7 @@ use sanedit_messages::redraw::{
 };
 
 use crate::{
-    grid::{completion::open_completion, filetree::open_filetree},
+    grid::{completion::open_completion, items::open_items},
     ui::UIContext,
 };
 
@@ -23,8 +23,8 @@ pub(crate) use self::rect::{Rect, Split};
 use self::{
     ccell::CCell,
     drawable::{DrawCursor, Drawable},
-    filetree::CustomFiletree,
     item::GridItem,
+    items::CustomItems,
     prompt::{open_prompt, CustomPrompt},
 };
 
@@ -35,7 +35,8 @@ pub(crate) struct Grid {
     prompt: Option<GridItem<CustomPrompt>>,
     msg: Option<GridItem<StatusMessage>>,
     completion: Option<GridItem<Completion>>,
-    filetree: Option<GridItem<CustomFiletree>>,
+    filetree: Option<GridItem<CustomItems>>,
+    locations: Option<GridItem<CustomItems>>,
 
     drawn: Vec<Vec<Cell>>,
     cursor: Option<Cursor>,
@@ -61,6 +62,7 @@ impl Grid {
             msg: None,
             completion: None,
             filetree: None,
+            locations: None,
 
             drawn: vec![vec![Cell::default(); width]; height],
             cursor: None,
@@ -117,14 +119,24 @@ impl Grid {
                 Close => self.completion = None,
             },
             Filetree(comp) => match comp {
-                Open(ft) => self.filetree = Some(open_filetree(self.window.area(), ft)),
+                Open(ft) => self.filetree = Some(open_items(self.window.area(), ft)),
                 Update(diff) => {
                     if let Some(ref mut ft) = self.filetree {
-                        ft.drawable().ft.update(diff);
+                        ft.drawable().items.update(diff);
                         ft.update();
                     }
                 }
                 Close => self.filetree = None,
+            },
+            Locations(comp) => match comp {
+                Open(ft) => self.locations = Some(open_items(self.window.area(), ft)),
+                Update(diff) => {
+                    if let Some(ref mut ft) = self.locations {
+                        ft.drawable().items.update(diff);
+                        ft.update();
+                    }
+                }
+                Close => self.locations = None,
             },
             _ => {}
         }
@@ -212,6 +224,10 @@ impl Grid {
         let t = &self.theme;
         Self::draw_drawable(&self.window, t, &mut self.cursor, &mut self.drawn);
         Self::draw_drawable(&self.statusline, t, &mut self.cursor, &mut self.drawn);
+
+        if let Some(ref loc) = self.locations {
+            Self::draw_drawable(loc, t, &mut self.cursor, &mut self.drawn);
+        }
 
         if let Some(ref ft) = self.filetree {
             Self::draw_drawable(ft, t, &mut self.cursor, &mut self.drawn);

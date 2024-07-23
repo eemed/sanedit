@@ -137,3 +137,9 @@ impl<T: Ord> Deref for SortedVec<T> {
         &self.items
     }
 }
+
+impl<T: Ord> From<SortedVec<T>> for Vec<T> {
+    fn from(value: SortedVec<T>) -> Self {
+        value.items
+    }
+}

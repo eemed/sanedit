@@ -617,9 +617,7 @@ impl Editor {
             Window => KeymapKind::Window,
             Completion => KeymapKind::Completion,
             Filetree => KeymapKind::Filetree,
-            Locations => {
-                todo!()
-            }
+            Locations => KeymapKind::Locations,
         };
 
         self.keymaps

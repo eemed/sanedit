@@ -7,7 +7,7 @@ use crate::ui::UIContext;
 use super::{
     completion::fit_completion,
     drawable::{DrawCursor, Drawable},
-    filetree::CustomFiletree,
+    items::CustomItems,
     CCell, Rect,
 };
 
@@ -80,11 +80,11 @@ impl GridItem<Completion> {
     }
 }
 
-impl GridItem<CustomFiletree> {
+impl GridItem<CustomItems> {
     pub fn update(&mut self) {
         let height = self.area.height;
         let cft = self.drawable();
-        let sel = cft.ft.selected;
+        let sel = cft.items.selected;
         let at_least = sel.saturating_sub(height.saturating_sub(1));
         cft.scroll = max(cft.scroll, at_least);
 

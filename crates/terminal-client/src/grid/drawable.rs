@@ -6,7 +6,7 @@ use sanedit_messages::redraw::{
 };
 
 use crate::{
-    grid::{ccell::format_option, filetree},
+    grid::{ccell::format_option, items},
     ui::UIContext,
 };
 
@@ -16,7 +16,7 @@ use super::{
         center_pad, clear_all, format_completion, into_cells_with_style, into_cells_with_style_pad,
         into_cells_with_theme_pad_with, pad_line, put_line, set_style, size, CCell,
     },
-    filetree::CustomFiletree,
+    items::CustomItems,
     prompt::{CustomPrompt, PromptStyle},
 };
 
@@ -313,7 +313,7 @@ impl Drawable for StatusMessage {
     }
 }
 
-impl Drawable for CustomFiletree {
+impl Drawable for CustomItems {
     fn draw(&self, ctx: &UIContext, cells: &mut [&mut [CCell]]) {
         let fill = ctx.style(ThemeField::FiletreeDefault);
         let file = ctx.style(ThemeField::FiletreeFile);
@@ -323,13 +323,13 @@ impl Drawable for CustomFiletree {
 
         clear_all(cells, fill);
 
-        for (row, item) in self.ft.items.iter().skip(self.scroll).enumerate() {
+        for (row, item) in self.items.items.iter().skip(self.scroll).enumerate() {
             if row >= cells.len() {
                 break;
             }
 
             let width = cells.get(0).map(|c| c.len()).unwrap_or(0);
-            let style = if self.scroll + row == self.ft.selected {
+            let style = if self.scroll + row == self.items.selected {
                 sel
             } else {
                 match item.kind {
@@ -338,7 +338,7 @@ impl Drawable for CustomFiletree {
                 }
             };
 
-            let mut titem = filetree::format_item(item, style, markers);
+            let mut titem = items::format_item(item, style, markers);
             pad_line(&mut titem, fill, width);
 
             for (i, cell) in titem.into_iter().enumerate() {

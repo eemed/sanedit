@@ -16,6 +16,7 @@ impl DefaultKeyMappings {
         maps.insert(Search, Self::search());
         maps.insert(Completion, Self::completion());
         maps.insert(Filetree, Self::filetree());
+        maps.insert(Locations, Self::locations());
         maps
     }
 
@@ -174,12 +175,32 @@ impl DefaultKeyMappings {
         map!(map,
              "ctrl+q", editor::quit,
 
-             "esc",   filetree::close_filetree,
+             "esc",   filetree::close,
              "enter", filetree::confirm,
              "up",    filetree::prev_entry,
              "down",  filetree::next_entry,
              "btab",  filetree::prev_entry,
              "tab",   filetree::next_entry,
+        );
+
+        map
+    }
+
+    fn locations() -> Keymap {
+        let mut map = Keymap {
+            root: KeyTrie::default(),
+        };
+
+        #[rustfmt::skip]
+        map!(map,
+             "ctrl+q", editor::quit,
+
+             "esc",   locations::close,
+             "enter", locations::confirm,
+             "up",    locations::prev_entry,
+             "down",  locations::next_entry,
+             "btab",  locations::prev_entry,
+             "tab",   locations::next_entry,
         );
 
         map

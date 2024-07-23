@@ -8,6 +8,7 @@ use std::path::{Path, PathBuf};
 use grep::matcher::{LineTerminator, Matcher};
 use grep::regex::{RegexMatcher, RegexMatcherBuilder};
 use grep::searcher::{BinaryDetection, Searcher, SearcherBuilder, Sink, SinkMatch};
+use sanedit_utils::sorted_vec::SortedVec;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 
 use crate::actions::jobs::{OptionProvider, CHANNEL_SIZE};
@@ -71,11 +72,21 @@ impl Grep {
                     matcher: &matcher,
                     sender: msend,
                     path: &path,
-                    matches: vec![],
+                    matches: SortedVec::new(),
                 };
                 let _ = searcher.search_path(&matcher, &path, rsend);
             });
         }
+    }
+
+    async fn send_results(mut recv: Receiver<GrepResult>, mut ctx: JobContext) {
+        // TODO send clear message?
+
+        while let Some(msg) = recv.recv().await {
+            ctx.send(msg);
+        }
+
+        // TODO send done message?
     }
 }
 
@@ -93,6 +104,7 @@ impl Job for Grep {
             tokio::join!(
                 fopts.provide(osend, ctx.kill.clone()),
                 Self::grep(orecv, &pattern, msend),
+                Self::send_results(mrecv, ctx),
             );
 
             Ok(())
@@ -122,11 +134,23 @@ impl KeepInTouch for Grep {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 struct GrepMatch {
+    line: Option<u64>,
     text: String,
     matches: Vec<Range<usize>>,
-    line: Option<u64>,
+}
+
+impl PartialOrd for GrepMatch {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        (other.line, &other.text).partial_cmp(&(self.line, &self.text))
+    }
+}
+
+impl Ord for GrepMatch {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        (other.line, &other.text).cmp(&(self.line, &self.text))
+    }
 }
 
 impl From<GrepMatch> for Location {
@@ -142,7 +166,7 @@ impl From<GrepMatch> for Location {
 
 struct GrepResult {
     path: PathBuf,
-    matches: Vec<GrepMatch>,
+    matches: SortedVec<GrepMatch>,
 }
 
 #[derive(Debug)]
@@ -150,7 +174,7 @@ struct ResultSender<'a> {
     matcher: &'a RegexMatcher,
     sender: Sender<GrepResult>,
     path: &'a Path,
-    matches: Vec<GrepMatch>,
+    matches: SortedVec<GrepMatch>,
 }
 
 impl<'a> Sink for ResultSender<'a> {

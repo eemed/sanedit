@@ -1,13 +1,21 @@
-use std::{cmp::Ordering, ops::Range};
+use std::{
+    cmp::{min, Ordering},
+    ops::Range,
+};
 
 #[derive(Debug, Default)]
 pub(crate) struct Locations {
+    selection: Option<usize>,
     locations: Vec<Location>,
 }
 
 impl Locations {
     pub fn push(&mut self, loc: Location) {
         self.locations.push(loc);
+
+        if self.selection.is_none() {
+            self.selection = Some(0);
+        }
     }
 
     pub fn clear(&mut self) {
@@ -16,6 +24,81 @@ impl Locations {
 
     pub fn iter(&self) -> LocationIter {
         LocationIter::new(&self.locations)
+    }
+
+    pub fn selection_index(&self) -> Option<usize> {
+        self.selection
+    }
+
+    pub fn selected(&self) -> Option<LocationEntry> {
+        let n = self.selection?;
+        self.iter().nth(n)
+    }
+
+    pub fn selected_mut(&mut self) -> Option<&mut Location> {
+        let n = self.selection?;
+        let mut stack = vec![];
+
+        for loc in self.locations.iter_mut() {
+            stack.push(loc);
+        }
+
+        let mut curn = 0;
+        while let Some(loc) = stack.pop() {
+            if curn == n {
+                return Some(loc);
+            }
+
+            if let Location::Group {
+                expanded,
+                locations,
+                ..
+            } = loc
+            {
+                if *expanded {
+                    for ll in locations.iter_mut() {
+                        stack.push(ll);
+                    }
+                }
+            }
+
+            curn += 1;
+        }
+
+        None
+    }
+
+    fn visible_len(&self) -> usize {
+        self.iter().count()
+    }
+
+    pub fn select_next(&mut self) {
+        log::info!("next 1: {:?}", self.selection);
+        if self.locations.is_empty() {
+            self.selection = None;
+            return;
+        }
+
+        self.selection = match self.selection {
+            Some(n) => min(n + 1, self.visible_len() - 1),
+            None => 0,
+        }
+        .into();
+
+        log::info!("next: after: {:?}", self.selection);
+    }
+
+    pub fn select_prev(&mut self) {
+        if self.locations.is_empty() {
+            self.selection = None;
+            return;
+        }
+
+        self.selection = match self.selection {
+            Some(n) => n.saturating_sub(1),
+            None => self.visible_len() - 1,
+        }
+        .into();
     }
 }
 
@@ -39,6 +122,13 @@ impl Location {
         match self {
             Location::Group { name, .. } => name,
             Location::Item { name, .. } => name,
+        }
+    }
+
+    pub fn line(&self) -> Option<u64> {
+        match self {
+            Location::Group { .. } => None,
+            Location::Item { line, .. } => *line,
         }
     }
 }

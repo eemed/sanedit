@@ -5,19 +5,29 @@ use crate::editor::windows::{Location, Locations};
 use super::DrawContext;
 
 pub(crate) fn draw(locs: &Locations, ctx: &mut DrawContext) -> redraw::Redraw {
-    let selected = ctx.editor.win.ft_view.selection;
+    let selected = locs.selection_index().unwrap_or(0);
     let mut items = vec![];
 
     for entry in locs.iter() {
-        let kind = if let Location::Group { expanded, .. } = entry.loc {
-            ItemKind::Group {
-                expanded: *expanded,
+        let (kind, name) = match entry.loc {
+            Location::Group { expanded, name, .. } => {
+                let kind = ItemKind::Group {
+                    expanded: *expanded,
+                };
+                (kind, name.to_string())
             }
-        } else {
-            ItemKind::Item
+            Location::Item {
+                name,
+                line,
+                column,
+                highlights,
+            } => {
+                let line = line.map(|n| n.to_string()).unwrap_or("?".into());
+                let name = format!("{}: {}", line, name);
+                (ItemKind::Item, name)
+            }
         };
 
-        let name = entry.loc.name().to_string();
         let item = Item {
             name,
             kind,

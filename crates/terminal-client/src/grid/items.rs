@@ -7,13 +7,13 @@ use super::{
 };
 
 #[derive(Debug)]
-pub(crate) struct CustomFiletree {
-    pub(crate) ft: Items,
+pub(crate) struct CustomItems {
+    pub(crate) items: Items,
     pub(crate) scroll: usize,
 }
 
-pub(crate) fn open_filetree(win: Rect, ft: Items) -> GridItem<CustomFiletree> {
-    GridItem::new(CustomFiletree { ft, scroll: 0 }, win)
+pub(crate) fn open_items(win: Rect, items: Items) -> GridItem<CustomItems> {
+    GridItem::new(CustomItems { items, scroll: 0 }, win)
 }
 
 pub(crate) fn format_item(item: &Item, name: Style, extra: Style) -> Vec<CCell> {

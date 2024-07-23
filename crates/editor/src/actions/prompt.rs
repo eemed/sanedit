@@ -294,10 +294,11 @@ fn grep(editor: &mut Editor, id: ClientId) {
         .prompt("Grep")
         .simple()
         .on_confirm(move |e, id, input| {
+            const GREP_JOB: &str = "grep";
             let ignore = e.options.ignore_directories();
             let wd = e.working_dir();
             let job = Grep::new(input, wd, &ignore, id);
-            e.job_broker.request(job);
+            e.job_broker.request_slot(id, GREP_JOB, job);
         })
         .build();
     win.focus = Focus::Prompt;

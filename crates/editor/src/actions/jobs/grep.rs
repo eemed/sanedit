@@ -26,7 +26,6 @@ use super::FileOptionProvider;
 pub(crate) struct Grep {
     client_id: ClientId,
     pattern: String,
-    path: PathBuf,
     file_opt_provider: FileOptionProvider,
 }
 
@@ -37,7 +36,6 @@ impl Grep {
         Grep {
             client_id: id,
             pattern: pattern.into(),
-            path: path.to_path_buf(),
             file_opt_provider: fprovider,
         }
     }
@@ -80,13 +78,11 @@ impl Grep {
     }
 
     async fn send_results(mut recv: Receiver<GrepResult>, mut ctx: JobContext) {
-        // TODO send clear message?
+        ctx.send(Start);
 
         while let Some(msg) = recv.recv().await {
             ctx.send(msg);
         }
-
-        // TODO send done message?
     }
 }
 
@@ -119,7 +115,14 @@ impl KeepInTouch for Grep {
         self.client_id
     }
 
-    fn on_message(&self, editor: &mut Editor, msg: Box<dyn Any>) {
+    fn on_message(&self, editor: &mut Editor, mut msg: Box<dyn Any>) {
+        if let Some(_msg) = msg.downcast_mut::<Start>() {
+            let (win, _buf) = editor.win_buf_mut(self.client_id);
+            win.locations.clear();
+            // TODO open matches
+            return;
+        }
+
         if let Ok(msg) = msg.downcast::<GrepResult>() {
             let locations = msg.matches.into_iter().map(Location::from).collect();
             let name = msg.path.to_string_lossy();
@@ -132,7 +135,16 @@ impl KeepInTouch for Grep {
             win.locations.push(location);
         }
     }
+
+    fn on_success(&self, editor: &mut Editor) {}
+
+    fn on_failure(&self, editor: &mut Editor, reason: &str) {
+        let (win, _buf) = editor.win_buf_mut(self.client_id);
+        win.locations.clear();
+    }
 }
+
+struct Start;
 
 #[derive(Debug, PartialEq, Eq)]
 struct GrepMatch {

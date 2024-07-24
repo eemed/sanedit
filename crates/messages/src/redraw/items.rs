@@ -15,6 +15,7 @@ use super::Diffable;
 pub struct Items {
     pub items: Vec<Item>,
     pub selected: usize,
+    pub in_focus: bool,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]

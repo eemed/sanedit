@@ -1,6 +1,6 @@
 use sanedit_messages::redraw::{self, Component, Item, ItemKind};
 
-use crate::editor::filetree::Filetree;
+use crate::editor::{filetree::Filetree, windows::Focus};
 
 use super::DrawContext;
 
@@ -27,6 +27,11 @@ pub(crate) fn draw(tree: &Filetree, ctx: &mut DrawContext) -> redraw::Redraw {
         items.push(item);
     }
 
-    let items = redraw::Items { items, selected };
+    let in_focus = ctx.editor.win.focus == Focus::Filetree;
+    let items = redraw::Items {
+        items,
+        selected,
+        in_focus,
+    };
     redraw::Redraw::Filetree(Component::Open(items))
 }

@@ -136,7 +136,10 @@ impl KeepInTouch for Grep {
         }
     }
 
-    fn on_success(&self, editor: &mut Editor) {}
+    fn on_success(&self, editor: &mut Editor) {
+        let (win, _buf) = editor.win_buf_mut(self.client_id);
+        win.locations.show = true;
+    }
 
     fn on_failure(&self, editor: &mut Editor, reason: &str) {
         let (win, _buf) = editor.win_buf_mut(self.client_id);

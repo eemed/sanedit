@@ -33,6 +33,9 @@ pub(crate) struct DrawState {
     /// Used to detect when prompt is different
     last_prompt: Option<String>,
     last_focus: Option<Focus>,
+    last_show_ft: Option<bool>,
+    last_show_loc: Option<bool>,
+
     /// Used to track scroll position when drawing prompt
     prompt_scroll_offset: usize,
     compl_scroll_offset: usize,
@@ -46,6 +49,8 @@ impl DrawState {
         let mut state = DrawState {
             last_prompt: None,
             last_focus: None,
+            last_show_ft: None,
+            last_show_loc: None,
             prompt_scroll_offset: 0,
             compl_scroll_offset: 0,
             redraw_window: true,
@@ -92,11 +97,16 @@ impl DrawState {
             redraw.push(Redraw::Completion(Component::Close));
         }
 
-        if focus_changed_from(Focus::Filetree) {
+        let close_ft = !win.ft_view.show && self.last_show_ft == Some(true);
+        let unfocus_ft = !close_ft && focus_changed_from(Focus::Filetree);
+        let close_loc = !win.locations.show && self.last_show_loc == Some(true);
+        let unfocus_loc = !close_loc && focus_changed_from(Focus::Locations);
+
+        if close_ft {
             redraw.push(Redraw::Filetree(Component::Close));
         }
 
-        if focus_changed_from(Focus::Locations) {
+        if close_loc {
             redraw.push(Redraw::Locations(Component::Close));
         }
 
@@ -115,6 +125,18 @@ impl DrawState {
 
         if let Some(msg) = win.message() {
             redraw.push(msg.clone().into());
+        }
+
+        // Indicate that this is now unfocused
+        if unfocus_ft {
+            let current = filetree::draw(filetree, &mut ctx);
+            redraw.push(current);
+        }
+
+        // Indicate that this is now unfocused
+        if unfocus_loc {
+            let current = locations::draw(&win.locations, &mut ctx);
+            redraw.push(current);
         }
 
         match win.focus() {
@@ -141,6 +163,8 @@ impl DrawState {
             _ => {}
         }
 
+        self.last_show_ft = Some(win.ft_view.show);
+        self.last_show_loc = Some(win.locations.show);
         self.last_focus = Some(win.focus);
         redraw
     }

@@ -7,7 +7,7 @@ use sanedit_messages::{
 };
 
 use crate::{
-    grid::{Grid, Rect},
+    grid::{Grid, Rect, RedrawResult},
     terminal::Terminal,
 };
 
@@ -47,7 +47,7 @@ impl UI {
         self.grid.on_send_input();
     }
 
-    pub fn handle_message(&mut self, msg: ClientMessage) -> anyhow::Result<bool> {
+    pub fn handle_message(&mut self, msg: ClientMessage) -> anyhow::Result<UIResult> {
         use ClientMessage::*;
         match msg {
             Hello => {}
@@ -55,17 +55,18 @@ impl UI {
             Theme(theme) => {
                 self.grid.theme = theme.into();
             }
-            Redraw(msg) => {
-                self.grid.handle_redraw(msg);
-            }
+            Redraw(msg) => match self.grid.handle_redraw(msg) {
+                RedrawResult::Resized => return Ok(UIResult::Resize),
+                RedrawResult::Ok => {}
+            },
             Flush => self.flush()?,
             Bye => {
                 log::info!("UI got bye, exiting.");
-                return Ok(true);
+                return Ok(UIResult::Exit);
             }
         }
 
-        Ok(false)
+        Ok(UIResult::Nothing)
     }
 
     fn flush(&mut self) -> anyhow::Result<()> {
@@ -94,4 +95,11 @@ impl UI {
         self.terminal.flush()?;
         Ok(())
     }
+}
+
+#[derive(Debug)]
+pub(crate) enum UIResult {
+    Nothing,
+    Exit,
+    Resize,
 }

@@ -5,6 +5,7 @@ use std::{
 
 #[derive(Debug, Default)]
 pub(crate) struct Locations {
+    pub(crate) show: bool,
     selection: Option<usize>,
     locations: Vec<Location>,
 }

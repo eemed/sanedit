@@ -9,7 +9,7 @@ use std::{io, sync::mpsc, thread};
 
 use sanedit_messages::{ClientMessage, Message, Reader, Writer};
 
-use crate::ui::UI;
+use crate::ui::{UIResult, UI};
 pub use client::*;
 use message::ClientInternalMessage;
 
@@ -40,12 +40,21 @@ where
         use ClientInternalMessage::*;
         match msg {
             FromServer(msg) => match ui.handle_message(msg) {
-                Ok(true) => break,
+                Ok(UIResult::Exit) => break,
+                Ok(UIResult::Nothing) => {}
+                Ok(UIResult::Resize) => {
+                    let rect = ui.window_rect();
+                    let msg = Message::Resize(rect.size());
+
+                    if let Err(_e) = writer.write(msg) {
+                        log::error!("Client failed to send event to server");
+                        break;
+                    }
+                }
                 Err(e) => {
                     log::error!("UI failed to handle message: {e}");
                     break;
                 }
-                _ => {}
             },
             ToServer(mut msg) => {
                 ui.on_send_input(&msg);

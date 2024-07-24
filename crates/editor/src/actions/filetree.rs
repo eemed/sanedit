@@ -11,6 +11,7 @@ fn show(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
 
     win.ft_view.selection = min(visible - 1, win.ft_view.selection);
+    win.ft_view.show = true;
     win.focus = Focus::Filetree;
 }
 
@@ -27,7 +28,7 @@ fn confirm(editor: &mut Editor, id: ClientId) {
         if let PressResult::IsFile = editor.filetree.on_press(&path) {
             if let Err(e) = editor.open_file(id, path) {
                 let (win, buf) = editor.win_buf_mut(id);
-                win.error_msg("Failed to open file {path:?}: {e}");
+                win.error_msg("failed to open file {path:?}: {e}");
             }
         }
     }
@@ -49,7 +50,9 @@ fn prev_entry(editor: &mut Editor, id: ClientId) {
 
 #[action("Close filetree")]
 fn close(editor: &mut Editor, id: ClientId) {
+    log::info!("Close ft");
     let (win, buf) = editor.win_buf_mut(id);
+    win.ft_view.show = false;
     win.focus = Focus::Window;
 }
 

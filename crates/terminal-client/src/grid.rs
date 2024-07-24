@@ -15,7 +15,10 @@ use sanedit_messages::redraw::{
 };
 
 use crate::{
-    grid::{completion::open_completion, items::open_items},
+    grid::{
+        completion::open_completion,
+        items::{open_filetree, open_locations},
+    },
     ui::UIContext,
 };
 
@@ -74,7 +77,7 @@ impl Grid {
         self.msg = None;
     }
 
-    pub fn handle_redraw(&mut self, msg: Redraw) {
+    pub fn handle_redraw(&mut self, msg: Redraw) -> RedrawResult {
         use Component::*;
         use Redraw::*;
 
@@ -119,17 +122,40 @@ impl Grid {
                 Close => self.completion = None,
             },
             Filetree(comp) => match comp {
-                Open(ft) => self.filetree = Some(open_items(self.window.area(), ft)),
+                Open(ft) => {
+                    let items = open_filetree(self.window.area(), ft);
+                    let ft_area = items.area();
+                    self.filetree = Some(items);
+
+                    let warea = self.window.area_mut();
+                    warea.width -= ft_area.width;
+                    warea.x += ft_area.width;
+
+                    return RedrawResult::Resized;
+                }
                 Update(diff) => {
                     if let Some(ref mut ft) = self.filetree {
                         ft.drawable().items.update(diff);
                         ft.update();
                     }
                 }
-                Close => self.filetree = None,
+                Close => {
+                    let ft_area = self
+                        .filetree
+                        .as_ref()
+                        .expect("Closing filetree that is not open")
+                        .area();
+
+                    let warea = self.window.area_mut();
+                    warea.width += ft_area.width;
+                    warea.x -= ft_area.width;
+
+                    self.filetree = None;
+                    return RedrawResult::Resized;
+                }
             },
             Locations(comp) => match comp {
-                Open(ft) => self.locations = Some(open_items(self.window.area(), ft)),
+                Open(ft) => self.locations = Some(open_locations(self.window.area(), ft)),
                 Update(diff) => {
                     if let Some(ref mut ft) = self.locations {
                         ft.drawable().items.update(diff);
@@ -140,6 +166,8 @@ impl Grid {
             },
             _ => {}
         }
+
+        RedrawResult::Ok
     }
 
     pub fn resize(&mut self, width: usize, height: usize) {
@@ -148,6 +176,7 @@ impl Grid {
         let prompt = mem::take(&mut self.prompt);
         let msg = mem::take(&mut self.msg);
         let statusline = self.statusline.drawable().clone();
+        let ft = mem::take(&mut self.filetree);
 
         *self = Grid::new(width, height);
 
@@ -163,6 +192,12 @@ impl Grid {
             let msg = msg.get();
             let item = GridItem::new(msg, self.statusline.area());
             self.msg = item.into();
+        }
+
+        if let Some(ft) = ft {
+            let ft = ft.get();
+            let item = open_filetree(self.window_area(), ft.items);
+            self.filetree = item.into();
         }
     }
 
@@ -247,4 +282,9 @@ impl Grid {
 
         (&self.drawn, self.cursor)
     }
+}
+
+pub(crate) enum RedrawResult {
+    Ok,
+    Resized,
 }

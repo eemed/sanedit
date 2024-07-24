@@ -8,6 +8,7 @@ use super::{Component, Diffable, Redraw};
 pub struct Filetree {
     pub items: Vec<FileItem>,
     pub selected: usize,
+    pub in_focus: bool,
 }
 
 impl From<Filetree> for Redraw {

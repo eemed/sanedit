@@ -9,12 +9,14 @@ use crate::{
 #[action("Show locations")]
 fn show(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
+    win.locations.show = true;
     win.focus = Focus::Locations;
 }
 
 #[action("Close locations")]
 fn close(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
+    win.locations.show = false;
     win.focus = Focus::Window;
 }
 

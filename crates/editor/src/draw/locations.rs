@@ -1,6 +1,6 @@
 use sanedit_messages::redraw::{self, Component, Item, ItemKind};
 
-use crate::editor::windows::{Location, Locations};
+use crate::editor::windows::{Focus, Location, Locations};
 
 use super::DrawContext;
 
@@ -37,6 +37,11 @@ pub(crate) fn draw(locs: &Locations, ctx: &mut DrawContext) -> redraw::Redraw {
         items.push(item);
     }
 
-    let items = redraw::Items { items, selected };
+    let in_focus = ctx.editor.win.focus == Focus::Locations;
+    let items = redraw::Items {
+        items,
+        selected,
+        in_focus,
+    };
     redraw::Redraw::Locations(Component::Open(items))
 }

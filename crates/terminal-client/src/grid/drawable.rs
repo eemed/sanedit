@@ -16,7 +16,7 @@ use super::{
         center_pad, clear_all, format_completion, into_cells_with_style, into_cells_with_style_pad,
         into_cells_with_theme_pad_with, pad_line, put_line, set_style, size, CCell,
     },
-    items::CustomItems,
+    items::{CustomItems, Kind},
     prompt::{CustomPrompt, PromptStyle},
 };
 
@@ -313,8 +313,8 @@ impl Drawable for StatusMessage {
     }
 }
 
-impl Drawable for CustomItems {
-    fn draw(&self, ctx: &UIContext, cells: &mut [&mut [CCell]]) {
+impl CustomItems {
+    fn draw_filetree(&self, ctx: &UIContext, cells: &mut [&mut [CCell]]) {
         let fill = ctx.style(ThemeField::FiletreeDefault);
         let file = ctx.style(ThemeField::FiletreeFile);
         let dir = ctx.style(ThemeField::FiletreeDir);
@@ -347,7 +347,53 @@ impl Drawable for CustomItems {
         }
     }
 
+    fn draw_locations(&self, ctx: &UIContext, cells: &mut [&mut [CCell]]) {
+        let fill = ctx.style(ThemeField::FiletreeDefault);
+        let file = ctx.style(ThemeField::FiletreeFile);
+        let dir = ctx.style(ThemeField::FiletreeDir);
+        let markers = ctx.style(ThemeField::FiletreeMarkers);
+        let sel = ctx.style(ThemeField::FiletreeSelected);
+
+        clear_all(cells, fill);
+
+        for (row, item) in self.items.items.iter().skip(self.scroll).enumerate() {
+            if row >= cells.len() {
+                break;
+            }
+
+            let width = cells.get(0).map(|c| c.len()).unwrap_or(0);
+            let style = if self.scroll + row == self.items.selected {
+                sel
+            } else {
+                match item.kind {
+                    ItemKind::Group { expanded } => dir,
+                    ItemKind::Item => file,
+                }
+            };
+
+            let mut titem = items::format_item(item, style, markers);
+            pad_line(&mut titem, fill, width);
+
+            for (i, cell) in titem.into_iter().enumerate() {
+                cells[row][i] = cell;
+            }
+        }
+    }
+}
+
+impl Drawable for CustomItems {
+    fn draw(&self, ctx: &UIContext, cells: &mut [&mut [CCell]]) {
+        match self.kind {
+            Kind::Filetree => self.draw_filetree(ctx, cells),
+            Kind::Locations => self.draw_locations(ctx, cells),
+        }
+    }
+
     fn cursor(&self, ctx: &UIContext) -> DrawCursor {
-        DrawCursor::Hide
+        if self.items.in_focus {
+            DrawCursor::Hide
+        } else {
+            DrawCursor::Ignore
+        }
     }
 }

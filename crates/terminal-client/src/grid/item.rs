@@ -82,7 +82,8 @@ impl GridItem<Completion> {
 
 impl GridItem<CustomItems> {
     pub fn update(&mut self) {
-        let height = self.area.height;
+        let area_reserved = self.drawable().area_reserved_lines;
+        let height = self.area.height.saturating_sub(area_reserved);
         let cft = self.drawable();
         let sel = cft.items.selected;
         let at_least = sel.saturating_sub(height.saturating_sub(1));

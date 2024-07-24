@@ -61,14 +61,16 @@ description = ",#5a433d,"
 match = ",#b0463a,"
 
 [colors.filetree]
-default = "#d8ccb4,#000000,"
+# default = "#d8ccb4,#000000,"
+default = "#E2DBC8,#000000,"
 file = ""
 directory = ",#824b26,"
 markers = ",#355d8d,"
 selected = "#efb679,,"
 
 [colors.locations]
-default = "#d8ccb4,#000000,"
+# default = "#d8ccb4,#000000,"
+default = "#E2DBC8,#000000,"
 entry = ""
 group = ",#824b26,"
 markers = ",#355d8d,"

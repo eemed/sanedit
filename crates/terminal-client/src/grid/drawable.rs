@@ -1,7 +1,7 @@
 use std::cmp::{max, min};
 
 use sanedit_messages::redraw::{
-    Completion, Cursor, CursorShape, IntoCells, Item, ItemKind, Items, Point, Severity,
+    Cell, Completion, Cursor, CursorShape, IntoCells, Item, ItemKind, Items, Point, Severity, Size,
     StatusMessage, Statusline, Style, ThemeField, Window,
 };
 
@@ -323,12 +323,26 @@ impl CustomItems {
 
         clear_all(cells, fill);
 
+        let Size { width, height } = size(cells);
+        let last = width.saturating_sub(1);
+
+        for i in 0..height {
+            let mut ccell = CCell::from('│');
+            ccell.style = markers;
+            cells[i][last] = ccell;
+        }
+
+        for i in 0..height {
+            let line = std::mem::replace(&mut cells[i], &mut []);
+            cells[i] = &mut line[..last];
+        }
+
+        let Size { width, height } = size(cells);
         for (row, item) in self.items.items.iter().skip(self.scroll).enumerate() {
             if row >= cells.len() {
                 break;
             }
 
-            let width = cells.get(0).map(|c| c.len()).unwrap_or(0);
             let style = if self.scroll + row == self.items.selected {
                 sel
             } else {
@@ -373,16 +387,36 @@ impl CustomItems {
         result
     }
 
-    fn draw_locations(&self, ctx: &UIContext, cells: &mut [&mut [CCell]]) {
+    fn draw_locations(&self, ctx: &UIContext, mut cells: &mut [&mut [CCell]]) {
         let fill = ctx.style(ThemeField::LocationsDefault);
         let entry = ctx.style(ThemeField::LocationsEntry);
         let group = ctx.style(ThemeField::LocationsGroup);
         let markers = ctx.style(ThemeField::LocationsMarkers);
+        let statusline = ctx.style(ThemeField::Statusline);
         let sel = ctx.style(ThemeField::LocationsSelected);
         let lmat = ctx.style(ThemeField::LocationsMatch);
         let smat = ctx.style(ThemeField::LocationsSelectedMatch);
 
         clear_all(cells, fill);
+
+        let Size { width, height } = size(cells);
+        if !cells.is_empty() {
+            let mut line = into_cells_with_style(" Locations ", statusline);
+
+            for i in line.len()..cells[0].len() {
+                let mut ccell = CCell::from(' ');
+                ccell.style = statusline;
+                line.push(ccell);
+            }
+
+            line.truncate(width);
+
+            for (i, c) in line.into_iter().enumerate() {
+                cells[0][i] = c;
+            }
+
+            cells = &mut cells[1..];
+        }
 
         for (row, item) in self.items.items.iter().skip(self.scroll).enumerate() {
             if row >= cells.len() {

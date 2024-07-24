@@ -8,7 +8,7 @@ mod window;
 
 use std::{mem, path::Path};
 
-use sanedit_messages::redraw::{Component, Redraw, Theme};
+use sanedit_messages::redraw::{Redraw, Theme};
 
 use crate::editor::{
     buffers::Buffer,
@@ -29,6 +29,13 @@ pub(crate) struct DrawContext<'a, 'b> {
     state: &'b mut DrawState,
 }
 
+impl<'a, 'b> DrawContext<'a, 'b> {
+    pub fn focus_changed_from(&self, focus: Focus) -> bool {
+        self.state.last_focus == Some(focus) && focus != self.editor.win.focus
+    }
+}
+
+#[derive(Debug)]
 pub(crate) struct DrawState {
     /// Used to detect when prompt is different
     last_prompt: Option<String>,
@@ -70,44 +77,11 @@ impl DrawState {
 
     pub fn redraw(&mut self, ectx: EditorContext) -> Vec<Redraw> {
         let EditorContext { win, filetree, .. } = ectx;
-        let focus_changed_from = |focus| self.last_focus == Some(focus) && focus != win.focus;
         let mut redraw: Vec<Redraw> = vec![];
 
         let draw = mem::replace(&mut self.redraw, true);
         if !draw {
             return redraw;
-        }
-
-        // Send close if not focused
-        if focus_changed_from(Focus::Prompt)
-            || focus_changed_from(Focus::Search)
-            || self
-                .last_prompt
-                .as_ref()
-                .map(|p| p != win.prompt.message())
-                .unwrap_or(false)
-        {
-            self.prompt_scroll_offset = 0;
-            self.last_prompt = None;
-            redraw.push(Redraw::Prompt(Component::Close));
-        }
-
-        if focus_changed_from(Focus::Completion) {
-            self.compl_scroll_offset = 0;
-            redraw.push(Redraw::Completion(Component::Close));
-        }
-
-        let close_ft = !win.ft_view.show && self.last_show_ft == Some(true);
-        let unfocus_ft = !close_ft && focus_changed_from(Focus::Filetree);
-        let close_loc = !win.locations.show && self.last_show_loc == Some(true);
-        let unfocus_loc = !close_loc && focus_changed_from(Focus::Locations);
-
-        if close_ft {
-            redraw.push(Redraw::Filetree(Component::Close));
-        }
-
-        if close_loc {
-            redraw.push(Redraw::Locations(Component::Close));
         }
 
         let mut ctx = DrawContext {
@@ -127,44 +101,26 @@ impl DrawState {
             redraw.push(msg.clone().into());
         }
 
-        // Indicate that this is now unfocused
-        if unfocus_ft {
-            let current = filetree::draw(filetree, &mut ctx);
+        if let Some(current) = search::draw(&win.prompt, &win.search, &mut ctx) {
             redraw.push(current);
         }
 
-        // Indicate that this is now unfocused
-        if unfocus_loc {
-            let current = locations::draw(&win.locations, &mut ctx);
+        if let Some(current) = prompt::draw(&win.prompt, &mut ctx) {
             redraw.push(current);
         }
 
-        match win.focus() {
-            Focus::Search => {
-                let current = search::draw(&win.prompt, &win.search, &mut ctx).into();
-                redraw.push(current);
-            }
-            Focus::Prompt => {
-                let current = prompt::draw(&win.prompt, &mut ctx).into();
-                redraw.push(current);
-            }
-            Focus::Completion => {
-                let current = completion::draw(&win.completion, &mut ctx).into();
-                redraw.push(current);
-            }
-            Focus::Filetree => {
-                let current = filetree::draw(filetree, &mut ctx);
-                redraw.push(current);
-            }
-            Focus::Locations => {
-                let current = locations::draw(&win.locations, &mut ctx);
-                redraw.push(current);
-            }
-            _ => {}
+        if let Some(current) = completion::draw(&win.completion, &mut ctx) {
+            redraw.push(current);
         }
 
-        self.last_show_ft = Some(win.ft_view.show);
-        self.last_show_loc = Some(win.locations.show);
+        if let Some(current) = locations::draw(&win.locations, &mut ctx) {
+            redraw.push(current);
+        }
+
+        if let Some(current) = filetree::draw(filetree, &mut ctx) {
+            redraw.push(current);
+        }
+
         self.last_focus = Some(win.focus);
         redraw
     }

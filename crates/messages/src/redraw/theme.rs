@@ -154,6 +154,14 @@ pub enum ThemeField {
     FiletreeDir,
     FiletreeSelected,
     FiletreeMarkers,
+
+    LocationsDefault,
+    LocationsGroup,
+    LocationsEntry,
+    LocationsSelected,
+    LocationsSelectedMatch,
+    LocationsMarkers,
+    LocationsMatch,
 }
 
 impl AsRef<str> for ThemeField {
@@ -212,6 +220,14 @@ impl AsRef<str> for ThemeField {
             FiletreeDir => "filetree.directory",
             FiletreeSelected => "filetree.selected",
             FiletreeMarkers => "filetree.markers",
+
+            LocationsDefault => "locations",
+            LocationsGroup => "locations.group",
+            LocationsEntry => "locations.entry",
+            LocationsSelected => "locations.selected",
+            LocationsSelectedMatch => "locations.selected.match",
+            LocationsMarkers => "locations.markers",
+            LocationsMatch => "locations.match",
         }
     }
 }

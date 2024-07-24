@@ -1,4 +1,5 @@
 use std::{
+    borrow::Cow,
     cmp::{min, Ordering},
     ops::Range,
 };
@@ -74,7 +75,6 @@ impl Locations {
     }
 
     pub fn select_next(&mut self) {
-        log::info!("next 1: {:?}", self.selection);
         if self.locations.is_empty() {
             self.selection = None;
             return;
@@ -85,8 +85,6 @@ impl Locations {
             None => 0,
         }
         .into();
-
-        log::info!("next: after: {:?}", self.selection);
     }
 
     pub fn select_prev(&mut self) {
@@ -106,12 +104,12 @@ impl Locations {
 #[derive(Debug)]
 pub(crate) enum Location {
     Group {
-        name: String,
+        data: Vec<u8>,
         expanded: bool,
         locations: Vec<Location>,
     },
     Item {
-        name: String,
+        data: Vec<u8>,
         line: Option<u64>,
         column: Option<u64>,
         highlights: Vec<Range<usize>>,
@@ -119,10 +117,10 @@ pub(crate) enum Location {
 }
 
 impl Location {
-    pub fn name(&self) -> &str {
+    pub fn data_as_str(&self) -> Cow<str> {
         match self {
-            Location::Group { name, .. } => name,
-            Location::Item { name, .. } => name,
+            Location::Group { data, .. } => String::from_utf8_lossy(data),
+            Location::Item { data, .. } => String::from_utf8_lossy(data),
         }
     }
 
@@ -137,8 +135,8 @@ impl Location {
 impl PartialEq for Location {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (Location::Group { name, .. }, Location::Group { name: oname, .. }) => name.eq(oname),
-            (Location::Item { name, .. }, Location::Item { name: oname, .. }) => name.eq(oname),
+            (Location::Group { data, .. }, Location::Group { data: odata, .. }) => data.eq(odata),
+            (Location::Item { data, .. }, Location::Item { data: odata, .. }) => data.eq(odata),
             _ => false,
         }
     }
@@ -150,10 +148,10 @@ impl PartialOrd for Location {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         use Location::*;
         match (self, other) {
-            (Group { name, .. }, Group { name: oname, .. }) => name.partial_cmp(oname),
+            (Group { data, .. }, Group { data: odata, .. }) => data.partial_cmp(odata),
             (Group { .. }, Item { .. }) => Some(Ordering::Greater),
             (Item { .. }, Group { .. }) => Some(Ordering::Less),
-            (Item { name, .. }, Item { name: oname, .. }) => name.partial_cmp(oname),
+            (Item { data, .. }, Item { data: odata, .. }) => data.partial_cmp(odata),
         }
     }
 }

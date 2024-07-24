@@ -124,13 +124,7 @@ impl Grid {
             Filetree(comp) => match comp {
                 Open(ft) => {
                     let items = open_filetree(self.window.area(), ft);
-                    let ft_area = items.area();
-                    self.filetree = Some(items);
-
-                    let warea = self.window.area_mut();
-                    warea.width -= ft_area.width;
-                    warea.x += ft_area.width;
-
+                    self.set_filetree(items);
                     return RedrawResult::Resized;
                 }
                 Update(diff) => {
@@ -140,34 +134,75 @@ impl Grid {
                     }
                 }
                 Close => {
-                    let ft_area = self
-                        .filetree
-                        .as_ref()
-                        .expect("Closing filetree that is not open")
-                        .area();
-
-                    let warea = self.window.area_mut();
-                    warea.width += ft_area.width;
-                    warea.x -= ft_area.width;
-
-                    self.filetree = None;
+                    self.unset_filetree();
                     return RedrawResult::Resized;
                 }
             },
             Locations(comp) => match comp {
-                Open(ft) => self.locations = Some(open_locations(self.window.area(), ft)),
+                Open(locs) => {
+                    let items = open_locations(self.window.area(), locs);
+                    self.set_locations(items);
+                    return RedrawResult::Resized;
+                }
                 Update(diff) => {
                     if let Some(ref mut ft) = self.locations {
                         ft.drawable().items.update(diff);
                         ft.update();
                     }
                 }
-                Close => self.locations = None,
+                Close => {
+                    self.unset_locations();
+                    return RedrawResult::Resized;
+                }
             },
             _ => {}
         }
 
         RedrawResult::Ok
+    }
+
+    fn set_locations(&mut self, locs: GridItem<CustomItems>) {
+        let area = locs.area();
+        self.locations = locs.into();
+
+        let warea = self.window.area_mut();
+        warea.height -= area.height;
+    }
+
+    fn unset_locations(&mut self) {
+        log::info!("close locations");
+        let area = self
+            .locations
+            .as_ref()
+            .expect("Closing locations that is not open")
+            .area();
+
+        let warea = self.window.area_mut();
+        warea.height += area.height;
+        self.locations = None;
+    }
+
+    fn set_filetree(&mut self, ft: GridItem<CustomItems>) {
+        let area = ft.area();
+        self.filetree = ft.into();
+
+        let warea = self.window.area_mut();
+        warea.width -= area.width;
+        warea.x += area.width;
+    }
+
+    fn unset_filetree(&mut self) {
+        let area = self
+            .filetree
+            .as_ref()
+            .expect("Closing filetree that is not open")
+            .area();
+
+        let warea = self.window.area_mut();
+        warea.width += area.width;
+        warea.x -= area.width;
+
+        self.filetree = None;
     }
 
     pub fn resize(&mut self, width: usize, height: usize) {
@@ -196,8 +231,8 @@ impl Grid {
 
         if let Some(ft) = ft {
             let ft = ft.get();
-            let item = open_filetree(self.window_area(), ft.items);
-            self.filetree = item.into();
+            let items = open_filetree(self.window_area(), ft.items);
+            self.set_filetree(items);
         }
     }
 

@@ -26,6 +26,8 @@ pub enum ItemKind {
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
 pub struct Item {
+    pub line: Option<u64>,
+
     pub name: String,
     /// What to highlight in name if any
     pub highlights: Vec<Range<usize>>,

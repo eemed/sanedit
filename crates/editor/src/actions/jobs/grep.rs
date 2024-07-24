@@ -119,7 +119,7 @@ impl KeepInTouch for Grep {
         if let Some(_msg) = msg.downcast_mut::<Start>() {
             let (win, _buf) = editor.win_buf_mut(self.client_id);
             win.locations.clear();
-            // TODO open matches
+            win.locations.show = true;
             return;
         }
 
@@ -128,7 +128,7 @@ impl KeepInTouch for Grep {
             let name = msg.path.to_string_lossy();
             let location = Location::Group {
                 expanded: false,
-                name: name.into(),
+                data: name.as_bytes().to_vec(),
                 locations,
             };
             let (win, _buf) = editor.win_buf_mut(self.client_id);
@@ -138,7 +138,6 @@ impl KeepInTouch for Grep {
 
     fn on_success(&self, editor: &mut Editor) {
         let (win, _buf) = editor.win_buf_mut(self.client_id);
-        win.locations.show = true;
     }
 
     fn on_failure(&self, editor: &mut Editor, reason: &str) {
@@ -171,7 +170,7 @@ impl Ord for GrepMatch {
 impl From<GrepMatch> for Location {
     fn from(gmat: GrepMatch) -> Self {
         Location::Item {
-            name: gmat.text,
+            data: gmat.text.into(),
             line: gmat.line,
             column: None,
             highlights: gmat.matches,
@@ -197,6 +196,7 @@ impl<'a> Sink for ResultSender<'a> {
 
     fn matched(&mut self, searcher: &Searcher, mat: &SinkMatch<'_>) -> Result<bool, Self::Error> {
         let Ok(text) = std::str::from_utf8(mat.bytes()) else { return Ok(true); };
+        let text = text.trim_end();
 
         let mut matches = vec![];
         self.matcher

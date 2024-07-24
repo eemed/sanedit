@@ -1,8 +1,8 @@
 use std::cmp::{max, min};
 
 use sanedit_messages::redraw::{
-    Completion, Cursor, CursorShape, IntoCells, ItemKind, Items, Point, Severity, StatusMessage,
-    Statusline, ThemeField, Window,
+    Completion, Cursor, CursorShape, IntoCells, Item, ItemKind, Items, Point, Severity,
+    StatusMessage, Statusline, Style, ThemeField, Window,
 };
 
 use crate::{
@@ -338,7 +338,7 @@ impl CustomItems {
                 }
             };
 
-            let mut titem = items::format_item(item, style, markers);
+            let mut titem = Self::format_ft_item(item, style, markers);
             pad_line(&mut titem, fill, width);
 
             for (i, cell) in titem.into_iter().enumerate() {
@@ -347,12 +347,40 @@ impl CustomItems {
         }
     }
 
+    fn format_ft_item(item: &Item, name: Style, extra: Style) -> Vec<CCell> {
+        let mut result = vec![];
+        result.extend(into_cells_with_style(&"  ".repeat(item.level), extra));
+
+        match item.kind {
+            ItemKind::Group { expanded } => {
+                if expanded {
+                    result.extend(into_cells_with_style("- ", extra));
+                } else {
+                    result.extend(into_cells_with_style("+ ", extra));
+                }
+            }
+            ItemKind::Item => {
+                result.extend(into_cells_with_style("# ", extra));
+            }
+        }
+
+        result.extend(into_cells_with_style(&item.name, name));
+
+        if matches!(item.kind, ItemKind::Group { .. }) {
+            result.extend(into_cells_with_style("/", name));
+        }
+
+        result
+    }
+
     fn draw_locations(&self, ctx: &UIContext, cells: &mut [&mut [CCell]]) {
-        let fill = ctx.style(ThemeField::FiletreeDefault);
-        let file = ctx.style(ThemeField::FiletreeFile);
-        let dir = ctx.style(ThemeField::FiletreeDir);
-        let markers = ctx.style(ThemeField::FiletreeMarkers);
-        let sel = ctx.style(ThemeField::FiletreeSelected);
+        let fill = ctx.style(ThemeField::LocationsDefault);
+        let entry = ctx.style(ThemeField::LocationsEntry);
+        let group = ctx.style(ThemeField::LocationsGroup);
+        let markers = ctx.style(ThemeField::LocationsMarkers);
+        let sel = ctx.style(ThemeField::LocationsSelected);
+        let lmat = ctx.style(ThemeField::LocationsMatch);
+        let smat = ctx.style(ThemeField::LocationsSelectedMatch);
 
         clear_all(cells, fill);
 
@@ -362,22 +390,59 @@ impl CustomItems {
             }
 
             let width = cells.get(0).map(|c| c.len()).unwrap_or(0);
-            let style = if self.scroll + row == self.items.selected {
+            let is_selected = self.scroll + row == self.items.selected;
+            let style = if is_selected {
                 sel
             } else {
                 match item.kind {
-                    ItemKind::Group { expanded } => dir,
-                    ItemKind::Item => file,
+                    ItemKind::Group { expanded } => group,
+                    ItemKind::Item => entry,
                 }
             };
-
-            let mut titem = items::format_item(item, style, markers);
+            let mat = if is_selected { smat } else { lmat };
+            let mut titem = Self::format_loc_item(item, style, markers, mat);
             pad_line(&mut titem, fill, width);
 
             for (i, cell) in titem.into_iter().enumerate() {
                 cells[row][i] = cell;
             }
         }
+    }
+
+    fn format_loc_item(item: &Item, name: Style, extra: Style, mat: Style) -> Vec<CCell> {
+        let mut result = vec![];
+        result.extend(into_cells_with_style(&"  ".repeat(item.level), extra));
+
+        match item.kind {
+            ItemKind::Group { expanded } => {
+                if expanded {
+                    result.extend(into_cells_with_style("- ", extra));
+                } else {
+                    result.extend(into_cells_with_style("+ ", extra));
+                }
+            }
+            ItemKind::Item => {
+                let line = item.line.map(|l| l.to_string()).unwrap_or("?".into());
+                result.extend(into_cells_with_style(&format!("{line}: "), extra));
+            }
+        }
+
+        let mut name = into_cells_with_style(&item.name, name);
+
+        // Highlight matches
+        for hl in &item.highlights {
+            let mut pos = 0;
+            // dont count padding
+            for cell in &mut name {
+                if hl.contains(&pos) {
+                    cell.style = mat;
+                }
+                pos += cell.cell.text.len();
+            }
+        }
+
+        result.extend(name);
+        result
     }
 }
 

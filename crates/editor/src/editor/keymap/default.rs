@@ -69,6 +69,7 @@ impl DefaultKeyMappings {
              "alt+r",  prompt::shell_command,
              "ctrl+p", prompt::command_palette,
              "ctrl+o", prompt::open_file,
+             "alt+f",  prompt::grep,
 
              "ctrl+f", search::forward,
              "ctrl+g", search::backward,
@@ -98,6 +99,9 @@ impl DefaultKeyMappings {
              "alt+o a", text_objects::select_in_angle,
              "alt+o A", text_objects::select_angle,
 
+             "ctrl+b", filetree::show,
+
+             "ctrl+l", locations::show,
         );
 
         map
@@ -175,12 +179,13 @@ impl DefaultKeyMappings {
         map!(map,
              "ctrl+q", editor::quit,
 
-             "esc",   filetree::close,
-             "enter", filetree::confirm,
-             "up",    filetree::prev_entry,
-             "down",  filetree::next_entry,
-             "btab",  filetree::prev_entry,
-             "tab",   filetree::next_entry,
+             "esc",    filetree::close,
+             "ctrl+b", filetree::close,
+             "enter",  filetree::confirm,
+             "up",     filetree::prev_entry,
+             "down",   filetree::next_entry,
+             "btab",   filetree::prev_entry,
+             "tab",    filetree::next_entry,
         );
 
         map
@@ -195,12 +200,13 @@ impl DefaultKeyMappings {
         map!(map,
              "ctrl+q", editor::quit,
 
-             "esc",   locations::close,
-             "enter", locations::confirm,
-             "up",    locations::prev_entry,
-             "down",  locations::next_entry,
-             "btab",  locations::prev_entry,
-             "tab",   locations::next_entry,
+             "esc",    locations::close,
+             "ctrl+l", locations::close,
+             "enter",  locations::confirm,
+             "up",     locations::prev_entry,
+             "down",   locations::next_entry,
+             "btab",   locations::prev_entry,
+             "tab",    locations::next_entry,
         );
 
         map

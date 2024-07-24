@@ -40,18 +40,18 @@ fn confirm(editor: &mut Editor, id: ClientId) {
         // TODO vec<u8>
         match sel {
             Location::Group {
-                name,
+                data,
                 expanded,
                 locations,
             } => {
                 *expanded = !*expanded;
             }
             Location::Item {
-                name,
+                data,
                 line,
                 column,
                 highlights,
-            } => log::info!("Open: {name}"),
+            } => log::info!("Open: {}", sel.data_as_str()),
         }
     }
 }

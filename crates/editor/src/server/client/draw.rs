@@ -79,7 +79,7 @@ impl ClientDrawState {
                     None => return Some(Redraw::Locations(Component::Open(current.clone()))),
                 }
             }
-            Filetree(Close) => diffable_close!(self.locations),
+            Locations(Close) => diffable_close!(self.locations),
             _ => {}
         }
 

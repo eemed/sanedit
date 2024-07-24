@@ -392,7 +392,7 @@ impl CustomItems {
         let entry = ctx.style(ThemeField::LocationsEntry);
         let group = ctx.style(ThemeField::LocationsGroup);
         let markers = ctx.style(ThemeField::LocationsMarkers);
-        let statusline = ctx.style(ThemeField::Statusline);
+        let title = ctx.style(ThemeField::LocationsTitle);
         let sel = ctx.style(ThemeField::LocationsSelected);
         let lmat = ctx.style(ThemeField::LocationsMatch);
         let smat = ctx.style(ThemeField::LocationsSelectedMatch);
@@ -401,11 +401,11 @@ impl CustomItems {
 
         let Size { width, height } = size(cells);
         if !cells.is_empty() {
-            let mut line = into_cells_with_style(" Locations ", statusline);
+            let mut line = into_cells_with_style(" Locations", title);
 
-            for i in line.len()..cells[0].len() {
+            for _ in line.len()..cells[0].len() {
                 let mut ccell = CCell::from(' ');
-                ccell.style = statusline;
+                ccell.style = title;
                 line.push(ccell);
             }
 

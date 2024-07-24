@@ -156,6 +156,7 @@ pub enum ThemeField {
     FiletreeMarkers,
 
     LocationsDefault,
+    LocationsTitle,
     LocationsGroup,
     LocationsEntry,
     LocationsSelected,
@@ -222,6 +223,7 @@ impl AsRef<str> for ThemeField {
             FiletreeMarkers => "filetree.markers",
 
             LocationsDefault => "locations",
+            LocationsTitle => "locations.title",
             LocationsGroup => "locations.group",
             LocationsEntry => "locations.entry",
             LocationsSelected => "locations.selected",

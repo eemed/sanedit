@@ -70,8 +70,7 @@ async fn rec(dir: PathBuf, ctx: ReadDirContext) -> io::Result<()> {
                     acc.push(comp);
                     acc
                 });
-            let name: String = path.to_string_lossy().into();
-            let _ = ctx.osend.send(name.into()).await;
+            let _ = ctx.osend.send(path.into()).await;
         }
     }
 

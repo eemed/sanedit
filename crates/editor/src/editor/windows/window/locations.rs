@@ -2,7 +2,10 @@ use std::{
     borrow::Cow,
     cmp::{min, Ordering},
     ops::Range,
+    path::PathBuf,
 };
+
+use sanedit_utils::either::Either;
 
 #[derive(Debug, Default)]
 pub(crate) struct Locations {
@@ -70,6 +73,39 @@ impl Locations {
         None
     }
 
+    pub fn parent_of_selected(&self) -> Option<&Location> {
+        let n = self.selection?;
+        let mut stack = vec![];
+
+        for loc in self.locations.iter() {
+            stack.push((None, loc));
+        }
+
+        let mut curn = 0;
+        while let Some((parent, loc)) = stack.pop() {
+            if curn == n {
+                return parent;
+            }
+
+            if let Location::Group {
+                expanded,
+                locations,
+                ..
+            } = loc
+            {
+                if *expanded {
+                    for ll in locations.iter() {
+                        stack.push((Some(loc), ll));
+                    }
+                }
+            }
+
+            curn += 1;
+        }
+
+        None
+    }
+
     fn visible_len(&self) -> usize {
         self.iter().count()
     }
@@ -104,14 +140,16 @@ impl Locations {
 #[derive(Debug)]
 pub(crate) enum Location {
     Group {
-        data: Vec<u8>,
+        data: Either<PathBuf, String>,
         expanded: bool,
         locations: Vec<Location>,
     },
     Item {
-        data: Vec<u8>,
+        data: Either<PathBuf, String>,
         line: Option<u64>,
         column: Option<u64>,
+        /// Absolute offset where data starts
+        absolute_offset: Option<u64>,
         highlights: Vec<Range<usize>>,
     },
 }
@@ -119,8 +157,17 @@ pub(crate) enum Location {
 impl Location {
     pub fn data_as_str(&self) -> Cow<str> {
         match self {
-            Location::Group { data, .. } => String::from_utf8_lossy(data),
-            Location::Item { data, .. } => String::from_utf8_lossy(data),
+            Location::Group { data, .. } | Location::Item { data, .. } => match data {
+                Either::Left(path) => path.to_string_lossy(),
+                Either::Right(string) => string.into(),
+            },
+        }
+    }
+
+    pub fn data(&self) -> &Either<PathBuf, String> {
+        match self {
+            Location::Group { data, .. } => data,
+            Location::Item { data, .. } => data,
         }
     }
 

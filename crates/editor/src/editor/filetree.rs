@@ -84,7 +84,9 @@ impl Node {
     }
 
     pub fn is_dir_expanded(&self) -> bool {
-        let Node::Directory { expanded, .. } = self else { return false; };
+        let Node::Directory { expanded, .. } = self else {
+            return false;
+        };
         *expanded
     }
 

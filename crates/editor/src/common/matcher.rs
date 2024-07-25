@@ -115,14 +115,14 @@ impl Matcher {
                         return;
                     }
 
-                    let candidates = reader.slice(batch);
-                    for can in candidates.into_iter() {
+                    let opts = reader.slice(batch);
+                    for opt in opts.into_iter() {
                         if let Some(ranges) =
-                            matches_with(&can.value, &patterns, case_sensitive, match_fn)
+                            matches_with(&opt, &patterns, case_sensitive, match_fn)
                         {
                             let mat = Match {
-                                score: score(&can.value, &ranges),
-                                opt: can.clone(),
+                                score: score(&opt.value, &ranges),
+                                opt: opt.clone(),
                                 ranges,
                             };
 
@@ -153,8 +153,8 @@ fn score(opt: &[u8], ranges: &[Range<usize>]) -> u32 {
         .unwrap_or(opt.len() as u32)
 }
 
-fn get_pattern(bytes: &[u8], case_sensitive: bool) -> Cow<str> {
-    let string = String::from_utf8_lossy(bytes);
+fn get_opt(opt: &MatchOption, case_sensitive: bool) -> Cow<str> {
+    let string = opt.display();
     if case_sensitive {
         return string;
     }
@@ -168,12 +168,12 @@ fn get_pattern(bytes: &[u8], case_sensitive: bool) -> Cow<str> {
 }
 
 fn matches_with(
-    bytes: &[u8],
+    opt: &MatchOption,
     patterns: &Arc<Vec<String>>,
     case_sensitive: bool,
     f: fn(&str, &str) -> Option<Range<usize>>,
 ) -> Option<Vec<Range<usize>>> {
-    let string: Cow<str> = get_pattern(bytes, case_sensitive);
+    let string: Cow<str> = get_opt(opt, case_sensitive);
     let mut matches = vec![];
     for pattern in patterns.iter() {
         let range = (f)(&string, pattern)?;

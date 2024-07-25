@@ -66,7 +66,9 @@ fn clear_matches(editor: &mut Editor, id: ClientId) {
 #[action("Goto next match")]
 fn next_match(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
-    let Some(input) = win.search.last_search_pattern().map(String::from) else { return; };
+    let Some(input) = win.search.last_search_pattern().map(String::from) else {
+        return;
+    };
     search(editor, id, &input);
 }
 
@@ -74,7 +76,9 @@ fn next_match(editor: &mut Editor, id: ClientId) {
 fn prev_match(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
 
-    let Some(input) = win.search.last_search_pattern().map(String::from) else { return; };
+    let Some(input) = win.search.last_search_pattern().map(String::from) else {
+        return;
+    };
     // search to opposite direction
     let dir = &mut win.search.direction;
     *dir = dir.reverse();
@@ -130,7 +134,9 @@ fn search_impl(editor: &mut Editor, id: ClientId, input: &str, mut pos: usize) {
         }
     }
 
-    let Ok(searcher) = PTSearcher::new(input, win.search.direction, win.search.kind) else { return };
+    let Ok(searcher) = PTSearcher::new(input, win.search.direction, win.search.kind) else {
+        return;
+    };
 
     let (start, mat, wrap) = match win.search.direction {
         SearchDirection::Forward => {

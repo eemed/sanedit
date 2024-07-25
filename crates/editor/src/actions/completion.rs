@@ -37,6 +37,7 @@ fn complete(editor: &mut Editor, id: ClientId) {
         .filter(|(compl, _)| compl != &word)
         .map(|(compl, desc)| MatchOption {
             value: compl.into(),
+            kind: Kind::String,
             description: desc,
         })
         .collect();

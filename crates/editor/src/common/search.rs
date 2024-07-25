@@ -149,12 +149,16 @@ impl<'a, 'b> Iterator for MatchIter<'a, 'b> {
             // again
             MatchIter::RegexBwd { .. } => match self.regex_bwd_next() {
                 Some(mat) => {
-                    let MatchIter::RegexBwd { slice, .. } = self else { unreachable!() };
+                    let MatchIter::RegexBwd { slice, .. } = self else {
+                        unreachable!()
+                    };
                     *slice = slice.slice(..mat.range.start);
                     Some(mat)
                 }
                 None => {
-                    let MatchIter::RegexBwd { slice, .. } = self else { unreachable!() };
+                    let MatchIter::RegexBwd { slice, .. } = self else {
+                        unreachable!()
+                    };
                     *slice = slice.slice(0..0);
                     None
                 }
@@ -165,7 +169,16 @@ impl<'a, 'b> Iterator for MatchIter<'a, 'b> {
 
 impl<'a, 'b> MatchIter<'a, 'b> {
     fn regex_bwd_next(&mut self) -> Option<SearchMatch> {
-        let MatchIter::RegexBwd { fwd, bwd, fwd_cache, bwd_cache, slice } = self else { unreachable!("Called regex_bwd_next without being the variant") };
+        let MatchIter::RegexBwd {
+            fwd,
+            bwd,
+            fwd_cache,
+            bwd_cache,
+            slice,
+        } = self
+        else {
+            unreachable!("Called regex_bwd_next without being the variant")
+        };
 
         // Find the start position of the match
         let mut input = to_input(slice);

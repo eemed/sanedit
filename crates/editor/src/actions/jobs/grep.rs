@@ -1,13 +1,12 @@
 use std::any::Any;
 use std::error::Error;
-use std::ffi::OsStr;
 use std::ops::Range;
-use std::os::unix::prelude::OsStrExt;
 use std::path::{Path, PathBuf};
 
 use grep::matcher::{LineTerminator, Matcher};
 use grep::regex::{RegexMatcher, RegexMatcherBuilder};
 use grep::searcher::{BinaryDetection, Searcher, SearcherBuilder, Sink, SinkMatch};
+use sanedit_utils::either::Either;
 use sanedit_utils::sorted_vec::SortedVec;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 
@@ -64,8 +63,9 @@ impl Grep {
             let msend = msend.clone();
 
             rayon::spawn(move || {
-                let ospath = OsStr::from_bytes(&opt.value);
-                let path = PathBuf::from(ospath);
+                let Some(path) = opt.path() else {
+                    return;
+                };
                 let rsend = ResultSender {
                     matcher: &matcher,
                     sender: msend,
@@ -125,10 +125,9 @@ impl KeepInTouch for Grep {
 
         if let Ok(msg) = msg.downcast::<GrepResult>() {
             let locations = msg.matches.into_iter().map(Location::from).collect();
-            let name = msg.path.to_string_lossy();
             let location = Location::Group {
                 expanded: false,
-                data: name.as_bytes().to_vec(),
+                data: Either::Left(msg.path),
                 locations,
             };
             let (win, _buf) = editor.win_buf_mut(self.client_id);
@@ -153,6 +152,7 @@ struct GrepMatch {
     line: Option<u64>,
     text: String,
     matches: Vec<Range<usize>>,
+    absolute_offset: Option<u64>,
 }
 
 impl PartialOrd for GrepMatch {
@@ -170,10 +170,11 @@ impl Ord for GrepMatch {
 impl From<GrepMatch> for Location {
     fn from(gmat: GrepMatch) -> Self {
         Location::Item {
-            data: gmat.text.into(),
+            data: Either::Right(gmat.text),
             line: gmat.line,
             column: None,
             highlights: gmat.matches,
+            absolute_offset: gmat.absolute_offset,
         }
     }
 }
@@ -195,7 +196,9 @@ impl<'a> Sink for ResultSender<'a> {
     type Error = Box<dyn Error>;
 
     fn matched(&mut self, searcher: &Searcher, mat: &SinkMatch<'_>) -> Result<bool, Self::Error> {
-        let Ok(text) = std::str::from_utf8(mat.bytes()) else { return Ok(true); };
+        let Ok(text) = std::str::from_utf8(mat.bytes()) else {
+            return Ok(true);
+        };
         let text = text.trim_end();
 
         let mut matches = vec![];
@@ -211,6 +214,7 @@ impl<'a> Sink for ResultSender<'a> {
                 text: text.to_string(),
                 matches,
                 line: mat.line_number(),
+                absolute_offset: mat.absolute_byte_offset().into(),
             };
 
             self.matches.push(gmat);

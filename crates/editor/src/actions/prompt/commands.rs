@@ -1,8 +1,9 @@
 use crate::actions::jobs::{MatchedOptions, MatcherMessage};
 use crate::actions::*;
-use crate::common::matcher::MatchOption;
+use crate::common::matcher::{Kind, MatchOption};
 use crate::editor::windows::{Focus, SelectorOption};
 use sanedit_messages::keyevents_to_string;
+use sanedit_utils::either::Either;
 
 #[rustfmt::skip]
 pub(crate) const COMMANDS: &[Action] = &[
@@ -86,7 +87,11 @@ pub(crate) fn command_palette(editor: &Editor, id: ClientId) -> Vec<MatchOption>
                 description = keyevents_to_string(&bind);
             }
             let value = action.description().into();
-            MatchOption { value, description }
+            MatchOption {
+                value,
+                kind: Kind::String,
+                description,
+            }
         })
         .collect()
 }

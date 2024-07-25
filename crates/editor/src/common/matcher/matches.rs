@@ -1,12 +1,26 @@
-use std::ops::Range;
+use std::{
+    ffi::OsStr,
+    ops::Range,
+    path::{Path, PathBuf},
+};
 
 use crate::editor::windows::SelectorOption;
+
+#[derive(Debug, Clone)]
+pub(crate) enum Kind {
+    Path,
+    String,
+}
 
 /// A generic match option that contains bytes.
 /// And a description of those bytes
 #[derive(Debug, Clone)]
 pub(crate) struct MatchOption {
+    /// Match option data
     pub(crate) value: Vec<u8>,
+
+    /// How to represent the match option data
+    pub(crate) kind: Kind,
     pub(crate) description: String,
 }
 
@@ -25,9 +39,43 @@ impl PartialEq for MatchOption {
 impl Eq for MatchOption {}
 
 impl MatchOption {
-    pub fn new(value: &str) -> MatchOption {
+    pub fn display(&self) -> std::borrow::Cow<'_, str> {
+        match self.kind {
+            Kind::Path => {
+                let os = unsafe { OsStr::from_encoded_bytes_unchecked(&self.value) };
+                os.to_string_lossy()
+            }
+            Kind::String => unsafe { std::str::from_utf8_unchecked(&self.value) }.into(),
+        }
+    }
+
+    /// Return path if this match option represents a path
+    pub fn path(&self) -> Option<PathBuf> {
+        match self.kind {
+            Kind::Path => {
+                let os = unsafe { OsStr::from_encoded_bytes_unchecked(&self.value) };
+                PathBuf::from(os).into()
+            }
+            Kind::String => None,
+        }
+    }
+}
+
+impl From<&Path> for MatchOption {
+    fn from(value: &Path) -> Self {
         MatchOption {
-            value: value.into(),
+            value: value.as_os_str().as_encoded_bytes().into(),
+            kind: Kind::Path,
+            description: String::new(),
+        }
+    }
+}
+
+impl From<PathBuf> for MatchOption {
+    fn from(value: PathBuf) -> Self {
+        MatchOption {
+            value: value.as_os_str().as_encoded_bytes().into(),
+            kind: Kind::Path,
             description: String::new(),
         }
     }
@@ -37,6 +85,17 @@ impl From<String> for MatchOption {
     fn from(value: String) -> Self {
         MatchOption {
             value: value.into(),
+            kind: Kind::String,
+            description: String::new(),
+        }
+    }
+}
+
+impl From<&str> for MatchOption {
+    fn from(value: &str) -> Self {
+        MatchOption {
+            value: value.into(),
+            kind: Kind::String,
             description: String::new(),
         }
     }

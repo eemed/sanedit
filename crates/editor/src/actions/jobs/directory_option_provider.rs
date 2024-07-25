@@ -58,12 +58,7 @@ async fn list_dirs(dir: PathBuf, ctx: ReadDirContext) -> io::Result<()> {
                     acc
                 });
 
-            let name = {
-                let mut result: String = path.to_string_lossy().into();
-                result.push(std::path::MAIN_SEPARATOR);
-                result
-            };
-            let _ = ctx.osend.send(name.into()).await;
+            let _ = ctx.osend.send(path.into()).await;
         }
     }
 

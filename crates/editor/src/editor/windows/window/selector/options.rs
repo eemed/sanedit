@@ -105,7 +105,7 @@ impl Options {
 pub(crate) struct SelectorOption {
     pub(super) score: u32,
     /// Underlying option
-    pub(super) value: String,
+    pub(super) value: Vec<u8>,
 
     /// Matched ranges
     pub(super) matches: Vec<Range<usize>>,
@@ -117,15 +117,19 @@ pub(crate) struct SelectorOption {
 impl SelectorOption {
     pub fn new(opt: String, matches: Vec<Range<usize>>, score: u32) -> SelectorOption {
         SelectorOption {
-            value: opt.clone(),
+            value: opt.into(),
             score,
             description: String::new(),
             matches,
         }
     }
 
-    pub fn value(&self) -> &str {
-        self.value.as_str()
+    pub fn value(&self) -> std::borrow::Cow<str> {
+        String::from_utf8_lossy(&self.value)
+    }
+
+    pub fn value_raw(&self) -> &[u8] {
+        &self.value
     }
 
     pub fn score(&self) -> u32 {
@@ -160,7 +164,7 @@ impl Ord for SelectorOption {
 impl From<SelectorOption> for PromptOption {
     fn from(opt: SelectorOption) -> Self {
         PromptOption {
-            name: opt.value,
+            name: opt.value().into(),
             description: opt.description,
             matches: opt.matches,
         }

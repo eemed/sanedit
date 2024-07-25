@@ -42,7 +42,7 @@ impl OptionProvider for Arc<Vec<String>> {
 
         let fut = async move {
             for opt in items.iter() {
-                if let Err(_) = sender.send(MatchOption::new(&opt)).await {
+                if let Err(_) = sender.send(MatchOption::from(opt.as_str())).await {
                     break;
                 }
             }
@@ -95,7 +95,7 @@ pub(crate) struct MatcherJobBuilder {
     opts: Arc<dyn OptionProvider>,
     strat: MatchStrategy,
     result_handler: MatchResultHandler,
-    search_term: String,
+    pattern: String,
 }
 
 impl MatcherJobBuilder {
@@ -105,7 +105,7 @@ impl MatcherJobBuilder {
             opts: Arc::new(Empty),
             strat: MatchStrategy::default(),
             result_handler: Empty::none_result_handler,
-            search_term: String::new(),
+            pattern: String::new(),
         }
     }
 
@@ -125,8 +125,8 @@ impl MatcherJobBuilder {
     }
 
     /// Search term to use when starting matching
-    pub fn search(mut self, term: String) -> Self {
-        self.search_term = term;
+    pub fn search(mut self, pattern: String) -> Self {
+        self.pattern = pattern;
         self
     }
 
@@ -136,7 +136,7 @@ impl MatcherJobBuilder {
             opts,
             strat,
             result_handler,
-            search_term,
+            pattern: search_term,
         } = self;
 
         MatcherJob {
@@ -144,7 +144,7 @@ impl MatcherJobBuilder {
             strat,
             result_handler,
             opts,
-            search_term,
+            pattern: search_term,
         }
     }
 }
@@ -167,7 +167,7 @@ pub(crate) struct MatcherJob {
     result_handler: MatchResultHandler,
 
     /// Initial search term to use
-    search_term: String,
+    pattern: String,
 }
 
 impl MatcherJob {
@@ -186,21 +186,21 @@ impl Job for MatcherJob {
     fn run(&self, mut ctx: JobContext) -> JobResult {
         let strat = self.strat.clone();
         let opts = self.opts.clone();
-        let term = self.search_term.clone();
+        let patt = self.pattern.clone();
 
         let fut = async move {
             // Term channel
-            let (tsend, trecv) = channel::<String>(CHANNEL_SIZE);
+            let (psend, precv) = channel::<String>(CHANNEL_SIZE);
             // Options channel
             let (osend, orecv) = channel::<MatchOption>(CHANNEL_SIZE);
             // Results channel
             let (msend, mrecv) = channel::<MatchedOptions>(CHANNEL_SIZE);
 
-            ctx.send(MatcherMessage::Init(tsend));
+            ctx.send(MatcherMessage::Init(psend));
 
             tokio::join!(
                 opts.provide(osend, ctx.kill.clone()),
-                match_options(orecv, trecv, msend, strat, term),
+                match_options(orecv, precv, msend, strat, patt),
                 Self::send_matched_options(ctx, mrecv),
             );
 
@@ -236,10 +236,10 @@ pub(crate) enum MatchedOptions {
 /// Reads options and filter term from channels and send results to progress
 pub(crate) async fn match_options(
     orecv: Receiver<MatchOption>,
-    mut trecv: Receiver<String>,
+    mut precv: Receiver<String>,
     msend: Sender<MatchedOptions>,
     strat: MatchStrategy,
-    mut term: String,
+    mut patt: String,
 ) {
     fn spawn(
         msend: Sender<MatchedOptions>,
@@ -292,14 +292,16 @@ pub(crate) async fn match_options(
                         last_sent = Instant::now();
                         let opts = mem::take(&mut matches);
 
-                        if let Err(_) = msend
-                            .send(MatchedOptions::Options {
-                                matched: opts,
-                                clear_old,
-                            })
-                            .await
-                        {
-                            break;
+                        if !opts.is_empty() {
+                            if let Err(_) = msend
+                                .send(MatchedOptions::Options {
+                                    matched: opts,
+                                    clear_old,
+                                })
+                                .await
+                            {
+                                break;
+                            }
                         }
                         clear_old = false;
                     }
@@ -307,6 +309,7 @@ pub(crate) async fn match_options(
                 }
             }
 
+            // Clear old in case of no results
             let _ = msend
                 .send(MatchedOptions::Options {
                     clear_old,
@@ -319,19 +322,19 @@ pub(crate) async fn match_options(
 
     let mut matcher = Matcher::new(orecv, strat);
 
-    let recv = matcher.do_match(&term);
+    let recv = matcher.do_match(&patt);
     let mut join = spawn(msend.clone(), recv);
 
-    while let Some(t) = trecv.recv().await {
-        if term == t {
+    while let Some(t) = precv.recv().await {
+        if patt == t {
             continue;
         }
-        term = t;
+        patt = t;
 
         join.abort();
         let _ = join.await;
 
-        let recv = matcher.do_match(&term);
+        let recv = matcher.do_match(&patt);
         join = spawn(msend.clone(), recv);
     }
 }

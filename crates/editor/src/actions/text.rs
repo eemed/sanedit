@@ -16,7 +16,7 @@ use super::{completion, hooks::run, jobs};
 fn remove_grapheme_after_cursor(editor: &mut Editor, id: ClientId) {
     run(editor, id, Hook::RemovePre);
     let (win, buf) = editor.win_buf_mut(id);
-    win.remove_grapheme_after_cursors(buf);
+    let _ = win.remove_grapheme_after_cursors(buf);
     run(editor, id, Hook::BufChanged);
 }
 
@@ -24,14 +24,14 @@ fn remove_grapheme_after_cursor(editor: &mut Editor, id: ClientId) {
 fn remove_grapheme_before_cursor(editor: &mut Editor, id: ClientId) {
     run(editor, id, Hook::RemovePre);
     let (win, buf) = editor.win_buf_mut(id);
-    win.remove_grapheme_before_cursors(buf);
+    let _ = win.remove_grapheme_before_cursors(buf);
     run(editor, id, Hook::BufChanged);
 }
 
 #[action("Undo a change")]
 pub(crate) fn undo(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
-    if win.undo(buf) {
+    if win.undo(buf).is_ok() {
         run(editor, id, Hook::BufChanged);
         run(editor, id, Hook::CursorMoved);
     }
@@ -40,7 +40,7 @@ pub(crate) fn undo(editor: &mut Editor, id: ClientId) {
 #[action("Redo a change")]
 pub(crate) fn redo(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
-    if win.redo(buf) {
+    if win.redo(buf).is_ok() {
         run(editor, id, Hook::BufChanged);
         run(editor, id, Hook::CursorMoved);
     }
@@ -61,7 +61,7 @@ pub(crate) fn insert(editor: &mut Editor, id: ClientId, text: &str) {
         Completion | Window => {
             run(editor, id, Hook::InsertPre);
             let (win, buf) = editor.win_buf_mut(id);
-            win.insert_at_cursors(buf, text);
+            let _ = win.insert_at_cursors(buf, text);
             run(editor, id, Hook::BufChanged);
         }
         Filetree => {}
@@ -117,7 +117,7 @@ fn save_as(editor: &mut Editor, id: ClientId) {
 fn insert_newline(editor: &mut Editor, id: ClientId) {
     run(editor, id, Hook::InsertPre);
     let (win, buf) = editor.win_buf_mut(id);
-    win.insert_newline(buf);
+    let _ = win.insert_newline(buf);
     run(editor, id, Hook::BufChanged);
 }
 

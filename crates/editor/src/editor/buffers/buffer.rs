@@ -12,8 +12,11 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use anyhow::Result;
+use anyhow::{bail, ensure};
 use sanedit_buffer::{PieceTree, PieceTreeSlice, ReadOnlyPieceTree};
 use sanedit_utils::key_type;
+use thiserror::Error;
 
 use crate::common::{dirs::tmp_file, file::File};
 
@@ -65,7 +68,7 @@ impl Buffer {
         }
     }
 
-    pub fn from_file(file: File) -> io::Result<Buffer> {
+    pub fn from_file(file: File) -> Result<Buffer> {
         if file.is_big() {
             Self::file_backed(file)
         } else {
@@ -73,7 +76,7 @@ impl Buffer {
         }
     }
 
-    fn file_backed(file: File) -> io::Result<Buffer> {
+    fn file_backed(file: File) -> Result<Buffer> {
         log::debug!("creating file backed buffer");
         let path = file.path().canonicalize()?;
         let pt = PieceTree::from_path(&path)?;
@@ -93,7 +96,7 @@ impl Buffer {
         })
     }
 
-    fn in_memory(file: File) -> io::Result<Buffer> {
+    fn in_memory(file: File) -> Result<Buffer> {
         log::debug!("creating in memory buffer");
         let path = file.path().canonicalize()?;
         let file = fs::File::open(&path)?;
@@ -103,7 +106,7 @@ impl Buffer {
         Ok(buf)
     }
 
-    fn from_reader<R: io::Read>(reader: R) -> io::Result<Buffer> {
+    fn from_reader<R: io::Read>(reader: R) -> Result<Buffer> {
         let pt = PieceTree::from_reader(reader)?;
         let snapshot = pt.read_only_copy();
         Ok(Buffer {
@@ -158,7 +161,7 @@ impl Buffer {
         change
     }
 
-    pub fn undo(&mut self) -> Result<&Change, &str> {
+    pub fn undo(&mut self) -> Result<&Change> {
         let change = Change::undo();
         let mut change = self.create_undo_point(change);
 
@@ -171,11 +174,11 @@ impl Buffer {
             let change = self.last_change.as_ref().unwrap();
             Ok(change)
         } else {
-            return Err("No more undo points");
+            bail!("No more undo points");
         }
     }
 
-    pub fn redo(&mut self) -> Result<&Change, &str> {
+    pub fn redo(&mut self) -> Result<&Change> {
         let change = Change::redo();
         let mut change = self.create_undo_point(change);
 
@@ -188,24 +191,25 @@ impl Buffer {
             let change = self.last_change.as_ref().unwrap();
             Ok(change)
         } else {
-            return Err("No more redo points");
+            bail!("No more redo points");
         }
     }
 
-    pub fn remove(&mut self, range: Range<usize>) -> &Change {
+    pub fn remove(&mut self, range: Range<usize>) -> Result<&Change> {
         let ranges = vec![range.clone()].into();
         self.remove_multi(&ranges)
     }
 
-    pub fn append<B: AsRef<[u8]>>(&mut self, bytes: B) -> &Change {
+    pub fn append<B: AsRef<[u8]>>(&mut self, bytes: B) -> Result<&Change> {
         self.insert_multi(&[self.pt.len()], bytes)
     }
 
-    pub fn insert<B: AsRef<[u8]>>(&mut self, pos: usize, bytes: B) -> &Change {
+    pub fn insert<B: AsRef<[u8]>>(&mut self, pos: usize, bytes: B) -> Result<&Change> {
         self.insert_multi(&[pos], bytes)
     }
 
-    pub fn insert_multi<B: AsRef<[u8]>>(&mut self, pos: &[usize], bytes: B) -> &Change {
+    pub fn insert_multi<B: AsRef<[u8]>>(&mut self, pos: &[usize], bytes: B) -> Result<&Change> {
+        ensure!(!self.read_only, BufferError::ReadOnly);
         let bytes = bytes.as_ref();
         let ranges: Vec<BufferRange> = pos.iter().map(|pos| *pos..pos + bytes.len()).collect();
         let change = Change::insert(&ranges.into(), bytes);
@@ -214,10 +218,12 @@ impl Buffer {
         self.pt.insert_multi(pos, bytes);
         self.is_modified = true;
         self.last_change = change.into();
-        self.last_change.as_ref().unwrap()
+        Ok(self.last_change.as_ref().unwrap())
     }
 
-    pub fn remove_multi(&mut self, ranges: &SortedRanges) -> &Change {
+    pub fn remove_multi(&mut self, ranges: &SortedRanges) -> Result<&Change> {
+        ensure!(!self.read_only, BufferError::ReadOnly);
+
         let change = Change::remove(ranges);
         let change = self.create_undo_point(change);
 
@@ -227,7 +233,7 @@ impl Buffer {
 
         self.is_modified = true;
         self.last_change = change.into();
-        self.last_change.as_ref().unwrap()
+        Ok(self.last_change.as_ref().unwrap())
     }
 
     pub fn set_path<P: AsRef<Path>>(&mut self, path: P) {
@@ -253,10 +259,9 @@ impl Buffer {
 
     /// Save the buffer by copying it to a temporary file and renaming it to the
     /// buffers path
-    pub fn save_rename(&mut self) -> anyhow::Result<Option<SnapshotId>> {
-        if !self.is_modified {
-            return Ok(None);
-        }
+    pub fn save_rename(&mut self) -> Result<Saved> {
+        ensure!(!self.read_only, BufferError::ReadOnly);
+        ensure!(self.is_modified, BufferError::Unmodified);
 
         let cur = self.read_only_copy();
         let copy = Self::save_copy(&cur)?;
@@ -284,10 +289,10 @@ impl Buffer {
         self.is_modified = false;
         let snap = self.snapshots.insert(cur);
         self.last_saved_snapshot = snap;
-        Ok(Some(snap))
+        Ok(Saved { snapshot: snap })
     }
 
-    fn save_copy(buf: &ReadOnlyPieceTree) -> anyhow::Result<PathBuf> {
+    fn save_copy(buf: &ReadOnlyPieceTree) -> Result<PathBuf> {
         let (path, mut file) = tmp_file().ok_or(anyhow::anyhow!("Cannot create tempfile"))?;
 
         let mut chunks = buf.chunks();
@@ -325,4 +330,18 @@ impl Default for Buffer {
     fn default() -> Self {
         Buffer::new()
     }
+}
+
+#[derive(Debug, Error)]
+pub(crate) enum BufferError {
+    #[error("Read only buffer")]
+    ReadOnly,
+
+    #[error("Buffer is not modified")]
+    Unmodified,
+}
+
+#[derive(Debug)]
+pub(crate) struct Saved {
+    pub(crate) snapshot: SnapshotId,
 }

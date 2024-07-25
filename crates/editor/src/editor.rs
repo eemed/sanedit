@@ -28,6 +28,8 @@ use std::sync::mpsc::Receiver;
 
 use tokio::io;
 
+use anyhow::Result;
+
 use crate::actions;
 use crate::actions::cursors;
 use crate::actions::hooks::run;
@@ -232,7 +234,7 @@ impl Editor {
     }
 
     /// Open a file in window
-    pub fn open_file(&mut self, id: ClientId, path: impl AsRef<Path>) -> io::Result<()> {
+    pub fn open_file(&mut self, id: ClientId, path: impl AsRef<Path>) -> Result<()> {
         let path = path.as_ref().canonicalize()?;
 
         // Use existing if possible
@@ -625,7 +627,7 @@ impl Editor {
             .expect("No keymap found for kind: {kind:?}")
     }
 
-    pub fn change_working_dir(&mut self, path: &Path) -> anyhow::Result<()> {
+    pub fn change_working_dir(&mut self, path: &Path) -> Result<()> {
         std::env::set_current_dir(path)?;
         self.working_dir = path.into();
         self.filetree = Filetree::new(&self.working_dir);

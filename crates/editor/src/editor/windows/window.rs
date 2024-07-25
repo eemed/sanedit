@@ -18,6 +18,7 @@ use std::{
     mem,
 };
 
+use anyhow::Result;
 use rustc_hash::FxHashSet;
 use sanedit_messages::redraw::{Severity, Size, StatusMessage};
 
@@ -35,6 +36,16 @@ use crate::{
 };
 
 use self::filetree::FiletreeView;
+
+macro_rules! show_error {
+    ($self:ident, $result:expr) => {{
+        let result = $result;
+        if let Err(e) = &result {
+            $self.error_msg(&e.to_string());
+        }
+        result?
+    }};
+}
 
 pub(crate) use self::{
     completion::*, cursors::*, focus::*, locations::*, options::*, prompt::*, search::*,
@@ -304,27 +315,29 @@ impl Window {
         }
     }
 
-    fn remove(&mut self, buf: &mut Buffer, ranges: &SortedRanges) {
-        let change = buf.remove_multi(ranges);
+    fn remove(&mut self, buf: &mut Buffer, ranges: &SortedRanges) -> Result<()> {
+        let change = buf.remove_multi(ranges)?;
         if let Some(id) = change.created_snapshot {
             *buf.snapshot_data_mut(id).unwrap() = self.create_snapshot_data();
         }
+        Ok(())
     }
 
-    fn insert(&mut self, buf: &mut Buffer, positions: &[usize], text: &str) {
-        let change = buf.insert_multi(positions, text);
+    fn insert(&mut self, buf: &mut Buffer, positions: &[usize], text: &str) -> Result<()> {
+        let change = buf.insert_multi(positions, text)?;
         if let Some(id) = change.created_snapshot {
             *buf.snapshot_data_mut(id).unwrap() = self.create_snapshot_data();
         }
+        Ok(())
     }
 
-    pub fn remove_cursor_selections(&mut self, buf: &mut Buffer) -> bool {
+    pub fn remove_cursor_selections(&mut self, buf: &mut Buffer) -> Result<bool> {
         let selections: SortedRanges = (&self.cursors).into();
         if selections.is_empty() {
-            return false;
+            return Ok(false);
         }
 
-        self.remove(buf, &selections);
+        self.remove(buf, &selections)?;
 
         let mut removed = 0;
         for cursor in self.cursors.cursors_mut() {
@@ -336,18 +349,15 @@ impl Window {
             cursor.goto(cpos - removed);
 
             if let Some(sel) = sel {
-                // sel.start -= removed;
-                // sel.end -= removed;
-
                 removed += sel.len();
             }
         }
 
         self.invalidate();
-        true
+        Ok(true)
     }
 
-    pub fn insert_to_each_cursor(&mut self, buf: &mut Buffer, texts: Vec<String>) {
+    pub fn insert_to_each_cursor(&mut self, buf: &mut Buffer, texts: Vec<String>) -> Result<()> {
         debug_assert!(
             texts.len() == self.cursors.len(),
             "Cursors {} and texts {} count mismatch",
@@ -356,25 +366,26 @@ impl Window {
         );
         // TODO make this one change instead of many
 
-        self.remove_cursor_selections(buf);
+        self.remove_cursor_selections(buf)?;
 
         let mut inserted = 0;
         for (i, cursor) in self.cursors.cursors_mut().iter_mut().enumerate() {
             let text = &texts[i];
             let cpos = cursor.pos() + inserted;
-            buf.insert(cpos, text);
+            buf.insert(cpos, text)?;
             cursor.goto(cpos + text.len());
             inserted += text.len();
         }
 
         self.invalidate();
+        Ok(())
     }
 
-    pub fn insert_at_cursors(&mut self, buf: &mut Buffer, text: &str) {
+    pub fn insert_at_cursors(&mut self, buf: &mut Buffer, text: &str) -> Result<()> {
         // TODO use a replace operation instead if removing
-        self.remove_cursor_selections(buf);
+        self.remove_cursor_selections(buf)?;
         let positions: Vec<usize> = (&self.cursors).into();
-        self.insert(buf, &positions, text);
+        self.insert(buf, &positions, text)?;
 
         let mut inserted = 0;
         for cursor in self.cursors.cursors_mut() {
@@ -385,11 +396,12 @@ impl Window {
 
         self.invalidate();
         self.view_to_cursor(buf);
+        Ok(())
     }
 
-    pub fn remove_grapheme_after_cursors(&mut self, buf: &mut Buffer) {
-        if self.remove_cursor_selections(buf) {
-            return;
+    pub fn remove_grapheme_after_cursors(&mut self, buf: &mut Buffer) -> Result<()> {
+        if show_error!(self, self.remove_cursor_selections(buf)) {
+            return Ok(());
         }
 
         let mut removed = 0;
@@ -404,34 +416,28 @@ impl Window {
 
         self.invalidate();
         self.view_to_cursor(buf);
+        Ok(())
     }
 
-    pub fn undo(&mut self, buf: &mut Buffer) -> bool {
-        match buf.undo() {
-            Ok(change) => {
-                let created = change.created_snapshot;
-                let restored = change.restored_snapshot;
+    pub fn undo(&mut self, buf: &mut Buffer) -> Result<()> {
+        let change = show_error!(self, buf.undo());
+        let created = change.created_snapshot;
+        let restored = change.restored_snapshot;
 
-                if let Some(id) = created {
-                    *buf.snapshot_data_mut(id).unwrap() = self.create_snapshot_data();
-                }
+        if let Some(id) = created {
+            *buf.snapshot_data_mut(id).unwrap() = self.create_snapshot_data();
+        }
 
-                if let Some(restored) = restored {
-                    if let Some(data) = buf.snapshot_data(restored) {
-                        self.restore(data);
-                    } else {
-                        self.reload();
-                    }
-                }
-
-                self.invalidate();
-                true
-            }
-            Err(msg) => {
-                self.warn_msg(msg);
-                false
+        if let Some(restored) = restored {
+            if let Some(data) = buf.snapshot_data(restored) {
+                self.restore(data);
+            } else {
+                self.reload();
             }
         }
+
+        self.invalidate();
+        Ok(())
     }
 
     fn restore(&mut self, sdata: &SnapshotData) {
@@ -440,38 +446,31 @@ impl Window {
         self.invalidate();
     }
 
-    pub fn redo(&mut self, buf: &mut Buffer) -> bool {
-        match buf.redo() {
-            Ok(change) => {
-                let created = change.created_snapshot;
-                let restored = change.restored_snapshot;
-                if let Some(id) = created {
-                    *buf.snapshot_data_mut(id).unwrap() = self.create_snapshot_data();
-                }
+    pub fn redo(&mut self, buf: &mut Buffer) -> Result<()> {
+        let change = show_error!(self, buf.redo());
+        let created = change.created_snapshot;
+        let restored = change.restored_snapshot;
+        if let Some(id) = created {
+            *buf.snapshot_data_mut(id).unwrap() = self.create_snapshot_data();
+        }
 
-                if let Some(restored) = restored {
-                    if let Some(data) = buf.snapshot_data(restored) {
-                        self.restore(data);
-                    } else {
-                        self.reload()
-                    }
-                }
-
-                self.invalidate();
-                true
-            }
-            Err(msg) => {
-                self.warn_msg(msg);
-                false
+        if let Some(restored) = restored {
+            if let Some(data) = buf.snapshot_data(restored) {
+                self.restore(data);
+            } else {
+                self.reload()
             }
         }
+
+        self.invalidate();
+        Ok(())
     }
 
     /// Remove a grapheme before the cursor, if at indentation
     /// remove a block of it
-    pub fn remove_grapheme_before_cursors(&mut self, buf: &mut Buffer) {
-        if self.remove_cursor_selections(buf) {
-            return;
+    pub fn remove_grapheme_before_cursors(&mut self, buf: &mut Buffer) -> Result<()> {
+        if show_error!(self, self.remove_cursor_selections(buf)) {
+            return Ok(());
         }
 
         let ranges: SortedRanges = {
@@ -486,7 +485,7 @@ impl Window {
             ranges.into()
         };
 
-        self.remove(buf, &ranges);
+        self.remove(buf, &ranges)?;
 
         let mut removed = 0;
         for (i, range) in ranges.iter().enumerate() {
@@ -497,6 +496,7 @@ impl Window {
 
         self.invalidate();
         self.view_to_cursor(buf);
+        Ok(())
     }
 
     pub fn syntax_result(&mut self) -> &mut SyntaxParseResult {
@@ -505,7 +505,7 @@ impl Window {
 
     /// Insert a newline to each cursor
     /// if originating line was indented also preserve the indentation
-    pub fn insert_newline(&mut self, buf: &mut Buffer) {
+    pub fn insert_newline(&mut self, buf: &mut Buffer) -> Result<()> {
         // 1. Calculate indents
         // 2. insert newlines + indent combo to each cursor
         let eol = buf.options.eol;
@@ -519,11 +519,12 @@ impl Window {
             })
             .collect();
 
-        self.insert_to_each_cursor(buf, texts);
+        show_error!(self, self.insert_to_each_cursor(buf, texts));
+        Ok(())
     }
 
     /// Indent all the lines with cursors or their selections
-    pub fn indent_cursor_lines(&mut self, buf: &mut Buffer) {
+    pub fn indent_cursor_lines(&mut self, buf: &mut Buffer) -> Result<()> {
         let starts: Vec<usize> = {
             let mut starts = FxHashSet::default();
 
@@ -538,7 +539,7 @@ impl Window {
         };
 
         let indent = buf.options.indent.to_string();
-        buf.insert_multi(&starts, &indent);
+        buf.insert_multi(&starts, &indent)?;
 
         for cursor in self.cursors.cursors_mut() {
             let mut range = cursor.selection().unwrap_or(cursor.pos()..cursor.pos() + 1);
@@ -555,16 +556,17 @@ impl Window {
         }
 
         self.invalidate();
+        Ok(())
     }
 
     /// Dedent all the lines with cursors or their selections
-    pub fn dedent_cursor_lines(&mut self, buf: &mut Buffer) {
+    pub fn dedent_cursor_lines(&mut self, buf: &mut Buffer) -> Result<()> {
         todo!()
     }
 
     /// Insert a tab character
     /// If cursor is at indentation, add an indentation block instead
-    pub fn insert_tab(&mut self, buf: &mut Buffer) {
+    pub fn insert_tab(&mut self, buf: &mut Buffer) -> Result<()> {
         let slice = buf.slice(..);
         let texts: Vec<String> = self
             .cursors()
@@ -582,10 +584,11 @@ impl Window {
             })
             .collect();
         self.insert_to_each_cursor(buf, texts);
+        Ok(())
     }
 
     /// If cursor is at indentation, try to dedent the line
-    pub fn backtab(&mut self, buf: &mut Buffer) {
+    pub fn backtab(&mut self, buf: &mut Buffer) -> Result<()> {
         let slice = buf.slice(..);
         let indmul = buf.options.indent.n;
         let ranges: SortedRanges = {
@@ -606,7 +609,7 @@ impl Window {
             ranges.into()
         };
 
-        self.remove(buf, &ranges);
+        self.remove(buf, &ranges)?;
 
         let mut removed = 0;
         for (i, range) in ranges.iter().enumerate() {
@@ -616,19 +619,14 @@ impl Window {
         }
 
         self.invalidate();
+        Ok(())
     }
 
     /// Synchronously saves the buffer
-    pub fn save_buffer(&mut self, buf: &mut Buffer) {
-        match buf.save_rename() {
-            Ok(Some(snap)) => {
-                let sdata = buf.snapshot_data_mut(snap).unwrap();
-                *sdata = self.create_snapshot_data();
-            }
-            Err(e) => {
-                self.error_msg(&format!("Failed to save buffer: {e}"));
-            }
-            _ => {}
-        }
+    pub fn save_buffer(&mut self, buf: &mut Buffer) -> Result<()> {
+        let saved = buf.save_rename()?;
+        let sdata = buf.snapshot_data_mut(saved.snapshot).unwrap();
+        *sdata = self.create_snapshot_data();
+        Ok(())
     }
 }

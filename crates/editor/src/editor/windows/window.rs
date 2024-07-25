@@ -47,6 +47,16 @@ macro_rules! show_error {
     }};
 }
 
+macro_rules! show_warn {
+    ($self:ident, $result:expr) => {{
+        let result = $result;
+        if let Err(e) = &result {
+            $self.warn_msg(&e.to_string());
+        }
+        result?
+    }};
+}
+
 pub(crate) use self::{
     completion::*, cursors::*, focus::*, locations::*, options::*, prompt::*, search::*,
     selector::SelectorOption, shell::*, view::*,
@@ -420,7 +430,7 @@ impl Window {
     }
 
     pub fn undo(&mut self, buf: &mut Buffer) -> Result<()> {
-        let change = show_error!(self, buf.undo());
+        let change = show_warn!(self, buf.undo());
         let created = change.created_snapshot;
         let restored = change.restored_snapshot;
 
@@ -447,7 +457,7 @@ impl Window {
     }
 
     pub fn redo(&mut self, buf: &mut Buffer) -> Result<()> {
-        let change = show_error!(self, buf.redo());
+        let change = show_warn!(self, buf.redo());
         let created = change.created_snapshot;
         let restored = change.restored_snapshot;
         if let Some(id) = created {

@@ -16,7 +16,7 @@ primary = "#C0A886,,"
 [colors.window.view]
 info = "#00917e,#000000,"
 warn = "#ff8c5a,#000000,"
-error = "#c0564a,#000000,"
+error = "#c0564a,#ffffff,"
 
 string =  ",#3C780A,"
 constant = ",#4f3693,"

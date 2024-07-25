@@ -11,7 +11,6 @@ mod text;
 pub(crate) const CHANNEL_SIZE: usize = 64;
 
 pub(crate) use self::grep::*;
-pub(crate) use directory_option_provider::*;
 pub(crate) use file_option_provider::*;
 pub(crate) use matcher::*;
 pub(crate) use search::*;

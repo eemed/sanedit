@@ -37,16 +37,8 @@ use crate::{
 use self::filetree::FiletreeView;
 
 pub(crate) use self::{
-    completion::*,
-    cursors::*,
-    focus::*,
-    locations::*,
-    options::*,
-    prompt::*,
-    search::*,
-    selector::{Selector, SelectorOption},
-    shell::*,
-    view::*,
+    completion::*, cursors::*, focus::*, locations::*, options::*, prompt::*, search::*,
+    selector::SelectorOption, shell::*, view::*,
 };
 
 #[derive(Debug)]

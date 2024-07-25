@@ -227,7 +227,7 @@ mod test {
         let peg = include_str!("../../pegs/json.peg");
         let rules = grammar::parse_rules(std::io::Cursor::new(peg)).unwrap();
 
-        let mut compiler = Compiler::new(&rules);
+        let compiler = Compiler::new(&rules);
         let program = compiler.compile().unwrap();
         println!("{program:?}");
     }
@@ -237,7 +237,7 @@ mod test {
         let peg = include_str!("../../pegs/toml.peg");
         let rules = grammar::parse_rules(std::io::Cursor::new(peg)).unwrap();
 
-        let mut compiler = Compiler::new(&rules);
+        let compiler = Compiler::new(&rules);
         let program = compiler.compile().unwrap();
         println!("{program:?}");
     }
@@ -247,7 +247,7 @@ mod test {
         let peg = "WHITESPACE = [ \\t\\r\\n];";
         let rules = grammar::parse_rules(std::io::Cursor::new(peg)).unwrap();
 
-        let mut compiler = Compiler::new(&rules);
+        let compiler = Compiler::new(&rules);
         let program = compiler.compile();
 
         println!("{program:?}");
@@ -264,7 +264,7 @@ mod test {
             ";
         let rules = grammar::parse_rules(std::io::Cursor::new(peg)).unwrap();
 
-        let mut compiler = Compiler::new(&rules);
+        let compiler = Compiler::new(&rules);
         let program = compiler.compile();
         println!("{program:?}");
     }
@@ -283,7 +283,7 @@ mod test {
         let rules = grammar::parse_rules(std::io::Cursor::new(peg)).unwrap();
         println!("{}", rules);
 
-        let mut compiler = Compiler::new(&rules);
+        let compiler = Compiler::new(&rules);
         let program = compiler.compile();
     }
 }

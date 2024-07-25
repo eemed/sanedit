@@ -1,14 +1,11 @@
-use std::cmp::{max, min};
+use std::cmp::min;
 
 use sanedit_messages::redraw::{
-    Cell, Completion, Cursor, CursorShape, IntoCells, Item, ItemKind, Items, Point, Severity, Size,
+    Completion, Cursor, CursorShape, IntoCells, Item, ItemKind, Point, Severity, Size,
     StatusMessage, Statusline, Style, ThemeField, Window,
 };
 
-use crate::{
-    grid::{ccell::format_option, items},
-    ui::UIContext,
-};
+use crate::{grid::ccell::format_option, ui::UIContext};
 
 use super::{
     border::{draw_border, Border},

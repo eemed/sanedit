@@ -1,7 +1,6 @@
-use std::{any::Any, cmp::min, ops::Range};
+use std::{any::Any, ops::Range};
 
-use regex_cursor::{engines::meta::Regex, Cursor, Input, IntoCursor};
-use sanedit_buffer::{Chunk, Chunks, PieceTreeSlice, ReadOnlyPieceTree, Searcher, SearcherRev};
+use sanedit_buffer::ReadOnlyPieceTree;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 
 use crate::{
@@ -130,7 +129,7 @@ impl Search {
 
     async fn search(
         msend: Sender<Vec<Range<usize>>>,
-        mut searcher: PTSearcher,
+        searcher: PTSearcher,
         ropt: ReadOnlyPieceTree,
         view: Range<usize>,
     ) {
@@ -157,7 +156,7 @@ impl Search {
 }
 
 impl Job for Search {
-    fn run(&self, mut ctx: JobContext) -> JobResult {
+    fn run(&self, ctx: JobContext) -> JobResult {
         let term = self.term.clone();
         let pt = self.ropt.clone();
         let range = self.range.clone();

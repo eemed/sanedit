@@ -230,7 +230,7 @@ fn do_write_in_place(pt: &ReadOnlyPieceTree, ops: Vec<WriteOp>) -> io::Result<()
 mod test {
     use super::*;
     use crate::PieceTree;
-    use std::{fs::File, path::PathBuf};
+    use std::path::PathBuf;
 
     #[test]
     fn write_ops() {

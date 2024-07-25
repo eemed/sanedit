@@ -1,6 +1,6 @@
 use std::cmp::{max, min};
 
-use sanedit_messages::redraw::{Completion, Cursor, Size};
+use sanedit_messages::redraw::{Completion, Size};
 
 use crate::ui::UIContext;
 

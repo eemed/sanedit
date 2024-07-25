@@ -1,9 +1,7 @@
-use std::{cell::RefCell, ops::Range, rc::Rc};
+use std::{cell::RefCell, ops::Range};
 
 use sanedit_messages::redraw::PromptOption;
 use sanedit_utils::sorted_vec::SortedVec;
-
-use crate::common::matcher::{Match, MatchOption};
 
 #[derive(Debug, Default)]
 struct MergedOptions {

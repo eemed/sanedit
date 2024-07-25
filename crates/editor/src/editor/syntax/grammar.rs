@@ -2,7 +2,7 @@ use std::{fs::File, path::Path};
 
 use anyhow::bail;
 use sanedit_buffer::{Bytes, PieceTreeSlice};
-use sanedit_parser::{Annotation, ByteReader, Capture, CaptureID, CaptureList, Parser};
+use sanedit_parser::{Annotation, ByteReader, CaptureID, CaptureList, Parser};
 use tokio::sync::broadcast;
 
 #[derive(Debug)]

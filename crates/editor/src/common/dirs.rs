@@ -5,8 +5,6 @@ use std::{
 
 use rand::Rng;
 
-use crate::server::ClientId;
-
 pub(crate) const ENV_PREFIX: &str = "SANE";
 
 const TMP_DIR: &str = "tmp";

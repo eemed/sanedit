@@ -3,7 +3,6 @@ use crate::actions::*;
 use crate::common::matcher::{Kind, MatchOption};
 use crate::editor::windows::{Focus, SelectorOption};
 use sanedit_messages::keyevents_to_string;
-use sanedit_utils::either::Either;
 
 #[rustfmt::skip]
 pub(crate) const COMMANDS: &[Action] = &[

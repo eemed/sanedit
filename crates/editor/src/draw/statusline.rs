@@ -1,5 +1,3 @@
-use std::{borrow::Cow, path::Path};
-
 use sanedit_messages::redraw::{self, Statusline};
 
 use crate::editor::{buffers::Filetype, windows::Focus};

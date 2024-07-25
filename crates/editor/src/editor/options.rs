@@ -30,7 +30,7 @@ impl Default for Options {
 
 impl Options {
     pub fn ignore_directories(&self) -> Vec<String> {
-        let mut ignore = self.ignore_directories.clone();
+        let ignore = self.ignore_directories.clone();
         ignore
     }
 }

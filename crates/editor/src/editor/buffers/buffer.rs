@@ -12,12 +12,12 @@ use std::{
 };
 
 use sanedit_buffer::{PieceTree, PieceTreeSlice, ReadOnlyPieceTree};
-use sanedit_utils::{idmap, key_type};
+use sanedit_utils::key_type;
 
 use crate::common::{dirs::tmp_file, file::File};
 
 use self::{options::Options, snapshots::Snapshots};
-pub(crate) use change::{Change, ChangeKind};
+pub(crate) use change::Change;
 pub(crate) use filetype::Filetype;
 pub(crate) use snapshots::{SnapshotData, SnapshotId};
 pub(crate) use sorted::SortedRanges;

@@ -1,12 +1,8 @@
 use std::cmp::{max, min};
 
-use sanedit_messages::redraw::{Item, ItemKind, Items, Style};
+use sanedit_messages::redraw::Items;
 
-use super::{
-    ccell::{into_cells_with_style, CCell},
-    item::GridItem,
-    Rect,
-};
+use super::{item::GridItem, Rect};
 
 #[derive(Debug)]
 pub(crate) enum Kind {

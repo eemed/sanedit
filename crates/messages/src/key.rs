@@ -1,4 +1,4 @@
-use std::{collections::HashSet, fmt};
+use std::fmt;
 
 use bitflags::bitflags;
 use rustc_hash::FxHashSet;

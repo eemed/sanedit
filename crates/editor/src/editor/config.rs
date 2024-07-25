@@ -13,7 +13,7 @@ pub(crate) struct Config {
 pub(crate) const PROJECT_CONFIG: &str = "sanedit-project.toml";
 
 pub(crate) fn read_config(config: &Path) -> anyhow::Result<Config> {
-    let mut config = read_toml::<Config>(config)?;
+    let config = read_toml::<Config>(config)?;
 
     let mut project_path = env::current_dir()?;
     project_path.push(PROJECT_CONFIG);

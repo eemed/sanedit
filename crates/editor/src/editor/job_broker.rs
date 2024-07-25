@@ -1,6 +1,6 @@
 mod cpu;
 
-use std::{any::Any, collections::HashMap, fmt, rc::Rc};
+use std::{any::Any, fmt, rc::Rc};
 
 use crate::job_runner::{Job, JobId, JobsHandle, ToJobs};
 use crate::server::ClientId;

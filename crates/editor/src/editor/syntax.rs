@@ -11,7 +11,7 @@ use sanedit_parser::Annotation;
 use tokio::sync::broadcast;
 
 use crate::{
-    common::{dirs::ConfigDirectory, movement::prev_line},
+    common::dirs::ConfigDirectory,
     editor::buffers::{BufferId, Filetype},
 };
 

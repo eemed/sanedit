@@ -36,7 +36,7 @@ impl ShellCommand {
 }
 
 impl Job for ShellCommand {
-    fn run(&self, mut ctx: JobContext) -> JobResult {
+    fn run(&self, ctx: JobContext) -> JobResult {
         let command = self.command.clone();
         let ropt = self.pipe_input.clone();
 

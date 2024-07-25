@@ -1,6 +1,7 @@
-use sanedit_messages::redraw::{self, Component, Item, ItemKind};
+use sanedit_messages::redraw::{self, Component, ItemKind};
+use sanedit_utils::either::Either;
 
-use crate::editor::windows::{Focus, Location, Locations};
+use crate::editor::windows::{Focus, Group, Item, Locations};
 
 use super::DrawContext;
 
@@ -25,19 +26,24 @@ fn draw_impl(locs: &Locations, ctx: &mut DrawContext) -> redraw::Redraw {
     let mut items = vec![];
 
     for entry in locs.iter() {
-        let (kind, hls) = match entry.loc {
-            Location::Group { expanded, .. } => {
+        let (name, kind, hls, line) = match entry.loc {
+            Either::Left(Group { expanded, path, .. }) => {
                 let kind = ItemKind::Group {
                     expanded: *expanded,
                 };
-                (kind, vec![])
+                let name = path.to_string_lossy().to_string();
+                (name, kind, vec![], None)
             }
-            Location::Item { highlights, .. } => (ItemKind::Item, highlights.clone()),
+            Either::Right(Item {
+                highlights,
+                name,
+                line,
+                ..
+            }) => (name.into(), ItemKind::Item, highlights.clone(), *line),
         };
-        let name = entry.loc.data_as_str();
 
-        let item = Item {
-            line: entry.loc.line(),
+        let item = redraw::Item {
+            line,
             name: name.into(),
             kind,
             level: entry.level,

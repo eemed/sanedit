@@ -12,7 +12,7 @@ use tokio::sync::mpsc::{channel, Receiver, Sender};
 
 use crate::actions::jobs::{OptionProvider, CHANNEL_SIZE};
 use crate::common::matcher::MatchOption;
-use crate::editor::windows::Location;
+use crate::editor::windows::{Group, Item};
 use crate::{
     editor::{job_broker::KeepInTouch, Editor},
     job_runner::{Job, JobContext, JobResult},
@@ -124,14 +124,14 @@ impl KeepInTouch for Grep {
         }
 
         if let Ok(msg) = msg.downcast::<GrepResult>() {
-            let locations = msg.matches.into_iter().map(Location::from).collect();
-            let location = Location::Group {
+            let items = msg.matches.into_iter().map(Item::from).collect();
+            let group = Group {
                 expanded: false,
-                data: Either::Left(msg.path),
-                locations,
+                path: msg.path,
+                items,
             };
             let (win, _buf) = editor.win_buf_mut(self.client_id);
-            win.locations.push(location);
+            win.locations.push(group);
         }
     }
 
@@ -167,10 +167,10 @@ impl Ord for GrepMatch {
     }
 }
 
-impl From<GrepMatch> for Location {
+impl From<GrepMatch> for Item {
     fn from(gmat: GrepMatch) -> Self {
-        Location::Item {
-            data: Either::Right(gmat.text),
+        Item {
+            name: gmat.text,
             line: gmat.line,
             column: None,
             highlights: gmat.matches,

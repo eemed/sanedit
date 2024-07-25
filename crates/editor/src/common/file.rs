@@ -14,6 +14,7 @@ pub(crate) struct File {
     eol: EndOfLine,
     size: u64,
     is_big: bool,
+    read_only: bool,
 }
 
 impl File {
@@ -32,15 +33,21 @@ impl File {
             ..
         } = options;
         let is_big = *big_file_threshold_bytes <= size;
+        let read_only = metadata.permissions().readonly();
 
         let file_metadata = File {
             path: path.into(),
             eol,
             size,
             is_big,
+            read_only,
         };
 
         Ok(file_metadata)
+    }
+
+    pub fn read_only(&self) -> bool {
+        self.read_only
     }
 
     pub fn path(&self) -> &Path {

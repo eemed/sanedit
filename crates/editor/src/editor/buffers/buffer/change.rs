@@ -13,7 +13,6 @@ pub(crate) enum ChangeKind {
     },
     Undo,
     Redo,
-    NoOp,
 }
 
 /// Describes what changed in the buffer when the change was made.
@@ -65,14 +64,6 @@ impl Change {
             created_snapshot: None,
             restored_snapshot: None,
             kind: ChangeKind::Redo,
-        }
-    }
-
-    pub fn no_op() -> Change {
-        Change {
-            created_snapshot: None,
-            restored_snapshot: None,
-            kind: ChangeKind::NoOp,
         }
     }
 

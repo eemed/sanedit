@@ -84,7 +84,7 @@ impl Buffer {
         let filetype = Filetype::determine(&path);
         Ok(Buffer {
             id: BufferId::default(),
-            read_only: false,
+            read_only: file.read_only(),
             pt,
             filetype,
             is_modified: false,
@@ -99,10 +99,11 @@ impl Buffer {
     fn in_memory(file: File) -> Result<Buffer> {
         log::debug!("creating in memory buffer");
         let path = file.path().canonicalize()?;
-        let file = fs::File::open(&path)?;
-        let mut buf = Self::from_reader(file)?;
+        let ffile = fs::File::open(&path)?;
+        let mut buf = Self::from_reader(ffile)?;
         buf.filetype = Filetype::determine(&path);
         buf.path = Some(path);
+        buf.read_only = file.read_only();
         Ok(buf)
     }
 
@@ -165,34 +166,28 @@ impl Buffer {
         let change = Change::undo();
         let mut change = self.create_undo_point(change);
 
-        if let Some(node) = self.snapshots.undo() {
-            change.restored_snapshot = Some(node.id);
-            self.is_modified = node.id != self.last_saved_snapshot;
-            self.last_change = change.into();
-            self.pt.restore(node.snapshot);
+        let node = self.snapshots.undo().ok_or(BufferError::NoMoreUndoPoints)?;
+        change.restored_snapshot = Some(node.id);
+        self.is_modified = node.id != self.last_saved_snapshot;
+        self.last_change = change.into();
+        self.pt.restore(node.snapshot);
 
-            let change = self.last_change.as_ref().unwrap();
-            Ok(change)
-        } else {
-            bail!("No more undo points");
-        }
+        let change = self.last_change.as_ref().unwrap();
+        Ok(change)
     }
 
     pub fn redo(&mut self) -> Result<&Change> {
         let change = Change::redo();
         let mut change = self.create_undo_point(change);
 
-        if let Some(node) = self.snapshots.redo() {
-            change.restored_snapshot = Some(node.id);
-            self.is_modified = node.id != self.last_saved_snapshot;
-            self.last_change = change.into();
-            self.pt.restore(node.snapshot);
+        let node = self.snapshots.redo().ok_or(BufferError::NoMoreRedoPoints)?;
+        change.restored_snapshot = Some(node.id);
+        self.is_modified = node.id != self.last_saved_snapshot;
+        self.last_change = change.into();
+        self.pt.restore(node.snapshot);
 
-            let change = self.last_change.as_ref().unwrap();
-            Ok(change)
-        } else {
-            bail!("No more redo points");
-        }
+        let change = self.last_change.as_ref().unwrap();
+        Ok(change)
     }
 
     pub fn remove(&mut self, range: Range<usize>) -> Result<&Change> {
@@ -261,24 +256,19 @@ impl Buffer {
     /// buffers path
     pub fn save_rename(&mut self) -> Result<Saved> {
         ensure!(!self.read_only, BufferError::ReadOnly);
+        // No save path before unmodified to execute save as even if buffer is
+        // unmodified without path
+        let path = self.path().ok_or(BufferError::NoSavePath)?;
         ensure!(self.is_modified, BufferError::Unmodified);
 
         let cur = self.read_only_copy();
         let copy = Self::save_copy(&cur)?;
-        let path = self.path().ok_or::<io::Error>(io::Error::new(
-            io::ErrorKind::NotFound,
-            "no buffer file path",
-        ))?;
 
         // Rename backing file if it is the same as our path
         if self.pt.is_file_backed() {
-            let backing = self.pt.backing_file().ok_or::<io::Error>(io::Error::new(
-                io::ErrorKind::NotFound,
-                "no backing file path",
-            ))?;
+            let backing = self.pt.backing_file().unwrap();
             if backing == path {
-                let (path, _file) = tmp_file()
-                    .ok_or::<io::Error>(io::Error::new(io::ErrorKind::NotFound, "no tmp file"))?;
+                let (path, _file) = tmp_file().ok_or(BufferError::CannotCreateTmpFile)?;
                 self.pt.rename_backing_file(&path)?;
             }
         }
@@ -293,7 +283,7 @@ impl Buffer {
     }
 
     fn save_copy(buf: &ReadOnlyPieceTree) -> Result<PathBuf> {
-        let (path, mut file) = tmp_file().ok_or(anyhow::anyhow!("Cannot create tempfile"))?;
+        let (path, mut file) = tmp_file().ok_or(BufferError::CannotCreateTmpFile)?;
 
         let mut chunks = buf.chunks();
         let mut chunk = chunks.get();
@@ -339,6 +329,18 @@ pub(crate) enum BufferError {
 
     #[error("Buffer is not modified")]
     Unmodified,
+
+    #[error("No save path set")]
+    NoSavePath,
+
+    #[error("Cannot create tmp file")]
+    CannotCreateTmpFile,
+
+    #[error("No more redo points")]
+    NoMoreRedoPoints,
+
+    #[error("No more undo points")]
+    NoMoreUndoPoints,
 }
 
 #[derive(Debug)]

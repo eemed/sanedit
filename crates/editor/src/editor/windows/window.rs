@@ -30,7 +30,7 @@ use crate::{
         text::selection_line_starts,
     },
     editor::{
-        buffers::{Buffer, BufferId, SnapshotData, SortedRanges},
+        buffers::{Buffer, BufferError, BufferId, SnapshotData, SortedRanges},
         syntax::SyntaxParseResult,
     },
 };
@@ -420,7 +420,7 @@ impl Window {
             let pos = movement::next_grapheme_boundary(&buf.slice(..), cpos);
 
             cursor.goto(cpos);
-            buf.remove(cpos..pos);
+            buf.remove(cpos..pos)?;
             removed += pos - cpos;
         }
 
@@ -634,7 +634,7 @@ impl Window {
 
     /// Synchronously saves the buffer
     pub fn save_buffer(&mut self, buf: &mut Buffer) -> Result<()> {
-        let saved = buf.save_rename()?;
+        let saved = show_error!(self, buf.save_rename());
         let sdata = buf.snapshot_data_mut(saved.snapshot).unwrap();
         *sdata = self.create_snapshot_data();
         Ok(())

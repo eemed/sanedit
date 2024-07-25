@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use crate::{
     common::indent::indent_at_pos,
     editor::{
+        buffers::BufferError,
         hooks::Hook,
         windows::{Focus, Prompt},
         Editor,
@@ -71,31 +72,27 @@ pub(crate) fn insert(editor: &mut Editor, id: ClientId, text: &str) {
 
 #[action("Save file")]
 fn save(editor: &mut Editor, id: ClientId) {
-    let (_win, buf) = editor.win_buf_mut(id);
+    let (win, buf) = editor.win_buf_mut(id);
 
-    match buf.path() {
-        Some(_path) => {
-            if !buf.is_modified() || buf.read_only {
-                return;
-            }
-
-            let big_th = editor.options.big_file_threshold_bytes;
-            let (win, buf) = editor.win_buf_mut(id);
-            let size = buf.len() as u64;
-            let is_big = size >= big_th;
-            if is_big {
-                todo!()
-                // buf.read_only = true;
-                // let job = jobs::Save::new(id, ropt);
-                // editor.job_broker.request(job);
-            } else {
-                win.save_buffer(buf);
-            }
-        }
-        None => {
-            save_as.execute(editor, id);
+    if let Err(e) = win.save_buffer(buf) {
+        if let Some(BufferError::NoSavePath) = e.root_cause().downcast_ref::<BufferError>() {
+            // Clear error message, as we execute a new fix action
+            win.clear_msg();
+            save_as.execute(editor, id)
         }
     }
+
+    // let big_th = editor.options.big_file_threshold_bytes;
+    // let (win, buf) = editor.win_buf_mut(id);
+    // let size = buf.len() as u64;
+    // let is_big = size >= big_th;
+    // if is_big {
+    //     todo!()
+    //     // buf.read_only = true;
+    //     // let job = jobs::Save::new(id, ropt);
+    //     // editor.job_broker.request(job);
+    // } else {
+    // }
 }
 
 #[action("Save as")]

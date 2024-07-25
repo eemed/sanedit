@@ -29,10 +29,10 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> redraw::Statusline {
         None => format!(" {} ", name),
     };
     if buf.is_modified() {
-        left.push_str("*");
+        left.push_str("* ");
     }
-    if buf.is_saving() {
-        left.push_str("*");
+    if buf.read_only {
+        left.push_str("RO ");
     }
 
     let cursor = win.primary_cursor();

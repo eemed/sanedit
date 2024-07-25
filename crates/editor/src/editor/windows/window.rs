@@ -617,4 +617,18 @@ impl Window {
 
         self.invalidate();
     }
+
+    /// Synchronously saves the buffer
+    pub fn save_buffer(&mut self, buf: &mut Buffer) {
+        match buf.save_rename() {
+            Ok(Some(snap)) => {
+                let sdata = buf.snapshot_data_mut(snap).unwrap();
+                *sdata = self.create_snapshot_data();
+            }
+            Err(e) => {
+                self.error_msg(&format!("Failed to save buffer: {e}"));
+            }
+            _ => {}
+        }
+    }
 }

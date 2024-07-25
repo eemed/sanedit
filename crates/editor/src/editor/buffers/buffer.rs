@@ -6,7 +6,8 @@ mod sorted;
 
 use std::{
     borrow::Cow,
-    fs, io,
+    fs,
+    io::{self, Write},
     ops::{Range, RangeBounds},
     path::{Path, PathBuf},
 };
@@ -32,14 +33,13 @@ pub(crate) struct Buffer {
     pub(crate) id: BufferId,
     pub(crate) filetype: Option<Filetype>,
     pub(crate) options: Options,
+    pub(crate) read_only: bool,
 
     pt: PieceTree,
     /// Snapshots of the piecetree, used for undo
     snapshots: Snapshots,
     last_saved_snapshot: SnapshotId,
 
-    /// Set while an async process is saving the file
-    is_saving: bool,
     is_modified: bool,
     last_change: Option<Change>,
 
@@ -54,8 +54,8 @@ impl Buffer {
         Buffer {
             id: BufferId::default(),
             filetype: None,
+            read_only: false,
             pt,
-            is_saving: false,
             is_modified: false,
             snapshots: Snapshots::new(snapshot),
             options: Options::default(),
@@ -81,9 +81,9 @@ impl Buffer {
         let filetype = Filetype::determine(&path);
         Ok(Buffer {
             id: BufferId::default(),
+            read_only: false,
             pt,
             filetype,
-            is_saving: false,
             is_modified: false,
             snapshots: Snapshots::new(snapshot),
             options: Options::default(),
@@ -110,7 +110,7 @@ impl Buffer {
             id: BufferId::default(),
             pt,
             filetype: None,
-            is_saving: false,
+            read_only: false,
             is_modified: false,
             snapshots: Snapshots::new(snapshot),
             options: Options::default(),
@@ -149,7 +149,7 @@ impl Buffer {
     /// Creates undo point if it is needed
     fn create_undo_point(&mut self, mut change: Change) -> Change {
         let last = self.last_change.as_ref();
-        if change.needs_undo_point(last) {
+        if self.is_modified && change.needs_undo_point(last) {
             let snap = self.pt.read_only_copy();
             let id = self.snapshots.insert(snap);
             change.created_snapshot = Some(id);
@@ -251,7 +251,15 @@ impl Buffer {
         self.is_modified
     }
 
-    pub fn save_rename(&mut self, copy: &Path) -> io::Result<()> {
+    /// Save the buffer by copying it to a temporary file and renaming it to the
+    /// buffers path
+    pub fn save_rename(&mut self) -> anyhow::Result<Option<SnapshotId>> {
+        if !self.is_modified {
+            return Ok(None);
+        }
+
+        let cur = self.read_only_copy();
+        let copy = Self::save_copy(&cur)?;
         let path = self.path().ok_or::<io::Error>(io::Error::new(
             io::ErrorKind::NotFound,
             "no buffer file path",
@@ -274,30 +282,24 @@ impl Buffer {
         fs::rename(copy, path)?;
 
         self.is_modified = false;
-        Ok(())
+        let snap = self.snapshots.insert(cur);
+        self.last_saved_snapshot = snap;
+        Ok(Some(snap))
     }
 
-    /// Called when async succesfully saved a copy of the file
-    pub fn save_succesful(&mut self, copy: &Path) -> io::Result<()> {
-        self.is_saving = false;
-        self.save_rename(copy)?;
-        Ok(())
-    }
+    fn save_copy(buf: &ReadOnlyPieceTree) -> anyhow::Result<PathBuf> {
+        let (path, mut file) = tmp_file().ok_or(anyhow::anyhow!("Cannot create tempfile"))?;
 
-    /// Called when async failed saving
-    pub fn save_failed(&mut self) {
-        self.is_saving = false;
-        self.is_modified = true;
-    }
+        let mut chunks = buf.chunks();
+        let mut chunk = chunks.get();
+        while let Some((_, chk)) = chunk {
+            let bytes = chk.as_ref();
+            file.write(bytes)?;
+            chunk = chunks.next();
+        }
 
-    /// Called when async is starting saving
-    pub fn start_saving(&mut self) {
-        self.is_modified = false;
-        self.is_saving = true;
-    }
-
-    pub fn is_saving(&self) -> bool {
-        self.is_saving
+        file.flush()?;
+        Ok(path)
     }
 }
 

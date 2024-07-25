@@ -6,7 +6,7 @@ mod matcher;
 mod search;
 mod shell;
 mod syntax;
-mod text;
+// mod text;
 
 pub(crate) const CHANNEL_SIZE: usize = 64;
 
@@ -16,4 +16,4 @@ pub(crate) use matcher::*;
 pub(crate) use search::*;
 pub(crate) use shell::*;
 pub(crate) use syntax::*;
-pub(crate) use text::*;
+// pub(crate) use text::*;

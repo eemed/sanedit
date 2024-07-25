@@ -75,15 +75,22 @@ fn save(editor: &mut Editor, id: ClientId) {
 
     match buf.path() {
         Some(_path) => {
-            if !buf.is_modified() {
+            if !buf.is_modified() || buf.read_only {
                 return;
             }
 
-            let ropt = buf.read_only_copy();
-            let (_win, buf) = editor.win_buf_mut(id);
-            buf.start_saving();
-            let job = jobs::Save::new(id, ropt);
-            editor.job_broker.request(job);
+            let big_th = editor.options.big_file_threshold_bytes;
+            let (win, buf) = editor.win_buf_mut(id);
+            let size = buf.len() as u64;
+            let is_big = size >= big_th;
+            if is_big {
+                todo!()
+                // buf.read_only = true;
+                // let job = jobs::Save::new(id, ropt);
+                // editor.job_broker.request(job);
+            } else {
+                win.save_buffer(buf);
+            }
         }
         None => {
             save_as.execute(editor, id);
@@ -96,6 +103,7 @@ fn save_as(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.prompt = Prompt::builder()
         .prompt("Save as")
+        .simple()
         .on_confirm(|editor, id, path| {
             let (_win, buf) = editor.win_buf_mut(id);
             buf.set_path(PathBuf::from(path));

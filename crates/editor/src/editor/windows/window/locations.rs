@@ -43,30 +43,22 @@ impl Locations {
 
     pub fn selected_mut(&mut self) -> Option<Either<&mut Group, &mut Item>> {
         let n = self.selection?;
-        let mut stack = vec![];
+        let mut cur = 0;
 
-        for loc in self.groups.iter_mut() {
-            stack.push(Either::Left(loc));
-        }
-
-        let mut curn = 0;
-        while let Some(loc) = stack.pop() {
-            if curn == n {
-                return Some(loc);
+        for group in &mut self.groups {
+            if cur == n {
+                return Some(Either::Left(group));
             }
 
-            if let Either::Left(Group {
-                expanded, items, ..
-            }) = loc
-            {
-                if *expanded {
-                    for ll in items.iter_mut() {
-                        stack.push(Either::Right(ll));
-                    }
+            cur += 1;
+
+            if group.expanded {
+                cur += group.items.len();
+                if cur > n {
+                    let item = &mut group.items[cur - n - 1];
+                    return Some(Either::Right(item));
                 }
             }
-
-            curn += 1;
         }
 
         None
@@ -74,31 +66,21 @@ impl Locations {
 
     pub fn parent_of_selected(&self) -> Option<&Group> {
         let n = self.selection?;
-        let mut stack = vec![];
+        let mut cur = 0;
 
-        for loc in self.groups.iter() {
-            stack.push((None, Either::Left(loc)));
-        }
-
-        let mut curn = 0;
-        while let Some((parent, loc)) = stack.pop() {
-            if curn == n {
-                return parent;
+        for group in &self.groups {
+            if cur == n {
+                return None;
             }
 
-            if let Either::Left(group) = loc {
-                let Group {
-                    expanded, items, ..
-                } = group;
+            cur += 1;
 
-                if *expanded {
-                    for ll in items.iter() {
-                        stack.push((Some(group), Either::Right(ll)));
-                    }
+            if group.expanded {
+                cur += group.items.len();
+                if cur > n {
+                    return Some(group);
                 }
             }
-
-            curn += 1;
         }
 
         None
@@ -153,66 +135,6 @@ pub(crate) struct Item {
     pub(crate) highlights: Vec<Range<usize>>,
 }
 
-// /// Location that may be just text or a path with various offsets into the file
-// #[derive(Debug)]
-// pub(crate) enum Location {
-//     Group {},
-//     Item {},
-// }
-
-// impl Location {
-//     pub fn name(&self) -> Cow<str> {
-//         match self {
-//             Location::Group { path, .. } => path.to_string_lossy(),
-//             Location::Item { name, .. } => name.into(),
-//         }
-//     }
-
-//     pub fn data(&self) -> &Either<PathBuf, String> {
-//         match self {
-//             Location::Group { data, .. } => data,
-//             Location::Item { data, .. } => data,
-//         }
-//     }
-
-//     pub fn line(&self) -> Option<u64> {
-//         match self {
-//             Location::Group { .. } => None,
-//             Location::Item { line, .. } => *line,
-//         }
-//     }
-// }
-
-// impl PartialEq for Location {
-//     fn eq(&self, other: &Self) -> bool {
-//         match (self, other) {
-//             (Location::Group { data, .. }, Location::Group { data: odata, .. }) => data.eq(odata),
-//             (Location::Item { data, .. }, Location::Item { data: odata, .. }) => data.eq(odata),
-//             _ => false,
-//         }
-//     }
-// }
-
-// impl Eq for Location {}
-
-// impl PartialOrd for Location {
-//     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-//         use Location::*;
-//         match (self, other) {
-//             (Group { data, .. }, Group { data: odata, .. }) => data.partial_cmp(odata),
-//             (Group { .. }, Item { .. }) => Some(Ordering::Greater),
-//             (Item { .. }, Group { .. }) => Some(Ordering::Less),
-//             (Item { data, .. }, Item { data: odata, .. }) => data.partial_cmp(odata),
-//         }
-//     }
-// }
-
-// impl Ord for Location {
-//     fn cmp(&self, other: &Self) -> Ordering {
-//         self.partial_cmp(other).unwrap()
-//     }
-// }
-
 #[derive(Debug)]
 pub(crate) struct LocationEntry<'a> {
     pub(crate) loc: Either<&'a Group, &'a Item>,
@@ -228,7 +150,7 @@ impl<'a> LocationIter<'a> {
     fn new(locs: &'a [Group]) -> Self {
         let mut stack = Vec::with_capacity(locs.len());
 
-        for loc in locs {
+        for loc in locs.iter().rev() {
             stack.push(LocationEntry {
                 loc: Either::Left(loc),
                 level: 0,

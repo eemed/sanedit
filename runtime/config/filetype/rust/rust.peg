@@ -3,10 +3,10 @@ document = (comment / keyword / constant / unsafe / string / char / .)*;
 visibility = "pub(crate)" / "pub(super)" / "pub";
 
 @show(identifier)
-keyword = start ("let" / "as" / "match" / "if" / "else" / "while" / "break" / "move") end;
+keyword = start ("let" / "as" / "match" / "if" / "else" / "while" / "break" / "move" / "async" ) end;
 
 @show(keyword)
-constant = start (visibility / "mod" / "use" / "fn" / "impl" / "struct" / "enum" / "const") end;
+constant = start (visibility / "mod" / "use" / "fn" / "impl" / "struct" / "enum" / "const" ) end;
 
 @show(string)
 char = "'" . "'";
@@ -19,7 +19,7 @@ start = WHITESPACE;
 end = &(WHITESPACE / ";");
 
 @show(operator)
-unsafe = "unsafe";
+unsafe = "unsafe" / "await";
 
 ########## COMMENTS
 @show

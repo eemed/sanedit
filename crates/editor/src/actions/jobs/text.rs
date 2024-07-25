@@ -43,11 +43,8 @@ impl Job for Save {
 
         let fut = async move {
             let (path, file) = tmp_file().ok_or(anyhow::anyhow!("Cannot create tempfile"))?;
-
-            match Self::save(buf, file).await {
-                Ok(p) => ctx.send(Msg { ok: true, path }),
-                Err(e) => ctx.send(Msg { ok: false, path }),
-            }
+            let ok = Self::save(buf, file).await.is_ok();
+            ctx.send(Msg { ok, path });
 
             Ok(())
         };
@@ -68,7 +65,12 @@ impl KeepInTouch for Save {
 
     fn on_failure(&self, editor: &mut Editor, reason: &str) {
         let (_win, buf) = editor.win_buf_mut(self.client_id);
-        buf.save_failed();
+        buf.read_only = false;
+    }
+
+    fn on_success(&self, editor: &mut Editor) {
+        let (_win, buf) = editor.win_buf_mut(self.client_id);
+        buf.read_only = false;
     }
 
     fn on_message(&self, editor: &mut Editor, msg: Box<dyn std::any::Any>) {
@@ -76,9 +78,9 @@ impl KeepInTouch for Save {
 
         if let Ok(msg) = msg.downcast::<Msg>() {
             if msg.ok {
-                buf.save_succesful(&msg.path);
+                buf.async_save_succesful(&msg.path);
             } else {
-                buf.save_failed();
+                buf.async_save_failed();
             }
 
             let _ = fs::remove_file(&msg.path);

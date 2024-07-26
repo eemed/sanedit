@@ -100,7 +100,7 @@ fn toggle_regex(editor: &mut Editor, id: ClientId) {
 }
 
 /// Execute a search from primary cursor position
-fn search(editor: &mut Editor, id: ClientId, input: &str) {
+pub(crate) fn search(editor: &mut Editor, id: ClientId, input: &str) {
     let (win, _buf) = editor.win_buf_mut(id);
     let cpos = win.cursors.primary().pos();
     win.search.save_last_search(input.into());

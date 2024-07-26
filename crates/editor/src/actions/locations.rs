@@ -8,6 +8,12 @@ use crate::{
     server::ClientId,
 };
 
+#[action("Clear locations")]
+fn clear(editor: &mut Editor, id: ClientId) {
+    let (win, buf) = editor.win_buf_mut(id);
+    win.locations.clear();
+}
+
 #[action("Show locations")]
 fn show(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);

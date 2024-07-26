@@ -1,9 +1,4 @@
-use std::{
-    borrow::Cow,
-    cmp::{min, Ordering},
-    ops::Range,
-    path::PathBuf,
-};
+use std::{cmp::min, ops::Range, path::PathBuf};
 
 use sanedit_utils::either::Either;
 

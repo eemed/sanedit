@@ -99,6 +99,8 @@ impl DefaultKeyMappings {
              "alt+o a", text_objects::select_in_angle,
              "alt+o A", text_objects::select_angle,
 
+             "alt+o w", text_objects::select_word,
+
              "ctrl+b", filetree::show,
 
              "ctrl+l", locations::show,

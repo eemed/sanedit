@@ -40,7 +40,7 @@ pub(crate) fn open_filetree(win: Rect, items: Items) -> GridItem<CustomItems> {
 pub(crate) fn open_locations(win: Rect, items: Items) -> GridItem<CustomItems> {
     let mut area = win;
     let max = area.height + area.y;
-    area.height = min(win.height, 10);
+    area.height = min(win.height, 15);
     area.y = max - area.height;
 
     GridItem::new(

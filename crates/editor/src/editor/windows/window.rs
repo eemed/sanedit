@@ -16,6 +16,7 @@ mod tests;
 use std::{
     cmp::{max, min},
     mem,
+    ops::Range,
 };
 
 use anyhow::Result;
@@ -410,7 +411,7 @@ impl Window {
     }
 
     pub fn remove_grapheme_after_cursors(&mut self, buf: &mut Buffer) -> Result<()> {
-        if show_error!(self, self.remove_cursor_selections(buf)) {
+        if self.remove_cursor_selections(buf)? {
             return Ok(());
         }
 
@@ -479,7 +480,7 @@ impl Window {
     /// Remove a grapheme before the cursor, if at indentation
     /// remove a block of it
     pub fn remove_grapheme_before_cursors(&mut self, buf: &mut Buffer) -> Result<()> {
-        if show_error!(self, self.remove_cursor_selections(buf)) {
+        if self.remove_cursor_selections(buf)? {
             return Ok(());
         }
 
@@ -529,7 +530,7 @@ impl Window {
             })
             .collect();
 
-        show_error!(self, self.insert_to_each_cursor(buf, texts));
+        self.insert_to_each_cursor(buf, texts)?;
         Ok(())
     }
 
@@ -571,7 +572,57 @@ impl Window {
 
     /// Dedent all the lines with cursors or their selections
     pub fn dedent_cursor_lines(&mut self, buf: &mut Buffer) -> Result<()> {
-        todo!()
+        let starts: Vec<usize> = {
+            let mut starts = FxHashSet::default();
+
+            for cursor in self.cursors.iter() {
+                let range = cursor.selection().unwrap_or(cursor.pos()..cursor.pos() + 1);
+                let cstarts = selection_line_starts(buf, range);
+                starts.extend(cstarts);
+            }
+            let mut vstarts: Vec<usize> = starts.into_iter().collect();
+            vstarts.sort();
+            vstarts
+        };
+
+        let slice = buf.slice(..);
+        let indmul = buf.options.indent.n;
+        let ranges: SortedRanges = {
+            let mut ranges = vec![];
+            for pos in starts {
+                let indent = indent_at_line(&slice, pos);
+                let n = indent.dedent_to_multiple_of(indmul);
+                // At start of line
+                if n == 0 {
+                    continue;
+                }
+
+                ranges.push(pos..pos + n);
+            }
+            ranges.into()
+        };
+
+        self.remove(buf, &ranges)?;
+
+        for cursor in self.cursors.cursors_mut() {
+            let mut range = cursor.selection().unwrap_or(cursor.pos()..cursor.pos() + 1);
+            let pre: usize = ranges
+                .iter()
+                .take_while(|cur| cur.end < range.start)
+                .map(Range::len)
+                .sum();
+            let post: usize = ranges
+                .iter()
+                .take_while(|cur| cur.end < range.end)
+                .map(Range::len)
+                .sum();
+            range.start -= pre;
+            range.end -= post;
+            cursor.to_range(&range);
+        }
+
+        self.invalidate();
+        Ok(())
     }
 
     /// Insert a tab character
@@ -593,7 +644,7 @@ impl Window {
                 }
             })
             .collect();
-        self.insert_to_each_cursor(buf, texts);
+        self.insert_to_each_cursor(buf, texts)?;
         Ok(())
     }
 

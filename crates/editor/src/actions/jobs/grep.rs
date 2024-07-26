@@ -6,11 +6,11 @@ use std::path::{Path, PathBuf};
 use grep::matcher::{LineTerminator, Matcher};
 use grep::regex::{RegexMatcher, RegexMatcherBuilder};
 use grep::searcher::{BinaryDetection, Searcher, SearcherBuilder, Sink, SinkMatch};
-use sanedit_utils::either::Either;
 use sanedit_utils::sorted_vec::SortedVec;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 
 use crate::actions::jobs::{OptionProvider, CHANNEL_SIZE};
+use crate::actions::locations;
 use crate::common::matcher::MatchOption;
 use crate::editor::windows::{Group, Item};
 use crate::{
@@ -117,9 +117,8 @@ impl KeepInTouch for Grep {
 
     fn on_message(&self, editor: &mut Editor, mut msg: Box<dyn Any>) {
         if let Some(_msg) = msg.downcast_mut::<Start>() {
-            let (win, _buf) = editor.win_buf_mut(self.client_id);
-            win.locations.clear();
-            win.locations.show = true;
+            locations::clear.execute(editor, self.client_id);
+            locations::show.execute(editor, self.client_id);
             return;
         }
 

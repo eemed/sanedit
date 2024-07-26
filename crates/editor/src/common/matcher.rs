@@ -121,7 +121,7 @@ impl Matcher {
                             matches_with(&opt, &patterns, case_sensitive, match_fn)
                         {
                             let mat = Match {
-                                score: score(&opt.value, &ranges),
+                                score: score(&opt.utf8_to_match(), &ranges),
                                 opt: opt.clone(),
                                 ranges,
                             };
@@ -144,7 +144,7 @@ impl Matcher {
 }
 
 // Score a match
-fn score(opt: &[u8], ranges: &[Range<usize>]) -> u32 {
+fn score(opt: &str, ranges: &[Range<usize>]) -> u32 {
     // Closest match first
     // Shortest item first
     ranges
@@ -153,8 +153,8 @@ fn score(opt: &[u8], ranges: &[Range<usize>]) -> u32 {
         .unwrap_or(opt.len() as u32)
 }
 
-fn get_opt(opt: &MatchOption, case_sensitive: bool) -> Cow<str> {
-    let string = opt.display();
+fn with_case_sensitivity(opt: &MatchOption, case_sensitive: bool) -> Cow<str> {
+    let string = opt.utf8_to_match();
     if case_sensitive {
         return string;
     }
@@ -173,13 +173,13 @@ fn matches_with(
     case_sensitive: bool,
     f: fn(&str, &str) -> Option<Range<usize>>,
 ) -> Option<Vec<Range<usize>>> {
-    let string: Cow<str> = get_opt(opt, case_sensitive);
+    let string: Cow<str> = with_case_sensitivity(opt, case_sensitive);
     let mut matches = vec![];
     for pattern in patterns.iter() {
         // Calculate match and apply offset
         let mut range = (f)(&string, pattern)?;
-        range.start += opt.offset;
-        range.end += opt.offset;
+        range.start += opt.offset();
+        range.end += opt.offset();
 
         matches.push(range);
     }

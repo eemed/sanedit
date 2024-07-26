@@ -1,6 +1,6 @@
 use std::{cell::RefCell, ops::Range};
 
-use sanedit_messages::redraw::PromptOption;
+use sanedit_messages::redraw::{CompletionOption, PromptOption};
 use sanedit_utils::sorted_vec::SortedVec;
 
 #[derive(Debug, Default)]
@@ -109,20 +109,25 @@ pub(crate) struct SelectorOption {
     pub(super) matches: Vec<Range<usize>>,
 
     /// Additional description of the option
-    pub(crate) description: String,
+    pub(super) description: String,
 }
 
 impl SelectorOption {
-    pub fn new(opt: Vec<u8>, matches: Vec<Range<usize>>, score: u32) -> SelectorOption {
+    pub fn new(
+        opt: &[u8],
+        matches: Vec<Range<usize>>,
+        score: u32,
+        description: &str,
+    ) -> SelectorOption {
         SelectorOption {
-            value: opt,
+            value: opt.into(),
             score,
-            description: String::new(),
+            description: description.into(),
             matches,
         }
     }
 
-    pub fn value(&self) -> std::borrow::Cow<str> {
+    pub fn to_str_lossy(&self) -> std::borrow::Cow<str> {
         String::from_utf8_lossy(&self.value)
     }
 
@@ -136,6 +141,10 @@ impl SelectorOption {
 
     pub fn matches(&self) -> &[Range<usize>] {
         &self.matches
+    }
+
+    pub fn description(&self) -> &str {
+        &self.description
     }
 }
 
@@ -159,12 +168,21 @@ impl Ord for SelectorOption {
     }
 }
 
-impl From<SelectorOption> for PromptOption {
-    fn from(opt: SelectorOption) -> Self {
+impl From<&SelectorOption> for PromptOption {
+    fn from(opt: &SelectorOption) -> Self {
         PromptOption {
-            name: opt.value().into(),
-            description: opt.description,
-            matches: opt.matches,
+            name: opt.to_str_lossy().into(),
+            description: opt.description.clone(),
+            matches: opt.matches.clone(),
+        }
+    }
+}
+
+impl From<&SelectorOption> for CompletionOption {
+    fn from(opt: &SelectorOption) -> Self {
+        CompletionOption {
+            name: opt.to_str_lossy().into(),
+            description: opt.description().into(),
         }
     }
 }

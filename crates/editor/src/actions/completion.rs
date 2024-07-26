@@ -35,11 +35,7 @@ fn complete(editor: &mut Editor, id: ClientId) {
             (compl, desc)
         })
         .filter(|(compl, _)| compl != &word)
-        .map(|(compl, desc)| {
-            let mut opt = MatchOption::from(compl);
-            opt.description = desc;
-            opt
-        })
+        .map(|(compl, desc)| MatchOption::with_description(&compl, &desc))
         .collect();
 
     let opts: Vec<MatchOption> = opts.into_iter().collect();
@@ -60,7 +56,7 @@ fn confirm(editor: &mut Editor, id: ClientId) {
 
     let opt = win.completion.selector.selected().map(|opt| {
         let prefix = opt.matches().iter().map(|m| m.end).max().unwrap_or(0);
-        opt.value()[prefix..].to_string()
+        opt.to_str_lossy()[prefix..].to_string()
     });
 
     if let Some(opt) = opt {

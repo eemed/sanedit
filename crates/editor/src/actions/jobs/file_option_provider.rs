@@ -9,7 +9,7 @@ use tokio::{
     sync::{broadcast, mpsc::Sender},
 };
 
-use crate::common::matcher::MatchOption;
+use crate::common::matcher::{Kind, MatchOption};
 
 use super::OptionProvider;
 
@@ -63,8 +63,12 @@ async fn rec(dir: PathBuf, ctx: ReadDirContext) -> io::Result<()> {
         if metadata.is_dir() {
             spawn(path, ctx.clone());
         } else {
-            let mut opt: MatchOption = path.into();
-            opt.offset = ctx.strip;
+            let opt = MatchOption::new(
+                path.as_os_str().as_encoded_bytes(),
+                "",
+                ctx.strip,
+                Kind::Path,
+            );
             let _ = ctx.osend.send(opt).await;
         }
     }

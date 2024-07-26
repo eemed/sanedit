@@ -38,10 +38,7 @@ fn draw_impl(completion: &Completion, ctx: &mut DrawContext) -> redraw::Redraw {
     let options: Vec<CompletionOption> = completion
         .options_window(compl_count, *offset)
         .into_iter()
-        .map(|opt| CompletionOption {
-            name: opt.value().into(),
-            description: opt.description.clone(),
-        })
+        .map(CompletionOption::from)
         .collect();
     let match_len = completion
         .selector

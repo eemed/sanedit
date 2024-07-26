@@ -17,34 +17,40 @@ pub(crate) enum Kind {
 #[derive(Debug, Clone)]
 pub(crate) struct MatchOption {
     /// Match option data
-    pub(crate) value: Vec<u8>,
+    value: Vec<u8>,
 
+    // TODO value and what is required to match could be just different fields?
     /// Offset into value that should be used in matching
     /// this allows to ignore any prefix during matching
     /// Useful for matching paths, without a certain prefix.
-    pub(crate) offset: usize,
+    offset: usize,
 
     /// How to represent the match option data
-    pub(crate) kind: Kind,
-    pub(crate) description: String,
+    kind: Kind,
+    description: String,
 }
-
-impl std::hash::Hash for MatchOption {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.value.hash(state);
-    }
-}
-
-impl PartialEq for MatchOption {
-    fn eq(&self, other: &Self) -> bool {
-        self.value.eq(&other.value)
-    }
-}
-
-impl Eq for MatchOption {}
 
 impl MatchOption {
-    pub fn display(&self) -> std::borrow::Cow<'_, str> {
+    pub fn new(option: &[u8], description: &str, offset: usize, kind: Kind) -> MatchOption {
+        MatchOption {
+            value: option.into(),
+            offset,
+            kind,
+            description: description.into(),
+        }
+    }
+
+    pub fn with_description(option: &str, description: &str) -> MatchOption {
+        MatchOption {
+            value: option.into(),
+            offset: 0,
+            kind: Kind::String,
+            description: description.into(),
+        }
+    }
+
+    /// Return the bytes required to match this option interpreted as utf8
+    pub fn utf8_to_match(&self) -> std::borrow::Cow<'_, str> {
         match self.kind {
             Kind::Path => {
                 let os = unsafe { OsStr::from_encoded_bytes_unchecked(self.bytes_to_match()) };
@@ -69,7 +75,25 @@ impl MatchOption {
     fn bytes_to_match(&self) -> &[u8] {
         &self.value[self.offset..]
     }
+
+    pub fn offset(&self) -> usize {
+        self.offset
+    }
 }
+
+impl std::hash::Hash for MatchOption {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.value.hash(state);
+    }
+}
+
+impl PartialEq for MatchOption {
+    fn eq(&self, other: &Self) -> bool {
+        self.value.eq(&other.value)
+    }
+}
+
+impl Eq for MatchOption {}
 
 impl From<&Path> for MatchOption {
     fn from(value: &Path) -> Self {
@@ -159,8 +183,12 @@ impl Ord for Match {
 
 impl From<Match> for SelectorOption {
     fn from(mat: Match) -> Self {
-        let mut opt = SelectorOption::new(mat.opt.value, mat.ranges, mat.score);
-        opt.description = mat.opt.description;
-        opt
+        SelectorOption::new(&mat.opt.value, mat.ranges, mat.score, "")
+    }
+}
+
+impl From<&Match> for SelectorOption {
+    fn from(mat: &Match) -> Self {
+        SelectorOption::new(&mat.opt.value, mat.ranges.clone(), mat.score, "")
     }
 }

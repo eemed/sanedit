@@ -288,7 +288,7 @@ impl Prompt {
 
     pub fn input_or_selected(&self) -> String {
         self.selected()
-            .map(|item| item.value().to_string())
+            .map(|item| item.to_str_lossy().to_string())
             .unwrap_or(self.input.clone())
     }
 

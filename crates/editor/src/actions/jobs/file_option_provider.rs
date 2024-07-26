@@ -63,14 +63,9 @@ async fn rec(dir: PathBuf, ctx: ReadDirContext) -> io::Result<()> {
         if metadata.is_dir() {
             spawn(path, ctx.clone());
         } else {
-            let path = path
-                .components()
-                .skip(ctx.strip)
-                .fold(PathBuf::new(), |mut acc, comp| {
-                    acc.push(comp);
-                    acc
-                });
-            let _ = ctx.osend.send(path.into()).await;
+            let mut opt: MatchOption = path.into();
+            opt.offset = ctx.strip;
+            let _ = ctx.osend.send(opt).await;
         }
     }
 
@@ -83,7 +78,7 @@ async fn read_directory_recursive(
     ignore: Arc<Vec<String>>,
     kill: broadcast::Sender<()>,
 ) {
-    let strip = dir.components().count();
+    let strip = dir.as_os_str().len();
     let mut krecv = kill.subscribe();
     let ctx = ReadDirContext {
         osend,

@@ -113,9 +113,9 @@ pub(crate) struct SelectorOption {
 }
 
 impl SelectorOption {
-    pub fn new(opt: String, matches: Vec<Range<usize>>, score: u32) -> SelectorOption {
+    pub fn new(opt: Vec<u8>, matches: Vec<Range<usize>>, score: u32) -> SelectorOption {
         SelectorOption {
-            value: opt.into(),
+            value: opt,
             score,
             description: String::new(),
             matches,

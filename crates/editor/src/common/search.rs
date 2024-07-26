@@ -14,6 +14,7 @@ use sanedit_buffer::{
 
 use crate::editor::windows::{SearchDirection, SearchKind};
 
+#[derive(Debug)]
 pub(crate) enum PTSearcher {
     /// Regex search
     RegexFwd(Regex),
@@ -29,39 +30,43 @@ pub(crate) enum PTSearcher {
 }
 
 impl PTSearcher {
-    pub fn new(term: &str, dir: SearchDirection, kind: SearchKind) -> anyhow::Result<PTSearcher> {
+    pub fn new(
+        pattern: &str,
+        dir: SearchDirection,
+        kind: SearchKind,
+    ) -> anyhow::Result<PTSearcher> {
         use SearchDirection::*;
         use SearchKind::*;
         match (dir, kind) {
-            (Forward, Regex) => Self::regex_fwd(term),
-            (Backward, Regex) => Self::regex_bwd(term),
-            (Forward, _) => Ok(Self::fwd(term)),
-            (Backward, _) => Ok(Self::bwd(term)),
+            (Forward, Regex) => Self::regex_fwd(pattern),
+            (Backward, Regex) => Self::regex_bwd(pattern),
+            (Forward, _) => Ok(Self::fwd(pattern)),
+            (Backward, _) => Ok(Self::bwd(pattern)),
         }
     }
 
-    fn fwd(term: &str) -> PTSearcher {
-        let searcher = Searcher::new(term.as_bytes());
+    fn fwd(patt: &str) -> PTSearcher {
+        let searcher = Searcher::new(patt.as_bytes());
         PTSearcher::Fwd(searcher)
     }
 
-    fn bwd(term: &str) -> PTSearcher {
-        let searcher = SearcherRev::new(term.as_bytes());
+    fn bwd(patt: &str) -> PTSearcher {
+        let searcher = SearcherRev::new(patt.as_bytes());
         PTSearcher::Bwd(searcher)
     }
 
-    fn regex_fwd(term: &str) -> anyhow::Result<PTSearcher> {
-        let searcher = Regex::new(term)?;
+    fn regex_fwd(patt: &str) -> anyhow::Result<PTSearcher> {
+        let searcher = Regex::new(patt)?;
         Ok(PTSearcher::RegexFwd(searcher))
     }
 
-    fn regex_bwd(term: &str) -> anyhow::Result<PTSearcher> {
+    fn regex_bwd(patt: &str) -> anyhow::Result<PTSearcher> {
         let dfa_fwd = DFA::builder()
             .thompson(thompson::Config::new())
-            .build(term)?;
+            .build(patt)?;
         let dfa_bwd = DFA::builder()
             .thompson(thompson::Config::new().reverse(true))
-            .build(term)?;
+            .build(patt)?;
         Ok(PTSearcher::RegexBwd {
             bwd: dfa_bwd,
             fwd: dfa_fwd,
@@ -100,7 +105,7 @@ impl PTSearcher {
 
 #[derive(Debug)]
 pub(crate) struct SearchMatch {
-    pub(crate) range: Range<usize>,
+    range: Range<usize>,
 }
 
 impl SearchMatch {

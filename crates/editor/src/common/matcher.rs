@@ -176,7 +176,11 @@ fn matches_with(
     let string: Cow<str> = get_opt(opt, case_sensitive);
     let mut matches = vec![];
     for pattern in patterns.iter() {
-        let range = (f)(&string, pattern)?;
+        // Calculate match and apply offset
+        let mut range = (f)(&string, pattern)?;
+        range.start += opt.offset;
+        range.end += opt.offset;
+
         matches.push(range);
     }
 

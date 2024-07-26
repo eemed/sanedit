@@ -42,6 +42,7 @@ pub fn setup() {
     let config = Config::builder()
         .appender(Appender::builder().build("file-appender", Box::new(file_appender)))
         .logger(Logger::builder().build("regex_cursor", LevelFilter::Off))
+        .logger(Logger::builder().build("grep_regex", LevelFilter::Off))
         .build(Root::builder().appender("file-appender").build(LOG_LEVEL))
         .unwrap();
 

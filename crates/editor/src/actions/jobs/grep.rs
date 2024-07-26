@@ -2,17 +2,22 @@ use std::any::Any;
 use std::error::Error;
 use std::ops::Range;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use grep::matcher::{LineTerminator, Matcher};
 use grep::regex::{RegexMatcher, RegexMatcherBuilder};
 use grep::searcher::{BinaryDetection, Searcher, SearcherBuilder, Sink, SinkMatch};
+use rustc_hash::FxHashMap;
+use sanedit_buffer::ReadOnlyPieceTree;
 use sanedit_utils::sorted_vec::SortedVec;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 
 use crate::actions::jobs::{OptionProvider, CHANNEL_SIZE};
 use crate::actions::locations;
 use crate::common::matcher::MatchOption;
-use crate::editor::windows::{Group, Item};
+use crate::common::range::RangeUtils;
+use crate::common::search::PTSearcher;
+use crate::editor::windows::{Group, Item, SearchDirection, SearchKind};
 use crate::{
     editor::{job_broker::KeepInTouch, Editor},
     job_runner::{Job, JobContext, JobResult},
@@ -26,20 +31,33 @@ pub(crate) struct Grep {
     client_id: ClientId,
     pattern: String,
     file_opt_provider: FileOptionProvider,
+    buffers: Arc<FxHashMap<PathBuf, ReadOnlyPieceTree>>,
 }
 
 impl Grep {
-    pub fn new(pattern: &str, path: &Path, ignore: &[String], id: ClientId) -> Grep {
+    pub fn new(
+        pattern: &str,
+        path: &Path,
+        ignore: &[String],
+        buffers: FxHashMap<PathBuf, ReadOnlyPieceTree>,
+        id: ClientId,
+    ) -> Grep {
         let fprovider = FileOptionProvider::new(path, ignore);
 
         Grep {
             client_id: id,
             pattern: pattern.into(),
             file_opt_provider: fprovider,
+            buffers: Arc::new(buffers),
         }
     }
 
-    async fn grep(mut orecv: Receiver<MatchOption>, pattern: &str, msend: Sender<GrepResult>) {
+    async fn grep(
+        mut orecv: Receiver<MatchOption>,
+        pattern: &str,
+        msend: Sender<GrepResult>,
+        buffers: Arc<FxHashMap<PathBuf, ReadOnlyPieceTree>>,
+    ) {
         let searcher = SearcherBuilder::new()
             .binary_detection(BinaryDetection::quit(b'\x00'))
             .line_terminator(LineTerminator::byte(b'\n'))
@@ -55,25 +73,95 @@ impl Grep {
             .build(&pattern)
             .expect("Cannot build RegexMatcher");
 
-        while let Some(opt) = orecv.recv().await {
-            // TODO if we have unsaved buffer grep that instead.
+        let ptsearcher = Arc::new(
+            PTSearcher::new(&pattern, SearchDirection::Forward, SearchKind::Regex)
+                .expect("Cannot build PTSearcher"),
+        );
 
+        while let Some(opt) = orecv.recv().await {
+            let ptsearcher = ptsearcher.clone();
             let mut searcher = searcher.clone();
             let matcher = matcher.clone();
             let msend = msend.clone();
+            let bufs = buffers.clone();
 
             rayon::spawn(move || {
                 let Some(path) = opt.path() else {
                     return;
                 };
-                let rsend = ResultSender {
-                    matcher: &matcher,
-                    sender: msend,
-                    path: &path,
-                    matches: SortedVec::new(),
-                };
-                let _ = searcher.search_path(&matcher, &path, rsend);
+
+                if let Some(buf) = bufs.get(&path) {
+                    // Grep buffer if it exists
+                    Self::grep_buffer(path, buf, &ptsearcher, msend);
+                } else {
+                    // Otherwise use ripgrep
+                    let rsend = ResultSender {
+                        matcher: &matcher,
+                        sender: msend,
+                        path: &path,
+                        matches: SortedVec::new(),
+                    };
+                    let _ = searcher.search_path(&matcher, &path, rsend);
+                }
             });
+        }
+    }
+
+    fn grep_buffer(
+        path: PathBuf,
+        ropt: &ReadOnlyPieceTree,
+        searcher: &PTSearcher,
+        msend: Sender<GrepResult>,
+    ) {
+        let slice = ropt.slice(..);
+        let mut line_ranges = vec![];
+        let mut matches = SortedVec::new();
+        let mut lines = slice.lines();
+        let mut linen = 1;
+        let mut line = lines.next().unwrap();
+
+        for mat in searcher.find_iter(&slice) {
+            if line.range().includes(&mat.range()) {
+                // Offsets to line start
+                let mut range = mat.range();
+                range.start -= line.start();
+                range.end -= line.start();
+                line_ranges.push(range);
+                continue;
+            }
+
+            if !line_ranges.is_empty() {
+                let text = String::from(&line);
+                let mat = GrepMatch {
+                    line: Some(linen),
+                    text,
+                    matches: std::mem::take(&mut line_ranges),
+                    absolute_offset: Some(line.start() as u64),
+                };
+                matches.push(mat);
+            }
+
+            while !line.range().includes(&mat.range()) {
+                line = lines.next().unwrap();
+                linen += 1;
+            }
+            line_ranges.push(mat.range());
+        }
+
+        if !line_ranges.is_empty() {
+            let text = String::from(&line);
+            let mat = GrepMatch {
+                line: Some(linen),
+                text: text.trim_end().into(),
+                matches: std::mem::take(&mut line_ranges),
+                absolute_offset: Some(line.start() as u64),
+            };
+            matches.push(mat);
+        }
+
+        if !matches.is_empty() {
+            let result = GrepResult { path, matches };
+            let _ = msend.blocking_send(result);
         }
     }
 
@@ -90,6 +178,7 @@ impl Job for Grep {
     fn run(&self, ctx: JobContext) -> JobResult {
         let fopts = self.file_opt_provider.clone();
         let pattern = self.pattern.clone();
+        let bufs = self.buffers.clone();
 
         let fut = async move {
             // Options channel
@@ -99,7 +188,7 @@ impl Job for Grep {
 
             tokio::join!(
                 fopts.provide(osend, ctx.kill.clone()),
-                Self::grep(orecv, &pattern, msend),
+                Self::grep(orecv, &pattern, msend, bufs),
                 Self::send_results(mrecv, ctx),
             );
 
@@ -178,6 +267,7 @@ impl From<GrepMatch> for Item {
     }
 }
 
+#[derive(Debug)]
 struct GrepResult {
     path: PathBuf,
     matches: SortedVec<GrepMatch>,

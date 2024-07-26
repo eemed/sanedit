@@ -175,14 +175,15 @@ fn search_impl(editor: &mut Editor, id: ClientId, input: &str, mut pos: usize) {
     };
 
     match mat {
-        Some(mut mat) => {
-            mat.range.start += start;
-            mat.range.end += start;
+        Some(mat) => {
+            let mut range = mat.range();
+            range.start += start;
+            range.end += start;
 
             let cursor = win.primary_cursor_mut();
-            cursor.goto(mat.range.start);
+            cursor.goto(range.start);
 
-            win.search.current_match = Some(mat.range);
+            win.search.current_match = Some(range);
 
             if wrap {
                 if win.search.direction == SearchDirection::Forward {

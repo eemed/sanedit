@@ -31,7 +31,10 @@ fn draw_impl(locs: &Locations, ctx: &mut DrawContext) -> redraw::Redraw {
                 let kind = ItemKind::Group {
                     expanded: *expanded,
                 };
-                let name = path.to_string_lossy().to_string();
+                let name = {
+                    let path = path.strip_prefix(ctx.editor.working_dir).unwrap_or(path);
+                    path.to_string_lossy().to_string()
+                };
                 (name, kind, vec![], None)
             }
             Either::Right(Item {

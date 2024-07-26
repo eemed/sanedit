@@ -19,6 +19,11 @@ pub(crate) struct MatchOption {
     /// Match option data
     pub(crate) value: Vec<u8>,
 
+    /// Offset into value that should be used in matching
+    /// this allows to ignore any prefix during matching
+    /// Useful for matching paths, without a certain prefix.
+    pub(crate) offset: usize,
+
     /// How to represent the match option data
     pub(crate) kind: Kind,
     pub(crate) description: String,
@@ -42,10 +47,10 @@ impl MatchOption {
     pub fn display(&self) -> std::borrow::Cow<'_, str> {
         match self.kind {
             Kind::Path => {
-                let os = unsafe { OsStr::from_encoded_bytes_unchecked(&self.value) };
+                let os = unsafe { OsStr::from_encoded_bytes_unchecked(self.bytes_to_match()) };
                 os.to_string_lossy()
             }
-            Kind::String => unsafe { std::str::from_utf8_unchecked(&self.value) }.into(),
+            Kind::String => unsafe { std::str::from_utf8_unchecked(self.bytes_to_match()) }.into(),
         }
     }
 
@@ -59,12 +64,18 @@ impl MatchOption {
             Kind::String => None,
         }
     }
+
+    /// Returns the bytes used to match this option
+    fn bytes_to_match(&self) -> &[u8] {
+        &self.value[self.offset..]
+    }
 }
 
 impl From<&Path> for MatchOption {
     fn from(value: &Path) -> Self {
         MatchOption {
             value: value.as_os_str().as_encoded_bytes().into(),
+            offset: 0,
             kind: Kind::Path,
             description: String::new(),
         }
@@ -75,6 +86,7 @@ impl From<PathBuf> for MatchOption {
     fn from(value: PathBuf) -> Self {
         MatchOption {
             value: value.as_os_str().as_encoded_bytes().into(),
+            offset: 0,
             kind: Kind::Path,
             description: String::new(),
         }
@@ -85,6 +97,7 @@ impl From<String> for MatchOption {
     fn from(value: String) -> Self {
         MatchOption {
             value: value.into(),
+            offset: 0,
             kind: Kind::String,
             description: String::new(),
         }
@@ -95,13 +108,14 @@ impl From<&str> for MatchOption {
     fn from(value: &str) -> Self {
         MatchOption {
             value: value.into(),
+            offset: 0,
             kind: Kind::String,
             description: String::new(),
         }
     }
 }
 
-/// A matched and scored candidate
+/// A matched and scored option
 #[derive(Debug, Clone)]
 pub(crate) struct Match {
     /// Matched value
@@ -145,8 +159,7 @@ impl Ord for Match {
 
 impl From<Match> for SelectorOption {
     fn from(mat: Match) -> Self {
-        let value = String::from_utf8_lossy(&mat.opt.value);
-        let mut opt = SelectorOption::new(value.into(), mat.ranges, mat.score);
+        let mut opt = SelectorOption::new(mat.opt.value, mat.ranges, mat.score);
         opt.description = mat.opt.description;
         opt
     }

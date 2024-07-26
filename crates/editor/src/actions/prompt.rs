@@ -2,6 +2,8 @@ mod commands;
 
 use std::{cmp::min, path::PathBuf, sync::Arc};
 
+use rustc_hash::FxHashMap;
+use sanedit_buffer::ReadOnlyPieceTree;
 use sanedit_messages::ClientMessage;
 use sanedit_utils::idmap::{AsID, ID};
 
@@ -93,12 +95,9 @@ fn open_file(editor: &mut Editor, id: ClientId) {
 
     win.prompt = Prompt::builder()
         .prompt(PROMPT_MESSAGE)
+        .has_paths()
         .on_confirm(move |editor, id, input| {
-            let path = {
-                let mut path = wd.clone();
-                path.push(input);
-                path
-            };
+            let path = PathBuf::from(input);
 
             if let Err(e) = editor.open_file(id, &path) {
                 let (win, _buf) = editor.win_buf_mut(id);
@@ -297,7 +296,18 @@ fn grep(editor: &mut Editor, id: ClientId) {
             const GREP_JOB: &str = "grep";
             let ignore = e.options.ignore_directories();
             let wd = e.working_dir();
-            let job = Grep::new(input, wd, &ignore, id);
+            let buffers: FxHashMap<PathBuf, ReadOnlyPieceTree> = {
+                let mut map = FxHashMap::default();
+
+                for (_, buf) in e.buffers().iter() {
+                    if let Some(path) = buf.path() {
+                        map.insert(path.to_path_buf(), buf.read_only_copy());
+                    }
+                }
+
+                map
+            };
+            let job = Grep::new(input, wd, &ignore, buffers, id);
             e.job_broker.request_slot(id, GREP_JOB, job);
         })
         .build();

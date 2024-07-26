@@ -1,6 +1,6 @@
-use std::cmp;
+use std::{cmp, ffi::OsStr, ops::Range, path::PathBuf};
 
-use sanedit_messages::redraw::{self, Component, Redraw, Source};
+use sanedit_messages::redraw::{self, Component, PromptOption, Redraw, Source};
 
 use crate::editor::windows::{Focus, Prompt};
 
@@ -51,7 +51,39 @@ fn draw_impl(prompt: &Prompt, ctx: &mut DrawContext) -> redraw::Redraw {
     let options = prompt
         .options_window(compl_count, *offset)
         .into_iter()
-        .map(|m| m.clone().into())
+        .map(|m| {
+            if prompt.has_paths() {
+                // If has paths strip working directory
+                let sopt = m.clone();
+                // Convert to path
+                let os = unsafe { OsStr::from_encoded_bytes_unchecked(sopt.value_raw()) };
+                let path = PathBuf::from(os);
+                // Strip working dir
+                let path = path.strip_prefix(ctx.editor.working_dir).unwrap_or(&path);
+                // Calculate how much we took off
+                let off = sopt.value_raw().len() - path.as_os_str().len();
+
+                // Make new name and matches
+                let name = path.to_string_lossy().into();
+                let matches: Vec<Range<usize>> = sopt
+                    .matches()
+                    .iter()
+                    .cloned()
+                    .map(|mut r| {
+                        r.start -= off;
+                        r.end -= off;
+                        r
+                    })
+                    .collect();
+
+                let mut popt = PromptOption::from(sopt);
+                popt.name = name;
+                popt.matches = matches;
+                popt
+            } else {
+                PromptOption::from(m.clone())
+            }
+        })
         .collect();
     let source = if prompt.is_simple() {
         Source::Simple

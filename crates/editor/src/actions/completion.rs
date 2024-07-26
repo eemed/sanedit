@@ -35,10 +35,10 @@ fn complete(editor: &mut Editor, id: ClientId) {
             (compl, desc)
         })
         .filter(|(compl, _)| compl != &word)
-        .map(|(compl, desc)| MatchOption {
-            value: compl.into(),
-            kind: Kind::String,
-            description: desc,
+        .map(|(compl, desc)| {
+            let mut opt = MatchOption::from(compl);
+            opt.description = desc;
+            opt
         })
         .collect();
 

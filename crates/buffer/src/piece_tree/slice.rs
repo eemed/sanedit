@@ -29,6 +29,10 @@ impl<'a> PieceTreeSlice<'a> {
         self.range.end
     }
 
+    pub fn range(&self) -> Range<usize> {
+        self.range.clone()
+    }
+
     #[inline]
     pub fn len(&self) -> usize {
         self.range.len()

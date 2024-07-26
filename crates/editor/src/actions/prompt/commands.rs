@@ -85,12 +85,10 @@ pub(crate) fn command_palette(editor: &Editor, id: ClientId) -> Vec<MatchOption>
             if let Some(bind) = editor.keymap().find_bound_key(action.name()) {
                 description = keyevents_to_string(&bind);
             }
-            let value = action.description().into();
-            MatchOption {
-                value,
-                kind: Kind::String,
-                description,
-            }
+            let value: String = action.description().into();
+            let mut opt = MatchOption::from(value);
+            opt.description = description;
+            opt
         })
         .collect()
 }

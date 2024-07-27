@@ -29,7 +29,7 @@ fn confirm(editor: &mut Editor, id: ClientId) {
         .map(|f| f.path().to_path_buf());
 
     if let Some(path) = path {
-        if let Some(node) = editor.filetree.get_mut(&path) {
+        if let Some(mut node) = editor.filetree.get_mut(&path) {
             match node.kind() {
                 Kind::Directory => {
                     if node.is_dir_expanded() {
@@ -78,17 +78,20 @@ fn create_new_file(editor: &mut Editor, id: ClientId) {
             return;
         };
 
-        match entry.node().kind() {
+        log::info!("Entry: {:?}", entry.path());
+        match entry.kind() {
             Kind::File => {
                 let Some(parent) = editor.filetree.parent_of(entry.path()) else {
                     return;
                 };
+                log::info!("parent: {:?}", parent.path());
                 parent.path().to_path_buf()
             }
             Kind::Directory { .. } => entry.path().to_path_buf(),
         }
     };
 
+    log::info!("dir: {dir:?}");
     let (win, buf) = editor.win_buf_mut(id);
     win.prompt = Prompt::builder()
         .prompt("Filename")
@@ -109,7 +112,7 @@ fn create_new_file(editor: &mut Editor, id: ClientId) {
             }
 
             // Refresh to show new file on tree
-            if let Some(node) = editor.filetree.get_mut(&dir) {
+            if let Some(mut node) = editor.filetree.get_mut(&dir) {
                 node.refresh();
             }
 
@@ -117,7 +120,7 @@ fn create_new_file(editor: &mut Editor, id: ClientId) {
             let pos = editor
                 .filetree
                 .iter()
-                .position(|entry| entry.node().path() == file)
+                .position(|entry| entry.path() == file)
                 .unwrap();
             let (win, _buf) = editor.win_buf_mut(id);
             win.ft_view.selection = pos;
@@ -136,8 +139,8 @@ fn delete_file(editor: &mut Editor, id: ClientId) {
         let Some(entry) = editor.filetree.iter().nth(win.ft_view.selection) else {
             return;
         };
-        let path = entry.node().path().to_path_buf();
-        let kind = entry.node().kind();
+        let path = entry.path().to_path_buf();
+        let kind = entry.kind();
 
         (kind, Arc::new(path))
     };
@@ -171,10 +174,12 @@ fn delete_file(editor: &mut Editor, id: ClientId) {
             }
 
             if let Some(parent) = path.parent() {
-                if let Some(node) = editor.filetree.get_mut(&parent) {
+                if let Some(mut node) = editor.filetree.get_mut(&parent) {
                     node.refresh();
                 }
             }
+
+            prev_entry.execute(editor, id);
         })
         .build();
     win.focus = Focus::Prompt;

@@ -20,9 +20,10 @@ use thiserror::Error;
 
 use crate::common::{dirs::tmp_file, file::File};
 
-use self::{options::Options, snapshots::Snapshots};
+use self::snapshots::Snapshots;
 pub(crate) use change::Change;
 pub(crate) use filetype::Filetype;
+pub(crate) use options::Options;
 pub(crate) use snapshots::{SnapshotData, SnapshotId};
 pub(crate) use sorted::SortedRanges;
 
@@ -68,20 +69,20 @@ impl Buffer {
         }
     }
 
-    pub fn from_file(file: File) -> Result<Buffer> {
+    pub fn from_file(file: File, options: Options) -> Result<Buffer> {
         if file.is_big() {
-            Self::file_backed(file)
+            Self::file_backed(file, options)
         } else {
-            Self::in_memory(file)
+            Self::in_memory(file, options)
         }
     }
 
-    fn file_backed(file: File) -> Result<Buffer> {
+    fn file_backed(file: File, options: Options) -> Result<Buffer> {
         log::debug!("creating file backed buffer");
         let path = file.path().canonicalize()?;
         let pt = PieceTree::from_path(&path)?;
         let snapshot = pt.read_only_copy();
-        let filetype = Filetype::determine(&path);
+        let filetype = Filetype::determine(&path, &options.filetype_overrides);
         Ok(Buffer {
             id: BufferId::default(),
             read_only: file.read_only(),
@@ -89,21 +90,22 @@ impl Buffer {
             filetype,
             is_modified: false,
             snapshots: Snapshots::new(snapshot),
-            options: Options::default(),
+            options,
             path: Some(path),
             last_change: None,
             last_saved_snapshot: 0,
         })
     }
 
-    fn in_memory(file: File) -> Result<Buffer> {
+    fn in_memory(file: File, options: Options) -> Result<Buffer> {
         log::debug!("creating in memory buffer");
         let path = file.path().canonicalize()?;
         let ffile = fs::File::open(&path)?;
         let mut buf = Self::from_reader(ffile)?;
-        buf.filetype = Filetype::determine(&path);
+        buf.filetype = Filetype::determine(&path, &options.filetype_overrides);
         buf.path = Some(path);
         buf.read_only = file.read_only();
+        buf.options = options;
         Ok(buf)
     }
 

@@ -2,12 +2,13 @@ use std::{env, fs, io, path::Path};
 
 use serde::Deserialize;
 
-use super::{options::Options, windows};
+use super::{buffers, options::Options, windows};
 
 #[derive(Debug, Deserialize)]
 pub(crate) struct Config {
     pub editor: Options,
     pub window: windows::Options,
+    pub file: buffers::Options,
 }
 
 pub(crate) const PROJECT_CONFIG: &str = "sanedit-project.toml";

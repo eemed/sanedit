@@ -4,20 +4,34 @@ use std::path::Path;
 
 use sanedit_utils::idmap::IdMap;
 
+use crate::common::file::File;
+
 pub(crate) use self::buffer::{
-    Buffer, BufferError, BufferId, BufferRange, Filetype, SnapshotData, SnapshotId, SortedRanges,
+    Buffer, BufferError, BufferId, BufferRange, Filetype, Options, SnapshotData, SnapshotId,
+    SortedRanges,
 };
 
 #[derive(Debug, Default)]
 pub(crate) struct Buffers {
+    default_options: Options,
     buffers: IdMap<BufferId, Buffer>,
 }
 
 impl Buffers {
+    pub fn new(&mut self, file: File) -> anyhow::Result<BufferId> {
+        let buf = Buffer::from_file(file, self.default_options.clone())?;
+        let id = self.insert(buf);
+        Ok(id)
+    }
+
     pub fn insert(&mut self, buf: Buffer) -> BufferId {
         let id = self.buffers.insert(buf);
         self.buffers[id].id = id;
         id
+    }
+
+    pub fn set_default_options(&mut self, opts: Options) {
+        self.default_options = opts;
     }
 
     pub fn get(&self, bid: BufferId) -> Option<&Buffer> {

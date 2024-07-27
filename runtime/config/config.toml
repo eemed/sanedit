@@ -53,17 +53,18 @@ tabstop = 8
 
 # Indent options, overridden if detect_indent is set
 # Available options:
-# space: use spaces
-# tab: use tabs
-indent_kind = "space"
+# Space: use spaces
+# Tab: use tabs
+indent = "Space"
 
 # How many spaces to use for indenting if using spaces
 indent_count = 4
 
 #
 # Filetype overrides
-# [filetype.rust]
-# patterns = ["*.rs"]
-
-# [filetype.toml]
-# patterns = ["Cargo.lock"]
+# By default the filetype is the extension of the file
+#
+[file.filetype]
+rust = ["*.rs"]
+toml = ["*/Cargo.lock"]
+yaml = ["*.yml"]

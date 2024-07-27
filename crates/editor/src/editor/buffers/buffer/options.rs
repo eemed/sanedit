@@ -1,3 +1,6 @@
+use std::sync::Arc;
+
+use rustc_hash::FxHashMap;
 use serde::Deserialize;
 
 use sanedit_buffer::utf8::EndOfLine;
@@ -18,7 +21,7 @@ enum EndOfLineDef {
     PS,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub(crate) struct Options {
     #[serde(with = "EndOfLineDef")]
     pub(crate) eol: EndOfLine,
@@ -31,6 +34,9 @@ pub(crate) struct Options {
     // How to indent stuff
     #[serde(flatten)]
     pub(crate) indent: Indent,
+
+    #[serde(rename = "filetype")]
+    pub(crate) filetype_overrides: Arc<FxHashMap<String, Vec<String>>>,
 }
 
 impl Default for Options {
@@ -39,6 +45,7 @@ impl Default for Options {
             eol: EndOfLine::default(),
             tabstop: 8,
             indent: Indent::default(),
+            filetype_overrides: Arc::new(FxHashMap::default()),
         }
     }
 }

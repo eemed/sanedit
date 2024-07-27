@@ -138,13 +138,16 @@ impl Editor {
             }
         }
 
-        // TODO
         match config::read_config(&self.config_dir.config()) {
             Ok(toml) => {
-                log::info!("Ok: {toml:?}");
-
-                let Config { editor, window } = toml;
+                let Config {
+                    editor,
+                    window,
+                    file,
+                } = toml;
                 self.options = editor;
+                self.windows.set_default_options(window);
+                self.buffers.set_default_options(file);
             }
             Err(e) => log::error!("ERROR reading config: {e}"),
         }
@@ -242,8 +245,7 @@ impl Editor {
             Some(bid) => bid,
             None => {
                 let file = File::new(&path, &self.options)?;
-                let buf = Buffer::from_file(file)?;
-                self.buffers.insert(buf)
+                self.buffers.new(file)?
             }
         };
         self.open_buffer(id, bid);

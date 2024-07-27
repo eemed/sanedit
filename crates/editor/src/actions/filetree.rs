@@ -130,7 +130,55 @@ fn create_new_file(editor: &mut Editor, id: ClientId) {
 }
 
 #[action("Go to previous directory")]
-fn delete_file(editor: &mut Editor, id: ClientId) {}
+fn delete_file(editor: &mut Editor, id: ClientId) {
+    let (kind, path) = {
+        let (win, _buf) = editor.win_buf(id);
+        let Some(entry) = editor.filetree.iter().nth(win.ft_view.selection) else {
+            return;
+        };
+        let path = entry.node().path().to_path_buf();
+        let kind = entry.node().kind();
+
+        (kind, Arc::new(path))
+    };
+
+    let prompt = {
+        let kind = match kind {
+            Kind::Directory => "directory",
+            Kind::File => "file",
+        };
+        let path = path.strip_prefix(editor.working_dir()).unwrap_or(&path);
+        format!("Delete {} {:?}? (y/N)", kind, path)
+    };
+
+    let (win, buf) = editor.win_buf_mut(id);
+    win.prompt = Prompt::builder()
+        .prompt(&prompt)
+        .simple()
+        .on_confirm(move |editor, id, input| {
+            let yes = input == "y";
+            if !yes {
+                return;
+            }
+
+            match kind {
+                Kind::Directory => {
+                    std::fs::remove_dir_all(path.as_path());
+                }
+                Kind::File => {
+                    std::fs::remove_file(path.as_path());
+                }
+            }
+
+            if let Some(parent) = path.parent() {
+                if let Some(node) = editor.filetree.get_mut(&parent) {
+                    node.refresh();
+                }
+            }
+        })
+        .build();
+    win.focus = Focus::Prompt;
+}
 
 // #[action("Search for an entry in filetree")]
 // fn search_forward(editor: &mut Editor, id: ClientId) {}

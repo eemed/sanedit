@@ -188,6 +188,7 @@ impl DefaultKeyMappings {
              "btab",      filetree::prev_entry,
              "tab",       filetree::next_entry,
              "c",         filetree::create_new_file,
+             "d",         filetree::delete_file,
 
              "alt+1",     window::focus,
              "alt+2",     filetree::close,

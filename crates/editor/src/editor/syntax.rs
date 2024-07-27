@@ -17,6 +17,8 @@ use crate::{
 
 use self::grammar::Grammar;
 
+use super::buffers::BufferRange;
+
 mod grammar;
 
 #[derive(Debug)]
@@ -84,7 +86,7 @@ impl Syntax {
 
         // TODO try to match these to newlines
         const HORIZON_TOP: usize = 1024 * 8;
-        const HORIZON_BOTTOM: usize = 1024;
+        const HORIZON_BOTTOM: usize = 1024 * 16;
         // prev_line_start(view.start)
         // next_line_start(view.start)
 
@@ -92,7 +94,7 @@ impl Syntax {
         view.end = min(ropt.len(), view.end + HORIZON_BOTTOM);
 
         let start = view.start;
-        let slice = ropt.slice(view);
+        let slice = ropt.slice(view.clone());
 
         let captures = self.grammar.parse(&slice, kill)?;
         let spans: Vec<Span> = captures
@@ -126,6 +128,7 @@ impl Syntax {
             .collect();
 
         Ok(SyntaxParseResult {
+            buffer_range: view,
             bid,
             highlights: spans,
         })
@@ -134,6 +137,7 @@ impl Syntax {
 
 #[derive(Debug, Default)]
 pub(crate) struct SyntaxParseResult {
+    pub(crate) buffer_range: BufferRange,
     pub(crate) bid: BufferId,
     pub(crate) highlights: Vec<Span>,
 }

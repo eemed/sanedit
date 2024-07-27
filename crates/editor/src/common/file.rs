@@ -6,19 +6,22 @@ use std::{
 
 use sanedit_buffer::utf8::EndOfLine;
 
-use crate::editor::options::Options;
-
 #[derive(Debug)]
-pub(crate) struct File {
-    path: PathBuf,
+pub(crate) struct FileDescription {
+    absolute_path: PathBuf,
+    local_path: PathBuf,
     eol: EndOfLine,
     size: u64,
     is_big: bool,
     read_only: bool,
 }
 
-impl File {
-    pub fn new(path: impl AsRef<Path>, options: &Options) -> io::Result<File> {
+impl FileDescription {
+    pub fn new(
+        path: impl AsRef<Path>,
+        big_file_threshold_bytes: u64,
+        working_dir: &Path,
+    ) -> io::Result<FileDescription> {
         let path = path.as_ref();
         let mut file = fs::File::open(path)?;
         let metadata = file.metadata()?;
@@ -28,15 +31,13 @@ impl File {
         let read = file.read(&mut buf)?;
         let eol = detect_line_ending(&buf[..read]);
 
-        let Options {
-            big_file_threshold_bytes,
-            ..
-        } = options;
-        let is_big = *big_file_threshold_bytes <= size;
+        let is_big = big_file_threshold_bytes <= size;
         let read_only = metadata.permissions().readonly();
+        let local = path.strip_prefix(working_dir).unwrap_or(path);
 
-        let file_metadata = File {
-            path: path.into(),
+        let file_metadata = FileDescription {
+            absolute_path: path.into(),
+            local_path: local.into(),
             eol,
             size,
             is_big,
@@ -51,7 +52,11 @@ impl File {
     }
 
     pub fn path(&self) -> &Path {
-        &self.path
+        &self.absolute_path
+    }
+
+    pub fn local_path(&self) -> &Path {
+        &self.local_path
     }
 
     pub fn eol(&self) -> EndOfLine {

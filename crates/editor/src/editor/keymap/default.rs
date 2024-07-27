@@ -83,7 +83,7 @@ impl DefaultKeyMappings {
              "ctrl+d",   cursors::new_to_next_search_match,
              "ctrl+l",   cursors::new_to_all_search_matches,
              "alt+v",    cursors::start_selection,
-             "alt+x",    cursors::select_line,
+             "alt+o l",    cursors::select_line,
 
              "alt+k", completion::complete,
 
@@ -101,9 +101,8 @@ impl DefaultKeyMappings {
 
              "alt+o w", text_objects::select_word,
 
-             "ctrl+b", filetree::show,
-
-             "ctrl+l", locations::show,
+             "alt+2", filetree::show,
+             "alt+3", locations::show,
         );
 
         map
@@ -181,13 +180,18 @@ impl DefaultKeyMappings {
         map!(map,
              "ctrl+q", editor::quit,
 
-             "esc",    filetree::close,
-             "ctrl+b", filetree::close,
-             "enter",  filetree::confirm,
-             "up",     filetree::prev_entry,
-             "down",   filetree::next_entry,
-             "btab",   filetree::prev_entry,
-             "tab",    filetree::next_entry,
+             "esc",       filetree::close,
+             "alt+right", window::focus,
+             "enter",     filetree::confirm,
+             "up",        filetree::prev_entry,
+             "down",      filetree::next_entry,
+             "btab",      filetree::prev_entry,
+             "tab",       filetree::next_entry,
+             "c",         filetree::create_new_file,
+
+             "alt+1",     window::focus,
+             "alt+2",     filetree::close,
+             "alt+3",     locations::show,
         );
 
         map
@@ -202,13 +206,17 @@ impl DefaultKeyMappings {
         map!(map,
              "ctrl+q", editor::quit,
 
+             "alt+up", window::focus,
              "esc",    locations::close,
-             "ctrl+l", locations::close,
              "enter",  locations::confirm,
              "up",     locations::prev_entry,
              "down",   locations::next_entry,
              "btab",   locations::prev_entry,
              "tab",    locations::next_entry,
+
+             "alt+1",  window::focus,
+             "alt+2",  filetree::show,
+             "alt+3",  locations::close,
         );
 
         map

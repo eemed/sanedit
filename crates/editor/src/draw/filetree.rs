@@ -25,20 +25,20 @@ fn draw_impl(tree: &Filetree, ctx: &mut DrawContext) -> redraw::Redraw {
     let mut items = vec![];
 
     for entry in tree.iter() {
-        let kind = if entry.node.is_dir() {
+        let kind = if entry.node().is_dir() {
             ItemKind::Group {
-                expanded: entry.node.is_dir_expanded(),
+                expanded: entry.node().is_dir_expanded(),
             }
         } else {
             ItemKind::Item
         };
 
-        let name = entry.name.to_string_lossy().to_string();
+        let name = entry.name().to_string_lossy().to_string();
         let item = Item {
             line: None,
             name,
             kind,
-            level: entry.level,
+            level: entry.level(),
             highlights: vec![],
         };
         items.push(item);

@@ -24,6 +24,9 @@ pub(crate) enum Hook {
     /// Before client message is processed
     OnMessagePre,
 
+    /// After client message is processed
+    OnMessagePost,
+
     OnDrawPre,
     Reload,
 }
@@ -96,9 +99,8 @@ impl Default for Hooks {
         hooks.register(CursorMoved, cursors::merge_overlapping_cursors);
 
         hooks.register(OnMessagePre, window::clear_messages);
-        // hooks.register(BufOpened, syntax::parse_syntax);
-        // hooks.register(BufChanged, syntax::parse_syntax);
-        // hooks.register(Reload, syntax::parse_syntax);
+
+        hooks.register(OnMessagePost, syntax::parse_view);
 
         // TODO handle registration only when needed?
         hooks.register(CursorMoved, completion::abort);

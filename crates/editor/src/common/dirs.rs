@@ -5,8 +5,6 @@ use std::{
 
 use rand::Rng;
 
-pub(crate) const ENV_PREFIX: &str = "SANE";
-
 const TMP_DIR: &str = "tmp";
 pub(crate) const SANE_DIR: &str = "sane";
 pub(crate) const FILETYPE_DIR: &str = "filetype";

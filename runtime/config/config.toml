@@ -9,7 +9,7 @@
 # Byte threshold when a file should be considered large and not loaded into memory
 big_file_threshold_bytes = 100
 # Ignore directories, will not be shown in filetree or open file dialog
-ignore_directories = ["Cargo.lock", "target", ".git"]
+ignore_directories = [".git"]
 
 # Shell command to build the project
 build_command = ""
@@ -66,5 +66,5 @@ indent_count = 4
 #
 [file.filetype]
 rust = ["*.rs"]
-toml = ["*/Cargo.lock"]
+toml = ["**/Cargo.lock"]
 yaml = ["*.yml"]

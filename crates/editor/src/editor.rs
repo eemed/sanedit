@@ -34,7 +34,7 @@ use crate::actions;
 use crate::actions::cursors;
 use crate::actions::hooks::run;
 use crate::common::dirs::ConfigDirectory;
-use crate::common::file::File;
+use crate::common::file::FileDescription;
 use crate::common::text::as_lines;
 use crate::common::text::to_line;
 use crate::draw::DrawState;
@@ -138,7 +138,7 @@ impl Editor {
             }
         }
 
-        match config::read_config(&self.config_dir.config()) {
+        match config::read_config(&self.config_dir.config(), &self.working_dir) {
             Ok(toml) => {
                 let Config {
                     editor,
@@ -238,13 +238,15 @@ impl Editor {
 
     /// Open a file in window
     pub fn open_file(&mut self, id: ClientId, path: impl AsRef<Path>) -> Result<()> {
-        let path = path.as_ref().canonicalize()?;
-
         // Use existing if possible
         let bid = match self.buffers.find(&path) {
             Some(bid) => bid,
             None => {
-                let file = File::new(&path, &self.options)?;
+                let file = FileDescription::new(
+                    &path,
+                    self.options.big_file_threshold_bytes,
+                    &self.working_dir,
+                )?;
                 self.buffers.new(file)?
             }
         };
@@ -280,6 +282,8 @@ impl Editor {
             Message::Resize(size) => self.handle_resize(id, size),
             _ => {}
         }
+
+        run(self, id, Hook::OnMessagePost);
     }
 
     fn create_context(&mut self, id: ClientId) -> EditorContext {
@@ -401,7 +405,7 @@ impl Editor {
 
     /// Redraw all windows that use the same buffer as `id`
     fn redraw(&mut self, id: ClientId) {
-        self.recalculate_syntax(id);
+        // self.recalculate_syntax(id);
 
         // Editor is closed or client is closed
         if !self.is_running || !self.clients.contains_key(&id) {
@@ -630,7 +634,6 @@ impl Editor {
     }
 
     pub fn change_working_dir(&mut self, path: &Path) -> Result<()> {
-        std::env::set_current_dir(path)?;
         self.working_dir = path.into();
         self.filetree = Filetree::new(&self.working_dir);
         Ok(())

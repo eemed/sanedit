@@ -18,7 +18,7 @@ use sanedit_buffer::{PieceTree, PieceTreeSlice, ReadOnlyPieceTree};
 use sanedit_utils::key_type;
 use thiserror::Error;
 
-use crate::common::{dirs::tmp_file, file::File};
+use crate::common::{dirs::tmp_file, file::FileDescription};
 
 use self::snapshots::Snapshots;
 pub(crate) use change::Change;
@@ -69,7 +69,7 @@ impl Buffer {
         }
     }
 
-    pub fn from_file(file: File, options: Options) -> Result<Buffer> {
+    pub fn from_file(file: FileDescription, options: Options) -> Result<Buffer> {
         if file.is_big() {
             Self::file_backed(file, options)
         } else {
@@ -77,12 +77,12 @@ impl Buffer {
         }
     }
 
-    fn file_backed(file: File, options: Options) -> Result<Buffer> {
+    fn file_backed(file: FileDescription, options: Options) -> Result<Buffer> {
         log::debug!("creating file backed buffer");
-        let path = file.path().canonicalize()?;
-        let pt = PieceTree::from_path(&path)?;
+        let path = file.path();
+        let pt = PieceTree::from_path(path)?;
         let snapshot = pt.read_only_copy();
-        let filetype = Filetype::determine(&path, &options.filetype_overrides);
+        let filetype = Filetype::determine(file.local_path(), &options.filetype_overrides);
         Ok(Buffer {
             id: BufferId::default(),
             read_only: file.read_only(),
@@ -91,19 +91,19 @@ impl Buffer {
             is_modified: false,
             snapshots: Snapshots::new(snapshot),
             options,
-            path: Some(path),
+            path: Some(path.into()),
             last_change: None,
             last_saved_snapshot: 0,
         })
     }
 
-    fn in_memory(file: File, options: Options) -> Result<Buffer> {
+    fn in_memory(file: FileDescription, options: Options) -> Result<Buffer> {
         log::debug!("creating in memory buffer");
-        let path = file.path().canonicalize()?;
-        let ffile = fs::File::open(&path)?;
+        let path = file.path();
+        let ffile = fs::File::open(path)?;
         let mut buf = Self::from_reader(ffile)?;
-        buf.filetype = Filetype::determine(&path, &options.filetype_overrides);
-        buf.path = Some(path);
+        buf.filetype = Filetype::determine(file.local_path(), &options.filetype_overrides);
+        buf.path = Some(path.into());
         buf.read_only = file.read_only();
         buf.options = options;
         Ok(buf)

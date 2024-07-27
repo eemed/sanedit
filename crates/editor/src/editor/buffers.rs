@@ -4,7 +4,7 @@ use std::path::Path;
 
 use sanedit_utils::idmap::IdMap;
 
-use crate::common::file::File;
+use crate::common::file::FileDescription;
 
 pub(crate) use self::buffer::{
     Buffer, BufferError, BufferId, BufferRange, Filetype, Options, SnapshotData, SnapshotId,
@@ -18,7 +18,7 @@ pub(crate) struct Buffers {
 }
 
 impl Buffers {
-    pub fn new(&mut self, file: File) -> anyhow::Result<BufferId> {
+    pub fn new(&mut self, file: FileDescription) -> anyhow::Result<BufferId> {
         let buf = Buffer::from_file(file, self.default_options.clone())?;
         let id = self.insert(buf);
         Ok(id)

@@ -1,206 +1,238 @@
+use anyhow::Result;
+use sanedit_utils::sorted_vec::SortedVec;
 use std::{
-    collections::BTreeMap,
-    ffi::OsStr,
-    io, mem,
+    io,
     path::{Path, PathBuf},
 };
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub(crate) enum FiletreePath {
-    Directory(PathBuf),
-    File(PathBuf),
-}
-
-impl From<FiletreePath> for PathBuf {
-    fn from(value: FiletreePath) -> Self {
-        match value {
-            FiletreePath::Directory(p) => p,
-            FiletreePath::File(p) => p,
-        }
-    }
-}
-
-impl AsRef<Path> for FiletreePath {
-    fn as_ref(&self) -> &Path {
-        match self {
-            FiletreePath::Directory(p) => p,
-            FiletreePath::File(p) => p,
-        }
-    }
-}
-
-#[derive(Debug)]
-pub(crate) struct Filetree {
-    node: Node,
-    root: PathBuf,
-}
-
-impl Filetree {
-    pub fn new<P: AsRef<Path>>(root: P) -> Filetree {
-        let mut tree = Filetree {
-            node: Node::dir(),
-            root: root.as_ref().into(),
-        };
-
-        // Expand the first level
-        tree.on_press(root.as_ref());
-
-        tree
-    }
-
-    pub fn on_press(&mut self, target: &Path) -> PressResult {
-        if let Ok(path) = target.strip_prefix(&self.root) {
-            self.node.on_press(path, target)
-        } else {
-            PressResult::InvalidPath
-        }
-    }
-
-    pub fn iter(&self) -> FiletreeIterator {
-        let root = self.root.file_name().unwrap_or(OsStr::new(""));
-        FiletreeIterator {
-            stack: vec![FiletreeEntry {
-                path: self.root.clone(),
-                name: PathBuf::from(root),
-                node: &self.node,
-                level: 0,
-            }],
-        }
-    }
-}
-
-#[derive(Debug)]
-pub(crate) enum Node {
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
+pub(crate) enum Kind {
+    Directory,
     File,
-    Directory {
-        expanded: bool,
-        children: BTreeMap<FiletreePath, Node>,
-    },
+}
+
+#[derive(Debug, PartialOrd, Ord, PartialEq, Eq, Clone)]
+pub(crate) struct Node {
+    kind: Kind,
+    absolute: PathBuf,
+    local: PathBuf,
+    expanded: bool,
+    children: SortedVec<Node>,
 }
 
 impl Node {
-    pub fn is_dir(&self) -> bool {
-        matches!(self, Node::Directory { .. })
-    }
-
-    pub fn is_dir_expanded(&self) -> bool {
-        let Node::Directory { expanded, .. } = self else {
-            return false;
+    pub fn new(absolute: &Path) -> Result<Node> {
+        let kind = if absolute.is_dir() {
+            Kind::Directory
+        } else {
+            Kind::File
         };
-        *expanded
-    }
+        let local = PathBuf::from(absolute.file_name().unwrap());
 
-    fn dir() -> Node {
-        Node::Directory {
+        Ok(Node {
+            absolute: absolute.to_path_buf(),
+            local,
+            kind,
+            children: SortedVec::default(),
             expanded: false,
-            children: BTreeMap::default(),
-        }
+        })
     }
 
-    fn child<'a, 'b>(&'a mut self, target: &'b Path) -> Option<(&'a mut Node, &'b Path)> {
-        let Node::Directory { children, .. } = self else {
-            unreachable!("Tried to open file as a directory: {:?}", target);
-        };
-        for (path, child) in children {
-            if let Ok(ntarget) = target.strip_prefix(path) {
-                return Some((child, ntarget));
+    pub fn collapse(&mut self) {
+        self.expanded = false;
+    }
+
+    pub fn expand(&mut self) -> Result<()> {
+        if self.expanded || !self.children.is_empty() {
+            self.expanded = true;
+            return Ok(());
+        }
+
+        let paths = std::fs::read_dir(&self.absolute)?
+            .map(|res| res.map(|e| e.path()))
+            .collect::<Result<Vec<_>, io::Error>>()?;
+
+        for path in paths {
+            let local = path.strip_prefix(&self.absolute).unwrap().to_path_buf();
+            let kind = if path.is_dir() {
+                Kind::Directory
+            } else {
+                Kind::File
+            };
+            let node = Node {
+                absolute: path,
+                local,
+                kind,
+                expanded: false,
+                children: SortedVec::default(),
+            };
+            self.children.push(node);
+        }
+
+        self.expanded = true;
+
+        Ok(())
+    }
+
+    pub fn refresh(&mut self) -> Result<()> {
+        let mut new_children = SortedVec::new();
+        let paths = std::fs::read_dir(&self.absolute)?
+            .map(|res| res.map(|e| e.path()))
+            .collect::<Result<Vec<_>, io::Error>>()?;
+
+        for path in paths {
+            if let Some(index) = self
+                .children
+                .iter()
+                .position(|child| child.absolute == path)
+            {
+                let mut child = self.children.remove(index);
+                if child.is_dir_expanded() {
+                    child.refresh()?;
+                }
+                new_children.push(child);
+            } else {
+                let local = path.strip_prefix(&self.absolute).unwrap().to_path_buf();
+                let kind = if path.is_dir() {
+                    Kind::Directory
+                } else {
+                    Kind::File
+                };
+                let node = Node {
+                    absolute: path,
+                    local,
+                    kind,
+                    expanded: false,
+                    children: SortedVec::default(),
+                };
+                new_children.push(node);
+            }
+        }
+
+        self.children = new_children;
+
+        Ok(())
+    }
+
+    fn child_mut(&mut self, target: &Path) -> Option<(&mut Node, bool)> {
+        for child in self.children.iter_mut() {
+            if let Ok(suffix) = target.strip_prefix(&child.absolute) {
+                let full_match = suffix.as_os_str().is_empty();
+                return Some((child, full_match));
             }
         }
 
         None
     }
 
-    fn on_press(&mut self, stack: &Path, target: &Path) -> PressResult {
-        let mut n = self;
-        let mut t = stack;
-
-        if t.as_os_str().is_empty() {
-            return n.on_press_item(target);
-        }
-
-        while let Some((node, ntarget)) = n.child(t) {
-            n = node;
-            t = ntarget;
-
-            if t.as_os_str().is_empty() {
-                return n.on_press_item(target);
+    fn child(&self, target: &Path) -> Option<(&Node, bool)> {
+        for child in self.children.iter() {
+            if let Ok(suffix) = target.strip_prefix(&child.absolute) {
+                let full_match = suffix.as_os_str().is_empty();
+                return Some((child, full_match));
             }
         }
 
-        PressResult::NotFound
+        None
     }
 
-    pub fn on_press_item(&mut self, target: &Path) -> PressResult {
-        match self {
-            Node::File => PressResult::IsFile,
-            Node::Directory { expanded, .. } => {
-                if *expanded {
-                    self.shrink();
-                    PressResult::Ok
-                } else if let Err(e) = self.expand(target) {
-                    log::error!("Failed to expand {target:?}: {e}");
-                    PressResult::ExpandError
-                } else {
-                    PressResult::Ok
-                }
-            }
-        }
+    pub fn kind(&self) -> Kind {
+        self.kind
     }
 
-    fn shrink(&mut self) {
-        let Node::Directory { expanded, .. } = self else {
-            unreachable!("Shrink called on a non directory entry");
-        };
-        *expanded = false;
+    pub fn path(&self) -> &Path {
+        &self.absolute
     }
 
-    fn expand(&mut self, target: &Path) -> anyhow::Result<()> {
-        let Node::Directory { expanded, children } = self else {
-            unreachable!("Expand called on a non directory entry: {:?}", target);
-        };
-        if mem::replace(expanded, true) {
-            return Ok(());
-        }
+    pub fn is_dir(&self) -> bool {
+        self.kind == Kind::Directory
+    }
 
-        if !children.is_empty() {
-            return Ok(());
-        }
-
-        let paths = std::fs::read_dir(target)?
-            .map(|res| res.map(|e| e.path()))
-            .collect::<Result<Vec<_>, io::Error>>()?;
-
-        for path in paths {
-            let local = path.strip_prefix(target)?.to_path_buf();
-            if path.is_dir() {
-                children.insert(FiletreePath::Directory(local), Node::dir());
-            } else {
-                children.insert(FiletreePath::File(local), Node::File);
-            }
-        }
-
-        // TODO if single dir inside this recursively open until atleast one
-        // file is found or an empty directory is found
-
-        Ok(())
+    pub fn is_dir_expanded(&self) -> bool {
+        self.kind == Kind::Directory && self.expanded
     }
 }
 
 #[derive(Debug)]
-pub(crate) enum PressResult {
-    IsFile,
-    NotFound,
-    Ok,
-    InvalidPath,
-    ExpandError,
+pub(crate) struct Filetree {
+    root: Node,
+}
+
+impl Filetree {
+    pub fn new(path: &Path) -> Filetree {
+        let root = Node::new(path).expect("could not create filetree");
+        Filetree { root }
+    }
+
+    pub fn get_mut(&mut self, target: &Path) -> Option<&mut Node> {
+        let mut node = &mut self.root;
+
+        if let Ok(suffix) = target.strip_prefix(&node.absolute) {
+            if suffix.as_os_str().is_empty() {
+                return Some(node);
+            }
+        }
+
+        while let Some((child, full_match)) = node.child_mut(target) {
+            if full_match {
+                return Some(child);
+            }
+
+            node = child;
+        }
+
+        None
+    }
+
+    pub fn parent_of(&self, target: &Path) -> Option<&Node> {
+        let mut node = &self.root;
+
+        while let Some((child, full_match)) = node.child(target) {
+            if full_match {
+                return Some(node);
+            }
+
+            node = child;
+        }
+
+        None
+    }
+
+    pub fn iter(&self) -> FiletreeIterator {
+        let entry = FiletreeEntry {
+            node: &self.root,
+            level: 0,
+        };
+        FiletreeIterator { stack: vec![entry] }
+    }
 }
 
 #[derive(Debug)]
 pub(crate) struct FiletreeEntry<'a> {
-    pub(crate) path: PathBuf,
-    pub(crate) name: PathBuf,
-    pub(crate) node: &'a Node,
-    pub(crate) level: usize,
+    node: &'a Node,
+    level: usize,
+}
+
+impl<'a> FiletreeEntry<'a> {
+    pub fn name(&self) -> &Path {
+        &self.node.local
+    }
+
+    pub fn name_to_str_lossy(&self) -> std::borrow::Cow<'_, str> {
+        self.node.local.to_string_lossy()
+    }
+
+    pub fn path(&self) -> &Path {
+        &self.node.absolute
+    }
+
+    pub fn node(&self) -> &Node {
+        &self.node
+    }
+
+    pub fn level(&self) -> usize {
+        self.level
+    }
 }
 
 /// Iterator over filetree in displayed order
@@ -214,22 +246,16 @@ impl<'a> Iterator for FiletreeIterator<'a> {
 
     fn next(&mut self) -> Option<Self::Item> {
         let entry = self.stack.pop()?;
-        if let Node::Directory { children, expanded } = entry.node {
-            if *expanded {
-                for (p, n) in children.iter().rev() {
-                    let mut npath = entry.path.clone();
-                    npath.push(p);
-
-                    self.stack.push(FiletreeEntry {
-                        path: npath,
-                        name: p.as_ref().to_path_buf(),
-                        node: n,
-                        level: entry.level + 1,
-                    });
-                }
+        let n = entry.node;
+        if Kind::Directory == n.kind && n.expanded {
+            for child in n.children.iter().rev() {
+                let child_entry = FiletreeEntry {
+                    node: child,
+                    level: entry.level + 1,
+                };
+                self.stack.push(child_entry);
             }
         }
-
         Some(entry)
     }
 }

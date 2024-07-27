@@ -1,9 +1,23 @@
 use crate::{
+    common::range::RangeUtils,
     editor::{syntax::SyntaxParseResult, Editor},
     server::ClientId,
 };
 
 use super::jobs::SyntaxParser;
+
+#[action("Parse buffer syntax for view")]
+pub(crate) fn parse_view(editor: &mut Editor, id: ClientId) {
+    let (win, buf) = editor.win_buf_mut(id);
+    win.redraw_view(buf);
+
+    let view = win.view().range();
+    let syntax_range = &win.syntax_result().buffer_range;
+
+    if !syntax_range.includes(&view) {
+        parse_syntax.execute(editor, id);
+    }
+}
 
 #[action("Parse buffer syntax")]
 pub(crate) fn parse_syntax(editor: &mut Editor, id: ClientId) {

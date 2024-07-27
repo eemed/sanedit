@@ -1,10 +1,10 @@
 use std::{
     mem,
-    ops::{Deref, Index},
+    ops::{Deref, DerefMut, Index},
 };
 
 /// A vector that is always sorted
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct SortedVec<T: Ord> {
     items: Vec<T>,
 }
@@ -55,6 +55,10 @@ impl<T: Ord> SortedVec<T> {
 
     pub fn clear(&mut self) {
         self.items.clear();
+    }
+
+    pub fn remove(&mut self, idx: usize) -> T {
+        self.items.remove(idx)
     }
 
     pub fn merge(&mut self, other: SortedVec<T>) {
@@ -135,6 +139,12 @@ impl<T: Ord> Deref for SortedVec<T> {
 
     fn deref(&self) -> &Self::Target {
         &self.items
+    }
+}
+
+impl<T: Ord> DerefMut for SortedVec<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.items
     }
 }
 

@@ -7,10 +7,10 @@ visibility = "pub(crate)" / "pub(super)" / "pub";
 keyword = ("let" / "match" / "if" / "else" / "while" / "break" / "move" / "async" / "dyn" / "return" / "for" / "in" / "as") end;
 
 @show
-constant = (visibility / "use" / "fn" / "impl" / "struct" / "enum" / "const" ) end;
+constant = (visibility / "use" / "fn" / "impl" / "struct" / "enum" / "const" / "trait" / "type" ) end;
 
 ############ Mod
-mod_decl = mod ws (!nl .)* nl;
+mod_decl = mod [ \t] ws (!nl .)* nl;
 
 @show(constant)
 mod = "mod";
@@ -23,7 +23,7 @@ string    = "\"" compl_string "\"";
 compl_string    = ("\\" escape_char / [^"\n])*;
 escape_char     = "0" / "t" / "n" / "r" / "\"" / "\\";
 
-end = &(WHITESPACE / ";");
+end = &(WHITESPACE / ";" / "<");
 
 ############ Unsafe
 @show(operator)
@@ -34,17 +34,19 @@ unsafe = "unsafe" / "await";
 @show
 type = ref? (tuple / arr / predefined / typename / generic);
 
+@show
 @whitespaced
 tuple = "(" type ("," type)* ")";
 typename = [A..Z] [a..zA..Z0..9_]*;
 
+@show(array)
 @whitespaced
 arr = "[" type "]";
+
+@show
 generic = "<" type ">";
 
-@show(type)
-restricted_type = (([A..Z] / ref ) [A..Za..z0..9_']+) / predefined ;
-predefined = ("usize" / "isize" / "u8" / "u16" / "u32" / "u64" / "i8" / "i16" / "i32" / "i64" / "str" / "bool" / "char") &[ ),];
+predefined = ("usize" / "isize" / "u8" / "u16" / "u32" / "u64" / "i8" / "i16" / "i32" / "i64" / "str" / "bool" / "char") &[ \]),>;];
 
 @whitespaced
 id = "(" single_id ("," single_id)*  ")" / single_id;
@@ -106,7 +108,7 @@ attrs = "#[" (!"]" .)* "]";
 comment = "//" (!nl .)* nl;
 
 # TODO fix
-# WHITESPACE = " " / "\t" / nl;
+#WHITESPACE = " " / "\t" / nl;
 WHITESPACE = [ \t] / nl;
 ws =  [ \t]*;
 nl = "\r\n" / "\n" / "\r";

@@ -118,7 +118,7 @@ impl DefaultKeyMappings {
         map!(map,
              "ctrl+q",      editor::quit,
 
-             "ctrl+c",    prompt::close,
+             "esc",       prompt::close,
              "backspace", prompt::remove_grapheme_before_cursor,
              "left",      prompt::prev_grapheme,
              "right",     prompt::next_grapheme,
@@ -141,7 +141,7 @@ impl DefaultKeyMappings {
         map!(map,
              "ctrl+q",      editor::quit,
 
-            "ctrl+c",       prompt::close,
+            "esc",          prompt::close,
             "backspace",    prompt::remove_grapheme_before_cursor,
             "left",         prompt::prev_grapheme,
             "right",        prompt::next_grapheme,
@@ -161,10 +161,10 @@ impl DefaultKeyMappings {
 
         #[rustfmt::skip]
         map!(map,
-             "tab",   completion::next,
-             "btab",  completion::prev,
-             "enter", completion::confirm,
-             "esc",   completion::abort,
+             "tab",    completion::next,
+             "btab",   completion::prev,
+             "enter",  completion::confirm,
+             "esc",    completion::abort,
 
              // "ctrl+s", search::toggle_select,
         );

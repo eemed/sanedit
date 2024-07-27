@@ -121,7 +121,7 @@ impl Matcher {
                             matches_with(&opt, &patterns, case_sensitive, match_fn)
                         {
                             let mat = Match {
-                                score: score(&opt.utf8_to_match(), &ranges),
+                                score: score(&opt.to_str_lossy(), &ranges),
                                 opt: opt.clone(),
                                 ranges,
                             };
@@ -154,7 +154,7 @@ fn score(opt: &str, ranges: &[Range<usize>]) -> u32 {
 }
 
 fn with_case_sensitivity(opt: &MatchOption, case_sensitive: bool) -> Cow<str> {
-    let string = opt.utf8_to_match();
+    let string = opt.to_str_lossy();
     if case_sensitive {
         return string;
     }

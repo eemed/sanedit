@@ -50,7 +50,7 @@ impl MatchOption {
     }
 
     /// Return the bytes required to match this option interpreted as utf8
-    pub fn utf8_to_match(&self) -> std::borrow::Cow<'_, str> {
+    pub fn to_str_lossy(&self) -> std::borrow::Cow<'_, str> {
         match self.kind {
             Kind::Path => {
                 let os = unsafe { OsStr::from_encoded_bytes_unchecked(self.bytes_to_match()) };
@@ -183,12 +183,17 @@ impl Ord for Match {
 
 impl From<Match> for SelectorOption {
     fn from(mat: Match) -> Self {
-        SelectorOption::new(&mat.opt.value, mat.ranges, mat.score, "")
+        SelectorOption::new(&mat.opt.value, mat.ranges, mat.score, &mat.opt.description)
     }
 }
 
 impl From<&Match> for SelectorOption {
     fn from(mat: &Match) -> Self {
-        SelectorOption::new(&mat.opt.value, mat.ranges.clone(), mat.score, "")
+        SelectorOption::new(
+            &mat.opt.value,
+            mat.ranges.clone(),
+            mat.score,
+            &mat.opt.description,
+        )
     }
 }

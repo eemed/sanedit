@@ -104,15 +104,13 @@ impl Syntax {
                 range.end += start;
 
                 let anns = self.grammar.annotations_for(cap.id());
-                let completion = anns
-                    .iter()
-                    .find_map(|ann| match ann {
-                        Annotation::Other(name, cname) if name == COMPLETION_ANNOTATION => {
-                            Some(cname.clone())
-                        }
-                        _ => None,
-                    })
-                    .flatten();
+                let completion = anns.iter().find_map(|ann| match ann {
+                    Annotation::Other(aname, cname) if aname == COMPLETION_ANNOTATION => {
+                        let completion = cname.clone().unwrap_or(name.into());
+                        Some(completion)
+                    }
+                    _ => None,
+                });
                 let hl = anns.iter().any(|ann| match ann {
                     Annotation::Other(name, _spec) => name == HIGHLIGHT_ANNOTATION,
                     _ => false,

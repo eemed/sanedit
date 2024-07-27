@@ -21,13 +21,10 @@ rule_name = id_chars+;
 
 @show(preproc)
 annotation = "@" annotation_name ("(" ann_spec ")")?;
-
-@show(type)
 ann_spec = [a..zA..Z_-]+;
 
 @completion(annotation)
 @highlight
-@show(keyword)
 annotation_name = [a..zA..Z_-]+;
 
 @whitespaced

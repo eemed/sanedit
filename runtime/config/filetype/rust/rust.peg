@@ -1,13 +1,21 @@
-document = (comment / keyword / constant / unsafe / string / char / .)*;
+document = (comment / attrs / mod_decl / const_decl / let_decl / string / char / unsafe / keyword / constant / type / .)*;
+#document = (comment / const / keyword / constant / unsafe / string / char / .)*;
 
 visibility = "pub(crate)" / "pub(super)" / "pub";
 
-@show(identifier)
-keyword = start ("let" / "as" / "match" / "if" / "else" / "while" / "break" / "move" / "async" ) end;
+@show
+keyword = ("let" / "as" / "match" / "if" / "else" / "while" / "break" / "move" / "async" / "dyn") end;
 
-@show(keyword)
-constant = start (visibility / "mod" / "use" / "fn" / "impl" / "struct" / "enum" / "const" ) end;
+@show
+constant = (visibility / "use" / "fn" / "impl" / "struct" / "enum" / "const" ) end;
 
+############ Mod
+mod_decl = mod ws (!nl .)* nl;
+
+@show(constant)
+mod = "mod";
+
+########## String
 @show(string)
 char = "'" . "'";
 @show
@@ -15,11 +23,83 @@ string    = "\"" compl_string "\"";
 compl_string    = ("\\" escape_char / [^"\n])*;
 escape_char     = "0" / "t" / "n" / "r" / "\"" / "\\";
 
-start = WHITESPACE;
 end = &(WHITESPACE / ";");
 
+############ Unsafe
 @show(operator)
 unsafe = "unsafe" / "await";
+
+############ Type
+
+@show
+type = ref? (tuple / arr / predefined / typename / generic);
+
+@whitespaced
+tuple = "(" type ("," type)* ")";
+typename = [A..Z] [a..zA..Z0..9_]*;
+
+@whitespaced
+arr = "[" type "]";
+generic = "<" type ">";
+
+@show(type)
+restricted_type = (([A..Z] / ref ) [A..Za..z0..9_']+) / predefined ;
+predefined = ("usize" / "isize" / "u8" / "u16" / "u32" / "u64" / "i8" / "i16" / "i32" / "i64" / "str" / "bool" / "char") !"(";
+
+@whitespaced
+id = "(" single_id ("," single_id)*  ")" / single_id;
+single_id = [a..zA..Z_] [a..zA..Z0..9_]*;
+
+########### Ref
+@show(constant)
+ref = ref_op lifetime? ws mut_op? ws;
+
+@show(operator)
+ref_op = "&";
+@show(operator)
+mut_op = "mut";
+
+lifetime = "'" [a..z]+;
+
+
+############# Constants
+@show
+@whitespaced
+const_decl = const const_id ":" type "=";
+
+@show(keyword)
+const = "const";
+
+
+@whitespaced
+const_id = "(" single_const_id ("," single_const_id)*  ")" / single_const_id;
+
+@show(const)
+@completion
+single_const_id = single_id;
+
+############## Variables
+
+@show
+@whitespaced
+let_decl = let let_id (":" type)? "=";
+
+@whitespaced
+let_id = "(" single_let_id ("," single_let_id)*  ")" / single_let_id;
+
+@show(variable)
+@completion
+single_let_id = single_id;
+
+@show(keyword)
+let = "let";
+
+
+######### attrs
+
+@show(preproc)
+@whitespaced
+attrs = "#[" (!"]" .)* "]";
 
 ########## COMMENTS
 @show
@@ -28,4 +108,5 @@ comment = "//" (!nl .)* nl;
 # TODO fix
 # WHITESPACE = " " / "\t" / nl;
 WHITESPACE = [ \t] / nl;
+ws =  [ \t]*;
 nl = "\r\n" / "\n" / "\r";

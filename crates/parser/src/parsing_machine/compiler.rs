@@ -105,35 +105,38 @@ impl<'a> Compiler<'a> {
         self.program.len() - 1
     }
 
-    fn compile_choice_rec(&mut self, rule: &Rule, rest: &[Rule]) {
-        //     Choice L1
+    fn compile_choice_rec(&mut self, rule: &Rule, rest: &[Rule]) -> anyhow::Result<()> {
+        //     Choice L2
         //     <rule 1>
         //     Commit L2
         // L1: <rule 2>
         // L2: ...
         if rest.is_empty() {
-            self.compile_rec(rule);
-            return;
+            self.compile_rec(rule)?;
+            return Ok(());
         }
 
         let choice = self.push(Operation::Choice(0));
-        self.compile_rec(rule);
+        self.compile_rec(rule)?;
         let commit = self.push(Operation::Commit(0));
         self.program[choice] = Operation::Choice(self.program.len());
 
-        let (next, nrest) = rest.split_first().unwrap();
-        self.compile_choice_rec(next, nrest);
+        let (next, nrest) = rest
+            .split_first()
+            .ok_or(anyhow::anyhow!("Choice no items"))?;
+        self.compile_choice_rec(next, nrest)?;
 
         self.program[commit] = Operation::Commit(self.program.len());
+        Ok(())
     }
 
-    fn compile_rec(&mut self, rule: &Rule) {
+    fn compile_rec(&mut self, rule: &Rule) -> anyhow::Result<()> {
         use grammar::Rule::*;
 
         match rule {
             Optional(rule) => {
                 let choice = self.push(Operation::Choice(0));
-                self.compile_rec(rule);
+                self.compile_rec(rule)?;
                 let next = self.program.len() + 1;
                 self.push(Operation::Commit(next));
                 self.program[choice] = Operation::Choice(next);
@@ -144,34 +147,36 @@ impl<'a> Compiler<'a> {
                 //     PartialCommit L1
                 // L2: ...
                 let choice = self.push(Operation::Choice(0));
-                self.compile_rec(rule);
+                self.compile_rec(rule)?;
                 self.push(Operation::PartialCommit(choice + 1));
                 let next = self.program.len();
                 self.program[choice] = Operation::Choice(next);
             }
             OneOrMore(rule) => {
                 // One
-                self.compile_rec(rule);
+                self.compile_rec(rule)?;
 
                 // Zero or more
                 let choice = self.push(Operation::Choice(0));
-                self.compile_rec(rule);
+                self.compile_rec(rule)?;
                 self.push(Operation::PartialCommit(choice + 1));
                 let next = self.program.len();
                 self.program[choice] = Operation::Choice(next);
             }
             Choice(rules) => {
-                let (first, rest) = rules.split_first().unwrap();
-                self.compile_choice_rec(first, rest);
+                let (first, rest) = rules
+                    .split_first()
+                    .ok_or(anyhow::anyhow!("Choice with no items"))?;
+                self.compile_choice_rec(first, rest)?;
             }
             Sequence(rules) => {
                 for rule in rules {
-                    self.compile_rec(rule);
+                    self.compile_rec(rule)?;
                 }
             }
             FollowedBy(rule) => {
                 let choice = self.push(Operation::Choice(0));
-                self.compile_rec(rule);
+                self.compile_rec(rule)?;
                 let bcommit = self.push(Operation::BackCommit(0));
                 let fail = self.push(Operation::Fail);
                 self.program[choice] = Operation::Choice(fail);
@@ -180,7 +185,7 @@ impl<'a> Compiler<'a> {
             }
             NotFollowedBy(rule) => {
                 let choice = self.push(Operation::Choice(0));
-                self.compile_rec(rule);
+                self.compile_rec(rule)?;
                 self.push(Operation::FailTwice);
                 let next = self.program.len();
                 self.program[choice] = Operation::Choice(next);
@@ -208,6 +213,8 @@ impl<'a> Compiler<'a> {
                 self.push(Operation::Set(Set::any()));
             }
         }
+
+        Ok(())
     }
 }
 

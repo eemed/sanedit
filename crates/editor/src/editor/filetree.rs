@@ -22,6 +22,7 @@ pub(crate) enum Kind {
     File,
 }
 
+/// immutable node with its absolute path
 #[derive(Debug)]
 pub(crate) struct TreeNode<'a> {
     internal: &'a Node,
@@ -34,6 +35,7 @@ impl<'a> TreeNode<'a> {
     }
 }
 
+/// mutable node with its absolute path
 #[derive(Debug)]
 pub(crate) struct TreeNodeMut<'a> {
     internal: &'a mut Node,
@@ -49,12 +51,7 @@ impl<'a> Deref for TreeNodeMut<'a> {
 }
 
 impl<'a> TreeNodeMut<'a> {
-    pub fn collapse(&mut self) {
-        self.internal.collapse()
-    }
-
     pub fn expand(&mut self) -> Result<()> {
-        log::info!("expand: {:?}", self.absolute);
         self.internal.expand(&self.absolute)
     }
 
@@ -65,9 +62,13 @@ impl<'a> TreeNodeMut<'a> {
 
 #[derive(Debug, PartialOrd, Ord, PartialEq, Eq, Clone)]
 pub(crate) struct Node {
+    /// File or directory
     kind: Kind,
+    /// Local name for this node, may contain multiple path components
     local: PathBuf,
+    /// Whether this entry is expanded, if directory
     expanded: bool,
+    /// Entries children, if directory
     children: SortedVec<Node>,
 }
 
@@ -81,7 +82,7 @@ impl Node {
         }
     }
 
-    fn collapse(&mut self) {
+    pub fn collapse(&mut self) {
         self.expanded = false;
     }
 

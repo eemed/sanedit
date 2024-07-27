@@ -4,7 +4,7 @@ document = (comment / attrs / mod_decl / const_decl / let_decl / string / char /
 visibility = "pub(crate)" / "pub(super)" / "pub";
 
 @show
-keyword = ("let" / "as" / "match" / "if" / "else" / "while" / "break" / "move" / "async" / "dyn") end;
+keyword = ("let" / "match" / "if" / "else" / "while" / "break" / "move" / "async" / "dyn" / "return" / "for" / "in" / "as") end;
 
 @show
 constant = (visibility / "use" / "fn" / "impl" / "struct" / "enum" / "const" ) end;
@@ -44,7 +44,7 @@ generic = "<" type ">";
 
 @show(type)
 restricted_type = (([A..Z] / ref ) [A..Za..z0..9_']+) / predefined ;
-predefined = ("usize" / "isize" / "u8" / "u16" / "u32" / "u64" / "i8" / "i16" / "i32" / "i64" / "str" / "bool" / "char") !"(";
+predefined = ("usize" / "isize" / "u8" / "u16" / "u32" / "u64" / "i8" / "i16" / "i32" / "i64" / "str" / "bool" / "char") &[ ),];
 
 @whitespaced
 id = "(" single_id ("," single_id)*  ")" / single_id;

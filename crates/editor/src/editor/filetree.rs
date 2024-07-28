@@ -2,17 +2,26 @@ use anyhow::Result;
 use sanedit_utils::sorted_vec::SortedVec;
 use std::{
     io,
-    ops::Deref,
+    ops::{Deref, DerefMut},
     path::{Path, PathBuf},
 };
 
-trait EmptyPath {
+trait PathExtended {
     fn is_empty(&self) -> bool;
+    fn kind(&self) -> Kind;
 }
 
-impl EmptyPath for &Path {
+impl<A: AsRef<Path> + ?Sized> PathExtended for &A {
     fn is_empty(&self) -> bool {
-        self.as_os_str().is_empty()
+        self.as_ref().as_os_str().is_empty()
+    }
+
+    fn kind(&self) -> Kind {
+        if self.as_ref().is_dir() {
+            Kind::Directory
+        } else {
+            Kind::File
+        }
     }
 }
 
@@ -47,6 +56,12 @@ impl<'a> Deref for TreeNodeMut<'a> {
 
     fn deref(&self) -> &Self::Target {
         &self.internal
+    }
+}
+
+impl<'a> DerefMut for TreeNodeMut<'a> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.internal
     }
 }
 
@@ -98,21 +113,43 @@ impl Node {
 
         for path in paths {
             let local = path.strip_prefix(absolute).unwrap().to_path_buf();
-            let kind = if path.is_dir() {
-                Kind::Directory
-            } else {
-                Kind::File
-            };
-            let node = Node {
+            let kind = path.as_path().kind();
+            let mut node = Node {
                 local,
                 kind,
                 expanded: false,
                 children: SortedVec::default(),
             };
+            if node.is_dir() {
+                node.add_single_directories_to_local(&path)?;
+            }
             self.children.push(node);
         }
 
         self.expanded = true;
+
+        Ok(())
+    }
+
+    fn add_single_directories_to_local(&mut self, absolute: &Path) -> Result<()> {
+        let mut absolute = absolute.to_path_buf();
+        let mut paths = std::fs::read_dir(absolute)?
+            .map(|res| res.map(|e| e.path()))
+            .collect::<Result<Vec<_>, io::Error>>()?;
+
+        while paths.len() == 1 {
+            let path = paths.pop().unwrap();
+            if !path.is_dir() {
+                break;
+            }
+            let name = PathBuf::from(path.file_name().unwrap());
+            self.local.push(name);
+            absolute = path;
+
+            paths = std::fs::read_dir(absolute)?
+                .map(|res| res.map(|e| e.path()))
+                .collect::<Result<Vec<_>, io::Error>>()?;
+        }
 
         Ok(())
     }
@@ -132,17 +169,16 @@ impl Node {
                 }
                 new_children.push(child);
             } else {
-                let kind = if path.is_dir() {
-                    Kind::Directory
-                } else {
-                    Kind::File
-                };
-                let node = Node {
+                let kind = path.as_path().kind();
+                let mut node = Node {
                     local,
                     kind,
                     expanded: false,
                     children: SortedVec::default(),
                 };
+                if node.is_dir() {
+                    node.add_single_directories_to_local(&path)?;
+                }
                 new_children.push(node);
             }
         }
@@ -193,11 +229,7 @@ pub(crate) struct Filetree {
 
 impl Filetree {
     pub fn new(path: &Path) -> Filetree {
-        let kind = if path.is_dir() {
-            Kind::Directory
-        } else {
-            Kind::File
-        };
+        let kind = path.kind();
         let mut absolute = path.to_path_buf();
         let name = absolute.file_name().expect("Could not create filetree");
         let local = PathBuf::from(name);

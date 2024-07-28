@@ -116,14 +116,15 @@ fn create_new_file(editor: &mut Editor, id: ClientId) {
                 node.refresh();
             }
 
-            // Select the new entry
-            let pos = editor
+            // Select the new entry if visible
+            if let Some(pos) = editor
                 .filetree
                 .iter()
                 .position(|entry| entry.path() == file)
-                .unwrap();
-            let (win, _buf) = editor.win_buf_mut(id);
-            win.ft_view.selection = pos;
+            {
+                let (win, _buf) = editor.win_buf_mut(id);
+                win.ft_view.selection = pos;
+            }
 
             // Open the file
             editor.open_file(id, &file);
@@ -183,6 +184,24 @@ fn delete_file(editor: &mut Editor, id: ClientId) {
         })
         .build();
     win.focus = Focus::Prompt;
+}
+
+#[action("Select parent")]
+fn select_parent(editor: &mut Editor, id: ClientId) {
+    fn inner(editor: &mut Editor, id: ClientId) -> Option<()> {
+        let (win, _buf) = editor.win_buf(id);
+        let entry = editor.filetree.iter().nth(win.ft_view.selection)?;
+        let parent = editor.filetree.parent_of(entry.path())?;
+        let pos = editor
+            .filetree
+            .iter()
+            .position(|entry| entry.path() == parent.path())?;
+        let (win, _buf) = editor.win_buf_mut(id);
+        win.ft_view.selection = pos;
+        Some(())
+    }
+
+    inner(editor, id);
 }
 
 // #[action("Search for an entry in filetree")]

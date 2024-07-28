@@ -1,6 +1,6 @@
 use std::{
     mem,
-    ops::{Deref, DerefMut, Index},
+    ops::{Deref, DerefMut, Index, IndexMut},
 };
 
 /// A vector that is always sorted
@@ -106,6 +106,12 @@ impl<T: Ord> Index<usize> for SortedVec<T> {
 
     fn index(&self, i: usize) -> &Self::Output {
         &self.items[i]
+    }
+}
+
+impl<T: Ord> IndexMut<usize> for SortedVec<T> {
+    fn index_mut(&mut self, i: usize) -> &mut Self::Output {
+        &mut self.items[i]
     }
 }
 

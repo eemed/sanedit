@@ -42,6 +42,7 @@ impl DefaultKeyMappings {
              "enter",     text::insert_newline,
              "tab",       text::insert_tab,
              "btab",      text::backtab,
+             "alt+k",     text::remove_line_after_cursor,
 
              // "ctrl+x", Action::next_visual_line,
 
@@ -83,9 +84,9 @@ impl DefaultKeyMappings {
              "ctrl+d",   cursors::new_to_next_search_match,
              "ctrl+l",   cursors::new_to_all_search_matches,
              "alt+v",    cursors::start_selection,
-             "alt+o l",    cursors::select_line,
+             "alt+o l",  cursors::select_line,
 
-             "alt+k", completion::complete,
+             // "alt+k", completion::complete,
 
              "f5",    window::reload,
              "alt+'", window::goto_prev_buffer,
@@ -215,6 +216,7 @@ impl DefaultKeyMappings {
              "down",   locations::next_entry,
              "btab",   locations::prev_entry,
              "tab",    locations::next_entry,
+             "p",      locations::select_parent,
 
              "alt+1",  window::focus,
              "alt+2",  filetree::show,

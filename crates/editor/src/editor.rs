@@ -587,6 +587,8 @@ impl Editor {
                 let text = String::from(&buf.slice(sel));
                 lines.push(text);
             }
+
+            cursor.unanchor();
         }
 
         let line = to_line(lines, buf.options.eol);

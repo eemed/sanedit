@@ -10,7 +10,8 @@ match = "#C0A886,,"
 
 [colors.window.cursor]
 default = "#a4ac86,,"
-selection = "#efb679,,"
+# selection = "#efb679,,"
+selection = "#d0bd97,,"
 primary = "#C0A886,,"
 
 [colors.window.view]
@@ -38,7 +39,6 @@ default = "#efb679,,"
 description = ",#5a433d,"
 match = ",#b0463a,"
 
-
 [colors.prompt]
 default = "#B8A282,#000000,"
 message = ",,bold"
@@ -65,7 +65,8 @@ default = "#E2DBC8,#000000,"
 file = ""
 directory = ",#824b26,"
 markers = ",#355d8d,"
-selected = "#efb679,,"
+# selected = "#efb679,,"
+selected = "#d0bd97,,"
 
 [colors.locations]
 default = "#E2DBC8,#000000,"
@@ -76,5 +77,6 @@ markers = ",#355d8d,"
 match = ",#b0463a,"
 
 [colors.locations.selected]
-default = "#efb679,,"
+# default = "#efb679,,"
+default = "#d0bd97,,"
 match = ",#b0463a,"

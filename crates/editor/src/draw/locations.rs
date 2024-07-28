@@ -26,30 +26,31 @@ fn draw_impl(locs: &Locations, ctx: &mut DrawContext) -> redraw::Redraw {
     let mut items = vec![];
 
     for entry in locs.iter() {
-        let (name, kind, hls, line) = match entry.loc {
-            Either::Left(Group { expanded, path, .. }) => {
+        let (name, kind, hls, line) = match entry.either() {
+            Either::Left(group) => {
                 let kind = ItemKind::Group {
-                    expanded: *expanded,
+                    expanded: group.is_expanded(),
                 };
                 let name = {
-                    let path = path.strip_prefix(ctx.editor.working_dir).unwrap_or(path);
+                    let gp = group.path();
+                    let path = gp.strip_prefix(ctx.editor.working_dir).unwrap_or(gp);
                     path.to_string_lossy().to_string()
                 };
                 (name, kind, vec![], None)
             }
-            Either::Right(Item {
-                highlights,
-                name,
-                line,
-                ..
-            }) => (name.into(), ItemKind::Item, highlights.clone(), *line),
+            Either::Right(item) => (
+                item.name().into(),
+                ItemKind::Item,
+                item.highlights().to_vec(),
+                item.line(),
+            ),
         };
 
         let item = redraw::Item {
             line,
             name: name.into(),
             kind,
-            level: entry.level,
+            level: entry.level(),
             highlights: hls,
         };
         items.push(item);

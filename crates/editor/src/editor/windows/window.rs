@@ -690,4 +690,34 @@ impl Window {
         *sdata = self.create_snapshot_data();
         Ok(())
     }
+
+    pub fn remove_line_after_cursor(&mut self, buf: &mut Buffer) -> Result<()> {
+        if self.remove_cursor_selections(buf)? {
+            return Ok(());
+        }
+
+        let mut cposs = vec![];
+        let mut to_remove = vec![];
+
+        for cursor in self.cursors.cursors() {
+            let cpos = cursor.pos();
+            let pos = movement::next_line_end(&buf.slice(..), cpos);
+            to_remove.push(cpos..pos);
+            cposs.push(cpos);
+        }
+
+        let ranges = SortedRanges::from(to_remove);
+        self.remove(buf, &ranges)?;
+
+        let mut removed = 0;
+        for (i, cursor) in self.cursors.cursors_mut().iter_mut().enumerate() {
+            cursor.goto(cursor.pos() - removed);
+            let range = &ranges[i];
+            removed += range.len();
+        }
+
+        self.invalidate();
+        self.view_to_cursor(buf);
+        Ok(())
+    }
 }

@@ -11,4 +11,11 @@ impl<L, R> Either<L, R> {
             Either::Right(_) => panic!("left called when either was right"),
         }
     }
+
+    pub fn is_right(&self) -> bool {
+        match self {
+            Either::Right(_) => true,
+            _ => false,
+        }
+    }
 }

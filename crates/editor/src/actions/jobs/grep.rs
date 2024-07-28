@@ -212,12 +212,9 @@ impl KeepInTouch for Grep {
         }
 
         if let Ok(msg) = msg.downcast::<GrepResult>() {
-            let items = msg.matches.into_iter().map(Item::from).collect();
-            let group = Group {
-                expanded: false,
-                path: msg.path,
-                items,
-            };
+            let items: Vec<Item> = msg.matches.into_iter().map(Item::from).collect();
+            let mut group = Group::new(&msg.path);
+            items.into_iter().for_each(|i| group.push(i));
             let (win, _buf) = editor.win_buf_mut(self.client_id);
             win.locations.push(group);
         }
@@ -257,13 +254,7 @@ impl Ord for GrepMatch {
 
 impl From<GrepMatch> for Item {
     fn from(gmat: GrepMatch) -> Self {
-        Item {
-            name: gmat.text,
-            line: gmat.line,
-            column: None,
-            highlights: gmat.matches,
-            absolute_offset: gmat.absolute_offset,
-        }
+        Item::new(&gmat.text, gmat.line, gmat.absolute_offset, gmat.matches)
     }
 }
 

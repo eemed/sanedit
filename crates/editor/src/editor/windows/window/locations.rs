@@ -1,4 +1,8 @@
-use std::{cmp::min, ops::Range, path::PathBuf};
+use std::{
+    cmp::min,
+    ops::Range,
+    path::{Path, PathBuf},
+};
 
 use sanedit_utils::either::Either;
 
@@ -81,6 +85,29 @@ impl Locations {
         None
     }
 
+    pub fn select_parent(&mut self) {
+        let Some(n) = self.selection else {
+            return;
+        };
+        let mut cur = 0;
+
+        for group in &self.groups {
+            if cur == n {
+                return;
+            }
+
+            cur += 1;
+
+            if group.expanded {
+                cur += group.items.len();
+                if cur > n {
+                    self.selection = Some(cur - 1 - group.items.len());
+                    return;
+                }
+            }
+        }
+    }
+
     fn visible_len(&self) -> usize {
         self.iter().count()
     }
@@ -114,26 +141,119 @@ impl Locations {
 
 #[derive(Debug)]
 pub(crate) struct Group {
-    pub(crate) path: PathBuf,
-    pub(crate) expanded: bool,
-    pub(crate) items: Vec<Item>,
+    path: PathBuf,
+    expanded: bool,
+    items: Vec<Item>,
+}
+
+impl Group {
+    pub fn new(path: &Path) -> Group {
+        Group {
+            path: path.to_path_buf(),
+            expanded: true,
+            items: vec![],
+        }
+    }
+
+    pub fn path(&self) -> &Path {
+        &self.path
+    }
+
+    pub fn is_expanded(&self) -> bool {
+        self.expanded
+    }
+
+    pub fn items(&self) -> &[Item] {
+        &self.items
+    }
+
+    pub fn collapse(&mut self) {
+        self.expanded = false;
+    }
+
+    pub fn expand(&mut self) {
+        self.expanded = true;
+    }
+
+    pub fn push(&mut self, item: Item) {
+        self.items.push(item);
+    }
+
+    pub fn clear(&mut self) {
+        self.items.clear()
+    }
 }
 
 #[derive(Debug)]
 pub(crate) struct Item {
-    pub(crate) name: String,
-    pub(crate) line: Option<u64>,
-    pub(crate) column: Option<u64>,
+    name: String,
+    line: Option<u64>,
     /// Absolute offset where data starts
-    pub(crate) absolute_offset: Option<u64>,
+    absolute_offset: Option<u64>,
     /// String highlights
-    pub(crate) highlights: Vec<Range<usize>>,
+    highlights: Vec<Range<usize>>,
+}
+
+impl Item {
+    pub fn new(
+        name: &str,
+        line: Option<u64>,
+        absolute_offset: Option<u64>,
+        highlights: Vec<Range<usize>>,
+    ) -> Item {
+        Item {
+            name: name.into(),
+            line,
+            absolute_offset,
+            highlights,
+        }
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn line(&self) -> Option<u64> {
+        self.line
+    }
+
+    pub fn absolute_offset(&self) -> Option<u64> {
+        self.absolute_offset
+    }
+
+    pub fn highlights(&self) -> &[Range<usize>] {
+        &self.highlights
+    }
 }
 
 #[derive(Debug)]
 pub(crate) struct LocationEntry<'a> {
-    pub(crate) loc: Either<&'a Group, &'a Item>,
-    pub(crate) level: usize,
+    loc: Either<&'a Group, &'a Item>,
+    level: usize,
+}
+
+impl<'a> LocationEntry<'a> {
+    pub fn group(&self) -> Option<&'a Group> {
+        match self.loc {
+            Either::Left(g) => Some(g),
+            Either::Right(_) => None,
+        }
+    }
+
+    pub fn item(&self) -> Option<&'a Item> {
+        match self.loc {
+            Either::Left(_) => None,
+            Either::Right(i) => Some(i),
+        }
+    }
+
+    pub fn either(&self) -> &Either<&'a Group, &'a Item> {
+        &self.loc
+    }
+
+    pub fn level(&self) -> usize {
+        self.level
+    }
 }
 
 #[derive(Debug)]

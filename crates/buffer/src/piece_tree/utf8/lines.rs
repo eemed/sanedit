@@ -128,7 +128,7 @@ impl<'a> Lines<'a> {
         let slice = pt.slice(..);
         let bytes = Bytes::new(pt, at);
         let mut lines = Lines {
-            at_end: bytes.pos() == slice.len(),
+            at_end: false,
             slice,
             bytes,
         };

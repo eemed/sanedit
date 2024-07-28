@@ -49,6 +49,14 @@ pub(crate) fn next_line_start(slice: &PieceTreeSlice, pos: usize) -> usize {
     }
 }
 
+pub(crate) fn next_line_end(slice: &PieceTreeSlice, pos: usize) -> usize {
+    let mut bytes = slice.bytes_at(pos);
+    match utf8::next_eol(&mut bytes) {
+        Some(m) => m.range.start,
+        None => slice.len(),
+    }
+}
+
 pub(crate) fn prev_line_start(slice: &PieceTreeSlice, pos: usize) -> usize {
     let mut bytes = slice.bytes_at(pos);
     utf8::prev_eol(&mut bytes);

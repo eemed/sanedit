@@ -46,19 +46,19 @@ fn confirm(editor: &mut Editor, id: ClientId) {
 
     if let Some(sel) = win.locations.selected_mut() {
         match sel {
-            Either::Left(Group { expanded, .. }) => {
-                *expanded = !*expanded;
+            Either::Left(group) => {
+                if group.is_expanded() {
+                    group.collapse();
+                } else {
+                    group.expand();
+                }
             }
-            Either::Right(Item {
-                absolute_offset,
-                highlights,
-                ..
-            }) => {
-                let hl_off = highlights.get(0).map_or(0, |r| r.start);
-                let offset = absolute_offset.unwrap_or(0) as usize + hl_off;
+            Either::Right(item) => {
+                let hl_off = item.highlights().get(0).map_or(0, |r| r.start);
+                let offset = item.absolute_offset().unwrap_or(0) as usize + hl_off;
 
                 if let Some(parent) = win.locations.parent_of_selected() {
-                    let path = parent.path.clone();
+                    let path = parent.path().to_path_buf();
                     if let Err(e) = editor.open_file(id, &path) {
                         let (win, _buf) = editor.win_buf_mut(id);
                         win.error_msg(&format!("Failed to open file: {e}"));
@@ -71,4 +71,10 @@ fn confirm(editor: &mut Editor, id: ClientId) {
             }
         }
     }
+}
+
+#[action("Goto parent group entry")]
+fn select_parent(editor: &mut Editor, id: ClientId) {
+    let (win, buf) = editor.win_buf_mut(id);
+    win.locations.select_parent();
 }

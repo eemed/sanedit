@@ -28,7 +28,7 @@ fn with_buf(content: &str) -> (Window, Buffer) {
 fn insert_tab() {
     let (mut win, mut buf) = with_buf("");
     buf.options.indent = Indent {
-        n: 4,
+        count: 4,
         kind: IndentKind::Space,
     };
 
@@ -47,7 +47,7 @@ fn insert_tab_text() {
     let (mut win, mut buf) = with_buf("hello");
     buf.options.tabstop = 8;
     buf.options.indent = Indent {
-        n: 4,
+        count: 4,
         kind: IndentKind::Space,
     };
 
@@ -65,7 +65,7 @@ fn insert_tab_text() {
 fn backtab() {
     let (mut win, mut buf) = with_buf("      ");
     buf.options.indent = Indent {
-        n: 4,
+        count: 4,
         kind: IndentKind::Space,
     };
 

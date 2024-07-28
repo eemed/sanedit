@@ -586,7 +586,7 @@ impl Window {
         };
 
         let slice = buf.slice(..);
-        let indmul = buf.options.indent.n;
+        let indmul = buf.options.indent.count;
         let ranges: SortedRanges = {
             let mut ranges = vec![];
             for pos in starts {
@@ -633,11 +633,11 @@ impl Window {
             .cursors()
             .iter()
             .map(|c| {
-                let indmul = buf.options.indent.n;
+                let indmul = buf.options.indent.count;
 
                 match indent_at_pos(&slice, c.pos()) {
                     Some(mut indent) => {
-                        indent.n = indent.indent_to_multiple_of(indmul);
+                        indent.count = indent.indent_to_multiple_of(indmul);
                         indent.to_string()
                     }
                     None => String::from("\t"),
@@ -651,7 +651,7 @@ impl Window {
     /// If cursor is at indentation, try to dedent the line
     pub fn backtab(&mut self, buf: &mut Buffer) -> Result<()> {
         let slice = buf.slice(..);
-        let indmul = buf.options.indent.n;
+        let indmul = buf.options.indent.count;
         let ranges: SortedRanges = {
             let mut ranges = vec![];
             for cursor in self.cursors.iter() {

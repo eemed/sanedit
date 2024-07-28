@@ -1,3 +1,4 @@
+use documented::DocumentedFields;
 use serde::{Deserialize, Serialize};
 
 use std::cmp::min;
@@ -20,25 +21,28 @@ impl IndentKind {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Hash, Copy, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Hash, Copy, Clone, DocumentedFields, Serialize, Deserialize)]
 pub(crate) struct Indent {
-    #[serde(rename = "indent_count")]
-    pub(crate) n: usize,
-
-    #[serde(rename = "indent")]
+    /// Indent options, overridden if detect_indent is set
+    /// Available options:
+    /// Space: use spaces
+    /// Tab: use tabs
     pub(crate) kind: IndentKind,
+
+    /// How many indent characters a single indent should be
+    pub(crate) count: usize,
 }
 
 impl Indent {
     pub fn get(&self, level: usize) -> String {
-        self.kind.as_str().repeat(level * self.n)
+        self.kind.as_str().repeat(level * self.count)
     }
 
     /// How much this indentation would need to be added so that it would be
     /// a multiple of n. This tries to always indent even if self is already
     /// multiple of n
     pub fn indent_to_multiple_of(&self, n: usize) -> usize {
-        let mut res = self.n % n;
+        let mut res = self.count % n;
         if res == 0 {
             res = n;
         }
@@ -50,9 +54,9 @@ impl Indent {
     /// a multiple of n. This tries to always dedent even if self is already
     /// multiple of n
     pub fn dedent_to_multiple_of(&self, n: usize) -> usize {
-        let mut res = self.n % n;
+        let mut res = self.count % n;
         if res == 0 {
-            res = min(self.n, n);
+            res = min(self.count, n);
         }
         res
     }
@@ -67,7 +71,7 @@ impl Indent {
         while let Some(line) = lines.next() {
             let mut bytes = line.bytes();
             let indent = indent_from_bytes(&mut bytes);
-            if indent.n != 0 {
+            if indent.count != 0 {
                 indents.push(indent);
             }
         }
@@ -82,15 +86,15 @@ impl Indent {
             .partition(|indent| indent.kind == IndentKind::Space);
 
         if spaces.len() >= tabs.len() {
-            let min = spaces.iter().map(|i| i.n).min().unwrap();
+            let min = spaces.iter().map(|i| i.count).min().unwrap();
             Indent {
-                n: min,
+                count: min,
                 kind: IndentKind::Space,
             }
         } else {
-            let min = tabs.iter().map(|i| i.n).min().unwrap();
+            let min = tabs.iter().map(|i| i.count).min().unwrap();
             Indent {
-                n: min,
+                count: min,
                 kind: IndentKind::Tab,
             }
         }
@@ -100,7 +104,7 @@ impl Indent {
 impl Default for Indent {
     fn default() -> Self {
         Indent {
-            n: 4,
+            count: 4,
             kind: IndentKind::Space,
         }
     }
@@ -132,7 +136,10 @@ fn indent_from_bytes(bytes: &mut Bytes) -> Indent {
                 }
             }
 
-            Indent { n, kind: Tab }
+            Indent {
+                count: n,
+                kind: Tab,
+            }
         }
         Some(Space) => {
             let mut n = 1;
@@ -144,9 +151,15 @@ fn indent_from_bytes(bytes: &mut Bytes) -> Indent {
                 }
             }
 
-            Indent { n, kind: Space }
+            Indent {
+                count: n,
+                kind: Space,
+            }
         }
-        None => Indent { n: 0, kind: Space },
+        None => Indent {
+            count: 0,
+            kind: Space,
+        },
     }
 }
 
@@ -176,7 +189,7 @@ pub(crate) fn indent_at_pos(slice: &PieceTreeSlice, pos: usize) -> Option<Indent
 
     let start = bytes.pos();
     let indent = indent_from_bytes(&mut bytes);
-    let end = start + indent.n;
+    let end = start + indent.count;
 
     if end == slice.len() {
         return Some(indent);

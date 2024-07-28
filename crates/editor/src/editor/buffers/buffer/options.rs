@@ -1,7 +1,4 @@
-use std::sync::Arc;
-
 use documented::DocumentedFields;
-use rustc_hash::FxHashMap;
 use serde::{Deserialize, Serialize};
 
 use sanedit_buffer::utf8::EndOfLine;
@@ -41,12 +38,7 @@ pub(crate) struct Options {
     /// is "elastic" calculated tabstop - (col % tabstop).
     pub(crate) tabstop: u8,
 
-    // How to indent stuff
-    #[serde(flatten)]
     pub(crate) indent: Indent,
-
-    #[serde(rename = "filetype")]
-    pub(crate) filetype_overrides: Arc<FxHashMap<String, Vec<String>>>,
 }
 
 impl Default for Options {
@@ -55,7 +47,6 @@ impl Default for Options {
             eol: EndOfLine::default(),
             tabstop: 8,
             indent: Indent::default(),
-            filetype_overrides: Arc::new(FxHashMap::default()),
         }
     }
 }

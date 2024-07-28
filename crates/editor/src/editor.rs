@@ -246,6 +246,7 @@ impl Editor {
                     &path,
                     self.options.big_file_threshold_bytes,
                     &self.working_dir,
+                    &self.options.filetype,
                 )?;
                 self.buffers.new(file)?
             }

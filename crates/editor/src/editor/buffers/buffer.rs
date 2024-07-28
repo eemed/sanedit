@@ -82,12 +82,11 @@ impl Buffer {
         let path = file.path();
         let pt = PieceTree::from_path(path)?;
         let snapshot = pt.read_only_copy();
-        let filetype = Filetype::determine(file.local_path(), &options.filetype_overrides);
         Ok(Buffer {
             id: BufferId::default(),
             read_only: file.read_only(),
             pt,
-            filetype,
+            filetype: file.filetype().cloned(),
             is_modified: false,
             snapshots: Snapshots::new(snapshot),
             options,
@@ -102,7 +101,7 @@ impl Buffer {
         let path = file.path();
         let ffile = fs::File::open(path)?;
         let mut buf = Self::from_reader(ffile)?;
-        buf.filetype = Filetype::determine(file.local_path(), &options.filetype_overrides);
+        buf.filetype = file.filetype().cloned();
         buf.path = Some(path.into());
         buf.read_only = file.read_only();
         buf.options = options;

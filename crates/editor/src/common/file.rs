@@ -4,7 +4,10 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use rustc_hash::FxHashMap;
 use sanedit_buffer::utf8::EndOfLine;
+
+use crate::editor::buffers::Filetype;
 
 #[derive(Debug)]
 pub(crate) struct FileDescription {
@@ -14,6 +17,7 @@ pub(crate) struct FileDescription {
     size: u64,
     is_big: bool,
     read_only: bool,
+    filetype: Option<Filetype>,
 }
 
 impl FileDescription {
@@ -21,6 +25,7 @@ impl FileDescription {
         path: impl AsRef<Path>,
         big_file_threshold_bytes: u64,
         working_dir: &Path,
+        ftmap: &FxHashMap<String, Vec<String>>,
     ) -> io::Result<FileDescription> {
         let path = path.as_ref();
         let mut file = fs::File::open(path)?;
@@ -34,6 +39,7 @@ impl FileDescription {
         let is_big = big_file_threshold_bytes <= size;
         let read_only = metadata.permissions().readonly();
         let local = path.strip_prefix(working_dir).unwrap_or(path);
+        let filetype = Filetype::determine(path, ftmap);
 
         let file_metadata = FileDescription {
             absolute_path: path.into(),
@@ -42,9 +48,14 @@ impl FileDescription {
             size,
             is_big,
             read_only,
+            filetype,
         };
 
         Ok(file_metadata)
+    }
+
+    pub fn filetype(&self) -> Option<&Filetype> {
+        self.filetype.as_ref()
     }
 
     pub fn read_only(&self) -> bool {

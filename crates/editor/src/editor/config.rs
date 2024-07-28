@@ -5,12 +5,12 @@ use serde::{Deserialize, Serialize};
 use toml_edit::{
     ser::to_document,
     visit_mut::{visit_table_like_kv_mut, VisitMut},
-    DocumentMut, Item, Key, KeyMut, Table, Value,
+    Item, KeyMut,
 };
 
-use crate::editor;
+use crate::{common::indent::Indent, editor};
 
-use super::{buffers, options::Options, windows};
+use super::{buffers, windows};
 
 #[derive(Debug, Default, Serialize, Deserialize, DocumentedFields)]
 pub(crate) struct Config {
@@ -74,6 +74,7 @@ impl VisitMut for Formatter {
                 VisitState::Editor => editor::Options::get_field_docs(keyname),
                 VisitState::Window => windows::Options::get_field_docs(keyname),
                 VisitState::File => buffers::Options::get_field_docs(keyname),
+                VisitState::Indent => Indent::get_field_docs(keyname),
                 VisitState::Irrelevant => {
                     Err(documented::Error::NoDocComments("irrelevant".into()))
                 }
@@ -82,6 +83,7 @@ impl VisitMut for Formatter {
 
         if let Ok(doc) = doc {
             let decor = key.leaf_decor_mut();
+            log::info!("Decor: {:?}", decor.prefix());
             let mut comment = String::from("\n");
             for line in doc.lines() {
                 let line = format!("# {line}\n");
@@ -92,16 +94,16 @@ impl VisitMut for Formatter {
 
         let keyname = key.get();
         let old = self.state;
-        if old == VisitState::Config {
-            self.state = self.state.descend(keyname);
+        let new = self.state.descend(keyname);
+        if new != VisitState::Irrelevant {
+            self.state = new;
         }
+        log::info!("keyname: {keyname} old: {old:?} new: {new:?}");
 
         // Recurse further into the document tree.
         visit_table_like_kv_mut(self, key, node);
 
-        if old == VisitState::Config {
-            self.state = old;
-        }
+        self.state = old;
     }
 }
 
@@ -111,6 +113,7 @@ enum VisitState {
     Editor,
     Window,
     File,
+    Indent,
     Irrelevant,
 }
 
@@ -120,6 +123,7 @@ impl VisitState {
             (VisitState::Config, "editor") => VisitState::Editor,
             (VisitState::Config, "window") => VisitState::Window,
             (VisitState::Config, "file") => VisitState::File,
+            (VisitState::File, "indent") => VisitState::Indent,
             _ => VisitState::Irrelevant,
         }
     }

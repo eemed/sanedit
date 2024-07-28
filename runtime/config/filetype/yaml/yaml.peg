@@ -1,0 +1,31 @@
+document =  (comment / block / value / .)*;
+
+WHITESPACE = [ \t];
+ws = WHITESPACE*;
+nl = "\r\n" / "\n";
+
+@whitespaced
+block = (name ":")+ value? (!nl .)* nl;
+
+@show(identifier)
+@completion
+@highlight
+name = [a..zA..Z0..9_-]+;
+value = string / char / bool / dash;
+dash = "-" (!nl .)*;
+
+@show(constant)
+bool = "true" / "false";
+
+@show
+string = "\"" string_inner "\"";
+
+@show(string)
+char = "'" ([^\u0..\u19\u27\u5c])* "'";
+
+@show(string)
+@completion
+string_inner = ([^\u0..\u19\u22\u5c])*;
+
+@show
+comment = "#" (!nl .)*;

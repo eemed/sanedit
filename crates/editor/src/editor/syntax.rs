@@ -43,12 +43,10 @@ impl Syntaxes {
     }
 
     pub fn load(&mut self, ft: &Filetype) -> anyhow::Result<Syntax> {
-        let peg = {
-            let mut conf = self.filetype_dir.clone();
-            conf.push(ft.as_str());
-            conf.push(format!("{}.peg", ft.as_str()));
-            conf
-        };
+        let peg = self
+            .filetype_dir
+            .join(ft.as_str())
+            .join(format!("{}.peg", ft.as_str()));
         let grammar = Grammar::from_path(&peg)?;
         let syntax = Syntax {
             grammar: Arc::new(grammar),

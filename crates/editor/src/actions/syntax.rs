@@ -32,16 +32,17 @@ pub(crate) fn parse_syntax(editor: &mut Editor, id: ClientId) {
     let range = win.view().range();
     let ropt = buf.read_only_copy();
 
-    if let Some(ft) = buf.filetype.clone() {
-        match editor.syntaxes.get(&ft) {
-            Ok(s) => {
-                editor.job_broker.request_slot(
-                    id,
-                    JOB_NAME,
-                    SyntaxParser::new(id, bid, s, ropt, range),
-                );
-            }
-            Err(e) => log::error!("Failed to load syntax for {}: {e}", ft.as_str()),
+    let Some(ft) = buf.filetype.clone() else {
+        return;
+    };
+    match editor.syntaxes.get(&ft) {
+        Ok(s) => {
+            editor.job_broker.request_slot(
+                id,
+                JOB_NAME,
+                SyntaxParser::new(id, bid, s, ropt, range),
+            );
         }
+        Err(e) => log::error!("Failed to load syntax for {}: {e}", ft.as_str()),
     }
 }

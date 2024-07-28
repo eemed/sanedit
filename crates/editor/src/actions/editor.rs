@@ -1,5 +1,10 @@
 use crate::{
-    editor::{hooks::Hook, Editor},
+    editor::{
+        config::{serialize_default_configuration, Config},
+        hooks::Hook,
+        windows::{Focus, Prompt},
+        Editor,
+    },
     server::ClientId,
 };
 
@@ -45,4 +50,39 @@ fn cut(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     win.remove_cursor_selections(buf);
     run(editor, id, Hook::BufChanged);
+}
+
+#[action("Open configuration file")]
+fn open_config(editor: &mut Editor, id: ClientId) {
+    let config = editor.config_dir.config();
+    prompt_create_config(editor, id);
+    // if !config.is_file() {
+    //     let (win, _buf) = editor.win_buf_mut(id);
+    // }
+}
+
+fn prompt_create_config(editor: &mut Editor, id: ClientId) {
+    let (win, _buf) = editor.win_buf_mut(id);
+
+    win.prompt = Prompt::builder()
+        .prompt("Configuration file is missing. Create default configuration? (Y/n)")
+        .simple()
+        .on_confirm(|editor, id, input| {
+            let yes = input.is_empty() || input.eq_ignore_ascii_case("y");
+            if !yes {
+                return;
+            }
+
+            let path = editor.config_dir.config();
+            serialize_default_configuration(&path);
+            // let Ok(toml) = toml::to_string(&config) else { return; };
+            // let config = Config::default();
+            // log::info!("Default configuration");
+            // log::info!("{toml}");
+
+            // let path = editor.config_dir.config();
+            // let Ok(file) = std::fs::File::create_new(&path) else { return; };
+        })
+        .build();
+    win.focus = Focus::Prompt;
 }

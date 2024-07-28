@@ -1,10 +1,10 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use std::cmp::min;
 
 use sanedit_buffer::{utf8::prev_eol, Bytes, PieceTreeSlice};
 
-#[derive(Debug, Eq, PartialEq, Hash, Copy, Clone, Deserialize)]
+#[derive(Debug, Eq, PartialEq, Hash, Copy, Clone, Serialize, Deserialize)]
 #[repr(u8)]
 pub(crate) enum IndentKind {
     Space = b' ',
@@ -20,7 +20,7 @@ impl IndentKind {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Hash, Copy, Clone, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Hash, Copy, Clone, Serialize, Deserialize)]
 pub(crate) struct Indent {
     #[serde(rename = "indent_count")]
     pub(crate) n: usize,

@@ -1,13 +1,28 @@
-use serde::Deserialize;
+use documented::DocumentedFields;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, DocumentedFields)]
 #[serde(default)]
 pub(crate) struct Options {
-    /// When filesize is over this threshold it is considered big
+    ///
+    /// Large file threshold in bytes
+    ///
     pub big_file_threshold_bytes: u64,
+    ///
+    /// Directories to ignore, when opening files etc.
+    ///
     pub ignore_directories: Vec<String>,
+    ///
+    /// Default shell command
+    ///
     pub shell: String,
+    ///
+    /// Shell command to build current project
+    ///
     pub build_command: String,
+    ///
+    /// Shell command to run current project
+    ///
     pub run_command: String,
     pub detect_eol: bool,
     pub detect_indent: bool,

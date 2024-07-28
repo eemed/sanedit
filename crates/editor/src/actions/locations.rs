@@ -78,3 +78,21 @@ fn select_parent(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     win.locations.select_parent();
 }
+
+#[action("Toggle expand on all entries")]
+fn toggle_expand_all(editor: &mut Editor, id: ClientId) {
+    let (win, buf) = editor.win_buf_mut(id);
+    let mut has_expanded = false;
+    for group in win.locations.groups() {
+        if group.is_expanded() {
+            has_expanded = true;
+            break;
+        }
+    }
+
+    if has_expanded {
+        win.locations.collapse_all();
+    } else {
+        win.locations.expand_all();
+    }
+}

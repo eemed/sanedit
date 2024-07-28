@@ -217,6 +217,7 @@ impl DefaultKeyMappings {
              "btab",   locations::prev_entry,
              "tab",    locations::next_entry,
              "p",      locations::select_parent,
+             "s",      locations::toggle_expand_all,
 
              "alt+1",  window::focus,
              "alt+2",  filetree::show,

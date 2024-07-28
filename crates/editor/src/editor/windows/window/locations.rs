@@ -137,6 +137,35 @@ impl Locations {
         }
         .into();
     }
+
+    fn ensure_selection_in_range(&mut self) {
+        if let Some(n) = self.selection {
+            let vis = self.visible_len();
+            if vis == 0 {
+                self.selection = None;
+            } else if n > vis {
+                self.selection = Some(vis.saturating_sub(1));
+            }
+        }
+    }
+
+    pub fn groups(&self) -> &[Group] {
+        &self.groups
+    }
+
+    pub fn expand_all(&mut self) {
+        for group in &mut self.groups {
+            group.expand();
+        }
+    }
+
+    pub fn collapse_all(&mut self) {
+        for group in &mut self.groups {
+            group.collapse();
+        }
+
+        self.ensure_selection_in_range();
+    }
 }
 
 #[derive(Debug)]

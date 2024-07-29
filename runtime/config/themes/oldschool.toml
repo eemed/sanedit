@@ -21,7 +21,7 @@ error = "#c0564a,#ffffff,"
 
 string =  ",#3C780A,"
 identifier = ",#824b26,"
-constant = ",#824b26,"
+constant = ",#452F81,"
 number = ",#452F81,"
 keyword = ",#824b26,"
 operator =  ",#a84d1f,"

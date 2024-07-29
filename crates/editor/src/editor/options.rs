@@ -36,7 +36,10 @@ impl Default for Options {
         Options {
             // big_file_threshold_bytes: 100 * 1024 * 1024, // 100MB
             big_file_threshold_bytes: 1024 * 1024, // 1MB
-            ignore_directories: vec![],
+            ignore_directories: vec![".git", "target"]
+                .into_iter()
+                .map(String::from)
+                .collect(),
             shell: "/bin/bash".into(),
             build_command: String::new(),
             run_command: String::new(),

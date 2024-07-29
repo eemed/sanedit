@@ -55,13 +55,14 @@ fn cut(editor: &mut Editor, id: ClientId) {
 #[action("Open configuration file")]
 fn open_config(editor: &mut Editor, id: ClientId) {
     let config = editor.config_dir.config();
-    prompt_create_config(editor, id);
-    // if !config.is_file() {
-    //     let (win, _buf) = editor.win_buf_mut(id);
-    // }
+    if !config.exists() {
+        prompt_create_and_open_config(editor, id);
+    } else {
+        editor.open_file(id, &config);
+    }
 }
 
-fn prompt_create_config(editor: &mut Editor, id: ClientId) {
+fn prompt_create_and_open_config(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
 
     win.prompt = Prompt::builder()
@@ -74,14 +75,13 @@ fn prompt_create_config(editor: &mut Editor, id: ClientId) {
             }
 
             let path = editor.config_dir.config();
-            serialize_default_configuration(&path);
-            // let Ok(toml) = toml::to_string(&config) else { return; };
-            // let config = Config::default();
-            // log::info!("Default configuration");
-            // log::info!("{toml}");
+            if let Err(e) = serialize_default_configuration(&path) {
+                let (win, buf) = editor.win_buf_mut(id);
+                win.warn_msg("Failed to create default configuration file.");
+                return;
+            }
 
-            // let path = editor.config_dir.config();
-            // let Ok(file) = std::fs::File::create_new(&path) else { return; };
+            editor.open_file(id, &path);
         })
         .build();
     win.focus = Focus::Prompt;

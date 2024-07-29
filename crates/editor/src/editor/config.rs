@@ -42,24 +42,33 @@ pub(crate) fn read_config(config_path: &Path, working_dir: &Path) -> anyhow::Res
     Ok(config)
 }
 
-pub(crate) fn serialize_default_configuration(path: &Path) {
+pub(crate) fn serialize_default_configuration(path: &Path) -> anyhow::Result<()> {
+    use std::io::Write;
+
     let config = Config::default();
     let mut doc = to_document(&config).unwrap().to_owned();
 
     let mut visitor = Formatter {
         state: VisitState::Config,
+        first: true,
     };
     visitor.visit_document_mut(&mut doc);
 
-    log::info!("{}", doc.to_string());
+    let default_config = doc.to_string();
+    let mut file = std::fs::File::create_new(path)?;
+    file.write_all(default_config.as_bytes())?;
+
+    Ok(())
 }
 
 struct Formatter {
     state: VisitState,
+    first: bool,
 }
 
 impl VisitMut for Formatter {
     fn visit_table_like_kv_mut(&mut self, mut key: KeyMut<'_>, node: &mut Item) {
+        // Format inline tables to normal tables
         if node.is_inline_table() {
             let item = std::mem::replace(node, Item::None);
             if let Ok(table) = item.into_table() {
@@ -81,24 +90,40 @@ impl VisitMut for Formatter {
             }
         };
 
+        // Add docstrings as comments
         if let Ok(doc) = doc {
-            let decor = key.leaf_decor_mut();
-            log::info!("Decor: {:?}", decor.prefix());
-            let mut comment = String::from("\n");
+            let top = if self.first { "" } else { "\n" };
+            let mut comment = String::from(top);
             for line in doc.lines() {
-                let line = format!("# {line}\n");
-                comment.push_str(&line);
+                if line.is_empty() {
+                    comment.push_str("#\n");
+                } else {
+                    let line = format!("# {line}\n");
+                    comment.push_str(&line);
+                }
             }
-            decor.set_prefix(comment);
+
+            match node {
+                // Add the comment to the table instead because of
+                // https://github.com/toml-rs/toml/issues/691
+                Item::Table(table) => {
+                    let decor = table.decor_mut();
+                    decor.set_prefix(comment);
+                }
+                _ => {
+                    let decor = key.leaf_decor_mut();
+                    decor.set_prefix(comment);
+                }
+            }
         }
 
+        self.first = false;
         let keyname = key.get();
         let old = self.state;
         let new = self.state.descend(keyname);
         if new != VisitState::Irrelevant {
             self.state = new;
         }
-        log::info!("keyname: {keyname} old: {old:?} new: {new:?}");
 
         // Recurse further into the document tree.
         visit_table_like_kv_mut(self, key, node);

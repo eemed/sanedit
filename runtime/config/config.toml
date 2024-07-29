@@ -1,0 +1,73 @@
+#
+# Sanedit configuration
+#
+# Configuration can be overridden using a sanedit-project.toml file in project
+# root. The file should be in the same format as this one and
+# configuration may be partially updated
+[editor]
+
+# Large file threshold in bytes
+big_file_threshold_bytes = 1048576
+
+# Directories to ignore, when opening files etc.
+ignore_directories = []
+
+# Default shell command
+shell = "/bin/bash"
+
+# Shell command to build current project
+build_command = ""
+
+# Shell command to run current project
+run_command = ""
+
+# Autodetect eol from file
+detect_eol = true
+
+# Autodetect indentation from file
+detect_indent = true
+
+# Filetype glob patterns
+# By default the filetype is the extension of the file
+[editor.filetype]
+rust = ["*.rs"]
+yaml = ["*.yml"]
+toml = ["**/Cargo.lock"]
+
+[window]
+
+# Maximum prompt completions to show at once
+max_prompt_completions = 10
+
+# Maximum completions to show at once
+max_completions = 10
+
+[file]
+
+# Default EOL, overridden if detect_eol is set
+# Available options:
+# LF: Line Feed, U+000A (UTF-8 in hex: 0A)
+# VT: Vertical Tab, U+000B (UTF-8 in hex: 0B)
+# FF: Form Feed, U+000C (UTF-8 in hex: 0C)
+# CR: Carriage Return, U+000D (UTF-8 in hex: 0D)
+# CRLF: CR (U+000D) followed by LF (U+000A) (UTF-8 in hex: 0D 0A)
+# NEL: Next Line, U+0085 (UTF-8 in hex: C2 85)
+# LS: Line Separator, U+2028 (UTF-8 in hex: E2 80 A8)
+# PS: Paragraph Separator, U+2029 (UTF-8 in hex: E2 80 A9)
+eol = "LF"
+
+# How many spaces for a tab character, note that tab does not always have
+# width `tab_width` because tabs are used to align stuff, so it
+# is "elastic" calculated tabstop - (col % tabstop).
+tabstop = 8
+
+[file.indent]
+
+# Indent options, overridden if detect_indent is set
+# Available options:
+# Space: use spaces
+# Tab: use tabs
+kind = "Space"
+
+# How many indent characters a single indent should be
+count = 4

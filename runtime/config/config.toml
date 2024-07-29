@@ -10,7 +10,7 @@
 big_file_threshold_bytes = 1048576
 
 # Directories to ignore, when opening files etc.
-ignore_directories = []
+ignore_directories = [".git", "target"]
 
 # Default shell command
 shell = "/bin/bash"

@@ -2,14 +2,18 @@
 
 ## TODO
 
-* Implement select around using parse result
+* Fix dedenting (needs tests)
+    * Including copy paste
+* play around with parsing machine JIT
+* Keybindings should be sensical
+    * Line up down char next prev, to keyboard not arrow keys
+* Show trailing whitespace
+* Save in place
+* Async saving
 
-* Add regex to searching/selecting
+## TODO
 * Add log buffer directly to editor
-* Test out saving in place
-* Create config file
 
-* Start using the thing and see whats wrong
 
 ## Future
 

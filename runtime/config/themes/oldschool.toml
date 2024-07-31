@@ -77,6 +77,6 @@ markers = ",#355d8d,"
 match = ",#b0463a,"
 
 [colors.locations.selected]
-# default = "#efb679,,"
 default = "#d0bd97,,"
 match = ",#b0463a,"
+markers = ",#355d8d,"

@@ -389,6 +389,7 @@ impl CustomItems {
         let entry = ctx.style(ThemeField::LocationsEntry);
         let group = ctx.style(ThemeField::LocationsGroup);
         let markers = ctx.style(ThemeField::LocationsMarkers);
+        let smarkers = ctx.style(ThemeField::LocationsSelectedMarkers);
         let title = ctx.style(ThemeField::LocationsTitle);
         let sel = ctx.style(ThemeField::LocationsSelected);
         let lmat = ctx.style(ThemeField::LocationsMatch);
@@ -431,8 +432,10 @@ impl CustomItems {
                 }
             };
             let mat = if is_selected { smat } else { lmat };
-            let mut titem = Self::format_loc_item(item, style, markers, mat);
-            pad_line(&mut titem, fill, width);
+            let fil = if is_selected { sel } else { fill };
+            let mark = if is_selected { smarkers } else { markers };
+            let mut titem = Self::format_loc_item(item, style, mark, mat, fil);
+            pad_line(&mut titem, fil, width);
 
             for (i, cell) in titem.into_iter().enumerate() {
                 cells[row][i] = cell;
@@ -440,9 +443,15 @@ impl CustomItems {
         }
     }
 
-    fn format_loc_item(item: &Item, name: Style, extra: Style, mat: Style) -> Vec<CCell> {
+    fn format_loc_item(
+        item: &Item,
+        name: Style,
+        extra: Style,
+        mat: Style,
+        fill: Style,
+    ) -> Vec<CCell> {
         let mut result = vec![];
-        result.extend(into_cells_with_style(&"  ".repeat(item.level), extra));
+        result.extend(into_cells_with_style(&"  ".repeat(item.level), fill));
 
         match item.kind {
             ItemKind::Group { expanded } => {

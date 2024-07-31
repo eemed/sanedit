@@ -4,7 +4,7 @@ document = (comment / attrs / mod_decl / const_decl / let_decl / string / char /
 visibility = "pub(crate)" / "pub(super)" / "pub";
 
 @show
-keyword = ("let" / "match" / "if" / "else" / "while" / "break" / "move" / "async" / "dyn" / "return" / "for" / "in" / "as") end;
+keyword = ( "loop" / "let" / "match" / "if" / "else" / "while" / "break" / "move" / "async" / "dyn" / "return" / "for" / "in" / "as") end;
 
 @show
 constant = (visibility / "use" / "fn" / "impl" / "struct" / "enum" / "const" / "trait" / "type" / "extern crate"  / "extern" ) end;

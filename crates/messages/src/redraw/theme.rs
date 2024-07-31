@@ -161,6 +161,7 @@ pub enum ThemeField {
     LocationsEntry,
     LocationsSelected,
     LocationsSelectedMatch,
+    LocationsSelectedMarkers,
     LocationsMarkers,
     LocationsMatch,
 }
@@ -226,10 +227,11 @@ impl AsRef<str> for ThemeField {
             LocationsTitle => "locations.title",
             LocationsGroup => "locations.group",
             LocationsEntry => "locations.entry",
-            LocationsSelected => "locations.selected",
-            LocationsSelectedMatch => "locations.selected.match",
             LocationsMarkers => "locations.markers",
             LocationsMatch => "locations.match",
+            LocationsSelected => "locations.selected",
+            LocationsSelectedMatch => "locations.selected.match",
+            LocationsSelectedMarkers => "locations.selected.markers",
         }
     }
 }

@@ -34,6 +34,22 @@ pub(crate) fn start_of_line(slice: &PieceTreeSlice, pos: usize) -> usize {
     bytes_start_of_line(&mut bytes)
 }
 
+pub(crate) fn first_char_of_line(slice: &PieceTreeSlice, pos: usize) -> usize {
+    let mut bytes = slice.bytes_at(pos);
+    let mut start = bytes_start_of_line(&mut bytes);
+
+    let mut graphemes = slice.graphemes_at(start);
+    while let Some(grapheme) = graphemes.next() {
+        let cat = grapheme_category(&grapheme);
+        if cat != GraphemeCategory::Whitespace {
+            start = grapheme.start();
+            break;
+        }
+    }
+
+    start
+}
+
 fn bytes_start_of_line(bytes: &mut Bytes) -> usize {
     match utf8::prev_eol(bytes) {
         Some(m) => m.range.end,

@@ -35,11 +35,17 @@ fn run_project(editor: &mut Editor, id: ClientId) {
 #[action("Copy selection to clipboard")]
 fn copy(editor: &mut Editor, id: ClientId) {
     editor.copy_to_clipboard(id);
+    let (win, buf) = editor.win_buf_mut(id);
+    for cursor in win.cursors.cursors_mut() {
+        cursor.unanchor();
+    }
 }
 
 #[action("Paste from clipboard")]
 fn paste(editor: &mut Editor, id: ClientId) {
     editor.paste_from_clipboard(id);
+    let (win, buf) = editor.win_buf_mut(id);
+    win.remove_cursor_selections(buf);
 }
 
 #[action("Copy selection to clipboard and remove it")]

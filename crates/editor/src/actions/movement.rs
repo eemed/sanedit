@@ -79,7 +79,7 @@ fn prev_grapheme(editor: &mut Editor, id: ClientId) {
 
 #[action("Move cursor(s) to the start of the line")]
 fn start_of_line(editor: &mut Editor, id: ClientId) {
-    do_move(editor, id, common::movement::start_of_line, Some(0));
+    do_move(editor, id, common::movement::first_char_of_line, Some(0));
 }
 
 #[action("Move cursor(s) to the end of the line")]

@@ -166,6 +166,14 @@ tasks:
     cmds:
       - gio open implementation-notes.pdf
 
+  jit:test:
+    desc: Run parser JIT tests
+    dir: crates/parser
+    cmds:
+      - "cargo test -- jit:: --nocapture"
+    env:
+      RUST_BACKTRACE: 1
+
   default:
     cmds:
       - task -l

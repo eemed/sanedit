@@ -1,6 +1,6 @@
 use std::cmp::min;
 
-use crate::{common::indent::Indent, editor::Editor, server::ClientId};
+use crate::{common::indent::determine_indent, editor::Editor, server::ClientId};
 
 #[action("Detect indentation")]
 fn detect_indent(editor: &mut Editor, id: ClientId) {
@@ -9,8 +9,9 @@ fn detect_indent(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     let len = buf.len();
     let slice = buf.slice(..min(len, MAX));
-    let indent = Indent::determine(&slice);
-    buf.options.indent = indent;
+    let (kind, n) = determine_indent(&slice);
+    buf.options.indent_kind = kind;
+    buf.options.indent_amount = n;
 }
 
 #[action("Indent cursor lines")]

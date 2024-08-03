@@ -53,7 +53,7 @@ impl DefaultKeyMappings {
              "alt+b", movement::end_of_buffer,
              "alt+B", movement::start_of_buffer,
              "alt+l", movement::end_of_line,
-             "alt+L", movement::start_of_line,
+             "alt+L", movement::first_char_of_line,
              // "alt+l", Action::next_visual_line,
              // "alt+L", Action::prev_visual_line,
              "alt+w", movement::next_word_start,

@@ -26,9 +26,9 @@ use sanedit_messages::redraw::{Severity, Size, StatusMessage};
 use crate::{
     common::{
         char::DisplayOptions,
-        indent::{indent_at_line, indent_at_pos},
-        movement,
-        text::selection_line_starts,
+        indent::{indent_at_line, is_indent_at_pos},
+        movement::{self, start_of_line},
+        text::{selection_line_starts, width_at_pos},
     },
     editor::{
         buffers::{Buffer, BufferError, BufferId, SnapshotData, SortedRanges},
@@ -525,8 +525,14 @@ impl Window {
             .cursors()
             .iter()
             .map(|c| {
-                let indent = indent_at_line(&slice, c.pos());
-                format!("{}{}", eol.as_str(), indent.to_string())
+                let indent = {
+                    match indent_at_line(&slice, c.pos()) {
+                        Some((k, n)) => k.repeat(n),
+                        None => String::new(),
+                    }
+                };
+
+                format!("{}{}", eol.as_str(), indent)
             })
             .collect();
 
@@ -549,7 +555,7 @@ impl Window {
             vstarts
         };
 
-        let indent = buf.options.indent.to_string();
+        let indent = buf.options.indent_kind.repeat(buf.options.indent_amount);
         buf.insert_multi(&starts, &indent)?;
 
         for cursor in self.cursors.cursors_mut() {
@@ -586,18 +592,20 @@ impl Window {
         };
 
         let slice = buf.slice(..);
-        let indmul = buf.options.indent.count;
+        let iamount = buf.options.indent_amount;
         let ranges: SortedRanges = {
             let mut ranges = vec![];
             for pos in starts {
-                let indent = indent_at_line(&slice, pos);
-                let n = indent.dedent_to_multiple_of(indmul);
-                // At start of line
-                if n == 0 {
+                let Some((_kind, n)) = indent_at_line(&slice, pos) else {
                     continue;
+                };
+
+                let mut off = n % iamount;
+                if off == 0 {
+                    off = min(iamount, n);
                 }
 
-                ranges.push(pos..pos + n);
+                ranges.push(pos..pos + off);
             }
             ranges.into()
         };
@@ -608,7 +616,7 @@ impl Window {
             let mut range = cursor.selection().unwrap_or(cursor.pos()..cursor.pos() + 1);
             let pre: usize = ranges
                 .iter()
-                .take_while(|cur| cur.end < range.start)
+                .take_while(|cur| cur.end <= range.start)
                 .map(Range::len)
                 .sum();
             let post: usize = ranges
@@ -629,57 +637,21 @@ impl Window {
     /// If cursor is at indentation, add an indentation block instead
     pub fn insert_tab(&mut self, buf: &mut Buffer) -> Result<()> {
         let slice = buf.slice(..);
+        let ikind = buf.options.indent_kind;
+        let iamount = buf.options.indent_amount;
         let texts: Vec<String> = self
             .cursors()
             .iter()
             .map(|c| {
-                let indmul = buf.options.indent.count;
-
-                match indent_at_pos(&slice, c.pos()) {
-                    Some(mut indent) => {
-                        indent.count = indent.indent_to_multiple_of(indmul);
-                        indent.to_string()
-                    }
-                    None => String::from("\t"),
+                let col = width_at_pos(&slice, c.pos(), &self.view.options);
+                let mut to_add = col % iamount;
+                if to_add == 0 {
+                    to_add = iamount;
                 }
+                ikind.repeat(to_add)
             })
             .collect();
         self.insert_to_each_cursor(buf, texts)?;
-        Ok(())
-    }
-
-    /// If cursor is at indentation, try to dedent the line
-    pub fn backtab(&mut self, buf: &mut Buffer) -> Result<()> {
-        let slice = buf.slice(..);
-        let indmul = buf.options.indent.count;
-        let ranges: SortedRanges = {
-            let mut ranges = vec![];
-            for cursor in self.cursors.iter() {
-                let pos = cursor.pos();
-                if let Some(at) = indent_at_pos(&slice, pos) {
-                    let n = at.dedent_to_multiple_of(indmul);
-                    // At start of line
-                    if n == 0 {
-                        continue;
-                    }
-
-                    let small = pos.saturating_sub(n);
-                    ranges.push(small..pos);
-                }
-            }
-            ranges.into()
-        };
-
-        self.remove(buf, &ranges)?;
-
-        let mut removed = 0;
-        for (i, range) in ranges.iter().enumerate() {
-            let cursor = &mut self.cursors.cursors_mut()[i];
-            cursor.goto(range.start - removed);
-            removed += range.len();
-        }
-
-        self.invalidate();
         Ok(())
     }
 

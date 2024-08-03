@@ -8,7 +8,7 @@ use toml_edit::{
     Item, KeyMut,
 };
 
-use crate::{common::indent::Indent, editor};
+use crate::editor;
 
 use super::{buffers, windows};
 
@@ -83,7 +83,6 @@ impl VisitMut for Formatter {
                 VisitState::Editor => editor::Options::get_field_docs(keyname),
                 VisitState::Window => windows::Options::get_field_docs(keyname),
                 VisitState::File => buffers::Options::get_field_docs(keyname),
-                VisitState::Indent => Indent::get_field_docs(keyname),
                 VisitState::Irrelevant => {
                     Err(documented::Error::NoDocComments("irrelevant".into()))
                 }
@@ -138,7 +137,6 @@ enum VisitState {
     Editor,
     Window,
     File,
-    Indent,
     Irrelevant,
 }
 
@@ -148,7 +146,6 @@ impl VisitState {
             (VisitState::Config, "editor") => VisitState::Editor,
             (VisitState::Config, "window") => VisitState::Window,
             (VisitState::Config, "file") => VisitState::File,
-            (VisitState::File, "indent") => VisitState::Indent,
             _ => VisitState::Irrelevant,
         }
     }

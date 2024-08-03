@@ -77,9 +77,14 @@ fn prev_grapheme(editor: &mut Editor, id: ClientId) {
     do_move(editor, id, common::movement::prev_grapheme_boundary, None);
 }
 
+#[action("Move cursor(s) to the first character of the line")]
+fn first_char_of_line(editor: &mut Editor, id: ClientId) {
+    do_move(editor, id, common::movement::first_char_of_line, None);
+}
+
 #[action("Move cursor(s) to the start of the line")]
 fn start_of_line(editor: &mut Editor, id: ClientId) {
-    do_move(editor, id, common::movement::first_char_of_line, Some(0));
+    do_move(editor, id, common::movement::start_of_line, Some(0));
 }
 
 #[action("Move cursor(s) to the end of the line")]
@@ -87,12 +92,12 @@ fn end_of_line(editor: &mut Editor, id: ClientId) {
     do_move(editor, id, common::movement::end_of_line, Some(usize::MAX));
 }
 
-#[action("Move cursor(s) to the first character in the buffer")]
+#[action("Move cursor(s) to the beginning of the buffer")]
 fn start_of_buffer(editor: &mut Editor, id: ClientId) {
     do_move_static(editor, id, 0, None);
 }
 
-#[action("Move cursor(s) to the last character in the buffer")]
+#[action("Move cursor(s) to the end of the buffer")]
 fn end_of_buffer(editor: &mut Editor, id: ClientId) {
     let blen = {
         let (_win, buf) = editor.win_buf(id);

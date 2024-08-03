@@ -183,3 +183,11 @@ pub(crate) fn selection_line_starts(buf: &Buffer, sel: Range<usize>) -> Vec<usiz
 
     starts
 }
+
+pub fn at_start_of_line(slice: &PieceTreeSlice, pos: usize) -> bool {
+    let mut graphemes = slice.graphemes_at(pos);
+    match graphemes.prev() {
+        Some(g) => grapheme_category(&g) == GraphemeCategory::EOL,
+        None => true,
+    }
+}

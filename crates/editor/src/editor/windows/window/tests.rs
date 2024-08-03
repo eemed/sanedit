@@ -1,4 +1,4 @@
-use crate::common::indent::{Indent, IndentKind};
+use crate::common::indent::IndentKind;
 
 use super::*;
 
@@ -25,56 +25,47 @@ fn with_buf(content: &str) -> (Window, Buffer) {
 }
 
 #[test]
-fn insert_tab() {
-    let (mut win, mut buf) = with_buf("");
-    buf.options.indent = Indent {
-        count: 4,
-        kind: IndentKind::Space,
-    };
-
-    win.insert_tab(&mut buf);
-    let lines = view_lines(&mut win, &buf);
-    assert_eq!(lines[0], buf.options.indent.to_string());
-
-    win.insert_at_cursors(&mut buf, "  ");
-    win.insert_tab(&mut buf);
-    let lines = view_lines(&mut win, &buf);
-    assert_eq!(lines[0], buf.options.indent.get(2));
-}
-
-#[test]
-fn insert_tab_text() {
+fn indent() {
     let (mut win, mut buf) = with_buf("hello");
     buf.options.tabstop = 8;
-    buf.options.indent = Indent {
-        count: 4,
-        kind: IndentKind::Space,
-    };
+    buf.options.indent_kind = IndentKind::Space;
+    buf.options.indent_amount = 4;
 
-    win.insert_tab(&mut buf);
+    win.indent_cursor_lines(&mut buf);
     let lines = view_lines(&mut win, &buf);
-    assert_eq!(lines[0], "    hello".to_string());
+    assert_eq!(lines[0], "    hello");
 
     win.cursors.primary_mut().goto(buf.len());
-    win.insert_tab(&mut buf);
+    win.indent_cursor_lines(&mut buf);
     let lines = view_lines(&mut win, &buf);
-    assert_eq!(lines[0], "    hello→      ".to_string());
+    assert_eq!(lines[0], "        hello");
 }
 
 #[test]
-fn backtab() {
+fn dedent() {
     let (mut win, mut buf) = with_buf("      ");
-    buf.options.indent = Indent {
-        count: 4,
-        kind: IndentKind::Space,
-    };
+    buf.options.indent_kind = IndentKind::Space;
+    buf.options.indent_amount = 4;
 
     win.cursors.primary_mut().goto(buf.len());
-    win.backtab(&mut buf);
+    win.dedent_cursor_lines(&mut buf);
     let lines = view_lines(&mut win, &buf);
-    assert_eq!(lines[0], buf.options.indent.to_string());
+    assert_eq!(lines[0], "    ");
 
-    win.backtab(&mut buf);
+    win.dedent_cursor_lines(&mut buf);
     let lines = view_lines(&mut win, &buf);
-    assert_eq!(lines[0], "".to_string());
+    assert_eq!(lines[0], "");
+}
+
+#[test]
+fn dedent_missing_spaces() {
+    let (mut win, mut buf) = with_buf("hello\n  bar");
+    buf.options.indent_kind = IndentKind::Space;
+    buf.options.indent_amount = 4;
+
+    win.cursors.primary_mut().goto(buf.len() - 5);
+    win.dedent_cursor_lines(&mut buf);
+    let lines = view_lines(&mut win, &buf);
+    assert_eq!(lines[0], "hello ");
+    assert_eq!(lines[1], "bar");
 }

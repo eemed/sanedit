@@ -5,6 +5,7 @@ default = "#E2DBC8,#000000,"
 statusline = "#B8A282,#2a130d,"
 gutter = ",#4C4C4C,bold"
 end_of_buffer = ",#7f755f,"
+trailing_whitespace = ",#7f755f,"
 symbols = ",#606060,"
 match = "#C0A886,,"
 

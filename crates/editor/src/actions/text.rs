@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use crate::{
-    common::indent::indent_at_pos,
+    common::{indent::is_indent_at_pos, text::at_start_of_line},
     editor::{
         buffers::BufferError,
         hooks::Hook,
@@ -124,9 +124,13 @@ fn insert_tab(editor: &mut Editor, id: ClientId) {
 
     let (win, buf) = editor.win_buf_mut(id);
     let slice = buf.slice(..);
+    let primary = win.cursors.primary().pos();
+
     if win.cursors().has_selections() {
         win.indent_cursor_lines(buf);
-    } else if win.cursors.len() == 1 && indent_at_pos(&slice, win.cursors.primary().pos()).is_none()
+    } else if win.cursors.len() == 1
+        && !is_indent_at_pos(&slice, primary)
+        && !at_start_of_line(&slice, primary)
     {
         // If single cursor not in indentation try completion
         completion::complete.execute(editor, id);
@@ -142,11 +146,7 @@ fn insert_tab(editor: &mut Editor, id: ClientId) {
 fn backtab(editor: &mut Editor, id: ClientId) {
     run(editor, id, Hook::InsertPre);
     let (win, buf) = editor.win_buf_mut(id);
-    if win.cursors().has_selections() {
-        win.dedent_cursor_lines(buf);
-    } else {
-        win.backtab(buf);
-    }
+    win.dedent_cursor_lines(buf);
     run(editor, id, Hook::BufChanged);
 }
 

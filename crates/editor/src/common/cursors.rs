@@ -30,6 +30,5 @@ pub(crate) fn word_before_cursor(editor: &Editor, id: ClientId) -> Option<String
 
     let word = buf.slice(start..cursor);
     let word = String::from(&word);
-    log::info!("Word is {word}");
     Some(word)
 }

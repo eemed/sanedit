@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use sanedit_buffer::utf8::EndOfLine;
 
-use crate::common::indent::Indent;
+use crate::common::indent::IndentKind;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(remote = "EndOfLine")]
@@ -38,7 +38,14 @@ pub(crate) struct Options {
     /// is "elastic" calculated tabstop - (col % tabstop).
     pub(crate) tabstop: u8,
 
-    pub(crate) indent: Indent,
+    /// Indent options, overridden if detect_indent is set
+    /// Available options:
+    /// Space: use spaces
+    /// Tab: use tabs
+    pub(crate) indent_kind: IndentKind,
+
+    /// How many indent characters a single indent should be
+    pub(crate) indent_amount: usize,
 }
 
 impl Default for Options {
@@ -46,7 +53,8 @@ impl Default for Options {
         Options {
             eol: EndOfLine::default(),
             tabstop: 8,
-            indent: Indent::default(),
+            indent_kind: IndentKind::Space,
+            indent_amount: 4,
         }
     }
 }

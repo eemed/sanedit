@@ -274,7 +274,6 @@ fn ascii_control_to_char(grapheme: String, blen: usize) -> Option<Char> {
     })
 }
 
-#[inline(always)]
 pub(crate) fn grapheme_category(grapheme: &PieceTreeSlice) -> GraphemeCategory {
     let chars = {
         // read chars to a buf for easier handling
@@ -290,6 +289,10 @@ pub(crate) fn grapheme_category(grapheme: &PieceTreeSlice) -> GraphemeCategory {
         return GraphemeCategory::Word;
     }
 
+    if EndOfLine::is_slice_eol(grapheme) {
+        return GraphemeCategory::EOL;
+    }
+
     if chars.iter().all(|ch| ch.is_whitespace()) {
         return GraphemeCategory::Whitespace;
     }
@@ -303,10 +306,6 @@ pub(crate) fn grapheme_category(grapheme: &PieceTreeSlice) -> GraphemeCategory {
         if ch.is_control() {
             return GraphemeCategory::ControlCode;
         }
-    }
-
-    if EndOfLine::is_slice_eol(grapheme) {
-        return GraphemeCategory::EOL;
     }
 
     GraphemeCategory::Unknown

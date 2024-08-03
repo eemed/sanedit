@@ -1,16 +1,25 @@
 use std::ops::Range;
 
-use sanedit_messages::redraw::{self, CursorShape, LineNumbers, Style, Theme, ThemeField};
+use sanedit_buffer::utf8::EndOfLine;
+use sanedit_messages::redraw::{self, CursorShape, LineNumbers, Point, Style, Theme, ThemeField};
 
 use crate::{
-    common::{char::Replacement, range::RangeUtils},
-    editor::windows::{Cell, Cursor, Cursors, View},
+    common::{
+        char::{grapheme_category, GraphemeCategory, Replacement},
+        range::RangeUtils,
+    },
+    editor::{
+        buffers::Buffer,
+        windows::{Cell, Cursor, Cursors, View},
+    },
 };
 
 use super::{DrawContext, EditorContext};
 
 pub(crate) fn draw(ctx: &mut DrawContext) -> redraw::Window {
-    let EditorContext { win, theme, .. } = ctx.editor;
+    let EditorContext {
+        win, theme, buf, ..
+    } = ctx.editor;
 
     let style = theme.get(ThemeField::Default);
     let view = win.view();
@@ -42,7 +51,7 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> redraw::Window {
 
     draw_syntax(&mut grid, view, theme);
     draw_end_of_buffer(&mut grid, view, theme);
-    draw_trailing_whitespace(&mut grid, view, theme);
+    draw_trailing_whitespace(&mut grid, view, theme, buf);
     draw_search_highlights(&mut grid, &win.search.hl_matches, view, theme);
     draw_secondary_cursors(&mut grid, cursors, view, theme);
     let cursor = draw_primary_cursor(&mut grid, cursors.primary(), view, theme);
@@ -189,8 +198,59 @@ fn draw_end_of_buffer(grid: &mut Vec<Vec<redraw::Cell>>, view: &View, theme: &Th
     }
 }
 
-fn draw_trailing_whitespace(_grid: &mut Vec<Vec<redraw::Cell>>, view: &View, _theme: &Theme) {
-    for (_line, _row) in view.cells().iter().enumerate() {}
+fn draw_trailing_whitespace(
+    grid: &mut Vec<Vec<redraw::Cell>>,
+    view: &View,
+    theme: &Theme,
+    buf: &Buffer,
+) {
+    let Some(rep) = view
+        .options
+        .replacements
+        .get(&Replacement::TrailingWhitespace)
+    else {
+        return;
+    };
+    let style = theme.get(ThemeField::EndOfBuffer);
+
+    // Findout if last line includes only trailing whitespace
+    let mut in_eol = true;
+    let slice = buf.slice(view.range().end..);
+    let mut graphemes = slice.graphemes_at(slice.len());
+    while let Some(g) = graphemes.next() {
+        let cat = grapheme_category(&g);
+        match cat {
+            GraphemeCategory::Whitespace => {}
+            GraphemeCategory::EOL => {
+                break;
+            }
+            _ => {
+                in_eol = false;
+                break;
+            }
+        }
+    }
+
+    // Iterate in reverse and mark all trailing whitespace
+    let slice = buf.slice(view.range());
+    let mut graphemes = slice.graphemes_at(slice.len());
+    while let Some(g) = graphemes.prev() {
+        let cat = grapheme_category(&g);
+        match cat {
+            GraphemeCategory::EOL => in_eol = true,
+            GraphemeCategory::Whitespace => {}
+            _ => in_eol = false,
+        }
+
+        if in_eol && cat == GraphemeCategory::Whitespace {
+            if let Some(point) = view.point_at_pos(g.start()) {
+                grid[point.y][point.x] = redraw::Cell {
+                    text: rep.clone(),
+                    style,
+                };
+            }
+        }
+    }
 }
 
 pub(crate) fn draw_line_numbers(ctx: &DrawContext) -> LineNumbers {

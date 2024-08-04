@@ -161,7 +161,7 @@ impl<'a> Lines<'a> {
         }
     }
 
-    pub fn next(&mut self) -> Option<PieceTreeSlice> {
+    pub fn next(&mut self) -> Option<PieceTreeSlice<'a>> {
         let start = self.bytes.pos();
 
         match next_eol(&mut self.bytes) {
@@ -178,7 +178,7 @@ impl<'a> Lines<'a> {
         }
     }
 
-    pub fn prev(&mut self) -> Option<PieceTreeSlice> {
+    pub fn prev(&mut self) -> Option<PieceTreeSlice<'a>> {
         let end = self.bytes.pos();
 
         // Skip over previous eol

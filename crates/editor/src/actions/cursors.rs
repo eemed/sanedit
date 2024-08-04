@@ -3,7 +3,7 @@ use sanedit_messages::redraw::Point;
 use crate::{
     common::{
         cursors::word_at_cursor,
-        movement::{end_of_line, next_line, prev_line, start_of_line},
+        movement::{end_of_line, next_line, next_line_start, prev_line, start_of_line},
         search::PTSearcher,
         window::pos_at_point,
     },
@@ -148,8 +148,7 @@ fn select_line(editor: &mut Editor, id: ClientId) {
         let slice = buf.slice(..);
         let pos = cursor.pos();
         let start = start_of_line(&slice, pos);
-        let end = end_of_line(&slice, pos);
-        // let end = next_line_start(&slice, pos);
+        let end = next_line_start(&slice, pos);
         if start == end {
             continue;
         }

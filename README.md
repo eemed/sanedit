@@ -2,8 +2,6 @@
 
 ## TODO
 
-* copy paste indent
-* Strip trailing whitespace command
 * Async saving
 * play around with parsing machine JIT
 

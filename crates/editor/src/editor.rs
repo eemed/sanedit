@@ -35,8 +35,8 @@ use crate::actions::cursors;
 use crate::actions::hooks::run;
 use crate::common::dirs::ConfigDirectory;
 use crate::common::file::FileDescription;
-use crate::common::text::as_lines;
-use crate::common::text::to_line;
+use crate::common::text::copy_cursors_to_lines;
+use crate::common::text::paste_separate_cursor_lines;
 use crate::draw::DrawState;
 use crate::draw::EditorContext;
 use crate::editor::buffers::Buffer;
@@ -566,7 +566,7 @@ impl Editor {
     pub fn paste_from_clipboard(&mut self, id: ClientId) {
         if let Ok(text) = self.clipboard.paste() {
             let (win, buf) = self.win_buf_mut(id);
-            let lines = as_lines(text.as_str());
+            let lines = paste_separate_cursor_lines(text.as_str());
             let clen = win.cursors.cursors().len();
             let llen = lines.len();
 
@@ -590,7 +590,7 @@ impl Editor {
             }
         }
 
-        let line = to_line(lines, buf.options.eol);
+        let line = copy_cursors_to_lines(lines, buf.options.eol);
         self.clipboard.copy(&line);
     }
 

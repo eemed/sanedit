@@ -25,7 +25,7 @@ use sanedit_messages::redraw::{Severity, Size, StatusMessage};
 
 use crate::{
     common::{
-        char::DisplayOptions,
+        char::{grapheme_category, DisplayOptions, GraphemeCategory},
         indent::{indent_at_line, is_indent_at_pos},
         movement::{self, start_of_line},
         text::{selection_line_starts, width_at_pos},
@@ -611,7 +611,12 @@ impl Window {
         };
 
         self.remove(buf, &ranges)?;
+        self.remove_fix_cursors(&ranges);
+        self.invalidate();
+        Ok(())
+    }
 
+    fn remove_fix_cursors(&mut self, ranges: &SortedRanges) {
         for cursor in self.cursors.cursors_mut() {
             let mut range = cursor.selection().unwrap_or(cursor.pos()..cursor.pos() + 1);
             let pre: usize = ranges
@@ -621,16 +626,13 @@ impl Window {
                 .sum();
             let post: usize = ranges
                 .iter()
-                .take_while(|cur| cur.end < range.end)
+                .take_while(|cur| cur.end <= range.end)
                 .map(Range::len)
                 .sum();
             range.start -= pre;
             range.end -= post;
             cursor.to_range(&range);
         }
-
-        self.invalidate();
-        Ok(())
     }
 
     /// Insert a tab character
@@ -690,6 +692,40 @@ impl Window {
 
         self.invalidate();
         self.view_to_cursor(buf);
+        Ok(())
+    }
+
+    pub fn strip_trailing_whitespace(&mut self, buf: &mut Buffer) -> Result<()> {
+        let mut ranges = vec![];
+        let slice = buf.slice(..);
+        let mut lines = slice.lines();
+
+        while let Some(line) = lines.next() {
+            let mut start = None;
+            let mut end = line.end();
+
+            let mut graphemes = line.graphemes_at(line.len());
+            while let Some(g) = graphemes.prev() {
+                let cat = grapheme_category(&g);
+                match cat {
+                    GraphemeCategory::EOL => {
+                        end = g.start();
+                    }
+                    GraphemeCategory::Whitespace => start = Some(g.start()),
+                    _ => break,
+                }
+            }
+
+            if let (Some(start), end) = (start, end) {
+                ranges.push(start..end);
+            }
+        }
+
+        let ranges = SortedRanges::from(ranges);
+        self.remove(buf, &ranges)?;
+        self.remove_fix_cursors(&ranges);
+        self.invalidate();
+
         Ok(())
     }
 }

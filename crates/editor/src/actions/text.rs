@@ -155,3 +155,9 @@ fn remove_line_after_cursor(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     win.remove_line_after_cursor(buf);
 }
+
+#[action("Strip trailing whitespace")]
+fn strip_trailing_whitespace(editor: &mut Editor, id: ClientId) {
+    let (win, buf) = editor.win_buf_mut(id);
+    win.strip_trailing_whitespace(buf);
+}

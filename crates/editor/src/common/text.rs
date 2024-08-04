@@ -133,16 +133,25 @@ pub(crate) fn strip_eol(slice: &mut PieceTreeSlice) {
     }
 }
 
-pub(crate) fn as_lines(text: &str) -> Vec<String> {
+pub(crate) fn paste_separate_cursor_lines(text: &str) -> Vec<String> {
     let pt = PieceTree::from_reader(io::Cursor::new(text)).unwrap();
     let mut lines = pt.lines();
-    let mut result = vec![];
+    let mut slices = vec![];
 
-    while let Some(mut line) = lines.next() {
+    while let Some(line) = lines.next() {
         if line.is_empty() {
             continue;
         }
-        strip_eol(&mut line);
+        slices.push(line);
+    }
+
+    let mut result = vec![];
+    let mut iter = slices.into_iter().peekable();
+    while let Some(mut line) = iter.next() {
+        if iter.peek().is_some() {
+            strip_eol(&mut line);
+        }
+
         let sline = String::from(&line);
         result.push(sline);
     }
@@ -150,7 +159,7 @@ pub(crate) fn as_lines(text: &str) -> Vec<String> {
     result
 }
 
-pub(crate) fn to_line(lines: Vec<String>, eol: EndOfLine) -> String {
+pub(crate) fn copy_cursors_to_lines(lines: Vec<String>, eol: EndOfLine) -> String {
     let mut result = String::new();
     for line in lines {
         if !result.is_empty() {

@@ -18,6 +18,7 @@ pub(crate) const COMMANDS: &[Action] = &[
     text::save_as,
     text::undo,
     text::redo,
+    text::strip_trailing_whitespace,
 
     prompt::open_file,
     prompt::open_buffer,

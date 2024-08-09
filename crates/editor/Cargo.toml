@@ -11,6 +11,7 @@ sanedit-buffer = { path = "../buffer" }
 sanedit-macros = { path = "../macros" }
 sanedit-utils = { path = "../utils" }
 sanedit-parser = { path = "../parser" }
+sanedit-lsp = { path = "../lsp" }
 
 # General
 log         = "0.4"

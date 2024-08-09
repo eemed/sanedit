@@ -75,6 +75,8 @@ pub(crate) const COMMANDS: &[Action] = &[
     filetree::show,
 
     locations::show,
+
+    lsp::start,
 ];
 
 pub(crate) fn command_palette(editor: &Editor, id: ClientId) -> Vec<MatchOption> {

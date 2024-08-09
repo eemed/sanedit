@@ -6,6 +6,7 @@ pub(crate) mod hooks;
 pub(crate) mod indent;
 pub(crate) mod jobs;
 pub(crate) mod locations;
+pub(crate) mod lsp;
 pub(crate) mod movement;
 pub(crate) mod prompt;
 pub(crate) mod search;

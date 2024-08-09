@@ -4,6 +4,7 @@ members = [
     "buffer",
     "cli",
     "editor",
+    "lsp",
     "macros",
     "messages",
     "parser",

@@ -2,23 +2,20 @@ mod capabilities;
 mod jsonrpc;
 
 use std::{
-    ffi::OsStr,
     path::{Path, PathBuf},
     process::Stdio,
     str::FromStr,
 };
 
-use anyhow::{anyhow, bail, Result};
+use anyhow::{anyhow, Result};
 use capabilities::client_capabilities;
 use jsonrpc::Response;
-use lsp_types::{ClientCapabilities, Uri};
-use serde::Serialize;
 use tokio::{
-    io::{AsyncBufReadExt, AsyncReadExt, AsyncWrite, AsyncWriteExt, BufReader},
+    io::BufReader,
     process::{Child, ChildStderr, ChildStdin, ChildStdout, Command},
 };
 
-use crate::jsonrpc::{Request, CONTENT_LENGTH, SEP};
+use crate::jsonrpc::Request;
 
 /// Just a struct to put all the parameters
 pub struct LSPStartParams {

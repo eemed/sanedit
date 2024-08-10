@@ -4,6 +4,9 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+sanedit-buffer = { path = "../buffer" }
+sanedit-utils = { path = "../utils" }
+
 tokio = { version = "1.37", features = ["full"] }
 lsp-types = "0.97"
 anyhow      = "1.0"

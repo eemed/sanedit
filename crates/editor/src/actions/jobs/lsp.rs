@@ -1,6 +1,6 @@
 use std::{any::Any, path::PathBuf};
 
-use sanedit_lsp::{LSPClient, LSPStartParams};
+use sanedit_lsp::{LSPClient, LSPStartParams, Operation};
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 
 use crate::{
@@ -10,9 +10,6 @@ use crate::{
 };
 
 use super::CHANNEL_SIZE;
-
-#[derive(Clone)]
-pub(crate) enum Operation {}
 
 /// A handle to send operations to LSP instance.
 ///

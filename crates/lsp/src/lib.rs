@@ -1,5 +1,8 @@
 mod capabilities;
 mod jsonrpc;
+mod operation;
+
+pub use operation::Operation;
 
 use std::{
     path::{Path, PathBuf},
@@ -60,11 +63,11 @@ impl LSPClient {
     /// Initialize capabilities to the LSP
     pub async fn start(&mut self) -> Result<()> {
         self.initialize().await?;
-
-        let response = self.read_response().await?;
-        log::info!("Init response: {response:?}");
+        let _response = self.read_response().await?;
 
         self.initialized().await?;
+        let _response = self.read_response().await?;
+
         Ok(())
     }
 
@@ -115,6 +118,14 @@ impl LSPClient {
         let content = Notification::new(method, Some(&init));
         content.write_to(&mut self.stdin).await?;
 
+        Ok(())
+    }
+
+    pub async fn request(&mut self, op: Operation) -> Result<()> {
+        Ok(())
+    }
+
+    async fn sync_document(&mut self) -> Result<()> {
         Ok(())
     }
 

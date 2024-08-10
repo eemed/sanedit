@@ -90,12 +90,46 @@ impl Response {
                 buf.push(b'\0');
             }
             reader.read_exact(&mut buf[..content_length]).await?;
-            let content = unsafe { std::str::from_utf8_unchecked(&buf[..content_length]) };
-            log::info!("LSP recv: {content}");
+            // let content = unsafe { std::str::from_utf8_unchecked(&buf[..content_length]) };
             let response: Response = serde_json::from_slice(&buf[..content_length])?;
-            log::info!("Response: {response:?}");
+            return Ok(response);
         }
 
         bail!("EOF")
+    }
+}
+
+#[derive(Debug, Serialize)]
+pub(crate) struct Notification {
+    jsonrpc: String,
+    method: String,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    params: Option<Value>,
+}
+
+impl Notification {
+    pub fn new<T>(method: &str, params: Option<&T>) -> Notification
+    where
+        T: ?Sized + Serialize,
+    {
+        let params = params.map(serde_json::to_value).map(|p| p.unwrap());
+
+        Notification {
+            jsonrpc: "2.0".into(),
+            method: method.into(),
+            params,
+        }
+    }
+
+    pub async fn write_to<W: AsyncWriteExt + Unpin>(&self, stdin: &mut W) -> Result<()> {
+        let json = serde_json::to_string(&self)?;
+
+        let clen = format!("{CONTENT_LENGTH}: {}{SEP}", json.len());
+        stdin.write(clen.as_bytes()).await?;
+        stdin.write(SEP.as_bytes()).await?;
+        stdin.write(json.as_bytes()).await?;
+
+        Ok(())
     }
 }

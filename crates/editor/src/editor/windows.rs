@@ -1,14 +1,13 @@
 mod window;
 
-use super::buffers::BufferId;
+use super::{buffers::BufferId, Map};
 use crate::server::ClientId;
-use rustc_hash::FxHashMap;
 pub(crate) use window::*;
 
 #[derive(Debug, Default)]
 pub(crate) struct Windows {
     default_opts: window::Options,
-    windows: FxHashMap<ClientId, Window>,
+    windows: Map<ClientId, Window>,
 }
 
 impl Windows {

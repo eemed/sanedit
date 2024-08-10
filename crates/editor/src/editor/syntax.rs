@@ -17,14 +17,14 @@ use crate::{
 
 use self::grammar::Grammar;
 
-use super::buffers::BufferRange;
+use super::{buffers::BufferRange, Map};
 
 mod grammar;
 
 #[derive(Debug)]
 pub(crate) struct Syntaxes {
     filetype_dir: PathBuf,
-    syntaxes: FxHashMap<Filetype, Syntax>,
+    syntaxes: Map<Filetype, Syntax>,
 }
 
 impl Syntaxes {

@@ -33,6 +33,7 @@ use anyhow::Result;
 use crate::actions;
 use crate::actions::cursors;
 use crate::actions::hooks::run;
+use crate::actions::jobs::LSPSender;
 use crate::common::dirs::ConfigDirectory;
 use crate::common::file::FileDescription;
 use crate::common::text::copy_cursors_to_lines;
@@ -54,6 +55,7 @@ use crate::StartOptions;
 
 use self::buffers::BufferId;
 use self::buffers::Buffers;
+use self::buffers::Filetype;
 use self::clipboard::Clipboard;
 use self::clipboard::DefaultClipboard;
 use self::hooks::Hooks;
@@ -71,9 +73,12 @@ use self::windows::HistoryKind;
 use self::windows::Window;
 use self::windows::Windows;
 
+/// Type to use with all hashmaps
+pub(crate) type Map<K, V> = FxHashMap<K, V>;
+
 pub(crate) struct Editor {
-    clients: FxHashMap<ClientId, ClientHandle>,
-    draw_states: FxHashMap<ClientId, DrawState>,
+    clients: Map<ClientId, ClientHandle>,
+    draw_states: Map<ClientId, DrawState>,
     windows: Windows,
     buffers: Buffers,
     keys: Vec<KeyEvent>,
@@ -88,8 +93,9 @@ pub(crate) struct Editor {
     pub hooks: Hooks,
     pub options: Options,
     pub clipboard: Box<dyn Clipboard>,
-    pub histories: FxHashMap<HistoryKind, History>,
-    pub keymaps: FxHashMap<KeymapKind, Keymap>,
+    pub histories: Map<HistoryKind, History>,
+    pub keymaps: Map<KeymapKind, Keymap>,
+    pub language_servers: Map<Filetype, LSPSender>,
     pub filetree: Filetree,
 }
 
@@ -102,8 +108,8 @@ impl Editor {
 
         Editor {
             runtime,
-            clients: FxHashMap::default(),
-            draw_states: FxHashMap::default(),
+            clients: Map::default(),
+            draw_states: Map::default(),
             syntaxes: Syntaxes::default(),
             windows: Windows::default(),
             buffers: Buffers::default(),
@@ -118,6 +124,7 @@ impl Editor {
             options: Options::default(),
             histories: Default::default(),
             clipboard: DefaultClipboard::new(),
+            language_servers: Map::default(),
             keymaps: DefaultKeyMappings::keymaps(),
         }
     }

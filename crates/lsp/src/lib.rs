@@ -1,47 +1,65 @@
 mod capabilities;
+mod jsonrpc;
 
-use std::{ffi::OsStr, path::PathBuf, process::Stdio, str::FromStr};
-
-use anyhow::{anyhow, Result};
-use capabilities::client_capabilities;
-use lsp_types::{ClientCapabilities, Uri};
-use tokio::{
-    io::{AsyncBufReadExt, AsyncReadExt, AsyncWrite, AsyncWriteExt, BufReader},
-    process::{ChildStdin, Command},
+use std::{
+    ffi::OsStr,
+    path::{Path, PathBuf},
+    process::Stdio,
+    str::FromStr,
 };
 
-pub struct LSPServer {
-    stdin: ChildStdin,
-}
+use anyhow::{anyhow, bail, Result};
+use capabilities::client_capabilities;
+use jsonrpc::Response;
+use lsp_types::{ClientCapabilities, Uri};
+use serde::Serialize;
+use tokio::{
+    io::{AsyncBufReadExt, AsyncReadExt, AsyncWrite, AsyncWriteExt, BufReader},
+    process::{Child, ChildStderr, ChildStdin, ChildStdout, Command},
+};
 
-impl LSPServer {
-    pub fn new(ctx: LSPContext) {}
+use crate::jsonrpc::{Request, CONTENT_LENGTH, SEP};
 
-    pub fn run(&mut self) {}
-}
-
-pub struct LSPContext {
+/// Just a struct to put all the parameters
+pub struct LSPStartParams {
     pub run_command: String,
     pub run_args: Vec<String>,
     pub root: PathBuf,
 }
 
-impl LSPContext {
-    pub async fn spawn(&mut self) -> Result<()> {
-        let root = self.root.to_string_lossy().to_string();
-        let mut cmd = Command::new(&self.run_command)
-            .args(&*self.run_args)
+pub struct LSPClient {
+    root: PathBuf,
+    stdin: ChildStdin,
+    stdout: BufReader<ChildStdout>,
+    stderr: BufReader<ChildStderr>,
+    _process: Child,
+}
+
+impl LSPClient {
+    pub fn new(ctx: LSPStartParams) -> Result<LSPClient> {
+        // Spawn server
+        let mut cmd = Command::new(&ctx.run_command)
+            .args(&*ctx.run_args)
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .stdin(Stdio::piped())
             .kill_on_drop(true)
             .spawn()?;
 
-        log::info!("Spawned");
-        let mut stdin = cmd.stdin.take().ok_or(anyhow!("Failed to take stdin"))?;
-        let mut stdout = cmd.stdout.take().ok_or(anyhow!("Failed to take stdout"))?;
-        log::info!("Taken");
+        let stdin = cmd.stdin.take().ok_or(anyhow!("Failed to take stdin"))?;
+        let stdout = cmd.stdout.take().ok_or(anyhow!("Failed to take stdout"))?;
+        let stderr = cmd.stderr.take().ok_or(anyhow!("Failed to take stderr"))?;
 
+        Ok(LSPClient {
+            root: ctx.root,
+            stdin,
+            stdout: BufReader::new(stdout),
+            stderr: BufReader::new(stderr),
+            _process: cmd,
+        })
+    }
+
+    pub async fn initialize(&mut self) -> Result<()> {
         let init = lsp_types::InitializeParams {
             process_id: std::process::id().into(),
             root_path: None,
@@ -50,9 +68,10 @@ impl LSPContext {
             capabilities: client_capabilities(),
             trace: None,
             workspace_folders: Some(vec![lsp_types::WorkspaceFolder {
-                uri: lsp_types::Uri::from_str(&root)?,
-                name: root,
+                uri: path_to_uri(&self.root),
+                name: "root".into(),
             }]),
+            // workspace_folders: None,
             client_info: Some(lsp_types::ClientInfo {
                 name: String::from("sanedit"),
                 version: None,
@@ -60,34 +79,21 @@ impl LSPContext {
             locale: None,
             work_done_progress_params: lsp_types::WorkDoneProgressParams::default(),
         };
+        let method = "initialize";
 
-        log::info!("Writing...");
-        let json = serde_json::to_string(&init)?;
-        // TODO format into a message
-        log::info!("Send: {json}");
-        stdin.write_all(json.as_bytes()).await?;
-        log::info!("Written");
+        let content = Request::new(method, Some(&init));
+        content.write_to(&mut self.stdin).await?;
 
-        log::info!("Reading");
-        let mut out = BufReader::new(stdout);
-
-        let mut buf = String::new();
-        while out.read_line(&mut buf).await.is_ok() {
-            log::info!("LSP: {buf:?}");
-            buf.clear();
-        }
-
-        // stdin.write_all();
-
-        // if let Ok(output) = child.wait_with_output().await {
-        //     log::info!(
-        //         "Ran '{}', stdout: {}, stderr: {}",
-        //         command,
-        //         std::str::from_utf8(&output.stdout).unwrap(),
-        //         std::str::from_utf8(&output.stderr).unwrap(),
-        //     )
-        // }
-        // }
         Ok(())
     }
+
+    pub async fn read_message(&mut self) -> Result<()> {
+        let response = Response::read_from(&mut self.stdout).await?;
+        Ok(())
+    }
+}
+
+fn path_to_uri(path: &Path) -> lsp_types::Uri {
+    let uri = format!("file://{}", path.to_string_lossy());
+    lsp_types::Uri::from_str(&uri).unwrap()
 }

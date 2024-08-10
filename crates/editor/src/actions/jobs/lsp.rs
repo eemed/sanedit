@@ -1,6 +1,6 @@
-use std::{ffi::OsStr, path::PathBuf};
+use std::path::PathBuf;
 
-use sanedit_lsp::LSPContext;
+use sanedit_lsp::{LSPClient, LSPStartParams};
 
 use crate::{
     editor::job_broker::KeepInTouch,
@@ -31,16 +31,16 @@ impl Job for LSP {
         let fut = async move {
             log::info!("Run rust-analyzer");
             // Implementation
-            let mut ctx = LSPContext {
+            let params = LSPStartParams {
                 run_command: "rust-analyzer".into(),
                 run_args: vec![],
                 root: wd,
             };
 
-            match ctx.spawn().await {
-                Ok(_) => log::error!("LSP ok"),
-                Err(e) => log::error!("LSP error: {e}"),
-            }
+            let mut client = LSPClient::new(params)?;
+            client.initialize().await?;
+            client.read_message().await;
+
             Ok(())
         };
 

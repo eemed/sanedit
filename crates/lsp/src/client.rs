@@ -1,21 +1,41 @@
-use std::path::Path;
+mod reader;
+mod writer;
+
+use std::sync::Arc;
 use std::{path::PathBuf, process::Stdio};
 
-use super::capabilities::client_capabilities;
-use super::jsonrpc::{Notification, Response};
-use anyhow::{anyhow, Result};
-use lsp_types::TextDocumentPositionParams;
-use sanedit_buffer::ReadOnlyPieceTree;
-use tokio::{
-    io::{AsyncBufReadExt, BufReader},
-    process::{Child, ChildStderr, ChildStdin, ChildStdout, Command},
-};
-
-use crate::jsonrpc::Request;
 use crate::util::path_to_uri;
 use crate::Operation;
 
-/// Just a struct to put all the parameters
+use self::reader::Reader;
+use self::writer::{LSPWrite, Writer};
+
+use anyhow::{anyhow, Result};
+use tokio::sync::mpsc::error::SendError;
+use tokio::sync::mpsc::{channel, Sender};
+use tokio::sync::Notify;
+use tokio::{
+    io::BufReader,
+    process::{Child, Command},
+};
+
+/// Common struct between LSP writer and reader halves
+struct Common {
+    params: LSPStartParams,
+    _process: Child,
+}
+
+impl Common {
+    pub fn root_uri(&self) -> lsp_types::Uri {
+        path_to_uri(&self.params.root)
+    }
+
+    pub fn filetype(&self) -> &str {
+        &self.params.filetype
+    }
+}
+
+/// a struct to put all the parameters
 pub struct LSPStartParams {
     pub run_command: String,
     pub run_args: Vec<String>,
@@ -23,21 +43,11 @@ pub struct LSPStartParams {
     pub filetype: String,
 }
 
-pub struct LSPClient {
-    root: PathBuf,
-    filetype: String,
-    stdin: ChildStdin,
-    stdout: BufReader<ChildStdout>,
-    stderr: BufReader<ChildStderr>,
-    _process: Child,
-}
-
-impl LSPClient {
-    /// Start a new LSP process
-    pub fn new(ctx: LSPStartParams) -> Result<LSPClient> {
+impl LSPStartParams {
+    pub async fn spawn(self) -> Result<LSPClient> {
         // Spawn server
-        let mut cmd = Command::new(&ctx.run_command)
-            .args(&*ctx.run_args)
+        let mut cmd = Command::new(&self.run_command)
+            .args(&*self.run_args)
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .stdin(Stdio::piped())
@@ -45,127 +55,47 @@ impl LSPClient {
             .spawn()?;
 
         let stdin = cmd.stdin.take().ok_or(anyhow!("Failed to take stdin"))?;
-        let stdout = cmd.stdout.take().ok_or(anyhow!("Failed to take stdout"))?;
-        let stderr = cmd.stderr.take().ok_or(anyhow!("Failed to take stderr"))?;
+        let stdout = BufReader::new(cmd.stdout.take().ok_or(anyhow!("Failed to take stdout"))?);
+        let stderr = BufReader::new(cmd.stderr.take().ok_or(anyhow!("Failed to take stderr"))?);
+        let (tx, rx) = channel(256);
+        let initialized = Arc::new(Notify::new());
 
-        Ok(LSPClient {
-            root: ctx.root,
-            filetype: ctx.filetype,
-            stdin,
-            stdout: BufReader::new(stdout),
-            stderr: BufReader::new(stderr),
+        let common = Arc::new(Common {
+            params: self,
             _process: cmd,
-        })
-    }
-
-    /// Initialize capabilities to the LSP
-    pub async fn start(&mut self) -> Result<()> {
-        self.initialize().await?;
-        let _response = self.read_response().await?;
-
-        self.initialized().await?;
-        let _response = self.read_response().await?;
-
-        Ok(())
-    }
-
-    pub async fn log_strerr(&mut self) {
-        let mut buf = String::new();
-        while let Ok(n) = self.stderr.read_line(&mut buf).await {
-            if n == 0 {
-                break;
-            }
-
-            log::info!("{buf}");
-            buf.clear();
-        }
-    }
-
-    async fn initialize(&mut self) -> Result<()> {
-        let params = lsp_types::InitializeParams {
-            process_id: std::process::id().into(),
-            root_path: None,
-            root_uri: None,
-            initialization_options: None,
-            capabilities: client_capabilities(),
-            trace: None,
-            workspace_folders: Some(vec![lsp_types::WorkspaceFolder {
-                uri: path_to_uri(&self.root),
-                name: "root".into(),
-            }]),
-            // workspace_folders: None,
-            client_info: Some(lsp_types::ClientInfo {
-                name: String::from("sanedit"),
-                version: None,
-            }),
-            locale: None,
-            work_done_progress_params: lsp_types::WorkDoneProgressParams::default(),
+        });
+        let writer = Writer {
+            common: common.clone(),
+            stdin,
+            receiver: rx,
+            initialized: initialized.clone(),
         };
-        let content = Request::new("initialize", &params);
-        content.write_to(&mut self.stdin).await?;
-
-        Ok(())
-    }
-
-    async fn initialized(&mut self) -> Result<()> {
-        let params = lsp_types::InitializedParams {};
-        let content = Notification::new("initialized", &params);
-        content.write_to(&mut self.stdin).await?;
-
-        Ok(())
-    }
-
-    async fn hover(&mut self, path: PathBuf, offset: usize) -> Result<()> {
-        let params = lsp_types::HoverParams {
-            text_document_position_params: lsp_types::TextDocumentPositionParams {
-                text_document: lsp_types::TextDocumentIdentifier {
-                    uri: path_to_uri(&path),
-                },
-                position: lsp_types::Position {
-                    line: 1,
-                    character: 5,
-                },
-            },
-            work_done_progress_params: lsp_types::WorkDoneProgressParams {
-                work_done_token: None,
-            },
+        let reader = Reader {
+            common: common.clone(),
+            stdout,
+            stderr,
+            sender: tx.clone(),
         };
 
-        let content = Request::new("textDocument/hover", &params);
-        content.write_to(&mut self.stdin).await?;
+        tokio::spawn(writer.run());
+        tokio::spawn(reader.run());
 
-        Ok(())
+        // Wait for initialization
+        initialized.notified().await;
+
+        let client = LSPClient { sender: tx };
+        Ok(client)
     }
+}
 
-    async fn did_open_document(&mut self, path: PathBuf, buf: ReadOnlyPieceTree) -> Result<()> {
-        let text = String::from(&buf);
-        let params = lsp_types::DidOpenTextDocumentParams {
-            text_document: lsp_types::TextDocumentItem {
-                uri: path_to_uri(&path),
-                language_id: self.filetype.clone(),
-                version: 0,
-                text,
-            },
-        };
+#[derive(Debug)]
+pub struct LSPClient {
+    sender: Sender<LSPWrite>,
+}
 
-        let content = Notification::new("textDocument/didOpen", &params);
-        content.write_to(&mut self.stdin).await?;
-
-        Ok(())
-    }
-
-    pub async fn read_response(&mut self) -> Result<Response> {
-        let response = Response::read_from(&mut self.stdout).await?;
-        Ok(response)
-    }
-
-    pub async fn operate(&mut self, op: Operation) -> Result<()> {
-        log::info!("Operate: {op:?}");
-        match op {
-            Operation::DidOpen { path, buf } => self.did_open_document(path, buf).await?,
-            Operation::Hover { path, offset } => self.hover(path, offset).await?,
-        }
-
-        Ok(())
+impl LSPClient {
+    // TODO error?
+    pub fn send(&mut self, op: Operation) {
+        let _ = self.sender.blocking_send(LSPWrite::Op(op));
     }
 }

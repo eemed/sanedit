@@ -1,13 +1,11 @@
-use std::{any::Any, path::PathBuf};
-
-use sanedit_lsp::{LSPClient, LSPStartParams, Operation};
-use tokio::sync::mpsc::{channel, Receiver, Sender};
+use std::{any::Any, path::PathBuf, time::Duration};
 
 use crate::{
     editor::{buffers::Filetype, job_broker::KeepInTouch, Editor},
     job_runner::{Job, JobContext, JobResult},
     server::ClientId,
 };
+use sanedit_lsp::{LSPClient, LSPStartParams, Operation};
 
 use anyhow::Result;
 
@@ -20,12 +18,12 @@ use super::CHANNEL_SIZE;
 #[derive(Debug)]
 pub(crate) struct LSPSender {
     name: String,
-    sender: Sender<Operation>,
+    client: LSPClient,
 }
 
 impl LSPSender {
     pub fn send(&mut self, op: Operation) -> Result<()> {
-        self.sender.blocking_send(op)?;
+        self.client.send(op);
         Ok(())
     }
 }
@@ -51,7 +49,6 @@ impl Job for LSP {
     fn run(&self, mut ctx: JobContext) -> JobResult {
         // Clones here
         let wd = self.working_dir.clone();
-        let (tx, mut rx) = channel::<Operation>(CHANNEL_SIZE);
         let ft = self.filetype.clone();
 
         let fut = async move {
@@ -65,26 +62,16 @@ impl Job for LSP {
                 filetype,
             };
 
-            let mut client = LSPClient::new(params)?;
-            client.start().await;
+            let client = params.spawn().await?;
+            log::info!("Client started");
 
             ctx.send(Message::Started(
                 ft,
                 LSPSender {
                     name: command,
-                    sender: tx,
+                    client,
                 },
             ));
-
-            // TODO spawn reading task
-            // tokio::spawn(async || {
-            // });
-
-            while let Some(op) = rx.recv().await {
-                client.operate(op).await;
-            }
-
-            client.log_strerr().await;
 
             Ok(())
         };
@@ -114,14 +101,21 @@ impl KeepInTouch for LSP {
                         let Some(path) = buf.path().map(|p| p.to_path_buf()) else {
                             continue;
                         };
-                        let buf = buf.read_only_copy();
+                        let ro = buf.read_only_copy();
                         sender.send(Operation::DidOpen {
                             path: path.clone(),
-                            buf,
+                            buf: ro,
                         });
 
                         // TODO testing
-                        sender.send(Operation::Hover { path, offset: 0 });
+                        for _ in 0..10 {
+                            let ro = buf.read_only_copy();
+                            sender.send(Operation::Hover {
+                                path: path.clone(),
+                                buf: ro,
+                                offset: 0,
+                            });
+                        }
                     }
 
                     // Set sender

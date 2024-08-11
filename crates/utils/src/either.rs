@@ -5,10 +5,31 @@ pub enum Either<L, R> {
 }
 
 impl<L, R> Either<L, R> {
+    pub fn take_left(self) -> Option<L> {
+        match self {
+            Either::Left(l) => Some(l),
+            Either::Right(_) => panic!("left called when either was right"),
+        }
+    }
+
+    pub fn take_right(self) -> Option<R> {
+        match self {
+            Either::Left(_) => panic!("left called when either was right"),
+            Either::Right(r) => Some(r),
+        }
+    }
+
     pub fn left(&self) -> Option<&L> {
         match self {
             Either::Left(l) => Some(l),
             Either::Right(_) => panic!("left called when either was right"),
+        }
+    }
+
+    pub fn right(&self) -> Option<&R> {
+        match self {
+            Either::Left(_) => panic!("left called when either was right"),
+            Either::Right(r) => Some(r),
         }
     }
 
@@ -17,5 +38,9 @@ impl<L, R> Either<L, R> {
             Either::Right(_) => true,
             _ => false,
         }
+    }
+
+    pub fn is_left(&self) -> bool {
+        !self.is_right()
     }
 }

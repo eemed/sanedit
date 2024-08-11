@@ -10,6 +10,7 @@ pub enum Operation {
     },
     Hover {
         path: PathBuf,
+        buf: ReadOnlyPieceTree,
         offset: usize,
     },
 }

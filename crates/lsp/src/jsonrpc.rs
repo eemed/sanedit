@@ -11,17 +11,15 @@ pub struct Request {
     jsonrpc: String,
     id: u32,
     method: String,
-
-    #[serde(skip_serializing_if = "Option::is_none")]
-    params: Option<Value>,
+    params: Value,
 }
 
 impl Request {
-    pub fn new<T>(method: &str, params: Option<&T>) -> Request
+    pub fn new<T>(method: &str, params: &T) -> Request
     where
         T: ?Sized + Serialize,
     {
-        let params = params.map(serde_json::to_value).map(|p| p.unwrap());
+        let params = serde_json::to_value(params).unwrap();
 
         Request {
             jsonrpc: "2.0".into(),
@@ -72,6 +70,10 @@ impl Response {
                 bail!("EOF encountered");
             }
 
+            {
+                let s = unsafe { std::str::from_utf8_unchecked(&buf) };
+                log::info!("Read: {s:?}");
+            }
             if buf.starts_with(CONTENT_LENGTH.as_bytes()) {
                 let start = CONTENT_LENGTH.len() + ": ".len();
                 let end = buf.len() - SEP.len();
@@ -90,7 +92,10 @@ impl Response {
                 buf.push(b'\0');
             }
             reader.read_exact(&mut buf[..content_length]).await?;
-            // let content = unsafe { std::str::from_utf8_unchecked(&buf[..content_length]) };
+            {
+                let content = unsafe { std::str::from_utf8_unchecked(&buf[..content_length]) };
+                log::info!("READ: {content:?}");
+            }
             let response: Response = serde_json::from_slice(&buf[..content_length])?;
             return Ok(response);
         }
@@ -103,17 +108,15 @@ impl Response {
 pub(crate) struct Notification {
     jsonrpc: String,
     method: String,
-
-    #[serde(skip_serializing_if = "Option::is_none")]
-    params: Option<Value>,
+    params: Value,
 }
 
 impl Notification {
-    pub fn new<T>(method: &str, params: Option<&T>) -> Notification
+    pub fn new<T>(method: &str, params: &T) -> Notification
     where
         T: ?Sized + Serialize,
     {
-        let params = params.map(serde_json::to_value).map(|p| p.unwrap());
+        let params = serde_json::to_value(params).unwrap();
 
         Notification {
             jsonrpc: "2.0".into(),

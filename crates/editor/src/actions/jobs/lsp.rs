@@ -9,6 +9,8 @@ use crate::{
     server::ClientId,
 };
 
+use anyhow::Result;
+
 use super::CHANNEL_SIZE;
 
 /// A handle to send operations to LSP instance.
@@ -19,6 +21,13 @@ use super::CHANNEL_SIZE;
 pub(crate) struct LSPSender {
     name: String,
     sender: Sender<Operation>,
+}
+
+impl LSPSender {
+    pub fn send(&mut self, op: Operation) -> Result<()> {
+        self.sender.blocking_send(op)?;
+        Ok(())
+    }
 }
 
 #[derive(Clone)]
@@ -42,16 +51,18 @@ impl Job for LSP {
     fn run(&self, mut ctx: JobContext) -> JobResult {
         // Clones here
         let wd = self.working_dir.clone();
-        let (tx, rx) = channel::<Operation>(CHANNEL_SIZE);
+        let (tx, mut rx) = channel::<Operation>(CHANNEL_SIZE);
         let ft = self.filetype.clone();
 
         let fut = async move {
             log::info!("Run rust-analyzer");
             let command: String = "rust-analyzer".into();
+            let filetype: String = "rust".into();
             let params = LSPStartParams {
                 run_command: command.clone(),
                 run_args: vec![],
                 root: wd,
+                filetype,
             };
 
             let mut client = LSPClient::new(params)?;
@@ -64,6 +75,14 @@ impl Job for LSP {
                     sender: tx,
                 },
             ));
+
+            // TODO spawn reading task
+            // tokio::spawn(async || {
+            // });
+
+            while let Some(op) = rx.recv().await {
+                client.operate(op).await;
+            }
 
             client.log_strerr().await;
 
@@ -84,8 +103,29 @@ impl KeepInTouch for LSP {
 
         if let Ok(output) = msg.downcast::<Message>() {
             match *output {
-                Message::Started(ft, send) => {
-                    editor.language_servers.insert(ft, send);
+                Message::Started(ft, mut sender) => {
+                    // Send all buffers of this filetype
+                    for (id, buf) in editor.buffers().iter() {
+                        let is_ft = buf.filetype.as_ref().map(|f| f == &ft).unwrap_or(false);
+                        if !is_ft {
+                            continue;
+                        }
+
+                        let Some(path) = buf.path().map(|p| p.to_path_buf()) else {
+                            continue;
+                        };
+                        let buf = buf.read_only_copy();
+                        sender.send(Operation::DidOpen {
+                            path: path.clone(),
+                            buf,
+                        });
+
+                        // TODO testing
+                        sender.send(Operation::Hover { path, offset: 0 });
+                    }
+
+                    // Set sender
+                    editor.language_servers.insert(ft, sender);
                 }
             }
         }

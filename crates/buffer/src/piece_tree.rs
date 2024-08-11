@@ -621,6 +621,13 @@ impl From<&ReadOnlyPieceTree> for Vec<u8> {
     }
 }
 
+impl From<&ReadOnlyPieceTree> for String {
+    fn from(value: &ReadOnlyPieceTree) -> Self {
+        let slice = value.slice(..);
+        String::from(&slice)
+    }
+}
+
 fn is_sorted(arr: &[usize]) -> bool {
     let mut min = 0;
 

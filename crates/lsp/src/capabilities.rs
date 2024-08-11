@@ -123,16 +123,17 @@ pub(crate) fn client_capabilities() -> lsp_types::ClientCapabilities {
                     }),
                     ..Default::default()
                 }),
-                publish_diagnostics: Some(lsp_types::PublishDiagnosticsClientCapabilities {
-                    version_support: Some(true),
-                    tag_support: Some(lsp_types::TagSupport {
-                        value_set: vec![
-                            lsp_types::DiagnosticTag::UNNECESSARY,
-                            lsp_types::DiagnosticTag::DEPRECATED,
-                        ],
-                    }),
-                    ..Default::default()
-                }),
+                publish_diagnostics: None,
+                // publish_diagnostics: Some(lsp_types::PublishDiagnosticsClientCapabilities {
+                //     version_support: Some(true),
+                //     tag_support: Some(lsp_types::TagSupport {
+                //         value_set: vec![
+                //             lsp_types::DiagnosticTag::UNNECESSARY,
+                //             lsp_types::DiagnosticTag::DEPRECATED,
+                //         ],
+                //     }),
+                //     ..Default::default()
+                // }),
                 inlay_hint: Some(lsp_types::InlayHintClientCapabilities {
                     dynamic_registration: Some(false),
                     resolve_support: None,

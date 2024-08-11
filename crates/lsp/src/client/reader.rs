@@ -28,7 +28,7 @@ impl Reader {
             let msg = read_from(&mut self.stdout).await?;
             match msg {
                 Either::Right(notification) => {
-                    log::info!("{notification:?}");
+                    // log::info!("{notification:?}");
                 }
                 Either::Left(response) => {
                     log::info!("{response:?}");

@@ -106,16 +106,6 @@ impl KeepInTouch for LSP {
                             path: path.clone(),
                             buf: ro,
                         });
-
-                        // TODO testing
-                        for _ in 0..10 {
-                            let ro = buf.read_only_copy();
-                            sender.send(Operation::Hover {
-                                path: path.clone(),
-                                buf: ro,
-                                offset: 0,
-                            });
-                        }
                     }
 
                     // Set sender

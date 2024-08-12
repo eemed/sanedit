@@ -40,6 +40,7 @@ pub(crate) struct Grid {
     completion: Option<GridItem<Completion>>,
     filetree: Option<GridItem<CustomItems>>,
     locations: Option<GridItem<CustomItems>>,
+    popup: Option<GridItem<Popup>>,
 
     drawn: Vec<Vec<Cell>>,
     cursor: Option<Cursor>,
@@ -155,7 +156,9 @@ impl Grid {
                     return RedrawResult::Resized;
                 }
             },
-            _ => {}
+            Popup(popup) => {
+                todo!()
+            }
         }
 
         RedrawResult::Ok

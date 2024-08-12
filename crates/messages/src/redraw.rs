@@ -6,6 +6,7 @@ mod cursor_shape;
 mod items;
 mod line_numbers;
 mod point;
+mod popup;
 mod prompt;
 mod size;
 mod status_message;
@@ -23,6 +24,7 @@ pub use cursor_shape::*;
 pub use items::*;
 pub use line_numbers::*;
 pub use point::*;
+pub use popup::*;
 pub use prompt::*;
 pub use size::*;
 pub use status_message::*;
@@ -68,7 +70,8 @@ pub enum Redraw {
     Filetree(Component<Items, items::Difference>),
     Locations(Component<Items, items::Difference>),
     StatusMessage(StatusMessage),
-    LineNumbers(LineNumbers),
+    // LineNumbers(LineNumbers),
+    Popup(Popup),
 }
 
 impl From<Redraw> for ClientMessage {

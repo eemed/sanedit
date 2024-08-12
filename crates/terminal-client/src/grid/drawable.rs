@@ -1,7 +1,7 @@
 use std::cmp::min;
 
 use sanedit_messages::redraw::{
-    Completion, Cursor, CursorShape, IntoCells, Item, ItemKind, Point, Severity, Size,
+    Completion, Cursor, CursorShape, IntoCells, Item, ItemKind, Point, Popup, Severity, Size,
     StatusMessage, Statusline, Style, ThemeField, Window,
 };
 
@@ -500,5 +500,15 @@ impl Drawable for CustomItems {
         } else {
             DrawCursor::Ignore
         }
+    }
+}
+
+impl Drawable for Popup {
+    fn draw(&self, ctx: &UIContext, cells: &mut [&mut [CCell]]) {
+        todo!()
+    }
+
+    fn cursor(&self, ctx: &UIContext) -> DrawCursor {
+        DrawCursor::Ignore
     }
 }

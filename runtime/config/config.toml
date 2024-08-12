@@ -34,6 +34,10 @@ rust = ["*.rs"]
 yaml = ["*.yml"]
 toml = ["**/Cargo.lock"]
 
+[editor.language_server.rust]
+command = "rust-analyzer"
+args = []
+
 [window]
 
 # Maximum prompt completions to show at once
@@ -61,13 +65,11 @@ eol = "LF"
 # is "elastic" calculated tabstop - (col % tabstop).
 tabstop = 8
 
-[file.indent]
-
 # Indent options, overridden if detect_indent is set
 # Available options:
 # Space: use spaces
 # Tab: use tabs
-kind = "Space"
+indent_kind = "Space"
 
 # How many indent characters a single indent should be
-count = 4
+indent_amount = 4

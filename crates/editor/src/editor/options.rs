@@ -2,6 +2,18 @@ use documented::DocumentedFields;
 use rustc_hash::FxHashMap;
 use serde::{Deserialize, Serialize};
 
+use super::Map;
+
+#[derive(Debug, Clone, Serialize, Default, Deserialize, DocumentedFields)]
+#[serde(default)]
+pub(crate) struct LSPOptions {
+    /// Command to run LSP
+    pub command: String,
+
+    /// Arguments to pass onto LSP command
+    pub args: Vec<String>,
+}
+
 #[derive(Debug, Serialize, Deserialize, DocumentedFields)]
 #[serde(default)]
 pub(crate) struct Options {
@@ -28,7 +40,9 @@ pub(crate) struct Options {
 
     /// Filetype glob patterns
     /// By default the filetype is the extension of the file
-    pub filetype: FxHashMap<String, Vec<String>>,
+    pub filetype: Map<String, Vec<String>>,
+
+    pub language_server: Map<String, LSPOptions>,
 }
 
 impl Default for Options {
@@ -46,6 +60,7 @@ impl Default for Options {
             detect_eol: true,
             detect_indent: true,
             filetype: Self::default_filetype_map(),
+            language_server: Self::default_language_server_map(),
         }
     }
 }
@@ -75,5 +90,24 @@ impl Options {
         );
 
         ftmap
+    }
+
+    fn default_language_server_map() -> FxHashMap<String, LSPOptions> {
+        macro_rules! map {
+            ($keymap:ident, $($ft: expr, $command:expr, $args:expr),+,) => {
+                $(
+                    $keymap.insert($ft.into(), LSPOptions { command: $command.into(), args: $args.into() });
+                 )*
+            }
+        }
+
+        let mut langmap = FxHashMap::default();
+
+        #[rustfmt::skip]
+        map!(langmap,
+             "rust", "rust-analyzer", [],
+        );
+
+        langmap
     }
 }

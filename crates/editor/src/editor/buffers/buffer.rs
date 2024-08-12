@@ -1,4 +1,5 @@
 mod change;
+mod diagnostic;
 mod filetype;
 mod options;
 mod snapshots;
@@ -15,6 +16,7 @@ use std::{
 use anyhow::Result;
 use anyhow::{bail, ensure};
 use sanedit_buffer::{PieceTree, PieceTreeSlice, ReadOnlyPieceTree};
+use sanedit_lsp::lsp_types::Diagnostic;
 use sanedit_utils::key_type;
 use thiserror::Error;
 
@@ -38,6 +40,7 @@ pub(crate) struct Buffer {
     pub(crate) filetype: Option<Filetype>,
     pub(crate) options: Options,
     pub(crate) read_only: bool,
+    pub(crate) diagnostics: Vec<Diagnostic>,
 
     pt: PieceTree,
     /// Snapshots of the piecetree, used for undo
@@ -59,6 +62,7 @@ impl Buffer {
             id: BufferId::default(),
             filetype: None,
             read_only: false,
+            diagnostics: vec![],
             pt,
             is_modified: false,
             snapshots: Snapshots::new(snapshot),
@@ -85,6 +89,7 @@ impl Buffer {
         Ok(Buffer {
             id: BufferId::default(),
             read_only: file.read_only(),
+            diagnostics: vec![],
             pt,
             filetype: file.filetype().cloned(),
             is_modified: false,
@@ -113,6 +118,7 @@ impl Buffer {
         let snapshot = pt.read_only_copy();
         Ok(Buffer {
             id: BufferId::default(),
+            diagnostics: vec![],
             pt,
             filetype: None,
             read_only: false,

@@ -1,7 +1,12 @@
 use std::{any::Any, path::PathBuf, time::Duration};
 
 use crate::{
-    editor::{buffers::Filetype, job_broker::KeepInTouch, Editor},
+    editor::{
+        buffers::{BufferRange, Filetype},
+        job_broker::KeepInTouch,
+        options::LSPOptions,
+        Editor, Map,
+    },
     job_runner::{Job, JobContext, JobResult},
     server::ClientId,
 };
@@ -17,7 +22,13 @@ use super::CHANNEL_SIZE;
 ///
 #[derive(Debug)]
 pub(crate) struct LSPSender {
+    /// Name of the LSP server
     name: String,
+
+    /// Root where LSP is started
+    root: PathBuf,
+
+    /// Client to send messages to LSP server
     client: LSPClient,
 }
 
@@ -33,14 +44,16 @@ pub(crate) struct LSP {
     client_id: ClientId,
     filetype: Filetype,
     working_dir: PathBuf,
+    opts: LSPOptions,
 }
 
 impl LSP {
-    pub fn new(id: ClientId, working_dir: PathBuf, ft: Filetype) -> LSP {
+    pub fn new(id: ClientId, working_dir: PathBuf, ft: Filetype, opts: &LSPOptions) -> LSP {
         LSP {
             client_id: id,
             filetype: ft,
             working_dir,
+            opts: opts.clone(),
         }
     }
 }
@@ -50,28 +63,28 @@ impl Job for LSP {
         // Clones here
         let wd = self.working_dir.clone();
         let ft = self.filetype.clone();
+        let opts = self.opts.clone();
 
         let fut = async move {
             log::info!("Run rust-analyzer");
-            let command: String = "rust-analyzer".into();
-            let filetype: String = "rust".into();
+            let LSPOptions { command, args } = opts;
+            let filetype: String = ft.as_str().into();
             let params = LSPStartParams {
                 run_command: command.clone(),
-                run_args: vec![],
-                root: wd,
+                run_args: args,
+                root: wd.clone(),
                 filetype,
             };
 
             let client = params.spawn().await?;
             log::info!("Client started");
 
-            ctx.send(Message::Started(
-                ft,
-                LSPSender {
-                    name: command,
-                    client,
-                },
-            ));
+            let sender = LSPSender {
+                name: command,
+                client,
+                root: wd,
+            };
+            ctx.send(Message::Started(ft, sender));
 
             Ok(())
         };

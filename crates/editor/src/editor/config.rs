@@ -71,7 +71,9 @@ impl VisitMut for Formatter {
         // Format inline tables to normal tables
         if node.is_inline_table() {
             let item = std::mem::replace(node, Item::None);
-            if let Ok(table) = item.into_table() {
+            if let Ok(mut table) = item.into_table() {
+                // Hide tables without any entries
+                table.set_implicit(true);
                 *node = Item::Table(table);
             }
         }

@@ -505,7 +505,36 @@ impl Drawable for CustomItems {
 
 impl Drawable for Popup {
     fn draw(&self, ctx: &UIContext, cells: &mut [&mut [CCell]]) {
-        todo!()
+        let wsize = size(cells);
+        let style = ctx.style(ThemeField::PopupDefault);
+
+        let mut row = 0;
+        let mut col = 0;
+
+        for line in &self.lines {
+            let lcells = into_cells_with_style(line.as_str(), style);
+            for cell in lcells {
+                cells[row][col] = cell;
+                col += 1;
+
+                if col == wsize.width {
+                    row += 1;
+                    col = 0;
+
+                    if row == wsize.height {
+                        break;
+                    }
+                }
+            }
+
+            // Line processed goto next
+            row += 1;
+            col = 0;
+
+            if row == wsize.height {
+                break;
+            }
+        }
     }
 
     fn cursor(&self, ctx: &UIContext) -> DrawCursor {

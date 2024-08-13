@@ -81,3 +81,6 @@ match = ",#b0463a,"
 default = "#d0bd97,,"
 match = ",#b0463a,"
 markers = ",#355d8d,"
+
+[colors.popup]
+default = "#d8ccb4,#000000,"

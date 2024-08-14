@@ -76,6 +76,7 @@ impl LSPClientParams {
             sender: tx.clone(),
         };
 
+        // TODO handle failures and shutdown
         tokio::spawn(writer.run());
         tokio::spawn(reader.run());
 

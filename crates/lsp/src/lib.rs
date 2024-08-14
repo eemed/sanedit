@@ -8,5 +8,5 @@ mod util;
 
 pub use lsp_types;
 
-pub use client::{LSPClient, LSPStartParams};
+pub use client::{LSPClient, LSPClientParams};
 pub use operation::Operation;

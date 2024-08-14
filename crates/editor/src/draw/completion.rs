@@ -2,11 +2,11 @@ use std::cmp;
 
 use sanedit_messages::redraw::{self, CompletionOption, Component, Redraw};
 
-use crate::editor::windows::{Completion, Focus};
+use crate::editor::windows::Focus;
 
 use super::DrawContext;
 
-pub(crate) fn draw(completion: &Completion, ctx: &mut DrawContext) -> Option<redraw::Redraw> {
+pub(crate) fn draw(ctx: &mut DrawContext) -> Option<redraw::Redraw> {
     if ctx.focus_changed_from(Focus::Completion) {
         ctx.state.compl_scroll_offset = 0;
         return Redraw::Completion(Component::Close).into();
@@ -18,10 +18,11 @@ pub(crate) fn draw(completion: &Completion, ctx: &mut DrawContext) -> Option<red
         return None;
     }
 
-    draw_impl(completion, ctx).into()
+    draw_impl(ctx).into()
 }
 
-fn draw_impl(completion: &Completion, ctx: &mut DrawContext) -> redraw::Redraw {
+fn draw_impl(ctx: &mut DrawContext) -> redraw::Redraw {
+    let completion = &ctx.editor.win.completion;
     let compl_count = ctx.editor.win.options.max_completions;
     let offset = &mut ctx.state.compl_scroll_offset;
     *offset = {

@@ -2,6 +2,12 @@ use serde::{Deserialize, Serialize};
 
 use super::{Point, Redraw, Severity};
 
+#[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
+pub enum PopupComponent {
+    Open(Popup),
+    Close,
+}
+
 /// A read only window that pops up at a position.
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
 pub struct Popup {
@@ -12,6 +18,6 @@ pub struct Popup {
 
 impl From<Popup> for Redraw {
     fn from(msg: Popup) -> Self {
-        Redraw::Popup(msg)
+        Redraw::Popup(PopupComponent::Open(msg))
     }
 }

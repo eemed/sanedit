@@ -8,6 +8,7 @@ pub(crate) mod jobs;
 pub(crate) mod locations;
 pub(crate) mod lsp;
 pub(crate) mod movement;
+pub(crate) mod popup;
 pub(crate) mod prompt;
 pub(crate) mod search;
 pub(crate) mod shell;

@@ -79,6 +79,7 @@ pub(crate) struct Window {
     pub options: Options,
     pub ft_view: FiletreeView,
     pub locations: Locations,
+    pub popup: Option<StatusMessage>,
 }
 
 impl Window {
@@ -97,6 +98,7 @@ impl Window {
             focus: Focus::Window,
             ft_view: FiletreeView::default(),
             locations: Locations::default(),
+            popup: None,
         }
     }
 

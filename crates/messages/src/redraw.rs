@@ -4,7 +4,7 @@ mod completion;
 mod cursor;
 mod cursor_shape;
 mod items;
-mod line_numbers;
+// mod line_numbers;
 mod point;
 mod popup;
 mod prompt;
@@ -22,7 +22,6 @@ pub use completion::*;
 pub use cursor::*;
 pub use cursor_shape::*;
 pub use items::*;
-pub use line_numbers::*;
 pub use point::*;
 pub use popup::*;
 pub use prompt::*;
@@ -71,7 +70,7 @@ pub enum Redraw {
     Locations(Component<Items, items::Difference>),
     StatusMessage(StatusMessage),
     // LineNumbers(LineNumbers),
-    Popup(Popup),
+    Popup(PopupComponent),
 }
 
 impl From<Redraw> for ClientMessage {

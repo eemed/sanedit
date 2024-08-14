@@ -11,7 +11,6 @@ use self::reader::Reader;
 use self::writer::{LSPWrite, Writer};
 
 use anyhow::{anyhow, Result};
-use tokio::sync::mpsc::error::SendError;
 use tokio::sync::mpsc::{channel, Sender};
 use tokio::sync::Notify;
 use tokio::{
@@ -21,7 +20,7 @@ use tokio::{
 
 /// Common struct between LSP writer and reader halves
 struct Common {
-    params: LSPStartParams,
+    params: LSPClientParams,
     _process: Child,
 }
 
@@ -36,14 +35,14 @@ impl Common {
 }
 
 /// a struct to put all the parameters
-pub struct LSPStartParams {
+pub struct LSPClientParams {
     pub run_command: String,
     pub run_args: Vec<String>,
     pub root: PathBuf,
     pub filetype: String,
 }
 
-impl LSPStartParams {
+impl LSPClientParams {
     pub async fn spawn(self) -> Result<LSPClient> {
         // Spawn server
         let mut cmd = Command::new(&self.run_command)

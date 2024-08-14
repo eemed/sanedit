@@ -1,12 +1,12 @@
 use sanedit_messages::redraw::{self, Component, ItemKind};
 use sanedit_utils::either::Either;
 
-use crate::editor::windows::{Focus, Group, Item, Locations};
+use crate::editor::windows::Focus;
 
 use super::DrawContext;
 
-pub(crate) fn draw(locs: &Locations, ctx: &mut DrawContext) -> Option<redraw::Redraw> {
-    let show_loc = locs.show;
+pub(crate) fn draw(ctx: &mut DrawContext) -> Option<redraw::Redraw> {
+    let show_loc = ctx.editor.win.locations.show;
     let close_loc = !show_loc && ctx.state.last_show_loc == Some(true);
     ctx.state.last_show_loc = Some(show_loc);
 
@@ -18,10 +18,11 @@ pub(crate) fn draw(locs: &Locations, ctx: &mut DrawContext) -> Option<redraw::Re
         return None;
     }
 
-    draw_impl(locs, ctx).into()
+    draw_impl(ctx).into()
 }
 
-fn draw_impl(locs: &Locations, ctx: &mut DrawContext) -> redraw::Redraw {
+fn draw_impl(ctx: &mut DrawContext) -> redraw::Redraw {
+    let locs = &ctx.editor.win.locations;
     let selected = locs.selection_index().unwrap_or(0);
     let mut items = vec![];
 

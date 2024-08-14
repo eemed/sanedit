@@ -10,7 +10,7 @@ use crate::{
     job_runner::{Job, JobContext, JobResult},
     server::ClientId,
 };
-use sanedit_lsp::{LSPClient, LSPStartParams, Operation};
+use sanedit_lsp::{LSPClient, LSPClientParams, Operation};
 
 use anyhow::Result;
 
@@ -69,7 +69,7 @@ impl Job for LSP {
             log::info!("Run rust-analyzer");
             let LSPOptions { command, args } = opts;
             let filetype: String = ft.as_str().into();
-            let params = LSPStartParams {
+            let params = LSPClientParams {
                 run_command: command.clone(),
                 run_args: args,
                 root: wd.clone(),

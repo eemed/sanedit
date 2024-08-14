@@ -2,11 +2,11 @@ use std::{cmp, ffi::OsStr, ops::Range, path::PathBuf};
 
 use sanedit_messages::redraw::{self, Component, PromptOption, Redraw, Source};
 
-use crate::editor::windows::{Focus, Prompt};
+use crate::editor::windows::Focus;
 
 use super::DrawContext;
 
-pub(crate) fn draw(prompt: &Prompt, ctx: &mut DrawContext) -> Option<redraw::Redraw> {
+pub(crate) fn draw(ctx: &mut DrawContext) -> Option<redraw::Redraw> {
     if ctx.focus_changed_from(Focus::Prompt)
         || ctx
             .state
@@ -26,10 +26,11 @@ pub(crate) fn draw(prompt: &Prompt, ctx: &mut DrawContext) -> Option<redraw::Red
         return None;
     }
 
-    draw_impl(prompt, ctx).into()
+    draw_impl(ctx).into()
 }
 
-fn draw_impl(prompt: &Prompt, ctx: &mut DrawContext) -> redraw::Redraw {
+fn draw_impl(ctx: &mut DrawContext) -> redraw::Redraw {
+    let prompt = &ctx.editor.win.prompt;
     let compl_count = ctx.editor.win.options.max_prompt_completions;
     let offset = &mut ctx.state.prompt_scroll_offset;
     *offset = {

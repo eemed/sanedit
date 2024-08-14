@@ -78,6 +78,9 @@ pub(crate) const COMMANDS: &[Action] = &[
 
     lsp::start,
     lsp::hover,
+
+    popup::test,
+    popup::close,
 ];
 
 pub(crate) fn command_palette(editor: &Editor, id: ClientId) -> Vec<MatchOption> {

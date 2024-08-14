@@ -1,6 +1,7 @@
 mod completion;
 mod filetree;
 mod locations;
+mod popup;
 mod prompt;
 mod search;
 mod statusline;
@@ -42,6 +43,7 @@ pub(crate) struct DrawState {
     last_focus: Option<Focus>,
     last_show_ft: Option<bool>,
     last_show_loc: Option<bool>,
+    last_show_popup: Option<bool>,
 
     /// Used to track scroll position when drawing prompt
     prompt_scroll_offset: usize,
@@ -58,6 +60,7 @@ impl DrawState {
             last_focus: None,
             last_show_ft: None,
             last_show_loc: None,
+            last_show_popup: None,
             prompt_scroll_offset: 0,
             compl_scroll_offset: 0,
             redraw_window: true,
@@ -76,7 +79,7 @@ impl DrawState {
     }
 
     pub fn redraw(&mut self, ectx: EditorContext) -> Vec<Redraw> {
-        let EditorContext { win, filetree, .. } = ectx;
+        let EditorContext { win, .. } = ectx;
         let mut redraw: Vec<Redraw> = vec![];
 
         let draw = mem::replace(&mut self.redraw, true);
@@ -101,23 +104,27 @@ impl DrawState {
             redraw.push(msg.clone().into());
         }
 
-        if let Some(current) = search::draw(&win.prompt, &win.search, &mut ctx) {
+        if let Some(current) = search::draw(&mut ctx) {
             redraw.push(current);
         }
 
-        if let Some(current) = prompt::draw(&win.prompt, &mut ctx) {
+        if let Some(current) = prompt::draw(&mut ctx) {
             redraw.push(current);
         }
 
-        if let Some(current) = completion::draw(&win.completion, &mut ctx) {
+        if let Some(current) = completion::draw(&mut ctx) {
             redraw.push(current);
         }
 
-        if let Some(current) = locations::draw(&win.locations, &mut ctx) {
+        if let Some(current) = locations::draw(&mut ctx) {
             redraw.push(current);
         }
 
-        if let Some(current) = filetree::draw(filetree, &mut ctx) {
+        if let Some(current) = filetree::draw(&mut ctx) {
+            redraw.push(current);
+        }
+
+        if let Some(current) = popup::draw(&mut ctx) {
             redraw.push(current);
         }
 

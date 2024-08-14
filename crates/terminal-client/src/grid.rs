@@ -1,23 +1,25 @@
 mod border;
-mod ccell;
+pub(crate) mod ccell;
 mod completion;
 mod drawable;
 mod item;
 mod items;
+mod popup;
 mod prompt;
 mod rect;
 
 use std::{mem, sync::Arc};
 
 use sanedit_messages::redraw::{
-    Cell, Completion, Component, Cursor, Diffable, Redraw, Size, StatusMessage, Statusline, Theme,
-    Window,
+    Cell, Completion, Component, Cursor, Diffable, Popup, PopupComponent, Redraw, Size,
+    StatusMessage, Statusline, Theme, Window,
 };
 
 use crate::{
     grid::{
         completion::open_completion,
         items::{open_filetree, open_locations},
+        popup::open_popup,
     },
     ui::UIContext,
 };
@@ -67,6 +69,7 @@ impl Grid {
             completion: None,
             filetree: None,
             locations: None,
+            popup: None,
 
             drawn: vec![vec![Cell::default(); width]; height],
             cursor: None,
@@ -156,12 +159,28 @@ impl Grid {
                     return RedrawResult::Resized;
                 }
             },
-            Popup(popup) => {
-                todo!()
-            }
+            Popup(popup) => match popup {
+                PopupComponent::Open(popup) => {
+                    let screen = self.screen();
+                    let win = self.window_area();
+                    self.popup = Some(open_popup(screen, win, popup));
+                }
+                PopupComponent::Close => {
+                    self.popup = None;
+                }
+            },
         }
 
         RedrawResult::Ok
+    }
+
+    fn screen(&self) -> Rect {
+        Rect {
+            x: 0,
+            y: 0,
+            width: self.size.width,
+            height: self.size.height,
+        }
     }
 
     fn set_locations(&mut self, locs: GridItem<CustomItems>) {
@@ -316,6 +335,10 @@ impl Grid {
 
         if let Some(ref compl) = self.completion {
             Self::draw_drawable(compl, t, &mut self.cursor, &mut self.drawn);
+        }
+
+        if let Some(ref popup) = self.popup {
+            Self::draw_drawable(popup, t, &mut self.cursor, &mut self.drawn);
         }
 
         (&self.drawn, self.cursor)

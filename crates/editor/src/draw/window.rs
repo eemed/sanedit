@@ -1,7 +1,7 @@
 use std::ops::Range;
 
 use sanedit_buffer::utf8::EndOfLine;
-use sanedit_messages::redraw::{self, CursorShape, LineNumbers, Point, Style, Theme, ThemeField};
+use sanedit_messages::redraw::{self, CursorShape, Point, Style, Theme, ThemeField};
 
 use crate::{
     common::{
@@ -253,41 +253,41 @@ fn draw_trailing_whitespace(
     }
 }
 
-pub(crate) fn draw_line_numbers(ctx: &DrawContext) -> LineNumbers {
-    let EditorContext { win, buf, .. } = ctx.editor;
+// pub(crate) fn draw_line_numbers(ctx: &DrawContext) -> LineNumbers {
+//     let EditorContext { win, buf, .. } = ctx.editor;
 
-    let range = win.view().range();
-    let slice = buf.slice(range.clone());
-    let mut lines = slice.lines();
-    let mut line = lines.next();
+//     let range = win.view().range();
+//     let slice = buf.slice(range.clone());
+//     let mut lines = slice.lines();
+//     let mut line = lines.next();
 
-    let view = win.view();
-    let mut pos = view.start();
-    let mut lnr = buf.slice(..).line_at(view.start()) + 1;
-    let mut lnrs = vec![];
+//     let view = win.view();
+//     let mut pos = view.start();
+//     let mut lnr = buf.slice(..).line_at(view.start()) + 1;
+//     let mut lnrs = vec![];
 
-    for row in view.cells() {
-        loop {
-            let on_next_line = line
-                .as_ref()
-                .map(|line| !line.is_empty() && line.end() <= pos)
-                .unwrap_or(false);
-            if on_next_line {
-                line = lines.next();
-                if line.is_some() {
-                    lnr += 1;
-                }
-            } else {
-                break;
-            }
-        }
+//     for row in view.cells() {
+//         loop {
+//             let on_next_line = line
+//                 .as_ref()
+//                 .map(|line| !line.is_empty() && line.end() <= pos)
+//                 .unwrap_or(false);
+//             if on_next_line {
+//                 line = lines.next();
+//                 if line.is_some() {
+//                     lnr += 1;
+//                 }
+//             } else {
+//                 break;
+//             }
+//         }
 
-        for cell in row {
-            pos += cell.len_in_buffer();
-        }
+//         for cell in row {
+//             pos += cell.len_in_buffer();
+//         }
 
-        lnrs.push(lnr);
-    }
+//         lnrs.push(lnr);
+//     }
 
-    lnrs
-}
+//     lnrs
+// }

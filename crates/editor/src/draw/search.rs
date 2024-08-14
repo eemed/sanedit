@@ -1,14 +1,10 @@
 use sanedit_messages::redraw::{self, Component, Redraw, Source};
 
-use crate::editor::windows::{Focus, Prompt, Search};
+use crate::editor::windows::Focus;
 
 use super::DrawContext;
 
-pub(crate) fn draw(
-    prompt: &Prompt,
-    search: &Search,
-    ctx: &mut DrawContext,
-) -> Option<redraw::Redraw> {
+pub(crate) fn draw(ctx: &mut DrawContext) -> Option<redraw::Redraw> {
     if ctx.focus_changed_from(Focus::Search) {
         ctx.state.prompt_scroll_offset = 0;
         ctx.state.last_prompt = None;
@@ -21,10 +17,12 @@ pub(crate) fn draw(
         return None;
     }
 
-    draw_impl(prompt, search, ctx).into()
+    draw_impl(ctx).into()
 }
 
-fn draw_impl(prompt: &Prompt, search: &Search, _ctx: &mut DrawContext) -> redraw::Redraw {
+fn draw_impl(ctx: &mut DrawContext) -> redraw::Redraw {
+    let prompt = &ctx.editor.win.prompt;
+    let search = &ctx.editor.win.search;
     let msg = {
         let prompt = prompt.message();
         let kind = search.kind.tag();

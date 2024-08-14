@@ -1,10 +1,10 @@
 use sanedit_messages::redraw::{self, Component, Item, ItemKind};
 
-use crate::editor::{filetree::Filetree, windows::Focus};
+use crate::editor::windows::Focus;
 
 use super::DrawContext;
 
-pub(crate) fn draw(ft: &Filetree, ctx: &mut DrawContext) -> Option<redraw::Redraw> {
+pub(crate) fn draw(ctx: &mut DrawContext) -> Option<redraw::Redraw> {
     let show_ft = ctx.editor.win.ft_view.show;
     let close_ft = !show_ft && ctx.state.last_show_ft == Some(true);
     ctx.state.last_show_ft = Some(show_ft);
@@ -17,10 +17,11 @@ pub(crate) fn draw(ft: &Filetree, ctx: &mut DrawContext) -> Option<redraw::Redra
         return None;
     }
 
-    draw_impl(ft, ctx).into()
+    draw_impl(ctx).into()
 }
 
-fn draw_impl(tree: &Filetree, ctx: &mut DrawContext) -> redraw::Redraw {
+fn draw_impl(ctx: &mut DrawContext) -> redraw::Redraw {
+    let tree = ctx.editor.filetree;
     let selected = ctx.editor.win.ft_view.selection;
     let mut items = vec![];
 

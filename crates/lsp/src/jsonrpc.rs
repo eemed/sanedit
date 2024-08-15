@@ -8,23 +8,23 @@ pub(crate) const CONTENT_LENGTH: &str = "Content-Length";
 pub(crate) const SEP: &str = "\r\n";
 
 #[derive(Debug, Serialize)]
-pub struct Request {
+pub struct JsonRequest {
     jsonrpc: String,
     id: u32,
     method: String,
     params: Value,
 }
 
-impl Request {
-    pub fn new<T>(method: &str, params: &T) -> Request
+impl JsonRequest {
+    pub fn new<T>(method: &str, params: &T, id: u32) -> JsonRequest
     where
         T: ?Sized + Serialize,
     {
         let params = serde_json::to_value(params).unwrap();
 
-        Request {
+        JsonRequest {
             jsonrpc: "2.0".into(),
-            id: 1,
+            id,
             method: method.into(),
             params,
         }
@@ -43,23 +43,23 @@ impl Request {
 }
 
 #[derive(Clone, Debug, Deserialize)]
-struct ResponseError {
+struct JsonResponseError {
     pub code: i32,
     pub message: String,
     pub data: Option<lsp_types::LSPAny>,
 }
 
 #[derive(Clone, Debug, Deserialize)]
-pub struct Response {
+pub struct JsonResponse {
     pub jsonrpc: String,
     pub id: u32,
     pub result: Option<lsp_types::LSPAny>,
-    pub error: Option<ResponseError>,
+    pub error: Option<JsonResponseError>,
 }
 
 pub async fn read_from<R: AsyncBufReadExt + Unpin>(
     reader: &mut R,
-) -> Result<Either<Response, Notification>> {
+) -> Result<Either<JsonResponse, JsonNotification>> {
     let mut content_length = 0;
     let mut buf = vec![];
 
@@ -94,11 +94,11 @@ pub async fn read_from<R: AsyncBufReadExt + Unpin>(
             let content = unsafe { std::str::from_utf8_unchecked(&buf[..content_length]) };
             log::info!("READ: {content:?}");
         }
-        if let Ok(response) = serde_json::from_slice::<Response>(&buf[..content_length]) {
+        if let Ok(response) = serde_json::from_slice::<JsonResponse>(&buf[..content_length]) {
             return Ok(Either::Left(response));
         }
 
-        if let Ok(notif) = serde_json::from_slice::<Notification>(&buf[..content_length]) {
+        if let Ok(notif) = serde_json::from_slice::<JsonNotification>(&buf[..content_length]) {
             return Ok(Either::Right(notif));
         }
     }
@@ -107,20 +107,20 @@ pub async fn read_from<R: AsyncBufReadExt + Unpin>(
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub(crate) struct Notification {
+pub(crate) struct JsonNotification {
     jsonrpc: String,
     method: String,
     params: Value,
 }
 
-impl Notification {
-    pub fn new<T>(method: &str, params: &T) -> Notification
+impl JsonNotification {
+    pub fn new<T>(method: &str, params: &T) -> JsonNotification
     where
         T: ?Sized + Serialize,
     {
         let params = serde_json::to_value(params).unwrap();
 
-        Notification {
+        JsonNotification {
             jsonrpc: "2.0".into(),
             method: method.into(),
             params,

@@ -3,10 +3,10 @@ mod capabilities;
 
 mod client;
 mod jsonrpc;
-mod operation;
+mod request;
 mod util;
 
 pub use lsp_types;
 
-pub use client::{LSPClient, LSPClientParams};
-pub use operation::Operation;
+pub use client::{LSPClientParams, LSPClientSender, Response};
+pub use request::{Request, RequestResult};

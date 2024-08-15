@@ -1,7 +1,7 @@
 use anyhow::{anyhow, Result};
 use std::path::Path;
 
-use sanedit_lsp::Operation;
+use sanedit_lsp::Request;
 
 use crate::{editor::Editor, server::ClientId};
 
@@ -50,5 +50,5 @@ fn hover(editor: &mut Editor, id: ClientId) {
         return;
     };
 
-    lsp.send(Operation::Hover { path, buf, offset });
+    lsp.send(Request::Hover { path, buf, offset });
 }

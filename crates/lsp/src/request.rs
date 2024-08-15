@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use sanedit_buffer::ReadOnlyPieceTree;
 
 #[derive(Debug, Clone)]
-pub enum Operation {
+pub enum Request {
     DidOpen {
         path: PathBuf,
         buf: ReadOnlyPieceTree,
@@ -13,4 +13,9 @@ pub enum Operation {
         buf: ReadOnlyPieceTree,
         offset: usize,
     },
+}
+
+#[derive(Debug, Clone)]
+pub enum RequestResult {
+    Hover {},
 }

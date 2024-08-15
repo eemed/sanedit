@@ -1,20 +1,13 @@
-use std::{any::Any, path::PathBuf, time::Duration};
+use std::{any::Any, path::PathBuf};
 
 use crate::{
-    editor::{
-        buffers::{BufferRange, Filetype},
-        job_broker::KeepInTouch,
-        options::LSPOptions,
-        Editor, Map,
-    },
+    editor::{buffers::Filetype, job_broker::KeepInTouch, options::LSPOptions, Editor},
     job_runner::{Job, JobContext, JobResult},
     server::ClientId,
 };
-use sanedit_lsp::{LSPClient, LSPClientParams, Operation};
+use sanedit_lsp::{LSPClientParams, LSPClientSender, Request, Response};
 
 use anyhow::Result;
-
-use super::CHANNEL_SIZE;
 
 /// A handle to send operations to LSP instance.
 ///
@@ -29,12 +22,12 @@ pub(crate) struct LSPSender {
     root: PathBuf,
 
     /// Client to send messages to LSP server
-    client: LSPClient,
+    sender: LSPClientSender,
 }
 
 impl LSPSender {
-    pub fn send(&mut self, op: Operation) -> Result<()> {
-        self.client.send(op);
+    pub fn send(&mut self, op: Request) -> Result<()> {
+        self.sender.send(op);
         Ok(())
     }
 }
@@ -76,15 +69,19 @@ impl Job for LSP {
                 filetype,
             };
 
-            let client = params.spawn().await?;
+            let (sender, mut reader) = params.spawn().await?;
             log::info!("Client started");
 
             let sender = LSPSender {
                 name: command,
-                client,
+                sender,
                 root: wd,
             };
             ctx.send(Message::Started(ft, sender));
+
+            while let Some(response) = reader.recv().await {
+                ctx.send(Message::Response(response));
+            }
 
             Ok(())
         };
@@ -115,7 +112,7 @@ impl KeepInTouch for LSP {
                             continue;
                         };
                         let ro = buf.read_only_copy();
-                        sender.send(Operation::DidOpen {
+                        sender.send(Request::DidOpen {
                             path: path.clone(),
                             buf: ro,
                         });
@@ -124,6 +121,11 @@ impl KeepInTouch for LSP {
                     // Set sender
                     editor.language_servers.insert(ft, sender);
                 }
+                Message::Response(response) => match response {
+                    Response::Request(request) => match request {
+                        sanedit_lsp::RequestResult::Hover {} => todo!(),
+                    },
+                },
             }
         }
     }
@@ -132,4 +134,5 @@ impl KeepInTouch for LSP {
 #[derive(Debug)]
 enum Message {
     Started(Filetype, LSPSender),
+    Response(Response),
 }

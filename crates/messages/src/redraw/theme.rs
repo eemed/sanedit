@@ -147,7 +147,6 @@ pub enum ThemeField {
 
     PromptOlayDefault,
     PromptOlayTitle,
-    PromptOlayUserInput,
     PromptOlayMessage,
 
     FiletreeDefault,
@@ -218,7 +217,6 @@ impl AsRef<str> for ThemeField {
 
             PromptOlayDefault => "prompt.overlay",
             PromptOlayTitle => "prompt.overlay.title",
-            PromptOlayUserInput => "prompt.overlay.userinput",
             PromptOlayMessage => "prompt.overlay.message",
 
             FiletreeDefault => "filetree",

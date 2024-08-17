@@ -6,6 +6,7 @@
     * Hover
     * Completion
     * Code actions
+    * Diagnostics: Somehow to show them
     * (Signature help) I use hover for this too
     * Cant remember anything else I use regularly
 * Highlight flickering
@@ -34,4 +35,10 @@
 * LSP
     * Needs installation mechanism => complex
 * Snippets
+    - a word prefix + key to expand 
+    - => Tab behaviour 
+    1. insert indent if in indentation
+    - if word before cursor
+    1. Expand snippet
+    2. word completion
 

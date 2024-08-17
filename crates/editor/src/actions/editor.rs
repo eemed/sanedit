@@ -48,7 +48,7 @@ fn paste(editor: &mut Editor, id: ClientId) {
     win.remove_cursor_selections(buf);
 }
 
-#[action("Copy selection to clipboard and remove it")]
+#[action("Cut selection to clipboard")]
 fn cut(editor: &mut Editor, id: ClientId) {
     editor.copy_to_clipboard(id);
 
@@ -58,7 +58,7 @@ fn cut(editor: &mut Editor, id: ClientId) {
     run(editor, id, Hook::BufChanged);
 }
 
-#[action("Open configuration file")]
+#[action("Open SanEdit configuration file")]
 fn open_config(editor: &mut Editor, id: ClientId) {
     let config = editor.config_dir.config();
     if !config.exists() {

@@ -13,7 +13,7 @@ use crate::{
 
 use super::{hooks, search};
 
-#[action("Create a new cursor on the next line")]
+#[action("New cursor on the next line")]
 fn new_next_line(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     let cursor = win.cursors.primary();
@@ -21,7 +21,7 @@ fn new_next_line(editor: &mut Editor, id: ClientId) {
     win.cursors.push_primary(Cursor::new(pos));
 }
 
-#[action("Create a new cursor on the previous line")]
+#[action("New cursor on the previous line")]
 fn new_prev_line(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     let cursor = win.cursors.primary();
@@ -29,7 +29,7 @@ fn new_prev_line(editor: &mut Editor, id: ClientId) {
     win.cursors.push_primary(Cursor::new(pos));
 }
 
-#[action("Create a new cursor on the next search match")]
+#[action("New cursor on the next search match")]
 fn new_to_next_search_match(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     let Some(last_search) = win.search.last_search() else {
@@ -58,7 +58,7 @@ fn new_to_next_search_match(editor: &mut Editor, id: ClientId) {
     }
 }
 
-#[action("Create a new cursor on each search match")]
+#[action("New cursor on each search match")]
 fn new_to_all_search_matches(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     // win.cursors.remove_secondary_cursors();
@@ -105,19 +105,22 @@ pub(crate) fn goto_position(editor: &mut Editor, id: ClientId, point: Point) {
     }
 }
 
-#[action("Start selecting")]
+#[action("Select")]
 fn start_selection(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.cursors.start_selection();
 }
 
-#[action("Keep only the primary cursor")]
-fn remove_secondary(editor: &mut Editor, id: ClientId) {
+#[action("Keep only primary cursor")]
+fn keep_only_primary(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.cursors.remove_secondary_cursors();
+
+    let (win, _buf) = editor.win_buf_mut(id);
+    win.cursors.primary_mut().unanchor();
 }
 
-#[action("Swap cursor position inside the selection")]
+#[action("Swap cursor in selection")]
 fn swap_selection_dir(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.cursors.swap_selection_dir();
@@ -164,12 +167,4 @@ fn select_line(editor: &mut Editor, id: ClientId) {
 fn merge_overlapping_cursors(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.cursors.merge_overlapping();
-}
-
-#[action("Restore single non selection cursor")]
-fn single_non_selecting(editor: &mut Editor, id: ClientId) {
-    remove_secondary.execute(editor, id);
-
-    let (win, _buf) = editor.win_buf_mut(id);
-    win.cursors.primary_mut().unanchor();
 }

@@ -7,7 +7,7 @@ use crate::{editor::Editor, server::ClientId};
 
 use super::jobs::LSP;
 
-#[action("Start LSP")]
+#[action("Start language server")]
 fn start(editor: &mut Editor, id: ClientId) {
     fn start_lsp(editor: &mut Editor, id: ClientId) -> Result<()> {
         let wd = editor.working_dir().to_path_buf();
@@ -32,7 +32,7 @@ fn start(editor: &mut Editor, id: ClientId) {
     }
 }
 
-#[action("LSP Hover")]
+#[action("Hover information")]
 fn hover(editor: &mut Editor, id: ClientId) {
     let wd = editor.working_dir().to_path_buf();
     let (win, buf) = editor.win_buf_mut(id);

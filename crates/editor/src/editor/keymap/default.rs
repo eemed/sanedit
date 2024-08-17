@@ -78,7 +78,7 @@ impl DefaultKeyMappings {
              "alt+n",  search::next_match,
              "alt+N",  search::prev_match,
 
-             "esc",      cursors::single_non_selecting,
+             "esc",      cursors::keep_only_primary,
              "alt+down", cursors::new_next_line,
              "alt+up",   cursors::new_prev_line,
              "ctrl+d",   cursors::new_to_next_search_match,

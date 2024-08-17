@@ -108,6 +108,8 @@ impl Default for Hooks {
 
         hooks.register(BufOpened, indent::detect_indent);
 
+        hooks.register(CursorMoved, popup::close);
+
         hooks
     }
 }

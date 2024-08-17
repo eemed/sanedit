@@ -1,0 +1,12 @@
+document = (title / list_op / .)*;
+
+WHITESPACE = [ \t];
+ws = WHITESPACE*;
+nl = "\r\n" / "\n";
+
+@show(identifier)
+@whitespaced
+title = "#"+ (!nl .)*;
+
+@show(operator)
+list_op = nl ws "*" / "-" / "+";

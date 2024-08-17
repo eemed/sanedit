@@ -121,10 +121,12 @@ pub enum ThemeField {
 
     Match,
 
-    String,
     Constant,
-    Identifier,
+    String,
     Number,
+
+    Identifier,
+
     Comment,
     Operator,
     Type,
@@ -153,6 +155,8 @@ pub enum ThemeField {
     FiletreeFile,
     FiletreeDir,
     FiletreeSelected,
+    FiletreeSelectedFile,
+    FiletreeSelectedDir,
     FiletreeMarkers,
 
     LocationsDefault,
@@ -162,6 +166,8 @@ pub enum ThemeField {
     LocationsSelected,
     LocationsSelectedMatch,
     LocationsSelectedMarkers,
+    LocationsSelectedEntry,
+    LocationsSelectedGroup,
     LocationsMarkers,
     LocationsMatch,
 
@@ -188,10 +194,11 @@ impl AsRef<str> for ThemeField {
             Warn => "window.view.warn",
             Error => "window.view.error",
 
-            String => "window.view.string",
             Constant => "window.view.constant",
-            Identifier => "window.view.identifier",
+            String => "window.view.string",
             Number => "window.view.number",
+
+            Identifier => "window.view.identifier",
             Comment => "window.view.comment",
             Operator => "window.view.operator",
             Type => "window.view.type",
@@ -223,6 +230,8 @@ impl AsRef<str> for ThemeField {
             FiletreeFile => "filetree.file",
             FiletreeDir => "filetree.directory",
             FiletreeSelected => "filetree.selected",
+            FiletreeSelectedFile => "filetree.selected.file",
+            FiletreeSelectedDir => "filetree.selected.directory",
             FiletreeMarkers => "filetree.markers",
 
             LocationsDefault => "locations",
@@ -234,6 +243,8 @@ impl AsRef<str> for ThemeField {
             LocationsSelected => "locations.selected",
             LocationsSelectedMatch => "locations.selected.match",
             LocationsSelectedMarkers => "locations.selected.markers",
+            LocationsSelectedEntry => "locations.selected.entry",
+            LocationsSelectedGroup => "locations.selected.group",
 
             PopupDefault => "popup",
         }

@@ -67,7 +67,8 @@ impl CustomItems {
         let file = ctx.style(ThemeField::FiletreeFile);
         let dir = ctx.style(ThemeField::FiletreeDir);
         let markers = ctx.style(ThemeField::FiletreeMarkers);
-        let sel = ctx.style(ThemeField::FiletreeSelected);
+        let sel = ctx.style(ThemeField::FiletreeSelectedFile);
+        let dsel = ctx.style(ThemeField::FiletreeSelectedDir);
 
         clear_all(cells, fill);
 
@@ -91,12 +92,17 @@ impl CustomItems {
                 break;
             }
 
-            let style = if self.scroll + row == self.items.selected {
-                sel
-            } else {
-                match item.kind {
-                    ItemKind::Group { expanded } => dir,
-                    ItemKind::Item => file,
+            let style = {
+                if self.scroll + row == self.items.selected {
+                    match item.kind {
+                        ItemKind::Group { expanded } => dsel,
+                        ItemKind::Item => sel,
+                    }
+                } else {
+                    match item.kind {
+                        ItemKind::Group { expanded } => dir,
+                        ItemKind::Item => file,
+                    }
                 }
             };
 
@@ -142,7 +148,8 @@ impl CustomItems {
         let markers = ctx.style(ThemeField::LocationsMarkers);
         let smarkers = ctx.style(ThemeField::LocationsSelectedMarkers);
         let title = ctx.style(ThemeField::LocationsTitle);
-        let sel = ctx.style(ThemeField::LocationsSelected);
+        let sel = ctx.style(ThemeField::LocationsSelectedEntry);
+        let gsel = ctx.style(ThemeField::LocationsSelectedGroup);
         let lmat = ctx.style(ThemeField::LocationsMatch);
         let smat = ctx.style(ThemeField::LocationsSelectedMatch);
 
@@ -174,12 +181,17 @@ impl CustomItems {
 
             let width = cells.get(0).map(|c| c.len()).unwrap_or(0);
             let is_selected = self.scroll + row == self.items.selected;
-            let style = if is_selected {
-                sel
-            } else {
-                match item.kind {
-                    ItemKind::Group { expanded } => group,
-                    ItemKind::Item => entry,
+            let style = {
+                if is_selected {
+                    match item.kind {
+                        ItemKind::Group { expanded } => gsel,
+                        ItemKind::Item => sel,
+                    }
+                } else {
+                    match item.kind {
+                        ItemKind::Group { expanded } => group,
+                        ItemKind::Item => entry,
+                    }
                 }
             };
             let mat = if is_selected { smat } else { lmat };

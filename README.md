@@ -2,6 +2,9 @@
 
 ## TODO
 
+* LSP
+* Somethings wrong with multiwidth grapheme rendering.
+
 * Async saving
 * play around with parsing machine JIT
 

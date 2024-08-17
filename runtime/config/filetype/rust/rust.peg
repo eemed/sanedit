@@ -1,18 +1,15 @@
-document = (comment / attrs / mod_decl / const_decl / let_decl / string / char / unsafe / keyword / constant / type / .)*;
+document = (comment / attrs / mod_decl / const_decl / let_decl / string / char / unsafe / keyword / type / .)*;
 #document = (comment / const / keyword / constant / unsafe / string / char / .)*;
 
 visibility = "pub(crate)" / "pub(super)" / "pub";
 
 @show
-keyword = ( "loop" / "let" / "match" / "if" / "else" / "while" / "break" / "move" / "async" / "dyn" / "return" / "for" / "in" / "as") end;
-
-@show
-constant = (visibility / "use" / "fn" / "impl" / "struct" / "enum" / "const" / "trait" / "type" / "extern crate"  / "extern" ) end;
+keyword = ( "loop" / "let" / "match" / "if" / "else" / "while" / "break" / "move" / "async" / "dyn" / "return" / "for" / "in" / "as") end / (visibility / "use" / "fn" / "impl" / "struct" / "enum" / "const" / "trait" / "type" / "extern crate"  / "extern" ) end;
 
 ############ Mod
 mod_decl = mod [ \t] ws (!nl .)* nl;
 
-@show(constant)
+@show(keyword)
 mod = "mod";
 
 ########## String
@@ -53,7 +50,7 @@ id = "(" single_id ("," single_id)*  ")" / single_id;
 single_id = [a..zA..Z_] [a..zA..Z0..9_]*;
 
 ########### Ref
-@show(constant)
+@show(operator)
 ref = ref_op lifetime? ws mut_op? ws;
 
 @show(operator)

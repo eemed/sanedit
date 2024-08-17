@@ -87,6 +87,7 @@ impl Options {
              "rust", vec!["*.rs"],
              "toml", vec!["**/Cargo.lock"],
              "yaml", vec!["*.yml"],
+             "markdown", vec!["*.md"],
         );
 
         ftmap

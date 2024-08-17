@@ -2,15 +2,14 @@
 default = "#1D1F21,#c1c1c1,"
 statusline = "#303030,#b1aaaa,"
 gutter = ",#4C4C4C,bold"
-end_of_buffer = ",#7f755f,"
-trailing_whitespace = ",#7f755f,"
-symbols = ",#606060,"
-match = "#C0A886,,"
+end_of_buffer = ",#555555,"
+trailing_whitespace = ",#666666,"
+symbols = ",#444444,"
+match = "#B5BD68,#222222,"
 
 [colors.window.cursor]
 default = "#a4ac86,,"
-# selection = "#efb679,,"
-selection = "#d0bd97,,"
+selection = "#81A2BE,#222222,"
 primary = "#C0A886,,"
 
 [colors.window.view]
@@ -18,31 +17,32 @@ info = "#00917e,#000000,"
 warn = "#ff8c5a,#000000,"
 error = "#c0564a,#ffffff,"
 
-string =  ",#d7af5f,"
-identifier = ",#D7875F,"
-constant = ",#5fafd7,"
-number = ",#5fafd7,"
+constant = ",#7AA6DA,"
+string =  ",#7AA6DA,"
+number = ",#7AA6DA,"
+
 keyword = ",#d7875f,"
-operator =  ",#a84d1f,"
+operator =  ",#8ABEB7,"
 type =  ",#d7af5f,"
-comment = ",#5faf5f,"
-preproc = ",#ff8700,"
-# BLUE #5fafd7
+comment = ",#B5BD68,"
+preproc = ",#B294BB,"
+
+identifier = ",#d7875f,"
 
 [colors.window.completion]
-default = "#B8A282,#2a130d,"
-description = ",#6f654f,"
-match = ",#ff8700,"
+default = "#303030,#d1caca,"
+description = ",#777777,"
+match = ",#d7875f,"
 
 [colors.window.completion.selected]
-default = "#efb679,,"
-description = ",#5a433d,"
-match = ",#ff8700,"
+default = "#4a4a4a,,"
+description = ",#777777,"
+match = ",#d7875f,"
 
 [colors.prompt]
 default = "#303030,#d1caca,"
 message = ",,bold"
-userinput = ",#a8a8a8,"
+userinput = ",,"
 
 [colors.prompt.overlay]
 default = ",#d1caca,"
@@ -55,30 +55,35 @@ description = ",#777777,"
 match = ",#d7875f,"
 
 [colors.prompt.completion.selected]
-default = "#404040,,"
+default = "#4a4a4a,,"
 description = ",#777777,"
 match = ",#d7875f,"
 
 [colors.filetree]
-default = "#E2DBC8,#000000,"
+default = "#1D1F21,#c1c1c1,"
 file = ""
-directory = ",#824b26,"
-markers = ",#355d8d,"
-# selected = "#efb679,,"
-selected = "#d0bd97,,"
+directory = ",#d7875f,"
+markers = ",#B5BD68,"
+
+[colors.filetree.selected]
+default = "#404040,,"
+file = ""
+directory = ",#d7875f,"
 
 [colors.locations]
-default = "#E2DBC8,#000000,"
-title = "#B8A282,#2a130d,"
+default = "#1D1F21,#c1c1c1,"
+title = "#303030,#b1aaaa,"
 entry = ""
-group = ",#824b26,"
-markers = ",#355d8d,"
-match = ",#b0463a,"
+group = ",#7AA6DA,"
+markers = ",#B5BD68,"
+match = ",#d7875f,"
 
 [colors.locations.selected]
-default = "#d0bd97,,"
-match = ",#b0463a,"
-markers = ",#355d8d,"
+default = "#404040,,"
+match = ",#d7875f,"
+markers = ",#B5BD68,"
+entry = ""
+group = ",#7AA6DA,"
 
 [colors.popup]
 default = "#d8ccb4,#000000,"

@@ -211,7 +211,7 @@ fn draw_trailing_whitespace(
     else {
         return;
     };
-    let style = theme.get(ThemeField::EndOfBuffer);
+    let style = theme.get(ThemeField::TrailingWhitespace);
 
     // Findout if last line includes only trailing whitespace
     let mut in_eol = true;

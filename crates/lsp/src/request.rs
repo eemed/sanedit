@@ -14,8 +14,3 @@ pub enum Request {
         offset: usize,
     },
 }
-
-#[derive(Debug, Clone)]
-pub enum RequestResult {
-    Hover {},
-}

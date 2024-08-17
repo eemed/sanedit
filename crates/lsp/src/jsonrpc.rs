@@ -40,17 +40,21 @@ impl JsonRequest {
 
         Ok(())
     }
+
+    pub fn id(&self) -> u32 {
+        self.id
+    }
 }
 
 #[derive(Clone, Debug, Deserialize)]
-struct JsonResponseError {
+pub(crate) struct JsonResponseError {
     pub code: i32,
     pub message: String,
     pub data: Option<lsp_types::LSPAny>,
 }
 
 #[derive(Clone, Debug, Deserialize)]
-pub struct JsonResponse {
+pub(crate) struct JsonResponse {
     pub jsonrpc: String,
     pub id: u32,
     pub result: Option<lsp_types::LSPAny>,

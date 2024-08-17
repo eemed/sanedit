@@ -1,5 +1,5 @@
 use std::collections::BTreeMap;
-use std::sync::atomic::{AtomicU32, AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
 use std::{path::PathBuf, process::Stdio};
 
@@ -9,9 +9,12 @@ use crate::util::path_to_uri;
 use crate::{Request, RequestResult};
 
 use anyhow::{anyhow, bail, Result};
+use lsp_types::notification::Notification;
+use lsp_types::request::Request as _;
 use sanedit_buffer::ReadOnlyPieceTree;
 use sanedit_utils::either::Either;
 use serde::Serialize;
+use serde_json::Value;
 use tokio::process::{ChildStderr, ChildStdin, ChildStdout};
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 use tokio::sync::Notify;
@@ -21,6 +24,7 @@ use tokio::{
 };
 
 /// a struct to put all the parameters
+#[derive(Clone)]
 pub struct LSPClientParams {
     pub run_command: String,
     pub run_args: Vec<String>,
@@ -42,47 +46,41 @@ impl LSPClientParams {
         let stdin = cmd.stdin.take().ok_or(anyhow!("Failed to take stdin"))?;
         let stdout = BufReader::new(cmd.stdout.take().ok_or(anyhow!("Failed to take stdout"))?);
         let stderr = BufReader::new(cmd.stderr.take().ok_or(anyhow!("Failed to take stderr"))?);
-        let (wsend, wrecv) = channel(256);
-        let (osend, orecv) = channel(256);
+        let (server_sender, server_recv) = channel(256);
+        let (req_sender, req_receiver) = channel(256);
+        let (res_sender, res_receiver) = channel(256);
         let initialized = Arc::new(Notify::new());
 
-        let client = LSPClient {
-            params: self,
+        let params = Arc::new(self);
+        let server = Server {
+            params: params.clone(),
             _process: cmd,
             stdin,
             stdout,
             stderr,
-            receiver: wrecv,
-            sender: osend,
+            receiver: server_recv,
             initialized: initialized.clone(),
             in_flight: BTreeMap::default(),
         };
 
-        tokio::spawn(client.run());
+        tokio::spawn(server.run());
 
         // Wait for initialization
         initialized.notified().await;
 
-        let send = LSPClientSender { sender: wsend };
-        let read = LSPClientReader { receiver: orecv };
+        let client = LSPClient {
+            params,
+            receiver: req_receiver,
+            sender: res_sender,
+            server_sender,
+        };
+        tokio::spawn(client.run());
+
+        let send = LSPClientSender { sender: req_sender };
+        let read = LSPClientReader {
+            receiver: res_receiver,
+        };
         Ok((send, read))
-    }
-}
-
-#[derive(Debug)]
-enum Method {
-    Initialize,
-    Initialized,
-    Hover,
-}
-
-impl Method {
-    fn as_str(&self) -> &str {
-        match self {
-            Method::Hover => "textDocument/hover",
-            Method::Initialize => "initialize",
-            Method::Initialized => "initialized",
-        }
     }
 }
 
@@ -92,21 +90,20 @@ pub enum Response {
     // Notification(),
 }
 
-struct LSPClient {
-    params: LSPClientParams,
+struct Server {
+    params: Arc<LSPClientParams>,
     _process: Child,
     stdin: ChildStdin,
     stdout: BufReader<ChildStdout>,
     stderr: BufReader<ChildStderr>,
 
-    receiver: Receiver<Request>,
-    sender: Sender<Response>,
+    receiver: Receiver<ServerRequest>,
     initialized: Arc<Notify>,
 
-    in_flight: BTreeMap<u32, Method>,
+    in_flight: BTreeMap<u32, Sender<Result<Value>>>,
 }
 
-impl LSPClient {
+impl Server {
     pub async fn run(mut self) -> Result<()> {
         let init_result = self.initialize().await;
         self.initialized.notify_one();
@@ -115,25 +112,53 @@ impl LSPClient {
         loop {
             tokio::select! {
                 msg = self.receiver.recv() => {
-                    let req = msg.ok_or(anyhow!("LSP sender is closed"))?;
-                    self.do_request(req).await?;
+                    let msg = msg.ok_or(anyhow!("LSP sender is closed"))?;
+                    log::info!("Receive: {:?}", msg);
+                    match msg {
+                        ServerRequest::Request { json, answer } => self.handle_request(json, answer).await?,
+                        ServerRequest::Notification { json } => self.handle_notification(json).await?,
+                    }
                 }
                 json = read_from(&mut self.stdout) => {
+                    log::info!("Read: {json:?}");
                     match json? {
                         Either::Right(notification) => {
-                            // log::info!("{notification:?}");
+                            log::info!("{notification:?}");
                         }
-                        Either::Left(response) => {
-                            let method = self.in_flight.remove(&response.id)
-                                .ok_or(anyhow!("Got a response to non existent request {}", response.id))?;
-
-                            log::info!("{method:?}: {response:?}");
-                        }
+                        Either::Left(response) => self.handle_response(response).await?,
                     }
                 }
             };
         }
 
+        Ok(())
+    }
+
+    async fn handle_request(
+        &mut self,
+        json: JsonRequest,
+        answer: Sender<Result<Value>>,
+    ) -> Result<()> {
+        let id = json.id();
+        json.write_to(&mut self.stdin).await?;
+        self.in_flight.insert(id, answer);
+        Ok(())
+    }
+
+    async fn handle_notification(&mut self, json: JsonNotification) -> Result<()> {
+        json.write_to(&mut self.stdin).await?;
+        Ok(())
+    }
+
+    async fn handle_response(&mut self, response: JsonResponse) -> Result<()> {
+        let sender = self.in_flight.remove(&response.id).ok_or(anyhow!(
+            "Got a response to non existent request {}",
+            response.id
+        ))?;
+        log::info!("Response: {response:?}");
+
+        let result = response.result.ok_or(anyhow!("{:?}", response.error));
+        let _ = sender.send(result).await;
         Ok(())
     }
 
@@ -158,11 +183,7 @@ impl LSPClient {
             locale: None,
             work_done_progress_params: lsp_types::WorkDoneProgressParams::default(),
         };
-        let content = JsonRequest::new(
-            Method::Initialize.as_str(),
-            &params,
-            Self::next_request_id(),
-        );
+        let content = JsonRequest::new(lsp_types::request::Initialize::METHOD, &params, 0);
         content.write_to(&mut self.stdin).await?;
 
         // Read server response
@@ -170,13 +191,92 @@ impl LSPClient {
 
         // Send initialized notification
         let params = lsp_types::InitializedParams {};
-        let content = JsonNotification::new(Method::Initialized.as_str(), &params);
+        let content = JsonNotification::new(lsp_types::notification::Initialized::METHOD, &params);
         content.write_to(&mut self.stdin).await?;
 
         Ok(())
     }
 
-    pub async fn do_request(&mut self, req: Request) -> Result<()> {
+    pub async fn read_response(&mut self) -> Result<JsonResponse> {
+        let response = read_from(&mut self.stdout).await?;
+        if response.is_right() {
+            bail!("Got notification instead of response")
+        }
+
+        Ok(response.take_left().unwrap())
+    }
+
+    pub fn root_uri(&self) -> lsp_types::Uri {
+        path_to_uri(&self.params.root)
+    }
+}
+
+#[derive(Debug)]
+pub struct LSPClientReader {
+    receiver: Receiver<Response>,
+}
+
+impl LSPClientReader {
+    pub async fn recv(&mut self) -> Option<Response> {
+        self.receiver.recv().await
+    }
+}
+
+#[derive(Debug)]
+pub struct LSPClientSender {
+    sender: Sender<Request>,
+}
+
+impl LSPClientSender {
+    // TODO error?
+    pub fn send(&mut self, req: Request) {
+        let _ = self.sender.blocking_send(req);
+    }
+}
+
+#[derive(Debug)]
+enum ServerRequest {
+    Request {
+        json: JsonRequest,
+        answer: Sender<Result<Value>>,
+    },
+    Notification {
+        json: JsonNotification,
+    },
+}
+
+struct LSPClient {
+    params: Arc<LSPClientParams>,
+    receiver: Receiver<Request>,
+    sender: Sender<Response>,
+
+    server_sender: Sender<ServerRequest>,
+}
+
+impl LSPClient {
+    pub async fn run(mut self) -> Result<()> {
+        while let Some(req) = self.receiver.recv().await {
+            let handler = Handler {
+                params: self.params.clone(),
+                server: self.server_sender.clone(),
+                response: self.sender.clone(),
+            };
+            tokio::spawn(async move {
+                let _ = handler.run(req).await;
+            });
+        }
+        Ok(())
+    }
+}
+
+struct Handler {
+    params: Arc<LSPClientParams>,
+    server: Sender<ServerRequest>,
+    response: Sender<Response>,
+}
+
+impl Handler {
+    pub async fn run(mut self, req: Request) -> Result<()> {
         log::info!("do_request: {req:?}");
         match req {
             Request::DidOpen { path, buf } => self.did_open_document(path, buf).await?,
@@ -202,7 +302,24 @@ impl LSPClient {
             },
         };
 
-        self.request(Method::Hover, &params).await
+        let response = self
+            .request::<lsp_types::request::HoverRequest>(&params)
+            .await?;
+
+        log::info!("Hover response: {:?}", response);
+
+        Ok(())
+    }
+
+    async fn notify<R: lsp_types::notification::Notification>(
+        &mut self,
+        params: &R::Params,
+    ) -> Result<()> {
+        let json = JsonNotification::new(R::METHOD, &params);
+        let msg = ServerRequest::Notification { json };
+        self.server.send(msg).await?;
+
+        Ok(())
     }
 
     async fn did_open_document(&mut self, path: PathBuf, buf: ReadOnlyPieceTree) -> Result<()> {
@@ -216,65 +333,39 @@ impl LSPClient {
             },
         };
 
-        let content = JsonNotification::new("textDocument/didOpen", &params);
-        content.write_to(&mut self.stdin).await?;
+        // let content = JsonNotification::new("textDocument/didOpen", &params);
+        self.notify::<lsp_types::notification::DidOpenTextDocument>(&params)
+            .await?;
 
         Ok(())
     }
 
-    pub async fn read_response(&mut self) -> Result<JsonResponse> {
-        let response = read_from(&mut self.stdout).await?;
-        if response.is_right() {
-            bail!("Got notification instead of response")
-        }
-
-        Ok(response.take_left().unwrap())
-    }
-
-    async fn request<T>(&mut self, method: Method, params: &T) -> Result<()>
-    where
-        T: ?Sized + Serialize,
-    {
+    async fn request<R: lsp_types::request::Request>(
+        &mut self,
+        params: &R::Params,
+    ) -> Result<R::Result> {
         let id = Self::next_request_id();
-        let content = JsonRequest::new(method.as_str(), &params, id);
-        content.write_to(&mut self.stdin).await?;
-        self.in_flight.insert(id, method);
-        Ok(())
+        let json = JsonRequest::new(R::METHOD, &params, id);
+        let (tx, mut rx) = channel(1);
+        let msg = ServerRequest::Request { json, answer: tx };
+        self.server.send(msg).await?;
+
+        let response = rx
+            .recv()
+            .await
+            .ok_or(anyhow!("No answer to request {}", R::METHOD))??;
+
+        let result = serde_json::from_value(response)?;
+
+        Ok(result)
     }
 
-    pub fn root_uri(&self) -> lsp_types::Uri {
-        path_to_uri(&self.params.root)
+    fn next_request_id() -> u32 {
+        static NEXT_ID: AtomicU32 = AtomicU32::new(1);
+        NEXT_ID.fetch_add(1, Ordering::Relaxed)
     }
 
     pub fn filetype(&self) -> &str {
         &self.params.filetype
-    }
-
-    fn next_request_id() -> u32 {
-        static NEXT_ID: AtomicU32 = AtomicU32::new(0);
-        NEXT_ID.fetch_add(1, Ordering::Relaxed)
-    }
-}
-
-#[derive(Debug)]
-pub struct LSPClientReader {
-    receiver: Receiver<Response>,
-}
-
-impl LSPClientReader {
-    pub async fn recv(&mut self) -> Option<Response> {
-        self.receiver.recv().await
-    }
-}
-
-#[derive(Debug)]
-pub struct LSPClientSender {
-    sender: Sender<Request>,
-}
-
-impl LSPClientSender {
-    // TODO error?
-    pub fn send(&mut self, req: Request) {
-        let _ = self.sender.blocking_send(req);
     }
 }

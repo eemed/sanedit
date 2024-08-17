@@ -88,11 +88,15 @@ impl ProcessHandler {
     }
 
     async fn handle_response(&mut self, response: JsonResponse) -> Result<()> {
+        log::info!("Response: {response:?}");
+        if response.result.is_none() && response.error.is_none() {
+            return Ok(());
+        }
+
         let sender = self.in_flight.remove(&response.id).ok_or(anyhow!(
             "Got a response to non existent request {}",
             response.id
         ))?;
-        log::info!("Response: {response:?}");
 
         let result = response.result.ok_or(anyhow!("{:?}", response.error));
         let _ = sender.send(result).await;

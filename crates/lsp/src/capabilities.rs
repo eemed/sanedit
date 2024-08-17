@@ -75,7 +75,7 @@ pub(crate) fn client_capabilities() -> lsp_types::ClientCapabilities {
                 hover: Some(lsp_types::HoverClientCapabilities {
                     // if not specified, rust-analyzer returns plaintext marked as markdown but
                     // badly formatted.
-                    content_format: Some(vec![lsp_types::MarkupKind::Markdown]),
+                    // content_format: Some(vec![lsp_types::MarkupKind::Markdown]),
                     ..Default::default()
                 }),
                 signature_help: Some(lsp_types::SignatureHelpClientCapabilities {

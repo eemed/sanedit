@@ -8,6 +8,7 @@ use crate::{
 use sanedit_lsp::{LSPClientParams, LSPClientSender, Request, Response};
 
 use anyhow::Result;
+use sanedit_messages::redraw::{Severity, StatusMessage};
 
 /// A handle to send operations to LSP instance.
 ///
@@ -123,7 +124,12 @@ impl KeepInTouch for LSP {
                 }
                 Message::Response(response) => match response {
                     Response::Request(request) => match request {
-                        sanedit_lsp::RequestResult::Hover {} => todo!(),
+                        sanedit_lsp::RequestResult::Hover { text, offset } => {
+                            win.popup = Some(StatusMessage {
+                                severity: Severity::Info,
+                                message: text,
+                            });
+                        }
                     },
                 },
             }

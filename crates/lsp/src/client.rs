@@ -6,7 +6,7 @@ use std::{path::PathBuf, process::Stdio};
 use crate::jsonrpc::{JsonNotification, JsonRequest};
 use crate::process::{ProcessHandler, ServerRequest};
 use crate::util::path_to_uri;
-use crate::{Request, Response};
+use crate::{Request, RequestResult, Response};
 
 use anyhow::{anyhow, Result};
 use sanedit_buffer::ReadOnlyPieceTree;
@@ -159,7 +159,24 @@ impl Handler {
             .request::<lsp_types::request::HoverRequest>(&params)
             .await?;
 
-        log::info!("Hover response: {:?}", response);
+        if let Some(response) = response {
+            let mut text = String::new();
+            match response.contents {
+                lsp_types::HoverContents::Scalar(_) => todo!(),
+                lsp_types::HoverContents::Array(_) => todo!(),
+                lsp_types::HoverContents::Markup(cont) => match cont.kind {
+                    lsp_types::MarkupKind::PlainText => {
+                        text = cont.value;
+                    }
+                    lsp_types::MarkupKind::Markdown => todo!(),
+                },
+            }
+
+            let _ = self
+                .response
+                .send(Response::Request(RequestResult::Hover { text, offset: 0 }))
+                .await;
+        }
 
         Ok(())
     }

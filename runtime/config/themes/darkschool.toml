@@ -1,6 +1,6 @@
 [colors.window]
 default = "#1D1F21,#c1c1c1,"
-statusline = "#303030,#b1aaaa,"
+statusline = "#353535,#b1aaaa,"
 gutter = ",#4C4C4C,bold"
 end_of_buffer = ",#555555,"
 trailing_whitespace = ",#666666,"
@@ -72,7 +72,7 @@ directory = ",#d7875f,"
 
 [colors.locations]
 default = "#1D1F21,#c1c1c1,"
-title = "#303030,#b1aaaa,"
+title = "#353535,#b1aaaa,"
 entry = ""
 group = ",#7AA6DA,"
 markers = ",#B5BD68,"
@@ -86,4 +86,4 @@ entry = ""
 group = ",#7AA6DA,"
 
 [colors.popup]
-default = "#d8ccb4,#000000,"
+default = "#303030,#d1caca,"

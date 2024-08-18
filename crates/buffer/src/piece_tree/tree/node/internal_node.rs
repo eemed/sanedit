@@ -16,7 +16,7 @@ pub(crate) struct InternalNode {
     /// Data in the tree
     pub(crate) piece: Piece,
     /// Left subtree length in bytes
-    pub(crate) left_subtree_len: usize,
+    pub(crate) left_subtree_len: u64,
 }
 
 impl InternalNode {

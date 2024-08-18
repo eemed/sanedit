@@ -1,5 +1,3 @@
-use std::ops::Range;
-
 use regex_cursor::{
     engines::meta::{FindMatches, Regex},
     regex_automata::{
@@ -12,7 +10,10 @@ use sanedit_buffer::{
     Chunk, Chunks, PieceTreeSlice, SearchIter, SearchIterRev, Searcher, SearcherRev,
 };
 
-use crate::editor::windows::{SearchDirection, SearchKind};
+use crate::editor::{
+    buffers::BufferRange,
+    windows::{SearchDirection, SearchKind},
+};
 
 #[derive(Debug)]
 pub(crate) enum PTSearcher {
@@ -105,11 +106,11 @@ impl PTSearcher {
 
 #[derive(Debug)]
 pub(crate) struct SearchMatch {
-    range: Range<usize>,
+    range: BufferRange,
 }
 
 impl SearchMatch {
-    pub fn range(&self) -> Range<usize> {
+    pub fn range(&self) -> BufferRange {
         self.range.clone()
     }
 }
@@ -134,9 +135,9 @@ impl<'a, 'b> Iterator for MatchIter<'a, 'b> {
         match self {
             MatchIter::Regex(i) => {
                 let next = i.next()?;
-                Some(SearchMatch {
-                    range: next.range(),
-                })
+                let start = next.start() as u64;
+                let end = next.end() as u64;
+                Some(SearchMatch { range: start..end })
             }
             MatchIter::Forward(i) => {
                 let next = i.next()?;
@@ -190,7 +191,7 @@ impl<'a, 'b> MatchIter<'a, 'b> {
         let start = regex_cursor::engines::hybrid::try_search_rev(bwd, bwd_cache, &mut input)
             .ok()
             .flatten()?;
-        let off = start.offset();
+        let off = start.offset() as u64;
 
         // Find the end position of the match
         let match_slice = slice.slice(off..);
@@ -198,7 +199,7 @@ impl<'a, 'b> MatchIter<'a, 'b> {
         let end = regex_cursor::engines::hybrid::try_search_fwd(fwd, fwd_cache, &mut finput)
             .ok()
             .flatten()?;
-        let end_off = end.offset();
+        let end_off = end.offset() as u64;
 
         let slice_start = slice.start() + off;
         let slice_end = slice_start + end_off;
@@ -217,9 +218,9 @@ fn to_input<'s>(slice: &'s PieceTreeSlice) -> Input<PTRegexCursor<'s>> {
 }
 
 pub(crate) struct PTRegexCursor<'a> {
-    len: usize,
+    len: u64,
     chunks: Chunks<'a>,
-    chunk: Option<(usize, Chunk<'a>)>,
+    chunk: Option<(u64, Chunk<'a>)>,
 }
 
 impl<'a> Cursor for PTRegexCursor<'a> {
@@ -249,12 +250,12 @@ impl<'a> Cursor for PTRegexCursor<'a> {
     }
 
     fn total_bytes(&self) -> Option<usize> {
-        Some(self.len)
+        Some(self.len as usize)
     }
 
     fn offset(&self) -> usize {
         match &self.chunk {
-            Some((off, _)) => *off,
+            Some((off, _)) => *off as usize,
             None => 0,
         }
     }

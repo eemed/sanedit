@@ -1,7 +1,4 @@
-use documented::DocumentedFields;
 use serde::{Deserialize, Serialize};
-
-use std::cmp::min;
 
 use sanedit_buffer::{utf8::prev_eol, Bytes, PieceTreeSlice};
 
@@ -118,7 +115,7 @@ impl IndentKind {
 //     }
 // }
 
-pub fn determine_indent(slice: &PieceTreeSlice) -> (IndentKind, usize) {
+pub fn determine_indent(slice: &PieceTreeSlice) -> (IndentKind, u8) {
     let mut indents = vec![];
     let mut lines = slice.lines();
     while let Some(line) = lines.next() {
@@ -135,20 +132,23 @@ pub fn determine_indent(slice: &PieceTreeSlice) -> (IndentKind, usize) {
         return (opts.indent_kind, opts.indent_amount);
     }
 
-    let (spaces, tabs): (Vec<(IndentKind, usize)>, Vec<(IndentKind, usize)>) = indents
+    let (spaces, tabs): (Vec<(IndentKind, u64)>, Vec<(IndentKind, u64)>) = indents
         .into_iter()
         .partition(|(kind, _)| *kind == IndentKind::Space);
 
     if spaces.len() >= tabs.len() {
         let min = spaces.iter().map(|(_, i)| i).min().unwrap();
-        (IndentKind::Space, *min)
+        (
+            IndentKind::Space,
+            TryInto::try_into(*min).unwrap_or(u8::MAX),
+        )
     } else {
         let min = tabs.iter().map(|(_, i)| i).min().unwrap();
-        (IndentKind::Tab, *min)
+        (IndentKind::Tab, TryInto::try_into(*min).unwrap_or(u8::MAX))
     }
 }
 
-fn indent_from_bytes(bytes: &mut Bytes) -> Option<(IndentKind, usize)> {
+fn indent_from_bytes(bytes: &mut Bytes) -> Option<(IndentKind, u64)> {
     use IndentKind::*;
     let kind = bytes
         .next()
@@ -176,7 +176,7 @@ fn indent_from_bytes(bytes: &mut Bytes) -> Option<(IndentKind, usize)> {
 }
 
 /// Calculate indentation level at a line where pos is at
-pub(crate) fn indent_at_line(slice: &PieceTreeSlice, pos: usize) -> Option<(IndentKind, usize)> {
+pub(crate) fn indent_at_line(slice: &PieceTreeSlice, pos: u64) -> Option<(IndentKind, u64)> {
     let mut bytes = slice.bytes_at(pos);
     if let Some(eol) = prev_eol(&mut bytes) {
         let len = eol.eol.len();
@@ -189,7 +189,7 @@ pub(crate) fn indent_at_line(slice: &PieceTreeSlice, pos: usize) -> Option<(Inde
 }
 
 /// If pos is at indentation
-pub(crate) fn is_indent_at_pos(slice: &PieceTreeSlice, pos: usize) -> bool {
+pub(crate) fn is_indent_at_pos(slice: &PieceTreeSlice, pos: u64) -> bool {
     let mut bytes = slice.bytes_at(pos);
     if let Some(eol) = prev_eol(&mut bytes) {
         let len = eol.eol.len();

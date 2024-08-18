@@ -20,7 +20,7 @@ pub(crate) struct Char {
     width: usize,
 
     /// Length of the thing we are displaying in buffer
-    len_in_buffer: usize,
+    len_in_buffer: u64,
 }
 
 impl Char {
@@ -36,7 +36,7 @@ impl Char {
         &self.display
     }
 
-    pub fn len_in_buffer(&self) -> usize {
+    pub fn len_in_buffer(&self) -> u64 {
         self.len_in_buffer
     }
 }
@@ -86,7 +86,7 @@ pub(crate) enum Replacement {
 #[derive(Debug, Clone)]
 pub(crate) struct DisplayOptions {
     pub theme: String,
-    pub tabstop: usize,
+    pub tabstop: u32,
     pub replacements: FxHashMap<Replacement, String>,
 }
 
@@ -152,9 +152,9 @@ fn grapheme_to_char(slice: &PieceTreeSlice, column: usize, options: &DisplayOpti
     }
 }
 
-fn tab_to_char(blen: usize, column: usize, options: &DisplayOptions) -> Char {
+fn tab_to_char(blen: u64, column: usize, options: &DisplayOptions) -> Char {
     // Calculate tab based on current visual column
-    let width = options.tabstop - (column % options.tabstop);
+    let width = options.tabstop as usize - (column % options.tabstop as usize);
     let first = options
         .replacements
         .get(&Replacement::Tab)
@@ -178,7 +178,7 @@ fn tab_to_char(blen: usize, column: usize, options: &DisplayOptions) -> Char {
     }
 }
 
-fn eol_to_char(blen: usize, options: &DisplayOptions) -> Char {
+fn eol_to_char(blen: u64, options: &DisplayOptions) -> Char {
     let display = options
         .replacements
         .get(&Replacement::EOL)
@@ -193,7 +193,7 @@ fn eol_to_char(blen: usize, options: &DisplayOptions) -> Char {
     }
 }
 
-fn nbsp_to_char(blen: usize, options: &DisplayOptions) -> Char {
+fn nbsp_to_char(blen: u64, options: &DisplayOptions) -> Char {
     let display = options
         .replacements
         .get(&Replacement::NonBreakingSpace)
@@ -208,7 +208,7 @@ fn nbsp_to_char(blen: usize, options: &DisplayOptions) -> Char {
     }
 }
 
-fn control_to_char(grapheme: String, blen: usize) -> Char {
+fn control_to_char(grapheme: String, blen: u64) -> Char {
     let ch = grapheme.chars().next().unwrap();
     // C0 control codes or ascii control codes
     if ch.is_ascii_control() {
@@ -226,7 +226,7 @@ fn control_to_char(grapheme: String, blen: usize) -> Char {
     }
 }
 
-fn ascii_control_to_char(grapheme: String, blen: usize) -> Option<Char> {
+fn ascii_control_to_char(grapheme: String, blen: u64) -> Option<Char> {
     let byte = grapheme.bytes().next()?;
     let rep = match byte {
         0 => "^@",

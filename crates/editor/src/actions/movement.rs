@@ -12,7 +12,7 @@ use crate::{
 use super::hooks;
 
 #[inline]
-fn do_move_line<F: Fn(&PieceTreeSlice, &Cursor, &DisplayOptions) -> (usize, usize)>(
+fn do_move_line<F: Fn(&PieceTreeSlice, &Cursor, &DisplayOptions) -> (u64, usize)>(
     editor: &mut Editor,
     id: ClientId,
     f: F,
@@ -36,7 +36,7 @@ fn do_move_line<F: Fn(&PieceTreeSlice, &Cursor, &DisplayOptions) -> (usize, usiz
 }
 
 #[inline]
-fn do_move<F: Fn(&PieceTreeSlice, usize) -> usize>(
+fn do_move<F: Fn(&PieceTreeSlice, u64) -> u64>(
     editor: &mut Editor,
     id: ClientId,
     f: F,
@@ -63,7 +63,7 @@ fn do_move<F: Fn(&PieceTreeSlice, usize) -> usize>(
 }
 
 #[inline]
-fn do_move_static(editor: &mut Editor, id: ClientId, pos: usize, col: Option<usize>) {
+fn do_move_static(editor: &mut Editor, id: ClientId, pos: u64, col: Option<usize>) {
     do_move(editor, id, |_, _| pos, col);
 }
 

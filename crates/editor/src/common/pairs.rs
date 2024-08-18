@@ -24,7 +24,7 @@ fn direction_and_pair(byte: u8) -> Option<(SearchDirection, u8)> {
 }
 
 /// Find matching pair for char at pos
-pub(crate) fn matching_pair(slice: &PieceTreeSlice, pos: usize) -> Option<usize> {
+pub(crate) fn matching_pair(slice: &PieceTreeSlice, pos: u64) -> Option<u64> {
     let mut bytes = slice.bytes_at(pos);
     let byte = bytes.at(pos);
     let (dir, pair) = direction_and_pair(byte)?;

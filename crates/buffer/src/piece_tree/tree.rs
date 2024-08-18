@@ -42,14 +42,14 @@ impl Tree {
 
     /// Insert piece `piece` to tree at index `index`.
     #[inline]
-    pub fn insert(&mut self, pos: usize, piece: Piece, allow_append: bool) {
+    pub fn insert(&mut self, pos: u64, piece: Piece, allow_append: bool) {
         let (nodes_inserted, ..) = insert_rec(&mut self.root, pos, piece, true, allow_append);
         self.node_count += nodes_inserted;
     }
 
-    pub fn remove(&mut self, range: Range<usize>) {
+    pub fn remove(&mut self, range: Range<u64>) {
         let mut removed_bytes = 0;
-        let len = range.len();
+        let len = range.end - range.start;
 
         while removed_bytes < len {
             let (removed_piece, node_removed, ins_p) =
@@ -70,7 +70,7 @@ impl Tree {
         }
     }
 
-    pub fn find_node(&self, mut target: usize) -> (Vec<&InternalNode>, usize) {
+    pub fn find_node(&self, mut target: u64) -> (Vec<&InternalNode>, u64) {
         let mut pos = 0;
         let mut stack = Vec::with_capacity(self.max_height());
         let mut node = self.root.as_ref();
@@ -110,14 +110,13 @@ impl Tree {
 /// Returns:
 ///     number of inserted nodes
 ///     inserted byte count
-///     inserted line count
 fn insert_rec(
     node: &mut Arc<Node>,
-    mut index: usize, // Index in buffer
-    piece: Piece,     // Piece to insert
+    mut index: u64, // Index in buffer
+    piece: Piece,   // Piece to insert
     at_root: bool,
     allow_append: bool,
-) -> (usize, usize) {
+) -> (usize, u64) {
     if node.is_leaf() {
         let ins_bytes = piece.len;
         let node_color = if at_root { Color::Black } else { Color::Red };
@@ -191,8 +190,8 @@ fn insert_rec(
 ///     Optional piece to insert if a piece split was needed.
 fn remove_rec(
     node: &mut Arc<Node>,
-    mut index: usize, // Remove buffer position
-    len: usize,       // Remove length
+    mut index: u64, // Remove buffer position
+    len: u64,       // Remove length
     at_root: bool,
 ) -> (Piece, bool, Option<Piece>) {
     if node.is_leaf() {
@@ -564,10 +563,10 @@ pub(crate) mod test {
         let mut gen = rand_chacha::ChaCha8Rng::seed_from_u64(seed);
         let p_len = 1000;
         let mut tree_len = p_len;
-        let mut pt = make_tree(p_len);
+        let mut pt = make_tree(p_len as usize);
 
         while tree_len > 0 {
-            let start = gen.next_u64() as usize % (tree_len + 1);
+            let start = gen.next_u64() % (tree_len + 1);
             let end = (start + 15).min(tree_len);
             pt.remove(start..end);
             tree_len -= end - start;
@@ -722,7 +721,7 @@ pub(crate) mod test {
     }
 
     fn is_black_height_balanced(node: &Arc<Node>) -> bool {
-        fn black_height(node: &Arc<Node>) -> Result<usize, ()> {
+        fn black_height(node: &Arc<Node>) -> Result<u64, ()> {
             match node.as_ref() {
                 Node::Leaf => Ok(1),
                 Node::BBLeaf => Ok(2),
@@ -742,7 +741,7 @@ pub(crate) mod test {
     }
 
     fn left_subtree_lengths_match(node: &Arc<Node>) -> bool {
-        fn subtree_len(node: &Arc<Node>) -> Result<usize, ()> {
+        fn subtree_len(node: &Arc<Node>) -> Result<u64, ()> {
             match node.as_ref() {
                 Node::Leaf => Ok(0),
                 Node::BBLeaf => Ok(0),

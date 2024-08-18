@@ -59,7 +59,7 @@ impl Cursors {
     }
 
     /// Remove cursor at position pos
-    pub fn remove(&mut self, _pos: usize) {
+    pub fn remove(&mut self, _pos: u64) {
         todo!()
     }
 
@@ -100,7 +100,7 @@ impl Cursors {
         self.primary = min(self.primary, self.cursors.len() - 1);
     }
 
-    pub fn shrink_cursor_to_range(&mut self, range: Range<usize>) {
+    pub fn shrink_cursor_to_range(&mut self, range: Range<u64>) {
         for cursor in &mut self.cursors {
             cursor.shrink_to_range(&range)
         }
@@ -159,9 +159,9 @@ impl Default for Cursors {
     }
 }
 
-impl From<&Cursors> for Vec<usize> {
+impl From<&Cursors> for Vec<u64> {
     fn from(cursors: &Cursors) -> Self {
-        let positions: Vec<usize> = cursors.cursors().iter().map(|c| c.pos()).collect();
+        let positions: Vec<u64> = cursors.cursors().iter().map(|c| c.pos()).collect();
         positions.into()
     }
 }

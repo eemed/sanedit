@@ -2,7 +2,7 @@ use sanedit_buffer::ReadOnlyPieceTree;
 
 pub(crate) fn offset_to_position(
     buf: &ReadOnlyPieceTree,
-    offset: usize,
+    offset: u64,
     kind: lsp_types::PositionEncodingKind,
 ) -> lsp_types::Position {
     let mut row = 0;

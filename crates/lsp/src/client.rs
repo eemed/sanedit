@@ -139,7 +139,7 @@ impl Handler {
         Ok(())
     }
 
-    async fn hover(&mut self, path: PathBuf, buf: ReadOnlyPieceTree, offset: usize) -> Result<()> {
+    async fn hover(&mut self, path: PathBuf, buf: ReadOnlyPieceTree, offset: u64) -> Result<()> {
         let params = lsp_types::HoverParams {
             text_document_position_params: lsp_types::TextDocumentPositionParams {
                 text_document: lsp_types::TextDocumentIdentifier {

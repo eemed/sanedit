@@ -63,7 +63,7 @@ struct PTReader<'a> {
 impl<'a> ByteReader for PTReader<'a> {
     type I = PTIter<'a>;
 
-    fn len(&self) -> usize {
+    fn len(&self) -> u64 {
         self.pt.len()
     }
 
@@ -71,7 +71,7 @@ impl<'a> ByteReader for PTReader<'a> {
         !self.kill.is_empty()
     }
 
-    fn iter(&self, range: std::ops::Range<usize>) -> Self::I {
+    fn iter(&self, range: std::ops::Range<u64>) -> Self::I {
         let slice = self.pt.slice(range);
         let bytes = slice.bytes();
         PTIter(bytes)

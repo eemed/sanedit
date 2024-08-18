@@ -59,10 +59,10 @@ impl OriginalBuffer {
     }
 
     #[inline(always)]
-    pub fn slice(&self, range: Range<usize>) -> io::Result<ByteSlice<'_>> {
+    pub fn slice(&self, range: Range<u64>) -> io::Result<ByteSlice<'_>> {
         use OriginalBuffer::*;
         match self {
-            Memory { bytes } => Ok(bytes[range].into()),
+            Memory { bytes } => Ok(bytes[range.start as usize..range.end as usize].into()),
             File { cache, file } => {
                 let Range { start, end } = range;
                 {
@@ -83,16 +83,17 @@ impl OriginalBuffer {
                     .map_err(|_| io::Error::from(io::ErrorKind::Other))?;
 
                 let buf = {
-                    let block = start - (start % FILE_BACKED_MAX_PIECE_SIZE);
-                    let size = min(len, block + FILE_BACKED_MAX_PIECE_SIZE) - block;
+                    let block = start - (start % FILE_BACKED_MAX_PIECE_SIZE as u64);
+                    let size =
+                        (min(len, block + FILE_BACKED_MAX_PIECE_SIZE as u64) - block) as usize;
 
                     let mut buf: Box<[u8]> = vec![0u8; size].into();
                     pfile.file.seek(SeekFrom::Start(block as u64))?;
                     pfile.file.read_exact(&mut buf)?;
                     let mut buf = cache.push(block, Arc::from(buf));
 
-                    let s = start - block;
-                    let e = s + end - start;
+                    let s = (start - block) as usize;
+                    let e = (s as u64 + end - start) as usize;
                     buf.slice(s..e);
                     buf
                 };
@@ -103,17 +104,17 @@ impl OriginalBuffer {
     }
 
     /// Returns the length of the original buffer
-    pub fn len(&self) -> usize {
+    pub fn len(&self) -> u64 {
         use OriginalBuffer::*;
         match self {
             File { file, .. } => {
                 if let Ok(pfile) = file.lock() {
-                    pfile.file.metadata().map(|m| m.len()).unwrap_or(0) as usize
+                    pfile.file.metadata().map(|m| m.len()).unwrap_or(0)
                 } else {
                     0
                 }
             }
-            Memory { bytes } => bytes.len(),
+            Memory { bytes } => bytes.len() as u64,
         }
     }
 

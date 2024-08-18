@@ -1,12 +1,11 @@
 use std::collections::VecDeque;
-use std::ops::Range;
 
 use sanedit_buffer::utf8::EndOfLine;
 use sanedit_messages::redraw::{Point, Size};
 
 use crate::common::char::{Char, DisplayOptions};
 use crate::common::movement::prev_line_start;
-use crate::editor::buffers::Buffer;
+use crate::editor::buffers::{Buffer, BufferRange};
 use crate::editor::syntax::SyntaxParseResult;
 
 #[derive(Debug, Clone)]
@@ -32,7 +31,7 @@ impl Cell {
         }
     }
 
-    pub fn len_in_buffer(&self) -> usize {
+    pub fn len_in_buffer(&self) -> u64 {
         match self {
             Cell::Char { ch } => ch.len_in_buffer(),
             _ => 0,
@@ -57,7 +56,7 @@ impl From<Char> for Cell {
 #[derive(Debug)]
 pub(crate) struct View {
     /// buffer range
-    range: Range<usize>,
+    range: BufferRange,
     /// Cells to hold drawn data
     cells: VecDeque<Vec<Cell>>,
     /// Width of view
@@ -189,24 +188,24 @@ impl View {
 
         if self.range.start > buf.len() {
             self.range.start = buf.len();
-            self.scroll_up_n(buf, self.height() / 2);
+            self.scroll_up_n(buf, (self.height() / 2) as u64);
         }
 
         self.clear();
         self.draw_cells(buf);
     }
 
-    pub fn line_len_in_buffer(&self, line: usize) -> usize {
+    pub fn line_len_in_buffer(&self, line: usize) -> u64 {
         self.cells
             .get(line)
             .map(|row| row.iter().fold(0, |acc, cell| acc + cell.len_in_buffer()))
             .unwrap_or(0)
     }
 
-    pub fn scroll_down_n(&mut self, buf: &Buffer, mut n: usize) {
+    pub fn scroll_down_n(&mut self, buf: &Buffer, mut n: u64) {
         self.redraw(buf);
 
-        if n >= self.height {
+        if n >= self.height as u64 {
             self.range.start = self.range.end;
             self.needs_redraw = true;
             return;
@@ -225,7 +224,7 @@ impl View {
         }
     }
 
-    pub fn scroll_up_n(&mut self, buf: &Buffer, mut n: usize) {
+    pub fn scroll_up_n(&mut self, buf: &Buffer, mut n: u64) {
         self.redraw(buf);
 
         if n == 0 || self.range.start == 0 {
@@ -235,7 +234,7 @@ impl View {
         // Go up until we find newlines,
         // but stop at a maximum if there are no lines.
         let mut pos = self.range.start;
-        let min = pos.saturating_sub(self.height * self.width);
+        let min = pos.saturating_sub((self.height * self.width) as u64);
         let slice = buf.slice(..pos);
         let mut graphemes = slice.graphemes_at(slice.len());
 
@@ -260,7 +259,7 @@ impl View {
         self.needs_redraw = true;
     }
 
-    pub fn range(&self) -> Range<usize> {
+    pub fn range(&self) -> BufferRange {
         self.range.clone()
     }
 
@@ -276,7 +275,7 @@ impl View {
             .fold(true, |acc, cell| acc && matches!(cell, Cell::Empty))
     }
 
-    pub fn set_offset(&mut self, offset: usize) {
+    pub fn set_offset(&mut self, offset: u64) {
         self.range.start = offset;
         self.needs_redraw = true;
     }
@@ -293,7 +292,7 @@ impl View {
         last
     }
 
-    pub fn pos_at_point(&self, point: Point) -> Option<usize> {
+    pub fn pos_at_point(&self, point: Point) -> Option<u64> {
         let mut pos = self.range.start;
         let mut last_ch_pos = None;
         for (y, row) in self.cells.iter().enumerate() {
@@ -324,7 +323,7 @@ impl View {
         None
     }
 
-    pub fn point_at_pos(&self, pos: usize) -> Option<Point> {
+    pub fn point_at_pos(&self, pos: u64) -> Option<Point> {
         let mut cur = self.range.start;
 
         for (y, row) in self.cells.iter().enumerate() {
@@ -344,20 +343,20 @@ impl View {
         None
     }
 
-    pub fn start(&self) -> usize {
+    pub fn start(&self) -> u64 {
         self.range.start
     }
 
-    pub fn end(&self) -> usize {
+    pub fn end(&self) -> u64 {
         self.range.end
     }
 
-    pub fn contains(&self, pos: usize) -> bool {
+    pub fn contains(&self, pos: u64) -> bool {
         self.range.contains(&pos)
     }
 
     /// If distance is small we can scroll to the next position
-    fn scroll_to(&mut self, pos: usize, buf: &Buffer) {
+    fn scroll_to(&mut self, pos: u64, buf: &Buffer) {
         while pos < self.start() {
             self.scroll_up_n(buf, 1);
             self.draw(buf);
@@ -370,7 +369,7 @@ impl View {
     }
 
     /// How much to move to be able to show pos in view
-    fn offset_from(&self, pos: usize) -> usize {
+    fn offset_from(&self, pos: u64) -> u64 {
         if self.contains(pos) {
             return 0;
         }
@@ -390,18 +389,18 @@ impl View {
     }
 
     /// Check wether the position is visible.
-    pub fn is_visible(&self, pos: usize) -> bool {
+    pub fn is_visible(&self, pos: u64) -> bool {
         // pos is visible if it is in the buffer range or we are at the end of
         // the file and the view is currently showing that eof.
         self.contains(pos) || (pos == self.end() && self.has_eof())
     }
 
     /// Align view so that pos is shown
-    pub fn view_to(&mut self, pos: usize, buf: &Buffer) {
+    pub fn view_to(&mut self, pos: u64, buf: &Buffer) {
         self.redraw(buf);
 
         // Scroll to position if its nearby
-        let max = (self.height() / 2) * self.width();
+        let max = ((self.height() / 2) * self.width()) as u64;
         let offset = self.offset_from(pos);
         if offset <= max {
             self.scroll_to(pos, buf);
@@ -410,14 +409,14 @@ impl View {
         // Goto position and scroll it to the middle
         if !self.is_visible(pos) {
             self.set_offset(pos);
-            self.scroll_up_n(buf, self.height() / 2);
+            self.scroll_up_n(buf, (self.height() / 2) as u64);
             self.draw(buf);
         }
 
         // Goto position and scroll until the whole line is visible
         if !self.is_visible(pos) {
             self.set_offset(pos);
-            let min = pos.saturating_sub(self.width() * self.height());
+            let min = pos.saturating_sub((self.width() * self.height()) as u64);
             let slice = &buf.slice(min..);
             self.range.start = min + prev_line_start(&slice, slice.len());
             self.draw(buf);

@@ -9,9 +9,9 @@ pub(crate) struct Piece {
     pub(crate) kind: BufferKind,
 
     /// index in buffer
-    pub(crate) pos: usize,
+    pub(crate) pos: u64,
     /// Length in bytes
-    pub(crate) len: usize,
+    pub(crate) len: u64,
 
     /// This is used when the same buffer part is used multiple times, so kind, pos, and len
     /// are the same. count can be used to identify a piece from other same
@@ -20,7 +20,7 @@ pub(crate) struct Piece {
 }
 
 impl Piece {
-    pub fn new(kind: BufferKind, pos: usize, len: usize) -> Self {
+    pub fn new(kind: BufferKind, pos: u64, len: u64) -> Self {
         Piece {
             kind,
             pos,
@@ -29,7 +29,7 @@ impl Piece {
         }
     }
 
-    pub fn new_with_count(kind: BufferKind, pos: usize, len: usize, count: u32) -> Self {
+    pub fn new_with_count(kind: BufferKind, pos: u64, len: u64, count: u32) -> Self {
         Piece {
             kind,
             pos,
@@ -41,7 +41,7 @@ impl Piece {
     /// Split the piece at offset from the piece start.
     /// Modifies the current piece to be the left half
     /// and returns the right half.
-    pub fn split_left(&mut self, offset: usize) -> Piece {
+    pub fn split_left(&mut self, offset: u64) -> Piece {
         debug_assert!(offset <= self.len);
         let right_start = self.pos + offset;
         let right_len = self.len - offset;
@@ -54,13 +54,13 @@ impl Piece {
     /// Split the piece at offset from the piece start.
     /// Modifies the current piece to be the right half
     /// and returns the left half.
-    pub fn split_right(&mut self, offset: usize) -> Piece {
+    pub fn split_right(&mut self, offset: u64) -> Piece {
         let right = self.split_left(offset);
         mem::replace(self, right)
     }
 
     /// Returns the range this piece references
-    pub fn range(&self) -> Range<usize> {
+    pub fn range(&self) -> Range<u64> {
         self.pos..self.pos + self.len
     }
 }

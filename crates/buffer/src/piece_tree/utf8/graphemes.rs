@@ -8,7 +8,7 @@ use super::chars::Chars;
 /// If more iterations are needed using the `Graphemes` iterator is more
 /// efficient.
 #[inline]
-pub fn next_grapheme_boundary(slice: &PieceTreeSlice, pos: usize) -> usize {
+pub fn next_grapheme_boundary(slice: &PieceTreeSlice, pos: u64) -> u64 {
     let mut graphemes = slice.graphemes_at(pos);
     match graphemes.next() {
         Some(g) => pos + g.len(),
@@ -20,7 +20,7 @@ pub fn next_grapheme_boundary(slice: &PieceTreeSlice, pos: usize) -> usize {
 /// If more iterations are needed using the `Graphemes` iterator is more
 /// efficient.
 #[inline]
-pub fn prev_grapheme_boundary(slice: &PieceTreeSlice, pos: usize) -> usize {
+pub fn prev_grapheme_boundary(slice: &PieceTreeSlice, pos: u64) -> u64 {
     let mut graphemes = slice.graphemes_at(pos);
     match graphemes.prev() {
         Some(g) => pos - g.len(),
@@ -30,14 +30,14 @@ pub fn prev_grapheme_boundary(slice: &PieceTreeSlice, pos: usize) -> usize {
 
 #[derive(Debug, Clone)]
 struct Char {
-    start: usize,
-    end: usize,
+    start: u64,
+    end: u64,
     ch: char,
     gbreak: GraphemeBreak,
 }
 
 impl Char {
-    pub fn new(ch: (usize, usize, char)) -> Char {
+    pub fn new(ch: (u64, u64, char)) -> Char {
         Char {
             start: ch.0,
             end: ch.1,
@@ -65,7 +65,7 @@ pub struct Graphemes<'a> {
 }
 
 impl<'a> Graphemes<'a> {
-    pub(crate) fn new(pt: &'a ReadOnlyPieceTree, at: usize) -> Graphemes<'a> {
+    pub(crate) fn new(pt: &'a ReadOnlyPieceTree, at: u64) -> Graphemes<'a> {
         let chars = Chars::new(pt, at);
         Graphemes {
             slice: pt.slice(..),
@@ -78,7 +78,7 @@ impl<'a> Graphemes<'a> {
         }
     }
 
-    pub(crate) fn new_from_slice(slice: &PieceTreeSlice<'a>, at: usize) -> Graphemes<'a> {
+    pub(crate) fn new_from_slice(slice: &PieceTreeSlice<'a>, at: u64) -> Graphemes<'a> {
         debug_assert!(
             slice.len() >= at,
             "Attempting to index {} over slice len {} ",

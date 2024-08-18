@@ -102,7 +102,7 @@ impl Change {
                         return true;
                     }
 
-                    ins += prang.len();
+                    ins += prang.end - prang.start;
                 }
 
                 false
@@ -121,7 +121,7 @@ impl Change {
                         return true;
                     }
 
-                    rem += prang.len();
+                    rem += prang.end - prang.start;
                 }
 
                 false

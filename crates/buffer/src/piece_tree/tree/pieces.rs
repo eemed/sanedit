@@ -11,13 +11,13 @@ pub(crate) type Pieces<'a> = BoundedPieceIter<'a>;
 /// Piece iterator that can be bounded to a buffer range
 #[derive(Debug, Clone)]
 pub(crate) struct BoundedPieceIter<'a> {
-    range: Range<usize>,
+    range: Range<u64>,
     iter: PieceIter<'a>,
 }
 
 impl<'a> BoundedPieceIter<'a> {
     #[inline]
-    pub(crate) fn new(pt: &'a ReadOnlyPieceTree, at: usize) -> BoundedPieceIter<'a> {
+    pub(crate) fn new(pt: &'a ReadOnlyPieceTree, at: u64) -> BoundedPieceIter<'a> {
         let iter = PieceIter::new(pt, at);
         BoundedPieceIter {
             range: 0..pt.len(),
@@ -25,7 +25,7 @@ impl<'a> BoundedPieceIter<'a> {
         }
     }
     #[inline]
-    pub(crate) fn new_from_slice(slice: &PieceTreeSlice<'a>, at: usize) -> BoundedPieceIter<'a> {
+    pub(crate) fn new_from_slice(slice: &PieceTreeSlice<'a>, at: u64) -> BoundedPieceIter<'a> {
         let iter = PieceIter::new(slice.pt, slice.start() + at);
         BoundedPieceIter {
             range: slice.range.clone(),
@@ -34,7 +34,7 @@ impl<'a> BoundedPieceIter<'a> {
     }
 
     #[inline]
-    fn shrink_to_range(&self, (mut p_start, mut piece): (usize, Piece)) -> Option<(usize, Piece)> {
+    fn shrink_to_range(&self, (mut p_start, mut piece): (u64, Piece)) -> Option<(u64, Piece)> {
         let Range { start, end } = self.range;
         let p_end = p_start + piece.len;
 
@@ -57,13 +57,13 @@ impl<'a> BoundedPieceIter<'a> {
     }
 
     #[inline]
-    pub fn get(&self) -> Option<(usize, Piece)> {
+    pub fn get(&self) -> Option<(u64, Piece)> {
         let pos_piece = self.iter.get()?;
         self.shrink_to_range(pos_piece)
     }
 
     #[inline]
-    pub fn next(&mut self) -> Option<(usize, Piece)> {
+    pub fn next(&mut self) -> Option<(u64, Piece)> {
         let (p_start, _) = self.iter.get()?;
         let Range { end, .. } = self.range;
         let over_bounds = end < p_start;
@@ -77,7 +77,7 @@ impl<'a> BoundedPieceIter<'a> {
     }
 
     #[inline]
-    pub fn prev(&mut self) -> Option<(usize, Piece)> {
+    pub fn prev(&mut self) -> Option<(u64, Piece)> {
         if let Some((p_start, _)) = self.iter.get() {
             let Range { start, .. } = self.range;
             let over_bounds = p_start <= start;
@@ -97,12 +97,12 @@ impl<'a> BoundedPieceIter<'a> {
 pub(crate) struct PieceIter<'a> {
     pt: &'a ReadOnlyPieceTree,
     stack: Vec<&'a InternalNode>,
-    pos: usize, // Current piece pos in buffer
+    pos: u64, // Current piece pos in buffer
 }
 
 impl<'a> PieceIter<'a> {
     #[inline]
-    pub(crate) fn new(pt: &'a ReadOnlyPieceTree, at: usize) -> Self {
+    pub(crate) fn new(pt: &'a ReadOnlyPieceTree, at: u64) -> Self {
         // log::info!("new pieces at {at}");
         // Be empty at pt.len
         let (stack, pos) = if at == pt.len {
@@ -186,14 +186,14 @@ impl<'a> PieceIter<'a> {
     }
 
     #[inline(always)]
-    pub fn get(&self) -> Option<(usize, Piece)> {
+    pub fn get(&self) -> Option<(u64, Piece)> {
         let piece = self.stack.last().map(|&node| node.piece.clone())?;
         let pos = self.pos();
         Some((pos, piece))
     }
 
     #[inline]
-    pub fn next(&mut self) -> Option<(usize, Piece)> {
+    pub fn next(&mut self) -> Option<(u64, Piece)> {
         let prev_len = self.get()?.1.len;
 
         if let Some(p) = self.tree_next().cloned() {
@@ -206,7 +206,7 @@ impl<'a> PieceIter<'a> {
     }
 
     #[inline]
-    pub fn prev(&mut self) -> Option<(usize, Piece)> {
+    pub fn prev(&mut self) -> Option<(u64, Piece)> {
         if self.pos == 0 {
             return None;
         }
@@ -223,7 +223,7 @@ impl<'a> PieceIter<'a> {
     }
 
     #[inline(always)]
-    pub fn pos(&self) -> usize {
+    pub fn pos(&self) -> u64 {
         self.pos
     }
 }
@@ -235,7 +235,7 @@ pub(crate) mod test {
 
     use super::*;
 
-    fn add_piece(pos: usize, index: usize, len: usize) -> Option<(usize, Piece)> {
+    fn add_piece(pos: u64, index: u64, len: u64) -> Option<(u64, Piece)> {
         Some((pos, Piece::new(BufferKind::Add, index, len)))
     }
 

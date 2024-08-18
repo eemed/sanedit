@@ -32,7 +32,7 @@ pub(crate) use sorted::SortedRanges;
 key_type!(pub(crate) BufferId);
 
 /// A range in the buffer
-pub(crate) type BufferRange = Range<usize>;
+pub(crate) type BufferRange = Range<u64>;
 
 #[derive(Debug)]
 pub(crate) struct Buffer {
@@ -138,7 +138,7 @@ impl Buffer {
             .unwrap_or(Cow::from("scratch"))
     }
 
-    pub fn len(&self) -> usize {
+    pub fn len(&self) -> u64 {
         self.pt.len()
     }
 
@@ -197,7 +197,7 @@ impl Buffer {
         Ok(change)
     }
 
-    pub fn remove(&mut self, range: Range<usize>) -> Result<&Change> {
+    pub fn remove(&mut self, range: Range<u64>) -> Result<&Change> {
         let ranges = vec![range.clone()].into();
         self.remove_multi(&ranges)
     }
@@ -206,14 +206,17 @@ impl Buffer {
         self.insert_multi(&[self.pt.len()], bytes)
     }
 
-    pub fn insert<B: AsRef<[u8]>>(&mut self, pos: usize, bytes: B) -> Result<&Change> {
+    pub fn insert<B: AsRef<[u8]>>(&mut self, pos: u64, bytes: B) -> Result<&Change> {
         self.insert_multi(&[pos], bytes)
     }
 
-    pub fn insert_multi<B: AsRef<[u8]>>(&mut self, pos: &[usize], bytes: B) -> Result<&Change> {
+    pub fn insert_multi<B: AsRef<[u8]>>(&mut self, pos: &[u64], bytes: B) -> Result<&Change> {
         ensure!(!self.read_only, BufferError::ReadOnly);
         let bytes = bytes.as_ref();
-        let ranges: Vec<BufferRange> = pos.iter().map(|pos| *pos..pos + bytes.len()).collect();
+        let ranges: Vec<BufferRange> = pos
+            .iter()
+            .map(|pos| *pos..pos + bytes.len() as u64)
+            .collect();
         let change = Change::insert(&ranges.into(), bytes);
         let change = self.create_undo_point(change);
 
@@ -247,7 +250,7 @@ impl Buffer {
         self.path.as_ref().map(|p| p.as_path())
     }
 
-    pub fn slice<R: RangeBounds<usize>>(&self, range: R) -> PieceTreeSlice {
+    pub fn slice<R: RangeBounds<u64>>(&self, range: R) -> PieceTreeSlice {
         self.pt.slice(range)
     }
 

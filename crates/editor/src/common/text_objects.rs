@@ -14,15 +14,15 @@ use crate::editor::buffers::BufferRange;
 /// Contains special logic when ch is a bracket
 pub(crate) fn find_range(
     slice: &PieceTreeSlice,
-    pos: usize,
+    pos: u64,
     start: &str,
     end: &str,
     include: bool,
 ) -> Option<BufferRange> {
     let mut range = find_range_included(slice, pos, start, end)?;
     if !include {
-        range.start += start.len();
-        range.end -= end.len();
+        range.start += start.len() as u64;
+        range.end -= end.len() as u64;
     }
 
     Some(range)
@@ -30,11 +30,11 @@ pub(crate) fn find_range(
 
 fn find_range_included(
     slice: &PieceTreeSlice,
-    pos: usize,
+    pos: u64,
     start: &str,
     end: &str,
 ) -> Option<BufferRange> {
-    let slen = start.len();
+    let slen = start.len() as u64;
     // Search forward for a start or end
 
     let mut graphemes = slice.graphemes_at(pos);
@@ -112,7 +112,7 @@ fn find_prev_start_or_end(
     graphemes: &mut Graphemes,
     start: &str,
     end: &str,
-) -> Option<(usize, bool)> {
+) -> Option<(u64, bool)> {
     let mut advanced = 0;
     while let Some(g) = graphemes.prev() {
         let gs = String::from(&g);
@@ -133,7 +133,7 @@ fn find_next_start_or_end(
     graphemes: &mut Graphemes,
     start: &str,
     end: &str,
-) -> Option<(usize, bool)> {
+) -> Option<(u64, bool)> {
     let mut advanced = 0;
     while let Some(g) = graphemes.next() {
         let gs = String::from(&g);

@@ -17,7 +17,7 @@ use super::{
     movement::{next_word_end, prev_word_start, start_of_line},
 };
 
-pub(crate) fn width_at_pos(slice: &PieceTreeSlice, pos: usize, opts: &DisplayOptions) -> usize {
+pub(crate) fn width_at_pos(slice: &PieceTreeSlice, pos: u64, opts: &DisplayOptions) -> usize {
     let target = pos;
     let mut pos = start_of_line(slice, pos);
     let mut col = 0;
@@ -39,10 +39,10 @@ pub(crate) fn width_at_pos(slice: &PieceTreeSlice, pos: usize, opts: &DisplayOpt
 /// returns the position at width + the width at the position
 pub(crate) fn pos_at_width(
     slice: &PieceTreeSlice,
-    pos: usize,
+    pos: u64,
     width: usize,
     opts: &DisplayOptions,
-) -> usize {
+) -> u64 {
     let mut pos = start_of_line(slice, pos);
     let mut col = 0;
     let mut graphemes = slice.graphemes_at(pos);
@@ -63,10 +63,10 @@ pub(crate) fn pos_at_width(
 }
 
 pub(crate) fn on_word_end(
-    prev: (usize, GraphemeCategory),
-    next: Option<(usize, GraphemeCategory)>,
-    pos: usize,
-    slice_len: usize,
+    prev: (u64, GraphemeCategory),
+    next: Option<(u64, GraphemeCategory)>,
+    pos: u64,
+    slice_len: u64,
 ) -> bool {
     match (prev, next) {
         ((_, p), Some((_, n))) => is_word_break_end(&p, &n),
@@ -75,9 +75,9 @@ pub(crate) fn on_word_end(
 }
 
 pub(crate) fn on_word_start(
-    prev: Option<(usize, GraphemeCategory)>,
-    next: (usize, GraphemeCategory),
-    pos: usize,
+    prev: Option<(u64, GraphemeCategory)>,
+    next: (u64, GraphemeCategory),
+    pos: u64,
 ) -> bool {
     match (prev, next) {
         (Some((_, p)), (_, n)) => is_word_break(&p, &n),
@@ -86,7 +86,7 @@ pub(crate) fn on_word_start(
 }
 
 /// Returns the range of the word that includes position pos
-pub(crate) fn word_at_pos(slice: &PieceTreeSlice, pos: usize) -> Option<BufferRange> {
+pub(crate) fn word_at_pos(slice: &PieceTreeSlice, pos: u64) -> Option<BufferRange> {
     let make_pair = |slice: PieceTreeSlice| {
         let len = slice.len();
         let cat = grapheme_category(&slice);
@@ -171,7 +171,7 @@ pub(crate) fn copy_cursors_to_lines(lines: Vec<String>, eol: EndOfLine) -> Strin
     result
 }
 
-pub(crate) fn selection_line_starts(buf: &Buffer, sel: Range<usize>) -> Vec<usize> {
+pub(crate) fn selection_line_starts(buf: &Buffer, sel: Range<u64>) -> Vec<u64> {
     let mut starts = vec![];
     let start = sel.start;
     let slice = buf.slice(sel);
@@ -193,7 +193,7 @@ pub(crate) fn selection_line_starts(buf: &Buffer, sel: Range<usize>) -> Vec<usiz
     starts
 }
 
-pub fn at_start_of_line(slice: &PieceTreeSlice, pos: usize) -> bool {
+pub fn at_start_of_line(slice: &PieceTreeSlice, pos: u64) -> bool {
     let mut graphemes = slice.graphemes_at(pos);
     match graphemes.prev() {
         Some(g) => grapheme_category(&g) == GraphemeCategory::EOL,

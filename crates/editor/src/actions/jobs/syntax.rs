@@ -4,7 +4,7 @@ use sanedit_buffer::ReadOnlyPieceTree;
 
 use crate::{
     editor::{
-        buffers::BufferId,
+        buffers::{BufferId, BufferRange},
         job_broker::{CPUJob, KeepInTouch},
         syntax::{Syntax, SyntaxParseResult},
         Editor,
@@ -19,7 +19,7 @@ pub(crate) struct SyntaxParser {
     syntax: Syntax,
     bid: BufferId,
     ropt: ReadOnlyPieceTree,
-    range: Range<usize>,
+    range: BufferRange,
 }
 
 impl SyntaxParser {
@@ -28,7 +28,7 @@ impl SyntaxParser {
         bid: BufferId,
         syntax: Syntax,
         ropt: ReadOnlyPieceTree,
-        range: Range<usize>,
+        range: BufferRange,
     ) -> Self {
         SyntaxParser {
             client_id: id,

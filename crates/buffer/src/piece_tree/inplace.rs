@@ -15,14 +15,14 @@ use super::tree::piece::Piece;
 
 #[derive(Debug)]
 enum WriteOp {
-    Size(usize),
+    Size(u64),
     Overwrite(Overwrite),
 }
 
 #[derive(PartialEq)]
 struct Overwrite {
     piece: Piece,
-    target: usize,
+    target: u64,
 }
 
 impl fmt::Debug for Overwrite {
@@ -36,7 +36,7 @@ impl Overwrite {
         self.piece.kind
     }
 
-    fn depends_on(&self) -> Option<Range<usize>> {
+    fn depends_on(&self) -> Option<Range<u64>> {
         match self.piece.kind {
             BufferKind::Add => None,
             BufferKind::Original => {
@@ -47,7 +47,7 @@ impl Overwrite {
         }
     }
 
-    fn target(&self) -> Range<usize> {
+    fn target(&self) -> Range<u64> {
         self.target..self.target + self.piece.len
     }
 }
@@ -159,7 +159,7 @@ fn do_write_in_place(pt: &ReadOnlyPieceTree, ops: Vec<WriteOp>) -> io::Result<()
                     let start = ow.target().start;
                     file.seek(SeekFrom::Start(start as u64))?;
                     let range = ow.piece.range();
-                    let bytes = pt.add.slice(range);
+                    let bytes = pt.add.slice(range.start as usize..range.end as usize);
                     file.write_all(bytes)?;
                 }
                 BufferKind::Original => {
@@ -173,7 +173,7 @@ fn do_write_in_place(pt: &ReadOnlyPieceTree, ops: Vec<WriteOp>) -> io::Result<()
                         let mut nbuf;
                         let up = target.start < deps.start;
                         // Deps len == target len
-                        let len = target.len();
+                        let len = target.end - target.start;
                         let mut written = 0;
 
                         // TODO use mmap that already exists?
@@ -182,16 +182,16 @@ fn do_write_in_place(pt: &ReadOnlyPieceTree, ops: Vec<WriteOp>) -> io::Result<()
                             let mut rpos = deps.start;
                             let mut wpos = target.start;
 
-                            while written < target.len() {
+                            while written < target.end - target.start {
                                 file.seek(SeekFrom::Start(rpos as u64))?;
-                                let bmax = min(deps.len() - written, SIZE);
+                                let bmax = min(((deps.end - deps.start) - written) as usize, SIZE);
                                 nbuf = file.read(&mut buf[..bmax])?;
-                                rpos += nbuf;
+                                rpos += nbuf as u64;
 
                                 file.seek(SeekFrom::Start(wpos as u64))?;
                                 file.write(&mut buf[..nbuf])?;
-                                wpos += nbuf;
-                                written += nbuf;
+                                wpos += nbuf as u64;
+                                written += nbuf as u64;
                             }
                         } else {
                             // Moving chunk down
@@ -199,15 +199,15 @@ fn do_write_in_place(pt: &ReadOnlyPieceTree, ops: Vec<WriteOp>) -> io::Result<()
                             let mut wpos = target.end;
 
                             while written < len {
-                                let bmax = min(len - written, SIZE);
-                                file.seek(SeekFrom::Start((rpos - bmax) as u64))?;
+                                let bmax = min((len - written) as usize, SIZE);
+                                file.seek(SeekFrom::Start(rpos - bmax as u64))?;
                                 nbuf = file.read(&mut buf[..bmax])?;
-                                rpos -= nbuf;
+                                rpos -= nbuf as u64;
 
-                                file.seek(SeekFrom::Start((wpos - nbuf) as u64))?;
+                                file.seek(SeekFrom::Start(wpos - nbuf as u64))?;
                                 file.write(&mut buf[..nbuf])?;
-                                wpos -= nbuf;
-                                written += nbuf;
+                                wpos -= nbuf as u64;
+                                written += nbuf as u64;
                             }
                         }
                     } else {

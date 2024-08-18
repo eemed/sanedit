@@ -5,17 +5,17 @@ use crate::common::range::RangeUtils;
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub(crate) struct Cursor {
     /// Position in buffer
-    pos: usize,
+    pos: u64,
 
     /// keeps track of the wanted column for cursor, used if moving lines
     col: Option<usize>,
 
     /// Selection anchor. Selected range is formed from this position and the current `pos`
-    anchor: Option<usize>,
+    anchor: Option<u64>,
 }
 
 impl Cursor {
-    pub fn new(pos: usize) -> Cursor {
+    pub fn new(pos: u64) -> Cursor {
         Cursor {
             pos,
             col: None,
@@ -23,7 +23,7 @@ impl Cursor {
         }
     }
 
-    pub fn new_select(range: &Range<usize>) -> Cursor {
+    pub fn new_select(range: &Range<u64>) -> Cursor {
         Cursor {
             pos: range.end,
             col: None,
@@ -31,7 +31,7 @@ impl Cursor {
         }
     }
 
-    pub fn pos(&self) -> usize {
+    pub fn pos(&self) -> u64 {
         self.pos
     }
 
@@ -39,12 +39,12 @@ impl Cursor {
         self.col
     }
 
-    pub fn goto(&mut self, pos: usize) {
+    pub fn goto(&mut self, pos: u64) {
         self.pos = pos;
         self.col = None;
     }
 
-    pub fn goto_with_col(&mut self, pos: usize, col: usize) {
+    pub fn goto_with_col(&mut self, pos: u64, col: usize) {
         self.pos = pos;
         self.col = Some(col);
     }
@@ -61,25 +61,25 @@ impl Cursor {
         self.anchor = None;
     }
 
-    pub fn select(&mut self, range: Range<usize>) {
+    pub fn select(&mut self, range: Range<u64>) {
         self.anchor = Some(range.start);
         self.pos = range.end;
     }
 
-    pub fn selection(&self) -> Option<Range<usize>> {
+    pub fn selection(&self) -> Option<Range<u64>> {
         let anc = self.anchor.as_ref()?;
         let min = self.pos.min(*anc);
         let max = self.pos.max(*anc);
         Some(min..max)
     }
 
-    pub fn take_selection(&mut self) -> Option<Range<usize>> {
+    pub fn take_selection(&mut self) -> Option<Range<u64>> {
         let sel = self.selection()?;
         self.unanchor();
         Some(sel)
     }
 
-    pub fn shrink_to_range(&mut self, range: &Range<usize>) {
+    pub fn shrink_to_range(&mut self, range: &Range<u64>) {
         if self.pos > range.end {
             self.pos = range.end
         }
@@ -99,9 +99,9 @@ impl Cursor {
         }
     }
 
-    pub fn to_range(&mut self, other: &Range<usize>) {
+    pub fn to_range(&mut self, other: &Range<u64>) {
         // Dont extend into a selection in not necessary
-        if other.len() == 1 && self.anchor.is_none() {
+        if other.end - other.start == 1 && self.anchor.is_none() {
             self.goto(other.start);
             return;
         }
@@ -113,7 +113,7 @@ impl Cursor {
     /// Extend this cursor to cover the specified range.
     /// If the range is a single value this will not convert the
     /// cursor into an selection.
-    pub fn extend_to_include(&mut self, other: &Range<usize>) {
+    pub fn extend_to_include(&mut self, other: &Range<u64>) {
         let sel = self.selection().unwrap_or(self.pos()..self.pos() + 1);
         if sel.includes(other) {
             return;

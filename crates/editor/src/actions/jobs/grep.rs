@@ -114,46 +114,58 @@ impl Grep {
         msend: Sender<GrepResult>,
     ) {
         let slice = ropt.slice(..);
-        let mut line_ranges = vec![];
         let mut matches = SortedVec::new();
+
+        // Track lines while iterating
         let mut lines = slice.lines();
         let mut linen = 1;
         let mut line = lines.next().unwrap();
+        let mut line_found_matches = vec![];
 
         for mat in searcher.find_iter(&slice) {
+            // Found a match at current line, add it and continue search
             if line.range().includes(&mat.range()) {
                 // Offsets to line start
-                let mut range = mat.range();
-                range.start -= line.start();
-                range.end -= line.start();
-                line_ranges.push(range);
+                let Range { mut start, mut end } = mat.range();
+                start -= line.start();
+                end -= line.start();
+                line_found_matches.push(start as usize..end as usize);
                 continue;
             }
 
-            if !line_ranges.is_empty() {
+            // Match is not at current line
+
+            // Add grep match from previous line if it had matches
+            if !line_found_matches.is_empty() {
                 let text = String::from(&line);
                 let mat = GrepMatch {
                     line: Some(linen),
                     text,
-                    matches: std::mem::take(&mut line_ranges),
+                    matches: std::mem::take(&mut line_found_matches),
                     absolute_offset: Some(line.start() as u64),
                 };
                 matches.push(mat);
             }
 
+            // Iterate to the line the match was found at
             while !line.range().includes(&mat.range()) {
                 line = lines.next().unwrap();
                 linen += 1;
             }
-            line_ranges.push(mat.range());
+
+            // Add match to line_ranges
+            let Range { mut start, mut end } = mat.range();
+            start -= line.start();
+            end -= line.start();
+            line_found_matches.push(start as usize..end as usize);
         }
 
-        if !line_ranges.is_empty() {
+        if !line_found_matches.is_empty() {
             let text = String::from(&line);
             let mat = GrepMatch {
                 line: Some(linen),
                 text: text.trim_end().into(),
-                matches: std::mem::take(&mut line_ranges),
+                matches: std::mem::take(&mut line_found_matches),
                 absolute_offset: Some(line.start() as u64),
             };
             matches.push(mat);
@@ -236,6 +248,8 @@ struct Start;
 struct GrepMatch {
     line: Option<u64>,
     text: String,
+
+    /// Matches found in text
     matches: Vec<Range<usize>>,
     absolute_offset: Option<u64>,
 }

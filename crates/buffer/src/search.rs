@@ -93,9 +93,9 @@ pub struct SearchIter<'a, 'b> {
     pattern: &'a [u8],
     bad_char: &'a [usize],
     good_suffix: &'a [usize],
-    slice_len: usize,
+    slice_len: u64,
     bytes: Bytes<'b>,
-    i: usize,
+    i: u64,
 }
 
 impl<'a, 'b> SearchIter<'a, 'b> {
@@ -111,13 +111,13 @@ impl<'a, 'b> SearchIter<'a, 'b> {
             good_suffix,
             slice_len: slice.len(),
             bytes: slice.bytes(),
-            i: pattern.len() - 1,
+            i: (pattern.len() - 1) as u64,
         }
     }
 }
 
 impl<'a, 'b> Iterator for SearchIter<'a, 'b> {
-    type Item = Range<usize>;
+    type Item = Range<u64>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let SearchIter {
@@ -138,15 +138,15 @@ impl<'a, 'b> Iterator for SearchIter<'a, 'b> {
 
             while bytes.at(*i) == pattern[j] {
                 if j == 0 {
-                    *i += m;
-                    return Some(*i - m..*i);
+                    *i += m as u64;
+                    return Some(*i - m as u64..*i);
                 }
 
                 j -= 1;
                 *i -= 1;
             }
 
-            *i += max(bad_char[bytes.at(*i) as usize], good_suffix[j]);
+            *i += max(bad_char[bytes.at(*i) as usize], good_suffix[j]) as u64;
         }
 
         None
@@ -243,7 +243,7 @@ pub struct SearchIterRev<'a, 'b> {
     bad_char: &'a [usize],
     good_suffix: &'a [usize],
     bytes: Bytes<'b>,
-    i: usize,
+    i: u64,
 }
 
 impl<'a, 'b> SearchIterRev<'a, 'b> {
@@ -258,13 +258,13 @@ impl<'a, 'b> SearchIterRev<'a, 'b> {
             bad_char,
             good_suffix,
             bytes: slice.bytes_at(slice.len()),
-            i: slice.len().saturating_sub(pattern.len()),
+            i: slice.len().saturating_sub(pattern.len() as u64),
         }
     }
 }
 
 impl<'a, 'b> Iterator for SearchIterRev<'a, 'b> {
-    type Item = Range<usize>;
+    type Item = Range<u64>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let SearchIterRev {
@@ -285,8 +285,8 @@ impl<'a, 'b> Iterator for SearchIterRev<'a, 'b> {
             while bytes.at(*i) == pattern[j] {
                 if j == m - 1 {
                     let end = *i + 1;
-                    let start = end - m;
-                    *i = i.saturating_sub(m);
+                    let start = end - m as u64;
+                    *i = i.saturating_sub(m as u64);
                     return Some(start..end);
                 }
 
@@ -295,7 +295,8 @@ impl<'a, 'b> Iterator for SearchIterRev<'a, 'b> {
             }
 
             check0 = *i != 0;
-            *i = i.saturating_sub(max(bad_char[bytes.at(*i) as usize], good_suffix[j]));
+            let shift = max(bad_char[bytes.at(*i) as usize], good_suffix[j]) as u64;
+            *i = i.saturating_sub(shift);
         }
 
         None

@@ -5,7 +5,7 @@ use super::slice::OriginalBufferSlice;
 #[derive(Debug)]
 pub(crate) struct Cache {
     /// Buffer data. (buf_offset, data) tuples
-    pub(super) cache: VecDeque<(usize, Arc<[u8]>)>,
+    pub(super) cache: VecDeque<(u64, Arc<[u8]>)>,
 }
 
 impl Cache {
@@ -17,15 +17,15 @@ impl Cache {
         }
     }
 
-    pub fn get(&self, start: usize, end: usize) -> Option<OriginalBufferSlice> {
+    pub fn get(&self, start: u64, end: u64) -> Option<OriginalBufferSlice> {
         for (off, ptr) in &self.cache {
-            if *off <= start && end <= off + ptr.len() {
+            if *off <= start && end <= off + ptr.len() as u64 {
                 let s = start - off;
                 let e = s + end - start;
                 return Some(OriginalBufferSlice {
                     ptr: ptr.clone(),
-                    offset: s,
-                    len: e - s,
+                    offset: s as usize,
+                    len: (e - s) as usize,
                 });
             }
         }
@@ -33,7 +33,7 @@ impl Cache {
         None
     }
 
-    pub fn push(&mut self, off: usize, ptr: Arc<[u8]>) -> OriginalBufferSlice {
+    pub fn push(&mut self, off: u64, ptr: Arc<[u8]>) -> OriginalBufferSlice {
         while self.cache.len() >= Self::CACHE_SIZE {
             self.cache.pop_front();
         }

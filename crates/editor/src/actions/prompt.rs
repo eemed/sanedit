@@ -237,7 +237,7 @@ fn goto_line(editor: &mut Editor, id: ClientId) {
         .prompt("Line")
         .simple()
         .on_confirm(move |editor, id, input| {
-            if let Ok(num) = input.parse::<usize>() {
+            if let Ok(num) = input.parse::<u64>() {
                 let (win, buf) = editor.win_buf_mut(id);
                 win.goto_line(num, buf);
                 hooks::run(editor, id, Hook::CursorMoved);
@@ -255,7 +255,7 @@ fn goto_percentage(editor: &mut Editor, id: ClientId) {
         .prompt("Percentage")
         .simple()
         .on_confirm(move |editor, id, input| {
-            if let Ok(mut num) = input.parse::<usize>() {
+            if let Ok(mut num) = input.parse::<u64>() {
                 num = min(100, num);
                 let (win, buf) = editor.win_buf_mut(id);
                 let offset = num * buf.len() / 100;

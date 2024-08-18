@@ -103,7 +103,7 @@ pub fn prev_eol(bytes: &mut Bytes) -> Option<EOLMatch> {
     }
 }
 
-pub(crate) fn line_at(slice: &PieceTreeSlice, pos: usize) -> usize {
+pub(crate) fn line_at(slice: &PieceTreeSlice, pos: u64) -> u64 {
     let mut line = 0;
     let slice = slice.slice(..pos);
     let mut bytes = slice.bytes();
@@ -124,7 +124,7 @@ pub struct Lines<'a> {
 
 impl<'a> Lines<'a> {
     #[inline]
-    pub fn new(pt: &'a ReadOnlyPieceTree, at: usize) -> Lines {
+    pub fn new(pt: &'a ReadOnlyPieceTree, at: u64) -> Lines {
         let slice = pt.slice(..);
         let bytes = Bytes::new(pt, at);
         let mut lines = Lines {
@@ -137,7 +137,7 @@ impl<'a> Lines<'a> {
     }
 
     #[inline]
-    pub fn new_from_slice(slice: &PieceTreeSlice<'a>, at: usize) -> Lines<'a> {
+    pub fn new_from_slice(slice: &PieceTreeSlice<'a>, at: u64) -> Lines<'a> {
         let slice = slice.clone();
         let bytes = Bytes::new_from_slice(&slice, at);
         let mut lines = Lines {
@@ -192,7 +192,7 @@ impl<'a> Lines<'a> {
                 let start = mat.range.end;
 
                 // Move bytes to start of line
-                for _ in 0..mat.range.len() {
+                for _ in 0..mat.range.end - mat.range.start {
                     self.bytes.next();
                 }
 
@@ -214,7 +214,7 @@ impl<'a> Lines<'a> {
 #[derive(Debug)]
 pub struct EOLMatch {
     pub eol: EndOfLine,
-    pub range: Range<usize>,
+    pub range: Range<u64>,
 }
 
 #[cfg(test)]

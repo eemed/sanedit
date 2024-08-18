@@ -12,16 +12,16 @@ use super::char::{is_word_break, is_word_break_end, DisplayOptions, GraphemeCate
 use super::text::{pos_at_width, width_at_pos};
 
 #[inline]
-pub(crate) fn next_grapheme_boundary(slice: &PieceTreeSlice, pos: usize) -> usize {
+pub(crate) fn next_grapheme_boundary(slice: &PieceTreeSlice, pos: u64) -> u64 {
     utf8::next_grapheme_boundary(slice, pos)
 }
 
 #[inline]
-pub(crate) fn prev_grapheme_boundary(slice: &PieceTreeSlice, pos: usize) -> usize {
+pub(crate) fn prev_grapheme_boundary(slice: &PieceTreeSlice, pos: u64) -> u64 {
     utf8::prev_grapheme_boundary(slice, pos)
 }
 
-pub(crate) fn end_of_line(slice: &PieceTreeSlice, pos: usize) -> usize {
+pub(crate) fn end_of_line(slice: &PieceTreeSlice, pos: u64) -> u64 {
     let mut bytes = slice.bytes_at(pos);
     match utf8::next_eol(&mut bytes) {
         Some(m) => m.range.start,
@@ -29,12 +29,12 @@ pub(crate) fn end_of_line(slice: &PieceTreeSlice, pos: usize) -> usize {
     }
 }
 
-pub(crate) fn start_of_line(slice: &PieceTreeSlice, pos: usize) -> usize {
+pub(crate) fn start_of_line(slice: &PieceTreeSlice, pos: u64) -> u64 {
     let mut bytes = slice.bytes_at(pos);
     bytes_start_of_line(&mut bytes)
 }
 
-pub(crate) fn first_char_of_line(slice: &PieceTreeSlice, pos: usize) -> usize {
+pub(crate) fn first_char_of_line(slice: &PieceTreeSlice, pos: u64) -> u64 {
     let mut bytes = slice.bytes_at(pos);
     let mut start = bytes_start_of_line(&mut bytes);
 
@@ -50,14 +50,14 @@ pub(crate) fn first_char_of_line(slice: &PieceTreeSlice, pos: usize) -> usize {
     start
 }
 
-fn bytes_start_of_line(bytes: &mut Bytes) -> usize {
+fn bytes_start_of_line(bytes: &mut Bytes) -> u64 {
     match utf8::prev_eol(bytes) {
         Some(m) => m.range.end,
         None => 0,
     }
 }
 
-pub(crate) fn next_line_start(slice: &PieceTreeSlice, pos: usize) -> usize {
+pub(crate) fn next_line_start(slice: &PieceTreeSlice, pos: u64) -> u64 {
     let mut bytes = slice.bytes_at(pos);
     match utf8::next_eol(&mut bytes) {
         Some(m) => m.range.end,
@@ -65,7 +65,7 @@ pub(crate) fn next_line_start(slice: &PieceTreeSlice, pos: usize) -> usize {
     }
 }
 
-pub(crate) fn next_line_end(slice: &PieceTreeSlice, pos: usize) -> usize {
+pub(crate) fn next_line_end(slice: &PieceTreeSlice, pos: u64) -> u64 {
     let mut bytes = slice.bytes_at(pos);
     match utf8::next_eol(&mut bytes) {
         Some(m) => m.range.start,
@@ -73,7 +73,7 @@ pub(crate) fn next_line_end(slice: &PieceTreeSlice, pos: usize) -> usize {
     }
 }
 
-pub(crate) fn prev_line_start(slice: &PieceTreeSlice, pos: usize) -> usize {
+pub(crate) fn prev_line_start(slice: &PieceTreeSlice, pos: u64) -> u64 {
     let mut bytes = slice.bytes_at(pos);
     utf8::prev_eol(&mut bytes);
     match utf8::prev_eol(&mut bytes) {
@@ -84,7 +84,7 @@ pub(crate) fn prev_line_start(slice: &PieceTreeSlice, pos: usize) -> usize {
 
 /// Find next word start, this will move even if we currently are on a word
 /// start.
-pub(crate) fn next_word_start(slice: &PieceTreeSlice, mut pos: usize) -> usize {
+pub(crate) fn next_word_start(slice: &PieceTreeSlice, mut pos: u64) -> u64 {
     let mut prev: Option<GraphemeCategory> = None;
     let mut graphemes = slice.graphemes_at(pos);
 
@@ -106,7 +106,7 @@ pub(crate) fn next_word_start(slice: &PieceTreeSlice, mut pos: usize) -> usize {
 
 /// Find previous word start, this will move even if we currently are on a word
 /// start.
-pub(crate) fn prev_word_start(slice: &PieceTreeSlice, mut pos: usize) -> usize {
+pub(crate) fn prev_word_start(slice: &PieceTreeSlice, mut pos: u64) -> u64 {
     let mut cat: Option<GraphemeCategory> = None;
     let mut graphemes = slice.graphemes_at(pos);
 
@@ -126,8 +126,8 @@ pub(crate) fn prev_word_start(slice: &PieceTreeSlice, mut pos: usize) -> usize {
     0
 }
 
-pub(crate) fn next_word_end(slice: &PieceTreeSlice, mut pos: usize) -> usize {
-    let mut prev: Option<(GraphemeCategory, usize)> = None;
+pub(crate) fn next_word_end(slice: &PieceTreeSlice, mut pos: u64) -> u64 {
+    let mut prev: Option<(GraphemeCategory, u64)> = None;
     let mut graphemes = slice.graphemes_at(pos);
     pos += graphemes.next().map(|g| g.len()).unwrap_or(0);
 
@@ -147,7 +147,7 @@ pub(crate) fn next_word_end(slice: &PieceTreeSlice, mut pos: usize) -> usize {
     slice.len()
 }
 
-pub(crate) fn prev_word_end(slice: &PieceTreeSlice, mut pos: usize) -> usize {
+pub(crate) fn prev_word_end(slice: &PieceTreeSlice, mut pos: u64) -> u64 {
     let mut cat: Option<GraphemeCategory> = None;
     let mut graphemes = slice.graphemes_at(pos);
     pos += graphemes.next().map(|g| g.len()).unwrap_or(0);
@@ -168,7 +168,7 @@ pub(crate) fn prev_word_end(slice: &PieceTreeSlice, mut pos: usize) -> usize {
     0
 }
 
-pub(crate) fn next_paragraph(slice: &PieceTreeSlice, pos: usize) -> usize {
+pub(crate) fn next_paragraph(slice: &PieceTreeSlice, pos: u64) -> u64 {
     let mut lines = slice.lines_at(pos);
 
     // Skip all empty lines
@@ -188,7 +188,7 @@ pub(crate) fn next_paragraph(slice: &PieceTreeSlice, pos: usize) -> usize {
     slice.len()
 }
 
-pub(crate) fn prev_paragraph(slice: &PieceTreeSlice, pos: usize) -> usize {
+pub(crate) fn prev_paragraph(slice: &PieceTreeSlice, pos: u64) -> u64 {
     let mut lines = slice.lines_at(pos);
     lines.next();
 
@@ -209,21 +209,21 @@ pub(crate) fn prev_paragraph(slice: &PieceTreeSlice, pos: usize) -> usize {
     0
 }
 
-fn find_next(slice: &PieceTreeSlice, pattern: &[u8]) -> Option<usize> {
+fn find_next(slice: &PieceTreeSlice, pattern: &[u8]) -> Option<u64> {
     let searcher = Searcher::new(pattern);
     let mut iter = searcher.find_iter(slice);
     let mat = iter.next()?;
     Some(mat.start)
 }
 
-fn find_prev(slice: &PieceTreeSlice, pattern: &[u8]) -> Option<usize> {
+fn find_prev(slice: &PieceTreeSlice, pattern: &[u8]) -> Option<u64> {
     let searcher = SearcherRev::new(pattern);
     let mut iter = searcher.find_iter(slice);
     let mat = iter.next()?;
     Some(mat.start)
 }
 
-pub(crate) fn next_blank_line(slice: &PieceTreeSlice, pos: usize) -> usize {
+pub(crate) fn next_blank_line(slice: &PieceTreeSlice, pos: u64) -> u64 {
     let mut bytes = slice.bytes_at(pos);
     utf8::next_eol(&mut bytes);
 
@@ -239,7 +239,7 @@ pub(crate) fn next_blank_line(slice: &PieceTreeSlice, pos: usize) -> usize {
     slice.len()
 }
 
-pub(crate) fn prev_blank_line(slice: &PieceTreeSlice, pos: usize) -> usize {
+pub(crate) fn prev_blank_line(slice: &PieceTreeSlice, pos: u64) -> u64 {
     let mut bytes = slice.bytes_at(pos);
     utf8::prev_eol(&mut bytes);
 
@@ -259,7 +259,7 @@ pub(crate) fn next_line(
     slice: &PieceTreeSlice,
     cursor: &Cursor,
     opts: &DisplayOptions,
-) -> (usize, usize) {
+) -> (u64, usize) {
     let cpos = cursor.pos();
     let width = cursor
         .column()
@@ -273,7 +273,7 @@ pub(crate) fn prev_line(
     slice: &PieceTreeSlice,
     cursor: &Cursor,
     opts: &DisplayOptions,
-) -> (usize, usize) {
+) -> (u64, usize) {
     let cpos = cursor.pos();
     let width = cursor
         .column()

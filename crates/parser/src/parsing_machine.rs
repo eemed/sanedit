@@ -31,7 +31,7 @@ enum State {
     Failure,
 }
 
-pub(crate) type SubjectPosition = usize;
+pub(crate) type SubjectPosition = u64;
 
 #[derive(Debug)]
 pub struct Parser {
@@ -184,7 +184,7 @@ impl Parser {
                     state = State::Failure;
                 }
                 Span(set) => {
-                    while set[sp] {
+                    while set[reader.at(sp)] {
                         sp += 1;
                     }
 

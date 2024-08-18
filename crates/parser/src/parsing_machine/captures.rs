@@ -9,7 +9,7 @@ pub type CaptureList = Vec<Capture>;
 pub struct Capture {
     pub(crate) id: CaptureID,
     pub(crate) start: SubjectPosition,
-    pub(crate) len: Option<usize>,
+    pub(crate) len: Option<u64>,
 }
 
 impl Capture {
@@ -32,7 +32,7 @@ impl Capture {
         self.id
     }
 
-    pub fn range(&self) -> Range<usize> {
+    pub fn range(&self) -> Range<u64> {
         let len = self
             .len
             .expect("Should not return a capture without length");

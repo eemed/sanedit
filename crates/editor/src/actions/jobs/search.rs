@@ -6,6 +6,7 @@ use tokio::sync::mpsc::{channel, Receiver, Sender};
 use crate::{
     common::search::PTSearcher,
     editor::{
+        buffers::BufferRange,
         job_broker::KeepInTouch,
         windows::{SearchDirection, SearchKind},
         Editor,
@@ -17,7 +18,7 @@ use crate::{
 use super::CHANNEL_SIZE;
 
 enum SearchMessage {
-    Matches(Vec<Range<usize>>),
+    Matches(Vec<BufferRange>),
 }
 
 #[derive(Clone)]
@@ -25,7 +26,7 @@ pub(crate) struct Search {
     client_id: ClientId,
     term: String,
     ropt: ReadOnlyPieceTree,
-    range: Range<usize>,
+    range: BufferRange,
     dir: SearchDirection,
     kind: SearchKind,
 }
@@ -35,7 +36,7 @@ impl Search {
         id: ClientId,
         term: &str,
         ropt: ReadOnlyPieceTree,
-        range: Range<usize>,
+        range: BufferRange,
         dir: SearchDirection,
         kind: SearchKind,
     ) -> Search {
@@ -128,10 +129,10 @@ impl Search {
     // }
 
     async fn search(
-        msend: Sender<Vec<Range<usize>>>,
+        msend: Sender<Vec<BufferRange>>,
         searcher: PTSearcher,
         ropt: ReadOnlyPieceTree,
-        view: Range<usize>,
+        view: BufferRange,
     ) {
         let slice = ropt.slice(view);
         let start = slice.start();
@@ -148,7 +149,7 @@ impl Search {
         let _ = msend.send(matches).await;
     }
 
-    async fn send_matches(mut ctx: JobContext, mut mrecv: Receiver<Vec<Range<usize>>>) {
+    async fn send_matches(mut ctx: JobContext, mut mrecv: Receiver<Vec<BufferRange>>) {
         while let Some(opts) = mrecv.recv().await {
             ctx.send(SearchMessage::Matches(opts));
         }
@@ -164,7 +165,7 @@ impl Job for Search {
         let kind = self.kind.clone();
 
         let fut = async move {
-            let (msend, mrecv) = channel::<Vec<Range<usize>>>(CHANNEL_SIZE);
+            let (msend, mrecv) = channel::<Vec<BufferRange>>(CHANNEL_SIZE);
             let searcher = PTSearcher::new(&term, dir, kind)?;
             tokio::join!(
                 Self::search(msend, searcher, pt, range),

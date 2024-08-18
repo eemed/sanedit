@@ -113,7 +113,7 @@ pub(crate) fn search(editor: &mut Editor, id: ClientId, input: &str) {
 /// The potential match is reported to win.search.current_match
 /// If no match is found current match is set to None
 ///
-fn search_impl(editor: &mut Editor, id: ClientId, input: &str, mut pos: usize) {
+fn search_impl(editor: &mut Editor, id: ClientId, input: &str, mut pos: u64) {
     let (win, buf) = editor.win_buf_mut(id);
     if input.is_empty() {
         return;
@@ -147,7 +147,7 @@ fn search_impl(editor: &mut Editor, id: ClientId, input: &str, mut pos: usize) {
 
             // Wrap if no match
             if mat.is_none() {
-                let last = min(blen, pos + input.len() - 1);
+                let last = min(blen, pos + input.len() as u64 - 1);
                 let slice = buf.slice(..last);
                 let mut iter = searcher.find_iter(&slice);
                 let mat = iter.next();
@@ -163,7 +163,7 @@ fn search_impl(editor: &mut Editor, id: ClientId, input: &str, mut pos: usize) {
 
             // Wrap if no match
             if mat.is_none() {
-                let first = pos.saturating_sub(input.len() - 1);
+                let first = pos.saturating_sub(input.len() as u64 - 1);
                 let slice = buf.slice(first..);
                 let mut iter = searcher.find_iter(&slice);
                 let mat = iter.next();

@@ -6,7 +6,7 @@ use super::BufferRange;
 pub(crate) struct SortedRanges(Vec<BufferRange>);
 
 impl SortedRanges {
-    pub fn iter(&self) -> std::slice::Iter<Range<usize>> {
+    pub fn iter(&self) -> std::slice::Iter<Range<u64>> {
         self.0.iter()
     }
 
@@ -20,15 +20,15 @@ impl SortedRanges {
 }
 
 impl Index<usize> for SortedRanges {
-    type Output = Range<usize>;
+    type Output = Range<u64>;
 
     fn index(&self, index: usize) -> &Self::Output {
         &self.0[index]
     }
 }
 
-impl From<Vec<Range<usize>>> for SortedRanges {
-    fn from(mut value: Vec<Range<usize>>) -> Self {
+impl From<Vec<Range<u64>>> for SortedRanges {
+    fn from(mut value: Vec<Range<u64>>) -> Self {
         value.sort_by(|a, b| a.start.cmp(&b.start));
         SortedRanges(value)
     }

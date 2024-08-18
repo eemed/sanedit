@@ -1,4 +1,4 @@
-use std::ops::Range;
+use crate::editor::buffers::BufferRange;
 
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum SearchDirection {
@@ -47,7 +47,7 @@ pub(crate) struct LastSearch {
     pub dir: SearchDirection,
 
     /// The match if the last search matched something
-    pub current_match: Option<Range<usize>>,
+    pub current_match: Option<BufferRange>,
 }
 
 #[derive(Debug)]
@@ -58,10 +58,10 @@ pub(crate) struct Search {
     pub kind: SearchKind,
 
     /// Search matches that should be highlighted
-    pub hl_matches: Vec<Range<usize>>,
+    pub hl_matches: Vec<BufferRange>,
 
     /// Current search match
-    pub current_match: Option<Range<usize>>,
+    pub current_match: Option<BufferRange>,
 }
 
 impl Search {

@@ -45,7 +45,7 @@ pub(crate) struct Options {
     pub(crate) indent_kind: IndentKind,
 
     /// How many indent characters a single indent should be
-    pub(crate) indent_amount: usize,
+    pub(crate) indent_amount: u8,
 }
 
 impl Default for Options {

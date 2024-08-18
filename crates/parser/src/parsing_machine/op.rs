@@ -11,7 +11,7 @@ pub(crate) enum Operation {
     Call(Addr),
     Commit(Addr),
     Choice(Addr),
-    Any(usize),
+    Any(u64),
     UTF8Range(char, char),
     Set(Set),
     Return,

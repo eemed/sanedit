@@ -16,7 +16,6 @@ mod tests;
 use std::{
     cmp::{max, min},
     mem,
-    ops::Range,
 };
 
 use anyhow::Result;
@@ -26,12 +25,12 @@ use sanedit_messages::redraw::{Severity, Size, StatusMessage};
 use crate::{
     common::{
         char::{grapheme_category, DisplayOptions, GraphemeCategory},
-        indent::{indent_at_line, is_indent_at_pos},
-        movement::{self, start_of_line},
+        indent::indent_at_line,
+        movement::{self},
         text::{selection_line_starts, width_at_pos},
     },
     editor::{
-        buffers::{Buffer, BufferError, BufferId, SnapshotData, SortedRanges},
+        buffers::{Buffer, BufferId, SnapshotData, SortedRanges},
         syntax::SyntaxParseResult,
     },
 };
@@ -186,7 +185,7 @@ impl Window {
         &self.cursors
     }
 
-    pub fn scroll_down_n(&mut self, buf: &Buffer, n: usize) {
+    pub fn scroll_down_n(&mut self, buf: &Buffer, n: u64) {
         debug_assert!(
             buf.id == self.bid,
             "Invalid buffer provided to window got id {:?}, expected {:?}",
@@ -198,7 +197,7 @@ impl Window {
         self.view.redraw(buf);
     }
 
-    pub fn scroll_up_n(&mut self, buf: &Buffer, n: usize) {
+    pub fn scroll_up_n(&mut self, buf: &Buffer, n: u64) {
         debug_assert!(
             buf.id == self.bid,
             "Invalid buffer provided to window got id {:?}, expected {:?}",
@@ -222,7 +221,7 @@ impl Window {
     }
 
     /// Move primary cursor to line and the view
-    pub fn goto_line(&mut self, line: usize, buf: &Buffer) {
+    pub fn goto_line(&mut self, line: u64, buf: &Buffer) {
         let slice = buf.slice(..);
         let mut lines = slice.lines();
         for _ in 1..max(line, 1) {
@@ -234,7 +233,7 @@ impl Window {
     }
 
     /// Move primary cursor to offset and the view too
-    pub fn goto_offset(&mut self, offset: usize, buf: &Buffer) {
+    pub fn goto_offset(&mut self, offset: u64, buf: &Buffer) {
         let offset = min(offset, buf.len());
         let primary = self.cursors.primary_mut();
         primary.goto(offset);
@@ -336,7 +335,7 @@ impl Window {
         Ok(())
     }
 
-    fn insert(&mut self, buf: &mut Buffer, positions: &[usize], text: &str) -> Result<()> {
+    fn insert(&mut self, buf: &mut Buffer, positions: &[u64], text: &str) -> Result<()> {
         let change = buf.insert_multi(positions, text)?;
         if let Some(id) = change.created_snapshot {
             *buf.snapshot_data_mut(id).unwrap() = self.create_snapshot_data();
@@ -362,7 +361,7 @@ impl Window {
             cursor.goto(cpos - removed);
 
             if let Some(sel) = sel {
-                removed += sel.len();
+                removed += sel.end - sel.start;
             }
         }
 
@@ -386,8 +385,9 @@ impl Window {
             let text = &texts[i];
             let cpos = cursor.pos() + inserted;
             buf.insert(cpos, text)?;
-            cursor.goto(cpos + text.len());
-            inserted += text.len();
+            let tlen = text.len() as u64;
+            cursor.goto(cpos + tlen);
+            inserted += tlen;
         }
 
         self.invalidate();
@@ -397,14 +397,15 @@ impl Window {
     pub fn insert_at_cursors(&mut self, buf: &mut Buffer, text: &str) -> Result<()> {
         // TODO use a replace operation instead if removing
         self.remove_cursor_selections(buf)?;
-        let positions: Vec<usize> = (&self.cursors).into();
+        let positions: Vec<u64> = (&self.cursors).into();
         self.insert(buf, &positions, text)?;
 
         let mut inserted = 0;
         for cursor in self.cursors.cursors_mut() {
             let cpos = cursor.pos() + inserted;
-            cursor.goto(cpos + text.len());
-            inserted += text.len();
+            let tlen = text.len() as u64;
+            cursor.goto(cpos + tlen);
+            inserted += tlen;
         }
 
         self.invalidate();
@@ -504,7 +505,7 @@ impl Window {
         for (i, range) in ranges.iter().enumerate() {
             let cursor = &mut self.cursors.cursors_mut()[i];
             cursor.goto(range.start - removed);
-            removed += range.len();
+            removed += range.end - range.start;
         }
 
         self.invalidate();
@@ -529,7 +530,8 @@ impl Window {
             .map(|c| {
                 let indent = {
                     match indent_at_line(&slice, c.pos()) {
-                        Some((k, n)) => k.repeat(n),
+                        // ??
+                        Some((k, n)) => k.repeat(n as usize),
                         None => String::new(),
                     }
                 };
@@ -544,7 +546,7 @@ impl Window {
 
     /// Indent all the lines with cursors or their selections
     pub fn indent_cursor_lines(&mut self, buf: &mut Buffer) -> Result<()> {
-        let starts: Vec<usize> = {
+        let starts: Vec<u64> = {
             let mut starts = FxHashSet::default();
 
             for cursor in self.cursors.iter() {
@@ -552,12 +554,15 @@ impl Window {
                 let cstarts = selection_line_starts(buf, range);
                 starts.extend(cstarts);
             }
-            let mut vstarts: Vec<usize> = starts.into_iter().collect();
+            let mut vstarts: Vec<u64> = starts.into_iter().collect();
             vstarts.sort();
             vstarts
         };
 
-        let indent = buf.options.indent_kind.repeat(buf.options.indent_amount);
+        let indent = buf
+            .options
+            .indent_kind
+            .repeat(buf.options.indent_amount as usize);
         buf.insert_multi(&starts, &indent)?;
 
         for cursor in self.cursors.cursors_mut() {
@@ -567,8 +572,8 @@ impl Window {
                 .iter()
                 .take_while(|cur| range.contains(cur))
                 .count();
-            let plen = pre * indent.len();
-            let len = count * indent.len();
+            let plen = (pre * indent.len()) as u64;
+            let len = (count * indent.len()) as u64;
             range.start += plen;
             range.end += plen + len;
             cursor.to_range(&range);
@@ -580,7 +585,7 @@ impl Window {
 
     /// Dedent all the lines with cursors or their selections
     pub fn dedent_cursor_lines(&mut self, buf: &mut Buffer) -> Result<()> {
-        let starts: Vec<usize> = {
+        let starts: Vec<u64> = {
             let mut starts = FxHashSet::default();
 
             for cursor in self.cursors.iter() {
@@ -588,7 +593,7 @@ impl Window {
                 let cstarts = selection_line_starts(buf, range);
                 starts.extend(cstarts);
             }
-            let mut vstarts: Vec<usize> = starts.into_iter().collect();
+            let mut vstarts: Vec<u64> = starts.into_iter().collect();
             vstarts.sort();
             vstarts
         };
@@ -602,9 +607,9 @@ impl Window {
                     continue;
                 };
 
-                let mut off = n % iamount;
+                let mut off = n % iamount as u64;
                 if off == 0 {
-                    off = min(iamount, n);
+                    off = min(iamount as u64, n);
                 }
 
                 ranges.push(pos..pos + off);
@@ -621,15 +626,15 @@ impl Window {
     fn remove_fix_cursors(&mut self, ranges: &SortedRanges) {
         for cursor in self.cursors.cursors_mut() {
             let mut range = cursor.selection().unwrap_or(cursor.pos()..cursor.pos() + 1);
-            let pre: usize = ranges
+            let pre: u64 = ranges
                 .iter()
                 .take_while(|cur| cur.end <= range.start)
-                .map(Range::len)
+                .map(|range| range.end - range.start)
                 .sum();
-            let post: usize = ranges
+            let post: u64 = ranges
                 .iter()
                 .take_while(|cur| cur.end <= range.end)
-                .map(Range::len)
+                .map(|range| range.end - range.start)
                 .sum();
             range.start -= pre;
             range.end -= post;
@@ -648,9 +653,9 @@ impl Window {
             .iter()
             .map(|c| {
                 let col = width_at_pos(&slice, c.pos(), &self.view.options);
-                let mut to_add = col % iamount;
+                let mut to_add = col % iamount as usize;
                 if to_add == 0 {
-                    to_add = iamount;
+                    to_add = iamount as usize;
                 }
                 ikind.repeat(to_add)
             })
@@ -689,7 +694,7 @@ impl Window {
         for (i, cursor) in self.cursors.cursors_mut().iter_mut().enumerate() {
             cursor.goto(cursor.pos() - removed);
             let range = &ranges[i];
-            removed += range.len();
+            removed += range.end - range.start;
         }
 
         self.invalidate();

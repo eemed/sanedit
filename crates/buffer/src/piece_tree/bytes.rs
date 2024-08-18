@@ -9,20 +9,20 @@ use super::{
 
 #[derive(Debug, Clone)]
 pub struct Bytes<'a> {
-    range: Range<usize>,
+    range: Range<u64>,
     chunks: Chunks<'a>,
     chunk: Option<Chunk<'a>>,
-    chunk_pos: usize,
+    chunk_pos: u64,
     chunk_len: usize, // cache chunk len to improve next performance about from 1.7ns to about 1.1ns ~30%.
     pos: usize,       // Position relative to the current chunk.
 }
 
 impl<'a> Bytes<'a> {
     #[inline]
-    pub(crate) fn new(pt: &'a ReadOnlyPieceTree, at: usize) -> Bytes<'a> {
+    pub(crate) fn new(pt: &'a ReadOnlyPieceTree, at: u64) -> Bytes<'a> {
         let chunks = Chunks::new(pt, at);
         let chunk = chunks.get();
-        let pos = chunk.as_ref().map(|(pos, _)| at - pos).unwrap_or(0);
+        let pos = chunk.as_ref().map(|(pos, _)| at - pos).unwrap_or(0) as usize;
         let chunk_pos = chunk.as_ref().map(|(p, _)| *p).unwrap_or(pt.len());
         let chunk = chunk.map(|(_, c)| c);
         let chunk_len = chunk.as_ref().map(|c| c.as_ref().len()).unwrap_or(0);
@@ -37,7 +37,7 @@ impl<'a> Bytes<'a> {
     }
 
     #[inline]
-    pub(crate) fn new_from_slice(slice: &PieceTreeSlice<'a>, at: usize) -> Bytes<'a> {
+    pub(crate) fn new_from_slice(slice: &PieceTreeSlice<'a>, at: u64) -> Bytes<'a> {
         debug_assert!(
             slice.len() >= at,
             "Attempting to index {} over slice len {} ",
@@ -47,8 +47,11 @@ impl<'a> Bytes<'a> {
         let srange = slice.range.clone();
         let chunks = Chunks::new_from_slice(&slice, at);
         let chunk = chunks.get();
-        let chunk_pos = chunk.as_ref().map(|(p, _)| *p).unwrap_or(srange.len());
-        let pos = chunk.as_ref().map(|(pos, _)| at - pos).unwrap_or(0);
+        let chunk_pos = chunk
+            .as_ref()
+            .map(|(p, _)| *p)
+            .unwrap_or(srange.end - srange.start);
+        let pos = chunk.as_ref().map(|(pos, _)| at - pos).unwrap_or(0) as usize;
         let chunk = chunk.map(|(_, c)| c);
         let chunk_len = chunk.as_ref().map(|c| c.as_ref().len()).unwrap_or(0);
         Bytes {
@@ -65,14 +68,14 @@ impl<'a> Bytes<'a> {
     pub(crate) fn get(&mut self) -> Option<u8> {
         if self.pos >= self.chunk_len {
             self.pos = 0;
-            let (chunk, pos, len): (Option<Chunk>, usize, usize) = self
+            let (chunk, pos, len): (Option<Chunk>, u64, usize) = self
                 .chunks
                 .next()
                 .map(|(pos, chunk)| {
                     let len = chunk.as_ref().len();
                     (Some(chunk), pos, len)
                 })
-                .unwrap_or((None, self.range.len(), 0));
+                .unwrap_or((None, self.range.end - self.range.start, 0));
             self.chunk = chunk;
             self.chunk_pos = pos;
             self.chunk_len = len;
@@ -109,17 +112,21 @@ impl<'a> Bytes<'a> {
     }
 
     #[inline]
-    pub fn pos(&self) -> usize {
-        self.chunk_pos + self.pos
+    pub fn pos(&self) -> u64 {
+        self.chunk_pos + self.pos as u64
+    }
+
+    pub fn len(&mut self) -> u64 {
+        self.range.end - self.range.start
     }
 
     /// Get byte at a position. This will iterate the iterator to the specific
     /// byte requested.
-    pub fn at(&mut self, pos: usize) -> u8 {
+    pub fn at(&mut self, pos: u64) -> u8 {
         debug_assert!(
-            pos <= self.range.len(),
+            pos <= self.len(),
             "Indexing out of slice: pos {pos}, slice len: {}",
-            self.range.len(),
+            self.len(),
         );
 
         // TODO: if the requested position is far away from current position,

@@ -76,15 +76,15 @@ impl Syntax {
         &self,
         bid: BufferId,
         ropt: &ReadOnlyPieceTree,
-        mut view: Range<usize>,
+        mut view: Range<u64>,
         kill: broadcast::Receiver<()>,
     ) -> anyhow::Result<SyntaxParseResult> {
         const COMPLETION_ANNOTATION: &str = "completion";
         const HIGHLIGHT_ANNOTATION: &str = "highlight";
 
         // TODO try to match these to newlines
-        const HORIZON_TOP: usize = 1024 * 8;
-        const HORIZON_BOTTOM: usize = 1024 * 16;
+        const HORIZON_TOP: u64 = 1024 * 8;
+        const HORIZON_BOTTOM: u64 = 1024 * 16;
         // prev_line_start(view.start)
         // next_line_start(view.start)
 
@@ -143,7 +143,7 @@ pub(crate) struct SyntaxParseResult {
 #[derive(Debug)]
 pub(crate) struct Span {
     name: String,
-    range: Range<usize>,
+    range: Range<u64>,
     completion: Option<String>,
     highlight: bool,
 }
@@ -153,7 +153,7 @@ impl Span {
         &self.name
     }
 
-    pub fn range(&self) -> Range<usize> {
+    pub fn range(&self) -> Range<u64> {
         self.range.clone()
     }
 

@@ -55,7 +55,7 @@ fn confirm(editor: &mut Editor, id: ClientId) {
             }
             Either::Right(item) => {
                 let hl_off = item.highlights().get(0).map_or(0, |r| r.start);
-                let offset = item.absolute_offset().unwrap_or(0) as usize + hl_off;
+                let offset = item.absolute_offset().unwrap_or(0) + hl_off as u64;
 
                 if let Some(parent) = win.locations.parent_of_selected() {
                     let path = parent.path().to_path_buf();

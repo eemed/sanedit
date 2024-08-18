@@ -11,6 +11,6 @@ pub enum Request {
     Hover {
         path: PathBuf,
         buf: ReadOnlyPieceTree,
-        offset: usize,
+        offset: u64,
     },
 }

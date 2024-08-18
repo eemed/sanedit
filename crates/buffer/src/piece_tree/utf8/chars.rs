@@ -61,7 +61,7 @@ pub fn decode_utf8(bytes: &[u8]) -> (Option<char>, usize) {
     }
 }
 
-pub fn decode_utf8_iter(mut bytes: impl Iterator<Item = u8>) -> (Option<char>, usize) {
+pub fn decode_utf8_iter(mut bytes: impl Iterator<Item = u8>) -> (Option<char>, u64) {
     let mut decoder = Decoder::new();
     let mut size = 0;
     while let Some(b) = bytes.next() {
@@ -226,7 +226,7 @@ pub struct Chars<'a> {
 
 impl<'a> Chars<'a> {
     #[inline]
-    pub(crate) fn new(pt: &'a ReadOnlyPieceTree, at: usize) -> Chars<'a> {
+    pub(crate) fn new(pt: &'a ReadOnlyPieceTree, at: u64) -> Chars<'a> {
         let bytes = Bytes::new(pt, at);
         Chars {
             bytes,
@@ -236,7 +236,7 @@ impl<'a> Chars<'a> {
     }
 
     #[inline]
-    pub(crate) fn new_from_slice(slice: &PieceTreeSlice<'a>, at: usize) -> Chars<'a> {
+    pub(crate) fn new_from_slice(slice: &PieceTreeSlice<'a>, at: u64) -> Chars<'a> {
         debug_assert!(
             slice.len() >= at,
             "Attempting to index {} over slice len {} ",
@@ -251,7 +251,7 @@ impl<'a> Chars<'a> {
         }
     }
 
-    pub fn next(&mut self) -> Option<(usize, usize, char)> {
+    pub fn next(&mut self) -> Option<(u64, u64, char)> {
         use DecodeResult::*;
         let start = self.bytes.pos();
 
@@ -289,7 +289,7 @@ impl<'a> Chars<'a> {
         }
     }
 
-    pub fn prev(&mut self) -> Option<(usize, usize, char)> {
+    pub fn prev(&mut self) -> Option<(u64, u64, char)> {
         use DecodeResult::*;
 
         let end = self.bytes.pos();
@@ -332,7 +332,7 @@ impl<'a> Chars<'a> {
                     // bytes start with 10 they definitely are not valid lead
                     // bytes.
                     let mut start = self.bytes.pos();
-                    let seq_len = byte.count_ones() as usize;
+                    let seq_len = byte.count_ones() as u64;
                     let read_len = end - start;
                     let valid_prefix = read_len < seq_len && seq_len >= 2 && seq_len <= 4;
 

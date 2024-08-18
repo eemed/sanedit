@@ -24,34 +24,34 @@ pub struct Chunks<'a> {
 
 impl<'a> Chunks<'a> {
     #[inline]
-    pub(crate) fn new(pt: &'a ReadOnlyPieceTree, at: usize) -> Chunks<'a> {
+    pub(crate) fn new(pt: &'a ReadOnlyPieceTree, at: u64) -> Chunks<'a> {
         let pieces = Pieces::new(pt, at);
         Chunks { pt, pieces }
     }
 
     #[inline]
-    pub(crate) fn new_from_slice(slice: &PieceTreeSlice<'a>, at: usize) -> Chunks<'a> {
+    pub(crate) fn new_from_slice(slice: &PieceTreeSlice<'a>, at: u64) -> Chunks<'a> {
         let pt = slice.pt;
         let pieces = Pieces::new_from_slice(slice, at);
         Chunks { pt, pieces }
     }
 
     #[inline]
-    pub fn get(&self) -> Option<(usize, Chunk<'a>)> {
+    pub fn get(&self) -> Option<(u64, Chunk<'a>)> {
         let (p_pos, piece) = self.pieces.get()?;
         let chunk = read_piece(self.pt, &piece)?;
         Some((p_pos, chunk))
     }
 
     #[inline]
-    pub fn next(&mut self) -> Option<(usize, Chunk<'a>)> {
+    pub fn next(&mut self) -> Option<(u64, Chunk<'a>)> {
         let (p_pos, piece) = self.pieces.next()?;
         let chunk = read_piece(self.pt, &piece)?;
         Some((p_pos, chunk))
     }
 
     #[inline]
-    pub fn prev(&mut self) -> Option<(usize, Chunk<'a>)> {
+    pub fn prev(&mut self) -> Option<(u64, Chunk<'a>)> {
         let (p_pos, piece) = self.pieces.prev()?;
         let chunk = read_piece(self.pt, &piece)?;
         Some((p_pos, chunk))
@@ -62,7 +62,9 @@ impl<'a> Chunks<'a> {
 fn read_piece<'a>(pt: &'a ReadOnlyPieceTree, piece: &Piece) -> Option<Chunk<'a>> {
     match piece.kind {
         BufferKind::Add => {
-            let bytes = pt.add.slice(piece.pos..piece.pos + piece.len);
+            let bytes = pt
+                .add
+                .slice(piece.pos as usize..(piece.pos + piece.len) as usize);
             Some(Chunk(bytes.into()))
         }
         BufferKind::Original => {
@@ -77,7 +79,7 @@ mod test {
     use super::*;
     use crate::PieceTree;
 
-    fn chunk(pos: usize, string: &str) -> Option<(usize, Chunk)> {
+    fn chunk(pos: u64, string: &str) -> Option<(u64, Chunk)> {
         let bytes = string.as_bytes().into();
         Some((pos, Chunk(bytes)))
     }

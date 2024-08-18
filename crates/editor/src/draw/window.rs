@@ -1,7 +1,6 @@
 use std::ops::Range;
 
-use sanedit_buffer::utf8::EndOfLine;
-use sanedit_messages::redraw::{self, CursorShape, Point, Style, Theme, ThemeField};
+use sanedit_messages::redraw::{self, CursorShape, Style, Theme, ThemeField};
 
 use crate::{
     common::{
@@ -9,7 +8,7 @@ use crate::{
         range::RangeUtils,
     },
     editor::{
-        buffers::Buffer,
+        buffers::{Buffer, BufferRange},
         windows::{Cell, Cursor, Cursors, View},
     },
 };
@@ -82,7 +81,7 @@ fn draw_syntax(grid: &mut Vec<Vec<redraw::Cell>>, view: &View, theme: &Theme) {
     }
 }
 
-fn draw_hl(grid: &mut Vec<Vec<redraw::Cell>>, view: &View, style: Style, range: &Range<usize>) {
+fn draw_hl(grid: &mut Vec<Vec<redraw::Cell>>, view: &View, style: Style, range: &BufferRange) {
     let vrange = view.range();
     if !vrange.overlaps(range) {
         return;
@@ -109,7 +108,7 @@ fn draw_hl(grid: &mut Vec<Vec<redraw::Cell>>, view: &View, style: Style, range: 
 
 fn draw_search_highlights(
     grid: &mut Vec<Vec<redraw::Cell>>,
-    matches: &[Range<usize>],
+    matches: &[Range<u64>],
     view: &View,
     theme: &Theme,
 ) {

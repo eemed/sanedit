@@ -32,14 +32,6 @@ impl Index<u8> for Set {
     }
 }
 
-impl Index<usize> for Set {
-    type Output = bool;
-
-    fn index(&self, index: usize) -> &Self::Output {
-        &self.inner[index]
-    }
-}
-
 impl std::fmt::Debug for Set {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str("[")?;

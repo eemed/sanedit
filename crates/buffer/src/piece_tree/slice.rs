@@ -8,35 +8,35 @@ use super::{
 
 #[derive(Debug, Clone)]
 pub struct PieceTreeSlice<'a> {
-    pub(crate) range: Range<usize>,
+    pub(crate) range: Range<u64>,
     pub(crate) pt: &'a ReadOnlyPieceTree,
 }
 
 impl<'a> PieceTreeSlice<'a> {
-    pub(crate) fn new(pt: &'a ReadOnlyPieceTree, range: Range<usize>) -> PieceTreeSlice {
+    pub(crate) fn new(pt: &'a ReadOnlyPieceTree, range: Range<u64>) -> PieceTreeSlice {
         PieceTreeSlice { range, pt }
     }
 
     /// Start of slice in buffer
     #[inline]
-    pub fn start(&self) -> usize {
+    pub fn start(&self) -> u64 {
         self.range.start
     }
 
     /// End of slice in buffer
     #[inline]
-    pub fn end(&self) -> usize {
+    pub fn end(&self) -> u64 {
         self.range.end
     }
 
     /// Range in buffer indices
-    pub fn range(&self) -> Range<usize> {
+    pub fn range(&self) -> Range<u64> {
         self.range.clone()
     }
 
     #[inline]
-    pub fn len(&self) -> usize {
-        self.range.len()
+    pub fn len(&self) -> u64 {
+        self.range.end - self.range.start
     }
 
     #[inline]
@@ -50,7 +50,7 @@ impl<'a> PieceTreeSlice<'a> {
     }
 
     #[inline]
-    pub fn bytes_at(&self, pos: usize) -> Bytes<'a> {
+    pub fn bytes_at(&self, pos: u64) -> Bytes<'a> {
         debug_assert!(
             self.start() + pos <= self.pt.len,
             "bytes_at: Attempting to index {} over buffer len {}",
@@ -66,7 +66,7 @@ impl<'a> PieceTreeSlice<'a> {
     }
 
     #[inline]
-    pub fn chunks_at(&self, pos: usize) -> Chunks<'a> {
+    pub fn chunks_at(&self, pos: u64) -> Chunks<'a> {
         debug_assert!(
             self.start() + pos <= self.pt.len,
             "chunks_at: Attempting to index {} over buffer len {}",
@@ -82,7 +82,7 @@ impl<'a> PieceTreeSlice<'a> {
     }
 
     #[inline]
-    pub fn chars_at(&self, pos: usize) -> Chars<'a> {
+    pub fn chars_at(&self, pos: u64) -> Chars<'a> {
         debug_assert!(
             self.start() + pos <= self.pt.len,
             "chars_at: Attempting to index {} over buffer len {}",
@@ -93,7 +93,7 @@ impl<'a> PieceTreeSlice<'a> {
     }
 
     #[inline]
-    pub fn slice<R: RangeBounds<usize>>(&self, range: R) -> PieceTreeSlice<'a> {
+    pub fn slice<R: RangeBounds<u64>>(&self, range: R) -> PieceTreeSlice<'a> {
         let sub_start = match range.start_bound() {
             Bound::Included(n) => *n,
             Bound::Excluded(n) => *n + 1,
@@ -118,12 +118,12 @@ impl<'a> PieceTreeSlice<'a> {
     }
 
     #[inline]
-    pub fn lines_at(&self, pos: usize) -> Lines<'a> {
+    pub fn lines_at(&self, pos: u64) -> Lines<'a> {
         Lines::new_from_slice(&self, pos)
     }
 
     #[inline]
-    pub fn line_at(&self, pos: usize) -> usize {
+    pub fn line_at(&self, pos: u64) -> u64 {
         utf8::lines::line_at(self, pos)
     }
 
@@ -133,14 +133,14 @@ impl<'a> PieceTreeSlice<'a> {
     }
 
     #[inline]
-    pub fn graphemes_at(&self, pos: usize) -> Graphemes<'a> {
+    pub fn graphemes_at(&self, pos: u64) -> Graphemes<'a> {
         Graphemes::new_from_slice(&self, pos)
     }
 }
 
 impl<'a, B: AsRef<[u8]>> PartialEq<B> for PieceTreeSlice<'a> {
     fn eq(&self, other: &B) -> bool {
-        if other.as_ref().len() != self.len() {
+        if other.as_ref().len() as u64 != self.len() {
             return false;
         }
 
@@ -158,7 +158,7 @@ impl<'a, B: AsRef<[u8]>> PartialEq<B> for PieceTreeSlice<'a> {
             }
 
             other = &other[chunk_len..];
-            total += chunk_len;
+            total += chunk_len as u64;
             pos_chunk = chunks.next();
         }
 
@@ -168,7 +168,12 @@ impl<'a, B: AsRef<[u8]>> PartialEq<B> for PieceTreeSlice<'a> {
 
 impl<'a> From<&PieceTreeSlice<'a>> for Vec<u8> {
     fn from(slice: &PieceTreeSlice<'a>) -> Self {
-        let mut bytes = Vec::with_capacity(slice.len());
+        assert!(
+            slice.len() > usize::MAX as u64,
+            "Slice is too large to be represented in memory"
+        );
+
+        let mut bytes = Vec::with_capacity(slice.len() as usize);
         let mut chunks = slice.chunks();
         let mut pos_chunk = chunks.get();
 

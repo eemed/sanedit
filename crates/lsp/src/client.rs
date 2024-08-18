@@ -4,6 +4,7 @@ use std::sync::Arc;
 use std::{path::PathBuf, process::Stdio};
 
 use crate::jsonrpc::{JsonNotification, JsonRequest};
+use crate::position::{offset_to_position, position_to_offset};
 use crate::process::{ProcessHandler, ServerRequest};
 use crate::util::path_to_uri;
 use crate::{Request, RequestResult, Response};
@@ -11,7 +12,7 @@ use crate::{Request, RequestResult, Response};
 use anyhow::{anyhow, Result};
 use sanedit_buffer::ReadOnlyPieceTree;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
-use tokio::sync::Notify;
+use tokio::sync::{oneshot, Notify};
 use tokio::{io::BufReader, process::Command};
 
 /// a struct to put all the parameters
@@ -40,7 +41,7 @@ impl LSPClientParams {
         let (server_sender, server_recv) = channel(256);
         let (req_sender, req_receiver) = channel(256);
         let (res_sender, res_receiver) = channel(256);
-        let initialized = Arc::new(Notify::new());
+        let (init_send, init_recv) = oneshot::channel();
 
         let params = Arc::new(self);
         let server = ProcessHandler {
@@ -50,17 +51,18 @@ impl LSPClientParams {
             stdout,
             stderr,
             receiver: server_recv,
-            initialized: initialized.clone(),
+            initialized: Some(init_send),
             in_flight: BTreeMap::default(),
         };
 
         tokio::spawn(server.run());
 
         // Wait for initialization
-        initialized.notified().await;
+        let init_params = init_recv.await??;
 
         let client = LSPClient {
             params,
+            init_params: Arc::new(init_params),
             receiver: req_receiver,
             sender: res_sender,
             server_sender,
@@ -100,6 +102,7 @@ impl LSPClientSender {
 
 struct LSPClient {
     params: Arc<LSPClientParams>,
+    init_params: Arc<lsp_types::InitializeResult>,
     receiver: Receiver<Request>,
     sender: Sender<Response>,
 
@@ -111,6 +114,7 @@ impl LSPClient {
         while let Some(req) = self.receiver.recv().await {
             let handler = Handler {
                 params: self.params.clone(),
+                init_params: self.init_params.clone(),
                 server: self.server_sender.clone(),
                 response: self.sender.clone(),
             };
@@ -124,13 +128,13 @@ impl LSPClient {
 
 struct Handler {
     params: Arc<LSPClientParams>,
+    init_params: Arc<lsp_types::InitializeResult>,
     server: Sender<ServerRequest>,
     response: Sender<Response>,
 }
 
 impl Handler {
     pub async fn run(mut self, req: Request) -> Result<()> {
-        log::info!("do_request: {req:?}");
         match req {
             Request::DidOpen { path, buf } => self.did_open_document(path, buf).await?,
             Request::Hover { path, offset, buf } => self.hover(path, buf, offset).await?,
@@ -140,15 +144,13 @@ impl Handler {
     }
 
     async fn hover(&mut self, path: PathBuf, buf: ReadOnlyPieceTree, offset: u64) -> Result<()> {
+        let position = offset_to_position(&buf, offset, self.position_encoding());
         let params = lsp_types::HoverParams {
             text_document_position_params: lsp_types::TextDocumentPositionParams {
                 text_document: lsp_types::TextDocumentIdentifier {
                     uri: path_to_uri(&path),
                 },
-                position: lsp_types::Position {
-                    line: 1,
-                    character: 5,
-                },
+                position,
             },
             work_done_progress_params: lsp_types::WorkDoneProgressParams {
                 work_done_token: None,
@@ -158,25 +160,24 @@ impl Handler {
         let response = self
             .request::<lsp_types::request::HoverRequest>(&params)
             .await?;
+        let response = response.ok_or(anyhow!("No hover response"))?;
 
-        if let Some(response) = response {
-            let mut text = String::new();
-            match response.contents {
-                lsp_types::HoverContents::Scalar(_) => todo!(),
-                lsp_types::HoverContents::Array(_) => todo!(),
-                lsp_types::HoverContents::Markup(cont) => match cont.kind {
-                    lsp_types::MarkupKind::PlainText => {
-                        text = cont.value;
-                    }
-                    lsp_types::MarkupKind::Markdown => todo!(),
-                },
-            }
-
-            let _ = self
-                .response
-                .send(Response::Request(RequestResult::Hover { text, offset: 0 }))
-                .await;
+        let mut text = String::new();
+        match response.contents {
+            lsp_types::HoverContents::Scalar(_) => todo!(),
+            lsp_types::HoverContents::Array(_) => todo!(),
+            lsp_types::HoverContents::Markup(cont) => match cont.kind {
+                lsp_types::MarkupKind::PlainText => {
+                    text = cont.value;
+                }
+                lsp_types::MarkupKind::Markdown => todo!(),
+            },
         }
+
+        let _ = self
+            .response
+            .send(Response::Request(RequestResult::Hover { text, offset }))
+            .await;
 
         Ok(())
     }
@@ -236,5 +237,13 @@ impl Handler {
 
     pub fn filetype(&self) -> &str {
         &self.params.filetype
+    }
+
+    fn position_encoding(&self) -> lsp_types::PositionEncodingKind {
+        self.init_params
+            .capabilities
+            .position_encoding
+            .clone()
+            .unwrap_or(lsp_types::PositionEncodingKind::UTF16)
     }
 }

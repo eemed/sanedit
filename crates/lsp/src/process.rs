@@ -13,7 +13,7 @@ use sanedit_utils::either::Either;
 use serde_json::Value;
 use tokio::process::{ChildStderr, ChildStdin, ChildStdout};
 use tokio::sync::mpsc::{Receiver, Sender};
-use tokio::sync::Notify;
+use tokio::sync::{oneshot, Notify};
 use tokio::{io::BufReader, process::Child};
 
 #[derive(Debug)]
@@ -35,7 +35,7 @@ pub(crate) struct ProcessHandler {
     pub(crate) stderr: BufReader<ChildStderr>,
 
     pub(crate) receiver: Receiver<ServerRequest>,
-    pub(crate) initialized: Arc<Notify>,
+    pub(crate) initialized: Option<oneshot::Sender<Result<lsp_types::InitializeResult>>>,
 
     pub(crate) in_flight: BTreeMap<u32, Sender<Result<Value>>>,
 }
@@ -43,24 +43,27 @@ pub(crate) struct ProcessHandler {
 impl ProcessHandler {
     pub async fn run(mut self) -> Result<()> {
         let init_result = self.initialize().await;
-        self.initialized.notify_one();
-        init_result?;
+        let ok = init_result.is_ok();
+        let init = std::mem::take(&mut self.initialized).unwrap();
+        let _ = init.send(init_result);
+
+        if !ok {
+            bail!("Initialization failed");
+        }
 
         loop {
             tokio::select! {
                 msg = self.receiver.recv() => {
                     let msg = msg.ok_or(anyhow!("LSP sender is closed"))?;
-                    log::info!("Receive: {:?}", msg);
                     match msg {
                         ServerRequest::Request { json, answer } => self.handle_request(json, answer).await?,
                         ServerRequest::Notification { json } => self.handle_notification(json).await?,
                     }
                 }
                 json = read_from(&mut self.stdout) => {
-                    log::info!("Read: {json:?}");
                     match json? {
                         Either::Right(notification) => {
-                            log::info!("{notification:?}");
+                            // log::info!("{notification:?}");
                         }
                         Either::Left(response) => self.handle_response(response).await?,
                     }
@@ -103,7 +106,7 @@ impl ProcessHandler {
         Ok(())
     }
 
-    async fn initialize(&mut self) -> Result<()> {
+    async fn initialize(&mut self) -> Result<lsp_types::InitializeResult> {
         // Send initialize request
         let params = lsp_types::InitializeParams {
             process_id: std::process::id().into(),
@@ -128,14 +131,18 @@ impl ProcessHandler {
         content.write_to(&mut self.stdin).await?;
 
         // Read server response
-        let _response = self.read_response().await?;
+        let response = self.read_response().await?;
+        let value = response
+            .result
+            .ok_or(anyhow!("Server responded with empty initialize result"))?;
+        let result = serde_json::from_value::<lsp_types::InitializeResult>(value)?;
 
         // Send initialized notification
         let params = lsp_types::InitializedParams {};
         let content = JsonNotification::new(lsp_types::notification::Initialized::METHOD, &params);
         content.write_to(&mut self.stdin).await?;
 
-        Ok(())
+        Ok(result)
     }
 
     pub async fn read_response(&mut self) -> Result<JsonResponse> {

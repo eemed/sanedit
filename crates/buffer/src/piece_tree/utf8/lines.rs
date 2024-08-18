@@ -103,16 +103,40 @@ pub fn prev_eol(bytes: &mut Bytes) -> Option<EOLMatch> {
     }
 }
 
-pub(crate) fn line_at(slice: &PieceTreeSlice, pos: u64) -> u64 {
+/// return position at line start of line
+pub(crate) fn pos_at_line<'a>(slice: &PieceTreeSlice<'a>, line: u64) -> u64 {
+    let mut n = 0;
+    let mut lines = slice.lines();
+
+    while let Some(l) = lines.next() {
+        if n == line {
+            return l.start();
+        }
+
+        n += 1;
+    }
+
+    unreachable!("Tried to get line {line} but buffer had only {n} lines");
+}
+
+/// return the line and its number at pos
+pub(crate) fn line_at<'a>(slice: &PieceTreeSlice<'a>, pos: u64) -> (u64, PieceTreeSlice<'a>) {
+    let mut start = 0;
     let mut line = 0;
     let slice = slice.slice(..pos);
     let mut bytes = slice.bytes();
 
     while let Some(_) = next_eol(&mut bytes) {
+        start = bytes.pos();
         line += 1;
     }
 
-    line
+    next_eol(&mut bytes);
+
+    let end = bytes.pos();
+    let line_slice = slice.slice(start..end);
+
+    (line, line_slice)
 }
 
 #[derive(Debug, Clone)]

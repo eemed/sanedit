@@ -27,6 +27,9 @@
   characters at most. For example show the non matched 20 first characters and the
   matched text afterwards with combined limit to 300 chars
 
+* Piecetree should optionally support line ending tracking
+    - Keep the same lines api but use the most effective line finding method under the hood
+
 * play around with parsing machine JIT
     - This is its own big project
     - Should try this once we can write it in this editor :)

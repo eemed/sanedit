@@ -6,5 +6,5 @@ pub enum Response {
 
 #[derive(Debug, Clone)]
 pub enum RequestResult {
-    Hover { text: String, offset: usize },
+    Hover { text: String, offset: u64 },
 }

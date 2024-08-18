@@ -277,8 +277,13 @@ impl PieceTree {
     }
 
     #[inline]
-    pub fn line_at(&self, pos: u64) -> u64 {
+    pub fn line_at(&self, pos: u64) -> (u64, PieceTreeSlice) {
         self.pt.line_at(pos)
+    }
+
+    #[inline]
+    pub fn pos_at_line(&self, line: u64) -> u64 {
+        self.pt.pos_at_line(line)
     }
 
     #[inline]
@@ -472,7 +477,7 @@ impl ReadOnlyPieceTree {
     }
 
     #[inline]
-    pub fn line_at(&self, pos: u64) -> u64 {
+    pub fn line_at(&self, pos: u64) -> (u64, PieceTreeSlice) {
         debug_assert!(
             pos <= self.len,
             "line_at: Attempting to index {} over buffer len {}",
@@ -480,6 +485,11 @@ impl ReadOnlyPieceTree {
             self.len
         );
         self.slice(..).line_at(pos)
+    }
+
+    #[inline]
+    pub fn pos_at_line(&self, line: u64) -> u64 {
+        self.slice(..).pos_at_line(line)
     }
 
     #[inline]

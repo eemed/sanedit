@@ -122,9 +122,16 @@ impl<'a> PieceTreeSlice<'a> {
         Lines::new_from_slice(&self, pos)
     }
 
+    /// Return the line number and slice at position
     #[inline]
-    pub fn line_at(&self, pos: u64) -> u64 {
+    pub fn line_at(&self, pos: u64) -> (u64, PieceTreeSlice<'a>) {
         utf8::lines::line_at(self, pos)
+    }
+
+    /// Position at the start of line
+    #[inline]
+    pub fn pos_at_line(&self, line: u64) -> u64 {
+        utf8::lines::pos_at_line(self, line)
     }
 
     #[inline]

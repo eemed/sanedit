@@ -94,10 +94,10 @@ pub async fn read_from<R: AsyncBufReadExt + Unpin>(
             buf.push(b'\0');
         }
         reader.read_exact(&mut buf[..content_length]).await?;
-        {
-            let content = unsafe { std::str::from_utf8_unchecked(&buf[..content_length]) };
-            log::info!("READ: {content:?}");
-        }
+        // {
+        //     let content = unsafe { std::str::from_utf8_unchecked(&buf[..content_length]) };
+        //     log::info!("READ: {content:?}");
+        // }
         if let Ok(response) = serde_json::from_slice::<JsonResponse>(&buf[..content_length]) {
             return Ok(Either::Left(response));
         }

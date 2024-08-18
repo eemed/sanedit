@@ -203,7 +203,6 @@ impl Handler {
             },
         };
 
-        // let content = JsonNotification::new("textDocument/didOpen", &params);
         self.notify::<lsp_types::notification::DidOpenTextDocument>(&params)
             .await?;
 

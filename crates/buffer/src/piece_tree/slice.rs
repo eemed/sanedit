@@ -29,6 +29,7 @@ impl<'a> PieceTreeSlice<'a> {
         self.range.end
     }
 
+    /// Range in buffer indices
     pub fn range(&self) -> Range<usize> {
         self.range.clone()
     }

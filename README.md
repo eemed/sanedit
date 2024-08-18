@@ -25,6 +25,8 @@
 * Keybindings should be sensical
     * Line up down char next prev, to keyboard not arrow keys
 * Save in place
+* Buffer should use u64 instead of usize to work with large files on 32bit
+  systems, not really important
 
 ## TODO
 * Add log buffer directly to editor

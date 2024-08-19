@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 bitflags! {
 #[derive(Serialize, Deserialize)]
-pub struct TextStyle: u32 {
+pub struct TextStyle: u8 {
     const BOLD      = 0b00000001;
     const UNDERLINE = 0b00000010;
     const ITALIC    = 0b00000100;

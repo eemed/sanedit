@@ -38,6 +38,13 @@ impl EndOfLine {
         eol_bytes().contains(bytes)
     }
 
+    pub fn is_byte_eol(byte: u8) -> bool {
+        match byte {
+            0x0a | 0x0b | 0x0c | 0x0d => true,
+            _ => false,
+        }
+    }
+
     pub fn is_slice_eol(slice: &PieceTreeSlice) -> bool {
         const MAX_EOL_LEN: usize = 3;
         if slice.len() > MAX_EOL_LEN as u64 {

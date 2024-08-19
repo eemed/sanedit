@@ -12,7 +12,8 @@ use crate::{
 
 use super::{
     char::{
-        grapheme_category, is_word_break, is_word_break_end, Char, DisplayOptions, GraphemeCategory,
+        grapheme_category, is_word_break, is_word_break_end, Char, Chars, DisplayOptions,
+        GraphemeCategory,
     },
     movement::{next_word_end, prev_word_start, start_of_line},
 };
@@ -24,13 +25,13 @@ pub(crate) fn width_at_pos(slice: &PieceTreeSlice, pos: u64, opts: &DisplayOptio
     let mut graphemes = slice.graphemes_at(pos);
 
     while let Some(g) = graphemes.next() {
-        let ch = Char::new(&g, col, opts);
+        let chars = Chars::new(&g, col, opts);
         if pos >= target {
             break;
         }
 
-        col += ch.width();
-        pos += ch.len_in_buffer();
+        col += chars.width();
+        pos += chars.len_in_buffer();
     }
 
     col
@@ -48,15 +49,19 @@ pub(crate) fn pos_at_width(
     let mut graphemes = slice.graphemes_at(pos);
 
     while let Some(g) = graphemes.next() {
-        let ch = Char::new(&g, col, opts);
-        if col + ch.width() > width {
+        let chars = Chars::new(&g, col, opts);
+        let ch_width = chars.width();
+        let ch_len = chars.len_in_buffer();
+        let eol = chars.is_eol();
+
+        if col + ch_width > width {
             break;
         }
-        if EndOfLine::is_slice_eol(&g) {
+        if eol {
             break;
         }
-        col += ch.width();
-        pos += ch.len_in_buffer();
+        col += ch_width;
+        pos += ch_len;
     }
 
     pos

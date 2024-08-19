@@ -189,7 +189,7 @@ fn draw_end_of_buffer(grid: &mut Vec<Vec<redraw::Cell>>, view: &View, theme: &Th
         if is_empty {
             if let Some(rep) = view.options.replacements.get(&Replacement::BufferEnd) {
                 grid[line][0] = redraw::Cell {
-                    text: rep.as_str().into(),
+                    text: rep.to_string(),
                     style,
                 };
             }
@@ -244,7 +244,7 @@ fn draw_trailing_whitespace(
         if in_eol && cat == GraphemeCategory::Whitespace {
             if let Some(point) = view.point_at_pos(g.start()) {
                 grid[point.y][point.x] = redraw::Cell {
-                    text: rep.clone(),
+                    text: rep.to_string(),
                     style,
                 };
             }

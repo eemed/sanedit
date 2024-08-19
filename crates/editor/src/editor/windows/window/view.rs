@@ -3,7 +3,7 @@ use std::collections::VecDeque;
 use sanedit_buffer::utf8::EndOfLine;
 use sanedit_messages::redraw::{Point, Size};
 
-use crate::common::char::{Char, DisplayOptions};
+use crate::common::char::{Char, Chars, DisplayOptions};
 use crate::common::movement::prev_line_start;
 use crate::editor::buffers::{Buffer, BufferRange};
 use crate::editor::syntax::SyntaxParseResult;
@@ -11,8 +11,8 @@ use crate::editor::syntax::SyntaxParseResult;
 #[derive(Debug, Clone)]
 pub(crate) enum Cell {
     Empty,
-    Continue, // Continuation of a previous char
-    EOF,      // End of file where cursor can be placed
+    // Continue, // Continuation of a previous char
+    EOF, // End of file where cursor can be placed
     Char { ch: Char },
 }
 
@@ -36,6 +36,17 @@ impl Cell {
             Cell::Char { ch } => ch.len_in_buffer(),
             _ => 0,
         }
+    }
+
+    pub fn is_non_continue_char(&self) -> bool {
+        match self {
+            Cell::Char { ch } => !ch.is_continue(),
+            _ => false,
+        }
+    }
+
+    pub fn is_eof(&self) -> bool {
+        matches!(self, Cell::EOF)
     }
 }
 
@@ -133,9 +144,13 @@ impl View {
         let mut graphemes = slice.graphemes_at(pos);
 
         while let Some(grapheme) = graphemes.next() {
-            is_eol = EndOfLine::is_slice_eol(&grapheme);
-            let ch = Char::new(&grapheme, col, &self.options);
-            let ch_width = ch.width();
+            let chars = Chars::new(&grapheme, col, &self.options);
+            let ch_width: usize = chars.width();
+            is_eol = chars.is_eol();
+            if ch_width != chars.len() {
+                let s = String::from(&grapheme);
+                log::info!("Grapheme: {s:?}, width: {ch_width}, len: {}", chars.len());
+            }
 
             // If we cannot fit this character, go to next line
             if col + ch_width > self.width {
@@ -147,13 +162,17 @@ impl View {
                 col = 0;
             }
 
-            self.cells[line][col] = ch.into();
+            let chars: Vec<Char> = chars.into();
+            for (i, ch) in chars.into_iter().enumerate() {
+                self.cells[line][col + i] = ch.into();
+            }
+            // self.cells[line][col] = ch.into();
 
             // Do not fill next characters
             // if current character is larger than 1 cell
-            for i in 1..ch_width {
-                self.cells[line][col + i] = Cell::Continue;
-            }
+            // for i in 1..ch_width {
+            //     self.cells[line][col + i] = Cell::Continue;
+            // }
 
             // Increment pos, col once we have written the character to grid
             col += ch_width;
@@ -303,17 +322,18 @@ impl View {
                             return Some(pos);
                         }
                     }
-                    Cell::Continue => {
-                        if point.y == y && point.x == x {
-                            return last_ch_pos;
-                        }
-                    }
                     Cell::Char { ch } => {
-                        if point.y == y && point.x == x {
-                            return Some(pos);
+                        if ch.is_continue() {
+                            if point.y == y && point.x == x {
+                                return last_ch_pos;
+                            }
+                        } else {
+                            if point.y == y && point.x == x {
+                                return Some(pos);
+                            }
+                            last_ch_pos = Some(pos);
+                            pos += ch.len_in_buffer();
                         }
-                        last_ch_pos = Some(pos);
-                        pos += ch.len_in_buffer();
                     }
                     _ => {}
                 }
@@ -328,7 +348,7 @@ impl View {
 
         for (y, row) in self.cells.iter().enumerate() {
             for (x, cell) in row.iter().enumerate() {
-                if !matches!(cell, Cell::Empty | Cell::Continue) {
+                if cell.is_eof() || cell.is_non_continue_char() {
                     if cur == pos {
                         return Some(Point { x, y });
                     }

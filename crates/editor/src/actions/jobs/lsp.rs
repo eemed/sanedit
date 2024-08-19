@@ -130,6 +130,13 @@ impl KeepInTouch for LSP {
                                 message: text,
                             });
                         }
+                        sanedit_lsp::RequestResult::GotoDefinition { path, position } => {
+                            if editor.open_file(self.client_id, path).is_ok() {
+                                let (win, buf) = editor.win_buf_mut(self.client_id);
+                                let offset = position.to_offset(&buf.read_only_copy());
+                                win.goto_offset(offset, buf);
+                            }
+                        }
                     },
                 },
             }

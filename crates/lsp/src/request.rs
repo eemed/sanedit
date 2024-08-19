@@ -13,4 +13,9 @@ pub enum Request {
         buf: ReadOnlyPieceTree,
         offset: u64,
     },
+    GotoDefinition {
+        path: PathBuf,
+        buf: ReadOnlyPieceTree,
+        offset: u64,
+    },
 }

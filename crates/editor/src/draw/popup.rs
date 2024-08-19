@@ -24,11 +24,11 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> Option<redraw::Redraw> {
         .view()
         .point_at_pos(cursor)
         .unwrap_or(Point::default());
-
+    let lines = popup.message.split("\n").map(String::from).collect();
     let redraw: redraw::Redraw = Popup {
         severity: popup.severity,
         point,
-        lines: popup.message.split("\n").map(String::from).collect(),
+        lines,
     }
     .into();
 

@@ -48,9 +48,6 @@ impl Drawable for Popup {
         for line in &self.lines {
             let lcells = into_cells_with_style(line.as_str(), style);
             for cell in lcells {
-                cells[row][col] = cell;
-                col += 1;
-
                 if col == wsize.width {
                     row += 1;
                     col = 0;
@@ -59,6 +56,9 @@ impl Drawable for Popup {
                         break;
                     }
                 }
+
+                cells[row][col] = cell;
+                col += 1;
             }
 
             // Line processed goto next

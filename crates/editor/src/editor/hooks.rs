@@ -109,6 +109,7 @@ impl Default for Hooks {
         hooks.register(BufOpened, indent::detect_indent);
 
         hooks.register(CursorMoved, popup::close);
+        hooks.register(BufOpened, syntax::parse_syntax);
 
         hooks
     }

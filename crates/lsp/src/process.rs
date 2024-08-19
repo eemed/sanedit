@@ -13,7 +13,7 @@ use sanedit_utils::either::Either;
 use serde_json::Value;
 use tokio::process::{ChildStderr, ChildStdin, ChildStdout};
 use tokio::sync::mpsc::{Receiver, Sender};
-use tokio::sync::{oneshot, Notify};
+use tokio::sync::oneshot;
 use tokio::{io::BufReader, process::Child};
 
 #[derive(Debug)]
@@ -91,7 +91,6 @@ impl ProcessHandler {
     }
 
     async fn handle_response(&mut self, response: JsonResponse) -> Result<()> {
-        log::info!("Response: {response:?}");
         if response.result.is_none() && response.error.is_none() {
             return Ok(());
         }

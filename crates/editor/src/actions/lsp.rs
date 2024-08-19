@@ -52,3 +52,24 @@ fn hover(editor: &mut Editor, id: ClientId) {
 
     lsp.send(Request::Hover { path, buf, offset });
 }
+
+#[action("Goto definition")]
+fn goto_definition(editor: &mut Editor, id: ClientId) {
+    let wd = editor.working_dir().to_path_buf();
+    let (win, buf) = editor.win_buf_mut(id);
+    let ft = buf.filetype.clone();
+    let Some(path) = buf.path().map(Path::to_path_buf) else {
+        return;
+    };
+    let buf = buf.read_only_copy();
+    let offset = win.cursors.primary().pos();
+
+    let Some(ft) = ft else {
+        return;
+    };
+    let Some(lsp) = editor.language_servers.get_mut(&ft) else {
+        return;
+    };
+
+    lsp.send(Request::GotoDefinition { path, buf, offset });
+}

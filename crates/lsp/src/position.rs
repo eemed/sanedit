@@ -1,5 +1,17 @@
 use sanedit_buffer::ReadOnlyPieceTree;
 
+#[derive(Debug, Clone)]
+pub struct Position {
+    pub(crate) position: lsp_types::Position,
+    pub(crate) encoding: lsp_types::PositionEncodingKind,
+}
+
+impl Position {
+    pub fn to_offset(&self, buf: &ReadOnlyPieceTree) -> u64 {
+        position_to_offset(buf, self.position, self.encoding.clone())
+    }
+}
+
 pub(crate) fn offset_to_position(
     buf: &ReadOnlyPieceTree,
     offset: u64,
@@ -51,7 +63,8 @@ pub(crate) fn position_to_offset(
 
     while let Some((start, _, ch)) = chars.next() {
         if col >= character {
-            return start;
+            log::info!("char: {}", start);
+            return start + line.start();
         }
         let len = if kind == lsp_types::PositionEncodingKind::UTF8 {
             ch.len_utf8()

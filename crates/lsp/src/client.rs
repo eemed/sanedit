@@ -7,7 +7,7 @@ use crate::jsonrpc::{JsonNotification, JsonRequest};
 use crate::position::{offset_to_position, position_to_offset};
 use crate::process::{ProcessHandler, ServerRequest};
 use crate::util::path_to_uri;
-use crate::{Request, RequestResult, Response};
+use crate::{Position, Request, RequestResult, Response};
 
 use anyhow::{anyhow, Result};
 use sanedit_buffer::ReadOnlyPieceTree;
@@ -138,7 +138,96 @@ impl Handler {
         match req {
             Request::DidOpen { path, buf } => self.did_open_document(path, buf).await?,
             Request::Hover { path, offset, buf } => self.hover(path, buf, offset).await?,
+            Request::GotoDefinition { path, offset, buf } => {
+                self.goto_definition(path, buf, offset).await?
+            }
         }
+
+        Ok(())
+    }
+
+    async fn complete(&mut self, path: PathBuf, buf: ReadOnlyPieceTree, offset: u64) -> Result<()> {
+        let position = offset_to_position(&buf, offset, self.position_encoding());
+        let params = lsp_types::CompletionParams {
+            text_document_position: lsp_types::TextDocumentPositionParams {
+                text_document: lsp_types::TextDocumentIdentifier {
+                    uri: path_to_uri(&path),
+                },
+                position,
+            },
+            work_done_progress_params: lsp_types::WorkDoneProgressParams {
+                work_done_token: None,
+            },
+            partial_result_params: lsp_types::PartialResultParams {
+                partial_result_token: None,
+            },
+            context: Some(lsp_types::CompletionContext {
+                trigger_kind: lsp_types::CompletionTriggerKind::INVOKED,
+                trigger_character: None,
+            }),
+        };
+
+        let response = self
+            .request::<lsp_types::request::Completion>(&params)
+            .await?;
+        let response = response.ok_or(anyhow!("No completion response"))?;
+
+        // TODO response
+
+        Ok(())
+    }
+
+    async fn goto_definition(
+        &mut self,
+        path: PathBuf,
+        buf: ReadOnlyPieceTree,
+        offset: u64,
+    ) -> Result<()> {
+        let position = offset_to_position(&buf, offset, self.position_encoding());
+        let params = lsp_types::GotoDefinitionParams {
+            text_document_position_params: lsp_types::TextDocumentPositionParams {
+                text_document: lsp_types::TextDocumentIdentifier {
+                    uri: path_to_uri(&path),
+                },
+                position,
+            },
+            work_done_progress_params: lsp_types::WorkDoneProgressParams {
+                work_done_token: None,
+            },
+            partial_result_params: lsp_types::PartialResultParams {
+                partial_result_token: None,
+            },
+        };
+
+        let response = self
+            .request::<lsp_types::request::GotoDefinition>(&params)
+            .await?;
+        let response = response.ok_or(anyhow!("No goto definition response"))?;
+
+        let path;
+        let position;
+        match response {
+            lsp_types::GotoDefinitionResponse::Scalar(_) => todo!("Scalar goto def"),
+            lsp_types::GotoDefinitionResponse::Array(locations) => {
+                let location = locations
+                    .get(0)
+                    .ok_or(anyhow!("Goto definition response found no locations"))?;
+                path = PathBuf::from(location.uri.path().as_str());
+                position = location.range.start;
+            }
+            lsp_types::GotoDefinitionResponse::Link(_) => todo!("Link gotodef"),
+        }
+
+        let _ = self
+            .response
+            .send(Response::Request(RequestResult::GotoDefinition {
+                path,
+                position: Position {
+                    position,
+                    encoding: self.position_encoding(),
+                },
+            }))
+            .await;
 
         Ok(())
     }
@@ -162,7 +251,7 @@ impl Handler {
             .await?;
         let response = response.ok_or(anyhow!("No hover response"))?;
 
-        let mut text = String::new();
+        let text;
         match response.contents {
             lsp_types::HoverContents::Scalar(_) => todo!(),
             lsp_types::HoverContents::Array(_) => todo!(),

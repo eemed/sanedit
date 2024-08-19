@@ -3,12 +3,14 @@
 ## TODO
 
 * LSP without installation mechanism
-    * Hover
-    * Completion
-    * Code actions
-    * Diagnostics: Somehow to show them
+    + Hover
+    - Completion
+    - Code actions
+    - Diagnostics: Somehow to show them
+    + Goto definition
+    - Show references
     * (Signature help) I use hover for this too
-    * Cant remember anything else I use regularly
+    * Update documents on change
 * Highlight flickering
     - => Modify existing syntax highlight to take into account the changes made
     - => No delay exeprt if we just typed a new higfhlighted item => GOOD

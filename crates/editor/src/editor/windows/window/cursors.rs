@@ -4,7 +4,7 @@ use std::{cmp::min, ops::Range};
 
 pub(crate) use cursor::Cursor;
 
-use crate::{common::range::RangeUtils, editor::buffers::SortedRanges};
+use crate::{common::range::RangeUtils, editor::buffers::SortedBufferRanges};
 
 #[derive(Debug, Clone)]
 pub(crate) struct Cursors {
@@ -166,7 +166,7 @@ impl From<&Cursors> for Vec<u64> {
     }
 }
 
-impl From<&Cursors> for SortedRanges {
+impl From<&Cursors> for SortedBufferRanges {
     /// Crate Sorted ranges from all of the cursors selections
     fn from(cursors: &Cursors) -> Self {
         let mut selections = vec![];

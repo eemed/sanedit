@@ -1,11 +1,11 @@
-use std::ops::{Index, Range};
+use std::ops::{Deref, Index, Range};
 
 use super::BufferRange;
 
 #[derive(Debug, Clone)]
-pub(crate) struct SortedRanges(Vec<BufferRange>);
+pub(crate) struct SortedBufferRanges(Vec<BufferRange>);
 
-impl SortedRanges {
+impl SortedBufferRanges {
     pub fn iter(&self) -> std::slice::Iter<Range<u64>> {
         self.0.iter()
     }
@@ -19,7 +19,15 @@ impl SortedRanges {
     }
 }
 
-impl Index<usize> for SortedRanges {
+impl Deref for SortedBufferRanges {
+    type Target = [BufferRange];
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl Index<usize> for SortedBufferRanges {
     type Output = Range<u64>;
 
     fn index(&self, index: usize) -> &Self::Output {
@@ -27,9 +35,15 @@ impl Index<usize> for SortedRanges {
     }
 }
 
-impl From<Vec<Range<u64>>> for SortedRanges {
+impl From<Vec<Range<u64>>> for SortedBufferRanges {
     fn from(mut value: Vec<Range<u64>>) -> Self {
         value.sort_by(|a, b| a.start.cmp(&b.start));
-        SortedRanges(value)
+        SortedBufferRanges(value)
+    }
+}
+
+impl From<Range<u64>> for SortedBufferRanges {
+    fn from(mut value: Range<u64>) -> Self {
+        SortedBufferRanges(vec![value])
     }
 }

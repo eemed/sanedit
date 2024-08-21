@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use sanedit_buffer::utf8::EndOfLine;
 use sanedit_utils::sorted_vec::SortedVec;
 
@@ -18,7 +20,7 @@ pub(crate) struct Changes {
 impl Changes {
     pub fn new(changes: &[Change]) -> Changes {
         Changes {
-            changes: SortedVec::from(changes.to_vec()),
+            changes: SortedVec::from(changes),
         }
     }
 
@@ -43,9 +45,10 @@ impl Changes {
     }
 
     pub fn multi_insert(positions: &[u64], text: &[u8]) -> Changes {
+        let text = Rc::new(text.to_vec());
         let changes: Vec<Change> = positions
             .iter()
-            .map(|pos| Change::insert(*pos, text.into()))
+            .map(|pos| Change::insert_rc(*pos, text.clone()))
             .collect();
         Changes::from(changes)
     }
@@ -231,30 +234,39 @@ pub(crate) struct Change {
     start: u64,
     /// Exclusive
     end: u64,
-    text: Vec<u8>,
+    text: Rc<Vec<u8>>,
     flags: Flags,
 }
 
 impl Change {
-    pub fn undo() -> Change {
+    fn undo() -> Change {
         Change {
             start: 0,
             end: 0,
-            text: Vec::new(),
+            text: Rc::new(Vec::new()),
             flags: Flags::UNDO,
         }
     }
 
-    pub fn redo() -> Change {
+    fn redo() -> Change {
         Change {
             start: 0,
             end: 0,
-            text: Vec::new(),
+            text: Rc::new(Vec::new()),
             flags: Flags::REDO,
         }
     }
 
-    pub fn insert(at: u64, text: Vec<u8>) -> Change {
+    pub fn insert(at: u64, text: &[u8]) -> Change {
+        Change {
+            start: at,
+            end: at,
+            text: Rc::new(text.into()),
+            flags: Flags::default(),
+        }
+    }
+
+    fn insert_rc(at: u64, text: Rc<Vec<u8>>) -> Change {
         Change {
             start: at,
             end: at,
@@ -267,16 +279,16 @@ impl Change {
         Change {
             start: range.start,
             end: range.end,
-            text: Vec::new(),
+            text: Rc::new(Vec::new()),
             flags: Flags::default(),
         }
     }
 
-    pub fn replace(range: BufferRange, text: Vec<u8>) -> Change {
+    pub fn replace(range: BufferRange, text: &[u8]) -> Change {
         Change {
             start: range.start,
             end: range.end,
-            text,
+            text: Rc::new(text.into()),
             flags: Flags::default(),
         }
     }
@@ -318,7 +330,7 @@ impl Change {
     }
 
     pub fn is_eol(&self) -> bool {
-        EndOfLine::is_eol(&self.text)
+        EndOfLine::is_eol(self.text.as_ref())
     }
 }
 

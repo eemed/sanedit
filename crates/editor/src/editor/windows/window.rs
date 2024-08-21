@@ -30,7 +30,7 @@ use crate::{
         text::{selection_line_starts, width_at_pos},
     },
     editor::{
-        buffers::{Buffer, BufferId, Change, Changes, SnapshotData, SortedBufferRanges},
+        buffers::{Buffer, BufferId, BufferRange, BufferRangeExt, Change, Changes, SnapshotData},
         syntax::SyntaxParseResult,
     },
 };
@@ -327,49 +327,48 @@ impl Window {
         }
     }
 
-    fn remove(&mut self, buf: &mut Buffer, ranges: &SortedBufferRanges) -> Result<()> {
+    fn remove(&mut self, buf: &mut Buffer, ranges: &[BufferRange]) -> Result<()> {
         let changes = Changes::multi_remove(ranges);
-        let result = buf.apply_changes(&changes)?;
-
-        if let Some(id) = result.created_snapshot {
-            *buf.snapshot_data_mut(id).unwrap() = self.create_snapshot_data();
-        }
-        Ok(())
+        self.change(buf, &changes)
     }
 
-    fn insert(&mut self, buf: &mut Buffer, positions: &[u64], text: &str) -> Result<()> {
-        let changes = Changes::multi_insert(positions, text.as_bytes());
+    fn change(&mut self, buf: &mut Buffer, changes: &Changes) -> Result<()> {
         let result = buf.apply_changes(&changes)?;
 
         if let Some(id) = result.created_snapshot {
             *buf.snapshot_data_mut(id).unwrap() = self.create_snapshot_data();
         }
+
+        // TODO move cursors to their logical positions
+        for cursor in self.cursors.cursors_mut() {}
+
+        self.invalidate();
         Ok(())
     }
 
     pub fn remove_cursor_selections(&mut self, buf: &mut Buffer) -> Result<bool> {
-        let selections: SortedBufferRanges = (&self.cursors).into();
+        let selections: Vec<BufferRange> = (&self.cursors).into();
         if selections.is_empty() {
             return Ok(false);
         }
 
         self.remove(buf, &selections)?;
 
-        let mut removed = 0;
-        for cursor in self.cursors.cursors_mut() {
-            let sel = cursor.take_selection();
-            let cpos = sel
-                .as_ref()
-                .map(|range| range.start)
-                .unwrap_or(cursor.pos());
-            cursor.goto(cpos - removed);
+        //         let mut removed = 0;
+        //         for cursor in self.cursors.cursors_mut() {
+        //             let sel = cursor.take_selection();
+        //             let cpos = sel
+        //                 .as_ref()
+        //                 .map(|range| range.start)
+        //                 .unwrap_or(cursor.pos());
+        //             cursor.goto(cpos - removed);
 
-            if let Some(sel) = sel {
-                removed += sel.end - sel.start;
-            }
-        }
+        //             if let Some(sel) = sel {
+        //                 removed += sel.len();
+        //             }
+        //         }
 
-        self.invalidate();
+        //         self.invalidate();
         Ok(true)
     }
 
@@ -380,39 +379,75 @@ impl Window {
             self.cursors.len(),
             texts.len()
         );
-        // TODO make this one change instead of many
 
-        //         self.remove_cursor_selections(buf)?;
+        let changes: Vec<Change> = self
+            .cursors
+            .iter()
+            .enumerate()
+            .map(|(i, cursor)| {
+                let text = texts[i].as_bytes();
+                if let Some(sel) = cursor.selection() {
+                    Change::replace(sel, text)
+                } else {
+                    Change::insert(cursor.pos(), text)
+                }
+            })
+            .collect();
+        let changes: Changes = changes.into();
+        self.change(buf, &changes)
 
-        //         let mut inserted = 0;
-        //         for (i, cursor) in self.cursors.cursors_mut().iter_mut().enumerate() {
-        //             let text = &texts[i];
-        //             let cpos = cursor.pos() + inserted;
-        //             buf.insert(cpos, text)?;
-        //             let tlen = text.len() as u64;
-        //             cursor.goto(cpos + tlen);
-        //             inserted += tlen;
-        //         }
+        // let positions: Vec<u64> = (&self.cursors).into();
+        // let changes: Vec<(u64, &[u8])> = positions
+        //     .into_iter()
+        //     .enumerate()
+        //     .map(|(i, pos)| (pos, texts[i].as_bytes()))
+        //     .collect();
+        // let changes = Changes::multi_insert_different(&changes);
+        // buf.apply_changes(&changes)?;
 
-        //         self.invalidate();
-        Ok(())
+        // let mut inserted = 0;
+        // for (i, cursor) in self.cursors.cursors_mut().iter_mut().enumerate() {
+        //     let text = &texts[i];
+        //     let cpos = cursor.pos() + inserted;
+        //     let tlen = text.len() as u64;
+        //     cursor.goto(cpos + tlen);
+        //     inserted += tlen;
+        // }
+
+        // self.invalidate();
+        // Ok(())
     }
 
     pub fn insert_at_cursors(&mut self, buf: &mut Buffer, text: &str) -> Result<()> {
+        let changes: Vec<Change> = self
+            .cursors
+            .iter()
+            .map(|cursor| {
+                if let Some(sel) = cursor.selection() {
+                    Change::replace(sel, text.as_bytes())
+                } else {
+                    Change::insert(cursor.pos(), text.as_bytes())
+                }
+            })
+            .collect();
+        let changes: Changes = changes.into();
+
+        self.change(buf, &changes)?;
+
         // TODO use a replace operation instead if removing
-        self.remove_cursor_selections(buf)?;
-        let positions: Vec<u64> = (&self.cursors).into();
-        self.insert(buf, &positions, text)?;
+        // self.remove_cursor_selections(buf)?;
+        // let positions: Vec<u64> = (&self.cursors).into();
+        // self.insert(buf, &positions, text)?;
 
-        let mut inserted = 0;
-        for cursor in self.cursors.cursors_mut() {
-            let cpos = cursor.pos() + inserted;
-            let tlen = text.len() as u64;
-            cursor.goto(cpos + tlen);
-            inserted += tlen;
-        }
+        // let mut inserted = 0;
+        // for cursor in self.cursors.cursors_mut() {
+        //     let cpos = cursor.pos() + inserted;
+        //     let tlen = text.len() as u64;
+        //     cursor.goto(cpos + tlen);
+        //     inserted += tlen;
+        // }
 
-        self.invalidate();
+        // self.invalidate();
         self.view_to_cursor(buf);
         Ok(())
     }
@@ -422,17 +457,27 @@ impl Window {
             return Ok(());
         }
 
-        // TODO
+        let slice = buf.slice(..);
+        let ranges: Vec<BufferRange> = self
+            .cursors
+            .cursors()
+            .iter()
+            .map(Cursor::pos)
+            .map(|pos| {
+                let next = movement::next_grapheme_boundary(&slice, pos);
+                pos..next
+            })
+            .collect();
+        let changes = Changes::multi_remove(&ranges);
+        buf.apply_changes(&changes)?;
 
-        // let mut removed = 0;
-        // for cursor in self.cursors.cursors_mut() {
-        //     let cpos = cursor.pos() - removed;
-        //     let pos = movement::next_grapheme_boundary(&buf.slice(..), cpos);
-
-        //     cursor.goto(cpos);
-        //     buf.remove(cpos..pos)?;
-        //     removed += pos - cpos;
-        // }
+        let mut removed = 0;
+        for (i, cursor) in self.cursors.cursors_mut().iter_mut().enumerate() {
+            let range = &ranges[i];
+            let cpos = cursor.pos() - removed;
+            cursor.goto(cpos);
+            removed += range.len();
+        }
 
         self.invalidate();
         self.view_to_cursor(buf);
@@ -493,7 +538,7 @@ impl Window {
             return Ok(());
         }
 
-        let ranges: SortedBufferRanges = {
+        let ranges: Vec<BufferRange> = {
             let mut ranges = vec![];
 
             for cursor in self.cursors.cursors_mut() {
@@ -502,7 +547,7 @@ impl Window {
                 ranges.push(pos..cpos);
             }
 
-            ranges.into()
+            ranges
         };
 
         self.remove(buf, &ranges)?;
@@ -511,7 +556,7 @@ impl Window {
         for (i, range) in ranges.iter().enumerate() {
             let cursor = &mut self.cursors.cursors_mut()[i];
             cursor.goto(range.start - removed);
-            removed += range.end - range.start;
+            removed += range.len();
         }
 
         self.invalidate();
@@ -570,23 +615,25 @@ impl Window {
             .indent_kind
             .repeat(buf.options.indent_amount as usize);
         let changes = Changes::multi_insert(&starts, indent.as_bytes());
-        buf.apply_changes(&changes)?;
+        self.change(buf, &changes)?;
 
-        for cursor in self.cursors.cursors_mut() {
-            let mut range = cursor.selection().unwrap_or(cursor.pos()..cursor.pos() + 1);
-            let pre = starts.iter().take_while(|cur| **cur < range.start).count();
-            let count = starts[pre..]
-                .iter()
-                .take_while(|cur| range.contains(cur))
-                .count();
-            let plen = (pre * indent.len()) as u64;
-            let len = (count * indent.len()) as u64;
-            range.start += plen;
-            range.end += plen + len;
-            cursor.to_range(&range);
-        }
+        // buf.apply_changes(&changes)?;
 
-        self.invalidate();
+        // for cursor in self.cursors.cursors_mut() {
+        //     let mut range = cursor.selection().unwrap_or(cursor.pos()..cursor.pos() + 1);
+        //     let pre = starts.iter().take_while(|cur| **cur < range.start).count();
+        //     let count = starts[pre..]
+        //         .iter()
+        //         .take_while(|cur| range.contains(cur))
+        //         .count();
+        //     let plen = (pre * indent.len()) as u64;
+        //     let len = (count * indent.len()) as u64;
+        //     range.start += plen;
+        //     range.end += plen + len;
+        //     cursor.to_range(&range);
+        // }
+
+        // self.invalidate();
         Ok(())
     }
 
@@ -607,7 +654,7 @@ impl Window {
 
         let slice = buf.slice(..);
         let iamount = buf.options.indent_amount;
-        let ranges: SortedBufferRanges = {
+        let ranges: Vec<BufferRange> = {
             let mut ranges = vec![];
             for pos in starts {
                 let Some((_kind, n)) = indent_at_line(&slice, pos) else {
@@ -621,27 +668,27 @@ impl Window {
 
                 ranges.push(pos..pos + off);
             }
-            ranges.into()
+            ranges
         };
 
         self.remove(buf, &ranges)?;
-        self.remove_fix_cursors(&ranges);
-        self.invalidate();
+        // self.remove_fix_cursors(&ranges);
+        // self.invalidate();
         Ok(())
     }
 
-    fn remove_fix_cursors(&mut self, ranges: &SortedBufferRanges) {
+    fn remove_fix_cursors(&mut self, ranges: &[BufferRange]) {
         for cursor in self.cursors.cursors_mut() {
             let mut range = cursor.selection().unwrap_or(cursor.pos()..cursor.pos() + 1);
             let pre: u64 = ranges
                 .iter()
                 .take_while(|cur| cur.end <= range.start)
-                .map(|range| range.end - range.start)
+                .map(|range| range.len())
                 .sum();
             let post: u64 = ranges
                 .iter()
                 .take_while(|cur| cur.end <= range.end)
-                .map(|range| range.end - range.start)
+                .map(|range| range.len())
                 .sum();
             range.start -= pre;
             range.end -= post;
@@ -684,27 +731,28 @@ impl Window {
             return Ok(());
         }
 
-        let mut cposs = vec![];
-        let mut to_remove = vec![];
+        let slice = buf.slice(..);
+        let ranges: Vec<BufferRange> = self
+            .cursors
+            .cursors()
+            .iter()
+            .map(Cursor::pos)
+            .map(|pos| {
+                let npos = movement::next_line_end(&slice, pos);
+                pos..npos
+            })
+            .collect();
 
-        for cursor in self.cursors.cursors() {
-            let cpos = cursor.pos();
-            let pos = movement::next_line_end(&buf.slice(..), cpos);
-            to_remove.push(cpos..pos);
-            cposs.push(cpos);
-        }
-
-        let ranges = SortedBufferRanges::from(to_remove);
         self.remove(buf, &ranges)?;
 
-        let mut removed = 0;
-        for (i, cursor) in self.cursors.cursors_mut().iter_mut().enumerate() {
-            cursor.goto(cursor.pos() - removed);
-            let range = &ranges[i];
-            removed += range.end - range.start;
-        }
+        // let mut removed = 0;
+        // for (i, cursor) in self.cursors.cursors_mut().iter_mut().enumerate() {
+        //     cursor.goto(cursor.pos() - removed);
+        //     let range = &ranges[i];
+        //     removed += range.len();
+        // }
 
-        self.invalidate();
+        // self.invalidate();
         self.view_to_cursor(buf);
         Ok(())
     }
@@ -735,10 +783,9 @@ impl Window {
             }
         }
 
-        let ranges = SortedBufferRanges::from(ranges);
         self.remove(buf, &ranges)?;
-        self.remove_fix_cursors(&ranges);
-        self.invalidate();
+        // self.remove_fix_cursors(&ranges);
+        // self.invalidate();
 
         Ok(())
     }

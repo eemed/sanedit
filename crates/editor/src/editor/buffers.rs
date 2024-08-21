@@ -7,8 +7,8 @@ use sanedit_utils::idmap::IdMap;
 use crate::common::file::FileDescription;
 
 pub(crate) use self::buffer::{
-    Buffer, BufferError, BufferId, BufferRange, Change, ChangeResult, Changes, Filetype, Options,
-    SnapshotData, SnapshotId, SortedBufferRanges,
+    Buffer, BufferError, BufferId, BufferRange, BufferRangeExt, Change, ChangeResult, Changes,
+    Filetype, Options, SnapshotData, SnapshotId,
 };
 
 #[derive(Debug, Default)]

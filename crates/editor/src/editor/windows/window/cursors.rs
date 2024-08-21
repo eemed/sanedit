@@ -4,11 +4,10 @@ use std::{cmp::min, ops::Range};
 
 pub(crate) use cursor::Cursor;
 
-use crate::{common::range::RangeUtils, editor::buffers::SortedBufferRanges};
+use crate::common::range::RangeUtils;
 
 #[derive(Debug, Clone)]
 pub(crate) struct Cursors {
-    /// Sorted list of cursors based on their positions
     cursors: Vec<Cursor>,
     primary: usize,
 }
@@ -42,20 +41,24 @@ impl Cursors {
 
     /// Add a new cursor
     pub fn push(&mut self, cursor: Cursor) {
-        let pos = self
-            .cursors
-            .binary_search_by(|c| c.pos().cmp(&cursor.pos()))
-            .unwrap_or_else(|n| n);
-        self.cursors.insert(pos, cursor);
+        self.cursors.push(cursor);
+        // let pos = self
+        //     .cursors
+        //     .binary_search_by(|c| c.pos().cmp(&cursor.pos()))
+        //     .unwrap_or_else(|n| n);
+        // self.cursors.insert(pos, cursor);
     }
 
     pub fn push_primary(&mut self, cursor: Cursor) {
-        let pos = self
-            .cursors
-            .binary_search_by(|c| c.pos().cmp(&cursor.pos()))
-            .unwrap_or_else(|n| n);
-        self.cursors.insert(pos, cursor);
-        self.primary = pos;
+        let len = self.cursors.len();
+        self.push(cursor);
+        self.primary = len;
+        // let pos = self
+        //     .cursors
+        //     .binary_search_by(|c| c.pos().cmp(&cursor.pos()))
+        //     .unwrap_or_else(|n| n);
+        // self.cursors.insert(pos, cursor);
+        // self.primary = pos;
     }
 
     /// Remove cursor at position pos
@@ -77,7 +80,27 @@ impl Cursors {
             return;
         }
 
-        self.cursors.sort();
+        // let mut cursors: Vec<(usize, Cursor)> =
+        //     self.cursors.clone().into_iter().enumerate().collect();
+        // cursors.sort();
+
+        // for i in (1..cursors.len()).rev() {
+        //     let cur = {
+        //         let cursor = &self.cursors[i - 1];
+        //         cursor.selection().unwrap_or(cursor.pos()..cursor.pos() + 1)
+        //     };
+
+        //     let next = {
+        //         let cursor = &self.cursors[i];
+        //         cursor.selection().unwrap_or(cursor.pos()..cursor.pos() + 1)
+        //     };
+
+        //     if cur.overlaps(&next) {
+        //         self.cursors.remove(i);
+        //         let cur = &mut self.cursors[i - 1];
+        //         cur.extend_to_include(&next);
+        //     }
+        // }
 
         for i in (1..self.cursors.len()).rev() {
             let cur = {
@@ -166,7 +189,7 @@ impl From<&Cursors> for Vec<u64> {
     }
 }
 
-impl From<&Cursors> for SortedBufferRanges {
+impl From<&Cursors> for Vec<Range<u64>> {
     /// Crate Sorted ranges from all of the cursors selections
     fn from(cursors: &Cursors) -> Self {
         let mut selections = vec![];
@@ -177,6 +200,6 @@ impl From<&Cursors> for SortedBufferRanges {
             }
         }
 
-        selections.into()
+        selections
     }
 }

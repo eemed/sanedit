@@ -4,7 +4,6 @@ mod filetype;
 mod options;
 mod range;
 mod snapshots;
-mod sorted;
 
 use std::{
     borrow::Cow,
@@ -18,7 +17,7 @@ use anyhow::Result;
 use anyhow::{bail, ensure};
 use sanedit_buffer::{PieceTree, PieceTreeSlice, ReadOnlyPieceTree};
 use sanedit_lsp::lsp_types::Diagnostic;
-use sanedit_utils::key_type;
+use sanedit_utils::{key_type, sorted_vec::SortedVec};
 use thiserror::Error;
 
 use crate::{
@@ -32,7 +31,6 @@ pub(crate) use filetype::Filetype;
 pub(crate) use options::Options;
 pub(crate) use range::{BufferRange, BufferRangeExt};
 pub(crate) use snapshots::{SnapshotData, SnapshotId};
-pub(crate) use sorted::SortedBufferRanges;
 
 key_type!(pub(crate) BufferId);
 
@@ -205,7 +203,7 @@ impl Buffer {
         }
 
         if changes.is_remove() {
-            let ranges: SortedBufferRanges = changes.before_ranges().into();
+            let ranges = changes.before_ranges();
             self.remove_multi(&ranges);
             return Ok(None);
         }
@@ -232,7 +230,7 @@ impl Buffer {
         } else {
             let range = change.range();
             if range.len() != 0 {
-                self.remove_multi(&SortedBufferRanges::from(range));
+                self.remove_multi(&[range]);
             }
 
             if !change.text().is_empty() {
@@ -266,7 +264,28 @@ impl Buffer {
         Ok(())
     }
 
-    fn remove_multi(&mut self, ranges: &SortedBufferRanges) -> Result<()> {
+    fn remove_multi(&mut self, ranges: &[BufferRange]) -> Result<()> {
+        fn is_sorted(ranges: &[BufferRange]) -> bool {
+            let mut last = 0;
+            for range in ranges.iter() {
+                if range.start < last {
+                    return false;
+                }
+
+                last = range.end;
+            }
+
+            true
+        }
+
+        let ranges: Cow<[BufferRange]> = if is_sorted(ranges) {
+            ranges.into()
+        } else {
+            let mut ranges = ranges.to_vec();
+            ranges.sort_by(|a, b| a.start.cmp(&b.start));
+            ranges.into()
+        };
+
         for range in ranges.iter().rev() {
             self.pt.remove(range.clone());
         }

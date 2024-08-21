@@ -3,8 +3,9 @@ mod cursor;
 use std::{cmp::min, ops::Range};
 
 pub(crate) use cursor::Cursor;
+use sanedit_utils::ranges::OverlappingRanges;
 
-use crate::common::range::RangeUtils;
+use crate::{common::range::RangeUtils, editor::buffers::BufferRangeExt};
 
 #[derive(Debug, Clone)]
 pub(crate) struct Cursors {
@@ -42,23 +43,12 @@ impl Cursors {
     /// Add a new cursor
     pub fn push(&mut self, cursor: Cursor) {
         self.cursors.push(cursor);
-        // let pos = self
-        //     .cursors
-        //     .binary_search_by(|c| c.pos().cmp(&cursor.pos()))
-        //     .unwrap_or_else(|n| n);
-        // self.cursors.insert(pos, cursor);
     }
 
     pub fn push_primary(&mut self, cursor: Cursor) {
         let len = self.cursors.len();
         self.push(cursor);
         self.primary = len;
-        // let pos = self
-        //     .cursors
-        //     .binary_search_by(|c| c.pos().cmp(&cursor.pos()))
-        //     .unwrap_or_else(|n| n);
-        // self.cursors.insert(pos, cursor);
-        // self.primary = pos;
     }
 
     /// Remove cursor at position pos
@@ -80,11 +70,34 @@ impl Cursors {
             return;
         }
 
-        // let mut cursors: Vec<(usize, Cursor)> =
-        //     self.cursors.clone().into_iter().enumerate().collect();
-        // cursors.sort();
+        let mut ranges = OverlappingRanges::default();
+        for cursor in &self.cursors {
+            let range = cursor.selection().unwrap_or(cursor.pos()..cursor.pos() + 1);
+            ranges.add(range);
+        }
 
-        // for i in (1..cursors.len()).rev() {
+        for range in ranges.iter() {
+            let mut i = 0;
+            while i < self.cursors.len() {
+                let cursor = &mut self.cursors[i];
+                let crange = cursor.selection().unwrap_or(cursor.pos()..cursor.pos() + 1);
+                if cursor.start() == range.start {
+                    if range.len() > 1 {
+                        cursor.select(range.clone());
+                    }
+
+                    i += 1;
+                } else if range.includes(&crange) {
+                    self.cursors.remove(i);
+                } else {
+                    i += 1;
+                }
+            }
+        }
+
+        // self.cursors = ranges.iter().
+
+        // for i in (1..self.cursors.len()).rev() {
         //     let cur = {
         //         let cursor = &self.cursors[i - 1];
         //         cursor.selection().unwrap_or(cursor.pos()..cursor.pos() + 1)
@@ -102,24 +115,6 @@ impl Cursors {
         //     }
         // }
 
-        for i in (1..self.cursors.len()).rev() {
-            let cur = {
-                let cursor = &self.cursors[i - 1];
-                cursor.selection().unwrap_or(cursor.pos()..cursor.pos() + 1)
-            };
-
-            let next = {
-                let cursor = &self.cursors[i];
-                cursor.selection().unwrap_or(cursor.pos()..cursor.pos() + 1)
-            };
-
-            if cur.overlaps(&next) {
-                self.cursors.remove(i);
-                let cur = &mut self.cursors[i - 1];
-                cur.extend_to_include(&next);
-            }
-        }
-
         self.primary = min(self.primary, self.cursors.len() - 1);
     }
 
@@ -135,6 +130,7 @@ impl Cursors {
         }
     }
 
+    // TODO
     pub fn primary_next(&mut self) {
         if self.primary + 1 < self.cursors.len() {
             self.primary += 1;
@@ -143,6 +139,7 @@ impl Cursors {
         }
     }
 
+    // TODO
     pub fn primary_prev(&mut self) {
         if self.primary == 0 {
             // Wrap to end
@@ -152,6 +149,7 @@ impl Cursors {
         }
     }
 
+    // TODO
     pub fn remove_primary(&mut self) {
         if self.cursors.len() < 2 {
             return;

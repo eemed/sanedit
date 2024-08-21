@@ -73,6 +73,14 @@ impl Cursor {
         Some(min..max)
     }
 
+    pub fn start(&self) -> u64 {
+        if let Some(anc) = self.anchor.as_ref() {
+            std::cmp::min(self.pos, *anc)
+        } else {
+            self.pos
+        }
+    }
+
     pub fn take_selection(&mut self) -> Option<Range<u64>> {
         let sel = self.selection()?;
         self.unanchor();
@@ -101,7 +109,7 @@ impl Cursor {
 
     pub fn to_range(&mut self, other: &Range<u64>) {
         // Dont extend into a selection in not necessary
-        if other.end - other.start == 1 && self.anchor.is_none() {
+        if other.end - other.start <= 1 && self.anchor.is_none() {
             self.goto(other.start);
             return;
         }

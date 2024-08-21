@@ -4,13 +4,19 @@ use std::{
     ops::Range,
 };
 
-#[derive(Debug, Default)]
-pub struct OverlappingRanges {
-    ranges: BTreeMap<usize, usize>,
+#[derive(Debug)]
+pub struct OverlappingRanges<T: Ord + Copy> {
+    ranges: BTreeMap<T, T>,
 }
 
-impl OverlappingRanges {
-    pub fn add(&mut self, range: Range<usize>) {
+impl<T: Ord + Copy> OverlappingRanges<T> {
+    pub fn new() -> OverlappingRanges<T> {
+        OverlappingRanges {
+            ranges: BTreeMap::new(),
+        }
+    }
+
+    pub fn add(&mut self, range: Range<T>) {
         use std::ops::Bound::*;
 
         let Range { mut start, mut end } = range;
@@ -43,7 +49,7 @@ impl OverlappingRanges {
 
     // pub fn remove(&self) {}
 
-    pub fn invert(&mut self, full: Range<usize>) {
+    pub fn invert(&mut self, full: Range<T>) {
         let mut inverted = OverlappingRanges::default();
 
         if self.ranges.is_empty() {
@@ -75,19 +81,25 @@ impl OverlappingRanges {
         *self = inverted;
     }
 
-    pub fn iter(&self) -> OverlappingRangeIter {
+    pub fn iter(&self) -> OverlappingRangeIter<T> {
         let iter = self.ranges.iter();
         OverlappingRangeIter { iter }
     }
 }
 
-#[derive(Debug)]
-pub struct OverlappingRangeIter<'a> {
-    iter: Iter<'a, usize, usize>,
+impl<T: Ord + Copy> Default for OverlappingRanges<T> {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
-impl<'a> Iterator for OverlappingRangeIter<'a> {
-    type Item = Range<usize>;
+#[derive(Debug)]
+pub struct OverlappingRangeIter<'a, T: Ord + Copy> {
+    iter: Iter<'a, T, T>,
+}
+
+impl<'a, T: Ord + Copy> Iterator for OverlappingRangeIter<'a, T> {
+    type Item = Range<T>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let (s, e) = self.iter.next()?;
@@ -95,7 +107,7 @@ impl<'a> Iterator for OverlappingRangeIter<'a> {
     }
 }
 
-impl<'a> DoubleEndedIterator for OverlappingRangeIter<'a> {
+impl<'a, T: Ord + Copy> DoubleEndedIterator for OverlappingRangeIter<'a, T> {
     fn next_back(&mut self) -> Option<Self::Item> {
         let (s, e) = self.iter.next_back()?;
         Some(*s..*e)
@@ -106,7 +118,7 @@ impl<'a> DoubleEndedIterator for OverlappingRangeIter<'a> {
 mod test {
     use super::*;
 
-    fn one(r: &OverlappingRanges) -> Range<usize> {
+    fn one(r: &OverlappingRanges<usize>) -> Range<usize> {
         assert!(r.ranges.len() == 1, "Found too many ranges");
         let item = r.iter().next();
         let item = item.expect("No first item found");

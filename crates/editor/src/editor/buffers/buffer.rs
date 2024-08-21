@@ -172,15 +172,17 @@ impl Buffer {
 
         ensure!(!self.read_only, BufferError::ReadOnly);
 
-        let needs_undo = self.needs_undo_point(changes);
+        let needs_undo = self.is_modified && self.needs_undo_point(changes);
         let rollback = self.read_only_copy();
+
+        // Undo needs the snapshot early if it will be taken
 
         match self.apply_changes_impl(changes) {
             Ok(restored) => {
                 result.restored_snapshot = restored;
                 if needs_undo {
                     let id = self.snapshots.insert(rollback);
-                    result.restored_snapshot = Some(id);
+                    result.created_snapshot = Some(id);
                 }
 
                 self.last_changes = Some(changes.clone());
@@ -198,13 +200,13 @@ impl Buffer {
         if changes.is_multi_insert() {
             let text = changes.iter().next().unwrap().text();
             let positions: Vec<u64> = changes.iter().map(Change::start).collect();
-            self.insert_multi(&positions, text);
+            self.insert_multi(&positions, text)?;
             return Ok(None);
         }
 
         if changes.is_remove() {
             let ranges = changes.before_ranges();
-            self.remove_multi(&ranges);
+            self.remove_multi(&ranges)?;
             return Ok(None);
         }
 
@@ -230,11 +232,11 @@ impl Buffer {
         } else {
             let range = change.range();
             if range.len() != 0 {
-                self.remove_multi(&[range]);
+                self.remove_multi(&[range])?;
             }
 
             if !change.text().is_empty() {
-                self.insert_multi(&[change.start()], change.text());
+                self.insert_multi(&[change.start()], change.text())?;
             }
         }
 
@@ -242,6 +244,9 @@ impl Buffer {
     }
 
     fn undo(&mut self) -> Result<SnapshotId> {
+        let rollback = self.read_only_copy();
+        let id = self.snapshots.insert(rollback);
+
         let node = self.snapshots.undo().ok_or(BufferError::NoMoreUndoPoints)?;
         let restored = node.id;
         self.is_modified = restored != self.last_saved_snapshot;

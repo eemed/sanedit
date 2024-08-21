@@ -172,23 +172,26 @@ impl Buffer {
 
         ensure!(!self.read_only, BufferError::ReadOnly);
 
-        let needs_undo = self.is_modified && self.needs_undo_point(changes);
         let rollback = self.read_only_copy();
+        let needs_undo = self.is_modified && self.needs_undo_point(changes);
+        let rollback_snapshot_id = self.snapshots.current();
 
-        // Undo needs the snapshot early if it will be taken
+        if needs_undo {
+            let snapshot = self.read_only_copy();
+            let id = self.snapshots.insert(snapshot);
+            result.created_snapshot = Some(id);
+        }
 
         match self.apply_changes_impl(changes) {
             Ok(restored) => {
                 result.restored_snapshot = restored;
-                if needs_undo {
-                    let id = self.snapshots.insert(rollback);
-                    result.created_snapshot = Some(id);
-                }
-
                 self.last_changes = Some(changes.clone());
             }
             Err(e) => {
                 self.pt.restore(rollback);
+                if needs_undo {
+                    self.snapshots.remove_current_and_set(rollback_snapshot_id);
+                }
                 return Err(e);
             }
         }
@@ -244,9 +247,6 @@ impl Buffer {
     }
 
     fn undo(&mut self) -> Result<SnapshotId> {
-        let rollback = self.read_only_copy();
-        let id = self.snapshots.insert(rollback);
-
         let node = self.snapshots.undo().ok_or(BufferError::NoMoreUndoPoints)?;
         let restored = node.id;
         self.is_modified = restored != self.last_saved_snapshot;

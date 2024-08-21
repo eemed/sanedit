@@ -1,7 +1,7 @@
 # DARK RED FG #7e0c1d
 
 [colors.window]
-default = "#E2DBC8,#000000,"
+default = "#E2DBC8,#202020,"
 statusline = "#B8A282,#2a130d,"
 gutter = ",#4C4C4C,bold"
 end_of_buffer = ",#7f755f,"
@@ -20,15 +20,17 @@ info = "#00917e,#000000,"
 warn = "#ff8c5a,#000000,"
 error = "#c0564a,#ffffff,"
 
-string =  ",#3C780A,"
+constant = ",#014CC0,"
+string =  ",#014CC0,"
+number = ",#014CC0,"
+
+keyword = ",#a84d1f,"
+type =  ",#824b26,"
+operator =  ",#008080,"
+comment = ",#006200,"
+preproc = ",#432378,"
+
 identifier = ",#824b26,"
-constant = ",#452F81,"
-number = ",#452F81,"
-keyword = ",#824b26,"
-operator =  ",#a84d1f,"
-type =  ",#355d8d,"
-comment = ",#014CC0,"
-preproc = ",#a84d1f,"
 
 [colors.window.completion]
 default = "#B8A282,#2a130d,"

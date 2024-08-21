@@ -26,6 +26,22 @@ impl Snapshots {
         }
     }
 
+    /// Remove current snapshot called in case something went wrong when
+    /// applying changes
+    pub fn remove_current_and_set(&mut self, id: SnapshotId) {
+        let current = self.snapshots.remove(self.current);
+        // Cut links
+        for prev in &current.previous {
+            self.snapshots[*prev].next.retain(|n| *n != self.current);
+        }
+        // Restore
+        self.current = id;
+    }
+
+    pub fn current(&self) -> SnapshotId {
+        self.current
+    }
+
     pub fn insert(&mut self, snapshot: ReadOnlyPieceTree) -> SnapshotId {
         let next_pos = self.snapshots.len();
         let mut node = SnapshotNode::new(snapshot, next_pos);

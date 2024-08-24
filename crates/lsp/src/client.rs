@@ -222,12 +222,19 @@ impl Handler {
             .request::<lsp_types::request::Completion>(&params)
             .await?;
         let response = response.ok_or(anyhow!("No completion response"))?;
-        log::info!("Response: {response:?}");
         match response {
             lsp_types::CompletionResponse::Array(_) => todo!(),
             lsp_types::CompletionResponse::List(list) => {
                 for item in list.items {
-                    log::info!("Item: {item:?}");
+                    // log::info!("Item: {:?}", item);
+                    if let Some(edit) = item.text_edit {
+                        match edit {
+                            lsp_types::CompletionTextEdit::Edit(_) => todo!(),
+                            lsp_types::CompletionTextEdit::InsertAndReplace(edit) => {
+                                log::info!("Item: {}", edit.new_text);
+                            }
+                        }
+                    }
                 }
             }
         }

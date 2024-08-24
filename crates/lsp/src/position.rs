@@ -1,21 +1,45 @@
 use sanedit_buffer::ReadOnlyPieceTree;
 
+/// Position that can be either offset into a buffer or LSP grid position
 #[derive(Debug, Clone)]
-pub struct Position {
-    pub(crate) position: lsp_types::Position,
-    pub(crate) encoding: lsp_types::PositionEncodingKind,
+pub enum Position {
+    Offset(u64),
+    LSP {
+        position: lsp_types::Position,
+        encoding: lsp_types::PositionEncodingKind,
+    },
 }
 
 impl Position {
     pub fn to_offset(&self, buf: &ReadOnlyPieceTree) -> u64 {
-        position_to_offset(buf, self.position, self.encoding.clone())
+        match self {
+            Position::Offset(off) => *off,
+            Position::LSP { position, encoding } => position_to_offset(buf, *position, encoding),
+        }
+    }
+
+    pub fn to_position(
+        &self,
+        buf: &ReadOnlyPieceTree,
+        encoding: &lsp_types::PositionEncodingKind,
+    ) -> lsp_types::Position {
+        match self {
+            Position::Offset(off) => offset_to_position(buf, *off, encoding),
+            Position::LSP {
+                position,
+                encoding: enc,
+            } => {
+                assert!(encoding == enc, "Position encoding mismatch");
+                position.clone()
+            }
+        }
     }
 }
 
 pub(crate) fn offset_to_position(
     buf: &ReadOnlyPieceTree,
     offset: u64,
-    kind: lsp_types::PositionEncodingKind,
+    kind: &lsp_types::PositionEncodingKind,
 ) -> lsp_types::Position {
     let (row, line) = buf.line_at(offset);
 
@@ -26,11 +50,11 @@ pub(crate) fn offset_to_position(
         if start > offset {
             break;
         }
-        let len = if kind == lsp_types::PositionEncodingKind::UTF8 {
+        let len = if *kind == lsp_types::PositionEncodingKind::UTF8 {
             ch.len_utf8()
-        } else if kind == lsp_types::PositionEncodingKind::UTF16 {
+        } else if *kind == lsp_types::PositionEncodingKind::UTF16 {
             ch.len_utf16()
-        } else if kind == lsp_types::PositionEncodingKind::UTF32 {
+        } else if *kind == lsp_types::PositionEncodingKind::UTF32 {
             1
         } else {
             unreachable!("unsupported position encoding: {}", kind.as_str())
@@ -48,7 +72,7 @@ pub(crate) fn offset_to_position(
 pub(crate) fn position_to_offset(
     buf: &ReadOnlyPieceTree,
     position: lsp_types::Position,
-    kind: lsp_types::PositionEncodingKind,
+    kind: &lsp_types::PositionEncodingKind,
 ) -> u64 {
     let lsp_types::Position { line, character } = position;
     let pos = buf.pos_at_line(line as u64);
@@ -66,11 +90,11 @@ pub(crate) fn position_to_offset(
             log::info!("char: {}", start);
             return start + line.start();
         }
-        let len = if kind == lsp_types::PositionEncodingKind::UTF8 {
+        let len = if *kind == lsp_types::PositionEncodingKind::UTF8 {
             ch.len_utf8()
-        } else if kind == lsp_types::PositionEncodingKind::UTF16 {
+        } else if *kind == lsp_types::PositionEncodingKind::UTF16 {
             ch.len_utf16()
-        } else if kind == lsp_types::PositionEncodingKind::UTF32 {
+        } else if *kind == lsp_types::PositionEncodingKind::UTF32 {
             1
         } else {
             unreachable!("unsupported position encoding: {}", kind.as_str())

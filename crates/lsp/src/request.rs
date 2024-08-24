@@ -2,6 +2,8 @@ use std::path::PathBuf;
 
 use sanedit_buffer::ReadOnlyPieceTree;
 
+use crate::Position;
+
 #[derive(Debug, Clone)]
 pub enum Request {
     DidOpen {
@@ -11,11 +13,28 @@ pub enum Request {
     Hover {
         path: PathBuf,
         buf: ReadOnlyPieceTree,
-        offset: u64,
+        position: Position,
     },
     GotoDefinition {
         path: PathBuf,
         buf: ReadOnlyPieceTree,
-        offset: u64,
+        position: Position,
     },
+    DidChange {
+        path: PathBuf,
+        buf: ReadOnlyPieceTree,
+        changes: Vec<Change>,
+    },
+    Complete {
+        path: PathBuf,
+        buf: ReadOnlyPieceTree,
+        position: Position,
+    },
+}
+
+#[derive(Debug, Clone)]
+pub struct Change {
+    pub start: Position,
+    pub end: Position,
+    pub text: String,
 }

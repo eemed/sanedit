@@ -124,7 +124,7 @@ impl KeepInTouch for LSP {
                 }
                 Message::Response(response) => match response {
                     Response::Request(request) => match request {
-                        sanedit_lsp::RequestResult::Hover { text, offset } => {
+                        sanedit_lsp::RequestResult::Hover { text, position } => {
                             win.popup = Some(StatusMessage {
                                 severity: Severity::Info,
                                 message: text,
@@ -137,6 +137,11 @@ impl KeepInTouch for LSP {
                                 win.goto_offset(offset, buf);
                             }
                         }
+                        sanedit_lsp::RequestResult::Complete {
+                            path,
+                            position,
+                            results,
+                        } => todo!(),
                     },
                 },
             }

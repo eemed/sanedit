@@ -8,7 +8,7 @@ use crate::common::file::FileDescription;
 
 pub(crate) use self::buffer::{
     Buffer, BufferError, BufferId, BufferRange, BufferRangeExt, Change, ChangeResult, Changes,
-    Filetype, Options, SnapshotData, SnapshotId,
+    ChangesKind, Filetype, Options, SnapshotData, SnapshotId,
 };
 
 #[derive(Debug, Default)]

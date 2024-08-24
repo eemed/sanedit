@@ -45,7 +45,9 @@ fn copy(editor: &mut Editor, id: ClientId) {
 fn paste(editor: &mut Editor, id: ClientId) {
     editor.paste_from_clipboard(id);
     let (win, buf) = editor.win_buf_mut(id);
-    win.remove_cursor_selections(buf);
+    if win.remove_cursor_selections(buf).unwrap_or(false) {
+        run(editor, id, Hook::BufChanged);
+    }
 }
 
 #[action("Cut selection to clipboard")]
@@ -54,8 +56,9 @@ fn cut(editor: &mut Editor, id: ClientId) {
 
     run(editor, id, Hook::RemovePre);
     let (win, buf) = editor.win_buf_mut(id);
-    win.remove_cursor_selections(buf);
-    run(editor, id, Hook::BufChanged);
+    if win.remove_cursor_selections(buf).unwrap_or(false) {
+        run(editor, id, Hook::BufChanged);
+    }
 }
 
 #[action("Open SanEdit configuration file")]

@@ -20,13 +20,10 @@ use sanedit_lsp::lsp_types::Diagnostic;
 use sanedit_utils::{key_type, sorted_vec::SortedVec};
 use thiserror::Error;
 
-use crate::{
-    common::{dirs::tmp_file, file::FileDescription},
-    editor::buffers::buffer::change::ChangesKind,
-};
+use crate::common::{dirs::tmp_file, file::FileDescription};
 
 use self::snapshots::Snapshots;
-pub(crate) use change::{Change, ChangeResult, Changes};
+pub(crate) use change::{Change, ChangeResult, Changes, ChangesKind};
 pub(crate) use filetype::Filetype;
 pub(crate) use options::Options;
 pub(crate) use range::{BufferRange, BufferRangeExt};
@@ -152,10 +149,10 @@ impl Buffer {
         self.snapshots.data(id)
     }
 
-    // /// Get the last change done to buffer
-    // pub fn last_change(&self) -> Option<&Change> {
-    //     self.last_changes.as_ref()
-    // }
+    /// Get the last change done to buffer
+    pub fn last_changes(&self) -> Option<&Changes> {
+        self.last_changes.as_ref()
+    }
 
     /// Creates undo point if it is needed
     fn needs_undo_point(&mut self, change: &Changes) -> bool {

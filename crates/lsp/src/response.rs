@@ -10,6 +10,17 @@ pub enum Response {
 
 #[derive(Debug, Clone)]
 pub enum RequestResult {
-    Hover { text: String, offset: u64 },
-    GotoDefinition { path: PathBuf, position: Position },
+    Hover {
+        text: String,
+        position: Position,
+    },
+    GotoDefinition {
+        path: PathBuf,
+        position: Position,
+    },
+    Complete {
+        path: PathBuf,
+        position: Position,
+        results: Vec<String>,
+    },
 }

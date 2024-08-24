@@ -91,6 +91,7 @@ impl ProcessHandler {
     }
 
     async fn handle_response(&mut self, response: JsonResponse) -> Result<()> {
+        // log::info!("Response: {response:?}");
         if response.result.is_none() && response.error.is_none() {
             return Ok(());
         }

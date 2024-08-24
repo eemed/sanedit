@@ -4,15 +4,14 @@ use std::sync::Arc;
 use std::{path::PathBuf, process::Stdio};
 
 use crate::jsonrpc::{JsonNotification, JsonRequest};
-use crate::position::{offset_to_position, position_to_offset};
 use crate::process::{ProcessHandler, ServerRequest};
 use crate::util::path_to_uri;
-use crate::{Position, Request, RequestResult, Response};
+use crate::{Change, Position, Request, RequestResult, Response};
 
 use anyhow::{anyhow, Result};
 use sanedit_buffer::ReadOnlyPieceTree;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
-use tokio::sync::{oneshot, Notify};
+use tokio::sync::oneshot;
 use tokio::{io::BufReader, process::Command};
 
 /// a struct to put all the parameters
@@ -137,17 +136,69 @@ impl Handler {
     pub async fn run(mut self, req: Request) -> Result<()> {
         match req {
             Request::DidOpen { path, buf } => self.did_open_document(path, buf).await?,
-            Request::Hover { path, offset, buf } => self.hover(path, buf, offset).await?,
-            Request::GotoDefinition { path, offset, buf } => {
-                self.goto_definition(path, buf, offset).await?
+            Request::Hover {
+                path,
+                position,
+                buf,
+            } => self.hover(path, buf, position).await?,
+            Request::GotoDefinition {
+                path,
+                position,
+                buf,
+            } => self.goto_definition(path, buf, position).await?,
+            Request::DidChange { path, buf, changes } => {
+                self.did_change_document(path, buf, changes).await?
             }
+            Request::Complete {
+                path,
+                buf,
+                position,
+            } => self.complete(path, buf, position).await?,
         }
 
         Ok(())
     }
 
-    async fn complete(&mut self, path: PathBuf, buf: ReadOnlyPieceTree, offset: u64) -> Result<()> {
-        let position = offset_to_position(&buf, offset, self.position_encoding());
+    async fn did_change_document(
+        &mut self,
+        path: PathBuf,
+        buf: ReadOnlyPieceTree,
+        changes: Vec<Change>,
+    ) -> Result<()> {
+        let content_changes = changes
+            .into_iter()
+            .map(|change| lsp_types::TextDocumentContentChangeEvent {
+                range: Some(lsp_types::Range {
+                    start: change.start.to_position(&buf, &self.position_encoding()),
+                    end: change.end.to_position(&buf, &self.position_encoding()),
+                }),
+                text: change.text,
+                range_length: None,
+            })
+            .collect();
+
+        let params = lsp_types::DidChangeTextDocumentParams {
+            text_document: lsp_types::VersionedTextDocumentIdentifier {
+                uri: path_to_uri(&path),
+                // TODO
+                version: 1,
+            },
+            content_changes,
+        };
+
+        let response = self
+            .notify::<lsp_types::notification::DidChangeTextDocument>(&params)
+            .await?;
+        Ok(())
+    }
+
+    async fn complete(
+        &mut self,
+        path: PathBuf,
+        buf: ReadOnlyPieceTree,
+        position: Position,
+    ) -> Result<()> {
+        let position = position.to_position(&buf, &self.position_encoding());
         let params = lsp_types::CompletionParams {
             text_document_position: lsp_types::TextDocumentPositionParams {
                 text_document: lsp_types::TextDocumentIdentifier {
@@ -171,6 +222,15 @@ impl Handler {
             .request::<lsp_types::request::Completion>(&params)
             .await?;
         let response = response.ok_or(anyhow!("No completion response"))?;
+        log::info!("Response: {response:?}");
+        match response {
+            lsp_types::CompletionResponse::Array(_) => todo!(),
+            lsp_types::CompletionResponse::List(list) => {
+                for item in list.items {
+                    log::info!("Item: {item:?}");
+                }
+            }
+        }
 
         // TODO response
 
@@ -181,9 +241,9 @@ impl Handler {
         &mut self,
         path: PathBuf,
         buf: ReadOnlyPieceTree,
-        offset: u64,
+        position: Position,
     ) -> Result<()> {
-        let position = offset_to_position(&buf, offset, self.position_encoding());
+        let position = position.to_position(&buf, &self.position_encoding());
         let params = lsp_types::GotoDefinitionParams {
             text_document_position_params: lsp_types::TextDocumentPositionParams {
                 text_document: lsp_types::TextDocumentIdentifier {
@@ -222,7 +282,7 @@ impl Handler {
             .response
             .send(Response::Request(RequestResult::GotoDefinition {
                 path,
-                position: Position {
+                position: Position::LSP {
                     position,
                     encoding: self.position_encoding(),
                 },
@@ -232,8 +292,8 @@ impl Handler {
         Ok(())
     }
 
-    async fn hover(&mut self, path: PathBuf, buf: ReadOnlyPieceTree, offset: u64) -> Result<()> {
-        let position = offset_to_position(&buf, offset, self.position_encoding());
+    async fn hover(&mut self, path: PathBuf, buf: ReadOnlyPieceTree, pos: Position) -> Result<()> {
+        let position = pos.to_position(&buf, &self.position_encoding());
         let params = lsp_types::HoverParams {
             text_document_position_params: lsp_types::TextDocumentPositionParams {
                 text_document: lsp_types::TextDocumentIdentifier {
@@ -265,7 +325,10 @@ impl Handler {
 
         let _ = self
             .response
-            .send(Response::Request(RequestResult::Hover { text, offset }))
+            .send(Response::Request(RequestResult::Hover {
+                text,
+                position: pos,
+            }))
             .await;
 
         Ok(())

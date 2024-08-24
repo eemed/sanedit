@@ -17,16 +17,18 @@ use super::{completion, hooks::run, jobs};
 fn remove_grapheme_after_cursor(editor: &mut Editor, id: ClientId) {
     run(editor, id, Hook::RemovePre);
     let (win, buf) = editor.win_buf_mut(id);
-    let _ = win.remove_grapheme_after_cursors(buf);
-    run(editor, id, Hook::BufChanged);
+    if win.remove_grapheme_after_cursors(buf).is_ok() {
+        run(editor, id, Hook::BufChanged);
+    }
 }
 
 #[action("Remove character before cursor")]
 fn remove_grapheme_before_cursor(editor: &mut Editor, id: ClientId) {
     run(editor, id, Hook::RemovePre);
     let (win, buf) = editor.win_buf_mut(id);
-    let _ = win.remove_grapheme_before_cursors(buf);
-    run(editor, id, Hook::BufChanged);
+    if win.remove_grapheme_before_cursors(buf).is_ok() {
+        run(editor, id, Hook::BufChanged);
+    }
 }
 
 #[action("Undo a change")]
@@ -62,8 +64,9 @@ pub(crate) fn insert(editor: &mut Editor, id: ClientId, text: &str) {
         Completion | Window => {
             run(editor, id, Hook::InsertPre);
             let (win, buf) = editor.win_buf_mut(id);
-            let _ = win.insert_at_cursors(buf, text);
-            run(editor, id, Hook::BufChanged);
+            if win.insert_at_cursors(buf, text).is_ok() {
+                run(editor, id, Hook::BufChanged);
+            }
         }
         Filetree => {}
         Locations => {}
@@ -127,7 +130,9 @@ fn insert_tab(editor: &mut Editor, id: ClientId) {
     let primary = win.cursors.primary().pos();
 
     if win.cursors().has_selections() {
-        win.indent_cursor_lines(buf);
+        if win.indent_cursor_lines(buf).is_ok() {
+            run(editor, id, Hook::BufChanged);
+        }
     } else if win.cursors.len() == 1
         && !is_indent_at_pos(&slice, primary)
         && !at_start_of_line(&slice, primary)
@@ -136,28 +141,33 @@ fn insert_tab(editor: &mut Editor, id: ClientId) {
         completion::complete.execute(editor, id);
     } else {
         let (win, buf) = editor.win_buf_mut(id);
-        win.insert_tab(buf);
+        if win.insert_tab(buf).is_ok() {
+            run(editor, id, Hook::BufChanged);
+        }
     }
-
-    run(editor, id, Hook::BufChanged);
 }
 
 #[action("Insert a tab to each cursor")]
 fn backtab(editor: &mut Editor, id: ClientId) {
     run(editor, id, Hook::InsertPre);
     let (win, buf) = editor.win_buf_mut(id);
-    win.dedent_cursor_lines(buf);
-    run(editor, id, Hook::BufChanged);
+    if win.dedent_cursor_lines(buf).is_ok() {
+        run(editor, id, Hook::BufChanged);
+    }
 }
 
 #[action("Remove the rest of the line")]
 fn remove_line_after_cursor(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
-    win.remove_line_after_cursor(buf);
+    if win.remove_line_after_cursor(buf).is_ok() {
+        run(editor, id, Hook::BufChanged);
+    }
 }
 
 #[action("Strip trailing whitespace")]
 fn strip_trailing_whitespace(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
-    win.strip_trailing_whitespace(buf);
+    if win.strip_trailing_whitespace(buf).is_ok() {
+        run(editor, id, Hook::BufChanged);
+    }
 }

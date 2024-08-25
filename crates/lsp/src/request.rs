@@ -30,6 +30,11 @@ pub enum Request {
         buf: ReadOnlyPieceTree,
         position: Position,
     },
+    References {
+        path: PathBuf,
+        buf: ReadOnlyPieceTree,
+        position: Position,
+    },
 }
 
 #[derive(Debug, Clone)]

@@ -1,12 +1,13 @@
 use std::collections::BTreeMap;
-use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::atomic::{AtomicI32, AtomicU32, Ordering};
 use std::sync::Arc;
 use std::{path::PathBuf, process::Stdio};
 
 use crate::jsonrpc::{JsonNotification, JsonRequest};
 use crate::process::{ProcessHandler, ServerRequest};
+use crate::response::Reference;
 use crate::util::path_to_uri;
-use crate::{Change, Position, Request, RequestResult, Response};
+use crate::{Change, CompletionItem, Position, Request, RequestResult, Response};
 
 use anyhow::{anyhow, Result};
 use sanedit_buffer::ReadOnlyPieceTree;
@@ -104,19 +105,22 @@ struct LSPClient {
     init_params: Arc<lsp_types::InitializeResult>,
     receiver: Receiver<Request>,
     sender: Sender<Response>,
-
     server_sender: Sender<ServerRequest>,
 }
 
 impl LSPClient {
     pub async fn run(mut self) -> Result<()> {
+        let increment_version: Arc<AtomicI32> = Arc::new(AtomicI32::new(i32::MIN));
+
         while let Some(req) = self.receiver.recv().await {
             let handler = Handler {
                 params: self.params.clone(),
                 init_params: self.init_params.clone(),
                 server: self.server_sender.clone(),
                 response: self.sender.clone(),
+                increment_version: increment_version.clone(),
             };
+
             tokio::spawn(async move {
                 let _ = handler.run(req).await;
             });
@@ -130,6 +134,7 @@ struct Handler {
     init_params: Arc<lsp_types::InitializeResult>,
     server: Sender<ServerRequest>,
     response: Sender<Response>,
+    increment_version: Arc<AtomicI32>,
 }
 
 impl Handler {
@@ -177,19 +182,17 @@ impl Handler {
             })
             .collect();
 
+        let version = self.increment_version.fetch_add(1, Ordering::Relaxed);
         let params = lsp_types::DidChangeTextDocumentParams {
             text_document: lsp_types::VersionedTextDocumentIdentifier {
                 uri: path_to_uri(&path),
-                // TODO
-                version: 1,
+                version,
             },
             content_changes,
         };
 
-        let response = self
-            .notify::<lsp_types::notification::DidChangeTextDocument>(&params)
-            .await?;
-        Ok(())
+        self.notify::<lsp_types::notification::DidChangeTextDocument>(&params)
+            .await
     }
 
     async fn complete(
@@ -222,6 +225,8 @@ impl Handler {
             .request::<lsp_types::request::Completion>(&params)
             .await?;
         let response = response.ok_or(anyhow!("No completion response"))?;
+
+        let mut results = vec![];
         match response {
             lsp_types::CompletionResponse::Array(_) => todo!(),
             lsp_types::CompletionResponse::List(list) => {
@@ -231,7 +236,9 @@ impl Handler {
                         match edit {
                             lsp_types::CompletionTextEdit::Edit(_) => todo!(),
                             lsp_types::CompletionTextEdit::InsertAndReplace(edit) => {
-                                log::info!("Item: {}", edit.new_text);
+                                results.push(CompletionItem {
+                                    name: edit.new_text,
+                                });
                             }
                         }
                     }
@@ -239,7 +246,17 @@ impl Handler {
             }
         }
 
-        // TODO response
+        let _ = self
+            .response
+            .send(Response::Request(RequestResult::Complete {
+                path,
+                position: Position::LSP {
+                    position,
+                    encoding: self.position_encoding(),
+                },
+                results,
+            }))
+            .await;
 
         Ok(())
     }
@@ -330,24 +347,12 @@ impl Handler {
             },
         }
 
-        let _ = self
-            .response
+        self.response
             .send(Response::Request(RequestResult::Hover {
                 text,
                 position: pos,
             }))
-            .await;
-
-        Ok(())
-    }
-
-    async fn notify<R: lsp_types::notification::Notification>(
-        &mut self,
-        params: &R::Params,
-    ) -> Result<()> {
-        let json = JsonNotification::new(R::METHOD, &params);
-        let msg = ServerRequest::Notification { json };
-        self.server.send(msg).await?;
+            .await?;
 
         Ok(())
     }
@@ -365,6 +370,69 @@ impl Handler {
 
         self.notify::<lsp_types::notification::DidOpenTextDocument>(&params)
             .await?;
+
+        Ok(())
+    }
+
+    async fn show_references(
+        &mut self,
+        path: PathBuf,
+        buf: ReadOnlyPieceTree,
+        pos: Position,
+    ) -> Result<()> {
+        let position = pos.to_position(&buf, &self.position_encoding());
+        let params = lsp_types::ReferenceParams {
+            text_document_position: lsp_types::TextDocumentPositionParams {
+                text_document: lsp_types::TextDocumentIdentifier {
+                    uri: path_to_uri(&path),
+                },
+                position,
+            },
+            work_done_progress_params: lsp_types::WorkDoneProgressParams {
+                work_done_token: None,
+            },
+            partial_result_params: lsp_types::PartialResultParams {
+                partial_result_token: None,
+            },
+            context: lsp_types::ReferenceContext {
+                include_declaration: true,
+            },
+        };
+
+        let response = self
+            .request::<lsp_types::request::References>(&params)
+            .await?;
+        let locations = response.ok_or(anyhow!("No references response"))?;
+        let references = locations
+            .into_iter()
+            .map(|loc| {
+                let start = Position::LSP {
+                    position: loc.range.start,
+                    encoding: self.position_encoding(),
+                };
+                let end = Position::LSP {
+                    position: loc.range.end,
+                    encoding: self.position_encoding(),
+                };
+                let path = PathBuf::from(loc.uri.path().as_str());
+                Reference { path, start, end }
+            })
+            .collect();
+
+        self.response
+            .send(Response::Request(RequestResult::References { references }))
+            .await?;
+
+        Ok(())
+    }
+
+    async fn notify<R: lsp_types::notification::Notification>(
+        &mut self,
+        params: &R::Params,
+    ) -> Result<()> {
+        let json = JsonNotification::new(R::METHOD, &params);
+        let msg = ServerRequest::Notification { json };
+        self.server.send(msg).await?;
 
         Ok(())
     }

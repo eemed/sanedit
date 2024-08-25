@@ -5,7 +5,6 @@ use sanedit_utils::sorted_vec::SortedVec;
 
 use crate::{
     actions::jobs::{MatchedOptions, MatcherMessage},
-    common::cursors::word_before_cursor,
     editor::{windows::Focus, Editor},
     server::ClientId,
 };
@@ -18,13 +17,19 @@ pub(crate) struct Completion {
     pub(crate) point: Point,
     pub(crate) selector: Selector,
 
+    /// Where the completion was started at
+    /// used to provide on input with the next term
+    pub(crate) started_at: u64,
+
     /// Called when input is modified.
     pub(crate) on_input: Option<CompletionAction>,
 }
 
 impl Completion {
-    pub fn new() -> Completion {
-        Completion::default()
+    pub fn new(started_at: u64) -> Completion {
+        let mut me = Completion::default();
+        me.started_at = started_at;
+        me
     }
 
     pub fn select_next(&mut self) {
@@ -59,7 +64,11 @@ impl Completion {
         //
         match msg {
             Init(sender) => {
-                let word = word_before_cursor(editor, id).unwrap_or(String::from(""));
+                let (win, buf) = editor.win_buf_mut(id);
+                let cursor = win.cursors.primary().pos();
+                let start = win.completion.started_at;
+                let slice = buf.slice(start..cursor);
+                let word = String::from(&slice);
                 let _ = sender.blocking_send(word);
 
                 let (win, buf) = editor.win_buf_mut(id);
@@ -98,6 +107,7 @@ impl Default for Completion {
         Completion {
             point: Point::default(),
             selector: Selector::default(),
+            started_at: 0,
             on_input: None,
         }
     }

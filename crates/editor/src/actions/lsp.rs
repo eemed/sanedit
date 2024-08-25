@@ -53,7 +53,6 @@ fn start(editor: &mut Editor, id: ClientId) {
 
 #[action("Hover information")]
 fn hover(editor: &mut Editor, id: ClientId) {
-    let wd = editor.working_dir().to_path_buf();
     let (win, buf) = editor.win_buf_mut(id);
     let ft = buf.filetype.clone();
     let Some(path) = buf.path().map(Path::to_path_buf) else {
@@ -78,7 +77,6 @@ fn hover(editor: &mut Editor, id: ClientId) {
 
 #[action("Goto definition")]
 fn goto_definition(editor: &mut Editor, id: ClientId) {
-    let wd = editor.working_dir().to_path_buf();
     let (win, buf) = editor.win_buf_mut(id);
     let ft = buf.filetype.clone();
     let Some(path) = buf.path().map(Path::to_path_buf) else {
@@ -103,25 +101,22 @@ fn goto_definition(editor: &mut Editor, id: ClientId) {
 
 #[action("Synchronize document")]
 fn sync_document(editor: &mut Editor, id: ClientId) {
-    let wd = editor.working_dir().to_path_buf();
     let (win, buf) = editor.win_buf_mut(id);
     let ft = buf.filetype.clone();
     let Some(path) = buf.path().map(Path::to_path_buf) else {
         return;
     };
-    let copy = buf.read_only_copy();
-    let offset = win.cursors.primary().pos();
 
     let Some(ft) = ft else {
         return;
     };
 
-    let Some(changes) = buf.last_changes() else {
+    let Some(edit) = buf.last_edit() else {
         return;
     };
 
     use ChangesKind::*;
-    let changes = match changes.kind() {
+    let changes = match edit.changes.kind() {
         Undo | Redo => {
             vec![sanedit_lsp::Change {
                 start: Position::Offset(0),
@@ -129,7 +124,8 @@ fn sync_document(editor: &mut Editor, id: ClientId) {
                 text: String::from(&buf.slice(..)),
             }]
         }
-        _ => changes
+        _ => edit
+            .changes
             .iter()
             .map(|change| sanedit_lsp::Change {
                 start: Position::Offset(change.start()),
@@ -139,19 +135,15 @@ fn sync_document(editor: &mut Editor, id: ClientId) {
             .collect(),
     };
 
+    let buf = edit.buf.clone();
     let Some(lsp) = editor.language_servers.get_mut(&ft) else {
         return;
     };
-    lsp.send(Request::DidChange {
-        path,
-        buf: copy,
-        changes,
-    });
+    lsp.send(Request::DidChange { path, buf, changes });
 }
 
 #[action("Complete")]
 fn complete(editor: &mut Editor, id: ClientId) {
-    let wd = editor.working_dir().to_path_buf();
     let (win, buf) = editor.win_buf_mut(id);
     let ft = buf.filetype.clone();
     let Some(path) = buf.path().map(Path::to_path_buf) else {

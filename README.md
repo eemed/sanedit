@@ -4,7 +4,7 @@
 
 * LSP without installation mechanism
     + Hover
-    - Completion
+    + Completion
     - Code actions
     - Diagnostics: Somehow to show them
     + Goto definition

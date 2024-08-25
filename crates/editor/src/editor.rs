@@ -156,7 +156,7 @@ impl Editor {
                 self.windows.set_default_options(window);
                 self.buffers.set_default_options(file);
             }
-            Err(e) => log::error!("ERROR reading config: {e}"),
+            Err(e) => log::error!("Failed to read config: {e}"),
         }
     }
 

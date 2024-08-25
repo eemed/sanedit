@@ -9,20 +9,19 @@ use std::{
     borrow::Cow,
     fs,
     io::{self, Write},
-    ops::{Range, RangeBounds},
+    ops::RangeBounds,
     path::{Path, PathBuf},
 };
 
+use anyhow::ensure;
 use anyhow::Result;
-use anyhow::{bail, ensure};
 use sanedit_buffer::{PieceTree, PieceTreeSlice, ReadOnlyPieceTree};
-use sanedit_lsp::lsp_types::Diagnostic;
-use sanedit_utils::{key_type, sorted_vec::SortedVec};
+use sanedit_utils::key_type;
 use thiserror::Error;
 
 use crate::common::{dirs::tmp_file, file::FileDescription};
 
-use self::snapshots::Snapshots;
+use self::{change::Edit, diagnostic::Diagnostic, snapshots::Snapshots};
 pub(crate) use change::{Change, ChangeResult, Changes, ChangesKind};
 pub(crate) use filetype::Filetype;
 pub(crate) use options::Options;
@@ -45,7 +44,7 @@ pub(crate) struct Buffer {
     last_saved_snapshot: SnapshotId,
 
     is_modified: bool,
-    last_changes: Option<Changes>,
+    last_edit: Option<Edit>,
 
     /// Path used for saving the file.
     path: Option<PathBuf>,
@@ -65,7 +64,7 @@ impl Buffer {
             snapshots: Snapshots::new(snapshot),
             options: Options::default(),
             path: None,
-            last_changes: None,
+            last_edit: None,
             last_saved_snapshot: 0,
         }
     }
@@ -93,7 +92,7 @@ impl Buffer {
             snapshots: Snapshots::new(snapshot),
             options,
             path: Some(path.into()),
-            last_changes: None,
+            last_edit: None,
             last_saved_snapshot: 0,
         })
     }
@@ -123,7 +122,7 @@ impl Buffer {
             snapshots: Snapshots::new(snapshot),
             options: Options::default(),
             path: None,
-            last_changes: None,
+            last_edit: None,
             last_saved_snapshot: 0,
         })
     }
@@ -150,14 +149,14 @@ impl Buffer {
     }
 
     /// Get the last change done to buffer
-    pub fn last_changes(&self) -> Option<&Changes> {
-        self.last_changes.as_ref()
+    pub fn last_edit(&self) -> Option<&Edit> {
+        self.last_edit.as_ref()
     }
 
     /// Creates undo point if it is needed
     fn needs_undo_point(&mut self, change: &Changes) -> bool {
-        let last = self.last_changes.as_ref();
-        self.is_modified && change.needs_undo_point(last)
+        let last = self.last_edit.as_ref();
+        self.is_modified && change.needs_undo_point(last.as_ref().map(|edit| &edit.changes))
     }
 
     pub fn apply_changes(&mut self, changes: &Changes) -> Result<ChangeResult> {
@@ -182,7 +181,10 @@ impl Buffer {
         match self.apply_changes_impl(changes) {
             Ok(restored) => {
                 result.restored_snapshot = restored;
-                self.last_changes = Some(changes.clone());
+                self.last_edit = Some(Edit {
+                    buf: rollback,
+                    changes: changes.clone(),
+                });
             }
             Err(e) => {
                 self.pt.restore(rollback);

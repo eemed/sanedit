@@ -1,9 +1,15 @@
 use std::rc::Rc;
 
-use sanedit_buffer::utf8::EndOfLine;
+use sanedit_buffer::{utf8::EndOfLine, ReadOnlyPieceTree};
 use sanedit_utils::sorted_vec::SortedVec;
 
 use crate::editor::buffers::{BufferRange, SnapshotId};
+
+#[derive(Debug)]
+pub(crate) struct Edit {
+    pub(crate) buf: ReadOnlyPieceTree,
+    pub(crate) changes: Changes,
+}
 
 #[derive(Debug, Default)]
 pub(crate) struct ChangeResult {

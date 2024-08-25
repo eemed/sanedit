@@ -109,7 +109,6 @@ pub(crate) fn pos_at_line<'a>(slice: &PieceTreeSlice<'a>, line: u64) -> u64 {
     let mut lines = slice.lines();
 
     while let Some(l) = lines.next() {
-        log::info!("Find: {line}, at: {n}, line: {:?}", String::from(&l));
         if n == line {
             return l.start();
         }

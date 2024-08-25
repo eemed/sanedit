@@ -1,14 +1,20 @@
-use std::{any::Any, path::PathBuf};
+use std::{any::Any, path::PathBuf, sync::Arc};
 
 use crate::{
-    editor::{buffers::Filetype, job_broker::KeepInTouch, options::LSPOptions, Editor},
+    common::matcher::{Kind, MatchOption, MatchStrategy},
+    editor::{
+        buffers::Filetype, job_broker::KeepInTouch, options::LSPOptions, windows::Completion,
+        Editor,
+    },
     job_runner::{Job, JobContext, JobResult},
     server::ClientId,
 };
-use sanedit_lsp::{LSPClientParams, LSPClientSender, Request, Response};
+use sanedit_lsp::{CompletionItem, LSPClientParams, LSPClientSender, Position, Request, Response};
 
 use anyhow::Result;
 use sanedit_messages::redraw::{Severity, StatusMessage};
+
+use super::MatcherJob;
 
 /// A handle to send operations to LSP instance.
 ///
@@ -141,7 +147,7 @@ impl KeepInTouch for LSP {
                             path,
                             position,
                             results,
-                        } => todo!(),
+                        } => complete(editor, self.client_id, path, position, results),
                     },
                 },
             }
@@ -153,4 +159,40 @@ impl KeepInTouch for LSP {
 enum Message {
     Started(Filetype, LSPSender),
     Response(Response),
+}
+
+fn complete(
+    editor: &mut Editor,
+    id: ClientId,
+    path: PathBuf,
+    position: Position,
+    opts: Vec<CompletionItem>,
+) {
+    let (win, buf) = editor.win_buf_mut(id);
+
+    // TODO how to ensure this is not old data
+    let copy = buf.read_only_copy();
+    let start = position.to_offset(&copy);
+    win.completion = Completion::new(start);
+
+    let cursor = win.primary_cursor();
+    if let Some(point) = win.view().point_at_pos(cursor.pos()) {
+        win.completion.point = point;
+    }
+
+    let opts: Vec<MatchOption> = opts.into_iter().map(MatchOption::from).collect();
+
+    let job = MatcherJob::builder(id)
+        .strategy(MatchStrategy::Prefix)
+        .options(Arc::new(opts))
+        .handler(Completion::matcher_result_handler)
+        .build();
+
+    editor.job_broker.request(job);
+}
+
+impl From<CompletionItem> for MatchOption {
+    fn from(value: CompletionItem) -> Self {
+        MatchOption::from(value.name)
+    }
 }

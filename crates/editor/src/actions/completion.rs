@@ -15,10 +15,13 @@ use super::{jobs::MatcherJob, text};
 
 #[action("Open completion menu")]
 fn complete(editor: &mut Editor, id: ClientId) {
-    let word = word_before_cursor(editor, id).unwrap_or(String::from(""));
-
+    let result = word_before_cursor(editor, id);
     let (win, buf) = editor.win_buf_mut(id);
-    win.completion = Completion::new();
+    let cursor = win.cursors.primary().pos();
+    let start = result.as_ref().map(|result| result.0).unwrap_or(cursor);
+    let word = result.map(|result| result.2).unwrap_or(String::new());
+
+    win.completion = Completion::new(start);
     let cursor = win.primary_cursor();
     if let Some(point) = win.view().point_at_pos(cursor.pos()) {
         win.completion.point = point;
@@ -82,7 +85,7 @@ fn prev(editor: &mut Editor, id: ClientId) {
     win.completion.select_prev();
 }
 
-#[action("Send word under cursor to matcher")]
+#[action("Send word to matcher")]
 fn send_word(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     if win.focus() != Focus::Completion {
@@ -91,7 +94,10 @@ fn send_word(editor: &mut Editor, id: ClientId) {
 
     let (win, buf) = editor.win_buf_mut(id);
     if let Some(fun) = win.completion.on_input.clone() {
-        let word = word_before_cursor(editor, id).unwrap_or(String::from(""));
+        let cursor = win.cursors.primary().pos();
+        let start = win.completion.started_at;
+        let slice = buf.slice(start..cursor);
+        let word = String::from(&slice);
         (fun)(editor, id, &word);
     }
 }

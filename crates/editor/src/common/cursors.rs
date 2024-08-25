@@ -14,7 +14,7 @@ pub(crate) fn word_at_cursor(editor: &Editor, id: ClientId) -> Option<String> {
     Some(String::from(&word))
 }
 
-pub(crate) fn word_before_cursor(editor: &Editor, id: ClientId) -> Option<String> {
+pub(crate) fn word_before_cursor(editor: &Editor, id: ClientId) -> Option<(u64, u64, String)> {
     let (win, buf) = editor.win_buf(id);
     let cursor = win.cursors.primary().pos();
     let slice = buf.slice(..);
@@ -30,5 +30,5 @@ pub(crate) fn word_before_cursor(editor: &Editor, id: ClientId) -> Option<String
 
     let word = buf.slice(start..cursor);
     let word = String::from(&word);
-    Some(word)
+    Some((start, cursor, word))
 }

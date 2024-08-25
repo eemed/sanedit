@@ -9,9 +9,10 @@ mod request;
 mod response;
 mod util;
 
-pub use lsp_types;
+// pub use lsp_types;
+//
 
 pub use client::{LSPClientParams, LSPClientSender};
 pub use position::Position;
 pub use request::{Change, Request};
-pub use response::{RequestResult, Response};
+pub use response::{CompletionItem, Reference, RequestResult, Response};

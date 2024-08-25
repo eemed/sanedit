@@ -21,6 +21,21 @@ pub enum RequestResult {
     Complete {
         path: PathBuf,
         position: Position,
-        results: Vec<String>,
+        results: Vec<CompletionItem>,
     },
+    References {
+        references: Vec<Reference>,
+    },
+}
+
+#[derive(Debug, Clone)]
+pub struct CompletionItem {
+    pub name: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct Reference {
+    pub path: PathBuf,
+    pub start: Position,
+    pub end: Position,
 }

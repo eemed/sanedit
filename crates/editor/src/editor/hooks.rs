@@ -110,7 +110,12 @@ impl Default for Hooks {
 
         hooks.register(CursorMoved, popup::close);
         hooks.register(BufOpened, syntax::parse_syntax);
+
+        hooks.register(BufOpened, lsp::start_lsp);
+        hooks.register(BufOpened, lsp::open_doc);
         hooks.register(BufChanged, lsp::sync_document);
+        // TODO closed
+        // hooks.register(BufOpened, lsp::);
 
         hooks
     }

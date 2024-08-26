@@ -38,15 +38,30 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> redraw::Statusline {
     let cursor = win.primary_cursor();
     let cpos = cursor.pos();
     let blen = buf.len();
-    let ft = buf
-        .filetype
-        .as_ref()
-        .map(Filetype::as_str)
-        .unwrap_or("no filetype");
-    let right = format!(
-        "{ft} | {}% {cpos}/{blen} ",
-        ((cpos as f64 / blen.max(1) as f64) * 100.0).floor()
-    );
+    let filetype = buf.filetype.as_ref();
+    let ft = filetype.map(Filetype::as_str).unwrap_or("no filetype");
+    let lsp = filetype
+        .map(|ft| {
+            ctx.editor
+                .language_servers
+                .get(ft)
+                .map(|lsp| lsp.server_name().to_string())
+        })
+        .flatten();
+
+    let right = {
+        let mut result = String::new();
+        if let Some(lsp) = lsp {
+            result.push_str(&format!(" {lsp} | "));
+        }
+
+        result.push_str(&format!(
+            "{ft} | {}% {cpos}/{blen} ",
+            ((cpos as f64 / blen.max(1) as f64) * 100.0).floor()
+        ));
+
+        result
+    };
 
     Statusline { left, right }
 }

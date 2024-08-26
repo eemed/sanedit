@@ -33,7 +33,7 @@ use anyhow::Result;
 use crate::actions;
 use crate::actions::cursors;
 use crate::actions::hooks::run;
-use crate::actions::jobs::LSPSender;
+use crate::actions::jobs::LSPHandle;
 use crate::common::dirs::ConfigDirectory;
 use crate::common::file::FileDescription;
 use crate::common::text::copy_cursors_to_lines;
@@ -95,7 +95,7 @@ pub(crate) struct Editor {
     pub clipboard: Box<dyn Clipboard>,
     pub histories: Map<HistoryKind, History>,
     pub keymaps: Map<KeymapKind, Keymap>,
-    pub language_servers: Map<Filetype, LSPSender>,
+    pub language_servers: Map<Filetype, LSPHandle>,
     pub filetree: Filetree,
 }
 
@@ -313,6 +313,7 @@ impl Editor {
             theme,
             working_dir: &self.working_dir,
             filetree: &self.filetree,
+            language_servers: &self.language_servers,
         }
     }
 
@@ -456,6 +457,7 @@ impl Editor {
             theme,
             working_dir: &self.working_dir,
             filetree: &self.filetree,
+            language_servers: &self.language_servers,
         };
 
         let messages = draw.redraw(ctx);
@@ -645,6 +647,19 @@ impl Editor {
         self.working_dir = path.into();
         self.filetree = Filetree::new(&self.working_dir);
         Ok(())
+    }
+
+    pub fn lsp_handle_for(&self, id: ClientId) -> Option<&LSPHandle> {
+        let (win, buf) = self.win_buf(id);
+        let ft = buf.filetype.as_ref()?;
+        self.language_servers.get(ft)
+    }
+
+    pub fn lsp_handle_for_mut(&mut self, id: ClientId) -> Option<&mut LSPHandle> {
+        let win = self.windows.get(id)?;
+        let buf = self.buffers.get_mut(win.buffer_id())?;
+        let ft = buf.filetype.as_ref()?;
+        self.language_servers.get_mut(ft)
     }
 }
 

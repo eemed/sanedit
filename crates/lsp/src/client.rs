@@ -1,5 +1,5 @@
 use std::collections::BTreeMap;
-use std::sync::atomic::{AtomicI32, AtomicU32, Ordering};
+use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
 use std::{path::PathBuf, process::Stdio};
 
@@ -7,10 +7,9 @@ use crate::jsonrpc::{JsonNotification, JsonRequest};
 use crate::process::{ProcessHandler, ServerRequest};
 use crate::response::Reference;
 use crate::util::path_to_uri;
-use crate::{Change, CompletionItem, Position, Request, RequestResult, Response};
+use crate::{Change, CompletionItem, Request, RequestResult, Response};
 
 use anyhow::{anyhow, Result};
-use sanedit_buffer::ReadOnlyPieceTree;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 use tokio::sync::oneshot;
 use tokio::{io::BufReader, process::Command};
@@ -58,18 +57,21 @@ impl LSPClientParams {
         tokio::spawn(server.run());
 
         // Wait for initialization
-        let init_params = init_recv.await??;
+        let init_params = Arc::new(init_recv.await??);
 
         let client = LSPClient {
             params,
-            init_params: Arc::new(init_params),
+            init_params: init_params.clone(),
             receiver: req_receiver,
             sender: res_sender,
             server_sender,
         };
         tokio::spawn(client.run());
 
-        let send = LSPClientSender { sender: req_sender };
+        let send = LSPClientSender {
+            init_params,
+            sender: req_sender,
+        };
         let read = LSPClientReader {
             receiver: res_receiver,
         };
@@ -90,6 +92,7 @@ impl LSPClientReader {
 
 #[derive(Debug)]
 pub struct LSPClientSender {
+    init_params: Arc<lsp_types::InitializeResult>,
     sender: Sender<Request>,
 }
 
@@ -97,6 +100,10 @@ impl LSPClientSender {
     // TODO error?
     pub fn send(&mut self, req: Request) {
         let _ = self.sender.blocking_send(req);
+    }
+
+    pub fn init_params(&self) -> &lsp_types::InitializeResult {
+        &self.init_params
     }
 }
 
@@ -110,15 +117,12 @@ struct LSPClient {
 
 impl LSPClient {
     pub async fn run(mut self) -> Result<()> {
-        let increment_version: Arc<AtomicI32> = Arc::new(AtomicI32::new(i32::MIN));
-
         while let Some(req) = self.receiver.recv().await {
             let handler = Handler {
                 params: self.params.clone(),
                 init_params: self.init_params.clone(),
                 server: self.server_sender.clone(),
                 response: self.sender.clone(),
-                increment_version: increment_version.clone(),
             };
 
             tokio::spawn(async move {
@@ -134,31 +138,28 @@ struct Handler {
     init_params: Arc<lsp_types::InitializeResult>,
     server: Sender<ServerRequest>,
     response: Sender<Response>,
-    increment_version: Arc<AtomicI32>,
 }
 
 impl Handler {
     pub async fn run(mut self, req: Request) -> Result<()> {
         match req {
-            Request::DidOpen { path, buf } => self.did_open_document(path, buf).await?,
-            Request::Hover {
+            Request::DidOpen {
                 path,
-                position,
-                buf,
-            } => self.hover(path, buf, position).await?,
-            Request::GotoDefinition {
+                text,
+                version,
+            } => self.did_open_document(path, text, version).await?,
+            Request::DidChange {
                 path,
-                position,
-                buf,
-            } => self.goto_definition(path, buf, position).await?,
-            Request::DidChange { path, buf, changes } => {
-                self.did_change_document(path, buf, changes).await?
+                version,
+                changes,
+            } => self.did_change_document(path, changes, version).await?,
+            Request::DidClose { path } => todo!(),
+            Request::Hover { path, position } => self.hover(path, position).await?,
+            Request::GotoDefinition { path, position } => {
+                self.goto_definition(path, position).await?
             }
-            Request::Complete {
-                path,
-                buf,
-                position,
-            } => self.complete(path, buf, position).await?,
+            Request::Complete { path, position } => self.complete(path, position).await?,
+            Request::References { path, position } => self.show_references(path, position).await?,
         }
 
         Ok(())
@@ -167,22 +168,22 @@ impl Handler {
     async fn did_change_document(
         &mut self,
         path: PathBuf,
-        buf: ReadOnlyPieceTree,
         changes: Vec<Change>,
+        version: i32,
     ) -> Result<()> {
         let content_changes = changes
             .into_iter()
             .map(|change| lsp_types::TextDocumentContentChangeEvent {
                 range: Some(lsp_types::Range {
-                    start: change.start.to_position(&buf, &self.position_encoding()),
-                    end: change.end.to_position(&buf, &self.position_encoding()),
+                    start: change.start,
+                    end: change.end,
                 }),
                 text: change.text,
                 range_length: None,
             })
             .collect();
+        log::info!("Changes: {content_changes:?}");
 
-        let version = self.increment_version.fetch_add(1, Ordering::Relaxed);
         let params = lsp_types::DidChangeTextDocumentParams {
             text_document: lsp_types::VersionedTextDocumentIdentifier {
                 uri: path_to_uri(&path),
@@ -195,13 +196,7 @@ impl Handler {
             .await
     }
 
-    async fn complete(
-        &mut self,
-        path: PathBuf,
-        buf: ReadOnlyPieceTree,
-        position: Position,
-    ) -> Result<()> {
-        let position = position.to_position(&buf, &self.position_encoding());
+    async fn complete(&mut self, path: PathBuf, position: lsp_types::Position) -> Result<()> {
         let params = lsp_types::CompletionParams {
             text_document_position: lsp_types::TextDocumentPositionParams {
                 text_document: lsp_types::TextDocumentIdentifier {
@@ -250,10 +245,7 @@ impl Handler {
             .response
             .send(Response::Request(RequestResult::Complete {
                 path,
-                position: Position::LSP {
-                    position,
-                    encoding: self.position_encoding(),
-                },
+                position,
                 results,
             }))
             .await;
@@ -264,10 +256,8 @@ impl Handler {
     async fn goto_definition(
         &mut self,
         path: PathBuf,
-        buf: ReadOnlyPieceTree,
-        position: Position,
+        position: lsp_types::Position,
     ) -> Result<()> {
-        let position = position.to_position(&buf, &self.position_encoding());
         let params = lsp_types::GotoDefinitionParams {
             text_document_position_params: lsp_types::TextDocumentPositionParams {
                 text_document: lsp_types::TextDocumentIdentifier {
@@ -306,18 +296,14 @@ impl Handler {
             .response
             .send(Response::Request(RequestResult::GotoDefinition {
                 path,
-                position: Position::LSP {
-                    position,
-                    encoding: self.position_encoding(),
-                },
+                position,
             }))
             .await;
 
         Ok(())
     }
 
-    async fn hover(&mut self, path: PathBuf, buf: ReadOnlyPieceTree, pos: Position) -> Result<()> {
-        let position = pos.to_position(&buf, &self.position_encoding());
+    async fn hover(&mut self, path: PathBuf, position: lsp_types::Position) -> Result<()> {
         let params = lsp_types::HoverParams {
             text_document_position_params: lsp_types::TextDocumentPositionParams {
                 text_document: lsp_types::TextDocumentIdentifier {
@@ -348,25 +334,22 @@ impl Handler {
         }
 
         self.response
-            .send(Response::Request(RequestResult::Hover {
-                text,
-                position: pos,
-            }))
+            .send(Response::Request(RequestResult::Hover { text, position }))
             .await?;
 
         Ok(())
     }
 
-    async fn did_open_document(&mut self, path: PathBuf, buf: ReadOnlyPieceTree) -> Result<()> {
-        let text = String::from(&buf);
+    async fn did_open_document(&mut self, path: PathBuf, text: String, version: i32) -> Result<()> {
         let params = lsp_types::DidOpenTextDocumentParams {
             text_document: lsp_types::TextDocumentItem {
                 uri: path_to_uri(&path),
                 language_id: self.filetype().to_string(),
-                version: 0,
+                version,
                 text,
             },
         };
+        log::info!("Did open: {params:?}");
 
         self.notify::<lsp_types::notification::DidOpenTextDocument>(&params)
             .await?;
@@ -377,10 +360,8 @@ impl Handler {
     async fn show_references(
         &mut self,
         path: PathBuf,
-        buf: ReadOnlyPieceTree,
-        pos: Position,
+        position: lsp_types::Position,
     ) -> Result<()> {
-        let position = pos.to_position(&buf, &self.position_encoding());
         let params = lsp_types::ReferenceParams {
             text_document_position: lsp_types::TextDocumentPositionParams {
                 text_document: lsp_types::TextDocumentIdentifier {
@@ -405,17 +386,10 @@ impl Handler {
         let locations = response.ok_or(anyhow!("No references response"))?;
         let references = locations
             .into_iter()
-            .map(|loc| {
-                let start = Position::LSP {
-                    position: loc.range.start,
-                    encoding: self.position_encoding(),
-                };
-                let end = Position::LSP {
-                    position: loc.range.end,
-                    encoding: self.position_encoding(),
-                };
-                let path = PathBuf::from(loc.uri.path().as_str());
-                Reference { path, start, end }
+            .map(|loc| Reference {
+                path: PathBuf::from(loc.uri.path().as_str()),
+                start: loc.range.start,
+                end: loc.range.end,
             })
             .collect();
 

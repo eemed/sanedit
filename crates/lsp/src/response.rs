@@ -1,7 +1,5 @@
 use std::path::PathBuf;
 
-use crate::Position;
-
 #[derive(Debug, Clone)]
 pub enum Response {
     Request(RequestResult),
@@ -12,15 +10,15 @@ pub enum Response {
 pub enum RequestResult {
     Hover {
         text: String,
-        position: Position,
+        position: lsp_types::Position,
     },
     GotoDefinition {
         path: PathBuf,
-        position: Position,
+        position: lsp_types::Position,
     },
     Complete {
         path: PathBuf,
-        position: Position,
+        position: lsp_types::Position,
         results: Vec<CompletionItem>,
     },
     References {
@@ -31,11 +29,13 @@ pub enum RequestResult {
 #[derive(Debug, Clone)]
 pub struct CompletionItem {
     pub name: String,
+    // pub description: Option<String>,
+    // pub documentation: Option<String>,
 }
 
 #[derive(Debug, Clone)]
 pub struct Reference {
     pub path: PathBuf,
-    pub start: Position,
-    pub end: Position,
+    pub start: lsp_types::Position,
+    pub end: lsp_types::Position,
 }

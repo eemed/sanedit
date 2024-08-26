@@ -46,6 +46,9 @@ pub(crate) struct Buffer {
     is_modified: bool,
     last_edit: Option<Edit>,
 
+    /// Total changes made to the buffer, used as a identifier for LSP
+    total_changes_made: u32,
+
     /// Path used for saving the file.
     path: Option<PathBuf>,
 }
@@ -66,6 +69,7 @@ impl Buffer {
             path: None,
             last_edit: None,
             last_saved_snapshot: 0,
+            total_changes_made: 0,
         }
     }
 
@@ -94,6 +98,7 @@ impl Buffer {
             path: Some(path.into()),
             last_edit: None,
             last_saved_snapshot: 0,
+            total_changes_made: 0,
         })
     }
 
@@ -124,6 +129,7 @@ impl Buffer {
             path: None,
             last_edit: None,
             last_saved_snapshot: 0,
+            total_changes_made: 0,
         })
     }
 
@@ -151,6 +157,10 @@ impl Buffer {
     /// Get the last change done to buffer
     pub fn last_edit(&self) -> Option<&Edit> {
         self.last_edit.as_ref()
+    }
+
+    pub fn total_changes_made(&self) -> u32 {
+        self.total_changes_made
     }
 
     /// Creates undo point if it is needed
@@ -185,6 +195,7 @@ impl Buffer {
                     buf: rollback,
                     changes: changes.clone(),
                 });
+                self.total_changes_made += 1;
             }
             Err(e) => {
                 self.pt.restore(rollback);

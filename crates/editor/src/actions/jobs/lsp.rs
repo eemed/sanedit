@@ -1,15 +1,22 @@
 use std::{any::Any, path::PathBuf, sync::Arc};
 
 use crate::{
+    actions::lsp::{self, position_to_offset},
     common::matcher::{Kind, MatchOption, MatchStrategy},
     editor::{
-        buffers::Filetype, job_broker::KeepInTouch, options::LSPOptions, windows::Completion,
+        buffers::{Buffer, BufferId, Filetype},
+        job_broker::KeepInTouch,
+        options::LSPOptions,
+        windows::Completion,
         Editor,
     },
     job_runner::{Job, JobContext, JobResult},
     server::ClientId,
 };
-use sanedit_lsp::{CompletionItem, LSPClientParams, LSPClientSender, Position, Request, Response};
+use sanedit_lsp::{
+    lsp_types::{self, Position},
+    CompletionItem, LSPClientParams, LSPClientSender, Request, Response,
+};
 
 use anyhow::Result;
 use sanedit_messages::redraw::{Severity, StatusMessage};
@@ -21,7 +28,7 @@ use super::MatcherJob;
 /// LSP is running in a job slot and communicates back using messages.
 ///
 #[derive(Debug)]
-pub(crate) struct LSPSender {
+pub(crate) struct LSPHandle {
     /// Name of the LSP server
     name: String,
 
@@ -32,10 +39,27 @@ pub(crate) struct LSPSender {
     sender: LSPClientSender,
 }
 
-impl LSPSender {
+impl LSPHandle {
+    pub fn server_name(&self) -> &str {
+        &self.name
+    }
+
     pub fn send(&mut self, op: Request) -> Result<()> {
         self.sender.send(op);
         Ok(())
+    }
+
+    pub fn init_params(&self) -> &lsp_types::InitializeResult {
+        self.sender.init_params()
+    }
+
+    pub fn position_encoding(&self) -> lsp_types::PositionEncodingKind {
+        self.sender
+            .init_params()
+            .capabilities
+            .position_encoding
+            .clone()
+            .unwrap_or(lsp_types::PositionEncodingKind::UTF16)
     }
 }
 
@@ -79,7 +103,7 @@ impl Job for LSP {
             let (sender, mut reader) = params.spawn().await?;
             log::info!("Client started");
 
-            let sender = LSPSender {
+            let sender = LSPHandle {
                 name: command,
                 sender,
                 root: wd,
@@ -107,26 +131,15 @@ impl KeepInTouch for LSP {
 
         if let Ok(output) = msg.downcast::<Message>() {
             match *output {
-                Message::Started(ft, mut sender) => {
-                    // Send all buffers of this filetype
-                    for (id, buf) in editor.buffers().iter() {
-                        let is_ft = buf.filetype.as_ref().map(|f| f == &ft).unwrap_or(false);
-                        if !is_ft {
-                            continue;
-                        }
-
-                        let Some(path) = buf.path().map(|p| p.to_path_buf()) else {
-                            continue;
-                        };
-                        let ro = buf.read_only_copy();
-                        sender.send(Request::DidOpen {
-                            path: path.clone(),
-                            buf: ro,
-                        });
-                    }
-
+                Message::Started(ft, sender) => {
                     // Set sender
                     editor.language_servers.insert(ft, sender);
+
+                    // Send all buffers of this filetype
+                    let ids: Vec<BufferId> = editor.buffers().iter().map(|(id, _buf)| id).collect();
+                    for id in ids {
+                        lsp::open_document(editor, id);
+                    }
                 }
                 Message::Response(response) => match response {
                     Response::Request(request) => match request {
@@ -138,9 +151,15 @@ impl KeepInTouch for LSP {
                         }
                         sanedit_lsp::RequestResult::GotoDefinition { path, position } => {
                             if editor.open_file(self.client_id, path).is_ok() {
-                                let (win, buf) = editor.win_buf_mut(self.client_id);
-                                let offset = position.to_offset(&buf.read_only_copy());
-                                win.goto_offset(offset, buf);
+                                let enc = editor
+                                    .lsp_handle_for(self.client_id)
+                                    .map(|x| x.position_encoding());
+                                if let Some(enc) = enc {
+                                    let (win, buf) = editor.win_buf_mut(self.client_id);
+                                    let slice = buf.slice(..);
+                                    let offset = position_to_offset(&slice, position, &enc);
+                                    win.goto_offset(offset, buf);
+                                }
                             }
                         }
                         sanedit_lsp::RequestResult::Complete {
@@ -148,6 +167,7 @@ impl KeepInTouch for LSP {
                             position,
                             results,
                         } => complete(editor, self.client_id, path, position, results),
+                        sanedit_lsp::RequestResult::References { references } => todo!(),
                     },
                 },
             }
@@ -157,7 +177,7 @@ impl KeepInTouch for LSP {
 
 #[derive(Debug)]
 enum Message {
-    Started(Filetype, LSPSender),
+    Started(Filetype, LSPHandle),
     Response(Response),
 }
 
@@ -168,11 +188,14 @@ fn complete(
     position: Position,
     opts: Vec<CompletionItem>,
 ) {
-    let (win, buf) = editor.win_buf_mut(id);
-
     // TODO how to ensure this is not old data
-    let copy = buf.read_only_copy();
-    let start = position.to_offset(&copy);
+
+    let Some(enc) = editor.lsp_handle_for(id).map(|x| x.position_encoding()) else {
+        return;
+    };
+    let (win, buf) = editor.win_buf_mut(id);
+    let slice = buf.slice(..);
+    let start = position_to_offset(&slice, position, &enc);
     win.completion = Completion::new(start);
 
     let cursor = win.primary_cursor();

@@ -1,45 +1,41 @@
 use std::path::PathBuf;
 
-use sanedit_buffer::ReadOnlyPieceTree;
-
-use crate::Position;
-
 #[derive(Debug, Clone)]
 pub enum Request {
     DidOpen {
         path: PathBuf,
-        buf: ReadOnlyPieceTree,
-    },
-    Hover {
-        path: PathBuf,
-        buf: ReadOnlyPieceTree,
-        position: Position,
-    },
-    GotoDefinition {
-        path: PathBuf,
-        buf: ReadOnlyPieceTree,
-        position: Position,
+        text: String,
+        version: i32,
     },
     DidChange {
         path: PathBuf,
-        buf: ReadOnlyPieceTree,
         changes: Vec<Change>,
+        version: i32,
+    },
+    DidClose {
+        path: PathBuf,
+    },
+    Hover {
+        path: PathBuf,
+        position: lsp_types::Position,
+    },
+    GotoDefinition {
+        path: PathBuf,
+        position: lsp_types::Position,
     },
     Complete {
         path: PathBuf,
-        buf: ReadOnlyPieceTree,
-        position: Position,
+        position: lsp_types::Position,
     },
     References {
         path: PathBuf,
-        buf: ReadOnlyPieceTree,
-        position: Position,
+        position: lsp_types::Position,
     },
 }
 
 #[derive(Debug, Clone)]
 pub struct Change {
-    pub start: Position,
-    pub end: Position,
+    pub start: lsp_types::Position,
+    pub end: lsp_types::Position,
     pub text: String,
 }

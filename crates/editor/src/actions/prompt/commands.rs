@@ -76,7 +76,7 @@ pub(crate) const COMMANDS: &[Action] = &[
 
     locations::show,
 
-    lsp::start,
+    lsp::start_lsp,
     lsp::hover,
     lsp::goto_definition,
     lsp::complete,

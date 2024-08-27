@@ -74,6 +74,7 @@ impl PieceTree {
         Ok(Self::from_original_buffer(orig_buf))
     }
 
+    /// Create a file backed buffer
     #[inline]
     pub fn from_path<P: AsRef<Path>>(path: P) -> io::Result<PieceTree> {
         let orig_buf = OriginalBuffer::from_path(path)?;

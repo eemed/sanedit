@@ -1,15 +1,18 @@
 use std::{
-    cmp::min,
+    cmp::{min, Reverse},
     ops::Range,
     path::{Path, PathBuf},
 };
 
-use sanedit_utils::either::Either;
+use sanedit_utils::{either::Either, sorted_vec::SortedVec};
 
 #[derive(Debug, Default)]
 pub(crate) struct Locations {
     pub(crate) show: bool,
     selection: Option<usize>,
+
+    // not sorted because results may be coming in while we are already browsing
+    // which would result in a confusing jump
     groups: Vec<Group>,
 }
 
@@ -168,11 +171,12 @@ impl Locations {
     }
 }
 
+/// Location group
 #[derive(Debug)]
 pub(crate) struct Group {
     path: PathBuf,
     expanded: bool,
-    items: Vec<Item>,
+    items: SortedVec<Item>,
 }
 
 impl Group {
@@ -180,7 +184,7 @@ impl Group {
         Group {
             path: path.to_path_buf(),
             expanded: true,
-            items: vec![],
+            items: SortedVec::new(),
         }
     }
 
@@ -215,10 +219,12 @@ impl Group {
 
 #[derive(Debug)]
 pub(crate) struct Item {
-    name: String,
     line: Option<u64>,
     /// Absolute offset where data starts
     absolute_offset: Option<u64>,
+
+    name: String,
+
     /// String highlights
     highlights: Vec<Range<usize>>,
 }
@@ -252,6 +258,53 @@ impl Item {
 
     pub fn highlights(&self) -> &[Range<usize>] {
         &self.highlights
+    }
+}
+
+impl PartialEq for Item {
+    fn eq(&self, other: &Self) -> bool {
+        (
+            Reverse(self.line),
+            Reverse(self.absolute_offset),
+            &self.name,
+        )
+            .eq(&(
+                Reverse(other.line),
+                Reverse(other.absolute_offset),
+                &other.name,
+            ))
+    }
+}
+
+impl Eq for Item {}
+
+impl PartialOrd for Item {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        (
+            Reverse(self.line),
+            Reverse(self.absolute_offset),
+            &self.name,
+        )
+            .partial_cmp(&(
+                Reverse(other.line),
+                Reverse(other.absolute_offset),
+                &other.name,
+            ))
+    }
+}
+
+impl Ord for Item {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        (
+            Reverse(self.line),
+            Reverse(self.absolute_offset),
+            &self.name,
+        )
+            .cmp(&(
+                Reverse(other.line),
+                Reverse(other.absolute_offset),
+                &other.name,
+            ))
     }
 }
 

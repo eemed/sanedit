@@ -160,6 +160,15 @@ fn complete(editor: &mut Editor, id: ClientId) {
     });
 }
 
+#[action("Show references")]
+fn references(editor: &mut Editor, id: ClientId) {
+    let _ = lsp_request(editor, id, move |win, buf, path, slice, lsp| {
+        let offset = win.cursors.primary().pos();
+        let position = offset_to_position(&slice, offset, &lsp.position_encoding());
+        Request::References { path, position }.into()
+    });
+}
+
 #[action("Send LSP open document notification")]
 pub(crate) fn open_doc(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf(id);
@@ -266,7 +275,6 @@ pub(crate) fn position_to_offset(
 
     while let Some((start, _, ch)) = chars.next() {
         if col >= character {
-            log::info!("char: {}", start);
             return start + line.start();
         }
         let len = if *kind == lsp_types::PositionEncodingKind::UTF8 {

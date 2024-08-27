@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::{collections::BTreeMap, path::PathBuf};
 
 #[derive(Debug, Clone)]
 pub enum Response {
@@ -22,7 +22,7 @@ pub enum RequestResult {
         results: Vec<CompletionItem>,
     },
     References {
-        references: Vec<Reference>,
+        references: BTreeMap<PathBuf, Vec<Reference>>,
     },
 }
 
@@ -33,9 +33,8 @@ pub struct CompletionItem {
     // pub documentation: Option<String>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Reference {
-    pub path: PathBuf,
     pub start: lsp_types::Position,
     pub end: lsp_types::Position,
 }

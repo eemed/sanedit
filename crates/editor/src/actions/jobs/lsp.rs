@@ -1,4 +1,9 @@
-use std::{any::Any, path::PathBuf, sync::Arc};
+use std::{
+    any::Any,
+    collections::BTreeMap,
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 
 use crate::{
     actions::lsp::{self, position_to_offset},
@@ -7,15 +12,16 @@ use crate::{
         buffers::{Buffer, BufferId, Filetype},
         job_broker::KeepInTouch,
         options::LSPOptions,
-        windows::Completion,
+        windows::{Completion, Focus, Group, Item},
         Editor,
     },
     job_runner::{Job, JobContext, JobResult},
     server::ClientId,
 };
+use sanedit_buffer::{PieceTree, PieceTreeSlice};
 use sanedit_lsp::{
     lsp_types::{self, Position},
-    CompletionItem, LSPClientParams, LSPClientSender, Request, Response,
+    CompletionItem, LSPClientParams, LSPClientSender, Reference, Request, Response,
 };
 
 use anyhow::Result;
@@ -167,7 +173,9 @@ impl KeepInTouch for LSP {
                             position,
                             results,
                         } => complete(editor, self.client_id, path, position, results),
-                        sanedit_lsp::RequestResult::References { references } => todo!(),
+                        sanedit_lsp::RequestResult::References { references } => {
+                            show_references(editor, self.client_id, references)
+                        }
                     },
                 },
             }
@@ -212,6 +220,62 @@ fn complete(
         .build();
 
     editor.job_broker.request(job);
+}
+
+fn show_references(
+    editor: &mut Editor,
+    id: ClientId,
+    references: BTreeMap<PathBuf, Vec<Reference>>,
+) {
+    let Some(enc) = editor
+        .lsp_handle_for(id)
+        .map(|handle| handle.position_encoding())
+    else {
+        return;
+    };
+
+    let (win, buf) = editor.win_buf_mut(id);
+    win.locations.clear();
+    win.locations.show = true;
+    win.focus = Focus::Locations;
+
+    for (path, references) in references {
+        if buf.path() == Some(&path) {
+            let slice = buf.slice(..);
+            let group = read_references(&slice, &path, &references, &enc);
+            win.locations.push(group);
+        } else if let Ok(pt) = PieceTree::from_path(&path) {
+            let slice = pt.slice(..);
+            let group = read_references(&slice, &path, &references, &enc);
+            win.locations.push(group);
+        }
+    }
+}
+
+fn read_references(
+    slice: &PieceTreeSlice,
+    path: &Path,
+    references: &[Reference],
+    enc: &lsp_types::PositionEncodingKind,
+) -> Group {
+    let mut group = Group::new(&path);
+
+    for re in references {
+        let start = position_to_offset(&slice, re.start, enc);
+        let end = position_to_offset(&slice, re.end, enc);
+        let (row, line) = slice.line_at(start);
+        let lstart = line.start();
+
+        let hlstart = (start - lstart) as usize;
+        let hlend = (end - lstart) as usize;
+        let text = String::from(&line);
+        let item = Item::new(&text, Some(row), Some(start), vec![hlstart..hlend]);
+
+        log::info!("Item: {item:?}");
+        group.push(item);
+    }
+
+    group
 }
 
 impl From<CompletionItem> for MatchOption {

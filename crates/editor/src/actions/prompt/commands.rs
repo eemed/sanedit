@@ -80,6 +80,7 @@ pub(crate) const COMMANDS: &[Action] = &[
     lsp::hover,
     lsp::goto_definition,
     lsp::complete,
+    lsp::references,
 
     popup::test,
     popup::close,

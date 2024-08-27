@@ -384,14 +384,17 @@ impl Handler {
             .request::<lsp_types::request::References>(&params)
             .await?;
         let locations = response.ok_or(anyhow!("No references response"))?;
-        let references = locations
-            .into_iter()
-            .map(|loc| Reference {
-                path: PathBuf::from(loc.uri.path().as_str()),
+        let mut references = BTreeMap::new();
+        for loc in locations {
+            let re = Reference {
                 start: loc.range.start,
                 end: loc.range.end,
-            })
-            .collect();
+            };
+            let path = PathBuf::from(loc.uri.path().as_str());
+            let entry = references.entry(path);
+            let value: &mut Vec<Reference> = entry.or_default();
+            value.push(re);
+        }
 
         self.response
             .send(Response::Request(RequestResult::References { references }))

@@ -121,22 +121,23 @@ pub(crate) fn pos_at_line<'a>(slice: &PieceTreeSlice<'a>, line: u64) -> u64 {
 
 /// return the line and its number at pos
 pub(crate) fn line_at<'a>(slice: &PieceTreeSlice<'a>, pos: u64) -> (u64, PieceTreeSlice<'a>) {
-    let mut start = 0;
-    let mut line = 0;
-    let slice = slice.slice(..pos);
-    let mut bytes = slice.bytes();
+    let mut lines = slice.lines();
+    let mut cur = lines.next();
+    let mut n = 0;
 
-    while let Some(_) = next_eol(&mut bytes) {
-        start = bytes.pos();
-        line += 1;
+    while let Some(line) = cur {
+        if line.range().contains(&pos) || (pos == slice.len() && pos == line.end()) {
+            return (n, line);
+        }
+
+        n += 1;
+        cur = lines.next();
     }
 
-    next_eol(&mut bytes);
-
-    let end = bytes.pos();
-    let line_slice = slice.slice(start..end);
-
-    (line, line_slice)
+    panic!(
+        "Tried get line at {pos} but slice length is: {}",
+        slice.len()
+    )
 }
 
 #[derive(Debug, Clone)]

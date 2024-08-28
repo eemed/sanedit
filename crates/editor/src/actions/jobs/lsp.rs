@@ -6,7 +6,10 @@ use std::{
 };
 
 use crate::{
-    actions::lsp::{self, position_to_offset},
+    actions::{
+        locations,
+        lsp::{self, position_to_offset},
+    },
     common::matcher::{Kind, MatchOption, MatchStrategy},
     editor::{
         buffers::{Buffer, BufferId, Filetype},
@@ -234,10 +237,10 @@ fn show_references(
         return;
     };
 
+    // TODO should this be auto shown?
+    locations::show.execute(editor, id);
+
     let (win, buf) = editor.win_buf_mut(id);
-    win.locations.clear();
-    win.locations.show = true;
-    win.focus = Focus::Locations;
 
     for (path, references) in references {
         if buf.path() == Some(&path) {
@@ -269,9 +272,9 @@ fn read_references(
         let hlstart = (start - lstart) as usize;
         let hlend = (end - lstart) as usize;
         let text = String::from(&line);
-        let item = Item::new(&text, Some(row), Some(start), vec![hlstart..hlend]);
+        let text = text.trim_end();
+        let item = Item::new(text, Some(row), Some(lstart), vec![hlstart..hlend]);
 
-        log::info!("Item: {item:?}");
         group.push(item);
     }
 

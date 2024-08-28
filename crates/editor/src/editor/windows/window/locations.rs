@@ -221,7 +221,7 @@ impl Group {
 pub(crate) struct Item {
     line: Option<u64>,
     /// Absolute offset where data starts
-    absolute_offset: Option<u64>,
+    line_absolute_offset: Option<u64>,
 
     name: String,
 
@@ -233,13 +233,13 @@ impl Item {
     pub fn new(
         name: &str,
         line: Option<u64>,
-        absolute_offset: Option<u64>,
+        line_absolute_offset: Option<u64>,
         highlights: Vec<Range<usize>>,
     ) -> Item {
         Item {
             name: name.into(),
             line,
-            absolute_offset,
+            line_absolute_offset,
             highlights,
         }
     }
@@ -253,7 +253,7 @@ impl Item {
     }
 
     pub fn absolute_offset(&self) -> Option<u64> {
-        self.absolute_offset
+        self.line_absolute_offset
     }
 
     pub fn highlights(&self) -> &[Range<usize>] {
@@ -265,12 +265,12 @@ impl PartialEq for Item {
     fn eq(&self, other: &Self) -> bool {
         (
             Reverse(self.line),
-            Reverse(self.absolute_offset),
+            Reverse(self.line_absolute_offset),
             &self.name,
         )
             .eq(&(
                 Reverse(other.line),
-                Reverse(other.absolute_offset),
+                Reverse(other.line_absolute_offset),
                 &other.name,
             ))
     }
@@ -282,12 +282,12 @@ impl PartialOrd for Item {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         (
             Reverse(self.line),
-            Reverse(self.absolute_offset),
+            Reverse(self.line_absolute_offset),
             &self.name,
         )
             .partial_cmp(&(
                 Reverse(other.line),
-                Reverse(other.absolute_offset),
+                Reverse(other.line_absolute_offset),
                 &other.name,
             ))
     }
@@ -297,12 +297,12 @@ impl Ord for Item {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         (
             Reverse(self.line),
-            Reverse(self.absolute_offset),
+            Reverse(self.line_absolute_offset),
             &self.name,
         )
             .cmp(&(
                 Reverse(other.line),
-                Reverse(other.absolute_offset),
+                Reverse(other.line_absolute_offset),
                 &other.name,
             ))
     }

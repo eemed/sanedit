@@ -226,10 +226,11 @@ pub(crate) fn close_document(editor: &mut Editor, bid: BufferId) -> Result<()> {
 
 pub(crate) fn offset_to_position(
     slice: &PieceTreeSlice,
-    offset: u64,
+    mut offset: u64,
     kind: &lsp_types::PositionEncodingKind,
 ) -> lsp_types::Position {
     let (row, line) = slice.line_at(offset);
+    offset -= line.start();
 
     let mut chars = line.chars();
     let mut col = 0u32;
@@ -264,18 +265,12 @@ pub(crate) fn position_to_offset(
 ) -> u64 {
     let lsp_types::Position { line, character } = position;
     let pos = slice.pos_at_line(line as u64);
-    let slice = slice.slice(pos..);
-    let line = slice
-        .lines()
-        .next()
-        .expect("Position does not correspond to a line");
-
-    let mut chars = line.chars();
+    let mut chars = slice.chars_at(pos);
     let mut col = 0u32;
 
     while let Some((start, _, ch)) = chars.next() {
         if col >= character {
-            return start + line.start();
+            return start;
         }
         let len = if *kind == lsp_types::PositionEncodingKind::UTF8 {
             ch.len_utf8()

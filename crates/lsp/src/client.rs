@@ -126,7 +126,9 @@ impl LSPClient {
             };
 
             tokio::spawn(async move {
-                let _ = handler.run(req).await;
+                if let Err(e) = handler.run(req).await {
+                    log::error!("Failed handling request: {e}");
+                }
             });
         }
         Ok(())
@@ -417,7 +419,6 @@ impl Handler {
                 text,
             },
         };
-        log::info!("Did open: {params:?}");
 
         self.notify::<lsp_types::notification::DidOpenTextDocument>(&params)
             .await?;

@@ -169,6 +169,15 @@ fn references(editor: &mut Editor, id: ClientId) {
     });
 }
 
+#[action("Code action")]
+fn code_action(editor: &mut Editor, id: ClientId) {
+    let _ = lsp_request(editor, id, move |win, buf, path, slice, lsp| {
+        let offset = win.cursors.primary().pos();
+        let position = offset_to_position(&slice, offset, &lsp.position_encoding());
+        Request::CodeAction { path, position }.into()
+    });
+}
+
 #[action("Send LSP open document notification")]
 pub(crate) fn open_doc(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf(id);

@@ -81,6 +81,7 @@ pub(crate) const COMMANDS: &[Action] = &[
     lsp::goto_definition,
     lsp::complete,
     lsp::references,
+    lsp::code_action,
 
     popup::test,
     popup::close,

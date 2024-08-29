@@ -160,7 +160,75 @@ impl Handler {
             }
             Request::Complete { path, position } => self.complete(path, position).await?,
             Request::References { path, position } => self.show_references(path, position).await?,
+            Request::CodeAction { path, position } => self.code_action(path, position).await?,
+            Request::CodeActionResolve { path, position } => {
+                self.code_action_resolve(path, position).await?
+            }
         }
+
+        Ok(())
+    }
+
+    async fn code_action_resolve(
+        &mut self,
+        path: PathBuf,
+        position: lsp_types::Position,
+    ) -> Result<()> {
+        let action = lsp_types::CodeAction {
+            title: todo!(),
+            kind: todo!(),
+            diagnostics: todo!(),
+            edit: todo!(),
+            command: todo!(),
+            is_preferred: todo!(),
+            disabled: todo!(),
+            data: todo!(),
+        };
+
+        let response = self
+            .request::<lsp_types::request::CodeActionResolveRequest>(&action)
+            .await?;
+        log::info!("Response: {response:?}");
+
+        Ok(())
+    }
+
+    async fn code_action(&mut self, path: PathBuf, position: lsp_types::Position) -> Result<()> {
+        let params = lsp_types::CodeActionParams {
+            text_document: lsp_types::TextDocumentIdentifier {
+                uri: path_to_uri(&path),
+            },
+            range: lsp_types::Range {
+                start: position.clone(),
+                end: position,
+            },
+            context: lsp_types::CodeActionContext {
+                diagnostics: vec![],
+                only: None,
+                trigger_kind: Some(lsp_types::CodeActionTriggerKind::INVOKED),
+            },
+            work_done_progress_params: lsp_types::WorkDoneProgressParams {
+                work_done_token: None,
+            },
+            partial_result_params: lsp_types::PartialResultParams {
+                partial_result_token: None,
+            },
+        };
+
+        let response = self
+            .request::<lsp_types::request::CodeActionRequest>(&params)
+            .await?;
+        let response = response.ok_or(anyhow!("No code action response"))?;
+        log::info!("Response: {response:?}");
+
+        // let _ = self
+        //     .response
+        //     .send(Response::Request(RequestResult::Complete {
+        //         path,
+        //         position,
+        //         results,
+        //     }))
+        //     .await;
 
         Ok(())
     }

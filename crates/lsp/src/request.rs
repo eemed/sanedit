@@ -31,6 +31,14 @@ pub enum Request {
         path: PathBuf,
         position: lsp_types::Position,
     },
+    CodeAction {
+        path: PathBuf,
+        position: lsp_types::Position,
+    },
+    CodeActionResolve {
+        path: PathBuf,
+        position: lsp_types::Position,
+    },
 }
 
 #[derive(Debug, Clone)]

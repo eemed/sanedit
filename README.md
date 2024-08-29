@@ -8,9 +8,9 @@
     - Code actions
     - Diagnostics: Somehow to show them
     + Goto definition
-    - Show references
+    + Show references
     * (Signature help) I use hover for this too
-    * Update documents on change
+    + Update documents on change
 * Highlight flickering
     - => Modify existing syntax highlight to take into account the changes made
     - => No delay exeprt if we just typed a new higfhlighted item => GOOD

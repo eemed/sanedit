@@ -5,7 +5,7 @@ use std::{path::PathBuf, process::Stdio};
 
 use crate::jsonrpc::{JsonNotification, JsonRequest};
 use crate::process::{ProcessHandler, ServerRequest};
-use crate::response::Reference;
+use crate::response::{CodeAction, Reference};
 use crate::util::path_to_uri;
 use crate::{Change, CompletionItem, Request, RequestResult, Response};
 
@@ -163,9 +163,11 @@ impl Handler {
             Request::Complete { path, position } => self.complete(path, position).await?,
             Request::References { path, position } => self.show_references(path, position).await?,
             Request::CodeAction { path, position } => self.code_action(path, position).await?,
-            Request::CodeActionResolve { path, position } => {
-                self.code_action_resolve(path, position).await?
-            }
+            Request::CodeActionResolve {
+                path,
+                position,
+                action,
+            } => self.code_action_resolve(path, position, action).await?,
         }
 
         Ok(())
@@ -175,18 +177,9 @@ impl Handler {
         &mut self,
         path: PathBuf,
         position: lsp_types::Position,
+        action: lsp_types::CodeAction,
     ) -> Result<()> {
-        let action = lsp_types::CodeAction {
-            title: todo!(),
-            kind: todo!(),
-            diagnostics: todo!(),
-            edit: todo!(),
-            command: todo!(),
-            is_preferred: todo!(),
-            disabled: todo!(),
-            data: todo!(),
-        };
-
+        log::info!("Resolve: {action:?}");
         let response = self
             .request::<lsp_types::request::CodeActionResolveRequest>(&action)
             .await?;
@@ -221,16 +214,21 @@ impl Handler {
             .request::<lsp_types::request::CodeActionRequest>(&params)
             .await?;
         let response = response.ok_or(anyhow!("No code action response"))?;
-        log::info!("Response: {response:?}");
+        let mut actions = vec![];
 
-        // let _ = self
-        //     .response
-        //     .send(Response::Request(RequestResult::Complete {
-        //         path,
-        //         position,
-        //         results,
-        //     }))
-        //     .await;
+        for cmd in response {
+            match cmd {
+                lsp_types::CodeActionOrCommand::Command(cmd) => todo!(),
+                lsp_types::CodeActionOrCommand::CodeAction(action) => {
+                    actions.push(action);
+                }
+            }
+        }
+
+        let _ = self
+            .response
+            .send(Response::Request(RequestResult::CodeAction { actions }))
+            .await;
 
         Ok(())
     }

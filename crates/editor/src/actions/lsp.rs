@@ -1,6 +1,9 @@
 use anyhow::{anyhow, bail, Result};
 use sanedit_buffer::PieceTreeSlice;
-use std::path::{Path, PathBuf};
+use std::{
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 use thiserror::Error;
 
 use sanedit_lsp::{lsp_types, Request};
@@ -35,7 +38,7 @@ enum LSPActionError {
 }
 
 /// Helper function to get out all of the mostly used stuff from editor state
-fn lsp_request(
+pub(crate) fn lsp_request(
     editor: &mut Editor,
     id: ClientId,
     f: fn(&Window, &Buffer, PathBuf, PieceTreeSlice, &LSPHandle) -> Option<Request>,

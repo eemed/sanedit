@@ -24,6 +24,12 @@ pub enum RequestResult {
     References {
         references: BTreeMap<PathBuf, Vec<Reference>>,
     },
+    CodeAction {
+        actions: Vec<lsp_types::CodeAction>,
+    },
+    ResolvedAction {
+        action: lsp_types::CodeAction,
+    },
 }
 
 #[derive(Debug, Clone)]

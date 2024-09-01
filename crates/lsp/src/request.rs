@@ -36,9 +36,17 @@ pub enum Request {
         position: lsp_types::Position,
     },
     CodeActionResolve {
-        path: PathBuf,
-        position: lsp_types::Position,
+        action: lsp_types::CodeAction,
     },
+}
+
+impl Request {
+    pub fn is_notification(&self) -> bool {
+        match self {
+            Request::DidOpen { .. } | Request::DidChange { .. } | Request::DidClose { .. } => true,
+            _ => false,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]

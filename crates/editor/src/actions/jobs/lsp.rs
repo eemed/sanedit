@@ -8,14 +8,14 @@ use std::{
 use crate::{
     actions::{
         locations,
-        lsp::{self, position_to_offset},
+        lsp::{self, lsp_request, offset_to_position, position_to_offset},
     },
     common::matcher::{Kind, MatchOption, MatchStrategy},
     editor::{
         buffers::{Buffer, BufferId, Filetype},
         job_broker::KeepInTouch,
         options::LSPOptions,
-        windows::{Completion, Focus, Group, Item},
+        windows::{Completion, Focus, Group, Item, Prompt, Window},
         Editor,
     },
     job_runner::{Job, JobContext, JobResult},
@@ -23,7 +23,7 @@ use crate::{
 };
 use sanedit_buffer::{PieceTree, PieceTreeSlice};
 use sanedit_lsp::{
-    lsp_types::{self, Position},
+    lsp_types::{self, CodeAction, Position},
     CompletionItem, LSPClientParams, LSPClientSender, Reference, Request, Response,
 };
 
@@ -179,6 +179,12 @@ impl KeepInTouch for LSP {
                         sanedit_lsp::RequestResult::References { references } => {
                             show_references(editor, self.client_id, references)
                         }
+                        sanedit_lsp::RequestResult::CodeAction { actions } => {
+                            code_action(editor, self.client_id, actions)
+                        }
+                        sanedit_lsp::RequestResult::ResolvedAction { action } => {
+                            code_action_edit(editor, self.client_id, action)
+                        }
                     },
                 },
             }
@@ -223,6 +229,60 @@ fn complete(
         .build();
 
     editor.job_broker.request(job);
+}
+
+fn code_action(editor: &mut Editor, id: ClientId, actions: Vec<CodeAction>) {
+    let options: Vec<String> = actions.iter().map(|a| a.title.clone()).collect();
+    let (win, _buf) = editor.win_buf_mut(id);
+
+    let job = MatcherJob::builder(id)
+        .options(Arc::new(options))
+        .handler(Prompt::matcher_result_handler)
+        .build();
+
+    win.prompt = Prompt::builder()
+        .prompt("Select code action")
+        .on_confirm(move |editor, id, input| {
+            let (win, buf) = editor.win_buf_mut(id);
+            let Some(ft) = buf.filetype.clone() else {
+                return;
+            };
+
+            let Some(action) = actions.iter().find(|action| action.title == input) else {
+                return;
+            };
+
+            let resolved = action.edit.is_some();
+            if !resolved {
+                let request = Request::CodeActionResolve {
+                    action: action.clone(),
+                };
+
+                let Some(lsp) = editor.language_servers.get_mut(&ft) else {
+                    return;
+                };
+                let _ = lsp.send(request);
+                return;
+            }
+        })
+        .build();
+
+    editor.job_broker.request(job);
+}
+
+fn code_action_edit(editor: &mut Editor, id: ClientId, edit: lsp_types::WorkspaceEdit) {
+    let lsp_types::WorkspaceEdit {
+        changes,
+        document_changes,
+        change_annotations,
+    } = edit;
+
+    if let Some(doc_changes) = document_changes {
+        match doc_changes {
+            lsp_types::DocumentChanges::Edits(edits) => todo!(),
+            lsp_types::DocumentChanges::Operations(ops) => todo!(),
+        }
+    }
 }
 
 fn show_references(

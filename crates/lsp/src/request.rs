@@ -1,7 +1,13 @@
 use std::path::PathBuf;
 
 #[derive(Debug, Clone)]
-pub enum Request {
+pub(crate) enum ToLSP {
+    Request(Request),
+    Notification(Notification),
+}
+
+#[derive(Debug, Clone)]
+pub enum Notification {
     DidOpen {
         path: PathBuf,
         text: String,
@@ -15,6 +21,16 @@ pub enum Request {
     DidClose {
         path: PathBuf,
     },
+}
+
+#[derive(Debug, Clone)]
+pub struct Request {
+    pub id: u32,
+    pub kind: RequestKind,
+}
+
+#[derive(Debug, Clone)]
+pub enum RequestKind {
     Hover {
         path: PathBuf,
         position: lsp_types::Position,
@@ -38,15 +54,6 @@ pub enum Request {
     CodeActionResolve {
         action: lsp_types::CodeAction,
     },
-}
-
-impl Request {
-    pub fn is_notification(&self) -> bool {
-        match self {
-            Request::DidOpen { .. } | Request::DidChange { .. } | Request::DidClose { .. } => true,
-            _ => false,
-        }
-    }
 }
 
 #[derive(Debug, Clone)]

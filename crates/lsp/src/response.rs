@@ -2,8 +2,7 @@ use std::{collections::BTreeMap, path::PathBuf};
 
 #[derive(Debug, Clone)]
 pub enum Response {
-    Request(RequestResult),
-    // Notification(),
+    Request { id: u32, result: RequestResult }, // Notification(),
 }
 
 #[derive(Debug, Clone)]

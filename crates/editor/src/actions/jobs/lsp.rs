@@ -2,7 +2,10 @@ use std::{
     any::Any,
     collections::BTreeMap,
     path::{Path, PathBuf},
-    sync::Arc,
+    sync::{
+        atomic::{AtomicU32, Ordering},
+        Arc,
+    },
 };
 
 use crate::{
@@ -16,7 +19,7 @@ use crate::{
         job_broker::KeepInTouch,
         options::LSPOptions,
         windows::{Completion, Focus, Group, Item, Prompt, Window},
-        Editor,
+        Editor, Map,
     },
     job_runner::{Job, JobContext, JobResult},
     server::ClientId,
@@ -24,13 +27,24 @@ use crate::{
 use sanedit_buffer::{PieceTree, PieceTreeSlice};
 use sanedit_lsp::{
     lsp_types::{self, CodeAction, Position},
-    CompletionItem, LSPClientParams, LSPClientSender, Reference, Request, Response,
+    CompletionItem, LSPClientParams, LSPClientSender, Notification, Reference, Request,
+    RequestKind, RequestResult, Response,
 };
 
 use anyhow::Result;
 use sanedit_messages::redraw::{Severity, StatusMessage};
 
 use super::MatcherJob;
+
+/// A way to discard non relevant LSP reponses.
+/// For example if we complete a completion request when the cursor has already
+/// moved, there is no point anymore.
+#[derive(Debug)]
+pub(crate) enum Constraint {
+    Buffer(BufferId),
+    BufferVersion(u32),
+    CursorPosition(u64),
+}
 
 /// A handle to send operations to LSP instance.
 ///
@@ -46,6 +60,11 @@ pub(crate) struct LSPHandle {
 
     /// Client to send messages to LSP server
     sender: LSPClientSender,
+
+    /// Constraints that need to be met in order to execute request responses
+    requests: Map<u32, (ClientId, Vec<Constraint>)>,
+
+    request_id: AtomicU32,
 }
 
 impl LSPHandle {
@@ -53,8 +72,28 @@ impl LSPHandle {
         &self.name
     }
 
-    pub fn send(&mut self, op: Request) -> Result<()> {
-        self.sender.send(op);
+    pub fn next_id(&self) -> u32 {
+        self.request_id.fetch_add(1, Ordering::Relaxed)
+    }
+
+    pub fn reponse_of(&mut self, id: u32) -> Option<(ClientId, Vec<Constraint>)> {
+        self.requests.remove(&id)
+    }
+
+    pub fn request(
+        &mut self,
+        req: RequestKind,
+        cid: ClientId,
+        constraints: Vec<Constraint>,
+    ) -> Result<()> {
+        let id = self.next_id();
+        self.requests.insert(id, (cid, constraints));
+        self.sender.request(Request { id, kind: req });
+        Ok(())
+    }
+
+    pub fn notify(&mut self, op: Notification) -> Result<()> {
+        self.sender.notify(op);
         Ok(())
     }
 
@@ -116,8 +155,10 @@ impl Job for LSP {
                 name: command,
                 sender,
                 root: wd,
+                requests: Map::default(),
+                request_id: AtomicU32::new(1),
             };
-            ctx.send(Message::Started(ft, sender));
+            ctx.send(Message::Started(sender));
 
             while let Some(response) = reader.recv().await {
                 ctx.send(Message::Response(response));
@@ -140,9 +181,18 @@ impl KeepInTouch for LSP {
 
         if let Ok(output) = msg.downcast::<Message>() {
             match *output {
-                Message::Started(ft, sender) => {
+                Message::Started(sender) => {
+                    if editor.language_servers.contains_key(&self.filetype) {
+                        log::error!(
+                            "Language server for {} is already running.",
+                            self.filetype.as_str()
+                        );
+                        todo!("shutdown")
+                    }
                     // Set sender
-                    editor.language_servers.insert(ft, sender);
+                    editor
+                        .language_servers
+                        .insert(self.filetype.clone(), sender);
 
                     // Send all buffers of this filetype
                     let ids: Vec<BufferId> = editor.buffers().iter().map(|(id, _buf)| id).collect();
@@ -150,43 +200,77 @@ impl KeepInTouch for LSP {
                         lsp::open_document(editor, id);
                     }
                 }
-                Message::Response(response) => match response {
-                    Response::Request(request) => match request {
-                        sanedit_lsp::RequestResult::Hover { text, position } => {
-                            win.popup = Some(StatusMessage {
-                                severity: Severity::Info,
-                                message: text,
-                            });
-                        }
-                        sanedit_lsp::RequestResult::GotoDefinition { path, position } => {
-                            if editor.open_file(self.client_id, path).is_ok() {
-                                let enc = editor
-                                    .lsp_handle_for(self.client_id)
-                                    .map(|x| x.position_encoding());
-                                if let Some(enc) = enc {
-                                    let (win, buf) = editor.win_buf_mut(self.client_id);
-                                    let slice = buf.slice(..);
-                                    let offset = position_to_offset(&slice, position, &enc);
-                                    win.goto_offset(offset, buf);
-                                }
-                            }
-                        }
-                        sanedit_lsp::RequestResult::Complete {
-                            path,
-                            position,
-                            results,
-                        } => complete(editor, self.client_id, path, position, results),
-                        sanedit_lsp::RequestResult::References { references } => {
-                            show_references(editor, self.client_id, references)
-                        }
-                        sanedit_lsp::RequestResult::CodeAction { actions } => {
-                            code_action(editor, self.client_id, actions)
-                        }
-                        sanedit_lsp::RequestResult::ResolvedAction { action } => {
-                            code_action_edit(editor, self.client_id, action)
-                        }
-                    },
-                },
+                Message::Response(response) => self.handle_response(editor, response),
+            }
+        }
+    }
+}
+
+impl LSP {
+    fn handle_response(&self, editor: &mut Editor, response: Response) {
+        match response {
+            Response::Request { id, result } => {
+                let Some(lsp) = editor.language_servers.get_mut(&self.filetype) else {
+                    return;
+                };
+                let Some((id, constraints)) = lsp.reponse_of(id) else {
+                    return;
+                };
+
+                // Verify constraints
+                let (win, buf) = editor.win_buf(id);
+                for constraint in constraints {
+                    let ok = match constraint {
+                        Constraint::Buffer(bid) => win.buffer_id() == bid,
+                        Constraint::BufferVersion(v) => buf.total_changes_made() == v,
+                        Constraint::CursorPosition(pos) => win.cursors.primary().pos() == pos,
+                    };
+
+                    if !ok {
+                        return;
+                    }
+                }
+
+                self.handle_result(editor, id, result);
+            }
+        }
+    }
+
+    fn handle_result(&self, editor: &mut Editor, id: ClientId, result: RequestResult) {
+        match result {
+            sanedit_lsp::RequestResult::Hover { text, position } => {
+                let (win, buf) = editor.win_buf_mut(id);
+                win.popup = Some(StatusMessage {
+                    severity: Severity::Info,
+                    message: text,
+                });
+            }
+            sanedit_lsp::RequestResult::GotoDefinition { path, position } => {
+                if editor.open_file(self.client_id, path).is_ok() {
+                    let enc = editor
+                        .lsp_handle_for(self.client_id)
+                        .map(|x| x.position_encoding());
+                    if let Some(enc) = enc {
+                        let (win, buf) = editor.win_buf_mut(self.client_id);
+                        let slice = buf.slice(..);
+                        let offset = position_to_offset(&slice, position, &enc);
+                        win.goto_offset(offset, buf);
+                    }
+                }
+            }
+            sanedit_lsp::RequestResult::Complete {
+                path,
+                position,
+                results,
+            } => complete(editor, id, path, position, results),
+            sanedit_lsp::RequestResult::References { references } => {
+                show_references(editor, id, references)
+            }
+            sanedit_lsp::RequestResult::CodeAction { actions } => code_action(editor, id, actions),
+            sanedit_lsp::RequestResult::ResolvedAction { action } => {
+                if let Some(edit) = action.edit {
+                    code_action_edit(editor, id, edit)
+                }
             }
         }
     }
@@ -194,7 +278,7 @@ impl KeepInTouch for LSP {
 
 #[derive(Debug)]
 enum Message {
-    Started(Filetype, LSPHandle),
+    Started(LSPHandle),
     Response(Response),
 }
 
@@ -254,14 +338,14 @@ fn code_action(editor: &mut Editor, id: ClientId, actions: Vec<CodeAction>) {
 
             let resolved = action.edit.is_some();
             if !resolved {
-                let request = Request::CodeActionResolve {
+                let request = RequestKind::CodeActionResolve {
                     action: action.clone(),
                 };
 
                 let Some(lsp) = editor.language_servers.get_mut(&ft) else {
                     return;
                 };
-                let _ = lsp.send(request);
+                let _ = lsp.request(request, id, vec![]);
                 return;
             }
         })

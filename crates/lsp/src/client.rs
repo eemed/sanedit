@@ -5,7 +5,8 @@ use std::{path::PathBuf, process::Stdio};
 
 use crate::jsonrpc::{JsonNotification, JsonRequest};
 use crate::process::{ProcessHandler, ServerRequest};
-use crate::response::{CodeAction, Reference};
+use crate::request::{Notification, RequestKind, ToLSP};
+use crate::response::Reference;
 use crate::util::path_to_uri;
 use crate::{Change, CompletionItem, Request, RequestResult, Response};
 
@@ -93,13 +94,16 @@ impl LSPClientReader {
 #[derive(Debug)]
 pub struct LSPClientSender {
     init_params: Arc<lsp_types::InitializeResult>,
-    sender: Sender<Request>,
+    sender: Sender<ToLSP>,
 }
 
 impl LSPClientSender {
-    // TODO error?
-    pub fn send(&mut self, req: Request) {
-        let _ = self.sender.blocking_send(req);
+    pub fn request(&mut self, req: Request) {
+        let _ = self.sender.blocking_send(ToLSP::Request(req));
+    }
+
+    pub fn notify(&mut self, notif: Notification) {
+        let _ = self.sender.blocking_send(ToLSP::Notification(notif));
     }
 
     pub fn init_params(&self) -> &lsp_types::InitializeResult {
@@ -110,7 +114,7 @@ impl LSPClientSender {
 struct LSPClient {
     params: Arc<LSPClientParams>,
     init_params: Arc<lsp_types::InitializeResult>,
-    receiver: Receiver<Request>,
+    receiver: Receiver<ToLSP>,
     sender: Sender<Response>,
     server_sender: Sender<ServerRequest>,
 }
@@ -143,52 +147,60 @@ struct Handler {
 }
 
 impl Handler {
-    pub async fn run(mut self, req: Request) -> Result<()> {
-        match req {
-            Request::DidOpen {
-                path,
-                text,
-                version,
-            } => self.did_open_document(path, text, version).await?,
-            Request::DidChange {
-                path,
-                version,
-                changes,
-            } => self.did_change_document(path, changes, version).await?,
-            Request::DidClose { path } => todo!(),
-            Request::Hover { path, position } => self.hover(path, position).await?,
-            Request::GotoDefinition { path, position } => {
-                self.goto_definition(path, position).await?
-            }
-            Request::Complete { path, position } => self.complete(path, position).await?,
-            Request::References { path, position } => self.show_references(path, position).await?,
-            Request::CodeAction { path, position } => self.code_action(path, position).await?,
-            Request::CodeActionResolve {
-                path,
-                position,
-                action,
-            } => self.code_action_resolve(path, position, action).await?,
+    pub async fn run(mut self, msg: ToLSP) -> Result<()> {
+        match msg {
+            ToLSP::Request(req) => match req.kind {
+                RequestKind::Hover { path, position } => self.hover(req.id, path, position).await?,
+                RequestKind::GotoDefinition { path, position } => {
+                    self.goto_definition(req.id, path, position).await?
+                }
+                RequestKind::Complete { path, position } => {
+                    self.complete(req.id, path, position).await?
+                }
+                RequestKind::References { path, position } => {
+                    self.show_references(req.id, path, position).await?
+                }
+                RequestKind::CodeAction { path, position } => {
+                    self.code_action(req.id, path, position).await?
+                }
+                RequestKind::CodeActionResolve { action } => {
+                    self.code_action_resolve(req.id, action).await?
+                }
+            },
+            ToLSP::Notification(notif) => match notif {
+                Notification::DidOpen {
+                    path,
+                    text,
+                    version,
+                } => self.did_open_document(path, text, version).await?,
+                Notification::DidChange {
+                    path,
+                    version,
+                    changes,
+                } => self.did_change_document(path, changes, version).await?,
+                Notification::DidClose { path } => todo!(),
+            },
         }
 
         Ok(())
     }
 
-    async fn code_action_resolve(
-        &mut self,
-        path: PathBuf,
-        position: lsp_types::Position,
-        action: lsp_types::CodeAction,
-    ) -> Result<()> {
+    async fn code_action_resolve(&mut self, id: u32, action: lsp_types::CodeAction) -> Result<()> {
         log::info!("Resolve: {action:?}");
         let response = self
-            .request::<lsp_types::request::CodeActionResolveRequest>(&action)
+            .request::<lsp_types::request::CodeActionResolveRequest>(id, &action)
             .await?;
         log::info!("Response: {response:?}");
 
         Ok(())
     }
 
-    async fn code_action(&mut self, path: PathBuf, position: lsp_types::Position) -> Result<()> {
+    async fn code_action(
+        &mut self,
+        id: u32,
+        path: PathBuf,
+        position: lsp_types::Position,
+    ) -> Result<()> {
         let params = lsp_types::CodeActionParams {
             text_document: lsp_types::TextDocumentIdentifier {
                 uri: path_to_uri(&path),
@@ -211,7 +223,7 @@ impl Handler {
         };
 
         let response = self
-            .request::<lsp_types::request::CodeActionRequest>(&params)
+            .request::<lsp_types::request::CodeActionRequest>(id, &params)
             .await?;
         let response = response.ok_or(anyhow!("No code action response"))?;
         let mut actions = vec![];
@@ -227,7 +239,10 @@ impl Handler {
 
         let _ = self
             .response
-            .send(Response::Request(RequestResult::CodeAction { actions }))
+            .send(Response::Request {
+                id,
+                result: RequestResult::CodeAction { actions },
+            })
             .await;
 
         Ok(())
@@ -264,7 +279,12 @@ impl Handler {
             .await
     }
 
-    async fn complete(&mut self, path: PathBuf, position: lsp_types::Position) -> Result<()> {
+    async fn complete(
+        &mut self,
+        id: u32,
+        path: PathBuf,
+        position: lsp_types::Position,
+    ) -> Result<()> {
         let params = lsp_types::CompletionParams {
             text_document_position: lsp_types::TextDocumentPositionParams {
                 text_document: lsp_types::TextDocumentIdentifier {
@@ -285,7 +305,7 @@ impl Handler {
         };
 
         let response = self
-            .request::<lsp_types::request::Completion>(&params)
+            .request::<lsp_types::request::Completion>(id, &params)
             .await?;
         let response = response.ok_or(anyhow!("No completion response"))?;
 
@@ -311,11 +331,14 @@ impl Handler {
 
         let _ = self
             .response
-            .send(Response::Request(RequestResult::Complete {
-                path,
-                position,
-                results,
-            }))
+            .send(Response::Request {
+                id,
+                result: RequestResult::Complete {
+                    path,
+                    position,
+                    results,
+                },
+            })
             .await;
 
         Ok(())
@@ -323,6 +346,7 @@ impl Handler {
 
     async fn goto_definition(
         &mut self,
+        id: u32,
         path: PathBuf,
         position: lsp_types::Position,
     ) -> Result<()> {
@@ -342,7 +366,7 @@ impl Handler {
         };
 
         let response = self
-            .request::<lsp_types::request::GotoDefinition>(&params)
+            .request::<lsp_types::request::GotoDefinition>(id, &params)
             .await?;
         let response = response.ok_or(anyhow!("No goto definition response"))?;
 
@@ -362,16 +386,16 @@ impl Handler {
 
         let _ = self
             .response
-            .send(Response::Request(RequestResult::GotoDefinition {
-                path,
-                position,
-            }))
+            .send(Response::Request {
+                id,
+                result: RequestResult::GotoDefinition { path, position },
+            })
             .await;
 
         Ok(())
     }
 
-    async fn hover(&mut self, path: PathBuf, position: lsp_types::Position) -> Result<()> {
+    async fn hover(&mut self, id: u32, path: PathBuf, position: lsp_types::Position) -> Result<()> {
         let params = lsp_types::HoverParams {
             text_document_position_params: lsp_types::TextDocumentPositionParams {
                 text_document: lsp_types::TextDocumentIdentifier {
@@ -385,7 +409,7 @@ impl Handler {
         };
 
         let response = self
-            .request::<lsp_types::request::HoverRequest>(&params)
+            .request::<lsp_types::request::HoverRequest>(id, &params)
             .await?;
         let response = response.ok_or(anyhow!("No hover response"))?;
 
@@ -402,7 +426,10 @@ impl Handler {
         }
 
         self.response
-            .send(Response::Request(RequestResult::Hover { text, position }))
+            .send(Response::Request {
+                id,
+                result: RequestResult::Hover { text, position },
+            })
             .await?;
 
         Ok(())
@@ -426,6 +453,7 @@ impl Handler {
 
     async fn show_references(
         &mut self,
+        id: u32,
         path: PathBuf,
         position: lsp_types::Position,
     ) -> Result<()> {
@@ -448,7 +476,7 @@ impl Handler {
         };
 
         let response = self
-            .request::<lsp_types::request::References>(&params)
+            .request::<lsp_types::request::References>(id, &params)
             .await?;
         let locations = response.ok_or(anyhow!("No references response"))?;
         let mut references = BTreeMap::new();
@@ -464,7 +492,10 @@ impl Handler {
         }
 
         self.response
-            .send(Response::Request(RequestResult::References { references }))
+            .send(Response::Request {
+                id,
+                result: RequestResult::References { references },
+            })
             .await?;
 
         Ok(())
@@ -483,9 +514,9 @@ impl Handler {
 
     async fn request<R: lsp_types::request::Request>(
         &mut self,
+        id: u32,
         params: &R::Params,
     ) -> Result<R::Result> {
-        let id = Self::next_request_id();
         let json = JsonRequest::new(R::METHOD, &params, id);
         let (tx, mut rx) = channel(1);
         let msg = ServerRequest::Request { json, answer: tx };
@@ -499,11 +530,6 @@ impl Handler {
         let result = serde_json::from_value(response)?;
 
         Ok(result)
-    }
-
-    fn next_request_id() -> u32 {
-        static NEXT_ID: AtomicU32 = AtomicU32::new(1);
-        NEXT_ID.fetch_add(1, Ordering::Relaxed)
     }
 
     pub fn filetype(&self) -> &str {

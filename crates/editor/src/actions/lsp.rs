@@ -6,7 +6,7 @@ use std::{
 };
 use thiserror::Error;
 
-use sanedit_lsp::{lsp_types, Request};
+use sanedit_lsp::{lsp_types, Notification, Request, RequestKind};
 
 use crate::{
     editor::{
@@ -17,7 +17,7 @@ use crate::{
     server::ClientId,
 };
 
-use super::jobs::{LSPHandle, LSP};
+use super::jobs::{Constraint, LSPHandle, LSP};
 
 #[derive(Debug, Error)]
 enum LSPActionError {
@@ -41,7 +41,13 @@ enum LSPActionError {
 pub(crate) fn lsp_request(
     editor: &mut Editor,
     id: ClientId,
-    f: fn(&Window, &Buffer, PathBuf, PieceTreeSlice, &LSPHandle) -> Option<Request>,
+    f: fn(
+        &Window,
+        &Buffer,
+        PathBuf,
+        PieceTreeSlice,
+        &LSPHandle,
+    ) -> Option<(RequestKind, Vec<Constraint>)>,
 ) -> Result<()> {
     let (win, buf) = editor.win_buf_mut(id);
     let ft = buf.filetype.clone().ok_or(LSPActionError::FiletypeNotSet)?;
@@ -58,12 +64,12 @@ pub(crate) fn lsp_request(
     let slice = buf.slice(..);
     let request = (f)(win, buf, path, slice, &handle);
 
-    if let Some(request) = request {
+    if let Some((kind, constraints)) = request {
         let lsp = editor
             .language_servers
             .get_mut(&ft)
             .ok_or(LSPActionError::LanguageServerNotStarted(ft.clone()))?;
-        lsp.send(request)
+        lsp.request(kind, id, constraints)
     } else {
         Ok(())
     }
@@ -84,9 +90,8 @@ fn start_lsp(editor: &mut Editor, id: ClientId) {
             .get(ft.as_str())
             .ok_or(LSPActionError::LanguageServerNotConfigured(ft.clone()))?;
 
-        let name = format!("LSP-{}", ft.as_str());
         let lsp = LSP::new(id, wd, ft, lang);
-        editor.job_broker.request_slot(id, &name, lsp);
+        editor.job_broker.request(lsp);
 
         Ok(())
     }
@@ -102,7 +107,15 @@ fn hover(editor: &mut Editor, id: ClientId) {
     let _ = lsp_request(editor, id, move |win, buf, path, slice, lsp| {
         let offset = win.cursors.primary().pos();
         let position = offset_to_position(&slice, offset, &lsp.position_encoding());
-        Request::Hover { path, position }.into()
+        let kind = RequestKind::Hover { path, position };
+        Some((
+            kind,
+            vec![
+                Constraint::Buffer(buf.id),
+                Constraint::BufferVersion(buf.total_changes_made()),
+                Constraint::CursorPosition(offset),
+            ],
+        ))
     });
 }
 
@@ -111,47 +124,48 @@ fn goto_definition(editor: &mut Editor, id: ClientId) {
     let _ = lsp_request(editor, id, move |win, buf, path, slice, lsp| {
         let offset = win.cursors.primary().pos();
         let position = offset_to_position(&slice, offset, &lsp.position_encoding());
-        Request::GotoDefinition { path, position }.into()
+        let kind = RequestKind::GotoDefinition { path, position };
+        Some((kind, vec![]))
     });
 }
 
 #[action("Synchronize document")]
 fn sync_document(editor: &mut Editor, id: ClientId) {
-    let _ = lsp_request(editor, id, move |win, buf, path, slice, lsp| {
-        let version = buf.total_changes_made() as i32;
-        let edit = buf.last_edit()?;
-        let enc = lsp.position_encoding();
+    // let _ = lsp_request(editor, id, move |win, buf, path, slice, lsp| {
+    //     let version = buf.total_changes_made() as i32;
+    //     let edit = buf.last_edit()?;
+    //     let enc = lsp.position_encoding();
 
-        use ChangesKind::*;
-        let changes = match edit.changes.kind() {
-            Undo | Redo => {
-                vec![sanedit_lsp::Change {
-                    start: lsp_types::Position {
-                        line: 0,
-                        character: 0,
-                    },
-                    end: offset_to_position(&slice, slice.len(), &enc),
-                    text: String::from(&slice),
-                }]
-            }
-            _ => edit
-                .changes
-                .iter()
-                .map(|change| sanedit_lsp::Change {
-                    start: offset_to_position(&slice, change.start(), &enc),
-                    end: offset_to_position(&slice, change.end(), &enc),
-                    text: String::from_utf8(change.text().into()).expect("Change was not UTF8"),
-                })
-                .collect(),
-        };
+    //     use ChangesKind::*;
+    //     let changes = match edit.changes.kind() {
+    //         Undo | Redo => {
+    //             vec![sanedit_lsp::Change {
+    //                 start: lsp_types::Position {
+    //                     line: 0,
+    //                     character: 0,
+    //                 },
+    //                 end: offset_to_position(&slice, slice.len(), &enc),
+    //                 text: String::from(&slice),
+    //             }]
+    //         }
+    //         _ => edit
+    //             .changes
+    //             .iter()
+    //             .map(|change| sanedit_lsp::Change {
+    //                 start: offset_to_position(&slice, change.start(), &enc),
+    //                 end: offset_to_position(&slice, change.end(), &enc),
+    //                 text: String::from_utf8(change.text().into()).expect("Change was not UTF8"),
+    //             })
+    //             .collect(),
+    //     };
 
-        Request::DidChange {
-            path,
-            changes,
-            version,
-        }
-        .into()
-    });
+    //     RequestKind::DidChange {
+    //         path,
+    //         changes,
+    //         version,
+    //     }
+    //     .into()
+    // });
 }
 
 #[action("Complete")]
@@ -159,7 +173,15 @@ fn complete(editor: &mut Editor, id: ClientId) {
     let _ = lsp_request(editor, id, move |win, buf, path, slice, lsp| {
         let offset = win.cursors.primary().pos();
         let position = offset_to_position(&slice, offset, &lsp.position_encoding());
-        Request::Complete { path, position }.into()
+        let kind = RequestKind::Complete { path, position };
+        Some((
+            kind,
+            vec![
+                Constraint::Buffer(buf.id),
+                Constraint::BufferVersion(buf.total_changes_made()),
+                Constraint::CursorPosition(offset),
+            ],
+        ))
     });
 }
 
@@ -168,7 +190,9 @@ fn references(editor: &mut Editor, id: ClientId) {
     let _ = lsp_request(editor, id, move |win, buf, path, slice, lsp| {
         let offset = win.cursors.primary().pos();
         let position = offset_to_position(&slice, offset, &lsp.position_encoding());
-        Request::References { path, position }.into()
+        let kind = RequestKind::References { path, position };
+
+        Some((kind, vec![]))
     });
 }
 
@@ -177,7 +201,14 @@ fn code_action(editor: &mut Editor, id: ClientId) {
     let _ = lsp_request(editor, id, move |win, buf, path, slice, lsp| {
         let offset = win.cursors.primary().pos();
         let position = offset_to_position(&slice, offset, &lsp.position_encoding());
-        Request::CodeAction { path, position }.into()
+        let kind = RequestKind::CodeAction { path, position };
+        Some((
+            kind,
+            vec![
+                Constraint::Buffer(buf.id),
+                Constraint::BufferVersion(buf.total_changes_made()),
+            ],
+        ))
     });
 }
 
@@ -211,7 +242,7 @@ pub(crate) fn open_document(editor: &mut Editor, bid: BufferId) -> Result<()> {
         .language_servers
         .get_mut(&ft)
         .ok_or(LSPActionError::LanguageServerNotStarted(ft.clone()))?;
-    lsp.send(Request::DidOpen {
+    lsp.notify(Notification::DidOpen {
         path: path.clone(),
         text,
         version,
@@ -233,7 +264,7 @@ pub(crate) fn close_document(editor: &mut Editor, bid: BufferId) -> Result<()> {
         .language_servers
         .get_mut(&ft)
         .ok_or(LSPActionError::LanguageServerNotStarted(ft.clone()))?;
-    lsp.send(Request::DidClose { path: path.clone() })
+    lsp.notify(Notification::DidClose { path: path.clone() })
 }
 
 pub(crate) fn offset_to_position(

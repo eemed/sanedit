@@ -227,6 +227,9 @@ impl LSP {
                     };
 
                     if !ok {
+                        log::debug!(
+                            "LSP response {result:?} filtered because constraint {constraint:?}"
+                        );
                         return;
                     }
                 }

@@ -366,7 +366,21 @@ fn code_action_edit(editor: &mut Editor, id: ClientId, edit: lsp_types::Workspac
 
     if let Some(doc_changes) = document_changes {
         match doc_changes {
-            lsp_types::DocumentChanges::Edits(edits) => todo!(),
+            lsp_types::DocumentChanges::Edits(edits) => {
+                for edit in edits {
+                    for tedit in edit.edits {
+                        let text_edit = {
+                            match tedit {
+                                lsp_types::OneOf::Left(item) => item,
+                                lsp_types::OneOf::Right(item) => item.text_edit,
+                            }
+                        };
+
+                        // tedit.range;
+                        // tedit.new_text;
+                    }
+                }
+            }
             lsp_types::DocumentChanges::Operations(ops) => todo!(),
         }
     }

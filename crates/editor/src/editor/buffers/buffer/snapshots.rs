@@ -1,4 +1,4 @@
-use sanedit_buffer::ReadOnlyPieceTree;
+use sanedit_buffer::PieceTreeView;
 
 use crate::editor::windows::Cursors;
 
@@ -19,7 +19,7 @@ pub(crate) struct Snapshots {
 }
 
 impl Snapshots {
-    pub fn new(initial: ReadOnlyPieceTree) -> Snapshots {
+    pub fn new(initial: PieceTreeView) -> Snapshots {
         Snapshots {
             current: 0,
             snapshots: vec![SnapshotNode::new(initial, 0)],
@@ -42,7 +42,7 @@ impl Snapshots {
         self.current
     }
 
-    pub fn insert(&mut self, snapshot: ReadOnlyPieceTree) -> SnapshotId {
+    pub fn insert(&mut self, snapshot: PieceTreeView) -> SnapshotId {
         let next_pos = self.snapshots.len();
         let mut node = SnapshotNode::new(snapshot, next_pos);
         node.previous.push(self.current);
@@ -98,7 +98,7 @@ impl Snapshots {
 #[derive(Debug, Clone)]
 pub(crate) struct SnapshotNode {
     pub(crate) id: SnapshotId,
-    pub(crate) snapshot: ReadOnlyPieceTree,
+    pub(crate) snapshot: PieceTreeView,
     previous: Vec<SnapshotId>,
     next: Vec<SnapshotId>,
 
@@ -107,7 +107,7 @@ pub(crate) struct SnapshotNode {
 }
 
 impl SnapshotNode {
-    pub fn new(snapshot: ReadOnlyPieceTree, id: SnapshotId) -> SnapshotNode {
+    pub fn new(snapshot: PieceTreeView, id: SnapshotId) -> SnapshotNode {
         SnapshotNode {
             id,
             snapshot,

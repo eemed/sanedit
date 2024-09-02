@@ -1,5 +1,5 @@
 use crate::{
-    piece_tree::{Bytes, ReadOnlyPieceTree},
+    piece_tree::{Bytes, PieceTreeView},
     PieceTreeSlice,
 };
 
@@ -226,7 +226,7 @@ pub struct Chars<'a> {
 
 impl<'a> Chars<'a> {
     #[inline]
-    pub(crate) fn new(pt: &'a ReadOnlyPieceTree, at: u64) -> Chars<'a> {
+    pub(crate) fn new(pt: &'a PieceTreeView, at: u64) -> Chars<'a> {
         let bytes = Bytes::new(pt, at);
         Chars {
             bytes,

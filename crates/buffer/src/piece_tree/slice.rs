@@ -3,18 +3,19 @@ use std::ops::{Bound, Range, RangeBounds};
 use super::{
     chunks::Chunks,
     utf8::{self, chars::Chars, graphemes::Graphemes, lines::Lines},
-    Bytes, ReadOnlyPieceTree,
+    Bytes, PieceTreeView,
 };
 
+/// A read only slice of the piecetree
 #[derive(Debug, Clone)]
 pub struct PieceTreeSlice<'a> {
     pub(crate) range: Range<u64>,
-    pub(crate) pt: &'a ReadOnlyPieceTree,
+    pub(crate) view: &'a PieceTreeView,
 }
 
 impl<'a> PieceTreeSlice<'a> {
-    pub(crate) fn new(pt: &'a ReadOnlyPieceTree, range: Range<u64>) -> PieceTreeSlice {
-        PieceTreeSlice { range, pt }
+    pub(crate) fn new(pt: &'a PieceTreeView, range: Range<u64>) -> PieceTreeSlice {
+        PieceTreeSlice { range, view: pt }
     }
 
     /// Start of slice in buffer
@@ -52,10 +53,10 @@ impl<'a> PieceTreeSlice<'a> {
     #[inline]
     pub fn bytes_at(&self, pos: u64) -> Bytes<'a> {
         debug_assert!(
-            self.start() + pos <= self.pt.len,
+            self.start() + pos <= self.view.len,
             "bytes_at: Attempting to index {} over buffer len {}",
             self.start() + pos,
-            self.pt.len
+            self.view.len
         );
         Bytes::new_from_slice(&self, pos)
     }
@@ -68,10 +69,10 @@ impl<'a> PieceTreeSlice<'a> {
     #[inline]
     pub fn chunks_at(&self, pos: u64) -> Chunks<'a> {
         debug_assert!(
-            self.start() + pos <= self.pt.len,
+            self.start() + pos <= self.view.len,
             "chunks_at: Attempting to index {} over buffer len {}",
             self.start() + pos,
-            self.pt.len
+            self.view.len
         );
         Chunks::new_from_slice(&self, pos)
     }
@@ -84,10 +85,10 @@ impl<'a> PieceTreeSlice<'a> {
     #[inline]
     pub fn chars_at(&self, pos: u64) -> Chars<'a> {
         debug_assert!(
-            self.start() + pos <= self.pt.len,
+            self.start() + pos <= self.view.len,
             "chars_at: Attempting to index {} over buffer len {}",
             self.start() + pos,
-            self.pt.len
+            self.view.len
         );
         Chars::new_from_slice(&self, pos)
     }
@@ -109,7 +110,7 @@ impl<'a> PieceTreeSlice<'a> {
         let start = self.range.start + sub_start;
         let end = self.range.start + sub_end;
 
-        self.pt.slice(start..end)
+        self.view.slice(start..end)
     }
 
     #[inline]

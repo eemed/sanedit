@@ -1,6 +1,6 @@
 use std::{any::Any, ops::Range};
 
-use sanedit_buffer::ReadOnlyPieceTree;
+use sanedit_buffer::PieceTreeView;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 
 use crate::{
@@ -25,7 +25,7 @@ enum SearchMessage {
 pub(crate) struct Search {
     client_id: ClientId,
     term: String,
-    ropt: ReadOnlyPieceTree,
+    ropt: PieceTreeView,
     range: BufferRange,
     dir: SearchDirection,
     kind: SearchKind,
@@ -35,7 +35,7 @@ impl Search {
     pub fn new(
         id: ClientId,
         term: &str,
-        ropt: ReadOnlyPieceTree,
+        ropt: PieceTreeView,
         range: BufferRange,
         dir: SearchDirection,
         kind: SearchKind,
@@ -53,7 +53,7 @@ impl Search {
     async fn search(
         msend: Sender<Vec<BufferRange>>,
         searcher: PTSearcher,
-        ropt: ReadOnlyPieceTree,
+        ropt: PieceTreeView,
         view: BufferRange,
     ) {
         let slice = ropt.slice(view);

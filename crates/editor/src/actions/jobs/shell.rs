@@ -2,7 +2,7 @@ mod tmux;
 
 use std::process::Stdio;
 
-use sanedit_buffer::ReadOnlyPieceTree;
+use sanedit_buffer::PieceTreeView;
 use tokio::process::Command;
 
 use crate::{
@@ -17,7 +17,7 @@ pub(crate) use tmux::*;
 pub(crate) struct ShellCommand {
     client_id: ClientId,
     command: String,
-    pipe_input: Option<ReadOnlyPieceTree>,
+    pipe_input: Option<PieceTreeView>,
 }
 
 impl ShellCommand {
@@ -29,7 +29,7 @@ impl ShellCommand {
         }
     }
 
-    pub fn pipe(mut self, ropt: ReadOnlyPieceTree) -> Self {
+    pub fn pipe(mut self, ropt: PieceTreeView) -> Self {
         self.pipe_input = Some(ropt);
         self
     }

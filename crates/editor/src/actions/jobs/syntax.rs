@@ -1,6 +1,6 @@
 use std::{any::Any, ops::Range};
 
-use sanedit_buffer::ReadOnlyPieceTree;
+use sanedit_buffer::PieceTreeView;
 
 use crate::{
     editor::{
@@ -18,7 +18,7 @@ pub(crate) struct SyntaxParser {
     client_id: ClientId,
     syntax: Syntax,
     bid: BufferId,
-    ropt: ReadOnlyPieceTree,
+    ropt: PieceTreeView,
     range: BufferRange,
 }
 
@@ -27,7 +27,7 @@ impl SyntaxParser {
         id: ClientId,
         bid: BufferId,
         syntax: Syntax,
-        ropt: ReadOnlyPieceTree,
+        ropt: PieceTreeView,
         range: BufferRange,
     ) -> Self {
         SyntaxParser {

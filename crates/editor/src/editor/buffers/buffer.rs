@@ -15,7 +15,7 @@ use std::{
 
 use anyhow::ensure;
 use anyhow::Result;
-use sanedit_buffer::{PieceTree, PieceTreeSlice, ReadOnlyPieceTree};
+use sanedit_buffer::{PieceTree, PieceTreeSlice, PieceTreeView};
 use sanedit_utils::key_type;
 use thiserror::Error;
 
@@ -56,7 +56,7 @@ pub(crate) struct Buffer {
 impl Buffer {
     pub fn new() -> Buffer {
         let pt = PieceTree::new();
-        let snapshot = pt.read_only_copy();
+        let snapshot = pt.view();
         Buffer {
             id: BufferId::default(),
             filetype: None,
@@ -85,7 +85,7 @@ impl Buffer {
         log::debug!("creating file backed buffer");
         let path = file.path();
         let pt = PieceTree::from_path(path)?;
-        let snapshot = pt.read_only_copy();
+        let snapshot = pt.view();
         Ok(Buffer {
             id: BufferId::default(),
             read_only: file.read_only(),
@@ -116,7 +116,7 @@ impl Buffer {
 
     fn from_reader<R: io::Read>(reader: R) -> Result<Buffer> {
         let pt = PieceTree::from_reader(reader)?;
-        let snapshot = pt.read_only_copy();
+        let snapshot = pt.view();
         Ok(Buffer {
             id: BufferId::default(),
             diagnostics: vec![],
@@ -321,8 +321,8 @@ impl Buffer {
         self.pt.slice(range)
     }
 
-    pub fn read_only_copy(&self) -> ReadOnlyPieceTree {
-        self.pt.read_only_copy()
+    pub fn read_only_copy(&self) -> PieceTreeView {
+        self.pt.view()
     }
 
     pub fn is_modified(&self) -> bool {
@@ -359,7 +359,7 @@ impl Buffer {
         Ok(Saved { snapshot: snap })
     }
 
-    fn save_copy(buf: &ReadOnlyPieceTree) -> Result<PathBuf> {
+    fn save_copy(buf: &PieceTreeView) -> Result<PathBuf> {
         let (path, mut file) = tmp_file().ok_or(BufferError::CannotCreateTmpFile)?;
 
         let mut chunks = buf.chunks();

@@ -3,22 +3,23 @@ pub(crate) mod builder;
 pub(crate) mod bytes;
 pub(crate) mod chunks;
 pub(crate) mod inplace;
+pub(crate) mod mark;
 pub(crate) mod slice;
 pub(crate) mod tree;
 pub(crate) mod utf8;
+pub(crate) mod view;
 
 use std::borrow::Cow;
-use std::cmp;
 use std::io::{self, Write};
-use std::ops::{Bound, RangeBounds};
+use std::ops::RangeBounds;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use self::buffers::{AddBuffer, AddBufferReader, AddBufferWriter};
-use self::inplace::write_in_place;
-use self::tree::pieces::Pieces;
+use self::buffers::{AddBuffer, AddBufferWriter};
+use self::mark::Mark;
 use self::tree::Tree;
 use self::utf8::graphemes::Graphemes;
+use self::view::PieceTreeView;
 use crate::piece_tree::buffers::{AppendResult, BufferKind};
 use crate::piece_tree::chunks::Chunks;
 use crate::piece_tree::tree::piece::Piece;
@@ -30,16 +31,6 @@ use self::utf8::chars::Chars;
 use crate::piece_tree::bytes::Bytes;
 
 pub(crate) const FILE_BACKED_MAX_PIECE_SIZE: usize = 1024 * 256;
-
-/// A mark that tracks a position in text.
-/// It can be retrieved anytime if the position has not been deleted
-#[derive(Debug, Clone, Copy)]
-pub struct Mark {
-    pub(crate) orig: u64,
-    pub(crate) kind: BufferKind,
-    pub(crate) pos: u64,
-    pub(crate) count: u32,
-}
 
 /// Buffer is created using two buffers. Original buffer which stores original
 /// file content and is immutable and add buffer which stores added text and is
@@ -55,7 +46,7 @@ pub struct Mark {
 #[derive(Debug)]
 pub struct PieceTree {
     add_writer: AddBufferWriter,
-    pt: ReadOnlyPieceTree,
+    view: PieceTreeView,
 }
 
 impl PieceTree {
@@ -109,7 +100,7 @@ impl PieceTree {
 
         PieceTree {
             add_writer: awrite,
-            pt: ReadOnlyPieceTree {
+            view: PieceTreeView {
                 tree: pieces,
                 len: orig.len(),
                 orig,
@@ -158,8 +149,8 @@ impl PieceTree {
                     bytes.len() as u64,
                     count as u32,
                 );
-                self.pt.len += piece.len;
-                self.pt.tree.insert(*pos as u64, piece, can_append);
+                self.view.len += piece.len;
+                self.view.tree.insert(*pos as u64, piece, can_append);
             }
 
             bytes = &bytes[n..];
@@ -169,10 +160,10 @@ impl PieceTree {
     /// Insert bytes to a position
     pub fn insert<B: AsRef<[u8]>>(&mut self, pos: u64, bytes: B) {
         debug_assert!(
-            pos <= self.pt.len,
+            pos <= self.view.len,
             "insert: Attempting to index {} over buffer len {}",
             pos,
-            self.pt.len
+            self.view.len
         );
 
         let mut bytes = bytes.as_ref();
@@ -188,8 +179,8 @@ impl PieceTree {
             };
 
             let piece = Piece::new(BufferKind::Add, bpos as u64, bytes.len() as u64);
-            self.pt.len += piece.len;
-            self.pt.tree.insert(pos, piece, can_append);
+            self.view.len += piece.len;
+            self.view.tree.insert(pos, piece, can_append);
 
             bytes = &bytes[n..];
         }
@@ -213,93 +204,93 @@ impl PieceTree {
         let end = match range.end_bound() {
             std::ops::Bound::Included(n) => *n + 1,
             std::ops::Bound::Excluded(n) => *n,
-            std::ops::Bound::Unbounded => self.pt.len,
+            std::ops::Bound::Unbounded => self.view.len,
         };
 
         debug_assert!(
-            end <= self.pt.len,
+            end <= self.view.len,
             "remove: Attempting to index {} over buffer len {}",
             end,
-            self.pt.len
+            self.view.len
         );
 
-        self.pt.tree.remove(start..end);
-        self.pt.len -= end - start;
+        self.view.tree.remove(start..end);
+        self.view.len -= end - start;
     }
 
     #[inline]
     pub fn append<B: AsRef<[u8]>>(&mut self, bytes: B) {
-        self.insert(self.pt.len, bytes);
+        self.insert(self.view.len, bytes);
     }
 
     #[inline]
     pub fn bytes(&self) -> Bytes {
-        self.pt.bytes()
+        self.view.bytes()
     }
 
     #[inline]
     pub fn bytes_at(&self, pos: u64) -> Bytes {
-        self.pt.bytes_at(pos)
+        self.view.bytes_at(pos)
     }
 
     #[inline]
     pub fn chunks(&self) -> Chunks {
-        self.pt.chunks()
+        self.view.chunks()
     }
 
     #[inline]
     pub fn chunks_at(&self, pos: u64) -> Chunks {
-        self.pt.chunks_at(pos)
+        self.view.chunks_at(pos)
     }
 
     #[inline]
     pub fn slice<R: RangeBounds<u64>>(&self, range: R) -> PieceTreeSlice {
-        self.pt.slice(range)
+        self.view.slice(range)
     }
 
     #[inline]
     pub fn chars(&self) -> Chars {
-        self.pt.chars()
+        self.view.chars()
     }
 
     #[inline]
     pub fn chars_at(&self, at: u64) -> Chars {
-        self.pt.chars_at(at)
+        self.view.chars_at(at)
     }
 
     #[inline]
     pub fn lines(&self) -> Lines {
-        self.pt.lines()
+        self.view.lines()
     }
 
     #[inline]
     pub fn lines_at(&self, pos: u64) -> Lines {
-        self.pt.lines_at(pos)
+        self.view.lines_at(pos)
     }
 
     #[inline]
     pub fn line_at(&self, pos: u64) -> (u64, PieceTreeSlice) {
-        self.pt.line_at(pos)
+        self.view.line_at(pos)
     }
 
     #[inline]
     pub fn pos_at_line(&self, line: u64) -> u64 {
-        self.pt.pos_at_line(line)
+        self.view.pos_at_line(line)
     }
 
     #[inline]
     pub fn graphemes(&self) -> Graphemes {
-        self.pt.graphemes()
+        self.view.graphemes()
     }
 
     #[inline]
     pub fn graphemes_at(&self, pos: u64) -> Graphemes {
-        self.pt.graphemes_at(pos)
+        self.view.graphemes_at(pos)
     }
 
     #[inline]
     pub fn is_file_backed(&self) -> bool {
-        self.pt.is_file_backed()
+        self.view.is_file_backed()
     }
 
     /// Mark a position in the buffer
@@ -309,7 +300,7 @@ impl PieceTree {
     // piece tree
     #[inline]
     pub fn mark(&self, pos: u64) -> Mark {
-        self.pt.mark(pos)
+        self.view.mark(pos)
     }
 
     /// Get a buffer position from a mark.
@@ -317,23 +308,23 @@ impl PieceTree {
     /// position.
     #[inline]
     pub fn mark_to_pos(&self, mark: &Mark) -> u64 {
-        self.pt.mark_to_pos(mark)
+        self.view.mark_to_pos(mark)
     }
 
     #[inline]
     pub fn write_to<W: Write>(&self, writer: W) -> io::Result<usize> {
-        self.pt.write_to(writer)
+        self.view.write_to(writer)
     }
 
     /// If the buffer is file backed, renames the backing file to another one.
     #[inline]
     pub fn rename_backing_file<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
-        self.pt.orig.rename_backing_file(path)
+        self.view.orig.rename_backing_file(path)
     }
 
     #[inline]
     pub fn backing_file(&self) -> Option<PathBuf> {
-        self.pt.orig.file_path()
+        self.view.orig.file_path()
     }
 
     ///
@@ -353,298 +344,43 @@ impl PieceTree {
     ///         in the beginning portion of the file
     ///      3. Previously created read only copies/marks cannot be used anymore
     unsafe fn write_in_place(&self) -> io::Result<()> {
-        self.pt.write_in_place()
+        self.view.write_in_place()
     }
 
     #[inline]
     pub fn len(&self) -> u64 {
-        self.pt.len()
+        self.view.len()
     }
 
     #[inline]
     pub fn piece_count(&self) -> usize {
-        self.pt.piece_count()
+        self.view.piece_count()
     }
 
     #[inline]
     pub fn is_empty(&self) -> bool {
-        self.pt.is_empty()
+        self.view.is_empty()
     }
 
     #[inline]
-    pub fn read_only_copy(&self) -> ReadOnlyPieceTree {
-        self.pt.clone()
+    pub fn view(&self) -> PieceTreeView {
+        self.view.clone()
     }
 
     #[inline]
-    pub fn restore(&mut self, ro: ReadOnlyPieceTree) {
-        self.pt = ro;
+    pub fn restore(&mut self, ro: PieceTreeView) {
+        self.view = ro;
     }
 
     #[inline]
     pub(crate) fn tree(&self) -> &Tree {
-        &self.pt.tree
+        &self.view.tree
     }
 }
 
 impl Default for PieceTree {
     fn default() -> Self {
         PieceTree::new()
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct ReadOnlyPieceTree {
-    pub(crate) orig: Arc<OriginalBuffer>,
-    pub(crate) add: AddBufferReader,
-    pub(crate) tree: Tree,
-    pub(crate) len: u64,
-}
-
-impl ReadOnlyPieceTree {
-    #[inline]
-    pub fn bytes(&self) -> Bytes {
-        self.bytes_at(0)
-    }
-
-    #[inline]
-    pub fn bytes_at(&self, pos: u64) -> Bytes {
-        debug_assert!(
-            pos <= self.len,
-            "bytes_at: Attempting to index {} over buffer len {}",
-            pos,
-            self.len
-        );
-        Bytes::new(self, pos)
-    }
-
-    #[inline]
-    pub fn chunks(&self) -> Chunks {
-        self.chunks_at(0)
-    }
-
-    #[inline]
-    pub fn chunks_at(&self, pos: u64) -> Chunks {
-        debug_assert!(
-            pos <= self.len,
-            "chunks_at: Attempting to index {} over buffer len {}",
-            pos,
-            self.len
-        );
-        Chunks::new(self, pos)
-    }
-
-    #[inline]
-    pub fn slice<R: RangeBounds<u64>>(&self, range: R) -> PieceTreeSlice {
-        let start = match range.start_bound() {
-            Bound::Included(n) => *n,
-            Bound::Excluded(n) => *n + 1,
-            Bound::Unbounded => 0,
-        };
-
-        let end = match range.end_bound() {
-            Bound::Included(n) => *n + 1,
-            Bound::Excluded(n) => *n,
-            Bound::Unbounded => self.len,
-        };
-
-        PieceTreeSlice::new(self, start..end)
-    }
-
-    #[inline]
-    pub fn chars(&self) -> Chars {
-        self.chars_at(0)
-    }
-
-    #[inline]
-    pub fn chars_at(&self, at: u64) -> Chars {
-        Chars::new(self, at)
-    }
-
-    #[inline]
-    pub fn lines(&self) -> Lines {
-        self.lines_at(0)
-    }
-
-    #[inline]
-    pub fn lines_at(&self, pos: u64) -> Lines {
-        debug_assert!(
-            pos <= self.len,
-            "lines_at: Attempting to index {} over buffer len {}",
-            pos,
-            self.len
-        );
-        Lines::new(self, pos)
-    }
-
-    #[inline]
-    pub fn line_at(&self, pos: u64) -> (u64, PieceTreeSlice) {
-        debug_assert!(
-            pos <= self.len,
-            "line_at: Attempting to index {} over buffer len {}",
-            pos,
-            self.len
-        );
-        self.slice(..).line_at(pos)
-    }
-
-    #[inline]
-    pub fn pos_at_line(&self, line: u64) -> u64 {
-        self.slice(..).pos_at_line(line)
-    }
-
-    #[inline]
-    pub fn graphemes(&self) -> Graphemes {
-        self.graphemes_at(0)
-    }
-
-    #[inline]
-    pub fn graphemes_at(&self, pos: u64) -> Graphemes {
-        debug_assert!(
-            pos <= self.len,
-            "graphemes_at: Attempting to index {} over buffer len {}",
-            pos,
-            self.len
-        );
-        Graphemes::new(self, pos)
-    }
-
-    #[inline]
-    pub fn is_file_backed(&self) -> bool {
-        self.orig.is_file_backed()
-    }
-
-    /// Mark a position in the buffer
-    // Internally works using offsets into the read only and append only buffers.
-    // These can be safely indexed into because they never change after written.
-    // Searching for a mark is O(n) operation where n is the number of pieces in the
-    // piece tree
-    #[inline]
-    pub fn mark(&self, pos: u64) -> Mark {
-        debug_assert!(
-            pos <= self.len,
-            "mark: Attempting to index {} over buffer len {}",
-            pos,
-            self.len
-        );
-        let pieces = Pieces::new(self, pos);
-        let (p_pos, piece) = pieces
-            .get()
-            .unwrap_or_else(|| panic!("Cannot find a piece for position {}", pos));
-        let off = pos - p_pos;
-        Mark {
-            orig: pos,
-            kind: piece.kind,
-            pos: piece.pos + off,
-            count: piece.count,
-        }
-    }
-
-    /// Get a buffer position from a mark.
-    /// If the buffer position has been deleted returns the original mark
-    /// position.
-    #[inline]
-    pub fn mark_to_pos(&self, mark: &Mark) -> u64 {
-        let mut pieces = Pieces::new(self, 0);
-        let mut piece = pieces.get();
-
-        while let Some((p_pos, p)) = piece {
-            if p.kind == mark.kind
-                && p.pos <= mark.pos
-                && mark.pos < p.pos + p.len
-                && mark.count == p.count
-            {
-                let off = mark.pos - p.pos;
-                return p_pos + off;
-            }
-            piece = pieces.next();
-        }
-
-        cmp::min(mark.orig, self.len)
-    }
-
-    ///
-    /// Writes the file in place if the buffer is file backed
-    ///
-    /// UNSAFETY: All previously created ReadOnlyPieceTrees cannot be used
-    /// anymore.
-    ///
-    /// Good:
-    ///      1. If only replaced or appended bytes, saving will be very fast
-    ///      2. No need for additional disk space as no copy is created
-    ///
-    /// Bad:
-    ///      1. If io error occurs while saving the file will be left in an
-    ///         incomplete state
-    ///      2. Probably slower than writing a copy if insert/remove operations are
-    ///         in the beginning portion of the file
-    ///      3. Previously created read only copies/marks cannot be used anymore
-    pub unsafe fn write_in_place(&self) -> io::Result<()> {
-        write_in_place(&self)
-    }
-
-    pub fn write_to<W: Write>(&self, mut writer: W) -> io::Result<usize> {
-        let mut written = 0;
-        let mut chunks = self.chunks();
-        let mut pos_chunk = chunks.get();
-
-        while let Some((_pos, chunk)) = pos_chunk {
-            let chunk_bytes = chunk.as_ref();
-            writer.write_all(chunk_bytes)?;
-            written += chunk_bytes.len();
-            pos_chunk = chunks.next();
-        }
-
-        writer.flush()?;
-        Ok(written)
-    }
-
-    #[inline]
-    pub fn len(&self) -> u64 {
-        self.len
-    }
-
-    #[inline]
-    pub fn piece_count(&self) -> usize {
-        self.tree.node_count
-    }
-
-    #[inline]
-    pub fn is_empty(&self) -> bool {
-        self.len == 0
-    }
-}
-
-impl From<&str> for PieceTree {
-    fn from(value: &str) -> Self {
-        PieceTree::from_reader(io::Cursor::new(value)).unwrap()
-    }
-}
-
-impl From<&ReadOnlyPieceTree> for Vec<u8> {
-    fn from(pt: &ReadOnlyPieceTree) -> Self {
-        assert!(
-            pt.len() <= usize::MAX as u64,
-            "Piece tree is too large to be represented in memory"
-        );
-        let mut bytes = Vec::with_capacity(pt.len() as usize);
-        let mut chunks = pt.chunks();
-        let mut pos_chunk = chunks.get();
-
-        while let Some((_pos, chunk)) = pos_chunk {
-            let chunk_bytes = chunk.as_ref();
-            bytes.extend_from_slice(chunk_bytes);
-            pos_chunk = chunks.next();
-        }
-
-        bytes
-    }
-}
-
-impl From<&ReadOnlyPieceTree> for String {
-    fn from(value: &ReadOnlyPieceTree) -> Self {
-        let slice = value.slice(..);
-        String::from(&slice)
     }
 }
 

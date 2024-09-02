@@ -1,6 +1,6 @@
 use sanedit_ucd::{grapheme_break, GraphemeBreak, Property};
 
-use crate::{piece_tree::PieceTreeSlice, ReadOnlyPieceTree};
+use crate::{piece_tree::PieceTreeSlice, PieceTreeView};
 
 use super::chars::Chars;
 
@@ -65,7 +65,7 @@ pub struct Graphemes<'a> {
 }
 
 impl<'a> Graphemes<'a> {
-    pub(crate) fn new(pt: &'a ReadOnlyPieceTree, at: u64) -> Graphemes<'a> {
+    pub(crate) fn new(pt: &'a PieceTreeView, at: u64) -> Graphemes<'a> {
         let chars = Chars::new(pt, at);
         Graphemes {
             slice: pt.slice(..),

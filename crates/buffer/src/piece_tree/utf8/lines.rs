@@ -2,7 +2,7 @@ mod eol;
 
 use std::{ops::Range, sync::OnceLock};
 
-use crate::{Bytes, PieceTreeSlice, ReadOnlyPieceTree};
+use crate::{Bytes, PieceTreeSlice, PieceTreeView};
 use aho_corasick::{automaton::Automaton, nfa::contiguous::NFA, Anchored};
 
 pub use self::eol::EndOfLine;
@@ -149,7 +149,7 @@ pub struct Lines<'a> {
 
 impl<'a> Lines<'a> {
     #[inline]
-    pub fn new(pt: &'a ReadOnlyPieceTree, at: u64) -> Lines {
+    pub fn new(pt: &'a PieceTreeView, at: u64) -> Lines {
         let slice = pt.slice(..);
         let bytes = Bytes::new(pt, at);
         let mut lines = Lines {

@@ -5,8 +5,10 @@ pub use piece_tree::{
     builder::PieceTreeBuilder,
     bytes::Bytes,
     chunks::{Chunk, Chunks},
+    mark::Mark,
     slice::PieceTreeSlice,
-    Mark, PieceTree, ReadOnlyPieceTree,
+    view::PieceTreeView,
+    PieceTree,
 };
 
 pub use search::{SearchIter, SearchIterRev, Searcher, SearcherRev};

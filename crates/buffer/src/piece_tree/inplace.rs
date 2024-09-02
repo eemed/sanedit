@@ -8,7 +8,7 @@ use std::{
 
 use crate::{
     piece_tree::{buffers::BufferKind, tree::pieces::PieceIter},
-    ReadOnlyPieceTree,
+    PieceTreeView,
 };
 
 use super::tree::piece::Piece;
@@ -52,7 +52,7 @@ impl Overwrite {
     }
 }
 
-pub fn write_in_place(pt: &ReadOnlyPieceTree) -> io::Result<()> {
+pub fn write_in_place(pt: &PieceTreeView) -> io::Result<()> {
     if !pt.is_file_backed() {
         return Err(io::Error::new(
             io::ErrorKind::Unsupported,
@@ -89,7 +89,7 @@ fn find_non_depended_target(ows: &Vec<Overwrite>) -> usize {
     unreachable!("Cannot find a overwrite with target that does not overlap with other overwrites dependencies");
 }
 
-fn in_place_write_ops(pt: &ReadOnlyPieceTree) -> Vec<WriteOp> {
+fn in_place_write_ops(pt: &PieceTreeView) -> Vec<WriteOp> {
     let mut adds = Vec::with_capacity(pt.piece_count());
     let mut origs = Vec::with_capacity(pt.piece_count());
     let mut iter = PieceIter::new(pt, 0);
@@ -132,7 +132,7 @@ fn in_place_write_ops(pt: &ReadOnlyPieceTree) -> Vec<WriteOp> {
     result
 }
 
-fn do_write_in_place(pt: &ReadOnlyPieceTree, ops: Vec<WriteOp>) -> io::Result<()> {
+fn do_write_in_place(pt: &PieceTreeView, ops: Vec<WriteOp>) -> io::Result<()> {
     let mut iter = ops.into_iter();
     let mut op = iter.next();
     let path = pt.orig.file_path().unwrap();
@@ -242,7 +242,7 @@ mod test {
         pt.insert(30, "a");
         pt.remove(35..40);
         pt.insert(70, "a");
-        let ows = in_place_write_ops(&pt.pt);
+        let ows = in_place_write_ops(&pt.view);
 
         for ow in ows {
             println!("{ow:?}",);

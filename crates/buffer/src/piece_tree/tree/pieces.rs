@@ -3,7 +3,7 @@ use std::ops::Range;
 use super::node::internal_node::InternalNode;
 use super::node::Node;
 use super::piece::Piece;
-use crate::piece_tree::ReadOnlyPieceTree;
+use crate::piece_tree::PieceTreeView;
 use crate::PieceTreeSlice;
 
 pub(crate) type Pieces<'a> = BoundedPieceIter<'a>;
@@ -17,7 +17,7 @@ pub(crate) struct BoundedPieceIter<'a> {
 
 impl<'a> BoundedPieceIter<'a> {
     #[inline]
-    pub(crate) fn new(pt: &'a ReadOnlyPieceTree, at: u64) -> BoundedPieceIter<'a> {
+    pub(crate) fn new(pt: &'a PieceTreeView, at: u64) -> BoundedPieceIter<'a> {
         let iter = PieceIter::new(pt, at);
         BoundedPieceIter {
             range: 0..pt.len(),
@@ -26,7 +26,7 @@ impl<'a> BoundedPieceIter<'a> {
     }
     #[inline]
     pub(crate) fn new_from_slice(slice: &PieceTreeSlice<'a>, at: u64) -> BoundedPieceIter<'a> {
-        let iter = PieceIter::new(slice.pt, slice.start() + at);
+        let iter = PieceIter::new(slice.view, slice.start() + at);
         BoundedPieceIter {
             range: slice.range.clone(),
             iter,
@@ -95,14 +95,14 @@ impl<'a> BoundedPieceIter<'a> {
 /// Traverse pieces in the tree, in order
 #[derive(Debug, Clone)]
 pub(crate) struct PieceIter<'a> {
-    pt: &'a ReadOnlyPieceTree,
+    pt: &'a PieceTreeView,
     stack: Vec<&'a InternalNode>,
     pos: u64, // Current piece pos in buffer
 }
 
 impl<'a> PieceIter<'a> {
     #[inline]
-    pub(crate) fn new(pt: &'a ReadOnlyPieceTree, at: u64) -> Self {
+    pub(crate) fn new(pt: &'a PieceTreeView, at: u64) -> Self {
         // log::info!("new pieces at {at}");
         // Be empty at pt.len
         let (stack, pos) = if at == pt.len {
@@ -242,7 +242,7 @@ pub(crate) mod test {
     #[test]
     fn empty() {
         let pt = PieceTree::new();
-        let pieces = PieceIter::new(&pt.pt, 0);
+        let pieces = PieceIter::new(&pt.view, 0);
         assert_eq!(None, pieces.get());
         assert_eq!(0, pieces.pos());
     }
@@ -251,7 +251,7 @@ pub(crate) mod test {
     fn piece_one() {
         let mut pt = PieceTree::new();
         pt.insert(0, "foobar");
-        let mut pieces = PieceIter::new(&pt.pt, 0);
+        let mut pieces = PieceIter::new(&pt.view, 0);
 
         assert_eq!(add_piece(0, 0, 6), pieces.get());
         assert_eq!(None, pieces.next());
@@ -268,7 +268,7 @@ pub(crate) mod test {
         pt.insert(0, "baz");
         pt.insert(0, "bar");
         pt.insert(0, "foo");
-        let mut pieces = PieceIter::new(&pt.pt, 0);
+        let mut pieces = PieceIter::new(&pt.view, 0);
 
         assert_eq!(add_piece(0, 6, 3), pieces.get());
         assert_eq!(add_piece(3, 3, 3), pieces.next());
@@ -288,7 +288,7 @@ pub(crate) mod test {
         pt.insert(0, "baz");
         pt.insert(0, "bar");
         pt.insert(0, "foo");
-        let mut pieces = PieceIter::new(&pt.pt, 5);
+        let mut pieces = PieceIter::new(&pt.view, 5);
 
         assert_eq!(add_piece(3, 3, 3), pieces.get());
         assert_eq!(add_piece(6, 0, 3), pieces.next());
@@ -301,7 +301,7 @@ pub(crate) mod test {
         pt.insert(0, "baz");
         pt.insert(0, "bar");
         pt.insert(0, "foo");
-        let pieces = PieceIter::new(&pt.pt, pt.len());
+        let pieces = PieceIter::new(&pt.view, pt.len());
 
         assert_eq!(None, pieces.get());
     }
@@ -311,7 +311,7 @@ pub(crate) mod test {
         let mut pt = PieceTree::new();
         pt.insert(0, "hello");
         pt.insert(4, " ");
-        let mut pieces = PieceIter::new(&pt.pt, 0);
+        let mut pieces = PieceIter::new(&pt.view, 0);
 
         assert_eq!(add_piece(0, 0, 4), pieces.get());
         assert_eq!(add_piece(4, 5, 1), pieces.next());

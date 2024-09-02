@@ -4,7 +4,7 @@ use crate::PieceTreeSlice;
 
 use super::{
     chunks::{Chunk, Chunks},
-    ReadOnlyPieceTree,
+    PieceTreeView,
 };
 
 #[derive(Debug, Clone)]
@@ -19,7 +19,7 @@ pub struct Bytes<'a> {
 
 impl<'a> Bytes<'a> {
     #[inline]
-    pub(crate) fn new(pt: &'a ReadOnlyPieceTree, at: u64) -> Bytes<'a> {
+    pub(crate) fn new(pt: &'a PieceTreeView, at: u64) -> Bytes<'a> {
         let chunks = Chunks::new(pt, at);
         let chunk = chunks.get();
         let pos = chunk.as_ref().map(|(pos, _)| at - pos).unwrap_or(0) as usize;

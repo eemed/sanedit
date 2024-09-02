@@ -8,7 +8,7 @@ use grep::matcher::{LineTerminator, Matcher};
 use grep::regex::{RegexMatcher, RegexMatcherBuilder};
 use grep::searcher::{BinaryDetection, Searcher, SearcherBuilder, Sink, SinkMatch};
 use rustc_hash::FxHashMap;
-use sanedit_buffer::ReadOnlyPieceTree;
+use sanedit_buffer::PieceTreeView;
 use sanedit_utils::sorted_vec::SortedVec;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 
@@ -31,7 +31,7 @@ pub(crate) struct Grep {
     client_id: ClientId,
     pattern: String,
     file_opt_provider: FileOptionProvider,
-    buffers: Arc<FxHashMap<PathBuf, ReadOnlyPieceTree>>,
+    buffers: Arc<FxHashMap<PathBuf, PieceTreeView>>,
 }
 
 impl Grep {
@@ -39,7 +39,7 @@ impl Grep {
         pattern: &str,
         path: &Path,
         ignore: &[String],
-        buffers: FxHashMap<PathBuf, ReadOnlyPieceTree>,
+        buffers: FxHashMap<PathBuf, PieceTreeView>,
         id: ClientId,
     ) -> Grep {
         let fprovider = FileOptionProvider::new(path, ignore);
@@ -56,7 +56,7 @@ impl Grep {
         mut orecv: Receiver<MatchOption>,
         pattern: &str,
         msend: Sender<GrepResult>,
-        buffers: Arc<FxHashMap<PathBuf, ReadOnlyPieceTree>>,
+        buffers: Arc<FxHashMap<PathBuf, PieceTreeView>>,
     ) {
         let searcher = SearcherBuilder::new()
             .binary_detection(BinaryDetection::quit(b'\x00'))
@@ -109,7 +109,7 @@ impl Grep {
 
     fn grep_buffer(
         path: PathBuf,
-        ropt: &ReadOnlyPieceTree,
+        ropt: &PieceTreeView,
         searcher: &PTSearcher,
         msend: Sender<GrepResult>,
     ) {

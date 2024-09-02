@@ -6,7 +6,7 @@ use std::{
 };
 
 use rustc_hash::FxHashMap;
-use sanedit_buffer::ReadOnlyPieceTree;
+use sanedit_buffer::PieceTreeView;
 use sanedit_parser::Annotation;
 use tokio::sync::broadcast;
 
@@ -75,7 +75,7 @@ impl Syntax {
     pub fn parse(
         &self,
         bid: BufferId,
-        ropt: &ReadOnlyPieceTree,
+        ropt: &PieceTreeView,
         mut view: Range<u64>,
         kill: broadcast::Receiver<()>,
     ) -> anyhow::Result<SyntaxParseResult> {

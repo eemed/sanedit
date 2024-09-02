@@ -1,7 +1,7 @@
 use std::process::Command;
 
 use anyhow::bail;
-use sanedit_buffer::ReadOnlyPieceTree;
+use sanedit_buffer::PieceTreeView;
 
 use crate::{
     editor::{job_broker::KeepInTouch, windows::Executor},
@@ -23,7 +23,7 @@ pub(crate) struct TmuxShellCommand {
     shell: String,
     pane: Option<TmuxPane>,
 
-    pipe_input: Option<ReadOnlyPieceTree>,
+    pipe_input: Option<PieceTreeView>,
 }
 
 impl TmuxShellCommand {
@@ -42,7 +42,7 @@ impl TmuxShellCommand {
         self
     }
 
-    pub fn pipe(mut self, ropt: ReadOnlyPieceTree) -> Self {
+    pub fn pipe(mut self, ropt: PieceTreeView) -> Self {
         self.pipe_input = Some(ropt);
         self
     }

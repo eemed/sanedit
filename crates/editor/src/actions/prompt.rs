@@ -3,7 +3,7 @@ mod commands;
 use std::{cmp::min, path::PathBuf, sync::Arc};
 
 use rustc_hash::FxHashMap;
-use sanedit_buffer::ReadOnlyPieceTree;
+use sanedit_buffer::PieceTreeView;
 use sanedit_messages::ClientMessage;
 use sanedit_utils::idmap::{AsID, ID};
 
@@ -296,7 +296,7 @@ fn grep(editor: &mut Editor, id: ClientId) {
             const GREP_JOB: &str = "grep";
             let ignore = e.options.ignore_directories();
             let wd = e.working_dir();
-            let buffers: FxHashMap<PathBuf, ReadOnlyPieceTree> = {
+            let buffers: FxHashMap<PathBuf, PieceTreeView> = {
                 let mut map = FxHashMap::default();
 
                 for (_, buf) in e.buffers().iter() {

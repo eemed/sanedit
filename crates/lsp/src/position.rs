@@ -1,4 +1,4 @@
-use sanedit_buffer::ReadOnlyPieceTree;
+use sanedit_buffer::PieceTreeView;
 
 /// Position that can be either offset into a buffer or LSP grid position
 #[derive(Debug, Clone)]
@@ -11,7 +11,7 @@ pub enum Position {
 }
 
 impl Position {
-    pub fn to_offset(&self, buf: &ReadOnlyPieceTree) -> u64 {
+    pub fn to_offset(&self, buf: &PieceTreeView) -> u64 {
         match self {
             Position::Offset(off) => *off,
             Position::LSP { position, encoding } => position_to_offset(buf, *position, encoding),
@@ -20,7 +20,7 @@ impl Position {
 
     pub fn to_position(
         &self,
-        buf: &ReadOnlyPieceTree,
+        buf: &PieceTreeView,
         encoding: &lsp_types::PositionEncodingKind,
     ) -> lsp_types::Position {
         match self {
@@ -37,7 +37,7 @@ impl Position {
 }
 
 pub(crate) fn offset_to_position(
-    buf: &ReadOnlyPieceTree,
+    buf: &PieceTreeView,
     offset: u64,
     kind: &lsp_types::PositionEncodingKind,
 ) -> lsp_types::Position {
@@ -70,7 +70,7 @@ pub(crate) fn offset_to_position(
 }
 
 pub(crate) fn position_to_offset(
-    buf: &ReadOnlyPieceTree,
+    buf: &PieceTreeView,
     position: lsp_types::Position,
     kind: &lsp_types::PositionEncodingKind,
 ) -> u64 {

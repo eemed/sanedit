@@ -3,7 +3,7 @@ use crate::PieceTreeSlice;
 use super::{
     buffers::{BufferKind, ByteSlice},
     tree::{piece::Piece, pieces::Pieces},
-    ReadOnlyPieceTree,
+    PieceTreeView,
 };
 
 #[derive(Debug, Clone, PartialEq)]
@@ -18,20 +18,20 @@ impl<'a> AsRef<[u8]> for Chunk<'a> {
 
 #[derive(Debug, Clone)]
 pub struct Chunks<'a> {
-    pt: &'a ReadOnlyPieceTree,
+    pt: &'a PieceTreeView,
     pieces: Pieces<'a>,
 }
 
 impl<'a> Chunks<'a> {
     #[inline]
-    pub(crate) fn new(pt: &'a ReadOnlyPieceTree, at: u64) -> Chunks<'a> {
+    pub(crate) fn new(pt: &'a PieceTreeView, at: u64) -> Chunks<'a> {
         let pieces = Pieces::new(pt, at);
         Chunks { pt, pieces }
     }
 
     #[inline]
     pub(crate) fn new_from_slice(slice: &PieceTreeSlice<'a>, at: u64) -> Chunks<'a> {
-        let pt = slice.pt;
+        let pt = slice.view;
         let pieces = Pieces::new_from_slice(slice, at);
         Chunks { pt, pieces }
     }
@@ -59,7 +59,7 @@ impl<'a> Chunks<'a> {
 }
 
 #[inline(always)]
-fn read_piece<'a>(pt: &'a ReadOnlyPieceTree, piece: &Piece) -> Option<Chunk<'a>> {
+fn read_piece<'a>(pt: &'a PieceTreeView, piece: &Piece) -> Option<Chunk<'a>> {
     match piece.kind {
         BufferKind::Add => {
             let bytes = pt

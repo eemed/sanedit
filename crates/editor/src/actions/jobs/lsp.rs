@@ -11,14 +11,14 @@ use std::{
 use crate::{
     actions::{
         locations,
-        lsp::{self, lsp_request, offset_to_position, position_to_offset, range_to_buffer_range},
+        lsp::{self, position_to_offset, range_to_buffer_range},
     },
-    common::matcher::{Kind, MatchOption, MatchStrategy},
+    common::matcher::{MatchOption, MatchStrategy},
     editor::{
-        buffers::{Buffer, BufferId, Change, Changes, Filetype},
+        buffers::{BufferId, Change, Changes, Filetype},
         job_broker::KeepInTouch,
         options::LSPOptions,
-        windows::{Completion, Focus, Group, Item, Prompt, Window},
+        windows::{Completion, Group, Item, Prompt},
         Editor, Map,
     },
     job_runner::{Job, JobContext, JobResult},
@@ -177,8 +177,6 @@ impl KeepInTouch for LSP {
     }
 
     fn on_message(&self, editor: &mut Editor, msg: Box<dyn Any>) {
-        let (win, buf) = editor.win_buf_mut(self.client_id);
-
         if let Ok(output) = msg.downcast::<Message>() {
             match *output {
                 Message::Started(sender) => {
@@ -409,11 +407,11 @@ fn code_action_edit_document(editor: &mut Editor, id: ClientId, edit: lsp_types:
             }
         },
     };
-    let buf = editor.buffers_mut().get_mut(bid).unwrap();
-    let slice = buf.slice(..);
     let Some(enc) = editor.lsp_handle_for(id).map(|x| x.position_encoding()) else {
         return;
     };
+    let buf = editor.buffers_mut().get_mut(bid).unwrap();
+    let slice = buf.slice(..);
 
     let changes: Vec<Change> = edit
         .edits

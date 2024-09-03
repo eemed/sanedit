@@ -169,8 +169,8 @@ impl Editor {
         &self.buffers
     }
 
-    pub fn buffers_mut(&self) -> &mut Buffers {
-        &self.buffers
+    pub fn buffers_mut(&mut self) -> &mut Buffers {
+        &mut self.buffers
     }
 
     pub fn win_buf(&self, id: ClientId) -> (&Window, &Buffer) {

@@ -169,6 +169,10 @@ impl Editor {
         &self.buffers
     }
 
+    pub fn buffers_mut(&self) -> &mut Buffers {
+        &self.buffers
+    }
+
     pub fn win_buf(&self, id: ClientId) -> (&Window, &Buffer) {
         let win = self.windows.get(id).expect("no win for cliend id {id}");
         let bid = win.buffer_id();
@@ -243,20 +247,24 @@ impl Editor {
         run(self, id, Hook::BufOpened);
     }
 
+    /// Create a new buffer from path
+    pub fn create_buffer(&mut self, path: impl AsRef<Path>) -> Result<BufferId> {
+        let file = FileDescription::new(
+            &path,
+            self.options.big_file_threshold_bytes,
+            &self.working_dir,
+            &self.options.filetype,
+        )?;
+        self.buffers.new(file)
+    }
+
     /// Open a file in window
+    /// if the buffer already exists open that or create new if it doesnt
     pub fn open_file(&mut self, id: ClientId, path: impl AsRef<Path>) -> Result<()> {
         // Use existing if possible
         let bid = match self.buffers.find(&path) {
             Some(bid) => bid,
-            None => {
-                let file = FileDescription::new(
-                    &path,
-                    self.options.big_file_threshold_bytes,
-                    &self.working_dir,
-                    &self.options.filetype,
-                )?;
-                self.buffers.new(file)?
-            }
+            None => self.create_buffer(&path)?,
         };
         self.open_buffer(id, bid);
 

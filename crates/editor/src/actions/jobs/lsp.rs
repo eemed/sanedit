@@ -11,11 +11,11 @@ use std::{
 use crate::{
     actions::{
         locations,
-        lsp::{self, lsp_request, offset_to_position, position_to_offset},
+        lsp::{self, lsp_request, offset_to_position, position_to_offset, range_to_buffer_range},
     },
     common::matcher::{Kind, MatchOption, MatchStrategy},
     editor::{
-        buffers::{Buffer, BufferId, Filetype},
+        buffers::{Buffer, BufferId, Change, Changes, Filetype},
         job_broker::KeepInTouch,
         options::LSPOptions,
         windows::{Completion, Focus, Group, Item, Prompt, Window},
@@ -151,14 +151,14 @@ impl Job for LSP {
             let (sender, mut reader) = params.spawn().await?;
             log::info!("Client started");
 
-            let sender = LSPHandle {
+            let handle = LSPHandle {
                 name: command,
                 sender,
                 root: wd,
                 requests: Map::default(),
                 request_id: AtomicU32::new(1),
             };
-            ctx.send(Message::Started(sender));
+            ctx.send(Message::Started(handle));
 
             while let Some(response) = reader.recv().await {
                 ctx.send(Message::Response(response));
@@ -187,7 +187,9 @@ impl KeepInTouch for LSP {
                             "Language server for {} is already running.",
                             self.filetype.as_str()
                         );
-                        todo!("shutdown")
+                        // Shutsdown automatically because sender is dropped
+                        // here
+                        return;
                     }
                     // Set sender
                     editor
@@ -272,7 +274,7 @@ impl LSP {
             sanedit_lsp::RequestResult::CodeAction { actions } => code_action(editor, id, actions),
             sanedit_lsp::RequestResult::ResolvedAction { action } => {
                 if let Some(edit) = action.edit {
-                    code_action_edit(editor, id, edit)
+                    code_action_edit_workspace(editor, id, edit)
                 }
             }
         }
@@ -357,7 +359,7 @@ fn code_action(editor: &mut Editor, id: ClientId, actions: Vec<CodeAction>) {
     editor.job_broker.request(job);
 }
 
-fn code_action_edit(editor: &mut Editor, id: ClientId, edit: lsp_types::WorkspaceEdit) {
+fn code_action_edit_workspace(editor: &mut Editor, id: ClientId, edit: lsp_types::WorkspaceEdit) {
     let lsp_types::WorkspaceEdit {
         changes,
         document_changes,
@@ -368,21 +370,70 @@ fn code_action_edit(editor: &mut Editor, id: ClientId, edit: lsp_types::Workspac
         match doc_changes {
             lsp_types::DocumentChanges::Edits(edits) => {
                 for edit in edits {
-                    for tedit in edit.edits {
-                        let text_edit = {
-                            match tedit {
-                                lsp_types::OneOf::Left(item) => item,
-                                lsp_types::OneOf::Right(item) => item.text_edit,
-                            }
-                        };
-
-                        // tedit.range;
-                        // tedit.new_text;
+                    code_action_edit_document(editor, id, edit);
+                }
+            }
+            lsp_types::DocumentChanges::Operations(ops) => {
+                for op in ops {
+                    match op {
+                        lsp_types::DocumentChangeOperation::Op(op) => {
+                            code_action_edit_operation(editor, id, op);
+                        }
+                        lsp_types::DocumentChangeOperation::Edit(edit) => {
+                            code_action_edit_document(editor, id, edit);
+                        }
                     }
                 }
             }
-            lsp_types::DocumentChanges::Operations(ops) => todo!(),
         }
+    }
+}
+
+fn code_action_edit_operation(editor: &mut Editor, id: ClientId, op: lsp_types::ResourceOp) {
+    match op {
+        lsp_types::ResourceOp::Create(create) => todo!(),
+        lsp_types::ResourceOp::Rename(rename) => todo!(),
+        lsp_types::ResourceOp::Delete(delete) => todo!(),
+    }
+}
+
+fn code_action_edit_document(editor: &mut Editor, id: ClientId, edit: lsp_types::TextDocumentEdit) {
+    let path = PathBuf::from(edit.text_document.uri.path().as_str());
+    let bid = match editor.buffers().find(&path) {
+        Some(bid) => bid,
+        None => match editor.create_buffer(&path) {
+            Ok(bid) => bid,
+            Err(_) => {
+                log::error!("Failed to create buffer for {path:?}");
+                return;
+            }
+        },
+    };
+    let buf = editor.buffers_mut().get_mut(bid).unwrap();
+    let slice = buf.slice(..);
+    let Some(enc) = editor.lsp_handle_for(id).map(|x| x.position_encoding()) else {
+        return;
+    };
+
+    let changes: Vec<Change> = edit
+        .edits
+        .into_iter()
+        .map(|edit| {
+            let text_edit = {
+                match edit {
+                    lsp_types::OneOf::Left(item) => item,
+                    lsp_types::OneOf::Right(item) => item.text_edit,
+                }
+            };
+
+            let range = range_to_buffer_range(&slice, text_edit.range, &enc);
+            Change::replace(range, text_edit.new_text.as_bytes())
+        })
+        .collect();
+    let changes = Changes::from(changes);
+    if let Err(e) = buf.apply_changes(&changes) {
+        log::error!("Failed to apply changes to buffer: {path:?}: {e}");
+        return;
     }
 }
 

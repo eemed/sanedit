@@ -126,8 +126,10 @@ impl Window {
 
     pub fn open_buffer(&mut self, bid: BufferId) -> BufferId {
         let old = self.bid;
+        // Store old buffer data
         let odata = self.create_snapshot_data();
         self.last_buf = Some((old, odata));
+
         self.bid = bid;
         self.reload();
         old

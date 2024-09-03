@@ -1,16 +1,13 @@
 use anyhow::{anyhow, bail, Result};
 use sanedit_buffer::PieceTreeSlice;
-use std::{
-    path::{Path, PathBuf},
-    sync::Arc,
-};
+use std::path::{Path, PathBuf};
 use thiserror::Error;
 
-use sanedit_lsp::{lsp_types, Notification, Request, RequestKind};
+use sanedit_lsp::{lsp_types, Notification, RequestKind};
 
 use crate::{
     editor::{
-        buffers::{Buffer, BufferId, ChangesKind, Filetype},
+        buffers::{Buffer, BufferId, BufferRange, ChangesKind, Filetype},
         windows::Window,
         Editor,
     },
@@ -58,7 +55,7 @@ pub(crate) fn lsp_request(
     let handle = editor
         .language_servers
         .get(&ft)
-        .ok_or(LSPActionError::LanguageServerNotStarted(ft.clone()))?;
+        .ok_or_else(|| LSPActionError::LanguageServerNotStarted(ft.clone()))?;
 
     let (win, buf) = editor.win_buf(id);
     let slice = buf.slice(..);
@@ -68,7 +65,7 @@ pub(crate) fn lsp_request(
         let lsp = editor
             .language_servers
             .get_mut(&ft)
-            .ok_or(LSPActionError::LanguageServerNotStarted(ft.clone()))?;
+            .ok_or_else(|| LSPActionError::LanguageServerNotStarted(ft.clone()))?;
         lsp.request(kind, id, constraints)
     } else {
         Ok(())
@@ -88,7 +85,7 @@ fn start_lsp(editor: &mut Editor, id: ClientId) {
             .options
             .language_server
             .get(ft.as_str())
-            .ok_or(LSPActionError::LanguageServerNotConfigured(ft.clone()))?;
+            .ok_or_else(|| LSPActionError::LanguageServerNotConfigured(ft.clone()))?;
 
         let lsp = LSP::new(id, wd, ft, lang);
         editor.job_broker.request(lsp);
@@ -131,41 +128,61 @@ fn goto_definition(editor: &mut Editor, id: ClientId) {
 
 #[action("Synchronize document")]
 fn sync_document(editor: &mut Editor, id: ClientId) {
-    // let _ = lsp_request(editor, id, move |win, buf, path, slice, lsp| {
-    //     let version = buf.total_changes_made() as i32;
-    //     let edit = buf.last_edit()?;
-    //     let enc = lsp.position_encoding();
+    fn sync(editor: &mut Editor, id: ClientId) -> Result<()> {
+        let (win, buf) = editor.win_buf(id);
+        let ft = buf.filetype.clone().ok_or(LSPActionError::FiletypeNotSet)?;
+        let path = buf
+            .path()
+            .map(Path::to_path_buf)
+            .ok_or(LSPActionError::PathNotSet)?;
 
-    //     use ChangesKind::*;
-    //     let changes = match edit.changes.kind() {
-    //         Undo | Redo => {
-    //             vec![sanedit_lsp::Change {
-    //                 start: lsp_types::Position {
-    //                     line: 0,
-    //                     character: 0,
-    //                 },
-    //                 end: offset_to_position(&slice, slice.len(), &enc),
-    //                 text: String::from(&slice),
-    //             }]
-    //         }
-    //         _ => edit
-    //             .changes
-    //             .iter()
-    //             .map(|change| sanedit_lsp::Change {
-    //                 start: offset_to_position(&slice, change.start(), &enc),
-    //                 end: offset_to_position(&slice, change.end(), &enc),
-    //                 text: String::from_utf8(change.text().into()).expect("Change was not UTF8"),
-    //             })
-    //             .collect(),
-    //     };
+        let version = buf.total_changes_made() as i32;
+        let Some(edit) = buf.last_edit() else {
+            // Nothing to sync
+            return Ok(());
+        };
+        let lsp = editor
+            .language_servers
+            .get(&ft)
+            .ok_or_else(|| LSPActionError::LanguageServerNotStarted(ft.clone()))?;
+        let enc = lsp.position_encoding();
+        let slice = buf.slice(..);
 
-    //     RequestKind::DidChange {
-    //         path,
-    //         changes,
-    //         version,
-    //     }
-    //     .into()
-    // });
+        use ChangesKind::*;
+        let changes = match edit.changes.kind() {
+            Undo | Redo => {
+                vec![sanedit_lsp::Change {
+                    start: lsp_types::Position {
+                        line: 0,
+                        character: 0,
+                    },
+                    end: offset_to_position(&slice, slice.len(), &enc),
+                    text: String::from(&slice),
+                }]
+            }
+            _ => edit
+                .changes
+                .iter()
+                .map(|change| sanedit_lsp::Change {
+                    start: offset_to_position(&slice, change.start(), &enc),
+                    end: offset_to_position(&slice, change.end(), &enc),
+                    text: String::from_utf8(change.text().into()).expect("Change was not UTF8"),
+                })
+                .collect(),
+        };
+
+        let lsp = editor
+            .language_servers
+            .get_mut(&ft)
+            .ok_or_else(|| LSPActionError::LanguageServerNotStarted(ft.clone()))?;
+        lsp.notify(Notification::DidChange {
+            path,
+            changes,
+            version,
+        })
+    }
+
+    sync(editor, id);
 }
 
 #[action("Complete")]
@@ -299,6 +316,16 @@ pub(crate) fn offset_to_position(
         line: row as u32,
         character: col,
     }
+}
+
+pub(crate) fn range_to_buffer_range(
+    slice: &PieceTreeSlice,
+    range: lsp_types::Range,
+    kind: &lsp_types::PositionEncodingKind,
+) -> BufferRange {
+    let start = position_to_offset(slice, range.start, kind);
+    let end = position_to_offset(slice, range.end, kind);
+    start..end
 }
 
 pub(crate) fn position_to_offset(

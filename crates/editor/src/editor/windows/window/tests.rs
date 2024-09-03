@@ -7,7 +7,7 @@ fn view_lines(win: &mut Window, buf: &Buffer) -> Vec<String> {
         let mut string = String::new();
         for cell in row {
             if let Some(ch) = cell.char() {
-                string.push_str(ch.display());
+                string.push_str(&ch.display());
             }
         }
         string
@@ -18,7 +18,8 @@ fn view_lines(win: &mut Window, buf: &Buffer) -> Vec<String> {
 
 fn with_buf(content: &str) -> (Window, Buffer) {
     let mut buf = Buffer::new();
-    buf.insert(0, content);
+    let changes = Changes::multi_insert(&[0], content.as_bytes());
+    buf.apply_changes(&changes);
     let mut win = Window::new(buf.id, 50, 10);
     win.redraw_view(&buf);
     (win, buf)

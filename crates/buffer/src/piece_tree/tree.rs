@@ -43,8 +43,8 @@ impl Tree {
     /// Insert piece `piece` to tree at index `index`.
     #[inline]
     pub fn insert(&mut self, pos: u64, piece: Piece, allow_append: bool) {
-        let (nodes_inserted, ..) = insert_rec(&mut self.root, pos, piece, true, allow_append);
-        self.node_count += nodes_inserted;
+        let inserted = insert_rec(&mut self.root, pos, piece, true, allow_append);
+        self.node_count += inserted.nodes;
     }
 
     pub fn remove(&mut self, range: Range<u64>) {
@@ -52,20 +52,19 @@ impl Tree {
         let len = range.end - range.start;
 
         while removed_bytes < len {
-            let (removed_piece, node_removed, ins_p) =
-                remove_rec(&mut self.root, range.start, len - removed_bytes, true);
+            let removed = remove_rec(&mut self.root, range.start, len - removed_bytes, true);
 
-            if node_removed {
+            if removed.node {
                 self.node_count -= 1;
             }
 
-            removed_bytes += removed_piece.len;
+            removed_bytes += removed.piece.len;
 
-            if let Some(p) = ins_p {
+            if let Some(p) = removed.reinsert {
                 removed_bytes -= p.len;
 
-                let (nodes_inserted, _) = insert_rec(&mut self.root, range.start, p, true, true);
-                self.node_count += nodes_inserted;
+                let inserted = insert_rec(&mut self.root, range.start, p, true, true);
+                self.node_count += inserted.nodes;
             }
         }
     }
@@ -107,39 +106,47 @@ impl Tree {
     }
 }
 
-/// Returns:
-///     number of inserted nodes
-///     inserted byte count
+struct Inserted {
+    nodes: usize,
+    bytes: u64,
+}
+
 fn insert_rec(
     node: &mut Arc<Node>,
     mut index: u64, // Index in buffer
     piece: Piece,   // Piece to insert
     at_root: bool,
     allow_append: bool,
-) -> (usize, u64) {
+) -> Inserted {
     if node.is_leaf() {
         let ins_bytes = piece.len;
         let node_color = if at_root { Color::Black } else { Color::Red };
         *node = Arc::new(Node::new(node_color, piece));
 
-        return (1, ins_bytes);
+        return Inserted {
+            nodes: 1,
+            bytes: ins_bytes,
+        };
     }
 
     let node = Arc::make_mut(node).internal();
     let node_left_len = node.left_subtree_len;
     let node_piece = &node.piece;
 
-    let (nodes_added, ins_bytes) = if node_left_len > index {
+    let inserted = if node_left_len > index {
         let ret = insert_rec(&mut node.left, index, piece, false, allow_append);
 
-        node.left_subtree_len += ret.1;
+        node.left_subtree_len += ret.bytes;
         ret
     } else if node_left_len == index {
         let ins_bytes = piece.len;
         node.insert_left(piece);
 
         node.left_subtree_len += ins_bytes;
-        (1, ins_bytes)
+        Inserted {
+            nodes: 1,
+            bytes: ins_bytes,
+        }
     } else if node_left_len + node_piece.len == index {
         // Append?
         if allow_append
@@ -147,12 +154,18 @@ fn insert_rec(
             && node_piece.pos + node_piece.len == piece.pos
         {
             node.piece.len += piece.len;
-            (0, piece.len)
+            Inserted {
+                nodes: 0,
+                bytes: piece.len,
+            }
         } else {
             // Otherwise insert to the right side
             let ins_bytes = piece.len;
             node.insert_right(piece);
-            (1, ins_bytes)
+            Inserted {
+                nodes: 1,
+                bytes: ins_bytes,
+            }
         }
     } else if node_left_len + node_piece.len > index {
         // Index is in the middle of the piece split the current piece.
@@ -164,7 +177,10 @@ fn insert_rec(
         node.insert_right(right_piece);
         node.insert_right(piece);
 
-        (2, ins_bytes)
+        Inserted {
+            nodes: 2,
+            bytes: ins_bytes,
+        }
     } else {
         // node_left_len + node_piece_len < index
         // Go right
@@ -172,7 +188,7 @@ fn insert_rec(
         insert_rec(&mut node.right, index, piece, false, allow_append)
     };
 
-    if nodes_added > 0 {
+    if inserted.nodes > 0 {
         node.balance();
     }
 
@@ -180,20 +196,26 @@ fn insert_rec(
         node.color = Color::Black;
     }
 
-    (nodes_added, ins_bytes)
+    inserted
+}
+
+struct Removed {
+    /// The removed picece
+    piece: Piece,
+    /// Whether a node was removed
+    node: bool,
+
+    /// The piece that should be reinserted into the piecetree
+    reinsert: Option<Piece>,
 }
 
 /// Remove from `len` bytes at position `index`.
-/// Returns:
-///     Removed piece,
-///     Wether the whole node was removed.
-///     Optional piece to insert if a piece split was needed.
 fn remove_rec(
     node: &mut Arc<Node>,
     mut index: u64, // Remove buffer position
     len: u64,       // Remove length
     at_root: bool,
-) -> (Piece, bool, Option<Piece>) {
+) -> Removed {
     if node.is_leaf() {
         unreachable!("Remove rec found leaf node");
     }
@@ -204,17 +226,27 @@ fn remove_rec(
     let n_left_len = n.left_subtree_len;
     let n_piece_len = n.piece.len;
 
-    let (rem_p, node_removed, ins_p, remove_piece) = if n_left_len > index {
-        let (removed_piece, node_removed, ins_p) = remove_rec(&mut n.left, index, len, false);
-        n.left_subtree_len -= removed_piece.len;
-        (removed_piece, node_removed, ins_p, false)
+    let (removed, remove_cur_node) = if n_left_len > index {
+        let removed = remove_rec(&mut n.left, index, len, false);
+        n.left_subtree_len -= removed.piece.len;
+        (removed, false)
     } else if n_left_len == index {
         if len >= n_piece_len {
             // Remove whole piece
-            (n.piece.clone(), true, None, true)
+            let remove = Removed {
+                piece: n.piece.clone(),
+                node: true,
+                reinsert: None,
+            };
+            (remove, true)
         } else {
             let rem_p = n.piece.split_right(len);
-            (rem_p, false, None, false)
+            let remove = Removed {
+                piece: rem_p,
+                node: false,
+                reinsert: None,
+            };
+            (remove, false)
         }
     } else if n_left_len + n_piece_len > index {
         // Removing from middle
@@ -231,16 +263,21 @@ fn remove_rec(
             Some(right_p)
         };
 
-        (rem_p, false, ins_p, false)
+        let remove = Removed {
+            piece: rem_p,
+            node: false,
+            reinsert: ins_p,
+        };
+        (remove, false)
     } else {
         index -= n_left_len + n_piece_len;
-        let (removed_piece, node_removed, ins_p) = remove_rec(&mut n.right, index, len, false);
-        (removed_piece, node_removed, ins_p, false)
+        let remove = remove_rec(&mut n.right, index, len, false);
+        (remove, false)
     };
 
-    if remove_piece {
+    if remove_cur_node {
         node_ref.remove();
-    } else if node_removed {
+    } else if removed.node {
         n.bubble();
     }
 
@@ -252,52 +289,8 @@ fn remove_rec(
         }
     }
 
-    (rem_p, node_removed, ins_p)
+    removed
 }
-
-// /// Find a node at `index` in the tree.
-// #[inline]
-// pub(crate) fn find_node_at(tree: &Tree, usize) -> (Vec<&InternalNode>, usize) {
-//     if tree.root.is_leaf() {
-//         return (vec![], 0);
-//     }
-
-//     let mut stack = Vec::with_capacity(tree.max_height());
-//     let idx = find_node_rec(&tree.root, pos, 0, &mut stack);
-//     (stack, idx)
-// }
-
-// fn find_node_rec<'a>(
-//     node: &'a Node,
-//     mut usize,
-//     mut cur_usize,
-//     stack: &mut Vec<&'a InternalNode>,
-// ) -> usize {
-//     if let Node::Internal(n) = node {
-//         let node_left_len = n.left_subtree_len;
-//         let node_piece = &n.piece;
-
-//         cur_pos += node_left_len;
-
-//         if node_left_len > pos {
-//             stack.push(n);
-//             return find_node_rec(&n.left, pos, cur_pos - node_left_len, stack);
-//         } else if node_left_len == pos
-//             || node_left_len + node_piece.len > pos
-//             || node_left_len + node_piece.len == pos && n.right.is_leaf()
-//         {
-//             stack.push(n);
-//             return cur_pos;
-//         } else {
-//             stack.push(n);
-//             pos -= node_left_len + node_piece.len;
-//             cur_pos += node_piece.len;
-//             return find_node_rec(&n.right, pos, cur_pos, stack);
-//         }
-//     }
-
-//     unreachable!()
-// }
 
 impl Default for Tree {
     fn default() -> Self {

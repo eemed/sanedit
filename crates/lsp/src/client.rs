@@ -1,5 +1,4 @@
 use std::collections::BTreeMap;
-use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
 use std::{path::PathBuf, process::Stdio};
 
@@ -122,7 +121,7 @@ struct LSPClient {
 impl LSPClient {
     pub async fn run(mut self) -> Result<()> {
         while let Some(req) = self.receiver.recv().await {
-            let handler = Handler {
+            let mut handler = Handler {
                 params: self.params.clone(),
                 init_params: self.init_params.clone(),
                 server: self.server_sender.clone(),
@@ -130,8 +129,22 @@ impl LSPClient {
             };
 
             tokio::spawn(async move {
+                let id = req.id();
                 if let Err(e) = handler.run(req).await {
                     log::error!("Failed handling request: {e}");
+
+                    // Send error response if failed request
+                    if let Some(id) = id {
+                        let _ = handler
+                            .response
+                            .send(Response::Request {
+                                id,
+                                result: RequestResult::Error {
+                                    msg: format!("{e}"),
+                                },
+                            })
+                            .await;
+                    }
                 }
             });
         }
@@ -147,7 +160,7 @@ struct Handler {
 }
 
 impl Handler {
-    pub async fn run(mut self, msg: ToLSP) -> Result<()> {
+    pub async fn run(&mut self, msg: ToLSP) -> Result<()> {
         match msg {
             ToLSP::Request(req) => match req.kind {
                 RequestKind::Hover { path, position } => self.hover(req.id, path, position).await?,
@@ -166,6 +179,11 @@ impl Handler {
                 RequestKind::CodeActionResolve { action } => {
                     self.code_action_resolve(req.id, action).await?
                 }
+                RequestKind::Rename {
+                    path,
+                    position,
+                    new_name,
+                } => self.rename(req.id, path, position, new_name).await?,
             },
             ToLSP::Notification(notif) => match notif {
                 Notification::DidOpen {
@@ -185,13 +203,54 @@ impl Handler {
         Ok(())
     }
 
+    async fn rename(
+        &mut self,
+        id: u32,
+        path: PathBuf,
+        position: lsp_types::Position,
+        new_name: String,
+    ) -> Result<()> {
+        let params = lsp_types::RenameParams {
+            text_document_position: lsp_types::TextDocumentPositionParams {
+                text_document: lsp_types::TextDocumentIdentifier {
+                    uri: path_to_uri(&path),
+                },
+                position,
+            },
+            new_name,
+            work_done_progress_params: lsp_types::WorkDoneProgressParams {
+                work_done_token: None,
+            },
+        };
+
+        let response = self
+            .request::<lsp_types::request::Rename>(id, &params)
+            .await?;
+
+        let result = response.ok_or(anyhow!("No rename response"))?;
+        let _ = self
+            .response
+            .send(Response::Request {
+                id,
+                result: RequestResult::Rename { edit: result },
+            })
+            .await;
+
+        Ok(())
+    }
+
     async fn code_action_resolve(&mut self, id: u32, action: lsp_types::CodeAction) -> Result<()> {
-        log::info!("Resolve: {action:?}");
         let response = self
             .request::<lsp_types::request::CodeActionResolveRequest>(id, &action)
             .await?;
-        log::info!("Response: {response:?}");
 
+        let _ = self
+            .response
+            .send(Response::Request {
+                id,
+                result: RequestResult::ResolvedAction { action: response },
+            })
+            .await;
         Ok(())
     }
 

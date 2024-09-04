@@ -42,8 +42,8 @@ pub(crate) fn client_capabilities() -> lsp_types::ClientCapabilities {
                     },
                 ),
                 file_operations: Some(lsp_types::WorkspaceFileOperationsClientCapabilities {
-                    will_rename: Some(true),
-                    did_rename: Some(true),
+                    // will_rename: Some(true),
+                    // did_rename: Some(true),
                     ..Default::default()
                 }),
                 ..Default::default()
@@ -78,16 +78,17 @@ pub(crate) fn client_capabilities() -> lsp_types::ClientCapabilities {
                     // content_format: Some(vec![lsp_types::MarkupKind::Markdown]),
                     ..Default::default()
                 }),
-                signature_help: Some(lsp_types::SignatureHelpClientCapabilities {
-                    signature_information: Some(lsp_types::SignatureInformationSettings {
-                        documentation_format: Some(vec![lsp_types::MarkupKind::Markdown]),
-                        parameter_information: Some(lsp_types::ParameterInformationSettings {
-                            label_offset_support: Some(true),
-                        }),
-                        active_parameter_support: Some(true),
-                    }),
-                    ..Default::default()
-                }),
+                signature_help: None,
+                // signature_help: Some(lsp_types::SignatureHelpClientCapabilities {
+                //     signature_information: Some(lsp_types::SignatureInformationSettings {
+                //         documentation_format: Some(vec![lsp_types::MarkupKind::Markdown]),
+                //         parameter_information: Some(lsp_types::ParameterInformationSettings {
+                //             label_offset_support: Some(true),
+                //         }),
+                //         active_parameter_support: Some(true),
+                //     }),
+                //     ..Default::default()
+                // }),
                 rename: Some(lsp_types::RenameClientCapabilities {
                     dynamic_registration: Some(false),
                     prepare_support: Some(true),

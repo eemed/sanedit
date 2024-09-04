@@ -6,6 +6,15 @@ pub(crate) enum ToLSP {
     Notification(Notification),
 }
 
+impl ToLSP {
+    pub fn id(&self) -> Option<u32> {
+        match self {
+            ToLSP::Request(req) => Some(req.id),
+            ToLSP::Notification(_) => None,
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum Notification {
     DidOpen {
@@ -53,6 +62,11 @@ pub enum RequestKind {
     },
     CodeActionResolve {
         action: lsp_types::CodeAction,
+    },
+    Rename {
+        path: PathBuf,
+        position: lsp_types::Position,
+        new_name: String,
     },
 }
 

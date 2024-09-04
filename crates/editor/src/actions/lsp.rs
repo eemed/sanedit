@@ -146,7 +146,7 @@ fn sync_document(editor: &mut Editor, id: ClientId) {
             .get(&ft)
             .ok_or_else(|| LSPActionError::LanguageServerNotStarted(ft.clone()))?;
         let enc = lsp.position_encoding();
-        let slice = buf.slice(..);
+        let slice = edit.buf.slice(..);
 
         use ChangesKind::*;
         let changes = match edit.changes.kind() {
@@ -229,6 +229,23 @@ fn code_action(editor: &mut Editor, id: ClientId) {
     });
 }
 
+#[action("Code action")]
+fn rename(editor: &mut Editor, id: ClientId) {
+    todo!()
+    // let _ = lsp_request(editor, id, move |win, buf, path, slice, lsp| {
+    //     let offset = win.cursors.primary().pos();
+    //     let position = offset_to_position(&slice, offset, &lsp.position_encoding());
+    //     let kind = RequestKind::CodeAction { path, position };
+    //     Some((
+    //         kind,
+    //         vec![
+    //             Constraint::Buffer(buf.id),
+    //             Constraint::BufferVersion(buf.total_changes_made()),
+    //         ],
+    //     ))
+    // });
+}
+
 #[action("Send LSP open document notification")]
 pub(crate) fn open_doc(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf(id);
@@ -289,6 +306,7 @@ pub(crate) fn offset_to_position(
     mut offset: u64,
     kind: &lsp_types::PositionEncodingKind,
 ) -> lsp_types::Position {
+    log::info!("OFFSET: {offset}");
     let (row, line) = slice.line_at(offset);
     offset -= line.start();
 
@@ -312,6 +330,7 @@ pub(crate) fn offset_to_position(
         col += len as u32;
     }
 
+    log::info!("TO: row: {row}, col: {col}");
     lsp_types::Position {
         line: row as u32,
         character: col,

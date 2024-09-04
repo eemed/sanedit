@@ -29,6 +29,12 @@ pub enum RequestResult {
     ResolvedAction {
         action: lsp_types::CodeAction,
     },
+    Rename {
+        edit: lsp_types::WorkspaceEdit,
+    },
+    Error {
+        msg: String,
+    },
 }
 
 #[derive(Debug, Clone)]

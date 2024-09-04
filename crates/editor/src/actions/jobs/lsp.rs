@@ -241,14 +241,14 @@ impl LSP {
 
     fn handle_result(&self, editor: &mut Editor, id: ClientId, result: RequestResult) {
         match result {
-            sanedit_lsp::RequestResult::Hover { text, position } => {
+            RequestResult::Hover { text, position } => {
                 let (win, buf) = editor.win_buf_mut(id);
                 win.popup = Some(StatusMessage {
                     severity: Severity::Info,
                     message: text,
                 });
             }
-            sanedit_lsp::RequestResult::GotoDefinition { path, position } => {
+            RequestResult::GotoDefinition { path, position } => {
                 if editor.open_file(self.client_id, path).is_ok() {
                     let enc = editor
                         .lsp_handle_for(self.client_id)
@@ -261,19 +261,21 @@ impl LSP {
                     }
                 }
             }
-            sanedit_lsp::RequestResult::Complete {
+            RequestResult::Complete {
                 path,
                 position,
                 results,
             } => complete(editor, id, path, position, results),
-            sanedit_lsp::RequestResult::References { references } => {
-                show_references(editor, id, references)
-            }
-            sanedit_lsp::RequestResult::CodeAction { actions } => code_action(editor, id, actions),
-            sanedit_lsp::RequestResult::ResolvedAction { action } => {
+            RequestResult::References { references } => show_references(editor, id, references),
+            RequestResult::CodeAction { actions } => code_action(editor, id, actions),
+            RequestResult::ResolvedAction { action } => {
                 if let Some(edit) = action.edit {
-                    code_action_edit_workspace(editor, id, edit)
+                    edit_workspace(editor, id, edit)
                 }
+            }
+            RequestResult::Rename { edit } => edit_workspace(editor, id, edit),
+            RequestResult::Error { msg } => {
+                log::error!("Got error message from LSP {}: {msg}", self.opts.command);
             }
         }
     }
@@ -357,7 +359,8 @@ fn code_action(editor: &mut Editor, id: ClientId, actions: Vec<CodeAction>) {
     editor.job_broker.request(job);
 }
 
-fn code_action_edit_workspace(editor: &mut Editor, id: ClientId, edit: lsp_types::WorkspaceEdit) {
+fn edit_workspace(editor: &mut Editor, id: ClientId, edit: lsp_types::WorkspaceEdit) {
+    log::info!("Edit workspace");
     let lsp_types::WorkspaceEdit {
         changes,
         document_changes,
@@ -368,7 +371,7 @@ fn code_action_edit_workspace(editor: &mut Editor, id: ClientId, edit: lsp_types
         match doc_changes {
             lsp_types::DocumentChanges::Edits(edits) => {
                 for edit in edits {
-                    code_action_edit_document(editor, id, edit);
+                    edit_document(editor, id, edit);
                 }
             }
             lsp_types::DocumentChanges::Operations(ops) => {
@@ -378,7 +381,7 @@ fn code_action_edit_workspace(editor: &mut Editor, id: ClientId, edit: lsp_types
                             code_action_edit_operation(editor, id, op);
                         }
                         lsp_types::DocumentChangeOperation::Edit(edit) => {
-                            code_action_edit_document(editor, id, edit);
+                            edit_document(editor, id, edit);
                         }
                     }
                 }
@@ -395,7 +398,8 @@ fn code_action_edit_operation(editor: &mut Editor, id: ClientId, op: lsp_types::
     }
 }
 
-fn code_action_edit_document(editor: &mut Editor, id: ClientId, edit: lsp_types::TextDocumentEdit) {
+fn edit_document(editor: &mut Editor, id: ClientId, edit: lsp_types::TextDocumentEdit) {
+    log::info!("Edit document");
     let path = PathBuf::from(edit.text_document.uri.path().as_str());
     let bid = match editor.buffers().find(&path) {
         Some(bid) => bid,
@@ -429,10 +433,13 @@ fn code_action_edit_document(editor: &mut Editor, id: ClientId, edit: lsp_types:
         })
         .collect();
     let changes = Changes::from(changes);
+
     if let Err(e) = buf.apply_changes(&changes) {
         log::error!("Failed to apply changes to buffer: {path:?}: {e}");
         return;
     }
+
+    todo!("hooks")
 }
 
 fn show_references(

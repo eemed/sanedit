@@ -93,29 +93,31 @@ impl Default for Hooks {
             hook_types: FxHashMap::default(),
             hooks: FxHashMap::default(),
         };
+
+        // Search
         hooks.register(InsertPre, search::clear_matches);
         hooks.register(RemovePre, search::clear_matches);
+
+        // Window
         hooks.register(BufChanged, window::sync_windows);
         hooks.register(CursorMoved, cursors::merge_overlapping_cursors);
-
         hooks.register(OnMessagePre, window::clear_messages);
-
-        hooks.register(OnMessagePost, syntax::parse_view);
-
         // TODO handle registration only when needed?
         hooks.register(CursorMoved, completion::abort);
         hooks.register(BufChanged, completion::send_word);
-
         hooks.register(BufOpened, indent::detect_indent);
-
         hooks.register(CursorMoved, popup::close);
-        hooks.register(BufOpened, syntax::parse_syntax);
 
+        // Syntax
+        hooks.register(OnMessagePost, syntax::reparse_view);
+        hooks.register(BufOpened, syntax::parse_syntax);
+        hooks.register(BufChanged, syntax::prevent_flicker);
+
+        // LSP
         hooks.register(BufOpened, lsp::start_lsp);
         hooks.register(BufOpened, lsp::open_doc);
         hooks.register(BufChanged, lsp::sync_document);
-        // TODO closed
-        // hooks.register(BufOpened, lsp::);
+        // TODO closed events
 
         hooks
     }

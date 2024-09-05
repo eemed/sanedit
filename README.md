@@ -2,18 +2,25 @@
 
 ## TODO
 
-* LSP without installation mechanism
-    + Hover
-    + Completion
+* LSP
+    - Hover
+        - needs section separators
+    - Completion
+        - needs documentation
+        - needs type
     - Code actions
+        - Missing hooks on workspace edit
     - Diagnostics: Somehow to show them
-    + Goto definition
-    + Show references
-    * (Signature help) I use hover for this too
-    + Update documents on change
+        - Not done at all
+    - Send close events on buf close
+    - Rename
+        - needs prompt
+
+
 * Highlight flickering
     - => Modify existing syntax highlight to take into account the changes made
     - => No delay exeprt if we just typed a new higfhlighted item => GOOD
+
 * Somethings wrong with multiwidth grapheme rendering.
 * Keybinds to configuration file => no default
 * Async saving
@@ -37,6 +44,8 @@
     - Should try this once we can write it in this editor :)
 
 * Add log buffer directly to editor
+
+* Basic highlighting for jsx
 
 
 ## Future

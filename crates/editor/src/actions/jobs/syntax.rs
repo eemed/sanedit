@@ -18,6 +18,7 @@ pub(crate) struct SyntaxParser {
     client_id: ClientId,
     syntax: Syntax,
     bid: BufferId,
+    total_changes_made: u32,
     ropt: PieceTreeView,
     range: BufferRange,
 }
@@ -26,6 +27,7 @@ impl SyntaxParser {
     pub fn new(
         id: ClientId,
         bid: BufferId,
+        total_changes_made: u32,
         syntax: Syntax,
         ropt: PieceTreeView,
         range: BufferRange,
@@ -33,6 +35,7 @@ impl SyntaxParser {
         SyntaxParser {
             client_id: id,
             bid,
+            total_changes_made,
             syntax,
             ropt,
             range,

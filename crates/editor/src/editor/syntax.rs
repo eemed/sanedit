@@ -75,6 +75,7 @@ impl Syntax {
     pub fn parse(
         &self,
         bid: BufferId,
+        total_changes_made: u32,
         ropt: &PieceTreeView,
         mut view: Range<u64>,
         kill: broadcast::Receiver<()>,
@@ -128,6 +129,7 @@ impl Syntax {
         Ok(SyntaxParseResult {
             buffer_range: view,
             bid,
+            total_changes_made,
             highlights: spans,
         })
     }
@@ -137,6 +139,7 @@ impl Syntax {
 pub(crate) struct SyntaxParseResult {
     pub(crate) buffer_range: BufferRange,
     pub(crate) bid: BufferId,
+    pub(crate) total_changes_made: u32,
     pub(crate) highlights: Vec<Span>,
 }
 

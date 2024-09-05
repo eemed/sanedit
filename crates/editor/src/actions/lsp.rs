@@ -7,7 +7,7 @@ use sanedit_lsp::{lsp_types, Notification, RequestKind};
 
 use crate::{
     editor::{
-        buffers::{Buffer, BufferId, BufferRange, ChangesKind, Filetype},
+        buffers::{Buffer, BufferId, BufferRange, ChangesKind},
         windows::Window,
         Editor,
     },
@@ -22,13 +22,13 @@ enum LSPActionError {
     PathNotSet,
 
     #[error("No language server configured for filetype {0:?}")]
-    LanguageServerNotConfigured(Filetype),
+    LanguageServerNotConfigured(String),
 
     #[error("Language server is already running for filetype {0:?}")]
-    LanguageServerAlreadyRunning(Filetype),
+    LanguageServerAlreadyRunning(String),
 
     #[error("No language server started for filetype {0:?}")]
-    LanguageServerNotStarted(Filetype),
+    LanguageServerNotStarted(String),
 
     #[error("File type not set for buffer")]
     FiletypeNotSet,
@@ -55,7 +55,7 @@ pub(crate) fn lsp_request(
     let handle = editor
         .language_servers
         .get(&ft)
-        .ok_or_else(|| LSPActionError::LanguageServerNotStarted(ft.clone()))?;
+        .ok_or_else(|| LSPActionError::LanguageServerNotStarted(ft.as_str().to_string()))?;
 
     let (win, buf) = editor.win_buf(id);
     let slice = buf.slice(..);
@@ -65,7 +65,7 @@ pub(crate) fn lsp_request(
         let lsp = editor
             .language_servers
             .get_mut(&ft)
-            .ok_or_else(|| LSPActionError::LanguageServerNotStarted(ft.clone()))?;
+            .ok_or_else(|| LSPActionError::LanguageServerNotStarted(ft.as_str().to_string()))?;
         lsp.request(kind, id, constraints)
     } else {
         Ok(())
@@ -79,13 +79,15 @@ fn start_lsp(editor: &mut Editor, id: ClientId) {
         let (_win, buf) = editor.win_buf_mut(id);
         let ft = buf.filetype.clone().ok_or(LSPActionError::FiletypeNotSet)?;
         if editor.language_servers.get(&ft).is_some() {
-            bail!(LSPActionError::LanguageServerAlreadyRunning(ft.clone()));
+            bail!(LSPActionError::LanguageServerAlreadyRunning(
+                ft.as_str().to_string()
+            ));
         }
         let lang = editor
             .options
             .language_server
             .get(ft.as_str())
-            .ok_or_else(|| LSPActionError::LanguageServerNotConfigured(ft.clone()))?;
+            .ok_or_else(|| LSPActionError::LanguageServerNotConfigured(ft.as_str().to_string()))?;
 
         let lsp = LSP::new(id, wd, ft, lang);
         editor.job_broker.request(lsp);
@@ -94,8 +96,14 @@ fn start_lsp(editor: &mut Editor, id: ClientId) {
     }
 
     if let Err(e) = start_lsp(editor, id) {
-        let (win, buf) = editor.win_buf_mut(id);
-        win.error_msg(&format!("{e}"));
+        let err = e.downcast_ref::<LSPActionError>().unwrap();
+        match err {
+            LSPActionError::LanguageServerAlreadyRunning(_) => {}
+            _ => {
+                let (win, buf) = editor.win_buf_mut(id);
+                win.error_msg(&format!("{e}"));
+            }
+        }
     }
 }
 
@@ -144,7 +152,7 @@ fn sync_document(editor: &mut Editor, id: ClientId) {
         let lsp = editor
             .language_servers
             .get(&ft)
-            .ok_or_else(|| LSPActionError::LanguageServerNotStarted(ft.clone()))?;
+            .ok_or_else(|| LSPActionError::LanguageServerNotStarted(ft.as_str().to_string()))?;
         let enc = lsp.position_encoding();
         let slice = edit.buf.slice(..);
 
@@ -174,7 +182,7 @@ fn sync_document(editor: &mut Editor, id: ClientId) {
         let lsp = editor
             .language_servers
             .get_mut(&ft)
-            .ok_or_else(|| LSPActionError::LanguageServerNotStarted(ft.clone()))?;
+            .ok_or_else(|| LSPActionError::LanguageServerNotStarted(ft.as_str().to_string()))?;
         lsp.notify(Notification::DidChange {
             path,
             changes,
@@ -272,10 +280,13 @@ pub(crate) fn open_document(editor: &mut Editor, bid: BufferId) -> Result<()> {
     let text = String::from(&buf.slice(..));
     let version = buf.total_changes_made() as i32;
 
-    let lsp = editor
-        .language_servers
-        .get_mut(&ft)
-        .ok_or(LSPActionError::LanguageServerNotStarted(ft.clone()))?;
+    let lsp =
+        editor
+            .language_servers
+            .get_mut(&ft)
+            .ok_or(LSPActionError::LanguageServerNotStarted(
+                ft.as_str().to_string(),
+            ))?;
     lsp.notify(Notification::DidOpen {
         path: path.clone(),
         text,
@@ -294,10 +305,13 @@ pub(crate) fn close_document(editor: &mut Editor, bid: BufferId) -> Result<()> {
         .map(Path::to_path_buf)
         .ok_or(LSPActionError::PathNotSet)?;
 
-    let lsp = editor
-        .language_servers
-        .get_mut(&ft)
-        .ok_or(LSPActionError::LanguageServerNotStarted(ft.clone()))?;
+    let lsp =
+        editor
+            .language_servers
+            .get_mut(&ft)
+            .ok_or(LSPActionError::LanguageServerNotStarted(
+                ft.as_str().to_string(),
+            ))?;
     lsp.notify(Notification::DidClose { path: path.clone() })
 }
 

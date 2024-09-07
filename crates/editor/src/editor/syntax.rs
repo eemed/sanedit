@@ -156,6 +156,14 @@ impl Span {
         &self.name
     }
 
+    pub fn start(&self) -> u64 {
+        self.range.start
+    }
+
+    pub fn end(&self) -> u64 {
+        self.range.end
+    }
+
     pub fn range(&self) -> Range<u64> {
         self.range.clone()
     }
@@ -172,5 +180,25 @@ impl Span {
     /// Wether this span should be highlighted or not
     pub fn highlight(&self) -> bool {
         self.highlight || !self.is_completion()
+    }
+
+    pub fn extend_by(&mut self, i: u64) {
+        self.range.end += i;
+    }
+
+    pub fn shrink_by(&mut self, i: u64) {
+        self.range.end = self.range.end.saturating_sub(i);
+    }
+
+    pub fn add_offset(&mut self, i: i128) {
+        let neg = i.is_negative();
+        let amount = i.abs() as u64;
+        if neg {
+            self.range.start = self.range.start.saturating_sub(amount);
+            self.range.end = self.range.end.saturating_sub(amount);
+        } else {
+            self.range.start += amount;
+            self.range.end += amount;
+        }
     }
 }

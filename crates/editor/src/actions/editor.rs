@@ -1,4 +1,5 @@
 use crate::{
+    common::is_yes,
     editor::{
         config::{serialize_default_configuration, Config},
         hooks::Hook,
@@ -78,7 +79,7 @@ fn prompt_create_and_open_config(editor: &mut Editor, id: ClientId) {
         .prompt("Configuration file is missing. Create default configuration? (Y/n)")
         .simple()
         .on_confirm(|editor, id, input| {
-            let yes = input.is_empty() || input.eq_ignore_ascii_case("y");
+            let yes = input.is_empty() || is_yes(input);
             if !yes {
                 return;
             }

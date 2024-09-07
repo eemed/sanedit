@@ -21,6 +21,9 @@ pub(crate) enum Hook {
     /// After buffer opened in a window
     BufOpened,
 
+    /// After buffer is closed, and will be removed
+    BufRemovePre,
+
     /// Before client message is processed
     OnMessagePre,
 
@@ -117,6 +120,7 @@ impl Default for Hooks {
         hooks.register(BufOpened, lsp::start_lsp);
         hooks.register(BufOpened, lsp::open_doc);
         hooks.register(BufChanged, lsp::sync_document);
+        hooks.register(BufRemovePre, lsp::close_doc);
         // TODO closed events
 
         hooks

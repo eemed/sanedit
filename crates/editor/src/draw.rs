@@ -113,9 +113,7 @@ impl DrawState {
             redraw.push(current);
         }
 
-        if let Some(current) = prompt::draw(&mut ctx) {
-            redraw.push(current);
-        }
+        redraw.extend(prompt::draw(&mut ctx));
 
         if let Some(current) = completion::draw(&mut ctx) {
             redraw.push(current);

@@ -6,27 +6,30 @@ use crate::editor::windows::Focus;
 
 use super::DrawContext;
 
-pub(crate) fn draw(ctx: &mut DrawContext) -> Option<redraw::Redraw> {
-    if ctx.focus_changed_from(Focus::Prompt)
-        || ctx
-            .state
-            .last_prompt
-            .as_ref()
-            .map(|p| p != ctx.editor.win.prompt.message())
-            .unwrap_or(false)
-    {
+pub(crate) fn draw(ctx: &mut DrawContext) -> Vec<redraw::Redraw> {
+    let mut results: Vec<redraw::Redraw> = vec![];
+
+    let reopened = ctx
+        .state
+        .last_prompt
+        .as_ref()
+        .map(|p| p != ctx.editor.win.prompt.message())
+        .unwrap_or(false);
+
+    if ctx.focus_changed_from(Focus::Prompt) || reopened {
         ctx.state.prompt_scroll_offset = 0;
         ctx.state.last_prompt = None;
-        return Redraw::Prompt(Component::Close).into();
+        results.push(Redraw::Prompt(Component::Close).into());
     }
 
     let in_focus = ctx.editor.win.focus == Focus::Prompt;
 
     if !in_focus {
-        return None;
+        return results;
     }
 
-    draw_impl(ctx).into()
+    results.push(draw_impl(ctx).into());
+    results.into()
 }
 
 fn draw_impl(ctx: &mut DrawContext) -> redraw::Redraw {

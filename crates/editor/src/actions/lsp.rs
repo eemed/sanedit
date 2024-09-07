@@ -30,7 +30,7 @@ enum LSPActionError {
     #[error("No language server started for filetype {0:?}")]
     LanguageServerNotStarted(String),
 
-    #[error("File type not set for buffer")]
+    #[error("Filetype not set for buffer")]
     FiletypeNotSet,
 }
 
@@ -95,16 +95,7 @@ fn start_lsp(editor: &mut Editor, id: ClientId) {
         Ok(())
     }
 
-    if let Err(e) = start_lsp(editor, id) {
-        let err = e.downcast_ref::<LSPActionError>().unwrap();
-        match err {
-            LSPActionError::LanguageServerAlreadyRunning(_) => {}
-            _ => {
-                let (win, buf) = editor.win_buf_mut(id);
-                win.error_msg(&format!("{e}"));
-            }
-        }
-    }
+    if let Err(_e) = start_lsp(editor, id) {}
 }
 
 #[action("Hover information")]
@@ -320,7 +311,6 @@ pub(crate) fn offset_to_position(
     mut offset: u64,
     kind: &lsp_types::PositionEncodingKind,
 ) -> lsp_types::Position {
-    log::info!("OFFSET: {offset}");
     let (row, line) = slice.line_at(offset);
     offset -= line.start();
 
@@ -344,7 +334,6 @@ pub(crate) fn offset_to_position(
         col += len as u32;
     }
 
-    log::info!("TO: row: {row}, col: {col}");
     lsp_types::Position {
         line: row as u32,
         character: col,

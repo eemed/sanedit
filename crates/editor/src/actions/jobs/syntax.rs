@@ -1,4 +1,4 @@
-use std::{any::Any, ops::Range};
+use std::any::Any;
 
 use sanedit_buffer::PieceTreeView;
 
@@ -47,6 +47,7 @@ impl CPUJob for SyntaxParser {
     fn run(&self, mut ctx: JobContext) -> anyhow::Result<()> {
         let ast = self.syntax.parse(
             self.bid,
+            self.total_changes_made,
             &self.ropt,
             self.range.clone(),
             ctx.kill.subscribe(),

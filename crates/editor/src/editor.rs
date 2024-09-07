@@ -34,6 +34,7 @@ use crate::actions;
 use crate::actions::cursors;
 use crate::actions::hooks::run;
 use crate::actions::jobs::LSPHandle;
+use crate::actions::prompt::close_modified_buffer;
 use crate::common::dirs::ConfigDirectory;
 use crate::common::file::FileDescription;
 use crate::common::text::copy_cursors_to_lines;
@@ -229,11 +230,8 @@ impl Editor {
 
     /// Open an existing buffer in a window
     pub fn open_buffer(&mut self, id: ClientId, bid: BufferId) {
-        let (win, buf) = self.win_buf_mut(id);
-        // TODO check if buffer is not saved and what to do if it is not, prompt
-        // save or auto save?
-
-        let old = win.open_buffer(bid);
+        let (_win, buf) = self.win_buf_mut(id);
+        let old = buf.id;
         let is_modified = buf.is_modified();
         let is_used = self
             .windows
@@ -241,8 +239,12 @@ impl Editor {
             .any(|(_, win)| win.buffer_id() == old || win.prev_buffer_id() == Some(old));
 
         if !is_modified && !is_used {
+            run(self, id, Hook::BufRemovePre);
             self.buffers.remove(old);
         }
+
+        let (win, _buf) = self.win_buf_mut(id);
+        win.open_buffer(bid);
 
         run(self, id, Hook::BufOpened);
     }
@@ -388,35 +390,6 @@ impl Editor {
 
         for cid in clients {
             self.redraw(cid);
-        }
-    }
-
-    /// Synchronously recalculates the syntax
-    fn recalculate_syntax(&mut self, id: ClientId) {
-        if !self.windows.contains(id) {
-            return;
-        }
-
-        let (win, buf) = self.win_buf_mut(id);
-        win.redraw_view(buf);
-
-        let bid = buf.id;
-        let range = win.view().range();
-        let ropt = buf.read_only_copy();
-        let (_s, r) = tokio::sync::broadcast::channel(1);
-        let Some(ft) = buf.filetype.clone() else {
-            return;
-        };
-        let syntax = self.syntaxes.get(&ft);
-
-        if let Ok(syntax) = syntax {
-            match syntax.parse(bid, &ropt, range, r) {
-                Ok(res) => {
-                    let (win, _buf) = self.win_buf_mut(id);
-                    *win.syntax_result() = res;
-                }
-                Err(e) => log::error!("Failed to parse file: {e}"),
-            }
         }
     }
 

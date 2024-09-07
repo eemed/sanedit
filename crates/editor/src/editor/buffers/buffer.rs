@@ -178,12 +178,12 @@ impl Buffer {
 
         ensure!(!self.read_only, BufferError::ReadOnly);
 
-        let rollback = self.read_only_copy();
+        let rollback = self.ro_view();
         let needs_undo = self.is_modified && self.needs_undo_point(changes);
         let rollback_snapshot_id = self.snapshots.current();
 
         if needs_undo {
-            let snapshot = self.read_only_copy();
+            let snapshot = self.ro_view();
             let id = self.snapshots.insert(snapshot);
             result.created_snapshot = Some(id);
         }
@@ -321,7 +321,7 @@ impl Buffer {
         self.pt.slice(range)
     }
 
-    pub fn read_only_copy(&self) -> PieceTreeView {
+    pub fn ro_view(&self) -> PieceTreeView {
         self.pt.view()
     }
 
@@ -338,7 +338,7 @@ impl Buffer {
         let path = self.path().ok_or(BufferError::NoSavePath)?;
         ensure!(self.is_modified, BufferError::Unmodified);
 
-        let cur = self.read_only_copy();
+        let cur = self.ro_view();
         let copy = Self::save_copy(&cur)?;
 
         // Rename backing file if it is the same as our path

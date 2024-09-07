@@ -9,6 +9,7 @@ use sanedit_utils::idmap::{AsID, ID};
 
 use crate::{
     actions::jobs::FileOptionProvider,
+    common::is_yes,
     editor::{
         buffers::BufferId,
         hooks::Hook,
@@ -24,6 +25,7 @@ use super::{
     hooks,
     jobs::{Grep, MatcherJob},
     shell,
+    text::save,
 };
 
 #[action("Select theme")]
@@ -301,7 +303,7 @@ fn grep(editor: &mut Editor, id: ClientId) {
 
                 for (_, buf) in e.buffers().iter() {
                     if let Some(path) = buf.path() {
-                        map.insert(path.to_path_buf(), buf.read_only_copy());
+                        map.insert(path.to_path_buf(), buf.ro_view());
                     }
                 }
 
@@ -309,6 +311,28 @@ fn grep(editor: &mut Editor, id: ClientId) {
             };
             let job = Grep::new(input, wd, &ignore, buffers, id);
             e.job_broker.request_slot(id, GREP_JOB, job);
+        })
+        .build();
+    win.focus = Focus::Prompt;
+}
+
+/// Prompt whether buffer changes should be changed or not
+pub(crate) fn close_modified_buffer<F: Fn(&mut Editor, ClientId) + 'static>(
+    editor: &mut Editor,
+    id: ClientId,
+    on_confirm: F,
+) {
+    let (win, _buf) = editor.win_buf_mut(id);
+    win.prompt = Prompt::builder()
+        .prompt("Closing a modified buffer. Save changes? (Y/n)")
+        .simple()
+        .on_confirm(move |e, id, input| {
+            let yes = input.is_empty() || is_yes(input);
+            if yes {
+                save.execute(e, id);
+            }
+
+            (on_confirm)(e, id);
         })
         .build();
     win.focus = Focus::Prompt;

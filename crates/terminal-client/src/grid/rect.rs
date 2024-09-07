@@ -127,6 +127,13 @@ impl Rect {
             && self.y + self.height >= other.y + other.height
     }
 
+    pub fn contains(&self, point: &Point) -> bool {
+        self.x <= point.x
+            && point.x <= self.x + self.width
+            && self.y < point.y
+            && point.y < self.y + self.height
+    }
+
     /// Rightmost position this rect reaches x + width
     pub fn rightmost(&self) -> usize {
         self.x + self.width

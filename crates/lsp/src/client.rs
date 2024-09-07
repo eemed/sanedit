@@ -480,7 +480,9 @@ impl Handler {
                 lsp_types::MarkupKind::PlainText => {
                     text = cont.value;
                 }
-                lsp_types::MarkupKind::Markdown => todo!(),
+                lsp_types::MarkupKind::Markdown => {
+                    text = cont.value;
+                }
             },
         }
 

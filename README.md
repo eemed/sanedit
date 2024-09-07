@@ -3,8 +3,6 @@
 ## TODO
 
 * LSP
-    - Hover
-        - needs section separators
     - Completion
         - needs documentation
         - needs type
@@ -16,10 +14,6 @@
     - Rename
         - needs prompt
 
-
-* Highlight flickering
-    - => Modify existing syntax highlight to take into account the changes made
-    - => No delay exeprt if we just typed a new higfhlighted item => GOOD
 
 * Somethings wrong with multiwidth grapheme rendering.
 * Keybinds to configuration file => no default

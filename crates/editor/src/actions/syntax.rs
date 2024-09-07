@@ -1,7 +1,14 @@
-use crate::{common::range::RangeUtils, editor::Editor, server::ClientId};
+use crate::{
+    common::range::RangeUtils,
+    editor::{buffers::BufferRangeExt, Editor},
+    server::ClientId,
+};
 
 use super::jobs::SyntaxParser;
 
+/// Prevents syntax highlighting flicker on buffer change, simply adjusts
+/// higlights to a simple solution, highlights are processed in the
+/// background and will override the guesses made here anyway.
 #[action("Adjust highlighting to take a buffer change into account")]
 pub(crate) fn prevent_flicker(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
@@ -10,11 +17,41 @@ pub(crate) fn prevent_flicker(editor: &mut Editor, id: ClientId) {
         return;
     };
 
-    for hl in &mut old.highlights {
-        for change in edit.changes.iter() {
-            todo!()
+    let mut off = 0i128;
+    let mut iter = edit.changes.iter().peekable();
+
+    old.highlights.retain_mut(|hl| {
+        while let Some(next) = iter.peek() {
+            if next.end() <= hl.start() {
+                // Before highlight
+                off -= next.range().len() as i128;
+                off += next.text().len() as i128;
+            } else if next.start() > hl.end() {
+                // Went past highlight
+                break;
+            } else if hl.range().includes(&next.range()) {
+                // Inside a higlight assume the highlight spans this edit too
+                let removed = next.range().len() as i128;
+                let added = next.text().len() as i128;
+                off -= removed;
+                off += added;
+
+                // counteract this offset
+                hl.add_offset(removed - added);
+                // Extend or shrink instead
+                hl.extend_by(added as u64);
+                hl.shrink_by(removed as u64);
+            } else {
+                // When edit is over highlight boundary just remove the higlight
+                return false;
+            }
+
+            iter.next();
         }
-    }
+
+        hl.add_offset(off);
+        true
+    });
 }
 
 #[action("Parse buffer syntax for view")]
@@ -40,7 +77,7 @@ pub(crate) fn parse_syntax(editor: &mut Editor, id: ClientId) {
     let bid = buf.id;
     let total_changes_made = buf.total_changes_made();
     let range = win.view().range();
-    let ropt = buf.read_only_copy();
+    let ropt = buf.ro_view();
 
     let Some(ft) = buf.filetype.clone() else {
         return;

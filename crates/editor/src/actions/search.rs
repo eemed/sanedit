@@ -14,7 +14,7 @@ use crate::{
 /// setups async job to handle matches within the view range.
 fn async_view_matches(editor: &mut Editor, id: ClientId, pattern: &str) {
     let (win, buf) = editor.win_buf_mut(id);
-    let pt = buf.read_only_copy();
+    let pt = buf.ro_view();
     let view = win.view().range();
     let dir = win.search.direction;
     let kind = win.search.kind;

@@ -100,7 +100,6 @@ impl View {
     }
 
     pub fn invalidate(&mut self) {
-        self.syntax = SyntaxParseResult::default();
         self.needs_redraw = true;
     }
 

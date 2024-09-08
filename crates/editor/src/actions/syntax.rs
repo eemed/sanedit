@@ -1,6 +1,6 @@
 use crate::{
     common::range::RangeUtils,
-    editor::{buffers::BufferRangeExt, Editor},
+    editor::{buffers::BufferRangeExt, hooks::Hook, Editor},
     server::ClientId,
 };
 
@@ -11,47 +11,59 @@ use super::jobs::SyntaxParser;
 /// background and will override the guesses made here anyway.
 #[action("Adjust highlighting to take a buffer change into account")]
 pub(crate) fn prevent_flicker(editor: &mut Editor, id: ClientId) {
-    let (win, buf) = editor.win_buf_mut(id);
-    let old = win.syntax_result();
-    let Some(edit) = buf.last_edit() else {
-        return;
-    };
+    let (win, buf) = editor.win_buf(id);
+    let bid = buf.id;
+    let bid = editor
+        .hooks
+        .running_hook()
+        .map(Hook::buffer_id)
+        .flatten()
+        .unwrap_or(bid);
+    let clients = editor.windows().find_clients_with_buf(bid);
 
-    let mut off = 0i128;
-    let mut iter = edit.changes.iter().peekable();
+    for client in clients {
+        let (win, buf) = editor.win_buf_mut(client);
+        let old = win.syntax_result();
+        let Some(edit) = buf.last_edit() else {
+            return;
+        };
 
-    old.highlights.retain_mut(|hl| {
-        while let Some(next) = iter.peek() {
-            if next.end() <= hl.start() {
-                // Before highlight
-                off -= next.range().len() as i128;
-                off += next.text().len() as i128;
-            } else if next.start() > hl.end() {
-                // Went past highlight
-                break;
-            } else if hl.range().includes(&next.range()) {
-                // Inside a higlight assume the highlight spans this edit too
-                let removed = next.range().len() as i128;
-                let added = next.text().len() as i128;
-                off -= removed;
-                off += added;
+        let mut off = 0i128;
+        let mut iter = edit.changes.iter().peekable();
 
-                // counteract this offset
-                hl.add_offset(removed - added);
-                // Extend or shrink instead
-                hl.extend_by(added as u64);
-                hl.shrink_by(removed as u64);
-            } else {
-                // When edit is over highlight boundary just remove the higlight
-                return false;
+        old.highlights.retain_mut(|hl| {
+            while let Some(next) = iter.peek() {
+                if next.end() <= hl.start() {
+                    // Before highlight
+                    off -= next.range().len() as i128;
+                    off += next.text().len() as i128;
+                } else if next.start() > hl.end() {
+                    // Went past highlight
+                    break;
+                } else if hl.range().includes(&next.range()) {
+                    // Inside a higlight assume the highlight spans this edit too
+                    let removed = next.range().len() as i128;
+                    let added = next.text().len() as i128;
+                    off -= removed;
+                    off += added;
+
+                    // counteract this offset
+                    hl.add_offset(removed - added);
+                    // Extend or shrink instead
+                    hl.extend_by(added as u64);
+                    hl.shrink_by(removed as u64);
+                } else {
+                    // When edit is over highlight boundary just remove the higlight
+                    return false;
+                }
+
+                iter.next();
             }
 
-            iter.next();
-        }
-
-        hl.add_offset(off);
-        true
-    });
+            hl.add_offset(off);
+            true
+        });
+    }
 }
 
 #[action("Parse buffer syntax for view")]

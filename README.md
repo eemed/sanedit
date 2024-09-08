@@ -6,13 +6,8 @@
     - Completion
         - needs documentation
         - needs type
-    - Code actions
-        - Missing hooks on workspace edit
     - Diagnostics: Somehow to show them
         - Not done at all
-    - Send close events on buf close
-    - Rename
-        - needs prompt
 
 
 * Somethings wrong with multiwidth grapheme rendering.
@@ -30,16 +25,13 @@
   characters at most. For example show the non matched 20 first characters and the
   matched text afterwards with combined limit to 300 chars
 
-* Piecetree should optionally support line ending tracking
-    - Keep the same lines api but use the most effective line finding method under the hood
-
 * play around with parsing machine JIT
     - This is its own big project
     - Should try this once we can write it in this editor :)
 
 * Add log buffer directly to editor
 
-* Basic highlighting for jsx
+* Basic highlighting for jsx, yang, java
 
 
 ## Future

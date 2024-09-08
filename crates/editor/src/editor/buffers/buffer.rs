@@ -166,7 +166,9 @@ impl Buffer {
     /// Creates undo point if it is needed
     fn needs_undo_point(&mut self, change: &Changes) -> bool {
         let last = self.last_edit.as_ref();
-        self.is_modified && change.needs_undo_point(last.as_ref().map(|edit| &edit.changes))
+        change.allows_undo_point_creation()
+            && self.is_modified
+            && change.needs_undo_point(last.as_ref().map(|edit| &edit.changes))
     }
 
     pub fn apply_changes(&mut self, changes: &Changes) -> Result<ChangeResult> {
@@ -179,7 +181,7 @@ impl Buffer {
         ensure!(!self.read_only, BufferError::ReadOnly);
 
         let rollback = self.ro_view();
-        let needs_undo = self.is_modified && self.needs_undo_point(changes);
+        let needs_undo = self.needs_undo_point(changes);
         let rollback_snapshot_id = self.snapshots.current();
 
         if needs_undo {

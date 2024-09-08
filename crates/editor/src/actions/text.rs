@@ -18,7 +18,8 @@ fn remove_grapheme_after_cursor(editor: &mut Editor, id: ClientId) {
     run(editor, id, Hook::RemovePre);
     let (win, buf) = editor.win_buf_mut(id);
     if win.remove_grapheme_after_cursors(buf).is_ok() {
-        run(editor, id, Hook::BufChanged);
+        let hook = Hook::BufChanged(buf.id);
+        run(editor, id, hook);
     }
 }
 
@@ -27,7 +28,8 @@ fn remove_grapheme_before_cursor(editor: &mut Editor, id: ClientId) {
     run(editor, id, Hook::RemovePre);
     let (win, buf) = editor.win_buf_mut(id);
     if win.remove_grapheme_before_cursors(buf).is_ok() {
-        run(editor, id, Hook::BufChanged);
+        let hook = Hook::BufChanged(buf.id);
+        run(editor, id, hook);
     }
 }
 
@@ -35,7 +37,8 @@ fn remove_grapheme_before_cursor(editor: &mut Editor, id: ClientId) {
 pub(crate) fn undo(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     if win.undo(buf).is_ok() {
-        run(editor, id, Hook::BufChanged);
+        let hook = Hook::BufChanged(buf.id);
+        run(editor, id, hook);
         run(editor, id, Hook::CursorMoved);
     }
 }
@@ -44,7 +47,8 @@ pub(crate) fn undo(editor: &mut Editor, id: ClientId) {
 pub(crate) fn redo(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     if win.redo(buf).is_ok() {
-        run(editor, id, Hook::BufChanged);
+        let hook = Hook::BufChanged(buf.id);
+        run(editor, id, hook);
         run(editor, id, Hook::CursorMoved);
     }
 }
@@ -65,7 +69,8 @@ pub(crate) fn insert(editor: &mut Editor, id: ClientId, text: &str) {
             run(editor, id, Hook::InsertPre);
             let (win, buf) = editor.win_buf_mut(id);
             if win.insert_at_cursors(buf, text).is_ok() {
-                run(editor, id, Hook::BufChanged);
+                let hook = Hook::BufChanged(buf.id);
+                run(editor, id, hook);
             }
         }
         Filetree => {}
@@ -118,7 +123,9 @@ fn insert_newline(editor: &mut Editor, id: ClientId) {
     run(editor, id, Hook::InsertPre);
     let (win, buf) = editor.win_buf_mut(id);
     let _ = win.insert_newline(buf);
-    run(editor, id, Hook::BufChanged);
+
+    let hook = Hook::BufChanged(buf.id);
+    run(editor, id, hook);
 }
 
 #[action("Insert a tab to each cursor")]
@@ -131,7 +138,8 @@ fn insert_tab(editor: &mut Editor, id: ClientId) {
 
     if win.cursors().has_selections() {
         if win.indent_cursor_lines(buf).is_ok() {
-            run(editor, id, Hook::BufChanged);
+            let hook = Hook::BufChanged(buf.id);
+            run(editor, id, hook);
         }
     } else if win.cursors.len() == 1
         && !is_indent_at_pos(&slice, primary)
@@ -142,7 +150,8 @@ fn insert_tab(editor: &mut Editor, id: ClientId) {
     } else {
         let (win, buf) = editor.win_buf_mut(id);
         if win.insert_tab(buf).is_ok() {
-            run(editor, id, Hook::BufChanged);
+            let hook = Hook::BufChanged(buf.id);
+            run(editor, id, hook);
         }
     }
 }
@@ -152,7 +161,8 @@ fn backtab(editor: &mut Editor, id: ClientId) {
     run(editor, id, Hook::InsertPre);
     let (win, buf) = editor.win_buf_mut(id);
     if win.dedent_cursor_lines(buf).is_ok() {
-        run(editor, id, Hook::BufChanged);
+        let hook = Hook::BufChanged(buf.id);
+        run(editor, id, hook);
     }
 }
 
@@ -160,7 +170,8 @@ fn backtab(editor: &mut Editor, id: ClientId) {
 fn remove_line_after_cursor(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     if win.remove_line_after_cursor(buf).is_ok() {
-        run(editor, id, Hook::BufChanged);
+        let hook = Hook::BufChanged(buf.id);
+        run(editor, id, hook);
     }
 }
 
@@ -168,6 +179,7 @@ fn remove_line_after_cursor(editor: &mut Editor, id: ClientId) {
 fn strip_trailing_whitespace(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     if win.strip_trailing_whitespace(buf).is_ok() {
-        run(editor, id, Hook::BufChanged);
+        let hook = Hook::BufChanged(buf.id);
+        run(editor, id, hook);
     }
 }

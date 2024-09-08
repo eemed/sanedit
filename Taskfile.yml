@@ -48,7 +48,6 @@ tasks:
     dir: crates
     deps: [install-pre-commit-hook]
     cmds:
-      - rm -rf /tmp/sanedit.sock
       - cargo run -- --config-dir ../runtime/config --working-dir ..
     env:
       RUST_BACKTRACE: 1

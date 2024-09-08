@@ -10,12 +10,14 @@ use std::{
 
 use crate::{
     actions::{
+        hooks::run,
         locations,
         lsp::{self, position_to_offset, range_to_buffer_range},
     },
     common::matcher::{MatchOption, MatchStrategy},
     editor::{
         buffers::{BufferId, Change, Changes, Filetype},
+        hooks::Hook,
         job_broker::KeepInTouch,
         options::LSPOptions,
         windows::{Completion, Group, Item, Prompt},
@@ -294,14 +296,14 @@ fn complete(
     position: Position,
     opts: Vec<CompletionItem>,
 ) {
-    // TODO how to ensure this is not old data
-
     let Some(enc) = editor.lsp_handle_for(id).map(|x| x.position_encoding()) else {
         return;
     };
     let (win, buf) = editor.win_buf_mut(id);
     let slice = buf.slice(..);
+    log::info!("position: {position:?}");
     let start = position_to_offset(&slice, position, &enc);
+    log::info!("Start: {start}");
     win.completion = Completion::new(start);
 
     let cursor = win.primary_cursor();
@@ -360,7 +362,6 @@ fn code_action(editor: &mut Editor, id: ClientId, actions: Vec<CodeAction>) {
 }
 
 fn edit_workspace(editor: &mut Editor, id: ClientId, edit: lsp_types::WorkspaceEdit) {
-    log::info!("Edit workspace");
     let lsp_types::WorkspaceEdit {
         changes,
         document_changes,
@@ -399,11 +400,10 @@ fn code_action_edit_operation(editor: &mut Editor, id: ClientId, op: lsp_types::
 }
 
 fn edit_document(editor: &mut Editor, id: ClientId, edit: lsp_types::TextDocumentEdit) {
-    log::info!("Edit document");
     let path = PathBuf::from(edit.text_document.uri.path().as_str());
     let bid = match editor.buffers().find(&path) {
         Some(bid) => bid,
-        None => match editor.create_buffer(&path) {
+        None => match editor.create_buffer(id, &path) {
             Ok(bid) => bid,
             Err(_) => {
                 log::error!("Failed to create buffer for {path:?}");
@@ -414,32 +414,33 @@ fn edit_document(editor: &mut Editor, id: ClientId, edit: lsp_types::TextDocumen
     let Some(enc) = editor.lsp_handle_for(id).map(|x| x.position_encoding()) else {
         return;
     };
-    let buf = editor.buffers_mut().get_mut(bid).unwrap();
-    let slice = buf.slice(..);
 
-    let changes: Vec<Change> = edit
-        .edits
-        .into_iter()
-        .map(|edit| {
-            let text_edit = {
-                match edit {
-                    lsp_types::OneOf::Left(item) => item,
-                    lsp_types::OneOf::Right(item) => item.text_edit,
-                }
-            };
+    // The changes build on themselves so apply each separately
+    for (i, edit) in edit.edits.into_iter().enumerate() {
+        let buf = editor.buffers_mut().get_mut(bid).unwrap();
+        let slice = buf.slice(..);
+        let text_edit = {
+            match edit {
+                lsp_types::OneOf::Left(item) => item,
+                lsp_types::OneOf::Right(item) => item.text_edit,
+            }
+        };
 
-            let range = range_to_buffer_range(&slice, text_edit.range, &enc);
-            Change::replace(range, text_edit.new_text.as_bytes())
-        })
-        .collect();
-    let changes = Changes::from(changes);
+        let range = range_to_buffer_range(&slice, text_edit.range, &enc);
+        let change = Change::replace(range, text_edit.new_text.as_bytes());
+        let mut changes = Changes::from(change);
+        // Disable undo point creation for other than first change
+        if i != 0 {
+            changes.disable_undo_point_creation();
+        }
 
-    if let Err(e) = buf.apply_changes(&changes) {
-        log::error!("Failed to apply changes to buffer: {path:?}: {e}");
-        return;
+        if let Err(e) = buf.apply_changes(&changes) {
+            log::error!("Failed to apply changes to buffer: {path:?}: {e}");
+            return;
+        }
+
+        run(editor, id, Hook::BufChanged(bid));
     }
-
-    todo!("hooks")
 }
 
 fn show_references(
@@ -500,6 +501,9 @@ fn read_references(
 
 impl From<CompletionItem> for MatchOption {
     fn from(value: CompletionItem) -> Self {
-        MatchOption::from(value.name)
+        match value.description {
+            Some(desc) => MatchOption::with_description(&value.name, &desc),
+            None => MatchOption::from(value.name),
+        }
     }
 }

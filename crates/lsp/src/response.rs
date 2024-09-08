@@ -40,7 +40,7 @@ pub enum RequestResult {
 #[derive(Debug, Clone)]
 pub struct CompletionItem {
     pub name: String,
-    // pub description: Option<String>,
+    pub description: Option<String>,
     // pub documentation: Option<String>,
 }
 

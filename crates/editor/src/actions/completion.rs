@@ -5,6 +5,7 @@ use rustc_hash::FxHashSet;
 use crate::{
     common::{cursors::word_before_cursor, matcher::*},
     editor::{
+        hooks::Hook,
         windows::{Completion, Focus},
         Editor,
     },
@@ -87,8 +88,9 @@ fn prev(editor: &mut Editor, id: ClientId) {
 
 #[action("Send word to matcher")]
 fn send_word(editor: &mut Editor, id: ClientId) {
-    let (win, _buf) = editor.win_buf_mut(id);
-    if win.focus() != Focus::Completion {
+    let hook_bid = editor.hooks.running_hook().map(Hook::buffer_id).flatten();
+    let (win, buf) = editor.win_buf_mut(id);
+    if hook_bid != Some(buf.id) || win.focus() != Focus::Completion {
         return;
     }
 

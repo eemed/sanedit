@@ -1,10 +1,15 @@
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use rustc_hash::FxHashMap;
+use strum_macros::EnumDiscriminants;
 
 use crate::actions::{Action, *};
 
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
+use super::buffers::BufferId;
+
+#[derive(Debug, EnumDiscriminants)]
+#[strum_discriminants(derive(Hash))]
+#[strum_discriminants(name(HookKind))]
 pub(crate) enum Hook {
     /// Before a text is inserted into the buffer
     InsertPre,
@@ -15,14 +20,17 @@ pub(crate) enum Hook {
     /// Before client keyevent is processed
     KeyPressedPre,
 
-    /// After buffer changed
-    BufChanged,
+    /// A new buffer is created
+    BufCreated(BufferId),
 
     /// After buffer opened in a window
-    BufOpened,
+    BufOpened(BufferId),
+
+    /// After buffer changed
+    BufChanged(BufferId),
 
     /// After buffer is closed, and will be removed
-    BufRemovePre,
+    BufDeletedPre(BufferId),
 
     /// Before client message is processed
     OnMessagePre,
@@ -32,6 +40,22 @@ pub(crate) enum Hook {
 
     OnDrawPre,
     Reload,
+}
+
+impl Hook {
+    pub fn kind(&self) -> HookKind {
+        HookKind::from(self)
+    }
+
+    pub fn buffer_id(&self) -> Option<BufferId> {
+        match self {
+            Hook::BufCreated(id)
+            | Hook::BufOpened(id)
+            | Hook::BufChanged(id)
+            | Hook::BufDeletedPre(id) => Some(*id),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
@@ -46,13 +70,16 @@ impl HookId {
 }
 
 pub(crate) struct Hooks {
-    hook_types: FxHashMap<Hook, Vec<HookId>>,
+    hook_types: FxHashMap<HookKind, Vec<HookId>>,
     hooks: FxHashMap<HookId, Action>,
+
+    /// Set if a hook is currently being run
+    pub(crate) current: Vec<Hook>,
 }
 
 impl Hooks {
     /// Register a new hook, returns the hook id.
-    pub fn register(&mut self, hook: Hook, fun: Action) -> HookId {
+    pub fn register(&mut self, hook: HookKind, fun: Action) -> HookId {
         let id = HookId::next();
         self.hooks.insert(id, fun);
 
@@ -76,7 +103,7 @@ impl Hooks {
     }
 
     /// Get all actions to run for a hook
-    pub fn get(&self, hook: Hook) -> Vec<Action> {
+    pub fn get(&self, hook: HookKind) -> Vec<Action> {
         let ids = self.hook_types.get(&hook).cloned().unwrap_or(vec![]);
 
         let mut result = Vec::with_capacity(ids.len());
@@ -86,15 +113,20 @@ impl Hooks {
         }
         result
     }
+
+    pub fn running_hook(&self) -> Option<&Hook> {
+        self.current.last()
+    }
 }
 
 impl Default for Hooks {
     fn default() -> Self {
-        use Hook::*;
+        use HookKind::*;
 
         let mut hooks = Hooks {
             hook_types: FxHashMap::default(),
             hooks: FxHashMap::default(),
+            current: vec![],
         };
 
         // Search
@@ -108,7 +140,7 @@ impl Default for Hooks {
         // TODO handle registration only when needed?
         hooks.register(CursorMoved, completion::abort);
         hooks.register(BufChanged, completion::send_word);
-        hooks.register(BufOpened, indent::detect_indent);
+        hooks.register(BufCreated, indent::detect_indent);
         hooks.register(CursorMoved, popup::close);
 
         // Syntax
@@ -117,10 +149,10 @@ impl Default for Hooks {
         hooks.register(BufChanged, syntax::prevent_flicker);
 
         // LSP
-        hooks.register(BufOpened, lsp::start_lsp);
-        hooks.register(BufOpened, lsp::open_doc);
+        hooks.register(BufCreated, lsp::start_lsp_hook);
+        hooks.register(BufCreated, lsp::open_doc);
         hooks.register(BufChanged, lsp::sync_document);
-        hooks.register(BufRemovePre, lsp::close_doc);
+        hooks.register(BufDeletedPre, lsp::close_doc);
         // TODO closed events
 
         hooks

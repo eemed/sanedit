@@ -324,7 +324,6 @@ impl Handler {
                 range_length: None,
             })
             .collect();
-        log::info!("Changes: {content_changes:?}");
 
         let params = lsp_types::DidChangeTextDocumentParams {
             text_document: lsp_types::VersionedTextDocumentIdentifier {
@@ -373,13 +372,17 @@ impl Handler {
             lsp_types::CompletionResponse::Array(_) => todo!(),
             lsp_types::CompletionResponse::List(list) => {
                 for item in list.items {
-                    // log::info!("Item: {:?}", item);
                     if let Some(edit) = item.text_edit {
                         match edit {
                             lsp_types::CompletionTextEdit::Edit(_) => todo!(),
                             lsp_types::CompletionTextEdit::InsertAndReplace(edit) => {
                                 results.push(CompletionItem {
                                     name: edit.new_text,
+                                    description: if item.label.is_empty() {
+                                        None
+                                    } else {
+                                        Some(item.label)
+                                    },
                                 });
                             }
                         }

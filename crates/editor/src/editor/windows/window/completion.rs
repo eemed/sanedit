@@ -59,14 +59,15 @@ impl Completion {
     pub fn matcher_result_handler(editor: &mut Editor, id: ClientId, msg: MatcherMessage) {
         use MatcherMessage::*;
 
-        // let draw = editor.draw_state(id);
-        // draw.no_redraw_window();
-        //
+        let draw = editor.draw_state(id);
+        draw.no_redraw_window();
+
         match msg {
             Init(sender) => {
                 let (win, buf) = editor.win_buf_mut(id);
                 let cursor = win.cursors.primary().pos();
                 let start = win.completion.started_at;
+                log::info!("Slice: {start}..{cursor}");
                 let slice = buf.slice(start..cursor);
                 let word = String::from(&slice);
                 let _ = sender.blocking_send(word);

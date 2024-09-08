@@ -34,7 +34,6 @@ use crate::actions;
 use crate::actions::cursors;
 use crate::actions::hooks::run;
 use crate::actions::jobs::LSPHandle;
-use crate::actions::prompt::close_modified_buffer;
 use crate::common::dirs::ConfigDirectory;
 use crate::common::file::FileDescription;
 use crate::common::text::copy_cursors_to_lines;
@@ -239,25 +238,27 @@ impl Editor {
             .any(|(_, win)| win.buffer_id() == old || win.prev_buffer_id() == Some(old));
 
         if !is_modified && !is_used {
-            run(self, id, Hook::BufRemovePre);
+            run(self, id, Hook::BufDeletedPre(old));
             self.buffers.remove(old);
         }
 
         let (win, _buf) = self.win_buf_mut(id);
         win.open_buffer(bid);
-
-        run(self, id, Hook::BufOpened);
+        run(self, id, Hook::BufOpened(bid));
     }
 
     /// Create a new buffer from path
-    pub fn create_buffer(&mut self, path: impl AsRef<Path>) -> Result<BufferId> {
+    pub fn create_buffer(&mut self, id: ClientId, path: impl AsRef<Path>) -> Result<BufferId> {
         let file = FileDescription::new(
             &path,
             self.options.big_file_threshold_bytes,
             &self.working_dir,
             &self.options.filetype,
         )?;
-        self.buffers.new(file)
+        let bid = self.buffers.new(file)?;
+        run(self, id, Hook::BufCreated(bid));
+
+        Ok(bid)
     }
 
     /// Open a file in window
@@ -266,7 +267,7 @@ impl Editor {
         // Use existing if possible
         let bid = match self.buffers.find(&path) {
             Some(bid) => bid,
-            None => self.create_buffer(&path)?,
+            None => self.create_buffer(id, &path)?,
         };
         self.open_buffer(id, bid);
 
@@ -554,20 +555,22 @@ impl Editor {
     }
 
     pub fn paste_from_clipboard(&mut self, id: ClientId) {
-        if let Ok(text) = self.clipboard.paste() {
-            let (win, buf) = self.win_buf_mut(id);
-            let lines = paste_separate_cursor_lines(text.as_str());
-            let clen = win.cursors.cursors().len();
-            let llen = lines.len();
+        let Ok(text) = self.clipboard.paste() else {
+            return;
+        };
+        let (win, buf) = self.win_buf_mut(id);
+        let lines = paste_separate_cursor_lines(text.as_str());
+        let clen = win.cursors.cursors().len();
+        let llen = lines.len();
+        let bid = buf.id;
 
-            if clen == llen {
-                win.insert_to_each_cursor(buf, lines);
-            } else {
-                win.insert_at_cursors(buf, &text);
-            }
+        if clen == llen {
+            win.insert_to_each_cursor(buf, lines);
+        } else {
+            win.insert_at_cursors(buf, &text);
         }
 
-        run(self, id, Hook::BufChanged);
+        run(self, id, Hook::BufChanged(bid));
     }
 
     pub fn copy_to_clipboard(&mut self, id: ClientId) {

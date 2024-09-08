@@ -6,9 +6,11 @@ use thiserror::Error;
 use sanedit_lsp::{lsp_types, Notification, RequestKind};
 
 use crate::{
+    common::cursors::word_at_cursor,
     editor::{
         buffers::{Buffer, BufferId, BufferRange, ChangesKind},
-        windows::Window,
+        hooks::Hook,
+        windows::{Focus, Prompt, Window},
         Editor,
     },
     server::ClientId,
@@ -74,28 +76,42 @@ pub(crate) fn lsp_request(
 
 #[action("Start language server")]
 fn start_lsp(editor: &mut Editor, id: ClientId) {
-    fn start_lsp(editor: &mut Editor, id: ClientId) -> Result<()> {
-        let wd = editor.working_dir().to_path_buf();
-        let (_win, buf) = editor.win_buf_mut(id);
-        let ft = buf.filetype.clone().ok_or(LSPActionError::FiletypeNotSet)?;
-        if editor.language_servers.get(&ft).is_some() {
-            bail!(LSPActionError::LanguageServerAlreadyRunning(
-                ft.as_str().to_string()
-            ));
-        }
-        let lang = editor
-            .options
-            .language_server
-            .get(ft.as_str())
-            .ok_or_else(|| LSPActionError::LanguageServerNotConfigured(ft.as_str().to_string()))?;
+    let (_win, buf) = editor.win_buf(id);
+    let bid = buf.id;
 
-        let lsp = LSP::new(id, wd, ft, lang);
-        editor.job_broker.request(lsp);
-
-        Ok(())
+    if let Err(e) = start_lsp_impl(editor, id, bid) {
+        let (win, _buf) = editor.win_buf_mut(id);
+        win.error_msg(&format!("{e}"));
     }
+}
 
-    if let Err(_e) = start_lsp(editor, id) {}
+#[action("Start language server from hook")]
+fn start_lsp_hook(editor: &mut Editor, id: ClientId) {
+    let (_win, buf) = editor.win_buf(id);
+    if let Some(bid) = editor.hooks.running_hook().map(Hook::buffer_id).flatten() {
+        let _ = start_lsp_impl(editor, id, bid);
+    }
+}
+
+fn start_lsp_impl(editor: &mut Editor, id: ClientId, bid: BufferId) -> Result<()> {
+    let wd = editor.working_dir().to_path_buf();
+    let buf = editor.buffers().get(bid).unwrap();
+    let ft = buf.filetype.clone().ok_or(LSPActionError::FiletypeNotSet)?;
+    if editor.language_servers.get(&ft).is_some() {
+        bail!(LSPActionError::LanguageServerAlreadyRunning(
+            ft.as_str().to_string()
+        ));
+    }
+    let lang = editor
+        .options
+        .language_server
+        .get(ft.as_str())
+        .ok_or_else(|| LSPActionError::LanguageServerNotConfigured(ft.as_str().to_string()))?;
+
+    let lsp = LSP::new(id, wd, ft, lang);
+    editor.job_broker.request(lsp);
+
+    Ok(())
 }
 
 #[action("Hover information")]
@@ -127,8 +143,8 @@ fn goto_definition(editor: &mut Editor, id: ClientId) {
 
 #[action("Synchronize document")]
 fn sync_document(editor: &mut Editor, id: ClientId) {
-    fn sync(editor: &mut Editor, id: ClientId) -> Result<()> {
-        let (win, buf) = editor.win_buf(id);
+    fn sync(editor: &mut Editor, bid: BufferId) -> Result<()> {
+        let buf = editor.buffers().get(bid).unwrap();
         let ft = buf.filetype.clone().ok_or(LSPActionError::FiletypeNotSet)?;
         let path = buf
             .path()
@@ -181,7 +197,16 @@ fn sync_document(editor: &mut Editor, id: ClientId) {
         })
     }
 
-    sync(editor, id);
+    let (_win, buf) = editor.win_buf(id);
+    let bid = buf.id;
+    let bid = editor
+        .hooks
+        .running_hook()
+        .map(Hook::buffer_id)
+        .flatten()
+        .unwrap_or(bid);
+
+    sync(editor, bid);
 }
 
 #[action("Complete")]
@@ -228,33 +253,76 @@ fn code_action(editor: &mut Editor, id: ClientId) {
     });
 }
 
-#[action("Code action")]
+#[action("Rename")]
 fn rename(editor: &mut Editor, id: ClientId) {
-    todo!()
-    // let _ = lsp_request(editor, id, move |win, buf, path, slice, lsp| {
-    //     let offset = win.cursors.primary().pos();
-    //     let position = offset_to_position(&slice, offset, &lsp.position_encoding());
-    //     let kind = RequestKind::CodeAction { path, position };
-    //     Some((
-    //         kind,
-    //         vec![
-    //             Constraint::Buffer(buf.id),
-    //             Constraint::BufferVersion(buf.total_changes_made()),
-    //         ],
-    //     ))
-    // });
+    let Some(word) = word_at_cursor(editor, id) else {
+        return;
+    };
+    let (win, _buf) = editor.win_buf_mut(id);
+
+    win.prompt = Prompt::builder()
+        .prompt("Rename to")
+        .simple()
+        .input(&word)
+        .on_confirm(|editor, id, input| {
+            let (win, buf) = editor.win_buf(id);
+            let slice = buf.slice(..);
+            let offset = win.cursors.primary().pos();
+            let total = buf.total_changes_made();
+            let bid = buf.id;
+            let Some(path) = buf.path().map(Path::to_path_buf) else {
+                return;
+            };
+            let Some(ft) = buf.filetype.clone() else {
+                return;
+            };
+            let Some(lsp) = editor.language_servers.get(&ft) else {
+                return;
+            };
+            let position = offset_to_position(&slice, offset, &lsp.position_encoding());
+            let request = RequestKind::Rename {
+                path,
+                position,
+                new_name: input.into(),
+            };
+
+            let Some(lsp) = editor.language_servers.get_mut(&ft) else {
+                return;
+            };
+            let _ = lsp.request(
+                request,
+                id,
+                vec![Constraint::Buffer(bid), Constraint::BufferVersion(total)],
+            );
+        })
+        .build();
+    win.focus = Focus::Prompt;
 }
 
 #[action("Send LSP open document notification")]
 pub(crate) fn open_doc(editor: &mut Editor, id: ClientId) {
-    let (win, _buf) = editor.win_buf(id);
-    open_document(editor, win.buffer_id());
+    let (_win, buf) = editor.win_buf(id);
+    let bid = buf.id;
+    let bid = editor
+        .hooks
+        .running_hook()
+        .map(Hook::buffer_id)
+        .flatten()
+        .unwrap_or(bid);
+    open_document(editor, bid);
 }
 
 #[action("Send LSP open document notification")]
 pub(crate) fn close_doc(editor: &mut Editor, id: ClientId) {
-    let (win, _buf) = editor.win_buf(id);
-    close_document(editor, win.buffer_id());
+    let (_win, buf) = editor.win_buf(id);
+    let bid = buf.id;
+    let bid = editor
+        .hooks
+        .running_hook()
+        .map(Hook::buffer_id)
+        .flatten()
+        .unwrap_or(bid);
+    close_document(editor, bid);
 }
 
 pub(crate) fn open_document(editor: &mut Editor, bid: BufferId) -> Result<()> {
@@ -318,7 +386,7 @@ pub(crate) fn offset_to_position(
     let mut col = 0u32;
 
     while let Some((start, _, ch)) = chars.next() {
-        if start > offset {
+        if start >= offset {
             break;
         }
         let len = if *kind == lsp_types::PositionEncodingKind::UTF8 {

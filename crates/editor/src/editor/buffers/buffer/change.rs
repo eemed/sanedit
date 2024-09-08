@@ -21,25 +21,33 @@ pub(crate) struct ChangeResult {
 #[derive(Debug, Clone)]
 pub(crate) struct Changes {
     changes: SortedVec<Change>,
+    disable_undopoint_creation: bool,
 }
 
 impl Changes {
     pub fn new(changes: &[Change]) -> Changes {
         Changes {
             changes: SortedVec::from(changes),
+            disable_undopoint_creation: false,
         }
     }
 
     pub fn undo() -> Changes {
         let mut changes = SortedVec::new();
         changes.push(Change::undo());
-        Changes { changes }
+        Changes {
+            changes,
+            disable_undopoint_creation: false,
+        }
     }
 
     pub fn redo() -> Changes {
         let mut changes = SortedVec::new();
         changes.push(Change::redo());
-        Changes { changes }
+        Changes {
+            changes,
+            disable_undopoint_creation: false,
+        }
     }
 
     pub fn multi_remove(ranges: &[BufferRange]) -> Changes {
@@ -57,6 +65,14 @@ impl Changes {
             .map(|pos| Change::insert_rc(*pos, text.clone()))
             .collect();
         Changes::from(changes)
+    }
+
+    pub fn disable_undo_point_creation(&mut self) {
+        self.disable_undopoint_creation = true;
+    }
+
+    pub fn allows_undo_point_creation(&self) -> bool {
+        !self.disable_undopoint_creation
     }
 
     pub fn iter(&self) -> std::slice::Iter<'_, Change> {
@@ -229,6 +245,16 @@ impl From<Vec<Change>> for Changes {
     fn from(value: Vec<Change>) -> Self {
         Changes {
             changes: SortedVec::from(value),
+            disable_undopoint_creation: false,
+        }
+    }
+}
+
+impl From<Change> for Changes {
+    fn from(value: Change) -> Self {
+        Changes {
+            changes: SortedVec::from(value),
+            disable_undopoint_creation: false,
         }
     }
 }

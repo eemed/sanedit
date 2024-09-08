@@ -11,25 +11,28 @@ const LOG_LEVEL: LevelFilter = LevelFilter::Debug;
 
 pub fn setup() {
     panic::set_hook(Box::new(|panic_info| {
-        let (filename, line) = panic_info
-            .location()
-            .map(|loc| (loc.file(), loc.line()))
-            .unwrap_or(("<unknown>", 0));
+        let backtrace = std::backtrace::Backtrace::capture();
+        log::error!("{backtrace}");
 
-        let cause = panic_info
-            .payload()
-            .downcast_ref::<String>()
-            .map(String::deref);
+        // let (filename, line) = panic_info
+        //     .location()
+        //     .map(|loc| (loc.file(), loc.line()))
+        //     .unwrap_or(("<unknown>", 0));
 
-        let cause = cause.unwrap_or_else(|| {
-            panic_info
-                .payload()
-                .downcast_ref::<&str>()
-                .map(|s| *s)
-                .unwrap_or("<cause unknown>")
-        });
+        // let cause = panic_info
+        //     .payload()
+        //     .downcast_ref::<String>()
+        //     .map(String::deref);
 
-        log::error!("A panic occurred at {}:{}: {}", filename, line, cause);
+        // let cause = cause.unwrap_or_else(|| {
+        //     panic_info
+        //         .payload()
+        //         .downcast_ref::<&str>()
+        //         .map(|s| *s)
+        //         .unwrap_or("<cause unknown>")
+        // });
+
+        // log::error!("A panic occurred at {}:{}: {}", filename, line, cause);
     }));
 
     let file_appender = FileAppender::builder()

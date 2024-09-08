@@ -1,7 +1,7 @@
 mod logging;
 
 use std::{
-    fs,
+    fs, io,
     path::{Path, PathBuf},
 };
 
@@ -45,25 +45,36 @@ fn main() {
     let socket = PathBuf::from("/tmp/sanedit.sock");
     let exists = socket.try_exists().unwrap_or(false);
     if exists {
+        log::info!("Connecting to existing socket..");
         // if socket already exists try to connect
-        connect(&socket);
-    } else {
-        // If no socket startup server
-        let s = socket.clone();
-        let addrs = vec![Address::UnixDomainSocket(s)];
-        let join = sanedit_editor::run_sync(addrs, start_opts);
-        if let Some(join) = join {
-            connect(&socket);
-            join.join().unwrap()
+        if let Err(e) = connect(&socket) {
+            match e.kind() {
+                io::ErrorKind::ConnectionRefused => {}
+                _ => {
+                    log::error!("{e}");
+                    return;
+                }
+            }
         }
-
-        let _ = fs::remove_file(socket);
     }
+
+    log::info!("Creating a new socket..");
+    // If no socket startup server
+    let s = socket.clone();
+    let addrs = vec![Address::UnixDomainSocket(s)];
+    let join = sanedit_editor::run_sync(addrs, start_opts);
+    if let Some(join) = join {
+        if let Err(e) = connect(&socket) {
+            log::error!("{e}");
+        }
+        join.join().unwrap()
+    }
+
+    let _ = fs::remove_file(socket);
 }
 
-fn connect(socket: &Path) {
-    match UnixDomainSocketClient::connect(socket) {
-        Ok(client) => client.run(),
-        Err(e) => log::info!("Error connecting to socket: {}", e),
-    }
+fn connect(socket: &Path) -> io::Result<()> {
+    let socket = UnixDomainSocketClient::connect(socket)?;
+    socket.run();
+    Ok(())
 }

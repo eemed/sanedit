@@ -68,6 +68,7 @@ pub(crate) struct Window {
     last_buf: Option<(BufferId, SnapshotData)>,
     message: Option<StatusMessage>,
     view: View,
+    jump_to_primary_cursor: bool,
 
     pub shell_executor: Executor,
     pub completion: Completion,
@@ -87,6 +88,7 @@ impl Window {
             bid,
             last_buf: None,
             view: View::new(width, height),
+            jump_to_primary_cursor: false,
             message: None,
             shell_executor: Executor::default(),
             completion: Completion::default(),
@@ -220,7 +222,11 @@ impl Window {
             self.bid
         );
         let cursor = self.primary_cursor().pos();
-        self.view.view_to(cursor, buf);
+
+        if !self.view.is_visible(cursor) {
+            self.view.view_to(cursor, buf);
+        }
+        self.jump_to_primary_cursor = false;
     }
 
     /// Move primary cursor to line and the view
@@ -268,10 +274,15 @@ impl Window {
     /// this window.
     pub fn on_buffer_changed(&mut self, buf: &Buffer) {
         // Remove cursors
-        self.cursors.remove_secondary_cursors();
-        self.cursors.primary_mut().unanchor();
+        // self.cursors.remove_secondary_cursors();
+        // self.cursors.primary_mut().unanchor();
 
-        self.ensure_cursor_on_grapheme_boundary(buf);
+        // self.ensure_cursor_on_grapheme_boundary(buf);
+        self.move_cursors_according_to_last_change(buf);
+
+        if self.jump_to_primary_cursor {
+            self.view_to_cursor(buf);
+        }
 
         // Redraw view
         self.view.invalidate();
@@ -335,12 +346,11 @@ impl Window {
         self.change(buf, &changes)
     }
 
-    fn change(&mut self, buf: &mut Buffer, changes: &Changes) -> Result<()> {
-        let result = buf.apply_changes(&changes)?;
-
-        if let Some(id) = result.created_snapshot {
-            *buf.snapshot_data_mut(id).unwrap() = self.create_snapshot_data();
-        }
+    fn move_cursors_according_to_last_change(&mut self, buf: &Buffer) {
+        let Some(edit) = buf.last_edit() else {
+            return;
+        };
+        let changes = &edit.changes;
 
         // Cursors are not in any order
         // Changes are in order
@@ -382,8 +392,17 @@ impl Window {
             cursor.to_range(&range);
             // log::debug!("Cursor: {cursor:?}");
         }
+    }
 
-        self.invalidate();
+    fn change(&mut self, buf: &mut Buffer, changes: &Changes) -> Result<()> {
+        let result = buf.apply_changes(&changes)?;
+
+        if let Some(id) = result.created_snapshot {
+            *buf.snapshot_data_mut(id).unwrap() = self.create_snapshot_data();
+        }
+
+        self.view.invalidate();
+
         Ok(())
     }
 
@@ -437,7 +456,7 @@ impl Window {
         let changes: Changes = changes.into();
 
         self.change(buf, &changes)?;
-        self.view_to_cursor(buf);
+        self.jump_to_primary_cursor = true;
         Ok(())
     }
 
@@ -459,17 +478,7 @@ impl Window {
             .collect();
         let changes = Changes::multi_remove(&ranges);
         buf.apply_changes(&changes)?;
-
-        let mut removed = 0;
-        for (i, cursor) in self.cursors.cursors_mut().iter_mut().enumerate() {
-            let range = &ranges[i];
-            let cpos = cursor.pos() - removed;
-            cursor.goto(cpos);
-            removed += range.len();
-        }
-
-        self.invalidate();
-        self.view_to_cursor(buf);
+        self.jump_to_primary_cursor = true;
         Ok(())
     }
 
@@ -541,15 +550,15 @@ impl Window {
 
         self.remove(buf, &ranges)?;
 
-        let mut removed = 0;
-        for (i, range) in ranges.iter().enumerate() {
-            let cursor = &mut self.cursors.cursors_mut()[i];
-            cursor.goto(range.start - removed);
-            removed += range.len();
-        }
+        // let mut removed = 0;
+        // for (i, range) in ranges.iter().enumerate() {
+        //     let cursor = &mut self.cursors.cursors_mut()[i];
+        //     cursor.goto(range.start - removed);
+        //     removed += range.len();
+        // }
 
-        self.invalidate();
-        self.view_to_cursor(buf);
+        // self.invalidate();
+        self.jump_to_primary_cursor = true;
         Ok(())
     }
 
@@ -694,7 +703,7 @@ impl Window {
             .collect();
 
         self.remove(buf, &ranges)?;
-        self.view_to_cursor(buf);
+        self.jump_to_primary_cursor = true;
         Ok(())
     }
 

@@ -34,6 +34,7 @@ pub(crate) struct ProcessHandler {
     pub(crate) stdout: BufReader<ChildStdout>,
     pub(crate) stderr: BufReader<ChildStderr>,
 
+    pub(crate) notification_sender: Sender<JsonNotification>,
     pub(crate) receiver: Receiver<ServerRequest>,
     pub(crate) initialized: Option<oneshot::Sender<Result<lsp_types::InitializeResult>>>,
 
@@ -62,9 +63,8 @@ impl ProcessHandler {
                 }
                 json = read_from(&mut self.stdout) => {
                     match json? {
-                        Either::Right(notification) => {
-                            // log::info!("{notification:?}");
-                        }
+                        Either::Right(notification) =>
+                            self.handle_response_notification(notification).await?,
                         Either::Left(response) => self.handle_response(response).await?,
                     }
                 }
@@ -90,8 +90,12 @@ impl ProcessHandler {
         Ok(())
     }
 
+    async fn handle_response_notification(&mut self, notif: JsonNotification) -> Result<()> {
+        let _ = self.notification_sender.send(notif).await;
+        Ok(())
+    }
+
     async fn handle_response(&mut self, response: JsonResponse) -> Result<()> {
-        // log::info!("Response: {response:?}");
         if response.result.is_none() && response.error.is_none() {
             return Ok(());
         }

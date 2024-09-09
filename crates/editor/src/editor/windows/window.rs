@@ -413,6 +413,12 @@ impl Window {
         }
 
         self.remove(buf, &selections)?;
+
+        // Stop selection
+        for cursor in self.cursors.cursors_mut() {
+            cursor.unanchor();
+        }
+
         Ok(true)
     }
 

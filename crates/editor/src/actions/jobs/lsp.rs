@@ -238,6 +238,7 @@ impl LSP {
 
                 self.handle_result(editor, id, result);
             }
+            Response::Notification(_) => todo!(),
         }
     }
 
@@ -301,9 +302,7 @@ fn complete(
     };
     let (win, buf) = editor.win_buf_mut(id);
     let slice = buf.slice(..);
-    log::info!("position: {position:?}");
     let start = position_to_offset(&slice, position, &enc);
-    log::info!("Start: {start}");
     win.completion = Completion::new(start);
 
     let cursor = win.primary_cursor();

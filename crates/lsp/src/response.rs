@@ -2,9 +2,12 @@ use std::{collections::BTreeMap, path::PathBuf};
 
 #[derive(Debug, Clone)]
 pub enum Response {
-    Request { id: u32, result: RequestResult }, // Notification(),
+    Request { id: u32, result: RequestResult },
+    Notification(NotificationResult),
 }
 
+// TODO should clear out lsp_types::* from here
+// to provide a simple interface to the editor.
 #[derive(Debug, Clone)]
 pub enum RequestResult {
     Hover {
@@ -38,10 +41,26 @@ pub enum RequestResult {
 }
 
 #[derive(Debug, Clone)]
+pub enum NotificationResult {
+    Diagnostics {
+        path: PathBuf,
+        version: Option<i32>,
+        diagnostics: Vec<Diagnostic>,
+    },
+}
+
+#[derive(Debug, Clone)]
+pub struct Diagnostic {
+    severity: lsp_types::DiagnosticSeverity,
+    range: lsp_types::Range,
+    message: String,
+}
+
+#[derive(Debug, Clone)]
 pub struct CompletionItem {
     pub name: String,
     pub description: Option<String>,
-    // pub documentation: Option<String>,
+    pub documentation: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]

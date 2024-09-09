@@ -112,9 +112,9 @@ pub async fn read_from<R: AsyncBufReadExt + Unpin>(
 
 #[derive(Debug, Serialize, Deserialize)]
 pub(crate) struct JsonNotification {
-    jsonrpc: String,
-    method: String,
-    params: Value,
+    pub(crate) jsonrpc: String,
+    pub(crate) method: String,
+    pub(crate) params: Value,
 }
 
 impl JsonNotification {

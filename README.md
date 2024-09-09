@@ -3,41 +3,40 @@
 ## TODO
 
 * LSP
-    - Completion
-        - needs documentation
-        - needs type
     - Diagnostics: Somehow to show them
         - Not done at all
 
 
-* Somethings wrong with multiwidth grapheme rendering.
-* Keybinds to configuration file => no default
-* Async saving
-    - Start saving if modified while saving quit the save process => prompt this so no accidental cancellations can occur
-* Welcome screen
-* Help menus to F1
-
-* Keybindings should be sensical
-    * Line up down char next prev, to keyboard not arrow keys
-* Save in place
+* Same buffer other deleting over other windows selection => problems!
+* LSP stuff menu
+    * Restart server
+    * Stop server
+    * all LSP actions if running
 
 * Grepping can match / display very long lines, this should be limited to X
   characters at most. For example show the non matched 20 first characters and the
   matched text afterwards with combined limit to 300 chars
+* Keybindings should be sensical
+    * Line up down char next prev, to keyboard not arrow keys
+    * Keybinds to configuration file => no default in code
+* Somethings wrong with multiwidth grapheme rendering.
+* Welcome screen
+    * Help menus to F1
 
+
+* Save in place
+* Async saving
+    - Start saving if modified while saving quit the save process => prompt this so no accidental cancellations can occur
 * play around with parsing machine JIT
     - This is its own big project
     - Should try this once we can write it in this editor :)
 
-* Add log buffer directly to editor
-
-* Basic highlighting for jsx, yang, java
+* Basic highlighting for jsx, yang, java, xml, makefile, dockerfile
 
 
 ## Future
 
-* LSP
-    * Needs installation mechanism => complex
+* Hex mode
 * Snippets
     - a word prefix + key to expand 
     - => Tab behaviour 

@@ -302,6 +302,11 @@ fn grep(editor: &mut Editor, id: ClientId) {
                 let mut map = FxHashMap::default();
 
                 for (_, buf) in e.buffers().iter() {
+                    // If not modified we let ripgrep grep from disk
+                    if !buf.is_modified() {
+                        continue;
+                    }
+
                     if let Some(path) = buf.path() {
                         map.insert(path.to_path_buf(), buf.ro_view());
                     }

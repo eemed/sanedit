@@ -137,7 +137,7 @@ impl Buffer {
         self.path
             .as_ref()
             .map(|p| p.to_string_lossy())
-            .unwrap_or(Cow::from("scratch"))
+            .unwrap_or_else(|| Cow::from(format!("scratch-{}", self.id.0)))
     }
 
     pub fn len(&self) -> u64 {

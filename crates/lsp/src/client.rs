@@ -10,6 +10,7 @@ use crate::util::path_to_uri;
 use crate::{Change, CompletionItem, Request, RequestResult, Response};
 
 use anyhow::{anyhow, Result};
+use lsp_types::notification::Notification as _;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 use tokio::sync::oneshot;
 use tokio::{io::BufReader, process::Command};
@@ -37,6 +38,7 @@ impl LSPClientParams {
         let stdin = cmd.stdin.take().ok_or(anyhow!("Failed to take stdin"))?;
         let stdout = BufReader::new(cmd.stdout.take().ok_or(anyhow!("Failed to take stdout"))?);
         let stderr = BufReader::new(cmd.stderr.take().ok_or(anyhow!("Failed to take stderr"))?);
+        let (server_notif_sender, server_notif_recv) = channel(256);
         let (server_sender, server_recv) = channel(256);
         let (req_sender, req_receiver) = channel(256);
         let (res_sender, res_receiver) = channel(256);
@@ -50,6 +52,7 @@ impl LSPClientParams {
             stdout,
             stderr,
             receiver: server_recv,
+            notification_sender: server_notif_sender,
             initialized: Some(init_send),
             in_flight: BTreeMap::default(),
         };
@@ -65,6 +68,7 @@ impl LSPClientParams {
             receiver: req_receiver,
             sender: res_sender,
             server_sender,
+            server_notification_receiver: server_notif_recv,
         };
         tokio::spawn(client.run());
 
@@ -116,38 +120,61 @@ struct LSPClient {
     receiver: Receiver<ToLSP>,
     sender: Sender<Response>,
     server_sender: Sender<ServerRequest>,
+    server_notification_receiver: Receiver<JsonNotification>,
 }
 
 impl LSPClient {
     pub async fn run(mut self) -> Result<()> {
-        while let Some(req) = self.receiver.recv().await {
-            let mut handler = Handler {
-                params: self.params.clone(),
-                init_params: self.init_params.clone(),
-                server: self.server_sender.clone(),
-                response: self.sender.clone(),
-            };
+        loop {
+            tokio::select! {
+                req = self.receiver.recv() => {
+                    let req = req.ok_or(anyhow!("Channel closed"))?;
+                    let mut handler = Handler {
+                        params: self.params.clone(),
+                        init_params: self.init_params.clone(),
+                        server: self.server_sender.clone(),
+                        response: self.sender.clone(),
+                    };
 
-            tokio::spawn(async move {
-                let id = req.id();
-                if let Err(e) = handler.run(req).await {
-                    log::error!("Failed handling request: {e}");
+                    tokio::spawn(async move {
+                        let id = req.id();
+                        if let Err(e) = handler.run(req).await {
+                            log::error!("Failed handling request: {e}");
 
-                    // Send error response if failed request
-                    if let Some(id) = id {
-                        let _ = handler
-                            .response
-                            .send(Response::Request {
-                                id,
-                                result: RequestResult::Error {
-                                    msg: format!("{e}"),
-                                },
-                            })
-                            .await;
-                    }
+                            // Send error response if failed request
+                            if let Some(id) = id {
+                                let _ = handler
+                                    .response
+                                    .send(Response::Request {
+                                        id,
+                                        result: RequestResult::Error {
+                                            msg: format!("{e}"),
+                                        },
+                                    })
+                                    .await;
+                            }
+                        }
+                    });
                 }
-            });
+                notif = self.server_notification_receiver.recv() => {
+                    let notif = notif.ok_or(anyhow!("Notification channel closed"))?;
+                    self.handle_notification(notif).await?;
+                }
+            }
         }
+    }
+
+    async fn handle_notification(&mut self, notif: JsonNotification) -> Result<()> {
+        match notif.method.as_str() {
+            lsp_types::notification::PublishDiagnostics::METHOD => {
+                let params =
+                    serde_json::from_value::<lsp_types::PublishDiagnosticsParams>(notif.params)?;
+            }
+            lsp_types::notification::Progress::METHOD => {}
+            lsp_types::notification::ShowMessage::METHOD => {}
+            _ => {}
+        }
+
         Ok(())
     }
 }
@@ -372,20 +399,23 @@ impl Handler {
             lsp_types::CompletionResponse::Array(_) => todo!(),
             lsp_types::CompletionResponse::List(list) => {
                 for item in list.items {
-                    if let Some(edit) = item.text_edit {
-                        match edit {
-                            lsp_types::CompletionTextEdit::Edit(_) => todo!(),
-                            lsp_types::CompletionTextEdit::InsertAndReplace(edit) => {
-                                results.push(CompletionItem {
-                                    name: edit.new_text,
-                                    description: if item.label.is_empty() {
-                                        None
-                                    } else {
-                                        Some(item.label)
-                                    },
-                                });
-                            }
+                    match item.text_edit {
+                        Some(lsp_types::CompletionTextEdit::Edit(_)) => todo!(),
+                        Some(lsp_types::CompletionTextEdit::InsertAndReplace(edit)) => {
+                            results.push(CompletionItem {
+                                name: edit.new_text,
+                                description: item.kind.map(|kind| {
+                                    let mut desc = format!("{kind:?}");
+                                    desc.make_ascii_lowercase();
+                                    desc
+                                }),
+                                documentation: item.documentation.map(|doc| match doc {
+                                    lsp_types::Documentation::String(doc) => doc,
+                                    lsp_types::Documentation::MarkupContent(mdoc) => mdoc.value,
+                                }),
+                            });
                         }
+                        None => {}
                     }
                 }
             }

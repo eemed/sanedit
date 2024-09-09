@@ -24,6 +24,11 @@ impl Buffers {
         Ok(id)
     }
 
+    pub fn new_scratch(&mut self) -> BufferId {
+        let buf = Buffer::default();
+        self.insert(buf)
+    }
+
     pub fn insert(&mut self, buf: Buffer) -> BufferId {
         let id = self.buffers.insert(buf);
         self.buffers[id].id = id;

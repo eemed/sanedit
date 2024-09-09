@@ -1,6 +1,7 @@
 use crate::{
     common::is_yes,
     editor::{
+        buffers::Buffer,
         config::{serialize_default_configuration, Config},
         hooks::Hook,
         windows::{Focus, Prompt},
@@ -97,4 +98,11 @@ fn prompt_create_and_open_config(editor: &mut Editor, id: ClientId) {
         })
         .build();
     win.focus = Focus::Prompt;
+}
+
+#[action("Open a new scratch buffer")]
+fn open_new_scratch_buffer(editor: &mut Editor, id: ClientId) {
+    let bid = editor.buffers_mut().new_scratch();
+    let (win, _buf) = editor.win_buf_mut(id);
+    win.open_buffer(bid);
 }

@@ -1,11 +1,12 @@
 use std::cmp::min;
 
+use sanedit_core::{PTSearcher, SearchDirection, SearchKind};
+
 use crate::{
     actions::jobs,
-    common::search::PTSearcher,
     editor::{
         keymap::KeymapKind,
-        windows::{Focus, HistoryKind, Prompt, SearchDirection, SearchKind},
+        windows::{Focus, HistoryKind, Prompt},
         Editor,
     },
     server::ClientId,

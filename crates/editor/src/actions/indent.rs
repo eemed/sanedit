@@ -1,6 +1,11 @@
 use std::cmp::min;
 
-use crate::{common::indent::determine_indent, editor::Editor, server::ClientId};
+use sanedit_core::determine_indent;
+
+use crate::{
+    editor::{buffers::Options, Editor},
+    server::ClientId,
+};
 
 #[action("Detect indentation")]
 fn detect_indent(editor: &mut Editor, id: ClientId) {
@@ -9,7 +14,10 @@ fn detect_indent(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     let len = buf.len();
     let slice = buf.slice(..min(len, MAX));
-    let (kind, n) = determine_indent(&slice);
+    let (kind, n) = determine_indent(&slice).unwrap_or_else(|| {
+        let opts = Options::default();
+        (opts.indent_kind, opts.indent_amount)
+    });
     buf.options.indent_kind = kind;
     buf.options.indent_amount = n;
 }

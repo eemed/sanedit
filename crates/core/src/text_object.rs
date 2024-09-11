@@ -1,5 +1,5 @@
+use crate::BufferRange;
 use sanedit_buffer::{utf8::Graphemes, PieceTreeSlice};
-use sanedit_core::BufferRange;
 
 /// Get a range of buffer from start - end,
 ///
@@ -11,7 +11,7 @@ use sanedit_core::BufferRange;
 ///     include - whether to include starting and ending chars in the range
 ///
 /// Contains special logic when ch is a bracket
-pub(crate) fn find_range(
+pub fn find_range(
     slice: &PieceTreeSlice,
     pos: u64,
     start: &str,

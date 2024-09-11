@@ -1,12 +1,14 @@
 use std::cmp;
 
 use sanedit_buffer::PieceTreeSlice;
-use sanedit_core::DisplayOptions;
+use sanedit_core::{
+    movement::{self, next_grapheme_boundary, prev_grapheme_boundary},
+    pairs, Cursor, DisplayOptions,
+};
 use sanedit_messages::redraw::Point;
 
 use crate::{
-    common::{self},
-    editor::{hooks::Hook, windows::Cursor, Editor},
+    editor::{hooks::Hook, Editor},
     server::ClientId,
 };
 
@@ -70,27 +72,27 @@ fn do_move_static(editor: &mut Editor, id: ClientId, pos: u64, col: Option<usize
 
 #[action("Move cursor(s) to the next character")]
 fn next_grapheme(editor: &mut Editor, id: ClientId) {
-    do_move(editor, id, common::movement::next_grapheme_boundary, None);
+    do_move(editor, id, next_grapheme_boundary, None);
 }
 
 #[action("Move cursor(s) to the previous character")]
 fn prev_grapheme(editor: &mut Editor, id: ClientId) {
-    do_move(editor, id, common::movement::prev_grapheme_boundary, None);
+    do_move(editor, id, prev_grapheme_boundary, None);
 }
 
 #[action("Move cursor(s) to the first character of the line")]
 fn first_char_of_line(editor: &mut Editor, id: ClientId) {
-    do_move(editor, id, common::movement::first_char_of_line, None);
+    do_move(editor, id, movement::first_char_of_line, None);
 }
 
 #[action("Move cursor(s) to the start of the line")]
 fn start_of_line(editor: &mut Editor, id: ClientId) {
-    do_move(editor, id, common::movement::start_of_line, Some(0));
+    do_move(editor, id, movement::start_of_line, Some(0));
 }
 
 #[action("Move cursor(s) to the end of the line")]
 fn end_of_line(editor: &mut Editor, id: ClientId) {
-    do_move(editor, id, common::movement::end_of_line, Some(usize::MAX));
+    do_move(editor, id, movement::end_of_line, Some(usize::MAX));
 }
 
 #[action("Move cursor(s) to the beginning of the buffer")]
@@ -109,32 +111,32 @@ fn end_of_buffer(editor: &mut Editor, id: ClientId) {
 
 #[action("Move cursor(s) to the start of the next word")]
 fn next_word_start(editor: &mut Editor, id: ClientId) {
-    do_move(editor, id, common::movement::next_word_start, None);
+    do_move(editor, id, movement::next_word_start, None);
 }
 
 #[action("Move cursor(s) to the start of the previous word")]
 fn prev_word_start(editor: &mut Editor, id: ClientId) {
-    do_move(editor, id, common::movement::prev_word_start, None);
+    do_move(editor, id, movement::prev_word_start, None);
 }
 
 #[action("Move cursor(s) to the end of the next word")]
 fn next_word_end(editor: &mut Editor, id: ClientId) {
-    do_move(editor, id, common::movement::next_word_end, None);
+    do_move(editor, id, movement::next_word_end, None);
 }
 
 #[action("Move cursor(s) to the end of the previous word")]
 fn prev_word_end(editor: &mut Editor, id: ClientId) {
-    do_move(editor, id, common::movement::prev_word_end, None);
+    do_move(editor, id, movement::prev_word_end, None);
 }
 
 #[action("Move cursor(s) to the next paragraph")]
 fn next_paragraph(editor: &mut Editor, id: ClientId) {
-    do_move(editor, id, common::movement::next_paragraph, None);
+    do_move(editor, id, movement::next_paragraph, None);
 }
 
 #[action("Move cursor(s) to the previous paragraph")]
 fn prev_paragraph(editor: &mut Editor, id: ClientId) {
-    do_move(editor, id, common::movement::prev_paragraph, None);
+    do_move(editor, id, movement::prev_paragraph, None);
 }
 
 #[action("Move cursor(s) to the previous visual line")]
@@ -262,12 +264,12 @@ fn next_visual_line_impl(editor: &mut Editor, id: ClientId) -> bool {
 
 #[action("Move cursor(s) to the next line")]
 fn next_line(editor: &mut Editor, id: ClientId) {
-    do_move_line(editor, id, common::movement::next_line);
+    do_move_line(editor, id, movement::next_line);
 }
 
 #[action("Move cursor(s) to the previous line")]
 fn prev_line(editor: &mut Editor, id: ClientId) {
-    do_move_line(editor, id, common::movement::prev_line);
+    do_move_line(editor, id, movement::prev_line);
 }
 
 #[action("Move cursor(s) to matching bracket pair")]
@@ -275,7 +277,7 @@ fn goto_matching_pair(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     let pos = win.cursors.primary().pos();
     let slice = buf.slice(..);
-    if let Some(pos) = common::pairs::matching_pair(&slice, pos) {
+    if let Some(pos) = pairs::matching_pair(&slice, pos) {
         do_move_static(editor, id, pos, None);
     }
 }

@@ -1,5 +1,4 @@
 mod completion;
-mod cursors;
 mod filetree;
 mod focus;
 mod options;
@@ -19,20 +18,15 @@ use std::{
 use anyhow::Result;
 use rustc_hash::FxHashSet;
 use sanedit_core::{
-    grapheme_category, BufferRange, BufferRangeExt as _, Change, Changes, DisplayOptions,
-    GraphemeCategory, Locations,
+    grapheme_category, indent_at_line,
+    movement::{next_grapheme_boundary, next_line_end, prev_grapheme_boundary},
+    selection_line_starts, width_at_pos, BufferRange, BufferRangeExt as _, Change, Changes, Cursor,
+    Cursors, DisplayOptions, GraphemeCategory, Locations,
 };
 use sanedit_messages::redraw::{Severity, Size, StatusMessage};
 use sanedit_syntax::SyntaxParseResult;
 
-use crate::{
-    common::{
-        indent::indent_at_line,
-        movement,
-        text::{selection_line_starts, width_at_pos},
-    },
-    editor::buffers::{Buffer, BufferId, SnapshotData},
-};
+use crate::editor::buffers::{Buffer, BufferId, SnapshotData};
 
 use self::filetree::FiletreeView;
 
@@ -57,7 +51,7 @@ macro_rules! show_warn {
 }
 
 pub(crate) use self::{
-    completion::*, cursors::*, focus::*, options::*, prompt::*, search::*, shell::*, view::*,
+    completion::*, focus::*, options::*, prompt::*, search::*, shell::*, view::*,
 };
 
 #[derive(Debug)]
@@ -484,7 +478,7 @@ impl Window {
             .iter()
             .map(Cursor::pos)
             .map(|pos| {
-                let next = movement::next_grapheme_boundary(&slice, pos);
+                let next = next_grapheme_boundary(&slice, pos);
                 pos..next
             })
             .collect();
@@ -553,7 +547,7 @@ impl Window {
 
             for cursor in self.cursors.cursors_mut() {
                 let cpos = cursor.pos();
-                let pos = movement::prev_grapheme_boundary(&buf.slice(..), cpos);
+                let pos = prev_grapheme_boundary(&buf.slice(..), cpos);
                 ranges.push(pos..cpos);
             }
 
@@ -607,12 +601,13 @@ impl Window {
 
     /// Indent all the lines with cursors or their selections
     pub fn indent_cursor_lines(&mut self, buf: &mut Buffer) -> Result<()> {
+        let slice = buf.slice(..);
         let starts: Vec<u64> = {
             let mut starts = FxHashSet::default();
 
             for cursor in self.cursors.iter() {
                 let range = cursor.selection().unwrap_or(cursor.pos()..cursor.pos() + 1);
-                let cstarts = selection_line_starts(buf, range);
+                let cstarts = selection_line_starts(&slice, range);
                 starts.extend(cstarts);
             }
             let mut vstarts: Vec<u64> = starts.into_iter().collect();
@@ -631,12 +626,13 @@ impl Window {
 
     /// Dedent all the lines with cursors or their selections
     pub fn dedent_cursor_lines(&mut self, buf: &mut Buffer) -> Result<()> {
+        let slice = buf.slice(..);
         let starts: Vec<u64> = {
             let mut starts = FxHashSet::default();
 
             for cursor in self.cursors.iter() {
                 let range = cursor.selection().unwrap_or(cursor.pos()..cursor.pos() + 1);
-                let cstarts = selection_line_starts(buf, range);
+                let cstarts = selection_line_starts(&slice, range);
                 starts.extend(cstarts);
             }
             let mut vstarts: Vec<u64> = starts.into_iter().collect();
@@ -644,7 +640,6 @@ impl Window {
             vstarts
         };
 
-        let slice = buf.slice(..);
         let iamount = buf.options.indent_amount;
         let ranges: Vec<BufferRange> = {
             let mut ranges = vec![];
@@ -709,7 +704,7 @@ impl Window {
             .iter()
             .map(Cursor::pos)
             .map(|pos| {
-                let npos = movement::next_line_end(&slice, pos);
+                let npos = next_line_end(&slice, pos);
                 pos..npos
             })
             .collect();

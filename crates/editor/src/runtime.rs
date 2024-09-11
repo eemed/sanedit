@@ -9,6 +9,7 @@ pub(crate) struct TokioRuntime {
     tokio: Runtime,
 
     /// Handle to send messages to editor
+    /// Spawned tasks need to communicate somehow
     handle: EditorHandle,
 }
 

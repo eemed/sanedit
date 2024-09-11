@@ -8,11 +8,15 @@ sanedit-buffer = { path = "../buffer" }
 sanedit-utils = { path = "../utils" }
 
 serde = { workspace = true, features = ["derive"] }
+regex-cursor = { workspace = true, features = ["perf-inline"] }
 
+anyhow.workspace = true
 globset.workspace = true
 tokio.workspace = true
 bitflags.workspace = true
 unicode-width.workspace = true
 rustc-hash.workspace = true 
 rayon.workspace = true
+rand.workspace = true
+dirs.workspace = true
 

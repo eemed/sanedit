@@ -1,12 +1,4 @@
 pub(crate) mod cursors;
-pub(crate) mod dirs;
-pub(crate) mod file;
-pub(crate) mod indent;
-pub(crate) mod movement;
-pub(crate) mod pairs;
-pub(crate) mod search;
-pub(crate) mod text;
-pub(crate) mod text_objects;
 pub(crate) mod window;
 
 pub(crate) fn is_yes(input: &str) -> bool {

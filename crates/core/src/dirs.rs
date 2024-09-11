@@ -6,13 +6,13 @@ use std::{
 use rand::Rng;
 
 const TMP_DIR: &str = "tmp";
-pub(crate) const SANE_DIR: &str = "sane";
-pub(crate) const FILETYPE_DIR: &str = "filetype";
-pub(crate) const THEME_DIR: &str = "themes";
-pub(crate) const CONFIG: &str = "config.toml";
+pub const SANE_DIR: &str = "sane";
+pub const FILETYPE_DIR: &str = "filetype";
+pub const THEME_DIR: &str = "themes";
+pub const CONFIG: &str = "config.toml";
 
 #[derive(Debug)]
-pub(crate) struct ConfigDirectory {
+pub struct ConfigDirectory {
     dir: PathBuf,
 }
 
@@ -47,23 +47,23 @@ impl Default for ConfigDirectory {
     }
 }
 
-pub(crate) fn config_dir() -> Option<PathBuf> {
+pub fn config_dir() -> Option<PathBuf> {
     let config = dirs::config_dir()?;
     Some(config.join(SANE_DIR))
 }
 
-pub(crate) fn filetype_dir() -> Option<PathBuf> {
+pub fn filetype_dir() -> Option<PathBuf> {
     let mut conf_dir = config_dir()?;
     conf_dir.push(FILETYPE_DIR);
     Some(conf_dir)
 }
 
-pub(crate) fn data_dir() -> Option<PathBuf> {
+pub fn data_dir() -> Option<PathBuf> {
     let data = dirs::data_dir()?;
     Some(data.join(SANE_DIR))
 }
 
-pub(crate) fn tmp_dir() -> Option<PathBuf> {
+pub fn tmp_dir() -> Option<PathBuf> {
     let data = data_dir()?;
     let tmp = data.join(TMP_DIR);
 
@@ -74,14 +74,14 @@ pub(crate) fn tmp_dir() -> Option<PathBuf> {
     Some(tmp)
 }
 
-// pub(crate) fn tmp_file() -> Option<PathBuf> {
+// pub fn tmp_file() -> Option<PathBuf> {
 //     let id = uuid::Uuid::new_v4();
 //     let mut result = tmp_dir()?;
 //     result.push(PathBuf::from(id.to_string()));
 //     Some(result)
 // }
 
-pub(crate) fn tmp_file() -> Option<(PathBuf, File)> {
+pub fn tmp_file() -> Option<(PathBuf, File)> {
     let mut rng = rand::thread_rng();
     loop {
         let rand: u32 = rng.gen();

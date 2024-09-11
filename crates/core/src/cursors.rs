@@ -2,14 +2,14 @@ mod cursor;
 
 use std::{cmp::min, ops::Range};
 
-pub(crate) use cursor::Cursor;
-use sanedit_core::BufferRangeExt as _;
+use crate::BufferRangeExt as _;
+pub use cursor::Cursor;
 use sanedit_utils::ranges::OverlappingRanges;
 
-use sanedit_core::RangeUtils;
+use crate::RangeUtils;
 
 #[derive(Debug, Clone)]
-pub(crate) struct Cursors {
+pub struct Cursors {
     cursors: Vec<Cursor>,
     primary: usize,
 }

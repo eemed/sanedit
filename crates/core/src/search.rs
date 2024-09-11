@@ -1,3 +1,4 @@
+use crate::BufferRange;
 use regex_cursor::{
     engines::meta::{FindMatches, Regex},
     regex_automata::{
@@ -9,12 +10,47 @@ use regex_cursor::{
 use sanedit_buffer::{
     Chunk, Chunks, PieceTreeSlice, SearchIter, SearchIterRev, Searcher, SearcherRev,
 };
-use sanedit_core::BufferRange;
 
-use crate::editor::windows::{SearchDirection, SearchKind};
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SearchDirection {
+    #[default]
+    Forward,
+    Backward,
+}
+
+impl SearchDirection {
+    pub fn reverse(&self) -> SearchDirection {
+        use SearchDirection::*;
+        match self {
+            Backward => Forward,
+            Forward => Backward,
+        }
+    }
+}
+
+#[derive(Debug, Default, Clone, PartialEq, Eq, Copy)]
+pub enum SearchKind {
+    /// Smartcase search
+    /// If all lowercase => case insensitive
+    /// otherwise case sensitive
+    #[default]
+    Smart,
+
+    /// Use the search pattern as a regex
+    Regex,
+}
+
+impl SearchKind {
+    pub fn tag(&self) -> &str {
+        match self {
+            SearchKind::Smart => "",
+            SearchKind::Regex => "regex",
+        }
+    }
+}
 
 #[derive(Debug)]
-pub(crate) enum PTSearcher {
+pub enum PTSearcher {
     /// Regex search
     RegexFwd(Regex),
 
@@ -103,7 +139,7 @@ impl PTSearcher {
 }
 
 #[derive(Debug)]
-pub(crate) struct SearchMatch {
+pub struct SearchMatch {
     range: BufferRange,
 }
 
@@ -113,7 +149,7 @@ impl SearchMatch {
     }
 }
 
-pub(crate) enum MatchIter<'a, 'b> {
+pub enum MatchIter<'a, 'b> {
     RegexBwd {
         fwd: &'a DFA,
         fwd_cache: Cache,
@@ -215,7 +251,7 @@ fn to_input<'s>(slice: &'s PieceTreeSlice) -> Input<PTRegexCursor<'s>> {
     Input::new(PTRegexCursor { len, chunks, chunk })
 }
 
-pub(crate) struct PTRegexCursor<'a> {
+pub struct PTRegexCursor<'a> {
     len: u64,
     chunks: Chunks<'a>,
     chunk: Option<(u64, Chunk<'a>)>,

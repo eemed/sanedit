@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use sanedit_buffer::utf8::EndOfLine;
 
-use crate::common::indent::IndentKind;
+use sanedit_core::IndentKind;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(remote = "EndOfLine")]

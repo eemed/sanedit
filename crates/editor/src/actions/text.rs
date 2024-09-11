@@ -1,7 +1,8 @@
 use std::path::PathBuf;
 
+use sanedit_core::{at_start_of_line, is_indent_at_pos};
+
 use crate::{
-    common::{indent::is_indent_at_pos, text::at_start_of_line},
     editor::{
         buffers::BufferError,
         hooks::Hook,

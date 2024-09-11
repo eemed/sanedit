@@ -1,11 +1,11 @@
 use std::collections::VecDeque;
 
 use sanedit_buffer::utf8::EndOfLine;
+use sanedit_core::movement::prev_line_start;
 use sanedit_core::{BufferRange, Char, Chars, DisplayOptions};
 use sanedit_messages::redraw::{Point, Size};
 use sanedit_syntax::SyntaxParseResult;
 
-use crate::common::movement::prev_line_start;
 use crate::editor::buffers::Buffer;
 use crate::editor::themes::DEFAULT_THEME;
 

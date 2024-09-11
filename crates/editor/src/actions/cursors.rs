@@ -1,17 +1,17 @@
 use sanedit_messages::redraw::Point;
 
 use crate::{
-    common::{
-        cursors::word_at_cursor,
-        movement::{end_of_line, next_line, next_line_start, prev_line, start_of_line},
-        search::PTSearcher,
-        window::pos_at_point,
-    },
-    editor::{hooks::Hook, windows::Cursor, Editor},
+    common::{cursors::word_at_cursor, window::pos_at_point},
+    editor::{hooks::Hook, Editor},
     server::ClientId,
 };
 
 use super::{hooks, search};
+
+use sanedit_core::{
+    movement::{end_of_line, next_line, next_line_start, prev_line, start_of_line},
+    Cursor, PTSearcher,
+};
 
 #[action("New cursor on the next line")]
 fn new_next_line(editor: &mut Editor, id: ClientId) {

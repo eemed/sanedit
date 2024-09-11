@@ -1,21 +1,17 @@
 use std::{any::Any, ops::Range};
 
 use sanedit_buffer::PieceTreeView;
-use sanedit_core::BufferRange;
+use sanedit_core::{BufferRange, SearchDirection, SearchKind};
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 
 use crate::{
-    common::search::PTSearcher,
-    editor::{
-        job_broker::KeepInTouch,
-        windows::{SearchDirection, SearchKind},
-        Editor,
-    },
+    editor::{job_broker::KeepInTouch, Editor},
     job_runner::{Job, JobContext, JobResult},
     server::ClientId,
 };
 
 use super::CHANNEL_SIZE;
+use sanedit_core::PTSearcher;
 
 enum SearchMessage {
     Matches(Vec<BufferRange>),

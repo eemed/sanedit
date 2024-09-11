@@ -1,9 +1,9 @@
 use std::{cmp, mem, ops::Range};
 
-use sanedit_core::RangeUtils;
+use crate::RangeUtils;
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
-pub(crate) struct Cursor {
+pub struct Cursor {
     /// Position in buffer
     pos: u64,
 

@@ -5,10 +5,9 @@ use std::{
 
 use anyhow::bail;
 use rustc_hash::FxHashMap;
+use sanedit_core::ConfigDirectory;
 use sanedit_messages::redraw::{Style, Theme, ThemeField};
 use toml::{Table, Value};
-
-use crate::common::dirs::ConfigDirectory;
 
 pub(crate) const DEFAULT_THEME: &str = "default";
 

@@ -1,19 +1,19 @@
 use std::{io, ops::Range};
 
+use crate::{
+    grapheme_category, is_word_break, is_word_break_end, BufferRange, Chars, DisplayOptions,
+    GraphemeCategory,
+};
 use sanedit_buffer::{
     utf8::{prev_eol, EndOfLine},
     PieceTree, PieceTreeSlice,
 };
-use sanedit_core::{
-    grapheme_category, is_word_break, is_word_break_end, BufferRange, Chars, DisplayOptions,
-    GraphemeCategory,
-};
 
-use crate::{common::movement::next_grapheme_boundary, editor::buffers::Buffer};
+use crate::movement::next_grapheme_boundary;
 
 use super::movement::{next_word_end, prev_word_start, start_of_line};
 
-pub(crate) fn width_at_pos(slice: &PieceTreeSlice, pos: u64, opts: &DisplayOptions) -> usize {
+pub fn width_at_pos(slice: &PieceTreeSlice, pos: u64, opts: &DisplayOptions) -> usize {
     let target = pos;
     let mut pos = start_of_line(slice, pos);
     let mut col = 0;
@@ -33,12 +33,7 @@ pub(crate) fn width_at_pos(slice: &PieceTreeSlice, pos: u64, opts: &DisplayOptio
 }
 
 /// returns the position at width + the width at the position
-pub(crate) fn pos_at_width(
-    slice: &PieceTreeSlice,
-    pos: u64,
-    width: usize,
-    opts: &DisplayOptions,
-) -> u64 {
+pub fn pos_at_width(slice: &PieceTreeSlice, pos: u64, width: usize, opts: &DisplayOptions) -> u64 {
     let mut pos = start_of_line(slice, pos);
     let mut col = 0;
     let mut graphemes = slice.graphemes_at(pos);
@@ -62,7 +57,7 @@ pub(crate) fn pos_at_width(
     pos
 }
 
-pub(crate) fn on_word_end(
+pub fn on_word_end(
     prev: (u64, GraphemeCategory),
     next: Option<(u64, GraphemeCategory)>,
     pos: u64,
@@ -74,7 +69,7 @@ pub(crate) fn on_word_end(
     }
 }
 
-pub(crate) fn on_word_start(
+pub fn on_word_start(
     prev: Option<(u64, GraphemeCategory)>,
     next: (u64, GraphemeCategory),
     pos: u64,
@@ -86,7 +81,7 @@ pub(crate) fn on_word_start(
 }
 
 /// Returns the range of the word that includes position pos
-pub(crate) fn word_at_pos(slice: &PieceTreeSlice, pos: u64) -> Option<BufferRange> {
+pub fn word_at_pos(slice: &PieceTreeSlice, pos: u64) -> Option<BufferRange> {
     let make_pair = |slice: PieceTreeSlice| {
         let len = slice.len();
         let cat = grapheme_category(&slice);
@@ -125,7 +120,7 @@ pub(crate) fn word_at_pos(slice: &PieceTreeSlice, pos: u64) -> Option<BufferRang
     Some(start..end)
 }
 
-pub(crate) fn strip_eol(slice: &mut PieceTreeSlice) {
+pub fn strip_eol(slice: &mut PieceTreeSlice) {
     let mut bytes = slice.bytes_at(slice.len());
     if let Some(mat) = prev_eol(&mut bytes) {
         let end = slice.len() - mat.eol.len();
@@ -133,7 +128,7 @@ pub(crate) fn strip_eol(slice: &mut PieceTreeSlice) {
     }
 }
 
-pub(crate) fn paste_separate_cursor_lines(text: &str) -> Vec<String> {
+pub fn paste_separate_cursor_lines(text: &str) -> Vec<String> {
     let pt = PieceTree::from_reader(io::Cursor::new(text)).unwrap();
     let mut lines = pt.lines();
     let mut slices = vec![];
@@ -159,7 +154,7 @@ pub(crate) fn paste_separate_cursor_lines(text: &str) -> Vec<String> {
     result
 }
 
-pub(crate) fn copy_cursors_to_lines(lines: Vec<String>, eol: EndOfLine) -> String {
+pub fn copy_cursors_to_lines(lines: Vec<String>, eol: EndOfLine) -> String {
     let mut result = String::new();
     for line in lines {
         if !result.is_empty() {
@@ -171,13 +166,13 @@ pub(crate) fn copy_cursors_to_lines(lines: Vec<String>, eol: EndOfLine) -> Strin
     result
 }
 
-pub(crate) fn selection_line_starts(buf: &Buffer, sel: Range<u64>) -> Vec<u64> {
+pub fn selection_line_starts(slice: &PieceTreeSlice, sel: Range<u64>) -> Vec<u64> {
     let mut starts = vec![];
     let start = sel.start;
-    let slice = buf.slice(sel);
+    let slice = slice.slice(sel);
     let mut lines = slice.lines();
 
-    let sol = start_of_line(&buf.slice(..), start);
+    let sol = start_of_line(&slice, start);
     if sol != start {
         starts.push(sol);
         // Skip first line

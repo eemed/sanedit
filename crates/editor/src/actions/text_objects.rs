@@ -1,5 +1,6 @@
+use sanedit_core::{find_range, word_at_pos};
+
 use crate::{
-    common::{text::word_at_pos, text_objects::find_range},
     editor::{hooks::Hook, Editor},
     server::ClientId,
 };

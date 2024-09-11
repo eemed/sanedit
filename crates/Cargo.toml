@@ -37,6 +37,8 @@ tokio         = "1.37"
 tokio-util    = "0.7"
 unicode-width = "0.1"
 
+regex-cursor = "0.1"
+
 
 [profile.release]
 opt-level = 3

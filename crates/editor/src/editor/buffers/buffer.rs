@@ -16,12 +16,10 @@ use sanedit_buffer::{PieceTree, PieceTreeSlice, PieceTreeView};
 use sanedit_utils::key_type;
 use thiserror::Error;
 
-use crate::common::dirs::tmp_file;
-
 use self::snapshots::Snapshots;
 pub(crate) use change::ChangeResult;
 pub(crate) use options::Options;
-use sanedit_core::{BufferRange, Change, Changes, Diagnostic, FileDescription, Filetype};
+use sanedit_core::{tmp_file, BufferRange, Change, Changes, Diagnostic, FileDescription, Filetype};
 use sanedit_core::{BufferRangeExt as _, Edit};
 pub(crate) use snapshots::{SnapshotData, SnapshotId};
 

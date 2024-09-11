@@ -1,7 +1,6 @@
 use crate::{editor::Editor, server::ClientId};
 
-use super::text::word_at_pos;
-use sanedit_core::{grapheme_category, GraphemeCategory};
+use sanedit_core::{grapheme_category, word_at_pos, GraphemeCategory};
 
 pub(crate) fn word_at_cursor(editor: &Editor, id: ClientId) -> Option<String> {
     let (win, buf) = editor.win_buf(id);

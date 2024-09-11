@@ -1,42 +1,4 @@
-use sanedit_core::BufferRange;
-
-#[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum SearchDirection {
-    #[default]
-    Forward,
-    Backward,
-}
-
-impl SearchDirection {
-    pub fn reverse(&self) -> SearchDirection {
-        use SearchDirection::*;
-        match self {
-            Backward => Forward,
-            Forward => Backward,
-        }
-    }
-}
-
-#[derive(Debug, Default, Clone, PartialEq, Eq, Copy)]
-pub(crate) enum SearchKind {
-    /// Smartcase search
-    /// If all lowercase => case insensitive
-    /// otherwise case sensitive
-    #[default]
-    Smart,
-
-    /// Use the search pattern as a regex
-    Regex,
-}
-
-impl SearchKind {
-    pub fn tag(&self) -> &str {
-        match self {
-            SearchKind::Smart => "",
-            SearchKind::Regex => "regex",
-        }
-    }
-}
+use sanedit_core::{BufferRange, SearchDirection, SearchKind};
 
 #[derive(Debug, Default)]
 pub(crate) struct LastSearch {

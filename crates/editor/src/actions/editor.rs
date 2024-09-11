@@ -1,7 +1,6 @@
 use crate::{
     common::is_yes,
     editor::{
-        buffers::Buffer,
         config::{serialize_default_configuration, Config},
         hooks::Hook,
         windows::{Focus, Prompt},

@@ -8,19 +8,17 @@ edition = "2021"
 [dependencies]
 sanedit-utils = { path = "../utils" }
 sanedit-buffer = { path = "../buffer" }
+sanedit-core = { path = "../core" }
 
-rustc-hash = "1.1"
-bitvec     = "1"
-
-anyhow     = "1.0"
-thiserror  = "1.0"
-log        = "0.4"
-
-# JIT
-libc = "0.2"
+rustc-hash.workspace = true
+bitvec.workspace = true
+anyhow.workspace = true
+thiserror.workspace = true
+log.workspace = true
+libc.workspace = true # JIT
 
 [dev-dependencies]
-criterion = "0.5"
+criterion.workspace = true
 
 [[bench]]
 name = "parse"

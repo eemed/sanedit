@@ -2,6 +2,11 @@ mod context;
 mod events;
 mod id;
 
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc,
+};
+
 use futures::future::BoxFuture;
 use rustc_hash::FxHashMap;
 use tokio::sync::mpsc::{self, channel};
@@ -55,7 +60,8 @@ async fn jobs_loop(mut recv: mpsc::Receiver<ToJobs>, handle: EditorHandle) {
                 match msg {
                     Request(id, job) => {
                         let mut ictx = context.clone();
-                        let (kill, ctx) = ictx.to_job_context(id);
+                        let ctx = ictx.to_job_context(id);
+                        let kill = ctx.kill.clone();
                         let task = async move {
                             let result = job.run(ctx).await;
                             let _ = match result {
@@ -69,7 +75,7 @@ async fn jobs_loop(mut recv: mpsc::Receiver<ToJobs>, handle: EditorHandle) {
                     }
                     Stop(id) => {
                         if let Some((kill, join)) = jobs.remove(&id) {
-                            let _ = kill.send(());
+                            kill.stop();
                             join.abort();
                             let _ = join.await;
                             log::info!("Job {id} stopped");

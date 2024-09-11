@@ -1,7 +1,14 @@
-use std::any::Any;
+use std::{
+    any::Any,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
+};
 
 use crate::events::ToEditor;
 use crate::server::EditorHandle;
+use sanedit_core::Kill;
 use tokio::sync::{
     broadcast,
     mpsc::{error::SendError, Sender},
@@ -13,7 +20,7 @@ use super::{FromJobs, JobId};
 /// editor.
 pub(crate) struct JobContext {
     pub id: JobId,
-    pub kill: broadcast::Sender<()>,
+    pub kill: Kill,
     pub sender: JobResponseSender,
 }
 
@@ -58,17 +65,10 @@ pub(crate) struct JobResponseSender {
 }
 
 impl JobResponseSender {
-    pub(super) fn to_job_context(&self, id: JobId) -> (broadcast::Sender<()>, JobContext) {
-        let (tx, rx) = broadcast::channel(1);
+    pub(super) fn to_job_context(&self, id: JobId) -> JobContext {
+        let kill = Kill::default();
         let sender = self.clone();
-        (
-            tx.clone(),
-            JobContext {
-                id,
-                sender,
-                kill: tx,
-            },
-        )
+        JobContext { id, sender, kill }
     }
 
     pub(super) async fn success(&mut self, id: JobId) -> Result<(), SendError<JobsMessage>> {

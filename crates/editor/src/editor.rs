@@ -6,7 +6,6 @@ pub(crate) mod hooks;
 pub(crate) mod job_broker;
 pub(crate) mod keymap;
 pub(crate) mod options;
-pub(crate) mod syntax;
 pub(crate) mod themes;
 pub(crate) mod windows;
 
@@ -21,6 +20,7 @@ use sanedit_messages::Message;
 use sanedit_messages::MouseButton;
 use sanedit_messages::MouseEvent;
 use sanedit_messages::MouseEventKind;
+use sanedit_syntax::Syntaxes;
 
 use std::env;
 use std::mem;
@@ -66,7 +66,6 @@ use self::keymap::KeymapKind;
 use self::options::Options;
 
 use self::filetree::Filetree;
-use self::syntax::Syntaxes;
 use self::themes::Themes;
 use self::windows::History;
 use self::windows::HistoryKind;
@@ -105,19 +104,21 @@ impl Editor {
         // Spawn job runner
         let jobs_handle = runtime.block_on(spawn_job_runner(handle));
         let working_dir = env::current_dir().expect("Cannot get current working directory.");
+        let config_dir = ConfigDirectory::default();
+        let ft_dir = config_dir.filetype_dir();
 
         Editor {
             runtime,
             clients: Map::default(),
             draw_states: Map::default(),
-            syntaxes: Syntaxes::default(),
+            syntaxes: Syntaxes::new(&ft_dir),
             windows: Windows::default(),
             buffers: Buffers::default(),
             job_broker: JobBroker::new(jobs_handle),
             hooks: Hooks::default(),
             keys: Vec::default(),
             is_running: true,
-            config_dir: ConfigDirectory::default(),
+            config_dir,
             filetree: Filetree::new(&working_dir),
             working_dir,
             themes: Themes::default(),

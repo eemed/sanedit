@@ -72,13 +72,16 @@ pub(crate) fn prevent_flicker(editor: &mut Editor, id: ClientId) {
 pub(crate) fn reparse_view(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     win.redraw_view(buf);
-    let bid = buf.id;
-    let total = buf.total_changes_made();
+    // let bid = buf.id;
+    // let total = buf.total_changes_made();
 
     let view = win.view().range();
     let old = win.syntax_result();
 
-    if old.bid != bid || old.total_changes_made != total || !old.buffer_range.includes(&view) {
+    // if old.bid != bid || old.total_changes_made != total ||
+
+    // TODO
+    if !old.buffer_range.includes(&view) {
         parse_syntax.execute(editor, id);
     }
 }

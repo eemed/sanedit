@@ -2,27 +2,22 @@ use std::{
     cmp::min,
     ops::Range,
     path::{Path, PathBuf},
-    sync::Arc,
+    sync::{atomic::AtomicBool, Arc},
 };
 
 use rustc_hash::FxHashMap;
 use sanedit_buffer::PieceTreeView;
-use sanedit_core::{BufferRange, Filetype};
-use sanedit_syntax::Annotation;
-use tokio::sync::broadcast;
+use sanedit_core::{BufferRange, Filetype, Kill};
 
-use crate::{common::dirs::ConfigDirectory, editor::buffers::BufferId};
-
-use self::grammar::Grammar;
-
-use super::Map;
+use crate::Annotation;
 
 mod grammar;
+pub use grammar::*;
 
 #[derive(Debug)]
-pub(crate) struct Syntaxes {
+pub struct Syntaxes {
     filetype_dir: PathBuf,
-    syntaxes: Map<Filetype, Syntax>,
+    syntaxes: FxHashMap<Filetype, Syntax>,
 }
 
 impl Syntaxes {
@@ -54,29 +49,17 @@ impl Syntaxes {
     }
 }
 
-impl Default for Syntaxes {
-    fn default() -> Self {
-        let ft_dir = ConfigDirectory::default().filetype_dir();
-        Syntaxes {
-            filetype_dir: ft_dir,
-            syntaxes: FxHashMap::default(),
-        }
-    }
-}
-
 #[derive(Debug, Clone)]
-pub(crate) struct Syntax {
+pub struct Syntax {
     grammar: Arc<Grammar>,
 }
 
 impl Syntax {
     pub fn parse(
         &self,
-        bid: BufferId,
-        total_changes_made: u32,
-        ropt: &PieceTreeView,
+        pt: &PieceTreeView,
         mut view: Range<u64>,
-        kill: broadcast::Receiver<()>,
+        kill: Kill,
     ) -> anyhow::Result<SyntaxParseResult> {
         const COMPLETION_ANNOTATION: &str = "completion";
         const HIGHLIGHT_ANNOTATION: &str = "highlight";
@@ -88,10 +71,10 @@ impl Syntax {
         // next_line_start(view.start)
 
         view.start = view.start.saturating_sub(HORIZON_TOP);
-        view.end = min(ropt.len(), view.end + HORIZON_BOTTOM);
+        view.end = min(pt.len(), view.end + HORIZON_BOTTOM);
 
         let start = view.start;
-        let slice = ropt.slice(view.clone());
+        let slice = pt.slice(view.clone());
 
         let captures = self.grammar.parse(&slice, kill)?;
         let spans: Vec<Span> = captures
@@ -126,23 +109,19 @@ impl Syntax {
 
         Ok(SyntaxParseResult {
             buffer_range: view,
-            bid,
-            total_changes_made,
             highlights: spans,
         })
     }
 }
 
 #[derive(Debug, Default)]
-pub(crate) struct SyntaxParseResult {
-    pub(crate) buffer_range: BufferRange,
-    pub(crate) bid: BufferId,
-    pub(crate) total_changes_made: u32,
-    pub(crate) highlights: Vec<Span>,
+pub struct SyntaxParseResult {
+    pub buffer_range: BufferRange,
+    pub highlights: Vec<Span>,
 }
 
 #[derive(Debug)]
-pub(crate) struct Span {
+pub struct Span {
     name: String,
     range: Range<u64>,
     completion: Option<String>,

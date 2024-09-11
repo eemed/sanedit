@@ -7,12 +7,12 @@ use crate::{
     editor::{
         buffers::BufferId,
         job_broker::{CPUJob, KeepInTouch},
-        syntax::{Syntax, SyntaxParseResult},
         Editor,
     },
     job_runner::JobContext,
     server::ClientId,
 };
+use sanedit_syntax::{Syntax, SyntaxParseResult};
 
 #[derive(Clone)]
 pub(crate) struct SyntaxParser {
@@ -20,7 +20,7 @@ pub(crate) struct SyntaxParser {
     syntax: Syntax,
     bid: BufferId,
     total_changes_made: u32,
-    ropt: PieceTreeView,
+    pt: PieceTreeView,
     range: BufferRange,
 }
 
@@ -38,7 +38,7 @@ impl SyntaxParser {
             bid,
             total_changes_made,
             syntax,
-            ropt,
+            pt: ropt,
             range,
         }
     }
@@ -46,13 +46,9 @@ impl SyntaxParser {
 
 impl CPUJob for SyntaxParser {
     fn run(&self, mut ctx: JobContext) -> anyhow::Result<()> {
-        let ast = self.syntax.parse(
-            self.bid,
-            self.total_changes_made,
-            &self.ropt,
-            self.range.clone(),
-            ctx.kill.subscribe(),
-        )?;
+        let ast = self
+            .syntax
+            .parse(&self.pt, self.range.clone(), ctx.kill.clone())?;
         ctx.send(ast);
         Ok(())
     }

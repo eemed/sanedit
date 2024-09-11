@@ -1,12 +1,9 @@
 use std::{fmt, mem, sync::Arc, time::Duration};
 
 use futures::future::BoxFuture;
-use sanedit_core::{Choice, MatchOption, MatchReceiver, MatchStrategy, Matcher};
+use sanedit_core::{Choice, Kill, MatchOption, MatchReceiver, MatchStrategy, Matcher};
 use tokio::{
-    sync::{
-        broadcast,
-        mpsc::{channel, Receiver, Sender},
-    },
+    sync::mpsc::{channel, Receiver, Sender},
     time::{timeout, Instant},
 };
 
@@ -25,19 +22,11 @@ pub(crate) enum MatcherMessage {
 
 /// Provides options to match
 pub(crate) trait OptionProvider: fmt::Debug + Sync + Send {
-    fn provide(
-        &self,
-        sender: Sender<MatchOption>,
-        kill: broadcast::Sender<()>,
-    ) -> BoxFuture<'static, ()>;
+    fn provide(&self, sender: Sender<MatchOption>, kill: Kill) -> BoxFuture<'static, ()>;
 }
 
 impl OptionProvider for Arc<Vec<String>> {
-    fn provide(
-        &self,
-        sender: Sender<MatchOption>,
-        kill: broadcast::Sender<()>,
-    ) -> BoxFuture<'static, ()> {
+    fn provide(&self, sender: Sender<MatchOption>, kill: Kill) -> BoxFuture<'static, ()> {
         let items = self.clone();
 
         let fut = async move {
@@ -53,11 +42,7 @@ impl OptionProvider for Arc<Vec<String>> {
 }
 
 impl OptionProvider for Arc<Vec<MatchOption>> {
-    fn provide(
-        &self,
-        sender: Sender<MatchOption>,
-        kill: broadcast::Sender<()>,
-    ) -> BoxFuture<'static, ()> {
+    fn provide(&self, sender: Sender<MatchOption>, kill: Kill) -> BoxFuture<'static, ()> {
         let items = self.clone();
 
         let fut = async move {
@@ -81,11 +66,7 @@ impl Empty {
     fn none_result_handler(editor: &mut Editor, id: ClientId, msg: MatcherMessage) {}
 }
 impl OptionProvider for Empty {
-    fn provide(
-        &self,
-        sender: Sender<MatchOption>,
-        kill: broadcast::Sender<()>,
-    ) -> BoxFuture<'static, ()> {
+    fn provide(&self, sender: Sender<MatchOption>, kill: Kill) -> BoxFuture<'static, ()> {
         Box::pin(async {})
     }
 }

@@ -1,12 +1,19 @@
-use std::{fs::File, path::Path};
+use std::{
+    fs::File,
+    path::Path,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
+};
 
+use crate::{Annotation, ByteReader, CaptureID, CaptureList, Parser};
 use anyhow::bail;
 use sanedit_buffer::{Bytes, PieceTreeSlice};
-use sanedit_syntax::{Annotation, ByteReader, CaptureID, CaptureList, Parser};
-use tokio::sync::broadcast;
+use sanedit_core::Kill;
 
 #[derive(Debug)]
-pub(crate) struct Grammar {
+pub struct Grammar {
     parser: Parser,
 }
 
@@ -34,8 +41,8 @@ impl Grammar {
     pub fn parse(
         &self,
         slice: &PieceTreeSlice,
-        kill: broadcast::Receiver<()>,
-    ) -> Result<CaptureList, sanedit_syntax::ParseError> {
+        kill: Kill,
+    ) -> Result<CaptureList, crate::ParseError> {
         let reader = PTReader {
             pt: slice.clone(),
             kill,
@@ -57,7 +64,7 @@ impl<'a> Iterator for PTIter<'a> {
 // and just cloning it, and limiting to a range
 struct PTReader<'a> {
     pt: PieceTreeSlice<'a>,
-    kill: broadcast::Receiver<()>,
+    kill: Kill,
 }
 
 impl<'a> ByteReader for PTReader<'a> {
@@ -68,7 +75,7 @@ impl<'a> ByteReader for PTReader<'a> {
     }
 
     fn stop(&self) -> bool {
-        !self.kill.is_empty()
+        self.kill.should_stop()
     }
 
     fn iter(&self, range: std::ops::Range<u64>) -> Self::I {

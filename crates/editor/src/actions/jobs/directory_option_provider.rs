@@ -4,11 +4,8 @@ use std::{
 };
 
 use futures::future::BoxFuture;
-use sanedit_core::MatchOption;
-use tokio::{
-    fs, io,
-    sync::{broadcast, mpsc::Sender},
-};
+use sanedit_core::{Kill, MatchOption};
+use tokio::{fs, io, sync::mpsc::Sender};
 
 use super::OptionProvider;
 
@@ -16,7 +13,7 @@ use super::OptionProvider;
 struct ReadDirContext {
     osend: Sender<MatchOption>,
     strip: usize,
-    kill: broadcast::Sender<()>,
+    kill: Kill,
     ignore: Arc<Vec<String>>,
 }
 
@@ -38,6 +35,10 @@ impl DirectoryOptionProvider {
 async fn list_dirs(dir: PathBuf, ctx: ReadDirContext) -> io::Result<()> {
     let mut rdir = fs::read_dir(&dir).await?;
     while let Ok(Some(entry)) = rdir.next_entry().await {
+        if ctx.kill.should_stop() {
+            return Ok(());
+        }
+
         let path = entry.path();
         let metadata = entry.metadata().await?;
         if metadata.is_dir() {
@@ -68,10 +69,9 @@ async fn read_directory_recursive(
     dir: PathBuf,
     osend: Sender<MatchOption>,
     ignore: Arc<Vec<String>>,
-    kill: broadcast::Sender<()>,
+    kill: Kill,
 ) {
     let strip = dir.components().count();
-    let mut krecv = kill.subscribe();
     let ctx = ReadDirContext {
         osend,
         strip,
@@ -79,18 +79,11 @@ async fn read_directory_recursive(
         ignore,
     };
 
-    tokio::select! {
-         _ = list_dirs(dir, ctx) => {}
-         _ = krecv.recv() => {}
-    }
+    list_dirs(dir, ctx).await;
 }
 
 impl OptionProvider for DirectoryOptionProvider {
-    fn provide(
-        &self,
-        sender: Sender<MatchOption>,
-        kill: broadcast::Sender<()>,
-    ) -> BoxFuture<'static, ()> {
+    fn provide(&self, sender: Sender<MatchOption>, kill: Kill) -> BoxFuture<'static, ()> {
         let dir = self.path.clone();
         Box::pin(read_directory_recursive(
             dir,

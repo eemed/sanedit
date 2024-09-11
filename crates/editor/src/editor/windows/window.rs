@@ -23,6 +23,7 @@ use sanedit_core::{
     GraphemeCategory, Locations,
 };
 use sanedit_messages::redraw::{Severity, Size, StatusMessage};
+use sanedit_syntax::SyntaxParseResult;
 
 use crate::{
     common::{
@@ -30,10 +31,7 @@ use crate::{
         movement,
         text::{selection_line_starts, width_at_pos},
     },
-    editor::{
-        buffers::{Buffer, BufferId, SnapshotData},
-        syntax::SyntaxParseResult,
-    },
+    editor::buffers::{Buffer, BufferId, SnapshotData},
 };
 
 use self::filetree::FiletreeView;

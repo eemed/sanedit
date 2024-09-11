@@ -1,0 +1,18 @@
+[package]
+name = "sanedit-core"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+sanedit-buffer = { path = "../buffer" }
+sanedit-utils = { path = "../utils" }
+
+serde = { workspace = true, features = ["derive"] }
+
+globset.workspace = true
+tokio.workspace = true
+bitflags.workspace = true
+unicode-width.workspace = true
+rustc-hash.workspace = true 
+rayon.workspace = true
+

@@ -51,7 +51,6 @@ impl UI {
         use ClientMessage::*;
         match msg {
             Hello => {}
-            SetOption(_) => {}
             Theme(theme) => {
                 self.grid.theme = theme.into();
             }

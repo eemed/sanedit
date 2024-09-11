@@ -1,9 +1,10 @@
 use std::sync::Arc;
 
 use rustc_hash::FxHashSet;
+use sanedit_core::{MatchOption, MatchStrategy};
 
 use crate::{
-    common::{cursors::word_before_cursor, matcher::*},
+    common::cursors::word_before_cursor,
     editor::{
         hooks::Hook,
         windows::{Completion, Focus},
@@ -58,7 +59,7 @@ fn confirm(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     win.focus = Focus::Window;
 
-    let opt = win.completion.selector.selected().map(|opt| {
+    let opt = win.completion.chooser.selected().map(|opt| {
         let prefix = opt.matches().iter().map(|m| m.end).max().unwrap_or(0);
         opt.to_str_lossy()[prefix..].to_string()
     });

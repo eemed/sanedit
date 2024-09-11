@@ -1,5 +1,6 @@
 use anyhow::{anyhow, bail, Result};
 use sanedit_buffer::PieceTreeSlice;
+use sanedit_core::{BufferRange, ChangesKind};
 use std::path::{Path, PathBuf};
 use thiserror::Error;
 
@@ -8,7 +9,7 @@ use sanedit_lsp::{lsp_types, Notification, RequestKind};
 use crate::{
     common::cursors::word_at_cursor,
     editor::{
-        buffers::{Buffer, BufferId, BufferRange, ChangesKind},
+        buffers::{Buffer, BufferId},
         hooks::Hook,
         windows::{Focus, Prompt, Window},
         Editor,

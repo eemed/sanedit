@@ -1,6 +1,6 @@
 use std::{cmp, mem, ops::Range};
 
-use crate::common::range::RangeUtils;
+use sanedit_core::RangeUtils;
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub(crate) struct Cursor {

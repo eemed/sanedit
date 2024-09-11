@@ -7,7 +7,7 @@ pub(crate) type MatchFn = fn(&str, &str) -> Option<Range<usize>>;
 /// Prefix matches from the start
 /// Any matches anywhre
 #[derive(Debug, Clone, Copy, Default)]
-pub(crate) enum MatchStrategy {
+pub enum MatchStrategy {
     #[default]
     AnySplit,
 
@@ -15,7 +15,7 @@ pub(crate) enum MatchStrategy {
 }
 
 impl MatchStrategy {
-    pub(super) fn get(&self) -> MatchFn {
+    pub fn get(&self) -> MatchFn {
         match self {
             MatchStrategy::Prefix => prefix_match,
             MatchStrategy::AnySplit => default_match,

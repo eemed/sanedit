@@ -81,7 +81,7 @@ fn above(win: Rect, compl: &Completion) -> Rect {
         mut height,
     } = compl.preferred_size();
 
-    y = y.saturating_sub(compl.options.len());
+    y = y.saturating_sub(compl.choices.len());
     x = x.saturating_sub(compl.query_len + 1);
 
     if x + width > win.x + win.width {
@@ -104,7 +104,7 @@ impl Drawable for Completion {
     fn draw(&self, ctx: &UIContext, cells: &mut [&mut [CCell]]) {
         let wsize = size(cells);
         let max_opts = wsize.height;
-        self.options
+        self.choices
             .iter()
             .take(max_opts)
             .enumerate()
@@ -121,8 +121,8 @@ impl Drawable for Completion {
                 let dstyle = ctx.style(dfield);
 
                 let line = format_completion(
-                    &opt.name,
-                    &opt.description,
+                    &opt.to_str_lossy(),
+                    opt.description(),
                     style,
                     dstyle,
                     wsize.width,

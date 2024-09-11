@@ -2,11 +2,9 @@ mod completion;
 mod cursors;
 mod filetree;
 mod focus;
-mod locations;
 mod options;
 mod prompt;
 mod search;
-mod selector;
 mod shell;
 mod view;
 
@@ -20,17 +18,20 @@ use std::{
 
 use anyhow::Result;
 use rustc_hash::FxHashSet;
+use sanedit_core::{
+    grapheme_category, BufferRange, BufferRangeExt as _, Change, Changes, DisplayOptions,
+    GraphemeCategory, Locations,
+};
 use sanedit_messages::redraw::{Severity, Size, StatusMessage};
 
 use crate::{
     common::{
-        char::{grapheme_category, DisplayOptions, GraphemeCategory},
         indent::indent_at_line,
         movement,
         text::{selection_line_starts, width_at_pos},
     },
     editor::{
-        buffers::{Buffer, BufferId, BufferRange, BufferRangeExt, Change, Changes, SnapshotData},
+        buffers::{Buffer, BufferId, SnapshotData},
         syntax::SyntaxParseResult,
     },
 };
@@ -58,8 +59,7 @@ macro_rules! show_warn {
 }
 
 pub(crate) use self::{
-    completion::*, cursors::*, focus::*, locations::*, options::*, prompt::*, search::*,
-    selector::SelectorOption, shell::*, view::*,
+    completion::*, cursors::*, focus::*, options::*, prompt::*, search::*, shell::*, view::*,
 };
 
 #[derive(Debug)]
@@ -121,6 +121,14 @@ impl Window {
 
     pub fn display_options_mut(&mut self) -> &mut DisplayOptions {
         &mut self.view.options
+    }
+
+    pub fn theme(&self) -> &str {
+        &self.view.theme
+    }
+
+    pub fn set_theme(&mut self, theme: &str) {
+        self.view.theme = theme.into();
     }
 
     pub fn display_options(&self) -> &DisplayOptions {

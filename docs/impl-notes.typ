@@ -33,6 +33,26 @@
 This document contains implementation details and notes. It should provide
 answers why certain design decisions were made.
 
+= Project structure
+
+#table(
+  columns: (auto, auto),
+  inset: 10pt,
+  align: horizon,
+  [*Crate*], [*Description*],
+  [buffer],  [Text buffer implementation],
+  [cli], [Commandline argument handling, starting the editor],
+  [core],    [Core structures and functionality],
+  [editor],  [Editor state using core structures and functions to modify editor state],
+  [lsp],  [LSP client implementation],
+  [macros],  [Macros to easily create functions to modify editor state],
+  [server],  [Server to talk to clients (client per window) and to send events to/from editor],
+  [syntax],  [Syntax higlighting using LPEG like parsing machine],
+  [terminal-client],  [A terminal client to talk to server and display editor],
+  [ucd],  [Unicode character database for unicode handling],
+  [utils],  [Useful functions and structures used in multiple places],
+)
+
 #include "impl-notes/buffer.typ"
 
 #include "impl-notes/cli.typ"

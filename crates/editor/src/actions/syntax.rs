@@ -1,10 +1,12 @@
+use sanedit_core::BufferRangeExt as _;
+
 use crate::{
-    common::range::RangeUtils,
-    editor::{buffers::BufferRangeExt, hooks::Hook, Editor},
+    editor::{hooks::Hook, Editor},
     server::ClientId,
 };
 
 use super::jobs::SyntaxParser;
+use sanedit_core::RangeUtils;
 
 /// Prevents syntax highlighting flicker on buffer change, simply adjusts
 /// higlights to a simple solution, highlights are processed in the

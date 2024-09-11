@@ -2,18 +2,15 @@ use std::ops::Range;
 
 use sanedit_messages::redraw::{self, CursorShape, Style, Theme, ThemeField};
 
-use crate::{
-    common::{
-        char::{grapheme_category, GraphemeCategory, Replacement},
-        range::RangeUtils,
-    },
-    editor::{
-        buffers::{Buffer, BufferRange},
-        windows::{Cell, Cursor, Cursors, View},
-    },
+use crate::editor::{
+    buffers::Buffer,
+    windows::{Cell, Cursor, Cursors, View},
 };
 
 use super::{DrawContext, EditorContext};
+use sanedit_core::{
+    grapheme_category, BufferRange, GraphemeCategory, RangeUtils as _, Replacement,
+};
 
 pub(crate) fn draw(ctx: &mut DrawContext) -> redraw::Window {
     let EditorContext {

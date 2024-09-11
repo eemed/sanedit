@@ -1,7 +1,7 @@
 use std::{cell::RefCell, ops::Range};
 
-use sanedit_messages::redraw::{CompletionOption, PromptOption};
 use sanedit_utils::sorted_vec::SortedVec;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Default)]
 struct MergedOptions {
@@ -26,18 +26,18 @@ impl MergedOptions {
 }
 
 #[derive(Debug, Default)]
-pub(crate) struct Options {
-    options: Vec<SortedVec<SelectorOption>>,
+pub struct Choices {
+    options: Vec<SortedVec<Choice>>,
     total: usize,
     interior: RefCell<MergedOptions>,
 }
 
-impl Options {
-    pub fn new() -> Options {
-        Options::default()
+impl Choices {
+    pub fn new() -> Choices {
+        Choices::default()
     }
 
-    pub fn push(&mut self, opts: SortedVec<SelectorOption>) {
+    pub fn push(&mut self, opts: SortedVec<Choice>) {
         self.total += opts.len();
         self.options.push(opts);
 
@@ -54,7 +54,7 @@ impl Options {
         self.total == 0
     }
 
-    pub fn get(&self, idx: usize) -> Option<&SelectorOption> {
+    pub fn get(&self, idx: usize) -> Option<&Choice> {
         self.merge_until(idx);
         let interior = self.interior.borrow();
         let (list, pos) = interior.merged.get(idx)?;
@@ -71,7 +71,7 @@ impl Options {
         for _ in interior.merged.len()..idx + 1 {
             let len = interior.cursors.len();
             // min element match and the list/cursor index
-            let mut min: Option<(usize, &SelectorOption)> = None;
+            let mut min: Option<(usize, &Choice)> = None;
 
             for c in 0..len {
                 let list = &self.options[c];
@@ -99,8 +99,8 @@ impl Options {
     }
 }
 
-#[derive(Debug, Clone, Default)]
-pub(crate) struct SelectorOption {
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct Choice {
     pub(super) score: u32,
     /// Underlying option
     pub(super) value: Vec<u8>,
@@ -112,14 +112,9 @@ pub(crate) struct SelectorOption {
     pub(super) description: String,
 }
 
-impl SelectorOption {
-    pub fn new(
-        opt: &[u8],
-        matches: Vec<Range<usize>>,
-        score: u32,
-        description: &str,
-    ) -> SelectorOption {
-        SelectorOption {
+impl Choice {
+    pub fn new(opt: &[u8], matches: Vec<Range<usize>>, score: u32, description: &str) -> Choice {
+        Choice {
             value: opt.into(),
             score,
             description: description.into(),
@@ -148,41 +143,41 @@ impl SelectorOption {
     }
 }
 
-impl PartialEq for SelectorOption {
+impl PartialEq for Choice {
     fn eq(&self, other: &Self) -> bool {
         (self.score, &self.value) == (other.score, &other.value)
     }
 }
 
-impl Eq for SelectorOption {}
+impl Eq for Choice {}
 
-impl PartialOrd for SelectorOption {
+impl PartialOrd for Choice {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         (self.score, &self.value).partial_cmp(&(other.score, &other.value))
     }
 }
 
-impl Ord for SelectorOption {
+impl Ord for Choice {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         (self.score, &self.value).cmp(&(other.score, &other.value))
     }
 }
 
-impl From<&SelectorOption> for PromptOption {
-    fn from(opt: &SelectorOption) -> Self {
-        PromptOption {
-            name: opt.to_str_lossy().into(),
-            description: opt.description.clone(),
-            matches: opt.matches.clone(),
-        }
-    }
-}
+// impl From<&SelectorOption> for PromptOption {
+//     fn from(opt: &SelectorOption) -> Self {
+//         PromptOption {
+//             name: opt.to_str_lossy().into(),
+//             description: opt.description.clone(),
+//             matches: opt.matches.clone(),
+//         }
+//     }
+// }
 
-impl From<&SelectorOption> for CompletionOption {
-    fn from(opt: &SelectorOption) -> Self {
-        CompletionOption {
-            name: opt.to_str_lossy().into(),
-            description: opt.description().into(),
-        }
-    }
-}
+// impl From<&SelectorOption> for CompletionOption {
+//     fn from(opt: &SelectorOption) -> Self {
+//         CompletionOption {
+//             name: opt.to_str_lossy().into(),
+//             description: opt.description().into(),
+//         }
+//     }
+// }

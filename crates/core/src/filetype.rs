@@ -9,8 +9,8 @@ pub struct Filetype {
 }
 
 impl Filetype {
-    pub fn determine(path: &Path, overrides: &FxHashMap<String, Vec<String>>) -> Option<Filetype> {
-        for (ft, patterns) in overrides {
+    pub fn determine(path: &Path, patterns: &FxHashMap<String, Vec<String>>) -> Option<Filetype> {
+        for (ft, patterns) in patterns {
             let mut builder = GlobSetBuilder::new();
             patterns.iter().for_each(|pat| {
                 if let Ok(glob) = Glob::new(pat) {

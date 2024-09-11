@@ -1,7 +1,7 @@
 use crate::actions::jobs::{MatchedOptions, MatcherMessage};
 use crate::actions::*;
-use crate::common::matcher::MatchOption;
-use crate::editor::windows::{Focus, SelectorOption};
+use crate::editor::windows::Focus;
+use sanedit_core::{Choice, MatchOption};
 use sanedit_messages::keyevents_to_string;
 
 #[rustfmt::skip]
@@ -135,8 +135,7 @@ pub(crate) fn matcher_result_handler(editor: &mut Editor, id: ClientId, msg: Mat
                     win.prompt.clear_options();
                 }
                 win.focus = Focus::Prompt;
-                let opts: Vec<SelectorOption> =
-                    matched.into_iter().map(SelectorOption::from).collect();
+                let opts: Vec<Choice> = matched.into_iter().map(Choice::from).collect();
                 let (win, _buf) = editor.win_buf_mut(id);
                 win.prompt.provide_options(opts.into());
             }

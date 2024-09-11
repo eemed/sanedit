@@ -51,9 +51,9 @@ pub enum NotificationResult {
 
 #[derive(Debug, Clone)]
 pub struct Diagnostic {
-    severity: lsp_types::DiagnosticSeverity,
-    range: lsp_types::Range,
-    message: String,
+    pub severity: lsp_types::DiagnosticSeverity,
+    pub range: lsp_types::Range,
+    pub message: String,
 }
 
 #[derive(Debug, Clone)]

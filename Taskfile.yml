@@ -51,6 +51,7 @@ tasks:
       - cargo run -- --config-dir ../runtime/config --working-dir ..
     env:
       RUST_BACKTRACE: 1
+      RUSTFLAGS: "-Awarnings"
 
   test:
     desc: Run tests

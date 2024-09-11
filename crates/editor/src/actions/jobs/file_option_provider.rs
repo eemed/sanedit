@@ -9,7 +9,7 @@ use tokio::{
     sync::{broadcast, mpsc::Sender},
 };
 
-use crate::common::matcher::{Kind, MatchOption};
+use sanedit_core::{Kind, MatchOption};
 
 use super::OptionProvider;
 

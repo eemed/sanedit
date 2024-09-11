@@ -4,12 +4,12 @@ use sanedit_buffer::Bytes;
 use sanedit_buffer::PieceTreeSlice;
 use sanedit_buffer::Searcher;
 use sanedit_buffer::SearcherRev;
+use sanedit_core::grapheme_category;
 
-use crate::common::char::grapheme_category;
 use crate::editor::windows::Cursor;
 
-use super::char::{is_word_break, is_word_break_end, DisplayOptions, GraphemeCategory};
 use super::text::{pos_at_width, width_at_pos};
+use sanedit_core::{is_word_break, is_word_break_end, DisplayOptions, GraphemeCategory};
 
 #[inline]
 pub(crate) fn next_grapheme_boundary(slice: &PieceTreeSlice, pos: u64) -> u64 {

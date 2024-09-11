@@ -3,9 +3,10 @@ mod cursor;
 use std::{cmp::min, ops::Range};
 
 pub(crate) use cursor::Cursor;
+use sanedit_core::BufferRangeExt as _;
 use sanedit_utils::ranges::OverlappingRanges;
 
-use crate::{common::range::RangeUtils, editor::buffers::BufferRangeExt};
+use sanedit_core::RangeUtils;
 
 #[derive(Debug, Clone)]
 pub(crate) struct Cursors {

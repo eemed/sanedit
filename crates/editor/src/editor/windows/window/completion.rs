@@ -1,5 +1,6 @@
 use std::rc::Rc;
 
+use sanedit_core::{Choice, Chooser};
 use sanedit_messages::redraw::Point;
 use sanedit_utils::sorted_vec::SortedVec;
 
@@ -9,13 +10,11 @@ use crate::{
     server::ClientId,
 };
 
-use super::{selector::Selector, SelectorOption};
-
 pub(crate) type CompletionAction = Rc<dyn Fn(&mut Editor, ClientId, &str)>;
 
 pub(crate) struct Completion {
     pub(crate) point: Point,
-    pub(crate) selector: Selector,
+    pub(crate) chooser: Chooser,
 
     /// Where the completion was started at
     /// used to provide on input with the next term
@@ -33,27 +32,27 @@ impl Completion {
     }
 
     pub fn select_next(&mut self) {
-        self.selector.select_next()
+        self.chooser.select_next()
     }
 
     pub fn select_prev(&mut self) {
-        self.selector.select_prev()
+        self.chooser.select_prev()
     }
 
-    pub fn provide_options(&mut self, options: SortedVec<SelectorOption>) {
-        self.selector.provide_options(options)
+    pub fn provide_options(&mut self, options: SortedVec<Choice>) {
+        self.chooser.provide_options(options)
     }
 
     pub fn selected_pos(&self) -> Option<usize> {
-        self.selector.selected_pos()
+        self.chooser.selected_pos()
     }
 
     pub fn clear_options(&mut self) {
-        self.selector = Selector::new();
+        self.chooser = Chooser::new();
     }
 
-    pub fn options_window(&self, count: usize, offset: usize) -> Vec<&SelectorOption> {
-        self.selector.matches_window(count, offset)
+    pub fn options_window(&self, count: usize, offset: usize) -> Vec<&Choice> {
+        self.chooser.matches_window(count, offset)
     }
 
     pub fn matcher_result_handler(editor: &mut Editor, id: ClientId, msg: MatcherMessage) {
@@ -82,7 +81,7 @@ impl Completion {
                 let (win, buf) = editor.win_buf_mut(id);
                 match opts {
                     MatchedOptions::Done => {
-                        if win.completion.selector.options.is_empty() {
+                        if win.completion.chooser.options().is_empty() {
                             win.focus = Focus::Window;
                             win.info_msg("No completion items");
                         }
@@ -92,8 +91,7 @@ impl Completion {
                             win.completion.clear_options();
                         }
                         win.focus = Focus::Completion;
-                        let opts: Vec<SelectorOption> =
-                            matched.into_iter().map(SelectorOption::from).collect();
+                        let opts: Vec<Choice> = matched.into_iter().map(Choice::from).collect();
                         let (win, _buf) = editor.win_buf_mut(id);
                         win.completion.provide_options(opts.into());
                     }
@@ -107,7 +105,7 @@ impl Default for Completion {
     fn default() -> Self {
         Completion {
             point: Point::default(),
-            selector: Selector::default(),
+            chooser: Chooser::default(),
             started_at: 0,
             on_input: None,
         }
@@ -118,7 +116,7 @@ impl std::fmt::Debug for Completion {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Completion")
             .field("point", &self.point)
-            .field("selector", &self.selector)
+            .field("selector", &self.chooser)
             .finish_non_exhaustive()
     }
 }

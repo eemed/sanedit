@@ -1,12 +1,13 @@
 use std::collections::VecDeque;
 
 use sanedit_buffer::utf8::EndOfLine;
+use sanedit_core::{BufferRange, Char, Chars, DisplayOptions};
 use sanedit_messages::redraw::{Point, Size};
 
-use crate::common::char::{Char, Chars, DisplayOptions};
 use crate::common::movement::prev_line_start;
-use crate::editor::buffers::{Buffer, BufferRange};
+use crate::editor::buffers::Buffer;
 use crate::editor::syntax::SyntaxParseResult;
+use crate::editor::themes::DEFAULT_THEME;
 
 #[derive(Debug, Clone)]
 pub(crate) enum Cell {
@@ -77,6 +78,7 @@ pub(crate) struct View {
 
     /// Display options which were used to draw this view
     pub options: DisplayOptions,
+    pub theme: String,
     needs_redraw: bool,
 
     pub(super) syntax: SyntaxParseResult,
@@ -92,6 +94,7 @@ impl View {
             options: DisplayOptions::default(),
             needs_redraw: true,
             syntax: SyntaxParseResult::default(),
+            theme: DEFAULT_THEME.into(),
         }
     }
 
@@ -146,10 +149,10 @@ impl View {
             let chars = Chars::new(&grapheme, col, &self.options);
             let ch_width: usize = chars.width();
             is_eol = chars.is_eol();
-            if ch_width != chars.len() {
-                let s = String::from(&grapheme);
-                log::info!("Grapheme: {s:?}, width: {ch_width}, len: {}", chars.len());
-            }
+            // if ch_width != chars.len() {
+            //     let s = String::from(&grapheme);
+            //     log::info!("Grapheme: {s:?}, width: {ch_width}, len: {}", chars.len());
+            // }
 
             // If we cannot fit this character, go to next line
             if col + ch_width > self.width {

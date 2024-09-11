@@ -7,8 +7,8 @@ use std::{
 use sanedit_utils::{either::Either, sorted_vec::SortedVec};
 
 #[derive(Debug, Default)]
-pub(crate) struct Locations {
-    pub(crate) show: bool,
+pub struct Locations {
+    pub show: bool,
     selection: Option<usize>,
 
     // not sorted because results may be coming in while we are already browsing
@@ -173,7 +173,7 @@ impl Locations {
 
 /// Location group
 #[derive(Debug)]
-pub(crate) struct Group {
+pub struct Group {
     path: PathBuf,
     expanded: bool,
     items: SortedVec<Item>,
@@ -218,7 +218,7 @@ impl Group {
 }
 
 #[derive(Debug)]
-pub(crate) struct Item {
+pub struct Item {
     line: Option<u64>,
     /// Absolute offset where data starts
     line_absolute_offset: Option<u64>,
@@ -309,7 +309,7 @@ impl Ord for Item {
 }
 
 #[derive(Debug)]
-pub(crate) struct LocationEntry<'a> {
+pub struct LocationEntry<'a> {
     loc: Either<&'a Group, &'a Item>,
     level: usize,
 }
@@ -339,7 +339,7 @@ impl<'a> LocationEntry<'a> {
 }
 
 #[derive(Debug)]
-pub(crate) struct LocationIter<'a> {
+pub struct LocationIter<'a> {
     stack: Vec<LocationEntry<'a>>,
 }
 

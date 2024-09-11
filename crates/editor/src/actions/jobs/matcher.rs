@@ -1,6 +1,7 @@
 use std::{fmt, mem, sync::Arc, time::Duration};
 
 use futures::future::BoxFuture;
+use sanedit_core::{Choice, MatchOption, MatchReceiver, MatchStrategy, Matcher};
 use tokio::{
     sync::{
         broadcast,
@@ -11,7 +12,6 @@ use tokio::{
 
 use crate::{
     actions::jobs::CHANNEL_SIZE,
-    common::matcher::{Match, MatchOption, MatchReceiver, MatchStrategy, Matcher},
     editor::{job_broker::KeepInTouch, Editor},
     job_runner::{Job, JobContext, JobResult},
     server::ClientId,
@@ -228,7 +228,7 @@ impl KeepInTouch for MatcherJob {
 pub(crate) enum MatchedOptions {
     Done,
     Options {
-        matched: Vec<Match>,
+        matched: Vec<Choice>,
         clear_old: bool,
     },
 }

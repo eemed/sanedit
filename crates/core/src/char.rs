@@ -4,17 +4,14 @@ use rustc_hash::FxHashMap;
 use sanedit_buffer::PieceTreeSlice;
 
 use sanedit_buffer::utf8::EndOfLine;
-use smallvec::SmallVec;
 use unicode_width::UnicodeWidthStr;
-
-use crate::editor::themes::DEFAULT_THEME;
 
 /// Representation of a grapheme cluster (clusters of codepoints we treat as one
 /// character) in the buffer.
 /// This is a separate type to distinguish graphemes that have already been
 /// converted to the format we want the user to see.
 #[derive(Debug, Default, Clone, PartialEq, Hash)]
-pub(crate) struct Chars {
+pub struct Chars {
     chars: Vec<Char>,
 }
 
@@ -109,7 +106,7 @@ impl From<Chars> for Vec<Char> {
 
 bitflags::bitflags! {
     #[derive(Default)]
-    pub(crate) struct Flags: u8 {
+    pub struct Flags: u8 {
         /// This char continues the previous one, for example Tab + tab fills
         const CONTINUE = 0b00000001;
 
@@ -126,12 +123,12 @@ bitflags::bitflags! {
 }
 
 #[derive(Debug, Clone, PartialEq, Hash, Default)]
-pub(crate) struct CharExtra {
+pub struct CharExtra {
     wide: String,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Hash)]
-pub(crate) struct Char {
+pub struct Char {
     character: char,
     extra: Option<Box<CharExtra>>,
     flags: Flags,
@@ -181,7 +178,7 @@ impl Char {
 }
 
 #[derive(PartialEq, Default, Clone, Copy, Debug, Hash)]
-pub(crate) enum GraphemeCategory {
+pub enum GraphemeCategory {
     EOL,
     Whitespace,
     Word,
@@ -201,18 +198,18 @@ impl GraphemeCategory {
 }
 
 #[inline(always)]
-pub(crate) fn is_word_break(prev: &GraphemeCategory, next: &GraphemeCategory) -> bool {
+pub fn is_word_break(prev: &GraphemeCategory, next: &GraphemeCategory) -> bool {
     prev != next && next.is_word()
 }
 
 #[inline(always)]
-pub(crate) fn is_word_break_end(prev: &GraphemeCategory, next: &GraphemeCategory) -> bool {
+pub fn is_word_break_end(prev: &GraphemeCategory, next: &GraphemeCategory) -> bool {
     prev != next && prev.is_word()
 }
 
 #[derive(Debug, Hash, Eq, PartialEq, Clone)]
 #[repr(usize)]
-pub(crate) enum Replacement {
+pub enum Replacement {
     Tab,
     TabFill,
     EOL,
@@ -223,8 +220,7 @@ pub(crate) enum Replacement {
 
 /// Options on how to display chars
 #[derive(Debug, Clone)]
-pub(crate) struct DisplayOptions {
-    pub theme: String,
+pub struct DisplayOptions {
     pub tabstop: u32,
     pub replacements: FxHashMap<Replacement, char>,
 }
@@ -248,7 +244,6 @@ impl Default for DisplayOptions {
         }
 
         DisplayOptions {
-            theme: DEFAULT_THEME.into(),
             tabstop: 8,
             replacements,
         }
@@ -424,16 +419,19 @@ fn ascii_control_to_char(byte: u8) -> Chars {
     Chars::from_str(rep, 1)
 }
 
-pub(crate) fn grapheme_category(grapheme: &PieceTreeSlice) -> GraphemeCategory {
-    let chars = {
+pub fn grapheme_category(grapheme: &PieceTreeSlice) -> GraphemeCategory {
+    let (chars, len) = {
         // read chars to a buf for easier handling
-        let mut chars: SmallVec<[char; 4]> = smallvec::SmallVec::new();
+        let mut chars = ['\0'; 4];
+        let mut n = 0;
         let mut iter = grapheme.chars();
         while let Some((_, _, ch)) = iter.next() {
-            chars.push(ch);
+            chars[n] = ch;
+            n += 1;
         }
-        chars
+        (chars, n)
     };
+    let chars = &chars[..len];
 
     if chars.iter().all(|ch| ch.is_alphanumeric() || *ch == '_') {
         return GraphemeCategory::Word;

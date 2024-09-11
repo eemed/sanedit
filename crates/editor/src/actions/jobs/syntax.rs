@@ -1,10 +1,11 @@
 use std::any::Any;
 
 use sanedit_buffer::PieceTreeView;
+use sanedit_core::BufferRange;
 
 use crate::{
     editor::{
-        buffers::{BufferId, BufferRange},
+        buffers::BufferId,
         job_broker::{CPUJob, KeepInTouch},
         syntax::{Syntax, SyntaxParseResult},
         Editor,

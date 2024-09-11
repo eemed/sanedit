@@ -1,13 +1,10 @@
 use std::{
     ffi::OsStr,
-    ops::Range,
     path::{Path, PathBuf},
 };
 
-use crate::editor::windows::SelectorOption;
-
 #[derive(Debug, Clone)]
-pub(crate) enum Kind {
+pub enum Kind {
     Path,
     String,
 }
@@ -15,7 +12,7 @@ pub(crate) enum Kind {
 /// A generic match option that contains bytes.
 /// And a description of those bytes
 #[derive(Debug, Clone)]
-pub(crate) struct MatchOption {
+pub struct MatchOption {
     /// Match option data
     value: Vec<u8>,
 
@@ -79,6 +76,14 @@ impl MatchOption {
     pub fn offset(&self) -> usize {
         self.offset
     }
+
+    pub fn description(&self) -> &str {
+        &self.description
+    }
+
+    pub fn bytes(&self) -> &[u8] {
+        &self.value
+    }
 }
 
 impl std::hash::Hash for MatchOption {
@@ -139,61 +144,61 @@ impl From<&str> for MatchOption {
     }
 }
 
-/// A matched and scored option
-#[derive(Debug, Clone)]
-pub(crate) struct Match {
-    /// Matched value
-    pub(crate) opt: MatchOption,
-    /// Score of the match
-    pub(crate) score: u32,
+// /// A matched and scored option
+// #[derive(Debug, Clone)]
+// pub(crate) struct Match {
+//     /// Matched value
+//     pub(crate) opt: MatchOption,
+//     /// Score of the match
+//     pub(crate) score: u32,
 
-    /// Ranges of value string that were matched
-    pub(crate) ranges: Vec<Range<usize>>,
-}
+//     /// Ranges of value string that were matched
+//     pub(crate) ranges: Vec<Range<usize>>,
+// }
 
-impl Match {
-    pub fn score(&self) -> u32 {
-        self.score
-    }
+// impl Match {
+//     pub fn score(&self) -> u32 {
+//         self.score
+//     }
 
-    pub fn ranges(&self) -> &[Range<usize>] {
-        &self.ranges
-    }
-}
+//     pub fn ranges(&self) -> &[Range<usize>] {
+//         &self.ranges
+//     }
+// }
 
-impl PartialEq for Match {
-    fn eq(&self, other: &Self) -> bool {
-        (self.score, &self.opt.value) == (other.score, &other.opt.value)
-    }
-}
+// impl PartialEq for Match {
+//     fn eq(&self, other: &Self) -> bool {
+//         (self.score, &self.opt.value) == (other.score, &other.opt.value)
+//     }
+// }
 
-impl Eq for Match {}
+// impl Eq for Match {}
 
-impl PartialOrd for Match {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        (self.score, &self.opt.value).partial_cmp(&(other.score, &other.opt.value))
-    }
-}
+// impl PartialOrd for Match {
+//     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+//         (self.score, &self.opt.value).partial_cmp(&(other.score, &other.opt.value))
+//     }
+// }
 
-impl Ord for Match {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        (self.score, &self.opt.value).cmp(&(other.score, &other.opt.value))
-    }
-}
+// impl Ord for Match {
+//     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+//         (self.score, &self.opt.value).cmp(&(other.score, &other.opt.value))
+//     }
+// }
 
-impl From<Match> for SelectorOption {
-    fn from(mat: Match) -> Self {
-        SelectorOption::new(&mat.opt.value, mat.ranges, mat.score, &mat.opt.description)
-    }
-}
+// impl From<Match> for SelectorOption {
+//     fn from(mat: Match) -> Self {
+//         SelectorOption::new(&mat.opt.value, mat.ranges, mat.score, &mat.opt.description)
+//     }
+// }
 
-impl From<&Match> for SelectorOption {
-    fn from(mat: &Match) -> Self {
-        SelectorOption::new(
-            &mat.opt.value,
-            mat.ranges.clone(),
-            mat.score,
-            &mat.opt.description,
-        )
-    }
-}
+// impl From<&Match> for SelectorOption {
+//     fn from(mat: &Match) -> Self {
+//         SelectorOption::new(
+//             &mat.opt.value,
+//             mat.ranges.clone(),
+//             mat.score,
+//             &mat.opt.description,
+//         )
+//     }
+// }

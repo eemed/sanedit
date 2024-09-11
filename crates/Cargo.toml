@@ -3,23 +3,45 @@ resolver = "2"
 members = [
     "buffer",
     "cli",
+    "core",
     "editor",
     "lsp",
     "macros",
     "messages",
-    "parser",
+    "syntax",
+    "server",
     "terminal-client",
     "ucd",
     "utils",
 ]
 
+[workspace.dependencies]
+anyhow      = "1.0"
+thiserror   = "1.0"
+log         = "0.4"
+dirs        = "4.0.0"
+rayon       = "1.7"
+rustc-hash  = "1.1"
+rand        = "0.8.5"
+bitflags    = "1.3"
+
+tokio = "1.37"
+tokio-util = "0.7"
+futures = "0.3"
+
+serde = "1.0"
+
+unicode-width = "0.1"
+
+bytes = "1.3"
+bincode = "1.3"
+byteorder = "1"
+
+globset = "0.4"
+
+
 [profile.release]
-# TODO investigate good tradeoff between size and speed
-# LLVM's inline threshold
-opt-level = 3 # uses 275
-# opt-level = 2 uses 225
-# opt-level = "s" uses 75
-# opt-level = "z" uses 25
+opt-level = 3
 lto = true          # Enable link-time optimization
 codegen-units = 1   # Reduce number of codegen units to increase optimizations
 panic = "abort"     # Abort on panic

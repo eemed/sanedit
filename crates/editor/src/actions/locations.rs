@@ -1,10 +1,7 @@
 use sanedit_utils::either::Either;
 
 use crate::{
-    editor::{
-        windows::{Focus, Group, Item},
-        Editor,
-    },
+    editor::{windows::Focus, Editor},
     server::ClientId,
 };
 

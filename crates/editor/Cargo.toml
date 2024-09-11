@@ -10,8 +10,9 @@ sanedit-messages = { path = "../messages" }
 sanedit-buffer = { path = "../buffer" }
 sanedit-macros = { path = "../macros" }
 sanedit-utils = { path = "../utils" }
-sanedit-parser = { path = "../parser" }
+sanedit-syntax = { path = "../syntax" }
 sanedit-lsp = { path = "../lsp" }
+sanedit-core = { path = "../core" }
 
 # General
 log         = "0.4"

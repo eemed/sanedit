@@ -2,13 +2,11 @@ mod buffer;
 
 use std::path::Path;
 
+use sanedit_core::FileDescription;
 use sanedit_utils::idmap::IdMap;
 
-use crate::common::file::FileDescription;
-
 pub(crate) use self::buffer::{
-    Buffer, BufferError, BufferId, BufferRange, BufferRangeExt, Change, ChangeResult, Changes,
-    ChangesKind, Filetype, Options, SnapshotData, SnapshotId,
+    Buffer, BufferError, BufferId, ChangeResult, Options, SnapshotData, SnapshotId,
 };
 
 #[derive(Debug, Default)]

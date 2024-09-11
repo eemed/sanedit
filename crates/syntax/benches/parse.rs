@@ -1,5 +1,5 @@
 use criterion::{criterion_group, criterion_main, Criterion};
-use sanedit_parser::Parser;
+use sanedit_syntax::Parser;
 
 fn json(c: &mut Criterion) {
     let peg = include_str!("../pegs/json.peg");

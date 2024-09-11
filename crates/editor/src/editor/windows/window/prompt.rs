@@ -2,6 +2,7 @@ mod history;
 
 use std::rc::Rc;
 
+use sanedit_core::{Choice, Choices, Chooser};
 use sanedit_utils::sorted_vec::SortedVec;
 use unicode_segmentation::UnicodeSegmentation;
 
@@ -12,8 +13,6 @@ use crate::{
 };
 
 pub(crate) use self::history::*;
-
-use super::{selector::Selector, SelectorOption};
 
 pub(crate) struct PromptBuilder {
     message: Option<String>,
@@ -137,7 +136,7 @@ pub(crate) struct Prompt {
 
     input: String,
     cursor: usize,
-    selector: Selector,
+    chooser: Chooser,
 
     /// Called when prompt is confirmed
     on_confirm: Option<PromptAction>,
@@ -165,7 +164,7 @@ impl Prompt {
             message: String::from(message),
             input: String::new(),
             cursor: 0,
-            selector: Selector::new(),
+            chooser: Chooser::new(),
             on_confirm: None,
             on_abort: None,
             on_input: None,
@@ -210,10 +209,8 @@ impl Prompt {
                     }
 
                     win.focus = Focus::Prompt;
-                    let opts: Vec<SelectorOption> =
-                        matched.into_iter().map(SelectorOption::from).collect();
                     let (win, _buf) = editor.win_buf_mut(id);
-                    win.prompt.provide_options(opts.into());
+                    win.prompt.provide_options(matched.into());
                 }
                 _ => {}
             },
@@ -244,7 +241,7 @@ impl Prompt {
     }
 
     pub fn clear_options(&mut self) {
-        self.selector = Selector::new();
+        self.chooser = Chooser::new();
     }
 
     pub fn next_grapheme(&mut self) {
@@ -275,11 +272,11 @@ impl Prompt {
     }
 
     pub fn next_completion(&mut self) {
-        self.selector.select_next();
+        self.chooser.select_next();
     }
 
     pub fn prev_completion(&mut self) {
-        self.selector.select_prev();
+        self.chooser.select_prev();
     }
 
     pub fn input(&self) -> &str {
@@ -306,20 +303,20 @@ impl Prompt {
         self.cursor += ch.len_utf8();
     }
 
-    pub fn provide_options(&mut self, opts: SortedVec<SelectorOption>) {
-        self.selector.provide_options(opts);
+    pub fn provide_options(&mut self, opts: SortedVec<Choice>) {
+        self.chooser.provide_options(opts);
     }
 
-    pub fn options_window(&self, count: usize, offset: usize) -> Vec<&SelectorOption> {
-        self.selector.matches_window(count, offset)
+    pub fn options_window(&self, count: usize, offset: usize) -> Vec<&Choice> {
+        self.chooser.matches_window(count, offset)
     }
 
-    pub fn selected(&self) -> Option<&SelectorOption> {
-        self.selector.selected()
+    pub fn selected(&self) -> Option<&Choice> {
+        self.chooser.selected()
     }
 
     pub fn selected_pos(&self) -> Option<usize> {
-        self.selector.selected_pos()
+        self.chooser.selected_pos()
     }
 
     pub fn overwrite_input(&mut self, item: &str) {
@@ -387,7 +384,7 @@ impl std::fmt::Debug for Prompt {
             .field("message", &self.message)
             .field("input", &self.input)
             .field("cursor", &self.cursor)
-            .field("completions", &self.selector)
+            .field("completions", &self.chooser)
             .field("simple", &self.simple)
             .finish_non_exhaustive()
     }

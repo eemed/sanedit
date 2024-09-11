@@ -1,19 +1,14 @@
 use std::cmp::max;
 
+use sanedit_core::Choice;
 use serde::{Deserialize, Serialize};
 
 use super::{Component, Diffable, Point, Redraw, Size};
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
-pub struct CompletionOption {
-    pub name: String,
-    pub description: String,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
 pub struct Completion {
     pub point: Point,
-    pub options: Vec<CompletionOption>,
+    pub choices: Vec<Choice>,
     pub selected: Option<usize>,
     pub query_len: usize,
 }
@@ -21,20 +16,20 @@ pub struct Completion {
 impl Completion {
     /// Size of completion where everything fits on screen
     pub fn preferred_size(&self) -> Size {
-        let width = self.options.iter().fold(0, |acc, o| {
+        let width = self.choices.iter().fold(0, |acc, o| {
             // " " + name + " " (+ description + " ")
             let mut len = 0;
             len += 1;
-            len += o.name.chars().count();
+            len += o.to_str_lossy().chars().count();
             len += 1;
 
-            if !o.description.is_empty() {
-                len += o.description.chars().count();
+            if !o.description().is_empty() {
+                len += o.description().chars().count();
                 len += 1;
             }
             max(acc, len)
         });
-        let height = self.options.len();
+        let height = self.choices.len();
         Size { width, height }
     }
 }

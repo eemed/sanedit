@@ -9,11 +9,9 @@ use regex_cursor::{
 use sanedit_buffer::{
     Chunk, Chunks, PieceTreeSlice, SearchIter, SearchIterRev, Searcher, SearcherRev,
 };
+use sanedit_core::BufferRange;
 
-use crate::editor::{
-    buffers::BufferRange,
-    windows::{SearchDirection, SearchKind},
-};
+use crate::editor::windows::{SearchDirection, SearchKind};
 
 #[derive(Debug)]
 pub(crate) enum PTSearcher {

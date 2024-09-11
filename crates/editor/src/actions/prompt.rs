@@ -49,7 +49,7 @@ fn select_theme(editor: &mut Editor, id: ClientId) {
             Ok(t) => {
                 let theme = t.clone();
                 let (win, _buf) = editor.win_buf_mut(id);
-                win.display_options_mut().theme = input.into();
+                win.set_theme(input);
                 editor.send_to_client(id, ClientMessage::Theme(theme));
             }
             Err(_) => {

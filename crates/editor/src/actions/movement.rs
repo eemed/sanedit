@@ -1,10 +1,11 @@
 use std::cmp;
 
 use sanedit_buffer::PieceTreeSlice;
+use sanedit_core::DisplayOptions;
 use sanedit_messages::redraw::Point;
 
 use crate::{
-    common::{self, char::DisplayOptions},
+    common::{self},
     editor::{hooks::Hook, windows::Cursor, Editor},
     server::ClientId,
 };

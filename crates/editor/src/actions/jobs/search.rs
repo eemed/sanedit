@@ -1,12 +1,12 @@
 use std::{any::Any, ops::Range};
 
 use sanedit_buffer::PieceTreeView;
+use sanedit_core::BufferRange;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 
 use crate::{
     common::search::PTSearcher,
     editor::{
-        buffers::BufferRange,
         job_broker::KeepInTouch,
         windows::{SearchDirection, SearchKind},
         Editor,

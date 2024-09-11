@@ -9,20 +9,20 @@ use grep::regex::{RegexMatcher, RegexMatcherBuilder};
 use grep::searcher::{BinaryDetection, Searcher, SearcherBuilder, Sink, SinkMatch};
 use rustc_hash::FxHashMap;
 use sanedit_buffer::PieceTreeView;
+use sanedit_core::{Group, Item, MatchOption};
 use sanedit_utils::sorted_vec::SortedVec;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 
 use crate::actions::jobs::{OptionProvider, CHANNEL_SIZE};
 use crate::actions::locations;
-use crate::common::matcher::MatchOption;
-use crate::common::range::RangeUtils;
 use crate::common::search::PTSearcher;
-use crate::editor::windows::{Group, Item, SearchDirection, SearchKind};
+use crate::editor::windows::{SearchDirection, SearchKind};
 use crate::{
     editor::{job_broker::KeepInTouch, Editor},
     job_runner::{Job, JobContext, JobResult},
     server::ClientId,
 };
+use sanedit_core::RangeUtils;
 
 use super::FileOptionProvider;
 

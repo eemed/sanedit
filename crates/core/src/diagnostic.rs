@@ -1,9 +1,7 @@
-use sanedit_messages::redraw::Severity;
-
-use super::BufferRange;
+use crate::{range::BufferRange, severity::Severity};
 
 #[derive(Debug)]
-pub(crate) struct Diagnostic {
+pub struct Diagnostic {
     severity: Severity,
     range: BufferRange,
     description: String,

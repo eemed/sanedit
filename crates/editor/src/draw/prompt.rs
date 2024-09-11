@@ -1,6 +1,7 @@
 use std::{cmp, ffi::OsStr, ops::Range, path::PathBuf};
 
-use sanedit_messages::redraw::{self, Component, PromptOption, Redraw, Source};
+use sanedit_core::Choice;
+use sanedit_messages::redraw::{self, Component, Redraw, Source};
 
 use crate::editor::windows::Focus;
 
@@ -55,19 +56,18 @@ fn draw_impl(ctx: &mut DrawContext) -> redraw::Redraw {
     let options = prompt
         .options_window(compl_count, *offset)
         .into_iter()
-        .map(|m| {
+        .map(|choice| {
             if prompt.has_paths() {
                 // Convert to path
-                let os = unsafe { OsStr::from_encoded_bytes_unchecked(m.value_raw()) };
+                let os = unsafe { OsStr::from_encoded_bytes_unchecked(choice.value_raw()) };
                 let path = PathBuf::from(os);
                 // Strip working dir
                 let path = path.strip_prefix(ctx.editor.working_dir).unwrap_or(&path);
                 // Calculate how much we took off
-                let off = m.value_raw().len() - path.as_os_str().len();
+                let off = choice.value_raw().len() - path.as_os_str().len();
 
-                // Make new name and matches
-                let name = path.to_string_lossy().into();
-                let matches: Vec<Range<usize>> = m
+                // Make matches
+                let matches: Vec<Range<usize>> = choice
                     .matches()
                     .iter()
                     .cloned()
@@ -78,12 +78,14 @@ fn draw_impl(ctx: &mut DrawContext) -> redraw::Redraw {
                     })
                     .collect();
 
-                let mut popt = PromptOption::from(m);
-                popt.name = name;
-                popt.matches = matches;
-                popt
+                Choice::new(
+                    &choice.value_raw()[off..],
+                    matches,
+                    choice.score(),
+                    choice.description(),
+                )
             } else {
-                PromptOption::from(m)
+                choice.clone()
             }
         })
         .collect();

@@ -9,12 +9,13 @@ mod window;
 
 use std::{mem, path::Path};
 
+use sanedit_core::Filetype;
 use sanedit_messages::redraw::{Redraw, Theme};
 
 use crate::{
     actions::jobs::LSPHandle,
     editor::{
-        buffers::{Buffer, Filetype},
+        buffers::Buffer,
         filetree::Filetree,
         windows::{Focus, Window},
         Map,

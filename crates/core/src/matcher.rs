@@ -15,12 +15,14 @@ use std::{
 use sanedit_utils::appendlist::{Appendlist, Reader};
 use tokio::sync::mpsc::channel;
 
-pub(crate) use matches::*;
-pub(crate) use receiver::*;
-pub(crate) use strategy::*;
+pub use matches::*;
+pub use receiver::*;
+pub use strategy::*;
+
+use crate::Choice;
 
 /// Matches options to a pattern
-pub(crate) struct Matcher {
+pub struct Matcher {
     reader: Reader<MatchOption>,
     all_opts_read: Arc<AtomicBool>,
     previous: Arc<AtomicBool>,
@@ -67,7 +69,7 @@ impl Matcher {
         // Batch candidates to 512 sized blocks
         // Send each block to an executor
         // Get the results and send to receiver
-        let (out, rx) = channel::<Match>(Self::CHANNEL_SIZE);
+        let (out, rx) = channel::<Choice>(Self::CHANNEL_SIZE);
         let reader = self.reader.clone();
         let all_opts_read = self.all_opts_read.clone();
         let case_sensitive = pattern.chars().any(|ch| ch.is_uppercase());
@@ -120,11 +122,10 @@ impl Matcher {
                         if let Some(ranges) =
                             matches_with(&opt, &patterns, case_sensitive, match_fn)
                         {
-                            let mat = Match {
-                                score: score(&opt.to_str_lossy(), &ranges),
-                                opt: opt.clone(),
-                                ranges,
-                            };
+                            let score = score(&opt.to_str_lossy(), &ranges);
+                            let desc = opt.description();
+                            let bytes = opt.bytes();
+                            let mat = Choice::new(bytes, ranges, score, desc);
 
                             if out.blocking_send(mat).is_err() {
                                 stop.store(true, Ordering::Release);

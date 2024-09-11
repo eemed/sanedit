@@ -7,17 +7,15 @@ use std::{
 
 use rustc_hash::FxHashMap;
 use sanedit_buffer::PieceTreeView;
-use sanedit_parser::Annotation;
+use sanedit_core::{BufferRange, Filetype};
+use sanedit_syntax::Annotation;
 use tokio::sync::broadcast;
 
-use crate::{
-    common::dirs::ConfigDirectory,
-    editor::buffers::{BufferId, Filetype},
-};
+use crate::{common::dirs::ConfigDirectory, editor::buffers::BufferId};
 
 use self::grammar::Grammar;
 
-use super::{buffers::BufferRange, Map};
+use super::Map;
 
 mod grammar;
 

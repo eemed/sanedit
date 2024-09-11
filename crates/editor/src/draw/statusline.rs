@@ -1,6 +1,7 @@
+use sanedit_core::Filetype;
 use sanedit_messages::redraw::{self, Statusline};
 
-use crate::editor::{buffers::Filetype, windows::Focus};
+use crate::editor::windows::Focus;
 
 use super::{DrawContext, EditorContext};
 

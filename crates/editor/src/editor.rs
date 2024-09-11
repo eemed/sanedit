@@ -11,6 +11,8 @@ pub(crate) mod themes;
 pub(crate) mod windows;
 
 use rustc_hash::FxHashMap;
+use sanedit_core::FileDescription;
+use sanedit_core::Filetype;
 use sanedit_messages::redraw::Size;
 use sanedit_messages::ClientMessage;
 use sanedit_messages::KeyEvent;
@@ -35,7 +37,6 @@ use crate::actions::cursors;
 use crate::actions::hooks::run;
 use crate::actions::jobs::LSPHandle;
 use crate::common::dirs::ConfigDirectory;
-use crate::common::file::FileDescription;
 use crate::common::text::copy_cursors_to_lines;
 use crate::common::text::paste_separate_cursor_lines;
 use crate::draw::DrawState;
@@ -55,7 +56,6 @@ use crate::StartOptions;
 
 use self::buffers::BufferId;
 use self::buffers::Buffers;
-use self::buffers::Filetype;
 use self::clipboard::Clipboard;
 use self::clipboard::DefaultClipboard;
 use self::hooks::Hooks;
@@ -312,10 +312,8 @@ impl Editor {
             .get(win.buffer_id())
             .expect("No window for {id}");
         let theme = {
-            let theme_name = &win.display_options().theme;
-            self.themes
-                .get(theme_name.as_str())
-                .expect("Theme not present")
+            let theme_name = win.theme();
+            self.themes.get(theme_name).expect("Theme not present")
         };
 
         EditorContext {
@@ -334,9 +332,9 @@ impl Editor {
         let win = self.windows.new_window(id, bid, size.width, size.height);
         let buf = self.buffers.get(bid).expect("Buffer not present");
         let theme = {
-            let theme_name = &win.display_options().theme;
+            let theme_name = win.theme();
             self.themes
-                .get(theme_name.as_str())
+                .get(theme_name)
                 .expect("Theme not present")
                 .clone()
         };
@@ -425,10 +423,8 @@ impl Editor {
             .get(win.buffer_id())
             .expect("No window for {id}");
         let theme = {
-            let theme_name = &win.display_options().theme;
-            self.themes
-                .get(theme_name.as_str())
-                .expect("Theme not present")
+            let theme_name = win.theme();
+            self.themes.get(theme_name).expect("Theme not present")
         };
 
         win.redraw_view(buf);
@@ -534,7 +530,7 @@ impl Editor {
     pub fn reload(&mut self, id: ClientId) {
         // Reload theme
         let (win, buf) = self.win_buf(id);
-        let theme = win.view().options.theme.clone();
+        let theme = win.theme().to_string();
         if let Ok(theme) = self.themes.load(&theme).cloned() {
             self.send_to_client(id, ClientMessage::Theme(theme))
         }

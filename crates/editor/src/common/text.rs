@@ -4,19 +4,14 @@ use sanedit_buffer::{
     utf8::{prev_eol, EndOfLine},
     PieceTree, PieceTreeSlice,
 };
-
-use crate::{
-    common::movement::next_grapheme_boundary,
-    editor::buffers::{Buffer, BufferRange},
+use sanedit_core::{
+    grapheme_category, is_word_break, is_word_break_end, BufferRange, Chars, DisplayOptions,
+    GraphemeCategory,
 };
 
-use super::{
-    char::{
-        grapheme_category, is_word_break, is_word_break_end, Char, Chars, DisplayOptions,
-        GraphemeCategory,
-    },
-    movement::{next_word_end, prev_word_start, start_of_line},
-};
+use crate::{common::movement::next_grapheme_boundary, editor::buffers::Buffer};
+
+use super::movement::{next_word_end, prev_word_start, start_of_line};
 
 pub(crate) fn width_at_pos(slice: &PieceTreeSlice, pos: u64, opts: &DisplayOptions) -> usize {
     let target = pos;

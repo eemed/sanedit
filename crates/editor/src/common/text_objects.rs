@@ -1,6 +1,5 @@
 use sanedit_buffer::{utf8::Graphemes, PieceTreeSlice};
-
-use crate::editor::buffers::BufferRange;
+use sanedit_core::BufferRange;
 
 /// Get a range of buffer from start - end,
 ///

@@ -2,7 +2,7 @@ use std::{fs::File, path::Path};
 
 use anyhow::bail;
 use sanedit_buffer::{Bytes, PieceTreeSlice};
-use sanedit_parser::{Annotation, ByteReader, CaptureID, CaptureList, Parser};
+use sanedit_syntax::{Annotation, ByteReader, CaptureID, CaptureList, Parser};
 use tokio::sync::broadcast;
 
 #[derive(Debug)]
@@ -35,7 +35,7 @@ impl Grammar {
         &self,
         slice: &PieceTreeSlice,
         kill: broadcast::Receiver<()>,
-    ) -> Result<CaptureList, sanedit_parser::ParseError> {
+    ) -> Result<CaptureList, sanedit_syntax::ParseError> {
         let reader = PTReader {
             pt: slice.clone(),
             kill,

@@ -5,9 +5,9 @@ use std::{path::PathBuf, process::Stdio};
 use crate::jsonrpc::{JsonNotification, JsonRequest};
 use crate::process::{ProcessHandler, ServerRequest};
 use crate::request::{Notification, RequestKind, ToLSP};
-use crate::response::Reference;
+use crate::response::{NotificationResult, Reference};
 use crate::util::path_to_uri;
-use crate::{Change, CompletionItem, Request, RequestResult, Response};
+use crate::{Change, CompletionItem, Diagnostic, Request, RequestResult, Response};
 
 use anyhow::{anyhow, Result};
 use lsp_types::notification::Notification as _;
@@ -169,6 +169,28 @@ impl LSPClient {
             lsp_types::notification::PublishDiagnostics::METHOD => {
                 let params =
                     serde_json::from_value::<lsp_types::PublishDiagnosticsParams>(notif.params)?;
+                let path = PathBuf::from(params.uri.path().as_str());
+                let diagnostics = NotificationResult::Diagnostics {
+                    path,
+                    version: params.version,
+                    diagnostics: params
+                        .diagnostics
+                        .into_iter()
+                        .map(|diag| {
+                            let severity =
+                                diag.severity.unwrap_or(lsp_types::DiagnosticSeverity::HINT);
+                            Diagnostic {
+                                severity,
+                                range: diag.range,
+                                message: diag.message,
+                            }
+                        })
+                        .collect(),
+                };
+
+                self.sender
+                    .send(Response::Notification(diagnostics))
+                    .await?;
             }
             lsp_types::notification::Progress::METHOD => {}
             lsp_types::notification::ShowMessage::METHOD => {}

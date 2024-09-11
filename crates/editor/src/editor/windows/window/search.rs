@@ -1,4 +1,4 @@
-use crate::editor::buffers::BufferRange;
+use sanedit_core::BufferRange;
 
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum SearchDirection {

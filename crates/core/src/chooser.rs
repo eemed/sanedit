@@ -1,34 +1,38 @@
-mod options;
+mod choices;
 
-pub(crate) use options::*;
+pub use choices::*;
 use sanedit_utils::sorted_vec::SortedVec;
 
 /// Selects one item from a list of options.
 /// Options can be filtered down using an input string.
 #[derive(Debug, Default)]
-pub(crate) struct Selector {
-    pub(crate) options: Options,
+pub struct Chooser {
+    choices: Choices,
 
     /// Currently selected index from `options`
-    pub(crate) selected: Option<usize>,
+    selected: Option<usize>,
 }
 
-impl Selector {
-    pub fn new() -> Selector {
-        Selector {
-            options: Options::default(),
+impl Chooser {
+    pub fn new() -> Chooser {
+        Chooser {
+            choices: Choices::default(),
             selected: None,
         }
     }
 
+    pub fn options(&self) -> &Choices {
+        &self.choices
+    }
+
     pub fn select_next(&mut self) {
-        if self.options.is_empty() {
+        if self.choices.is_empty() {
             self.selected = None;
         }
 
         match self.selected {
             Some(n) => {
-                let is_last = n == self.options.len() - 1;
+                let is_last = n == self.choices.len() - 1;
                 if is_last {
                     self.selected = None;
                 } else {
@@ -40,7 +44,7 @@ impl Selector {
     }
 
     pub fn select_prev(&mut self) {
-        if self.options.is_empty() {
+        if self.choices.is_empty() {
             return;
         }
 
@@ -53,29 +57,29 @@ impl Selector {
                     self.selected = Some(n - 1);
                 }
             }
-            None => self.selected = Some(self.options.len() - 1),
+            None => self.selected = Some(self.choices.len() - 1),
         }
     }
 
-    pub fn provide_options(&mut self, opts: SortedVec<SelectorOption>) {
-        self.options.push(opts)
+    pub fn provide_options(&mut self, opts: SortedVec<Choice>) {
+        self.choices.push(opts)
     }
 
     pub fn selected_pos(&self) -> Option<usize> {
         self.selected
     }
 
-    pub fn selected(&self) -> Option<&SelectorOption> {
+    pub fn selected(&self) -> Option<&Choice> {
         let sel = self.selected?;
-        self.options.get(sel)
+        self.choices.get(sel)
     }
 
     /// Returns less than or equal to count matches around selection,
     /// selection is positioned at the selected_offset index.
-    pub fn matches_window(&self, count: usize, offset: usize) -> Vec<&SelectorOption> {
+    pub fn matches_window(&self, count: usize, offset: usize) -> Vec<&Choice> {
         let mut results = Vec::with_capacity(count);
         for i in offset..offset + count {
-            if let Some(item) = self.options.get(i) {
+            if let Some(item) = self.choices.get(i) {
                 results.push(item);
             }
         }

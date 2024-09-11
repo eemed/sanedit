@@ -1,9 +1,9 @@
 use tokio::sync::mpsc::Receiver;
 
-use super::matches::Match;
+use crate::Choice;
 
 /// Trait used to receive candidates using various receiver implementations
-pub(crate) trait MatchOptionReceiver<T> {
+pub trait MatchOptionReceiver<T> {
     fn recv(&mut self) -> Option<T>;
 }
 
@@ -15,16 +15,16 @@ impl<T> MatchOptionReceiver<T> for Receiver<T> {
 
 /// Receiver for the match results
 #[derive(Debug)]
-pub(crate) struct MatchReceiver {
-    pub(super) receiver: Receiver<Match>,
+pub struct MatchReceiver {
+    pub(super) receiver: Receiver<Choice>,
 }
 
 impl MatchReceiver {
-    pub fn blocking_recv(&mut self) -> Option<Match> {
+    pub fn blocking_recv(&mut self) -> Option<Choice> {
         self.receiver.blocking_recv()
     }
 
-    pub async fn recv(&mut self) -> Option<Match> {
+    pub async fn recv(&mut self) -> Option<Choice> {
         self.receiver.recv().await
     }
 }

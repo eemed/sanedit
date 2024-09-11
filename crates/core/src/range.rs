@@ -1,6 +1,19 @@
 use std::ops::Range;
 
-pub(crate) trait RangeUtils {
+/// A range in the buffer
+pub type BufferRange = Range<u64>;
+
+pub trait BufferRangeExt {
+    fn len(&self) -> u64;
+}
+
+impl BufferRangeExt for BufferRange {
+    fn len(&self) -> u64 {
+        self.end - self.start
+    }
+}
+
+pub trait RangeUtils {
     /// Wether this and other range overlap
     fn overlaps(&self, other: &Self) -> bool;
 

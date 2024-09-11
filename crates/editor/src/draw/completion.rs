@@ -1,6 +1,7 @@
 use std::cmp;
 
-use sanedit_messages::redraw::{self, CompletionOption, Component, Redraw};
+use sanedit_core::Choice;
+use sanedit_messages::redraw::{self, Component, Redraw};
 
 use crate::editor::windows::Focus;
 
@@ -36,14 +37,14 @@ fn draw_impl(ctx: &mut DrawContext) -> redraw::Redraw {
         }
     };
     let selected_relative_pos = completion.selected_pos().map(|pos| pos - *offset);
-    let options: Vec<CompletionOption> = completion
+    let choices: Vec<Choice> = completion
         .options_window(compl_count, *offset)
         .into_iter()
-        .map(CompletionOption::from)
+        .cloned()
         .collect();
     let match_len = completion
-        .selector
-        .options
+        .chooser
+        .options()
         .get(0)
         .map(|mat| mat.matches().get(0).map(|o| o.len()))
         .flatten()
@@ -51,7 +52,7 @@ fn draw_impl(ctx: &mut DrawContext) -> redraw::Redraw {
 
     redraw::Completion {
         point: completion.point,
-        options,
+        choices,
         selected: selected_relative_pos,
         query_len: match_len,
     }

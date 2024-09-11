@@ -14,19 +14,19 @@ use crate::{
         locations,
         lsp::{self, position_to_offset, range_to_buffer_range},
     },
-    common::matcher::{MatchOption, MatchStrategy},
     editor::{
-        buffers::{BufferId, Change, Changes, Filetype},
+        buffers::BufferId,
         hooks::Hook,
         job_broker::KeepInTouch,
         options::LSPOptions,
-        windows::{Completion, Group, Item, Prompt},
+        windows::{Completion, Prompt},
         Editor, Map,
     },
     job_runner::{Job, JobContext, JobResult},
     server::ClientId,
 };
 use sanedit_buffer::{PieceTree, PieceTreeSlice};
+use sanedit_core::{Change, Changes, Filetype, Group, Item, MatchOption, MatchStrategy};
 use sanedit_lsp::{
     lsp_types::{self, CodeAction, Position},
     CompletionItem, LSPClientParams, LSPClientSender, Notification, Reference, Request,
@@ -310,7 +310,7 @@ fn complete(
         win.completion.point = point;
     }
 
-    let opts: Vec<MatchOption> = opts.into_iter().map(MatchOption::from).collect();
+    let opts: Vec<MatchOption> = opts.into_iter().map(from_completion_item).collect();
 
     let job = MatcherJob::builder(id)
         .strategy(MatchStrategy::Prefix)
@@ -498,11 +498,9 @@ fn read_references(
     group
 }
 
-impl From<CompletionItem> for MatchOption {
-    fn from(value: CompletionItem) -> Self {
-        match value.description {
-            Some(desc) => MatchOption::with_description(&value.name, &desc),
-            None => MatchOption::from(value.name),
-        }
+fn from_completion_item(value: CompletionItem) -> MatchOption {
+    match value.description {
+        Some(desc) => MatchOption::with_description(&value.name, &desc),
+        None => MatchOption::from(value.name),
     }
 }

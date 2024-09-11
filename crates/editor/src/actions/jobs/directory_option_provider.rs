@@ -4,12 +4,11 @@ use std::{
 };
 
 use futures::future::BoxFuture;
+use sanedit_core::MatchOption;
 use tokio::{
     fs, io,
     sync::{broadcast, mpsc::Sender},
 };
-
-use crate::common::matcher::MatchOption;
 
 use super::OptionProvider;
 

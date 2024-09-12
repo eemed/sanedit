@@ -4,12 +4,12 @@ use sanedit_messages::redraw::{self, CursorShape, Style, Theme, ThemeField};
 
 use crate::editor::{
     buffers::Buffer,
-    windows::{Cell, View},
+    windows::{Cell, Cursors, View},
 };
 
 use super::{DrawContext, EditorContext};
 use sanedit_core::{
-    grapheme_category, BufferRange, Cursor, Cursors, GraphemeCategory, RangeUtils as _, Replacement,
+    grapheme_category, BufferRange, Cursor, GraphemeCategory, RangeUtils as _, Replacement,
 };
 
 pub(crate) fn draw(ctx: &mut DrawContext) -> redraw::Window {

@@ -1,17 +1,20 @@
 use std::sync::Arc;
 
 use rustc_hash::FxHashSet;
-use sanedit_core::{MatchOption, MatchStrategy};
 
 use crate::{
-    common::cursors::word_before_cursor,
+    common::{
+        cursors::word_before_cursor,
+        matcher::{MatchOption, MatchStrategy},
+    },
     editor::{
         hooks::Hook,
         windows::{Completion, Focus},
         Editor,
     },
-    server::ClientId,
 };
+
+use sanedit_server::ClientId;
 
 use super::{jobs::MatcherJob, text};
 

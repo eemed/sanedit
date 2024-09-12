@@ -1,7 +1,5 @@
-mod accept;
-mod client;
-
-pub(crate) use client::*;
+pub(crate) mod accept;
+pub(crate) mod client;
 
 use std::{
     borrow::Cow,
@@ -18,8 +16,7 @@ use tokio::{net::unix::SocketAddr, sync::Notify};
 
 use crate::events::ToEditor;
 
-/// Channel buffer size for tokio channels
-pub(crate) const CHANNEL_SIZE: usize = 256;
+use self::client::ClientId;
 
 #[derive(Clone, Debug)]
 pub struct StartOptions {
@@ -30,9 +27,9 @@ pub struct StartOptions {
 
 /// Editor handle allows us to communicate with the editor
 #[derive(Clone, Debug)]
-pub(crate) struct EditorHandle {
-    pub(crate) sender: Sender<ToEditor>,
-    pub(crate) next_id: Arc<AtomicUsize>,
+pub struct EditorHandle {
+    pub sender: Sender<ToEditor>,
+    pub next_id: Arc<AtomicUsize>,
 }
 
 impl EditorHandle {
@@ -80,7 +77,7 @@ impl Address {
     }
 }
 
-pub(crate) async fn spawn_listeners(addrs: Vec<Address>, handle: EditorHandle) {
+pub async fn spawn_listeners(addrs: Vec<Address>, handle: EditorHandle) {
     for addr in addrs.into_iter() {
         let addr_ready = Arc::new(Notify::new());
 

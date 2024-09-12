@@ -20,6 +20,12 @@ use sanedit_messages::Message;
 use sanedit_messages::MouseButton;
 use sanedit_messages::MouseEvent;
 use sanedit_messages::MouseEventKind;
+use sanedit_server::spawn_job_runner;
+use sanedit_server::ClientHandle;
+use sanedit_server::ClientId;
+use sanedit_server::FromJobs;
+use sanedit_server::StartOptions;
+use sanedit_server::ToEditor;
 use sanedit_syntax::Syntaxes;
 
 use std::env;
@@ -43,13 +49,7 @@ use crate::editor::config::Config;
 use crate::editor::hooks::Hook;
 use crate::editor::keymap::KeymapResult;
 use crate::editor::windows::Focus;
-use crate::events::ToEditor;
-use crate::job_runner::spawn_job_runner;
-use crate::job_runner::FromJobs;
 use crate::runtime::TokioRuntime;
-use crate::server::ClientHandle;
-use crate::server::ClientId;
-use crate::StartOptions;
 use sanedit_core::copy_cursors_to_lines;
 use sanedit_core::paste_separate_cursor_lines;
 use sanedit_core::ConfigDirectory;
@@ -224,8 +224,12 @@ impl Editor {
     }
 
     fn on_client_connected(&mut self, handle: ClientHandle) {
-        log::info!("Client connected: {:?}, id: {:?}", handle.info, handle.id);
-        self.clients.insert(handle.id, handle);
+        log::info!(
+            "Client connected: {:?}, id: {:?}",
+            handle.connection_info(),
+            handle.id()
+        );
+        self.clients.insert(handle.id(), handle);
     }
 
     /// Open an existing buffer in a window
@@ -276,7 +280,7 @@ impl Editor {
     }
 
     pub fn send_to_client(&mut self, id: ClientId, msg: ClientMessage) {
-        if let Err(_e) = self.clients[&id].send.blocking_send(msg.into()) {
+        if let Err(_e) = self.clients.get_mut(&id).unwrap().send(msg.into()) {
             log::info!(
                 "Server failed to send to client {:?}, removing from client map",
                 id

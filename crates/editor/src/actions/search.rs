@@ -9,8 +9,9 @@ use crate::{
         windows::{Focus, HistoryKind, Prompt},
         Editor,
     },
-    server::ClientId,
 };
+
+use sanedit_server::ClientId;
 
 /// setups async job to handle matches within the view range.
 fn async_view_matches(editor: &mut Editor, id: ClientId, pattern: &str) {

@@ -1,4 +1,5 @@
 pub(crate) mod cursors;
+pub(crate) mod matcher;
 pub(crate) mod window;
 
 pub(crate) fn is_yes(input: &str) -> bool {

@@ -7,10 +7,9 @@ use sanedit_core::{
 };
 use sanedit_messages::redraw::Point;
 
-use crate::{
-    editor::{hooks::Hook, Editor},
-    server::ClientId,
-};
+use crate::editor::{hooks::Hook, Editor};
+
+use sanedit_server::ClientId;
 
 use super::hooks;
 

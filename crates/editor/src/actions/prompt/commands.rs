@@ -1,7 +1,8 @@
 use crate::actions::jobs::{MatchedOptions, MatcherMessage};
 use crate::actions::*;
+use crate::common::matcher::MatchOption;
 use crate::editor::windows::Focus;
-use sanedit_core::{Choice, MatchOption};
+use sanedit_core::Choice;
 use sanedit_messages::keyevents_to_string;
 
 #[rustfmt::skip]

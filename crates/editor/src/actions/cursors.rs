@@ -3,8 +3,9 @@ use sanedit_messages::redraw::Point;
 use crate::{
     common::{cursors::word_at_cursor, window::pos_at_point},
     editor::{hooks::Hook, Editor},
-    server::ClientId,
 };
+
+use sanedit_server::ClientId;
 
 use super::{hooks, search};
 

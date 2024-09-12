@@ -1,7 +1,6 @@
-use crate::{
-    editor::{windows::Executor, Editor},
-    server::ClientId,
-};
+use crate::editor::{windows::Executor, Editor};
+
+use sanedit_server::ClientId;
 
 use super::jobs::TmuxShellCommand;
 

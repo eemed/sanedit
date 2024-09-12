@@ -14,6 +14,7 @@ use crate::{
         locations,
         lsp::{self, position_to_offset, range_to_buffer_range},
     },
+    common::matcher::{MatchOption, MatchStrategy},
     editor::{
         buffers::BufferId,
         hooks::Hook,
@@ -22,11 +23,9 @@ use crate::{
         windows::{Completion, Prompt},
         Editor, Map,
     },
-    job_runner::{Job, JobContext, JobResult},
-    server::ClientId,
 };
 use sanedit_buffer::{PieceTree, PieceTreeSlice};
-use sanedit_core::{Change, Changes, Filetype, Group, Item, MatchOption, MatchStrategy};
+use sanedit_core::{Change, Changes, Filetype, Group, Item};
 use sanedit_lsp::{
     lsp_types::{self, CodeAction, Position},
     CompletionItem, LSPClientParams, LSPClientSender, Notification, Reference, Request,
@@ -35,6 +34,7 @@ use sanedit_lsp::{
 
 use anyhow::Result;
 use sanedit_messages::redraw::{Severity, StatusMessage};
+use sanedit_server::{ClientId, Job, JobContext, JobResult};
 
 use super::MatcherJob;
 

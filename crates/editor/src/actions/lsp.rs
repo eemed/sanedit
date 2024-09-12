@@ -14,8 +14,9 @@ use crate::{
         windows::{Focus, Prompt, Window},
         Editor,
     },
-    server::ClientId,
 };
+
+use sanedit_server::ClientId;
 
 use super::jobs::{Constraint, LSPHandle, LSP};
 

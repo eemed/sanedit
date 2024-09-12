@@ -5,16 +5,12 @@ pub(crate) mod actions;
 pub(crate) mod common;
 pub(crate) mod draw;
 pub(crate) mod editor;
-pub(crate) mod events;
-pub(crate) mod job_runner;
 pub(crate) mod runtime;
-pub(crate) mod server;
 
 use std::{sync::mpsc::channel, thread};
 
 use runtime::TokioRuntime;
-pub use server::{Address, StartOptions};
-use server::{EditorHandle, CHANNEL_SIZE};
+use sanedit_server::{spawn_listeners, Address, EditorHandle, StartOptions};
 
 pub fn run_sync(addrs: Vec<Address>, opts: StartOptions) -> Option<thread::JoinHandle<()>> {
     let (send, recv) = channel();
@@ -24,7 +20,7 @@ pub fn run_sync(addrs: Vec<Address>, opts: StartOptions) -> Option<thread::JoinH
     };
 
     let runtime = TokioRuntime::new(handle.clone());
-    runtime.block_on(server::spawn_listeners(addrs, handle));
+    runtime.block_on(spawn_listeners(addrs, handle));
 
     thread::Builder::new()
         .name("sanedit".into())

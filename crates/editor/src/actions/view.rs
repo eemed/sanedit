@@ -1,4 +1,6 @@
-use crate::{editor::Editor, server::ClientId};
+use crate::editor::Editor;
+
+use sanedit_server::ClientId;
 
 #[action("Scroll down")]
 fn scroll_down(editor: &mut Editor, id: ClientId) {

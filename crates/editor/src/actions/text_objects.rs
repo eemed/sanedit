@@ -1,9 +1,8 @@
 use sanedit_core::{find_range, word_at_pos};
 
-use crate::{
-    editor::{hooks::Hook, Editor},
-    server::ClientId,
-};
+use crate::editor::{hooks::Hook, Editor};
+
+use sanedit_server::ClientId;
 
 use super::hooks;
 

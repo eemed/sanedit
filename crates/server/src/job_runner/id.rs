@@ -4,7 +4,7 @@ use std::{
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub(crate) struct JobId {
+pub struct JobId {
     id: usize,
 }
 

@@ -1,4 +1,6 @@
+mod chooser;
 mod completion;
+mod cursors;
 mod filetree;
 mod focus;
 mod options;
@@ -21,7 +23,7 @@ use sanedit_core::{
     grapheme_category, indent_at_line,
     movement::{next_grapheme_boundary, next_line_end, prev_grapheme_boundary},
     selection_line_starts, width_at_pos, BufferRange, BufferRangeExt as _, Change, Changes, Cursor,
-    Cursors, DisplayOptions, GraphemeCategory, Locations,
+    DisplayOptions, GraphemeCategory, Locations,
 };
 use sanedit_messages::redraw::{Severity, Size, StatusMessage};
 use sanedit_syntax::SyntaxParseResult;
@@ -29,6 +31,7 @@ use sanedit_syntax::SyntaxParseResult;
 use crate::editor::buffers::{Buffer, BufferId, SnapshotData};
 
 use self::filetree::FiletreeView;
+pub(crate) use cursors::Cursors;
 
 macro_rules! show_error {
     ($self:ident, $result:expr) => {{

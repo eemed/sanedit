@@ -1,13 +1,12 @@
 use std::{cmp::min, sync::Arc};
 
-use crate::{
-    editor::{
-        filetree::{Kind, Node},
-        windows::{Focus, Prompt},
-        Editor,
-    },
-    server::ClientId,
+use crate::editor::{
+    filetree::{Kind, Node},
+    windows::{Focus, Prompt},
+    Editor,
 };
+
+use sanedit_server::ClientId;
 
 #[action("Show filetree")]
 fn show(editor: &mut Editor, id: ClientId) {

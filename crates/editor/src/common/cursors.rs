@@ -1,4 +1,6 @@
-use crate::{editor::Editor, server::ClientId};
+use crate::editor::Editor;
+
+use sanedit_server::ClientId;
 
 use sanedit_core::{grapheme_category, word_at_pos, GraphemeCategory};
 

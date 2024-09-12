@@ -6,9 +6,9 @@ use tokio::{fs::File, io::AsyncWriteExt};
 use crate::{
     common::dirs::tmp_file,
     editor::{job_broker::KeepInTouch, Editor},
-    job_runner::{Job, JobContext, JobResult},
-    server::ClientId,
 };
+
+use sanedit_server::{ClientId, Job, JobContext, JobResult, Kill};
 
 #[derive(Clone)]
 pub(crate) struct Save {

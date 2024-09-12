@@ -1,7 +1,6 @@
-use crate::{
-    editor::{hooks::Hook, Editor},
-    server::ClientId,
-};
+use crate::editor::{hooks::Hook, Editor};
+
+use sanedit_server::ClientId;
 
 pub(crate) fn run(editor: &mut Editor, id: ClientId, hook: Hook) {
     let kind = hook.kind();

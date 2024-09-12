@@ -16,8 +16,9 @@ use crate::{
         windows::{Focus, HistoryKind, Prompt},
         Editor,
     },
-    server::ClientId,
 };
+
+use sanedit_server::ClientId;
 
 use self::commands::find_action;
 

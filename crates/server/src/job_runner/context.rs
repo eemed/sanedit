@@ -1,24 +1,14 @@
-use std::{
-    any::Any,
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        Arc,
-    },
-};
+use std::any::Any;
 
 use crate::events::ToEditor;
 use crate::server::EditorHandle;
-use sanedit_core::Kill;
-use tokio::sync::{
-    broadcast,
-    mpsc::{error::SendError, Sender},
-};
+use tokio::sync::mpsc::{error::SendError, Sender};
 
-use super::{FromJobs, JobId};
+use super::{FromJobs, JobId, Kill};
 
 /// Job context used to provide jobs the means to communicate back to the
 /// editor.
-pub(crate) struct JobContext {
+pub struct JobContext {
     pub id: JobId,
     pub kill: Kill,
     pub sender: JobResponseSender,
@@ -34,7 +24,7 @@ impl JobContext {
 }
 
 /// Used for internal messaging when the job is completed
-pub(super) enum JobsMessage {
+pub enum JobsMessage {
     Succesful(JobId),
     Failed(JobId, String),
 }
@@ -59,7 +49,7 @@ impl From<JobsMessage> for FromJobs {
 
 /// Job context used to communicate back to editor
 #[derive(Clone, Debug)]
-pub(crate) struct JobResponseSender {
+pub struct JobResponseSender {
     pub(super) editor: EditorHandle,
     pub(super) internal: Sender<JobsMessage>,
 }

@@ -10,6 +10,7 @@ path = "src/main.rs"
 [dependencies]
 sanedit-terminal-client = { path = "../terminal-client" }
 sanedit-editor = { path = "../editor" }
+sanedit-server = { path = "../server" }
 
 clap = { version = "^4", features = ["derive"] }
 log = "0.4"

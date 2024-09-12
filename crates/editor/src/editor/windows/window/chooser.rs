@@ -1,7 +1,9 @@
 mod choices;
 
-pub use choices::*;
+use sanedit_core::Choice;
 use sanedit_utils::sorted_vec::SortedVec;
+
+use self::choices::Choices;
 
 /// Selects one item from a list of options.
 /// Options can be filtered down using an input string.

@@ -1,13 +1,9 @@
-mod cpu;
-
 use std::{any::Any, fmt, rc::Rc};
 
-use crate::job_runner::{Job, JobId, JobsHandle, ToJobs};
-use crate::server::ClientId;
+use sanedit_server::{ClientId, Job, JobId, JobsHandle, ToJobs};
 
 use super::Editor;
 
-pub(crate) use cpu::CPUJob;
 use rustc_hash::FxHashMap;
 
 /// A job that can send messages back to the editor

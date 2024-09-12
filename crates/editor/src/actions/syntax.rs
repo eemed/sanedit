@@ -1,9 +1,8 @@
 use sanedit_core::BufferRangeExt as _;
 
-use crate::{
-    editor::{hooks::Hook, Editor},
-    server::ClientId,
-};
+use crate::editor::{hooks::Hook, Editor};
+
+use sanedit_server::ClientId;
 
 use super::jobs::SyntaxParser;
 use sanedit_core::RangeUtils;

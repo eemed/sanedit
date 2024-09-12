@@ -6,8 +6,8 @@ use crate::{
         windows::{Focus, Prompt},
         Editor,
     },
-    server::ClientId,
 };
+use sanedit_server::ClientId;
 
 use super::{hooks::run, shell};
 

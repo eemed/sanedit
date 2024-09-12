@@ -3,13 +3,10 @@
 use sanedit_messages::{ClientMessage, Message};
 use tokio::io;
 
-use crate::{
-    job_runner::FromJobs,
-    server::{ClientHandle, ClientId},
-};
+use crate::{job_runner::FromJobs, ClientHandle, ClientId};
 
 #[derive(Debug)]
-pub(crate) enum ToEditor {
+pub enum ToEditor {
     NewClient(ClientHandle),
     Jobs(FromJobs),
     Message(ClientId, Message),
@@ -17,7 +14,7 @@ pub(crate) enum ToEditor {
 }
 
 #[derive(Debug)]
-pub(crate) enum FromEditor {
+pub enum FromEditor {
     Message(ClientMessage),
 }
 

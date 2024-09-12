@@ -1,6 +1,16 @@
 [package]
-name = "server"
+name = "sanedit-server"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+sanedit-messages = { path = "../messages" }
+
+tokio.workspace = true
+tokio-util.workspace = true
+futures.workspace = true
+anyhow.workspace = true
+rustc-hash.workspace = true
+log.workspace = true
+rayon.workspace = true
+

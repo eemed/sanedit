@@ -20,7 +20,8 @@ pub(crate) mod window;
 
 use std::{fmt, sync::Arc};
 
-use crate::{editor::Editor, server::ClientId};
+use crate::editor::Editor;
+use sanedit_server::ClientId;
 
 pub(crate) type ActionFunction = Arc<dyn Fn(&mut Editor, ClientId) + Send + Sync>;
 

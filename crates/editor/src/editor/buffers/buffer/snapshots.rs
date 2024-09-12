@@ -1,5 +1,6 @@
 use sanedit_buffer::PieceTreeView;
-use sanedit_core::Cursors;
+
+use crate::editor::windows::Cursors;
 
 #[derive(Debug, Clone, Default)]
 pub(crate) struct SnapshotData {

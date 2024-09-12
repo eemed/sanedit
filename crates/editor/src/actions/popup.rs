@@ -1,6 +1,8 @@
 use sanedit_messages::redraw::{Severity, StatusMessage};
 
-use crate::{editor::Editor, server::ClientId};
+use crate::editor::Editor;
+
+use sanedit_server::ClientId;
 
 #[action("Popup a message")]
 fn test(editor: &mut Editor, id: ClientId) {

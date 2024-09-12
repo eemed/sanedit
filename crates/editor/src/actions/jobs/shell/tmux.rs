@@ -3,11 +3,8 @@ use std::process::Command;
 use anyhow::bail;
 use sanedit_buffer::PieceTreeView;
 
-use crate::{
-    editor::{job_broker::KeepInTouch, windows::Executor},
-    job_runner::Job,
-    server::ClientId,
-};
+use crate::editor::{job_broker::KeepInTouch, windows::Executor};
+use sanedit_server::{ClientId, Job, JobContext, JobResult, Kill};
 
 #[derive(Debug, Clone)]
 pub(crate) struct TmuxPane {
@@ -49,7 +46,7 @@ impl TmuxShellCommand {
 }
 
 impl Job for TmuxShellCommand {
-    fn run(&self, mut ctx: crate::job_runner::JobContext) -> crate::job_runner::JobResult {
+    fn run(&self, mut ctx: JobContext) -> JobResult {
         let command = self.command.clone();
         let ropt = self.pipe_input.clone();
         let shell = self.shell.clone();

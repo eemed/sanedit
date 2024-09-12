@@ -2,12 +2,13 @@ use std::{
     cmp::min,
     ops::Range,
     path::{Path, PathBuf},
-    sync::{atomic::AtomicBool, Arc},
+    sync::Arc,
 };
 
 use rustc_hash::FxHashMap;
 use sanedit_buffer::PieceTreeView;
-use sanedit_core::{BufferRange, Filetype, Kill};
+use sanedit_core::{BufferRange, Filetype};
+use sanedit_server::Kill;
 
 use crate::Annotation;
 

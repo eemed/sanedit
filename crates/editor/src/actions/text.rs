@@ -2,15 +2,14 @@ use std::path::PathBuf;
 
 use sanedit_core::{at_start_of_line, is_indent_at_pos};
 
-use crate::{
-    editor::{
-        buffers::BufferError,
-        hooks::Hook,
-        windows::{Focus, Prompt},
-        Editor,
-    },
-    server::ClientId,
+use crate::editor::{
+    buffers::BufferError,
+    hooks::Hook,
+    windows::{Focus, Prompt},
+    Editor,
 };
+
+use sanedit_server::ClientId;
 
 use super::{completion, hooks::run, jobs};
 

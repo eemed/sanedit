@@ -2,10 +2,9 @@ use std::cmp::min;
 
 use sanedit_core::determine_indent;
 
-use crate::{
-    editor::{buffers::Options, Editor},
-    server::ClientId,
-};
+use crate::editor::{buffers::Options, Editor};
+
+use sanedit_server::ClientId;
 
 #[action("Detect indentation")]
 fn detect_indent(editor: &mut Editor, id: ClientId) {

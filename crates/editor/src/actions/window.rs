@@ -1,7 +1,6 @@
-use crate::{
-    editor::{hooks::Hook, windows::Focus, Editor},
-    server::ClientId,
-};
+use crate::editor::{hooks::Hook, windows::Focus, Editor};
+
+use sanedit_server::ClientId;
 
 use super::hooks;
 

@@ -1,39 +1,59 @@
 mod context;
 mod events;
 mod id;
-
-use std::sync::{
-    atomic::{AtomicBool, Ordering},
-    Arc,
-};
+mod kill;
 
 use futures::future::BoxFuture;
 use rustc_hash::FxHashMap;
 use tokio::sync::mpsc::{self, channel};
 
 use crate::events::ToEditor;
+use crate::{EditorHandle, CHANNEL_SIZE};
 
-use super::{EditorHandle, CHANNEL_SIZE};
-pub(crate) use context::*;
-pub(crate) use events::*;
-pub(crate) use id::*;
+pub use context::*;
+pub use events::*;
+pub use id::*;
+pub use kill::Kill;
 
 /// Used to communicate with jobs runner
-pub(crate) type JobsHandle = mpsc::Sender<ToJobs>;
+pub type JobsHandle = mpsc::Sender<ToJobs>;
 /// A job that can be sent to other threads
-pub(crate) type BoxedJob = Box<dyn Job + Send + Sync>;
-pub(crate) type JobResult = BoxFuture<'static, anyhow::Result<()>>;
+pub type BoxedJob = Box<dyn Job + Send + Sync>;
+pub type JobResult = BoxFuture<'static, anyhow::Result<()>>;
 
 /// Jobs that can be ran on async runner
-pub(crate) trait Job {
+pub trait Job {
     /// Run the job.
     /// This should return the async future to run the job.
     /// This should not block for a long time
     fn run(&self, ctx: JobContext) -> JobResult;
 }
 
+/// Jobs that do not need / would block the async runtime are ran on a separate threadpool.
+pub trait CPUJob: Clone + Send + Sync {
+    fn run(&self, ctx: JobContext) -> anyhow::Result<()>;
+}
+
+impl<T: CPUJob + 'static> Job for T {
+    fn run(&self, ctx: JobContext) -> JobResult {
+        let job = self.clone();
+
+        let fut = async move {
+            // Send result in a oneshot channel
+            let (send, recv) = tokio::sync::oneshot::channel();
+            rayon::spawn(move || {
+                let result = job.run(ctx);
+                let _ = send.send(result);
+            });
+            recv.await?
+        };
+
+        Box::pin(fut)
+    }
+}
+
 /// Spawn a job runner
-pub(crate) async fn spawn_job_runner(editor_handle: EditorHandle) -> JobsHandle {
+pub async fn spawn_job_runner(editor_handle: EditorHandle) -> JobsHandle {
     let (tx, rx) = mpsc::channel(CHANNEL_SIZE);
     tokio::spawn(jobs_loop(rx, editor_handle));
     tx

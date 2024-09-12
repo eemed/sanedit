@@ -1,7 +1,7 @@
 use std::{fmt, mem, sync::Arc, time::Duration};
 
 use futures::future::BoxFuture;
-use sanedit_core::{Choice, Kill, MatchOption, MatchReceiver, MatchStrategy, Matcher};
+use sanedit_core::Choice;
 use tokio::{
     sync::mpsc::{channel, Receiver, Sender},
     time::{timeout, Instant},
@@ -9,10 +9,11 @@ use tokio::{
 
 use crate::{
     actions::jobs::CHANNEL_SIZE,
+    common::matcher::{MatchOption, MatchReceiver, MatchStrategy, Matcher},
     editor::{job_broker::KeepInTouch, Editor},
-    job_runner::{Job, JobContext, JobResult},
-    server::ClientId,
 };
+
+use sanedit_server::{ClientId, Job, JobContext, JobResult, Kill};
 
 #[derive(Debug)]
 pub(crate) enum MatcherMessage {

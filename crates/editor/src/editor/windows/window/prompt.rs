@@ -2,17 +2,19 @@ mod history;
 
 use std::rc::Rc;
 
-use sanedit_core::{Choice, Choices, Chooser};
+use sanedit_core::Choice;
 use sanedit_utils::sorted_vec::SortedVec;
 use unicode_segmentation::UnicodeSegmentation;
 
 use crate::{
     actions::jobs::{MatchedOptions, MatcherMessage},
     editor::{keymap::KeymapKind, windows::Focus, Editor},
-    server::ClientId,
 };
+use sanedit_server::ClientId;
 
 pub(crate) use self::history::*;
+
+use super::chooser::Chooser;
 
 pub(crate) struct PromptBuilder {
     message: Option<String>,
@@ -240,10 +242,6 @@ impl Prompt {
         &self.message
     }
 
-    pub fn clear_options(&mut self) {
-        self.chooser = Chooser::new();
-    }
-
     pub fn next_grapheme(&mut self) {
         let mut graphemes = self.input.grapheme_indices(true);
         graphemes.position(|(pos, _)| pos == self.cursor);
@@ -271,12 +269,32 @@ impl Prompt {
         self.input.replace_range(start..end, "");
     }
 
+    pub fn clear_options(&mut self) {
+        self.chooser = Chooser::new();
+    }
+
     pub fn next_completion(&mut self) {
         self.chooser.select_next();
     }
 
     pub fn prev_completion(&mut self) {
         self.chooser.select_prev();
+    }
+
+    pub fn provide_options(&mut self, opts: SortedVec<Choice>) {
+        self.chooser.provide_options(opts);
+    }
+
+    pub fn options_window(&self, count: usize, offset: usize) -> Vec<&Choice> {
+        self.chooser.matches_window(count, offset)
+    }
+
+    pub fn selected(&self) -> Option<&Choice> {
+        self.chooser.selected()
+    }
+
+    pub fn selected_pos(&self) -> Option<usize> {
+        self.chooser.selected_pos()
     }
 
     pub fn input(&self) -> &str {
@@ -301,22 +319,6 @@ impl Prompt {
     pub fn insert_char_at_cursor(&mut self, ch: char) {
         self.input.insert(self.cursor, ch);
         self.cursor += ch.len_utf8();
-    }
-
-    pub fn provide_options(&mut self, opts: SortedVec<Choice>) {
-        self.chooser.provide_options(opts);
-    }
-
-    pub fn options_window(&self, count: usize, offset: usize) -> Vec<&Choice> {
-        self.chooser.matches_window(count, offset)
-    }
-
-    pub fn selected(&self) -> Option<&Choice> {
-        self.chooser.selected()
-    }
-
-    pub fn selected_pos(&self) -> Option<usize> {
-        self.chooser.selected_pos()
     }
 
     pub fn overwrite_input(&mut self, item: &str) {

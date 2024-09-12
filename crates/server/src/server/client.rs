@@ -2,9 +2,10 @@ mod draw;
 pub(crate) mod tcp;
 pub(crate) mod unix;
 
-use std::path::PathBuf;
+use std::{borrow::Cow, path::PathBuf};
 
 use futures::{SinkExt, StreamExt};
+use log::info;
 use sanedit_messages::{BinCodec, ClientMessage, Message};
 use tokio::{
     io::{self, AsyncRead, AsyncWrite},
@@ -20,7 +21,7 @@ use self::draw::ClientDrawState;
 use super::EditorHandle;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub(crate) struct ClientId(pub(crate) usize);
+pub struct ClientId(pub usize);
 
 impl From<ClientId> for String {
     fn from(value: ClientId) -> Self {
@@ -30,11 +31,29 @@ impl From<ClientId> for String {
 
 /// Client handle allows us to communicate with the client
 #[derive(Debug)]
-pub(crate) struct ClientHandle {
+pub struct ClientHandle {
     pub(crate) id: ClientId,
     pub(crate) info: ClientConnectionInfo,
     pub(crate) send: Sender<FromEditor>,
     pub(crate) kill: JoinHandle<()>,
+}
+
+impl ClientHandle {
+    pub fn id(&self) -> ClientId {
+        self.id
+    }
+
+    pub fn connection_info(&self) -> Cow<str> {
+        match &self.info {
+            ClientConnectionInfo::UnixDomainSocket(sock) => sock.as_os_str().to_string_lossy(),
+            ClientConnectionInfo::Tcp() => todo!(),
+        }
+    }
+
+    pub fn send(&mut self, msg: FromEditor) -> anyhow::Result<()> {
+        self.send.blocking_send(msg)?;
+        Ok(())
+    }
 }
 
 /// Information on how the client is connected

@@ -4,8 +4,10 @@ use std::{
 };
 
 use futures::future::BoxFuture;
-use sanedit_core::{Kill, MatchOption};
+use sanedit_server::Kill;
 use tokio::{fs, io, sync::mpsc::Sender};
+
+use crate::common::matcher::MatchOption;
 
 use super::OptionProvider;
 

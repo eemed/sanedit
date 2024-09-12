@@ -14,8 +14,9 @@ use crate::{
     events::{FromEditor, ToEditor},
     server::{
         client::{conn_read, conn_write},
-        EditorHandle, CHANNEL_SIZE,
+        EditorHandle,
     },
+    CHANNEL_SIZE,
 };
 
 use super::{ClientConnectionInfo, ClientHandle, ClientId};

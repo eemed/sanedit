@@ -3,15 +3,8 @@ use std::any::Any;
 use sanedit_buffer::PieceTreeView;
 use sanedit_core::BufferRange;
 
-use crate::{
-    editor::{
-        buffers::BufferId,
-        job_broker::{CPUJob, KeepInTouch},
-        Editor,
-    },
-    job_runner::JobContext,
-    server::ClientId,
-};
+use crate::editor::{buffers::BufferId, job_broker::KeepInTouch, Editor};
+use sanedit_server::{CPUJob, ClientId, Job, JobContext, JobResult, Kill};
 use sanedit_syntax::{Syntax, SyntaxParseResult};
 
 #[derive(Clone)]

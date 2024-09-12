@@ -9,18 +9,16 @@ use grep::regex::{RegexMatcher, RegexMatcherBuilder};
 use grep::searcher::{BinaryDetection, Searcher, SearcherBuilder, Sink, SinkMatch};
 use rustc_hash::FxHashMap;
 use sanedit_buffer::PieceTreeView;
-use sanedit_core::{Group, Item, MatchOption, PTSearcher, SearchDirection, SearchKind};
+use sanedit_core::{Group, Item, PTSearcher, SearchDirection, SearchKind};
 use sanedit_utils::sorted_vec::SortedVec;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 
 use crate::actions::jobs::{OptionProvider, CHANNEL_SIZE};
 use crate::actions::locations;
-use crate::{
-    editor::{job_broker::KeepInTouch, Editor},
-    job_runner::{Job, JobContext, JobResult},
-    server::ClientId,
-};
+use crate::common::matcher::MatchOption;
+use crate::editor::{job_broker::KeepInTouch, Editor};
 use sanedit_core::RangeUtils;
+use sanedit_server::{ClientId, Job, JobContext, JobResult};
 
 use super::FileOptionProvider;
 

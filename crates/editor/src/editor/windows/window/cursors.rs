@@ -1,12 +1,7 @@
-mod cursor;
-
 use std::{cmp::min, ops::Range};
 
-use crate::BufferRangeExt as _;
-pub use cursor::Cursor;
+use sanedit_core::{BufferRangeExt as _, Cursor, RangeUtils as _};
 use sanedit_utils::ranges::OverlappingRanges;
-
-use crate::RangeUtils;
 
 #[derive(Debug, Clone)]
 pub struct Cursors {
@@ -95,26 +90,6 @@ impl Cursors {
                 }
             }
         }
-
-        // self.cursors = ranges.iter().
-
-        // for i in (1..self.cursors.len()).rev() {
-        //     let cur = {
-        //         let cursor = &self.cursors[i - 1];
-        //         cursor.selection().unwrap_or(cursor.pos()..cursor.pos() + 1)
-        //     };
-
-        //     let next = {
-        //         let cursor = &self.cursors[i];
-        //         cursor.selection().unwrap_or(cursor.pos()..cursor.pos() + 1)
-        //     };
-
-        //     if cur.overlaps(&next) {
-        //         self.cursors.remove(i);
-        //         let cur = &mut self.cursors[i - 1];
-        //         cur.extend_to_include(&next);
-        //     }
-        // }
 
         self.primary = min(self.primary, self.cursors.len() - 1);
     }

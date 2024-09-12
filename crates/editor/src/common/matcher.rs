@@ -12,14 +12,13 @@ use std::{
     },
 };
 
+use sanedit_core::Choice;
 use sanedit_utils::appendlist::{Appendlist, Reader};
 use tokio::sync::mpsc::channel;
 
 pub use matches::*;
 pub use receiver::*;
 pub use strategy::*;
-
-use crate::Choice;
 
 /// Matches options to a pattern
 pub struct Matcher {

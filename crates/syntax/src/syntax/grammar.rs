@@ -1,16 +1,9 @@
-use std::{
-    fs::File,
-    path::Path,
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        Arc,
-    },
-};
+use std::{fs::File, path::Path};
 
 use crate::{Annotation, ByteReader, CaptureID, CaptureList, Parser};
 use anyhow::bail;
 use sanedit_buffer::{Bytes, PieceTreeSlice};
-use sanedit_core::Kill;
+use sanedit_server::Kill;
 
 #[derive(Debug)]
 pub struct Grammar {

@@ -1,14 +1,16 @@
 use std::rc::Rc;
 
-use sanedit_core::{Choice, Chooser};
+use sanedit_core::Choice;
 use sanedit_messages::redraw::Point;
 use sanedit_utils::sorted_vec::SortedVec;
 
 use crate::{
     actions::jobs::{MatchedOptions, MatcherMessage},
     editor::{windows::Focus, Editor},
-    server::ClientId,
 };
+use sanedit_server::ClientId;
+
+use super::chooser::Chooser;
 
 pub(crate) type CompletionAction = Rc<dyn Fn(&mut Editor, ClientId, &str)>;
 

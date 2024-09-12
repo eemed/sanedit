@@ -1,6 +1,5 @@
+use sanedit_core::Choice;
 use tokio::sync::mpsc::Receiver;
-
-use crate::Choice;
 
 /// Trait used to receive candidates using various receiver implementations
 pub trait MatchOptionReceiver<T> {

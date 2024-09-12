@@ -13,6 +13,7 @@ sanedit-utils = { path = "../utils" }
 sanedit-syntax = { path = "../syntax" }
 sanedit-lsp = { path = "../lsp" }
 sanedit-core = { path = "../core" }
+sanedit-server = { path = "../server" }
 
 # General
 log         = "0.4"

@@ -6,7 +6,9 @@ use std::{
 use futures::future::BoxFuture;
 use tokio::{fs, io, sync::mpsc::Sender};
 
-use sanedit_core::{Kill, Kind, MatchOption};
+use sanedit_server::Kill;
+
+use crate::common::matcher::{Kind, MatchOption};
 
 use super::OptionProvider;
 

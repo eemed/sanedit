@@ -1,9 +1,8 @@
 use sanedit_utils::either::Either;
 
-use crate::{
-    editor::{windows::Focus, Editor},
-    server::ClientId,
-};
+use crate::editor::{windows::Focus, Editor};
+
+use sanedit_server::ClientId;
 
 #[action("Clear locations")]
 fn clear(editor: &mut Editor, id: ClientId) {

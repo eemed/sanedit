@@ -6,7 +6,7 @@ use std::{
 };
 
 use clap::Parser;
-use sanedit_editor::{Address, StartOptions};
+use sanedit_server::{Address, StartOptions};
 use sanedit_terminal_client::unix::UnixDomainSocketClient;
 
 #[derive(Parser)]

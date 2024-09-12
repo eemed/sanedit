@@ -1,7 +1,7 @@
 mod window;
 
 use super::{buffers::BufferId, Map};
-use crate::server::ClientId;
+use sanedit_server::ClientId;
 pub(crate) use window::*;
 
 #[derive(Debug, Default)]

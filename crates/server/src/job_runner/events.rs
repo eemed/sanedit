@@ -2,7 +2,7 @@ use std::any::Any;
 
 use super::{BoxedJob, JobId};
 
-pub(crate) enum ToJobs {
+pub enum ToJobs {
     /// Request a new job to ran
     Request(JobId, BoxedJob),
     /// Request to stop a job
@@ -10,7 +10,7 @@ pub(crate) enum ToJobs {
 }
 
 #[derive(Debug)]
-pub(crate) enum FromJobs {
+pub enum FromJobs {
     /// Message from a job. Could be anything.
     Message(JobId, Box<dyn Any + Send>),
 

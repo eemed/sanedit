@@ -195,6 +195,17 @@ impl<'a> From<&PieceTreeSlice<'a>> for Vec<u8> {
     }
 }
 
+impl<'a> From<&PieceTreeSlice<'a>> for String {
+    fn from(slice: &PieceTreeSlice) -> Self {
+        let mut result = String::new();
+        let mut chars = slice.chars();
+        while let Some((_, _, ch)) = chars.next() {
+            result.push(ch);
+        }
+        result
+    }
+}
+
 #[cfg(test)]
 mod test {
     use crate::PieceTree;

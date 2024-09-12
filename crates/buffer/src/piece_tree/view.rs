@@ -244,29 +244,10 @@ impl PieceTreeView {
     }
 }
 
-impl From<&str> for PieceTree {
-    fn from(value: &str) -> Self {
-        PieceTree::from_reader(io::Cursor::new(value)).unwrap()
-    }
-}
-
 impl From<&PieceTreeView> for Vec<u8> {
     fn from(pt: &PieceTreeView) -> Self {
-        assert!(
-            pt.len() <= usize::MAX as u64,
-            "Piece tree is too large to be represented in memory"
-        );
-        let mut bytes = Vec::with_capacity(pt.len() as usize);
-        let mut chunks = pt.chunks();
-        let mut pos_chunk = chunks.get();
-
-        while let Some((_pos, chunk)) = pos_chunk {
-            let chunk_bytes = chunk.as_ref();
-            bytes.extend_from_slice(chunk_bytes);
-            pos_chunk = chunks.next();
-        }
-
-        bytes
+        let slice = pt.slice(..);
+        (&slice).into()
     }
 }
 

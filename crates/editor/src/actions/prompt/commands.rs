@@ -128,17 +128,17 @@ pub(crate) fn matcher_result_handler(editor: &mut Editor, id: ClientId, msg: Mat
             win.prompt.set_on_input(move |editor, id, input| {
                 let _ = sender.blocking_send(input.to_string());
             });
-            win.prompt.clear_options();
+            win.prompt.clear_choices();
         }
         Progress(opts) => match opts {
             MatchedOptions::Options { matched, clear_old } => {
                 if clear_old {
-                    win.prompt.clear_options();
+                    win.prompt.clear_choices();
                 }
                 win.focus = Focus::Prompt;
                 let opts: Vec<Choice> = matched.into_iter().map(Choice::from).collect();
                 let (win, _buf) = editor.win_buf_mut(id);
-                win.prompt.provide_options(opts.into());
+                win.prompt.add_choices(opts.into());
             }
             _ => {}
         },

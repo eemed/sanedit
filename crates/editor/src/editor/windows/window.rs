@@ -355,46 +355,7 @@ impl Window {
         };
         let changes = &edit.changes;
 
-        // Cursors are not in any order
-        // Changes are in order
-        for cursor in self.cursors.cursors_mut() {
-            let mut range = cursor.selection().unwrap_or(cursor.pos()..cursor.pos());
-            let removed: u64 = changes
-                .iter()
-                .take_while(|change| change.end() <= range.start)
-                .map(|change| change.range().len())
-                .sum();
-
-            let add: u64 = changes
-                .iter()
-                .take_while(|change| change.start() <= range.start)
-                .map(|change| change.text().len() as u64)
-                .sum();
-
-            // log::debug!("+{add} -{removed}");
-
-            let removed_post: u64 = changes
-                .iter()
-                .take_while(|change| change.end() <= range.end)
-                .map(|change| change.range().len())
-                .sum();
-
-            let add_post: u64 = changes
-                .iter()
-                .take_while(|change| change.start() <= range.end)
-                .map(|change| change.text().len() as u64)
-                .sum();
-            // log::debug!("post+{add_post} post-{removed_post}");
-
-            range.start += add;
-            range.start -= removed;
-            range.end += add_post;
-            range.end -= removed_post;
-
-            // log::debug!("Cursor: {cursor:?} to {range:?}");
-            cursor.to_range(&range);
-            // log::debug!("Cursor: {cursor:?}");
-        }
+        changes.move_cursors(self.cursors.cursors_mut());
     }
 
     fn change(&mut self, buf: &mut Buffer, changes: &Changes) -> Result<()> {

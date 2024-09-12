@@ -378,6 +378,26 @@ impl PieceTree {
     }
 }
 
+impl<A: AsRef<str>> From<A> for PieceTree {
+    fn from(value: A) -> Self {
+        PieceTree::from_reader(io::Cursor::new(value.as_ref())).unwrap()
+    }
+}
+
+impl From<&PieceTree> for String {
+    fn from(value: &PieceTree) -> Self {
+        let slice = value.slice(..);
+        String::from(&slice)
+    }
+}
+
+impl From<&PieceTree> for Vec<u8> {
+    fn from(pt: &PieceTree) -> Self {
+        let view = &pt.view;
+        view.into()
+    }
+}
+
 impl Default for PieceTree {
     fn default() -> Self {
         PieceTree::new()

@@ -63,7 +63,7 @@ impl Chooser {
         }
     }
 
-    pub fn provide_options(&mut self, opts: SortedVec<Choice>) {
+    pub fn add(&mut self, opts: SortedVec<Choice>) {
         self.choices.push(opts)
     }
 
@@ -87,5 +87,9 @@ impl Chooser {
         }
 
         results
+    }
+
+    pub fn clear(&mut self) {
+        self.choices.clear();
     }
 }

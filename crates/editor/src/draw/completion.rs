@@ -38,23 +38,23 @@ fn draw_impl(ctx: &mut DrawContext) -> redraw::Redraw {
     };
     let selected_relative_pos = completion.selected_pos().map(|pos| pos - *offset);
     let choices: Vec<Choice> = completion
-        .options_window(compl_count, *offset)
+        .choices_part(compl_count, *offset)
         .into_iter()
         .cloned()
         .collect();
-    let match_len = completion
-        .chooser
-        .options()
-        .get(0)
-        .map(|mat| mat.matches().get(0).map(|o| o.len()))
-        .flatten()
-        .unwrap_or(0);
+    // let match_len = completion
+    //     .options()
+    //     .get(0)
+    //     .map(|mat| mat.matches().get(0).map(|o| o.len()))
+    //     .flatten()
+    //     .unwrap_or(0);
 
     redraw::Completion {
-        point: completion.point,
+        point: completion.point().clone(),
         choices,
         selected: selected_relative_pos,
-        query_len: match_len,
+        // TODO
+        query_len: 0,
     }
     .into()
 }

@@ -303,12 +303,12 @@ fn complete(
     let (win, buf) = editor.win_buf_mut(id);
     let slice = buf.slice(..);
     let start = position_to_offset(&slice, position, &enc);
-    win.completion = Completion::new(start);
 
     let cursor = win.primary_cursor();
-    if let Some(point) = win.view().point_at_pos(cursor.pos()) {
-        win.completion.point = point;
-    }
+    let Some(point) = win.view().point_at_pos(cursor.pos()) else {
+        return;
+    };
+    win.completion = Completion::new(start, point);
 
     let opts: Vec<MatchOption> = opts.into_iter().map(from_completion_item).collect();
 

@@ -1,7 +1,7 @@
 [package]
 name = "sanedit-cli"
-version = "0.1.0"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
 
 [[bin]]
 name = "sane"
@@ -12,6 +12,6 @@ sanedit-terminal-client = { path = "../terminal-client" }
 sanedit-editor = { path = "../editor" }
 sanedit-server = { path = "../server" }
 
-clap = { version = "^4", features = ["derive"] }
-log = "0.4"
-log4rs = "1"
+clap = { workspace = true, features = ["derive"] }
+log.workspace = true
+log4rs.workspace = true

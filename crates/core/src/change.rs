@@ -1,9 +1,9 @@
-use std::rc::Rc;
+use std::{borrow::Cow, rc::Rc};
 
-use sanedit_buffer::{utf8::EndOfLine, PieceTreeView};
+use sanedit_buffer::{utf8::EndOfLine, PieceTree, PieceTreeView};
 use sanedit_utils::sorted_vec::SortedVec;
 
-use crate::range::BufferRange;
+use crate::{range::BufferRange, BufferRangeExt as _, Cursor};
 
 #[derive(Debug)]
 pub struct Edit {
@@ -11,42 +11,81 @@ pub struct Edit {
     pub changes: Changes,
 }
 
-// #[derive(Debug, Default)]
-// pub(crate) struct ChangeResult {
-//     pub(crate) created_snapshot: Option<SnapshotId>,
-//     /// If kind is undo or redo, the restored snapshot id
-//     pub(crate) restored_snapshot: Option<SnapshotId>,
-// }
-
 #[derive(Debug, Clone)]
 pub struct Changes {
     changes: SortedVec<Change>,
-    disable_undopoint_creation: bool,
+    flags: Flags,
 }
 
 impl Changes {
     pub fn new(changes: &[Change]) -> Changes {
         Changes {
             changes: SortedVec::from(changes),
-            disable_undopoint_creation: false,
+            flags: Flags::default(),
         }
     }
 
     pub fn undo() -> Changes {
-        let mut changes = SortedVec::new();
-        changes.push(Change::undo());
         Changes {
-            changes,
-            disable_undopoint_creation: false,
+            changes: SortedVec::new(),
+            flags: Flags::UNDO,
         }
     }
 
     pub fn redo() -> Changes {
-        let mut changes = SortedVec::new();
-        changes.push(Change::redo());
         Changes {
-            changes,
-            disable_undopoint_creation: false,
+            changes: SortedVec::new(),
+            flags: Flags::REDO,
+        }
+    }
+
+    pub fn is_undo(&self) -> bool {
+        self.flags.contains(Flags::UNDO)
+    }
+
+    pub fn is_redo(&self) -> bool {
+        self.flags.contains(Flags::REDO)
+    }
+
+    /// Apply the change and return whether anything changed.
+    /// This wont apply undo or redo you should handle those yourself
+    pub fn apply(&self, pt: &mut PieceTree) {
+        for change in self.changes.iter() {
+            let range = change.range();
+            if range.len() != 0 {
+                self.remove_ranges(pt, &[range]);
+            }
+
+            if !change.text().is_empty() {
+                pt.insert_multi(&[change.start()], change.text());
+            }
+        }
+    }
+
+    fn remove_ranges(&self, pt: &mut PieceTree, ranges: &[BufferRange]) {
+        fn is_sorted(ranges: &[BufferRange]) -> bool {
+            let mut last = 0;
+            for range in ranges.iter() {
+                if range.start < last {
+                    return false;
+                }
+
+                last = range.end;
+            }
+
+            true
+        }
+
+        let ranges: Cow<[BufferRange]> = if is_sorted(ranges) {
+            ranges.into()
+        } else {
+            let mut ranges = ranges.to_vec();
+            ranges.sort_by(|a, b| a.start.cmp(&b.start));
+            ranges.into()
+        };
+
+        for range in ranges.iter().rev() {
+            pt.remove(range.clone());
         }
     }
 
@@ -68,11 +107,11 @@ impl Changes {
     }
 
     pub fn disable_undo_point_creation(&mut self) {
-        self.disable_undopoint_creation = true;
+        self.flags.insert(Flags::DISABLE_UNDO_POINT_CREATION);
     }
 
     pub fn allows_undo_point_creation(&self) -> bool {
-        !self.disable_undopoint_creation
+        !self.flags.contains(Flags::DISABLE_UNDO_POINT_CREATION)
     }
 
     pub fn iter(&self) -> std::slice::Iter<'_, Change> {
@@ -83,7 +122,62 @@ impl Changes {
         self.changes.is_empty()
     }
 
+    /// Moves cursors according to this change,
+    /// Wont handle undo or redo
+    pub fn move_cursors(&self, cursors: &mut [Cursor]) {
+        for cursor in cursors {
+            let mut range = cursor.selection().unwrap_or(cursor.pos()..cursor.pos());
+            let removed: u64 = self
+                .changes
+                .iter()
+                .take_while(|change| change.end() <= range.start)
+                .map(|change| change.range().len())
+                .sum();
+
+            let add: u64 = self
+                .changes
+                .iter()
+                .take_while(|change| change.start() <= range.start)
+                .map(|change| change.text().len() as u64)
+                .sum();
+
+            // log::debug!("+{add} -{removed}");
+
+            let removed_post: u64 = self
+                .changes
+                .iter()
+                .take_while(|change| change.end() <= range.end)
+                .map(|change| change.range().len())
+                .sum();
+
+            let add_post: u64 = self
+                .changes
+                .iter()
+                .take_while(|change| change.start() <= range.end)
+                .map(|change| change.text().len() as u64)
+                .sum();
+            // log::debug!("post+{add_post} post-{removed_post}");
+
+            range.start += add;
+            range.start -= removed;
+            range.end += add_post;
+            range.end -= removed_post;
+
+            // log::debug!("Cursor: {cursor:?} to {range:?}");
+            cursor.to_range(&range);
+            // log::debug!("Cursor: {cursor:?}");
+        }
+    }
+
     pub fn kind(&self) -> ChangesKind {
+        if self.flags.contains(Flags::UNDO) {
+            return ChangesKind::Undo;
+        }
+
+        if self.flags.contains(Flags::REDO) {
+            return ChangesKind::Redo;
+        }
+
         let is_insert = self.changes.iter().all(Change::is_insert);
         if is_insert {
             return ChangesKind::Insert;
@@ -97,16 +191,6 @@ impl Changes {
         let is_replace = self.changes.iter().all(Change::is_replace);
         if is_replace {
             return ChangesKind::Replace;
-        }
-
-        let is_undo = self.changes.iter().all(Change::is_undo);
-        if is_undo {
-            return ChangesKind::Undo;
-        }
-
-        let is_redo = self.changes.iter().all(Change::is_redo);
-        if is_redo {
-            return ChangesKind::Redo;
         }
 
         ChangesKind::Mixed
@@ -245,7 +329,7 @@ impl From<Vec<Change>> for Changes {
     fn from(value: Vec<Change>) -> Self {
         Changes {
             changes: SortedVec::from(value),
-            disable_undopoint_creation: false,
+            flags: Flags::default(),
         }
     }
 }
@@ -254,7 +338,7 @@ impl From<Change> for Changes {
     fn from(value: Change) -> Self {
         Changes {
             changes: SortedVec::from(value),
-            disable_undopoint_creation: false,
+            flags: Flags::default(),
         }
     }
 }
@@ -267,34 +351,14 @@ pub struct Change {
     /// Exclusive
     end: u64,
     text: Rc<Vec<u8>>,
-    flags: Flags,
 }
 
 impl Change {
-    fn undo() -> Change {
-        Change {
-            start: 0,
-            end: 0,
-            text: Rc::new(Vec::new()),
-            flags: Flags::UNDO,
-        }
-    }
-
-    fn redo() -> Change {
-        Change {
-            start: 0,
-            end: 0,
-            text: Rc::new(Vec::new()),
-            flags: Flags::REDO,
-        }
-    }
-
     pub fn insert(at: u64, text: &[u8]) -> Change {
         Change {
             start: at,
             end: at,
             text: Rc::new(text.into()),
-            flags: Flags::default(),
         }
     }
 
@@ -303,7 +367,6 @@ impl Change {
             start: at,
             end: at,
             text,
-            flags: Flags::default(),
         }
     }
 
@@ -312,7 +375,6 @@ impl Change {
             start: range.start,
             end: range.end,
             text: Rc::new(Vec::new()),
-            flags: Flags::default(),
         }
     }
 
@@ -321,7 +383,6 @@ impl Change {
             start: range.start,
             end: range.end,
             text: Rc::new(text.into()),
-            flags: Flags::default(),
         }
     }
 
@@ -339,14 +400,6 @@ impl Change {
 
     pub fn text(&self) -> &[u8] {
         &self.text
-    }
-
-    pub fn is_undo(&self) -> bool {
-        self.flags.contains(Flags::UNDO)
-    }
-
-    pub fn is_redo(&self) -> bool {
-        self.flags.contains(Flags::REDO)
     }
 
     pub fn is_remove(&self) -> bool {
@@ -371,6 +424,7 @@ bitflags::bitflags! {
     struct Flags: u8 {
         const UNDO = 0b00000001;
         const REDO = 0b00000010;
+        const DISABLE_UNDO_POINT_CREATION = 0b00000100;
     }
 }
 

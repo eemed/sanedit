@@ -193,6 +193,7 @@ impl Buffer {
                     changes: changes.clone(),
                 });
                 self.total_changes_made += 1;
+                self.is_modified = true;
             }
             Err(e) => {
                 self.pt.restore(rollback);
@@ -207,50 +208,16 @@ impl Buffer {
     }
 
     fn apply_changes_impl(&mut self, changes: &Changes) -> Result<Option<SnapshotId>> {
-        if changes.is_multi_insert() {
-            let text = changes.iter().next().unwrap().text();
-            let positions: Vec<u64> = changes.iter().map(Change::start).collect();
-            self.insert_multi(&positions, text)?;
-            return Ok(None);
-        }
-
-        if changes.is_remove() {
-            let ranges = changes.before_ranges();
-            self.remove_multi(&ranges)?;
-            return Ok(None);
-        }
-
-        let mut result = None;
-        for change in changes.iter() {
-            if let Some(res) = self.apply_change(change)? {
-                result = Some(res);
-            }
-        }
-
-        Ok(result)
-    }
-
-    fn apply_change(&mut self, change: &Change) -> Result<Option<SnapshotId>> {
-        let mut result = None;
-
-        if change.is_undo() {
+        if changes.is_undo() {
             let snapshot = self.undo()?;
-            result = Some(snapshot);
-        } else if change.is_redo() {
+            Ok(Some(snapshot))
+        } else if changes.is_redo() {
             let snapshot = self.redo()?;
-            result = Some(snapshot);
+            Ok(Some(snapshot))
         } else {
-            let range = change.range();
-            if range.len() != 0 {
-                self.remove_multi(&[range])?;
-            }
-
-            if !change.text().is_empty() {
-                self.insert_multi(&[change.start()], change.text())?;
-            }
+            changes.apply(&mut self.pt);
+            Ok(None)
         }
-
-        Ok(result)
     }
 
     fn undo(&mut self) -> Result<SnapshotId> {
@@ -267,42 +234,6 @@ impl Buffer {
         self.is_modified = restored != self.last_saved_snapshot;
         self.pt.restore(node.snapshot);
         Ok(restored)
-    }
-
-    fn insert_multi<B: AsRef<[u8]>>(&mut self, pos: &[u64], bytes: B) -> Result<()> {
-        let bytes = bytes.as_ref();
-        self.pt.insert_multi(pos, bytes);
-        self.is_modified = true;
-        Ok(())
-    }
-
-    fn remove_multi(&mut self, ranges: &[BufferRange]) -> Result<()> {
-        fn is_sorted(ranges: &[BufferRange]) -> bool {
-            let mut last = 0;
-            for range in ranges.iter() {
-                if range.start < last {
-                    return false;
-                }
-
-                last = range.end;
-            }
-
-            true
-        }
-
-        let ranges: Cow<[BufferRange]> = if is_sorted(ranges) {
-            ranges.into()
-        } else {
-            let mut ranges = ranges.to_vec();
-            ranges.sort_by(|a, b| a.start.cmp(&b.start));
-            ranges.into()
-        };
-
-        for range in ranges.iter().rev() {
-            self.pt.remove(range.clone());
-        }
-        self.is_modified = true;
-        Ok(())
     }
 
     pub fn set_path<P: AsRef<Path>>(&mut self, path: P) {

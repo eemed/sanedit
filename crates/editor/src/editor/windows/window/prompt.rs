@@ -2,9 +2,9 @@ mod history;
 
 use std::rc::Rc;
 
+use sanedit_buffer::PieceTree;
 use sanedit_core::Choice;
 use sanedit_utils::sorted_vec::SortedVec;
-use unicode_segmentation::UnicodeSegmentation;
 
 use crate::{
     actions::jobs::{MatchedOptions, MatcherMessage},
@@ -202,17 +202,17 @@ impl Prompt {
                 win.prompt.set_on_input(move |editor, id, input| {
                     let _ = sender.blocking_send(input.to_string());
                 });
-                win.prompt.clear_options();
+                win.prompt.clear_choices();
             }
             Progress(opts) => match opts {
                 MatchedOptions::Options { matched, clear_old } => {
                     if clear_old {
-                        win.prompt.clear_options();
+                        win.prompt.clear_choices();
                     }
 
                     win.focus = Focus::Prompt;
                     let (win, _buf) = editor.win_buf_mut(id);
-                    win.prompt.provide_options(matched.into());
+                    win.prompt.add_choices(matched.into());
                 }
                 _ => {}
             },
@@ -243,23 +243,20 @@ impl Prompt {
     }
 
     pub fn next_grapheme(&mut self) {
-        let mut graphemes = self.input.grapheme_indices(true);
-        graphemes.position(|(pos, _)| pos == self.cursor);
-        self.cursor = graphemes.next().map_or(self.input.len(), |(pos, _)| pos);
+        let pt = PieceTree::from(&self.input);
+        let slice = pt.slice(self.cursor as u64..);
+        let mut graphemes = slice.graphemes();
+        graphemes.next();
+        self.cursor = graphemes
+            .next()
+            .map_or(self.input.len(), |slice| slice.start() as usize);
     }
 
     pub fn prev_grapheme(&mut self) {
-        let graphemes = self.input.grapheme_indices(true);
-
-        let mut last = 0;
-        for (pos, _) in graphemes {
-            if pos == self.cursor {
-                break;
-            }
-
-            last = pos;
-        }
-        self.cursor = last;
+        let pt = PieceTree::from(&self.input);
+        let slice = pt.slice(..self.cursor as u64);
+        let mut graphemes = slice.graphemes_at(slice.len());
+        self.cursor = graphemes.prev().map_or(0, |slice| slice.start() as usize);
     }
 
     pub fn remove_grapheme_before_cursor(&mut self) {
@@ -269,7 +266,7 @@ impl Prompt {
         self.input.replace_range(start..end, "");
     }
 
-    pub fn clear_options(&mut self) {
+    pub fn clear_choices(&mut self) {
         self.chooser = Chooser::new();
     }
 
@@ -281,8 +278,8 @@ impl Prompt {
         self.chooser.select_prev();
     }
 
-    pub fn provide_options(&mut self, opts: SortedVec<Choice>) {
-        self.chooser.provide_options(opts);
+    pub fn add_choices(&mut self, opts: SortedVec<Choice>) {
+        self.chooser.add(opts);
     }
 
     pub fn options_window(&self, count: usize, offset: usize) -> Vec<&Choice> {

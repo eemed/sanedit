@@ -25,12 +25,11 @@ fn complete(editor: &mut Editor, id: ClientId) {
     let cursor = win.cursors.primary().pos();
     let start = result.as_ref().map(|result| result.0).unwrap_or(cursor);
     let word = result.map(|result| result.2).unwrap_or(String::new());
-
-    win.completion = Completion::new(start);
     let cursor = win.primary_cursor();
-    if let Some(point) = win.view().point_at_pos(cursor.pos()) {
-        win.completion.point = point;
-    }
+    let Some(point) = win.view().point_at_pos(cursor.pos()) else {
+        return;
+    };
+    win.completion = Completion::new(start, point);
 
     let opts: FxHashSet<MatchOption> = win
         .syntax_result()
@@ -62,7 +61,7 @@ fn confirm(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     win.focus = Focus::Window;
 
-    let opt = win.completion.chooser.selected().map(|opt| {
+    let opt = win.completion.selected().map(|opt| {
         let prefix = opt.matches().iter().map(|m| m.end).max().unwrap_or(0);
         opt.to_str_lossy()[prefix..].to_string()
     });
@@ -101,7 +100,7 @@ fn send_word(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     if let Some(fun) = win.completion.on_input.clone() {
         let cursor = win.cursors.primary().pos();
-        let start = win.completion.started_at;
+        let start = win.completion.started_at();
         let slice = buf.slice(start..cursor);
         let word = String::from(&slice);
         (fun)(editor, id, &word);

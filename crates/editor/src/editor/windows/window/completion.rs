@@ -15,22 +15,36 @@ use super::chooser::Chooser;
 pub(crate) type CompletionAction = Rc<dyn Fn(&mut Editor, ClientId, &str)>;
 
 pub(crate) struct Completion {
-    pub(crate) point: Point,
-    pub(crate) chooser: Chooser,
+    point: Point,
 
     /// Where the completion was started at
     /// used to provide on input with the next term
-    pub(crate) started_at: u64,
+    started_at: u64,
+
+    chooser: Chooser,
 
     /// Called when input is modified.
     pub(crate) on_input: Option<CompletionAction>,
 }
 
 impl Completion {
-    pub fn new(started_at: u64) -> Completion {
+    pub fn new(started_at: u64, point: Point) -> Completion {
         let mut me = Completion::default();
         me.started_at = started_at;
+        me.point = point;
         me
+    }
+
+    pub fn started_at(&self) -> u64 {
+        self.started_at
+    }
+
+    pub fn point(&self) -> &Point {
+        &self.point
+    }
+
+    pub fn selected(&self) -> Option<&Choice> {
+        self.chooser.selected()
     }
 
     pub fn select_next(&mut self) {
@@ -41,19 +55,19 @@ impl Completion {
         self.chooser.select_prev()
     }
 
-    pub fn provide_options(&mut self, options: SortedVec<Choice>) {
-        self.chooser.provide_options(options)
+    pub fn add_choices(&mut self, options: SortedVec<Choice>) {
+        self.chooser.add(options)
     }
 
     pub fn selected_pos(&self) -> Option<usize> {
         self.chooser.selected_pos()
     }
 
-    pub fn clear_options(&mut self) {
+    pub fn clear_choices(&mut self) {
         self.chooser = Chooser::new();
     }
 
-    pub fn options_window(&self, count: usize, offset: usize) -> Vec<&Choice> {
+    pub fn choices_part(&self, count: usize, offset: usize) -> Vec<&Choice> {
         self.chooser.matches_window(count, offset)
     }
 
@@ -77,7 +91,7 @@ impl Completion {
                 win.completion.on_input = Some(Rc::new(move |editor, id, input| {
                     let _ = sender.blocking_send(input.to_string());
                 }));
-                win.completion.clear_options();
+                win.completion.clear_choices();
             }
             Progress(opts) => {
                 let (win, buf) = editor.win_buf_mut(id);
@@ -90,12 +104,12 @@ impl Completion {
                     }
                     MatchedOptions::Options { matched, clear_old } => {
                         if clear_old {
-                            win.completion.clear_options();
+                            win.completion.clear_choices();
                         }
                         win.focus = Focus::Completion;
                         let opts: Vec<Choice> = matched.into_iter().map(Choice::from).collect();
                         let (win, _buf) = editor.win_buf_mut(id);
-                        win.completion.provide_options(opts.into());
+                        win.completion.add_choices(opts.into());
                     }
                 }
             }

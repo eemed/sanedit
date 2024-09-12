@@ -54,6 +54,10 @@ impl Choices {
         self.total == 0
     }
 
+    pub fn clear(&mut self) {
+        *self = Choices::default();
+    }
+
     pub fn get(&self, idx: usize) -> Option<&Choice> {
         self.merge_until(idx);
         let interior = self.interior.borrow();

@@ -12,7 +12,6 @@ use super::tree::Tree;
 use super::utf8::graphemes::Graphemes;
 use crate::piece_tree::chunks::Chunks;
 use crate::piece_tree::utf8::lines::Lines;
-use crate::PieceTree;
 
 use super::slice::PieceTreeSlice;
 use super::utf8::chars::Chars;

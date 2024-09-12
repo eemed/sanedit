@@ -31,7 +31,7 @@
 ])
 
 This document contains implementation details and notes. It should provide
-answers why certain design decisions were made.
+answers what was the thought process behind certain design decisions.
 
 = Project structure
 

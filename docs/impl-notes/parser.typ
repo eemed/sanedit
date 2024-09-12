@@ -1,4 +1,4 @@
-= Parser <parser>
+= Syntax <parser>
 
 Requirements:
 
@@ -74,3 +74,12 @@ error and keep track of the longest position we were succesfully able to parse.
 This reliably finds syntax errors, but erases all of the parser state required
 to restart the parsing process after corrections. Copying the parser state
 (stack) is rather expensive and would slow down performance.
+
+
+== Current solution 
+
+Wrote a LPEG like parsing machine and would like to investigate making a JIT.
+
+The grammars are matching parts of the structure instead of the whole
+structure, to allow most things to be highlighted while we are writing
+code.

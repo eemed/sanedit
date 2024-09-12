@@ -20,7 +20,6 @@ The editor is structed into a few subdirectories.
   [actions], [functions that directly change the editor state],
   [draw],    [used to draw all the things for the client],
   [editor],  [holds the editor state model and functions to ease operating on it],
-  [server],  [handles async with tokio, handles all the client connections, jobs, etc.]
 )
 
 
@@ -41,4 +40,9 @@ The editor can ask tokio to run jobs. Jobs are just functions that can produce
 gradual output. Jobs were created to run long running processes in the
 background whilst having a responsive editor. Best usages for jobs are shell
 commands, large buffer saving, listing files can be implemented as jobs.
+
+Syntax highlighting is also implemented as a job even though it is quite
+performant. However we have no control over the grammars others can write which
+could make it slow. The approach here is to shift previous syntax parse result
+to according to changes and calculate the real highlights in the background.
 

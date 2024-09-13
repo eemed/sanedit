@@ -1,14 +1,7 @@
+use sanedit_core::Severity;
 use serde::{Deserialize, Serialize};
 
 use super::Redraw;
-
-#[derive(Clone, Debug, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]
-pub enum Severity {
-    #[default]
-    Info,
-    Warn,
-    Error,
-}
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub struct StatusMessage {

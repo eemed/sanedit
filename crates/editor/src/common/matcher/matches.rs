@@ -9,8 +9,8 @@ pub enum Kind {
     String,
 }
 
-/// A generic match option that contains bytes.
-/// And a description of those bytes
+/// An option that can be matched using matcher.
+/// Contains bytes and a description of those bytes
 #[derive(Debug, Clone)]
 pub struct MatchOption {
     /// Match option data

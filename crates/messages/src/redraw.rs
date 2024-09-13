@@ -33,6 +33,8 @@ pub use text_style::*;
 pub use theme::*;
 pub use window::*;
 
+pub use sanedit_core::Severity;
+
 use serde::{Deserialize, Serialize};
 
 use crate::ClientMessage;

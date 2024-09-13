@@ -7,7 +7,6 @@
         - Not done at all
 
 
-* Same buffer other deleting over other windows selection => problems!
 * LSP stuff menu
     * Restart server
     * Stop server

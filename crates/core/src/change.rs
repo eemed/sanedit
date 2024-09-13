@@ -130,8 +130,8 @@ impl Changes {
             let removed: u64 = self
                 .changes
                 .iter()
-                .take_while(|change| change.end() <= range.start)
-                .map(|change| change.range().len())
+                .take_while(|change| change.start() <= range.start)
+                .map(|change| range.start - change.start())
                 .sum();
 
             let add: u64 = self
@@ -140,14 +140,13 @@ impl Changes {
                 .take_while(|change| change.start() <= range.start)
                 .map(|change| change.text().len() as u64)
                 .sum();
-
             // log::debug!("+{add} -{removed}");
 
             let removed_post: u64 = self
                 .changes
                 .iter()
-                .take_while(|change| change.end() <= range.end)
-                .map(|change| change.range().len())
+                .take_while(|change| change.start() <= range.end)
+                .map(|change| range.end - change.start())
                 .sum();
 
             let add_post: u64 = self

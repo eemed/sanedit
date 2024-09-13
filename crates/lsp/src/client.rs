@@ -7,10 +7,11 @@ use crate::process::{ProcessHandler, ServerRequest};
 use crate::request::{Notification, RequestKind, ToLSP};
 use crate::response::{NotificationResult, Reference};
 use crate::util::path_to_uri;
-use crate::{Change, CompletionItem, Diagnostic, Request, RequestResult, Response};
+use crate::{Change, CompletionItem, LSPRange, Request, RequestResult, Response};
 
 use anyhow::{anyhow, Result};
 use lsp_types::notification::Notification as _;
+use sanedit_core::{Diagnostic, Severity};
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 use tokio::sync::oneshot;
 use tokio::{io::BufReader, process::Command};
@@ -176,15 +177,7 @@ impl LSPClient {
                     diagnostics: params
                         .diagnostics
                         .into_iter()
-                        .map(|diag| {
-                            let severity =
-                                diag.severity.unwrap_or(lsp_types::DiagnosticSeverity::HINT);
-                            Diagnostic {
-                                severity,
-                                range: diag.range,
-                                message: diag.message,
-                            }
-                        })
+                        .map(to_core_diagnostic)
                         .collect(),
                 };
 
@@ -198,6 +191,26 @@ impl LSPClient {
         }
 
         Ok(())
+    }
+}
+
+fn to_core_diagnostic(diag: lsp_types::Diagnostic) -> LSPRange<Diagnostic> {
+    let severity = diag
+        .severity
+        .map(|sev| match sev {
+            lsp_types::DiagnosticSeverity::ERROR => Severity::Error,
+            lsp_types::DiagnosticSeverity::INFORMATION => Severity::Info,
+            lsp_types::DiagnosticSeverity::WARNING => Severity::Warn,
+            lsp_types::DiagnosticSeverity::HINT => Severity::Hint,
+            _ => unreachable!(),
+        })
+        .unwrap_or(Severity::Hint);
+
+    let diagnostic = Diagnostic::new(severity, 0..0, &diag.message);
+
+    LSPRange {
+        t: diagnostic,
+        range: diag.range,
     }
 }
 

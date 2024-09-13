@@ -16,6 +16,7 @@ selection = "#d0bd97,,"
 primary = "#C0A886,,"
 
 [colors.window.view]
+hint = "#00917e,#000000,"
 info = "#00917e,#000000,"
 warn = "#ff8c5a,#000000,"
 error = "#c0564a,#ffffff,"

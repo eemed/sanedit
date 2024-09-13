@@ -63,7 +63,7 @@ fn draw_syntax(grid: &mut Vec<Vec<redraw::Cell>>, view: &View, theme: &Theme) {
     let syntax = view.syntax();
     let vrange = view.range();
 
-    for span in &syntax.highlights {
+    for span in syntax.spans() {
         if !span.highlight() {
             continue;
         }

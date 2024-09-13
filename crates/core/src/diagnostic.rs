@@ -1,6 +1,6 @@
 use crate::{range::BufferRange, severity::Severity};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Diagnostic {
     severity: Severity,
     range: BufferRange,
@@ -8,11 +8,11 @@ pub struct Diagnostic {
 }
 
 impl Diagnostic {
-    pub fn new(severity: Severity, range: BufferRange, description: String) -> Diagnostic {
+    pub fn new(severity: Severity, range: BufferRange, description: &str) -> Diagnostic {
         Diagnostic {
             severity,
             range,
-            description,
+            description: description.into(),
         }
     }
 

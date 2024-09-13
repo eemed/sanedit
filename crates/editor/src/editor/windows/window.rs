@@ -111,7 +111,7 @@ impl Window {
         self.prompt = Prompt::default();
         self.message = None;
         self.completion = Completion::default();
-        self.view.syntax = SyntaxParseResult::default();
+        self.view.syntax = ViewSyntax::default();
     }
 
     pub fn display_options_mut(&mut self) -> &mut DisplayOptions {
@@ -520,19 +520,12 @@ impl Window {
 
         self.remove(buf, &ranges)?;
 
-        // let mut removed = 0;
-        // for (i, range) in ranges.iter().enumerate() {
-        //     let cursor = &mut self.cursors.cursors_mut()[i];
-        //     cursor.goto(range.start - removed);
-        //     removed += range.len();
-        // }
-
         // self.invalidate();
         self.jump_to_primary_cursor = true;
         Ok(())
     }
 
-    pub fn syntax_result(&mut self) -> &mut SyntaxParseResult {
+    pub fn view_syntax(&mut self) -> &mut ViewSyntax {
         &mut self.view.syntax
     }
 

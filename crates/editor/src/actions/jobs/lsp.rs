@@ -199,7 +199,7 @@ impl KeepInTouch for LSP {
                     // Send all buffers of this filetype
                     let ids: Vec<BufferId> = editor.buffers().iter().map(|(id, _buf)| id).collect();
                     for id in ids {
-                        lsp::open_document(editor, id);
+                        let _ = lsp::open_document(editor, id);
                     }
                 }
                 Message::Response(response) => self.handle_response(editor, response),
@@ -238,7 +238,13 @@ impl LSP {
 
                 self.handle_result(editor, id, result);
             }
-            Response::Notification(_) => todo!(),
+            Response::Notification(notif) => match notif {
+                sanedit_lsp::NotificationResult::Diagnostics {
+                    path,
+                    version,
+                    diagnostics,
+                } => {}
+            },
         }
     }
 

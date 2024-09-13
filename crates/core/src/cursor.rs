@@ -116,6 +116,15 @@ impl Cursor {
 
         self.extend_to_include(other);
         self.shrink_to_range(other);
+
+        let unanchor = self
+            .anchor
+            .as_ref()
+            .map(|anc| self.pos == *anc)
+            .unwrap_or(false);
+        if unanchor {
+            self.unanchor();
+        }
     }
 
     /// Extend this cursor to cover the specified range.

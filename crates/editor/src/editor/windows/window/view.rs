@@ -6,7 +6,7 @@ use sanedit_core::{BufferRange, Char, Chars, DisplayOptions};
 use sanedit_messages::redraw::{Point, Size};
 use sanedit_syntax::SyntaxParseResult;
 
-use crate::editor::buffers::Buffer;
+use crate::editor::buffers::{Buffer, BufferId};
 use crate::editor::themes::DEFAULT_THEME;
 
 #[derive(Debug, Clone)]
@@ -63,6 +63,43 @@ impl From<Char> for Cell {
     }
 }
 
+#[derive(Debug, Default)]
+pub(crate) struct ViewSyntax {
+    parse: SyntaxParseResult,
+    total_changes_made: u32,
+    bid: BufferId,
+}
+
+impl ViewSyntax {
+    pub fn new(bid: BufferId, parse: SyntaxParseResult, total: u32) -> ViewSyntax {
+        ViewSyntax {
+            parse,
+            total_changes_made: total,
+            bid,
+        }
+    }
+
+    pub fn total_changes_made(&self) -> u32 {
+        self.total_changes_made
+    }
+
+    pub fn parsed_range(&self) -> BufferRange {
+        self.parse.buffer_range.clone()
+    }
+
+    pub fn buffer_id(&self) -> BufferId {
+        self.bid
+    }
+
+    pub fn spans(&self) -> &Vec<sanedit_syntax::Span> {
+        &self.parse.highlights
+    }
+
+    pub fn spans_mut(&mut self) -> &mut Vec<sanedit_syntax::Span> {
+        &mut self.parse.highlights
+    }
+}
+
 /// View of the current window, used to draw the actual content sent to client
 /// as well as implement movements which operate on visual information.
 #[derive(Debug)]
@@ -81,7 +118,7 @@ pub(crate) struct View {
     pub theme: String,
     needs_redraw: bool,
 
-    pub(super) syntax: SyntaxParseResult,
+    pub(super) syntax: ViewSyntax,
 }
 
 impl View {
@@ -93,7 +130,7 @@ impl View {
             height,
             options: DisplayOptions::default(),
             needs_redraw: true,
-            syntax: SyntaxParseResult::default(),
+            syntax: ViewSyntax::default(),
             theme: DEFAULT_THEME.into(),
         }
     }
@@ -149,10 +186,6 @@ impl View {
             let chars = Chars::new(&grapheme, col, &self.options);
             let ch_width: usize = chars.width();
             is_eol = chars.is_eol();
-            // if ch_width != chars.len() {
-            //     let s = String::from(&grapheme);
-            //     log::info!("Grapheme: {s:?}, width: {ch_width}, len: {}", chars.len());
-            // }
 
             // If we cannot fit this character, go to next line
             if col + ch_width > self.width {
@@ -168,13 +201,6 @@ impl View {
             for (i, ch) in chars.into_iter().enumerate() {
                 self.cells[line][col + i] = ch.into();
             }
-            // self.cells[line][col] = ch.into();
-
-            // Do not fill next characters
-            // if current character is larger than 1 cell
-            // for i in 1..ch_width {
-            //     self.cells[line][col + i] = Cell::Continue;
-            // }
 
             // Increment pos, col once we have written the character to grid
             col += ch_width;
@@ -461,7 +487,7 @@ impl View {
         self.needs_redraw = true;
     }
 
-    pub fn syntax(&self) -> &SyntaxParseResult {
+    pub fn syntax(&self) -> &ViewSyntax {
         &self.syntax
     }
 }

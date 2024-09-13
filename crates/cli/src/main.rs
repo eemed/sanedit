@@ -47,14 +47,18 @@ fn main() {
     if exists {
         log::info!("Connecting to existing socket..");
         // if socket already exists try to connect
-        if let Err(e) = connect(&socket) {
-            match e.kind() {
+        match UnixDomainSocketClient::connect(&socket) {
+            Ok(socket) => {
+                socket.run();
+                return;
+            }
+            Err(e) => match e.kind() {
                 io::ErrorKind::ConnectionRefused => {}
                 _ => {
                     log::error!("{e}");
                     return;
                 }
-            }
+            },
         }
     }
 
@@ -64,17 +68,16 @@ fn main() {
     let addrs = vec![Address::UnixDomainSocket(s)];
     let join = sanedit_editor::run_sync(addrs, start_opts);
     if let Some(join) = join {
-        if let Err(e) = connect(&socket) {
-            log::error!("{e}");
+        match UnixDomainSocketClient::connect(&socket) {
+            Ok(socket) => {
+                socket.run();
+            }
+            Err(e) => {
+                log::error!("{e}");
+            }
         }
         join.join().unwrap()
     }
 
     let _ = fs::remove_file(socket);
-}
-
-fn connect(socket: &Path) -> io::Result<()> {
-    let socket = UnixDomainSocketClient::connect(socket)?;
-    socket.run();
-    Ok(())
 }

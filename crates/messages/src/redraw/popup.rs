@@ -1,6 +1,7 @@
+use sanedit_core::Severity;
 use serde::{Deserialize, Serialize};
 
-use super::{Point, Redraw, Severity};
+use super::{Point, Redraw};
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
 pub enum PopupComponent {

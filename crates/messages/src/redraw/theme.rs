@@ -133,6 +133,7 @@ pub enum ThemeField {
     Keyword,
     Preproc,
 
+    Hint,
     Info,
     Warn,
     Error,
@@ -190,6 +191,7 @@ impl AsRef<str> for ThemeField {
             Symbols => "window.symbols",
             Match => "window.match",
 
+            Hint => "window.view.hint",
             Info => "window.view.info",
             Warn => "window.view.warn",
             Error => "window.view.error",

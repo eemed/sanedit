@@ -15,5 +15,5 @@ pub mod lsp_types {
 pub use client::{LSPClientParams, LSPClientSender};
 pub use request::{Change, Notification, Request, RequestKind};
 pub use response::{
-    CompletionItem, Diagnostic, NotificationResult, Reference, RequestResult, Response,
+    CompletionItem, LSPPosition, LSPRange, NotificationResult, Reference, RequestResult, Response,
 };

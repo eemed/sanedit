@@ -75,6 +75,7 @@ impl Drawable for Statusline {
 impl Drawable for StatusMessage {
     fn draw(&self, ctx: &UIContext, cells: &mut [&mut [CCell]]) {
         let field = match self.severity {
+            Severity::Hint => ThemeField::Hint,
             Severity::Info => ThemeField::Info,
             Severity::Warn => ThemeField::Warn,
             Severity::Error => ThemeField::Error,

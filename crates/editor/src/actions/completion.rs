@@ -32,8 +32,8 @@ fn complete(editor: &mut Editor, id: ClientId) {
     win.completion = Completion::new(start, point);
 
     let opts: FxHashSet<MatchOption> = win
-        .syntax_result()
-        .highlights
+        .view_syntax()
+        .spans()
         .iter()
         .filter(|hl| hl.is_completion())
         .map(|hl| {

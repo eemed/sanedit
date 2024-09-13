@@ -6,6 +6,7 @@ edition.workspace = true
 [dependencies]
 sanedit-buffer = { path = "../buffer" }
 sanedit-utils = { path = "../utils" }
+sanedit-core = { path = "../core" }
 
 tokio = { workspace = true, features = ["full"] }
 serde = { workspace = true, features = ["derive"] }

@@ -24,7 +24,7 @@ pub(crate) fn prevent_flicker(editor: &mut Editor, id: ClientId) {
 
     for client in clients {
         let (win, buf) = editor.win_buf_mut(client);
-        let old = win.syntax_result();
+        let old = win.view_syntax();
         let Some(edit) = buf.last_edit() else {
             return;
         };
@@ -32,7 +32,7 @@ pub(crate) fn prevent_flicker(editor: &mut Editor, id: ClientId) {
         let mut off = 0i128;
         let mut iter = edit.changes.iter().peekable();
 
-        old.highlights.retain_mut(|hl| {
+        old.spans_mut().retain_mut(|hl| {
             while let Some(next) = iter.peek() {
                 if next.end() <= hl.start() {
                     // Before highlight
@@ -71,16 +71,16 @@ pub(crate) fn prevent_flicker(editor: &mut Editor, id: ClientId) {
 pub(crate) fn reparse_view(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     win.redraw_view(buf);
-    // let bid = buf.id;
-    // let total = buf.total_changes_made();
+    let bid = buf.id;
+    let total = buf.total_changes_made();
 
     let view = win.view().range();
-    let old = win.syntax_result();
+    let old = win.view_syntax();
 
-    // if old.bid != bid || old.total_changes_made != total ||
-
-    // TODO
-    if !old.buffer_range.includes(&view) {
+    if old.buffer_id() != bid
+        || old.total_changes_made() != total
+        || !old.parsed_range().includes(&view)
+    {
         parse_syntax.execute(editor, id);
     }
 }

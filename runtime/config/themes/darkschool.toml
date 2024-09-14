@@ -8,11 +8,9 @@ symbols = ",#444444,"
 match = "#B5BD68,#222222,"
 
 [colors.window.cursor]
-default = "#a4ac86,#000000,"
+default = "#d7875f,#000000,"
 selection = "#81A2BE,#222222,"
-
-# selection = "#3F3B31,#F8C75B,"
-primary = "#C0A886,,"
+primary = "#81A2BE,#222222,"
 
 [colors.window.view]
 hint = "#33334a,#66bbe9,"

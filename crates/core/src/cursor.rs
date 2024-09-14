@@ -53,17 +53,23 @@ impl Cursor {
         self.col = Some(col);
     }
 
-    pub fn anchor(&mut self) {
+    pub fn start_selection(&mut self) {
         self.anchor = Some(self.pos);
     }
 
-    pub fn unanchor(&mut self) {
+    pub fn stop_selection(&mut self) {
         self.anchor = None;
     }
 
-    pub fn select(&mut self, range: Range<u64>) {
-        self.anchor = Some(range.start);
-        self.pos = range.end;
+    pub fn select(&mut self, range: &Range<u64>) {
+        let is_select = self.anchor.is_some();
+        if is_select {
+            self.extend_to_include(range);
+            self.contain_to(range);
+        } else {
+            self.anchor = Some(range.start);
+            self.pos = range.end;
+        }
     }
 
     pub fn selection(&self) -> Option<Range<u64>> {
@@ -83,11 +89,11 @@ impl Cursor {
 
     pub fn take_selection(&mut self) -> Option<Range<u64>> {
         let sel = self.selection()?;
-        self.unanchor();
+        self.stop_selection();
         Some(sel)
     }
 
-    pub fn shrink_to_range(&mut self, range: &Range<u64>) {
+    pub fn contain_to(&mut self, range: &Range<u64>) {
         if self.pos > range.end {
             self.pos = range.end
         }
@@ -115,7 +121,7 @@ impl Cursor {
         }
 
         self.extend_to_include(other);
-        self.shrink_to_range(other);
+        self.contain_to(other);
 
         let unanchor = self
             .anchor
@@ -123,7 +129,7 @@ impl Cursor {
             .map(|anc| self.pos == *anc)
             .unwrap_or(false);
         if unanchor {
-            self.unanchor();
+            self.stop_selection();
         }
     }
 

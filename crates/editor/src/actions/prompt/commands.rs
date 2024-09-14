@@ -55,6 +55,9 @@ pub(crate) const COMMANDS: &[Action] = &[
     cursors::new_to_next_search_match,
     cursors::new_to_all_search_matches,
     cursors::swap_selection_dir,
+    cursors::next,
+    cursors::prev,
+    cursors::remove,
 
     view::scroll_up,
     view::scroll_down,
@@ -85,6 +88,7 @@ pub(crate) const COMMANDS: &[Action] = &[
     lsp::references,
     lsp::code_action,
     lsp::rename,
+    lsp::show_diagnostics,
 
     popup::test,
     popup::close,

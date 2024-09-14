@@ -4,7 +4,7 @@ use sanedit_messages::redraw::{self, CursorShape, Style, Theme, ThemeField};
 
 use crate::editor::{
     buffers::Buffer,
-    windows::{Cell, Cursors, View},
+    windows::{Cell, Cursors, Focus, View},
 };
 
 use super::{DrawContext, EditorContext};
@@ -44,6 +44,7 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> redraw::Window {
         }
     }
 
+    let focus_on_win = win.focus() == Focus::Window;
     let cursors = win.cursors();
 
     draw_syntax(&mut grid, view, theme);
@@ -51,7 +52,7 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> redraw::Window {
     draw_end_of_buffer(&mut grid, view, theme);
     draw_trailing_whitespace(&mut grid, view, theme, buf);
     draw_search_highlights(&mut grid, &win.search.hl_matches, view, theme);
-    draw_secondary_cursors(&mut grid, cursors, view, theme);
+    draw_secondary_cursors(&mut grid, cursors, focus_on_win, view, theme);
     let cursor = draw_primary_cursor(&mut grid, cursors.primary(), view, theme);
 
     redraw::Window {
@@ -83,7 +84,6 @@ fn draw_diagnostics(
 
     for diag in diagnostics {
         let key = format!("{}{}", HL_PREFIX, diag.severity().as_ref());
-        log::info!("Draw: {diag:?}, key: {key}");
         let style = theme.get(key);
         draw_hl(grid, view, style, &diag.range());
     }
@@ -135,25 +135,35 @@ fn draw_search_highlights(
 fn draw_secondary_cursors(
     grid: &mut Vec<Vec<redraw::Cell>>,
     cursors: &Cursors,
+    focus_on_win: bool,
     view: &View,
     theme: &Theme,
 ) {
     for cursor in cursors.cursors() {
-        if cursor == cursors.primary() {
-            continue;
-        }
-
         if !view.contains(cursor.pos()) {
             continue;
         }
 
-        let _selection = cursor.selection();
         let (area, style) = match cursor.selection() {
             Some(s) => (s, theme.get(ThemeField::Selection)),
-            None => (
-                cursor.pos()..cursor.pos() + 1,
-                theme.get(ThemeField::Cursor),
-            ),
+            None => {
+                let range = cursor.pos()..cursor.pos() + 1;
+                let is_primary = cursor == cursors.primary();
+
+                // Assume client draws the primary cursor here instead of us if
+                // window is focused
+                if is_primary && focus_on_win {
+                    continue;
+                }
+
+                let style = if is_primary {
+                    theme.get(ThemeField::PrimaryCursor)
+                } else {
+                    theme.get(ThemeField::Cursor)
+                };
+
+                (range, style)
+            }
         };
         draw_hl(grid, view, style, &area);
     }

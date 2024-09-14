@@ -37,9 +37,7 @@ fn run_project(editor: &mut Editor, id: ClientId) {
 fn copy(editor: &mut Editor, id: ClientId) {
     editor.copy_to_clipboard(id);
     let (win, buf) = editor.win_buf_mut(id);
-    for cursor in win.cursors.cursors_mut() {
-        cursor.unanchor();
-    }
+    win.cursors.stop_selection();
 }
 
 #[action("Paste from clipboard")]

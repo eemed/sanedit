@@ -17,7 +17,7 @@ fn select_impl(editor: &mut Editor, id: ClientId, start: &str, end: &str, includ
 
         if let Some(range) = range {
             if !range.is_empty() {
-                cursor.select(range);
+                cursor.select(&range);
                 changed = true;
             }
         }
@@ -81,7 +81,7 @@ fn select_word(editor: &mut Editor, id: ClientId) {
 
         if let Some(range) = range {
             if !range.is_empty() {
-                cursor.select(range);
+                cursor.select(&range);
                 changed = true;
             }
         }

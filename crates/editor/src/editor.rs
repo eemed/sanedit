@@ -577,7 +577,7 @@ impl Editor {
     pub fn copy_to_clipboard(&mut self, id: ClientId) {
         let (win, buf) = self.win_buf_mut(id);
         let mut lines = vec![];
-        for cursor in win.cursors.cursors_mut() {
+        for cursor in win.cursors.cursors() {
             if let Some(sel) = cursor.selection() {
                 let text = String::from(&buf.slice(sel));
                 lines.push(text);

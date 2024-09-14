@@ -63,6 +63,8 @@ pub(crate) struct Window {
     last_buf: Option<(BufferId, SnapshotData)>,
     message: Option<StatusMessage>,
     view: View,
+
+    /// Jump to primary cursor on next buffer changed event
     jump_to_primary_cursor: bool,
 
     pub shell_executor: Executor,
@@ -256,7 +258,7 @@ impl Window {
 
     pub fn ensure_cursor_on_grapheme_boundary(&mut self, buf: &Buffer) {
         // Ensure cursor in buf range
-        self.cursors.shrink_cursor_to_range(0..buf.len());
+        self.cursors.contain_to(0..buf.len());
 
         // Ensure cursor in buf grapheme boundary
         let primary = self.cursors.primary_mut();
@@ -276,12 +278,8 @@ impl Window {
     /// Called when buffer is changed in the background and we should correct
     /// this window.
     pub fn on_buffer_changed(&mut self, buf: &Buffer) {
-        // Remove cursors
-        // self.cursors.remove_secondary_cursors();
-        // self.cursors.primary_mut().unanchor();
-
-        // self.ensure_cursor_on_grapheme_boundary(buf);
         self.move_cursors_according_to_last_change(buf);
+        self.cursors.merge_overlapping();
 
         if self.jump_to_primary_cursor {
             self.view_to_cursor(buf);
@@ -331,7 +329,7 @@ impl Window {
             self.bid
         );
 
-        self.cursors.shrink_cursor_to_range(0..buf.len());
+        self.cursors.contain_to(0..buf.len());
         // let primary_pos = self.cursors.primary().pos();
         self.view.redraw(buf);
         // self.view.view_to(primary_pos, buf);
@@ -377,11 +375,7 @@ impl Window {
         }
 
         self.remove(buf, &selections)?;
-
-        // Stop selection
-        for cursor in self.cursors.cursors_mut() {
-            cursor.unanchor();
-        }
+        self.cursors.stop_selection();
 
         Ok(true)
     }
@@ -509,7 +503,7 @@ impl Window {
         let ranges: Vec<BufferRange> = {
             let mut ranges = vec![];
 
-            for cursor in self.cursors.cursors_mut() {
+            for cursor in self.cursors.cursors() {
                 let cpos = cursor.pos();
                 let pos = prev_grapheme_boundary(&buf.slice(..), cpos);
                 ranges.push(pos..cpos);
@@ -520,7 +514,6 @@ impl Window {
 
         self.remove(buf, &ranges)?;
 
-        // self.invalidate();
         self.jump_to_primary_cursor = true;
         Ok(())
     }

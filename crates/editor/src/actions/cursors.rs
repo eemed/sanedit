@@ -97,10 +97,10 @@ pub(crate) fn new_to_point(editor: &mut Editor, id: ClientId, point: Point) {
 
 pub(crate) fn goto_position(editor: &mut Editor, id: ClientId, point: Point) {
     let (win, _buf) = editor.win_buf_mut(id);
-    win.cursors.remove_secondary_cursors();
+    win.cursors.remove_except_primary();
     if let Some(pos) = pos_at_point(win, point) {
         let primary = win.cursors.primary_mut();
-        primary.unanchor();
+        primary.stop_selection();
         primary.goto(pos);
         hooks::run(editor, id, Hook::CursorMoved);
     }
@@ -115,10 +115,10 @@ fn start_selection(editor: &mut Editor, id: ClientId) {
 #[action("Keep only primary cursor")]
 fn keep_only_primary(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
-    win.cursors.remove_secondary_cursors();
+    win.cursors.remove_except_primary();
 
     let (win, _buf) = editor.win_buf_mut(id);
-    win.cursors.primary_mut().unanchor();
+    win.cursors.primary_mut().stop_selection();
 }
 
 #[action("Swap cursor in selection")]
@@ -157,9 +157,7 @@ fn select_line(editor: &mut Editor, id: ClientId) {
             continue;
         }
 
-        cursor.goto(start);
-        cursor.anchor();
-        cursor.goto(end);
+        cursor.select(&(start..end));
         cursor.set_column(usize::MAX);
     }
 }

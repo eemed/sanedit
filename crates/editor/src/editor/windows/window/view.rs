@@ -1,4 +1,5 @@
 use std::collections::VecDeque;
+use std::ops::Range;
 
 use sanedit_buffer::utf8::EndOfLine;
 use sanedit_core::movement::prev_line_start;
@@ -337,6 +338,21 @@ impl View {
         }
 
         last
+    }
+
+    /// Return bufferrange of line in view
+    pub fn line_at_pos(&self, pos: u64) -> Option<BufferRange> {
+        let mut cur = self.range.start;
+        for y in 0..self.cells.len() {
+            let llen = self.line_len_in_buffer(y);
+
+            if cur <= pos && pos < cur + llen {
+                return Some(cur..cur + llen);
+            }
+
+            cur += llen;
+        }
+        None
     }
 
     pub fn pos_at_point(&self, point: Point) -> Option<u64> {

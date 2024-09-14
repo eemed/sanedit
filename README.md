@@ -2,9 +2,9 @@
 
 ## TODO
 
-* LSP
-    - Diagnostics: Somehow to show them
-        - Not done at all
+* Fix popup, multiple? or style them?
+    - Probably allow multiple
+    - use actual popup in window not statusmessage
 
 
 * LSP stuff menu

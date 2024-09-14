@@ -171,7 +171,7 @@ impl Changes {
                 .take_while(|change| change.start() <= range.start)
                 .map(|change| change.text().len() as u64)
                 .sum();
-            log::debug!("+{add} -{removed}");
+            // log::debug!("+{add} -{removed}");
 
             let removed_post: u64 = self
                 .changes
@@ -193,16 +193,16 @@ impl Changes {
                 .take_while(|change| change.start() <= range.end)
                 .map(|change| change.text().len() as u64)
                 .sum();
-            log::debug!("post+{add_post} post-{removed_post}");
+            // log::debug!("post+{add_post} post-{removed_post}");
 
             range.start += add;
             range.start -= removed;
             range.end += add_post;
             range.end -= removed_post;
 
-            log::debug!("Cursor: {cursor:?} to {range:?}");
+            // log::debug!("Cursor: {cursor:?} to {range:?}");
             cursor.to_range(&range);
-            log::debug!("Cursor: {cursor:?}");
+            // log::debug!("Cursor: {cursor:?}");
         }
     }
 

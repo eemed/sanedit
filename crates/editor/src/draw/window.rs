@@ -9,7 +9,8 @@ use crate::editor::{
 
 use super::{DrawContext, EditorContext};
 use sanedit_core::{
-    grapheme_category, BufferRange, Cursor, GraphemeCategory, RangeUtils as _, Replacement,
+    grapheme_category, BufferRange, Cursor, Diagnostic, GraphemeCategory, RangeUtils as _,
+    Replacement,
 };
 
 pub(crate) fn draw(ctx: &mut DrawContext) -> redraw::Window {
@@ -46,6 +47,7 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> redraw::Window {
     let cursors = win.cursors();
 
     draw_syntax(&mut grid, view, theme);
+    draw_diagnostics(&mut grid, &buf.diagnostics, view, theme);
     draw_end_of_buffer(&mut grid, view, theme);
     draw_trailing_whitespace(&mut grid, view, theme, buf);
     draw_search_highlights(&mut grid, &win.search.hl_matches, view, theme);
@@ -61,20 +63,29 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> redraw::Window {
 fn draw_syntax(grid: &mut Vec<Vec<redraw::Cell>>, view: &View, theme: &Theme) {
     const HL_PREFIX: &str = "window.view.";
     let syntax = view.syntax();
-    let vrange = view.range();
 
     for span in syntax.spans() {
         if !span.highlight() {
             continue;
         }
-
-        let srange = span.range();
-        if !vrange.overlaps(&srange) {
-            continue;
-        }
         let style = theme.get(HL_PREFIX.to_owned() + span.name());
+        draw_hl(grid, view, style, &span.range());
+    }
+}
 
-        draw_hl(grid, view, style, &srange);
+fn draw_diagnostics(
+    grid: &mut Vec<Vec<redraw::Cell>>,
+    diagnostics: &[Diagnostic],
+    view: &View,
+    theme: &Theme,
+) {
+    const HL_PREFIX: &str = "window.view.";
+
+    for diag in diagnostics {
+        let key = format!("{}{}", HL_PREFIX, diag.severity().as_ref());
+        log::info!("Draw: {diag:?}, key: {key}");
+        let style = theme.get(key);
+        draw_hl(grid, view, style, &diag.range());
     }
 }
 

@@ -5,11 +5,23 @@ pub type BufferRange = Range<u64>;
 
 pub trait BufferRangeExt {
     fn len(&self) -> u64;
+    fn forward(&mut self, off: u64);
+    fn backward(&mut self, off: u64);
 }
 
 impl BufferRangeExt for BufferRange {
     fn len(&self) -> u64 {
         self.end - self.start
+    }
+
+    fn forward(&mut self, off: u64) {
+        self.start += off;
+        self.end += off;
+    }
+
+    fn backward(&mut self, off: u64) {
+        self.start -= off;
+        self.end -= off;
     }
 }
 

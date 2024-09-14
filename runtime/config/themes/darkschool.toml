@@ -8,15 +8,17 @@ symbols = ",#444444,"
 match = "#B5BD68,#222222,"
 
 [colors.window.cursor]
-default = "#a4ac86,,"
+default = "#a4ac86,#000000,"
 selection = "#81A2BE,#222222,"
+
+# selection = "#3F3B31,#F8C75B,"
 primary = "#C0A886,,"
 
 [colors.window.view]
-hint = "#00917e,#000000,"
-info = "#00917e,#000000,"
-warn = "#ff8c5a,#000000,"
-error = "#c0564a,#ffffff,"
+hint = "#33334a,#66bbe9,"
+info = "#33334a,#66bbe9,"
+warn = "#3F3B31,#F8C75B,"
+error = "#3E3332,#E97866,"
 
 constant = ",#7AA6DA,"
 string =  ",#7AA6DA,"

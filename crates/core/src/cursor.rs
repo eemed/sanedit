@@ -7,11 +7,11 @@ pub struct Cursor {
     /// Position in buffer
     pos: u64,
 
-    /// keeps track of the wanted column for cursor, used if moving lines
-    col: Option<usize>,
-
     /// Selection anchor. Selected range is formed from this position and the current `pos`
     anchor: Option<u64>,
+
+    /// keeps track of the wanted column for cursor, used if moving lines
+    col: Option<usize>,
 }
 
 impl Cursor {

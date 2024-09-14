@@ -25,10 +25,10 @@ use crate::{
     },
 };
 use sanedit_buffer::{PieceTree, PieceTreeSlice};
-use sanedit_core::{Change, Changes, Filetype, Group, Item};
+use sanedit_core::{Change, Changes, Diagnostic, Filetype, Group, Item};
 use sanedit_lsp::{
     lsp_types::{self, CodeAction, Position},
-    CompletionItem, LSPClientParams, LSPClientSender, Notification, Reference, Request,
+    CompletionItem, LSPClientParams, LSPClientSender, LSPRange, Notification, Reference, Request,
     RequestKind, RequestResult, Response,
 };
 
@@ -243,7 +243,7 @@ impl LSP {
                     path,
                     version,
                     diagnostics,
-                } => {}
+                } => handle_diagnostics(editor, self.client_id, path, version, diagnostics),
             },
         }
     }
@@ -325,6 +325,47 @@ fn complete(
         .build();
 
     editor.job_broker.request(job);
+}
+
+fn handle_diagnostics(
+    editor: &mut Editor,
+    id: ClientId,
+    path: PathBuf,
+    version: Option<i32>,
+    diags: Vec<LSPRange<Diagnostic>>,
+) {
+    let Some(bid) = editor.buffers().find(&path) else {
+        return;
+    };
+    let buf = editor.buffers().get(bid).unwrap();
+
+    // Ensure not changed
+    if let Some(version) = version {
+        if buf.total_changes_made() != version as u32 {
+            return;
+        }
+    }
+
+    let Some(ft) = buf.filetype.clone() else {
+        return;
+    };
+    let Some(enc) = editor
+        .language_servers
+        .get(&ft)
+        .map(|x| x.position_encoding())
+    else {
+        return;
+    };
+
+    log::info!("Diagnostics for {bid:?}");
+    let buf = editor.buffers_mut().get_mut(bid).unwrap();
+    buf.diagnostics.clear();
+
+    for ldiag in diags {
+        let slice = buf.slice(..);
+        let diag = ldiag.decode(&slice, &enc);
+        buf.diagnostics.push(diag);
+    }
 }
 
 fn code_action(editor: &mut Editor, id: ClientId, actions: Vec<CodeAction>) {

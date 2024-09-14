@@ -20,4 +20,5 @@ rayon.workspace = true
 rand.workspace = true
 dirs.workspace = true
 log.workspace = true
-
+strum.workspace = true
+strum_macros.workspace = true

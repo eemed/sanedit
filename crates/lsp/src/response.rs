@@ -82,8 +82,8 @@ pub struct LSPPosition<T> {
 }
 
 impl LSPRange<Diagnostic> {
-    fn decode(
-        &mut self,
+    pub fn decode(
+        &self,
         slice: &PieceTreeSlice,
         enc: &lsp_types::PositionEncodingKind,
     ) -> Diagnostic {

@@ -1,8 +1,9 @@
-use sanedit_messages::redraw::{Point, Popup, ThemeField};
+use sanedit_messages::redraw::{Point, Popup, Severity, ThemeField};
 
 use crate::ui::UIContext;
 
 use super::{
+    border::{draw_border, draw_side_border, Border},
     ccell::{clear_all, into_cells_with_style, size, CCell},
     drawable::{DrawCursor, Drawable},
     item::GridItem,
@@ -27,13 +28,20 @@ pub(crate) fn open_popup(screen: Rect, win: Rect, popup: Popup) -> GridItem<Popu
 pub(crate) fn below(screen: &Rect, win: &Rect, popup: &Popup) -> Rect {
     let Point { mut x, mut y } = popup.point + win.position();
     let width = popup
-        .lines
+        .messages
         .iter()
-        .map(|l| l.len())
+        .map(|msg| msg.text.lines().map(|line| line.len() + 2).max())
+        .flatten()
         .max()
         .unwrap_or(0)
         .min(screen.width);
-    let height = popup.lines.len().min(screen.height);
+    let height = popup
+        .messages
+        .iter()
+        .map(|msg| msg.text.lines().count())
+        .sum::<usize>()
+        .min(screen.height)
+        + popup.messages.len().saturating_sub(1);
 
     if y + height < screen.height {
         y += 1;
@@ -50,13 +58,20 @@ pub(crate) fn below(screen: &Rect, win: &Rect, popup: &Popup) -> Rect {
 pub(crate) fn above(screen: &Rect, win: &Rect, popup: &Popup) -> Rect {
     let Point { mut x, mut y } = popup.point + win.position();
     let width = popup
-        .lines
+        .messages
         .iter()
-        .map(|l| l.len())
+        .map(|msg| msg.text.lines().map(|line| line.len() + 2).max())
+        .flatten()
         .max()
         .unwrap_or(0)
         .min(screen.width);
-    let height = popup.lines.len().min(screen.height);
+    let height = popup
+        .messages
+        .iter()
+        .map(|msg| msg.text.lines().count())
+        .sum::<usize>()
+        .min(screen.height)
+        + popup.messages.len().saturating_sub(1);
     y = y.saturating_sub(height);
 
     if x + width >= screen.width {
@@ -72,37 +87,65 @@ pub(crate) fn above(screen: &Rect, win: &Rect, popup: &Popup) -> Rect {
 }
 
 impl Drawable for Popup {
-    fn draw(&self, ctx: &UIContext, cells: &mut [&mut [CCell]]) {
-        let wsize = size(cells);
+    fn draw(&self, ctx: &UIContext, mut cells: &mut [&mut [CCell]]) {
         let style = ctx.style(ThemeField::PopupDefault);
 
         clear_all(cells, style);
+        cells = draw_side_border(Border::Margin, style, cells);
+        let wsize = size(cells);
 
         let mut row = 0;
         let mut col = 0;
 
-        for line in &self.lines {
-            let lcells = into_cells_with_style(line.as_str(), style);
-            for cell in lcells {
-                if col == wsize.width {
-                    row += 1;
-                    col = 0;
+        for (i, msg) in self.messages.iter().enumerate() {
+            // Add popup message separators
+            if i != 0 {
+                let lcells = into_cells_with_style(&"─".repeat(wsize.width - 1), style);
+                lcells.into_iter().enumerate().for_each(|(i, cell)| {
+                    cells[row][i] = cell;
+                });
 
-                    if row == wsize.height {
-                        break;
-                    }
+                row += 1;
+
+                if row == wsize.height {
+                    break;
                 }
-
-                cells[row][col] = cell;
-                col += 1;
             }
 
-            // Line processed goto next
-            row += 1;
-            col = 0;
+            let mstyle = {
+                let field = match msg.severity {
+                    Some(Severity::Hint) => ThemeField::Hint,
+                    Some(Severity::Info) => ThemeField::Info,
+                    Some(Severity::Warn) => ThemeField::Warn,
+                    Some(Severity::Error) => ThemeField::Error,
+                    None => ThemeField::PopupDefault,
+                };
+                ctx.style(field)
+            };
+            // Add popup messages
+            for line in msg.text.lines() {
+                let lcells = into_cells_with_style(line, mstyle);
+                for cell in lcells {
+                    if col == wsize.width {
+                        row += 1;
+                        col = 0;
 
-            if row == wsize.height {
-                break;
+                        if row == wsize.height {
+                            break;
+                        }
+                    }
+
+                    cells[row][col] = cell;
+                    col += 1;
+                }
+
+                // Line processed goto next
+                row += 1;
+                col = 0;
+
+                if row == wsize.height {
+                    break;
+                }
             }
         }
     }

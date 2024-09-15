@@ -263,16 +263,11 @@ impl Item {
 
 impl PartialEq for Item {
     fn eq(&self, other: &Self) -> bool {
-        (
-            Reverse(self.line),
-            Reverse(self.line_absolute_offset),
-            &self.name,
-        )
-            .eq(&(
-                Reverse(other.line),
-                Reverse(other.line_absolute_offset),
-                &other.name,
-            ))
+        (self.line, self.line_absolute_offset, &self.name).eq(&(
+            other.line,
+            other.line_absolute_offset,
+            &other.name,
+        ))
     }
 }
 
@@ -280,31 +275,21 @@ impl Eq for Item {}
 
 impl PartialOrd for Item {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        (
-            Reverse(self.line),
-            Reverse(self.line_absolute_offset),
-            &self.name,
-        )
-            .partial_cmp(&(
-                Reverse(other.line),
-                Reverse(other.line_absolute_offset),
-                &other.name,
-            ))
+        (self.line, self.line_absolute_offset, &self.name).partial_cmp(&(
+            other.line,
+            other.line_absolute_offset,
+            &other.name,
+        ))
     }
 }
 
 impl Ord for Item {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        (
-            Reverse(self.line),
-            Reverse(self.line_absolute_offset),
-            &self.name,
-        )
-            .cmp(&(
-                Reverse(other.line),
-                Reverse(other.line_absolute_offset),
-                &other.name,
-            ))
+        (self.line, self.line_absolute_offset, &self.name).cmp(&(
+            other.line,
+            other.line_absolute_offset,
+            &other.name,
+        ))
     }
 }
 
@@ -372,7 +357,7 @@ impl<'a> Iterator for LocationIter<'a> {
         } = next
         {
             if *expanded {
-                for loc in items.iter() {
+                for loc in items.iter().rev() {
                     self.stack.push(LocationEntry {
                         loc: Either::Right(loc),
                         level: level + 1,

@@ -13,7 +13,7 @@ use std::{
 use anyhow::ensure;
 use anyhow::Result;
 use sanedit_buffer::{PieceTree, PieceTreeSlice, PieceTreeView};
-use sanedit_utils::key_type;
+use sanedit_utils::{key_type, sorted_vec::SortedVec};
 use thiserror::Error;
 
 use self::snapshots::Snapshots;
@@ -31,7 +31,7 @@ pub(crate) struct Buffer {
     pub(crate) filetype: Option<Filetype>,
     pub(crate) options: Options,
     pub(crate) read_only: bool,
-    pub(crate) diagnostics: Vec<Diagnostic>,
+    pub(crate) diagnostics: SortedVec<Diagnostic>,
 
     pt: PieceTree,
     /// Snapshots of the piecetree, used for undo
@@ -56,7 +56,7 @@ impl Buffer {
             id: BufferId::default(),
             filetype: None,
             read_only: false,
-            diagnostics: vec![],
+            diagnostics: SortedVec::new(),
             pt,
             is_modified: false,
             snapshots: Snapshots::new(snapshot),
@@ -84,7 +84,7 @@ impl Buffer {
         Ok(Buffer {
             id: BufferId::default(),
             read_only: file.read_only(),
-            diagnostics: vec![],
+            diagnostics: SortedVec::new(),
             pt,
             filetype: file.filetype().cloned(),
             is_modified: false,
@@ -114,7 +114,7 @@ impl Buffer {
         let snapshot = pt.view();
         Ok(Buffer {
             id: BufferId::default(),
-            diagnostics: vec![],
+            diagnostics: SortedVec::new(),
             pt,
             filetype: None,
             read_only: false,

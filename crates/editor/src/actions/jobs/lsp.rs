@@ -33,7 +33,7 @@ use sanedit_lsp::{
 };
 
 use anyhow::Result;
-use sanedit_messages::redraw::{Severity, StatusMessage};
+use sanedit_messages::redraw::{PopupMessage, Severity, StatusMessage};
 use sanedit_server::{ClientId, Job, JobContext, JobResult};
 
 use super::MatcherJob;
@@ -252,9 +252,9 @@ impl LSP {
         match result {
             RequestResult::Hover { text, position } => {
                 let (win, buf) = editor.win_buf_mut(id);
-                win.popup = Some(StatusMessage {
-                    severity: Severity::Info,
-                    message: text,
+                win.push_popup(PopupMessage {
+                    severity: None,
+                    text,
                 });
             }
             RequestResult::GotoDefinition { path, position } => {

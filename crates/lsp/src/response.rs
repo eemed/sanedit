@@ -1,6 +1,6 @@
 use std::{collections::BTreeMap, path::PathBuf};
 
-use sanedit_buffer::{PieceTreeSlice, PieceTreeView};
+use sanedit_buffer::PieceTreeSlice;
 use sanedit_core::{BufferRange, Diagnostic};
 
 #[derive(Debug, Clone)]

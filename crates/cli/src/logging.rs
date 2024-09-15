@@ -14,25 +14,25 @@ pub fn setup() {
         let backtrace = std::backtrace::Backtrace::capture();
         log::error!("{backtrace}");
 
-        // let (filename, line) = panic_info
-        //     .location()
-        //     .map(|loc| (loc.file(), loc.line()))
-        //     .unwrap_or(("<unknown>", 0));
+        let (filename, line) = panic_info
+            .location()
+            .map(|loc| (loc.file(), loc.line()))
+            .unwrap_or(("<unknown>", 0));
 
-        // let cause = panic_info
-        //     .payload()
-        //     .downcast_ref::<String>()
-        //     .map(String::deref);
+        let cause = panic_info
+            .payload()
+            .downcast_ref::<String>()
+            .map(String::deref);
 
-        // let cause = cause.unwrap_or_else(|| {
-        //     panic_info
-        //         .payload()
-        //         .downcast_ref::<&str>()
-        //         .map(|s| *s)
-        //         .unwrap_or("<cause unknown>")
-        // });
+        let cause = cause.unwrap_or_else(|| {
+            panic_info
+                .payload()
+                .downcast_ref::<&str>()
+                .map(|s| *s)
+                .unwrap_or("<cause unknown>")
+        });
 
-        // log::error!("A panic occurred at {}:{}: {}", filename, line, cause);
+        log::error!("A panic occurred at {}:{}: {}", filename, line, cause);
     }));
 
     let file_appender = FileAppender::builder()

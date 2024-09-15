@@ -12,9 +12,14 @@ pub enum PopupComponent {
 /// A read only window that pops up at a position.
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
 pub struct Popup {
-    pub severity: Severity,
     pub point: Point,
-    pub lines: Vec<String>,
+    pub messages: Vec<PopupMessage>,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
+pub struct PopupMessage {
+    pub severity: Option<Severity>,
+    pub text: String,
 }
 
 impl From<Popup> for Redraw {

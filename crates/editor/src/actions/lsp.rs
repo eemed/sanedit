@@ -1,7 +1,7 @@
 use anyhow::{anyhow, bail, Result};
 use sanedit_buffer::PieceTreeSlice;
 use sanedit_core::{BufferRange, ChangesKind, RangeUtils as _, Severity};
-use sanedit_messages::redraw::{Popup, StatusMessage};
+use sanedit_messages::redraw::{Popup, PopupMessage, StatusMessage};
 use std::path::{Path, PathBuf};
 use thiserror::Error;
 
@@ -333,24 +333,16 @@ pub(crate) fn show_diagnostics(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     let view = win.view();
     let pos = win.cursors.primary().pos();
-    let mut messages = vec![];
 
     if let Some(range) = view.line_at_pos(pos) {
-        for diag in &buf.diagnostics {
+        for diag in buf.diagnostics.iter() {
             if range.overlaps(&diag.range()) {
-                messages.push(diag.description().to_string());
+                win.push_popup(PopupMessage {
+                    severity: Some(*diag.severity()),
+                    text: diag.description().to_string(),
+                });
             }
         }
-    }
-
-    if !messages.is_empty() {
-        let message = messages.join("\n\n");
-        // let point = view.point_at_pos(pos).unwrap();
-        // TODO severity
-        win.popup = Some(StatusMessage {
-            severity: Severity::Info,
-            message,
-        });
     }
 }
 

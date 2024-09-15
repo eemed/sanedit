@@ -68,6 +68,39 @@ impl Border {
     }
 }
 
+pub(crate) fn draw_side_border_with_style<'a, 'b, F: Fn(usize, usize) -> Style>(
+    border: Border,
+    get_style: F,
+    cells: &'a mut [&'b mut [CCell]],
+) -> &'a mut [&'b mut [CCell]] {
+    let size = size(cells);
+
+    if size.width <= 2 && size.height <= 2 {
+        return cells;
+    }
+
+    // Sides
+    for i in 1..size.height {
+        cells[i][0] = Cell {
+            text: border.left().into(),
+            style: get_style(i, 0),
+        }
+        .into();
+        cells[i][size.width - 1] = Cell {
+            text: border.right().into(),
+            style: get_style(i, size.width),
+        }
+        .into();
+    }
+
+    for i in 0..cells.len() {
+        let line = mem::replace(&mut cells[i], &mut []);
+        let width = line.len();
+        cells[i] = &mut line[1..width - 1];
+    }
+    cells
+}
+
 pub(crate) fn draw_border_with_style<'a, 'b, F: Fn(usize, usize) -> Style>(
     border: Border,
     get_style: F,
@@ -148,4 +181,12 @@ pub(crate) fn draw_border<'a, 'b>(
     cells: &'a mut [&'b mut [CCell]],
 ) -> &'a mut [&'b mut [CCell]] {
     draw_border_with_style(border, |_, _| style, cells)
+}
+
+pub(crate) fn draw_side_border<'a, 'b>(
+    border: Border,
+    style: Style,
+    cells: &'a mut [&'b mut [CCell]],
+) -> &'a mut [&'b mut [CCell]] {
+    draw_side_border_with_style(border, |_, _| style, cells)
 }

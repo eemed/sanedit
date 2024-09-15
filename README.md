@@ -2,11 +2,6 @@
 
 ## TODO
 
-* Fix popup, multiple? or style them?
-    - Probably allow multiple
-    - use actual popup in window not statusmessage
-
-
 * LSP stuff menu
     * Restart server
     * Stop server

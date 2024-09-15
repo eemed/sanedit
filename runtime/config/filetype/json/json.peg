@@ -1,1 +1,1 @@
-../../../../crates/parser/pegs/json.peg
+../../../../crates/syntax/pegs/json.peg

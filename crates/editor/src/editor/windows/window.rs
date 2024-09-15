@@ -25,7 +25,7 @@ use sanedit_core::{
     selection_line_starts, width_at_pos, BufferRange, BufferRangeExt as _, Change, Changes, Cursor,
     DisplayOptions, GraphemeCategory, Locations,
 };
-use sanedit_messages::redraw::{Severity, Size, StatusMessage};
+use sanedit_messages::redraw::{Popup, PopupMessage, Severity, Size, StatusMessage};
 
 use crate::editor::buffers::{Buffer, BufferId, SnapshotData};
 
@@ -75,7 +75,7 @@ pub(crate) struct Window {
     pub options: Options,
     pub ft_view: FiletreeView,
     pub locations: Locations,
-    pub popup: Option<StatusMessage>,
+    popup: Option<Popup>,
 }
 
 impl Window {
@@ -97,6 +97,31 @@ impl Window {
             locations: Locations::default(),
             popup: None,
         }
+    }
+
+    pub fn clear_popup(&mut self) {
+        self.popup = None;
+    }
+
+    /// Push a new popup message
+    pub fn push_popup(&mut self, msg: PopupMessage) {
+        match self.popup.as_mut() {
+            Some(popup) => {
+                popup.messages.push(msg);
+            }
+            None => {
+                let pos = self.cursors.primary().pos();
+                let point = self.view.point_at_pos(pos).unwrap_or_default();
+                self.popup = Some(Popup {
+                    point,
+                    messages: vec![msg],
+                });
+            }
+        }
+    }
+
+    pub fn popup(&self) -> Option<&Popup> {
+        self.popup.as_ref()
     }
 
     pub fn focus(&self) -> Focus {

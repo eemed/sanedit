@@ -26,7 +26,6 @@ use sanedit_core::{
     DisplayOptions, GraphemeCategory, Locations,
 };
 use sanedit_messages::redraw::{Severity, Size, StatusMessage};
-use sanedit_syntax::SyntaxParseResult;
 
 use crate::editor::buffers::{Buffer, BufferId, SnapshotData};
 

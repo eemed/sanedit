@@ -1,13 +1,12 @@
 use std::collections::VecDeque;
-use std::ops::Range;
 
 use sanedit_buffer::utf8::EndOfLine;
 use sanedit_core::movement::prev_line_start;
 use sanedit_core::{BufferRange, Char, Chars, DisplayOptions};
 use sanedit_messages::redraw::{Point, Size};
-use sanedit_syntax::SyntaxParseResult;
 
 use crate::editor::buffers::{Buffer, BufferId};
+use crate::editor::syntax::{Span, SyntaxResult};
 use crate::editor::themes::DEFAULT_THEME;
 
 #[derive(Debug, Clone)]
@@ -66,13 +65,13 @@ impl From<Char> for Cell {
 
 #[derive(Debug, Default)]
 pub(crate) struct ViewSyntax {
-    parse: SyntaxParseResult,
+    parse: SyntaxResult,
     total_changes_made: u32,
     bid: BufferId,
 }
 
 impl ViewSyntax {
-    pub fn new(bid: BufferId, parse: SyntaxParseResult, total: u32) -> ViewSyntax {
+    pub fn new(bid: BufferId, parse: SyntaxResult, total: u32) -> ViewSyntax {
         ViewSyntax {
             parse,
             total_changes_made: total,
@@ -92,11 +91,11 @@ impl ViewSyntax {
         self.bid
     }
 
-    pub fn spans(&self) -> &Vec<sanedit_syntax::Span> {
+    pub fn spans(&self) -> &Vec<Span> {
         &self.parse.highlights
     }
 
-    pub fn spans_mut(&mut self) -> &mut Vec<sanedit_syntax::Span> {
+    pub fn spans_mut(&mut self) -> &mut Vec<Span> {
         &mut self.parse.highlights
     }
 }

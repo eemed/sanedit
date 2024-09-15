@@ -6,6 +6,7 @@ pub(crate) mod hooks;
 pub(crate) mod job_broker;
 pub(crate) mod keymap;
 pub(crate) mod options;
+pub(crate) mod syntax;
 pub(crate) mod themes;
 pub(crate) mod windows;
 
@@ -26,7 +27,6 @@ use sanedit_server::ClientId;
 use sanedit_server::FromJobs;
 use sanedit_server::StartOptions;
 use sanedit_server::ToEditor;
-use sanedit_syntax::Syntaxes;
 
 use std::env;
 use std::mem;
@@ -66,6 +66,7 @@ use self::keymap::KeymapKind;
 use self::options::Options;
 
 use self::filetree::Filetree;
+use self::syntax::Syntaxes;
 use self::themes::Themes;
 use self::windows::History;
 use self::windows::HistoryKind;

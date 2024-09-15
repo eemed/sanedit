@@ -3,9 +3,14 @@ use std::any::Any;
 use sanedit_buffer::PieceTreeView;
 use sanedit_core::BufferRange;
 
-use crate::editor::{buffers::BufferId, job_broker::KeepInTouch, windows::ViewSyntax, Editor};
+use crate::editor::{
+    buffers::BufferId,
+    job_broker::KeepInTouch,
+    syntax::{Syntax, SyntaxResult},
+    windows::ViewSyntax,
+    Editor,
+};
 use sanedit_server::{CPUJob, ClientId, Job, JobContext, JobResult, Kill};
-use sanedit_syntax::{Syntax, SyntaxParseResult};
 
 #[derive(Clone)]
 pub(crate) struct SyntaxParser {
@@ -53,7 +58,7 @@ impl KeepInTouch for SyntaxParser {
     }
 
     fn on_message(&self, editor: &mut Editor, msg: Box<dyn Any>) {
-        if let Ok(output) = msg.downcast::<SyntaxParseResult>() {
+        if let Ok(output) = msg.downcast::<SyntaxResult>() {
             let (win, _buf) = editor.win_buf_mut(self.client_id);
             *win.view_syntax() = ViewSyntax::new(self.bid, *output, self.total_changes_made);
         }

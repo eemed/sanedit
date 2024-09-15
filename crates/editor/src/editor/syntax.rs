@@ -10,10 +10,11 @@ use sanedit_buffer::PieceTreeView;
 use sanedit_core::{BufferRange, Filetype};
 use sanedit_server::Kill;
 
-use crate::Annotation;
+use std::fs::File;
 
-mod grammar;
-pub use grammar::*;
+use anyhow::bail;
+use sanedit_buffer::{Bytes, PieceTreeSlice};
+use sanedit_syntax::{Annotation, ByteReader, CaptureID, Parser};
 
 #[derive(Debug)]
 pub struct Syntaxes {
@@ -41,10 +42,7 @@ impl Syntaxes {
             .filetype_dir
             .join(ft.as_str())
             .join(format!("{}.peg", ft.as_str()));
-        let grammar = Grammar::from_path(&peg)?;
-        let syntax = Syntax {
-            grammar: Arc::new(grammar),
-        };
+        let syntax = Syntax::from_path(&peg)?;
         self.syntaxes.insert(ft.clone(), syntax.clone());
         Ok(syntax)
     }
@@ -52,16 +50,38 @@ impl Syntaxes {
 
 #[derive(Debug, Clone)]
 pub struct Syntax {
-    grammar: Arc<Grammar>,
+    parser: Arc<Parser>,
 }
 
 impl Syntax {
+    pub fn from_path(peg: &Path) -> anyhow::Result<Syntax> {
+        let file = match File::open(&peg) {
+            Ok(f) => f,
+            Err(e) => bail!("Failed to read PEG file: {:?}", peg),
+        };
+
+        match Parser::new(file) {
+            Ok(p) => Ok(Syntax {
+                parser: Arc::new(p),
+            }),
+            Err(e) => bail!("Failed to create grammar from PEG file: {:?}: {e}", peg),
+        }
+    }
+
+    pub fn label_for(&self, id: CaptureID) -> &str {
+        self.parser.label_for(id)
+    }
+
+    pub fn annotations_for(&self, id: CaptureID) -> &[Annotation] {
+        self.parser.annotations_for(id)
+    }
+
     pub fn parse(
         &self,
         pt: &PieceTreeView,
         mut view: Range<u64>,
         kill: Kill,
-    ) -> anyhow::Result<SyntaxParseResult> {
+    ) -> anyhow::Result<SyntaxResult> {
         const COMPLETION_ANNOTATION: &str = "completion";
         const HIGHLIGHT_ANNOTATION: &str = "highlight";
 
@@ -77,16 +97,17 @@ impl Syntax {
         let start = view.start;
         let slice = pt.slice(view.clone());
 
-        let captures = self.grammar.parse(&slice, kill)?;
+        let reader = PTReader { pt: slice, kill };
+        let captures = self.parser.parse(reader)?;
         let spans: Vec<Span> = captures
             .into_iter()
             .map(|cap| {
-                let name = self.grammar.label_for(cap.id());
+                let name = self.parser.label_for(cap.id());
                 let mut range = cap.range();
                 range.start += start;
                 range.end += start;
 
-                let anns = self.grammar.annotations_for(cap.id());
+                let anns = self.parser.annotations_for(cap.id());
                 let completion = anns.iter().find_map(|ann| match ann {
                     Annotation::Other(aname, cname) if aname == COMPLETION_ANNOTATION => {
                         let completion = cname.clone().unwrap_or(name.into());
@@ -108,15 +129,49 @@ impl Syntax {
             })
             .collect();
 
-        Ok(SyntaxParseResult {
+        Ok(SyntaxResult {
             buffer_range: view,
             highlights: spans,
         })
     }
 }
 
+struct PTIter<'a>(Bytes<'a>);
+impl<'a> Iterator for PTIter<'a> {
+    type Item = u8;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.next()
+    }
+}
+
+// TODO optimize, check performance using a bytes iterator
+// and just cloning it, and limiting to a range
+struct PTReader<'a> {
+    pt: PieceTreeSlice<'a>,
+    kill: Kill,
+}
+
+impl<'a> ByteReader for PTReader<'a> {
+    type I = PTIter<'a>;
+
+    fn len(&self) -> u64 {
+        self.pt.len()
+    }
+
+    fn stop(&self) -> bool {
+        self.kill.should_stop()
+    }
+
+    fn iter(&self, range: std::ops::Range<u64>) -> Self::I {
+        let slice = self.pt.slice(range);
+        let bytes = slice.bytes();
+        PTIter(bytes)
+    }
+}
+
 #[derive(Debug, Default)]
-pub struct SyntaxParseResult {
+pub struct SyntaxResult {
     pub buffer_range: BufferRange,
     pub highlights: Vec<Span>,
 }

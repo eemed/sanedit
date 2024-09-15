@@ -8,8 +8,6 @@ edition.workspace = true
 [dependencies]
 sanedit-utils = { path = "../utils" }
 sanedit-buffer = { path = "../buffer" }
-sanedit-core = { path = "../core" }
-sanedit-server = { path = "../server" }
 
 rustc-hash.workspace = true
 bitvec.workspace = true

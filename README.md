@@ -26,6 +26,13 @@
     - Should try this once we can write it in this editor :)
 
 * Basic highlighting for jsx, yang, java, xml, makefile, dockerfile
+    - injection of other languages in peg
+
+## Tests
+
+* Using the thing to see whats wrong
+    - Should write tests for these fixes so that they do not reappear
+* unicode grapheme boundary test set
 
 
 ## Future

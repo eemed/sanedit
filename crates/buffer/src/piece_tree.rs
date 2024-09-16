@@ -378,7 +378,7 @@ impl PieceTree {
     }
 }
 
-impl<A: AsRef<str>> From<A> for PieceTree {
+impl<A: AsRef<[u8]>> From<A> for PieceTree {
     fn from(value: A) -> Self {
         PieceTree::from_reader(io::Cursor::new(value.as_ref())).unwrap()
     }

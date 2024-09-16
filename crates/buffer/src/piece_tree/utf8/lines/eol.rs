@@ -2,6 +2,8 @@ use std::{collections::HashSet, sync::OnceLock};
 
 use crate::PieceTreeSlice;
 
+use super::prev_eol;
+
 fn eol_bytes() -> &'static HashSet<Vec<u8>> {
     static SET: OnceLock<HashSet<Vec<u8>>> = OnceLock::new();
     SET.get_or_init(|| {
@@ -33,6 +35,21 @@ pub enum EndOfLine {
 }
 
 impl EndOfLine {
+    /// Maximum eol length in bytes
+    pub const MAX_EOL_LEN: usize = 3;
+
+    pub fn strip_eol<'a>(slice: &PieceTreeSlice<'a>) -> PieceTreeSlice<'a> {
+        let start = slice.len().saturating_sub(Self::MAX_EOL_LEN as u64);
+        let end = slice.len();
+        let potential = slice.slice(start..end);
+        let mut bytes = potential.bytes_at(potential.len());
+        if let Some(eol) = prev_eol(&mut bytes) {
+            slice.slice(..slice.len() - eol.eol.len())
+        } else {
+            slice.clone()
+        }
+    }
+
     pub fn is_eol<B: AsRef<[u8]>>(bytes: B) -> bool {
         let bytes = bytes.as_ref();
         eol_bytes().contains(bytes)
@@ -46,12 +63,11 @@ impl EndOfLine {
     }
 
     pub fn is_slice_eol(slice: &PieceTreeSlice) -> bool {
-        const MAX_EOL_LEN: usize = 3;
-        if slice.len() > MAX_EOL_LEN as u64 {
+        if slice.len() > Self::MAX_EOL_LEN as u64 {
             return false;
         }
 
-        let mut buf = [0u8; MAX_EOL_LEN];
+        let mut buf = [0u8; Self::MAX_EOL_LEN];
         let mut bytes = slice.bytes();
         let mut i = 0;
         while let Some(byte) = bytes.next() {

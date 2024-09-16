@@ -2,14 +2,6 @@
 
 ## TODO
 
-* LSP stuff menu
-    * Restart server
-    * Stop server
-    * all LSP actions if running
-
-* Grepping can match / display very long lines, this should be limited to X
-  characters at most. For example show the non matched 20 first characters and the
-  matched text afterwards with combined limit to 300 chars
 * Keybindings should be sensical
     * Line up down char next prev, to keyboard not arrow keys
     * Keybinds to configuration file => no default in code

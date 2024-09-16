@@ -1,13 +1,15 @@
 use std::{
+    collections::HashMap,
     fs,
     path::{Path, PathBuf},
 };
 
 use anyhow::bail;
+use config::{File, Value};
 use rustc_hash::FxHashMap;
 use sanedit_core::ConfigDirectory;
 use sanedit_messages::redraw::{Style, Theme, ThemeField};
-use toml::{Table, Value};
+// use toml::{Table, Value};
 
 pub(crate) const DEFAULT_THEME: &str = "default";
 
@@ -60,21 +62,12 @@ impl Themes {
             conf
         };
 
-        let content = std::fs::read_to_string(theme)?;
-        let config = content.parse::<Table>()?;
-
+        let theme_file = config::Config::builder()
+            .add_source(File::from(theme.as_path()))
+            .build()?;
+        let table = theme_file.get_table("colors")?;
         let mut theme = Theme::new(theme_name);
-        for (key, val) in config.iter() {
-            match key.as_str() {
-                "colors" => {
-                    let map = flatten_colors(val)?;
-                    for (k, v) in map {
-                        theme.insert(k, v);
-                    }
-                }
-                _ => bail!("Unsupported header {} in theme {}", key, theme_name),
-            }
-        }
+        fill_theme_colors(&table, &mut theme)?;
 
         self.themes.insert(theme_name.to_string(), theme);
         Ok(&self.themes[theme_name])
@@ -90,39 +83,43 @@ impl Default for Themes {
     }
 }
 
-fn flatten_colors(table: &Value) -> anyhow::Result<FxHashMap<String, Style>> {
-    fn rec(path: &str, cur: &Value, result: &mut FxHashMap<String, Style>) -> anyhow::Result<()> {
-        match cur {
-            Value::String(s) => match Style::from_str(s) {
-                Ok(style) => {
-                    result.insert(path.into(), style);
-                    Ok(())
+fn fill_theme_colors(table: &HashMap<String, Value>, theme: &mut Theme) -> anyhow::Result<()> {
+    fn rec<'a>(
+        prefix: &mut Vec<&'a str>,
+        cur: &'a HashMap<String, Value>,
+        theme: &mut Theme,
+    ) -> anyhow::Result<()> {
+        for (k, v) in cur {
+            let plen = prefix.len();
+            // Add all keys split by .
+            for key in k.split(".") {
+                // Dont add default
+                if k != "default" {
+                    prefix.push(key);
                 }
-                _ => bail!("Invalid style for key {}", path),
-            },
-            Value::Table(t) => {
-                for (k, v) in t {
-                    let mut npath = path.to_string();
-                    if k != "default" {
-                        if !npath.is_empty() {
-                            npath.push('.')
-                        }
-
-                        npath.push_str(k);
-                    }
-
-                    rec(&npath, v, result)?;
-                }
-
-                Ok(())
             }
-            _ => bail!("Unsupported type in theme"),
+
+            match &v.kind {
+                config::ValueKind::String(s) => match Style::from_str(&s) {
+                    Ok(style) => {
+                        let key = prefix.join(".");
+                        log::info!("Push: {key}");
+                        theme.insert(key, style);
+                    }
+                    _ => bail!("Invalid style for key {}", prefix.join(".")),
+                },
+                config::ValueKind::Table(table) => rec(prefix, table, theme)?,
+                _ => unreachable!(),
+            }
+
+            prefix.truncate(plen);
         }
+
+        Ok(())
     }
 
-    let mut result = FxHashMap::default();
-    rec("", table, &mut result)?;
-    Ok(result)
+    let mut stack = vec![];
+    rec(&mut stack, table, theme)
 }
 
 fn default_theme() -> Theme {

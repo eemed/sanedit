@@ -38,7 +38,7 @@ impl Locations {
         self.selection
     }
 
-    pub fn selected(&self) -> Option<LocationEntry> {
+    pub fn selected(&self) -> Option<Either<&Group, &Item>> {
         let n = self.selection?;
         self.iter().nth(n)
     }
@@ -294,38 +294,8 @@ impl Ord for Item {
 }
 
 #[derive(Debug)]
-pub struct LocationEntry<'a> {
-    loc: Either<&'a Group, &'a Item>,
-    level: usize,
-}
-
-impl<'a> LocationEntry<'a> {
-    pub fn group(&self) -> Option<&'a Group> {
-        match self.loc {
-            Either::Left(g) => Some(g),
-            Either::Right(_) => None,
-        }
-    }
-
-    pub fn item(&self) -> Option<&'a Item> {
-        match self.loc {
-            Either::Left(_) => None,
-            Either::Right(i) => Some(i),
-        }
-    }
-
-    pub fn either(&self) -> &Either<&'a Group, &'a Item> {
-        &self.loc
-    }
-
-    pub fn level(&self) -> usize {
-        self.level
-    }
-}
-
-#[derive(Debug)]
 pub struct LocationIter<'a> {
-    stack: Vec<LocationEntry<'a>>,
+    stack: Vec<Either<&'a Group, &'a Item>>,
 }
 
 impl<'a> LocationIter<'a> {
@@ -333,10 +303,7 @@ impl<'a> LocationIter<'a> {
         let mut stack = Vec::with_capacity(locs.len());
 
         for loc in locs.iter().rev() {
-            stack.push(LocationEntry {
-                loc: Either::Left(loc),
-                level: 0,
-            });
+            stack.push(Either::Left(loc));
         }
 
         LocationIter { stack }
@@ -344,24 +311,18 @@ impl<'a> LocationIter<'a> {
 }
 
 impl<'a> Iterator for LocationIter<'a> {
-    type Item = LocationEntry<'a>;
+    type Item = Either<&'a Group, &'a Item>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let next = self.stack.pop()?;
 
-        if let LocationEntry {
-            loc: Either::Left(Group {
-                expanded, items, ..
-            }),
-            level,
-        } = next
+        if let Either::Left(Group {
+            expanded, items, ..
+        }) = next
         {
             if *expanded {
                 for loc in items.iter().rev() {
-                    self.stack.push(LocationEntry {
-                        loc: Either::Right(loc),
-                        level: level + 1,
-                    });
+                    self.stack.push(Either::Right(loc));
                 }
             }
         }

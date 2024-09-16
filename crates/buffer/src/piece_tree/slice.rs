@@ -1,5 +1,7 @@
 use std::ops::{Bound, Range, RangeBounds};
 
+use crate::utf8::EndOfLine;
+
 use super::{
     chunks::Chunks,
     utf8::{self, chars::Chars, graphemes::Graphemes, lines::Lines},

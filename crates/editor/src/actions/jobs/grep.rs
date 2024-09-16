@@ -8,8 +8,10 @@ use grep::matcher::{LineTerminator, Matcher};
 use grep::regex::{RegexMatcher, RegexMatcherBuilder};
 use grep::searcher::{BinaryDetection, Searcher, SearcherBuilder, Sink, SinkMatch};
 use rustc_hash::FxHashMap;
-use sanedit_buffer::PieceTreeView;
+use sanedit_buffer::utf8::EndOfLine;
+use sanedit_buffer::{PieceTree, PieceTreeSlice, PieceTreeView};
 use sanedit_core::{Group, Item, PTSearcher, SearchDirection, SearchKind};
+use sanedit_utils::either::Either;
 use sanedit_utils::sorted_vec::SortedVec;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 
@@ -125,6 +127,7 @@ impl Grep {
                 let Range { mut start, mut end } = mat.range();
                 start -= line.start();
                 end -= line.start();
+
                 line_found_matches.push(start as usize..end as usize);
                 continue;
             }
@@ -133,13 +136,12 @@ impl Grep {
 
             // Add grep match from previous line if it had matches
             if !line_found_matches.is_empty() {
-                let text = String::from(&line);
-                let mat = GrepMatch {
-                    line: Some(linen),
-                    text,
-                    matches: std::mem::take(&mut line_found_matches),
-                    absolute_offset: Some(line.start() as u64),
-                };
+                let mat = prepare_grep_match(
+                    Either::Right(&line),
+                    Some(linen),
+                    line.start(),
+                    std::mem::take(&mut line_found_matches),
+                );
                 matches.push(mat);
             }
 
@@ -286,11 +288,6 @@ impl<'a> Sink for ResultSender<'a> {
     type Error = Box<dyn Error>;
 
     fn matched(&mut self, searcher: &Searcher, mat: &SinkMatch<'_>) -> Result<bool, Self::Error> {
-        let Ok(text) = std::str::from_utf8(mat.bytes()) else {
-            return Ok(true);
-        };
-        let text = text.trim_end();
-
         let mut matches = vec![];
         self.matcher
             .find_iter(mat.bytes(), |m| {
@@ -300,13 +297,12 @@ impl<'a> Sink for ResultSender<'a> {
             .ok();
 
         if !matches.is_empty() {
-            let gmat = GrepMatch {
-                text: text.to_string(),
+            let gmat = prepare_grep_match(
+                Either::Left(mat.bytes()),
+                mat.line_number(),
+                mat.absolute_byte_offset(),
                 matches,
-                line: mat.line_number(),
-                absolute_offset: mat.absolute_byte_offset().into(),
-            };
-
+            );
             self.matches.push(gmat);
         }
 
@@ -327,5 +323,60 @@ impl<'a> Sink for ResultSender<'a> {
         }
 
         Ok(())
+    }
+}
+
+/// Shorten long grep lines to MAX_BEFORE_TRUNC characters.
+/// Also move to the match if it is far into the match
+fn prepare_grep_match(
+    text: Either<&[u8], &PieceTreeSlice>,
+    line: Option<u64>,
+    mut offset: u64,
+    mut matches: Vec<Range<usize>>,
+) -> GrepMatch {
+    const MAX_BEFORE_TRUNC: u64 = 400;
+    let fmatch = matches[0].start as u64;
+    let len = match text {
+        Either::Left(bytes) => bytes.len() as u64,
+        Either::Right(slice) => slice.len(),
+    };
+
+    let mut start = 0u64;
+    // If first match far into the line => move there
+    if fmatch > MAX_BEFORE_TRUNC - (MAX_BEFORE_TRUNC / 4) {
+        start = fmatch - MAX_BEFORE_TRUNC / 4;
+    }
+    offset += start;
+    for mat in &mut matches {
+        mat.start -= start as usize;
+        mat.end -= start as usize;
+    }
+
+    let mut end = len;
+    // If line long => shorten it
+    if len - start > MAX_BEFORE_TRUNC {
+        end = start + MAX_BEFORE_TRUNC;
+    }
+
+    let text = match text {
+        Either::Left(bytes) => {
+            // handle invalid utf8
+            let pt = PieceTree::from(&bytes[start as usize..end as usize]);
+            let slice = pt.slice(..);
+            let slice = EndOfLine::strip_eol(&slice);
+            String::from(&slice)
+        }
+        Either::Right(slice) => {
+            let slice = slice.slice(start..end);
+            let slice = EndOfLine::strip_eol(&slice);
+            String::from(&slice)
+        }
+    };
+
+    GrepMatch {
+        line,
+        text,
+        matches,
+        absolute_offset: Some(offset),
     }
 }

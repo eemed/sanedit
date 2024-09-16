@@ -27,7 +27,7 @@ fn draw_impl(ctx: &mut DrawContext) -> redraw::Redraw {
     let mut items = vec![];
 
     for entry in locs.iter() {
-        let (name, kind, hls, line) = match entry.either() {
+        let (name, kind, hls, line, level) = match entry {
             Either::Left(group) => {
                 let kind = ItemKind::Group {
                     expanded: group.is_expanded(),
@@ -37,13 +37,14 @@ fn draw_impl(ctx: &mut DrawContext) -> redraw::Redraw {
                     let path = gp.strip_prefix(ctx.editor.working_dir).unwrap_or(gp);
                     path.to_string_lossy().to_string()
                 };
-                (name, kind, vec![], None)
+                (name, kind, vec![], None, 0)
             }
             Either::Right(item) => (
                 item.name().into(),
                 ItemKind::Item,
                 item.highlights().to_vec(),
                 item.line(),
+                1,
             ),
         };
 
@@ -51,7 +52,7 @@ fn draw_impl(ctx: &mut DrawContext) -> redraw::Redraw {
             line,
             name: name.into(),
             kind,
-            level: entry.level(),
+            level,
             highlights: hls,
         };
         items.push(item);

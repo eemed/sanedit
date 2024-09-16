@@ -117,6 +117,27 @@ fn start_lsp_impl(editor: &mut Editor, id: ClientId, bid: BufferId) -> Result<()
     Ok(())
 }
 
+#[action("Stop language server")]
+fn stop_lsp(editor: &mut Editor, id: ClientId) {
+    let (_win, buf) = editor.win_buf(id);
+    let bid = buf.id;
+    let _ = stop_lsp_impl(editor, id, bid);
+}
+
+fn stop_lsp_impl(editor: &mut Editor, id: ClientId, bid: BufferId) -> Result<()> {
+    let wd = editor.working_dir().to_path_buf();
+    let buf = editor.buffers().get(bid).unwrap();
+    let ft = buf.filetype.clone().ok_or(LSPActionError::FiletypeNotSet)?;
+    editor.language_servers.remove(&ft);
+    Ok(())
+}
+
+#[action("Restart language server")]
+fn restart_lsp(editor: &mut Editor, id: ClientId) {
+    stop_lsp.execute(editor, id);
+    start_lsp.execute(editor, id);
+}
+
 #[action("Hover information")]
 fn hover(editor: &mut Editor, id: ClientId) {
     let _ = lsp_request(editor, id, move |win, buf, path, slice, lsp| {

@@ -143,10 +143,6 @@ impl Changes {
         self.changes.iter()
     }
 
-    pub fn is_empty(&self) -> bool {
-        self.changes.is_empty()
-    }
-
     /// Moves cursors according to this change,
     /// Wont handle undo or redo
     pub fn move_cursors(&self, cursors: &mut [Cursor]) {

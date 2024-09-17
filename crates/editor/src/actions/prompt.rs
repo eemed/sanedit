@@ -20,7 +20,7 @@ use crate::{
 
 use sanedit_server::ClientId;
 
-use self::commands::find_action;
+use self::commands::find_by_description;
 
 use super::{
     hooks,
@@ -75,7 +75,7 @@ fn command_palette(editor: &mut Editor, id: ClientId) {
 
     win.prompt = Prompt::builder()
         .prompt("Palette")
-        .on_confirm(move |editor, id, input| match find_action(input) {
+        .on_confirm(move |editor, id, input| match find_by_description(input) {
             Some(action) => action.execute(editor, id),
             None => log::error!("No action with name {input}"),
         })
@@ -87,7 +87,7 @@ fn command_palette(editor: &mut Editor, id: ClientId) {
 #[action("Open a file")]
 fn open_file(editor: &mut Editor, id: ClientId) {
     const PROMPT_MESSAGE: &str = "Open a file";
-    let ignore = editor.options.ignore_directories();
+    let ignore = editor.config.editor.ignore_directories();
     let wd = editor.working_dir().to_path_buf();
     let job = MatcherJob::builder(id)
         .options(FileOptionProvider::new(&wd, &ignore))
@@ -297,7 +297,7 @@ fn grep(editor: &mut Editor, id: ClientId) {
         .simple()
         .on_confirm(move |e, id, input| {
             const GREP_JOB: &str = "grep";
-            let ignore = e.options.ignore_directories();
+            let ignore = e.config.editor.ignore_directories();
             let wd = e.working_dir();
             let buffers: FxHashMap<PathBuf, PieceTreeView> = {
                 let mut map = FxHashMap::default();

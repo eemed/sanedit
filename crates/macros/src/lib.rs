@@ -41,7 +41,6 @@ pub fn action(attr: TokenStream, item: TokenStream) -> TokenStream {
         #[allow(non_upper_case_globals)]
         pub(crate) const #name: crate::actions::Action = crate::actions::Action::Static {
             name: stringify!(#name),
-            module: module_path!(),
             fun: #fname,
             desc: #desc,
         };

@@ -106,7 +106,8 @@ fn start_lsp_impl(editor: &mut Editor, id: ClientId, bid: BufferId) -> Result<()
         ));
     }
     let lang = editor
-        .options
+        .config
+        .editor
         .language_server
         .get(ft.as_str())
         .ok_or_else(|| LSPActionError::LanguageServerNotConfigured(ft.as_str().to_string()))?;

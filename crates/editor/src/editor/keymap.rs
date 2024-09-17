@@ -2,6 +2,7 @@ mod default;
 
 use rustc_hash::FxHashMap;
 use sanedit_messages::KeyEvent;
+use strum_macros::AsRefStr;
 
 use crate::actions::Action;
 
@@ -17,7 +18,8 @@ macro_rules! map {
     }
 }
 
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, AsRefStr)]
+#[strum(serialize_all = "lowercase")]
 pub(crate) enum KeymapKind {
     Search,
     Prompt,

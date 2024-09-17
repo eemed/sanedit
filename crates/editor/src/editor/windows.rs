@@ -6,7 +6,6 @@ pub(crate) use window::*;
 
 #[derive(Debug, Default)]
 pub(crate) struct Windows {
-    default_opts: window::Options,
     windows: Map<ClientId, Window>,
 }
 
@@ -17,15 +16,12 @@ impl Windows {
         buf: BufferId,
         width: usize,
         height: usize,
+        options: Options,
     ) -> &mut Window {
         let mut win = Window::new(buf, width, height);
-        win.options = self.default_opts.clone();
+        win.options = options;
         self.windows.insert(id, win);
         self.get_mut(id).unwrap()
-    }
-
-    pub fn set_default_options(&mut self, opts: window::Options) {
-        self.default_opts = opts;
     }
 
     pub fn get(&self, id: ClientId) -> Option<&Window> {

@@ -5,7 +5,7 @@ use sanedit_server::ClientId;
 use super::jobs::TmuxShellCommand;
 
 pub(crate) fn execute(editor: &mut Editor, id: ClientId, cmd: &str) {
-    let shell = editor.options.shell.clone();
+    let shell = editor.config.editor.shell.clone();
     let (win, _buf) = editor.win_buf(id);
 
     match &win.shell_executor {

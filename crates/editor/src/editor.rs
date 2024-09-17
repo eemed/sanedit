@@ -91,12 +91,12 @@ pub(crate) struct Editor {
     pub syntaxes: Syntaxes,
     pub job_broker: JobBroker,
     pub hooks: Hooks,
-    pub options: Options,
     pub clipboard: Box<dyn Clipboard>,
     pub histories: Map<HistoryKind, History>,
     pub keymaps: Map<KeymapKind, Keymap>,
     pub language_servers: Map<Filetype, LSPHandle>,
     pub filetree: Filetree,
+    pub config: Config,
 }
 
 impl Editor {
@@ -123,19 +123,18 @@ impl Editor {
             filetree: Filetree::new(&working_dir),
             working_dir,
             themes: Themes::default(),
-            options: Options::default(),
             histories: Default::default(),
             clipboard: DefaultClipboard::new(),
             language_servers: Map::default(),
             keymaps: DefaultKeyMappings::keymaps(),
+            config: Config::default(),
         }
     }
 
     pub fn configure(&mut self, mut opts: StartOptions) {
         if let Some(cd) = opts.config_dir.take() {
             if let Ok(cd) = cd.canonicalize() {
-                let cd = ConfigDirectory::new(&cd);
-                self.config_dir = cd;
+                self.config_dir = ConfigDirectory::new(&cd);
                 self.syntaxes = Syntaxes::new(&self.config_dir.filetype_dir());
                 self.themes = Themes::new(&self.config_dir.theme_dir());
             }
@@ -148,16 +147,7 @@ impl Editor {
         }
 
         match config::read_config(&self.config_dir.config(), &self.working_dir) {
-            Ok(toml) => {
-                let Config {
-                    editor,
-                    window,
-                    file,
-                } = toml;
-                self.options = editor;
-                self.windows.set_default_options(window);
-                self.buffers.set_default_options(file);
-            }
+            Ok(config) => self.config = config,
             Err(e) => log::error!("Failed to read config: {e}"),
         }
     }
@@ -257,11 +247,11 @@ impl Editor {
     pub fn create_buffer(&mut self, id: ClientId, path: impl AsRef<Path>) -> Result<BufferId> {
         let file = FileDescription::new(
             &path,
-            self.options.big_file_threshold_bytes,
+            self.config.editor.big_file_threshold_bytes,
             &self.working_dir,
-            &self.options.filetype,
+            &self.config.editor.filetype,
         )?;
-        let bid = self.buffers.new(file)?;
+        let bid = self.buffers.new(file, self.config.file.clone())?;
         run(self, id, Hook::BufCreated(bid));
 
         Ok(bid)
@@ -335,7 +325,9 @@ impl Editor {
     fn handle_hello(&mut self, id: ClientId, size: Size) {
         // Create buffer and window
         let bid = self.buffers.insert(Buffer::default());
-        let win = self.windows.new_window(id, bid, size.width, size.height);
+        let win =
+            self.windows
+                .new_window(id, bid, size.width, size.height, self.config.window.clone());
         let buf = self.buffers.get(bid).expect("Buffer not present");
         let theme = {
             let theme_name = win.theme();

@@ -96,9 +96,9 @@ pub(crate) const COMMANDS: &[Action] = &[
 ];
 
 pub(crate) fn command_palette(editor: &Editor, id: ClientId) -> Vec<MatchOption> {
-    let cmds = COMMANDS.to_vec();
     // Display descriptions in command palette
-    cmds.iter()
+    COMMANDS
+        .iter()
         .map(|action| {
             let (win, _buf) = editor.win_buf(id);
             let mut description = String::new();
@@ -111,9 +111,19 @@ pub(crate) fn command_palette(editor: &Editor, id: ClientId) -> Vec<MatchOption>
         .collect()
 }
 
-pub(crate) fn find_action(name: &str) -> Option<Action> {
+pub(crate) fn find_by_description(name: &str) -> Option<Action> {
     for cmd in COMMANDS {
         if cmd.description() == name {
+            return Some(cmd.clone());
+        }
+    }
+
+    None
+}
+
+pub(crate) fn find_by_name(name: &str) -> Option<Action> {
+    for cmd in COMMANDS {
+        if cmd.name() == name {
             return Some(cmd.clone());
         }
     }

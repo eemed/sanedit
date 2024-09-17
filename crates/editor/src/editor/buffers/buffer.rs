@@ -167,14 +167,9 @@ impl Buffer {
     }
 
     pub fn apply_changes(&mut self, changes: &Changes) -> Result<ChangeResult> {
-        let mut result = ChangeResult::default();
-
-        if changes.is_empty() {
-            return Ok(result);
-        }
-
         ensure!(!self.read_only, BufferError::ReadOnly);
 
+        let mut result = ChangeResult::default();
         let rollback = self.ro_view();
         let needs_undo = self.needs_undo_point(changes);
         let rollback_snapshot_id = self.snapshots.current();
@@ -193,7 +188,6 @@ impl Buffer {
                     changes: changes.clone(),
                 });
                 self.total_changes_made += 1;
-                self.is_modified = true;
             }
             Err(e) => {
                 self.pt.restore(rollback);
@@ -216,6 +210,7 @@ impl Buffer {
             Ok(Some(snapshot))
         } else {
             changes.apply(&mut self.pt);
+            self.is_modified = true;
             Ok(None)
         }
     }

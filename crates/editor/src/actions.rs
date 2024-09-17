@@ -33,7 +33,6 @@ pub(crate) enum Action {
     },
     Static {
         name: &'static str,
-        module: &'static str,
         fun: fn(&mut Editor, ClientId),
         desc: &'static str,
     },
@@ -55,7 +54,6 @@ impl Action {
             Action::Dynamic { name: _, fun } => (fun)(editor, id),
             Action::Static {
                 name: _,
-                module: _,
                 fun,
                 desc: _,
             } => (fun)(editor, id),
@@ -83,7 +81,6 @@ impl fmt::Debug for Action {
             Action::Dynamic { name, fun: _ } => write!(f, "{}", name),
             Action::Static {
                 name,
-                module: _,
                 fun: _,
                 desc: _,
             } => write!(f, "{}", name),

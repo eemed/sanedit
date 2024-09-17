@@ -11,13 +11,12 @@ pub(crate) use self::buffer::{
 
 #[derive(Debug, Default)]
 pub(crate) struct Buffers {
-    default_options: Options,
     buffers: IdMap<BufferId, Buffer>,
 }
 
 impl Buffers {
-    pub fn new(&mut self, file: FileDescription) -> anyhow::Result<BufferId> {
-        let buf = Buffer::from_file(file, self.default_options.clone())?;
+    pub fn new(&mut self, file: FileDescription, options: Options) -> anyhow::Result<BufferId> {
+        let buf = Buffer::from_file(file, options)?;
         let id = self.insert(buf);
         Ok(id)
     }
@@ -31,10 +30,6 @@ impl Buffers {
         let id = self.buffers.insert(buf);
         self.buffers[id].id = id;
         id
-    }
-
-    pub fn set_default_options(&mut self, opts: Options) {
-        self.default_options = opts;
     }
 
     pub fn get(&self, bid: BufferId) -> Option<&Buffer> {

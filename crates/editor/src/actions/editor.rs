@@ -23,13 +23,13 @@ fn quit(editor: &mut Editor, id: ClientId) {
 
 #[action("Build project")]
 fn build_project(editor: &mut Editor, id: ClientId) {
-    let cmd = editor.options.build_command.clone();
+    let cmd = editor.config.editor.build_command.clone();
     shell::execute(editor, id, &cmd);
 }
 
 #[action("Run project")]
 fn run_project(editor: &mut Editor, id: ClientId) {
-    let cmd = editor.options.run_command.clone();
+    let cmd = editor.config.editor.run_command.clone();
     shell::execute(editor, id, &cmd);
 }
 

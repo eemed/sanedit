@@ -9,7 +9,6 @@ use config::{File, Value};
 use rustc_hash::FxHashMap;
 use sanedit_core::ConfigDirectory;
 use sanedit_messages::redraw::{Style, Theme, ThemeField};
-// use toml::{Table, Value};
 
 pub(crate) const DEFAULT_THEME: &str = "default";
 
@@ -103,7 +102,6 @@ fn fill_theme_colors(table: &HashMap<String, Value>, theme: &mut Theme) -> anyho
                 config::ValueKind::String(s) => match Style::from_str(&s) {
                     Ok(style) => {
                         let key = prefix.join(".");
-                        log::info!("Push: {key}");
                         theme.insert(key, style);
                     }
                     _ => bail!("Invalid style for key {}", prefix.join(".")),

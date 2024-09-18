@@ -502,7 +502,7 @@ fn show_references(
     };
 
     // TODO should this be auto shown?
-    locations::show.execute(editor, id);
+    locations::show_locations.execute(editor, id);
 
     let (win, buf) = editor.win_buf_mut(id);
 

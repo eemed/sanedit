@@ -11,7 +11,7 @@ fn clear(editor: &mut Editor, id: ClientId) {
 }
 
 #[action("Show locations")]
-fn show(editor: &mut Editor, id: ClientId) {
+fn show_locations(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     win.locations.show = true;
     win.focus = Focus::Locations;

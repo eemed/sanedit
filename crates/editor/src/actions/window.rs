@@ -11,7 +11,7 @@ fn focus(editor: &mut Editor, id: ClientId) {
 }
 
 #[action("Reload the current window")]
-fn reload(editor: &mut Editor, id: ClientId) {
+fn reload_window(editor: &mut Editor, id: ClientId) {
     editor.reload(id);
 }
 

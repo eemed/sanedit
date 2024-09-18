@@ -250,7 +250,7 @@ impl Editor {
             &self.working_dir,
             &self.config.editor.filetype,
         )?;
-        let bid = self.buffers.new(file, self.config.file.clone())?;
+        let bid = self.buffers.new(file, self.config.buffer.clone())?;
         run(self, id, Hook::BufCreated(bid));
 
         Ok(bid)

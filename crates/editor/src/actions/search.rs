@@ -26,7 +26,7 @@ fn async_view_matches(editor: &mut Editor, id: ClientId, pattern: &str) {
 }
 
 #[action("Search forward")]
-fn forward(editor: &mut Editor, id: ClientId) {
+fn search_forward(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.search.direction = SearchDirection::Forward;
     win.prompt = Prompt::builder()
@@ -40,7 +40,7 @@ fn forward(editor: &mut Editor, id: ClientId) {
 }
 
 #[action("Search backwards")]
-fn backward(editor: &mut Editor, id: ClientId) {
+fn search_backward(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.search.direction = SearchDirection::Backward;
     win.prompt = Prompt::builder()
@@ -59,14 +59,14 @@ fn confirm_all(_editor: &mut Editor, _id: ClientId) {
 }
 
 #[action("Clear match highlighting")]
-fn clear_matches(editor: &mut Editor, id: ClientId) {
+fn clear_search_matches(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.search.current_match = None;
     win.search.hl_matches.clear();
 }
 
 #[action("Goto next match")]
-fn next_match(editor: &mut Editor, id: ClientId) {
+fn next_search_match(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     let Some(input) = win.search.last_search_pattern().map(String::from) else {
         return;
@@ -75,7 +75,7 @@ fn next_match(editor: &mut Editor, id: ClientId) {
 }
 
 #[action("Goto previous match")]
-fn prev_match(editor: &mut Editor, id: ClientId) {
+fn prev_search_match(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
 
     let Some(input) = win.search.last_search_pattern().map(String::from) else {
@@ -93,7 +93,7 @@ fn prev_match(editor: &mut Editor, id: ClientId) {
 }
 
 #[action("Toggle regex search")]
-fn toggle_regex(editor: &mut Editor, id: ClientId) {
+fn toggle_search_regex(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.search.kind = match win.search.kind {
         SearchKind::Regex => SearchKind::Smart,

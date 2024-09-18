@@ -130,8 +130,8 @@ impl Default for Hooks {
         };
 
         // Search
-        hooks.register(InsertPre, search::clear_matches);
-        hooks.register(RemovePre, search::clear_matches);
+        hooks.register(InsertPre, search::clear_search_matches);
+        hooks.register(RemovePre, search::clear_search_matches);
 
         // Window
         hooks.register(BufChanged, window::sync_windows);

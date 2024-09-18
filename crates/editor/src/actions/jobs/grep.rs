@@ -217,7 +217,7 @@ impl KeepInTouch for Grep {
     fn on_message(&self, editor: &mut Editor, mut msg: Box<dyn Any>) {
         if let Some(_msg) = msg.downcast_mut::<Start>() {
             locations::clear.execute(editor, self.client_id);
-            locations::show.execute(editor, self.client_id);
+            locations::show_locations.execute(editor, self.client_id);
             return;
         }
 

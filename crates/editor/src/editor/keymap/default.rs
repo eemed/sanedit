@@ -72,38 +72,38 @@ impl DefaultKeyMappings {
              "ctrl+o", prompt::open_file,
              "alt+f",  prompt::grep,
 
-             "ctrl+f", search::forward,
-             "ctrl+g", search::backward,
-             "ctrl+h", search::clear_matches,
-             "alt+n",  search::next_match,
-             "alt+N",  search::prev_match,
+             "ctrl+f", search::search_forward,
+             "ctrl+g", search::search_backward,
+             "ctrl+h", search::clear_search_matches,
+             "alt+n",  search::next_search_match,
+             "alt+N",  search::prev_search_match,
 
              "esc",      cursors::keep_only_primary,
-             "alt+down", cursors::new_next_line,
-             "alt+up",   cursors::new_prev_line,
-             "ctrl+d",   cursors::new_to_next_search_match,
-             "ctrl+l",   cursors::new_to_all_search_matches,
+             "alt+down", cursors::new_cursor_to_next_line,
+             "alt+up",   cursors::new_cursor_to_prev_line,
+             "ctrl+d",   cursors::new_cursor_to_next_search_match,
+             "ctrl+l",   cursors::new_cursor_to_all_search_matches,
              "alt+v",    cursors::start_selection,
-             "alt+o l",  cursors::select_line,
 
              // "alt+k", completion::complete,
 
-             "f5",    window::reload,
+             "f5",    window::reload_window,
              "alt+'", window::goto_prev_buffer,
 
+             "alt+o l", text_objects::select_line,
              "alt+o c", text_objects::select_in_curly,
-             "alt+o C", text_objects::select_curly,
+             "alt+o C", text_objects::select_all_curly,
              "alt+o b", text_objects::select_in_parens,
-             "alt+o B", text_objects::select_parens,
+             "alt+o B", text_objects::select_all_parens,
              "alt+o r", text_objects::select_in_square,
-             "alt+o R", text_objects::select_square,
+             "alt+o R", text_objects::select_all_square,
              "alt+o a", text_objects::select_in_angle,
-             "alt+o A", text_objects::select_angle,
+             "alt+o A", text_objects::select_all_angle,
 
              "alt+o w", text_objects::select_word,
 
-             "alt+2", filetree::show,
-             "alt+3", locations::show,
+             "alt+2", filetree::show_filetree,
+             "alt+3", locations::show_locations,
         );
 
         map
@@ -149,7 +149,7 @@ impl DefaultKeyMappings {
             "up",           prompt::history_prev,
             "down",         prompt::history_next,
 
-            "ctrl+r",        search::toggle_regex,
+            "ctrl+r",        search::toggle_search_regex,
              // "ctrl+s", search::toggle_select,
         );
 
@@ -194,7 +194,7 @@ impl DefaultKeyMappings {
 
              "alt+1",     window::focus,
              "alt+2",     filetree::close,
-             "alt+3",     locations::show,
+             "alt+3",     locations::show_locations,
         );
 
         map
@@ -220,7 +220,7 @@ impl DefaultKeyMappings {
              "s",      locations::toggle_expand_all,
 
              "alt+1",  window::focus,
-             "alt+2",  filetree::show,
+             "alt+2",  filetree::show_filetree,
              "alt+3",  locations::close,
         );
 

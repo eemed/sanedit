@@ -9,7 +9,7 @@ use crate::editor::{
 use sanedit_server::ClientId;
 
 #[action("Show filetree")]
-fn show(editor: &mut Editor, id: ClientId) {
+fn show_filetree(editor: &mut Editor, id: ClientId) {
     let visible = editor.filetree.iter().count();
     let (win, buf) = editor.win_buf_mut(id);
 

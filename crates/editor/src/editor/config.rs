@@ -26,21 +26,21 @@ pub(crate) struct Config {
     ///
     pub editor: editor::EditorConfig,
     pub window: windows::WindowConfig,
-    pub file: buffers::BufferConfig,
+    pub buffer: buffers::BufferConfig,
+    pub keymap: KeymapConfig,
 }
 
 pub(crate) const PROJECT_CONFIG: &str = "sanedit-project.toml";
 
 pub(crate) fn read_config(config_path: &Path, working_dir: &Path) -> anyhow::Result<Config> {
-    let mut local = working_dir.to_path_buf();
-    local.push(PROJECT_CONFIG);
-
+    let local = working_dir.join(PROJECT_CONFIG);
     let config = config::Config::builder()
         .add_source(config::File::from(config_path))
         .add_source(config::File::from(local))
         .build()?;
 
     let config = config.try_deserialize::<Config>()?;
+    log::info!("kmap: {:?}", config.keymap);
 
     Ok(config)
 }
@@ -202,10 +202,7 @@ impl Default for EditorConfig {
         EditorConfig {
             // big_file_threshold_bytes: 100 * 1024 * 1024, // 100MB
             big_file_threshold_bytes: 1024 * 1024, // 1MB
-            ignore_directories: vec![".git", "target"]
-                .into_iter()
-                .map(String::from)
-                .collect(),
+            ignore_directories: [".git", "target"].into_iter().map(String::from).collect(),
             shell: "/bin/bash".into(),
             build_command: String::new(),
             run_command: String::new(),
@@ -236,10 +233,10 @@ impl EditorConfig {
 
         #[rustfmt::skip]
         map!(ftmap,
-             "rust", vec!["*.rs"],
-             "toml", vec!["**/Cargo.lock"],
-             "yaml", vec!["*.yml"],
-             "markdown", vec!["*.md"],
+             "rust", ["*.rs"],
+             "toml", ["**/Cargo.lock"],
+             "yaml", ["*.yml"],
+             "markdown", ["*.md"],
         );
 
         ftmap
@@ -262,5 +259,114 @@ impl EditorConfig {
         );
 
         langmap
+    }
+}
+
+macro_rules! make_keymap {
+    ($keymap:ident, $($action:ident, $bind:expr),+,) => {
+        $(
+            $keymap.insert(stringify!($action).into(), $bind.into());
+         )*
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, DocumentedFields)]
+pub(crate) struct KeymapConfig {
+    window: FxHashMap<String, String>,
+    // search: FxHashMap<String, String>,
+    // prompt: FxHashMap<String, String>,
+    // completion: FxHashMap<String, String>,
+    // locations: FxHashMap<String, String>,
+    // filetree: FxHashMap<String, String>,
+}
+
+impl Default for KeymapConfig {
+    fn default() -> Self {
+        KeymapConfig {
+            window: Self::window(),
+        }
+    }
+}
+
+impl KeymapConfig {
+    pub fn window() -> FxHashMap<String, String> {
+        let mut map = FxHashMap::default();
+
+        #[rustfmt::skip]
+        make_keymap!(map,
+            quit,                             "ctrl+q",
+            copy,                             "ctrl+c",
+            paste,                            "ctrl+v",
+            cut,                              "ctrl+x",
+            build_project,                    "f2",
+            run_project,                      "f3",
+
+            save,                             "ctrl+s",
+            remove_grapheme_before_cursor,    "backspace",
+            remove_grapheme_after_cursor,     "delete",
+            undo,                             "ctrl+z",
+            redo,                             "ctrl+r",
+            insert_newline,                   "enter",
+            insert_tab,                       "tab",
+            backtab,                          "btab",
+            remove_line_after_cursor,         "alt+k",
+
+            prev_line,                        "up",
+            next_line,                        "down",
+            prev_grapheme,                    "left",
+            next_grapheme,                    "right",
+            end_of_buffer,                    "alt+b",
+            start_of_buffer,                  "alt+B",
+            end_of_line,                      "alt+l",
+            first_char_of_line,               "alt+L",
+            next_word_start,                  "alt+w",
+            prev_word_start,                  "alt+W",
+            next_word_end,                    "alt+e",
+            prev_word_end,                    "alt+E",
+            next_paragraph,                   "alt+p",
+            prev_paragraph,                   "alt+P",
+            goto_matching_pair,               "alt+m",
+
+            scroll_down,                      "alt+s",
+            scroll_up,                        "alt+S",
+
+            shell_command,                    "alt+r",
+            command_palette,                  "ctrl+p",
+            open_file,                        "ctrl+o",
+            grep,                             "alt+f",
+
+            search_forward,                   "ctrl+f",
+            search_backward,                  "ctrl+g",
+            clear_search_matches,             "ctrl+h",
+            next_search_match,                "alt+n",
+            prev_search_match,                "alt+N",
+
+            keep_only_primary,                "esc",
+            new_cursor_to_next_line,          "alt+down",
+            new_cursor_to_prev_line,          "alt+up",
+            new_cursor_to_next_search_match,  "ctrl+d",
+            new_cursor_to_all_search_matches, "ctrl+l",
+            start_selection,                  "alt+v",
+
+            reload_window,                    "f5",
+            goto_prev_buffer,                 "alt+'",
+
+            select_line,                      "alt+o l",
+            select_in_curly,                  "alt+o c",
+            select_all_curly,                 "alt+o C",
+            select_in_parens,                 "alt+o b",
+            select_all_parens,                "alt+o B",
+            select_in_square,                 "alt+o r",
+            select_all_square,                "alt+o R",
+            select_in_angle,                  "alt+o a",
+            select_all_angle,                 "alt+o A",
+
+            select_word,                      "alt+o w",
+
+            show_filetree,                    "alt+2",
+            show_locations,                   "alt+3",
+        );
+
+        map
     }
 }

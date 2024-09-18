@@ -24,7 +24,7 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> Option<redraw::Redraw> {
 
 fn draw_impl(ctx: &mut DrawContext) -> redraw::Redraw {
     let completion = &ctx.editor.win.completion;
-    let compl_count = ctx.editor.win.options.max_completions;
+    let compl_count = ctx.editor.win.config.max_completions;
     let offset = &mut ctx.state.compl_scroll_offset;
     *offset = {
         let selected = completion.selected_pos().unwrap_or(0);

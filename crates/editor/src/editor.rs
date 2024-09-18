@@ -5,7 +5,6 @@ pub(crate) mod filetree;
 pub(crate) mod hooks;
 pub(crate) mod job_broker;
 pub(crate) mod keymap;
-pub(crate) mod options;
 pub(crate) mod syntax;
 pub(crate) mod themes;
 pub(crate) mod windows;
@@ -58,12 +57,12 @@ use self::buffers::BufferId;
 use self::buffers::Buffers;
 use self::clipboard::Clipboard;
 use self::clipboard::DefaultClipboard;
+use self::config::EditorConfig;
 use self::hooks::Hooks;
 use self::job_broker::JobBroker;
 use self::keymap::DefaultKeyMappings;
 use self::keymap::Keymap;
 use self::keymap::KeymapKind;
-use self::options::Options;
 
 use self::filetree::Filetree;
 use self::syntax::Syntaxes;
@@ -483,7 +482,7 @@ impl Editor {
                 Enter => {
                     let eol = {
                         let (_, buf) = self.win_buf(id);
-                        buf.options.eol
+                        buf.config.eol
                     };
                     insert(self, id, eol.as_ref());
                 }
@@ -577,7 +576,7 @@ impl Editor {
             }
         }
 
-        let line = copy_cursors_to_lines(lines, buf.options.eol);
+        let line = copy_cursors_to_lines(lines, buf.config.eol);
         self.clipboard.copy(&line);
     }
 

@@ -1,9 +1,9 @@
 mod chooser;
 mod completion;
+mod config;
 mod cursors;
 mod filetree;
 mod focus;
-mod options;
 mod prompt;
 mod search;
 mod shell;
@@ -53,7 +53,7 @@ macro_rules! show_warn {
 }
 
 pub(crate) use self::{
-    completion::*, focus::*, options::*, prompt::*, search::*, shell::*, view::*,
+    completion::*, config::*, focus::*, prompt::*, search::*, shell::*, view::*,
 };
 
 #[derive(Debug)]
@@ -72,7 +72,7 @@ pub(crate) struct Window {
     pub focus: Focus,
     pub search: Search,
     pub prompt: Prompt,
-    pub options: Options,
+    pub config: WindowConfig,
     pub ft_view: FiletreeView,
     pub locations: Locations,
     popup: Option<Popup>,
@@ -89,7 +89,7 @@ impl Window {
             shell_executor: Executor::default(),
             completion: Completion::default(),
             cursors: Cursors::default(),
-            options: Options::default(),
+            config: WindowConfig::default(),
             search: Search::default(),
             prompt: Prompt::default(),
             focus: Focus::Window,
@@ -551,7 +551,7 @@ impl Window {
     pub fn insert_newline(&mut self, buf: &mut Buffer) -> Result<()> {
         // 1. Calculate indents
         // 2. insert newlines + indent combo to each cursor
-        let eol = buf.options.eol;
+        let eol = buf.config.eol;
         let slice = buf.slice(..);
         let texts: Vec<String> = self
             .cursors()
@@ -590,9 +590,9 @@ impl Window {
         };
 
         let indent = buf
-            .options
+            .config
             .indent_kind
-            .repeat(buf.options.indent_amount as usize);
+            .repeat(buf.config.indent_amount as usize);
         let changes = Changes::multi_insert(&starts, indent.as_bytes());
         self.change(buf, &changes)?;
         Ok(())
@@ -614,7 +614,7 @@ impl Window {
             vstarts
         };
 
-        let iamount = buf.options.indent_amount;
+        let iamount = buf.config.indent_amount;
         let ranges: Vec<BufferRange> = {
             let mut ranges = vec![];
             for pos in starts {
@@ -640,8 +640,8 @@ impl Window {
     /// If cursor is at indentation, add an indentation block instead
     pub fn insert_tab(&mut self, buf: &mut Buffer) -> Result<()> {
         let slice = buf.slice(..);
-        let ikind = buf.options.indent_kind;
-        let iamount = buf.options.indent_amount;
+        let ikind = buf.config.indent_kind;
+        let iamount = buf.config.indent_amount;
         let texts: Vec<String> = self
             .cursors()
             .iter()

@@ -2,7 +2,7 @@ use std::cmp::min;
 
 use sanedit_core::determine_indent;
 
-use crate::editor::{buffers::Options, Editor};
+use crate::editor::{buffers::BufferConfig, Editor};
 
 use sanedit_server::ClientId;
 
@@ -14,11 +14,11 @@ fn detect_indent(editor: &mut Editor, id: ClientId) {
     let len = buf.len();
     let slice = buf.slice(..min(len, MAX));
     let (kind, n) = determine_indent(&slice).unwrap_or_else(|| {
-        let opts = Options::default();
+        let opts = BufferConfig::default();
         (opts.indent_kind, opts.indent_amount)
     });
-    buf.options.indent_kind = kind;
-    buf.options.indent_amount = n;
+    buf.config.indent_kind = kind;
+    buf.config.indent_amount = n;
 }
 
 #[action("Indent cursor lines")]

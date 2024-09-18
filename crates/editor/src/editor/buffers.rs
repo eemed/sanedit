@@ -6,7 +6,7 @@ use sanedit_core::FileDescription;
 use sanedit_utils::idmap::IdMap;
 
 pub(crate) use self::buffer::{
-    Buffer, BufferError, BufferId, ChangeResult, Options, SnapshotData, SnapshotId,
+    Buffer, BufferConfig, BufferError, BufferId, ChangeResult, SnapshotData, SnapshotId,
 };
 
 #[derive(Debug, Default)]
@@ -15,7 +15,11 @@ pub(crate) struct Buffers {
 }
 
 impl Buffers {
-    pub fn new(&mut self, file: FileDescription, options: Options) -> anyhow::Result<BufferId> {
+    pub fn new(
+        &mut self,
+        file: FileDescription,
+        options: BufferConfig,
+    ) -> anyhow::Result<BufferId> {
         let buf = Buffer::from_file(file, options)?;
         let id = self.insert(buf);
         Ok(id)

@@ -1,5 +1,5 @@
 mod change;
-mod options;
+mod config;
 mod snapshots;
 
 use std::{
@@ -18,7 +18,7 @@ use thiserror::Error;
 
 use self::snapshots::Snapshots;
 pub(crate) use change::ChangeResult;
-pub(crate) use options::Options;
+pub(crate) use config::BufferConfig;
 use sanedit_core::{tmp_file, BufferRange, Change, Changes, Diagnostic, FileDescription, Filetype};
 use sanedit_core::{BufferRangeExt as _, Edit};
 pub(crate) use snapshots::{SnapshotData, SnapshotId};
@@ -29,7 +29,7 @@ key_type!(pub(crate) BufferId);
 pub(crate) struct Buffer {
     pub(crate) id: BufferId,
     pub(crate) filetype: Option<Filetype>,
-    pub(crate) options: Options,
+    pub(crate) config: BufferConfig,
     pub(crate) read_only: bool,
     pub(crate) diagnostics: SortedVec<Diagnostic>,
 
@@ -60,7 +60,7 @@ impl Buffer {
             pt,
             is_modified: false,
             snapshots: Snapshots::new(snapshot),
-            options: Options::default(),
+            config: BufferConfig::default(),
             path: None,
             last_edit: None,
             last_saved_snapshot: 0,
@@ -68,7 +68,7 @@ impl Buffer {
         }
     }
 
-    pub fn from_file(file: FileDescription, options: Options) -> Result<Buffer> {
+    pub fn from_file(file: FileDescription, options: BufferConfig) -> Result<Buffer> {
         if file.is_big() {
             Self::file_backed(file, options)
         } else {
@@ -76,7 +76,7 @@ impl Buffer {
         }
     }
 
-    fn file_backed(file: FileDescription, options: Options) -> Result<Buffer> {
+    fn file_backed(file: FileDescription, options: BufferConfig) -> Result<Buffer> {
         log::debug!("creating file backed buffer");
         let path = file.path();
         let pt = PieceTree::from_path(path)?;
@@ -89,7 +89,7 @@ impl Buffer {
             filetype: file.filetype().cloned(),
             is_modified: false,
             snapshots: Snapshots::new(snapshot),
-            options,
+            config: options,
             path: Some(path.into()),
             last_edit: None,
             last_saved_snapshot: 0,
@@ -97,7 +97,7 @@ impl Buffer {
         })
     }
 
-    fn in_memory(file: FileDescription, options: Options) -> Result<Buffer> {
+    fn in_memory(file: FileDescription, options: BufferConfig) -> Result<Buffer> {
         log::debug!("creating in memory buffer");
         let path = file.path();
         let ffile = fs::File::open(path)?;
@@ -105,7 +105,7 @@ impl Buffer {
         buf.filetype = file.filetype().cloned();
         buf.path = Some(path.into());
         buf.read_only = file.read_only();
-        buf.options = options;
+        buf.config = options;
         Ok(buf)
     }
 
@@ -120,7 +120,7 @@ impl Buffer {
             read_only: false,
             is_modified: false,
             snapshots: Snapshots::new(snapshot),
-            options: Options::default(),
+            config: BufferConfig::default(),
             path: None,
             last_edit: None,
             last_saved_snapshot: 0,

@@ -16,10 +16,10 @@ impl Windows {
         buf: BufferId,
         width: usize,
         height: usize,
-        options: Options,
+        options: WindowConfig,
     ) -> &mut Window {
         let mut win = Window::new(buf, width, height);
-        win.options = options;
+        win.config = options;
         self.windows.insert(id, win);
         self.get_mut(id).unwrap()
     }

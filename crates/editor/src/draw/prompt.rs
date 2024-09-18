@@ -35,7 +35,7 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> Vec<redraw::Redraw> {
 
 fn draw_impl(ctx: &mut DrawContext) -> redraw::Redraw {
     let prompt = &ctx.editor.win.prompt;
-    let compl_count = ctx.editor.win.options.max_prompt_completions;
+    let compl_count = ctx.editor.win.config.max_prompt_completions;
     let offset = &mut ctx.state.prompt_scroll_offset;
     *offset = {
         let selected = prompt.selected_pos().unwrap_or(0);

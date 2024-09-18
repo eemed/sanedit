@@ -19,7 +19,7 @@ enum EndOfLineDef {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, DocumentedFields)]
-pub(crate) struct Options {
+pub(crate) struct BufferConfig {
     /// Default EOL, overridden if detect_eol is set
     /// Available options:
     /// LF: Line Feed, U+000A (UTF-8 in hex: 0A)
@@ -48,9 +48,9 @@ pub(crate) struct Options {
     pub(crate) indent_amount: u8,
 }
 
-impl Default for Options {
+impl Default for BufferConfig {
     fn default() -> Self {
-        Options {
+        BufferConfig {
             eol: EndOfLine::default(),
             tabstop: 8,
             indent_kind: IndentKind::Space,

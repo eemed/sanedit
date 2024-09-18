@@ -17,9 +17,9 @@ use crate::{
     common::matcher::{MatchOption, MatchStrategy},
     editor::{
         buffers::BufferId,
+        config::LSPConfig,
         hooks::Hook,
         job_broker::KeepInTouch,
-        options::LSPOptions,
         windows::{Completion, Prompt},
         Editor, Map,
     },
@@ -118,11 +118,11 @@ pub(crate) struct LSP {
     client_id: ClientId,
     filetype: Filetype,
     working_dir: PathBuf,
-    opts: LSPOptions,
+    opts: LSPConfig,
 }
 
 impl LSP {
-    pub fn new(id: ClientId, working_dir: PathBuf, ft: Filetype, opts: &LSPOptions) -> LSP {
+    pub fn new(id: ClientId, working_dir: PathBuf, ft: Filetype, opts: &LSPConfig) -> LSP {
         LSP {
             client_id: id,
             filetype: ft,
@@ -141,7 +141,7 @@ impl Job for LSP {
 
         let fut = async move {
             log::info!("Run rust-analyzer");
-            let LSPOptions { command, args } = opts;
+            let LSPConfig { command, args } = opts;
             let filetype: String = ft.as_str().into();
             let params = LSPClientParams {
                 run_command: command.clone(),

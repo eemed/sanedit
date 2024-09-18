@@ -28,9 +28,9 @@ fn with_buf(content: &str) -> (Window, Buffer) {
 #[test]
 fn indent() {
     let (mut win, mut buf) = with_buf("hello");
-    buf.options.tabstop = 8;
-    buf.options.indent_kind = IndentKind::Space;
-    buf.options.indent_amount = 4;
+    buf.config.tabstop = 8;
+    buf.config.indent_kind = IndentKind::Space;
+    buf.config.indent_amount = 4;
 
     win.indent_cursor_lines(&mut buf);
     let lines = view_lines(&mut win, &buf);
@@ -45,8 +45,8 @@ fn indent() {
 #[test]
 fn dedent() {
     let (mut win, mut buf) = with_buf("      ");
-    buf.options.indent_kind = IndentKind::Space;
-    buf.options.indent_amount = 4;
+    buf.config.indent_kind = IndentKind::Space;
+    buf.config.indent_amount = 4;
 
     win.cursors.primary_mut().goto(buf.len());
     win.dedent_cursor_lines(&mut buf);
@@ -61,8 +61,8 @@ fn dedent() {
 #[test]
 fn dedent_missing_spaces() {
     let (mut win, mut buf) = with_buf("hello\n  bar");
-    buf.options.indent_kind = IndentKind::Space;
-    buf.options.indent_amount = 4;
+    buf.config.indent_kind = IndentKind::Space;
+    buf.config.indent_amount = 4;
 
     win.cursors.primary_mut().goto(buf.len() - 5);
     win.dedent_cursor_lines(&mut buf);

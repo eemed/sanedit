@@ -20,7 +20,7 @@ use crate::{
 
 use sanedit_server::ClientId;
 
-use self::commands::find_by_description;
+pub(crate) use self::commands::{find_by_description, find_by_name};
 
 use super::{
     hooks,

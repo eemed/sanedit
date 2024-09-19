@@ -85,6 +85,15 @@ pub(crate) fn reparse_view(editor: &mut Editor, id: ClientId) {
     }
 }
 
+#[action("Load buffer syntax")]
+pub(crate) fn load_syntax(editor: &mut Editor, id: ClientId) {
+    let (win, buf) = editor.win_buf_mut(id);
+    let Some(ft) = buf.filetype.clone() else {
+        return;
+    };
+    let _ = editor.syntaxes.load(&ft);
+}
+
 #[action("Parse buffer syntax")]
 pub(crate) fn parse_syntax(editor: &mut Editor, id: ClientId) {
     const JOB_NAME: &str = "parse-syntax";
@@ -98,14 +107,11 @@ pub(crate) fn parse_syntax(editor: &mut Editor, id: ClientId) {
     let Some(ft) = buf.filetype.clone() else {
         return;
     };
-    match editor.syntaxes.get(&ft) {
-        Ok(s) => {
-            editor.job_broker.request_slot(
-                id,
-                JOB_NAME,
-                SyntaxParser::new(id, bid, total_changes_made, s, ropt, range),
-            );
-        }
-        Err(e) => log::error!("Failed to load syntax for {}: {e}", ft.as_str()),
+    if let Ok(s) = editor.syntaxes.get(&ft) {
+        editor.job_broker.request_slot(
+            id,
+            JOB_NAME,
+            SyntaxParser::new(id, bid, total_changes_made, s, ropt, range),
+        );
     }
 }

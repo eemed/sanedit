@@ -13,6 +13,7 @@ use rustc_hash::FxHashMap;
 use sanedit_core::FileDescription;
 use sanedit_core::Filetype;
 use sanedit_messages::redraw::Size;
+use sanedit_messages::try_parse_keyevents;
 use sanedit_messages::ClientMessage;
 use sanedit_messages::KeyEvent;
 use sanedit_messages::KeyMods;
@@ -41,6 +42,7 @@ use crate::actions;
 use crate::actions::cursors;
 use crate::actions::hooks::run;
 use crate::actions::jobs::LSPHandle;
+use crate::actions::prompt::find_by_name;
 use crate::draw::DrawState;
 use crate::draw::EditorContext;
 use crate::editor::buffers::Buffer;
@@ -146,9 +148,25 @@ impl Editor {
         }
 
         match config::read_config(&self.config_dir.config(), &self.working_dir) {
-            Ok(config) => self.config = config,
+            Ok(config) => {
+                self.config = config;
+                self.configure_keymap();
+            }
             Err(e) => log::error!("Failed to read config: {e}"),
         }
+    }
+
+    fn configure_keymap(&mut self) {
+        let mut winmap = Keymap::default();
+        for mapping in &self.config.keymaps.window {
+            if let (Ok(events), Some(action)) = (
+                try_parse_keyevents(&mapping.key),
+                find_by_name(&mapping.action),
+            ) {
+                winmap.bind(&events, action);
+            }
+        }
+        self.keymaps.insert(KeymapKind::Window, winmap);
     }
 
     /// Ran after the startup configuration is complete

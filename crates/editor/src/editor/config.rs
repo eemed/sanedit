@@ -27,7 +27,7 @@ pub(crate) struct Config {
     pub editor: editor::EditorConfig,
     pub window: windows::WindowConfig,
     pub buffer: buffers::BufferConfig,
-    pub keymap: KeymapConfig,
+    pub keymaps: KeymapsConfig,
 }
 
 pub(crate) const PROJECT_CONFIG: &str = "sanedit-project.toml";
@@ -38,10 +38,7 @@ pub(crate) fn read_config(config_path: &Path, working_dir: &Path) -> anyhow::Res
         .add_source(config::File::from(config_path))
         .add_source(config::File::from(local))
         .build()?;
-
     let config = config.try_deserialize::<Config>()?;
-    log::info!("kmap: {:?}", config.keymap);
-
     Ok(config)
 }
 
@@ -53,7 +50,7 @@ pub(crate) fn serialize_default_configuration(path: &Path) -> anyhow::Result<()>
 
     let mut visitor = Formatter {
         state: VisitState::Config,
-        first: true,
+        start_of_file: true,
     };
     visitor.visit_document_mut(&mut doc);
 
@@ -66,7 +63,7 @@ pub(crate) fn serialize_default_configuration(path: &Path) -> anyhow::Result<()>
 
 struct Formatter {
     state: VisitState,
-    first: bool,
+    start_of_file: bool,
 }
 
 impl VisitMut for Formatter {
@@ -79,6 +76,21 @@ impl VisitMut for Formatter {
                 table.set_implicit(true);
                 *node = Item::Table(table);
             }
+        } else if self.state == VisitState::Keymaps {
+            if node.is_array() {
+                if let Some(arr) = node.as_array_mut() {
+                    arr.set_trailing_comma(false);
+
+                    for val in arr.iter_mut() {
+                        val.decor_mut().set_prefix("\n    ");
+                    }
+
+                    if let Some(last) = arr.iter_mut().last() {
+                        last.decor_mut().set_suffix(",\n");
+                    }
+                }
+            } else {
+            }
         }
 
         let doc = {
@@ -87,16 +99,14 @@ impl VisitMut for Formatter {
                 VisitState::Config => Config::get_field_docs(keyname),
                 VisitState::Editor => editor::EditorConfig::get_field_docs(keyname),
                 VisitState::Window => windows::WindowConfig::get_field_docs(keyname),
-                VisitState::File => buffers::BufferConfig::get_field_docs(keyname),
-                VisitState::Irrelevant => {
-                    Err(documented::Error::NoDocComments("irrelevant".into()))
-                }
+                VisitState::Buffer => buffers::BufferConfig::get_field_docs(keyname),
+                _ => Err(documented::Error::NoDocComments("irrelevant".into())),
             }
         };
 
         // Add docstrings as comments
         if let Ok(doc) = doc {
-            let top = if self.first { "" } else { "\n" };
+            let top = if self.start_of_file { "" } else { "\n" };
             let mut comment = String::from(top);
             for line in doc.lines() {
                 if line.is_empty() {
@@ -121,7 +131,7 @@ impl VisitMut for Formatter {
             }
         }
 
-        self.first = false;
+        self.start_of_file = false;
         let keyname = key.get();
         let old = self.state;
         let new = self.state.descend(keyname);
@@ -141,7 +151,8 @@ enum VisitState {
     Config,
     Editor,
     Window,
-    File,
+    Buffer,
+    Keymaps,
     Irrelevant,
 }
 
@@ -150,7 +161,9 @@ impl VisitState {
         match (self, key) {
             (VisitState::Config, "editor") => VisitState::Editor,
             (VisitState::Config, "window") => VisitState::Window,
-            (VisitState::Config, "file") => VisitState::File,
+            (VisitState::Config, "buffer") => VisitState::Buffer,
+            (VisitState::Config, "keymaps") => VisitState::Keymaps,
+            (VisitState::Keymaps, _) => VisitState::Keymaps,
             _ => VisitState::Irrelevant,
         }
     }
@@ -263,16 +276,22 @@ impl EditorConfig {
 }
 
 macro_rules! make_keymap {
-    ($keymap:ident, $($action:ident, $bind:expr),+,) => {
+    ($keymap:ident, $($key:expr, $action:ident),+,) => {
         $(
-            $keymap.insert(stringify!($action).into(), $bind.into());
+            $keymap.push(Mapping { key: $key.into(), action: stringify!($action).into() });
          )*
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, DocumentedFields)]
-pub(crate) struct KeymapConfig {
-    window: FxHashMap<String, String>,
+#[derive(Debug, Serialize, Deserialize)]
+pub(crate) struct Mapping {
+    pub(crate) key: String,
+    pub(crate) action: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub(crate) struct KeymapsConfig {
+    pub(crate) window: Vec<Mapping>,
     // search: FxHashMap<String, String>,
     // prompt: FxHashMap<String, String>,
     // completion: FxHashMap<String, String>,
@@ -280,93 +299,93 @@ pub(crate) struct KeymapConfig {
     // filetree: FxHashMap<String, String>,
 }
 
-impl Default for KeymapConfig {
+impl Default for KeymapsConfig {
     fn default() -> Self {
-        KeymapConfig {
+        KeymapsConfig {
             window: Self::window(),
         }
     }
 }
 
-impl KeymapConfig {
-    pub fn window() -> FxHashMap<String, String> {
-        let mut map = FxHashMap::default();
+impl KeymapsConfig {
+    pub fn window() -> Vec<Mapping> {
+        let mut maps = Vec::default();
 
         #[rustfmt::skip]
-        make_keymap!(map,
-            quit,                             "ctrl+q",
-            copy,                             "ctrl+c",
-            paste,                            "ctrl+v",
-            cut,                              "ctrl+x",
-            build_project,                    "f2",
-            run_project,                      "f3",
+        make_keymap!(maps,
+            "ctrl+q",    quit,
+            "ctrl+c",    copy,
+            "ctrl+v",    paste,
+            "ctrl+x",    cut,
+            "f2",        build_project,
+            "f3",        run_project,
 
-            save,                             "ctrl+s",
-            remove_grapheme_before_cursor,    "backspace",
-            remove_grapheme_after_cursor,     "delete",
-            undo,                             "ctrl+z",
-            redo,                             "ctrl+r",
-            insert_newline,                   "enter",
-            insert_tab,                       "tab",
-            backtab,                          "btab",
-            remove_line_after_cursor,         "alt+k",
+            "ctrl+s",    save,
+            "backspace", remove_grapheme_before_cursor,
+            "delete",    remove_grapheme_after_cursor,
+            "ctrl+z",    undo,
+            "ctrl+r",    redo,
+            "enter",     insert_newline,
+            "tab",       insert_tab,
+            "btab",      backtab,
+            "alt+k",     remove_to_end_of_line,
 
-            prev_line,                        "up",
-            next_line,                        "down",
-            prev_grapheme,                    "left",
-            next_grapheme,                    "right",
-            end_of_buffer,                    "alt+b",
-            start_of_buffer,                  "alt+B",
-            end_of_line,                      "alt+l",
-            first_char_of_line,               "alt+L",
-            next_word_start,                  "alt+w",
-            prev_word_start,                  "alt+W",
-            next_word_end,                    "alt+e",
-            prev_word_end,                    "alt+E",
-            next_paragraph,                   "alt+p",
-            prev_paragraph,                   "alt+P",
-            goto_matching_pair,               "alt+m",
+            "up",        prev_line,
+            "down",      next_line,
+            "left",      prev_grapheme,
+            "right",     next_grapheme,
+            "alt+b",     end_of_buffer,
+            "alt+B",     start_of_buffer,
+            "alt+l",     end_of_line,
+            "alt+L",     first_char_of_line,
+            "alt+w",     next_word_start,
+            "alt+W",     prev_word_start,
+            "alt+e",     next_word_end,
+            "alt+E",     prev_word_end,
+            "alt+p",     next_paragraph,
+            "alt+P",     prev_paragraph,
+            "alt+m",     goto_matching_pair,
 
-            scroll_down,                      "alt+s",
-            scroll_up,                        "alt+S",
+            "alt+s",     scroll_down,
+            "alt+S",     scroll_up,
 
-            shell_command,                    "alt+r",
-            command_palette,                  "ctrl+p",
-            open_file,                        "ctrl+o",
-            grep,                             "alt+f",
+            "alt+r",     shell_command,
+            "ctrl+p",    command_palette,
+            "ctrl+o",    open_file,
+            "alt+f",     grep,
 
-            search_forward,                   "ctrl+f",
-            search_backward,                  "ctrl+g",
-            clear_search_matches,             "ctrl+h",
-            next_search_match,                "alt+n",
-            prev_search_match,                "alt+N",
+            "ctrl+f",    search_forward,
+            "ctrl+g",    search_backward,
+            "ctrl+h",    clear_search_matches,
+            "alt+n",     next_search_match,
+            "alt+N",     prev_search_match,
 
-            keep_only_primary,                "esc",
-            new_cursor_to_next_line,          "alt+down",
-            new_cursor_to_prev_line,          "alt+up",
-            new_cursor_to_next_search_match,  "ctrl+d",
-            new_cursor_to_all_search_matches, "ctrl+l",
-            start_selection,                  "alt+v",
+            "esc",       keep_only_primary,
+            "alt+down",  new_cursor_to_next_line,
+            "alt+up",    new_cursor_to_prev_line,
+            "ctrl+d",    new_cursor_to_next_search_match,
+            "ctrl+l",    new_cursor_to_all_search_matches,
+            "alt+v",     start_selection,
 
-            reload_window,                    "f5",
-            goto_prev_buffer,                 "alt+'",
+            "f5",        reload_window,
+            "alt+'",     goto_prev_buffer,
 
-            select_line,                      "alt+o l",
-            select_in_curly,                  "alt+o c",
-            select_all_curly,                 "alt+o C",
-            select_in_parens,                 "alt+o b",
-            select_all_parens,                "alt+o B",
-            select_in_square,                 "alt+o r",
-            select_all_square,                "alt+o R",
-            select_in_angle,                  "alt+o a",
-            select_all_angle,                 "alt+o A",
+            "alt+o l",   select_line,
+            "alt+o c",   select_in_curly,
+            "alt+o C",   select_all_curly,
+            "alt+o b",   select_in_parens,
+            "alt+o B",   select_all_parens,
+            "alt+o r",   select_in_square,
+            "alt+o R",   select_all_square,
+            "alt+o a",   select_in_angle,
+            "alt+o A",   select_all_angle,
 
-            select_word,                      "alt+o w",
+            "alt+o w",   select_word,
 
-            show_filetree,                    "alt+2",
-            show_locations,                   "alt+3",
+            "alt+2",     show_filetree,
+            "alt+3",     show_locations,
         );
 
-        map
+        maps
     }
 }

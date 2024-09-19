@@ -42,7 +42,7 @@ impl DefaultKeyMappings {
              "enter",     text::insert_newline,
              "tab",       text::insert_tab,
              "btab",      text::backtab,
-             "alt+k",     text::remove_line_after_cursor,
+             "alt+k",     text::remove_to_end_of_line,
 
              // "ctrl+x", Action::next_visual_line,
 

@@ -29,7 +29,7 @@ pub(crate) enum KeymapKind {
     Locations,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub(crate) struct Keymap {
     root: KeyTrie,
 }

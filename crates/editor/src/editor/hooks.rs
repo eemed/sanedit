@@ -145,6 +145,7 @@ impl Default for Hooks {
 
         // Syntax
         hooks.register(OnMessagePost, syntax::reparse_view);
+        hooks.register(BufCreated, syntax::load_syntax);
         hooks.register(BufOpened, syntax::parse_syntax);
         hooks.register(BufChanged, syntax::prevent_flicker);
 

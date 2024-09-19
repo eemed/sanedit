@@ -12,7 +12,7 @@ use sanedit_server::Kill;
 
 use std::fs::File;
 
-use anyhow::bail;
+use anyhow::{anyhow, bail};
 use sanedit_buffer::{Bytes, PieceTreeSlice};
 use sanedit_syntax::{Annotation, ByteReader, CaptureID, Parser};
 
@@ -31,10 +31,10 @@ impl Syntaxes {
     }
 
     pub fn get(&mut self, ft: &Filetype) -> anyhow::Result<Syntax> {
-        match self.syntaxes.get(ft) {
-            Some(s) => Ok(s.clone()),
-            None => self.load(ft),
-        }
+        self.syntaxes
+            .get(ft)
+            .cloned()
+            .ok_or(anyhow!("Syntax not loaded"))
     }
 
     pub fn load(&mut self, ft: &Filetype) -> anyhow::Result<Syntax> {

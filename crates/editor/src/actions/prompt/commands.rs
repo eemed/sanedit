@@ -21,6 +21,7 @@ pub(crate) const COMMANDS: &[Action] = &[
     text::undo,
     text::redo,
     text::strip_trailing_whitespace,
+    text::remove_to_end_of_line,
 
     prompt::open_file,
     prompt::open_buffer,
@@ -30,6 +31,7 @@ pub(crate) const COMMANDS: &[Action] = &[
     prompt::goto_percentage,
     prompt::change_working_dir,
     prompt::grep,
+    prompt::command_palette,
 
     search::search_forward,
     search::search_backward,
@@ -47,6 +49,11 @@ pub(crate) const COMMANDS: &[Action] = &[
     movement::goto_matching_pair,
     movement::end_of_line,
     movement::start_of_line,
+    movement::next_line,
+    movement::prev_line,
+    movement::next_grapheme,
+    movement::prev_grapheme,
+    movement::first_char_of_line,
 
     cursors::start_selection,
     cursors::new_cursor_to_next_line,

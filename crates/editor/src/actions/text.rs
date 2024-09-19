@@ -167,7 +167,7 @@ fn backtab(editor: &mut Editor, id: ClientId) {
 }
 
 #[action("Remove the rest of the line")]
-fn remove_line_after_cursor(editor: &mut Editor, id: ClientId) {
+fn remove_to_end_of_line(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     if win.remove_line_after_cursor(buf).is_ok() {
         let hook = Hook::BufChanged(buf.id);

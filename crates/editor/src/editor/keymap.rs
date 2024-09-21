@@ -1,22 +1,8 @@
-mod default;
-
 use rustc_hash::FxHashMap;
 use sanedit_messages::KeyEvent;
 use strum_macros::AsRefStr;
 
 use crate::actions::Action;
-
-pub(crate) use default::DefaultKeyMappings;
-
-#[macro_export]
-macro_rules! map {
-    ($keymap:ident, $($mapping: expr, $action:expr),+,) => {
-        use sanedit_messages::{try_parse_keyevents};
-        $(
-            $keymap.bind(&try_parse_keyevents($mapping).unwrap(), $action);
-         )*
-    }
-}
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, AsRefStr)]
 #[strum(serialize_all = "lowercase")]

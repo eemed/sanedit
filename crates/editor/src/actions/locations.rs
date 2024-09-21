@@ -5,7 +5,7 @@ use crate::editor::{windows::Focus, Editor};
 use sanedit_server::ClientId;
 
 #[action("Clear locations")]
-fn clear(editor: &mut Editor, id: ClientId) {
+fn clear_locations(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     win.locations.clear();
 }
@@ -18,26 +18,26 @@ fn show_locations(editor: &mut Editor, id: ClientId) {
 }
 
 #[action("Close locations")]
-fn close(editor: &mut Editor, id: ClientId) {
+fn close_locations(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     win.locations.show = false;
     win.focus = Focus::Window;
 }
 
 #[action("Next location entry")]
-fn next_entry(editor: &mut Editor, id: ClientId) {
+fn next_loc_entry(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     win.locations.select_next();
 }
 
 #[action("Previous location entry")]
-fn prev_entry(editor: &mut Editor, id: ClientId) {
+fn prev_loc_entry(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     win.locations.select_prev();
 }
 
 #[action("Press location entry")]
-fn confirm(editor: &mut Editor, id: ClientId) {
+fn goto_loc_entry(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
 
     if let Some(sel) = win.locations.selected_mut() {
@@ -70,13 +70,13 @@ fn confirm(editor: &mut Editor, id: ClientId) {
 }
 
 #[action("Goto parent group entry")]
-fn select_parent(editor: &mut Editor, id: ClientId) {
+fn select_loc_parent(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     win.locations.select_parent();
 }
 
 #[action("Expand or collapse all location entries")]
-fn toggle_expand_all(editor: &mut Editor, id: ClientId) {
+fn toggle_all_expand_locs(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     let mut has_expanded = false;
     for group in win.locations.groups() {

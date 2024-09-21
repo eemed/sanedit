@@ -13,7 +13,6 @@ use rustc_hash::FxHashMap;
 use sanedit_core::FileDescription;
 use sanedit_core::Filetype;
 use sanedit_messages::redraw::Size;
-use sanedit_messages::try_parse_keyevents;
 use sanedit_messages::ClientMessage;
 use sanedit_messages::KeyEvent;
 use sanedit_messages::KeyMods;
@@ -42,7 +41,6 @@ use crate::actions;
 use crate::actions::cursors;
 use crate::actions::hooks::run;
 use crate::actions::jobs::LSPHandle;
-use crate::actions::prompt::find_by_name;
 use crate::draw::DrawState;
 use crate::draw::EditorContext;
 use crate::editor::buffers::Buffer;
@@ -62,7 +60,6 @@ use self::clipboard::DefaultClipboard;
 use self::config::EditorConfig;
 use self::hooks::Hooks;
 use self::job_broker::JobBroker;
-use self::keymap::DefaultKeyMappings;
 use self::keymap::Keymap;
 use self::keymap::KeymapKind;
 
@@ -127,7 +124,7 @@ impl Editor {
             histories: Default::default(),
             clipboard: DefaultClipboard::new(),
             language_servers: Map::default(),
-            keymaps: DefaultKeyMappings::keymaps(),
+            keymaps: Map::default(),
             config: Config::default(),
         }
     }
@@ -147,26 +144,88 @@ impl Editor {
             }
         }
 
-        match config::read_config(&self.config_dir.config(), &self.working_dir) {
-            Ok(config) => {
-                self.config = config;
-                self.configure_keymap();
-            }
-            Err(e) => log::error!("Failed to read config: {e}"),
-        }
+        self.config = config::read_config(&self.config_dir.config(), &self.working_dir);
+        self.configure_keymap();
     }
 
     fn configure_keymap(&mut self) {
         let mut winmap = Keymap::default();
         for mapping in &self.config.keymaps.window {
-            if let (Ok(events), Some(action)) = (
-                try_parse_keyevents(&mapping.key),
-                find_by_name(&mapping.action),
-            ) {
-                winmap.bind(&events, action);
+            match mapping.to_keymap(KeymapKind::Window) {
+                Some((keys, action)) => winmap.bind(&keys, action),
+                None => log::error!(
+                    "Failed to bind window mapping: {} to {}",
+                    mapping.key,
+                    mapping.action
+                ),
             }
         }
         self.keymaps.insert(KeymapKind::Window, winmap);
+
+        let mut map = Keymap::default();
+        for mapping in &self.config.keymaps.search {
+            match mapping.to_keymap(KeymapKind::Search) {
+                Some((keys, action)) => map.bind(&keys, action),
+                None => log::error!(
+                    "Failed to bind search mapping: {} to {}",
+                    mapping.key,
+                    mapping.action
+                ),
+            }
+        }
+        self.keymaps.insert(KeymapKind::Search, map);
+
+        let mut map = Keymap::default();
+        for mapping in &self.config.keymaps.prompt {
+            match mapping.to_keymap(KeymapKind::Prompt) {
+                Some((keys, action)) => map.bind(&keys, action),
+                None => log::error!(
+                    "Failed to bind prompt mapping: {} to {}",
+                    mapping.key,
+                    mapping.action
+                ),
+            }
+        }
+        self.keymaps.insert(KeymapKind::Prompt, map);
+
+        let mut map = Keymap::default();
+        for mapping in &self.config.keymaps.completion {
+            match mapping.to_keymap(KeymapKind::Completion) {
+                Some((keys, action)) => map.bind(&keys, action),
+                None => log::error!(
+                    "Failed to bind completion mapping: {} to {}",
+                    mapping.key,
+                    mapping.action
+                ),
+            }
+        }
+        self.keymaps.insert(KeymapKind::Completion, map);
+
+        let mut map = Keymap::default();
+        for mapping in &self.config.keymaps.locations {
+            match mapping.to_keymap(KeymapKind::Locations) {
+                Some((keys, action)) => map.bind(&keys, action),
+                None => log::error!(
+                    "Failed to bind locations mapping: {} to {}",
+                    mapping.key,
+                    mapping.action
+                ),
+            }
+        }
+        self.keymaps.insert(KeymapKind::Locations, map);
+
+        let mut map = Keymap::default();
+        for mapping in &self.config.keymaps.filetree {
+            match mapping.to_keymap(KeymapKind::Filetree) {
+                Some((keys, action)) => map.bind(&keys, action),
+                None => log::error!(
+                    "Failed to bind filetree mapping: {} to {}",
+                    mapping.key,
+                    mapping.action
+                ),
+            }
+        }
+        self.keymaps.insert(KeymapKind::Filetree, map);
     }
 
     /// Ran after the startup configuration is complete

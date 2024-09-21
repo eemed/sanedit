@@ -19,7 +19,7 @@ fn show_filetree(editor: &mut Editor, id: ClientId) {
 }
 
 #[action("Press filetree entry")]
-fn confirm(editor: &mut Editor, id: ClientId) {
+fn goto_ft_entry(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf(id);
     let path = editor
         .filetree
@@ -49,7 +49,7 @@ fn confirm(editor: &mut Editor, id: ClientId) {
 }
 
 #[action("Next filetree entry")]
-fn next_entry(editor: &mut Editor, id: ClientId) {
+fn next_ft_entry(editor: &mut Editor, id: ClientId) {
     let visible = editor.filetree.iter().count();
 
     let (win, buf) = editor.win_buf_mut(id);
@@ -57,40 +57,37 @@ fn next_entry(editor: &mut Editor, id: ClientId) {
 }
 
 #[action("Previous filetree entry")]
-fn prev_entry(editor: &mut Editor, id: ClientId) {
+fn prev_ft_entry(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     win.ft_view.selection = win.ft_view.selection.saturating_sub(1);
 }
 
 #[action("Close filetree")]
-fn close(editor: &mut Editor, id: ClientId) {
+fn close_filetree(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     win.ft_view.show = false;
     win.focus = Focus::Window;
 }
 
 #[action("Create a new file")]
-fn create_new_file(editor: &mut Editor, id: ClientId) {
+fn ft_new_file(editor: &mut Editor, id: ClientId) {
     let dir = {
         let (win, _buf) = editor.win_buf(id);
         let Some(entry) = editor.filetree.iter().nth(win.ft_view.selection) else {
             return;
         };
 
-        log::info!("Entry: {:?}", entry.path());
         match entry.kind() {
             Kind::File => {
                 let Some(parent) = editor.filetree.parent_of(entry.path()) else {
                     return;
                 };
-                log::info!("parent: {:?}", parent.path());
                 parent.path().to_path_buf()
             }
             Kind::Directory { .. } => entry.path().to_path_buf(),
         }
     };
 
-    log::info!("dir: {dir:?}");
     let (win, buf) = editor.win_buf_mut(id);
     win.prompt = Prompt::builder()
         .prompt("Filename")
@@ -133,7 +130,7 @@ fn create_new_file(editor: &mut Editor, id: ClientId) {
 }
 
 #[action("Go to previous directory")]
-fn delete_file(editor: &mut Editor, id: ClientId) {
+fn ft_delete_file(editor: &mut Editor, id: ClientId) {
     let (kind, path) = {
         let (win, _buf) = editor.win_buf(id);
         let Some(entry) = editor.filetree.iter().nth(win.ft_view.selection) else {
@@ -179,14 +176,14 @@ fn delete_file(editor: &mut Editor, id: ClientId) {
                 }
             }
 
-            prev_entry.execute(editor, id);
+            prev_ft_entry.execute(editor, id);
         })
         .build();
     win.focus = Focus::Prompt;
 }
 
 #[action("Select parent")]
-fn select_parent(editor: &mut Editor, id: ClientId) {
+fn select_ft_parent(editor: &mut Editor, id: ClientId) {
     fn inner(editor: &mut Editor, id: ClientId) -> Option<()> {
         let (win, _buf) = editor.win_buf(id);
         let entry = editor.filetree.iter().nth(win.ft_view.selection)?;

@@ -5,7 +5,7 @@ use sanedit_server::ClientId;
 use super::hooks;
 
 #[action("Focus window")]
-fn focus(editor: &mut Editor, id: ClientId) {
+fn focus_window(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.focus = Focus::Window;
 }

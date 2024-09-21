@@ -57,7 +57,7 @@ fn complete(editor: &mut Editor, id: ClientId) {
 }
 
 #[action("Confirm completion")]
-fn confirm(editor: &mut Editor, id: ClientId) {
+fn confirm_completion(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     win.focus = Focus::Window;
 
@@ -72,19 +72,19 @@ fn confirm(editor: &mut Editor, id: ClientId) {
 }
 
 #[action("Abort completion")]
-fn abort(editor: &mut Editor, id: ClientId) {
+fn abort_completion(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     win.focus = Focus::Window;
 }
 
 #[action("Select next completion")]
-fn next(editor: &mut Editor, id: ClientId) {
+fn next_completion(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.completion.select_next();
 }
 
 #[action("Select previous completion")]
-fn prev(editor: &mut Editor, id: ClientId) {
+fn prev_completion(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.completion.select_prev();
 }

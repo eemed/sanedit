@@ -1,6 +1,7 @@
 use std::path::Path;
 
 use documented::DocumentedFields;
+use sanedit_messages::{try_parse_keyevents, KeyEvent};
 use serde::{Deserialize, Serialize};
 use toml_edit::{
     ser::to_document,
@@ -8,9 +9,15 @@ use toml_edit::{
     Item, KeyMut,
 };
 
-use crate::editor;
+use crate::{
+    actions::{
+        find_by_name, Action, COMPLETION_COMMANDS, FILETREE_COMMANDS, GLOBAL_COMMANDS,
+        LOCATIONS_COMMANDS, PROMPT_COMMANDS, SEARCH_COMMANDS, WINDOW_COMMANDS,
+    },
+    editor,
+};
 
-use super::{buffers, windows};
+use super::{buffers, keymap::KeymapKind, windows};
 use rustc_hash::FxHashMap;
 
 use super::Map;
@@ -32,7 +39,11 @@ pub(crate) struct Config {
 
 pub(crate) const PROJECT_CONFIG: &str = "sanedit-project.toml";
 
-pub(crate) fn read_config(config_path: &Path, working_dir: &Path) -> anyhow::Result<Config> {
+pub(crate) fn read_config(config_path: &Path, working_dir: &Path) -> Config {
+    try_read_config(config_path, working_dir).unwrap_or_default()
+}
+
+pub(crate) fn try_read_config(config_path: &Path, working_dir: &Path) -> anyhow::Result<Config> {
     let local = working_dir.join(PROJECT_CONFIG);
     let config = config::Config::builder()
         .add_source(config::File::from(config_path))
@@ -289,25 +300,151 @@ pub(crate) struct Mapping {
     pub(crate) action: String,
 }
 
+impl Mapping {
+    pub fn to_keymap(&self, kind: KeymapKind) -> Option<(Vec<KeyEvent>, Action)> {
+        let mut actions: Vec<&[Action]> = match kind {
+            KeymapKind::Search => [SEARCH_COMMANDS, PROMPT_COMMANDS].into(),
+            KeymapKind::Prompt => [PROMPT_COMMANDS].into(),
+            KeymapKind::Window => [WINDOW_COMMANDS].into(),
+            KeymapKind::Completion => [COMPLETION_COMMANDS].into(),
+            KeymapKind::Filetree => [FILETREE_COMMANDS].into(),
+            KeymapKind::Locations => [LOCATIONS_COMMANDS].into(),
+        };
+
+        actions.push(GLOBAL_COMMANDS);
+
+        let keys = try_parse_keyevents(&self.key).ok()?;
+        for list in actions {
+            if let Some(action) = find_by_name(list, &self.action) {
+                return Some((keys, action));
+            }
+        }
+
+        None
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub(crate) struct KeymapsConfig {
     pub(crate) window: Vec<Mapping>,
-    // search: FxHashMap<String, String>,
-    // prompt: FxHashMap<String, String>,
-    // completion: FxHashMap<String, String>,
-    // locations: FxHashMap<String, String>,
-    // filetree: FxHashMap<String, String>,
+    pub(crate) search: Vec<Mapping>,
+    pub(crate) prompt: Vec<Mapping>,
+    pub(crate) completion: Vec<Mapping>,
+    pub(crate) locations: Vec<Mapping>,
+    pub(crate) filetree: Vec<Mapping>,
 }
 
 impl Default for KeymapsConfig {
     fn default() -> Self {
         KeymapsConfig {
             window: Self::window(),
+            search: Self::search(),
+            prompt: Self::prompt(),
+            completion: Self::completion(),
+            locations: Self::locations(),
+            filetree: Self::filetree(),
         }
     }
 }
 
 impl KeymapsConfig {
+    pub fn search() -> Vec<Mapping> {
+        let mut maps = Vec::default();
+        #[rustfmt::skip]
+        make_keymap!(maps,
+            "ctrl+q",      quit,
+
+            "esc",          close_prompt,
+            "backspace",    prompt_remove_grapheme_before_cursor,
+            "left",         prompt_prev_grapheme,
+            "right",        prompt_next_grapheme,
+            "enter",        prompt_confirm,
+            "up",           prompt_history_prev,
+            "down",         prompt_history_next,
+
+            "ctrl+r",        toggle_search_regex,
+        );
+        maps
+    }
+
+    pub fn prompt() -> Vec<Mapping> {
+        let mut maps = Vec::default();
+        #[rustfmt::skip]
+        make_keymap!(maps,
+             "ctrl+q",    quit,
+
+             "esc",       close_prompt,
+             "backspace", prompt_remove_grapheme_before_cursor,
+             "left",      prompt_prev_grapheme,
+             "right",     prompt_next_grapheme,
+             "tab",       prompt_next_completion,
+             "btab",      prompt_prev_completion,
+             "enter",     prompt_confirm,
+             "up",        prompt_history_prev,
+             "down",      prompt_history_next,
+        );
+        maps
+    }
+
+    pub fn completion() -> Vec<Mapping> {
+        let mut maps = Vec::default();
+        #[rustfmt::skip]
+        make_keymap!(maps,
+             "tab",    next_completion,
+             "btab",   prev_completion,
+             "enter",  confirm_completion,
+             "esc",    abort_completion,
+        );
+        maps
+    }
+
+    pub fn locations() -> Vec<Mapping> {
+        let mut maps = Vec::default();
+        #[rustfmt::skip]
+        make_keymap!(maps,
+             "ctrl+q", quit,
+
+             "alt+up", focus_window,
+             "esc",    close_locations,
+             "enter",  goto_loc_entry,
+             "up",     prev_loc_entry,
+             "down",   next_loc_entry,
+             "btab",   prev_loc_entry,
+             "tab",    next_loc_entry,
+             "p",      select_loc_parent,
+             "s",      toggle_all_expand_locs,
+
+             "alt+1",  focus_window,
+             "alt+2",  show_filetree,
+             "alt+3",  close_locations,
+        );
+        maps
+    }
+
+    pub fn filetree() -> Vec<Mapping> {
+        let mut maps = Vec::default();
+        #[rustfmt::skip]
+        make_keymap!(maps,
+             "ctrl+q", quit,
+
+             "esc",       close_filetree,
+             "alt+right", focus_window,
+             "enter",     goto_ft_entry,
+             "up",        prev_ft_entry,
+             "down",      next_ft_entry,
+             "btab",      prev_ft_entry,
+             "tab",       next_ft_entry,
+             "c",         ft_new_file,
+             "d",         ft_delete_file,
+             "p",         select_ft_parent,
+
+             "alt+1",     focus_window,
+             "alt+2",     close_filetree,
+             "alt+3",     show_locations,
+        );
+        maps
+    }
+
     pub fn window() -> Vec<Mapping> {
         let mut maps = Vec::default();
 

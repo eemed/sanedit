@@ -20,13 +20,12 @@ use crate::{
 
 use sanedit_server::ClientId;
 
-pub(crate) use self::commands::{find_by_description, find_by_name};
-
 use super::{
-    hooks,
+    find_by_description, hooks,
     jobs::{Grep, MatcherJob},
     shell,
     text::save,
+    GLOBAL_COMMANDS, WINDOW_COMMANDS,
 };
 
 #[action("Select theme")]
@@ -75,9 +74,16 @@ fn command_palette(editor: &mut Editor, id: ClientId) {
 
     win.prompt = Prompt::builder()
         .prompt("Palette")
-        .on_confirm(move |editor, id, input| match find_by_description(input) {
-            Some(action) => action.execute(editor, id),
-            None => log::error!("No action with name {input}"),
+        .on_confirm(move |editor, id, input| {
+            let actions = [GLOBAL_COMMANDS, WINDOW_COMMANDS];
+            for list in actions {
+                if let Some(action) = find_by_description(list, input) {
+                    action.execute(editor, id);
+                    return;
+                }
+            }
+
+            log::error!("No action with name {input}");
         })
         .build();
 
@@ -141,7 +147,7 @@ fn open_buffer(editor: &mut Editor, id: ClientId) {
 }
 
 #[action("Close prompt")]
-fn close(editor: &mut Editor, id: ClientId) {
+fn close_prompt(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.focus = Focus::Window;
 
@@ -156,7 +162,7 @@ fn close(editor: &mut Editor, id: ClientId) {
 }
 
 #[action("Confirm selection")]
-fn confirm(editor: &mut Editor, id: ClientId) {
+fn prompt_confirm(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.focus = Focus::Window;
 
@@ -175,19 +181,19 @@ fn confirm(editor: &mut Editor, id: ClientId) {
 }
 
 #[action("Move cursor one character right")]
-fn next_grapheme(editor: &mut Editor, id: ClientId) {
+fn prompt_next_grapheme(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.prompt.next_grapheme();
 }
 
 #[action("Move cursor one character left")]
-fn prev_grapheme(editor: &mut Editor, id: ClientId) {
+fn prompt_prev_grapheme(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.prompt.prev_grapheme();
 }
 
 #[action("Delete a character before cursor")]
-pub(crate) fn remove_grapheme_before_cursor(editor: &mut Editor, id: ClientId) {
+pub(crate) fn prompt_remove_grapheme_before_cursor(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.prompt.remove_grapheme_before_cursor();
 
@@ -198,24 +204,24 @@ pub(crate) fn remove_grapheme_before_cursor(editor: &mut Editor, id: ClientId) {
 }
 
 #[action("Select the next completion item")]
-fn next_completion(editor: &mut Editor, id: ClientId) {
+fn prompt_next_completion(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.prompt.next_completion();
 }
 
 #[action("Select the previous completion item")]
-fn prev_completion(editor: &mut Editor, id: ClientId) {
+fn prompt_prev_completion(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.prompt.prev_completion();
 }
 
 #[action("Select the next entry from history")]
-fn history_next(editor: &mut Editor, id: ClientId) {
+fn prompt_history_next(editor: &mut Editor, id: ClientId) {
     editor.prompt_history_next(id);
 }
 
 #[action("Select the previous entry from history")]
-fn history_prev(editor: &mut Editor, id: ClientId) {
+fn prompt_history_prev(editor: &mut Editor, id: ClientId) {
     editor.prompt_history_prev(id);
 }
 

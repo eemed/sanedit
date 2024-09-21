@@ -138,7 +138,7 @@ impl Default for Hooks {
         hooks.register(CursorMoved, cursors::merge_overlapping_cursors);
         hooks.register(OnMessagePre, window::clear_messages);
         // TODO handle registration only when needed?
-        hooks.register(CursorMoved, completion::abort);
+        hooks.register(CursorMoved, completion::abort_completion);
         hooks.register(BufChanged, completion::send_word);
         hooks.register(BufCreated, indent::detect_indent);
         hooks.register(CursorMoved, popup::close);

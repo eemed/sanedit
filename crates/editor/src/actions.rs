@@ -267,4 +267,6 @@ pub(crate) const WINDOW_COMMANDS: &[Action] = &[
     lsp::restart_lsp,
 
     popup::close,
+
+    syntax::parse_syntax,
 ];

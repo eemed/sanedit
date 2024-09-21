@@ -40,7 +40,13 @@ pub(crate) struct Config {
 pub(crate) const PROJECT_CONFIG: &str = "sanedit-project.toml";
 
 pub(crate) fn read_config(config_path: &Path, working_dir: &Path) -> Config {
-    try_read_config(config_path, working_dir).unwrap_or_default()
+    match try_read_config(config_path, working_dir) {
+        Ok(config) => config,
+        Err(e) => {
+            log::warn!("Failed to load configuration, using default instead: {e}");
+            Config::default()
+        }
+    }
 }
 
 pub(crate) fn try_read_config(config_path: &Path, working_dir: &Path) -> anyhow::Result<Config> {

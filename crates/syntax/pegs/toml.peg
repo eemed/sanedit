@@ -12,7 +12,7 @@ value_line      = ignore name ws "=" ws value line_end;
 name            = (!space !nl .)+;
 value           = string / datetime / float / integer / boolean / array / object;
 
-array           = (empty_array / string_array / datetime_array / float_array / integer_array / boolean_array / array_array);
+array           = (empty_array / string_array / datetime_array / float_array / integer_array / boolean_array / array_array / object_array);
 
 @show
 string    = "\"" compl_string "\"";
@@ -67,6 +67,9 @@ datetime_array  = "[" datetime ("," datetime)* ","? "]";
 
 @whitespaced
 array_array     = "[" array ("," array)*  ","? "]";
+
+@whitespaced
+object_array    = "[" object ("," object)*  ","? "]";
 
 line_end        = ws comment? !(!nl .);
 ignore          = (comment / space / nl)*;

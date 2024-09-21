@@ -87,7 +87,16 @@ pub(crate) fn reparse_view(editor: &mut Editor, id: ClientId) {
 
 #[action("Load buffer syntax")]
 pub(crate) fn load_syntax(editor: &mut Editor, id: ClientId) {
-    let (win, buf) = editor.win_buf_mut(id);
+    let bid = editor
+        .hooks
+        .running_hook()
+        .map(Hook::buffer_id)
+        .flatten()
+        .unwrap_or_else(|| {
+            let (win, _) = editor.win_buf(id);
+            win.buffer_id()
+        });
+    let buf = editor.buffers().get(bid).unwrap();
     let Some(ft) = buf.filetype.clone() else {
         return;
     };
@@ -96,6 +105,7 @@ pub(crate) fn load_syntax(editor: &mut Editor, id: ClientId) {
 
 #[action("Parse buffer syntax")]
 pub(crate) fn parse_syntax(editor: &mut Editor, id: ClientId) {
+    log::info!("Parsing syntax..");
     const JOB_NAME: &str = "parse-syntax";
 
     let (win, buf) = editor.win_buf_mut(id);

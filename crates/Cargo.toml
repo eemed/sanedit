@@ -59,6 +59,7 @@ toml_edit            = "0.22"
 unicode-width        = "0.1"
 which                = "5.0.0"
 
+
 [profile.release]
 opt-level = 3
 lto = true          # Enable link-time optimization

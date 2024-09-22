@@ -16,6 +16,14 @@ tasks:
     cmds:
       - cargo build --release
 
+  release:deb:
+    desc: Build a deb package
+    dir: crates
+    deps: [install-pre-commit-hook]
+    cmds:
+        - mkdir -p ../deb
+        - cargo deb -p sanedit-cli -o ../deb
+
   release:run:
     desc: Build and run the release build
     dir: crates

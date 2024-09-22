@@ -4,11 +4,9 @@
 
 * Keybindings should be sensical
     * Line up down char next prev, to keyboard not arrow keys
-    * Keybinds to configuration file => no default in code
 * Somethings wrong with multiwidth grapheme rendering.
 * Welcome screen
     * Help menus to F1
-
 
 * Save in place
 * Async saving

@@ -9,3 +9,4 @@ testfiles
 docs/images/*.png
 crates/samples
 runtime/config/config.toml
+deb/

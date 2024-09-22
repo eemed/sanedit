@@ -605,7 +605,7 @@ impl Window {
             let mut starts = FxHashSet::default();
 
             for cursor in self.cursors.iter() {
-                let range = cursor.selection().unwrap_or(cursor.pos()..cursor.pos() + 1);
+                let range = cursor.selection().unwrap_or(cursor.pos()..cursor.pos());
                 let cstarts = selection_line_starts(&slice, range);
                 starts.extend(cstarts);
             }

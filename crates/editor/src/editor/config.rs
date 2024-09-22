@@ -475,8 +475,12 @@ impl KeymapsConfig {
 
             "up",        prev_line,
             "down",      next_line,
+            "alt+U",     prev_line,
+            "alt+u",     next_line,
             "left",      prev_grapheme,
             "right",     next_grapheme,
+            "alt+c",     next_grapheme,
+            "alt+C",     prev_grapheme,
             "alt+b",     end_of_buffer,
             "alt+B",     start_of_buffer,
             "alt+l",     end_of_line,

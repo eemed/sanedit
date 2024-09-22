@@ -3,6 +3,13 @@ name = "sanedit-cli"
 version.workspace = true
 edition.workspace = true
 
+[package.metadata.deb]
+maintainer = "eemed <eemed@protonmail.com>"
+copyright = "2024, eemed"
+depends = "$auto"
+section = "utils"
+priority = "optional"
+
 [[bin]]
 name = "sane"
 path = "src/main.rs"

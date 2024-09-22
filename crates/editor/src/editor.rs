@@ -110,7 +110,7 @@ impl Editor {
             runtime,
             clients: Map::default(),
             draw_states: Map::default(),
-            syntaxes: Syntaxes::new(&ft_dir),
+            syntaxes: Syntaxes::new(ft_dir),
             windows: Windows::default(),
             buffers: Buffers::default(),
             job_broker: JobBroker::new(jobs_handle),
@@ -133,8 +133,8 @@ impl Editor {
         if let Some(cd) = opts.config_dir.take() {
             if let Ok(cd) = cd.canonicalize() {
                 self.config_dir = ConfigDirectory::new(&cd);
-                self.syntaxes = Syntaxes::new(&self.config_dir.filetype_dir());
-                self.themes = Themes::new(&self.config_dir.theme_dir());
+                self.syntaxes = Syntaxes::new(self.config_dir.filetype_dir());
+                self.themes = Themes::new(self.config_dir.theme_dir());
             }
         }
 

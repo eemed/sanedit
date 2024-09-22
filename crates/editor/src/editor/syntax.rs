@@ -7,7 +7,7 @@ use std::{
 
 use rustc_hash::FxHashMap;
 use sanedit_buffer::PieceTreeView;
-use sanedit_core::{BufferRange, Filetype};
+use sanedit_core::{BufferRange, Directory, Filetype};
 use sanedit_server::Kill;
 
 use std::fs::File;
@@ -18,14 +18,14 @@ use sanedit_syntax::{Annotation, ByteReader, CaptureID, Parser};
 
 #[derive(Debug)]
 pub struct Syntaxes {
-    filetype_dir: PathBuf,
+    filetype_dir: Directory,
     syntaxes: FxHashMap<Filetype, Syntax>,
 }
 
 impl Syntaxes {
-    pub fn new(ft_dir: &Path) -> Syntaxes {
+    pub fn new(ft_dir: Directory) -> Syntaxes {
         Syntaxes {
-            filetype_dir: ft_dir.into(),
+            filetype_dir: ft_dir,
             syntaxes: FxHashMap::default(),
         }
     }
@@ -38,10 +38,14 @@ impl Syntaxes {
     }
 
     pub fn load(&mut self, ft: &Filetype) -> anyhow::Result<Syntax> {
-        let peg = self
-            .filetype_dir
-            .join(ft.as_str())
-            .join(format!("{}.peg", ft.as_str()));
+        let components = [
+            PathBuf::from(ft.as_str()),
+            PathBuf::from(format!("{}.peg", ft.as_str())),
+        ];
+        let peg = self.filetype_dir.find(&components).ok_or(anyhow!(
+            "Could not find syntax for filetype {}",
+            ft.as_str()
+        ))?;
         let syntax = Syntax::from_path(&peg)?;
         self.syntaxes.insert(ft.clone(), syntax.clone());
         Ok(syntax)

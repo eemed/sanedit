@@ -4,22 +4,22 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use anyhow::bail;
+use anyhow::{anyhow, bail};
 use config::{File, Value};
 use rustc_hash::FxHashMap;
-use sanedit_core::ConfigDirectory;
+use sanedit_core::{ConfigDirectory, Directory};
 use sanedit_messages::redraw::{Style, Theme, ThemeField};
 
 pub(crate) const DEFAULT_THEME: &str = "default";
 
 #[derive(Debug)]
 pub(crate) struct Themes {
-    theme_dir: PathBuf,
+    theme_dir: Directory,
     themes: FxHashMap<String, Theme>,
 }
 
 impl Themes {
-    pub fn new(path: &Path) -> Themes {
+    pub fn new(path: Directory) -> Themes {
         let mut themes = FxHashMap::default();
         themes.insert(DEFAULT_THEME.into(), default_theme());
 
@@ -41,28 +41,29 @@ impl Themes {
     }
 
     pub fn load_all(&mut self) {
-        if let Ok(mut paths) = fs::read_dir(&self.theme_dir) {
-            while let Some(Ok(path)) = paths.next() {
-                let fname = path.file_name();
-                let name = fname.to_string_lossy().to_string();
-                let stripped = name.strip_suffix(".toml").unwrap_or(name.as_str());
+        for path in self.theme_dir.find_all_files() {
+            log::info!("Loading theme: {:?}", path);
+            let Some(fname) = path.file_name() else {
+                continue;
+            };
+            let name = fname.to_string_lossy().to_string();
+            let stripped = name.strip_suffix(".toml").unwrap_or(name.as_str());
 
-                if let Err(e) = self.load(&stripped) {
-                    log::error!("Loading theme '{name}' failed: {e}");
-                }
+            if let Err(e) = self.load(&stripped) {
+                log::error!("Loading theme '{name}' failed: {e}");
             }
         }
     }
 
     pub fn load(&mut self, theme_name: &str) -> anyhow::Result<&Theme> {
-        let theme = {
-            let mut conf = self.theme_dir.clone();
-            conf.push(format!("{}.toml", theme_name));
-            conf
-        };
+        let components = [PathBuf::from(format!("{}.toml", theme_name))];
+        let theme = self
+            .theme_dir
+            .find(&components)
+            .ok_or(anyhow!("Could not find theme"))?;
 
         let theme_file = config::Config::builder()
-            .add_source(File::from(theme.as_path()))
+            .add_source(File::from(theme))
             .build()?;
         let table = theme_file.get_table("colors")?;
         let mut theme = Theme::new(theme_name);

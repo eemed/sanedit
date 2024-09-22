@@ -4,11 +4,16 @@ version.workspace = true
 edition.workspace = true
 
 [package.metadata.deb]
+name = "sanedit"
 maintainer = "eemed <eemed@protonmail.com>"
 copyright = "2024, eemed"
 depends = "$auto"
 section = "utils"
 priority = "optional"
+assets = [
+    ["target/release/sane", "usr/bin/", "755"],
+    ["../../runtime/**/*", "usr/share/sanedit/", "644"],
+]
 
 [[bin]]
 name = "sane"

@@ -2,9 +2,10 @@
 
 ## TODO
 
-* Keybindings should be sensical
-    * Line up down char next prev, to keyboard not arrow keys
+* Searcher is one step behind
+* core dirs has todos
 * Somethings wrong with multiwidth grapheme rendering.
+* Keybindings should be sensical
 * Welcome screen
     * Help menus to F1
 

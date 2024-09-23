@@ -56,7 +56,7 @@ tokio                = "1.37"
 tokio-util           = "0.7"
 toml                 = "0.8"
 toml_edit            = "0.22"
-unicode-width        = "0.1"
+unicode-width        = "0.1.13"
 which                = "5.0.0"
 
 

@@ -384,7 +384,7 @@ impl Editor {
             .get(win.buffer_id())
             .expect("No window for {id}");
         let theme = {
-            let theme_name = win.theme();
+            let theme_name = &win.config.theme;
             self.themes.get(theme_name).expect("Theme not present")
         };
 
@@ -406,7 +406,7 @@ impl Editor {
                 .new_window(id, bid, size.width, size.height, self.config.window.clone());
         let buf = self.buffers.get(bid).expect("Buffer not present");
         let theme = {
-            let theme_name = win.theme();
+            let theme_name = &win.config.theme;
             self.themes
                 .get(theme_name)
                 .expect("Theme not present")
@@ -497,7 +497,7 @@ impl Editor {
             .get(win.buffer_id())
             .expect("No window for {id}");
         let theme = {
-            let theme_name = win.theme();
+            let theme_name = &win.config.theme;
             self.themes.get(theme_name).expect("Theme not present")
         };
 
@@ -604,7 +604,7 @@ impl Editor {
     pub fn reload(&mut self, id: ClientId) {
         // Reload theme
         let (win, buf) = self.win_buf(id);
-        let theme = win.theme().to_string();
+        let theme = win.config.theme.to_string();
         if let Ok(theme) = self.themes.load(&theme).cloned() {
             self.send_to_client(id, ClientMessage::Theme(theme))
         }

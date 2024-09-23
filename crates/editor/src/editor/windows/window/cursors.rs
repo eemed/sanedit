@@ -1,6 +1,6 @@
-use std::{cmp::min, collections::HashMap, ops::Range};
+use std::{cmp::min, ops::Range};
 
-use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_hash::FxHashSet;
 use sanedit_core::{BufferRangeExt as _, Cursor, RangeUtils as _};
 use sanedit_utils::ranges::OverlappingRanges;
 

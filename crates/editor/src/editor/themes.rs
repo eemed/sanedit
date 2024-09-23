@@ -1,8 +1,4 @@
-use std::{
-    collections::HashMap,
-    fs,
-    path::{Path, PathBuf},
-};
+use std::{collections::HashMap, path::PathBuf};
 
 use anyhow::{anyhow, bail};
 use config::{File, Value};
@@ -41,7 +37,7 @@ impl Themes {
     }
 
     pub fn load_all(&mut self) {
-        for path in self.theme_dir.find_all_files() {
+        for path in self.theme_dir.find_all_distinct_files() {
             log::info!("Loading theme: {:?}", path);
             let Some(fname) = path.file_name() else {
                 continue;

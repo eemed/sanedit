@@ -17,7 +17,7 @@ use std::{
     mem,
 };
 
-use anyhow::Result;
+use anyhow::{bail, Result};
 use rustc_hash::FxHashSet;
 use sanedit_core::{
     grapheme_category, indent_at_line,
@@ -142,14 +142,6 @@ impl Window {
 
     pub fn display_options_mut(&mut self) -> &mut DisplayOptions {
         &mut self.view.options
-    }
-
-    pub fn theme(&self) -> &str {
-        &self.view.theme
-    }
-
-    pub fn set_theme(&mut self, theme: &str) {
-        self.view.theme = theme.into();
     }
 
     pub fn display_options(&self) -> &DisplayOptions {
@@ -559,7 +551,6 @@ impl Window {
             .map(|c| {
                 let indent = {
                     match indent_at_line(&slice, c.pos()) {
-                        // ??
                         Some((k, n)) => k.repeat(n as usize),
                         None => String::new(),
                     }
@@ -573,47 +564,25 @@ impl Window {
         Ok(())
     }
 
-    /// Indent all the lines with cursors or their selections
-    pub fn indent_cursor_lines(&mut self, buf: &mut Buffer) -> Result<()> {
+    fn cursor_line_starts(&self, buf: &Buffer) -> Vec<u64> {
         let slice = buf.slice(..);
-        let starts: Vec<u64> = {
-            let mut starts = FxHashSet::default();
+        let mut starts = FxHashSet::default();
 
-            for cursor in self.cursors.iter() {
-                let range = cursor.selection().unwrap_or(cursor.pos()..cursor.pos() + 1);
-                let cstarts = selection_line_starts(&slice, range);
-                starts.extend(cstarts);
-            }
-            let mut vstarts: Vec<u64> = starts.into_iter().collect();
-            vstarts.sort();
-            vstarts
-        };
-
-        let indent = buf
-            .config
-            .indent_kind
-            .repeat(buf.config.indent_amount as usize);
-        let changes = Changes::multi_insert(&starts, indent.as_bytes());
-        self.change(buf, &changes)?;
-        Ok(())
+        for cursor in self.cursors.iter() {
+            let cpos = cursor.pos();
+            let sel = cursor.selection().unwrap_or(cpos..cpos);
+            let cstarts = selection_line_starts(&slice, sel);
+            starts.extend(cstarts);
+        }
+        let mut vstarts: Vec<u64> = starts.into_iter().collect();
+        vstarts.sort();
+        vstarts
     }
 
     /// Dedent all the lines with cursors or their selections
     pub fn dedent_cursor_lines(&mut self, buf: &mut Buffer) -> Result<()> {
+        let starts = self.cursor_line_starts(buf);
         let slice = buf.slice(..);
-        let starts: Vec<u64> = {
-            let mut starts = FxHashSet::default();
-
-            for cursor in self.cursors.iter() {
-                let range = cursor.selection().unwrap_or(cursor.pos()..cursor.pos());
-                let cstarts = selection_line_starts(&slice, range);
-                starts.extend(cstarts);
-            }
-            let mut vstarts: Vec<u64> = starts.into_iter().collect();
-            vstarts.sort();
-            vstarts
-        };
-
         let iamount = buf.config.indent_amount;
         let ranges: Vec<BufferRange> = {
             let mut ranges = vec![];
@@ -623,22 +592,39 @@ impl Window {
                 };
 
                 let mut off = n % iamount as u64;
-                if off == 0 {
-                    off = min(iamount as u64, n);
+                if off == 0 && n != 0 {
+                    off = iamount as u64;
                 }
 
-                ranges.push(pos..pos + off);
+                if off != 0 {
+                    ranges.push(pos..pos + off);
+                }
             }
             ranges
         };
+
+        if ranges.is_empty() {
+            bail!("No lines to dedent");
+        }
 
         self.remove(buf, &ranges)?;
         Ok(())
     }
 
-    /// Insert a tab character
-    /// If cursor is at indentation, add an indentation block instead
-    pub fn insert_tab(&mut self, buf: &mut Buffer) -> Result<()> {
+    /// Indent all the lines with cursors or their selections
+    pub fn indent_cursor_lines(&mut self, buf: &mut Buffer) -> Result<()> {
+        let starts = self.cursor_line_starts(buf);
+        let indent = buf
+            .config
+            .indent_kind
+            .repeat(buf.config.indent_amount as usize);
+        let changes = Changes::multi_insert(&starts, indent.as_bytes());
+        self.change(buf, &changes)?;
+        Ok(())
+    }
+
+    /// Add indentation at cursors
+    pub fn indent(&mut self, buf: &mut Buffer) -> Result<()> {
         let slice = buf.slice(..);
         let ikind = buf.config.indent_kind;
         let iamount = buf.config.indent_amount;

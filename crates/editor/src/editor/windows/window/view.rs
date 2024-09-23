@@ -7,7 +7,6 @@ use sanedit_messages::redraw::{Point, Size};
 
 use crate::editor::buffers::{Buffer, BufferId};
 use crate::editor::syntax::{Span, SyntaxResult};
-use crate::editor::themes::DEFAULT_THEME;
 
 #[derive(Debug, Clone)]
 pub(crate) enum Cell {
@@ -115,7 +114,6 @@ pub(crate) struct View {
 
     /// Display options which were used to draw this view
     pub options: DisplayOptions,
-    pub theme: String,
     needs_redraw: bool,
 
     pub(super) syntax: ViewSyntax,
@@ -131,7 +129,6 @@ impl View {
             options: DisplayOptions::default(),
             needs_redraw: true,
             syntax: ViewSyntax::default(),
-            theme: DEFAULT_THEME.into(),
         }
     }
 

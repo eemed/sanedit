@@ -4,6 +4,7 @@ use std::{
 };
 
 use rand::Rng;
+use rustc_hash::FxHashSet;
 
 const TMP_DIR: &str = "tmp";
 pub const SANE_DIR: &str = "sanedit";
@@ -38,17 +39,41 @@ impl Directory {
     }
 
     pub fn find_all_files(&self) -> Vec<PathBuf> {
-        log::info!("Find all: {self:?}");
         let mut results = vec![];
 
         for dir in &self.dirs {
             if let Ok(mut rd) = std::fs::read_dir(dir) {
-                while let Some(Ok(dir)) = rd.next() {
-                    let Ok(ft) = dir.file_type() else {
+                while let Some(Ok(entry)) = rd.next() {
+                    let Ok(ft) = entry.file_type() else {
                         continue;
                     };
                     if ft.is_file() {
-                        results.push(dir.path());
+                        results.push(entry.path());
+                    }
+                }
+            }
+        }
+
+        results
+    }
+
+    pub fn find_all_distinct_files(&self) -> Vec<PathBuf> {
+        let mut seen = FxHashSet::default();
+        let mut results = vec![];
+
+        for dir in &self.dirs {
+            if let Ok(mut rd) = std::fs::read_dir(dir) {
+                while let Some(Ok(entry)) = rd.next() {
+                    let Ok(ft) = entry.file_type() else {
+                        continue;
+                    };
+                    let path = entry.path();
+                    let Ok(local) = path.strip_prefix(&dir) else {
+                        continue;
+                    };
+                    if ft.is_file() && !seen.contains(local) {
+                        seen.insert(local.to_path_buf());
+                        results.push(path);
                     }
                 }
             }

@@ -147,12 +147,9 @@ fn insert_tab(editor: &mut Editor, id: ClientId) {
     {
         // If single cursor not in indentation try completion
         completion::complete.execute(editor, id);
-    } else {
-        let (win, buf) = editor.win_buf_mut(id);
-        if win.insert_tab(buf).is_ok() {
-            let hook = Hook::BufChanged(buf.id);
-            run(editor, id, hook);
-        }
+    } else if win.indent(buf).is_ok() {
+        let hook = Hook::BufChanged(buf.id);
+        run(editor, id, hook);
     }
 }
 

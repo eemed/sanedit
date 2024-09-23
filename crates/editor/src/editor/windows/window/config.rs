@@ -1,6 +1,8 @@
 use documented::DocumentedFields;
 use serde::{Deserialize, Serialize};
 
+use crate::editor::themes::DEFAULT_THEME;
+
 #[derive(Debug, Clone, Serialize, Deserialize, DocumentedFields)]
 #[serde(default)]
 pub(crate) struct WindowConfig {
@@ -9,6 +11,8 @@ pub(crate) struct WindowConfig {
 
     /// Maximum completions to show at once
     pub max_completions: usize,
+
+    pub theme: String,
 }
 
 impl Default for WindowConfig {
@@ -16,6 +20,7 @@ impl Default for WindowConfig {
         WindowConfig {
             max_prompt_completions: 10,
             max_completions: 10,
+            theme: DEFAULT_THEME.into(),
         }
     }
 }

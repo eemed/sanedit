@@ -24,6 +24,6 @@ sanedit-terminal-client = { path = "../terminal-client" }
 sanedit-editor = { path = "../editor" }
 sanedit-server = { path = "../server" }
 
-clap = { workspace = true, features = ["derive"] }
+argh.workspace = true
 log.workspace = true
 log4rs.workspace = true

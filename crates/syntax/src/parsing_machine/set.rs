@@ -1,34 +1,31 @@
-use std::ops::Index;
-
-use bitvec::{bitarr, prelude::*};
-
 pub(crate) struct Set {
-    inner: BitArray<[u32; 8]>,
+    // 32 * 8 = 256 bits
+    inner: [u32; 8],
 }
 
 impl Set {
     pub fn any() -> Set {
         Set {
-            inner: bitarr![u32, Lsb0; u32::MAX; 256],
+            inner: [u32::MAX; 8],
         }
     }
 
     pub fn new() -> Set {
-        Set {
-            inner: bitarr![u32, Lsb0; 0; 256],
-        }
+        Set { inner: [0u32; 8] }
     }
 
     pub fn add(&mut self, n: u8) {
-        self.inner.set(n as usize, true);
+        let num = (n / 32) as usize;
+        let pos = n % 32;
+        let shifted = 1 << pos;
+        self.inner[num] |= shifted;
     }
-}
 
-impl Index<u8> for Set {
-    type Output = bool;
-
-    fn index(&self, index: u8) -> &Self::Output {
-        &self.inner[index as usize]
+    pub fn has(&self, n: u8) -> bool {
+        let num = (n / 32) as usize;
+        let pos = n % 32;
+        let shifted = 1 << pos;
+        self.inner[num] & shifted != 0
     }
 }
 
@@ -36,8 +33,8 @@ impl std::fmt::Debug for Set {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str("[")?;
         let mut first = true;
-        for i in 0..256 {
-            if !self.inner[i] {
+        for i in 0..=255 {
+            if !self.has(i) {
                 continue;
             }
 
@@ -50,5 +47,18 @@ impl std::fmt::Debug for Set {
             first = false;
         }
         f.write_str("]")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn has_any() {
+        let mut set = Set::new();
+        set.add(2);
+        set.add(50);
+        println!("Set: {set:?}");
     }
 }

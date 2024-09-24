@@ -144,7 +144,7 @@ impl Parser {
                     }
                 },
                 Set(set) => {
-                    if sp < slen && set[reader.at(sp)] {
+                    if sp < slen && set.has(reader.at(sp)) {
                         ip += 1;
                         sp += 1;
                     } else {
@@ -184,7 +184,7 @@ impl Parser {
                     state = State::Failure;
                 }
                 Span(set) => {
-                    while set[reader.at(sp)] {
+                    while set.has(reader.at(sp)) {
                         sp += 1;
                     }
 

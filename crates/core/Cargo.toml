@@ -17,7 +17,6 @@ bitflags.workspace = true
 unicode-width.workspace = true
 rustc-hash.workspace = true 
 rayon.workspace = true
-rand.workspace = true
 dirs.workspace = true
 log.workspace = true
 strum.workspace = true

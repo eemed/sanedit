@@ -10,7 +10,6 @@ sanedit-utils = { path = "../utils" }
 sanedit-buffer = { path = "../buffer" }
 
 rustc-hash.workspace = true
-bitvec.workspace = true
 anyhow.workspace = true
 thiserror.workspace = true
 log.workspace = true

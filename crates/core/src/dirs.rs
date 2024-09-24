@@ -1,9 +1,13 @@
 use std::{
+    cell::Cell,
     fs::{self, File, OpenOptions},
     path::{Path, PathBuf},
+    sync::{
+        atomic::{AtomicU32, Ordering},
+        Arc, OnceLock,
+    },
 };
 
-use rand::Rng;
 use rustc_hash::FxHashSet;
 
 const TMP_DIR: &str = "tmp";
@@ -152,18 +156,9 @@ pub fn tmp_dir() -> Option<PathBuf> {
     Some(tmp)
 }
 
-// pub fn tmp_file() -> Option<PathBuf> {
-//     let id = uuid::Uuid::new_v4();
-//     let mut result = tmp_dir()?;
-//     result.push(PathBuf::from(id.to_string()));
-//     Some(result)
-// }
-
 pub fn tmp_file() -> Option<(PathBuf, File)> {
-    let mut rng = rand::thread_rng();
     loop {
-        let rand: u32 = rng.gen();
-        let name = format!("tmp-file-{}", rand);
+        let name = format!("tmp-file-{}", next_id());
         let mut path = tmp_dir()?;
 
         path.push(PathBuf::from(name));
@@ -180,4 +175,10 @@ pub fn tmp_file() -> Option<(PathBuf, File)> {
             }
         }
     }
+}
+
+fn next_id() -> u32 {
+    static TMP_FILE_NUM: OnceLock<Arc<AtomicU32>> = OnceLock::new();
+    let count = TMP_FILE_NUM.get_or_init(|| Arc::new(AtomicU32::new(0)));
+    count.fetch_add(1, Ordering::Relaxed)
 }

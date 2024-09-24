@@ -1,4 +1,3 @@
-use byteorder::{BigEndian, ByteOrder, WriteBytesExt};
 use std::{io, marker::PhantomData};
 
 use bincode::Options;
@@ -56,7 +55,7 @@ where
     /// Read enough bytes from read to src to be able to decode an item
     pub fn decode_fill<R: io::Read>(read: &mut R, src: &mut BytesMut) -> io::Result<usize> {
         let first = Self::decode_fill_size(read, src, U32_BYTES)?;
-        let size = BigEndian::read_u32(&src[..U32_BYTES]) as usize;
+        let size = u32::from_be_bytes(src[..U32_BYTES].try_into().unwrap()) as usize;
         let second = Self::decode_fill_size(read, src, size + U32_BYTES)?;
 
         Ok(first + second)
@@ -85,7 +84,7 @@ where
             return Ok(None);
         }
 
-        let size = BigEndian::read_u32(&src[..U32_BYTES]) as usize;
+        let size = u32::from_be_bytes(src[..U32_BYTES].try_into().unwrap()) as usize;
         if src.remaining() < U32_BYTES + size {
             return Ok(None);
         }
@@ -111,6 +110,8 @@ where
     type Error = bincode::Error;
 
     fn encode(&mut self, item: T, dst: &mut BytesMut) -> Result<(), Self::Error> {
+        use io::Write;
+
         let bcode = bincode::options()
             .with_big_endian()
             .with_fixint_encoding()
@@ -126,7 +127,8 @@ where
 
         let mut writer = dst.writer();
 
-        writer.write_u32::<BigEndian>(size)?;
+        let bytes = size.to_be_bytes();
+        writer.write(&bytes)?;
         bcode.serialize_into(writer, &item)
     }
 }

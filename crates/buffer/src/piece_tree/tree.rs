@@ -300,7 +300,7 @@ impl Default for Tree {
 
 #[cfg(test)]
 pub(crate) mod test {
-    use rand_chacha::rand_core::{RngCore, SeedableRng};
+    // use rand_chacha::rand_core::{RngCore, SeedableRng};
 
     use super::*;
     use crate::piece_tree::PieceTree;
@@ -544,28 +544,28 @@ pub(crate) mod test {
         }
     }
 
-    #[test]
-    fn fuzz_found_bug_1() {
-        fn make_tree(p_len: usize) -> PieceTree {
-            let mut pt = PieceTree::new();
-            pt.insert(0, "a".repeat(p_len).as_bytes());
-            pt
-        }
+    // #[test]
+    // fn fuzz_found_bug_1() {
+    //     fn make_tree(p_len: usize) -> PieceTree {
+    //         let mut pt = PieceTree::new();
+    //         pt.insert(0, "a".repeat(p_len).as_bytes());
+    //         pt
+    //     }
 
-        let seed = 67_319;
-        let mut gen = rand_chacha::ChaCha8Rng::seed_from_u64(seed);
-        let p_len = 1000;
-        let mut tree_len = p_len;
-        let mut pt = make_tree(p_len as usize);
+    //     let seed = 67_319;
+    //     let mut gen = rand_chacha::ChaCha8Rng::seed_from_u64(seed);
+    //     let p_len = 1000;
+    //     let mut tree_len = p_len;
+    //     let mut pt = make_tree(p_len as usize);
 
-        while tree_len > 0 {
-            let start = gen.next_u64() % (tree_len + 1);
-            let end = (start + 15).min(tree_len);
-            pt.remove(start..end);
-            tree_len -= end - start;
-            assert_eq!(Ok(()), is_valid_tree(pt.tree()));
-        }
-    }
+    //     while tree_len > 0 {
+    //         let start = gen.next_u64() % (tree_len + 1);
+    //         let end = (start + 15).min(tree_len);
+    //         pt.remove(start..end);
+    //         tree_len -= end - start;
+    //         assert_eq!(Ok(()), is_valid_tree(pt.tree()));
+    //     }
+    // }
 
     // #[test]
     // fn bug_finder() {

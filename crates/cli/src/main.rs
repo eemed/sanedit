@@ -5,34 +5,34 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use clap::Parser;
+use argh::FromArgs;
 use sanedit_server::{Address, StartOptions};
 use sanedit_terminal_client::unix::UnixDomainSocketClient;
 
-#[derive(Parser)]
-#[command(author, version, about, long_about = None)]
+/// command line options
+#[derive(FromArgs)]
 struct Cli {
-    /// File to open
-    #[arg(value_name = "FILE")]
+    /// file to open
+    #[argh(positional)]
     file: Option<PathBuf>,
 
-    /// Turn debugging information on
-    #[arg(short, long)]
+    /// turn debugging information on
+    #[argh(switch)]
     debug: bool,
 
-    /// Set configuration directory
-    #[arg(short, long, value_name = "DIRECTORY")]
+    /// set configuration directory
+    #[argh(option)]
     config_dir: Option<PathBuf>,
 
-    /// Set working directory
-    #[arg(short, long, value_name = "DIRECTORY")]
+    /// set working directory
+    #[argh(option)]
     working_dir: Option<PathBuf>,
 }
 
 fn main() {
     logging::setup();
 
-    let cli = Cli::parse();
+    let cli: Cli = argh::from_env();
     let open_files = cli.file.clone().map(|f| vec![f]).unwrap_or(vec![]);
     let config_dir = cli.config_dir.clone();
     let working_dir = cli.working_dir.clone();

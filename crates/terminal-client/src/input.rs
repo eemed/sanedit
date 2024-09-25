@@ -3,8 +3,9 @@ use std::{sync::mpsc, time::Duration};
 use anyhow::Result;
 use crossterm::event::{poll, read, KeyCode, KeyModifiers};
 use sanedit_messages::{
+    key::{self, Key, KeyEvent, KeyMods},
     redraw::{Point, Size},
-    Key, KeyEvent, KeyMods, Message, MouseButton, MouseEvent, MouseEventKind,
+    Message, MouseButton, MouseEvent, MouseEventKind,
 };
 
 use crate::message::ClientInternalMessage;
@@ -78,7 +79,9 @@ fn process_input_event(
     Ok(())
 }
 
-pub(crate) fn convert_key_event(key: crossterm::event::KeyEvent) -> sanedit_messages::KeyEvent {
+pub(crate) fn convert_key_event(
+    key: crossterm::event::KeyEvent,
+) -> sanedit_messages::key::KeyEvent {
     let plain_key = match key.code {
         KeyCode::Backspace => Key::Backspace,
         KeyCode::Enter => Key::Enter,
@@ -106,18 +109,18 @@ pub(crate) fn convert_key_event(key: crossterm::event::KeyEvent) -> sanedit_mess
 }
 
 fn convert_mods(modifiers: &KeyModifiers) -> KeyMods {
-    let mut mods = KeyMods::empty();
+    let mut mods = 0u8;
 
     if modifiers.contains(KeyModifiers::ALT) {
-        mods |= KeyMods::ALT;
+        mods |= key::ALT;
     }
 
     if modifiers.contains(KeyModifiers::CONTROL) {
-        mods |= KeyMods::CONTROL;
+        mods |= key::CONTROL;
     }
 
     if modifiers.contains(KeyModifiers::SHIFT) {
-        mods |= KeyMods::SHIFT;
+        mods |= key::SHIFT;
     }
 
     mods

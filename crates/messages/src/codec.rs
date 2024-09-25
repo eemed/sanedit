@@ -1,9 +1,14 @@
-use std::{io, marker::PhantomData};
+use std::{
+    io::{self, Write as _},
+    marker::PhantomData,
+};
 
 use bincode::Options;
-use bytes::{Buf, BufMut, BytesMut};
 use serde::{Deserialize, Serialize};
-use tokio_util::codec::{Decoder, Encoder};
+use tokio_util::{
+    bytes::{Buf as _, BufMut as _, BytesMut},
+    codec::{Decoder, Encoder},
+};
 
 const U32_BYTES: usize = 4;
 
@@ -110,8 +115,6 @@ where
     type Error = bincode::Error;
 
     fn encode(&mut self, item: T, dst: &mut BytesMut) -> Result<(), Self::Error> {
-        use io::Write;
-
         let bcode = bincode::options()
             .with_big_endian()
             .with_fixint_encoding()

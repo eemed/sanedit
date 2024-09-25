@@ -3,20 +3,22 @@
 // Commands trigger something which should happen (in the future).
 
 mod codec;
-mod key;
 mod mouse;
 mod reader;
-pub mod redraw;
 mod writer;
 
+pub mod key;
+pub mod redraw;
+
 pub use codec::BinCodec;
-pub use key::{keyevents_to_string, try_parse_keyevents, Key, KeyEvent, KeyMods};
 pub use mouse::{MouseButton, MouseEvent, MouseEventKind};
 pub use reader::Reader;
-use redraw::{Redraw, Size, Theme};
-use serde::{Deserialize, Serialize};
 pub use tokio_util::codec::{Decoder, Encoder};
 pub use writer::{WriteError, Writer};
+
+use key::KeyEvent;
+use redraw::{Redraw, Size, Theme};
+use serde::{Deserialize, Serialize};
 
 /// Messages sent to the client
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug)]

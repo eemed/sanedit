@@ -1,5 +1,5 @@
 use rustc_hash::FxHashMap;
-use sanedit_messages::KeyEvent;
+use sanedit_messages::key::KeyEvent;
 use strum_macros::AsRefStr;
 
 use crate::actions::Action;

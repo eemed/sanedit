@@ -5,6 +5,8 @@ use sanedit_utils::sorted_vec::SortedVec;
 
 use crate::{range::BufferRange, BufferRangeExt as _, Cursor};
 
+use self::flags::Flags;
+
 #[derive(Debug)]
 pub struct Edit {
     pub buf: PieceTreeView,
@@ -28,23 +30,23 @@ impl Changes {
     pub fn undo() -> Changes {
         Changes {
             changes: SortedVec::new(),
-            flags: Flags::UNDO,
+            flags: flags::UNDO,
         }
     }
 
     pub fn redo() -> Changes {
         Changes {
             changes: SortedVec::new(),
-            flags: Flags::REDO,
+            flags: flags::REDO,
         }
     }
 
     pub fn is_undo(&self) -> bool {
-        self.flags.contains(Flags::UNDO)
+        self.flags & flags::UNDO != 0
     }
 
     pub fn is_redo(&self) -> bool {
-        self.flags.contains(Flags::REDO)
+        self.flags & flags::REDO != 0
     }
 
     /// Apply the change and return whether anything changed.
@@ -132,11 +134,11 @@ impl Changes {
     }
 
     pub fn disable_undo_point_creation(&mut self) {
-        self.flags.insert(Flags::DISABLE_UNDO_POINT_CREATION);
+        self.flags |= flags::DISABLE_UNDO_POINT_CREATION;
     }
 
     pub fn allows_undo_point_creation(&self) -> bool {
-        !self.flags.contains(Flags::DISABLE_UNDO_POINT_CREATION)
+        !(self.flags & flags::DISABLE_UNDO_POINT_CREATION != 0)
     }
 
     pub fn iter(&self) -> std::slice::Iter<'_, Change> {
@@ -203,11 +205,11 @@ impl Changes {
     }
 
     pub fn kind(&self) -> ChangesKind {
-        if self.flags.contains(Flags::UNDO) {
+        if self.flags & flags::UNDO != 0 {
             return ChangesKind::Undo;
         }
 
-        if self.flags.contains(Flags::REDO) {
+        if self.flags & flags::REDO != 0 {
             return ChangesKind::Redo;
         }
 
@@ -452,13 +454,11 @@ impl Change {
     }
 }
 
-bitflags::bitflags! {
-    #[derive(Default)]
-    struct Flags: u8 {
-        const UNDO = 0b00000001;
-        const REDO = 0b00000010;
-        const DISABLE_UNDO_POINT_CREATION = 0b00000100;
-    }
+mod flags {
+    pub(crate) type Flags = u8;
+    pub(crate) const UNDO: u8 = 1 << 0;
+    pub(crate) const REDO: u8 = 1 << 1;
+    pub(crate) const DISABLE_UNDO_POINT_CREATION: u8 = 1 << 2;
 }
 
 #[derive(Debug, Clone)]

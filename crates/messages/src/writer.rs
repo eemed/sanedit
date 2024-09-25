@@ -1,8 +1,8 @@
 use std::io;
 
-use bytes::BytesMut;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
+use tokio_util::bytes::BytesMut;
 use tokio_util::codec::Encoder;
 
 use crate::BinCodec;

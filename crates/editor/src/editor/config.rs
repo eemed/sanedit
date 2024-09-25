@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use documented::DocumentedFields;
-use sanedit_messages::{try_parse_keyevents, KeyEvent};
+use sanedit_messages::key::{try_parse_keyevents, KeyEvent};
 use serde::{Deserialize, Serialize};
 use toml_edit::{
     ser::to_document,

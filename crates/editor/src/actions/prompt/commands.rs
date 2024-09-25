@@ -3,7 +3,7 @@ use crate::actions::*;
 use crate::common::matcher::MatchOption;
 use crate::editor::windows::Focus;
 use sanedit_core::Choice;
-use sanedit_messages::keyevents_to_string;
+use sanedit_messages::key::keyevents_to_string;
 
 pub(crate) fn command_palette(editor: &Editor, id: ClientId) -> Vec<MatchOption> {
     // Display descriptions in command palette

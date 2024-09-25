@@ -6,6 +6,8 @@ use sanedit_buffer::PieceTreeSlice;
 use sanedit_buffer::utf8::EndOfLine;
 use unicode_width::UnicodeWidthStr;
 
+use self::flags::Flags;
+
 /// Representation of a grapheme cluster (clusters of codepoints we treat as one
 /// character) in the buffer.
 /// This is a separate type to distinguish graphemes that have already been
@@ -25,7 +27,7 @@ impl Chars {
         let mut chars = vec![Char {
             character: ' ',
             extra: Some(Box::new(CharExtra { wide: grapheme })),
-            flags: Flags::WIDE,
+            flags: flags::WIDE,
             len_in_buffer: len,
         }];
 
@@ -33,7 +35,7 @@ impl Chars {
             chars.push(Char {
                 character: ' ',
                 extra: None,
-                flags: Flags::NO_WIDTH,
+                flags: flags::NO_WIDTH,
                 len_in_buffer: 0,
             });
         }
@@ -55,7 +57,7 @@ impl Chars {
                 Char {
                     character: ch,
                     extra: None,
-                    flags: Flags::CONTINUE,
+                    flags: flags::CONTINUE,
                     len_in_buffer: 0,
                 }
             };
@@ -104,22 +106,21 @@ impl From<Chars> for Vec<Char> {
     }
 }
 
-bitflags::bitflags! {
-    #[derive(Default)]
-    pub struct Flags: u8 {
-        /// This char continues the previous one, for example Tab + tab fills
-        const CONTINUE = 0b00000001;
+mod flags {
+    pub(crate) type Flags = u8;
 
-        /// Grapheme is not one char, something like zerowidth joiner used to merge
-        /// multiple together
-        const WIDE = 0b00000010;
+    /// This char continues the previous one, for example Tab + tab fills
+    pub(crate) const CONTINUE: u8 = 1 << 0;
 
-        /// This char has no width, used as padding with wide chars
-        const NO_WIDTH = 0b00000100;
+    /// Grapheme is not one char, something like zerowidth joiner used to merge
+    /// multiple together
+    pub(crate) const WIDE: u8 = 1 << 1;
 
-        /// Just keep eol status so we can fetch it whenever
-        const EOL = 0b00001000;
-    }
+    /// This char has no width, used as padding with wide chars
+    pub(crate) const NO_WIDTH: u8 = 1 << 2;
+
+    /// Just keep eol status so we can fetch it whenever
+    pub(crate) const EOL: u8 = 1 << 3;
 }
 
 #[derive(Debug, Clone, PartialEq, Hash, Default)]
@@ -139,11 +140,11 @@ pub struct Char {
 
 impl Char {
     pub fn width(&self) -> usize {
-        if self.flags.contains(Flags::NO_WIDTH) {
+        if self.flags & flags::NO_WIDTH != 0 {
             return 0;
         }
 
-        let width = if self.flags.contains(Flags::WIDE) {
+        let width = if self.flags & flags::WIDE != 0 {
             let extra = self.extra.as_ref().unwrap();
             extra.wide.width()
         } else {
@@ -156,7 +157,7 @@ impl Char {
     }
 
     pub fn display(&self) -> Cow<str> {
-        if self.flags.contains(Flags::WIDE) {
+        if self.flags & flags::WIDE != 0 {
             let extra = self.extra.as_ref().unwrap();
             Cow::Borrowed(extra.wide.as_str())
         } else {
@@ -169,11 +170,11 @@ impl Char {
     }
 
     pub fn is_eol(&self) -> bool {
-        self.flags.contains(Flags::EOL)
+        self.flags & flags::EOL != 0
     }
 
     pub fn is_continue(&self) -> bool {
-        self.flags.contains(Flags::CONTINUE)
+        self.flags & flags::CONTINUE != 0
     }
 }
 
@@ -346,7 +347,7 @@ fn eol_to_char(blen: u64, options: &DisplayOptions) -> Char {
     Char {
         character,
         extra: None,
-        flags: Flags::EOL,
+        flags: flags::EOL,
         len_in_buffer: blen,
     }
 }

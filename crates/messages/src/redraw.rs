@@ -12,7 +12,7 @@ mod size;
 mod status_message;
 mod statusline;
 mod style;
-mod text_style;
+pub mod text_style;
 mod theme;
 mod window;
 
@@ -29,7 +29,6 @@ pub use size::*;
 pub use status_message::*;
 pub use statusline::*;
 pub use style::*;
-pub use text_style::*;
 pub use theme::*;
 pub use window::*;
 

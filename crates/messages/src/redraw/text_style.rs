@@ -1,26 +1,19 @@
-use bitflags::bitflags;
-use serde::{Deserialize, Serialize};
+pub type TextStyle = u8;
 
-bitflags! {
-#[derive(Serialize, Deserialize)]
-pub struct TextStyle: u8 {
-    const BOLD      = 0b00000001;
-    const UNDERLINE = 0b00000010;
-    const ITALIC    = 0b00000100;
-}}
+pub const BOLD: u8 = 1 << 0;
+pub const UNDERLINE: u8 = 1 << 1;
+pub const ITALIC: u8 = 1 << 2;
 
-impl TextStyle {
-    pub fn from_str(string: &str) -> TextStyle {
-        let mut style = TextStyle::empty();
+pub fn from_str(string: &str) -> TextStyle {
+    let mut style = 0u8;
 
-        for s in string.split(",") {
-            match s {
-                "bold" => style |= TextStyle::BOLD,
-                "underline" => style |= TextStyle::UNDERLINE,
-                "italic" => style |= TextStyle::ITALIC,
-                _ => {}
-            }
+    for s in string.split(",") {
+        match s {
+            "bold" => style |= BOLD,
+            "underline" => style |= UNDERLINE,
+            "italic" => style |= ITALIC,
+            _ => {}
         }
-        style
     }
+    style
 }

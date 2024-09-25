@@ -1,7 +1,10 @@
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use super::{Color, HexStringError, TextStyle};
+use super::{
+    text_style::{self, TextStyle},
+    Color, HexStringError,
+};
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Copy, Default)]
 pub struct Style {
@@ -47,7 +50,7 @@ impl Style {
 
         let bg = Color::from_str(splits[0]).ok();
         let fg = Color::from_str(splits[1]).ok();
-        let text_style = TextStyle::from_str(splits[2]);
+        let text_style = text_style::from_str(splits[2]);
 
         Ok(Style {
             bg,

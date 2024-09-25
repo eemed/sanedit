@@ -12,10 +12,10 @@ pub(crate) mod windows;
 use rustc_hash::FxHashMap;
 use sanedit_core::FileDescription;
 use sanedit_core::Filetype;
+use sanedit_messages::key;
+use sanedit_messages::key::{KeyEvent, KeyMods};
 use sanedit_messages::redraw::Size;
 use sanedit_messages::ClientMessage;
-use sanedit_messages::KeyEvent;
-use sanedit_messages::KeyMods;
 use sanedit_messages::Message;
 use sanedit_messages::MouseButton;
 use sanedit_messages::MouseEvent;
@@ -448,9 +448,9 @@ impl Editor {
                 win.scroll_up_n(buf, 3);
             }
             MouseEventKind::ButtonDown(MouseButton::Left) => {
-                if event.mods.contains(KeyMods::CONTROL) {
+                if event.mods & key::CONTROL != 0 {
                     cursors::new_to_point(self, id, event.point);
-                } else if event.mods.is_empty() {
+                } else if event.mods == 0 {
                     cursors::goto_position(self, id, event.point);
                 }
             }
@@ -523,7 +523,7 @@ impl Editor {
 
     fn handle_key_event(&mut self, id: ClientId, event: KeyEvent) {
         log::info!("Editor got {event}");
-        use sanedit_messages::Key::*;
+        use sanedit_messages::key::Key::*;
 
         // Add key to buffer
         self.keys.push(event);

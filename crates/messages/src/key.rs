@@ -1,17 +1,12 @@
 use std::fmt;
 
-use bitflags::bitflags;
 use rustc_hash::FxHashSet;
 use serde::{Deserialize, Serialize};
 
-bitflags! {
-    #[derive(Serialize, Deserialize)]
-    pub struct KeyMods: u8 {
-        const CONTROL = 0b00_00_01;
-        const ALT = 0b00_00_10;
-        const SHIFT = 0b00_01_00;
-    }
-}
+pub type KeyMods = u8;
+pub const CONTROL: u8 = 1 << 0;
+pub const ALT: u8 = 1 << 1;
+pub const SHIFT: u8 = 1 << 2;
 
 /// Keyboard keys
 #[derive(Serialize, Deserialize, Debug, Clone, Hash, PartialEq, Eq)]
@@ -52,11 +47,11 @@ impl KeyEvent {
     }
 
     pub fn control_pressed(&self) -> bool {
-        self.mods.contains(KeyMods::CONTROL)
+        self.mods & CONTROL != 0
     }
 
     pub fn alt_pressed(&self) -> bool {
-        self.mods.contains(KeyMods::ALT)
+        self.mods & ALT != 0
     }
 }
 
@@ -68,19 +63,19 @@ pub(crate) const KEY_SEPARATOR: &str = "+";
 
 impl fmt::Display for KeyEvent {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let ctrl = if self.mods.contains(KeyMods::CONTROL) {
+        let ctrl = if self.mods & CONTROL != 0 {
             format!("ctrl{}", KEY_SEPARATOR)
         } else {
             "".to_string()
         };
 
-        let alt = if self.mods.contains(KeyMods::ALT) {
+        let alt = if self.mods & ALT != 0 {
             format!("alt{}", KEY_SEPARATOR)
         } else {
             "".to_string()
         };
 
-        let shift = if self.mods.contains(KeyMods::SHIFT) {
+        let shift = if self.mods & SHIFT != 0 {
             format!("shift{}", KEY_SEPARATOR)
         } else {
             "".to_string()
@@ -117,7 +112,7 @@ impl TryFrom<&str> for KeyEvent {
 
     fn try_from(string: &str) -> Result<KeyEvent, String> {
         let keys = string.split(KEY_SEPARATOR);
-        let mut mods = KeyMods::empty();
+        let mut mods = 0u8;
         let mut seen = FxHashSet::default();
 
         for token in keys {
@@ -132,22 +127,22 @@ impl TryFrom<&str> for KeyEvent {
 
             match token {
                 "alt" => {
-                    mods |= KeyMods::ALT;
+                    mods |= ALT;
                     continue;
                 }
                 "ctrl" | "ctl" => {
-                    mods |= KeyMods::CONTROL;
+                    mods |= CONTROL;
                     continue;
                 }
                 "shift" => {
-                    mods |= KeyMods::SHIFT;
+                    mods |= SHIFT;
                     continue;
                 }
                 token => {
                     let key = if token.chars().count() == 1 {
                         let ch = token.chars().next().unwrap();
                         if ch.is_uppercase() {
-                            mods |= KeyMods::SHIFT;
+                            mods |= SHIFT;
                         }
                         Key::Char(ch)
                     } else if token.starts_with("f") || token.starts_with("F") {
@@ -175,7 +170,7 @@ impl TryFrom<&str> for KeyEvent {
                             "esc" => Key::Esc,
                             "tab" => Key::Tab,
                             "btab" | "backtab" => {
-                                mods |= KeyMods::SHIFT;
+                                mods |= SHIFT;
                                 Key::BackTab
                             }
                             "insert" => Key::Insert,

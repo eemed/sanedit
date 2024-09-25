@@ -2,7 +2,10 @@ use std::io::{stdout, BufWriter, Stdout, Write};
 
 use anyhow::Result;
 use crossterm::{cursor, event::*, execute, queue, style, terminal::*};
-use sanedit_messages::redraw::{Cell, Color, CursorShape, Style, TextStyle};
+use sanedit_messages::redraw::{
+    text_style::{self, TextStyle},
+    Cell, Color, CursorShape, Style,
+};
 
 pub struct Terminal {
     out: BufWriter<Stdout>,
@@ -119,15 +122,15 @@ impl Terminal {
         if let Some(style) = style {
             let mut attrs = style::Attributes::default();
 
-            if style.contains(TextStyle::BOLD) {
+            if style & text_style::BOLD != 0 {
                 attrs.set(style::Attribute::Bold);
             }
 
-            if style.contains(TextStyle::UNDERLINE) {
+            if style & text_style::UNDERLINE != 0 {
                 attrs.set(style::Attribute::Underlined);
             }
 
-            if style.contains(TextStyle::ITALIC) {
+            if style & text_style::ITALIC != 0 {
                 attrs.set(style::Attribute::Italic);
             }
 

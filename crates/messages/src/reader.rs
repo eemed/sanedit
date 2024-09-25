@@ -1,7 +1,7 @@
 use std::io;
 
-use bytes::{Buf, BytesMut};
 use serde::{Deserialize, Serialize};
+use tokio_util::bytes::{Buf as _, BytesMut};
 use tokio_util::codec::Decoder;
 
 use crate::BinCodec;

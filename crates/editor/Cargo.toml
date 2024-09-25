@@ -27,7 +27,6 @@ log.workspace = true
 dirs.workspace = true
 rayon.workspace = true
 rustc-hash.workspace = true
-bitflags.workspace = true
 
 # Useful enum derives
 strum.workspace = true

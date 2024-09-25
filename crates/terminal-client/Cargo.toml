@@ -13,6 +13,5 @@ tokio = { workspace = true, features = ["full"] }
 # Drawing to the terminal
 crossterm.workspace = true
 
-bytes.workspace = true
 anyhow.workspace = true
 log.workspace = true

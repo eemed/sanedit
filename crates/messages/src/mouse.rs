@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{redraw::Point, KeyMods, Message};
+use crate::{key::KeyMods, redraw::Point, Message};
 
 #[derive(Serialize, Deserialize, Debug, Hash, PartialEq, Eq, Clone)]
 pub enum MouseButton {

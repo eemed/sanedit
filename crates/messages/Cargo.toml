@@ -11,9 +11,7 @@ sanedit-core = { path = "../core" }
 serde = { workspace = true, features = ["derive"] }
 tokio-util = { workspace = true, features = ["codec"] }
 
-bytes.workspace = true
 bincode.workspace = true
-bitflags.workspace = true
 thiserror.workspace = true
 log.workspace = true
 rustc-hash.workspace = true

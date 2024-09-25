@@ -20,7 +20,6 @@ version = "0.1.0"
 edition = "2021"
 
 [workspace.dependencies]
-aho-corasick         = "1" # Probably could delete only used in buffer lines impl
 anyhow               = "1.0" # Should be deleted after some stability
 bincode              = "1.3"
 argh                 = "0.1"

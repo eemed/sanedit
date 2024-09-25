@@ -256,6 +256,7 @@ pub fn prev_blank_line(slice: &PieceTreeSlice, pos: u64) -> u64 {
 }
 
 pub fn next_line(slice: &PieceTreeSlice, cursor: &Cursor, opts: &DisplayOptions) -> (u64, usize) {
+    log::info!("next line");
     let cpos = cursor.pos();
     let width = cursor
         .column()

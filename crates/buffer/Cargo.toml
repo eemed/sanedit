@@ -9,7 +9,6 @@ edition.workspace = true
 sanedit-ucd = { path = "../ucd" }
 sanedit-utils = { path = "../utils" }
 
-aho-corasick.workspace = true
 log.workspace = true
 
 [dev-dependencies]

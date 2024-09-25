@@ -1,71 +1,100 @@
 mod eol;
 
-use std::{ops::Range, sync::OnceLock};
+use std::ops::Range;
 
 use crate::{Bytes, PieceTreeSlice, PieceTreeView};
-use aho_corasick::{automaton::Automaton, nfa::contiguous::NFA, Anchored};
 
 pub use self::eol::EndOfLine;
-
-const LF: u8 = 0x0A;
-const CR: u8 = 0x0D;
-const ANC: Anchored = Anchored::No;
-const EOLS: [EndOfLine; 7] = [
-    EndOfLine::LF,
-    EndOfLine::VT,
-    EndOfLine::FF,
-    EndOfLine::CR,
-    EndOfLine::NEL,
-    EndOfLine::LS,
-    EndOfLine::PS,
-    // Missing CRLF on purpose, handled separately
-];
-
-fn nfa_fwd() -> &'static NFA {
-    static NFA: OnceLock<NFA> = OnceLock::new();
-    NFA.get_or_init(|| NFA::new(EOLS).unwrap())
-}
-
-fn nfa_bwd() -> &'static NFA {
-    static NFA: OnceLock<NFA> = OnceLock::new();
-    NFA.get_or_init(|| {
-        let eol_rev: Vec<Vec<u8>> = EOLS
-            .into_iter()
-            .map(|eol| {
-                let bytes: &[u8] = eol.as_ref();
-                bytes.iter().cloned().rev().collect()
-            })
-            .collect();
-        NFA::new(eol_rev).unwrap()
-    })
-}
 
 /// Advances bytes iterator to the next end of line and over it.
 /// If an EOL is found returns the form of eol and the range it spans over.
 pub fn next_eol(bytes: &mut Bytes) -> Option<EOLMatch> {
-    let nfa = nfa_fwd();
-    let mut state = nfa.start_state(ANC).unwrap();
     loop {
         let byte = bytes.next()?;
-        state = nfa.next_state(ANC, state, byte);
-
-        if nfa.is_match(state) {
-            let pat = nfa.match_pattern(state, 0);
-            let mut eol = EOLS[pat.as_usize()];
-
-            let crlf = eol == EndOfLine::CR && bytes.get().map(|b| b == LF).unwrap_or(false);
-            if crlf {
-                // Advance over lf
-                bytes.next();
-                eol = EndOfLine::CRLF;
+        match byte {
+            // LF VT FF
+            0x0a => {
+                let pos = bytes.pos();
+                return Some(EOLMatch {
+                    eol: EndOfLine::LF,
+                    range: pos - 1..pos,
+                });
             }
+            0x0b => {
+                let pos = bytes.pos();
+                return Some(EOLMatch {
+                    eol: EndOfLine::VT,
+                    range: pos - 1..pos,
+                });
+            }
+            0x0c => {
+                let pos = bytes.pos();
+                return Some(EOLMatch {
+                    eol: EndOfLine::FF,
+                    range: pos - 1..pos,
+                });
+            }
+            // CR
+            0x0d => {
+                let crlf = bytes.get().map(|b| b == 0x0a).unwrap_or(false);
+                if crlf {
+                    bytes.next();
+                    let pos = bytes.pos();
+                    return Some(EOLMatch {
+                        eol: EndOfLine::CRLF,
+                        range: pos - 2..pos,
+                    });
+                } else {
+                    let pos = bytes.pos();
+                    return Some(EOLMatch {
+                        eol: EndOfLine::CR,
+                        range: pos - 1..pos,
+                    });
+                }
+            }
+            // NEL
+            0xc2 => {
+                let nel = bytes.get().map(|b| b == 0x85).unwrap_or(false);
+                if nel {
+                    bytes.next();
+                    let pos = bytes.pos();
+                    return Some(EOLMatch {
+                        eol: EndOfLine::NEL,
+                        range: pos - 2..pos,
+                    });
+                }
+            }
+            // LS PS
+            0xe2 => {
+                let cont = bytes.get().map(|b| b == 0x80).unwrap_or(false);
 
-            let end = bytes.pos();
+                if !cont {
+                    continue;
+                }
 
-            return Some(EOLMatch {
-                eol,
-                range: end - eol.len()..end,
-            });
+                bytes.next();
+
+                match bytes.get() {
+                    Some(0xa8) => {
+                        bytes.next();
+                        let pos = bytes.pos();
+                        return Some(EOLMatch {
+                            eol: EndOfLine::LS,
+                            range: pos - 3..pos,
+                        });
+                    }
+                    Some(0xa9) => {
+                        bytes.next();
+                        let pos = bytes.pos();
+                        return Some(EOLMatch {
+                            eol: EndOfLine::PS,
+                            range: pos - 3..pos,
+                        });
+                    }
+                    _ => {}
+                }
+            }
+            _ => {}
         }
     }
 }
@@ -73,32 +102,106 @@ pub fn next_eol(bytes: &mut Bytes) -> Option<EOLMatch> {
 /// Advances bytes iterator to the previous end of line and over it.
 /// If an EOL is found returns the form of eol and the range it spans over.
 pub fn prev_eol(bytes: &mut Bytes) -> Option<EOLMatch> {
-    let nfa = nfa_bwd();
-    let mut state = nfa.start_state(ANC).unwrap();
+    let mut byte = bytes.prev()?;
     loop {
-        let byte = bytes.prev()?;
-        state = nfa.next_state(ANC, state, byte);
+        match byte {
+            // CR VT FF
+            0x0d => {
+                let pos = bytes.pos();
+                return Some(EOLMatch {
+                    eol: EndOfLine::CR,
+                    range: pos..pos + 1,
+                });
+            }
+            0x0b => {
+                let pos = bytes.pos();
+                return Some(EOLMatch {
+                    eol: EndOfLine::VT,
+                    range: pos..pos + 1,
+                });
+            }
+            0x0c => {
+                let pos = bytes.pos();
+                return Some(EOLMatch {
+                    eol: EndOfLine::FF,
+                    range: pos..pos + 1,
+                });
+            }
+            // LF
+            0x0a => {
+                let crlf = bytes
+                    .prev()
+                    .map(|b| {
+                        let ret = b == 0x0d;
+                        if !ret {
+                            bytes.next();
+                        }
+                        ret
+                    })
+                    .unwrap_or(false);
 
-        if nfa.is_match(state) {
-            let pat = nfa.match_pattern(state, 0);
-            let mut eol = EOLS[pat.as_usize()];
-
-            if eol == EndOfLine::LF {
-                if let Some(b) = bytes.prev() {
-                    if b == CR {
-                        eol = EndOfLine::CRLF;
-                    } else {
-                        bytes.next();
-                    }
+                let pos = bytes.pos();
+                if crlf {
+                    return Some(EOLMatch {
+                        eol: EndOfLine::CRLF,
+                        range: pos..pos + 2,
+                    });
+                } else {
+                    return Some(EOLMatch {
+                        eol: EndOfLine::LF,
+                        range: pos..pos + 1,
+                    });
                 }
             }
+            // NEL
+            0x85 => {
+                let nel = bytes.prev().map(|b| b == 0xc2).unwrap_or(false);
+                if nel {
+                    let pos = bytes.pos();
+                    return Some(EOLMatch {
+                        eol: EndOfLine::NEL,
+                        range: pos..pos + 2,
+                    });
+                }
+            }
+            // LS PS
+            0xa9 => {
+                let cont = bytes.prev().map(|b| b == 0x80).unwrap_or(false);
 
-            let start = bytes.pos();
+                if !cont {
+                    continue;
+                }
+                let cont = bytes.prev().map(|b| b == 0xe2).unwrap_or(false);
 
-            return Some(EOLMatch {
-                eol,
-                range: start..start + eol.len(),
-            });
+                if !cont {
+                    continue;
+                }
+                let pos = bytes.pos();
+                return Some(EOLMatch {
+                    eol: EndOfLine::LS,
+                    range: pos..pos + 3,
+                });
+            }
+            0xa8 => {
+                let cont = bytes.prev().map(|b| b == 0x80).unwrap_or(false);
+
+                if !cont {
+                    continue;
+                }
+                let cont = bytes.prev().map(|b| b == 0xe2).unwrap_or(false);
+
+                if !cont {
+                    continue;
+                }
+                let pos = bytes.pos();
+                return Some(EOLMatch {
+                    eol: EndOfLine::PS,
+                    range: pos..pos + 3,
+                });
+            }
+            _ => {
+                byte = bytes.prev()?;
+            }
         }
     }
 }

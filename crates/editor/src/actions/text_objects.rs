@@ -48,7 +48,7 @@ fn select_line(editor: &mut Editor, id: ClientId) {
 
         changed = true;
         cursor.select(&(start..end));
-        cursor.set_column(usize::MAX);
+        cursor.set_column(0);
     }
 
     if changed {

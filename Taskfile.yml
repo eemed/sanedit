@@ -116,11 +116,20 @@ tasks:
       # - cargo fix --workspace --allow-dirty --allow-staged
       - cargo fmt
 
+  clippy:
+    desc: Run code clippy on crates
+    dir: crates
+    cmds:
+      - cargo clippy
+
   check:
     desc: Run code checks on all files
     dir: crates
     cmds:
       - cargo fmt --check
+      - cargo build
+    env:
+      RUSTFLAGS: "-D warnings"
 
   clean:
     desc: Clean up working directories

@@ -34,7 +34,7 @@ fn draw_impl(ctx: &mut DrawContext) -> redraw::Redraw {
             ItemKind::Item
         };
 
-        let name = entry.name().to_string_lossy().to_string();
+        let name = entry.name_to_str_lossy().to_string();
         let item = Item {
             line: None,
             name,

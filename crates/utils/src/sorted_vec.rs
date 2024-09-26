@@ -1,6 +1,6 @@
 use std::{
     mem,
-    ops::{Deref, DerefMut, Index, IndexMut},
+    ops::{Deref, Index},
 };
 
 /// A vector that is always sorted
@@ -30,6 +30,16 @@ impl<T: Ord> SortedVec<T> {
 
     pub fn get(&self, i: usize) -> Option<&T> {
         self.items.get(i)
+    }
+
+    /// SAFETY: Can be changed in a way that items Ord placement is not changed
+    pub unsafe fn get_mut(&mut self, i: usize) -> Option<&mut T> {
+        self.items.get_mut(i)
+    }
+
+    /// SAFETY: Can be changed in a way that items Ord placement is not changed
+    pub unsafe fn iter_mut(&mut self) -> std::slice::IterMut<'_, T> {
+        self.items.iter_mut()
     }
 
     pub fn iter(&self) -> std::slice::Iter<T> {
@@ -109,12 +119,6 @@ impl<T: Ord> Index<usize> for SortedVec<T> {
     }
 }
 
-impl<T: Ord> IndexMut<usize> for SortedVec<T> {
-    fn index_mut(&mut self, i: usize) -> &mut Self::Output {
-        &mut self.items[i]
-    }
-}
-
 impl<T: Ord + Clone> From<&[T]> for SortedVec<T> {
     fn from(arr: &[T]) -> Self {
         Self::from_unsorted(arr)
@@ -145,12 +149,6 @@ impl<T: Ord> Deref for SortedVec<T> {
 
     fn deref(&self) -> &Self::Target {
         &self.items
-    }
-}
-
-impl<T: Ord> DerefMut for SortedVec<T> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.items
     }
 }
 

@@ -75,7 +75,7 @@ impl<'a> TreeNodeMut<'a> {
     }
 }
 
-#[derive(Debug, PartialOrd, Ord, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub(crate) struct Node {
     /// File or directory
     kind: Kind,
@@ -189,7 +189,8 @@ impl Node {
     }
 
     fn child_mut<'a, 'b>(&'a mut self, target: &'b Path) -> Option<(&'a mut Node, &'b Path)> {
-        for child in self.children.iter_mut() {
+        // SAFETY: ensured by node api
+        for child in unsafe { self.children.iter_mut() } {
             if let Ok(suffix) = target.strip_prefix(&child.local) {
                 return Some((child, suffix));
             }
@@ -218,6 +219,18 @@ impl Node {
 
     pub fn is_dir_expanded(&self) -> bool {
         self.kind == Kind::Directory && self.expanded
+    }
+}
+
+impl PartialOrd for Node {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        (self.kind, &self.local).partial_cmp(&(other.kind, &other.local))
+    }
+}
+
+impl Ord for Node {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        (self.kind, &self.local).cmp(&(other.kind, &other.local))
     }
 }
 

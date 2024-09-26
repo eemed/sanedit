@@ -57,7 +57,8 @@ impl Locations {
             if group.expanded {
                 cur += group.items.len();
                 if cur > n {
-                    let item = &mut group.items[cur - n - 1];
+                    // Ord is protected with Group and Item apis
+                    let item = unsafe { group.items.get_mut(cur - n - 1).unwrap() };
                     return Some(Either::Right(item));
                 }
             }

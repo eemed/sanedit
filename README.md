@@ -2,9 +2,8 @@
 
 ## TODO
 
-* Searcher is one step behind
 * core dirs has todos
-* Somethings wrong with multiwidth grapheme rendering.
+* Somethings wrong with multiwidth grapheme rendering. Grapheme widths is wrong
 * Keybindings should be sensical
 * Welcome screen
     * Help menus to F1

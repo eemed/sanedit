@@ -132,10 +132,6 @@ impl View {
         }
     }
 
-    pub fn is_invalid(&self) -> bool {
-        self.needs_redraw
-    }
-
     pub fn invalidate(&mut self) {
         self.needs_redraw = true;
     }
@@ -307,11 +303,15 @@ impl View {
         self.range.clone()
     }
 
+    // Is used but not detected?
+    #[allow(dead_code)]
     /// wether this view includes the buffer start
     pub fn at_start(&self) -> bool {
         self.range.start == 0
     }
 
+    // Is used but not detected?
+    #[allow(dead_code)]
     /// wether this view includes the buffer end
     pub fn at_end(&self) -> bool {
         self.cells[self.height - 1]

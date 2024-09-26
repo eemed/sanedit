@@ -1,4 +1,8 @@
-use sanedit_messages::redraw::{self, Component, Item, ItemKind};
+use sanedit_messages::redraw::{
+    self,
+    items::{Item, ItemKind},
+    Component,
+};
 
 use crate::editor::windows::Focus;
 
@@ -46,7 +50,7 @@ fn draw_impl(ctx: &mut DrawContext) -> redraw::Redraw {
     }
 
     let in_focus = ctx.editor.win.focus == Focus::Filetree;
-    let items = redraw::Items {
+    let items = redraw::items::Items {
         items,
         selected,
         in_focus,

@@ -6,8 +6,8 @@ edition.workspace = true
 [dependencies]
 sanedit-messages = { path = "../messages" }
 
-tokio.workspace = true
-tokio-util.workspace = true
+tokio = { workspace = true, features = ["full"] }
+tokio-util = { workspace = true, features = ["codec"] }
 futures.workspace = true
 anyhow.workspace = true
 rustc-hash.workspace = true

@@ -13,14 +13,15 @@ use std::{
 use anyhow::ensure;
 use anyhow::Result;
 use sanedit_buffer::{PieceTree, PieceTreeSlice, PieceTreeView};
+use sanedit_core::Edit;
+use sanedit_core::{tmp_file, Changes, Diagnostic, FileDescription, Filetype};
 use sanedit_utils::{key_type, sorted_vec::SortedVec};
 use thiserror::Error;
 
 use self::snapshots::Snapshots;
+
 pub(crate) use change::ChangeResult;
 pub(crate) use config::BufferConfig;
-use sanedit_core::{tmp_file, BufferRange, Change, Changes, Diagnostic, FileDescription, Filetype};
-use sanedit_core::{BufferRangeExt as _, Edit};
 pub(crate) use snapshots::{SnapshotData, SnapshotId};
 
 key_type!(pub(crate) BufferId);

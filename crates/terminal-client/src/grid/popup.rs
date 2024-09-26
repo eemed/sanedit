@@ -3,7 +3,7 @@ use sanedit_messages::redraw::{Point, Popup, Severity, ThemeField};
 use crate::ui::UIContext;
 
 use super::{
-    border::{draw_border, draw_side_border, Border},
+    border::{draw_side_border, Border},
     ccell::{clear_all, into_cells_with_style, size, CCell},
     drawable::{DrawCursor, Drawable},
     item::GridItem,
@@ -26,7 +26,7 @@ pub(crate) fn open_popup(screen: Rect, win: Rect, popup: Popup) -> GridItem<Popu
 }
 
 pub(crate) fn below(screen: &Rect, win: &Rect, popup: &Popup) -> Rect {
-    let Point { mut x, mut y } = popup.point + win.position();
+    let Point { x, mut y } = popup.point + win.position();
     let width = popup
         .messages
         .iter()
@@ -150,7 +150,7 @@ impl Drawable for Popup {
         }
     }
 
-    fn cursor(&self, ctx: &UIContext) -> DrawCursor {
+    fn cursor(&self, _ctx: &UIContext) -> DrawCursor {
         DrawCursor::Hide
     }
 }

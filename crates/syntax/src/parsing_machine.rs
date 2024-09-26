@@ -1,9 +1,11 @@
 mod captures;
 mod compiler;
-mod jit;
 mod op;
 mod set;
 mod stack;
+
+#[allow(dead_code)]
+mod jit;
 
 pub use self::captures::{Capture, CaptureID, CaptureList};
 use self::compiler::Program;
@@ -166,11 +168,7 @@ impl Parser {
                         .expect("No stack entry to pop at partial commit");
 
                     match last {
-                        StackEntry::Backtrack {
-                            addr,
-                            spos,
-                            caplevel,
-                        } => {
+                        StackEntry::Backtrack { spos, caplevel, .. } => {
                             *spos = sp;
                             *caplevel = captop;
                         }
@@ -194,11 +192,7 @@ impl Parser {
                 EndFail => bail!("Parsing failed"),
                 BackCommit(l) => {
                     match stack.pop() {
-                        Some(StackEntry::Backtrack {
-                            addr,
-                            spos,
-                            caplevel,
-                        }) => {
+                        Some(StackEntry::Backtrack { spos, caplevel, .. }) => {
                             sp = spos;
                             captop = caplevel;
                         }

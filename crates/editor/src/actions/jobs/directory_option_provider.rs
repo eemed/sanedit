@@ -25,6 +25,7 @@ pub(crate) struct DirectoryOptionProvider {
     ignore: Arc<Vec<String>>,
 }
 
+#[allow(dead_code)]
 impl DirectoryOptionProvider {
     pub fn new(path: &Path, ignore: &[String]) -> DirectoryOptionProvider {
         DirectoryOptionProvider {
@@ -81,7 +82,7 @@ async fn read_directory_recursive(
         ignore,
     };
 
-    list_dirs(dir, ctx).await;
+    let _ = list_dirs(dir, ctx).await;
 }
 
 impl OptionProvider for DirectoryOptionProvider {

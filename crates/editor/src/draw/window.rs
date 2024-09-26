@@ -13,7 +13,7 @@ use sanedit_core::{
     Replacement,
 };
 
-pub(crate) fn draw(ctx: &mut DrawContext) -> redraw::Window {
+pub(crate) fn draw(ctx: &mut DrawContext) -> redraw::window::Window {
     let EditorContext {
         win, theme, buf, ..
     } = ctx.editor;
@@ -55,7 +55,7 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> redraw::Window {
     draw_secondary_cursors(&mut grid, cursors, focus_on_win, view, theme);
     let cursor = draw_primary_cursor(&mut grid, cursors.primary(), view, theme);
 
-    redraw::Window {
+    redraw::window::Window {
         cells: grid,
         cursor,
     }

@@ -32,7 +32,7 @@ pub(crate) struct ProcessHandler {
     pub(crate) _process: Child,
     pub(crate) stdin: ChildStdin,
     pub(crate) stdout: BufReader<ChildStdout>,
-    pub(crate) stderr: BufReader<ChildStderr>,
+    pub(crate) _stderr: BufReader<ChildStderr>,
 
     pub(crate) notification_sender: Sender<JsonNotification>,
     pub(crate) receiver: Receiver<ServerRequest>,
@@ -70,8 +70,6 @@ impl ProcessHandler {
                 }
             };
         }
-
-        Ok(())
     }
 
     async fn handle_request(
@@ -114,8 +112,6 @@ impl ProcessHandler {
         // Send initialize request
         let params = lsp_types::InitializeParams {
             process_id: std::process::id().into(),
-            root_path: None,
-            root_uri: None,
             initialization_options: None,
             capabilities: client_capabilities(),
             trace: None,
@@ -130,6 +126,7 @@ impl ProcessHandler {
             }),
             locale: None,
             work_done_progress_params: lsp_types::WorkDoneProgressParams::default(),
+            ..Default::default()
         };
         let content = JsonRequest::new(lsp_types::request::Initialize::METHOD, &params, 0);
         content.write_to(&mut self.stdin).await?;

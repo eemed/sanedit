@@ -160,7 +160,7 @@ impl OriginalBuffer {
                     unreachable!("failed to lock backing file");
                 }
             }
-            OriginalBuffer::Memory { bytes } => {
+            OriginalBuffer::Memory { .. } => {
                 unreachable!("cannot rename backing file on memory buffer")
             }
         }

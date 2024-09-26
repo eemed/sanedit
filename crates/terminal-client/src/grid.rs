@@ -11,8 +11,8 @@ mod rect;
 use std::{mem, sync::Arc};
 
 use sanedit_messages::redraw::{
-    Cell, Completion, Component, Cursor, Diffable, Popup, PopupComponent, Redraw, Size,
-    StatusMessage, Statusline, Theme, Window,
+    completion::Completion, statusline::Statusline, window::Window, Cell, Component, Cursor,
+    Diffable as _, Popup, PopupComponent, Redraw, Size, StatusMessage, Theme,
 };
 
 use crate::{

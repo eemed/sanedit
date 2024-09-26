@@ -12,7 +12,7 @@ use sanedit_core::RangeUtils;
 /// background and will override the guesses made here anyway.
 #[action("Adjust highlighting to take a buffer change into account")]
 pub(crate) fn prevent_flicker(editor: &mut Editor, id: ClientId) {
-    let (win, buf) = editor.win_buf(id);
+    let (_win, buf) = editor.win_buf(id);
     let bid = buf.id;
     let bid = editor
         .hooks

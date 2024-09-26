@@ -73,6 +73,8 @@ pub struct LSPRange<T> {
     pub(crate) range: lsp_types::Range,
 }
 
+/// TODO use in lsp types
+#[allow(dead_code)]
 /// Wraps a structure which references a lsp position.
 /// This needs to be decoded before the inner T can be accessed
 #[derive(Debug, Clone)]
@@ -92,7 +94,7 @@ impl LSPRange<Diagnostic> {
     }
 }
 
-pub(crate) fn offset_to_position(
+pub fn offset_to_position(
     slice: &PieceTreeSlice,
     mut offset: u64,
     kind: &lsp_types::PositionEncodingKind,
@@ -126,7 +128,7 @@ pub(crate) fn offset_to_position(
     }
 }
 
-pub(crate) fn range_to_buffer_range(
+pub fn range_to_buffer_range(
     slice: &PieceTreeSlice,
     range: lsp_types::Range,
     kind: &lsp_types::PositionEncodingKind,
@@ -136,7 +138,7 @@ pub(crate) fn range_to_buffer_range(
     start..end
 }
 
-pub(crate) fn position_to_offset(
+pub fn position_to_offset(
     slice: &PieceTreeSlice,
     position: lsp_types::Position,
     kind: &lsp_types::PositionEncodingKind,

@@ -1,5 +1,5 @@
 use std::{
-    cmp::{min, Reverse},
+    cmp::min,
     ops::Range,
     path::{Path, PathBuf},
 };

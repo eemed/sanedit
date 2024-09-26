@@ -4,6 +4,7 @@ use super::set::Set;
 
 pub(crate) type Addr = usize;
 
+#[allow(dead_code)]
 #[derive(Debug)]
 pub(crate) enum Operation {
     Jump(Addr),

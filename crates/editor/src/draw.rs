@@ -54,7 +54,6 @@ pub(crate) struct DrawState {
     /// Used to track scroll position when drawing prompt
     prompt_scroll_offset: usize,
     compl_scroll_offset: usize,
-    redraw: bool,
 
     pub(crate) redraw_window: bool,
 }
@@ -70,7 +69,6 @@ impl DrawState {
             prompt_scroll_offset: 0,
             compl_scroll_offset: 0,
             redraw_window: true,
-            redraw: true,
         };
 
         let mut ctx = DrawContext {
@@ -87,12 +85,6 @@ impl DrawState {
     pub fn redraw(&mut self, ectx: EditorContext) -> Vec<Redraw> {
         let EditorContext { win, .. } = ectx;
         let mut redraw: Vec<Redraw> = vec![];
-
-        let draw = mem::replace(&mut self.redraw, true);
-        if !draw {
-            return redraw;
-        }
-
         let mut ctx = DrawContext {
             editor: ectx,
             state: self,
@@ -134,10 +126,6 @@ impl DrawState {
 
         self.last_focus = Some(win.focus);
         redraw
-    }
-
-    pub fn no_redraw(&mut self) {
-        self.redraw = false;
     }
 
     pub fn no_redraw_window(&mut self) {

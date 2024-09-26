@@ -1,7 +1,7 @@
 use std::{cmp::min, sync::Arc};
 
 use crate::editor::{
-    filetree::{Kind, Node},
+    filetree::Kind,
     windows::{Focus, Prompt},
     Editor,
 };
@@ -11,7 +11,7 @@ use sanedit_server::ClientId;
 #[action("Show filetree")]
 fn show_filetree(editor: &mut Editor, id: ClientId) {
     let visible = editor.filetree.iter().count();
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, _buf) = editor.win_buf_mut(id);
 
     win.ft_view.selection = min(visible - 1, win.ft_view.selection);
     win.ft_view.show = true;
@@ -20,7 +20,7 @@ fn show_filetree(editor: &mut Editor, id: ClientId) {
 
 #[action("Press filetree entry")]
 fn goto_ft_entry(editor: &mut Editor, id: ClientId) {
-    let (win, buf) = editor.win_buf(id);
+    let (win, _buf) = editor.win_buf(id);
     let path = editor
         .filetree
         .iter()
@@ -34,12 +34,12 @@ fn goto_ft_entry(editor: &mut Editor, id: ClientId) {
                     if node.is_dir_expanded() {
                         node.collapse();
                     } else {
-                        node.expand();
+                        let _ = node.expand();
                     }
                 }
                 Kind::File => {
-                    if let Err(e) = editor.open_file(id, path) {
-                        let (win, buf) = editor.win_buf_mut(id);
+                    if let Err(_e) = editor.open_file(id, path) {
+                        let (win, _buf) = editor.win_buf_mut(id);
                         win.error_msg("failed to open file {path:?}: {e}");
                     }
                 }
@@ -52,19 +52,19 @@ fn goto_ft_entry(editor: &mut Editor, id: ClientId) {
 fn next_ft_entry(editor: &mut Editor, id: ClientId) {
     let visible = editor.filetree.iter().count();
 
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, _buf) = editor.win_buf_mut(id);
     win.ft_view.selection = min(visible - 1, win.ft_view.selection + 1);
 }
 
 #[action("Previous filetree entry")]
 fn prev_ft_entry(editor: &mut Editor, id: ClientId) {
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, _buf) = editor.win_buf_mut(id);
     win.ft_view.selection = win.ft_view.selection.saturating_sub(1);
 }
 
 #[action("Close filetree")]
 fn close_filetree(editor: &mut Editor, id: ClientId) {
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, _buf) = editor.win_buf_mut(id);
     win.ft_view.show = false;
     win.focus = Focus::Window;
 }
@@ -88,7 +88,7 @@ fn ft_new_file(editor: &mut Editor, id: ClientId) {
         }
     };
 
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, _buf) = editor.win_buf_mut(id);
     win.prompt = Prompt::builder()
         .prompt("Filename")
         .simple()
@@ -103,13 +103,13 @@ fn ft_new_file(editor: &mut Editor, id: ClientId) {
             // Create new file
             if let Err(e) = std::fs::File::create_new(&file) {
                 let (win, _buf) = editor.win_buf_mut(id);
-                win.warn_msg("Failed to create file {e}");
+                win.warn_msg(&format!("Failed to create file {e}"));
                 return;
             }
 
             // Refresh to show new file on tree
             if let Some(mut node) = editor.filetree.get_mut(&dir) {
-                node.refresh();
+                let _ = node.refresh();
             }
 
             // Select the new entry if visible
@@ -123,7 +123,7 @@ fn ft_new_file(editor: &mut Editor, id: ClientId) {
             }
 
             // Open the file
-            editor.open_file(id, &file);
+            let _ = editor.open_file(id, &file);
         })
         .build();
     win.focus = Focus::Prompt;
@@ -151,7 +151,7 @@ fn ft_delete_file(editor: &mut Editor, id: ClientId) {
         format!("Delete {} {:?}? (y/N)", kind, path)
     };
 
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, _buf) = editor.win_buf_mut(id);
     win.prompt = Prompt::builder()
         .prompt(&prompt)
         .simple()
@@ -161,18 +161,19 @@ fn ft_delete_file(editor: &mut Editor, id: ClientId) {
                 return;
             }
 
-            match kind {
-                Kind::Directory => {
-                    std::fs::remove_dir_all(path.as_path());
-                }
-                Kind::File => {
-                    std::fs::remove_file(path.as_path());
-                }
+            let result = match kind {
+                Kind::Directory => std::fs::remove_dir_all(path.as_path()),
+                Kind::File => std::fs::remove_file(path.as_path()),
+            };
+
+            if let Err(e) = result {
+                log::error!("Failed to delete file: {e}");
+                return;
             }
 
             if let Some(parent) = path.parent() {
                 if let Some(mut node) = editor.filetree.get_mut(&parent) {
-                    node.refresh();
+                    let _ = node.refresh();
                 }
             }
 

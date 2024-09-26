@@ -25,6 +25,7 @@ impl TokioRuntime {
         self.tokio.block_on(fut)
     }
 
+    #[allow(dead_code)]
     pub fn spawn<F>(&self, fut: F) -> JoinHandle<F::Output>
     where
         F: Future + Send + 'static,

@@ -3,8 +3,6 @@ use sanedit_buffer::utf8;
 use sanedit_buffer::utf8::EndOfLine;
 use sanedit_buffer::Bytes;
 use sanedit_buffer::PieceTreeSlice;
-use sanedit_buffer::Searcher;
-use sanedit_buffer::SearcherRev;
 
 use crate::Cursor;
 
@@ -209,20 +207,6 @@ pub fn prev_paragraph(slice: &PieceTreeSlice, pos: u64) -> u64 {
     0
 }
 
-fn find_next(slice: &PieceTreeSlice, pattern: &[u8]) -> Option<u64> {
-    let searcher = Searcher::new(pattern);
-    let mut iter = searcher.find_iter(slice);
-    let mat = iter.next()?;
-    Some(mat.start)
-}
-
-fn find_prev(slice: &PieceTreeSlice, pattern: &[u8]) -> Option<u64> {
-    let searcher = SearcherRev::new(pattern);
-    let mut iter = searcher.find_iter(slice);
-    let mat = iter.next()?;
-    Some(mat.start)
-}
-
 pub fn next_blank_line(slice: &PieceTreeSlice, pos: u64) -> u64 {
     let mut bytes = slice.bytes_at(pos);
     utf8::next_eol(&mut bytes);
@@ -256,7 +240,6 @@ pub fn prev_blank_line(slice: &PieceTreeSlice, pos: u64) -> u64 {
 }
 
 pub fn next_line(slice: &PieceTreeSlice, cursor: &Cursor, opts: &DisplayOptions) -> (u64, usize) {
-    log::info!("next line");
     let cpos = cursor.pos();
     let width = cursor
         .column()

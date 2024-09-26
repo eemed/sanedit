@@ -1,4 +1,4 @@
-use sanedit_messages::redraw::{self, Component, Redraw, Source};
+use sanedit_messages::redraw::{self, prompt::Source, Component, Redraw};
 
 use crate::editor::windows::Focus;
 
@@ -35,7 +35,7 @@ fn draw_impl(ctx: &mut DrawContext) -> redraw::Redraw {
     let input = prompt.input().into();
     let cursor = prompt.cursor();
 
-    redraw::Prompt {
+    redraw::prompt::Prompt {
         message: msg,
         input,
         cursor,

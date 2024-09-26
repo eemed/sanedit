@@ -48,7 +48,7 @@ pub(crate) fn spawn_client(info: ClientInfo) {
         id,
         send,
         info: ClientConnectionInfo::UnixDomainSocket(path),
-        kill,
+        _kill: kill,
     };
 
     // Ignore send errors here. Should only happen if the server is shutting

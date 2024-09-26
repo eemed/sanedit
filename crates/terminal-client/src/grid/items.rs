@@ -1,6 +1,9 @@
 use std::cmp::{max, min};
 
-use sanedit_messages::redraw::{Item, ItemKind, Items, Size, Style, ThemeField};
+use sanedit_messages::redraw::{
+    items::{Item, ItemKind, Items},
+    Size, Style, ThemeField,
+};
 
 use crate::ui::UIContext;
 
@@ -86,7 +89,7 @@ impl CustomItems {
             cells[i] = &mut line[..last];
         }
 
-        let Size { width, height } = size(cells);
+        let Size { width, .. } = size(cells);
         for (row, item) in self.items.items.iter().skip(self.scroll).enumerate() {
             if row >= cells.len() {
                 break;
@@ -95,12 +98,12 @@ impl CustomItems {
             let style = {
                 if self.scroll + row == self.items.selected {
                     match item.kind {
-                        ItemKind::Group { expanded } => dsel,
+                        ItemKind::Group { .. } => dsel,
                         ItemKind::Item => sel,
                     }
                 } else {
                     match item.kind {
-                        ItemKind::Group { expanded } => dir,
+                        ItemKind::Group { .. } => dir,
                         ItemKind::Item => file,
                     }
                 }
@@ -155,7 +158,7 @@ impl CustomItems {
 
         clear_all(cells, fill);
 
-        let Size { width, height } = size(cells);
+        let Size { width, .. } = size(cells);
         if !cells.is_empty() {
             let mut line = into_cells_with_style(" Locations", title);
 
@@ -184,12 +187,12 @@ impl CustomItems {
             let style = {
                 if is_selected {
                     match item.kind {
-                        ItemKind::Group { expanded } => gsel,
+                        ItemKind::Group { .. } => gsel,
                         ItemKind::Item => sel,
                     }
                 } else {
                     match item.kind {
-                        ItemKind::Group { expanded } => group,
+                        ItemKind::Group { .. } => group,
                         ItemKind::Item => entry,
                     }
                 }
@@ -257,7 +260,7 @@ impl Drawable for CustomItems {
         }
     }
 
-    fn cursor(&self, ctx: &UIContext) -> DrawCursor {
+    fn cursor(&self, _ctx: &UIContext) -> DrawCursor {
         if self.items.in_focus {
             DrawCursor::Hide
         } else {

@@ -25,6 +25,8 @@ use sanedit_server::ClientId;
 
 pub(crate) type ActionFunction = Arc<dyn Fn(&mut Editor, ClientId) + Send + Sync>;
 
+// TODO should dynamic be removed?
+#[allow(dead_code)]
 #[derive(Clone)]
 pub(crate) enum Action {
     Dynamic {
@@ -39,6 +41,7 @@ pub(crate) enum Action {
 }
 
 impl Action {
+    #[allow(dead_code)]
     pub fn new<F>(name: &str, fun: F) -> Action
     where
         F: Fn(&mut Editor, ClientId) + Sync + Send + 'static,
@@ -222,6 +225,8 @@ pub(crate) const WINDOW_COMMANDS: &[Action] = &[
     movement::next_grapheme,
     movement::prev_grapheme,
     movement::first_char_of_line,
+    movement::prev_visual_line,
+    movement::next_visual_line,
 
     cursors::start_selection,
     cursors::new_cursor_to_next_line,

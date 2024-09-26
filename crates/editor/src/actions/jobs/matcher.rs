@@ -27,7 +27,7 @@ pub(crate) trait OptionProvider: fmt::Debug + Sync + Send {
 }
 
 impl OptionProvider for Arc<Vec<String>> {
-    fn provide(&self, sender: Sender<MatchOption>, kill: Kill) -> BoxFuture<'static, ()> {
+    fn provide(&self, sender: Sender<MatchOption>, _kill: Kill) -> BoxFuture<'static, ()> {
         let items = self.clone();
 
         let fut = async move {
@@ -43,7 +43,7 @@ impl OptionProvider for Arc<Vec<String>> {
 }
 
 impl OptionProvider for Arc<Vec<MatchOption>> {
-    fn provide(&self, sender: Sender<MatchOption>, kill: Kill) -> BoxFuture<'static, ()> {
+    fn provide(&self, sender: Sender<MatchOption>, _kill: Kill) -> BoxFuture<'static, ()> {
         let items = self.clone();
 
         let fut = async move {
@@ -64,10 +64,10 @@ pub(crate) type MatchResultHandler = fn(&mut Editor, ClientId, MatcherMessage);
 #[derive(Debug)]
 struct Empty;
 impl Empty {
-    fn none_result_handler(editor: &mut Editor, id: ClientId, msg: MatcherMessage) {}
+    fn none_result_handler(_editor: &mut Editor, _id: ClientId, _msg: MatcherMessage) {}
 }
 impl OptionProvider for Empty {
-    fn provide(&self, sender: Sender<MatchOption>, kill: Kill) -> BoxFuture<'static, ()> {
+    fn provide(&self, _sender: Sender<MatchOption>, _kill: Kill) -> BoxFuture<'static, ()> {
         Box::pin(async {})
     }
 }

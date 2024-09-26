@@ -1,7 +1,7 @@
 use crate::{
     common::is_yes,
     editor::{
-        config::{serialize_default_configuration, Config},
+        config::serialize_default_configuration,
         hooks::Hook,
         windows::{Focus, Prompt},
         Editor,
@@ -36,7 +36,7 @@ fn run_project(editor: &mut Editor, id: ClientId) {
 #[action("Copy selection to clipboard")]
 fn copy(editor: &mut Editor, id: ClientId) {
     editor.copy_to_clipboard(id);
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, _buf) = editor.win_buf_mut(id);
     win.cursors.stop_selection();
 }
 
@@ -68,7 +68,7 @@ fn open_config(editor: &mut Editor, id: ClientId) {
     if !config.exists() {
         prompt_create_and_open_config(editor, id);
     } else {
-        editor.open_file(id, &config);
+        let _ = editor.open_file(id, &config);
     }
 }
 
@@ -86,12 +86,13 @@ fn prompt_create_and_open_config(editor: &mut Editor, id: ClientId) {
 
             let path = editor.config_dir.config();
             if let Err(e) = serialize_default_configuration(&path) {
-                let (win, buf) = editor.win_buf_mut(id);
+                let (win, _buf) = editor.win_buf_mut(id);
                 win.warn_msg("Failed to create default configuration file.");
+                log::error!("Failed to create default configuration file: {e}");
                 return;
             }
 
-            editor.open_file(id, &path);
+            let _ = editor.open_file(id, &path);
         })
         .build();
     win.focus = Focus::Prompt;

@@ -1,7 +1,7 @@
 use std::{cmp, ffi::OsStr, ops::Range, path::PathBuf};
 
 use sanedit_core::Choice;
-use sanedit_messages::redraw::{self, Component, Redraw, Source};
+use sanedit_messages::redraw::{self, prompt::Source, Component, Redraw};
 
 use crate::editor::windows::Focus;
 
@@ -95,7 +95,7 @@ fn draw_impl(ctx: &mut DrawContext) -> redraw::Redraw {
         Source::Prompt
     };
 
-    redraw::Prompt {
+    redraw::prompt::Prompt {
         input,
         cursor,
         options,

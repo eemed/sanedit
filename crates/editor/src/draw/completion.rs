@@ -49,7 +49,7 @@ fn draw_impl(ctx: &mut DrawContext) -> redraw::Redraw {
     //     .flatten()
     //     .unwrap_or(0);
 
-    redraw::Completion {
+    redraw::completion::Completion {
         point: completion.point().clone(),
         choices,
         selected: selected_relative_pos,

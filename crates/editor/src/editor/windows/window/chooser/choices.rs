@@ -33,10 +33,6 @@ pub struct Choices {
 }
 
 impl Choices {
-    pub fn new() -> Choices {
-        Choices::default()
-    }
-
     pub fn push(&mut self, opts: SortedVec<Choice>) {
         self.total += opts.len();
         self.options.push(opts);
@@ -52,10 +48,6 @@ impl Choices {
 
     pub fn is_empty(&self) -> bool {
         self.total == 0
-    }
-
-    pub fn clear(&mut self) {
-        *self = Choices::default();
     }
 
     pub fn get(&self, idx: usize) -> Option<&Choice> {

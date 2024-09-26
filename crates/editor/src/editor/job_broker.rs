@@ -9,9 +9,9 @@ use rustc_hash::FxHashMap;
 /// A job that can send messages back to the editor
 pub(crate) trait KeepInTouch {
     /// Ran when the job sends the message back to the editor
-    fn on_message(&self, editor: &mut Editor, msg: Box<dyn Any>) {}
-    fn on_success(&self, editor: &mut Editor) {}
-    fn on_failure(&self, editor: &mut Editor, reason: &str) {}
+    fn on_message(&self, _editor: &mut Editor, _msg: Box<dyn Any>) {}
+    fn on_success(&self, _editor: &mut Editor) {}
+    fn on_failure(&self, _editor: &mut Editor, _reason: &str) {}
     fn client_id(&self) -> ClientId;
 }
 
@@ -40,6 +40,7 @@ impl JobBroker {
         }
     }
 
+    #[allow(dead_code)]
     /// Run a job in the background
     pub fn run<T>(&mut self, job: T) -> JobId
     where

@@ -46,6 +46,7 @@ impl JsonRequest {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Clone, Debug, Deserialize)]
 pub(crate) struct JsonResponseError {
     pub code: i32,
@@ -55,6 +56,7 @@ pub(crate) struct JsonResponseError {
 
 #[derive(Clone, Debug, Deserialize)]
 pub(crate) struct JsonResponse {
+    #[allow(dead_code)]
     pub jsonrpc: String,
     pub id: u32,
     pub result: Option<lsp_types::LSPAny>,
@@ -112,6 +114,7 @@ pub async fn read_from<R: AsyncBufReadExt + Unpin>(
 
 #[derive(Debug, Serialize, Deserialize)]
 pub(crate) struct JsonNotification {
+    #[allow(dead_code)]
     pub(crate) jsonrpc: String,
     pub(crate) method: String,
     pub(crate) params: Value,

@@ -89,6 +89,7 @@ impl Hooks {
         id
     }
 
+    #[allow(dead_code)]
     /// Remove a registered hook if it exists
     pub fn remove(&mut self, id: HookId) {
         let removed = self.hooks.remove(&id).is_some();

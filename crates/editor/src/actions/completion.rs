@@ -58,7 +58,7 @@ fn complete(editor: &mut Editor, id: ClientId) {
 
 #[action("Confirm completion")]
 fn confirm_completion(editor: &mut Editor, id: ClientId) {
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, _buf) = editor.win_buf_mut(id);
     win.focus = Focus::Window;
 
     let opt = win.completion.selected().map(|opt| {
@@ -73,7 +73,7 @@ fn confirm_completion(editor: &mut Editor, id: ClientId) {
 
 #[action("Abort completion")]
 fn abort_completion(editor: &mut Editor, id: ClientId) {
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, _buf) = editor.win_buf_mut(id);
     win.focus = Focus::Window;
 }
 

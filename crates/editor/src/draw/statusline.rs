@@ -1,11 +1,11 @@
 use sanedit_core::Filetype;
-use sanedit_messages::redraw::{self, Statusline};
+use sanedit_messages::redraw::statusline::Statusline;
 
 use crate::editor::windows::Focus;
 
 use super::{DrawContext, EditorContext};
 
-pub(crate) fn draw(ctx: &mut DrawContext) -> redraw::Statusline {
+pub(crate) fn draw(ctx: &mut DrawContext) -> Statusline {
     let EditorContext {
         win,
         buf,

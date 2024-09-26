@@ -4,6 +4,7 @@ use sanedit_messages::redraw::{Cell, Style};
 
 use super::ccell::{size, CCell};
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum Border {
     Box,

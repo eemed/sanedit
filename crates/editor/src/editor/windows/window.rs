@@ -22,8 +22,8 @@ use rustc_hash::FxHashSet;
 use sanedit_core::{
     grapheme_category, indent_at_line,
     movement::{next_grapheme_boundary, next_line_end, prev_grapheme_boundary},
-    selection_line_starts, width_at_pos, BufferRange, BufferRangeExt as _, Change, Changes, Cursor,
-    DisplayOptions, GraphemeCategory, Locations,
+    selection_line_starts, width_at_pos, BufferRange, Change, Changes, Cursor, DisplayOptions,
+    GraphemeCategory, Locations,
 };
 use sanedit_messages::redraw::{Popup, PopupMessage, Severity, Size, StatusMessage};
 
@@ -138,10 +138,6 @@ impl Window {
         self.message = None;
         self.completion = Completion::default();
         self.view.syntax = ViewSyntax::default();
-    }
-
-    pub fn display_options_mut(&mut self) -> &mut DisplayOptions {
-        &mut self.view.options
     }
 
     pub fn display_options(&self) -> &DisplayOptions {

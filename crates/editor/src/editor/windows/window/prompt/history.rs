@@ -6,12 +6,6 @@ pub(crate) enum HistoryKind {
     Search,
 }
 
-impl HistoryKind {
-    pub const fn variant_count() -> usize {
-        2
-    }
-}
-
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub(crate) enum HistoryPosition {
     First,

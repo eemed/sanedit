@@ -6,7 +6,7 @@ use sanedit_core::FileDescription;
 use sanedit_utils::idmap::IdMap;
 
 pub(crate) use self::buffer::{
-    Buffer, BufferConfig, BufferError, BufferId, ChangeResult, SnapshotData, SnapshotId,
+    Buffer, BufferConfig, BufferError, BufferId, SnapshotData, SnapshotId,
 };
 
 #[derive(Debug, Default)]

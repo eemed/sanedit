@@ -4,12 +4,12 @@ use anyhow::bail;
 use sanedit_buffer::PieceTreeView;
 
 use crate::editor::{job_broker::KeepInTouch, windows::Executor};
-use sanedit_server::{ClientId, Job, JobContext, JobResult, Kill};
+use sanedit_server::{ClientId, Job, JobContext, JobResult};
 
 #[derive(Debug, Clone)]
 pub(crate) struct TmuxPane {
-    session: usize,
-    window: usize,
+    _session: usize,
+    _window: usize,
     pane: usize,
 }
 
@@ -39,6 +39,7 @@ impl TmuxShellCommand {
         self
     }
 
+    #[allow(dead_code)]
     pub fn pipe(mut self, ropt: PieceTreeView) -> Self {
         self.pipe_input = Some(ropt);
         self
@@ -48,7 +49,6 @@ impl TmuxShellCommand {
 impl Job for TmuxShellCommand {
     fn run(&self, mut ctx: JobContext) -> JobResult {
         let command = self.command.clone();
-        let ropt = self.pipe_input.clone();
         let shell = self.shell.clone();
         let pane = self.pane.clone();
 
@@ -63,7 +63,7 @@ impl Job for TmuxShellCommand {
                     run_in_pane(&pane, &shell, &escaped_command)?;
                 }
                 None => {
-                    let cwin = open_pane(&shell, &escaped_command)?;
+                    let cwin = open_pane(&shell)?;
                     run_in_pane(&cwin, &shell, &escaped_command)?;
                     ctx.send(cwin);
                 }
@@ -87,10 +87,6 @@ impl KeepInTouch for TmuxShellCommand {
             win.shell_executor = Executor::Tmux { pane: Some(*pane) };
         }
     }
-
-    fn on_success(&self, editor: &mut crate::editor::Editor) {}
-
-    fn on_failure(&self, editor: &mut crate::editor::Editor, reason: &str) {}
 }
 
 fn escape_cmd(command: &str) -> String {
@@ -124,7 +120,7 @@ fn reset_pane(win: &TmuxPane, shell: &str) -> anyhow::Result<()> {
     Ok(())
 }
 
-fn open_pane(shell: &str, cmd: &str) -> anyhow::Result<TmuxPane> {
+fn open_pane(shell: &str) -> anyhow::Result<TmuxPane> {
     let tmux_cmd = format!("tmux split-window -l 15% -d -P -F \"#{{session_id}}\n#{{window_id}}\n#{{pane_id}}\" '{shell}'");
     let output = Command::new(shell).args(&["-c", &tmux_cmd]).output()?;
 
@@ -139,8 +135,8 @@ fn open_pane(shell: &str, cmd: &str) -> anyhow::Result<TmuxPane> {
     let pane: usize = ids[2][1..].parse()?;
 
     Ok(TmuxPane {
-        session,
-        window,
+        _session: session,
+        _window: window,
         pane,
     })
 }

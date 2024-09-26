@@ -78,14 +78,6 @@ impl<R: io::Read> Lexer<R> {
         self.token_count
     }
 
-    fn consume(&mut self, s: &str) -> Result<()> {
-        let chars = s.chars();
-        for ch in chars {
-            self.read.consume(ch)?;
-        }
-        Ok(())
-    }
-
     fn consume_string(&mut self) -> Result<String> {
         let mut result = String::new();
         while let Some(ch) = self.read.peek() {

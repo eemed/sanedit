@@ -1,5 +1,4 @@
 use std::{
-    cell::Cell,
     fs::{self, File, OpenOptions},
     path::{Path, PathBuf},
     sync::{

@@ -9,11 +9,7 @@ use std::{
 };
 
 use crate::{
-    actions::{
-        hooks::run,
-        locations,
-        lsp::{self, position_to_offset, range_to_buffer_range},
-    },
+    actions::{hooks::run, locations, lsp},
     common::matcher::{MatchOption, MatchStrategy},
     editor::{
         buffers::BufferId,
@@ -28,12 +24,12 @@ use sanedit_buffer::{PieceTree, PieceTreeSlice};
 use sanedit_core::{Change, Changes, Diagnostic, Filetype, Group, Item};
 use sanedit_lsp::{
     lsp_types::{self, CodeAction, Position},
-    CompletionItem, LSPClientParams, LSPClientSender, LSPRange, Notification, Reference, Request,
-    RequestKind, RequestResult, Response,
+    position_to_offset, range_to_buffer_range, CompletionItem, LSPClientParams, LSPClientSender,
+    LSPRange, Notification, Reference, Request, RequestKind, RequestResult, Response,
 };
 
 use anyhow::Result;
-use sanedit_messages::redraw::{PopupMessage, Severity, StatusMessage};
+use sanedit_messages::redraw::PopupMessage;
 use sanedit_server::{ClientId, Job, JobContext, JobResult};
 
 use super::MatcherJob;
@@ -56,9 +52,6 @@ pub(crate) enum Constraint {
 pub(crate) struct LSPHandle {
     /// Name of the LSP server
     name: String,
-
-    /// Root where LSP is started
-    root: PathBuf,
 
     /// Client to send messages to LSP server
     sender: LSPClientSender,
@@ -97,10 +90,6 @@ impl LSPHandle {
     pub fn notify(&mut self, op: Notification) -> Result<()> {
         self.sender.notify(op);
         Ok(())
-    }
-
-    pub fn init_params(&self) -> &lsp_types::InitializeResult {
-        self.sender.init_params()
     }
 
     pub fn position_encoding(&self) -> lsp_types::PositionEncodingKind {
@@ -156,7 +145,6 @@ impl Job for LSP {
             let handle = LSPHandle {
                 name: command,
                 sender,
-                root: wd,
                 requests: Map::default(),
                 request_id: AtomicU32::new(1),
             };
@@ -250,8 +238,8 @@ impl LSP {
 
     fn handle_result(&self, editor: &mut Editor, id: ClientId, result: RequestResult) {
         match result {
-            RequestResult::Hover { text, position } => {
-                let (win, buf) = editor.win_buf_mut(id);
+            RequestResult::Hover { text, .. } => {
+                let (win, _buf) = editor.win_buf_mut(id);
                 win.push_popup(PopupMessage {
                     severity: None,
                     text,
@@ -299,7 +287,7 @@ enum Message {
 fn complete(
     editor: &mut Editor,
     id: ClientId,
-    path: PathBuf,
+    _path: PathBuf,
     position: Position,
     opts: Vec<CompletionItem>,
 ) {
@@ -329,7 +317,7 @@ fn complete(
 
 fn handle_diagnostics(
     editor: &mut Editor,
-    id: ClientId,
+    _id: ClientId,
     path: PathBuf,
     version: Option<i32>,
     diags: Vec<LSPRange<Diagnostic>>,
@@ -380,7 +368,7 @@ fn code_action(editor: &mut Editor, id: ClientId, actions: Vec<CodeAction>) {
     win.prompt = Prompt::builder()
         .prompt("Select code action")
         .on_confirm(move |editor, id, input| {
-            let (win, buf) = editor.win_buf_mut(id);
+            let (_win, buf) = editor.win_buf_mut(id);
             let Some(ft) = buf.filetype.clone() else {
                 return;
             };
@@ -409,9 +397,7 @@ fn code_action(editor: &mut Editor, id: ClientId, actions: Vec<CodeAction>) {
 
 fn edit_workspace(editor: &mut Editor, id: ClientId, edit: lsp_types::WorkspaceEdit) {
     let lsp_types::WorkspaceEdit {
-        changes,
-        document_changes,
-        change_annotations,
+        document_changes, ..
     } = edit;
 
     if let Some(doc_changes) = document_changes {
@@ -437,11 +423,11 @@ fn edit_workspace(editor: &mut Editor, id: ClientId, edit: lsp_types::WorkspaceE
     }
 }
 
-fn code_action_edit_operation(editor: &mut Editor, id: ClientId, op: lsp_types::ResourceOp) {
+fn code_action_edit_operation(_editor: &mut Editor, _id: ClientId, op: lsp_types::ResourceOp) {
     match op {
-        lsp_types::ResourceOp::Create(create) => todo!(),
-        lsp_types::ResourceOp::Rename(rename) => todo!(),
-        lsp_types::ResourceOp::Delete(delete) => todo!(),
+        lsp_types::ResourceOp::Create(_create) => todo!(),
+        lsp_types::ResourceOp::Rename(_rename) => todo!(),
+        lsp_types::ResourceOp::Delete(_delete) => todo!(),
     }
 }
 

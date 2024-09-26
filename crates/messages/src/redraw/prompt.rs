@@ -1,5 +1,3 @@
-use std::ops::Range;
-
 use sanedit_core::Choice;
 use serde::{Deserialize, Serialize};
 

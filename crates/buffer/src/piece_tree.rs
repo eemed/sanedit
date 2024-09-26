@@ -343,6 +343,7 @@ impl PieceTree {
     ///      2. Probably slower than writing a copy if insert/remove operations are
     ///         in the beginning portion of the file
     ///      3. Previously created read only copies/marks cannot be used anymore
+    #[allow(dead_code)]
     unsafe fn write_in_place(&self) -> io::Result<()> {
         self.view.write_in_place()
     }
@@ -370,11 +371,6 @@ impl PieceTree {
     #[inline]
     pub fn restore(&mut self, ro: PieceTreeView) {
         self.view = ro;
-    }
-
-    #[inline]
-    pub(crate) fn tree(&self) -> &Tree {
-        &self.view.tree
     }
 }
 

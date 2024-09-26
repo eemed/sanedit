@@ -301,6 +301,12 @@ impl Default for Tree {
 #[cfg(test)]
 pub(crate) mod test {
     // use rand_chacha::rand_core::{RngCore, SeedableRng};
+    //
+    impl PieceTree {
+        pub(crate) fn tree(&self) -> &Tree {
+            &self.view.tree
+        }
+    }
 
     use super::*;
     use crate::piece_tree::PieceTree;

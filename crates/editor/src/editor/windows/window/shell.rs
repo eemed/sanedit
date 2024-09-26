@@ -4,7 +4,6 @@ use crate::actions::jobs::TmuxPane;
 #[derive(Debug)]
 pub(crate) enum Executor {
     Tmux { pane: Option<TmuxPane> },
-    Buffer,
 }
 
 impl Default for Executor {

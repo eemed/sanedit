@@ -1,7 +1,7 @@
 use std::cmp::min;
 
 use sanedit_messages::redraw::{
-    Cursor, Popup, Severity, StatusMessage, Statusline, ThemeField, Window,
+    statusline::Statusline, window::Window, Cursor, Severity, StatusMessage, ThemeField,
 };
 
 use crate::ui::UIContext;
@@ -24,7 +24,7 @@ pub(crate) trait Drawable {
 }
 
 impl Drawable for Window {
-    fn draw(&self, ctx: &UIContext, cells: &mut [&mut [CCell]]) {
+    fn draw(&self, _ctx: &UIContext, cells: &mut [&mut [CCell]]) {
         let width = min(
             cells.get(0).map(|c| c.len()).unwrap_or(0),
             self.cells.get(0).map(|c| c.len()).unwrap_or(0),
@@ -38,7 +38,7 @@ impl Drawable for Window {
         }
     }
 
-    fn cursor(&self, ctx: &UIContext) -> DrawCursor {
+    fn cursor(&self, _ctx: &UIContext) -> DrawCursor {
         match self.cursor {
             Some(cursor) => DrawCursor::Show(cursor),
             None => DrawCursor::Ignore,
@@ -67,7 +67,7 @@ impl Drawable for Statusline {
         }
     }
 
-    fn cursor(&self, ctx: &UIContext) -> DrawCursor {
+    fn cursor(&self, _ctx: &UIContext) -> DrawCursor {
         DrawCursor::Ignore
     }
 }
@@ -90,7 +90,7 @@ impl Drawable for StatusMessage {
         }
     }
 
-    fn cursor(&self, ctx: &UIContext) -> DrawCursor {
+    fn cursor(&self, _ctx: &UIContext) -> DrawCursor {
         DrawCursor::Ignore
     }
 }

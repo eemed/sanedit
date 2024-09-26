@@ -23,7 +23,7 @@ fn clear_messages(editor: &mut Editor, id: ClientId) {
 
 #[action("Sync windows if a buffer is changed")]
 fn sync_windows(editor: &mut Editor, id: ClientId) {
-    let (win, buf) = editor.win_buf(id);
+    let (_win, buf) = editor.win_buf(id);
     let bid = buf.id;
     let bid = editor
         .hooks

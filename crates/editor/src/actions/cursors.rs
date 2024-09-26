@@ -1,18 +1,18 @@
 use sanedit_messages::redraw::Point;
 
 use crate::{
-    common::{cursors::word_at_cursor, window::pos_at_point},
+    common::window::pos_at_point,
     editor::{hooks::Hook, Editor},
 };
 
 use sanedit_server::ClientId;
 
-use super::{hooks, search};
-
 use sanedit_core::{
-    movement::{end_of_line, next_line, next_line_start, prev_line, start_of_line},
+    movement::{next_line, prev_line},
     Cursor, PTSearcher,
 };
+
+use super::hooks;
 
 #[action("New cursor on the next line")]
 fn new_cursor_to_next_line(editor: &mut Editor, id: ClientId) {

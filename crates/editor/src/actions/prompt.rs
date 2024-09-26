@@ -110,7 +110,7 @@ fn open_file(editor: &mut Editor, id: ClientId) {
 
             if let Err(e) = editor.open_file(id, &path) {
                 let (win, _buf) = editor.win_buf_mut(id);
-                win.warn_msg(&format!("Failed to open file {input}"))
+                win.warn_msg(&format!("Failed to open file {input}: {e}"))
             }
         })
         .build();
@@ -328,6 +328,8 @@ fn grep(editor: &mut Editor, id: ClientId) {
     win.focus = Focus::Prompt;
 }
 
+// TODO use
+#[allow(dead_code)]
 /// Prompt whether buffer changes should be changed or not
 pub(crate) fn close_modified_buffer<F: Fn(&mut Editor, ClientId) + 'static>(
     editor: &mut Editor,

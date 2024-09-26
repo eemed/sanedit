@@ -1,11 +1,11 @@
-use std::{any::Any, ops::Range};
+use std::any::Any;
 
 use sanedit_buffer::PieceTreeView;
 use sanedit_core::{BufferRange, SearchDirection, SearchKind};
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 
 use crate::editor::{job_broker::KeepInTouch, Editor};
-use sanedit_server::{ClientId, Job, JobContext, JobResult, Kill};
+use sanedit_server::{ClientId, Job, JobContext, JobResult};
 
 use super::CHANNEL_SIZE;
 use sanedit_core::PTSearcher;

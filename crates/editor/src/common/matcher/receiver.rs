@@ -19,10 +19,6 @@ pub struct MatchReceiver {
 }
 
 impl MatchReceiver {
-    pub fn blocking_recv(&mut self) -> Option<Choice> {
-        self.receiver.blocking_recv()
-    }
-
     pub async fn recv(&mut self) -> Option<Choice> {
         self.receiver.recv().await
     }

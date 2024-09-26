@@ -1,4 +1,4 @@
-use crate::common::indent::IndentKind;
+use sanedit_core::IndentKind;
 
 use super::*;
 

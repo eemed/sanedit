@@ -22,34 +22,6 @@ impl Rect {
         }
     }
 
-    pub fn top_center(width: usize, height: usize) -> Rect {
-        let width = width / 2;
-        let height = height / 2;
-        let x = width / 2;
-        let y = height / 4;
-
-        Rect {
-            x,
-            y,
-            width,
-            height,
-        }
-    }
-
-    pub fn centered(width: usize, height: usize) -> Rect {
-        let width = width / 2;
-        let height = height / 2;
-        let x = width / 2;
-        let y = height / 2;
-
-        Rect {
-            x,
-            y,
-            width,
-            height,
-        }
-    }
-
     pub fn position(&self) -> Point {
         Point {
             x: self.x,
@@ -138,13 +110,9 @@ impl Rect {
     pub fn rightmost(&self) -> usize {
         self.x + self.width
     }
-
-    /// bottom position this rect reaches y + height
-    pub fn bottom(&self) -> usize {
-        self.y + self.height
-    }
 }
 
+#[allow(dead_code)]
 pub(crate) enum SplitPoint {
     Percentage(usize),
     Size(usize),
@@ -159,6 +127,7 @@ impl SplitPoint {
     }
 }
 
+#[allow(dead_code)]
 pub(crate) enum Split {
     Top(SplitPoint),
     Bottom(SplitPoint),
@@ -166,6 +135,7 @@ pub(crate) enum Split {
     Right(SplitPoint),
 }
 
+#[allow(dead_code)]
 impl Split {
     pub fn top_size(size: usize) -> Split {
         Split::Top(SplitPoint::Size(size))

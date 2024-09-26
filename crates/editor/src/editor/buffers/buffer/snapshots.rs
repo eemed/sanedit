@@ -76,14 +76,6 @@ impl Snapshots {
         node.clone().into()
     }
 
-    pub fn has_redo(&self) -> bool {
-        self.redo_pos().is_some()
-    }
-
-    pub fn has_undo(&self) -> bool {
-        self.undo_pos().is_some()
-    }
-
     pub fn data_mut(&mut self, id: SnapshotId) -> Option<&mut SnapshotData> {
         let node = self.snapshots.get_mut(id)?;
         Some(&mut node.data)

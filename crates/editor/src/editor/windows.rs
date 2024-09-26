@@ -36,16 +36,8 @@ impl Windows {
         self.windows.remove(&id)
     }
 
-    pub fn contains(&self, id: ClientId) -> bool {
-        self.windows.contains_key(&id)
-    }
-
     pub fn iter(&self) -> std::collections::hash_map::Iter<ClientId, Window> {
         self.windows.iter()
-    }
-
-    pub fn iter_mut(&mut self) -> std::collections::hash_map::IterMut<ClientId, Window> {
-        self.windows.iter_mut()
     }
 
     pub fn find_clients_with_buf(&self, bid: BufferId) -> Vec<ClientId> {

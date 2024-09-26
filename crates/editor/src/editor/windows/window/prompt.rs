@@ -78,6 +78,7 @@ impl PromptBuilder {
         self
     }
 
+    #[allow(dead_code)]
     pub fn on_abort<F>(mut self, fun: F) -> Self
     where
         F: Fn(&mut Editor, ClientId, &str) + 'static,
@@ -199,7 +200,7 @@ impl Prompt {
         let (win, _buf) = editor.win_buf_mut(id);
         match msg {
             Init(sender) => {
-                win.prompt.set_on_input(move |editor, id, input| {
+                win.prompt.set_on_input(move |_editor, _id, input| {
                     let _ = sender.blocking_send(input.to_string());
                 });
                 win.prompt.clear_choices();
@@ -311,11 +312,6 @@ impl Prompt {
     pub fn insert_at_cursor(&mut self, string: &str) {
         self.input.insert_str(self.cursor, string);
         self.cursor += string.len();
-    }
-
-    pub fn insert_char_at_cursor(&mut self, ch: char) {
-        self.input.insert(self.cursor, ch);
-        self.cursor += ch.len_utf8();
     }
 
     pub fn overwrite_input(&mut self, item: &str) {

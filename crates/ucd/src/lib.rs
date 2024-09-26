@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 mod enums;
 mod general_category;
 mod grapheme_break;

@@ -13,7 +13,7 @@ use rustc_hash::FxHashMap;
 use sanedit_core::FileDescription;
 use sanedit_core::Filetype;
 use sanedit_messages::key;
-use sanedit_messages::key::{KeyEvent, KeyMods};
+use sanedit_messages::key::KeyEvent;
 use sanedit_messages::redraw::Size;
 use sanedit_messages::ClientMessage;
 use sanedit_messages::Message;
@@ -83,7 +83,7 @@ pub(crate) struct Editor {
     is_running: bool,
     working_dir: PathBuf,
 
-    pub runtime: TokioRuntime,
+    pub _runtime: TokioRuntime,
     pub themes: Themes,
     pub config_dir: ConfigDirectory,
     pub syntaxes: Syntaxes,
@@ -107,7 +107,7 @@ impl Editor {
         let ft_dir = config_dir.filetype_dir();
 
         Editor {
-            runtime,
+            _runtime: runtime,
             clients: Map::default(),
             draw_states: Map::default(),
             syntaxes: Syntaxes::new(ft_dir),
@@ -603,14 +603,14 @@ impl Editor {
 
     pub fn reload(&mut self, id: ClientId) {
         // Reload theme
-        let (win, buf) = self.win_buf(id);
+        let (win, _buf) = self.win_buf(id);
         let theme = win.config.theme.to_string();
         if let Ok(theme) = self.themes.load(&theme).cloned() {
             self.send_to_client(id, ClientMessage::Theme(theme))
         }
 
         // Reload syntax
-        let (win, buf) = self.win_buf(id);
+        let (_win, buf) = self.win_buf(id);
         if let Some(ft) = buf.filetype.clone() {
             if let Err(e) = self.syntaxes.load(&ft) {
                 log::error!("Failed to reload syntax: {e}");
@@ -618,7 +618,7 @@ impl Editor {
         }
 
         // Reload window
-        let (win, buf) = self.win_buf_mut(id);
+        let (win, _buf) = self.win_buf_mut(id);
         win.reload();
 
         run(self, id, Hook::Reload);
@@ -634,13 +634,15 @@ impl Editor {
         let llen = lines.len();
         let bid = buf.id;
 
-        if clen == llen {
-            win.insert_to_each_cursor(buf, lines);
+        let res = if clen == llen {
+            win.insert_to_each_cursor(buf, lines)
         } else {
-            win.insert_at_cursors(buf, &text);
-        }
+            win.insert_at_cursors(buf, &text)
+        };
 
-        run(self, id, Hook::BufChanged(bid));
+        if res.is_ok() {
+            run(self, id, Hook::BufChanged(bid));
+        }
     }
 
     pub fn copy_to_clipboard(&mut self, id: ClientId) {
@@ -683,7 +685,7 @@ impl Editor {
     pub fn focus_keymap(&self, id: ClientId) -> &Keymap {
         use Focus::*;
 
-        let (win, buf) = self.win_buf(id);
+        let (win, _buf) = self.win_buf(id);
         let kind = match win.focus {
             Search | Prompt => win.prompt.keymap_kind(),
             Window => KeymapKind::Window,
@@ -704,16 +706,9 @@ impl Editor {
     }
 
     pub fn lsp_handle_for(&self, id: ClientId) -> Option<&LSPHandle> {
-        let (win, buf) = self.win_buf(id);
+        let (_win, buf) = self.win_buf(id);
         let ft = buf.filetype.as_ref()?;
         self.language_servers.get(ft)
-    }
-
-    pub fn lsp_handle_for_mut(&mut self, id: ClientId) -> Option<&mut LSPHandle> {
-        let win = self.windows.get(id)?;
-        let buf = self.buffers.get_mut(win.buffer_id())?;
-        let ft = buf.filetype.as_ref()?;
-        self.language_servers.get_mut(ft)
     }
 }
 

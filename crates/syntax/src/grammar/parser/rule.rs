@@ -142,14 +142,6 @@ pub(crate) enum Rule {
 }
 
 impl Rule {
-    pub fn is_terminal(&self) -> bool {
-        use Rule::*;
-        match self {
-            ByteSequence(_) | ByteRange(_, _) | ByteAny | UTF8Range(_, _) => true,
-            _ => false,
-        }
-    }
-
     pub fn is_repetition(&self) -> bool {
         use Rule::*;
         match self {

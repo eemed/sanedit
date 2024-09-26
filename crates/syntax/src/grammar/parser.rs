@@ -17,11 +17,6 @@ pub(crate) use self::rule::Rules;
 use super::lexer::Lexer;
 use super::lexer::Token;
 
-pub(crate) fn parse_rules_from_str(input: &str) -> Result<Rules> {
-    let sinput = io::Cursor::new(input);
-    parse_rules(sinput)
-}
-
 pub(crate) fn parse_rules<R: io::Read>(read: R) -> Result<Rules> {
     let mut lex = Lexer::new(read);
     let token = lex.next()?;
@@ -31,7 +26,6 @@ pub(crate) fn parse_rules<R: io::Read>(read: R) -> Result<Rules> {
         rules: vec![],
         indices: FxHashMap::default(),
         seen: FxHashSet::default(),
-        cp: 0,
     };
     parser.parse()
 }
@@ -57,8 +51,6 @@ pub(crate) struct GrammarParser<R: io::Read> {
     rules: Vec<RuleInfo>,
     /// Map from rule name to its index
     indices: FxHashMap<String, usize>,
-
-    cp: usize,
 }
 
 impl<R: io::Read> GrammarParser<R> {
@@ -351,16 +343,6 @@ impl<R: io::Read> GrammarParser<R> {
             Token::Text(s) => Ok(s),
             tok => {
                 bail!("Expected a string but got {:?}, at {pos}", tok,)
-            }
-        }
-    }
-
-    fn char(&mut self) -> Result<char> {
-        let pos = self.lex.pos();
-        match self.skip()? {
-            Token::Char(c) => Ok(c),
-            tok => {
-                bail!("Expected a character but got {:?}, at {pos}", tok,)
             }
         }
     }

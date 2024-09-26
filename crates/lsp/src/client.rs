@@ -51,7 +51,7 @@ impl LSPClientParams {
             _process: cmd,
             stdin,
             stdout,
-            stderr,
+            _stderr: stderr,
             receiver: server_recv,
             notification_sender: server_notif_sender,
             initialized: Some(init_send),
@@ -65,7 +65,6 @@ impl LSPClientParams {
 
         let client = LSPClient {
             params,
-            init_params: init_params.clone(),
             receiver: req_receiver,
             sender: res_sender,
             server_sender,
@@ -117,7 +116,6 @@ impl LSPClientSender {
 
 struct LSPClient {
     params: Arc<LSPClientParams>,
-    init_params: Arc<lsp_types::InitializeResult>,
     receiver: Receiver<ToLSP>,
     sender: Sender<Response>,
     server_sender: Sender<ServerRequest>,
@@ -132,7 +130,6 @@ impl LSPClient {
                     let req = req.ok_or(anyhow!("Channel closed"))?;
                     let mut handler = Handler {
                         params: self.params.clone(),
-                        init_params: self.init_params.clone(),
                         server: self.server_sender.clone(),
                         response: self.sender.clone(),
                     };
@@ -216,7 +213,6 @@ fn to_core_diagnostic(diag: lsp_types::Diagnostic) -> LSPRange<Diagnostic> {
 
 struct Handler {
     params: Arc<LSPClientParams>,
-    init_params: Arc<lsp_types::InitializeResult>,
     server: Sender<ServerRequest>,
     response: Sender<Response>,
 }
@@ -258,7 +254,7 @@ impl Handler {
                     version,
                     changes,
                 } => self.did_change_document(path, changes, version).await?,
-                Notification::DidClose { path } => todo!(),
+                Notification::DidClose { path } => self.did_close_document(path).await?,
             },
         }
 
@@ -351,7 +347,7 @@ impl Handler {
 
         for cmd in response {
             match cmd {
-                lsp_types::CodeActionOrCommand::Command(cmd) => todo!(),
+                lsp_types::CodeActionOrCommand::Command(_cmd) => todo!(),
                 lsp_types::CodeActionOrCommand::CodeAction(action) => {
                     actions.push(action);
                 }
@@ -580,6 +576,19 @@ impl Handler {
         Ok(())
     }
 
+    async fn did_close_document(&mut self, path: PathBuf) -> Result<()> {
+        let params = lsp_types::DidCloseTextDocumentParams {
+            text_document: lsp_types::TextDocumentIdentifier {
+                uri: path_to_uri(&path),
+            },
+        };
+
+        self.notify::<lsp_types::notification::DidCloseTextDocument>(&params)
+            .await?;
+
+        Ok(())
+    }
+
     async fn show_references(
         &mut self,
         id: u32,
@@ -663,13 +672,5 @@ impl Handler {
 
     pub fn filetype(&self) -> &str {
         &self.params.filetype
-    }
-
-    fn position_encoding(&self) -> lsp_types::PositionEncodingKind {
-        self.init_params
-            .capabilities
-            .position_encoding
-            .clone()
-            .unwrap_or(lsp_types::PositionEncodingKind::UTF16)
     }
 }

@@ -10,7 +10,7 @@ use crate::editor::{
     windows::ViewSyntax,
     Editor,
 };
-use sanedit_server::{CPUJob, ClientId, Job, JobContext, JobResult, Kill};
+use sanedit_server::{CPUJob, ClientId, JobContext};
 
 #[derive(Clone)]
 pub(crate) struct SyntaxParser {

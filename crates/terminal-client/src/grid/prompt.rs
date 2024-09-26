@@ -1,7 +1,8 @@
 use std::cmp::min;
 
 use sanedit_messages::redraw::{
-    Cursor, CursorShape, IntoCells, Point, Prompt, Source, Style, ThemeField,
+    prompt::{Prompt, Source},
+    Cursor, CursorShape, IntoCells, Point, Style, ThemeField,
 };
 
 use crate::{

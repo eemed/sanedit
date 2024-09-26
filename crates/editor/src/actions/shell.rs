@@ -17,6 +17,5 @@ pub(crate) fn execute(editor: &mut Editor, id: ClientId, cmd: &str) {
 
             editor.job_broker.request(job);
         }
-        Executor::Buffer => unimplemented!("In buffer commands"),
     }
 }

@@ -5,7 +5,6 @@ pub(crate) mod unix;
 use std::{borrow::Cow, path::PathBuf};
 
 use futures::{SinkExt, StreamExt};
-use log::info;
 use sanedit_messages::{BinCodec, ClientMessage, Message};
 use tokio::{
     io::{self, AsyncRead, AsyncWrite},
@@ -35,7 +34,7 @@ pub struct ClientHandle {
     pub(crate) id: ClientId,
     pub(crate) info: ClientConnectionInfo,
     pub(crate) send: Sender<FromEditor>,
-    pub(crate) kill: JoinHandle<()>,
+    pub(crate) _kill: JoinHandle<()>,
 }
 
 impl ClientHandle {
@@ -46,7 +45,6 @@ impl ClientHandle {
     pub fn connection_info(&self) -> Cow<str> {
         match &self.info {
             ClientConnectionInfo::UnixDomainSocket(sock) => sock.as_os_str().to_string_lossy(),
-            ClientConnectionInfo::Tcp() => todo!(),
         }
     }
 
@@ -60,7 +58,6 @@ impl ClientHandle {
 #[derive(Debug, Clone)]
 pub(crate) enum ClientConnectionInfo {
     UnixDomainSocket(PathBuf),
-    Tcp(),
 }
 
 async fn conn_read(

@@ -1,4 +1,4 @@
-use sanedit_messages::redraw::{self, Component, ItemKind};
+use sanedit_messages::redraw::{self, items::ItemKind, Component};
 use sanedit_utils::either::Either;
 
 use crate::editor::windows::Focus;
@@ -48,7 +48,7 @@ fn draw_impl(ctx: &mut DrawContext) -> redraw::Redraw {
             ),
         };
 
-        let item = redraw::Item {
+        let item = redraw::items::Item {
             line,
             name: name.into(),
             kind,
@@ -59,7 +59,7 @@ fn draw_impl(ctx: &mut DrawContext) -> redraw::Redraw {
     }
 
     let in_focus = ctx.editor.win.focus == Focus::Locations;
-    let items = redraw::Items {
+    let items = redraw::items::Items {
         items,
         selected,
         in_focus,

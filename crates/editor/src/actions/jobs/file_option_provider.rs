@@ -45,7 +45,7 @@ fn spawn(dir: PathBuf, ctx: ReadDirContext) {
     }
 
     tokio::spawn(async move {
-        rec(dir, ctx).await;
+        let _ = rec(dir, ctx).await;
     });
 }
 
@@ -88,7 +88,7 @@ async fn read_directory_recursive(
         ignore,
     };
 
-    rec(dir, ctx).await;
+    let _ = rec(dir, ctx).await;
 }
 
 impl OptionProvider for FileOptionProvider {

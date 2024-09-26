@@ -6,7 +6,7 @@ use sanedit_buffer::PieceTreeView;
 use tokio::process::Command;
 
 use crate::editor::job_broker::KeepInTouch;
-use sanedit_server::{ClientId, Job, JobContext, JobResult, Kill};
+use sanedit_server::{ClientId, Job, JobContext, JobResult};
 
 pub(crate) use tmux::*;
 
@@ -17,6 +17,7 @@ pub(crate) struct ShellCommand {
     pipe_input: Option<PieceTreeView>,
 }
 
+#[allow(dead_code)]
 impl ShellCommand {
     pub fn new(client_id: ClientId, command: &str) -> ShellCommand {
         ShellCommand {
@@ -33,7 +34,7 @@ impl ShellCommand {
 }
 
 impl Job for ShellCommand {
-    fn run(&self, ctx: JobContext) -> JobResult {
+    fn run(&self, _ctx: JobContext) -> JobResult {
         let command = self.command.clone();
         let ropt = self.pipe_input.clone();
 
@@ -68,7 +69,7 @@ impl Job for ShellCommand {
 }
 
 impl KeepInTouch for ShellCommand {
-    fn on_message(&self, editor: &mut crate::editor::Editor, msg: Box<dyn std::any::Any>) {
+    fn on_message(&self, _editor: &mut crate::editor::Editor, _msg: Box<dyn std::any::Any>) {
         todo!()
     }
 

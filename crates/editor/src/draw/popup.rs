@@ -16,7 +16,7 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> Option<redraw::Redraw> {
         return None;
     }
 
-    let popup = popup.as_ref().unwrap().clone();
-    let redraw: redraw::Redraw = popup.clone().into();
+    let popup = popup.as_ref().unwrap();
+    let redraw: redraw::Redraw = (*popup).clone().into();
     redraw.into()
 }

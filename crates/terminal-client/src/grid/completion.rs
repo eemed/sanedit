@@ -1,6 +1,6 @@
 use std::cmp::{max, min};
 
-use sanedit_messages::redraw::{Completion, Point, Size, Style, ThemeField};
+use sanedit_messages::redraw::{completion::Completion, Point, Size, Style, ThemeField};
 
 use crate::ui::UIContext;
 
@@ -133,7 +133,7 @@ impl Drawable for Completion {
             });
     }
 
-    fn cursor(&self, ctx: &UIContext) -> DrawCursor {
+    fn cursor(&self, _ctx: &UIContext) -> DrawCursor {
         DrawCursor::Ignore
     }
 }

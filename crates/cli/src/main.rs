@@ -1,9 +1,6 @@
 mod logging;
 
-use std::{
-    fs, io,
-    path::{Path, PathBuf},
-};
+use std::{fs, io, path::PathBuf};
 
 use argh::FromArgs;
 use sanedit_server::{Address, StartOptions};
@@ -30,9 +27,10 @@ struct Cli {
 }
 
 fn main() {
-    logging::setup();
-
     let cli: Cli = argh::from_env();
+
+    logging::setup(cli.debug);
+
     let open_files = cli.file.clone().map(|f| vec![f]).unwrap_or(vec![]);
     let config_dir = cli.config_dir.clone();
     let working_dir = cli.working_dir.clone();

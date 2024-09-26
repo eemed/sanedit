@@ -82,19 +82,18 @@ impl Completion {
                 let (win, buf) = editor.win_buf_mut(id);
                 let cursor = win.cursors.primary().pos();
                 let start = win.completion.started_at;
-                log::info!("Slice: {start}..{cursor}");
                 let slice = buf.slice(start..cursor);
                 let word = String::from(&slice);
                 let _ = sender.blocking_send(word);
 
-                let (win, buf) = editor.win_buf_mut(id);
-                win.completion.on_input = Some(Rc::new(move |editor, id, input| {
+                let (win, _buf) = editor.win_buf_mut(id);
+                win.completion.on_input = Some(Rc::new(move |_editor, _id, input| {
                     let _ = sender.blocking_send(input.to_string());
                 }));
                 win.completion.clear_choices();
             }
             Progress(opts) => {
-                let (win, buf) = editor.win_buf_mut(id);
+                let (win, _buf) = editor.win_buf_mut(id);
                 match opts {
                     MatchedOptions::Done => {
                         if win.completion.chooser.options().is_empty() {

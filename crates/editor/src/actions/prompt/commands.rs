@@ -11,7 +11,7 @@ pub(crate) fn command_palette(editor: &Editor, id: ClientId) -> Vec<MatchOption>
         .iter()
         .chain(GLOBAL_COMMANDS.iter())
         .map(|action| {
-            let (win, _buf) = editor.win_buf(id);
+            let (_win, _buf) = editor.win_buf(id);
             let mut description = String::new();
             if let Some(bind) = editor.keymap().find_bound_key(action.name()) {
                 description = keyevents_to_string(&bind);
@@ -31,7 +31,7 @@ pub(crate) fn matcher_result_handler(editor: &mut Editor, id: ClientId, msg: Mat
     let (win, _buf) = editor.win_buf_mut(id);
     match msg {
         Init(sender) => {
-            win.prompt.set_on_input(move |editor, id, input| {
+            win.prompt.set_on_input(move |_editor, _id, input| {
                 let _ = sender.blocking_send(input.to_string());
             });
             win.prompt.clear_choices();

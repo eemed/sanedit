@@ -53,11 +53,6 @@ fn search_backward(editor: &mut Editor, id: ClientId) {
     win.focus = Focus::Search;
 }
 
-#[action("Find all matches")]
-fn confirm_all(_editor: &mut Editor, _id: ClientId) {
-    log::info!("Hello world");
-}
-
 #[action("Clear match highlighting")]
 fn clear_search_matches(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);

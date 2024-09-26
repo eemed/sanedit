@@ -34,7 +34,7 @@ pub(crate) enum Kind {
 /// immutable node with its absolute path
 #[derive(Debug)]
 pub(crate) struct TreeNode<'a> {
-    internal: &'a Node,
+    _internal: &'a Node,
     absolute: PathBuf,
 }
 
@@ -290,7 +290,7 @@ impl Filetree {
         if let Ok(suffix) = target.strip_prefix(&node.local) {
             if suffix.is_empty() {
                 return Some(TreeNode {
-                    internal: node,
+                    _internal: node,
                     absolute,
                 });
             }
@@ -303,7 +303,7 @@ impl Filetree {
                     absolute.pop();
                 }
                 return Some(TreeNode {
-                    internal: node,
+                    _internal: node,
                     absolute,
                 });
             }
@@ -342,10 +342,6 @@ impl<'a> Deref for FiletreeEntry<'a> {
 }
 
 impl<'a> FiletreeEntry<'a> {
-    pub fn name(&self) -> &Path {
-        &self.node.local
-    }
-
     pub fn name_to_str_lossy(&self) -> std::borrow::Cow<'_, str> {
         self.node.local.to_string_lossy()
     }

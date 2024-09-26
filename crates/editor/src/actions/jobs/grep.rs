@@ -231,10 +231,11 @@ impl KeepInTouch for Grep {
     }
 
     fn on_success(&self, editor: &mut Editor) {
-        let (win, _buf) = editor.win_buf_mut(self.client_id);
+        let (_win, _buf) = editor.win_buf_mut(self.client_id);
     }
 
     fn on_failure(&self, editor: &mut Editor, reason: &str) {
+        log::error!("Grep error: {reason}");
         let (win, _buf) = editor.win_buf_mut(self.client_id);
         win.locations.clear();
     }
@@ -287,7 +288,7 @@ struct ResultSender<'a> {
 impl<'a> Sink for ResultSender<'a> {
     type Error = Box<dyn Error>;
 
-    fn matched(&mut self, searcher: &Searcher, mat: &SinkMatch<'_>) -> Result<bool, Self::Error> {
+    fn matched(&mut self, _searcher: &Searcher, mat: &SinkMatch<'_>) -> Result<bool, Self::Error> {
         let mut matches = vec![];
         self.matcher
             .find_iter(mat.bytes(), |m| {

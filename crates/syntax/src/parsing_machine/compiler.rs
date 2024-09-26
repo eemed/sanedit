@@ -74,7 +74,7 @@ impl<'a> Compiler<'a> {
             }
 
             // Compile the rule
-            self.compile_rec(&rule.rule);
+            self.compile_rec(&rule.rule)?;
 
             if show {
                 self.push(Operation::CaptureEnd);
@@ -222,6 +222,7 @@ impl<'a> Compiler<'a> {
 mod test {
     use super::*;
 
+    #[allow(dead_code)]
     fn print_ops(ops: &[Operation]) {
         println!("------ Operations ---------");
         for (i, op) in ops.iter().enumerate() {

@@ -11,13 +11,6 @@ pub(crate) struct UIContext {
 }
 
 impl UIContext {
-    pub fn new() -> UIContext {
-        UIContext {
-            theme: Arc::new(Theme::default()),
-            rect: Rect::new(0, 0, 0, 0),
-        }
-    }
-
     pub fn style(&self, field: ThemeField) -> Style {
         self.theme.get(field)
     }

@@ -56,7 +56,7 @@ tasks:
     dir: crates
     deps: [install-pre-commit-hook]
     cmds:
-      - cargo run -- --config-dir ../runtime --working-dir ..
+      - cargo run -- --config-dir ../runtime --working-dir .. --debug
     env:
       RUST_BACKTRACE: 1
       # RUSTFLAGS: "-Awarnings"

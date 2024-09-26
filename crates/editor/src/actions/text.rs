@@ -11,7 +11,7 @@ use crate::editor::{
 
 use sanedit_server::ClientId;
 
-use super::{completion, hooks::run, jobs};
+use super::{completion, hooks::run};
 
 #[action("Remove character after cursor")]
 fn remove_grapheme_after_cursor(editor: &mut Editor, id: ClientId) {

@@ -14,7 +14,7 @@ use std::fs::File;
 
 use anyhow::{anyhow, bail};
 use sanedit_buffer::{Bytes, PieceTreeSlice};
-use sanedit_syntax::{Annotation, ByteReader, CaptureID, Parser};
+use sanedit_syntax::{Annotation, ByteReader, Parser};
 
 #[derive(Debug)]
 pub struct Syntaxes {
@@ -61,7 +61,7 @@ impl Syntax {
     pub fn from_path(peg: &Path) -> anyhow::Result<Syntax> {
         let file = match File::open(&peg) {
             Ok(f) => f,
-            Err(e) => bail!("Failed to read PEG file: {:?}", peg),
+            Err(e) => bail!("Failed to read PEG file {:?}: {e}", peg),
         };
 
         match Parser::new(file) {
@@ -70,14 +70,6 @@ impl Syntax {
             }),
             Err(e) => bail!("Failed to create grammar from PEG file: {:?}: {e}", peg),
         }
-    }
-
-    pub fn label_for(&self, id: CaptureID) -> &str {
-        self.parser.label_for(id)
-    }
-
-    pub fn annotations_for(&self, id: CaptureID) -> &[Annotation] {
-        self.parser.annotations_for(id)
     }
 
     pub fn parse(

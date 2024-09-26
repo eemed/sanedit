@@ -88,8 +88,4 @@ impl Chooser {
 
         results
     }
-
-    pub fn clear(&mut self) {
-        self.choices.clear();
-    }
 }

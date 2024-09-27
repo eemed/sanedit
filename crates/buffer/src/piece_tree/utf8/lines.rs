@@ -207,7 +207,7 @@ pub fn prev_eol(bytes: &mut Bytes) -> Option<EOLMatch> {
 }
 
 /// return position at line start of line
-pub(crate) fn pos_at_line<'a>(slice: &PieceTreeSlice<'a>, line: u64) -> u64 {
+pub(crate) fn pos_at_line(slice: &PieceTreeSlice<'_>, line: u64) -> u64 {
     let mut n = 0;
     let mut lines = slice.lines();
 

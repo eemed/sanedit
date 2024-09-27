@@ -124,7 +124,7 @@ fn draw_search_highlights(
 
     let vrange = view.range();
     for m in matches {
-        if !vrange.overlaps(&m) {
+        if !vrange.overlaps(m) {
             continue;
         }
 

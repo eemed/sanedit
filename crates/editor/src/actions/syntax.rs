@@ -17,8 +17,7 @@ pub(crate) fn prevent_flicker(editor: &mut Editor, id: ClientId) {
     let bid = editor
         .hooks
         .running_hook()
-        .map(Hook::buffer_id)
-        .flatten()
+        .and_then(Hook::buffer_id)
         .unwrap_or(bid);
     let clients = editor.windows().find_clients_with_buf(bid);
 
@@ -90,8 +89,7 @@ pub(crate) fn load_syntax(editor: &mut Editor, id: ClientId) {
     let bid = editor
         .hooks
         .running_hook()
-        .map(Hook::buffer_id)
-        .flatten()
+        .and_then(Hook::buffer_id)
         .unwrap_or_else(|| {
             let (win, _) = editor.win_buf(id);
             win.buffer_id()

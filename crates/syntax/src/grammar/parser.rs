@@ -360,19 +360,16 @@ impl<R: io::Read> GrammarParser<R> {
                 Token::Byte(b) => {
                     if range {
                         range = false;
-                        let start = choices
-                            .last()
-                            .map(|rule| match rule {
-                                Rule::ByteSequence(bytes) => {
-                                    if bytes.len() == 1 {
-                                        Some(bytes[0])
-                                    } else {
-                                        None
-                                    }
+                        let start = choices.last().and_then(|rule| match rule {
+                            Rule::ByteSequence(bytes) => {
+                                if bytes.len() == 1 {
+                                    Some(bytes[0])
+                                } else {
+                                    None
                                 }
-                                _ => None,
-                            })
-                            .flatten();
+                            }
+                            _ => None,
+                        });
                         match start {
                             Some(a) => {
                                 choices.pop();
@@ -399,16 +396,12 @@ impl<R: io::Read> GrammarParser<R> {
                 Token::Char(ch) => {
                     if range {
                         range = false;
-                        let start = choices
-                            .last()
-                            .map(|rule| match rule {
-                                Rule::ByteSequence(seq) => std::str::from_utf8(seq)
-                                    .ok()
-                                    .map(|s| s.chars().next())
-                                    .flatten(),
-                                _ => None,
-                            })
-                            .flatten();
+                        let start = choices.last().and_then(|rule| match rule {
+                            Rule::ByteSequence(seq) => {
+                                std::str::from_utf8(seq).ok().and_then(|s| s.chars().next())
+                            }
+                            _ => None,
+                        });
                         match start {
                             Some(a) => {
                                 choices.pop();

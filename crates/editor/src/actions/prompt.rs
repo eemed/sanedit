@@ -135,7 +135,7 @@ fn open_buffer(editor: &mut Editor, id: ClientId) {
     win.prompt = Prompt::builder()
         .prompt(PROMPT_MESSAGE)
         .on_confirm(move |editor, id, input| {
-            if let Some(bid) = input.split(":").next() {
+            if let Some(bid) = input.split(':').next() {
                 if let Ok(bid) = bid.parse::<ID>() {
                     let bid = BufferId::from(bid);
                     editor.open_buffer(id, bid);

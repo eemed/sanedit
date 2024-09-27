@@ -59,7 +59,7 @@ pub struct Syntax {
 
 impl Syntax {
     pub fn from_path(peg: &Path) -> anyhow::Result<Syntax> {
-        let file = match File::open(&peg) {
+        let file = match File::open(peg) {
             Ok(f) => f,
             Err(e) => bail!("Failed to read PEG file {:?}: {e}", peg),
         };
@@ -203,7 +203,7 @@ impl Span {
     }
 
     pub fn completion_category(&self) -> Option<&str> {
-        self.completion.as_ref().map(|s| s.as_str())
+        self.completion.as_deref()
     }
 
     /// Wether this span should be highlighted or not
@@ -221,7 +221,7 @@ impl Span {
 
     pub fn add_offset(&mut self, i: i128) {
         let neg = i.is_negative();
-        let amount = i.abs() as u64;
+        let amount = i.unsigned_abs() as u64;
         if neg {
             self.range.start = self.range.start.saturating_sub(amount);
             self.range.end = self.range.end.saturating_sub(amount);

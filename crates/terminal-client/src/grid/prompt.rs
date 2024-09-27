@@ -181,7 +181,7 @@ impl Drawable for CustomPrompt {
 
                         let mut line = format_option(
                             &opt.to_str_lossy(),
-                            &opt.description(),
+                            opt.description(),
                             style,
                             dstyle,
                             wsize.width,
@@ -257,14 +257,14 @@ pub(crate) fn format_option(
 ) -> Vec<CCell> {
     let mut left = {
         let mut res = String::from(" ");
-        res.push_str(&left);
+        res.push_str(left);
         res.push(' ');
         res
     };
 
     let right = {
         let mut res = String::from("");
-        res.push_str(&right);
+        res.push_str(right);
         res.push(' ');
         res
     };

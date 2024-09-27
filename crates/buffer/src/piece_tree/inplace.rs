@@ -123,7 +123,7 @@ fn in_place_write_ops(pt: &PieceTreeView) -> Vec<WriteOp> {
         result.push(WriteOp::Overwrite(ow));
     }
 
-    result.extend(adds.into_iter().map(|item| WriteOp::Overwrite(item)));
+    result.extend(adds.into_iter().map(WriteOp::Overwrite));
 
     if nlen < olen {
         result.push(WriteOp::Size(nlen))
@@ -141,7 +141,7 @@ fn do_write_in_place(pt: &PieceTreeView, ops: Vec<WriteOp>) -> io::Result<()> {
         // Handle extending and truncating
         while let Some(WriteOp::Size(size)) = op {
             let file = File::options().append(true).open(&path)?;
-            file.set_len(size as u64)?;
+            file.set_len(size)?;
             op = iter.next();
         }
 
@@ -157,7 +157,7 @@ fn do_write_in_place(pt: &PieceTreeView, ops: Vec<WriteOp>) -> io::Result<()> {
             match ow.kind() {
                 BufferKind::Add => {
                     let start = ow.target().start;
-                    file.seek(SeekFrom::Start(start as u64))?;
+                    file.seek(SeekFrom::Start(start))?;
                     let range = ow.piece.range();
                     let bytes = pt.add.slice(range.start as usize..range.end as usize);
                     file.write_all(bytes)?;
@@ -183,12 +183,12 @@ fn do_write_in_place(pt: &PieceTreeView, ops: Vec<WriteOp>) -> io::Result<()> {
                             let mut wpos = target.start;
 
                             while written < target.end - target.start {
-                                file.seek(SeekFrom::Start(rpos as u64))?;
+                                file.seek(SeekFrom::Start(rpos))?;
                                 let bmax = min(((deps.end - deps.start) - written) as usize, SIZE);
                                 nbuf = file.read(&mut buf[..bmax])?;
                                 rpos += nbuf as u64;
 
-                                file.seek(SeekFrom::Start(wpos as u64))?;
+                                file.seek(SeekFrom::Start(wpos))?;
                                 file.write(&mut buf[..nbuf])?;
                                 wpos += nbuf as u64;
                                 written += nbuf as u64;
@@ -211,7 +211,7 @@ fn do_write_in_place(pt: &PieceTreeView, ops: Vec<WriteOp>) -> io::Result<()> {
                             }
                         }
                     } else {
-                        file.seek(SeekFrom::Start(target.start as u64))?;
+                        file.seek(SeekFrom::Start(target.start))?;
                         let range = ow.piece.range();
                         let bytes = pt.orig.slice(range)?;
                         file.write_all(bytes.as_ref())?;

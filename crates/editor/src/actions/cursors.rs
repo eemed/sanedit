@@ -74,9 +74,9 @@ fn new_cursor_to_all_search_matches(editor: &mut Editor, id: ClientId) {
         return;
     };
     let slice = buf.slice(..);
-    let mut iter = searcher.find_iter(&slice);
+    let iter = searcher.find_iter(&slice);
 
-    while let Some(mat) = iter.next() {
+    for mat in iter {
         let range = mat.range();
         let selecting = win.primary_cursor().selection().is_some();
         if selecting {

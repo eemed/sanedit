@@ -30,8 +30,7 @@ pub(crate) fn below(screen: &Rect, win: &Rect, popup: &Popup) -> Rect {
     let width = popup
         .messages
         .iter()
-        .map(|msg| msg.text.lines().map(|line| line.len() + 2).max())
-        .flatten()
+        .filter_map(|msg| msg.text.lines().map(|line| line.len() + 2).max())
         .max()
         .unwrap_or(0)
         .min(screen.width);
@@ -60,8 +59,7 @@ pub(crate) fn above(screen: &Rect, win: &Rect, popup: &Popup) -> Rect {
     let width = popup
         .messages
         .iter()
-        .map(|msg| msg.text.lines().map(|line| line.len() + 2).max())
-        .flatten()
+        .filter_map(|msg| msg.text.lines().map(|line| line.len() + 2).max())
         .max()
         .unwrap_or(0)
         .min(screen.width);

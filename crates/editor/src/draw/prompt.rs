@@ -20,7 +20,7 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> Vec<redraw::Redraw> {
     if ctx.focus_changed_from(Focus::Prompt) || reopened {
         ctx.state.prompt_scroll_offset = 0;
         ctx.state.last_prompt = None;
-        results.push(Redraw::Prompt(Component::Close).into());
+        results.push(Redraw::Prompt(Component::Close));
     }
 
     let in_focus = ctx.editor.win.focus == Focus::Prompt;
@@ -29,8 +29,8 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> Vec<redraw::Redraw> {
         return results;
     }
 
-    results.push(draw_impl(ctx).into());
-    results.into()
+    results.push(draw_impl(ctx));
+    results
 }
 
 fn draw_impl(ctx: &mut DrawContext) -> redraw::Redraw {

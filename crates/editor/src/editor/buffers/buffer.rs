@@ -238,7 +238,7 @@ impl Buffer {
     }
 
     pub fn path(&self) -> Option<&Path> {
-        self.path.as_ref().map(|p| p.as_path())
+        self.path.as_deref()
     }
 
     pub fn slice<R: RangeBounds<u64>>(&self, range: R) -> PieceTreeSlice {
@@ -270,7 +270,7 @@ impl Buffer {
             let backing = self.pt.backing_file().unwrap();
             if backing == path {
                 let (path, _file) = tmp_file().ok_or(BufferError::CannotCreateTmpFile)?;
-                self.pt.rename_backing_file(&path)?;
+                self.pt.rename_backing_file(path)?;
             }
         }
 

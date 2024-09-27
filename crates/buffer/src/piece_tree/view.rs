@@ -208,7 +208,7 @@ impl PieceTreeView {
     ///         in the beginning portion of the file
     ///      3. Previously created read only copies/marks cannot be used anymore
     pub unsafe fn write_in_place(&self) -> io::Result<()> {
-        write_in_place(&self)
+        write_in_place(self)
     }
 
     pub fn write_to<W: Write>(&self, mut writer: W) -> io::Result<usize> {

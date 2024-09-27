@@ -369,7 +369,7 @@ impl Window {
     }
 
     fn change(&mut self, buf: &mut Buffer, changes: &Changes) -> Result<()> {
-        let result = buf.apply_changes(&changes)?;
+        let result = buf.apply_changes(changes)?;
 
         if let Some(id) = result.created_snapshot {
             *buf.snapshot_data_mut(id).unwrap() = self.create_snapshot_data();

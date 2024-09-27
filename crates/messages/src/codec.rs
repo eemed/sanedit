@@ -22,7 +22,7 @@ where
 {
     pub fn new() -> BinCodec<T> {
         BinCodec {
-            phantom: PhantomData::default(),
+            phantom: PhantomData,
         }
     }
 

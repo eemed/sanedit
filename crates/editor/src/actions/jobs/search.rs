@@ -76,8 +76,8 @@ impl Job for Search {
         let term = self.term.clone();
         let pt = self.ropt.clone();
         let range = self.range.clone();
-        let dir = self.dir.clone();
-        let kind = self.kind.clone();
+        let dir = self.dir;
+        let kind = self.kind;
 
         let fut = async move {
             let (msend, mrecv) = channel::<Vec<BufferRange>>(CHANNEL_SIZE);

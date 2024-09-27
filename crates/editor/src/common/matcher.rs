@@ -117,9 +117,8 @@ impl Matcher {
                     }
 
                     let opts = reader.slice(batch);
-                    for opt in opts.into_iter() {
-                        if let Some(ranges) =
-                            matches_with(&opt, &patterns, case_sensitive, match_fn)
+                    for opt in opts.iter() {
+                        if let Some(ranges) = matches_with(opt, &patterns, case_sensitive, match_fn)
                         {
                             let score = score(&opt.to_str_lossy(), &ranges);
                             let desc = opt.description();
@@ -148,7 +147,7 @@ fn score(opt: &str, ranges: &[Range<usize>]) -> u32 {
     // Closest match first
     // Shortest item first
     ranges
-        .get(0)
+        .first()
         .map(|f| f.start as u32)
         .unwrap_or(opt.len() as u32)
 }

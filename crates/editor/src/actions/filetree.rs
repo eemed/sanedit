@@ -172,7 +172,7 @@ fn ft_delete_file(editor: &mut Editor, id: ClientId) {
             }
 
             if let Some(parent) = path.parent() {
-                if let Some(mut node) = editor.filetree.get_mut(&parent) {
+                if let Some(mut node) = editor.filetree.get_mut(parent) {
                     let _ = node.refresh();
                 }
             }

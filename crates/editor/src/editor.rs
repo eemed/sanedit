@@ -28,7 +28,6 @@ use sanedit_server::StartOptions;
 use sanedit_server::ToEditor;
 
 use std::env;
-use std::mem;
 use std::path::Path;
 use std::path::PathBuf;
 use std::sync::mpsc::Receiver;
@@ -266,7 +265,7 @@ impl Editor {
     }
 
     pub fn quit_client(&mut self, id: ClientId) {
-        let _ = self.send_to_client(id, ClientMessage::Bye.into());
+        self.send_to_client(id, ClientMessage::Bye);
 
         if let Some(win) = self.windows.remove(id) {
             let old = win.buffer_id();
@@ -281,11 +280,11 @@ impl Editor {
     }
 
     pub fn quit(&mut self) {
-        let client_ids: Vec<ClientId> = self.clients.iter().map(|(id, _)| *id).collect();
+        let client_ids: Vec<ClientId> = self.clients.keys().copied().collect();
         for id in client_ids {
             log::info!("Quit to {:?}", id);
             // Dont care about errors here we are quitting anyway
-            let _ = self.send_to_client(id, ClientMessage::Bye.into());
+            self.send_to_client(id, ClientMessage::Bye);
         }
         self.is_running = false;
     }
@@ -542,7 +541,7 @@ impl Editor {
         }
 
         // Clear keys buffer, and handle them separately
-        let events = mem::replace(&mut self.keys, vec![]);
+        let events = std::mem::take(&mut self.keys);
         for event in events {
             if event.alt_pressed() || event.control_pressed() {
                 continue;

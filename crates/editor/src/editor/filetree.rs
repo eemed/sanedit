@@ -55,13 +55,13 @@ impl<'a> Deref for TreeNodeMut<'a> {
     type Target = Node;
 
     fn deref(&self) -> &Self::Target {
-        &self.internal
+        self.internal
     }
 }
 
 impl<'a> DerefMut for TreeNodeMut<'a> {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.internal
+        self.internal
     }
 }
 
@@ -337,7 +337,7 @@ impl<'a> Deref for FiletreeEntry<'a> {
     type Target = Node;
 
     fn deref(&self) -> &Self::Target {
-        &self.node
+        self.node
     }
 }
 
@@ -351,7 +351,7 @@ impl<'a> FiletreeEntry<'a> {
     }
 
     pub fn node(&self) -> &Node {
-        &self.node
+        self.node
     }
 
     pub fn level(&self) -> usize {

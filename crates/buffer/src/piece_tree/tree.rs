@@ -629,7 +629,7 @@ pub(crate) mod test {
     fn simple_tree() -> PieceTree {
         let mut pt = PieceTree::new();
 
-        let pieces = vec![0, 1, 2];
+        let pieces = [0, 1, 2];
 
         // Put pieces in order
         for i in pieces.iter() {
@@ -788,15 +788,15 @@ pub(crate) mod test {
             return Err("Root is not black.");
         }
 
-        if !is_black_height_balanced(&root) {
+        if !is_black_height_balanced(root) {
             return Err("Black height unbalanced.");
         }
 
-        if !red_nodes_have_black_children(&root) {
+        if !red_nodes_have_black_children(root) {
             return Err("Red nodes have red children.");
         }
 
-        if !left_subtree_lengths_match(&root) {
+        if !left_subtree_lengths_match(root) {
             return Err("Left subtree counts are invalid.");
         }
 

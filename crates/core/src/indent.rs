@@ -62,18 +62,15 @@ pub fn determine_indent(slice: &PieceTreeSlice) -> Option<(IndentKind, u8)> {
 
 fn indent_from_bytes(bytes: &mut Bytes) -> Option<(IndentKind, u64)> {
     use IndentKind::*;
-    let kind = bytes
-        .next()
-        .map(|b| {
-            if b == Tab.as_byte() {
-                Some(Tab)
-            } else if b == Space.as_byte() {
-                Some(Space)
-            } else {
-                None
-            }
-        })
-        .flatten()?;
+    let kind = bytes.next().and_then(|b| {
+        if b == Tab.as_byte() {
+            Some(Tab)
+        } else if b == Space.as_byte() {
+            Some(Space)
+        } else {
+            None
+        }
+    })?;
 
     let mut n = 1;
     while let Some(b) = bytes.next() {

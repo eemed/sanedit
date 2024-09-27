@@ -166,7 +166,7 @@ impl MatcherJob {
 
 impl Job for MatcherJob {
     fn run(&self, mut ctx: JobContext) -> JobResult {
-        let strat = self.strat.clone();
+        let strat = self.strat;
         let opts = self.opts.clone();
         let patt = self.pattern.clone();
 

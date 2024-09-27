@@ -10,7 +10,7 @@ pub trait IntoCells {
 
 impl IntoCells for &str {
     fn into_cells(self) -> Vec<Cell> {
-        self.chars().map(|ch| Cell::from(ch)).collect()
+        self.chars().map(Cell::from).collect()
     }
 }
 

@@ -35,7 +35,7 @@ impl<T: Drawable> GridItem<T> {
     }
 
     pub fn area(&self) -> Rect {
-        self.area.clone()
+        self.area
     }
 
     pub fn drawable(&mut self) -> &mut T {

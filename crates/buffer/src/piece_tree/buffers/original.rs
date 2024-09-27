@@ -88,7 +88,7 @@ impl OriginalBuffer {
                         (min(len, block + FILE_BACKED_MAX_PIECE_SIZE as u64) - block) as usize;
 
                     let mut buf: Box<[u8]> = vec![0u8; size].into();
-                    pfile.file.seek(SeekFrom::Start(block as u64))?;
+                    pfile.file.seek(SeekFrom::Start(block))?;
                     pfile.file.read_exact(&mut buf)?;
                     let mut buf = cache.push(block, Arc::from(buf));
 

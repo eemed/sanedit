@@ -43,7 +43,7 @@ impl Style {
             });
         }
 
-        let splits: Vec<&str> = string.splitn(3, ",").collect();
+        let splits: Vec<&str> = string.splitn(3, ',').collect();
         if splits.len() < 3 {
             return Err(StyleError::Split);
         }

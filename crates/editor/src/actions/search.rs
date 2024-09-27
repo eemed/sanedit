@@ -100,7 +100,7 @@ fn toggle_search_regex(editor: &mut Editor, id: ClientId) {
 pub(crate) fn search(editor: &mut Editor, id: ClientId, input: &str) {
     let (win, _buf) = editor.win_buf_mut(id);
     let cpos = win.cursors.primary().pos();
-    win.search.save_last_search(input.into());
+    win.search.save_last_search(input);
 
     search_impl(editor, id, input, cpos);
 }
@@ -120,8 +120,7 @@ fn search_impl(editor: &mut Editor, id: ClientId, input: &str, mut pos: u64) {
     if let Some(last_match) = win
         .search
         .last_search()
-        .map(|ls| ls.current_match.as_ref())
-        .flatten()
+        .and_then(|ls| ls.current_match.as_ref())
     {
         if last_match.contains(&pos) {
             match win.search.direction {

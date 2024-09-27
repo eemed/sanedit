@@ -85,7 +85,7 @@ impl CustomItems {
         }
 
         for i in 0..height {
-            let line = std::mem::replace(&mut cells[i], &mut []);
+            let line = std::mem::take(&mut cells[i]);
             cells[i] = &mut line[..last];
         }
 
@@ -182,7 +182,7 @@ impl CustomItems {
                 break;
             }
 
-            let width = cells.get(0).map(|c| c.len()).unwrap_or(0);
+            let width = cells.first().map(|c| c.len()).unwrap_or(0);
             let is_selected = self.scroll + row == self.items.selected;
             let style = {
                 if is_selected {

@@ -26,8 +26,8 @@ pub(crate) trait Drawable {
 impl Drawable for Window {
     fn draw(&self, _ctx: &UIContext, cells: &mut [&mut [CCell]]) {
         let width = min(
-            cells.get(0).map(|c| c.len()).unwrap_or(0),
-            self.cells.get(0).map(|c| c.len()).unwrap_or(0),
+            cells.first().map(|c| c.len()).unwrap_or(0),
+            self.cells.first().map(|c| c.len()).unwrap_or(0),
         );
         let height = min(cells.len(), self.cells.len());
 
@@ -49,7 +49,7 @@ impl Drawable for Window {
 impl Drawable for Statusline {
     fn draw(&self, ctx: &UIContext, cells: &mut [&mut [CCell]]) {
         let style = ctx.style(ThemeField::Statusline);
-        let width = cells.get(0).map(|c| c.len()).unwrap_or(0);
+        let width = cells.first().map(|c| c.len()).unwrap_or(0);
         let left = into_cells_with_theme_pad_with(&self.left, &style, width);
         for (i, cell) in left.into_iter().enumerate() {
             cells[0][i] = cell;
@@ -81,7 +81,7 @@ impl Drawable for StatusMessage {
             Severity::Error => ThemeField::Error,
         };
         let style = ctx.style(field);
-        let width = cells.get(0).map(|c| c.len()).unwrap_or(0);
+        let width = cells.first().map(|c| c.len()).unwrap_or(0);
         for (i, cell) in into_cells_with_theme_pad_with(&self.message, &style, width)
             .into_iter()
             .enumerate()

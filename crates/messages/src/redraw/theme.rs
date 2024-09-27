@@ -33,7 +33,7 @@ impl Theme {
                     let mut nodes = FxHashMap::default();
                     nodes.insert(comp.to_string(), ThemeNode::Leaf(Style::default()));
                     *node = ThemeNode::Node {
-                        style: style.clone(),
+                        style: *style,
                         nodes,
                     };
 
@@ -50,7 +50,7 @@ impl Theme {
     pub fn get<S: AsRef<str>>(&self, path: S) -> Style {
         let path: Vec<&str> = path.as_ref().split(Self::SEPARATOR).collect();
         let mut node = &self.node;
-        let mut cur = node.style().clone();
+        let mut cur = *node.style();
 
         for comp in path {
             match node {

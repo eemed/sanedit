@@ -20,7 +20,7 @@ impl Themes {
         themes.insert(DEFAULT_THEME.into(), default_theme());
 
         Themes {
-            theme_dir: path.into(),
+            theme_dir: path,
             themes,
         }
     }
@@ -45,7 +45,7 @@ impl Themes {
             let name = fname.to_string_lossy().to_string();
             let stripped = name.strip_suffix(".toml").unwrap_or(name.as_str());
 
-            if let Err(e) = self.load(&stripped) {
+            if let Err(e) = self.load(stripped) {
                 log::error!("Loading theme '{name}' failed: {e}");
             }
         }
@@ -88,7 +88,7 @@ fn fill_theme_colors(table: &HashMap<String, Value>, theme: &mut Theme) -> anyho
         for (k, v) in cur {
             let plen = prefix.len();
             // Add all keys split by .
-            for key in k.split(".") {
+            for key in k.split('.') {
                 // Dont add default
                 if k != "default" {
                     prefix.push(key);
@@ -96,7 +96,7 @@ fn fill_theme_colors(table: &HashMap<String, Value>, theme: &mut Theme) -> anyho
             }
 
             match &v.kind {
-                config::ValueKind::String(s) => match Style::from_str(&s) {
+                config::ValueKind::String(s) => match Style::from_str(s) {
                     Ok(style) => {
                         let key = prefix.join(".");
                         theme.insert(key, style);

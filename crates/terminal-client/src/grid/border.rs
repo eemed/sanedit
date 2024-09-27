@@ -1,5 +1,3 @@
-use std::mem;
-
 use sanedit_messages::redraw::{Cell, Style};
 
 use super::ccell::{size, CCell};
@@ -95,7 +93,7 @@ pub(crate) fn draw_side_border_with_style<'a, 'b, F: Fn(usize, usize) -> Style>(
     }
 
     for i in 0..cells.len() {
-        let line = mem::replace(&mut cells[i], &mut []);
+        let line = std::mem::take(&mut cells[i]);
         let width = line.len();
         cells[i] = &mut line[1..width - 1];
     }
@@ -168,7 +166,7 @@ pub(crate) fn draw_border_with_style<'a, 'b, F: Fn(usize, usize) -> Style>(
 
     cells = &mut cells[1..size.height - 1];
     for i in 0..cells.len() {
-        let line = mem::replace(&mut cells[i], &mut []);
+        let line = std::mem::take(&mut cells[i]);
         let width = line.len();
         cells[i] = &mut line[1..width - 1];
     }

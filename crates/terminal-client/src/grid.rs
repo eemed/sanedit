@@ -278,7 +278,7 @@ impl Grid {
         cursor: &mut Option<Cursor>,
         cells: &mut Vec<Vec<Cell>>,
     ) {
-        let rect = drawable.area().clone();
+        let rect = drawable.area();
         let ctx = UIContext {
             theme: theme.clone(),
             rect,

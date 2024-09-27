@@ -61,10 +61,10 @@ pub fn decode_utf8(bytes: &[u8]) -> (Option<char>, usize) {
     }
 }
 
-pub fn decode_utf8_iter(mut bytes: impl Iterator<Item = u8>) -> (Option<char>, u64) {
+pub fn decode_utf8_iter(bytes: impl Iterator<Item = u8>) -> (Option<char>, u64) {
     let mut decoder = Decoder::new();
     let mut size = 0;
-    while let Some(b) = bytes.next() {
+    for b in bytes {
         size += 1;
 
         use DecodeResult::*;
@@ -334,7 +334,7 @@ impl<'a> Chars<'a> {
                     let mut start = self.bytes.pos();
                     let seq_len = byte.count_ones() as u64;
                     let read_len = end - start;
-                    let valid_prefix = read_len < seq_len && seq_len >= 2 && seq_len <= 4;
+                    let valid_prefix = read_len < seq_len && (2..=4).contains(&seq_len);
 
                     if !valid_prefix {
                         for _ in 1..read_len {

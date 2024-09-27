@@ -50,7 +50,7 @@ fn draw_impl(ctx: &mut DrawContext) -> redraw::Redraw {
     //     .unwrap_or(0);
 
     redraw::completion::Completion {
-        point: completion.point().clone(),
+        point: *completion.point(),
         choices,
         selected: selected_relative_pos,
         // TODO

@@ -24,7 +24,7 @@ fn complete(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     let cursor = win.cursors.primary().pos();
     let start = result.as_ref().map(|result| result.0).unwrap_or(cursor);
-    let word = result.map(|result| result.2).unwrap_or(String::new());
+    let word = result.map(|result| result.2).unwrap_or_default();
     let cursor = win.primary_cursor();
     let Some(point) = win.view().point_at_pos(cursor.pos()) else {
         return;
@@ -91,7 +91,7 @@ fn prev_completion(editor: &mut Editor, id: ClientId) {
 
 #[action("Send word to matcher")]
 fn send_word(editor: &mut Editor, id: ClientId) {
-    let hook_bid = editor.hooks.running_hook().map(Hook::buffer_id).flatten();
+    let hook_bid = editor.hooks.running_hook().and_then(Hook::buffer_id);
     let (win, buf) = editor.win_buf_mut(id);
     if hook_bid != Some(buf.id) || win.focus() != Focus::Completion {
         return;

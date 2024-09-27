@@ -20,7 +20,7 @@ impl std::fmt::Debug for Program {
             if let Some(name) = self.names.get(&i) {
                 write!(f, " <- {name}")?;
             }
-            writeln!(f, "")?;
+            writeln!(f)?;
         }
 
         Ok(())

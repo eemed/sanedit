@@ -247,7 +247,7 @@ impl Default for Cursors {
 impl From<&Cursors> for Vec<u64> {
     fn from(cursors: &Cursors) -> Self {
         let positions: Vec<u64> = cursors.cursors().iter().map(|c| c.pos()).collect();
-        positions.into()
+        positions
     }
 }
 

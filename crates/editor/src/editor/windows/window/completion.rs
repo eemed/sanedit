@@ -14,6 +14,7 @@ use super::chooser::Chooser;
 
 pub(crate) type CompletionAction = Rc<dyn Fn(&mut Editor, ClientId, &str)>;
 
+#[derive(Default)]
 pub(crate) struct Completion {
     point: Point,
 
@@ -112,17 +113,6 @@ impl Completion {
                     }
                 }
             }
-        }
-    }
-}
-
-impl Default for Completion {
-    fn default() -> Self {
-        Completion {
-            point: Point::default(),
-            chooser: Chooser::default(),
-            started_at: 0,
-            on_input: None,
         }
     }
 }

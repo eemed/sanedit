@@ -7,7 +7,7 @@ pub const ITALIC: u8 = 1 << 2;
 pub fn from_str(string: &str) -> TextStyle {
     let mut style = 0u8;
 
-    for s in string.split(",") {
+    for s in string.split(',') {
         match s {
             "bold" => style |= BOLD,
             "underline" => style |= UNDERLINE,

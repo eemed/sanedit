@@ -63,19 +63,19 @@ impl Changes {
 
         for change in self.changes.iter() {
             let mut range = change.range();
-            let abs = off.abs() as u64;
+            let abs = off.unsigned_abs() as u64;
             if off.is_negative() {
                 range.backward(abs);
             } else {
                 range.forward(abs);
             }
 
-            if range.len() != 0 {
+            if !range.is_empty() {
                 self.remove_ranges(pt, &[range]);
             }
 
             if !change.text().is_empty() {
-                let abs = off.abs() as u64;
+                let abs = off.unsigned_abs() as u64;
                 let start = if off.is_negative() {
                     change.start() - abs
                 } else {
@@ -138,7 +138,7 @@ impl Changes {
     }
 
     pub fn allows_undo_point_creation(&self) -> bool {
-        !(self.flags & flags::DISABLE_UNDO_POINT_CREATION != 0)
+        self.flags & flags::DISABLE_UNDO_POINT_CREATION == 0
     }
 
     pub fn iter(&self) -> std::slice::Iter<'_, Change> {

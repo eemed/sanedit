@@ -60,7 +60,7 @@ impl<K: AsID, V> IdMap<K, V> {
         let iter = self.map.iter();
         Iter {
             iter,
-            _phantom: PhantomData::default(),
+            _phantom: PhantomData,
         }
     }
 
@@ -108,7 +108,7 @@ impl<K: AsID, V> Default for IdMap<K, V> {
         Self {
             map: BTreeMap::default(),
             next_id: AtomicU32::new(1),
-            _phantom: PhantomData::default(),
+            _phantom: PhantomData,
         }
     }
 }

@@ -145,7 +145,7 @@ impl TryFrom<&str> for KeyEvent {
                             mods |= SHIFT;
                         }
                         Key::Char(ch)
-                    } else if token.starts_with("f") || token.starts_with("F") {
+                    } else if token.starts_with('f') || token.starts_with('F') {
                         let mut chars = token.chars();
                         // skip f
                         chars.next();

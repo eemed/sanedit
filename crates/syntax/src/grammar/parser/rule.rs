@@ -155,7 +155,7 @@ impl Rule {
         match self {
             Choice(choices) => {
                 let mut result = String::new();
-                result.push_str("(");
+                result.push('(');
                 for (i, choice) in choices.iter().enumerate() {
                     if i != 0 {
                         result.push_str(" / ");
@@ -163,21 +163,21 @@ impl Rule {
 
                     result.push_str(&choice.format(rules));
                 }
-                result.push_str(")");
+                result.push(')');
 
                 result
             }
             Sequence(seq) => {
                 let mut result = String::new();
-                result.push_str("(");
+                result.push('(');
                 for (i, choice) in seq.iter().enumerate() {
                     if i != 0 {
-                        result.push_str(" ");
+                        result.push(' ');
                     }
 
                     result.push_str(&choice.format(rules));
                 }
-                result.push_str(")");
+                result.push(')');
 
                 result
             }
@@ -185,7 +185,7 @@ impl Rule {
             FollowedBy(r) => format!("&({})", r.format(rules)),
             Ref(r) => {
                 let rule = &rules[*r].name;
-                format!("{}", rule)
+                rule.to_string()
             }
             OneOrMore(r) => format!("({})+", r.format(rules)),
             Optional(r) => format!("({})?", r.format(rules)),
@@ -204,7 +204,7 @@ impl fmt::Display for Rule {
             }
             Choice(choices) => {
                 let mut result = String::new();
-                result.push_str("(");
+                result.push('(');
                 for (i, choice) in choices.iter().enumerate() {
                     if i != 0 {
                         result.push_str(" / ");
@@ -212,21 +212,21 @@ impl fmt::Display for Rule {
 
                     result.push_str(&format!("{}", choice));
                 }
-                result.push_str(")");
+                result.push(')');
 
                 write!(f, "{}", result)
             }
             Sequence(seq) => {
                 let mut result = String::new();
-                result.push_str("(");
+                result.push('(');
                 for (i, choice) in seq.iter().enumerate() {
                     if i != 0 {
-                        result.push_str(" ");
+                        result.push(' ');
                     }
 
                     result.push_str(&format!("{}", choice));
                 }
-                result.push_str(")");
+                result.push(')');
 
                 write!(f, "{}", result)
             }

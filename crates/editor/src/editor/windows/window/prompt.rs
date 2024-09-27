@@ -16,6 +16,7 @@ pub(crate) use self::history::*;
 
 use super::chooser::Chooser;
 
+#[derive(Default)]
 pub(crate) struct PromptBuilder {
     message: Option<String>,
     on_confirm: Option<PromptAction>,
@@ -26,22 +27,6 @@ pub(crate) struct PromptBuilder {
     has_paths: bool,
     history_kind: Option<HistoryKind>,
     input: String,
-}
-
-impl Default for PromptBuilder {
-    fn default() -> Self {
-        PromptBuilder {
-            message: None,
-            on_confirm: None,
-            on_input: None,
-            on_abort: None,
-            keymap_kind: None,
-            simple: false,
-            has_paths: false,
-            history_kind: None,
-            input: String::new(),
-        }
-    }
 }
 
 impl PromptBuilder {

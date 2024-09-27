@@ -8,12 +8,15 @@ use sanedit_messages::redraw::{Point, Size};
 use crate::editor::buffers::{Buffer, BufferId};
 use crate::editor::syntax::{Span, SyntaxResult};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub(crate) enum Cell {
+    #[default]
     Empty,
     // Continue, // Continuation of a previous char
     EOF, // End of file where cursor can be placed
-    Char { ch: Char },
+    Char {
+        ch: Char,
+    },
 }
 
 impl Cell {
@@ -47,12 +50,6 @@ impl Cell {
 
     pub fn is_eof(&self) -> bool {
         matches!(self, Cell::EOF)
-    }
-}
-
-impl Default for Cell {
-    fn default() -> Self {
-        Cell::Empty
     }
 }
 
@@ -388,10 +385,8 @@ impl View {
 
         for (y, row) in self.cells.iter().enumerate() {
             for (x, cell) in row.iter().enumerate() {
-                if cell.is_eof() || cell.is_non_continue_char() {
-                    if cur == pos {
-                        return Some(Point { x, y });
-                    }
+                if (cell.is_eof() || cell.is_non_continue_char()) && cur == pos {
+                    return Some(Point { x, y });
                 }
 
                 if let Cell::Char { ch } = cell {
@@ -478,7 +473,7 @@ impl View {
             self.set_offset(pos);
             let min = pos.saturating_sub((self.width() * self.height()) as u64);
             let slice = &buf.slice(min..);
-            self.range.start = min + prev_line_start(&slice, slice.len());
+            self.range.start = min + prev_line_start(slice, slice.len());
             self.draw(buf);
         }
 

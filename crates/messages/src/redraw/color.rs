@@ -12,14 +12,14 @@ pub enum Color {
 
 impl Color {
     pub fn from_hex(string: &str) -> Result<Color, HexStringError> {
-        Rgb::from_hex(string).map(|hex| Color::Rgb(hex))
+        Rgb::from_hex(string).map(Color::Rgb)
     }
 
     pub fn from_str(string: &str) -> Result<Color, HexStringError> {
         match string {
             "black" => Ok(Color::Black),
             "white" => Ok(Color::White),
-            _ => Rgb::from_hex(string).map(|rgb| Color::Rgb(rgb)),
+            _ => Rgb::from_hex(string).map(Color::Rgb),
         }
     }
 }
@@ -53,7 +53,7 @@ impl Rgb {
             return Err(HexStringError::InvalidLength);
         }
 
-        let mut chars = string.chars().into_iter().enumerate();
+        let mut chars = string.chars().enumerate();
 
         let first_char = chars.next().map(|s| s.1);
         if first_char != Some('#') {
@@ -64,7 +64,7 @@ impl Rgb {
             });
         }
 
-        while let Some((i, ch)) = chars.next() {
+        for (i, ch) in chars {
             match ch {
                 '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | 'a' | 'b' | 'c'
                 | 'd' | 'e' | 'f' | 'A' | 'B' | 'C' | 'D' | 'E' | 'F' => {}

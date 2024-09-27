@@ -93,20 +93,17 @@ impl VisitMut for Formatter {
                 table.set_implicit(true);
                 *node = Item::Table(table);
             }
-        } else if self.state == VisitState::Keymaps {
-            if node.is_array() {
-                if let Some(arr) = node.as_array_mut() {
-                    arr.set_trailing_comma(false);
+        } else if self.state == VisitState::Keymaps && node.is_array() {
+            if let Some(arr) = node.as_array_mut() {
+                arr.set_trailing_comma(false);
 
-                    for val in arr.iter_mut() {
-                        val.decor_mut().set_prefix("\n    ");
-                    }
-
-                    if let Some(last) = arr.iter_mut().last() {
-                        last.decor_mut().set_suffix(",\n");
-                    }
+                for val in arr.iter_mut() {
+                    val.decor_mut().set_prefix("\n    ");
                 }
-            } else {
+
+                if let Some(last) = arr.iter_mut().last() {
+                    last.decor_mut().set_suffix(",\n");
+                }
             }
         }
 
@@ -246,8 +243,7 @@ impl Default for EditorConfig {
 
 impl EditorConfig {
     pub fn ignore_directories(&self) -> Vec<String> {
-        let ignore = self.ignore_directories.clone();
-        ignore
+        self.ignore_directories.clone()
     }
 
     fn default_filetype_map() -> FxHashMap<String, Vec<String>> {

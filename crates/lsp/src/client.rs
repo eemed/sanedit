@@ -323,7 +323,7 @@ impl Handler {
                 uri: path_to_uri(&path),
             },
             range: lsp_types::Range {
-                start: position.clone(),
+                start: position,
                 end: position,
             },
             context: lsp_types::CodeActionContext {
@@ -499,7 +499,7 @@ impl Handler {
             lsp_types::GotoDefinitionResponse::Scalar(_) => todo!("Scalar goto def"),
             lsp_types::GotoDefinitionResponse::Array(locations) => {
                 let location = locations
-                    .get(0)
+                    .first()
                     .ok_or(anyhow!("Goto definition response found no locations"))?;
                 path = PathBuf::from(location.uri.path().as_str());
                 position = location.range.start;

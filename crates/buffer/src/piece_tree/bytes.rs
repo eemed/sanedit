@@ -45,7 +45,7 @@ impl<'a> Bytes<'a> {
             slice.len(),
         );
         let srange = slice.range.clone();
-        let chunks = Chunks::new_from_slice(&slice, at);
+        let chunks = Chunks::new_from_slice(slice, at);
         let chunk = chunks.get();
         let chunk_pos = chunk
             .as_ref()

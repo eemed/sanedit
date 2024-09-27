@@ -57,7 +57,7 @@ impl EndOfLine {
 
     pub fn is_byte_eol(byte: u8) -> bool {
         match byte {
-            0x0a | 0x0b | 0x0c | 0x0d => true,
+            0x0a..=0x0d => true,
             _ => false,
         }
     }

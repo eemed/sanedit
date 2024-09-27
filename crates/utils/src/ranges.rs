@@ -29,8 +29,8 @@ impl<T: Ord + Copy> OverlappingRanges<T> {
         }
 
         let mut remove = vec![];
-        let mut higher = self.ranges.range((Included(start), Unbounded));
-        while let Some((s, e)) = higher.next() {
+        let higher = self.ranges.range((Included(start), Unbounded));
+        for (s, e) in higher {
             if *s <= end {
                 start = min(*s, start);
                 end = max(end, *e);
@@ -121,8 +121,8 @@ mod test {
     fn one(r: &OverlappingRanges<usize>) -> Range<usize> {
         assert!(r.ranges.len() == 1, "Found too many ranges");
         let item = r.iter().next();
-        let item = item.expect("No first item found");
-        item
+
+        item.expect("No first item found")
     }
 
     #[test]

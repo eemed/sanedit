@@ -68,11 +68,11 @@ impl Grep {
             .case_insensitive(false)
             .case_smart(false)
             .word(false)
-            .build(&pattern)
+            .build(pattern)
             .expect("Cannot build RegexMatcher");
 
         let ptsearcher = Arc::new(
-            PTSearcher::new(&pattern, SearchDirection::Forward, SearchKind::Regex)
+            PTSearcher::new(pattern, SearchDirection::Forward, SearchKind::Regex)
                 .expect("Cannot build PTSearcher"),
         );
 
@@ -164,7 +164,7 @@ impl Grep {
                 line: Some(linen),
                 text: text.trim_end().into(),
                 matches: std::mem::take(&mut line_found_matches),
-                absolute_offset: Some(line.start() as u64),
+                absolute_offset: Some(line.start()),
             };
             matches.push(mat);
         }

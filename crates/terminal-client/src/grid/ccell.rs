@@ -2,7 +2,7 @@ use std::ops::{Deref, DerefMut};
 
 use sanedit_messages::redraw::{Cell, Size, Style};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct CCell {
     pub is_transparent: bool,
     pub cell: Cell,
@@ -27,15 +27,6 @@ impl CCell {
         CCell {
             is_transparent: false,
             cell: Cell::with_style(style),
-        }
-    }
-}
-
-impl Default for CCell {
-    fn default() -> Self {
-        CCell {
-            is_transparent: false,
-            cell: Cell::default(),
         }
     }
 }
@@ -72,7 +63,7 @@ pub(crate) fn clear_all(cells: &mut [&mut [CCell]], style: Style) {
 }
 
 pub(crate) fn into_cells(string: &str) -> Vec<CCell> {
-    string.chars().map(|ch| CCell::from(ch)).collect()
+    string.chars().map(CCell::from).collect()
 }
 
 pub(crate) fn into_cells_with_style(string: &str, style: Style) -> Vec<CCell> {
@@ -93,7 +84,7 @@ pub(crate) fn into_cells_with_theme_pad_with(
     width: usize,
 ) -> Vec<CCell> {
     let mut cells = into_cells_with_theme_with(string, style);
-    pad_line(&mut cells, style.clone(), width);
+    pad_line(&mut cells, *style, width);
     cells
 }
 
@@ -115,7 +106,7 @@ pub(crate) fn pad_line(cells: &mut Vec<CCell>, style: Style, width: usize) {
 
 pub(crate) fn size(cells: &mut [&mut [CCell]]) -> Size {
     let height = cells.len();
-    let width = cells.get(0).map(|line| line.len()).unwrap_or(0);
+    let width = cells.first().map(|line| line.len()).unwrap_or(0);
 
     Size { width, height }
 }

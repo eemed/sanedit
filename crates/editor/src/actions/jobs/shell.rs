@@ -41,7 +41,7 @@ impl Job for ShellCommand {
         let fut = async move {
             let mut cmd = Command::new("/bin/sh");
 
-            cmd.args(&["-c", &format!("setsid {}", command)])
+            cmd.args(["-c", &format!("setsid {}", command)])
                 .stdout(Stdio::piped())
                 .stderr(Stdio::piped());
 

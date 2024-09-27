@@ -50,7 +50,7 @@ fn draw_impl(ctx: &mut DrawContext) -> redraw::Redraw {
 
         let item = redraw::items::Item {
             line,
-            name: name.into(),
+            name,
             kind,
             level,
             highlights: hls,

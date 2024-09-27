@@ -58,7 +58,7 @@ impl<'a> PieceTreeSlice<'a> {
             self.start() + pos,
             self.view.len
         );
-        Bytes::new_from_slice(&self, pos)
+        Bytes::new_from_slice(self, pos)
     }
 
     #[inline]
@@ -74,7 +74,7 @@ impl<'a> PieceTreeSlice<'a> {
             self.start() + pos,
             self.view.len
         );
-        Chunks::new_from_slice(&self, pos)
+        Chunks::new_from_slice(self, pos)
     }
 
     #[inline]
@@ -90,7 +90,7 @@ impl<'a> PieceTreeSlice<'a> {
             self.start() + pos,
             self.view.len
         );
-        Chars::new_from_slice(&self, pos)
+        Chars::new_from_slice(self, pos)
     }
 
     #[inline]
@@ -120,7 +120,7 @@ impl<'a> PieceTreeSlice<'a> {
 
     #[inline]
     pub fn lines_at(&self, pos: u64) -> Lines<'a> {
-        Lines::new_from_slice(&self, pos)
+        Lines::new_from_slice(self, pos)
     }
 
     /// Return the line number and slice at position
@@ -142,7 +142,7 @@ impl<'a> PieceTreeSlice<'a> {
 
     #[inline]
     pub fn graphemes_at(&self, pos: u64) -> Graphemes<'a> {
-        Graphemes::new_from_slice(&self, pos)
+        Graphemes::new_from_slice(self, pos)
     }
 }
 

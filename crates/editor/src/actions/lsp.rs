@@ -64,7 +64,7 @@ pub(crate) fn lsp_request(
 
     let (win, buf) = editor.win_buf(id);
     let slice = buf.slice(..);
-    let request = (f)(win, buf, path, slice, &handle);
+    let request = (f)(win, buf, path, slice, handle);
 
     if let Some((kind, constraints)) = request {
         let lsp = editor
@@ -90,7 +90,7 @@ fn start_lsp(editor: &mut Editor, id: ClientId) {
 
 #[action("Start language server from hook")]
 fn start_lsp_hook(editor: &mut Editor, id: ClientId) {
-    if let Some(bid) = editor.hooks.running_hook().map(Hook::buffer_id).flatten() {
+    if let Some(bid) = editor.hooks.running_hook().and_then(Hook::buffer_id) {
         let _ = start_lsp_impl(editor, id, bid);
     }
 }
@@ -225,8 +225,7 @@ fn sync_document(editor: &mut Editor, id: ClientId) {
     let bid = editor
         .hooks
         .running_hook()
-        .map(Hook::buffer_id)
-        .flatten()
+        .and_then(Hook::buffer_id)
         .unwrap_or(bid);
 
     let _ = sync(editor, bid);
@@ -329,8 +328,7 @@ pub(crate) fn open_doc(editor: &mut Editor, id: ClientId) {
     let bid = editor
         .hooks
         .running_hook()
-        .map(Hook::buffer_id)
-        .flatten()
+        .and_then(Hook::buffer_id)
         .unwrap_or(bid);
     let _ = open_document(editor, bid);
 }
@@ -342,8 +340,7 @@ pub(crate) fn close_doc(editor: &mut Editor, id: ClientId) {
     let bid = editor
         .hooks
         .running_hook()
-        .map(Hook::buffer_id)
-        .flatten()
+        .and_then(Hook::buffer_id)
         .unwrap_or(bid);
     let _ = close_document(editor, bid);
 }

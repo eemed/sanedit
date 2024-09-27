@@ -40,9 +40,7 @@ where
         BinCodec::<T>::decode_fill(&mut self.read, &mut self.buf).ok()?;
 
         match self.codec.decode(&mut self.buf) {
-            Ok(Some(msg)) => {
-                return Some(msg);
-            }
+            Ok(Some(msg)) => Some(msg),
             Ok(None) => unreachable!("BinCodec::<T>::decode_fill not working as intended"),
             Err(_e) => {
                 // Try to advance and retry

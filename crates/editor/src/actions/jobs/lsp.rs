@@ -322,7 +322,7 @@ fn handle_diagnostics(
     version: Option<i32>,
     diags: Vec<LSPRange<Diagnostic>>,
 ) {
-    let Some(bid) = editor.buffers().find(&path) else {
+    let Some(bid) = editor.buffers().find(path) else {
         return;
     };
     let buf = editor.buffers().get(bid).unwrap();
@@ -387,7 +387,6 @@ fn code_action(editor: &mut Editor, id: ClientId, actions: Vec<CodeAction>) {
                     return;
                 };
                 let _ = lsp.request(request, id, vec![]);
-                return;
             }
         })
         .build();
@@ -511,11 +510,11 @@ fn read_references(
     references: &[Reference],
     enc: &lsp_types::PositionEncodingKind,
 ) -> Group {
-    let mut group = Group::new(&path);
+    let mut group = Group::new(path);
 
     for re in references {
-        let start = position_to_offset(&slice, re.start, enc);
-        let end = position_to_offset(&slice, re.end, enc);
+        let start = position_to_offset(slice, re.start, enc);
+        let end = position_to_offset(slice, re.end, enc);
         let (row, line) = slice.line_at(start);
         let lstart = line.start();
 

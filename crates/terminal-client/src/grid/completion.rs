@@ -20,17 +20,17 @@ pub(crate) fn open_completion(win: Rect, compl: Completion) -> GridItem<Completi
 }
 
 pub(crate) fn fit_completion(win: Rect, compl: &Completion) -> Rect {
-    let below = below(win, &compl);
+    let below = below(win, compl);
     if win.includes(&below) {
         return below;
     }
 
-    let above = above(win, &compl);
+    let above = above(win, compl);
     if win.includes(&above) {
         return above;
     }
 
-    fallback(win, &compl)
+    fallback(win, compl)
 }
 
 fn fallback(win: Rect, compl: &Completion) -> Rect {

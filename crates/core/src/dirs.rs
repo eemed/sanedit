@@ -71,7 +71,7 @@ impl Directory {
                         continue;
                     };
                     let path = entry.path();
-                    let Ok(local) = path.strip_prefix(&dir) else {
+                    let Ok(local) = path.strip_prefix(dir) else {
                         continue;
                     };
                     if ft.is_file() && !seen.contains(local) {

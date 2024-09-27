@@ -169,7 +169,7 @@ pub fn copy_cursors_to_lines(lines: Vec<String>, eol: EndOfLine) -> String {
 pub fn selection_line_starts(slice: &PieceTreeSlice, sel: Range<u64>) -> Vec<u64> {
     let mut starts = vec![];
     let start = sel.start;
-    let sol = start_of_line(&slice, start);
+    let sol = start_of_line(slice, start);
 
     if sel.is_empty() {
         return vec![sol];

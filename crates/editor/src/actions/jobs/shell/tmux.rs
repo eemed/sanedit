@@ -102,7 +102,7 @@ fn escape_cmd(command: &str) -> String {
 
 fn run_in_pane(win: &TmuxPane, shell: &str, cmd: &str) -> anyhow::Result<()> {
     Command::new(shell)
-        .args(&[
+        .args([
             "-c",
             &format!("tmux send-keys -t %{} '{cmd}' Enter", win.pane),
         ])
@@ -112,7 +112,7 @@ fn run_in_pane(win: &TmuxPane, shell: &str, cmd: &str) -> anyhow::Result<()> {
 
 fn reset_pane(win: &TmuxPane, shell: &str) -> anyhow::Result<()> {
     Command::new(shell)
-        .args(&[
+        .args([
             "-c",
             &format!("tmux respawn-pane -k -t %{} '{shell}'", win.pane),
         ])
@@ -122,10 +122,10 @@ fn reset_pane(win: &TmuxPane, shell: &str) -> anyhow::Result<()> {
 
 fn open_pane(shell: &str) -> anyhow::Result<TmuxPane> {
     let tmux_cmd = format!("tmux split-window -l 15% -d -P -F \"#{{session_id}}\n#{{window_id}}\n#{{pane_id}}\" '{shell}'");
-    let output = Command::new(shell).args(&["-c", &tmux_cmd]).output()?;
+    let output = Command::new(shell).args(["-c", &tmux_cmd]).output()?;
 
     let output = std::str::from_utf8(&output.stdout)?.trim();
-    let ids: Vec<&str> = output.split("\n").collect();
+    let ids: Vec<&str> = output.split('\n').collect();
     if ids.len() != 3 {
         bail!("Command output invalid.");
     }

@@ -14,8 +14,8 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> Statusline {
     } = ctx.editor;
 
     if win.focus == Focus::Filetree {
-        let left = format!(" File browser");
-        let right = format!("",);
+        let left = " File browser".to_string();
+        let right = String::new();
         return Statusline { left, right };
     }
 
@@ -41,14 +41,12 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> Statusline {
     let blen = buf.len();
     let filetype = buf.filetype.as_ref();
     let ft = filetype.map(Filetype::as_str).unwrap_or("no filetype");
-    let lsp = filetype
-        .map(|ft| {
-            ctx.editor
-                .language_servers
-                .get(ft)
-                .map(|lsp| lsp.server_name().to_string())
-        })
-        .flatten();
+    let lsp = filetype.and_then(|ft| {
+        ctx.editor
+            .language_servers
+            .get(ft)
+            .map(|lsp| lsp.server_name().to_string())
+    });
 
     let right = {
         let mut result = String::new();

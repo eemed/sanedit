@@ -27,7 +27,7 @@ impl Terminal {
         let (width, height) = terminal_size();
 
         Ok(Terminal {
-            out: BufWriter::with_capacity(4096_000, stdout),
+            out: BufWriter::with_capacity(4_096_000, stdout),
             written: vec![vec![Cell::default(); width]; height],
             brush: Style::default(),
             cursor_shown: false,
@@ -42,7 +42,7 @@ impl Terminal {
     }
 
     pub fn draw_cell(&mut self, cell: &Cell, x: usize, y: usize) -> Result<()> {
-        if let Some(written) = self.written.get(y).map(|row| row.get(x)).flatten() {
+        if let Some(written) = self.written.get(y).and_then(|row| row.get(x)) {
             if written != cell {
                 self.set_style(cell.style)?;
                 self.goto(x, y)?;
@@ -149,7 +149,7 @@ impl Terminal {
     }
 
     pub fn width(&self) -> usize {
-        self.written.get(0).map(|row| row.len()).unwrap_or(0)
+        self.written.first().map(|row| row.len()).unwrap_or(0)
     }
 }
 

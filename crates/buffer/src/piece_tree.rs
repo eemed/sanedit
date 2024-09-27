@@ -150,7 +150,7 @@ impl PieceTree {
                     count as u32,
                 );
                 self.view.len += piece.len;
-                self.view.tree.insert(*pos as u64, piece, can_append);
+                self.view.tree.insert(*pos, piece, can_append);
             }
 
             bytes = &bytes[n..];

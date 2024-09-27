@@ -272,11 +272,11 @@ impl<R: io::Read> Lexer<R> {
             '"' => {
                 self.advance()?;
                 self.state = State::Normal;
-                return Ok(Token::Quote);
+                Ok(Token::Quote)
             }
             _ => {
                 let string = self.consume_string_until('"')?;
-                return Ok(Token::Text(string));
+                Ok(Token::Text(string))
             }
         }
     }
@@ -291,46 +291,46 @@ impl<R: io::Read> Lexer<R> {
             ']' => {
                 self.advance()?;
                 self.state = State::Normal;
-                return Ok(Token::RBracket);
+                Ok(Token::RBracket)
             }
             '^' => {
                 self.advance()?;
-                return Ok(Token::Negate);
+                Ok(Token::Negate)
             }
             '\\' => {
                 self.advance()?;
                 match self.read.peek() {
                     Some('n') => {
                         self.advance()?;
-                        Ok(Token::Byte('\n' as u8))
+                        Ok(Token::Byte(b'\n'))
                     }
                     Some('t') => {
                         self.advance()?;
-                        Ok(Token::Byte('\t' as u8))
+                        Ok(Token::Byte(b'\t'))
                     }
                     Some('r') => {
                         self.advance()?;
-                        Ok(Token::Byte('\r' as u8))
+                        Ok(Token::Byte(b'\r'))
                     }
                     Some(']') => {
                         self.advance()?;
-                        Ok(Token::Byte(']' as u8))
+                        Ok(Token::Byte(b']'))
                     }
                     Some('.') => {
                         self.advance()?;
-                        Ok(Token::Byte('.' as u8))
+                        Ok(Token::Byte(b'.'))
                     }
                     Some('[') => {
                         self.advance()?;
-                        Ok(Token::Byte('[' as u8))
+                        Ok(Token::Byte(b'['))
                     }
                     Some('^') => {
                         self.advance()?;
-                        Ok(Token::Byte('^' as u8))
+                        Ok(Token::Byte(b'^'))
                     }
                     Some('\\') => {
                         self.advance()?;
-                        Ok(Token::Byte('\\' as u8))
+                        Ok(Token::Byte(b'\\'))
                     }
                     Some('u') => {
                         self.advance()?;
@@ -389,9 +389,9 @@ impl<R: io::Read> Lexer<R> {
             ch => {
                 self.advance()?;
                 if ch as u32 <= u8::MAX as u32 {
-                    return Ok(Token::Byte(ch as u8));
+                    Ok(Token::Byte(ch as u8))
                 } else {
-                    return Ok(Token::Char(ch));
+                    Ok(Token::Char(ch))
                 }
             }
         }

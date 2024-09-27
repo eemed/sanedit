@@ -276,11 +276,7 @@ impl Eq for Item {}
 
 impl PartialOrd for Item {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        (self.line, self.line_absolute_offset, &self.name).partial_cmp(&(
-            other.line,
-            other.line_absolute_offset,
-            &other.name,
-        ))
+        Some(self.cmp(other))
     }
 }
 

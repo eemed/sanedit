@@ -79,23 +79,23 @@ pub(crate) fn draw_side_border_with_style<'a, 'b, F: Fn(usize, usize) -> Style>(
     }
 
     // Sides
-    for i in 1..size.height {
-        cells[i][0] = Cell {
+    for (i, line) in cells.iter_mut().enumerate().skip(1) {
+        line[0] = Cell {
             text: border.left().into(),
             style: get_style(i, 0),
         }
         .into();
-        cells[i][size.width - 1] = Cell {
+        line[size.width - 1] = Cell {
             text: border.right().into(),
             style: get_style(i, size.width),
         }
         .into();
     }
 
-    for i in 0..cells.len() {
-        let line = std::mem::take(&mut cells[i]);
+    for l in cells.iter_mut() {
+        let line = std::mem::take(l);
         let width = line.len();
-        cells[i] = &mut line[1..width - 1];
+        *l = &mut line[1..width - 1];
     }
     cells
 }
@@ -126,13 +126,13 @@ pub(crate) fn draw_border_with_style<'a, 'b, F: Fn(usize, usize) -> Style>(
     }
 
     // Sides
-    for i in 1..size.height {
-        cells[i][0] = Cell {
+    for (i, line) in cells.iter_mut().enumerate().skip(1) {
+        line[0] = Cell {
             text: border.left().into(),
             style: get_style(i, 0),
         }
         .into();
-        cells[i][size.width - 1] = Cell {
+        line[size.width - 1] = Cell {
             text: border.right().into(),
             style: get_style(i, size.width),
         }
@@ -165,10 +165,10 @@ pub(crate) fn draw_border_with_style<'a, 'b, F: Fn(usize, usize) -> Style>(
     .into();
 
     cells = &mut cells[1..size.height - 1];
-    for i in 0..cells.len() {
-        let line = std::mem::take(&mut cells[i]);
+    for l in cells.iter_mut() {
+        let line = std::mem::take(l);
         let width = line.len();
-        cells[i] = &mut line[1..width - 1];
+        *l = &mut line[1..width - 1];
     }
     cells
 }

@@ -290,7 +290,7 @@ impl Buffer {
         let mut chunk = chunks.get();
         while let Some((_, chk)) = chunk {
             let bytes = chk.as_ref();
-            file.write(bytes)?;
+            file.write_all(bytes)?;
             chunk = chunks.next();
         }
 
@@ -305,13 +305,10 @@ impl Drop for Buffer {
             let path = self.path();
             let bfpath = self.pt.backing_file();
 
-            match (path, bfpath) {
-                (Some(p), Some(bfp)) => {
-                    if p != bfp {
-                        let _ = fs::remove_file(bfp);
-                    }
+            if let (Some(p), Some(bfp)) = (path, bfpath) {
+                if p != bfp {
+                    let _ = fs::remove_file(bfp);
                 }
-                _ => {}
             }
         }
     }

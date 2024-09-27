@@ -190,8 +190,8 @@ impl Prompt {
                 });
                 win.prompt.clear_choices();
             }
-            Progress(opts) => match opts {
-                MatchedOptions::Options { matched, clear_old } => {
+            Progress(opts) => {
+                if let MatchedOptions::Options { matched, clear_old } = opts {
                     if clear_old {
                         win.prompt.clear_choices();
                     }
@@ -200,8 +200,7 @@ impl Prompt {
                     let (win, _buf) = editor.win_buf_mut(id);
                     win.prompt.add_choices(matched.into());
                 }
-                _ => {}
-            },
+            }
         }
     }
 

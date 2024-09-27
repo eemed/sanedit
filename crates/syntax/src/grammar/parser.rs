@@ -194,7 +194,7 @@ impl<R: io::Read> GrammarParser<R> {
                 }
             }
 
-            if let Err(_) = self.consume(Token::Choice) {
+            if self.consume(Token::Choice).is_err() {
                 break;
             }
         }

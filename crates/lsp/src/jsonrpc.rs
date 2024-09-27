@@ -34,9 +34,9 @@ impl JsonRequest {
         let json = serde_json::to_string(&self)?;
 
         let clen = format!("{CONTENT_LENGTH}: {}{SEP}", json.len());
-        stdin.write(clen.as_bytes()).await?;
-        stdin.write(SEP.as_bytes()).await?;
-        stdin.write(json.as_bytes()).await?;
+        stdin.write_all(clen.as_bytes()).await?;
+        stdin.write_all(SEP.as_bytes()).await?;
+        stdin.write_all(json.as_bytes()).await?;
 
         Ok(())
     }
@@ -138,9 +138,9 @@ impl JsonNotification {
         let json = serde_json::to_string(&self)?;
 
         let clen = format!("{CONTENT_LENGTH}: {}{SEP}", json.len());
-        stdin.write(clen.as_bytes()).await?;
-        stdin.write(SEP.as_bytes()).await?;
-        stdin.write(json.as_bytes()).await?;
+        stdin.write_all(clen.as_bytes()).await?;
+        stdin.write_all(SEP.as_bytes()).await?;
+        stdin.write_all(json.as_bytes()).await?;
 
         Ok(())
     }

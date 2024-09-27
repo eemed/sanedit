@@ -31,7 +31,7 @@ fn main() {
 
     logging::setup(cli.debug);
 
-    let open_files = cli.file.clone().map(|f| vec![f]).unwrap_or(vec![]);
+    let open_files = cli.file.clone().map(|f| vec![f]).unwrap_or_default();
     let config_dir = cli.config_dir.clone();
     let working_dir = cli.working_dir.clone();
     let start_opts = StartOptions {

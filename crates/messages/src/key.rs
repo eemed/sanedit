@@ -155,7 +155,7 @@ impl TryFrom<&str> for KeyEvent {
                             acc
                         });
 
-                        match u8::from_str_radix(&string, 10) {
+                        match string.parse::<u8>() {
                             Ok(fkey) => Key::F(fkey),
                             Err(_) => {
                                 return Err(format!(

@@ -125,11 +125,7 @@ impl OriginalBuffer {
 
     #[inline]
     pub fn is_file_backed(&self) -> bool {
-        use OriginalBuffer::*;
-        match self {
-            File { .. } => true,
-            _ => false,
-        }
+        matches!(self, OriginalBuffer::File { .. })
     }
 
     #[inline]

@@ -50,9 +50,8 @@ pub(crate) struct RuleInfo {
 impl RuleInfo {
     pub fn display_name(&self) -> &str {
         for ann in &self.annotations {
-            match ann {
-                Annotation::Show(Some(name)) => return name.as_str(),
-                _ => {}
+            if let Annotation::Show(Some(name)) = ann {
+                return name.as_str();
             }
         }
 
@@ -144,10 +143,7 @@ pub(crate) enum Rule {
 impl Rule {
     pub fn is_repetition(&self) -> bool {
         use Rule::*;
-        match self {
-            OneOrMore(_) | Optional(_) | ZeroOrMore(_) => true,
-            _ => false,
-        }
+        matches!(self, OneOrMore(_) | Optional(_) | ZeroOrMore(_))
     }
 
     pub fn format(&self, rules: &[RuleInfo]) -> String {

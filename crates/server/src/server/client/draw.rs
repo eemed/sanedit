@@ -22,10 +22,7 @@ macro_rules! diffable_open {
 
 macro_rules! diffable_close {
     ($field:expr) => {{
-        if $field.is_none() {
-            return None;
-        }
-
+        $field.as_ref()?;
         $field = None;
     }};
 }

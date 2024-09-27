@@ -56,10 +56,7 @@ impl EndOfLine {
     }
 
     pub fn is_byte_eol(byte: u8) -> bool {
-        match byte {
-            0x0a..=0x0d => true,
-            _ => false,
-        }
+        matches!(byte, 0x0a..=0x0d)
     }
 
     pub fn is_slice_eol(slice: &PieceTreeSlice) -> bool {

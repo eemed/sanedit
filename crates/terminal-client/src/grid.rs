@@ -276,7 +276,7 @@ impl Grid {
         drawable: &GridItem<D>,
         theme: &Arc<Theme>,
         cursor: &mut Option<Cursor>,
-        cells: &mut Vec<Vec<Cell>>,
+        cells: &mut [Vec<Cell>],
     ) {
         let rect = drawable.area();
         let ctx = UIContext {

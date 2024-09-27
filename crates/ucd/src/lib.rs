@@ -1,6 +1,4 @@
-#![allow(unknown_lints)]
 #![allow(dead_code)]
-#![allow(clippy)]
 
 mod enums;
 mod general_category;

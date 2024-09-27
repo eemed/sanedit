@@ -91,7 +91,7 @@ impl JobBroker {
     }
 
     pub fn stop(&mut self, id: JobId) {
-        if let Some(_) = self.jobs.remove(&id) {
+        if self.jobs.remove(&id).is_some() {
             let _ = self.handle.blocking_send(ToJobs::Stop(id));
         }
     }

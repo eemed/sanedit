@@ -356,12 +356,9 @@ impl Editor {
     }
 
     fn handle_message(&mut self, id: ClientId, msg: Message) {
-        match msg {
-            Message::Hello(size) => {
-                self.handle_hello(id, size);
-                return;
-            }
-            _ => {}
+        if let Message::Hello(size) = msg {
+            self.handle_hello(id, size);
+            return;
         }
 
         run(self, id, Hook::OnMessagePre);

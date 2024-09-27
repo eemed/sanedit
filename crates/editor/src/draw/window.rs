@@ -75,7 +75,7 @@ fn draw_syntax(grid: &mut Vec<Vec<redraw::Cell>>, view: &View, theme: &Theme) {
 }
 
 fn draw_diagnostics(
-    grid: &mut Vec<Vec<redraw::Cell>>,
+    grid: &mut [Vec<redraw::Cell>],
     diagnostics: &[Diagnostic],
     view: &View,
     theme: &Theme,
@@ -89,7 +89,7 @@ fn draw_diagnostics(
     }
 }
 
-fn draw_hl(grid: &mut Vec<Vec<redraw::Cell>>, view: &View, style: Style, range: &BufferRange) {
+fn draw_hl(grid: &mut [Vec<redraw::Cell>], view: &View, style: Style, range: &BufferRange) {
     let vrange = view.range();
     if !vrange.overlaps(range) {
         return;
@@ -170,7 +170,7 @@ fn draw_secondary_cursors(
 }
 
 fn draw_primary_cursor(
-    grid: &mut Vec<Vec<redraw::Cell>>,
+    grid: &mut [Vec<redraw::Cell>],
     cursor: &Cursor,
     view: &View,
     theme: &Theme,
@@ -198,12 +198,10 @@ fn draw_primary_cursor(
     .into()
 }
 
-fn draw_end_of_buffer(grid: &mut Vec<Vec<redraw::Cell>>, view: &View, theme: &Theme) {
+fn draw_end_of_buffer(grid: &mut [Vec<redraw::Cell>], view: &View, theme: &Theme) {
     let style = theme.get(ThemeField::EndOfBuffer);
     for (line, row) in view.cells().iter().enumerate() {
-        let is_empty = row
-            .iter()
-            .fold(true, |acc, cell| acc && matches!(cell, Cell::Empty));
+        let is_empty = row.iter().all(|cell| matches!(cell, Cell::Empty));
         if is_empty {
             if let Some(rep) = view.options.replacements.get(&Replacement::BufferEnd) {
                 grid[line][0] = redraw::Cell {

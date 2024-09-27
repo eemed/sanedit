@@ -69,7 +69,7 @@ impl Address {
         }
     }
 
-    pub fn address_name<'a>(&'a self) -> Option<Cow<'a, str>> {
+    pub fn address_name(&self) -> Option<Cow<str>> {
         match self {
             Address::UnixDomainSocket(p) => Some(p.as_os_str().to_string_lossy()),
             Address::Tcp(addr) => addr.as_pathname().map(|p| p.as_os_str().to_string_lossy()),

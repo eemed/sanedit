@@ -56,7 +56,7 @@ impl Eq for Choice {}
 
 impl PartialOrd for Choice {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        (self.score, &self.value).partial_cmp(&(other.score, &other.value))
+        Some(self.cmp(other))
     }
 }
 

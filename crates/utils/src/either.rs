@@ -34,10 +34,7 @@ impl<L, R> Either<L, R> {
     }
 
     pub fn is_right(&self) -> bool {
-        match self {
-            Either::Right(_) => true,
-            _ => false,
-        }
+        matches!(self, Either::Right(_))
     }
 
     pub fn is_left(&self) -> bool {

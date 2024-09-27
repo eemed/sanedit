@@ -131,7 +131,7 @@ where
         let mut writer = dst.writer();
 
         let bytes = size.to_be_bytes();
-        writer.write(&bytes)?;
+        writer.write_all(&bytes)?;
         bcode.serialize_into(writer, &item)
     }
 }

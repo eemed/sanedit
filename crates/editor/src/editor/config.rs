@@ -290,9 +290,11 @@ impl EditorConfig {
 
 macro_rules! make_keymap {
     ($keymap:ident, $($key:expr, $action:ident),+,) => {
-        $(
-            $keymap.push(Mapping { key: $key.into(), action: stringify!($action).into() });
-         )*
+        vec![
+            $(
+                Mapping { key: $key.into(), action: stringify!($action).into() },
+             )*
+        ]
     }
 }
 
@@ -351,9 +353,8 @@ impl Default for KeymapsConfig {
 
 impl KeymapsConfig {
     pub fn search() -> Vec<Mapping> {
-        let mut maps = Vec::default();
         #[rustfmt::skip]
-        make_keymap!(maps,
+        let map = make_keymap!(maps,
             "ctrl+q",      quit,
 
             "esc",          close_prompt,
@@ -366,13 +367,12 @@ impl KeymapsConfig {
 
             "ctrl+r",        toggle_search_regex,
         );
-        maps
+        map
     }
 
     pub fn prompt() -> Vec<Mapping> {
-        let mut maps = Vec::default();
         #[rustfmt::skip]
-        make_keymap!(maps,
+        let map = make_keymap!(maps,
              "ctrl+q",    quit,
 
              "esc",       close_prompt,
@@ -385,25 +385,23 @@ impl KeymapsConfig {
              "up",        prompt_history_prev,
              "down",      prompt_history_next,
         );
-        maps
+        map
     }
 
     pub fn completion() -> Vec<Mapping> {
-        let mut maps = Vec::default();
         #[rustfmt::skip]
-        make_keymap!(maps,
+        let map = make_keymap!(maps,
              "tab",    next_completion,
              "btab",   prev_completion,
              "enter",  confirm_completion,
              "esc",    abort_completion,
         );
-        maps
+        map
     }
 
     pub fn locations() -> Vec<Mapping> {
-        let mut maps = Vec::default();
         #[rustfmt::skip]
-        make_keymap!(maps,
+        let map = make_keymap!(maps,
              "ctrl+q", quit,
 
              "alt+up", focus_window,
@@ -420,13 +418,12 @@ impl KeymapsConfig {
              "alt+2",  show_filetree,
              "alt+3",  close_locations,
         );
-        maps
+        map
     }
 
     pub fn filetree() -> Vec<Mapping> {
-        let mut maps = Vec::default();
         #[rustfmt::skip]
-        make_keymap!(maps,
+        let map = make_keymap!(maps,
              "ctrl+q", quit,
 
              "esc",       close_filetree,
@@ -444,14 +441,12 @@ impl KeymapsConfig {
              "alt+2",     close_filetree,
              "alt+3",     show_locations,
         );
-        maps
+        map
     }
 
     pub fn window() -> Vec<Mapping> {
-        let mut maps = Vec::default();
-
         #[rustfmt::skip]
-        make_keymap!(maps,
+        let map = make_keymap!(maps,
             "ctrl+q",    quit,
             "ctrl+c",    copy,
             "ctrl+v",    paste,
@@ -529,6 +524,6 @@ impl KeymapsConfig {
             "alt+3",     show_locations,
         );
 
-        maps
+        map
     }
 }

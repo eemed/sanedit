@@ -165,11 +165,8 @@ pub fn tmp_file() -> Option<(PathBuf, File)> {
         match OpenOptions::new().write(true).create_new(true).open(&path) {
             Ok(f) => return Some((path, f)),
             Err(e) => {
-                use std::io::ErrorKind::*;
-
-                match e.kind() {
-                    PermissionDenied => return None,
-                    _ => {}
+                if matches!(e.kind(), std::io::ErrorKind::PermissionDenied) {
+                    return None;
                 }
             }
         }

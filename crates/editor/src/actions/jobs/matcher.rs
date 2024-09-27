@@ -32,7 +32,7 @@ impl OptionProvider for Arc<Vec<String>> {
 
         let fut = async move {
             for opt in items.iter() {
-                if let Err(_) = sender.send(MatchOption::from(opt.as_str())).await {
+                if sender.send(MatchOption::from(opt.as_str())).await.is_err() {
                     break;
                 }
             }
@@ -48,7 +48,7 @@ impl OptionProvider for Arc<Vec<MatchOption>> {
 
         let fut = async move {
             for opt in items.iter() {
-                if let Err(_) = sender.send(opt.clone()).await {
+                if sender.send(opt.clone()).await.is_err() {
                     break;
                 }
             }
@@ -256,12 +256,13 @@ pub(crate) async fn match_options(
                             last_sent = now;
                             let opts = mem::take(&mut matches);
 
-                            if let Err(_) = msend
+                            if msend
                                 .send(MatchedOptions::Options {
                                     matched: opts,
                                     clear_old,
                                 })
                                 .await
+                                .is_err()
                             {
                                 break;
                             }
@@ -274,16 +275,16 @@ pub(crate) async fn match_options(
                         last_sent = Instant::now();
                         let opts = mem::take(&mut matches);
 
-                        if !opts.is_empty() {
-                            if let Err(_) = msend
+                        if !opts.is_empty()
+                            && msend
                                 .send(MatchedOptions::Options {
                                     matched: opts,
                                     clear_old,
                                 })
                                 .await
-                            {
-                                break;
-                            }
+                                .is_err()
+                        {
+                            break;
                         }
                         clear_old = false;
                     }

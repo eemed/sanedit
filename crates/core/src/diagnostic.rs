@@ -31,18 +31,7 @@ impl Diagnostic {
 
 impl PartialOrd for Diagnostic {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        (
-            self.range.start,
-            self.range.end,
-            self.severity,
-            &self.description,
-        )
-            .partial_cmp(&(
-                other.range.start,
-                other.range.end,
-                other.severity,
-                &other.description,
-            ))
+        Some(self.cmp(other))
     }
 }
 

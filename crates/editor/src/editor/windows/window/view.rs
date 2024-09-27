@@ -313,7 +313,7 @@ impl View {
     pub fn at_end(&self) -> bool {
         self.cells[self.height - 1]
             .iter()
-            .fold(true, |acc, cell| acc && matches!(cell, Cell::Empty))
+            .all(|cell| matches!(cell, Cell::Empty))
     }
 
     pub fn set_offset(&mut self, offset: u64) {
@@ -440,7 +440,7 @@ impl View {
         let last = self.height().saturating_sub(1);
         self.cells[last]
             .iter()
-            .fold(true, |acc, c| acc && matches!(c, Cell::Empty | Cell::EOF))
+            .all(|cell| matches!(cell, Cell::Empty | Cell::EOF))
     }
 
     /// Check wether the position is visible.

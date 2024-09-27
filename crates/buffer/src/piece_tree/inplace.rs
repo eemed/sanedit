@@ -61,10 +61,10 @@ pub fn write_in_place(pt: &PieceTreeView) -> io::Result<()> {
     }
 
     let ops = in_place_write_ops(pt);
-    do_write_in_place(pt, ops)
+    do_write_in_place(pt, &ops)
 }
 
-fn find_non_depended_target(ows: &Vec<Overwrite>) -> usize {
+fn find_non_depended_target(ows: &[Overwrite]) -> usize {
     for (i, ow) in ows.iter().enumerate() {
         let mut good = true;
 
@@ -132,7 +132,7 @@ fn in_place_write_ops(pt: &PieceTreeView) -> Vec<WriteOp> {
     result
 }
 
-fn do_write_in_place(pt: &PieceTreeView, ops: Vec<WriteOp>) -> io::Result<()> {
+fn do_write_in_place(pt: &PieceTreeView, ops: &[WriteOp]) -> io::Result<()> {
     let mut iter = ops.into_iter();
     let mut op = iter.next();
     let path = pt.orig.file_path().unwrap();
@@ -141,7 +141,7 @@ fn do_write_in_place(pt: &PieceTreeView, ops: Vec<WriteOp>) -> io::Result<()> {
         // Handle extending and truncating
         while let Some(WriteOp::Size(size)) = op {
             let file = File::options().append(true).open(&path)?;
-            file.set_len(size)?;
+            file.set_len(*size)?;
             op = iter.next();
         }
 
@@ -189,7 +189,7 @@ fn do_write_in_place(pt: &PieceTreeView, ops: Vec<WriteOp>) -> io::Result<()> {
                                 rpos += nbuf as u64;
 
                                 file.seek(SeekFrom::Start(wpos))?;
-                                file.write(&mut buf[..nbuf])?;
+                                file.write_all(&buf[..nbuf])?;
                                 wpos += nbuf as u64;
                                 written += nbuf as u64;
                             }
@@ -205,7 +205,7 @@ fn do_write_in_place(pt: &PieceTreeView, ops: Vec<WriteOp>) -> io::Result<()> {
                                 rpos -= nbuf as u64;
 
                                 file.seek(SeekFrom::Start(wpos - nbuf as u64))?;
-                                file.write(&mut buf[..nbuf])?;
+                                file.write_all(&buf[..nbuf])?;
                                 wpos -= nbuf as u64;
                                 written += nbuf as u64;
                             }

@@ -118,13 +118,13 @@ impl PTSearcher {
             PTSearcher::RegexBwd { bwd, fwd } => {
                 let bwd_cache = bwd.create_cache();
                 let fwd_cache = fwd.create_cache();
-                MatchIter::RegexBwd {
+                MatchIter::RegexBwd(Box::new(RegexBwd {
                     fwd,
                     bwd,
                     fwd_cache,
                     bwd_cache,
                     slice: slice.clone(),
-                }
+                }))
             }
             PTSearcher::Fwd(s) => {
                 let iter = s.find_iter(slice);
@@ -149,14 +149,16 @@ impl SearchMatch {
     }
 }
 
+pub struct RegexBwd<'a, 'b> {
+    fwd: &'a DFA,
+    fwd_cache: Cache,
+    bwd: &'a DFA,
+    bwd_cache: Cache,
+    slice: PieceTreeSlice<'b>,
+}
+
 pub enum MatchIter<'a, 'b> {
-    RegexBwd {
-        fwd: &'a DFA,
-        fwd_cache: Cache,
-        bwd: &'a DFA,
-        bwd_cache: Cache,
-        slice: PieceTreeSlice<'b>,
-    },
+    RegexBwd(Box<RegexBwd<'a, 'b>>),
     Regex(FindMatches<'a, PTRegexCursor<'b>>),
     Forward(SearchIter<'a, 'b>),
     Backwards(SearchIterRev<'a, 'b>),
@@ -187,19 +189,19 @@ impl<'a, 'b> Iterator for MatchIter<'a, 'b> {
             }
             // Find next match and update slice to not search the same thing
             // again
-            MatchIter::RegexBwd { .. } => match self.regex_bwd_next() {
+            MatchIter::RegexBwd(_) => match self.regex_bwd_next() {
                 Some(mat) => {
-                    let MatchIter::RegexBwd { slice, .. } = self else {
+                    let MatchIter::RegexBwd(r) = self else {
                         unreachable!()
                     };
-                    *slice = slice.slice(..mat.range.start);
+                    r.slice = r.slice.slice(..mat.range.start);
                     Some(mat)
                 }
                 None => {
-                    let MatchIter::RegexBwd { slice, .. } = self else {
+                    let MatchIter::RegexBwd(r) = self else {
                         unreachable!()
                     };
-                    *slice = slice.slice(0..0);
+                    r.slice = r.slice.slice(0..0);
                     None
                 }
             },
@@ -209,33 +211,28 @@ impl<'a, 'b> Iterator for MatchIter<'a, 'b> {
 
 impl<'a, 'b> MatchIter<'a, 'b> {
     fn regex_bwd_next(&mut self) -> Option<SearchMatch> {
-        let MatchIter::RegexBwd {
-            fwd,
-            bwd,
-            fwd_cache,
-            bwd_cache,
-            slice,
-        } = self
-        else {
+        let MatchIter::RegexBwd(r) = self else {
             unreachable!("Called regex_bwd_next without being the variant")
         };
 
         // Find the start position of the match
-        let mut input = to_input(slice);
-        let start = regex_cursor::engines::hybrid::try_search_rev(bwd, bwd_cache, &mut input)
-            .ok()
-            .flatten()?;
+        let mut input = to_input(&r.slice);
+        let start =
+            regex_cursor::engines::hybrid::try_search_rev(r.bwd, &mut r.bwd_cache, &mut input)
+                .ok()
+                .flatten()?;
         let off = start.offset() as u64;
 
         // Find the end position of the match
-        let match_slice = slice.slice(off..);
+        let match_slice = r.slice.slice(off..);
         let mut finput = to_input(&match_slice);
-        let end = regex_cursor::engines::hybrid::try_search_fwd(fwd, fwd_cache, &mut finput)
-            .ok()
-            .flatten()?;
+        let end =
+            regex_cursor::engines::hybrid::try_search_fwd(r.fwd, &mut r.fwd_cache, &mut finput)
+                .ok()
+                .flatten()?;
         let end_off = end.offset() as u64;
 
-        let slice_start = slice.start() + off;
+        let slice_start = r.slice.start() + off;
         let slice_end = slice_start + end_off;
 
         Some(SearchMatch {

@@ -36,8 +36,8 @@ pub(crate) fn matcher_result_handler(editor: &mut Editor, id: ClientId, msg: Mat
             });
             win.prompt.clear_choices();
         }
-        Progress(opts) => match opts {
-            MatchedOptions::Options { matched, clear_old } => {
+        Progress(opts) => {
+            if let MatchedOptions::Options { matched, clear_old } = opts {
                 if clear_old {
                     win.prompt.clear_choices();
                 }
@@ -46,7 +46,6 @@ pub(crate) fn matcher_result_handler(editor: &mut Editor, id: ClientId, msg: Mat
                 let (win, _buf) = editor.win_buf_mut(id);
                 win.prompt.add_choices(opts.into());
             }
-            _ => {}
-        },
+        }
     }
 }

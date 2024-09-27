@@ -30,10 +30,11 @@ pub(crate) struct Completion {
 
 impl Completion {
     pub fn new(started_at: u64, point: Point) -> Completion {
-        let mut me = Completion::default();
-        me.started_at = started_at;
-        me.point = point;
-        me
+        Completion {
+            started_at,
+            point,
+            ..Default::default()
+        }
     }
 
     pub fn started_at(&self) -> u64 {

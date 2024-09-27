@@ -255,7 +255,7 @@ struct GrepMatch {
 
 impl PartialOrd for GrepMatch {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        (other.line, &other.text).partial_cmp(&(self.line, &self.text))
+        Some(self.cmp(other))
     }
 }
 

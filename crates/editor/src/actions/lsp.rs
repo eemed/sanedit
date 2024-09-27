@@ -99,7 +99,7 @@ fn start_lsp_impl(editor: &mut Editor, id: ClientId, bid: BufferId) -> Result<()
     let wd = editor.working_dir().to_path_buf();
     let buf = editor.buffers().get(bid).unwrap();
     let ft = buf.filetype.clone().ok_or(LSPActionError::FiletypeNotSet)?;
-    if editor.language_servers.get(&ft).is_some() {
+    if editor.language_servers.contains_key(&ft) {
         bail!(LSPActionError::LanguageServerAlreadyRunning(
             ft.as_str().to_string()
         ));

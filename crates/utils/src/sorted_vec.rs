@@ -32,12 +32,16 @@ impl<T: Ord> SortedVec<T> {
         self.items.get(i)
     }
 
-    /// SAFETY: Can be changed in a way that items Ord placement is not changed
+    /// # SAFETY
+    ///
+    /// Can be changed in a way that items Ord placement is not changed
     pub unsafe fn get_mut(&mut self, i: usize) -> Option<&mut T> {
         self.items.get_mut(i)
     }
 
-    /// SAFETY: Can be changed in a way that items Ord placement is not changed
+    /// # SAFETY
+    ///
+    /// Can be changed in a way that items Ord placement is not changed
     pub unsafe fn iter_mut(&mut self) -> std::slice::IterMut<'_, T> {
         self.items.iter_mut()
     }

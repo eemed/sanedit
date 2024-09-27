@@ -224,7 +224,7 @@ impl Node {
 
 impl PartialOrd for Node {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        (self.kind, &self.local).partial_cmp(&(other.kind, &other.local))
+        Some(self.cmp(other))
     }
 }
 

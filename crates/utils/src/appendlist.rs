@@ -194,6 +194,10 @@ impl<T> Writer<T> {
     pub fn len(&self) -> usize {
         self.list.len.load(Ordering::Relaxed)
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -208,7 +212,7 @@ impl<T> Reader<T> {
         let bucket = {
             let bucket: &UnsafeCell<Option<Box<[MaybeUninit<T>]>>> = &self.list.buckets[loc.bucket];
             let bucket: Option<&Box<[MaybeUninit<T>]>> = unsafe { (*bucket.get()).as_ref() };
-            let bucket: &Box<[MaybeUninit<T>]> = bucket.unwrap();
+            let bucket: &[MaybeUninit<T>] = bucket.unwrap();
             bucket
         };
         let brange = loc.pos..loc.pos + range.len();
@@ -220,7 +224,7 @@ impl<T> Reader<T> {
         let bucket = {
             let bucket: &UnsafeCell<Option<Box<[MaybeUninit<T>]>>> = &self.list.buckets[loc.bucket];
             let bucket: Option<&Box<[MaybeUninit<T>]>> = unsafe { (*bucket.get()).as_ref() };
-            let bucket: &Box<[MaybeUninit<T>]> = bucket.unwrap();
+            let bucket: &[MaybeUninit<T>] = bucket.unwrap();
             bucket
         };
         unsafe { mem::transmute(&bucket[loc.pos]) }
@@ -228,6 +232,10 @@ impl<T> Reader<T> {
 
     pub fn len(&self) -> usize {
         self.list.len.load(Ordering::Relaxed)
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
     }
 }
 

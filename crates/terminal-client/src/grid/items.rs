@@ -1,4 +1,4 @@
-use std::cmp::{max, min};
+use std::cmp::min;
 
 use sanedit_messages::redraw::{
     items::{Item, ItemKind, Items},
@@ -30,7 +30,7 @@ pub(crate) struct CustomItems {
 
 pub(crate) fn open_filetree(win: Rect, items: Items) -> GridItem<CustomItems> {
     let mut area = win;
-    area.width = max(min(area.width / 6, 50), 40);
+    area.width = (area.width / 6).clamp(40, 50);
 
     if area.width > win.width {
         area.width = win.width;
@@ -75,18 +75,18 @@ impl CustomItems {
 
         clear_all(cells, fill);
 
-        let Size { width, height } = size(cells);
+        let Size { width, .. } = size(cells);
         let last = width.saturating_sub(1);
 
-        for i in 0..height {
+        for l in cells.iter_mut() {
             let mut ccell = CCell::from('│');
             ccell.style = markers;
-            cells[i][last] = ccell;
+            l[last] = ccell;
         }
 
-        for i in 0..height {
-            let line = std::mem::take(&mut cells[i]);
-            cells[i] = &mut line[..last];
+        for l in cells.iter_mut() {
+            let line = std::mem::take(l);
+            *l = &mut line[..last];
         }
 
         let Size { width, .. } = size(cells);

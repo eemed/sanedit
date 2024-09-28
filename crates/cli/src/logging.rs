@@ -34,18 +34,18 @@ pub fn setup(debug: bool) {
         log::error!("A panic occurred at {}:{}: {}", filename, line, cause);
     }));
 
+    let level = if debug {
+        LevelFilter::Debug
+    } else {
+        LevelFilter::Info
+    };
+
     let file_appender = FileAppender::builder()
         .encoder(Box::new(PatternEncoder::new(
             "{l} {d(%H:%M:%S.%3f)} {f}:{L} {m}{n}",
         )))
         .build(LOG_FILE)
         .unwrap();
-
-    let level = if debug {
-        LevelFilter::Debug
-    } else {
-        LevelFilter::Info
-    };
 
     let config = Config::builder()
         .appender(Appender::builder().build("file-appender", Box::new(file_appender)))

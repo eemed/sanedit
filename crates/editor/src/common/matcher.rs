@@ -5,14 +5,13 @@ mod strategy;
 use std::{
     borrow::Cow,
     cmp::min,
-    ops::Range,
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc,
     },
 };
 
-use sanedit_core::Choice;
+use sanedit_core::{Choice, Range};
 use sanedit_utils::appendlist::{Appendlist, Reader};
 use tokio::sync::mpsc::channel;
 

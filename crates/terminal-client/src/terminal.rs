@@ -159,8 +159,16 @@ impl Drop for Terminal {
             log::error!("Failed to disable raw mode");
         }
 
-        if execute!(self.out, DisableMouseCapture, LeaveAlternateScreen).is_err() {
-            log::error!("Failed to leave alternate screen");
+        if execute!(
+            self.out,
+            DisableMouseCapture,
+            LeaveAlternateScreen,
+            cursor::Show,
+            cursor::SetCursorShape(cursor::CursorShape::Block)
+        )
+        .is_err()
+        {
+            log::error!("Failed to restore screen");
         }
     }
 }

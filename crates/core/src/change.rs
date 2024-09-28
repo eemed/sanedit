@@ -3,7 +3,7 @@ use std::{borrow::Cow, rc::Rc};
 use sanedit_buffer::{utf8::EndOfLine, PieceTree, PieceTreeView};
 use sanedit_utils::sorted_vec::SortedVec;
 
-use crate::{range::BufferRange, BufferRangeExt as _, Cursor};
+use crate::{range::BufferRange, Cursor, Range};
 
 use self::flags::Flags;
 
@@ -112,7 +112,7 @@ impl Changes {
         };
 
         for range in ranges.iter().rev() {
-            pt.remove(range.clone());
+            pt.remove(range);
         }
     }
 
@@ -149,7 +149,9 @@ impl Changes {
     /// Wont handle undo or redo
     pub fn move_cursors(&self, cursors: &mut [Cursor]) {
         for cursor in cursors {
-            let mut range = cursor.selection().unwrap_or(cursor.pos()..cursor.pos());
+            let mut range = cursor
+                .selection()
+                .unwrap_or(Range::new(cursor.pos(), cursor.pos()));
             let removed: u64 = self
                 .changes
                 .iter()
@@ -264,8 +266,8 @@ impl Changes {
         let mut ranges = Vec::with_capacity(self.changes.len());
 
         for change in self.changes.iter() {
-            let start = change.start;
-            let mut end = change.end;
+            let start = change.start();
+            let mut end = change.end();
 
             if start != end && !change.text.is_empty() {
                 // Replace
@@ -277,7 +279,7 @@ impl Changes {
                 // Insert
                 end += change.text.len() as u64;
             }
-            ranges.push(start..end);
+            ranges.push(Range::new(start, end));
         }
 
         ranges
@@ -287,9 +289,7 @@ impl Changes {
         let mut ranges = Vec::with_capacity(self.changes.len());
 
         for change in self.changes.iter() {
-            let start = change.start;
-            let end = change.end;
-            ranges.push(start..end);
+            ranges.push(change.range());
         }
 
         ranges
@@ -380,57 +380,49 @@ impl From<Change> for Changes {
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Change {
-    // Range stored separately as Range<u64> does not implement ord
-    /// Inclusive
-    start: u64,
-    /// Exclusive
-    end: u64,
+    range: Range<u64>,
     text: Rc<Vec<u8>>,
 }
 
 impl Change {
     pub fn insert(at: u64, text: &[u8]) -> Change {
         Change {
-            start: at,
-            end: at,
+            range: Range::new(at, at),
             text: Rc::new(text.into()),
         }
     }
 
     fn insert_rc(at: u64, text: Rc<Vec<u8>>) -> Change {
         Change {
-            start: at,
-            end: at,
+            range: Range::new(at, at),
             text,
         }
     }
 
     pub fn remove(range: BufferRange) -> Change {
         Change {
-            start: range.start,
-            end: range.end,
+            range,
             text: Rc::new(Vec::new()),
         }
     }
 
     pub fn replace(range: BufferRange, text: &[u8]) -> Change {
         Change {
-            start: range.start,
-            end: range.end,
+            range,
             text: Rc::new(text.into()),
         }
     }
 
     pub fn range(&self) -> BufferRange {
-        self.start..self.end
+        self.range.clone()
     }
 
     pub fn start(&self) -> u64 {
-        self.start
+        self.range.start
     }
 
     pub fn end(&self) -> u64 {
-        self.end
+        self.range.end
     }
 
     pub fn text(&self) -> &[u8] {
@@ -438,15 +430,15 @@ impl Change {
     }
 
     pub fn is_remove(&self) -> bool {
-        self.text.is_empty() && self.start != self.end
+        self.text.is_empty() && !self.range.is_empty()
     }
 
     pub fn is_insert(&self) -> bool {
-        !self.text.is_empty() && self.start == self.end
+        !self.text.is_empty() && self.range.is_empty()
     }
 
     pub fn is_replace(&self) -> bool {
-        !self.text.is_empty() && self.start != self.end
+        !self.text.is_empty() && !self.range.is_empty()
     }
 
     pub fn is_eol(&self) -> bool {

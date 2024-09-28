@@ -1,4 +1,5 @@
-use crate::BufferRange;
+use crate::{BufferRange, Range};
+use anyhow::bail;
 use regex_cursor::{
     engines::meta::{FindMatches, Regex},
     regex_automata::{
@@ -70,6 +71,10 @@ impl PTSearcher {
         dir: SearchDirection,
         kind: SearchKind,
     ) -> anyhow::Result<PTSearcher> {
+        if pattern.is_empty() {
+            bail!("Searcher empty pattern");
+        }
+
         use SearchDirection::*;
         use SearchKind::*;
         match (dir, kind) {
@@ -173,18 +178,20 @@ impl<'a, 'b> Iterator for MatchIter<'a, 'b> {
                 let next = i.next()?;
                 let start = next.start() as u64;
                 let end = next.end() as u64;
-                Some(SearchMatch { range: start..end })
+                Some(SearchMatch {
+                    range: Range::new(start, end),
+                })
             }
             MatchIter::Forward(i) => {
                 let next = i.next()?;
                 Some(SearchMatch {
-                    range: next.start..next.end,
+                    range: Range::new(next.start, next.end),
                 })
             }
             MatchIter::Backwards(i) => {
                 let next = i.next()?;
                 Some(SearchMatch {
-                    range: next.start..next.end,
+                    range: Range::new(next.start, next.end),
                 })
             }
             // Find next match and update slice to not search the same thing
@@ -236,7 +243,7 @@ impl<'a, 'b> MatchIter<'a, 'b> {
         let slice_end = slice_start + end_off;
 
         Some(SearchMatch {
-            range: slice_start..slice_end,
+            range: Range::new(slice_start, slice_end),
         })
     }
 }

@@ -57,7 +57,7 @@ fn find_range_included(
             }
         }
 
-        Some(cpos..end_pos)
+        Some((cpos..end_pos).into())
     } else {
         // if start is found => search backwards for end or start
         let first_start_after = pos + adv + slen;
@@ -82,7 +82,7 @@ fn find_range_included(
                 }
             }
 
-            Some(start_pos..cpos)
+            Some((start_pos..cpos).into())
         } else {
             // "] | [ ]"  select next brackets
             // Jump forward to the first starting pos and search an end for that
@@ -101,7 +101,7 @@ fn find_range_included(
                 }
             }
 
-            Some(first_start_after - slen..cpos)
+            Some((first_start_after - slen..cpos).into())
         }
     }
 }

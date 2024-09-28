@@ -23,7 +23,7 @@ use sanedit_core::{
     grapheme_category, indent_at_line,
     movement::{next_grapheme_boundary, next_line_end, prev_grapheme_boundary},
     selection_line_starts, width_at_pos, BufferRange, Change, Changes, Cursor, DisplayOptions,
-    GraphemeCategory, Locations,
+    GraphemeCategory, Locations, Range,
 };
 use sanedit_messages::redraw::{Popup, PopupMessage, Severity, Size, StatusMessage};
 
@@ -270,7 +270,7 @@ impl Window {
 
     pub fn ensure_cursor_on_grapheme_boundary(&mut self, buf: &Buffer) {
         // Ensure cursor in buf range
-        self.cursors.contain_to(0..buf.len());
+        self.cursors.contain_to(Range::new(0, buf.len()));
 
         // Ensure cursor in buf grapheme boundary
         let primary = self.cursors.primary_mut();
@@ -341,7 +341,7 @@ impl Window {
             self.bid
         );
 
-        self.cursors.contain_to(0..buf.len());
+        self.cursors.contain_to(Range::new(0, buf.len()));
         // let primary_pos = self.cursors.primary().pos();
         self.view.redraw(buf);
         // self.view.view_to(primary_pos, buf);
@@ -449,7 +449,7 @@ impl Window {
             .map(Cursor::pos)
             .map(|pos| {
                 let next = next_grapheme_boundary(&slice, pos);
-                pos..next
+                Range::new(pos, next)
             })
             .collect();
         let changes = Changes::multi_remove(&ranges);
@@ -518,7 +518,7 @@ impl Window {
             for cursor in self.cursors.cursors() {
                 let cpos = cursor.pos();
                 let pos = prev_grapheme_boundary(&buf.slice(..), cpos);
-                ranges.push(pos..cpos);
+                ranges.push(Range::new(pos, cpos));
             }
 
             ranges
@@ -566,7 +566,7 @@ impl Window {
 
         for cursor in self.cursors.iter() {
             let cpos = cursor.pos();
-            let sel = cursor.selection().unwrap_or(cpos..cpos);
+            let sel = cursor.selection().unwrap_or(Range::new(cpos, cpos));
             let cstarts = selection_line_starts(&slice, sel);
             starts.extend(cstarts);
         }
@@ -593,7 +593,7 @@ impl Window {
                 }
 
                 if off != 0 {
-                    ranges.push(pos..pos + off);
+                    ranges.push(Range::new(pos, pos + off));
                 }
             }
             ranges
@@ -661,7 +661,7 @@ impl Window {
             .map(Cursor::pos)
             .map(|pos| {
                 let npos = next_line_end(&slice, pos);
-                pos..npos
+                Range::new(pos, npos)
             })
             .collect();
 
@@ -692,7 +692,7 @@ impl Window {
             }
 
             if let (Some(start), end) = (start, end) {
-                ranges.push(start..end);
+                ranges.push(Range::new(start, end));
             }
         }
 

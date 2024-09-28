@@ -1,13 +1,12 @@
 use std::{
     cmp::min,
-    ops::Range,
     path::{Path, PathBuf},
     sync::Arc,
 };
 
 use rustc_hash::FxHashMap;
 use sanedit_buffer::PieceTreeView;
-use sanedit_core::{BufferRange, Directory, Filetype};
+use sanedit_core::{BufferRange, Directory, Filetype, Range};
 use sanedit_server::Kill;
 
 use std::fs::File;
@@ -79,7 +78,7 @@ impl Syntax {
     pub fn parse(
         &self,
         pt: &PieceTreeView,
-        mut view: Range<u64>,
+        mut view: BufferRange,
         kill: Kill,
     ) -> anyhow::Result<SyntaxResult> {
         const COMPLETION_ANNOTATION: &str = "completion";
@@ -103,7 +102,7 @@ impl Syntax {
             .into_iter()
             .map(|cap| {
                 let name = self.parser.label_for(cap.id());
-                let mut range = cap.range();
+                let mut range: BufferRange = cap.range().into();
                 range.start += start;
                 range.end += start;
 
@@ -197,7 +196,7 @@ impl Span {
         self.range.end
     }
 
-    pub fn range(&self) -> Range<u64> {
+    pub fn range(&self) -> BufferRange {
         self.range.clone()
     }
 

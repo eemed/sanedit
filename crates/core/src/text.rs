@@ -1,8 +1,8 @@
-use std::{io, ops::Range};
+use std::io;
 
 use crate::{
     grapheme_category, is_word_break, is_word_break_end, BufferRange, Chars, DisplayOptions,
-    GraphemeCategory,
+    GraphemeCategory, Range,
 };
 use sanedit_buffer::{
     utf8::{prev_eol, EndOfLine},
@@ -117,7 +117,7 @@ pub fn word_at_pos(slice: &PieceTreeSlice, pos: u64) -> Option<BufferRange> {
         next_grapheme_boundary(slice, end)
     };
 
-    Some(start..end)
+    Some(Range::new(start, end))
 }
 
 pub fn strip_eol(slice: &mut PieceTreeSlice) {
@@ -166,7 +166,7 @@ pub fn copy_cursors_to_lines(lines: Vec<String>, eol: EndOfLine) -> String {
     result
 }
 
-pub fn selection_line_starts(slice: &PieceTreeSlice, sel: Range<u64>) -> Vec<u64> {
+pub fn selection_line_starts(slice: &PieceTreeSlice, sel: BufferRange) -> Vec<u64> {
     let mut starts = vec![];
     let start = sel.start;
     let sol = start_of_line(slice, start);

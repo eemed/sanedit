@@ -1,7 +1,7 @@
 use sanedit_core::{
     find_range,
     movement::{self, next_line_start},
-    word_at_pos,
+    word_at_pos, Range,
 };
 
 use crate::editor::{hooks::Hook, Editor};
@@ -47,7 +47,8 @@ fn select_line(editor: &mut Editor, id: ClientId) {
         }
 
         changed = true;
-        cursor.select(&(start..end));
+        let range = Range::new(start, end);
+        cursor.select(&range);
         cursor.set_column(0);
     }
 

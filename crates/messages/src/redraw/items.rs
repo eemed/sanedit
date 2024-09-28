@@ -1,5 +1,4 @@
-use std::ops::Range;
-
+use sanedit_core::Range;
 use serde::{Deserialize, Serialize};
 
 use super::Diffable;

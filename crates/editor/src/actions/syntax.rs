@@ -1,11 +1,8 @@
-use sanedit_core::BufferRangeExt as _;
-
 use crate::editor::{hooks::Hook, Editor};
 
 use sanedit_server::ClientId;
 
 use super::jobs::SyntaxParser;
-use sanedit_core::RangeUtils;
 
 /// Prevents syntax highlighting flicker on buffer change, simply adjusts
 /// higlights to a simple solution, highlights are processed in the
@@ -70,7 +67,7 @@ pub(crate) fn prevent_flicker(editor: &mut Editor, id: ClientId) {
 pub(crate) fn reparse_view(editor: &mut Editor, id: ClientId) {
     let (_win, buf) = editor.win_buf(id);
     if let Some(ref ft) = buf.filetype {
-        if editor.syntaxes.contains_key(ft) {
+        if !editor.syntaxes.contains_key(ft) {
             return;
         }
     }
@@ -105,14 +102,17 @@ pub(crate) fn load_syntax(editor: &mut Editor, id: ClientId) {
     let Some(ft) = buf.filetype.clone() else {
         return;
     };
-    let _ = editor.syntaxes.load(&ft);
+
+    if let Err(e) = editor.syntaxes.load(&ft) {
+        log::error!("Failed to load syntax for filetype {ft:?}: {e}");
+    }
 }
 
 #[action("Parse buffer syntax")]
 pub(crate) fn parse_syntax(editor: &mut Editor, id: ClientId) {
     let (_win, buf) = editor.win_buf(id);
     if let Some(ref ft) = buf.filetype {
-        if editor.syntaxes.contains_key(ft) {
+        if !editor.syntaxes.contains_key(ft) {
             return;
         }
     }

@@ -21,7 +21,7 @@ use crate::{
     },
 };
 use sanedit_buffer::{PieceTree, PieceTreeSlice};
-use sanedit_core::{Change, Changes, Diagnostic, Filetype, Group, Item};
+use sanedit_core::{Change, Changes, Diagnostic, Filetype, Group, Item, Range};
 use sanedit_lsp::{
     CodeAction, CompletionItem, FileEdit, LSPClientParams, LSPClientSender, Notification, Position,
     PositionEncoding, PositionRange, Request, RequestKind, RequestResult, Response, TextDiagnostic,
@@ -345,7 +345,7 @@ fn handle_diagnostics(
         let slice = buf.slice(..);
         let start = d.range.start.to_offset(&slice, &enc);
         let end = d.range.end.to_offset(&slice, &enc);
-        let diag = Diagnostic::new(d.severity, start..end, &d.description);
+        let diag = Diagnostic::new(d.severity, (start..end).into(), &d.description);
         buf.diagnostics.push(diag);
     }
 }
@@ -415,7 +415,7 @@ fn edit_document(editor: &mut Editor, id: ClientId, edit: FileEdit) {
         let slice = buf.slice(..);
         let start = edit.range.start.to_offset(&slice, &enc);
         let end = edit.range.end.to_offset(&slice, &enc);
-        let change = Change::replace(start..end, edit.text.as_bytes());
+        let change = Change::replace((start..end).into(), edit.text.as_bytes());
         let mut changes = Changes::from(change);
         // Disable undo point creation for other than first change
         if i != 0 {
@@ -479,7 +479,12 @@ fn read_references(
         let hlend = (end - lstart) as usize;
         let text = String::from(&line);
         let text = text.trim_end();
-        let item = Item::new(text, Some(row), Some(lstart), vec![hlstart..hlend]);
+        let item = Item::new(
+            text,
+            Some(row),
+            Some(lstart),
+            vec![Range::new(hlstart, hlend)],
+        );
 
         group.push(item);
     }

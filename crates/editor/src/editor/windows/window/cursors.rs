@@ -1,7 +1,7 @@
-use std::{cmp::min, ops::Range};
+use std::cmp::min;
 
 use rustc_hash::FxHashSet;
-use sanedit_core::{Cursor, RangeUtils as _};
+use sanedit_core::{BufferRange, Cursor};
 use sanedit_utils::ranges::OverlappingRanges;
 
 #[derive(Debug, Clone)]
@@ -77,7 +77,7 @@ impl Cursors {
         for cursor in &self.cursors {
             match cursor.selection() {
                 Some(range) => {
-                    selections.add(range);
+                    selections.add(range.into());
                 }
                 _ => {
                     singles.insert(cursor.pos());
@@ -87,6 +87,7 @@ impl Cursors {
 
         // Handle ranges
         for range in selections.iter() {
+            let range: BufferRange = range.into();
             let mut i = 0;
             while i < self.cursors.len() {
                 let cursor = &mut self.cursors[i];
@@ -132,7 +133,7 @@ impl Cursors {
 
     /// Make sure all cursors are contained in range
     /// Moves / shrinks cursors if needed
-    pub fn contain_to(&mut self, range: Range<u64>) {
+    pub fn contain_to(&mut self, range: BufferRange) {
         for cursor in &mut self.cursors {
             cursor.contain_to(&range)
         }
@@ -251,7 +252,7 @@ impl From<&Cursors> for Vec<u64> {
     }
 }
 
-impl From<&Cursors> for Vec<Range<u64>> {
+impl From<&Cursors> for Vec<BufferRange> {
     /// Crate Sorted ranges from all of the cursors selections
     fn from(cursors: &Cursors) -> Self {
         let mut selections = vec![];

@@ -75,7 +75,7 @@ impl<'a> TreeNodeMut<'a> {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, Clone)]
 pub(crate) struct Node {
     /// File or directory
     kind: Kind,
@@ -221,6 +221,14 @@ impl Node {
         self.kind == Kind::Directory && self.expanded
     }
 }
+
+impl PartialEq for Node {
+    fn eq(&self, other: &Self) -> bool {
+        (self.kind, &self.local).eq(&(other.kind, &other.local))
+    }
+}
+
+impl Eq for Node {}
 
 impl PartialOrd for Node {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {

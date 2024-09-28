@@ -1,6 +1,6 @@
-use std::{cmp, ffi::OsStr, ops::Range, path::PathBuf};
+use std::{cmp, ffi::OsStr, path::PathBuf};
 
-use sanedit_core::Choice;
+use sanedit_core::{Choice, Range};
 use sanedit_messages::redraw::{self, prompt::Source, Component, Redraw};
 
 use crate::editor::windows::Focus;

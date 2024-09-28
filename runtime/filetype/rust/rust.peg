@@ -6,11 +6,13 @@ visibility = "pub(crate)" / "pub(super)" / "pub";
 @show
 keyword = ( "loop" / "let" / "match" / "if" / "else" / "while" / "break" / "move" / "async" / "dyn" / "return" / "for" / "in" / "as") end / (visibility / "use" / "fn" / "impl" / "struct" / "enum" / "const" / "trait" / "type" / "extern crate"  / "extern" ) end;
 
+
 ############ Mod
 mod_decl = mod [ \t] ws (!nl .)* nl;
 
 @show(keyword)
 mod = "mod";
+
 
 ########## String
 @show(string)
@@ -22,12 +24,13 @@ escape_char     = "0" / "t" / "n" / "r" / "\"" / "\\";
 
 end = &(WHITESPACE / ";" / "<");
 
+
 ############ Unsafe
 @show(operator)
 unsafe = "unsafe" / "await";
 
-############ Type
 
+############ Type
 @show
 type = ref? (tuple / arr / predefined / typename / generic);
 
@@ -77,8 +80,8 @@ const_id = "(" single_const_id ("," single_const_id)*  ")" / single_const_id;
 @completion
 single_const_id = single_id;
 
-############## Variables
 
+############## Variables
 @show
 @whitespaced
 let_decl = let let_id (":" type)? "=";
@@ -95,10 +98,9 @@ let = "let";
 
 
 ######### attrs
-
 @show(preproc)
 @whitespaced
-attrs = "#[" (!"]" .)* "]";
+attrs = "#" "!"? "[" (!"]" .)* "]";
 
 ########## COMMENTS
 @show

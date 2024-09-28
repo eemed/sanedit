@@ -1,6 +1,6 @@
 use anyhow::{anyhow, bail, Result};
 use sanedit_buffer::PieceTreeSlice;
-use sanedit_core::{ChangesKind, RangeUtils as _};
+use sanedit_core::ChangesKind;
 use sanedit_messages::redraw::PopupMessage;
 use std::path::{Path, PathBuf};
 use thiserror::Error;

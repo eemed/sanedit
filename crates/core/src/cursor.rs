@@ -1,6 +1,6 @@
-use std::{cmp, mem, ops::Range};
+use std::{cmp, mem};
 
-use crate::RangeUtils;
+use crate::{BufferRange, Range};
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub struct Cursor {
@@ -23,7 +23,7 @@ impl Cursor {
         }
     }
 
-    pub fn new_select(range: &Range<u64>) -> Cursor {
+    pub fn new_select(range: &BufferRange) -> Cursor {
         Cursor {
             pos: range.end,
             col: None,
@@ -61,7 +61,7 @@ impl Cursor {
         self.anchor = None;
     }
 
-    pub fn select(&mut self, range: &Range<u64>) {
+    pub fn select(&mut self, range: &BufferRange) {
         let is_select = self.anchor.is_some();
         if is_select {
             self.extend_to_include(range);
@@ -72,11 +72,11 @@ impl Cursor {
         }
     }
 
-    pub fn selection(&self) -> Option<Range<u64>> {
+    pub fn selection(&self) -> Option<BufferRange> {
         let anc = self.anchor.as_ref()?;
         let min = self.pos.min(*anc);
         let max = self.pos.max(*anc);
-        Some(min..max)
+        Some(Range::new(min, max))
     }
 
     pub fn start(&self) -> u64 {
@@ -87,13 +87,13 @@ impl Cursor {
         }
     }
 
-    pub fn take_selection(&mut self) -> Option<Range<u64>> {
+    pub fn take_selection(&mut self) -> Option<BufferRange> {
         let sel = self.selection()?;
         self.stop_selection();
         Some(sel)
     }
 
-    pub fn contain_to(&mut self, range: &Range<u64>) {
+    pub fn contain_to(&mut self, range: &BufferRange) {
         if self.pos > range.end {
             self.pos = range.end
         }
@@ -113,7 +113,7 @@ impl Cursor {
         }
     }
 
-    pub fn to_range(&mut self, other: &Range<u64>) {
+    pub fn to_range(&mut self, other: &BufferRange) {
         // Dont extend into a selection in not necessary
         if other.end - other.start <= 1 && self.anchor.is_none() {
             self.goto(other.start);
@@ -136,8 +136,10 @@ impl Cursor {
     /// Extend this cursor to cover the specified range.
     /// If the range is a single value this will not convert the
     /// cursor into an selection.
-    pub fn extend_to_include(&mut self, other: &Range<u64>) {
-        let sel = self.selection().unwrap_or(self.pos()..self.pos() + 1);
+    pub fn extend_to_include(&mut self, other: &BufferRange) {
+        let sel = self
+            .selection()
+            .unwrap_or(Range::new(self.pos(), self.pos() + 1));
         if sel.includes(other) {
             return;
         }

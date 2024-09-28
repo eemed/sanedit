@@ -2,7 +2,7 @@ use std::collections::VecDeque;
 
 use sanedit_buffer::utf8::EndOfLine;
 use sanedit_core::movement::prev_line_start;
-use sanedit_core::{BufferRange, Char, Chars, DisplayOptions};
+use sanedit_core::{BufferRange, Char, Chars, DisplayOptions, Range};
 use sanedit_messages::redraw::{Point, Size};
 
 use crate::editor::buffers::{Buffer, BufferId};
@@ -119,7 +119,7 @@ pub(crate) struct View {
 impl View {
     pub fn new(width: usize, height: usize) -> View {
         View {
-            range: 0..0,
+            range: Range::new(0, 0),
             cells: Self::make_default_cells(width, height),
             width,
             height,
@@ -211,7 +211,7 @@ impl View {
             self.cells[line][col] = Cell::EOF;
         }
 
-        self.range = self.range.start..self.range.start + pos;
+        self.range = Range::new(self.range.start, self.range.start + pos);
     }
 
     pub fn redraw(&mut self, buf: &Buffer) {
@@ -340,7 +340,7 @@ impl View {
             let llen = self.line_len_in_buffer(y);
 
             if cur <= pos && pos < cur + llen {
-                return Some(cur..cur + llen);
+                return Some(Range::new(cur, cur + llen));
             }
 
             cur += llen;

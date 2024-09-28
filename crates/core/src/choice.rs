@@ -1,8 +1,8 @@
-use std::ops::Range;
-
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+use crate::Range;
+
+#[derive(Debug, Clone, PartialOrd, Ord, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub struct Choice {
     pub(super) score: u32,
     /// Underlying option
@@ -43,17 +43,5 @@ impl Choice {
 
     pub fn description(&self) -> &str {
         &self.description
-    }
-}
-
-impl PartialOrd for Choice {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(&other))
-    }
-}
-
-impl Ord for Choice {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        (self.score, &self.value).cmp(&(other.score, &other.value))
     }
 }

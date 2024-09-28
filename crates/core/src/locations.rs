@@ -1,10 +1,11 @@
 use std::{
     cmp::min,
-    ops::Range,
     path::{Path, PathBuf},
 };
 
 use sanedit_utils::{either::Either, sorted_vec::SortedVec};
+
+use crate::Range;
 
 #[derive(Debug, Default)]
 pub struct Locations {
@@ -218,7 +219,7 @@ impl Group {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Item {
     line: Option<u64>,
     /// Absolute offset where data starts
@@ -259,22 +260,6 @@ impl Item {
 
     pub fn highlights(&self) -> &[Range<usize>] {
         &self.highlights
-    }
-}
-
-impl PartialOrd for Item {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl Ord for Item {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        (self.line, self.line_absolute_offset, &self.name).cmp(&(
-            other.line,
-            other.line_absolute_offset,
-            &other.name,
-        ))
     }
 }
 

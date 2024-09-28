@@ -1,6 +1,5 @@
 use std::any::Any;
 use std::error::Error;
-use std::ops::Range;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
@@ -10,7 +9,7 @@ use grep::searcher::{BinaryDetection, Searcher, SearcherBuilder, Sink, SinkMatch
 use rustc_hash::FxHashMap;
 use sanedit_buffer::utf8::EndOfLine;
 use sanedit_buffer::{PieceTree, PieceTreeSlice, PieceTreeView};
-use sanedit_core::{Group, Item, PTSearcher, SearchDirection, SearchKind};
+use sanedit_core::{BufferRange, Group, Item, PTSearcher, Range, SearchDirection, SearchKind};
 use sanedit_utils::either::Either;
 use sanedit_utils::sorted_vec::SortedVec;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
@@ -19,7 +18,6 @@ use crate::actions::jobs::{OptionProvider, CHANNEL_SIZE};
 use crate::actions::locations;
 use crate::common::matcher::MatchOption;
 use crate::editor::{job_broker::KeepInTouch, Editor};
-use sanedit_core::RangeUtils;
 use sanedit_server::{ClientId, Job, JobContext, JobResult};
 
 use super::FileOptionProvider;
@@ -121,14 +119,15 @@ impl Grep {
         let mut line_found_matches = vec![];
 
         for mat in searcher.find_iter(&slice) {
+            let line_range: BufferRange = line.range().into();
             // Found a match at current line, add it and continue search
-            if line.range().includes(&mat.range()) {
+            if line_range.includes(&mat.range()) {
                 // Offsets to line start
                 let Range { mut start, mut end } = mat.range();
                 start -= line.start();
                 end -= line.start();
 
-                line_found_matches.push(start as usize..end as usize);
+                line_found_matches.push((start as usize..end as usize).into());
                 continue;
             }
 
@@ -146,7 +145,7 @@ impl Grep {
             }
 
             // Iterate to the line the match was found at
-            while !line.range().includes(&mat.range()) {
+            while !line_range.includes(&mat.range()) {
                 line = lines.next().unwrap();
                 linen += 1;
             }
@@ -155,7 +154,7 @@ impl Grep {
             let Range { mut start, mut end } = mat.range();
             start -= line.start();
             end -= line.start();
-            line_found_matches.push(start as usize..end as usize);
+            line_found_matches.push((start as usize..end as usize).into());
         }
 
         if !line_found_matches.is_empty() {
@@ -292,7 +291,7 @@ impl<'a> Sink for ResultSender<'a> {
         let mut matches = vec![];
         self.matcher
             .find_iter(mat.bytes(), |m| {
-                matches.push(m.start()..m.end());
+                matches.push((m.start()..m.end()).into());
                 true
             })
             .ok();

@@ -5,12 +5,12 @@ use sanedit_messages::redraw::PopupMessage;
 use std::path::{Path, PathBuf};
 use thiserror::Error;
 
-use sanedit_lsp::{lsp_types, offset_to_position, Notification, RequestKind};
+use sanedit_lsp::{Notification, Position, PositionRange, RequestKind, TextEdit};
 
 use crate::{
     common::cursors::word_at_cursor,
     editor::{
-        buffers::{Buffer, BufferId},
+        buffers::{Buffer, BufferConfig, BufferId},
         hooks::Hook,
         windows::{Focus, Prompt, Window},
         Editor,
@@ -141,7 +141,7 @@ fn restart_lsp(editor: &mut Editor, id: ClientId) {
 fn hover(editor: &mut Editor, id: ClientId) {
     let _ = lsp_request(editor, id, move |win, buf, path, slice, lsp| {
         let offset = win.cursors.primary().pos();
-        let position = offset_to_position(&slice, offset, &lsp.position_encoding());
+        let position = Position::new(offset, &slice, &lsp.position_encoding());
         let kind = RequestKind::Hover { path, position };
         Some((
             kind,
@@ -158,7 +158,7 @@ fn hover(editor: &mut Editor, id: ClientId) {
 fn goto_definition(editor: &mut Editor, id: ClientId) {
     let _ = lsp_request(editor, id, move |win, _buf, path, slice, lsp| {
         let offset = win.cursors.primary().pos();
-        let position = offset_to_position(&slice, offset, &lsp.position_encoding());
+        let position = Position::new(offset, &slice, &lsp.position_encoding());
         let kind = RequestKind::GotoDefinition { path, position };
         Some((kind, vec![]))
     });
@@ -189,22 +189,24 @@ fn sync_document(editor: &mut Editor, id: ClientId) {
         use ChangesKind::*;
         let changes = match edit.changes.kind() {
             Undo | Redo => {
-                vec![sanedit_lsp::Change {
-                    start: lsp_types::Position {
-                        line: 0,
-                        character: 0,
+                vec![sanedit_lsp::TextEdit {
+                    range: PositionRange {
+                        start: Position::default(),
+                        end: Position::new(slice.len(), &slice, &enc),
                     },
-                    end: offset_to_position(&slice, slice.len(), &enc),
                     text: String::from(&slice),
                 }]
             }
             _ => edit
                 .changes
                 .iter()
-                .map(|change| sanedit_lsp::Change {
-                    start: offset_to_position(&slice, change.start(), &enc),
-                    end: offset_to_position(&slice, change.end(), &enc),
-                    text: String::from_utf8(change.text().into()).expect("Change was not UTF8"),
+                .map(|change| {
+                    let start = Position::new(change.start(), &slice, &enc);
+                    let end = Position::new(change.end(), &slice, &enc);
+                    TextEdit {
+                        range: PositionRange { start, end },
+                        text: String::from_utf8(change.text().into()).expect("Change was not UTF8"),
+                    }
                 })
                 .collect(),
         };
@@ -235,7 +237,7 @@ fn sync_document(editor: &mut Editor, id: ClientId) {
 fn complete(editor: &mut Editor, id: ClientId) {
     let _ = lsp_request(editor, id, move |win, buf, path, slice, lsp| {
         let offset = win.cursors.primary().pos();
-        let position = offset_to_position(&slice, offset, &lsp.position_encoding());
+        let position = Position::new(offset, &slice, &lsp.position_encoding());
         let kind = RequestKind::Complete { path, position };
         Some((
             kind,
@@ -252,7 +254,7 @@ fn complete(editor: &mut Editor, id: ClientId) {
 fn references(editor: &mut Editor, id: ClientId) {
     let _ = lsp_request(editor, id, move |win, _buf, path, slice, lsp| {
         let offset = win.cursors.primary().pos();
-        let position = offset_to_position(&slice, offset, &lsp.position_encoding());
+        let position = Position::new(offset, &slice, &lsp.position_encoding());
         let kind = RequestKind::References { path, position };
 
         Some((kind, vec![]))
@@ -263,8 +265,31 @@ fn references(editor: &mut Editor, id: ClientId) {
 fn code_action(editor: &mut Editor, id: ClientId) {
     let _ = lsp_request(editor, id, move |win, buf, path, slice, lsp| {
         let offset = win.cursors.primary().pos();
-        let position = offset_to_position(&slice, offset, &lsp.position_encoding());
+        let position = Position::new(offset, &slice, &lsp.position_encoding());
         let kind = RequestKind::CodeAction { path, position };
+        Some((
+            kind,
+            vec![
+                Constraint::Buffer(buf.id),
+                Constraint::BufferVersion(buf.total_changes_made()),
+            ],
+        ))
+    });
+}
+
+#[action("Format")]
+fn format(editor: &mut Editor, id: ClientId) {
+    let _ = lsp_request(editor, id, move |_win, buf, path, _slice, _lsp| {
+        let BufferConfig {
+            indent_kind,
+            indent_amount,
+            ..
+        } = buf.config;
+        let kind = RequestKind::Format {
+            path,
+            indent_kind,
+            indent_amount: indent_amount.into(),
+        };
         Some((
             kind,
             vec![
@@ -301,7 +326,7 @@ fn rename(editor: &mut Editor, id: ClientId) {
             let Some(lsp) = editor.language_servers.get(&ft) else {
                 return;
             };
-            let position = offset_to_position(&slice, offset, &lsp.position_encoding());
+            let position = Position::new(offset, &slice, &lsp.position_encoding());
             let request = RequestKind::Rename {
                 path,
                 position,

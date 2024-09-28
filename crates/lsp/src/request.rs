@@ -1,5 +1,9 @@
 use std::path::PathBuf;
 
+use sanedit_core::IndentKind;
+
+use crate::util::{CodeAction, Position, TextEdit};
+
 #[derive(Debug, Clone)]
 pub(crate) enum ToLSP {
     Request(Request),
@@ -24,7 +28,7 @@ pub enum Notification {
     },
     DidChange {
         path: PathBuf,
-        changes: Vec<Change>,
+        changes: Vec<TextEdit>,
         version: i32,
     },
     DidClose {
@@ -42,37 +46,35 @@ pub struct Request {
 pub enum RequestKind {
     Hover {
         path: PathBuf,
-        position: lsp_types::Position,
+        position: Position,
     },
     GotoDefinition {
         path: PathBuf,
-        position: lsp_types::Position,
+        position: Position,
     },
     Complete {
         path: PathBuf,
-        position: lsp_types::Position,
+        position: Position,
     },
     References {
         path: PathBuf,
-        position: lsp_types::Position,
+        position: Position,
     },
     CodeAction {
         path: PathBuf,
-        position: lsp_types::Position,
+        position: Position,
     },
     CodeActionResolve {
-        action: lsp_types::CodeAction,
+        action: CodeAction,
     },
     Rename {
         path: PathBuf,
-        position: lsp_types::Position,
+        position: Position,
         new_name: String,
     },
-}
-
-#[derive(Debug, Clone)]
-pub struct Change {
-    pub start: lsp_types::Position,
-    pub end: lsp_types::Position,
-    pub text: String,
+    Format {
+        path: PathBuf,
+        indent_kind: IndentKind,
+        indent_amount: u32,
+    },
 }

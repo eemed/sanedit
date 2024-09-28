@@ -23,9 +23,9 @@ use crate::{
 use sanedit_buffer::{PieceTree, PieceTreeSlice};
 use sanedit_core::{Change, Changes, Diagnostic, Filetype, Group, Item};
 use sanedit_lsp::{
-    lsp_types::{self, CodeAction, Position},
-    position_to_offset, range_to_buffer_range, CompletionItem, LSPClientParams, LSPClientSender,
-    LSPRange, Notification, Reference, Request, RequestKind, RequestResult, Response,
+    CodeAction, CompletionItem, FileEdit, LSPClientParams, LSPClientSender, Notification, Position,
+    PositionEncoding, PositionRange, Request, RequestKind, RequestResult, Response, TextDiagnostic,
+    WorkspaceEdit,
 };
 
 use anyhow::Result;
@@ -92,13 +92,8 @@ impl LSPHandle {
         Ok(())
     }
 
-    pub fn position_encoding(&self) -> lsp_types::PositionEncodingKind {
-        self.sender
-            .init_params()
-            .capabilities
-            .position_encoding
-            .clone()
-            .unwrap_or(lsp_types::PositionEncodingKind::UTF16)
+    pub fn position_encoding(&self) -> PositionEncoding {
+        self.sender.position_encoding()
     }
 }
 
@@ -247,15 +242,13 @@ impl LSP {
             }
             RequestResult::GotoDefinition { path, position } => {
                 if editor.open_file(self.client_id, path).is_ok() {
-                    let enc = editor
-                        .lsp_handle_for(self.client_id)
-                        .map(|x| x.position_encoding());
-                    if let Some(enc) = enc {
-                        let (win, buf) = editor.win_buf_mut(self.client_id);
-                        let slice = buf.slice(..);
-                        let offset = position_to_offset(&slice, position, &enc);
-                        win.goto_offset(offset, buf);
-                    }
+                    let Some(enc) = editor.lsp_handle_for(id).map(|x| x.position_encoding()) else {
+                        return;
+                    };
+                    let (win, buf) = editor.win_buf_mut(self.client_id);
+                    let slice = buf.slice(..);
+                    let offset = position.to_offset(&slice, &enc);
+                    win.goto_offset(offset, buf);
                 }
             }
             RequestResult::Complete {
@@ -266,11 +259,12 @@ impl LSP {
             RequestResult::References { references } => show_references(editor, id, references),
             RequestResult::CodeAction { actions } => code_action(editor, id, actions),
             RequestResult::ResolvedAction { action } => {
-                if let Some(edit) = action.edit {
+                if let Some(edit) = action.workspace_edit() {
                     edit_workspace(editor, id, edit)
                 }
             }
-            RequestResult::Rename { edit } => edit_workspace(editor, id, edit),
+            RequestResult::Rename { workspace_edit } => edit_workspace(editor, id, workspace_edit),
+            RequestResult::Format { edit } => edit_document(editor, id, edit),
             RequestResult::Error { msg } => {
                 log::error!("Got error message from LSP {}: {msg}", self.opts.command);
             }
@@ -296,8 +290,7 @@ fn complete(
     };
     let (win, buf) = editor.win_buf_mut(id);
     let slice = buf.slice(..);
-    let start = position_to_offset(&slice, position, &enc);
-
+    let start = position.to_offset(&slice, &enc);
     let cursor = win.primary_cursor();
     let Some(point) = win.view().point_at_pos(cursor.pos()) else {
         return;
@@ -320,7 +313,7 @@ fn handle_diagnostics(
     _id: ClientId,
     path: PathBuf,
     version: Option<i32>,
-    diags: Vec<LSPRange<Diagnostic>>,
+    diags: Vec<TextDiagnostic>,
 ) {
     let Some(bid) = editor.buffers().find(path) else {
         return;
@@ -345,19 +338,20 @@ fn handle_diagnostics(
         return;
     };
 
-    log::info!("Diagnostics for {bid:?}");
     let buf = editor.buffers_mut().get_mut(bid).unwrap();
     buf.diagnostics.clear();
 
-    for ldiag in diags {
+    for d in diags {
         let slice = buf.slice(..);
-        let diag = ldiag.decode(&slice, &enc);
+        let start = d.range.start.to_offset(&slice, &enc);
+        let end = d.range.end.to_offset(&slice, &enc);
+        let diag = Diagnostic::new(d.severity, start..end, &d.description);
         buf.diagnostics.push(diag);
     }
 }
 
 fn code_action(editor: &mut Editor, id: ClientId, actions: Vec<CodeAction>) {
-    let options: Vec<String> = actions.iter().map(|a| a.title.clone()).collect();
+    let options: Vec<String> = actions.iter().map(|a| a.name().to_string()).collect();
     let (win, _buf) = editor.win_buf_mut(id);
 
     let job = MatcherJob::builder(id)
@@ -373,12 +367,11 @@ fn code_action(editor: &mut Editor, id: ClientId, actions: Vec<CodeAction>) {
                 return;
             };
 
-            let Some(action) = actions.iter().find(|action| action.title == input) else {
+            let Some(action) = actions.iter().find(|action| action.name() == input) else {
                 return;
             };
 
-            let resolved = action.edit.is_some();
-            if !resolved {
+            if !action.is_resolved() {
                 let request = RequestKind::CodeActionResolve {
                     action: action.clone(),
                 };
@@ -394,50 +387,20 @@ fn code_action(editor: &mut Editor, id: ClientId, actions: Vec<CodeAction>) {
     editor.job_broker.request(job);
 }
 
-fn edit_workspace(editor: &mut Editor, id: ClientId, edit: lsp_types::WorkspaceEdit) {
-    let lsp_types::WorkspaceEdit {
-        document_changes, ..
-    } = edit;
-
-    if let Some(doc_changes) = document_changes {
-        match doc_changes {
-            lsp_types::DocumentChanges::Edits(edits) => {
-                for edit in edits {
-                    edit_document(editor, id, edit);
-                }
-            }
-            lsp_types::DocumentChanges::Operations(ops) => {
-                for op in ops {
-                    match op {
-                        lsp_types::DocumentChangeOperation::Op(op) => {
-                            code_action_edit_operation(editor, id, op);
-                        }
-                        lsp_types::DocumentChangeOperation::Edit(edit) => {
-                            edit_document(editor, id, edit);
-                        }
-                    }
-                }
-            }
-        }
+fn edit_workspace(editor: &mut Editor, id: ClientId, edit: WorkspaceEdit) {
+    for edit in edit.file_edits {
+        edit_document(editor, id, edit);
     }
 }
 
-fn code_action_edit_operation(_editor: &mut Editor, _id: ClientId, op: lsp_types::ResourceOp) {
-    match op {
-        lsp_types::ResourceOp::Create(_create) => todo!(),
-        lsp_types::ResourceOp::Rename(_rename) => todo!(),
-        lsp_types::ResourceOp::Delete(_delete) => todo!(),
-    }
-}
-
-fn edit_document(editor: &mut Editor, id: ClientId, edit: lsp_types::TextDocumentEdit) {
-    let path = PathBuf::from(edit.text_document.uri.path().as_str());
+fn edit_document(editor: &mut Editor, id: ClientId, edit: FileEdit) {
+    let path = &edit.path;
     let bid = match editor.buffers().find(&path) {
         Some(bid) => bid,
         None => match editor.create_buffer(id, &path) {
             Ok(bid) => bid,
-            Err(_) => {
-                log::error!("Failed to create buffer for {path:?}");
+            Err(e) => {
+                log::error!("Failed to create buffer for {path:?} {e}");
                 return;
             }
         },
@@ -450,15 +413,9 @@ fn edit_document(editor: &mut Editor, id: ClientId, edit: lsp_types::TextDocumen
     for (i, edit) in edit.edits.into_iter().enumerate() {
         let buf = editor.buffers_mut().get_mut(bid).unwrap();
         let slice = buf.slice(..);
-        let text_edit = {
-            match edit {
-                lsp_types::OneOf::Left(item) => item,
-                lsp_types::OneOf::Right(item) => item.text_edit,
-            }
-        };
-
-        let range = range_to_buffer_range(&slice, text_edit.range, &enc);
-        let change = Change::replace(range, text_edit.new_text.as_bytes());
+        let start = edit.range.start.to_offset(&slice, &enc);
+        let end = edit.range.end.to_offset(&slice, &enc);
+        let change = Change::replace(start..end, edit.text.as_bytes());
         let mut changes = Changes::from(change);
         // Disable undo point creation for other than first change
         if i != 0 {
@@ -477,7 +434,7 @@ fn edit_document(editor: &mut Editor, id: ClientId, edit: lsp_types::TextDocumen
 fn show_references(
     editor: &mut Editor,
     id: ClientId,
-    references: BTreeMap<PathBuf, Vec<Reference>>,
+    references: BTreeMap<PathBuf, Vec<PositionRange>>,
 ) {
     let Some(enc) = editor
         .lsp_handle_for(id)
@@ -507,14 +464,14 @@ fn show_references(
 fn read_references(
     slice: &PieceTreeSlice,
     path: &Path,
-    references: &[Reference],
-    enc: &lsp_types::PositionEncodingKind,
+    references: &[PositionRange],
+    enc: &PositionEncoding,
 ) -> Group {
     let mut group = Group::new(path);
 
     for re in references {
-        let start = position_to_offset(slice, re.start, enc);
-        let end = position_to_offset(slice, re.end, enc);
+        let start = re.start.to_offset(slice, enc);
+        let end = re.end.to_offset(slice, enc);
         let (row, line) = slice.line_at(start);
         let lstart = line.start();
 

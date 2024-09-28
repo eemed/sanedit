@@ -145,10 +145,11 @@ pub(crate) fn client_capabilities() -> lsp_types::ClientCapabilities {
                     }),
                     ..Default::default()
                 }),
-                window: Some(lsp_types::WindowClientCapabilities {
-                    work_done_progress: Some(true),
-                    ..Default::default()
-                }),
+                // window: Some(lsp_types::WindowClientCapabilities {
+                //     work_done_progress: Some(true),
+                //     ..Default::default()
+                // }),
+                window: None,
                 general: Some(lsp_types::GeneralClientCapabilities {
                     position_encodings: Some(vec![
                         PositionEncodingKind::UTF8,

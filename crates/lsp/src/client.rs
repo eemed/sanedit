@@ -5,13 +5,15 @@ use std::{path::PathBuf, process::Stdio};
 use crate::jsonrpc::{JsonNotification, JsonRequest};
 use crate::process::{ProcessHandler, ServerRequest};
 use crate::request::{Notification, RequestKind, ToLSP};
-use crate::response::{NotificationResult, Reference};
-use crate::util::path_to_uri;
-use crate::{Change, CompletionItem, LSPRange, Request, RequestResult, Response};
+use crate::response::NotificationResult;
+use crate::util::{path_to_uri, CodeAction, CompletionItem, FileEdit, Position};
+use crate::{
+    PositionEncoding, PositionRange, Request, RequestResult, Response, TextDiagnostic, TextEdit,
+};
 
 use anyhow::{anyhow, Result};
 use lsp_types::notification::Notification as _;
-use sanedit_core::{Diagnostic, Severity};
+use sanedit_core::IndentKind;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 use tokio::sync::oneshot;
 use tokio::{io::BufReader, process::Command};
@@ -109,8 +111,13 @@ impl LSPClientSender {
         let _ = self.sender.blocking_send(ToLSP::Notification(notif));
     }
 
-    pub fn init_params(&self) -> &lsp_types::InitializeResult {
-        &self.init_params
+    pub fn position_encoding(&self) -> PositionEncoding {
+        self.init_params
+            .capabilities
+            .position_encoding
+            .clone()
+            .unwrap_or(lsp_types::PositionEncodingKind::UTF16)
+            .into()
     }
 }
 
@@ -174,7 +181,7 @@ impl LSPClient {
                     diagnostics: params
                         .diagnostics
                         .into_iter()
-                        .map(to_core_diagnostic)
+                        .map(TextDiagnostic::from)
                         .collect(),
                 };
 
@@ -188,26 +195,6 @@ impl LSPClient {
         }
 
         Ok(())
-    }
-}
-
-fn to_core_diagnostic(diag: lsp_types::Diagnostic) -> LSPRange<Diagnostic> {
-    let severity = diag
-        .severity
-        .map(|sev| match sev {
-            lsp_types::DiagnosticSeverity::ERROR => Severity::Error,
-            lsp_types::DiagnosticSeverity::INFORMATION => Severity::Info,
-            lsp_types::DiagnosticSeverity::WARNING => Severity::Warn,
-            lsp_types::DiagnosticSeverity::HINT => Severity::Hint,
-            _ => unreachable!(),
-        })
-        .unwrap_or(Severity::Hint);
-
-    let diagnostic = Diagnostic::new(severity, 0..0, &diag.message);
-
-    LSPRange {
-        t: diagnostic,
-        range: diag.range,
     }
 }
 
@@ -242,6 +229,14 @@ impl Handler {
                     position,
                     new_name,
                 } => self.rename(req.id, path, position, new_name).await?,
+                RequestKind::Format {
+                    path,
+                    indent_kind,
+                    indent_amount,
+                } => {
+                    self.format(req.id, path, indent_kind, indent_amount)
+                        .await?
+                }
             },
             ToLSP::Notification(notif) => match notif {
                 Notification::DidOpen {
@@ -261,11 +256,56 @@ impl Handler {
         Ok(())
     }
 
+    async fn format(
+        &mut self,
+        id: u32,
+        path: PathBuf,
+        indent_kind: IndentKind,
+        indent_amount: u32,
+    ) -> Result<()> {
+        let params = lsp_types::DocumentFormattingParams {
+            text_document: lsp_types::TextDocumentIdentifier {
+                uri: path_to_uri(&path),
+            },
+            options: lsp_types::FormattingOptions {
+                tab_size: indent_amount,
+                insert_spaces: matches!(indent_kind, IndentKind::Space),
+                properties: Default::default(),
+                trim_trailing_whitespace: Some(true),
+                insert_final_newline: Some(true),
+                trim_final_newlines: Some(true),
+            },
+            work_done_progress_params: lsp_types::WorkDoneProgressParams {
+                work_done_token: None,
+            },
+        };
+
+        let response = self
+            .request::<lsp_types::request::Formatting>(id, &params)
+            .await?;
+
+        let result = response.ok_or(anyhow!("No formatting response"))?;
+        let _ = self
+            .response
+            .send(Response::Request {
+                id,
+                result: RequestResult::Format {
+                    edit: FileEdit {
+                        path,
+                        edits: result.into_iter().map(TextEdit::from).collect(),
+                    },
+                },
+            })
+            .await;
+
+        Ok(())
+    }
+
     async fn rename(
         &mut self,
         id: u32,
         path: PathBuf,
-        position: lsp_types::Position,
+        position: Position,
         new_name: String,
     ) -> Result<()> {
         let params = lsp_types::RenameParams {
@@ -273,7 +313,7 @@ impl Handler {
                 text_document: lsp_types::TextDocumentIdentifier {
                     uri: path_to_uri(&path),
                 },
-                position,
+                position: position.as_lsp(),
             },
             new_name,
             work_done_progress_params: lsp_types::WorkDoneProgressParams {
@@ -285,46 +325,44 @@ impl Handler {
             .request::<lsp_types::request::Rename>(id, &params)
             .await?;
 
-        let result = response.ok_or(anyhow!("No rename response"))?;
-        let _ = self
-            .response
-            .send(Response::Request {
-                id,
-                result: RequestResult::Rename { edit: result },
-            })
-            .await;
+        let _result = response.ok_or(anyhow!("No rename response"))?;
+        todo!();
+        // let _ = self
+        //     .response
+        //     .send(Response::Request {
+        //         id,
+        //         result: RequestResult::Rename { edit: result },
+        //     })
+        //     .await;
 
-        Ok(())
+        // Ok(())
     }
 
-    async fn code_action_resolve(&mut self, id: u32, action: lsp_types::CodeAction) -> Result<()> {
+    async fn code_action_resolve(&mut self, id: u32, action: CodeAction) -> Result<()> {
         let response = self
-            .request::<lsp_types::request::CodeActionResolveRequest>(id, &action)
+            .request::<lsp_types::request::CodeActionResolveRequest>(id, &action.action)
             .await?;
 
         let _ = self
             .response
             .send(Response::Request {
                 id,
-                result: RequestResult::ResolvedAction { action: response },
+                result: RequestResult::ResolvedAction {
+                    action: CodeAction { action: response },
+                },
             })
             .await;
         Ok(())
     }
 
-    async fn code_action(
-        &mut self,
-        id: u32,
-        path: PathBuf,
-        position: lsp_types::Position,
-    ) -> Result<()> {
+    async fn code_action(&mut self, id: u32, path: PathBuf, position: Position) -> Result<()> {
         let params = lsp_types::CodeActionParams {
             text_document: lsp_types::TextDocumentIdentifier {
                 uri: path_to_uri(&path),
             },
             range: lsp_types::Range {
-                start: position,
-                end: position,
+                start: position.as_lsp(),
+                end: position.as_lsp(),
             },
             context: lsp_types::CodeActionContext {
                 diagnostics: vec![],
@@ -349,7 +387,7 @@ impl Handler {
             match cmd {
                 lsp_types::CodeActionOrCommand::Command(_cmd) => todo!(),
                 lsp_types::CodeActionOrCommand::CodeAction(action) => {
-                    actions.push(action);
+                    actions.push(CodeAction { action });
                 }
             }
         }
@@ -368,16 +406,13 @@ impl Handler {
     async fn did_change_document(
         &mut self,
         path: PathBuf,
-        changes: Vec<Change>,
+        changes: Vec<TextEdit>,
         version: i32,
     ) -> Result<()> {
         let content_changes = changes
             .into_iter()
             .map(|change| lsp_types::TextDocumentContentChangeEvent {
-                range: Some(lsp_types::Range {
-                    start: change.start,
-                    end: change.end,
-                }),
+                range: Some(change.range.into()),
                 text: change.text,
                 range_length: None,
             })
@@ -395,18 +430,13 @@ impl Handler {
             .await
     }
 
-    async fn complete(
-        &mut self,
-        id: u32,
-        path: PathBuf,
-        position: lsp_types::Position,
-    ) -> Result<()> {
+    async fn complete(&mut self, id: u32, path: PathBuf, position: Position) -> Result<()> {
         let params = lsp_types::CompletionParams {
             text_document_position: lsp_types::TextDocumentPositionParams {
                 text_document: lsp_types::TextDocumentIdentifier {
                     uri: path_to_uri(&path),
                 },
-                position,
+                position: position.as_lsp(),
             },
             work_done_progress_params: lsp_types::WorkDoneProgressParams {
                 work_done_token: None,
@@ -467,18 +497,13 @@ impl Handler {
         Ok(())
     }
 
-    async fn goto_definition(
-        &mut self,
-        id: u32,
-        path: PathBuf,
-        position: lsp_types::Position,
-    ) -> Result<()> {
+    async fn goto_definition(&mut self, id: u32, path: PathBuf, position: Position) -> Result<()> {
         let params = lsp_types::GotoDefinitionParams {
             text_document_position_params: lsp_types::TextDocumentPositionParams {
                 text_document: lsp_types::TextDocumentIdentifier {
                     uri: path_to_uri(&path),
                 },
-                position,
+                position: position.as_lsp(),
             },
             work_done_progress_params: lsp_types::WorkDoneProgressParams {
                 work_done_token: None,
@@ -511,20 +536,23 @@ impl Handler {
             .response
             .send(Response::Request {
                 id,
-                result: RequestResult::GotoDefinition { path, position },
+                result: RequestResult::GotoDefinition {
+                    path,
+                    position: position.into(),
+                },
             })
             .await;
 
         Ok(())
     }
 
-    async fn hover(&mut self, id: u32, path: PathBuf, position: lsp_types::Position) -> Result<()> {
+    async fn hover(&mut self, id: u32, path: PathBuf, position: Position) -> Result<()> {
         let params = lsp_types::HoverParams {
             text_document_position_params: lsp_types::TextDocumentPositionParams {
                 text_document: lsp_types::TextDocumentIdentifier {
                     uri: path_to_uri(&path),
                 },
-                position,
+                position: position.as_lsp(),
             },
             work_done_progress_params: lsp_types::WorkDoneProgressParams {
                 work_done_token: None,
@@ -589,18 +617,13 @@ impl Handler {
         Ok(())
     }
 
-    async fn show_references(
-        &mut self,
-        id: u32,
-        path: PathBuf,
-        position: lsp_types::Position,
-    ) -> Result<()> {
+    async fn show_references(&mut self, id: u32, path: PathBuf, position: Position) -> Result<()> {
         let params = lsp_types::ReferenceParams {
             text_document_position: lsp_types::TextDocumentPositionParams {
                 text_document: lsp_types::TextDocumentIdentifier {
                     uri: path_to_uri(&path),
                 },
-                position,
+                position: position.as_lsp(),
             },
             work_done_progress_params: lsp_types::WorkDoneProgressParams {
                 work_done_token: None,
@@ -619,14 +642,10 @@ impl Handler {
         let locations = response.ok_or(anyhow!("No references response"))?;
         let mut references = BTreeMap::new();
         for loc in locations {
-            let re = Reference {
-                start: loc.range.start,
-                end: loc.range.end,
-            };
             let path = PathBuf::from(loc.uri.path().as_str());
             let entry = references.entry(path);
-            let value: &mut Vec<Reference> = entry.or_default();
-            value.push(re);
+            let value: &mut Vec<PositionRange> = entry.or_default();
+            value.push(loc.range.into());
         }
 
         self.response

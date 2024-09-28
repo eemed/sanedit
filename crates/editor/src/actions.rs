@@ -270,6 +270,7 @@ pub(crate) const WINDOW_COMMANDS: &[Action] = &[
     lsp::show_diagnostics,
     lsp::stop_lsp,
     lsp::restart_lsp,
+    lsp::format,
 
     popup::close,
 

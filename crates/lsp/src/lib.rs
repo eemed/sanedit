@@ -13,8 +13,9 @@ pub mod lsp_types {
 }
 
 pub use client::{LSPClientParams, LSPClientSender};
-pub use request::{Change, Notification, Request, RequestKind};
-pub use response::{
-    offset_to_position, position_to_offset, range_to_buffer_range, CompletionItem, LSPPosition,
-    LSPRange, NotificationResult, Reference, RequestResult, Response,
+pub use request::{Notification, Request, RequestKind};
+pub use response::{NotificationResult, RequestResult, Response};
+pub use util::{
+    CodeAction, CompletionItem, FileEdit, Position, PositionEncoding, PositionRange,
+    TextDiagnostic, TextEdit, WorkspaceEdit,
 };

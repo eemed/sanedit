@@ -2,6 +2,7 @@
 mod capabilities;
 
 mod client;
+mod error;
 mod jsonrpc;
 mod process;
 mod request;

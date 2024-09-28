@@ -2,11 +2,11 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use crate::capabilities::client_capabilities;
+use crate::error::LSPError;
 use crate::jsonrpc::{read_from, JsonNotification, JsonRequest, JsonResponse};
 use crate::util::path_to_uri;
 use crate::LSPClientParams;
 
-use anyhow::{anyhow, bail, Result};
 use lsp_types::notification::Notification;
 use lsp_types::request::Request as _;
 use sanedit_utils::either::Either;
@@ -20,7 +20,7 @@ use tokio::{io::BufReader, process::Child};
 pub(crate) enum ServerRequest {
     Request {
         json: JsonRequest,
-        answer: Sender<Result<Value>>,
+        answer: Sender<Result<Value, String>>,
     },
     Notification {
         json: JsonNotification,
@@ -36,29 +36,29 @@ pub(crate) struct ProcessHandler {
 
     pub(crate) notification_sender: Sender<JsonNotification>,
     pub(crate) receiver: Receiver<ServerRequest>,
-    pub(crate) initialized: Option<oneshot::Sender<Result<lsp_types::InitializeResult>>>,
+    pub(crate) initialized: Option<oneshot::Sender<Result<lsp_types::InitializeResult, LSPError>>>,
 
-    pub(crate) in_flight: BTreeMap<u32, Sender<Result<Value>>>,
+    pub(crate) in_flight: BTreeMap<u32, Sender<Result<Value, String>>>,
 }
 
 impl ProcessHandler {
-    pub async fn run(mut self) -> Result<()> {
+    pub async fn run(mut self) -> Result<(), LSPError> {
         let init_result = self.initialize().await;
         let ok = init_result.is_ok();
         let init = std::mem::take(&mut self.initialized).unwrap();
         let _ = init.send(init_result);
 
         if !ok {
-            bail!("Initialization failed");
+            return Err(LSPError::Initialize);
         }
 
         loop {
             tokio::select! {
                 msg = self.receiver.recv() => {
-                    let msg = msg.ok_or(anyhow!("LSP sender is closed"))?;
                     match msg {
-                        ServerRequest::Request { json, answer } => self.handle_request(json, answer).await?,
-                        ServerRequest::Notification { json } => self.handle_notification(json).await?,
+                        Some(ServerRequest::Request { json, answer }) => self.handle_request(json, answer).await?,
+                        Some(ServerRequest::Notification { json }) => self.handle_notification(json).await?,
+                        _ => {}
                     }
                 }
                 json = read_from(&mut self.stdout) => {
@@ -75,40 +75,43 @@ impl ProcessHandler {
     async fn handle_request(
         &mut self,
         json: JsonRequest,
-        answer: Sender<Result<Value>>,
-    ) -> Result<()> {
+        answer: Sender<Result<Value, String>>,
+    ) -> Result<(), LSPError> {
         let id = json.id();
         json.write_to(&mut self.stdin).await?;
         self.in_flight.insert(id, answer);
         Ok(())
     }
 
-    async fn handle_notification(&mut self, json: JsonNotification) -> Result<()> {
+    async fn handle_notification(&mut self, json: JsonNotification) -> Result<(), LSPError> {
         json.write_to(&mut self.stdin).await?;
         Ok(())
     }
 
-    async fn handle_response_notification(&mut self, notif: JsonNotification) -> Result<()> {
+    async fn handle_response_notification(
+        &mut self,
+        notif: JsonNotification,
+    ) -> Result<(), LSPError> {
         let _ = self.notification_sender.send(notif).await;
         Ok(())
     }
 
-    async fn handle_response(&mut self, response: JsonResponse) -> Result<()> {
+    async fn handle_response(&mut self, response: JsonResponse) -> Result<(), LSPError> {
         if response.result.is_none() && response.error.is_none() {
             return Ok(());
         }
 
-        let sender = self.in_flight.remove(&response.id).ok_or(anyhow!(
-            "Got a response to non existent request {}",
-            response.id
-        ))?;
+        let sender = self
+            .in_flight
+            .remove(&response.id)
+            .ok_or(LSPError::ResponseToNonexistentRequest)?;
 
-        let result = response.result.ok_or(anyhow!("{:?}", response.error));
+        let result = response.result.ok_or(format!("{:?}", response.error));
         let _ = sender.send(result).await;
         Ok(())
     }
 
-    async fn initialize(&mut self) -> Result<lsp_types::InitializeResult> {
+    async fn initialize(&mut self) -> Result<lsp_types::InitializeResult, LSPError> {
         // Send initialize request
         let params = lsp_types::InitializeParams {
             process_id: std::process::id().into(),
@@ -133,9 +136,7 @@ impl ProcessHandler {
 
         // Read server response
         let response = self.read_response().await?;
-        let value = response
-            .result
-            .ok_or(anyhow!("Server responded with empty initialize result"))?;
+        let value = response.result.ok_or(LSPError::Initialize)?;
         let result = serde_json::from_value::<lsp_types::InitializeResult>(value)?;
 
         // Send initialized notification
@@ -146,10 +147,10 @@ impl ProcessHandler {
         Ok(result)
     }
 
-    pub async fn read_response(&mut self) -> Result<JsonResponse> {
+    pub async fn read_response(&mut self) -> Result<JsonResponse, LSPError> {
         let response = read_from(&mut self.stdout).await?;
         if response.is_right() {
-            bail!("Got notification instead of response")
+            return Err(LSPError::InvalidResponse);
         }
 
         Ok(response.take_left().unwrap())

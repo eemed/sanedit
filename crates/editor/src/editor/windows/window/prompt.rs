@@ -192,6 +192,7 @@ impl Prompt {
             }
             Progress(opts) => {
                 if let MatchedOptions::Options { matched, clear_old } = opts {
+                    log::info!("clear: {}, Matched: {matched:?}", clear_old);
                     if clear_old {
                         win.prompt.clear_choices();
                     }

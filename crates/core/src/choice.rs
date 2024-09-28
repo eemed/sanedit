@@ -2,7 +2,7 @@ use std::ops::Range;
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Choice {
     pub(super) score: u32,
     /// Underlying option
@@ -46,17 +46,9 @@ impl Choice {
     }
 }
 
-impl PartialEq for Choice {
-    fn eq(&self, other: &Self) -> bool {
-        (self.score, &self.value) == (other.score, &other.value)
-    }
-}
-
-impl Eq for Choice {}
-
 impl PartialOrd for Choice {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(other))
+        Some(self.cmp(&other))
     }
 }
 

@@ -218,7 +218,7 @@ impl Group {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Item {
     line: Option<u64>,
     /// Absolute offset where data starts
@@ -261,18 +261,6 @@ impl Item {
         &self.highlights
     }
 }
-
-impl PartialEq for Item {
-    fn eq(&self, other: &Self) -> bool {
-        (self.line, self.line_absolute_offset, &self.name).eq(&(
-            other.line,
-            other.line_absolute_offset,
-            &other.name,
-        ))
-    }
-}
-
-impl Eq for Item {}
 
 impl PartialOrd for Item {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {

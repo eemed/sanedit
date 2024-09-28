@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 use std::{path::PathBuf, process::Stdio};
 
+use crate::error::LSPError;
 use crate::jsonrpc::{JsonNotification, JsonRequest};
 use crate::process::{ProcessHandler, ServerRequest};
 use crate::request::{Notification, RequestKind, ToLSP};
@@ -11,7 +12,6 @@ use crate::{
     PositionEncoding, PositionRange, Request, RequestResult, Response, TextDiagnostic, TextEdit,
 };
 
-use anyhow::{anyhow, Result};
 use lsp_types::notification::Notification as _;
 use sanedit_core::IndentKind;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
@@ -28,7 +28,7 @@ pub struct LSPClientParams {
 }
 
 impl LSPClientParams {
-    pub async fn spawn(self) -> Result<(LSPClientSender, LSPClientReader)> {
+    pub async fn spawn(self) -> Result<(LSPClientSender, LSPClientReader), LSPError> {
         // Spawn server
         let mut cmd = Command::new(&self.run_command)
             .args(&*self.run_args)
@@ -38,9 +38,9 @@ impl LSPClientParams {
             .kill_on_drop(true)
             .spawn()?;
 
-        let stdin = cmd.stdin.take().ok_or(anyhow!("Failed to take stdin"))?;
-        let stdout = BufReader::new(cmd.stdout.take().ok_or(anyhow!("Failed to take stdout"))?);
-        let stderr = BufReader::new(cmd.stderr.take().ok_or(anyhow!("Failed to take stderr"))?);
+        let stdin = cmd.stdin.take().ok_or(LSPError::Initialize)?;
+        let stdout = BufReader::new(cmd.stdout.take().ok_or(LSPError::Initialize)?);
+        let stderr = BufReader::new(cmd.stderr.take().ok_or(LSPError::Initialize)?);
         let (server_notif_sender, server_notif_recv) = channel(256);
         let (server_sender, server_recv) = channel(256);
         let (req_sender, req_receiver) = channel(256);
@@ -63,7 +63,11 @@ impl LSPClientParams {
         tokio::spawn(server.run());
 
         // Wait for initialization
-        let init_params = Arc::new(init_recv.await??);
+        let init = init_recv
+            .await
+            .map_err(|_| LSPError::Initialize)?
+            .map_err(|_| LSPError::Initialize)?;
+        let init_params = Arc::new(init);
 
         let client = LSPClient {
             params,
@@ -130,11 +134,12 @@ struct LSPClient {
 }
 
 impl LSPClient {
-    pub async fn run(mut self) -> Result<()> {
+    pub async fn run(mut self) -> Result<(), LSPError> {
         loop {
             tokio::select! {
+                // Handle user requests/notifications
                 req = self.receiver.recv() => {
-                    let req = req.ok_or(anyhow!("Channel closed"))?;
+                    let req = req.ok_or(LSPError::Receive)?;
                     let mut handler = Handler {
                         params: self.params.clone(),
                         server: self.server_sender.clone(),
@@ -144,8 +149,6 @@ impl LSPClient {
                     tokio::spawn(async move {
                         let id = req.id();
                         if let Err(e) = handler.run(req).await {
-                            log::error!("Failed handling request: {e}");
-
                             // Send error response if failed request
                             if let Some(id) = id {
                                 let _ = handler
@@ -161,15 +164,16 @@ impl LSPClient {
                         }
                     });
                 }
+                // Handle notifications sent by LSP
                 notif = self.server_notification_receiver.recv() => {
-                    let notif = notif.ok_or(anyhow!("Notification channel closed"))?;
+                    let notif = notif.ok_or(LSPError::Receive)?;
                     self.handle_notification(notif).await?;
                 }
             }
         }
     }
 
-    async fn handle_notification(&mut self, notif: JsonNotification) -> Result<()> {
+    async fn handle_notification(&mut self, notif: JsonNotification) -> Result<(), LSPError> {
         match notif.method.as_str() {
             lsp_types::notification::PublishDiagnostics::METHOD => {
                 let params =
@@ -205,7 +209,7 @@ struct Handler {
 }
 
 impl Handler {
-    pub async fn run(&mut self, msg: ToLSP) -> Result<()> {
+    pub async fn run(&mut self, msg: ToLSP) -> Result<(), LSPError> {
         match msg {
             ToLSP::Request(req) => match req.kind {
                 RequestKind::Hover { path, position } => self.hover(req.id, path, position).await?,
@@ -262,7 +266,7 @@ impl Handler {
         path: PathBuf,
         indent_kind: IndentKind,
         indent_amount: u32,
-    ) -> Result<()> {
+    ) -> Result<(), LSPError> {
         let params = lsp_types::DocumentFormattingParams {
             text_document: lsp_types::TextDocumentIdentifier {
                 uri: path_to_uri(&path),
@@ -284,9 +288,8 @@ impl Handler {
             .request::<lsp_types::request::Formatting>(id, &params)
             .await?;
 
-        let result = response.ok_or(anyhow!("No formatting response"))?;
-        let _ = self
-            .response
+        let result = response.ok_or(LSPError::EmptyResponse)?;
+        self.response
             .send(Response::Request {
                 id,
                 result: RequestResult::Format {
@@ -296,7 +299,7 @@ impl Handler {
                     },
                 },
             })
-            .await;
+            .await?;
 
         Ok(())
     }
@@ -307,7 +310,7 @@ impl Handler {
         path: PathBuf,
         position: Position,
         new_name: String,
-    ) -> Result<()> {
+    ) -> Result<(), LSPError> {
         let params = lsp_types::RenameParams {
             text_document_position: lsp_types::TextDocumentPositionParams {
                 text_document: lsp_types::TextDocumentIdentifier {
@@ -325,37 +328,41 @@ impl Handler {
             .request::<lsp_types::request::Rename>(id, &params)
             .await?;
 
-        let _result = response.ok_or(anyhow!("No rename response"))?;
-        todo!();
-        // let _ = self
-        //     .response
-        //     .send(Response::Request {
-        //         id,
-        //         result: RequestResult::Rename { edit: result },
-        //     })
-        //     .await;
+        let result = response.ok_or(LSPError::EmptyResponse)?;
+        self.response
+            .send(Response::Request {
+                id,
+                result: RequestResult::Rename {
+                    workspace_edit: result.into(),
+                },
+            })
+            .await?;
 
-        // Ok(())
+        Ok(())
     }
 
-    async fn code_action_resolve(&mut self, id: u32, action: CodeAction) -> Result<()> {
+    async fn code_action_resolve(&mut self, id: u32, action: CodeAction) -> Result<(), LSPError> {
         let response = self
             .request::<lsp_types::request::CodeActionResolveRequest>(id, &action.action)
             .await?;
 
-        let _ = self
-            .response
+        self.response
             .send(Response::Request {
                 id,
                 result: RequestResult::ResolvedAction {
                     action: CodeAction { action: response },
                 },
             })
-            .await;
+            .await?;
         Ok(())
     }
 
-    async fn code_action(&mut self, id: u32, path: PathBuf, position: Position) -> Result<()> {
+    async fn code_action(
+        &mut self,
+        id: u32,
+        path: PathBuf,
+        position: Position,
+    ) -> Result<(), LSPError> {
         let params = lsp_types::CodeActionParams {
             text_document: lsp_types::TextDocumentIdentifier {
                 uri: path_to_uri(&path),
@@ -380,7 +387,7 @@ impl Handler {
         let response = self
             .request::<lsp_types::request::CodeActionRequest>(id, &params)
             .await?;
-        let response = response.ok_or(anyhow!("No code action response"))?;
+        let response = response.ok_or(LSPError::EmptyResponse)?;
         let mut actions = vec![];
 
         for cmd in response {
@@ -392,13 +399,12 @@ impl Handler {
             }
         }
 
-        let _ = self
-            .response
+        self.response
             .send(Response::Request {
                 id,
                 result: RequestResult::CodeAction { actions },
             })
-            .await;
+            .await?;
 
         Ok(())
     }
@@ -408,7 +414,7 @@ impl Handler {
         path: PathBuf,
         changes: Vec<TextEdit>,
         version: i32,
-    ) -> Result<()> {
+    ) -> Result<(), LSPError> {
         let content_changes = changes
             .into_iter()
             .map(|change| lsp_types::TextDocumentContentChangeEvent {
@@ -430,7 +436,12 @@ impl Handler {
             .await
     }
 
-    async fn complete(&mut self, id: u32, path: PathBuf, position: Position) -> Result<()> {
+    async fn complete(
+        &mut self,
+        id: u32,
+        path: PathBuf,
+        position: Position,
+    ) -> Result<(), LSPError> {
         let params = lsp_types::CompletionParams {
             text_document_position: lsp_types::TextDocumentPositionParams {
                 text_document: lsp_types::TextDocumentIdentifier {
@@ -453,7 +464,7 @@ impl Handler {
         let response = self
             .request::<lsp_types::request::Completion>(id, &params)
             .await?;
-        let response = response.ok_or(anyhow!("No completion response"))?;
+        let response = response.ok_or(LSPError::EmptyResponse)?;
 
         let mut results = vec![];
         match response {
@@ -482,8 +493,7 @@ impl Handler {
             }
         }
 
-        let _ = self
-            .response
+        self.response
             .send(Response::Request {
                 id,
                 result: RequestResult::Complete {
@@ -492,12 +502,17 @@ impl Handler {
                     results,
                 },
             })
-            .await;
+            .await?;
 
         Ok(())
     }
 
-    async fn goto_definition(&mut self, id: u32, path: PathBuf, position: Position) -> Result<()> {
+    async fn goto_definition(
+        &mut self,
+        id: u32,
+        path: PathBuf,
+        position: Position,
+    ) -> Result<(), LSPError> {
         let params = lsp_types::GotoDefinitionParams {
             text_document_position_params: lsp_types::TextDocumentPositionParams {
                 text_document: lsp_types::TextDocumentIdentifier {
@@ -516,7 +531,7 @@ impl Handler {
         let response = self
             .request::<lsp_types::request::GotoDefinition>(id, &params)
             .await?;
-        let response = response.ok_or(anyhow!("No goto definition response"))?;
+        let response = response.ok_or(LSPError::EmptyResponse)?;
 
         let path;
         let position;
@@ -525,15 +540,14 @@ impl Handler {
             lsp_types::GotoDefinitionResponse::Array(locations) => {
                 let location = locations
                     .first()
-                    .ok_or(anyhow!("Goto definition response found no locations"))?;
+                    .expect("Goto definition response found no locations");
                 path = PathBuf::from(location.uri.path().as_str());
                 position = location.range.start;
             }
             lsp_types::GotoDefinitionResponse::Link(_) => todo!("Link gotodef"),
         }
 
-        let _ = self
-            .response
+        self.response
             .send(Response::Request {
                 id,
                 result: RequestResult::GotoDefinition {
@@ -541,12 +555,12 @@ impl Handler {
                     position: position.into(),
                 },
             })
-            .await;
+            .await?;
 
         Ok(())
     }
 
-    async fn hover(&mut self, id: u32, path: PathBuf, position: Position) -> Result<()> {
+    async fn hover(&mut self, id: u32, path: PathBuf, position: Position) -> Result<(), LSPError> {
         let params = lsp_types::HoverParams {
             text_document_position_params: lsp_types::TextDocumentPositionParams {
                 text_document: lsp_types::TextDocumentIdentifier {
@@ -562,7 +576,7 @@ impl Handler {
         let response = self
             .request::<lsp_types::request::HoverRequest>(id, &params)
             .await?;
-        let response = response.ok_or(anyhow!("No hover response"))?;
+        let response = response.ok_or(LSPError::EmptyResponse)?;
 
         let text;
         match response.contents {
@@ -588,7 +602,12 @@ impl Handler {
         Ok(())
     }
 
-    async fn did_open_document(&mut self, path: PathBuf, text: String, version: i32) -> Result<()> {
+    async fn did_open_document(
+        &mut self,
+        path: PathBuf,
+        text: String,
+        version: i32,
+    ) -> Result<(), LSPError> {
         let params = lsp_types::DidOpenTextDocumentParams {
             text_document: lsp_types::TextDocumentItem {
                 uri: path_to_uri(&path),
@@ -604,7 +623,7 @@ impl Handler {
         Ok(())
     }
 
-    async fn did_close_document(&mut self, path: PathBuf) -> Result<()> {
+    async fn did_close_document(&mut self, path: PathBuf) -> Result<(), LSPError> {
         let params = lsp_types::DidCloseTextDocumentParams {
             text_document: lsp_types::TextDocumentIdentifier {
                 uri: path_to_uri(&path),
@@ -617,7 +636,12 @@ impl Handler {
         Ok(())
     }
 
-    async fn show_references(&mut self, id: u32, path: PathBuf, position: Position) -> Result<()> {
+    async fn show_references(
+        &mut self,
+        id: u32,
+        path: PathBuf,
+        position: Position,
+    ) -> Result<(), LSPError> {
         let params = lsp_types::ReferenceParams {
             text_document_position: lsp_types::TextDocumentPositionParams {
                 text_document: lsp_types::TextDocumentIdentifier {
@@ -639,7 +663,7 @@ impl Handler {
         let response = self
             .request::<lsp_types::request::References>(id, &params)
             .await?;
-        let locations = response.ok_or(anyhow!("No references response"))?;
+        let locations = response.ok_or(LSPError::EmptyResponse)?;
         let mut references = BTreeMap::new();
         for loc in locations {
             let path = PathBuf::from(loc.uri.path().as_str());
@@ -661,10 +685,13 @@ impl Handler {
     async fn notify<R: lsp_types::notification::Notification>(
         &mut self,
         params: &R::Params,
-    ) -> Result<()> {
+    ) -> Result<(), LSPError> {
         let json = JsonNotification::new(R::METHOD, &params);
         let msg = ServerRequest::Notification { json };
-        self.server.send(msg).await?;
+        self.server
+            .send(msg)
+            .await
+            .map_err(|_| LSPError::InternalChannel)?;
 
         Ok(())
     }
@@ -673,16 +700,20 @@ impl Handler {
         &mut self,
         id: u32,
         params: &R::Params,
-    ) -> Result<R::Result> {
+    ) -> Result<R::Result, LSPError> {
         let json = JsonRequest::new(R::METHOD, &params, id);
         let (tx, mut rx) = channel(1);
         let msg = ServerRequest::Request { json, answer: tx };
-        self.server.send(msg).await?;
+        self.server
+            .send(msg)
+            .await
+            .map_err(|_| LSPError::InternalChannel)?;
 
         let response = rx
             .recv()
             .await
-            .ok_or(anyhow!("No answer to request {}", R::METHOD))??;
+            .ok_or(LSPError::NoResponse)?
+            .map_err(|_| LSPError::InvalidResponse)?;
 
         let result = serde_json::from_value(response)?;
 

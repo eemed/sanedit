@@ -1,8 +1,9 @@
-use anyhow::{bail, Result};
 use sanedit_utils::either::Either;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt};
+
+use crate::error::LSPError;
 
 pub(crate) const CONTENT_LENGTH: &str = "Content-Length";
 pub(crate) const SEP: &str = "\r\n";
@@ -30,7 +31,7 @@ impl JsonRequest {
         }
     }
 
-    pub async fn write_to<W: AsyncWriteExt + Unpin>(&self, stdin: &mut W) -> Result<()> {
+    pub async fn write_to<W: AsyncWriteExt + Unpin>(&self, stdin: &mut W) -> Result<(), LSPError> {
         let json = serde_json::to_string(&self)?;
 
         let clen = format!("{CONTENT_LENGTH}: {}{SEP}", json.len());
@@ -65,7 +66,7 @@ pub(crate) struct JsonResponse {
 
 pub async fn read_from<R: AsyncBufReadExt + Unpin>(
     reader: &mut R,
-) -> Result<Either<JsonResponse, JsonNotification>> {
+) -> Result<Either<JsonResponse, JsonNotification>, LSPError> {
     let mut content_length = 0;
     let mut buf = vec![];
 
@@ -75,14 +76,16 @@ pub async fn read_from<R: AsyncBufReadExt + Unpin>(
 
         let read = reader.read_until(b'\n', &mut buf).await?;
         if read == 0 {
-            bail!("EOF encountered");
+            return Err(tokio::io::Error::from(tokio::io::ErrorKind::UnexpectedEof).into());
         }
 
         if buf.starts_with(CONTENT_LENGTH.as_bytes()) {
             let start = CONTENT_LENGTH.len() + ": ".len();
             let end = buf.len() - SEP.len();
             let clen = unsafe { std::str::from_utf8_unchecked(&buf[start..end]) };
-            content_length = clen.parse()?;
+            content_length = clen
+                .parse()
+                .map_err(|_| tokio::io::Error::from(tokio::io::ErrorKind::InvalidData))?;
         }
 
         if buf == SEP.as_bytes() {
@@ -109,7 +112,7 @@ pub async fn read_from<R: AsyncBufReadExt + Unpin>(
         }
     }
 
-    bail!("EOF")
+    Err(tokio::io::Error::from(tokio::io::ErrorKind::UnexpectedEof).into())
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -134,7 +137,7 @@ impl JsonNotification {
         }
     }
 
-    pub async fn write_to<W: AsyncWriteExt + Unpin>(&self, stdin: &mut W) -> Result<()> {
+    pub async fn write_to<W: AsyncWriteExt + Unpin>(&self, stdin: &mut W) -> Result<(), LSPError> {
         let json = serde_json::to_string(&self)?;
 
         let clen = format!("{CONTENT_LENGTH}: {}{SEP}", json.len());

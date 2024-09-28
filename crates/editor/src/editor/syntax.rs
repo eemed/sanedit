@@ -37,6 +37,10 @@ impl Syntaxes {
             .ok_or(anyhow!("Syntax not loaded"))
     }
 
+    pub fn contains_key(&self, ft: &Filetype) -> bool {
+        self.syntaxes.contains_key(ft)
+    }
+
     pub fn load(&mut self, ft: &Filetype) -> anyhow::Result<Syntax> {
         let components = [
             PathBuf::from(ft.as_str()),

@@ -266,7 +266,7 @@ impl LSP {
             RequestResult::Rename { workspace_edit } => edit_workspace(editor, id, workspace_edit),
             RequestResult::Format { edit } => edit_document(editor, id, edit),
             RequestResult::Error { msg } => {
-                log::error!("Got error message from LSP {}: {msg}", self.opts.command);
+                log::error!("LSP '{}' failed to process: {msg}", self.opts.command);
             }
         }
     }

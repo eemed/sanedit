@@ -1,5 +1,4 @@
 use crate::{BufferRange, Range};
-use anyhow::bail;
 use regex_cursor::{
     engines::meta::{FindMatches, Regex},
     regex_automata::{
@@ -71,10 +70,6 @@ impl PTSearcher {
         dir: SearchDirection,
         kind: SearchKind,
     ) -> anyhow::Result<PTSearcher> {
-        if pattern.is_empty() {
-            bail!("Searcher empty pattern");
-        }
-
         use SearchDirection::*;
         use SearchKind::*;
         match (dir, kind) {

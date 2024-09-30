@@ -1,9 +1,8 @@
-use documented::DocumentedFields;
 use serde::{Deserialize, Serialize};
 
 use crate::editor::themes::DEFAULT_THEME;
 
-#[derive(Debug, Clone, Serialize, Deserialize, DocumentedFields)]
+#[derive(Debug, Clone, Serialize, Deserialize, DocComment)]
 #[serde(default)]
 pub(crate) struct WindowConfig {
     /// Maximum prompt completions to show at once

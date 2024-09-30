@@ -48,5 +48,4 @@ globset.workspace = true
 
 # Configuration handling
 toml_edit.workspace = true
-documented.workspace = true
 

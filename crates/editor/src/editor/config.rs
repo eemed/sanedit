@@ -1,6 +1,5 @@
 use std::path::Path;
 
-use documented::DocumentedFields;
 use sanedit_messages::key::{try_parse_keyevents, KeyEvent};
 use serde::{Deserialize, Serialize};
 use toml_edit::{
@@ -22,7 +21,7 @@ use rustc_hash::FxHashMap;
 
 use super::Map;
 
-#[derive(Debug, Default, Serialize, Deserialize, DocumentedFields)]
+#[derive(Debug, Default, Serialize, Deserialize, DocComment)]
 pub(crate) struct Config {
     ///
     /// Sanedit configuration
@@ -110,16 +109,17 @@ impl VisitMut for Formatter {
         let doc = {
             let keyname = key.get();
             match self.state {
-                VisitState::Config => Config::get_field_docs(keyname),
-                VisitState::Editor => editor::EditorConfig::get_field_docs(keyname),
-                VisitState::Window => windows::WindowConfig::get_field_docs(keyname),
-                VisitState::Buffer => buffers::BufferConfig::get_field_docs(keyname),
-                _ => Err(documented::Error::NoDocComments("irrelevant".into())),
+                VisitState::Config => Config::doc_comment(keyname),
+                VisitState::Editor => editor::EditorConfig::doc_comment(keyname),
+                VisitState::Window => windows::WindowConfig::doc_comment(keyname),
+                VisitState::Buffer => buffers::BufferConfig::doc_comment(keyname),
+                _ => None,
+                // _ => Err(documented::Error::NoDocComments("irrelevant".into())),
             }
         };
 
         // Add docstrings as comments
-        if let Ok(doc) = doc {
+        if let Some(doc) = doc {
             let top = if self.start_of_file { "" } else { "\n" };
             let mut comment = String::from(top);
             for line in doc.lines() {
@@ -183,7 +183,7 @@ impl VisitState {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Default, Deserialize, DocumentedFields)]
+#[derive(Debug, Clone, Serialize, Default, Deserialize, DocComment)]
 #[serde(default)]
 pub(crate) struct LSPConfig {
     /// Command to run LSP
@@ -193,7 +193,7 @@ pub(crate) struct LSPConfig {
     pub args: Vec<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize, DocumentedFields)]
+#[derive(Debug, Serialize, Deserialize, DocComment)]
 #[serde(default)]
 pub(crate) struct EditorConfig {
     /// Large file threshold in bytes

@@ -72,7 +72,7 @@ impl Search {
 }
 
 impl Job for Search {
-    fn run(&self, ctx: JobContext) -> JobResult {
+    fn run(&self, mut ctx: JobContext) -> JobResult {
         let term = self.term.clone();
         let pt = self.ropt.clone();
         let range = self.range.clone();
@@ -80,6 +80,12 @@ impl Job for Search {
         let kind = self.kind;
 
         let fut = async move {
+            if term.is_empty() {
+                // Clears previous matches if any
+                ctx.send(SearchMessage::Matches(vec![]));
+                return Ok(());
+            }
+
             let (msend, mrecv) = channel::<Vec<BufferRange>>(CHANNEL_SIZE);
             let searcher = PTSearcher::new(&term, dir, kind)?;
             tokio::join!(

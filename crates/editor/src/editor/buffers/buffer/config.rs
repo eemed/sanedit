@@ -1,4 +1,3 @@
-use documented::DocumentedFields;
 use serde::{Deserialize, Serialize};
 
 use sanedit_buffer::utf8::EndOfLine;
@@ -18,7 +17,7 @@ enum EndOfLineDef {
     PS,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, DocumentedFields)]
+#[derive(Debug, Clone, Serialize, Deserialize, DocComment)]
 pub(crate) struct BufferConfig {
     /// Default EOL, overridden if detect_eol is set
     /// Available options:

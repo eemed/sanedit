@@ -29,7 +29,8 @@ struct Cli {
 fn main() {
     let cli: Cli = argh::from_env();
 
-    logging::setup(cli.debug);
+    logging::init_panic();
+    logging::init_logger(cli.debug);
 
     let open_files = cli.file.clone().map(|f| vec![f]).unwrap_or_default();
     let config_dir = cli.config_dir.clone();

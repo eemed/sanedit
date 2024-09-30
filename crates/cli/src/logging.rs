@@ -1,20 +1,15 @@
-use std::cell::RefCell;
 use std::fs::File;
 use std::io::Write;
 use std::ops::Deref;
 use std::panic;
 use std::path::PathBuf;
-use std::rc::Rc;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, OnceLock};
 
 use log::LevelFilter;
-// use log4rs::append::file::FileAppender;
-// use log4rs::config::{Appender, Config, Logger, Root};
-// use log4rs::encode::pattern::PatternEncoder;
 
 const LOG_FILE: &str = "/tmp/sanedit.log";
 
-pub fn setup(debug: bool) {
+pub(crate) fn init_panic() {
     panic::set_hook(Box::new(|panic_info| {
         let backtrace = std::backtrace::Backtrace::capture();
         log::error!("{backtrace}");
@@ -39,8 +34,12 @@ pub fn setup(debug: bool) {
 
         log::error!("A panic occurred at {}:{}: {}", filename, line, cause);
     }));
+}
 
-        let level= if debug {
+pub(crate) fn init_logger(debug: bool) {
+    static LOGGER: OnceLock<Logger> = OnceLock::new();
+    let logger = LOGGER.get_or_init(|| {
+        let level = if debug {
             LevelFilter::Debug
         } else {
             LevelFilter::Info
@@ -50,24 +49,28 @@ pub fn setup(debug: bool) {
             .into_iter()
             .map(String::from)
             .collect();
-    let logger = Logger::new(level, LOG_FILE, ignore);
+        Logger::new(level, LOG_FILE, ignore)
+    });
 
-    logger.init();
+    log::set_max_level(logger.level);
+    let _ = log::set_logger(logger);
 }
 
 struct Logger {
     level: LevelFilter,
-    output_file: Rc<RefCell<File>>,
+    output_file: Arc<Mutex<File>>,
     ignore_crates: Vec<String>,
 }
 
 impl Logger {
     pub fn new(level: LevelFilter, path: &str, ignore: Vec<String>) -> Logger {
-    }
-
-    pub fn init(self) {
-        log::set_max_level(self.level);
-        let _ = log::set_boxed_logger(Box::new(self));
+        Logger {
+            level,
+            output_file: Arc::new(Mutex::new(
+                File::create(PathBuf::from(path)).expect("Failed to open log file"),
+            )),
+            ignore_crates: ignore,
+        }
     }
 
     fn is_ignored(&self, module: &str) -> bool {
@@ -87,10 +90,31 @@ impl log::Log for Logger {
     }
 
     fn log(&self, record: &log::Record) {
-        todo!()
+        if !self.enabled(record.metadata()) {
+            return;
+        }
+
+        let timestamp = chrono::Local::now().format("%H:%M:%S.%3f");
+        let mut file = self.output_file.lock().expect("Failed to lock logger");
+        let _ = writeln!(
+            file,
+            "{} {} {}:{} {}",
+            record.level(),
+            timestamp,
+            record.file().unwrap_or(""),
+            record
+                .line()
+                .map(|n| n.to_string())
+                .unwrap_or(String::new()),
+            record.args()
+        );
     }
 
     fn flush(&self) {
-        self.output_file.flush()
+        let _ = self
+            .output_file
+            .lock()
+            .expect("Failed to lock logger")
+            .flush();
     }
 }

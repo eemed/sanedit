@@ -26,4 +26,4 @@ sanedit-server = { path = "../server" }
 
 argh.workspace = true
 log.workspace = true
-log4rs.workspace = true
+chrono = { workspace = true, features = ["alloc"]}

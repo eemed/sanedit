@@ -8,7 +8,8 @@ sanedit-messages = { path = "../messages" }
 
 tokio = { workspace = true, features = ["full"] }
 tokio-util = { workspace = true, features = ["codec"] }
-futures.workspace = true
+futures-util = { workspace = true, features = ["sink"] }
+futures-core.workspace = true
 anyhow.workspace = true
 rustc-hash.workspace = true
 log.workspace = true

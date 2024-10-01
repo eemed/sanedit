@@ -1,7 +1,6 @@
-use futures::Future;
 use tokio::{runtime::Runtime, task::JoinHandle};
 
-use sanedit_server::EditorHandle;
+use sanedit_server::{EditorHandle, Future};
 
 #[derive(Debug)]
 pub(crate) struct TokioRuntime {

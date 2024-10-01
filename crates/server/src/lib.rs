@@ -4,9 +4,12 @@ mod server;
 
 pub use events::{FromEditor, ToEditor};
 pub use job_runner::{
-    spawn_job_runner, CPUJob, FromJobs, Job, JobContext, JobId, JobResult, JobsHandle, JobsMessage,
-    Kill, ToJobs,
+    spawn_job_runner, BoxFuture, CPUJob, FromJobs, Job, JobContext, JobId, JobResult, JobsHandle,
+    JobsMessage, Kill, ToJobs,
 };
+
+pub use futures_core::Future;
+
 pub use server::{
     client::{ClientHandle, ClientId},
     spawn_listeners, Address, EditorHandle, StartOptions,

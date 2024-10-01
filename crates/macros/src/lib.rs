@@ -1,24 +1,42 @@
 extern crate proc_macro;
 use proc_macro::{Span, TokenStream};
 use quote::quote;
-use syn::{AttributeArgs, Ident};
+use syn::{
+    parse::{Parse, ParseStream},
+    Ident,
+};
+
+struct Args {
+    pub description: syn::LitStr,
+}
+impl Parse for Args {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        Ok(Args {
+            description: input.parse()?,
+        })
+    }
+}
 
 /// Converts the function into an Action. The original function name will be
 /// used as the action name and the function will be suffixed with
 /// `_action_impl`.
 #[proc_macro_attribute]
 pub fn action(attr: TokenStream, item: TokenStream) -> TokenStream {
-    let args = syn::parse_macro_input!(attr as AttributeArgs);
-    let desc = {
-        let desc = args.first();
-        if desc.is_none() {
-            return quote! {
-                compile_error!("Action needs a description #[action(<description>)]");
-            }
-            .into();
-        }
-        desc.unwrap()
-    };
+    // let mut desc: Option<syn::LitStr> = None;
+    // let parser = syn::Attribute::parse_args_with(syn::Attribute::parse_outer);
+    let Args { description } = syn::parse_macro_input!(attr as Args);
+
+    // let args = syn::parse_macro_input!(attr as syn::LitStr);
+    // let desc = {
+    //     let desc = args.first();
+    //     if desc.is_none() {
+    //         return quote! {
+    //             compile_error!("Action needs a description #[action(<description>)]");
+    //         }
+    //         .into();
+    //     }
+    //     desc.unwrap()
+    // };
 
     let (fun, name) = {
         // Add _action_impl suffix to function name, and create an action
@@ -42,7 +60,7 @@ pub fn action(attr: TokenStream, item: TokenStream) -> TokenStream {
         pub(crate) const #name: crate::actions::Action = crate::actions::Action::Static {
             name: stringify!(#name),
             fun: #fname,
-            desc: #desc,
+            desc: #description,
         };
     };
     result.into()
@@ -95,10 +113,13 @@ pub fn describe(input: TokenStream) -> TokenStream {
 fn parse_doc_comment(attrs: &[syn::Attribute]) -> Option<String> {
     let mut result = String::new();
     for attr in attrs {
-        let meta = attr.parse_meta().unwrap();
-        if let syn::Meta::NameValue(name_value) = meta {
+        if let syn::Meta::NameValue(ref name_value) = attr.meta {
             if name_value.path.is_ident("doc") {
-                if let syn::Lit::Str(doc) = name_value.lit {
+                if let syn::Expr::Lit(syn::ExprLit {
+                    lit: syn::Lit::Str(doc),
+                    ..
+                }) = &name_value.value
+                {
                     result.push_str(&doc.value().trim());
                     result.push('\n');
                 }

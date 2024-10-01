@@ -4,7 +4,8 @@ pub(crate) mod unix;
 
 use std::{borrow::Cow, path::PathBuf};
 
-use futures::{SinkExt, StreamExt};
+use futures_util::sink::SinkExt;
+use futures_util::StreamExt;
 use sanedit_messages::{BinCodec, ClientMessage, Message};
 use tokio::{
     io::{self, AsyncRead, AsyncWrite},

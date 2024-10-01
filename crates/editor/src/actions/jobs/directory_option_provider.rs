@@ -3,8 +3,7 @@ use std::{
     sync::Arc,
 };
 
-use futures::future::BoxFuture;
-use sanedit_server::Kill;
+use sanedit_server::{BoxFuture, Kill};
 use tokio::{fs, io, sync::mpsc::Sender};
 
 use crate::common::matcher::MatchOption;

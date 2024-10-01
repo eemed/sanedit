@@ -3,7 +3,7 @@ mod events;
 mod id;
 mod kill;
 
-use futures::future::BoxFuture;
+pub use futures_core::future::BoxFuture;
 use rustc_hash::FxHashMap;
 use tokio::sync::mpsc::{self, channel};
 

@@ -110,14 +110,6 @@ pub(crate) fn load_syntax(editor: &mut Editor, id: ClientId) {
 
 #[action("Parse buffer syntax")]
 pub(crate) fn parse_syntax(editor: &mut Editor, id: ClientId) {
-    let (_win, buf) = editor.win_buf(id);
-    if let Some(ref ft) = buf.filetype {
-        if !editor.syntaxes.contains_key(ft) {
-            return;
-        }
-    }
-
-    log::info!("Parsing syntax..");
     const JOB_NAME: &str = "parse-syntax";
 
     let (win, buf) = editor.win_buf_mut(id);

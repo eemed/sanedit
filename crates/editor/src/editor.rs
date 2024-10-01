@@ -701,6 +701,19 @@ impl Editor {
         Ok(())
     }
 
+    pub fn has_syntax(&self, id: ClientId) -> bool {
+        let (_win, buf) = self.win_buf(id);
+        if let Some(ref ft) = buf.filetype {
+            return self.syntaxes.contains_key(ft);
+        }
+
+        false
+    }
+
+    pub fn has_lsp(&self, id: ClientId) -> bool {
+        self.lsp_handle_for(id).is_some()
+    }
+
     pub fn lsp_handle_for(&self, id: ClientId) -> Option<&LSPHandle> {
         let (_win, buf) = self.win_buf(id);
         let ft = buf.filetype.as_ref()?;

@@ -518,6 +518,14 @@ impl KeymapsConfig {
             "alt+o a",   select_in_angle,
             "alt+o A",   select_all_angle,
 
+            "alt+g d",   goto_definition,
+            "alt+g a",   code_action,
+            "alt+g r",   references,
+            "alt+g f",   format,
+            "alt+g R",   rename,
+            "alt+g h",   hover,
+            "alt+g c",   complete,
+
             "alt+o w",   select_word,
 
             "alt+2",     show_filetree,

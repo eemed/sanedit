@@ -16,10 +16,18 @@ use crate::{
 
 use sanedit_server::ClientId;
 
-use super::{jobs::MatcherJob, text};
+use super::{jobs::MatcherJob, lsp, text};
 
 #[action("Open completion menu")]
 fn complete(editor: &mut Editor, id: ClientId) {
+    if editor.has_lsp(id) {
+        lsp::complete.execute(editor, id)
+    } else {
+        complete_from_syntax(editor, id);
+    }
+}
+
+fn complete_from_syntax(editor: &mut Editor, id: ClientId) {
     let result = word_before_cursor(editor, id);
     let (win, buf) = editor.win_buf_mut(id);
     let cursor = win.cursors.primary().pos();

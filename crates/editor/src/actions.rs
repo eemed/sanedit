@@ -18,76 +18,35 @@ pub(crate) mod text_objects;
 pub(crate) mod view;
 pub(crate) mod window;
 
-use std::{fmt, sync::Arc};
+use std::fmt;
 
 use crate::editor::Editor;
 use sanedit_server::ClientId;
 
-pub(crate) type ActionFunction = Arc<dyn Fn(&mut Editor, ClientId) + Send + Sync>;
-
-// TODO should dynamic be removed?
-#[allow(dead_code)]
 #[derive(Clone)]
-pub(crate) enum Action {
-    Dynamic {
-        name: String,
-        fun: ActionFunction,
-    },
-    Static {
-        name: &'static str,
-        fun: fn(&mut Editor, ClientId),
-        desc: &'static str,
-    },
+pub(crate) struct Action {
+    name: &'static str,
+    fun: fn(&mut Editor, ClientId),
+    desc: &'static str,
 }
 
 impl Action {
-    #[allow(dead_code)]
-    pub fn new<F>(name: &str, fun: F) -> Action
-    where
-        F: Fn(&mut Editor, ClientId) + Sync + Send + 'static,
-    {
-        Action::Dynamic {
-            name: name.to_string(),
-            fun: Arc::new(fun),
-        }
-    }
-
     pub fn execute(&self, editor: &mut Editor, id: ClientId) {
-        match self {
-            Action::Dynamic { name: _, fun } => (fun)(editor, id),
-            Action::Static {
-                name: _,
-                fun,
-                desc: _,
-            } => (fun)(editor, id),
-        }
+        (self.fun)(editor, id)
     }
 
     pub fn name(&self) -> &str {
-        match self {
-            Action::Dynamic { name, .. } => name,
-            Action::Static { name, .. } => name,
-        }
+        self.name
     }
 
     pub fn description(&self) -> &str {
-        match self {
-            Action::Dynamic { name, .. } => name,
-            Action::Static { desc, .. } => desc,
-        }
+        self.desc
     }
 }
 
 impl fmt::Debug for Action {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Action::Dynamic { name, fun: _ } => write!(f, "{}", name),
-            Action::Static {
-                name,
-                fun: _,
-                desc: _,
-            } => write!(f, "{}", name),
-        }
+        write!(f, "{}", self.name)
     }
 }
 
@@ -259,11 +218,11 @@ pub(crate) const WINDOW_COMMANDS: &[Action] = &[
     window::reload_window,
     window::goto_prev_buffer,
 
+    completion::complete,
 
     lsp::start_lsp,
     lsp::hover,
     lsp::goto_definition,
-    lsp::complete,
     lsp::references,
     lsp::code_action,
     lsp::rename,

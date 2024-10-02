@@ -166,6 +166,10 @@ impl Cursor {
             mem::swap(anc, &mut self.pos);
         }
     }
+
+    pub fn is_selecting(&self) -> bool {
+        self.anchor.is_some()
+    }
 }
 
 impl Default for Cursor {

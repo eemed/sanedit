@@ -132,9 +132,31 @@ pub fn next_word_end(slice: &PieceTreeSlice, mut pos: u64) -> u64 {
     while let Some(g) = graphemes.next() {
         let cat = grapheme_category(&g);
 
-        if let Some((ref prev, len)) = prev {
+        if let Some((ref prev, _len)) = prev {
             if is_word_break_end(prev, &cat) {
-                return pos - len;
+                return pos;
+            }
+        }
+
+        pos += g.len();
+        prev = Some((cat, g.len()));
+    }
+
+    slice.len()
+}
+
+/// Find next word end and move to the next character
+pub fn next_word_end_next(slice: &PieceTreeSlice, mut pos: u64) -> u64 {
+    let mut prev: Option<(GraphemeCategory, u64)> = None;
+    let mut graphemes = slice.graphemes_at(pos);
+    pos += graphemes.next().map(|g| g.len()).unwrap_or(0);
+
+    while let Some(g) = graphemes.next() {
+        let cat = grapheme_category(&g);
+
+        if let Some((ref prev, _len)) = prev {
+            if is_word_break_end(prev, &cat) {
+                return pos;
             }
         }
 
@@ -148,7 +170,6 @@ pub fn next_word_end(slice: &PieceTreeSlice, mut pos: u64) -> u64 {
 pub fn prev_word_end(slice: &PieceTreeSlice, mut pos: u64) -> u64 {
     let mut cat: Option<GraphemeCategory> = None;
     let mut graphemes = slice.graphemes_at(pos);
-    pos += graphemes.next().map(|g| g.len()).unwrap_or(0);
 
     while let Some(g) = graphemes.prev() {
         let prev = grapheme_category(&g);
@@ -156,7 +177,7 @@ pub fn prev_word_end(slice: &PieceTreeSlice, mut pos: u64) -> u64 {
 
         if let Some(cat) = cat {
             if is_word_break_end(&prev, &cat) {
-                return pos;
+                return pos + g.len();
             }
         }
 

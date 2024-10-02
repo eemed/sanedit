@@ -12,7 +12,29 @@ use sanedit_core::{
     Cursor, PTSearcher,
 };
 
-use super::hooks;
+use super::{hooks, movement};
+
+#[action("Start selection and jump to next word")]
+fn select_to_next_word(editor: &mut Editor, id: ClientId) {
+    let (win, _buf) = editor.win_buf_mut(id);
+    for cursor in win.cursors.cursors_mut() {
+        if !cursor.is_selecting() {
+            cursor.start_selection();
+        }
+    }
+    movement::next_word_end.execute(editor, id);
+}
+
+#[action("Start selection and jump to prev word")]
+fn select_to_prev_word(editor: &mut Editor, id: ClientId) {
+    let (win, _buf) = editor.win_buf_mut(id);
+    for cursor in win.cursors.cursors_mut() {
+        if !cursor.is_selecting() {
+            cursor.start_selection();
+        }
+    }
+    movement::prev_word_start.execute(editor, id);
+}
 
 #[action("New cursor on the next line")]
 fn new_cursor_to_next_line(editor: &mut Editor, id: ClientId) {
@@ -115,10 +137,15 @@ fn start_selection(editor: &mut Editor, id: ClientId) {
 #[action("Keep only primary cursor")]
 fn keep_only_primary(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
-    win.cursors.remove_except_primary();
 
-    let (win, _buf) = editor.win_buf_mut(id);
-    win.cursors.primary_mut().stop_selection();
+    if win.cursors.cursors().iter().any(|c| c.is_selecting()) {
+        win.cursors.stop_selection();
+    } else {
+        win.cursors.remove_except_primary();
+
+        let (win, _buf) = editor.win_buf_mut(id);
+        win.cursors.primary_mut().stop_selection();
+    }
 }
 
 #[action("Swap cursor in selection")]

@@ -5,12 +5,9 @@
 * core dirs has todos
 * Somethings wrong with multiwidth grapheme rendering. Grapheme widths is wrong
 * Keybindings should be sensical
+* Proper mouse support
     * Mouse 2 click select word
     * 3 click select line
-    * ctrl shift (left/right) => extend selection to
-    * shift (left/right) => goto next word
-    * Home start of line
-    * End end of line
 
 * Welcome screen
     * Help menus to F1

@@ -9,8 +9,6 @@ use sanedit_buffer::{
     PieceTree, PieceTreeSlice,
 };
 
-use crate::movement::next_grapheme_boundary;
-
 use super::movement::{next_word_end, prev_word_start, start_of_line};
 
 pub fn width_at_pos(slice: &PieceTreeSlice, pos: u64, opts: &DisplayOptions) -> usize {
@@ -114,7 +112,7 @@ pub fn word_at_pos(slice: &PieceTreeSlice, pos: u64) -> Option<BufferRange> {
         if !on_word_end(current, after, pos, slice.len()) {
             end = next_word_end(slice, pos);
         }
-        next_grapheme_boundary(slice, end)
+        end
     };
 
     Some(Range::new(start, end))

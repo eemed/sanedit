@@ -464,8 +464,13 @@ impl KeymapsConfig {
             "btab",      backtab,
             "alt+k",     remove_to_end_of_line,
 
-            "up",        prev_line,
-            "down",      next_line,
+            "up",               prev_line,
+            "down",             next_line,
+            "ctrl+right",       next_word_end,
+            "ctrl+left",        prev_word_start,
+            "ctrl+shift+right", select_to_next_word,
+            "ctrl+shift+left",  select_to_prev_word,
+
             "alt+U",     prev_line,
             "alt+u",     next_line,
             "left",      prev_grapheme,

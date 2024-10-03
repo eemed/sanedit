@@ -4,10 +4,15 @@
 
 * core dirs has todos
 * Somethings wrong with multiwidth grapheme rendering. Grapheme widths is wrong
+    * Probably just dont support in terminal?
 * Keybindings should be sensical
 * Proper mouse support
     * Mouse 2 click select word
     * 3 click select line
+
+* Text object impls
+    * select paragraphs
+    * Select by syntax tree?
 
 * Welcome screen
     * Help menus to F1

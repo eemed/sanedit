@@ -514,14 +514,16 @@ impl KeymapsConfig {
             "alt+'",     goto_prev_buffer,
 
             "alt+o l",   select_line,
-            "alt+o c",   select_in_curly,
-            "alt+o C",   select_all_curly,
-            "alt+o b",   select_in_parens,
-            "alt+o B",   select_all_parens,
-            "alt+o r",   select_in_square,
-            "alt+o R",   select_all_square,
-            "alt+o a",   select_in_angle,
-            "alt+o A",   select_all_angle,
+            "alt+o c",   select_curly,
+            "alt+o C",   select_curly_incl,
+            "alt+o b",   select_parens,
+            "alt+o B",   select_parens_incl,
+            "alt+o r",   select_square,
+            "alt+o R",   select_square_incl,
+            "alt+o a",   select_angle,
+            "alt+o A",   select_angle_incl,
+
+            "alt+o w",   select_word,
 
             "alt+g d",   goto_definition,
             "alt+g a",   code_action,
@@ -530,8 +532,6 @@ impl KeymapsConfig {
             "alt+g R",   rename,
             "alt+g h",   hover,
             "alt+g c",   complete,
-
-            "alt+o w",   select_word,
 
             "alt+2",     show_filetree,
             "alt+3",     show_locations,

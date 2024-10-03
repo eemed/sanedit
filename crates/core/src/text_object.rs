@@ -18,13 +18,17 @@ pub fn find_range(
     end: &str,
     include: bool,
 ) -> Option<BufferRange> {
-    let mut range = find_range_included(slice, pos, start, end)?;
-    if !include {
-        range.start += start.len() as u64;
-        range.end -= end.len() as u64;
-    }
+    if start == end {
+        todo!("missing add same char impl")
+    } else {
+        let mut range = find_range_included(slice, pos, start, end)?;
+        if !include {
+            range.start += start.len() as u64;
+            range.end -= end.len() as u64;
+        }
 
-    Some(range)
+        Some(range)
+    }
 }
 
 fn find_range_included(

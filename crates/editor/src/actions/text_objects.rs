@@ -58,42 +58,42 @@ fn select_line(editor: &mut Editor, id: ClientId) {
 }
 
 #[action("Select in curly brackets")]
-fn select_in_curly(editor: &mut Editor, id: ClientId) {
+fn select_curly(editor: &mut Editor, id: ClientId) {
     select_impl(editor, id, "{", "}", false);
 }
 
 #[action("Select including curly brackets")]
-fn select_all_curly(editor: &mut Editor, id: ClientId) {
+fn select_curly_incl(editor: &mut Editor, id: ClientId) {
     select_impl(editor, id, "{", "}", true);
 }
 
 #[action("Select in parentheses")]
-fn select_in_parens(editor: &mut Editor, id: ClientId) {
+fn select_parens(editor: &mut Editor, id: ClientId) {
     select_impl(editor, id, "(", ")", false);
 }
 
 #[action("Select including parentheses")]
-fn select_all_parens(editor: &mut Editor, id: ClientId) {
+fn select_parens_incl(editor: &mut Editor, id: ClientId) {
     select_impl(editor, id, "(", ")", true);
 }
 
 #[action("Select in square brackets")]
-fn select_in_square(editor: &mut Editor, id: ClientId) {
+fn select_square(editor: &mut Editor, id: ClientId) {
     select_impl(editor, id, "[", "]", false);
 }
 
 #[action("Select including square brackets")]
-fn select_all_square(editor: &mut Editor, id: ClientId) {
+fn select_square_incl(editor: &mut Editor, id: ClientId) {
     select_impl(editor, id, "[", "]", true);
 }
 
 #[action("Select in angle brackets")]
-fn select_in_angle(editor: &mut Editor, id: ClientId) {
+fn select_angle(editor: &mut Editor, id: ClientId) {
     select_impl(editor, id, "<", ">", false);
 }
 
 #[action("Select including angle brackets")]
-fn select_all_angle(editor: &mut Editor, id: ClientId) {
+fn select_angle_incl(editor: &mut Editor, id: ClientId) {
     select_impl(editor, id, "<", ">", true);
 }
 
@@ -120,3 +120,16 @@ fn select_word(editor: &mut Editor, id: ClientId) {
         hooks::run(editor, id, Hook::CursorMoved);
     }
 }
+
+#[action("Select paragraph under cursor")]
+fn select_paragraph(editor: &mut Editor, id: ClientId) {
+}
+
+// Select in various quotes ", ', `
+// #[action("Select in quotes")]
+// fn select_in_quote(editor: &mut Editor, id: ClientId) {
+// }
+
+// #[action("Select including quotes")]
+// fn select_all_quote(editor: &mut Editor, id: ClientId) {
+// }

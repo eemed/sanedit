@@ -118,6 +118,10 @@ pub fn word_at_pos(slice: &PieceTreeSlice, pos: u64) -> Option<BufferRange> {
     Some(Range::new(start, end))
 }
 
+pub fn paragraph_at_pos(slice: &PieceTreeSlice, pos: u64) -> Option<BufferRange> {
+    todo!()
+}
+
 pub fn strip_eol(slice: &mut PieceTreeSlice) {
     let mut bytes = slice.bytes_at(slice.len());
     if let Some(mat) = prev_eol(&mut bytes) {

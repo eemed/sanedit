@@ -522,6 +522,9 @@ impl KeymapsConfig {
             "alt+o R",   select_square_incl,
             "alt+o a",   select_angle,
             "alt+o A",   select_angle_incl,
+            "alt+o \"",  select_double,
+            "alt+o '",   select_single,
+            "alt+o `",   select_backtick,
 
             "alt+o w",   select_word,
 

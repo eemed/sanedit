@@ -217,6 +217,13 @@ pub(crate) const WINDOW_COMMANDS: &[Action] = &[
     text_objects::select_angle_incl,
     text_objects::select_angle,
     text_objects::select_word,
+    text_objects::select_paragraph,
+    text_objects::select_double,
+    text_objects::select_double_incl,
+    text_objects::select_single,
+    text_objects::select_single_incl,
+    text_objects::select_backtick,
+    text_objects::select_backtick_incl,
 
     window::reload_window,
     window::goto_prev_buffer,

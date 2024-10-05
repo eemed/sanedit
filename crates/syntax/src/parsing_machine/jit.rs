@@ -1,5 +1,20 @@
 use std::{ffi::c_int, mem};
 
+struct Jit {
+    code: MachineCode,
+}
+
+impl Jit {
+    pub fn new() -> Jit {
+        let code = MachineCode::new();
+
+        Jit { code }
+    }
+
+    // Compile routines here
+    // fn compile_step() { code.mov(a, b); }
+}
+
 struct MachineCode {
     memory: Vec<u8>,
 }
@@ -8,6 +23,9 @@ impl MachineCode {
     pub fn new() -> MachineCode {
         MachineCode { memory: vec![] }
     }
+
+    // ASM things here
+    // fn mov() { }
 
     pub fn compile(&mut self) {
         // mov %rdi, %rax
@@ -23,8 +41,6 @@ impl MachineCode {
         // https://github.com/spencertipping/jit-tutorial
 
         // Create executable memory map
-        // use memmap2::{MmapMut, MmapOptions};
-        // let mut mmap = MmapOptions::new().len(self.memory.len()).map_anon().expect("Failed to create mmap");
         let page_size = 4096;
         let size = self.memory.len();
         let mut raw_addr: *mut libc::c_void = std::ptr::null_mut();

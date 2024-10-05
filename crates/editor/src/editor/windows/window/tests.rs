@@ -70,3 +70,17 @@ fn dedent_missing_spaces() {
     assert_eq!(lines[0], "hello ");
     assert_eq!(lines[1], "bar");
 }
+
+#[test]
+fn indent_multiline() {
+    let (mut win, mut buf) = with_buf("uselessline\nhello\nworld");
+    buf.config.tabstop = 8;
+    buf.config.indent_kind = IndentKind::Space;
+    buf.config.indent_amount = 4;
+
+    win.cursors.primary_mut().select(&Range::new(13, buf.len()));
+    win.indent_cursor_lines(&mut buf);
+    let lines = view_lines(&mut win, &buf);
+    assert_eq!(lines[1], "    hello ");
+    assert_eq!(lines[2], "    world");
+}

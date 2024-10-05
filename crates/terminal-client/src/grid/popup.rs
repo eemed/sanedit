@@ -34,13 +34,13 @@ pub(crate) fn below(screen: &Rect, win: &Rect, popup: &Popup) -> Rect {
         .max()
         .unwrap_or(0)
         .min(screen.width);
-    let height = popup
+    let height = (popup
         .messages
         .iter()
         .map(|msg| msg.text.lines().count())
         .sum::<usize>()
-        .min(screen.height)
-        + popup.messages.len().saturating_sub(1);
+        + popup.messages.len().saturating_sub(1))
+    .min(screen.height);
 
     if y + height < screen.height {
         y += 1;
@@ -63,13 +63,13 @@ pub(crate) fn above(screen: &Rect, win: &Rect, popup: &Popup) -> Rect {
         .max()
         .unwrap_or(0)
         .min(screen.width);
-    let height = popup
+    let height = (popup
         .messages
         .iter()
         .map(|msg| msg.text.lines().count())
         .sum::<usize>()
-        .min(screen.height)
-        + popup.messages.len().saturating_sub(1);
+        + popup.messages.len().saturating_sub(1))
+    .min(screen.height);
     y = y.saturating_sub(height);
 
     if x + width >= screen.width {
@@ -121,7 +121,7 @@ impl Drawable for Popup {
                 ctx.style(field)
             };
             // Add popup messages
-            for line in msg.text.lines() {
+            for line in msg.text.lines().skip(self.line_offset) {
                 let lcells = into_cells_with_style(line, mstyle);
                 for cell in lcells {
                     if col == wsize.width {

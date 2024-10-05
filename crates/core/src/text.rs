@@ -119,7 +119,32 @@ pub fn word_at_pos(slice: &PieceTreeSlice, pos: u64) -> Option<BufferRange> {
 }
 
 pub fn paragraph_at_pos(slice: &PieceTreeSlice, pos: u64) -> Option<BufferRange> {
-    todo!()
+    let mut lines = slice.lines_at(pos);
+    let mut start = None;
+    let mut end = None;
+
+    // Skip all content lines up
+    while let Some(line) = lines.prev() {
+        if EndOfLine::is_slice_eol(&line) {
+            start = Some(line.end());
+            lines.next();
+            break;
+        }
+    }
+
+    let start = start?;
+
+    // Skip all content lines down
+    while let Some(line) = lines.next() {
+        if EndOfLine::is_slice_eol(&line) {
+            end = Some(line.start());
+            break;
+        }
+    }
+
+    let end = end?;
+
+    Some(Range::new(start, end))
 }
 
 pub fn strip_eol(slice: &mut PieceTreeSlice) {

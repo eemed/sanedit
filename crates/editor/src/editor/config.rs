@@ -525,6 +525,7 @@ impl KeymapsConfig {
             "alt+o \"",  select_double,
             "alt+o '",   select_single,
             "alt+o `",   select_backtick,
+            "alt+o p",   select_paragraph,
 
             "alt+o w",   select_word,
 

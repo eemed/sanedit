@@ -87,6 +87,14 @@ impl Cursor {
         }
     }
 
+    pub fn end(&self) -> u64 {
+        if let Some(anc) = self.anchor.as_ref() {
+            std::cmp::max(self.pos, *anc)
+        } else {
+            self.pos
+        }
+    }
+
     pub fn take_selection(&mut self) -> Option<BufferRange> {
         let sel = self.selection()?;
         self.stop_selection();

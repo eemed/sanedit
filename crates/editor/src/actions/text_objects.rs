@@ -2,7 +2,7 @@ use sanedit_buffer::PieceTreeSlice;
 use sanedit_core::{
     find_range,
     movement::{self, next_line_start},
-    paragraph_at_pos, word_at_pos, Range, BufferRange,
+    paragraph_at_pos, word_at_pos, BufferRange, Range,
 };
 
 use crate::editor::{hooks::Hook, Editor};

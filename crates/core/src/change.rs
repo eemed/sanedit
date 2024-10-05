@@ -1,3 +1,6 @@
+#[cfg(test)]
+mod test;
+
 use std::{borrow::Cow, rc::Rc};
 
 use sanedit_buffer::{utf8::EndOfLine, PieceTree, PieceTreeView};
@@ -145,63 +148,83 @@ impl Changes {
         self.changes.iter()
     }
 
+    fn added(&self, pos: u64, inclusive: bool) -> u64 {
+        self.changes
+            .iter()
+            .take_while(|change| {
+                if inclusive {
+                    change.start() <= pos
+                } else {
+                    change.start() < pos
+                }
+            })
+            .map(|change| change.text().len() as u64)
+            .sum()
+    }
+
+    fn removed(&self, pos: u64, inclusive: bool) -> u64 {
+        self.changes
+            .iter()
+            .take_while(|change| {
+                if inclusive {
+                    change.start() <= pos
+                } else {
+                    change.start() < pos
+                }
+            })
+            .map(|change| {
+                if change.end() < pos || pos < change.start() {
+                    change.range().len()
+                } else {
+                    pos - change.start()
+                }
+            })
+            .sum()
+    }
+
+    fn is_removed(&self, range: &BufferRange) -> bool {
+        log::info!("changes: {:?}", self.changes);
+        self.changes
+            .iter()
+            .any(|change| change.range.includes(range))
+    }
+
     /// Moves cursors according to this change,
     /// Wont handle undo or redo
     pub fn move_cursors(&self, cursors: &mut [Cursor]) {
         for cursor in cursors {
-            let mut range = cursor
-                .selection()
-                .unwrap_or(Range::new(cursor.pos(), cursor.pos()));
-            let removed: u64 = self
-                .changes
-                .iter()
-                .take_while(|change| change.start() <= range.start)
-                .map(|change| {
-                    if change.end() < range.start {
-                        change.range().len()
+            match cursor.selection() {
+                Some(range) => {
+                    if self.is_removed(&range) {
+                        let mut pos = range.start;
+                        pos += self.added(range.start, true);
+                        pos -= self.removed(range.start, true);
+
+                        // Stop selection is completely removed
+                        cursor.stop_selection();
+                        cursor.goto(pos);
                     } else {
-                        range.start - change.start()
+                        let mut start = range.start;
+                        let mut end = range.end;
+                        start += self.added(range.start, true);
+                        start -= self.removed(range.start, true);
+                        end += self.added(range.end, false);
+                        end -= self.removed(range.end, false);
+                        log::debug!("Cursor: {cursor:?} to {range:?}");
+
+                        cursor.to_range(&Range::new(start, end));
                     }
-                })
-                .sum();
+                }
+                None => {
+                    let mut npos = cursor.pos();
 
-            let add: u64 = self
-                .changes
-                .iter()
-                .take_while(|change| change.start() <= range.start)
-                .map(|change| change.text().len() as u64)
-                .sum();
-            // log::debug!("+{add} -{removed}");
+                    npos += self.added(cursor.pos(), true);
+                    npos -= self.removed(cursor.pos(), true);
 
-            let removed_post: u64 = self
-                .changes
-                .iter()
-                .take_while(|change| change.start() <= range.end)
-                // .map(|change| range.end - change.start())
-                .map(|change| {
-                    if change.end() < range.start {
-                        change.range().len()
-                    } else {
-                        range.start - change.start()
-                    }
-                })
-                .sum();
+                    cursor.goto(npos);
+                }
+            }
 
-            let add_post: u64 = self
-                .changes
-                .iter()
-                .take_while(|change| change.start() <= range.end)
-                .map(|change| change.text().len() as u64)
-                .sum();
-            // log::debug!("post+{add_post} post-{removed_post}");
-
-            range.start += add;
-            range.start -= removed;
-            range.end += add_post;
-            range.end -= removed_post;
-
-            // log::debug!("Cursor: {cursor:?} to {range:?}");
-            cursor.to_range(&range);
             // log::debug!("Cursor: {cursor:?}");
         }
     }

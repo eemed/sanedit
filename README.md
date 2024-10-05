@@ -10,10 +10,6 @@
     * Mouse 2 click select word
     * 3 click select line
 
-* Text object impls
-    * select paragraphs
-    * Select by syntax tree?
-
 * Welcome screen
     * Help menus to F1
 

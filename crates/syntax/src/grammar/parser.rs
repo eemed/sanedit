@@ -511,7 +511,7 @@ mod test {
     #[test]
     fn grammar_json() {
         let peg = include_str!("../../pegs/json.peg");
-        match parse_rules_from_str(peg) {
+        match parse_rules(std::io::Cursor::new(peg)) {
             Ok(rules) => println!("==== Created rules ====\n{}", print_rules(&rules)),
             Err(e) => println!("Failed to create rules: {e}"),
         }

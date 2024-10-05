@@ -57,15 +57,15 @@ tasks:
     deps: [install-pre-commit-hook]
     cmds:
       - cargo run -- --config-dir ../runtime --working-dir .. --debug
-    env:
-      RUST_BACKTRACE: 1
+    # env:
+      # RUST_BACKTRACE: 1
       # RUSTFLAGS: "-Awarnings"
 
   test:
     desc: Run tests
     dir: crates
     cmds:
-      - cargo test
+      - cargo test -- --nocapture {{ .CLI_ARGS }}
 
   bench:
     desc: Run benchmarks

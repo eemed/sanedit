@@ -343,8 +343,15 @@ fn handle_diagnostics(
 
     for d in diags {
         let slice = buf.slice(..);
-        let start = d.range.start.to_offset(&slice, &enc);
-        let end = d.range.end.to_offset(&slice, &enc);
+        let start;
+        let end;
+        if d.range.start == d.range.start {
+            start = d.range.start.to_offset(&slice, &enc);
+            end = start + 1;
+        } else {
+            start = d.range.start.to_offset(&slice, &enc);
+            end = d.range.end.to_offset(&slice, &enc);
+        }
         let diag = Diagnostic::new(d.severity, (start..end).into(), &d.description);
         buf.diagnostics.push(diag);
     }

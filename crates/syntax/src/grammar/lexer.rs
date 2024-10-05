@@ -164,7 +164,10 @@ impl<R: io::Read> Lexer<R> {
     }
 
     pub fn next(&mut self) -> Result<Token> {
-        self.skip_whitespace()?;
+        // Skip whitespace only if not in any special mode
+        if matches!(self.state, State::Normal) {
+            self.skip_whitespace()?;
+        }
 
         let tok = match self.state {
             State::Normal => self.normal()?,

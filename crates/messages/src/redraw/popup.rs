@@ -14,6 +14,8 @@ pub enum PopupComponent {
 pub struct Popup {
     pub point: Point,
     pub messages: Vec<PopupMessage>,
+    // Just for UI
+    pub line_offset: usize,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]

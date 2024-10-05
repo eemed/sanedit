@@ -115,6 +115,7 @@ impl Window {
                 self.popup = Some(Popup {
                     point,
                     messages: vec![msg],
+                    line_offset: 0,
                 });
             }
         }
@@ -215,8 +216,15 @@ impl Window {
             self.bid
         );
 
-        self.view.scroll_down_n(buf, n);
-        self.view.redraw(buf);
+        match &mut self.popup {
+            Some(popup) => {
+                popup.line_offset += n as usize;
+            }
+            None => {
+                self.view.scroll_down_n(buf, n);
+                self.view.redraw(buf);
+            }
+        }
     }
 
     pub fn scroll_up_n(&mut self, buf: &Buffer, n: u64) {
@@ -226,8 +234,15 @@ impl Window {
             buf.id,
             self.bid
         );
-        self.view.scroll_up_n(buf, n);
-        self.view.redraw(buf);
+        match &mut self.popup {
+            Some(popup) => {
+                popup.line_offset = popup.line_offset.saturating_sub(n as usize);
+            }
+            None => {
+                self.view.scroll_up_n(buf, n);
+                self.view.redraw(buf);
+            }
+        }
     }
 
     /// sets window offset so that primary cursor is visible in the drawn view.

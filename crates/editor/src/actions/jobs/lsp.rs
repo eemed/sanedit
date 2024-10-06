@@ -345,7 +345,7 @@ fn handle_diagnostics(
         let slice = buf.slice(..);
         let start;
         let end;
-        if d.range.start == d.range.start {
+        if d.range.start == d.range.end {
             start = d.range.start.to_offset(&slice, &enc);
             end = start + 1;
         } else {

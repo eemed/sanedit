@@ -1,6 +1,9 @@
 use sanedit_utils::either::Either;
 
-use crate::editor::{windows::Focus, Editor};
+use crate::editor::{
+    windows::{Focus, Prompt},
+    Editor,
+};
 
 use sanedit_server::ClientId;
 
@@ -91,4 +94,34 @@ fn toggle_all_expand_locs(editor: &mut Editor, id: ClientId) {
     } else {
         win.locations.expand_all();
     }
+}
+
+#[action("Keep locations with")]
+fn keep_locations(editor: &mut Editor, id: ClientId) {
+    let (win, _buf) = editor.win_buf_mut(id);
+    win.prompt = Prompt::builder()
+        .prompt("Keep locations")
+        .simple()
+        .on_confirm(move |editor, id, input| {
+            let (win, _buf) = editor.win_buf_mut(id);
+            win.locations.retain(|name| name.contains(input));
+            win.focus = Focus::Locations;
+        })
+        .build();
+    win.focus = Focus::Prompt;
+}
+
+#[action("Reject locations with")]
+fn reject_locations(editor: &mut Editor, id: ClientId) {
+    let (win, _buf) = editor.win_buf_mut(id);
+    win.prompt = Prompt::builder()
+        .prompt("Reject locations")
+        .simple()
+        .on_confirm(move |editor, id, input| {
+            let (win, _buf) = editor.win_buf_mut(id);
+            win.locations.retain(|name| !name.contains(input));
+            win.focus = Focus::Locations;
+        })
+        .build();
+    win.focus = Focus::Prompt;
 }

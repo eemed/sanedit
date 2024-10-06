@@ -183,6 +183,14 @@ tasks:
     cmds:
       - gio open implementation-notes.pdf
 
+  release:install-deb:
+    desc: Build release deb and install it to local machine
+    deps: [release:deb]
+    cmds:
+      - sudo apt remove -y sanedit
+      - sudo apt install -y ./deb/sanedit_*.deb
+
+
   jit:test:
     desc: Run parser JIT tests
     dir: crates/parser

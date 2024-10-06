@@ -261,7 +261,7 @@ impl Position {
             col += len as u32;
         }
 
-        unreachable!("Position not found")
+        slice.len()
     }
 
     pub(crate) fn as_lsp(&self) -> lsp_types::Position {

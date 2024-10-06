@@ -46,6 +46,10 @@ impl<T: Ord> SortedVec<T> {
         self.items.iter_mut()
     }
 
+    pub fn retain<F: Fn(&T) -> bool>(&mut self, f: F) {
+        self.items.retain(f)
+    }
+
     pub fn iter(&self) -> std::slice::Iter<T> {
         self.items.iter()
     }

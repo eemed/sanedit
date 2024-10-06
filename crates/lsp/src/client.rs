@@ -188,6 +188,7 @@ impl LSPClient {
                         .map(TextDiagnostic::from)
                         .collect(),
                 };
+                log::info!("Diagnostics: {:?}", diagnostics);
 
                 self.sender
                     .send(Response::Notification(diagnostics))
@@ -415,6 +416,7 @@ impl Handler {
         changes: Vec<TextEdit>,
         version: i32,
     ) -> Result<(), LSPError> {
+        log::info!("Changes: {changes:?}");
         let content_changes = changes
             .into_iter()
             .map(|change| lsp_types::TextDocumentContentChangeEvent {

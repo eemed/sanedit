@@ -156,7 +156,9 @@ impl Default for Hooks {
         hooks.register(BufCreated, lsp::open_doc);
         hooks.register(BufChanged, lsp::sync_document);
         hooks.register(BufDeletedPre, lsp::close_doc);
-        // TODO closed events
+
+        // Buffer
+        // hooks.register(BufChanged, text::clear_diagnostics);
 
         hooks
     }

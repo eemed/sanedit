@@ -130,6 +130,8 @@ pub(crate) const LOCATIONS_COMMANDS: &[Action] = &[
     locations::goto_loc_entry,
     locations::select_loc_parent,
     locations::toggle_all_expand_locs,
+    locations::keep_locations,
+    locations::reject_locations,
 ];
 
 #[rustfmt::skip]

@@ -51,6 +51,10 @@ pub enum RequestResult {
     Format {
         edit: FileEdit,
     },
+    Diagnostics {
+        path: PathBuf,
+        diagnostics: Vec<TextDiagnostic>,
+    },
     Error {
         msg: String,
     },

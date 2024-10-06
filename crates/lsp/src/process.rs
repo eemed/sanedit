@@ -150,7 +150,9 @@ impl ProcessHandler {
     pub async fn read_response(&mut self) -> Result<JsonResponse, LSPError> {
         let response = read_from(&mut self.stdout).await?;
         if response.is_right() {
-            return Err(LSPError::InvalidResponse);
+            return Err(LSPError::InvalidResponse(
+                "LSP Received notification instead of response".into(),
+            ));
         }
 
         Ok(response.take_left().unwrap())

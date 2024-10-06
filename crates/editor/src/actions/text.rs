@@ -80,13 +80,19 @@ pub(crate) fn insert(editor: &mut Editor, id: ClientId, text: &str) {
 
 #[action("Save file")]
 fn save(editor: &mut Editor, id: ClientId) {
+    run(editor, id, Hook::BufSavedPre);
     let (win, buf) = editor.win_buf_mut(id);
 
-    if let Err(e) = win.save_buffer(buf) {
-        if let Some(BufferError::NoSavePath) = e.root_cause().downcast_ref::<BufferError>() {
-            // Clear error message, as we execute a new fix action
-            win.clear_msg();
-            save_as.execute(editor, id)
+    match win.save_buffer(buf) {
+        Ok(()) => {
+            run(editor, id, Hook::BufSavedPost);
+        }
+        Err(e) => {
+            if let Some(BufferError::NoSavePath) = e.root_cause().downcast_ref::<BufferError>() {
+                // Clear error message, as we execute a new fix action
+                win.clear_msg();
+                save_as.execute(editor, id)
+            }
         }
     }
 

@@ -8,7 +8,8 @@ pub(crate) fn client_capabilities() -> lsp_types::ClientCapabilities {
         .get_or_init(|| {
             lsp_types::ClientCapabilities {
                 workspace: Some(lsp_types::WorkspaceClientCapabilities {
-                    configuration: Some(true),
+                    configuration: None,
+                    // configuration: Some(true),
                     did_change_configuration: Some(
                         lsp_types::DynamicRegistrationClientCapabilities {
                             dynamic_registration: Some(false),
@@ -28,21 +29,23 @@ pub(crate) fn client_capabilities() -> lsp_types::ClientCapabilities {
                     }),
                     workspace_edit: Some(lsp_types::WorkspaceEditClientCapabilities {
                         document_changes: Some(true),
-                        resource_operations: Some(vec![
-                            lsp_types::ResourceOperationKind::Create,
-                            lsp_types::ResourceOperationKind::Rename,
-                            lsp_types::ResourceOperationKind::Delete,
-                        ]),
+                        resource_operations: None,
+                        // Some(vec![
+                        //     lsp_types::ResourceOperationKind::Create,
+                        //     lsp_types::ResourceOperationKind::Rename,
+                        //     lsp_types::ResourceOperationKind::Delete,
+                        // ]),
                         failure_handling: Some(lsp_types::FailureHandlingKind::Abort),
                         normalizes_line_endings: Some(false),
                         change_annotation_support: None,
                     }),
-                    did_change_watched_files: Some(
-                        lsp_types::DidChangeWatchedFilesClientCapabilities {
-                            dynamic_registration: Some(true),
-                            relative_pattern_support: Some(false),
-                        },
-                    ),
+                    did_change_watched_files: None,
+                    // Some(
+                    //     lsp_types::DidChangeWatchedFilesClientCapabilities {
+                    //         dynamic_registration: Some(false),
+                    //         relative_pattern_support: Some(false),
+                    //     },
+                    // ),
                     file_operations: Some(lsp_types::WorkspaceFileOperationsClientCapabilities {
                         // will_rename: Some(true),
                         // did_rename: Some(true),
@@ -128,22 +131,45 @@ pub(crate) fn client_capabilities() -> lsp_types::ClientCapabilities {
                         }),
                         ..Default::default()
                     }),
-                    publish_diagnostics: None,
-                    // publish_diagnostics: Some(lsp_types::PublishDiagnosticsClientCapabilities {
-                    //     version_support: Some(true),
-                    //     tag_support: Some(lsp_types::TagSupport {
-                    //         value_set: vec![
-                    //             lsp_types::DiagnosticTag::UNNECESSARY,
-                    //             lsp_types::DiagnosticTag::DEPRECATED,
-                    //         ],
-                    //     }),
-                    //     ..Default::default()
-                    // }),
+                    publish_diagnostics: Some(lsp_types::PublishDiagnosticsClientCapabilities {
+                        version_support: Some(true),
+                        tag_support: Some(lsp_types::TagSupport {
+                            value_set: vec![
+                                lsp_types::DiagnosticTag::UNNECESSARY,
+                                lsp_types::DiagnosticTag::DEPRECATED,
+                            ],
+                        }),
+                        ..Default::default()
+                    }),
                     inlay_hint: Some(lsp_types::InlayHintClientCapabilities {
                         dynamic_registration: Some(false),
                         resolve_support: None,
                     }),
-                    ..Default::default()
+                    diagnostic: Some(lsp_types::DiagnosticClientCapabilities {
+                        dynamic_registration: None,
+                        related_document_support: Some(true),
+                    }),
+                    ..Default::default() // references: todo!(),
+                                         // document_highlight: todo!(),
+                                         // document_symbol: todo!(),
+                                         // range_formatting: todo!(),
+                                         // on_type_formatting: todo!(),
+                                         // declaration: todo!(),
+                                         // definition: todo!(),
+                                         // type_definition: todo!(),
+                                         // implementation: todo!(),
+                                         // code_lens: todo!(),
+                                         // document_link: todo!(),
+                                         // color_provider: todo!(),
+                                         // folding_range: todo!(),
+                                         // selection_range: todo!(),
+                                         // linked_editing_range: todo!(),
+                                         // call_hierarchy: todo!(),
+                                         // semantic_tokens: todo!(),
+                                         // moniker: todo!(),
+                                         // type_hierarchy: todo!(),
+                                         // inline_value: todo!(),
+                                         // diagnostic: todo!(),
                 }),
                 // window: Some(lsp_types::WindowClientCapabilities {
                 //     work_done_progress: Some(true),

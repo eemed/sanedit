@@ -20,8 +20,8 @@ pub enum LSPError {
     #[error("LSP responded to nonexistent request")]
     ResponseToNonexistentRequest,
 
-    #[error("LSP responded with invalid data")]
-    InvalidResponse,
+    #[error("LSP responded with invalid data: {0}")]
+    InvalidResponse(String),
 
     #[error("IO error: {0}")]
     IO(#[from] tokio::io::Error),

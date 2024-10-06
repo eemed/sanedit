@@ -6,7 +6,7 @@ pub struct LRU<T> {
 }
 
 impl<T> LRU<T> {
-    fn new(cap: usize) -> LRU<T> {
-        todo!()
+    pub fn new(cap: usize) -> LRU<T> {
+        todo!();
     }
 }

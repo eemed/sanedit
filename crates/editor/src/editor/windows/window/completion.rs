@@ -84,6 +84,7 @@ impl Completion {
                 let (win, buf) = editor.win_buf_mut(id);
                 let cursor = win.cursors.primary().pos();
                 let start = win.completion.started_at;
+                log::info!("Started: {start}, cursor: {cursor}");
                 let slice = buf.slice(start..cursor);
                 let word = String::from(&slice);
                 let _ = sender.blocking_send(word);

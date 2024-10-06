@@ -38,6 +38,11 @@ pub(crate) enum Hook {
     /// After client message is processed
     OnMessagePost,
 
+    /// Before buffer is saved
+    BufSavedPre,
+    /// After buffer has been saved
+    BufSavedPost,
+
     OnDrawPre,
     Reload,
 }
@@ -156,6 +161,7 @@ impl Default for Hooks {
         hooks.register(BufCreated, lsp::open_doc);
         hooks.register(BufChanged, lsp::sync_document);
         hooks.register(BufDeletedPre, lsp::close_doc);
+        // hooks.register(BufSavedPre, lsp::sync_on_save);
 
         // Buffer
         // hooks.register(BufChanged, text::clear_diagnostics);

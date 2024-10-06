@@ -268,6 +268,9 @@ impl LSP {
             RequestResult::Error { msg } => {
                 log::error!("LSP '{}' failed to process: {msg}", self.opts.command);
             }
+            RequestResult::Diagnostics { path, diagnostics } => {
+                handle_diagnostics(editor, self.client_id, path, None, diagnostics)
+            }
         }
     }
 }
@@ -288,6 +291,7 @@ fn complete(
     let Some(enc) = editor.lsp_handle_for(id).map(|x| x.position_encoding()) else {
         return;
     };
+    log::info!("Compl at: {position:?}");
     let (win, buf) = editor.win_buf_mut(id);
     let slice = buf.slice(..);
     let start = position.to_offset(&slice, &enc);
@@ -320,6 +324,7 @@ fn handle_diagnostics(
     };
     let buf = editor.buffers().get(bid).unwrap();
 
+    log::info!("Diag: {version:?}");
     // Ensure not changed
     if let Some(version) = version {
         if buf.total_changes_made() != version as u32 {
@@ -342,6 +347,7 @@ fn handle_diagnostics(
     buf.diagnostics.clear();
 
     for d in diags {
+        // log::info!("Recv Diagnostic: {d:?}");
         let slice = buf.slice(..);
         let start;
         let end;

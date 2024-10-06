@@ -218,6 +218,15 @@ impl Position {
         let (row, line) = slice.line_at(offset);
         offset -= line.start();
 
+        if offset == line.len() {
+            return Position {
+                pos: lsp_types::Position {
+                    line: (row + 1) as u32,
+                    character: 0,
+                },
+            };
+        }
+
         let mut chars = line.chars();
         let mut col = 0u32;
 

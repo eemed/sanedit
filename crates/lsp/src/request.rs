@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 
 use sanedit_core::IndentKind;
+use sanedit_utils::either::Either;
 
 use crate::util::{CodeAction, Position, TextEdit};
 
@@ -28,7 +29,8 @@ pub enum Notification {
     },
     DidChange {
         path: PathBuf,
-        changes: Vec<TextEdit>,
+        /// Either partial or full change
+        changes: Either<Vec<TextEdit>, String>,
         version: i32,
     },
     DidClose {
@@ -76,5 +78,8 @@ pub enum RequestKind {
         path: PathBuf,
         indent_kind: IndentKind,
         indent_amount: u32,
+    },
+    PullDiagnostics {
+        path: PathBuf,
     },
 }

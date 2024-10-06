@@ -14,6 +14,7 @@ use crate::{
 
 use lsp_types::notification::Notification as _;
 use sanedit_core::IndentKind;
+use sanedit_utils::either::Either;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 use tokio::sync::oneshot;
 use tokio::{io::BufReader, process::Command};
@@ -188,7 +189,7 @@ impl LSPClient {
                         .map(TextDiagnostic::from)
                         .collect(),
                 };
-                log::info!("Diagnostics: {:?}", diagnostics);
+                log::info!("Sent Diagnostics");
 
                 self.sender
                     .send(Response::Notification(diagnostics))
@@ -242,6 +243,9 @@ impl Handler {
                     self.format(req.id, path, indent_kind, indent_amount)
                         .await?
                 }
+                RequestKind::PullDiagnostics { path } => {
+                    self.pull_diagnostics(req.id, path).await?
+                }
             },
             ToLSP::Notification(notif) => match notif {
                 Notification::DidOpen {
@@ -257,6 +261,47 @@ impl Handler {
                 Notification::DidClose { path } => self.did_close_document(path).await?,
             },
         }
+
+        Ok(())
+    }
+
+    async fn pull_diagnostics(&mut self, id: u32, path: PathBuf) -> Result<(), LSPError> {
+        let params = lsp_types::DocumentDiagnosticParams {
+            text_document: lsp_types::TextDocumentIdentifier {
+                uri: path_to_uri(&path),
+            },
+            identifier: None,
+            previous_result_id: None,
+            work_done_progress_params: lsp_types::WorkDoneProgressParams {
+                work_done_token: None,
+            },
+            partial_result_params: lsp_types::PartialResultParams {
+                partial_result_token: None,
+            },
+        };
+
+        let response = self
+            .request::<lsp_types::request::DocumentDiagnosticRequest>(id, &params)
+            .await?;
+
+        let mut diagnostics = vec![];
+        match response {
+            lsp_types::DocumentDiagnosticReportResult::Report(rep) => match rep {
+                lsp_types::DocumentDiagnosticReport::Full(full) => {
+                    diagnostics.extend(full.full_document_diagnostic_report.items);
+                }
+                lsp_types::DocumentDiagnosticReport::Unchanged(_) => {}
+            },
+            lsp_types::DocumentDiagnosticReportResult::Partial(_) => {}
+        }
+        let diagnostics = diagnostics.into_iter().map(TextDiagnostic::from).collect();
+
+        self.response
+            .send(Response::Request {
+                id,
+                result: RequestResult::Diagnostics { path, diagnostics },
+            })
+            .await?;
 
         Ok(())
     }
@@ -413,18 +458,29 @@ impl Handler {
     async fn did_change_document(
         &mut self,
         path: PathBuf,
-        changes: Vec<TextEdit>,
+        changes: Either<Vec<TextEdit>, String>,
         version: i32,
     ) -> Result<(), LSPError> {
-        log::info!("Changes: {changes:?}");
-        let content_changes = changes
-            .into_iter()
-            .map(|change| lsp_types::TextDocumentContentChangeEvent {
-                range: Some(change.range.into()),
-                text: change.text,
-                range_length: None,
-            })
-            .collect();
+        let content_changes = {
+            match changes {
+                Either::Left(changes) => changes
+                    .into_iter()
+                    .map(|change| lsp_types::TextDocumentContentChangeEvent {
+                        range: Some(change.range.into()),
+                        text: change.text,
+                        range_length: None,
+                    })
+                    .collect(),
+                Either::Right(full) => {
+                    vec![lsp_types::TextDocumentContentChangeEvent {
+                        range: None,
+                        text: full,
+                        range_length: None,
+                    }]
+                }
+            }
+        };
+        log::info!("Changes: {content_changes:?}");
 
         let params = lsp_types::DidChangeTextDocumentParams {
             text_document: lsp_types::VersionedTextDocumentIdentifier {
@@ -715,7 +771,7 @@ impl Handler {
             .recv()
             .await
             .ok_or(LSPError::NoResponse)?
-            .map_err(|_| LSPError::InvalidResponse)?;
+            .map_err(|e| LSPError::InvalidResponse(e))?;
 
         let result = serde_json::from_value(response)?;
 

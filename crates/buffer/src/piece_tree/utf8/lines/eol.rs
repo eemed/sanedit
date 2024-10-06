@@ -50,6 +50,12 @@ impl EndOfLine {
         }
     }
 
+    pub fn is_eol_char(ch: char) -> bool {
+        let mut buf = [0; 4];
+        let s = ch.encode_utf8(&mut buf);
+        Self::is_eol(s.as_bytes())
+    }
+
     pub fn is_eol<B: AsRef<[u8]>>(bytes: B) -> bool {
         let bytes = bytes.as_ref();
         eol_bytes().contains(bytes)

@@ -2,6 +2,7 @@ use anyhow::{anyhow, bail, Result};
 use sanedit_buffer::PieceTreeSlice;
 use sanedit_core::ChangesKind;
 use sanedit_messages::redraw::PopupMessage;
+use sanedit_utils::either::Either;
 use std::path::{Path, PathBuf};
 use thiserror::Error;
 
@@ -188,27 +189,28 @@ fn sync_document(editor: &mut Editor, id: ClientId) {
 
         use ChangesKind::*;
         let changes = match edit.changes.kind() {
-            Undo | Redo => {
-                vec![sanedit_lsp::TextEdit {
-                    range: PositionRange {
-                        start: Position::default(),
-                        end: Position::new(slice.len(), &slice, &enc),
-                    },
-                    text: String::from(&slice),
-                }]
+            Undo | Redo => Either::Right(String::from(&buf.slice(..))),
+            _ => {
+                let changes = edit
+                    .changes
+                    .iter()
+                    .map(|change| {
+                        let start = Position::new(change.start(), &slice, &enc);
+                        let end = if change.range().is_empty() {
+                            start.clone()
+                        } else {
+                            Position::new(change.end(), &slice, &enc)
+                        };
+
+                        TextEdit {
+                            range: PositionRange { start, end },
+                            text: String::from_utf8(change.text().into())
+                                .expect("Change was not UTF8"),
+                        }
+                    })
+                    .collect();
+                Either::Left(changes)
             }
-            _ => edit
-                .changes
-                .iter()
-                .map(|change| {
-                    let start = Position::new(change.start(), &slice, &enc);
-                    let end = Position::new(change.end(), &slice, &enc);
-                    TextEdit {
-                        range: PositionRange { start, end },
-                        text: String::from_utf8(change.text().into()).expect("Change was not UTF8"),
-                    }
-                })
-                .collect(),
         };
 
         let lsp = editor
@@ -245,6 +247,20 @@ fn complete(editor: &mut Editor, id: ClientId) {
                 Constraint::Buffer(buf.id),
                 Constraint::BufferVersion(buf.total_changes_made()),
                 Constraint::CursorPosition(offset),
+            ],
+        ))
+    });
+}
+
+#[action("Pull diagnostics")]
+fn pull_diagnostics(editor: &mut Editor, id: ClientId) {
+    let _ = lsp_request(editor, id, move |_win, buf, path, _slice, _lsp| {
+        let kind = RequestKind::PullDiagnostics { path };
+        Some((
+            kind,
+            vec![
+                Constraint::Buffer(buf.id),
+                Constraint::BufferVersion(buf.total_changes_made()),
             ],
         ))
     });
@@ -435,4 +451,10 @@ pub(crate) fn close_document(editor: &mut Editor, bid: BufferId) -> Result<()> {
                 ft.as_str().to_string(),
             ))?;
     lsp.notify(Notification::DidClose { path: path.clone() })
+}
+
+#[action("Sync document on save")]
+pub(crate) fn sync_on_save(editor: &mut Editor, id: ClientId) {
+    close_doc.execute(editor, id);
+    open_doc.execute(editor, id);
 }

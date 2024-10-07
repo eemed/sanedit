@@ -36,12 +36,37 @@ pub enum Notification {
     DidClose {
         path: PathBuf,
     },
+    WillSave {
+        path: PathBuf,
+    },
+    DidSave {
+        path: PathBuf,
+        text: Option<String>,
+    },
+}
+
+impl Notification {
+    /// Determines if the notification is supported by the LSP.
+    /// May also modify the notification to make it supported.
+    pub fn is_supported(&mut self, init: &lsp_types::InitializeResult) -> bool {
+        // TODO determine if server supports this request
+        true
+    }
 }
 
 #[derive(Debug, Clone)]
 pub struct Request {
     pub id: u32,
     pub kind: RequestKind,
+}
+
+impl Request {
+    /// Determines if the request is supported by the LSP.
+    /// May also modify the request to make it supported.
+    pub fn is_supported(&mut self, init: &lsp_types::InitializeResult) -> bool {
+        // TODO determine if server supports this request
+        true
+    }
 }
 
 #[derive(Debug, Clone)]

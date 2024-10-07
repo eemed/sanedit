@@ -158,9 +158,9 @@ impl Default for Hooks {
 
         // LSP
         hooks.register(BufCreated, lsp::start_lsp_hook);
-        hooks.register(BufCreated, lsp::open_doc);
+        hooks.register(BufCreated, lsp::open_document);
         hooks.register(BufChanged, lsp::sync_document);
-        hooks.register(BufDeletedPre, lsp::close_doc);
+        hooks.register(BufDeletedPre, lsp::close_document);
         // hooks.register(BufSavedPre, lsp::sync_on_save);
 
         // Buffer

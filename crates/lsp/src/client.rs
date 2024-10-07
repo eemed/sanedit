@@ -1,8 +1,9 @@
 use std::collections::BTreeMap;
+use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use std::{path::PathBuf, process::Stdio};
 
-use crate::error::LSPError;
+use crate::error::{LSPError, LSPRequestError, LSPSpawnError};
 use crate::jsonrpc::{JsonNotification, JsonRequest};
 use crate::process::{ProcessHandler, ServerRequest};
 use crate::request::{Notification, RequestKind, ToLSP};
@@ -29,7 +30,7 @@ pub struct LSPClientParams {
 }
 
 impl LSPClientParams {
-    pub async fn spawn(self) -> Result<(LSPClientSender, LSPClientReader), LSPError> {
+    pub async fn spawn(self) -> Result<(LSPClientSender, LSPClientReader), LSPSpawnError> {
         // Spawn server
         let mut cmd = Command::new(&self.run_command)
             .args(&*self.run_args)
@@ -39,9 +40,9 @@ impl LSPClientParams {
             .kill_on_drop(true)
             .spawn()?;
 
-        let stdin = cmd.stdin.take().ok_or(LSPError::Initialize)?;
-        let stdout = BufReader::new(cmd.stdout.take().ok_or(LSPError::Initialize)?);
-        let stderr = BufReader::new(cmd.stderr.take().ok_or(LSPError::Initialize)?);
+        let stdin = cmd.stdin.take().ok_or(LSPSpawnError::Stdin)?;
+        let stdout = BufReader::new(cmd.stdout.take().ok_or(LSPSpawnError::Stdout)?);
+        let stderr = BufReader::new(cmd.stderr.take().ok_or(LSPSpawnError::Stderr)?);
         let (server_notif_sender, server_notif_recv) = channel(256);
         let (server_sender, server_recv) = channel(256);
         let (req_sender, req_receiver) = channel(256);
@@ -66,8 +67,8 @@ impl LSPClientParams {
         // Wait for initialization
         let init = init_recv
             .await
-            .map_err(|_| LSPError::Initialize)?
-            .map_err(|_| LSPError::Initialize)?;
+            .map_err(|_| LSPSpawnError::Initialize)?
+            .map_err(|_| LSPSpawnError::Initialize)?;
         let init_params = Arc::new(init);
 
         let client = LSPClient {
@@ -108,12 +109,24 @@ pub struct LSPClientSender {
 }
 
 impl LSPClientSender {
-    pub fn request(&mut self, req: Request) {
-        let _ = self.sender.blocking_send(ToLSP::Request(req));
+    pub fn request(&mut self, mut req: Request) -> Result<(), LSPRequestError> {
+        if !req.is_supported(&self.init_params) {
+            return Err(LSPRequestError::Unsupported);
+        }
+        self.sender
+            .blocking_send(ToLSP::Request(req))
+            .map_err(|_| LSPRequestError::ServerClosed)?;
+        Ok(())
     }
 
-    pub fn notify(&mut self, notif: Notification) {
-        let _ = self.sender.blocking_send(ToLSP::Notification(notif));
+    pub fn notify(&mut self, mut notif: Notification) -> Result<(), LSPRequestError> {
+        if !notif.is_supported(&self.init_params) {
+            return Err(LSPRequestError::Unsupported);
+        }
+        self.sender
+            .blocking_send(ToLSP::Notification(notif))
+            .map_err(|_| LSPRequestError::ServerClosed)?;
+        Ok(())
     }
 
     pub fn position_encoding(&self) -> PositionEncoding {
@@ -259,6 +272,8 @@ impl Handler {
                     changes,
                 } => self.did_change_document(path, changes, version).await?,
                 Notification::DidClose { path } => self.did_close_document(path).await?,
+                Notification::WillSave { path } => self.will_save(path).await?,
+                Notification::DidSave { path, text } => self.did_save(path, text).await?,
             },
         }
 
@@ -453,6 +468,30 @@ impl Handler {
             .await?;
 
         Ok(())
+    }
+
+    async fn will_save(&mut self, path: PathBuf) -> Result<(), LSPError> {
+        let params = lsp_types::WillSaveTextDocumentParams {
+            text_document: lsp_types::TextDocumentIdentifier {
+                uri: path_to_uri(&path),
+            },
+            reason: lsp_types::TextDocumentSaveReason::MANUAL,
+        };
+
+        self.notify::<lsp_types::notification::WillSaveTextDocument>(&params)
+            .await
+    }
+
+    async fn did_save(&mut self, path: PathBuf, text: Option<String>) -> Result<(), LSPError> {
+        let params = lsp_types::DidSaveTextDocumentParams {
+            text_document: lsp_types::TextDocumentIdentifier {
+                uri: path_to_uri(&path),
+            },
+            text,
+        };
+
+        self.notify::<lsp_types::notification::DidSaveTextDocument>(&params)
+            .await
     }
 
     async fn did_change_document(

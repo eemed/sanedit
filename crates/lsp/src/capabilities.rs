@@ -147,7 +147,13 @@ pub(crate) fn client_capabilities() -> lsp_types::ClientCapabilities {
                     }),
                     diagnostic: Some(lsp_types::DiagnosticClientCapabilities {
                         dynamic_registration: None,
-                        related_document_support: Some(true),
+                        related_document_support: Some(false),
+                    }),
+                    synchronization: Some(lsp_types::TextDocumentSyncClientCapabilities {
+                        dynamic_registration: Some(false),
+                        will_save: Some(true),
+                        will_save_wait_until: Some(false),
+                        did_save: Some(true),
                     }),
                     ..Default::default() // references: todo!(),
                                          // document_highlight: todo!(),

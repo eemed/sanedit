@@ -27,6 +27,9 @@ enum LSPActionError {
     #[error("Buffer path is not set")]
     PathNotSet,
 
+    #[error("Buffer not found")]
+    BufferNotFound,
+
     #[error("No language server configured for filetype {0:?}")]
     LanguageServerNotConfigured(String),
 
@@ -72,10 +75,60 @@ pub(crate) fn lsp_request(
             .language_servers
             .get_mut(&ft)
             .ok_or_else(|| LSPActionError::LanguageServerNotStarted(ft.as_str().to_string()))?;
-        lsp.request(kind, id, constraints)
-    } else {
-        Ok(())
+        lsp.request(kind, id, constraints)?;
     }
+
+    Ok(())
+}
+
+pub(crate) fn lsp_notify_for(
+    editor: &mut Editor,
+    id: ClientId,
+    bid: BufferId,
+    f: fn(&Buffer, PathBuf, PieceTreeSlice, &LSPHandle) -> Option<Notification>,
+) -> Result<()> {
+    let buf = editor
+        .buffers()
+        .get(bid)
+        .ok_or(LSPActionError::BufferNotFound)?;
+    let ft = buf.filetype.clone().ok_or(LSPActionError::FiletypeNotSet)?;
+    let path = buf
+        .path()
+        .map(Path::to_path_buf)
+        .ok_or(LSPActionError::PathNotSet)?;
+    let handle = editor
+        .language_servers
+        .get(&ft)
+        .ok_or_else(|| LSPActionError::LanguageServerNotStarted(ft.as_str().to_string()))?;
+
+    let (_win, buf) = editor.win_buf(id);
+    let slice = buf.slice(..);
+    let request = (f)(buf, path, slice, handle);
+
+    if let Some(notif) = request {
+        let lsp = editor
+            .language_servers
+            .get_mut(&ft)
+            .ok_or_else(|| LSPActionError::LanguageServerNotStarted(ft.as_str().to_string()))?;
+        lsp.notify(notif)?;
+    }
+
+    Ok(())
+}
+
+pub(crate) fn lsp_notify(
+    editor: &mut Editor,
+    id: ClientId,
+    f: fn(&Buffer, PathBuf, PieceTreeSlice, &LSPHandle) -> Option<Notification>,
+) -> Result<()> {
+    let (_win, buf) = editor.win_buf_mut(id);
+    let bid = buf.id;
+    let bid = editor
+        .hooks
+        .running_hook()
+        .and_then(Hook::buffer_id)
+        .unwrap_or(bid);
+    lsp_notify_for(editor, id, bid, f)
 }
 
 #[action("Start language server")]
@@ -167,39 +220,28 @@ fn goto_definition(editor: &mut Editor, id: ClientId) {
 
 #[action("Synchronize document")]
 fn sync_document(editor: &mut Editor, id: ClientId) {
-    fn sync(editor: &mut Editor, bid: BufferId) -> Result<()> {
-        let buf = editor.buffers().get(bid).unwrap();
-        let ft = buf.filetype.clone().ok_or(LSPActionError::FiletypeNotSet)?;
-        let path = buf
-            .path()
-            .map(Path::to_path_buf)
-            .ok_or(LSPActionError::PathNotSet)?;
-
+    let _ = lsp_notify(editor, id, |buf, path, slice, lsp| {
         let version = buf.total_changes_made() as i32;
         let Some(edit) = buf.last_edit() else {
             // Nothing to sync
-            return Ok(());
+            return None;
         };
-        let lsp = editor
-            .language_servers
-            .get(&ft)
-            .ok_or_else(|| LSPActionError::LanguageServerNotStarted(ft.as_str().to_string()))?;
         let enc = lsp.position_encoding();
-        let slice = edit.buf.slice(..);
+        let eslice = edit.buf.slice(..);
 
         use ChangesKind::*;
         let changes = match edit.changes.kind() {
-            Undo | Redo => Either::Right(String::from(&buf.slice(..))),
+            Undo | Redo => Either::Right(String::from(&slice)),
             _ => {
                 let changes = edit
                     .changes
                     .iter()
                     .map(|change| {
-                        let start = Position::new(change.start(), &slice, &enc);
+                        let start = Position::new(change.start(), &eslice, &enc);
                         let end = if change.range().is_empty() {
                             start.clone()
                         } else {
-                            Position::new(change.end(), &slice, &enc)
+                            Position::new(change.end(), &eslice, &enc)
                         };
 
                         TextEdit {
@@ -213,26 +255,12 @@ fn sync_document(editor: &mut Editor, id: ClientId) {
             }
         };
 
-        let lsp = editor
-            .language_servers
-            .get_mut(&ft)
-            .ok_or_else(|| LSPActionError::LanguageServerNotStarted(ft.as_str().to_string()))?;
-        lsp.notify(Notification::DidChange {
+        Some(Notification::DidChange {
             path,
             changes,
             version,
         })
-    }
-
-    let (_win, buf) = editor.win_buf(id);
-    let bid = buf.id;
-    let bid = editor
-        .hooks
-        .running_hook()
-        .and_then(Hook::buffer_id)
-        .unwrap_or(bid);
-
-    let _ = sync(editor, bid);
+    });
 }
 
 #[action("Complete")]
@@ -363,27 +391,23 @@ fn rename(editor: &mut Editor, id: ClientId) {
 }
 
 #[action("Send LSP open document notification")]
-pub(crate) fn open_doc(editor: &mut Editor, id: ClientId) {
-    let (_win, buf) = editor.win_buf(id);
-    let bid = buf.id;
-    let bid = editor
-        .hooks
-        .running_hook()
-        .and_then(Hook::buffer_id)
-        .unwrap_or(bid);
-    let _ = open_document(editor, bid);
+pub(crate) fn open_document(editor: &mut Editor, id: ClientId) {
+    let _ = lsp_notify(editor, id, |buf, path, slice, _lsp| {
+        let text = String::from(&slice);
+        let version = buf.total_changes_made() as i32;
+        Some(Notification::DidOpen {
+            path: path.clone(),
+            text,
+            version,
+        })
+    });
 }
 
 #[action("Send LSP open document notification")]
-pub(crate) fn close_doc(editor: &mut Editor, id: ClientId) {
-    let (_win, buf) = editor.win_buf(id);
-    let bid = buf.id;
-    let bid = editor
-        .hooks
-        .running_hook()
-        .and_then(Hook::buffer_id)
-        .unwrap_or(bid);
-    let _ = close_document(editor, bid);
+pub(crate) fn close_document(editor: &mut Editor, id: ClientId) {
+    let _ = lsp_notify(editor, id, |_buf, path, _slice, _lsp| {
+        Some(Notification::DidClose { path: path.clone() })
+    });
 }
 
 #[action("Show diagnostics on line")]
@@ -404,57 +428,20 @@ pub(crate) fn show_diagnostics(editor: &mut Editor, id: ClientId) {
     }
 }
 
-pub(crate) fn open_document(editor: &mut Editor, bid: BufferId) -> Result<()> {
-    let buf = editor
-        .buffers()
-        .get(bid)
-        .ok_or(anyhow!("Buffer not found"))?;
-    let ft = buf.filetype.clone().ok_or(LSPActionError::FiletypeNotSet)?;
-    let path = buf
-        .path()
-        .map(Path::to_path_buf)
-        .ok_or(LSPActionError::PathNotSet)?;
-
-    let text = String::from(&buf.slice(..));
-    let version = buf.total_changes_made() as i32;
-
-    let lsp =
-        editor
-            .language_servers
-            .get_mut(&ft)
-            .ok_or(LSPActionError::LanguageServerNotStarted(
-                ft.as_str().to_string(),
-            ))?;
-    lsp.notify(Notification::DidOpen {
-        path: path.clone(),
-        text,
-        version,
-    })
+#[action("Will save document notification")]
+pub(crate) fn will_save_document(editor: &mut Editor, id: ClientId) {
+    let _ = lsp_notify(editor, id, |_buf, path, _slice, _lsp| {
+        Some(Notification::WillSave { path: path.clone() })
+    });
 }
 
-pub(crate) fn close_document(editor: &mut Editor, bid: BufferId) -> Result<()> {
-    let buf = editor
-        .buffers()
-        .get(bid)
-        .ok_or(anyhow!("Buffer not found"))?;
-    let ft = buf.filetype.clone().ok_or(LSPActionError::FiletypeNotSet)?;
-    let path = buf
-        .path()
-        .map(Path::to_path_buf)
-        .ok_or(LSPActionError::PathNotSet)?;
-
-    let lsp =
-        editor
-            .language_servers
-            .get_mut(&ft)
-            .ok_or(LSPActionError::LanguageServerNotStarted(
-                ft.as_str().to_string(),
-            ))?;
-    lsp.notify(Notification::DidClose { path: path.clone() })
-}
-
-#[action("Sync document on save")]
-pub(crate) fn sync_on_save(editor: &mut Editor, id: ClientId) {
-    close_doc.execute(editor, id);
-    open_doc.execute(editor, id);
+#[action("Did save document notification")]
+pub(crate) fn did_save_document(editor: &mut Editor, id: ClientId) {
+    let _ = lsp_notify(editor, id, |_buf, path, slice, _lsp| {
+        let text = String::from(&slice);
+        Some(Notification::DidSave {
+            path: path.clone(),
+            text: Some(text),
+        })
+    });
 }

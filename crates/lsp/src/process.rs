@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use crate::capabilities::client_capabilities;
-use crate::error::LSPError;
+use crate::error::{LSPError, LSPSpawnError};
 use crate::jsonrpc::{read_from, JsonNotification, JsonRequest, JsonResponse};
 use crate::util::path_to_uri;
 use crate::LSPClientParams;
@@ -49,7 +49,7 @@ impl ProcessHandler {
         let _ = init.send(init_result);
 
         if !ok {
-            return Err(LSPError::Initialize);
+            return Err(LSPSpawnError::Initialize.into());
         }
 
         loop {
@@ -58,7 +58,7 @@ impl ProcessHandler {
                     match msg {
                         Some(ServerRequest::Request { json, answer }) => self.handle_request(json, answer).await?,
                         Some(ServerRequest::Notification { json }) => self.handle_notification(json).await?,
-                        _ => {}
+                        None => return Err(LSPError::Receive),
                     }
                 }
                 json = read_from(&mut self.stdout) => {
@@ -136,7 +136,7 @@ impl ProcessHandler {
 
         // Read server response
         let response = self.read_response().await?;
-        let value = response.result.ok_or(LSPError::Initialize)?;
+        let value = response.result.ok_or(LSPSpawnError::Initialize)?;
         let result = serde_json::from_value::<lsp_types::InitializeResult>(value)?;
 
         // Send initialized notification

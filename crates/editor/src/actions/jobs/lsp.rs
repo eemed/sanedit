@@ -9,7 +9,11 @@ use std::{
 };
 
 use crate::{
-    actions::{hooks::run, locations, lsp},
+    actions::{
+        hooks::run,
+        locations,
+        lsp::{self, lsp_notify, lsp_notify_for, open_document},
+    },
     common::matcher::{MatchOption, MatchStrategy},
     editor::{
         buffers::BufferId,
@@ -23,9 +27,9 @@ use crate::{
 use sanedit_buffer::{PieceTree, PieceTreeSlice};
 use sanedit_core::{Change, Changes, Diagnostic, Filetype, Group, Item, Range};
 use sanedit_lsp::{
-    CodeAction, CompletionItem, FileEdit, LSPClientParams, LSPClientSender, Notification, Position,
-    PositionEncoding, PositionRange, Request, RequestKind, RequestResult, Response, TextDiagnostic,
-    WorkspaceEdit,
+    CodeAction, CompletionItem, FileEdit, LSPClientParams, LSPClientSender, LSPRequestError,
+    Notification, Position, PositionEncoding, PositionRange, Request, RequestKind, RequestResult,
+    Response, TextDiagnostic, WorkspaceEdit,
 };
 
 use anyhow::Result;
@@ -80,15 +84,15 @@ impl LSPHandle {
         req: RequestKind,
         cid: ClientId,
         constraints: Vec<Constraint>,
-    ) -> Result<()> {
+    ) -> Result<(), LSPRequestError> {
         let id = self.next_id();
         self.requests.insert(id, (cid, constraints));
-        self.sender.request(Request { id, kind: req });
+        self.sender.request(Request { id, kind: req })?;
         Ok(())
     }
 
-    pub fn notify(&mut self, op: Notification) -> Result<()> {
-        self.sender.notify(op);
+    pub fn notify(&mut self, op: Notification) -> Result<(), LSPRequestError> {
+        self.sender.notify(op)?;
         Ok(())
     }
 
@@ -182,7 +186,16 @@ impl KeepInTouch for LSP {
                     // Send all buffers of this filetype
                     let ids: Vec<BufferId> = editor.buffers().iter().map(|(id, _buf)| id).collect();
                     for id in ids {
-                        let _ = lsp::open_document(editor, id);
+                        let _ =
+                            lsp_notify_for(editor, self.client_id, id, |buf, path, slice, _lsp| {
+                                let text = String::from(&slice);
+                                let version = buf.total_changes_made() as i32;
+                                Some(Notification::DidOpen {
+                                    path: path.clone(),
+                                    text,
+                                    version,
+                                })
+                            });
                     }
                 }
                 Message::Response(response) => self.handle_response(editor, response),
@@ -324,7 +337,6 @@ fn handle_diagnostics(
     };
     let buf = editor.buffers().get(bid).unwrap();
 
-    log::info!("Diag: {version:?}");
     // Ensure not changed
     if let Some(version) = version {
         if buf.total_changes_made() != version as u32 {

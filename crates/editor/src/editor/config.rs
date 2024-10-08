@@ -289,7 +289,7 @@ impl EditorConfig {
 }
 
 macro_rules! make_keymap {
-    ($keymap:ident, $($key:expr, $action:ident),+,) => {
+    ($($key:expr, $action:ident),+,) => {
         vec![
             $(
                 Mapping { key: $key.into(), action: stringify!($action).into() },
@@ -310,7 +310,7 @@ impl Mapping {
             KeymapKind::Search => [SEARCH_COMMANDS, PROMPT_COMMANDS].into(),
             KeymapKind::Prompt => [PROMPT_COMMANDS].into(),
             KeymapKind::Window => [WINDOW_COMMANDS].into(),
-            KeymapKind::Completion => [COMPLETION_COMMANDS].into(),
+            KeymapKind::Completion => [WINDOW_COMMANDS, COMPLETION_COMMANDS].into(),
             KeymapKind::Filetree => [FILETREE_COMMANDS].into(),
             KeymapKind::Locations => [LOCATIONS_COMMANDS].into(),
         };
@@ -354,7 +354,7 @@ impl Default for KeymapsConfig {
 impl KeymapsConfig {
     pub fn search() -> Vec<Mapping> {
         #[rustfmt::skip]
-        let map = make_keymap!(maps,
+        let map = make_keymap!(
             "ctrl+q",      quit,
 
             "esc",          close_prompt,
@@ -372,7 +372,7 @@ impl KeymapsConfig {
 
     pub fn prompt() -> Vec<Mapping> {
         #[rustfmt::skip]
-        let map = make_keymap!(maps,
+        let map = make_keymap!(
              "ctrl+q",    quit,
 
              "esc",       close_prompt,
@@ -389,19 +389,23 @@ impl KeymapsConfig {
     }
 
     pub fn completion() -> Vec<Mapping> {
+        let mut map = Self::window();
+
         #[rustfmt::skip]
-        let map = make_keymap!(maps,
+        let compl = make_keymap!(
              "tab",    next_completion,
              "btab",   prev_completion,
              "enter",  confirm_completion,
              "esc",    abort_completion,
         );
+
+        map.extend(compl);
         map
     }
 
     pub fn locations() -> Vec<Mapping> {
         #[rustfmt::skip]
-        let map = make_keymap!(maps,
+        let map = make_keymap!(
              "ctrl+q", quit,
 
              "alt+up", focus_window,
@@ -425,7 +429,7 @@ impl KeymapsConfig {
 
     pub fn filetree() -> Vec<Mapping> {
         #[rustfmt::skip]
-        let map = make_keymap!(maps,
+        let map = make_keymap!(
              "ctrl+q", quit,
 
              "esc",       close_filetree,
@@ -448,7 +452,7 @@ impl KeymapsConfig {
 
     pub fn window() -> Vec<Mapping> {
         #[rustfmt::skip]
-        let map = make_keymap!(maps,
+        let map = make_keymap!(
             "ctrl+q",    quit,
             "ctrl+c",    copy,
             "ctrl+v",    paste,

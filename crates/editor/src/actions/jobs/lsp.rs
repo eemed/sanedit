@@ -9,11 +9,7 @@ use std::{
 };
 
 use crate::{
-    actions::{
-        hooks::run,
-        locations,
-        lsp::{self, lsp_notify, lsp_notify_for, open_document},
-    },
+    actions::{hooks::run, locations, lsp::lsp_notify_for},
     common::matcher::{MatchOption, MatchStrategy},
     editor::{
         buffers::BufferId,
@@ -25,7 +21,9 @@ use crate::{
     },
 };
 use sanedit_buffer::{PieceTree, PieceTreeSlice};
-use sanedit_core::{Change, Changes, Diagnostic, Filetype, Group, Item, Range};
+use sanedit_core::{
+    word_at_pos, word_before_pos, Change, Changes, Diagnostic, Filetype, Group, Item, Range,
+};
 use sanedit_lsp::{
     CodeAction, CompletionItem, FileEdit, LSPClientParams, LSPClientSender, LSPRequestError,
     Notification, Position, PositionEncoding, PositionRange, Request, RequestKind, RequestResult,
@@ -139,7 +137,6 @@ impl Job for LSP {
             };
 
             let (sender, mut reader) = params.spawn().await?;
-            log::info!("Client started");
 
             let handle = LSPHandle {
                 name: command,
@@ -304,7 +301,6 @@ fn complete(
     let Some(enc) = editor.lsp_handle_for(id).map(|x| x.position_encoding()) else {
         return;
     };
-    log::info!("Compl at: {position:?}");
     let (win, buf) = editor.win_buf_mut(id);
     let slice = buf.slice(..);
     let start = position.to_offset(&slice, &enc);
@@ -312,13 +308,17 @@ fn complete(
     let Some(point) = win.view().point_at_pos(cursor.pos()) else {
         return;
     };
-    win.completion = Completion::new(start, point);
+    let (range, word) =
+        word_before_pos(&slice, start).unwrap_or((Range::new(start, start), String::default()));
+
+    win.completion = Completion::new(range.start, point);
 
     let opts: Vec<MatchOption> = opts.into_iter().map(from_completion_item).collect();
 
     let job = MatcherJob::builder(id)
         .strategy(MatchStrategy::Prefix)
         .options(Arc::new(opts))
+        .search(word)
         .handler(Completion::matcher_result_handler)
         .build();
 

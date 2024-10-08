@@ -1,6 +1,6 @@
-use anyhow::{anyhow, bail, Result};
+use anyhow::{bail, Result};
 use sanedit_buffer::PieceTreeSlice;
-use sanedit_core::ChangesKind;
+use sanedit_core::{word_at_pos, ChangesKind};
 use sanedit_messages::redraw::PopupMessage;
 use sanedit_utils::either::Either;
 use std::path::{Path, PathBuf};
@@ -8,14 +8,11 @@ use thiserror::Error;
 
 use sanedit_lsp::{Notification, Position, PositionRange, RequestKind, TextEdit};
 
-use crate::{
-    common::cursors::word_at_cursor,
-    editor::{
-        buffers::{Buffer, BufferConfig, BufferId},
-        hooks::Hook,
-        windows::{Focus, Prompt, Window},
-        Editor,
-    },
+use crate::editor::{
+    buffers::{Buffer, BufferConfig, BufferId},
+    hooks::Hook,
+    windows::{Focus, Prompt, Window},
+    Editor,
 };
 
 use sanedit_server::ClientId;
@@ -346,10 +343,13 @@ fn format(editor: &mut Editor, id: ClientId) {
 
 #[action("Rename")]
 fn rename(editor: &mut Editor, id: ClientId) {
-    let Some(word) = word_at_cursor(editor, id) else {
+    let (win, buf) = editor.win_buf_mut(id);
+    let cursor = win.cursors.primary().pos();
+    let slice = buf.slice(..);
+    let Some(word) = word_at_pos(&slice, cursor) else {
         return;
     };
-    let (win, _buf) = editor.win_buf_mut(id);
+    let word = String::from(&slice.slice(word));
 
     win.prompt = Prompt::builder()
         .prompt("Rename to")

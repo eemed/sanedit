@@ -118,6 +118,22 @@ pub fn word_at_pos(slice: &PieceTreeSlice, pos: u64) -> Option<BufferRange> {
     Some(Range::new(start, end))
 }
 
+pub fn word_before_pos(slice: &PieceTreeSlice, pos: u64) -> Option<(BufferRange, String)> {
+    let mut start = pos;
+    let mut graphemes = slice.graphemes_at(pos);
+    while let Some(g) = graphemes.prev() {
+        use GraphemeCategory::*;
+        match grapheme_category(&g) {
+            Word => start = g.start(),
+            _ => break,
+        }
+    }
+
+    let word = slice.slice(start..pos);
+    let word = String::from(&word);
+    Some((Range::new(start, pos), word))
+}
+
 pub fn paragraph_at_pos(slice: &PieceTreeSlice, pos: u64) -> Option<BufferRange> {
     let mut lines = slice.lines_at(pos);
     let mut start = None;

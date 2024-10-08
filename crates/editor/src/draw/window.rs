@@ -155,7 +155,7 @@ fn draw_secondary_cursors(
                 }
 
                 let style = if is_primary {
-                    theme.get(ThemeField::PrimaryCursor)
+                    theme.get(ThemeField::Default)
                 } else {
                     theme.get(ThemeField::Cursor)
                 };
@@ -186,7 +186,7 @@ fn draw_primary_cursor(
         CursorShape::Block(true)
     };
     let point = view.point_at_pos(cursor.pos())?;
-    let style = theme.get(ThemeField::PrimaryCursor);
+    let style = theme.get(ThemeField::Default);
     redraw::Cursor {
         bg: style.bg,
         fg: style.fg,

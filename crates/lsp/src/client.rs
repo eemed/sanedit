@@ -1,5 +1,4 @@
 use std::collections::BTreeMap;
-use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use std::{path::PathBuf, process::Stdio};
 
@@ -202,7 +201,7 @@ impl LSPClient {
                         .map(TextDiagnostic::from)
                         .collect(),
                 };
-                log::info!("Sent Diagnostics");
+                // log::info!("Sent Diagnostics");
 
                 self.sender
                     .send(Response::Notification(diagnostics))
@@ -539,6 +538,7 @@ impl Handler {
         path: PathBuf,
         position: Position,
     ) -> Result<(), LSPError> {
+        log::info!("Complete at: {:?}", position);
         let params = lsp_types::CompletionParams {
             text_document_position: lsp_types::TextDocumentPositionParams {
                 text_document: lsp_types::TextDocumentIdentifier {

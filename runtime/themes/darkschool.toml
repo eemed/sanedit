@@ -10,7 +10,6 @@ match = "#B5BD68,#222222,"
 [colors.window.cursor]
 default = "#d7875f,#000000,"
 selection = "#81A2BE,#222222,"
-primary = "#81A2BE,#222222,"
 
 [colors.window.view]
 hint = "#33334a,#66bbe9,"

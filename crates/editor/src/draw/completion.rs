@@ -42,19 +42,19 @@ fn draw_impl(ctx: &mut DrawContext) -> redraw::Redraw {
         .into_iter()
         .cloned()
         .collect();
-    // let match_len = completion
-    //     .options()
-    //     .get(0)
-    //     .map(|mat| mat.matches().get(0).map(|o| o.len()))
-    //     .flatten()
-    //     .unwrap_or(0);
+    let query_len = ctx
+        .editor
+        .win
+        .cursors()
+        .primary()
+        .pos()
+        .saturating_sub(completion.started_at());
 
     redraw::completion::Completion {
         point: *completion.point(),
         choices,
         selected: selected_relative_pos,
-        // TODO
-        query_len: 0,
+        query_len: query_len as usize,
     }
     .into()
 }

@@ -1,12 +1,10 @@
 use std::sync::Arc;
 
 use rustc_hash::FxHashSet;
+use sanedit_core::{word_before_pos, Range};
 
 use crate::{
-    common::{
-        cursors::word_before_cursor,
-        matcher::{MatchOption, MatchStrategy},
-    },
+    common::matcher::{MatchOption, MatchStrategy},
     editor::{
         hooks::Hook,
         windows::{Completion, Focus},
@@ -18,7 +16,7 @@ use sanedit_server::ClientId;
 
 use super::{jobs::MatcherJob, lsp, text};
 
-#[action("Open completion menu")]
+#[action("Complete")]
 fn complete(editor: &mut Editor, id: ClientId) {
     if editor.has_lsp(id) {
         lsp::complete.execute(editor, id)
@@ -28,16 +26,16 @@ fn complete(editor: &mut Editor, id: ClientId) {
 }
 
 fn complete_from_syntax(editor: &mut Editor, id: ClientId) {
-    let result = word_before_cursor(editor, id);
     let (win, buf) = editor.win_buf_mut(id);
     let cursor = win.cursors.primary().pos();
-    let start = result.as_ref().map(|result| result.0).unwrap_or(cursor);
-    let word = result.map(|result| result.2).unwrap_or_default();
+    let slice = buf.slice(..);
+    let (range, word) =
+        word_before_pos(&slice, cursor).unwrap_or((Range::new(cursor, cursor), String::new()));
     let cursor = win.primary_cursor();
     let Some(point) = win.view().point_at_pos(cursor.pos()) else {
         return;
     };
-    win.completion = Completion::new(start, point);
+    win.completion = Completion::new(range.start, point);
 
     let opts: FxHashSet<MatchOption> = win
         .view_syntax()

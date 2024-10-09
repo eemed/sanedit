@@ -22,6 +22,11 @@ impl<T: Ord> SortedVec<T> {
         SortedVec { items: Vec::new() }
     }
 
+    pub fn from_unsorted_owned(mut items: Vec<T>) -> SortedVec<T> {
+        items.sort();
+        SortedVec { items }
+    }
+
     pub fn with_capacity(cap: usize) -> SortedVec<T> {
         SortedVec {
             items: Vec::with_capacity(cap),
@@ -163,5 +168,12 @@ impl<T: Ord> Deref for SortedVec<T> {
 impl<T: Ord> From<SortedVec<T>> for Vec<T> {
     fn from(value: SortedVec<T>) -> Self {
         value.items
+    }
+}
+
+impl<T: Ord> FromIterator<T> for SortedVec<T> {
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
+        let vec: Vec<T> = iter.into_iter().collect();
+        SortedVec::from_unsorted_owned(vec)
     }
 }

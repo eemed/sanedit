@@ -2,6 +2,7 @@ use sanedit_messages::redraw::{self, CursorShape, Style, Theme, ThemeField};
 
 use crate::editor::{
     buffers::Buffer,
+    lsp::get_diagnostics,
     windows::{Cell, Cursors, Focus, View},
 };
 
@@ -12,7 +13,11 @@ use sanedit_core::{
 
 pub(crate) fn draw(ctx: &mut DrawContext) -> redraw::window::Window {
     let EditorContext {
-        win, theme, buf, ..
+        win,
+        theme,
+        buf,
+        language_servers,
+        ..
     } = ctx.editor;
 
     let style = theme.get(ThemeField::Default);
@@ -43,9 +48,16 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> redraw::window::Window {
 
     let focus_on_win = win.focus() == Focus::Window;
     let cursors = win.cursors();
+    let diagnostics = if win.config.highlight_diagnostics {
+        get_diagnostics(buf, language_servers)
+    } else {
+        None
+    };
 
     draw_syntax(&mut grid, view, theme);
-    draw_diagnostics(&mut grid, &buf.diagnostics, view, theme);
+    if let Some(diagnostics) = diagnostics {
+        draw_diagnostics(&mut grid, diagnostics, view, theme);
+    }
     draw_end_of_buffer(&mut grid, view, theme);
     draw_trailing_whitespace(&mut grid, view, theme, buf);
     draw_search_highlights(&mut grid, &win.search.hl_matches, view, theme);

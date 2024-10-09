@@ -2,10 +2,7 @@ use std::{
     any::Any,
     collections::BTreeMap,
     path::{Path, PathBuf},
-    sync::{
-        atomic::{AtomicU32, Ordering},
-        Arc,
-    },
+    sync::Arc,
 };
 
 use crate::{
@@ -16,100 +13,41 @@ use crate::{
         config::LSPConfig,
         hooks::Hook,
         job_broker::KeepInTouch,
+        lsp::{Constraint, LSP},
         windows::{Completion, Prompt},
-        Editor, Map,
+        Editor,
     },
 };
 use sanedit_buffer::{PieceTree, PieceTreeSlice};
-use sanedit_core::{
-    word_at_pos, word_before_pos, Change, Changes, Diagnostic, Filetype, Group, Item, Range,
-};
+use sanedit_core::{word_before_pos, Change, Changes, Diagnostic, Filetype, Group, Item, Range};
 use sanedit_lsp::{
-    CodeAction, CompletionItem, FileEdit, LSPClientParams, LSPClientSender, LSPRequestError,
-    Notification, Position, PositionEncoding, PositionRange, Request, RequestKind, RequestResult,
-    Response, TextDiagnostic, WorkspaceEdit,
+    CodeAction, CompletionItem, FileEdit, LSPClientParams, Notification, Position,
+    PositionEncoding, PositionRange, RequestKind, RequestResult, Response, TextDiagnostic,
+    WorkspaceEdit,
 };
 
-use anyhow::Result;
 use sanedit_messages::redraw::PopupMessage;
 use sanedit_server::{ClientId, Job, JobContext, JobResult};
 
 use super::MatcherJob;
 
-/// A way to discard non relevant LSP reponses.
-/// For example if we complete a completion request when the cursor has already
-/// moved, there is no point anymore.
 #[derive(Debug)]
-pub(crate) enum Constraint {
-    Buffer(BufferId),
-    BufferVersion(u32),
-    CursorPosition(u64),
-}
-
-/// A handle to send operations to LSP instance.
-///
-/// LSP is running in a job slot and communicates back using messages.
-///
-#[derive(Debug)]
-pub(crate) struct LSPHandle {
-    /// Name of the LSP server
-    name: String,
-
-    /// Client to send messages to LSP server
-    sender: LSPClientSender,
-
-    /// Constraints that need to be met in order to execute request responses
-    requests: Map<u32, (ClientId, Vec<Constraint>)>,
-
-    request_id: AtomicU32,
-}
-
-impl LSPHandle {
-    pub fn server_name(&self) -> &str {
-        &self.name
-    }
-
-    pub fn next_id(&self) -> u32 {
-        self.request_id.fetch_add(1, Ordering::Relaxed)
-    }
-
-    pub fn reponse_of(&mut self, id: u32) -> Option<(ClientId, Vec<Constraint>)> {
-        self.requests.remove(&id)
-    }
-
-    pub fn request(
-        &mut self,
-        req: RequestKind,
-        cid: ClientId,
-        constraints: Vec<Constraint>,
-    ) -> Result<(), LSPRequestError> {
-        let id = self.next_id();
-        self.requests.insert(id, (cid, constraints));
-        self.sender.request(Request { id, kind: req })?;
-        Ok(())
-    }
-
-    pub fn notify(&mut self, op: Notification) -> Result<(), LSPRequestError> {
-        self.sender.notify(op)?;
-        Ok(())
-    }
-
-    pub fn position_encoding(&self) -> PositionEncoding {
-        self.sender.position_encoding()
-    }
+enum Message {
+    Started(LSP),
+    Response(Response),
 }
 
 #[derive(Clone)]
-pub(crate) struct LSP {
+pub(crate) struct LSPJob {
     client_id: ClientId,
     filetype: Filetype,
     working_dir: PathBuf,
     opts: LSPConfig,
 }
 
-impl LSP {
-    pub fn new(id: ClientId, working_dir: PathBuf, ft: Filetype, opts: &LSPConfig) -> LSP {
-        LSP {
+impl LSPJob {
+    pub fn new(id: ClientId, working_dir: PathBuf, ft: Filetype, opts: &LSPConfig) -> LSPJob {
+        LSPJob {
             client_id: id,
             filetype: ft,
             working_dir,
@@ -118,7 +56,7 @@ impl LSP {
     }
 }
 
-impl Job for LSP {
+impl Job for LSPJob {
     fn run(&self, mut ctx: JobContext) -> JobResult {
         // Clones here
         let wd = self.working_dir.clone();
@@ -138,12 +76,7 @@ impl Job for LSP {
 
             let (sender, mut reader) = params.spawn().await?;
 
-            let handle = LSPHandle {
-                name: command,
-                sender,
-                requests: Map::default(),
-                request_id: AtomicU32::new(1),
-            };
+            let handle = LSP::new(&command, sender);
             ctx.send(Message::Started(handle));
 
             while let Some(response) = reader.recv().await {
@@ -157,7 +90,7 @@ impl Job for LSP {
     }
 }
 
-impl KeepInTouch for LSP {
+impl KeepInTouch for LSPJob {
     fn client_id(&self) -> ClientId {
         self.client_id
     }
@@ -201,7 +134,7 @@ impl KeepInTouch for LSP {
     }
 }
 
-impl LSP {
+impl LSPJob {
     fn handle_response(&self, editor: &mut Editor, response: Response) {
         match response {
             Response::Request { id, result } => {
@@ -236,7 +169,7 @@ impl LSP {
                     path,
                     version,
                     diagnostics,
-                } => handle_diagnostics(editor, self.client_id, path, version, diagnostics),
+                } => self.handle_diagnostics(editor, self.client_id, path, version, diagnostics),
             },
         }
     }
@@ -252,7 +185,7 @@ impl LSP {
             }
             RequestResult::GotoDefinition { path, position } => {
                 if editor.open_file(self.client_id, path).is_ok() {
-                    let Some(enc) = editor.lsp_handle_for(id).map(|x| x.position_encoding()) else {
+                    let Some(enc) = editor.lsp_for(id).map(|x| x.position_encoding()) else {
                         return;
                     };
                     let (win, buf) = editor.win_buf_mut(self.client_id);
@@ -265,223 +198,216 @@ impl LSP {
                 path,
                 position,
                 results,
-            } => complete(editor, id, path, position, results),
-            RequestResult::References { references } => show_references(editor, id, references),
-            RequestResult::CodeAction { actions } => code_action(editor, id, actions),
+            } => self.complete(editor, id, path, position, results),
+            RequestResult::References { references } => {
+                self.show_references(editor, id, references)
+            }
+            RequestResult::CodeAction { actions } => self.code_action(editor, id, actions),
             RequestResult::ResolvedAction { action } => {
                 if let Some(edit) = action.workspace_edit() {
-                    edit_workspace(editor, id, edit)
+                    self.edit_workspace(editor, id, edit)
                 }
             }
-            RequestResult::Rename { workspace_edit } => edit_workspace(editor, id, workspace_edit),
-            RequestResult::Format { edit } => edit_document(editor, id, edit),
+            RequestResult::Rename { workspace_edit } => {
+                self.edit_workspace(editor, id, workspace_edit)
+            }
+            RequestResult::Format { edit } => self.edit_document(editor, id, edit),
             RequestResult::Error { msg } => {
                 log::error!("LSP '{}' failed to process: {msg}", self.opts.command);
             }
             RequestResult::Diagnostics { path, diagnostics } => {
-                handle_diagnostics(editor, self.client_id, path, None, diagnostics)
+                self.handle_diagnostics(editor, self.client_id, path, None, diagnostics)
             }
         }
     }
-}
 
-#[derive(Debug)]
-enum Message {
-    Started(LSPHandle),
-    Response(Response),
-}
-
-fn complete(
-    editor: &mut Editor,
-    id: ClientId,
-    _path: PathBuf,
-    position: Position,
-    opts: Vec<CompletionItem>,
-) {
-    let Some(enc) = editor.lsp_handle_for(id).map(|x| x.position_encoding()) else {
-        return;
-    };
-    let (win, buf) = editor.win_buf_mut(id);
-    let slice = buf.slice(..);
-    let start = position.to_offset(&slice, &enc);
-    let cursor = win.primary_cursor();
-    let Some(point) = win.view().point_at_pos(cursor.pos()) else {
-        return;
-    };
-    let (range, word) =
-        word_before_pos(&slice, start).unwrap_or((Range::new(start, start), String::default()));
-
-    win.completion = Completion::new(range.start, point);
-
-    let opts: Vec<MatchOption> = opts.into_iter().map(from_completion_item).collect();
-
-    let job = MatcherJob::builder(id)
-        .strategy(MatchStrategy::Prefix)
-        .options(Arc::new(opts))
-        .search(word)
-        .handler(Completion::matcher_result_handler)
-        .build();
-
-    editor.job_broker.request(job);
-}
-
-fn handle_diagnostics(
-    editor: &mut Editor,
-    _id: ClientId,
-    path: PathBuf,
-    version: Option<i32>,
-    diags: Vec<TextDiagnostic>,
-) {
-    let Some(bid) = editor.buffers().find(path) else {
-        return;
-    };
-    let buf = editor.buffers().get(bid).unwrap();
-
-    // Ensure not changed
-    if let Some(version) = version {
-        if buf.total_changes_made() != version as u32 {
+    fn complete(
+        &self,
+        editor: &mut Editor,
+        id: ClientId,
+        _path: PathBuf,
+        position: Position,
+        opts: Vec<CompletionItem>,
+    ) {
+        let Some(enc) = editor.lsp_for(id).map(|x| x.position_encoding()) else {
             return;
-        }
-    }
-
-    let Some(ft) = buf.filetype.clone() else {
-        return;
-    };
-    let Some(enc) = editor
-        .language_servers
-        .get(&ft)
-        .map(|x| x.position_encoding())
-    else {
-        return;
-    };
-
-    let buf = editor.buffers_mut().get_mut(bid).unwrap();
-    buf.diagnostics.clear();
-
-    for d in diags {
-        // log::info!("Recv Diagnostic: {d:?}");
+        };
+        let (win, buf) = editor.win_buf_mut(id);
         let slice = buf.slice(..);
-        let start;
-        let end;
-        if d.range.start == d.range.end {
-            start = d.range.start.to_offset(&slice, &enc);
-            end = start + 1;
-        } else {
-            start = d.range.start.to_offset(&slice, &enc);
-            end = d.range.end.to_offset(&slice, &enc);
-        }
-        let diag = Diagnostic::new(d.severity, (start..end).into(), &d.description);
-        buf.diagnostics.push(diag);
+        let start = position.to_offset(&slice, &enc);
+        let cursor = win.primary_cursor();
+        let Some(point) = win.view().point_at_pos(cursor.pos()) else {
+            return;
+        };
+        let (range, word) =
+            word_before_pos(&slice, start).unwrap_or((Range::new(start, start), String::default()));
+
+        win.completion = Completion::new(range.start, point);
+
+        let opts: Vec<MatchOption> = opts.into_iter().map(from_completion_item).collect();
+
+        let job = MatcherJob::builder(id)
+            .strategy(MatchStrategy::Prefix)
+            .options(Arc::new(opts))
+            .search(word)
+            .handler(Completion::matcher_result_handler)
+            .build();
+
+        editor.job_broker.request(job);
     }
-}
 
-fn code_action(editor: &mut Editor, id: ClientId, actions: Vec<CodeAction>) {
-    let options: Vec<String> = actions.iter().map(|a| a.name().to_string()).collect();
-    let (win, _buf) = editor.win_buf_mut(id);
+    fn handle_diagnostics(
+        &self,
+        editor: &mut Editor,
+        _id: ClientId,
+        path: PathBuf,
+        version: Option<i32>,
+        diags: Vec<TextDiagnostic>,
+    ) {
+        let Some(bid) = editor.buffers().find(&path) else {
+            return;
+        };
+        let buf = editor.buffers().get(bid).unwrap();
 
-    let job = MatcherJob::builder(id)
-        .options(Arc::new(options))
-        .handler(Prompt::matcher_result_handler)
-        .build();
-
-    win.prompt = Prompt::builder()
-        .prompt("Select code action")
-        .on_confirm(move |editor, id, input| {
-            let (_win, buf) = editor.win_buf_mut(id);
-            let Some(ft) = buf.filetype.clone() else {
+        // Ensure not changed
+        if let Some(version) = version {
+            if buf.total_changes_made() != version as u32 {
                 return;
-            };
+            }
+        }
 
-            let Some(action) = actions.iter().find(|action| action.name() == input) else {
-                return;
-            };
+        let Some(enc) = editor
+            .language_servers
+            .get(&self.filetype)
+            .map(|x| x.position_encoding())
+        else {
+            return;
+        };
 
-            if !action.is_resolved() {
-                let request = RequestKind::CodeActionResolve {
-                    action: action.clone(),
-                };
+        let buf = editor.buffers().get(bid).unwrap();
+        let slice = buf.slice(..);
+        let diagnostics = diags
+            .into_iter()
+            .map(|d| {
+                let start;
+                let end;
+                if d.range.start == d.range.end {
+                    start = d.range.start.to_offset(&slice, &enc);
+                    end = start + 1;
+                } else {
+                    start = d.range.start.to_offset(&slice, &enc);
+                    end = d.range.end.to_offset(&slice, &enc);
+                }
+                Diagnostic::new(d.severity, (start..end).into(), &d.description)
+            })
+            .collect();
 
-                let Some(lsp) = editor.language_servers.get_mut(&ft) else {
+        let lsp = editor.language_servers.get_mut(&self.filetype).unwrap();
+        lsp.diagnostics.insert(path, diagnostics);
+    }
+
+    fn code_action(&self, editor: &mut Editor, id: ClientId, actions: Vec<CodeAction>) {
+        let options: Vec<String> = actions.iter().map(|a| a.name().to_string()).collect();
+        let (win, _buf) = editor.win_buf_mut(id);
+
+        let job = MatcherJob::builder(id)
+            .options(Arc::new(options))
+            .handler(Prompt::matcher_result_handler)
+            .build();
+
+        let ft = self.filetype.clone();
+        win.prompt = Prompt::builder()
+            .prompt("Select code action")
+            .on_confirm(move |editor, id, input| {
+                let Some(action) = actions.iter().find(|action| action.name() == input) else {
                     return;
                 };
-                let _ = lsp.request(request, id, vec![]);
-            }
-        })
-        .build();
 
-    editor.job_broker.request(job);
-}
+                if !action.is_resolved() {
+                    let request = RequestKind::CodeActionResolve {
+                        action: action.clone(),
+                    };
 
-fn edit_workspace(editor: &mut Editor, id: ClientId, edit: WorkspaceEdit) {
-    for edit in edit.file_edits {
-        edit_document(editor, id, edit);
+                    let Some(lsp) = editor.language_servers.get_mut(&ft) else {
+                        return;
+                    };
+                    let _ = lsp.request(request, id, vec![]);
+                }
+            })
+            .build();
+
+        editor.job_broker.request(job);
     }
-}
 
-fn edit_document(editor: &mut Editor, id: ClientId, edit: FileEdit) {
-    let path = &edit.path;
-    let bid = match editor.buffers().find(&path) {
-        Some(bid) => bid,
-        None => match editor.create_buffer(id, &path) {
-            Ok(bid) => bid,
-            Err(e) => {
-                log::error!("Failed to create buffer for {path:?} {e}");
+    fn edit_workspace(&self, editor: &mut Editor, id: ClientId, edit: WorkspaceEdit) {
+        for edit in edit.file_edits {
+            self.edit_document(editor, id, edit);
+        }
+    }
+
+    fn edit_document(&self, editor: &mut Editor, id: ClientId, edit: FileEdit) {
+        let path = &edit.path;
+        let bid = match editor.buffers().find(&path) {
+            Some(bid) => bid,
+            None => match editor.create_buffer(id, &path) {
+                Ok(bid) => bid,
+                Err(e) => {
+                    log::error!("Failed to create buffer for {path:?} {e}");
+                    return;
+                }
+            },
+        };
+        let Some(enc) = editor.lsp_for(id).map(|x| x.position_encoding()) else {
+            return;
+        };
+
+        // The changes build on themselves so apply each separately
+        for (i, edit) in edit.edits.into_iter().enumerate() {
+            let buf = editor.buffers_mut().get_mut(bid).unwrap();
+            let slice = buf.slice(..);
+            let start = edit.range.start.to_offset(&slice, &enc);
+            let end = edit.range.end.to_offset(&slice, &enc);
+            let change = Change::replace((start..end).into(), edit.text.as_bytes());
+            let mut changes = Changes::from(change);
+            // Disable undo point creation for other than first change
+            if i != 0 {
+                changes.disable_undo_point_creation();
+            }
+
+            if let Err(e) = buf.apply_changes(&changes) {
+                log::error!("Failed to apply changes to buffer: {path:?}: {e}");
                 return;
             }
-        },
-    };
-    let Some(enc) = editor.lsp_handle_for(id).map(|x| x.position_encoding()) else {
-        return;
-    };
 
-    // The changes build on themselves so apply each separately
-    for (i, edit) in edit.edits.into_iter().enumerate() {
-        let buf = editor.buffers_mut().get_mut(bid).unwrap();
-        let slice = buf.slice(..);
-        let start = edit.range.start.to_offset(&slice, &enc);
-        let end = edit.range.end.to_offset(&slice, &enc);
-        let change = Change::replace((start..end).into(), edit.text.as_bytes());
-        let mut changes = Changes::from(change);
-        // Disable undo point creation for other than first change
-        if i != 0 {
-            changes.disable_undo_point_creation();
+            run(editor, id, Hook::BufChanged(bid));
         }
-
-        if let Err(e) = buf.apply_changes(&changes) {
-            log::error!("Failed to apply changes to buffer: {path:?}: {e}");
-            return;
-        }
-
-        run(editor, id, Hook::BufChanged(bid));
     }
-}
 
-fn show_references(
-    editor: &mut Editor,
-    id: ClientId,
-    references: BTreeMap<PathBuf, Vec<PositionRange>>,
-) {
-    let Some(enc) = editor
-        .lsp_handle_for(id)
-        .map(|handle| handle.position_encoding())
-    else {
-        return;
-    };
+    fn show_references(
+        &self,
+        editor: &mut Editor,
+        id: ClientId,
+        references: BTreeMap<PathBuf, Vec<PositionRange>>,
+    ) {
+        let Some(enc) = editor.lsp_for(id).map(|handle| handle.position_encoding()) else {
+            return;
+        };
 
-    // TODO should this be auto shown?
-    locations::show_locations.execute(editor, id);
+        // TODO should this be auto shown?
+        locations::show_locations.execute(editor, id);
 
-    let (win, buf) = editor.win_buf_mut(id);
+        let (win, buf) = editor.win_buf_mut(id);
 
-    for (path, references) in references {
-        if buf.path() == Some(&path) {
-            let slice = buf.slice(..);
-            let group = read_references(&slice, &path, &references, &enc);
-            win.locations.push(group);
-        } else if let Ok(pt) = PieceTree::from_path(&path) {
-            let slice = pt.slice(..);
-            let group = read_references(&slice, &path, &references, &enc);
-            win.locations.push(group);
+        for (path, references) in references {
+            if buf.path() == Some(&path) {
+                let slice = buf.slice(..);
+                let group = read_references(&slice, &path, &references, &enc);
+                win.locations.push(group);
+            } else if let Ok(pt) = PieceTree::from_path(&path) {
+                let slice = pt.slice(..);
+                let group = read_references(&slice, &path, &references, &enc);
+                win.locations.push(group);
+            }
         }
     }
 }

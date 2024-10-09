@@ -12,6 +12,12 @@ pub(crate) struct WindowConfig {
     pub max_completions: usize,
 
     pub theme: String,
+
+    /// Highlight LSP diagnostics
+    pub highlight_syntax: bool,
+
+    /// Highlight LSP diagnostics
+    pub highlight_diagnostics: bool,
 }
 
 impl Default for WindowConfig {
@@ -20,6 +26,8 @@ impl Default for WindowConfig {
             max_prompt_completions: 10,
             max_completions: 10,
             theme: DEFAULT_THEME.into(),
+            highlight_syntax: true,
+            highlight_diagnostics: true,
         }
     }
 }

@@ -70,6 +70,9 @@ pub(crate) fn reparse_view(editor: &mut Editor, id: ClientId) {
     }
 
     let (win, buf) = editor.win_buf_mut(id);
+    if !win.config.highlight_syntax {
+        return;
+    }
     win.redraw_view(buf);
     let bid = buf.id;
     let total = buf.total_changes_made();
@@ -110,6 +113,9 @@ pub(crate) fn parse_syntax(editor: &mut Editor, id: ClientId) {
     const JOB_NAME: &str = "parse-syntax";
 
     let (win, buf) = editor.win_buf_mut(id);
+    if !win.config.highlight_syntax {
+        return;
+    }
     let bid = buf.id;
     let total_changes_made = buf.total_changes_made();
     let range = win.view().range();

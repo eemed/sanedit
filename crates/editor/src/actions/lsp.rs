@@ -1,6 +1,6 @@
 use anyhow::{bail, Result};
 use sanedit_buffer::PieceTreeSlice;
-use sanedit_core::{word_at_pos, ChangesKind};
+use sanedit_core::{word_at_pos, ChangesKind, Locations};
 use sanedit_messages::redraw::PopupMessage;
 use sanedit_utils::either::Either;
 use std::path::{Path, PathBuf};
@@ -8,16 +8,20 @@ use thiserror::Error;
 
 use sanedit_lsp::{Notification, Position, PositionRange, RequestKind, TextEdit};
 
-use crate::editor::{
-    buffers::{Buffer, BufferConfig, BufferId},
-    hooks::Hook,
-    windows::{Focus, Prompt, Window},
-    Editor,
+use crate::{
+    editor::{
+        buffers::{Buffer, BufferConfig, BufferId},
+        hooks::Hook,
+        lsp::{get_diagnostics, Constraint, LSP},
+        windows::{Focus, Prompt, Window},
+        Editor,
+    },
+    get, win_buf,
 };
 
 use sanedit_server::ClientId;
 
-use super::jobs::{Constraint, LSPHandle, LSP};
+use super::jobs::LSPJob;
 
 #[derive(Debug, Error)]
 enum LSPActionError {
@@ -49,7 +53,7 @@ pub(crate) fn lsp_request(
         &Buffer,
         PathBuf,
         PieceTreeSlice,
-        &LSPHandle,
+        &LSP,
     ) -> Option<(RequestKind, Vec<Constraint>)>,
 ) -> Result<()> {
     let (_win, buf) = editor.win_buf_mut(id);
@@ -82,7 +86,7 @@ pub(crate) fn lsp_notify_for(
     editor: &mut Editor,
     id: ClientId,
     bid: BufferId,
-    f: fn(&Buffer, PathBuf, PieceTreeSlice, &LSPHandle) -> Option<Notification>,
+    f: fn(&Buffer, PathBuf, PieceTreeSlice, &LSP) -> Option<Notification>,
 ) -> Result<()> {
     let buf = editor
         .buffers()
@@ -116,7 +120,7 @@ pub(crate) fn lsp_notify_for(
 pub(crate) fn lsp_notify(
     editor: &mut Editor,
     id: ClientId,
-    f: fn(&Buffer, PathBuf, PieceTreeSlice, &LSPHandle) -> Option<Notification>,
+    f: fn(&Buffer, PathBuf, PieceTreeSlice, &LSP) -> Option<Notification>,
 ) -> Result<()> {
     let (_win, buf) = editor.win_buf_mut(id);
     let bid = buf.id;
@@ -162,7 +166,7 @@ fn start_lsp_impl(editor: &mut Editor, id: ClientId, bid: BufferId) -> Result<()
         .get(ft.as_str())
         .ok_or_else(|| LSPActionError::LanguageServerNotConfigured(ft.as_str().to_string()))?;
 
-    let lsp = LSP::new(id, wd, ft, lang);
+    let lsp = LSPJob::new(id, wd, ft, lang);
     editor.job_broker.request(lsp);
 
     Ok(())
@@ -346,9 +350,7 @@ fn rename(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     let cursor = win.cursors.primary().pos();
     let slice = buf.slice(..);
-    let Some(word) = word_at_pos(&slice, cursor) else {
-        return;
-    };
+    let word = get!(word_at_pos(&slice, cursor));
     let word = String::from(&slice.slice(word));
 
     win.prompt = Prompt::builder()
@@ -361,15 +363,9 @@ fn rename(editor: &mut Editor, id: ClientId) {
             let offset = win.cursors.primary().pos();
             let total = buf.total_changes_made();
             let bid = buf.id;
-            let Some(path) = buf.path().map(Path::to_path_buf) else {
-                return;
-            };
-            let Some(ft) = buf.filetype.clone() else {
-                return;
-            };
-            let Some(lsp) = editor.language_servers.get(&ft) else {
-                return;
-            };
+            let path = get!(buf.path().map(Path::to_path_buf));
+            let ft = get!(buf.filetype.clone());
+            let lsp = get!(editor.language_servers.get(&ft));
             let position = Position::new(offset, &slice, &lsp.position_encoding());
             let request = RequestKind::Rename {
                 path,
@@ -377,9 +373,7 @@ fn rename(editor: &mut Editor, id: ClientId) {
                 new_name: input.into(),
             };
 
-            let Some(lsp) = editor.language_servers.get_mut(&ft) else {
-                return;
-            };
+            let lsp = get!(editor.language_servers.get_mut(&ft));
             let _ = lsp.request(
                 request,
                 id,
@@ -412,18 +406,18 @@ pub(crate) fn close_document(editor: &mut Editor, id: ClientId) {
 
 #[action("Show diagnostics on line")]
 pub(crate) fn show_diagnostics(editor: &mut Editor, id: ClientId) {
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, buf) = win_buf!(editor, id);
     let view = win.view();
     let pos = win.cursors.primary().pos();
+    let range = get!(view.line_at_pos(pos));
+    let diagnostics = get!(get_diagnostics(buf, &editor.language_servers));
 
-    if let Some(range) = view.line_at_pos(pos) {
-        for diag in buf.diagnostics.iter() {
-            if range.overlaps(&diag.range()) {
-                win.push_popup(PopupMessage {
-                    severity: Some(*diag.severity()),
-                    text: diag.description().to_string(),
-                });
-            }
+    for diag in diagnostics {
+        if range.overlaps(&diag.range()) {
+            win.push_popup(PopupMessage {
+                severity: Some(*diag.severity()),
+                text: diag.description().to_string(),
+            });
         }
     }
 }
@@ -444,4 +438,16 @@ pub(crate) fn did_save_document(editor: &mut Editor, id: ClientId) {
             text: Some(text),
         })
     });
+}
+
+#[action("Diagnostics to locations")]
+pub(crate) fn diagnostics_to_locations(editor: &mut Editor, id: ClientId) {
+    let (win, buf) = win_buf!(editor, id);
+    let ft = get!(buf.filetype.clone());
+    let lsp = get!(editor.language_servers.get(&ft));
+
+    win.locations.clear();
+
+    // Transform diagnostics to locations
+    for (path, diags) in &lsp.diagnostics {}
 }

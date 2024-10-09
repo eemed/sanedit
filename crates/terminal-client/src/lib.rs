@@ -31,10 +31,10 @@ where
 
     // Input thread
     let input_sender = tx.clone();
-    let _input_join = thread::spawn(|| input::run_loop(input_sender));
+    thread::spawn(|| input::run_loop(input_sender));
 
     let read_sender = tx;
-    let _read_join = thread::spawn(|| run_read_loop(read, read_sender));
+    thread::spawn(|| run_read_loop(read, read_sender));
 
     while let Ok(msg) = rx.recv() {
         use ClientInternalMessage::*;
@@ -99,9 +99,8 @@ where
         }
     }
 
-    // Currently no way to message these that we are exiting
-    // input_join.join().expect("Failed to join input thread");
-    // read_join.join().expect("Failed to join read thread");
+    drop(ui);
+    std::process::exit(0);
 }
 
 fn run_read_loop<R>(read: R, sender: mpsc::Sender<ClientInternalMessage>)

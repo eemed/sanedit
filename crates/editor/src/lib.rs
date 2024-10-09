@@ -1,6 +1,35 @@
 #[macro_use]
 extern crate sanedit_macros;
 
+/// Get option if Some otherwise return
+macro_rules! get {
+    ($thing:expr) => {{
+        match $thing {
+            Some(thing) => thing,
+            _ => return,
+        }
+    }};
+}
+
+/// Quick way to borrow just window and buffer mutably from the editor.
+/// Used if mutable access is needed in other parts of editor
+macro_rules! win_buf {
+    ($editor:ident, $id:ident) => {{
+        let win = $editor
+            .windows
+            .get_mut($id)
+            .expect("no win for cliend id {id}");
+        let bid = win.buffer_id();
+        let buf = $editor
+            .buffers
+            .get_mut(bid)
+            .expect("no buffer for buffer id {bid}");
+        (win, buf)
+    }};
+}
+pub(crate) use get;
+pub(crate) use win_buf;
+
 pub(crate) mod actions;
 pub(crate) mod common;
 pub(crate) mod draw;

@@ -5,6 +5,7 @@ pub(crate) mod filetree;
 pub(crate) mod hooks;
 pub(crate) mod job_broker;
 pub(crate) mod keymap;
+pub(crate) mod lsp;
 pub(crate) mod syntax;
 pub(crate) mod themes;
 pub(crate) mod windows;
@@ -39,7 +40,6 @@ use anyhow::Result;
 use crate::actions;
 use crate::actions::cursors;
 use crate::actions::hooks::run;
-use crate::actions::jobs::LSPHandle;
 use crate::draw::DrawState;
 use crate::draw::EditorContext;
 use crate::editor::buffers::Buffer;
@@ -63,6 +63,7 @@ use self::keymap::Keymap;
 use self::keymap::KeymapKind;
 
 use self::filetree::Filetree;
+use self::lsp::LSP;
 use self::syntax::Syntaxes;
 use self::themes::Themes;
 use self::windows::History;
@@ -76,12 +77,12 @@ pub(crate) type Map<K, V> = FxHashMap<K, V>;
 pub(crate) struct Editor {
     clients: Map<ClientId, ClientHandle>,
     draw_states: Map<ClientId, DrawState>,
-    windows: Windows,
-    buffers: Buffers,
     keys: Vec<KeyEvent>,
     is_running: bool,
     working_dir: PathBuf,
 
+    pub windows: Windows,
+    pub buffers: Buffers,
     pub _runtime: TokioRuntime,
     pub themes: Themes,
     pub config_dir: ConfigDirectory,
@@ -91,7 +92,7 @@ pub(crate) struct Editor {
     pub clipboard: Box<dyn Clipboard>,
     pub histories: Map<HistoryKind, History>,
     pub keymaps: Map<KeymapKind, Keymap>,
-    pub language_servers: Map<Filetype, LSPHandle>,
+    pub language_servers: Map<Filetype, LSP>,
     pub filetree: Filetree,
     pub config: Config,
 }
@@ -711,10 +712,10 @@ impl Editor {
     }
 
     pub fn has_lsp(&self, id: ClientId) -> bool {
-        self.lsp_handle_for(id).is_some()
+        self.lsp_for(id).is_some()
     }
 
-    pub fn lsp_handle_for(&self, id: ClientId) -> Option<&LSPHandle> {
+    pub fn lsp_for(&self, id: ClientId) -> Option<&LSP> {
         let (_win, buf) = self.win_buf(id);
         let ft = buf.filetype.as_ref()?;
         self.language_servers.get(ft)

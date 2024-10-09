@@ -12,14 +12,12 @@ use std::{mem, path::Path};
 use sanedit_core::Filetype;
 use sanedit_messages::redraw::{Redraw, Theme};
 
-use crate::{
-    actions::jobs::LSPHandle,
-    editor::{
-        buffers::Buffer,
-        filetree::Filetree,
-        windows::{Focus, Window},
-        Map,
-    },
+use crate::editor::{
+    buffers::Buffer,
+    filetree::Filetree,
+    lsp::LSP,
+    windows::{Focus, Window},
+    Map,
 };
 
 pub(crate) struct EditorContext<'a> {
@@ -28,7 +26,7 @@ pub(crate) struct EditorContext<'a> {
     pub(crate) theme: &'a Theme,
     pub(crate) working_dir: &'a Path,
     pub(crate) filetree: &'a Filetree,
-    pub(crate) language_servers: &'a Map<Filetype, LSPHandle>,
+    pub(crate) language_servers: &'a Map<Filetype, LSP>,
 }
 
 pub(crate) struct DrawContext<'a, 'b> {

@@ -186,9 +186,3 @@ fn strip_trailing_whitespace(editor: &mut Editor, id: ClientId) {
         run(editor, id, hook);
     }
 }
-
-#[action("Clear buffer diagnostics")]
-fn clear_diagnostics(editor: &mut Editor, id: ClientId) {
-    let (_win, buf) = editor.win_buf_mut(id);
-    buf.diagnostics.clear();
-}

@@ -119,6 +119,7 @@ pub(crate) const FILETREE_COMMANDS: &[Action] = &[
     filetree::ft_delete_file,
     filetree::ft_new_file,
     filetree::goto_ft_entry,
+    filetree::ft_goto_current_file,
 ];
 
 #[rustfmt::skip]

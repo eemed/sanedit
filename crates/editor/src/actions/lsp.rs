@@ -1,6 +1,6 @@
 use anyhow::{bail, Result};
 use sanedit_buffer::PieceTreeSlice;
-use sanedit_core::{word_at_pos, ChangesKind, Locations};
+use sanedit_core::{word_at_pos, ChangesKind, Group, Item, Locations};
 use sanedit_messages::redraw::PopupMessage;
 use sanedit_utils::either::Either;
 use std::path::{Path, PathBuf};
@@ -448,6 +448,16 @@ pub(crate) fn diagnostics_to_locations(editor: &mut Editor, id: ClientId) {
 
     win.locations.clear();
 
-    // Transform diagnostics to locations
-    for (path, diags) in &lsp.diagnostics {}
+    for (path, diags) in &lsp.diagnostics {
+        let mut group = Group::new(path);
+        for diag in diags.iter() {
+            let item = Item::new(diag.description(), None, Some(diag.range().start), vec![]);
+            log::info!("push: {item:?}");
+            group.push(item);
+        }
+        win.locations.push(group);
+    }
+
+    win.locations.show = true;
+    win.focus = Focus::Locations;
 }

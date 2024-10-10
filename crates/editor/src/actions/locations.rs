@@ -56,17 +56,17 @@ fn goto_loc_entry(editor: &mut Editor, id: ClientId) {
                 let hl_off = item.highlights().first().map_or(0, |r| r.start);
                 let offset = item.absolute_offset().unwrap_or(0) + hl_off as u64;
 
-                if let Some(parent) = win.locations.parent_of_selected() {
-                    let path = parent.path().to_path_buf();
-                    if let Err(e) = editor.open_file(id, &path) {
-                        let (win, _buf) = editor.win_buf_mut(id);
-                        win.error_msg(&format!("Failed to open file: {e}"));
-                        return;
-                    }
-
-                    let (win, buf) = editor.win_buf_mut(id);
-                    win.goto_offset(offset, buf);
+                log::info!("off: {offset}");
+                let parent = get!(win.locations.parent_of_selected());
+                let path = parent.path().to_path_buf();
+                if let Err(e) = editor.open_file(id, &path) {
+                    let (win, _buf) = editor.win_buf_mut(id);
+                    win.error_msg(&format!("Failed to open file: {e}"));
+                    return;
                 }
+
+                let (win, buf) = editor.win_buf_mut(id);
+                win.goto_offset(offset, buf);
             }
         }
     }

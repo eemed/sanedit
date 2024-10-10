@@ -442,6 +442,7 @@ impl KeymapsConfig {
              "c",         ft_new_file,
              "d",         ft_delete_file,
              "p",         select_ft_parent,
+             "s",         ft_goto_current_file,
 
              "alt+1",     focus_window,
              "alt+2",     close_filetree,

@@ -256,8 +256,44 @@ impl Filetree {
         let local = PathBuf::from(name);
         absolute.pop();
 
-        let root = Node::new(&local, kind);
+        let mut root = Node::new(&local, kind);
+        // Auto expand first
+        let _ = root.expand(path);
         Filetree { absolute, root }
+    }
+
+    fn expand_to(&mut self, path: &Path) {
+        let mut absolute = self.absolute.clone();
+        let mut target = path.strip_prefix(&self.absolute).unwrap_or(path);
+        let mut node = &mut self.root;
+
+        absolute.push(&node.local);
+        let _ = node.expand(&absolute);
+
+        if let Ok(suffix) = target.strip_prefix(&node.local) {
+            if suffix.is_empty() {
+                return;
+            }
+            target = suffix;
+        }
+
+        while let Some((child, suffix)) = node.child_mut(target) {
+            if suffix.is_empty() {
+                return;
+            }
+
+            node = child;
+            target = suffix;
+
+            absolute.push(&node.local);
+            let _ = node.expand(&absolute);
+        }
+    }
+
+    /// Expands directories to show a path and selects it
+    pub fn select(&mut self, path: &Path) -> Option<usize> {
+        self.expand_to(path);
+        self.iter().position(|entry| entry.path() == path)
     }
 
     pub fn get_mut(&mut self, mut target: &Path) -> Option<TreeNodeMut> {

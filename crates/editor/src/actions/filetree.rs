@@ -10,9 +10,13 @@ use sanedit_server::ClientId;
 
 #[action("Show filetree")]
 fn show_filetree(editor: &mut Editor, id: ClientId) {
-    let visible = editor.filetree.iter().count();
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
+    if win.ft_view.show {
+        win.focus = Focus::Filetree;
+        return;
+    }
 
+    let visible = editor.filetree.iter().count();
     win.ft_view.selection = min(visible - 1, win.ft_view.selection);
     win.ft_view.show = true;
     win.focus = Focus::Filetree;
@@ -185,20 +189,22 @@ fn ft_delete_file(editor: &mut Editor, id: ClientId) {
 
 #[action("Select parent")]
 fn select_ft_parent(editor: &mut Editor, id: ClientId) {
-    fn inner(editor: &mut Editor, id: ClientId) -> Option<()> {
-        let (win, _buf) = editor.win_buf(id);
-        let entry = editor.filetree.iter().nth(win.ft_view.selection)?;
-        let parent = editor.filetree.parent_of(entry.path())?;
-        let pos = editor
-            .filetree
-            .iter()
-            .position(|entry| entry.path() == parent.path())?;
-        let (win, _buf) = editor.win_buf_mut(id);
-        win.ft_view.selection = pos;
-        Some(())
-    }
+    let (win, _buf) = editor.win_buf(id);
+    let entry = get!(editor.filetree.iter().nth(win.ft_view.selection));
+    let parent = get!(editor.filetree.parent_of(entry.path()));
+    let pos = get!(editor
+        .filetree
+        .iter()
+        .position(|entry| entry.path() == parent.path()));
+    let (win, _buf) = editor.win_buf_mut(id);
+    win.ft_view.selection = pos;
+}
 
-    inner(editor, id);
+#[action("Show current file in filetree")]
+fn ft_goto_current_file(editor: &mut Editor, id: ClientId) {
+    let (win, buf) = win_buf!(editor, id);
+    let path = get!(buf.path());
+    win.ft_view.selection = get!(editor.filetree.select(path));
 }
 
 // #[action("Search for an entry in filetree")]

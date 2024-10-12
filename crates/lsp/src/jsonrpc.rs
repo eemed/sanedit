@@ -33,6 +33,7 @@ impl JsonRequest {
 
     pub async fn write_to<W: AsyncWriteExt + Unpin>(&self, stdin: &mut W) -> Result<(), LSPError> {
         let json = serde_json::to_string(&self)?;
+        log::debug!("--->\n{}", serde_json::to_string_pretty(&self)?);
 
         let clen = format!("{CONTENT_LENGTH}: {}{SEP}", json.len());
         stdin.write_all(clen.as_bytes()).await?;
@@ -48,14 +49,14 @@ impl JsonRequest {
 }
 
 #[allow(dead_code)]
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub(crate) struct JsonResponseError {
     pub code: i32,
     pub message: String,
     pub data: Option<lsp_types::LSPAny>,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub(crate) struct JsonResponse {
     #[allow(dead_code)]
     pub jsonrpc: String,
@@ -99,15 +100,13 @@ pub async fn read_from<R: AsyncBufReadExt + Unpin>(
             buf.push(b'\0');
         }
         reader.read_exact(&mut buf[..content_length]).await?;
-        // {
-        //     let content = unsafe { std::str::from_utf8_unchecked(&buf[..content_length]) };
-        //     log::info!("READ: {content:?}");
-        // }
         if let Ok(response) = serde_json::from_slice::<JsonResponse>(&buf[..content_length]) {
+            log::debug!("<---\n{}", serde_json::to_string_pretty(&response)?);
             return Ok(Either::Left(response));
         }
 
         if let Ok(notif) = serde_json::from_slice::<JsonNotification>(&buf[..content_length]) {
+            log::debug!("<---\n{}", serde_json::to_string_pretty(&notif)?);
             return Ok(Either::Right(notif));
         }
     }
@@ -139,6 +138,7 @@ impl JsonNotification {
 
     pub async fn write_to<W: AsyncWriteExt + Unpin>(&self, stdin: &mut W) -> Result<(), LSPError> {
         let json = serde_json::to_string(&self)?;
+        log::debug!("--->\n{}", serde_json::to_string_pretty(&self)?);
 
         let clen = format!("{CONTENT_LENGTH}: {}{SEP}", json.len());
         stdin.write_all(clen.as_bytes()).await?;

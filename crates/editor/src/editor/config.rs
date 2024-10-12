@@ -510,7 +510,7 @@ impl KeymapsConfig {
             "alt+n",     next_search_match,
             "alt+N",     prev_search_match,
 
-            "esc",       keep_only_primary,
+            "esc",       prog_cancel,
             "alt+down",  new_cursor_to_next_line,
             "alt+up",    new_cursor_to_prev_line,
             "ctrl+d",    new_cursor_to_next_search_match,

@@ -201,7 +201,6 @@ impl LSPClient {
                         .map(TextDiagnostic::from)
                         .collect(),
                 };
-                // log::info!("Sent Diagnostics");
 
                 self.sender
                     .send(Response::Notification(diagnostics))
@@ -518,7 +517,6 @@ impl Handler {
                 }
             }
         };
-        log::info!("Changes: {content_changes:?}");
 
         let params = lsp_types::DidChangeTextDocumentParams {
             text_document: lsp_types::VersionedTextDocumentIdentifier {
@@ -538,7 +536,6 @@ impl Handler {
         path: PathBuf,
         position: Position,
     ) -> Result<(), LSPError> {
-        log::info!("Complete at: {:?}", position);
         let params = lsp_types::CompletionParams {
             text_document_position: lsp_types::TextDocumentPositionParams {
                 text_document: lsp_types::TextDocumentIdentifier {
@@ -635,9 +632,7 @@ impl Handler {
         match response {
             lsp_types::GotoDefinitionResponse::Scalar(_) => todo!("Scalar goto def"),
             lsp_types::GotoDefinitionResponse::Array(locations) => {
-                let location = locations
-                    .first()
-                    .expect("Goto definition response found no locations");
+                let location = locations.first().ok_or(LSPError::EmptyResponse)?;
                 path = PathBuf::from(location.uri.path().as_str());
                 position = location.range.start;
             }

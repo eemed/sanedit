@@ -1,4 +1,5 @@
 pub(crate) mod buffers;
+pub(crate) mod caches;
 pub(crate) mod clipboard;
 pub(crate) mod config;
 pub(crate) mod filetree;
@@ -10,6 +11,7 @@ pub(crate) mod syntax;
 pub(crate) mod themes;
 pub(crate) mod windows;
 
+use caches::Caches;
 use rustc_hash::FxHashMap;
 use sanedit_core::FileDescription;
 use sanedit_core::Filetype;
@@ -95,6 +97,7 @@ pub(crate) struct Editor {
     pub language_servers: Map<Filetype, LSP>,
     pub filetree: Filetree,
     pub config: Config,
+    pub caches: Caches,
 }
 
 impl Editor {
@@ -105,6 +108,8 @@ impl Editor {
         let working_dir = env::current_dir().expect("Cannot get current working directory.");
         let config_dir = ConfigDirectory::default();
         let ft_dir = config_dir.filetype_dir();
+        let config = Config::default();
+        let caches = Caches::new(&config);
 
         Editor {
             _runtime: runtime,
@@ -125,7 +130,8 @@ impl Editor {
             clipboard: DefaultClipboard::new(),
             language_servers: Map::default(),
             keymaps: Map::default(),
-            config: Config::default(),
+            config,
+            caches,
         }
     }
 
@@ -145,6 +151,7 @@ impl Editor {
         }
 
         self.config = config::read_config(&self.config_dir.config(), &self.working_dir);
+        self.caches = Caches::new(&self.config);
         self.configure_keymap();
     }
 

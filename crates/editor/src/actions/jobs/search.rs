@@ -20,7 +20,6 @@ pub(crate) struct Search {
     term: String,
     ropt: PieceTreeView,
     range: BufferRange,
-    dir: SearchDirection,
     kind: SearchKind,
 }
 
@@ -30,7 +29,6 @@ impl Search {
         term: &str,
         ropt: PieceTreeView,
         range: BufferRange,
-        dir: SearchDirection,
         kind: SearchKind,
     ) -> Search {
         Search {
@@ -38,7 +36,6 @@ impl Search {
             term: term.into(),
             ropt,
             range,
-            dir,
             kind,
         }
     }
@@ -76,7 +73,6 @@ impl Job for Search {
         let term = self.term.clone();
         let pt = self.ropt.clone();
         let range = self.range.clone();
-        let dir = self.dir;
         let kind = self.kind;
 
         let fut = async move {
@@ -87,7 +83,7 @@ impl Job for Search {
             }
 
             let (msend, mrecv) = channel::<Vec<BufferRange>>(CHANNEL_SIZE);
-            let searcher = PTSearcher::new(&term, dir, kind)?;
+            let searcher = PTSearcher::new(&term, SearchDirection::Forward, kind)?;
             tokio::join!(
                 Self::search(msend, searcher, pt, range),
                 Self::send_matches(ctx, mrecv),

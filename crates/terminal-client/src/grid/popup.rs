@@ -26,7 +26,7 @@ pub(crate) fn open_popup(screen: Rect, win: Rect, popup: Popup) -> GridItem<Popu
 }
 
 pub(crate) fn below(screen: &Rect, win: &Rect, popup: &Popup) -> Rect {
-    let Point { x, mut y } = popup.point + win.position();
+    let Point { mut x, mut y } = popup.point + win.position();
     let width = popup
         .messages
         .iter()
@@ -42,8 +42,12 @@ pub(crate) fn below(screen: &Rect, win: &Rect, popup: &Popup) -> Rect {
         + popup.messages.len().saturating_sub(1))
     .min(screen.height);
 
-    if y + height < screen.height {
-        y += 1;
+    if y + height > screen.height {
+        y = 0;
+    }
+
+    if x + width >= screen.width {
+        x -= x + width - screen.width;
     }
 
     Rect {

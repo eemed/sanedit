@@ -256,7 +256,7 @@ impl<'a> Lines<'a> {
         let slice = pt.slice(..);
         let bytes = Bytes::new(pt, at);
         let mut lines = Lines {
-            at_end: at == pt.len(),
+            at_end: at == pt.len() && !pt.is_empty(),
             slice,
             bytes,
         };
@@ -269,7 +269,7 @@ impl<'a> Lines<'a> {
         let slice = slice.clone();
         let bytes = Bytes::new_from_slice(&slice, at);
         let mut lines = Lines {
-            at_end: bytes.pos() == slice.len(),
+            at_end: bytes.pos() == slice.len() && !slice.is_empty(),
             slice,
             bytes,
         };
@@ -277,7 +277,6 @@ impl<'a> Lines<'a> {
         lines
     }
 
-    #[inline]
     fn goto_bol(&mut self) {
         if self.bytes.pos() == self.slice.len() {
             return;
@@ -348,6 +347,16 @@ pub struct EOLMatch {
 #[cfg(test)]
 mod test {
     use crate::PieceTree;
+
+    #[test]
+    fn lines_next_empty() {
+        let pt = PieceTree::new();
+        let mut lines = pt.lines();
+        assert_eq!(
+            lines.next().as_ref().map(String::from),
+            Some("".to_string())
+        );
+    }
 
     #[test]
     fn lines_next() {

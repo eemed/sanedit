@@ -136,13 +136,15 @@ impl Default for Hooks {
         };
 
         // Search
-        hooks.register(InsertPre, search::clear_search_matches);
-        hooks.register(RemovePre, search::clear_search_matches);
+        // hooks.register(InsertPre, search::clear_search_matches);
+        // hooks.register(RemovePre, search::clear_search_matches);
+        hooks.register(OnMessagePost, search::highlight_last_search);
 
         // Window
         hooks.register(BufChanged, window::sync_windows);
         hooks.register(CursorMoved, cursors::merge_overlapping_cursors);
         hooks.register(OnMessagePre, window::clear_messages);
+
         // TODO handle registration only when needed?
         hooks.register(CursorMoved, completion::abort_completion);
         hooks.register(BufChanged, completion::send_word);

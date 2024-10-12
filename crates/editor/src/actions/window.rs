@@ -2,7 +2,7 @@ use crate::editor::{hooks::Hook, windows::Focus, Editor};
 
 use sanedit_server::ClientId;
 
-use super::hooks;
+use super::{cursors, hooks};
 
 #[action("Focus window")]
 fn focus_window(editor: &mut Editor, id: ClientId) {
@@ -47,4 +47,21 @@ fn goto_prev_buffer(editor: &mut Editor, id: ClientId) {
     } else {
         win.warn_msg("No previous buffer");
     }
+}
+
+#[action("Progressively close stuff on the screen")]
+fn prog_cancel(editor: &mut Editor, id: ClientId) {
+    let (win, _buf) = editor.win_buf_mut(id);
+
+    if win.search.hl_last || win.popup().is_some() {
+        // Clear search matches
+        win.search.hl_last = false;
+        win.search.hl_matches.clear();
+
+        // Close popups
+        win.clear_popup();
+        return;
+    }
+
+    cursors::keep_only_primary.execute(editor, id);
 }

@@ -13,22 +13,47 @@ use crate::{
 
 use sanedit_server::ClientId;
 
+const HORIZON_TOP: u64 = 1024 * 8;
+const HORIZON_BOTTOM: u64 = 1024 * 16;
+
 /// setups async job to handle matches within the view range.
 fn async_view_matches(editor: &mut Editor, id: ClientId, pattern: &str) {
     let (win, buf) = editor.win_buf_mut(id);
     let pt = buf.ro_view();
-    let view = win.view().range();
-    let dir = win.search.direction;
+    let mut view = win.view().range();
+    view.start = view.start.saturating_sub(HORIZON_TOP);
+    view.end = min(pt.len(), view.end + HORIZON_BOTTOM);
     let kind = win.search.kind;
 
-    let job = jobs::Search::new(id, pattern, pt, view, dir, kind);
+    let job = jobs::Search::new(id, pattern, pt, view, kind);
     editor.job_broker.request(job);
+}
+
+#[action("Highlight last search")]
+fn highlight_last_search(editor: &mut Editor, id: ClientId) {
+    let (win, buf) = editor.win_buf_mut(id);
+    if !win.search.hl_last {
+        return;
+    }
+
+    // TODO adjust if buffer changed, same as syntaxhl
+
+    if let Some(last) = win.search.last_search() {
+        let pt = buf.ro_view();
+        let mut view = win.view().range();
+        view.start = view.start.saturating_sub(HORIZON_TOP);
+        view.end = min(pt.len(), view.end + HORIZON_BOTTOM);
+
+        let job = jobs::Search::new(id, &last.pattern, pt, view, last.kind);
+        editor.job_broker.request(job);
+    }
 }
 
 #[action("Search forward")]
 fn search_forward(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.search.direction = SearchDirection::Forward;
+    win.search.hl_last = false;
     win.prompt = Prompt::builder()
         .prompt("Search")
         .history(HistoryKind::Search)
@@ -43,6 +68,7 @@ fn search_forward(editor: &mut Editor, id: ClientId) {
 fn search_backward(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.search.direction = SearchDirection::Backward;
+    win.search.hl_last = false;
     win.prompt = Prompt::builder()
         .history(HistoryKind::Search)
         .keymap(KeymapKind::Search)
@@ -58,6 +84,7 @@ fn clear_search_matches(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.search.current_match = None;
     win.search.hl_matches.clear();
+    win.search.hl_last = false;
 }
 
 #[action("Goto next match")]
@@ -180,6 +207,7 @@ fn search_impl(editor: &mut Editor, id: ClientId, input: &str, mut pos: u64) {
             cursor.goto(range.start);
 
             win.search.current_match = Some(range);
+            win.search.hl_last = true;
 
             if wrap {
                 if win.search.direction == SearchDirection::Forward {

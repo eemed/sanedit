@@ -84,7 +84,6 @@ pub(crate) fn lsp_request(
 
 pub(crate) fn lsp_notify_for(
     editor: &mut Editor,
-    id: ClientId,
     bid: BufferId,
     f: fn(&Buffer, PathBuf, PieceTreeSlice, &LSP) -> Option<Notification>,
 ) -> Result<()> {
@@ -102,7 +101,6 @@ pub(crate) fn lsp_notify_for(
         .get(&ft)
         .ok_or_else(|| LSPActionError::LanguageServerNotStarted(ft.as_str().to_string()))?;
 
-    let (_win, buf) = editor.win_buf(id);
     let slice = buf.slice(..);
     let request = (f)(buf, path, slice, handle);
 
@@ -129,7 +127,7 @@ pub(crate) fn lsp_notify(
         .running_hook()
         .and_then(Hook::buffer_id)
         .unwrap_or(bid);
-    lsp_notify_for(editor, id, bid, f)
+    lsp_notify_for(editor, bid, f)
 }
 
 #[action("Start language server")]

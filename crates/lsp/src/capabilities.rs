@@ -56,7 +56,7 @@ pub(crate) fn client_capabilities() -> lsp_types::ClientCapabilities {
                 text_document: Some(lsp_types::TextDocumentClientCapabilities {
                     completion: Some(lsp_types::CompletionClientCapabilities {
                         completion_item: Some(lsp_types::CompletionItemCapability {
-                            snippet_support: Some(false),
+                            snippet_support: Some(true),
                             resolve_support: Some(
                                 lsp_types::CompletionItemCapabilityResolveSupport {
                                     properties: vec![

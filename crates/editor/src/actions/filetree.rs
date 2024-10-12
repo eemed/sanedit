@@ -182,6 +182,9 @@ fn ft_delete_file(editor: &mut Editor, id: ClientId) {
             }
 
             prev_ft_entry.execute(editor, id);
+
+            let (win, _buf) = editor.win_buf_mut(id);
+            win.focus = Focus::Filetree;
         })
         .build();
     win.focus = Focus::Prompt;

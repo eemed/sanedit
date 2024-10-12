@@ -495,6 +495,9 @@ impl Window {
     }
 
     fn restore(&mut self, sdata: &SnapshotData) {
+        // Clear highlights
+        self.search.hl_matches = vec![];
+
         self.cursors = sdata.cursors.clone();
         self.view.set_offset(sdata.view_offset);
         self.invalidate();

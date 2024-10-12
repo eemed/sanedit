@@ -116,16 +116,15 @@ impl KeepInTouch for LSPJob {
                     // Send all buffers of this filetype
                     let ids: Vec<BufferId> = editor.buffers().iter().map(|(id, _buf)| id).collect();
                     for id in ids {
-                        let _ =
-                            lsp_notify_for(editor, self.client_id, id, |buf, path, slice, _lsp| {
-                                let text = String::from(&slice);
-                                let version = buf.total_changes_made() as i32;
-                                Some(Notification::DidOpen {
-                                    path: path.clone(),
-                                    text,
-                                    version,
-                                })
-                            });
+                        let _ = lsp_notify_for(editor, id, |buf, path, slice, _lsp| {
+                            let text = String::from(&slice);
+                            let version = buf.total_changes_made() as i32;
+                            Some(Notification::DidOpen {
+                                path: path.clone(),
+                                text,
+                                version,
+                            })
+                        });
                     }
                 }
                 Message::Response(response) => self.handle_response(editor, response),
@@ -275,6 +274,7 @@ impl LSPJob {
                 return;
             }
         }
+        log::info!("Handle: {path:?}, {version:?}, diags: {diags:?}");
 
         let Some(enc) = editor
             .language_servers
@@ -361,26 +361,29 @@ impl LSPJob {
             return;
         };
 
-        // The changes build on themselves so apply each separately
-        for (i, edit) in edit.edits.into_iter().enumerate() {
-            let buf = editor.buffers_mut().get_mut(bid).unwrap();
-            let slice = buf.slice(..);
-            let start = edit.range.start.to_offset(&slice, &enc);
-            let end = edit.range.end.to_offset(&slice, &enc);
-            let change = Change::replace((start..end).into(), edit.text.as_bytes());
-            let mut changes = Changes::from(change);
-            // Disable undo point creation for other than first change
-            if i != 0 {
-                changes.disable_undo_point_creation();
-            }
+        let buf = editor.buffers_mut().get_mut(bid).unwrap();
+        let slice = buf.slice(..);
+        let changes: Vec<Change> = edit
+            .edits
+            .into_iter()
+            .map(|edit| {
+                let start = edit.range.start.to_offset(&slice, &enc);
+                let end = if edit.range.end != edit.range.start {
+                    edit.range.end.to_offset(&slice, &enc)
+                } else {
+                    start
+                };
+                Change::replace((start..end).into(), edit.text.as_bytes())
+            })
+            .collect();
+        let changes = Changes::from(changes);
 
-            if let Err(e) = buf.apply_changes(&changes) {
-                log::error!("Failed to apply changes to buffer: {path:?}: {e}");
-                return;
-            }
-
-            run(editor, id, Hook::BufChanged(bid));
+        if let Err(e) = buf.apply_changes(&changes) {
+            log::error!("Failed to apply changes to buffer: {path:?}: {e}");
+            return;
         }
+
+        run(editor, id, Hook::BufChanged(bid));
     }
 
     fn show_references(

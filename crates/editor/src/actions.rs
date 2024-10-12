@@ -230,6 +230,7 @@ pub(crate) const WINDOW_COMMANDS: &[Action] = &[
 
     window::reload_window,
     window::goto_prev_buffer,
+    window::prog_cancel,
 
     completion::complete,
 

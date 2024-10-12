@@ -21,6 +21,8 @@ pub(crate) struct Search {
 
     /// Search matches that should be highlighted
     pub hl_matches: Vec<BufferRange>,
+    /// Whether to highlight last match or not
+    pub hl_last: bool,
 
     /// Current search match
     pub current_match: Option<BufferRange>,
@@ -53,6 +55,7 @@ impl Default for Search {
             last_search: None,
             direction: SearchDirection::Forward,
             kind: SearchKind::default(),
+            hl_last: false,
             hl_matches: vec![],
             current_match: None,
         }

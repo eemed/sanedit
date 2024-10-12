@@ -107,6 +107,10 @@ fn send_word(editor: &mut Editor, id: ClientId) {
     if let Some(fun) = win.completion.on_input.clone() {
         let cursor = win.cursors.primary().pos();
         let start = win.completion.started_at();
+        if start > cursor {
+            win.focus = Focus::Window;
+            return;
+        }
         let slice = buf.slice(start..cursor);
         let word = String::from(&slice);
         (fun)(editor, id, &word);

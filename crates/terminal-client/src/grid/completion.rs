@@ -7,19 +7,13 @@ use crate::ui::UIContext;
 use super::{
     ccell::{into_cells_with_style, put_line, size, CCell},
     drawable::{DrawCursor, Drawable},
-    item::GridItem,
     Rect,
 };
 
 const MIN_WIDTH: usize = 40;
 const MIN_HEIGHT: usize = 5;
 
-pub(crate) fn open_completion(win: Rect, compl: Completion) -> GridItem<Completion> {
-    let rect = fit_completion(win, &compl);
-    GridItem::new(compl, rect)
-}
-
-pub(crate) fn fit_completion(win: Rect, compl: &Completion) -> Rect {
+pub(crate) fn completion_rect(win: Rect, compl: &Completion) -> Rect {
     let below = below(win, compl);
     if win.includes(&below) {
         return below;

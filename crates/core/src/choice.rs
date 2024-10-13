@@ -25,6 +25,10 @@ impl Choice {
         }
     }
 
+    pub fn rescore(&mut self, score: u32) {
+        self.score = score;
+    }
+
     pub fn to_str_lossy(&self) -> std::borrow::Cow<str> {
         String::from_utf8_lossy(&self.value)
     }

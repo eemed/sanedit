@@ -26,7 +26,7 @@ where
     let (tx, rx) = mpsc::channel();
 
     writer
-        .write(Message::Hello(ui.window_rect().size()))
+        .write(Message::Hello(ui.window().size()))
         .expect("Failed to send hello");
 
     // Input thread
@@ -43,7 +43,7 @@ where
                 Ok(UIResult::Exit) => break,
                 Ok(UIResult::Nothing) => {}
                 Ok(UIResult::Resize) => {
-                    let rect = ui.window_rect();
+                    let rect = ui.window();
                     let msg = Message::Resize(rect.size());
 
                     if let Err(_e) = writer.write(msg) {
@@ -65,11 +65,11 @@ where
                             log::error!("Failed to resize UI: {e}");
                             break;
                         }
-                        let rect = ui.window_rect();
+                        let rect = ui.window();
                         msg = Message::Resize(rect.size());
                     }
                     Message::MouseEvent(ref mut ev) => {
-                        let win = ui.window_rect();
+                        let win = ui.window();
                         let position = win.position();
                         let size = win.size();
                         let point = &mut ev.point;

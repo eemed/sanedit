@@ -1,8 +1,8 @@
-use std::cmp::min;
+use std::cmp::max;
 
 use sanedit_messages::redraw::{
-    items::{Item, ItemKind, Items},
-    Size, Style, ThemeField,
+    items::{Difference, Item, ItemKind, Items},
+    Diffable, Size, Style, ThemeField,
 };
 
 use crate::ui::UIContext;
@@ -10,7 +10,6 @@ use crate::ui::UIContext;
 use super::{
     ccell::{clear_all, into_cells_with_style, pad_line, size, CCell},
     drawable::{DrawCursor, Drawable},
-    item::GridItem,
     Rect,
 };
 
@@ -24,44 +23,35 @@ pub(crate) enum Kind {
 pub(crate) struct CustomItems {
     pub(crate) items: Items,
     pub(crate) scroll: usize,
-    pub(crate) area_reserved_lines: usize,
     pub(crate) kind: Kind,
 }
 
-pub(crate) fn open_filetree(win: Rect, items: Items) -> GridItem<CustomItems> {
-    let mut area = win;
-    area.width = (area.width / 6).clamp(40, 50);
-
-    if area.width > win.width {
-        area.width = win.width;
+impl CustomItems {
+    pub fn new(items: Items, kind: Kind) -> CustomItems {
+        CustomItems {
+            items,
+            scroll: 0,
+            kind,
+        }
     }
 
-    GridItem::new(
-        CustomItems {
-            items,
-            scroll: 0,
-            area_reserved_lines: 0,
-            kind: Kind::Filetree,
-        },
-        area,
-    )
-}
+    pub fn update(&mut self, diff: Difference, rect: Rect) {
+        self.items.update(diff);
 
-pub(crate) fn open_locations(win: Rect, items: Items) -> GridItem<CustomItems> {
-    let mut area = win;
-    let max = area.height + area.y;
-    area.height = min(win.height, 15);
-    area.y = max - area.height;
+        let area_reserved = if matches!(self.kind, Kind::Locations) {
+            1
+        } else {
+            0
+        };
+        let height = rect.height.saturating_sub(area_reserved);
+        let sel = self.items.selected;
+        let at_least = sel.saturating_sub(height.saturating_sub(1));
+        self.scroll = max(self.scroll, at_least);
 
-    GridItem::new(
-        CustomItems {
-            items,
-            scroll: 0,
-            area_reserved_lines: 1,
-            kind: Kind::Locations,
-        },
-        area,
-    )
+        if self.scroll > sel {
+            self.scroll = sel;
+        }
+    }
 }
 
 impl CustomItems {

@@ -1,6 +1,6 @@
 use anyhow::{bail, Result};
 use sanedit_buffer::PieceTreeSlice;
-use sanedit_core::{word_at_pos, ChangesKind, Group, Item, Locations};
+use sanedit_core::{word_at_pos, ChangesKind, Group, Item};
 use sanedit_messages::redraw::PopupMessage;
 use sanedit_utils::either::Either;
 use std::path::{Path, PathBuf};

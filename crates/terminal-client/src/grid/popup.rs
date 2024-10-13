@@ -6,26 +6,25 @@ use super::{
     border::{draw_side_border, Border},
     ccell::{clear_all, into_cells_with_style, size, CCell},
     drawable::{DrawCursor, Drawable},
-    item::GridItem,
     Rect,
 };
 
-pub(crate) fn open_popup(screen: Rect, win: Rect, popup: Popup) -> GridItem<Popup> {
+pub(crate) fn popup_rect(screen: Rect, win: Rect, popup: &Popup) -> Rect {
     let over = above(&screen, &win, &popup);
     let screen_point = popup.point + win.position();
     if !over.contains(&screen_point) {
-        return GridItem::new(popup, over);
+        return over;
     }
 
     let under = below(&screen, &win, &popup);
     if under.contains(&screen_point) {
-        GridItem::new(popup, over)
+        over
     } else {
-        GridItem::new(popup, under)
+        under
     }
 }
 
-pub(crate) fn below(screen: &Rect, win: &Rect, popup: &Popup) -> Rect {
+fn below(screen: &Rect, win: &Rect, popup: &Popup) -> Rect {
     let Point { mut x, mut y } = popup.point + win.position();
     let width = popup
         .messages
@@ -58,7 +57,7 @@ pub(crate) fn below(screen: &Rect, win: &Rect, popup: &Popup) -> Rect {
     }
 }
 
-pub(crate) fn above(screen: &Rect, win: &Rect, popup: &Popup) -> Rect {
+fn above(screen: &Rect, win: &Rect, popup: &Popup) -> Rect {
     let Point { mut x, mut y } = popup.point + win.position();
     let width = popup
         .messages

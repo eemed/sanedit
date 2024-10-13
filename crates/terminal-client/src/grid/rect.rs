@@ -4,7 +4,7 @@ use sanedit_messages::redraw::{Point, Size};
 
 use super::ccell::CCell;
 
-#[derive(Clone, Debug, Copy)]
+#[derive(Clone, Debug, Copy, Default)]
 pub(crate) struct Rect {
     pub x: usize,
     pub y: usize,

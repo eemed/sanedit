@@ -29,8 +29,12 @@ impl UI {
         })
     }
 
-    pub fn window_rect(&self) -> Rect {
-        self.grid.window_area()
+    pub fn window(&self) -> Rect {
+        // Atleast size of 1 cell
+        let mut rect = self.grid.window();
+        rect.width = rect.width.max(1);
+        rect.height = rect.height.max(1);
+        rect
     }
 
     pub fn resize(&mut self, size: Size) -> anyhow::Result<()> {

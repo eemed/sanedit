@@ -48,7 +48,7 @@ pub enum Notification {
 impl Notification {
     /// Determines if the notification is supported by the LSP.
     /// May also modify the notification to make it supported.
-    pub fn is_supported(&mut self, init: &lsp_types::InitializeResult) -> bool {
+    pub fn is_supported(&mut self, _init: &lsp_types::InitializeResult) -> bool {
         // TODO determine if server supports this request
         true
     }
@@ -63,7 +63,7 @@ pub struct Request {
 impl Request {
     /// Determines if the request is supported by the LSP.
     /// May also modify the request to make it supported.
-    pub fn is_supported(&mut self, init: &lsp_types::InitializeResult) -> bool {
+    pub fn is_supported(&mut self, _init: &lsp_types::InitializeResult) -> bool {
         // TODO determine if server supports this request
         true
     }

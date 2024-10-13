@@ -6,7 +6,7 @@ use super::config::Config;
 
 #[derive(Debug)]
 pub(crate) struct Caches {
-    files: LRU<PathBuf>,
+    pub(crate) files: LRU<PathBuf>,
 }
 
 impl Caches {

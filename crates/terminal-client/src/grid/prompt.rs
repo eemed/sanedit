@@ -16,7 +16,6 @@ use crate::{
 use super::{
     ccell::{into_cells_with_style, into_cells_with_style_pad, pad_line, put_line, size, CCell},
     drawable::{DrawCursor, Drawable},
-    item::GridItem,
     Rect,
 };
 
@@ -34,7 +33,16 @@ pub struct CustomPrompt {
     pub prompt: Prompt,
 }
 
-pub(crate) fn open_prompt(width: usize, height: usize, prompt: Prompt) -> GridItem<CustomPrompt> {
+impl CustomPrompt {
+    pub fn new(prompt: Prompt) -> CustomPrompt {
+        CustomPrompt {
+            style: PromptStyle::Oneline,
+            prompt,
+        }
+    }
+}
+
+pub(crate) fn prompt_rect(screen: Rect, prompt: &mut CustomPrompt) -> Rect {
     use PromptStyle::*;
     use Source::*;
     // Try to fit overlay prompt
@@ -42,11 +50,12 @@ pub(crate) fn open_prompt(width: usize, height: usize, prompt: Prompt) -> GridIt
     // dont attach to window sides 6
     //
     // minimum height to draw overlay
-    let olay_min_height = prompt.max_completions + 3 + 1 + 6;
+    let Rect { width, height, .. } = screen;
+    let olay_min_height = prompt.prompt.max_completions + 3 + 1 + 6;
     // height the overlay needs
-    let olay_height = prompt.max_completions + 3 + 1;
-    let oneline_min_height = prompt.max_completions + 1;
-    let style = match prompt.source {
+    let olay_height = prompt.prompt.max_completions + 3 + 1;
+    let oneline_min_height = prompt.prompt.max_completions + 1;
+    prompt.style = match prompt.prompt.source {
         Search | Simple => Oneline,
         Prompt => {
             if height < olay_min_height {
@@ -57,18 +66,14 @@ pub(crate) fn open_prompt(width: usize, height: usize, prompt: Prompt) -> GridIt
         }
     };
 
-    match style {
-        PromptStyle::Oneline => {
-            let rect = Rect::new(0, 0, width, min(height, oneline_min_height));
-            GridItem::new(CustomPrompt { prompt, style }, rect)
-        }
+    match prompt.style {
+        PromptStyle::Oneline => Rect::new(0, 0, width, min(height, oneline_min_height)),
         PromptStyle::Overlay => {
             let width = width / 2;
             let x = width / 2;
             let extra = height - olay_height;
             let y = extra / 4;
-            let rect = Rect::new(x, y, width, olay_height);
-            GridItem::new(CustomPrompt { prompt, style }, rect)
+            Rect::new(x, y, width, olay_height)
         }
     }
 }

@@ -196,15 +196,6 @@ impl Prompt {
                         win.prompt.clear_choices();
                     }
 
-                    let has_input = matched
-                        .get(0)
-                        .map(|choice| !choice.matches().is_empty())
-                        .unwrap_or(false);
-                    if !has_input {
-                        // If no input is matched, sort results using LRU
-                        // TODO add LRU scores
-                    }
-
                     win.focus = Focus::Prompt;
                     let (win, _buf) = editor.win_buf_mut(id);
                     win.prompt.add_choices(matched.into());

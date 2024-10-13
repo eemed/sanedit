@@ -97,59 +97,7 @@ fn open_file(editor: &mut Editor, id: ClientId) {
     let wd = editor.working_dir().to_path_buf();
     let job = MatcherJob::builder(id)
         .options(FileOptionProvider::new(&wd, &ignore))
-        .handler(|editor, id, msg| {
-            use MatcherMessage::*;
-
-            let draw = editor.draw_state(id);
-            draw.no_redraw_window();
-
-            let (win, _buf) = win_buf!(editor, id);
-            match msg {
-                Init(sender) => {
-                    win.prompt.set_on_input(move |_editor, _id, input| {
-                        let _ = sender.blocking_send(input.to_string());
-                    });
-                    win.prompt.clear_choices();
-                }
-                Progress(opts) => {
-                    if let MatchedOptions::Options {
-                        mut matched,
-                        clear_old,
-                    } = opts
-                    {
-                        if clear_old {
-                            win.prompt.clear_choices();
-                        }
-
-                        let has_input = matched
-                            .get(0)
-                            .map(|choice| !choice.matches().is_empty())
-                            .unwrap_or(false);
-                        if !has_input {
-                            // If no input is matched, sort results using LRU
-
-                            let cache = &mut editor.caches.files;
-                            let lru = cache.to_map();
-                            let max = lru.len();
-                            for mat in &mut matched {
-                                let os =
-                                    unsafe { OsStr::from_encoded_bytes_unchecked(mat.value_raw()) };
-                                let path = PathBuf::from(os);
-                                if let Some(score) = lru.get(&path) {
-                                    mat.rescore(*score as u32);
-                                } else {
-                                    mat.rescore(mat.score() + max as u32);
-                                }
-                            }
-                        }
-
-                        win.focus = Focus::Prompt;
-                        let (win, _buf) = editor.win_buf_mut(id);
-                        win.prompt.add_choices(matched.into());
-                    }
-                }
-            }
-        })
+        .handler(open_file_handler)
         .build();
     editor.job_broker.request_slot(id, PROMPT_MESSAGE, job);
     let (win, _buf) = editor.win_buf_mut(id);
@@ -172,6 +120,59 @@ fn open_file(editor: &mut Editor, id: ClientId) {
         })
         .build();
     win.focus = Focus::Prompt;
+}
+
+fn open_file_handler(editor: &mut Editor, id: ClientId, msg: MatcherMessage) {
+    use MatcherMessage::*;
+
+    let draw = editor.draw_state(id);
+    draw.no_redraw_window();
+
+    let (win, _buf) = win_buf!(editor, id);
+    match msg {
+        Init(sender) => {
+            win.prompt.set_on_input(move |_editor, _id, input| {
+                let _ = sender.blocking_send(input.to_string());
+            });
+            win.prompt.clear_choices();
+        }
+        Progress(opts) => {
+            if let MatchedOptions::Options {
+                mut matched,
+                clear_old,
+            } = opts
+            {
+                if clear_old {
+                    win.prompt.clear_choices();
+                }
+
+                let no_input = matched
+                    .get(0)
+                    .map(|choice| choice.matches().is_empty())
+                    .unwrap_or(false);
+                if no_input {
+                    // If no input is matched, sort results using LRU
+
+                    let cache = &mut editor.caches.files;
+                    let lru = cache.to_map();
+                    let max = lru.len();
+                    for mat in &mut matched {
+                        let os = unsafe { OsStr::from_encoded_bytes_unchecked(mat.value_raw()) };
+                        let path = PathBuf::from(os);
+                        if let Some(score) = lru.get(&path) {
+                            mat.rescore(*score as u32);
+                        } else {
+                            mat.rescore(mat.score() + max as u32);
+                        }
+                    }
+                }
+
+                win.focus = Focus::Prompt;
+                let (win, _buf) = editor.win_buf_mut(id);
+                win.prompt.add_choices(matched.into());
+            }
+        }
+    }
 }
 
 #[action("Open a buffer")]

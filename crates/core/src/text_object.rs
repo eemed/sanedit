@@ -1,5 +1,8 @@
-use crate::BufferRange;
-use sanedit_buffer::{utf8::Graphemes, PieceTreeSlice};
+use crate::{BufferRange, Range};
+use sanedit_buffer::{
+    utf8::{EndOfLine, Graphemes},
+    PieceTreeSlice,
+};
 
 /// Get a range of buffer from start - end,
 ///
@@ -10,7 +13,6 @@ use sanedit_buffer::{utf8::Graphemes, PieceTreeSlice};
 ///     end     - ending character to find
 ///     include - whether to include starting and ending chars in the range
 ///
-/// Contains special logic when ch is a bracket
 pub fn find_range(
     slice: &PieceTreeSlice,
     pos: u64,
@@ -18,17 +20,73 @@ pub fn find_range(
     end: &str,
     include: bool,
 ) -> Option<BufferRange> {
-    if start == end {
-        todo!("missing add same char impl")
+    let mut range = if start == end {
+        find_range_delim_included(slice, pos, start)?
     } else {
-        let mut range = find_range_included(slice, pos, start, end)?;
-        if !include {
-            range.start += start.len() as u64;
-            range.end -= end.len() as u64;
+        find_range_included(slice, pos, start, end)?
+    };
+
+    if !include {
+        range.start += start.len() as u64;
+        range.end -= end.len() as u64;
+    }
+
+    Some(range)
+}
+
+/// Find range of delimiters in the current line
+fn find_range_delim_included(slice: &PieceTreeSlice, pos: u64, delim: &str) -> Option<BufferRange> {
+    let mut ngraphemes = slice.graphemes_at(pos);
+    let mut pgraphemes = ngraphemes.clone();
+
+    // Find next delimiter
+    let next = find_next_delim(&mut ngraphemes, delim)?;
+    // Try to find previous delimiter
+    // "abc|e"
+    if let Some(prev) = find_prev_delim(&mut pgraphemes, delim) {
+        return Some(Range::new(pos - prev, pos + next));
+    }
+
+    // Find next of next
+    // | "abce"
+    let next_next = find_next_delim(&mut ngraphemes, delim)?;
+    Some(Range::new(pos + next, pos + next_next))
+}
+
+fn find_prev_delim(graphemes: &mut Graphemes, delim: &str) -> Option<u64> {
+    let mut adv = 0;
+
+    while let Some(g) = graphemes.prev() {
+        if EndOfLine::is_slice_eol(&g) {
+            break;
         }
 
-        Some(range)
+        adv += g.len();
+
+        if &g == &delim {
+            return Some(adv);
+        }
     }
+
+    None
+}
+
+fn find_next_delim(graphemes: &mut Graphemes, delim: &str) -> Option<u64> {
+    let mut adv = 0;
+
+    while let Some(g) = graphemes.next() {
+        if EndOfLine::is_slice_eol(&g) {
+            break;
+        }
+
+        adv += g.len();
+
+        if &g == &delim {
+            return Some(adv);
+        }
+    }
+
+    None
 }
 
 fn find_range_included(

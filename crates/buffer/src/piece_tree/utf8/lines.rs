@@ -306,10 +306,11 @@ impl<'a> Lines<'a> {
     }
 
     pub fn prev(&mut self) -> Option<PieceTreeSlice<'a>> {
+        let at_end = self.at_end;
         let end = self.bytes.pos();
 
         // Skip over previous eol
-        if !self.at_end {
+        if !at_end {
             prev_eol(&mut self.bytes);
         }
         self.at_end = false;
@@ -327,7 +328,7 @@ impl<'a> Lines<'a> {
             }
             None => {
                 let start = self.bytes.pos();
-                if start == end {
+                if start == end && !at_end {
                     // At start
                     None
                 } else {
@@ -352,6 +353,20 @@ mod test {
     fn lines_next_empty() {
         let pt = PieceTree::new();
         let mut lines = pt.lines();
+        assert_eq!(
+            lines.next().as_ref().map(String::from),
+            Some("".to_string())
+        );
+
+        assert_eq!(lines.next().as_ref().map(String::from), None);
+
+        assert_eq!(
+            lines.prev().as_ref().map(String::from),
+            Some("".to_string())
+        );
+
+        assert_eq!(lines.prev().as_ref().map(String::from), None);
+
         assert_eq!(
             lines.next().as_ref().map(String::from),
             Some("".to_string())

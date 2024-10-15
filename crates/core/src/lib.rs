@@ -15,7 +15,6 @@ pub(crate) mod text;
 pub(crate) mod text_object;
 
 pub mod movement;
-pub mod pairs;
 
 pub use change::*;
 pub use char::*;

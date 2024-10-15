@@ -49,6 +49,10 @@ where
 
         while src.len() < size {
             let n = read.read(&mut rest[..])?;
+            // If channel closed
+            if n == 0 {
+                return Err(io::Error::from(io::ErrorKind::UnexpectedEof));
+            }
             total += n;
             let good = rest.split_to(n);
             src.unsplit(good);

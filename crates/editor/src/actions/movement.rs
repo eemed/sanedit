@@ -2,8 +2,9 @@ use std::cmp;
 
 use sanedit_buffer::PieceTreeSlice;
 use sanedit_core::{
+    find_range,
     movement::{self, next_grapheme_boundary, prev_grapheme_boundary},
-    pairs, Cursor, DisplayOptions,
+    Cursor, DisplayOptions,
 };
 use sanedit_messages::redraw::Point;
 
@@ -271,12 +272,35 @@ fn prev_line(editor: &mut Editor, id: ClientId) {
     do_move_line(editor, id, movement::prev_line);
 }
 
-#[action("Move cursor(s) to matching bracket pair")]
+const PAIRS: [(char, char); 4] = [('(', ')'), ('[', ']'), ('{', '}'), ('<', '>')];
+
+pub fn pair_for(ch: char) -> Option<(char, char)> {
+    for (a, b) in PAIRS.iter() {
+        if a == &ch || b == &ch {
+            return Some((*a, *b));
+        }
+    }
+
+    None
+}
+
+#[action("Move cursor(s) to matching pair")]
 fn goto_matching_pair(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     let pos = win.cursors.primary().pos();
     let slice = buf.slice(..);
-    if let Some(pos) = pairs::matching_pair(&slice, pos) {
-        do_move_static(editor, id, pos, None);
+    let mut chars = slice.chars_at(pos);
+    let (_, _, ch) = get!(chars.next());
+    let (start, end) = pair_for(ch).unwrap_or((ch, ch));
+    let mut buf1 = [0u8; 4];
+    let mut buf2 = [0u8; 4];
+    let start = start.encode_utf8(&mut buf1);
+    let end = end.encode_utf8(&mut buf2);
+
+    let range = get!(find_range(&slice, pos, start, end, true));
+    if range.start == pos {
+        do_move_static(editor, id, range.end - end.len() as u64, None);
+    } else {
+        do_move_static(editor, id, range.start, None);
     }
 }

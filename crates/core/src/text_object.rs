@@ -36,6 +36,7 @@ pub fn find_range(
 
 /// Find range of delimiters in the current line
 fn find_range_delim_included(slice: &PieceTreeSlice, pos: u64, delim: &str) -> Option<BufferRange> {
+    let dlen = delim.len() as u64;
     let mut ngraphemes = slice.graphemes_at(pos);
     let mut pgraphemes = ngraphemes.clone();
 
@@ -44,13 +45,13 @@ fn find_range_delim_included(slice: &PieceTreeSlice, pos: u64, delim: &str) -> O
     // Try to find previous delimiter
     // "abc|e"
     if let Some(prev) = find_prev_delim(&mut pgraphemes, delim) {
-        return Some(Range::new(pos - prev, pos + next));
+        return Some(Range::new(pos - prev, pos + next + dlen));
     }
 
     // Find next of next
     // | "abce"
     let next_next = find_next_delim(&mut ngraphemes, delim)?;
-    Some(Range::new(pos + next, pos + next_next))
+    Some(Range::new(pos + next, pos + next + next_next + dlen * 2))
 }
 
 fn find_prev_delim(graphemes: &mut Graphemes, delim: &str) -> Option<u64> {
@@ -79,11 +80,11 @@ fn find_next_delim(graphemes: &mut Graphemes, delim: &str) -> Option<u64> {
             break;
         }
 
-        adv += g.len();
-
         if &g == &delim {
             return Some(adv);
         }
+
+        adv += g.len();
     }
 
     None
@@ -120,6 +121,25 @@ fn find_range_included(
         }
 
         Some((cpos..end_pos).into())
+    } else if adv == 0 {
+        // if we are at a start, anchor to this one
+        let start_pos = pos;
+        let mut cpos = pos + slen;
+        let mut nest = 1;
+
+        while nest != 0 {
+            // NOTE: using graphemes, Continue from old position
+            let (adv, is_start) = find_next_start_or_end(&mut graphemes, start, end)?;
+            cpos += adv + slen;
+
+            if is_start {
+                nest += 1;
+            } else {
+                nest -= 1;
+            }
+        }
+
+        Some((start_pos..cpos).into())
     } else {
         // if start is found => search backwards for end or start
         let first_start_after = pos + adv + slen;

@@ -79,7 +79,6 @@ pub(crate) type Map<K, V> = FxHashMap<K, V>;
 pub(crate) struct Editor {
     clients: Map<ClientId, ClientHandle>,
     draw_states: Map<ClientId, DrawState>,
-    keys: Vec<KeyEvent>,
     is_running: bool,
     working_dir: PathBuf,
 
@@ -120,7 +119,6 @@ impl Editor {
             buffers: Buffers::default(),
             job_broker: JobBroker::new(jobs_handle),
             hooks: Hooks::default(),
-            keys: Vec::default(),
             is_running: true,
             config_dir,
             filetree: Filetree::new(&working_dir),
@@ -530,23 +528,28 @@ impl Editor {
         use sanedit_messages::key::Key::*;
 
         // Add key to buffer
-        self.keys.push(event);
+        let (win, _buf) = self.win_buf_mut(id);
+        win.push_key(event);
+
         run(self, id, Hook::KeyPressedPre);
 
         // Handle key bindings
-        let keymap = self.focus_keymap(id);
-        match keymap.get(&self.keys) {
+        match self.mapped_action(id) {
             KeymapResult::Matched(action) => {
-                self.keys.clear();
                 action.execute(self, id);
+
+                let (win, _buf) = self.win_buf_mut(id);
+                win.clear_keys();
                 return;
             }
             KeymapResult::Pending => return,
             KeymapResult::NotFound => {}
         }
 
-        // Clear keys buffer, and handle them separately
-        let events = std::mem::take(&mut self.keys);
+        // Clear keys buffer, and handle keys separately
+        let (win, _buf) = self.win_buf_mut(id);
+        let events = win.clear_keys();
+
         for event in events {
             if event.alt_pressed() || event.control_pressed() {
                 continue;
@@ -686,7 +689,7 @@ impl Editor {
     }
 
     /// Return the currently focused elements keymap
-    pub fn focus_keymap(&self, id: ClientId) -> &Keymap {
+    pub fn mapped_action(&self, id: ClientId) -> KeymapResult {
         use Focus::*;
 
         let (win, _buf) = self.win_buf(id);
@@ -698,9 +701,16 @@ impl Editor {
             Locations => KeymapKind::Locations,
         };
 
-        self.keymaps
-            .get(&kind)
-            .expect("No keymap found for kind: {kind:?}")
+        let kmap = self.keymaps.get(&kind).expect("No keymap found");
+
+        // Use persist keys only on window for now
+        let persist = if matches!(kind, KeymapKind::Window) {
+            0
+        } else {
+            win.key_persist
+        };
+
+        kmap.get(&win.keys()[persist..])
     }
 
     pub fn change_working_dir(&mut self, path: &Path) -> Result<()> {

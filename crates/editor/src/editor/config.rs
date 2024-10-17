@@ -542,6 +542,20 @@ impl KeymapsConfig {
             "alt+x R",   rename,
             "alt+x h",   hover,
 
+            "alt+d",        persist,
+            "alt+d h",      prev_grapheme,
+            "alt+d j",      next_line,
+            "alt+d k",      prev_line,
+            "alt+d l",      next_grapheme,
+            "alt+d w",      next_word_start,
+            "alt+d b",      prev_word_start,
+            "alt+d /",      search_forward,
+            "alt+d ?",      search_backward,
+            "alt+d esc",    clear_persist,
+            "alt+d ctrl+p", command_palette,
+            "alt+d ctrl+o", open_file,
+            "alt+d ctrl+q", quit,
+
             "alt+2",     show_filetree,
             "alt+3",     show_locations,
         );

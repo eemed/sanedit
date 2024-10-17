@@ -25,7 +25,10 @@ use sanedit_core::{
     selection_line_starts, width_at_pos, BufferRange, Change, Changes, Cursor, DisplayOptions,
     GraphemeCategory, Locations, Range,
 };
-use sanedit_messages::redraw::{Popup, PopupMessage, Severity, Size, StatusMessage};
+use sanedit_messages::{
+    key::KeyEvent,
+    redraw::{Popup, PopupMessage, Severity, Size, StatusMessage},
+};
 
 use crate::editor::buffers::{Buffer, BufferId, SnapshotData};
 
@@ -66,6 +69,9 @@ pub(crate) struct Window {
     /// Jump to primary cursor on next buffer changed event
     jump_to_primary_cursor: bool,
 
+    pub key_persist: usize,
+    keys: Vec<KeyEvent>,
+
     pub shell_executor: Executor,
     pub completion: Completion,
     pub cursors: Cursors,
@@ -82,6 +88,8 @@ impl Window {
     pub fn new(bid: BufferId, width: usize, height: usize) -> Window {
         Window {
             bid,
+            key_persist: 0,
+            keys: Vec::default(),
             last_buf: None,
             view: View::new(width, height),
             jump_to_primary_cursor: false,
@@ -97,6 +105,18 @@ impl Window {
             locations: Locations::default(),
             popup: None,
         }
+    }
+
+    pub fn keys(&self) -> &[KeyEvent] {
+        &self.keys
+    }
+
+    pub fn push_key(&mut self, event: KeyEvent) {
+        self.keys.push(event)
+    }
+
+    pub fn clear_keys(&mut self) -> Vec<KeyEvent> {
+        self.keys.split_off(self.key_persist)
     }
 
     pub fn clear_popup(&mut self) {

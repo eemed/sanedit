@@ -50,6 +50,21 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> Statusline {
 
     let right = {
         let mut result = String::new();
+        let keys = win.keys();
+        let persist = win.key_persist;
+        if !keys.is_empty() {
+            let keys: Vec<String> = keys.iter().map(|k| k.to_string()).collect();
+            if persist != 0 {
+                result.push('(');
+                result.push_str(&keys[..persist].join(" "));
+                result.push(')');
+                result.push(' ');
+            }
+
+            result.push_str(&keys[persist..].join(" "));
+            result.push_str(" | ")
+        }
+
         if let Some(lsp) = lsp {
             result.push_str(&format!(" {lsp} | "));
         }

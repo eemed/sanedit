@@ -65,3 +65,15 @@ fn prog_cancel(editor: &mut Editor, id: ClientId) {
 
     cursors::keep_only_primary.execute(editor, id);
 }
+
+#[action("Persist keys pressed")]
+fn persist(editor: &mut Editor, id: ClientId) {
+    let (win, _buf) = editor.win_buf_mut(id);
+    win.key_persist = win.keys().len();
+}
+
+#[action("Clear persisted keys")]
+fn clear_persist(editor: &mut Editor, id: ClientId) {
+    let (win, _buf) = editor.win_buf_mut(id);
+    win.key_persist = 0;
+}

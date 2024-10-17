@@ -67,7 +67,8 @@ impl KeyTrie {
 impl Default for KeyTrie {
     fn default() -> Self {
         KeyTrie {
-            root: KeyTrieNode::Node {
+            root: KeyTrieNode {
+                action: None,
                 map: FxHashMap::default(),
             },
         }
@@ -75,97 +76,66 @@ impl Default for KeyTrie {
 }
 
 #[derive(Debug, Clone)]
-enum KeyTrieNode {
-    Leaf {
-        action: Action,
-    },
-    Node {
-        map: FxHashMap<KeyEvent, KeyTrieNode>,
-    },
+struct KeyTrieNode {
+    action: Option<Action>,
+    map: FxHashMap<KeyEvent, KeyTrieNode>,
 }
 
 impl KeyTrieNode {
     fn bind(&mut self, events: &[KeyEvent], new_action: Action) {
-        use KeyTrieNode::*;
-        match self {
-            Leaf { action: _ } => {
-                if events.first().is_some() {
-                    let mut node = Node {
+        match events.first() {
+            Some(event) => match self.map.get_mut(event) {
+                Some(node) => {
+                    node.bind(&events[1..], new_action);
+                }
+                None => {
+                    let mut node = KeyTrieNode {
+                        action: None,
                         map: FxHashMap::default(),
                     };
                     node.bind(&events[1..], new_action);
-                    *self = node;
-                    return;
+                    self.map.insert(event.clone(), node);
                 }
-
-                // There is no more key events.
-                *self = Leaf { action: new_action };
-            }
-            Node { map } => {
-                if let Some(event) = events.first() {
-                    if let Some(node) = map.get_mut(event) {
-                        node.bind(&events[1..], new_action);
-                    } else {
-                        let mut node = Node {
-                            map: FxHashMap::default(),
-                        };
-                        node.bind(&events[1..], new_action);
-                        map.insert(event.clone(), node);
-                    }
-                    return;
-                }
-
-                *self = Leaf { action: new_action };
-            }
+            },
+            None => self.action = Some(new_action),
         }
     }
 
     fn get(&self, events: &[KeyEvent]) -> KeymapResult {
-        match self {
-            KeyTrieNode::Leaf { action } => {
-                if events.is_empty() {
-                    return KeymapResult::Matched(action.clone());
+        if events.is_empty() {
+            return match &self.action {
+                Some(action) => KeymapResult::Matched(action.clone()),
+                None => {
+                    if !self.map.is_empty() {
+                        KeymapResult::Pending
+                    } else {
+                        KeymapResult::NotFound
+                    }
                 }
-
-                KeymapResult::NotFound
-            }
-            KeyTrieNode::Node { map } => {
-                if events.is_empty() && !map.is_empty() {
-                    return KeymapResult::Pending;
-                }
-
-                if events.is_empty() {
-                    return KeymapResult::NotFound;
-                }
-
-                if let Some(node) = map.get(&events[0]) {
-                    return node.get(&events[1..]);
-                }
-
-                KeymapResult::NotFound
-            }
+            };
         }
+
+        if let Some(node) = self.map.get(&events[0]) {
+            return node.get(&events[1..]);
+        }
+
+        KeymapResult::NotFound
     }
 
     fn find_bound_key(&self, name: &str) -> Option<Vec<KeyEvent>> {
-        match self {
-            KeyTrieNode::Leaf { action } => {
-                if action.name() == name {
-                    Some(vec![])
-                } else {
-                    None
-                }
-            }
-            KeyTrieNode::Node { map } => {
-                for (ev, n) in map {
-                    if let Some(mut events) = n.find_bound_key(name) {
-                        events.insert(0, ev.clone());
-                        return Some(events);
-                    }
-                }
-
-                None
+        if let Some(ref action) = self.action {
+            if action.name() == name {
+                return Some(vec![]);
             }
         }
+
+        for (ev, n) in &self.map {
+            if let Some(mut events) = n.find_bound_key(name) {
+                events.insert(0, ev.clone());
+                return Some(events);
+            }
+        }
+
+        None
     }
 }

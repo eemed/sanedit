@@ -2,7 +2,7 @@ use crate::editor::{hooks::Hook, windows::Focus, Editor};
 
 use sanedit_server::ClientId;
 
-use super::{cursors, hooks};
+use super::hooks;
 
 #[action("Focus window")]
 fn focus_window(editor: &mut Editor, id: ClientId) {
@@ -63,7 +63,16 @@ fn prog_cancel(editor: &mut Editor, id: ClientId) {
         return;
     }
 
-    cursors::keep_only_primary.execute(editor, id);
+    if win.cursors.cursors().iter().any(|c| c.is_selecting()) {
+        win.cursors.stop_selection();
+    } else if win.cursors().len() > 1 {
+        win.cursors.remove_except_primary();
+
+        let (win, _buf) = editor.win_buf_mut(id);
+        win.cursors.primary_mut().stop_selection();
+    } else {
+        win.key_persist = 0;
+    }
 }
 
 #[action("Persist keys pressed")]

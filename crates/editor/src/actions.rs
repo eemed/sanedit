@@ -154,6 +154,8 @@ pub(crate) const WINDOW_COMMANDS: &[Action] = &[
     text::insert_newline,
     text::insert_tab,
     text::backtab,
+    text::newline_above,
+    text::newline_below,
 
     prompt::open_file,
     prompt::open_buffer,

@@ -11,7 +11,11 @@ use crate::editor::{
 
 use sanedit_server::ClientId;
 
-use super::{completion, hooks::run};
+use super::{
+    completion,
+    hooks::run,
+    movement::{end_of_line, prev_line},
+};
 
 #[action("Remove character after cursor")]
 fn remove_grapheme_after_cursor(editor: &mut Editor, id: ClientId) {
@@ -66,6 +70,11 @@ pub(crate) fn insert(editor: &mut Editor, id: ClientId, text: &str) {
             }
         }
         Completion | Window => {
+            let (win, _buf) = editor.win_buf_mut(id);
+            if matches!(win.focus, Focus::Window) && win.key_persist != 0 {
+                return;
+            }
+
             run(editor, id, Hook::InsertPre);
             let (win, buf) = editor.win_buf_mut(id);
             if win.insert_at_cursors(buf, text).is_ok() {
@@ -185,4 +194,17 @@ fn strip_trailing_whitespace(editor: &mut Editor, id: ClientId) {
         let hook = Hook::BufChanged(buf.id);
         run(editor, id, hook);
     }
+}
+
+#[action("Crate a newline below current line and move to it")]
+fn newline_below(editor: &mut Editor, id: ClientId) {
+    end_of_line.execute(editor, id);
+    insert_newline.execute(editor, id);
+}
+
+#[action("Crate a newline above current line and move to it")]
+fn newline_above(editor: &mut Editor, id: ClientId) {
+    prev_line.execute(editor, id);
+    end_of_line.execute(editor, id);
+    insert_newline.execute(editor, id);
 }

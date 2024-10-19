@@ -26,7 +26,7 @@ use sanedit_core::{
     GraphemeCategory, Locations, Range,
 };
 use sanedit_messages::{
-    key::KeyEvent,
+    key::{try_parse_keyevents, KeyEvent},
     redraw::{Popup, PopupMessage, Severity, Size, StatusMessage},
 };
 
@@ -85,11 +85,14 @@ pub(crate) struct Window {
 }
 
 impl Window {
-    pub fn new(bid: BufferId, width: usize, height: usize) -> Window {
+    pub fn new(bid: BufferId, width: usize, height: usize, config: WindowConfig) -> Window {
+        // Add default persist
+        let keys = try_parse_keyevents(&config.startup_persist_keys).unwrap_or_default();
+
         Window {
             bid,
-            key_persist: 0,
-            keys: Vec::default(),
+            key_persist: keys.len(),
+            keys,
             last_buf: None,
             view: View::new(width, height),
             jump_to_primary_cursor: false,

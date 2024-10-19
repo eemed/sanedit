@@ -18,8 +18,7 @@ impl Windows {
         height: usize,
         options: WindowConfig,
     ) -> &mut Window {
-        let mut win = Window::new(buf, width, height);
-        win.config = options;
+        let win = Window::new(buf, width, height, options);
         self.windows.insert(id, win);
         self.get_mut(id).unwrap()
     }

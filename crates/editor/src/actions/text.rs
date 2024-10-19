@@ -14,7 +14,7 @@ use sanedit_server::ClientId;
 use super::{
     completion,
     hooks::run,
-    movement::{end_of_line, prev_line},
+    movement::{end_of_line, prev_line, start_of_line},
 };
 
 #[action("Remove character after cursor")]
@@ -204,7 +204,7 @@ fn newline_below(editor: &mut Editor, id: ClientId) {
 
 #[action("Crate a newline above current line and move to it")]
 fn newline_above(editor: &mut Editor, id: ClientId) {
-    prev_line.execute(editor, id);
-    end_of_line.execute(editor, id);
+    start_of_line.execute(editor, id);
     insert_newline.execute(editor, id);
+    prev_line.execute(editor, id);
 }

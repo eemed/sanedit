@@ -20,7 +20,7 @@ fn with_buf(content: &str) -> (Window, Buffer) {
     let mut buf = Buffer::new();
     let changes = Changes::multi_insert(&[0], content.as_bytes());
     buf.apply_changes(&changes);
-    let mut win = Window::new(buf.id, 50, 10);
+    let mut win = Window::new(buf.id, 50, 10, WindowConfig::default());
     win.redraw_view(&buf);
     (win, buf)
 }

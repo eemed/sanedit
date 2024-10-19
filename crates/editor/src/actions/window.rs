@@ -70,8 +70,6 @@ fn prog_cancel(editor: &mut Editor, id: ClientId) {
 
         let (win, _buf) = editor.win_buf_mut(id);
         win.cursors.primary_mut().stop_selection();
-    } else {
-        win.key_persist = 0;
     }
 }
 

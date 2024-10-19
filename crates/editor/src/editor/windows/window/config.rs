@@ -18,6 +18,9 @@ pub(crate) struct WindowConfig {
 
     /// Highlight LSP diagnostics
     pub highlight_diagnostics: bool,
+
+    /// Default persisted keys when creating a new window
+    pub startup_persist_keys: String,
 }
 
 impl Default for WindowConfig {
@@ -28,6 +31,7 @@ impl Default for WindowConfig {
             theme: DEFAULT_THEME.into(),
             highlight_syntax: true,
             highlight_diagnostics: true,
+            startup_persist_keys: "esc".into(),
         }
     }
 }

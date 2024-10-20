@@ -88,7 +88,7 @@ fn prompt_create_and_open_config(editor: &mut Editor, id: ClientId) {
             if let Err(e) = serialize_default_configuration(&path) {
                 let (win, _buf) = editor.win_buf_mut(id);
                 win.warn_msg("Failed to create default configuration file.");
-                log::error!("Failed to create default configuration file: {e}");
+                log::error!("Failed to create default configuration file to: {path:?} {e}");
                 return;
             }
 

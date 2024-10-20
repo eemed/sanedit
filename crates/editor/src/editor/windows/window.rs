@@ -587,6 +587,8 @@ impl Window {
             .iter()
             .map(|c| {
                 let indent = {
+                    // TODO if only indent on line insert newline before it so
+                    // it moves to the next line!
                     match indent_at_line(&slice, c.pos()) {
                         Some((k, n)) => k.repeat(n as usize),
                         None => String::new(),

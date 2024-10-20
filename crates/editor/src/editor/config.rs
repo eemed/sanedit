@@ -61,6 +61,10 @@ pub(crate) fn try_read_config(config_path: &Path, working_dir: &Path) -> anyhow:
 pub(crate) fn serialize_default_configuration(path: &Path) -> anyhow::Result<()> {
     use std::io::Write;
 
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+
     let config = Config::default();
     let mut doc = to_document(&config).unwrap().to_owned();
 
@@ -568,6 +572,7 @@ impl KeymapsConfig {
             "esc ctrl+s", save,
             "esc ctrl+o", open_file,
             "esc ctrl+q", quit,
+            "esc ctrl+x", cut,
             "esc u",      undo,
             "esc U",      redo,
             "esc K",      hover,
@@ -595,16 +600,18 @@ impl KeymapsConfig {
             "esc s p",   select_paragraph,
             "esc s w",   select_word,
 
-            "esc L d",   goto_definition,
-            "esc L a",   code_action,
-            "esc L r",   references,
-            "esc L f",   format,
-            "esc L R",   rename,
-            "esc L h",   hover,
-            "esc 0",     start_of_line,
-            "esc A",     first_char_of_line,
-            "esc a",     end_of_line,
-            "esc :",     command_palette,
+            "esc L d",    goto_definition,
+            "esc L a",    code_action,
+            "esc L r",    references,
+            "esc L f",    format,
+            "esc L R",    rename,
+            "esc L h",    hover,
+            "esc 0",      start_of_line,
+            "esc A",      first_char_of_line,
+            "esc a",      end_of_line,
+            "esc :",      command_palette,
+            "esc alt+2",  show_filetree,
+            "esc alt+3",  show_locations,
 
             "esc backspace", goto_prev_buffer,
             "esc ctrl+u",    scroll_up,

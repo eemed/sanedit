@@ -148,6 +148,10 @@ impl Editor {
             }
         }
 
+        self.reload_config();
+    }
+
+    fn reload_config(&mut self) {
         self.config = config::read_config(&self.config_dir.config(), &self.working_dir);
         self.caches = Caches::new(&self.config);
         self.configure_keymap();
@@ -609,6 +613,9 @@ impl Editor {
     }
 
     pub fn reload(&mut self, id: ClientId) {
+        // Reload config
+        self.reload_config();
+
         // Reload theme
         let (win, _buf) = self.win_buf(id);
         let theme = win.config.theme.to_string();

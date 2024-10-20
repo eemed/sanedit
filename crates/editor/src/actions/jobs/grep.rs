@@ -146,8 +146,13 @@ impl Grep {
 
             // Iterate to the line the match was found at
             while !line_range.includes(&mat.range()) {
-                line = lines.next().unwrap();
-                linen += 1;
+                match lines.next() {
+                    Some(l) => {
+                        line = l;
+                        linen += 1;
+                    }
+                    None => break,
+                }
             }
 
             // Add match to line_ranges

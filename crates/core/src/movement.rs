@@ -192,14 +192,14 @@ pub fn next_paragraph(slice: &PieceTreeSlice, pos: u64) -> u64 {
 
     // Skip all empty lines
     while let Some(line) = lines.next() {
-        if !EndOfLine::is_slice_eol(&line) {
+        if !line.is_eol() {
             break;
         }
     }
 
     // Skip all content lines
     while let Some(line) = lines.next() {
-        if EndOfLine::is_slice_eol(&line) {
+        if line.is_eol() {
             return line.start();
         }
     }
@@ -213,14 +213,14 @@ pub fn prev_paragraph(slice: &PieceTreeSlice, pos: u64) -> u64 {
 
     // Skip all empty lines
     while let Some(line) = lines.prev() {
-        if !EndOfLine::is_slice_eol(&line) {
+        if !line.is_eol() {
             break;
         }
     }
 
     // Skip all content lines
     while let Some(line) = lines.prev() {
-        if EndOfLine::is_slice_eol(&line) {
+        if line.is_eol() {
             return line.start();
         }
     }

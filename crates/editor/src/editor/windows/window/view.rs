@@ -1,6 +1,5 @@
 use std::collections::VecDeque;
 
-use sanedit_buffer::utf8::EndOfLine;
 use sanedit_core::movement::prev_line_start;
 use sanedit_core::{BufferRange, Char, Chars, DisplayOptions, Range};
 use sanedit_messages::redraw::{Point, Size};
@@ -276,8 +275,7 @@ impl View {
         let mut graphemes = slice.graphemes_at(slice.len());
 
         while let Some(grapheme) = graphemes.prev() {
-            let is_eol = EndOfLine::is_slice_eol(&grapheme);
-            if is_eol && pos != self.range.start {
+            if grapheme.is_eol() && pos != self.range.start {
                 n -= 1;
 
                 if n == 0 {

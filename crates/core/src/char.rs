@@ -438,7 +438,7 @@ pub fn grapheme_category(grapheme: &PieceTreeSlice) -> GraphemeCategory {
         return GraphemeCategory::Word;
     }
 
-    if EndOfLine::is_slice_eol(grapheme) {
+    if grapheme.is_eol() {
         return GraphemeCategory::EOL;
     }
 

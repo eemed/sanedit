@@ -21,6 +21,12 @@ pub(crate) struct WindowConfig {
 
     /// Default persisted keys when creating a new window
     pub startup_persist_keys: String,
+
+    /// Automatically indent lines, and clear them from indent
+    pub autoindent: bool,
+
+    /// Automatically insert pairs on enter, works only with autoindent
+    pub autopair: bool,
 }
 
 impl Default for WindowConfig {
@@ -31,7 +37,9 @@ impl Default for WindowConfig {
             theme: DEFAULT_THEME.into(),
             highlight_syntax: true,
             highlight_diagnostics: true,
-            startup_persist_keys: "esc".into(),
+            startup_persist_keys: "".into(),
+            autoindent: true,
+            autopair: true,
         }
     }
 }

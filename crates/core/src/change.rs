@@ -281,8 +281,8 @@ impl Changes {
         self.changes.iter().all(Change::is_remove)
     }
 
-    pub fn is_insert_eol(&self) -> bool {
-        self.changes.iter().all(Change::is_eol)
+    pub fn has_insert_eol(&self) -> bool {
+        self.changes.iter().all(Change::has_eol)
     }
 
     pub fn after_ranges(&self) -> Vec<BufferRange> {
@@ -329,7 +329,7 @@ impl Changes {
         let pchange = previous.unwrap();
         match (pchange.kind(), self.kind()) {
             (Insert, Insert) => {
-                if self.is_insert_eol() {
+                if self.has_insert_eol() {
                     return true;
                 }
 
@@ -464,8 +464,8 @@ impl Change {
         !self.text.is_empty() && !self.range.is_empty()
     }
 
-    pub fn is_eol(&self) -> bool {
-        EndOfLine::is_eol(self.text.as_ref())
+    pub fn has_eol(&self) -> bool {
+        EndOfLine::has_eol(self.text.as_ref())
     }
 }
 

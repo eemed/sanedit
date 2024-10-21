@@ -1,8 +1,8 @@
 use std::{collections::HashSet, sync::OnceLock};
 
-use crate::PieceTreeSlice;
+use crate::{PieceTree, PieceTreeSlice};
 
-use super::prev_eol;
+use super::{next_eol, prev_eol};
 
 fn eol_bytes() -> &'static HashSet<Vec<u8>> {
     static SET: OnceLock<HashSet<Vec<u8>>> = OnceLock::new();
@@ -20,6 +20,13 @@ fn eol_bytes() -> &'static HashSet<Vec<u8>> {
         set.insert(AsRef::<[u8]>::as_ref(&PS).into());
         set
     })
+}
+
+impl<'a> PieceTreeSlice<'a> {
+    /// Whether this slice is a single EOL
+    pub fn is_eol(&self) -> bool {
+        EndOfLine::is_slice_eol(self)
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -56,6 +63,12 @@ impl EndOfLine {
         Self::is_eol(s.as_bytes())
     }
 
+    pub fn has_eol<B: AsRef<[u8]>>(bytes: B) -> bool {
+        let pt = PieceTree::from_reader(std::io::Cursor::new(bytes.as_ref())).unwrap();
+        let mut bytes = pt.bytes();
+        next_eol(&mut bytes).is_some()
+    }
+
     pub fn is_eol<B: AsRef<[u8]>>(bytes: B) -> bool {
         let bytes = bytes.as_ref();
         eol_bytes().contains(bytes)
@@ -65,7 +78,7 @@ impl EndOfLine {
         matches!(byte, 0x0a..=0x0d)
     }
 
-    pub fn is_slice_eol(slice: &PieceTreeSlice) -> bool {
+    fn is_slice_eol(slice: &PieceTreeSlice) -> bool {
         if slice.len() > Self::MAX_EOL_LEN as u64 {
             return false;
         }

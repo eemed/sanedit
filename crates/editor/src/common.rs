@@ -1,3 +1,4 @@
+pub(crate) mod text;
 pub(crate) mod matcher;
 pub(crate) mod window;
 

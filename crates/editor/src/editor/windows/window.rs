@@ -30,7 +30,10 @@ use sanedit_messages::{
     redraw::{Popup, PopupMessage, Severity, Size, StatusMessage},
 };
 
-use crate::editor::buffers::{Buffer, BufferId, SnapshotData};
+use crate::{
+    common::text::{at_eol_close_pairs, at_eol_on_whitespace_line},
+    editor::buffers::{Buffer, BufferId, SnapshotData},
+};
 
 use self::filetree::FiletreeView;
 pub(crate) use cursors::Cursors;
@@ -576,31 +579,71 @@ impl Window {
     }
 
     /// Insert a newline to each cursor
-    /// if originating line was indented also preserve the indentation
+    /// Tries to preserve indentation
     pub fn insert_newline(&mut self, buf: &mut Buffer) -> Result<()> {
-        // 1. Calculate indents
-        // 2. insert newlines + indent combo to each cursor
-        let eol = buf.config.eol;
+        let eol = buf.config.eol.as_str();
+        let was_eol = buf
+            .last_edit()
+            .map(|edit| edit.changes.has_insert_eol())
+            .unwrap_or(false);
         let slice = buf.slice(..);
-        let texts: Vec<String> = self
-            .cursors()
-            .iter()
-            .map(|c| {
-                let indent = {
-                    // TODO if only indent on line insert newline before it so
-                    // it moves to the next line!
-                    match indent_at_line(&slice, c.pos()) {
-                        Some((k, n)) => k.repeat(n as usize),
-                        None => String::new(),
-                    }
-                };
+        let mut changes: Vec<Change> = vec![];
 
-                format!("{}{}", eol.as_str(), indent)
-            })
-            .collect();
+        for c in self.cursors().iter() {
+            if !self.config.autoindent {
+                changes.push(Change::insert(c.pos(), eol.as_bytes()));
+                continue;
+            }
 
-        self.insert_to_each_cursor(buf, texts)?;
-        Ok(())
+            // Last edit was eol add, cursor at eol with only indentation
+            // Then move the indentation to our new line instead
+            if was_eol {
+                if let Some(start) = at_eol_on_whitespace_line(&slice, c.pos()) {
+                    changes.push(Change::insert(start, eol.as_bytes()));
+                    continue;
+                }
+            }
+
+            // Indent next line if previous was indented
+            let indent_line = indent_at_line(&slice, c.pos());
+            let indent = {
+                match indent_line {
+                    Some((k, n)) => k.repeat(n as usize),
+                    None => String::new(),
+                }
+            };
+
+            // Add autopairs if necessary
+            if self.config.autopair {
+                let iamount = buf.config.indent_amount;
+                let close = at_eol_close_pairs(&slice, c.pos());
+                if !close.is_empty() {
+                    let extra = match indent_line {
+                        Some((k, n)) => k.repeat(n as usize + iamount as usize),
+                        None => buf.config.indent_kind.repeat(iamount as usize),
+                    };
+                    let next = format!("{}{}", eol, extra);
+                    changes.push(Change::insert(c.pos(), next.as_bytes()));
+
+                    // Break this change into two parts so cursor will be placed
+                    // on the end of the first
+                    let second = format!("{}{}{}", eol, indent, close);
+                    changes.push(Change::insert(
+                        c.pos() + next.len() as u64,
+                        second.as_bytes(),
+                    ));
+                    continue;
+                }
+            }
+
+            // Otherwise just insert normal eol + indent
+            let text = format!("{}{}", eol, indent);
+            changes.push(Change::insert(c.pos(), text.as_bytes()));
+        }
+
+        log::info!("Changes {changes:?}");
+        let changes: Changes = changes.into();
+        self.change(buf, &changes)
     }
 
     fn cursor_line_starts(&self, buf: &Buffer) -> Vec<u64> {

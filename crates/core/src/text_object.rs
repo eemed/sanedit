@@ -1,8 +1,5 @@
 use crate::{BufferRange, Range};
-use sanedit_buffer::{
-    utf8::{EndOfLine, Graphemes},
-    PieceTreeSlice,
-};
+use sanedit_buffer::{utf8::Graphemes, PieceTreeSlice};
 
 /// Get a range of buffer from start - end,
 ///
@@ -58,7 +55,7 @@ fn find_prev_delim(graphemes: &mut Graphemes, delim: &str) -> Option<u64> {
     let mut adv = 0;
 
     while let Some(g) = graphemes.prev() {
-        if EndOfLine::is_slice_eol(&g) {
+        if g.is_eol() {
             break;
         }
 
@@ -76,7 +73,7 @@ fn find_next_delim(graphemes: &mut Graphemes, delim: &str) -> Option<u64> {
     let mut adv = 0;
 
     while let Some(g) = graphemes.next() {
-        if EndOfLine::is_slice_eol(&g) {
+        if g.is_eol() {
             break;
         }
 

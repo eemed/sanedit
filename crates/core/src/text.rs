@@ -141,7 +141,7 @@ pub fn paragraph_at_pos(slice: &PieceTreeSlice, pos: u64) -> Option<BufferRange>
 
     // Skip all content lines up
     while let Some(line) = lines.prev() {
-        if EndOfLine::is_slice_eol(&line) {
+        if line.is_eol() {
             start = Some(line.end());
             lines.next();
             break;
@@ -152,7 +152,7 @@ pub fn paragraph_at_pos(slice: &PieceTreeSlice, pos: u64) -> Option<BufferRange>
 
     // Skip all content lines down
     while let Some(line) = lines.next() {
-        if EndOfLine::is_slice_eol(&line) {
+        if line.is_eol() {
             end = Some(line.start());
             break;
         }

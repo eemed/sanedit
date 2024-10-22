@@ -1,5 +1,6 @@
-pub(crate) mod text;
+pub(crate) mod change;
 pub(crate) mod matcher;
+pub(crate) mod text;
 pub(crate) mod window;
 
 pub(crate) fn is_yes(input: &str) -> bool {

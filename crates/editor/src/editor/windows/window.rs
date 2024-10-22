@@ -31,7 +31,10 @@ use sanedit_messages::{
 };
 
 use crate::{
-    common::text::{at_eol_close_pairs, at_eol_on_whitespace_line},
+    common::{
+        change::{newline_autopair, newline_empty_line, newline_indent},
+        text::{at_eol_close_pairs, at_eol_on_whitespace_line},
+    },
     editor::buffers::{Buffer, BufferId, SnapshotData},
 };
 
@@ -582,11 +585,6 @@ impl Window {
     /// Tries to preserve indentation
     pub fn insert_newline(&mut self, buf: &mut Buffer) -> Result<()> {
         let eol = buf.config.eol.as_str();
-        let was_eol = buf
-            .last_edit()
-            .map(|edit| edit.changes.has_insert_eol())
-            .unwrap_or(false);
-        let slice = buf.slice(..);
         let mut changes: Vec<Change> = vec![];
 
         for c in self.cursors().iter() {
@@ -595,50 +593,22 @@ impl Window {
                 continue;
             }
 
-            // Last edit was eol add, cursor at eol with only indentation
-            // Then move the indentation to our new line instead
-            if was_eol {
-                if let Some(start) = at_eol_on_whitespace_line(&slice, c.pos()) {
-                    changes.push(Change::insert(start, eol.as_bytes()));
-                    continue;
-                }
+            // Delete empty lines indentation and indent current instead
+            if let Some(change) = newline_empty_line(buf, c.pos()) {
+                changes.push(change);
+                continue;
             }
-
-            // Indent next line if previous was indented
-            let indent_line = indent_at_line(&slice, c.pos());
-            let indent = {
-                match indent_line {
-                    Some((k, n)) => k.repeat(n as usize),
-                    None => String::new(),
-                }
-            };
 
             // Add autopairs if necessary
             if self.config.autopair {
-                let iamount = buf.config.indent_amount;
-                let close = at_eol_close_pairs(&slice, c.pos());
-                if !close.is_empty() {
-                    let extra = match indent_line {
-                        Some((k, n)) => k.repeat(n as usize + iamount as usize),
-                        None => buf.config.indent_kind.repeat(iamount as usize),
-                    };
-                    let next = format!("{}{}", eol, extra);
-                    changes.push(Change::insert(c.pos(), next.as_bytes()));
-
-                    // Break this change into two parts so cursor will be placed
-                    // on the end of the first
-                    let second = format!("{}{}{}", eol, indent, close);
-                    changes.push(Change::insert(
-                        c.pos() + next.len() as u64,
-                        second.as_bytes(),
-                    ));
+                if let Some(change) = newline_autopair(buf, c.pos()) {
+                    changes.extend(change);
                     continue;
                 }
             }
 
             // Otherwise just insert normal eol + indent
-            let text = format!("{}{}", eol, indent);
-            changes.push(Change::insert(c.pos(), text.as_bytes()));
+            changes.push(newline_indent(buf, c.pos()));
         }
 
         log::info!("Changes {changes:?}");

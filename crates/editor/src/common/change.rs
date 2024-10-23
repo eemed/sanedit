@@ -73,34 +73,58 @@ pub(crate) fn newline_autopair(buf: &Buffer, pos: u64) -> Option<Vec<Change>> {
 
     // Break this change into two parts so cursor will be placed
     // on the end of the first
-    let second = format!("{}{}{}", eol.as_str(), indent, close);
-    let block_close = Change::insert(pos + middle.len() as u64, second.as_bytes());
+    let closing = format!("{}{}{}", eol.as_str(), indent, close);
+    let block_close = Change::insert(pos + middle.len() as u64, closing.as_bytes());
     Some(vec![block_middle, block_close])
 }
 
 /// Returns string to close pairs on line before pos
 fn close_pairs_before(slice: &PieceTreeSlice, pos: u64) -> String {
-    let mut graphemes = slice.graphemes_at(pos);
     // TODO tags
-    // TODO ignore strings " ' `
     // configurable pairs, case esac in bash etc
+    // regex on line + ending
 
     let start = start_of_line(slice, pos);
     let line = slice.slice(start..pos);
     let mut chars = line.chars();
     let mut result = vec![];
-    let mut in_quote = false;
+    let mut in_quote: Option<char> = None;
+    let mut escaped = false;
 
     while let Some((_, _, ch)) = chars.next() {
         match ch {
             '{' => {
-                result.push('}');
+                if in_quote.is_none() {
+                    result.push('}');
+                }
             }
             '[' => {
-                result.push(']');
+                if in_quote.is_none() {
+                    result.push(']');
+                }
             }
             '(' => {
-                result.push(')');
+                if in_quote.is_none() {
+                    result.push(')');
+                }
+            }
+            '\\' => {
+                escaped = true;
+            }
+            '"' | '\'' | '`' => {
+                if escaped {
+                    continue;
+                }
+                match in_quote {
+                    Some(quot) => {
+                        if quot == ch {
+                            in_quote = None;
+                        }
+                    }
+                    None => {
+                        in_quote = Some(ch);
+                    }
+                }
             }
             ch => {
                 if result.last() == Some(&ch) {
@@ -109,12 +133,9 @@ fn close_pairs_before(slice: &PieceTreeSlice, pos: u64) -> String {
             }
         }
     }
+
     result.into_iter().rev().fold(String::new(), |mut acc, ch| {
         acc.push(ch);
         acc
     })
-}
-
-pub(crate) fn newline_autoindent() -> Option<Change> {
-    None
 }

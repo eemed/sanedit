@@ -1,6 +1,5 @@
 use crate::grapheme_category;
 use sanedit_buffer::utf8;
-use sanedit_buffer::utf8::EndOfLine;
 use sanedit_buffer::Bytes;
 use sanedit_buffer::PieceTreeSlice;
 

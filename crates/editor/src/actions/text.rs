@@ -208,3 +208,12 @@ fn newline_above(editor: &mut Editor, id: ClientId) {
     insert_newline.execute(editor, id);
     prev_line.execute(editor, id);
 }
+
+#[action("Align each cursor on top of each other")]
+fn align_cursor_columns(editor: &mut Editor, id: ClientId) {
+    let (win, buf) = editor.win_buf_mut(id);
+    if win.align_cursors(buf).is_ok() {
+        let hook = Hook::BufChanged(buf.id);
+        run(editor, id, hook);
+    }
+}

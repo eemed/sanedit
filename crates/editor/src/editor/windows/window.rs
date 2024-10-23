@@ -14,6 +14,7 @@ mod tests;
 
 use std::{
     cmp::{max, min},
+    collections::BTreeMap,
     mem,
 };
 
@@ -21,7 +22,7 @@ use anyhow::{bail, Result};
 use rustc_hash::FxHashSet;
 use sanedit_core::{
     grapheme_category, indent_at_line,
-    movement::{next_grapheme_boundary, next_line_end, prev_grapheme_boundary},
+    movement::{next_grapheme_boundary, next_line_end, prev_grapheme_boundary, start_of_line},
     selection_line_starts, width_at_pos, BufferRange, Change, Changes, Cursor, DisplayOptions,
     GraphemeCategory, Locations, Range,
 };
@@ -31,10 +32,7 @@ use sanedit_messages::{
 };
 
 use crate::{
-    common::{
-        change::{newline_autopair, newline_empty_line, newline_indent},
-        text::{at_eol_close_pairs, at_eol_on_whitespace_line},
-    },
+    common::change::{newline_autopair, newline_empty_line, newline_indent},
     editor::buffers::{Buffer, BufferId, SnapshotData},
 };
 
@@ -755,5 +753,54 @@ impl Window {
         self.remove(buf, &ranges)?;
 
         Ok(())
+    }
+
+    pub fn align_cursors(&mut self, buf: &mut Buffer) -> Result<()> {
+        let slice = buf.slice(..);
+        let mut align: BTreeMap<u64, Vec<u64>> = BTreeMap::default();
+
+        for cursor in self.cursors().iter() {
+            let lstart = start_of_line(&slice, cursor.pos());
+            let entry = align.entry(lstart);
+            entry.or_default().push(cursor.pos());
+        }
+
+        let most_on_one_line = align
+            .values()
+            .map(|positions| positions.len())
+            .max()
+            .unwrap();
+        // How much we have added to a line already
+        let mut align_added: BTreeMap<u64, u64> = BTreeMap::default();
+        let mut changes = vec![];
+
+        // For each cursor on a line
+        for i in 0..most_on_one_line {
+            // Find the furthest cursor
+            let mut furthest = 0;
+            for (pline, cursors) in &align {
+                if let Some(pos) = cursors.get(i) {
+                    let dist = *pos - *pline;
+                    furthest = max(furthest, dist);
+                }
+            }
+
+            for (pline, cursors) in &align {
+                if let Some(pos) = cursors.get(i) {
+                    let added = align_added.entry(*pline).or_default();
+
+                    let dist = *pos - *pline;
+                    let pad = " ".repeat((furthest.saturating_sub(dist + *added)) as usize);
+                    let change = Change::insert(*pos, pad.as_bytes());
+
+                    *added += pad.len() as u64;
+
+                    changes.push(change);
+                }
+            }
+        }
+
+        let changes = Changes::new(&changes);
+        self.change(buf, &changes)
     }
 }

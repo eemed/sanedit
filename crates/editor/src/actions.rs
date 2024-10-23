@@ -156,6 +156,7 @@ pub(crate) const WINDOW_COMMANDS: &[Action] = &[
     text::backtab,
     text::newline_above,
     text::newline_below,
+    text::align_cursor_columns,
 
     prompt::open_file,
     prompt::open_buffer,

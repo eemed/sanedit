@@ -158,7 +158,13 @@ impl Changes {
                     change.start() < pos
                 }
             })
-            .map(|change| change.text().len() as u64)
+            .map(|change| {
+                if pos == change.start() && change.cursor_offset.is_some() {
+                    change.cursor_offset.unwrap()
+                } else {
+                    change.text().len() as u64
+                }
+            })
             .sum()
     }
 
@@ -405,6 +411,10 @@ impl From<Change> for Changes {
 pub struct Change {
     range: Range<u64>,
     text: Rc<Vec<u8>>,
+
+    /// By default cursor is placed at the start/end of a change.
+    /// If we want cursor to be set in the middle, this offset can be used.
+    pub cursor_offset: Option<u64>,
 }
 
 impl Change {
@@ -412,6 +422,7 @@ impl Change {
         Change {
             range: Range::new(at, at),
             text: Rc::new(text.into()),
+            cursor_offset: None,
         }
     }
 
@@ -419,6 +430,7 @@ impl Change {
         Change {
             range: Range::new(at, at),
             text,
+            cursor_offset: None,
         }
     }
 
@@ -426,6 +438,7 @@ impl Change {
         Change {
             range,
             text: Rc::new(Vec::new()),
+            cursor_offset: None,
         }
     }
 
@@ -433,6 +446,7 @@ impl Change {
         Change {
             range,
             text: Rc::new(text.into()),
+            cursor_offset: None,
         }
     }
 

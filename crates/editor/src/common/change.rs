@@ -42,7 +42,7 @@ pub(crate) fn newline_indent(buf: &Buffer, pos: u64) -> Change {
 }
 
 /// Handle newline with autopair closing and indenting
-pub(crate) fn newline_autopair(buf: &Buffer, pos: u64) -> Option<Vec<Change>> {
+pub(crate) fn newline_autopair(buf: &Buffer, pos: u64) -> Option<Change> {
     let slice = buf.slice(..);
     let at_eol = is_eol_or_eof_at(&slice, pos);
     // Not at eol or eof
@@ -68,14 +68,18 @@ pub(crate) fn newline_autopair(buf: &Buffer, pos: u64) -> Option<Vec<Change>> {
         None => buf.config.indent_kind.repeat(iamount as usize),
     };
     let eol = buf.config.eol;
-    let middle = format!("{}{}", eol.as_str(), next_indent_level);
-    let block_middle = Change::insert(pos, middle.as_bytes());
-
-    // Break this change into two parts so cursor will be placed
-    // on the end of the first
-    let closing = format!("{}{}{}", eol.as_str(), indent, close);
-    let block_close = Change::insert(pos + middle.len() as u64, closing.as_bytes());
-    Some(vec![block_middle, block_close])
+    let block = format!(
+        "{}{}{}{}{}",
+        eol.as_str(),
+        next_indent_level,
+        eol.as_str(),
+        indent,
+        close
+    );
+    let mut change = Change::insert(pos, block.as_bytes());
+    // Cursor to middle line
+    change.cursor_offset = Some(eol.len() + next_indent_level.len() as u64);
+    Some(change)
 }
 
 /// Returns string to close pairs on line before pos

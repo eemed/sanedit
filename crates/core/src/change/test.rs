@@ -97,3 +97,18 @@ fn cursor_insert_contains() {
     assert_eq!(0, cursor.start());
     assert_eq!(15, cursor.end());
 }
+
+#[test]
+fn cursor_insert_middle_of_change() {
+    // Cursor:  |
+    // Change:  |++++o++++|
+    // Result:       |
+
+    let mut cursors = vec![Cursor::new(0)];
+    let mut change = Change::insert(0, b"helloworld");
+    change.cursor_offset = Some(5);
+    let changes = Changes::new(&[change]);
+    changes.move_cursors(&mut cursors);
+    let cursor = &cursors[0];
+    assert_eq!(5, cursor.pos());
+}

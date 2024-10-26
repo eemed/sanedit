@@ -600,7 +600,7 @@ impl Window {
             // Add autopairs if necessary
             if self.config.autopair {
                 if let Some(change) = newline_autopair(buf, c.pos()) {
-                    changes.extend(change);
+                    changes.push(change);
                     continue;
                 }
             }

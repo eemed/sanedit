@@ -53,6 +53,7 @@ which                = "5.0.0" # Should be replaced with something simpler
 # Copy pasta should be used for clipboard
 
 [profile.dev.package."*"]
+debug = false
 opt-level = 3
 
 [profile.release]

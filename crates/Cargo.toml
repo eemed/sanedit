@@ -52,6 +52,8 @@ unicode-width        = "0.1.13" # Rendering itself has problems
 which                = "5.0.0" # Should be replaced with something simpler
 # Copy pasta should be used for clipboard
 
+[profile.dev.package."*"]
+opt-level = 3
 
 [profile.release]
 opt-level = 3

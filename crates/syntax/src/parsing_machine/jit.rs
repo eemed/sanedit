@@ -1,14 +1,14 @@
 mod code;
 
-use code::MachineCode;
+use code::AssemblyCode;
 
 struct Jit {
-    code: MachineCode,
+    code: AssemblyCode,
 }
 
 impl Jit {
     pub fn new() -> Jit {
-        let code = MachineCode::new();
+        let code = AssemblyCode::new();
 
         Jit { code }
     }

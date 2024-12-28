@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::{collections::HashMap, path::Path};
 
 use sanedit_messages::key::{try_parse_keyevents, KeyEvent};
 use serde::{Deserialize, Serialize};
@@ -16,7 +16,11 @@ use crate::{
     editor,
 };
 
-use super::{buffers, keymap::KeymapKind, windows};
+use super::{
+    buffers,
+    keymap::{KeymapKind, Layer},
+    windows,
+};
 use rustc_hash::FxHashMap;
 
 use super::Map;
@@ -296,50 +300,127 @@ macro_rules! make_keymap {
     ($($key:expr, $action:ident),+,) => {
         vec![
             $(
-                Mapping { key: $key.into(), action: stringify!($action).into() },
+                Mapping { key: $key.into(), actions: vec![stringify!($action).into()] },
              )*
         ]
     }
 }
 
+pub(crate) struct MappingAsKeymap {
+    events: Vec<KeyEvent>,
+    actions: Vec<Action>,
+    goto_layer: Option<String>,
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub(crate) struct Mapping {
     pub(crate) key: String,
-    pub(crate) action: String,
+    pub(crate) actions: Vec<String>,
 }
 
 impl Mapping {
-    pub fn to_keymap(&self, kind: KeymapKind) -> Option<(Vec<KeyEvent>, Action)> {
-        let mut actions: Vec<&[Action]> = match kind {
-            KeymapKind::Search => [SEARCH_COMMANDS, PROMPT_COMMANDS].into(),
-            KeymapKind::Prompt => [PROMPT_COMMANDS].into(),
-            KeymapKind::Window => [WINDOW_COMMANDS].into(),
-            KeymapKind::Completion => [WINDOW_COMMANDS, COMPLETION_COMMANDS].into(),
-            KeymapKind::Filetree => [FILETREE_COMMANDS].into(),
-            KeymapKind::Locations => [LOCATIONS_COMMANDS].into(),
+    pub fn to_keymap(&self, kind: KeymapKind) -> Option<MappingAsKeymap> {
+        let allowed = {
+            let mut allowed_lists: Vec<&[Action]> = match kind {
+                KeymapKind::Search => [SEARCH_COMMANDS, PROMPT_COMMANDS].into(),
+                KeymapKind::Prompt => [PROMPT_COMMANDS].into(),
+                KeymapKind::Window => [WINDOW_COMMANDS].into(),
+                KeymapKind::Completion => [WINDOW_COMMANDS, COMPLETION_COMMANDS].into(),
+                KeymapKind::Filetree => [FILETREE_COMMANDS].into(),
+                KeymapKind::Locations => [LOCATIONS_COMMANDS].into(),
+            };
+
+            allowed_lists.push(GLOBAL_COMMANDS);
+
+            let mut allowed = vec![];
+            allowed_lists
+                .iter()
+                .for_each(|actions| allowed.extend_from_slice(actions));
+            allowed
         };
 
-        actions.push(GLOBAL_COMMANDS);
-
         let keys = try_parse_keyevents(&self.key).ok()?;
-        for list in actions {
-            if let Some(action) = find_by_name(list, &self.action) {
-                return Some((keys, action));
+
+        // try to find specified action
+        let mut actions = vec![];
+        let mut goto_layer = None;
+
+        for name in &self.actions {
+            // Try to parse goto_layer
+            if let Some(goto) = parse_goto_layer(name) {
+                goto_layer = goto.into();
+            }
+
+            // Try to find action with name
+            if let Some(action) = find_by_name(&allowed, name) {
+                actions.push(action);
             }
         }
 
-        None
+        if actions.is_empty() && goto_layer.is_none() {
+            None
+        } else {
+            Some(MappingAsKeymap {
+                events: keys,
+                actions,
+                goto_layer,
+            })
+        }
+    }
+}
+
+fn parse_goto_layer(action: &str) -> Option<String> {
+    action.strip_prefix("goto_layer ").map(|s| s.to_string())
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub(crate) struct KeymapLayer {
+    name: String,
+
+    fallthrough: Option<String>,
+
+    /// Whether to discard not found bindigs or insert them into the buffer
+    discard: bool,
+
+    /// Keymappings for this layer
+    maps: Vec<Mapping>,
+}
+
+impl KeymapLayer {
+    pub fn to_layer(&self, kind: KeymapKind) -> Layer {
+        let mut layer = Layer::new(&self.name);
+        layer.discard = self.discard;
+        layer.fallthrough = self.fallthrough.clone();
+
+        for map in &self.maps {
+            match map.to_keymap(kind) {
+                Some(MappingAsKeymap {
+                    events,
+                    actions,
+                    goto_layer,
+                }) => match goto_layer {
+                    Some(goto) => layer.bind_goto_layer(&events, &goto),
+                    None => layer.bind(&events, &actions),
+                },
+                _ => log::error!(
+                    "Unknown keymapping: key: {}, actions: {:?}",
+                    map.key,
+                    map.actions
+                ),
+            }
+        }
+        layer
     }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub(crate) struct KeymapsConfig {
-    pub(crate) window: Vec<Mapping>,
-    pub(crate) search: Vec<Mapping>,
-    pub(crate) prompt: Vec<Mapping>,
-    pub(crate) completion: Vec<Mapping>,
-    pub(crate) locations: Vec<Mapping>,
-    pub(crate) filetree: Vec<Mapping>,
+    pub(crate) window: Vec<KeymapLayer>,
+    pub(crate) search: Vec<KeymapLayer>,
+    pub(crate) prompt: Vec<KeymapLayer>,
+    pub(crate) completion: Vec<KeymapLayer>,
+    pub(crate) locations: Vec<KeymapLayer>,
+    pub(crate) filetree: Vec<KeymapLayer>,
 }
 
 impl Default for KeymapsConfig {
@@ -356,7 +437,7 @@ impl Default for KeymapsConfig {
 }
 
 impl KeymapsConfig {
-    pub fn search() -> Vec<Mapping> {
+    pub fn search() -> Vec<KeymapLayer> {
         #[rustfmt::skip]
         let map = make_keymap!(
             "ctrl+q",      quit,
@@ -371,10 +452,18 @@ impl KeymapsConfig {
 
             "ctrl+r",        toggle_search_regex,
         );
-        map
+
+        let layer = KeymapLayer {
+            name: KeymapKind::Search.as_ref().into(),
+            fallthrough: None,
+            discard: false,
+            maps: map,
+        };
+
+        vec![layer]
     }
 
-    pub fn prompt() -> Vec<Mapping> {
+    pub fn prompt() -> Vec<KeymapLayer> {
         #[rustfmt::skip]
         let map = make_keymap!(
              "ctrl+q",    quit,
@@ -389,11 +478,19 @@ impl KeymapsConfig {
              "up",        prompt_history_next,
              "down",      prompt_history_prev,
         );
-        map
+
+        let layer = KeymapLayer {
+            name: KeymapKind::Prompt.as_ref().into(),
+            fallthrough: None,
+            discard: false,
+            maps: map,
+        };
+
+        vec![layer]
     }
 
-    pub fn completion() -> Vec<Mapping> {
-        let mut map = Self::window();
+    pub fn completion() -> Vec<KeymapLayer> {
+        let mut layers = Self::window();
 
         #[rustfmt::skip]
         let compl = make_keymap!(
@@ -403,11 +500,18 @@ impl KeymapsConfig {
              "esc",    abort_completion,
         );
 
-        map.extend(compl);
-        map
+        let layer = KeymapLayer {
+            name: KeymapKind::Completion.as_ref().into(),
+            fallthrough: Some(KeymapKind::Window.as_ref().into()),
+            discard: false,
+            maps: compl,
+        };
+
+        layers.insert(0, layer);
+        layers
     }
 
-    pub fn locations() -> Vec<Mapping> {
+    pub fn locations() -> Vec<KeymapLayer> {
         #[rustfmt::skip]
         let map = make_keymap!(
              "ctrl+q", quit,
@@ -428,10 +532,17 @@ impl KeymapsConfig {
              "alt+2",  show_filetree,
              "alt+3",  close_locations,
         );
-        map
+        let layer = KeymapLayer {
+            name: KeymapKind::Locations.as_ref().into(),
+            fallthrough: None,
+            discard: false,
+            maps: map,
+        };
+
+        vec![layer]
     }
 
-    pub fn filetree() -> Vec<Mapping> {
+    pub fn filetree() -> Vec<KeymapLayer> {
         #[rustfmt::skip]
         let map = make_keymap!(
              "ctrl+q", quit,
@@ -452,10 +563,18 @@ impl KeymapsConfig {
              "alt+2",     close_filetree,
              "alt+3",     show_locations,
         );
-        map
+
+        let layer = KeymapLayer {
+            name: KeymapKind::Filetree.as_ref().into(),
+            fallthrough: None,
+            discard: false,
+            maps: map,
+        };
+
+        vec![layer]
     }
 
-    pub fn window() -> Vec<Mapping> {
+    pub fn window() -> Vec<KeymapLayer> {
         #[rustfmt::skip]
         let map = make_keymap!(
             "ctrl+q",    quit,
@@ -514,7 +633,7 @@ impl KeymapsConfig {
             "alt+n",     next_search_match,
             "alt+N",     prev_search_match,
 
-            "esc",       prog_cancel,
+            "esc",       cancel,
             "alt+down",  new_cursor_to_next_line,
             "alt+up",    new_cursor_to_prev_line,
             "ctrl+d",    new_cursor_to_next_search_match,
@@ -550,6 +669,13 @@ impl KeymapsConfig {
             "alt+3",     show_locations,
         );
 
-        map
+        let layer = KeymapLayer {
+            name: KeymapKind::Window.as_ref().into(),
+            fallthrough: None,
+            discard: false,
+            maps: map,
+        };
+
+        vec![layer]
     }
 }

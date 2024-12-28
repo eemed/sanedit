@@ -2,13 +2,13 @@ use crate::actions::jobs::TmuxPane;
 
 /// How to execute shell commands
 #[derive(Debug)]
-pub(crate) enum Executor {
+pub(crate) enum ShellKind {
     Tmux { pane: Option<TmuxPane> },
 }
 
-impl Default for Executor {
+impl Default for ShellKind {
     fn default() -> Self {
         // TODO determine
-        Executor::Tmux { pane: None }
+        ShellKind::Tmux { pane: None }
     }
 }

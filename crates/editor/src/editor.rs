@@ -13,6 +13,8 @@ pub(crate) mod themes;
 pub(crate) mod windows;
 
 use caches::Caches;
+use config::KeymapLayer;
+use keymap::KeymapResult;
 use rustc_hash::FxHashMap;
 use sanedit_core::FileDescription;
 use sanedit_core::Filetype;
@@ -30,6 +32,7 @@ use sanedit_server::ClientId;
 use sanedit_server::FromJobs;
 use sanedit_server::StartOptions;
 use sanedit_server::ToEditor;
+use strum::IntoEnumIterator;
 
 use std::env;
 use std::path::Path;
@@ -48,7 +51,6 @@ use crate::draw::EditorContext;
 use crate::editor::buffers::Buffer;
 use crate::editor::config::Config;
 use crate::editor::hooks::Hook;
-use crate::editor::keymap::KeymapResult;
 use crate::editor::windows::Focus;
 use crate::runtime::TokioRuntime;
 use sanedit_core::copy_cursors_to_lines;
@@ -62,8 +64,8 @@ use self::clipboard::DefaultClipboard;
 use self::config::EditorConfig;
 use self::hooks::Hooks;
 use self::job_broker::JobBroker;
-use self::keymap::Keymap;
 use self::keymap::KeymapKind;
+use self::keymap::Keymaps;
 
 use self::filetree::Filetree;
 use self::lsp::LSP;
@@ -93,7 +95,7 @@ pub(crate) struct Editor {
     pub hooks: Hooks,
     pub clipboard: Box<dyn Clipboard>,
     pub histories: Map<HistoryKind, History>,
-    pub keymaps: Map<KeymapKind, Keymap>,
+    pub keymaps: Keymaps,
     pub language_servers: Map<Filetype, LSP>,
     pub filetree: Filetree,
     pub config: Config,
@@ -128,7 +130,7 @@ impl Editor {
             histories: Default::default(),
             clipboard: DefaultClipboard::new(),
             language_servers: Map::default(),
-            keymaps: Map::default(),
+            keymaps: Keymaps::default(),
             config,
             caches,
         }
@@ -159,83 +161,21 @@ impl Editor {
     }
 
     fn configure_keymap(&mut self) {
-        let mut winmap = Keymap::default();
-        for mapping in &self.config.keymaps.window {
-            match mapping.to_keymap(KeymapKind::Window) {
-                Some((keys, action)) => winmap.bind(&keys, action),
-                None => log::error!(
-                    "Failed to bind window mapping: {} to {}",
-                    mapping.key,
-                    mapping.action
-                ),
-            }
-        }
-        self.keymaps.insert(KeymapKind::Window, winmap);
+        for kind in KeymapKind::iter() {
+            let layers = match kind {
+                KeymapKind::Search => &self.config.keymaps.search,
+                KeymapKind::Prompt => &self.config.keymaps.prompt,
+                KeymapKind::Window => &self.config.keymaps.window,
+                KeymapKind::Completion => &self.config.keymaps.completion,
+                KeymapKind::Filetree => &self.config.keymaps.filetree,
+                KeymapKind::Locations => &self.config.keymaps.locations,
+            };
 
-        let mut map = Keymap::default();
-        for mapping in &self.config.keymaps.search {
-            match mapping.to_keymap(KeymapKind::Search) {
-                Some((keys, action)) => map.bind(&keys, action),
-                None => log::error!(
-                    "Failed to bind search mapping: {} to {}",
-                    mapping.key,
-                    mapping.action
-                ),
+            for kmlayer in layers {
+                let layer = kmlayer.to_layer(kind);
+                self.keymaps.push(layer);
             }
         }
-        self.keymaps.insert(KeymapKind::Search, map);
-
-        let mut map = Keymap::default();
-        for mapping in &self.config.keymaps.prompt {
-            match mapping.to_keymap(KeymapKind::Prompt) {
-                Some((keys, action)) => map.bind(&keys, action),
-                None => log::error!(
-                    "Failed to bind prompt mapping: {} to {}",
-                    mapping.key,
-                    mapping.action
-                ),
-            }
-        }
-        self.keymaps.insert(KeymapKind::Prompt, map);
-
-        let mut map = Keymap::default();
-        for mapping in &self.config.keymaps.completion {
-            match mapping.to_keymap(KeymapKind::Completion) {
-                Some((keys, action)) => map.bind(&keys, action),
-                None => log::error!(
-                    "Failed to bind completion mapping: {} to {}",
-                    mapping.key,
-                    mapping.action
-                ),
-            }
-        }
-        self.keymaps.insert(KeymapKind::Completion, map);
-
-        let mut map = Keymap::default();
-        for mapping in &self.config.keymaps.locations {
-            match mapping.to_keymap(KeymapKind::Locations) {
-                Some((keys, action)) => map.bind(&keys, action),
-                None => log::error!(
-                    "Failed to bind locations mapping: {} to {}",
-                    mapping.key,
-                    mapping.action
-                ),
-            }
-        }
-        self.keymaps.insert(KeymapKind::Locations, map);
-
-        let mut map = Keymap::default();
-        for mapping in &self.config.keymaps.filetree {
-            match mapping.to_keymap(KeymapKind::Filetree) {
-                Some((keys, action)) => map.bind(&keys, action),
-                None => log::error!(
-                    "Failed to bind filetree mapping: {} to {}",
-                    mapping.key,
-                    mapping.action
-                ),
-            }
-        }
-        self.keymaps.insert(KeymapKind::Filetree, map);
     }
 
     /// Ran after the startup configuration is complete
@@ -538,22 +478,29 @@ impl Editor {
 
         run(self, id, Hook::KeyPressedPre);
 
+        let events;
         // Handle key bindings
         match self.mapped_action(id) {
-            KeymapResult::Matched(action) => {
-                action.execute(self, id);
+            KeymapResult::Matched(actions) => {
+                for action in actions {
+                    action.execute(self, id);
+                }
 
                 let (win, _buf) = self.win_buf_mut(id);
                 win.clear_keys();
                 return;
             }
             KeymapResult::Pending => return,
-            KeymapResult::NotFound => {}
+            KeymapResult::Insert => {
+                let (win, _buf) = self.win_buf_mut(id);
+                events = win.clear_keys();
+            }
+            KeymapResult::Discard => {
+                let (win, _buf) = self.win_buf_mut(id);
+                win.clear_keys();
+                return;
+            }
         }
-
-        // Clear keys buffer, and handle keys separately
-        let (win, _buf) = self.win_buf_mut(id);
-        let events = win.clear_keys();
 
         for event in events {
             if event.alt_pressed() || event.control_pressed() {
@@ -690,10 +637,9 @@ impl Editor {
         }
     }
 
-    pub fn keymap(&self) -> &Keymap {
-        self.keymaps
-            .get(&KeymapKind::Window)
-            .expect("No keymap for window")
+    pub fn keymap(&self) -> &Keymaps {
+        self.keymaps.goto(KeymapKind::Window);
+        &self.keymaps
     }
 
     /// Return the currently focused elements keymap
@@ -709,7 +655,8 @@ impl Editor {
             Locations => KeymapKind::Locations,
         };
 
-        let kmap = self.keymaps.get(&kind).expect("No keymap found");
+        self.keymaps.goto(kind);
+        let kmap = &self.keymaps;
 
         // Use persist keys only on window for now
         let persist = if matches!(kind, KeymapKind::Window) {

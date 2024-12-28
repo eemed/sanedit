@@ -50,7 +50,7 @@ fn goto_prev_buffer(editor: &mut Editor, id: ClientId) {
 }
 
 #[action("Progressively close stuff on the screen")]
-fn prog_cancel(editor: &mut Editor, id: ClientId) {
+fn cancel(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
 
     if win.search.hl_last || win.popup().is_some() {

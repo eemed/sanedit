@@ -27,7 +27,7 @@ use sanedit_core::{
     GraphemeCategory, Locations, Range,
 };
 use sanedit_messages::{
-    key::{try_parse_keyevents, KeyEvent},
+    key::KeyEvent,
     redraw::{Popup, PopupMessage, Severity, Size, StatusMessage},
 };
 
@@ -70,13 +70,12 @@ pub(crate) struct Window {
     message: Option<StatusMessage>,
     view: View,
 
-    /// Jump to primary cursor on next buffer changed event
+    /// Jump to primary cursor on next buffer changed event, TODO is this useless
     jump_to_primary_cursor: bool,
 
-    pub key_persist: usize,
     keys: Vec<KeyEvent>,
 
-    pub shell_executor: Executor,
+    pub shell_kind: ShellKind,
     pub completion: Completion,
     pub cursors: Cursors,
     pub focus: Focus,
@@ -89,19 +88,15 @@ pub(crate) struct Window {
 }
 
 impl Window {
-    pub fn new(bid: BufferId, width: usize, height: usize, config: WindowConfig) -> Window {
-        // Add default persist
-        let keys = try_parse_keyevents(&config.startup_persist_keys).unwrap_or_default();
-
+    pub fn new(bid: BufferId, width: usize, height: usize, _config: WindowConfig) -> Window {
         Window {
             bid,
-            key_persist: keys.len(),
-            keys,
+            keys: vec![],
             last_buf: None,
             view: View::new(width, height),
             jump_to_primary_cursor: false,
             message: None,
-            shell_executor: Executor::default(),
+            shell_kind: ShellKind::default(),
             completion: Completion::default(),
             cursors: Cursors::default(),
             config: WindowConfig::default(),
@@ -123,7 +118,7 @@ impl Window {
     }
 
     pub fn clear_keys(&mut self) -> Vec<KeyEvent> {
-        self.keys.split_off(self.key_persist)
+        mem::take(&mut self.keys)
     }
 
     pub fn clear_popup(&mut self) {
@@ -329,7 +324,7 @@ impl Window {
         }
     }
 
-    /// Called when buffer is changed in the background and we should correct
+    /// Called when buffer is changed and we should correct
     /// this window.
     pub fn on_buffer_changed(&mut self, buf: &Buffer) {
         self.move_cursors_according_to_last_change(buf);

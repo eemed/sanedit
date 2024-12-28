@@ -19,9 +19,6 @@ pub(crate) struct WindowConfig {
     /// Highlight LSP diagnostics
     pub highlight_diagnostics: bool,
 
-    /// Default persisted keys when creating a new window
-    pub startup_persist_keys: String,
-
     /// Automatically indent lines, and clear them from indent
     pub autoindent: bool,
 
@@ -37,7 +34,6 @@ impl Default for WindowConfig {
             theme: DEFAULT_THEME.into(),
             highlight_syntax: true,
             highlight_diagnostics: true,
-            startup_persist_keys: "".into(),
             autoindent: true,
             autopair: true,
         }

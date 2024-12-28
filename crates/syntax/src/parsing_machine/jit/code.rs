@@ -5,13 +5,18 @@ enum Register {
 }
 
 #[derive(Debug)]
-pub(crate) struct MachineCode {
-    memory: Vec<u8>,
+enum Operation {
+    Label(String),
 }
 
-impl MachineCode {
-    pub fn new() -> MachineCode {
-        MachineCode { memory: vec![] }
+#[derive(Debug)]
+pub(crate) struct AssemblyCode {
+    ops: Vec<Operation>,
+}
+
+impl AssemblyCode {
+    pub fn new() -> AssemblyCode {
+        AssemblyCode { ops: vec![] }
     }
 
     // ASM things here
@@ -24,14 +29,14 @@ impl MachineCode {
         // self.memory.push(0x48);
         // self.memory.push(0x8b);
         // self.memory.push(0xc7);
-        self.memory.extend_from_slice(&[0x48, 0x8b, 0xc7]);
+        // self.ops.extend_from_slice(&[0x48, 0x8b, 0xc7]);
 
         // ret
-        self.memory.push(0xc3);
+        // self.ops.push(0xc3);
     }
 
     fn ret(&mut self) {
-        self.memory.push(0xc3);
+        // self.ops.push(0xc3);
     }
 
     pub unsafe fn run(&self, n: c_int) -> c_int {
@@ -39,7 +44,7 @@ impl MachineCode {
 
         // Create executable memory map
         let page_size = 4096;
-        let size = self.memory.len();
+        let size = self.ops.len();
         let mut raw_addr: *mut libc::c_void = std::ptr::null_mut();
         libc::posix_memalign(&mut raw_addr, page_size, size);
         libc::mprotect(
@@ -50,7 +55,7 @@ impl MachineCode {
         let ptr = mem::transmute(raw_addr);
 
         // Copy compiled instrcutions to it
-        std::ptr::copy(self.memory.as_ptr(), ptr, self.memory.len());
+        std::ptr::copy(self.ops.as_ptr(), ptr, self.ops.len());
 
         // Execute
         let func: unsafe extern "C" fn(c_int) -> c_int = mem::transmute(ptr);
@@ -65,7 +70,7 @@ mod test {
     #[test]
     fn jit() {
         unsafe {
-            let mut mc = MachineCode::new();
+            let mut mc = AssemblyCode::new();
             mc.compile();
             for i in 0..10 {
                 println!("i: {i}, f(i) = {}", mc.run(i));

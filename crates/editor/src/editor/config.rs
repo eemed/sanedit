@@ -1,4 +1,4 @@
-use std::{collections::HashMap, path::Path};
+use std::{path::Path, sync::Arc};
 
 use sanedit_messages::key::{try_parse_keyevents, KeyEvent};
 use serde::{Deserialize, Serialize};
@@ -398,10 +398,46 @@ impl KeymapLayer {
                     events,
                     actions,
                     goto_layer,
-                }) => match goto_layer {
-                    Some(goto) => layer.bind_goto_layer(&events, &goto),
-                    None => layer.bind(&events, &actions),
-                },
+                }) => {
+                    // Goto layer action
+                    if let Some(goto) = goto_layer {
+                        let action = Action::Dynamic {
+                            name: format!("Goto layer {}", goto),
+                            fun: Arc::new(move |editor, _id| {
+                                editor.keymaps.goto_layer(goto.as_str());
+                                return;
+                            }),
+                            desc: String::new(),
+                        };
+
+                        layer.bind(&events, &action);
+                        continue;
+                    }
+
+                    // Only a single action
+                    if actions.len() == 1 {
+                        layer.bind(&events, &actions[0]);
+                        continue;
+                    }
+
+                    // Multiple actions combined into one
+                    let name = actions
+                        .iter()
+                        .map(|action| action.name())
+                        .collect::<Vec<&str>>()
+                        .join(",");
+                    let action = Action::Dynamic {
+                        name,
+                        fun: Arc::new(move |editor, id| {
+                            for action in &actions {
+                                action.execute(editor, id);
+                            }
+                        }),
+                        desc: String::new(),
+                    };
+
+                    layer.bind(&events, &action);
+                }
                 _ => log::error!(
                     "Unknown keymapping: key: {}, actions: {:?}",
                     map.key,

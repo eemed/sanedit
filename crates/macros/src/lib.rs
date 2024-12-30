@@ -43,7 +43,7 @@ pub fn action(attr: TokenStream, item: TokenStream) -> TokenStream {
         #fun
 
         #[allow(non_upper_case_globals)]
-        pub(crate) const #name: crate::actions::Action = crate::actions::Action {
+        pub(crate) const #name: crate::actions::Action = crate::actions::Action::Static {
             name: stringify!(#name),
             fun: #fname,
             desc: #description,

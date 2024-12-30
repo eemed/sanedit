@@ -42,12 +42,8 @@ impl Layer {
         }
     }
 
-    pub fn bind(&mut self, events: &[KeyEvent], action: &[Action]) {
+    pub fn bind(&mut self, events: &[KeyEvent], action: &Action) {
         self.root.bind(events, action)
-    }
-
-    pub fn bind_goto_layer(&mut self, events: &[KeyEvent], layer: &str) {
-        self.root.bind_goto_layer(events, layer)
     }
 
     pub fn get(&self, events: &[KeyEvent]) -> KeytrieResult {
@@ -69,6 +65,12 @@ impl Keymaps {
     pub fn layer(&self) -> &str {
         let current = *self.layer.borrow();
         &self.layers[current].name
+    }
+
+    pub fn goto_layer(&self, name: &str) {
+        if let Some(pos) = self.layers.iter().position(|layer| layer.name == name) {
+            *self.layer.borrow_mut() = pos;
+        }
     }
 
     pub fn goto(&self, kind: KeymapKind) {
@@ -105,14 +107,9 @@ impl Keymaps {
         }
 
         match result {
-            KeytrieResult::Matched(actions) => KeymapResult::Matched(actions),
-            KeytrieResult::Pending(actions) => KeymapResult::Pending(actions),
+            KeytrieResult::Matched(action) => KeymapResult::Matched(action),
+            KeytrieResult::Pending(action) => KeymapResult::Pending(action),
             KeytrieResult::NotFound => unreachable!(),
-            KeytrieResult::GotoLayer(l) => {
-                let mut layer = self.layer.borrow_mut();
-                *layer = self.layers.iter().position(|lay| lay.name == l).unwrap();
-                KeymapResult::Discard
-            }
         }
     }
 
@@ -137,18 +134,17 @@ impl Keymaps {
 }
 
 pub(crate) enum KeymapResult {
-    Matched(Vec<Action>),
-    Pending(Vec<Action>),
+    Matched(Action),
+    Pending(Option<Action>),
     Insert,
     Discard,
 }
 
 #[derive(Debug)]
 pub(crate) enum KeytrieResult {
-    Matched(Vec<Action>),
-    Pending(Vec<Action>),
+    Matched(Action),
+    Pending(Option<Action>),
     NotFound,
-    GotoLayer(String),
 }
 
 #[derive(Debug, Clone)]
@@ -161,12 +157,8 @@ impl KeyTrie {
         self.root.get(events)
     }
 
-    fn bind(&mut self, events: &[KeyEvent], action: &[Action]) {
+    fn bind(&mut self, events: &[KeyEvent], action: &Action) {
         self.root.bind(events, action);
-    }
-
-    fn bind_goto_layer(&mut self, events: &[KeyEvent], name: &str) {
-        self.root.bind_goto_layer(events, name);
     }
 }
 
@@ -174,8 +166,7 @@ impl Default for KeyTrie {
     fn default() -> Self {
         KeyTrie {
             root: KeyTrieNode {
-                actions: vec![],
-                goto_layer: None,
+                action: None,
                 map: FxHashMap::default(),
             },
         }
@@ -184,16 +175,12 @@ impl Default for KeyTrie {
 
 #[derive(Debug, Clone)]
 struct KeyTrieNode {
-    actions: Vec<Action>,
-
-    // If this node represents a layer swtich
-    goto_layer: Option<String>,
-
+    action: Option<Action>,
     map: FxHashMap<KeyEvent, KeyTrieNode>,
 }
 
 impl KeyTrieNode {
-    fn bind(&mut self, events: &[KeyEvent], new_action: &[Action]) {
+    fn bind(&mut self, events: &[KeyEvent], new_action: &Action) {
         match events.first() {
             Some(event) => match self.map.get_mut(event) {
                 Some(node) => {
@@ -201,57 +188,31 @@ impl KeyTrieNode {
                 }
                 None => {
                     let mut node = KeyTrieNode {
-                        actions: vec![],
-                        goto_layer: None,
+                        action: None,
                         map: FxHashMap::default(),
                     };
                     node.bind(&events[1..], new_action);
                     self.map.insert(event.clone(), node);
                 }
             },
-            None => self.actions.extend_from_slice(new_action),
-        }
-    }
-
-    fn bind_goto_layer(&mut self, events: &[KeyEvent], name: &str) {
-        match events.first() {
-            Some(event) => match self.map.get_mut(event) {
-                Some(node) => {
-                    node.bind_goto_layer(&events[1..], name);
-                }
-                None => {
-                    let mut node = KeyTrieNode {
-                        actions: vec![],
-                        goto_layer: None,
-                        map: FxHashMap::default(),
-                    };
-                    node.bind_goto_layer(&events[1..], name);
-                    self.map.insert(event.clone(), node);
-                }
-            },
-            None => self.goto_layer = Some(name.into()),
+            None => self.action = Some(new_action.clone()),
         }
     }
 
     fn get(&self, events: &[KeyEvent]) -> KeytrieResult {
         if events.is_empty() {
-            // If bound to goto layer
-            if let Some(ref layer) = self.goto_layer {
-                return KeytrieResult::GotoLayer(layer.into());
-            }
-
             // If next keys exist keep in pending state and return middle
             // actions
             if !self.map.is_empty() {
-                return KeytrieResult::Pending(self.actions.clone());
+                return KeytrieResult::Pending(self.action.clone());
             }
 
             // If bound to nothing
-            if self.actions.is_empty() {
+            if self.action.is_none() {
                 return KeytrieResult::NotFound;
             }
 
-            return KeytrieResult::Matched(self.actions.clone());
+            return KeytrieResult::Matched(self.action.clone().unwrap());
         }
 
         if let Some(node) = self.map.get(&events[0]) {
@@ -262,7 +223,7 @@ impl KeyTrieNode {
     }
 
     fn find_bound_key(&self, name: &str) -> Option<Vec<KeyEvent>> {
-        for action in &self.actions {
+        if let Some(ref action) = self.action {
             if action.name() == name {
                 return Some(vec![]);
             }

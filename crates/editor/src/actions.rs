@@ -18,35 +18,51 @@ pub(crate) mod text_objects;
 pub(crate) mod view;
 pub(crate) mod window;
 
-use std::fmt;
+use std::{fmt, sync::Arc};
 
 use crate::editor::Editor;
 use sanedit_server::ClientId;
 
 #[derive(Clone)]
-pub(crate) struct Action {
-    name: &'static str,
-    fun: fn(&mut Editor, ClientId),
-    desc: &'static str,
+pub(crate) enum Action {
+    Static {
+        name: &'static str,
+        fun: fn(&mut Editor, ClientId),
+        desc: &'static str,
+    },
+    Dynamic {
+        name: String,
+        fun: Arc<dyn Fn(&mut Editor, ClientId)>,
+        desc: String,
+    },
 }
 
 impl Action {
     pub fn execute(&self, editor: &mut Editor, id: ClientId) {
-        (self.fun)(editor, id)
+        match self {
+            Action::Static { fun, .. } => (fun)(editor, id),
+            Action::Dynamic { fun, .. } => (fun)(editor, id),
+        }
     }
 
     pub fn name(&self) -> &str {
-        self.name
+        match self {
+            Action::Static { name, .. } => name,
+            Action::Dynamic { name, .. } => &name,
+        }
     }
 
     pub fn description(&self) -> &str {
-        self.desc
+        match self {
+            Action::Static { desc, .. } => desc,
+            Action::Dynamic { desc, .. } => &desc,
+        }
     }
 }
 
 impl fmt::Debug for Action {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.name)
+        write!(f, "{}", self.name())
     }
 }
 

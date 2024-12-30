@@ -481,16 +481,18 @@ impl Editor {
         let events;
         // Handle key bindings
         match self.mapped_action(id) {
-            KeymapResult::Matched(actions) => {
-                for action in actions {
-                    action.execute(self, id);
-                }
-
+            KeymapResult::Matched(action) => {
+                action.execute(self, id);
                 let (win, _buf) = self.win_buf_mut(id);
                 win.clear_keys();
                 return;
             }
-            KeymapResult::Pending => return,
+            KeymapResult::Pending(action) => {
+                if let Some(action) = action {
+                    action.execute(self, id);
+                }
+                return;
+            }
             KeymapResult::Insert => {
                 let (win, _buf) = self.win_buf_mut(id);
                 events = win.clear_keys();
@@ -657,15 +659,7 @@ impl Editor {
 
         self.keymaps.goto(kind);
         let kmap = &self.keymaps;
-
-        // Use persist keys only on window for now
-        let persist = if matches!(kind, KeymapKind::Window) {
-            0
-        } else {
-            win.key_persist
-        };
-
-        kmap.get(&win.keys()[persist..])
+        kmap.get(&win.keys())
     }
 
     pub fn change_working_dir(&mut self, path: &Path) -> Result<()> {

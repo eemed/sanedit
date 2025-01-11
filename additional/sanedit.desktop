@@ -1,0 +1,8 @@
+[Desktop Entry]
+Version=1.0
+Name=Sanedit
+Exec=bash -c 'sane'
+Icon=/usr/share/sanedit/sanedit.svg
+Terminal=true
+Type=Application
+Categories=Application;

@@ -13,6 +13,8 @@ priority = "optional"
 assets = [
     ["target/release/sane", "usr/bin/", "755"],
     ["../../runtime/**/*", "usr/share/sanedit/", "644"],
+    ["../../additional/sanedit.svg", "usr/share/sanedit/", "644"],
+    ["../../additional/sanedit.desktop", "usr/share/applications/", "644"],
 ]
 
 [[bin]]

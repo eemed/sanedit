@@ -70,11 +70,6 @@ pub(crate) fn insert(editor: &mut Editor, id: ClientId, text: &str) {
             }
         }
         Completion | Window => {
-            let (win, _buf) = editor.win_buf_mut(id);
-            if matches!(win.focus, Focus::Window) && win.key_persist != 0 {
-                return;
-            }
-
             run(editor, id, Hook::InsertPre);
             let (win, buf) = editor.win_buf_mut(id);
             if win.insert_at_cursors(buf, text).is_ok() {

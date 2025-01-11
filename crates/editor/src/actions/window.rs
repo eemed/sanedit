@@ -72,15 +72,3 @@ fn cancel(editor: &mut Editor, id: ClientId) {
         win.cursors.primary_mut().stop_selection();
     }
 }
-
-#[action("Persist keys pressed")]
-fn persist(editor: &mut Editor, id: ClientId) {
-    let (win, _buf) = editor.win_buf_mut(id);
-    win.key_persist = win.keys().len();
-}
-
-#[action("Clear persisted keys")]
-fn clear_persist(editor: &mut Editor, id: ClientId) {
-    let (win, _buf) = editor.win_buf_mut(id);
-    win.key_persist = 0;
-}

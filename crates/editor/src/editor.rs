@@ -13,7 +13,6 @@ pub(crate) mod themes;
 pub(crate) mod windows;
 
 use caches::Caches;
-use config::KeymapLayer;
 use keymap::KeymapResult;
 use rustc_hash::FxHashMap;
 use sanedit_core::FileDescription;

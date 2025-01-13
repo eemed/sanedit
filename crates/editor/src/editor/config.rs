@@ -309,7 +309,6 @@ macro_rules! make_keymap {
 pub(crate) struct MappingAsKeymap {
     events: Vec<KeyEvent>,
     actions: Vec<Action>,
-    goto_layer: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -343,12 +342,20 @@ impl Mapping {
 
         // try to find specified action
         let mut actions = vec![];
-        let mut goto_layer = None;
 
         for name in &self.actions {
             // Try to parse goto_layer
             if let Some(goto) = parse_goto_layer(name) {
-                goto_layer = goto.into();
+                let action = Action::Dynamic {
+                    name: format!("Goto layer {}", goto),
+                    fun: Arc::new(move |editor, _id| {
+                        editor.keymaps.goto_layer(goto.as_str());
+                        return;
+                    }),
+                    desc: String::new(),
+                };
+
+                actions.push(action);
             }
 
             // Try to find action with name
@@ -357,20 +364,20 @@ impl Mapping {
             }
         }
 
-        if actions.is_empty() && goto_layer.is_none() {
+        if actions.is_empty() {
             None
         } else {
             Some(MappingAsKeymap {
                 events: keys,
                 actions,
-                goto_layer,
             })
         }
     }
 }
 
 fn parse_goto_layer(action: &str) -> Option<String> {
-    action.strip_prefix("goto_layer ").map(|s| s.to_string())
+    let suffix = action.strip_prefix("goto_layer ")?;
+    Some(suffix.to_string())
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -394,26 +401,7 @@ impl KeymapLayer {
 
         for map in &self.maps {
             match map.to_keymap(kind) {
-                Some(MappingAsKeymap {
-                    events,
-                    actions,
-                    goto_layer,
-                }) => {
-                    // Goto layer action
-                    if let Some(goto) = goto_layer {
-                        let action = Action::Dynamic {
-                            name: format!("Goto layer {}", goto),
-                            fun: Arc::new(move |editor, _id| {
-                                editor.keymaps.goto_layer(goto.as_str());
-                                return;
-                            }),
-                            desc: String::new(),
-                        };
-
-                        layer.bind(&events, &action);
-                        continue;
-                    }
-
+                Some(MappingAsKeymap { events, actions }) => {
                     // Only a single action
                     if actions.len() == 1 {
                         layer.bind(&events, &actions[0]);

@@ -148,7 +148,7 @@ pub fn paragraph_at_pos(slice: &PieceTreeSlice, pos: u64) -> Option<BufferRange>
         }
     }
 
-    let start = start?;
+    let start = start.unwrap_or(0);
 
     // Skip all content lines down
     while let Some(line) = lines.next() {
@@ -158,7 +158,7 @@ pub fn paragraph_at_pos(slice: &PieceTreeSlice, pos: u64) -> Option<BufferRange>
         }
     }
 
-    let end = end?;
+    let end = end.unwrap_or(slice.len());
 
     Some(Range::new(start, end))
 }

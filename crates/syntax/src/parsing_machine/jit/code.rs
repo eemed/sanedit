@@ -20,9 +20,9 @@ impl AssemblyCode {
     }
 
     // ASM things here
-    fn mov_reg_memory(&mut self, reg: Register, mem: ()) {}
+    fn mov_reg_memory(&mut self, _reg: Register, _mem: ()) {}
 
-    fn mov_reg_reg(&mut self, from: Register, to: Register) {}
+    fn mov_reg_reg(&mut self, _from: Register, _to: Register) {}
 
     pub fn compile(&mut self) {
         // mov %rdi, %rax

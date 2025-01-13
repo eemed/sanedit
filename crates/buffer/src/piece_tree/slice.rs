@@ -14,7 +14,7 @@ pub struct PieceTreeSlice<'a> {
 }
 
 impl<'a> PieceTreeSlice<'a> {
-    pub(crate) fn new(pt: &'a PieceTreeView, range: Range<u64>) -> PieceTreeSlice {
+    pub(crate) fn new(pt: &'a PieceTreeView, range: Range<u64>) -> PieceTreeSlice<'a> {
         PieceTreeSlice { range, view: pt }
     }
 

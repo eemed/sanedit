@@ -252,7 +252,7 @@ pub struct Lines<'a> {
 
 impl<'a> Lines<'a> {
     #[inline]
-    pub fn new(pt: &'a PieceTreeView, at: u64) -> Lines {
+    pub fn new(pt: &'a PieceTreeView, at: u64) -> Lines<'a> {
         let slice = pt.slice(..);
         let bytes = Bytes::new(pt, at);
         let mut lines = Lines {

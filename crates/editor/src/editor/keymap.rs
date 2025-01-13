@@ -62,6 +62,7 @@ pub(crate) struct Keymaps {
 }
 
 impl Keymaps {
+    #[allow(dead_code)]
     pub fn layer(&self) -> &str {
         let current = *self.layer.borrow();
         &self.layers[current].name

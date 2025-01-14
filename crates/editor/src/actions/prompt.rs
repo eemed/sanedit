@@ -25,7 +25,6 @@ use super::{
     jobs::{Grep, MatcherJob, MatcherMessage},
     shell,
     text::save,
-    GLOBAL_COMMANDS, WINDOW_COMMANDS,
 };
 
 #[action("Select theme")]
@@ -75,12 +74,9 @@ fn command_palette(editor: &mut Editor, id: ClientId) {
     win.prompt = Prompt::builder()
         .prompt("Palette")
         .on_confirm(move |editor, id, input| {
-            let actions = [GLOBAL_COMMANDS, WINDOW_COMMANDS];
-            for list in actions {
-                if let Some(action) = find_by_description(list, input) {
-                    action.execute(editor, id);
-                    return;
-                }
+            if let Some(action) = find_by_description(input) {
+                action.execute(editor, id);
+                return;
             }
 
             log::error!("No action with name {input}");
@@ -205,7 +201,7 @@ fn open_buffer(editor: &mut Editor, id: ClientId) {
 }
 
 #[action("Close prompt")]
-fn close_prompt(editor: &mut Editor, id: ClientId) {
+fn prompt_close(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.focus = Focus::Window;
 

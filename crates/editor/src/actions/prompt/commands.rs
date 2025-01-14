@@ -7,9 +7,8 @@ use sanedit_messages::key::keyevents_to_string;
 
 pub(crate) fn command_palette(editor: &Editor, id: ClientId) -> Vec<MatchOption> {
     // Display descriptions in command palette
-    WINDOW_COMMANDS
+    COMMANDS
         .iter()
-        .chain(GLOBAL_COMMANDS.iter())
         .map(|action| {
             let (_win, _buf) = editor.win_buf(id);
             let mut description = String::new();

@@ -31,7 +31,6 @@ use sanedit_server::ClientId;
 use sanedit_server::FromJobs;
 use sanedit_server::StartOptions;
 use sanedit_server::ToEditor;
-use strum::IntoEnumIterator;
 
 use std::env;
 use std::path::Path;
@@ -160,20 +159,9 @@ impl Editor {
     }
 
     fn configure_keymap(&mut self) {
-        for kind in KeymapKind::iter() {
-            let layers = match kind {
-                KeymapKind::Search => &self.config.keymaps.search,
-                KeymapKind::Prompt => &self.config.keymaps.prompt,
-                KeymapKind::Window => &self.config.keymaps.window,
-                KeymapKind::Completion => &self.config.keymaps.completion,
-                KeymapKind::Filetree => &self.config.keymaps.filetree,
-                KeymapKind::Locations => &self.config.keymaps.locations,
-            };
-
-            for kmlayer in layers {
-                let layer = kmlayer.to_layer(kind);
-                self.keymaps.push(layer);
-            }
+        for (name, kmlayer) in &self.config.keymaps {
+            let layer = kmlayer.to_layer(&name);
+            self.keymaps.push(layer);
         }
     }
 

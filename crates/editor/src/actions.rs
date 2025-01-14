@@ -66,8 +66,8 @@ impl fmt::Debug for Action {
     }
 }
 
-pub(crate) fn find_by_description(actions: &[Action], name: &str) -> Option<Action> {
-    for cmd in actions {
+pub(crate) fn find_by_description(name: &str) -> Option<Action> {
+    for cmd in COMMANDS {
         if cmd.description() == name {
             return Some(cmd.clone());
         }
@@ -76,8 +76,8 @@ pub(crate) fn find_by_description(actions: &[Action], name: &str) -> Option<Acti
     None
 }
 
-pub(crate) fn find_by_name(actions: &[Action], name: &str) -> Option<Action> {
-    for cmd in actions {
+pub(crate) fn find_by_name(name: &str) -> Option<Action> {
+    for cmd in COMMANDS {
         if cmd.name() == name {
             return Some(cmd.clone());
         }
@@ -89,23 +89,9 @@ pub(crate) fn find_by_name(actions: &[Action], name: &str) -> Option<Action> {
 // Define commands that can be used in specific contexts
 
 #[rustfmt::skip]
-pub(crate) const GLOBAL_COMMANDS: &[Action] = &[
-    editor::quit,
-    editor::build_project,
-    editor::run_project,
+pub(crate) const COMMANDS: &[Action] = &[
+    search::search_toggle_regex,
 
-    window::focus_window,
-    filetree::show_filetree,
-    locations::show_locations,
-];
-
-#[rustfmt::skip]
-pub(crate) const SEARCH_COMMANDS: &[Action] = &[
-    search::toggle_search_regex,
-];
-
-#[rustfmt::skip]
-pub(crate) const PROMPT_COMMANDS: &[Action] = &[
     prompt::prompt_history_next,
     prompt::prompt_history_prev,
     prompt::prompt_next_completion,
@@ -114,32 +100,14 @@ pub(crate) const PROMPT_COMMANDS: &[Action] = &[
     prompt::prompt_next_grapheme,
     prompt::prompt_prev_grapheme,
     prompt::prompt_confirm,
-    prompt::close_prompt,
+    prompt::prompt_close,
 
-];
+    completion::completion_confirm,
+    completion::completion_abort,
+    completion::completion_next,
+    completion::completion_prev,
 
-#[rustfmt::skip]
-pub(crate) const COMPLETION_COMMANDS: &[Action] = &[
-    completion::confirm_completion,
-    completion::abort_completion,
-    completion::next_completion,
-    completion::prev_completion,
-];
-
-#[rustfmt::skip]
-pub(crate) const FILETREE_COMMANDS: &[Action] = &[
-    filetree::close_filetree,
-    filetree::next_ft_entry,
-    filetree::prev_ft_entry,
-    filetree::select_ft_parent,
-    filetree::ft_delete_file,
-    filetree::ft_new_file,
-    filetree::goto_ft_entry,
-    filetree::ft_goto_current_file,
-];
-
-#[rustfmt::skip]
-pub(crate) const LOCATIONS_COMMANDS: &[Action] = &[
+    locations::show_locations,
     locations::close_locations,
     locations::clear_locations,
     locations::next_loc_entry,
@@ -149,10 +117,22 @@ pub(crate) const LOCATIONS_COMMANDS: &[Action] = &[
     locations::toggle_all_expand_locs,
     locations::keep_locations,
     locations::reject_locations,
-];
 
-#[rustfmt::skip]
-pub(crate) const WINDOW_COMMANDS: &[Action] = &[
+    filetree::close_filetree,
+    filetree::next_ft_entry,
+    filetree::prev_ft_entry,
+    filetree::select_ft_parent,
+    filetree::ft_delete_file,
+    filetree::ft_new_file,
+    filetree::goto_ft_entry,
+    filetree::ft_goto_current_file,
+    filetree::show_filetree,
+
+    editor::quit,
+    editor::build_project,
+    editor::run_project,
+
+    window::focus_window,
     editor::copy,
     editor::paste,
     editor::cut,

@@ -63,7 +63,7 @@ fn complete_from_syntax(editor: &mut Editor, id: ClientId) {
 }
 
 #[action("Confirm completion")]
-fn confirm_completion(editor: &mut Editor, id: ClientId) {
+fn completion_confirm(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.focus = Focus::Window;
 
@@ -78,19 +78,19 @@ fn confirm_completion(editor: &mut Editor, id: ClientId) {
 }
 
 #[action("Abort completion")]
-fn abort_completion(editor: &mut Editor, id: ClientId) {
+fn completion_abort(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.focus = Focus::Window;
 }
 
 #[action("Select next completion")]
-fn next_completion(editor: &mut Editor, id: ClientId) {
+fn completion_next(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.completion.select_next();
 }
 
 #[action("Select previous completion")]
-fn prev_completion(editor: &mut Editor, id: ClientId) {
+fn completion_prev(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.completion.select_prev();
 }

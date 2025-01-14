@@ -115,7 +115,7 @@ fn prev_search_match(editor: &mut Editor, id: ClientId) {
 }
 
 #[action("Toggle regex search")]
-fn toggle_search_regex(editor: &mut Editor, id: ClientId) {
+fn search_toggle_regex(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.search.kind = match win.search.kind {
         SearchKind::Regex => SearchKind::Smart,

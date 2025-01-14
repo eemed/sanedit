@@ -69,12 +69,14 @@ pub(crate) fn read_config(config_path: &Path, working_dir: &Path) -> Config {
 }
 
 pub(crate) fn try_read_config(config_path: &Path, working_dir: &Path) -> anyhow::Result<Config> {
+    let mut builder = config::Config::builder().add_source(config::File::from(config_path));
+
     let local = working_dir.join(PROJECT_CONFIG);
-    let config = config::Config::builder()
-        .add_source(config::File::from(config_path))
-        .add_source(config::File::from(local))
-        .build()?;
-    let config = config.try_deserialize::<Config>()?;
+    if local.exists() {
+        builder = builder.add_source(config::File::from(local));
+    }
+
+    let config = builder.build()?.try_deserialize::<Config>()?;
     Ok(config)
 }
 
@@ -347,6 +349,7 @@ impl Mapping {
                 let action = Action::Dynamic {
                     name: format!("Goto layer {}", goto),
                     fun: Arc::new(move |editor, _id| {
+                        log::info!("goto: {}", goto);
                         editor.keymaps.goto_layer(goto.as_str());
                         return;
                     }),
@@ -383,7 +386,7 @@ pub(crate) struct KeymapLayer {
     fallthrough: Option<String>,
 
     /// Whether to discard not found bindigs or insert them into the buffer
-    discard: bool,
+    discard: Option<bool>,
 
     /// Keymappings for this layer
     maps: Vec<Mapping>,
@@ -392,7 +395,7 @@ pub(crate) struct KeymapLayer {
 impl KeymapLayer {
     pub fn to_layer(&self, name: &str) -> Layer {
         let mut layer = Layer::new(name);
-        layer.discard = self.discard;
+        layer.discard = self.discard.unwrap_or(false);
         layer.fallthrough = self.fallthrough.clone();
 
         for map in &self.maps {
@@ -451,7 +454,7 @@ fn search() -> KeymapLayer {
 
     KeymapLayer {
         fallthrough: None,
-        discard: false,
+        discard: None,
         maps: map,
     }
 }
@@ -474,7 +477,7 @@ fn prompt() -> KeymapLayer {
 
     KeymapLayer {
         fallthrough: None,
-        discard: false,
+        discard: None,
         maps: map,
     }
 }
@@ -490,7 +493,7 @@ fn completion() -> KeymapLayer {
 
     KeymapLayer {
         fallthrough: Some(KeymapKind::Window.as_ref().into()),
-        discard: false,
+        discard: None,
         maps: compl,
     }
 }
@@ -518,7 +521,7 @@ fn locations() -> KeymapLayer {
         );
     KeymapLayer {
         fallthrough: None,
-        discard: false,
+        discard: None,
         maps: map,
     }
 }
@@ -547,7 +550,7 @@ fn filetree() -> KeymapLayer {
 
     KeymapLayer {
         fallthrough: None,
-        discard: false,
+        discard: None,
         maps: map,
     }
 }
@@ -649,7 +652,7 @@ fn window() -> KeymapLayer {
 
     KeymapLayer {
         fallthrough: None,
-        discard: false,
+        discard: None,
         maps: map,
     }
 }

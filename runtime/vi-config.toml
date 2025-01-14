@@ -1,0 +1,306 @@
+#
+# Sanedit configuration
+#
+# Configuration can be overridden using a sanedit-project.toml file in project
+# root. The file should be in the same format as this one and
+# configuration may be partially updated
+#
+[editor]
+
+# Large file threshold in bytes
+big_file_threshold_bytes = 1048576
+
+# Directories to ignore, when opening files etc.
+ignore_directories = [".git", "target"]
+
+# Default shell command
+shell = "/bin/bash"
+
+# Shell command to build current project
+build_command = ""
+
+# Shell command to run current project
+run_command = ""
+
+# Autodetect eol from file
+detect_eol = true
+
+# Autodetect indentation from file
+detect_indent = true
+
+# Filetype glob patterns
+# By default the filetype is the extension of the file
+[editor.filetype]
+rust = ["*.rs"]
+toml = ["**/Cargo.lock"]
+markdown = ["*.md"]
+yaml = ["*.yml"]
+
+[editor.language_server.rust]
+command = "rust-analyzer"
+args = []
+
+[window]
+
+# Maximum prompt completions to show at once
+max_prompt_completions = 10
+
+# Maximum completions to show at once
+max_completions = 10
+theme = "default"
+
+# Highlight LSP diagnostics
+highlight_syntax = true
+
+# Highlight LSP diagnostics
+highlight_diagnostics = true
+
+# Automatically indent lines, and clear them from indent
+autoindent = true
+
+# Automatically insert pairs on enter, works only with autoindent
+autopair = true
+
+[buffer]
+
+# Default EOL, overridden if detect_eol is set
+# Available options:
+# LF: Line Feed, U+000A (UTF-8 in hex: 0A)
+# VT: Vertical Tab, U+000B (UTF-8 in hex: 0B)
+# FF: Form Feed, U+000C (UTF-8 in hex: 0C)
+# CR: Carriage Return, U+000D (UTF-8 in hex: 0D)
+# CRLF: CR (U+000D) followed by LF (U+000A) (UTF-8 in hex: 0D 0A)
+# NEL: Next Line, U+0085 (UTF-8 in hex: C2 85)
+# LS: Line Separator, U+2028 (UTF-8 in hex: E2 80 A8)
+# PS: Paragraph Separator, U+2029 (UTF-8 in hex: E2 80 A9)
+eol = "LF"
+
+# How many spaces for a tab character, note that tab does not always have
+# width `tab_width` because tabs are used to align stuff, so it
+# is "elastic" calculated tabstop - (col % tabstop).
+tabstop = 8
+
+# Indent options, overridden if detect_indent is set
+# Available options:
+# Space: use spaces
+# Tab: use tabs
+indent_kind = "Space"
+
+# How many indent characters a single indent should be
+indent_amount = 4
+
+[keymaps.insert]
+maps = [
+    { key = "esc", actions = ["goto_layer window"] },
+    { key = "left", actions = ["prev_grapheme"] },
+    { key = "up", actions = ["prev_line"] },
+    { key = "down", actions = ["next_line"] },
+    { key = "right", actions = ["next_grapheme"] },
+]
+
+[keymaps.window]
+discard = true
+maps = [
+    { key = "space q", actions = ["quit"] },
+
+    { key = "ctrl+s", actions = ["save"] },
+    { key = "ctrl+c", actions = ["copy"] },
+    { key = "ctrl+v", actions = ["paste"] },
+    { key = "ctrl+x", actions = ["cut"] },
+    { key = "ctrl+d", actions = ["scroll_down"] },
+    { key = "ctrl+u", actions = ["scroll_up"] },
+
+    { key = "esc", actions = ["cancel"] },
+    { key = "y", actions = ["copy"] },
+    { key = "p", actions = ["paste"] },
+    { key = "i", actions = ["goto_layer insert"] },
+    { key = "u", actions = ["undo"] },
+    { key = "U", actions = ["redo"] },
+    { key = "h", actions = ["prev_grapheme"] },
+    { key = "k", actions = ["prev_line"] },
+    { key = "j", actions = ["next_line"] },
+    { key = "l", actions = ["next_grapheme"] },
+    { key = "ctrl+p", actions = ["open_file"] },
+    { key = "space g", actions = ["grep"] },
+    { key = "v", actions = ["start_selection"] },
+    { key = "$", actions = ["end_of_line"] },
+    { key = "^", actions = ["first_char_of_line"] },
+    { key = "0", actions = ["start_of_line"] },
+    { key = "w", actions = ["next_word_start"] },
+    { key = "b", actions = ["prev_word_start"] },
+    { key = "V", actions = ["select_line"] },
+    { key = "a", actions = ["next_grapheme", "goto_layer insert"] },
+    { key = "A", actions = ["end_of_line", "goto_layer insert"] },
+    { key = "I", actions = ["first_char_of_line", "goto_layer insert"] },
+    { key = "!", actions = ["shell_command"] },
+    { key = ":", actions = ["command_palette"] },
+
+    { key = "g d", actions = ["goto_definition"] },
+    { key = "g r", actions = ["references"] },
+    { key = "g R", actions = ["rename"] },
+    { key = "space a", actions = ["code_action"] },
+    { key = "space f", actions = ["format"] },
+    { key = "K", actions = ["hover"] },
+
+    { key = "-", actions = ["show_filetree"] },
+    { key = "alt+q", actions = ["show_locations"] },
+
+    # { key = "e", actions = ["next_word_end"] },
+    # { key = "E", actions = ["prev_word_end"] },
+
+################
+
+
+    # { key = "ctrl+q", actions = ["quit"] },
+    # { key = "ctrl+c", actions = ["copy"] },
+    # { key = "ctrl+v", actions = ["paste"] },
+    # { key = "ctrl+x", actions = ["cut"] },
+    # { key = "f2", actions = ["build_project"] },
+    # { key = "f3", actions = ["run_project"] },
+    # { key = "ctrl+s", actions = ["save"] },
+    # { key = "backspace", actions = ["remove_grapheme_before_cursor"] },
+    # { key = "delete", actions = ["remove_grapheme_after_cursor"] },
+    # { key = "ctrl+z", actions = ["undo"] },
+    # { key = "ctrl+r", actions = ["redo"] },
+    # { key = "enter", actions = ["insert_newline"] },
+    # { key = "tab", actions = ["insert_tab"] },
+    # { key = "btab", actions = ["backtab"] },
+    # { key = "alt+k", actions = ["remove_to_end_of_line"] },
+    # { key = "up", actions = ["prev_line"] },
+    # { key = "down", actions = ["next_line"] },
+    # { key = "ctrl+right", actions = ["next_word_end"] },
+    # { key = "ctrl+left", actions = ["prev_word_start"] },
+    # { key = "ctrl+shift+right", actions = ["select_to_next_word"] },
+    # { key = "ctrl+shift+left", actions = ["select_to_prev_word"] },
+    # { key = "alt+U", actions = ["prev_line"] },
+    # { key = "alt+u", actions = ["next_line"] },
+    # { key = "left", actions = ["prev_grapheme"] },
+    # { key = "right", actions = ["next_grapheme"] },
+    # { key = "alt+b", actions = ["end_of_buffer"] },
+    # { key = "alt+B", actions = ["start_of_buffer"] },
+    # { key = "alt+l", actions = ["end_of_line"] },
+    # { key = "alt+L", actions = ["first_char_of_line"] },
+    # { key = "alt+w", actions = ["next_word_start"] },
+    # { key = "alt+W", actions = ["prev_word_start"] },
+    # { key = "alt+e", actions = ["next_word_end"] },
+    # { key = "alt+E", actions = ["prev_word_end"] },
+    # { key = "alt+p", actions = ["next_paragraph"] },
+    # { key = "alt+P", actions = ["prev_paragraph"] },
+    # { key = "alt+m", actions = ["goto_matching_pair"] },
+    # { key = "alt+s", actions = ["scroll_down"] },
+    # { key = "alt+S", actions = ["scroll_up"] },
+    # { key = "alt+r", actions = ["shell_command"] },
+    # { key = "ctrl+p", actions = ["command_palette"] },
+    # { key = "ctrl+o", actions = ["open_file"] },
+    # { key = "alt+f", actions = ["grep"] },
+    # { key = "ctrl+f", actions = ["search_forward"] },
+    # { key = "ctrl+g", actions = ["search_backward"] },
+    # { key = "ctrl+h", actions = ["clear_search_matches"] },
+    # { key = "alt+n", actions = ["next_search_match"] },
+    # { key = "alt+N", actions = ["prev_search_match"] },
+    # { key = "esc", actions = ["cancel"] },
+    # { key = "alt+down", actions = ["new_cursor_to_next_line"] },
+    # { key = "alt+up", actions = ["new_cursor_to_prev_line"] },
+    # { key = "ctrl+d", actions = ["new_cursor_to_next_search_match"] },
+    # { key = "ctrl+l", actions = ["new_cursor_to_all_search_matches"] },
+    # { key = "alt+v", actions = ["start_selection"] },
+    # { key = "f5", actions = ["reload_window"] },
+    # { key = "alt+'", actions = ["goto_prev_buffer"] },
+    # { key = "alt+o l", actions = ["select_line"] },
+    # { key = "alt+o c", actions = ["select_curly"] },
+    # { key = "alt+o C", actions = ["select_curly_incl"] },
+    # { key = "alt+o b", actions = ["select_parens"] },
+    # { key = "alt+o B", actions = ["select_parens_incl"] },
+    # { key = "alt+o r", actions = ["select_square"] },
+    # { key = "alt+o R", actions = ["select_square_incl"] },
+    # { key = "alt+o a", actions = ["select_angle"] },
+    # { key = "alt+o A", actions = ["select_angle_incl"] },
+    # { key = 'alt+o "', actions = ["select_double"] },
+    # { key = "alt+o '", actions = ["select_single"] },
+    # { key = "alt+o `", actions = ["select_backtick"] },
+    # { key = "alt+o p", actions = ["select_paragraph"] },
+    # { key = "alt+o w", actions = ["select_word"] },
+    # { key = "alt+x d", actions = ["goto_definition"] },
+    # { key = "alt+x a", actions = ["code_action"] },
+    # { key = "alt+x r", actions = ["references"] },
+    # { key = "alt+x f", actions = ["format"] },
+    # { key = "alt+x R", actions = ["rename"] },
+    # { key = "alt+x h", actions = ["hover"] },
+    # { key = "alt+2", actions = ["show_filetree"] },
+    # { key = "alt+3", actions = ["show_locations"] },
+]
+
+# [keymaps.search]
+# maps = [
+#     { key = "ctrl+q", actions = ["quit"] },
+#     { key = "esc", actions = ["prompt_close"] },
+#     { key = "backspace", actions = ["prompt_remove_grapheme_before_cursor"] },
+#     { key = "left", actions = ["prompt_prev_grapheme"] },
+#     { key = "right", actions = ["prompt_next_grapheme"] },
+#     { key = "enter", actions = ["prompt_confirm"] },
+#     { key = "up", actions = ["prompt_history_next"] },
+#     { key = "down", actions = ["prompt_history_prev"] },
+#     { key = "ctrl+r", actions = ["search_toggle_regex"] },
+# ]
+
+
+# [keymaps.locations]
+# maps = [
+#     { key = "ctrl+q", actions = ["quit"] },
+#     { key = "alt+up", actions = ["focus_window"] },
+#     { key = "esc", actions = ["close_locations"] },
+#     { key = "enter", actions = ["goto_loc_entry"] },
+#     { key = "up", actions = ["prev_loc_entry"] },
+#     { key = "down", actions = ["next_loc_entry"] },
+#     { key = "btab", actions = ["prev_loc_entry"] },
+#     { key = "tab", actions = ["next_loc_entry"] },
+#     { key = "p", actions = ["select_loc_parent"] },
+#     { key = "s", actions = ["toggle_all_expand_locs"] },
+#     { key = "k", actions = ["keep_locations"] },
+#     { key = "r", actions = ["reject_locations"] },
+#     { key = "alt+1", actions = ["focus_window"] },
+#     { key = "alt+2", actions = ["show_filetree"] },
+#     { key = "alt+3", actions = ["close_locations"] },
+# ]
+
+# [keymaps.filetree]
+# maps = [
+#     { key = "ctrl+q", actions = ["quit"] },
+#     { key = "esc", actions = ["close_filetree"] },
+#     { key = "alt+right", actions = ["focus_window"] },
+#     { key = "enter", actions = ["goto_ft_entry"] },
+#     { key = "up", actions = ["prev_ft_entry"] },
+#     { key = "down", actions = ["next_ft_entry"] },
+#     { key = "btab", actions = ["prev_ft_entry"] },
+#     { key = "tab", actions = ["next_ft_entry"] },
+#     { key = "c", actions = ["ft_new_file"] },
+#     { key = "d", actions = ["ft_delete_file"] },
+#     { key = "p", actions = ["select_ft_parent"] },
+#     { key = "s", actions = ["ft_goto_current_file"] },
+#     { key = "alt+1", actions = ["focus_window"] },
+#     { key = "alt+2", actions = ["close_filetree"] },
+#     { key = "alt+3", actions = ["show_locations"] },
+# ]
+
+# [keymaps.prompt]
+# maps = [
+#     { key = "ctrl+q", actions = ["quit"] },
+#     { key = "esc", actions = ["prompt_close"] },
+#     { key = "backspace", actions = ["prompt_remove_grapheme_before_cursor"] },
+#     { key = "left", actions = ["prompt_prev_grapheme"] },
+#     { key = "right", actions = ["prompt_next_grapheme"] },
+#     { key = "tab", actions = ["prompt_next_completion"] },
+#     { key = "btab", actions = ["prompt_prev_completion"] },
+#     { key = "enter", actions = ["prompt_confirm"] },
+#     { key = "up", actions = ["prompt_history_next"] },
+#     { key = "down", actions = ["prompt_history_prev"] },
+# ]
+
+# [keymaps.completion]
+# fallthrough = "window"
+# maps = [
+#     { key = "tab", actions = ["next_completion"] },
+#     { key = "btab", actions = ["prev_completion"] },
+#     { key = "enter", actions = ["confirm_completion"] },
+#     { key = "esc", actions = ["abort_completion"] },
+# ]

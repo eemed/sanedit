@@ -12,7 +12,7 @@ use sanedit_core::{
     Cursor, PTSearcher,
 };
 
-use super::{hooks, movement};
+use super::{hooks::{self, run}, movement};
 
 #[action("Start selection and jump to next word")]
 fn select_to_next_word(editor: &mut Editor, id: ClientId) {
@@ -176,4 +176,16 @@ fn make_prev_cursor_primary(editor: &mut Editor, id: ClientId) {
 fn merge_overlapping_cursors(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.cursors.merge_overlapping();
+}
+
+#[action("Remove cursor selections")]
+fn remove_cursor_selections(editor: &mut Editor, id: ClientId) {
+    let (win, buf) = editor.win_buf_mut(id);
+    match win.remove_cursor_selections(buf) {
+        Ok(true) => {
+            let hook = Hook::BufChanged(buf.id);
+            run(editor, id, hook);
+        }
+        _ => {}
+    }
 }

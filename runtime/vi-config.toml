@@ -98,6 +98,9 @@ maps = [
     { key = "right", actions = ["next_grapheme"] },
     { key = "backspace", actions = ["remove_grapheme_before_cursor"] },
     { key = "delete", actions = ["remove_grapheme_after_cursor"] },
+    { key = "enter", actions = ["insert_newline"] },
+    { key = "tab", actions = ["insert_tab"] },
+    { key = "btab", actions = ["backtab"] },
 ]
 
 [keymaps.window]
@@ -139,6 +142,15 @@ maps = [
     { key = "/", actions = ["search_forward"] },
     { key = "?", actions = ["search_backward"] },
     { key = "%", actions = ["goto_matching_pair"] },
+    { key = "c", actions = ["remove_cursor_selections", "goto_layer insert"] },
+    { key = "c c", actions = ["select_line", "remove_cursor_selections", "goto_layer insert"] },
+    { key = "d d", actions = ["select_line", "remove_cursor_selections"] },
+    { key = "D", actions = ["remove_to_end_of_line"] },
+    { key = "x", actions = ["remove_grapheme_after_cursor"] },
+    { key = "G", actions = ["end_of_buffer"] },
+    { key = "g g", actions = ["start_of_buffer"] },
+    { key = "o", actions = ["newline_below", "goto_layer insert"] },
+    { key = "O", actions = ["newline_above", "goto_layer insert"] },
 
     { key = "g d", actions = ["goto_definition"] },
     { key = "g r", actions = ["references"] },
@@ -149,6 +161,21 @@ maps = [
 
     { key = "-", actions = ["show_filetree"] },
     { key = "alt+q", actions = ["show_locations"] },
+
+    { key = "s l", actions = ["select_line"] },
+    { key = "s c", actions = ["select_curly"] },
+    { key = "s C", actions = ["select_curly_incl"] },
+    { key = "s b", actions = ["select_parens"] },
+    { key = "s B", actions = ["select_parens_incl"] },
+    { key = "s r", actions = ["select_square"] },
+    { key = "s R", actions = ["select_square_incl"] },
+    { key = "s a", actions = ["select_angle"] },
+    { key = "s A", actions = ["select_angle_incl"] },
+    { key = 's "', actions = ["select_double"] },
+    { key = "s '", actions = ["select_single"] },
+    { key = "s `", actions = ["select_backtick"] },
+    { key = "s p", actions = ["select_paragraph"] },
+    { key = "s w", actions = ["select_word"] },
 
     # { key = "e", actions = ["next_word_end"] },
     # { key = "E", actions = ["prev_word_end"] },

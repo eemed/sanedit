@@ -202,6 +202,7 @@ pub(crate) const COMMANDS: &[Action] = &[
     cursors::select_to_next_word,
     cursors::select_to_prev_word,
     cursors::keep_only_primary,
+    cursors::remove_cursor_selections,
 
     view::scroll_up,
     view::scroll_down,

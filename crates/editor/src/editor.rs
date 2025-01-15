@@ -470,7 +470,6 @@ impl Editor {
         // Handle key bindings
         match self.mapped_action(id) {
             KeymapResult::Matched(action) => {
-                log::info!("matched");
                 action.execute(self, id);
                 let (win, _buf) = self.win_buf_mut(id);
                 win.clear_keys();
@@ -483,12 +482,10 @@ impl Editor {
                 return;
             }
             KeymapResult::Insert => {
-                log::info!("insert");
                 let (win, _buf) = self.win_buf_mut(id);
                 events = win.clear_keys();
             }
             KeymapResult::Discard => {
-                log::info!("discard");
                 let (win, _buf) = self.win_buf_mut(id);
                 win.clear_keys();
                 return;

@@ -7,7 +7,6 @@ mod focus;
 mod prompt;
 mod search;
 mod shell;
-mod vi;
 mod view;
 
 #[cfg(test)]
@@ -31,7 +30,6 @@ use sanedit_messages::{
     key::KeyEvent,
     redraw::{Popup, PopupMessage, Severity, Size, StatusMessage},
 };
-use vi::Vi;
 
 use crate::{
     common::change::{newline_autopair, newline_empty_line, newline_indent},
@@ -80,7 +78,6 @@ pub(crate) struct Window {
 
     keys: Vec<KeyEvent>,
     focus: Focus,
-    // vi_mode: Vi,
 
     pub keymap_layer: String,
     pub shell_kind: ShellKind,

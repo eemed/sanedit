@@ -58,7 +58,7 @@ fn draw_impl(ctx: &mut DrawContext) -> redraw::Redraw {
         items.push(item);
     }
 
-    let in_focus = ctx.editor.win.focus == Focus::Locations;
+    let in_focus = ctx.editor.win.focus() == Focus::Locations;
     let items = redraw::items::Items {
         items,
         selected,

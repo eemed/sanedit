@@ -17,14 +17,14 @@ fn clear_locations(editor: &mut Editor, id: ClientId) {
 fn show_locations(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.locations.show = true;
-    win.focus = Focus::Locations;
+    win.focus_to(Focus::Locations);
 }
 
 #[action("Close locations")]
 fn close_locations(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.locations.show = false;
-    win.focus = Focus::Window;
+    win.focus_to(Focus::Window);
 }
 
 #[action("Next location entry")]
@@ -105,10 +105,10 @@ fn keep_locations(editor: &mut Editor, id: ClientId) {
         .on_confirm(move |editor, id, input| {
             let (win, _buf) = editor.win_buf_mut(id);
             win.locations.retain(|name| name.contains(input));
-            win.focus = Focus::Locations;
+            win.focus_to(Focus::Locations);
         })
         .build();
-    win.focus = Focus::Prompt;
+    win.focus_to(Focus::Prompt);
 }
 
 #[action("Reject locations with")]
@@ -120,8 +120,8 @@ fn reject_locations(editor: &mut Editor, id: ClientId) {
         .on_confirm(move |editor, id, input| {
             let (win, _buf) = editor.win_buf_mut(id);
             win.locations.retain(|name| !name.contains(input));
-            win.focus = Focus::Locations;
+            win.focus_to(Focus::Locations);
         })
         .build();
-    win.focus = Focus::Prompt;
+    win.focus_to(Focus::Prompt);
 }

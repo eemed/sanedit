@@ -95,7 +95,7 @@ fn prompt_create_and_open_config(editor: &mut Editor, id: ClientId) {
             let _ = editor.open_file(id, &path);
         })
         .build();
-    win.focus = Focus::Prompt;
+    win.focus_to(Focus::Prompt);
 }
 
 #[action("Open a new scratch buffer")]

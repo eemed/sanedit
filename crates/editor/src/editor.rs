@@ -162,11 +162,8 @@ impl Editor {
         self.keymaps = Keymaps::default();
 
         for (name, kmlayer) in &self.config.keymaps {
-            let layer = kmlayer.to_layer(&name);
-            self.keymaps.push(layer);
+            self.keymaps.insert(name, kmlayer.to_layer());
         }
-
-        self.keymaps.goto(KeymapKind::Window);
     }
 
     /// Ran after the startup configuration is complete
@@ -373,7 +370,7 @@ impl Editor {
 
     fn handle_mouse_event(&mut self, id: ClientId, event: MouseEvent) {
         let (win, buf) = self.win_buf_mut(id);
-        if win.focus != Focus::Window {
+        if win.focus() != Focus::Window {
             return;
         }
 
@@ -641,7 +638,7 @@ impl Editor {
     pub fn mapped_action(&self, id: ClientId) -> KeymapResult {
         let (win, _buf) = self.win_buf(id);
         let kmap = &self.keymaps;
-        kmap.get(&win.keys())
+        kmap.get(&win.keymap_layer, &win.keys())
     }
 
     pub fn change_working_dir(&mut self, path: &Path) -> Result<()> {

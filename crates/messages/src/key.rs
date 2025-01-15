@@ -82,7 +82,13 @@ impl fmt::Display for KeyEvent {
         };
 
         let key = match self.key {
-            Key::Char(ch) => ch.to_string(),
+            Key::Char(ch) => {
+                if ch == ' ' {
+                    "space".to_string()
+                } else {
+                    ch.to_string()
+                }
+            }
             Key::F(n) => format!("F{}", n),
             Key::Enter => "enter".to_string(),
             Key::Esc => "esc".to_string(),

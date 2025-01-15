@@ -23,7 +23,7 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> Vec<redraw::Redraw> {
         results.push(Redraw::Prompt(Component::Close));
     }
 
-    let in_focus = ctx.editor.win.focus == Focus::Prompt;
+    let in_focus = ctx.editor.win.focus() == Focus::Prompt;
 
     if !in_focus {
         return results;

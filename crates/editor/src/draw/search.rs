@@ -11,7 +11,7 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> Option<redraw::Redraw> {
         return Redraw::Prompt(Component::Close).into();
     }
 
-    let in_focus = ctx.editor.win.focus == Focus::Search;
+    let in_focus = ctx.editor.win.focus() == Focus::Search;
 
     if !in_focus {
         return None;

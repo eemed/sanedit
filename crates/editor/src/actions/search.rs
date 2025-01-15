@@ -61,7 +61,7 @@ fn search_forward(editor: &mut Editor, id: ClientId) {
         .on_confirm(search)
         .on_input(async_view_matches)
         .build();
-    win.focus = Focus::Search;
+    win.focus_to(Focus::Search);
 }
 
 #[action("Search backwards")]
@@ -76,7 +76,7 @@ fn search_backward(editor: &mut Editor, id: ClientId) {
         .on_confirm(search)
         .on_input(async_view_matches)
         .build();
-    win.focus = Focus::Search;
+    win.focus_to(Focus::Search);
 }
 
 #[action("Clear match highlighting")]

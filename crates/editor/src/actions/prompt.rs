@@ -115,7 +115,7 @@ fn open_file(editor: &mut Editor, id: ClientId) {
             }
         })
         .build();
-    win.focus = Focus::Prompt;
+    win.focus_to(Focus::Prompt);
 }
 
 fn open_file_handler(editor: &mut Editor, id: ClientId, msg: MatcherMessage) {
@@ -163,7 +163,7 @@ fn open_file_handler(editor: &mut Editor, id: ClientId, msg: MatcherMessage) {
                     }
                 }
 
-                win.focus = Focus::Prompt;
+                win.focus_to(Focus::Prompt);
                 let (win, _buf) = editor.win_buf_mut(id);
                 win.prompt.add_choices(matched.into());
             }
@@ -197,13 +197,13 @@ fn open_buffer(editor: &mut Editor, id: ClientId) {
             }
         })
         .build();
-    win.focus = Focus::Prompt;
+    win.focus_to(Focus::Prompt);
 }
 
 #[action("Close prompt")]
 fn prompt_close(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
-    win.focus = Focus::Window;
+    win.focus_to(Focus::Window);
 
     let slotname = win.prompt.message().to_string();
     editor.job_broker.stop_slot(id, &slotname);
@@ -218,7 +218,7 @@ fn prompt_close(editor: &mut Editor, id: ClientId) {
 #[action("Confirm selection")]
 fn prompt_confirm(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
-    win.focus = Focus::Window;
+    win.focus_to(Focus::Window);
 
     let slotname = win.prompt.message().to_string();
     editor.job_broker.stop_slot(id, &slotname);
@@ -289,7 +289,7 @@ fn shell_command(editor: &mut Editor, id: ClientId) {
         .simple()
         .on_confirm(shell::execute)
         .build();
-    win.focus = Focus::Prompt;
+    win.focus_to(Focus::Prompt);
 }
 
 #[action("Goto a line")]
@@ -307,7 +307,7 @@ fn goto_line(editor: &mut Editor, id: ClientId) {
             }
         })
         .build();
-    win.focus = Focus::Prompt;
+    win.focus_to(Focus::Prompt);
 }
 
 #[action("Goto a percentage")]
@@ -327,7 +327,7 @@ fn goto_percentage(editor: &mut Editor, id: ClientId) {
             }
         })
         .build();
-    win.focus = Focus::Prompt;
+    win.focus_to(Focus::Prompt);
 }
 
 #[action("Change working directory")]
@@ -346,7 +346,7 @@ fn change_working_dir(editor: &mut Editor, id: ClientId) {
             }
         })
         .build();
-    win.focus = Focus::Prompt;
+    win.focus_to( Focus::Prompt);
 }
 
 #[action("Grep")]
@@ -379,7 +379,7 @@ fn grep(editor: &mut Editor, id: ClientId) {
             e.job_broker.request_slot(id, GREP_JOB, job);
         })
         .build();
-    win.focus = Focus::Prompt;
+    win.focus_to(Focus::Prompt);
 }
 
 // TODO use
@@ -403,5 +403,5 @@ pub(crate) fn close_modified_buffer<F: Fn(&mut Editor, ClientId) + 'static>(
             (on_confirm)(e, id);
         })
         .build();
-    win.focus = Focus::Prompt;
+    win.focus_to(Focus::Prompt);
 }

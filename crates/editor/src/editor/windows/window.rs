@@ -7,6 +7,7 @@ mod focus;
 mod prompt;
 mod search;
 mod shell;
+mod vi;
 mod view;
 
 #[cfg(test)]
@@ -30,10 +31,14 @@ use sanedit_messages::{
     key::KeyEvent,
     redraw::{Popup, PopupMessage, Severity, Size, StatusMessage},
 };
+use vi::Vi;
 
 use crate::{
     common::change::{newline_autopair, newline_empty_line, newline_indent},
-    editor::buffers::{Buffer, BufferId, SnapshotData},
+    editor::{
+        buffers::{Buffer, BufferId, SnapshotData},
+        keymap::KeymapKind,
+    },
 };
 
 use self::filetree::FiletreeView;
@@ -74,11 +79,13 @@ pub(crate) struct Window {
     jump_to_primary_cursor: bool,
 
     keys: Vec<KeyEvent>,
+    focus: Focus,
+    // vi_mode: Vi,
 
+    pub keymap_layer: String,
     pub shell_kind: ShellKind,
     pub completion: Completion,
     pub cursors: Cursors,
-    pub focus: Focus,
     pub search: Search,
     pub prompt: Prompt,
     pub config: WindowConfig,
@@ -96,6 +103,7 @@ impl Window {
             view: View::new(width, height),
             jump_to_primary_cursor: false,
             message: None,
+            keymap_layer: KeymapKind::Window.as_ref().into(),
             shell_kind: ShellKind::default(),
             completion: Completion::default(),
             cursors: Cursors::default(),
@@ -149,6 +157,20 @@ impl Window {
 
     pub fn focus(&self) -> Focus {
         self.focus
+    }
+
+    pub fn focus_to(&mut self, focus: Focus) {
+        self.focus = focus;
+
+        let kind = match self.focus {
+            Focus::Search => KeymapKind::Search,
+            Focus::Prompt => KeymapKind::Prompt,
+            Focus::Window => KeymapKind::Window,
+            Focus::Completion => KeymapKind::Completion,
+            Focus::Filetree => KeymapKind::Filetree,
+            Focus::Locations => KeymapKind::Locations,
+        };
+        self.keymap_layer = kind.as_ref().into();
     }
 
     pub fn reload(&mut self) {

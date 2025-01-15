@@ -3,7 +3,8 @@ use std::ops::{Add, RangeBounds, Sub};
 
 pub type BufferRange = Range<u64>;
 
-// Normal range is shit
+/// Normal range is shit
+/// Start is inclusive, end is exclusive
 #[derive(Default, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct Range<T: Ord> {
     pub start: T,

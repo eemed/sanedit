@@ -96,6 +96,8 @@ maps = [
     { key = "up", actions = ["prev_line"] },
     { key = "down", actions = ["next_line"] },
     { key = "right", actions = ["next_grapheme"] },
+    { key = "backspace", actions = ["remove_grapheme_before_cursor"] },
+    { key = "delete", actions = ["remove_grapheme_after_cursor"] },
 ]
 
 [keymaps.window]
@@ -134,6 +136,9 @@ maps = [
     { key = "I", actions = ["first_char_of_line", "goto_layer insert"] },
     { key = "!", actions = ["shell_command"] },
     { key = ":", actions = ["command_palette"] },
+    { key = "/", actions = ["search_forward"] },
+    { key = "?", actions = ["search_backward"] },
+    { key = "%", actions = ["goto_matching_pair"] },
 
     { key = "g d", actions = ["goto_definition"] },
     { key = "g r", actions = ["references"] },
@@ -230,77 +235,76 @@ maps = [
     # { key = "alt+3", actions = ["show_locations"] },
 ]
 
-# [keymaps.search]
-# maps = [
-#     { key = "ctrl+q", actions = ["quit"] },
-#     { key = "esc", actions = ["prompt_close"] },
-#     { key = "backspace", actions = ["prompt_remove_grapheme_before_cursor"] },
-#     { key = "left", actions = ["prompt_prev_grapheme"] },
-#     { key = "right", actions = ["prompt_next_grapheme"] },
-#     { key = "enter", actions = ["prompt_confirm"] },
-#     { key = "up", actions = ["prompt_history_next"] },
-#     { key = "down", actions = ["prompt_history_prev"] },
-#     { key = "ctrl+r", actions = ["search_toggle_regex"] },
-# ]
+[keymaps.search]
+maps = [
+    { key = "ctrl+q", actions = ["quit"] },
+    { key = "esc", actions = ["prompt_close"] },
+    { key = "backspace", actions = ["prompt_remove_grapheme_before_cursor"] },
+    { key = "left", actions = ["prompt_prev_grapheme"] },
+    { key = "right", actions = ["prompt_next_grapheme"] },
+    { key = "enter", actions = ["prompt_confirm"] },
+    { key = "up", actions = ["prompt_history_next"] },
+    { key = "down", actions = ["prompt_history_prev"] },
+    { key = "ctrl+r", actions = ["search_toggle_regex"] },
+]
 
 
-# [keymaps.locations]
-# maps = [
-#     { key = "ctrl+q", actions = ["quit"] },
-#     { key = "alt+up", actions = ["focus_window"] },
-#     { key = "esc", actions = ["close_locations"] },
-#     { key = "enter", actions = ["goto_loc_entry"] },
-#     { key = "up", actions = ["prev_loc_entry"] },
-#     { key = "down", actions = ["next_loc_entry"] },
-#     { key = "btab", actions = ["prev_loc_entry"] },
-#     { key = "tab", actions = ["next_loc_entry"] },
-#     { key = "p", actions = ["select_loc_parent"] },
-#     { key = "s", actions = ["toggle_all_expand_locs"] },
-#     { key = "k", actions = ["keep_locations"] },
-#     { key = "r", actions = ["reject_locations"] },
-#     { key = "alt+1", actions = ["focus_window"] },
-#     { key = "alt+2", actions = ["show_filetree"] },
-#     { key = "alt+3", actions = ["close_locations"] },
-# ]
+[keymaps.locations]
+maps = [
+    { key = "ctrl+q", actions = ["quit"] },
+    { key = "alt+up", actions = ["focus_window"] },
+    { key = "esc", actions = ["close_locations"] },
+    { key = "enter", actions = ["goto_loc_entry"] },
+    { key = "up", actions = ["prev_loc_entry"] },
+    { key = "down", actions = ["next_loc_entry"] },
+    { key = "btab", actions = ["prev_loc_entry"] },
+    { key = "tab", actions = ["next_loc_entry"] },
+    { key = "p", actions = ["select_loc_parent"] },
+    { key = "s", actions = ["toggle_all_expand_locs"] },
+    { key = "k", actions = ["keep_locations"] },
+    { key = "r", actions = ["reject_locations"] },
+    { key = "alt+1", actions = ["focus_window"] },
+    { key = "alt+2", actions = ["show_filetree"] },
+    { key = "alt+3", actions = ["close_locations"] },
+]
 
-# [keymaps.filetree]
-# maps = [
-#     { key = "ctrl+q", actions = ["quit"] },
-#     { key = "esc", actions = ["close_filetree"] },
-#     { key = "alt+right", actions = ["focus_window"] },
-#     { key = "enter", actions = ["goto_ft_entry"] },
-#     { key = "up", actions = ["prev_ft_entry"] },
-#     { key = "down", actions = ["next_ft_entry"] },
-#     { key = "btab", actions = ["prev_ft_entry"] },
-#     { key = "tab", actions = ["next_ft_entry"] },
-#     { key = "c", actions = ["ft_new_file"] },
-#     { key = "d", actions = ["ft_delete_file"] },
-#     { key = "p", actions = ["select_ft_parent"] },
-#     { key = "s", actions = ["ft_goto_current_file"] },
-#     { key = "alt+1", actions = ["focus_window"] },
-#     { key = "alt+2", actions = ["close_filetree"] },
-#     { key = "alt+3", actions = ["show_locations"] },
-# ]
+[keymaps.filetree]
+maps = [
+    { key = "ctrl+q", actions = ["quit"] },
+    { key = "esc", actions = ["close_filetree"] },
+    { key = "alt+right", actions = ["focus_window"] },
+    { key = "enter", actions = ["goto_ft_entry"] },
+    { key = "up", actions = ["prev_ft_entry"] },
+    { key = "down", actions = ["next_ft_entry"] },
+    { key = "btab", actions = ["prev_ft_entry"] },
+    { key = "tab", actions = ["next_ft_entry"] },
+    { key = "c", actions = ["ft_new_file"] },
+    { key = "d", actions = ["ft_delete_file"] },
+    { key = "p", actions = ["select_ft_parent"] },
+    { key = "s", actions = ["ft_goto_current_file"] },
+    { key = "alt+1", actions = ["focus_window"] },
+    { key = "alt+2", actions = ["close_filetree"] },
+    { key = "alt+3", actions = ["show_locations"] },
+]
 
-# [keymaps.prompt]
-# maps = [
-#     { key = "ctrl+q", actions = ["quit"] },
-#     { key = "esc", actions = ["prompt_close"] },
-#     { key = "backspace", actions = ["prompt_remove_grapheme_before_cursor"] },
-#     { key = "left", actions = ["prompt_prev_grapheme"] },
-#     { key = "right", actions = ["prompt_next_grapheme"] },
-#     { key = "tab", actions = ["prompt_next_completion"] },
-#     { key = "btab", actions = ["prompt_prev_completion"] },
-#     { key = "enter", actions = ["prompt_confirm"] },
-#     { key = "up", actions = ["prompt_history_next"] },
-#     { key = "down", actions = ["prompt_history_prev"] },
-# ]
+[keymaps.prompt]
+maps = [
+    { key = "esc", actions = ["prompt_close"] },
+    { key = "backspace", actions = ["prompt_remove_grapheme_before_cursor"] },
+    { key = "left", actions = ["prompt_prev_grapheme"] },
+    { key = "right", actions = ["prompt_next_grapheme"] },
+    { key = "tab", actions = ["prompt_next_completion"] },
+    { key = "btab", actions = ["prompt_prev_completion"] },
+    { key = "enter", actions = ["prompt_confirm"] },
+    { key = "up", actions = ["prompt_history_next"] },
+    { key = "down", actions = ["prompt_history_prev"] },
+]
 
-# [keymaps.completion]
-# fallthrough = "window"
-# maps = [
+[keymaps.completion]
+fallthrough = "window"
+maps = [
 #     { key = "tab", actions = ["next_completion"] },
 #     { key = "btab", actions = ["prev_completion"] },
 #     { key = "enter", actions = ["confirm_completion"] },
 #     { key = "esc", actions = ["abort_completion"] },
-# ]
+]

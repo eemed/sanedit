@@ -386,7 +386,7 @@ fn rename(editor: &mut Editor, id: ClientId) {
             );
         })
         .build();
-    win.focus = Focus::Prompt;
+    win.focus_to(Focus::Prompt);
 }
 
 #[action("Send LSP open document notification")]
@@ -464,5 +464,5 @@ pub(crate) fn diagnostics_to_locations(editor: &mut Editor, id: ClientId) {
     }
 
     win.locations.show = true;
-    win.focus = Focus::Locations;
+    win.focus_to(Focus::Locations);
 }

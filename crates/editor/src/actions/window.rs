@@ -7,7 +7,7 @@ use super::hooks;
 #[action("Focus window")]
 fn focus_window(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
-    win.focus = Focus::Window;
+    win.focus_to(Focus::Window);
 }
 
 #[action("Reload the current window")]

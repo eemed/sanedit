@@ -196,7 +196,7 @@ impl Prompt {
                         win.prompt.clear_choices();
                     }
 
-                    win.focus = Focus::Prompt;
+                    win.focus_to(Focus::Prompt);
                     let (win, _buf) = editor.win_buf_mut(id);
                     win.prompt.add_choices(matched.into());
                 }

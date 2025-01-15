@@ -125,7 +125,7 @@ fn save_as(editor: &mut Editor, id: ClientId) {
             save.execute(editor, id);
         })
         .build();
-    win.focus = Focus::Prompt;
+    win.focus_to(Focus::Prompt);
 }
 
 #[action("Insert a newline to each cursor")]

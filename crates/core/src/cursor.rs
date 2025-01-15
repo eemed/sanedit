@@ -73,6 +73,7 @@ impl Cursor {
     }
 
     pub fn selection(&self) -> Option<BufferRange> {
+        // TODO make this inclusive range
         let anc = self.anchor.as_ref()?;
         let min = self.pos.min(*anc);
         let max = self.pos.max(*anc);

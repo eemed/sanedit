@@ -36,7 +36,7 @@ pub(crate) struct DrawContext<'a, 'b> {
 
 impl<'a, 'b> DrawContext<'a, 'b> {
     pub fn focus_changed_from(&self, focus: Focus) -> bool {
-        self.state.last_focus == Some(focus) && focus != self.editor.win.focus
+        self.state.last_focus == Some(focus) && focus != self.editor.win.focus()
     }
 }
 
@@ -122,7 +122,7 @@ impl DrawState {
             redraw.push(current);
         }
 
-        self.last_focus = Some(win.focus);
+        self.last_focus = Some(win.focus());
         redraw
     }
 

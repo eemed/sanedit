@@ -100,7 +100,7 @@ impl Completion {
                 match opts {
                     MatchedOptions::Done => {
                         if win.completion.chooser.options().is_empty() {
-                            win.focus = Focus::Window;
+                            win.focus_to(Focus::Window);
                             win.info_msg("No completion items");
                         }
                     }
@@ -108,7 +108,7 @@ impl Completion {
                         if clear_old {
                             win.completion.clear_choices();
                         }
-                        win.focus = Focus::Completion;
+                        win.focus_to(Focus::Completion);
                         let opts: Vec<Choice> = matched.into_iter().map(Choice::from).collect();
                         let (win, _buf) = editor.win_buf_mut(id);
                         win.completion.add_choices(opts.into());

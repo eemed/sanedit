@@ -348,9 +348,9 @@ impl Mapping {
             if let Some(goto) = parse_goto_layer(name) {
                 let action = Action::Dynamic {
                     name: format!("Goto layer {}", goto),
-                    fun: Arc::new(move |editor, _id| {
-                        log::info!("goto: {}", goto);
-                        editor.keymaps.goto_layer(goto.as_str());
+                    fun: Arc::new(move |editor, id| {
+                        let (win, _buf) = editor.win_buf_mut(id);
+                        win.keymap_layer = goto.clone();
                         return;
                     }),
                     desc: String::new(),
@@ -393,8 +393,8 @@ pub(crate) struct KeymapLayer {
 }
 
 impl KeymapLayer {
-    pub fn to_layer(&self, name: &str) -> Layer {
-        let mut layer = Layer::new(name);
+    pub fn to_layer(&self) -> Layer {
+        let mut layer = Layer::new();
         layer.discard = self.discard.unwrap_or(false);
         layer.fallthrough = self.fallthrough.clone();
 

@@ -65,7 +65,7 @@ fn complete_from_syntax(editor: &mut Editor, id: ClientId) {
 #[action("Confirm completion")]
 fn completion_confirm(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
-    win.focus = Focus::Window;
+    win.focus_to(Focus::Window);
 
     let opt = win.completion.selected().map(|opt| {
         let prefix = opt.matches().iter().map(|m| m.end).max().unwrap_or(0);
@@ -80,7 +80,7 @@ fn completion_confirm(editor: &mut Editor, id: ClientId) {
 #[action("Abort completion")]
 fn completion_abort(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
-    win.focus = Focus::Window;
+    win.focus_to(Focus::Window);
 }
 
 #[action("Select next completion")]
@@ -108,7 +108,7 @@ fn send_word(editor: &mut Editor, id: ClientId) {
         let cursor = win.cursors.primary().pos();
         let start = win.completion.started_at();
         if start > cursor {
-            win.focus = Focus::Window;
+            win.focus_to(Focus::Window);
             return;
         }
         let slice = buf.slice(start..cursor);

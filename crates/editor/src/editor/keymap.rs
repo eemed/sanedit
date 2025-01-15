@@ -1,11 +1,11 @@
-use std::cell::RefCell;
-
 use rustc_hash::FxHashMap;
 use sanedit_messages::key::KeyEvent;
 use strum_macros::AsRefStr;
 use strum_macros::EnumIter;
 
 use crate::actions::Action;
+
+use super::Map;
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, AsRefStr, EnumIter)]
 #[strum(serialize_all = "lowercase")]
@@ -20,8 +20,6 @@ pub(crate) enum KeymapKind {
 
 #[derive(Debug, Clone, Default)]
 pub(crate) struct Layer {
-    name: String,
-
     root: KeyTrie,
 
     /// if no keybinding found whether to fallthrough to the next layer
@@ -33,9 +31,8 @@ pub(crate) struct Layer {
 }
 
 impl Layer {
-    pub fn new(name: &str) -> Layer {
+    pub fn new() -> Layer {
         Layer {
-            name: name.into(),
             root: KeyTrie::default(),
             fallthrough: None,
             discard: false,
@@ -57,44 +54,19 @@ impl Layer {
 
 #[derive(Debug, Clone, Default)]
 pub(crate) struct Keymaps {
-    layer: RefCell<usize>,
-    layers: Vec<Layer>,
+    layers: Map<String, Layer>,
 }
 
 impl Keymaps {
-    #[allow(dead_code)]
-    pub fn layer(&self) -> &str {
-        let current = *self.layer.borrow();
-        &self.layers[current].name
-    }
-
-    pub fn goto_layer(&self, name: &str) {
-        if let Some(pos) = self.layers.iter().position(|layer| layer.name == name) {
-            *self.layer.borrow_mut() = pos;
-        }
-    }
-
-    pub fn goto(&self, kind: KeymapKind) {
-        if let Some(pos) = self
-            .layers
-            .iter()
-            .position(|layer| layer.name == kind.as_ref())
-        {
-            *self.layer.borrow_mut() = pos;
-        }
-    }
-
-    pub fn get(&self, events: &[KeyEvent]) -> KeymapResult {
-        let mut current = *self.layer.borrow();
-        let mut layer = &self.layers[current];
+    pub fn get(&self, layer: &str, events: &[KeyEvent]) -> KeymapResult {
+        let mut layer = &self.layers[layer];
         let mut result = layer.get(events);
 
         while matches!(result, KeytrieResult::NotFound) {
             // No fallthrough or no new layer to fallto
             match &layer.fallthrough {
                 Some(l) => {
-                    current = self.layers.iter().position(|lay| &lay.name == l).unwrap();
-                    layer = &self.layers[current];
+                    layer = &self.layers[l];
                     result = layer.get(events);
                 }
                 None => {
@@ -114,19 +86,17 @@ impl Keymaps {
         }
     }
 
-    pub fn push(&mut self, layer: Layer) {
-        self.layers.push(layer);
+    pub fn insert(&mut self, name: &str, layer: Layer) {
+        self.layers.insert(name.to_string(), layer);
     }
 
-    pub fn find_bound_key(&self, name: &str) -> Option<Vec<KeyEvent>> {
-        let mut current = *self.layer.borrow();
-        let mut layer = &self.layers[current];
+    pub fn find_bound_key(&self, layer: &str, name: &str) -> Option<Vec<KeyEvent>> {
+        let mut layer = &self.layers[layer];
         let mut result = layer.find_bound_key(name);
 
         while result.is_none() {
             let next = layer.fallthrough.as_ref()?;
-            current = self.layers.iter().position(|lay| &lay.name == next)?;
-            layer = &self.layers[current];
+            layer = &self.layers[next];
             result = layer.find_bound_key(name);
         }
 

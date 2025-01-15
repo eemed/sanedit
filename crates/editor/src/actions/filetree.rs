@@ -12,14 +12,14 @@ use sanedit_server::ClientId;
 fn show_filetree(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = win_buf!(editor, id);
     if win.ft_view.show {
-        win.focus = Focus::Filetree;
+        win.focus_to(Focus::Filetree);
         return;
     }
 
     let visible = editor.filetree.iter().count();
     win.ft_view.selection = min(visible - 1, win.ft_view.selection);
     win.ft_view.show = true;
-    win.focus = Focus::Filetree;
+    win.focus_to(Focus::Filetree);
 }
 
 #[action("Press filetree entry")]
@@ -70,7 +70,7 @@ fn prev_ft_entry(editor: &mut Editor, id: ClientId) {
 fn close_filetree(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.ft_view.show = false;
-    win.focus = Focus::Window;
+    win.focus_to(Focus::Window);
 }
 
 #[action("Create a new file")]
@@ -130,7 +130,7 @@ fn ft_new_file(editor: &mut Editor, id: ClientId) {
             let _ = editor.open_file(id, &file);
         })
         .build();
-    win.focus = Focus::Prompt;
+    win.focus_to(Focus::Prompt);
 }
 
 #[action("Go to previous directory")]
@@ -184,10 +184,10 @@ fn ft_delete_file(editor: &mut Editor, id: ClientId) {
             prev_ft_entry.execute(editor, id);
 
             let (win, _buf) = editor.win_buf_mut(id);
-            win.focus = Focus::Filetree;
+            win.focus_to(Focus::Filetree);
         })
         .build();
-    win.focus = Focus::Prompt;
+    win.focus_to(Focus::Prompt);
 }
 
 #[action("Select parent")]

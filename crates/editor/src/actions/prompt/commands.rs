@@ -10,9 +10,12 @@ pub(crate) fn command_palette(editor: &Editor, id: ClientId) -> Vec<MatchOption>
     COMMANDS
         .iter()
         .map(|action| {
-            let (_win, _buf) = editor.win_buf(id);
+            let (win, _buf) = editor.win_buf(id);
             let mut description = String::new();
-            if let Some(bind) = editor.keymap().find_bound_key(action.name()) {
+            if let Some(bind) = editor
+                .keymap()
+                .find_bound_key(&win.keymap_layer, action.name())
+            {
                 description = keyevents_to_string(&bind);
             }
             let value: String = action.description().into();
@@ -40,7 +43,7 @@ pub(crate) fn matcher_result_handler(editor: &mut Editor, id: ClientId, msg: Mat
                 if clear_old {
                     win.prompt.clear_choices();
                 }
-                win.focus = Focus::Prompt;
+                win.focus_to(Focus::Prompt);
                 let opts: Vec<Choice> = matched.into_iter().map(Choice::from).collect();
                 let (win, _buf) = editor.win_buf_mut(id);
                 win.prompt.add_choices(opts.into());

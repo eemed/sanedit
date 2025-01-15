@@ -13,7 +13,7 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> Option<redraw::Redraw> {
         return Redraw::Completion(Component::Close).into();
     }
 
-    let in_focus = ctx.editor.win.focus == Focus::Completion;
+    let in_focus = ctx.editor.win.focus() == Focus::Completion;
 
     if !in_focus {
         return None;

@@ -13,7 +13,7 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> Statusline {
         ..
     } = ctx.editor;
 
-    if win.focus == Focus::Filetree {
+    if win.focus() == Focus::Filetree {
         let left = " File browser".to_string();
         let right = String::new();
         return Statusline { left, right };

@@ -346,7 +346,7 @@ fn change_working_dir(editor: &mut Editor, id: ClientId) {
             }
         })
         .build();
-    win.focus_to( Focus::Prompt);
+    win.focus_to(Focus::Prompt);
 }
 
 #[action("Grep")]

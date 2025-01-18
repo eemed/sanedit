@@ -1,7 +1,7 @@
 use std::cmp::min;
 
 use rustc_hash::FxHashSet;
-use sanedit_core::{BufferRange, Cursor};
+use sanedit_core::{BufferRange, Cursor, Range};
 use sanedit_utils::ranges::OverlappingRanges;
 
 #[derive(Debug, Clone)]

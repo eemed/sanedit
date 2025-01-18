@@ -125,6 +125,10 @@ maps = [
     { key = "k", actions = ["prev_line"] },
     { key = "j", actions = ["next_line"] },
     { key = "l", actions = ["next_grapheme"] },
+
+    { key = "alt+k", actions = ["prev_paragraph"] },
+    { key = "alt+j", actions = ["next_paragraph"] },
+
     { key = "ctrl+p", actions = ["open_file"] },
     { key = "space g", actions = ["grep"] },
     { key = "v", actions = ["start_selection"] },
@@ -142,15 +146,17 @@ maps = [
     { key = "/", actions = ["search_forward"] },
     { key = "?", actions = ["search_backward"] },
     { key = "%", actions = ["goto_matching_pair"] },
-    { key = "c", actions = ["remove_cursor_selections", "goto_layer insert"] },
-    { key = "c c", actions = ["select_line", "remove_cursor_selections", "goto_layer insert"] },
-    { key = "d d", actions = ["select_line", "remove_cursor_selections"] },
+    # { key = "c", actions = ["remove_cursor_selections", "goto_layer insert"] },
+    { key = "c c", actions = ["start_of_line", "remove_to_end_of_line", "goto_layer insert"] },
+    { key = "d d", actions = ["select_line", "swap_selection_dir", "remove_cursor_selections"] },
     { key = "D", actions = ["remove_to_end_of_line"] },
     { key = "x", actions = ["remove_grapheme_after_cursor"] },
     { key = "G", actions = ["end_of_buffer"] },
     { key = "g g", actions = ["start_of_buffer"] },
     { key = "o", actions = ["newline_below", "goto_layer insert"] },
     { key = "O", actions = ["newline_above", "goto_layer insert"] },
+    { key = ">", actions = ["indent_line"] },
+    { key = "<", actions = ["dedent_line"] },
 
     { key = "g d", actions = ["goto_definition"] },
     { key = "g r", actions = ["references"] },
@@ -278,21 +284,30 @@ maps = [
 
 [keymaps.locations]
 maps = [
-    { key = "ctrl+q", actions = ["quit"] },
-    { key = "alt+up", actions = ["focus_window"] },
-    { key = "esc", actions = ["close_locations"] },
+    { key = "alt+q", actions = ["close_locations"] },
+    { key = "space q", actions = ["quit"] },
+    { key = "k", actions = ["prev_loc_entry"] },
+    { key = "j", actions = ["next_loc_entry"] },
+
     { key = "enter", actions = ["goto_loc_entry"] },
-    { key = "up", actions = ["prev_loc_entry"] },
-    { key = "down", actions = ["next_loc_entry"] },
-    { key = "btab", actions = ["prev_loc_entry"] },
-    { key = "tab", actions = ["next_loc_entry"] },
     { key = "p", actions = ["select_loc_parent"] },
-    { key = "s", actions = ["toggle_all_expand_locs"] },
-    { key = "k", actions = ["keep_locations"] },
-    { key = "r", actions = ["reject_locations"] },
-    { key = "alt+1", actions = ["focus_window"] },
-    { key = "alt+2", actions = ["show_filetree"] },
-    { key = "alt+3", actions = ["close_locations"] },
+    { key = "e", actions = ["toggle_all_expand_locs"] },
+    # { key = "k", actions = ["keep_locations"] },
+    # { key = "r", actions = ["reject_locations"] },
+
+    # { key = "alt+up", actions = ["focus_window"] },
+
+    # { key = "up", actions = ["prev_loc_entry"] },
+    # { key = "down", actions = ["next_loc_entry"] },
+    # { key = "btab", actions = ["prev_loc_entry"] },
+    # { key = "tab", actions = ["next_loc_entry"] },
+    # { key = "p", actions = ["select_loc_parent"] },
+    # { key = "s", actions = ["toggle_all_expand_locs"] },
+    # { key = "k", actions = ["keep_locations"] },
+    # { key = "r", actions = ["reject_locations"] },
+    # { key = "alt+1", actions = ["focus_window"] },
+    # { key = "alt+2", actions = ["show_filetree"] },
+    # { key = "alt+3", actions = ["close_locations"] },
 ]
 
 [keymaps.filetree]

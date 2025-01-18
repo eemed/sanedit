@@ -3,7 +3,7 @@ use sanedit_buffer::PieceTreeView;
 use crate::editor::windows::Cursors;
 
 #[derive(Debug, Clone, Default)]
-pub(crate) struct SnapshotData {
+pub(crate) struct SnapshotMetadata {
     pub(crate) cursors: Cursors,
     pub(crate) view_offset: u64,
 }
@@ -14,74 +14,78 @@ pub(crate) type SnapshotId = usize;
 /// redo points.
 #[derive(Debug)]
 pub(crate) struct Snapshots {
-    current: SnapshotId,
+    current: Option<SnapshotId>,
     snapshots: Vec<SnapshotNode>,
 }
 
 impl Snapshots {
-    pub fn new(initial: PieceTreeView) -> Snapshots {
+    pub fn new() -> Snapshots {
         Snapshots {
-            current: 0,
-            snapshots: vec![SnapshotNode::new(initial, 0)],
+            current: None,
+            snapshots: vec![],
         }
     }
 
     /// Remove current snapshot called in case something went wrong when
     /// applying changes
-    pub fn remove_current_and_set(&mut self, id: SnapshotId) {
-        let current = self.snapshots.remove(self.current);
-        // Cut links
-        for prev in &current.previous {
-            self.snapshots[*prev].next.retain(|n| *n != self.current);
+    pub fn remove_current_and_set(&mut self, id: Option<SnapshotId>) {
+        if let Some(cur) = self.current {
+            let current = self.snapshots.remove(cur);
+            // Cut links
+            for prev in &current.previous {
+                self.snapshots[*prev].next.retain(|n| *n != cur);
+            }
         }
         // Restore
         self.current = id;
     }
 
-    pub fn current(&self) -> SnapshotId {
+    pub fn current(&self) -> Option<SnapshotId> {
         self.current
     }
 
     pub fn insert(&mut self, snapshot: PieceTreeView) -> SnapshotId {
         let next_pos = self.snapshots.len();
         let mut node = SnapshotNode::new(snapshot, next_pos);
-        node.previous.push(self.current);
-        self.snapshots[self.current].next.push(next_pos);
+        if let Some(cur) = self.current {
+            node.previous.push(cur);
+            self.snapshots[cur].next.push(next_pos);
+        }
         self.snapshots.push(node);
-        self.current = next_pos;
-        self.current
+        self.current = Some(next_pos);
+        next_pos
     }
 
     fn undo_pos(&self) -> Option<SnapshotId> {
-        let node = self.snapshots.get(self.current)?;
+        let node = self.snapshots.get(self.current?)?;
         node.previous.iter().max().cloned()
     }
 
     pub fn undo(&mut self) -> Option<SnapshotNode> {
         let latest = self.undo_pos()?;
         let node = self.snapshots.get(latest)?;
-        self.current = node.id;
+        self.current = Some(node.id);
         node.clone().into()
     }
 
     fn redo_pos(&self) -> Option<SnapshotId> {
-        let node = self.snapshots.get(self.current)?;
+        let node = self.snapshots.get(self.current?)?;
         node.next.iter().max().cloned()
     }
 
     pub fn redo(&mut self) -> Option<SnapshotNode> {
         let latest = self.redo_pos()?;
         let node = self.snapshots.get(latest)?;
-        self.current = node.id;
+        self.current = Some(node.id);
         node.clone().into()
     }
 
-    pub fn data_mut(&mut self, id: SnapshotId) -> Option<&mut SnapshotData> {
+    pub fn data_mut(&mut self, id: SnapshotId) -> Option<&mut SnapshotMetadata> {
         let node = self.snapshots.get_mut(id)?;
         Some(&mut node.data)
     }
 
-    pub fn data(&self, id: SnapshotId) -> Option<&SnapshotData> {
+    pub fn data(&self, id: SnapshotId) -> Option<&SnapshotMetadata> {
         let node = self.snapshots.get(id)?;
         Some(&node.data)
     }
@@ -95,7 +99,7 @@ pub(crate) struct SnapshotNode {
     next: Vec<SnapshotId>,
 
     /// Extra data we can save to a snapshot
-    pub(crate) data: SnapshotData,
+    pub(crate) data: SnapshotMetadata,
 }
 
 impl SnapshotNode {
@@ -106,7 +110,7 @@ impl SnapshotNode {
             previous: vec![],
             next: vec![],
 
-            data: SnapshotData::default(),
+            data: SnapshotMetadata::default(),
         }
     }
 }

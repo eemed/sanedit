@@ -66,7 +66,7 @@ impl Changes {
 
         for change in self.changes.iter() {
             let mut range = change.range();
-            let abs = off.unsigned_abs() as u64;
+            let abs = off.abs() as u64;
             if off.is_negative() {
                 range.backward(abs);
             } else {
@@ -78,7 +78,7 @@ impl Changes {
             }
 
             if !change.text().is_empty() {
-                let abs = off.unsigned_abs() as u64;
+                let abs = off.abs() as u64;
                 let start = if off.is_negative() {
                     change.start() - abs
                 } else {
@@ -291,7 +291,7 @@ impl Changes {
         self.changes.iter().all(Change::has_eol)
     }
 
-    pub fn after_ranges(&self) -> Vec<BufferRange> {
+    fn after_ranges(&self) -> Vec<BufferRange> {
         let mut ranges = Vec::with_capacity(self.changes.len());
 
         for change in self.changes.iter() {
@@ -314,7 +314,7 @@ impl Changes {
         ranges
     }
 
-    pub fn before_ranges(&self) -> Vec<BufferRange> {
+    fn before_ranges(&self) -> Vec<BufferRange> {
         let mut ranges = Vec::with_capacity(self.changes.len());
 
         for change in self.changes.iter() {
@@ -325,9 +325,9 @@ impl Changes {
     }
 
     pub fn needs_undo_point(&self, previous: Option<&Changes>) -> bool {
-        // no previous edits, undo point should be created automatically
+        // no previous edits, undo point should be created
         if previous.is_none() {
-            return false;
+            return true;
         }
 
         use ChangesKind::*;

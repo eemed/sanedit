@@ -22,7 +22,7 @@ use self::snapshots::Snapshots;
 
 pub(crate) use change::ChangeResult;
 pub(crate) use config::BufferConfig;
-pub(crate) use snapshots::{SnapshotData, SnapshotId};
+pub(crate) use snapshots::{SnapshotId, SnapshotMetadata};
 
 key_type!(pub(crate) BufferId);
 
@@ -51,14 +51,13 @@ pub(crate) struct Buffer {
 impl Buffer {
     pub fn new() -> Buffer {
         let pt = PieceTree::new();
-        let snapshot = pt.view();
         Buffer {
             id: BufferId::default(),
             filetype: None,
             read_only: false,
             pt,
             is_modified: false,
-            snapshots: Snapshots::new(snapshot),
+            snapshots: Snapshots::new(),
             config: BufferConfig::default(),
             path: None,
             last_edit: None,
@@ -79,14 +78,13 @@ impl Buffer {
         log::debug!("creating file backed buffer");
         let path = file.path();
         let pt = PieceTree::from_path(path)?;
-        let snapshot = pt.view();
         Ok(Buffer {
             id: BufferId::default(),
             read_only: file.read_only(),
             pt,
             filetype: file.filetype().cloned(),
             is_modified: false,
-            snapshots: Snapshots::new(snapshot),
+            snapshots: Snapshots::new(),
             config: options,
             path: Some(path.into()),
             last_edit: None,
@@ -109,14 +107,13 @@ impl Buffer {
 
     fn from_reader<R: io::Read>(reader: R) -> Result<Buffer> {
         let pt = PieceTree::from_reader(reader)?;
-        let snapshot = pt.view();
         Ok(Buffer {
             id: BufferId::default(),
             pt,
             filetype: None,
             read_only: false,
             is_modified: false,
-            snapshots: Snapshots::new(snapshot),
+            snapshots: Snapshots::new(),
             config: BufferConfig::default(),
             path: None,
             last_edit: None,
@@ -137,12 +134,12 @@ impl Buffer {
     }
 
     /// Get mutable access to extra data for a snapshot
-    pub fn snapshot_data_mut(&mut self, id: SnapshotId) -> Option<&mut SnapshotData> {
+    pub fn snapshot_data_mut(&mut self, id: SnapshotId) -> Option<&mut SnapshotMetadata> {
         self.snapshots.data_mut(id)
     }
 
     /// Get access to extra data for a snapshot
-    pub fn snapshot_data(&self, id: SnapshotId) -> Option<&SnapshotData> {
+    pub fn snapshot_data(&self, id: SnapshotId) -> Option<&SnapshotMetadata> {
         self.snapshots.data(id)
     }
 
@@ -159,7 +156,7 @@ impl Buffer {
     fn needs_undo_point(&mut self, change: &Changes) -> bool {
         let last = self.last_edit.as_ref();
         change.allows_undo_point_creation()
-            && self.is_modified
+            && (self.is_modified || self.total_changes_made == 0)
             && change.needs_undo_point(last.as_ref().map(|edit| &edit.changes))
     }
 
@@ -168,8 +165,18 @@ impl Buffer {
 
         let mut result = ChangeResult::default();
         let rollback = self.ro_view();
+        let snapshot = self.snapshots.current();
         let needs_undo = self.needs_undo_point(changes);
-        let rollback_snapshot_id = self.snapshots.current();
+        let did_undo = self
+            .last_edit
+            .as_ref()
+            .map(|edit| edit.changes.is_undo())
+            .unwrap_or(false);
+        let forks = did_undo && !changes.is_undo() && !changes.is_redo();
+
+        if forks {
+            result.forked_snapshot = snapshot;
+        }
 
         if needs_undo {
             let snapshot = self.ro_view();
@@ -180,6 +187,7 @@ impl Buffer {
         match self.apply_changes_impl(changes) {
             Ok(restored) => {
                 result.restored_snapshot = restored;
+
                 self.last_edit = Some(Edit {
                     buf: rollback,
                     changes: changes.clone(),
@@ -189,7 +197,7 @@ impl Buffer {
             Err(e) => {
                 self.pt.restore(rollback);
                 if needs_undo {
-                    self.snapshots.remove_current_and_set(rollback_snapshot_id);
+                    self.snapshots.remove_current_and_set(snapshot);
                 }
                 return Err(e);
             }

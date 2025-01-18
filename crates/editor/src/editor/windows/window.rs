@@ -34,7 +34,7 @@ use sanedit_messages::{
 use crate::{
     common::change::{newline_autopair, newline_empty_line, newline_indent},
     editor::{
-        buffers::{Buffer, BufferId, SnapshotData},
+        buffers::{Buffer, BufferId, SnapshotMetadata},
         keymap::KeymapKind,
     },
 };
@@ -69,7 +69,7 @@ pub(crate) use self::{
 #[derive(Debug)]
 pub(crate) struct Window {
     bid: BufferId,
-    last_buf: Option<(BufferId, SnapshotData)>,
+    last_buf: Option<(BufferId, SnapshotMetadata)>,
     message: Option<StatusMessage>,
     view: View,
 
@@ -189,7 +189,7 @@ impl Window {
     pub fn open_buffer(&mut self, bid: BufferId) -> BufferId {
         let old = self.bid;
         // Store old buffer data
-        let odata = self.create_snapshot_data();
+        let odata = self.window_metadata();
         self.last_buf = Some((old, odata));
 
         self.bid = bid;
@@ -201,7 +201,7 @@ impl Window {
         match mem::take(&mut self.last_buf) {
             Some((pbid, pdata)) => {
                 let old = self.bid;
-                let odata = self.create_snapshot_data();
+                let odata = self.window_metadata();
                 self.last_buf = Some((old, odata));
 
                 self.bid = pbid;
@@ -346,12 +346,12 @@ impl Window {
     /// Called when buffer is changed and we should correct
     /// this window.
     pub fn on_buffer_changed(&mut self, buf: &Buffer) {
-        self.move_cursors_according_to_last_change(buf);
-        self.cursors.merge_overlapping();
+        // self.move_cursors_according_to_last_change(buf);
+        // self.cursors.merge_overlapping();
 
-        if self.jump_to_primary_cursor {
-            self.view_to_cursor(buf);
-        }
+        // if self.jump_to_primary_cursor {
+        //     self.view_to_cursor(buf);
+        // }
 
         // Redraw view
         self.view.invalidate();
@@ -403,8 +403,8 @@ impl Window {
         // self.view.view_to(primary_pos, buf);
     }
 
-    fn create_snapshot_data(&self) -> SnapshotData {
-        SnapshotData {
+    fn window_metadata(&self) -> SnapshotMetadata {
+        SnapshotMetadata {
             cursors: self.cursors.clone(),
             view_offset: self.view.start(),
         }
@@ -425,10 +425,17 @@ impl Window {
     }
 
     fn change(&mut self, buf: &mut Buffer, changes: &Changes) -> Result<()> {
+        let sdata = self.window_metadata();
         let result = buf.apply_changes(changes)?;
 
+        log::info!("Change: {sdata:?}, {result:?}");
+        changes.move_cursors(self.cursors.cursors_mut());
+        self.cursors.merge_overlapping();
+
         if let Some(id) = result.created_snapshot {
-            *buf.snapshot_data_mut(id).unwrap() = self.create_snapshot_data();
+            *buf.snapshot_data_mut(id).unwrap() = sdata;
+        } else if let Some(id) = result.forked_snapshot {
+            *buf.snapshot_data_mut(id).unwrap() = sdata;
         }
 
         self.view.invalidate();
@@ -442,8 +449,8 @@ impl Window {
             return Ok(false);
         }
 
-        self.remove(buf, &selections)?;
         self.cursors.stop_selection();
+        self.remove(buf, &selections)?;
 
         Ok(true)
     }
@@ -514,13 +521,78 @@ impl Window {
         Ok(())
     }
 
+    fn cursors_from_changes(changes: &Changes) -> Cursors {
+        let mut cursors = Cursors::default();
+
+        let mut diff: i128 = 0;
+        for change in changes.iter() {
+            let total = change.text().len() as i128 - change.range().len() as i128;
+            diff += total;
+
+            let mut pos = change.range().end;
+            if total < 0 {
+                pos -= diff.abs() as u64;
+            } else {
+                pos += diff.abs() as u64;
+            }
+
+            cursors.push(Cursor::new(pos));
+        }
+
+        if cursors.len() != 1 {
+            cursors.remove_primary();
+        }
+        cursors
+    }
+
     pub fn undo(&mut self, buf: &mut Buffer) -> Result<()> {
+        // R -> r1Aa -> a1 xxx Cc
+        //           -> a2 yyy Dd
+        //
+        // PROBLEM:
+        // on fork: undo from C or D -> When was (a) saved? what cursors are
+        // there
+
+        // Nothing -> insert h -> SNAP A -> insert ello
+        //
+        // undo -> SNAP B hello| after/berfore
+        //      -> restore SNAP A before cursors
+        //
+        // redo -> restore SNAP B hello| after/before cursors
+        //
+        // remove o -> SNAP B before hello| after hell|
+        //     undo -> SNAP C after before hell|
+        //          -> restore SNAP B hello| before
+        //     redo -> restore SNAP C hell| before
+        //
+        // FORK:
+        // remove o -> SNAP B before hello| after hell|
+        //     undo -> SNAP C after before hell|
+        //          -> restore SNAP B hello| before
+        //  insert line 2 w
+        //          -> No snap
+        //          (UPDATE SNAP B?)
+        //          -> FORKS the SNAPSHOTS HERE
+        //     undo -> SNAP D after before w|
+        //          -> restore SNAP B hello| BEFORE
+        //          SHOULD BE SNAP B  line2 |
+        //          !!!!! WE NEED CURSORS AT POSITION WITHOUT SNAPSHOT ?!? HOW TO FIX
+        //
+        // When undoing stuff create cursors from last edit, instead of current
+        // position
+        let cursors = buf
+            .last_edit()
+            .map(|edit| Self::cursors_from_changes(&edit.changes))
+            .unwrap_or(Cursors::default());
+
         let change = show_warn!(self, buf.apply_changes(&Changes::undo()));
         let created = change.created_snapshot;
         let restored = change.restored_snapshot;
 
         if let Some(id) = created {
-            *buf.snapshot_data_mut(id).unwrap() = self.create_snapshot_data();
+            let mut sdata = self.window_metadata();
+            sdata.cursors = cursors;
+            *buf.snapshot_data_mut(id).unwrap() = sdata;
         }
 
         if let Some(restored) = restored {
@@ -535,7 +607,7 @@ impl Window {
         Ok(())
     }
 
-    fn restore(&mut self, sdata: &SnapshotData) {
+    fn restore(&mut self, sdata: &SnapshotMetadata) {
         // Clear highlights
         self.search.hl_matches = vec![];
 
@@ -546,11 +618,7 @@ impl Window {
 
     pub fn redo(&mut self, buf: &mut Buffer) -> Result<()> {
         let change = show_warn!(self, buf.apply_changes(&Changes::redo()));
-        let created = change.created_snapshot;
         let restored = change.restored_snapshot;
-        if let Some(id) = created {
-            *buf.snapshot_data_mut(id).unwrap() = self.create_snapshot_data();
-        }
 
         if let Some(restored) = restored {
             if let Some(data) = buf.snapshot_data(restored) {
@@ -712,7 +780,7 @@ impl Window {
     pub fn save_buffer(&mut self, buf: &mut Buffer) -> Result<()> {
         let saved = show_error!(self, buf.save_rename());
         let sdata = buf.snapshot_data_mut(saved.snapshot).unwrap();
-        *sdata = self.create_snapshot_data();
+        *sdata = self.window_metadata();
         Ok(())
     }
 

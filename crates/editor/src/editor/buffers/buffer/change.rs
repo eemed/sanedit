@@ -5,4 +5,7 @@ pub(crate) struct ChangeResult {
     pub(crate) created_snapshot: Option<SnapshotId>,
     /// If kind is undo or redo, the restored snapshot id
     pub(crate) restored_snapshot: Option<SnapshotId>,
+
+    /// If operation forks a snapshot ie. undo and insert something else
+    pub(crate) forked_snapshot: Option<SnapshotId>,
 }

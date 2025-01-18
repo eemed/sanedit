@@ -12,7 +12,10 @@ use sanedit_core::{
     Cursor, PTSearcher,
 };
 
-use super::{hooks::{self, run}, movement};
+use super::{
+    hooks::{self, run},
+    movement,
+};
 
 #[action("Start selection and jump to next word")]
 fn select_to_next_word(editor: &mut Editor, id: ClientId) {

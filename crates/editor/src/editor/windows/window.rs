@@ -88,6 +88,7 @@ pub(crate) struct Window {
     pub config: WindowConfig,
     pub ft_view: FiletreeView,
     pub locations: Locations,
+    pub on_line_char_search: Option<char>,
     popup: Option<Popup>,
 }
 
@@ -110,6 +111,7 @@ impl Window {
             focus: Focus::Window,
             ft_view: FiletreeView::default(),
             locations: Locations::default(),
+            on_line_char_search: None,
             popup: None,
         }
     }
@@ -157,6 +159,7 @@ impl Window {
     }
 
     pub fn focus_to(&mut self, focus: Focus) {
+        log::info!("Focus: {focus:?}");
         self.focus = focus;
 
         let kind = match self.focus {

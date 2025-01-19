@@ -13,7 +13,6 @@ pub(crate) fn run(editor: &mut Editor, id: ClientId, hook: Hook) {
 
     let hooks = editor.hooks.get(kind);
     for action in hooks {
-        // log::info!("Exec hook func: {}", action.name());
         action.execute(editor, id);
     }
 

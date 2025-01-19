@@ -189,7 +189,6 @@ impl Changes {
     }
 
     fn is_removed(&self, range: &BufferRange) -> bool {
-        log::info!("changes: {:?}", self.changes);
         self.changes
             .iter()
             .any(|change| change.range.includes(range))

@@ -104,3 +104,6 @@ fn open_new_scratch_buffer(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.open_buffer(bid);
 }
+
+#[action("Do nothing")]
+fn nop(_editor: &mut Editor, _id: ClientId) {}

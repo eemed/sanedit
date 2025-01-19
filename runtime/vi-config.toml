@@ -103,6 +103,16 @@ maps = [
     { key = "btab", actions = ["backtab"] },
 ]
 
+[keymaps.select]
+discard = true
+fallthrough = "window"
+maps = [
+    { key = "x", actions = ["remove_cursor_selections"] },
+    { key = "d", actions = ["remove_cursor_selections"] },
+    { key = "c", actions = ["remove_cursor_selections", "goto_layer insert"] },
+    { key = "esc", actions = ["cancel", "goto_layer window"] },
+]
+
 [keymaps.window]
 discard = true
 maps = [
@@ -131,13 +141,13 @@ maps = [
 
     { key = "ctrl+p", actions = ["open_file"] },
     { key = "space g", actions = ["grep"] },
-    { key = "v", actions = ["start_selection"] },
+    { key = "v", actions = ["start_selection", "goto_layer select"] },
     { key = "$", actions = ["end_of_line"] },
     { key = "^", actions = ["first_char_of_line"] },
     { key = "0", actions = ["start_of_line"] },
     { key = "w", actions = ["next_word_start"] },
     { key = "b", actions = ["prev_word_start"] },
-    { key = "V", actions = ["select_line"] },
+    { key = "V", actions = ["select_line", "goto_layer select"] },
     { key = "a", actions = ["next_grapheme", "goto_layer insert"] },
     { key = "A", actions = ["end_of_line", "goto_layer insert"] },
     { key = "I", actions = ["first_char_of_line", "goto_layer insert"] },
@@ -159,9 +169,19 @@ maps = [
     { key = "<", actions = ["dedent_line"] },
     { key = "f", actions = ["find_next_char_on_line"] },
     { key = "F", actions = ["find_prev_char_on_line"] },
+    { key = ";", actions = ["next_char_on_line"] },
+    { key = ",", actions = ["prev_char_on_line"] },
     { key = ".", actions = ["swap_selection_dir"] },
     { key = "n", actions = ["next_search_match"] },
     { key = "N", actions = ["prev_search_match"] },
+    { key = "#", actions = ["search_prev_word_under_cursor"] },
+    { key = "*", actions = ["search_next_word_under_cursor"] },
+
+    { key = "&", actions = ["align_cursor_columns"] },
+    { key = "alt+down", actions = ["new_cursor_to_next_line"] },
+    { key = "alt+up", actions = ["new_cursor_to_prev_line"] },
+    { key = "alt+d", actions = ["new_cursor_to_next_search_match"] },
+    { key = "alt+l", actions = ["new_cursor_to_all_search_matches"] },
 
     { key = "g d", actions = ["goto_definition"] },
     { key = "g r", actions = ["references"] },
@@ -174,20 +194,20 @@ maps = [
     { key = "alt+q", actions = ["show_locations"] },
     { key = "backspace", actions = ["goto_prev_buffer"] },
 
-    { key = "s l", actions = ["select_line"] },
-    { key = "s c", actions = ["select_curly"] },
-    { key = "s C", actions = ["select_curly_incl"] },
-    { key = "s b", actions = ["select_parens"] },
-    { key = "s B", actions = ["select_parens_incl"] },
-    { key = "s r", actions = ["select_square"] },
-    { key = "s R", actions = ["select_square_incl"] },
-    { key = "s a", actions = ["select_angle"] },
-    { key = "s A", actions = ["select_angle_incl"] },
-    { key = 's "', actions = ["select_double"] },
-    { key = "s '", actions = ["select_single"] },
-    { key = "s `", actions = ["select_backtick"] },
-    { key = "s p", actions = ["select_paragraph"] },
-    { key = "s w", actions = ["select_word"] },
+    { key = "s l", actions = ["select_line",        "goto_layer select"] },
+    { key = "s c", actions = ["select_curly",       "goto_layer select"] },
+    { key = "s C", actions = ["select_curly_incl",  "goto_layer select"] },
+    { key = "s b", actions = ["select_parens",      "goto_layer select"] },
+    { key = "s B", actions = ["select_parens_incl", "goto_layer select"] },
+    { key = "s r", actions = ["select_square",      "goto_layer select"] },
+    { key = "s R", actions = ["select_square_incl", "goto_layer select"] },
+    { key = "s a", actions = ["select_angle",       "goto_layer select"] },
+    { key = "s A", actions = ["select_angle_incl",  "goto_layer select"] },
+    { key = 's "', actions = ["select_double",      "goto_layer select"] },
+    { key = "s '", actions = ["select_single",      "goto_layer select"] },
+    { key = "s `", actions = ["select_backtick",    "goto_layer select"] },
+    { key = "s p", actions = ["select_paragraph",   "goto_layer select"] },
+    { key = "s w", actions = ["select_word",        "goto_layer select"] },
 
     { key = "e", actions = ["next_word_end"] },
     { key = "E", actions = ["prev_word_end"] },

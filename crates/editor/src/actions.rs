@@ -90,7 +90,6 @@ pub(crate) fn find_by_name(name: &str) -> Option<Action> {
 
 #[rustfmt::skip]
 pub(crate) const COMMANDS: &[Action] = &[
-    search::search_toggle_regex,
 
     prompt::prompt_history_next,
     prompt::prompt_history_prev,
@@ -138,6 +137,7 @@ pub(crate) const COMMANDS: &[Action] = &[
     editor::cut,
     editor::open_config,
     editor::open_new_scratch_buffer,
+    editor::nop,
 
     text::save,
     text::save_as,
@@ -169,6 +169,9 @@ pub(crate) const COMMANDS: &[Action] = &[
     search::next_search_match,
     search::prev_search_match,
     search::clear_search_matches,
+    search::search_toggle_regex,
+    search::search_next_word_under_cursor,
+    search::search_prev_word_under_cursor,
 
     movement::start_of_buffer,
     movement::end_of_buffer,
@@ -190,6 +193,8 @@ pub(crate) const COMMANDS: &[Action] = &[
     movement::next_visual_line,
     movement::find_next_char_on_line,
     movement::find_prev_char_on_line,
+    movement::next_char_on_line,
+    movement::prev_char_on_line,
 
     cursors::start_selection,
     cursors::new_cursor_to_next_line,

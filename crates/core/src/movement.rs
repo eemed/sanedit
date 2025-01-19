@@ -280,34 +280,44 @@ pub fn prev_line(slice: &PieceTreeSlice, cursor: &Cursor, opts: &DisplayOptions)
     (npos, width)
 }
 
-pub fn find_next_char(slice: &PieceTreeSlice, pos: u64, target: char, stop_at_eol: bool) -> u64 {
+pub fn find_next_char(
+    slice: &PieceTreeSlice,
+    pos: u64,
+    target: char,
+    stop_at_eol: bool,
+) -> Option<u64> {
     let mut chars = slice.chars_at(pos);
 
     while let Some((start, _, ch)) = chars.next() {
         if ch == target {
-            return start;
+            return Some(start);
         }
 
         if stop_at_eol && EndOfLine::is_eol_char(ch) {
-            return pos;
+            return None;
         }
     }
 
-    pos
+    None
 }
 
-pub fn find_prev_char(slice: &PieceTreeSlice, pos: u64, target: char, stop_at_eol: bool) -> u64 {
+pub fn find_prev_char(
+    slice: &PieceTreeSlice,
+    pos: u64,
+    target: char,
+    stop_at_eol: bool,
+) -> Option<u64> {
     let mut chars = slice.chars_at(pos);
 
     while let Some((start, _, ch)) = chars.prev() {
         if ch == target {
-            return start;
+            return Some(start);
         }
 
         if stop_at_eol && EndOfLine::is_eol_char(ch) {
-            return pos;
+            return None;
         }
     }
 
-    pos
+    None
 }

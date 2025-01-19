@@ -1,4 +1,4 @@
-use std::cmp;
+use std::cmp::{self, min};
 
 use sanedit_buffer::PieceTreeSlice;
 use sanedit_core::{
@@ -323,12 +323,17 @@ fn find_next_char_on_line(editor: &mut Editor, id: ClientId) {
             do_move(
                 editor,
                 id,
-                |slice, pos| find_next_char(slice, pos, ch, true),
+                |slice, pos| {
+                    let npos = min(pos + 1, slice.len());
+                    let next = find_next_char(slice, npos, ch, true);
+                    next.unwrap_or(pos)
+                },
                 None,
             );
             let (win, _buf) = editor.win_buf_mut(id);
             win.focus_to(Focus::Window);
             win.keymap_layer = layer.clone();
+            win.on_line_char_search = Some(ch);
         })
         .build();
     win.focus_to(Focus::Prompt);
@@ -346,13 +351,44 @@ fn find_prev_char_on_line(editor: &mut Editor, id: ClientId) {
             do_move(
                 editor,
                 id,
-                |slice, pos| find_prev_char(slice, pos, ch, true),
+                |slice, pos| find_prev_char(slice, pos, ch, true).unwrap_or(pos),
                 None,
             );
             let (win, _buf) = editor.win_buf_mut(id);
             win.focus_to(Focus::Window);
             win.keymap_layer = layer.clone();
+            win.on_line_char_search = Some(ch);
         })
         .build();
     win.focus_to(Focus::Prompt);
+}
+
+#[action("Next last searched character on line")]
+fn next_char_on_line(editor: &mut Editor, id: ClientId) {
+    let (win, _buf) = editor.win_buf_mut(id);
+    if let Some(ch) = win.on_line_char_search {
+        do_move(
+            editor,
+            id,
+            |slice, pos| {
+                let npos = min(pos + 1, slice.len());
+                let next = find_next_char(slice, npos, ch, true);
+                next.unwrap_or(pos)
+            },
+            None,
+        );
+    }
+}
+
+#[action("Previous last searched character on line")]
+fn prev_char_on_line(editor: &mut Editor, id: ClientId) {
+    let (win, _buf) = editor.win_buf_mut(id);
+    if let Some(ch) = win.on_line_char_search {
+        do_move(
+            editor,
+            id,
+            |slice, pos| find_prev_char(slice, pos, ch, true).unwrap_or(pos),
+            None,
+        );
+    }
 }

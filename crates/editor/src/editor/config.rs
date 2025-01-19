@@ -349,6 +349,7 @@ impl Mapping {
                 let action = Action::Dynamic {
                     name: format!("Goto layer {}", goto),
                     fun: Arc::new(move |editor, id| {
+                        log::info!("Goto: {goto:?}");
                         let (win, _buf) = editor.win_buf_mut(id);
                         win.keymap_layer = goto.clone();
                         return;

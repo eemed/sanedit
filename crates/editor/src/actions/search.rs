@@ -1,6 +1,6 @@
 use std::cmp::min;
 
-use sanedit_core::{PTSearcher, SearchDirection, SearchKind};
+use sanedit_core::{word_at_pos, PTSearcher, SearchDirection, SearchKind};
 
 use crate::{
     actions::jobs,
@@ -77,6 +77,30 @@ fn search_backward(editor: &mut Editor, id: ClientId) {
         .on_input(async_view_matches)
         .build();
     win.focus_to(Focus::Search);
+}
+
+#[action("Search word under cursor and move to next occurence")]
+fn search_next_word_under_cursor(editor: &mut Editor, id: ClientId) {
+    let (win, buf) = editor.win_buf_mut(id);
+    let pos = win.cursors.primary().pos();
+    let slice = buf.slice(..);
+    let range = get!(word_at_pos(&slice, pos));
+    let word = String::from(&slice.slice(range));
+    win.search.direction = SearchDirection::Forward;
+
+    search(editor, id, &word);
+}
+
+#[action("Search word under cursor and move to previous occurence")]
+fn search_prev_word_under_cursor(editor: &mut Editor, id: ClientId) {
+    let (win, buf) = editor.win_buf_mut(id);
+    let pos = win.cursors.primary().pos();
+    let slice = buf.slice(..);
+    let range = get!(word_at_pos(&slice, pos));
+    let word = String::from(&slice.slice(range));
+    win.search.direction = SearchDirection::Backward;
+
+    search(editor, id, &word);
 }
 
 #[action("Clear match highlighting")]
@@ -164,14 +188,16 @@ fn search_impl(editor: &mut Editor, id: ClientId, input: &str, mut pos: u64) {
     let (start, mat, wrap) = match win.search.direction {
         SearchDirection::Forward => {
             let blen = buf.len();
-            let slice = buf.slice(pos..);
+            // Skip first to not match inplace
+            let start = min(blen, pos + 1);
+            let slice = buf.slice(start..);
             let mut iter = searcher.find_iter(&slice);
             let mat = iter.next();
 
             // Wrap if no match
             if mat.is_none() {
-                let last = min(blen, pos + input.len() as u64 - 1);
-                let slice = buf.slice(..last);
+                // let last = min(blen, pos + input.len() as u64);
+                let slice = buf.slice(..);
                 let mut iter = searcher.find_iter(&slice);
                 let mat = iter.next();
                 (slice.start(), mat, true)
@@ -180,14 +206,16 @@ fn search_impl(editor: &mut Editor, id: ClientId, input: &str, mut pos: u64) {
             }
         }
         SearchDirection::Backward => {
-            let slice = buf.slice(..pos);
+            // Skip first to not match inplace
+            let end = pos.saturating_sub(1);
+            let slice = buf.slice(..end);
             let mut iter = searcher.find_iter(&slice);
             let mat = iter.next();
 
             // Wrap if no match
             if mat.is_none() {
-                let first = pos.saturating_sub(input.len() as u64 - 1);
-                let slice = buf.slice(first..);
+                // let first = pos.saturating_sub(input.len() as u64 - 1);
+                let slice = buf.slice(..);
                 let mut iter = searcher.find_iter(&slice);
                 let mat = iter.next();
                 (slice.start(), mat, true)

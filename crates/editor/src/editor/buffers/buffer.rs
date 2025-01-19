@@ -22,7 +22,7 @@ use self::snapshots::Snapshots;
 
 pub(crate) use change::ChangeResult;
 pub(crate) use config::BufferConfig;
-pub(crate) use snapshots::{SnapshotId, SnapshotMetadata};
+pub(crate) use snapshots::{SnapshotAux, SnapshotId};
 
 key_type!(pub(crate) BufferId);
 
@@ -133,14 +133,14 @@ impl Buffer {
         self.pt.len()
     }
 
-    /// Get mutable access to extra data for a snapshot
-    pub fn snapshot_data_mut(&mut self, id: SnapshotId) -> Option<&mut SnapshotMetadata> {
-        self.snapshots.data_mut(id)
+    /// Get mutable access to auxilary data for a snapshot
+    pub fn snapshot_aux_mut(&mut self, id: SnapshotId) -> Option<&mut SnapshotAux> {
+        self.snapshots.aux_mut(id)
     }
 
-    /// Get access to extra data for a snapshot
-    pub fn snapshot_data(&self, id: SnapshotId) -> Option<&SnapshotMetadata> {
-        self.snapshots.data(id)
+    /// Get access to auxilary data for a snapshot
+    pub fn snapshot_aux(&self, id: SnapshotId) -> Option<&SnapshotAux> {
+        self.snapshots.aux(id)
     }
 
     /// Get the last change done to buffer

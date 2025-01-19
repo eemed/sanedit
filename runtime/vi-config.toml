@@ -147,7 +147,7 @@ maps = [
     { key = "?", actions = ["search_backward"] },
     { key = "%", actions = ["goto_matching_pair"] },
     # { key = "c", actions = ["remove_cursor_selections", "goto_layer insert"] },
-    { key = "c c", actions = ["start_of_line", "remove_to_end_of_line", "goto_layer insert"] },
+    { key = "c c", actions = ["first_char_of_line", "remove_to_end_of_line", "goto_layer insert"] },
     { key = "d d", actions = ["select_line", "swap_selection_dir", "remove_cursor_selections"] },
     { key = "D", actions = ["remove_to_end_of_line"] },
     { key = "x", actions = ["remove_grapheme_after_cursor"] },
@@ -157,6 +157,11 @@ maps = [
     { key = "O", actions = ["newline_above", "goto_layer insert"] },
     { key = ">", actions = ["indent_line"] },
     { key = "<", actions = ["dedent_line"] },
+    { key = "f", actions = ["find_next_char_on_line"] },
+    { key = "F", actions = ["find_prev_char_on_line"] },
+    { key = ".", actions = ["swap_selection_dir"] },
+    { key = "n", actions = ["next_search_match"] },
+    { key = "N", actions = ["prev_search_match"] },
 
     { key = "g d", actions = ["goto_definition"] },
     { key = "g r", actions = ["references"] },
@@ -167,6 +172,7 @@ maps = [
 
     { key = "-", actions = ["show_filetree"] },
     { key = "alt+q", actions = ["show_locations"] },
+    { key = "backspace", actions = ["goto_prev_buffer"] },
 
     { key = "s l", actions = ["select_line"] },
     { key = "s c", actions = ["select_curly"] },
@@ -183,8 +189,8 @@ maps = [
     { key = "s p", actions = ["select_paragraph"] },
     { key = "s w", actions = ["select_word"] },
 
-    # { key = "e", actions = ["next_word_end"] },
-    # { key = "E", actions = ["prev_word_end"] },
+    { key = "e", actions = ["next_word_end"] },
+    { key = "E", actions = ["prev_word_end"] },
 
 ################
 
@@ -285,7 +291,7 @@ maps = [
 [keymaps.locations]
 maps = [
     { key = "alt+q", actions = ["close_locations"] },
-    { key = "space q", actions = ["quit"] },
+    { key = "space q", actions = ["close_locations"] },
     { key = "k", actions = ["prev_loc_entry"] },
     { key = "j", actions = ["next_loc_entry"] },
 
@@ -312,21 +318,26 @@ maps = [
 
 [keymaps.filetree]
 maps = [
-    { key = "ctrl+q", actions = ["quit"] },
-    { key = "esc", actions = ["close_filetree"] },
-    { key = "alt+right", actions = ["focus_window"] },
+    { key = "space q", actions = ["close_filetree"] },
     { key = "enter", actions = ["goto_ft_entry"] },
-    { key = "up", actions = ["prev_ft_entry"] },
-    { key = "down", actions = ["next_ft_entry"] },
-    { key = "btab", actions = ["prev_ft_entry"] },
-    { key = "tab", actions = ["next_ft_entry"] },
+    { key = "k", actions = ["prev_ft_entry"] },
+    { key = "j", actions = ["next_ft_entry"] },
+    { key = "h", actions = ["select_ft_parent"] },
+    { key = "s", actions = ["ft_goto_current_file"] },
+
     { key = "c", actions = ["ft_new_file"] },
     { key = "d", actions = ["ft_delete_file"] },
-    { key = "p", actions = ["select_ft_parent"] },
-    { key = "s", actions = ["ft_goto_current_file"] },
-    { key = "alt+1", actions = ["focus_window"] },
-    { key = "alt+2", actions = ["close_filetree"] },
-    { key = "alt+3", actions = ["show_locations"] },
+
+    # { key = "alt+right", actions = ["focus_window"] },
+    # { key = "up", actions = ["prev_ft_entry"] },
+    # { key = "down", actions = ["next_ft_entry"] },
+    # { key = "btab", actions = ["prev_ft_entry"] },
+    # { key = "tab", actions = ["next_ft_entry"] },
+    # { key = "p", actions = ["select_ft_parent"] },
+    # { key = "s", actions = ["ft_goto_current_file"] },
+    # { key = "alt+1", actions = ["focus_window"] },
+    # { key = "alt+2", actions = ["close_filetree"] },
+    # { key = "alt+3", actions = ["show_locations"] },
 ]
 
 [keymaps.prompt]

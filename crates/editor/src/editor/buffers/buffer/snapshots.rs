@@ -3,7 +3,7 @@ use sanedit_buffer::PieceTreeView;
 use crate::editor::windows::Cursors;
 
 #[derive(Debug, Clone, Default)]
-pub(crate) struct SnapshotMetadata {
+pub(crate) struct SnapshotAux {
     pub(crate) cursors: Cursors,
     pub(crate) view_offset: u64,
 }
@@ -80,12 +80,12 @@ impl Snapshots {
         node.clone().into()
     }
 
-    pub fn data_mut(&mut self, id: SnapshotId) -> Option<&mut SnapshotMetadata> {
+    pub fn aux_mut(&mut self, id: SnapshotId) -> Option<&mut SnapshotAux> {
         let node = self.snapshots.get_mut(id)?;
         Some(&mut node.data)
     }
 
-    pub fn data(&self, id: SnapshotId) -> Option<&SnapshotMetadata> {
+    pub fn aux(&self, id: SnapshotId) -> Option<&SnapshotAux> {
         let node = self.snapshots.get(id)?;
         Some(&node.data)
     }
@@ -99,7 +99,7 @@ pub(crate) struct SnapshotNode {
     next: Vec<SnapshotId>,
 
     /// Extra data we can save to a snapshot
-    pub(crate) data: SnapshotMetadata,
+    pub(crate) data: SnapshotAux,
 }
 
 impl SnapshotNode {
@@ -110,7 +110,7 @@ impl SnapshotNode {
             previous: vec![],
             next: vec![],
 
-            data: SnapshotMetadata::default(),
+            data: SnapshotAux::default(),
         }
     }
 }

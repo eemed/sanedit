@@ -3,12 +3,18 @@ use std::cmp;
 use sanedit_buffer::PieceTreeSlice;
 use sanedit_core::{
     find_range,
-    movement::{self, next_grapheme_boundary, prev_grapheme_boundary},
+    movement::{
+        self, find_next_char, find_prev_char, next_grapheme_boundary, prev_grapheme_boundary,
+    },
     Cursor, DisplayOptions,
 };
 use sanedit_messages::redraw::Point;
 
-use crate::editor::{hooks::Hook, Editor};
+use crate::editor::{
+    hooks::Hook,
+    windows::{Focus, Prompt},
+    Editor,
+};
 
 use sanedit_server::ClientId;
 
@@ -303,4 +309,50 @@ fn goto_matching_pair(editor: &mut Editor, id: ClientId) {
     } else {
         do_move_static(editor, id, range.start, None);
     }
+}
+
+#[action("Find next character on line")]
+fn find_next_char_on_line(editor: &mut Editor, id: ClientId) {
+    let (win, _buf) = editor.win_buf_mut(id);
+    let layer = win.keymap_layer.clone();
+    win.prompt = Prompt::builder()
+        .prompt("hidden")
+        .hidden()
+        .on_input(move |editor, id, input| {
+            let ch = get!(input.chars().next());
+            do_move(
+                editor,
+                id,
+                |slice, pos| find_next_char(slice, pos, ch, true),
+                None,
+            );
+            let (win, _buf) = editor.win_buf_mut(id);
+            win.focus_to(Focus::Window);
+            win.keymap_layer = layer.clone();
+        })
+        .build();
+    win.focus_to(Focus::Prompt);
+}
+
+#[action("Find previous character on line")]
+fn find_prev_char_on_line(editor: &mut Editor, id: ClientId) {
+    let (win, _buf) = editor.win_buf_mut(id);
+    let layer = win.keymap_layer.clone();
+    win.prompt = Prompt::builder()
+        .prompt("hidden")
+        .hidden()
+        .on_input(move |editor, id, input| {
+            let ch = get!(input.chars().next());
+            do_move(
+                editor,
+                id,
+                |slice, pos| find_prev_char(slice, pos, ch, true),
+                None,
+            );
+            let (win, _buf) = editor.win_buf_mut(id);
+            win.focus_to(Focus::Window);
+            win.keymap_layer = layer.clone();
+        })
+        .build();
+    win.focus_to(Focus::Prompt);
 }

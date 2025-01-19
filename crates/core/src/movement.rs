@@ -1,5 +1,6 @@
 use crate::grapheme_category;
 use sanedit_buffer::utf8;
+use sanedit_buffer::utf8::EndOfLine;
 use sanedit_buffer::Bytes;
 use sanedit_buffer::PieceTreeSlice;
 
@@ -277,4 +278,36 @@ pub fn prev_line(slice: &PieceTreeSlice, cursor: &Cursor, opts: &DisplayOptions)
     let pos = prev_line_start(slice, cpos);
     let npos = pos_at_width(slice, pos, width, opts);
     (npos, width)
+}
+
+pub fn find_next_char(slice: &PieceTreeSlice, pos: u64, target: char, stop_at_eol: bool) -> u64 {
+    let mut chars = slice.chars_at(pos);
+
+    while let Some((start, _, ch)) = chars.next() {
+        if ch == target {
+            return start;
+        }
+
+        if stop_at_eol && EndOfLine::is_eol_char(ch) {
+            return pos;
+        }
+    }
+
+    pos
+}
+
+pub fn find_prev_char(slice: &PieceTreeSlice, pos: u64, target: char, stop_at_eol: bool) -> u64 {
+    let mut chars = slice.chars_at(pos);
+
+    while let Some((start, _, ch)) = chars.prev() {
+        if ch == target {
+            return start;
+        }
+
+        if stop_at_eol && EndOfLine::is_eol_char(ch) {
+            return pos;
+        }
+    }
+
+    pos
 }

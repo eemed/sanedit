@@ -330,6 +330,7 @@ impl Editor {
             working_dir: &self.working_dir,
             filetree: &self.filetree,
             language_servers: &self.language_servers,
+            keymaps: &self.keymaps,
         }
     }
 
@@ -445,6 +446,7 @@ impl Editor {
             working_dir: &self.working_dir,
             filetree: &self.filetree,
             language_servers: &self.language_servers,
+            keymaps: &self.keymaps,
         };
 
         let messages = draw.redraw(ctx);

@@ -45,7 +45,11 @@ fn goto_ft_entry(editor: &mut Editor, id: ClientId) {
                     if let Err(_e) = editor.open_file(id, path) {
                         let (win, _buf) = editor.win_buf_mut(id);
                         win.error_msg("failed to open file {path:?}: {e}");
+                        return;
                     }
+
+                    let (win, _buf) = editor.win_buf_mut(id);
+                    win.focus_to(Focus::Window);
                 }
             }
         }

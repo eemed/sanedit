@@ -3,7 +3,7 @@ use std::{cmp, ffi::OsStr, path::PathBuf};
 use sanedit_core::{Choice, Range};
 use sanedit_messages::redraw::{self, prompt::Source, Component, Redraw};
 
-use crate::editor::windows::Focus;
+use crate::editor::windows::{Focus, PromptKind};
 
 use super::DrawContext;
 
@@ -23,7 +23,8 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> Vec<redraw::Redraw> {
         results.push(Redraw::Prompt(Component::Close));
     }
 
-    let in_focus = ctx.editor.win.focus() == Focus::Prompt;
+    let in_focus = ctx.editor.win.focus() == Focus::Prompt
+        && ctx.editor.win.prompt.kind() != &PromptKind::Hidden;
 
     if !in_focus {
         return results;

@@ -17,6 +17,7 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> redraw::window::Window {
         theme,
         buf,
         language_servers,
+        keymaps,
         ..
     } = ctx.editor;
 
@@ -53,6 +54,11 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> redraw::window::Window {
     } else {
         None
     };
+    // if layer does not discard, we can insert
+    let can_insert = keymaps
+        .get_layer(&win.keymap_layer)
+        .map(|kmap| !kmap.discard)
+        .unwrap_or(false);
 
     draw_syntax(&mut grid, view, theme);
     if let Some(diagnostics) = diagnostics {
@@ -62,7 +68,13 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> redraw::window::Window {
     draw_trailing_whitespace(&mut grid, view, theme, buf);
     draw_search_highlights(&mut grid, &win.search.hl_matches, view, theme);
     draw_secondary_cursors(&mut grid, cursors, focus_on_win, view, theme);
-    let cursor = draw_primary_cursor(&mut grid, cursors.primary(), view, theme);
+    let cursor = draw_primary_cursor(
+        &mut grid,
+        cursors.primary(),
+        can_insert && focus_on_win,
+        view,
+        theme,
+    );
 
     redraw::window::Window {
         cells: grid,
@@ -182,6 +194,7 @@ fn draw_secondary_cursors(
 fn draw_primary_cursor(
     grid: &mut [Vec<redraw::Cell>],
     cursor: &Cursor,
+    show_as_line: bool,
     view: &View,
     theme: &Theme,
 ) -> Option<redraw::Cursor> {
@@ -191,8 +204,8 @@ fn draw_primary_cursor(
         draw_hl(grid, view, style, &area);
     }
 
-    let has_selection = cursor.selection().is_some();
-    let shape = if has_selection {
+    let line_style = cursor.selection().is_some() || show_as_line;
+    let shape = if line_style {
         CursorShape::Line(false)
     } else {
         CursorShape::Block(true)

@@ -58,6 +58,10 @@ pub(crate) struct Keymaps {
 }
 
 impl Keymaps {
+    pub fn get_layer(&self, layer: &str) -> Option<&Layer> {
+        self.layers.get(layer)
+    }
+
     pub fn get(&self, layer: &str, events: &[KeyEvent]) -> KeymapResult {
         let mut layer = &self.layers[layer];
         let mut result = layer.get(events);

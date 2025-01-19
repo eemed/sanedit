@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::{mem, path::PathBuf};
 
 use sanedit_core::{at_start_of_line, is_indent_at_pos};
 
@@ -193,15 +193,29 @@ fn strip_trailing_whitespace(editor: &mut Editor, id: ClientId) {
 
 #[action("Crate a newline below current line and move to it")]
 fn newline_below(editor: &mut Editor, id: ClientId) {
+    // Disable autopair for this action
+    let (win, _buf) = editor.win_buf_mut(id);
+    let restore = mem::replace(&mut win.config.autopair, false);
+
     end_of_line.execute(editor, id);
     insert_newline.execute(editor, id);
+
+    let (win, _buf) = editor.win_buf_mut(id);
+    win.config.autopair = restore;
 }
 
 #[action("Crate a newline above current line and move to it")]
 fn newline_above(editor: &mut Editor, id: ClientId) {
+    // Disable autopair for this action
+    let (win, _buf) = editor.win_buf_mut(id);
+    let restore = mem::replace(&mut win.config.autopair, false);
+
     start_of_line.execute(editor, id);
     insert_newline.execute(editor, id);
     prev_line.execute(editor, id);
+
+    let (win, _buf) = editor.win_buf_mut(id);
+    win.config.autopair = restore;
 }
 
 #[action("Align each cursor on top of each other")]

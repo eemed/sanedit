@@ -23,7 +23,7 @@ pub(crate) struct PromptBuilder {
     on_input: Option<PromptAction>,
     on_abort: Option<PromptAction>,
     keymap_kind: Option<KeymapKind>,
-    simple: bool,
+    kind: PromptKind,
     has_paths: bool,
     history_kind: Option<HistoryKind>,
     input: String,
@@ -36,7 +36,12 @@ impl PromptBuilder {
     }
 
     pub fn simple(mut self) -> Self {
-        self.simple = true;
+        self.kind = PromptKind::Simple;
+        self
+    }
+
+    pub fn hidden(mut self) -> Self {
+        self.kind = PromptKind::Hidden;
         self
     }
 
@@ -92,7 +97,7 @@ impl PromptBuilder {
             on_input,
             on_abort,
             keymap_kind,
-            simple,
+            kind,
             history_kind,
             input,
             has_paths: paths,
@@ -102,7 +107,7 @@ impl PromptBuilder {
         prompt.on_abort = on_abort;
         prompt.on_input = on_input;
         prompt.history_kind = history_kind;
-        prompt.simple = simple;
+        prompt.kind = kind;
         prompt.cursor = input.len();
         prompt.input = input;
         prompt.has_paths = paths;
@@ -118,6 +123,15 @@ impl PromptBuilder {
 /// Prompt action, similar to a normal `ActionFunction` but also takes the
 /// prompt input as a additional parameter
 pub(crate) type PromptAction = Rc<dyn Fn(&mut Editor, ClientId, &str)>;
+
+#[derive(Default, Debug, Eq, PartialEq)]
+pub(crate) enum PromptKind {
+    #[default]
+    Regular,
+
+    Hidden,
+    Simple,
+}
 
 pub(crate) struct Prompt {
     message: String,
@@ -139,8 +153,7 @@ pub(crate) struct Prompt {
 
     history_kind: Option<HistoryKind>,
     history_pos: HistoryPosition,
-    /// show this prompt as a simple prompt
-    simple: bool,
+    kind: PromptKind,
 
     /// If selector contains paths
     has_paths: bool,
@@ -159,7 +172,7 @@ impl Prompt {
             keymap_kind: KeymapKind::Prompt,
             history_kind: None,
             history_pos: HistoryPosition::First,
-            simple: false,
+            kind: PromptKind::Regular,
             has_paths: false,
         }
     }
@@ -303,8 +316,12 @@ impl Prompt {
         self.input = item.into();
     }
 
+    pub fn kind(&self) -> &PromptKind {
+        &self.kind
+    }
+
     pub fn is_simple(&self) -> bool {
-        self.simple
+        self.kind == PromptKind::Simple
     }
 
     pub fn history_next(&mut self, hist: &History) {
@@ -364,7 +381,7 @@ impl std::fmt::Debug for Prompt {
             .field("input", &self.input)
             .field("cursor", &self.cursor)
             .field("completions", &self.chooser)
-            .field("simple", &self.simple)
+            .field("kind", &self.kind)
             .finish_non_exhaustive()
     }
 }

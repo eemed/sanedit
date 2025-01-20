@@ -4,6 +4,7 @@ mod config;
 mod cursors;
 mod filetree;
 mod focus;
+mod jumps;
 mod prompt;
 mod search;
 mod shell;

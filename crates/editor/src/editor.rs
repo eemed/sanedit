@@ -7,7 +7,6 @@ pub(crate) mod hooks;
 pub(crate) mod job_broker;
 pub(crate) mod keymap;
 pub(crate) mod lsp;
-pub(crate) mod snippets;
 pub(crate) mod syntax;
 pub(crate) mod themes;
 pub(crate) mod windows;

@@ -148,13 +148,18 @@ impl PieceTreeView {
     // Searching for a mark is O(n) operation where n is the number of pieces in the
     // piece tree
     #[inline]
-    pub fn mark(&self, pos: u64) -> Mark {
+    pub fn mark(&self, mut pos: u64) -> Mark {
         debug_assert!(
             pos <= self.len,
             "mark: Attempting to index {} over buffer len {}",
             pos,
             self.len
         );
+        let after = pos == self.len();
+        if after {
+            pos -= 1;
+        }
+
         let pieces = Pieces::new(self, pos);
         let (p_pos, piece) = pieces
             .get()
@@ -165,6 +170,7 @@ impl PieceTreeView {
             kind: piece.kind,
             pos: piece.pos + off,
             count: piece.count,
+            after,
         }
     }
 
@@ -182,7 +188,10 @@ impl PieceTreeView {
                 && mark.pos < p.pos + p.len
                 && mark.count == p.count
             {
-                let off = mark.pos - p.pos;
+                let mut off = mark.pos - p.pos;
+                if mark.after {
+                    off += 1;
+                }
                 return p_pos + off;
             }
             piece = pieces.next();

@@ -8,4 +8,5 @@ pub struct Mark {
     pub(crate) kind: BufferKind,
     pub(crate) pos: u64,
     pub(crate) count: u32,
+    pub(crate) after: bool,
 }

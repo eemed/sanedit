@@ -333,7 +333,7 @@ fn find_next_char_on_line(editor: &mut Editor, id: ClientId) {
             let (win, _buf) = editor.win_buf_mut(id);
             win.focus_to(Focus::Window);
             win.keymap_layer = layer.clone();
-            win.on_line_char_search = Some(ch);
+            win.search.on_line_char_search = Some(ch);
         })
         .build();
     win.focus_to(Focus::Prompt);
@@ -357,7 +357,7 @@ fn find_prev_char_on_line(editor: &mut Editor, id: ClientId) {
             let (win, _buf) = editor.win_buf_mut(id);
             win.focus_to(Focus::Window);
             win.keymap_layer = layer.clone();
-            win.on_line_char_search = Some(ch);
+            win.search.on_line_char_search = Some(ch);
         })
         .build();
     win.focus_to(Focus::Prompt);
@@ -366,7 +366,7 @@ fn find_prev_char_on_line(editor: &mut Editor, id: ClientId) {
 #[action("Next last searched character on line")]
 fn next_char_on_line(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
-    if let Some(ch) = win.on_line_char_search {
+    if let Some(ch) = win.search.on_line_char_search {
         do_move(
             editor,
             id,
@@ -383,7 +383,7 @@ fn next_char_on_line(editor: &mut Editor, id: ClientId) {
 #[action("Previous last searched character on line")]
 fn prev_char_on_line(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
-    if let Some(ch) = win.on_line_char_search {
+    if let Some(ch) = win.search.on_line_char_search {
         do_move(
             editor,
             id,

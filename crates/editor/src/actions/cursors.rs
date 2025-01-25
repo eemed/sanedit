@@ -137,6 +137,12 @@ fn start_selection(editor: &mut Editor, id: ClientId) {
     win.cursors.start_selection();
 }
 
+#[action("Unselect")]
+fn stop_selection(editor: &mut Editor, id: ClientId) {
+    let (win, _buf) = editor.win_buf_mut(id);
+    win.cursors.stop_selection();
+}
+
 #[action("Keep only primary cursor")]
 fn keep_only_primary(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);

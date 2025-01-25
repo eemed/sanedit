@@ -1,4 +1,4 @@
-use std::cmp::min;
+use std::{cmp::min, collections::VecDeque};
 
 use rustc_hash::FxHashSet;
 use sanedit_core::{BufferRange, Cursor, Range};
@@ -56,6 +56,11 @@ impl Cursors {
         let len = self.cursors.len();
         self.push(cursor);
         self.primary = len;
+    }
+
+    pub fn replace_primary(&mut self, cursor: Cursor) {
+        let primary = self.cursors.get_mut(self.primary).unwrap();
+        *primary = cursor;
     }
 
     /// Remove all cursors except the primary one

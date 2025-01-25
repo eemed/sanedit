@@ -12,7 +12,7 @@ use std::{
 
 use anyhow::ensure;
 use anyhow::Result;
-use sanedit_buffer::{PieceTree, PieceTreeSlice, PieceTreeView};
+use sanedit_buffer::{Mark, PieceTree, PieceTreeSlice, PieceTreeView};
 use sanedit_core::Edit;
 use sanedit_core::{tmp_file, Changes, FileDescription, Filetype};
 use sanedit_utils::key_type;
@@ -300,6 +300,14 @@ impl Buffer {
 
         file.flush()?;
         Ok(path)
+    }
+
+    pub fn mark(&self, pos: u64) -> Mark {
+        self.pt.mark(pos)
+    }
+
+    pub fn mark_to_pos(&self, mark: &Mark) -> u64 {
+        self.pt.mark_to_pos(mark)
     }
 }
 

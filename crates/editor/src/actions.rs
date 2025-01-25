@@ -12,6 +12,7 @@ pub(crate) mod popup;
 pub(crate) mod prompt;
 pub(crate) mod search;
 pub(crate) mod shell;
+pub(crate) mod jumps;
 pub(crate) mod syntax;
 pub(crate) mod text;
 pub(crate) mod text_objects;
@@ -197,6 +198,7 @@ pub(crate) const COMMANDS: &[Action] = &[
     movement::prev_char_on_line,
 
     cursors::start_selection,
+    cursors::stop_selection,
     cursors::new_cursor_to_next_line,
     cursors::new_cursor_to_prev_line,
     cursors::new_cursor_to_next_search_match,
@@ -257,4 +259,7 @@ pub(crate) const COMMANDS: &[Action] = &[
     popup::close,
 
     syntax::parse_syntax,
+
+    jumps::snippet_jump_next,
+    jumps::test_snippet,
 ];

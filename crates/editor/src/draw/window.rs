@@ -161,15 +161,12 @@ fn draw_secondary_cursors(
     theme: &Theme,
 ) {
     for cursor in cursors.cursors() {
-        if !view.contains(cursor.pos()) {
-            continue;
-        }
-
-        let (area, style) = match cursor.selection() {
-            Some(s) => (s, theme.get(ThemeField::Selection)),
+        match cursor.selection() {
+            Some(area) => {
+                let style = theme.get(ThemeField::Selection);
+                draw_hl(grid, view, style, &area);
+            }
             None => {
-                let cpos = cursor.pos();
-                let range = Range::new(cpos, cpos + 1);
                 let is_primary = cursor == cursors.primary();
 
                 // Assume client draws the primary cursor here instead of us if
@@ -184,10 +181,11 @@ fn draw_secondary_cursors(
                     theme.get(ThemeField::Cursor)
                 };
 
-                (range, style)
+                if let Some(point) = view.point_at_pos(cursor.pos()) {
+                    grid[point.y][point.x].style = style;
+                }
             }
-        };
-        draw_hl(grid, view, style, &area);
+        }
     }
 }
 

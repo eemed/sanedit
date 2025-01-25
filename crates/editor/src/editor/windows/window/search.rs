@@ -14,6 +14,7 @@ pub(crate) struct LastSearch {
 
 #[derive(Debug)]
 pub(crate) struct Search {
+    pub on_line_char_search: Option<char>,
     last_search: Option<LastSearch>,
 
     pub direction: SearchDirection,
@@ -52,6 +53,7 @@ impl Search {
 impl Default for Search {
     fn default() -> Self {
         Search {
+            on_line_char_search: None,
             last_search: None,
             direction: SearchDirection::Forward,
             kind: SearchKind::default(),

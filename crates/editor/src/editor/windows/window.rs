@@ -64,7 +64,7 @@ macro_rules! show_warn {
 }
 
 pub(crate) use self::{
-    completion::*, config::*, focus::*, prompt::*, search::*, shell::*, view::*,
+    completion::*, config::*, focus::*, jumps::*, prompt::*, search::*, shell::*, view::*,
 };
 
 #[derive(Debug)]
@@ -89,7 +89,7 @@ pub(crate) struct Window {
     pub config: WindowConfig,
     pub ft_view: FiletreeView,
     pub locations: Locations,
-    pub on_line_char_search: Option<char>,
+    pub snippets: Vec<Jumps>,
     popup: Option<Popup>,
 }
 
@@ -112,8 +112,8 @@ impl Window {
             focus: Focus::Window,
             ft_view: FiletreeView::default(),
             locations: Locations::default(),
-            on_line_char_search: None,
             popup: None,
+            snippets: vec![],
         }
     }
 
@@ -429,7 +429,7 @@ impl Window {
         changes.move_cursors(self.cursors.cursors_mut());
     }
 
-    fn change(&mut self, buf: &mut Buffer, changes: &Changes) -> Result<()> {
+    pub fn change(&mut self, buf: &mut Buffer, changes: &Changes) -> Result<()> {
         let aux = self.window_aux();
         let result = buf.apply_changes(changes)?;
 
@@ -879,5 +879,41 @@ impl Window {
 
         let changes = Changes::new(&changes);
         self.change(buf, &changes)
+    }
+
+    pub fn cursors_to_next_snippet_jump(&mut self, buf: &Buffer) {
+        while let Some(last) = self.snippets.last_mut() {
+            match last.next() {
+                Some(jumps) => {
+                    self.cursors_to_jump_group(buf, jumps);
+                    break;
+                }
+                None => {
+                    self.snippets.pop();
+                }
+            }
+        }
+    }
+
+    fn cursors_to_jump_group(&mut self, buf: &Buffer, group: JumpGroup) {
+        self.cursors.remove_except_primary();
+
+        for (i, jump) in group.jumps().iter().enumerate() {
+            let start = buf.mark_to_pos(jump.start());
+            let end = jump.end().map(|mark| buf.mark_to_pos(mark));
+
+            let cursor = if let Some(end) = end {
+                Cursor::new_select(&Range::new(start, end))
+            } else {
+                Cursor::new(start)
+            };
+
+            let first = i == 0;
+            if first {
+                self.cursors.replace_primary(cursor);
+            } else {
+                self.cursors.push(cursor);
+            }
+        }
     }
 }

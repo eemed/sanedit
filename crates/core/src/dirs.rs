@@ -1,6 +1,6 @@
 use std::{
     fs::{self, File, OpenOptions},
-    path::{Path, PathBuf},
+    path::{Component, Path, PathBuf},
     sync::{
         atomic::{AtomicU32, Ordering},
         Arc, OnceLock,
@@ -14,6 +14,7 @@ pub const SANE_DIR: &str = "sanedit";
 pub const FILETYPE_DIR: &str = "filetype";
 pub const THEME_DIR: &str = "themes";
 pub const CONFIG: &str = "config.toml";
+pub const SNIPPETS_FILE: &str = "snippets.toml";
 
 #[cfg(unix)]
 pub const GLOBAL: &str = "/usr/share/sanedit";
@@ -29,10 +30,12 @@ pub struct Directory {
 }
 
 impl Directory {
-    pub fn find<A: AsRef<Path>>(&self, components: &[A]) -> Option<PathBuf> {
+    pub fn find<A: AsRef<Path>>(&self, path: &A) -> Option<PathBuf> {
+        let components: Vec<Component> = path.as_ref().components().collect();
+
         for dir in &self.dirs {
             let mut d = dir.clone();
-            d.extend(components);
+            d.extend(&components);
             if d.exists() {
                 return Some(d);
             }

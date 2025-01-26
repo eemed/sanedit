@@ -1,0 +1,7 @@
+[for-in-loop]
+trigger = "for-in"
+body = """
+for $2 in $1 {
+	$0
+}
+"""

@@ -7,6 +7,7 @@ pub(crate) mod hooks;
 pub(crate) mod job_broker;
 pub(crate) mod keymap;
 pub(crate) mod lsp;
+pub(crate) mod snippets;
 pub(crate) mod syntax;
 pub(crate) mod themes;
 pub(crate) mod windows;
@@ -61,7 +62,6 @@ use self::clipboard::DefaultClipboard;
 use self::config::EditorConfig;
 use self::hooks::Hooks;
 use self::job_broker::JobBroker;
-use self::keymap::KeymapKind;
 use self::keymap::Keymaps;
 
 use self::filetree::Filetree;

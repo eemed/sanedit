@@ -12,7 +12,7 @@ pub(crate) mod popup;
 pub(crate) mod prompt;
 pub(crate) mod search;
 pub(crate) mod shell;
-pub(crate) mod jumps;
+pub(crate) mod snippets;
 pub(crate) mod syntax;
 pub(crate) mod text;
 pub(crate) mod text_objects;
@@ -260,6 +260,6 @@ pub(crate) const COMMANDS: &[Action] = &[
 
     syntax::parse_syntax,
 
-    jumps::snippet_jump_next,
-    jumps::test_snippet,
+    snippets::snippet_jump_next,
+    snippets::test_snippet,
 ];

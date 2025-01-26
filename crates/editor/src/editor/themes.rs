@@ -52,10 +52,10 @@ impl Themes {
     }
 
     pub fn load(&mut self, theme_name: &str) -> anyhow::Result<&Theme> {
-        let components = [PathBuf::from(format!("{}.toml", theme_name))];
+        let path = PathBuf::from(format!("{}.toml", theme_name));
         let theme = self
             .theme_dir
-            .find(&components)
+            .find(&path)
             .ok_or(anyhow!("Could not find theme"))?;
 
         let theme_file = config::Config::builder()

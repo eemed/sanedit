@@ -41,11 +41,8 @@ impl Syntaxes {
     }
 
     pub fn load(&mut self, ft: &Filetype) -> anyhow::Result<Syntax> {
-        let components = [
-            PathBuf::from(ft.as_str()),
-            PathBuf::from(format!("{}.peg", ft.as_str())),
-        ];
-        let peg = self.filetype_dir.find(&components).ok_or(anyhow!(
+        let path = PathBuf::from(ft.as_str()).join(format!("{}.peg", ft.as_str()));
+        let peg = self.filetype_dir.find(&path).ok_or(anyhow!(
             "Could not find syntax for filetype {}",
             ft.as_str()
         ))?;

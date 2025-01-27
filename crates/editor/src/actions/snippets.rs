@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, sync::Arc};
 
 use sanedit_buffer::Mark;
 use sanedit_core::{indent_at_line, Change, Changes};
@@ -8,10 +8,13 @@ use crate::{
     actions::hooks::run,
     editor::{
         hooks::Hook,
-        windows::{Jump, JumpGroup, Jumps, Snippet, SnippetAtom},
+        snippets::{Snippet, SnippetAtom},
+        windows::{Focus, Jump, JumpGroup, Jumps, Prompt},
         Editor,
     },
 };
+
+use super::jobs::MatcherJob;
 
 #[action("Jump to next snippet placeholders")]
 pub(crate) fn snippet_jump_next(editor: &mut Editor, id: ClientId) {
@@ -19,17 +22,58 @@ pub(crate) fn snippet_jump_next(editor: &mut Editor, id: ClientId) {
     win.cursors_to_next_snippet_jump(buf);
 }
 
-#[action("Test snippets")]
-pub(crate) fn test_snippet(editor: &mut Editor, id: ClientId) {
-    let text = "line 1\\n\\tline2 $0\\nline3 ${3:shitter}\\nline4 ${3:worse}";
-    let snippet = Snippet::new(text);
-    if let Err(e) = snippet.as_ref() {
-        log::error!("Failed to create snippet: {e}");
-    }
-    insert_snippet(editor, id, snippet.unwrap());
+#[action("Insert a snippet")]
+pub(crate) fn insert_snippet(editor: &mut Editor, id: ClientId) {
+    const MESSAGE: &str = "Insert a snippet";
+    let (win, buf) = win_buf!(editor, id);
+    let filetype = buf.filetype.clone();
+    let snippets: Vec<String> = filetype
+        .as_ref()
+        .map(|ft| editor.snippets.all(ft))
+        .unwrap_or_else(|| editor.snippets.all_global())
+        .into_iter()
+        .map(|(name, _snip)| name)
+        .collect();
+    let job = MatcherJob::builder(id)
+        .options(Arc::new(snippets))
+        .handler(Prompt::matcher_result_handler)
+        .build();
+    editor.job_broker.request_slot(id, MESSAGE, job);
+
+    win.prompt = Prompt::builder()
+        .prompt(MESSAGE)
+        .on_confirm(move |editor, id, input| {
+            let snippet = filetype
+                .as_ref()
+                .map(|ft| editor.snippets.get_snippet(ft, input))
+                .unwrap_or_else(|| editor.snippets.get_global_snippet(input))
+                .cloned();
+
+            match snippet {
+                Some(snip) => insert_snippet_impl(editor, id, snip),
+                _ => log::error!("No snippet with name {input}"),
+            }
+        })
+        .build();
+    win.focus_to(Focus::Prompt);
 }
 
-pub(crate) fn insert_snippet(editor: &mut Editor, id: ClientId, snippet: Snippet) {
+pub(crate) fn expand_snippet(editor: &mut Editor, id: ClientId, name: &str) {
+    let (_win, buf) = win_buf!(editor, id);
+    let snippet = buf
+        .filetype
+        .as_ref()
+        .map(|ft| editor.snippets.get_snippet(ft, name))
+        .unwrap_or_else(|| editor.snippets.get_global_snippet(name))
+        .cloned();
+
+    match snippet {
+        Some(snip) => insert_snippet_impl(editor, id, snip),
+        _ => log::error!("No snippet with name {name}"),
+    }
+}
+
+pub(crate) fn insert_snippet_impl(editor: &mut Editor, id: ClientId, snippet: Snippet) {
     let (win, buf) = editor.win_buf_mut(id);
     let pos = win.cursors.primary().pos();
     let slice = buf.slice(..);
@@ -45,6 +89,7 @@ pub(crate) fn insert_snippet(editor: &mut Editor, id: ClientId, snippet: Snippet
     let amount = buf.config.indent_amount;
     let bufindent = kind.repeat(amount as usize);
 
+    // Convert snippet to text and record the placeholder positions
     let mut placeholders = vec![];
     let mut text = String::new();
     for atom in snippet.atoms() {
@@ -69,6 +114,7 @@ pub(crate) fn insert_snippet(editor: &mut Editor, id: ClientId, snippet: Snippet
     let change = Change::insert(pos, text.as_bytes());
     let changes = Changes::new(&[change]);
 
+    // Insert snippet to buffer
     if win.change(buf, &changes).is_ok() {
         let hook = Hook::BufChanged(buf.id);
         run(editor, id, hook);
@@ -76,6 +122,7 @@ pub(crate) fn insert_snippet(editor: &mut Editor, id: ClientId, snippet: Snippet
         return;
     }
 
+    // Convert recorded placeholders to jumps
     let (win, buf) = editor.win_buf_mut(id);
     let mut jumps: BTreeMap<u8, Vec<Jump>> = BTreeMap::new();
     for (n, start, end) in placeholders {
@@ -98,8 +145,6 @@ pub(crate) fn insert_snippet(editor: &mut Editor, id: ClientId, snippet: Snippet
     }
 
     let jumps = Jumps::new(groups);
-
     win.snippets.push(jumps);
-
     win.cursors_to_next_snippet_jump(buf);
 }

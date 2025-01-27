@@ -80,7 +80,7 @@ fn completion_confirm(editor: &mut Editor, id: ClientId) {
 #[action("Abort completion")]
 fn completion_abort(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
-    if win.focus() != Focus::Window {
+    if win.focus() == Focus::Completion {
         win.focus_to(Focus::Window);
     }
 }

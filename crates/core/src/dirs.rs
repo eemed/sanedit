@@ -24,7 +24,7 @@ pub const GLOBAL: &str = "todo";
 
 /// Directory that represents all the locations that contain the same
 /// information. Used to find things from multiple places at once.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Directory {
     dirs: Vec<PathBuf>,
 }
@@ -99,6 +99,10 @@ impl ConfigDirectory {
         ConfigDirectory { dir: cd.into() }
     }
 
+    pub fn global_snippet_file(&self) -> PathBuf {
+        self.dir.join(SNIPPETS_FILE)
+    }
+
     pub fn filetype_dir(&self) -> Directory {
         let global = PathBuf::from(GLOBAL).join(FILETYPE_DIR);
         let local = self.dir.join(FILETYPE_DIR);
@@ -117,9 +121,7 @@ impl ConfigDirectory {
 
     // TODO should be split into global and local config
     pub fn config(&self) -> PathBuf {
-        let mut base = self.dir.clone();
-        base.push(CONFIG);
-        base
+        self.dir.join(CONFIG)
     }
 }
 

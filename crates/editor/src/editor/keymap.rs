@@ -16,6 +16,7 @@ pub(crate) enum KeymapKind {
     Completion,
     Filetree,
     Locations,
+    Snippet,
 }
 
 #[derive(Debug, Clone, Default)]

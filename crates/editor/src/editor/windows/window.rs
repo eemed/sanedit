@@ -43,26 +43,6 @@ use crate::{
 use self::filetree::FiletreeView;
 pub(crate) use cursors::Cursors;
 
-macro_rules! show_error {
-    ($self:ident, $result:expr) => {{
-        let result = $result;
-        if let Err(e) = &result {
-            $self.error_msg(&e.to_string());
-        }
-        result?
-    }};
-}
-
-macro_rules! show_warn {
-    ($self:ident, $result:expr) => {{
-        let result = $result;
-        if let Err(e) = &result {
-            $self.warn_msg(&e.to_string());
-        }
-        result?
-    }};
-}
-
 pub(crate) use self::{
     completion::*, config::*, focus::*, jumps::*, prompt::*, search::*, shell::*, view::*,
 };
@@ -133,6 +113,20 @@ impl Window {
         self.popup = None;
     }
 
+    fn unwrap_or_error<T>(&mut self, result: anyhow::Result<T>) -> T {
+        if let Err(e) = &result {
+            self.error_msg(&e.to_string());
+        }
+        result.unwrap()
+    }
+
+    fn unwrap_or_warn<T>(&mut self, result: anyhow::Result<T>) -> T {
+        if let Err(e) = &result {
+            self.warn_msg(&e.to_string());
+        }
+        result.unwrap()
+    }
+
     /// Push a new popup message
     pub fn push_popup(&mut self, msg: PopupMessage) {
         match self.popup.as_mut() {
@@ -159,8 +153,8 @@ impl Window {
         self.focus
     }
 
+    /// Switches focus and changes to appropriate keymap layer
     pub fn focus_to(&mut self, focus: Focus) {
-        log::info!("Focus: {focus:?}");
         self.focus = focus;
 
         let kind = match self.focus {
@@ -580,7 +574,7 @@ impl Window {
             .map(|edit| Self::cursors_from_changes(&edit.changes))
             .unwrap_or(Cursors::default());
 
-        let change = show_warn!(self, buf.apply_changes(&Changes::undo()));
+        let change = self.unwrap_or_warn(buf.apply_changes(&Changes::undo()));
         let created = change.created_snapshot;
         let restored = change.restored_snapshot;
 
@@ -612,7 +606,7 @@ impl Window {
     }
 
     pub fn redo(&mut self, buf: &mut Buffer) -> Result<()> {
-        let change = show_warn!(self, buf.apply_changes(&Changes::redo()));
+        let change = self.unwrap_or_warn(buf.apply_changes(&Changes::redo()));
         let restored = change.restored_snapshot;
 
         if let Some(restored) = restored {
@@ -773,7 +767,7 @@ impl Window {
 
     /// Synchronously saves the buffer
     pub fn save_buffer(&mut self, buf: &mut Buffer) -> Result<()> {
-        let saved = show_error!(self, buf.save_rename());
+        let saved = self.unwrap_or_error(buf.save_rename());
         let aux = buf.snapshot_aux_mut(saved.snapshot).unwrap();
         *aux = self.window_aux();
         Ok(())
@@ -885,7 +879,16 @@ impl Window {
         while let Some(last) = self.snippets.last_mut() {
             match last.next() {
                 Some(jumps) => {
+                    let empty = last.is_empty();
                     self.cursors_to_jump_group(buf, jumps);
+                    // Set keymap to snippet if jumped to next
+                    self.keymap_layer = KeymapKind::Snippet.as_ref().into();
+                    self.focus = Focus::Window;
+
+                    // Clear jumps if empty
+                    if empty {
+                        self.snippets.pop();
+                    }
                     break;
                 }
                 None => {

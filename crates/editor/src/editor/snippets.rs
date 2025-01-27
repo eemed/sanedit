@@ -19,20 +19,36 @@ pub(crate) struct Snippets {
 }
 
 impl Snippets {
-    pub fn new(global: &Path, ft_dir: Directory) -> Snippets {
-        let mut snippets = Snippets {
+    pub fn new(global_file: &Path, ft_dir: Directory) -> Snippets {
+        let mut global = Map::default();
+        if global_file.exists() {
+            match Self::load_snippet_file(global_file) {
+                Ok(snips) => global = snips,
+                Err(e) => {
+                    log::error!("Failed to load global snippets from {global_file:?}: {e}");
+                }
+            }
+        }
+
+        Snippets {
             filetype_dir: ft_dir,
             map: Map::default(),
-            global: Map::default(),
-        };
-        if let Err(e) = snippets.load_global(global) {
-            log::error!("Failed to load global snippets from {global:?}: {e}");
+            global,
         }
+    }
+
+    pub fn all_global(&self) -> BTreeMap<String, &Snippet> {
+        let mut snippets = BTreeMap::new();
+
+        for (name, snippet) in &self.global {
+            snippets.insert(name.clone(), snippet);
+        }
+
         snippets
     }
 
     /// all snippets available for filetype
-    pub fn snippets(&self, ft: &Filetype) -> BTreeMap<String, &Snippet> {
+    pub fn all(&self, ft: &Filetype) -> BTreeMap<String, &Snippet> {
         let mut snippets = BTreeMap::new();
 
         for (name, snippet) in &self.global {
@@ -49,6 +65,10 @@ impl Snippets {
         snippets
     }
 
+    pub fn get_global_snippet(&self, name: &str) -> Option<&Snippet> {
+        self.global.get(name)
+    }
+
     /// Get a specific snippet for a filetype
     pub fn get_snippet(&self, ft: &Filetype, name: &str) -> Option<&Snippet> {
         if let Some(local) = self.map.get(ft) {
@@ -57,10 +77,11 @@ impl Snippets {
             }
         }
 
-        self.global.get(name)
+        self.get_global_snippet(name)
     }
 
     pub fn load_global(&mut self, path: &Path) -> anyhow::Result<Map<String, Snippet>> {
+        log::debug!("Loading global snippets from: {path:?}");
         if !path.exists() {
             return Ok(Map::default());
         }
@@ -108,7 +129,7 @@ pub(crate) struct ConfigSnippet {
 }
 
 /// A snippet consists of a list of atoms
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) enum SnippetAtom {
     Text(String),
     Placeholder(u8, String),
@@ -116,7 +137,7 @@ pub(crate) enum SnippetAtom {
     Indent,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) struct Snippet {
     trigger: String,
     atoms: Vec<SnippetAtom>,

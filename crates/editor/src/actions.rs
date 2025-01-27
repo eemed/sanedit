@@ -261,5 +261,5 @@ pub(crate) const COMMANDS: &[Action] = &[
     syntax::parse_syntax,
 
     snippets::snippet_jump_next,
-    snippets::test_snippet,
+    snippets::insert_snippet,
 ];

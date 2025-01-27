@@ -31,6 +31,7 @@ use sanedit_server::ClientId;
 use sanedit_server::FromJobs;
 use sanedit_server::StartOptions;
 use sanedit_server::ToEditor;
+use snippets::Snippets;
 
 use std::env;
 use std::path::Path;
@@ -88,6 +89,7 @@ pub(crate) struct Editor {
     pub themes: Themes,
     pub config_dir: ConfigDirectory,
     pub syntaxes: Syntaxes,
+    pub snippets: Snippets,
     pub job_broker: JobBroker,
     pub hooks: Hooks,
     pub clipboard: Box<dyn Clipboard>,
@@ -106,6 +108,7 @@ impl Editor {
         let jobs_handle = runtime.block_on(spawn_job_runner(handle));
         let working_dir = env::current_dir().expect("Cannot get current working directory.");
         let config_dir = ConfigDirectory::default();
+        let global_snippets = config_dir.global_snippet_file();
         let ft_dir = config_dir.filetype_dir();
         let config = Config::default();
         let caches = Caches::new(&config);
@@ -114,7 +117,8 @@ impl Editor {
             _runtime: runtime,
             clients: Map::default(),
             draw_states: Map::default(),
-            syntaxes: Syntaxes::new(ft_dir),
+            syntaxes: Syntaxes::new(ft_dir.clone()),
+            snippets: Snippets::new(&global_snippets, ft_dir),
             windows: Windows::default(),
             buffers: Buffers::default(),
             job_broker: JobBroker::new(jobs_handle),
@@ -135,9 +139,14 @@ impl Editor {
 
     pub fn configure(&mut self, mut opts: StartOptions) {
         if let Some(cd) = opts.config_dir.take() {
+            log::info!("Config directory: {cd:?}");
             if let Ok(cd) = cd.canonicalize() {
                 self.config_dir = ConfigDirectory::new(&cd);
                 self.syntaxes = Syntaxes::new(self.config_dir.filetype_dir());
+                self.snippets = Snippets::new(
+                    &self.config_dir.global_snippet_file(),
+                    self.config_dir.filetype_dir(),
+                );
                 self.themes = Themes::new(self.config_dir.theme_dir());
             }
         }

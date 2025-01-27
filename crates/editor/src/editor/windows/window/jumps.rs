@@ -60,4 +60,8 @@ impl Jumps {
     pub fn next(&mut self) -> Option<JumpGroup> {
         self.jumps.pop_front()
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.jumps.is_empty()
+    }
 }

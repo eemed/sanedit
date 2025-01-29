@@ -51,16 +51,8 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> Statusline {
     let right = {
         let mut result = String::new();
         let keys = win.keys();
-        // let persist = win.key_persist;
         if !keys.is_empty() {
             let keys: Vec<String> = keys.iter().map(|k| k.to_string()).collect();
-            // if persist != 0 {
-            //     result.push('(');
-            //     result.push_str(&keys[..persist].join(" "));
-            //     result.push(')');
-            //     result.push(' ');
-            // }
-
             result.push_str(&keys.join(" "));
             result.push_str(" | ")
         }
@@ -69,6 +61,7 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> Statusline {
             result.push_str(&format!(" {lsp} | "));
         }
 
+        result.push_str(&format!(" {} | ", win.keymap_layer));
         result.push_str(&format!(
             "{ft} | {}% {cpos}/{blen} ",
             ((cpos as f64 / blen.max(1) as f64) * 100.0).floor()

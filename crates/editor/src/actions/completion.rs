@@ -7,6 +7,7 @@ use crate::{
     common::matcher::{MatchOption, MatchStrategy},
     editor::{
         hooks::Hook,
+        snippets::SNIPPET_DESCRIPTION,
         windows::{Completion, Focus},
         Editor,
     },
@@ -14,7 +15,7 @@ use crate::{
 
 use sanedit_server::ClientId;
 
-use super::{jobs::MatcherJob, lsp, text};
+use super::{jobs::MatcherJob, lsp, snippets, text};
 
 #[action("Complete")]
 fn complete(editor: &mut Editor, id: ClientId) {
@@ -26,7 +27,7 @@ fn complete(editor: &mut Editor, id: ClientId) {
 }
 
 fn complete_from_syntax(editor: &mut Editor, id: ClientId) {
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, buf) = win_buf!(editor, id);
     let cursor = win.cursors.primary().pos();
     let slice = buf.slice(..);
     let (range, word) =
@@ -37,6 +38,7 @@ fn complete_from_syntax(editor: &mut Editor, id: ClientId) {
     };
     win.completion = Completion::new(range.start, point);
 
+    // Fetch completions from buffer
     let opts: FxHashSet<MatchOption> = win
         .view_syntax()
         .spans()
@@ -51,7 +53,15 @@ fn complete_from_syntax(editor: &mut Editor, id: ClientId) {
         .map(|(compl, desc)| MatchOption::with_description(&compl, &desc))
         .collect();
 
-    let opts: Vec<MatchOption> = opts.into_iter().collect();
+    let opts: Vec<MatchOption> = opts
+        .into_iter()
+        .chain(
+            editor
+                .snippets
+                .match_options(buf.filetype.as_ref())
+                .into_iter(),
+        )
+        .collect();
     let job = MatcherJob::builder(id)
         .strategy(MatchStrategy::Prefix)
         .search(word)
@@ -67,13 +77,15 @@ fn completion_confirm(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.focus_to(Focus::Window);
 
-    let opt = win.completion.selected().map(|opt| {
-        let prefix = opt.matches().iter().map(|m| m.end).max().unwrap_or(0);
-        opt.to_str_lossy()[prefix..].to_string()
-    });
-
-    if let Some(opt) = opt {
-        text::insert(editor, id, &opt);
+    if let Some(opt) = win.completion.selected().cloned() {
+        if opt.description() == SNIPPET_DESCRIPTION {
+            let prefix = opt.matches().iter().map(|m| m.end).max().unwrap_or(0);
+            snippets::expand_snippet(editor, id, &opt.to_str_lossy(), prefix as u64)
+        } else {
+            let prefix = opt.matches().iter().map(|m| m.end).max().unwrap_or(0);
+            let opt = opt.to_str_lossy()[prefix..].to_string();
+            text::insert(editor, id, &opt);
+        }
     }
 }
 

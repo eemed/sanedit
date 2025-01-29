@@ -1,7 +1,7 @@
 use std::{collections::BTreeMap, sync::Arc};
 
 use sanedit_buffer::Mark;
-use sanedit_core::{indent_at_line, Change, Changes};
+use sanedit_core::{indent_at_line, Change, Changes, Range};
 use sanedit_server::ClientId;
 
 use crate::{
@@ -19,7 +19,9 @@ use super::jobs::MatcherJob;
 #[action("Jump to next snippet placeholders")]
 pub(crate) fn snippet_jump_next(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
-    win.cursors_to_next_snippet_jump(buf);
+    if !win.cursors_to_next_snippet_jump(buf) {
+        win.focus_to(Focus::Window);
+    }
 }
 
 #[action("Insert a snippet")]
@@ -27,10 +29,9 @@ pub(crate) fn insert_snippet(editor: &mut Editor, id: ClientId) {
     const MESSAGE: &str = "Insert a snippet";
     let (win, buf) = win_buf!(editor, id);
     let filetype = buf.filetype.clone();
-    let snippets: Vec<String> = filetype
-        .as_ref()
-        .map(|ft| editor.snippets.all(ft))
-        .unwrap_or_else(|| editor.snippets.all_global())
+    let snippets: Vec<String> = editor
+        .snippets
+        .all(filetype.as_ref())
         .into_iter()
         .map(|(name, _snip)| name)
         .collect();
@@ -43,14 +44,13 @@ pub(crate) fn insert_snippet(editor: &mut Editor, id: ClientId) {
     win.prompt = Prompt::builder()
         .prompt(MESSAGE)
         .on_confirm(move |editor, id, input| {
-            let snippet = filetype
-                .as_ref()
-                .map(|ft| editor.snippets.get_snippet(ft, input))
-                .unwrap_or_else(|| editor.snippets.get_global_snippet(input))
+            let snippet = editor
+                .snippets
+                .get_snippet(filetype.as_ref(), input)
                 .cloned();
 
             match snippet {
-                Some(snip) => insert_snippet_impl(editor, id, snip),
+                Some(snip) => insert_snippet_impl(editor, id, snip, 0),
                 _ => log::error!("No snippet with name {input}"),
             }
         })
@@ -58,22 +58,25 @@ pub(crate) fn insert_snippet(editor: &mut Editor, id: ClientId) {
     win.focus_to(Focus::Prompt);
 }
 
-pub(crate) fn expand_snippet(editor: &mut Editor, id: ClientId, name: &str) {
+pub(crate) fn expand_snippet(editor: &mut Editor, id: ClientId, name: &str, remove_prefix: u64) {
     let (_win, buf) = win_buf!(editor, id);
-    let snippet = buf
-        .filetype
-        .as_ref()
-        .map(|ft| editor.snippets.get_snippet(ft, name))
-        .unwrap_or_else(|| editor.snippets.get_global_snippet(name))
+    let snippet = editor
+        .snippets
+        .get_snippet(buf.filetype.as_ref(), name)
         .cloned();
 
     match snippet {
-        Some(snip) => insert_snippet_impl(editor, id, snip),
+        Some(snip) => insert_snippet_impl(editor, id, snip, remove_prefix),
         _ => log::error!("No snippet with name {name}"),
     }
 }
 
-pub(crate) fn insert_snippet_impl(editor: &mut Editor, id: ClientId, snippet: Snippet) {
+pub(crate) fn insert_snippet_impl(
+    editor: &mut Editor,
+    id: ClientId,
+    snippet: Snippet,
+    remove_prefix: u64,
+) {
     let (win, buf) = editor.win_buf_mut(id);
     let pos = win.cursors.primary().pos();
     let slice = buf.slice(..);
@@ -98,8 +101,8 @@ pub(crate) fn insert_snippet_impl(editor: &mut Editor, id: ClientId, snippet: Sn
             SnippetAtom::Placeholder(n, sel) => {
                 placeholders.push((
                     n,
-                    pos + text.len() as u64,
-                    pos + text.len() as u64 + sel.len() as u64,
+                    pos - remove_prefix + text.len() as u64,
+                    pos - remove_prefix + text.len() as u64 + sel.len() as u64,
                 ));
                 text.push_str(sel);
             }
@@ -111,8 +114,15 @@ pub(crate) fn insert_snippet_impl(editor: &mut Editor, id: ClientId, snippet: Sn
         }
     }
 
-    let change = Change::insert(pos, text.as_bytes());
-    let changes = Changes::new(&[change]);
+    let mut changes = vec![];
+    // If we are asked to remove a prefix also. atleast completion will do this
+    // to remove the match prefix
+    if remove_prefix != 0 {
+        let remove = Change::remove(Range::new(pos - remove_prefix, pos));
+        changes.push(remove);
+    }
+    changes.push(Change::insert(pos, text.as_bytes()));
+    let changes = Changes::new(&changes);
 
     // Insert snippet to buffer
     if win.change(buf, &changes).is_ok() {

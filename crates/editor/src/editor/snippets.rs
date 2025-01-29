@@ -9,7 +9,11 @@ use std::{
 };
 use thiserror::Error;
 
+use crate::common::matcher::MatchOption;
+
 use super::Map;
+
+pub(crate) const SNIPPET_DESCRIPTION: &str = "snippet";
 
 #[derive(Debug)]
 pub(crate) struct Snippets {
@@ -37,18 +41,8 @@ impl Snippets {
         }
     }
 
-    pub fn all_global(&self) -> BTreeMap<String, &Snippet> {
-        let mut snippets = BTreeMap::new();
-
-        for (name, snippet) in &self.global {
-            snippets.insert(name.clone(), snippet);
-        }
-
-        snippets
-    }
-
     /// all snippets available for filetype
-    pub fn all(&self, ft: &Filetype) -> BTreeMap<String, &Snippet> {
+    pub fn all(&self, ft: Option<&Filetype>) -> BTreeMap<String, &Snippet> {
         let mut snippets = BTreeMap::new();
 
         for (name, snippet) in &self.global {
@@ -56,9 +50,11 @@ impl Snippets {
         }
 
         // Add/Overwrite with local
-        if let Some(local) = self.map.get(ft) {
-            for (name, snippet) in local {
-                snippets.insert(name.clone(), snippet);
+        if let Some(ft) = ft {
+            if let Some(local) = self.map.get(ft) {
+                for (name, snippet) in local {
+                    snippets.insert(name.clone(), snippet);
+                }
             }
         }
 
@@ -70,14 +66,16 @@ impl Snippets {
     }
 
     /// Get a specific snippet for a filetype
-    pub fn get_snippet(&self, ft: &Filetype, name: &str) -> Option<&Snippet> {
-        if let Some(local) = self.map.get(ft) {
-            if let Some(snip) = local.get(name) {
-                return Some(snip);
+    pub fn get_snippet(&self, ft: Option<&Filetype>, name: &str) -> Option<&Snippet> {
+        if let Some(ft) = ft {
+            if let Some(local) = self.map.get(ft) {
+                if let Some(snip) = local.get(name) {
+                    return Some(snip);
+                }
             }
         }
 
-        self.get_global_snippet(name)
+        self.global.get(name)
     }
 
     pub fn load_global(&mut self, path: &Path) -> anyhow::Result<Map<String, Snippet>> {
@@ -118,6 +116,13 @@ impl Snippets {
         }
 
         Ok(snippets)
+    }
+
+    pub fn match_options(&self, ft: Option<&Filetype>) -> Vec<MatchOption> {
+        self.all(ft)
+            .into_iter()
+            .map(|(name, snippet)| MatchOption::with_description(&snippet.trigger, SNIPPET_DESCRIPTION))
+            .collect()
     }
 }
 

@@ -4,6 +4,7 @@ use sanedit_core::movement::prev_line_start;
 use sanedit_core::{BufferRange, Char, Chars, DisplayOptions, Range};
 use sanedit_messages::redraw::{Point, Size};
 
+use crate::common::matcher::MatchOption;
 use crate::editor::buffers::{Buffer, BufferId};
 use crate::editor::syntax::{Span, SyntaxResult};
 

@@ -89,9 +89,15 @@ indent_kind = "Space"
 # How many indent characters a single indent should be
 indent_amount = 4
 
+[keymaps.snippet]
+fallthrough = "insert"
+maps = [
+    { key = "tab", actions = ["snippet_jump_next"] },
+]
+
 [keymaps.insert]
 maps = [
-    { key = "esc", actions = ["stop_selection", "goto_layer window"] },
+    { key = "esc", actions = ["stop_selection", "completion_abort", "goto_layer window"] },
     { key = "left", actions = ["prev_grapheme"] },
     { key = "up", actions = ["prev_line"] },
     { key = "down", actions = ["next_line"] },
@@ -101,9 +107,6 @@ maps = [
     { key = "enter", actions = ["insert_newline"] },
     { key = "tab", actions = ["insert_tab"] },
     { key = "btab", actions = ["backtab"] },
-
-    { key = "ctrl+b", actions = ["test_snippet"] },
-    { key = "ctrl+n", actions = ["snippet_jump_next"] },
 ]
 
 [keymaps.select]
@@ -303,8 +306,8 @@ maps = [
 [keymaps.completion]
 fallthrough = "window"
 maps = [
-    { key = "tab", actions = ["next_completion"] },
-    { key = "btab", actions = ["prev_completion"] },
-    { key = "enter", actions = ["confirm_completion"] },
-    { key = "esc", actions = ["abort_completion"] },
+    { key = "tab", actions = ["completion_next"] },
+    { key = "btab", actions = ["completion_prev"] },
+    { key = "enter", actions = ["completion_confirm"] },
+    { key = "esc", actions = ["completion_abort"] },
 ]

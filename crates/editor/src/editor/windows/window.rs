@@ -875,7 +875,7 @@ impl Window {
         self.change(buf, &changes)
     }
 
-    pub fn cursors_to_next_snippet_jump(&mut self, buf: &Buffer) {
+    pub fn cursors_to_next_snippet_jump(&mut self, buf: &Buffer) -> bool {
         while let Some(last) = self.snippets.last_mut() {
             match last.next() {
                 Some(jumps) => {
@@ -889,13 +889,15 @@ impl Window {
                     if empty {
                         self.snippets.pop();
                     }
-                    break;
+                    return true;
                 }
                 None => {
                     self.snippets.pop();
                 }
             }
         }
+
+        false
     }
 
     fn cursors_to_jump_group(&mut self, buf: &Buffer, group: JumpGroup) {

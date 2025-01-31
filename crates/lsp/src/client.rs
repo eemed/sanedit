@@ -565,11 +565,12 @@ impl Handler {
             lsp_types::CompletionResponse::Array(_) => todo!(),
             lsp_types::CompletionResponse::List(list) => {
                 for item in list.items {
+                    // TODO handle mode -- item.insert_text_mode
                     match item.text_edit {
-                        Some(lsp_types::CompletionTextEdit::Edit(_)) => todo!(),
+                        Some(lsp_types::CompletionTextEdit::Edit(edit)) => todo!(),
                         Some(lsp_types::CompletionTextEdit::InsertAndReplace(edit)) => {
                             results.push(CompletionItem {
-                                name: edit.new_text,
+                                text: edit.new_text,
                                 description: item.kind.map(|kind| {
                                     let mut desc = format!("{kind:?}");
                                     desc.make_ascii_lowercase();
@@ -579,6 +580,8 @@ impl Handler {
                                     lsp_types::Documentation::String(doc) => doc,
                                     lsp_types::Documentation::MarkupContent(mdoc) => mdoc.value,
                                 }),
+                                snippet: item.insert_text_format
+                                    == Some(lsp_types::InsertTextFormat::SNIPPET),
                             });
                         }
                         None => {}

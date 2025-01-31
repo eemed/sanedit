@@ -113,10 +113,10 @@ impl Drawable for CustomPrompt {
                         let style = ctx.style(field);
                         let mstyle = ctx.style(field);
                         let mut line =
-                            into_cells_with_style_pad(&opt.to_str_lossy(), style, wsize.width);
+                            into_cells_with_style_pad(&opt.text, style, wsize.width);
 
                         // Highlight matches
-                        for mat in opt.matches() {
+                        for mat in &opt.matches {
                             let mut pos = 0;
                             for cell in &mut line {
                                 if mat.contains(&pos) {
@@ -185,15 +185,15 @@ impl Drawable for CustomPrompt {
                         let mstyle = ctx.style(mfield);
 
                         let mut line = format_option(
-                            &opt.to_str_lossy(),
-                            opt.description(),
+                            &opt.text,
+                            &opt.description,
                             style,
                             dstyle,
                             wsize.width,
                         );
 
                         // Highlight matches
-                        for mat in opt.matches() {
+                        for mat in &opt.matches {
                             let mut pos = 0;
                             // dont count padding
                             for cell in &mut line[1..] {

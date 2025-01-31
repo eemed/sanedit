@@ -21,7 +21,7 @@ pub use strategy::*;
 
 /// Matches options to a pattern
 pub struct Matcher {
-    reader: Reader<MatchOption>,
+    reader: Reader<Arc<dyn Choice>>,
     all_opts_read: Arc<AtomicBool>,
     previous: Arc<AtomicBool>,
     strategy: MatchStrategy,
@@ -34,9 +34,9 @@ impl Matcher {
     // Create a new matcher.
     pub fn new<T>(mut chan: T, strategy: MatchStrategy) -> Matcher
     where
-        T: MatchOptionReceiver<MatchOption> + Send + 'static,
+        T: MatchOptionReceiver<Arc<dyn Choice>> + Send + 'static,
     {
-        let (reader, writer) = Appendlist::<MatchOption>::new();
+        let (reader, writer) = Appendlist::<Arc<dyn Choice>>::new();
         let all_opts_read = Arc::new(AtomicBool::new(false));
         let all_read = all_opts_read.clone();
 
@@ -67,7 +67,7 @@ impl Matcher {
         // Batch candidates to 512 sized blocks
         // Send each block to an executor
         // Get the results and send to receiver
-        let (out, rx) = channel::<Choice>(Self::CHANNEL_SIZE);
+        let (out, rx) = channel::<ScoredChoice>(Self::CHANNEL_SIZE);
         let reader = self.reader.clone();
         let all_opts_read = self.all_opts_read.clone();
         let case_sensitive = pattern.chars().any(|ch| ch.is_uppercase());
@@ -116,15 +116,14 @@ impl Matcher {
                     }
 
                     let opts = reader.slice(batch);
-                    for opt in opts.iter() {
-                        if let Some(ranges) = matches_with(opt, &patterns, case_sensitive, match_fn)
+                    for choice in opts.iter() {
+                        if let Some(ranges) =
+                            matches_with(choice.text(), &patterns, case_sensitive, match_fn)
                         {
-                            let score = score(&opt.to_str_lossy(), &ranges);
-                            let desc = opt.description();
-                            let bytes = opt.bytes();
-                            let mat = Choice::new(bytes, ranges, score, desc);
+                            let score = score(&choice.text(), &ranges);
+                            let scored = ScoredChoice::new(choice.clone(), score, ranges);
 
-                            if out.blocking_send(mat).is_err() {
+                            if out.blocking_send(scored).is_err() {
                                 stop.store(true, Ordering::Release);
                                 return;
                             }
@@ -151,22 +150,21 @@ fn score(opt: &str, ranges: &[Range<usize>]) -> u32 {
         .unwrap_or(opt.len() as u32)
 }
 
-fn with_case_sensitivity(opt: &MatchOption, case_sensitive: bool) -> Cow<str> {
-    let string = opt.to_str_lossy();
+fn with_case_sensitivity(opt: &str, case_sensitive: bool) -> Cow<str> {
     if case_sensitive {
-        return string;
+        return opt.into();
     }
 
-    let has_upper = string.chars().any(|ch| ch.is_ascii_uppercase());
+    let has_upper = opt.chars().any(|ch| ch.is_ascii_uppercase());
     if !has_upper {
-        return string;
+        return opt.into();
     }
 
-    Cow::from(string.to_ascii_lowercase())
+    Cow::from(opt.to_ascii_lowercase())
 }
 
 fn matches_with(
-    opt: &MatchOption,
+    opt: &str,
     patterns: &Arc<Vec<String>>,
     case_sensitive: bool,
     f: fn(&str, &str) -> Option<Range<usize>>,
@@ -175,10 +173,7 @@ fn matches_with(
     let mut matches = vec![];
     for pattern in patterns.iter() {
         // Calculate match and apply offset
-        let mut range = (f)(&string, pattern)?;
-        range.start += opt.offset();
-        range.end += opt.offset();
-
+        let range = (f)(&string, pattern)?;
         matches.push(range);
     }
 

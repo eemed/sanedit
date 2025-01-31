@@ -1,7 +1,6 @@
-use sanedit_core::Choice;
 use serde::{Deserialize, Serialize};
 
-use super::{Component, Diffable, Redraw};
+use super::{choice::Choice, Component, Diffable, Redraw};
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
 pub enum Source {

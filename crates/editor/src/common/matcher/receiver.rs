@@ -1,5 +1,6 @@
-use sanedit_core::Choice;
 use tokio::sync::mpsc::Receiver;
+
+use super::ScoredChoice;
 
 /// Trait used to receive candidates using various receiver implementations
 pub trait MatchOptionReceiver<T> {
@@ -15,11 +16,11 @@ impl<T> MatchOptionReceiver<T> for Receiver<T> {
 /// Receiver for the match results
 #[derive(Debug)]
 pub struct MatchReceiver {
-    pub(super) receiver: Receiver<Choice>,
+    pub(super) receiver: Receiver<ScoredChoice>,
 }
 
 impl MatchReceiver {
-    pub async fn recv(&mut self) -> Option<Choice> {
+    pub async fn recv(&mut self) -> Option<ScoredChoice> {
         self.receiver.recv().await
     }
 }

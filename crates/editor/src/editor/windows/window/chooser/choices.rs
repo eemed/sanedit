@@ -1,7 +1,8 @@
 use std::cell::RefCell;
 
-use sanedit_core::Choice;
 use sanedit_utils::sorted_vec::SortedVec;
+
+use crate::common::matcher::ScoredChoice;
 
 #[derive(Debug, Default)]
 struct MergedOptions {
@@ -27,13 +28,13 @@ impl MergedOptions {
 
 #[derive(Debug, Default)]
 pub struct Choices {
-    options: Vec<SortedVec<Choice>>,
+    options: Vec<SortedVec<ScoredChoice>>,
     total: usize,
     interior: RefCell<MergedOptions>,
 }
 
 impl Choices {
-    pub fn push(&mut self, opts: SortedVec<Choice>) {
+    pub fn push(&mut self, opts: SortedVec<ScoredChoice>) {
         self.total += opts.len();
         self.options.push(opts);
 
@@ -50,7 +51,7 @@ impl Choices {
         self.total == 0
     }
 
-    pub fn get(&self, idx: usize) -> Option<&Choice> {
+    pub fn get(&self, idx: usize) -> Option<&ScoredChoice> {
         self.merge_until(idx);
         let interior = self.interior.borrow();
         let (list, pos) = interior.merged.get(idx)?;
@@ -67,7 +68,7 @@ impl Choices {
         for _ in interior.merged.len()..idx + 1 {
             let len = interior.cursors.len();
             // min element match and the list/cursor index
-            let mut min: Option<(usize, &Choice)> = None;
+            let mut min: Option<(usize, &ScoredChoice)> = None;
 
             for c in 0..len {
                 let list = &self.options[c];

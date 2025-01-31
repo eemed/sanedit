@@ -1,51 +1,61 @@
-use serde::{Deserialize, Serialize};
+use std::{any::Any, path::PathBuf};
 
-use crate::Range;
-
-#[derive(Debug, Clone, PartialOrd, Ord, PartialEq, Eq, Default, Serialize, Deserialize)]
-pub struct Choice {
-    pub(super) score: u32,
-    /// Underlying option
-    pub(super) value: Vec<u8>,
-
-    /// Matched ranges
-    pub(super) matches: Vec<Range<usize>>,
-
-    /// Additional description of the option
-    pub(super) description: String,
+pub trait Choice: Send + Sync + std::fmt::Debug {
+    fn description(&self) -> &str;
+    fn text(&self) -> &str;
+    fn as_any(&self) -> &dyn Any;
 }
 
-impl Choice {
-    pub fn new(opt: &[u8], matches: Vec<Range<usize>>, score: u32, description: &str) -> Choice {
-        Choice {
-            value: opt.into(),
-            score,
-            description: description.into(),
-            matches,
-        }
+impl std::hash::Hash for dyn Choice {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        (self.text(), self.description()).hash(state)
+    }
+}
+
+impl PartialEq for dyn Choice {
+    fn eq(&self, other: &Self) -> bool {
+        self.text().eq(other.text())
+    }
+}
+
+impl Eq for dyn Choice {}
+
+impl PartialOrd for dyn Choice {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        self.text().partial_cmp(other.text())
+    }
+}
+
+impl Ord for dyn Choice {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.text().cmp(other.text())
+    }
+}
+
+impl Choice for String {
+    fn description(&self) -> &str {
+        ""
     }
 
-    pub fn rescore(&mut self, score: u32) {
-        self.score = score;
+    fn text(&self) -> &str {
+        self.as_str()
     }
 
-    pub fn to_str_lossy(&self) -> std::borrow::Cow<str> {
-        String::from_utf8_lossy(&self.value)
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+}
+
+impl Choice for (String, String) {
+    fn description(&self) -> &str {
+        self.1.as_str()
     }
 
-    pub fn value_raw(&self) -> &[u8] {
-        &self.value
+    fn text(&self) -> &str {
+        self.0.as_str()
     }
 
-    pub fn score(&self) -> u32 {
-        self.score
-    }
-
-    pub fn matches(&self) -> &[Range<usize>] {
-        &self.matches
-    }
-
-    pub fn description(&self) -> &str {
-        &self.description
+    fn as_any(&self) -> &dyn Any {
+        self
     }
 }

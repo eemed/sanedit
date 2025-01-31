@@ -1,6 +1,5 @@
-use std::{cmp, ffi::OsStr, path::PathBuf};
+use std::cmp;
 
-use sanedit_core::{Choice, Range};
 use sanedit_messages::redraw::{self, prompt::Source, Component, Redraw};
 
 use crate::editor::windows::{Focus, PromptKind};
@@ -54,39 +53,15 @@ fn draw_impl(ctx: &mut DrawContext) -> redraw::Redraw {
     let input = prompt.input().into();
     let cursor = prompt.cursor();
     let selected_relative_pos = prompt.selected_pos().map(|pos| pos - *offset);
-    let options = prompt
+    let options: Vec<redraw::choice::Choice> = prompt
         .options_window(compl_count, *offset)
         .into_iter()
         .map(|choice| {
-            if prompt.has_paths() {
-                // Convert to path
-                let os = unsafe { OsStr::from_encoded_bytes_unchecked(choice.value_raw()) };
-                let path = PathBuf::from(os);
-                // Strip working dir
-                let path = path.strip_prefix(ctx.editor.working_dir).unwrap_or(&path);
-                // Calculate how much we took off
-                let off = choice.value_raw().len() - path.as_os_str().len();
-
-                // Make matches
-                let matches: Vec<Range<usize>> = choice
-                    .matches()
-                    .iter()
-                    .cloned()
-                    .map(|mut r| {
-                        r.start -= off;
-                        r.end -= off;
-                        r
-                    })
-                    .collect();
-
-                Choice::new(
-                    &choice.value_raw()[off..],
-                    matches,
-                    choice.score(),
-                    choice.description(),
-                )
-            } else {
-                choice.clone()
+            let c = choice.choice();
+            redraw::choice::Choice {
+                text: c.text().to_string(),
+                description: c.description().to_string(),
+                matches: choice.matches().to_vec(),
             }
         })
         .collect();

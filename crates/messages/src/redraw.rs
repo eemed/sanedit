@@ -10,6 +10,7 @@ mod status_message;
 mod style;
 mod theme;
 
+pub mod choice;
 pub mod completion;
 pub mod items;
 pub mod prompt;

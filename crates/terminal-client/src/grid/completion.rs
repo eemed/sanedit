@@ -115,8 +115,8 @@ impl Drawable for Completion {
                 let dstyle = ctx.style(dfield);
 
                 let line = format_completion(
-                    &opt.to_str_lossy(),
-                    opt.description(),
+                    &opt.text,
+                    &opt.description,
                     style,
                     dstyle,
                     wsize.width,

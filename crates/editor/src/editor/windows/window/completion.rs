@@ -1,12 +1,10 @@
 use std::rc::Rc;
 
-use sanedit_core::Choice;
 use sanedit_messages::redraw::Point;
 use sanedit_utils::sorted_vec::SortedVec;
 
 use crate::{
-    actions::jobs::{MatchedOptions, MatcherMessage},
-    editor::{windows::Focus, Editor},
+    actions::jobs::{MatchedOptions, MatcherMessage}, common::matcher::ScoredChoice, editor::{windows::Focus, Editor}
 };
 use sanedit_server::ClientId;
 
@@ -45,7 +43,7 @@ impl Completion {
         &self.point
     }
 
-    pub fn selected(&self) -> Option<&Choice> {
+    pub fn selected(&self) -> Option<&ScoredChoice> {
         self.chooser.selected()
     }
 
@@ -57,7 +55,7 @@ impl Completion {
         self.chooser.select_prev()
     }
 
-    pub fn add_choices(&mut self, options: SortedVec<Choice>) {
+    pub fn add_choices(&mut self, options: SortedVec<ScoredChoice>) {
         self.chooser.add(options)
     }
 
@@ -69,7 +67,7 @@ impl Completion {
         self.chooser = Chooser::new();
     }
 
-    pub fn choices_part(&self, count: usize, offset: usize) -> Vec<&Choice> {
+    pub fn choices_part(&self, count: usize, offset: usize) -> Vec<&ScoredChoice> {
         self.chooser.matches_window(count, offset)
     }
 
@@ -109,9 +107,8 @@ impl Completion {
                             win.completion.clear_choices();
                         }
                         win.focus_to(Focus::Completion);
-                        let opts: Vec<Choice> = matched.into_iter().map(Choice::from).collect();
                         let (win, _buf) = editor.win_buf_mut(id);
-                        win.completion.add_choices(opts.into());
+                        win.completion.add_choices(matched);
                     }
                 }
             }

@@ -126,9 +126,10 @@ impl From<lsp_types::Diagnostic> for TextDiagnostic {
 
 #[derive(Debug, Clone)]
 pub struct CompletionItem {
-    pub name: String,
+    pub text: String,
     pub description: Option<String>,
     pub documentation: Option<String>,
+    pub snippet: bool,
 }
 
 #[derive(Debug, Clone)]

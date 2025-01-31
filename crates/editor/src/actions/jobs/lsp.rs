@@ -7,19 +7,22 @@ use std::{
 
 use crate::{
     actions::{hooks::run, locations, lsp::lsp_notify_for},
-    common::matcher::{MatchOption, MatchStrategy},
+    common::matcher::{MatchStrategy, SnippetChoice},
     editor::{
         buffers::BufferId,
         config::LSPConfig,
         hooks::Hook,
         job_broker::KeepInTouch,
         lsp::{Constraint, LSP},
+        snippets::Snippet,
         windows::{Completion, Prompt},
         Editor,
     },
 };
 use sanedit_buffer::{PieceTree, PieceTreeSlice};
-use sanedit_core::{word_before_pos, Change, Changes, Diagnostic, Filetype, Group, Item, Range};
+use sanedit_core::{
+    word_before_pos, Change, Changes, Choice, Diagnostic, Filetype, Group, Item, Range,
+};
 use sanedit_lsp::{
     CodeAction, CompletionItem, FileEdit, LSPClientParams, Notification, Position,
     PositionEncoding, PositionRange, RequestKind, RequestResult, Response, TextDiagnostic,
@@ -243,7 +246,7 @@ impl LSPJob {
 
         win.completion = Completion::new(range.start, point);
 
-        let opts: Vec<MatchOption> = opts.into_iter().map(from_completion_item).collect();
+        let opts: Vec<Arc<dyn Choice>> = opts.into_iter().map(from_completion_item).collect();
 
         let job = MatcherJob::builder(id)
             .strategy(MatchStrategy::Prefix)
@@ -446,9 +449,19 @@ fn read_references(
     group
 }
 
-fn from_completion_item(value: CompletionItem) -> MatchOption {
+fn from_completion_item(value: CompletionItem) -> Arc<dyn Choice> {
+    if value.snippet {
+        match Snippet::new(&value.text) {
+            Ok(snippet) => {
+                let snippet = SnippetChoice::new(snippet);
+                return Arc::new(snippet);
+            }
+            Err(e) => log::error!("Failed to create LSP snippet: {e}"),
+        }
+    }
+
     match value.description {
-        Some(desc) => MatchOption::with_description(&value.name, &desc),
-        None => MatchOption::from(value.name),
+        Some(desc) => Arc::new((value.text, desc)),
+        None => Arc::new(value.text),
     }
 }

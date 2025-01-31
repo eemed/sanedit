@@ -3,17 +3,18 @@ use std::{
     sync::Arc,
 };
 
+use sanedit_core::Choice;
 use tokio::{fs, io, sync::mpsc::Sender};
 
 use sanedit_server::{BoxFuture, Kill};
 
-use crate::common::matcher::{Kind, MatchOption};
+use crate::common::matcher::PathChoice;
 
 use super::OptionProvider;
 
 #[derive(Clone)]
 struct ReadDirContext {
-    osend: Sender<MatchOption>,
+    osend: Sender<Arc<dyn Choice>>,
     strip: usize,
     kill: Kill,
     ignore: Arc<Vec<String>>,
@@ -60,13 +61,8 @@ async fn rec(dir: PathBuf, ctx: ReadDirContext) -> io::Result<()> {
         if metadata.is_dir() {
             spawn(path, ctx.clone());
         } else {
-            let opt = MatchOption::new(
-                path.as_os_str().as_encoded_bytes(),
-                "",
-                ctx.strip,
-                Kind::Path,
-            );
-            let _ = ctx.osend.send(opt).await;
+            let opt = PathChoice::new(path, ctx.strip);
+            let _ = ctx.osend.send(Arc::new(opt)).await;
         }
     }
 
@@ -75,11 +71,11 @@ async fn rec(dir: PathBuf, ctx: ReadDirContext) -> io::Result<()> {
 
 async fn read_directory_recursive(
     dir: PathBuf,
-    osend: Sender<MatchOption>,
+    osend: Sender<Arc<dyn Choice>>,
     ignore: Arc<Vec<String>>,
     kill: Kill,
 ) {
-    let strip = dir.as_os_str().len();
+    let strip = dir.as_os_str().len() + 1;
     let ctx = ReadDirContext {
         osend,
         strip,
@@ -91,7 +87,7 @@ async fn read_directory_recursive(
 }
 
 impl OptionProvider for FileOptionProvider {
-    fn provide(&self, sender: Sender<MatchOption>, kill: Kill) -> BoxFuture<'static, ()> {
+    fn provide(&self, sender: Sender<Arc<dyn Choice>>, kill: Kill) -> BoxFuture<'static, ()> {
         let dir = self.path.clone();
         Box::pin(read_directory_recursive(
             dir,

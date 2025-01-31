@@ -200,9 +200,17 @@ impl<T> Writer<T> {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Reader<T> {
     list: Arc<List<T>>,
+}
+
+impl<T> Clone for Reader<T> {
+    fn clone(&self) -> Self {
+        Self {
+            list: self.list.clone(),
+        }
+    }
 }
 
 impl<T> Reader<T> {

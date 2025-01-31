@@ -37,10 +37,17 @@ fn draw_impl(ctx: &mut DrawContext) -> redraw::Redraw {
         }
     };
     let selected_relative_pos = completion.selected_pos().map(|pos| pos - *offset);
-    let choices: Vec<Choice> = completion
+    let choices: Vec<redraw::choice::Choice> = completion
         .choices_part(compl_count, *offset)
         .into_iter()
-        .cloned()
+        .map(|choice| {
+            let c = choice.choice();
+            redraw::choice::Choice {
+                text: c.text().to_string(),
+                description: c.description().to_string(),
+                matches: choice.matches().to_vec(),
+            }
+        })
         .collect();
     let query_len = ctx
         .editor

@@ -1,9 +1,8 @@
 use std::cmp::max;
 
-use sanedit_core::Choice;
 use serde::{Deserialize, Serialize};
 
-use super::{Component, Diffable, Point, Redraw, Size};
+use super::{choice::Choice, Component, Diffable, Point, Redraw, Size};
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
 pub struct Completion {
@@ -20,11 +19,11 @@ impl Completion {
             // " " + name + " " (+ description + " ")
             let mut len = 0;
             len += 1;
-            len += o.to_str_lossy().chars().count();
+            len += o.text.chars().count();
             len += 1;
 
-            if !o.description().is_empty() {
-                len += o.description().chars().count();
+            if !o.description.is_empty() {
+                len += o.description.chars().count();
                 len += 1;
             }
             max(acc, len)

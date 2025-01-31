@@ -1,13 +1,13 @@
 use std::sync::Arc;
 
 use rustc_hash::FxHashSet;
-use sanedit_core::{word_before_pos, Range};
+use sanedit_core::{word_before_pos, Choice, Range};
 
 use crate::{
-    common::matcher::{MatchOption, MatchStrategy},
+    common::matcher::{MatchStrategy, ScoredChoice},
     editor::{
         hooks::Hook,
-        snippets::SNIPPET_DESCRIPTION,
+        snippets::{Snippet, SNIPPET_DESCRIPTION},
         windows::{Completion, Focus},
         Editor,
     },
@@ -39,7 +39,7 @@ fn complete_from_syntax(editor: &mut Editor, id: ClientId) {
     win.completion = Completion::new(range.start, point);
 
     // Fetch completions from buffer
-    let opts: FxHashSet<MatchOption> = win
+    let opts: FxHashSet<Arc<dyn Choice>> = win
         .view_syntax()
         .spans()
         .iter()
@@ -50,10 +50,13 @@ fn complete_from_syntax(editor: &mut Editor, id: ClientId) {
             (compl, desc)
         })
         .filter(|(compl, _)| compl != &word)
-        .map(|(compl, desc)| MatchOption::with_description(&compl, &desc))
+        .map(|(compl, desc)| {
+            let c: Arc<dyn Choice> = Arc::new((compl, desc));
+            c
+        })
         .collect();
 
-    let opts: Vec<MatchOption> = opts
+    let opts: Vec<Arc<dyn Choice>> = opts
         .into_iter()
         .chain(
             editor
@@ -78,12 +81,14 @@ fn completion_confirm(editor: &mut Editor, id: ClientId) {
     win.focus_to(Focus::Window);
 
     if let Some(opt) = win.completion.selected().cloned() {
-        if opt.description() == SNIPPET_DESCRIPTION {
+        let choice = opt.choice();
+
+        if let Some(snippet) = choice.as_any().downcast_ref::<Snippet>().cloned() {
             let prefix = opt.matches().iter().map(|m| m.end).max().unwrap_or(0);
-            snippets::expand_snippet(editor, id, &opt.to_str_lossy(), prefix as u64)
+            snippets::insert_snippet_impl(editor, id, snippet, prefix as u64)
         } else {
             let prefix = opt.matches().iter().map(|m| m.end).max().unwrap_or(0);
-            let opt = opt.to_str_lossy()[prefix..].to_string();
+            let opt = choice.text()[prefix..].to_string();
             text::insert(editor, id, &opt);
         }
     }

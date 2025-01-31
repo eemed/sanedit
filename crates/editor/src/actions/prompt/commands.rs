@@ -1,11 +1,10 @@
 use crate::actions::jobs::{MatchedOptions, MatcherMessage};
 use crate::actions::*;
-use crate::common::matcher::MatchOption;
 use crate::editor::windows::Focus;
 use sanedit_core::Choice;
 use sanedit_messages::key::keyevents_to_string;
 
-pub(crate) fn command_palette(editor: &Editor, id: ClientId) -> Vec<MatchOption> {
+pub(crate) fn command_palette(editor: &Editor, id: ClientId) -> Vec<Arc<dyn Choice>> {
     // Display descriptions in command palette
     COMMANDS
         .iter()
@@ -19,7 +18,8 @@ pub(crate) fn command_palette(editor: &Editor, id: ClientId) -> Vec<MatchOption>
                 description = keyevents_to_string(&bind);
             }
             let value: String = action.description().into();
-            MatchOption::with_description(&value, &description)
+            let choice: Arc<dyn Choice> = Arc::new((value, description));
+            choice
         })
         .collect()
 }
@@ -44,9 +44,8 @@ pub(crate) fn matcher_result_handler(editor: &mut Editor, id: ClientId, msg: Mat
                     win.prompt.clear_choices();
                 }
                 win.focus_to(Focus::Prompt);
-                let opts: Vec<Choice> = matched.into_iter().map(Choice::from).collect();
                 let (win, _buf) = editor.win_buf_mut(id);
-                win.prompt.add_choices(opts.into());
+                win.prompt.add_choices(matched);
             }
         }
     }

@@ -1,6 +1,6 @@
 mod commands;
 
-use std::{cmp::min, ffi::OsStr, path::PathBuf, sync::Arc};
+use std::{cmp::min, path::PathBuf, sync::Arc};
 
 use rustc_hash::FxHashMap;
 use sanedit_buffer::PieceTreeView;
@@ -134,7 +134,7 @@ fn open_file_handler(editor: &mut Editor, id: ClientId, msg: MatcherMessage) {
         }
         Progress(opts) => {
             if let MatchedOptions::Options {
-                mut matched,
+                matched,
                 clear_old,
             } = opts
             {
@@ -146,26 +146,28 @@ fn open_file_handler(editor: &mut Editor, id: ClientId, msg: MatcherMessage) {
                     .get(0)
                     .map(|choice| choice.matches().is_empty())
                     .unwrap_or(false);
+
+                let mut rescored = matched;
                 if no_input {
                     // If no input is matched, sort results using LRU
 
                     let cache = &mut editor.caches.files;
                     let lru = cache.to_map();
                     let max = lru.len();
-                    for mat in &mut matched {
-                        let os = unsafe { OsStr::from_encoded_bytes_unchecked(mat.value_raw()) };
-                        let path = PathBuf::from(os);
+                    for mut mat in std::mem::take(&mut rescored).into_iter() {
+                        let path = PathBuf::from(mat.choice().text());
                         if let Some(score) = lru.get(&path) {
                             mat.rescore(*score as u32);
                         } else {
                             mat.rescore(mat.score() + max as u32);
                         }
+                        rescored.push(mat);
                     }
                 }
 
                 win.focus_to(Focus::Prompt);
                 let (win, _buf) = editor.win_buf_mut(id);
-                win.prompt.add_choices(matched.into());
+                win.prompt.add_choices(rescored);
             }
         }
     }

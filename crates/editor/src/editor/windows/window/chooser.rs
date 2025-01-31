@@ -1,7 +1,8 @@
 mod choices;
 
-use sanedit_core::Choice;
 use sanedit_utils::sorted_vec::SortedVec;
+
+use crate::common::matcher::ScoredChoice;
 
 use self::choices::Choices;
 
@@ -63,7 +64,7 @@ impl Chooser {
         }
     }
 
-    pub fn add(&mut self, opts: SortedVec<Choice>) {
+    pub fn add(&mut self, opts: SortedVec<ScoredChoice>) {
         self.choices.push(opts)
     }
 
@@ -71,14 +72,14 @@ impl Chooser {
         self.selected
     }
 
-    pub fn selected(&self) -> Option<&Choice> {
+    pub fn selected(&self) -> Option<&ScoredChoice> {
         let sel = self.selected?;
         self.choices.get(sel)
     }
 
     /// Returns less than or equal to count matches around selection,
     /// selection is positioned at the selected_offset index.
-    pub fn matches_window(&self, count: usize, offset: usize) -> Vec<&Choice> {
+    pub fn matches_window(&self, count: usize, offset: usize) -> Vec<&ScoredChoice> {
         let mut results = Vec::with_capacity(count);
         for i in offset..offset + count {
             if let Some(item) = self.choices.get(i) {

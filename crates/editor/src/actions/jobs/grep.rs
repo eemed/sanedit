@@ -9,14 +9,15 @@ use grep::searcher::{BinaryDetection, Searcher, SearcherBuilder, Sink, SinkMatch
 use rustc_hash::FxHashMap;
 use sanedit_buffer::utf8::EndOfLine;
 use sanedit_buffer::{PieceTree, PieceTreeSlice, PieceTreeView};
-use sanedit_core::{BufferRange, Group, Item, PTSearcher, Range, SearchDirection, SearchKind};
+use sanedit_core::{
+    BufferRange, Choice, Group, Item, PTSearcher, Range, SearchDirection, SearchKind,
+};
 use sanedit_utils::either::Either;
 use sanedit_utils::sorted_vec::SortedVec;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 
 use crate::actions::jobs::{OptionProvider, CHANNEL_SIZE};
 use crate::actions::locations;
-use crate::common::matcher::MatchOption;
 use crate::editor::{job_broker::KeepInTouch, Editor};
 use sanedit_server::{ClientId, Job, JobContext, JobResult};
 
@@ -49,7 +50,7 @@ impl Grep {
     }
 
     async fn grep(
-        mut orecv: Receiver<MatchOption>,
+        mut orecv: Receiver<Arc<dyn Choice>>,
         pattern: &str,
         msend: Sender<GrepResult>,
         buffers: Arc<FxHashMap<PathBuf, PieceTreeView>>,
@@ -82,7 +83,7 @@ impl Grep {
             let bufs = buffers.clone();
 
             rayon::spawn(move || {
-                let Some(path) = opt.path() else {
+                let Some(path) = opt.as_any().downcast_ref::<PathBuf>().cloned() else {
                     return;
                 };
 
@@ -196,7 +197,7 @@ impl Job for Grep {
 
         let fut = async move {
             // Options channel
-            let (osend, orecv) = channel::<MatchOption>(CHANNEL_SIZE);
+            let (osend, orecv) = channel::<Arc<dyn Choice>>(CHANNEL_SIZE);
             // Results channel
             let (msend, mrecv) = channel::<GrepResult>(CHANNEL_SIZE);
 

@@ -1,15 +1,16 @@
 use anyhow::anyhow;
-use sanedit_core::{Directory, Filetype, SNIPPETS_FILE};
+use sanedit_core::{Choice, Directory, Filetype, SNIPPETS_FILE};
 use serde::Deserialize;
 use std::{
     collections::BTreeMap,
     iter::Peekable,
     path::{Path, PathBuf},
     str::Chars,
+    sync::Arc,
 };
 use thiserror::Error;
 
-use crate::common::matcher::MatchOption;
+use crate::common::matcher::SnippetChoice;
 
 use super::Map;
 
@@ -118,10 +119,13 @@ impl Snippets {
         Ok(snippets)
     }
 
-    pub fn match_options(&self, ft: Option<&Filetype>) -> Vec<MatchOption> {
+    pub fn match_options(&self, ft: Option<&Filetype>) -> Vec<Arc<dyn Choice>> {
         self.all(ft)
             .into_iter()
-            .map(|(name, snippet)| MatchOption::with_description(&snippet.trigger, SNIPPET_DESCRIPTION))
+            .map(|(name, snippet)| {
+                let d: Arc<dyn Choice> = Arc::new(SnippetChoice::new_trigger(snippet.clone()));
+                d
+            })
             .collect()
     }
 }

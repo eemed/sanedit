@@ -1,145 +1,111 @@
-use std::{
-    ffi::OsStr,
-    path::{Path, PathBuf},
-};
+use std::{path::PathBuf, sync::Arc};
 
-#[derive(Debug, Clone)]
-pub enum Kind {
-    Path,
-    String,
+use sanedit_core::{Choice, Range};
+
+use crate::editor::snippets::{Snippet, SNIPPET_DESCRIPTION};
+
+#[derive(Debug, Eq, Ord, PartialOrd, Clone)]
+pub(crate) struct ScoredChoice {
+    score: u32,
+    matches: Vec<Range<usize>>,
+    choice: Arc<dyn Choice>,
 }
 
-/// An option that can be matched using matcher.
-/// Contains bytes and a description of those bytes
-#[derive(Debug, Clone)]
-pub struct MatchOption {
-    /// Match option data
-    value: Vec<u8>,
-
-    // TODO value and what is required to match could be just different fields?
-    /// Offset into value that should be used in matching
-    /// this allows to ignore any prefix during matching
-    /// Useful for matching paths, without a certain prefix.
-    offset: usize,
-
-    /// How to represent the match option data
-    kind: Kind,
-    description: String,
-}
-
-impl MatchOption {
-    pub fn new(option: &[u8], description: &str, offset: usize, kind: Kind) -> MatchOption {
-        MatchOption {
-            value: option.into(),
-            offset,
-            kind,
-            description: description.into(),
-        }
-    }
-
-    pub fn with_description(option: &str, description: &str) -> MatchOption {
-        MatchOption {
-            value: option.into(),
-            offset: 0,
-            kind: Kind::String,
-            description: description.into(),
-        }
-    }
-
-    /// Return the bytes required to match this option interpreted as utf8
-    pub fn to_str_lossy(&self) -> std::borrow::Cow<'_, str> {
-        match self.kind {
-            Kind::Path => {
-                let os = unsafe { OsStr::from_encoded_bytes_unchecked(self.bytes_to_match()) };
-                os.to_string_lossy()
-            }
-            Kind::String => unsafe { std::str::from_utf8_unchecked(self.bytes_to_match()) }.into(),
-        }
-    }
-
-    /// Return path if this match option represents a path
-    pub fn path(&self) -> Option<PathBuf> {
-        match self.kind {
-            Kind::Path => {
-                let os = unsafe { OsStr::from_encoded_bytes_unchecked(&self.value) };
-                PathBuf::from(os).into()
-            }
-            Kind::String => None,
-        }
-    }
-
-    /// Returns the bytes used to match this option
-    fn bytes_to_match(&self) -> &[u8] {
-        &self.value[self.offset..]
-    }
-
-    pub fn offset(&self) -> usize {
-        self.offset
-    }
-
-    pub fn description(&self) -> &str {
-        &self.description
-    }
-
-    pub fn bytes(&self) -> &[u8] {
-        &self.value
-    }
-}
-
-impl std::hash::Hash for MatchOption {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.value.hash(state);
-    }
-}
-
-impl PartialEq for MatchOption {
+impl PartialEq for ScoredChoice {
     fn eq(&self, other: &Self) -> bool {
-        self.value.eq(&other.value)
+        (&self.score, &self.matches, &self.choice).eq(&(
+            &other.score,
+            &other.matches,
+            &other.choice,
+        ))
     }
 }
 
-impl Eq for MatchOption {}
+impl ScoredChoice {
+    pub fn new(choice: Arc<dyn Choice>, score: u32, matches: Vec<Range<usize>>) -> ScoredChoice {
+        ScoredChoice {
+            score,
+            matches,
+            choice,
+        }
+    }
 
-impl From<&Path> for MatchOption {
-    fn from(value: &Path) -> Self {
-        MatchOption {
-            value: value.as_os_str().as_encoded_bytes().into(),
-            offset: 0,
-            kind: Kind::Path,
-            description: String::new(),
+    pub fn rescore(&mut self, score: u32) {
+        self.score = score;
+    }
+
+    pub fn matches(&self) -> &[Range<usize>] {
+        &self.matches
+    }
+
+    pub fn score(&self) -> u32 {
+        self.score
+    }
+
+    pub fn choice(&self) -> &dyn Choice {
+        self.choice.as_ref()
+    }
+}
+
+#[derive(Debug)]
+pub(crate) struct PathChoice {
+    path: PathBuf,
+    as_string: String,
+}
+
+impl PathChoice {
+    pub fn new(path: PathBuf, strip: usize) -> PathChoice {
+        let as_string = path.to_string_lossy()[strip..].to_string();
+        PathChoice { path, as_string }
+    }
+}
+
+impl Choice for PathChoice {
+    fn description(&self) -> &str {
+        ""
+    }
+
+    fn text(&self) -> &str {
+        &self.as_string
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        &self.path
+    }
+}
+
+#[derive(Debug)]
+pub(crate) struct SnippetChoice {
+    snippet: Snippet,
+    as_string: String,
+}
+
+impl SnippetChoice {
+    pub fn new(snippet: Snippet) -> SnippetChoice {
+        SnippetChoice {
+            snippet,
+            as_string: "todo".to_string(),
+        }
+    }
+
+    pub fn new_trigger(snippet: Snippet) -> SnippetChoice {
+        SnippetChoice {
+            as_string: snippet.trigger().to_string(),
+            snippet,
         }
     }
 }
 
-impl From<PathBuf> for MatchOption {
-    fn from(value: PathBuf) -> Self {
-        MatchOption {
-            value: value.as_os_str().as_encoded_bytes().into(),
-            offset: 0,
-            kind: Kind::Path,
-            description: String::new(),
-        }
+impl Choice for SnippetChoice {
+    fn description(&self) -> &str {
+        SNIPPET_DESCRIPTION
     }
-}
 
-impl From<String> for MatchOption {
-    fn from(value: String) -> Self {
-        MatchOption {
-            value: value.into(),
-            offset: 0,
-            kind: Kind::String,
-            description: String::new(),
-        }
+    fn text(&self) -> &str {
+        &self.as_string
     }
-}
 
-impl From<&str> for MatchOption {
-    fn from(value: &str) -> Self {
-        MatchOption {
-            value: value.into(),
-            offset: 0,
-            kind: Kind::String,
-            description: String::new(),
-        }
+    fn as_any(&self) -> &dyn std::any::Any {
+        &self.snippet
     }
 }

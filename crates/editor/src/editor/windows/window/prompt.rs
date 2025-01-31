@@ -3,11 +3,11 @@ mod history;
 use std::rc::Rc;
 
 use sanedit_buffer::PieceTree;
-use sanedit_core::Choice;
 use sanedit_utils::sorted_vec::SortedVec;
 
 use crate::{
     actions::jobs::{MatchedOptions, MatcherMessage},
+    common::matcher::ScoredChoice,
     editor::{keymap::KeymapKind, windows::Focus, Editor},
 };
 use sanedit_server::ClientId;
@@ -276,15 +276,15 @@ impl Prompt {
         self.chooser.select_prev();
     }
 
-    pub fn add_choices(&mut self, opts: SortedVec<Choice>) {
+    pub fn add_choices(&mut self, opts: SortedVec<ScoredChoice>) {
         self.chooser.add(opts);
     }
 
-    pub fn options_window(&self, count: usize, offset: usize) -> Vec<&Choice> {
+    pub fn options_window(&self, count: usize, offset: usize) -> Vec<&ScoredChoice> {
         self.chooser.matches_window(count, offset)
     }
 
-    pub fn selected(&self) -> Option<&Choice> {
+    pub fn selected(&self) -> Option<&ScoredChoice> {
         self.chooser.selected()
     }
 
@@ -298,7 +298,7 @@ impl Prompt {
 
     pub fn input_or_selected(&self) -> String {
         self.selected()
-            .map(|item| item.to_str_lossy().to_string())
+            .map(|item| item.choice().text().to_string())
             .unwrap_or(self.input.clone())
     }
 

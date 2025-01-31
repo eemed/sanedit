@@ -9,15 +9,14 @@ use grep::searcher::{BinaryDetection, Searcher, SearcherBuilder, Sink, SinkMatch
 use rustc_hash::FxHashMap;
 use sanedit_buffer::utf8::EndOfLine;
 use sanedit_buffer::{PieceTree, PieceTreeSlice, PieceTreeView};
-use sanedit_core::{
-    BufferRange, Choice, Group, Item, PTSearcher, Range, SearchDirection, SearchKind,
-};
+use sanedit_core::{BufferRange, Group, Item, PTSearcher, Range, SearchDirection, SearchKind};
 use sanedit_utils::either::Either;
 use sanedit_utils::sorted_vec::SortedVec;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 
 use crate::actions::jobs::{OptionProvider, CHANNEL_SIZE};
 use crate::actions::locations;
+use crate::common::matcher::Choice;
 use crate::editor::{job_broker::KeepInTouch, Editor};
 use sanedit_server::{ClientId, Job, JobContext, JobResult};
 
@@ -50,7 +49,7 @@ impl Grep {
     }
 
     async fn grep(
-        mut orecv: Receiver<Arc<dyn Choice>>,
+        mut orecv: Receiver<Arc<Choice>>,
         pattern: &str,
         msend: Sender<GrepResult>,
         buffers: Arc<FxHashMap<PathBuf, PieceTreeView>>,
@@ -83,13 +82,14 @@ impl Grep {
             let bufs = buffers.clone();
 
             rayon::spawn(move || {
-                let Some(path) = opt.as_any().downcast_ref::<PathBuf>().cloned() else {
-                    return;
+                let path = match opt.as_ref() {
+                    Choice::Path { path, .. } => path,
+                    _ => return,
                 };
 
-                if let Some(buf) = bufs.get(&path) {
+                if let Some(buf) = bufs.get(path) {
                     // Grep buffer if it exists
-                    Self::grep_buffer(path, buf, &ptsearcher, msend);
+                    Self::grep_buffer(path.clone(), buf, &ptsearcher, msend);
                 } else {
                     // Otherwise use ripgrep
                     let rsend = ResultSender {
@@ -197,7 +197,7 @@ impl Job for Grep {
 
         let fut = async move {
             // Options channel
-            let (osend, orecv) = channel::<Arc<dyn Choice>>(CHANNEL_SIZE);
+            let (osend, orecv) = channel::<Arc<Choice>>(CHANNEL_SIZE);
             // Results channel
             let (msend, mrecv) = channel::<GrepResult>(CHANNEL_SIZE);
 

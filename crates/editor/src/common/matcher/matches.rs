@@ -1,14 +1,81 @@
-use std::{path::PathBuf, sync::Arc};
+use std::{borrow::Cow, path::PathBuf, sync::Arc};
 
-use sanedit_core::{Choice, Range};
+use sanedit_core::Range;
 
 use crate::editor::snippets::{Snippet, SNIPPET_DESCRIPTION};
+
+#[derive(Debug, Hash, PartialEq, Eq, Ord, PartialOrd, Clone)]
+pub(crate) enum Choice {
+    Snippet { snippet: Snippet, trigger: bool },
+    Path { path: PathBuf, strip: usize },
+    Text { text: String, description: String },
+}
+
+impl Choice {
+    pub fn from_text(text: String) -> Arc<Choice> {
+        Arc::new(Choice::Text {
+            text: text.into(),
+            description: String::new(),
+        })
+    }
+
+    pub fn from_text_with_description(text: String, desc: String) -> Arc<Choice> {
+        Arc::new(Choice::Text {
+            text: text.into(),
+            description: desc.into(),
+        })
+    }
+
+    pub fn from_path(path: PathBuf, strip: usize) -> Arc<Choice> {
+        Arc::new(Choice::Path { path, strip })
+    }
+
+    pub fn from_snippet(snippet: Snippet) -> Arc<Choice> {
+        Arc::new(Choice::Snippet {
+            snippet,
+            trigger: false,
+        })
+    }
+
+    pub fn from_snippet_trigger(snippet: Snippet) -> Arc<Choice> {
+        Arc::new(Choice::Snippet {
+            snippet,
+            trigger: true,
+        })
+    }
+
+    pub fn text(&self) -> Cow<str> {
+        match self {
+            Choice::Snippet { snippet, trigger } => {
+                if *trigger {
+                    snippet.trigger().into()
+                } else {
+                    todo!()
+                }
+            }
+            Choice::Path { path, strip } => {
+                let path = path.to_string_lossy();
+                let path = &path[*strip..];
+                Cow::Owned(path.to_string())
+            }
+            Choice::Text { text, .. } => text.into(),
+        }
+    }
+
+    pub fn description(&self) -> Cow<str> {
+        match self {
+            Choice::Snippet { .. } => SNIPPET_DESCRIPTION.into(),
+            Choice::Path { .. } => "".into(),
+            Choice::Text { description, .. } => description.into(),
+        }
+    }
+}
 
 #[derive(Debug, Eq, Ord, PartialOrd, Clone)]
 pub(crate) struct ScoredChoice {
     score: u32,
     matches: Vec<Range<usize>>,
-    choice: Arc<dyn Choice>,
+    choice: Arc<Choice>,
 }
 
 impl PartialEq for ScoredChoice {
@@ -22,7 +89,7 @@ impl PartialEq for ScoredChoice {
 }
 
 impl ScoredChoice {
-    pub fn new(choice: Arc<dyn Choice>, score: u32, matches: Vec<Range<usize>>) -> ScoredChoice {
+    pub fn new(choice: Arc<Choice>, score: u32, matches: Vec<Range<usize>>) -> ScoredChoice {
         ScoredChoice {
             score,
             matches,
@@ -42,70 +109,7 @@ impl ScoredChoice {
         self.score
     }
 
-    pub fn choice(&self) -> &dyn Choice {
+    pub fn choice(&self) -> &Choice {
         self.choice.as_ref()
-    }
-}
-
-#[derive(Debug)]
-pub(crate) struct PathChoice {
-    path: PathBuf,
-    as_string: String,
-}
-
-impl PathChoice {
-    pub fn new(path: PathBuf, strip: usize) -> PathChoice {
-        let as_string = path.to_string_lossy()[strip..].to_string();
-        PathChoice { path, as_string }
-    }
-}
-
-impl Choice for PathChoice {
-    fn description(&self) -> &str {
-        ""
-    }
-
-    fn text(&self) -> &str {
-        &self.as_string
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        &self.path
-    }
-}
-
-#[derive(Debug)]
-pub(crate) struct SnippetChoice {
-    snippet: Snippet,
-    as_string: String,
-}
-
-impl SnippetChoice {
-    pub fn new(snippet: Snippet) -> SnippetChoice {
-        SnippetChoice {
-            snippet,
-            as_string: "todo".to_string(),
-        }
-    }
-
-    pub fn new_trigger(snippet: Snippet) -> SnippetChoice {
-        SnippetChoice {
-            as_string: snippet.trigger().to_string(),
-            snippet,
-        }
-    }
-}
-
-impl Choice for SnippetChoice {
-    fn description(&self) -> &str {
-        SNIPPET_DESCRIPTION
-    }
-
-    fn text(&self) -> &str {
-        &self.as_string
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        &self.snippet
     }
 }

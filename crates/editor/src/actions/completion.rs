@@ -1,13 +1,12 @@
 use std::sync::Arc;
 
 use rustc_hash::FxHashSet;
-use sanedit_core::{word_before_pos, Choice, Range};
+use sanedit_core::{word_before_pos, Range};
 
 use crate::{
-    common::matcher::{MatchStrategy, ScoredChoice},
+    common::matcher::{Choice, MatchStrategy},
     editor::{
         hooks::Hook,
-        snippets::{Snippet, SNIPPET_DESCRIPTION},
         windows::{Completion, Focus},
         Editor,
     },
@@ -39,7 +38,7 @@ fn complete_from_syntax(editor: &mut Editor, id: ClientId) {
     win.completion = Completion::new(range.start, point);
 
     // Fetch completions from buffer
-    let opts: FxHashSet<Arc<dyn Choice>> = win
+    let opts: FxHashSet<Arc<Choice>> = win
         .view_syntax()
         .spans()
         .iter()
@@ -50,13 +49,10 @@ fn complete_from_syntax(editor: &mut Editor, id: ClientId) {
             (compl, desc)
         })
         .filter(|(compl, _)| compl != &word)
-        .map(|(compl, desc)| {
-            let c: Arc<dyn Choice> = Arc::new((compl, desc));
-            c
-        })
+        .map(|(compl, desc)| Choice::from_text_with_description(compl, desc))
         .collect();
 
-    let opts: Vec<Arc<dyn Choice>> = opts
+    let opts: Vec<Arc<Choice>> = opts
         .into_iter()
         .chain(
             editor
@@ -82,14 +78,16 @@ fn completion_confirm(editor: &mut Editor, id: ClientId) {
 
     if let Some(opt) = win.completion.selected().cloned() {
         let choice = opt.choice();
-
-        if let Some(snippet) = choice.as_any().downcast_ref::<Snippet>().cloned() {
-            let prefix = opt.matches().iter().map(|m| m.end).max().unwrap_or(0);
-            snippets::insert_snippet_impl(editor, id, snippet, prefix as u64)
-        } else {
-            let prefix = opt.matches().iter().map(|m| m.end).max().unwrap_or(0);
-            let opt = choice.text()[prefix..].to_string();
-            text::insert(editor, id, &opt);
+        match choice {
+            Choice::Snippet { snippet, .. } => {
+                let prefix = opt.matches().iter().map(|m| m.end).max().unwrap_or(0);
+                snippets::insert_snippet_impl(editor, id, snippet.clone(), prefix as u64)
+            }
+            _ => {
+                let prefix = opt.matches().iter().map(|m| m.end).max().unwrap_or(0);
+                let opt = choice.text()[prefix..].to_string();
+                text::insert(editor, id, &opt);
+            }
         }
     }
 }

@@ -7,7 +7,7 @@ use std::{
 
 use crate::{
     actions::{hooks::run, locations, lsp::lsp_notify_for},
-    common::matcher::{MatchStrategy, SnippetChoice},
+    common::matcher::{Choice, MatchStrategy},
     editor::{
         buffers::BufferId,
         config::LSPConfig,
@@ -20,9 +20,7 @@ use crate::{
     },
 };
 use sanedit_buffer::{PieceTree, PieceTreeSlice};
-use sanedit_core::{
-    word_before_pos, Change, Changes, Choice, Diagnostic, Filetype, Group, Item, Range,
-};
+use sanedit_core::{word_before_pos, Change, Changes, Diagnostic, Filetype, Group, Item, Range};
 use sanedit_lsp::{
     CodeAction, CompletionItem, FileEdit, LSPClientParams, Notification, Position,
     PositionEncoding, PositionRange, RequestKind, RequestResult, Response, TextDiagnostic,
@@ -246,7 +244,7 @@ impl LSPJob {
 
         win.completion = Completion::new(range.start, point);
 
-        let opts: Vec<Arc<dyn Choice>> = opts.into_iter().map(from_completion_item).collect();
+        let opts: Vec<Arc<Choice>> = opts.into_iter().map(from_completion_item).collect();
 
         let job = MatcherJob::builder(id)
             .strategy(MatchStrategy::Prefix)
@@ -449,19 +447,18 @@ fn read_references(
     group
 }
 
-fn from_completion_item(value: CompletionItem) -> Arc<dyn Choice> {
+fn from_completion_item(value: CompletionItem) -> Arc<Choice> {
     if value.snippet {
         match Snippet::new(&value.text) {
             Ok(snippet) => {
-                let snippet = SnippetChoice::new(snippet);
-                return Arc::new(snippet);
+                return Choice::from_snippet(snippet);
             }
             Err(e) => log::error!("Failed to create LSP snippet: {e}"),
         }
     }
 
     match value.description {
-        Some(desc) => Arc::new((value.text, desc)),
-        None => Arc::new(value.text),
+        Some(desc) => Choice::from_text_with_description(value.text, desc),
+        None => Choice::from_text(value.text),
     }
 }

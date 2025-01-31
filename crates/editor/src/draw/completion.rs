@@ -1,6 +1,5 @@
 use std::cmp;
 
-use sanedit_core::Choice;
 use sanedit_messages::redraw::{self, Component, Redraw};
 
 use crate::editor::windows::Focus;

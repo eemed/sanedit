@@ -11,17 +11,17 @@ use std::{
     },
 };
 
-use sanedit_core::{Choice, Range};
+use sanedit_core::Range;
 use sanedit_utils::appendlist::{Appendlist, Reader};
 use tokio::sync::mpsc::channel;
 
-pub use matches::*;
+pub(crate) use matches::*;
 pub use receiver::*;
 pub use strategy::*;
 
 /// Matches options to a pattern
 pub struct Matcher {
-    reader: Reader<Arc<dyn Choice>>,
+    reader: Reader<Arc<Choice>>,
     all_opts_read: Arc<AtomicBool>,
     previous: Arc<AtomicBool>,
     strategy: MatchStrategy,
@@ -34,9 +34,9 @@ impl Matcher {
     // Create a new matcher.
     pub fn new<T>(mut chan: T, strategy: MatchStrategy) -> Matcher
     where
-        T: MatchOptionReceiver<Arc<dyn Choice>> + Send + 'static,
+        T: MatchOptionReceiver<Arc<Choice>> + Send + 'static,
     {
-        let (reader, writer) = Appendlist::<Arc<dyn Choice>>::new();
+        let (reader, writer) = Appendlist::<Arc<Choice>>::new();
         let all_opts_read = Arc::new(AtomicBool::new(false));
         let all_read = all_opts_read.clone();
 
@@ -117,9 +117,12 @@ impl Matcher {
 
                     let opts = reader.slice(batch);
                     for choice in opts.iter() {
-                        if let Some(ranges) =
-                            matches_with(choice.text(), &patterns, case_sensitive, match_fn)
-                        {
+                        if let Some(ranges) = matches_with(
+                            choice.text().as_ref(),
+                            &patterns,
+                            case_sensitive,
+                            match_fn,
+                        ) {
                             let score = score(&choice.text(), &ranges);
                             let scored = ScoredChoice::new(choice.clone(), score, ranges);
 

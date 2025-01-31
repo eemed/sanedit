@@ -1,6 +1,5 @@
 pub(crate) mod change;
 pub(crate) mod char;
-pub(crate) mod choice;
 pub(crate) mod cursor;
 pub(crate) mod diagnostic;
 pub(crate) mod dirs;
@@ -18,7 +17,6 @@ pub mod movement;
 
 pub use change::*;
 pub use char::*;
-pub use choice::*;
 pub use cursor::*;
 pub use diagnostic::*;
 pub use dirs::*;

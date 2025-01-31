@@ -1,6 +1,5 @@
 use std::{fmt, mem, sync::Arc, time::Duration};
 
-use sanedit_core::Choice;
 use sanedit_utils::sorted_vec::SortedVec;
 use tokio::{
     sync::mpsc::{channel, Receiver, Sender},
@@ -9,7 +8,7 @@ use tokio::{
 
 use crate::{
     actions::jobs::CHANNEL_SIZE,
-    common::matcher::{MatchReceiver, MatchStrategy, Matcher, ScoredChoice},
+    common::matcher::{Choice, MatchReceiver, MatchStrategy, Matcher, ScoredChoice},
     editor::{job_broker::KeepInTouch, Editor},
 };
 
@@ -23,16 +22,16 @@ pub(crate) enum MatcherMessage {
 
 /// Provides options to match
 pub(crate) trait OptionProvider: fmt::Debug + Sync + Send {
-    fn provide(&self, sender: Sender<Arc<dyn Choice>>, kill: Kill) -> BoxFuture<'static, ()>;
+    fn provide(&self, sender: Sender<Arc<Choice>>, kill: Kill) -> BoxFuture<'static, ()>;
 }
 
 impl OptionProvider for Arc<Vec<String>> {
-    fn provide(&self, sender: Sender<Arc<dyn Choice>>, _kill: Kill) -> BoxFuture<'static, ()> {
+    fn provide(&self, sender: Sender<Arc<Choice>>, _kill: Kill) -> BoxFuture<'static, ()> {
         let items = self.clone();
 
         let fut = async move {
             for opt in items.iter() {
-                if sender.send(Arc::new(opt.clone())).await.is_err() {
+                if sender.send(Choice::from_text(opt.clone())).await.is_err() {
                     break;
                 }
             }
@@ -42,8 +41,8 @@ impl OptionProvider for Arc<Vec<String>> {
     }
 }
 
-impl OptionProvider for Arc<Vec<Arc<dyn Choice>>> {
-    fn provide(&self, sender: Sender<Arc<dyn Choice>>, _kill: Kill) -> BoxFuture<'static, ()> {
+impl OptionProvider for Arc<Vec<Arc<Choice>>> {
+    fn provide(&self, sender: Sender<Arc<Choice>>, _kill: Kill) -> BoxFuture<'static, ()> {
         let items = self.clone();
 
         let fut = async move {
@@ -67,7 +66,7 @@ impl Empty {
     fn none_result_handler(_editor: &mut Editor, _id: ClientId, _msg: MatcherMessage) {}
 }
 impl OptionProvider for Empty {
-    fn provide(&self, _sender: Sender<Arc<dyn Choice>>, _kill: Kill) -> BoxFuture<'static, ()> {
+    fn provide(&self, _sender: Sender<Arc<Choice>>, _kill: Kill) -> BoxFuture<'static, ()> {
         Box::pin(async {})
     }
 }
@@ -174,7 +173,7 @@ impl Job for MatcherJob {
             // Term channel
             let (psend, precv) = channel::<String>(CHANNEL_SIZE);
             // Options channel
-            let (osend, orecv) = channel::<Arc<dyn Choice>>(CHANNEL_SIZE);
+            let (osend, orecv) = channel::<Arc<Choice>>(CHANNEL_SIZE);
             // Results channel
             let (msend, mrecv) = channel::<MatchedOptions>(CHANNEL_SIZE);
 
@@ -217,7 +216,7 @@ pub(crate) enum MatchedOptions {
 
 /// Reads options and filter term from channels and send results to progress
 pub(crate) async fn match_options(
-    orecv: Receiver<Arc<dyn Choice>>,
+    orecv: Receiver<Arc<Choice>>,
     mut precv: Receiver<String>,
     msend: Sender<MatchedOptions>,
     strat: MatchStrategy,

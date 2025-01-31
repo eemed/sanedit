@@ -1,10 +1,10 @@
 use crate::actions::jobs::{MatchedOptions, MatcherMessage};
 use crate::actions::*;
+use crate::common::matcher::Choice;
 use crate::editor::windows::Focus;
-use sanedit_core::Choice;
 use sanedit_messages::key::keyevents_to_string;
 
-pub(crate) fn command_palette(editor: &Editor, id: ClientId) -> Vec<Arc<dyn Choice>> {
+pub(crate) fn command_palette(editor: &Editor, id: ClientId) -> Vec<Arc<Choice>> {
     // Display descriptions in command palette
     COMMANDS
         .iter()
@@ -18,8 +18,7 @@ pub(crate) fn command_palette(editor: &Editor, id: ClientId) -> Vec<Arc<dyn Choi
                 description = keyevents_to_string(&bind);
             }
             let value: String = action.description().into();
-            let choice: Arc<dyn Choice> = Arc::new((value, description));
-            choice
+            Choice::from_text_with_description(value, description)
         })
         .collect()
 }

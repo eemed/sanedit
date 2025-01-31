@@ -1,5 +1,5 @@
 use anyhow::anyhow;
-use sanedit_core::{Choice, Directory, Filetype, SNIPPETS_FILE};
+use sanedit_core::{Directory, Filetype, SNIPPETS_FILE};
 use serde::Deserialize;
 use std::{
     collections::BTreeMap,
@@ -10,7 +10,7 @@ use std::{
 };
 use thiserror::Error;
 
-use crate::common::matcher::SnippetChoice;
+use crate::common::matcher::Choice;
 
 use super::Map;
 
@@ -119,13 +119,10 @@ impl Snippets {
         Ok(snippets)
     }
 
-    pub fn match_options(&self, ft: Option<&Filetype>) -> Vec<Arc<dyn Choice>> {
+    pub fn match_options(&self, ft: Option<&Filetype>) -> Vec<Arc<Choice>> {
         self.all(ft)
             .into_iter()
-            .map(|(name, snippet)| {
-                let d: Arc<dyn Choice> = Arc::new(SnippetChoice::new_trigger(snippet.clone()));
-                d
-            })
+            .map(|(name, snippet)| Choice::from_snippet_trigger(snippet.clone()))
             .collect()
     }
 }
@@ -138,7 +135,7 @@ pub(crate) struct ConfigSnippet {
 }
 
 /// A snippet consists of a list of atoms
-#[derive(Debug, Clone)]
+#[derive(Debug, Hash, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub(crate) enum SnippetAtom {
     Text(String),
     Placeholder(u8, String),
@@ -146,7 +143,7 @@ pub(crate) enum SnippetAtom {
     Indent,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Hash, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub(crate) struct Snippet {
     trigger: String,
     atoms: Vec<SnippetAtom>,

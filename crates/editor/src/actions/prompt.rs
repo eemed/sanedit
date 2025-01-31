@@ -9,7 +9,7 @@ use sanedit_utils::idmap::{AsID, ID};
 
 use crate::{
     actions::jobs::{FileOptionProvider, MatchedOptions},
-    common::is_yes,
+    common::{is_yes, matcher::Choice},
     editor::{
         buffers::BufferId,
         hooks::Hook,
@@ -133,11 +133,7 @@ fn open_file_handler(editor: &mut Editor, id: ClientId, msg: MatcherMessage) {
             win.prompt.clear_choices();
         }
         Progress(opts) => {
-            if let MatchedOptions::Options {
-                matched,
-                clear_old,
-            } = opts
-            {
+            if let MatchedOptions::Options { matched, clear_old } = opts {
                 if clear_old {
                     win.prompt.clear_choices();
                 }
@@ -155,8 +151,11 @@ fn open_file_handler(editor: &mut Editor, id: ClientId, msg: MatcherMessage) {
                     let lru = cache.to_map();
                     let max = lru.len();
                     for mut mat in std::mem::take(&mut rescored).into_iter() {
-                        let path = PathBuf::from(mat.choice().text());
-                        if let Some(score) = lru.get(&path) {
+                        let path = match mat.choice() {
+                            Choice::Path { path, .. } => path,
+                            _ => unreachable!(),
+                        };
+                        if let Some(score) = lru.get(path.as_path()) {
                             mat.rescore(*score as u32);
                         } else {
                             mat.rescore(mat.score() + max as u32);

@@ -1,13 +1,13 @@
-use std::{borrow::Cow, path::PathBuf, sync::Arc};
+use std::{path::PathBuf, sync::Arc};
 
 use sanedit_core::Range;
 
-use crate::editor::snippets::{Snippet, SNIPPET_DESCRIPTION};
+use crate::editor::snippets::{Snippet, SnippetAtom, SNIPPET_DESCRIPTION};
 
 #[derive(Debug, Hash, PartialEq, Eq, Ord, PartialOrd, Clone)]
 pub(crate) enum Choice {
-    Snippet { snippet: Snippet, trigger: bool },
-    Path { path: PathBuf, strip: usize },
+    Snippet { snippet: Snippet, display: String },
+    Path { path: PathBuf, display: String },
     Text { text: String, description: String },
 }
 
@@ -27,46 +27,45 @@ impl Choice {
     }
 
     pub fn from_path(path: PathBuf, strip: usize) -> Arc<Choice> {
-        Arc::new(Choice::Path { path, strip })
+        let display = path.to_string_lossy();
+        let display = display[strip..].to_string();
+        Arc::new(Choice::Path { path, display })
     }
 
     pub fn from_snippet(snippet: Snippet) -> Arc<Choice> {
-        Arc::new(Choice::Snippet {
-            snippet,
-            trigger: false,
-        })
+        let mut display = String::new();
+        for atom in snippet.atoms() {
+            match atom {
+                SnippetAtom::Text(text) => display.push_str(&text),
+                SnippetAtom::Placeholder(_, text) => display.push_str(&text),
+                SnippetAtom::Newline => break,
+                SnippetAtom::Indent => display.push_str("  "),
+            }
+        }
+
+        Arc::new(Choice::Snippet { snippet, display })
     }
 
     pub fn from_snippet_trigger(snippet: Snippet) -> Arc<Choice> {
         Arc::new(Choice::Snippet {
+            display: snippet.trigger().into(),
             snippet,
-            trigger: true,
         })
     }
 
-    pub fn text(&self) -> Cow<str> {
+    pub fn text(&self) -> &str {
         match self {
-            Choice::Snippet { snippet, trigger } => {
-                if *trigger {
-                    snippet.trigger().into()
-                } else {
-                    todo!()
-                }
-            }
-            Choice::Path { path, strip } => {
-                let path = path.to_string_lossy();
-                let path = &path[*strip..];
-                Cow::Owned(path.to_string())
-            }
-            Choice::Text { text, .. } => text.into(),
+            Choice::Snippet { display, .. } => display.as_str(),
+            Choice::Path { display, .. } => display.as_str(),
+            Choice::Text { text, .. } => text.as_str(),
         }
     }
 
-    pub fn description(&self) -> Cow<str> {
+    pub fn description(&self) -> &str {
         match self {
-            Choice::Snippet { .. } => SNIPPET_DESCRIPTION.into(),
-            Choice::Path { .. } => "".into(),
-            Choice::Text { description, .. } => description.into(),
+            Choice::Snippet { .. } => SNIPPET_DESCRIPTION,
+            Choice::Path { .. } => "",
+            Choice::Text { description, .. } => description,
         }
     }
 }

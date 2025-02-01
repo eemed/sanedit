@@ -24,7 +24,6 @@ pub(crate) struct PromptBuilder {
     on_abort: Option<PromptAction>,
     keymap_kind: Option<KeymapKind>,
     kind: PromptKind,
-    has_paths: bool,
     history_kind: Option<HistoryKind>,
     input: String,
 }
@@ -45,10 +44,6 @@ impl PromptBuilder {
         self
     }
 
-    pub fn has_paths(mut self) -> Self {
-        self.has_paths = true;
-        self
-    }
 
     pub fn input(mut self, input: &str) -> Self {
         self.input = input.into();
@@ -100,7 +95,6 @@ impl PromptBuilder {
             kind,
             history_kind,
             input,
-            has_paths: paths,
         } = self;
         let mut prompt = Prompt::new(&message.unwrap_or(String::new()));
         prompt.on_confirm = on_confirm;
@@ -110,7 +104,6 @@ impl PromptBuilder {
         prompt.kind = kind;
         prompt.cursor = input.len();
         prompt.input = input;
-        prompt.has_paths = paths;
 
         if let Some(kmap) = keymap_kind {
             prompt.keymap_kind = kmap;
@@ -154,9 +147,6 @@ pub(crate) struct Prompt {
     history_kind: Option<HistoryKind>,
     history_pos: HistoryPosition,
     kind: PromptKind,
-
-    /// If selector contains paths
-    has_paths: bool,
 }
 
 impl Prompt {
@@ -173,7 +163,6 @@ impl Prompt {
             history_kind: None,
             history_pos: HistoryPosition::First,
             kind: PromptKind::Regular,
-            has_paths: false,
         }
     }
 
@@ -361,10 +350,6 @@ impl Prompt {
 
         let item = hist.get(self.history_pos).unwrap_or("");
         self.overwrite_input(item);
-    }
-
-    pub fn has_paths(&self) -> bool {
-        self.has_paths
     }
 }
 

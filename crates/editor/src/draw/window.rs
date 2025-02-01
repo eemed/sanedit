@@ -8,7 +8,7 @@ use crate::editor::{
 
 use super::{DrawContext, EditorContext};
 use sanedit_core::{
-    grapheme_category, BufferRange, Cursor, Diagnostic, GraphemeCategory, Range, Replacement,
+    grapheme_category, BufferRange, Cursor, Diagnostic, GraphemeCategory, Replacement,
 };
 
 pub(crate) fn draw(ctx: &mut DrawContext) -> redraw::window::Window {

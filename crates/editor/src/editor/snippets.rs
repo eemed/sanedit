@@ -62,10 +62,6 @@ impl Snippets {
         snippets
     }
 
-    pub fn get_global_snippet(&self, name: &str) -> Option<&Snippet> {
-        self.global.get(name)
-    }
-
     /// Get a specific snippet for a filetype
     pub fn get_snippet(&self, ft: Option<&Filetype>, name: &str) -> Option<&Snippet> {
         if let Some(ft) = ft {
@@ -105,14 +101,11 @@ impl Snippets {
 
         let mut snippets = Map::default();
         for (name, snip) in map {
-            match Snippet::new(&snip.body) {
-                Ok(mut snippet) => {
-                    snippet.trigger = snip.trigger;
+            match Snippet::new_trigger(&snip.body, &snip.trigger) {
+                Ok(snippet) => {
                     snippets.insert(name, snippet);
                 }
-                Err(e) => {
-                    log::error!("Failed to parse snippet: {name}: {e}");
-                }
+                Err(e) => log::error!("Failed to parse snippet: {name}: {e}"),
             }
         }
 
@@ -144,13 +137,36 @@ pub(crate) enum SnippetAtom {
 }
 
 #[derive(Debug, Hash, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub(crate) struct Snippet {
+pub(crate) struct Snippet(Arc<SnippetInner>);
+
+impl Snippet {
+    pub fn new(snip: &str) -> Result<Snippet, SnippetError> {
+        let inner = SnippetInner::new(snip)?;
+        Ok(Snippet(Arc::new(inner)))
+    }
+
+    pub fn new_trigger(snip: &str, trigger: &str) -> Result<Snippet, SnippetError> {
+        let inner = SnippetInner::new_trigger(snip, trigger)?;
+        Ok(Snippet(Arc::new(inner)))
+    }
+
+    pub fn atoms(&self) -> &[SnippetAtom] {
+        &self.0.atoms
+    }
+
+    pub fn trigger(&self) -> &str {
+        &self.0.trigger
+    }
+}
+
+#[derive(Debug, Hash, Clone, PartialEq, Eq, PartialOrd, Ord)]
+struct SnippetInner {
     trigger: String,
     atoms: Vec<SnippetAtom>,
 }
 
-impl Snippet {
-    pub fn new(snip: &str) -> Result<Snippet, SnippetError> {
+impl SnippetInner {
+    pub fn new(snip: &str) -> Result<SnippetInner, SnippetError> {
         let mut atoms = vec![];
         let mut escaped = false;
         let mut text = String::new();
@@ -183,10 +199,16 @@ impl Snippet {
             return Err(SnippetError::Empty);
         }
 
-        Ok(Snippet {
+        Ok(SnippetInner {
             trigger: String::new(),
             atoms,
         })
+    }
+
+    pub fn new_trigger(snip: &str, trigger: &str) -> Result<SnippetInner, SnippetError> {
+        let mut snip = Self::new(snip)?;
+        snip.trigger = trigger.into();
+        Ok(snip)
     }
 
     fn push(atoms: &mut Vec<SnippetAtom>, text: &mut String, atom: SnippetAtom) {
@@ -249,14 +271,6 @@ impl Snippet {
 
         let num = num.parse::<u8>().unwrap();
         Ok(num)
-    }
-
-    pub fn atoms(&self) -> &[SnippetAtom] {
-        &self.atoms
-    }
-
-    pub fn trigger(&self) -> &str {
-        &self.trigger
     }
 }
 

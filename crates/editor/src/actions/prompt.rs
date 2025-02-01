@@ -100,7 +100,6 @@ fn open_file(editor: &mut Editor, id: ClientId) {
 
     win.prompt = Prompt::builder()
         .prompt(PROMPT_MESSAGE)
-        .has_paths()
         .on_confirm(move |editor, id, input| {
             let path = PathBuf::from(input);
 

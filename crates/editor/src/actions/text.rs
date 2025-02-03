@@ -228,12 +228,22 @@ fn align_cursor_columns(editor: &mut Editor, id: ClientId) {
     }
 }
 
-#[action("Align each cursor on top of each other")]
+#[action("Comment lines")]
 fn comment_lines(editor: &mut Editor, id: ClientId) {
     let (win, buf) = win_buf!(editor, id);
-    let ft = get!(&buf.filetype);
-    let ftconfig = get!(editor.filetype_config.get(ft));
+    let Some(ft) = &buf.filetype else {
+        win.warn_msg("No filetype set");
+        return;
+    };
+    let Some(ftconfig) = editor.filetype_config.get(ft) else {
+        win.warn_msg("No comment string set for filetype");
+        return;
+    };
     let comment = &ftconfig.general.comment;
+    if comment.is_empty() {
+        win.warn_msg("No comment string set for filetype");
+        return;
+    }
 
     if win.comment_cursor_lines(buf, comment).is_ok() {
         let hook = Hook::BufChanged(buf.id);

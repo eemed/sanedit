@@ -1,7 +1,8 @@
 use std::io;
 
 use crate::{
-    grapheme_category, is_word_break, is_word_break_end, movement::first_char_of_line, BufferRange, Chars, DisplayOptions, GraphemeCategory, Range
+    grapheme_category, is_word_break, is_word_break_end, movement::first_char_of_line, BufferRange,
+    Chars, DisplayOptions, GraphemeCategory, Range,
 };
 use sanedit_buffer::{
     utf8::{prev_eol, EndOfLine},
@@ -209,26 +210,23 @@ pub fn copy_cursors_to_lines(lines: Vec<String>, eol: EndOfLine) -> String {
 }
 
 pub fn selection_first_chars_of_lines(slice: &PieceTreeSlice, sel: BufferRange) -> Vec<u64> {
-    let mut starts = vec![];
-    let start = sel.start;
-    let sol = first_char_of_line(slice, start);
+    let sol = first_char_of_line(slice, sel.start);
+    let mut starts = vec![sol];
 
     if sel.is_empty() {
-        return vec![sol];
+        return starts;
     }
 
     let slice = slice.slice(sel);
     let mut lines = slice.lines();
-
-    if sol != start {
-        starts.push(sol);
-        // Skip first line
-        lines.next();
-    }
+    lines.next();
 
     while let Some(line) = lines.next() {
         if !line.is_empty() {
-            starts.push(line.start());
+            let fchar = first_char_of_line(&line, 0);
+            if fchar != line.start() {
+                starts.push(fchar);
+            }
         }
     }
 

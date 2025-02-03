@@ -113,20 +113,6 @@ impl Window {
         self.popup = None;
     }
 
-    fn unwrap_or_error<T>(&mut self, result: anyhow::Result<T>) -> T {
-        if let Err(e) = &result {
-            self.error_msg(&e.to_string());
-        }
-        result.unwrap()
-    }
-
-    fn unwrap_or_warn<T>(&mut self, result: anyhow::Result<T>) -> T {
-        if let Err(e) = &result {
-            self.warn_msg(&e.to_string());
-        }
-        result.unwrap()
-    }
-
     /// Push a new popup message
     pub fn push_popup(&mut self, msg: PopupMessage) {
         match self.popup.as_mut() {
@@ -574,7 +560,13 @@ impl Window {
             .map(|edit| Self::cursors_from_changes(&edit.changes))
             .unwrap_or(Cursors::default());
 
-        let change = self.unwrap_or_warn(buf.apply_changes(&Changes::undo()));
+        let change = match buf.apply_changes(&Changes::undo()) {
+            Ok(res) => res,
+            Err(e) => {
+                self.warn_msg(&format!("{e}"));
+                return Err(e);
+            }
+        };
         let created = change.created_snapshot;
         let restored = change.restored_snapshot;
 
@@ -606,7 +598,13 @@ impl Window {
     }
 
     pub fn redo(&mut self, buf: &mut Buffer) -> Result<()> {
-        let change = self.unwrap_or_warn(buf.apply_changes(&Changes::redo()));
+        let change = match buf.apply_changes(&Changes::redo()) {
+            Ok(res) => res,
+            Err(e) => {
+                self.warn_msg(&format!("{e}"));
+                return Err(e);
+            }
+        };
         let restored = change.restored_snapshot;
 
         if let Some(restored) = restored {
@@ -761,6 +759,9 @@ impl Window {
 
     pub fn comment_cursor_lines(&mut self, buf: &mut Buffer, comment: &str) -> Result<()> {
         let starts = self.cursor_line_first_chars_of_lines(buf);
+        if starts.is_empty() {
+            return Ok(());
+        }
         let changes = Changes::multi_insert(&starts, comment.as_bytes());
         self.change(buf, &changes)?;
         Ok(())
@@ -789,7 +790,13 @@ impl Window {
 
     /// Synchronously saves the buffer
     pub fn save_buffer(&mut self, buf: &mut Buffer) -> Result<()> {
-        let saved = self.unwrap_or_error(buf.save_rename());
+        let saved = match buf.save_rename() {
+            Ok(res) => res,
+            Err(e) => {
+                self.error_msg(&format!("{e}"));
+                return Err(e);
+            }
+        };
         let aux = buf.snapshot_aux_mut(saved.snapshot).unwrap();
         *aux = self.window_aux();
         Ok(())

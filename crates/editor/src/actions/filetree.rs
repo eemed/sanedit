@@ -1,9 +1,12 @@
 use std::{cmp::min, sync::Arc};
 
-use crate::editor::{
-    filetree::Kind,
-    windows::{Focus, Prompt},
-    Editor,
+use crate::{
+    common::is_yes,
+    editor::{
+        filetree::Kind,
+        windows::{Focus, Prompt},
+        Editor,
+    },
 };
 
 use sanedit_server::ClientId;
@@ -100,8 +103,9 @@ fn ft_new_file(editor: &mut Editor, id: ClientId) {
     win.prompt = Prompt::builder()
         .prompt("Filename")
         .simple()
-        .on_confirm(move |editor, id, input| {
-            let file = dir.join(input);
+        .on_confirm(move |editor, id, out| {
+            let path = get!(out.text());
+            let file = dir.join(path);
 
             // Create directories leading up to the file
             if let Some(parent) = file.parent() {
@@ -163,9 +167,9 @@ fn ft_delete_file(editor: &mut Editor, id: ClientId) {
     win.prompt = Prompt::builder()
         .prompt(&prompt)
         .simple()
-        .on_confirm(move |editor, id, input| {
-            let yes = input == "y";
-            if !yes {
+        .on_confirm(move |editor, id, out| {
+            let ans = get!(out.text());
+            if !is_yes(ans) {
                 return;
             }
 

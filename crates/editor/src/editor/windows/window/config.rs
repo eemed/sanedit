@@ -13,7 +13,7 @@ pub(crate) struct WindowConfig {
 
     pub theme: String,
 
-    /// Highlight LSP diagnostics
+    /// Highlight syntax
     pub highlight_syntax: bool,
 
     /// Highlight LSP diagnostics

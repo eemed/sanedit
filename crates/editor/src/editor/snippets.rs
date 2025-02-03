@@ -18,13 +18,12 @@ pub(crate) const SNIPPET_DESCRIPTION: &str = "snippet";
 
 #[derive(Debug)]
 pub(crate) struct Snippets {
-    filetype_dir: Directory,
     map: Map<Filetype, Map<String, Snippet>>,
     global: Map<String, Snippet>,
 }
 
 impl Snippets {
-    pub fn new(global_file: &Path, ft_dir: Directory) -> Snippets {
+    pub fn new(global_file: &Path) -> Snippets {
         let mut global = Map::default();
         if global_file.exists() {
             match Self::load_snippet_file(global_file) {
@@ -36,7 +35,6 @@ impl Snippets {
         }
 
         Snippets {
-            filetype_dir: ft_dir,
             map: Map::default(),
             global,
         }
@@ -75,22 +73,14 @@ impl Snippets {
         self.global.get(name)
     }
 
-    pub fn load_global(&mut self, path: &Path) -> anyhow::Result<Map<String, Snippet>> {
-        log::debug!("Loading global snippets from: {path:?}");
-        if !path.exists() {
-            return Ok(Map::default());
+    pub fn load(&mut self, ft: &Filetype, path: &Path) -> anyhow::Result<()> {
+        if self.map.contains_key(ft) {
+            return Ok(());
         }
 
-        Self::load_snippet_file(path)
-    }
-
-    pub fn load(&mut self, ft: &Filetype) -> anyhow::Result<Map<String, Snippet>> {
-        let path = PathBuf::from(ft.as_str()).join(SNIPPETS_FILE);
-        let snippets = self.filetype_dir.find(&path).ok_or(anyhow!(
-            "Could not find snippet file for filetype {}",
-            ft.as_str()
-        ))?;
-        Self::load_snippet_file(snippets.as_path())
+        let snippets = Self::load_snippet_file(path)?;
+        self.map.insert(ft.clone(), snippets);
+        Ok(())
     }
 
     fn load_snippet_file(path: &Path) -> anyhow::Result<Map<String, Snippet>> {

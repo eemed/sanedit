@@ -1,3 +1,5 @@
+mod filetype;
+
 use std::{collections::HashMap, path::Path, sync::Arc};
 
 use sanedit_messages::key::{try_parse_keyevents, KeyEvent};
@@ -21,6 +23,7 @@ use super::{
 use rustc_hash::FxHashMap;
 
 use super::Map;
+pub(crate) use filetype::{FiletypeConfig, LSPConfig};
 
 #[derive(Debug, Serialize, Deserialize, DocComment)]
 pub(crate) struct Config {
@@ -56,51 +59,51 @@ impl Default for Config {
     }
 }
 
-pub(crate) const PROJECT_CONFIG: &str = "sanedit-project.toml";
-
-pub(crate) fn read_config(config_path: &Path, working_dir: &Path) -> Config {
-    match try_read_config(config_path, working_dir) {
-        Ok(config) => config,
-        Err(e) => {
-            log::warn!("Failed to load configuration, using default instead: {e}");
-            Config::default()
+impl Config {
+    pub fn new(config_path: &Path, working_dir: &Path) -> Config {
+        match Self::try_new(config_path, working_dir) {
+            Ok(config) => config,
+            Err(e) => {
+                log::warn!("Failed to load configuration, using default instead: {e}");
+                Config::default()
+            }
         }
     }
-}
 
-pub(crate) fn try_read_config(config_path: &Path, working_dir: &Path) -> anyhow::Result<Config> {
-    let mut builder = config::Config::builder().add_source(config::File::from(config_path));
+    pub fn try_new(config_path: &Path, working_dir: &Path) -> anyhow::Result<Config> {
+        let mut builder = config::Config::builder().add_source(config::File::from(config_path));
 
-    let local = working_dir.join(PROJECT_CONFIG);
-    if local.exists() {
-        builder = builder.add_source(config::File::from(local));
+        // let local = working_dir.join(PROJECT_CONFIG);
+        // if local.exists() {
+        //     builder = builder.add_source(config::File::from(local));
+        // }
+
+        let config = builder.build()?.try_deserialize::<Config>()?;
+        Ok(config)
     }
 
-    let config = builder.build()?.try_deserialize::<Config>()?;
-    Ok(config)
-}
+    pub(crate) fn serialize_default_configuration(path: &Path) -> anyhow::Result<()> {
+        use std::io::Write;
 
-pub(crate) fn serialize_default_configuration(path: &Path) -> anyhow::Result<()> {
-    use std::io::Write;
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
 
-    if let Some(parent) = path.parent() {
-        std::fs::create_dir_all(parent)?;
+        let config = Config::default();
+        let mut doc = to_document(&config).unwrap().to_owned();
+
+        let mut visitor = Formatter {
+            state: VisitState::Config,
+            start_of_file: true,
+        };
+        visitor.visit_document_mut(&mut doc);
+
+        let default_config = doc.to_string();
+        let mut file = std::fs::File::create_new(path)?;
+        file.write_all(default_config.as_bytes())?;
+
+        Ok(())
     }
-
-    let config = Config::default();
-    let mut doc = to_document(&config).unwrap().to_owned();
-
-    let mut visitor = Formatter {
-        state: VisitState::Config,
-        start_of_file: true,
-    };
-    visitor.visit_document_mut(&mut doc);
-
-    let default_config = doc.to_string();
-    let mut file = std::fs::File::create_new(path)?;
-    file.write_all(default_config.as_bytes())?;
-
-    Ok(())
 }
 
 struct Formatter {
@@ -210,16 +213,6 @@ impl VisitState {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Default, Deserialize, DocComment)]
-#[serde(default)]
-pub(crate) struct LSPConfig {
-    /// Command to run LSP
-    pub command: String,
-
-    /// Arguments to pass onto LSP command
-    pub args: Vec<String>,
-}
-
 #[derive(Debug, Serialize, Deserialize, DocComment)]
 #[serde(default)]
 pub(crate) struct EditorConfig {
@@ -247,8 +240,6 @@ pub(crate) struct EditorConfig {
     /// Filetype glob patterns
     /// By default the filetype is the extension of the file
     pub filetype: Map<String, Vec<String>>,
-
-    pub language_server: Map<String, LSPConfig>,
 }
 
 impl Default for EditorConfig {
@@ -263,7 +254,6 @@ impl Default for EditorConfig {
             detect_eol: true,
             detect_indent: true,
             filetype: Self::default_filetype_map(),
-            language_server: Self::default_language_server_map(),
         }
     }
 }
@@ -293,25 +283,6 @@ impl EditorConfig {
         );
 
         ftmap
-    }
-
-    fn default_language_server_map() -> FxHashMap<String, LSPConfig> {
-        macro_rules! map {
-            ($keymap:ident, $($ft: expr, $command:expr, $args:expr),+,) => {
-                $(
-                    $keymap.insert($ft.into(), LSPConfig { command: $command.into(), args: $args.into() });
-                 )*
-            }
-        }
-
-        let mut langmap = FxHashMap::default();
-
-        #[rustfmt::skip]
-        map!(langmap,
-             "rust", "rust-analyzer", [],
-        );
-
-        langmap
     }
 }
 

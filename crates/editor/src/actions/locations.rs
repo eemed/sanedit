@@ -102,9 +102,10 @@ fn keep_locations(editor: &mut Editor, id: ClientId) {
     win.prompt = Prompt::builder()
         .prompt("Keep locations")
         .simple()
-        .on_confirm(move |editor, id, input| {
+        .on_confirm(move |editor, id, out| {
             let (win, _buf) = editor.win_buf_mut(id);
-            win.locations.retain(|name| name.contains(input));
+            let text = get!(out.text());
+            win.locations.retain(|name| name.contains(text));
             win.focus_to(Focus::Locations);
         })
         .build();
@@ -117,9 +118,10 @@ fn reject_locations(editor: &mut Editor, id: ClientId) {
     win.prompt = Prompt::builder()
         .prompt("Reject locations")
         .simple()
-        .on_confirm(move |editor, id, input| {
+        .on_confirm(move |editor, id, out| {
             let (win, _buf) = editor.win_buf_mut(id);
-            win.locations.retain(|name| !name.contains(input));
+            let text = get!(out.text());
+            win.locations.retain(|name| !name.contains(text));
             win.focus_to(Focus::Locations);
         })
         .build();

@@ -119,9 +119,10 @@ fn save_as(editor: &mut Editor, id: ClientId) {
     win.prompt = Prompt::builder()
         .prompt("Save as")
         .simple()
-        .on_confirm(|editor, id, path| {
+        .on_confirm(|editor, id, out| {
+            let path = get!(out.path());
             let (_win, buf) = editor.win_buf_mut(id);
-            buf.set_path(PathBuf::from(path));
+            buf.set_path(path);
             save.execute(editor, id);
         })
         .build();
@@ -222,6 +223,19 @@ fn newline_above(editor: &mut Editor, id: ClientId) {
 fn align_cursor_columns(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     if win.align_cursors(buf).is_ok() {
+        let hook = Hook::BufChanged(buf.id);
+        run(editor, id, hook);
+    }
+}
+
+#[action("Align each cursor on top of each other")]
+fn comment_lines(editor: &mut Editor, id: ClientId) {
+    let (win, buf) = win_buf!(editor, id);
+    let ft = get!(&buf.filetype);
+    let ftconfig = get!(editor.filetype_config.get(ft));
+    let comment = &ftconfig.general.comment;
+
+    if win.comment_cursor_lines(buf, comment).is_ok() {
         let hook = Hook::BufChanged(buf.id);
         run(editor, id, hook);
     }

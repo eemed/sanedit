@@ -58,7 +58,10 @@ fn search_forward(editor: &mut Editor, id: ClientId) {
         .prompt("Search")
         .history(HistoryKind::Search)
         .keymap(KeymapKind::Search)
-        .on_confirm(search)
+        .on_confirm(|editor, id, out| {
+            let text = get!(out.text());
+            search(editor, id, text);
+        })
         .on_input(async_view_matches)
         .build();
     win.focus_to(Focus::Search);
@@ -73,7 +76,10 @@ fn search_backward(editor: &mut Editor, id: ClientId) {
         .history(HistoryKind::Search)
         .keymap(KeymapKind::Search)
         .prompt("Backward search")
-        .on_confirm(search)
+        .on_confirm(|editor, id, out| {
+            let text = get!(out.text());
+            search(editor, id, text);
+        })
         .on_input(async_view_matches)
         .build();
     win.focus_to(Focus::Search);

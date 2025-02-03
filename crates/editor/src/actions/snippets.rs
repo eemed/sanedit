@@ -43,16 +43,9 @@ pub(crate) fn insert_snippet(editor: &mut Editor, id: ClientId) {
 
     win.prompt = Prompt::builder()
         .prompt(MESSAGE)
-        .on_confirm(move |editor, id, input| {
-            let snippet = editor
-                .snippets
-                .get_snippet(filetype.as_ref(), input)
-                .cloned();
-
-            match snippet {
-                Some(snip) => insert_snippet_impl(editor, id, snip, 0),
-                _ => log::error!("No snippet with name {input}"),
-            }
+        .on_confirm(move |editor, id, out| {
+            let snippet = get!(out.snippet().cloned());
+            insert_snippet_impl(editor, id, snippet, 0);
         })
         .build();
     win.focus_to(Focus::Prompt);

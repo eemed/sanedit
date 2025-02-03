@@ -17,14 +17,12 @@ use sanedit_syntax::{Annotation, ByteReader, Parser};
 
 #[derive(Debug)]
 pub struct Syntaxes {
-    filetype_dir: Directory,
     syntaxes: FxHashMap<Filetype, Syntax>,
 }
 
 impl Syntaxes {
-    pub fn new(ft_dir: Directory) -> Syntaxes {
+    pub fn new() -> Syntaxes {
         Syntaxes {
-            filetype_dir: ft_dir,
             syntaxes: FxHashMap::default(),
         }
     }
@@ -40,15 +38,14 @@ impl Syntaxes {
         self.syntaxes.contains_key(ft)
     }
 
-    pub fn load(&mut self, ft: &Filetype) -> anyhow::Result<Syntax> {
-        let path = PathBuf::from(ft.as_str()).join(format!("{}.peg", ft.as_str()));
-        let peg = self.filetype_dir.find(&path).ok_or(anyhow!(
-            "Could not find syntax for filetype {}",
-            ft.as_str()
-        ))?;
-        let syntax = Syntax::from_path(&peg)?;
-        self.syntaxes.insert(ft.clone(), syntax.clone());
-        Ok(syntax)
+    pub fn load(&mut self, ft: &Filetype, path: &Path) -> anyhow::Result<()> {
+        if self.syntaxes.contains_key(ft) {
+            return Ok(());
+        }
+
+        let syntax = Syntax::from_path(path)?;
+        self.syntaxes.insert(ft.clone(), syntax);
+        Ok(())
     }
 }
 

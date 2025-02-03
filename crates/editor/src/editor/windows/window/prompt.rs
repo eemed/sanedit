@@ -1,14 +1,14 @@
 mod history;
 
-use std::rc::Rc;
+use std::{path::PathBuf, rc::Rc};
 
 use sanedit_buffer::PieceTree;
-use sanedit_utils::sorted_vec::SortedVec;
+use sanedit_utils::{either::Either, sorted_vec::SortedVec};
 
 use crate::{
     actions::jobs::{MatchedOptions, MatcherMessage},
-    common::matcher::ScoredChoice,
-    editor::{keymap::KeymapKind, windows::Focus, Editor},
+    common::matcher::{Choice, ScoredChoice},
+    editor::{keymap::KeymapKind, snippets::Snippet, windows::Focus, Editor},
 };
 use sanedit_server::ClientId;
 
@@ -20,7 +20,7 @@ use super::chooser::Chooser;
 pub(crate) struct PromptBuilder {
     message: Option<String>,
     on_confirm: Option<PromptAction>,
-    on_input: Option<PromptAction>,
+    on_input: Option<PromptOnInput>,
     on_abort: Option<PromptAction>,
     keymap_kind: Option<KeymapKind>,
     kind: PromptKind,
@@ -44,7 +44,6 @@ impl PromptBuilder {
         self
     }
 
-
     pub fn input(mut self, input: &str) -> Self {
         self.input = input.into();
         self
@@ -66,7 +65,7 @@ impl PromptBuilder {
     #[allow(dead_code)]
     pub fn on_abort<F>(mut self, fun: F) -> Self
     where
-        F: Fn(&mut Editor, ClientId, &str) + 'static,
+        F: Fn(&mut Editor, ClientId, PromptOutput) + 'static,
     {
         self.on_abort = Some(Rc::new(fun));
         self
@@ -74,7 +73,7 @@ impl PromptBuilder {
 
     pub fn on_confirm<F>(mut self, fun: F) -> Self
     where
-        F: Fn(&mut Editor, ClientId, &str) + 'static,
+        F: Fn(&mut Editor, ClientId, PromptOutput) + 'static,
     {
         self.on_confirm = Some(Rc::new(fun));
         self
@@ -115,7 +114,46 @@ impl PromptBuilder {
 
 /// Prompt action, similar to a normal `ActionFunction` but also takes the
 /// prompt input as a additional parameter
-pub(crate) type PromptAction = Rc<dyn Fn(&mut Editor, ClientId, &str)>;
+pub(crate) type PromptAction = Rc<dyn Fn(&mut Editor, ClientId, PromptOutput)>;
+pub(crate) type PromptOnInput = Rc<dyn Fn(&mut Editor, ClientId, &str)>;
+
+#[derive(Debug, Eq, PartialEq)]
+pub(crate) struct PromptOutput {
+    inner: Either<String, ScoredChoice>,
+}
+
+impl PromptOutput {
+    pub fn path(&self) -> Option<PathBuf> {
+        match &self.inner {
+            Either::Left(text) => Some(PathBuf::from(text)),
+            Either::Right(choice) => match choice.choice() {
+                Choice::Path { path, .. } => Some(path.clone()),
+                Choice::Text { text, .. } => Some(PathBuf::from(text)),
+                _ => None,
+            },
+        }
+    }
+
+    pub fn snippet(&self) -> Option<&Snippet> {
+        match &self.inner {
+            Either::Right(choice) => match choice.choice() {
+                Choice::Snippet { snippet, .. } => Some(snippet),
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+
+    pub fn text(&self) -> Option<&str> {
+        match &self.inner {
+            Either::Left(text) => Some(text),
+            Either::Right(choice) => match choice.choice() {
+                Choice::Text { text, .. } => Some(text.as_str()),
+                _ => None,
+            },
+        }
+    }
+}
 
 #[derive(Default, Debug, Eq, PartialEq)]
 pub(crate) enum PromptKind {
@@ -140,7 +178,7 @@ pub(crate) struct Prompt {
     on_abort: Option<PromptAction>,
 
     /// Called when input is modified
-    on_input: Option<PromptAction>,
+    on_input: Option<PromptOnInput>,
 
     keymap_kind: KeymapKind,
 
@@ -213,7 +251,7 @@ impl Prompt {
         self.on_input = Some(Rc::new(fun));
     }
 
-    pub fn on_input(&self) -> Option<PromptAction> {
+    pub fn on_input(&self) -> Option<PromptOnInput> {
         self.on_input.clone()
     }
 
@@ -285,10 +323,13 @@ impl Prompt {
         &self.input
     }
 
-    pub fn input_or_selected(&self) -> String {
-        self.selected()
-            .map(|item| item.choice().text().to_string())
-            .unwrap_or(self.input.clone())
+    pub fn input_or_selected(&self) -> PromptOutput {
+        let inner = match self.selected() {
+            Some(scored) => Either::Right(scored.clone()),
+            None => Either::Left(self.input.clone()),
+        };
+
+        PromptOutput { inner }
     }
 
     pub fn cursor(&self) -> usize {

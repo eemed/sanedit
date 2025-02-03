@@ -3,7 +3,10 @@ use std::{
     sync::Arc,
 };
 
-use tokio::{fs, io, sync::mpsc::Sender};
+use tokio::{
+    io,
+    sync::{mpsc::Sender, oneshot},
+};
 
 use sanedit_server::{BoxFuture, Kill};
 
@@ -34,7 +37,40 @@ impl FileOptionProvider {
     }
 }
 
-fn spawn(dir: PathBuf, ctx: ReadDirContext) {
+async fn rayon_reader(dir: PathBuf, ctx: ReadDirContext) -> io::Result<()> {
+    let (tx, rx) = oneshot::channel();
+    rayon::spawn(|| {
+        rayon::scope(|s| {
+            let _ = rayon_read(s, dir, ctx);
+        });
+        let _ = tx.send(());
+    });
+
+    let _ = rx.await;
+    Ok(())
+}
+
+fn rayon_read(scope: &rayon::Scope, dir: PathBuf, ctx: ReadDirContext) -> io::Result<()> {
+    let mut rdir = std::fs::read_dir(&dir)?;
+    while let Some(Ok(entry)) = rdir.next() {
+        if ctx.kill.should_stop() {
+            return Ok(());
+        }
+
+        let path = entry.path();
+        let metadata = entry.metadata()?;
+        if metadata.is_dir() {
+            let ctx = ctx.clone();
+            scope.spawn(|s| rayon_spawn(s, path, ctx));
+        } else {
+            let _ = ctx.osend.blocking_send(Choice::from_path(path, ctx.strip));
+        }
+    }
+
+    Ok(())
+}
+
+fn rayon_spawn(scope: &rayon::Scope, dir: PathBuf, ctx: ReadDirContext) {
     if let Some(fname) = dir.file_name().map(|fname| fname.to_string_lossy()) {
         for ig in ctx.ignore.iter() {
             if ig.as_str() == fname {
@@ -43,28 +79,9 @@ fn spawn(dir: PathBuf, ctx: ReadDirContext) {
         }
     }
 
-    tokio::spawn(async move {
-        let _ = rec(dir, ctx).await;
-    });
-}
-
-async fn rec(dir: PathBuf, ctx: ReadDirContext) -> io::Result<()> {
-    let mut rdir = fs::read_dir(&dir).await?;
-    while let Ok(Some(entry)) = rdir.next_entry().await {
-        if ctx.kill.should_stop() {
-            return Ok(());
-        }
-
-        let path = entry.path();
-        let metadata = entry.metadata().await?;
-        if metadata.is_dir() {
-            spawn(path, ctx.clone());
-        } else {
-            let _ = ctx.osend.send(Choice::from_path(path, ctx.strip)).await;
-        }
-    }
-
-    Ok(())
+    scope.spawn(|s| {
+        let _ = rayon_read(s, dir, ctx);
+    })
 }
 
 async fn read_directory_recursive(
@@ -81,7 +98,7 @@ async fn read_directory_recursive(
         ignore,
     };
 
-    let _ = rec(dir, ctx).await;
+    let _ = rayon_reader(dir, ctx).await;
 }
 
 impl OptionProvider for FileOptionProvider {

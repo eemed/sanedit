@@ -1,7 +1,7 @@
 use crate::{
     common::is_yes,
     editor::{
-        config::serialize_default_configuration,
+        config::Config,
         hooks::Hook,
         windows::{Focus, Prompt},
         Editor,
@@ -78,14 +78,15 @@ fn prompt_create_and_open_config(editor: &mut Editor, id: ClientId) {
     win.prompt = Prompt::builder()
         .prompt("Configuration file is missing. Create default configuration? (Y/n)")
         .simple()
-        .on_confirm(|editor, id, input| {
+        .on_confirm(|editor, id, out| {
+            let input = get!(out.text());
             let yes = input.is_empty() || is_yes(input);
             if !yes {
                 return;
             }
 
             let path = editor.config_dir.config();
-            if let Err(e) = serialize_default_configuration(&path) {
+            if let Err(e) = Config::serialize_default_configuration(&path) {
                 let (win, _buf) = editor.win_buf_mut(id);
                 win.warn_msg("Failed to create default configuration file.");
                 log::error!("Failed to create default configuration file to: {path:?} {e}");
@@ -107,3 +108,20 @@ fn open_new_scratch_buffer(editor: &mut Editor, id: ClientId) {
 
 #[action("Do nothing")]
 fn nop(_editor: &mut Editor, _id: ClientId) {}
+
+#[action("Load filetype")]
+fn load_filetype(editor: &mut Editor, id: ClientId) {
+    let bid = editor
+        .hooks
+        .running_hook()
+        .and_then(Hook::buffer_id)
+        .unwrap_or_else(|| {
+            let (win, _) = editor.win_buf(id);
+            win.buffer_id()
+        });
+    let buf = editor.buffers().get(bid).unwrap();
+    let Some(ft) = buf.filetype.clone() else {
+        return;
+    };
+    editor.load_filetype(&ft);
+}

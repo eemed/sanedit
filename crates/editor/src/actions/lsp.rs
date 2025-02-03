@@ -158,10 +158,9 @@ fn start_lsp_impl(editor: &mut Editor, id: ClientId, bid: BufferId) -> Result<()
         ));
     }
     let lang = editor
-        .config
-        .editor
-        .language_server
-        .get(ft.as_str())
+        .filetype_config
+        .get(&ft)
+        .map(|config| &config.lsp)
         .ok_or_else(|| LSPActionError::LanguageServerNotConfigured(ft.as_str().to_string()))?;
 
     let lsp = LSPJob::new(id, wd, ft, lang);
@@ -362,7 +361,8 @@ fn rename(editor: &mut Editor, id: ClientId) {
         .prompt("Rename to")
         .simple()
         .input(&word)
-        .on_confirm(|editor, id, input| {
+        .on_confirm(|editor, id, out| {
+            let name = get!(out.text());
             let (win, buf) = editor.win_buf(id);
             let slice = buf.slice(..);
             let offset = win.cursors.primary().pos();
@@ -375,7 +375,7 @@ fn rename(editor: &mut Editor, id: ClientId) {
             let request = RequestKind::Rename {
                 path,
                 position,
-                new_name: input.into(),
+                new_name: name.into(),
             };
 
             let lsp = get!(editor.language_servers.get_mut(&ft));

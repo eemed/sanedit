@@ -13,10 +13,13 @@ pub(crate) mod themes;
 pub(crate) mod windows;
 
 use caches::Caches;
+use config::FiletypeConfig;
 use keymap::KeymapResult;
 use rustc_hash::FxHashMap;
 use sanedit_core::FileDescription;
 use sanedit_core::Filetype;
+use sanedit_core::CONFIG;
+use sanedit_core::SNIPPETS_FILE;
 use sanedit_messages::key;
 use sanedit_messages::key::KeyEvent;
 use sanedit_messages::redraw::Size;
@@ -98,6 +101,7 @@ pub(crate) struct Editor {
     pub language_servers: Map<Filetype, LSP>,
     pub filetree: Filetree,
     pub config: Config,
+    pub filetype_config: Map<Filetype, FiletypeConfig>,
     pub caches: Caches,
 }
 
@@ -109,7 +113,6 @@ impl Editor {
         let working_dir = env::current_dir().expect("Cannot get current working directory.");
         let config_dir = ConfigDirectory::default();
         let global_snippets = config_dir.global_snippet_file();
-        let ft_dir = config_dir.filetype_dir();
         let config = Config::default();
         let caches = Caches::new(&config);
 
@@ -117,8 +120,8 @@ impl Editor {
             _runtime: runtime,
             clients: Map::default(),
             draw_states: Map::default(),
-            syntaxes: Syntaxes::new(ft_dir.clone()),
-            snippets: Snippets::new(&global_snippets, ft_dir),
+            syntaxes: Syntaxes::new(),
+            snippets: Snippets::new(&global_snippets),
             windows: Windows::default(),
             buffers: Buffers::default(),
             job_broker: JobBroker::new(jobs_handle),
@@ -133,6 +136,7 @@ impl Editor {
             language_servers: Map::default(),
             keymaps: Keymaps::default(),
             config,
+            filetype_config: Map::default(),
             caches,
         }
     }
@@ -142,11 +146,9 @@ impl Editor {
             log::info!("Config directory: {cd:?}");
             if let Ok(cd) = cd.canonicalize() {
                 self.config_dir = ConfigDirectory::new(&cd);
-                self.syntaxes = Syntaxes::new(self.config_dir.filetype_dir());
-                self.snippets = Snippets::new(
-                    &self.config_dir.global_snippet_file(),
-                    self.config_dir.filetype_dir(),
-                );
+                self.syntaxes = Syntaxes::new();
+                self.snippets = Snippets::new(&self.config_dir.global_snippet_file());
+                self.filetype_config = Map::default();
                 self.themes = Themes::new(self.config_dir.theme_dir());
             }
         }
@@ -161,7 +163,7 @@ impl Editor {
     }
 
     fn reload_config(&mut self) {
-        self.config = config::read_config(&self.config_dir.config(), &self.working_dir);
+        self.config = Config::new(&self.config_dir.config(), &self.working_dir);
         self.caches = Caches::new(&self.config);
         self.configure_keymap();
     }
@@ -571,12 +573,10 @@ impl Editor {
             self.send_to_client(id, ClientMessage::Theme(theme))
         }
 
-        // Reload syntax
+        // Reload filetype
         let (_win, buf) = self.win_buf(id);
         if let Some(ft) = buf.filetype.clone() {
-            if let Err(e) = self.syntaxes.load(&ft) {
-                log::error!("Failed to reload syntax: {e}");
-            }
+            self.load_filetype(&ft);
         }
 
         // Reload window
@@ -671,6 +671,41 @@ impl Editor {
         let (_win, buf) = self.win_buf(id);
         let ft = buf.filetype.as_ref()?;
         self.language_servers.get(ft)
+    }
+
+    pub fn load_filetype(&mut self, ft: &Filetype) {
+        self.load_filetype_config(ft);
+        self.load_filetype_snippets(ft);
+        self.load_filetype_syntax(ft);
+    }
+
+    fn load_filetype_syntax(&mut self, ft: &Filetype) {
+        let dir = self.config_dir.filetype_dir();
+        let path = PathBuf::from(ft.as_str()).join(format!("{}.peg", ft.as_str()));
+        if let Some(path) = dir.find(&path) {
+            let _ = self.syntaxes.load(ft, &path);
+        }
+    }
+
+    fn load_filetype_snippets(&mut self, ft: &Filetype) {
+        let dir = self.config_dir.filetype_dir();
+        let path = PathBuf::from(ft.as_str()).join(SNIPPETS_FILE);
+        if let Some(path) = dir.find(&path) {
+            self.snippets.load(ft, &path);
+        }
+    }
+
+    fn load_filetype_config(&mut self, ft: &Filetype) {
+        if self.filetype_config.contains_key(&ft) {
+            return;
+        }
+
+        let dir = self.config_dir.filetype_dir();
+        let path = PathBuf::from(ft.as_str()).join(CONFIG);
+        if let Some(ftconfig) = dir.find(&path) {
+            let ftconfig = FiletypeConfig::new(&ftconfig);
+            self.filetype_config.insert(ft.clone(), ftconfig);
+        }
     }
 }
 

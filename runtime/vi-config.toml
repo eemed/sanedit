@@ -36,10 +36,6 @@ toml = ["**/Cargo.lock"]
 markdown = ["*.md"]
 yaml = ["*.yml"]
 
-[editor.language_server.rust]
-command = "rust-analyzer"
-args = []
-
 [window]
 
 # Maximum prompt completions to show at once
@@ -49,7 +45,7 @@ max_prompt_completions = 10
 max_completions = 10
 theme = "default"
 
-# Highlight LSP diagnostics
+# Highlight syntax
 highlight_syntax = true
 
 # Highlight LSP diagnostics
@@ -180,6 +176,7 @@ maps = [
     { key = "#", actions = ["search_prev_word_under_cursor"] },
     { key = "*", actions = ["search_next_word_under_cursor"] },
     { key = "&", actions = ["align_cursor_columns"] },
+    { key = "gc", actions = ["comment_lines"] },
 
     { key = "alt+down", actions = ["new_cursor_to_next_line"] },
     { key = "alt+up", actions = ["new_cursor_to_prev_line"] },

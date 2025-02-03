@@ -24,8 +24,8 @@ use rustc_hash::FxHashSet;
 use sanedit_core::{
     grapheme_category, indent_at_line,
     movement::{next_grapheme_boundary, next_line_end, prev_grapheme_boundary, start_of_line},
-    selection_line_starts, width_at_pos, BufferRange, Change, Changes, Cursor, DisplayOptions,
-    GraphemeCategory, Locations, Range,
+    selection_first_chars_of_lines, selection_line_starts, width_at_pos, BufferRange, Change,
+    Changes, Cursor, DisplayOptions, GraphemeCategory, Locations, Range,
 };
 use sanedit_messages::{
     key::KeyEvent,
@@ -700,6 +700,21 @@ impl Window {
         vstarts
     }
 
+    fn cursor_line_first_chars_of_lines(&self, buf: &Buffer) -> Vec<u64> {
+        let slice = buf.slice(..);
+        let mut starts = FxHashSet::default();
+
+        for cursor in self.cursors.iter() {
+            let cpos = cursor.pos();
+            let sel = cursor.selection().unwrap_or(Range::new(cpos, cpos));
+            let cstarts = selection_first_chars_of_lines(&slice, sel);
+            starts.extend(cstarts);
+        }
+        let mut vstarts: Vec<u64> = starts.into_iter().collect();
+        vstarts.sort();
+        vstarts
+    }
+
     /// Dedent all the lines with cursors or their selections
     pub fn dedent_cursor_lines(&mut self, buf: &mut Buffer) -> Result<()> {
         let starts = self.cursor_line_starts(buf);
@@ -740,6 +755,13 @@ impl Window {
             .indent_kind
             .repeat(buf.config.indent_amount as usize);
         let changes = Changes::multi_insert(&starts, indent.as_bytes());
+        self.change(buf, &changes)?;
+        Ok(())
+    }
+
+    pub fn comment_cursor_lines(&mut self, buf: &mut Buffer, comment: &str) -> Result<()> {
+        let starts = self.cursor_line_first_chars_of_lines(buf);
+        let changes = Changes::multi_insert(&starts, comment.as_bytes());
         self.change(buf, &changes)?;
         Ok(())
     }

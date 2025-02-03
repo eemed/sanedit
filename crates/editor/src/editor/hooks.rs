@@ -135,6 +135,9 @@ impl Default for Hooks {
             current: vec![],
         };
 
+        // Editor
+        hooks.register(BufCreated, editor::load_filetype);
+
         // Search
         // hooks.register(InsertPre, search::clear_search_matches);
         // hooks.register(RemovePre, search::clear_search_matches);
@@ -154,7 +157,6 @@ impl Default for Hooks {
         // Syntax
         hooks.register(OnMessagePost, syntax::reparse_view);
         hooks.register(Reload, syntax::parse_syntax);
-        hooks.register(BufCreated, syntax::load_syntax);
         hooks.register(BufOpened, syntax::parse_syntax);
         hooks.register(BufChanged, syntax::prevent_flicker);
 

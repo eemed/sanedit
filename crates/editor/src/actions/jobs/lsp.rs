@@ -319,19 +319,16 @@ impl LSPJob {
         let ft = self.filetype.clone();
         win.prompt = Prompt::builder()
             .prompt("Select code action")
-            .on_confirm(move |editor, id, input| {
-                let Some(action) = actions.iter().find(|action| action.name() == input) else {
-                    return;
-                };
+            .on_confirm(move |editor, id, out| {
+                let name = get!(out.text());
+                let action = get!(actions.iter().find(|action| action.name() == name));
 
                 if !action.is_resolved() {
                     let request = RequestKind::CodeActionResolve {
                         action: action.clone(),
                     };
 
-                    let Some(lsp) = editor.language_servers.get_mut(&ft) else {
-                        return;
-                    };
+                    let lsp = get!(editor.language_servers.get_mut(&ft));
                     let _ = lsp.request(request, id, vec![]);
                 }
             })

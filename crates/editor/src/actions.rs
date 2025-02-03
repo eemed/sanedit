@@ -154,6 +154,7 @@ pub(crate) const COMMANDS: &[Action] = &[
     text::newline_above,
     text::newline_below,
     text::align_cursor_columns,
+    text::comment_lines,
 
     prompt::open_file,
     prompt::open_buffer,

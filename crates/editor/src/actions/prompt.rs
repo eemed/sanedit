@@ -44,16 +44,19 @@ fn select_theme(editor: &mut Editor, id: ClientId) {
 
     win.prompt = Prompt::builder()
         .prompt("Select theme")
-        .on_confirm(move |editor, id, input| match editor.themes.get(input) {
-            Ok(t) => {
-                let theme = t.clone();
-                let (win, _buf) = editor.win_buf_mut(id);
-                win.config.theme = input.into();
-                editor.send_to_client(id, ClientMessage::Theme(theme));
-            }
-            Err(_) => {
-                let (win, _buf) = editor.win_buf_mut(id);
-                win.warn_msg(&format!("No such theme '{}'", input));
+        .on_confirm(move |editor, id, out| {
+            let text = get!(out.text());
+            match editor.themes.get(text) {
+                Ok(t) => {
+                    let theme = t.clone();
+                    let (win, _buf) = editor.win_buf_mut(id);
+                    win.config.theme = text.into();
+                    editor.send_to_client(id, ClientMessage::Theme(theme));
+                }
+                Err(_) => {
+                    let (win, _buf) = editor.win_buf_mut(id);
+                    win.warn_msg(&format!("No such theme '{}'", text));
+                }
             }
         })
         .build();
@@ -73,13 +76,14 @@ fn command_palette(editor: &mut Editor, id: ClientId) {
 
     win.prompt = Prompt::builder()
         .prompt("Palette")
-        .on_confirm(move |editor, id, input| {
-            if let Some(action) = find_by_description(input) {
+        .on_confirm(move |editor, id, out| {
+            let desc = get!(out.text());
+            if let Some(action) = find_by_description(desc) {
                 action.execute(editor, id);
                 return;
             }
 
-            log::error!("No action with name {input}");
+            log::error!("No action with name {desc}");
         })
         .build();
 
@@ -100,8 +104,8 @@ fn open_file(editor: &mut Editor, id: ClientId) {
 
     win.prompt = Prompt::builder()
         .prompt(PROMPT_MESSAGE)
-        .on_confirm(move |editor, id, input| {
-            let path = PathBuf::from(input);
+        .on_confirm(move |editor, id, out| {
+            let path = get!(out.path());
 
             match editor.open_file(id, &path) {
                 Ok(()) => {
@@ -109,7 +113,7 @@ fn open_file(editor: &mut Editor, id: ClientId) {
                 }
                 Err(e) => {
                     let (win, _buf) = editor.win_buf_mut(id);
-                    win.warn_msg(&format!("Failed to open file {input}: {e}"))
+                    win.warn_msg(&format!("Failed to open file {path:?}: {e}"));
                 }
             }
         })
@@ -188,8 +192,10 @@ fn open_buffer(editor: &mut Editor, id: ClientId) {
 
     win.prompt = Prompt::builder()
         .prompt(PROMPT_MESSAGE)
-        .on_confirm(move |editor, id, input| {
-            if let Some(bid) = input.split(':').next() {
+        .on_confirm(move |editor, id, out| {
+            // TODO maybe own type in prompt?
+            let text = get!(out.text());
+            if let Some(bid) = text.split(':').next() {
                 if let Ok(bid) = bid.parse::<ID>() {
                     let bid = BufferId::from(bid);
                     editor.open_buffer(id, bid);
@@ -211,7 +217,7 @@ fn prompt_close(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     if let Some(on_abort) = win.prompt.on_abort() {
         let input = win.prompt.input_or_selected();
-        (on_abort)(editor, id, &input)
+        (on_abort)(editor, id, input)
     }
 }
 
@@ -225,12 +231,14 @@ fn prompt_confirm(editor: &mut Editor, id: ClientId) {
 
     let (win, _buf) = editor.win_buf_mut(id);
     if let Some(on_confirm) = win.prompt.on_confirm() {
-        let input = win.prompt.input_or_selected();
-        if let Some(kind) = win.prompt.history() {
-            let history = editor.histories.entry(kind).or_default();
-            history.push(&input);
+        let out = win.prompt.input_or_selected();
+        if let Some(text) = out.text() {
+            if let Some(kind) = win.prompt.history() {
+                let history = editor.histories.entry(kind).or_default();
+                history.push(text);
+            }
         }
-        (on_confirm)(editor, id, &input)
+        (on_confirm)(editor, id, out)
     }
 }
 
@@ -287,7 +295,7 @@ fn shell_command(editor: &mut Editor, id: ClientId) {
         .prompt("Shell")
         .history(HistoryKind::Command)
         .simple()
-        .on_confirm(shell::execute)
+        .on_confirm(shell::execute_prompt)
         .build();
     win.focus_to(Focus::Prompt);
 }
@@ -299,8 +307,9 @@ fn goto_line(editor: &mut Editor, id: ClientId) {
     win.prompt = Prompt::builder()
         .prompt("Line")
         .simple()
-        .on_confirm(move |editor, id, input| {
-            if let Ok(num) = input.parse::<u64>() {
+        .on_confirm(move |editor, id, out| {
+            let text = get!(out.text());
+            if let Ok(num) = text.parse::<u64>() {
                 let (win, buf) = editor.win_buf_mut(id);
                 win.goto_line(num, buf);
                 hooks::run(editor, id, Hook::CursorMoved);
@@ -317,8 +326,9 @@ fn goto_percentage(editor: &mut Editor, id: ClientId) {
     win.prompt = Prompt::builder()
         .prompt("Percentage")
         .simple()
-        .on_confirm(move |editor, id, input| {
-            if let Ok(mut num) = input.parse::<u64>() {
+        .on_confirm(move |editor, id, out| {
+            let text = get!(out.text());
+            if let Ok(mut num) = text.parse::<u64>() {
                 num = min(100, num);
                 let (win, buf) = editor.win_buf_mut(id);
                 let offset = num * buf.len() / 100;
@@ -338,8 +348,8 @@ fn change_working_dir(editor: &mut Editor, id: ClientId) {
         .prompt("Working directory")
         .simple()
         .input(&wd.to_string_lossy())
-        .on_confirm(move |e, id, input| {
-            let path = PathBuf::from(input);
+        .on_confirm(move |e, id, out| {
+            let path = get!(out.path());
             if let Err(err) = e.change_working_dir(&path) {
                 let (win, _buf) = e.win_buf_mut(id);
                 win.warn_msg(&err.to_string());
@@ -355,8 +365,9 @@ fn grep(editor: &mut Editor, id: ClientId) {
     win.prompt = Prompt::builder()
         .prompt("Grep")
         .simple()
-        .on_confirm(move |e, id, input| {
+        .on_confirm(move |e, id, out| {
             const GREP_JOB: &str = "grep";
+            let patt = get!(out.text());
             let ignore = e.config.editor.ignore_directories();
             let wd = e.working_dir();
             let buffers: FxHashMap<PathBuf, PieceTreeView> = {
@@ -375,7 +386,7 @@ fn grep(editor: &mut Editor, id: ClientId) {
 
                 map
             };
-            let job = Grep::new(input, wd, &ignore, buffers, id);
+            let job = Grep::new(patt, wd, &ignore, buffers, id);
             e.job_broker.request_slot(id, GREP_JOB, job);
         })
         .build();
@@ -394,8 +405,9 @@ pub(crate) fn close_modified_buffer<F: Fn(&mut Editor, ClientId) + 'static>(
     win.prompt = Prompt::builder()
         .prompt("Closing a modified buffer. Save changes? (Y/n)")
         .simple()
-        .on_confirm(move |e, id, input| {
-            let yes = input.is_empty() || is_yes(input);
+        .on_confirm(move |e, id, out| {
+            let ans = get!(out.text());
+            let yes = ans.is_empty() || is_yes(ans);
             if yes {
                 save.execute(e, id);
             }

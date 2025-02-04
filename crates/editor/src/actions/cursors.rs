@@ -198,3 +198,24 @@ fn remove_cursor_selections(editor: &mut Editor, id: ClientId) {
         _ => {}
     }
 }
+
+#[action("Cursor to line first chars")]
+fn cursors_to_lines_first_char(editor: &mut Editor, id: ClientId) {
+    let (win, buf) = editor.win_buf_mut(id);
+    win.cursors_to_lines_first_char(buf);
+    hooks::run(editor, id, Hook::CursorMoved);
+}
+
+#[action("Cursor to line starts")]
+fn cursors_to_lines_start(editor: &mut Editor, id: ClientId) {
+    let (win, buf) = editor.win_buf_mut(id);
+    win.cursors_to_lines_start(buf);
+    hooks::run(editor, id, Hook::CursorMoved);
+}
+
+#[action("Cursor to line ends")]
+fn cursors_to_lines_end(editor: &mut Editor, id: ClientId) {
+    let (win, buf) = editor.win_buf_mut(id);
+    win.cursors_to_lines_end(buf);
+    hooks::run(editor, id, Hook::CursorMoved);
+}

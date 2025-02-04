@@ -1,4 +1,4 @@
-use std::{mem, path::PathBuf};
+use std::mem;
 
 use sanedit_core::{at_start_of_line, is_indent_at_pos};
 
@@ -246,6 +246,52 @@ fn comment_lines(editor: &mut Editor, id: ClientId) {
     }
 
     if win.comment_cursor_lines(buf, comment).is_ok() {
+        let hook = Hook::BufChanged(buf.id);
+        run(editor, id, hook);
+    }
+}
+
+#[action("Uncomment lines")]
+fn uncomment_lines(editor: &mut Editor, id: ClientId) {
+    let (win, buf) = win_buf!(editor, id);
+    let Some(ft) = &buf.filetype else {
+        win.warn_msg("No filetype set");
+        return;
+    };
+    let Some(ftconfig) = editor.filetype_config.get(ft) else {
+        win.warn_msg("No comment string set for filetype");
+        return;
+    };
+    let comment = &ftconfig.general.comment;
+    if comment.is_empty() {
+        win.warn_msg("No comment string set for filetype");
+        return;
+    }
+
+    if win.uncomment_cursor_lines(buf, comment).is_ok() {
+        let hook = Hook::BufChanged(buf.id);
+        run(editor, id, hook);
+    }
+}
+
+#[action("Toggle comment lines")]
+fn toggle_comment_lines(editor: &mut Editor, id: ClientId) {
+    let (win, buf) = win_buf!(editor, id);
+    let Some(ft) = &buf.filetype else {
+        win.warn_msg("No filetype set");
+        return;
+    };
+    let Some(ftconfig) = editor.filetype_config.get(ft) else {
+        win.warn_msg("No comment string set for filetype");
+        return;
+    };
+    let comment = &ftconfig.general.comment;
+    if comment.is_empty() {
+        win.warn_msg("No comment string set for filetype");
+        return;
+    }
+
+    if win.toggle_comment_cursor_lines(buf, comment).is_ok() {
         let hook = Hook::BufChanged(buf.id);
         run(editor, id, hook);
     }

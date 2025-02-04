@@ -117,7 +117,9 @@ maps = [
     { key = ".", actions = ["swap_selection_dir"] },
 
     { key = "g", actions = ["nop"] },
-    { key = "g c", actions = ["comment_lines"] },
+    { key = "g c", actions = ["toggle_comment_lines"] },
+    { key = "I", actions = ["cursors_to_lines_start"] },
+    { key = "A", actions = ["cursors_to_lines_end"] },
 ]
 
 [keymaps.window]

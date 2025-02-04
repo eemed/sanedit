@@ -22,10 +22,9 @@ use std::{
 use anyhow::{bail, Result};
 use rustc_hash::FxHashSet;
 use sanedit_core::{
-    grapheme_category, indent_at_line,
-    movement::{next_grapheme_boundary, next_line_end, prev_grapheme_boundary, start_of_line},
-    selection_first_chars_of_lines, selection_line_starts, width_at_pos, BufferRange, Change,
-    Changes, Cursor, DisplayOptions, GraphemeCategory, Locations, Range,
+    grapheme_category, indent_at_line, movement::{
+        end_of_line, next_grapheme_boundary, next_line_end, prev_grapheme_boundary, start_of_line,
+    }, selection_first_chars_of_lines, selection_line_ends, selection_line_starts, width_at_pos, BufferRange, Change, Changes, Cursor, DisplayOptions, GraphemeCategory, Locations, Range
 };
 use sanedit_messages::{
     key::KeyEvent,
@@ -698,6 +697,21 @@ impl Window {
         vstarts
     }
 
+    fn cursor_line_ends(&self, buf: &Buffer) -> Vec<u64> {
+        let slice = buf.slice(..);
+        let mut endset = FxHashSet::default();
+
+        for cursor in self.cursors.iter() {
+            let cpos = cursor.pos();
+            let sel = cursor.selection().unwrap_or(Range::new(cpos, cpos));
+            let ends = selection_line_ends(&slice, sel);
+            endset.extend(ends);
+        }
+        let mut ends: Vec<u64> = endset.into_iter().collect();
+        ends.sort();
+        ends
+    }
+
     fn cursor_line_first_chars_of_lines(&self, buf: &Buffer) -> Vec<u64> {
         let slice = buf.slice(..);
         let mut starts = FxHashSet::default();
@@ -758,13 +772,124 @@ impl Window {
     }
 
     pub fn comment_cursor_lines(&mut self, buf: &mut Buffer, comment: &str) -> Result<()> {
+        if comment.is_empty() {
+            return Ok(());
+        }
+
         let starts = self.cursor_line_first_chars_of_lines(buf);
+        self.cursors.stop_selection();
         if starts.is_empty() {
             return Ok(());
         }
         let changes = Changes::multi_insert(&starts, comment.as_bytes());
         self.change(buf, &changes)?;
         Ok(())
+    }
+
+    pub fn uncomment_cursor_lines(&mut self, buf: &mut Buffer, comment: &str) -> Result<()> {
+        if comment.is_empty() {
+            return Ok(());
+        }
+
+        let starts = self.cursor_line_starts(buf);
+        let slice = buf.slice(..);
+        let patt: Vec<char> = comment.chars().collect();
+
+        let mut changes = vec![];
+
+        'outer: for start in starts {
+            let mut npatt = 0;
+            let end = end_of_line(&slice, start);
+            let line = buf.slice(start..end);
+            let mut chars = line.chars();
+
+            while let Some((_, e, ch)) = chars.next() {
+                if ch == patt[npatt] {
+                    npatt += 1;
+                    if npatt == patt.len() {
+                        let end = e + line.start();
+                        let start = end - comment.len() as u64;
+                        changes.push(Change::remove(Range::new(start, end)));
+                        break;
+                    }
+                } else if !ch.is_whitespace() {
+                    continue 'outer;
+                }
+            }
+        }
+
+        let changes = Changes::new(&changes);
+        self.change(buf, &changes)?;
+        Ok(())
+    }
+
+    fn has_comment_on_line(&self, buf: &Buffer, comment: &str, start_of_line: u64) -> bool {
+        let patt: Vec<char> = comment.chars().collect();
+        let mut npatt = 0;
+        let slice = buf.slice(..);
+        let end = end_of_line(&slice, start_of_line);
+        let line = buf.slice(start_of_line..end);
+        let mut chars = line.chars();
+
+        while let Some((_, _, ch)) = chars.next() {
+            if ch == patt[npatt] {
+                npatt += 1;
+                if npatt == patt.len() {
+                    return true;
+                }
+            } else if !ch.is_whitespace() {
+                return false;
+            }
+        }
+
+        false
+    }
+
+    pub fn toggle_comment_cursor_lines(&mut self, buf: &mut Buffer, comment: &str) -> Result<()> {
+        let starts = self.cursor_line_starts(buf);
+        let start = starts[0];
+
+        if self.has_comment_on_line(buf, comment, start) {
+            self.uncomment_cursor_lines(buf, comment)
+        } else {
+            self.comment_cursor_lines(buf, comment)
+        }
+    }
+
+    pub fn cursors_to_lines_first_char(&mut self, buf: &Buffer) {
+        let starts = self.cursor_line_first_chars_of_lines(buf);
+        self.cursors.remove_except_primary();
+        for (i, start) in starts.iter().enumerate() {
+            if i == 0 {
+                self.cursors.replace_primary(Cursor::new(*start));
+            } else {
+                self.cursors.push(Cursor::new(*start));
+            }
+        }
+    }
+
+    pub fn cursors_to_lines_start(&mut self, buf: &Buffer) {
+        let starts = self.cursor_line_starts(buf);
+        self.cursors.remove_except_primary();
+        for (i, start) in starts.iter().enumerate() {
+            if i == 0 {
+                self.cursors.replace_primary(Cursor::new(*start));
+            } else {
+                self.cursors.push(Cursor::new(*start));
+            }
+        }
+    }
+
+    pub fn cursors_to_lines_end(&mut self, buf: &Buffer) {
+        let ends = self.cursor_line_ends(buf);
+        self.cursors.remove_except_primary();
+        for (i, end) in ends.iter().enumerate() {
+            if i == 0 {
+                self.cursors.replace_primary(Cursor::new(*end));
+            } else {
+                self.cursors.push(Cursor::new(*end));
+            }
+        }
     }
 
     /// Add indentation at cursors

@@ -155,6 +155,8 @@ pub(crate) const COMMANDS: &[Action] = &[
     text::newline_below,
     text::align_cursor_columns,
     text::comment_lines,
+    text::uncomment_lines,
+    text::toggle_comment_lines,
 
     prompt::open_file,
     prompt::open_buffer,
@@ -213,6 +215,8 @@ pub(crate) const COMMANDS: &[Action] = &[
     cursors::select_to_prev_word,
     cursors::keep_only_primary,
     cursors::remove_cursor_selections,
+    cursors::cursors_to_lines_start,
+    cursors::cursors_to_lines_end,
 
     view::scroll_up,
     view::scroll_down,

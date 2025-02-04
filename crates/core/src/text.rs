@@ -1,11 +1,12 @@
 use std::io;
 
 use crate::{
-    grapheme_category, is_word_break, is_word_break_end, movement::first_char_of_line, BufferRange,
-    Chars, DisplayOptions, GraphemeCategory, Range,
+    grapheme_category, is_word_break, is_word_break_end,
+    movement::{end_of_line, first_char_of_line},
+    BufferRange, Chars, DisplayOptions, GraphemeCategory, Range,
 };
 use sanedit_buffer::{
-    utf8::{prev_eol, EndOfLine},
+    utf8::{self, prev_eol, EndOfLine},
     PieceTree, PieceTreeSlice,
 };
 
@@ -258,6 +259,32 @@ pub fn selection_line_starts(slice: &PieceTreeSlice, sel: BufferRange) -> Vec<u6
     }
 
     starts
+}
+
+pub fn selection_line_ends(slice: &PieceTreeSlice, sel: BufferRange) -> Vec<u64> {
+    let start = sel.start;
+    let eol = end_of_line(slice, start);
+
+    if sel.is_empty() {
+        return vec![eol];
+    }
+
+    let mut ends = vec![eol];
+    let mut bytes = slice.bytes_at(eol);
+    loop {
+        match utf8::next_eol(&mut bytes) {
+            Some(eol) => {
+                ends.push(eol.range.start);
+
+                if bytes.pos() >= sel.end {
+                    break;
+                }
+            }
+            None => ends.push(slice.len()),
+        }
+    }
+
+    ends
 }
 
 pub fn at_start_of_line(slice: &PieceTreeSlice, pos: u64) -> bool {

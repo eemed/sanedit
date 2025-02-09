@@ -22,9 +22,13 @@ use std::{
 use anyhow::{bail, Result};
 use rustc_hash::FxHashSet;
 use sanedit_core::{
-    grapheme_category, indent_at_line, movement::{
-        end_of_line, next_grapheme_boundary, next_line_end, prev_grapheme_boundary, start_of_line,
-    }, selection_first_chars_of_lines, selection_line_ends, selection_line_starts, width_at_pos, BufferRange, Change, Changes, Cursor, DisplayOptions, GraphemeCategory, Locations, Range
+    grapheme_category, indent_at_line,
+    movement::{
+        end_of_line, next_grapheme_boundary, next_line_end, next_line_start,
+        prev_grapheme_boundary, prev_line_start, start_of_line,
+    },
+    selection_first_chars_of_lines, selection_line_ends, selection_line_starts, width_at_pos,
+    BufferRange, Change, Changes, Cursor, DisplayOptions, GraphemeCategory, Locations, Range,
 };
 use sanedit_messages::{
     key::KeyEvent,
@@ -32,6 +36,7 @@ use sanedit_messages::{
 };
 
 use crate::{
+    actions::movement::next_line,
     common::change::{newline_autopair, newline_empty_line, newline_indent},
     editor::{
         buffers::{Buffer, BufferId, SnapshotAux},
@@ -889,6 +894,24 @@ impl Window {
             } else {
                 self.cursors.push(Cursor::new(*end));
             }
+        }
+    }
+
+    pub fn cursors_extend_next_line(&mut self, buf: &Buffer) {
+        let slice = buf.slice(..);
+        for cursor in self.cursors.cursors_mut() {
+            let pos = cursor.end();
+            let nline = next_line_start(&slice, pos);
+            cursor.extend_to_include_pos(nline);
+        }
+    }
+
+    pub fn cursors_extend_prev_line(&mut self, buf: &Buffer) {
+        let slice = buf.slice(..);
+        for cursor in self.cursors.cursors_mut() {
+            let pos = cursor.start();
+            let start = prev_line_start(&slice, pos);
+            cursor.extend_to_include_pos(start);
         }
     }
 

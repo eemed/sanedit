@@ -142,6 +142,31 @@ impl Cursor {
         }
     }
 
+    pub fn extend_to_include_pos(&mut self, pos: u64) {
+        let sel = self
+            .selection()
+            .unwrap_or(Range::new(self.pos(), self.pos() + 1));
+        if sel.start <= pos && pos < sel.end {
+            return;
+        }
+
+        if let Some(anc) = self.anchor.as_mut() {
+            if *anc < self.pos {
+                *anc = cmp::min(pos, *anc);
+                self.pos = cmp::max(pos, self.pos);
+            } else {
+                *anc = cmp::max(pos, *anc);
+                self.pos = cmp::min(pos, self.pos);
+            }
+            return;
+        }
+
+        let min = cmp::min(pos, self.pos);
+        let max = cmp::max(pos, self.pos);
+        self.pos = min;
+        self.anchor = Some(max);
+    }
+
     /// Extend this cursor to cover the specified range.
     /// If the range is a single value this will not convert the
     /// cursor into an selection.

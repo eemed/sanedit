@@ -217,6 +217,8 @@ pub(crate) const COMMANDS: &[Action] = &[
     cursors::remove_cursor_selections,
     cursors::cursors_to_lines_start,
     cursors::cursors_to_lines_end,
+    cursors::extend_next_line,
+    cursors::extend_prev_line,
 
     view::scroll_up,
     view::scroll_down,

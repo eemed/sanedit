@@ -219,17 +219,3 @@ fn cursors_to_lines_end(editor: &mut Editor, id: ClientId) {
     win.cursors_to_lines_end(buf);
     hooks::run(editor, id, Hook::CursorMoved);
 }
-
-#[action("Extend cursor selection to previous line")]
-fn extend_prev_line(editor: &mut Editor, id: ClientId) {
-    let (win, buf) = editor.win_buf_mut(id);
-    win.cursors_extend_prev_line(buf);
-    hooks::run(editor, id, Hook::CursorMoved);
-}
-
-#[action("Extend cursor selection to next line")]
-fn extend_next_line(editor: &mut Editor, id: ClientId) {
-    let (win, buf) = editor.win_buf_mut(id);
-    win.cursors_extend_next_line(buf);
-    hooks::run(editor, id, Hook::CursorMoved);
-}

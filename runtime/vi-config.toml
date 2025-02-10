@@ -116,8 +116,8 @@ maps = [
     { key = "esc", actions = ["stop_selection", "goto_layer window"] },
     { key = ".", actions = ["swap_selection_dir"] },
 
-    { key = "K", actions = ["extend_prev_line"] },
-    { key = "J", actions = ["extend_next_line"] },
+    { key = "K", actions = ["swap_selection_dir", "prev_line", "swap_selection_dir"] },
+    { key = "J", actions = ["swap_selection_dir", "next_line", "swap_selection_dir"] },
 
     { key = "g", actions = ["nop"] },
     { key = "g c", actions = ["toggle_comment_lines"] },

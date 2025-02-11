@@ -8,7 +8,6 @@ sanedit-buffer = { path = "../buffer" }
 sanedit-utils = { path = "../utils" }
 
 serde = { workspace = true, features = ["derive"] }
-regex-cursor = { workspace = true, features = ["perf-inline"] }
 
 anyhow.workspace = true
 globset.workspace = true

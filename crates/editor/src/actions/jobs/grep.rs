@@ -9,7 +9,7 @@ use grep::searcher::{BinaryDetection, Searcher, SearcherBuilder, Sink, SinkMatch
 use rustc_hash::FxHashMap;
 use sanedit_buffer::utf8::EndOfLine;
 use sanedit_buffer::{PieceTree, PieceTreeSlice, PieceTreeView};
-use sanedit_core::{BufferRange, Group, Item, PTSearcher, Range, SearchDirection, SearchKind};
+use sanedit_core::{BufferRange, Group, Item, Searcher, Range, SearchDirection, SearchKind};
 use sanedit_utils::either::Either;
 use sanedit_utils::sorted_vec::SortedVec;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
@@ -70,7 +70,7 @@ impl Grep {
             .expect("Cannot build RegexMatcher");
 
         let ptsearcher = Arc::new(
-            PTSearcher::new(pattern, SearchDirection::Forward, SearchKind::Regex)
+            Searcher::new(pattern, SearchDirection::Forward, SearchKind::Regex)
                 .expect("Cannot build PTSearcher"),
         );
 
@@ -107,7 +107,7 @@ impl Grep {
     fn grep_buffer(
         path: PathBuf,
         ropt: &PieceTreeView,
-        searcher: &PTSearcher,
+        searcher: &Searcher,
         msend: Sender<GrepResult>,
     ) {
         let slice = ropt.slice(..);

@@ -1,14 +1,14 @@
 use std::any::Any;
 
 use sanedit_buffer::PieceTreeView;
-use sanedit_core::{BufferRange, SearchDirection, SearchKind};
+use sanedit_core::{BufferRange, SearchKind};
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 
 use crate::editor::{job_broker::KeepInTouch, Editor};
 use sanedit_server::{ClientId, Job, JobContext, JobResult};
 
 use super::CHANNEL_SIZE;
-use sanedit_core::PTSearcher;
+use sanedit_core::Searcher;
 
 enum SearchMessage {
     Matches(Vec<BufferRange>),
@@ -42,7 +42,7 @@ impl Search {
 
     async fn search(
         msend: Sender<Vec<BufferRange>>,
-        searcher: PTSearcher,
+        searcher: Searcher,
         ropt: PieceTreeView,
         view: BufferRange,
     ) {
@@ -83,7 +83,7 @@ impl Job for Search {
             }
 
             let (msend, mrecv) = channel::<Vec<BufferRange>>(CHANNEL_SIZE);
-            let searcher = PTSearcher::new(&term, SearchDirection::Forward, kind)?;
+            let searcher = Searcher::new(&term, kind)?;
             tokio::join!(
                 Self::search(msend, searcher, pt, range),
                 Self::send_matches(ctx, mrecv),

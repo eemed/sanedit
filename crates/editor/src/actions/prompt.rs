@@ -22,7 +22,7 @@ use sanedit_server::ClientId;
 
 use super::{
     find_by_description, hooks,
-    jobs::{Grep, MatcherJob, MatcherMessage},
+    jobs::{MatcherJob, MatcherMessage},
     shell,
     text::save,
 };
@@ -359,39 +359,39 @@ fn change_working_dir(editor: &mut Editor, id: ClientId) {
     win.focus_to(Focus::Prompt);
 }
 
-#[action("Grep")]
-fn grep(editor: &mut Editor, id: ClientId) {
-    let (win, _buf) = editor.win_buf_mut(id);
-    win.prompt = Prompt::builder()
-        .prompt("Grep")
-        .simple()
-        .on_confirm(move |e, id, out| {
-            const GREP_JOB: &str = "grep";
-            let patt = get!(out.text());
-            let ignore = e.config.editor.ignore_directories();
-            let wd = e.working_dir();
-            let buffers: FxHashMap<PathBuf, PieceTreeView> = {
-                let mut map = FxHashMap::default();
+// #[action("Grep")]
+// fn grep(editor: &mut Editor, id: ClientId) {
+//     let (win, _buf) = editor.win_buf_mut(id);
+//     win.prompt = Prompt::builder()
+//         .prompt("Grep")
+//         .simple()
+//         .on_confirm(move |e, id, out| {
+//             const GREP_JOB: &str = "grep";
+//             let patt = get!(out.text());
+//             let ignore = e.config.editor.ignore_directories();
+//             let wd = e.working_dir();
+//             let buffers: FxHashMap<PathBuf, PieceTreeView> = {
+//                 let mut map = FxHashMap::default();
 
-                for (_, buf) in e.buffers().iter() {
-                    // If not modified we let ripgrep grep from disk
-                    if !buf.is_modified() {
-                        continue;
-                    }
+//                 for (_, buf) in e.buffers().iter() {
+//                     // If not modified we let ripgrep grep from disk
+//                     if !buf.is_modified() {
+//                         continue;
+//                     }
 
-                    if let Some(path) = buf.path() {
-                        map.insert(path.to_path_buf(), buf.ro_view());
-                    }
-                }
+//                     if let Some(path) = buf.path() {
+//                         map.insert(path.to_path_buf(), buf.ro_view());
+//                     }
+//                 }
 
-                map
-            };
-            let job = Grep::new(patt, wd, &ignore, buffers, id);
-            e.job_broker.request_slot(id, GREP_JOB, job);
-        })
-        .build();
-    win.focus_to(Focus::Prompt);
-}
+//                 map
+//             };
+//             let job = Grep::new(patt, wd, &ignore, buffers, id);
+//             e.job_broker.request_slot(id, GREP_JOB, job);
+//         })
+//         .build();
+//     win.focus_to(Focus::Prompt);
+// }
 
 // TODO use
 #[allow(dead_code)]

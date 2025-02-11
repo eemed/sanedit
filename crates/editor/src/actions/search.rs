@@ -1,6 +1,6 @@
 use std::cmp::min;
 
-use sanedit_core::{word_at_pos, PTSearcher, SearchDirection, SearchKind};
+use sanedit_core::{word_at_pos, SearchKind, Searcher};
 
 use crate::{
     actions::jobs,
@@ -52,7 +52,6 @@ fn highlight_last_search(editor: &mut Editor, id: ClientId) {
 #[action("Search forward")]
 fn search_forward(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
-    win.search.direction = SearchDirection::Forward;
     win.search.hl_last = false;
     win.prompt = Prompt::builder()
         .prompt("Search")
@@ -70,7 +69,6 @@ fn search_forward(editor: &mut Editor, id: ClientId) {
 #[action("Search backwards")]
 fn search_backward(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
-    win.search.direction = SearchDirection::Backward;
     win.search.hl_last = false;
     win.prompt = Prompt::builder()
         .history(HistoryKind::Search)
@@ -92,7 +90,7 @@ fn search_next_word_under_cursor(editor: &mut Editor, id: ClientId) {
     let slice = buf.slice(..);
     let range = get!(word_at_pos(&slice, pos));
     let word = String::from(&slice.slice(range));
-    win.search.direction = SearchDirection::Forward;
+    win.search.kind = SearchKind::Default(false);
 
     search(editor, id, &word);
 }
@@ -104,7 +102,7 @@ fn search_prev_word_under_cursor(editor: &mut Editor, id: ClientId) {
     let slice = buf.slice(..);
     let range = get!(word_at_pos(&slice, pos));
     let word = String::from(&slice.slice(range));
-    win.search.direction = SearchDirection::Backward;
+    win.search.kind = SearchKind::Default(true);
 
     search(editor, id, &word);
 }
@@ -133,24 +131,18 @@ fn prev_search_match(editor: &mut Editor, id: ClientId) {
     let Some(input) = win.search.last_search_pattern().map(String::from) else {
         return;
     };
+
+    if !win.search.kind.can_reverse() {
+        win.warn_msg("Search method is unable to search to the other direction. TODO workaround")
+    }
+
     // search to opposite direction
-    let dir = &mut win.search.direction;
-    *dir = dir.reverse();
+    win.search.kind.reverse();
 
     search(editor, id, &input);
 
     let (win, _buf) = editor.win_buf_mut(id);
-    let dir = &mut win.search.direction;
-    *dir = dir.reverse();
-}
-
-#[action("Toggle regex search")]
-fn search_toggle_regex(editor: &mut Editor, id: ClientId) {
-    let (win, _buf) = editor.win_buf_mut(id);
-    win.search.kind = match win.search.kind {
-        SearchKind::Regex => SearchKind::Smart,
-        _ => SearchKind::Regex,
-    };
+    win.search.kind.reverse();
 }
 
 /// Execute a search from primary cursor position
@@ -180,54 +172,52 @@ fn search_impl(editor: &mut Editor, id: ClientId, input: &str, mut pos: u64) {
         .and_then(|ls| ls.current_match.as_ref())
     {
         if last_match.contains(&pos) {
-            match win.search.direction {
-                SearchDirection::Backward => pos = last_match.start,
-                SearchDirection::Forward => pos = last_match.end,
+            if win.search.kind.is_reversed() {
+                pos = last_match.start;
+            } else {
+                pos = last_match.end;
             }
         }
     }
 
-    let Ok(searcher) = PTSearcher::new(input, win.search.direction, win.search.kind) else {
+    let Ok(searcher) = Searcher::new(input, win.search.kind) else {
         return;
     };
 
-    let (start, mat, wrap) = match win.search.direction {
-        SearchDirection::Forward => {
-            let blen = buf.len();
-            // Skip first to not match inplace
-            let start = min(blen, pos + 1);
-            let slice = buf.slice(start..);
+    let (start, mat, wrap) = if win.search.kind.is_reversed() {
+        // Skip first to not match inplace
+        let end = pos.saturating_sub(1);
+        let slice = buf.slice(..end);
+        let mut iter = searcher.find_iter(&slice);
+        let mat = iter.next();
+
+        // Wrap if no match
+        if mat.is_none() {
+            // let first = pos.saturating_sub(input.len() as u64 - 1);
+            let slice = buf.slice(..);
             let mut iter = searcher.find_iter(&slice);
             let mat = iter.next();
-
-            // Wrap if no match
-            if mat.is_none() {
-                // let last = min(blen, pos + input.len() as u64);
-                let slice = buf.slice(..);
-                let mut iter = searcher.find_iter(&slice);
-                let mat = iter.next();
-                (slice.start(), mat, true)
-            } else {
-                (slice.start(), mat, false)
-            }
+            (slice.start(), mat, true)
+        } else {
+            (slice.start(), mat, false)
         }
-        SearchDirection::Backward => {
-            // Skip first to not match inplace
-            let end = pos.saturating_sub(1);
-            let slice = buf.slice(..end);
+    } else {
+        let blen = buf.len();
+        // Skip first to not match inplace
+        let start = min(blen, pos + 1);
+        let slice = buf.slice(start..);
+        let mut iter = searcher.find_iter(&slice);
+        let mat = iter.next();
+
+        // Wrap if no match
+        if mat.is_none() {
+            // let last = min(blen, pos + input.len() as u64);
+            let slice = buf.slice(..);
             let mut iter = searcher.find_iter(&slice);
             let mat = iter.next();
-
-            // Wrap if no match
-            if mat.is_none() {
-                // let first = pos.saturating_sub(input.len() as u64 - 1);
-                let slice = buf.slice(..);
-                let mut iter = searcher.find_iter(&slice);
-                let mat = iter.next();
-                (slice.start(), mat, true)
-            } else {
-                (slice.start(), mat, false)
-            }
+            (slice.start(), mat, true)
+        } else {
+            (slice.start(), mat, false)
         }
     };
 
@@ -244,10 +234,10 @@ fn search_impl(editor: &mut Editor, id: ClientId, input: &str, mut pos: u64) {
             win.search.hl_last = true;
 
             if wrap {
-                if win.search.direction == SearchDirection::Forward {
-                    win.info_msg("Wrapped to beginning");
-                } else {
+                if win.search.kind.is_reversed() {
                     win.info_msg("Wrapped to end");
+                } else {
+                    win.info_msg("Wrapped to beginning");
                 }
             }
 

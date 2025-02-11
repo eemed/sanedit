@@ -1,4 +1,4 @@
-use sanedit_core::{BufferRange, SearchDirection, SearchKind};
+use sanedit_core::{BufferRange, SearchKind};
 
 #[derive(Debug, Default)]
 pub(crate) struct LastSearch {
@@ -6,7 +6,6 @@ pub(crate) struct LastSearch {
     pub pattern: String,
 
     pub kind: SearchKind,
-    pub dir: SearchDirection,
 
     /// The match if the last search matched something
     pub current_match: Option<BufferRange>,
@@ -17,7 +16,6 @@ pub(crate) struct Search {
     pub on_line_char_search: Option<char>,
     last_search: Option<LastSearch>,
 
-    pub direction: SearchDirection,
     pub kind: SearchKind,
 
     /// Search matches that should be highlighted
@@ -34,7 +32,6 @@ impl Search {
         self.last_search = Some(LastSearch {
             pattern: pattern.into(),
             kind: self.kind,
-            dir: self.direction,
             current_match: self.current_match.clone(),
         });
 
@@ -55,7 +52,6 @@ impl Default for Search {
         Search {
             on_line_char_search: None,
             last_search: None,
-            direction: SearchDirection::Forward,
             kind: SearchKind::default(),
             hl_last: false,
             hl_matches: vec![],

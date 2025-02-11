@@ -165,7 +165,7 @@ pub(crate) const COMMANDS: &[Action] = &[
     prompt::goto_line,
     prompt::goto_percentage,
     prompt::change_working_dir,
-    prompt::grep,
+    // prompt::grep,
     prompt::command_palette,
 
     search::search_forward,
@@ -173,7 +173,6 @@ pub(crate) const COMMANDS: &[Action] = &[
     search::next_search_match,
     search::prev_search_match,
     search::clear_search_matches,
-    search::search_toggle_regex,
     search::search_next_word_under_cursor,
     search::search_prev_word_under_cursor,
 

@@ -18,7 +18,6 @@ sanedit-server = { path = "../server" }
 
 tokio = { workspace = true, features = ["full"] }
 serde = { workspace = true, features = ["derive", "rc"] }
-regex-cursor = { workspace = true, features = ["perf-inline"] }
 tokio-util = { workspace = true, features = ["codec"] }
 config = { workspace = true, features = ["toml"] }
 

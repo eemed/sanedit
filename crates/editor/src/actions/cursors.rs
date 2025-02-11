@@ -9,7 +9,7 @@ use sanedit_server::ClientId;
 
 use sanedit_core::{
     movement::{next_line, prev_line},
-    Cursor, PTSearcher,
+    Cursor, Searcher,
 };
 
 use super::{
@@ -63,8 +63,7 @@ fn new_cursor_to_next_search_match(editor: &mut Editor, id: ClientId) {
     };
     let ppos = win.cursors.primary().pos();
 
-    let Ok(searcher) = PTSearcher::new(&last_search.pattern, last_search.dir, last_search.kind)
-    else {
+    let Ok(searcher) = Searcher::new(&last_search.pattern, last_search.kind) else {
         return;
     };
     let slice = buf.slice(ppos..);
@@ -94,8 +93,7 @@ fn new_cursor_to_all_search_matches(editor: &mut Editor, id: ClientId) {
         return;
     };
 
-    let Ok(searcher) = PTSearcher::new(&last_search.pattern, last_search.dir, last_search.kind)
-    else {
+    let Ok(searcher) = Searcher::new(&last_search.pattern, last_search.kind) else {
         return;
     };
     let slice = buf.slice(..);

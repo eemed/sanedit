@@ -67,6 +67,7 @@ fn goto_loc_entry(editor: &mut Editor, id: ClientId) {
 
                 let (win, buf) = editor.win_buf_mut(id);
                 win.goto_offset(offset, buf);
+                win.focus_to(Focus::Window);
             }
         }
     }

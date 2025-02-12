@@ -36,7 +36,6 @@ use sanedit_messages::{
 };
 
 use crate::{
-    actions::movement::next_line,
     common::change::{newline_autopair, newline_empty_line, newline_indent},
     editor::{
         buffers::{Buffer, BufferId, SnapshotAux},
@@ -78,7 +77,7 @@ pub(crate) struct Window {
 }
 
 impl Window {
-    pub fn new(bid: BufferId, width: usize, height: usize, _config: WindowConfig) -> Window {
+    pub fn new(bid: BufferId, width: usize, height: usize, config: WindowConfig) -> Window {
         Window {
             bid,
             keys: vec![],
@@ -90,7 +89,7 @@ impl Window {
             shell_kind: ShellKind::default(),
             completion: Completion::default(),
             cursors: Cursors::default(),
-            config: WindowConfig::default(),
+            config,
             search: Search::default(),
             prompt: Prompt::default(),
             focus: Focus::Window,

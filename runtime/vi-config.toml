@@ -43,7 +43,7 @@ max_prompt_completions = 10
 
 # Maximum completions to show at once
 max_completions = 10
-theme = "default"
+theme = "oldschool"
 
 # Highlight syntax
 highlight_syntax = true
@@ -94,6 +94,7 @@ maps = [
 [keymaps.insert]
 maps = [
     { key = "esc", actions = ["stop_selection", "completion_abort", "goto_layer window"] },
+    { key = "§", actions = ["stop_selection", "completion_abort", "goto_layer window"] },
     { key = "left", actions = ["prev_grapheme"] },
     { key = "up", actions = ["prev_line"] },
     { key = "down", actions = ["next_line"] },
@@ -114,6 +115,7 @@ maps = [
     { key = "d", actions = ["remove_cursor_selections"] },
     { key = "c", actions = ["remove_cursor_selections", "goto_layer insert"] },
     { key = "esc", actions = ["stop_selection", "goto_layer window"] },
+    { key = "§", actions = ["stop_selection", "goto_layer window"] },
     { key = ".", actions = ["swap_selection_dir"] },
 
     { key = "K", actions = ["swap_selection_dir", "prev_line", "swap_selection_dir"] },
@@ -138,6 +140,7 @@ maps = [
     { key = "ctrl+u", actions = ["scroll_up"] },
 
     { key = "esc", actions = ["cancel"] },
+    { key = "§", actions = ["cancel"] },
     { key = "y", actions = ["copy"] },
     { key = "p", actions = ["paste"] },
     { key = "i", actions = ["goto_layer insert"] },
@@ -190,7 +193,7 @@ maps = [
     { key = "alt+d", actions = ["new_cursor_to_next_search_match"] },
     { key = "alt+l", actions = ["new_cursor_to_all_search_matches"] },
     { key = "space b", actions = ["open_buffer"] },
-    { key = "space g", actions = ["grep"] },
+    # { key = "space g", actions = ["grep"] },
     { key = "alt+k", actions = ["prev_paragraph"] },
     { key = "alt+j", actions = ["next_paragraph"] },
 
@@ -199,6 +202,8 @@ maps = [
     { key = "g R", actions = ["rename"] },
     { key = "space a", actions = ["code_action"] },
     { key = "space f", actions = ["format"] },
+    { key = "space e", actions = ["show_diagnostics"] },
+    { key = "space d", actions = ["diagnostics_to_locations"] },
     { key = "K", actions = ["hover"] },
 
     { key = "-", actions = ["show_filetree"] },
@@ -232,6 +237,7 @@ maps = [
 maps = [
     { key = "ctrl+q", actions = ["quit"] },
     { key = "esc", actions = ["prompt_close"] },
+    { key = "§", actions = ["prompt_close"] },
     { key = "backspace", actions = ["prompt_remove_grapheme_before_cursor"] },
     { key = "left", actions = ["prompt_prev_grapheme"] },
     { key = "right", actions = ["prompt_next_grapheme"] },
@@ -255,7 +261,7 @@ maps = [
     # { key = "k", actions = ["keep_locations"] },
     # { key = "r", actions = ["reject_locations"] },
 
-    # { key = "alt+up", actions = ["focus_window"] },
+    { key = "alt+up", actions = ["focus_window"] },
 
     # { key = "up", actions = ["prev_loc_entry"] },
     # { key = "down", actions = ["next_loc_entry"] },
@@ -297,6 +303,7 @@ maps = [
 [keymaps.prompt]
 maps = [
     { key = "esc", actions = ["prompt_close"] },
+    { key = "§", actions = ["prompt_close"] },
     { key = "backspace", actions = ["prompt_remove_grapheme_before_cursor"] },
     { key = "left", actions = ["prompt_prev_grapheme"] },
     { key = "right", actions = ["prompt_next_grapheme"] },
@@ -314,4 +321,5 @@ maps = [
     { key = "btab", actions = ["completion_prev"] },
     { key = "enter", actions = ["completion_confirm"] },
     { key = "esc", actions = ["completion_abort"] },
+    { key = "§", actions = ["completion_abort"] },
 ]

@@ -580,8 +580,9 @@ impl Editor {
         }
 
         // Reload window
-        let (win, _buf) = self.win_buf_mut(id);
+        let (win, _buf) = win_buf!(self, id);
         win.reload();
+        win.config = self.config.window.clone();
 
         run(self, id, Hook::Reload);
     }

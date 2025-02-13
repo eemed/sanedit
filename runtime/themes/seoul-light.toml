@@ -22,11 +22,11 @@ constant = ",#014CC0,"
 string =  ",#216CD0,"
 number = ",#014CC0,"
 
-keyword = ",#a84d1f,"
+keyword = ",#005F00,"
 type =  ",#824b26,"
-operator =  ",#008080,"
-comment = ",#005F00,"
-preproc = ",#673F67,"
+operator =  ",#008787,"
+comment = ",#870100,"
+preproc = ",#533388,"
 
 identifier = ",#824b26,"
 

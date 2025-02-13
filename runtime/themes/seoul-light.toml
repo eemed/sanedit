@@ -1,0 +1,85 @@
+[colors.window]
+default = "#DADADA,#3A3A3A,"
+statusline = "#5F885F,#202020,"
+gutter = ",#4C4C4C,bold"
+end_of_buffer = ",#4E4E4E,"
+trailing_whitespace = ",#7f755f,"
+symbols = ",#606060,"
+match = "#8FB88F,,"
+
+[colors.window.cursor]
+default = "#8FB7DE,,"
+selection = "#c2c2c2,,"
+primary = "#5F87AE,,"
+
+[colors.window.view]
+hint = "#d5cce3,#3856d1,"
+info = "#e5dcf3,#3856d1,"
+warn = "#fde37c,#615413,"
+error = "#f2d8d8,#b22e32,"
+
+constant = ",#014CC0,"
+string =  ",#216CD0,"
+number = ",#014CC0,"
+
+keyword = ",#a84d1f,"
+type =  ",#824b26,"
+operator =  ",#008080,"
+comment = ",#005F00,"
+preproc = ",#673F67,"
+
+identifier = ",#824b26,"
+
+[colors.window.completion]
+default = "#B8A282,#2a130d,"
+description = ",#6f654f,"
+match = ",#b0463a,"
+
+[colors.window.completion.selected]
+default = "#5F87AE,,"
+description = ",#5a433d,"
+match = ",#b0463a,"
+
+[colors.prompt]
+default = "#5F885F,#3A3A3A,"
+message = ",,bold"
+userinput = ",#000000,"
+
+[colors.prompt.overlay]
+default = ",,"
+title = ",,bold"
+message = ",,bold"
+userinput = ""
+
+[colors.prompt.completion]
+default = "#CACACA,#3A3A3A,"
+description = ",#7f755f,"
+match = ",#b0463a,"
+
+[colors.prompt.completion.selected]
+default = "#E4E4E4,,"
+description = ",#5a433d,"
+match = ",#b0463a,"
+
+[colors.filetree]
+default = "#DADADA,#3A3A3A,"
+file = ""
+directory = ",#824b26,"
+markers = ",#355d8d,"
+selected = "#c2c2c2,,"
+
+[colors.locations]
+default = "#DADADA,#3A3A3A,"
+title = "#5F885F,#202020,"
+entry = ""
+group = ",#824b26,"
+markers = ",#355d8d,"
+match = ",#b0463a,"
+
+[colors.locations.selected]
+default = "#c2c2c2,,"
+match = ",#b0463a,"
+markers = ",#355d8d,"
+
+[colors.popup]
+default = "#CACACA,#3A3A3A,"

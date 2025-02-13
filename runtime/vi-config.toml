@@ -43,7 +43,7 @@ max_prompt_completions = 10
 
 # Maximum completions to show at once
 max_completions = 10
-theme = "oldschool"
+theme = "seoul-light"
 
 # Highlight syntax
 highlight_syntax = true

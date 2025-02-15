@@ -3,7 +3,7 @@ use sanedit_messages::redraw::{Point, Popup, Severity, ThemeField};
 use crate::ui::UIContext;
 
 use super::{
-    border::{draw_side_border, Border},
+    border::{draw_border, Border},
     ccell::{clear_all, into_cells_with_style, size, CCell},
     drawable::{DrawCursor, Drawable},
     Rect,
@@ -29,6 +29,7 @@ fn below(screen: &Rect, win: &Rect, popup: &Popup) -> Rect {
     let width = popup
         .messages
         .iter()
+        // + 2 for borders
         .filter_map(|msg| msg.text.lines().map(|line| line.len() + 2).max())
         .max()
         .unwrap_or(0)
@@ -37,7 +38,8 @@ fn below(screen: &Rect, win: &Rect, popup: &Popup) -> Rect {
         .messages
         .iter()
         .map(|msg| msg.text.lines().count())
-        .sum::<usize>()
+        // + 2 for borders
+        .sum::<usize>() + 2
         + popup.messages.len().saturating_sub(1))
     .min(screen.height);
 
@@ -62,6 +64,7 @@ fn above(screen: &Rect, win: &Rect, popup: &Popup) -> Rect {
     let width = popup
         .messages
         .iter()
+        // + 2 for borders
         .filter_map(|msg| msg.text.lines().map(|line| line.len() + 2).max())
         .max()
         .unwrap_or(0)
@@ -70,7 +73,8 @@ fn above(screen: &Rect, win: &Rect, popup: &Popup) -> Rect {
         .messages
         .iter()
         .map(|msg| msg.text.lines().count())
-        .sum::<usize>()
+        // + 2 for borders
+        .sum::<usize>() + 2
         + popup.messages.len().saturating_sub(1))
     .min(screen.height);
     y = y.saturating_sub(height);
@@ -92,7 +96,7 @@ impl Drawable for Popup {
         let style = ctx.style(ThemeField::PopupDefault);
 
         clear_all(cells, style);
-        cells = draw_side_border(Border::Margin, style, cells);
+        cells = draw_border(Border::Box, style, cells);
         let wsize = size(cells);
 
         let mut row = 0;

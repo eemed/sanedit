@@ -214,6 +214,7 @@ impl Editor {
     }
 
     pub fn quit_client(&mut self, id: ClientId) {
+        log::info!("Quit client: {id:?}");
         self.send_to_client(id, ClientMessage::Bye);
 
         if let Some(win) = self.windows.remove(id) {
@@ -483,8 +484,10 @@ impl Editor {
         match self.mapped_action(id) {
             KeymapResult::Matched(action) => {
                 action.execute(self, id);
-                let (win, _buf) = self.win_buf_mut(id);
-                win.clear_keys();
+                // We may have removed the window
+                if let Some(win) = self.windows.get_mut(id) {
+                    win.clear_keys();
+                }
                 return;
             }
             KeymapResult::Pending(action) => {

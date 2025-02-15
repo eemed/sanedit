@@ -308,8 +308,13 @@ impl LSPJob {
     }
 
     fn code_action(&self, editor: &mut Editor, id: ClientId, actions: Vec<CodeAction>) {
-        let options: Vec<String> = actions.iter().map(|a| a.name().to_string()).collect();
+        let options: Vec<String> = actions.iter().enumerate().map(|(i, action)| format!("{}: {}", i + 1, action.name())).collect();
         let (win, _buf) = editor.win_buf_mut(id);
+
+        if options.is_empty() {
+            win.warn_msg("No code actions available");
+            return;
+        }
 
         let job = MatcherJob::builder(id)
             .options(Arc::new(options))
@@ -321,7 +326,11 @@ impl LSPJob {
             .prompt("Select code action")
             .on_confirm(move |editor, id, out| {
                 let name = get!(out.text());
-                let action = get!(actions.iter().find(|action| action.name() == name));
+                let action = if let Ok(num) = name.parse::<usize>() {
+                    &actions[num - 1]
+                } else {
+                    get!(actions.iter().find(|action| action.name() == name))
+                };
 
                 if !action.is_resolved() {
                     let request = RequestKind::CodeActionResolve {

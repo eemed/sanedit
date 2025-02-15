@@ -111,9 +111,10 @@ discard = true
 fallthrough = "window"
 maps = [
     { key = "i", actions = ["nop"] },
-    { key = "x", actions = ["remove_cursor_selections"] },
-    { key = "d", actions = ["remove_cursor_selections"] },
+    { key = "x", actions = ["remove_cursor_selections", "goto_layer window"] },
+    { key = "d", actions = ["remove_cursor_selections", "goto_layer window"] },
     { key = "c", actions = ["remove_cursor_selections", "goto_layer insert"] },
+    { key = "y", actions = ["copy"] },
     { key = "esc", actions = ["stop_selection", "goto_layer window"] },
     { key = "§", actions = ["stop_selection", "goto_layer window"] },
     { key = ".", actions = ["swap_selection_dir"] },
@@ -141,15 +142,17 @@ maps = [
 
     { key = "esc", actions = ["cancel"] },
     { key = "§", actions = ["cancel"] },
-    { key = "y", actions = ["copy"] },
+    { key = "y", actions = ["select_line", "swap_selection_dir", "copy"] },
     { key = "p", actions = ["paste"] },
     { key = "i", actions = ["goto_layer insert"] },
     { key = "u", actions = ["undo"] },
     { key = "U", actions = ["redo"] },
     { key = "h", actions = ["prev_grapheme"] },
-    { key = "k", actions = ["prev_line"] },
-    { key = "j", actions = ["next_line"] },
+    { key = "g k", actions = ["prev_line"] },
+    { key = "g j", actions = ["next_line"] },
     { key = "l", actions = ["next_grapheme"] },
+    { key = "k", actions = ["prev_visual_line"] },
+    { key = "j", actions = ["next_visual_line"] },
 
 
     { key = "ctrl+p", actions = ["open_file"] },

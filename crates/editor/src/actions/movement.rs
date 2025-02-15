@@ -148,6 +148,7 @@ fn prev_paragraph(editor: &mut Editor, id: ClientId) {
 #[action("Move cursor(s) to the previous visual line")]
 pub(crate) fn prev_visual_line(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
+    win.view_to_cursor(buf);
     let cursor_pos = win.cursors().primary().pos();
     let cursor_point = win
         .view()
@@ -165,7 +166,9 @@ pub(crate) fn prev_visual_line(editor: &mut Editor, id: ClientId) {
         win.scroll_up_n(buf, 1);
     }
 
-    prev_visual_line_impl(editor, id);
+    if prev_visual_line_impl(editor, id) {
+        hooks::run(editor, id, Hook::CursorMoved);
+    }
 }
 
 // Moves cursor one visual line up, but will not change the view.
@@ -209,6 +212,7 @@ fn prev_visual_line_impl(editor: &mut Editor, id: ClientId) -> bool {
 #[action("Move cursor(s) to the next visual line")]
 fn next_visual_line(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
+    win.view_to_cursor(buf);
     let cursor_pos = win.cursors().primary().pos();
     let cursor_point = win
         .view()
@@ -227,7 +231,9 @@ fn next_visual_line(editor: &mut Editor, id: ClientId) {
         win.scroll_down_n(buf, 1);
     }
 
-    next_visual_line_impl(editor, id);
+    if next_visual_line_impl(editor, id) {
+        hooks::run(editor, id, Hook::CursorMoved);
+    }
 }
 
 // Moves cursor one visual line down, but will not change the view.

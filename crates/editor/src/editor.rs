@@ -16,6 +16,7 @@ use caches::Caches;
 use config::FiletypeConfig;
 use keymap::KeymapResult;
 use rustc_hash::FxHashMap;
+use sanedit_buffer::PieceTree;
 use sanedit_core::FileDescription;
 use sanedit_core::Filetype;
 use sanedit_core::CONFIG;
@@ -612,6 +613,7 @@ impl Editor {
 
     pub fn copy_to_clipboard(&mut self, id: ClientId) {
         let (win, buf) = self.win_buf_mut(id);
+
         let mut lines = vec![];
         for cursor in win.cursors.cursors() {
             if let Some(sel) = cursor.selection() {

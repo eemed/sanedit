@@ -1,5 +1,7 @@
 use std::{fmt, ops::Deref};
 
+use super::parse_rules;
+
 /// Annotation a rule has in the peg grammar
 #[derive(Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub enum Annotation {
@@ -17,6 +19,10 @@ pub(crate) struct Rules {
 impl Rules {
     pub fn new(rules: Box<[RuleInfo]>) -> Rules {
         Rules { rules }
+    }
+
+    pub fn parse<R: std::io::Read>(read: R) -> anyhow::Result<Rules> {
+        parse_rules(read)
     }
 }
 

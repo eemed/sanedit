@@ -196,8 +196,10 @@ pub(crate) const COMMANDS: &[Action] = &[
     movement::next_visual_line,
     movement::find_next_char_on_line,
     movement::find_prev_char_on_line,
-    movement::next_char_on_line,
-    movement::prev_char_on_line,
+    movement::next_searched_char,
+    movement::prev_searched_char,
+    movement::prev_grapheme_on_line,
+    movement::next_grapheme_on_line,
 
     cursors::start_selection,
     cursors::stop_selection,

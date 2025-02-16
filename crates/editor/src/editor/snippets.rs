@@ -1,13 +1,6 @@
-use anyhow::anyhow;
-use sanedit_core::{Directory, Filetype, SNIPPETS_FILE};
+use sanedit_core::Filetype;
 use serde::Deserialize;
-use std::{
-    collections::BTreeMap,
-    iter::Peekable,
-    path::{Path, PathBuf},
-    str::Chars,
-    sync::Arc,
-};
+use std::{collections::BTreeMap, iter::Peekable, path::Path, str::Chars, sync::Arc};
 use thiserror::Error;
 
 use crate::common::matcher::Choice;
@@ -185,7 +178,12 @@ impl SnippetInner {
             }
         }
 
+        if !text.is_empty() {
+            atoms.push(SnippetAtom::Text(text))
+        }
+
         if atoms.is_empty() {
+            log::error!("snip: {snip:?}");
             return Err(SnippetError::Empty);
         }
 
@@ -215,11 +213,19 @@ impl SnippetInner {
 
         if is_open {
             // Case: ${0:foo}
+            // Case: ${0}
+
             // {
             chars.next();
 
             // number
             let num = Self::parse_num(chars)?;
+
+            // End of case: ${0}
+            if chars.peek() == Some(&'}') {
+                chars.next();
+                return Ok(SnippetAtom::Placeholder(num, String::new()))
+            }
 
             // :
             if chars.next() != Some(':') {

@@ -172,6 +172,10 @@ pub enum ThemeField {
     LocationsMatch,
 
     PopupDefault,
+    PopupHint,
+    PopupInfo,
+    PopupWarn,
+    PopupError,
 }
 
 impl AsRef<str> for ThemeField {
@@ -247,6 +251,10 @@ impl AsRef<str> for ThemeField {
             LocationsSelectedGroup => "locations.selected.group",
 
             PopupDefault => "popup",
+            PopupHint => "popup.hint",
+            PopupInfo => "popup.info",
+            PopupWarn => "popup.warn",
+            PopupError => "popup.error",
         }
     }
 }

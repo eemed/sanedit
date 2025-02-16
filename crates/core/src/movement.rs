@@ -321,3 +321,31 @@ pub fn find_prev_char(
 
     None
 }
+
+pub fn next_grapheme_on_line(slice: &PieceTreeSlice, pos: u64) -> u64 {
+    let mut chars = slice.chars_at(pos);
+
+    while let Some((start, end, ch)) = chars.next() {
+        if EndOfLine::is_eol_char(ch) {
+            return start;
+        }
+
+        return end;
+    }
+
+    pos
+}
+
+pub fn prev_grapheme_on_line(slice: &PieceTreeSlice, pos: u64) -> u64 {
+    let mut chars = slice.chars_at(pos);
+
+    while let Some((start, end, ch)) = chars.prev() {
+        if EndOfLine::is_eol_char(ch) {
+            return end;
+        }
+
+        return start;
+    }
+
+    pos
+}

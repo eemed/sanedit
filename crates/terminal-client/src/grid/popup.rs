@@ -39,7 +39,8 @@ fn below(screen: &Rect, win: &Rect, popup: &Popup) -> Rect {
         .iter()
         .map(|msg| msg.text.lines().count())
         // + 2 for borders
-        .sum::<usize>() + 2
+        .sum::<usize>()
+        + 2
         + popup.messages.len().saturating_sub(1))
     .min(screen.height);
 
@@ -74,7 +75,8 @@ fn above(screen: &Rect, win: &Rect, popup: &Popup) -> Rect {
         .iter()
         .map(|msg| msg.text.lines().count())
         // + 2 for borders
-        .sum::<usize>() + 2
+        .sum::<usize>()
+        + 2
         + popup.messages.len().saturating_sub(1))
     .min(screen.height);
     y = y.saturating_sub(height);
@@ -96,7 +98,7 @@ impl Drawable for Popup {
         let style = ctx.style(ThemeField::PopupDefault);
 
         clear_all(cells, style);
-        cells = draw_border(Border::Box, style, cells);
+        cells = draw_border(Border::Margin, style, cells);
         let wsize = size(cells);
 
         let mut row = 0;
@@ -119,10 +121,10 @@ impl Drawable for Popup {
 
             let mstyle = {
                 let field = match msg.severity {
-                    Some(Severity::Hint) => ThemeField::Hint,
-                    Some(Severity::Info) => ThemeField::Info,
-                    Some(Severity::Warn) => ThemeField::Warn,
-                    Some(Severity::Error) => ThemeField::Error,
+                    Some(Severity::Hint) => ThemeField::PopupHint,
+                    Some(Severity::Info) => ThemeField::PopupInfo,
+                    Some(Severity::Warn) => ThemeField::PopupWarn,
+                    Some(Severity::Error) => ThemeField::PopupError,
                     None => ThemeField::PopupDefault,
                 };
                 ctx.style(field)
@@ -131,11 +133,11 @@ impl Drawable for Popup {
             for line in msg.text.lines().skip(self.line_offset) {
                 let lcells = into_cells_with_style(line, mstyle);
                 for cell in lcells {
-                    if col == wsize.width {
+                    if col >= wsize.width {
                         row += 1;
                         col = 0;
 
-                        if row == wsize.height {
+                        if row >= wsize.height {
                             break;
                         }
                     }
@@ -148,7 +150,7 @@ impl Drawable for Popup {
                 row += 1;
                 col = 0;
 
-                if row == wsize.height {
+                if row >= wsize.height {
                     break;
                 }
             }

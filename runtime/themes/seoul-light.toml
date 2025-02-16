@@ -13,10 +13,10 @@ selection = "#c2c2c2,,"
 primary = "#5F87AE,,"
 
 [colors.window.view]
-hint = "#5F87AE,#e5dcf3,"
+hint = "#DADAFF,#2F577E,"
 info = "#5F87AE,#e5dcf3,"
-warn = "#fde37c,#615413,"
-error = "#AF5F5F,#FFE1E1,"
+warn = "#FAEAAA,#615413,"
+error = "#FFAAAA,#8F3F3F,"
 
 constant = ",#014CC0,"
 string =  ",#216CD0,"
@@ -31,14 +31,14 @@ preproc = ",#533388,"
 identifier = ",#824b26,"
 
 [colors.window.completion]
-default = "#B8A282,#2a130d,"
-description = ",#6f654f,"
-match = ",#b0463a,"
+default = "#E8E8E8,#3A3A3A,"
+description = ",#909090,"
+match = ",,"
 
 [colors.window.completion.selected]
-default = "#5F87AE,,"
-description = ",#5a433d,"
-match = ",#b0463a,"
+default = "#CACACA,,"
+description = ",#808080,"
+match = ",,"
 
 [colors.prompt]
 default = "#5F885F,#3A3A3A,"
@@ -52,12 +52,12 @@ message = ",,bold"
 userinput = ""
 
 [colors.prompt.completion]
-default = "#CACACA,#3A3A3A,"
+default = "#E8E8E8,#3A3A3A,"
 description = ",#7f755f,"
 match = ",#b0463a,"
 
 [colors.prompt.completion.selected]
-default = "#E4E4E4,,"
+default = "#CACACA,,"
 description = ",#5a433d,"
 match = ",#b0463a,"
 
@@ -65,7 +65,7 @@ match = ",#b0463a,"
 default = "#DADADA,#3A3A3A,"
 file = ""
 directory = ",#824b26,"
-markers = ",#355d8d,"
+markers = ",#014CC0,"
 selected = "#c2c2c2,,"
 
 [colors.locations]
@@ -82,4 +82,8 @@ match = ",#b0463a,"
 markers = ",#355d8d,"
 
 [colors.popup]
-default = "#CACACA,#3A3A3A,"
+default = "#E8E8E8,#4A4A4A,"
+hint = ",#014CC0,"
+info = ",#014CC0,"
+warn = ",#a56d00,"
+error = ",#870100,"

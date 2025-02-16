@@ -45,6 +45,10 @@ impl Parser {
     pub fn new<R: io::Read>(read: R) -> Result<Parser, ParseError> {
         let rules =
             grammar::parse_rules(read).map_err(|err| ParseError::Grammar(err.to_string()))?;
+        Self::from_rules(rules)
+    }
+
+    pub fn from_rules(rules: Rules) -> Result<Parser, ParseError> {
         let compiler = Compiler::new(&rules);
         let program = compiler
             .compile()

@@ -1,9 +1,7 @@
 mod commands;
 
-use std::{cmp::min, path::PathBuf, sync::Arc};
+use std::{cmp::min, sync::Arc};
 
-use rustc_hash::FxHashMap;
-use sanedit_buffer::PieceTreeView;
 use sanedit_messages::ClientMessage;
 use sanedit_utils::idmap::{AsID, ID};
 
@@ -393,17 +391,15 @@ fn change_working_dir(editor: &mut Editor, id: ClientId) {
 //     win.focus_to(Focus::Prompt);
 // }
 
-// TODO use
-#[allow(dead_code)]
 /// Prompt whether buffer changes should be changed or not
-pub(crate) fn close_modified_buffer<F: Fn(&mut Editor, ClientId) + 'static>(
+pub(crate) fn unsaved_changes<F: Fn(&mut Editor, ClientId) + 'static>(
     editor: &mut Editor,
     id: ClientId,
     on_confirm: F,
 ) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.prompt = Prompt::builder()
-        .prompt("Closing a modified buffer. Save changes? (Y/n)")
+        .prompt("Save all unsaved changes? (Y/n)")
         .simple()
         .on_confirm(move |e, id, out| {
             let ans = get!(out.text());

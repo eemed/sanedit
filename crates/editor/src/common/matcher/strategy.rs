@@ -8,10 +8,16 @@ pub(crate) type MatchFn = fn(&str, &str) -> Option<Range<usize>>;
 /// Any matches anywhre
 #[derive(Debug, Clone, Copy, Default)]
 pub enum MatchStrategy {
+    // Match in any position
+    // and split term by whitespace and search each term separately
     #[default]
     AnySplit,
 
+    // Match the prefix
     Prefix,
+
+    // TODO: Keep order of options alphabetical (lsp code actions)
+    // Alphabetical,
 }
 
 impl MatchStrategy {

@@ -211,9 +211,9 @@ fn newline_above(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     let restore = mem::replace(&mut win.config.autopair, false);
 
-    start_of_line.execute(editor, id);
-    insert_newline.execute(editor, id);
     prev_line.execute(editor, id);
+    end_of_line.execute(editor, id);
+    insert_newline.execute(editor, id);
 
     let (win, _buf) = editor.win_buf_mut(id);
     win.config.autopair = restore;

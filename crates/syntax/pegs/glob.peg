@@ -1,0 +1,12 @@
+document = ( any / many / text)*;
+
+@show
+text = [^\[?*]+;
+
+char = [^\]];
+brackets = "[" "]"? char* "]";
+
+@show
+any = "?";
+@show
+many = "*";

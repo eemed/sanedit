@@ -164,14 +164,18 @@ pub fn paragraph_at_pos(slice: &PieceTreeSlice, pos: u64) -> Option<BufferRange>
     Some(Range::new(start, end))
 }
 
-pub fn strip_eol(slice: &mut PieceTreeSlice) {
+pub fn strip_eol(slice: &mut PieceTreeSlice) -> bool {
     let mut bytes = slice.bytes_at(slice.len());
     if let Some(mat) = prev_eol(&mut bytes) {
         let end = slice.len() - mat.eol.len();
         *slice = slice.slice(..end);
+        true
+    } else {
+        false
     }
 }
 
+// Returns text as lines and whether they had eol or not
 pub fn paste_separate_cursor_lines(text: &str) -> Vec<String> {
     let pt = PieceTree::from_reader(io::Cursor::new(text)).unwrap();
     let mut lines = pt.lines();
@@ -190,7 +194,6 @@ pub fn paste_separate_cursor_lines(text: &str) -> Vec<String> {
         if iter.peek().is_some() {
             strip_eol(&mut line);
         }
-
         let sline = String::from(&line);
         result.push(sline);
     }

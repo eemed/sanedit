@@ -1,6 +1,7 @@
 use crate::{
     common::is_yes,
     editor::{
+        buffers::BufferId,
         config::Config,
         hooks::Hook,
         windows::{Focus, Prompt},
@@ -9,15 +10,43 @@ use crate::{
 };
 use sanedit_server::ClientId;
 
-use super::{hooks::run, shell};
+use super::{hooks::run, prompt::unsaved_changes, shell, text::save};
 
 #[action("Quit Sanedit")]
 fn quit(editor: &mut Editor, id: ClientId) {
     // If is the first client
     if id.0 == 0 {
-        editor.quit();
+        if editor.buffers.any_unsaved_changes().is_some() {
+            unsaved_changes(editor, id, |editor, id| {
+                let unsaved: Vec<BufferId> = editor
+                    .buffers
+                    .iter()
+                    .filter(|(_, buf)| buf.is_modified())
+                    .map(|(bid, _)| bid)
+                    .collect();
+                for bid in unsaved {
+                    let (win, _buf) = win_buf!(editor, id);
+                    win.open_buffer(bid);
+                    save.execute(editor, id)
+                }
+                editor.quit_client(id);
+            })
+        } else {
+            editor.quit();
+        }
     } else {
-        editor.quit_client(id);
+        let (_, buf) = editor.win_buf(id);
+        if buf.is_modified() {
+            unsaved_changes(editor, id, move |editor, id| {
+                let (win, buf) = editor.win_buf_mut(id);
+                win.open_buffer(buf.id);
+                save.execute(editor, id);
+
+                editor.quit_client(id);
+            })
+        } else {
+            editor.quit_client(id);
+        }
     }
 }
 
@@ -36,18 +65,16 @@ fn run_project(editor: &mut Editor, id: ClientId) {
 #[action("Copy selection to clipboard")]
 fn copy(editor: &mut Editor, id: ClientId) {
     editor.copy_to_clipboard(id);
-    let (win, _buf) = editor.win_buf_mut(id);
-    win.cursors.stop_selection();
 }
 
 #[action("Paste from clipboard")]
 fn paste(editor: &mut Editor, id: ClientId) {
     editor.paste_from_clipboard(id);
-    let (win, buf) = editor.win_buf_mut(id);
+    let (_, buf) = editor.win_buf_mut(id);
     let bid = buf.id;
-    if win.remove_cursor_selections(buf).unwrap_or(false) {
-        run(editor, id, Hook::BufChanged(bid));
-    }
+    run(editor, id, Hook::BufChanged(bid));
+    // if win.remove_cursor_selections(buf).unwrap_or(false) {
+    // }
 }
 
 #[action("Cut selection to clipboard")]

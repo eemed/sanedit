@@ -66,4 +66,14 @@ impl Buffers {
 
         None
     }
+
+    pub fn any_unsaved_changes(&self) -> Option<BufferId> {
+        for (id, buf) in self.buffers.iter() {
+            if buf.is_modified() {
+                return Some(id);
+            }
+        }
+
+        None
+    }
 }

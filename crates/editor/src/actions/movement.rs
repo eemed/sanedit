@@ -370,7 +370,7 @@ fn find_prev_char_on_line(editor: &mut Editor, id: ClientId) {
 }
 
 #[action("Next last searched character on line")]
-fn next_char_on_line(editor: &mut Editor, id: ClientId) {
+fn next_searched_char(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     if let Some(ch) = win.search.on_line_char_search {
         do_move(
@@ -387,7 +387,7 @@ fn next_char_on_line(editor: &mut Editor, id: ClientId) {
 }
 
 #[action("Previous last searched character on line")]
-fn prev_char_on_line(editor: &mut Editor, id: ClientId) {
+fn prev_searched_char(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     if let Some(ch) = win.search.on_line_char_search {
         do_move(
@@ -397,4 +397,14 @@ fn prev_char_on_line(editor: &mut Editor, id: ClientId) {
             None,
         );
     }
+}
+
+#[action("Move cursor(s) to the previous grapheme on the same line")]
+fn prev_grapheme_on_line(editor: &mut Editor, id: ClientId) {
+    do_move(editor, id, movement::prev_grapheme_on_line, None);
+}
+
+#[action("Move cursor(s) to the next grapheme on the same line")]
+fn next_grapheme_on_line(editor: &mut Editor, id: ClientId) {
+    do_move(editor, id, movement::next_grapheme_on_line, None);
 }

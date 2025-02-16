@@ -65,3 +65,21 @@ impl<'a> ByteReader for &'a str {
             .copied()
     }
 }
+
+impl<'a> ByteReader for &'a [u8] {
+    type I = std::iter::Copied<std::slice::Iter<'a, u8>>;
+
+    fn len(&self) -> u64 {
+        <[u8]>::len(self) as u64
+    }
+
+    fn stop(&self) -> bool {
+        false
+    }
+
+    fn iter(&self, range: Range<u64>) -> Self::I {
+        self[range.start as usize..range.end as usize]
+            .iter()
+            .copied()
+    }
+}

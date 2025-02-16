@@ -164,19 +164,18 @@ pub fn paragraph_at_pos(slice: &PieceTreeSlice, pos: u64) -> Option<BufferRange>
     Some(Range::new(start, end))
 }
 
-pub fn strip_eol(slice: &mut PieceTreeSlice) -> bool {
-    let mut bytes = slice.bytes_at(slice.len());
-    if let Some(mat) = prev_eol(&mut bytes) {
-        let end = slice.len() - mat.eol.len();
-        *slice = slice.slice(..end);
-        true
+pub fn eol_len(slice: &PieceTreeSlice) -> Option<u64> {
+    let mut graphemes = slice.graphemes_at(slice.len());
+    let grapheme = graphemes.prev()?;
+    if grapheme.is_eol() {
+        Some(grapheme.len())
     } else {
-        false
+        None
     }
 }
 
-// Returns text as lines and whether they had eol or not
-pub fn paste_separate_cursor_lines(text: &str) -> Vec<String> {
+// Returns text as lines and whether text ended on eol or not
+pub fn paste_separate_cursor_lines(text: &str) -> Vec<(String, bool)> {
     let pt = PieceTree::from_reader(io::Cursor::new(text)).unwrap();
     let mut lines = pt.lines();
     let mut slices = vec![];
@@ -191,11 +190,14 @@ pub fn paste_separate_cursor_lines(text: &str) -> Vec<String> {
     let mut result = vec![];
     let mut iter = slices.into_iter().peekable();
     while let Some(mut line) = iter.next() {
-        if iter.peek().is_some() {
-            strip_eol(&mut line);
+        let mut eol = false;
+        if let Some(len) = eol_len(&line) {
+            eol = true;
+            line = line.slice(..line.len() - len);
         }
+
         let sline = String::from(&line);
-        result.push(sline);
+        result.push((sline, eol));
     }
 
     result

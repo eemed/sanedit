@@ -136,7 +136,7 @@ discard = true
 maps = [
     { key = "space q", actions = ["quit"] },
     { key = "space s", actions = ["strip_trailing_whitespace"] },
-    { key = "alt+d", actions = ["select_line", "copy", "stop_selection", "paste", "prev_line"] },
+    { key = "alt+v", actions = ["select_line", "copy", "stop_selection", "paste", "prev_line"] },
 
     { key = "ctrl+s", actions = ["save"] },
     { key = "ctrl+c", actions = ["copy", "stop_selection"] },

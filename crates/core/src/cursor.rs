@@ -40,13 +40,23 @@ impl Cursor {
     }
 
     pub fn goto(&mut self, pos: u64) {
-        self.pos = pos;
         self.col = None;
+        self.goto_impl(pos);
     }
 
     pub fn goto_with_col(&mut self, pos: u64, col: usize) {
-        self.pos = pos;
         self.col = Some(col);
+        self.goto_impl(pos);
+    }
+
+    fn goto_impl(&mut self, pos: u64) {
+        if let Some(ref mut anc) = self.anchor {
+            if *anc == pos {
+                *anc = self.pos;
+            }
+        }
+
+        self.pos = pos;
     }
 
     pub fn set_column(&mut self, col: usize) {

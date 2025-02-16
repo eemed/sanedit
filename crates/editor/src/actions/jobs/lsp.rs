@@ -308,7 +308,13 @@ impl LSPJob {
     }
 
     fn code_action(&self, editor: &mut Editor, id: ClientId, actions: Vec<CodeAction>) {
-        let options: Vec<String> = actions.iter().enumerate().map(|(i, action)| format!("{}: {}", i + 1, action.name())).collect();
+        let options: Vec<Arc<Choice>> = actions
+            .iter()
+            .enumerate()
+            .map(|(i, action)| {
+                Choice::from_numbered_text((i + 1) as u32, action.name().to_string())
+            })
+            .collect();
         let (win, _buf) = editor.win_buf_mut(id);
 
         if options.is_empty() {
@@ -325,12 +331,8 @@ impl LSPJob {
         win.prompt = Prompt::builder()
             .prompt("Select code action")
             .on_confirm(move |editor, id, out| {
-                let name = get!(out.text());
-                let action = if let Ok(num) = name.parse::<usize>() {
-                    &actions[num - 1]
-                } else {
-                    get!(actions.iter().find(|action| action.name() == name))
-                };
+                let n = get!(out.number()) as usize;
+                let action = &actions[n - 1];
 
                 if !action.is_resolved() {
                     let request = RequestKind::CodeActionResolve {

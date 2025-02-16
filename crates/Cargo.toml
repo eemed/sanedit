@@ -3,7 +3,6 @@ resolver = "2"
 members = [
     "buffer",
     "cli",
-    "cli",
     "core",
     "editor",
     "lsp",

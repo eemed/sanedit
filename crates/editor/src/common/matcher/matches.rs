@@ -6,12 +6,34 @@ use crate::editor::snippets::{Snippet, SnippetAtom, SNIPPET_DESCRIPTION};
 
 #[derive(Debug, Hash, PartialEq, Eq, Ord, PartialOrd, Clone)]
 pub(crate) enum Choice {
-    Snippet { snippet: Snippet, display: String },
-    Path { path: PathBuf, display: String },
-    Text { text: String, description: String },
+    Snippet {
+        snippet: Snippet,
+        display: String,
+    },
+    Path {
+        path: PathBuf,
+        display: String,
+    },
+    Text {
+        text: String,
+        description: String,
+    },
+    Numbered {
+        n: u32,
+        text: String,
+        display: String,
+    },
 }
 
 impl Choice {
+    pub fn from_numbered_text(n: u32, text: String) -> Arc<Choice> {
+        Arc::new(Choice::Numbered {
+            display: format!("{}: {}", n, text),
+            n,
+            text: text.into(),
+        })
+    }
+
     pub fn from_text(text: String) -> Arc<Choice> {
         Arc::new(Choice::Text {
             text: text.into(),
@@ -58,14 +80,22 @@ impl Choice {
             Choice::Snippet { display, .. } => display.as_str(),
             Choice::Path { display, .. } => display.as_str(),
             Choice::Text { text, .. } => text.as_str(),
+            Choice::Numbered { display, .. } => display.as_str(),
         }
     }
 
     pub fn description(&self) -> &str {
         match self {
             Choice::Snippet { .. } => SNIPPET_DESCRIPTION,
-            Choice::Path { .. } => "",
             Choice::Text { description, .. } => description,
+            _ => "",
+        }
+    }
+
+    pub fn number(&self) -> Option<u32> {
+        match self {
+            Choice::Numbered { n, .. } => Some(*n),
+            _ => None,
         }
     }
 }

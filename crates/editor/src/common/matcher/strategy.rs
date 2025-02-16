@@ -8,29 +8,28 @@ pub(crate) type MatchFn = fn(&str, &str) -> Option<Range<usize>>;
 /// Any matches anywhre
 #[derive(Debug, Clone, Copy, Default)]
 pub enum MatchStrategy {
-    // Match in any position
-    // and split term by whitespace and search each term separately
+    /// Match in any position
+    /// and split term by whitespace and search each term separately
     #[default]
-    AnySplit,
+    Default,
 
-    // Match the prefix
+    /// Match the prefix
     Prefix,
-
-    // TODO: Keep order of options alphabetical (lsp code actions)
-    // Alphabetical,
 }
 
 impl MatchStrategy {
     pub fn get(&self) -> MatchFn {
         match self {
             MatchStrategy::Prefix => prefix_match,
-            MatchStrategy::AnySplit => default_match,
+            MatchStrategy::Default => default_match,
         }
     }
 
+    /// Whether to split term from whitespace, and match using all of them
+    /// separately
     pub fn split(&self) -> bool {
         match self {
-            MatchStrategy::AnySplit => true,
+            MatchStrategy::Default => true,
             MatchStrategy::Prefix => false,
         }
     }

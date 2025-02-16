@@ -123,7 +123,9 @@ impl Matcher {
                             case_sensitive,
                             match_fn,
                         ) {
-                            let score = score(&choice.text(), &ranges);
+                            let score = choice
+                                .number()
+                                .unwrap_or_else(|| score(&choice.text(), &ranges));
                             let scored = ScoredChoice::new(choice.clone(), score, ranges);
 
                             if out.blocking_send(scored).is_err() {

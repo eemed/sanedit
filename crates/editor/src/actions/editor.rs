@@ -67,12 +67,17 @@ fn copy(editor: &mut Editor, id: ClientId) {
     editor.copy_to_clipboard(id);
 }
 
+#[action("Paste from clipboard below the current line")]
+fn paste_below(editor: &mut Editor, id: ClientId) {
+    editor.paste_from_clipboard_below(id);
+}
+
 #[action("Paste from clipboard")]
 fn paste(editor: &mut Editor, id: ClientId) {
     editor.paste_from_clipboard(id);
-    let (_, buf) = editor.win_buf_mut(id);
-    let bid = buf.id;
-    run(editor, id, Hook::BufChanged(bid));
+    // let (_, buf) = editor.win_buf_mut(id);
+    // let bid = buf.id;
+    // run(editor, id, Hook::BufChanged(bid));
     // if win.remove_cursor_selections(buf).unwrap_or(false) {
     // }
 }

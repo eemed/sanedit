@@ -153,6 +153,13 @@ impl PromptOutput {
             },
         }
     }
+
+    pub fn number(&self) -> Option<u32> {
+        match &self.inner {
+            Either::Left(text) => text.parse::<u32>().ok(),
+            Either::Right(choice) => choice.choice().number(),
+        }
+    }
 }
 
 #[derive(Default, Debug, Eq, PartialEq)]

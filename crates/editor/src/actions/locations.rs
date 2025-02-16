@@ -55,8 +55,6 @@ fn goto_loc_entry(editor: &mut Editor, id: ClientId) {
             Either::Right(item) => {
                 let hl_off = item.highlights().first().map_or(0, |r| r.start);
                 let offset = item.absolute_offset().unwrap_or(0) + hl_off as u64;
-
-                log::info!("off: {offset}");
                 let parent = get!(win.locations.parent_of_selected());
                 let path = parent.path().to_path_buf();
                 if let Err(e) = editor.open_file(id, &path) {

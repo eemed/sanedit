@@ -1,4 +1,4 @@
-use sanedit_messages::redraw::{Point, Popup, Severity, ThemeField};
+use sanedit_messages::redraw::{Point, Popup, Severity, Size, ThemeField};
 
 use crate::ui::UIContext;
 
@@ -24,25 +24,43 @@ pub(crate) fn popup_rect(screen: Rect, win: Rect, popup: &Popup) -> Rect {
     }
 }
 
-fn below(screen: &Rect, win: &Rect, popup: &Popup) -> Rect {
-    let Point { mut x, mut y } = popup.point + win.position();
+// How much to reserve for border
+const BORDER: Border = Border::Margin;
+const BORDER_VERTICAL: usize = 2;
+const BORDER_HORIZONTAL: usize = 2;
+
+fn popup_size(screen: &Rect, popup: &Popup) -> Size {
     let width = popup
         .messages
         .iter()
-        // + 2 for borders
-        .filter_map(|msg| msg.text.lines().map(|line| line.len() + 2).max())
+        .filter_map(|msg| {
+            msg.text
+                .lines()
+                .map(|line| line.len() + BORDER_HORIZONTAL)
+                .max()
+        })
         .max()
         .unwrap_or(0)
         .min(screen.width);
     let height = (popup
         .messages
         .iter()
-        .map(|msg| msg.text.lines().count())
-        // + 2 for borders
+        .map(|msg| {
+            msg.text
+                .lines()
+                .map(|line| (line.len()).div_ceil(width - BORDER_HORIZONTAL).max(1))
+                .sum::<usize>()
+        })
         .sum::<usize>()
-        + 2
+        + BORDER_VERTICAL
         + popup.messages.len().saturating_sub(1))
     .min(screen.height);
+    Size { width, height }
+}
+
+fn below(screen: &Rect, win: &Rect, popup: &Popup) -> Rect {
+    let Point { mut x, mut y } = popup.point + win.position();
+    let Size { width, height } = popup_size(screen, popup);
 
     if y + height > screen.height {
         y = 0;
@@ -62,23 +80,7 @@ fn below(screen: &Rect, win: &Rect, popup: &Popup) -> Rect {
 
 fn above(screen: &Rect, win: &Rect, popup: &Popup) -> Rect {
     let Point { mut x, mut y } = popup.point + win.position();
-    let width = popup
-        .messages
-        .iter()
-        // + 2 for borders
-        .filter_map(|msg| msg.text.lines().map(|line| line.len() + 2).max())
-        .max()
-        .unwrap_or(0)
-        .min(screen.width);
-    let height = (popup
-        .messages
-        .iter()
-        .map(|msg| msg.text.lines().count())
-        // + 2 for borders
-        .sum::<usize>()
-        + 2
-        + popup.messages.len().saturating_sub(1))
-    .min(screen.height);
+    let Size { width, height } = popup_size(screen, popup);
     y = y.saturating_sub(height);
 
     if x + width >= screen.width {
@@ -98,7 +100,7 @@ impl Drawable for Popup {
         let style = ctx.style(ThemeField::PopupDefault);
 
         clear_all(cells, style);
-        cells = draw_border(Border::Margin, style, cells);
+        cells = draw_border(BORDER, style, cells);
         let wsize = size(cells);
 
         let mut row = 0;

@@ -316,6 +316,7 @@ impl View {
 
     pub fn set_offset(&mut self, offset: u64) {
         self.range.start = offset;
+        self.range.end = offset;
         self.needs_redraw = true;
     }
 

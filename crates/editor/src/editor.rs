@@ -16,7 +16,6 @@ use caches::Caches;
 use config::FiletypeConfig;
 use keymap::KeymapResult;
 use rustc_hash::FxHashMap;
-use sanedit_buffer::PieceTree;
 use sanedit_core::FileDescription;
 use sanedit_core::Filetype;
 use sanedit_core::CONFIG;
@@ -50,8 +49,6 @@ use crate::actions;
 use crate::actions::cursors;
 use crate::actions::cursors::swap_selection_dir;
 use crate::actions::hooks::run;
-use crate::actions::movement::end_of_line;
-use crate::actions::text::newline_below;
 use crate::actions::text_objects::select_line;
 use crate::draw::DrawState;
 use crate::draw::EditorContext;
@@ -594,50 +591,12 @@ impl Editor {
         run(self, id, Hook::Reload);
     }
 
-    pub fn paste_from_clipboard_below(&mut self, id: ClientId) {
-        let Ok(text) = self.clipboard.paste() else {
-            return;
-        };
-        let lines = paste_separate_cursor_lines(text.as_str());
-        let paste_below = lines.iter().all(|(_, eol)| *eol);
-
-        if paste_below {
-            self.paste_below(id, &text, lines);
-        } else {
-            self.paste_inline(id, &text, lines);
-        }
-    }
-
     pub fn paste_from_clipboard(&mut self, id: ClientId) {
         let Ok(text) = self.clipboard.paste() else {
             return;
         };
         let lines = paste_separate_cursor_lines(text.as_str());
         self.paste_inline(id, &text, lines);
-    }
-
-    // Paste below current line
-    fn paste_below(&mut self, id: ClientId, text: &str, lines: Vec<(String, bool)>) {
-        end_of_line.execute(self, id);
-
-        let (win, buf) = self.win_buf_mut(id);
-        let clen = win.cursors.cursors().len();
-        let llen = lines.len();
-        let bid = buf.id;
-        let lines = lines
-            .into_iter()
-            .map(|(line, _)| format!("{}{}", buf.config.eol.as_str(), line))
-            .collect();
-
-        let res = if clen == llen {
-            win.insert_to_each_cursor(buf, lines)
-        } else {
-            win.insert_at_cursors(buf, &text)
-        };
-
-        if res.is_ok() {
-            run(self, id, Hook::BufChanged(bid));
-        }
     }
 
     // Paste to current cursors
@@ -759,7 +718,7 @@ impl Editor {
         let dir = self.config_dir.filetype_dir();
         let path = PathBuf::from(ft.as_str()).join(SNIPPETS_FILE);
         if let Some(path) = dir.find(&path) {
-            self.snippets.load(ft, &path);
+            let _ = self.snippets.load(ft, &path);
         }
     }
 

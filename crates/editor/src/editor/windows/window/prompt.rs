@@ -8,7 +8,7 @@ use sanedit_utils::{either::Either, sorted_vec::SortedVec};
 use crate::{
     actions::jobs::{MatchedOptions, MatcherMessage},
     common::matcher::{Choice, ScoredChoice},
-    editor::{keymap::KeymapKind, snippets::Snippet, windows::Focus, Editor},
+    editor::{snippets::Snippet, windows::Focus, Editor},
 };
 use sanedit_server::ClientId;
 
@@ -22,7 +22,6 @@ pub(crate) struct PromptBuilder {
     on_confirm: Option<PromptAction>,
     on_input: Option<PromptOnInput>,
     on_abort: Option<PromptAction>,
-    keymap_kind: Option<KeymapKind>,
     kind: PromptKind,
     history_kind: Option<HistoryKind>,
     input: String,
@@ -79,18 +78,12 @@ impl PromptBuilder {
         self
     }
 
-    pub fn keymap(mut self, keymap: KeymapKind) -> Self {
-        self.keymap_kind = Some(keymap);
-        self
-    }
-
     pub fn build(self) -> Prompt {
         let PromptBuilder {
             message,
             on_confirm,
             on_input,
             on_abort,
-            keymap_kind,
             kind,
             history_kind,
             input,
@@ -103,10 +96,6 @@ impl PromptBuilder {
         prompt.kind = kind;
         prompt.cursor = input.len();
         prompt.input = input;
-
-        if let Some(kmap) = keymap_kind {
-            prompt.keymap_kind = kmap;
-        }
 
         prompt
     }
@@ -187,8 +176,6 @@ pub(crate) struct Prompt {
     /// Called when input is modified
     on_input: Option<PromptOnInput>,
 
-    keymap_kind: KeymapKind,
-
     history_kind: Option<HistoryKind>,
     history_pos: HistoryPosition,
     kind: PromptKind,
@@ -204,7 +191,6 @@ impl Prompt {
             on_confirm: None,
             on_abort: None,
             on_input: None,
-            keymap_kind: KeymapKind::Prompt,
             history_kind: None,
             history_pos: HistoryPosition::First,
             kind: PromptKind::Regular,
@@ -213,10 +199,6 @@ impl Prompt {
 
     pub fn builder() -> PromptBuilder {
         PromptBuilder::default()
-    }
-
-    pub fn keymap_kind(&self) -> KeymapKind {
-        self.keymap_kind
     }
 
     pub fn history(&self) -> Option<HistoryKind> {

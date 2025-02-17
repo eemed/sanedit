@@ -567,7 +567,7 @@ impl Handler {
                 for item in list.items {
                     // TODO handle mode -- item.insert_text_mode
                     match item.text_edit {
-                        Some(lsp_types::CompletionTextEdit::Edit(edit)) => todo!(),
+                        Some(lsp_types::CompletionTextEdit::Edit(_edit)) => todo!(),
                         Some(lsp_types::CompletionTextEdit::InsertAndReplace(edit)) => {
                             results.push(CompletionItem {
                                 text: edit.new_text,

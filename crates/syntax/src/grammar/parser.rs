@@ -17,19 +17,6 @@ pub(crate) use self::rule::Rules;
 use super::lexer::Lexer;
 use super::lexer::Token;
 
-pub(crate) fn parse_rules<R: io::Read>(read: R) -> Result<Rules> {
-    let mut lex = Lexer::new(read);
-    let token = lex.next()?;
-    let parser = GrammarParser {
-        lex,
-        token,
-        rules: vec![],
-        indices: FxHashMap::default(),
-        seen: FxHashSet::default(),
-    };
-    parser.parse()
-}
-
 pub(crate) const CHAR_MIN: char = '\u{0}';
 pub(crate) const CHAR_MAX: char = '\u{10ffff}';
 
@@ -511,7 +498,7 @@ mod test {
     #[test]
     fn grammar_json() {
         let peg = include_str!("../../pegs/json.peg");
-        match parse_rules(std::io::Cursor::new(peg)) {
+        match Rules::parse(std::io::Cursor::new(peg)) {
             Ok(rules) => println!("==== Created rules ====\n{}", print_rules(&rules)),
             Err(e) => println!("Failed to create rules: {e}"),
         }

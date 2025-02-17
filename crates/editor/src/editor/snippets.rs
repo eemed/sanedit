@@ -53,19 +53,6 @@ impl Snippets {
         snippets
     }
 
-    /// Get a specific snippet for a filetype
-    pub fn get_snippet(&self, ft: Option<&Filetype>, name: &str) -> Option<&Snippet> {
-        if let Some(ft) = ft {
-            if let Some(local) = self.map.get(ft) {
-                if let Some(snip) = local.get(name) {
-                    return Some(snip);
-                }
-            }
-        }
-
-        self.global.get(name)
-    }
-
     pub fn load(&mut self, ft: &Filetype, path: &Path) -> anyhow::Result<()> {
         if self.map.contains_key(ft) {
             return Ok(());
@@ -98,7 +85,7 @@ impl Snippets {
     pub fn match_options(&self, ft: Option<&Filetype>) -> Vec<Arc<Choice>> {
         self.all(ft)
             .into_iter()
-            .map(|(name, snippet)| Choice::from_snippet_trigger(snippet.clone()))
+            .map(|(_name, snippet)| Choice::from_snippet_trigger(snippet.clone()))
             .collect()
     }
 }
@@ -224,7 +211,7 @@ impl SnippetInner {
             // End of case: ${0}
             if chars.peek() == Some(&'}') {
                 chars.next();
-                return Ok(SnippetAtom::Placeholder(num, String::new()))
+                return Ok(SnippetAtom::Placeholder(num, String::new()));
             }
 
             // :

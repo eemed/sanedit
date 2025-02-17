@@ -67,11 +67,6 @@ fn copy(editor: &mut Editor, id: ClientId) {
     editor.copy_to_clipboard(id);
 }
 
-#[action("Paste from clipboard below the current line")]
-fn paste_below(editor: &mut Editor, id: ClientId) {
-    editor.paste_from_clipboard_below(id);
-}
-
 #[action("Paste from clipboard")]
 fn paste(editor: &mut Editor, id: ClientId) {
     editor.paste_from_clipboard(id);

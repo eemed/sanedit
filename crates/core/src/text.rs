@@ -6,7 +6,7 @@ use crate::{
     BufferRange, Chars, DisplayOptions, GraphemeCategory, Range,
 };
 use sanedit_buffer::{
-    utf8::{self, prev_eol, EndOfLine},
+    utf8::{self, EndOfLine},
     PieceTree, PieceTreeSlice,
 };
 

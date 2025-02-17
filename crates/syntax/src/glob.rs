@@ -1,12 +1,17 @@
-use crate::{grammar::{Rule, RuleInfo, Rules}, Parser};
+use crate::{
+    grammar::{Rule, RuleInfo, Rules},
+    Parser,
+};
 
 // https://en.wikipedia.org/wiki/Glob_(programming)
 //
+#[allow(dead_code)]
 #[derive(Debug)]
 pub struct Glob {
     parser: Parser,
 }
 
+#[allow(dead_code)]
 impl Glob {
     pub fn new(pattern: &str) -> Glob {
         // Just testing here that this works OK, should probably do something better => just parse manually as this is prett simple
@@ -20,11 +25,11 @@ impl Glob {
             println!("Label: {label:?}");
             match label {
                 "text" => {
-                    let range =  cap.range();
+                    let range = cap.range();
                     let text = &pattern[range.start as usize..range.end as usize];
                     rule.push('"');
                     rules.push(Rule::ByteSequence(text.as_bytes().to_vec()))
-                },
+                }
                 _ => {
                     rule.push(' ');
                     rule.push_str(label);
@@ -32,13 +37,16 @@ impl Glob {
             }
         }
 
-        let info = RuleInfo { top: true, annotations: vec![], name: "glob".into(), rule: Rule::Sequence(rules)};
+        let info = RuleInfo {
+            top: true,
+            annotations: vec![],
+            name: "glob".into(),
+            rule: Rule::Sequence(rules),
+        };
         let rules = Rules::new(Box::new([info]));
 
         let pparse = Parser::from_rules(rules).unwrap();
-        Glob {
-            parser: pparse,
-        }
+        Glob { parser: pparse }
     }
 
     pub fn is_match<B: AsRef<[u8]>>(&self, bytes: &B) -> bool {

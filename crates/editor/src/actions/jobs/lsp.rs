@@ -229,22 +229,22 @@ impl LSPJob {
         position: Position,
         opts: Vec<CompletionItem>,
     ) {
-        let Some(enc) = editor.lsp_for(id).map(|x| x.position_encoding()) else {
-            return;
-        };
-        let (win, buf) = editor.win_buf_mut(id);
+        let enc = get!(editor.lsp_for(id).map(|x| x.position_encoding()));
+        let (win, buf) = win_buf!(editor, id);
         let slice = buf.slice(..);
         let start = position.to_offset(&slice, &enc);
         let cursor = win.primary_cursor();
-        let Some(point) = win.view().point_at_pos(cursor.pos()) else {
-            return;
-        };
+        let point = get!(win.view().point_at_pos(cursor.pos()));
         let (range, word) =
             word_before_pos(&slice, start).unwrap_or((Range::new(start, start), String::default()));
 
         win.completion = Completion::new(range.start, point);
 
-        let opts: Vec<Arc<Choice>> = opts.into_iter().map(from_completion_item).collect();
+        let opts: Vec<Arc<Choice>> = opts
+            .into_iter()
+            .map(from_completion_item)
+            .chain(editor.snippets.match_options(buf.filetype.as_ref()))
+            .collect();
 
         let job = MatcherJob::builder(id)
             .strategy(MatchStrategy::Prefix)

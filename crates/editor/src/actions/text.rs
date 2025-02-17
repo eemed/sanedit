@@ -14,7 +14,7 @@ use sanedit_server::ClientId;
 use super::{
     completion,
     hooks::run,
-    movement::{end_of_line, prev_line, start_of_line},
+    movement::{end_of_line, prev_line},
 };
 
 #[action("Remove character after cursor")]

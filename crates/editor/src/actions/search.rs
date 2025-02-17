@@ -5,7 +5,6 @@ use sanedit_core::{word_at_pos, SearchKind, Searcher};
 use crate::{
     actions::jobs,
     editor::{
-        keymap::KeymapKind,
         windows::{Focus, HistoryKind, Prompt},
         Editor,
     },
@@ -56,7 +55,6 @@ fn search_forward(editor: &mut Editor, id: ClientId) {
     win.prompt = Prompt::builder()
         .prompt("Search")
         .history(HistoryKind::Search)
-        .keymap(KeymapKind::Search)
         .on_confirm(|editor, id, out| {
             let text = get!(out.text());
             search(editor, id, text);
@@ -72,7 +70,6 @@ fn search_backward(editor: &mut Editor, id: ClientId) {
     win.search.hl_last = false;
     win.prompt = Prompt::builder()
         .history(HistoryKind::Search)
-        .keymap(KeymapKind::Search)
         .prompt("Backward search")
         .on_confirm(|editor, id, out| {
             let text = get!(out.text());

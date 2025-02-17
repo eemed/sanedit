@@ -70,8 +70,8 @@ impl Config {
         }
     }
 
-    pub fn try_new(config_path: &Path, working_dir: &Path) -> anyhow::Result<Config> {
-        let mut builder = config::Config::builder().add_source(config::File::from(config_path));
+    pub fn try_new(config_path: &Path, _working_dir: &Path) -> anyhow::Result<Config> {
+        let builder = config::Config::builder().add_source(config::File::from(config_path));
 
         // let local = working_dir.join(PROJECT_CONFIG);
         // if local.exists() {

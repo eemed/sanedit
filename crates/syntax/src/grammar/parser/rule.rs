@@ -1,6 +1,10 @@
 use std::{fmt, ops::Deref};
 
-use super::parse_rules;
+use rustc_hash::{FxHashMap, FxHashSet};
+
+use crate::grammar::lexer::Lexer;
+
+use super::GrammarParser;
 
 /// Annotation a rule has in the peg grammar
 #[derive(Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Clone)]
@@ -22,7 +26,16 @@ impl Rules {
     }
 
     pub fn parse<R: std::io::Read>(read: R) -> anyhow::Result<Rules> {
-        parse_rules(read)
+        let mut lex = Lexer::new(read);
+        let token = lex.next()?;
+        let parser = GrammarParser {
+            lex,
+            token,
+            rules: vec![],
+            indices: FxHashMap::default(),
+            seen: FxHashSet::default(),
+        };
+        parser.parse()
     }
 }
 

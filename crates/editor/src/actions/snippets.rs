@@ -51,19 +51,6 @@ pub(crate) fn insert_snippet(editor: &mut Editor, id: ClientId) {
     win.focus_to(Focus::Prompt);
 }
 
-pub(crate) fn expand_snippet(editor: &mut Editor, id: ClientId, name: &str, remove_prefix: u64) {
-    let (_win, buf) = win_buf!(editor, id);
-    let snippet = editor
-        .snippets
-        .get_snippet(buf.filetype.as_ref(), name)
-        .cloned();
-
-    match snippet {
-        Some(snip) => insert_snippet_impl(editor, id, snip, remove_prefix),
-        _ => log::error!("No snippet with name {name}"),
-    }
-}
-
 pub(crate) fn insert_snippet_impl(
     editor: &mut Editor,
     id: ClientId,

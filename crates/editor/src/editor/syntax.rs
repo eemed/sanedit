@@ -1,12 +1,8 @@
-use std::{
-    cmp::min,
-    path::{Path, PathBuf},
-    sync::Arc,
-};
+use std::{cmp::min, path::Path, sync::Arc};
 
 use rustc_hash::FxHashMap;
 use sanedit_buffer::PieceTreeView;
-use sanedit_core::{BufferRange, Directory, Filetype, Range};
+use sanedit_core::{BufferRange, Filetype, Range};
 use sanedit_server::Kill;
 
 use std::fs::File;

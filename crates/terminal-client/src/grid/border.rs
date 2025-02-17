@@ -182,6 +182,7 @@ pub(crate) fn draw_border<'a, 'b>(
     draw_border_with_style(border, |_, _| style, cells)
 }
 
+#[allow(dead_code)]
 pub(crate) fn draw_side_border<'a, 'b>(
     border: Border,
     style: Style,

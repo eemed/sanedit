@@ -15,7 +15,7 @@ use std::io;
 use anyhow::bail;
 
 use crate::{
-    grammar::{self, Annotation, Rules},
+    grammar::{Annotation, Rules},
     parsing_machine::{
         compiler::Compiler,
         stack::{Stack, StackEntry},
@@ -43,12 +43,11 @@ pub struct Parser {
 
 impl Parser {
     pub fn new<R: io::Read>(read: R) -> Result<Parser, ParseError> {
-        let rules =
-            grammar::parse_rules(read).map_err(|err| ParseError::Grammar(err.to_string()))?;
+        let rules = Rules::parse(read).map_err(|err| ParseError::Grammar(err.to_string()))?;
         Self::from_rules(rules)
     }
 
-    pub fn from_rules(rules: Rules) -> Result<Parser, ParseError> {
+    pub(crate) fn from_rules(rules: Rules) -> Result<Parser, ParseError> {
         let compiler = Compiler::new(&rules);
         let program = compiler
             .compile()

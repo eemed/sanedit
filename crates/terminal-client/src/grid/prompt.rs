@@ -112,8 +112,7 @@ impl Drawable for CustomPrompt {
                         };
                         let style = ctx.style(field);
                         let mstyle = ctx.style(field);
-                        let mut line =
-                            into_cells_with_style_pad(&opt.text, style, wsize.width);
+                        let mut line = into_cells_with_style_pad(&opt.text, style, wsize.width);
 
                         // Highlight matches
                         for mat in &opt.matches {
@@ -184,13 +183,8 @@ impl Drawable for CustomPrompt {
                         let dstyle = ctx.style(dfield);
                         let mstyle = ctx.style(mfield);
 
-                        let mut line = format_option(
-                            &opt.text,
-                            &opt.description,
-                            style,
-                            dstyle,
-                            wsize.width,
-                        );
+                        let mut line =
+                            format_option(&opt.text, &opt.description, style, dstyle, wsize.width);
 
                         // Highlight matches
                         for mat in &opt.matches {

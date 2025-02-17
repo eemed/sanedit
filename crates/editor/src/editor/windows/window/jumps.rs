@@ -30,6 +30,7 @@ impl Jump {
 /// Mostly to place a cursor on each jump simultaneously
 #[derive(Debug)]
 pub(crate) struct JumpGroup {
+    #[allow(dead_code)]
     bid: BufferId,
     jumps: Vec<Jump>,
 }

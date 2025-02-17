@@ -54,12 +54,7 @@ fn complete_from_syntax(editor: &mut Editor, id: ClientId) {
 
     let opts: Vec<Arc<Choice>> = opts
         .into_iter()
-        .chain(
-            editor
-                .snippets
-                .match_options(buf.filetype.as_ref())
-                .into_iter(),
-        )
+        .chain(editor.snippets.match_options(buf.filetype.as_ref()))
         .collect();
     let job = MatcherJob::builder(id)
         .strategy(MatchStrategy::Prefix)

@@ -24,8 +24,7 @@ use rustc_hash::FxHashSet;
 use sanedit_core::{
     grapheme_category, indent_at_line,
     movement::{
-        end_of_line, next_grapheme_boundary, next_line_end, next_line_start,
-        prev_grapheme_boundary, prev_line_start, start_of_line,
+        end_of_line, next_grapheme_boundary, next_line_end, prev_grapheme_boundary, start_of_line,
     },
     selection_first_chars_of_lines, selection_line_ends, selection_line_starts, width_at_pos,
     BufferRange, Change, Changes, Cursor, DisplayOptions, GraphemeCategory, Locations, Range,
@@ -333,13 +332,6 @@ impl Window {
     /// Called when buffer is changed and we should correct
     /// this window.
     pub fn on_buffer_changed(&mut self, buf: &Buffer) {
-        // self.move_cursors_according_to_last_change(buf);
-        // self.cursors.merge_overlapping();
-
-        // if self.jump_to_primary_cursor {
-        //     self.view_to_cursor(buf);
-        // }
-
         // Redraw view
         self.view.invalidate();
         self.view.redraw(buf);
@@ -401,15 +393,6 @@ impl Window {
     fn remove(&mut self, buf: &mut Buffer, ranges: &[BufferRange]) -> Result<()> {
         let changes = Changes::multi_remove(ranges);
         self.change(buf, &changes)
-    }
-
-    fn move_cursors_according_to_last_change(&mut self, buf: &Buffer) {
-        let Some(edit) = buf.last_edit() else {
-            return;
-        };
-        let changes = &edit.changes;
-
-        changes.move_cursors(self.cursors.cursors_mut());
     }
 
     pub fn change(&mut self, buf: &mut Buffer, changes: &Changes) -> Result<()> {
@@ -860,18 +843,6 @@ impl Window {
         }
     }
 
-    pub fn cursors_to_lines_first_char(&mut self, buf: &Buffer) {
-        let starts = self.cursor_line_first_chars_of_lines(buf);
-        self.cursors.remove_except_primary();
-        for (i, start) in starts.iter().enumerate() {
-            if i == 0 {
-                self.cursors.replace_primary(Cursor::new(*start));
-            } else {
-                self.cursors.push(Cursor::new(*start));
-            }
-        }
-    }
-
     pub fn cursors_to_lines_start(&mut self, buf: &Buffer) {
         let starts = self.cursor_line_starts(buf);
         self.cursors.remove_except_primary();
@@ -893,24 +864,6 @@ impl Window {
             } else {
                 self.cursors.push(Cursor::new(*end));
             }
-        }
-    }
-
-    pub fn cursors_extend_next_line(&mut self, buf: &Buffer) {
-        let slice = buf.slice(..);
-        for cursor in self.cursors.cursors_mut() {
-            let pos = cursor.end();
-            let nline = next_line_start(&slice, pos);
-            cursor.extend_to_include_pos(nline);
-        }
-    }
-
-    pub fn cursors_extend_prev_line(&mut self, buf: &Buffer) {
-        let slice = buf.slice(..);
-        for cursor in self.cursors.cursors_mut() {
-            let pos = cursor.start();
-            let start = prev_line_start(&slice, pos);
-            cursor.extend_to_include_pos(start);
         }
     }
 

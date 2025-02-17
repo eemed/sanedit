@@ -2,8 +2,8 @@ pub(crate) mod grammar;
 
 mod byte_reader;
 mod error;
-mod parsing_machine;
 mod glob;
+mod parsing_machine;
 
 pub use byte_reader::ByteReader;
 pub use error::ParseError;

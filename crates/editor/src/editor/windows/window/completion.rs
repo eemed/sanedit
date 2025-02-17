@@ -4,7 +4,9 @@ use sanedit_messages::redraw::Point;
 use sanedit_utils::sorted_vec::SortedVec;
 
 use crate::{
-    actions::jobs::{MatchedOptions, MatcherMessage}, common::matcher::ScoredChoice, editor::{windows::Focus, Editor}
+    actions::jobs::{MatchedOptions, MatcherMessage},
+    common::matcher::ScoredChoice,
+    editor::{windows::Focus, Editor},
 };
 use sanedit_server::ClientId;
 

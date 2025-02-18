@@ -13,10 +13,10 @@ selection = "#c2c2c2,,"
 primary = "#5F87AE,,"
 
 [colors.window.view]
-hint = "#DADAFF,#2F577E,"
-info = "#5F87AE,#e5dcf3,"
-warn = "#FAEAAA,#615413,"
-error = "#FFAAAA,#8F3F3F,"
+hint = "#8EACD0,#1D232B,"
+info = "#8EACD0,#1D232B,"
+warn = "#ffe699,#514403,"
+error = "#BF7E7E,#392525,"
 
 constant = ",#014CC0,"
 string =  ",#216CD0,"

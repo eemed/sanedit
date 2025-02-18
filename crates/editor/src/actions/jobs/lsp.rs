@@ -15,12 +15,14 @@ use crate::{
         job_broker::KeepInTouch,
         lsp::{Constraint, LSP},
         snippets::Snippet,
-        windows::{Completion, Prompt},
+        windows::{Completion, Cursors, Prompt},
         Editor,
     },
 };
 use sanedit_buffer::{PieceTree, PieceTreeSlice};
-use sanedit_core::{word_before_pos, Change, Changes, Diagnostic, Filetype, Group, Item, Range};
+use sanedit_core::{
+    word_before_pos, Change, Changes, Cursor, Diagnostic, Filetype, Group, Item, Range,
+};
 use sanedit_lsp::{
     CodeAction, CompletionItem, FileEdit, LSPClientParams, Notification, Position,
     PositionEncoding, PositionRange, RequestKind, RequestResult, Response, TextDiagnostic,
@@ -366,9 +368,7 @@ impl LSPJob {
                 }
             },
         };
-        let Some(enc) = editor.lsp_for(id).map(|x| x.position_encoding()) else {
-            return;
-        };
+        let enc = get!(editor.lsp_for(id).map(|x| x.position_encoding()));
 
         let buf = editor.buffers_mut().get_mut(bid).unwrap();
         let slice = buf.slice(..);
@@ -386,10 +386,21 @@ impl LSPJob {
             })
             .collect();
         let changes = Changes::from(changes);
+        let start = changes.iter().next().unwrap().start();
 
-        if let Err(e) = buf.apply_changes(&changes) {
-            log::error!("Failed to apply changes to buffer: {path:?}: {e}");
-            return;
+        match buf.apply_changes(&changes) {
+            Ok(result) => {
+                if let Some(id) = result.created_snapshot {
+                    if let Some(aux) = buf.snapshot_aux_mut(id) {
+                        aux.cursors = Cursors::new(Cursor::new(start));
+                        aux.view_offset = start;
+                    }
+                }
+            }
+            Err(e) => {
+                log::error!("Failed to apply changes to buffer: {path:?}: {e}");
+                return;
+            }
         }
 
         run(editor, id, Hook::BufChanged(bid));

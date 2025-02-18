@@ -191,7 +191,7 @@ impl Window {
                 self.last_buf = Some((old, odata));
 
                 self.bid = pbid;
-                self.restore(&pdata);
+                self.restore(&pdata, None);
                 true
             }
             None => false,
@@ -564,7 +564,7 @@ impl Window {
 
         if let Some(restored) = restored {
             if let Some(data) = buf.snapshot_aux(restored) {
-                self.restore(data);
+                self.restore(data, Some(buf));
             } else {
                 self.reload();
             }
@@ -574,12 +574,18 @@ impl Window {
         Ok(())
     }
 
-    fn restore(&mut self, aux: &SnapshotAux) {
+    // Restore aux data, if buffer is provided try to scroll to view position
+    // otherwise hard set it
+    fn restore(&mut self, aux: &SnapshotAux, buf: Option<&Buffer>) {
         // Clear highlights
         self.search.hl_matches = vec![];
 
         self.cursors = aux.cursors.clone();
-        self.view.set_offset(aux.view_offset);
+        if let Some(buf) = buf {
+            self.view.view_to(aux.view_offset, buf);
+        } else {
+            self.view.set_offset(aux.view_offset);
+        }
         self.invalidate();
     }
 
@@ -595,7 +601,7 @@ impl Window {
 
         if let Some(restored) = restored {
             if let Some(data) = buf.snapshot_aux(restored) {
-                self.restore(data);
+                self.restore(data, Some(buf));
             } else {
                 self.reload()
             }

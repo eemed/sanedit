@@ -14,6 +14,13 @@ pub struct Cursors {
 }
 
 impl Cursors {
+    pub fn new(cursor: Cursor) -> Cursors {
+        Cursors {
+            cursors: vec![cursor],
+            primary: 0,
+        }
+    }
+
     pub fn len(&self) -> usize {
         self.cursors.len()
     }

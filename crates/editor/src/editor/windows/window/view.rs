@@ -1,7 +1,7 @@
 use std::collections::VecDeque;
 
 use sanedit_core::movement::prev_line_start;
-use sanedit_core::{BufferRange, Char, Chars, DisplayOptions, Range};
+use sanedit_core::{BufferRange, Char, Chars, DisplayOptions, Range, Replacement};
 use sanedit_messages::redraw::{Point, Size};
 
 use crate::editor::buffers::{Buffer, BufferId};
@@ -16,12 +16,16 @@ pub(crate) enum Cell {
     Char {
         ch: Char,
     },
+    Virtual {
+        ch: Char,
+    },
 }
 
 impl Cell {
     pub fn char(&self) -> Option<&Char> {
         match self {
             Cell::Char { ch } => Some(ch),
+            Cell::Virtual { ch } => Some(ch),
             _ => None,
         }
     }
@@ -29,6 +33,7 @@ impl Cell {
     pub fn width(&self) -> usize {
         match self {
             Cell::Char { ch } => ch.width(),
+            Cell::Virtual { ch } => ch.width(),
             _ => 0,
         }
     }
@@ -49,6 +54,14 @@ impl Cell {
 
     pub fn is_eof(&self) -> bool {
         matches!(self, Cell::EOF)
+    }
+
+    pub fn is_virtual(&self) -> bool {
+        matches!(self, Cell::Virtual { .. })
+    }
+
+    pub fn is_empty(&self) -> bool {
+        matches!(self, Cell::Empty)
     }
 }
 
@@ -103,10 +116,6 @@ pub(crate) struct View {
     range: BufferRange,
     /// Cells to hold drawn data
     cells: VecDeque<Vec<Cell>>,
-    /// Width of view
-    width: usize,
-    /// Height of view
-    height: usize,
 
     /// Display options which were used to draw this view
     pub options: DisplayOptions,
@@ -120,9 +129,7 @@ impl View {
         View {
             range: Range::new(0, 0),
             cells: Self::make_default_cells(width, height),
-            width,
-            height,
-            options: DisplayOptions::default(),
+            options: DisplayOptions::new(width, height),
             needs_redraw: true,
             syntax: ViewSyntax::default(),
         }
@@ -154,11 +161,11 @@ impl View {
     }
 
     pub fn width(&self) -> usize {
-        self.width
+        self.options.width
     }
 
     pub fn height(&self) -> usize {
-        self.height
+        self.options.height
     }
 
     fn draw_cells(&mut self, buf: &Buffer) {
@@ -177,13 +184,25 @@ impl View {
             is_eol = chars.is_eol();
 
             // If we cannot fit this character, go to next line
-            if col + ch_width > self.width {
-                if line + 1 >= self.height {
+            if col + ch_width > self.width() {
+                if line + 1 >= self.height() {
                     break;
                 }
 
                 line += 1;
                 col = 0;
+
+                if let Some(wrap) = self.options.replacements.get(&Replacement::Wrap) {
+                    let char = Char::new_virtual(*wrap);
+                    let wrap_ch_width = char.width();
+                    self.cells[line][col] = Cell::Virtual { ch: char };
+                    col += wrap_ch_width;
+                }
+
+                // Cannot fit this grapheme in any way
+                if col + ch_width > self.width() {
+                    break;
+                }
             }
 
             let chars: Vec<Char> = chars.into();
@@ -197,7 +216,7 @@ impl View {
 
             // Goto next line if eol
             if is_eol {
-                if line + 1 >= self.height {
+                if line + 1 >= self.height() {
                     break;
                 }
                 line += 1;
@@ -206,7 +225,7 @@ impl View {
         }
 
         // Add in EOF if we have space
-        if col < self.width && pos == slice.len() {
+        if col < self.width() && pos == slice.len() {
             self.cells[line][col] = Cell::EOF;
         }
 
@@ -241,7 +260,7 @@ impl View {
     pub fn scroll_down_n(&mut self, buf: &Buffer, mut n: u64) {
         self.redraw(buf);
 
-        if n >= self.height as u64 {
+        if n >= self.height() as u64 {
             self.range.start = self.range.end;
             self.needs_redraw = true;
             return;
@@ -270,7 +289,7 @@ impl View {
         // Go up until we find newlines,
         // but stop at a maximum if there are no lines.
         let mut pos = self.range.start;
-        let min = pos.saturating_sub((self.height * self.width) as u64);
+        let min = pos.saturating_sub((self.height() * self.width()) as u64);
         let slice = buf.slice(..pos);
         let mut graphemes = slice.graphemes_at(slice.len());
 
@@ -309,7 +328,7 @@ impl View {
     #[allow(dead_code)]
     /// wether this view includes the buffer end
     pub fn at_end(&self) -> bool {
-        self.cells[self.height - 1]
+        self.cells[self.height() - 1]
             .iter()
             .all(|cell| matches!(cell, Cell::Empty))
     }
@@ -484,11 +503,11 @@ impl View {
     }
 
     pub fn resize(&mut self, size: Size) {
-        if size.width == self.width && size.height == self.height {
+        if size.width == self.width() && size.height == self.height() {
             return;
         }
-        self.width = size.width;
-        self.height = size.height;
+        self.options.width = size.width;
+        self.options.height = size.height;
         self.cells = Self::make_default_cells(size.width, size.height);
         self.needs_redraw = true;
     }

@@ -80,6 +80,14 @@ pub fn prev_line_start(slice: &PieceTreeSlice, pos: u64) -> u64 {
     }
 }
 
+pub fn prev_line_end(slice: &PieceTreeSlice, pos: u64) -> u64 {
+    let mut bytes = slice.bytes_at(pos);
+    match utf8::prev_eol(&mut bytes) {
+        Some(m) => m.range.start,
+        None => 0,
+    }
+}
+
 /// Find next word start, this will move even if we currently are on a word
 /// start.
 pub fn next_word_start(slice: &PieceTreeSlice, mut pos: u64) -> u64 {
@@ -266,7 +274,7 @@ pub fn next_line(slice: &PieceTreeSlice, cursor: &Cursor, opts: &DisplayOptions)
         .column()
         .unwrap_or_else(|| width_at_pos(slice, cpos, opts));
     let pos = next_line_start(slice, cpos);
-    let npos = pos_at_width(slice, pos, width, opts);
+    let (npos, _) = pos_at_width(slice, pos, width, opts);
     (npos, width)
 }
 
@@ -276,7 +284,7 @@ pub fn prev_line(slice: &PieceTreeSlice, cursor: &Cursor, opts: &DisplayOptions)
         .column()
         .unwrap_or_else(|| width_at_pos(slice, cpos, opts));
     let pos = prev_line_start(slice, cpos);
-    let npos = pos_at_width(slice, pos, width, opts);
+    let (npos, _) = pos_at_width(slice, pos, width, opts);
     (npos, width)
 }
 
@@ -348,4 +356,60 @@ pub fn prev_grapheme_on_line(slice: &PieceTreeSlice, pos: u64) -> u64 {
     }
 
     pos
+}
+
+pub fn next_visual_line(
+    slice: &PieceTreeSlice,
+    cursor: &Cursor,
+    opts: &DisplayOptions,
+) -> (u64, usize) {
+    let cpos = cursor.pos();
+    let width = cursor
+        .column()
+        .unwrap_or_else(|| width_at_pos(slice, cpos, opts));
+    log::info!("next line: {}", width);
+    let next_wrapped = width + opts.width;
+
+    // Wrapped lines
+    let (npos, found) = pos_at_width(slice, cpos, next_wrapped, opts);
+    if found {
+        return (npos, next_wrapped);
+    }
+
+    // Set cursor width to first line
+    let w = width % opts.width;
+    let mut fake = Cursor::new(cpos);
+    fake.goto_with_col(cpos, w);
+    let (npos, _) = next_line(slice, &fake, opts);
+    (npos, w)
+}
+
+pub fn prev_visual_line(
+    slice: &PieceTreeSlice,
+    cursor: &Cursor,
+    opts: &DisplayOptions,
+) -> (u64, usize) {
+    let cpos = cursor.pos();
+    let width = cursor
+        .column()
+        .unwrap_or_else(|| width_at_pos(slice, cpos, opts));
+
+    // Try to find lower width on same line
+    // TODO we could find out if current line is even this length
+    let mut w = width;
+    while w >= opts.width {
+        w -= opts.width;
+        let (npos, found) = pos_at_width(slice, cpos, w, opts);
+        if found && npos != cpos {
+            return (npos, width);
+        }
+    }
+
+    // Find highest width on previous line
+    let end = prev_line_end(slice, cpos);
+    let total_width = width_at_pos(slice, end, opts);
+    let width_off = width % opts.width;
+    let pline_target_width = (total_width / opts.width) * opts.width + width_off;
+    let (npos, _) = pos_at_width(slice, end, pline_target_width, opts);
+    (npos, pline_target_width)
 }

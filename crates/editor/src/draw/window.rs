@@ -22,6 +22,7 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> redraw::window::Window {
     } = ctx.editor;
 
     let style = theme.get(ThemeField::Default);
+    let vstyle = theme.get(ThemeField::Virtual);
     let view = win.view();
     let mut grid = vec![vec![redraw::Cell::with_style(style); view.width()]; view.height()];
 
@@ -35,7 +36,7 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> redraw::window::Window {
             let ch = cell.char().unwrap();
             grid[line][col] = redraw::Cell {
                 text: ch.display().into(),
-                style,
+                style: if cell.is_virtual() { vstyle } else { style },
             };
 
             for i in 1..cell.width() {
@@ -121,7 +122,7 @@ fn draw_hl(grid: &mut [Vec<redraw::Cell>], view: &View, style: Style, range: &Bu
         for (i, row) in view.cells().iter().skip(point.y).enumerate() {
             let line = point.y + i;
             for (col, cell) in row.iter().enumerate() {
-                if !matches!(cell, Cell::Empty) && range.contains(&pos) {
+                if !cell.is_virtual() && !cell.is_empty() && range.contains(&pos) {
                     grid[line][col].style = style;
                 }
 

@@ -117,6 +117,7 @@ pub enum ThemeField {
     CompletionSelected,
     CompletionSelectedDescription,
     CompletionSelectedMatch,
+    Virtual,
 
     Match,
 
@@ -192,6 +193,7 @@ impl AsRef<str> for ThemeField {
             TrailingWhitespace => "window.trailing_whitespace",
             Symbols => "window.symbols",
             Match => "window.match",
+            Virtual => "window.virtual",
 
             Hint => "window.view.hint",
             Info => "window.view.info",

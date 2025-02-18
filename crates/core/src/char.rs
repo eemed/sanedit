@@ -139,6 +139,15 @@ pub struct Char {
 }
 
 impl Char {
+    pub fn new_virtual(ch: char) -> Char {
+        Char {
+            character: ch,
+            extra: None,
+            flags: Flags::default(),
+            len_in_buffer: 0,
+        }
+    }
+
     pub fn width(&self) -> usize {
         if self.flags & flags::NO_WIDTH != 0 {
             return 0;
@@ -217,26 +226,36 @@ pub enum Replacement {
     BufferEnd,
     TrailingWhitespace,
     NonBreakingSpace,
+    Wrap,
 }
 
 /// Options on how to display chars
 #[derive(Debug, Clone)]
 pub struct DisplayOptions {
+    pub width: usize,
+    pub height: usize,
     pub tabstop: u32,
     pub replacements: FxHashMap<Replacement, char>,
 }
 
 impl Default for DisplayOptions {
     fn default() -> Self {
+        Self::new(80, 24)
+    }
+}
+
+impl DisplayOptions {
+    pub fn new(width: usize, height: usize) -> DisplayOptions {
         use Replacement::*;
 
-        const DEFAULT: [(Replacement, char); 6] = [
+        const DEFAULT: [(Replacement, char); 7] = [
             (Tab, '→'),
             (TabFill, ' '),
             (EOL, ' '),
             (BufferEnd, '~'),
             (TrailingWhitespace, '•'),
             (NonBreakingSpace, '•'),
+            (Wrap, '↳'),
         ];
 
         let mut replacements = FxHashMap::default();
@@ -245,9 +264,18 @@ impl Default for DisplayOptions {
         }
 
         DisplayOptions {
+            width,
+            height,
             tabstop: 8,
             replacements,
         }
+    }
+
+    pub fn wrap_char_width(&self) -> usize {
+        self.replacements
+            .get(&Replacement::Wrap)
+            .map(|rep| Char::new_virtual(*rep).width())
+            .unwrap_or(0)
     }
 }
 

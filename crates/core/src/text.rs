@@ -3,7 +3,7 @@ use std::io;
 use crate::{
     grapheme_category, is_word_break, is_word_break_end,
     movement::{end_of_line, first_char_of_line},
-    BufferRange, Chars, DisplayOptions, GraphemeCategory, Range,
+    BufferRange, Char, Chars, DisplayOptions, GraphemeCategory, Range, Replacement,
 };
 use sanedit_buffer::{
     utf8::{self, EndOfLine},
@@ -15,8 +15,10 @@ use super::movement::{next_word_end, prev_word_start, start_of_line};
 pub fn width_at_pos(slice: &PieceTreeSlice, pos: u64, opts: &DisplayOptions) -> usize {
     let target = pos;
     let mut pos = start_of_line(slice, pos);
+    let mut total = 0;
     let mut col = 0;
     let mut graphemes = slice.graphemes_at(pos);
+    let wrap_width = opts.wrap_char_width();
 
     while let Some(g) = graphemes.next() {
         let chars = Chars::new(&g, col, opts);
@@ -25,17 +27,34 @@ pub fn width_at_pos(slice: &PieceTreeSlice, pos: u64, opts: &DisplayOptions) -> 
         }
 
         col += chars.width();
+
+        // Currently moving chars to next line if they dont fit.
+        // this can create empty spaces. Add them to total width also
+        if col > opts.width {
+            // Add skipped
+            total += wrap_width + opts.width + chars.width() - col;
+            col = wrap_width + chars.width();
+        }
+
+        total += chars.width();
         pos += chars.len_in_buffer();
     }
 
-    col
+    total
 }
 
-/// returns the position at width + the width at the position
-pub fn pos_at_width(slice: &PieceTreeSlice, pos: u64, width: usize, opts: &DisplayOptions) -> u64 {
+/// returns the position at width, and whether the width was reaced
+pub fn pos_at_width(
+    slice: &PieceTreeSlice,
+    pos: u64,
+    width: usize,
+    opts: &DisplayOptions,
+) -> (u64, bool) {
     let mut pos = start_of_line(slice, pos);
+    let mut total = 0;
     let mut col = 0;
     let mut graphemes = slice.graphemes_at(pos);
+    let wrap_width = opts.wrap_char_width();
 
     while let Some(g) = graphemes.next() {
         let chars = Chars::new(&g, col, opts);
@@ -43,17 +62,24 @@ pub fn pos_at_width(slice: &PieceTreeSlice, pos: u64, width: usize, opts: &Displ
         let ch_len = chars.len_in_buffer();
         let eol = chars.is_eol();
 
-        if col + ch_width > width {
-            break;
+        if total + ch_width > width {
+            return (pos, true);
         }
         if eol {
-            break;
+            return (pos, false);
         }
         col += ch_width;
+
+        if col > opts.width {
+            total += wrap_width + opts.width + chars.width() - col;
+            col = wrap_width + chars.width();
+        }
+
+        total += ch_width;
         pos += ch_len;
     }
 
-    pos
+    (pos, false)
 }
 
 pub fn on_word_end(

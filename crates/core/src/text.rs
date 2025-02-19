@@ -71,6 +71,7 @@ pub fn pos_at_width(
         col += ch_width;
 
         if col > opts.width {
+            // TODO fix
             total += wrap_width + opts.width + chars.width() - col;
             col = wrap_width + chars.width();
         }

@@ -9,12 +9,17 @@ use super::jobs::TmuxShellCommand;
 
 pub(crate) fn execute_prompt(editor: &mut Editor, id: ClientId, out: PromptOutput) {
     let cmd = get!(out.text());
-    execute(editor, id, cmd);
+    execute(editor, id, true, cmd);
 }
 
-pub(crate) fn execute(editor: &mut Editor, id: ClientId, cmd: &str) {
+pub(crate) fn execute(editor: &mut Editor, id: ClientId, show: bool, cmd: &str) {
     let shell = editor.config.editor.shell.clone();
     let (win, _buf) = editor.win_buf(id);
+
+    if !show {
+        todo!();
+        return;
+    }
 
     match &win.shell_kind {
         ShellKind::Tmux { pane } => {

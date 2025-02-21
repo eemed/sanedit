@@ -57,6 +57,8 @@ autoindent = true
 # Automatically insert pairs on enter, works only with autoindent
 autopair = true
 
+new_window_command = "tmux split"
+
 [buffer]
 
 # Default EOL, overridden if detect_eol is set
@@ -137,6 +139,7 @@ maps = [
     { key = "space q", actions = ["quit"] },
     { key = "space s", actions = ["strip_trailing_whitespace"] },
     { key = "alt+v", actions = ["select_line", "copy", "stop_selection", "paste", "prev_line"] },
+    { key = "ctrl+w", actions = ["new_window"] },
 
     { key = "ctrl+s", actions = ["save"] },
     { key = "ctrl+c", actions = ["copy", "stop_selection"] },

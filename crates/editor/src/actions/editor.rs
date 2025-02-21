@@ -53,13 +53,13 @@ fn quit(editor: &mut Editor, id: ClientId) {
 #[action("Build project")]
 fn build_project(editor: &mut Editor, id: ClientId) {
     let cmd = editor.config.editor.build_command.clone();
-    shell::execute(editor, id, &cmd);
+    shell::execute(editor, id, true, &cmd);
 }
 
 #[action("Run project")]
 fn run_project(editor: &mut Editor, id: ClientId) {
     let cmd = editor.config.editor.run_command.clone();
-    shell::execute(editor, id, &cmd);
+    shell::execute(editor, id, true, &cmd);
 }
 
 #[action("Copy selection to clipboard")]

@@ -77,5 +77,5 @@ fn cancel(editor: &mut Editor, id: ClientId) {
 fn new_window(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf(id);
     let command = win.config.new_window_command.clone();
-    shell::execute(editor, id, &command);
+    shell::execute(editor, id, false, &command);
 }

@@ -35,7 +35,7 @@ fn complete_from_syntax(editor: &mut Editor, id: ClientId) {
     let Some(point) = win.view().point_at_pos(cursor.pos()) else {
         return;
     };
-    win.completion = Completion::new(range.start, point);
+    win.completion = Completion::new(range.start, point, Some(&win.keymap_layer));
 
     // Fetch completions from buffer
     let opts: FxHashSet<Arc<Choice>> = win
@@ -70,6 +70,9 @@ fn complete_from_syntax(editor: &mut Editor, id: ClientId) {
 fn completion_confirm(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.focus_to(Focus::Window);
+    if let Some(ref km) = win.completion.previous_keymap {
+        win.keymap_layer = km.into();
+    }
 
     if let Some(opt) = win.completion.selected().cloned() {
         let choice = opt.choice();
@@ -92,6 +95,10 @@ fn completion_abort(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     if win.focus() == Focus::Completion {
         win.focus_to(Focus::Window);
+
+        if let Some(ref km) = win.completion.previous_keymap {
+            win.keymap_layer = km.into();
+        }
     }
 }
 

@@ -26,13 +26,15 @@ pub(crate) struct Completion {
 
     /// Called when input is modified.
     pub(crate) on_input: Option<CompletionAction>,
+    pub(crate) previous_keymap: Option<String>,
 }
 
 impl Completion {
-    pub fn new(started_at: u64, point: Point) -> Completion {
+    pub fn new(started_at: u64, point: Point, previous_keymap: Option<&str>) -> Completion {
         Completion {
             started_at,
             point,
+            previous_keymap: previous_keymap.map(|km| km.to_string()),
             ..Default::default()
         }
     }

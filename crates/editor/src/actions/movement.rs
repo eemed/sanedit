@@ -12,7 +12,7 @@ use sanedit_messages::redraw::Point;
 
 use crate::editor::{
     hooks::Hook,
-    windows::{Focus, Prompt},
+    windows::{Focus, Prompt, View},
     Editor,
 };
 
@@ -143,16 +143,6 @@ fn next_paragraph(editor: &mut Editor, id: ClientId) {
 #[action("Move cursor(s) to the previous paragraph")]
 fn prev_paragraph(editor: &mut Editor, id: ClientId) {
     do_move(editor, id, movement::prev_paragraph, None);
-}
-
-#[action("Move cursor(s) to the previous visual line")]
-pub(crate) fn prev_visual_line(editor: &mut Editor, id: ClientId) {
-    do_move_line(editor, id, movement::prev_visual_line);
-}
-
-#[action("Move cursor(s) to the next visual line")]
-fn next_visual_line(editor: &mut Editor, id: ClientId) {
-    do_move_line(editor, id, movement::next_visual_line);
 }
 
 #[action("Move cursor(s) to the next line")]
@@ -288,4 +278,137 @@ fn prev_grapheme_on_line(editor: &mut Editor, id: ClientId) {
 #[action("Move cursor(s) to the next grapheme on the same line")]
 fn next_grapheme_on_line(editor: &mut Editor, id: ClientId) {
     do_move(editor, id, movement::next_grapheme_on_line, None);
+}
+
+#[action("Move cursor to the previous visual line")]
+pub(crate) fn prev_visual_line(editor: &mut Editor, id: ClientId) {
+    let (win, buf) = editor.win_buf_mut(id);
+
+    // If multicursor use lines
+    let multi_cursor = win.cursors.len() > 1;
+    if multi_cursor {
+        prev_line.execute(editor, id);
+        return;
+    }
+
+    win.view_to_cursor(buf);
+    let cursor_pos = win.cursors().primary().pos();
+    let cursor_point = win
+        .view()
+        .point_at_pos(cursor_pos)
+        .expect("cursor not in view");
+    let cursor_at_start = cursor_point.y == 0;
+    let view_at_start = win.view().at_start();
+
+    if cursor_at_start && view_at_start {
+        return;
+    }
+
+    if cursor_at_start && !view_at_start {
+        // We are at the top line already, but view can be scrolled up
+        win.scroll_up_n(buf, 1);
+    }
+
+    let cursor = win.cursors.primary();
+    let view = win.view();
+    if let Some((pos, col)) = prev_visual_line_impl(view, cursor) {
+        let primary = win.primary_cursor_mut();
+        primary.goto_with_col(pos, col);
+
+        hooks::run(editor, id, Hook::CursorMoved);
+    }
+}
+
+// Moves cursor one visual line up, but will not change the view.
+// Before using this you should check if the view can be scrolled
+// up and do so. returns wether cursor was moved.
+fn prev_visual_line_impl(view: &View, cursor: &Cursor) -> Option<(u64, usize)> {
+    let cursor_pos = cursor.pos();
+    let cursor_point = view.point_at_pos(cursor_pos)?;
+    if cursor_point.y == 0 {
+        return None;
+    }
+
+    // Targets where we want to end up
+    let target_line = cursor_point.y.saturating_sub(1);
+    let target_col = cursor.column().unwrap_or(cursor_point.x);
+
+    // Last character on the target line
+    let max_col = view
+        .last_non_empty_cell(target_line)
+        .map(|point| point.x)
+        .unwrap_or(0);
+    // Column where there exists a character
+    let col = target_col.min(max_col);
+
+    let pos = view
+        .pos_at_point(Point {
+            x: col,
+            y: target_line,
+        })
+        .unwrap_or(0);
+    Some((pos, target_col))
+}
+
+#[action("Move cursor to the next visual line")]
+fn next_visual_line(editor: &mut Editor, id: ClientId) {
+    let (win, buf) = editor.win_buf_mut(id);
+
+    // If multicursor use lines
+    let multi_cursor = win.cursors.len() > 1;
+    if multi_cursor {
+        next_line.execute(editor, id);
+        return;
+    }
+
+    win.view_to_cursor(buf);
+    let cursor_pos = win.cursors().primary().pos();
+    let cursor_point = win
+        .view()
+        .point_at_pos(cursor_pos)
+        .expect("cursor not in view");
+    let last_line = win.view().height().saturating_sub(1);
+    let cursor_at_end = cursor_point.y == last_line;
+    let view_at_end = win.view().at_end();
+
+    if cursor_at_end && view_at_end {
+        return;
+    }
+
+    // Make sure we have atleast one extra line to down to
+    if cursor_at_end && !view_at_end {
+        win.scroll_down_n(buf, 1);
+    }
+
+    let view = win.view();
+    let cursor = win.cursors.primary();
+    if let Some((pos, col)) = next_visual_line_impl(view, cursor, buf.len()) {
+        let primary = win.primary_cursor_mut();
+        primary.goto_with_col(pos, col);
+
+        hooks::run(editor, id, Hook::CursorMoved);
+    }
+}
+
+// Moves cursor one visual line down, but will not change the view.
+//  Before using this you should check if the view can be
+// scrolled down and do so. returns wether cursor was moved.
+fn next_visual_line_impl(view: &View, cursor: &Cursor, buf_len: u64) -> Option<(u64, usize)> {
+    let cursor_pos = cursor.pos();
+    let cursor_point = view.point_at_pos(cursor_pos).expect("cursor not in view");
+    let last_line = view.height().saturating_sub(1);
+    let target_line = cmp::min(cursor_point.y + 1, last_line);
+
+    let max_col = view.last_non_empty_cell(target_line).map(|point| point.x)?;
+    let cursor_col = cursor.column().unwrap_or(cursor_point.x);
+    let col = cursor_col.min(max_col);
+
+    let pos = view
+        .pos_at_point(Point {
+            x: col,
+            y: target_line,
+        })
+        .unwrap_or(buf_len);
+
+    Some((pos, cursor_col))
 }

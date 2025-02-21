@@ -132,7 +132,6 @@ pub(crate) const COMMANDS: &[Action] = &[
     editor::build_project,
     editor::run_project,
 
-    window::focus_window,
     editor::copy,
     editor::paste,
     editor::cut,
@@ -245,7 +244,9 @@ pub(crate) const COMMANDS: &[Action] = &[
 
     window::reload_window,
     window::goto_prev_buffer,
+    window::focus_window,
     window::cancel,
+    window::new_window,
 
     completion::complete,
 

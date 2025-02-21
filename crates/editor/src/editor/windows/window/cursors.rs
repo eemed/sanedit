@@ -33,6 +33,10 @@ impl Cursors {
         &mut self.cursors[self.primary]
     }
 
+    pub fn primary_index(&self) -> usize {
+        self.primary
+    }
+
     pub fn start_selection(&mut self) {
         for cursor in &mut self.cursors {
             cursor.start_selection();

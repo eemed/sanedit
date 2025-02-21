@@ -1,4 +1,4 @@
-use crate::editor::{hooks::Hook, windows::Focus, Editor};
+use crate::{actions::shell, editor::{hooks::Hook, windows::Focus, Editor}};
 
 use sanedit_server::ClientId;
 
@@ -71,4 +71,11 @@ fn cancel(editor: &mut Editor, id: ClientId) {
         let (win, _buf) = editor.win_buf_mut(id);
         win.cursors.primary_mut().stop_selection();
     }
+}
+
+#[action("Create a new window")]
+fn new_window(editor: &mut Editor, id: ClientId) {
+    let (win, _buf) = editor.win_buf(id);
+    let command = win.config.new_window_command.clone();
+    shell::execute(editor, id, &command);
 }

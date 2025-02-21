@@ -24,6 +24,8 @@ pub(crate) struct WindowConfig {
 
     /// Automatically insert pairs on enter, works only with autoindent
     pub autopair: bool,
+
+    pub new_window_command: String,
 }
 
 impl Default for WindowConfig {
@@ -36,6 +38,7 @@ impl Default for WindowConfig {
             highlight_diagnostics: true,
             autoindent: true,
             autopair: true,
+            new_window_command: String::new(),
         }
     }
 }

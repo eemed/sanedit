@@ -3,7 +3,7 @@ use std::io;
 use crate::{
     grapheme_category, is_word_break, is_word_break_end,
     movement::{end_of_line, first_char_of_line},
-    BufferRange, Char, Chars, DisplayOptions, GraphemeCategory, Range, Replacement,
+    BufferRange, Chars, DisplayOptions, GraphemeCategory, Range,
 };
 use sanedit_buffer::{
     utf8::{self, EndOfLine},
@@ -21,18 +21,22 @@ pub fn width_at_pos(slice: &PieceTreeSlice, pos: u64, opts: &DisplayOptions) -> 
     let wrap_width = opts.wrap_char_width();
 
     while let Some(g) = graphemes.next() {
-        let chars = Chars::new(&g, col, opts);
         if pos >= target {
             break;
         }
 
+        let chars = Chars::new(&g, col, opts);
         col += chars.width();
 
-        // Currently moving chars to next line if they dont fit.
-        // this can create empty spaces. Add them to total width also
-        if col > opts.width {
-            // Add skipped
-            total += wrap_width + opts.width + chars.width() - col;
+        if col >= opts.width {
+            // Currently moving chars to next line if they dont fit.
+            // Add empty width if needed
+            if col > opts.width {
+                let col_without_current = col - chars.width();
+                total += opts.width - col_without_current;
+            }
+
+            total += wrap_width;
             col = wrap_width + chars.width();
         }
 
@@ -49,7 +53,7 @@ pub fn pos_at_width(
     pos: u64,
     width: usize,
     opts: &DisplayOptions,
-) -> (u64, bool) {
+) -> u64 {
     let mut pos = start_of_line(slice, pos);
     let mut total = 0;
     let mut col = 0;
@@ -63,16 +67,20 @@ pub fn pos_at_width(
         let eol = chars.is_eol();
 
         if total + ch_width > width {
-            return (pos, true);
+            return pos;
         }
         if eol {
-            return (pos, false);
+            return pos;
         }
         col += ch_width;
 
-        if col > opts.width {
-            // TODO fix
-            total += wrap_width + opts.width + chars.width() - col;
+        if col >= opts.width {
+            if col > opts.width {
+                let col_without_current = col - chars.width();
+                total += opts.width - col_without_current;
+            }
+
+            total += wrap_width;
             col = wrap_width + chars.width();
         }
 
@@ -80,7 +88,7 @@ pub fn pos_at_width(
         pos += ch_len;
     }
 
-    (pos, false)
+    pos
 }
 
 pub fn on_word_end(

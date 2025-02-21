@@ -235,13 +235,6 @@ fn sync_document(editor: &mut Editor, id: ClientId) {
                     .changes
                     .iter()
                     .map(|change| {
-                        log::info!(
-                            "Start: {}, Slice: {}..{} = {}",
-                            change.start(),
-                            eslice.start(),
-                            eslice.end(),
-                            eslice.len()
-                        );
                         let start = Position::new(change.start(), &eslice, &enc);
                         let end = if change.range().is_empty() {
                             start.clone()

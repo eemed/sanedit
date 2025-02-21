@@ -1,5 +1,4 @@
 use crate::grapheme_category;
-use crate::Chars;
 use sanedit_buffer::utf8;
 use sanedit_buffer::utf8::EndOfLine;
 use sanedit_buffer::Bytes;
@@ -275,7 +274,7 @@ pub fn next_line(slice: &PieceTreeSlice, cursor: &Cursor, opts: &DisplayOptions)
         .column()
         .unwrap_or_else(|| width_at_pos(slice, cpos, opts));
     let pos = next_line_start(slice, cpos);
-    let (npos, _) = pos_at_width(slice, pos, width, opts);
+    let npos = pos_at_width(slice, pos, width, opts);
     (npos, width)
 }
 
@@ -285,7 +284,7 @@ pub fn prev_line(slice: &PieceTreeSlice, cursor: &Cursor, opts: &DisplayOptions)
         .column()
         .unwrap_or_else(|| width_at_pos(slice, cpos, opts));
     let pos = prev_line_start(slice, cpos);
-    let (npos, _) = pos_at_width(slice, pos, width, opts);
+    let npos = pos_at_width(slice, pos, width, opts);
     (npos, width)
 }
 
@@ -357,143 +356,4 @@ pub fn prev_grapheme_on_line(slice: &PieceTreeSlice, pos: u64) -> u64 {
     }
 
     pos
-}
-
-pub fn next_visual_line(
-    slice: &PieceTreeSlice,
-    cursor: &Cursor,
-    opts: &DisplayOptions,
-) -> (u64, usize) {
-    let cpos = cursor.pos();
-    let width = width_at_pos(slice, cpos, opts);
-    // Atleast to next line, width wise or completely
-    let mut pos = cpos;
-    let mut col = width % opts.width;
-    let mut total = width;
-    let mut graphemes = slice.graphemes_at(cpos);
-    let wrap_width = opts.wrap_char_width();
-    let want_width = cursor.column().unwrap_or(width);
-
-    // Goto next line, or next wrapped line
-    while let Some(g) = graphemes.next() {
-        let chars = Chars::new(&g, col, opts);
-        let ch_width = chars.width();
-        let ch_len = chars.len_in_buffer();
-        let eol = chars.is_eol();
-
-        if eol {
-            // TODO only eol on next line
-            // if col + ch_width > opts.width {
-            //     return (pos, want_width)
-            // }
-
-            log::info!("EOL");
-            total = 0;
-            col = 0;
-            pos += ch_len;
-            break;
-        }
-
-        col += ch_width;
-
-        if col > opts.width {
-            total += wrap_width;
-            col = wrap_width + chars.width();
-            break;
-        }
-
-        total += ch_width;
-        pos += ch_len;
-    }
-
-    let max_col = width % opts.width;
-    // Scroll to same column as last
-    while let Some(g) = graphemes.next() {
-        let chars = Chars::new(&g, col, opts);
-        let ch_width = chars.width();
-        let ch_len = chars.len_in_buffer();
-        let eol = chars.is_eol();
-
-        if eol {
-            log::info!("EOL2");
-            return (pos, want_width);
-        }
-
-        col += ch_width;
-
-        if col > max_col {
-            col -= ch_width;
-            graphemes.prev();
-            break;
-        }
-
-        total += ch_width;
-        pos += ch_len;
-    }
-
-    // Scroll to want column
-    if let Some(want_width) = cursor.column() {
-        log::info!("WNT COL: {want_width}, total: {total}");
-        if want_width > total {
-            while let Some(g) = graphemes.next() {
-                let chars = Chars::new(&g, col, opts);
-                let ch_width = chars.width();
-                let ch_len = chars.len_in_buffer();
-                let eol = chars.is_eol();
-
-                if eol {
-                    log::info!("RET1: total: {total}");
-                    return (pos, total);
-                }
-                col += ch_width;
-
-                if col > opts.width {
-                    log::info!("RET2");
-                    return (pos, total);
-                }
-
-                log::info!("total: +{ch_width}");
-                total += ch_width;
-                pos += ch_len;
-
-                if total > want_width {
-                    log::info!("RET3: total: {}", total - ch_width);
-                    return (pos - ch_len, total - ch_width);
-                }
-            }
-        }
-    }
-
-    (pos, want_width)
-}
-
-pub fn prev_visual_line(
-    slice: &PieceTreeSlice,
-    cursor: &Cursor,
-    opts: &DisplayOptions,
-) -> (u64, usize) {
-    todo!()
-    // let cpos = cursor.pos();
-    // let width = cursor
-    //     .column()
-    //     .unwrap_or_else(|| width_at_pos(slice, cpos, opts));
-
-    // // Try to find lower width on same line
-    // // TODO we could find out if current line is even this length
-    // let mut w = width;
-    // while w >= opts.width {
-    //     w -= opts.width;
-    //     let (npos, found) = pos_at_width(slice, cpos, w, opts);
-    //     if found && npos != cpos {
-    //         return (npos, width);
-    //     }
-    // }
-
-    // // Find highest width on previous line
-    // let end = prev_line_end(slice, cpos);
-    // let total_width = width_at_pos(slice, end, opts);
-    // let width_off = width % opts.width;
-    // let pline_target_width = (total_width / opts.width) * opts.width + width_off;
-    // let (npos, _) = pos_at_width(slice, end, pline_target_width, opts);
-    // (npos, pline_target_width)
 }

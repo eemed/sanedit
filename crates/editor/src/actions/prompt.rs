@@ -3,7 +3,7 @@ mod commands;
 use std::{cmp::min, sync::Arc};
 
 use sanedit_messages::ClientMessage;
-use sanedit_utils::idmap::{AsID, ID};
+use sanedit_utils::idmap::AsID;
 
 use crate::{
     actions::jobs::{FileOptionProvider, MatchedOptions},
@@ -176,10 +176,20 @@ fn open_file_handler(editor: &mut Editor, id: ClientId, msg: MatcherMessage) {
 #[action("Open a buffer")]
 fn open_buffer(editor: &mut Editor, id: ClientId) {
     const PROMPT_MESSAGE: &str = "Open a buffer";
-    let buffers: Vec<String> = editor
+    let wd = editor.working_dir();
+    let buffers: Vec<Arc<Choice>> = editor
         .buffers()
         .iter()
-        .map(|(bid, buf)| format!("{}: {}", bid.id(), buf.name()))
+        .map(|(bid, buf)| {
+            let text = buf
+                .path()
+                .map(|path| {
+                    let stripped = path.strip_prefix(wd).unwrap_or(path);
+                    stripped.display().to_string().into()
+                })
+                .unwrap_or(buf.name());
+            Choice::from_numbered_text(bid.id(), text.to_string())
+        })
         .collect();
     let job = MatcherJob::builder(id)
         .options(Arc::new(buffers))
@@ -191,14 +201,9 @@ fn open_buffer(editor: &mut Editor, id: ClientId) {
     win.prompt = Prompt::builder()
         .prompt(PROMPT_MESSAGE)
         .on_confirm(move |editor, id, out| {
-            // TODO maybe own type in prompt?
-            let text = get!(out.text());
-            if let Some(bid) = text.split(':').next() {
-                if let Ok(bid) = bid.parse::<ID>() {
-                    let bid = BufferId::from(bid);
-                    editor.open_buffer(id, bid);
-                }
-            }
+            let num = get!(out.number());
+            let bid = BufferId::from(num);
+            editor.open_buffer(id, bid);
         })
         .build();
     win.focus_to(Focus::Prompt);

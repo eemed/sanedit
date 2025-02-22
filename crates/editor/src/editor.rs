@@ -319,6 +319,7 @@ impl Editor {
             Message::KeyEvent(key_event) => self.handle_key_event(id, key_event),
             Message::MouseEvent(mouse_event) => self.handle_mouse_event(id, mouse_event),
             Message::Resize(size) => self.handle_resize(id, size),
+            Message::Focus(in_focus) => self.handle_focus(id, in_focus),
             _ => {}
         }
 
@@ -377,6 +378,12 @@ impl Editor {
         self.send_to_client(id, ClientMessage::Flush);
     }
 
+    fn handle_focus(&mut self, id: ClientId, in_focus: bool) {
+        let (win, _) = self.win_buf_mut(id);
+        win.client_in_focus = in_focus;
+        log::info!("Focus: {in_focus}");
+    }
+
     fn handle_resize(&mut self, id: ClientId, size: Size) {
         let (win, buf) = self.win_buf_mut(id);
         win.resize(size, buf);
@@ -417,8 +424,6 @@ impl Editor {
 
     /// Redraw all windows that use the same buffer as `id`
     fn redraw(&mut self, id: ClientId) {
-        // self.recalculate_syntax(id);
-
         // Editor is closed or client is closed
         if !self.is_running || !self.clients.contains_key(&id) {
             return;

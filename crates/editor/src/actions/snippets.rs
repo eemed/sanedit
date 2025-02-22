@@ -20,7 +20,7 @@ use super::jobs::MatcherJob;
 pub(crate) fn snippet_jump_next(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     if !win.cursors_to_next_snippet_jump(buf) {
-        win.focus_to(Focus::Window);
+        win.pop_focus();
     }
 }
 

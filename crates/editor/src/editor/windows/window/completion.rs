@@ -102,7 +102,7 @@ impl Completion {
                 match opts {
                     MatchedOptions::Done => {
                         if win.completion.chooser.options().is_empty() {
-                            win.focus_to(Focus::Window);
+                            win.pop_focus();
                             win.info_msg("No completion items");
                         }
                     }
@@ -110,8 +110,9 @@ impl Completion {
                         if clear_old {
                             win.completion.clear_choices();
                         }
-                        win.focus_to(Focus::Completion);
-                        let (win, _buf) = editor.win_buf_mut(id);
+                        if win.focus() != Focus::Completion {
+                            win.push_focus(Focus::Completion, None);
+                        }
                         win.completion.add_choices(matched);
                     }
                 }

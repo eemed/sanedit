@@ -69,10 +69,7 @@ fn complete_from_syntax(editor: &mut Editor, id: ClientId) {
 #[action("Confirm completion")]
 fn completion_confirm(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
-    win.focus_to(Focus::Window);
-    if let Some(ref km) = win.completion.previous_keymap {
-        win.keymap_layer = km.into();
-    }
+    win.pop_focus();
 
     if let Some(opt) = win.completion.selected().cloned() {
         let choice = opt.choice();
@@ -94,7 +91,7 @@ fn completion_confirm(editor: &mut Editor, id: ClientId) {
 fn completion_abort(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     if win.focus() == Focus::Completion {
-        win.focus_to(Focus::Window);
+        win.pop_focus();
 
         if let Some(ref km) = win.completion.previous_keymap {
             win.keymap_layer = km.into();
@@ -127,7 +124,7 @@ fn send_word(editor: &mut Editor, id: ClientId) {
         let cursor = win.cursors.primary().pos();
         let start = win.completion.started_at();
         if start > cursor {
-            win.focus_to(Focus::Window);
+            win.pop_focus();
             return;
         }
         let slice = buf.slice(start..cursor);

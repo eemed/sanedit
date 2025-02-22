@@ -57,7 +57,7 @@ autoindent = true
 # Automatically insert pairs on enter, works only with autoindent
 autopair = true
 
-new_window_command = "tmux split"
+new_window_command = "tmux split 'sane'"
 
 [buffer]
 
@@ -113,9 +113,9 @@ discard = true
 fallthrough = "window"
 maps = [
     { key = "i", actions = ["nop"] },
-    { key = "x", actions = ["remove_cursor_selections", "goto_layer window"] },
-    { key = "d", actions = ["remove_cursor_selections", "goto_layer window"] },
-    { key = "c", actions = ["remove_cursor_selections", "goto_layer insert"] },
+    { key = "x", actions = ["copy", "remove_cursor_selections", "goto_layer window"] },
+    { key = "d", actions = ["copy", "remove_cursor_selections", "goto_layer window"] },
+    { key = "c", actions = ["copy", "remove_cursor_selections", "goto_layer insert"] },
     { key = "y", actions = ["copy", "stop_selection"] },
     { key = "esc", actions = ["stop_selection", "goto_layer window"] },
     { key = "§", actions = ["stop_selection", "goto_layer window"] },
@@ -180,8 +180,8 @@ maps = [
     { key = "?", actions = ["search_backward"] },
     { key = "%", actions = ["goto_matching_pair"] },
     { key = "c", actions = ["first_char_of_line", "remove_to_end_of_line", "goto_layer insert"] },
-    { key = "d", actions = ["select_line", "swap_selection_dir", "remove_cursor_selections"] },
-    { key = "D", actions = ["remove_to_end_of_line"] },
+    { key = "d", actions = ["select_line", "copy", "swap_selection_dir", "remove_cursor_selections"] },
+    { key = "D", actions = ["start_selection", "end_of_line", "copy", "remove_cursor_selections"] },
     { key = "x", actions = ["remove_grapheme_after_cursor"] },
     { key = "G", actions = ["end_of_buffer"] },
     { key = "g g", actions = ["start_of_buffer"] },

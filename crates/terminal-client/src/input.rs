@@ -74,6 +74,13 @@ fn process_input_event(
                 sender.send(Message::MouseEvent(msg).into())?;
             }
         }
+        FocusGained => {
+            sender.send(Message::Focus(true).into())?;
+        }
+        FocusLost => {
+            sender.send(Message::Focus(false).into())?;
+        }
+        Paste(_) => {}
     }
 
     Ok(())
@@ -101,6 +108,8 @@ pub(crate) fn convert_key_event(
         KeyCode::Char(ch) => Key::Char(ch),
         KeyCode::Esc => Key::Esc,
         KeyCode::Null => Key::Unknown,
+
+        _ => Key::Unknown,
     };
 
     let mods = convert_mods(&key.modifiers);
@@ -140,6 +149,8 @@ pub(crate) fn convert_mouse_event(
         crossterm::event::MouseEventKind::ScrollUp => MouseEventKind::ScrollUp,
         crossterm::event::MouseEventKind::Drag(_b) => return None,
         crossterm::event::MouseEventKind::Moved => return None,
+        crossterm::event::MouseEventKind::ScrollLeft => return None,
+        crossterm::event::MouseEventKind::ScrollRight => return None,
     };
 
     let mods = convert_mods(&event.modifiers);

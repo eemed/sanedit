@@ -22,6 +22,7 @@ impl Terminal {
             stdout,
             EnterAlternateScreen,
             EnableMouseCapture,
+            EnableFocusChange,
             Clear(ClearType::All),
         )?;
         let (width, height) = terminal_size();
@@ -77,13 +78,16 @@ impl Terminal {
             queue!(self.out, cursor::DisableBlinking)?;
         }
 
-        let cshape = match style {
-            CursorShape::Block(_) => cursor::CursorShape::Block,
-            CursorShape::Underline(_) => cursor::CursorShape::UnderScore,
-            CursorShape::Line(_) => cursor::CursorShape::Line,
+        let cstyle = match style {
+            CursorShape::Block(true) => cursor::SetCursorStyle::BlinkingBlock,
+            CursorShape::Block(false) => cursor::SetCursorStyle::SteadyBlock,
+            CursorShape::Underline(true) => cursor::SetCursorStyle::BlinkingUnderScore,
+            CursorShape::Underline(false) => cursor::SetCursorStyle::SteadyUnderScore,
+            CursorShape::Line(true) => cursor::SetCursorStyle::BlinkingBar,
+            CursorShape::Line(false) => cursor::SetCursorStyle::SteadyBar,
         };
 
-        queue!(self.out, cursor::SetCursorShape(cshape))?;
+        queue!(self.out, cstyle)?;
         Ok(())
     }
 
@@ -164,7 +168,7 @@ impl Drop for Terminal {
             DisableMouseCapture,
             LeaveAlternateScreen,
             cursor::Show,
-            cursor::SetCursorShape(cursor::CursorShape::Block)
+            cursor::SetCursorStyle::DefaultUserShape
         )
         .is_err()
         {

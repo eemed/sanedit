@@ -105,6 +105,7 @@ impl Default for ThemeNode {
 pub enum ThemeField {
     Default,
     Statusline,
+    StatuslineNoFocus,
     Selection,
     EndOfBuffer,
     TrailingWhitespace,
@@ -186,6 +187,7 @@ impl AsRef<str> for ThemeField {
         match self {
             Default => "window",
             Statusline => "window.statusline",
+            StatuslineNoFocus => "window.statusline_no_focus",
             Selection => "window.cursor.selection",
             Cursor => "window.cursor",
             Gutter => "window.gutter",

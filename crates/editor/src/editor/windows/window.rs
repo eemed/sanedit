@@ -60,6 +60,12 @@ pub(crate) struct Window {
     jump_to_primary_cursor: bool,
 
     keys: Vec<KeyEvent>,
+
+    /// Whether the this client is focused
+    pub(crate) client_in_focus: bool,
+
+    /// Focus determines where to direct input
+    focus_stack: FocusStack,
     focus: Focus,
 
     pub keymap_layer: String,
@@ -91,7 +97,9 @@ impl Window {
             config,
             search: Search::default(),
             prompt: Prompt::default(),
+            client_in_focus: true,
             focus: Focus::Window,
+            focus_stack: FocusStack::default(),
             ft_view: FiletreeView::default(),
             locations: Locations::default(),
             popup: None,
@@ -141,8 +149,46 @@ impl Window {
         self.focus
     }
 
-    /// Switches focus and changes to appropriate keymap layer
+    /// Focuses new element and pushes the old one to focus stack
+    pub fn push_focus(&mut self, focus: Focus, layer: Option<String>) {
+        let entry = FocusEntry {
+            focus: self.focus,
+            keymap_layer: self.keymap_layer.clone(),
+        };
+        self.focus_stack.push(entry);
+
+        self.focus = focus;
+        if let Some(layer) = layer {
+            self.keymap_layer = layer;
+        } else {
+            let kind = match self.focus {
+                Focus::Search => KeymapKind::Search,
+                Focus::Prompt => KeymapKind::Prompt,
+                Focus::Window => KeymapKind::Window,
+                Focus::Completion => KeymapKind::Completion,
+                Focus::Filetree => KeymapKind::Filetree,
+                Focus::Locations => KeymapKind::Locations,
+            };
+            self.keymap_layer = kind.as_ref().into();
+        }
+    }
+
+    /// Restores previously focused element
+    pub fn pop_focus(&mut self) -> bool {
+        if let Some(entry) = self.focus_stack.pop() {
+            self.focus = entry.focus;
+            self.keymap_layer = entry.keymap_layer;
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Switches focus and changes to appropriate keymap layer,
+    /// clears focus stack
     pub fn focus_to(&mut self, focus: Focus) {
+        self.focus_stack.clear();
+
         self.focus = focus;
 
         let kind = match self.focus {
@@ -1017,8 +1063,7 @@ impl Window {
                     let empty = last.is_empty();
                     self.cursors_to_jump_group(buf, jumps);
                     // Set keymap to snippet if jumped to next
-                    self.keymap_layer = KeymapKind::Snippet.as_ref().into();
-                    self.focus = Focus::Window;
+                    self.push_focus(Focus::Window, Some(KeymapKind::Snippet.as_ref().into()));
 
                     // Clear jumps if empty
                     if empty {

@@ -1,3 +1,5 @@
+use std::process::Command;
+
 use crate::editor::{
     windows::{PromptOutput, ShellKind},
     Editor,
@@ -12,12 +14,12 @@ pub(crate) fn execute_prompt(editor: &mut Editor, id: ClientId, out: PromptOutpu
     execute(editor, id, true, cmd);
 }
 
-pub(crate) fn execute(editor: &mut Editor, id: ClientId, show: bool, cmd: &str) {
+pub(crate) fn execute(editor: &mut Editor, id: ClientId, interactive: bool, cmd: &str) {
     let shell = editor.config.editor.shell.clone();
     let (win, _buf) = editor.win_buf(id);
 
-    if !show {
-        todo!();
+    if !interactive {
+        run_non_interactive(&shell, &cmd);
         return;
     }
 
@@ -30,5 +32,16 @@ pub(crate) fn execute(editor: &mut Editor, id: ClientId, show: bool, cmd: &str) 
 
             editor.job_broker.request(job);
         }
+    }
+}
+
+fn run_non_interactive(shell: &str, cmd: &str) {
+    match Command::new(shell).args(["-c", cmd]).output() {
+        Ok(output) => log::info!(
+            "output: {}: {:?}",
+            output.status,
+            std::str::from_utf8(&output.stdout)
+        ),
+        Err(e) => log::error!("Command '{cmd}' failed: {e}"),
     }
 }

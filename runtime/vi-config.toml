@@ -155,10 +155,10 @@ maps = [
     { key = "i", actions = ["goto_layer insert"] },
     { key = "u", actions = ["undo"] },
     { key = "U", actions = ["redo"] },
-    { key = "h", actions = ["prev_grapheme"] },
+    { key = "h", actions = ["prev_grapheme_on_line"] },
     { key = "g k", actions = ["prev_line"] },
     { key = "g j", actions = ["next_line"] },
-    { key = "l", actions = ["next_grapheme"] },
+    { key = "l", actions = ["next_grapheme_on_line"] },
     { key = "k", actions = ["prev_visual_line"] },
     { key = "j", actions = ["next_visual_line"] },
 

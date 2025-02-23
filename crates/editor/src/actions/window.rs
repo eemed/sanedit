@@ -1,4 +1,8 @@
-use crate::{actions::shell, editor::{hooks::Hook, windows::Focus, Editor}};
+use crate::{
+    actions::shell,
+    editor::{buffers::Buffer, hooks::Hook, windows::Focus, Editor},
+    VERSION,
+};
 
 use sanedit_server::ClientId;
 
@@ -78,4 +82,71 @@ fn new_window(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf(id);
     let command = win.config.new_window_command.clone();
     shell::execute(editor, id, false, &command);
+}
+
+#[action("Status")]
+fn status(editor: &mut Editor, id: ClientId) {
+    let (win, buf) = editor.win_buf(id);
+    let file = buf
+        .path()
+        .map(|path| {
+            path.strip_prefix(editor.working_dir())
+                .unwrap_or(path)
+                .display()
+                .to_string()
+                .into()
+        })
+        .unwrap_or(buf.name());
+    let ft = buf
+        .filetype
+        .as_ref()
+        .map(|ft| ft.as_str())
+        .unwrap_or("no filetype");
+    let bufsize = buf.len();
+    let edits = buf.total_changes_made();
+    let (lsp, command, args) = buf.filetype.as_ref().map(|ft| {
+        let lsp = editor.language_servers.get(ft)?;
+        let name = lsp.server_name();
+        let config  = editor.filetype_config.get(ft)?;
+        let command = config.lsp.command.as_str();
+        let args = config.lsp.args.clone();
+        Some((name, command, args))
+    }).flatten().unwrap_or(("no", "-", vec![]));
+    let options = &win.view().options;
+    let width = options.width;
+    let height = options.height;
+    let client_id = id.0;
+    let working_dir = editor.working_dir();
+    let shell = &editor.config.editor.shell;
+    let config_dir = editor.config_dir.root();
+
+    let text = format!(
+        "\
+        Sanedit v{VERSION}\n\
+        --------------\n\
+        \n\
+        Buffer:\n  \
+        File: {file}\n  \
+        Filetype: {ft}\n  \
+        Size: {bufsize}\n  \
+        Edits made: {edits}\n\
+        \n\
+        Language server: ({ft})\n  \
+        Running: {lsp}\n  \
+        Start command: {command} {args:?}\n\
+        \n\
+        Window:\n  \
+        Client ID: {client_id}\n  \
+        Size: {width}x{height}\n\
+        \n\
+        Editor:\n  \
+        Working directory: {working_dir:?}\n  \
+        Config directory: {config_dir:?}\n  \
+        Shell: {shell}\n\
+    "
+    );
+
+    let buf = Buffer::from_reader(std::io::Cursor::new(text)).unwrap();
+    let bid = editor.buffers_mut().insert(buf);
+    editor.open_buffer(id, bid);
 }

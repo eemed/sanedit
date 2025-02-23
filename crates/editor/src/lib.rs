@@ -41,6 +41,9 @@ use std::{sync::mpsc::channel, thread};
 use runtime::TokioRuntime;
 use sanedit_server::{spawn_listeners, Address, EditorHandle, StartOptions};
 
+// works only with cargo
+pub(crate) const VERSION: &str = env!("CARGO_PKG_VERSION");
+
 pub fn run_sync(addrs: Vec<Address>, opts: StartOptions) -> Option<thread::JoinHandle<()>> {
     let (send, recv) = channel();
     let handle = EditorHandle {

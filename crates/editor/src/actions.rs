@@ -247,6 +247,7 @@ pub(crate) const COMMANDS: &[Action] = &[
     window::focus_window,
     window::cancel,
     window::new_window,
+    window::status,
 
     completion::complete,
 

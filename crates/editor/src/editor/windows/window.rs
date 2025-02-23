@@ -37,7 +37,7 @@ use sanedit_messages::{
 use crate::{
     common::change::{newline_autopair, newline_empty_line, newline_indent},
     editor::{
-        buffers::{Buffer, BufferId, SnapshotAux},
+        buffers::{Buffer, BufferId, SnapshotAux, SnapshotId},
         keymap::KeymapKind,
     },
 };
@@ -52,7 +52,7 @@ pub(crate) use self::{
 #[derive(Debug)]
 pub(crate) struct Window {
     bid: BufferId,
-    last_buf: Option<(BufferId, SnapshotAux)>,
+    last_buffer: Option<(BufferId, SnapshotAux)>,
     message: Option<StatusMessage>,
     view: View,
 
@@ -67,6 +67,7 @@ pub(crate) struct Window {
     /// Focus determines where to direct input
     focus_stack: FocusStack,
     focus: Focus,
+    popup: Option<Popup>,
 
     pub keymap_layer: String,
     pub shell_kind: ShellKind,
@@ -78,7 +79,12 @@ pub(crate) struct Window {
     pub ft_view: FiletreeView,
     pub locations: Locations,
     pub snippets: Vec<Jumps>,
-    popup: Option<Popup>,
+
+    /// Cursor jumps across files
+    pub cursor_jumps: Jumps,
+
+    /// Last edit jumped to in buffer
+    pub last_edit_jump: Option<SnapshotId>,
 }
 
 impl Window {
@@ -86,7 +92,7 @@ impl Window {
         Window {
             bid,
             keys: vec![],
-            last_buf: None,
+            last_buffer: None,
             view: View::new(width, height),
             jump_to_primary_cursor: false,
             message: None,
@@ -104,6 +110,8 @@ impl Window {
             locations: Locations::default(),
             popup: None,
             snippets: vec![],
+            cursor_jumps: Jumps::default(),
+            last_edit_jump: None,
         }
     }
 
@@ -222,7 +230,7 @@ impl Window {
         let old = self.bid;
         // Store old buffer data
         let odata = self.window_aux();
-        self.last_buf = Some((old, odata));
+        self.last_buffer = Some((old, odata));
 
         self.bid = bid;
         self.reload();
@@ -230,11 +238,11 @@ impl Window {
     }
 
     pub fn goto_prev_buffer(&mut self) -> bool {
-        match mem::take(&mut self.last_buf) {
+        match mem::take(&mut self.last_buffer) {
             Some((pbid, pdata)) => {
                 let old = self.bid;
                 let odata = self.window_aux();
-                self.last_buf = Some((old, odata));
+                self.last_buffer = Some((old, odata));
 
                 self.bid = pbid;
                 self.restore(&pdata, None);
@@ -388,7 +396,7 @@ impl Window {
     }
 
     pub fn prev_buffer_id(&self) -> Option<BufferId> {
-        self.last_buf.as_ref().map(|(a, _)| a).copied()
+        self.last_buffer.as_ref().map(|(a, _)| a).copied()
     }
 
     pub fn view(&self) -> &View {
@@ -1058,7 +1066,7 @@ impl Window {
 
     pub fn cursors_to_next_snippet_jump(&mut self, buf: &Buffer) -> bool {
         while let Some(last) = self.snippets.last_mut() {
-            match last.next() {
+            match last.pop() {
                 Some(jumps) => {
                     let empty = last.is_empty();
                     self.cursors_to_jump_group(buf, jumps);

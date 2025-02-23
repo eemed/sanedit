@@ -105,7 +105,7 @@ impl Buffer {
         Ok(buf)
     }
 
-    fn from_reader<R: io::Read>(reader: R) -> Result<Buffer> {
+    pub fn from_reader<R: io::Read>(reader: R) -> Result<Buffer> {
         let pt = PieceTree::from_reader(reader)?;
         Ok(Buffer {
             id: BufferId::default(),

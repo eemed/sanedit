@@ -89,6 +89,30 @@ impl Snapshots {
         let node = self.snapshots.get(id)?;
         Some(&node.data)
     }
+
+    pub fn next_of(&self, id: SnapshotId) -> Option<SnapshotId> {
+        for node in &self.snapshots {
+            if node.id == id {
+                let max = node.next.iter().max()?;
+                let node = self.snapshots.get(*max)?;
+                return Some(node.id);
+            }
+        }
+
+        None
+    }
+
+    pub fn prev_of(&self, id: SnapshotId) -> Option<SnapshotId> {
+        for node in &self.snapshots {
+            if node.id == id {
+                let max = node.previous.iter().max()?;
+                let node = self.snapshots.get(*max)?;
+                return Some(node.id);
+            }
+        }
+
+        None
+    }
 }
 
 #[derive(Debug, Clone)]

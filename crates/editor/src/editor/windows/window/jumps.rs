@@ -45,24 +45,66 @@ impl JumpGroup {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub(crate) struct Jumps {
     jumps: VecDeque<JumpGroup>,
+    // Dont store too many
+    cap: usize,
+
+    /// None = front before 0
+    position: Option<usize>,
 }
 
 impl Jumps {
     pub fn new(groups: Vec<JumpGroup>) -> Jumps {
-        let mut deque = VecDeque::with_capacity(groups.len());
+        let len = groups.len();
+        let mut deque = VecDeque::with_capacity(len);
         deque.extend(groups);
 
-        Jumps { jumps: deque }
+        Jumps {
+            jumps: deque,
+            cap: len,
+            position: None,
+        }
     }
 
-    pub fn next(&mut self) -> Option<JumpGroup> {
+    /// Takes the front jump group out of jumps
+    pub fn take_front(&mut self) -> Option<JumpGroup> {
         self.jumps.pop_front()
     }
 
     pub fn is_empty(&self) -> bool {
         self.jumps.is_empty()
+    }
+
+    pub fn push(&mut self, group: JumpGroup) {
+        while self.jumps.len() >= self.cap {
+            self.jumps.pop_back();
+        }
+
+        self.jumps.push_front(group);
+        self.position = None;
+    }
+
+    /// Goto the previous jump group inserted
+    pub fn prev(&mut self) -> Option<&JumpGroup> {
+        self.position = match self.position {
+            Some(pos) => Some(pos + 1),
+            None => Some(0),
+        };
+
+        self.jumps.get(self.position?)
+    }
+
+    /// Goto the next jump group, return Some only if prev was called before
+    pub fn next(&mut self) -> Option<&JumpGroup> {
+        let pos = self.position?;
+        if pos == 0 {
+            self.position = None;
+        } else {
+            self.position = Some(pos - 1);
+        }
+
+        self.jumps.get(self.position?)
     }
 }

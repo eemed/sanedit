@@ -99,6 +99,10 @@ impl ConfigDirectory {
         ConfigDirectory { dir: cd.into() }
     }
 
+    pub fn root(&self) -> &Path {
+        &self.dir
+    }
+
     pub fn global_snippet_file(&self) -> PathBuf {
         self.dir.join(SNIPPETS_FILE)
     }

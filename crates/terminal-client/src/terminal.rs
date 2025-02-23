@@ -167,6 +167,7 @@ impl Drop for Terminal {
             self.out,
             DisableMouseCapture,
             LeaveAlternateScreen,
+            DisableFocusChange,
             cursor::Show,
             cursor::SetCursorStyle::DefaultUserShape
         )

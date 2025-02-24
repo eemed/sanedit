@@ -217,6 +217,10 @@ pub(crate) const COMMANDS: &[Action] = &[
     cursors::remove_cursor_selections,
     cursors::cursors_to_lines_start,
     cursors::cursors_to_lines_end,
+    cursors::jump_next,
+    cursors::jump_prev,
+    cursors::jump_next_change,
+    cursors::jump_prev_change,
 
     view::scroll_up,
     view::scroll_down,

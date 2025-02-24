@@ -1,11 +1,14 @@
 use std::collections::VecDeque;
 
 use sanedit_buffer::Mark;
+use sanedit_core::{Cursor, Range};
 
-use crate::editor::buffers::BufferId;
+use crate::editor::buffers::{Buffer, BufferId};
+
+use super::Cursors;
 
 /// jump to a position or selection in buffer
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) struct Jump {
     start: Mark,
     /// If jump selects a portion of the text end is set
@@ -28,7 +31,7 @@ impl Jump {
 
 /// A group of jumps meant to be used at the same time.
 /// Mostly to place a cursor on each jump simultaneously
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) struct JumpGroup {
     #[allow(dead_code)]
     bid: BufferId,
@@ -42,6 +45,30 @@ impl JumpGroup {
 
     pub fn jumps(&self) -> &[Jump] {
         &self.jumps
+    }
+
+    pub fn to_cursors(&self, buf: &Buffer) -> Cursors {
+        let mut cursors = Cursors::default();
+
+        for (i, jump) in self.jumps().iter().enumerate() {
+            let start = buf.mark_to_pos(jump.start());
+            let end = jump.end().map(|mark| buf.mark_to_pos(mark));
+
+            let cursor = if let Some(end) = end {
+                Cursor::new_select(&Range::new(start, end))
+            } else {
+                Cursor::new(start)
+            };
+
+            let first = i == 0;
+            if first {
+                cursors.replace_primary(cursor);
+            } else {
+                cursors.push(cursor);
+            }
+        }
+
+        cursors
     }
 }
 

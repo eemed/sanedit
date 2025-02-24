@@ -381,7 +381,6 @@ impl Editor {
     fn handle_focus(&mut self, id: ClientId, in_focus: bool) {
         let (win, _) = self.win_buf_mut(id);
         win.client_in_focus = in_focus;
-        log::info!("Focus: {in_focus}");
     }
 
     fn handle_resize(&mut self, id: ClientId, size: Size) {

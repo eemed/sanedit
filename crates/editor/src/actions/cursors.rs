@@ -210,3 +210,35 @@ fn cursors_to_lines_end(editor: &mut Editor, id: ClientId) {
     win.cursors_to_lines_end(buf);
     hooks::run(editor, id, Hook::CursorMoved);
 }
+
+#[action("Jump to previous change")]
+fn jump_prev_change(editor: &mut Editor, id: ClientId) {
+    let (win, buf) = editor.win_buf_mut(id);
+    if win.cursors_to_prev_change(buf) {
+        run(editor, id, Hook::CursorMoved)
+    }
+}
+
+#[action("Jump to next change")]
+fn jump_next_change(editor: &mut Editor, id: ClientId) {
+    let (win, buf) = editor.win_buf_mut(id);
+    if win.cursors_to_next_change(buf) {
+        run(editor, id, Hook::CursorMoved)
+    }
+}
+
+#[action("Goto previous cursor jump")]
+fn jump_prev(editor: &mut Editor, id: ClientId) {
+    let (win, buf) = editor.win_buf_mut(id);
+    if win.cursors_to_prev_jump(buf) {
+        run(editor, id, Hook::CursorMoved)
+    }
+}
+
+#[action("Goto next cursor jump")]
+fn jump_next(editor: &mut Editor, id: ClientId) {
+    let (win, buf) = editor.win_buf_mut(id);
+    if win.cursors_to_next_jump(buf) {
+        run(editor, id, Hook::CursorMoved)
+    }
+}

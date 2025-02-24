@@ -133,6 +133,10 @@ impl Buffer {
         self.pt.len()
     }
 
+    pub fn snapshots(&self) -> &Snapshots {
+        &self.snapshots
+    }
+
     /// Get mutable access to auxilary data for a snapshot
     pub fn snapshot_aux_mut(&mut self, id: SnapshotId) -> Option<&mut SnapshotAux> {
         self.snapshots.aux_mut(id)

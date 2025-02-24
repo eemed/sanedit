@@ -56,9 +56,6 @@ pub(crate) struct Window {
     message: Option<StatusMessage>,
     view: View,
 
-    /// Jump to primary cursor on next buffer changed event, TODO is this useless
-    jump_to_primary_cursor: bool,
-
     keys: Vec<KeyEvent>,
 
     /// Whether the this client is focused
@@ -94,7 +91,6 @@ impl Window {
             keys: vec![],
             last_buffer: None,
             view: View::new(width, height),
-            jump_to_primary_cursor: false,
             message: None,
             keymap_layer: KeymapKind::Window.as_ref().into(),
             shell_kind: ShellKind::default(),
@@ -339,7 +335,6 @@ impl Window {
         if !self.view.is_visible(cursor) {
             self.view.view_to(cursor, buf);
         }
-        self.jump_to_primary_cursor = false;
     }
 
     /// Move primary cursor to line and the view
@@ -386,6 +381,8 @@ impl Window {
     /// Called when buffer is changed and we should correct
     /// this window.
     pub fn on_buffer_changed(&mut self, buf: &Buffer) {
+        self.ensure_cursor_on_grapheme_boundary(buf);
+
         // Redraw view
         self.view.invalidate();
         self.view.redraw(buf);
@@ -519,7 +516,6 @@ impl Window {
         let changes: Changes = changes.into();
 
         self.change(buf, &changes)?;
-        self.jump_to_primary_cursor = true;
         Ok(())
     }
 
@@ -541,7 +537,6 @@ impl Window {
             .collect();
         let changes = Changes::multi_remove(&ranges);
         buf.apply_changes(&changes)?;
-        self.jump_to_primary_cursor = true;
         Ok(())
     }
 
@@ -633,12 +628,11 @@ impl Window {
     fn restore(&mut self, aux: &SnapshotAux, buf: Option<&Buffer>) {
         // Clear highlights
         self.search.hl_matches = vec![];
-
         self.cursors = aux.cursors.clone();
-        if let Some(buf) = buf {
-            self.view.view_to(aux.view_offset, buf);
-        } else {
-            self.view.set_offset(aux.view_offset);
+
+        match buf {
+            Some(buf) => self.view.view_to(aux.view_offset, buf),
+            None => self.view.set_offset(aux.view_offset),
         }
         self.invalidate();
     }
@@ -686,7 +680,6 @@ impl Window {
 
         self.remove(buf, &ranges)?;
 
-        self.jump_to_primary_cursor = true;
         Ok(())
     }
 
@@ -980,7 +973,6 @@ impl Window {
             .collect();
 
         self.remove(buf, &ranges)?;
-        self.jump_to_primary_cursor = true;
         Ok(())
     }
 
@@ -1066,10 +1058,12 @@ impl Window {
 
     pub fn cursors_to_next_snippet_jump(&mut self, buf: &Buffer) -> bool {
         while let Some(last) = self.snippets.last_mut() {
-            match last.pop() {
+            match last.take_front() {
                 Some(jumps) => {
                     let empty = last.is_empty();
-                    self.cursors_to_jump_group(buf, jumps);
+                    self.cursors = jumps.to_cursors(buf);
+                    self.ensure_cursor_on_grapheme_boundary(buf);
+
                     // Set keymap to snippet if jumped to next
                     self.push_focus(Focus::Window, Some(KeymapKind::Snippet.as_ref().into()));
 
@@ -1088,25 +1082,81 @@ impl Window {
         false
     }
 
-    fn cursors_to_jump_group(&mut self, buf: &Buffer, group: JumpGroup) {
-        self.cursors.remove_except_primary();
-
-        for (i, jump) in group.jumps().iter().enumerate() {
-            let start = buf.mark_to_pos(jump.start());
-            let end = jump.end().map(|mark| buf.mark_to_pos(mark));
-
-            let cursor = if let Some(end) = end {
-                Cursor::new_select(&Range::new(start, end))
-            } else {
-                Cursor::new(start)
-            };
-
-            let first = i == 0;
-            if first {
-                self.cursors.replace_primary(cursor);
-            } else {
-                self.cursors.push(cursor);
-            }
+    pub fn cursors_to_next_jump(&mut self, buf: &Buffer) -> bool {
+        if let Some(group) = self.cursor_jumps.next() {
+            self.cursors = group.to_cursors(buf);
+            self.ensure_cursor_on_grapheme_boundary(buf);
+            true
+        } else {
+            false
         }
+    }
+
+    pub fn cursors_to_prev_jump(&mut self, buf: &Buffer) -> bool {
+        if let Some(group) = self.cursor_jumps.prev() {
+            self.cursors = group.to_cursors(buf);
+            self.ensure_cursor_on_grapheme_boundary(buf);
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn cursors_to_prev_change(&mut self, buf: &Buffer) -> bool {
+        self.cursors_to_prev_change_impl(buf).is_some()
+    }
+
+    fn cursors_to_prev_change_impl(&mut self, buf: &Buffer) -> Option<()> {
+        // TODO this works like shit, we need to record positions in a different way
+        let snaps = buf.snapshots();
+        // TODO some kind of X characters difference requirement?
+        let aux = match self.last_edit_jump {
+            Some(id) => {
+                let prev = snaps.prev_of(id)?;
+                self.last_edit_jump = Some(prev);
+                snaps.aux(prev)?
+            }
+            None => {
+                let id = snaps.current()?;
+                self.last_edit_jump = Some(id);
+                snaps.aux(id)?
+            }
+        };
+
+        // Just copy first cursor
+        let cursor = aux
+            .cursors
+            .iter()
+            .min_by(|a, b| a.start().cmp(&b.start()))
+            .cloned()
+            .expect("No cursors in aux");
+        self.cursors = Cursors::new(cursor);
+        self.view.view_to(aux.view_offset, buf);
+        self.invalidate();
+
+        Some(())
+    }
+
+    pub fn cursors_to_next_change(&mut self, buf: &Buffer) -> bool {
+        self.cursors_to_next_change_impl(buf).is_some()
+    }
+
+    fn cursors_to_next_change_impl(&mut self, buf: &Buffer) -> Option<()> {
+        let snaps = buf.snapshots();
+        let id = self.last_edit_jump.unwrap_or(snaps.current()?);
+        let next = snaps.next_of(id)?;
+        let aux = snaps.aux(next)?;
+
+        let cursor = aux
+            .cursors
+            .iter()
+            .min_by(|a, b| a.start().cmp(&b.start()))
+            .cloned()
+            .expect("No cursors in aux");
+        self.cursors = Cursors::new(cursor);
+        self.view.view_to(aux.view_offset, buf);
+        self.invalidate();
+
+        Some(())
     }
 }

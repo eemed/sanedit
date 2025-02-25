@@ -21,6 +21,7 @@ use std::{
 
 use anyhow::{bail, Result};
 use rustc_hash::FxHashSet;
+use sanedit_buffer::Mark;
 use sanedit_core::{
     grapheme_category, indent_at_line,
     movement::{
@@ -225,7 +226,7 @@ impl Window {
     pub fn open_buffer(&mut self, bid: BufferId) -> BufferId {
         let old = self.bid;
         // Store old buffer data
-        let odata = self.window_aux();
+        let odata = self.window_aux(None);
         self.last_buffer = Some((old, odata));
 
         self.bid = bid;
@@ -237,7 +238,7 @@ impl Window {
         match mem::take(&mut self.last_buffer) {
             Some((pbid, pdata)) => {
                 let old = self.bid;
-                let odata = self.window_aux();
+                let odata = self.window_aux(None);
                 self.last_buffer = Some((old, odata));
 
                 self.bid = pbid;
@@ -434,10 +435,12 @@ impl Window {
     }
 
     /// Create snapshot auxilary data for window
-    fn window_aux(&self) -> SnapshotAux {
+    /// Provide mark to store in aux
+    fn window_aux(&self, mark: Option<Mark>) -> SnapshotAux {
         SnapshotAux {
             cursors: self.cursors.clone(),
             view_offset: self.view.start(),
+            mark,
         }
     }
 
@@ -447,7 +450,10 @@ impl Window {
     }
 
     pub fn change(&mut self, buf: &mut Buffer, changes: &Changes) -> Result<()> {
-        let aux = self.window_aux();
+        self.last_edit_jump = None;
+
+        let mark = self.cursors.mark_first(buf);
+        let aux = self.window_aux(mark.into());
         let result = buf.apply_changes(changes)?;
 
         changes.move_cursors(self.cursors.cursors_mut());
@@ -590,10 +596,20 @@ impl Window {
         //
         // When undoing stuff create cursors from last edit, instead of current
         // position
-        let cursors = buf
-            .last_edit()
-            .map(|edit| Self::cursors_from_changes(&edit.changes))
-            .unwrap_or(Cursors::default());
+        self.last_edit_jump = None;
+        let aux = {
+            let cursors = buf
+                .last_edit()
+                .map(|edit| Self::cursors_from_changes(&edit.changes))
+                .unwrap_or(Cursors::default());
+            let mark = cursors.mark_first(buf);
+
+            SnapshotAux {
+                cursors,
+                view_offset: self.view.start(),
+                mark: mark.into(),
+            }
+        };
 
         let change = match buf.apply_changes(&Changes::undo()) {
             Ok(res) => res,
@@ -606,8 +622,6 @@ impl Window {
         let restored = change.restored_snapshot;
 
         if let Some(id) = created {
-            let mut aux = self.window_aux();
-            aux.cursors = cursors;
             *buf.snapshot_aux_mut(id).unwrap() = aux;
         }
 
@@ -638,6 +652,7 @@ impl Window {
     }
 
     pub fn redo(&mut self, buf: &mut Buffer) -> Result<()> {
+        self.last_edit_jump = None;
         let change = match buf.apply_changes(&Changes::redo()) {
             Ok(res) => res,
             Err(e) => {
@@ -950,8 +965,10 @@ impl Window {
                 return Err(e);
             }
         };
+        let mark = self.cursors.mark_first(buf);
+        let waux = self.window_aux(mark.into());
         let aux = buf.snapshot_aux_mut(saved.snapshot).unwrap();
-        *aux = self.window_aux();
+        *aux = waux;
         Ok(())
     }
 
@@ -1109,7 +1126,6 @@ impl Window {
     fn cursors_to_prev_change_impl(&mut self, buf: &Buffer) -> Option<()> {
         // TODO this works like shit, we need to record positions in a different way
         let snaps = buf.snapshots();
-        // TODO some kind of X characters difference requirement?
         let aux = match self.last_edit_jump {
             Some(id) => {
                 let prev = snaps.prev_of(id)?;
@@ -1123,15 +1139,20 @@ impl Window {
             }
         };
 
-        // Just copy first cursor
-        let cursor = aux
-            .cursors
-            .iter()
-            .min_by(|a, b| a.start().cmp(&b.start()))
-            .cloned()
-            .expect("No cursors in aux");
+        let pos = match aux.mark {
+            Some(mark) => buf.mark_to_pos(&mark),
+            None => aux
+                .cursors
+                .iter()
+                .map(Cursor::start)
+                .min()
+                .expect("No cursors found in aux"),
+        };
+
+        let cursor = Cursor::new(pos);
         self.cursors = Cursors::new(cursor);
         self.view.view_to(aux.view_offset, buf);
+        self.ensure_cursor_on_grapheme_boundary(buf);
         self.invalidate();
 
         Some(())
@@ -1143,18 +1164,33 @@ impl Window {
 
     fn cursors_to_next_change_impl(&mut self, buf: &Buffer) -> Option<()> {
         let snaps = buf.snapshots();
-        let id = self.last_edit_jump.unwrap_or(snaps.current()?);
-        let next = snaps.next_of(id)?;
-        let aux = snaps.aux(next)?;
+        let aux = match self.last_edit_jump {
+            Some(id) => {
+                let prev = snaps.next_of(id)?;
+                self.last_edit_jump = Some(prev);
+                snaps.aux(prev)?
+            }
+            None => {
+                let id = snaps.current()?;
+                self.last_edit_jump = Some(id);
+                snaps.aux(id)?
+            }
+        };
 
-        let cursor = aux
-            .cursors
-            .iter()
-            .min_by(|a, b| a.start().cmp(&b.start()))
-            .cloned()
-            .expect("No cursors in aux");
+        let pos = match aux.mark {
+            Some(mark) => buf.mark_to_pos(&mark),
+            None => aux
+                .cursors
+                .iter()
+                .map(Cursor::start)
+                .min()
+                .expect("No cursors found in aux"),
+        };
+
+        let cursor = Cursor::new(pos);
         self.cursors = Cursors::new(cursor);
         self.view.view_to(aux.view_offset, buf);
+        self.ensure_cursor_on_grapheme_boundary(buf);
         self.invalidate();
 
         Some(())

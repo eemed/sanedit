@@ -1,4 +1,4 @@
-use sanedit_buffer::PieceTreeView;
+use sanedit_buffer::{Mark, PieceTreeView};
 
 use crate::editor::windows::Cursors;
 
@@ -6,6 +6,7 @@ use crate::editor::windows::Cursors;
 pub(crate) struct SnapshotAux {
     pub(crate) cursors: Cursors,
     pub(crate) view_offset: u64,
+    pub(crate) mark: Option<Mark>,
 }
 
 pub(crate) type SnapshotId = usize;

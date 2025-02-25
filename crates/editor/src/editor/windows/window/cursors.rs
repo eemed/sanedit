@@ -1,8 +1,11 @@
 use std::cmp::min;
 
 use rustc_hash::FxHashSet;
+use sanedit_buffer::Mark;
 use sanedit_core::{BufferRange, Cursor};
 use sanedit_utils::ranges::OverlappingRanges;
+
+use crate::editor::buffers::Buffer;
 
 #[derive(Debug, Clone)]
 pub struct Cursors {
@@ -249,6 +252,16 @@ impl Cursors {
 
     pub fn has_selections(&self) -> bool {
         self.cursors.iter().any(|c| c.selection().is_some())
+    }
+
+    pub fn mark_first(&self, buf: &Buffer) -> Mark {
+        let pos = self
+            .cursors()
+            .iter()
+            .map(Cursor::start)
+            .min()
+            .expect("No cursors found");
+        buf.mark(pos)
     }
 }
 

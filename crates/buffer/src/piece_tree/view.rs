@@ -10,6 +10,7 @@ use super::mark::Mark;
 use super::tree::pieces::Pieces;
 use super::tree::Tree;
 use super::utf8::graphemes::Graphemes;
+use crate::piece_tree::buffers::BufferKind;
 use crate::piece_tree::chunks::Chunks;
 use crate::piece_tree::utf8::lines::Lines;
 
@@ -157,6 +158,17 @@ impl PieceTreeView {
         );
         let after = pos == self.len();
         if after {
+            // If marking an empty buffer use original 0 and after flag
+            if pos == 0 {
+                return Mark {
+                    orig: 0,
+                    kind: BufferKind::Original,
+                    pos: 0,
+                    count: 0,
+                    after,
+                };
+            }
+
             pos -= 1;
         }
 
@@ -179,6 +191,11 @@ impl PieceTreeView {
     /// position.
     #[inline]
     pub fn mark_to_pos(&self, mark: &Mark) -> u64 {
+        // Marked an empty buffer
+        if mark.orig == 0 && mark.after {
+            return 0;
+        }
+
         let mut pieces = Pieces::new(self, 0);
         let mut piece = pieces.get();
 

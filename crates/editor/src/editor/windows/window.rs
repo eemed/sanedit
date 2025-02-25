@@ -440,7 +440,7 @@ impl Window {
         SnapshotAux {
             cursors: self.cursors.clone(),
             view_offset: self.view.start(),
-            mark,
+            change_start: mark,
         }
     }
 
@@ -607,7 +607,7 @@ impl Window {
             SnapshotAux {
                 cursors,
                 view_offset: self.view.start(),
-                mark: mark.into(),
+                change_start: mark.into(),
             }
         };
 
@@ -1139,7 +1139,7 @@ impl Window {
             }
         };
 
-        let pos = match aux.mark {
+        let pos = match aux.change_start {
             Some(mark) => buf.mark_to_pos(&mark),
             None => aux
                 .cursors
@@ -1177,7 +1177,7 @@ impl Window {
             }
         };
 
-        let pos = match aux.mark {
+        let pos = match aux.change_start {
             Some(mark) => buf.mark_to_pos(&mark),
             None => aux
                 .cursors

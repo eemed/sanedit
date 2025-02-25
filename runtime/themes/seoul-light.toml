@@ -65,9 +65,14 @@ match = ",#b0463a,"
 
 [colors.filetree]
 default = "#DADADA,#3A3A3A,"
-file = ""
-directory = ",#824b26,"
 markers = ",#014CC0,"
+
+[colors.filetree.file]
+default = ""
+selected = "#c2c2c2,,"
+
+[colors.filetree.directory]
+default = ",#824b26,"
 selected = "#c2c2c2,,"
 
 [colors.locations]

@@ -6,7 +6,7 @@ use crate::editor::windows::Cursors;
 pub(crate) struct SnapshotAux {
     pub(crate) cursors: Cursors,
     pub(crate) view_offset: u64,
-    pub(crate) mark: Option<Mark>,
+    pub(crate) change_start: Option<Mark>,
 }
 
 pub(crate) type SnapshotId = usize;

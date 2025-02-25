@@ -6,7 +6,7 @@ use std::sync::Arc;
 use super::buffers::AddBufferReader;
 use super::buffers::OriginalBuffer;
 use super::inplace::write_in_place;
-use super::mark::Mark;
+use super::mark::{Mark, MarkResult};
 use super::tree::pieces::Pieces;
 use super::tree::Tree;
 use super::utf8::graphemes::Graphemes;
@@ -190,10 +190,10 @@ impl PieceTreeView {
     /// If the buffer position has been deleted returns the original mark
     /// position.
     #[inline]
-    pub fn mark_to_pos(&self, mark: &Mark) -> u64 {
+    pub fn mark_to_pos(&self, mark: &Mark) -> MarkResult {
         // Marked an empty buffer
         if mark.orig == 0 && mark.after {
-            return 0;
+            return MarkResult::Certain(0);
         }
 
         let mut pieces = Pieces::new(self, 0);
@@ -209,12 +209,12 @@ impl PieceTreeView {
                 if mark.after {
                     off += 1;
                 }
-                return p_pos + off;
+                return MarkResult::Certain(p_pos + off);
             }
             piece = pieces.next();
         }
 
-        cmp::min(mark.orig, self.len)
+        MarkResult::Guess(cmp::min(mark.orig, self.len))
     }
 
     ///

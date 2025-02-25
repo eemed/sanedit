@@ -25,6 +25,7 @@ use crate::piece_tree::chunks::Chunks;
 use crate::piece_tree::tree::piece::Piece;
 use crate::piece_tree::utf8::lines::Lines;
 use buffers::OriginalBuffer;
+use mark::MarkResult;
 
 use self::slice::PieceTreeSlice;
 use self::utf8::chars::Chars;
@@ -307,7 +308,7 @@ impl PieceTree {
     /// If the buffer position has been deleted returns the original mark
     /// position.
     #[inline]
-    pub fn mark_to_pos(&self, mark: &Mark) -> u64 {
+    pub fn mark_to_pos(&self, mark: &Mark) -> MarkResult {
         self.view.mark_to_pos(mark)
     }
 

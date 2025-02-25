@@ -21,7 +21,7 @@ use std::{
 
 use anyhow::{bail, Result};
 use rustc_hash::FxHashSet;
-use sanedit_buffer::Mark;
+use sanedit_buffer::{Mark, MarkResult};
 use sanedit_core::{
     grapheme_category, indent_at_line,
     movement::{
@@ -1124,38 +1124,33 @@ impl Window {
     }
 
     fn cursors_to_prev_change_impl(&mut self, buf: &Buffer) -> Option<()> {
-        // TODO this works like shit, we need to record positions in a different way
         let snaps = buf.snapshots();
-        let aux = match self.last_edit_jump {
-            Some(id) => {
-                let prev = snaps.prev_of(id)?;
-                self.last_edit_jump = Some(prev);
-                snaps.aux(prev)?
+        // Loop until we find a mark that has not been deleted
+        loop {
+            let aux = match self.last_edit_jump {
+                Some(id) => {
+                    let prev = snaps.prev_of(id)?;
+                    self.last_edit_jump = Some(prev);
+                    snaps.aux(prev)?
+                }
+                None => {
+                    let id = snaps.current()?;
+                    self.last_edit_jump = Some(id);
+                    snaps.aux(id)?
+                }
+            };
+
+            if let Some(mark) = aux.change_start {
+                if let MarkResult::Certain(pos) = buf.mark_to_pos(&mark) {
+                    let cursor = Cursor::new(pos);
+                    self.cursors = Cursors::new(cursor);
+                    self.view.view_to(aux.view_offset, buf);
+                    self.ensure_cursor_on_grapheme_boundary(buf);
+                    self.invalidate();
+                    return Some(());
+                }
             }
-            None => {
-                let id = snaps.current()?;
-                self.last_edit_jump = Some(id);
-                snaps.aux(id)?
-            }
-        };
-
-        let pos = match aux.change_start {
-            Some(mark) => buf.mark_to_pos(&mark),
-            None => aux
-                .cursors
-                .iter()
-                .map(Cursor::start)
-                .min()
-                .expect("No cursors found in aux"),
-        };
-
-        let cursor = Cursor::new(pos);
-        self.cursors = Cursors::new(cursor);
-        self.view.view_to(aux.view_offset, buf);
-        self.ensure_cursor_on_grapheme_boundary(buf);
-        self.invalidate();
-
-        Some(())
+        }
     }
 
     pub fn cursors_to_next_change(&mut self, buf: &Buffer) -> bool {
@@ -1164,35 +1159,31 @@ impl Window {
 
     fn cursors_to_next_change_impl(&mut self, buf: &Buffer) -> Option<()> {
         let snaps = buf.snapshots();
-        let aux = match self.last_edit_jump {
-            Some(id) => {
-                let prev = snaps.next_of(id)?;
-                self.last_edit_jump = Some(prev);
-                snaps.aux(prev)?
+
+        loop {
+            let aux = match self.last_edit_jump {
+                Some(id) => {
+                    let prev = snaps.next_of(id)?;
+                    self.last_edit_jump = Some(prev);
+                    snaps.aux(prev)?
+                }
+                None => {
+                    let id = snaps.current()?;
+                    self.last_edit_jump = Some(id);
+                    snaps.aux(id)?
+                }
+            };
+
+            if let Some(mark) = aux.change_start {
+                if let MarkResult::Certain(pos) = buf.mark_to_pos(&mark) {
+                    let cursor = Cursor::new(pos);
+                    self.cursors = Cursors::new(cursor);
+                    self.view.view_to(aux.view_offset, buf);
+                    self.ensure_cursor_on_grapheme_boundary(buf);
+                    self.invalidate();
+                    return Some(());
+                }
             }
-            None => {
-                let id = snaps.current()?;
-                self.last_edit_jump = Some(id);
-                snaps.aux(id)?
-            }
-        };
-
-        let pos = match aux.change_start {
-            Some(mark) => buf.mark_to_pos(&mark),
-            None => aux
-                .cursors
-                .iter()
-                .map(Cursor::start)
-                .min()
-                .expect("No cursors found in aux"),
-        };
-
-        let cursor = Cursor::new(pos);
-        self.cursors = Cursors::new(cursor);
-        self.view.view_to(aux.view_offset, buf);
-        self.ensure_cursor_on_grapheme_boundary(buf);
-        self.invalidate();
-
-        Some(())
+        }
     }
 }

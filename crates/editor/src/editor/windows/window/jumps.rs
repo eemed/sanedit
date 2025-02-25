@@ -51,11 +51,11 @@ impl JumpGroup {
         let mut cursors = Cursors::default();
 
         for (i, jump) in self.jumps().iter().enumerate() {
-            let start = buf.mark_to_pos(jump.start());
+            let start = buf.mark_to_pos(jump.start()).pos();
             let end = jump.end().map(|mark| buf.mark_to_pos(mark));
 
             let cursor = if let Some(end) = end {
-                Cursor::new_select(&Range::new(start, end))
+                Cursor::new_select(&Range::new(start, end.pos()))
             } else {
                 Cursor::new(start)
             };

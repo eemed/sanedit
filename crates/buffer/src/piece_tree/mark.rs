@@ -10,3 +10,18 @@ pub struct Mark {
     pub(crate) count: u32,
     pub(crate) after: bool,
 }
+
+#[derive(Debug, Clone, Copy)]
+pub enum MarkResult {
+    Guess(u64),
+    Certain(u64),
+}
+
+impl MarkResult {
+    pub fn pos(&self) -> u64 {
+        match self {
+            MarkResult::Guess(n) => *n,
+            MarkResult::Certain(n) => *n,
+        }
+    }
+}

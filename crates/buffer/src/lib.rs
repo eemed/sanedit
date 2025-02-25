@@ -5,7 +5,7 @@ pub use piece_tree::{
     builder::PieceTreeBuilder,
     bytes::Bytes,
     chunks::{Chunk, Chunks},
-    mark::Mark,
+    mark::{Mark, MarkResult},
     slice::PieceTreeSlice,
     view::PieceTreeView,
     PieceTree,

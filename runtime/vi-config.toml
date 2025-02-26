@@ -165,6 +165,9 @@ maps = [
     { key = "ctrl+i", actions = ["jump_next"] },
     { key = "g ;", actions = ["jump_prev_change"] },
     { key = "g ,", actions = ["jump_next_change"] },
+    { key = "z z", actions = ["view_to_cursor_middle"] },
+    { key = "z t", actions = ["view_to_cursor_top"] },
+    { key = "z b", actions = ["view_to_cursor_bottom"] },
 
 
     { key = "ctrl+p", actions = ["open_file"] },

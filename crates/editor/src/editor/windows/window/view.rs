@@ -7,6 +7,13 @@ use sanedit_messages::redraw::{Point, Size};
 use crate::editor::buffers::{Buffer, BufferId};
 use crate::editor::syntax::{Span, SyntaxResult};
 
+#[derive(Debug, Clone)]
+pub(crate) enum Zone {
+    Top,
+    Middle,
+    Bottom,
+}
+
 #[derive(Debug, Clone, Default)]
 pub(crate) enum Cell {
     #[default]

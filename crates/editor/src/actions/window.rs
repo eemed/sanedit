@@ -1,6 +1,11 @@
 use crate::{
     actions::shell,
-    editor::{buffers::Buffer, hooks::Hook, windows::Focus, Editor},
+    editor::{
+        buffers::Buffer,
+        hooks::Hook,
+        windows::{Focus, Zone},
+        Editor,
+    },
     VERSION,
 };
 
@@ -104,14 +109,19 @@ fn status(editor: &mut Editor, id: ClientId) {
         .unwrap_or("no filetype");
     let bufsize = buf.len();
     let edits = buf.total_changes_made();
-    let (lsp, command, args) = buf.filetype.as_ref().map(|ft| {
-        let lsp = editor.language_servers.get(ft)?;
-        let name = lsp.server_name();
-        let config  = editor.filetype_config.get(ft)?;
-        let command = config.lsp.command.as_str();
-        let args = config.lsp.args.clone();
-        Some((name, command, args))
-    }).flatten().unwrap_or(("no", "-", vec![]));
+    let (lsp, command, args) = buf
+        .filetype
+        .as_ref()
+        .map(|ft| {
+            let lsp = editor.language_servers.get(ft)?;
+            let name = lsp.server_name();
+            let config = editor.filetype_config.get(ft)?;
+            let command = config.lsp.command.as_str();
+            let args = config.lsp.args.clone();
+            Some((name, command, args))
+        })
+        .flatten()
+        .unwrap_or(("no", "-", vec![]));
     let options = &win.view().options;
     let width = options.width;
     let height = options.height;
@@ -149,4 +159,22 @@ fn status(editor: &mut Editor, id: ClientId) {
     let buf = Buffer::from_reader(std::io::Cursor::new(text)).unwrap();
     let bid = editor.buffers_mut().insert(buf);
     editor.open_buffer(id, bid);
+}
+
+#[action("Move view to cursor high")]
+fn view_to_cursor_top(editor: &mut Editor, id: ClientId) {
+    let (win, buf) = editor.win_buf_mut(id);
+    win.view_to_cursor_zone(buf, Zone::Top)
+}
+
+#[action("Move view to cursor middle")]
+fn view_to_cursor_middle(editor: &mut Editor, id: ClientId) {
+    let (win, buf) = editor.win_buf_mut(id);
+    win.view_to_cursor_zone(buf, Zone::Middle)
+}
+
+#[action("Move view to cursor bottom")]
+fn view_to_cursor_bottom(editor: &mut Editor, id: ClientId) {
+    let (win, buf) = editor.win_buf_mut(id);
+    win.view_to_cursor_zone(buf, Zone::Bottom)
 }

@@ -119,12 +119,26 @@ impl Locations {
 
     /// Select next item, expand groups if needed
     pub fn select_next_item(&mut self) -> bool {
-        todo!()
+        while self.select_next() {
+            match self.selected_mut().unwrap() {
+                Either::Left(group) => group.expand(),
+                Either::Right(_) => return true,
+            }
+        }
+
+        false
     }
 
     /// Select previous item, expand groups if needed
     pub fn select_prev_item(&mut self) -> bool {
-        todo!()
+        while self.select_prev() {
+            match self.selected_mut().unwrap() {
+                Either::Left(group) => group.expand(),
+                Either::Right(_) => return true,
+            }
+        }
+
+        false
     }
 
     pub fn select_next(&mut self) -> bool {

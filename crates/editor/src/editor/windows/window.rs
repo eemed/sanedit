@@ -319,6 +319,30 @@ impl Window {
         }
     }
 
+    pub fn view_to_cursor_zone(&mut self, buf: &Buffer, zone: Zone) {
+        debug_assert!(
+            buf.id == self.bid,
+            "Invalid buffer provided to window got id {:?}, expected {:?}",
+            buf.id,
+            self.bid
+        );
+        let cursor = self.primary_cursor().pos();
+
+        self.view.set_offset(cursor);
+
+        match zone {
+            Zone::Top => self.view.scroll_up_n(buf, 1),
+            Zone::Middle => {
+                let lines = (self.view.height() / 2) as u64;
+                self.view.scroll_up_n(buf, lines);
+            }
+            Zone::Bottom => {
+                let lines = self.view.height().saturating_sub(2) as u64;
+                self.view.scroll_up_n(buf, lines);
+            }
+        }
+    }
+
     /// sets window offset so that primary cursor is visible in the drawn view.
     pub fn view_to_cursor(&mut self, buf: &Buffer) {
         debug_assert!(

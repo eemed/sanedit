@@ -117,6 +117,8 @@ pub(crate) const COMMANDS: &[Action] = &[
     locations::toggle_all_expand_locs,
     locations::keep_locations,
     locations::reject_locations,
+    locations::goto_next_loc_item,
+    locations::goto_prev_loc_item,
 
     filetree::close_filetree,
     filetree::next_ft_entry,

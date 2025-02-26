@@ -126,3 +126,19 @@ fn reject_locations(editor: &mut Editor, id: ClientId) {
         .build();
     win.focus_to(Focus::Prompt);
 }
+
+#[action("Goto next location item")]
+fn goto_next_loc_item(editor: &mut Editor, id: ClientId) {
+    let (win, _buf) = editor.win_buf_mut(id);
+    if win.locations.select_next_item() {
+        goto_loc_entry.execute(editor, id);
+    }
+}
+
+#[action("Goto prev location item")]
+fn goto_prev_loc_item(editor: &mut Editor, id: ClientId) {
+    let (win, _buf) = editor.win_buf_mut(id);
+    if win.locations.select_prev_item() {
+        goto_loc_entry.execute(editor, id);
+    }
+}

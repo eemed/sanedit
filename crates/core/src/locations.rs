@@ -117,30 +117,48 @@ impl Locations {
         self.iter().count()
     }
 
-    pub fn select_next(&mut self) {
+    /// Select next item, expand groups if needed
+    pub fn select_next_item(&mut self) -> bool {
+        todo!()
+    }
+
+    /// Select previous item, expand groups if needed
+    pub fn select_prev_item(&mut self) -> bool {
+        todo!()
+    }
+
+    pub fn select_next(&mut self) -> bool {
         if self.groups.is_empty() {
             self.selection = None;
-            return;
+            return false;
         }
+
+        let old = self.selection;
 
         self.selection = match self.selection {
             Some(n) => min(n + 1, self.visible_len() - 1),
             None => 0,
         }
         .into();
+
+        old != self.selection
     }
 
-    pub fn select_prev(&mut self) {
+    pub fn select_prev(&mut self) -> bool {
         if self.groups.is_empty() {
             self.selection = None;
-            return;
+            return false;
         }
+
+        let old = self.selection;
 
         self.selection = match self.selection {
             Some(n) => n.saturating_sub(1),
             None => self.visible_len() - 1,
         }
         .into();
+
+        old != self.selection
     }
 
     fn ensure_selection_in_range(&mut self) {

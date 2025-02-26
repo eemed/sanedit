@@ -151,7 +151,7 @@ maps = [
     { key = "esc", actions = ["cancel"] },
     { key = "§", actions = ["cancel"] },
     { key = "y", actions = ["select_line", "swap_selection_dir", "copy", "stop_selection"] },
-    { key = "p", actions = ["paste"] },
+    { key = "p", actions = ["paste_after"] },
     { key = "i", actions = ["goto_layer insert"] },
     { key = "u", actions = ["undo"] },
     { key = "U", actions = ["redo"] },

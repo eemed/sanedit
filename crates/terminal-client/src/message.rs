@@ -5,6 +5,7 @@ pub(crate) enum ClientInternalMessage {
     FromServer(ClientMessage),
     ToServer(Message),
     Error(String),
+    Focus(bool),
     Bye,
 }
 

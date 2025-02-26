@@ -75,10 +75,10 @@ fn process_input_event(
             }
         }
         FocusGained => {
-            sender.send(Message::Focus(true).into())?;
+            sender.send(ClientInternalMessage::Focus(true))?;
         }
         FocusLost => {
-            sender.send(Message::Focus(false).into())?;
+            sender.send(ClientInternalMessage::Focus(false))?;
         }
         Paste(_) => {}
     }

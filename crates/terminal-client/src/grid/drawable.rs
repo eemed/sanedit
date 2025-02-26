@@ -48,7 +48,11 @@ impl Drawable for Window {
 
 impl Drawable for Statusline {
     fn draw(&self, ctx: &UIContext, cells: &mut [&mut [CCell]]) {
-        let field = if self.client_in_focus { ThemeField::Statusline } else { ThemeField::StatuslineNoFocus };
+        let field = if ctx.client_in_focus {
+            ThemeField::Statusline
+        } else {
+            ThemeField::StatuslineNoFocus
+        };
         let style = ctx.style(field);
         let width = cells.first().map(|c| c.len()).unwrap_or(0);
         let left = into_cells_with_theme_pad_with(&self.left, &style, width);

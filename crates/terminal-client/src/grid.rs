@@ -13,10 +13,10 @@ use completion::completion_rect;
 use items::Kind;
 use popup::popup_rect;
 use prompt::prompt_rect;
-use sanedit_messages::redraw::{
+use sanedit_messages::{redraw::{
     completion::Completion, statusline::Statusline, window::Window, Cell, Component, Cursor,
     Diffable as _, Popup, PopupComponent, Redraw, Size, StatusMessage, Theme,
-};
+}, Message};
 
 use crate::ui::UIContext;
 
@@ -42,6 +42,7 @@ pub(crate) struct Grid {
     drawn: Vec<Vec<Cell>>,
     cursor: Option<Cursor>,
     pub theme: Arc<Theme>,
+    pub client_in_focus: bool,
 }
 
 impl Grid {
@@ -60,13 +61,18 @@ impl Grid {
             drawn: vec![vec![Cell::default(); width]; height],
             cursor: None,
             theme: Arc::new(Theme::default()),
+            client_in_focus: true,
         };
         me.refresh();
         me
     }
 
-    pub fn on_send_input(&mut self) {
+    pub fn on_send_input(&mut self, _msg: &Message) {
         self.msg = None;
+    }
+
+    pub fn on_focus_change(&mut self, focus: bool) {
+        self.client_in_focus = focus;
     }
 
     pub fn handle_redraw(&mut self, msg: Redraw) -> RedrawResult {
@@ -241,12 +247,14 @@ impl Grid {
         drawable: &D,
         rect: Rect,
         theme: &Arc<Theme>,
+        client_in_focus: bool,
         cursor: &mut Option<Cursor>,
         cells: &mut [Vec<Cell>],
     ) {
         let ctx = UIContext {
             theme: theme.clone(),
             rect,
+            client_in_focus,
         };
 
         match drawable.cursor(&ctx) {
@@ -283,6 +291,7 @@ impl Grid {
             &self.window.0,
             self.window.1,
             t,
+            self.client_in_focus,
             &mut self.cursor,
             &mut self.drawn,
         );
@@ -290,32 +299,75 @@ impl Grid {
             &self.statusline.0,
             self.statusline.1,
             t,
+            self.client_in_focus,
             &mut self.cursor,
             &mut self.drawn,
         );
 
         if let Some((loc, rect)) = &self.locations {
-            Self::draw_drawable(loc, *rect, t, &mut self.cursor, &mut self.drawn);
+            Self::draw_drawable(
+                loc,
+                *rect,
+                t,
+                self.client_in_focus,
+                &mut self.cursor,
+                &mut self.drawn,
+            );
         }
 
         if let Some((ft, rect)) = &self.filetree {
-            Self::draw_drawable(ft, *rect, t, &mut self.cursor, &mut self.drawn);
+            Self::draw_drawable(
+                ft,
+                *rect,
+                t,
+                self.client_in_focus,
+                &mut self.cursor,
+                &mut self.drawn,
+            );
         }
 
         if let Some((prompt, rect)) = &self.prompt {
-            Self::draw_drawable(prompt, *rect, t, &mut self.cursor, &mut self.drawn);
+            Self::draw_drawable(
+                prompt,
+                *rect,
+                t,
+                self.client_in_focus,
+                &mut self.cursor,
+                &mut self.drawn,
+            );
         }
 
         if let Some((msg, rect)) = &self.msg {
-            Self::draw_drawable(msg, *rect, t, &mut self.cursor, &mut self.drawn);
+            Self::draw_drawable(
+                msg,
+                *rect,
+                t,
+                self.client_in_focus,
+                &mut self.cursor,
+                &mut self.drawn,
+            );
         }
 
         if let Some((compl, rect)) = &self.completion {
-            Self::draw_drawable(compl, *rect, t, &mut self.cursor, &mut self.drawn);
+            Self::draw_drawable(
+                compl,
+                *rect,
+                t,
+                self.client_in_focus,
+                &mut self.cursor,
+                &mut self.drawn,
+            );
         }
 
         if let Some((popup, rect)) = &self.popup {
-            Self::draw_drawable(popup, *rect, t, &mut self.cursor, &mut self.drawn);
+            Self::draw_drawable(
+                popup,
+                *rect,
+                t,
+                self.client_in_focus,
+                &mut self.cursor,
+                &mut self.drawn,
+            );
         }
 
         (&self.drawn, self.cursor)

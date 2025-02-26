@@ -59,9 +59,6 @@ pub(crate) struct Window {
 
     keys: Vec<KeyEvent>,
 
-    /// Whether the this client is focused
-    pub(crate) client_in_focus: bool,
-
     /// Focus determines where to direct input
     focus_stack: FocusStack,
     focus: Focus,
@@ -100,7 +97,6 @@ impl Window {
             config,
             search: Search::default(),
             prompt: Prompt::default(),
-            client_in_focus: true,
             focus: Focus::Window,
             focus_stack: FocusStack::default(),
             ft_view: FiletreeView::default(),
@@ -456,7 +452,11 @@ impl Window {
         let aux = self.window_aux(mark.into());
         let result = buf.apply_changes(changes)?;
 
-        changes.move_cursors(self.cursors.cursors_mut());
+        if self.cursors.keep_positions {
+            changes.keep_cursors_still(self.cursors.cursors_mut());
+        } else {
+            changes.move_cursors(self.cursors.cursors_mut());
+        }
         self.cursors.merge_overlapping();
 
         if let Some(id) = result.created_snapshot {
@@ -1141,7 +1141,7 @@ impl Window {
             };
 
             if let Some(mark) = aux.change_start {
-                if let MarkResult::Certain(pos) = buf.mark_to_pos(&mark) {
+                if let MarkResult::Found(pos) = buf.mark_to_pos(&mark) {
                     let cursor = Cursor::new(pos);
                     self.cursors = Cursors::new(cursor);
                     self.view.view_to(aux.view_offset, buf);
@@ -1175,7 +1175,7 @@ impl Window {
             };
 
             if let Some(mark) = aux.change_start {
-                if let MarkResult::Certain(pos) = buf.mark_to_pos(&mark) {
+                if let MarkResult::Found(pos) = buf.mark_to_pos(&mark) {
                     let cursor = Cursor::new(pos);
                     self.cursors = Cursors::new(cursor);
                     self.view.view_to(aux.view_offset, buf);

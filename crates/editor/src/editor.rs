@@ -319,7 +319,6 @@ impl Editor {
             Message::KeyEvent(key_event) => self.handle_key_event(id, key_event),
             Message::MouseEvent(mouse_event) => self.handle_mouse_event(id, mouse_event),
             Message::Resize(size) => self.handle_resize(id, size),
-            Message::Focus(in_focus) => self.handle_focus(id, in_focus),
             _ => {}
         }
 
@@ -376,11 +375,6 @@ impl Editor {
             self.send_to_client(id, ClientMessage::Redraw(msg));
         }
         self.send_to_client(id, ClientMessage::Flush);
-    }
-
-    fn handle_focus(&mut self, id: ClientId, in_focus: bool) {
-        let (win, _) = self.win_buf_mut(id);
-        win.client_in_focus = in_focus;
     }
 
     fn handle_resize(&mut self, id: ClientId, size: Size) {
@@ -595,16 +589,22 @@ impl Editor {
         run(self, id, Hook::Reload);
     }
 
-    pub fn paste_from_clipboard(&mut self, id: ClientId) {
+    pub fn paste_from_clipboard(&mut self, id: ClientId, keep_cursor_position: bool) {
         let Ok(text) = self.clipboard.paste() else {
             return;
         };
         let lines = paste_separate_cursor_lines(text.as_str());
-        self.paste_inline(id, &text, lines);
+        self.paste_inline(id, &text, lines, keep_cursor_position);
     }
 
     // Paste to current cursors
-    fn paste_inline(&mut self, id: ClientId, text: &str, lines: Vec<(String, bool)>) {
+    fn paste_inline(
+        &mut self,
+        id: ClientId,
+        text: &str,
+        lines: Vec<(String, bool)>,
+        keep_cursor_position: bool,
+    ) {
         let (win, buf) = self.win_buf_mut(id);
         let clen = win.cursors.cursors().len();
         let llen = lines.len();
@@ -619,11 +619,14 @@ impl Editor {
             })
             .collect();
 
+        let keep_positions =
+            std::mem::replace(&mut win.cursors.keep_positions, keep_cursor_position);
         let res = if clen == llen {
             win.insert_to_each_cursor(buf, lines)
         } else {
             win.insert_at_cursors(buf, &text)
         };
+        win.cursors.keep_positions = keep_positions;
 
         if res.is_ok() {
             run(self, id, Hook::BufChanged(bid));

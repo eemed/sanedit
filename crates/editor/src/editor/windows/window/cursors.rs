@@ -8,12 +8,15 @@ use sanedit_utils::ranges::OverlappingRanges;
 use crate::editor::buffers::Buffer;
 
 #[derive(Debug, Clone)]
-pub struct Cursors {
+pub(crate) struct Cursors {
     // I would like this to be sorted but sortedvec ensures nothing because
     // cursors move all the time. It should be sorted/checked after every
     // change. So its unsorted for now.
     cursors: Vec<Cursor>,
     primary: usize,
+
+    /// Try to not move cursors during edits if possible
+    pub keep_positions: bool,
 }
 
 impl Cursors {
@@ -21,6 +24,7 @@ impl Cursors {
         Cursors {
             cursors: vec![cursor],
             primary: 0,
+            keep_positions: false,
         }
     }
 
@@ -34,10 +38,6 @@ impl Cursors {
 
     pub fn primary_mut(&mut self) -> &mut Cursor {
         &mut self.cursors[self.primary]
-    }
-
-    pub fn primary_index(&self) -> usize {
-        self.primary
     }
 
     pub fn start_selection(&mut self) {
@@ -270,6 +270,7 @@ impl Default for Cursors {
         Cursors {
             cursors: vec![Cursor::default()],
             primary: 0,
+            keep_positions: false,
         }
     }
 }

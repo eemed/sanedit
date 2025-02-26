@@ -96,6 +96,7 @@ where
                 break;
             }
             Bye => break,
+            Focus(focus) => ui.on_focus_change(focus),
         }
     }
 

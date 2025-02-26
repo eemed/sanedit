@@ -156,8 +156,8 @@ impl PieceTreeView {
             pos,
             self.len
         );
-        let after = pos == self.len();
-        if after {
+        let end_of_buffer = pos == self.len();
+        if end_of_buffer {
             // If marking an empty buffer use original 0 and after flag
             if pos == 0 {
                 return Mark {
@@ -165,7 +165,7 @@ impl PieceTreeView {
                     kind: BufferKind::Original,
                     pos: 0,
                     count: 0,
-                    after,
+                    end_of_buffer,
                 };
             }
 
@@ -182,7 +182,7 @@ impl PieceTreeView {
             kind: piece.kind,
             pos: piece.pos + off,
             count: piece.count,
-            after,
+            end_of_buffer,
         }
     }
 
@@ -192,29 +192,38 @@ impl PieceTreeView {
     #[inline]
     pub fn mark_to_pos(&self, mark: &Mark) -> MarkResult {
         // Marked an empty buffer
-        if mark.orig == 0 && mark.after {
-            return MarkResult::Certain(0);
+        if mark.orig == 0 && mark.end_of_buffer {
+            return MarkResult::Found(0);
         }
 
+        let mut min_dist = self.len;
+        let mut deleted_closest = std::cmp::min(mark.orig, self.len);
         let mut pieces = Pieces::new(self, 0);
         let mut piece = pieces.get();
 
         while let Some((p_pos, p)) = piece {
-            if p.kind == mark.kind
-                && p.pos <= mark.pos
-                && mark.pos < p.pos + p.len
-                && mark.count == p.count
-            {
-                let mut off = mark.pos - p.pos;
-                if mark.after {
-                    off += 1;
+            if p.kind == mark.kind && mark.count == p.count {
+                // If mark in piece we found it
+                if p.pos <= mark.pos && mark.pos < p.pos + p.len {
+                    let mut off = mark.pos - p.pos;
+                    if mark.end_of_buffer {
+                        off += 1;
+                    }
+                    return MarkResult::Found(p_pos + off);
                 }
-                return MarkResult::Certain(p_pos + off);
+
+                // Try to find closest match if mark position is deleted
+                let dist = p.min_abs_distance(mark.pos);
+                if dist < min_dist {
+                    min_dist = dist;
+                    deleted_closest = mark.pos + if mark.end_of_buffer { 1 } else { 0 };
+                }
             }
+
             piece = pieces.next();
         }
 
-        MarkResult::Guess(cmp::min(mark.orig, self.len))
+        MarkResult::Deleted(deleted_closest)
     }
 
     ///
@@ -233,7 +242,7 @@ impl PieceTreeView {
     ///      2. Probably slower than writing a copy if insert/remove operations are
     ///         in the beginning portion of the file
     ///      3. Previously created read only copies/marks cannot be used anymore
-    pub unsafe fn write_in_place(&self) -> io::Result<()> {
+    pub(crate) unsafe fn write_in_place(&self) -> io::Result<()> {
         write_in_place(self)
     }
 

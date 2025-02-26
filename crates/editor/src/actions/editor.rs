@@ -69,12 +69,12 @@ fn copy(editor: &mut Editor, id: ClientId) {
 
 #[action("Paste from clipboard")]
 fn paste(editor: &mut Editor, id: ClientId) {
-    editor.paste_from_clipboard(id);
-    // let (_, buf) = editor.win_buf_mut(id);
-    // let bid = buf.id;
-    // run(editor, id, Hook::BufChanged(bid));
-    // if win.remove_cursor_selections(buf).unwrap_or(false) {
-    // }
+    editor.paste_from_clipboard(id, false);
+}
+
+#[action("Paste from clipboard after cursor")]
+fn paste_after(editor: &mut Editor, id: ClientId) {
+    editor.paste_from_clipboard(id, true);
 }
 
 #[action("Cut selection to clipboard")]

@@ -134,6 +134,7 @@ pub(crate) const COMMANDS: &[Action] = &[
 
     editor::copy,
     editor::paste,
+    editor::paste_after,
     editor::cut,
     editor::open_config,
     editor::open_new_scratch_buffer,

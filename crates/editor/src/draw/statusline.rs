@@ -16,11 +16,7 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> Statusline {
     if win.focus() == Focus::Filetree {
         let left = " File browser".to_string();
         let right = String::new();
-        return Statusline {
-            left,
-            right,
-            client_in_focus: win.client_in_focus,
-        };
+        return Statusline { left, right };
     }
 
     let name = buf.name();
@@ -74,9 +70,5 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> Statusline {
         result
     };
 
-    Statusline {
-        left,
-        right,
-        client_in_focus: win.client_in_focus,
-    }
+    Statusline { left, right }
 }

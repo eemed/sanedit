@@ -37,6 +37,5 @@ pub enum Message {
     KeyEvent(KeyEvent),
     MouseEvent(MouseEvent),
     Resize(Size),
-    Focus(bool),
     Bye,
 }

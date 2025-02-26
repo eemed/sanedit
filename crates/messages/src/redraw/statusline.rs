@@ -4,7 +4,6 @@ use super::{Component, Diffable, Redraw};
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone, Default)]
 pub struct Statusline {
-    pub client_in_focus: bool,
     pub left: String,
     pub right: String,
 }

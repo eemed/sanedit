@@ -63,4 +63,24 @@ impl Piece {
     pub fn range(&self) -> Range<u64> {
         self.pos..self.pos + self.len
     }
+
+    /// Minimum absolute distance to buffer position
+    pub fn min_abs_distance(&self, bpos: u64) -> u64 {
+        fn abs_diff(x: u64, y: u64) -> u64 {
+            if x < y {
+                y - x
+            } else {
+                x - y
+            }
+        }
+
+        if self.pos <= bpos && bpos < self.pos + self.len {
+            return 0;
+        }
+
+        let start = abs_diff(self.pos, bpos);
+        let end = abs_diff(self.pos + self.len, bpos);
+
+        std::cmp::min(start, end)
+    }
 }

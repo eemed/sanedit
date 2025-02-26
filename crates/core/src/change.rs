@@ -194,6 +194,40 @@ impl Changes {
             .any(|change| change.range.includes(range))
     }
 
+    pub fn keep_cursors_still(&self, cursors: &mut [Cursor]) {
+        for cursor in cursors {
+            match cursor.selection() {
+                Some(range) => {
+                    if self.is_removed(&range) {
+                        let mut pos = range.start;
+                        pos -= self.removed(range.start, true);
+
+                        // Stop selection is completely removed
+                        cursor.stop_selection();
+                        cursor.goto(pos);
+                    } else {
+                        let mut start = range.start;
+                        let mut end = range.end;
+                        start -= self.removed(range.start, true);
+                        end -= self.removed(range.end, false);
+                        log::debug!("Cursor: {cursor:?} to {range:?}");
+
+                        cursor.to_range(&Range::new(start, end));
+                    }
+                }
+                None => {
+                    let mut npos = cursor.pos();
+
+                    npos -= self.removed(cursor.pos(), true);
+
+                    cursor.goto(npos);
+                }
+            }
+
+            // log::debug!("Cursor: {cursor:?}");
+        }
+    }
+
     /// Moves cursors according to this change,
     /// Wont handle undo or redo
     pub fn move_cursors(&self, cursors: &mut [Cursor]) {

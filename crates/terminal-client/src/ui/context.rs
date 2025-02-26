@@ -8,6 +8,7 @@ use crate::grid::Rect;
 pub(crate) struct UIContext {
     pub theme: Arc<Theme>,
     pub rect: Rect,
+    pub client_in_focus: bool,
 }
 
 impl UIContext {

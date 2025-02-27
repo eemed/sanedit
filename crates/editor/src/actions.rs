@@ -224,6 +224,9 @@ pub(crate) const COMMANDS: &[Action] = &[
     cursors::jump_prev,
     cursors::jump_next_change,
     cursors::jump_prev_change,
+    cursors::cursor_to_view_top,
+    cursors::cursor_to_view_middle,
+    cursors::cursor_to_view_bottom,
 
     view::scroll_up,
     view::scroll_down,

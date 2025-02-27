@@ -1210,4 +1210,25 @@ impl Window {
             }
         }
     }
+
+    pub fn cursor_to_view_zone(&mut self, zone: Zone) -> bool {
+        let line = match zone {
+            Zone::Top => 1,
+            Zone::Middle => self.view.height() / 2,
+            Zone::Bottom => self.view.height().saturating_sub(2),
+        };
+
+        let mut pos = self.view.start();
+        for i in 0..line {
+            pos += self.view.line_len_in_buffer(i);
+        }
+
+        let primary = self.cursors.primary_mut();
+        if primary.pos() != pos {
+            primary.goto(pos);
+            true
+        } else {
+            false
+        }
+    }
 }

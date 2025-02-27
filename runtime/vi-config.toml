@@ -168,6 +168,9 @@ maps = [
     { key = "z z", actions = ["view_to_cursor_middle"] },
     { key = "z t", actions = ["view_to_cursor_top"] },
     { key = "z b", actions = ["view_to_cursor_bottom"] },
+    { key = "H", actions = ["cursor_to_view_top"] },
+    { key = "M", actions = ["cursor_to_view_middle"] },
+    { key = "L", actions = ["cursor_to_view_bottom"] },
 
 
     { key = "ctrl+p", actions = ["open_file"] },

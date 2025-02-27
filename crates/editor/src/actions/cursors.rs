@@ -2,7 +2,7 @@ use sanedit_messages::redraw::Point;
 
 use crate::{
     common::window::pos_at_point,
-    editor::{hooks::Hook, Editor},
+    editor::{hooks::Hook, windows::Zone, Editor},
 };
 
 use sanedit_server::ClientId;
@@ -239,6 +239,30 @@ fn jump_prev(editor: &mut Editor, id: ClientId) {
 fn jump_next(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     if win.cursors_to_next_jump(buf) {
+        run(editor, id, Hook::CursorMoved)
+    }
+}
+
+#[action("Cursor to view top")]
+fn cursor_to_view_top(editor: &mut Editor, id: ClientId) {
+    let (win, _buf) = editor.win_buf_mut(id);
+    if win.cursor_to_view_zone(Zone::Top) {
+        run(editor, id, Hook::CursorMoved)
+    }
+}
+
+#[action("Cursor to view middle")]
+fn cursor_to_view_middle(editor: &mut Editor, id: ClientId) {
+    let (win, _buf) = editor.win_buf_mut(id);
+    if win.cursor_to_view_zone(Zone::Middle) {
+        run(editor, id, Hook::CursorMoved)
+    }
+}
+
+#[action("Cursor to view bottom")]
+fn cursor_to_view_bottom(editor: &mut Editor, id: ClientId) {
+    let (win, _buf) = editor.win_buf_mut(id);
+    if win.cursor_to_view_zone(Zone::Bottom) {
         run(editor, id, Hook::CursorMoved)
     }
 }

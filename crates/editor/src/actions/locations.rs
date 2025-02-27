@@ -7,39 +7,39 @@ use crate::editor::{
 
 use sanedit_server::ClientId;
 
-#[action("Clear locations")]
+#[action("Locations: Clear")]
 fn clear_locations(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.locations.clear();
 }
 
-#[action("Show locations")]
+#[action("Locations: Show")]
 fn show_locations(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.locations.show = true;
     win.focus_to(Focus::Locations);
 }
 
-#[action("Close locations")]
+#[action("Locations: Close")]
 fn close_locations(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.locations.show = false;
     win.focus_to(Focus::Window);
 }
 
-#[action("Next location entry")]
+#[action("Locations: Next entry")]
 fn next_loc_entry(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.locations.select_next();
 }
 
-#[action("Previous location entry")]
+#[action("Locations: Previous entry")]
 fn prev_loc_entry(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.locations.select_prev();
 }
 
-#[action("Press location entry")]
+#[action("Locations: Confirm entry")]
 fn goto_loc_entry(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
 
@@ -71,13 +71,13 @@ fn goto_loc_entry(editor: &mut Editor, id: ClientId) {
     }
 }
 
-#[action("Goto parent group entry")]
+#[action("Locations: Goto parent")]
 fn select_loc_parent(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.locations.select_parent();
 }
 
-#[action("Expand or collapse all location entries")]
+#[action("Locations: Expand / collapse toggle")]
 fn toggle_all_expand_locs(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     let mut has_expanded = false;
@@ -95,7 +95,7 @@ fn toggle_all_expand_locs(editor: &mut Editor, id: ClientId) {
     }
 }
 
-#[action("Keep locations with")]
+#[action("Locations: Keep entries with")]
 fn keep_locations(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.prompt = Prompt::builder()
@@ -111,7 +111,7 @@ fn keep_locations(editor: &mut Editor, id: ClientId) {
     win.focus_to(Focus::Prompt);
 }
 
-#[action("Reject locations with")]
+#[action("Locations: Reject entries with")]
 fn reject_locations(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.prompt = Prompt::builder()
@@ -127,7 +127,7 @@ fn reject_locations(editor: &mut Editor, id: ClientId) {
     win.focus_to(Focus::Prompt);
 }
 
-#[action("Goto next location item")]
+#[action("Locations: Open next item")]
 fn goto_next_loc_item(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     if win.locations.select_next_item() {
@@ -135,7 +135,7 @@ fn goto_next_loc_item(editor: &mut Editor, id: ClientId) {
     }
 }
 
-#[action("Goto prev location item")]
+#[action("Locations: Open previous item")]
 fn goto_prev_loc_item(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     if win.locations.select_prev_item() {

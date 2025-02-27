@@ -76,37 +76,37 @@ fn do_move_static(editor: &mut Editor, id: ClientId, pos: u64, col: Option<usize
     do_move(editor, id, |_, _| pos, col);
 }
 
-#[action("Move cursor(s) to the next character")]
+#[action("Cursors: Move to next character")]
 fn next_grapheme(editor: &mut Editor, id: ClientId) {
     do_move(editor, id, next_grapheme_boundary, None);
 }
 
-#[action("Move cursor(s) to the previous character")]
+#[action("Cursors: Move to previous character")]
 fn prev_grapheme(editor: &mut Editor, id: ClientId) {
     do_move(editor, id, prev_grapheme_boundary, None);
 }
 
-#[action("Move cursor(s) to the first character of the line")]
+#[action("Cursors: Move to first character on line")]
 fn first_char_of_line(editor: &mut Editor, id: ClientId) {
     do_move(editor, id, movement::first_char_of_line, None);
 }
 
-#[action("Move cursor(s) to the start of the line")]
+#[action("Cursors: Move to line start")]
 fn start_of_line(editor: &mut Editor, id: ClientId) {
     do_move(editor, id, movement::start_of_line, Some(0));
 }
 
-#[action("Move cursor(s) to the end of the line")]
+#[action("Cursors: Move to line end")]
 fn end_of_line(editor: &mut Editor, id: ClientId) {
     do_move(editor, id, movement::end_of_line, Some(usize::MAX));
 }
 
-#[action("Move cursor(s) to the beginning of the buffer")]
+#[action("Cursors: Move to buffer start")]
 fn start_of_buffer(editor: &mut Editor, id: ClientId) {
     do_move_static(editor, id, 0, None);
 }
 
-#[action("Move cursor(s) to the end of the buffer")]
+#[action("Cursors: Move to buffer end")]
 fn end_of_buffer(editor: &mut Editor, id: ClientId) {
     let blen = {
         let (_win, buf) = editor.win_buf(id);
@@ -115,42 +115,42 @@ fn end_of_buffer(editor: &mut Editor, id: ClientId) {
     do_move_static(editor, id, blen, None);
 }
 
-#[action("Move cursor(s) to the start of the next word")]
+#[action("Cursors: Move to next word start")]
 fn next_word_start(editor: &mut Editor, id: ClientId) {
     do_move(editor, id, movement::next_word_start, None);
 }
 
-#[action("Move cursor(s) to the start of the previous word")]
+#[action("Cursors: Move to previous word start")]
 fn prev_word_start(editor: &mut Editor, id: ClientId) {
     do_move(editor, id, movement::prev_word_start, None);
 }
 
-#[action("Move cursor(s) to the end of the next word")]
+#[action("Cursors: Move to next word end")]
 fn next_word_end(editor: &mut Editor, id: ClientId) {
     do_move(editor, id, movement::next_word_end, None);
 }
 
-#[action("Move cursor(s) to the end of the previous word")]
+#[action("Cursors: Move to previous word end")]
 fn prev_word_end(editor: &mut Editor, id: ClientId) {
     do_move(editor, id, movement::prev_word_end, None);
 }
 
-#[action("Move cursor(s) to the next paragraph")]
+#[action("Cursors: Move to next paragraph")]
 fn next_paragraph(editor: &mut Editor, id: ClientId) {
     do_move(editor, id, movement::next_paragraph, None);
 }
 
-#[action("Move cursor(s) to the previous paragraph")]
+#[action("Cursors: Move to previous paragraph")]
 fn prev_paragraph(editor: &mut Editor, id: ClientId) {
     do_move(editor, id, movement::prev_paragraph, None);
 }
 
-#[action("Move cursor(s) to the next line")]
+#[action("Cursors: Move to next line")]
 fn next_line(editor: &mut Editor, id: ClientId) {
     do_move_line(editor, id, movement::next_line);
 }
 
-#[action("Move cursor(s) to the previous line")]
+#[action("Cursors: Move to previous line")]
 fn prev_line(editor: &mut Editor, id: ClientId) {
     do_move_line(editor, id, movement::prev_line);
 }
@@ -167,7 +167,7 @@ pub fn pair_for(ch: char) -> Option<(char, char)> {
     None
 }
 
-#[action("Move cursor(s) to matching pair")]
+#[action("Cursors: Move to matching pair")]
 fn goto_matching_pair(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     let pos = win.cursors.primary().pos();
@@ -188,7 +188,7 @@ fn goto_matching_pair(editor: &mut Editor, id: ClientId) {
     }
 }
 
-#[action("Find next character on line")]
+#[action("Cursors: Find next char on line")]
 fn find_next_char_on_line(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     let layer = win.keymap_layer.clone();
@@ -216,7 +216,7 @@ fn find_next_char_on_line(editor: &mut Editor, id: ClientId) {
     win.focus_to(Focus::Prompt);
 }
 
-#[action("Find previous character on line")]
+#[action("Cursors: Find previous char on line")]
 fn find_prev_char_on_line(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     let layer = win.keymap_layer.clone();
@@ -240,7 +240,7 @@ fn find_prev_char_on_line(editor: &mut Editor, id: ClientId) {
     win.focus_to(Focus::Prompt);
 }
 
-#[action("Next last searched character on line")]
+#[action("Cursors: Next searched char on line")]
 fn next_searched_char(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     if let Some(ch) = win.search.on_line_char_search {
@@ -257,7 +257,7 @@ fn next_searched_char(editor: &mut Editor, id: ClientId) {
     }
 }
 
-#[action("Previous last searched character on line")]
+#[action("Cursors: Previous searched char on line")]
 fn prev_searched_char(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     if let Some(ch) = win.search.on_line_char_search {
@@ -270,17 +270,17 @@ fn prev_searched_char(editor: &mut Editor, id: ClientId) {
     }
 }
 
-#[action("Move cursor(s) to the previous grapheme on the same line")]
+#[action("Cursors: Move to previous grapheme on the same line")]
 fn prev_grapheme_on_line(editor: &mut Editor, id: ClientId) {
     do_move(editor, id, movement::prev_grapheme_on_line, None);
 }
 
-#[action("Move cursor(s) to the next grapheme on the same line")]
+#[action("Cursors: Move to next grapheme on the same line")]
 fn next_grapheme_on_line(editor: &mut Editor, id: ClientId) {
     do_move(editor, id, movement::next_grapheme_on_line, None);
 }
 
-#[action("Move cursor to the previous visual line")]
+#[action("Cursors: Move to previous visual line")]
 pub(crate) fn prev_visual_line(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
 
@@ -350,7 +350,7 @@ fn prev_visual_line_impl(view: &View, cursor: &Cursor) -> Option<(u64, usize)> {
     Some((pos, target_col))
 }
 
-#[action("Move cursor to the next visual line")]
+#[action("Cursors: Move to next visual line")]
 fn next_visual_line(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
 

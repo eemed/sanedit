@@ -21,13 +21,13 @@ fn detect_indent(editor: &mut Editor, id: ClientId) {
     buf.config.indent_amount = n;
 }
 
-#[action("Indent cursor lines")]
+#[action("Buffer: Indent lines")]
 fn indent_line(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     let _ = win.indent_cursor_lines(buf);
 }
 
-#[action("Dedent cursor lines")]
+#[action("Buffer: Dedent lines")]
 fn dedent_line(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     let _ = win.dedent_cursor_lines(buf);

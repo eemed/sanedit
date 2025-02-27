@@ -12,7 +12,7 @@ use sanedit_server::ClientId;
 
 use super::{hooks::run, prompt::unsaved_changes, shell, text::save};
 
-#[action("Quit Sanedit")]
+#[action("Editor: Quit")]
 fn quit(editor: &mut Editor, id: ClientId) {
     // If is the first client
     if id.0 == 0 {
@@ -50,34 +50,34 @@ fn quit(editor: &mut Editor, id: ClientId) {
     }
 }
 
-#[action("Build project")]
+#[action("Editor: Build project")]
 fn build_project(editor: &mut Editor, id: ClientId) {
     let cmd = editor.config.editor.build_command.clone();
     shell::execute(editor, id, true, &cmd);
 }
 
-#[action("Run project")]
+#[action("Editor: Run project")]
 fn run_project(editor: &mut Editor, id: ClientId) {
     let cmd = editor.config.editor.run_command.clone();
     shell::execute(editor, id, true, &cmd);
 }
 
-#[action("Copy selection to clipboard")]
+#[action("Editor: Copy to clipboard")]
 fn copy(editor: &mut Editor, id: ClientId) {
     editor.copy_to_clipboard(id);
 }
 
-#[action("Paste from clipboard")]
+#[action("Editor: Paste from clipboard")]
 fn paste(editor: &mut Editor, id: ClientId) {
     editor.paste_from_clipboard(id, false);
 }
 
-#[action("Paste from clipboard after cursor")]
+#[action("Editor: Paste from clipboard after cursor")]
 fn paste_after(editor: &mut Editor, id: ClientId) {
     editor.paste_from_clipboard(id, true);
 }
 
-#[action("Cut selection to clipboard")]
+#[action("Editor: Cut to clipboard")]
 fn cut(editor: &mut Editor, id: ClientId) {
     editor.copy_to_clipboard(id);
 
@@ -89,7 +89,7 @@ fn cut(editor: &mut Editor, id: ClientId) {
     }
 }
 
-#[action("Open SanEdit configuration file")]
+#[action("Editor: Open configuration file")]
 fn open_config(editor: &mut Editor, id: ClientId) {
     let config = editor.config_dir.config();
     if !config.exists() {
@@ -126,17 +126,17 @@ fn prompt_create_and_open_config(editor: &mut Editor, id: ClientId) {
     win.focus_to(Focus::Prompt);
 }
 
-#[action("Open a new scratch buffer")]
+#[action("Buffer: New scratch buffer")]
 fn open_new_scratch_buffer(editor: &mut Editor, id: ClientId) {
     let bid = editor.buffers_mut().new_scratch();
     let (win, _buf) = editor.win_buf_mut(id);
     win.open_buffer(bid);
 }
 
-#[action("Do nothing")]
+#[action("Editor: Do nothing")]
 fn nop(_editor: &mut Editor, _id: ClientId) {}
 
-#[action("Load filetype")]
+#[action("Editor: Load filetype")]
 fn load_filetype(editor: &mut Editor, id: ClientId) {
     let bid = editor
         .hooks

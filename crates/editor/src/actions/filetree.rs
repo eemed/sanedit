@@ -11,7 +11,7 @@ use crate::{
 
 use sanedit_server::ClientId;
 
-#[action("Show filetree")]
+#[action("Filetree: Show")]
 fn show_filetree(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = win_buf!(editor, id);
     if win.ft_view.show {
@@ -25,7 +25,7 @@ fn show_filetree(editor: &mut Editor, id: ClientId) {
     win.focus_to(Focus::Filetree);
 }
 
-#[action("Press filetree entry")]
+#[action("Filetree: Confirm entry")]
 fn goto_ft_entry(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf(id);
     let path = editor
@@ -59,7 +59,7 @@ fn goto_ft_entry(editor: &mut Editor, id: ClientId) {
     }
 }
 
-#[action("Next filetree entry")]
+#[action("Filetree: Next entry")]
 fn next_ft_entry(editor: &mut Editor, id: ClientId) {
     let visible = editor.filetree.iter().count();
 
@@ -67,20 +67,20 @@ fn next_ft_entry(editor: &mut Editor, id: ClientId) {
     win.ft_view.selection = min(visible - 1, win.ft_view.selection + 1);
 }
 
-#[action("Previous filetree entry")]
+#[action("Filetree: Previous entry")]
 fn prev_ft_entry(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.ft_view.selection = win.ft_view.selection.saturating_sub(1);
 }
 
-#[action("Close filetree")]
+#[action("Filetree: Close")]
 fn close_filetree(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.ft_view.show = false;
     win.focus_to(Focus::Window);
 }
 
-#[action("Create a new file")]
+#[action("Filetree: Create new file")]
 fn ft_new_file(editor: &mut Editor, id: ClientId) {
     let dir = {
         let (win, _buf) = editor.win_buf(id);
@@ -141,7 +141,7 @@ fn ft_new_file(editor: &mut Editor, id: ClientId) {
     win.focus_to(Focus::Prompt);
 }
 
-#[action("Go to previous directory")]
+#[action("Filetree: Delete file")]
 fn ft_delete_file(editor: &mut Editor, id: ClientId) {
     let (kind, path) = {
         let (win, _buf) = editor.win_buf(id);
@@ -198,7 +198,7 @@ fn ft_delete_file(editor: &mut Editor, id: ClientId) {
     win.focus_to(Focus::Prompt);
 }
 
-#[action("Select parent")]
+#[action("Filetree: Goto parent")]
 fn select_ft_parent(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf(id);
     let entry = get!(editor.filetree.iter().nth(win.ft_view.selection));
@@ -211,7 +211,7 @@ fn select_ft_parent(editor: &mut Editor, id: ClientId) {
     win.ft_view.selection = pos;
 }
 
-#[action("Show current file in filetree")]
+#[action("Filetree: Show current file")]
 fn ft_goto_current_file(editor: &mut Editor, id: ClientId) {
     let (win, buf) = win_buf!(editor, id);
     let path = get!(buf.path());

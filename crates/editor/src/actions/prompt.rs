@@ -25,7 +25,7 @@ use super::{
     text::save,
 };
 
-#[action("Select theme")]
+#[action("Editor: Select theme")]
 fn select_theme(editor: &mut Editor, id: ClientId) {
     let themes: Vec<String> = editor
         .themes
@@ -62,7 +62,7 @@ fn select_theme(editor: &mut Editor, id: ClientId) {
     editor.job_broker.request(job);
 }
 
-#[action("Command palette")]
+#[action("Editor: Command palette")]
 fn command_palette(editor: &mut Editor, id: ClientId) {
     let opts = Arc::new(commands::command_palette(editor, id));
 

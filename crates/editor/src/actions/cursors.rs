@@ -17,7 +17,7 @@ use super::{
     movement,
 };
 
-#[action("Start selection and jump to next word")]
+#[action("Cursors: Select next word")]
 fn select_to_next_word(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     for cursor in win.cursors.cursors_mut() {
@@ -28,7 +28,7 @@ fn select_to_next_word(editor: &mut Editor, id: ClientId) {
     movement::next_word_end.execute(editor, id);
 }
 
-#[action("Start selection and jump to prev word")]
+#[action("Cursors: Select previous word")]
 fn select_to_prev_word(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     for cursor in win.cursors.cursors_mut() {
@@ -39,7 +39,7 @@ fn select_to_prev_word(editor: &mut Editor, id: ClientId) {
     movement::prev_word_start.execute(editor, id);
 }
 
-#[action("New cursor on the next line")]
+#[action("Cursors: New on next line")]
 fn new_cursor_to_next_line(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     let cursor = win.cursors.primary();
@@ -47,7 +47,7 @@ fn new_cursor_to_next_line(editor: &mut Editor, id: ClientId) {
     win.cursors.push_primary(Cursor::new(pos));
 }
 
-#[action("New cursor on the previous line")]
+#[action("Cursors: New on previous line")]
 fn new_cursor_to_prev_line(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     let cursor = win.cursors.primary();
@@ -55,7 +55,7 @@ fn new_cursor_to_prev_line(editor: &mut Editor, id: ClientId) {
     win.cursors.push_primary(Cursor::new(pos));
 }
 
-#[action("New cursor on the next search match")]
+#[action("Cursors: New on next search match")]
 fn new_cursor_to_next_search_match(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     let Some(last_search) = win.search.last_search() else {
@@ -83,7 +83,7 @@ fn new_cursor_to_next_search_match(editor: &mut Editor, id: ClientId) {
     }
 }
 
-#[action("New cursor on each search match")]
+#[action("Cursors: New on each search match")]
 fn new_cursor_to_all_search_matches(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     // win.cursors.remove_secondary_cursors();
@@ -129,19 +129,19 @@ pub(crate) fn goto_position(editor: &mut Editor, id: ClientId, point: Point) {
     }
 }
 
-#[action("Select")]
+#[action("Cursors: Start selection")]
 fn start_selection(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.cursors.start_selection();
 }
 
-#[action("Unselect")]
+#[action("Cursors: Cancel selection")]
 fn stop_selection(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.cursors.stop_selection();
 }
 
-#[action("Keep only primary cursor")]
+#[action("Cursors: Remove secondary cursors")]
 fn keep_only_primary(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
 
@@ -155,37 +155,37 @@ fn keep_only_primary(editor: &mut Editor, id: ClientId) {
     }
 }
 
-#[action("Swap cursor in selection")]
+#[action("Cursors: Swap selection direction")]
 fn swap_selection_dir(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.cursors.swap_selection_dir();
 }
 
-#[action("Remove primary cursor")]
+#[action("Cursors: Remove primary cursor")]
 fn remove_primary_cursor(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.cursors.remove_primary();
 }
 
-#[action("Make next cursor primary")]
+#[action("Cursors: Make next cursor primary")]
 fn make_next_cursor_primary(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.cursors.primary_next();
 }
 
-#[action("Make previous cursor primary")]
+#[action("Cursors: Make previous cursor primary")]
 fn make_prev_cursor_primary(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.cursors.primary_prev();
 }
 
-#[action("Merge overlapping cursors")]
+#[action("Cursors: Merge overlapping")]
 fn merge_overlapping_cursors(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.cursors.merge_overlapping();
 }
 
-#[action("Remove cursor selections")]
+#[action("Cursors: Remove selections")]
 fn remove_cursor_selections(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     match win.remove_cursor_selections(buf) {
@@ -197,21 +197,21 @@ fn remove_cursor_selections(editor: &mut Editor, id: ClientId) {
     }
 }
 
-#[action("Cursor to line starts")]
+#[action("Cursors: New cursors on line starts")]
 fn cursors_to_lines_start(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     win.cursors_to_lines_start(buf);
     hooks::run(editor, id, Hook::CursorMoved);
 }
 
-#[action("Cursor to line ends")]
+#[action("Cursors: New cursors on line ends")]
 fn cursors_to_lines_end(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     win.cursors_to_lines_end(buf);
     hooks::run(editor, id, Hook::CursorMoved);
 }
 
-#[action("Jump to previous change")]
+#[action("Cursors: Goto to previous change")]
 fn jump_prev_change(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     if win.cursors_to_prev_change(buf) {
@@ -219,7 +219,7 @@ fn jump_prev_change(editor: &mut Editor, id: ClientId) {
     }
 }
 
-#[action("Jump to next change")]
+#[action("Cursors: Goto to next change")]
 fn jump_next_change(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     if win.cursors_to_next_change(buf) {
@@ -227,7 +227,7 @@ fn jump_next_change(editor: &mut Editor, id: ClientId) {
     }
 }
 
-#[action("Goto previous cursor jump")]
+#[action("Cursors: Goto previous jump")]
 fn jump_prev(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     if win.cursors_to_prev_jump(buf) {
@@ -235,7 +235,7 @@ fn jump_prev(editor: &mut Editor, id: ClientId) {
     }
 }
 
-#[action("Goto next cursor jump")]
+#[action("Cursors: Goto next jump")]
 fn jump_next(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     if win.cursors_to_next_jump(buf) {
@@ -243,7 +243,7 @@ fn jump_next(editor: &mut Editor, id: ClientId) {
     }
 }
 
-#[action("Cursor to view top")]
+#[action("Cursors: Goto to top of view")]
 fn cursor_to_view_top(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     if win.cursor_to_view_zone(Zone::Top) {
@@ -251,7 +251,7 @@ fn cursor_to_view_top(editor: &mut Editor, id: ClientId) {
     }
 }
 
-#[action("Cursor to view middle")]
+#[action("Cursors: Goto to middle of view")]
 fn cursor_to_view_middle(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     if win.cursor_to_view_zone(Zone::Middle) {
@@ -259,7 +259,7 @@ fn cursor_to_view_middle(editor: &mut Editor, id: ClientId) {
     }
 }
 
-#[action("Cursor to view bottom")]
+#[action("Cursors: Goto to bottom of view")]
 fn cursor_to_view_bottom(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     if win.cursor_to_view_zone(Zone::Bottom) {

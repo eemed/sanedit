@@ -130,7 +130,7 @@ pub(crate) fn lsp_notify(
     lsp_notify_for(editor, bid, f)
 }
 
-#[action("Start language server")]
+#[action("LSP: Start server")]
 fn start_lsp(editor: &mut Editor, id: ClientId) {
     let (_win, buf) = editor.win_buf(id);
     let bid = buf.id;
@@ -141,7 +141,7 @@ fn start_lsp(editor: &mut Editor, id: ClientId) {
     }
 }
 
-#[action("Start language server from hook")]
+#[action("LSP: Start server hook")]
 fn start_lsp_hook(editor: &mut Editor, id: ClientId) {
     if let Some(bid) = editor.hooks.running_hook().and_then(Hook::buffer_id) {
         let _ = start_lsp_impl(editor, id, bid);
@@ -169,7 +169,7 @@ fn start_lsp_impl(editor: &mut Editor, id: ClientId, bid: BufferId) -> Result<()
     Ok(())
 }
 
-#[action("Stop language server")]
+#[action("LSP: Stop server")]
 fn stop_lsp(editor: &mut Editor, id: ClientId) {
     let (_win, buf) = editor.win_buf(id);
     let bid = buf.id;
@@ -183,13 +183,13 @@ fn stop_lsp_impl(editor: &mut Editor, _id: ClientId, bid: BufferId) -> Result<()
     Ok(())
 }
 
-#[action("Restart language server")]
+#[action("LSP: Restart server")]
 fn restart_lsp(editor: &mut Editor, id: ClientId) {
     stop_lsp.execute(editor, id);
     start_lsp.execute(editor, id);
 }
 
-#[action("Hover information")]
+#[action("LSP: Hover")]
 fn hover(editor: &mut Editor, id: ClientId) {
     let _ = lsp_request(editor, id, move |win, buf, path, slice, lsp| {
         let offset = win.cursors.primary().pos();
@@ -206,7 +206,7 @@ fn hover(editor: &mut Editor, id: ClientId) {
     });
 }
 
-#[action("Goto definition")]
+#[action("LSP: Goto definition")]
 fn goto_definition(editor: &mut Editor, id: ClientId) {
     let _ = lsp_request(editor, id, move |win, _buf, path, slice, lsp| {
         let offset = win.cursors.primary().pos();
@@ -261,7 +261,7 @@ fn sync_document(editor: &mut Editor, id: ClientId) {
     });
 }
 
-#[action("Complete")]
+#[action("LSP: Complete")]
 fn complete(editor: &mut Editor, id: ClientId) {
     let _ = lsp_request(editor, id, move |win, buf, path, slice, lsp| {
         let offset = win.cursors.primary().pos();
@@ -278,7 +278,7 @@ fn complete(editor: &mut Editor, id: ClientId) {
     });
 }
 
-#[action("Pull diagnostics")]
+#[action("LSP: Pull diagnostics")]
 fn pull_diagnostics(editor: &mut Editor, id: ClientId) {
     let _ = lsp_request(editor, id, move |_win, buf, path, _slice, _lsp| {
         let kind = RequestKind::PullDiagnostics { path };
@@ -292,7 +292,7 @@ fn pull_diagnostics(editor: &mut Editor, id: ClientId) {
     });
 }
 
-#[action("Show references")]
+#[action("LSP: Show references")]
 fn references(editor: &mut Editor, id: ClientId) {
     let _ = lsp_request(editor, id, move |win, _buf, path, slice, lsp| {
         let offset = win.cursors.primary().pos();
@@ -303,7 +303,7 @@ fn references(editor: &mut Editor, id: ClientId) {
     });
 }
 
-#[action("Code action")]
+#[action("LSP: Code action")]
 fn code_action(editor: &mut Editor, id: ClientId) {
     let _ = lsp_request(editor, id, move |win, buf, path, slice, lsp| {
         let offset = win.cursors.primary().pos();
@@ -319,7 +319,7 @@ fn code_action(editor: &mut Editor, id: ClientId) {
     });
 }
 
-#[action("Format")]
+#[action("LSP: Format")]
 fn format(editor: &mut Editor, id: ClientId) {
     let _ = lsp_request(editor, id, move |_win, buf, path, _slice, _lsp| {
         let BufferConfig {
@@ -342,7 +342,7 @@ fn format(editor: &mut Editor, id: ClientId) {
     });
 }
 
-#[action("Rename")]
+#[action("LSP: Rename")]
 fn rename(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     let cursor = win.cursors.primary().pos();
@@ -402,7 +402,7 @@ pub(crate) fn close_document(editor: &mut Editor, id: ClientId) {
     });
 }
 
-#[action("Show diagnostics on line")]
+#[action("LSP: Show diagnostics on line")]
 pub(crate) fn show_diagnostics(editor: &mut Editor, id: ClientId) {
     let (win, buf) = win_buf!(editor, id);
     let view = win.view();
@@ -438,7 +438,7 @@ pub(crate) fn did_save_document(editor: &mut Editor, id: ClientId) {
     });
 }
 
-#[action("Diagnostics to locations")]
+#[action("LSP: Diagnostics to locations")]
 pub(crate) fn diagnostics_to_locations(editor: &mut Editor, id: ClientId) {
     let (win, buf) = win_buf!(editor, id);
     let ft = get!(buf.filetype.clone());

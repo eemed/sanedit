@@ -88,7 +88,7 @@ fn command_palette(editor: &mut Editor, id: ClientId) {
     editor.job_broker.request(job);
 }
 
-#[action("Open a file")]
+#[action("Editor: Open file")]
 fn open_file(editor: &mut Editor, id: ClientId) {
     const PROMPT_MESSAGE: &str = "Open a file";
     let ignore = editor.config.editor.ignore_directories();
@@ -173,7 +173,7 @@ fn open_file_handler(editor: &mut Editor, id: ClientId, msg: MatcherMessage) {
     }
 }
 
-#[action("Open a buffer")]
+#[action("Editor: Open buffer")]
 fn open_buffer(editor: &mut Editor, id: ClientId) {
     const PROMPT_MESSAGE: &str = "Open a buffer";
     let wd = editor.working_dir();
@@ -209,7 +209,7 @@ fn open_buffer(editor: &mut Editor, id: ClientId) {
     win.focus_to(Focus::Prompt);
 }
 
-#[action("Close prompt")]
+#[action("Prompt: Close")]
 fn prompt_close(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.focus_to(Focus::Window);
@@ -224,7 +224,7 @@ fn prompt_close(editor: &mut Editor, id: ClientId) {
     }
 }
 
-#[action("Confirm selection")]
+#[action("Prompt: Confirm")]
 fn prompt_confirm(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.focus_to(Focus::Window);
@@ -245,19 +245,19 @@ fn prompt_confirm(editor: &mut Editor, id: ClientId) {
     }
 }
 
-#[action("Move cursor one character right")]
+#[action("Prompt: Move cursor right")]
 fn prompt_next_grapheme(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.prompt.next_grapheme();
 }
 
-#[action("Move cursor one character left")]
+#[action("Prompt: Move cursor left")]
 fn prompt_prev_grapheme(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.prompt.prev_grapheme();
 }
 
-#[action("Delete a character before cursor")]
+#[action("Prompt: Delete grapheme before cursor")]
 pub(crate) fn prompt_remove_grapheme_before_cursor(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.prompt.remove_grapheme_before_cursor();
@@ -268,29 +268,29 @@ pub(crate) fn prompt_remove_grapheme_before_cursor(editor: &mut Editor, id: Clie
     }
 }
 
-#[action("Select the next completion item")]
+#[action("Prompt: Select next completion item")]
 fn prompt_next_completion(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.prompt.next_completion();
 }
 
-#[action("Select the previous completion item")]
+#[action("Prompt: Select previous completion item")]
 fn prompt_prev_completion(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.prompt.prev_completion();
 }
 
-#[action("Select the next entry from history")]
+#[action("Prompt: Select next history entry")]
 fn prompt_history_next(editor: &mut Editor, id: ClientId) {
     editor.prompt_history_next(id);
 }
 
-#[action("Select the previous entry from history")]
+#[action("Prompt: Select previous history entry")]
 fn prompt_history_prev(editor: &mut Editor, id: ClientId) {
     editor.prompt_history_prev(id);
 }
 
-#[action("Run a shell command")]
+#[action("Editor: Run a shell command")]
 fn shell_command(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
 
@@ -303,7 +303,7 @@ fn shell_command(editor: &mut Editor, id: ClientId) {
     win.focus_to(Focus::Prompt);
 }
 
-#[action("Goto a line")]
+#[action("Cursors: Goto line number")]
 fn goto_line(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
 
@@ -322,7 +322,7 @@ fn goto_line(editor: &mut Editor, id: ClientId) {
     win.focus_to(Focus::Prompt);
 }
 
-#[action("Goto a percentage")]
+#[action("Cursors: Goto percentage")]
 fn goto_percentage(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
 
@@ -343,7 +343,7 @@ fn goto_percentage(editor: &mut Editor, id: ClientId) {
     win.focus_to(Focus::Prompt);
 }
 
-#[action("Change working directory")]
+#[action("Editor: Change working directory")]
 fn change_working_dir(editor: &mut Editor, id: ClientId) {
     let wd = editor.working_dir().to_path_buf();
     let (win, _buf) = editor.win_buf_mut(id);

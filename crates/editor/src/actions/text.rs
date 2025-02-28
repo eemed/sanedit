@@ -17,7 +17,7 @@ use super::{
     movement::{end_of_line, prev_line},
 };
 
-#[action("Remove character after cursor")]
+#[action("Buffer: Remove character after cursor")]
 fn remove_grapheme_after_cursor(editor: &mut Editor, id: ClientId) {
     run(editor, id, Hook::RemovePre);
     let (win, buf) = editor.win_buf_mut(id);
@@ -27,7 +27,7 @@ fn remove_grapheme_after_cursor(editor: &mut Editor, id: ClientId) {
     }
 }
 
-#[action("Remove character before cursor")]
+#[action("Buffer: Remove character before cursor")]
 fn remove_grapheme_before_cursor(editor: &mut Editor, id: ClientId) {
     run(editor, id, Hook::RemovePre);
     let (win, buf) = editor.win_buf_mut(id);
@@ -37,7 +37,7 @@ fn remove_grapheme_before_cursor(editor: &mut Editor, id: ClientId) {
     }
 }
 
-#[action("Undo a change")]
+#[action("Buffer: Undo")]
 pub(crate) fn undo(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     if win.undo(buf).is_ok() {
@@ -47,7 +47,7 @@ pub(crate) fn undo(editor: &mut Editor, id: ClientId) {
     }
 }
 
-#[action("Redo a change")]
+#[action("Buffer: Redo")]
 pub(crate) fn redo(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     if win.redo(buf).is_ok() {
@@ -82,7 +82,7 @@ pub(crate) fn insert(editor: &mut Editor, id: ClientId, text: &str) {
     }
 }
 
-#[action("Save file")]
+#[action("Buffer: Save")]
 fn save(editor: &mut Editor, id: ClientId) {
     run(editor, id, Hook::BufSavedPre);
     let (win, buf) = editor.win_buf_mut(id);
@@ -113,7 +113,7 @@ fn save(editor: &mut Editor, id: ClientId) {
     // }
 }
 
-#[action("Save as")]
+#[action("Buffer: Save as")]
 fn save_as(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.prompt = Prompt::builder()
@@ -129,7 +129,7 @@ fn save_as(editor: &mut Editor, id: ClientId) {
     win.focus_to(Focus::Prompt);
 }
 
-#[action("Insert a newline to each cursor")]
+#[action("Buffer: Insert newline")]
 fn insert_newline(editor: &mut Editor, id: ClientId) {
     run(editor, id, Hook::InsertPre);
     let (win, buf) = editor.win_buf_mut(id);
@@ -139,7 +139,7 @@ fn insert_newline(editor: &mut Editor, id: ClientId) {
     run(editor, id, hook);
 }
 
-#[action("Insert a tab to each cursor")]
+#[action("Buffer: Insert tab")]
 fn insert_tab(editor: &mut Editor, id: ClientId) {
     run(editor, id, Hook::InsertPre);
 
@@ -164,7 +164,7 @@ fn insert_tab(editor: &mut Editor, id: ClientId) {
     }
 }
 
-#[action("Insert a tab to each cursor")]
+#[action("Buffer: Dedent")]
 fn backtab(editor: &mut Editor, id: ClientId) {
     run(editor, id, Hook::InsertPre);
     let (win, buf) = editor.win_buf_mut(id);
@@ -174,7 +174,7 @@ fn backtab(editor: &mut Editor, id: ClientId) {
     }
 }
 
-#[action("Remove the rest of the line")]
+#[action("Buffer: Remove to line end")]
 fn remove_to_end_of_line(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     if win.remove_line_after_cursor(buf).is_ok() {
@@ -183,7 +183,7 @@ fn remove_to_end_of_line(editor: &mut Editor, id: ClientId) {
     }
 }
 
-#[action("Strip trailing whitespace")]
+#[action("Buffer: Remove trailing whitespace")]
 fn strip_trailing_whitespace(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     if win.strip_trailing_whitespace(buf).is_ok() {
@@ -192,7 +192,7 @@ fn strip_trailing_whitespace(editor: &mut Editor, id: ClientId) {
     }
 }
 
-#[action("Crate a newline below current line and move to it")]
+#[action("Buffer: Newline below")]
 fn newline_below(editor: &mut Editor, id: ClientId) {
     // Disable autopair for this action
     let (win, _buf) = editor.win_buf_mut(id);
@@ -205,7 +205,7 @@ fn newline_below(editor: &mut Editor, id: ClientId) {
     win.config.autopair = restore;
 }
 
-#[action("Crate a newline above current line and move to it")]
+#[action("Buffer: Newline above")]
 fn newline_above(editor: &mut Editor, id: ClientId) {
     // Disable autopair for this action
     let (win, _buf) = editor.win_buf_mut(id);
@@ -219,7 +219,7 @@ fn newline_above(editor: &mut Editor, id: ClientId) {
     win.config.autopair = restore;
 }
 
-#[action("Align each cursor on top of each other")]
+#[action("Buffer: Align cursor columns")]
 fn align_cursor_columns(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     if win.align_cursors(buf).is_ok() {
@@ -228,7 +228,7 @@ fn align_cursor_columns(editor: &mut Editor, id: ClientId) {
     }
 }
 
-#[action("Comment lines")]
+#[action("Buffer: Comment lines")]
 fn comment_lines(editor: &mut Editor, id: ClientId) {
     let (win, buf) = win_buf!(editor, id);
     let Some(ft) = &buf.filetype else {
@@ -251,7 +251,7 @@ fn comment_lines(editor: &mut Editor, id: ClientId) {
     }
 }
 
-#[action("Uncomment lines")]
+#[action("Buffer: Uncomment lines")]
 fn uncomment_lines(editor: &mut Editor, id: ClientId) {
     let (win, buf) = win_buf!(editor, id);
     let Some(ft) = &buf.filetype else {
@@ -274,7 +274,7 @@ fn uncomment_lines(editor: &mut Editor, id: ClientId) {
     }
 }
 
-#[action("Toggle comment lines")]
+#[action("Buffer: Toggle comment lines")]
 fn toggle_comment_lines(editor: &mut Editor, id: ClientId) {
     let (win, buf) = win_buf!(editor, id);
     let Some(ft) = &buf.filetype else {

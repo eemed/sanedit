@@ -279,7 +279,7 @@ pub(crate) const COMMANDS: &[Action] = &[
 
     popup::close,
 
-    syntax::parse_syntax,
+    // syntax::parse_syntax,
 
     snippets::snippet_jump_next,
     snippets::insert_snippet,

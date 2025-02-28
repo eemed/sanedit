@@ -16,7 +16,7 @@ use sanedit_server::ClientId;
 
 use super::{jobs::MatcherJob, lsp, snippets, text};
 
-#[action("Complete")]
+#[action("Editor: Complete")]
 fn complete(editor: &mut Editor, id: ClientId) {
     if editor.has_lsp(id) {
         lsp::complete.execute(editor, id)
@@ -66,7 +66,7 @@ fn complete_from_syntax(editor: &mut Editor, id: ClientId) {
     editor.job_broker.request(job);
 }
 
-#[action("Confirm completion")]
+#[action("Completion: Confirm")]
 fn completion_confirm(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.pop_focus();
@@ -87,7 +87,7 @@ fn completion_confirm(editor: &mut Editor, id: ClientId) {
     }
 }
 
-#[action("Abort completion")]
+#[action("Completion: Abort")]
 fn completion_abort(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     if win.focus() == Focus::Completion {
@@ -99,13 +99,13 @@ fn completion_abort(editor: &mut Editor, id: ClientId) {
     }
 }
 
-#[action("Select next completion")]
+#[action("Completion: Select next")]
 fn completion_next(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.completion.select_next();
 }
 
-#[action("Select previous completion")]
+#[action("Completion: Select previous")]
 fn completion_prev(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.completion.select_prev();

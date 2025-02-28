@@ -16,7 +16,7 @@ use crate::{
 
 use super::jobs::MatcherJob;
 
-#[action("Jump to next snippet placeholders")]
+#[action("Snippet: Jump to next placeholder")]
 pub(crate) fn snippet_jump_next(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     if !win.cursors_to_next_snippet_jump(buf) {
@@ -24,7 +24,7 @@ pub(crate) fn snippet_jump_next(editor: &mut Editor, id: ClientId) {
     }
 }
 
-#[action("Insert a snippet")]
+#[action("Snippet: Insert new")]
 pub(crate) fn insert_snippet(editor: &mut Editor, id: ClientId) {
     const MESSAGE: &str = "Insert a snippet";
     let (win, buf) = win_buf!(editor, id);

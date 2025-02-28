@@ -72,7 +72,7 @@ fn select<F: Fn(&PieceTreeSlice, u64) -> Option<BufferRange>>(
     }
 }
 
-#[action("Select line")]
+#[action("Select: Line")]
 fn select_line(editor: &mut Editor, id: ClientId) {
     select_with_col(editor, id, |slice, pos| {
         let start = movement::start_of_line(&slice, pos);
@@ -85,82 +85,82 @@ fn select_line(editor: &mut Editor, id: ClientId) {
     });
 }
 
-#[action("Select in curly brackets")]
+#[action("Select: In curly brackets")]
 fn select_curly(editor: &mut Editor, id: ClientId) {
     select_range(editor, id, "{", "}", false);
 }
 
-#[action("Select including curly brackets")]
+#[action("Select: In curly brackets (incl)")]
 fn select_curly_incl(editor: &mut Editor, id: ClientId) {
     select_range(editor, id, "{", "}", true);
 }
 
-#[action("Select in parentheses")]
+#[action("Select: In parentheses")]
 fn select_parens(editor: &mut Editor, id: ClientId) {
     select_range(editor, id, "(", ")", false);
 }
 
-#[action("Select including parentheses")]
+#[action("Select: In parentheses (incl)")]
 fn select_parens_incl(editor: &mut Editor, id: ClientId) {
     select_range(editor, id, "(", ")", true);
 }
 
-#[action("Select in square brackets")]
+#[action("Select: In square brackets")]
 fn select_square(editor: &mut Editor, id: ClientId) {
     select_range(editor, id, "[", "]", false);
 }
 
-#[action("Select including square brackets")]
+#[action("Select: In square brackets (incl)")]
 fn select_square_incl(editor: &mut Editor, id: ClientId) {
     select_range(editor, id, "[", "]", true);
 }
 
-#[action("Select in angle brackets")]
+#[action("Select: In angle brackets")]
 fn select_angle(editor: &mut Editor, id: ClientId) {
     select_range(editor, id, "<", ">", false);
 }
 
-#[action("Select including angle brackets")]
+#[action("Select: In angle brackets (incl)")]
 fn select_angle_incl(editor: &mut Editor, id: ClientId) {
     select_range(editor, id, "<", ">", true);
 }
 
-#[action("Select including single quotes")]
+#[action("Select: In single quotes (incl)")]
 fn select_single_incl(editor: &mut Editor, id: ClientId) {
     select_range(editor, id, "'", "'", true);
 }
 
-#[action("Select in single quotes")]
+#[action("Select: In single quotes")]
 fn select_single(editor: &mut Editor, id: ClientId) {
     select_range(editor, id, "'", "'", false);
 }
 
-#[action("Select including double quotes")]
+#[action("Select: In double quotes (incl)")]
 fn select_double_incl(editor: &mut Editor, id: ClientId) {
     select_range(editor, id, "\"", "\"", true);
 }
 
-#[action("Select in double quotes")]
+#[action("Select: In double quotes")]
 fn select_double(editor: &mut Editor, id: ClientId) {
     select_range(editor, id, "\"", "\"", false);
 }
 
-#[action("Select including backticks")]
+#[action("Select: In backticks (incl)")]
 fn select_backtick_incl(editor: &mut Editor, id: ClientId) {
     select_range(editor, id, "`", "`", true);
 }
 
-#[action("Select in backticks")]
+#[action("Select: In backticks")]
 fn select_backtick(editor: &mut Editor, id: ClientId) {
     select_range(editor, id, "`", "`", false);
 }
 
-#[action("Select word under cursor")]
+#[action("Select: Word")]
 fn select_word(editor: &mut Editor, id: ClientId) {
     select(editor, id, word_at_pos);
 }
 
-#[action("Select paragraph under cursor")]
+#[action("Select: Paragraph")]
 fn select_paragraph(editor: &mut Editor, id: ClientId) {
     select(editor, id, paragraph_at_pos);
 }

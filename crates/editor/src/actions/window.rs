@@ -13,18 +13,18 @@ use sanedit_server::ClientId;
 
 use super::hooks;
 
-#[action("Focus window")]
+#[action("Window: Focus window")]
 fn focus_window(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.focus_to(Focus::Window);
 }
 
-#[action("Reload the current window")]
+#[action("Window: Reload")]
 fn reload_window(editor: &mut Editor, id: ClientId) {
     editor.reload(id);
 }
 
-#[action("Clear messages")]
+#[action("Window: Clear messages")]
 fn clear_messages(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.clear_msg();
@@ -47,7 +47,7 @@ fn sync_windows(editor: &mut Editor, id: ClientId) {
     }
 }
 
-#[action("Goto previous buffer")]
+#[action("Window: Goto previous buffer")]
 fn goto_prev_buffer(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     if win.goto_prev_buffer() {
@@ -58,7 +58,7 @@ fn goto_prev_buffer(editor: &mut Editor, id: ClientId) {
     }
 }
 
-#[action("Progressively close stuff on the screen")]
+#[action("Window: Cancel")]
 fn cancel(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
 
@@ -82,14 +82,14 @@ fn cancel(editor: &mut Editor, id: ClientId) {
     }
 }
 
-#[action("Create a new window")]
+#[action("Window: New")]
 fn new_window(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf(id);
     let command = win.config.new_window_command.clone();
     shell::execute(editor, id, false, &command);
 }
 
-#[action("Status")]
+#[action("Editor: Status")]
 fn status(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf(id);
     let file = buf
@@ -161,19 +161,19 @@ fn status(editor: &mut Editor, id: ClientId) {
     editor.open_buffer(id, bid);
 }
 
-#[action("Move view to cursor high")]
+#[action("View: Move to cursor high")]
 fn view_to_cursor_top(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     win.view_to_cursor_zone(buf, Zone::Top)
 }
 
-#[action("Move view to cursor middle")]
+#[action("View: Move to cursor middle")]
 fn view_to_cursor_middle(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     win.view_to_cursor_zone(buf, Zone::Middle)
 }
 
-#[action("Move view to cursor bottom")]
+#[action("View: Move to cursor bottom")]
 fn view_to_cursor_bottom(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     win.view_to_cursor_zone(buf, Zone::Bottom)

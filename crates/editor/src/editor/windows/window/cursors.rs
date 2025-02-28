@@ -28,6 +28,10 @@ impl Cursors {
         }
     }
 
+    pub fn primary_index(&self) -> usize {
+        self.primary
+    }
+
     pub fn len(&self) -> usize {
         self.cursors.len()
     }

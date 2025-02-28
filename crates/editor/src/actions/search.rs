@@ -48,7 +48,7 @@ fn highlight_last_search(editor: &mut Editor, id: ClientId) {
     }
 }
 
-#[action("Search forward")]
+#[action("Search: Forward")]
 fn search_forward(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.search.hl_last = false;
@@ -64,7 +64,7 @@ fn search_forward(editor: &mut Editor, id: ClientId) {
     win.focus_to(Focus::Search);
 }
 
-#[action("Search backwards")]
+#[action("Search: Backward")]
 fn search_backward(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.search.hl_last = false;
@@ -80,7 +80,7 @@ fn search_backward(editor: &mut Editor, id: ClientId) {
     win.focus_to(Focus::Search);
 }
 
-#[action("Search word under cursor and move to next occurence")]
+#[action("Search: Find word under cursor and move to next occurence")]
 fn search_next_word_under_cursor(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     let pos = win.cursors.primary().pos();
@@ -92,7 +92,7 @@ fn search_next_word_under_cursor(editor: &mut Editor, id: ClientId) {
     search(editor, id, &word);
 }
 
-#[action("Search word under cursor and move to previous occurence")]
+#[action("Search: Find word under cursor and move to previous occurence")]
 fn search_prev_word_under_cursor(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     let pos = win.cursors.primary().pos();
@@ -104,7 +104,7 @@ fn search_prev_word_under_cursor(editor: &mut Editor, id: ClientId) {
     search(editor, id, &word);
 }
 
-#[action("Clear match highlighting")]
+#[action("Editor: Clear match highlighting")]
 fn clear_search_matches(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     win.search.current_match = None;
@@ -112,7 +112,7 @@ fn clear_search_matches(editor: &mut Editor, id: ClientId) {
     win.search.hl_last = false;
 }
 
-#[action("Goto next match")]
+#[action("Search: Goto next match")]
 fn next_search_match(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     let Some(input) = win.search.last_search_pattern().map(String::from) else {
@@ -121,7 +121,7 @@ fn next_search_match(editor: &mut Editor, id: ClientId) {
     search(editor, id, &input);
 }
 
-#[action("Goto previous match")]
+#[action("Search: Goto previous match")]
 fn prev_search_match(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
 

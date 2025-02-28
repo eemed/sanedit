@@ -103,7 +103,7 @@ impl Window {
             locations: Locations::default(),
             popup: None,
             snippets: vec![],
-            cursor_jumps: Jumps::default(),
+            cursor_jumps: Jumps::with_capacity(512),
             last_edit_jump: None,
         }
     }

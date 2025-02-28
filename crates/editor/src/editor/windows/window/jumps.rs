@@ -72,7 +72,7 @@ impl JumpGroup {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub(crate) struct Jumps {
     jumps: VecDeque<JumpGroup>,
     // Dont store too many
@@ -91,6 +91,14 @@ impl Jumps {
         Jumps {
             jumps: deque,
             cap: len,
+            position: None,
+        }
+    }
+
+    pub fn with_capacity(cap: usize) -> Jumps {
+        Jumps {
+            jumps: VecDeque::with_capacity(cap),
+            cap,
             position: None,
         }
     }

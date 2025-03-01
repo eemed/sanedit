@@ -406,14 +406,25 @@ pub(crate) fn unsaved_changes<F: Fn(&mut Editor, ClientId) + 'static>(
     win.prompt = Prompt::builder()
         .prompt("Save all unsaved changes? (Y/n)")
         .simple()
-        .on_confirm(move |e, id, out| {
+        .on_confirm(move |editor, id, out| {
             let ans = get!(out.text());
+            log::info!("Ans: {ans}");
             let yes = ans.is_empty() || is_yes(ans);
             if yes {
-                save.execute(e, id);
+                let unsaved: Vec<BufferId> = editor
+                    .buffers
+                    .iter()
+                    .filter(|(_, buf)| buf.is_modified())
+                    .map(|(bid, _)| bid)
+                    .collect();
+                for bid in unsaved {
+                    let (win, _buf) = win_buf!(editor, id);
+                    win.open_buffer(bid);
+                    save.execute(editor, id)
+                }
             }
 
-            (on_confirm)(e, id);
+            (on_confirm)(editor, id);
         })
         .build();
     win.focus_to(Focus::Prompt);

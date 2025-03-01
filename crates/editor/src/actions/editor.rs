@@ -10,7 +10,7 @@ use crate::{
 };
 use sanedit_server::ClientId;
 
-use super::{hooks::run, prompt::unsaved_changes, shell, text::save};
+use super::{hooks::run, prompt::unsaved_changes, shell};
 
 #[action("Editor: Quit")]
 fn quit(editor: &mut Editor, id: ClientId) {
@@ -18,35 +18,13 @@ fn quit(editor: &mut Editor, id: ClientId) {
     if id.0 == 0 {
         if editor.buffers.any_unsaved_changes().is_some() {
             unsaved_changes(editor, id, |editor, id| {
-                let unsaved: Vec<BufferId> = editor
-                    .buffers
-                    .iter()
-                    .filter(|(_, buf)| buf.is_modified())
-                    .map(|(bid, _)| bid)
-                    .collect();
-                for bid in unsaved {
-                    let (win, _buf) = win_buf!(editor, id);
-                    win.open_buffer(bid);
-                    save.execute(editor, id)
-                }
                 editor.quit_client(id);
             })
         } else {
             editor.quit();
         }
     } else {
-        let (_, buf) = editor.win_buf(id);
-        if buf.is_modified() {
-            unsaved_changes(editor, id, move |editor, id| {
-                let (win, buf) = editor.win_buf_mut(id);
-                win.open_buffer(buf.id);
-                save.execute(editor, id);
-
-                editor.quit_client(id);
-            })
-        } else {
-            editor.quit_client(id);
-        }
+        editor.quit_client(id);
     }
 }
 

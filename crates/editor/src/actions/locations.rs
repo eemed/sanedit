@@ -27,6 +27,14 @@ fn close_locations(editor: &mut Editor, id: ClientId) {
     win.focus_to(Focus::Window);
 }
 
+#[action("Locations: Focus")]
+fn focus_locations(editor: &mut Editor, id: ClientId) {
+    let (win, _buf) = editor.win_buf_mut(id);
+    if win.locations.show {
+        win.focus_to(Focus::Locations);
+    }
+}
+
 #[action("Locations: Next entry")]
 fn next_loc_entry(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);

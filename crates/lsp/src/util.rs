@@ -3,7 +3,7 @@ use std::{
     str::FromStr,
 };
 
-use sanedit_buffer::PieceTreeSlice;
+use sanedit_buffer::{utf8::EndOfLine, PieceTreeSlice};
 use sanedit_core::Severity;
 
 pub fn path_to_uri(path: &Path) -> lsp_types::Uri {
@@ -98,6 +98,7 @@ impl From<lsp_types::TextEdit> for TextEdit {
 
 #[derive(Debug, Clone)]
 pub struct TextDiagnostic {
+    pub line: u64,
     pub severity: Severity,
     pub description: String,
     pub range: PositionRange,
@@ -117,6 +118,7 @@ impl From<lsp_types::Diagnostic> for TextDiagnostic {
             .unwrap_or(Severity::Hint);
 
         TextDiagnostic {
+            line: diag.range.start.line as u64,
             severity,
             description: diag.message,
             range: diag.range.into(),
@@ -216,17 +218,8 @@ impl From<Position> for lsp_types::Position {
 
 impl Position {
     pub fn new(mut offset: u64, slice: &PieceTreeSlice, enc: &PositionEncoding) -> Self {
-        let (row, line) = slice.line_at(offset);
+        let (mut row, line) = slice.line_at(offset);
         offset -= line.start();
-
-        if offset == line.len() {
-            return Position {
-                pos: lsp_types::Position {
-                    line: (row + 1) as u32,
-                    character: 0,
-                },
-            };
-        }
 
         let mut chars = line.chars();
         let mut col = 0u32;
@@ -242,6 +235,11 @@ impl Position {
             };
 
             col += len as u32;
+
+            if EndOfLine::is_eol_char(ch) {
+                row += 1;
+                col = 0;
+            }
         }
 
         Position {

@@ -299,7 +299,7 @@ impl LSPJob {
                     start = d.range.start.to_offset(&slice, &enc);
                     end = d.range.end.to_offset(&slice, &enc);
                 }
-                Diagnostic::new(d.severity, (start..end).into(), &d.description)
+                Diagnostic::new(d.severity, (start..end).into(), d.line, &d.description)
             })
             .collect();
 

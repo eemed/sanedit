@@ -5,14 +5,16 @@ pub struct Diagnostic {
     range: BufferRange,
     severity: Severity,
     description: String,
+    line: u64,
 }
 
 impl Diagnostic {
-    pub fn new(severity: Severity, range: BufferRange, description: &str) -> Diagnostic {
+    pub fn new(severity: Severity, range: BufferRange, line: u64, description: &str) -> Diagnostic {
         Diagnostic {
             severity,
             range,
             description: description.into(),
+            line,
         }
     }
 
@@ -26,6 +28,10 @@ impl Diagnostic {
 
     pub fn description(&self) -> &str {
         &self.description
+    }
+
+    pub fn line(&self) -> u64 {
+        self.line
     }
 }
 

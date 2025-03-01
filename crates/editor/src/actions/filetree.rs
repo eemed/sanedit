@@ -25,6 +25,14 @@ fn show_filetree(editor: &mut Editor, id: ClientId) {
     win.focus_to(Focus::Filetree);
 }
 
+#[action("Filetree: Focus")]
+fn focus_filetree(editor: &mut Editor, id: ClientId) {
+    let (win, _buf) = win_buf!(editor, id);
+    if win.ft_view.show {
+        win.focus_to(Focus::Filetree);
+    }
+}
+
 #[action("Filetree: Confirm entry")]
 fn goto_ft_entry(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf(id);

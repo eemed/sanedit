@@ -119,6 +119,7 @@ pub(crate) const COMMANDS: &[Action] = &[
     locations::reject_locations,
     locations::goto_next_loc_item,
     locations::goto_prev_loc_item,
+    locations::focus_locations,
 
     filetree::close_filetree,
     filetree::next_ft_entry,
@@ -129,6 +130,7 @@ pub(crate) const COMMANDS: &[Action] = &[
     filetree::goto_ft_entry,
     filetree::ft_goto_current_file,
     filetree::show_filetree,
+    filetree::focus_filetree,
 
     editor::quit,
     editor::build_project,

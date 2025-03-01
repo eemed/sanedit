@@ -449,7 +449,12 @@ pub(crate) fn diagnostics_to_locations(editor: &mut Editor, id: ClientId) {
     for (path, diags) in &lsp.diagnostics {
         let mut group = Group::new(path);
         for diag in diags.iter() {
-            let item = Item::new(diag.description(), None, Some(diag.range().start), vec![]);
+            let item = Item::new(
+                diag.description(),
+                Some(diag.line()),
+                Some(diag.range().start),
+                vec![],
+            );
             log::info!("push: {item:?}");
             group.push(item);
         }

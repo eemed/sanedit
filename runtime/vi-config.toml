@@ -233,6 +233,8 @@ maps = [
     { key = "-", actions = ["show_filetree"] },
     { key = "alt+q", actions = ["show_locations"] },
     { key = "backspace", actions = ["goto_prev_buffer"] },
+    { key = "alt+j", actions = ["focus_locations"] },
+    { key = "alt+h", actions = ["focus_filetree"] },
 
     { key = "s l", actions = ["select_line",        "goto_layer select"] },
     { key = "s c", actions = ["select_curly",       "goto_layer select"] },
@@ -285,7 +287,7 @@ maps = [
     # { key = "k", actions = ["keep_locations"] },
     # { key = "r", actions = ["reject_locations"] },
 
-    { key = "alt+up", actions = ["focus_window"] },
+    { key = "alt+k", actions = ["focus_window"] },
 
     # { key = "up", actions = ["prev_loc_entry"] },
     # { key = "down", actions = ["next_loc_entry"] },
@@ -312,7 +314,7 @@ maps = [
     { key = "c", actions = ["ft_new_file"] },
     { key = "d", actions = ["ft_delete_file"] },
 
-    # { key = "alt+right", actions = ["focus_window"] },
+    { key = "alt+l", actions = ["focus_window"] },
     # { key = "up", actions = ["prev_ft_entry"] },
     # { key = "down", actions = ["next_ft_entry"] },
     # { key = "btab", actions = ["prev_ft_entry"] },

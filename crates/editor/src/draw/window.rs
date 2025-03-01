@@ -122,7 +122,7 @@ fn draw_hl(grid: &mut [Vec<redraw::Cell>], view: &View, style: Style, range: &Bu
         for (i, row) in view.cells().iter().skip(point.y).enumerate() {
             let line = point.y + i;
             for (col, cell) in row.iter().enumerate() {
-                if !cell.is_virtual() && !cell.is_empty() && range.contains(&pos) {
+                if (!cell.is_virtual() && !cell.is_empty() && range.contains(&pos)) || cell.is_eof() {
                     grid[line][col].style = style;
                 }
 

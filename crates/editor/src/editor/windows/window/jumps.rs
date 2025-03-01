@@ -33,7 +33,6 @@ impl Jump {
 /// Mostly to place a cursor on each jump simultaneously
 #[derive(Debug, Clone)]
 pub(crate) struct JumpGroup {
-    #[allow(dead_code)]
     bid: BufferId,
     jumps: Vec<Jump>,
 }
@@ -41,6 +40,10 @@ pub(crate) struct JumpGroup {
 impl JumpGroup {
     pub fn new(id: BufferId, jumps: Vec<Jump>) -> JumpGroup {
         JumpGroup { bid: id, jumps }
+    }
+
+    pub fn buffer_id(&self) -> BufferId {
+        self.bid
     }
 
     pub fn jumps(&self) -> &[Jump] {
@@ -118,13 +121,29 @@ impl Jumps {
         }
 
         self.jumps.push_front(group);
+
+        // Keep position if not in front
+        if let Some(pos) = self.position {
+            if pos + 1 >= self.jumps.len() {
+                return;
+            }
+            self.position = Some(pos + 1);
+        };
+    }
+
+    pub fn reset_position(&mut self) {
         self.position = None;
     }
 
     /// Goto the previous jump group inserted
     pub fn prev(&mut self) -> Option<&JumpGroup> {
         self.position = match self.position {
-            Some(pos) => Some(pos + 1),
+            Some(pos) => {
+                if pos + 1 >= self.jumps.len() {
+                    return None;
+                }
+                Some(pos + 1)
+            }
             None => Some(0),
         };
 
@@ -135,11 +154,18 @@ impl Jumps {
     pub fn next(&mut self) -> Option<&JumpGroup> {
         let pos = self.position?;
         if pos == 0 {
-            self.position = None;
-        } else {
-            self.position = Some(pos - 1);
+            return None;
         }
 
+        self.position = Some(pos - 1);
         self.jumps.get(self.position?)
+    }
+
+    pub fn current(&self) -> Option<&JumpGroup> {
+        self.jumps.get(self.position?)
+    }
+
+    pub fn iter(&self) -> std::collections::vec_deque::Iter<'_, JumpGroup> {
+        self.jumps.iter()
     }
 }

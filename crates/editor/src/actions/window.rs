@@ -3,7 +3,7 @@ use crate::{
     editor::{
         buffers::Buffer,
         hooks::Hook,
-        windows::{Focus, Zone},
+        windows::{Focus, Jump, JumpGroup, Zone},
         Editor,
     },
     VERSION,
@@ -51,7 +51,7 @@ fn sync_windows(editor: &mut Editor, id: ClientId) {
 fn goto_prev_buffer(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     if win.goto_prev_buffer() {
-        let hook = Hook::BufOpened(buf.id);
+        let hook = Hook::BufEnter(buf.id);
         hooks::run(editor, id, hook)
     } else {
         win.warn_msg("No previous buffer");
@@ -177,4 +177,32 @@ fn view_to_cursor_middle(editor: &mut Editor, id: ClientId) {
 fn view_to_cursor_bottom(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     win.view_to_cursor_zone(buf, Zone::Bottom)
+}
+
+#[action("Save cursor jump")]
+fn save_cursor_jump(editor: &mut Editor, id: ClientId) {
+    let (_win, buf) = editor.win_buf_mut(id);
+    let bid = buf.id;
+    let bid = editor
+        .hooks
+        .running_hook()
+        .and_then(Hook::buffer_id)
+        .unwrap_or(bid);
+
+    let (win, buf) = editor.win_buf_mut(id);
+    let has_jumps = win
+        .cursor_jumps
+        .iter()
+        .any(|group| group.buffer_id() == bid);
+
+    if has_jumps {
+        return;
+    }
+
+        log::info!("Saved: {bid:?}");
+    let primary = win.cursors.primary().pos();
+    let mark = buf.mark(primary);
+    let jump = Jump::new(mark, None);
+    let group = JumpGroup::new(bid, vec![jump]);
+    win.cursor_jumps.push(group);
 }

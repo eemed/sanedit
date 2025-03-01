@@ -32,16 +32,10 @@ pub(crate) fn execute(editor: &mut Editor, id: ClientId, interactive: bool, cmd:
 
             editor.job_broker.request(job);
         }
+        ShellKind::NonInteractive => run_non_interactive(&shell, cmd),
     }
 }
 
 fn run_non_interactive(shell: &str, cmd: &str) {
-    match Command::new(shell).args(["-c", cmd]).output() {
-        Ok(output) => log::info!(
-            "output: {}: {:?}",
-            output.status,
-            std::str::from_utf8(&output.stdout)
-        ),
-        Err(e) => log::error!("Command '{cmd}' failed: {e}"),
-    }
+    let _ = Command::new(shell).args(["-c", cmd]).spawn();
 }

@@ -48,6 +48,7 @@ fn do_move_line<F: Fn(&PieceTreeSlice, &Cursor, &DisplayOptions) -> (u64, usize)
 
     if let Some(jump) = jump {
         win.cursor_jumps.push(JumpGroup::new(buf.id, vec![jump]));
+        win.cursor_jumps.reset_position();
     }
 
     if changed {
@@ -89,6 +90,7 @@ fn do_move<F: Fn(&PieceTreeSlice, u64) -> u64>(
 
     if let Some(jump) = jump {
         win.cursor_jumps.push(JumpGroup::new(buf.id, vec![jump]));
+        win.cursor_jumps.reset_position();
     }
 
     if changed {

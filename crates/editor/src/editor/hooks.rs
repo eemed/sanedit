@@ -23,10 +23,13 @@ pub(crate) enum Hook {
     /// A new buffer is created
     BufCreated(BufferId),
 
-    /// After buffer opened in a window
-    BufOpened(BufferId),
+    /// After buffer entered
+    BufEnter(BufferId),
 
-    /// After buffer changed
+    /// When a buffer is left
+    BufLeave(BufferId),
+
+    /// After text is inserted or removed from buffer
     BufChanged(BufferId),
 
     /// After buffer is closed, and will be removed
@@ -55,7 +58,8 @@ impl Hook {
     pub fn buffer_id(&self) -> Option<BufferId> {
         match self {
             Hook::BufCreated(id)
-            | Hook::BufOpened(id)
+            | Hook::BufLeave(id)
+            | Hook::BufEnter(id)
             | Hook::BufChanged(id)
             | Hook::BufDeletedPre(id) => Some(*id),
             _ => None,
@@ -147,6 +151,7 @@ impl Default for Hooks {
         hooks.register(BufChanged, window::sync_windows);
         hooks.register(CursorMoved, cursors::merge_overlapping_cursors);
         hooks.register(OnMessagePre, window::clear_messages);
+        hooks.register(BufLeave, window::save_cursor_jump);
 
         // TODO handle registration only when needed?
         hooks.register(CursorMoved, completion::completion_abort);
@@ -157,7 +162,7 @@ impl Default for Hooks {
         // Syntax
         hooks.register(OnMessagePost, syntax::reparse_view);
         hooks.register(Reload, syntax::parse_syntax);
-        hooks.register(BufOpened, syntax::parse_syntax);
+        hooks.register(BufEnter, syntax::parse_syntax);
         hooks.register(BufChanged, syntax::prevent_flicker);
 
         // LSP

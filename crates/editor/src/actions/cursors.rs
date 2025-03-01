@@ -230,17 +230,61 @@ fn jump_next_change(editor: &mut Editor, id: ClientId) {
 #[action("Cursors: Goto previous jump")]
 fn jump_prev(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
-    if win.cursors_to_prev_jump(buf) {
-        run(editor, id, Hook::CursorMoved)
+    let bid = buf.id;
+    let enter = win
+        .cursor_jumps
+        .prev()
+        .map(|prev| {
+            if prev.buffer_id() != bid {
+                Some(prev.buffer_id())
+            } else {
+                None
+            }
+        })
+        .flatten();
+
+    if enter.is_some() {
+        run(editor, id, Hook::BufLeave(bid));
     }
+
+    let (win, buf) = win_buf!(editor, id);
+    let nbid = enter.unwrap_or(buf.id);
+    let buf = get!(editor.buffers.get(nbid));
+    win.goto_cursor_jump(buf);
+    if enter.is_some() {
+        run(editor, id, Hook::BufEnter(nbid));
+    }
+    run(editor, id, Hook::CursorMoved)
 }
 
 #[action("Cursors: Goto next jump")]
 fn jump_next(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
-    if win.cursors_to_next_jump(buf) {
-        run(editor, id, Hook::CursorMoved)
+    let bid = buf.id;
+    let enter = win
+        .cursor_jumps
+        .next()
+        .map(|next| {
+            if next.buffer_id() != bid {
+                Some(next.buffer_id())
+            } else {
+                None
+            }
+        })
+        .flatten();
+
+    if enter.is_some() {
+        run(editor, id, Hook::BufLeave(bid));
     }
+
+    let (win, buf) = win_buf!(editor, id);
+    let nbid = enter.unwrap_or(buf.id);
+    let buf = get!(editor.buffers.get(nbid));
+    win.goto_cursor_jump(buf);
+    if enter.is_some() {
+        run(editor, id, Hook::BufEnter(nbid));
+    }
+    run(editor, id, Hook::CursorMoved)
 }
 
 #[action("Cursors: Goto to top of view")]

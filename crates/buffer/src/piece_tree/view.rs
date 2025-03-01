@@ -1,4 +1,3 @@
-use std::cmp;
 use std::io::{self, Write};
 use std::ops::{Bound, RangeBounds};
 use std::sync::Arc;

@@ -162,7 +162,7 @@ maps = [
     { key = "k", actions = ["prev_visual_line"] },
     { key = "j", actions = ["next_visual_line"] },
     { key = "ctrl+o", actions = ["jump_prev"] },
-    { key = "ctrl+i", actions = ["jump_next"] },
+    { key = "tab", actions = ["jump_next"] },
     { key = "g ;", actions = ["jump_prev_change"] },
     { key = "g ,", actions = ["jump_next_change"] },
     { key = "z z", actions = ["view_to_cursor_middle"] },

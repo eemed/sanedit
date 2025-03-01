@@ -265,9 +265,11 @@ impl Editor {
             self.buffers.remove(old);
         }
 
+        run(self, id, Hook::BufLeave(old));
+
         let (win, _buf) = self.win_buf_mut(id);
         win.open_buffer(bid);
-        run(self, id, Hook::BufOpened(bid));
+        run(self, id, Hook::BufEnter(bid));
     }
 
     /// Create a new buffer from path
@@ -292,6 +294,11 @@ impl Editor {
             Some(bid) => bid,
             None => self.create_buffer(id, &path)?,
         };
+        let (win, _buf) = self.win_buf(id);
+        if win.buffer_id() == bid {
+            return Ok(());
+        }
+
         self.open_buffer(id, bid);
 
         Ok(())

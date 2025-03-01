@@ -370,8 +370,18 @@ impl Window {
         self.goto_offset(offset, buf);
     }
 
+    fn push_new_cursor_jump(&mut self, buf: &Buffer) {
+        let primary = self.cursors.primary().pos();
+        let mark = buf.mark(primary);
+        let jump = Jump::new(mark, None);
+        let group = JumpGroup::new(self.bid, vec![jump]);
+        self.cursor_jumps.push(group);
+    }
+
     /// Move primary cursor to offset and the view too
     pub fn goto_offset(&mut self, offset: u64, buf: &Buffer) {
+        self.push_new_cursor_jump(buf);
+
         let offset = min(offset, buf.len());
         let primary = self.cursors.primary_mut();
         primary.goto(offset);
@@ -1123,24 +1133,15 @@ impl Window {
         false
     }
 
-    pub fn cursors_to_next_jump(&mut self, buf: &Buffer) -> bool {
-        if let Some(group) = self.cursor_jumps.next() {
-            self.cursors = group.to_cursors(buf);
-            self.ensure_cursor_on_grapheme_boundary(buf);
-            true
-        } else {
-            false
-        }
-    }
+    // Goto current jump, buffer provided should be the one in current jump
+    pub fn goto_cursor_jump(&mut self, buf: &Buffer) {
+        let group = get!(self.cursor_jumps.current());
 
-    pub fn cursors_to_prev_jump(&mut self, buf: &Buffer) -> bool {
-        if let Some(group) = self.cursor_jumps.prev() {
-            self.cursors = group.to_cursors(buf);
-            self.ensure_cursor_on_grapheme_boundary(buf);
-            true
-        } else {
-            false
-        }
+        self.bid = group.buffer_id();
+        self.cursors = group.to_cursors(buf);
+
+        self.ensure_cursor_on_grapheme_boundary(buf);
+        self.view_to_cursor(buf);
     }
 
     pub fn cursors_to_prev_change(&mut self, buf: &Buffer) -> bool {

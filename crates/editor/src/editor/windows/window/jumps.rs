@@ -1,7 +1,4 @@
-use std::{
-    collections::{LinkedList, VecDeque},
-    sync::Arc,
-};
+use std::{collections::VecDeque, sync::Arc};
 
 use sanedit_buffer::Mark;
 use sanedit_core::{Cursor, Range};
@@ -78,6 +75,40 @@ impl JumpGroup {
     }
 }
 
+pub(crate) struct Iter<'a> {
+    jumps: &'a VecDeque<Arc<JumpGroup>>,
+    position: Option<usize>,
+}
+
+impl<'a> Iter<'a> {
+    pub fn next(&mut self) -> Option<(JumpCursor, &JumpGroup)> {
+        let index = self.position? + 1;
+        if index >= self.jumps.len() {
+            return None;
+        }
+
+        let group = self.jumps.get(index)?;
+        let cursor = JumpCursor(Arc::as_ptr(group));
+        Some((cursor, group))
+    }
+
+    pub fn prev(&mut self) -> Option<(JumpCursor, &JumpGroup)> {
+        let index = match self.position {
+            Some(pos) => {
+                if pos == 0 {
+                    return None;
+                }
+                pos - 1
+            }
+            None => self.jumps.len() - 1,
+        };
+
+        let group = self.jumps.get(index)?;
+        let cursor = JumpCursor(Arc::as_ptr(group));
+        Some((cursor, group))
+    }
+}
+
 /// Object that remembers a position in jumps
 pub(crate) struct JumpCursor(*const JumpGroup);
 
@@ -115,8 +146,9 @@ impl Jumps {
     }
 
     /// Takes the front jump group out of jumps
-    pub fn take(&mut self) -> Option<Arc<JumpGroup>> {
-        self.jumps.pop_back()
+    pub fn take(&mut self) -> Option<JumpGroup> {
+        let group = self.jumps.pop_back()?;
+        Arc::into_inner(group)
     }
 
     pub fn is_empty(&self) -> bool {
@@ -135,33 +167,12 @@ impl Jumps {
         self.position = None;
     }
 
-    /// Goto the previous jump group inserted
-    pub fn peek_prev(&self) -> Option<(JumpCursor, &JumpGroup)> {
-        let index = match self.position {
-            Some(pos) => {
-                if pos == 0 {
-                    return None;
-                }
-                pos - 1
-            }
-            None => self.jumps.len() - 1,
-        };
-
-        let group = self.jumps.get(index)?;
-        let cursor = JumpCursor(Arc::as_ptr(group));
-        Some((cursor, group))
-    }
-
-    /// Goto the next jump group, return Some only if prev was called before
-    pub fn peek_next(&self) -> Option<(JumpCursor, &JumpGroup)> {
-        let index = self.position? + 1;
-        if index >= self.jumps.len() {
-            return None;
+    /// New iterator starting at current position
+    pub fn iter(&self) -> Iter {
+        Iter {
+            jumps: &self.jumps,
+            position: self.position.clone(),
         }
-
-        let group = self.jumps.get(index)?;
-        let cursor = JumpCursor(Arc::as_ptr(group));
-        Some((cursor, group))
     }
 
     pub fn goto(&mut self, cursor: JumpCursor) -> Option<&JumpGroup> {
@@ -178,9 +189,5 @@ impl Jumps {
     pub fn current(&self) -> Option<&JumpGroup> {
         let current = self.jumps.get(self.position?)?;
         Some(current.as_ref())
-    }
-
-    pub fn iter(&self) -> std::collections::vec_deque::Iter<'_, Arc<JumpGroup>> {
-        self.jumps.iter()
     }
 }

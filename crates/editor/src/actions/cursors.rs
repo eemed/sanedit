@@ -1,8 +1,14 @@
+use sanedit_buffer::MarkResult;
 use sanedit_messages::redraw::Point;
 
 use crate::{
     common::window::pos_at_point,
-    editor::{hooks::Hook, windows::Zone, Editor},
+    editor::{
+        buffers::{BufferId, Buffers},
+        hooks::Hook,
+        windows::{JumpCursor, Jumps, Zone},
+        Editor,
+    },
 };
 
 use sanedit_server::ClientId;
@@ -227,15 +233,117 @@ fn jump_next_change(editor: &mut Editor, id: ClientId) {
     }
 }
 
+fn find_prev_jump(
+    cursor_jumps: &Jumps,
+    buffers: &Buffers,
+    original_bid: BufferId,
+) -> Option<(JumpCursor, BufferId)> {
+    // for example iter backwards
+    // until mark is Found
+    // or
+    //  buf changes => iter until mark is Found
+    //      or
+    //      if not goto Deleted marker once
+    //
+    // This would go to previous buffers even if mark is not found
+    // but skip all other deleted markers
+
+    let mut iter = cursor_jumps.iter();
+    let mut previous = None;
+
+    while let Some((cursor, group)) = iter.prev() {
+        let gbid = group.buffer_id();
+
+        // Return if marks are found
+        if let Some(buf) = buffers.get(gbid) {
+            let found = group.jumps().iter().all(|jump| {
+                let mark = buf.mark_to_pos(jump.start());
+                matches!(mark, MarkResult::Found(_))
+            });
+
+            if found {
+                return Some((cursor, gbid));
+            }
+        }
+
+        if let Some((_, pbid)) = &previous {
+            // We have went to next buffer
+            // and current entry is also in another buffer
+            if *pbid != original_bid && *pbid != gbid {
+                return previous;
+            }
+        }
+
+        previous = Some((cursor, gbid));
+    }
+
+    if let Some((_, pbid)) = &previous {
+        if *pbid != original_bid {
+            return previous;
+        }
+    }
+
+    None
+}
+
+fn find_next_jump(
+    cursor_jumps: &Jumps,
+    buffers: &Buffers,
+    original_bid: BufferId,
+) -> Option<(JumpCursor, BufferId)> {
+    // for example iter backwards
+    // until mark is Found
+    // or
+    //  buf changes => iter until mark is Found
+    //      or
+    //      if not goto Deleted marker once
+    //
+    // This would go to previous buffers even if mark is not found
+    // but skip all other deleted markers
+
+    let mut iter = cursor_jumps.iter();
+    let mut previous = None;
+
+    while let Some((cursor, group)) = iter.next() {
+        let gbid = group.buffer_id();
+
+        // Return if marks are found
+        if let Some(buf) = buffers.get(gbid) {
+            let found = group.jumps().iter().all(|jump| {
+                let mark = buf.mark_to_pos(jump.start());
+                matches!(mark, MarkResult::Found(_))
+            });
+
+            if found {
+                return Some((cursor, gbid));
+            }
+        }
+
+        if let Some((_, pbid)) = &previous {
+            // We have went to next buffer
+            // and current entry is also in another buffer
+            if *pbid != original_bid && *pbid != gbid {
+                return previous;
+            }
+        }
+
+        previous = Some((cursor, gbid));
+    }
+
+    if let Some((_, pbid)) = &previous {
+        if *pbid != original_bid {
+            return previous;
+        }
+    }
+
+    None
+}
+
 #[action("Cursors: Goto previous jump")]
 fn jump_prev(editor: &mut Editor, id: ClientId) {
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, buf) = win_buf!(editor, id);
     let bid = buf.id;
-    let (cursor, next_bid) = get!(win
-        .cursor_jumps
-        .peek_prev()
-        .map(|(cursor, next)| Some((cursor, next.buffer_id())))
-        .flatten());
+    let (cursor, next_bid) = get!(find_prev_jump(&win.cursor_jumps, &editor.buffers, bid));
 
     if next_bid != bid {
         run(editor, id, Hook::BufLeave(bid));
@@ -252,13 +360,9 @@ fn jump_prev(editor: &mut Editor, id: ClientId) {
 
 #[action("Cursors: Goto next jump")]
 fn jump_next(editor: &mut Editor, id: ClientId) {
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, buf) = win_buf!(editor, id);
     let bid = buf.id;
-    let (cursor, next_bid) = get!(win
-        .cursor_jumps
-        .peek_next()
-        .map(|(cursor, next)| Some((cursor, next.buffer_id())))
-        .flatten());
+    let (cursor, next_bid) = get!(find_next_jump(&win.cursor_jumps, &editor.buffers, bid));
 
     if next_bid != bid {
         run(editor, id, Hook::BufLeave(bid));

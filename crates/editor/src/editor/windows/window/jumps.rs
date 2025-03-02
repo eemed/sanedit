@@ -1,4 +1,7 @@
-use std::collections::VecDeque;
+use std::{
+    collections::{LinkedList, VecDeque},
+    sync::Arc,
+};
 
 use sanedit_buffer::Mark;
 use sanedit_core::{Cursor, Range};
@@ -75,18 +78,23 @@ impl JumpGroup {
     }
 }
 
+/// Object that remembers a position in jumps
+pub(crate) struct JumpCursor(*const JumpGroup);
+
 #[derive(Debug)]
 pub(crate) struct Jumps {
-    jumps: VecDeque<JumpGroup>,
+    jumps: VecDeque<Arc<JumpGroup>>,
+
     // Dont store too many
     cap: usize,
 
-    /// None = front before 0
+    /// None = back
     position: Option<usize>,
 }
 
 impl Jumps {
     pub fn new(groups: Vec<JumpGroup>) -> Jumps {
+        let groups: Vec<Arc<JumpGroup>> = groups.into_iter().map(Arc::new).collect();
         let len = groups.len();
         let mut deque = VecDeque::with_capacity(len);
         deque.extend(groups);
@@ -100,15 +108,15 @@ impl Jumps {
 
     pub fn with_capacity(cap: usize) -> Jumps {
         Jumps {
-            jumps: VecDeque::with_capacity(cap),
+            jumps: VecDeque::new(),
             cap,
             position: None,
         }
     }
 
     /// Takes the front jump group out of jumps
-    pub fn take_front(&mut self) -> Option<JumpGroup> {
-        self.jumps.pop_front()
+    pub fn take(&mut self) -> Option<Arc<JumpGroup>> {
+        self.jumps.pop_back()
     }
 
     pub fn is_empty(&self) -> bool {
@@ -117,55 +125,62 @@ impl Jumps {
 
     pub fn push(&mut self, group: JumpGroup) {
         while self.jumps.len() >= self.cap {
-            self.jumps.pop_back();
+            self.jumps.pop_front();
         }
 
-        self.jumps.push_front(group);
-
-        // Keep position if not in front
-        if let Some(pos) = self.position {
-            if pos + 1 >= self.jumps.len() {
-                return;
-            }
-            self.position = Some(pos + 1);
-        };
+        self.jumps.push_back(Arc::new(group));
     }
 
-    pub fn reset_position(&mut self) {
+    pub fn goto_start(&mut self) {
         self.position = None;
     }
 
     /// Goto the previous jump group inserted
-    pub fn prev(&mut self) -> Option<&JumpGroup> {
-        self.position = match self.position {
+    pub fn peek_prev(&self) -> Option<(JumpCursor, &JumpGroup)> {
+        let index = match self.position {
             Some(pos) => {
-                if pos + 1 >= self.jumps.len() {
+                if pos == 0 {
                     return None;
                 }
-                Some(pos + 1)
+                pos - 1
             }
-            None => Some(0),
+            None => self.jumps.len() - 1,
         };
 
-        self.jumps.get(self.position?)
+        let group = self.jumps.get(index)?;
+        let cursor = JumpCursor(Arc::as_ptr(group));
+        Some((cursor, group))
     }
 
     /// Goto the next jump group, return Some only if prev was called before
-    pub fn next(&mut self) -> Option<&JumpGroup> {
-        let pos = self.position?;
-        if pos == 0 {
+    pub fn peek_next(&self) -> Option<(JumpCursor, &JumpGroup)> {
+        let index = self.position? + 1;
+        if index >= self.jumps.len() {
             return None;
         }
 
-        self.position = Some(pos - 1);
-        self.jumps.get(self.position?)
+        let group = self.jumps.get(index)?;
+        let cursor = JumpCursor(Arc::as_ptr(group));
+        Some((cursor, group))
+    }
+
+    pub fn goto(&mut self, cursor: JumpCursor) -> Option<&JumpGroup> {
+        let i = self.jumps.iter().rev().position(|group| {
+            let ptr = Arc::as_ptr(group);
+            std::ptr::eq(ptr, cursor.0)
+        })?;
+        let index = self.jumps.len() - 1 - i;
+        self.position = Some(index);
+        let group = self.jumps.get(index)?.as_ref();
+        Some(group)
     }
 
     pub fn current(&self) -> Option<&JumpGroup> {
-        self.jumps.get(self.position?)
+        let current = self.jumps.get(self.position?)?;
+        Some(current.as_ref())
     }
 
-    pub fn iter(&self) -> std::collections::vec_deque::Iter<'_, JumpGroup> {
+    pub fn iter(&self) -> std::collections::vec_deque::Iter<'_, Arc<JumpGroup>> {
         self.jumps.iter()
     }
 }

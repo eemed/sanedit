@@ -189,19 +189,21 @@ fn save_cursor_jump(editor: &mut Editor, id: ClientId) {
         .and_then(Hook::buffer_id)
         .unwrap_or(bid);
 
-    let (win, buf) = editor.win_buf_mut(id);
-    let has_jumps = win
-        .cursor_jumps
-        .iter()
-        .any(|group| group.buffer_id() == bid);
+    let (win, _buf) = win_buf!(editor, id);
+    let at_start = win.cursor_jumps.current().is_none();
+    // win
+    // .cursor_jumps
+    // .iter()
+    // .any(|group| group.buffer_id() == bid);
 
-    if has_jumps {
+    if !at_start {
         return;
     }
 
-        log::info!("Saved: {bid:?}");
+    log::info!("SAVEING: {bid:?}");
+    let buffer = editor.buffers.get(bid).unwrap();
     let primary = win.cursors.primary().pos();
-    let mark = buf.mark(primary);
+    let mark = buffer.mark(primary);
     let jump = Jump::new(mark, None);
     let group = JumpGroup::new(bid, vec![jump]);
     win.cursor_jumps.push(group);

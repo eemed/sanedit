@@ -1109,7 +1109,7 @@ impl Window {
 
     pub fn cursors_to_next_snippet_jump(&mut self, buf: &Buffer) -> bool {
         while let Some(last) = self.snippets.last_mut() {
-            match last.take_front() {
+            match last.take() {
                 Some(jumps) => {
                     let empty = last.is_empty();
                     self.cursors = jumps.to_cursors(buf);
@@ -1134,14 +1134,22 @@ impl Window {
     }
 
     // Goto current jump, buffer provided should be the one in current jump
-    pub fn goto_cursor_jump(&mut self, buf: &Buffer) {
-        let group = get!(self.cursor_jumps.current());
+    pub fn goto_cursor_jump(&mut self, cursor: JumpCursor, buf: &Buffer) {
+        let group = get!(self.cursor_jumps.goto(cursor));
+
+        debug_assert!(
+            buf.id == group.buffer_id(),
+            "Invalid buffer provided to window got id {:?}, expected {:?}",
+            buf.id,
+            group.buffer_id()
+        );
 
         self.bid = group.buffer_id();
         self.cursors = group.to_cursors(buf);
 
         self.ensure_cursor_on_grapheme_boundary(buf);
         self.view_to_cursor(buf);
+        self.invalidate();
     }
 
     pub fn cursors_to_prev_change(&mut self, buf: &Buffer) -> bool {

@@ -231,28 +231,21 @@ fn jump_next_change(editor: &mut Editor, id: ClientId) {
 fn jump_prev(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     let bid = buf.id;
-    let enter = win
+    let (cursor, next_bid) = get!(win
         .cursor_jumps
-        .prev()
-        .map(|prev| {
-            if prev.buffer_id() != bid {
-                Some(prev.buffer_id())
-            } else {
-                None
-            }
-        })
-        .flatten();
+        .peek_prev()
+        .map(|(cursor, next)| Some((cursor, next.buffer_id())))
+        .flatten());
 
-    if enter.is_some() {
+    if next_bid != bid {
         run(editor, id, Hook::BufLeave(bid));
     }
 
-    let (win, buf) = win_buf!(editor, id);
-    let nbid = enter.unwrap_or(buf.id);
-    let buf = get!(editor.buffers.get(nbid));
-    win.goto_cursor_jump(buf);
-    if enter.is_some() {
-        run(editor, id, Hook::BufEnter(nbid));
+    let (win, _buf) = win_buf!(editor, id);
+    let buf = get!(editor.buffers.get(next_bid));
+    win.goto_cursor_jump(cursor, buf);
+    if next_bid != bid {
+        run(editor, id, Hook::BufEnter(next_bid));
     }
     run(editor, id, Hook::CursorMoved)
 }
@@ -261,28 +254,21 @@ fn jump_prev(editor: &mut Editor, id: ClientId) {
 fn jump_next(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
     let bid = buf.id;
-    let enter = win
+    let (cursor, next_bid) = get!(win
         .cursor_jumps
-        .next()
-        .map(|next| {
-            if next.buffer_id() != bid {
-                Some(next.buffer_id())
-            } else {
-                None
-            }
-        })
-        .flatten();
+        .peek_next()
+        .map(|(cursor, next)| Some((cursor, next.buffer_id())))
+        .flatten());
 
-    if enter.is_some() {
+    if next_bid != bid {
         run(editor, id, Hook::BufLeave(bid));
     }
 
-    let (win, buf) = win_buf!(editor, id);
-    let nbid = enter.unwrap_or(buf.id);
-    let buf = get!(editor.buffers.get(nbid));
-    win.goto_cursor_jump(buf);
-    if enter.is_some() {
-        run(editor, id, Hook::BufEnter(nbid));
+    let (win, _buf) = win_buf!(editor, id);
+    let buf = get!(editor.buffers.get(next_bid));
+    win.goto_cursor_jump(cursor, buf);
+    if next_bid != bid {
+        run(editor, id, Hook::BufEnter(next_bid));
     }
     run(editor, id, Hook::CursorMoved)
 }

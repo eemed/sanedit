@@ -1,7 +1,6 @@
-use std::{collections::VecDeque, sync::Arc};
-
 use sanedit_buffer::Mark;
 use sanedit_core::{Cursor, Range};
+use sanedit_utils::ring::{Iter, Ref, RingBuffer};
 
 use crate::editor::buffers::{Buffer, BufferId};
 
@@ -75,49 +74,9 @@ impl JumpGroup {
     }
 }
 
-pub(crate) struct Iter<'a> {
-    jumps: &'a VecDeque<Arc<JumpGroup>>,
-    position: Option<usize>,
-}
-
-impl<'a> Iter<'a> {
-    pub fn next(&mut self) -> Option<(JumpCursor, &JumpGroup)> {
-        let index = self.position? + 1;
-        if index >= self.jumps.len() {
-            return None;
-        }
-
-        let group = self.jumps.get(index)?;
-        let cursor = JumpCursor(Arc::as_ptr(group));
-        Some((cursor, group))
-    }
-
-    pub fn prev(&mut self) -> Option<(JumpCursor, &JumpGroup)> {
-        let index = match self.position {
-            Some(pos) => {
-                if pos == 0 {
-                    return None;
-                }
-                pos - 1
-            }
-            None => self.jumps.len() - 1,
-        };
-
-        let group = self.jumps.get(index)?;
-        let cursor = JumpCursor(Arc::as_ptr(group));
-        Some((cursor, group))
-    }
-}
-
-/// Object that remembers a position in jumps
-pub(crate) struct JumpCursor(*const JumpGroup);
-
 #[derive(Debug)]
 pub(crate) struct Jumps {
-    jumps: VecDeque<Arc<JumpGroup>>,
-
-    // Dont store too many
-    cap: usize,
+    jumps: RingBuffer<JumpGroup>,
 
     /// None = back
     position: Option<usize>,
@@ -125,42 +84,34 @@ pub(crate) struct Jumps {
 
 impl Jumps {
     pub fn new(groups: Vec<JumpGroup>) -> Jumps {
-        let groups: Vec<Arc<JumpGroup>> = groups.into_iter().map(Arc::new).collect();
         let len = groups.len();
-        let mut deque = VecDeque::with_capacity(len);
+        let mut deque = RingBuffer::with_capacity(len);
         deque.extend(groups);
 
         Jumps {
             jumps: deque,
-            cap: len,
             position: None,
         }
     }
 
     pub fn with_capacity(cap: usize) -> Jumps {
         Jumps {
-            jumps: VecDeque::new(),
-            cap,
+            jumps: RingBuffer::with_capacity(cap),
             position: None,
         }
     }
 
     /// Takes the front jump group out of jumps
-    pub fn take(&mut self) -> Option<JumpGroup> {
-        let group = self.jumps.pop_back()?;
-        Arc::into_inner(group)
+    pub fn take(&mut self) -> Option<&JumpGroup> {
+        self.jumps.read()
     }
 
     pub fn is_empty(&self) -> bool {
-        self.jumps.is_empty()
+        !self.jumps.can_read()
     }
 
     pub fn push(&mut self, group: JumpGroup) {
-        while self.jumps.len() >= self.cap {
-            self.jumps.pop_front();
-        }
-
-        self.jumps.push_back(Arc::new(group));
+        self.jumps.push_back_overwrite(group);
     }
 
     pub fn goto_start(&mut self) {
@@ -168,26 +119,18 @@ impl Jumps {
     }
 
     /// New iterator starting at current position
-    pub fn iter(&self) -> Iter {
-        Iter {
-            jumps: &self.jumps,
-            position: self.position.clone(),
-        }
+    pub fn iter(&self) -> Iter<JumpGroup> {
+        let off = self.position.unwrap_or(self.jumps.total_stored());
+        self.jumps.iter_at(off)
     }
 
-    pub fn goto(&mut self, cursor: JumpCursor) -> Option<&JumpGroup> {
-        let i = self.jumps.iter().rev().position(|group| {
-            let ptr = Arc::as_ptr(group);
-            std::ptr::eq(ptr, cursor.0)
-        })?;
-        let index = self.jumps.len() - 1 - i;
-        self.position = Some(index);
-        let group = self.jumps.get(index)?.as_ref();
+    pub fn goto(&mut self, reference: &Ref) -> Option<&JumpGroup> {
+        let group = self.jumps.get_ref(&reference)?;
+        self.position = Some(reference.position());
         Some(group)
     }
 
     pub fn current(&self) -> Option<&JumpGroup> {
-        let current = self.jumps.get(self.position?)?;
-        Some(current.as_ref())
+        self.jumps.get(self.position?)
     }
 }

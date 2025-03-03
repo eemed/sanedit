@@ -1,12 +1,13 @@
 use sanedit_buffer::MarkResult;
 use sanedit_messages::redraw::Point;
+use sanedit_utils::ring::Ref;
 
 use crate::{
     common::window::pos_at_point,
     editor::{
         buffers::{BufferId, Buffers},
         hooks::Hook,
-        windows::{JumpCursor, Jumps, Zone},
+        windows::{Jumps, Zone},
         Editor,
     },
 };
@@ -237,7 +238,7 @@ fn find_prev_jump(
     cursor_jumps: &Jumps,
     buffers: &Buffers,
     original_bid: BufferId,
-) -> Option<(JumpCursor, BufferId)> {
+) -> Option<(Ref, BufferId)> {
     // for example iter backwards
     // until mark is Found
     // or
@@ -290,7 +291,7 @@ fn find_next_jump(
     cursor_jumps: &Jumps,
     buffers: &Buffers,
     original_bid: BufferId,
-) -> Option<(JumpCursor, BufferId)> {
+) -> Option<(Ref, BufferId)> {
     // for example iter backwards
     // until mark is Found
     // or
@@ -351,7 +352,7 @@ fn jump_prev(editor: &mut Editor, id: ClientId) {
 
     let (win, _buf) = win_buf!(editor, id);
     let buf = get!(editor.buffers.get(next_bid));
-    win.goto_cursor_jump(cursor, buf);
+    win.goto_cursor_jump(&cursor, buf);
     if next_bid != bid {
         run(editor, id, Hook::BufEnter(next_bid));
     }
@@ -370,7 +371,7 @@ fn jump_next(editor: &mut Editor, id: ClientId) {
 
     let (win, _buf) = win_buf!(editor, id);
     let buf = get!(editor.buffers.get(next_bid));
-    win.goto_cursor_jump(cursor, buf);
+    win.goto_cursor_jump(&cursor, buf);
     if next_bid != bid {
         run(editor, id, Hook::BufEnter(next_bid));
     }

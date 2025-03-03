@@ -34,6 +34,7 @@ use sanedit_messages::{
     key::KeyEvent,
     redraw::{Popup, PopupMessage, Severity, Size, StatusMessage},
 };
+use sanedit_utils::ring::Ref;
 
 use crate::{
     common::change::{newline_autopair, newline_empty_line, newline_indent},
@@ -1109,7 +1110,7 @@ impl Window {
 
     pub fn cursors_to_next_snippet_jump(&mut self, buf: &Buffer) -> bool {
         while let Some(last) = self.snippets.last_mut() {
-            match last.take() {
+            match last.take().cloned() {
                 Some(jumps) => {
                     let empty = last.is_empty();
                     self.cursors = jumps.to_cursors(buf);
@@ -1134,8 +1135,8 @@ impl Window {
     }
 
     // Goto current jump, buffer provided should be the one in current jump
-    pub fn goto_cursor_jump(&mut self, cursor: JumpCursor, buf: &Buffer) {
-        let group = get!(self.cursor_jumps.goto(cursor));
+    pub fn goto_cursor_jump(&mut self, reference: &Ref, buf: &Buffer) {
+        let group = get!(self.cursor_jumps.goto(reference));
 
         debug_assert!(
             buf.id == group.buffer_id(),

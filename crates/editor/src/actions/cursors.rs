@@ -248,11 +248,18 @@ fn find_prev_jump(
     //
     // This would go to previous buffers even if mark is not found
     // but skip all other deleted markers
+    //
 
-    let mut iter = cursor_jumps.iter();
+    // Take previous or last if none selected
+    let mut item = {
+        match cursor_jumps.current() {
+            Some((cursor, _)) => cursor_jumps.prev(&cursor),
+            None => cursor_jumps.last(),
+        }
+    };
     let mut previous = None;
 
-    while let Some((cursor, group)) = iter.prev() {
+    while let Some((cursor, group)) = item {
         let gbid = group.buffer_id();
 
         // Return if marks are found
@@ -275,6 +282,7 @@ fn find_prev_jump(
             }
         }
 
+        item = cursor_jumps.prev(&cursor);
         previous = Some((cursor, gbid));
     }
 
@@ -302,10 +310,14 @@ fn find_next_jump(
     // This would go to previous buffers even if mark is not found
     // but skip all other deleted markers
 
-    let mut iter = cursor_jumps.iter();
+    log::info!("Next");
+    let (mut cursor, _) = cursor_jumps.current()?;
+    log::info!("Next current: {cursor:?}");
     let mut previous = None;
 
-    while let Some((cursor, group)) = iter.next() {
+    while let Some((gcursor, group)) = cursor_jumps.next(&cursor) {
+        cursor = gcursor;
+
         let gbid = group.buffer_id();
 
         // Return if marks are found
@@ -328,7 +340,7 @@ fn find_next_jump(
             }
         }
 
-        previous = Some((cursor, gbid));
+        previous = Some((cursor.clone(), gbid));
     }
 
     if let Some((_, pbid)) = &previous {
@@ -346,13 +358,14 @@ fn jump_prev(editor: &mut Editor, id: ClientId) {
     let bid = buf.id;
     let (cursor, next_bid) = get!(find_prev_jump(&win.cursor_jumps, &editor.buffers, bid));
 
+    log::info!("Prev: {cursor:?}");
     if next_bid != bid {
         run(editor, id, Hook::BufLeave(bid));
     }
 
     let (win, _buf) = win_buf!(editor, id);
     let buf = get!(editor.buffers.get(next_bid));
-    win.goto_cursor_jump(&cursor, buf);
+    win.goto_cursor_jump(cursor, buf);
     if next_bid != bid {
         run(editor, id, Hook::BufEnter(next_bid));
     }
@@ -364,6 +377,7 @@ fn jump_next(editor: &mut Editor, id: ClientId) {
     let (win, buf) = win_buf!(editor, id);
     let bid = buf.id;
     let (cursor, next_bid) = get!(find_next_jump(&win.cursor_jumps, &editor.buffers, bid));
+    log::info!("Next: {cursor:?}");
 
     if next_bid != bid {
         run(editor, id, Hook::BufLeave(bid));
@@ -371,7 +385,7 @@ fn jump_next(editor: &mut Editor, id: ClientId) {
 
     let (win, _buf) = win_buf!(editor, id);
     let buf = get!(editor.buffers.get(next_bid));
-    win.goto_cursor_jump(&cursor, buf);
+    win.goto_cursor_jump(cursor, buf);
     if next_bid != bid {
         run(editor, id, Hook::BufEnter(next_bid));
     }

@@ -1,6 +1,6 @@
 use sanedit_buffer::Mark;
 use sanedit_core::{Cursor, Range};
-use sanedit_utils::ring::{Iter, Ref, RingBuffer};
+use sanedit_utils::ring::{Ref, RingBuffer};
 
 use crate::editor::buffers::{Buffer, BufferId};
 
@@ -79,7 +79,7 @@ pub(crate) struct Jumps {
     jumps: RingBuffer<JumpGroup>,
 
     /// None = back
-    position: Option<usize>,
+    position: Option<Ref>,
 }
 
 impl Jumps {
@@ -102,35 +102,44 @@ impl Jumps {
     }
 
     /// Takes the front jump group out of jumps
-    pub fn take(&mut self) -> Option<&JumpGroup> {
-        self.jumps.read()
+    pub fn take(&mut self) -> Option<JumpGroup> {
+        self.jumps.take()
     }
 
     pub fn is_empty(&self) -> bool {
-        !self.jumps.can_read()
+        !self.jumps.is_empty()
     }
 
     pub fn push(&mut self, group: JumpGroup) {
-        self.jumps.push_back_overwrite(group);
+        self.jumps.push_overwrite(group);
     }
 
     pub fn goto_start(&mut self) {
         self.position = None;
     }
 
-    /// New iterator starting at current position
-    pub fn iter(&self) -> Iter<JumpGroup> {
-        let off = self.position.unwrap_or(self.jumps.total_stored());
-        self.jumps.iter_at(off)
-    }
-
-    pub fn goto(&mut self, reference: &Ref) -> Option<&JumpGroup> {
-        let group = self.jumps.get_ref(&reference)?;
-        self.position = Some(reference.position());
+    pub fn goto(&mut self, reference: Ref) -> Option<&JumpGroup> {
+        log::info!("GOTO: {reference:?}");
+        let group = self.jumps.read_reference(&reference)?;
+        self.position = Some(reference);
         Some(group)
     }
 
-    pub fn current(&self) -> Option<&JumpGroup> {
-        self.jumps.get(self.position?)
+    pub fn current(&self) -> Option<(Ref, &JumpGroup)> {
+        let reference = self.position.clone()?;
+        let group = self.jumps.read_reference(&reference)?;
+        Some((reference, group))
+    }
+
+    pub fn last(&self) -> Option<(Ref, &JumpGroup)> {
+        self.jumps.last()
+    }
+
+    pub fn next(&self, reference: &Ref) -> Option<(Ref, &JumpGroup)> {
+        self.jumps.next(reference)
+    }
+
+    pub fn prev(&self, reference: &Ref) -> Option<(Ref, &JumpGroup)> {
+        self.jumps.previous(reference)
     }
 }

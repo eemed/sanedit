@@ -24,6 +24,11 @@ impl<T> RingBuffer<T> {
             cap.count_ones() == 1,
             "Ring buffer must have capacity of a power of 2!"
         );
+        assert!(
+            cap <= (usize::MAX >> 1),
+            "Ring buffer must have capacity lower than {}!",
+            (usize::MAX >> 1)
+        );
 
         let mut items = Vec::with_capacity(cap);
         for _ in 0..cap {
@@ -59,14 +64,10 @@ impl<T> RingBuffer<T> {
     }
 
     pub fn len(&self) -> usize {
-        if self.read <= self.write {
-            self.write - self.read
-        } else {
-            self.write + (usize::MAX - self.read + 1)
-        }
+        self.write.wrapping_sub(self.read)
     }
 
-    fn array_pos(&self, n: usize) -> usize {
+    fn position(&self, n: usize) -> usize {
         n & (self.capacity() - 1)
     }
 
@@ -77,7 +78,7 @@ impl<T> RingBuffer<T> {
             self.read = self.read.wrapping_add(1);
         }
 
-        let pos = self.array_pos(self.write);
+        let pos = self.position(self.write);
         self.items[pos].write(item);
         self.write = self.write.wrapping_add(1);
     }
@@ -88,7 +89,7 @@ impl<T> RingBuffer<T> {
             return false;
         }
 
-        let pos = self.array_pos(self.write);
+        let pos = self.position(self.write);
         self.items[pos].write(item);
         self.write = self.write.wrapping_add(1);
 
@@ -145,7 +146,7 @@ impl<T> RingBuffer<T> {
     }
 
     fn read(&self, read: usize) -> Option<(Ref, &T)> {
-        let pos = self.array_pos(read);
+        let pos = self.position(read);
         let item = unsafe { self.items[pos].assume_init_ref() };
         let item_ref = Ref { read: pos };
         Some((item_ref, item))

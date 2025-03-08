@@ -9,10 +9,10 @@ use crate::{
 };
 use sanedit_server::ClientId;
 
-use super::{hooks::run, prompt::unsaved_changes, shell};
+use super::{hooks::run, prompt::unsaved_changes, shell, ActionResult};
 
 #[action("Editor: Quit")]
-fn quit(editor: &mut Editor, id: ClientId) {
+fn quit(editor: &mut Editor, id: ClientId) -> ActionResult {
     // If is the first client
     if id.0 == 0 {
         if editor.buffers.any_unsaved_changes().is_some() {
@@ -25,37 +25,42 @@ fn quit(editor: &mut Editor, id: ClientId) {
     } else {
         editor.quit_client(id);
     }
+
+    ActionResult::Ok
 }
 
 #[action("Editor: Build project")]
-fn build_project(editor: &mut Editor, id: ClientId) {
+fn build_project(editor: &mut Editor, id: ClientId) -> ActionResult {
     let cmd = editor.config.editor.build_command.clone();
-    shell::execute(editor, id, true, &cmd);
+    shell::execute(editor, id, true, &cmd)
 }
 
 #[action("Editor: Run project")]
-fn run_project(editor: &mut Editor, id: ClientId) {
+fn run_project(editor: &mut Editor, id: ClientId) -> ActionResult {
     let cmd = editor.config.editor.run_command.clone();
-    shell::execute(editor, id, true, &cmd);
+    shell::execute(editor, id, true, &cmd)
 }
 
 #[action("Editor: Copy to clipboard")]
-fn copy(editor: &mut Editor, id: ClientId) {
+fn copy(editor: &mut Editor, id: ClientId) -> ActionResult {
     editor.copy_to_clipboard(id);
+    ActionResult::Ok
 }
 
 #[action("Editor: Paste from clipboard")]
-fn paste(editor: &mut Editor, id: ClientId) {
+fn paste(editor: &mut Editor, id: ClientId) -> ActionResult {
     editor.paste_from_clipboard(id, false);
+    ActionResult::Ok
 }
 
 #[action("Editor: Paste from clipboard after cursor")]
-fn paste_after(editor: &mut Editor, id: ClientId) {
+fn paste_after(editor: &mut Editor, id: ClientId) -> ActionResult {
     editor.paste_from_clipboard(id, true);
+    ActionResult::Ok
 }
 
 #[action("Editor: Cut to clipboard")]
-fn cut(editor: &mut Editor, id: ClientId) {
+fn cut(editor: &mut Editor, id: ClientId) -> ActionResult {
     editor.copy_to_clipboard(id);
 
     run(editor, id, Hook::RemovePre);
@@ -64,15 +69,18 @@ fn cut(editor: &mut Editor, id: ClientId) {
     if win.remove_cursor_selections(buf).unwrap_or(false) {
         run(editor, id, Hook::BufChanged(bid));
     }
+
+    ActionResult::Ok
 }
 
 #[action("Editor: Open configuration file")]
-fn open_config(editor: &mut Editor, id: ClientId) {
+fn open_config(editor: &mut Editor, id: ClientId) -> ActionResult {
     let config = editor.config_dir.config();
     if !config.exists() {
         prompt_create_and_open_config(editor, id);
+        ActionResult::Ok
     } else {
-        let _ = editor.open_file(id, &config);
+        editor.open_file(id, &config).into()
     }
 }
 
@@ -104,17 +112,20 @@ fn prompt_create_and_open_config(editor: &mut Editor, id: ClientId) {
 }
 
 #[action("Buffer: New scratch buffer")]
-fn open_new_scratch_buffer(editor: &mut Editor, id: ClientId) {
+fn open_new_scratch_buffer(editor: &mut Editor, id: ClientId) -> ActionResult {
     let bid = editor.buffers_mut().new_scratch();
     let (win, _buf) = editor.win_buf_mut(id);
     win.open_buffer(bid);
+    ActionResult::Ok
 }
 
 #[action("Editor: Do nothing")]
-fn nop(_editor: &mut Editor, _id: ClientId) {}
+fn nop(_editor: &mut Editor, _id: ClientId) -> ActionResult {
+    ActionResult::Ok
+}
 
 #[action("Editor: Load filetype")]
-fn load_filetype(editor: &mut Editor, id: ClientId) {
+fn load_filetype(editor: &mut Editor, id: ClientId) -> ActionResult {
     let bid = editor
         .hooks
         .running_hook()
@@ -124,8 +135,7 @@ fn load_filetype(editor: &mut Editor, id: ClientId) {
             win.buffer_id()
         });
     let buf = editor.buffers().get(bid).unwrap();
-    let Some(ft) = buf.filetype.clone() else {
-        return;
-    };
+    let ft = getf!(buf.filetype.clone());
     editor.load_filetype(&ft);
+    ActionResult::Ok
 }

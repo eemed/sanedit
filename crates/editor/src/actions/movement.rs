@@ -18,7 +18,7 @@ use crate::editor::{
 
 use sanedit_server::ClientId;
 
-use super::hooks;
+use super::{hooks, ActionResult};
 
 #[inline]
 fn do_move_line<F: Fn(&PieceTreeSlice, &Cursor, &DisplayOptions) -> (u64, usize)>(
@@ -26,7 +26,7 @@ fn do_move_line<F: Fn(&PieceTreeSlice, &Cursor, &DisplayOptions) -> (u64, usize)
     id: ClientId,
     f: F,
     save_jump: bool,
-) -> bool {
+) -> ActionResult {
     let (win, buf) = editor.win_buf_mut(id);
     let opts = win.display_options().clone();
     let primary = win.cursors.primary_index();
@@ -54,9 +54,10 @@ fn do_move_line<F: Fn(&PieceTreeSlice, &Cursor, &DisplayOptions) -> (u64, usize)
     if changed {
         win.view_to_cursor(buf);
         hooks::run(editor, id, Hook::CursorMoved);
+        ActionResult::Ok
+    } else {
+        ActionResult::Skipped
     }
-
-    changed
 }
 
 #[inline]
@@ -66,7 +67,7 @@ fn do_move<F: Fn(&PieceTreeSlice, u64) -> u64>(
     f: F,
     col: Option<usize>,
     save_jump: bool,
-) -> bool {
+) -> ActionResult {
     let (win, buf) = editor.win_buf_mut(id);
     let mut changed = false;
     let primary = win.cursors.primary_index();
@@ -96,9 +97,10 @@ fn do_move<F: Fn(&PieceTreeSlice, u64) -> u64>(
     if changed {
         win.view_to_cursor(buf);
         hooks::run(editor, id, Hook::CursorMoved);
+        ActionResult::Ok
+    } else {
+        ActionResult::Skipped
     }
-
-    changed
 }
 
 #[inline]
@@ -108,87 +110,87 @@ fn do_move_static(
     pos: u64,
     col: Option<usize>,
     save_jump: bool,
-) {
-    do_move(editor, id, |_, _| pos, col, save_jump);
+) -> ActionResult {
+    do_move(editor, id, |_, _| pos, col, save_jump)
 }
 
 #[action("Cursors: Goto to next character")]
-fn next_grapheme(editor: &mut Editor, id: ClientId) {
-    do_move(editor, id, next_grapheme_boundary, None, false);
+fn next_grapheme(editor: &mut Editor, id: ClientId) -> ActionResult {
+    do_move(editor, id, next_grapheme_boundary, None, false)
 }
 
 #[action("Cursors: Goto to previous character")]
-fn prev_grapheme(editor: &mut Editor, id: ClientId) {
-    do_move(editor, id, prev_grapheme_boundary, None, false);
+fn prev_grapheme(editor: &mut Editor, id: ClientId) -> ActionResult {
+    do_move(editor, id, prev_grapheme_boundary, None, false)
 }
 
 #[action("Cursors: Goto to first character on line")]
-fn first_char_of_line(editor: &mut Editor, id: ClientId) {
-    do_move(editor, id, movement::first_char_of_line, None, false);
+fn first_char_of_line(editor: &mut Editor, id: ClientId) -> ActionResult {
+    do_move(editor, id, movement::first_char_of_line, None, false)
 }
 
 #[action("Cursors: Goto to line start")]
-fn start_of_line(editor: &mut Editor, id: ClientId) {
-    do_move(editor, id, movement::start_of_line, Some(0), false);
+fn start_of_line(editor: &mut Editor, id: ClientId) -> ActionResult {
+    do_move(editor, id, movement::start_of_line, Some(0), false)
 }
 
 #[action("Cursors: Goto to line end")]
-fn end_of_line(editor: &mut Editor, id: ClientId) {
-    do_move(editor, id, movement::end_of_line, Some(usize::MAX), false);
+fn end_of_line(editor: &mut Editor, id: ClientId) -> ActionResult {
+    do_move(editor, id, movement::end_of_line, Some(usize::MAX), false)
 }
 
 #[action("Cursors: Goto to buffer start")]
-fn start_of_buffer(editor: &mut Editor, id: ClientId) {
-    do_move_static(editor, id, 0, None, true);
+fn start_of_buffer(editor: &mut Editor, id: ClientId) -> ActionResult {
+    do_move_static(editor, id, 0, None, true)
 }
 
 #[action("Cursors: Goto to buffer end")]
-fn end_of_buffer(editor: &mut Editor, id: ClientId) {
+fn end_of_buffer(editor: &mut Editor, id: ClientId) -> ActionResult {
     let blen = {
         let (_win, buf) = editor.win_buf(id);
         buf.len()
     };
-    do_move_static(editor, id, blen, None, true);
+    do_move_static(editor, id, blen, None, true)
 }
 
 #[action("Cursors: Goto to next word start")]
-fn next_word_start(editor: &mut Editor, id: ClientId) {
-    do_move(editor, id, movement::next_word_start, None, false);
+fn next_word_start(editor: &mut Editor, id: ClientId) -> ActionResult {
+    do_move(editor, id, movement::next_word_start, None, false)
 }
 
 #[action("Cursors: Goto to previous word start")]
-fn prev_word_start(editor: &mut Editor, id: ClientId) {
-    do_move(editor, id, movement::prev_word_start, None, false);
+fn prev_word_start(editor: &mut Editor, id: ClientId) -> ActionResult {
+    do_move(editor, id, movement::prev_word_start, None, false)
 }
 
 #[action("Cursors: Goto to next word end")]
-fn next_word_end(editor: &mut Editor, id: ClientId) {
-    do_move(editor, id, movement::next_word_end, None, false);
+fn next_word_end(editor: &mut Editor, id: ClientId) -> ActionResult {
+    do_move(editor, id, movement::next_word_end, None, false)
 }
 
 #[action("Cursors: Goto to previous word end")]
-fn prev_word_end(editor: &mut Editor, id: ClientId) {
-    do_move(editor, id, movement::prev_word_end, None, false);
+fn prev_word_end(editor: &mut Editor, id: ClientId) -> ActionResult {
+    do_move(editor, id, movement::prev_word_end, None, false)
 }
 
 #[action("Cursors: Goto to next paragraph")]
-fn next_paragraph(editor: &mut Editor, id: ClientId) {
-    do_move(editor, id, movement::next_paragraph, None, true);
+fn next_paragraph(editor: &mut Editor, id: ClientId) -> ActionResult {
+    do_move(editor, id, movement::next_paragraph, None, true)
 }
 
 #[action("Cursors: Goto to previous paragraph")]
-fn prev_paragraph(editor: &mut Editor, id: ClientId) {
-    do_move(editor, id, movement::prev_paragraph, None, true);
+fn prev_paragraph(editor: &mut Editor, id: ClientId) -> ActionResult {
+    do_move(editor, id, movement::prev_paragraph, None, true)
 }
 
 #[action("Cursors: Goto to next line")]
-fn next_line(editor: &mut Editor, id: ClientId) {
-    do_move_line(editor, id, movement::next_line, false);
+fn next_line(editor: &mut Editor, id: ClientId) -> ActionResult {
+    do_move_line(editor, id, movement::next_line, false)
 }
 
 #[action("Cursors: Goto to previous line")]
-fn prev_line(editor: &mut Editor, id: ClientId) {
-    do_move_line(editor, id, movement::prev_line, false);
+fn prev_line(editor: &mut Editor, id: ClientId) -> ActionResult {
+    do_move_line(editor, id, movement::prev_line, false)
 }
 
 const PAIRS: [(char, char); 4] = [('(', ')'), ('[', ']'), ('{', '}'), ('<', '>')];
@@ -204,28 +206,28 @@ pub fn pair_for(ch: char) -> Option<(char, char)> {
 }
 
 #[action("Cursors: Goto to matching pair")]
-fn goto_matching_pair(editor: &mut Editor, id: ClientId) {
+fn goto_matching_pair(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = editor.win_buf_mut(id);
     let pos = win.cursors.primary().pos();
     let slice = buf.slice(..);
     let mut chars = slice.chars_at(pos);
-    let (_, _, ch) = get!(chars.next());
+    let (_, _, ch) = getf!(chars.next());
     let (start, end) = pair_for(ch).unwrap_or((ch, ch));
     let mut buf1 = [0u8; 4];
     let mut buf2 = [0u8; 4];
     let start = start.encode_utf8(&mut buf1);
     let end = end.encode_utf8(&mut buf2);
 
-    let range = get!(find_range(&slice, pos, start, end, true));
+    let range = getf!(find_range(&slice, pos, start, end, true));
     if range.start == pos {
-        do_move_static(editor, id, range.end - end.len() as u64, None, true);
+        do_move_static(editor, id, range.end - end.len() as u64, None, true)
     } else {
-        do_move_static(editor, id, range.start, None, true);
+        do_move_static(editor, id, range.start, None, true)
     }
 }
 
 #[action("Cursors: Find next char on line")]
-fn find_next_char_on_line(editor: &mut Editor, id: ClientId) {
+fn find_next_char_on_line(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
     let layer = win.keymap_layer.clone();
     win.prompt = Prompt::builder()
@@ -251,10 +253,11 @@ fn find_next_char_on_line(editor: &mut Editor, id: ClientId) {
         })
         .build();
     win.focus_to(Focus::Prompt);
+    ActionResult::Ok
 }
 
 #[action("Cursors: Find previous char on line")]
-fn find_prev_char_on_line(editor: &mut Editor, id: ClientId) {
+fn find_prev_char_on_line(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
     let layer = win.keymap_layer.clone();
     win.prompt = Prompt::builder()
@@ -276,10 +279,11 @@ fn find_prev_char_on_line(editor: &mut Editor, id: ClientId) {
         })
         .build();
     win.focus_to(Focus::Prompt);
+    ActionResult::Ok
 }
 
 #[action("Cursors: Next searched char on line")]
-fn next_searched_char(editor: &mut Editor, id: ClientId) {
+fn next_searched_char(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
     if let Some(ch) = win.search.on_line_char_search {
         do_move(
@@ -292,12 +296,14 @@ fn next_searched_char(editor: &mut Editor, id: ClientId) {
             },
             None,
             false,
-        );
+        )
+    } else {
+        ActionResult::Skipped
     }
 }
 
 #[action("Cursors: Previous searched char on line")]
-fn prev_searched_char(editor: &mut Editor, id: ClientId) {
+fn prev_searched_char(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
     if let Some(ch) = win.search.on_line_char_search {
         do_move(
@@ -306,29 +312,31 @@ fn prev_searched_char(editor: &mut Editor, id: ClientId) {
             |slice, pos| find_prev_char(slice, pos, ch, true).unwrap_or(pos),
             None,
             false,
-        );
+        )
+    } else {
+        ActionResult::Skipped
     }
 }
 
 #[action("Cursors: Goto to previous character on the same line")]
-fn prev_grapheme_on_line(editor: &mut Editor, id: ClientId) {
-    do_move(editor, id, movement::prev_grapheme_on_line, None, false);
+fn prev_grapheme_on_line(editor: &mut Editor, id: ClientId) -> ActionResult {
+    do_move(editor, id, movement::prev_grapheme_on_line, None, false)
 }
 
 #[action("Cursors: Goto to next character on the same line")]
-fn next_grapheme_on_line(editor: &mut Editor, id: ClientId) {
-    do_move(editor, id, movement::next_grapheme_on_line, None, false);
+fn next_grapheme_on_line(editor: &mut Editor, id: ClientId)  -> ActionResult{
+    do_move(editor, id, movement::next_grapheme_on_line, None, false)
 }
 
 #[action("Cursors: Goto to previous visual line")]
-pub(crate) fn prev_visual_line(editor: &mut Editor, id: ClientId) {
+pub(crate) fn prev_visual_line(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = editor.win_buf_mut(id);
 
     // If multicursor use lines
     let multi_cursor = win.cursors.len() > 1;
     if multi_cursor {
         prev_line.execute(editor, id);
-        return;
+        return ActionResult::Ok;
     }
 
     win.view_to_cursor(buf);
@@ -341,7 +349,7 @@ pub(crate) fn prev_visual_line(editor: &mut Editor, id: ClientId) {
     let view_at_start = win.view().at_start();
 
     if cursor_at_start && view_at_start {
-        return;
+        return ActionResult::Ok;
     }
 
     if cursor_at_start && !view_at_start {
@@ -357,6 +365,8 @@ pub(crate) fn prev_visual_line(editor: &mut Editor, id: ClientId) {
 
         hooks::run(editor, id, Hook::CursorMoved);
     }
+
+    ActionResult::Ok
 }
 
 // Moves cursor one visual line up, but will not change the view.
@@ -391,14 +401,14 @@ fn prev_visual_line_impl(view: &View, cursor: &Cursor) -> Option<(u64, usize)> {
 }
 
 #[action("Cursors: Goto to next visual line")]
-fn next_visual_line(editor: &mut Editor, id: ClientId) {
+fn next_visual_line(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = editor.win_buf_mut(id);
 
     // If multicursor use lines
     let multi_cursor = win.cursors.len() > 1;
     if multi_cursor {
         next_line.execute(editor, id);
-        return;
+        return ActionResult::Ok;
     }
 
     win.view_to_cursor(buf);
@@ -412,7 +422,7 @@ fn next_visual_line(editor: &mut Editor, id: ClientId) {
     let view_at_end = win.view().at_end();
 
     if cursor_at_end && view_at_end {
-        return;
+        return ActionResult::Ok;
     }
 
     // Make sure we have atleast one extra line to down to
@@ -428,6 +438,8 @@ fn next_visual_line(editor: &mut Editor, id: ClientId) {
 
         hooks::run(editor, id, Hook::CursorMoved);
     }
+
+    ActionResult::Ok
 }
 
 // Moves cursor one visual line down, but will not change the view.

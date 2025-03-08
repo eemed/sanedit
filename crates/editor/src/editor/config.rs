@@ -11,7 +11,7 @@ use toml_edit::{
 };
 
 use crate::{
-    actions::{find_by_name, Action},
+    actions::{find_by_name, Action, ActionResult},
     editor,
 };
 
@@ -298,7 +298,7 @@ macro_rules! make_keymap {
 
 pub(crate) struct MappingAsKeymap {
     events: Vec<KeyEvent>,
-    actions: Vec<Action>,
+    actions: Vec<(Action, Option<ActionResult>)>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -315,6 +315,16 @@ impl Mapping {
         let mut actions = vec![];
 
         for name in &self.actions {
+            let mut name = name.as_str();
+            let mut stop = None;
+            if name.ends_with("!") {
+                stop = Some(ActionResult::Ok);
+                name = &name[..name.len() - 1];
+            } else if name.ends_with("?") {
+                stop = Some(ActionResult::Skipped);
+                name = &name[..name.len() - 1];
+            }
+
             // Try to parse goto_layer
             if let Some(goto) = parse_goto_layer(name) {
                 let action = Action::Dynamic {
@@ -323,17 +333,16 @@ impl Mapping {
                         log::info!("Goto: {goto:?}");
                         let (win, _buf) = editor.win_buf_mut(id);
                         win.keymap_layer = goto.clone();
-                        return;
+
+                        ActionResult::Ok
                     }),
                     desc: String::new(),
                 };
 
-                actions.push(action);
-            }
-
-            // Try to find action with name
-            if let Some(action) = find_by_name(name) {
-                actions.push(action);
+                actions.push((action, stop));
+            } else if let Some(action) = find_by_name(name) {
+                // Try to find action with name
+                actions.push((action, stop));
             }
         }
 
@@ -375,22 +384,31 @@ impl KeymapLayer {
                 Some(MappingAsKeymap { events, actions }) => {
                     // Only a single action
                     if actions.len() == 1 {
-                        layer.bind(&events, &actions[0]);
+                        let (action, _stop) = &actions[0];
+                        layer.bind(&events, action);
                         continue;
                     }
 
                     // Multiple actions combined into one
                     let name = actions
                         .iter()
-                        .map(|action| action.name())
+                        .map(|(action, _skip)| action.name())
                         .collect::<Vec<&str>>()
                         .join(",");
                     let action = Action::Dynamic {
                         name,
                         fun: Arc::new(move |editor, id| {
-                            for action in &actions {
-                                action.execute(editor, id);
+                            for (action, skip) in &actions {
+                                let result = action.execute(editor, id);
+                                let stop =
+                                    skip.as_ref().map(|skip| &result >= skip).unwrap_or(false);
+
+                                if stop {
+                                    break;
+                                }
                             }
+
+                            ActionResult::Ok
                         }),
                         desc: String::new(),
                     };

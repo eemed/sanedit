@@ -279,6 +279,19 @@ impl Default for Cursors {
     }
 }
 
+impl From<Vec<Cursor>> for Cursors {
+    fn from(value: Vec<Cursor>) -> Self {
+        assert!(!value.is_empty(), "Empty cursor vector");
+
+        let last = value.len().saturating_sub(1);
+        Cursors {
+            cursors: value,
+            primary: last,
+            keep_positions: false,
+        }
+    }
+}
+
 impl From<&Cursors> for Vec<u64> {
     fn from(cursors: &Cursors) -> Self {
         let positions: Vec<u64> = cursors.cursors().iter().map(|c| c.pos()).collect();

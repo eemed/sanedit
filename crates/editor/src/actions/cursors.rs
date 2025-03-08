@@ -7,7 +7,7 @@ use crate::{
     editor::{
         buffers::{BufferId, Buffers},
         hooks::Hook,
-        windows::{Jumps, Zone},
+        windows::{Cursors, Jumps, Zone},
         Editor,
     },
 };
@@ -21,57 +21,57 @@ use sanedit_core::{
 
 use super::{
     hooks::{self, run},
-    movement,
+    movement, ActionResult,
 };
 
 #[action("Cursors: Select next word")]
-fn select_to_next_word(editor: &mut Editor, id: ClientId) {
+fn select_to_next_word(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
     for cursor in win.cursors.cursors_mut() {
         if !cursor.is_selecting() {
             cursor.start_selection();
         }
     }
-    movement::next_word_end.execute(editor, id);
+    movement::next_word_end.execute(editor, id)
 }
 
 #[action("Cursors: Select previous word")]
-fn select_to_prev_word(editor: &mut Editor, id: ClientId) {
+fn select_to_prev_word(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
     for cursor in win.cursors.cursors_mut() {
         if !cursor.is_selecting() {
             cursor.start_selection();
         }
     }
-    movement::prev_word_start.execute(editor, id);
+    movement::prev_word_start.execute(editor, id)
 }
 
 #[action("Cursors: New on next line")]
-fn new_cursor_to_next_line(editor: &mut Editor, id: ClientId) {
+fn new_cursor_to_next_line(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = editor.win_buf_mut(id);
     let cursor = win.cursors.primary();
     let (pos, _col) = next_line(&buf.slice(..), cursor, win.display_options());
     win.cursors.push_primary(Cursor::new(pos));
+    ActionResult::Ok
 }
 
 #[action("Cursors: New on previous line")]
-fn new_cursor_to_prev_line(editor: &mut Editor, id: ClientId) {
+fn new_cursor_to_prev_line(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = editor.win_buf_mut(id);
     let cursor = win.cursors.primary();
     let (pos, _col) = prev_line(&buf.slice(..), cursor, win.display_options());
     win.cursors.push_primary(Cursor::new(pos));
+    ActionResult::Ok
 }
 
 #[action("Cursors: New on next search match")]
-fn new_cursor_to_next_search_match(editor: &mut Editor, id: ClientId) {
+fn new_cursor_to_next_search_match(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = editor.win_buf_mut(id);
-    let Some(last_search) = win.search.last_search() else {
-        return;
-    };
+    let last_search = getf!(win.search.last_search());
     let ppos = win.cursors.primary().pos();
 
     let Ok(searcher) = Searcher::new(&last_search.pattern, last_search.kind) else {
-        return;
+        return ActionResult::Failed;
     };
     let slice = buf.slice(ppos..);
     let mut iter = searcher.find_iter(&slice);
@@ -88,34 +88,40 @@ fn new_cursor_to_next_search_match(editor: &mut Editor, id: ClientId) {
             *cursor = Cursor::new_select(&range);
         }
     }
+
+    ActionResult::Ok
 }
 
 #[action("Cursors: New on each search match")]
-fn new_cursor_to_all_search_matches(editor: &mut Editor, id: ClientId) {
+fn new_cursor_to_all_search_matches(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = editor.win_buf_mut(id);
     // win.cursors.remove_secondary_cursors();
 
     let Some(last_search) = win.search.last_search() else {
         win.warn_msg("No last search pattern");
-        return;
+        return ActionResult::Failed;
     };
 
     let Ok(searcher) = Searcher::new(&last_search.pattern, last_search.kind) else {
-        return;
+        return ActionResult::Failed;
     };
     let slice = buf.slice(..);
-    let iter = searcher.find_iter(&slice);
 
-    for mat in iter {
-        let range = mat.range();
-        let selecting = win.primary_cursor().selection().is_some();
-        if selecting {
-            win.cursors.push_primary(Cursor::new_select(&range));
-        } else {
-            let cursor = win.cursors.primary_mut();
-            *cursor = Cursor::new_select(&range);
-        }
+    let cursors: Vec<Cursor> = searcher
+        .find_iter(&slice)
+        .map(|mat| {
+            let range = mat.range();
+            Cursor::new_select(&range)
+        })
+        .collect();
+
+    if cursors.is_empty() {
+        return ActionResult::Skipped;
     }
+
+    win.cursors = Cursors::from(cursors);
+
+    ActionResult::Ok
 }
 
 pub(crate) fn new_to_point(editor: &mut Editor, id: ClientId, point: Point) {
@@ -137,19 +143,21 @@ pub(crate) fn goto_position(editor: &mut Editor, id: ClientId, point: Point) {
 }
 
 #[action("Cursors: Start selection")]
-fn start_selection(editor: &mut Editor, id: ClientId) {
+fn start_selection(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
     win.cursors.start_selection();
+    ActionResult::Ok
 }
 
 #[action("Cursors: Cancel selection")]
-fn stop_selection(editor: &mut Editor, id: ClientId) {
+fn stop_selection(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
     win.cursors.stop_selection();
+    ActionResult::Ok
 }
 
 #[action("Cursors: Remove secondary cursors")]
-fn keep_only_primary(editor: &mut Editor, id: ClientId) {
+fn keep_only_primary(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
 
     if win.cursors.cursors().iter().any(|c| c.is_selecting()) {
@@ -160,78 +168,93 @@ fn keep_only_primary(editor: &mut Editor, id: ClientId) {
         let (win, _buf) = editor.win_buf_mut(id);
         win.cursors.primary_mut().stop_selection();
     }
+
+    ActionResult::Ok
 }
 
 #[action("Cursors: Swap selection direction")]
-fn swap_selection_dir(editor: &mut Editor, id: ClientId) {
+fn swap_selection_dir(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
     win.cursors.swap_selection_dir();
+
+    ActionResult::Ok
 }
 
 #[action("Cursors: Remove primary cursor")]
-fn remove_primary_cursor(editor: &mut Editor, id: ClientId) {
+fn remove_primary_cursor(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
     win.cursors.remove_primary();
+
+    ActionResult::Ok
 }
 
 #[action("Cursors: Make next cursor primary")]
-fn make_next_cursor_primary(editor: &mut Editor, id: ClientId) {
+fn make_next_cursor_primary(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
     win.cursors.primary_next();
+
+    ActionResult::Ok
 }
 
 #[action("Cursors: Make previous cursor primary")]
-fn make_prev_cursor_primary(editor: &mut Editor, id: ClientId) {
+fn make_prev_cursor_primary(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
     win.cursors.primary_prev();
+    ActionResult::Ok
 }
 
 #[action("Cursors: Merge overlapping")]
-fn merge_overlapping_cursors(editor: &mut Editor, id: ClientId) {
+fn merge_overlapping_cursors(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
     win.cursors.merge_overlapping();
+    ActionResult::Ok
 }
 
 #[action("Cursors: Remove selections")]
-fn remove_cursor_selections(editor: &mut Editor, id: ClientId) {
+fn remove_cursor_selections(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = editor.win_buf_mut(id);
     match win.remove_cursor_selections(buf) {
         Ok(true) => {
             let hook = Hook::BufChanged(buf.id);
             run(editor, id, hook);
+            ActionResult::Ok
         }
-        _ => {}
+        _ => ActionResult::Skipped,
     }
 }
 
 #[action("Cursors: New cursors on line starts")]
-fn cursors_to_lines_start(editor: &mut Editor, id: ClientId) {
+fn cursors_to_lines_start(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = editor.win_buf_mut(id);
     win.cursors_to_lines_start(buf);
     hooks::run(editor, id, Hook::CursorMoved);
+    ActionResult::Ok
 }
 
 #[action("Cursors: New cursors on line ends")]
-fn cursors_to_lines_end(editor: &mut Editor, id: ClientId) {
+fn cursors_to_lines_end(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = editor.win_buf_mut(id);
     win.cursors_to_lines_end(buf);
     hooks::run(editor, id, Hook::CursorMoved);
+    ActionResult::Ok
 }
 
 #[action("Cursors: Goto to previous change")]
-fn jump_prev_change(editor: &mut Editor, id: ClientId) {
+fn jump_prev_change(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = editor.win_buf_mut(id);
     if win.cursors_to_prev_change(buf) {
         run(editor, id, Hook::CursorMoved)
     }
+    ActionResult::Ok
 }
 
 #[action("Cursors: Goto to next change")]
-fn jump_next_change(editor: &mut Editor, id: ClientId) {
+fn jump_next_change(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = editor.win_buf_mut(id);
     if win.cursors_to_next_change(buf) {
         run(editor, id, Hook::CursorMoved)
     }
+    ActionResult::Ok
 }
 
 fn find_prev_jump(
@@ -353,10 +376,10 @@ fn find_next_jump(
 }
 
 #[action("Cursors: Goto previous jump")]
-fn jump_prev(editor: &mut Editor, id: ClientId) {
+fn jump_prev(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = win_buf!(editor, id);
     let bid = buf.id;
-    let (cursor, next_bid) = get!(find_prev_jump(&win.cursor_jumps, &editor.buffers, bid));
+    let (cursor, next_bid) = getf!(find_prev_jump(&win.cursor_jumps, &editor.buffers, bid));
 
     log::info!("Prev: {cursor:?}");
     if next_bid != bid {
@@ -364,19 +387,20 @@ fn jump_prev(editor: &mut Editor, id: ClientId) {
     }
 
     let (win, _buf) = win_buf!(editor, id);
-    let buf = get!(editor.buffers.get(next_bid));
+    let buf = getf!(editor.buffers.get(next_bid));
     win.goto_cursor_jump(cursor, buf);
     if next_bid != bid {
         run(editor, id, Hook::BufEnter(next_bid));
     }
-    run(editor, id, Hook::CursorMoved)
+    run(editor, id, Hook::CursorMoved);
+    ActionResult::Ok
 }
 
 #[action("Cursors: Goto next jump")]
-fn jump_next(editor: &mut Editor, id: ClientId) {
+fn jump_next(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = win_buf!(editor, id);
     let bid = buf.id;
-    let (cursor, next_bid) = get!(find_next_jump(&win.cursor_jumps, &editor.buffers, bid));
+    let (cursor, next_bid) = getf!(find_next_jump(&win.cursor_jumps, &editor.buffers, bid));
     log::info!("Next: {cursor:?}");
 
     if next_bid != bid {
@@ -384,34 +408,41 @@ fn jump_next(editor: &mut Editor, id: ClientId) {
     }
 
     let (win, _buf) = win_buf!(editor, id);
-    let buf = get!(editor.buffers.get(next_bid));
+    let buf = getf!(editor.buffers.get(next_bid));
     win.goto_cursor_jump(cursor, buf);
     if next_bid != bid {
         run(editor, id, Hook::BufEnter(next_bid));
     }
-    run(editor, id, Hook::CursorMoved)
+    run(editor, id, Hook::CursorMoved);
+    ActionResult::Ok
 }
 
 #[action("Cursors: Goto to top of view")]
-fn cursor_to_view_top(editor: &mut Editor, id: ClientId) {
+fn cursor_to_view_top(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
     if win.cursor_to_view_zone(Zone::Top) {
-        run(editor, id, Hook::CursorMoved)
+        run(editor, id, Hook::CursorMoved);
     }
+
+    ActionResult::Ok
 }
 
 #[action("Cursors: Goto to middle of view")]
-fn cursor_to_view_middle(editor: &mut Editor, id: ClientId) {
+fn cursor_to_view_middle(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
     if win.cursor_to_view_zone(Zone::Middle) {
-        run(editor, id, Hook::CursorMoved)
+        run(editor, id, Hook::CursorMoved);
     }
+
+    ActionResult::Ok
 }
 
 #[action("Cursors: Goto to bottom of view")]
-fn cursor_to_view_bottom(editor: &mut Editor, id: ClientId) {
+fn cursor_to_view_bottom(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
     if win.cursor_to_view_zone(Zone::Bottom) {
-        run(editor, id, Hook::CursorMoved)
+        run(editor, id, Hook::CursorMoved);
     }
+
+    ActionResult::Ok
 }

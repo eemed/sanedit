@@ -649,7 +649,7 @@ impl Editor {
             swap_selection_dir.execute(self, id);
         }
 
-        let (win, buf) = self.win_buf_mut(id);
+        let (win, buf) = self.win_buf(id);
         let mut lines = vec![];
         for cursor in win.cursors.cursors() {
             if let Some(sel) = cursor.selection() {

@@ -12,6 +12,8 @@ use crate::{
 
 use sanedit_server::ClientId;
 
+use super::ActionResult;
+
 const HORIZON_TOP: u64 = 1024 * 8;
 const HORIZON_BOTTOM: u64 = 1024 * 16;
 
@@ -29,10 +31,10 @@ fn async_view_matches(editor: &mut Editor, id: ClientId, pattern: &str) {
 }
 
 #[action("Highlight last search")]
-fn highlight_last_search(editor: &mut Editor, id: ClientId) {
+fn highlight_last_search(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = editor.win_buf_mut(id);
     if !win.search.hl_last {
-        return;
+        return ActionResult::Skipped;
     }
 
     // TODO adjust if buffer changed, same as syntaxhl
@@ -46,10 +48,12 @@ fn highlight_last_search(editor: &mut Editor, id: ClientId) {
         let job = jobs::Search::new(id, &last.pattern, pt, view, last.kind);
         editor.job_broker.request(job);
     }
+
+    ActionResult::Ok
 }
 
 #[action("Search: Forward")]
-fn search_forward(editor: &mut Editor, id: ClientId) {
+fn search_forward(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
     win.search.hl_last = false;
     win.prompt = Prompt::builder()
@@ -62,10 +66,11 @@ fn search_forward(editor: &mut Editor, id: ClientId) {
         .on_input(async_view_matches)
         .build();
     win.focus_to(Focus::Search);
+    ActionResult::Ok
 }
 
 #[action("Search: Backward")]
-fn search_backward(editor: &mut Editor, id: ClientId) {
+fn search_backward(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
     win.search.hl_last = false;
     win.prompt = Prompt::builder()
@@ -78,59 +83,61 @@ fn search_backward(editor: &mut Editor, id: ClientId) {
         .on_input(async_view_matches)
         .build();
     win.focus_to(Focus::Search);
+    ActionResult::Ok
 }
 
 #[action("Search: Find word under cursor and move to next occurence")]
-fn search_next_word_under_cursor(editor: &mut Editor, id: ClientId) {
+fn search_next_word_under_cursor(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = editor.win_buf_mut(id);
     let pos = win.cursors.primary().pos();
     let slice = buf.slice(..);
-    let range = get!(word_at_pos(&slice, pos));
+    let range = getf!(word_at_pos(&slice, pos));
     let word = String::from(&slice.slice(range));
     win.search.kind = SearchKind::Default(false);
 
     search(editor, id, &word);
+    ActionResult::Ok
 }
 
 #[action("Search: Find word under cursor and move to previous occurence")]
-fn search_prev_word_under_cursor(editor: &mut Editor, id: ClientId) {
+fn search_prev_word_under_cursor(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = editor.win_buf_mut(id);
     let pos = win.cursors.primary().pos();
     let slice = buf.slice(..);
-    let range = get!(word_at_pos(&slice, pos));
+    let range = getf!(word_at_pos(&slice, pos));
     let word = String::from(&slice.slice(range));
     win.search.kind = SearchKind::Default(true);
 
     search(editor, id, &word);
+    ActionResult::Ok
 }
 
 #[action("Editor: Clear match highlighting")]
-fn clear_search_matches(editor: &mut Editor, id: ClientId) {
+fn clear_search_matches(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
     win.search.current_match = None;
     win.search.hl_matches.clear();
     win.search.hl_last = false;
+    ActionResult::Ok
 }
 
 #[action("Search: Goto next match")]
-fn next_search_match(editor: &mut Editor, id: ClientId) {
+fn next_search_match(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
-    let Some(input) = win.search.last_search_pattern().map(String::from) else {
-        return;
-    };
+    let input = getf!(win.search.last_search_pattern().map(String::from));
     search(editor, id, &input);
+    ActionResult::Ok
 }
 
 #[action("Search: Goto previous match")]
-fn prev_search_match(editor: &mut Editor, id: ClientId) {
+fn prev_search_match(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
 
-    let Some(input) = win.search.last_search_pattern().map(String::from) else {
-        return;
-    };
+    let input = getf!(win.search.last_search_pattern().map(String::from));
 
     if !win.search.kind.can_reverse() {
-        win.warn_msg("Search method is unable to search to the other direction. TODO workaround")
+        win.warn_msg("Search method is unable to search to the other direction. TODO workaround");
+        return ActionResult::Failed;
     }
 
     // search to opposite direction
@@ -140,6 +147,7 @@ fn prev_search_match(editor: &mut Editor, id: ClientId) {
 
     let (win, _buf) = editor.win_buf_mut(id);
     win.search.kind.reverse();
+    ActionResult::Ok
 }
 
 /// Execute a search from primary cursor position

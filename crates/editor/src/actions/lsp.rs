@@ -21,7 +21,7 @@ use crate::{
 
 use sanedit_server::ClientId;
 
-use super::jobs::LSPJob;
+use super::{jobs::LSPJob, ActionResult};
 
 #[derive(Debug, Error)]
 enum LSPActionError {
@@ -131,21 +131,23 @@ pub(crate) fn lsp_notify(
 }
 
 #[action("LSP: Start server")]
-fn start_lsp(editor: &mut Editor, id: ClientId) {
+fn start_lsp(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (_win, buf) = editor.win_buf(id);
     let bid = buf.id;
 
     if let Err(e) = start_lsp_impl(editor, id, bid) {
         let (win, _buf) = editor.win_buf_mut(id);
         win.error_msg(&format!("{e}"));
+        return ActionResult::Failed;
     }
+
+    ActionResult::Ok
 }
 
 #[action("LSP: Start server hook")]
-fn start_lsp_hook(editor: &mut Editor, id: ClientId) {
-    if let Some(bid) = editor.hooks.running_hook().and_then(Hook::buffer_id) {
-        let _ = start_lsp_impl(editor, id, bid);
-    }
+fn start_lsp_hook(editor: &mut Editor, id: ClientId) -> ActionResult {
+    let bid = getf!(editor.hooks.running_hook().and_then(Hook::buffer_id));
+    start_lsp_impl(editor, id, bid).into()
 }
 
 fn start_lsp_impl(editor: &mut Editor, id: ClientId, bid: BufferId) -> Result<()> {
@@ -170,10 +172,10 @@ fn start_lsp_impl(editor: &mut Editor, id: ClientId, bid: BufferId) -> Result<()
 }
 
 #[action("LSP: Stop server")]
-fn stop_lsp(editor: &mut Editor, id: ClientId) {
+fn stop_lsp(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (_win, buf) = editor.win_buf(id);
     let bid = buf.id;
-    let _ = stop_lsp_impl(editor, id, bid);
+    stop_lsp_impl(editor, id, bid).into()
 }
 
 fn stop_lsp_impl(editor: &mut Editor, _id: ClientId, bid: BufferId) -> Result<()> {
@@ -184,14 +186,14 @@ fn stop_lsp_impl(editor: &mut Editor, _id: ClientId, bid: BufferId) -> Result<()
 }
 
 #[action("LSP: Restart server")]
-fn restart_lsp(editor: &mut Editor, id: ClientId) {
+fn restart_lsp(editor: &mut Editor, id: ClientId) -> ActionResult {
     stop_lsp.execute(editor, id);
-    start_lsp.execute(editor, id);
+    start_lsp.execute(editor, id)
 }
 
 #[action("LSP: Hover")]
-fn hover(editor: &mut Editor, id: ClientId) {
-    let _ = lsp_request(editor, id, move |win, buf, path, slice, lsp| {
+fn hover(editor: &mut Editor, id: ClientId) -> ActionResult {
+    lsp_request(editor, id, move |win, buf, path, slice, lsp| {
         let offset = win.cursors.primary().pos();
         let position = Position::new(offset, &slice, &lsp.position_encoding());
         let kind = RequestKind::Hover { path, position };
@@ -203,22 +205,23 @@ fn hover(editor: &mut Editor, id: ClientId) {
                 Constraint::CursorPosition(offset),
             ],
         ))
-    });
+    })
+    .into()
 }
 
 #[action("LSP: Goto definition")]
-fn goto_definition(editor: &mut Editor, id: ClientId) {
-    let _ = lsp_request(editor, id, move |win, _buf, path, slice, lsp| {
+fn goto_definition(editor: &mut Editor, id: ClientId) -> ActionResult {
+    lsp_request(editor, id, move |win, _buf, path, slice, lsp| {
         let offset = win.cursors.primary().pos();
         let position = Position::new(offset, &slice, &lsp.position_encoding());
         let kind = RequestKind::GotoDefinition { path, position };
         Some((kind, vec![]))
-    });
+    }).into()
 }
 
 #[action("Synchronize document")]
-fn sync_document(editor: &mut Editor, id: ClientId) {
-    let _ = lsp_notify(editor, id, |buf, path, slice, lsp| {
+fn sync_document(editor: &mut Editor, id: ClientId) -> ActionResult {
+    lsp_notify(editor, id, |buf, path, slice, lsp| {
         let version = buf.total_changes_made() as i32;
         let Some(edit) = buf.last_edit() else {
             // Nothing to sync
@@ -258,12 +261,12 @@ fn sync_document(editor: &mut Editor, id: ClientId) {
             changes,
             version,
         })
-    });
+    }).into()
 }
 
 #[action("LSP: Complete")]
-fn complete(editor: &mut Editor, id: ClientId) {
-    let _ = lsp_request(editor, id, move |win, buf, path, slice, lsp| {
+fn complete(editor: &mut Editor, id: ClientId) -> ActionResult {
+    lsp_request(editor, id, move |win, buf, path, slice, lsp| {
         let offset = win.cursors.primary().pos();
         let position = Position::new(offset, &slice, &lsp.position_encoding());
         let kind = RequestKind::Complete { path, position };
@@ -275,12 +278,12 @@ fn complete(editor: &mut Editor, id: ClientId) {
                 Constraint::CursorPosition(offset),
             ],
         ))
-    });
+    }).into()
 }
 
 #[action("LSP: Pull diagnostics")]
-fn pull_diagnostics(editor: &mut Editor, id: ClientId) {
-    let _ = lsp_request(editor, id, move |_win, buf, path, _slice, _lsp| {
+fn pull_diagnostics(editor: &mut Editor, id: ClientId) -> ActionResult {
+    lsp_request(editor, id, move |_win, buf, path, _slice, _lsp| {
         let kind = RequestKind::PullDiagnostics { path };
         Some((
             kind,
@@ -289,23 +292,23 @@ fn pull_diagnostics(editor: &mut Editor, id: ClientId) {
                 Constraint::BufferVersion(buf.total_changes_made()),
             ],
         ))
-    });
+    }).into()
 }
 
 #[action("LSP: Show references")]
-fn references(editor: &mut Editor, id: ClientId) {
-    let _ = lsp_request(editor, id, move |win, _buf, path, slice, lsp| {
+fn references(editor: &mut Editor, id: ClientId) -> ActionResult {
+    lsp_request(editor, id, move |win, _buf, path, slice, lsp| {
         let offset = win.cursors.primary().pos();
         let position = Position::new(offset, &slice, &lsp.position_encoding());
         let kind = RequestKind::References { path, position };
 
         Some((kind, vec![]))
-    });
+    }).into()
 }
 
 #[action("LSP: Code action")]
-fn code_action(editor: &mut Editor, id: ClientId) {
-    let _ = lsp_request(editor, id, move |win, buf, path, slice, lsp| {
+fn code_action(editor: &mut Editor, id: ClientId) -> ActionResult {
+    lsp_request(editor, id, move |win, buf, path, slice, lsp| {
         let offset = win.cursors.primary().pos();
         let position = Position::new(offset, &slice, &lsp.position_encoding());
         let kind = RequestKind::CodeAction { path, position };
@@ -316,12 +319,12 @@ fn code_action(editor: &mut Editor, id: ClientId) {
                 Constraint::BufferVersion(buf.total_changes_made()),
             ],
         ))
-    });
+    }).into()
 }
 
 #[action("LSP: Format")]
-fn format(editor: &mut Editor, id: ClientId) {
-    let _ = lsp_request(editor, id, move |_win, buf, path, _slice, _lsp| {
+fn format(editor: &mut Editor, id: ClientId) -> ActionResult {
+    lsp_request(editor, id, move |_win, buf, path, _slice, _lsp| {
         let BufferConfig {
             indent_kind,
             indent_amount,
@@ -339,15 +342,15 @@ fn format(editor: &mut Editor, id: ClientId) {
                 Constraint::BufferVersion(buf.total_changes_made()),
             ],
         ))
-    });
+    }).into()
 }
 
 #[action("LSP: Rename")]
-fn rename(editor: &mut Editor, id: ClientId) {
+fn rename(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = editor.win_buf_mut(id);
     let cursor = win.cursors.primary().pos();
     let slice = buf.slice(..);
-    let word = get!(word_at_pos(&slice, cursor));
+    let word = getf!(word_at_pos(&slice, cursor));
     let word = String::from(&slice.slice(word));
 
     win.prompt = Prompt::builder()
@@ -380,11 +383,12 @@ fn rename(editor: &mut Editor, id: ClientId) {
         })
         .build();
     win.focus_to(Focus::Prompt);
+    ActionResult::Ok
 }
 
 #[action("Send LSP open document notification")]
-pub(crate) fn open_document(editor: &mut Editor, id: ClientId) {
-    let _ = lsp_notify(editor, id, |buf, path, slice, _lsp| {
+pub(crate) fn open_document(editor: &mut Editor, id: ClientId) -> ActionResult {
+    lsp_notify(editor, id, |buf, path, slice, _lsp| {
         let text = String::from(&slice);
         let version = buf.total_changes_made() as i32;
         Some(Notification::DidOpen {
@@ -392,23 +396,23 @@ pub(crate) fn open_document(editor: &mut Editor, id: ClientId) {
             text,
             version,
         })
-    });
+    }).into()
 }
 
 #[action("Send LSP open document notification")]
-pub(crate) fn close_document(editor: &mut Editor, id: ClientId) {
-    let _ = lsp_notify(editor, id, |_buf, path, _slice, _lsp| {
+pub(crate) fn close_document(editor: &mut Editor, id: ClientId) -> ActionResult {
+    lsp_notify(editor, id, |_buf, path, _slice, _lsp| {
         Some(Notification::DidClose { path: path.clone() })
-    });
+    }).into()
 }
 
 #[action("LSP: Show diagnostics on line")]
-pub(crate) fn show_diagnostics(editor: &mut Editor, id: ClientId) {
+pub(crate) fn show_diagnostics(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = win_buf!(editor, id);
     let view = win.view();
     let pos = win.cursors.primary().pos();
-    let range = get!(view.line_at_pos(pos));
-    let diagnostics = get!(get_diagnostics(buf, &editor.language_servers));
+    let range = getf!(view.line_at_pos(pos));
+    let diagnostics = getf!(get_diagnostics(buf, &editor.language_servers));
 
     for diag in diagnostics {
         if range.overlaps(&diag.range()) {
@@ -418,31 +422,33 @@ pub(crate) fn show_diagnostics(editor: &mut Editor, id: ClientId) {
             });
         }
     }
+
+    ActionResult::Ok
 }
 
 #[action("Will save document notification")]
-pub(crate) fn will_save_document(editor: &mut Editor, id: ClientId) {
-    let _ = lsp_notify(editor, id, |_buf, path, _slice, _lsp| {
+pub(crate) fn will_save_document(editor: &mut Editor, id: ClientId) -> ActionResult {
+    lsp_notify(editor, id, |_buf, path, _slice, _lsp| {
         Some(Notification::WillSave { path: path.clone() })
-    });
+    }).into()
 }
 
 #[action("Did save document notification")]
-pub(crate) fn did_save_document(editor: &mut Editor, id: ClientId) {
-    let _ = lsp_notify(editor, id, |_buf, path, slice, _lsp| {
+pub(crate) fn did_save_document(editor: &mut Editor, id: ClientId) -> ActionResult {
+    lsp_notify(editor, id, |_buf, path, slice, _lsp| {
         let text = String::from(&slice);
         Some(Notification::DidSave {
             path: path.clone(),
             text: Some(text),
         })
-    });
+    }).into()
 }
 
 #[action("LSP: Diagnostics to locations")]
-pub(crate) fn diagnostics_to_locations(editor: &mut Editor, id: ClientId) {
+pub(crate) fn diagnostics_to_locations(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = win_buf!(editor, id);
-    let ft = get!(buf.filetype.clone());
-    let lsp = get!(editor.language_servers.get(&ft));
+    let ft = getf!(buf.filetype.clone());
+    let lsp = getf!(editor.language_servers.get(&ft));
 
     win.locations.clear();
 
@@ -463,4 +469,6 @@ pub(crate) fn diagnostics_to_locations(editor: &mut Editor, id: ClientId) {
 
     win.locations.show = true;
     win.focus_to(Focus::Locations);
+
+    ActionResult::Ok
 }

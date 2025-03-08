@@ -11,30 +11,35 @@ use crate::{
 
 use sanedit_server::ClientId;
 
+use super::ActionResult;
+
 #[action("Filetree: Show")]
-fn show_filetree(editor: &mut Editor, id: ClientId) {
+fn show_filetree(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = win_buf!(editor, id);
     if win.ft_view.show {
         win.focus_to(Focus::Filetree);
-        return;
+        return ActionResult::Ok;
     }
 
     let visible = editor.filetree.iter().count();
     win.ft_view.selection = min(visible - 1, win.ft_view.selection);
     win.ft_view.show = true;
     win.focus_to(Focus::Filetree);
+    ActionResult::Ok
 }
 
 #[action("Filetree: Focus")]
-fn focus_filetree(editor: &mut Editor, id: ClientId) {
+fn focus_filetree(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = win_buf!(editor, id);
     if win.ft_view.show {
         win.focus_to(Focus::Filetree);
     }
+
+    ActionResult::Ok
 }
 
 #[action("Filetree: Confirm entry")]
-fn goto_ft_entry(editor: &mut Editor, id: ClientId) {
+fn goto_ft_entry(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf(id);
     let path = editor
         .filetree
@@ -56,7 +61,7 @@ fn goto_ft_entry(editor: &mut Editor, id: ClientId) {
                     if let Err(_e) = editor.open_file(id, path) {
                         let (win, _buf) = editor.win_buf_mut(id);
                         win.error_msg("failed to open file {path:?}: {e}");
-                        return;
+                        return ActionResult::Failed;
                     }
 
                     let (win, _buf) = editor.win_buf_mut(id);
@@ -65,42 +70,44 @@ fn goto_ft_entry(editor: &mut Editor, id: ClientId) {
             }
         }
     }
+
+    ActionResult::Ok
 }
 
 #[action("Filetree: Next entry")]
-fn next_ft_entry(editor: &mut Editor, id: ClientId) {
+fn next_ft_entry(editor: &mut Editor, id: ClientId) -> ActionResult {
     let visible = editor.filetree.iter().count();
-
     let (win, _buf) = editor.win_buf_mut(id);
     win.ft_view.selection = min(visible - 1, win.ft_view.selection + 1);
+
+    ActionResult::Ok
 }
 
 #[action("Filetree: Previous entry")]
-fn prev_ft_entry(editor: &mut Editor, id: ClientId) {
+fn prev_ft_entry(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
     win.ft_view.selection = win.ft_view.selection.saturating_sub(1);
+    ActionResult::Ok
 }
 
 #[action("Filetree: Close")]
-fn close_filetree(editor: &mut Editor, id: ClientId) {
+fn close_filetree(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
     win.ft_view.show = false;
     win.focus_to(Focus::Window);
+
+    ActionResult::Ok
 }
 
 #[action("Filetree: Create new file")]
-fn ft_new_file(editor: &mut Editor, id: ClientId) {
+fn ft_new_file(editor: &mut Editor, id: ClientId) -> ActionResult {
     let dir = {
         let (win, _buf) = editor.win_buf(id);
-        let Some(entry) = editor.filetree.iter().nth(win.ft_view.selection) else {
-            return;
-        };
+        let entry = getf!(editor.filetree.iter().nth(win.ft_view.selection));
 
         match entry.kind() {
             Kind::File => {
-                let Some(parent) = editor.filetree.parent_of(entry.path()) else {
-                    return;
-                };
+                let parent = getf!(editor.filetree.parent_of(entry.path()));
                 parent.path().to_path_buf()
             }
             Kind::Directory { .. } => entry.path().to_path_buf(),
@@ -147,15 +154,14 @@ fn ft_new_file(editor: &mut Editor, id: ClientId) {
         })
         .build();
     win.focus_to(Focus::Prompt);
+    ActionResult::Ok
 }
 
 #[action("Filetree: Delete file")]
-fn ft_delete_file(editor: &mut Editor, id: ClientId) {
+fn ft_delete_file(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (kind, path) = {
         let (win, _buf) = editor.win_buf(id);
-        let Some(entry) = editor.filetree.iter().nth(win.ft_view.selection) else {
-            return;
-        };
+        let entry = getf!(editor.filetree.iter().nth(win.ft_view.selection));
         let path = entry.path().to_path_buf();
         let kind = entry.kind();
 
@@ -204,26 +210,31 @@ fn ft_delete_file(editor: &mut Editor, id: ClientId) {
         })
         .build();
     win.focus_to(Focus::Prompt);
+
+    ActionResult::Ok
 }
 
 #[action("Filetree: Goto parent")]
-fn select_ft_parent(editor: &mut Editor, id: ClientId) {
+fn select_ft_parent(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf(id);
-    let entry = get!(editor.filetree.iter().nth(win.ft_view.selection));
-    let parent = get!(editor.filetree.parent_of(entry.path()));
-    let pos = get!(editor
+    let entry = getf!(editor.filetree.iter().nth(win.ft_view.selection));
+    let parent = getf!(editor.filetree.parent_of(entry.path()));
+    let pos = getf!(editor
         .filetree
         .iter()
         .position(|entry| entry.path() == parent.path()));
     let (win, _buf) = editor.win_buf_mut(id);
     win.ft_view.selection = pos;
+
+    ActionResult::Ok
 }
 
 #[action("Filetree: Show current file")]
-fn ft_goto_current_file(editor: &mut Editor, id: ClientId) {
+fn ft_goto_current_file(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = win_buf!(editor, id);
-    let path = get!(buf.path());
-    win.ft_view.selection = get!(editor.filetree.select(path));
+    let path = getf!(buf.path());
+    win.ft_view.selection = getf!(editor.filetree.select(path));
+    ActionResult::Ok
 }
 
 // #[action("Search for an entry in filetree")]

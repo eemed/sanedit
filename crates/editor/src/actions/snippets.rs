@@ -14,18 +14,19 @@ use crate::{
     },
 };
 
-use super::jobs::MatcherJob;
+use super::{jobs::MatcherJob, ActionResult};
 
 #[action("Snippet: Jump to next placeholder")]
-pub(crate) fn snippet_jump_next(editor: &mut Editor, id: ClientId) {
+pub(crate) fn snippet_jump_next(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = editor.win_buf_mut(id);
     if !win.cursors_to_next_snippet_jump(buf) {
         win.pop_focus();
     }
+    ActionResult::Ok
 }
 
 #[action("Snippet: Insert new")]
-pub(crate) fn insert_snippet(editor: &mut Editor, id: ClientId) {
+pub(crate) fn insert_snippet(editor: &mut Editor, id: ClientId) -> ActionResult {
     const MESSAGE: &str = "Insert a snippet";
     let (win, buf) = win_buf!(editor, id);
     let filetype = buf.filetype.clone();
@@ -49,6 +50,8 @@ pub(crate) fn insert_snippet(editor: &mut Editor, id: ClientId) {
         })
         .build();
     win.focus_to(Focus::Prompt);
+
+    ActionResult::Ok
 }
 
 pub(crate) fn insert_snippet_impl(

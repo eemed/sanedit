@@ -11,27 +11,30 @@ use crate::{
 
 use sanedit_server::ClientId;
 
-use super::hooks;
+use super::{hooks, ActionResult};
 
 #[action("Window: Focus window")]
-fn focus_window(editor: &mut Editor, id: ClientId) {
+fn focus_window(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
     win.focus_to(Focus::Window);
+    ActionResult::Ok
 }
 
 #[action("Window: Reload")]
-fn reload_window(editor: &mut Editor, id: ClientId) {
+fn reload_window(editor: &mut Editor, id: ClientId) -> ActionResult {
     editor.reload(id);
+    ActionResult::Ok
 }
 
 #[action("Window: Clear messages")]
-fn clear_messages(editor: &mut Editor, id: ClientId) {
+fn clear_messages(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
     win.clear_msg();
+    ActionResult::Ok
 }
 
 #[action("Sync windows if a buffer is changed")]
-fn sync_windows(editor: &mut Editor, id: ClientId) {
+fn sync_windows(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (_win, buf) = editor.win_buf(id);
     let bid = buf.id;
     let bid = editor
@@ -45,21 +48,25 @@ fn sync_windows(editor: &mut Editor, id: ClientId) {
         let (win, buf) = editor.win_buf_mut(client);
         win.on_buffer_changed(buf);
     }
+
+    ActionResult::Ok
 }
 
 #[action("Window: Goto previous buffer")]
-fn goto_prev_buffer(editor: &mut Editor, id: ClientId) {
+fn goto_prev_buffer(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = editor.win_buf_mut(id);
     if win.goto_prev_buffer() {
         let hook = Hook::BufEnter(buf.id);
-        hooks::run(editor, id, hook)
+        hooks::run(editor, id, hook);
+        ActionResult::Ok
     } else {
         win.warn_msg("No previous buffer");
+        ActionResult::Failed
     }
 }
 
 #[action("Window: Cancel")]
-fn cancel(editor: &mut Editor, id: ClientId) {
+fn cancel(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
 
     if win.search.hl_last || win.popup().is_some() {
@@ -69,7 +76,7 @@ fn cancel(editor: &mut Editor, id: ClientId) {
 
         // Close popups
         win.clear_popup();
-        return;
+        return ActionResult::Ok;
     }
 
     if win.cursors.cursors().iter().any(|c| c.is_selecting()) {
@@ -80,17 +87,19 @@ fn cancel(editor: &mut Editor, id: ClientId) {
         let (win, _buf) = editor.win_buf_mut(id);
         win.cursors.primary_mut().stop_selection();
     }
+
+    ActionResult::Ok
 }
 
 #[action("Window: New")]
-fn new_window(editor: &mut Editor, id: ClientId) {
+fn new_window(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf(id);
     let command = win.config.new_window_command.clone();
-    shell::execute(editor, id, false, &command);
+    shell::execute(editor, id, false, &command)
 }
 
 #[action("Editor: Status")]
-fn status(editor: &mut Editor, id: ClientId) {
+fn status(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = editor.win_buf(id);
     let file = buf
         .path()
@@ -159,28 +168,33 @@ fn status(editor: &mut Editor, id: ClientId) {
     let buf = Buffer::from_reader(std::io::Cursor::new(text)).unwrap();
     let bid = editor.buffers_mut().insert(buf);
     editor.open_buffer(id, bid);
+
+    ActionResult::Ok
 }
 
 #[action("View: Move to cursor high")]
-fn view_to_cursor_top(editor: &mut Editor, id: ClientId) {
+fn view_to_cursor_top(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = editor.win_buf_mut(id);
-    win.view_to_cursor_zone(buf, Zone::Top)
+    win.view_to_cursor_zone(buf, Zone::Top);
+    ActionResult::Ok
 }
 
 #[action("View: Move to cursor middle")]
-fn view_to_cursor_middle(editor: &mut Editor, id: ClientId) {
+fn view_to_cursor_middle(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = editor.win_buf_mut(id);
-    win.view_to_cursor_zone(buf, Zone::Middle)
+    win.view_to_cursor_zone(buf, Zone::Middle);
+    ActionResult::Ok
 }
 
 #[action("View: Move to cursor bottom")]
-fn view_to_cursor_bottom(editor: &mut Editor, id: ClientId) {
+fn view_to_cursor_bottom(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = editor.win_buf_mut(id);
-    win.view_to_cursor_zone(buf, Zone::Bottom)
+    win.view_to_cursor_zone(buf, Zone::Bottom);
+    ActionResult::Ok
 }
 
 #[action("Save cursor jump")]
-fn save_cursor_jump(editor: &mut Editor, id: ClientId) {
+fn save_cursor_jump(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (_win, buf) = editor.win_buf_mut(id);
     let bid = buf.id;
     let bid = editor
@@ -197,7 +211,7 @@ fn save_cursor_jump(editor: &mut Editor, id: ClientId) {
     // .any(|group| group.buffer_id() == bid);
 
     if !at_start {
-        return;
+        return ActionResult::Skipped;
     }
 
     log::info!("SAVEING: {bid:?}");
@@ -207,4 +221,5 @@ fn save_cursor_jump(editor: &mut Editor, id: ClientId) {
     let jump = Jump::new(mark, None);
     let group = JumpGroup::new(bid, vec![jump]);
     win.cursor_jumps.push(group);
+    ActionResult::Ok
 }

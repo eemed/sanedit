@@ -24,22 +24,44 @@ use std::{fmt, sync::Arc};
 use crate::editor::Editor;
 use sanedit_server::ClientId;
 
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub(crate) enum ActionResult {
+    /// Action completed succesfully
+    Ok,
+
+    /// Do not execute any further actions, wait for next one
+    Skipped,
+
+    /// Action failed to complete
+    Failed,
+}
+
+impl<T, E> From<Result<T, E>> for ActionResult {
+    fn from(value: Result<T, E>) -> Self {
+        if value.is_ok() {
+            ActionResult::Ok
+        } else {
+            ActionResult::Failed
+        }
+    }
+}
+
 #[derive(Clone)]
 pub(crate) enum Action {
     Static {
         name: &'static str,
-        fun: fn(&mut Editor, ClientId),
+        fun: fn(&mut Editor, ClientId) -> ActionResult,
         desc: &'static str,
     },
     Dynamic {
         name: String,
-        fun: Arc<dyn Fn(&mut Editor, ClientId)>,
+        fun: Arc<dyn Fn(&mut Editor, ClientId) -> ActionResult>,
         desc: String,
     },
 }
 
 impl Action {
-    pub fn execute(&self, editor: &mut Editor, id: ClientId) {
+    pub fn execute(&self, editor: &mut Editor, id: ClientId) -> ActionResult {
         match self {
             Action::Static { fun, .. } => (fun)(editor, id),
             Action::Dynamic { fun, .. } => (fun)(editor, id),

@@ -1,6 +1,16 @@
 #[macro_use]
 extern crate sanedit_macros;
 
+/// Get option or return ActionResult::Failed
+macro_rules! getf {
+    ($thing:expr) => {{
+        match $thing {
+            Some(thing) => thing,
+            _ => return ActionResult::Failed,
+        }
+    }};
+}
+
 /// Get option if Some otherwise return
 macro_rules! get {
     ($thing:expr) => {{

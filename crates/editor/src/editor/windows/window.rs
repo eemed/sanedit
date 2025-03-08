@@ -506,10 +506,12 @@ impl Window {
     }
 
     pub fn remove_cursor_selections(&mut self, buf: &mut Buffer) -> Result<bool> {
+        log::info!("Selections: {:?}", &self.cursors);
         let selections: Vec<BufferRange> = (&self.cursors).into();
         if selections.is_empty() {
             return Ok(false);
         }
+        log::info!("Selections: {selections:?}");
 
         self.cursors.stop_selection();
         self.remove(buf, &selections)?;

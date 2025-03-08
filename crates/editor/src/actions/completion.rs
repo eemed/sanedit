@@ -14,27 +14,25 @@ use crate::{
 
 use sanedit_server::ClientId;
 
-use super::{jobs::MatcherJob, lsp, snippets, text};
+use super::{jobs::MatcherJob, lsp, snippets, text, ActionResult};
 
 #[action("Editor: Complete")]
-fn complete(editor: &mut Editor, id: ClientId) {
+fn complete(editor: &mut Editor, id: ClientId) -> ActionResult {
     if editor.has_lsp(id) {
         lsp::complete.execute(editor, id)
     } else {
-        complete_from_syntax(editor, id);
+        complete_from_syntax(editor, id)
     }
 }
 
-fn complete_from_syntax(editor: &mut Editor, id: ClientId) {
+fn complete_from_syntax(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = win_buf!(editor, id);
     let cursor = win.cursors.primary().pos();
     let slice = buf.slice(..);
     let (range, word) =
         word_before_pos(&slice, cursor).unwrap_or((Range::new(cursor, cursor), String::new()));
     let cursor = win.primary_cursor();
-    let Some(point) = win.view().point_at_pos(cursor.pos()) else {
-        return;
-    };
+    let point = getf!(win.view().point_at_pos(cursor.pos()));
     win.completion = Completion::new(range.start, point, Some(&win.keymap_layer));
 
     // Fetch completions from buffer
@@ -64,10 +62,11 @@ fn complete_from_syntax(editor: &mut Editor, id: ClientId) {
         .build();
 
     editor.job_broker.request(job);
+    ActionResult::Ok
 }
 
 #[action("Completion: Confirm")]
-fn completion_confirm(editor: &mut Editor, id: ClientId) {
+fn completion_confirm(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
     win.pop_focus();
 
@@ -81,14 +80,16 @@ fn completion_confirm(editor: &mut Editor, id: ClientId) {
             _ => {
                 let prefix = opt.matches().iter().map(|m| m.end).max().unwrap_or(0);
                 let opt = choice.text()[prefix..].to_string();
-                text::insert(editor, id, &opt);
+                text::insert(editor, id, &opt)
             }
         }
     }
+
+    ActionResult::Ok
 }
 
 #[action("Completion: Abort")]
-fn completion_abort(editor: &mut Editor, id: ClientId) {
+fn completion_abort(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
     if win.focus() == Focus::Completion {
         win.pop_focus();
@@ -96,27 +97,34 @@ fn completion_abort(editor: &mut Editor, id: ClientId) {
         if let Some(ref km) = win.completion.previous_keymap {
             win.keymap_layer = km.into();
         }
+        return ActionResult::Ok
     }
+
+    ActionResult::Skipped
 }
 
 #[action("Completion: Select next")]
-fn completion_next(editor: &mut Editor, id: ClientId) {
+fn completion_next(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
     win.completion.select_next();
+
+    ActionResult::Ok
 }
 
 #[action("Completion: Select previous")]
-fn completion_prev(editor: &mut Editor, id: ClientId) {
+fn completion_prev(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
     win.completion.select_prev();
+
+    ActionResult::Ok
 }
 
 #[action("Send word to matcher")]
-fn send_word(editor: &mut Editor, id: ClientId) {
+fn send_word(editor: &mut Editor, id: ClientId) -> ActionResult {
     let hook_bid = editor.hooks.running_hook().and_then(Hook::buffer_id);
     let (win, buf) = editor.win_buf_mut(id);
     if hook_bid != Some(buf.id) || win.focus() != Focus::Completion {
-        return;
+        return ActionResult::Skipped;
     }
 
     let (win, buf) = editor.win_buf_mut(id);
@@ -125,10 +133,12 @@ fn send_word(editor: &mut Editor, id: ClientId) {
         let start = win.completion.started_at();
         if start > cursor {
             win.pop_focus();
-            return;
+            return ActionResult::Ok;
         }
         let slice = buf.slice(start..cursor);
         let word = String::from(&slice);
         (fun)(editor, id, &word);
     }
+
+    ActionResult::Ok
 }

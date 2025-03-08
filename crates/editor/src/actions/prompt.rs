@@ -22,11 +22,11 @@ use super::{
     find_by_description, hooks,
     jobs::{MatcherJob, MatcherMessage},
     shell,
-    text::save,
+    text::save, ActionResult,
 };
 
 #[action("Editor: Select theme")]
-fn select_theme(editor: &mut Editor, id: ClientId) {
+fn select_theme(editor: &mut Editor, id: ClientId) -> ActionResult {
     let themes: Vec<String> = editor
         .themes
         .names()
@@ -60,10 +60,11 @@ fn select_theme(editor: &mut Editor, id: ClientId) {
         .build();
 
     editor.job_broker.request(job);
+    ActionResult::Ok
 }
 
 #[action("Editor: Command palette")]
-fn command_palette(editor: &mut Editor, id: ClientId) {
+fn command_palette(editor: &mut Editor, id: ClientId) -> ActionResult {
     let opts = Arc::new(commands::command_palette(editor, id));
 
     let (win, _buf) = editor.win_buf_mut(id);
@@ -86,10 +87,11 @@ fn command_palette(editor: &mut Editor, id: ClientId) {
         .build();
 
     editor.job_broker.request(job);
+    ActionResult::Ok
 }
 
 #[action("Editor: Open file")]
-fn open_file(editor: &mut Editor, id: ClientId) {
+fn open_file(editor: &mut Editor, id: ClientId) -> ActionResult {
     const PROMPT_MESSAGE: &str = "Open a file";
     let ignore = editor.config.editor.ignore_directories();
     let wd = editor.working_dir().to_path_buf();
@@ -117,6 +119,7 @@ fn open_file(editor: &mut Editor, id: ClientId) {
         })
         .build();
     win.focus_to(Focus::Prompt);
+    ActionResult::Ok
 }
 
 fn open_file_handler(editor: &mut Editor, id: ClientId, msg: MatcherMessage) {
@@ -174,7 +177,7 @@ fn open_file_handler(editor: &mut Editor, id: ClientId, msg: MatcherMessage) {
 }
 
 #[action("Editor: Open buffer")]
-fn open_buffer(editor: &mut Editor, id: ClientId) {
+fn open_buffer(editor: &mut Editor, id: ClientId) -> ActionResult {
     const PROMPT_MESSAGE: &str = "Open a buffer";
     let wd = editor.working_dir();
     let buffers: Vec<Arc<Choice>> = editor
@@ -207,10 +210,11 @@ fn open_buffer(editor: &mut Editor, id: ClientId) {
         })
         .build();
     win.focus_to(Focus::Prompt);
+    ActionResult::Ok
 }
 
 #[action("Prompt: Close")]
-fn prompt_close(editor: &mut Editor, id: ClientId) {
+fn prompt_close(editor: &mut Editor, id: ClientId) -> ActionResult{
     let (win, _buf) = editor.win_buf_mut(id);
     win.focus_to(Focus::Window);
 
@@ -222,10 +226,11 @@ fn prompt_close(editor: &mut Editor, id: ClientId) {
         let input = win.prompt.input_or_selected();
         (on_abort)(editor, id, input)
     }
+    ActionResult::Ok
 }
 
 #[action("Prompt: Confirm")]
-fn prompt_confirm(editor: &mut Editor, id: ClientId) {
+fn prompt_confirm(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
     win.focus_to(Focus::Window);
 
@@ -243,22 +248,25 @@ fn prompt_confirm(editor: &mut Editor, id: ClientId) {
         }
         (on_confirm)(editor, id, out)
     }
+    ActionResult::Ok
 }
 
 #[action("Prompt: Move cursor right")]
-fn prompt_next_grapheme(editor: &mut Editor, id: ClientId) {
+fn prompt_next_grapheme(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
     win.prompt.next_grapheme();
+    ActionResult::Ok
 }
 
 #[action("Prompt: Move cursor left")]
-fn prompt_prev_grapheme(editor: &mut Editor, id: ClientId) {
+fn prompt_prev_grapheme(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
     win.prompt.prev_grapheme();
+    ActionResult::Ok
 }
 
 #[action("Prompt: Delete grapheme before cursor")]
-pub(crate) fn prompt_remove_grapheme_before_cursor(editor: &mut Editor, id: ClientId) {
+pub(crate) fn prompt_remove_grapheme_before_cursor(editor: &mut Editor, id: ClientId) -> ActionResult{
     let (win, _buf) = editor.win_buf_mut(id);
     win.prompt.remove_grapheme_before_cursor();
 
@@ -266,32 +274,37 @@ pub(crate) fn prompt_remove_grapheme_before_cursor(editor: &mut Editor, id: Clie
         let input = win.prompt.input().to_string();
         (on_input)(editor, id, &input)
     }
+    ActionResult::Ok
 }
 
 #[action("Prompt: Select next completion item")]
-fn prompt_next_completion(editor: &mut Editor, id: ClientId) {
+fn prompt_next_completion(editor: &mut Editor, id: ClientId) -> ActionResult{
     let (win, _buf) = editor.win_buf_mut(id);
     win.prompt.next_completion();
+    ActionResult::Ok
 }
 
 #[action("Prompt: Select previous completion item")]
-fn prompt_prev_completion(editor: &mut Editor, id: ClientId) {
+fn prompt_prev_completion(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
     win.prompt.prev_completion();
+    ActionResult::Ok
 }
 
 #[action("Prompt: Select next history entry")]
-fn prompt_history_next(editor: &mut Editor, id: ClientId) {
+fn prompt_history_next(editor: &mut Editor, id: ClientId) -> ActionResult {
     editor.prompt_history_next(id);
+    ActionResult::Ok
 }
 
 #[action("Prompt: Select previous history entry")]
-fn prompt_history_prev(editor: &mut Editor, id: ClientId) {
+fn prompt_history_prev(editor: &mut Editor, id: ClientId) -> ActionResult {
     editor.prompt_history_prev(id);
+    ActionResult::Ok
 }
 
 #[action("Editor: Run a shell command")]
-fn shell_command(editor: &mut Editor, id: ClientId) {
+fn shell_command(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
 
     win.prompt = Prompt::builder()
@@ -301,10 +314,11 @@ fn shell_command(editor: &mut Editor, id: ClientId) {
         .on_confirm(shell::execute_prompt)
         .build();
     win.focus_to(Focus::Prompt);
+    ActionResult::Ok
 }
 
 #[action("Cursors: Goto line number")]
-fn goto_line(editor: &mut Editor, id: ClientId) {
+fn goto_line(editor: &mut Editor, id: ClientId) -> ActionResult{
     let (win, _buf) = editor.win_buf_mut(id);
 
     win.prompt = Prompt::builder()
@@ -320,10 +334,11 @@ fn goto_line(editor: &mut Editor, id: ClientId) {
         })
         .build();
     win.focus_to(Focus::Prompt);
+    ActionResult::Ok
 }
 
 #[action("Cursors: Goto percentage")]
-fn goto_percentage(editor: &mut Editor, id: ClientId) {
+fn goto_percentage(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
 
     win.prompt = Prompt::builder()
@@ -341,10 +356,11 @@ fn goto_percentage(editor: &mut Editor, id: ClientId) {
         })
         .build();
     win.focus_to(Focus::Prompt);
+    ActionResult::Ok
 }
 
 #[action("Editor: Change working directory")]
-fn change_working_dir(editor: &mut Editor, id: ClientId) {
+fn change_working_dir(editor: &mut Editor, id: ClientId) -> ActionResult {
     let wd = editor.working_dir().to_path_buf();
     let (win, _buf) = editor.win_buf_mut(id);
     win.prompt = Prompt::builder()
@@ -360,6 +376,7 @@ fn change_working_dir(editor: &mut Editor, id: ClientId) {
         })
         .build();
     win.focus_to(Focus::Prompt);
+    ActionResult::Ok
 }
 
 // #[action("Grep")]
@@ -420,7 +437,7 @@ pub(crate) fn unsaved_changes<F: Fn(&mut Editor, ClientId) + 'static>(
                 for bid in unsaved {
                     let (win, _buf) = win_buf!(editor, id);
                     win.open_buffer(bid);
-                    save.execute(editor, id)
+                    save.execute(editor, id);
                 }
             }
 

@@ -6,8 +6,10 @@ use crate::editor::{buffers::BufferConfig, Editor};
 
 use sanedit_server::ClientId;
 
+use super::ActionResult;
+
 #[action("Detect indentation")]
-fn detect_indent(editor: &mut Editor, id: ClientId) {
+fn detect_indent(editor: &mut Editor, id: ClientId) -> ActionResult {
     const MAX: u64 = 1024 * 64; // 64kb
 
     let (_win, buf) = editor.win_buf_mut(id);
@@ -19,16 +21,17 @@ fn detect_indent(editor: &mut Editor, id: ClientId) {
     });
     buf.config.indent_kind = kind;
     buf.config.indent_amount = n;
+    ActionResult::Ok
 }
 
 #[action("Buffer: Indent lines")]
-fn indent_line(editor: &mut Editor, id: ClientId) {
+fn indent_line(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = editor.win_buf_mut(id);
-    let _ = win.indent_cursor_lines(buf);
+    win.indent_cursor_lines(buf).into()
 }
 
 #[action("Buffer: Dedent lines")]
-fn dedent_line(editor: &mut Editor, id: ClientId) {
+fn dedent_line(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = editor.win_buf_mut(id);
-    let _ = win.dedent_cursor_lines(buf);
+    win.dedent_cursor_lines(buf).into()
 }

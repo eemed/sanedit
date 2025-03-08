@@ -2,13 +2,13 @@ use crate::editor::{hooks::Hook, Editor};
 
 use sanedit_server::ClientId;
 
-use super::jobs::SyntaxParser;
+use super::{jobs::SyntaxParser, ActionResult};
 
 /// Prevents syntax highlighting flicker on buffer change, simply adjusts
 /// higlights to a simple solution, highlights are processed in the
 /// background and will override the guesses made here anyway.
 #[action("Adjust highlighting to take a buffer change into account")]
-pub(crate) fn prevent_flicker(editor: &mut Editor, id: ClientId) {
+pub(crate) fn prevent_flicker(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (_win, buf) = editor.win_buf(id);
     let bid = buf.id;
     let bid = editor
@@ -21,9 +21,7 @@ pub(crate) fn prevent_flicker(editor: &mut Editor, id: ClientId) {
     for client in clients {
         let (win, buf) = editor.win_buf_mut(client);
         let old = win.view_syntax();
-        let Some(edit) = buf.last_edit() else {
-            return;
-        };
+        let edit = getf!(buf.last_edit());
 
         let mut off = 0i128;
         let mut iter = edit.changes.iter().peekable();
@@ -61,17 +59,19 @@ pub(crate) fn prevent_flicker(editor: &mut Editor, id: ClientId) {
             true
         });
     }
+
+    ActionResult::Ok
 }
 
 #[action("Parse buffer syntax for view")]
-pub(crate) fn reparse_view(editor: &mut Editor, id: ClientId) {
+pub(crate) fn reparse_view(editor: &mut Editor, id: ClientId) -> ActionResult {
     if !editor.has_syntax(id) {
-        return;
+        return ActionResult::Skipped;
     }
 
     let (win, buf) = editor.win_buf_mut(id);
     if !win.config.highlight_syntax {
-        return;
+        return ActionResult::Skipped;
     }
     win.redraw_view(buf);
     let bid = buf.id;
@@ -84,26 +84,26 @@ pub(crate) fn reparse_view(editor: &mut Editor, id: ClientId) {
         || old.total_changes_made() != total
         || !old.parsed_range().includes(&view)
     {
-        parse_syntax.execute(editor, id);
+        parse_syntax.execute(editor, id)
+    } else {
+        ActionResult::Ok
     }
 }
 
 #[action("Parse buffer syntax")]
-pub(crate) fn parse_syntax(editor: &mut Editor, id: ClientId) {
+pub(crate) fn parse_syntax(editor: &mut Editor, id: ClientId) -> ActionResult {
     const JOB_NAME: &str = "parse-syntax";
 
     let (win, buf) = editor.win_buf_mut(id);
     if !win.config.highlight_syntax {
-        return;
+        return ActionResult::Skipped;
     }
     let bid = buf.id;
     let total_changes_made = buf.total_changes_made();
     let range = win.view().range();
     let ropt = buf.ro_view();
 
-    let Some(ft) = buf.filetype.clone() else {
-        return;
-    };
+    let ft = getf!(buf.filetype.clone());
     if let Ok(s) = editor.syntaxes.get(&ft) {
         editor.job_broker.request_slot(
             id,
@@ -111,4 +111,6 @@ pub(crate) fn parse_syntax(editor: &mut Editor, id: ClientId) {
             SyntaxParser::new(id, bid, total_changes_made, s, ropt, range),
         );
     }
+
+    ActionResult::Ok
 }

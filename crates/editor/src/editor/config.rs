@@ -401,7 +401,9 @@ impl KeymapLayer {
                             for (action, skip) in &actions {
                                 let result = action.execute(editor, id);
                                 let stop =
-                                    skip.as_ref().map(|skip| &result >= skip).unwrap_or(false);
+                                    skip.as_ref().map(|skip| &result > skip).unwrap_or(false);
+
+                                log::info!("Result: {result:?}, SKIP: {skip:?}, stop: {stop}");
 
                                 if stop {
                                     break;

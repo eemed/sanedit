@@ -233,7 +233,7 @@ mod test {
     #[test]
     fn compile_json() {
         let peg = include_str!("../../pegs/json.peg");
-        let rules = grammar::parse_rules(std::io::Cursor::new(peg)).unwrap();
+        let rules = Rules::parse(std::io::Cursor::new(peg)).unwrap();
 
         let compiler = Compiler::new(&rules);
         let program = compiler.compile().unwrap();
@@ -243,7 +243,7 @@ mod test {
     #[test]
     fn compile_toml() {
         let peg = include_str!("../../pegs/toml.peg");
-        let rules = grammar::parse_rules(std::io::Cursor::new(peg)).unwrap();
+        let rules = Rules::parse(std::io::Cursor::new(peg)).unwrap();
 
         let compiler = Compiler::new(&rules);
         let program = compiler.compile().unwrap();
@@ -253,7 +253,7 @@ mod test {
     #[test]
     fn compile_brackets() {
         let peg = "WHITESPACE = [ \\t\\r\\n];";
-        let rules = grammar::parse_rules(std::io::Cursor::new(peg)).unwrap();
+        let rules = Rules::parse(std::io::Cursor::new(peg)).unwrap();
 
         let compiler = Compiler::new(&rules);
         let program = compiler.compile();
@@ -270,7 +270,7 @@ mod test {
             @show
             value = \"abba\";
             ";
-        let rules = grammar::parse_rules(std::io::Cursor::new(peg)).unwrap();
+        let rules = Rules::parse(std::io::Cursor::new(peg)).unwrap();
 
         let compiler = Compiler::new(&rules);
         let program = compiler.compile();
@@ -288,7 +288,7 @@ mod test {
             range = [\\u00..\\u20];
             combi = [\\u0..\\u20\\u25];
             ";
-        let rules = grammar::parse_rules(std::io::Cursor::new(peg)).unwrap();
+        let rules = Rules::parse(std::io::Cursor::new(peg)).unwrap();
         println!("{}", rules);
 
         let compiler = Compiler::new(&rules);

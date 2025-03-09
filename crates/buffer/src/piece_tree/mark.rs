@@ -2,7 +2,7 @@ use super::buffers::BufferKind;
 
 /// A mark that tracks a position in text.
 /// It can be retrieved if the position has not been deleted
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Mark {
     pub(crate) orig: u64,
     pub(crate) kind: BufferKind,

@@ -131,7 +131,7 @@ impl<'a> PieceTreeSlice<'a> {
 
     /// Position at the start of line
     #[inline]
-    pub fn pos_at_line(&self, line: u64) -> u64 {
+    pub fn pos_at_line(&self, line: u64) -> Option<u64> {
         utf8::lines::pos_at_line(self, line)
     }
 

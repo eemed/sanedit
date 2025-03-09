@@ -14,9 +14,6 @@ pub(crate) struct Cursors {
     // change. So its unsorted for now.
     cursors: Vec<Cursor>,
     primary: usize,
-
-    /// Try to not move cursors during edits if possible
-    pub keep_positions: bool,
 }
 
 impl Cursors {
@@ -24,7 +21,6 @@ impl Cursors {
         Cursors {
             cursors: vec![cursor],
             primary: 0,
-            keep_positions: false,
         }
     }
 
@@ -274,7 +270,6 @@ impl Default for Cursors {
         Cursors {
             cursors: vec![Cursor::default()],
             primary: 0,
-            keep_positions: false,
         }
     }
 }
@@ -287,7 +282,6 @@ impl From<Vec<Cursor>> for Cursors {
         Cursors {
             cursors: value,
             primary: last,
-            keep_positions: false,
         }
     }
 }

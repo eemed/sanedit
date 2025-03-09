@@ -32,7 +32,7 @@ detect_indent = true
 # By default the filetype is the extension of the file
 [editor.filetype]
 rust = ["*.rs"]
-toml = ["**/Cargo.lock"]
+toml = ["*/Cargo.lock"]
 markdown = ["*.md"]
 yaml = ["*.yml"]
 

@@ -182,7 +182,7 @@ impl View {
         let mut pos = 0;
         let mut line = 0;
         let mut col = 0;
-        let mut is_eol;
+        let mut is_eol = false;
         let mut graphemes = slice.graphemes_at(pos);
 
         while let Some(grapheme) = graphemes.next() {
@@ -232,8 +232,12 @@ impl View {
         }
 
         // Add in EOF if we have space
-        if col < self.width() && pos == slice.len() {
-            self.cells[line][col] = Cell::EOF;
+        if pos == slice.len() {
+            if !is_eol && col < self.width() {
+                self.cells[line][col] = Cell::EOF;
+            } else if is_eol && col == 0 {
+                self.cells[line][0] = Cell::EOF;
+            }
         }
 
         self.range = Range::new(self.range.start, self.range.start + pos);

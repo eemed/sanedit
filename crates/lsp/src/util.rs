@@ -252,7 +252,9 @@ impl Position {
 
     pub fn to_offset(&self, slice: &PieceTreeSlice, enc: &PositionEncoding) -> u64 {
         let lsp_types::Position { line, character } = self.pos;
-        let pos = slice.pos_at_line(line as u64);
+        let Some(pos) = slice.pos_at_line(line as u64) else {
+            return slice.len();
+        };
         let mut chars = slice.chars_at(pos);
         let mut col = 0u32;
 

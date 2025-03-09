@@ -7,7 +7,7 @@ use crate::{
     editor::{
         buffers::{BufferId, Buffers},
         hooks::Hook,
-        windows::{Cursors, Jumps, Zone},
+        windows::{Cursors, Jump, JumpGroup, Jumps, Window, Zone},
         Editor,
     },
 };
@@ -258,7 +258,7 @@ fn jump_next_change(editor: &mut Editor, id: ClientId) -> ActionResult {
 }
 
 fn find_prev_jump(
-    cursor_jumps: &Jumps,
+    win: &Window,
     buffers: &Buffers,
     original_bid: BufferId,
 ) -> Option<(Ref, BufferId)> {
@@ -273,6 +273,16 @@ fn find_prev_jump(
     // but skip all other deleted markers
     //
 
+    // If curent position was a jump group, used to skip over jump that would do
+    // nothing
+    let current = {
+        let primary = win.cursors.primary().pos();
+        let mark = buffers.get(win.buffer_id()).unwrap().mark(primary);
+        let jump = Jump::new(mark, None);
+        JumpGroup::new(win.buffer_id(), vec![jump])
+    };
+
+    let cursor_jumps = &win.cursor_jumps;
     // Take previous or last if none selected
     let mut item = {
         match cursor_jumps.current() {
@@ -281,6 +291,13 @@ fn find_prev_jump(
         }
     };
     let mut previous = None;
+
+    // Skip to if this is current position
+    if let Some((cursor, group)) = &item {
+        if *group == &current {
+            item = cursor_jumps.prev(&cursor);
+        }
+    }
 
     while let Some((cursor, group)) = item {
         let gbid = group.buffer_id();
@@ -298,17 +315,19 @@ fn find_prev_jump(
         }
 
         if let Some((_, pbid)) = &previous {
-            // We have went to next buffer
+            // We have already looped to next buffer
             // and current entry is also in another buffer
             if *pbid != original_bid && *pbid != gbid {
                 return previous;
             }
         }
 
+        // Goto previous element and record current
         item = cursor_jumps.prev(&cursor);
         previous = Some((cursor, gbid));
     }
 
+    // If buffer changed goto previous buffer
     if let Some((_, pbid)) = &previous {
         if *pbid != original_bid {
             return previous;
@@ -333,9 +352,7 @@ fn find_next_jump(
     // This would go to previous buffers even if mark is not found
     // but skip all other deleted markers
 
-    log::info!("Next");
     let (mut cursor, _) = cursor_jumps.current()?;
-    log::info!("Next current: {cursor:?}");
     let mut previous = None;
 
     while let Some((gcursor, group)) = cursor_jumps.next(&cursor) {
@@ -379,9 +396,8 @@ fn find_next_jump(
 fn jump_prev(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = win_buf!(editor, id);
     let bid = buf.id;
-    let (cursor, next_bid) = getf!(find_prev_jump(&win.cursor_jumps, &editor.buffers, bid));
+    let (cursor, next_bid) = getf!(find_prev_jump(&win, &editor.buffers, bid));
 
-    log::info!("Prev: {cursor:?}");
     if next_bid != bid {
         run(editor, id, Hook::BufLeave(bid));
     }
@@ -401,7 +417,6 @@ fn jump_next(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = win_buf!(editor, id);
     let bid = buf.id;
     let (cursor, next_bid) = getf!(find_next_jump(&win.cursor_jumps, &editor.buffers, bid));
-    log::info!("Next: {cursor:?}");
 
     if next_bid != bid {
         run(editor, id, Hook::BufLeave(bid));

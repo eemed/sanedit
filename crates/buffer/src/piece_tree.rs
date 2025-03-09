@@ -275,7 +275,7 @@ impl PieceTree {
     }
 
     #[inline]
-    pub fn pos_at_line(&self, line: u64) -> u64 {
+    pub fn pos_at_line(&self, line: u64) -> Option<u64> {
         self.view.pos_at_line(line)
     }
 

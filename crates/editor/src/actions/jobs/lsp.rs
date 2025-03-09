@@ -187,6 +187,7 @@ impl LSPJob {
             }
             RequestResult::GotoDefinition { path, position } => {
                 if editor.open_file(self.client_id, path).is_ok() {
+                    log::info!("GD GOTO");
                     let enc = get!(editor.lsp_for(id).map(|x| x.position_encoding()));
                     let (win, buf) = editor.win_buf_mut(self.client_id);
                     let slice = buf.slice(..);

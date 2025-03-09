@@ -1,7 +1,7 @@
 use std::path::Path;
 
-use globset::{Glob, GlobSetBuilder};
 use rustc_hash::FxHashMap;
+use sanedit_syntax::Glob;
 
 #[derive(Debug, Hash, PartialEq, Eq, Ord, PartialOrd, Clone)]
 pub struct Filetype {
@@ -11,15 +11,16 @@ pub struct Filetype {
 impl Filetype {
     pub fn determine(path: &Path, patterns: &FxHashMap<String, Vec<String>>) -> Option<Filetype> {
         for (ft, patterns) in patterns {
-            let mut builder = GlobSetBuilder::new();
+            let mut globs = vec![];
             patterns.iter().for_each(|pat| {
                 if let Ok(glob) = Glob::new(pat) {
-                    builder.add(glob);
+                    globs.push(glob);
                 }
             });
 
-            if let Ok(glob) = builder.build() {
-                if !glob.matches(path).is_empty() {
+            for glob in globs {
+                let path = path.as_os_str().to_string_lossy();
+                if glob.is_match(&path.as_bytes()) {
                     return Some(Filetype {
                         name: ft.to_string(),
                     });

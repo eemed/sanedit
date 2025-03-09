@@ -627,13 +627,13 @@ impl Editor {
             .collect();
 
         let keep_positions =
-            std::mem::replace(&mut win.cursors.keep_positions, keep_cursor_position);
+            std::mem::replace(&mut win.keep_cursor_positions, keep_cursor_position);
         let res = if clen == llen {
             win.insert_to_each_cursor(buf, lines)
         } else {
             win.insert_at_cursors(buf, &text)
         };
-        win.cursors.keep_positions = keep_positions;
+        win.keep_cursor_positions = keep_positions;
 
         if res.is_ok() {
             run(self, id, Hook::BufChanged(bid));

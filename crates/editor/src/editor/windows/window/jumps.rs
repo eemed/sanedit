@@ -7,7 +7,7 @@ use crate::editor::buffers::{Buffer, BufferId};
 use super::Cursors;
 
 /// jump to a position or selection in buffer
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub(crate) struct Jump {
     start: Mark,
     /// If jump selects a portion of the text end is set
@@ -30,7 +30,7 @@ impl Jump {
 
 /// A group of jumps meant to be used at the same time.
 /// Mostly to place a cursor on each jump simultaneously
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub(crate) struct JumpGroup {
     bid: BufferId,
     jumps: Vec<Jump>,
@@ -111,6 +111,7 @@ impl Jumps {
     }
 
     pub fn push(&mut self, group: JumpGroup) {
+    log::info!("push: {group:?}");
         self.jumps.push_overwrite(group);
     }
 
@@ -119,7 +120,6 @@ impl Jumps {
     }
 
     pub fn goto(&mut self, reference: Ref) -> Option<&JumpGroup> {
-        log::info!("GOTO: {reference:?}");
         let group = self.jumps.read_reference(&reference)?;
         self.position = Some(reference);
         Some(group)

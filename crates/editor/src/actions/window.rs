@@ -214,7 +214,7 @@ fn save_cursor_jump(editor: &mut Editor, id: ClientId) -> ActionResult {
         return ActionResult::Skipped;
     }
 
-    log::info!("SAVEING: {bid:?}");
+    log::info!("SAVEING: {bid:?}, Cursors: {:?}", win.cursors);
     let buffer = editor.buffers.get(bid).unwrap();
     let primary = win.cursors.primary().pos();
     let mark = buffer.mark(primary);

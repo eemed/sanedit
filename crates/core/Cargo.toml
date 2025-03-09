@@ -6,6 +6,7 @@ edition.workspace = true
 [dependencies]
 sanedit-buffer = { path = "../buffer" }
 sanedit-utils = { path = "../utils" }
+sanedit-syntax = { path = "../syntax" }
 
 serde = { workspace = true, features = ["derive"] }
 

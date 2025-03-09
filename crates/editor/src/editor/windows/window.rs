@@ -81,6 +81,8 @@ pub(crate) struct Window {
 
     /// Last edit jumped to in buffer
     pub last_edit_jump: Option<SnapshotId>,
+
+    pub keep_cursor_positions: bool,
 }
 
 impl Window {
@@ -106,6 +108,7 @@ impl Window {
             snippets: vec![],
             cursor_jumps: Jumps::with_capacity(512),
             last_edit_jump: None,
+            keep_cursor_positions: false,
         }
     }
 
@@ -354,6 +357,8 @@ impl Window {
         );
         let cursor = self.primary_cursor().pos();
 
+        self.view.redraw(buf);
+
         if !self.view.is_visible(cursor) {
             self.view.view_to(cursor, buf);
         }
@@ -381,14 +386,15 @@ impl Window {
 
     /// Move primary cursor to offset and the view too
     pub fn goto_offset(&mut self, offset: u64, buf: &Buffer) {
-        self.push_new_cursor_jump(buf);
-
         let offset = min(offset, buf.len());
         let primary = self.cursors.primary_mut();
         primary.goto(offset);
 
         self.ensure_cursor_on_grapheme_boundary(buf);
         self.view_to_cursor(buf);
+
+        self.push_new_cursor_jump(buf);
+
     }
 
     pub fn ensure_cursor_on_grapheme_boundary(&mut self, buf: &Buffer) {
@@ -487,7 +493,7 @@ impl Window {
         let aux = self.window_aux(mark.into());
         let result = buf.apply_changes(changes)?;
 
-        if self.cursors.keep_positions {
+        if self.keep_cursor_positions {
             changes.keep_cursors_still(self.cursors.cursors_mut());
         } else {
             changes.move_cursors(self.cursors.cursors_mut());
@@ -671,6 +677,7 @@ impl Window {
         }
 
         self.invalidate();
+        self.view_to_cursor(buf);
         Ok(())
     }
 
@@ -1149,8 +1156,9 @@ impl Window {
 
         self.bid = group.buffer_id();
         self.cursors = group.to_cursors(buf);
-
         self.ensure_cursor_on_grapheme_boundary(buf);
+        self.invalidate();
+
         self.view_to_cursor(buf);
         self.invalidate();
     }

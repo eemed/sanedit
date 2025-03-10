@@ -2,6 +2,7 @@ mod commands;
 
 use std::{cmp::min, sync::Arc};
 
+use sanedit_core::Group;
 use sanedit_messages::ClientMessage;
 use sanedit_utils::idmap::AsID;
 
@@ -22,7 +23,8 @@ use super::{
     find_by_description, hooks,
     jobs::{MatcherJob, MatcherMessage},
     shell,
-    text::save, ActionResult,
+    text::save,
+    ActionResult,
 };
 
 #[action("Editor: Select theme")]
@@ -214,7 +216,7 @@ fn open_buffer(editor: &mut Editor, id: ClientId) -> ActionResult {
 }
 
 #[action("Prompt: Close")]
-fn prompt_close(editor: &mut Editor, id: ClientId) -> ActionResult{
+fn prompt_close(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
     win.focus_to(Focus::Window);
 
@@ -266,7 +268,10 @@ fn prompt_prev_grapheme(editor: &mut Editor, id: ClientId) -> ActionResult {
 }
 
 #[action("Prompt: Delete grapheme before cursor")]
-pub(crate) fn prompt_remove_grapheme_before_cursor(editor: &mut Editor, id: ClientId) -> ActionResult{
+pub(crate) fn prompt_remove_grapheme_before_cursor(
+    editor: &mut Editor,
+    id: ClientId,
+) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
     win.prompt.remove_grapheme_before_cursor();
 
@@ -278,7 +283,7 @@ pub(crate) fn prompt_remove_grapheme_before_cursor(editor: &mut Editor, id: Clie
 }
 
 #[action("Prompt: Select next completion item")]
-fn prompt_next_completion(editor: &mut Editor, id: ClientId) -> ActionResult{
+fn prompt_next_completion(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
     win.prompt.next_completion();
     ActionResult::Ok
@@ -318,7 +323,7 @@ fn shell_command(editor: &mut Editor, id: ClientId) -> ActionResult {
 }
 
 #[action("Cursors: Goto line number")]
-fn goto_line(editor: &mut Editor, id: ClientId) -> ActionResult{
+fn goto_line(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
 
     win.prompt = Prompt::builder()
@@ -445,4 +450,44 @@ pub(crate) fn unsaved_changes<F: Fn(&mut Editor, ClientId) + 'static>(
         })
         .build();
     win.focus_to(Focus::Prompt);
+}
+
+#[action("Prompt: Jumps")]
+fn prompt_jump(editor: &mut Editor, id: ClientId) -> ActionResult {
+    let (win, _buf) = editor.win_buf(id);
+    let current = win.cursor_jumps.current();
+    let mut items: Vec<Arc<Choice>> = vec![];
+    let mut item = win.cursor_jumps.last();
+    while let Some((cursor, group)) = item {
+        let bid = group.buffer_id();
+        let positions = group
+            .jumps()
+            .iter()
+            .map(|jump| jump.start().original_position().to_string())
+            .collect::<Vec<String>>()
+            .join(", ");
+        let buf = editor.buffers().get(bid).unwrap();
+        let choice = Choice::from_text(format!("{}: {}", buf.name(), positions));
+        items.push(choice);
+        item = win.cursor_jumps.prev(&cursor);
+    }
+
+    const PROMPT_MESSAGE: &str = "Goto a jump";
+    let job = MatcherJob::builder(id)
+        .options(Arc::new(items))
+        .handler(Prompt::matcher_result_handler)
+        .build();
+    editor.job_broker.request_slot(id, PROMPT_MESSAGE, job);
+    let (win, _buf) = editor.win_buf_mut(id);
+
+    win.prompt = Prompt::builder()
+        .prompt(PROMPT_MESSAGE)
+        .on_confirm(move |editor, id, out| {
+            let num = get!(out.number());
+            let bid = BufferId::from(num);
+            editor.open_buffer(id, bid);
+        })
+        .build();
+    win.focus_to(Focus::Prompt);
+    ActionResult::Ok
 }

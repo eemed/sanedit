@@ -6,7 +6,7 @@ use sanedit_utils::either::Either;
 use std::path::{Path, PathBuf};
 use thiserror::Error;
 
-use sanedit_lsp::{Notification, Position, PositionRange, RequestKind, TextEdit};
+use sanedit_lsp::{LSPRequestError, Notification, Position, PositionRange, RequestKind, TextEdit};
 
 use crate::{
     editor::{
@@ -76,7 +76,12 @@ pub(crate) fn lsp_request(
             .language_servers
             .get_mut(&ft)
             .ok_or_else(|| LSPActionError::LanguageServerNotStarted(ft.as_str().to_string()))?;
-        lsp.request(kind, id, constraints)?;
+        match lsp.request(kind, id, constraints) {
+            Err(LSPRequestError::ServerClosed) => {
+                editor.language_servers.remove(&ft);
+            }
+            _ => {}
+        }
     }
 
     Ok(())
@@ -109,7 +114,12 @@ pub(crate) fn lsp_notify_for(
             .language_servers
             .get_mut(&ft)
             .ok_or_else(|| LSPActionError::LanguageServerNotStarted(ft.as_str().to_string()))?;
-        lsp.notify(notif)?;
+        match lsp.notify(notif) {
+            Err(LSPRequestError::ServerClosed) => {
+                editor.language_servers.remove(&ft);
+            }
+            _ => {}
+        }
     }
 
     Ok(())
@@ -216,7 +226,8 @@ fn goto_definition(editor: &mut Editor, id: ClientId) -> ActionResult {
         let position = Position::new(offset, &slice, &lsp.position_encoding());
         let kind = RequestKind::GotoDefinition { path, position };
         Some((kind, vec![]))
-    }).into()
+    })
+    .into()
 }
 
 #[action("Synchronize document")]
@@ -261,7 +272,8 @@ fn sync_document(editor: &mut Editor, id: ClientId) -> ActionResult {
             changes,
             version,
         })
-    }).into()
+    })
+    .into()
 }
 
 #[action("LSP: Complete")]
@@ -278,7 +290,8 @@ fn complete(editor: &mut Editor, id: ClientId) -> ActionResult {
                 Constraint::CursorPosition(offset),
             ],
         ))
-    }).into()
+    })
+    .into()
 }
 
 #[action("LSP: Pull diagnostics")]
@@ -292,7 +305,8 @@ fn pull_diagnostics(editor: &mut Editor, id: ClientId) -> ActionResult {
                 Constraint::BufferVersion(buf.total_changes_made()),
             ],
         ))
-    }).into()
+    })
+    .into()
 }
 
 #[action("LSP: Show references")]
@@ -303,7 +317,8 @@ fn references(editor: &mut Editor, id: ClientId) -> ActionResult {
         let kind = RequestKind::References { path, position };
 
         Some((kind, vec![]))
-    }).into()
+    })
+    .into()
 }
 
 #[action("LSP: Code action")]
@@ -319,7 +334,8 @@ fn code_action(editor: &mut Editor, id: ClientId) -> ActionResult {
                 Constraint::BufferVersion(buf.total_changes_made()),
             ],
         ))
-    }).into()
+    })
+    .into()
 }
 
 #[action("LSP: Format")]
@@ -342,7 +358,8 @@ fn format(editor: &mut Editor, id: ClientId) -> ActionResult {
                 Constraint::BufferVersion(buf.total_changes_made()),
             ],
         ))
-    }).into()
+    })
+    .into()
 }
 
 #[action("LSP: Rename")]
@@ -396,14 +413,16 @@ pub(crate) fn open_document(editor: &mut Editor, id: ClientId) -> ActionResult {
             text,
             version,
         })
-    }).into()
+    })
+    .into()
 }
 
 #[action("Send LSP open document notification")]
 pub(crate) fn close_document(editor: &mut Editor, id: ClientId) -> ActionResult {
     lsp_notify(editor, id, |_buf, path, _slice, _lsp| {
         Some(Notification::DidClose { path: path.clone() })
-    }).into()
+    })
+    .into()
 }
 
 #[action("LSP: Show diagnostics on line")]
@@ -430,7 +449,8 @@ pub(crate) fn show_diagnostics(editor: &mut Editor, id: ClientId) -> ActionResul
 pub(crate) fn will_save_document(editor: &mut Editor, id: ClientId) -> ActionResult {
     lsp_notify(editor, id, |_buf, path, _slice, _lsp| {
         Some(Notification::WillSave { path: path.clone() })
-    }).into()
+    })
+    .into()
 }
 
 #[action("Did save document notification")]
@@ -441,7 +461,8 @@ pub(crate) fn did_save_document(editor: &mut Editor, id: ClientId) -> ActionResu
             path: path.clone(),
             text: Some(text),
         })
-    }).into()
+    })
+    .into()
 }
 
 #[action("LSP: Diagnostics to locations")]

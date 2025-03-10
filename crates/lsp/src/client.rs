@@ -77,7 +77,12 @@ impl LSPClientParams {
             server_sender,
             server_notification_receiver: server_notif_recv,
         };
-        tokio::spawn(client.run());
+        tokio::spawn(async {
+            match client.run().await {
+                Ok(_) => log::error!("LSP client exited"),
+                Err(e) => log::error!("LSP client failed: {e}"),
+            }
+        });
 
         let send = LSPClientSender {
             init_params,
@@ -188,7 +193,7 @@ impl LSPClient {
     }
 
     async fn handle_notification(&mut self, notif: JsonNotification) -> Result<(), LSPError> {
-        log::info!("NOTIFICATION");
+        log::info!("NOTIFICATION: {}", notif.method.as_str());
         match notif.method.as_str() {
             lsp_types::notification::PublishDiagnostics::METHOD => {
                 let params =
@@ -204,6 +209,7 @@ impl LSPClient {
                         .collect(),
                 };
 
+                log::info!("Sending: {:?}", diagnostics);
                 self.sender
                     .send(Response::Notification(diagnostics))
                     .await?;

@@ -203,6 +203,7 @@ fn save_cursor_jump(editor: &mut Editor, id: ClientId) -> ActionResult {
         .and_then(Hook::buffer_id)
         .unwrap_or(bid);
 
+    log::info!("Save cursor jump");
     let (win, _buf) = win_buf!(editor, id);
     let at_start = win.cursor_jumps.current().is_none();
     // win

@@ -85,7 +85,7 @@ pub(crate) struct Jumps {
 impl Jumps {
     pub fn new(groups: Vec<JumpGroup>) -> Jumps {
         let len = groups.len();
-        let mut deque = RingBuffer::with_capacity(len);
+        let mut deque = RingBuffer::with_capacity(len.next_power_of_two());
         deque.extend(groups);
 
         Jumps {
@@ -111,7 +111,6 @@ impl Jumps {
     }
 
     pub fn push(&mut self, group: JumpGroup) {
-    log::info!("push: {group:?}");
         self.jumps.push_overwrite(group);
     }
 

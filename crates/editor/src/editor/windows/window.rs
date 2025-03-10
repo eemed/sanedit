@@ -224,6 +224,8 @@ impl Window {
     }
 
     pub fn open_buffer(&mut self, bid: BufferId) -> BufferId {
+        self.cursor_jumps.goto_start();
+
         let old = self.bid;
         // Store old buffer data
         let odata = self.window_aux(None);
@@ -394,7 +396,6 @@ impl Window {
         self.view_to_cursor(buf);
 
         self.push_new_cursor_jump(buf);
-
     }
 
     pub fn ensure_cursor_on_grapheme_boundary(&mut self, buf: &Buffer) {
@@ -488,6 +489,7 @@ impl Window {
 
     pub fn change(&mut self, buf: &mut Buffer, changes: &Changes) -> Result<()> {
         self.last_edit_jump = None;
+        self.cursor_jumps.goto_start();
 
         let mark = self.cursors.mark_first(buf);
         let aux = self.window_aux(mark.into());
@@ -811,17 +813,21 @@ impl Window {
         ends
     }
 
-    fn cursor_line_first_chars_of_lines(&self, buf: &Buffer) -> Vec<u64> {
+    fn cursor_line_first_chars_of_lines_aligned(&self, buf: &Buffer) -> Vec<u64> {
         let slice = buf.slice(..);
         let mut starts = FxHashSet::default();
+        let mut dist = u64::MAX;
 
         for cursor in self.cursors.iter() {
             let cpos = cursor.pos();
             let sel = cursor.selection().unwrap_or(Range::new(cpos, cpos));
             let cstarts = selection_first_chars_of_lines(&slice, sel);
-            starts.extend(cstarts);
+            for (sol, fch) in cstarts {
+                starts.insert(sol);
+                dist = std::cmp::min(dist, fch - sol);
+            }
         }
-        let mut vstarts: Vec<u64> = starts.into_iter().collect();
+        let mut vstarts: Vec<u64> = starts.into_iter().map(|s| s + dist).collect();
         vstarts.sort();
         vstarts
     }
@@ -875,7 +881,7 @@ impl Window {
             return Ok(());
         }
 
-        let starts = self.cursor_line_first_chars_of_lines(buf);
+        let starts = self.cursor_line_first_chars_of_lines_aligned(buf);
         self.cursors.stop_selection();
         if starts.is_empty() {
             return Ok(());

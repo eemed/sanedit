@@ -11,6 +11,12 @@ pub struct Mark {
     pub(crate) end_of_buffer: bool,
 }
 
+impl Mark {
+    pub fn original_position(&self) -> u64 {
+        self.orig
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 pub enum MarkResult {
     Deleted(u64),

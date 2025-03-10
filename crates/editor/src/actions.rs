@@ -123,6 +123,7 @@ pub(crate) const COMMANDS: &[Action] = &[
     prompt::prompt_prev_grapheme,
     prompt::prompt_confirm,
     prompt::prompt_close,
+    prompt::prompt_jump,
 
     completion::completion_confirm,
     completion::completion_abort,

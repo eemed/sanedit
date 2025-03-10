@@ -357,9 +357,12 @@ impl Editor {
     fn handle_hello(&mut self, id: ClientId, size: Size) {
         // Create buffer and window
         let bid = self.buffers.insert(Buffer::default());
-        let win =
-            self.windows
-                .new_window(id, bid, size.width, size.height, self.config.window.clone());
+        self.windows
+            .new_window(id, bid, size.width, size.height, self.config.window.clone());
+
+        run(self, id, Hook::BufEnter(bid));
+
+        let win = self.windows.get_mut(id).expect("Window not present");
         let buf = self.buffers.get(bid).expect("Buffer not present");
         let theme = {
             let theme_name = &win.config.theme;

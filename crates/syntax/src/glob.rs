@@ -94,6 +94,14 @@ mod test {
     }
 
     #[test]
+    fn wildcard() {
+        let glob = Glob::new("*aw*").unwrap();
+        assert_eq!(glob.is_match(b"lawyer"), true);
+        assert_eq!(glob.is_match(b"the law"), true);
+        assert_eq!(glob.is_match(b"the lew"), false);
+    }
+
+    #[test]
     fn hidden() {
         let glob = Glob::new(".*").unwrap();
         assert_eq!(glob.is_match(b".hidden"), true);

@@ -21,7 +21,7 @@ pub enum LSPSpawnError {
     IO(#[from] tokio::io::Error),
 }
 
-#[derive(Error, Debug)]
+#[derive(Error, PartialEq, Eq, Debug)]
 pub enum LSPRequestError {
     #[error("Server does not support this request")]
     Unsupported,

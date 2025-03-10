@@ -116,6 +116,7 @@ fn open_new_scratch_buffer(editor: &mut Editor, id: ClientId) -> ActionResult {
     let bid = editor.buffers_mut().new_scratch();
     let (win, _buf) = editor.win_buf_mut(id);
     win.open_buffer(bid);
+    run(editor, id, Hook::BufEnter(bid));
     ActionResult::Ok
 }
 

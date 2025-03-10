@@ -250,9 +250,11 @@ pub fn copy_cursors_to_lines(lines: Vec<String>, eol: EndOfLine) -> String {
     result
 }
 
-pub fn selection_first_chars_of_lines(slice: &PieceTreeSlice, sel: BufferRange) -> Vec<u64> {
-    let sol = first_char_of_line(slice, sel.start);
-    let mut starts = vec![sol];
+/// Returns the pair line start, first char on line
+pub fn selection_first_chars_of_lines(slice: &PieceTreeSlice, sel: BufferRange) -> Vec<(u64, u64)> {
+    let start = start_of_line(slice, sel.start);
+    let fchar = first_char_of_line(slice, sel.start);
+    let mut starts = vec![(start, fchar)];
 
     if sel.is_empty() {
         return starts;
@@ -266,7 +268,7 @@ pub fn selection_first_chars_of_lines(slice: &PieceTreeSlice, sel: BufferRange) 
         if !line.is_empty() {
             let fchar = first_char_of_line(&line, 0);
             if fchar != line.start() {
-                starts.push(fchar);
+                starts.push((line.start(), fchar));
             }
         }
     }

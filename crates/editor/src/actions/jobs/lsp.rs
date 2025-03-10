@@ -265,6 +265,7 @@ impl LSPJob {
         version: Option<i32>,
         diags: Vec<TextDiagnostic>,
     ) {
+        log::info!("Handle: {path:?}, {version:?}");
         let Some(bid) = editor.buffers().find(&path) else {
             return;
         };

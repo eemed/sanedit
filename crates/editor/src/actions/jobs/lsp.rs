@@ -243,7 +243,7 @@ impl LSPJob {
 
         let opts: Vec<Arc<Choice>> = opts
             .into_iter()
-            .map(from_completion_item)
+            .map(Choice::from_completion_item)
             .chain(editor.snippets.match_options(buf.filetype.as_ref()))
             .collect();
 
@@ -464,20 +464,4 @@ fn read_references(
     }
 
     group
-}
-
-fn from_completion_item(value: CompletionItem) -> Arc<Choice> {
-    if value.snippet {
-        match Snippet::new(&value.text) {
-            Ok(snippet) => {
-                return Choice::from_snippet(snippet);
-            }
-            Err(e) => log::error!("Failed to create LSP snippet: {e}"),
-        }
-    }
-
-    match value.description {
-        Some(desc) => Choice::from_text_with_description(value.text, desc),
-        None => Choice::from_text(value.text),
-    }
 }

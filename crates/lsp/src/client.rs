@@ -7,7 +7,9 @@ use crate::jsonrpc::{JsonNotification, JsonRequest};
 use crate::process::{ProcessHandler, ServerRequest};
 use crate::request::{Notification, RequestKind, ToLSP};
 use crate::response::NotificationResult;
-use crate::util::{path_to_uri, CodeAction, CompletionItem, FileEdit, Position};
+use crate::util::{
+    path_to_uri, CodeAction, CompletionItem, CompletionItemKind, FileEdit, Position,
+};
 use crate::{
     PositionEncoding, PositionRange, Request, RequestResult, Response, TextDiagnostic, TextEdit,
 };
@@ -569,33 +571,31 @@ impl Handler {
         let response = response.ok_or(LSPError::EmptyResponse)?;
 
         let mut results = vec![];
-        match response {
-            lsp_types::CompletionResponse::Array(_) => todo!(),
-            lsp_types::CompletionResponse::List(list) => {
-                for item in list.items {
-                    // TODO handle mode -- item.insert_text_mode
-                    match item.text_edit {
-                        Some(lsp_types::CompletionTextEdit::Edit(_edit)) => todo!(),
-                        Some(lsp_types::CompletionTextEdit::InsertAndReplace(edit)) => {
-                            results.push(CompletionItem {
-                                text: edit.new_text,
-                                description: item.kind.map(|kind| {
-                                    let mut desc = format!("{kind:?}");
-                                    desc.make_ascii_lowercase();
-                                    desc
-                                }),
-                                documentation: item.documentation.map(|doc| match doc {
-                                    lsp_types::Documentation::String(doc) => doc,
-                                    lsp_types::Documentation::MarkupContent(mdoc) => mdoc.value,
-                                }),
-                                snippet: item.insert_text_format
-                                    == Some(lsp_types::InsertTextFormat::SNIPPET),
-                            });
-                        }
-                        None => {}
-                    }
-                }
-            }
+        let items = match response {
+            lsp_types::CompletionResponse::Array(items) => items,
+            lsp_types::CompletionResponse::List(list) => list.items,
+        };
+
+        for item in items {
+            let text = item.insert_text.unwrap_or(item.label);
+            let edit = item.text_edit.map(|ctedit| match ctedit {
+                lsp_types::CompletionTextEdit::Edit(edit) => TextEdit::from(edit),
+                lsp_types::CompletionTextEdit::InsertAndReplace(_edit) => unimplemented!(),
+            });
+            let kind = match item.kind {
+                Some(kind) => kind.into(),
+                None => CompletionItemKind::Text,
+            };
+            let snippet = item.insert_text_format == Some(lsp_types::InsertTextFormat::SNIPPET);
+            let completion = CompletionItem {
+                text,
+                filter: item.filter_text,
+                edit,
+                kind,
+                is_snippet: snippet,
+            };
+            log::info!("Compl Item: {completion:?}");
+            results.push(completion);
         }
 
         self.response

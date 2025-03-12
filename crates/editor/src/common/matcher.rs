@@ -118,14 +118,14 @@ impl Matcher {
                     let opts = reader.slice(batch);
                     for choice in opts.iter() {
                         if let Some(ranges) = matches_with(
-                            choice.text().as_ref(),
+                            choice.filter_text().as_ref(),
                             &patterns,
                             case_sensitive,
                             match_fn,
                         ) {
                             let score = choice
                                 .number()
-                                .unwrap_or_else(|| score(&choice.text(), &ranges));
+                                .unwrap_or_else(|| score(&choice.filter_text(), &ranges));
                             let scored = ScoredChoice::new(choice.clone(), score, ranges);
 
                             if out.blocking_send(scored).is_err() {

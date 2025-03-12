@@ -57,20 +57,10 @@ pub(crate) fn client_capabilities() -> lsp_types::ClientCapabilities {
                     completion: Some(lsp_types::CompletionClientCapabilities {
                         completion_item: Some(lsp_types::CompletionItemCapability {
                             snippet_support: Some(true),
-                            resolve_support: Some(
-                                lsp_types::CompletionItemCapabilityResolveSupport {
-                                    properties: vec![
-                                        String::from("documentation"),
-                                        String::from("detail"),
-                                        String::from("additionalTextEdits"),
-                                    ],
-                                },
-                            ),
-                            insert_replace_support: Some(true),
-                            deprecated_support: Some(true),
-                            tag_support: Some(lsp_types::TagSupport {
-                                value_set: vec![lsp_types::CompletionItemTag::DEPRECATED],
-                            }),
+                            resolve_support: None,
+                            insert_replace_support: Some(false),
+                            deprecated_support: Some(false),
+                            tag_support: None,
                             ..Default::default()
                         }),
                         completion_item_kind: Some(lsp_types::CompletionItemKindCapability {

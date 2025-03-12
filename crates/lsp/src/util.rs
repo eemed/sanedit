@@ -5,6 +5,8 @@ use std::{
 
 use sanedit_buffer::{utf8::EndOfLine, PieceTreeSlice};
 use sanedit_core::Severity;
+use sanedit_utils::either::Either;
+use strum_macros::AsRefStr;
 
 pub fn path_to_uri(path: &Path) -> lsp_types::Uri {
     let uri = format!("file://{}", path.to_string_lossy());
@@ -81,7 +83,7 @@ impl From<lsp_types::TextDocumentEdit> for FileEdit {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct TextEdit {
     pub range: PositionRange,
     pub text: String,
@@ -126,12 +128,97 @@ impl From<lsp_types::Diagnostic> for TextDiagnostic {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, AsRefStr, Hash)]
+#[strum(serialize_all = "lowercase")]
+pub enum CompletionItemKind {
+    Text,
+    Method,
+    Function,
+    Constructor,
+    Field,
+    Variable,
+    Class,
+    Interface,
+    Module,
+    Property,
+    Unit,
+    Value,
+    Enum,
+    Keyword,
+    Snippet,
+    Color,
+    File,
+    Reference,
+    Folder,
+    EnumMember,
+    Constant,
+    Struct,
+    Event,
+    Operator,
+    TypeParameter,
+}
+
+impl From<lsp_types::CompletionItemKind> for CompletionItemKind {
+    fn from(value: lsp_types::CompletionItemKind) -> Self {
+        match value {
+            lsp_types::CompletionItemKind::TEXT => CompletionItemKind::Text,
+            lsp_types::CompletionItemKind::METHOD => CompletionItemKind::Method,
+            lsp_types::CompletionItemKind::FUNCTION => CompletionItemKind::Function,
+            lsp_types::CompletionItemKind::CONSTRUCTOR => CompletionItemKind::Constructor,
+            lsp_types::CompletionItemKind::FIELD => CompletionItemKind::Field,
+            lsp_types::CompletionItemKind::VARIABLE => CompletionItemKind::Variable,
+            lsp_types::CompletionItemKind::CLASS => CompletionItemKind::Class,
+            lsp_types::CompletionItemKind::INTERFACE => CompletionItemKind::Interface,
+            lsp_types::CompletionItemKind::MODULE => CompletionItemKind::Module,
+            lsp_types::CompletionItemKind::PROPERTY => CompletionItemKind::Property,
+            lsp_types::CompletionItemKind::UNIT => CompletionItemKind::Unit,
+            lsp_types::CompletionItemKind::VALUE => CompletionItemKind::Value,
+            lsp_types::CompletionItemKind::ENUM => CompletionItemKind::Enum,
+            lsp_types::CompletionItemKind::KEYWORD => CompletionItemKind::Keyword,
+            lsp_types::CompletionItemKind::SNIPPET => CompletionItemKind::Snippet,
+            lsp_types::CompletionItemKind::COLOR => CompletionItemKind::Color,
+            lsp_types::CompletionItemKind::FILE => CompletionItemKind::File,
+            lsp_types::CompletionItemKind::REFERENCE => CompletionItemKind::Reference,
+            lsp_types::CompletionItemKind::FOLDER => CompletionItemKind::Folder,
+            lsp_types::CompletionItemKind::ENUM_MEMBER => CompletionItemKind::EnumMember,
+            lsp_types::CompletionItemKind::CONSTANT => CompletionItemKind::Constant,
+            lsp_types::CompletionItemKind::STRUCT => CompletionItemKind::Struct,
+            lsp_types::CompletionItemKind::EVENT => CompletionItemKind::Event,
+            lsp_types::CompletionItemKind::OPERATOR => CompletionItemKind::Operator,
+            lsp_types::CompletionItemKind::TYPE_PARAMETER => CompletionItemKind::TypeParameter,
+            _ => CompletionItemKind::Text,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct CompletionItem {
+    pub kind: CompletionItemKind,
+
+    /// Text to insert
     pub text: String,
-    pub description: Option<String>,
-    pub documentation: Option<String>,
-    pub snippet: bool,
+
+    /// Text to use to filter or text if not present
+    pub filter: Option<String>,
+
+    /// Overrides text to insert
+    pub edit: Option<TextEdit>,
+
+    pub is_snippet: bool,
+}
+
+impl CompletionItem {
+    pub fn filter_text(&self) -> &str {
+        self.filter.as_ref().unwrap_or(&self.text)
+    }
+
+    pub fn insert_text(&self) -> Either<&str, &TextEdit> {
+        if let Some(edit) = &self.edit {
+            Either::Right(edit)
+        } else {
+            Either::Left(self.text.as_str())
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -175,7 +262,7 @@ impl From<lsp_types::PositionEncodingKind> for PositionEncoding {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct PositionRange {
     pub start: Position,
     pub end: Position,
@@ -199,7 +286,7 @@ impl From<PositionRange> for lsp_types::Range {
     }
 }
 
-#[derive(Default, Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Position {
     pos: lsp_types::Position,
 }

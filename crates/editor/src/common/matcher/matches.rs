@@ -1,6 +1,7 @@
 use std::{path::PathBuf, sync::Arc};
 
 use sanedit_core::Range;
+use sanedit_lsp::CompletionItem;
 
 use crate::editor::snippets::{Snippet, SnippetAtom, SNIPPET_DESCRIPTION};
 
@@ -23,9 +24,18 @@ pub(crate) enum Choice {
         text: String,
         display: String,
     },
+    LSPCompletion {
+        item: Box<CompletionItem>,
+    },
 }
 
 impl Choice {
+    pub fn from_completion_item(completion: CompletionItem) -> Arc<Choice> {
+        Arc::new(Choice::LSPCompletion {
+            item: Box::new(completion),
+        })
+    }
+
     pub fn from_numbered_text(n: u32, text: String) -> Arc<Choice> {
         Arc::new(Choice::Numbered {
             display: format!("{}: {}", n, text),
@@ -75,12 +85,22 @@ impl Choice {
         })
     }
 
+    /// Text used to show this option
     pub fn text(&self) -> &str {
         match self {
             Choice::Snippet { display, .. } => display.as_str(),
             Choice::Path { display, .. } => display.as_str(),
             Choice::Text { text, .. } => text.as_str(),
             Choice::Numbered { display, .. } => display.as_str(),
+            Choice::LSPCompletion { item } => item.text.as_str(),
+        }
+    }
+
+    /// Text used to filter / match this option
+    pub fn filter_text(&self) -> &str {
+        match self {
+            Choice::LSPCompletion { item } => item.filter_text(),
+            _ => self.text(),
         }
     }
 
@@ -88,6 +108,7 @@ impl Choice {
         match self {
             Choice::Snippet { .. } => SNIPPET_DESCRIPTION,
             Choice::Text { description, .. } => description,
+            Choice::LSPCompletion { item } => item.kind.as_ref(),
             _ => "",
         }
     }

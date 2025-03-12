@@ -1,20 +1,22 @@
 use std::sync::Arc;
 
 use rustc_hash::FxHashSet;
-use sanedit_core::{word_before_pos, Range};
+use sanedit_core::{word_before_pos, Change, Changes, Cursor, Range};
+use sanedit_utils::either::Either;
 
 use crate::{
     common::matcher::{Choice, MatchStrategy},
     editor::{
         hooks::Hook,
-        windows::{Completion, Focus},
+        snippets::Snippet,
+        windows::{Completion, Cursors, Focus},
         Editor,
     },
 };
 
 use sanedit_server::ClientId;
 
-use super::{jobs::MatcherJob, lsp, snippets, text, ActionResult};
+use super::{hooks::run, jobs::MatcherJob, lsp, snippets, text, ActionResult};
 
 #[action("Editor: Complete")]
 fn complete(editor: &mut Editor, id: ClientId) -> ActionResult {
@@ -67,7 +69,7 @@ fn complete_from_syntax(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Completion: Confirm")]
 fn completion_confirm(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, buf) = win_buf!(editor, id);
     win.pop_focus();
 
     if let Some(opt) = win.completion.selected().cloned() {
@@ -76,6 +78,72 @@ fn completion_confirm(editor: &mut Editor, id: ClientId) -> ActionResult {
             Choice::Snippet { snippet, .. } => {
                 let prefix = opt.matches().iter().map(|m| m.end).max().unwrap_or(0);
                 snippets::insert_snippet_impl(editor, id, snippet.clone(), prefix as u64)
+            }
+            Choice::LSPCompletion { item } => {
+                if item.is_snippet {
+                    let prefix = opt.matches().iter().map(|m| m.end).max().unwrap_or(0);
+                    let text = match item.insert_text() {
+                        Either::Left(text) => text,
+                        Either::Right(edit) => &edit.text,
+                    };
+                    log::info!("Snippet: {:?}", item.insert_text());
+                    todo!("implement text edit removal with snippet");
+                    let snippet = match Snippet::new(text) {
+                        Ok(snip) => snip,
+                        Err(e) => {
+                            log::error!("LSP snippet parse failed: {e}");
+                            return ActionResult::Failed;
+                        }
+                    };
+
+                    snippets::insert_snippet_impl(editor, id, snippet, prefix as u64);
+                    return ActionResult::Ok;
+                }
+
+                match item.insert_text() {
+                    Either::Left(text) => {
+                        let prefix = opt.matches().iter().map(|m| m.end).max().unwrap_or(0);
+                        let opt = text[prefix..].to_string();
+                        text::insert(editor, id, &opt)
+                    }
+                    Either::Right(edit) => {
+                        let ft = getf!(buf.filetype.clone());
+                        let enc = getf!(editor
+                            .language_servers
+                            .get(&ft)
+                            .map(|x| x.position_encoding()));
+                        let bid = buf.id.clone();
+                        let slice = buf.slice(..);
+                        let change = {
+                            let start = edit.range.start.to_offset(&slice, &enc);
+                            let end = if edit.range.end != edit.range.start {
+                                edit.range.end.to_offset(&slice, &enc)
+                            } else {
+                                start
+                            };
+                            Change::replace((start..end).into(), edit.text.as_bytes())
+                        };
+                        let changes = Changes::from(vec![change]);
+                        let start = changes.iter().next().unwrap().start();
+
+                        match buf.apply_changes(&changes) {
+                            Ok(result) => {
+                                if let Some(id) = result.created_snapshot {
+                                    if let Some(aux) = buf.snapshot_aux_mut(id) {
+                                        aux.cursors = Cursors::new(Cursor::new(start));
+                                        aux.view_offset = start;
+                                    }
+                                }
+                            }
+                            Err(e) => {
+                                log::error!("LSP text edit failed: {e}");
+                                return ActionResult::Failed;
+                            }
+                        }
+
+                        run(editor, id, Hook::BufChanged(bid));
+                    }
+                }
             }
             _ => {
                 let prefix = opt.matches().iter().map(|m| m.end).max().unwrap_or(0);
@@ -97,7 +165,7 @@ fn completion_abort(editor: &mut Editor, id: ClientId) -> ActionResult {
         if let Some(ref km) = win.completion.previous_keymap {
             win.keymap_layer = km.into();
         }
-        return ActionResult::Ok
+        return ActionResult::Ok;
     }
 
     ActionResult::Skipped

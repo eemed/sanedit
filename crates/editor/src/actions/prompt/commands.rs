@@ -3,6 +3,7 @@ use crate::actions::*;
 use crate::common::matcher::Choice;
 use crate::editor::windows::Focus;
 use sanedit_messages::key::keyevents_to_string;
+use window::focus;
 
 pub(crate) fn command_palette(editor: &Editor, id: ClientId) -> Vec<Arc<Choice>> {
     // Display descriptions in command palette
@@ -42,9 +43,10 @@ pub(crate) fn matcher_result_handler(editor: &mut Editor, id: ClientId, msg: Mat
                 if clear_old {
                     win.prompt.clear_choices();
                 }
-                win.focus_to(Focus::Prompt);
                 let (win, _buf) = editor.win_buf_mut(id);
                 win.prompt.add_choices(matched);
+
+                focus(editor, id, Focus::Prompt);
             }
         }
     }

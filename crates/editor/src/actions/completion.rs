@@ -16,7 +16,7 @@ use crate::{
 
 use sanedit_server::ClientId;
 
-use super::{hooks::run, jobs::MatcherJob, lsp, snippets, text, ActionResult};
+use super::{hooks::run, jobs::MatcherJob, lsp, snippets, text, window::pop_focus, ActionResult};
 
 #[action("Editor: Complete")]
 fn complete(editor: &mut Editor, id: ClientId) -> ActionResult {
@@ -35,7 +35,7 @@ fn complete_from_syntax(editor: &mut Editor, id: ClientId) -> ActionResult {
         word_before_pos(&slice, cursor).unwrap_or((Range::new(cursor, cursor), String::new()));
     let cursor = win.primary_cursor();
     let point = getf!(win.view().point_at_pos(cursor.pos()));
-    win.completion = Completion::new(range.start, point, Some(&win.keymap_layer));
+    win.completion = Completion::new(range.start, point);
 
     // Fetch completions from buffer
     let opts: FxHashSet<Arc<Choice>> = win
@@ -69,25 +69,43 @@ fn complete_from_syntax(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Completion: Confirm")]
 fn completion_confirm(editor: &mut Editor, id: ClientId) -> ActionResult {
+    pop_focus(editor, id);
+
     let (win, buf) = win_buf!(editor, id);
-    win.pop_focus();
 
     if let Some(opt) = win.completion.selected().cloned() {
         let choice = opt.choice();
         match choice {
             Choice::Snippet { snippet, .. } => {
+                let pos = win.completion.started_at();
                 let prefix = opt.matches().iter().map(|m| m.end).max().unwrap_or(0);
-                snippets::insert_snippet_impl(editor, id, snippet.clone(), prefix as u64)
+                snippets::insert_snippet_impl(
+                    editor,
+                    id,
+                    snippet.clone(),
+                    Range::new(pos, pos + prefix as u64),
+                )
             }
             Choice::LSPCompletion { item } => {
                 if item.is_snippet {
-                    let prefix = opt.matches().iter().map(|m| m.end).max().unwrap_or(0);
-                    let text = match item.insert_text() {
-                        Either::Left(text) => text,
-                        Either::Right(edit) => &edit.text,
+                    let (text, replace) = match item.insert_text() {
+                        Either::Left(text) => {
+                            let pos = win.completion.started_at();
+                            let prefix = opt.matches().iter().map(|m| m.end).max().unwrap_or(0);
+                            (text, Range::new(pos, pos + prefix as u64))
+                        }
+                        Either::Right(edit) => {
+                            let ft = getf!(buf.filetype.clone());
+                            let enc = getf!(editor
+                                .language_servers
+                                .get(&ft)
+                                .map(|x| x.position_encoding()));
+                            let slice = buf.slice(..);
+                            let range = edit.range.to_buffer_range(&slice, &enc);
+                            (edit.text.as_str(), range)
+                        }
                     };
                     log::info!("Snippet: {:?}", item.insert_text());
-                    todo!("implement text edit removal with snippet");
                     let snippet = match Snippet::new(text) {
                         Ok(snip) => snip,
                         Err(e) => {
@@ -96,7 +114,7 @@ fn completion_confirm(editor: &mut Editor, id: ClientId) -> ActionResult {
                         }
                     };
 
-                    snippets::insert_snippet_impl(editor, id, snippet, prefix as u64);
+                    snippets::insert_snippet_impl(editor, id, snippet, replace);
                     return ActionResult::Ok;
                 }
 
@@ -115,13 +133,8 @@ fn completion_confirm(editor: &mut Editor, id: ClientId) -> ActionResult {
                         let bid = buf.id.clone();
                         let slice = buf.slice(..);
                         let change = {
-                            let start = edit.range.start.to_offset(&slice, &enc);
-                            let end = if edit.range.end != edit.range.start {
-                                edit.range.end.to_offset(&slice, &enc)
-                            } else {
-                                start
-                            };
-                            Change::replace((start..end).into(), edit.text.as_bytes())
+                            let range = edit.range.to_buffer_range(&slice, &enc);
+                            Change::replace(range, edit.text.as_bytes())
                         };
                         let changes = Changes::from(vec![change]);
                         let start = changes.iter().next().unwrap().start();
@@ -160,11 +173,7 @@ fn completion_confirm(editor: &mut Editor, id: ClientId) -> ActionResult {
 fn completion_abort(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
     if win.focus() == Focus::Completion {
-        win.pop_focus();
-
-        if let Some(ref km) = win.completion.previous_keymap {
-            win.keymap_layer = km.into();
-        }
+        pop_focus(editor, id);
         return ActionResult::Ok;
     }
 
@@ -200,7 +209,7 @@ fn send_word(editor: &mut Editor, id: ClientId) -> ActionResult {
         let cursor = win.cursors.primary().pos();
         let start = win.completion.started_at();
         if start > cursor {
-            win.pop_focus();
+            pop_focus(editor, id);
             return ActionResult::Ok;
         }
         let slice = buf.slice(start..cursor);

@@ -135,7 +135,7 @@ impl<R: io::Read> GrammarParser<R> {
         while let Some((ann, specifiers)) = self.annotation()? {
             match ann.as_str() {
                 "whitespaced" => anns.push(Annotation::Whitespaced),
-                "show" => anns.push(Annotation::Show(specifiers)),
+                "show" => anns.push(Annotation::Show),
                 _ => anns.push(Annotation::Other(ann, specifiers)),
             }
         }

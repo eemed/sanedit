@@ -9,7 +9,7 @@ use crate::{
 };
 use sanedit_server::ClientId;
 
-use super::{hooks::run, prompt::unsaved_changes, shell, ActionResult};
+use super::{hooks::run, prompt::unsaved_changes, shell, window::focus, ActionResult};
 
 #[action("Editor: Quit")]
 fn quit(editor: &mut Editor, id: ClientId) -> ActionResult {
@@ -108,7 +108,7 @@ fn prompt_create_and_open_config(editor: &mut Editor, id: ClientId) {
             let _ = editor.open_file(id, &path);
         })
         .build();
-    win.focus_to(Focus::Prompt);
+    focus(editor, id, Focus::Prompt);
 }
 
 #[action("Buffer: New scratch buffer")]

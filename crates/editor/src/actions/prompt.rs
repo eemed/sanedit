@@ -7,7 +7,10 @@ use sanedit_messages::ClientMessage;
 use sanedit_utils::idmap::AsID;
 
 use crate::{
-    actions::jobs::{FileOptionProvider, MatchedOptions},
+    actions::{
+        jobs::{FileOptionProvider, MatchedOptions},
+        window::focus,
+    },
     common::{is_yes, matcher::Choice},
     editor::{
         buffers::BufferId,
@@ -120,7 +123,7 @@ fn open_file(editor: &mut Editor, id: ClientId) -> ActionResult {
             }
         })
         .build();
-    win.focus_to(Focus::Prompt);
+    focus(editor, id, Focus::Prompt);
     ActionResult::Ok
 }
 
@@ -170,9 +173,10 @@ fn open_file_handler(editor: &mut Editor, id: ClientId, msg: MatcherMessage) {
                     }
                 }
 
-                win.focus_to(Focus::Prompt);
                 let (win, _buf) = editor.win_buf_mut(id);
                 win.prompt.add_choices(rescored);
+
+                focus(editor, id, Focus::Prompt);
             }
         }
     }
@@ -211,14 +215,15 @@ fn open_buffer(editor: &mut Editor, id: ClientId) -> ActionResult {
             editor.open_buffer(id, bid);
         })
         .build();
-    win.focus_to(Focus::Prompt);
+    focus(editor, id, Focus::Prompt);
     ActionResult::Ok
 }
 
 #[action("Prompt: Close")]
 fn prompt_close(editor: &mut Editor, id: ClientId) -> ActionResult {
+    focus(editor, id, Focus::Window);
+
     let (win, _buf) = editor.win_buf_mut(id);
-    win.focus_to(Focus::Window);
 
     let slotname = win.prompt.message().to_string();
     editor.job_broker.stop_slot(id, &slotname);
@@ -233,8 +238,8 @@ fn prompt_close(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Prompt: Confirm")]
 fn prompt_confirm(editor: &mut Editor, id: ClientId) -> ActionResult {
+    focus(editor, id, Focus::Window);
     let (win, _buf) = editor.win_buf_mut(id);
-    win.focus_to(Focus::Window);
 
     let slotname = win.prompt.message().to_string();
     editor.job_broker.stop_slot(id, &slotname);
@@ -318,7 +323,7 @@ fn shell_command(editor: &mut Editor, id: ClientId) -> ActionResult {
         .simple()
         .on_confirm(shell::execute_prompt)
         .build();
-    win.focus_to(Focus::Prompt);
+    focus(editor, id, Focus::Prompt);
     ActionResult::Ok
 }
 
@@ -338,7 +343,7 @@ fn goto_line(editor: &mut Editor, id: ClientId) -> ActionResult {
             }
         })
         .build();
-    win.focus_to(Focus::Prompt);
+    focus(editor, id, Focus::Prompt);
     ActionResult::Ok
 }
 
@@ -360,7 +365,7 @@ fn goto_percentage(editor: &mut Editor, id: ClientId) -> ActionResult {
             }
         })
         .build();
-    win.focus_to(Focus::Prompt);
+    focus(editor, id, Focus::Prompt);
     ActionResult::Ok
 }
 
@@ -380,7 +385,7 @@ fn change_working_dir(editor: &mut Editor, id: ClientId) -> ActionResult {
             }
         })
         .build();
-    win.focus_to(Focus::Prompt);
+    focus(editor, id, Focus::Prompt);
     ActionResult::Ok
 }
 
@@ -449,7 +454,7 @@ pub(crate) fn unsaved_changes<F: Fn(&mut Editor, ClientId) + 'static>(
             (on_confirm)(editor, id);
         })
         .build();
-    win.focus_to(Focus::Prompt);
+    focus(editor, id, Focus::Prompt);
 }
 
 #[action("Prompt: Jumps")]
@@ -488,6 +493,6 @@ fn prompt_jump(editor: &mut Editor, id: ClientId) -> ActionResult {
             editor.open_buffer(id, bid);
         })
         .build();
-    win.focus_to(Focus::Prompt);
+    focus(editor, id, Focus::Prompt);
     ActionResult::Ok
 }

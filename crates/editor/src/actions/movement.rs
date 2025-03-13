@@ -18,7 +18,11 @@ use crate::editor::{
 
 use sanedit_server::ClientId;
 
-use super::{hooks, ActionResult};
+use super::{
+    hooks,
+    window::{focus, focus_with_keymap},
+    ActionResult,
+};
 
 #[inline]
 fn do_move_line<F: Fn(&PieceTreeSlice, &Cursor, &DisplayOptions) -> (u64, usize)>(
@@ -247,12 +251,12 @@ fn find_next_char_on_line(editor: &mut Editor, id: ClientId) -> ActionResult {
                 false,
             );
             let (win, _buf) = editor.win_buf_mut(id);
-            win.focus_to(Focus::Window);
-            win.keymap_layer = layer.clone();
             win.search.on_line_char_search = Some(ch);
+
+            focus_with_keymap(editor, id, Focus::Window, layer.clone());
         })
         .build();
-    win.focus_to(Focus::Prompt);
+    focus(editor, id, Focus::Prompt);
     ActionResult::Ok
 }
 
@@ -273,12 +277,12 @@ fn find_prev_char_on_line(editor: &mut Editor, id: ClientId) -> ActionResult {
                 false,
             );
             let (win, _buf) = editor.win_buf_mut(id);
-            win.focus_to(Focus::Window);
-            win.keymap_layer = layer.clone();
             win.search.on_line_char_search = Some(ch);
+
+            focus_with_keymap(editor, id, Focus::Window, layer.clone());
         })
         .build();
-    win.focus_to(Focus::Prompt);
+    focus(editor, id, Focus::Prompt);
     ActionResult::Ok
 }
 
@@ -324,7 +328,7 @@ fn prev_grapheme_on_line(editor: &mut Editor, id: ClientId) -> ActionResult {
 }
 
 #[action("Cursors: Goto to next character on the same line")]
-fn next_grapheme_on_line(editor: &mut Editor, id: ClientId)  -> ActionResult{
+fn next_grapheme_on_line(editor: &mut Editor, id: ClientId) -> ActionResult {
     do_move(editor, id, movement::next_grapheme_on_line, None, false)
 }
 

@@ -91,7 +91,7 @@ impl Syntax {
         let spans: Vec<Span> = captures
             .into_iter()
             .map(|cap| {
-                let name = self.parser.label_for(cap.id());
+                let mut name = self.parser.label_for(cap.id());
                 let mut range: BufferRange = cap.range().into();
                 range.start += start;
                 range.end += start;
@@ -105,7 +105,16 @@ impl Syntax {
                     _ => None,
                 });
                 let hl = anns.iter().any(|ann| match ann {
-                    Annotation::Other(name, _spec) => name == HIGHLIGHT_ANNOTATION,
+                    Annotation::Other(ann, hlname) => {
+                        if ann == HIGHLIGHT_ANNOTATION {
+                            if let Some(hlname) = hlname {
+                                name = hlname.as_str();
+                            }
+                            true
+                        } else {
+                            false
+                        }
+                    }
                     _ => false,
                 });
 
@@ -201,7 +210,7 @@ impl Span {
 
     /// Wether this span should be highlighted or not
     pub fn highlight(&self) -> bool {
-        self.highlight || !self.is_completion()
+        self.highlight
     }
 
     pub fn extend_by(&mut self, i: u64) {

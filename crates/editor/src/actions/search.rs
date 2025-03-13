@@ -12,7 +12,7 @@ use crate::{
 
 use sanedit_server::ClientId;
 
-use super::ActionResult;
+use super::{window::focus, ActionResult};
 
 const HORIZON_TOP: u64 = 1024 * 8;
 const HORIZON_BOTTOM: u64 = 1024 * 16;
@@ -65,7 +65,7 @@ fn search_forward(editor: &mut Editor, id: ClientId) -> ActionResult {
         })
         .on_input(async_view_matches)
         .build();
-    win.focus_to(Focus::Search);
+    focus(editor, id, Focus::Search);
     ActionResult::Ok
 }
 
@@ -82,7 +82,7 @@ fn search_backward(editor: &mut Editor, id: ClientId) -> ActionResult {
         })
         .on_input(async_view_matches)
         .build();
-    win.focus_to(Focus::Search);
+    focus(editor, id, Focus::Search);
     ActionResult::Ok
 }
 

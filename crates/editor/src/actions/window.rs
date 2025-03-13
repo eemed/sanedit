@@ -3,7 +3,8 @@ use crate::{
     editor::{
         buffers::Buffer,
         hooks::Hook,
-        windows::{Focus, Jump, JumpGroup, Zone},
+        keymap::KeymapKind,
+        windows::{Focus, FocusEntry, Jump, JumpGroup, Zone},
         Editor,
     },
     VERSION,
@@ -13,10 +14,114 @@ use sanedit_server::ClientId;
 
 use super::{hooks, ActionResult};
 
+/// Pop focus from focus stack and run hooks
+pub fn pop_focus(editor: &mut Editor, id: ClientId) {
+    let (win, _buf) = editor.win_buf_mut(id);
+    let entry = get!(win.pop_focus());
+
+    let same_keymap = win.keymap_layer == entry.keymap_layer;
+    if same_keymap && win.focus() == entry.focus {
+        return;
+    }
+
+    if !same_keymap {
+        let layer = win.keymap_layer.clone();
+        hooks::run(editor, id, Hook::KeymapLeave(layer));
+    }
+
+    let (win, _buf) = editor.win_buf_mut(id);
+    win.restore_focus(entry);
+
+    if !same_keymap {
+        let layer = win.keymap_layer.clone();
+        hooks::run(editor, id, Hook::KeymapEnter(layer));
+    }
+}
+
+/// Focus new focus and keymap and place old one in the focus stack, and run
+/// hooks
+pub fn push_focus_with_keymap(editor: &mut Editor, id: ClientId, focus: Focus, keymap: String) {
+    let (win, _buf) = editor.win_buf_mut(id);
+    let entry = FocusEntry {
+        focus: win.focus(),
+        keymap_layer: win.keymap_layer.clone(),
+    };
+    win.push_focus(entry);
+
+    focus_with_keymap(editor, id, focus, keymap)
+}
+
+/// Focus new focus and place old one in the focus stack, and run hooks
+pub fn push_focus(editor: &mut Editor, id: ClientId, focus: Focus) {
+    let kind = match focus {
+        Focus::Search => KeymapKind::Search,
+        Focus::Prompt => KeymapKind::Prompt,
+        Focus::Window => KeymapKind::Window,
+        Focus::Completion => KeymapKind::Completion,
+        Focus::Filetree => KeymapKind::Filetree,
+        Focus::Locations => KeymapKind::Locations,
+    };
+
+    push_focus_with_keymap(editor, id, focus, kind.as_ref().into())
+}
+
+/// Change keymap and run hooks
+pub fn change_keymap(editor: &mut Editor, id: ClientId, keymap: String) {
+    let (win, _buf) = editor.win_buf_mut(id);
+    if win.keymap_layer == keymap {
+        return;
+    }
+
+    let layer = win.keymap_layer.clone();
+    hooks::run(editor, id, Hook::KeymapLeave(layer));
+
+    let (win, _buf) = editor.win_buf_mut(id);
+    win.keymap_layer = keymap;
+
+    let layer = win.keymap_layer.clone();
+    hooks::run(editor, id, Hook::KeymapEnter(layer));
+}
+
+/// Change focus and keymap and run hooks
+pub fn focus_with_keymap(editor: &mut Editor, id: ClientId, focus: Focus, keymap: String) {
+    let (win, _buf) = editor.win_buf_mut(id);
+    let same_keymap = win.keymap_layer == keymap;
+    if same_keymap && win.focus() == focus {
+        return;
+    }
+
+    if !same_keymap {
+        let layer = win.keymap_layer.clone();
+        hooks::run(editor, id, Hook::KeymapLeave(layer));
+    }
+
+    let (win, _buf) = editor.win_buf_mut(id);
+    win.focus_to(focus);
+    win.keymap_layer = keymap;
+
+    if !same_keymap {
+        let layer = win.keymap_layer.clone();
+        hooks::run(editor, id, Hook::KeymapEnter(layer));
+    }
+}
+
+/// Change focus and run hooks
+pub fn focus(editor: &mut Editor, id: ClientId, focus: Focus) {
+    let kind = match focus {
+        Focus::Search => KeymapKind::Search,
+        Focus::Prompt => KeymapKind::Prompt,
+        Focus::Window => KeymapKind::Window,
+        Focus::Completion => KeymapKind::Completion,
+        Focus::Filetree => KeymapKind::Filetree,
+        Focus::Locations => KeymapKind::Locations,
+    };
+
+    focus_with_keymap(editor, id, focus, kind.as_ref().into())
+}
+
 #[action("Window: Focus window")]
 fn focus_window(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, _buf) = editor.win_buf_mut(id);
-    win.focus_to(Focus::Window);
+    focus(editor, id, Focus::Window);
     ActionResult::Ok
 }
 
@@ -222,5 +327,19 @@ fn save_cursor_jump(editor: &mut Editor, id: ClientId) -> ActionResult {
     let jump = Jump::new(mark, None);
     let group = JumpGroup::new(bid, vec![jump]);
     win.cursor_jumps.push(group);
+    ActionResult::Ok
+}
+
+#[action("LSP: Show diagnostic highlights")]
+fn show_diagnostic_highlights(editor: &mut Editor, id: ClientId) -> ActionResult {
+    let (win, buf) = editor.win_buf_mut(id);
+    win.config.highlight_diagnostics = true;
+    ActionResult::Ok
+}
+
+#[action("LSP: Hide diagnostic higlights")]
+fn hide_diagnostic_highlights(editor: &mut Editor, id: ClientId) -> ActionResult {
+    let (win, buf) = editor.win_buf_mut(id);
+    win.config.highlight_diagnostics = false;
     ActionResult::Ok
 }

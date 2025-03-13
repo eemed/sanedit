@@ -21,7 +21,7 @@ use crate::{
 
 use sanedit_server::ClientId;
 
-use super::{jobs::LSPJob, ActionResult};
+use super::{jobs::LSPJob, window::focus, ActionResult};
 
 #[derive(Debug, Error)]
 enum LSPActionError {
@@ -399,7 +399,7 @@ fn rename(editor: &mut Editor, id: ClientId) -> ActionResult {
             );
         })
         .build();
-    win.focus_to(Focus::Prompt);
+    focus(editor, id, Focus::Prompt);
     ActionResult::Ok
 }
 
@@ -489,7 +489,7 @@ pub(crate) fn diagnostics_to_locations(editor: &mut Editor, id: ClientId) -> Act
     }
 
     win.locations.show = true;
-    win.focus_to(Focus::Locations);
+    focus(editor, id, Focus::Locations);
 
     ActionResult::Ok
 }

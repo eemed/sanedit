@@ -4,20 +4,25 @@ document = (comment / attrs / mod_decl / const_decl / let_decl / string / char /
 visibility = "pub(crate)" / "pub(super)" / "pub";
 
 @show
+@highlight
 keyword = ( "loop" / "let" / "match" / "if" / "else" / "while" / "break" / "move" / "async" / "dyn" / "return" / "for" / "in" / "as") end / (visibility / "use" / "fn" / "impl" / "struct" / "enum" / "const" / "trait" / "type" / "extern crate"  / "extern" ) end;
 
 
 ############ Mod
 mod_decl = mod [ \t] ws (!nl .)* nl;
 
-@show(keyword)
+@show
+@highlight(keyword)
 mod = "mod";
 
 
 ########## String
-@show(string)
-char = "'" . "'";
 @show
+@highlight(string)
+char = "'" . "'";
+
+@show
+@highlight
 string    = "\"" compl_string "\"";
 compl_string    = ("\\" escape_char / [^"\n])*;
 escape_char     = "0" / "t" / "n" / "r" / "\"" / "\\";
@@ -26,12 +31,14 @@ end = &(WHITESPACE / ";" / "<");
 
 
 ############ Unsafe
-@show(operator)
+@show
+@highlight(operator)
 unsafe = "unsafe" / "await";
 
 
 ############ Type
 @show
+@highlight
 type = ref? (tuple / arr / predefined / typename / generic);
 
 @show
@@ -39,11 +46,13 @@ type = ref? (tuple / arr / predefined / typename / generic);
 tuple = "(" type ("," type)* ")";
 typename = [A..Z] [a..zA..Z0..9_]*;
 
-@show(array)
+@show
+@highlight(array)
 @whitespaced
 arr = "[" type "]";
 
 @show
+@highlight(generic)
 generic = "<" type ">";
 
 predefined = ("usize" / "isize" / "u8" / "u16" / "u32" / "u64" / "i8" / "i16" / "i32" / "i64" / "str" / "bool" / "char") &[ \]),>;];
@@ -53,12 +62,16 @@ id = "(" single_id ("," single_id)*  ")" / single_id;
 single_id = [a..zA..Z_] [a..zA..Z0..9_]*;
 
 ########### Ref
-@show(operator)
+@show
+@highlight(operator)
 ref = ref_op lifetime? ws mut_op? ws;
 
-@show(operator)
+@show
+@highlight(operator)
 ref_op = "&";
-@show(operator)
+
+@show
+@highlight(operator)
 mut_op = "mut";
 
 lifetime = "'" [a..z]+;
@@ -69,15 +82,17 @@ lifetime = "'" [a..z]+;
 @whitespaced
 const_decl = const const_id ":" type "=";
 
-@show(keyword)
+@show
+@highlight(keyword)
 const = "const";
 
 
 @whitespaced
 const_id = "(" single_const_id ("," single_const_id)*  ")" / single_const_id;
 
-@show(const)
+@show
 @completion
+@highlight(const)
 single_const_id = single_id;
 
 
@@ -89,21 +104,25 @@ let_decl = let let_id (":" type)? "=";
 @whitespaced
 let_id = "(" single_let_id ("," single_let_id)*  ")" / single_let_id;
 
-@show(variable)
+@show
 @completion
+@highlight(variable)
 single_let_id = single_id;
 
-@show(keyword)
+@show
+@highlight(keyword)
 let = "let";
 
 
 ######### attrs
-@show(preproc)
+@show
 @whitespaced
+@highlight(preproc)
 attrs = "#" "!"? "[" (!"]" .)* "]";
 
 ########## COMMENTS
 @show
+@highlight
 comment = "//" (!nl .)* nl;
 
 # TODO fix

@@ -12,10 +12,7 @@ use crate::editor::{
 use sanedit_server::ClientId;
 
 use super::{
-    completion,
-    hooks::run,
-    movement::{end_of_line, prev_line},
-    ActionResult,
+    completion, hooks::run, movement::{end_of_line, prev_line}, window::focus, ActionResult
 };
 
 #[action("Buffer: Remove character after cursor")]
@@ -138,7 +135,7 @@ fn save_as(editor: &mut Editor, id: ClientId) -> ActionResult {
             save.execute(editor, id);
         })
         .build();
-    win.focus_to(Focus::Prompt);
+    focus(editor, id, Focus::Prompt);
     ActionResult::Ok
 }
 

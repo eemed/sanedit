@@ -4,7 +4,7 @@ use std::{
 };
 
 use sanedit_buffer::{utf8::EndOfLine, PieceTreeSlice};
-use sanedit_core::Severity;
+use sanedit_core::{BufferRange, Range, Severity};
 use sanedit_utils::either::Either;
 use strum_macros::AsRefStr;
 
@@ -266,6 +266,19 @@ impl From<lsp_types::PositionEncodingKind> for PositionEncoding {
 pub struct PositionRange {
     pub start: Position,
     pub end: Position,
+}
+
+impl PositionRange {
+    pub fn to_buffer_range(&self, slice: &PieceTreeSlice, enc: &PositionEncoding) -> BufferRange {
+        let start = self.start.to_offset(slice, enc);
+        let end = if self.start == self.end {
+            start
+        } else {
+            self.end.to_offset(slice, enc)
+        };
+
+        Range::new(start, end)
+    }
 }
 
 impl From<lsp_types::Range> for PositionRange {

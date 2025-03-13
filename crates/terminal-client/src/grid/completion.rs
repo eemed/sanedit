@@ -158,7 +158,7 @@ pub(crate) fn format_completion(
     };
 
     // Fill space between
-    let mut len = left.len() + right.len();
+    let mut len = left.chars().count() + right.chars().count();
     while len < width {
         left.push(' ');
         len += 1;

@@ -11,20 +11,20 @@ use crate::{
 
 use sanedit_server::ClientId;
 
-use super::ActionResult;
+use super::{window::focus, ActionResult};
 
 #[action("Filetree: Show")]
 fn show_filetree(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = win_buf!(editor, id);
     if win.ft_view.show {
-        win.focus_to(Focus::Filetree);
+        focus(editor, id, Focus::Filetree);
         return ActionResult::Ok;
     }
 
     let visible = editor.filetree.iter().count();
     win.ft_view.selection = min(visible - 1, win.ft_view.selection);
     win.ft_view.show = true;
-    win.focus_to(Focus::Filetree);
+    focus(editor, id, Focus::Filetree);
     ActionResult::Ok
 }
 
@@ -32,7 +32,7 @@ fn show_filetree(editor: &mut Editor, id: ClientId) -> ActionResult {
 fn focus_filetree(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = win_buf!(editor, id);
     if win.ft_view.show {
-        win.focus_to(Focus::Filetree);
+        focus(editor, id, Focus::Filetree);
     }
 
     ActionResult::Ok
@@ -64,8 +64,7 @@ fn goto_ft_entry(editor: &mut Editor, id: ClientId) -> ActionResult {
                         return ActionResult::Failed;
                     }
 
-                    let (win, _buf) = editor.win_buf_mut(id);
-                    win.focus_to(Focus::Window);
+                    focus(editor, id, Focus::Window);
                 }
             }
         }
@@ -94,7 +93,7 @@ fn prev_ft_entry(editor: &mut Editor, id: ClientId) -> ActionResult {
 fn close_filetree(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
     win.ft_view.show = false;
-    win.focus_to(Focus::Window);
+    focus(editor, id, Focus::Window);
 
     ActionResult::Ok
 }
@@ -153,7 +152,7 @@ fn ft_new_file(editor: &mut Editor, id: ClientId) -> ActionResult {
             let _ = editor.open_file(id, &file);
         })
         .build();
-    win.focus_to(Focus::Prompt);
+    focus(editor, id, Focus::Prompt);
     ActionResult::Ok
 }
 
@@ -205,11 +204,10 @@ fn ft_delete_file(editor: &mut Editor, id: ClientId) -> ActionResult {
 
             prev_ft_entry.execute(editor, id);
 
-            let (win, _buf) = editor.win_buf_mut(id);
-            win.focus_to(Focus::Filetree);
+            focus(editor, id, Focus::Filetree);
         })
         .build();
-    win.focus_to(Focus::Prompt);
+    focus(editor, id, Focus::Prompt);
 
     ActionResult::Ok
 }

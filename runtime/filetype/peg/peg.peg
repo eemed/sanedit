@@ -7,19 +7,21 @@ _ = WHITESPACE*;
 nl = "\r\n" / "\r" / "\n";
 
 @show
+@highlight
 comment = "#" (!nl .)* nl;
 
 @whitespaced
 rule = ws (_ annotation)* rule_name "=" def+ ";" ws ;
 
 @completion(rule)
-@highlight
-@show(identifier)
+@highlight(identifier)
+@show
 @whitespaced
 rule_name = id_chars+;
 
 
-@show(preproc)
+@show
+@highlight(preproc)
 annotation = "@" annotation_name ("(" ann_spec ")")?;
 ann_spec = [a..zA..Z_-]+;
 
@@ -30,7 +32,8 @@ annotation_name = [a..zA..Z_-]+;
 @whitespaced
 def = clause (op? clause)*;
 
-@show(operator)
+@show
+@highlight(operator)
 op = "/";
 
 @whitespaced
@@ -49,15 +52,18 @@ negate = "^";
 
 
 @show
+@highlight
 string          = "\"" ("\\" escape_char / [^"])* "\"";
 escape_char     = "0" / "t" / "n" / "r" / "\"" / "\\" / "]";
 hex = "\\x" hex_digit+;
 hex_digit = [a..fA..F0..9];
 
-@show(operator)
+@show
+@highlight(operator)
 postop = "?" / "*" / "+";
 
-@show(operator)
+@show
+@highlight(operator)
 preop = "!" / "&";
 
 id_chars = [a..zA..Z_-];

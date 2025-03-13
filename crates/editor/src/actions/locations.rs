@@ -7,7 +7,7 @@ use crate::editor::{
 
 use sanedit_server::ClientId;
 
-use super::ActionResult;
+use super::{window::focus, ActionResult};
 
 #[action("Locations: Clear")]
 fn clear_locations(editor: &mut Editor, id: ClientId) -> ActionResult {
@@ -20,7 +20,7 @@ fn clear_locations(editor: &mut Editor, id: ClientId) -> ActionResult {
 fn show_locations(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
     win.locations.show = true;
-    win.focus_to(Focus::Locations);
+    focus(editor, id, Focus::Locations);
     ActionResult::Ok
 }
 
@@ -28,7 +28,7 @@ fn show_locations(editor: &mut Editor, id: ClientId) -> ActionResult {
 fn close_locations(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
     win.locations.show = false;
-    win.focus_to(Focus::Window);
+    focus(editor, id, Focus::Window);
     ActionResult::Ok
 }
 
@@ -36,7 +36,7 @@ fn close_locations(editor: &mut Editor, id: ClientId) -> ActionResult {
 fn focus_locations(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
     if win.locations.show {
-        win.focus_to(Focus::Locations);
+        focus(editor, id, Focus::Locations);
     }
 
     ActionResult::Ok
@@ -82,7 +82,7 @@ fn goto_loc_entry(editor: &mut Editor, id: ClientId) -> ActionResult {
 
                 let (win, buf) = editor.win_buf_mut(id);
                 win.goto_offset(offset, buf);
-                win.focus_to(Focus::Window);
+                focus(editor, id, Focus::Window);
             }
         }
     }
@@ -127,10 +127,10 @@ fn keep_locations(editor: &mut Editor, id: ClientId) -> ActionResult {
             let (win, _buf) = editor.win_buf_mut(id);
             let text = get!(out.text());
             win.locations.retain(|name| name.contains(text));
-            win.focus_to(Focus::Locations);
+            focus(editor, id, Focus::Locations);
         })
         .build();
-    win.focus_to(Focus::Prompt);
+    focus(editor, id, Focus::Prompt);
     ActionResult::Ok
 }
 
@@ -144,10 +144,10 @@ fn reject_locations(editor: &mut Editor, id: ClientId) -> ActionResult {
             let (win, _buf) = editor.win_buf_mut(id);
             let text = get!(out.text());
             win.locations.retain(|name| !name.contains(text));
-            win.focus_to(Focus::Locations);
+    focus(editor, id, Focus::Locations);
         })
         .build();
-    win.focus_to(Focus::Prompt);
+    focus(editor, id, Focus::Prompt);
     ActionResult::Ok
 }
 

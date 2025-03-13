@@ -2,9 +2,9 @@ document        = (ws (key_group / string / .))* !.;
 key_group       = header_line? value_line+ ignore;
 header_line     = ignore "["+ key_name "]"+ line_end;
 
-@show(identifier)
+@show
 @completion
-@highlight
+@highlight(identifier)
 key_name        = key_segment ("." key_segment)*;
 key_segment     = [^\[\]\.\n\r]+;
 
@@ -15,22 +15,27 @@ value           = string / datetime / float / integer / boolean / array / object
 array           = (empty_array / string_array / datetime_array / float_array / integer_array / boolean_array / array_array / object_array);
 
 @show
+@highlight
 string    = "\"" compl_string "\"";
 
-@show(string)
+@show
 @completion
+@highlight(string)
 compl_string    = ("\\" escape_char / [^"\n])*;
 
 escape_char     = "0" / "t" / "n" / "r" / "\"" / "\\";
 digit           = [0..9];
 
-@show(number)
+@show
+@highlight(number)
 integer         = "-"? [1..9] digit*;
 
-@show(number)
+@show
+@highlight(number)
 float           = integer "." digit+;
 
-@show(constant)
+@show
+@highlight(constant)
 boolean         = ("true" / "false");
 datetime        = ([1..9] digit digit digit) "-"
                    (digit digit) "-"
@@ -80,5 +85,6 @@ WHITESPACE      = space / nl;
 space           = [ \t];
 
 @show
+@highlight(comment)
 comment         = "#" (!nl .)*;
 nl              = "\r\n" / "\r" / "\n";

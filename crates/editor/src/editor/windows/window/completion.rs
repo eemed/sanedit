@@ -4,7 +4,10 @@ use sanedit_messages::redraw::Point;
 use sanedit_utils::sorted_vec::SortedVec;
 
 use crate::{
-    actions::jobs::{MatchedOptions, MatcherMessage},
+    actions::{
+        jobs::{MatchedOptions, MatcherMessage},
+        window::{pop_focus, push_focus},
+    },
     common::matcher::ScoredChoice,
     editor::{windows::Focus, Editor},
 };
@@ -26,15 +29,13 @@ pub(crate) struct Completion {
 
     /// Called when input is modified.
     pub(crate) on_input: Option<CompletionAction>,
-    pub(crate) previous_keymap: Option<String>,
 }
 
 impl Completion {
-    pub fn new(started_at: u64, point: Point, previous_keymap: Option<&str>) -> Completion {
+    pub fn new(started_at: u64, point: Point) -> Completion {
         Completion {
             started_at,
             point,
-            previous_keymap: previous_keymap.map(|km| km.to_string()),
             ..Default::default()
         }
     }
@@ -102,18 +103,19 @@ impl Completion {
                 match opts {
                     MatchedOptions::Done => {
                         if win.completion.chooser.options().is_empty() {
-                            win.pop_focus();
                             win.info_msg("No completion items");
+                            pop_focus(editor, id);
                         }
                     }
                     MatchedOptions::Options { matched, clear_old } => {
                         if clear_old {
                             win.completion.clear_choices();
                         }
-                        if win.focus() != Focus::Completion {
-                            win.push_focus(Focus::Completion, None);
-                        }
                         win.completion.add_choices(matched);
+
+                        if win.focus() != Focus::Completion {
+                            push_focus(editor, id, Focus::Completion);
+                        }
                     }
                 }
             }

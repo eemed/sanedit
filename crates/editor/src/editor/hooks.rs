@@ -48,6 +48,9 @@ pub(crate) enum Hook {
 
     OnDrawPre,
     Reload,
+
+    KeymapEnter(String),
+    KeymapLeave(String),
 }
 
 impl Hook {

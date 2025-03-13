@@ -14,7 +14,6 @@ use crate::{
         hooks::Hook,
         job_broker::KeepInTouch,
         lsp::{Constraint, LSP},
-        snippets::Snippet,
         windows::{Completion, Cursors, Prompt},
         Editor,
     },
@@ -140,15 +139,11 @@ impl LSPJob {
     fn handle_response(&self, editor: &mut Editor, response: Response) {
         match response {
             Response::Request { id, result } => {
-                let Some(lsp) = editor.language_servers.get_mut(&self.filetype) else {
-                    return;
-                };
-                let Some((id, constraints)) = lsp.reponse_of(id) else {
-                    return;
-                };
+                let lsp = get!(editor.language_servers.get_mut(&self.filetype));
+                let (cid, constraints) = get!(lsp.reponse_of(id));
 
                 // Verify constraints
-                let (win, buf) = editor.win_buf(id);
+                let (win, buf) = editor.win_buf(cid);
                 for constraint in constraints {
                     let ok = match constraint {
                         Constraint::Buffer(bid) => win.buffer_id() == bid,
@@ -164,14 +159,14 @@ impl LSPJob {
                     }
                 }
 
-                self.handle_result(editor, id, result);
+                self.handle_result(editor, cid, result);
             }
             Response::Notification(notif) => match notif {
                 sanedit_lsp::NotificationResult::Diagnostics {
                     path,
                     version,
                     diagnostics,
-                } => self.handle_diagnostics(editor, self.client_id, path, version, diagnostics),
+                } => self.handle_diagnostics(editor, path, version, diagnostics),
             },
         }
     }
@@ -186,8 +181,7 @@ impl LSPJob {
                 });
             }
             RequestResult::GotoDefinition { path, position } => {
-                if editor.open_file(self.client_id, path).is_ok() {
-                    log::info!("GD GOTO");
+                if editor.open_file(id, path).is_ok() {
                     let enc = get!(editor.lsp_for(id).map(|x| x.position_encoding()));
                     let (win, buf) = editor.win_buf_mut(self.client_id);
                     let slice = buf.slice(..);
@@ -217,7 +211,7 @@ impl LSPJob {
                 log::error!("LSP '{}' failed to process: {msg}", self.opts.command);
             }
             RequestResult::Diagnostics { path, diagnostics } => {
-                self.handle_diagnostics(editor, self.client_id, path, None, diagnostics)
+                self.handle_diagnostics(editor, path, None, diagnostics)
             }
         }
     }
@@ -239,7 +233,7 @@ impl LSPJob {
         let (range, word) =
             word_before_pos(&slice, start).unwrap_or((Range::new(start, start), String::default()));
 
-        win.completion = Completion::new(range.start, point, Some(&win.keymap_layer));
+        win.completion = Completion::new(range.start, point);
 
         let opts: Vec<Arc<Choice>> = opts
             .into_iter()
@@ -260,7 +254,6 @@ impl LSPJob {
     fn handle_diagnostics(
         &self,
         editor: &mut Editor,
-        _id: ClientId,
         path: PathBuf,
         version: Option<i32>,
         diags: Vec<TextDiagnostic>,

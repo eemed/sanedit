@@ -154,57 +154,24 @@ impl Window {
         self.focus
     }
 
-    /// Focuses new element and pushes the old one to focus stack
-    pub fn push_focus(&mut self, focus: Focus, layer: Option<String>) {
-        let entry = FocusEntry {
-            focus: self.focus,
-            keymap_layer: self.keymap_layer.clone(),
-        };
+    pub fn push_focus(&mut self, entry: FocusEntry) {
         self.focus_stack.push(entry);
-
-        self.focus = focus;
-        if let Some(layer) = layer {
-            self.keymap_layer = layer;
-        } else {
-            let kind = match self.focus {
-                Focus::Search => KeymapKind::Search,
-                Focus::Prompt => KeymapKind::Prompt,
-                Focus::Window => KeymapKind::Window,
-                Focus::Completion => KeymapKind::Completion,
-                Focus::Filetree => KeymapKind::Filetree,
-                Focus::Locations => KeymapKind::Locations,
-            };
-            self.keymap_layer = kind.as_ref().into();
-        }
     }
 
-    /// Restores previously focused element
-    pub fn pop_focus(&mut self) -> bool {
-        if let Some(entry) = self.focus_stack.pop() {
-            self.focus = entry.focus;
-            self.keymap_layer = entry.keymap_layer;
-            true
-        } else {
-            false
-        }
+    pub fn pop_focus(&mut self) -> Option<FocusEntry> {
+        self.focus_stack.pop()
+    }
+
+    pub fn restore_focus(&mut self, entry: FocusEntry) {
+        self.focus = entry.focus;
+        self.keymap_layer = entry.keymap_layer;
     }
 
     /// Switches focus and changes to appropriate keymap layer,
     /// clears focus stack
     pub fn focus_to(&mut self, focus: Focus) {
         self.focus_stack.clear();
-
         self.focus = focus;
-
-        let kind = match self.focus {
-            Focus::Search => KeymapKind::Search,
-            Focus::Prompt => KeymapKind::Prompt,
-            Focus::Window => KeymapKind::Window,
-            Focus::Completion => KeymapKind::Completion,
-            Focus::Filetree => KeymapKind::Filetree,
-            Focus::Locations => KeymapKind::Locations,
-        };
-        self.keymap_layer = kind.as_ref().into();
     }
 
     pub fn reload(&mut self) {
@@ -1130,9 +1097,6 @@ impl Window {
                     let empty = last.is_empty();
                     self.cursors = jumps.to_cursors(buf);
                     self.ensure_cursor_on_grapheme_boundary(buf);
-
-                    // Set keymap to snippet if jumped to next
-                    self.push_focus(Focus::Window, Some(KeymapKind::Snippet.as_ref().into()));
 
                     // Clear jumps if empty
                     if empty {

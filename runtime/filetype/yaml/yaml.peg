@@ -7,25 +7,30 @@ nl = "\r\n" / "\n";
 @whitespaced
 block = (name ":")+ value? (!nl .)* nl;
 
-@show(identifier)
+@show
 @completion
-@highlight
+@highlight(identifier)
 name = [a..zA..Z0..9_-]+;
 value = string / char / bool / dash;
 dash = "-" (!nl .)*;
 
-@show(constant)
+@show
+@highlight(constant)
 bool = "true" / "false";
 
 @show
+@highlight
 string = "\"" string_inner "\"";
 
-@show(string)
+@show
+@highlight(string)
 char = "'" ([^\u0..\u19\u27\u5c])* "'";
 
-@show(string)
+@show
 @completion
+@highlight(string)
 string_inner = ([^\u0..\u19\u22\u5c])*;
 
 @show
+@highlight
 comment = "#" (!nl .)*;

@@ -10,7 +10,7 @@ use super::GrammarParser;
 #[derive(Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub enum Annotation {
     Whitespaced,
-    Show(Option<String>),
+    Show,
     Other(String, Option<String>),
 }
 
@@ -67,20 +67,10 @@ pub(crate) struct RuleInfo {
 }
 
 impl RuleInfo {
-    pub fn display_name(&self) -> &str {
-        for ann in &self.annotations {
-            if let Annotation::Show(Some(name)) = ann {
-                return name.as_str();
-            }
-        }
-
-        &self.name
-    }
-
     pub fn show(&self) -> bool {
         self.annotations
             .iter()
-            .any(|ann| matches!(ann, Annotation::Show(_)))
+            .any(|ann| matches!(ann, Annotation::Show))
     }
 
     pub fn apply_whitespaced(&mut self, ws: usize) {

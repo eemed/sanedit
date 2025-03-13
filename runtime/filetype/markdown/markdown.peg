@@ -4,9 +4,11 @@ WHITESPACE = [ \t];
 ws = WHITESPACE*;
 nl = "\r\n" / "\n";
 
-@show(identifier)
+@show
 @whitespaced
+@highlight(identifier)
 title = "#"+ (!nl .)*;
 
-@show(operator)
+@show
+@highlight(operator)
 list_op = nl ws "*" / "-" / "+";

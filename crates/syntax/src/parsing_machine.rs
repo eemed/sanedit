@@ -63,7 +63,7 @@ impl Parser {
     }
 
     pub fn label_for(&self, id: CaptureID) -> &str {
-        self.rules[id].display_name()
+        &self.rules[id].name
     }
 
     pub fn annotations_for(&self, id: CaptureID) -> &[Annotation] {

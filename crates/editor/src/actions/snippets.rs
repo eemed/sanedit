@@ -1,26 +1,39 @@
 use std::{collections::BTreeMap, sync::Arc};
 
 use sanedit_buffer::Mark;
-use sanedit_core::{indent_at_line, Change, Changes, Range};
+use sanedit_core::{indent_at_line, BufferRange, Change, Changes, Range};
 use sanedit_server::ClientId;
 
 use crate::{
-    actions::hooks::run,
+    actions::{hooks::run, window::focus},
     editor::{
         hooks::Hook,
+        keymap::KeymapKind,
         snippets::{Snippet, SnippetAtom},
         windows::{Focus, Jump, JumpGroup, Jumps, Prompt},
         Editor,
     },
 };
 
-use super::{jobs::MatcherJob, ActionResult};
+use super::{
+    jobs::MatcherJob,
+    window::{pop_focus, push_focus_with_keymap},
+    ActionResult,
+};
 
 #[action("Snippet: Jump to next placeholder")]
 pub(crate) fn snippet_jump_next(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = editor.win_buf_mut(id);
     if !win.cursors_to_next_snippet_jump(buf) {
-        win.pop_focus();
+        pop_focus(editor, id);
+    } else {
+        // Set keymap to snippet if jumped to next
+        push_focus_with_keymap(
+            editor,
+            id,
+            Focus::Window,
+            KeymapKind::Snippet.as_ref().into(),
+        );
     }
     ActionResult::Ok
 }
@@ -45,12 +58,13 @@ pub(crate) fn insert_snippet(editor: &mut Editor, id: ClientId) -> ActionResult 
     win.prompt = Prompt::builder()
         .prompt(MESSAGE)
         .on_confirm(move |editor, id, out| {
+            let (win, _buf) = editor.win_buf(id);
+            let primary = win.cursors.primary().pos();
             let snippet = get!(out.snippet().cloned());
-            insert_snippet_impl(editor, id, snippet, 0);
+            insert_snippet_impl(editor, id, snippet, Range::new(primary, primary));
         })
         .build();
-    win.focus_to(Focus::Prompt);
-
+    focus(editor, id, Focus::Prompt);
     ActionResult::Ok
 }
 
@@ -58,10 +72,10 @@ pub(crate) fn insert_snippet_impl(
     editor: &mut Editor,
     id: ClientId,
     snippet: Snippet,
-    remove_prefix: u64,
+    replace: BufferRange,
 ) {
     let (win, buf) = editor.win_buf_mut(id);
-    let pos = win.cursors.primary().pos();
+    let pos = replace.start;
     let slice = buf.slice(..);
     let indent_line = indent_at_line(&slice, pos);
     let preindent = {
@@ -84,8 +98,8 @@ pub(crate) fn insert_snippet_impl(
             SnippetAtom::Placeholder(n, sel) => {
                 placeholders.push((
                     n,
-                    pos - remove_prefix + text.len() as u64,
-                    pos - remove_prefix + text.len() as u64 + sel.len() as u64,
+                    pos + text.len() as u64,
+                    pos + text.len() as u64 + sel.len() as u64,
                 ));
                 text.push_str(sel);
             }
@@ -98,13 +112,11 @@ pub(crate) fn insert_snippet_impl(
     }
 
     let mut changes = vec![];
-    // If we are asked to remove a prefix also. atleast completion will do this
-    // to remove the match prefix
-    if remove_prefix != 0 {
-        let remove = Change::remove(Range::new(pos - remove_prefix, pos));
-        changes.push(remove);
+    if replace.is_empty() {
+        changes.push(Change::insert(pos, text.as_bytes()));
+    } else {
+        changes.push(Change::replace(replace, text.as_bytes()));
     }
-    changes.push(Change::insert(pos, text.as_bytes()));
     let changes = Changes::new(&changes);
 
     // Insert snippet to buffer
@@ -139,5 +151,12 @@ pub(crate) fn insert_snippet_impl(
 
     let jumps = Jumps::new(groups);
     win.snippets.push(jumps);
-    win.cursors_to_next_snippet_jump(buf);
+    if win.cursors_to_next_snippet_jump(buf) {
+        push_focus_with_keymap(
+            editor,
+            id,
+            Focus::Window,
+            KeymapKind::Snippet.as_ref().into(),
+        );
+    }
 }

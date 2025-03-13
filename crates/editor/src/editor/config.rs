@@ -11,7 +11,7 @@ use toml_edit::{
 };
 
 use crate::{
-    actions::{find_by_name, Action, ActionResult},
+    actions::{find_by_name, window::change_keymap, Action, ActionResult},
     editor,
 };
 
@@ -331,9 +331,7 @@ impl Mapping {
                     name: format!("Goto layer {}", goto),
                     fun: Arc::new(move |editor, id| {
                         log::info!("Goto: {goto:?}");
-                        let (win, _buf) = editor.win_buf_mut(id);
-                        win.keymap_layer = goto.clone();
-
+                        change_keymap(editor, id, goto.clone());
                         ActionResult::Ok
                     }),
                     desc: String::new(),

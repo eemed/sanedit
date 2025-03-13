@@ -6,7 +6,10 @@ use sanedit_buffer::PieceTree;
 use sanedit_utils::{either::Either, sorted_vec::SortedVec};
 
 use crate::{
-    actions::jobs::{MatchedOptions, MatcherMessage},
+    actions::{
+        jobs::{MatchedOptions, MatcherMessage},
+        window::focus,
+    },
     common::matcher::{Choice, ScoredChoice},
     editor::{snippets::Snippet, windows::Focus, Editor},
 };
@@ -225,9 +228,10 @@ impl Prompt {
                         win.prompt.clear_choices();
                     }
 
-                    win.focus_to(Focus::Prompt);
                     let (win, _buf) = editor.win_buf_mut(id);
                     win.prompt.add_choices(matched.into());
+
+                    focus(editor, id, Focus::Prompt);
                 }
             }
         }

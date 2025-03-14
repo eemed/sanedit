@@ -13,7 +13,7 @@ pub(crate) fn command_palette(editor: &Editor, id: ClientId) -> Vec<Arc<Choice>>
             let (win, _buf) = editor.win_buf(id);
             let mut description = String::new();
             if let Some(bind) = editor
-                .keymap()
+                .keymaps
                 .find_bound_key(&win.keymap_layer, action.name())
             {
                 description = keyevents_to_string(&bind);

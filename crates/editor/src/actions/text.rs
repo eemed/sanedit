@@ -12,7 +12,11 @@ use crate::editor::{
 use sanedit_server::ClientId;
 
 use super::{
-    completion, hooks::run, movement::{end_of_line, prev_line}, window::focus, ActionResult
+    completion,
+    hooks::run,
+    movement::{end_of_line, prev_line},
+    window::focus,
+    ActionResult,
 };
 
 #[action("Buffer: Remove character after cursor")]
@@ -253,7 +257,7 @@ fn align_cursor_columns(editor: &mut Editor, id: ClientId) -> ActionResult {
 }
 
 #[action("Buffer: Comment lines")]
-fn comment_lines(editor: &mut Editor, id: ClientId) -> ActionResult{
+fn comment_lines(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = win_buf!(editor, id);
     let Some(ft) = &buf.filetype else {
         win.warn_msg("No filetype set");

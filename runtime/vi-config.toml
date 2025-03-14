@@ -135,6 +135,8 @@ maps = [
 
 [keymaps.window]
 discard = true
+on_enter = ["show_diagnostic_highlights"]
+on_leave = ["hide_diagnostic_highlights"]
 maps = [
     { key = "space q", actions = ["quit"] },
     { key = "space s", actions = ["strip_trailing_whitespace"] },

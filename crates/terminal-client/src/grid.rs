@@ -13,10 +13,13 @@ use completion::completion_rect;
 use items::Kind;
 use popup::popup_rect;
 use prompt::prompt_rect;
-use sanedit_messages::{redraw::{
-    completion::Completion, statusline::Statusline, window::Window, Cell, Component, Cursor,
-    Diffable as _, Popup, PopupComponent, Redraw, Size, StatusMessage, Theme,
-}, Message};
+use sanedit_messages::{
+    redraw::{
+        completion::Completion, statusline::Statusline, window::Window, Cell, Component, Cursor,
+        Diffable as _, Popup, PopupComponent, Redraw, Size, StatusMessage, Theme,
+    },
+    Message,
+};
 
 use crate::ui::UIContext;
 

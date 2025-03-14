@@ -25,16 +25,14 @@ pub fn pop_focus(editor: &mut Editor, id: ClientId) {
     }
 
     if !same_keymap {
-        let layer = win.keymap_layer.clone();
-        hooks::run(editor, id, Hook::KeymapLeave(layer));
+        hooks::run(editor, id, Hook::KeymapLeave);
     }
 
     let (win, _buf) = editor.win_buf_mut(id);
     win.restore_focus(entry);
 
     if !same_keymap {
-        let layer = win.keymap_layer.clone();
-        hooks::run(editor, id, Hook::KeymapEnter(layer));
+        hooks::run(editor, id, Hook::KeymapEnter);
     }
 }
 
@@ -72,14 +70,12 @@ pub fn change_keymap(editor: &mut Editor, id: ClientId, keymap: String) {
         return;
     }
 
-    let layer = win.keymap_layer.clone();
-    hooks::run(editor, id, Hook::KeymapLeave(layer));
+    hooks::run(editor, id, Hook::KeymapLeave);
 
     let (win, _buf) = editor.win_buf_mut(id);
     win.keymap_layer = keymap;
 
-    let layer = win.keymap_layer.clone();
-    hooks::run(editor, id, Hook::KeymapEnter(layer));
+    hooks::run(editor, id, Hook::KeymapEnter);
 }
 
 /// Change focus and keymap and run hooks
@@ -91,8 +87,7 @@ pub fn focus_with_keymap(editor: &mut Editor, id: ClientId, focus: Focus, keymap
     }
 
     if !same_keymap {
-        let layer = win.keymap_layer.clone();
-        hooks::run(editor, id, Hook::KeymapLeave(layer));
+        hooks::run(editor, id, Hook::KeymapLeave);
     }
 
     let (win, _buf) = editor.win_buf_mut(id);
@@ -100,8 +95,7 @@ pub fn focus_with_keymap(editor: &mut Editor, id: ClientId, focus: Focus, keymap
     win.keymap_layer = keymap;
 
     if !same_keymap {
-        let layer = win.keymap_layer.clone();
-        hooks::run(editor, id, Hook::KeymapEnter(layer));
+        hooks::run(editor, id, Hook::KeymapEnter);
     }
 }
 
@@ -341,5 +335,23 @@ fn show_diagnostic_highlights(editor: &mut Editor, id: ClientId) -> ActionResult
 fn hide_diagnostic_highlights(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = editor.win_buf_mut(id);
     win.config.highlight_diagnostics = false;
+    ActionResult::Ok
+}
+
+#[action("Keymap: On keymap enter")]
+fn on_keymap_enter(editor: &mut Editor, id: ClientId) -> ActionResult {
+    let layer = editor.layer(id);
+    if let Some(action) = layer.on_enter.clone() {
+        action.execute(editor, id);
+    }
+    ActionResult::Ok
+}
+
+#[action("Keymap: On keymap leave")]
+fn on_keymap_leave(editor: &mut Editor, id: ClientId) -> ActionResult {
+    let layer = editor.layer(id);
+    if let Some(action) = layer.on_leave.clone() {
+        action.execute(editor, id);
+    }
     ActionResult::Ok
 }

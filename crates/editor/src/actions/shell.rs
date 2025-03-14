@@ -14,7 +14,12 @@ pub(crate) fn execute_prompt(editor: &mut Editor, id: ClientId, out: PromptOutpu
     execute(editor, id, true, cmd);
 }
 
-pub(crate) fn execute(editor: &mut Editor, id: ClientId, interactive: bool, cmd: &str) -> ActionResult {
+pub(crate) fn execute(
+    editor: &mut Editor,
+    id: ClientId,
+    interactive: bool,
+    cmd: &str,
+) -> ActionResult {
     let shell = editor.config.editor.shell.clone();
     let (win, _buf) = editor.win_buf(id);
 

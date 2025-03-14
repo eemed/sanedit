@@ -23,6 +23,12 @@ pub(crate) enum KeymapKind {
 pub(crate) struct Layer {
     root: KeyTrie,
 
+    /// Action to run when this layer is entered
+    pub(crate) on_enter: Option<Action>,
+
+    /// Action to run when this layer is left
+    pub(crate) on_leave: Option<Action>,
+
     /// if no keybinding found whether to fallthrough to the next layer
     pub(crate) fallthrough: Option<String>,
 
@@ -34,6 +40,8 @@ pub(crate) struct Layer {
 impl Layer {
     pub fn new() -> Layer {
         Layer {
+            on_enter: None,
+            on_leave: None,
             root: KeyTrie::default(),
             fallthrough: None,
             discard: false,

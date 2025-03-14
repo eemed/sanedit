@@ -330,7 +330,6 @@ impl Mapping {
                 let action = Action::Dynamic {
                     name: format!("Goto layer {}", goto),
                     fun: Arc::new(move |editor, id| {
-                        log::info!("Goto: {goto:?}");
                         change_keymap(editor, id, goto.clone());
                         ActionResult::Ok
                     }),
@@ -367,12 +366,90 @@ pub(crate) struct KeymapLayer {
     /// Whether to discard not found bindigs or insert them into the buffer
     discard: Option<bool>,
 
+    /// On enter keymap actions
+    on_enter: Option<Vec<String>>,
+
+    /// On leave keymap actions
+    on_leave: Option<Vec<String>>,
+
     /// Keymappings for this layer
     maps: Vec<Mapping>,
 }
 
 impl KeymapLayer {
-    pub fn to_layer(&self) -> Layer {
+    pub fn on_enter(&self, name: &str) -> Option<Action> {
+        let mut actions = vec![];
+        if let Some(acts) = &self.on_enter {
+            for name in acts {
+                match find_by_name(name) {
+                    Some(action) => actions.push(action),
+                    _ => log::error!("on enter: No such action {}", name),
+                }
+            }
+        }
+
+        if actions.is_empty() {
+            return None;
+        }
+
+        let name = name.to_string();
+
+        Action::Dynamic {
+            name: format!("on_enter_{name}"),
+            fun: Arc::new(move |editor, id| {
+                let (win, _buf) = editor.win_buf(id);
+                if win.keymap_layer != name {
+                    return ActionResult::Skipped;
+                }
+
+                for action in &actions {
+                    action.execute(editor, id);
+                }
+
+                ActionResult::Ok
+            }),
+            desc: String::new(),
+        }
+        .into()
+    }
+
+    pub fn on_leave(&self, name: &str) -> Option<Action> {
+        let mut actions = vec![];
+        if let Some(acts) = &self.on_leave {
+            for name in acts {
+                match find_by_name(name) {
+                    Some(action) => actions.push(action),
+                    _ => log::error!("on enter: No such action {}", name),
+                }
+            }
+        }
+
+        if actions.is_empty() {
+            return None;
+        }
+
+        let name = name.to_string();
+
+        Action::Dynamic {
+            name: format!("on_leave_{name}"),
+            fun: Arc::new(move |editor, id| {
+                let (win, _buf) = editor.win_buf(id);
+                if win.keymap_layer != name {
+                    return ActionResult::Skipped;
+                }
+
+                for action in &actions {
+                    action.execute(editor, id);
+                }
+
+                ActionResult::Ok
+            }),
+            desc: String::new(),
+        }
+        .into()
+    }
+
+    pub fn to_layer(&self, name: &str) -> Layer {
         let mut layer = Layer::new();
         layer.discard = self.discard.unwrap_or(false);
         layer.fallthrough = self.fallthrough.clone();
@@ -401,8 +478,6 @@ impl KeymapLayer {
                                 let stop =
                                     skip.as_ref().map(|skip| &result > skip).unwrap_or(false);
 
-                                log::info!("Result: {result:?}, SKIP: {skip:?}, stop: {stop}");
-
                                 if stop {
                                     break;
                                 }
@@ -422,6 +497,10 @@ impl KeymapLayer {
                 ),
             }
         }
+
+        layer.on_enter = self.on_enter(name);
+        layer.on_leave = self.on_leave(name);
+
         layer
     }
 }
@@ -443,6 +522,8 @@ fn search() -> KeymapLayer {
         );
 
     KeymapLayer {
+        on_enter: None,
+        on_leave: None,
         fallthrough: None,
         discard: None,
         maps: map,
@@ -466,6 +547,8 @@ fn prompt() -> KeymapLayer {
         );
 
     KeymapLayer {
+        on_enter: None,
+        on_leave: None,
         fallthrough: None,
         discard: None,
         maps: map,
@@ -482,6 +565,8 @@ fn completion() -> KeymapLayer {
         );
 
     KeymapLayer {
+        on_enter: None,
+        on_leave: None,
         fallthrough: Some(KeymapKind::Window.as_ref().into()),
         discard: None,
         maps: compl,
@@ -510,6 +595,8 @@ fn locations() -> KeymapLayer {
              "alt+3",  close_locations,
         );
     KeymapLayer {
+        on_enter: None,
+        on_leave: None,
         fallthrough: None,
         discard: None,
         maps: map,
@@ -539,6 +626,8 @@ fn filetree() -> KeymapLayer {
         );
 
     KeymapLayer {
+        on_enter: None,
+        on_leave: None,
         fallthrough: None,
         discard: None,
         maps: map,
@@ -641,6 +730,8 @@ fn window() -> KeymapLayer {
         );
 
     KeymapLayer {
+        on_enter: None,
+        on_leave: None,
         fallthrough: None,
         discard: None,
         maps: map,

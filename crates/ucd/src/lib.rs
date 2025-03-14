@@ -13,6 +13,7 @@ pub use enums::GraphemeBreak;
 pub use enums::Property;
 
 pub fn grapheme_break(ch: char) -> GraphemeBreak {
+    let a = 0;
     // Optimization for ascii
     // First entries in the GRAPHEME_CLUSTER_BREAK table
     // (0, 9, 1),     => Control

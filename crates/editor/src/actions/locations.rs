@@ -144,7 +144,7 @@ fn reject_locations(editor: &mut Editor, id: ClientId) -> ActionResult {
             let (win, _buf) = editor.win_buf_mut(id);
             let text = get!(out.text());
             win.locations.retain(|name| !name.contains(text));
-    focus(editor, id, Focus::Locations);
+            focus(editor, id, Focus::Locations);
         })
         .build();
     focus(editor, id, Focus::Prompt);

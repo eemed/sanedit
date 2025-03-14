@@ -1,7 +1,6 @@
 #[macro_use]
 extern crate sanedit_macros;
 
-
 /// Get option or return ActionResult::Failed
 macro_rules! getf {
     ($thing:expr) => {{

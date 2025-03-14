@@ -14,7 +14,10 @@ pub(crate) mod windows;
 
 use caches::Caches;
 use config::FiletypeConfig;
+use hooks::HookId;
+use hooks::HookKind;
 use keymap::KeymapResult;
+use keymap::Layer;
 use rustc_hash::FxHashMap;
 use sanedit_core::FileDescription;
 use sanedit_core::Filetype;
@@ -40,6 +43,7 @@ use std::env;
 use std::path::Path;
 use std::path::PathBuf;
 use std::sync::mpsc::Receiver;
+use std::sync::Arc;
 
 use tokio::io;
 
@@ -50,6 +54,8 @@ use crate::actions::cursors;
 use crate::actions::cursors::swap_selection_dir;
 use crate::actions::hooks::run;
 use crate::actions::text_objects::select_line;
+use crate::actions::Action;
+use crate::actions::ActionResult;
 use crate::draw::DrawState;
 use crate::draw::EditorContext;
 use crate::editor::buffers::Buffer;
@@ -174,7 +180,9 @@ impl Editor {
         self.keymaps = Keymaps::default();
 
         for (name, kmlayer) in &self.config.keymaps {
-            self.keymaps.insert(name, kmlayer.to_layer());
+            // Insert new layer
+            let layer = kmlayer.to_layer(name);
+            self.keymaps.insert(name, layer);
         }
     }
 
@@ -360,8 +368,6 @@ impl Editor {
         self.windows
             .new_window(id, bid, size.width, size.height, self.config.window.clone());
 
-        run(self, id, Hook::BufEnter(bid));
-
         let win = self.windows.get_mut(id).expect("Window not present");
         let buf = self.buffers.get(bid).expect("Buffer not present");
         let theme = {
@@ -385,6 +391,9 @@ impl Editor {
             self.send_to_client(id, ClientMessage::Redraw(msg));
         }
         self.send_to_client(id, ClientMessage::Flush);
+
+        run(self, id, Hook::BufEnter(bid));
+        run(self, id, Hook::KeymapEnter);
     }
 
     fn handle_resize(&mut self, id: ClientId, size: Size) {
@@ -681,8 +690,11 @@ impl Editor {
         }
     }
 
-    pub fn keymap(&self) -> &Keymaps {
-        &self.keymaps
+    pub fn layer(&self, id: ClientId) -> &Layer {
+        let win = self.windows.get(id).expect("No window found");
+        self.keymaps
+            .get_layer(&win.keymap_layer)
+            .expect("Window has nonexistent keymap layer")
     }
 
     /// Return the currently focused elements keymap

@@ -48,12 +48,7 @@ pub fn width_at_pos(slice: &PieceTreeSlice, pos: u64, opts: &DisplayOptions) -> 
 }
 
 /// returns the position at width, and whether the width was reaced
-pub fn pos_at_width(
-    slice: &PieceTreeSlice,
-    pos: u64,
-    width: usize,
-    opts: &DisplayOptions,
-) -> u64 {
+pub fn pos_at_width(slice: &PieceTreeSlice, pos: u64, width: usize, opts: &DisplayOptions) -> u64 {
     let mut pos = start_of_line(slice, pos);
     let mut total = 0;
     let mut col = 0;

@@ -14,8 +14,6 @@ pub(crate) mod windows;
 
 use caches::Caches;
 use config::FiletypeConfig;
-use hooks::HookId;
-use hooks::HookKind;
 use keymap::KeymapResult;
 use keymap::Layer;
 use rustc_hash::FxHashMap;
@@ -43,7 +41,6 @@ use std::env;
 use std::path::Path;
 use std::path::PathBuf;
 use std::sync::mpsc::Receiver;
-use std::sync::Arc;
 
 use tokio::io;
 
@@ -54,8 +51,6 @@ use crate::actions::cursors;
 use crate::actions::cursors::swap_selection_dir;
 use crate::actions::hooks::run;
 use crate::actions::text_objects::select_line;
-use crate::actions::Action;
-use crate::actions::ActionResult;
 use crate::draw::DrawState;
 use crate::draw::EditorContext;
 use crate::editor::buffers::Buffer;

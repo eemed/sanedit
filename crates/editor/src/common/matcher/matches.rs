@@ -3,7 +3,7 @@ use std::{path::PathBuf, sync::Arc};
 use sanedit_core::Range;
 use sanedit_lsp::CompletionItem;
 
-use crate::editor::snippets::{Snippet, SnippetAtom, SNIPPET_DESCRIPTION};
+use crate::editor::snippets::{Snippet, SNIPPET_DESCRIPTION};
 
 #[derive(Debug, Hash, PartialEq, Eq, Ord, PartialOrd, Clone)]
 pub(crate) enum Choice {
@@ -62,20 +62,6 @@ impl Choice {
         let display = path.to_string_lossy();
         let display = display[strip..].to_string();
         Arc::new(Choice::Path { path, display })
-    }
-
-    pub fn from_snippet(snippet: Snippet) -> Arc<Choice> {
-        let mut display = String::new();
-        for atom in snippet.atoms() {
-            match atom {
-                SnippetAtom::Text(text) => display.push_str(&text),
-                SnippetAtom::Placeholder(_, text) => display.push_str(&text),
-                SnippetAtom::Newline => break,
-                SnippetAtom::Indent => display.push_str("  "),
-            }
-        }
-
-        Arc::new(Choice::Snippet { snippet, display })
     }
 
     pub fn from_snippet_trigger(snippet: Snippet) -> Arc<Choice> {

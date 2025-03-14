@@ -302,13 +302,8 @@ fn save_cursor_jump(editor: &mut Editor, id: ClientId) -> ActionResult {
         .and_then(Hook::buffer_id)
         .unwrap_or(bid);
 
-    log::info!("Save cursor jump");
     let (win, _buf) = win_buf!(editor, id);
     let at_start = win.cursor_jumps.current().is_none();
-    // win
-    // .cursor_jumps
-    // .iter()
-    // .any(|group| group.buffer_id() == bid);
 
     if !at_start {
         return ActionResult::Skipped;
@@ -326,14 +321,14 @@ fn save_cursor_jump(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("LSP: Show diagnostic highlights")]
 fn show_diagnostic_highlights(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, _buf) = editor.win_buf_mut(id);
     win.config.highlight_diagnostics = true;
     ActionResult::Ok
 }
 
 #[action("LSP: Hide diagnostic higlights")]
 fn hide_diagnostic_highlights(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, _buf) = editor.win_buf_mut(id);
     win.config.highlight_diagnostics = false;
     ActionResult::Ok
 }

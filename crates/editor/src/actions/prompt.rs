@@ -2,7 +2,6 @@ mod commands;
 
 use std::{cmp::min, sync::Arc};
 
-use sanedit_core::Group;
 use sanedit_messages::ClientMessage;
 use sanedit_utils::idmap::AsID;
 
@@ -460,7 +459,7 @@ pub(crate) fn unsaved_changes<F: Fn(&mut Editor, ClientId) + 'static>(
 #[action("Prompt: Jumps")]
 fn prompt_jump(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf(id);
-    let current = win.cursor_jumps.current();
+    let _current = win.cursor_jumps.current();
     let mut items: Vec<Arc<Choice>> = vec![];
     let mut item = win.cursor_jumps.last();
     while let Some((cursor, group)) = item {

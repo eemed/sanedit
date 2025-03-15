@@ -1,12 +1,3 @@
-#
-# Sanedit configuration
-#
-# Configuration can be overridden using a sanedit-project.toml file in project
-# root. The file should be in the same format as this one and
-# configuration may be partially updated
-#
-[editor]
-
 # Large file threshold in bytes
 big_file_threshold_bytes = 1048576
 
@@ -16,27 +7,11 @@ ignore_directories = [".git", "target"]
 # Default shell command
 shell = "/bin/bash"
 
-# Shell command to build current project
-build_command = ""
-
-# Shell command to run current project
-run_command = ""
-
 # Autodetect eol from file
 detect_eol = true
 
 # Autodetect indentation from file
 detect_indent = true
-
-# Filetype glob patterns
-# By default the filetype is the extension of the file
-[editor.filetype]
-rust = ["*.rs"]
-toml = ["*/Cargo.lock"]
-markdown = ["*.md"]
-yaml = ["*.yml"]
-
-[window]
 
 # Maximum prompt completions to show at once
 max_prompt_completions = 10
@@ -57,35 +32,26 @@ autoindent = true
 # Automatically insert pairs on enter, works only with autoindent
 autopair = true
 
-new_window_command = "tmux split 'sane'"
+# Currently used window manager
+# Options:
+# Auto: automatically detect window manager
+# Tmux
+window_manager = "Auto"
 
-[buffer]
+# Filetype glob patterns
+# By default the filetype is the extension of the file
+[filetype_detect]
+rust = ["*.rs"]
+toml = ["*/Cargo.lock"]
+markdown = ["*.md"]
+yaml = ["*.yml"]
 
-# Default EOL, overridden if detect_eol is set
-# Available options:
-# LF: Line Feed, U+000A (UTF-8 in hex: 0A)
-# VT: Vertical Tab, U+000B (UTF-8 in hex: 0B)
-# FF: Form Feed, U+000C (UTF-8 in hex: 0C)
-# CR: Carriage Return, U+000D (UTF-8 in hex: 0D)
-# CRLF: CR (U+000D) followed by LF (U+000A) (UTF-8 in hex: 0D 0A)
-# NEL: Next Line, U+0085 (UTF-8 in hex: C2 85)
-# LS: Line Separator, U+2028 (UTF-8 in hex: E2 80 A8)
-# PS: Paragraph Separator, U+2029 (UTF-8 in hex: E2 80 A9)
-eol = "LF"
+[filetype.rust]
+comment = "# "
+language_server.command = "rust-analyzer"
 
-# How many spaces for a tab character, note that tab does not always have
-# width `tab_width` because tabs are used to align stuff, so it
-# is "elastic" calculated tabstop - (col % tabstop).
-tabstop = 8
-
-# Indent options, overridden if detect_indent is set
-# Available options:
-# Space: use spaces
-# Tab: use tabs
-indent_kind = "Space"
-
-# How many indent characters a single indent should be
-indent_amount = 4
+[filetype.peg]
+comment = "# "
 
 [keymaps.snippet]
 fallthrough = "insert"
@@ -287,22 +253,8 @@ maps = [
     { key = "enter", actions = ["goto_loc_entry"] },
     { key = "p", actions = ["select_loc_parent"] },
     { key = "e", actions = ["toggle_all_expand_locs"] },
-    # { key = "k", actions = ["keep_locations"] },
-    # { key = "r", actions = ["reject_locations"] },
 
     { key = "alt+k", actions = ["focus_window"] },
-
-    # { key = "up", actions = ["prev_loc_entry"] },
-    # { key = "down", actions = ["next_loc_entry"] },
-    # { key = "btab", actions = ["prev_loc_entry"] },
-    # { key = "tab", actions = ["next_loc_entry"] },
-    # { key = "p", actions = ["select_loc_parent"] },
-    # { key = "s", actions = ["toggle_all_expand_locs"] },
-    # { key = "k", actions = ["keep_locations"] },
-    # { key = "r", actions = ["reject_locations"] },
-    # { key = "alt+1", actions = ["focus_window"] },
-    # { key = "alt+2", actions = ["show_filetree"] },
-    # { key = "alt+3", actions = ["close_locations"] },
 ]
 
 [keymaps.filetree]
@@ -318,15 +270,6 @@ maps = [
     { key = "d", actions = ["ft_delete_file"] },
 
     { key = "alt+l", actions = ["focus_window"] },
-    # { key = "up", actions = ["prev_ft_entry"] },
-    # { key = "down", actions = ["next_ft_entry"] },
-    # { key = "btab", actions = ["prev_ft_entry"] },
-    # { key = "tab", actions = ["next_ft_entry"] },
-    # { key = "p", actions = ["select_ft_parent"] },
-    # { key = "s", actions = ["ft_goto_current_file"] },
-    # { key = "alt+1", actions = ["focus_window"] },
-    # { key = "alt+2", actions = ["close_filetree"] },
-    # { key = "alt+3", actions = ["show_locations"] },
 ]
 
 [keymaps.prompt]

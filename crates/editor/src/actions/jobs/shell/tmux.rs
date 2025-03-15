@@ -3,7 +3,7 @@ use std::process::Command;
 use anyhow::bail;
 use sanedit_buffer::PieceTreeView;
 
-use crate::editor::{job_broker::KeepInTouch, windows::ShellKind};
+use crate::editor::{job_broker::KeepInTouch, windows::WindowManager};
 use sanedit_server::{ClientId, Job, JobContext, JobResult};
 
 #[derive(Debug, Clone)]
@@ -84,7 +84,10 @@ impl KeepInTouch for TmuxShellCommand {
     fn on_message(&self, editor: &mut crate::editor::Editor, msg: Box<dyn std::any::Any>) {
         if let Ok(pane) = msg.downcast::<TmuxPane>() {
             let (win, _buf) = editor.win_buf_mut(self.client_id);
-            win.shell_kind = ShellKind::Tmux { pane: Some(*pane) };
+            match &mut win.window_manager {
+                WindowManager::Tmux { shell_pane } => *shell_pane = Some(*pane),
+                _ => {}
+            }
         }
     }
 }

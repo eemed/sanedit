@@ -238,7 +238,7 @@ impl LSPJob {
         let opts: Vec<Arc<Choice>> = opts
             .into_iter()
             .map(Choice::from_completion_item)
-            .chain(editor.snippets.match_options(buf.filetype.as_ref()))
+            .chain(editor.get_snippets(id))
             .collect();
 
         let job = MatcherJob::builder(id)

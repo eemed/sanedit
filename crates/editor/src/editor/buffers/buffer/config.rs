@@ -18,6 +18,7 @@ enum EndOfLineDef {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, DocComment)]
+#[serde(default)]
 pub(crate) struct BufferConfig {
     /// Default EOL, overridden if detect_eol is set
     /// Available options:

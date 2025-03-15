@@ -7,8 +7,8 @@ mod focus;
 mod jumps;
 mod prompt;
 mod search;
-mod shell;
 mod view;
+mod window_manager;
 
 #[cfg(test)]
 mod tests;
@@ -48,7 +48,7 @@ use self::filetree::FiletreeView;
 pub(crate) use cursors::Cursors;
 
 pub(crate) use self::{
-    completion::*, config::*, focus::*, jumps::*, prompt::*, search::*, shell::*, view::*,
+    completion::*, config::*, focus::*, jumps::*, prompt::*, search::*, view::*, window_manager::*,
 };
 
 #[derive(Debug)]
@@ -66,7 +66,7 @@ pub(crate) struct Window {
     popup: Option<Popup>,
 
     pub keymap_layer: String,
-    pub shell_kind: ShellKind,
+    pub window_manager: WindowManager,
     pub completion: Completion,
     pub cursors: Cursors,
     pub search: Search,
@@ -94,7 +94,7 @@ impl Window {
             view: View::new(width, height),
             message: None,
             keymap_layer: KeymapKind::Window.as_ref().into(),
-            shell_kind: ShellKind::default(),
+            window_manager: config.window_manager.get(),
             completion: Completion::default(),
             cursors: Cursors::default(),
             config,

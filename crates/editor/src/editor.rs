@@ -13,14 +13,11 @@ pub(crate) mod themes;
 pub(crate) mod windows;
 
 use caches::Caches;
-use config::FiletypeConfig;
 use keymap::KeymapResult;
 use keymap::Layer;
 use rustc_hash::FxHashMap;
 use sanedit_core::FileDescription;
 use sanedit_core::Filetype;
-use sanedit_core::CONFIG;
-use sanedit_core::SNIPPETS_FILE;
 use sanedit_messages::key;
 use sanedit_messages::key::KeyEvent;
 use sanedit_messages::redraw::Size;
@@ -35,12 +32,12 @@ use sanedit_server::ClientId;
 use sanedit_server::FromJobs;
 use sanedit_server::StartOptions;
 use sanedit_server::ToEditor;
-use snippets::Snippets;
 
 use std::env;
 use std::path::Path;
 use std::path::PathBuf;
 use std::sync::mpsc::Receiver;
+use std::sync::Arc;
 
 use tokio::io;
 
@@ -51,6 +48,7 @@ use crate::actions::cursors;
 use crate::actions::cursors::swap_selection_dir;
 use crate::actions::hooks::run;
 use crate::actions::text_objects::select_line;
+use crate::common::matcher::Choice;
 use crate::draw::DrawState;
 use crate::draw::EditorContext;
 use crate::editor::buffers::Buffer;
@@ -95,7 +93,6 @@ pub(crate) struct Editor {
     pub themes: Themes,
     pub config_dir: ConfigDirectory,
     pub syntaxes: Syntaxes,
-    pub snippets: Snippets,
     pub job_broker: JobBroker,
     pub hooks: Hooks,
     pub clipboard: Box<dyn Clipboard>,
@@ -104,7 +101,6 @@ pub(crate) struct Editor {
     pub language_servers: Map<Filetype, LSP>,
     pub filetree: Filetree,
     pub config: Config,
-    pub filetype_config: Map<Filetype, FiletypeConfig>,
     pub caches: Caches,
 }
 
@@ -115,7 +111,6 @@ impl Editor {
         let jobs_handle = runtime.block_on(spawn_job_runner(handle));
         let working_dir = env::current_dir().expect("Cannot get current working directory.");
         let config_dir = ConfigDirectory::default();
-        let global_snippets = config_dir.global_snippet_file();
         let config = Config::default();
         let caches = Caches::new(&config);
 
@@ -124,7 +119,6 @@ impl Editor {
             clients: Map::default(),
             draw_states: Map::default(),
             syntaxes: Syntaxes::new(),
-            snippets: Snippets::new(&global_snippets),
             windows: Windows::default(),
             buffers: Buffers::default(),
             job_broker: JobBroker::new(jobs_handle),
@@ -139,7 +133,6 @@ impl Editor {
             language_servers: Map::default(),
             keymaps: Keymaps::default(),
             config,
-            filetype_config: Map::default(),
             caches,
         }
     }
@@ -150,8 +143,6 @@ impl Editor {
             if let Ok(cd) = cd.canonicalize() {
                 self.config_dir = ConfigDirectory::new(&cd);
                 self.syntaxes = Syntaxes::new();
-                self.snippets = Snippets::new(&self.config_dir.global_snippet_file());
-                self.filetype_config = Map::default();
                 self.themes = Themes::new(self.config_dir.theme_dir());
             }
         }
@@ -281,9 +272,15 @@ impl Editor {
             &path,
             self.config.editor.big_file_threshold_bytes,
             &self.working_dir,
-            &self.config.editor.filetype,
+            &self.config.editor.filetype_detect,
         )?;
-        let bid = self.buffers.new(file, self.config.buffer.clone())?;
+        let config = file
+            .filetype()
+            .map(|ft| self.config.filetype.get(ft.as_str()))
+            .flatten()
+            .map(|ftconfig| ftconfig.buffer.clone())
+            .unwrap_or_default();
+        let bid = self.buffers.new(file, config)?;
         run(self, id, Hook::BufCreated(bid));
 
         Ok(bid)
@@ -725,8 +722,6 @@ impl Editor {
     }
 
     pub fn load_filetype(&mut self, ft: &Filetype) {
-        self.load_filetype_config(ft);
-        self.load_filetype_snippets(ft);
         self.load_filetype_syntax(ft);
     }
 
@@ -738,25 +733,21 @@ impl Editor {
         }
     }
 
-    fn load_filetype_snippets(&mut self, ft: &Filetype) {
-        let dir = self.config_dir.filetype_dir();
-        let path = PathBuf::from(ft.as_str()).join(SNIPPETS_FILE);
-        if let Some(path) = dir.find(&path) {
-            let _ = self.snippets.load(ft, &path);
-        }
-    }
+    pub fn get_snippets(&self, id: ClientId) -> Vec<Arc<Choice>> {
+        let win = self.windows.get(id).expect("No window for {id}");
+        let buf = self
+            .buffers
+            .get(win.buffer_id())
+            .expect("No window for {id}");
+        let Some(ft) = buf.filetype.as_ref() else {
+            return vec![];
+        };
 
-    fn load_filetype_config(&mut self, ft: &Filetype) {
-        if self.filetype_config.contains_key(&ft) {
-            return;
-        }
+        let Some(ftconfig) = self.config.filetype.get(ft.as_str()) else {
+            return vec![];
+        };
 
-        let dir = self.config_dir.filetype_dir();
-        let path = PathBuf::from(ft.as_str()).join(CONFIG);
-        if let Some(ftconfig) = dir.find(&path) {
-            let ftconfig = FiletypeConfig::new(&ftconfig);
-            self.filetype_config.insert(ft.clone(), ftconfig);
-        }
+        ftconfig.snippets_as_choices()
     }
 }
 

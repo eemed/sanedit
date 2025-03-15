@@ -1,8 +1,36 @@
-use std::{collections::HashMap, path::Path};
+use std::{cell::OnceCell, sync::Arc};
 
 use serde::{Deserialize, Serialize};
 
-use super::{buffers, KeymapLayer};
+use crate::{
+    common::matcher::Choice,
+    editor::{snippets::Snippet, Map},
+};
+
+use super::buffers;
+
+#[derive(Debug, Serialize, Deserialize)]
+pub(crate) struct ConfigSnippet {
+    trigger: String,
+    body: String,
+
+    #[serde(skip)]
+    loaded: OnceCell<Option<Snippet>>,
+}
+
+impl ConfigSnippet {
+    pub fn get(&self) -> Option<Snippet> {
+        self.loaded
+            .get_or_init(|| match Snippet::new_trigger(&self.body, &self.trigger) {
+                Ok(snip) => Some(snip),
+                Err(e) => {
+                    log::error!("Failed to load snippet: {e}");
+                    None
+                }
+            })
+            .clone()
+    }
+}
 
 #[derive(Debug, Clone, Serialize, Default, Deserialize, DocComment)]
 #[serde(default)]
@@ -14,38 +42,29 @@ pub(crate) struct LSPConfig {
     pub args: Vec<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Default, Deserialize, DocComment)]
-#[serde(default)]
-pub(crate) struct General {
-    /// Used to comment blocks of text
-    pub comment: String,
-}
-
 #[derive(Debug, Serialize, Default, Deserialize, DocComment)]
 #[serde(default)]
 pub(crate) struct FiletypeConfig {
-    pub general: General,
-    pub lsp: LSPConfig,
-    /// Custom buffer options for this filetype, overrides global
+    /// Used to comment blocks of text
+    pub comment: String,
+
+    #[serde(flatten)]
     pub buffer: buffers::BufferConfig,
-    /// Curstom keymap options for this filetype, added to global
-    pub keymaps: HashMap<String, KeymapLayer>,
+
+    pub language_server: LSPConfig,
+
+    pub snippets: Map<String, ConfigSnippet>,
 }
 
 impl FiletypeConfig {
-    pub fn new(path: &Path) -> FiletypeConfig {
-        match Self::try_new(path) {
-            Ok(config) => config,
-            Err(e) => {
-                log::warn!("Failed to load filetype configuration, using default instead: {e}");
-                FiletypeConfig::default()
+    pub fn snippets_as_choices(&self) -> Vec<Arc<Choice>> {
+        let mut choices = vec![];
+        for (_name, snip) in &self.snippets {
+            if let Some(loaded) = snip.get() {
+                choices.push(Choice::from_snippet_trigger(loaded));
             }
         }
-    }
 
-    pub fn try_new(path: &Path) -> anyhow::Result<FiletypeConfig> {
-        let builder = config::Config::builder().add_source(config::File::from(path));
-        let config = builder.build()?.try_deserialize::<FiletypeConfig>()?;
-        Ok(config)
+        choices
     }
 }

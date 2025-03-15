@@ -156,8 +156,6 @@ pub(crate) const COMMANDS: &[Action] = &[
     filetree::focus_filetree,
 
     editor::quit,
-    editor::build_project,
-    editor::run_project,
 
     editor::copy,
     editor::paste,

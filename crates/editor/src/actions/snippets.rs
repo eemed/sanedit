@@ -41,14 +41,9 @@ pub(crate) fn snippet_jump_next(editor: &mut Editor, id: ClientId) -> ActionResu
 #[action("Snippet: Insert new")]
 pub(crate) fn insert_snippet(editor: &mut Editor, id: ClientId) -> ActionResult {
     const MESSAGE: &str = "Insert a snippet";
-    let (win, buf) = win_buf!(editor, id);
-    let filetype = buf.filetype.clone();
-    let snippets: Vec<String> = editor
-        .snippets
-        .all(filetype.as_ref())
-        .into_iter()
-        .map(|(name, _snip)| name)
-        .collect();
+    let snippets = editor.get_snippets(id);
+
+    let (win, _buf) = win_buf!(editor, id);
     let job = MatcherJob::builder(id)
         .options(Arc::new(snippets))
         .handler(Prompt::matcher_result_handler)

@@ -7,6 +7,7 @@ use sanedit_utils::idmap::AsID;
 
 use crate::{
     actions::{
+        cursors::jump_to_ref,
         jobs::{FileOptionProvider, MatchedOptions},
         window::focus,
     },
@@ -456,42 +457,64 @@ pub(crate) fn unsaved_changes<F: Fn(&mut Editor, ClientId) + 'static>(
     focus(editor, id, Focus::Prompt);
 }
 
-#[action("Prompt: Jumps")]
+#[action("Window: Show cursor jumps")]
 fn prompt_jump(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf(id);
-    let _current = win.cursor_jumps.current();
+    let current = win.cursor_jumps.current().map(|(cursor, _)| cursor);
     let mut items: Vec<Arc<Choice>> = vec![];
+    let mut cursors = vec![];
     let mut item = win.cursor_jumps.last();
+
     while let Some((cursor, group)) = item {
         let bid = group.buffer_id();
-        let positions = group
-            .jumps()
-            .iter()
-            .map(|jump| jump.start().original_position().to_string())
-            .collect::<Vec<String>>()
-            .join(", ");
-        let buf = editor.buffers().get(bid).unwrap();
-        let choice = Choice::from_text(format!("{}: {}", buf.name(), positions));
+        let text = {
+            let positions = group
+                .jumps()
+                .iter()
+                .map(|jump| jump.start().original_position().to_string())
+                .collect::<Vec<String>>()
+                .join(", ");
+            let buf = editor.buffers().get(bid).unwrap();
+            let wd = editor.working_dir();
+            let name = match buf.path() {
+                Some(path) => path.strip_prefix(wd).unwrap_or(path).to_string_lossy(),
+                None => buf.name(),
+            };
+            let is_current = current
+                .as_ref()
+                .map(|current| current == &cursor)
+                .unwrap_or(false);
+            let current_indicator = if is_current { "> " } else { "" };
+            format!("{}{} @ {}", current_indicator, name, positions)
+        };
+        let choice = Choice::from_numbered_text(items.len() as u32 + 1, text);
         items.push(choice);
+        cursors.push(cursor.clone());
         item = win.cursor_jumps.prev(&cursor);
     }
 
+    let items = Arc::new(items);
     const PROMPT_MESSAGE: &str = "Goto a jump";
     let job = MatcherJob::builder(id)
-        .options(Arc::new(items))
+        .options(items.clone())
         .handler(Prompt::matcher_result_handler)
         .build();
     editor.job_broker.request_slot(id, PROMPT_MESSAGE, job);
-    let (win, _buf) = editor.win_buf_mut(id);
 
+    let (win, _buf) = editor.win_buf_mut(id);
     win.prompt = Prompt::builder()
         .prompt(PROMPT_MESSAGE)
         .on_confirm(move |editor, id, out| {
-            let num = get!(out.number());
-            let bid = BufferId::from(num);
-            editor.open_buffer(id, bid);
+            let index = get!(out.number()) as usize - 1;
+            let cursor = cursors[index].clone();
+            jump_to_ref(editor, id, cursor);
         })
         .build();
     focus(editor, id, Focus::Prompt);
+    ActionResult::Ok
+}
+
+#[action("Buffer: Show undo points")]
+fn buffer_undo_points(editor: &mut Editor, id: ClientId) -> ActionResult {
     ActionResult::Ok
 }

@@ -9,7 +9,7 @@ use crate::{
 };
 use sanedit_server::ClientId;
 
-use super::{hooks::run, prompt::unsaved_changes, shell, window::focus, ActionResult};
+use super::{hooks::run, prompt::unsaved_changes, window::focus, ActionResult};
 
 #[action("Editor: Quit")]
 fn quit(editor: &mut Editor, id: ClientId) -> ActionResult {
@@ -27,18 +27,6 @@ fn quit(editor: &mut Editor, id: ClientId) -> ActionResult {
     }
 
     ActionResult::Ok
-}
-
-#[action("Editor: Build project")]
-fn build_project(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let cmd = editor.config.editor.build_command.clone();
-    shell::execute(editor, id, true, &cmd)
-}
-
-#[action("Editor: Run project")]
-fn run_project(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let cmd = editor.config.editor.run_command.clone();
-    shell::execute(editor, id, true, &cmd)
 }
 
 #[action("Editor: Copy to clipboard")]

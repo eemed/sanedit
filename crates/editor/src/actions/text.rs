@@ -3,9 +3,10 @@ use std::mem;
 use sanedit_core::{at_start_of_line, is_indent_at_pos};
 
 use crate::editor::{
-    buffers::BufferError,
+    buffers::{Buffer, BufferError},
+    config::Config,
     hooks::Hook,
-    windows::{Focus, Prompt},
+    windows::{Focus, Prompt, Window},
     Editor,
 };
 
@@ -256,77 +257,65 @@ fn align_cursor_columns(editor: &mut Editor, id: ClientId) -> ActionResult {
     ActionResult::Ok
 }
 
+fn get_comment<'a>(config: &'a Config, win: &mut Window, buf: &Buffer) -> Option<&'a str> {
+    let Some(ft) = &buf.filetype else {
+        win.warn_msg("No filetype set");
+        return None;
+    };
+    let Some(ftconfig) = config.filetype.get(ft.as_str()) else {
+        win.warn_msg("No comment string set for filetype");
+        return None;
+    };
+    let comment = &ftconfig.comment;
+    if comment.is_empty() {
+        win.warn_msg("No comment string set for filetype");
+        return None;
+    }
+
+    Some(comment)
+}
+
 #[action("Buffer: Comment lines")]
 fn comment_lines(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = win_buf!(editor, id);
-    let Some(ft) = &buf.filetype else {
-        win.warn_msg("No filetype set");
-        return ActionResult::Skipped;
-    };
-    let Some(ftconfig) = editor.filetype_config.get(ft) else {
-        win.warn_msg("No comment string set for filetype");
-        return ActionResult::Skipped;
-    };
-    let comment = &ftconfig.general.comment;
-    if comment.is_empty() {
-        win.warn_msg("No comment string set for filetype");
-        return ActionResult::Skipped;
+    match get_comment(&editor.config, win, buf) {
+        Some(comment) => {
+            if win.comment_cursor_lines(buf, comment).is_ok() {
+                let hook = Hook::BufChanged(buf.id);
+                run(editor, id, hook);
+            }
+            ActionResult::Ok
+        }
+        None => ActionResult::Skipped,
     }
-
-    if win.comment_cursor_lines(buf, comment).is_ok() {
-        let hook = Hook::BufChanged(buf.id);
-        run(editor, id, hook);
-    }
-
-    ActionResult::Ok
 }
 
 #[action("Buffer: Uncomment lines")]
 fn uncomment_lines(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = win_buf!(editor, id);
-    let Some(ft) = &buf.filetype else {
-        win.warn_msg("No filetype set");
-        return ActionResult::Skipped;
-    };
-    let Some(ftconfig) = editor.filetype_config.get(ft) else {
-        win.warn_msg("No comment string set for filetype");
-        return ActionResult::Skipped;
-    };
-    let comment = &ftconfig.general.comment;
-    if comment.is_empty() {
-        win.warn_msg("No comment string set for filetype");
-        return ActionResult::Skipped;
+    match get_comment(&editor.config, win, buf) {
+        Some(comment) => {
+            if win.uncomment_cursor_lines(buf, comment).is_ok() {
+                let hook = Hook::BufChanged(buf.id);
+                run(editor, id, hook);
+            }
+            ActionResult::Ok
+        }
+        None => ActionResult::Skipped,
     }
-
-    if win.uncomment_cursor_lines(buf, comment).is_ok() {
-        let hook = Hook::BufChanged(buf.id);
-        run(editor, id, hook);
-    }
-
-    ActionResult::Ok
 }
 
 #[action("Buffer: Toggle comment lines")]
 fn toggle_comment_lines(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = win_buf!(editor, id);
-    let Some(ft) = &buf.filetype else {
-        win.warn_msg("No filetype set");
-        return ActionResult::Skipped;
-    };
-    let Some(ftconfig) = editor.filetype_config.get(ft) else {
-        win.warn_msg("No comment string set for filetype");
-        return ActionResult::Skipped;
-    };
-    let comment = &ftconfig.general.comment;
-    if comment.is_empty() {
-        win.warn_msg("No comment string set for filetype");
-        return ActionResult::Skipped;
+    match get_comment(&editor.config, win, buf) {
+        Some(comment) => {
+            if win.toggle_comment_cursor_lines(buf, comment).is_ok() {
+                let hook = Hook::BufChanged(buf.id);
+                run(editor, id, hook);
+            }
+            ActionResult::Ok
+        }
+        None => ActionResult::Skipped,
     }
-
-    if win.toggle_comment_cursor_lines(buf, comment).is_ok() {
-        let hook = Hook::BufChanged(buf.id);
-        run(editor, id, hook);
-    }
-
-    ActionResult::Ok
 }

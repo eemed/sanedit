@@ -1,9 +1,6 @@
 use std::process::Command;
 
-use crate::editor::{
-    windows::{PromptOutput, ShellKind},
-    Editor,
-};
+use crate::editor::{windows::{PromptOutput, WindowManager}, Editor};
 
 use sanedit_server::ClientId;
 
@@ -28,16 +25,15 @@ pub(crate) fn execute(
         return ActionResult::Ok;
     }
 
-    match &win.shell_kind {
-        ShellKind::Tmux { pane } => {
+    match &win.window_manager {
+        WindowManager::Tmux { shell_pane } => {
             let mut job = TmuxShellCommand::new(id, &shell, cmd);
-            if let Some(pane) = pane {
+            if let Some(pane) = shell_pane {
                 job = job.pane(pane.clone());
             }
 
             editor.job_broker.request(job);
         }
-        ShellKind::NonInteractive => run_non_interactive(&shell, cmd),
     }
 
     ActionResult::Ok

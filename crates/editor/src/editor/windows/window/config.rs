@@ -2,6 +2,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::editor::themes::DEFAULT_THEME;
 
+use super::window_manager::WindowManager;
+
 #[derive(Debug, Clone, Serialize, Deserialize, DocComment)]
 #[serde(default)]
 pub(crate) struct WindowConfig {
@@ -25,7 +27,11 @@ pub(crate) struct WindowConfig {
     /// Automatically insert pairs on enter, works only with autoindent
     pub autopair: bool,
 
-    pub new_window_command: String,
+    /// Currently used window manager
+    /// Options:
+    ///     Auto: automatically detect window manager
+    ///     Tmux
+    pub window_manager: WindowManagerConfig,
 }
 
 impl Default for WindowConfig {
@@ -38,7 +44,31 @@ impl Default for WindowConfig {
             highlight_diagnostics: true,
             autoindent: true,
             autopair: true,
-            new_window_command: String::new(),
+            window_manager: WindowManagerConfig::Auto,
+        }
+    }
+}
+
+/// How to open new windows
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub(crate) enum WindowManagerConfig {
+    #[default]
+    Auto,
+    Tmux,
+}
+
+impl WindowManagerConfig {
+    pub fn get(&self) -> WindowManager {
+        match self {
+            // TODO detect
+            WindowManagerConfig::Auto => WindowManager::Tmux { shell_pane: None },
+            WindowManagerConfig::Tmux => WindowManager::Tmux { shell_pane: None },
+        }
+    }
+    pub fn new_window(&self) -> String {
+        match self {
+            WindowManagerConfig::Auto => unreachable!("Window manager still auto"),
+            WindowManagerConfig::Tmux => todo!(),
         }
     }
 }

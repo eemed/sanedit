@@ -1,7 +1,0 @@
-[for-in-loop]
-trigger = "for-in"
-body = """
-for ${2:item} in ${1:collection} {
-	$0
-}
-"""

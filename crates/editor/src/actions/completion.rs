@@ -52,10 +52,7 @@ fn complete_from_syntax(editor: &mut Editor, id: ClientId) -> ActionResult {
         .map(|(compl, desc)| Choice::from_text_with_description(compl, desc))
         .collect();
 
-    let opts: Vec<Arc<Choice>> = opts
-        .into_iter()
-        .chain(editor.snippets.match_options(buf.filetype.as_ref()))
-        .collect();
+    let opts: Vec<Arc<Choice>> = opts.into_iter().chain(editor.get_snippets(id)).collect();
     let job = MatcherJob::builder(id)
         .strategy(MatchStrategy::Prefix)
         .search(word)

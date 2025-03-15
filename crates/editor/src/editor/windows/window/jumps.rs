@@ -118,6 +118,10 @@ impl Jumps {
         self.position = None;
     }
 
+    pub fn get(&mut self, reference: &Ref) -> Option<&JumpGroup> {
+        self.jumps.read_reference(reference)
+    }
+
     pub fn goto(&mut self, reference: Ref) -> Option<&JumpGroup> {
         let group = self.jumps.read_reference(&reference)?;
         self.position = Some(reference);

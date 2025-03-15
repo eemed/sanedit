@@ -257,11 +257,7 @@ fn jump_next_change(editor: &mut Editor, id: ClientId) -> ActionResult {
     ActionResult::Ok
 }
 
-fn find_prev_jump(
-    win: &Window,
-    buffers: &Buffers,
-    original_bid: BufferId,
-) -> Option<(Ref, BufferId)> {
+fn find_prev_jump(win: &Window, buffers: &Buffers, original_bid: BufferId) -> Option<Ref> {
     // for example iter backwards
     // until mark is Found
     // or
@@ -290,7 +286,7 @@ fn find_prev_jump(
             None => cursor_jumps.last(),
         }
     };
-    let mut previous = None;
+    let mut previous: Option<(Ref, BufferId)> = None;
 
     // Skip to if this is current position
     if let Some((cursor, group)) = &item {
@@ -310,15 +306,15 @@ fn find_prev_jump(
             });
 
             if found {
-                return Some((cursor, gbid));
+                return Some(cursor);
             }
         }
 
-        if let Some((_, pbid)) = &previous {
+        if let Some((pcursor, pbid)) = &previous {
             // We have already looped to next buffer
             // and current entry is also in another buffer
             if *pbid != original_bid && *pbid != gbid {
-                return previous;
+                return Some(pcursor.clone());
             }
         }
 
@@ -328,20 +324,16 @@ fn find_prev_jump(
     }
 
     // If buffer changed goto previous buffer
-    if let Some((_, pbid)) = &previous {
+    if let Some((pcursor, pbid)) = &previous {
         if *pbid != original_bid {
-            return previous;
+            return Some(pcursor.clone());
         }
     }
 
     None
 }
 
-fn find_next_jump(
-    cursor_jumps: &Jumps,
-    buffers: &Buffers,
-    original_bid: BufferId,
-) -> Option<(Ref, BufferId)> {
+fn find_next_jump(cursor_jumps: &Jumps, buffers: &Buffers, original_bid: BufferId) -> Option<Ref> {
     // for example iter backwards
     // until mark is Found
     // or
@@ -353,7 +345,7 @@ fn find_next_jump(
     // but skip all other deleted markers
 
     let (mut cursor, _) = cursor_jumps.current()?;
-    let mut previous = None;
+    let mut previous: Option<(Ref, BufferId)> = None;
 
     while let Some((gcursor, group)) = cursor_jumps.next(&cursor) {
         cursor = gcursor;
@@ -368,24 +360,24 @@ fn find_next_jump(
             });
 
             if found {
-                return Some((cursor, gbid));
+                return Some(cursor);
             }
         }
 
-        if let Some((_, pbid)) = &previous {
+        if let Some((pcursor, pbid)) = &previous {
             // We have went to next buffer
             // and current entry is also in another buffer
             if *pbid != original_bid && *pbid != gbid {
-                return previous;
+                return Some(pcursor.clone());
             }
         }
 
         previous = Some((cursor.clone(), gbid));
     }
 
-    if let Some((_, pbid)) = &previous {
+    if let Some((pcursor, pbid)) = &previous {
         if *pbid != original_bid {
-            return previous;
+            return Some(pcursor.clone());
         }
     }
 
@@ -396,27 +388,24 @@ fn find_next_jump(
 fn jump_prev(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = win_buf!(editor, id);
     let bid = buf.id;
-    let (cursor, next_bid) = getf!(find_prev_jump(&win, &editor.buffers, bid));
-
-    if next_bid != bid {
-        run(editor, id, Hook::BufLeave(bid));
-    }
-
-    let (win, _buf) = win_buf!(editor, id);
-    let buf = getf!(editor.buffers.get(next_bid));
-    win.goto_cursor_jump(cursor, buf);
-    if next_bid != bid {
-        run(editor, id, Hook::BufEnter(next_bid));
-    }
-    run(editor, id, Hook::CursorMoved);
-    ActionResult::Ok
+    let cursor = getf!(find_prev_jump(&win, &editor.buffers, bid));
+    jump_to_ref(editor, id, cursor)
 }
 
 #[action("Cursors: Goto next jump")]
 fn jump_next(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = win_buf!(editor, id);
     let bid = buf.id;
-    let (cursor, next_bid) = getf!(find_next_jump(&win.cursor_jumps, &editor.buffers, bid));
+    let cursor = getf!(find_next_jump(&win.cursor_jumps, &editor.buffers, bid));
+    jump_to_ref(editor, id, cursor)
+}
+
+/// Jump to reference
+pub(crate) fn jump_to_ref(editor: &mut Editor, id: ClientId, cursor: Ref) -> ActionResult {
+    let (win, buf) = win_buf!(editor, id);
+    let bid = buf.id;
+    let group = getf!(win.cursor_jumps.get(&cursor));
+    let next_bid = group.buffer_id();
 
     if next_bid != bid {
         run(editor, id, Hook::BufLeave(bid));

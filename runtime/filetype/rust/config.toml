@@ -1,6 +1,0 @@
-[general]
-comment = "// "
-
-[lsp]
-command = "rust-analyzer"
-args = []

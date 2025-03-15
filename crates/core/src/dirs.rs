@@ -14,7 +14,6 @@ pub const SANE_DIR: &str = "sanedit";
 pub const FILETYPE_DIR: &str = "filetype";
 pub const THEME_DIR: &str = "themes";
 pub const CONFIG: &str = "config.toml";
-pub const SNIPPETS_FILE: &str = "snippets.toml";
 
 #[cfg(unix)]
 pub const GLOBAL: &str = "/usr/share/sanedit";
@@ -103,9 +102,6 @@ impl ConfigDirectory {
         &self.dir
     }
 
-    pub fn global_snippet_file(&self) -> PathBuf {
-        self.dir.join(SNIPPETS_FILE)
-    }
 
     pub fn filetype_dir(&self) -> Directory {
         let global = PathBuf::from(GLOBAL).join(FILETYPE_DIR);

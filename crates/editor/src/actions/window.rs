@@ -193,7 +193,7 @@ fn cancel(editor: &mut Editor, id: ClientId) -> ActionResult {
 #[action("Window: New")]
 fn new_window(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf(id);
-    let command = win.config.new_window_command.clone();
+    let command = win.config.window_manager.new_window();
     shell::execute(editor, id, false, &command)
 }
 
@@ -223,9 +223,9 @@ fn status(editor: &mut Editor, id: ClientId) -> ActionResult {
         .map(|ft| {
             let lsp = editor.language_servers.get(ft)?;
             let name = lsp.server_name();
-            let config = editor.filetype_config.get(ft)?;
-            let command = config.lsp.command.as_str();
-            let args = config.lsp.args.clone();
+            let config = editor.config.filetype.get(ft.as_str())?;
+            let command = config.language_server.command.as_str();
+            let args = config.language_server.args.clone();
             Some((name, command, args))
         })
         .flatten()
@@ -237,6 +237,9 @@ fn status(editor: &mut Editor, id: ClientId) -> ActionResult {
     let working_dir = editor.working_dir();
     let shell = &editor.config.editor.shell;
     let config_dir = editor.config_dir.root();
+    let istyle = &buf.config.indent_kind.as_str();
+    let iamount = &buf.config.indent_amount;
+    let eol = &buf.config.eol.as_str();
 
     let text = format!(
         "\
@@ -246,6 +249,9 @@ fn status(editor: &mut Editor, id: ClientId) -> ActionResult {
         Buffer:\n  \
         File: {file}\n  \
         Filetype: {ft}\n  \
+        Indent style: {istyle}\n\
+        Indent amount: {iamount}\n\
+        End of line: {eol}\n\
         Size: {bufsize}\n  \
         Edits made: {edits}\n\
         \n\

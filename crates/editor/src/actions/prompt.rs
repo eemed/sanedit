@@ -3,7 +3,7 @@ mod commands;
 use std::{
     cmp::min,
     sync::Arc,
-    time::{Duration, Instant, SystemTime},
+    time::{Duration, Instant},
 };
 
 use chrono::{DateTime, Local, TimeDelta};
@@ -537,12 +537,7 @@ fn buffer_snapshots(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (_win, buf) = win_buf!(editor, id);
     let now = Instant::now();
     let local = Local::now();
-    let on_snapshot = !buf.is_modified()
-        || buf
-            .last_edit()
-            .as_ref()
-            .map(|edit| edit.changes.is_undo() || edit.changes.is_redo())
-            .unwrap_or(false);
+    let on_snapshot = buf.on_undopoint();
     let current = if on_snapshot {
         buf.snapshots().current()
     } else {

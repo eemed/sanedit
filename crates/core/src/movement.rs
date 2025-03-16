@@ -357,3 +357,16 @@ pub fn prev_grapheme_on_line(slice: &PieceTreeSlice, pos: u64) -> u64 {
 
     pos
 }
+
+pub fn find_prev_whitespace(slice: &PieceTreeSlice, pos: u64) -> Option<u64> {
+    let mut graphemes = slice.graphemes_at(pos);
+
+    while let Some(g) = graphemes.prev() {
+        let cat = grapheme_category(&g);
+        if cat == GraphemeCategory::Whitespace {
+            return Some(g.start());
+        }
+    }
+
+    None
+}

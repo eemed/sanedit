@@ -25,7 +25,8 @@ use sanedit_buffer::{Mark, MarkResult};
 use sanedit_core::{
     grapheme_category, indent_at_line,
     movement::{
-        end_of_line, next_grapheme_boundary, next_line_end, prev_grapheme_boundary, start_of_line,
+        end_of_line, find_prev_whitespace, next_grapheme_boundary, next_line_end,
+        prev_grapheme_boundary, start_of_line,
     },
     selection_first_chars_of_lines, selection_line_ends, selection_line_starts, width_at_pos,
     BufferRange, Change, Changes, Cursor, DisplayOptions, GraphemeCategory, Locations, Range,
@@ -34,7 +35,7 @@ use sanedit_messages::{
     key::KeyEvent,
     redraw::{Popup, PopupMessage, Severity, Size, StatusMessage},
 };
-use sanedit_utils::ring::Ref;
+use sanedit_utils::{ring::Ref, sorted_vec::SortedVec};
 
 use crate::{
     common::change::{newline_autopair, newline_empty_line, newline_indent},
@@ -1086,12 +1087,30 @@ impl Window {
 
     pub fn align_cursors(&mut self, buf: &mut Buffer) -> Result<()> {
         let slice = buf.slice(..);
-        let mut align: BTreeMap<u64, Vec<u64>> = BTreeMap::default();
+        // Cursor positions per line,
+        // entries are line index: (cursor position, whitespace start position)
+        //
+        // We want to add whitespaces next to other whitespaces. So this
+        // can align right or left depending on the cursor position
+        //
+        // ||abba                  |    |abba
+        // |  |babba        =>     |    |babba
+        // |    |chabba            |    |chabba
+        //
+        // |abba|                  |           abba|
+        // |  babbatwo|        =>  |       babbatwo|
+        // |    chabbathree|       |    chabbathree|
+        //
+        let mut align: BTreeMap<u64, SortedVec<(u64, u64)>> = BTreeMap::default();
 
         for cursor in self.cursors().iter() {
             let lstart = start_of_line(&slice, cursor.pos());
             let entry = align.entry(lstart);
-            entry.or_default().push(cursor.pos());
+            let line = slice.slice(lstart..cursor.pos());
+            let insert = find_prev_whitespace(&line, line.len())
+                .map(|pos| pos)
+                .unwrap_or(lstart);
+            entry.or_default().push((cursor.pos(), insert));
         }
 
         let most_on_one_line = align
@@ -1107,20 +1126,21 @@ impl Window {
         for i in 0..most_on_one_line {
             // Find the furthest cursor
             let mut furthest = 0;
-            for (pline, cursors) in &align {
-                if let Some(pos) = cursors.get(i) {
-                    let dist = *pos - *pline;
+            for (line_start, cursors) in &align {
+                if let Some((pos, _)) = cursors.get(i) {
+                    let added = align_added.entry(*line_start).or_default();
+
+                    let dist = *pos - *line_start + *added;
                     furthest = max(furthest, dist);
                 }
             }
 
-            for (pline, cursors) in &align {
-                if let Some(pos) = cursors.get(i) {
-                    let added = align_added.entry(*pline).or_default();
-
-                    let dist = *pos - *pline;
-                    let pad = " ".repeat((furthest.saturating_sub(dist + *added)) as usize);
-                    let change = Change::insert(*pos, pad.as_bytes());
+            for (line_start, cursors) in &align {
+                if let Some((pos, insert)) = cursors.get(i) {
+                    let added = align_added.entry(*line_start).or_default();
+                    let dist = *pos - *line_start + *added;
+                    let pad = " ".repeat((furthest - dist) as usize);
+                    let change = Change::insert(*insert, pad.as_bytes());
 
                     *added += pad.len() as u64;
 

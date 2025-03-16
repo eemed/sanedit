@@ -164,6 +164,16 @@ impl Buffer {
             && change.needs_undo_point(last.as_ref().map(|edit| &edit.changes))
     }
 
+    pub fn on_undopoint(&self) -> bool {
+        let on_save = !self.is_modified && self.total_changes_made != 0;
+        let on_previous_point = self
+            .last_edit
+            .as_ref()
+            .map(|edit| edit.changes.is_undo() || edit.changes.is_redo())
+            .unwrap_or(false);
+        on_save || on_previous_point
+    }
+
     pub fn apply_changes(&mut self, changes: &Changes) -> Result<ChangeResult> {
         ensure!(!self.read_only, BufferError::ReadOnly);
 
@@ -171,17 +181,7 @@ impl Buffer {
         let rollback = self.ro_view();
         let snapshot = self.snapshots.current();
         let needs_undo = self.needs_undo_point(changes);
-        let did_undo = self
-            .last_edit
-            .as_ref()
-            .map(|edit| edit.changes.is_undo())
-            .unwrap_or(false);
-        let forks = did_undo && !changes.is_undo() && !changes.is_redo();
-        // let last_created_snapshot = self
-        //     .last_edit
-        //     .as_ref()
-        //     .map(|edit| edit.created_snapshot).unwrap_or(false);
-        // let forks = last_created_snapshot && !changes.is_undo() && !changes.is_redo();
+        let forks = self.on_undopoint() && !changes.is_undo() && !changes.is_redo();
 
         if forks {
             result.forked_snapshot = snapshot;
@@ -218,7 +218,9 @@ impl Buffer {
     fn apply_changes_impl(&mut self, changes: &Changes) -> Result<Option<SnapshotId>> {
         if changes.is_undo_jump() {
             let index = changes.undo_jump_index();
-            self.snapshots.goto_get(index).ok_or(BufferError::NoSuchSnapshot)?;
+            self.snapshots
+                .goto_get(index)
+                .ok_or(BufferError::NoSuchSnapshot)?;
             self.restore_snapshot(index)?;
             Ok(Some(index))
         } else if changes.is_undo() {

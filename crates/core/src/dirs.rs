@@ -102,7 +102,6 @@ impl ConfigDirectory {
         &self.dir
     }
 
-
     pub fn filetype_dir(&self) -> Directory {
         let global = PathBuf::from(GLOBAL).join(FILETYPE_DIR);
         let local = self.dir.join(FILETYPE_DIR);

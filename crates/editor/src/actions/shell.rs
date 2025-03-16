@@ -1,6 +1,9 @@
 use std::process::Command;
 
-use crate::editor::{windows::{PromptOutput, WindowManager}, Editor};
+use crate::editor::{
+    windows::{PromptOutput, WindowManager},
+    Editor,
+};
 
 use sanedit_server::ClientId;
 

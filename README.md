@@ -1,4 +1,4 @@
-![logo](https://github.com/eemed/sanedit/additional/sanedit-title.svg "SanEdit")
+![SanEdit Logo](https://github.com/user-attachments/assets/b75335be-d847-4ca3-a730-7314db4ee031)
 
 ---
 

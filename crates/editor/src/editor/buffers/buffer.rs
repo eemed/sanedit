@@ -177,6 +177,11 @@ impl Buffer {
             .map(|edit| edit.changes.is_undo())
             .unwrap_or(false);
         let forks = did_undo && !changes.is_undo() && !changes.is_redo();
+        // let last_created_snapshot = self
+        //     .last_edit
+        //     .as_ref()
+        //     .map(|edit| edit.created_snapshot).unwrap_or(false);
+        // let forks = last_created_snapshot && !changes.is_undo() && !changes.is_redo();
 
         if forks {
             result.forked_snapshot = snapshot;
@@ -211,7 +216,12 @@ impl Buffer {
     }
 
     fn apply_changes_impl(&mut self, changes: &Changes) -> Result<Option<SnapshotId>> {
-        if changes.is_undo() {
+        if changes.is_undo_jump() {
+            let index = changes.undo_jump_index();
+            self.snapshots.goto_get(index).ok_or(BufferError::NoSuchSnapshot)?;
+            self.restore_snapshot(index)?;
+            Ok(Some(index))
+        } else if changes.is_undo() {
             let snapshot = self.undo()?;
             Ok(Some(snapshot))
         } else if changes.is_redo() {
@@ -224,20 +234,29 @@ impl Buffer {
         }
     }
 
-    fn undo(&mut self) -> Result<SnapshotId> {
-        let node = self.snapshots.undo().ok_or(BufferError::NoMoreUndoPoints)?;
+    fn restore_snapshot(&mut self, snapshot: SnapshotId) -> Result<()> {
+        let node = self
+            .snapshots
+            .get(snapshot)
+            .ok_or(BufferError::NoSuchSnapshot)?;
         let restored = node.id;
         self.is_modified = restored != self.last_saved_snapshot;
-        self.pt.restore(node.snapshot);
-        Ok(restored)
+        self.pt.restore(node.snapshot.clone());
+        Ok(())
     }
 
-    pub fn redo(&mut self) -> Result<SnapshotId> {
+    fn undo(&mut self) -> Result<SnapshotId> {
+        let node = self.snapshots.undo().ok_or(BufferError::NoMoreUndoPoints)?;
+        let id = node.id;
+        self.restore_snapshot(id)?;
+        Ok(id)
+    }
+
+    fn redo(&mut self) -> Result<SnapshotId> {
         let node = self.snapshots.redo().ok_or(BufferError::NoMoreRedoPoints)?;
-        let restored = node.id;
-        self.is_modified = restored != self.last_saved_snapshot;
-        self.pt.restore(node.snapshot);
-        Ok(restored)
+        let id = node.id;
+        self.restore_snapshot(id)?;
+        Ok(id)
     }
 
     pub fn set_path<P: AsRef<Path>>(&mut self, path: P) {
@@ -355,6 +374,9 @@ pub(crate) enum BufferError {
 
     #[error("No more undo points")]
     NoMoreUndoPoints,
+
+    #[error("Snapshot does not exist")]
+    NoSuchSnapshot,
 }
 
 #[derive(Debug)]

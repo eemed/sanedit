@@ -1,13 +1,19 @@
 mod commands;
 
-use std::{cmp::min, sync::Arc};
+use std::{
+    cmp::min,
+    sync::Arc,
+    time::{Duration, Instant, SystemTime},
+};
 
+use chrono::{DateTime, Local, TimeDelta};
 use sanedit_messages::ClientMessage;
 use sanedit_utils::idmap::AsID;
 
 use crate::{
     actions::{
         cursors::jump_to_ref,
+        hooks::run,
         jobs::{FileOptionProvider, MatchedOptions},
         window::focus,
     },
@@ -514,7 +520,74 @@ fn prompt_jump(editor: &mut Editor, id: ClientId) -> ActionResult {
     ActionResult::Ok
 }
 
-#[action("Buffer: Show undo points")]
-fn buffer_undo_points(editor: &mut Editor, id: ClientId) -> ActionResult {
+fn timestamp_to_string(local: &DateTime<Local>, since: Duration) -> String {
+    let Ok(delta) = TimeDelta::from_std(since) else {
+        return "<no-time>".into();
+    };
+
+    let Some(time) = local.checked_sub_signed(delta) else {
+        return "<no-time>".into();
+    };
+
+    time.format("%H:%M:%S").to_string()
+}
+
+#[action("Buffer: Show snapshots")]
+fn buffer_snapshots(editor: &mut Editor, id: ClientId) -> ActionResult {
+    let (_win, buf) = win_buf!(editor, id);
+    let now = Instant::now();
+    let local = Local::now();
+    let on_snapshot = !buf.is_modified()
+        || buf
+            .last_edit()
+            .as_ref()
+            .map(|edit| edit.changes.is_undo() || edit.changes.is_redo())
+            .unwrap_or(false);
+    let current = if on_snapshot {
+        buf.snapshots().current()
+    } else {
+        None
+    };
+
+    let nodes = buf.snapshots().nodes();
+    let nodes_len = nodes.len();
+    let snapshots: Vec<Arc<Choice>> = nodes
+        .iter()
+        .map(|snapshot| {
+            let since = now.duration_since(snapshot.timestamp.clone());
+            let ts = timestamp_to_string(&local, since);
+            let is_current = current.map(|c| c == snapshot.id).unwrap_or(false);
+            let text = if is_current {
+                format!("> Snapshot at {ts}")
+            } else {
+                format!("Snapshot at {ts}")
+            };
+            // Reverse order using numbering
+            Choice::from_numbered_text((nodes_len - snapshot.id) as u32, text)
+        })
+        .collect();
+
+    let items = Arc::new(snapshots);
+    const PROMPT_MESSAGE: &str = "Goto a undopoint";
+    let job = MatcherJob::builder(id)
+        .options(items.clone())
+        .handler(Prompt::matcher_result_handler)
+        .build();
+    editor.job_broker.request_slot(id, PROMPT_MESSAGE, job);
+
+    let (win, _buf) = editor.win_buf_mut(id);
+    win.prompt = Prompt::builder()
+        .prompt(PROMPT_MESSAGE)
+        .on_confirm(move |editor, id, out| {
+            let snapshot = nodes_len - get!(out.number()) as usize;
+            let (win, buf) = win_buf!(editor, id);
+            if win.undo_jump(buf, snapshot).is_ok() {
+                let hook = Hook::BufChanged(buf.id);
+                run(editor, id, hook);
+                run(editor, id, Hook::CursorMoved);
+            }
+        })
+        .build();
+    focus(editor, id, Focus::Prompt);
     ActionResult::Ok
 }

@@ -192,6 +192,7 @@ pub(crate) const COMMANDS: &[Action] = &[
     prompt::change_working_dir,
     // prompt::grep,
     prompt::command_palette,
+    prompt::buffer_snapshots,
 
     search::search_forward,
     search::search_backward,

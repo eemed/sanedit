@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use sanedit_buffer::{Mark, PieceTreeView};
 
 use crate::editor::windows::Cursors;
@@ -25,6 +27,20 @@ impl Snapshots {
             current: None,
             snapshots: vec![],
         }
+    }
+
+    pub fn nodes(&self) -> &[SnapshotNode] {
+        &self.snapshots
+    }
+
+    pub fn get(&mut self, id: SnapshotId) -> Option<&SnapshotNode> {
+        self.snapshots.get(id)
+    }
+
+    pub fn goto_get(&mut self, id: SnapshotId) -> Option<&SnapshotNode> {
+        let node = self.snapshots.get(id)?;
+        self.current = Some(id);
+        Some(node)
     }
 
     /// Remove current snapshot called in case something went wrong when
@@ -62,11 +78,11 @@ impl Snapshots {
         node.previous.iter().max().cloned()
     }
 
-    pub fn undo(&mut self) -> Option<SnapshotNode> {
+    pub fn undo(&mut self) -> Option<&SnapshotNode> {
         let latest = self.undo_pos()?;
         let node = self.snapshots.get(latest)?;
         self.current = Some(node.id);
-        node.clone().into()
+        node.into()
     }
 
     fn redo_pos(&self) -> Option<SnapshotId> {
@@ -74,11 +90,11 @@ impl Snapshots {
         node.next.iter().max().cloned()
     }
 
-    pub fn redo(&mut self) -> Option<SnapshotNode> {
+    pub fn redo(&mut self) -> Option<&SnapshotNode> {
         let latest = self.redo_pos()?;
         let node = self.snapshots.get(latest)?;
         self.current = Some(node.id);
-        node.clone().into()
+        node.into()
     }
 
     pub fn aux_mut(&mut self, id: SnapshotId) -> Option<&mut SnapshotAux> {
@@ -120,6 +136,8 @@ impl Snapshots {
 pub(crate) struct SnapshotNode {
     pub(crate) id: SnapshotId,
     pub(crate) snapshot: PieceTreeView,
+    pub(crate) timestamp: Instant,
+
     previous: Vec<SnapshotId>,
     next: Vec<SnapshotId>,
 
@@ -132,6 +150,7 @@ impl SnapshotNode {
         SnapshotNode {
             id,
             snapshot,
+            timestamp: Instant::now(),
             previous: vec![],
             next: vec![],
 

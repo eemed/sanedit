@@ -30,6 +30,15 @@ impl Changes {
         }
     }
 
+    /// Jump to a undo index
+    pub fn undo_jump(index: usize) -> Changes {
+        let index = index as u64;
+        Changes {
+            changes: SortedVec::from(Change::remove(Range::new(index, index))),
+            flags: flags::UNDO_JUMP,
+        }
+    }
+
     pub fn undo() -> Changes {
         Changes {
             changes: SortedVec::new(),
@@ -45,11 +54,19 @@ impl Changes {
     }
 
     pub fn is_undo(&self) -> bool {
-        self.flags & flags::UNDO != 0
+        self.flags & flags::UNDO == flags::UNDO
+    }
+
+    pub fn is_undo_jump(&self) -> bool {
+        self.flags & flags::UNDO_JUMP == flags::UNDO_JUMP
     }
 
     pub fn is_redo(&self) -> bool {
-        self.flags & flags::REDO != 0
+        self.flags & flags::REDO == flags::REDO
+    }
+
+    pub fn undo_jump_index(&self) -> usize {
+        self.changes[0].range.start as usize
     }
 
     /// Apply the change and return whether anything changed.
@@ -521,6 +538,7 @@ mod flags {
     pub(crate) const UNDO: u8 = 1 << 0;
     pub(crate) const REDO: u8 = 1 << 1;
     pub(crate) const DISABLE_UNDO_POINT_CREATION: u8 = 1 << 2;
+    pub(crate) const UNDO_JUMP: u8 = UNDO | 1 << 3;
 }
 
 #[derive(Debug, Clone)]

@@ -582,6 +582,49 @@ impl Window {
         cursors
     }
 
+    pub fn undo_jump(&mut self, buf: &mut Buffer, snapshot: SnapshotId) -> Result<()> {
+        self.last_edit_jump = None;
+        let aux = {
+            let cursors = buf
+                .last_edit()
+                .map(|edit| Self::cursors_from_changes(&edit.changes))
+                .unwrap_or(Cursors::default());
+            let mark = cursors.mark_first(buf);
+
+            SnapshotAux {
+                cursors,
+                view_offset: self.view.start(),
+                change_start: mark.into(),
+            }
+        };
+
+        let change = match buf.apply_changes(&Changes::undo_jump(snapshot)) {
+            Ok(res) => res,
+            Err(e) => {
+                self.warn_msg(&format!("{e}"));
+                return Err(e);
+            }
+        };
+        let created = change.created_snapshot;
+        let restored = change.restored_snapshot;
+
+        if let Some(id) = created {
+            *buf.snapshot_aux_mut(id).unwrap() = aux;
+        }
+
+        if let Some(restored) = restored {
+            if let Some(data) = buf.snapshot_aux(restored) {
+                self.restore(data, Some(buf));
+            } else {
+                self.reload();
+            }
+        }
+
+        self.invalidate();
+        self.view_to_cursor(buf);
+        Ok(())
+    }
+
     pub fn undo(&mut self, buf: &mut Buffer) -> Result<()> {
         // Nothing -> insert h -> SNAP A -> insert ello
         //

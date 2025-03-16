@@ -22,5 +22,5 @@ More basic features include:
 
 ## Building and running
 
-The project is built using a [Taskfile](https://taskfile.dev/installation/), install it and use the command `task` to see all available commands and their descriptions for the project.
+The project is built using a [Taskfile](https://taskfile.dev/installation/), install it and use the command `task` to see all available commands and their descriptions.
 

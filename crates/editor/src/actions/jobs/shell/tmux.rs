@@ -57,16 +57,18 @@ impl Job for TmuxShellCommand {
             // using single quotes
             let escaped_command = escape_cmd(&command);
 
-            match pane {
-                Some(pane) => {
-                    reset_pane(&pane, &shell)?;
-                    run_in_pane(&pane, &shell, &escaped_command)?;
-                }
-                None => {
-                    let cwin = open_pane(&shell)?;
-                    run_in_pane(&cwin, &shell, &escaped_command)?;
-                    ctx.send(cwin);
-                }
+            let exists = pane
+                .as_ref()
+                .map(|pane| pane_exists(&pane, &shell))
+                .unwrap_or(false);
+            if exists {
+                let pane = pane.unwrap();
+                reset_pane(&pane, &shell)?;
+                run_in_pane(&pane, &shell, &escaped_command)?;
+            } else {
+                let cwin = open_pane(&shell)?;
+                run_in_pane(&cwin, &shell, &escaped_command)?;
+                ctx.send(cwin);
             }
 
             Ok(())
@@ -110,6 +112,30 @@ fn run_in_pane(win: &TmuxPane, shell: &str, cmd: &str) -> anyhow::Result<()> {
         ])
         .output()?;
     Ok(())
+}
+
+fn pane_exists(win: &TmuxPane, shell: &str) -> bool {
+    let output = Command::new(shell)
+        .args([
+            "-c",
+            &format!(
+                "tmux display-message -pt %{} '#{{window_active}}'",
+                win.pane
+            ),
+        ])
+        .output();
+
+    if output.is_err() {
+        return false;
+    }
+    let output = output.unwrap();
+    let string = std::str::from_utf8(&output.stdout);
+
+    if string.is_err() {
+        return false;
+    }
+
+    string.unwrap().trim() == "1"
 }
 
 fn reset_pane(win: &TmuxPane, shell: &str) -> anyhow::Result<()> {

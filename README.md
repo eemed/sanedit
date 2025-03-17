@@ -6,21 +6,58 @@ SanEdit is a UTF-8 text editor inspired by [Neovim](https://neovim.io/), [Emacs]
 
 ## Features
 
-* Large file support (any size should work)
-* Syntax highlighting
+* Large file support (buffer implementation supports any size)
 * Language server protocol support
+    * Hover information
+    * Go to definition
+    * Find references
+    * Completion
+    * Code diagnostics
+    * Rename variable
+    * Format
+    * Code actions
 * Multiple cursors
-* Snippets
-* Comment block
+* Filetree
+* Syntax highlighting using PEGs
+* Terminal UI
+* Modal and non-modal editing using configuration
 
 More basic features include:
 
-* Completion
-* Search
+* Snippets
+* Comment block
+* Search text
 * File picker
 * Undo, redo
+* Jumps
+    * to last change
+    * to last cursor position
+    * to last file
+* Align cursors
+* Automatic indentation
+* Automatic pair insertion on enter
+
+## Planned features
+
+* GUI using non web technologies
+* Convert regex syntax to PEG to support regex search and grep
+* JIT compiler for PEG patterns to improve performance
+* More syntax highlighted languages
 
 ## Building and running
 
-The project is built using a [Taskfile](https://taskfile.dev/installation/), install it and use the command `task` to see all available commands and their descriptions.
+The project is built using a [Taskfile](https://taskfile.dev/installation/) and [Cargo](https://doc.rust-lang.org/cargo/getting-started/installation.html), install them and use the command `task` to see all available commands and their descriptions.
 
+To quickly run the project in the repo run `task run`.
+
+## Why
+
+There are more than enough editors out there and this one was born because of my
+initial interest in text buffer implementations. Most prominent question was why
+no editor could support large files in any meaningful way. Logically I also
+created an editor to go with the buffer implementation.
+
+## More information
+
+Checkout the repositories docs folder for scribblings on why certain decisions
+were made or how they are implemented.

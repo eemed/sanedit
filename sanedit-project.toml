@@ -1,4 +1,0 @@
-[editor]
-build_command = "task build"
-run_command = "task run"
-ignore_directories = [".git", "target"]

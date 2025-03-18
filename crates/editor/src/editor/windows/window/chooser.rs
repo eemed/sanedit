@@ -77,6 +77,10 @@ impl Chooser {
         self.choices.get(sel)
     }
 
+    pub fn len(&self) -> usize {
+        self.choices.len()
+    }
+
     /// Returns less than or equal to count matches around selection,
     /// selection is positioned at the selected_offset index.
     pub fn matches_window(&self, count: usize, offset: usize) -> Vec<&ScoredChoice> {

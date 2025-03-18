@@ -15,7 +15,15 @@ pub(crate) struct TokioRuntime {
 impl TokioRuntime {
     pub fn new(handle: EditorHandle) -> TokioRuntime {
         TokioRuntime {
-            tokio: Runtime::new().unwrap(),
+            // TODO just make sure everything works
+            tokio: tokio::runtime::Builder::new_multi_thread()
+                .worker_threads(1)
+                .on_thread_start(|| {
+                    log::info!("Thread stater");
+                })
+                .enable_all()
+                .build()
+                .unwrap(),
             handle,
         }
     }

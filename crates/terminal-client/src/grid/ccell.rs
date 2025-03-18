@@ -94,6 +94,20 @@ pub(crate) fn into_cells_with_theme_with(string: &str, style: &Style) -> Vec<CCe
     cells
 }
 
+pub(crate) fn pad_line_left(cells: &mut Vec<CCell>, style: Style, width: usize) {
+    let left = width.saturating_sub(cells.len());
+    let mut line = Vec::with_capacity(width);
+
+    for _ in 0..left {
+        line.push(CCell::with_style(style));
+    }
+
+    let items = std::mem::take(cells);
+    line.extend(items);
+
+    *cells = line;
+}
+
 pub(crate) fn pad_line(cells: &mut Vec<CCell>, style: Style, width: usize) {
     while cells.len() < width {
         cells.push(CCell::with_style(style));

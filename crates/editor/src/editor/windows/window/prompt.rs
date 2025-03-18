@@ -300,6 +300,10 @@ impl Prompt {
         self.chooser.add(opts);
     }
 
+    pub fn total_choices(&self) -> usize {
+        self.chooser.len()
+    }
+
     pub fn options_window(&self, count: usize, offset: usize) -> Vec<&ScoredChoice> {
         self.chooser.matches_window(count, offset)
     }

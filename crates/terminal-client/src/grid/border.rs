@@ -100,10 +100,11 @@ pub(crate) fn draw_side_border_with_style<'a, 'b, F: Fn(usize, usize) -> Style>(
     cells
 }
 
-pub(crate) fn draw_border_with_style<'a, 'b, F: Fn(usize, usize) -> Style>(
+fn draw_border_impl<'a, 'b, F: Fn(usize, usize) -> Style>(
     border: Border,
     get_style: F,
     mut cells: &'a mut [&'b mut [CCell]],
+    strip: bool,
 ) -> &'a mut [&'b mut [CCell]] {
     let size = size(cells);
 
@@ -164,13 +165,39 @@ pub(crate) fn draw_border_with_style<'a, 'b, F: Fn(usize, usize) -> Style>(
     }
     .into();
 
+    if strip {
+        strip_border(cells);
+    }
+    cells
+}
+
+pub(crate) fn strip_border<'a, 'b>(mut cells: &'a mut [&'b mut [CCell]]) -> &'a mut [&'b mut [CCell]]{
+    let size = size(cells);
+
     cells = &mut cells[1..size.height - 1];
     for l in cells.iter_mut() {
         let line = std::mem::take(l);
         let width = line.len();
         *l = &mut line[1..width - 1];
     }
+
     cells
+}
+
+pub(crate) fn draw_border_no_strip<'a, 'b>(
+    border: Border,
+    style: Style,
+    cells: &'a mut [&'b mut [CCell]],
+) {
+    draw_border_impl(border, |_, _| style, cells, false);
+}
+
+pub(crate) fn draw_border_with_style<'a, 'b, F: Fn(usize, usize) -> Style>(
+    border: Border,
+    get_style: F,
+    cells: &'a mut [&'b mut [CCell]],
+) -> &'a mut [&'b mut [CCell]] {
+    draw_border_impl(border, get_style, cells, true)
 }
 
 /// Draw border and return inner cells to draw to

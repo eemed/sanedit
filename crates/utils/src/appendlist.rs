@@ -99,7 +99,10 @@ pub struct Writer<T> {
 
 impl<T: Copy> Writer<T> {
     pub fn append_slice(&self, items: &[T]) -> AppendResult {
-        let len = self.list.len.load(Ordering::Relaxed);
+        // Using the len here as an index.
+        // This is safe because we are the only writer so no one can write to
+        // the same location in the meanwhile
+        let len = self.len();
         let loc = BucketLocation::of(len);
         let bucket = &self.list.buckets[loc.bucket];
         // SAFETY: we are the only writer, and readers will not read after len
@@ -134,7 +137,7 @@ impl<T: Copy> Writer<T> {
 
 impl<T> Writer<T> {
     pub fn append_vec(&self, mut items: Vec<T>) -> AppendResult {
-        let len = self.list.len.load(Ordering::Relaxed);
+        let len = self.len();
         let loc = BucketLocation::of(len);
         let bucket = &self.list.buckets[loc.bucket];
         // SAFETY: we are the only writer, and readers will not read after len
@@ -167,7 +170,7 @@ impl<T> Writer<T> {
     }
 
     pub fn append(&self, item: T) {
-        let len = self.list.len.load(Ordering::Relaxed);
+        let len = self.len();
         let loc = BucketLocation::of(len);
         let bucket = &self.list.buckets[loc.bucket];
         // SAFETY: we are the only writer, and readers will not read after len
@@ -192,7 +195,7 @@ impl<T> Writer<T> {
     }
 
     pub fn len(&self) -> usize {
-        self.list.len.load(Ordering::Relaxed)
+        self.list.len.load(Ordering::Acquire)
     }
 
     pub fn is_empty(&self) -> bool {
@@ -239,7 +242,7 @@ impl<T> Reader<T> {
     }
 
     pub fn len(&self) -> usize {
-        self.list.len.load(Ordering::Relaxed)
+        self.list.len.load(Ordering::Acquire)
     }
 
     pub fn is_empty(&self) -> bool {

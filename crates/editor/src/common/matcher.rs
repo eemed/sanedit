@@ -6,7 +6,7 @@ use std::{
     borrow::Cow,
     cmp::min,
     sync::{
-        atomic::{AtomicBool, Ordering},
+        atomic::{AtomicBool, AtomicUsize, Ordering},
         Arc,
     },
 };
@@ -22,8 +22,8 @@ pub use strategy::*;
 /// Matches options to a pattern
 pub struct Matcher {
     reader: Reader<Arc<Choice>>,
-    all_opts_read: Arc<AtomicBool>,
-    previous: Arc<AtomicBool>,
+    read_done: Arc<AtomicUsize>,
+    prev_stop: Arc<AtomicBool>,
     strategy: MatchStrategy,
 }
 
@@ -37,21 +37,28 @@ impl Matcher {
         T: MatchOptionReceiver<Arc<Choice>> + Send + 'static,
     {
         let (reader, writer) = Appendlist::<Arc<Choice>>::new();
-        let all_opts_read = Arc::new(AtomicBool::new(false));
-        let all_read = all_opts_read.clone();
+        let read_done = Arc::new(AtomicUsize::new(0));
+        let read_done2 = read_done.clone();
+        let stop = Arc::new(AtomicBool::new(false));
+        let stop2 = stop.clone();
 
         rayon::spawn(move || {
             while let Some(msg) = chan.recv() {
                 writer.append(msg);
             }
 
-            all_read.store(true, Ordering::Release);
+            let len = writer.len();
+            if len == 0 {
+                stop2.store(true, Ordering::Release);
+            } else {
+                read_done2.store(len, Ordering::Release);
+            }
         });
 
         Matcher {
             reader,
-            all_opts_read,
-            previous: Arc::new(AtomicBool::new(false)),
+            read_done,
+            prev_stop: stop,
             strategy,
         }
     }
@@ -61,15 +68,15 @@ impl Matcher {
     /// Dropping the receiver stops the matching process.
     pub fn do_match(&mut self, pattern: &str) -> MatchReceiver {
         // Cancel possible previous search
-        self.previous.store(true, Ordering::Release);
-        self.previous = Arc::new(AtomicBool::new(false));
+        self.prev_stop.store(true, Ordering::Release);
+        self.prev_stop = Arc::new(AtomicBool::new(false));
 
         // Batch candidates to 512 sized blocks
         // Send each block to an executor
         // Get the results and send to receiver
         let (out, rx) = channel::<ScoredChoice>(Self::CHANNEL_SIZE);
         let reader = self.reader.clone();
-        let all_opts_read = self.all_opts_read.clone();
+        let read_done = self.read_done.clone();
         let case_sensitive = pattern.chars().any(|ch| ch.is_uppercase());
         let strat = self.strategy;
         let match_fn = strat.get();
@@ -85,22 +92,24 @@ impl Matcher {
                 Arc::new(vec![pattern.into()])
             }
         };
-        let mut available = reader.len();
         let mut taken = 0;
-        let stop = self.previous.clone();
+        let stop = self.prev_stop.clone();
 
         rayon::spawn(move || loop {
-            if stop.load(Ordering::Relaxed) {
+            if stop.load(Ordering::Acquire) {
                 break;
             }
 
-            let all_read = all_opts_read.load(Ordering::Relaxed);
+            let total = read_done.load(Ordering::Acquire);
+            let available = reader.len();
+            let fully_read = total != 0 && available == total;
+
             // If we are done reading all available options
-            if all_read && available <= taken {
+            if fully_read && available == taken {
                 break;
             }
 
-            if available >= taken + Self::BATCH_SIZE || all_read {
+            if available >= taken + Self::BATCH_SIZE || fully_read {
                 let size = min(available - taken, Self::BATCH_SIZE);
                 let batch = taken..taken + size;
                 taken += size;
@@ -111,7 +120,7 @@ impl Matcher {
                 let patterns = patterns.clone();
 
                 rayon::spawn(move || {
-                    if stop.load(Ordering::Relaxed) {
+                    if stop.load(Ordering::Acquire) {
                         return;
                     }
 
@@ -135,9 +144,6 @@ impl Matcher {
                         }
                     }
                 });
-            } else {
-                // TODO Wait for next batch
-                available = reader.len();
             }
         });
 

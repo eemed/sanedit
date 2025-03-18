@@ -7,7 +7,7 @@ use sanedit_messages::redraw::{
 
 use crate::{
     grid::{
-        border::{draw_border, Border},
+        border::{draw_border_no_strip, strip_border, Border},
         ccell::{center_pad, set_style},
     },
     ui::UIContext,
@@ -137,11 +137,6 @@ impl Drawable for CustomPrompt {
                     let title = center_pad(title, title_style, wsize.width);
                     put_line(title, 0, cells);
 
-                    // Empty line
-                    // let mut line = vec![];
-                    // pad_line(&mut line, input_style, wsize.width);
-                    // put_line(line, 1, cells);
-
                     // Message
                     let message_style = ctx.theme.get(ThemeField::PromptOlayMessage);
                     let mut message = into_cells_with_style(" > ", message_style);
@@ -153,10 +148,37 @@ impl Drawable for CustomPrompt {
 
                 cells = &mut cells[TITLE_HEIGHT..];
 
-                // Options
+                // Borders
+                let wsize = size(cells);
                 let pcompl = ctx.theme.get(ThemeField::PromptCompletion);
                 set_style(cells, pcompl);
-                cells = draw_border(Border::Margin, pcompl, cells);
+                draw_border_no_strip(Border::Margin, pcompl, cells);
+
+                // Override border to show how many completions we have
+                let compl_count = format!(
+                    "{}/{}",
+                    self.prompt
+                        .selected_total_index
+                        .map(|i| (i + 1).to_string())
+                        .unwrap_or(String::from("-")),
+                    self.prompt.total_options,
+                );
+                let comple_count_cells = into_cells_with_style(&compl_count, pcompl);
+                // Top border replace
+                if wsize.height != 0 {
+                    // "-/100 "
+                    let clen = comple_count_cells.len();
+                    if wsize.width >= clen + 1 {
+                        for (i, cell) in comple_count_cells.into_iter().enumerate() {
+                            let pos = wsize.width - 1 - clen + i;
+                            cells[0][pos] = cell;
+                        }
+                    }
+                }
+
+                // Ignore border cells from this point on
+                cells = strip_border(cells);
+
                 let wsize = size(cells);
                 let max_opts = wsize.height;
 
@@ -183,8 +205,13 @@ impl Drawable for CustomPrompt {
                         let dstyle = ctx.style(dfield);
                         let mstyle = ctx.style(mfield);
 
-                        let mut line =
-                            format_option(&opt.text, &opt.description, style, dstyle, wsize.width);
+                        let mut line = cells_left_right(
+                            &opt.text,
+                            &opt.description,
+                            style,
+                            dstyle,
+                            wsize.width,
+                        );
 
                         // Highlight matches
                         for mat in &opt.matches {
@@ -247,7 +274,7 @@ impl Drawable for CustomPrompt {
     }
 }
 
-pub(crate) fn format_option(
+pub(crate) fn cells_left_right(
     left: &str,
     right: &str,
     mstyle: Style,

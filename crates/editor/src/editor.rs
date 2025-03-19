@@ -33,6 +33,7 @@ use sanedit_server::FromJobs;
 use sanedit_server::StartOptions;
 use sanedit_server::ToEditor;
 
+use std::collections::HashSet;
 use std::env;
 use std::path::Path;
 use std::path::PathBuf;
@@ -421,27 +422,38 @@ impl Editor {
     fn redraw_all(&mut self) {
         let clients: Vec<ClientId> = self.clients.keys().cloned().collect();
 
+        let mut drawn = HashSet::new();
         for cid in clients {
-            self.redraw(cid);
+            if drawn.contains(&cid) {
+                continue;
+            }
+
+            let drawn_clients = self.redraw(cid);
+            drawn.extend(drawn_clients);
         }
     }
 
     /// Redraw all windows that use the same buffer as `id`
-    fn redraw(&mut self, id: ClientId) {
+    fn redraw(&mut self, id: ClientId) -> Vec<ClientId> {
+        let mut drawn = vec![];
         // Editor is closed or client is closed
         if !self.is_running || !self.clients.contains_key(&id) {
-            return;
+            return drawn;
         }
 
         if let Some(bid) = self.windows.bid(id) {
             for cid in self.windows.find_clients_with_buf(bid) {
                 self.redraw_client(cid);
+                drawn.push(cid);
             }
         }
+
+        drawn
     }
 
     /// redraw a window
     fn redraw_client(&mut self, id: ClientId) {
+        log::info!("DRAW {id:?}");
         run(self, id, Hook::OnDrawPre);
 
         let draw = self

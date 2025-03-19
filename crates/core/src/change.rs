@@ -285,6 +285,15 @@ impl Changes {
         }
     }
 
+    pub fn move_offset(&self, keep_still: bool, offset: u64) -> u64 {
+        let mut npos = offset;
+        if !keep_still {
+            npos += self.added(offset, true);
+        }
+        npos -= self.removed(offset, true);
+        npos
+    }
+
     pub fn kind(&self) -> ChangesKind {
         if self.flags & flags::UNDO != 0 {
             return ChangesKind::Undo;

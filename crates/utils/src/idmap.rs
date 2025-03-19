@@ -64,6 +64,14 @@ impl<K: AsID, V> IdMap<K, V> {
         }
     }
 
+    pub fn iter_mut(&mut self) -> IterMut<K, V> {
+        let iter = self.map.iter_mut();
+        IterMut {
+            iter,
+            _phantom: PhantomData,
+        }
+    }
+
     pub fn get(&self, key: &K) -> Option<&V> {
         self.map.get(&key.id())
     }
@@ -94,6 +102,22 @@ pub struct Iter<'a, K: AsID, V> {
 
 impl<'a, K: AsID, V> Iterator for Iter<'a, K, V> {
     type Item = (K, &'a V);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let (id, val) = self.iter.next()?;
+        let id = K::to_id(*id);
+
+        Some((id, val))
+    }
+}
+
+pub struct IterMut<'a, K: AsID, V> {
+    iter: std::collections::btree_map::IterMut<'a, ID, V>,
+    _phantom: PhantomData<K>,
+}
+
+impl<'a, K: AsID, V> Iterator for IterMut<'a, K, V> {
+    type Item = (K, &'a mut V);
 
     fn next(&mut self) -> Option<Self::Item> {
         let (id, val) = self.iter.next()?;

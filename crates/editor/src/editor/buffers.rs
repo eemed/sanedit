@@ -52,6 +52,10 @@ impl Buffers {
         self.buffers.iter()
     }
 
+    pub fn iter_mut(&mut self) -> sanedit_utils::idmap::IterMut<BufferId, Buffer> {
+        self.buffers.iter_mut()
+    }
+
     /// Find buffer with a save path
     pub fn find(&self, path: impl AsRef<Path>) -> Option<BufferId> {
         let path = path.as_ref();

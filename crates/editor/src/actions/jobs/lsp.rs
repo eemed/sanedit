@@ -396,6 +396,13 @@ impl LSPJob {
             }
         }
 
+        // We may have edited the buffer in the window
+        // Hook only runs this for all other windows than self
+        let (win, buf) = editor.win_buf_mut(id);
+        if buf.id == bid {
+            win.on_buffer_changed(buf);
+        }
+
         run(editor, id, Hook::BufChanged(bid));
     }
 

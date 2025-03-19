@@ -385,12 +385,24 @@ impl Window {
         }
     }
 
-    /// Called when buffer is changed and we should correct
+    /// Called when buffer is changed by another client and we should correct
     /// this window.
     pub fn on_buffer_changed(&mut self, buf: &Buffer) {
+        let Some(edit) = buf.last_edit() else {
+            return;
+        };
+        let changes = &edit.changes;
+        changes.move_cursors(self.cursors.cursors_mut());
+
+        self.cursors.merge_overlapping();
         self.ensure_cursor_on_grapheme_boundary(buf);
 
         // Redraw view
+        let offset = changes.move_offset(true, self.view().start());
+        if offset != self.view().start() {
+            self.view.set_offset(offset);
+        }
+
         self.view.invalidate();
         self.view.redraw(buf);
     }

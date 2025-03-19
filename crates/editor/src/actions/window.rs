@@ -144,8 +144,10 @@ fn sync_windows(editor: &mut Editor, id: ClientId) -> ActionResult {
     let clients = editor.windows().find_clients_with_buf(bid);
 
     for client in clients {
-        let (win, buf) = editor.win_buf_mut(client);
-        win.on_buffer_changed(buf);
+        if id != client {
+            let (win, buf) = editor.win_buf_mut(client);
+            win.on_buffer_changed(buf);
+        }
     }
 
     ActionResult::Ok

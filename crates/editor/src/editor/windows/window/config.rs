@@ -65,10 +65,4 @@ impl WindowManagerConfig {
             WindowManagerConfig::Tmux => WindowManager::Tmux { shell_pane: None },
         }
     }
-    pub fn new_window(&self) -> String {
-        match self {
-            WindowManagerConfig::Auto => unreachable!("Window manager still auto"),
-            WindowManagerConfig::Tmux => todo!(),
-        }
-    }
 }

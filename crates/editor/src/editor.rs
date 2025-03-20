@@ -421,8 +421,8 @@ impl Editor {
 
     fn redraw_all(&mut self) {
         let clients: Vec<ClientId> = self.clients.keys().cloned().collect();
-
         let mut drawn = HashSet::new();
+
         for cid in clients {
             if drawn.contains(&cid) {
                 continue;
@@ -453,7 +453,6 @@ impl Editor {
 
     /// redraw a window
     fn redraw_client(&mut self, id: ClientId) {
-        log::info!("DRAW {id:?}");
         run(self, id, Hook::OnDrawPre);
 
         let draw = self

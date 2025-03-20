@@ -18,7 +18,7 @@ max_prompt_completions = 10
 
 # Maximum completions to show at once
 max_completions = 10
-theme = "seoul-light"
+theme = "darkschool"
 
 # Highlight syntax
 highlight_syntax = true

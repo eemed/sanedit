@@ -503,6 +503,7 @@ impl Window {
 
         self.cursors.stop_selection();
         self.remove(buf, &selections)?;
+        self.invalidate();
 
         Ok(true)
     }
@@ -567,7 +568,9 @@ impl Window {
             })
             .collect();
         let changes = Changes::multi_remove(&ranges);
-        buf.apply_changes(&changes)?;
+        self.change(buf, &changes)?;
+        // buf.apply_changes(&changes)?;
+        // self.invalidate();
         Ok(())
     }
 

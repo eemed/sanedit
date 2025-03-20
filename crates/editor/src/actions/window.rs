@@ -195,7 +195,7 @@ fn cancel(editor: &mut Editor, id: ClientId) -> ActionResult {
 #[action("Window: New")]
 fn new_window(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf(id);
-    let command = win.config.window_manager.new_window();
+    let command = win.window_manager.new_window();
     shell::execute(editor, id, false, &command)
 }
 

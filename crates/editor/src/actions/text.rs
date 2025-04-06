@@ -257,18 +257,29 @@ fn align_cursor_columns(editor: &mut Editor, id: ClientId) -> ActionResult {
     ActionResult::Ok
 }
 
-fn get_comment<'a>(config: &'a Config, win: &mut Window, buf: &Buffer) -> Option<&'a str> {
+fn get_comment<'a>(
+    config: &'a Config,
+    win: &mut Window,
+    buf: &Buffer,
+    show_error: bool,
+) -> Option<&'a str> {
     let Some(ft) = &buf.filetype else {
-        win.warn_msg("No filetype set");
+        if show_error {
+            win.warn_msg("No filetype set");
+        }
         return None;
     };
     let Some(ftconfig) = config.filetype.get(ft.as_str()) else {
-        win.warn_msg("No comment string set for filetype");
+        if show_error {
+            win.warn_msg("No comment string set for filetype");
+        }
         return None;
     };
     let comment = &ftconfig.comment;
     if comment.is_empty() {
-        win.warn_msg("No comment string set for filetype");
+        if show_error {
+            win.warn_msg("No comment string set for filetype");
+        }
         return None;
     }
 
@@ -278,7 +289,7 @@ fn get_comment<'a>(config: &'a Config, win: &mut Window, buf: &Buffer) -> Option
 #[action("Buffer: Comment lines")]
 fn comment_lines(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = win_buf!(editor, id);
-    match get_comment(&editor.config, win, buf) {
+    match get_comment(&editor.config, win, buf, true) {
         Some(comment) => {
             if win.comment_cursor_lines(buf, comment).is_ok() {
                 let hook = Hook::BufChanged(buf.id);
@@ -293,7 +304,7 @@ fn comment_lines(editor: &mut Editor, id: ClientId) -> ActionResult {
 #[action("Buffer: Uncomment lines")]
 fn uncomment_lines(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = win_buf!(editor, id);
-    match get_comment(&editor.config, win, buf) {
+    match get_comment(&editor.config, win, buf, true) {
         Some(comment) => {
             if win.uncomment_cursor_lines(buf, comment).is_ok() {
                 let hook = Hook::BufChanged(buf.id);
@@ -308,7 +319,7 @@ fn uncomment_lines(editor: &mut Editor, id: ClientId) -> ActionResult {
 #[action("Buffer: Toggle comment lines")]
 fn toggle_comment_lines(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = win_buf!(editor, id);
-    match get_comment(&editor.config, win, buf) {
+    match get_comment(&editor.config, win, buf, true) {
         Some(comment) => {
             if win.toggle_comment_cursor_lines(buf, comment).is_ok() {
                 let hook = Hook::BufChanged(buf.id);
@@ -318,4 +329,17 @@ fn toggle_comment_lines(editor: &mut Editor, id: ClientId) -> ActionResult {
         }
         None => ActionResult::Skipped,
     }
+}
+
+#[action("Buffer: Join lines")]
+fn join_lines(editor: &mut Editor, id: ClientId) -> ActionResult {
+    let (win, buf) = win_buf!(editor, id);
+    let comment = get_comment(&editor.config, win, buf, false).unwrap_or("");
+
+    if win.join_lines(buf, comment).is_ok() {
+        let hook = Hook::BufChanged(buf.id);
+        run(editor, id, hook);
+    }
+
+    ActionResult::Ok
 }

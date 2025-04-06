@@ -182,6 +182,7 @@ pub(crate) const COMMANDS: &[Action] = &[
     text::comment_lines,
     text::uncomment_lines,
     text::toggle_comment_lines,
+    text::join_lines,
 
     prompt::open_file,
     prompt::open_buffer,

@@ -53,6 +53,9 @@ language_server.command = "rust-analyzer"
 [filetype.peg]
 comment = "# "
 
+[filetype.toml]
+comment = "# "
+
 [keymaps.snippet]
 fallthrough = "insert"
 maps = [
@@ -140,6 +143,7 @@ maps = [
     { key = "M", actions = ["cursor_to_view_middle"] },
     { key = "L", actions = ["cursor_to_view_bottom"] },
     { key = "g c", actions = ["toggle_comment_lines"] },
+    { key = "J", actions = ["join_lines"] },
 
 
     { key = "ctrl+p", actions = ["open_file"] },

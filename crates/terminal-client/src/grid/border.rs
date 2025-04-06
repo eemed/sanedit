@@ -171,7 +171,9 @@ fn draw_border_impl<'a, 'b, F: Fn(usize, usize) -> Style>(
     cells
 }
 
-pub(crate) fn strip_border<'a, 'b>(mut cells: &'a mut [&'b mut [CCell]]) -> &'a mut [&'b mut [CCell]]{
+pub(crate) fn strip_border<'a, 'b>(
+    mut cells: &'a mut [&'b mut [CCell]],
+) -> &'a mut [&'b mut [CCell]] {
     let size = size(cells);
 
     cells = &mut cells[1..size.height - 1];

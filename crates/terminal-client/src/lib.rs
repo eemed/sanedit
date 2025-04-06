@@ -7,7 +7,7 @@ mod ui;
 
 use std::{io, sync::mpsc, thread};
 
-use sanedit_messages::{ClientMessage, Message, Reader, Writer};
+use sanedit_messages::{ClientMessage, Command, Message, Reader, Writer};
 
 use crate::ui::{UIResult, UI};
 pub use client::*;
@@ -16,7 +16,7 @@ use message::ClientInternalMessage;
 // We have 2 tasks that need to be running
 // Input thread: polls inputs and writes them to the server.
 // Logic thread: Reacts to server messages, draws screen.
-pub fn run<R, W>(read: R, write: W)
+pub fn run<R, W>(read: R, write: W, opts: SocketStartOptions)
 where
     R: io::Read + Clone + Send + 'static,
     W: io::Write + 'static,
@@ -28,6 +28,13 @@ where
     writer
         .write(Message::Hello(ui.window().size()))
         .expect("Failed to send hello");
+
+    // Open file if exists
+    if let Some(file) = opts.file.as_ref() {
+        writer
+            .write(Message::Command(Command::OpenFile(file.clone())))
+            .expect("Failed to open file");
+    }
 
     // Input thread
     let input_sender = tx.clone();

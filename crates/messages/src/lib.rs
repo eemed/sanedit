@@ -10,6 +10,8 @@ mod writer;
 pub mod key;
 pub mod redraw;
 
+use std::path::PathBuf;
+
 pub use codec::BinCodec;
 pub use mouse::{MouseButton, MouseEvent, MouseEventKind};
 pub use reader::Reader;
@@ -30,10 +32,16 @@ pub enum ClientMessage {
     Bye,
 }
 
+#[derive(Serialize, Deserialize, PartialEq, Eq, Debug)]
+pub enum Command {
+    OpenFile(PathBuf),
+}
+
 /// Messages sent to the server
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug)]
 pub enum Message {
     Hello(Size),
+    Command(Command),
     KeyEvent(KeyEvent),
     MouseEvent(MouseEvent),
     Resize(Size),

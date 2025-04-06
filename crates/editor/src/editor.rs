@@ -22,6 +22,7 @@ use sanedit_messages::key;
 use sanedit_messages::key::KeyEvent;
 use sanedit_messages::redraw::Size;
 use sanedit_messages::ClientMessage;
+use sanedit_messages::Command;
 use sanedit_messages::Message;
 use sanedit_messages::MouseButton;
 use sanedit_messages::MouseEvent;
@@ -327,6 +328,7 @@ impl Editor {
             Message::KeyEvent(key_event) => self.handle_key_event(id, key_event),
             Message::MouseEvent(mouse_event) => self.handle_mouse_event(id, mouse_event),
             Message::Resize(size) => self.handle_resize(id, size),
+            Message::Command(cmd) => self.handle_command(id, cmd),
             _ => {}
         }
 
@@ -392,6 +394,14 @@ impl Editor {
     fn handle_resize(&mut self, id: ClientId, size: Size) {
         let (win, buf) = self.win_buf_mut(id);
         win.resize(size, buf);
+    }
+
+    fn handle_command(&mut self, id: ClientId, cmd: Command) {
+        match cmd {
+            Command::OpenFile(path_buf) => {
+                let _ = self.open_file(id, &path_buf);
+            }
+        }
     }
 
     fn handle_mouse_event(&mut self, id: ClientId, event: MouseEvent) {

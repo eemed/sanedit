@@ -25,7 +25,7 @@ use sanedit_buffer::{Mark, MarkResult};
 use sanedit_core::{
     grapheme_category, indent_at_line,
     movement::{
-        end_of_line, find_prev_whitespace, next_grapheme_boundary, next_line_end,
+        end_of_line, find_prev_whitespace, next_grapheme_boundary, next_line_end, next_line_start,
         prev_grapheme_boundary, start_of_line,
     },
     selection_first_chars_of_lines, selection_line_ends, selection_line_starts, width_at_pos,
@@ -1298,5 +1298,56 @@ impl Window {
         } else {
             false
         }
+    }
+
+    pub fn join_lines(&mut self, buf: &mut Buffer, comment: &str) -> Result<()> {
+        let ends = self.cursor_line_ends(buf);
+        let slice = buf.slice(..);
+        let mut changes = Vec::with_capacity(ends.len());
+
+        for start in ends {
+            let mut end = next_line_start(&slice, start);
+
+            // Strip whitespace
+            let mut graphemes = slice.graphemes_at(end);
+            while let Some(g) = graphemes.next() {
+                let cat = grapheme_category(&g);
+                if cat != GraphemeCategory::Whitespace {
+                    end = g.start();
+                    break;
+                }
+            }
+
+            // Strip comment
+            let mut bytes = slice.bytes_at(end);
+            let has_comment = comment
+                .as_bytes()
+                .iter()
+                .all(|comment_byte| Some(*comment_byte) == bytes.next());
+            if has_comment {
+                end += comment.as_bytes().len() as u64;
+            }
+
+            // Strip whitespace
+            let mut graphemes = slice.graphemes_at(end);
+            while let Some(g) = graphemes.next() {
+                let cat = grapheme_category(&g);
+                if cat != GraphemeCategory::Whitespace {
+                    end = g.start();
+                    break;
+                }
+            }
+
+            // Replace everything with one space
+            changes.push(Change::replace(Range::new(start, end), b" "));
+        }
+
+        if changes.is_empty() {
+            return Ok(());
+        }
+
+        let changes = Changes::from(changes);
+        self.change(buf, &changes)?;
+        Ok(())
     }
 }

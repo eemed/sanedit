@@ -1,6 +1,6 @@
 [Desktop Entry]
 Version=1.0
-Name=Sanedit
+Name=SanEdit
 Exec=bash -c 'sane'
 Icon=/usr/share/sanedit/sanedit.svg
 Terminal=true

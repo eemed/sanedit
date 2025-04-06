@@ -20,7 +20,6 @@ use self::client::ClientId;
 
 #[derive(Clone, Debug)]
 pub struct StartOptions {
-    pub open_files: Vec<PathBuf>,
     pub config_dir: Option<PathBuf>,
     pub working_dir: Option<PathBuf>,
 }

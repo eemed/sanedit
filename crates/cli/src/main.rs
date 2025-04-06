@@ -4,7 +4,7 @@ use std::{fs, io, path::PathBuf};
 
 use argh::FromArgs;
 use sanedit_server::{Address, StartOptions};
-use sanedit_terminal_client::unix::UnixDomainSocketClient;
+use sanedit_terminal_client::{unix::UnixDomainSocketClient, SocketStartOptions};
 
 /// command line options
 #[derive(FromArgs)]
@@ -32,14 +32,14 @@ fn main() {
     logging::init_panic();
     logging::init_logger(cli.debug);
 
-    let open_files = cli.file.clone().map(|f| vec![f]).unwrap_or_default();
+    // let open_files = cli.file.clone().map(|f| vec![f]).unwrap_or_default();
     let config_dir = cli.config_dir.clone();
     let working_dir = cli.working_dir.clone();
     let start_opts = StartOptions {
-        open_files,
         config_dir,
         working_dir,
     };
+    let socket_start_opts = SocketStartOptions { file: cli.file };
 
     let socket = PathBuf::from("/tmp/sanedit.sock");
     let exists = socket.try_exists().unwrap_or(false);
@@ -48,7 +48,7 @@ fn main() {
         // if socket already exists try to connect
         match UnixDomainSocketClient::connect(&socket) {
             Ok(socket) => {
-                socket.run();
+                socket.run(socket_start_opts);
                 return;
             }
             Err(e) => match e.kind() {
@@ -69,7 +69,7 @@ fn main() {
     if let Some(join) = join {
         match UnixDomainSocketClient::connect(&socket) {
             Ok(socket) => {
-                socket.run();
+                socket.run(socket_start_opts);
             }
             Err(e) => {
                 log::error!("{e}");

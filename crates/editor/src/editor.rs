@@ -2,6 +2,7 @@ pub(crate) mod buffers;
 pub(crate) mod caches;
 pub(crate) mod clipboard;
 pub(crate) mod config;
+pub(crate) mod file_description;
 pub(crate) mod filetree;
 pub(crate) mod hooks;
 pub(crate) mod job_broker;
@@ -13,10 +14,10 @@ pub(crate) mod themes;
 pub(crate) mod windows;
 
 use caches::Caches;
+use file_description::FileDescription;
 use keymap::KeymapResult;
 use keymap::Layer;
 use rustc_hash::FxHashMap;
-use sanedit_core::FileDescription;
 use sanedit_core::Filetype;
 use sanedit_messages::key;
 use sanedit_messages::key::KeyEvent;
@@ -270,14 +271,10 @@ impl Editor {
 
     /// Create a new buffer from path
     pub fn create_buffer(&mut self, id: ClientId, path: impl AsRef<Path>) -> Result<BufferId> {
-        let file = FileDescription::new(
-            &path,
-            self.config.editor.big_file_threshold_bytes,
-            &self.working_dir,
-            &self.config.editor.filetype_detect,
-        )?;
+        let file = FileDescription::new(path, &self.config)?;
         let config = file
-            .filetype()
+            .filetype
+            .as_ref()
             .map(|ft| self.config.filetype.get(ft.as_str()))
             .flatten()
             .map(|ftconfig| ftconfig.buffer.clone())
@@ -291,6 +288,14 @@ impl Editor {
     /// Open a file in window
     /// if the buffer already exists open that or create new if it doesnt
     pub fn open_file(&mut self, id: ClientId, path: impl AsRef<Path>) -> Result<()> {
+        let path = path.as_ref();
+        let path = if path.is_relative() {
+            self.working_dir.join(path)
+        } else {
+            path.to_path_buf()
+        };
+        log::info!("PATH: {path:?}");
+
         // Use existing if possible
         let bid = match self.buffers.find(&path) {
             Some(bid) => bid,
@@ -307,12 +312,14 @@ impl Editor {
     }
 
     pub fn send_to_client(&mut self, id: ClientId, msg: ClientMessage) {
-        if let Err(_e) = self.clients.get_mut(&id).unwrap().send(msg.into()) {
-            log::info!(
-                "Server failed to send to client {:?}, removing from client map",
-                id
-            );
-            self.clients.remove(&id);
+        if let Some(client) = self.clients.get_mut(&id) {
+            if let Err(_e) = client.send(msg.into()) {
+                log::info!(
+                    "Server failed to send to client {:?}, removing from client map",
+                    id
+                );
+                self.clients.remove(&id);
+            }
         }
     }
 
@@ -399,6 +406,7 @@ impl Editor {
     fn handle_command(&mut self, id: ClientId, cmd: Command) {
         match cmd {
             Command::OpenFile(path_buf) => {
+                log::info!("open: {path_buf:?}");
                 let _ = self.open_file(id, &path_buf);
             }
         }

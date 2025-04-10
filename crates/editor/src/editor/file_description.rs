@@ -4,30 +4,28 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use rustc_hash::FxHashMap;
 use sanedit_buffer::utf8::EndOfLine;
+use sanedit_core::Filetype;
 
-use crate::Filetype;
+use super::config::Config;
 
 #[derive(Debug)]
 pub struct FileDescription {
-    absolute_path: PathBuf,
-    local_path: PathBuf,
-    eol: EndOfLine,
-    size: u64,
-    is_big: bool,
-    read_only: bool,
-    filetype: Option<Filetype>,
+    pub(crate) absolute_path: PathBuf,
+    pub(crate) eol: EndOfLine,
+    pub(crate) size: u64,
+    pub(crate) is_big: bool,
+    pub(crate) read_only: bool,
+    pub(crate) filetype: Option<Filetype>,
 }
 
 impl FileDescription {
-    pub fn new(
-        path: impl AsRef<Path>,
-        big_file_threshold_bytes: u64,
-        working_dir: &Path,
-        filetype_patterns: &FxHashMap<String, Vec<String>>,
-    ) -> io::Result<FileDescription> {
+    pub fn new(path: impl AsRef<Path>, config: &Config) -> io::Result<FileDescription> {
         let path = path.as_ref();
+        if !path.exists() {
+            return Self::new_empty(path, config);
+        }
+
         let mut file = fs::File::open(path)?;
         let metadata = file.metadata()?;
         let size = metadata.len();
@@ -36,18 +34,37 @@ impl FileDescription {
         let read = file.read(&mut buf)?;
         let eol = detect_line_ending(&buf[..read]);
 
-        let is_big = big_file_threshold_bytes <= size;
+        let is_big = config.editor.big_file_threshold_bytes <= size;
         let read_only = metadata.permissions().readonly();
-        let local = path.strip_prefix(working_dir).unwrap_or(path);
-        let filetype = Filetype::determine(path, filetype_patterns);
+        let filetype = Filetype::determine(path, &config.editor.filetype_detect);
 
         let file_metadata = FileDescription {
             absolute_path: path.into(),
-            local_path: local.into(),
             eol,
             size,
             is_big,
             read_only,
+            filetype,
+        };
+
+        Ok(file_metadata)
+    }
+
+    fn new_empty(path: &Path, config: &Config) -> io::Result<FileDescription> {
+        let filetype = Filetype::determine(path, &config.editor.filetype_detect);
+        let eol = filetype
+            .as_ref()
+            .map(|ft| config.filetype.get(ft.as_str()))
+            .flatten()
+            .map(|ftconfig| ftconfig.buffer.eol)
+            .unwrap_or(config.editor.eol);
+
+        let file_metadata = FileDescription {
+            absolute_path: path.into(),
+            eol,
+            size: 0,
+            is_big: false,
+            read_only: false, // TODO can write here?
             filetype,
         };
 
@@ -64,10 +81,6 @@ impl FileDescription {
 
     pub fn path(&self) -> &Path {
         &self.absolute_path
-    }
-
-    pub fn local_path(&self) -> &Path {
-        &self.local_path
     }
 
     pub fn eol(&self) -> EndOfLine {

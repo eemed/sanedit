@@ -22,6 +22,12 @@ pub struct Glob {
 #[allow(dead_code)]
 impl Glob {
     pub fn new(pattern: &str) -> Result<Glob, GlobError> {
+        let rules = Self::to_rules(pattern)?;
+        let pparse = Parser::from_rules(rules)?;
+        Ok(Glob { parser: pparse })
+    }
+
+    fn to_rules(pattern: &str) -> Result<Rules, GlobError> {
         // Just testing here that this works OK, should probably do something better => just parse manually as this is prett simple
         let text = include_str!("../pegs/glob.peg");
         let parser = Parser::new(std::io::Cursor::new(text))?;
@@ -68,8 +74,7 @@ impl Glob {
             rule: Rule::Sequence(rules),
         };
         let rules = Rules::new(Box::new([info]));
-        let pparse = Parser::from_rules(rules)?;
-        Ok(Glob { parser: pparse })
+        Ok(rules)
     }
 
     pub fn is_match<B: AsRef<[u8]>>(&self, bytes: &B) -> bool {

@@ -62,8 +62,9 @@ pub(crate) struct Window {
     keys: Vec<KeyEvent>,
 
     /// Focus determines where to direct input
-    focus_stack: FocusStack,
-    focus: Focus,
+    pub focus_stack: FocusStack,
+    pub focus: Focus,
+
     popup: Option<Popup>,
 
     pub keymap_layer: String,
@@ -153,26 +154,6 @@ impl Window {
 
     pub fn focus(&self) -> Focus {
         self.focus
-    }
-
-    pub fn push_focus(&mut self, entry: FocusEntry) {
-        self.focus_stack.push(entry);
-    }
-
-    pub fn pop_focus(&mut self) -> Option<FocusEntry> {
-        self.focus_stack.pop()
-    }
-
-    pub fn restore_focus(&mut self, entry: FocusEntry) {
-        self.focus = entry.focus;
-        self.keymap_layer = entry.keymap_layer;
-    }
-
-    /// Switches focus and changes to appropriate keymap layer,
-    /// clears focus stack
-    pub fn focus_to(&mut self, focus: Focus) {
-        self.focus_stack.clear();
-        self.focus = focus;
     }
 
     pub fn reload(&mut self) {
@@ -949,6 +930,7 @@ impl Window {
             }
         }
 
+        self.cursors.stop_selection();
         let changes = Changes::new(&changes);
         self.change(buf, &changes)?;
         Ok(())

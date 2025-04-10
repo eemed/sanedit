@@ -166,7 +166,7 @@ fn draw_border_impl<'a, 'b, F: Fn(usize, usize) -> Style>(
     .into();
 
     if strip {
-        strip_border(cells);
+        cells = strip_border(cells);
     }
     cells
 }

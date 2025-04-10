@@ -1,0 +1,19 @@
+document = regex*;
+regex = sequence;
+
+@show
+sequence = (literal / escaped_char)+;
+
+@show
+literal = [^\[\]\.+*?\^$(){}|\\]+;
+
+escaped_char = "\\" escaped;
+
+@show
+escaped = .;
+
+zero_or_more = regex "*";
+
+# zero_or_more = "";
+# group = "";
+# atom = "";

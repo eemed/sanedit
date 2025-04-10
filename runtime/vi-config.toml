@@ -9,6 +9,7 @@ shell = "/bin/bash"
 
 # Autodetect eol from file
 detect_eol = true
+eol = "LF"
 
 # Autodetect indentation from file
 detect_indent = true
@@ -18,7 +19,7 @@ max_prompt_completions = 10
 
 # Maximum completions to show at once
 max_completions = 10
-theme = "darkschool"
+theme = "seoul-light"
 
 # Highlight syntax
 highlight_syntax = true
@@ -296,6 +297,6 @@ maps = [
     { key = "tab", actions = ["completion_next"] },
     { key = "btab", actions = ["completion_prev"] },
     { key = "enter", actions = ["completion_confirm"] },
-    { key = "esc", actions = ["completion_abort", "prev_grapheme_on_line", "goto_layer window"] },
+    { key = "esc", actions = ["completion_abort"] },
     { key = "§", actions = ["completion_abort"] },
 ]

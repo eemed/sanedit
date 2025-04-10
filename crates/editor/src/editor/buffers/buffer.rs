@@ -14,14 +14,16 @@ use anyhow::ensure;
 use anyhow::Result;
 use sanedit_buffer::{Mark, MarkResult, PieceTree, PieceTreeSlice, PieceTreeView};
 use sanedit_core::Edit;
-use sanedit_core::{tmp_file, Changes, FileDescription, Filetype};
+use sanedit_core::{tmp_file, Changes, Filetype};
 use sanedit_utils::key_type;
 use thiserror::Error;
+
+use crate::editor::file_description::FileDescription;
 
 use self::snapshots::Snapshots;
 
 pub(crate) use change::ChangeResult;
-pub(crate) use config::BufferConfig;
+pub(crate) use config::{BufferConfig, EndOfLineDef};
 pub(crate) use snapshots::{SnapshotAux, SnapshotId};
 
 key_type!(pub(crate) BufferId);
@@ -96,8 +98,13 @@ impl Buffer {
     fn in_memory(file: FileDescription, options: BufferConfig) -> Result<Buffer> {
         log::debug!("creating in memory buffer");
         let path = file.path();
-        let ffile = fs::File::open(path)?;
-        let mut buf = Self::from_reader(ffile)?;
+        let mut buf = if !path.exists() {
+            Self::new()
+        } else {
+            let ffile = fs::File::open(path)?;
+            Self::from_reader(ffile)?
+        };
+
         buf.filetype = file.filetype().cloned();
         buf.path = Some(path.into());
         buf.read_only = file.read_only();

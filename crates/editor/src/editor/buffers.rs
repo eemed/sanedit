@@ -2,12 +2,13 @@ mod buffer;
 
 use std::path::Path;
 
-use sanedit_core::FileDescription;
 use sanedit_utils::idmap::IdMap;
 
 pub(crate) use self::buffer::{
-    Buffer, BufferConfig, BufferError, BufferId, SnapshotAux, SnapshotId,
+    Buffer, BufferConfig, BufferError, BufferId, SnapshotAux, SnapshotId, EndOfLineDef
 };
+
+use super::file_description::FileDescription;
 
 #[derive(Debug, Default)]
 pub(crate) struct Buffers {

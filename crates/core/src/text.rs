@@ -262,9 +262,7 @@ pub fn selection_first_chars_of_lines(slice: &PieceTreeSlice, sel: BufferRange) 
     while let Some(line) = lines.next() {
         if !line.is_empty() {
             let fchar = first_char_of_line(&line, 0);
-            if fchar != line.start() {
-                starts.push((line.start(), fchar));
-            }
+            starts.push((line.start(), fchar));
         }
     }
 

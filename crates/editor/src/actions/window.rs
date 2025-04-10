@@ -17,7 +17,7 @@ use super::{hooks, ActionResult};
 /// Pop focus from focus stack and run hooks
 pub fn pop_focus(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
-    let entry = get!(win.pop_focus());
+    let entry = get!(win.focus_stack.pop());
 
     let same_keymap = win.keymap_layer == entry.keymap_layer;
     if same_keymap && win.focus() == entry.focus {
@@ -29,7 +29,8 @@ pub fn pop_focus(editor: &mut Editor, id: ClientId) {
     }
 
     let (win, _buf) = editor.win_buf_mut(id);
-    win.restore_focus(entry);
+    win.focus = entry.focus;
+    win.keymap_layer = entry.keymap_layer;
 
     if !same_keymap {
         hooks::run(editor, id, Hook::KeymapEnter);
@@ -44,9 +45,25 @@ pub fn push_focus_with_keymap(editor: &mut Editor, id: ClientId, focus: Focus, k
         focus: win.focus(),
         keymap_layer: win.keymap_layer.clone(),
     };
-    win.push_focus(entry);
+    win.focus_stack.push(entry);
 
-    focus_with_keymap(editor, id, focus, keymap)
+    let (win, _buf) = editor.win_buf_mut(id);
+    let same_keymap = win.keymap_layer == keymap;
+    if same_keymap && win.focus() == focus {
+        return;
+    }
+
+    if !same_keymap {
+        hooks::run(editor, id, Hook::KeymapLeave);
+    }
+
+    let (win, _buf) = editor.win_buf_mut(id);
+    win.focus = focus;
+    win.keymap_layer = keymap;
+
+    if !same_keymap {
+        hooks::run(editor, id, Hook::KeymapEnter);
+    }
 }
 
 /// Focus new focus and place old one in the focus stack, and run hooks
@@ -91,7 +108,8 @@ pub fn focus_with_keymap(editor: &mut Editor, id: ClientId, focus: Focus, keymap
     }
 
     let (win, _buf) = editor.win_buf_mut(id);
-    win.focus_to(focus);
+    win.focus_stack.clear();
+    win.focus = focus;
     win.keymap_layer = keymap;
 
     if !same_keymap {

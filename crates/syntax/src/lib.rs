@@ -4,6 +4,7 @@ mod byte_reader;
 mod error;
 mod glob;
 mod parsing_machine;
+mod regex;
 
 pub use byte_reader::ByteReader;
 pub use error::ParseError;

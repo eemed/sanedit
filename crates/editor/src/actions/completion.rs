@@ -35,7 +35,7 @@ fn complete_from_syntax(editor: &mut Editor, id: ClientId) -> ActionResult {
         word_before_pos(&slice, cursor).unwrap_or((Range::new(cursor, cursor), String::new()));
     let cursor = win.primary_cursor();
     let point = getf!(win.view().point_at_pos(cursor.pos()));
-    win.completion = Completion::new(range.start, point);
+    win.completion = Completion::new(range.start, cursor.pos(), point);
 
     // Fetch completions from buffer
     let opts: FxHashSet<Arc<Choice>> = win
@@ -74,7 +74,7 @@ fn completion_confirm(editor: &mut Editor, id: ClientId) -> ActionResult {
         let choice = opt.choice();
         match choice {
             Choice::Snippet { snippet, .. } => {
-                let pos = win.completion.started_at();
+                let pos = win.completion.item_start();
                 let prefix = opt.matches().iter().map(|m| m.end).max().unwrap_or(0);
                 snippets::insert_snippet_impl(
                     editor,
@@ -87,7 +87,7 @@ fn completion_confirm(editor: &mut Editor, id: ClientId) -> ActionResult {
                 if item.is_snippet {
                     let (text, replace) = match item.insert_text() {
                         Either::Left(text) => {
-                            let pos = win.completion.started_at();
+                            let pos = win.completion.item_start();
                             let prefix = opt.matches().iter().map(|m| m.end).max().unwrap_or(0);
                             (text, Range::new(pos, pos + prefix as u64))
                         }
@@ -204,7 +204,7 @@ fn send_word(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = editor.win_buf_mut(id);
     if let Some(fun) = win.completion.on_input.clone() {
         let cursor = win.cursors.primary().pos();
-        let start = win.completion.started_at();
+        let start = win.completion.item_start();
         if start > cursor {
             pop_focus(editor, id);
             return ActionResult::Ok;

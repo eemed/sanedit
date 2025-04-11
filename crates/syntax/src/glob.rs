@@ -23,8 +23,8 @@ pub struct Glob {
 impl Glob {
     pub fn new(pattern: &str) -> Result<Glob, GlobError> {
         let rules = Self::to_rules(pattern)?;
-        let pparse = Parser::from_rules(rules)?;
-        Ok(Glob { parser: pparse })
+        let parser = Parser::from_rules(rules)?;
+        Ok(Glob { parser })
     }
 
     fn to_rules(pattern: &str) -> Result<Rules, GlobError> {

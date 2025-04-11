@@ -19,11 +19,15 @@ pub(crate) type CompletionAction = Rc<dyn Fn(&mut Editor, ClientId, &str)>;
 
 #[derive(Default)]
 pub(crate) struct Completion {
+    /// Point at which completion was started
     point: Point,
+    /// Point as offset
+    point_offset: u64,
 
-    /// Where the completion was started at
+    /// Where the completion item starts at
     /// used to provide on input with the next term
-    started_at: u64,
+    /// This may be before point if completed in middle of word
+    item_start: u64,
 
     chooser: Chooser,
 
@@ -32,16 +36,21 @@ pub(crate) struct Completion {
 }
 
 impl Completion {
-    pub fn new(started_at: u64, point: Point) -> Completion {
+    pub fn new(started_at: u64, started_at_cursor: u64, point: Point) -> Completion {
         Completion {
-            started_at,
+            item_start: started_at,
+            point_offset: started_at_cursor,
             point,
             ..Default::default()
         }
     }
 
-    pub fn started_at(&self) -> u64 {
-        self.started_at
+    pub fn point_offset(&self) -> u64 {
+        self.point_offset
+    }
+
+    pub fn item_start(&self) -> u64 {
+        self.item_start
     }
 
     pub fn point(&self) -> &Point {
@@ -86,7 +95,7 @@ impl Completion {
             Init(sender) => {
                 let (win, buf) = editor.win_buf_mut(id);
                 let cursor = win.cursors.primary().pos();
-                let start = win.completion.started_at;
+                let start = win.completion.item_start;
                 log::info!("Started: {start}, cursor: {cursor}");
                 let slice = buf.slice(start..cursor);
                 let word = String::from(&slice);

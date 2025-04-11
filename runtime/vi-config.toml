@@ -48,7 +48,7 @@ markdown = ["*.md"]
 yaml = ["*.yml"]
 
 [filetype.rust]
-comment = "# "
+comment = "// "
 language_server.command = "rust-analyzer"
 
 [filetype.peg]

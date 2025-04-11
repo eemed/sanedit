@@ -46,7 +46,7 @@ fn fallback(win: Rect, compl: &Completion) -> Rect {
 
 fn below(win: Rect, compl: &Completion) -> Rect {
     let Point { mut x, y } = compl.point + win.position() + Point { x: 0, y: 1 };
-    x = x.saturating_sub(compl.query_len + 1);
+    x = x.saturating_sub(compl.item_offset_before_point + 1);
     let Size {
         mut width,
         mut height,
@@ -76,7 +76,7 @@ fn above(win: Rect, compl: &Completion) -> Rect {
     } = compl.preferred_size();
 
     y = y.saturating_sub(compl.choices.len());
-    x = x.saturating_sub(compl.query_len + 1);
+    x = x.saturating_sub(compl.item_offset_before_point + 1);
 
     if x + width > win.x + win.width {
         width = max(win.width, MIN_WIDTH);

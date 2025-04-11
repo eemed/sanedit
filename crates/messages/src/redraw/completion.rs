@@ -9,7 +9,10 @@ pub struct Completion {
     pub point: Point,
     pub choices: Vec<Choice>,
     pub selected: Option<usize>,
-    pub query_len: usize,
+    /// If completion is started at point but the matching item starts before it
+    /// then this is the offset between item start offset and point offset.
+    /// Can be used to match up suggestions to buffer contents.
+    pub item_offset_before_point: usize,
 }
 
 impl Completion {

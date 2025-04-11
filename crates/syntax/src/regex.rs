@@ -1,5 +1,7 @@
 use thiserror::Error;
 
+use crate::grammar::Rule;
+use crate::grammar::RuleInfo;
 use crate::grammar::Rules;
 use crate::Parser;
 use crate::ParseError;
@@ -17,15 +19,53 @@ impl Regex {
         let text = include_str!("../pegs/regex.peg");
         let parser = Parser::new(std::io::Cursor::new(text))?;
         let captures = parser.parse(pattern)?;
+        let mut caps = captures.iter().peekable();
+        let mut rules = vec![];
 
-        for cap in captures {
+        while caps.peek().is_some() {
+            let cap = caps.next().unwrap();
             let range = cap.range();
             let text = &pattern[range.start as usize..range.end as usize];
-            let name = parser.label_for(cap.id);
-            println!("{name}: {text:?}");
+            let label = parser.label_for(cap.id);
+
+            println!("{label}: {text:?}");
+
+            match label {
+                "sequence" => {
+                    let mut literal = vec![];
+                    while let Some(inner) = caps.peek() {
+                        let inner_range = inner.range();
+                        if range.end >= inner_range.start {
+                            break;
+                        }
+
+                        let itext = &pattern[inner_range.start as usize..inner_range.end as usize];
+                        let ilabel = parser.label_for(cap.id);
+
+                        match ilabel {
+                            "escaped" | "literal" => {
+                                literal.extend_from_slice(itext.as_bytes());
+                            }
+                            _ => unreachable!(),
+                        }
+
+                        caps.next();
+                    }
+
+                    rules.push(Rule::ByteSequence(literal));
+                }
+                _ => {}
+            }
         }
 
-        todo!()
+        let info = RuleInfo {
+            top: true,
+            annotations: vec![],
+            name: "regex".into(),
+            rule: Rule::Sequence(rules),
+        };
+        let rules = Rules::new(Box::new([info]));
+        Ok(rules)
     }
 }
 

@@ -379,7 +379,7 @@ impl Window {
         self.ensure_cursor_on_grapheme_boundary(buf);
 
         // Redraw view
-        let offset = changes.move_offset(true, self.view().start());
+        let offset = changes.move_offset(self.view().start());
         if offset != self.view().start() {
             self.view.set_offset(offset);
         }

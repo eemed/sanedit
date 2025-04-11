@@ -233,7 +233,7 @@ impl LSPJob {
         let (range, word) =
             word_before_pos(&slice, start).unwrap_or((Range::new(start, start), String::default()));
 
-        win.completion = Completion::new(range.start, point);
+        win.completion = Completion::new(range.start, cursor.pos(), point);
 
         let opts: Vec<Arc<Choice>> = opts
             .into_iter()

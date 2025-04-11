@@ -48,19 +48,12 @@ fn draw_impl(ctx: &mut DrawContext) -> redraw::Redraw {
             }
         })
         .collect();
-    let query_len = ctx
-        .editor
-        .win
-        .cursors()
-        .primary()
-        .pos()
-        .saturating_sub(completion.started_at());
 
     redraw::completion::Completion {
         point: *completion.point(),
         choices,
         selected: selected_relative_pos,
-        query_len: query_len as usize,
+        item_offset_before_point: (completion.point_offset() - completion.item_start()) as usize,
     }
     .into()
 }

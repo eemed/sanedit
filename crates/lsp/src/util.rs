@@ -129,8 +129,9 @@ impl From<lsp_types::Diagnostic> for TextDiagnostic {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, AsRefStr, Hash)]
-#[strum(serialize_all = "lowercase")]
+// #[strum(serialize_all = "lowercase")]
 pub enum CompletionItemKind {
+    EnumMember,
     Text,
     Method,
     Function,
@@ -150,7 +151,6 @@ pub enum CompletionItemKind {
     File,
     Reference,
     Folder,
-    EnumMember,
     Constant,
     Struct,
     Event,

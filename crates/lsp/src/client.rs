@@ -186,7 +186,6 @@ impl LSPClient {
                 }
                 // Handle notifications sent by LSP
                 notif = self.server_notification_receiver.recv() => {
-                    log::info!("Client got notifixation");
                     let notif = notif.ok_or(LSPError::Receive)?;
                     self.handle_notification(notif).await?;
                 }
@@ -195,7 +194,6 @@ impl LSPClient {
     }
 
     async fn handle_notification(&mut self, notif: JsonNotification) -> Result<(), LSPError> {
-        log::info!("NOTIFICATION: {}", notif.method.as_str());
         match notif.method.as_str() {
             lsp_types::notification::PublishDiagnostics::METHOD => {
                 let params =
@@ -211,7 +209,6 @@ impl LSPClient {
                         .collect(),
                 };
 
-                log::info!("Sending: {:?}", diagnostics);
                 self.sender
                     .send(Response::Notification(diagnostics))
                     .await?;

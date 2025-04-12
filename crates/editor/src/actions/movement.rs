@@ -1,4 +1,7 @@
-use std::cmp::{self, min};
+use std::{
+    cmp::{self, min},
+    sync::Arc,
+};
 
 use sanedit_buffer::PieceTreeSlice;
 use sanedit_core::{
@@ -12,7 +15,7 @@ use sanedit_messages::redraw::Point;
 
 use crate::editor::{
     hooks::Hook,
-    windows::{Focus, Jump, JumpGroup, Prompt, View},
+    windows::{Focus, Jump, JumpGroup, NextKeyFunction, Prompt, View},
     Editor,
 };
 
@@ -233,56 +236,48 @@ fn goto_matching_pair(editor: &mut Editor, id: ClientId) -> ActionResult {
 #[action("Cursors: Find next char on line")]
 fn find_next_char_on_line(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
-    let layer = win.keymap_layer.clone();
-    win.prompt = Prompt::builder()
-        .prompt("hidden")
-        .hidden()
-        .on_input(move |editor, id, input| {
-            let ch = get!(input.chars().next());
-            do_move(
-                editor,
-                id,
-                |slice, pos| {
-                    let npos = min(pos + 1, slice.len());
-                    let next = find_next_char(slice, npos, ch, true);
-                    next.unwrap_or(pos)
-                },
-                None,
-                false,
-            );
-            let (win, _buf) = editor.win_buf_mut(id);
-            win.search.on_line_char_search = Some(ch);
-
-            focus_with_keymap(editor, id, Focus::Window, layer.clone());
-        })
-        .build();
-    focus(editor, id, Focus::Prompt);
+    win.next_key_handler = Some(NextKeyFunction(Arc::new(|editor, id, event| {
+        let ch = match event.key() {
+            sanedit_messages::key::Key::Char(ch) => *ch,
+            _ => return ActionResult::Failed,
+        };
+        do_move(
+            editor,
+            id,
+            |slice, pos| {
+                let npos = min(pos + 1, slice.len());
+                let next = find_next_char(slice, npos, ch, true);
+                next.unwrap_or(pos)
+            },
+            None,
+            false,
+        );
+        let (win, _buf) = editor.win_buf_mut(id);
+        win.search.on_line_char_search = Some(ch);
+        ActionResult::Ok
+    })));
     ActionResult::Ok
 }
 
 #[action("Cursors: Find previous char on line")]
 fn find_prev_char_on_line(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
-    let layer = win.keymap_layer.clone();
-    win.prompt = Prompt::builder()
-        .prompt("hidden")
-        .hidden()
-        .on_input(move |editor, id, input| {
-            let ch = get!(input.chars().next());
-            do_move(
-                editor,
-                id,
-                |slice, pos| find_prev_char(slice, pos, ch, true).unwrap_or(pos),
-                None,
-                false,
-            );
-            let (win, _buf) = editor.win_buf_mut(id);
-            win.search.on_line_char_search = Some(ch);
-
-            focus_with_keymap(editor, id, Focus::Window, layer.clone());
-        })
-        .build();
-    focus(editor, id, Focus::Prompt);
+    win.next_key_handler = Some(NextKeyFunction(Arc::new(|editor, id, event| {
+        let ch = match event.key() {
+            sanedit_messages::key::Key::Char(ch) => *ch,
+            _ => return ActionResult::Failed,
+        };
+        do_move(
+            editor,
+            id,
+            |slice, pos| find_prev_char(slice, pos, ch, true).unwrap_or(pos),
+            None,
+            false,
+        );
+        let (win, _buf) = editor.win_buf_mut(id);
+        win.search.on_line_char_search = Some(ch);
+        ActionResult::Ok
+    })));
     ActionResult::Ok
 }
 

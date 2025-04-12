@@ -56,10 +56,18 @@ tasks:
     dir: crates
     deps: [install-pre-commit-hook]
     cmds:
+      - cargo run -- --config-dir ../runtime
+    env:
+      RUST_BACKTRACE: 1
+
+  run:debug:
+    desc: Build and run the debug build with debug logging
+    dir: crates
+    deps: [install-pre-commit-hook]
+    cmds:
       - cargo run -- --config-dir ../runtime --debug
     env:
       RUST_BACKTRACE: 1
-      # RUSTFLAGS: "-Awarnings"
 
   test:
     desc: Run tests

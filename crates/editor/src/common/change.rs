@@ -1,5 +1,5 @@
 use sanedit_buffer::PieceTreeSlice;
-use sanedit_core::{indent_at_line, movement::start_of_line, Change};
+use sanedit_core::{indent_at_prev_good_line, movement::start_of_line, Change};
 
 use crate::editor::buffers::Buffer;
 
@@ -11,13 +11,9 @@ use super::text::{is_eol_or_eof_at, only_whitespace_before};
 /// to the next line, by inserting the newline at linestart instead.
 ///
 pub(crate) fn newline_empty_line(buf: &Buffer, pos: u64) -> Option<Change> {
-    let was_eol = buf
-        .last_edit()
-        .map(|edit| edit.changes.has_insert_eol())
-        .unwrap_or(false);
     let slice = buf.slice(..);
     let at_eol = is_eol_or_eof_at(&slice, pos);
-    if !was_eol || !at_eol {
+    if !at_eol {
         return None;
     }
     let start = only_whitespace_before(&slice, pos)?;
@@ -29,7 +25,7 @@ pub(crate) fn newline_indent(buf: &Buffer, pos: u64) -> Change {
     let slice = buf.slice(..);
 
     // Indent next line if previous was indented
-    let indent_line = indent_at_line(&slice, pos);
+    let indent_line = indent_at_prev_good_line(&slice, pos);
     let indent = {
         match indent_line {
             Some((k, n)) => k.repeat(n as usize),
@@ -51,7 +47,7 @@ pub(crate) fn newline_autopair(buf: &Buffer, pos: u64) -> Option<Change> {
     }
     let close = close_pairs_before(&slice, pos);
     let iamount = buf.config.indent_amount;
-    let indent_line = indent_at_line(&slice, pos);
+    let indent_line = indent_at_prev_good_line(&slice, pos);
     let indent = {
         match indent_line {
             Some((k, n)) => k.repeat(n as usize),

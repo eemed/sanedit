@@ -195,19 +195,32 @@ pub fn prev_word_end(slice: &PieceTreeSlice, mut pos: u64) -> u64 {
     0
 }
 
+/// Check whether slice is only whitespace and eols
+pub fn is_empty_or_whitespace(slice: &PieceTreeSlice) -> bool {
+    let mut graphemes = slice.graphemes();
+    while let Some(g) = graphemes.next() {
+        let cat = grapheme_category(&g);
+        if !matches!(cat, GraphemeCategory::EOL | GraphemeCategory::Whitespace) {
+            return false;
+        }
+    }
+
+    true
+}
+
 pub fn next_paragraph(slice: &PieceTreeSlice, pos: u64) -> u64 {
     let mut lines = slice.lines_at(pos);
 
     // Skip all empty lines
     while let Some(line) = lines.next() {
-        if !line.is_eol() {
+        if !is_empty_or_whitespace(&line) {
             break;
         }
     }
 
     // Skip all content lines
     while let Some(line) = lines.next() {
-        if line.is_eol() {
+        if is_empty_or_whitespace(&line) {
             return line.start();
         }
     }
@@ -221,14 +234,14 @@ pub fn prev_paragraph(slice: &PieceTreeSlice, pos: u64) -> u64 {
 
     // Skip all empty lines
     while let Some(line) = lines.prev() {
-        if !line.is_eol() {
+        if !is_empty_or_whitespace(&line) {
             break;
         }
     }
 
     // Skip all content lines
     while let Some(line) = lines.prev() {
-        if line.is_eol() {
+        if is_empty_or_whitespace(&line) {
             return line.start();
         }
     }

@@ -1,4 +1,4 @@
-use std::mem;
+use std::{mem, sync::Arc};
 
 use sanedit_core::{at_start_of_line, is_indent_at_pos};
 
@@ -6,7 +6,7 @@ use crate::editor::{
     buffers::{Buffer, BufferError},
     config::Config,
     hooks::Hook,
-    windows::{Focus, Prompt, Window},
+    windows::{Focus, NextKeyFunction, Prompt, Window},
     Editor,
 };
 
@@ -16,8 +16,8 @@ use super::{
     completion,
     hooks::run,
     movement::{end_of_line, prev_line},
-    window::focus,
-    ActionResult,
+    window::{focus, pop_focus, push_focus, push_focus_with_keymap},
+    Action, ActionResult,
 };
 
 #[action("Buffer: Remove character after cursor")]
@@ -341,5 +341,16 @@ fn join_lines(editor: &mut Editor, id: ClientId) -> ActionResult {
         run(editor, id, hook);
     }
 
+    ActionResult::Ok
+}
+
+#[action("Buffer: Insert literal")]
+fn insert_literal(editor: &mut Editor, id: ClientId) -> ActionResult {
+    let (win, _buf) = editor.win_buf_mut(id);
+    win.next_key_handler = Some(NextKeyFunction(Arc::new(|editor, id, key| {
+        let input = key.literal_utf8();
+        insert(editor, id, &input);
+        ActionResult::Ok
+    })));
     ActionResult::Ok
 }

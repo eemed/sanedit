@@ -61,7 +61,7 @@ impl WindowManagerConfig {
     pub fn get(&self) -> WindowManager {
         match self {
             // TODO detect
-            WindowManagerConfig::Auto => WindowManager::Tmux { shell_pane: None },
+            WindowManagerConfig::Auto => WindowManager::Wezterm,
             WindowManagerConfig::Tmux => WindowManager::Tmux { shell_pane: None },
         }
     }

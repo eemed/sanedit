@@ -200,13 +200,13 @@ impl LSPJob {
             RequestResult::CodeAction { actions } => self.code_action(editor, id, actions),
             RequestResult::ResolvedAction { action } => {
                 if let Some(edit) = action.workspace_edit() {
-                    self.edit_workspace(editor, id, edit)
+                    Self::edit_workspace(editor, id, edit)
                 }
             }
             RequestResult::Rename { workspace_edit } => {
-                self.edit_workspace(editor, id, workspace_edit)
+                Self::edit_workspace(editor, id, workspace_edit)
             }
-            RequestResult::Format { edit } => self.edit_document(editor, id, edit),
+            RequestResult::Format { edit } => Self::edit_document(editor, id, edit),
             RequestResult::Error { msg } => {
                 log::error!("LSP '{}' failed to process: {msg}", self.opts.command);
             }
@@ -258,7 +258,6 @@ impl LSPJob {
         version: Option<i32>,
         diags: Vec<TextDiagnostic>,
     ) {
-        log::info!("Handle: {path:?}, {version:?}");
         let Some(bid) = editor.buffers().find(&path) else {
             return;
         };
@@ -270,7 +269,6 @@ impl LSPJob {
                 return;
             }
         }
-        log::info!("Handle: {path:?}, {version:?}, diags: {diags:?}");
 
         let Some(enc) = editor
             .language_servers
@@ -329,7 +327,10 @@ impl LSPJob {
                 let n = get!(out.number()) as usize;
                 let action = &actions[n - 1];
 
-                if !action.is_resolved() {
+                if action.is_resolved() {
+                    let edit = action.workspace_edit().unwrap();
+                    Self::edit_workspace(editor, id, edit)
+                } else {
                     let request = RequestKind::CodeActionResolve {
                         action: action.clone(),
                     };
@@ -343,13 +344,13 @@ impl LSPJob {
         editor.job_broker.request(job);
     }
 
-    fn edit_workspace(&self, editor: &mut Editor, id: ClientId, edit: WorkspaceEdit) {
+    fn edit_workspace(editor: &mut Editor, id: ClientId, edit: WorkspaceEdit) {
         for edit in edit.file_edits {
-            self.edit_document(editor, id, edit);
+            Self::edit_document(editor, id, edit);
         }
     }
 
-    fn edit_document(&self, editor: &mut Editor, id: ClientId, edit: FileEdit) {
+    fn edit_document(editor: &mut Editor, id: ClientId, edit: FileEdit) {
         let path = &edit.path;
         let bid = match editor.buffers().find(&path) {
             Some(bid) => bid,

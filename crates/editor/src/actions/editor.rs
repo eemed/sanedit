@@ -37,13 +37,7 @@ fn copy(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Editor: Paste from clipboard")]
 fn paste(editor: &mut Editor, id: ClientId) -> ActionResult {
-    editor.paste_from_clipboard(id, false);
-    ActionResult::Ok
-}
-
-#[action("Editor: Paste from clipboard after cursor")]
-fn paste_after(editor: &mut Editor, id: ClientId) -> ActionResult {
-    editor.paste_from_clipboard(id, true);
+    editor.paste_from_clipboard(id);
     ActionResult::Ok
 }
 

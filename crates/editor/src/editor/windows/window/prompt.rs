@@ -41,11 +41,6 @@ impl PromptBuilder {
         self
     }
 
-    pub fn hidden(mut self) -> Self {
-        self.kind = PromptKind::Hidden;
-        self
-    }
-
     pub fn input(mut self, input: &str) -> Self {
         self.input = input.into();
         self
@@ -159,7 +154,6 @@ pub(crate) enum PromptKind {
     #[default]
     Regular,
 
-    Hidden,
     Simple,
 }
 

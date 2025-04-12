@@ -67,6 +67,26 @@ pub(crate) struct RuleInfo {
 }
 
 impl RuleInfo {
+    /// Common way to create a rule
+    pub fn new(name: &str, rule: Rule) -> RuleInfo {
+        RuleInfo {
+            top: false,
+            annotations: vec![Annotation::Show],
+            name: name.into(),
+            rule,
+        }
+    }
+
+    pub fn new_hidden(name: &str, rule: Rule) -> RuleInfo {
+        RuleInfo {
+            top: false,
+            annotations: vec![],
+            name: name.into(),
+            rule,
+        }
+    }
+
+
     pub fn show(&self) -> bool {
         self.annotations
             .iter()

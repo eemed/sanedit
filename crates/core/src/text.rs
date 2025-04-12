@@ -2,7 +2,7 @@ use std::io;
 
 use crate::{
     grapheme_category, is_word_break, is_word_break_end,
-    movement::{end_of_line, first_char_of_line},
+    movement::{end_of_line, first_char_of_line, is_empty_or_whitespace},
     BufferRange, Chars, DisplayOptions, GraphemeCategory, Range,
 };
 use sanedit_buffer::{
@@ -172,7 +172,7 @@ pub fn paragraph_at_pos(slice: &PieceTreeSlice, pos: u64) -> Option<BufferRange>
 
     // Skip all content lines up
     while let Some(line) = lines.prev() {
-        if line.is_eol() {
+        if is_empty_or_whitespace(&line) {
             start = Some(line.end());
             lines.next();
             break;
@@ -183,7 +183,7 @@ pub fn paragraph_at_pos(slice: &PieceTreeSlice, pos: u64) -> Option<BufferRange>
 
     // Skip all content lines down
     while let Some(line) = lines.next() {
-        if line.is_eol() {
+        if is_empty_or_whitespace(&line) {
             end = Some(line.start());
             break;
         }

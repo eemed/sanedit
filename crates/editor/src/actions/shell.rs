@@ -37,6 +37,7 @@ pub(crate) fn execute(
 
             editor.job_broker.request(job);
         }
+        WindowManager::Wezterm => todo!(),
     }
 
     ActionResult::Ok

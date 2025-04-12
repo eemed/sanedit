@@ -519,8 +519,16 @@ impl Editor {
 
         run(self, id, Hook::KeyPressedPre);
 
-        let events;
+        // If next key handler specified
+        let (win, _buf) = self.win_buf_mut(id);
+        if let Some(handler) = win.next_key_handler.take() {
+            let event = win.clear_keys().pop().unwrap();
+            (handler.0)(self, id, event);
+            return;
+        }
+
         // Handle key bindings
+        let events;
         match self.mapped_action(id) {
             KeymapResult::Matched(action) => {
                 action.execute(self, id);
@@ -629,44 +637,65 @@ impl Editor {
         run(self, id, Hook::Reload);
     }
 
-    pub fn paste_from_clipboard(&mut self, id: ClientId, keep_cursor_position: bool) {
+    pub fn paste_from_clipboard(&mut self, id: ClientId) {
         let Ok(text) = self.clipboard.paste() else {
             return;
         };
+
+        let (win, _buf) = self.win_buf(id);
         let lines = paste_separate_cursor_lines(text.as_str());
-        self.paste_inline(id, &text, lines, keep_cursor_position);
+        let single_with_eol = lines.len() == 1 && lines[0].1 && win.cursors.len() == 1;
+        let multicursor_match = win.cursors.len() == lines.len();
+
+        if single_with_eol || !multicursor_match {
+            self.paste_on_line_below(id, lines);
+        } else {
+            self.paste_inline(id, lines);
+        }
+    }
+
+    fn paste_on_line_below(&mut self, id: ClientId, lines: Vec<(String, bool)>) {
+        let (win, buf) = self.win_buf_mut(id);
+        let bid = buf.id;
+        let text = {
+            let mut result: Vec<String> = vec![];
+            for (mut line, _) in lines {
+                line.push_str(buf.config.eol.as_str());
+                result.push(line);
+            }
+            result.join("")
+        };
+
+        let res = win.insert_at_cursors_next_line(buf, &text);
+
+        if res.is_ok() {
+            run(self, id, Hook::BufChanged(bid));
+        }
     }
 
     // Paste to current cursors
-    fn paste_inline(
-        &mut self,
-        id: ClientId,
-        text: &str,
-        lines: Vec<(String, bool)>,
-        keep_cursor_position: bool,
-    ) {
+    fn paste_inline(&mut self, id: ClientId, lines: Vec<(String, bool)>) {
         let (win, buf) = self.win_buf_mut(id);
         let clen = win.cursors.cursors().len();
         let llen = lines.len();
         let bid = buf.id;
-        let lines = lines
-            .into_iter()
-            .map(|(mut line, eol)| {
-                if eol {
-                    line.push_str(buf.config.eol.as_str());
-                }
-                line
-            })
-            .collect();
 
-        let keep_positions =
-            std::mem::replace(&mut win.keep_cursor_positions, keep_cursor_position);
         let res = if clen == llen {
+            let lines = lines.into_iter().map(|(line, _)| line).collect();
             win.insert_to_each_cursor(buf, lines)
         } else {
+            let text = lines
+                .into_iter()
+                .map(|(mut line, eol)| {
+                    if eol {
+                        line.push_str(buf.config.eol.as_str());
+                    }
+                    line
+                })
+                .collect::<Vec<String>>()
+                .join("");
             win.insert_at_cursors(buf, &text)
         };
-        win.keep_cursor_positions = keep_positions;
 
         if res.is_ok() {
             run(self, id, Hook::BufChanged(bid));
@@ -711,11 +740,9 @@ impl Editor {
         }
     }
 
-    pub fn layer(&self, id: ClientId) -> &Layer {
+    pub fn layer(&self, id: ClientId) -> Option<&Layer> {
         let win = self.windows.get(id).expect("No window found");
-        self.keymaps
-            .get_layer(&win.keymap_layer)
-            .expect("Window has nonexistent keymap layer")
+        self.keymaps.get_layer(&win.keymap_layer)
     }
 
     /// Return the currently focused elements keymap

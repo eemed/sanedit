@@ -159,7 +159,6 @@ pub(crate) const COMMANDS: &[Action] = &[
 
     editor::copy,
     editor::paste,
-    editor::paste_after,
     editor::cut,
     editor::open_config,
     editor::open_new_scratch_buffer,
@@ -183,6 +182,7 @@ pub(crate) const COMMANDS: &[Action] = &[
     text::uncomment_lines,
     text::toggle_comment_lines,
     text::join_lines,
+    text::insert_literal,
 
     prompt::open_file,
     prompt::open_buffer,

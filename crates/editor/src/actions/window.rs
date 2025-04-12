@@ -257,9 +257,9 @@ fn status(editor: &mut Editor, id: ClientId) -> ActionResult {
     let working_dir = editor.working_dir();
     let shell = &editor.config.editor.shell;
     let config_dir = editor.config_dir.root();
-    let istyle = &buf.config.indent_kind.as_str();
+    let istyle = format!("{:?}", buf.config.indent_kind);
     let iamount = &buf.config.indent_amount;
-    let eol = &buf.config.eol.as_str();
+    let eol = format!("{:?}", buf.config.eol);
 
     let text = format!(
         "\
@@ -361,7 +361,9 @@ fn hide_diagnostic_highlights(editor: &mut Editor, id: ClientId) -> ActionResult
 
 #[action("Keymap: On keymap enter")]
 fn on_keymap_enter(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let layer = editor.layer(id);
+    let Some(layer) = editor.layer(id) else {
+        return ActionResult::Failed;
+    };
     if let Some(action) = layer.on_enter.clone() {
         action.execute(editor, id);
     }
@@ -370,7 +372,9 @@ fn on_keymap_enter(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Keymap: On keymap leave")]
 fn on_keymap_leave(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let layer = editor.layer(id);
+    let Some(layer) = editor.layer(id) else {
+        return ActionResult::Failed;
+    };
     if let Some(action) = layer.on_leave.clone() {
         action.execute(editor, id);
     }

@@ -17,6 +17,7 @@ use std::{
     cmp::{max, min},
     collections::BTreeMap,
     mem,
+    sync::Arc,
 };
 
 use anyhow::{bail, Result};
@@ -35,13 +36,16 @@ use sanedit_messages::{
     key::KeyEvent,
     redraw::{Popup, PopupMessage, Severity, Size, StatusMessage},
 };
+use sanedit_server::ClientId;
 use sanedit_utils::{ring::Ref, sorted_vec::SortedVec};
 
 use crate::{
+    actions::ActionResult,
     common::change::{newline_autopair, newline_empty_line, newline_indent},
     editor::{
         buffers::{Buffer, BufferId, SnapshotAux, SnapshotId},
         keymap::KeymapKind,
+        Editor,
     },
 };
 
@@ -84,7 +88,7 @@ pub(crate) struct Window {
     /// Last edit jumped to in buffer
     pub last_edit_jump: Option<SnapshotId>,
 
-    pub keep_cursor_positions: bool,
+    pub next_key_handler: Option<NextKeyFunction>,
 }
 
 impl Window {
@@ -110,7 +114,7 @@ impl Window {
             snippets: vec![],
             cursor_jumps: Jumps::with_capacity(512),
             last_edit_jump: None,
-            keep_cursor_positions: false,
+            next_key_handler: None,
         }
     }
 
@@ -456,11 +460,7 @@ impl Window {
         let aux = self.window_aux(mark.into());
         let result = buf.apply_changes(changes)?;
 
-        if self.keep_cursor_positions {
-            changes.keep_cursors_still(self.cursors.cursors_mut());
-        } else {
-            changes.move_cursors(self.cursors.cursors_mut());
-        }
+        changes.move_cursors(self.cursors.cursors_mut());
         self.cursors.merge_overlapping();
 
         if let Some(id) = result.created_snapshot {
@@ -512,6 +512,23 @@ impl Window {
             .collect();
         let changes: Changes = changes.into();
         self.change(buf, &changes)
+    }
+
+    pub fn insert_at_cursors_next_line(&mut self, buf: &mut Buffer, text: &str) -> Result<()> {
+        let slice = buf.slice(..);
+        let changes: Vec<Change> = self
+            .cursors
+            .iter()
+            .map(|cursor| {
+                let pos = cursor.pos();
+                let next_line = next_line_start(&slice, pos);
+                Change::insert(next_line, text.as_bytes())
+            })
+            .collect();
+        let changes: Changes = changes.into();
+
+        self.change(buf, &changes)?;
+        Ok(())
     }
 
     pub fn insert_at_cursors(&mut self, buf: &mut Buffer, text: &str) -> Result<()> {
@@ -785,7 +802,6 @@ impl Window {
             changes.push(newline_indent(buf, c.pos()));
         }
 
-        log::info!("Changes {changes:?}");
         let changes: Changes = changes.into();
         self.change(buf, &changes)
     }
@@ -1331,5 +1347,13 @@ impl Window {
         let changes = Changes::from(changes);
         self.change(buf, &changes)?;
         Ok(())
+    }
+}
+
+pub struct NextKeyFunction(pub Arc<dyn Fn(&mut Editor, ClientId, KeyEvent) -> ActionResult>);
+
+impl std::fmt::Debug for NextKeyFunction {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("NextKeyFunction").finish()
     }
 }

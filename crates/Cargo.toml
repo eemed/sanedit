@@ -49,7 +49,6 @@ tokio-util           = "0.7.12"
 toml_edit            = "0.22"
 unicode-width        = "0.1.13" # Rendering itself has problems
 which                = "5.0.0" # Should be replaced with something simpler
-# Copy pasta should be used for clipboard
 
 [profile.dev.package."*"]
 debug = false

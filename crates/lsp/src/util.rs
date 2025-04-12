@@ -227,8 +227,8 @@ pub struct CodeAction {
 }
 
 impl CodeAction {
-    pub fn workspace_edit(self) -> Option<WorkspaceEdit> {
-        let old = self.action.edit?;
+    pub fn workspace_edit(&self) -> Option<WorkspaceEdit> {
+        let old = self.action.edit.clone()?;
         Some(WorkspaceEdit::from(old))
     }
 

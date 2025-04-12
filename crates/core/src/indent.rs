@@ -2,6 +2,8 @@ use serde::{Deserialize, Serialize};
 
 use sanedit_buffer::{utf8::prev_eol, Bytes, PieceTreeSlice};
 
+use crate::movement::is_empty_or_whitespace;
+
 #[derive(Debug, Eq, PartialEq, Hash, Copy, Clone, Serialize, Deserialize)]
 pub enum IndentKind {
     Space,
@@ -82,6 +84,24 @@ fn indent_from_bytes(bytes: &mut Bytes) -> Option<(IndentKind, u64)> {
     }
 
     Some((kind, n))
+}
+
+/// Calculate indentation level at a current or previous line that is not empty/whitespace
+pub fn indent_at_prev_good_line(slice: &PieceTreeSlice, pos: u64) -> Option<(IndentKind, u64)> {
+    let mut lines = slice.lines_at(pos);
+    let mut line = lines.next();
+    lines.prev();
+
+    while let Some(l) = line {
+        if !is_empty_or_whitespace(&l) {
+            let mut bytes = l.bytes();
+            return indent_from_bytes(&mut bytes);
+        }
+
+        line = lines.prev();
+    }
+
+    None
 }
 
 /// Calculate indentation level at a line where pos is at

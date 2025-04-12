@@ -281,6 +281,12 @@ fn draw_trailing_whitespace(
         }
 
         if in_eol && cat == GraphemeCategory::Whitespace {
+            // Dont do tabs they are already done
+            let is_tab = g == "\t";
+            if is_tab {
+                continue;
+            }
+
             if let Some(point) = view.point_at_pos(g.start()) {
                 grid[point.y][point.x] = redraw::Cell {
                     text: rep.to_string(),

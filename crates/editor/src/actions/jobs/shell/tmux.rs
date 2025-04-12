@@ -88,6 +88,7 @@ impl KeepInTouch for TmuxShellCommand {
             let (win, _buf) = editor.win_buf_mut(self.client_id);
             match &mut win.window_manager {
                 WindowManager::Tmux { shell_pane } => *shell_pane = Some(*pane),
+                _ => {}
             }
         }
     }

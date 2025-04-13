@@ -15,13 +15,13 @@ selection = "#c2c2c2,,"
 primary = "#5F87AE,,"
 
 [colors.window.view]
-hint = "#8EACD0,#1D232B,"
-info = "#8EACD0,#1D232B,"
+hint = "#B4CBF0,#014CB0,"
+info = "#B4CBF0,#014CB0,"
 warn = "#ffe699,#514403,"
 error = "#BF7E7E,#392525,"
 
 constant = ",#014CC0,"
-string =  ",#216CD0,"
+string =  ",#014CC0,"
 number = ",#014CC0,"
 
 keyword = ",#005F00,"

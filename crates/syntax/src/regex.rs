@@ -99,11 +99,17 @@ mod tests {
     #[test]
     fn regex_literal() {
         let regex = Regex::new("abc").unwrap();
+        assert!(regex.is_match(b"abc"));
+        assert!(!regex.is_match(b"ab"));
+        assert!(!regex.is_match(b"ab."));
     }
 
     #[test]
     fn regex_zero_or_more() {
         let regex = Regex::new("a*").unwrap();
+        assert!(regex.is_match(b""));
+        assert!(regex.is_match(b"aaa"));
+        assert!(!regex.is_match(b"ab"));
     }
 
     #[test]
@@ -111,5 +117,29 @@ mod tests {
         let regex = Regex::new("abc\\.").unwrap();
         assert!(!regex.is_match(b"abdc"));
         assert!(regex.is_match(b"abc."));
+    }
+
+    #[test]
+    fn regex_alt() {
+        let regex = Regex::new("ab|abc").unwrap();
+        assert!(regex.is_match(b"ab"));
+        assert!(regex.is_match(b"abc"));
+        assert!(!regex.is_match(b"ac"));
+    }
+
+    #[test]
+    fn regex_one_or_more() {
+        let regex = Regex::new("a+").unwrap();
+        assert!(!regex.is_match(b""));
+        assert!(regex.is_match(b"aaa"));
+        assert!(!regex.is_match(b"ab"));
+    }
+
+    #[test]
+    fn regex_optional() {
+        let regex = Regex::new("ab?").unwrap();
+        assert!(regex.is_match(b"a"));
+        assert!(regex.is_match(b"ab"));
+        assert!(!regex.is_match(b"ac"));
     }
 }

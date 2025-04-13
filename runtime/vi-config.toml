@@ -86,7 +86,7 @@ maps = [
     { key = "x", actions = ["copy", "remove_cursor_selections", "goto_layer window"] },
     { key = "d", actions = ["copy", "remove_cursor_selections", "goto_layer window"] },
     { key = "c", actions = ["copy", "remove_cursor_selections", "goto_layer insert"] },
-    { key = "y", actions = ["copy", "stop_selection"] },
+    { key = "y", actions = ["copy", "stop_selection", "goto_layer window"] },
     { key = "esc", actions = ["stop_selection", "goto_layer window"] },
     { key = "§", actions = ["stop_selection", "goto_layer window"] },
     { key = ".", actions = ["swap_selection_dir"] },

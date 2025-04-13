@@ -3,6 +3,7 @@
 [colors.window]
 default = "#E2DBC8,#202020,"
 statusline = "#B8A282,#2a130d,"
+statusline_no_focus = "#B8B4A9,#2a130d,"
 gutter = ",#4C4C4C,bold"
 end_of_buffer = ",#7f755f,"
 trailing_whitespace = ",#7f755f,"
@@ -16,15 +17,10 @@ selection = "#d0bd97,,"
 primary = "#C0A886,,"
 
 [colors.window.view]
-# hint = "#00917e,#000000,"
-hint = "#d5cce3,#3856d1,"
-info = "#e5dcf3,#3856d1,"
-# guifg=#3856d1 guibg=#e5dcf3
+hint = "#B8C5F0,#014CC0,"
+info = "#B8C5F0,#014CC0,"
 warn = "#fde37c,#615413,"
-# guifg=#615413 guibg=#fde37c
 error = "#f2d8d8,#b22e32,"
-# =#b22e32 guibg=#f2d8d8
-
 
 constant = ",#014CC0,"
 string =  ",#014CC0,"
@@ -75,11 +71,11 @@ markers = ",#355d8d,"
 
 [colors.filetree.file]
 default = ""
-selected = "#c2c2c2,,"
+selected = "#d0bd97,,"
 
 [colors.filetree.directory]
 default = ",#824b26,"
-selected = "#c2c2c2,,"
+selected = "#d0bd97,,"
 
 [colors.locations]
 default = "#E2DBC8,#000000,"

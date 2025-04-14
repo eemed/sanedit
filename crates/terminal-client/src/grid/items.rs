@@ -60,8 +60,10 @@ impl CustomItems {
         let file = ctx.style(ThemeField::FiletreeFile);
         let dir = ctx.style(ThemeField::FiletreeDir);
         let markers = ctx.style(ThemeField::FiletreeMarkers);
+        let selfill = ctx.style(ThemeField::FiletreeSelected);
         let sel = ctx.style(ThemeField::FiletreeSelectedFile);
         let dsel = ctx.style(ThemeField::FiletreeSelectedDir);
+        let msel = ctx.style(ThemeField::FiletreeSelectedMarkers);
 
         clear_all(cells, fill);
 
@@ -85,21 +87,24 @@ impl CustomItems {
                 break;
             }
 
-            let style = {
-                if self.scroll + row == self.items.selected {
-                    match item.kind {
+            let is_selected = self.scroll + row == self.items.selected;
+            let (name, fill, markers) = {
+                if is_selected {
+                    let name = match item.kind {
                         ItemKind::Group { .. } => dsel,
                         ItemKind::Item => sel,
-                    }
+                    };
+                    (name, selfill, msel)
                 } else {
-                    match item.kind {
+                    let name = match item.kind {
                         ItemKind::Group { .. } => dir,
                         ItemKind::Item => file,
-                    }
+                    };
+                    (name, fill, markers)
                 }
             };
 
-            let mut titem = Self::format_ft_item(item, style, markers);
+            let mut titem = Self::format_ft_item(item, name, fill, markers);
             pad_line(&mut titem, fill, width);
 
             for (i, cell) in titem.into_iter().enumerate() {
@@ -108,23 +113,23 @@ impl CustomItems {
         }
     }
 
-    fn format_ft_item(item: &Item, name: Style, extra: Style) -> Vec<CCell> {
+    fn format_ft_item(item: &Item, name: Style, fill: Style, markers: Style) -> Vec<CCell> {
         let mut result = vec![];
-        result.extend(into_cells_with_style(&"  ".repeat(item.level), extra));
+        result.extend(into_cells_with_style(&"  ".repeat(item.level), fill));
 
         match item.kind {
             ItemKind::Group { expanded } => {
                 if expanded {
-                    result.extend(into_cells_with_style("- ", extra));
+                    result.extend(into_cells_with_style("-", markers));
                 } else {
-                    result.extend(into_cells_with_style("+ ", extra));
+                    result.extend(into_cells_with_style("+", markers));
                 }
             }
             ItemKind::Item => {
-                result.extend(into_cells_with_style("# ", extra));
+                result.extend(into_cells_with_style("#", markers));
             }
         }
-
+        result.extend(into_cells_with_style(" ", fill));
         result.extend(into_cells_with_style(&item.name, name));
 
         if matches!(item.kind, ItemKind::Group { .. }) {

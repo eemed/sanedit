@@ -62,14 +62,12 @@ match = ",#d7875f,"
 [colors.filetree]
 default = "#1D1F21,#c1c1c1,"
 markers = ",#B5BD68,"
+directory = ",#d7875f,"
 
-[colors.filetree.file]
-default = ""
-selected = "#404040,,"
-
-[colors.filetree.directory]
-default = ",#d7875f,"
-selected = "#404040,,"
+[colors.filetree.selected]
+default = "#353535,,"
+directory = ",#d7875f,"
+markers = ",#B5BD68,"
 
 [colors.locations]
 default = "#1D1F21,#c1c1c1,"
@@ -80,7 +78,7 @@ markers = ",#B5BD68,"
 match = ",#d7875f,"
 
 [colors.locations.selected]
-default = "#404040,,"
+default = "#353535,,"
 match = ",#d7875f,"
 markers = ",#B5BD68,"
 entry = ""

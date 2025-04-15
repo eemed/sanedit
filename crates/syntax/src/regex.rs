@@ -3,8 +3,9 @@ use thiserror::Error;
 use crate::grammar::Rule;
 use crate::grammar::RuleInfo;
 use crate::grammar::Rules;
-use crate::Parser;
+use crate::Capture;
 use crate::ParseError;
+use crate::Parser;
 
 pub struct Regex {
     parser: Parser,
@@ -12,7 +13,7 @@ pub struct Regex {
 
 impl Regex {
     pub fn new(pattern: &str) -> Result<Regex, RegexError> {
-        let rules = Self::to_rules(pattern)?;
+        let rules = RegexToPEG::convert(pattern)?;
         let parser = Parser::from_rules(rules)?;
         Ok(Regex { parser })
     }
@@ -77,12 +78,72 @@ impl Regex {
         Ok(rules)
     }
 
-   pub fn is_match<B: AsRef<[u8]>>(&self, bytes: &B) -> bool {
+    pub fn is_match<B: AsRef<[u8]>>(&self, bytes: &B) -> bool {
         let bytes = bytes.as_ref();
         match self.parser.parse(bytes) {
             Ok(_) => true,
             Err(_e) => false,
         }
+    }
+}
+
+struct RegexToPEG<'a> {
+    pattern: &'a str,
+    parser: Parser,
+    regex: Vec<Capture>,
+}
+
+impl<'a> RegexToPEG<'a> {
+    fn new(pattern: &'a str, parser: Parser, captures: Vec<Capture>) -> RegexToPEG<'a> {
+        RegexToPEG {
+            pattern,
+            parser,
+            regex: captures,
+        }
+    }
+
+    /// Convert provided regex to PEG
+    pub fn convert(pattern: &str) -> Result<Rules, RegexError> {
+        let text = include_str!("../pegs/regex.peg");
+        let parser = Parser::new(std::io::Cursor::new(text))?;
+        let captures = parser.parse(pattern)?;
+        // let caps = captures.iter().peekable();
+
+        let mut state = RegexToPEG {
+            pattern,
+            parser,
+            regex: captures,
+        };
+        // let rule = state.convert_rec(0);
+
+        todo!()
+    }
+
+    fn convert_rec(&mut self, index: usize, cont: &RuleInfo) -> RuleInfo {
+        let cap = &self.regex[index];
+        let range = cap.range();
+        let text = &self.pattern[range.start as usize..range.end as usize];
+        let label = self.parser.label_for(cap.id);
+
+        match label {
+            "sequence" => {
+                let mut index = index + 1;
+                while let Some(icap) = self.regex.get(index) {
+                    if range.end < icap.range().end {
+                        break;
+                    }
+
+                    let rule = self.convert_rec(index, cont);
+                    index += 1;
+                }
+            }
+            "escaped" => {}
+            "literal" => {}
+            "alt" => {}
+            "zero_or_more" => {}
+            _ => {}
+        }
+        todo!()
     }
 }
 

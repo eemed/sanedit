@@ -87,10 +87,13 @@ impl<'a> RegexToPEG<'a> {
             }
             children
         };
-        println!("Enter depth: {depth}, capture: {} / {label} {text:?}: Children: {children:?}", cap.id);
+        println!(
+            "Enter depth: {depth}, capture: {} / {label} {text:?}: Children: {children:?}",
+            cap.id
+        );
 
         match label {
-            "escaped" | "literal" => {
+            "escaped" | "char" => {
                 // Π(ε, k) = k (1)
                 // Π(c, k) = c k (2)
                 let mut text = text.as_bytes().to_vec();
@@ -130,6 +133,7 @@ impl<'a> RegexToPEG<'a> {
                 if children.len() != 1 {
                     panic!("Zero or more has wrong number of children");
                 }
+
                 let rule = self.convert_rec(children[0], &cont, depth + 1);
                 return Rule::ZeroOrMore(rule.into());
             }
@@ -139,6 +143,13 @@ impl<'a> RegexToPEG<'a> {
                 }
                 let rule = self.convert_rec(children[0], &cont, depth + 1);
                 return Rule::OneOrMore(rule.into());
+            }
+            "optional" => {
+                if children.len() != 1 {
+                    panic!("Optional has wrong number of children");
+                }
+                let rule = self.convert_rec(children[0], &cont, depth + 1);
+                return Rule::Optional(rule.into());
             }
             _ => {}
         }
@@ -166,10 +177,12 @@ mod tests {
 
     #[test]
     fn regex_zero_or_more() {
-        let regex = Regex::new("a*").unwrap();
-        assert!(regex.is_match(b""));
-        assert!(regex.is_match(b"aaa"));
-        assert!(!regex.is_match(b"ab"));
+        let regex = Regex::new("ba*").unwrap();
+        assert!(!regex.is_match(b""));
+        assert!(regex.is_match(b"baaa"));
+        assert!(regex.is_match(b"b"));
+        assert!(regex.is_match(b"ba"));
+        assert!(!regex.is_match(b"aa"));
     }
 
     #[test]
@@ -192,7 +205,7 @@ mod tests {
         let regex = Regex::new("a+").unwrap();
         assert!(!regex.is_match(b""));
         assert!(regex.is_match(b"aaa"));
-        assert!(!regex.is_match(b"ab"));
+        assert!(!regex.is_match(b"b"));
     }
 
     #[test]
@@ -200,6 +213,6 @@ mod tests {
         let regex = Regex::new("ab?").unwrap();
         assert!(regex.is_match(b"a"));
         assert!(regex.is_match(b"ab"));
-        assert!(!regex.is_match(b"ac"));
+        assert!(!regex.is_match(b"ba"));
     }
 }

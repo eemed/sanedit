@@ -5,18 +5,23 @@ regex = alt;
 alt = sequence ("|" sequence)*;
 
 @show
-sequence = (literal / escaped_char)+;
+sequence = (repetition / char / escaped_char)+;
 
 @show
-literal = [^\[\]\.+*?\^$(){}|\\]+;
+char = [^\[\]\.+*?\^$(){}|\\];
 
 escaped_char = "\\" escaped;
 
 @show
 escaped = .;
 
-zero_or_more = regex "*";
+repetition = zero_or_more / one_or_more /  optional;
 
-# zero_or_more = "";
-# group = "";
-# atom = "";
+@show
+zero_or_more = char "*";
+
+@show
+one_or_more = char "+";
+
+@show
+optional = char "?";

@@ -18,66 +18,6 @@ impl Regex {
         Ok(Regex { parser })
     }
 
-    fn to_rules(pattern: &str) -> Result<Rules, RegexError> {
-        let text = include_str!("../pegs/regex.peg");
-        let parser = Parser::new(std::io::Cursor::new(text))?;
-        let captures = parser.parse(pattern)?;
-        let mut caps = captures.iter().peekable();
-        let mut rules: Vec<RuleInfo> = vec![];
-
-        while caps.peek().is_some() {
-            let cap = caps.next().unwrap();
-            let range = cap.range();
-            let text = &pattern[range.start as usize..range.end as usize];
-            let label = parser.label_for(cap.id);
-
-            println!("{label}: {text:?}");
-
-            match label {
-                "sequence" => {
-                    let mut literal = vec![];
-                    while let Some(inner) = caps.peek() {
-                        let inner_range = inner.range();
-                        if range.end < inner_range.end {
-                            break;
-                        }
-
-                        let itext = &pattern[inner_range.start as usize..inner_range.end as usize];
-                        let ilabel = parser.label_for(inner.id);
-
-                        println!("i: {ilabel}: {itext:?}");
-
-                        match ilabel {
-                            "escaped" | "literal" => {
-                                literal.extend_from_slice(itext.as_bytes());
-                            }
-                            _ => unreachable!(),
-                        }
-
-                        caps.next();
-                    }
-
-                    if !literal.is_empty() {
-                        let name = format!("{}-sequence", rules.len());
-                        let rule = Rule::ByteSequence(literal);
-                        rules.push(RuleInfo::new_hidden(&name, rule));
-                    }
-                }
-                _ => {}
-            }
-        }
-
-        // let info = RuleInfo {
-        //     top: true,
-        //     annotations: vec![],
-        //     name: "regex".into(),
-        //     rule: Rule::Sequence(rules),
-        // };
-
-        let rules = Rules::new(rules.into_boxed_slice());
-        Ok(rules)
-    }
-
     pub fn is_match<B: AsRef<[u8]>>(&self, bytes: &B) -> bool {
         let bytes = bytes.as_ref();
         match self.parser.parse(bytes) {
@@ -91,56 +31,115 @@ struct RegexToPEG<'a> {
     pattern: &'a str,
     parser: Parser,
     regex: Vec<Capture>,
+    n: usize,
 }
 
 impl<'a> RegexToPEG<'a> {
-    fn new(pattern: &'a str, parser: Parser, captures: Vec<Capture>) -> RegexToPEG<'a> {
-        RegexToPEG {
-            pattern,
-            parser,
-            regex: captures,
-        }
-    }
-
     /// Convert provided regex to PEG
     pub fn convert(pattern: &str) -> Result<Rules, RegexError> {
         let text = include_str!("../pegs/regex.peg");
         let parser = Parser::new(std::io::Cursor::new(text))?;
         let captures = parser.parse(pattern)?;
-        // let caps = captures.iter().peekable();
 
+        println!("Captures: {captures:?}");
         let mut state = RegexToPEG {
             pattern,
             parser,
             regex: captures,
+            n: 0,
         };
-        // let rule = state.convert_rec(0);
-
-        todo!()
+        let empty = Rule::ByteSequence(vec![]);
+        let rule = state.convert_rec(0, &empty, 1);
+        let info = RuleInfo {
+            rule,
+            top: true,
+            annotations: vec![],
+            name: "root".into(),
+        };
+        let rules = Rules::new(vec![info].into_boxed_slice());
+        println!("Rules:\n{rules}");
+        Ok(rules)
     }
 
-    fn convert_rec(&mut self, index: usize, cont: &RuleInfo) -> RuleInfo {
+    fn convert_rec(&mut self, index: usize, cont: &Rule, depth: usize) -> Rule {
         let cap = &self.regex[index];
         let range = cap.range();
         let text = &self.pattern[range.start as usize..range.end as usize];
         let label = self.parser.label_for(cap.id);
 
-        match label {
-            "sequence" => {
-                let mut index = index + 1;
-                while let Some(icap) = self.regex.get(index) {
-                    if range.end < icap.range().end {
-                        break;
-                    }
+        let children = {
+            let mut children = vec![];
+            let mut start = range.start;
+            let min = std::cmp::min(index + 1, self.regex.len());
+            for (i, icap) in self.regex[min..].iter().enumerate() {
+                let irange = icap.range();
 
-                    let rule = self.convert_rec(index, cont);
-                    index += 1;
+                // If capture is past the current capture
+                if range.end < irange.end {
+                    break;
+                }
+
+                // Skip inner captures by only considering the first encountered
+                if start <= irange.start {
+                    start = irange.end;
+                    children.push(min + i);
                 }
             }
-            "escaped" => {}
-            "literal" => {}
-            "alt" => {}
-            "zero_or_more" => {}
+            children
+        };
+        println!("Enter depth: {depth}, capture: {} / {label} {text:?}: Children: {children:?}", cap.id);
+
+        match label {
+            "escaped" | "literal" => {
+                // Π(ε, k) = k (1)
+                // Π(c, k) = c k (2)
+                let mut text = text.as_bytes().to_vec();
+                match cont {
+                    Rule::ByteSequence(vec) => {
+                        text.extend(vec);
+                        return Rule::ByteSequence(text);
+                    }
+                    _ => {
+                        let rule = Rule::ByteSequence(text);
+                        return Rule::Sequence(vec![rule, cont.clone()]);
+                    }
+                }
+            }
+            "sequence" => {
+                // Π(e1e2, k) = Π(e1, Π(e2, k)) (3)
+                let mut cont = cont.clone();
+                for child in children.iter().rev() {
+                    cont = self.convert_rec(*child, &cont, depth + 1);
+                }
+                return cont;
+            }
+            "alt" => {
+                // Π(e1|e2, k) = Π(e1, k) / Π(e2, k) (4)
+                if children.len() == 1 {
+                    return self.convert_rec(children[0], &cont, depth + 1);
+                }
+
+                let mut choices = vec![];
+                for child in children {
+                    let rule = self.convert_rec(child, &cont, depth + 1);
+                    choices.push(rule);
+                }
+                return Rule::Choice(choices);
+            }
+            "zero_or_more" => {
+                if children.len() != 1 {
+                    panic!("Zero or more has wrong number of children");
+                }
+                let rule = self.convert_rec(children[0], &cont, depth + 1);
+                return Rule::ZeroOrMore(rule.into());
+            }
+            "one_or_more" => {
+                if children.len() != 1 {
+                    panic!("One or more has wrong number of children");
+                }
+                let rule = self.convert_rec(children[0], &cont, depth + 1);
+                return Rule::OneOrMore(rule.into());
+            }
             _ => {}
         }
         todo!()

@@ -124,7 +124,6 @@ fn completion_confirm(editor: &mut Editor, id: ClientId) -> ActionResult {
                         // So that it does not remove extra data
                         replace.end -= ppos - cpos;
                     }
-                    log::info!("Snippet: {:?}", item.insert_text());
                     let snippet = match Snippet::new(text) {
                         Ok(snip) => snip,
                         Err(e) => {
@@ -141,9 +140,6 @@ fn completion_confirm(editor: &mut Editor, id: ClientId) -> ActionResult {
                     Either::Left(text) => {
                         let pos = win.completion.point_offset();
                         (text.as_bytes(), Range::new(pos, pos))
-                        // let prefix = opt.matches().iter().map(|m| m.end).max().unwrap_or(0);
-                        // let opt = text[prefix..].to_string();
-                        // text::insert(editor, id, &opt)
                     }
                     Either::Right(edit) => {
                         let ft = getf!(buf.filetype.clone());
@@ -168,25 +164,14 @@ fn completion_confirm(editor: &mut Editor, id: ClientId) -> ActionResult {
 
                 let change = Change::replace(replace, text);
                 let changes = Changes::from(vec![change]);
-                let start = changes.iter().next().unwrap().start();
+                // let start = changes.iter().next().unwrap().start();
 
-                match buf.apply_changes(&changes) {
-                    Ok(result) => {
-                        if let Some(id) = result.created_snapshot {
-                            if let Some(aux) = buf.snapshot_aux_mut(id) {
-                                aux.cursors = Cursors::new(Cursor::new(start));
-                                aux.view_offset = start;
-                            }
-                        }
-                    }
-                    Err(e) => {
-                        log::error!("LSP text edit failed: {e}");
-                        return ActionResult::Failed;
-                    }
+                if win.change(buf, &changes).is_ok() {
+                    let hook = Hook::BufChanged(buf.id);
+                    run(editor, id, hook);
+                } else {
+                    return ActionResult::Failed;
                 }
-
-                let bid = buf.id.clone();
-                run(editor, id, Hook::BufChanged(bid));
             }
             _ => {
                 let prefix = opt.matches().iter().map(|m| m.end).max().unwrap_or(0);

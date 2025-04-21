@@ -21,7 +21,10 @@ impl Regex {
     pub fn is_match<B: AsRef<[u8]>>(&self, bytes: &B) -> bool {
         let bytes = bytes.as_ref();
         match self.parser.parse(bytes) {
-            Ok(_) => true,
+            Ok(cap) => {
+                println!("OK: {cap:?}");
+                true
+            }
             Err(_e) => false,
         }
     }
@@ -31,7 +34,7 @@ struct RegexToPEG<'a> {
     pattern: &'a str,
     parser: Parser,
     regex: Vec<Capture>,
-    n: usize,
+    rules: Vec<RuleInfo>,
 }
 
 impl<'a> RegexToPEG<'a> {
@@ -46,17 +49,18 @@ impl<'a> RegexToPEG<'a> {
             pattern,
             parser,
             regex: captures,
-            n: 0,
+            rules: vec![],
         };
         let empty = Rule::ByteSequence(vec![]);
-        let rule = state.convert_rec(0, &empty, 1);
         let info = RuleInfo {
-            rule,
+            rule: empty.clone(),
             top: true,
             annotations: vec![],
             name: "root".into(),
         };
-        let rules = Rules::new(vec![info].into_boxed_slice());
+        state.rules.push(info);
+        state.rules[0].rule = state.convert_rec(0, &empty, 1);
+        let rules = Rules::new(state.rules.into_boxed_slice());
         println!("Rules:\n{rules}");
         Ok(rules)
     }
@@ -117,6 +121,7 @@ impl<'a> RegexToPEG<'a> {
                 return cont;
             }
             "alt" => {
+                // Distribute continuation to all alternatives
                 // Π(e1|e2, k) = Π(e1, k) / Π(e2, k) (4)
                 if children.len() == 1 {
                     return self.convert_rec(children[0], &cont, depth + 1);
@@ -130,26 +135,51 @@ impl<'a> RegexToPEG<'a> {
                 return Rule::Choice(choices);
             }
             "zero_or_more" => {
+                // e∗ = e e∗ | ε
                 if children.len() != 1 {
                     panic!("Zero or more has wrong number of children");
                 }
 
-                let rule = self.convert_rec(children[0], &cont, depth + 1);
-                return Rule::ZeroOrMore(rule.into());
+                let self_ref = Rule::Ref(self.rules.len());
+                let epsilon = cont.clone();
+                let e = self.convert_rec(children[0], &self_ref, depth + 1);
+                let rule = Rule::Choice(vec![e, epsilon]);
+
+                let name = format!("{index}-zero-or-more");
+                let info = RuleInfo::new(&name, rule);
+                self.rules.push(info);
+                return self_ref;
             }
             "one_or_more" => {
+                // e+ = e e+ | e
                 if children.len() != 1 {
                     panic!("One or more has wrong number of children");
                 }
-                let rule = self.convert_rec(children[0], &cont, depth + 1);
-                return Rule::OneOrMore(rule.into());
+                let self_ref = Rule::Ref(self.rules.len());
+                let right = self.convert_rec(children[0], cont, depth + 1);
+                let left = self.convert_rec(children[0], &self_ref, depth + 1);
+                let rule = Rule::Choice(vec![left, right]);
+
+                let name = format!("{index}-one-or-more");
+                let info = RuleInfo::new(&name, rule);
+                self.rules.push(info);
+                return self_ref;
             }
             "optional" => {
+                // e? = e | ε
                 if children.len() != 1 {
                     panic!("Optional has wrong number of children");
                 }
-                let rule = self.convert_rec(children[0], &cont, depth + 1);
-                return Rule::Optional(rule.into());
+                let e = self.convert_rec(children[0], &cont, depth + 1);
+                let epsilon = cont.clone();
+                return Rule::Choice(vec![e, epsilon]);
+            }
+            "group" => {
+                // TODO no known solution to captures
+                if children.len() != 1 {
+                    panic!("Group has wrong number of children");
+                }
+                return self.convert_rec(children[0], &cont, depth + 1);
             }
             _ => {}
         }
@@ -202,10 +232,13 @@ mod tests {
 
     #[test]
     fn regex_one_or_more() {
-        let regex = Regex::new("a+").unwrap();
+        let regex = Regex::new("(a|ab)+c").unwrap();
+        assert!(regex.is_match(b"ac"));
+        assert!(regex.is_match(b"abc"));
+
         assert!(!regex.is_match(b""));
-        assert!(regex.is_match(b"aaa"));
-        assert!(!regex.is_match(b"b"));
+        assert!(!regex.is_match(b"bc"));
+        assert!(!regex.is_match(b"c"));
     }
 
     #[test]
@@ -213,6 +246,21 @@ mod tests {
         let regex = Regex::new("ab?").unwrap();
         assert!(regex.is_match(b"a"));
         assert!(regex.is_match(b"ab"));
+
         assert!(!regex.is_match(b"ba"));
+    }
+
+    #[test]
+    fn regex_group() {
+        let regex = Regex::new("(a|ab)*c").unwrap();
+        assert!(regex.is_match(b"c"));
+        assert!(regex.is_match(b"abc"));
+        assert!(regex.is_match(b"ac"));
+        assert!(regex.is_match(b"aaaabaac"));
+        assert!(regex.is_match(b"ababc"));
+
+        assert!(!regex.is_match(b"abdc"));
+        assert!(!regex.is_match(b"zz"));
+        assert!(!regex.is_match(b"bc"));
     }
 }

@@ -240,10 +240,10 @@ impl Parser {
                     }
 
                     None => {
-                        if captures.is_empty() {
-                            bail!("No stack entry to backtrack to");
-                        } else {
+                        if captures_good(&captures) {
                             return Ok(captures);
+                        } else {
+                            bail!("No stack entry to backtrack to");
                         }
                     }
                     _ => {}
@@ -251,6 +251,21 @@ impl Parser {
             }
         }
     }
+}
+
+/// Check that captures exist and all captures all closed
+fn captures_good(caps: &Vec<Capture>) -> bool {
+    if caps.is_empty() {
+        return false;
+    }
+
+    for cap in caps {
+        if cap.len.is_none() {
+            return false;
+        }
+    }
+
+    true
 }
 
 #[cfg(test)]

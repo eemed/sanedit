@@ -5,7 +5,7 @@ regex = alt;
 alt = sequence ("|" sequence)*;
 
 @show
-sequence = (repetition / char / escaped_char)+;
+sequence = (repetition / group / char / escaped_char)+;
 
 @show
 char = [^\[\]\.+*?\^$(){}|\\];
@@ -18,10 +18,13 @@ escaped = .;
 repetition = zero_or_more / one_or_more /  optional;
 
 @show
-zero_or_more = char "*";
+zero_or_more = (group / char) "*";
 
 @show
-one_or_more = char "+";
+one_or_more = (group / char) "+";
 
 @show
-optional = char "?";
+optional = (group / char) "?";
+
+@show
+group = "(" regex ")";

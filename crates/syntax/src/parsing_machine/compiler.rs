@@ -212,6 +212,9 @@ impl<'a> Compiler<'a> {
             ByteAny => {
                 self.push(Operation::Set(Set::any()));
             }
+            Embed(operation) => {
+                self.push(operation.clone());
+            }
         }
 
         Ok(())

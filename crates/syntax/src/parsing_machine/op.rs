@@ -5,7 +5,7 @@ use super::set::Set;
 pub(crate) type Addr = usize;
 
 #[allow(dead_code)]
-#[derive(Debug)]
+#[derive(Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub(crate) enum Operation {
     Jump(Addr),
     Byte(u8),
@@ -29,6 +29,7 @@ pub(crate) enum Operation {
     TestSetNoChoice(Set, Addr),
     TestAny(usize, Addr),
     CaptureBegin(CaptureID),
+    CaptureBeginMultiEnd(CaptureID),
     CaptureEnd,
     Checkpoint,
 }

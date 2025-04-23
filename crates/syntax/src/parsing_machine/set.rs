@@ -1,3 +1,4 @@
+#[derive(Hash, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub(crate) struct Set {
     // 32 * 8 = 256 bits
     inner: [u32; 8],

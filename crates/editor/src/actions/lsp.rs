@@ -475,6 +475,9 @@ pub(crate) fn diagnostics_to_locations(editor: &mut Editor, id: ClientId) -> Act
     win.locations.clear();
 
     for (path, diags) in &lsp.diagnostics {
+        if diags.is_empty() {
+            continue;
+        }
         let mut group = Group::new(path);
         for diag in diags.iter() {
             let item = Item::new(

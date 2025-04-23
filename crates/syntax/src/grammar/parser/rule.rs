@@ -2,7 +2,7 @@ use std::{fmt, ops::Deref};
 
 use rustc_hash::{FxHashMap, FxHashSet};
 
-use crate::grammar::lexer::Lexer;
+use crate::{grammar::lexer::Lexer, Operation};
 
 use super::GrammarParser;
 
@@ -167,6 +167,8 @@ pub(crate) enum Rule {
     /// Inclusive UTF8 range
     UTF8Range(char, char),
     Ref(usize),
+    /// Add an instruction directly
+    Embed(Operation),
 }
 
 impl Rule {
@@ -264,6 +266,7 @@ impl fmt::Display for Rule {
             ByteSequence(s) => write!(f, "{:?}", s),
             ByteRange(a, b) => write!(f, "[{:?}..{:?}]", a, b),
             ByteAny => write!(f, "."),
+            Embed(operation) => write!(f, "<< {operation:?} >>"),
         }
     }
 }

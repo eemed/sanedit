@@ -10,6 +10,7 @@ pub struct Capture {
     pub(crate) id: CaptureID,
     pub(crate) start: SubjectPosition,
     pub(crate) len: Option<u64>,
+    pub(crate) reopen: bool,
 }
 
 impl Capture {
@@ -18,8 +19,27 @@ impl Capture {
             id,
             start,
             len: None,
+            reopen: false,
         }
     }
+
+    pub(crate) fn new_reopenable(id: CaptureID, start: SubjectPosition) -> Capture {
+        Capture {
+            id,
+            start,
+            len: None,
+            reopen: true,
+        }
+    }
+
+    pub(crate) fn is_reopenable(&self) -> bool {
+        self.reopen
+    }
+
+    pub(crate) fn reopen(&mut self) {
+        self.len = None;
+    }
+
     pub(crate) fn is_closed(&self) -> bool {
         self.len.is_some()
     }

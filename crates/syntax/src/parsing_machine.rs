@@ -23,7 +23,7 @@ use crate::{
     ByteReader, ParseError,
 };
 
-use self::op::{Addr, Operation};
+pub(crate) use self::op::{Addr, Operation};
 
 // https://github.com/roberto-ieru/LPeg/blob/master/lpvm.c
 
@@ -198,6 +198,9 @@ impl Parser {
                         Some(StackEntry::Backtrack { spos, caplevel, .. }) => {
                             sp = spos;
                             captop = caplevel;
+                            captures.truncate(captop);
+
+                            reopen_captures(sp, &mut captures[..captop]);
                         }
                         e => bail!("Invalid stack entry pop at back commit: {e:?}"),
                     }
@@ -220,6 +223,11 @@ impl Parser {
                     }
                     ip += 1;
                 }
+                CaptureBeginMultiEnd(id) => {
+                    captures.push(Capture::new_reopenable(*id, sp));
+                    captop += 1;
+                    ip += 1;
+                }
                 _ => bail!("Unsupported operation {op:?}"),
             }
 
@@ -236,6 +244,7 @@ impl Parser {
                         sp = spos;
                         captop = caplevel;
                         captures.truncate(captop);
+                        reopen_captures(sp, &mut captures[..captop]);
                         break;
                     }
 
@@ -248,6 +257,22 @@ impl Parser {
                     }
                     _ => {}
                 }
+            }
+        }
+    }
+}
+
+fn reopen_captures(sp: u64, caps: &mut [Capture]) {
+    // If reopenable captures were closed, we need to reopen them
+    for i in (0..caps.len()).rev() {
+        let cap = &mut caps[i];
+        if cap.is_closed() {
+            if cap.range().end <= sp {
+                break;
+            }
+
+            if cap.is_reopenable() {
+                cap.reopen();
             }
         }
     }

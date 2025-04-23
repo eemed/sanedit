@@ -4,6 +4,7 @@ use crate::grammar::Rule;
 use crate::grammar::RuleInfo;
 use crate::grammar::Rules;
 use crate::Capture;
+use crate::Operation;
 use crate::ParseError;
 use crate::Parser;
 
@@ -35,6 +36,7 @@ struct RegexToPEG<'a> {
     parser: Parser,
     regex: Vec<Capture>,
     rules: Vec<RuleInfo>,
+    n: usize,
 }
 
 impl<'a> RegexToPEG<'a> {
@@ -50,6 +52,7 @@ impl<'a> RegexToPEG<'a> {
             parser,
             regex: captures,
             rules: vec![],
+            n: 0,
         };
         let empty = Rule::ByteSequence(vec![]);
         let info = RuleInfo {
@@ -175,11 +178,13 @@ impl<'a> RegexToPEG<'a> {
                 return Rule::Choice(vec![e, epsilon]);
             }
             "group" => {
-                // TODO no known solution to captures
                 if children.len() != 1 {
                     panic!("Group has wrong number of children");
                 }
-                return self.convert_rec(children[0], &cont, depth + 1);
+                self.n += 1;
+                let cont = Rule::Sequence(vec![Rule::Embed(Operation::CaptureEnd), cont.clone()]);
+                let rule = self.convert_rec(children[0], &cont, depth + 1);
+                return Rule::Sequence(vec![Rule::Embed(Operation::CaptureBeginMultiEnd(self.n)), rule]);
             }
             _ => {}
         }
@@ -262,5 +267,15 @@ mod tests {
         assert!(!regex.is_match(b"abdc"));
         assert!(!regex.is_match(b"zz"));
         assert!(!regex.is_match(b"bc"));
+    }
+
+    #[test]
+    fn regex_capture() {
+        let regex = Regex::new("(ab|bd)c").unwrap();
+        assert!(regex.is_match(b"abc"));
+        assert!(regex.is_match(b"bdc"));
+
+        assert!(!regex.is_match(b"abd"));
+        assert!(!regex.is_match(b"acdc"));
     }
 }

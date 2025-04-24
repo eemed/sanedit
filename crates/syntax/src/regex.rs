@@ -8,6 +8,7 @@ use crate::Operation;
 use crate::ParseError;
 use crate::Parser;
 
+#[derive(Debug)]
 pub struct Regex {
     parser: Parser,
 }

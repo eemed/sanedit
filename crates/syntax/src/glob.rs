@@ -91,7 +91,7 @@ mod test {
     use super::*;
 
     #[test]
-    fn rust() {
+    fn glob_rust() {
         let glob = Glob::new("*.rs").unwrap();
         assert_eq!(glob.is_match(b".hidden"), false);
         assert_eq!(glob.is_match(b"path/to/glob.rs"), true);
@@ -99,7 +99,7 @@ mod test {
     }
 
     #[test]
-    fn wildcard() {
+    fn glob_wildcard() {
         let glob = Glob::new("*aw*").unwrap();
         assert_eq!(glob.is_match(b"lawyer"), true);
         assert_eq!(glob.is_match(b"the law"), true);
@@ -107,7 +107,7 @@ mod test {
     }
 
     #[test]
-    fn hidden() {
+    fn glob_hidden() {
         let glob = Glob::new(".*").unwrap();
         assert_eq!(glob.is_match(b".hidden"), true);
         assert_eq!(glob.is_match(b"path/to/glob.rs"), false);
@@ -115,7 +115,7 @@ mod test {
     }
 
     #[test]
-    fn question() {
+    fn glob_question() {
         let glob = Glob::new("?at").unwrap();
         assert_eq!(glob.is_match(b"Cat"), true);
         assert_eq!(glob.is_match(b"Bat"), true);
@@ -123,7 +123,7 @@ mod test {
     }
 
     #[test]
-    fn alt() {
+    fn glob_alt() {
         let glob = Glob::new("[CB]at").unwrap();
         assert_eq!(glob.is_match(b"Cat"), true);
         assert_eq!(glob.is_match(b"Bat"), true);
@@ -131,7 +131,7 @@ mod test {
     }
 
     #[test]
-    fn alt_range() {
+    fn glob_alt_range() {
         let glob = Glob::new("Letter[0-9]").unwrap();
         assert_eq!(glob.is_match(b"Letter8"), true);
         assert_eq!(glob.is_match(b"Letter0"), true);

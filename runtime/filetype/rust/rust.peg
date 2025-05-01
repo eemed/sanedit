@@ -1,5 +1,4 @@
-document = (comment / attrs / mod_decl / const_decl / let_decl / string / char / unsafe / keyword / type / .)*;
-#document = (comment / const / keyword / constant / unsafe / string / char / .)*;
+document = (comment / attrs / mod_decl / const_decl / let_decl / string / char / unsafe / keyword / type / (!WS .)* WS / .)*;
 
 visibility = "pub(crate)" / "pub(super)" / "pub";
 
@@ -27,6 +26,7 @@ string    = "\"" compl_string "\"";
 compl_string    = ("\\" escape_char / [^"\n])*;
 escape_char     = "0" / "t" / "n" / "r" / "\"" / "\\";
 
+start = &(WHITESPACE / ";" / "<");
 end = &(WHITESPACE / ";" / "<");
 
 

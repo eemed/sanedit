@@ -3,16 +3,15 @@ use std::error::Error;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use grep::matcher::{LineTerminator, Matcher};
-use grep::regex::{RegexMatcher, RegexMatcherBuilder};
-use grep::searcher::{BinaryDetection, Searcher, SearcherBuilder, Sink, SinkMatch};
 use rustc_hash::FxHashMap;
 use sanedit_buffer::utf8::EndOfLine;
 use sanedit_buffer::{PieceTree, PieceTreeSlice, PieceTreeView};
-use sanedit_core::{BufferRange, Group, Item, Searcher, Range, SearchDirection, SearchKind};
+use sanedit_core::{BufferRange, Group, Item, Range, SearchKind, Searcher};
+use sanedit_syntax::Regex;
 use sanedit_utils::either::Either;
 use sanedit_utils::sorted_vec::SortedVec;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
+use tokio_util::bytes::BytesMut;
 
 use crate::actions::jobs::{OptionProvider, CHANNEL_SIZE};
 use crate::actions::locations;
@@ -54,30 +53,32 @@ impl Grep {
         msend: Sender<GrepResult>,
         buffers: Arc<FxHashMap<PathBuf, PieceTreeView>>,
     ) {
-        let searcher = SearcherBuilder::new()
-            .binary_detection(BinaryDetection::quit(b'\x00'))
-            .line_terminator(LineTerminator::byte(b'\n'))
-            .line_number(true)
-            .multi_line(false)
-            .build();
+        // let searcher = SearcherBuilder::new()
+        //     .binary_detection(BinaryDetection::quit(b'\x00'))
+        //     .line_terminator(LineTerminator::byte(b'\n'))
+        //     .line_number(true)
+        //     .multi_line(false)
+        //     .build();
 
-        let matcher = RegexMatcherBuilder::new()
-            .line_terminator(Some(b'\n'))
-            .case_insensitive(false)
-            .case_smart(false)
-            .word(false)
-            .build(pattern)
-            .expect("Cannot build RegexMatcher");
+        // let matcher = RegexMatcherBuilder::new()
+        //     .line_terminator(Some(b'\n'))
+        //     .case_insensitive(false)
+        //     .case_smart(false)
+        //     .word(false)
+        //     .build(pattern)
+        //     .expect("Cannot build RegexMatcher");
 
-        let ptsearcher = Arc::new(
-            Searcher::new(pattern, SearchDirection::Forward, SearchKind::Regex)
-                .expect("Cannot build PTSearcher"),
-        );
+        // let ptsearcher = Arc::new(
+        //     Searcher::new(pattern, SearchDirection::Forward, SearchKind::Regex)
+        //         .expect("Cannot build PTSearcher"),
+        // );
 
         while let Some(opt) = orecv.recv().await {
-            let ptsearcher = ptsearcher.clone();
-            let mut searcher = searcher.clone();
-            let matcher = matcher.clone();
+            // TODO handle ignored filepaths
+
+            // let ptsearcher = ptsearcher.clone();
+            // let mut searcher = searcher.clone();
+            // let matcher = matcher.clone();
             let msend = msend.clone();
             let bufs = buffers.clone();
 
@@ -89,16 +90,16 @@ impl Grep {
 
                 if let Some(buf) = bufs.get(path) {
                     // Grep buffer if it exists
-                    Self::grep_buffer(path.clone(), buf, &ptsearcher, msend);
+                    // Self::grep_buffer(path.clone(), buf, &ptsearcher, msend);
                 } else {
-                    // Otherwise use ripgrep
-                    let rsend = ResultSender {
-                        matcher: &matcher,
-                        sender: msend,
-                        path: &path,
-                        matches: SortedVec::new(),
-                    };
-                    let _ = searcher.search_path(&matcher, &path, rsend);
+                    // Otherwise use filegrep
+                    // let rsend = ResultSender {
+                    //     matcher: &matcher,
+                    //     sender: msend,
+                    //     path: &path,
+                    //     matches: SortedVec::new(),
+                    // };
+                    // let _ = searcher.search_path(&matcher, &path, rsend);
                 }
             });
         }
@@ -282,55 +283,74 @@ struct GrepResult {
     matches: SortedVec<GrepMatch>,
 }
 
-#[derive(Debug)]
-struct ResultSender<'a> {
-    matcher: &'a RegexMatcher,
-    sender: Sender<GrepResult>,
-    path: &'a Path,
-    matches: SortedVec<GrepMatch>,
+/// Read a file and keep track of its line number
+/// Consider all of EndOfLine as eol?
+// Read a file and if it is detected binary stop?
+struct FileReader {
+    buf: BytesMut,
 }
 
-impl<'a> Sink for ResultSender<'a> {
-    type Error = Box<dyn Error>;
-
-    fn matched(&mut self, _searcher: &Searcher, mat: &SinkMatch<'_>) -> Result<bool, Self::Error> {
-        let mut matches = vec![];
-        self.matcher
-            .find_iter(mat.bytes(), |m| {
-                matches.push((m.start()..m.end()).into());
-                true
-            })
-            .ok();
-
-        if !matches.is_empty() {
-            let gmat = prepare_grep_match(
-                Either::Left(mat.bytes()),
-                mat.line_number(),
-                mat.absolute_byte_offset(),
-                matches,
-            );
-            self.matches.push(gmat);
-        }
-
-        Ok(true)
-    }
-
-    fn finish(
-        &mut self,
-        _searcher: &Searcher,
-        _: &grep::searcher::SinkFinish,
-    ) -> Result<(), Self::Error> {
-        let matches = std::mem::take(&mut self.matches);
-        if !matches.is_empty() {
-            let _ = self.sender.blocking_send(GrepResult {
-                path: self.path.to_path_buf(),
-                matches,
-            });
-        }
-
-        Ok(())
-    }
+struct FileGrepper<'a> {
+    regex: &'a Regex,
 }
+
+impl<'a> FileGrepper<'a> {
+    fn new(pattern: &str) -> anyhow::Result<FileGrepper<'a>> {
+            todo!()
+    }
+
+    fn grep(&self, reader: FileReader) {}
+}
+
+// #[derive(Debug)]
+// struct ResultSender<'a> {
+//     matcher: &'a RegexMatcher,
+//     sender: Sender<GrepResult>,
+//     path: &'a Path,
+//     matches: SortedVec<GrepMatch>,
+// }
+
+// impl<'a> Sink for ResultSender<'a> {
+//     type Error = Box<dyn Error>;
+
+//     fn matched(&mut self, _searcher: &Searcher, mat: &SinkMatch<'_>) -> Result<bool, Self::Error> {
+//         let mut matches = vec![];
+//         self.matcher
+//             .find_iter(mat.bytes(), |m| {
+//                 matches.push((m.start()..m.end()).into());
+//                 true
+//             })
+//             .ok();
+
+//         if !matches.is_empty() {
+//             let gmat = prepare_grep_match(
+//                 Either::Left(mat.bytes()),
+//                 mat.line_number(),
+//                 mat.absolute_byte_offset(),
+//                 matches,
+//             );
+//             self.matches.push(gmat);
+//         }
+
+//         Ok(true)
+//     }
+
+//     fn finish(
+//         &mut self,
+//         _searcher: &Searcher,
+//         _: &grep::searcher::SinkFinish,
+//     ) -> Result<(), Self::Error> {
+//         let matches = std::mem::take(&mut self.matches);
+//         if !matches.is_empty() {
+//             let _ = self.sender.blocking_send(GrepResult {
+//                 path: self.path.to_path_buf(),
+//                 matches,
+//             });
+//         }
+
+//         Ok(())
+//     }
+// }
 
 /// Shorten long grep lines to MAX_BEFORE_TRUNC characters.
 /// Also move to the match if it is far into the match

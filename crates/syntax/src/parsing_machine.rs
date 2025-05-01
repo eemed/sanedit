@@ -7,7 +7,7 @@ mod stack;
 #[allow(dead_code)]
 mod jit;
 
-pub use self::captures::{Capture, CaptureID, CaptureList};
+pub use self::captures::{Capture, CaptureID, CaptureIter, CaptureList};
 use self::compiler::Program;
 
 use std::io;
@@ -62,8 +62,18 @@ impl Parser {
         Ok(parser)
     }
 
+    pub fn program(&self) -> &Program {
+        &self.program
+    }
+
     pub fn label_for(&self, id: CaptureID) -> &str {
-        &self.rules[id].name
+        if let Some(rule) = self.rules.get(id) {
+            return &rule.name;
+        }
+
+        // If the capture was not from a rule should be from an embedded
+        // operation
+        "embed"
     }
 
     pub fn annotations_for(&self, id: CaptureID) -> &[Annotation] {
@@ -79,19 +89,34 @@ impl Parser {
             .1
     }
 
-    pub fn parse<B: ByteReader>(&self, reader: B) -> Result<CaptureList, ParseError> {
-        self.do_parse(reader)
+    /// Try to match text multiple times. Skips errors and yields an element only when part of the text matches
+    pub fn captures<'a, B: ByteReader>(&'a self, reader: B) -> CaptureIter<'a, B> {
+        CaptureIter {
+            parser: self,
+            reader,
+            sp: 0,
+        }
+    }
+
+    /// Match whole text and return captures, fails if the text does not match
+    pub fn parse<B: ByteReader>(&self, mut reader: B) -> Result<CaptureList, ParseError> {
+        self.do_parse(&mut reader, 0)
+            .map(|(caps, _)| caps)
             .map_err(|err| ParseError::Parse(err.to_string()))
     }
 
-    fn do_parse<B: ByteReader>(&self, reader: B) -> anyhow::Result<CaptureList> {
+    fn do_parse<B: ByteReader>(
+        &self,
+        reader: &mut B,
+        sp: u64,
+    ) -> anyhow::Result<(CaptureList, u64)> {
         use Operation::*;
 
         let slen = reader.len();
         // Instruction pointer
         let mut ip = 0;
         // Subject pointer
-        let mut sp = 0;
+        let mut sp = sp;
         // State to indicate failure
         let mut state = State::Normal;
         // Stack for backtracking, choices, returns
@@ -191,7 +216,7 @@ impl Parser {
 
                     ip += 1;
                 }
-                End => return Ok(captures),
+                End => return Ok((captures, sp)),
                 EndFail => bail!("Parsing failed"),
                 BackCommit(l) => {
                     match stack.pop() {
@@ -250,7 +275,7 @@ impl Parser {
 
                     None => {
                         if captures_good(&captures) {
-                            return Ok(captures);
+                            return Ok((captures, sp));
                         } else {
                             bail!("No stack entry to backtrack to");
                         }
@@ -361,7 +386,6 @@ mod test {
     #[test]
     fn parse_not_followed() {
         let peg = "
-
             line_end        = comment? !(!nl .);
             nl              = \"\\r\\n\" / \"\\r\" / \"\\n\";
             comment         = \"#\" (!nl .)*;

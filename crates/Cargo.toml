@@ -12,7 +12,7 @@ members = [
     "server",
     "terminal-client",
     "ucd",
-    "utils",
+    "utils", "syntax-cli",
 ]
 
 [workspace.package]

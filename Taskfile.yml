@@ -29,7 +29,7 @@ tasks:
     dir: crates
     deps: [install-pre-commit-hook]
     cmds:
-      - cargo run --release
+      - cargo run --bin sane --release
 
   build:
     desc: Build a debug build
@@ -56,16 +56,32 @@ tasks:
     dir: crates
     deps: [install-pre-commit-hook]
     cmds:
-      - cargo run -- --config-dir ../runtime
+      - cargo run --bin sane -- --config-dir ../runtime
     env:
       RUST_BACKTRACE: 1
+
+  debug-regex:
+    desc: Build and run the debug regex pattern
+    dir: crates
+    requires:
+      vars: [INPUT, PATTERN]
+    cmds:
+      - echo "{{ .INPUT }}" | cargo run --bin syntax -- --rules "{{ .PATTERN }}" --regex --print-rules --print-byte-code --print-captures
+
+  debug-peg:
+    desc: Build and run the debug regex pattern
+    dir: crates
+    requires:
+      vars: [INPUT, PATTERN]
+    cmds:
+      - echo "{{ .INPUT }}" | cargo run --bin syntax -- --rules "{{ .PATTERN }}" --print-rules --print-byte-code --print-captures
 
   run:debug:
     desc: Build and run the debug build with debug logging
     dir: crates
     deps: [install-pre-commit-hook]
     cmds:
-      - cargo run -- --config-dir ../runtime --debug
+      - cargo run --bin sane -- --config-dir ../runtime --debug
     env:
       RUST_BACKTRACE: 1
 

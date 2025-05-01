@@ -3,10 +3,25 @@ use thiserror::Error;
 use crate::grammar::Rule;
 use crate::grammar::RuleInfo;
 use crate::grammar::Rules;
+use crate::ByteReader;
 use crate::Capture;
+use crate::CaptureIter;
 use crate::Operation;
 use crate::ParseError;
 use crate::Parser;
+
+pub struct RegexRules(Rules);
+impl std::fmt::Display for RegexRules {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl std::fmt::Debug for RegexRules {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self.0)
+    }
+}
 
 #[derive(Debug)]
 pub struct Regex {
@@ -20,15 +35,40 @@ impl Regex {
         Ok(Regex { parser })
     }
 
+    pub fn new_literal(pattern: &str) -> Result<Regex, RegexError> {
+        let rules = RegexToPEG::convert_literal(pattern)?;
+        let parser = Parser::from_rules(rules)?;
+        Ok(Regex { parser })
+    }
+
+    pub fn parse_pattern(pattern: &str) -> Result<RegexRules, RegexError> {
+        let rules = RegexToPEG::convert(pattern)?;
+        Ok(RegexRules(rules))
+    }
+
+    pub fn from_rules(rules: RegexRules) -> Result<Regex, RegexError> {
+        let parser = Parser::from_rules(rules.0)?;
+        Ok(Regex { parser })
+    }
+
     pub fn is_match<B: AsRef<[u8]>>(&self, bytes: &B) -> bool {
         let bytes = bytes.as_ref();
         match self.parser.parse(bytes) {
             Ok(cap) => {
-                println!("OK: {cap:?}");
                 true
             }
             Err(_e) => false,
         }
+    }
+
+    pub fn captures<B: ByteReader>(&self, reader: B) -> CaptureIter<B> {
+        self.parser.captures(reader)
+    }
+}
+
+impl From<Regex> for Parser {
+    fn from(value: Regex) -> Self {
+        value.parser
     }
 }
 
@@ -41,13 +81,25 @@ struct RegexToPEG<'a> {
 }
 
 impl<'a> RegexToPEG<'a> {
+    pub fn convert_literal(pattern: &str) -> Result<Rules, RegexError> {
+        let empty = Rule::ByteSequence(pattern.as_bytes().to_vec());
+        let info = RuleInfo {
+            rule: empty.clone(),
+            top: true,
+            annotations: vec![],
+            name: "root".into(),
+        };
+
+        let rules = Rules::new(vec![info].into());
+        Ok(rules)
+    }
+
     /// Convert provided regex to PEG
     pub fn convert(pattern: &str) -> Result<Rules, RegexError> {
         let text = include_str!("../pegs/regex.peg");
         let parser = Parser::new(std::io::Cursor::new(text))?;
         let captures = parser.parse(pattern)?;
 
-        println!("Captures: {captures:?}");
         let mut state = RegexToPEG {
             pattern,
             parser,
@@ -65,7 +117,6 @@ impl<'a> RegexToPEG<'a> {
         state.rules.push(info);
         state.rules[0].rule = state.convert_rec(0, &empty, 1);
         let rules = Rules::new(state.rules.into_boxed_slice());
-        println!("Rules:\n{rules}");
         Ok(rules)
     }
 
@@ -95,10 +146,10 @@ impl<'a> RegexToPEG<'a> {
             }
             children
         };
-        println!(
-            "Enter depth: {depth}, capture: {} / {label} {text:?}: Children: {children:?}",
-            cap.id
-        );
+        // println!(
+        //     "Enter depth: {depth}, capture: {} / {label} {text:?}: Children: {children:?}",
+        //     cap.id
+        // );
 
         match label {
             "escaped" | "char" => {
@@ -185,7 +236,10 @@ impl<'a> RegexToPEG<'a> {
                 self.n += 1;
                 let cont = Rule::Sequence(vec![Rule::Embed(Operation::CaptureEnd), cont.clone()]);
                 let rule = self.convert_rec(children[0], &cont, depth + 1);
-                return Rule::Sequence(vec![Rule::Embed(Operation::CaptureBeginMultiEnd(self.n)), rule]);
+                return Rule::Sequence(vec![
+                    Rule::Embed(Operation::CaptureBeginMultiEnd(self.n)),
+                    rule,
+                ]);
             }
             _ => {}
         }

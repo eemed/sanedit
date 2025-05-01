@@ -2,11 +2,13 @@ use crate::{BufferRange, Range};
 use sanedit_buffer::{
     PieceTreeSlice, SearchIter, SearchIterRev, Searcher as PTSearcher, SearcherRev as PTSearcherRev,
 };
+use sanedit_syntax::Regex;
 
 #[derive(Debug, Clone, PartialEq, Eq, Copy)]
 pub enum SearchKind {
     /// default case sensitive search
     Default(bool),
+    Regex,
 }
 
 impl Default for SearchKind {
@@ -26,42 +28,53 @@ impl SearchKind {
     pub fn can_reverse(&self) -> bool {
         match self {
             SearchKind::Default(_) => true,
+            SearchKind::Regex => false,
         }
     }
 
     pub fn reverse(&mut self) {
         match self {
             SearchKind::Default(rev) => *rev = !*rev,
+            _ => {}
         }
     }
 
     pub fn is_reversed(&self) -> bool {
         match self {
             SearchKind::Default(rev) => *rev,
+            SearchKind::Regex => false,
         }
     }
 }
 
 #[derive(Debug)]
 pub enum Searcher {
-    /// Forward search
-    Default(PTSearcher),
-
     /// Backwards search
     Rev(PTSearcherRev),
+
+    /// Forward search
+    Regex(Regex),
 }
 
 impl Searcher {
     pub fn new(pattern: &str, kind: SearchKind) -> anyhow::Result<Searcher> {
         match kind {
             SearchKind::Default(true) => Ok(Self::create_rev(pattern)),
-            SearchKind::Default(false) => Ok(Self::create(pattern)),
+            SearchKind::Default(false) => Self::create(pattern),
+            SearchKind::Regex => Self::create_regex(pattern),
         }
     }
 
-    fn create(patt: &str) -> Searcher {
-        let searcher = PTSearcher::new(patt.as_bytes());
-        Searcher::Default(searcher)
+    fn create_regex(patt: &str) -> anyhow::Result<Searcher> {
+        let regex = Regex::new(patt)?;
+        let searcher = Searcher::Regex(regex);
+        Ok(searcher)
+    }
+
+    fn create(patt: &str) -> anyhow::Result<Searcher> {
+        let regex = Regex::new_literal(patt)?;
+        let searcher = Searcher::Regex(regex);
+        Ok(searcher)
     }
 
     fn create_rev(patt: &str) -> Searcher {
@@ -95,7 +108,7 @@ impl SearchMatch {
 }
 
 pub enum MatchIter<'a, 'b> {
-    Default(SearchIter<'a, 'b>),
+    Regex(SearchIter<'a, 'b>),
     Rev(SearchIterRev<'a, 'b>),
 }
 

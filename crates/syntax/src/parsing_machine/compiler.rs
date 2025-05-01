@@ -7,7 +7,7 @@ use crate::{
 
 use super::op::Operation;
 
-pub(crate) struct Program {
+pub struct Program {
     pub(crate) ops: Vec<Operation>,
     pub(crate) names: BTreeMap<usize, String>,
 }

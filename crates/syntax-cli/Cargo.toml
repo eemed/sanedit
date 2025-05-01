@@ -1,0 +1,13 @@
+[package]
+name = "syntax-cli"
+version.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "syntax"
+path = "src/main.rs"
+
+[dependencies]
+sanedit-syntax = { path = "../syntax" }
+
+argh.workspace = true

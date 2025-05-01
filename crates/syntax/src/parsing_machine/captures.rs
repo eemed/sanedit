@@ -1,6 +1,8 @@
 use std::ops::Range;
 
-use crate::SubjectPosition;
+use crate::{ByteReader, SubjectPosition};
+
+use super::Parser;
 
 pub type CaptureID = usize;
 pub type CaptureList = Vec<Capture>;
@@ -58,5 +60,38 @@ impl Capture {
             .expect("Should not return a capture without length");
 
         self.start..self.start + len
+    }
+}
+
+/// Iterate over matched captures.
+/// Yields captures only when matching succeeds otherwise tries again at the next position
+#[derive(Debug)]
+pub struct CaptureIter<'a, B: ByteReader> {
+    pub(super) parser: &'a Parser,
+    pub(super) reader: B,
+    pub(super) sp: u64,
+}
+
+impl<'a, B: ByteReader> Iterator for CaptureIter<'a, B> {
+    type Item = CaptureList;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        // TODO this should be benchmarked and done some better way,
+        // for example by including a special instruction to byte code
+
+        let len = self.reader.len();
+        while self.sp != len {
+            match self.parser.do_parse(&mut self.reader, self.sp) {
+                Ok((caps, sp)) => {
+                    self.sp = sp;
+                    return Some(caps);
+                }
+                Err(_) => {
+                    self.sp += 1;
+                }
+            }
+        }
+
+        None
     }
 }

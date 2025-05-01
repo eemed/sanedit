@@ -11,6 +11,6 @@ pub use error::ParseError;
 
 pub use glob::Glob;
 pub use glob::GlobError;
-pub use regex::{RegexError, Regex};
+pub use regex::{RegexRules, RegexError, Regex};
 pub use grammar::Annotation;
 pub use parsing_machine::*;

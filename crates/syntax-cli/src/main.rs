@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use argh::FromArgs;
-use sanedit_syntax::{Capture, Parser, Regex};
+use sanedit_syntax::{Capture, Glob, Parser, Regex};
 
 /// command line options
 #[derive(FromArgs)]
@@ -9,6 +9,10 @@ struct Cli {
     /// interpret rules as regex
     #[argh(switch)]
     regex: bool,
+
+    /// interpret rules as glob
+    #[argh(switch)]
+    glob: bool,
 
     /// print rules
     #[argh(switch)]
@@ -101,7 +105,13 @@ fn main() {
     let cli: Cli = argh::from_env();
 
     let rules = read_rules(&cli);
-    let parser = if cli.regex {
+    let parser = if cli.glob {
+        let rules = Glob::parse_pattern(&rules).unwrap();
+        if cli.print_rules {
+            println!("{rules}");
+        }
+        Glob::from_rules(rules).unwrap().into()
+    } else if cli.regex {
         let rules = Regex::parse_pattern(&rules).unwrap();
         if cli.print_rules {
             println!("{rules}");

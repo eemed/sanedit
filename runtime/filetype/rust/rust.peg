@@ -4,7 +4,7 @@ visibility = "pub(crate)" / "pub(super)" / "pub";
 
 @show
 @highlight
-keyword = ( "loop" / "let" / "match" / "if" / "else" / "while" / "break" / "move" / "async" / "dyn" / "return" / "for" / "in" / "as") end / (visibility / "use" / "fn" / "impl" / "struct" / "enum" / "const" / "trait" / "type" / "extern crate"  / "extern" ) end;
+keyword = start ( "loop" / "let" / "match" / "if" / "else" / "while" / "break" / "move" / "async" / "dyn" / "return" / "for" / "in" / "as") end / (visibility / "use" / "fn" / "impl" / "struct" / "enum" / "const" / "trait" / "type" / "extern crate"  / "extern" ) end;
 
 
 ############ Mod
@@ -26,7 +26,7 @@ string    = "\"" compl_string "\"";
 compl_string    = ("\\" escape_char / [^"\n])*;
 escape_char     = "0" / "t" / "n" / "r" / "\"" / "\\";
 
-start = &(WHITESPACE / ";" / "<");
+start = WHITESPACE;
 end = &(WHITESPACE / ";" / "<");
 
 
@@ -123,7 +123,7 @@ attrs = "#" "!"? "[" (!"]" .)* "]";
 ########## COMMENTS
 @show
 @highlight
-comment = "//" (!nl .)* nl;
+comment = "//" (!nl .)*;
 
 # TODO fix
 WHITESPACE = " " / "\t" / nl;

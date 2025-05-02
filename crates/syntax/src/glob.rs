@@ -11,6 +11,20 @@ pub enum GlobError {
     Parsing(#[from] ParseError),
 }
 
+pub struct GlobRules(Rules);
+
+impl std::fmt::Display for GlobRules {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl std::fmt::Debug for GlobRules {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self.0)
+    }
+}
+
 // https://en.wikipedia.org/wiki/Glob_(programming)
 //
 #[allow(dead_code)]
@@ -24,6 +38,16 @@ impl Glob {
     pub fn new(pattern: &str) -> Result<Glob, GlobError> {
         let rules = Self::to_rules(pattern)?;
         let parser = Parser::from_rules(rules)?;
+        Ok(Glob { parser })
+    }
+
+    pub fn parse_pattern(pattern: &str) -> Result<GlobRules, GlobError> {
+        let rules = Self::to_rules(pattern)?;
+        Ok(GlobRules(rules))
+    }
+
+    pub fn from_rules(rules: GlobRules) -> Result<Glob, GlobError> {
+        let parser = Parser::from_rules(rules.0)?;
         Ok(Glob { parser })
     }
 
@@ -83,6 +107,12 @@ impl Glob {
             Ok(_) => true,
             Err(_e) => false,
         }
+    }
+}
+
+impl From<Glob> for Parser {
+    fn from(value: Glob) -> Self {
+        value.parser
     }
 }
 

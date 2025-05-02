@@ -60,6 +60,14 @@ tasks:
     env:
       RUST_BACKTRACE: 1
 
+  debug-glob:
+    desc: Build and run the debug glob pattern
+    dir: crates
+    requires:
+      vars: [INPUT, PATTERN]
+    cmds:
+      - echo "{{ .INPUT }}" | cargo run --bin syntax -- --rules "{{ .PATTERN }}" --glob --print-rules --print-byte-code --print-captures
+
   debug-regex:
     desc: Build and run the debug regex pattern
     dir: crates

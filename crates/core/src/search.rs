@@ -1,8 +1,9 @@
 use crate::{BufferRange, Range};
 use sanedit_buffer::{
-    PieceTreeSlice, SearchIter, SearchIterRev, Searcher as PTSearcher, SearcherRev as PTSearcherRev,
+    Bytes, PieceTreeSlice, SearchIter, SearchIterRev, Searcher as PTSearcher,
+    SearcherRev as PTSearcherRev,
 };
-use sanedit_syntax::Regex;
+use sanedit_syntax::{ByteReader, CaptureIter, Regex};
 
 #[derive(Debug, Clone, PartialEq, Eq, Copy)]
 pub enum SearchKind {
@@ -49,6 +50,9 @@ impl SearchKind {
 
 #[derive(Debug)]
 pub enum Searcher {
+    /// Forwards search
+    Forward(PTSearcher),
+
     /// Backwards search
     Rev(PTSearcherRev),
 
@@ -60,7 +64,7 @@ impl Searcher {
     pub fn new(pattern: &str, kind: SearchKind) -> anyhow::Result<Searcher> {
         match kind {
             SearchKind::Default(true) => Ok(Self::create_rev(pattern)),
-            SearchKind::Default(false) => Self::create(pattern),
+            SearchKind::Default(false) => Ok(Self::create(pattern)),
             SearchKind::Regex => Self::create_regex(pattern),
         }
     }
@@ -71,10 +75,9 @@ impl Searcher {
         Ok(searcher)
     }
 
-    fn create(patt: &str) -> anyhow::Result<Searcher> {
-        let regex = Regex::new_literal(patt)?;
-        let searcher = Searcher::Regex(regex);
-        Ok(searcher)
+    fn create(patt: &str) -> Searcher {
+        let searcher = PTSearcher::new(patt.as_bytes());
+        Searcher::Forward(searcher)
     }
 
     fn create_rev(patt: &str) -> Searcher {
@@ -84,13 +87,18 @@ impl Searcher {
 
     pub fn find_iter<'a, 'b: 'a>(&'a self, slice: &'b PieceTreeSlice) -> MatchIter<'a, 'b> {
         match self {
-            Searcher::Default(s) => {
+            Searcher::Forward(s) => {
                 let iter = s.find_iter(slice);
-                MatchIter::Default(iter)
+                MatchIter::Forward(iter)
             }
             Searcher::Rev(s) => {
                 let iter = s.find_iter(slice);
                 MatchIter::Rev(iter)
+            }
+            Searcher::Regex(regex) => {
+                let bytes = slice.bytes();
+                let iter = regex.captures(bytes);
+                MatchIter::Regex(iter)
             }
         }
     }
@@ -108,8 +116,9 @@ impl SearchMatch {
 }
 
 pub enum MatchIter<'a, 'b> {
-    Regex(SearchIter<'a, 'b>),
+    Forward(SearchIter<'a, 'b>),
     Rev(SearchIterRev<'a, 'b>),
+    Regex(CaptureIter<'a, Bytes<'a>>),
 }
 
 impl<'a, 'b> Iterator for MatchIter<'a, 'b> {
@@ -117,7 +126,7 @@ impl<'a, 'b> Iterator for MatchIter<'a, 'b> {
 
     fn next(&mut self) -> Option<Self::Item> {
         match self {
-            MatchIter::Default(i) => {
+            MatchIter::Forward(i) => {
                 let next = i.next()?;
                 Some(SearchMatch {
                     range: Range::new(next.start, next.end),
@@ -127,6 +136,13 @@ impl<'a, 'b> Iterator for MatchIter<'a, 'b> {
                 let next = i.next()?;
                 Some(SearchMatch {
                     range: Range::new(next.start, next.end),
+                })
+            }
+            MatchIter::Regex(capture_iter) => {
+                let caps = capture_iter.next()?;
+                let cap = &caps[0];
+                Some(SearchMatch {
+                    range: cap.range().into(),
                 })
             }
         }

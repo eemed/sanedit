@@ -1,43 +1,40 @@
-use std::{cmp::min, ops::Range};
+use std::cmp::min;
 
-use sanedit_buffer::utf8::decode_utf8_iter;
+use sanedit_buffer::{utf8::decode_utf8_iter, Bytes};
 
 pub trait ByteReader {
-    type I: Iterator<Item = u8>;
-
     /// Length of all the bytes in this reader utf8
     fn len(&self) -> u64;
 
     /// Wether to stop parsing and return an error
     fn stop(&self) -> bool;
 
-    fn iter(&self, range: Range<u64>) -> Self::I;
+    fn at(&mut self, at: u64) -> u8;
 
-    fn at(&self, at: u64) -> u8 {
-        self.iter(at..at + 1).next().unwrap()
-    }
+    fn matches(&mut self, at: u64, exp: &[u8]) -> bool {
+        if at + exp.len() as u64 >= self.len() {
+            return false;
+        }
 
-    fn matches(&self, at: u64, exp: &[u8]) -> bool {
-        let max = min(at + exp.len() as u64, self.len());
-        let mut bytes = self.iter(at..max);
+        let mut cur = at;
         for e in exp {
-            match bytes.next() {
-                Some(ch) => {
-                    if ch != *e {
-                        return false;
-                    }
-                }
-                None => return false,
+            let byte = self.at(cur);
+            cur += 1;
+            if *e != byte {
+                return false;
             }
         }
 
         true
     }
 
-    fn char_between(&self, at: u64, start: char, end: char) -> Option<u64> {
+    fn char_between(&mut self, at: u64, start: char, end: char) -> Option<u64> {
         let max = min(at + 4, self.len());
-        let bytes = self.iter(at..max);
-        let (ch, size) = decode_utf8_iter(bytes);
+        let mut bytes = [0u8; 4];
+        for i in 0..max {
+            bytes[i as usize] = self.at(at + i);
+        }
+        let (ch, size) = decode_utf8_iter(bytes[..max as usize].iter().copied());
         let ch = ch?;
 
         if start <= ch && ch <= end {
@@ -49,8 +46,6 @@ pub trait ByteReader {
 }
 
 impl<'a> ByteReader for &'a str {
-    type I = std::iter::Copied<std::slice::Iter<'a, u8>>;
-
     fn len(&self) -> u64 {
         self.as_bytes().len() as u64
     }
@@ -59,16 +54,12 @@ impl<'a> ByteReader for &'a str {
         false
     }
 
-    fn iter(&self, range: Range<u64>) -> Self::I {
-        self.as_bytes()[range.start as usize..range.end as usize]
-            .iter()
-            .copied()
+    fn at(&mut self, at: u64) -> u8 {
+        self.as_bytes()[at as usize]
     }
 }
 
 impl<'a> ByteReader for &'a [u8] {
-    type I = std::iter::Copied<std::slice::Iter<'a, u8>>;
-
     fn len(&self) -> u64 {
         <[u8]>::len(self) as u64
     }
@@ -77,9 +68,21 @@ impl<'a> ByteReader for &'a [u8] {
         false
     }
 
-    fn iter(&self, range: Range<u64>) -> Self::I {
-        self[range.start as usize..range.end as usize]
-            .iter()
-            .copied()
+    fn at(&mut self, at: u64) -> u8 {
+        self[at as usize]
+    }
+}
+
+impl<'a> ByteReader for Bytes<'a> {
+    fn len(&self) -> u64 {
+        <Bytes>::len(self)
+    }
+
+    fn stop(&self) -> bool {
+        false
+    }
+
+    fn at(&mut self, at: u64) -> u8 {
+        <Bytes>::at(self, at)
     }
 }

@@ -86,7 +86,7 @@ impl Syntax {
         let start = view.start;
         let slice = pt.slice(view.clone());
 
-        let reader = PTReader { pt: slice, kill };
+        let reader = slice.bytes();
         let captures = self.parser.parse(reader)?;
         let spans: Vec<Span> = captures
             .into_iter()
@@ -131,40 +131,6 @@ impl Syntax {
             buffer_range: view,
             highlights: spans,
         })
-    }
-}
-
-struct PTIter<'a>(Bytes<'a>);
-impl<'a> Iterator for PTIter<'a> {
-    type Item = u8;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.0.next()
-    }
-}
-
-// TODO optimize, check performance using a bytes iterator
-// and just cloning it, and limiting to a range
-struct PTReader<'a> {
-    pt: PieceTreeSlice<'a>,
-    kill: Kill,
-}
-
-impl<'a> ByteReader for PTReader<'a> {
-    type I = PTIter<'a>;
-
-    fn len(&self) -> u64 {
-        self.pt.len()
-    }
-
-    fn stop(&self) -> bool {
-        self.kill.should_stop()
-    }
-
-    fn iter(&self, range: std::ops::Range<u64>) -> Self::I {
-        let slice = self.pt.slice(range);
-        let bytes = slice.bytes();
-        PTIter(bytes)
     }
 }
 

@@ -116,7 +116,7 @@ impl<'a> Bytes<'a> {
         self.chunk_pos + self.pos as u64
     }
 
-    pub fn len(&mut self) -> u64 {
+    pub fn len(&self) -> u64 {
         self.range.end - self.range.start
     }
 

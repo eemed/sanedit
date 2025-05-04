@@ -42,6 +42,74 @@ impl<'a> Compiler<'a> {
         }
     }
 
+    pub(crate) fn compile_unanchored(mut self) -> anyhow::Result<Program> {
+        let top = {
+            let mut result = 0;
+            for (i, rule) in self.rules.iter().enumerate() {
+                if rule.top {
+                    result = i;
+                    break;
+                }
+            }
+
+            result
+        };
+
+
+        // Unanchor
+        let unanchor = self.push(Operation::Choice(0));
+
+        // Push top rule call
+        let site = self.push(Operation::Call(0));
+        self.call_sites.push((top, site));
+        self.push(Operation::End);
+
+        // Unanchor
+        let any = self.push(Operation::Set(Set::any()));
+        self.push(Operation::Jump(0));
+        self.program[unanchor] = Operation::Choice(any);
+
+
+        let mut compile_addrs = vec![0; self.rules.len()];
+
+        // Compile all the other rules
+        for (i, rule) in self.rules.iter().enumerate() {
+            let show = rule.show();
+
+            compile_addrs[i] = self.program.len();
+
+            // Add capture if we want to show this in AST
+            if show {
+                self.push(Operation::CaptureBegin(i));
+            }
+
+            // Compile the rule
+            self.compile_rec(&rule.rule)?;
+
+            if show {
+                self.push(Operation::CaptureEnd);
+            }
+
+            // Add a return op
+            self.push(Operation::Return);
+        }
+
+        // Program addresses to names mapping
+        let mut names = BTreeMap::default();
+
+        // Set all call sites to their function addresses
+        for (rule, site) in &self.call_sites {
+            let addr = compile_addrs[*rule];
+            self.program[*site] = Operation::Call(addr);
+            names.insert(addr, self.rules[*rule].name.clone());
+        }
+
+        Ok(Program {
+            ops: self.program,
+            names,
+        })
+    }
+
     pub(crate) fn compile(mut self) -> anyhow::Result<Program> {
         let top = {
             let mut result = 0;

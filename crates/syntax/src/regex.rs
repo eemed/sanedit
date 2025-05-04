@@ -31,13 +31,7 @@ pub struct Regex {
 impl Regex {
     pub fn new(pattern: &str) -> Result<Regex, RegexError> {
         let rules = RegexToPEG::convert(pattern)?;
-        let parser = Parser::from_rules(rules)?;
-        Ok(Regex { parser })
-    }
-
-    pub fn new_literal(pattern: &str) -> Result<Regex, RegexError> {
-        let rules = RegexToPEG::convert_literal(pattern)?;
-        let parser = Parser::from_rules(rules)?;
+        let parser = Parser::from_rules_unanchored(rules)?;
         Ok(Regex { parser })
     }
 
@@ -53,12 +47,7 @@ impl Regex {
 
     pub fn is_match<B: AsRef<[u8]>>(&self, bytes: &B) -> bool {
         let bytes = bytes.as_ref();
-        match self.parser.parse(bytes) {
-            Ok(cap) => {
-                true
-            }
-            Err(_e) => false,
-        }
+        self.parser.parse(bytes).is_ok()
     }
 
     pub fn captures<B: ByteReader>(&self, reader: B) -> CaptureIter<B> {
@@ -81,19 +70,6 @@ struct RegexToPEG<'a> {
 }
 
 impl<'a> RegexToPEG<'a> {
-    pub fn convert_literal(pattern: &str) -> Result<Rules, RegexError> {
-        let empty = Rule::ByteSequence(pattern.as_bytes().to_vec());
-        let info = RuleInfo {
-            rule: empty.clone(),
-            top: true,
-            annotations: vec![],
-            name: "root".into(),
-        };
-
-        let rules = Rules::new(vec![info].into());
-        Ok(rules)
-    }
-
     /// Convert provided regex to PEG
     pub fn convert(pattern: &str) -> Result<Rules, RegexError> {
         let text = include_str!("../pegs/regex.peg");

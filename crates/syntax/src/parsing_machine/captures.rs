@@ -76,22 +76,15 @@ impl<'a, B: ByteReader> Iterator for CaptureIter<'a, B> {
     type Item = CaptureList;
 
     fn next(&mut self) -> Option<Self::Item> {
-        // TODO this should be benchmarked and done some better way,
-        // for example by including a special instruction to byte code
-
-        let len = self.reader.len();
-        while self.sp != len {
-            match self.parser.do_parse(&mut self.reader, self.sp) {
-                Ok((caps, sp)) => {
-                    self.sp = sp;
-                    return Some(caps);
-                }
-                Err(_) => {
-                    self.sp += 1;
-                }
+        match self.parser.do_parse(&mut self.reader, self.sp) {
+            Ok((caps, sp)) => {
+                self.sp = sp;
+                Some(caps)
+            }
+            Err(_) => {
+                self.sp = self.reader.len();
+                None
             }
         }
-
-        None
     }
 }

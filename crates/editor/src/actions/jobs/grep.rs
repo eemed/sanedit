@@ -1,12 +1,11 @@
 use std::any::Any;
-use std::error::Error;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use rustc_hash::FxHashMap;
 use sanedit_buffer::utf8::EndOfLine;
 use sanedit_buffer::{PieceTree, PieceTreeSlice, PieceTreeView};
-use sanedit_core::{BufferRange, Group, Item, Range, SearchKind, Searcher};
+use sanedit_core::{BufferRange, Group, Item, Range, Searcher};
 use sanedit_syntax::Regex;
 use sanedit_utils::either::Either;
 use sanedit_utils::sorted_vec::SortedVec;

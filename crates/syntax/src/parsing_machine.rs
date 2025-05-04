@@ -47,6 +47,16 @@ impl Parser {
         Self::from_rules(rules)
     }
 
+    pub(crate) fn from_rules_unanchored(rules: Rules) -> Result<Parser, ParseError> {
+        let compiler = Compiler::new(&rules);
+        let program = compiler
+            .compile_unanchored()
+            .map_err(|err| ParseError::Preprocess(err.to_string()))?;
+
+        let parser = Parser { rules, program };
+        Ok(parser)
+    }
+
     pub(crate) fn from_rules(rules: Rules) -> Result<Parser, ParseError> {
         let compiler = Compiler::new(&rules);
         let program = compiler
@@ -80,7 +90,7 @@ impl Parser {
         &self.rules[id].annotations
     }
 
-    pub fn label_for_op(&self, op: Addr) -> &str {
+    fn label_for_op(&self, op: Addr) -> &str {
         self.program
             .names
             .range(..=op)

@@ -3,7 +3,7 @@ use sanedit_buffer::{
     Bytes, PieceTreeSlice, SearchIter, SearchIterRev, Searcher as PTSearcher,
     SearcherRev as PTSearcherRev,
 };
-use sanedit_syntax::{ByteReader, CaptureIter, Regex};
+use sanedit_syntax::{CaptureIter, Regex};
 
 #[derive(Debug, Clone, PartialEq, Eq, Copy)]
 pub enum SearchKind {

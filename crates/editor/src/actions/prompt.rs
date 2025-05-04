@@ -2,11 +2,14 @@ mod commands;
 
 use std::{
     cmp::min,
+    path::PathBuf,
     sync::Arc,
     time::{Duration, Instant},
 };
 
 use chrono::{DateTime, Local, TimeDelta};
+use rustc_hash::FxHashMap;
+use sanedit_buffer::PieceTreeView;
 use sanedit_messages::ClientMessage;
 use sanedit_utils::idmap::AsID;
 
@@ -14,7 +17,7 @@ use crate::{
     actions::{
         cursors::jump_to_ref,
         hooks::run,
-        jobs::{FileOptionProvider, MatchedOptions},
+        jobs::{FileOptionProvider, Grep, MatchedOptions},
         window::focus,
     },
     common::{is_yes, matcher::Choice},
@@ -395,39 +398,40 @@ fn change_working_dir(editor: &mut Editor, id: ClientId) -> ActionResult {
     ActionResult::Ok
 }
 
-// #[action("Grep")]
-// fn grep(editor: &mut Editor, id: ClientId) {
-//     let (win, _buf) = editor.win_buf_mut(id);
-//     win.prompt = Prompt::builder()
-//         .prompt("Grep")
-//         .simple()
-//         .on_confirm(move |e, id, out| {
-//             const GREP_JOB: &str = "grep";
-//             let patt = get!(out.text());
-//             let ignore = e.config.editor.ignore_directories();
-//             let wd = e.working_dir();
-//             let buffers: FxHashMap<PathBuf, PieceTreeView> = {
-//                 let mut map = FxHashMap::default();
+#[action("Grep")]
+fn grep(editor: &mut Editor, id: ClientId) -> ActionResult {
+    let (win, _buf) = editor.win_buf_mut(id);
+    win.prompt = Prompt::builder()
+        .prompt("Grep")
+        .simple()
+        .on_confirm(move |e, id, out| {
+            const GREP_JOB: &str = "grep";
+            let patt = get!(out.text());
+            let ignore = e.config.editor.ignore_directories();
+            let wd = e.working_dir();
+            let buffers: FxHashMap<PathBuf, PieceTreeView> = {
+                let mut map = FxHashMap::default();
 
-//                 for (_, buf) in e.buffers().iter() {
-//                     // If not modified we let ripgrep grep from disk
-//                     if !buf.is_modified() {
-//                         continue;
-//                     }
+                for (_, buf) in e.buffers().iter() {
+                    // If not modified we grep from disk
+                    if !buf.is_modified() {
+                        continue;
+                    }
 
-//                     if let Some(path) = buf.path() {
-//                         map.insert(path.to_path_buf(), buf.ro_view());
-//                     }
-//                 }
+                    if let Some(path) = buf.path() {
+                        map.insert(path.to_path_buf(), buf.ro_view());
+                    }
+                }
 
-//                 map
-//             };
-//             let job = Grep::new(patt, wd, &ignore, buffers, id);
-//             e.job_broker.request_slot(id, GREP_JOB, job);
-//         })
-//         .build();
-//     win.focus_to(Focus::Prompt);
-// }
+                map
+            };
+            let job = Grep::new(patt, wd, &ignore, buffers, id);
+            e.job_broker.request_slot(id, GREP_JOB, job);
+        })
+        .build();
+    focus(editor, id, Focus::Prompt);
+    ActionResult::Ok
+}
 
 /// Prompt whether buffer changes should be changed or not
 pub(crate) fn unsaved_changes<F: Fn(&mut Editor, ClientId) + 'static>(

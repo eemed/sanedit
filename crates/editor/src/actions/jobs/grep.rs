@@ -5,7 +5,7 @@ use std::sync::Arc;
 use rustc_hash::FxHashMap;
 use sanedit_buffer::utf8::EndOfLine;
 use sanedit_buffer::{PieceTree, PieceTreeSlice, PieceTreeView};
-use sanedit_core::{BufferRange, Group, Item, Range, Searcher};
+use sanedit_core::{BufferRange, Group, Item, Range, SearchKind, Searcher};
 use sanedit_syntax::Regex;
 use sanedit_utils::either::Either;
 use sanedit_utils::sorted_vec::SortedVec;
@@ -52,32 +52,15 @@ impl Grep {
         msend: Sender<GrepResult>,
         buffers: Arc<FxHashMap<PathBuf, PieceTreeView>>,
     ) {
-        // let searcher = SearcherBuilder::new()
-        //     .binary_detection(BinaryDetection::quit(b'\x00'))
-        //     .line_terminator(LineTerminator::byte(b'\n'))
-        //     .line_number(true)
-        //     .multi_line(false)
-        //     .build();
-
-        // let matcher = RegexMatcherBuilder::new()
-        //     .line_terminator(Some(b'\n'))
-        //     .case_insensitive(false)
-        //     .case_smart(false)
-        //     .word(false)
-        //     .build(pattern)
-        //     .expect("Cannot build RegexMatcher");
-
-        // let ptsearcher = Arc::new(
-        //     Searcher::new(pattern, SearchDirection::Forward, SearchKind::Regex)
-        //         .expect("Cannot build PTSearcher"),
-        // );
+        let searcher =
+            Arc::new(Searcher::new(pattern, SearchKind::Regex).expect("Cannot build Searcher"));
+        let Ok(grepper) = FileGrepper::new(pattern) else {
+            return;
+        };
 
         while let Some(opt) = orecv.recv().await {
-            // TODO handle ignored filepaths
-
-            // let ptsearcher = ptsearcher.clone();
-            // let mut searcher = searcher.clone();
-            // let matcher = matcher.clone();
+            let grepper = grepper.clone();
+            let searcher = searcher.clone();
             let msend = msend.clone();
             let bufs = buffers.clone();
 
@@ -89,7 +72,7 @@ impl Grep {
 
                 if let Some(buf) = bufs.get(path) {
                     // Grep buffer if it exists
-                    // Self::grep_buffer(path.clone(), buf, &ptsearcher, msend);
+                    Self::grep_buffer(path.clone(), buf, &searcher, msend);
                 } else {
                     // Otherwise use filegrep
                     // let rsend = ResultSender {
@@ -289,69 +272,25 @@ struct FileReader {
     buf: BytesMut,
 }
 
-struct FileGrepper<'a> {
-    regex: &'a Regex,
+#[derive(Debug, Clone)]
+struct FileGrepper {
+    regex: Arc<Regex>,
 }
 
-impl<'a> FileGrepper<'a> {
-    fn new(pattern: &str) -> anyhow::Result<FileGrepper<'a>> {
-            todo!()
+impl FileGrepper {
+    fn new(pattern: &str) -> anyhow::Result<FileGrepper> {
+        let regex = Regex::new(pattern)?;
+        let grepper = FileGrepper {
+            regex: Arc::new(regex),
+        };
+        Ok(grepper)
     }
 
-    fn grep(&self, reader: FileReader) {}
+    fn grep(&self, reader: FileReader) {
+    }
 }
 
-// #[derive(Debug)]
-// struct ResultSender<'a> {
-//     matcher: &'a RegexMatcher,
-//     sender: Sender<GrepResult>,
-//     path: &'a Path,
-//     matches: SortedVec<GrepMatch>,
-// }
-
-// impl<'a> Sink for ResultSender<'a> {
-//     type Error = Box<dyn Error>;
-
-//     fn matched(&mut self, _searcher: &Searcher, mat: &SinkMatch<'_>) -> Result<bool, Self::Error> {
-//         let mut matches = vec![];
-//         self.matcher
-//             .find_iter(mat.bytes(), |m| {
-//                 matches.push((m.start()..m.end()).into());
-//                 true
-//             })
-//             .ok();
-
-//         if !matches.is_empty() {
-//             let gmat = prepare_grep_match(
-//                 Either::Left(mat.bytes()),
-//                 mat.line_number(),
-//                 mat.absolute_byte_offset(),
-//                 matches,
-//             );
-//             self.matches.push(gmat);
-//         }
-
-//         Ok(true)
-//     }
-
-//     fn finish(
-//         &mut self,
-//         _searcher: &Searcher,
-//         _: &grep::searcher::SinkFinish,
-//     ) -> Result<(), Self::Error> {
-//         let matches = std::mem::take(&mut self.matches);
-//         if !matches.is_empty() {
-//             let _ = self.sender.blocking_send(GrepResult {
-//                 path: self.path.to_path_buf(),
-//                 matches,
-//             });
-//         }
-
-//         Ok(())
-//     }
-// }
-
-/// Shorten long grep lines to MAX_BEFORE_TRUNC characters.
+/// Shorten long grep lines to MAX_CHARS characters.
 /// Also move to the match if it is far into the match
 fn prepare_grep_match(
     text: Either<&[u8], &PieceTreeSlice>,
@@ -359,7 +298,8 @@ fn prepare_grep_match(
     mut offset: u64,
     mut matches: Vec<Range<usize>>,
 ) -> GrepMatch {
-    const MAX_BEFORE_TRUNC: u64 = 400;
+    const MAX_CHARS: u64 = 400;
+
     let fmatch = matches[0].start as u64;
     let len = match text {
         Either::Left(bytes) => bytes.len() as u64,
@@ -368,8 +308,8 @@ fn prepare_grep_match(
 
     let mut start = 0u64;
     // If first match far into the line => move there
-    if fmatch > MAX_BEFORE_TRUNC - (MAX_BEFORE_TRUNC / 4) {
-        start = fmatch - MAX_BEFORE_TRUNC / 4;
+    if fmatch > MAX_CHARS - (MAX_CHARS / 4) {
+        start = fmatch - MAX_CHARS / 4;
     }
     offset += start;
     for mat in &mut matches {
@@ -379,8 +319,8 @@ fn prepare_grep_match(
 
     let mut end = len;
     // If line long => shorten it
-    if len - start > MAX_BEFORE_TRUNC {
-        end = start + MAX_BEFORE_TRUNC;
+    if len - start > MAX_CHARS {
+        end = start + MAX_CHARS;
     }
 
     let text = match text {

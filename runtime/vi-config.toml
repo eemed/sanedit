@@ -191,7 +191,7 @@ maps = [
     { key = "alt+d", actions = ["new_cursor_to_next_search_match!", "goto_layer select"] },
     { key = "alt+l", actions = ["new_cursor_to_all_search_matches!", "goto_layer select"] },
     { key = "space b", actions = ["open_buffer"] },
-    # { key = "space g", actions = ["grep"] },
+    { key = "space g", actions = ["grep"] },
     # { key = "alt+k", actions = ["prev_paragraph"] },
     # { key = "alt+j", actions = ["next_paragraph"] },
 

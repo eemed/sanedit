@@ -103,11 +103,8 @@ pub(crate) fn parse_syntax(editor: &mut Editor, id: ClientId) -> ActionResult {
     let range = win.view().range();
     let ropt = buf.ro_view();
 
-        log::info!("FT");
     let ft = getf!(buf.filetype.clone());
-        log::info!("OK");
     if let Ok(s) = editor.syntaxes.get(&ft) {
-        log::info!("dD");
         editor.job_broker.request_slot(
             id,
             JOB_NAME,

@@ -785,7 +785,10 @@ impl Editor {
         let dir = self.config_dir.filetype_dir();
         let path = PathBuf::from(ft.as_str()).join(format!("{}.peg", ft.as_str()));
         if let Some(path) = dir.find(&path) {
-            let _ = self.syntaxes.load(ft, &path);
+            log::info!("LOAD");
+            if let Err(e) = self.syntaxes.load(ft, &path) {
+                log::error!("Faile to load syntax for {}: {e}", ft.as_str());
+            }
         }
     }
 

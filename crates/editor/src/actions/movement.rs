@@ -15,17 +15,13 @@ use sanedit_messages::redraw::Point;
 
 use crate::editor::{
     hooks::Hook,
-    windows::{Focus, Jump, JumpGroup, NextKeyFunction, Prompt, View},
+    windows::{Jump, JumpGroup, NextKeyFunction, View},
     Editor,
 };
 
 use sanedit_server::ClientId;
 
-use super::{
-    hooks,
-    window::{focus, focus_with_keymap},
-    ActionResult,
-};
+use super::{hooks, ActionResult};
 
 #[inline]
 fn do_move_line<F: Fn(&PieceTreeSlice, &Cursor, &DisplayOptions) -> (u64, usize)>(
@@ -387,15 +383,18 @@ fn prev_visual_line_impl(view: &View, cursor: &Cursor) -> Option<(u64, usize)> {
         .last_non_empty_cell(target_line)
         .map(|point| point.x)
         .unwrap_or(0);
+    log::info!("MAX COL: {max_col}, {target_col}");
     // Column where there exists a character
     let col = target_col.min(max_col);
 
+    log::info!("LINE: {target_line}, COL: {col}");
     let pos = view
         .pos_at_point(Point {
             x: col,
             y: target_line,
         })
         .unwrap_or(0);
+    log::info!("POS: {pos}");
     Some((pos, target_col))
 }
 

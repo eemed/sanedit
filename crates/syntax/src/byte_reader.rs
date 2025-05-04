@@ -1,4 +1,10 @@
-use std::cmp::min;
+use std::{
+    cmp::min,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
+};
 
 use sanedit_buffer::{utf8::decode_utf8_iter, Bytes};
 
@@ -29,7 +35,7 @@ pub trait ByteReader {
     }
 
     fn char_between(&mut self, at: u64, start: char, end: char) -> Option<u64> {
-        let max = min(at + 4, self.len());
+        let max = min(4, self.len() - at);
         let mut bytes = [0u8; 4];
         for i in 0..max {
             bytes[i as usize] = self.at(at + i);
@@ -84,5 +90,19 @@ impl<'a> ByteReader for Bytes<'a> {
 
     fn at(&mut self, at: u64) -> u8 {
         <Bytes>::at(self, at)
+    }
+}
+
+impl<B: ByteReader> ByteReader for (B, Arc<AtomicBool>) {
+    fn len(&self) -> u64 {
+        self.0.len()
+    }
+
+    fn stop(&self) -> bool {
+        self.1.load(Ordering::Acquire)
+    }
+
+    fn at(&mut self, at: u64) -> u8 {
+        self.0.at(at)
     }
 }

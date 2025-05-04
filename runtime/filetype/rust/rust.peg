@@ -1,4 +1,4 @@
-document = (comment / attrs / mod_decl / const_decl / let_decl / string / char / unsafe / keyword / type / (!WS .)* WS / .)*;
+document = (comment / attrs / mod_decl / const_decl / let_decl / string / char / unsafe / keyword / type / (!WHITESPACE .)* WHITESPACE / .)*;
 
 visibility = "pub(crate)" / "pub(super)" / "pub";
 
@@ -125,8 +125,6 @@ attrs = "#" "!"? "[" (!"]" .)* "]";
 @highlight
 comment = "//" (!nl .)*;
 
-# TODO fix
 WHITESPACE = " " / "\t" / nl;
-#WHITESPACE = [ \t] / nl;
 ws =  [ \t]*;
 nl = "\r\n" / "\n" / "\r";

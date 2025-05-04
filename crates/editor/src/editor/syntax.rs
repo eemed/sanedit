@@ -85,7 +85,6 @@ impl Syntax {
 
         let start = view.start;
         let slice = pt.slice(view.clone());
-
         let reader = slice.bytes();
         let captures = self.parser.parse(reader)?;
         let spans: Vec<Span> = captures

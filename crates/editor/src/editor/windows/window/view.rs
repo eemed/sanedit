@@ -401,7 +401,11 @@ impl View {
                             pos += ch.len_in_buffer();
                         }
                     }
-                    _ => {}
+                    _ => {
+                        if point.y == y && point.x == x {
+                            return Some(pos);
+                        }
+                    }
                 }
             }
         }

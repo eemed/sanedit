@@ -74,10 +74,11 @@ impl<'a> RegexToPEG<'a> {
     pub fn convert(pattern: &str) -> Result<Rules, RegexError> {
         let text = include_str!("../pegs/regex.peg");
         let parser = Parser::new(std::io::Cursor::new(text))?;
-        let captures = parser.parse(pattern)?;
+        let pattern = format!("({pattern})");
+        let captures = parser.parse(pattern.as_str())?;
 
         let mut state = RegexToPEG {
-            pattern,
+            pattern: pattern.as_str(),
             parser,
             regex: captures,
             rules: vec![],

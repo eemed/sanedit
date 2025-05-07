@@ -445,7 +445,6 @@ pub(crate) fn unsaved_changes<F: Fn(&mut Editor, ClientId) + 'static>(
         .simple()
         .on_confirm(move |editor, id, out| {
             let ans = get!(out.text());
-            log::info!("Ans: {ans}");
             let yes = ans.is_empty() || is_yes(ans);
             if yes {
                 let unsaved: Vec<BufferId> = editor

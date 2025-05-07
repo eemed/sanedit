@@ -61,11 +61,26 @@ pub enum Searcher {
 }
 
 impl Searcher {
-    pub fn new(pattern: &str, kind: SearchKind) -> anyhow::Result<Searcher> {
+    /// Create a new searched with specific type
+    pub fn with_kind(pattern: &str, kind: SearchKind) -> anyhow::Result<Searcher> {
         match kind {
             SearchKind::Default(true) => Ok(Self::create_rev(pattern)),
             SearchKind::Default(false) => Ok(Self::create(pattern)),
             SearchKind::Regex => Self::create_regex(pattern),
+        }
+    }
+
+    /// Creates a forward searcher.
+    /// Search regex if formatted like /<pattern>/
+    /// Otherwise search literal string
+    pub fn new(pattern: &str) -> anyhow::Result<Searcher> {
+        let is_regex = pattern.starts_with("/") && pattern.ends_with("/");
+
+        if is_regex {
+            let end = std::cmp::max(1, pattern.len() - 1);
+            Self::create_regex(&pattern[1..end])
+        } else {
+            Ok(Self::create(pattern))
         }
     }
 

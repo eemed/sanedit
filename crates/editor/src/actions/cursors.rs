@@ -70,7 +70,7 @@ fn new_cursor_to_next_search_match(editor: &mut Editor, id: ClientId) -> ActionR
     let last_search = getf!(win.search.last_search());
     let ppos = win.cursors.primary().pos();
 
-    let Ok(searcher) = Searcher::new(&last_search.pattern, last_search.kind) else {
+    let Ok(searcher) = Searcher::with_kind(&last_search.pattern, last_search.kind) else {
         return ActionResult::Failed;
     };
     let slice = buf.slice(ppos..);
@@ -102,7 +102,7 @@ fn new_cursor_to_all_search_matches(editor: &mut Editor, id: ClientId) -> Action
         return ActionResult::Failed;
     };
 
-    let Ok(searcher) = Searcher::new(&last_search.pattern, last_search.kind) else {
+    let Ok(searcher) = Searcher::with_kind(&last_search.pattern, last_search.kind) else {
         return ActionResult::Failed;
     };
     let slice = buf.slice(..);

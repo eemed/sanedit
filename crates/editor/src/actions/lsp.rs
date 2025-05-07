@@ -486,7 +486,6 @@ pub(crate) fn diagnostics_to_locations(editor: &mut Editor, id: ClientId) -> Act
                 Some(diag.range().start),
                 vec![],
             );
-            log::info!("push: {item:?}");
             group.push(item);
         }
         win.locations.push(group);

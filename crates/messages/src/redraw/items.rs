@@ -24,8 +24,14 @@ pub enum ItemKind {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
+pub enum ItemLocation {
+    Line(u64),
+    ByteOffset(u64),
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
 pub struct Item {
-    pub line: Option<u64>,
+    pub location: Option<ItemLocation>,
 
     pub name: String,
     /// What to highlight in name if any

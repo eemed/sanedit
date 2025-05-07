@@ -383,18 +383,15 @@ fn prev_visual_line_impl(view: &View, cursor: &Cursor) -> Option<(u64, usize)> {
         .last_non_empty_cell(target_line)
         .map(|point| point.x)
         .unwrap_or(0);
-    log::info!("MAX COL: {max_col}, {target_col}");
     // Column where there exists a character
     let col = target_col.min(max_col);
 
-    log::info!("LINE: {target_line}, COL: {col}");
     let pos = view
         .pos_at_point(Point {
             x: col,
             y: target_line,
         })
         .unwrap_or(0);
-    log::info!("POS: {pos}");
     Some((pos, target_col))
 }
 

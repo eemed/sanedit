@@ -40,7 +40,7 @@ fn draw_impl(ctx: &mut DrawContext) -> redraw::Redraw {
 
         let name = entry.name_to_str_lossy().to_string();
         let item = Item {
-            line: None,
+            location: None,
             name,
             kind,
             level: entry.level(),

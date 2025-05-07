@@ -294,7 +294,6 @@ impl Editor {
         } else {
             path.to_path_buf()
         };
-        log::info!("PATH: {path:?}");
 
         // Use existing if possible
         let bid = match self.buffers.find(&path) {
@@ -406,7 +405,6 @@ impl Editor {
     fn handle_command(&mut self, id: ClientId, cmd: Command) {
         match cmd {
             Command::OpenFile(path_buf) => {
-                log::info!("open: {path_buf:?}");
                 let _ = self.open_file(id, &path_buf);
             }
         }
@@ -785,7 +783,6 @@ impl Editor {
         let dir = self.config_dir.filetype_dir();
         let path = PathBuf::from(ft.as_str()).join(format!("{}.peg", ft.as_str()));
         if let Some(path) = dir.find(&path) {
-            log::info!("LOAD");
             if let Err(e) = self.syntaxes.load(ft, &path) {
                 log::error!("Faile to load syntax for {}: {e}", ft.as_str());
             }

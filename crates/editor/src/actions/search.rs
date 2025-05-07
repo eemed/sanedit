@@ -185,7 +185,7 @@ fn search_impl(editor: &mut Editor, id: ClientId, input: &str, mut pos: u64) {
         }
     }
 
-    let Ok(searcher) = Searcher::new(input, win.search.kind) else {
+    let Ok(searcher) = Searcher::with_kind(input, win.search.kind) else {
         return;
     };
 

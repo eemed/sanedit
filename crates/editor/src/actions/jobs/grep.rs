@@ -6,7 +6,7 @@ use rustc_hash::FxHashMap;
 use sanedit_buffer::utf8::EndOfLine;
 use sanedit_buffer::{PieceTree, PieceTreeSlice, PieceTreeView};
 use sanedit_core::movement::{end_of_line, start_of_line};
-use sanedit_core::{Group, Item, Range, SearchKind, Searcher};
+use sanedit_core::{Group, Item, Range, SearchKind, SearchMatch, Searcher};
 use sanedit_utils::sorted_vec::SortedVec;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 
@@ -50,8 +50,7 @@ impl Grep {
         msend: Sender<GrepResult>,
         buffers: Arc<FxHashMap<PathBuf, PieceTreeView>>,
     ) {
-        let searcher =
-            Arc::new(Searcher::new(pattern, SearchKind::Regex).expect("Cannot build Searcher"));
+        let searcher = Arc::new(Searcher::new(pattern).expect("Cannot build Searcher"));
 
         while let Some(opt) = orecv.recv().await {
             let searcher = searcher.clone();
@@ -66,9 +65,11 @@ impl Grep {
 
                 match bufs.get(path) {
                     Some(view) => {
+                        // Grep editor buffers
                         Self::grep_buffer(path.clone(), view, &searcher, msend);
                     }
                     None => {
+                        // Grep files outside editor
                         let Ok(pt) = PieceTree::from_path(&path) else {
                             return;
                         };
@@ -77,6 +78,14 @@ impl Grep {
                     }
                 }
             });
+        }
+    }
+
+    async fn send_results(mut recv: Receiver<GrepResult>, mut ctx: JobContext) {
+        ctx.send(Start);
+
+        while let Some(msg) = recv.recv().await {
+            ctx.send(msg);
         }
     }
 
@@ -90,17 +99,7 @@ impl Grep {
         let mut matches = SortedVec::new();
 
         for mat in searcher.find_iter(&slice) {
-            let range = mat.range();
-            let sol = start_of_line(&slice, range.start);
-            let eol = end_of_line(&slice, range.end);
-            let line = slice.slice(sol..eol);
-            let line_mat = {
-                let mut range = mat.range();
-                range.start -= sol;
-                range.end -= sol;
-                Range::new(range.start as usize, range.end as usize)
-            };
-            let gmat = prepare_grep_match(&line, None, vec![line_mat]);
+            let gmat = Self::prepare_match(&slice, mat);
             matches.push(gmat);
         }
 
@@ -110,11 +109,42 @@ impl Grep {
         }
     }
 
-    async fn send_results(mut recv: Receiver<GrepResult>, mut ctx: JobContext) {
-        ctx.send(Start);
+    fn prepare_match(slice: &PieceTreeSlice, mat: SearchMatch) -> GrepMatch {
+        const MAX_BYTES_BEFORE_MATCH: u64 = 128;
+        const MAX_BYTES_AFTER_MATCH: u64 = 256;
 
-        while let Some(msg) = recv.recv().await {
-            ctx.send(msg);
+        let start = mat.range().start;
+
+        let sol = {
+            let limit = start.saturating_sub(MAX_BYTES_BEFORE_MATCH);
+            let mat_start = start - limit;
+            let slice = slice.slice(limit..);
+            start_of_line(&slice, mat_start) + limit
+        };
+
+        let eol = {
+            let limit = start.saturating_add(MAX_BYTES_AFTER_MATCH);
+            let slice = slice.slice(..limit);
+            end_of_line(&slice, start)
+        };
+        let line = slice.slice(sol..eol);
+        let line_mat = {
+            let mut range = mat.range();
+            range.start -= sol;
+            range.end -= sol;
+            Range::new(range.start as usize, range.end as usize)
+        };
+
+        let text = {
+            let line = EndOfLine::strip_eol(&line);
+            String::from(&line)
+        };
+
+        GrepMatch {
+            line: None,
+            text,
+            matches: vec![line_mat],
+            absolute_offset: Some(line.start()),
         }
     }
 }
@@ -210,48 +240,4 @@ impl From<GrepMatch> for Item {
 struct GrepResult {
     path: PathBuf,
     matches: SortedVec<GrepMatch>,
-}
-
-/// Shorten long grep lines to MAX_CHARS characters.
-/// Also move to the match if it is far into the match
-fn prepare_grep_match(
-    slice: &PieceTreeSlice,
-    line: Option<u64>,
-    mut matches: Vec<Range<usize>>,
-) -> GrepMatch {
-    const MAX_CHARS: u64 = 400;
-    let fmatch = matches[0].start as u64;
-    let len = slice.len();
-    let mut offset = slice.start();
-    let mut start = 0u64;
-
-    // If first match far into the line => move there
-    if fmatch > MAX_CHARS - (MAX_CHARS / 4) {
-        start = fmatch - MAX_CHARS / 4;
-    }
-    offset += start;
-
-    for mat in &mut matches {
-        mat.start -= start as usize;
-        mat.end -= start as usize;
-    }
-
-    let mut end = len;
-    // If line long => shorten it
-    if len - start > MAX_CHARS {
-        end = start + MAX_CHARS;
-    }
-
-    let text = {
-        let slice = slice.slice(start..end);
-        let slice = EndOfLine::strip_eol(&slice);
-        String::from(&slice)
-    };
-
-    GrepMatch {
-        line,
-        text,
-        matches,
-        absolute_offset: Some(offset),
-    }
 }

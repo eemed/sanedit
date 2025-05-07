@@ -1,7 +1,7 @@
 use std::cmp::max;
 
 use sanedit_messages::redraw::{
-    items::{Difference, Item, ItemKind, Items},
+    items::{Difference, Item, ItemKind, ItemLocation, Items},
     Diffable, Size, Style, ThemeField,
 };
 
@@ -223,7 +223,14 @@ impl CustomItems {
                 }
             }
             ItemKind::Item => {
-                let line = item.line.map(|l| l.to_string()).unwrap_or("?".into());
+                let line = item
+                    .location
+                    .as_ref()
+                    .map(|loc| match loc {
+                        ItemLocation::Line(n) => format!("{n}"),
+                        ItemLocation::ByteOffset(n) => format!("{n:#x}"),
+                    })
+                    .unwrap_or("?".into());
                 result.extend(into_cells_with_style(&format!("{line}: "), extra));
             }
         }

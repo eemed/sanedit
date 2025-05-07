@@ -83,7 +83,7 @@ impl Job for Search {
             }
 
             let (msend, mrecv) = channel::<Vec<BufferRange>>(CHANNEL_SIZE);
-            let searcher = Searcher::new(&term, kind)?;
+            let searcher = Searcher::with_kind(&term, kind)?;
             tokio::join!(
                 Self::search(msend, searcher, pt, range),
                 Self::send_matches(ctx, mrecv),

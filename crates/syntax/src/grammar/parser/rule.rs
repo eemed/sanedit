@@ -266,7 +266,7 @@ impl fmt::Display for Rule {
             ByteSequence(s) => write!(f, "{:?}", s),
             ByteRange(a, b) => write!(f, "[{:?}..{:?}]", a, b),
             ByteAny => write!(f, "."),
-            Embed(operation) => write!(f, "<< {operation:?} >>"),
+            Embed(operation) => write!(f, "<{operation:?}>"),
         }
     }
 }

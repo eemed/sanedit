@@ -1,4 +1,8 @@
-use sanedit_messages::redraw::{self, items::ItemKind, Component};
+use sanedit_messages::redraw::{
+    self,
+    items::{ItemKind, ItemLocation},
+    Component,
+};
 use sanedit_utils::either::Either;
 
 use crate::editor::windows::Focus;
@@ -27,7 +31,7 @@ fn draw_impl(ctx: &mut DrawContext) -> redraw::Redraw {
     let mut items = vec![];
 
     for entry in locs.iter() {
-        let (name, kind, hls, line, level) = match entry {
+        let (name, kind, hls, location, level) = match entry {
             Either::Left(group) => {
                 let kind = ItemKind::Group {
                     expanded: group.is_expanded(),
@@ -39,17 +43,23 @@ fn draw_impl(ctx: &mut DrawContext) -> redraw::Redraw {
                 };
                 (name, kind, vec![], None, 0)
             }
-            Either::Right(item) => (
-                item.name().into(),
-                ItemKind::Item,
-                item.highlights().to_vec(),
-                item.line(),
-                1,
-            ),
+            Either::Right(item) => {
+                let location = item
+                    .line()
+                    .map(|l| ItemLocation::Line(l))
+                    .or_else(|| item.absolute_offset().map(|o| ItemLocation::ByteOffset(o)));
+                (
+                    item.name().into(),
+                    ItemKind::Item,
+                    item.highlights().to_vec(),
+                    location,
+                    1,
+                )
+            }
         };
 
         let item = redraw::items::Item {
-            line,
+            location,
             name,
             kind,
             level,

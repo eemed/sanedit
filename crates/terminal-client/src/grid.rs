@@ -99,6 +99,7 @@ impl Grid {
                     self.refresh_overlays();
                 }
                 Update(diff) => {
+                    log::info!("DIFF: {diff:?}");
                     if let Some(ref mut custom_prompt) = self.prompt {
                         custom_prompt.0.prompt.update(diff);
                     }

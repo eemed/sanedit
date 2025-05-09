@@ -6,7 +6,7 @@ use rustc_hash::FxHashMap;
 use sanedit_buffer::utf8::EndOfLine;
 use sanedit_buffer::{PieceTree, PieceTreeSlice, PieceTreeView};
 use sanedit_core::movement::{end_of_line, start_of_line};
-use sanedit_core::{Group, Item, Range, SearchKind, SearchMatch, Searcher};
+use sanedit_core::{Group, Item, Range, SearchMatch, Searcher};
 use sanedit_utils::sorted_vec::SortedVec;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 
@@ -50,7 +50,8 @@ impl Grep {
         msend: Sender<GrepResult>,
         buffers: Arc<FxHashMap<PathBuf, PieceTreeView>>,
     ) {
-        let searcher = Arc::new(Searcher::new(pattern).expect("Cannot build Searcher"));
+        let (searcher, _) = Searcher::new(pattern).expect("Cannot build Searcher");
+        let searcher = Arc::new(searcher);
 
         while let Some(opt) = orecv.recv().await {
             let searcher = searcher.clone();

@@ -5,45 +5,57 @@ use sanedit_buffer::{
 };
 use sanedit_syntax::{CaptureIter, Regex};
 
-#[derive(Debug, Clone, PartialEq, Eq, Copy)]
-pub enum SearchKind {
-    /// default case sensitive search
-    Default(bool),
-    Regex,
+#[derive(Debug, Clone, Copy)]
+pub struct SearchOptions {
+    pub is_case_sensitive: bool,
+    pub is_reversed: bool,
+    pub is_regex: bool,
 }
 
-impl Default for SearchKind {
+impl SearchOptions {
+    pub fn from_pattern(pattern: &str) -> (SearchOptions, String) {
+        let case_sensitive = pattern.chars().any(|ch| ch.is_ascii_uppercase());
+        let is_regex = pattern.starts_with("/") && pattern.ends_with("/");
+        let options = SearchOptions {
+            is_case_sensitive: is_regex || case_sensitive,
+            is_reversed: false,
+            is_regex,
+        };
+
+        let pattern = if options.is_regex {
+            let end = std::cmp::max(1, pattern.len() - 1);
+            &pattern[1..end]
+        } else {
+            pattern
+        };
+
+        (options, pattern.into())
+    }
+
+    pub fn tag(&self) -> String {
+        let mut result = String::new();
+        if !self.is_case_sensitive {
+            result.push('i');
+        }
+
+        if self.is_reversed {
+            result.push('r');
+        }
+
+        if self.is_regex {
+            result.push('R');
+        }
+
+        result
+    }
+}
+
+impl Default for SearchOptions {
     fn default() -> Self {
-        Self::Default(false)
-    }
-}
-
-impl SearchKind {
-    pub fn tag(&self) -> &str {
-        match self {
-            SearchKind::Default(true) => "rev",
-            _ => "",
-        }
-    }
-
-    pub fn can_reverse(&self) -> bool {
-        match self {
-            SearchKind::Default(_) => true,
-            SearchKind::Regex => false,
-        }
-    }
-
-    pub fn reverse(&mut self) {
-        match self {
-            SearchKind::Default(rev) => *rev = !*rev,
-            _ => {}
-        }
-    }
-
-    pub fn is_reversed(&self) -> bool {
-        match self {
-            SearchKind::Default(rev) => *rev,
-            SearchKind::Regex => false,
+        SearchOptions {
+            is_case_sensitive: true,
+            is_reversed: false,
+            is_regex: false,
         }
     }
 }
@@ -62,41 +74,51 @@ pub enum Searcher {
 
 impl Searcher {
     /// Create a new searched with specific type
-    pub fn with_kind(pattern: &str, kind: SearchKind) -> anyhow::Result<Searcher> {
-        match kind {
-            SearchKind::Default(true) => Ok(Self::create_rev(pattern)),
-            SearchKind::Default(false) => Ok(Self::create(pattern)),
-            SearchKind::Regex => Self::create_regex(pattern),
+    pub fn with_options(pattern: &str, options: &SearchOptions) -> anyhow::Result<Searcher> {
+        if options.is_regex {
+            Self::create_regex(pattern, options)
+        } else if options.is_reversed {
+            Ok(Self::create_rev(pattern, options))
+        } else {
+            Ok(Self::create(pattern, options))
         }
     }
 
     /// Creates a forward searcher.
     /// Search regex if formatted like /<pattern>/
     /// Otherwise search literal string
-    pub fn new(pattern: &str) -> anyhow::Result<Searcher> {
-        let is_regex = pattern.starts_with("/") && pattern.ends_with("/");
-
-        if is_regex {
-            let end = std::cmp::max(1, pattern.len() - 1);
-            Self::create_regex(&pattern[1..end])
-        } else {
-            Ok(Self::create(pattern))
-        }
+    /// If contains uppercase letters search is case sensitive if only lowercase its case insensitive
+    pub fn new(pattern: &str) -> anyhow::Result<(Searcher, String)> {
+        let (options, pattern) = SearchOptions::from_pattern(pattern);
+        let searcher = Self::with_options(&pattern, &options)?;
+        Ok((searcher, pattern))
     }
 
-    fn create_regex(patt: &str) -> anyhow::Result<Searcher> {
+    fn create_regex(patt: &str, options: &SearchOptions) -> anyhow::Result<Searcher> {
+        // TODO currently options not supported
+
         let regex = Regex::new(patt)?;
         let searcher = Searcher::Regex(regex);
         Ok(searcher)
     }
 
-    fn create(patt: &str) -> Searcher {
-        let searcher = PTSearcher::new(patt.as_bytes());
+    fn create(patt: &str, options: &SearchOptions) -> Searcher {
+        let searcher = if options.is_case_sensitive {
+            PTSearcher::new(patt.as_bytes())
+        } else {
+            PTSearcher::new_ascii_case_insensitive(patt)
+                .unwrap_or_else(|| PTSearcher::new(patt.as_bytes()))
+        };
         Searcher::Forward(searcher)
     }
 
-    fn create_rev(patt: &str) -> Searcher {
-        let searcher = PTSearcherRev::new(patt.as_bytes());
+    fn create_rev(patt: &str, options: &SearchOptions) -> Searcher {
+        let searcher = if options.is_case_sensitive {
+            PTSearcherRev::new(patt.as_bytes())
+        } else {
+            PTSearcherRev::new_ascii_case_insensitive(patt)
+                .unwrap_or_else(|| PTSearcherRev::new(patt.as_bytes()))
+        };
         Searcher::Rev(searcher)
     }
 
@@ -115,6 +137,21 @@ impl Searcher {
                 let iter = regex.captures(bytes);
                 MatchIter::Regex(iter)
             }
+        }
+    }
+
+    pub fn options(&self) -> SearchOptions {
+        let is_regex = matches!(self, Self::Regex(..));
+        let (is_case_sensitive, is_reversed) = match self {
+            Searcher::Forward(s) => (s.is_case_sensitive(), false),
+            Searcher::Rev(s) => (s.is_case_sensitive(), true),
+            Searcher::Regex(_) => (false, false),
+        };
+
+        SearchOptions {
+            is_case_sensitive,
+            is_reversed,
+            is_regex,
         }
     }
 }

@@ -1,7 +1,7 @@
-use std::any::Any;
+use std::{any::Any, sync::Arc};
 
 use sanedit_buffer::PieceTreeView;
-use sanedit_core::{BufferRange, SearchKind};
+use sanedit_core::BufferRange;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 
 use crate::editor::{job_broker::KeepInTouch, Editor};
@@ -17,32 +17,29 @@ enum SearchMessage {
 #[derive(Clone)]
 pub(crate) struct Search {
     client_id: ClientId,
-    term: String,
+    searcher: Arc<Searcher>,
     ropt: PieceTreeView,
     range: BufferRange,
-    kind: SearchKind,
 }
 
 impl Search {
     pub fn new(
         id: ClientId,
-        term: &str,
+        searcher: Searcher,
         ropt: PieceTreeView,
         range: BufferRange,
-        kind: SearchKind,
     ) -> Search {
         Search {
             client_id: id,
-            term: term.into(),
+            searcher: Arc::new(searcher),
             ropt,
             range,
-            kind,
         }
     }
 
     async fn search(
         msend: Sender<Vec<BufferRange>>,
-        searcher: Searcher,
+        searcher: Arc<Searcher>,
         ropt: PieceTreeView,
         view: BufferRange,
     ) {
@@ -70,20 +67,12 @@ impl Search {
 
 impl Job for Search {
     fn run(&self, mut ctx: JobContext) -> JobResult {
-        let term = self.term.clone();
         let pt = self.ropt.clone();
         let range = self.range.clone();
-        let kind = self.kind;
+        let searcher = self.searcher.clone();
 
         let fut = async move {
-            if term.is_empty() {
-                // Clears previous matches if any
-                ctx.send(SearchMessage::Matches(vec![]));
-                return Ok(());
-            }
-
             let (msend, mrecv) = channel::<Vec<BufferRange>>(CHANNEL_SIZE);
-            let searcher = Searcher::with_kind(&term, kind)?;
             tokio::join!(
                 Self::search(msend, searcher, pt, range),
                 Self::send_matches(ctx, mrecv),
@@ -100,7 +89,7 @@ impl KeepInTouch for Search {
         if let Ok(output) = msg.downcast::<SearchMessage>() {
             let (win, _buf) = editor.win_buf_mut(self.client_id);
             match *output {
-                SearchMessage::Matches(matches) => win.search.hl_matches = matches,
+                SearchMessage::Matches(matches) => win.search.highlights = matches,
             }
         }
     }

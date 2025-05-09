@@ -148,7 +148,7 @@ impl Default for Hooks {
         // Search
         // hooks.register(InsertPre, search::clear_search_matches);
         // hooks.register(RemovePre, search::clear_search_matches);
-        hooks.register(OnMessagePost, search::highlight_last_search);
+        // hooks.register(OnMessagePost, search::highlight_last_search);
 
         // Window
         hooks.register(BufChanged, window::sync_windows);

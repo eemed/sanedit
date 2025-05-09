@@ -710,7 +710,7 @@ impl Window {
     // otherwise hard set it
     fn restore(&mut self, aux: &SnapshotAux, buf: Option<&Buffer>) {
         // Clear highlights
-        self.search.hl_matches = vec![];
+        self.search.highlights.clear();
         self.cursors = aux.cursors.clone();
 
         match buf {

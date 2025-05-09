@@ -1,44 +1,31 @@
-use sanedit_core::{BufferRange, SearchKind};
+use sanedit_core::{BufferRange, SearchOptions};
 
 #[derive(Debug, Default)]
-pub(crate) struct LastSearch {
+pub(crate) struct SearchResult {
     /// The searched pattern
     pub pattern: String,
-
-    pub kind: SearchKind,
-
-    /// The match if the last search matched something
-    pub current_match: Option<BufferRange>,
+    pub opts: SearchOptions,
+    pub result: Option<BufferRange>,
 }
 
 #[derive(Debug)]
 pub(crate) struct Search {
+    // Used for on line searches
     pub on_line_char_search: Option<char>,
-    last_search: Option<LastSearch>,
-
-    pub kind: SearchKind,
+    pub last_search: Option<SearchResult>,
+    pub current: SearchResult,
 
     /// Search matches that should be highlighted
-    pub hl_matches: Vec<BufferRange>,
-    /// Whether to highlight last match or not
-    pub hl_last: bool,
-
-    /// Current search match
-    pub current_match: Option<BufferRange>,
+    pub highlights: Vec<BufferRange>,
 }
 
 impl Search {
-    pub fn save_last_search(&mut self, pattern: &str) {
-        self.last_search = Some(LastSearch {
-            pattern: pattern.into(),
-            kind: self.kind,
-            current_match: self.current_match.clone(),
-        });
-
-        self.current_match = None;
+    pub fn save_last_search(&mut self) {
+        let search = std::mem::take(&mut self.current);
+        self.last_search = Some(search);
     }
 
-    pub fn last_search(&self) -> Option<&LastSearch> {
+    pub fn last_search(&self) -> Option<&SearchResult> {
         self.last_search.as_ref()
     }
 
@@ -52,10 +39,8 @@ impl Default for Search {
         Search {
             on_line_char_search: None,
             last_search: None,
-            kind: SearchKind::default(),
-            hl_last: false,
-            hl_matches: vec![],
-            current_match: None,
+            current: SearchResult::default(),
+            highlights: vec![],
         }
     }
 }

@@ -25,11 +25,11 @@ fn draw_impl(ctx: &mut DrawContext) -> redraw::Redraw {
     let search = &ctx.editor.win.search;
     let msg = {
         let prompt = prompt.message();
-        let kind = search.kind.tag();
-        if kind.is_empty() {
+        let tag = search.current.opts.tag();
+        if tag.is_empty() {
             prompt.to_string()
         } else {
-            format!("{} ({})", prompt, kind)
+            format!("{} ({})", prompt, tag)
         }
     };
     let input = prompt.input().into();

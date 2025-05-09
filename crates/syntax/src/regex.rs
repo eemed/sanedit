@@ -92,12 +92,15 @@ impl<'a> RegexToPEG<'a> {
             name: "root".into(),
         };
         state.rules.push(info);
-        state.rules[0].rule = state.convert_rec(0, &empty, 1);
+        state.rules[0].rule = state.convert_rec(0, &empty, 1)?;
         let rules = Rules::new(state.rules.into_boxed_slice());
         Ok(rules)
     }
 
-    fn convert_rec(&mut self, index: usize, cont: &Rule, depth: usize) -> Rule {
+    fn convert_rec(&mut self, index: usize, cont: &Rule, depth: usize) -> Result<Rule, RegexError> {
+        if index >= self.regex.len() {
+            return Err(RegexError::InvalidPattern);
+        }
         let cap = &self.regex[index];
         let range = cap.range();
         let text = &self.pattern[range.start as usize..range.end as usize];
@@ -136,11 +139,11 @@ impl<'a> RegexToPEG<'a> {
                 match cont {
                     Rule::ByteSequence(vec) => {
                         text.extend(vec);
-                        return Rule::ByteSequence(text);
+                        return Ok(Rule::ByteSequence(text));
                     }
                     _ => {
                         let rule = Rule::ByteSequence(text);
-                        return Rule::Sequence(vec![rule, cont.clone()]);
+                        return Ok(Rule::Sequence(vec![rule, cont.clone()]));
                     }
                 }
             }
@@ -148,9 +151,9 @@ impl<'a> RegexToPEG<'a> {
                 // Π(e1e2, k) = Π(e1, Π(e2, k)) (3)
                 let mut cont = cont.clone();
                 for child in children.iter().rev() {
-                    cont = self.convert_rec(*child, &cont, depth + 1);
+                    cont = self.convert_rec(*child, &cont, depth + 1)?;
                 }
-                return cont;
+                return Ok(cont);
             }
             "alt" => {
                 // Distribute continuation to all alternatives
@@ -161,10 +164,10 @@ impl<'a> RegexToPEG<'a> {
 
                 let mut choices = vec![];
                 for child in children {
-                    let rule = self.convert_rec(child, &cont, depth + 1);
+                    let rule = self.convert_rec(child, &cont, depth + 1)?;
                     choices.push(rule);
                 }
-                return Rule::Choice(choices);
+                return Ok(Rule::Choice(choices));
             }
             "zero_or_more" => {
                 // e∗ = e e∗ | ε
@@ -174,13 +177,13 @@ impl<'a> RegexToPEG<'a> {
 
                 let self_ref = Rule::Ref(self.rules.len());
                 let epsilon = cont.clone();
-                let e = self.convert_rec(children[0], &self_ref, depth + 1);
+                let e = self.convert_rec(children[0], &self_ref, depth + 1)?;
                 let rule = Rule::Choice(vec![e, epsilon]);
 
                 let name = format!("{index}-zero-or-more");
                 let info = RuleInfo::new(&name, rule);
                 self.rules.push(info);
-                return self_ref;
+                return Ok(self_ref);
             }
             "one_or_more" => {
                 // e+ = e e+ | e
@@ -188,23 +191,23 @@ impl<'a> RegexToPEG<'a> {
                     panic!("One or more has wrong number of children");
                 }
                 let self_ref = Rule::Ref(self.rules.len());
-                let right = self.convert_rec(children[0], cont, depth + 1);
-                let left = self.convert_rec(children[0], &self_ref, depth + 1);
+                let right = self.convert_rec(children[0], cont, depth + 1)?;
+                let left = self.convert_rec(children[0], &self_ref, depth + 1)?;
                 let rule = Rule::Choice(vec![left, right]);
 
                 let name = format!("{index}-one-or-more");
                 let info = RuleInfo::new(&name, rule);
                 self.rules.push(info);
-                return self_ref;
+                return Ok(self_ref);
             }
             "optional" => {
                 // e? = e | ε
                 if children.len() != 1 {
                     panic!("Optional has wrong number of children");
                 }
-                let e = self.convert_rec(children[0], &cont, depth + 1);
+                let e = self.convert_rec(children[0], &cont, depth + 1)?;
                 let epsilon = cont.clone();
-                return Rule::Choice(vec![e, epsilon]);
+                return Ok(Rule::Choice(vec![e, epsilon]));
             }
             "group" => {
                 if children.len() != 1 {
@@ -212,11 +215,11 @@ impl<'a> RegexToPEG<'a> {
                 }
                 self.n += 1;
                 let cont = Rule::Sequence(vec![Rule::Embed(Operation::CaptureEnd), cont.clone()]);
-                let rule = self.convert_rec(children[0], &cont, depth + 1);
-                return Rule::Sequence(vec![
+                let rule = self.convert_rec(children[0], &cont, depth + 1)?;
+                return Ok(Rule::Sequence(vec![
                     Rule::Embed(Operation::CaptureBeginMultiEnd(self.n)),
                     rule,
-                ]);
+                ]));
             }
             _ => {}
         }
@@ -228,6 +231,9 @@ impl<'a> RegexToPEG<'a> {
 pub enum RegexError {
     #[error("Failed to parse grammar: {0}")]
     Parsing(#[from] ParseError),
+
+    #[error("Invalid regex pattern")]
+    InvalidPattern,
 }
 
 #[cfg(test)]

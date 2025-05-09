@@ -188,10 +188,9 @@ fn goto_prev_buffer(editor: &mut Editor, id: ClientId) -> ActionResult {
 fn cancel(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
 
-    if win.search.hl_last || win.popup().is_some() {
+    if !win.search.highlights.is_empty() || win.popup().is_some() {
         // Clear search matches
-        win.search.hl_last = false;
-        win.search.hl_matches.clear();
+        win.search.highlights.clear();
 
         // Close popups
         win.clear_popup();

@@ -1,7 +1,7 @@
 use sanedit_core::Filetype;
 use sanedit_messages::redraw::statusline::Statusline;
 
-use crate::editor::windows::Focus;
+use crate::{common::to_human_readable, editor::windows::Focus};
 
 use super::{DrawContext, EditorContext};
 
@@ -63,8 +63,9 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> Statusline {
 
         result.push_str(&format!(" {} | ", win.keymap_layer));
         result.push_str(&format!(
-            "{ft} | {}% {cpos}/{blen} ",
-            ((cpos as f64 / blen.max(1) as f64) * 100.0).floor()
+            "{ft} | {}% {cpos:#x}/{} ",
+            ((cpos as f64 / blen.max(1) as f64) * 100.0).floor(),
+            to_human_readable(blen as f64)
         ));
 
         result

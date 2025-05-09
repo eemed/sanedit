@@ -2,11 +2,12 @@ use std::{cmp::max, ops::Range};
 
 use crate::{Bytes, PieceTreeSlice};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Searcher {
     pattern: Vec<u8>,
     bad_char: [usize; 256],
     good_suffix: Box<[usize]>,
+    case_sensitive: bool,
 }
 
 impl Searcher {
@@ -15,7 +16,22 @@ impl Searcher {
             bad_char: Self::build_bad_char_table(pattern),
             good_suffix: Self::build_good_suffix_table(pattern),
             pattern: pattern.into(),
+            case_sensitive: true,
         }
+    }
+
+    /// Create a new ascii case insensitive searcher
+    /// Pattern must be all ascii characters otherwise none will be returned
+    pub fn new_ascii_case_insensitive(patt: &str) -> Option<Searcher> {
+        if !patt.is_ascii() {
+            return None;
+        }
+
+        let patt = patt.to_ascii_lowercase();
+        let mut searcher = Self::new(patt.as_bytes());
+        searcher.case_sensitive = false;
+
+        Some(searcher)
     }
 
     fn build_bad_char_table(pattern: &[u8]) -> [usize; 256] {
@@ -80,11 +96,21 @@ impl Searcher {
     }
 
     pub fn find_iter<'a, 'b: 'a>(&'a self, slice: &'b PieceTreeSlice) -> SearchIter<'a, 'b> {
-        SearchIter::new(&self.pattern, &self.bad_char, &self.good_suffix, slice)
+        SearchIter::new(
+            &self.pattern,
+            &self.bad_char,
+            &self.good_suffix,
+            slice,
+            self.case_sensitive,
+        )
     }
 
     pub fn pattern_len(&self) -> usize {
         self.pattern.len()
+    }
+
+    pub fn is_case_sensitive(&self) -> bool {
+        self.case_sensitive
     }
 }
 
@@ -96,6 +122,7 @@ pub struct SearchIter<'a, 'b> {
     slice_len: u64,
     bytes: Bytes<'b>,
     i: u64,
+    case_sensitive: bool,
 }
 
 impl<'a, 'b> SearchIter<'a, 'b> {
@@ -104,22 +131,20 @@ impl<'a, 'b> SearchIter<'a, 'b> {
         bad_char: &'a [usize],
         good_suffix: &'a [usize],
         slice: &'b PieceTreeSlice,
+        case_sensitive: bool,
     ) -> SearchIter<'a, 'b> {
         SearchIter {
             pattern,
             bad_char,
             good_suffix,
+            case_sensitive,
             slice_len: slice.len(),
             bytes: slice.bytes(),
             i: (pattern.len() - 1) as u64,
         }
     }
-}
 
-impl<'a, 'b> Iterator for SearchIter<'a, 'b> {
-    type Item = Range<u64>;
-
-    fn next(&mut self) -> Option<Self::Item> {
+    fn find_next(&mut self) -> Option<Range<u64>> {
         let SearchIter {
             pattern,
             bad_char,
@@ -151,13 +176,64 @@ impl<'a, 'b> Iterator for SearchIter<'a, 'b> {
 
         None
     }
+
+    fn find_next_insensitive(&mut self) -> Option<Range<u64>> {
+        fn lower(mut byte: u8) -> u8 {
+            byte.make_ascii_lowercase();
+            byte
+        }
+
+        let SearchIter {
+            pattern,
+            bad_char,
+            good_suffix,
+            slice_len,
+            bytes,
+            i,
+            ..
+        } = self;
+
+        let m = pattern.len();
+        let n = *slice_len;
+
+        while *i < n {
+            let mut j = m - 1;
+
+            while lower(bytes.at(*i)) == pattern[j] {
+                if j == 0 {
+                    *i += m as u64;
+                    return Some(*i - m as u64..*i);
+                }
+
+                j -= 1;
+                *i -= 1;
+            }
+
+            *i += max(bad_char[lower(bytes.at(*i)) as usize], good_suffix[j]) as u64;
+        }
+
+        None
+    }
 }
 
-#[derive(Debug)]
+impl<'a, 'b> Iterator for SearchIter<'a, 'b> {
+    type Item = Range<u64>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.case_sensitive {
+            self.find_next()
+        } else {
+            self.find_next_insensitive()
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct SearcherRev {
     pattern: Vec<u8>,
     bad_char: [usize; 256],
     good_suffix: Box<[usize]>,
+    case_sensitive: bool,
 }
 
 impl SearcherRev {
@@ -166,7 +242,26 @@ impl SearcherRev {
             bad_char: Self::build_bad_char_table(pattern),
             good_suffix: Self::build_good_suffix_table(pattern),
             pattern: pattern.into(),
+            case_sensitive: true,
         }
+    }
+
+    /// Create a new ascii case insensitive searcher
+    /// Pattern must be all ascii characters otherwise none will be returned
+    pub fn new_ascii_case_insensitive(patt: &str) -> Option<SearcherRev> {
+        if !patt.is_ascii() {
+            return None;
+        }
+
+        let patt = patt.to_ascii_lowercase();
+        let mut searcher = Self::new(patt.as_bytes());
+        searcher.case_sensitive = false;
+
+        Some(searcher)
+    }
+
+    pub fn is_case_sensitive(&self) -> bool {
+        self.case_sensitive
     }
 
     fn build_bad_char_table(pattern: &[u8]) -> [usize; 256] {
@@ -229,7 +324,13 @@ impl SearcherRev {
     }
 
     pub fn find_iter<'a, 'b: 'a>(&'a self, slice: &'b PieceTreeSlice) -> SearchIterRev<'a, 'b> {
-        SearchIterRev::new(&self.pattern, &self.bad_char, &self.good_suffix, slice)
+        SearchIterRev::new(
+            &self.pattern,
+            &self.bad_char,
+            &self.good_suffix,
+            slice,
+            self.case_sensitive,
+        )
     }
 
     pub fn pattern_len(&self) -> usize {
@@ -244,6 +345,7 @@ pub struct SearchIterRev<'a, 'b> {
     good_suffix: &'a [usize],
     bytes: Bytes<'b>,
     i: u64,
+    case_sensitive: bool,
 }
 
 impl<'a, 'b> SearchIterRev<'a, 'b> {
@@ -252,6 +354,7 @@ impl<'a, 'b> SearchIterRev<'a, 'b> {
         bad_char: &'a [usize],
         good_suffix: &'a [usize],
         slice: &'b PieceTreeSlice,
+        case_sensitive: bool,
     ) -> SearchIterRev<'a, 'b> {
         SearchIterRev {
             pattern,
@@ -259,14 +362,11 @@ impl<'a, 'b> SearchIterRev<'a, 'b> {
             good_suffix,
             bytes: slice.bytes_at(slice.len()),
             i: slice.len().saturating_sub(pattern.len() as u64),
+            case_sensitive,
         }
     }
-}
 
-impl<'a, 'b> Iterator for SearchIterRev<'a, 'b> {
-    type Item = Range<u64>;
-
-    fn next(&mut self) -> Option<Self::Item> {
+    fn find_next(&mut self) -> Option<Range<u64>> {
         let SearchIterRev {
             pattern,
             bad_char,
@@ -300,6 +400,59 @@ impl<'a, 'b> Iterator for SearchIterRev<'a, 'b> {
         }
 
         None
+    }
+
+    fn find_next_insensitive(&mut self) -> Option<Range<u64>> {
+        fn lower(mut byte: u8) -> u8 {
+            byte.make_ascii_lowercase();
+            byte
+        }
+
+        let SearchIterRev {
+            pattern,
+            bad_char,
+            good_suffix,
+            bytes,
+            i,
+            ..
+        } = self;
+
+        let m = pattern.len();
+        let mut check0 = false;
+
+        while *i != 0 || check0 {
+            let mut j = 0;
+
+            while lower(bytes.at(*i)) == pattern[j] {
+                if j == m - 1 {
+                    let end = *i + 1;
+                    let start = end - m as u64;
+                    *i = i.saturating_sub(m as u64);
+                    return Some(start..end);
+                }
+
+                j += 1;
+                *i += 1;
+            }
+
+            check0 = *i != 0;
+            let shift = max(bad_char[lower(bytes.at(*i)) as usize], good_suffix[j]) as u64;
+            *i = i.saturating_sub(shift);
+        }
+
+        None
+    }
+}
+
+impl<'a, 'b> Iterator for SearchIterRev<'a, 'b> {
+    type Item = Range<u64>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.case_sensitive {
+            self.find_next()
+        } else {
+            self.find_next_insensitive()
+        }
     }
 }
 

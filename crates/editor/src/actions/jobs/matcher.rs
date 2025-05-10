@@ -1,6 +1,13 @@
-use std::{fmt, mem, sync::Arc, time::Duration};
+use std::{
+    fmt, mem,
+    sync::{atomic::Ordering, Arc},
+    time::Duration,
+};
 
-use sanedit_utils::sorted_vec::SortedVec;
+use sanedit_utils::{
+    appendlist::{Appendlist, Reader},
+    sorted_vec::SortedVec,
+};
 use tokio::{
     sync::mpsc::{channel, Receiver, Sender},
     time::{timeout, Instant},
@@ -216,7 +223,7 @@ pub(crate) enum MatchedOptions {
 
 /// Reads options and filter term from channels and send results to progress
 pub(crate) async fn match_options(
-    orecv: Receiver<Arc<Choice>>,
+    mut orecv: Receiver<Arc<Choice>>,
     mut precv: Receiver<String>,
     msend: Sender<MatchedOptions>,
     strat: MatchStrategy,
@@ -302,8 +309,26 @@ pub(crate) async fn match_options(
         })
     }
 
-    let mut matcher = Matcher::new(orecv, strat);
+    let (reader, writer) = Appendlist::<Arc<Choice>>::new();
+    let mut matcher = Matcher::new(reader, strat);
+    let stop = matcher.stop();
+    let read_done = matcher.read_done();
 
+    // Send options to appendlist
+    tokio::spawn(async move {
+        while let Some(choice) = orecv.recv().await {
+            writer.append(choice);
+        }
+
+        let len = writer.len();
+        if len == 0 {
+            stop.store(true, Ordering::Release);
+        } else {
+            read_done.store(len, Ordering::Release);
+        }
+    });
+
+    // Start matching
     let recv = matcher.do_match(&patt);
     let mut join = spawn(msend.clone(), recv);
 

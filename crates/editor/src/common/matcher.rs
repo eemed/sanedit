@@ -12,7 +12,7 @@ use std::{
 };
 
 use sanedit_core::Range;
-use sanedit_utils::appendlist::{Appendlist, Reader};
+use sanedit_utils::appendlist::Reader;
 use tokio::sync::mpsc::channel;
 
 pub(crate) use matches::*;
@@ -32,28 +32,9 @@ impl Matcher {
     const CHANNEL_SIZE: usize = 1024;
 
     // Create a new matcher.
-    pub fn new<T>(mut chan: T, strategy: MatchStrategy) -> Matcher
-    where
-        T: MatchOptionReceiver<Arc<Choice>> + Send + 'static,
-    {
-        let (reader, writer) = Appendlist::<Arc<Choice>>::new();
+    pub fn new(reader: Reader<Arc<Choice>>, strategy: MatchStrategy) -> Matcher {
         let read_done = Arc::new(AtomicUsize::new(0));
-        let read_done2 = read_done.clone();
         let stop = Arc::new(AtomicBool::new(false));
-        let stop2 = stop.clone();
-
-        rayon::spawn(move || {
-            while let Some(msg) = chan.recv() {
-                writer.append(msg);
-            }
-
-            let len = writer.len();
-            if len == 0 {
-                stop2.store(true, Ordering::Release);
-            } else {
-                read_done2.store(len, Ordering::Release);
-            }
-        });
 
         Matcher {
             reader,
@@ -61,6 +42,14 @@ impl Matcher {
             prev_stop: stop,
             strategy,
         }
+    }
+
+    pub fn stop(&self) -> Arc<AtomicBool> {
+        self.prev_stop.clone()
+    }
+
+    pub fn read_done(&self) -> Arc<AtomicUsize> {
+        self.read_done.clone()
     }
 
     /// Match the candidates with the pattern. Returns a receiver where the results

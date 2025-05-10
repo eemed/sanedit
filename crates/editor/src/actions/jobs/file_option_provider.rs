@@ -79,9 +79,7 @@ fn rayon_spawn(scope: &rayon::Scope, dir: PathBuf, ctx: ReadDirContext) {
         }
     }
 
-    scope.spawn(|s| {
-        let _ = rayon_read(s, dir, ctx);
-    })
+    let _ = rayon_read(scope, dir, ctx);
 }
 
 async fn read_directory_recursive(

@@ -1,4 +1,5 @@
 use crate::{BufferRange, Range};
+use anyhow::bail;
 use sanedit_buffer::{
     Bytes, PieceTreeSlice, SearchIter, SearchIterRev, Searcher as PTSearcher,
     SearcherRev as PTSearcherRev,
@@ -15,7 +16,7 @@ pub struct SearchOptions {
 impl SearchOptions {
     pub fn from_pattern(pattern: &str) -> (SearchOptions, String) {
         let case_sensitive = pattern.chars().any(|ch| ch.is_ascii_uppercase());
-        let is_regex = pattern.starts_with("/") && pattern.ends_with("/");
+        let is_regex = pattern.starts_with("/") && pattern.ends_with("/") && pattern.len() >= 2;
         let options = SearchOptions {
             is_case_sensitive: is_regex || case_sensitive,
             is_reversed: false,
@@ -23,8 +24,7 @@ impl SearchOptions {
         };
 
         let pattern = if options.is_regex {
-            let end = std::cmp::max(1, pattern.len() - 1);
-            &pattern[1..end]
+            &pattern[1..pattern.len() - 1]
         } else {
             pattern
         };
@@ -75,6 +75,10 @@ pub enum Searcher {
 impl Searcher {
     /// Create a new searched with specific type
     pub fn with_options(pattern: &str, options: &SearchOptions) -> anyhow::Result<Searcher> {
+        if pattern.is_empty() {
+            bail!("Empty pattern");
+        }
+
         if options.is_regex {
             Self::create_regex(pattern, options)
         } else if options.is_reversed {

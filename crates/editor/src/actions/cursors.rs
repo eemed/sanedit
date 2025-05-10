@@ -67,7 +67,7 @@ fn new_cursor_to_prev_line(editor: &mut Editor, id: ClientId) -> ActionResult {
 #[action("Cursors: New on next search match")]
 fn new_cursor_to_next_search_match(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = editor.win_buf_mut(id);
-    let last_search = getf!(win.search.last_search());
+    let last_search = &win.search.current;
     let ppos = win.cursors.primary().pos();
 
     let Ok(searcher) = Searcher::with_options(&last_search.pattern, &last_search.opts) else {
@@ -97,10 +97,7 @@ fn new_cursor_to_all_search_matches(editor: &mut Editor, id: ClientId) -> Action
     let (win, buf) = editor.win_buf_mut(id);
     // win.cursors.remove_secondary_cursors();
 
-    let Some(last_search) = win.search.last_search() else {
-        win.warn_msg("No last search pattern");
-        return ActionResult::Failed;
-    };
+    let last_search = &win.search.current;
 
     let Ok(searcher) = Searcher::with_options(&last_search.pattern, &last_search.opts) else {
         return ActionResult::Failed;

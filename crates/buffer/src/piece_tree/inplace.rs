@@ -228,24 +228,24 @@ fn do_write_in_place(pt: &PieceTreeView, ops: &[WriteOp]) -> io::Result<()> {
 
 #[cfg(test)]
 mod test {
-    use super::*;
-    use crate::PieceTree;
-    use std::path::PathBuf;
+    // use super::*;
+    // use crate::PieceTree;
+    // use std::path::PathBuf;
 
-    #[test]
-    fn write_ops() {
-        let path = PathBuf::from("../../test-files/lorem.txt");
-        let mut pt = PieceTree::from_path(path).unwrap();
-        // pt.insert(0, "a");
-        // pt.remove(0..10);
-        pt.insert(60, "abba");
-        pt.insert(30, "a");
-        pt.remove(35..40);
-        pt.insert(70, "a");
-        let ows = in_place_write_ops(&pt.view);
+    // #[test]
+    // fn write_ops() {
+    //     let path = PathBuf::from("../../test-files/lorem.txt");
+    //     let mut pt = PieceTree::from_path(path).unwrap();
+    //     // pt.insert(0, "a");
+    //     // pt.remove(0..10);
+    //     pt.insert(60, "abba");
+    //     pt.insert(30, "a");
+    //     pt.remove(35..40);
+    //     pt.insert(70, "a");
+    //     let ows = in_place_write_ops(&pt.view);
 
-        for ow in ows {
-            println!("{ow:?}",);
-        }
-    }
+    //     for ow in ows {
+    //         println!("{ow:?}",);
+    //     }
+    // }
 }

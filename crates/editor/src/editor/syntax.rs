@@ -33,6 +33,12 @@ impl Syntaxes {
         self.syntaxes.contains_key(ft)
     }
 
+    pub fn reload(&mut self, ft: &Filetype, path: &Path) -> anyhow::Result<()> {
+        let syntax = Syntax::from_path(path)?;
+        self.syntaxes.insert(ft.clone(), syntax);
+        Ok(())
+    }
+
     pub fn load(&mut self, ft: &Filetype, path: &Path) -> anyhow::Result<()> {
         if self.syntaxes.contains_key(ft) {
             return Ok(());

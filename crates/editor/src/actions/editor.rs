@@ -119,6 +119,6 @@ fn load_filetype(editor: &mut Editor, id: ClientId) -> ActionResult {
         });
     let buf = editor.buffers().get(bid).unwrap();
     let ft = getf!(buf.filetype.clone());
-    editor.load_filetype(&ft);
+    editor.load_filetype(&ft, false);
     ActionResult::Ok
 }

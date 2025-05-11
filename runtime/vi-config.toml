@@ -46,6 +46,7 @@ rust = ["*.rs"]
 toml = ["*/Cargo.lock"]
 markdown = ["*.md"]
 yaml = ["*.yml"]
+make = ["**/Makefile"]
 
 [filetype.rust]
 comment = "// "
@@ -55,6 +56,9 @@ language_server.command = "rust-analyzer"
 comment = "# "
 
 [filetype.toml]
+comment = "# "
+
+[filetype.make]
 comment = "# "
 
 [keymaps.snippet]

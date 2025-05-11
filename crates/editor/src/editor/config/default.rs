@@ -56,6 +56,7 @@ impl EditorConfig {
              "toml", ["**/Cargo.lock"],
              "yaml", ["*.yml"],
              "markdown", ["*.md"],
+             "make", ["**/Makefile"],
         );
 
         ftmap

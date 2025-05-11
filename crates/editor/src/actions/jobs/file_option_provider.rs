@@ -88,7 +88,14 @@ async fn read_directory_recursive(
     ignore: Arc<Vec<String>>,
     kill: Kill,
 ) {
-    let strip = dir.as_os_str().len() + 1;
+    let strip = {
+        let dir = dir.as_os_str().to_string_lossy();
+        let mut len = dir.len();
+        if !dir.ends_with(std::path::MAIN_SEPARATOR) {
+            len += 1;
+        }
+        len
+    };
     let ctx = ReadDirContext {
         osend,
         strip,

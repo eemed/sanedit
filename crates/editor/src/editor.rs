@@ -625,7 +625,7 @@ impl Editor {
         // Reload filetype
         let (_win, buf) = self.win_buf(id);
         if let Some(ft) = buf.filetype.clone() {
-            self.load_filetype(&ft);
+            self.load_filetype(&ft, true);
         }
 
         // Reload window
@@ -775,16 +775,21 @@ impl Editor {
         self.language_servers.get(ft)
     }
 
-    pub fn load_filetype(&mut self, ft: &Filetype) {
-        self.load_filetype_syntax(ft);
+    pub fn load_filetype(&mut self, ft: &Filetype, reload: bool) {
+        self.load_filetype_syntax(ft, reload);
     }
 
-    fn load_filetype_syntax(&mut self, ft: &Filetype) {
+    fn load_filetype_syntax(&mut self, ft: &Filetype, reload: bool) {
         let dir = self.config_dir.filetype_dir();
         let path = PathBuf::from(ft.as_str()).join(format!("{}.peg", ft.as_str()));
         if let Some(path) = dir.find(&path) {
-            if let Err(e) = self.syntaxes.load(ft, &path) {
-                log::error!("Faile to load syntax for {}: {e}", ft.as_str());
+            let result = if reload {
+                self.syntaxes.reload(ft, &path)
+            } else {
+                self.syntaxes.load(ft, &path)
+            };
+            if let Err(e) = result {
+                log::error!("Failed to load syntax for {}: {e}", ft.as_str());
             }
         }
     }

@@ -146,9 +146,8 @@ impl Default for Hooks {
         hooks.register(BufCreated, editor::load_filetype);
 
         // Search
-        // hooks.register(InsertPre, search::clear_search_matches);
-        // hooks.register(RemovePre, search::clear_search_matches);
-        // hooks.register(OnMessagePost, search::highlight_last_search);
+        hooks.register(OnMessagePost, search::highlight_search);
+        // hooks.register(BufChanged, search::prevent_flicker);
 
         // Window
         hooks.register(BufChanged, window::sync_windows);

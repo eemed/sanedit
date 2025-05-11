@@ -67,7 +67,9 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> redraw::window::Window {
     }
     draw_end_of_buffer(&mut grid, view, theme);
     draw_trailing_whitespace(&mut grid, view, theme, buf);
-    draw_search_highlights(&mut grid, &win.search.highlights, view, theme);
+    if let Some(hls) = &win.search.highlights {
+        draw_search_highlights(&mut grid, &hls.highlights, view, theme);
+    }
     draw_secondary_cursors(&mut grid, cursors, focus_on_win, view, theme);
     let cursor = draw_primary_cursor(
         &mut grid,

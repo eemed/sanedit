@@ -14,28 +14,62 @@ use sanedit_server::ClientId;
 
 use super::{window::focus, ActionResult};
 
-const HORIZON_TOP: u64 = 1024 * 8;
-const HORIZON_BOTTOM: u64 = 1024 * 16;
+const HORIZON_TOP: u64 = 1024;
+const HORIZON_BOTTOM: u64 = 1024;
 
 /// setups async job to handle matches within the view range.
-fn async_view_matches(editor: &mut Editor, id: ClientId, pattern: &str) {
+fn highlight_view_matches_on_input(editor: &mut Editor, id: ClientId, pattern: &str) {
+    let Ok((searcher, _)) = Searcher::new(pattern) else {
+        return;
+    };
+    highlight_view_matches(editor, id, searcher)
+}
+
+fn highlight_current_search_matches(editor: &mut Editor, id: ClientId) {
+    let (win, _buf) = editor.win_buf_mut(id);
+    let mut opts = win.search.current.opts;
+    opts.is_reversed = false;
+
+    let Ok(searcher) = Searcher::with_options(&win.search.current.pattern, &opts) else {
+        return;
+    };
+    highlight_view_matches(editor, id, searcher)
+}
+
+/// Highlights search matches on view using
+fn highlight_view_matches(editor: &mut Editor, id: ClientId, searcher: Searcher) {
     let (win, buf) = editor.win_buf_mut(id);
     let pt = buf.ro_view();
     let mut view = win.view().range();
     view.start = view.start.saturating_sub(HORIZON_TOP);
     view.end = min(pt.len(), view.end + HORIZON_BOTTOM);
-    let Ok((searcher, _)) = Searcher::new(pattern) else {
-        return;
-    };
-
-    let job = jobs::Search::new(id, searcher, pt, view);
+    let job = jobs::Search::new(id, searcher, pt, view, buf.total_changes_made());
     editor.job_broker.request(job);
+}
+
+#[action("Search: Highlight matches")]
+fn highlight_search(editor: &mut Editor, id: ClientId) -> ActionResult {
+    let (win, buf) = editor.win_buf_mut(id);
+    if win.search.highlights.is_none() {
+        return ActionResult::Skipped;
+    }
+    win.redraw_view(buf);
+    let total = buf.total_changes_made();
+
+    let view = win.view().range();
+    let old = win.search.highlights.as_ref().unwrap();
+
+    if old.changes_made != total || !old.buffer_range.includes(&view) {
+        highlight_current_search_matches(editor, id);
+    }
+
+    ActionResult::Ok
 }
 
 #[action("Search: Forward")]
 fn search_forward(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
-    win.search.highlights.clear();
+    win.search.highlights = None;
 
     win.prompt = Prompt::builder()
         .prompt("Search")
@@ -44,7 +78,7 @@ fn search_forward(editor: &mut Editor, id: ClientId) -> ActionResult {
             let needle = get!(out.text());
             new_search(editor, id, needle, false);
         })
-        .on_input(async_view_matches)
+        .on_input(highlight_view_matches_on_input)
         .build();
     focus(editor, id, Focus::Search);
     ActionResult::Ok
@@ -54,16 +88,16 @@ fn search_forward(editor: &mut Editor, id: ClientId) -> ActionResult {
 fn search_backward(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
 
-    win.search.highlights.clear();
+    win.search.highlights = None;
 
     win.prompt = Prompt::builder()
-        .prompt("Search")
+        .prompt("Search backwards")
         .history(HistoryKind::Search)
         .on_confirm(|editor, id, out| {
             let needle = get!(out.text());
             new_search(editor, id, needle, true);
         })
-        .on_input(async_view_matches)
+        .on_input(highlight_view_matches_on_input)
         .build();
 
     focus(editor, id, Focus::Search);
@@ -97,7 +131,7 @@ fn search_prev_word_under_cursor(editor: &mut Editor, id: ClientId) -> ActionRes
 #[action("Editor: Clear match highlighting")]
 fn clear_search_matches(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
-    win.search.highlights.clear();
+    win.search.highlights = None;
     ActionResult::Ok
 }
 
@@ -217,6 +251,10 @@ fn do_search(editor: &mut Editor, id: ClientId, searcher: Searcher, starting_pos
             }
 
             win.view_to_cursor(buf);
+
+            // Triggers match highlighting, it needs to be updated on buffer /
+            // view changes so it is separated
+            win.search.highlights = Some(Default::default());
         }
         None => {
             win.search.current.result = None;

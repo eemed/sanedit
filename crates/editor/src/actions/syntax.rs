@@ -5,8 +5,8 @@ use sanedit_server::ClientId;
 use super::{jobs::SyntaxParser, ActionResult};
 
 /// Prevents syntax highlighting flicker on buffer change, simply adjusts
-/// higlights to a simple solution, highlights are processed in the
-/// background and will override the guesses made here anyway.
+/// higlights based on the change, highlights are processed in the
+/// background and will override the guesses made here.
 #[action("Adjust highlighting to take a buffer change into account")]
 pub(crate) fn prevent_flicker(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (_win, buf) = editor.win_buf(id);

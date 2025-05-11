@@ -4,7 +4,7 @@ use sanedit_buffer::PieceTreeView;
 use sanedit_core::BufferRange;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 
-use crate::editor::{job_broker::KeepInTouch, Editor};
+use crate::editor::{job_broker::KeepInTouch, windows::SearchHighlights, Editor};
 use sanedit_server::{ClientId, Job, JobContext, JobResult};
 
 use super::CHANNEL_SIZE;
@@ -20,6 +20,7 @@ pub(crate) struct Search {
     searcher: Arc<Searcher>,
     ropt: PieceTreeView,
     range: BufferRange,
+    changes_made: u32,
 }
 
 impl Search {
@@ -28,12 +29,14 @@ impl Search {
         searcher: Searcher,
         ropt: PieceTreeView,
         range: BufferRange,
+        changes_made: u32,
     ) -> Search {
         Search {
             client_id: id,
             searcher: Arc::new(searcher),
             ropt,
             range,
+            changes_made,
         }
     }
 
@@ -89,7 +92,14 @@ impl KeepInTouch for Search {
         if let Ok(output) = msg.downcast::<SearchMessage>() {
             let (win, _buf) = editor.win_buf_mut(self.client_id);
             match *output {
-                SearchMessage::Matches(matches) => win.search.highlights = matches,
+                SearchMessage::Matches(matches) => {
+                    win.search.highlights = SearchHighlights {
+                        highlights: matches,
+                        changes_made: self.changes_made,
+                        buffer_range: self.range.clone(),
+                    }
+                    .into();
+                }
             }
         }
     }

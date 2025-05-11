@@ -709,8 +709,7 @@ impl Window {
     // Restore aux data, if buffer is provided try to scroll to view position
     // otherwise hard set it
     fn restore(&mut self, aux: &SnapshotAux, buf: Option<&Buffer>) {
-        // Clear highlights
-        self.search.highlights.clear();
+        self.search.highlights = Some(Default::default());
         self.cursors = aux.cursors.clone();
 
         match buf {

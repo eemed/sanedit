@@ -66,7 +66,7 @@ impl Search {
 }
 
 impl Job for Search {
-    fn run(&self, mut ctx: JobContext) -> JobResult {
+    fn run(&self, ctx: JobContext) -> JobResult {
         let pt = self.ropt.clone();
         let range = self.range.clone();
         let searcher = self.searcher.clone();

@@ -337,10 +337,6 @@ impl Prompt {
         self.input = item.into();
     }
 
-    pub fn kind(&self) -> &PromptKind {
-        &self.kind
-    }
-
     pub fn is_simple(&self) -> bool {
         self.kind == PromptKind::Simple
     }

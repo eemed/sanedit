@@ -98,7 +98,7 @@ impl Searcher {
         Ok((searcher, pattern))
     }
 
-    fn create_regex(patt: &str, options: &SearchOptions) -> anyhow::Result<Searcher> {
+    fn create_regex(patt: &str, _options: &SearchOptions) -> anyhow::Result<Searcher> {
         // TODO currently options not supported
 
         let regex = Regex::new(patt)?;

@@ -19,3 +19,9 @@ impl Kill {
         self.atomic.store(true, Ordering::Release)
     }
 }
+
+impl From<Kill> for Arc<AtomicBool> {
+    fn from(value: Kill) -> Self {
+        value.atomic
+    }
+}

@@ -2,17 +2,6 @@ use tokio::sync::mpsc::Receiver;
 
 use super::ScoredChoice;
 
-/// Trait used to receive candidates using various receiver implementations
-pub trait MatchOptionReceiver<T> {
-    fn recv(&mut self) -> Option<T>;
-}
-
-impl<T> MatchOptionReceiver<T> for Receiver<T> {
-    fn recv(&mut self) -> Option<T> {
-        self.blocking_recv()
-    }
-}
-
 /// Receiver for the match results
 #[derive(Debug)]
 pub struct MatchReceiver {

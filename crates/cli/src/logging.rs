@@ -45,11 +45,12 @@ pub(crate) fn init_logger(debug: bool) {
             LevelFilter::Info
         };
 
-        let ignore = vec!["regex_cursor", "grep_regex", "globset"]
-            .into_iter()
-            .map(String::from)
-            .collect();
-        Logger::new(level, LOG_FILE, ignore)
+        // let ignore = vec![]
+        //     .into_iter()
+        //     .map(String::from)
+        //     .collect();
+        // Logger::new(level, LOG_FILE, ignore)
+        Logger::new(level, LOG_FILE, vec![])
     });
 
     log::set_max_level(logger.level);

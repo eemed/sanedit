@@ -8,8 +8,7 @@ use sanedit_server::Kill;
 use std::fs::File;
 
 use anyhow::{anyhow, bail};
-use sanedit_buffer::{Bytes, PieceTreeSlice};
-use sanedit_syntax::{Annotation, ByteReader, Parser};
+use sanedit_syntax::{Annotation, Parser};
 
 #[derive(Debug)]
 pub struct Syntaxes {
@@ -85,7 +84,7 @@ impl Syntax {
 
         let start = view.start;
         let slice = pt.slice(view.clone());
-        let reader = slice.bytes();
+        let reader = (slice.bytes(), kill.into());
         let captures = self.parser.parse(reader)?;
         let spans: Vec<Span> = captures
             .into_iter()

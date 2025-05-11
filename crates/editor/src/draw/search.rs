@@ -1,4 +1,3 @@
-use sanedit_core::SearchOptions;
 use sanedit_messages::redraw::{self, prompt::Source, Component, Redraw};
 
 use crate::editor::windows::Focus;
@@ -23,7 +22,6 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> Option<redraw::Redraw> {
 
 fn draw_impl(ctx: &mut DrawContext) -> redraw::Redraw {
     let prompt = &ctx.editor.win.prompt;
-    let search = &ctx.editor.win.search;
     let msg = prompt.message().into();
     let input = prompt.input().into();
     let cursor = prompt.cursor();

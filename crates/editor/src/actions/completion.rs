@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use rustc_hash::FxHashSet;
-use sanedit_core::{word_before_pos, Change, Changes, Cursor, Range};
+use sanedit_core::{word_before_pos, Change, Changes, Range};
 use sanedit_utils::either::Either;
 
 use crate::{
@@ -9,7 +9,7 @@ use crate::{
     editor::{
         hooks::Hook,
         snippets::Snippet,
-        windows::{Completion, Cursors, Focus},
+        windows::{Completion, Focus},
         Editor,
     },
 };

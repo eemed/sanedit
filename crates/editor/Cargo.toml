@@ -15,7 +15,6 @@ sanedit-lsp = { path = "../lsp" }
 sanedit-core = { path = "../core" }
 sanedit-server = { path = "../server" }
 
-
 tokio = { workspace = true, features = ["full"] }
 serde = { workspace = true, features = ["derive", "rc"] }
 tokio-util = { workspace = true, features = ["codec"] }
@@ -41,9 +40,6 @@ unicode-width.workspace = true
 # Used to detect clipboard commands, TODO probably replace with something more
 # lightweight
 which.workspace = true
-
-grep.workspace = true
-globset.workspace = true
 
 # Configuration handling
 toml_edit.workspace = true

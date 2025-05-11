@@ -94,6 +94,7 @@ pub(crate) fn into_cells_with_theme_with(string: &str, style: &Style) -> Vec<CCe
     cells
 }
 
+#[allow(dead_code)]
 pub(crate) fn pad_line_left(cells: &mut Vec<CCell>, style: Style, width: usize) {
     let left = width.saturating_sub(cells.len());
     let mut line = Vec::with_capacity(width);

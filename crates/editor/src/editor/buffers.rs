@@ -5,7 +5,7 @@ use std::path::Path;
 use sanedit_utils::idmap::IdMap;
 
 pub(crate) use self::buffer::{
-    Buffer, BufferConfig, BufferError, BufferId, SnapshotAux, SnapshotId, EndOfLineDef
+    Buffer, BufferConfig, BufferError, BufferId, EndOfLineDef, SnapshotAux, SnapshotId,
 };
 
 use super::file_description::FileDescription;
@@ -53,6 +53,7 @@ impl Buffers {
         self.buffers.iter()
     }
 
+    #[allow(dead_code)]
     pub fn iter_mut(&mut self) -> sanedit_utils::idmap::IterMut<BufferId, Buffer> {
         self.buffers.iter_mut()
     }

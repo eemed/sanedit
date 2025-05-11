@@ -90,6 +90,7 @@ impl Parser {
         &self.rules[id].annotations
     }
 
+    #[allow(dead_code)]
     fn label_for_op(&self, op: Addr) -> &str {
         self.program
             .names

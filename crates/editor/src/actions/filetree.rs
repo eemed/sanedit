@@ -25,6 +25,9 @@ fn show_filetree(editor: &mut Editor, id: ClientId) -> ActionResult {
     win.ft_view.selection = min(visible - 1, win.ft_view.selection);
     win.ft_view.show = true;
     focus(editor, id, Focus::Filetree);
+
+    ft_goto_current_file.execute(editor, id);
+
     ActionResult::Ok
 }
 

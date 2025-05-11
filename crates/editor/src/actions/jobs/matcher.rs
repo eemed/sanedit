@@ -4,10 +4,7 @@ use std::{
     time::Duration,
 };
 
-use sanedit_utils::{
-    appendlist::{Appendlist, Reader},
-    sorted_vec::SortedVec,
-};
+use sanedit_utils::{appendlist::Appendlist, sorted_vec::SortedVec};
 use tokio::{
     sync::mpsc::{channel, Receiver, Sender},
     time::{timeout, Instant},

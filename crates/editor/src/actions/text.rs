@@ -16,8 +16,8 @@ use super::{
     completion,
     hooks::run,
     movement::{end_of_line, prev_line},
-    window::{focus, pop_focus, push_focus, push_focus_with_keymap},
-    Action, ActionResult,
+    window::focus,
+    ActionResult,
 };
 
 #[action("Buffer: Remove character after cursor")]

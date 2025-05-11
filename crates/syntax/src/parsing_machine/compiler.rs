@@ -55,7 +55,6 @@ impl<'a> Compiler<'a> {
             result
         };
 
-
         // Unanchor
         let unanchor = self.push(Operation::Choice(0));
 
@@ -68,7 +67,6 @@ impl<'a> Compiler<'a> {
         let any = self.push(Operation::Set(Set::any()));
         self.push(Operation::Jump(0));
         self.program[unanchor] = Operation::Choice(any);
-
 
         let mut compile_addrs = vec![0; self.rules.len()];
 

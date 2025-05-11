@@ -69,6 +69,7 @@ impl Buffer {
     }
 
     pub fn from_file(file: FileDescription, options: BufferConfig) -> Result<Buffer> {
+        // TODO what to prefer, file eol or option eol
         if file.is_big() {
             Self::file_backed(file, options)
         } else {

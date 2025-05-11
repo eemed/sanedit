@@ -12,14 +12,20 @@ pub(crate) fn is_yes(input: &str) -> bool {
 }
 
 pub(crate) fn to_human_readable(num: f64) -> String {
-  let num = num.abs();
-  let units = ["B", "K", "M", "G", "T"];
-  if num < 1_f64 {
-      return format!("{}{}", num, "B");
-  }
-  let delimiter = 1024_f64;
-  let exponent = cmp::min((num.ln() / delimiter.ln()).floor() as i32, (units.len() - 1) as i32);
-  let pretty_bytes = format!("{:.2}", num / delimiter.powi(exponent)).parse::<f64>().unwrap() * 1_f64;
-  let unit = units[exponent as usize];
-  format!("{}{}", pretty_bytes, unit)
+    let num = num.abs();
+    let units = ["B", "K", "M", "G", "T"];
+    if num < 1_f64 {
+        return format!("{}{}", num, "B");
+    }
+    let delimiter = 1024_f64;
+    let exponent = cmp::min(
+        (num.ln() / delimiter.ln()).floor() as i32,
+        (units.len() - 1) as i32,
+    );
+    let pretty_bytes = format!("{:.2}", num / delimiter.powi(exponent))
+        .parse::<f64>()
+        .unwrap()
+        * 1_f64;
+    let unit = units[exponent as usize];
+    format!("{}{}", pretty_bytes, unit)
 }

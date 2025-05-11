@@ -63,7 +63,7 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> Statusline {
 
         result.push_str(&format!(" {} | ", win.keymap_layer));
         result.push_str(&format!(
-            "{ft} | {}% {cpos:#x}/{} ",
+            "{ft} | {}% {} ",
             ((cpos as f64 / blen.max(1) as f64) * 100.0).floor(),
             to_human_readable(blen as f64)
         ));

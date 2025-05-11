@@ -13,7 +13,6 @@ use super::config::Config;
 pub struct FileDescription {
     pub(crate) absolute_path: PathBuf,
     pub(crate) eol: EndOfLine,
-    pub(crate) size: u64,
     pub(crate) is_big: bool,
     pub(crate) read_only: bool,
     pub(crate) filetype: Option<Filetype>,
@@ -41,7 +40,6 @@ impl FileDescription {
         let file_metadata = FileDescription {
             absolute_path: path.into(),
             eol,
-            size,
             is_big,
             read_only,
             filetype,
@@ -62,7 +60,6 @@ impl FileDescription {
         let file_metadata = FileDescription {
             absolute_path: path.into(),
             eol,
-            size: 0,
             is_big: false,
             read_only: false, // TODO can write here?
             filetype,
@@ -83,12 +80,9 @@ impl FileDescription {
         &self.absolute_path
     }
 
+    #[allow(dead_code)]
     pub fn eol(&self) -> EndOfLine {
         self.eol
-    }
-
-    pub fn size(&self) -> u64 {
-        self.size
     }
 
     pub fn is_big(&self) -> bool {

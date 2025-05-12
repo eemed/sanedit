@@ -15,44 +15,31 @@ _ = WHITESPACE*;
 
 value =  object / array / number / string / constant;
 
-@show
-@whitespaced
-@highlight
+@show @whitespaced @highlight
 object = "{" member ("," member)* "}";
 
-@show
-@whitespaced
-@highlight
+@show @whitespaced @highlight
 member = identifier ":" value;
 
 @show
 identifier = quote identifier_inner quote;
 
-@show
-@completion
-@highlight(identifier)
+@show @completion @highlight(identifier)
 identifier_inner = ([^\u0..\u19\u22\u5c])*;
 
-@show
-@highlight
+@show @highlight
 string = quote string_inner quote;
 
-@show
-@completion
-@highlight(string)
+@show @completion @highlight(string)
 string_inner = ([^\u0..\u19\u22\u5c])*;
 
-@show
-@whitespaced
-@highlight
+@show @whitespaced @highlight
 array = "[" value ("," value )* "]";
 
-@show
-@highlight
+@show @highlight
 number = "-"? integer ("." [0..9]+)?;
 
-@show
-@highlight
+@show @highlight
 constant = true / false / null;
 
 true = "true";

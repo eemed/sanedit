@@ -19,16 +19,16 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> Statusline {
         return Statusline { left, right };
     }
 
-    let name = buf.name();
-    let wd = format!(
-        "{}{}",
-        working_dir.to_string_lossy().as_ref(),
-        std::path::MAIN_SEPARATOR_STR
-    );
-    let mut left = match name.strip_prefix(&wd) {
-        Some(bname) => format!(" {} ", bname),
-        None => format!(" {} ", name),
+    let name = {
+        match buf.path() {
+            Some(path) => {
+                let path = path.strip_prefix(working_dir).unwrap_or(path);
+                path.to_string_lossy()
+            }
+            None => buf.name(),
+        }
     };
+    let mut left = format!(" {} ", name);
     if buf.is_modified() {
         left.push_str("* ");
     }

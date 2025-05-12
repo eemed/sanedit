@@ -3,47 +3,43 @@ rules =  (assign / subshell / string / comment / specials / target / .)*;
 
 subshell = subshell_start gnu_statement? (!subshell_end .)* subshell_end;
 
-@show
-@highlight(operator)
+@show @highlight(operator)
 subshell_start = "$(";
 
-@show
-@highlight(operator)
+@show @highlight(operator)
 subshell_end = ")";
 
 @whitespaced
 assign = assign_id "=";
 
-@show
-@highlight(identifier)
+@show @highlight(identifier)
 assign_id = [a..zA..Z0..9]+;
 
 @whitespaced
 target =  target_id ":";
 
-@show
-@highlight(identifier)
+@show @highlight(identifier)
 target_id = [a..zA..Z0..9]+;
 
-@show
-@highlight(keyword)
-gnu_statement = "abspath" / "addprefix" / "addsuffix" / "and" / "basename" / "call" / "dir" / "error" / "eval" / "file" / "filter-out" / "filter" / "findstring" / "firstword" / "flavor" / "foreach" / "guile" / "if" / "info" / "intcmp" / "join" / "lastword" / "let" / "notdir" / "or" / "origin" / "patsubst" / "realpath" / "shell" / "sort" / "strip" / "subst" / "suffix" / "value" / "warning" / "wildcard" / "word" / "wordlist" / "words";
+@show @highlight(keyword)
+gnu_statement = "abspath" / "addprefix" / "addsuffix" / "and" / "basename" /
+ "call" / "dir" / "error" / "eval" / "file" / "filter-out" / "filter" /
+ "findstring" / "firstword" / "flavor" / "foreach" / "guile" / "if" /
+ "info" / "intcmp" / "join" / "lastword" / "let" / "notdir" / "or" /
+ "origin" / "patsubst" / "realpath" / "shell" / "sort" / "strip" /
+ "subst" / "suffix" / "value" / "warning" / "wildcard" / "word" /
+ "wordlist" / "words";
 
-@show
-@highlight(constant)
+@show @highlight(constant)
 specials = "." ("SUFFIXES" / "PHONY" / "DEFAULT" / "PRECIOUS" / "IGNORE" / "SILENT" / "NOTPARALLEL" / "POSIX");
 
-@show
-@highlight
+@show @highlight
 comment = "#" (!nl .)* nl;
 
-@show
-@highlight
+@show @highlight
 string    = "\"" compl_string "\"";
 
-@show
-@completion
-@highlight(string)
+@show @completion @highlight(string)
 compl_string    = ("\\" escape_char / [^"\n])*;
 
 escape_char     = "0" / "t" / "n" / "r" / "\"" / "\\";

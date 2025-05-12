@@ -9,7 +9,7 @@ match = "#B5BD68,#222222,"
 
 [colors.window.cursor]
 default = "#d7875f,#000000,"
-selection = "#81A2BE,#222222,"
+selection = "#3a3f41,#d3d3d3,"
 
 [colors.window.view]
 hint = "#33334a,#66bbe9,"
@@ -22,11 +22,10 @@ string =  ",#7AA6DA,"
 number = ",#7AA6DA,"
 
 keyword = ",#d7875f,"
-operator =  ",#8ABEB7,"
+operator =  ",#83a4af,"
 type =  ",#d7af5f,"
 comment = ",#B5BD68,"
 preproc = ",#B294BB,"
-
 identifier = ",#d7875f,"
 
 [colors.window.completion]

@@ -12,7 +12,6 @@ match = "#C0A886,,"
 
 [colors.window.cursor]
 default = "#a4ac86,,"
-# selection = "#efb679,,"
 selection = "#d0bd97,,"
 primary = "#C0A886,,"
 
@@ -28,10 +27,9 @@ number = ",#014CC0,"
 
 keyword = ",#a84d1f,"
 type =  ",#824b26,"
-operator =  ",#008080,"
+operator =  ",#005c76,"
 comment = ",#006200,"
 preproc = ",#432378,"
-
 identifier = ",#824b26,"
 
 [colors.window.completion]

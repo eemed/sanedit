@@ -20,16 +20,14 @@ info = "#B4CBF0,#014CB0,"
 warn = "#ffe699,#514403,"
 error = "#BF7E7E,#392525,"
 
-constant = ",#014CC0,"
-string =  ",#014CC0,"
-number = ",#014CC0,"
-
+constant = ",#274172,"
+string =  ",#0750b1,"
+number = ",#274172,"
 keyword = ",#005F00,"
 type =  ",#824b26,"
-operator =  ",#008787,"
+operator =  ",#2e503f,"
 comment = ",#870100,"
 preproc = ",#533388,"
-
 identifier = ",#824b26,"
 
 [colors.window.completion]

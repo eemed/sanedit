@@ -88,7 +88,7 @@ fn command_palette(editor: &mut Editor, id: ClientId) -> ActionResult {
         .build();
 
     win.prompt = Prompt::builder()
-        .prompt("Palette")
+        .prompt("Commands")
         .on_confirm(move |editor, id, out| {
             let desc = get!(out.text());
             if let Some(action) = find_by_description(desc) {

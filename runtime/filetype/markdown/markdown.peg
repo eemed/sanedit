@@ -1,14 +1,15 @@
-document = (title / list_op / .)*;
+document = (title / list_op / link / (!WHITESPACE .) WHITESPACE / .)*;
 
 WHITESPACE = [ \t];
 ws = WHITESPACE*;
 nl = "\r\n" / "\n";
 
-@show
-@whitespaced
-@highlight(identifier)
+@show @whitespaced @highlight(identifier)
 title = "#"+ (!nl .)*;
 
-@show
-@highlight(operator)
+@show @highlight(operator)
 list_op = nl ws "*" / "-" / "+";
+
+link = "[" link_name "](" (!")" .)* ")";
+@show @highlight(keyword)
+link_name = (!"]" .)*;

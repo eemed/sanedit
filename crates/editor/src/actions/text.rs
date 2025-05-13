@@ -4,7 +4,7 @@ use sanedit_core::{at_start_of_line, is_indent_at_pos};
 
 use crate::editor::{
     buffers::{Buffer, BufferError},
-    config::Config,
+    filetype::Filetypes,
     hooks::Hook,
     windows::{Focus, NextKeyFunction, Prompt, Window},
     Editor,
@@ -258,7 +258,7 @@ fn align_cursor_columns(editor: &mut Editor, id: ClientId) -> ActionResult {
 }
 
 fn get_comment<'a>(
-    config: &'a Config,
+    filetypes: &'a Filetypes,
     win: &mut Window,
     buf: &Buffer,
     show_error: bool,
@@ -269,7 +269,7 @@ fn get_comment<'a>(
         }
         return None;
     };
-    let Some(ftconfig) = config.filetype.get(ft.as_str()) else {
+    let Some(ftconfig) = filetypes.get(&ft) else {
         if show_error {
             win.warn_msg("No comment string set for filetype");
         }
@@ -289,7 +289,7 @@ fn get_comment<'a>(
 #[action("Buffer: Comment lines")]
 fn comment_lines(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = win_buf!(editor, id);
-    match get_comment(&editor.config, win, buf, true) {
+    match get_comment(&editor.filetypes, win, buf, true) {
         Some(comment) => {
             if win.comment_cursor_lines(buf, comment).is_ok() {
                 let hook = Hook::BufChanged(buf.id);
@@ -304,7 +304,7 @@ fn comment_lines(editor: &mut Editor, id: ClientId) -> ActionResult {
 #[action("Buffer: Uncomment lines")]
 fn uncomment_lines(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = win_buf!(editor, id);
-    match get_comment(&editor.config, win, buf, true) {
+    match get_comment(&editor.filetypes, win, buf, true) {
         Some(comment) => {
             if win.uncomment_cursor_lines(buf, comment).is_ok() {
                 let hook = Hook::BufChanged(buf.id);
@@ -319,7 +319,7 @@ fn uncomment_lines(editor: &mut Editor, id: ClientId) -> ActionResult {
 #[action("Buffer: Toggle comment lines")]
 fn toggle_comment_lines(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = win_buf!(editor, id);
-    match get_comment(&editor.config, win, buf, true) {
+    match get_comment(&editor.filetypes, win, buf, true) {
         Some(comment) => {
             if win.toggle_comment_cursor_lines(buf, comment).is_ok() {
                 let hook = Hook::BufChanged(buf.id);
@@ -334,7 +334,7 @@ fn toggle_comment_lines(editor: &mut Editor, id: ClientId) -> ActionResult {
 #[action("Buffer: Join lines")]
 fn join_lines(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = win_buf!(editor, id);
-    let comment = get_comment(&editor.config, win, buf, false).unwrap_or("");
+    let comment = get_comment(&editor.filetypes, win, buf, false).unwrap_or("");
 
     if win.join_lines(buf, comment).is_ok() {
         let hook = Hook::BufChanged(buf.id);

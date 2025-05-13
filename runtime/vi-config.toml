@@ -46,11 +46,7 @@ rust = ["*.rs"]
 toml = ["*/Cargo.lock"]
 markdown = ["*.md"]
 yaml = ["*.yml"]
-make = ["**/Makefile"]
-
-[filetype.rust]
-comment = "// "
-language_server.command = "rust-analyzer"
+make = ["*/Makefile"]
 
 [filetype.peg]
 comment = "# "
@@ -304,3 +300,13 @@ maps = [
     { key = "esc", actions = ["completion_abort"] },
     { key = "§", actions = ["completion_abort"] },
 ]
+
+
+[snippets.ticket]
+trigger = "ticket"
+body = """[TICKET-${1:number}] ${0:description}"""
+
+
+[snippets.bob]
+trigger="bob"
+body="hello $0 world $1"

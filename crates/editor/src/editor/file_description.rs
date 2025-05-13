@@ -7,7 +7,7 @@ use std::{
 use sanedit_buffer::utf8::EndOfLine;
 use sanedit_core::Filetype;
 
-use super::config::Config;
+use super::{config::Config, filetype::Filetypes};
 
 #[derive(Debug)]
 pub struct FileDescription {
@@ -19,10 +19,10 @@ pub struct FileDescription {
 }
 
 impl FileDescription {
-    pub fn new(path: impl AsRef<Path>, config: &Config) -> io::Result<FileDescription> {
+    pub fn new(path: impl AsRef<Path>, config: &Config, filetypes: &Filetypes) -> io::Result<FileDescription> {
         let path = path.as_ref();
         if !path.exists() {
-            return Self::new_empty(path, config);
+            return Self::new_empty(path, config, filetypes);
         }
 
         let mut file = fs::File::open(path)?;
@@ -48,11 +48,11 @@ impl FileDescription {
         Ok(file_metadata)
     }
 
-    fn new_empty(path: &Path, config: &Config) -> io::Result<FileDescription> {
+    fn new_empty(path: &Path, config: &Config, filetypes: &Filetypes) -> io::Result<FileDescription> {
         let filetype = Filetype::determine(path, &config.editor.filetype_detect);
         let eol = filetype
             .as_ref()
-            .map(|ft| config.filetype.get(ft.as_str()))
+            .map(|ft| filetypes.get(&ft))
             .flatten()
             .map(|ftconfig| ftconfig.buffer.eol)
             .unwrap_or(config.editor.eol);

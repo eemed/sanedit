@@ -346,7 +346,6 @@ impl Window {
         primary.goto(offset);
 
         self.ensure_cursor_on_grapheme_boundary(buf);
-        self.view_to_cursor(buf);
         self.view_to_cursor_zone(buf, Zone::Middle);
 
         self.push_new_cursor_jump(buf);
@@ -1203,7 +1202,7 @@ impl Window {
         self.ensure_cursor_on_grapheme_boundary(buf);
         self.invalidate();
 
-        self.view_to_cursor(buf);
+        self.view_to_cursor_zone(buf, Zone::Middle);
         self.invalidate();
     }
 

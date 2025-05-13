@@ -19,6 +19,7 @@ pub fn pop_focus(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     let entry = get!(win.focus_stack.pop());
 
+    log::info!("POP: {entry:?}");
     let same_keymap = win.keymap_layer == entry.keymap_layer;
     if same_keymap && win.focus() == entry.focus {
         return;
@@ -45,6 +46,7 @@ pub fn push_focus_with_keymap(editor: &mut Editor, id: ClientId, focus: Focus, k
         focus: win.focus(),
         keymap_layer: win.keymap_layer.clone(),
     };
+    log::info!("PUSH: {entry:?}");
     win.focus_stack.push(entry);
 
     let (win, _buf) = editor.win_buf_mut(id);
@@ -242,7 +244,7 @@ fn status(editor: &mut Editor, id: ClientId) -> ActionResult {
         .map(|ft| {
             let lsp = editor.language_servers.get(ft)?;
             let name = lsp.server_name();
-            let config = editor.config.filetype.get(ft.as_str())?;
+            let config = editor.filetypes.get(&ft)?;
             let command = config.language_server.command.as_str();
             let args = config.language_server.args.clone();
             Some((name, command, args))

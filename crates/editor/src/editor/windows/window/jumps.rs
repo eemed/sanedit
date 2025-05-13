@@ -107,7 +107,7 @@ impl Jumps {
     }
 
     pub fn is_empty(&self) -> bool {
-        !self.jumps.is_empty()
+        self.jumps.is_empty()
     }
 
     pub fn push(&mut self, group: JumpGroup) {

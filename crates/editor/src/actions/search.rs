@@ -5,7 +5,7 @@ use sanedit_core::{word_at_pos, SearchOptions, Searcher};
 use crate::{
     actions::jobs,
     editor::{
-        windows::{Focus, HistoryKind, Prompt},
+        windows::{Focus, HistoryKind, Prompt, Zone},
         Editor,
     },
 };
@@ -38,13 +38,14 @@ fn highlight_current_search_matches(editor: &mut Editor, id: ClientId) {
 
 /// Highlights search matches on view using
 fn highlight_view_matches(editor: &mut Editor, id: ClientId, searcher: Searcher) {
+    const JOB_NAME: &str = "search-highlight";
     let (win, buf) = editor.win_buf_mut(id);
     let pt = buf.ro_view();
     let mut view = win.view().range();
     view.start = view.start.saturating_sub(HORIZON_TOP);
     view.end = min(pt.len(), view.end + HORIZON_BOTTOM);
     let job = jobs::Search::new(id, searcher, pt, view, buf.total_changes_made());
-    editor.job_broker.request(job);
+    editor.job_broker.request_slot(id, JOB_NAME, job);
 }
 
 #[action("Search: Highlight matches")]
@@ -254,7 +255,9 @@ fn do_search(editor: &mut Editor, id: ClientId, searcher: Searcher, starting_pos
 
             // Triggers match highlighting, it needs to be updated on buffer /
             // view changes so it is separated
-            win.search.highlights = Some(Default::default());
+            if win.search.highlights.is_none() {
+                win.search.highlights = Some(Default::default());
+            }
         }
         None => {
             win.search.current.result = None;

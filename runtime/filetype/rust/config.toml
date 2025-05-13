@@ -1,0 +1,14 @@
+comment = "// "
+language_server.command = "rust-analyzer"
+
+[snippets.log-info]
+trigger="li"
+body="log::info!($0)"
+
+[snippets.fn]
+trigger="fn"
+body="""\
+fn ${3:name}($2) -> ${1:()}{
+    \t$0
+}\
+"""

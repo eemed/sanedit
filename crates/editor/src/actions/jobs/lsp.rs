@@ -423,6 +423,9 @@ impl LSPJob {
             return;
         };
 
+        let (win, _buf) = editor.win_buf_mut(id);
+        win.locations.clear();
+
         // TODO should this be auto shown?
         locations::show_locations.execute(editor, id);
 

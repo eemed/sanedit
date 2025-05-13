@@ -4,6 +4,7 @@ pub(crate) mod clipboard;
 pub(crate) mod config;
 pub(crate) mod file_description;
 pub(crate) mod filetree;
+pub(crate) mod filetype;
 pub(crate) mod hooks;
 pub(crate) mod job_broker;
 pub(crate) mod keymap;
@@ -14,7 +15,9 @@ pub(crate) mod themes;
 pub(crate) mod windows;
 
 use caches::Caches;
+use config::FiletypeConfig;
 use file_description::FileDescription;
+use filetype::Filetypes;
 use keymap::KeymapResult;
 use keymap::Layer;
 use rustc_hash::FxHashMap;
@@ -96,6 +99,7 @@ pub(crate) struct Editor {
     pub themes: Themes,
     pub config_dir: ConfigDirectory,
     pub syntaxes: Syntaxes,
+    pub filetypes: Filetypes,
     pub job_broker: JobBroker,
     pub hooks: Hooks,
     pub clipboard: Box<dyn Clipboard>,
@@ -122,6 +126,7 @@ impl Editor {
             clients: Map::default(),
             draw_states: Map::default(),
             syntaxes: Syntaxes::new(),
+            filetypes: Filetypes::default(),
             windows: Windows::default(),
             buffers: Buffers::default(),
             job_broker: JobBroker::new(jobs_handle),
@@ -271,11 +276,11 @@ impl Editor {
 
     /// Create a new buffer from path
     pub fn create_buffer(&mut self, id: ClientId, path: impl AsRef<Path>) -> Result<BufferId> {
-        let file = FileDescription::new(path, &self.config)?;
+        let file = FileDescription::new(path, &self.config, &self.filetypes)?;
         let config = file
             .filetype
             .as_ref()
-            .map(|ft| self.config.filetype.get(ft.as_str()))
+            .map(|ft| self.filetypes.get(&ft))
             .flatten()
             .map(|ftconfig| ftconfig.buffer.clone())
             .unwrap_or_default();
@@ -777,11 +782,27 @@ impl Editor {
 
     pub fn load_filetype(&mut self, ft: &Filetype, reload: bool) {
         self.load_filetype_syntax(ft, reload);
+        self.load_filetype_config(ft, reload);
+    }
+
+    fn load_filetype_config(&mut self, ft: &Filetype, reload: bool) {
+        let dir = self.config_dir.filetype_dir();
+        let path = PathBuf::from(ft.as_str()).join("config.toml");
+        if let Some(path) = dir.find(&path) {
+            let result = if reload {
+                self.filetypes.reload(ft, &path)
+            } else {
+                self.filetypes.load(ft, &path)
+            };
+            if let Err(e) = result {
+                log::error!("Failed to load filetype config for {}: {e}", ft.as_str());
+            }
+        }
     }
 
     fn load_filetype_syntax(&mut self, ft: &Filetype, reload: bool) {
         let dir = self.config_dir.filetype_dir();
-        let path = PathBuf::from(ft.as_str()).join(format!("{}.peg", ft.as_str()));
+        let path = PathBuf::from(ft.as_str()).join("syntax.peg");
         if let Some(path) = dir.find(&path) {
             let result = if reload {
                 self.syntaxes.reload(ft, &path)
@@ -795,20 +816,25 @@ impl Editor {
     }
 
     pub fn get_snippets(&self, id: ClientId) -> Vec<Arc<Choice>> {
+        let mut result = self.config.snippets_as_choices();
+
         let win = self.windows.get(id).expect("No window for {id}");
         let buf = self
             .buffers
             .get(win.buffer_id())
             .expect("No window for {id}");
         let Some(ft) = buf.filetype.as_ref() else {
-            return vec![];
+            return result;
         };
 
-        let Some(ftconfig) = self.config.filetype.get(ft.as_str()) else {
-            return vec![];
+        let Some(ftconfig) = self.filetypes.get(&ft) else {
+            return result;
         };
 
-        ftconfig.snippets_as_choices()
+        result.extend(ftconfig.snippets_as_choices());
+        log::info!("Snippets: {result:?}");
+
+        result
     }
 }
 

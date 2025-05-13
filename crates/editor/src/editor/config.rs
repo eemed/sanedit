@@ -3,6 +3,7 @@ mod filetype;
 
 use std::{path::Path, sync::Arc};
 
+use filetype::ConfigSnippet;
 use sanedit_buffer::utf8::EndOfLine;
 use sanedit_messages::key::{try_parse_keyevents, KeyEvent};
 use serde::{Deserialize, Serialize};
@@ -14,8 +15,8 @@ use toml_edit::{
 
 use crate::{
     actions::{find_by_name, window::change_keymap, Action, ActionResult},
-    editor,
-    editor::buffers::EndOfLineDef,
+    common::matcher::Choice,
+    editor::{self, buffers::EndOfLineDef},
 };
 
 use super::{
@@ -36,8 +37,10 @@ pub(crate) struct Config {
 
     #[serde(flatten)]
     pub window: windows::WindowConfig,
-    pub filetype: Map<String, FiletypeConfig>,
+
     pub keymaps: Map<String, KeymapLayer>,
+
+    pub snippets: Map<String, ConfigSnippet>,
 }
 
 impl Config {
@@ -78,6 +81,17 @@ impl Config {
         file.write_all(default_config.as_bytes())?;
 
         Ok(())
+    }
+
+    pub fn snippets_as_choices(&self) -> Vec<Arc<Choice>> {
+        let mut choices = vec![];
+        for (_name, snip) in &self.snippets {
+            if let Some(loaded) = snip.get() {
+                choices.push(Choice::from_snippet_trigger(loaded));
+            }
+        }
+
+        choices
     }
 }
 

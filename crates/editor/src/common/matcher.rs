@@ -23,7 +23,7 @@ pub use strategy::*;
 pub struct Matcher {
     reader: Reader<Arc<Choice>>,
     read_done: Arc<AtomicUsize>,
-    prev_stop: Arc<AtomicBool>,
+    prev_search: Arc<AtomicBool>,
     strategy: MatchStrategy,
 }
 
@@ -33,19 +33,15 @@ impl Matcher {
 
     // Create a new matcher.
     pub fn new(reader: Reader<Arc<Choice>>, strategy: MatchStrategy) -> Matcher {
-        let read_done = Arc::new(AtomicUsize::new(0));
-        let stop = Arc::new(AtomicBool::new(false));
+        let read_done = Arc::new(AtomicUsize::new(usize::MAX));
+        let prev_search = Arc::new(AtomicBool::new(false));
 
         Matcher {
             reader,
             read_done,
-            prev_stop: stop,
             strategy,
+            prev_search,
         }
-    }
-
-    pub fn stop(&self) -> Arc<AtomicBool> {
-        self.prev_stop.clone()
     }
 
     pub fn read_done(&self) -> Arc<AtomicUsize> {
@@ -57,8 +53,8 @@ impl Matcher {
     /// Dropping the receiver stops the matching process.
     pub fn do_match(&mut self, pattern: &str) -> MatchReceiver {
         // Cancel possible previous search
-        self.prev_stop.store(true, Ordering::Release);
-        self.prev_stop = Arc::new(AtomicBool::new(false));
+        self.prev_search.store(true, Ordering::Release);
+        self.prev_search = Arc::new(AtomicBool::new(false));
 
         // Batch candidates to 512 sized blocks
         // Send each block to an executor
@@ -82,16 +78,16 @@ impl Matcher {
             }
         };
         let mut taken = 0;
-        let stop = self.prev_stop.clone();
+        let local_stop = self.prev_search.clone();
 
         rayon::spawn(move || loop {
-            if stop.load(Ordering::Acquire) {
+            if local_stop.load(Ordering::Acquire) {
                 break;
             }
 
             let total = read_done.load(Ordering::Acquire);
             let available = reader.len();
-            let fully_read = total != 0 && available == total;
+            let fully_read = available == total;
 
             // If we are done reading all available options
             if fully_read && available == taken {
@@ -104,7 +100,7 @@ impl Matcher {
                 taken += size;
 
                 let out = out.clone();
-                let stop = stop.clone();
+                let stop = local_stop.clone();
                 let reader = reader.clone();
                 let patterns = patterns.clone();
 

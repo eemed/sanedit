@@ -1,4 +1,4 @@
-use std::{cell::OnceCell, sync::Arc};
+use std::{cell::OnceCell, path::Path, sync::Arc};
 
 use serde::{Deserialize, Serialize};
 
@@ -9,7 +9,7 @@ use crate::{
 
 use super::buffers;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct ConfigSnippet {
     trigger: String,
     body: String,
@@ -42,24 +42,40 @@ pub(crate) struct LSPConfig {
     pub args: Vec<String>,
 }
 
-#[derive(Debug, Serialize, Default, Deserialize, DocComment)]
+#[derive(Debug, Clone, Serialize, Default, Deserialize, DocComment)]
 #[serde(default)]
 pub(crate) struct FiletypeConfig {
     /// Used to comment blocks of text
     pub comment: String,
 
-    #[serde(flatten)]
-    pub buffer: buffers::BufferConfig,
-
     pub language_server: LSPConfig,
+
+    pub buffer: buffers::BufferConfig,
 
     pub snippets: Map<String, ConfigSnippet>,
 }
 
 impl FiletypeConfig {
+    pub fn new(config_path: &Path) -> FiletypeConfig {
+        match Self::try_new(config_path) {
+            Ok(config) => config,
+            Err(e) => {
+                log::warn!("Failed to load filetype configuration, using default instead: {e}");
+                FiletypeConfig::default()
+            }
+        }
+    }
+
+    pub fn try_new(config_path: &Path) -> anyhow::Result<FiletypeConfig> {
+        let builder = config::Config::builder().add_source(config::File::from(config_path));
+        let config = builder.build()?.try_deserialize::<FiletypeConfig>()?;
+        Ok(config)
+    }
+
     pub fn snippets_as_choices(&self) -> Vec<Arc<Choice>> {
         let mut choices = vec![];
         for (_name, snip) in &self.snippets {
+            log::info!("SNIP: {snip:?}");
             if let Some(loaded) = snip.get() {
                 choices.push(Choice::from_snippet_trigger(loaded));
             }

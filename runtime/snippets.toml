@@ -1,7 +1,3 @@
 [ticket]
 trigger = "ticket"
-body = """[NEO-${1:number}] ${0:description}"""
-
-[buffalo]
-trigger = "buffalo"
-body = """[NEO-${1:number}] ${0:description}"""
+body = """[TICKET-${1:number}] ${0:description}"""

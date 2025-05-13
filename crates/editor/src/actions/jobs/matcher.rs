@@ -308,7 +308,6 @@ pub(crate) async fn match_options(
 
     let (reader, writer) = Appendlist::<Arc<Choice>>::new();
     let mut matcher = Matcher::new(reader, strat);
-    let stop = matcher.stop();
     let read_done = matcher.read_done();
 
     // Send options to appendlist
@@ -317,12 +316,7 @@ pub(crate) async fn match_options(
             writer.append(choice);
         }
 
-        let len = writer.len();
-        if len == 0 {
-            stop.store(true, Ordering::Release);
-        } else {
-            read_done.store(len, Ordering::Release);
-        }
+        read_done.store(writer.len(), Ordering::Release);
     });
 
     // Start matching

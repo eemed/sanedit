@@ -26,14 +26,6 @@ pub(crate) fn snippet_jump_next(editor: &mut Editor, id: ClientId) -> ActionResu
     let (win, buf) = editor.win_buf_mut(id);
     if !win.cursors_to_next_snippet_jump(buf) {
         pop_focus(editor, id);
-    } else {
-        // Set keymap to snippet if jumped to next
-        push_focus_with_keymap(
-            editor,
-            id,
-            Focus::Window,
-            KeymapKind::Snippet.as_ref().into(),
-        );
     }
     ActionResult::Ok
 }

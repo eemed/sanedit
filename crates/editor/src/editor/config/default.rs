@@ -32,8 +32,8 @@ impl Default for Config {
         Config {
             editor: Default::default(),
             window: Default::default(),
-            filetype: Default::default(),
             keymaps,
+            snippets: Default::default(),
         }
     }
 }
@@ -53,10 +53,10 @@ impl EditorConfig {
         #[rustfmt::skip]
         map!(ftmap,
              "rust", ["*.rs"],
-             "toml", ["**/Cargo.lock"],
+             "toml", ["*/Cargo.lock"],
              "yaml", ["*.yml"],
              "markdown", ["*.md"],
-             "make", ["**/Makefile"],
+             "make", ["*/Makefile"],
         );
 
         ftmap

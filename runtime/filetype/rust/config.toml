@@ -1,11 +1,11 @@
 comment = "// "
 language_server.command = "rust-analyzer"
 
-[snippets.log-info]
+[[snippet]]
 trigger="li"
 body="log::info!($0)"
 
-[snippets.fn]
+[[snippet]]
 trigger="fn"
 body="""\
 fn ${3:name}($2) -> ${1:()}{

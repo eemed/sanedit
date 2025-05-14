@@ -15,7 +15,6 @@ pub(crate) mod themes;
 pub(crate) mod windows;
 
 use caches::Caches;
-use config::FiletypeConfig;
 use file_description::FileDescription;
 use filetype::Filetypes;
 use keymap::KeymapResult;

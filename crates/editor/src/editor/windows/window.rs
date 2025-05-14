@@ -278,6 +278,16 @@ impl Window {
         }
     }
 
+    /// Put View to cursor if cursor is not visible otherwise
+    pub fn view_to_around_cursor_zone(&mut self, buf: &Buffer, zone: Zone) {
+        let cursor = self.primary_cursor().pos();
+        self.view.redraw(buf);
+
+        if !self.view.is_visible(cursor) {
+            self.view_to_cursor_zone(buf, zone);
+        }
+    }
+
     pub fn view_to_cursor_zone(&mut self, buf: &Buffer, zone: Zone) {
         debug_assert!(
             buf.id == self.bid,
@@ -1202,7 +1212,7 @@ impl Window {
         self.ensure_cursor_on_grapheme_boundary(buf);
         self.invalidate();
 
-        self.view_to_cursor_zone(buf, Zone::Middle);
+        self.view_to_around_cursor_zone(buf, Zone::Middle);
         self.invalidate();
     }
 

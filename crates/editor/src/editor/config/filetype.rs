@@ -2,10 +2,7 @@ use std::{cell::OnceCell, path::Path, sync::Arc};
 
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    common::matcher::Choice,
-    editor::{snippets::Snippet, Map},
-};
+use crate::{common::matcher::Choice, editor::snippets::Snippet};
 
 use super::buffers;
 
@@ -52,7 +49,7 @@ pub(crate) struct FiletypeConfig {
 
     pub buffer: buffers::BufferConfig,
 
-    pub snippets: Map<String, ConfigSnippet>,
+    pub snippet: Vec<ConfigSnippet>,
 }
 
 impl FiletypeConfig {
@@ -74,7 +71,7 @@ impl FiletypeConfig {
 
     pub fn snippets_as_choices(&self) -> Vec<Arc<Choice>> {
         let mut choices = vec![];
-        for (_name, snip) in &self.snippets {
+        for snip in &self.snippet {
             log::info!("SNIP: {snip:?}");
             if let Some(loaded) = snip.get() {
                 choices.push(Choice::from_snippet_trigger(loaded));

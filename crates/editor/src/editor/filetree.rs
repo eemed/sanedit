@@ -368,6 +368,11 @@ impl Filetree {
         };
         FiletreeIterator { stack: vec![entry] }
     }
+
+    pub fn refresh(&mut self) -> Result<()> {
+        let root_path = self.absolute.join(&self.root.local);
+        self.root.refresh(&root_path)
+    }
 }
 
 #[derive(Debug)]

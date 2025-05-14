@@ -1,4 +1,4 @@
-use std::{cmp::min, sync::Arc};
+use std::{cmp::min, path::PathBuf, sync::Arc};
 
 use crate::{
     common::is_yes,
@@ -11,7 +11,7 @@ use crate::{
 
 use sanedit_server::ClientId;
 
-use super::{window::focus, ActionResult};
+use super::{window::{focus, push_focus}, ActionResult};
 
 #[action("Filetree: Show")]
 fn show_filetree(editor: &mut Editor, id: ClientId) -> ActionResult {
@@ -156,6 +156,55 @@ fn ft_new_file(editor: &mut Editor, id: ClientId) -> ActionResult {
         })
         .build();
     focus(editor, id, Focus::Prompt);
+    ActionResult::Ok
+}
+
+#[action("Filetree: Rename file or folder")]
+fn ft_rename_file(editor: &mut Editor, id: ClientId) -> ActionResult {
+    let old = {
+        let (win, _buf) = editor.win_buf(id);
+        let entry = getf!(editor.filetree.iter().nth(win.ft_view.selection));
+        entry.path().to_path_buf()
+    };
+
+    let (win, _buf) = editor.win_buf_mut(id);
+    win.prompt = Prompt::builder()
+        .prompt("Rename")
+        .simple()
+        .on_confirm(move |editor, id, out| {
+            let path = get!(out.text());
+            let mut new = PathBuf::from(path);
+            if new.is_relative() {
+                new = editor.working_dir().join(new);
+            }
+
+            // Create directories leading up to the renamed thing
+            if let Some(parent) = new.parent() {
+                let _ = std::fs::create_dir_all(parent);
+            }
+
+            // Rename
+            if let Err(e) = std::fs::rename(&old, &new) {
+                let (win, _buf) = editor.win_buf_mut(id);
+                win.warn_msg(&format!("Failed to rename file/dir {e}"));
+                return;
+            }
+
+            // Refresh tree to show moved stuff
+            let _ = editor.filetree.refresh();
+
+            // Select the new entry if visible
+            if let Some(pos) = editor
+                .filetree
+                .iter()
+                .position(|entry| entry.path() == new.as_path())
+            {
+                let (win, _buf) = editor.win_buf_mut(id);
+                win.ft_view.selection = pos;
+            }
+        })
+        .build();
+    push_focus(editor, id, Focus::Prompt);
     ActionResult::Ok
 }
 

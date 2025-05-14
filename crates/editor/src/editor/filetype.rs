@@ -10,12 +10,6 @@ pub struct Filetypes {
 }
 
 impl Filetypes {
-    pub fn new() -> Filetypes {
-        Filetypes {
-            filetypes: Map::default(),
-        }
-    }
-
     pub fn get(&self, ft: &Filetype) -> Option<&FiletypeConfig> {
         self.filetypes.get(ft)
     }
@@ -31,12 +25,11 @@ impl Filetypes {
     }
 
     pub fn load(&mut self, ft: &Filetype, path: &Path) -> anyhow::Result<()> {
-        if self.filetypes.contains_key(ft) {
+        if self.contains_key(ft) {
             return Ok(());
         }
 
         let ftc = FiletypeConfig::new(path);
-        log::info!("FTC: {path:?}, {ftc:?}");
         self.filetypes.insert(ft.clone(), ftc);
         Ok(())
     }

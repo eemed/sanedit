@@ -40,7 +40,7 @@ pub(crate) struct Config {
 
     pub keymaps: Map<String, KeymapLayer>,
 
-    pub snippets: Map<String, ConfigSnippet>,
+    pub snippet: Vec<ConfigSnippet>,
 }
 
 impl Config {
@@ -85,7 +85,7 @@ impl Config {
 
     pub fn snippets_as_choices(&self) -> Vec<Arc<Choice>> {
         let mut choices = vec![];
-        for (_name, snip) in &self.snippets {
+        for snip in &self.snippet {
             if let Some(loaded) = snip.get() {
                 choices.push(Choice::from_snippet_trigger(loaded));
             }

@@ -17,7 +17,10 @@ use super::{hooks, ActionResult};
 /// Pop focus from focus stack and run hooks
 pub fn pop_focus(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
-    let entry = get!(win.focus_stack.pop());
+    let Some(entry) = win.focus_stack.pop() else {
+        focus(editor, id, Focus::Window);
+        return;
+    };
 
     log::info!("POP: {entry:?}");
     let same_keymap = win.keymap_layer == entry.keymap_layer;

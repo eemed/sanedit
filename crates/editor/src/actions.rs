@@ -150,6 +150,7 @@ pub(crate) const COMMANDS: &[Action] = &[
     filetree::select_ft_parent,
     filetree::ft_delete_file,
     filetree::ft_new_file,
+    filetree::ft_rename_file,
     filetree::goto_ft_entry,
     filetree::ft_goto_current_file,
     filetree::show_filetree,

@@ -251,7 +251,7 @@ fn do_search(editor: &mut Editor, id: ClientId, searcher: Searcher, starting_pos
                 }
             }
 
-            win.view_to_cursor(buf);
+            win.view_to_around_cursor_zone(buf, Zone::Middle);
 
             // Triggers match highlighting, it needs to be updated on buffer /
             // view changes so it is separated

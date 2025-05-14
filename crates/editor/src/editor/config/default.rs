@@ -33,7 +33,7 @@ impl Default for Config {
             editor: Default::default(),
             window: Default::default(),
             keymaps,
-            snippets: Default::default(),
+            snippet: Default::default(),
         }
     }
 }

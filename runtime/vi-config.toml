@@ -269,10 +269,13 @@ maps = [
     { key = "k", actions = ["prev_ft_entry"] },
     { key = "j", actions = ["next_ft_entry"] },
     { key = "h", actions = ["select_ft_parent"] },
+    { key = "p", actions = ["select_ft_parent"] },
     { key = "s", actions = ["ft_goto_current_file"] },
 
     { key = "c", actions = ["ft_new_file"] },
     { key = "d", actions = ["ft_delete_file"] },
+    { key = "r", actions = ["ft_rename_file"] },
+    { key = "m", actions = ["ft_rename_file"] },
 
     { key = "alt+l", actions = ["focus_window"] },
 ]
@@ -307,6 +310,6 @@ trigger = "ticket"
 body = """[TICKET-${1:number}] ${0:description}"""
 
 
-[snippets.bob]
+[[snippet]]
 trigger="bob"
 body="hello $0 world $1"

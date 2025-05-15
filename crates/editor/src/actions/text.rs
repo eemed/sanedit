@@ -2,13 +2,13 @@ use std::{mem, sync::Arc};
 
 use sanedit_core::{at_start_of_line, is_indent_at_pos};
 
-use crate::editor::{
+use crate::{actions::movement::start_of_buffer, editor::{
     buffers::{Buffer, BufferError},
     filetype::Filetypes,
     hooks::Hook,
     windows::{Focus, NextKeyFunction, Prompt, Window},
     Editor,
-};
+}};
 
 use sanedit_server::ClientId;
 
@@ -237,9 +237,29 @@ fn newline_above(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
     let restore = mem::replace(&mut win.config.autopair, false);
 
+    let (win, _buf) = editor.win_buf_mut(id);
+    let orig = win.cursors().primary().pos();
+    log::info!("PLINE");
     prev_line.execute(editor, id);
-    end_of_line.execute(editor, id);
+    let (win, _buf) = editor.win_buf_mut(id);
+    let prev = win.cursors().primary().pos();
+    let on_first_line = orig == prev;
+    log::info!("ON FIRST LINE: {orig} == {prev}");
+    if !on_first_line {
+    log::info!("EOL");
+        end_of_line.execute(editor, id);
+    } else {
+    log::info!("SOB");
+        start_of_buffer.execute(editor, id);
+    }
+
+    log::info!("INL");
     insert_newline.execute(editor, id);
+
+    if on_first_line {
+    log::info!("PLINE");
+        prev_line.execute(editor, id);
+    }
 
     let (win, _buf) = editor.win_buf_mut(id);
     win.config.autopair = restore;

@@ -147,7 +147,7 @@ impl Default for Hooks {
 
         // Search
         hooks.register(OnMessagePost, search::highlight_search);
-        // hooks.register(BufChanged, search::prevent_flicker);
+        hooks.register(BufChanged, search::prevent_flicker);
 
         // Window
         hooks.register(BufChanged, window::sync_windows);

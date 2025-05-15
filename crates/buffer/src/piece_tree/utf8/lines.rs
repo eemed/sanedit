@@ -102,7 +102,9 @@ pub fn next_eol(bytes: &mut Bytes) -> Option<EOLMatch> {
 /// Advances bytes iterator to the previous end of line and over it.
 /// If an EOL is found returns the form of eol and the range it spans over.
 pub fn prev_eol(bytes: &mut Bytes) -> Option<EOLMatch> {
+log::info!("PREV EOL: {}", bytes.pos());
     let mut byte = bytes.prev()?;
+log::info!("PREV EOL: {byte}");
     loop {
         match byte {
             // CR VT FF
@@ -129,9 +131,9 @@ pub fn prev_eol(bytes: &mut Bytes) -> Option<EOLMatch> {
             }
             // LF
             0x0a => {
-                byte = bytes.prev()?;
-                let crlf = byte == 0x0d;
-                if !crlf {
+                let prev = bytes.prev();
+                let crlf = prev == Some(0x0d);
+                if !crlf && prev.is_some() {
                     bytes.next();
                 }
 

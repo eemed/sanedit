@@ -1,4 +1,4 @@
-use std::{cmp::max, ops::Range};
+use std::{cmp::max, ops::Range, sync::{atomic::{AtomicBool, Ordering}, Arc}};
 
 use crate::{Bytes, PieceTreeSlice};
 
@@ -96,11 +96,16 @@ impl Searcher {
     }
 
     pub fn find_iter<'a, 'b: 'a>(&'a self, slice: &'b PieceTreeSlice) -> SearchIter<'a, 'b> {
+        self.find_iter_stoppable(slice, Arc::new(AtomicBool::new(false)))
+    }
+
+    pub fn find_iter_stoppable<'a, 'b: 'a>(&'a self, slice: &'b PieceTreeSlice, stop: Arc<AtomicBool>) -> SearchIter<'a, 'b> {
         SearchIter::new(
             &self.pattern,
             &self.bad_char,
             &self.good_suffix,
             slice,
+            stop,
             self.case_sensitive,
         )
     }
@@ -123,6 +128,7 @@ pub struct SearchIter<'a, 'b> {
     bytes: Bytes<'b>,
     i: u64,
     case_sensitive: bool,
+    stop: Arc<AtomicBool>,
 }
 
 impl<'a, 'b> SearchIter<'a, 'b> {
@@ -131,6 +137,7 @@ impl<'a, 'b> SearchIter<'a, 'b> {
         bad_char: &'a [usize],
         good_suffix: &'a [usize],
         slice: &'b PieceTreeSlice,
+        stop: Arc<AtomicBool>,
         case_sensitive: bool,
     ) -> SearchIter<'a, 'b> {
         SearchIter {
@@ -138,6 +145,7 @@ impl<'a, 'b> SearchIter<'a, 'b> {
             bad_char,
             good_suffix,
             case_sensitive,
+            stop,
             slice_len: slice.len(),
             bytes: slice.bytes(),
             i: (pattern.len() - 1) as u64,
@@ -152,6 +160,7 @@ impl<'a, 'b> SearchIter<'a, 'b> {
             slice_len,
             bytes,
             i,
+            stop,
             ..
         } = self;
 
@@ -159,6 +168,9 @@ impl<'a, 'b> SearchIter<'a, 'b> {
         let n = *slice_len;
 
         while *i < n {
+            if stop.load(Ordering::Acquire) {
+                return None;
+            }
             let mut j = m - 1;
 
             while bytes.at(*i) == pattern[j] {
@@ -190,6 +202,7 @@ impl<'a, 'b> SearchIter<'a, 'b> {
             slice_len,
             bytes,
             i,
+            stop,
             ..
         } = self;
 
@@ -197,6 +210,10 @@ impl<'a, 'b> SearchIter<'a, 'b> {
         let n = *slice_len;
 
         while *i < n {
+            if stop.load(Ordering::Acquire) {
+                return None;
+            }
+
             let mut j = m - 1;
 
             while lower(bytes.at(*i)) == pattern[j] {
@@ -324,11 +341,16 @@ impl SearcherRev {
     }
 
     pub fn find_iter<'a, 'b: 'a>(&'a self, slice: &'b PieceTreeSlice) -> SearchIterRev<'a, 'b> {
+        self.find_iter_stoppable(slice, Arc::new(AtomicBool::new(false)))
+    }
+
+    pub fn find_iter_stoppable<'a, 'b: 'a>(&'a self, slice: &'b PieceTreeSlice, stop: Arc<AtomicBool>) -> SearchIterRev<'a, 'b> {
         SearchIterRev::new(
             &self.pattern,
             &self.bad_char,
             &self.good_suffix,
             slice,
+            stop,
             self.case_sensitive,
         )
     }
@@ -345,6 +367,7 @@ pub struct SearchIterRev<'a, 'b> {
     good_suffix: &'a [usize],
     bytes: Bytes<'b>,
     i: u64,
+    stop: Arc<AtomicBool>,
     case_sensitive: bool,
 }
 
@@ -354,6 +377,7 @@ impl<'a, 'b> SearchIterRev<'a, 'b> {
         bad_char: &'a [usize],
         good_suffix: &'a [usize],
         slice: &'b PieceTreeSlice,
+        stop: Arc<AtomicBool>,
         case_sensitive: bool,
     ) -> SearchIterRev<'a, 'b> {
         SearchIterRev {
@@ -361,6 +385,7 @@ impl<'a, 'b> SearchIterRev<'a, 'b> {
             bad_char,
             good_suffix,
             bytes: slice.bytes_at(slice.len()),
+            stop,
             i: slice.len().saturating_sub(pattern.len() as u64),
             case_sensitive,
         }

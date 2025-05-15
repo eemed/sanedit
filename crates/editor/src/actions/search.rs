@@ -1,12 +1,11 @@
 use std::cmp::min;
 
-use sanedit_core::{word_at_pos, SearchOptions, Searcher};
+use sanedit_core::{word_at_pos, Range, SearchOptions, Searcher};
 
 use crate::{
     actions::jobs,
     editor::{
-        windows::{Focus, HistoryKind, Prompt, Zone},
-        Editor,
+        hooks::Hook, windows::{Focus, HistoryKind, Prompt, Zone}, Editor
     },
 };
 
@@ -16,6 +15,76 @@ use super::{window::focus, ActionResult};
 
 const HORIZON_TOP: u64 = 1024;
 const HORIZON_BOTTOM: u64 = 1024;
+
+#[action("Adjust search highlights to take a buffer change into account")]
+pub(crate) fn prevent_flicker(editor: &mut Editor, id: ClientId) -> ActionResult {
+    fn add_offset(range: &mut Range<u64>, i: i128) {
+        let neg = i.is_negative();
+        let amount = i.unsigned_abs() as u64;
+        if neg {
+            range.start = range.start.saturating_sub(amount);
+            range.end = range.end.saturating_sub(amount);
+        } else {
+            range.start += amount;
+            range.end += amount;
+        }
+    }
+
+    let (_win, buf) = editor.win_buf(id);
+    let bid = buf.id;
+    let bid = editor
+        .hooks
+        .running_hook()
+        .and_then(Hook::buffer_id)
+        .unwrap_or(bid);
+    let clients = editor.windows().find_clients_with_buf(bid);
+
+    for client in clients {
+        let (win, buf) = editor.win_buf_mut(client);
+        if let Some(old) = &mut win.search.highlights {
+            let edit = getf!(buf.last_edit());
+
+            let mut off = 0i128;
+            let mut iter = edit.changes.iter().peekable();
+
+            old.highlights.retain_mut(|hl| {
+                while let Some(next) = iter.peek() {
+                    if next.end() <= hl.start {
+                        // Before highlight
+                        off -= next.range().len() as i128;
+                        off += next.text().len() as i128;
+                    } else if next.start() > hl.end {
+                        // Went past highlight
+                        break;
+                    } else if hl.includes(&next.range()) {
+                        // Inside a higlight assume the highlight spans this edit too
+                        let removed = next.range().len() as i128;
+                        let added = next.text().len() as i128;
+                        off -= removed;
+                        off += added;
+
+                        // counteract this offset
+                        add_offset(hl, removed - added);
+
+                        // Extend or shrink instead
+                        hl.end += added as u64;
+                        hl.end = hl.end.saturating_sub(removed as u64);
+                    } else {
+                        // When edit is over highlight boundary just remove the higlight
+                        return false;
+                    }
+
+                    iter.next();
+                }
+
+                add_offset(hl, off);
+                true
+            });
+        }
+    }
+
+    ActionResult::Ok
+}
 
 /// setups async job to handle matches within the view range.
 fn highlight_view_matches_on_input(editor: &mut Editor, id: ClientId, pattern: &str) {
@@ -50,18 +119,29 @@ fn highlight_view_matches(editor: &mut Editor, id: ClientId, searcher: Searcher)
 
 #[action("Search: Highlight matches")]
 fn highlight_search(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, buf) = editor.win_buf_mut(id);
-    if win.search.highlights.is_none() {
-        return ActionResult::Skipped;
-    }
-    win.redraw_view(buf);
-    let total = buf.total_changes_made();
+    let (_win, buf) = editor.win_buf_mut(id);
+    let bid = buf.id;
+    let bid = editor
+        .hooks
+        .running_hook()
+        .and_then(Hook::buffer_id)
+        .unwrap_or(bid);
+    let clients = editor.windows().find_clients_with_buf(bid);
 
-    let view = win.view().range();
-    let old = win.search.highlights.as_ref().unwrap();
+    for client in clients {
+        let (win, buf) = editor.win_buf_mut(client);
+        if win.search.highlights.is_none() {
+            return ActionResult::Skipped;
+        }
+        win.redraw_view(buf);
+        let total = buf.total_changes_made();
 
-    if old.changes_made != total || !old.buffer_range.includes(&view) {
-        highlight_current_search_matches(editor, id);
+        let view = win.view().range();
+        let old = win.search.highlights.as_ref().unwrap();
+
+        if old.changes_made != total || !old.buffer_range.includes(&view) {
+            highlight_current_search_matches(editor, client);
+        }
     }
 
     ActionResult::Ok

@@ -65,29 +65,41 @@ pub(crate) fn prevent_flicker(editor: &mut Editor, id: ClientId) -> ActionResult
 
 #[action("Parse buffer syntax for view")]
 pub(crate) fn reparse_view(editor: &mut Editor, id: ClientId) -> ActionResult {
-    if !editor.has_syntax(id) {
-        return ActionResult::Skipped;
-    }
-
-    let (win, buf) = editor.win_buf_mut(id);
-    if !win.config.highlight_syntax {
-        return ActionResult::Skipped;
-    }
-    win.redraw_view(buf);
+    let (_win, buf) = editor.win_buf_mut(id);
     let bid = buf.id;
-    let total = buf.total_changes_made();
+    let bid = editor
+        .hooks
+        .running_hook()
+        .and_then(Hook::buffer_id)
+        .unwrap_or(bid);
+    let clients = editor.windows().find_clients_with_buf(bid);
 
-    let view = win.view().range();
-    let old = win.view_syntax();
+    for client in clients {
+        if !editor.has_syntax(client) {
+            continue;
+        }
 
-    if old.buffer_id() != bid
-        || old.total_changes_made() != total
-        || !old.parsed_range().includes(&view)
-    {
-        parse_syntax.execute(editor, id)
-    } else {
-        ActionResult::Ok
+        let (win, buf) = editor.win_buf_mut(client);
+        if !win.config.highlight_syntax {
+            continue;
+        }
+
+        win.redraw_view(buf);
+        let bid = buf.id;
+        let total = buf.total_changes_made();
+
+        let view = win.view().range();
+        let old = win.view_syntax();
+
+        if old.buffer_id() != bid
+            || old.total_changes_made() != total
+            || !old.parsed_range().includes(&view)
+        {
+            parse_syntax.execute(editor, client);
+        }
     }
+
+    ActionResult::Ok
 }
 
 #[action("Parse buffer syntax")]

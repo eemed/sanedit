@@ -1,4 +1,4 @@
-use std::{any::Any, sync::Arc};
+use std::{any::Any, sync::{atomic::AtomicBool, Arc}};
 
 use sanedit_buffer::PieceTreeView;
 use sanedit_core::BufferRange;
@@ -45,12 +45,13 @@ impl Search {
         searcher: Arc<Searcher>,
         ropt: PieceTreeView,
         view: BufferRange,
+        stop: Arc<AtomicBool>,
     ) {
         let slice = ropt.slice(view);
         let start = slice.start();
 
         let matches = searcher
-            .find_iter(&slice)
+            .find_iter_stoppable(&slice, stop)
             .map(|mat| {
                 let mut range = mat.range();
                 range.start += start;
@@ -77,7 +78,7 @@ impl Job for Search {
         let fut = async move {
             let (msend, mrecv) = channel::<Vec<BufferRange>>(CHANNEL_SIZE);
             tokio::join!(
-                Self::search(msend, searcher, pt, range),
+                Self::search(msend, searcher, pt, range, ctx.kill.clone().into()),
                 Self::send_matches(ctx, mrecv),
             );
             Ok(())

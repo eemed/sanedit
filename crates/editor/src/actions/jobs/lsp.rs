@@ -183,7 +183,7 @@ impl LSPJob {
             RequestResult::GotoDefinition { path, position } => {
                 if editor.open_file(id, path).is_ok() {
                     let enc = get!(editor.lsp_for(id).map(|x| x.position_encoding()));
-                    let (win, buf) = editor.win_buf_mut(self.client_id);
+                    let (win, buf) = editor.win_buf_mut(id);
                     let slice = buf.slice(..);
                     let offset = position.to_offset(&slice, &enc);
                     win.goto_offset(offset, buf);

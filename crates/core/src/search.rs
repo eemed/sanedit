@@ -1,3 +1,5 @@
+use std::sync::{atomic::AtomicBool, Arc};
+
 use crate::{BufferRange, Range};
 use anyhow::bail;
 use sanedit_buffer::{
@@ -127,18 +129,22 @@ impl Searcher {
     }
 
     pub fn find_iter<'a, 'b: 'a>(&'a self, slice: &'b PieceTreeSlice) -> MatchIter<'a, 'b> {
+        self.find_iter_stoppable(slice, Arc::new(AtomicBool::new(false)))
+    }
+
+    pub fn find_iter_stoppable<'a, 'b: 'a>(&'a self, slice: &'b PieceTreeSlice, stop: Arc<AtomicBool>) -> MatchIter<'a, 'b> {
         match self {
             Searcher::Forward(s) => {
-                let iter = s.find_iter(slice);
+                let iter = s.find_iter_stoppable(slice, stop);
                 MatchIter::Forward(iter)
             }
             Searcher::Rev(s) => {
-                let iter = s.find_iter(slice);
+                let iter = s.find_iter_stoppable(slice, stop);
                 MatchIter::Rev(iter)
             }
             Searcher::Regex(regex) => {
                 let bytes = slice.bytes();
-                let iter = regex.captures(bytes);
+                let iter = regex.captures((bytes, stop));
                 MatchIter::Regex(iter)
             }
         }
@@ -174,7 +180,7 @@ impl SearchMatch {
 pub enum MatchIter<'a, 'b> {
     Forward(SearchIter<'a, 'b>),
     Rev(SearchIterRev<'a, 'b>),
-    Regex(CaptureIter<'a, Bytes<'a>>),
+    Regex(CaptureIter<'a, (Bytes<'a>, Arc<AtomicBool>)>),
 }
 
 impl<'a, 'b> Iterator for MatchIter<'a, 'b> {

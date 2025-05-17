@@ -14,7 +14,7 @@ use crate::{
         hooks::Hook,
         job_broker::KeepInTouch,
         lsp::{Constraint, LSP},
-        windows::{Completion, Cursors, Prompt, Zone},
+        windows::{Completion, Cursors, Prompt},
         Editor,
     },
 };
@@ -187,7 +187,6 @@ impl LSPJob {
                     let slice = buf.slice(..);
                     let offset = position.to_offset(&slice, &enc);
                     win.goto_offset(offset, buf);
-                    win.view_to_cursor_zone(buf, Zone::Middle);
                 }
             }
             RequestResult::Complete {

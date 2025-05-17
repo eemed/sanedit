@@ -341,7 +341,7 @@ impl Window {
         self.goto_offset(offset, buf);
     }
 
-    fn push_new_cursor_jump(&mut self, buf: &Buffer) {
+    pub fn push_new_cursor_jump(&mut self, buf: &Buffer) {
         let primary = self.cursors.primary().pos();
         let mark = buf.mark(primary);
         let jump = Jump::new(mark, None);
@@ -357,7 +357,6 @@ impl Window {
 
         self.ensure_cursor_on_grapheme_boundary(buf);
         self.view_to_cursor_zone(buf, Zone::Middle);
-
         self.push_new_cursor_jump(buf);
     }
 
@@ -718,7 +717,6 @@ impl Window {
     // Restore aux data, if buffer is provided try to scroll to view position
     // otherwise hard set it
     fn restore(&mut self, aux: &SnapshotAux, buf: Option<&Buffer>) {
-        self.search.highlights = Some(Default::default());
         self.cursors = aux.cursors.clone();
 
         match buf {

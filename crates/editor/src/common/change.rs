@@ -88,44 +88,12 @@ fn close_pairs_before(slice: &PieceTreeSlice, pos: u64) -> String {
     let line = slice.slice(start..pos);
     let mut chars = line.chars();
     let mut result = vec![];
-    let mut in_quote: Option<char> = None;
-    let mut escaped = false;
 
     while let Some((_, _, ch)) = chars.next() {
         match ch {
-            '{' => {
-                if in_quote.is_none() {
-                    result.push('}');
-                }
-            }
-            '[' => {
-                if in_quote.is_none() {
-                    result.push(']');
-                }
-            }
-            '(' => {
-                if in_quote.is_none() {
-                    result.push(')');
-                }
-            }
-            '\\' => {
-                escaped = true;
-            }
-            '"' | '\'' | '`' => {
-                if escaped {
-                    continue;
-                }
-                match in_quote {
-                    Some(quot) => {
-                        if quot == ch {
-                            in_quote = None;
-                        }
-                    }
-                    None => {
-                        in_quote = Some(ch);
-                    }
-                }
-            }
+            '{' => result.push('}'),
+            '[' => result.push(']'),
+            '(' => result.push(')'),
             ch => {
                 if result.last() == Some(&ch) {
                     result.pop();

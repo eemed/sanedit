@@ -398,6 +398,7 @@ impl<'a, 'b> SearchIterRev<'a, 'b> {
             good_suffix,
             bytes,
             i,
+            stop,
             ..
         } = self;
 
@@ -405,6 +406,9 @@ impl<'a, 'b> SearchIterRev<'a, 'b> {
         let mut check0 = false;
 
         while *i != 0 || check0 {
+            if stop.load(Ordering::Acquire) {
+                return None;
+            }
             let mut j = 0;
 
             while bytes.at(*i) == pattern[j] {
@@ -439,6 +443,7 @@ impl<'a, 'b> SearchIterRev<'a, 'b> {
             good_suffix,
             bytes,
             i,
+            stop,
             ..
         } = self;
 
@@ -446,6 +451,9 @@ impl<'a, 'b> SearchIterRev<'a, 'b> {
         let mut check0 = false;
 
         while *i != 0 || check0 {
+            if stop.load(Ordering::Acquire) {
+                return None;
+            }
             let mut j = 0;
 
             while lower(bytes.at(*i)) == pattern[j] {

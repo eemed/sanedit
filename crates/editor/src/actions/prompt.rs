@@ -195,14 +195,20 @@ fn open_buffer(editor: &mut Editor, id: ClientId) -> ActionResult {
         .buffers()
         .iter()
         .map(|(bid, buf)| {
-            let text = buf
+            let path = buf
                 .path()
                 .map(|path| {
-                    let stripped = path.strip_prefix(wd).unwrap_or(path);
-                    stripped.display().to_string().into()
+                    let path = path.strip_prefix(wd).unwrap_or(path);
+                    path.display().to_string().into()
                 })
                 .unwrap_or(buf.name());
-            Choice::from_numbered_text(bid.id(), text.to_string())
+            let modified = if buf.is_modified() {
+                " *"
+            } else {
+                ""
+            };
+            let text = format!("{}{}", path, modified);
+            Choice::from_numbered_text(bid.id(), text)
         })
         .collect();
     let job = MatcherJob::builder(id)

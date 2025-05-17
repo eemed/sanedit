@@ -299,11 +299,8 @@ pub fn prev_line(slice: &PieceTreeSlice, cursor: &Cursor, opts: &DisplayOptions)
     let width = cursor
         .column()
         .unwrap_or_else(|| width_at_pos(slice, cpos, opts));
-    log::info!("CPOS: {cpos}");
     let pos = prev_line_start(slice, cpos);
-    log::info!("POS: {pos}");
     let npos = pos_at_width(slice, pos, width, opts);
-    log::info!("npos: {npos}");
     (npos, width)
 }
 

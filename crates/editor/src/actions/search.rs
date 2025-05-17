@@ -5,7 +5,9 @@ use sanedit_core::{word_at_pos, Range, SearchOptions, Searcher};
 use crate::{
     actions::jobs,
     editor::{
-        hooks::Hook, windows::{Focus, HistoryKind, Prompt, Zone}, Editor
+        hooks::Hook,
+        windows::{Focus, HistoryKind, Prompt, Zone},
+        Editor,
     },
 };
 
@@ -131,7 +133,7 @@ fn highlight_search(editor: &mut Editor, id: ClientId) -> ActionResult {
     for client in clients {
         let (win, buf) = editor.win_buf_mut(client);
         if win.search.highlights.is_none() {
-            return ActionResult::Skipped;
+            continue;
         }
         win.redraw_view(buf);
         let total = buf.total_changes_made();
@@ -253,7 +255,7 @@ fn continue_search(editor: &mut Editor, id: ClientId, reverse: bool) {
         return;
     };
 
-    do_search(editor, id, searcher, pos)
+    do_search(editor, id, searcher, pos, true)
 }
 
 /// Start a new search
@@ -269,11 +271,17 @@ fn new_search(editor: &mut Editor, id: ClientId, needle: &str, reverse: bool) {
     win.search.current.opts = searcher.options();
 
     let cpos = win.cursors.primary().pos();
-    do_search(editor, id, searcher, cpos)
+    do_search(editor, id, searcher, cpos, false)
 }
 
-fn do_search(editor: &mut Editor, id: ClientId, searcher: Searcher, starting_position: u64) {
+fn do_search(editor: &mut Editor, id: ClientId, searcher: Searcher, starting_position: u64, cont: bool) {
     let (win, buf) = editor.win_buf_mut(id);
+
+    // Triggers match highlighting, it needs to be updated on buffer /
+    // view changes so it is separated
+    if !cont {
+        win.search.highlights = Some(Default::default());
+    }
 
     let (start, mat, wrap) = if searcher.options().is_reversed {
         // Skip first to not match inplace
@@ -314,15 +322,6 @@ fn do_search(editor: &mut Editor, id: ClientId, searcher: Searcher, starting_pos
 
     match mat {
         Some(mat) => {
-            let mut range = mat.range();
-            range.start += start;
-            range.end += start;
-
-            let cursor = win.primary_cursor_mut();
-            cursor.goto(range.start);
-
-            win.search.current.result = Some(range);
-
             if wrap {
                 if searcher.options().is_reversed {
                     win.info_msg("Wrapped to end");
@@ -331,13 +330,16 @@ fn do_search(editor: &mut Editor, id: ClientId, searcher: Searcher, starting_pos
                 }
             }
 
-            win.view_to_around_cursor_zone(buf, Zone::Middle);
+            let mut range = mat.range();
+            range.start += start;
+            range.end += start;
 
-            // Triggers match highlighting, it needs to be updated on buffer /
-            // view changes so it is separated
-            if win.search.highlights.is_none() {
-                win.search.highlights = Some(Default::default());
-            }
+            let cursor = win.primary_cursor_mut();
+            cursor.goto(range.start);
+
+            win.push_new_cursor_jump(buf);
+            win.search.current.result = Some(range);
+            win.view_to_around_cursor_zone(buf, Zone::Middle);
         }
         None => {
             win.search.current.result = None;

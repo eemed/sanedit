@@ -181,13 +181,22 @@ impl LSPJob {
                 });
             }
             RequestResult::GotoDefinition { path, position } => {
-                if editor.open_file(id, path).is_ok() {
-                    let enc = get!(editor.lsp_for(id).map(|x| x.position_encoding()));
-                    let (win, buf) = editor.win_buf_mut(id);
-                    let slice = buf.slice(..);
-                    let offset = position.to_offset(&slice, &enc);
-                    win.goto_offset(offset, buf);
+                let (win, buf) = editor.win_buf_mut(id);
+                let is_current = buf.path().map(|p| p == path).unwrap_or(false);
+                if !is_current {
+                    if !editor.open_file(id, path).is_ok() {
+                        return;
+                    }
+                } else {
+                    // save cursor jump in same buffer also
+                    win.push_new_cursor_jump(buf);
                 }
+
+                let enc = get!(editor.lsp_for(id).map(|x| x.position_encoding()));
+                let (win, buf) = editor.win_buf_mut(id);
+                let slice = buf.slice(..);
+                let offset = position.to_offset(&slice, &enc);
+                win.goto_offset(offset, buf);
             }
             RequestResult::Complete {
                 path,

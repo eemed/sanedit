@@ -6,7 +6,7 @@ use crate::{
     actions::jobs,
     editor::{
         hooks::Hook,
-        windows::{Focus, HistoryKind, Prompt, Zone},
+        windows::{Focus, HistoryKind, Prompt},
         Editor,
     },
 };
@@ -334,12 +334,8 @@ fn do_search(editor: &mut Editor, id: ClientId, searcher: Searcher, starting_pos
             range.start += start;
             range.end += start;
 
-            let cursor = win.primary_cursor_mut();
-            cursor.goto(range.start);
-
-            win.push_new_cursor_jump(buf);
+            win.goto_offset(range.start, buf);
             win.search.current.result = Some(range);
-            win.view_to_around_cursor_zone(buf, Zone::Middle);
         }
         None => {
             win.search.current.result = None;

@@ -95,7 +95,7 @@ maps = [
     { key = "J", actions = ["swap_selection_dir", "next_line", "swap_selection_dir"] },
 
     { key = "g", actions = ["nop"] },
-    { key = "g c", actions = ["toggle_comment_lines"] },
+    { key = "g c", actions = ["toggle_comment_lines", "goto_layer window"] },
     { key = "I", actions = ["cursors_to_lines_start"] },
     { key = "A", actions = ["cursors_to_lines_end"] },
 

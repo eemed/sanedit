@@ -12,7 +12,8 @@ members = [
     "server",
     "terminal-client",
     "ucd",
-    "utils", "syntax-cli",
+    "utils",
+    "syntax-cli",
 ]
 
 [workspace.package]

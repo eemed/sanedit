@@ -98,6 +98,7 @@ maps = [
     { key = "g c", actions = ["toggle_comment_lines", "goto_layer window"] },
     { key = "I", actions = ["cursors_to_lines_start"] },
     { key = "A", actions = ["cursors_to_lines_end"] },
+    { key = "s", actions = ["select_pattern"] },
 
     { key = "ctrl+x", actions = ["cut", "goto_layer window"] },
     { key = "ctrl+c", actions = ["copy", "stop_selection", "goto_layer window"] },
@@ -110,7 +111,7 @@ on_leave = ["hide_diagnostic_highlights"]
 maps = [
     { key = "space q", actions = ["quit"] },
     { key = "space s", actions = ["strip_trailing_whitespace"] },
-    { key = "alt+v", actions = ["select_line", "copy", "stop_selection", "paste", "prev_line"] },
+    { key = "alt+v", actions = ["select_line", "copy", "stop_selection", "prev_line", "paste", "next_line"] },
     { key = "ctrl+w", actions = ["new_window"] },
 
     { key = "ctrl+s", actions = ["save"] },
@@ -195,6 +196,7 @@ maps = [
     # { key = "alt+k", actions = ["prev_paragraph"] },
     # { key = "alt+j", actions = ["next_paragraph"] },
 
+    { key = "g l", actions = ["goto_line"] },
     { key = "g d", actions = ["goto_definition"] },
     { key = "g r", actions = ["references"] },
     { key = "g R", actions = ["rename"] },
@@ -210,7 +212,8 @@ maps = [
     { key = "alt+j", actions = ["focus_locations"] },
     { key = "alt+h", actions = ["focus_filetree"] },
 
-    { key = "s s", actions = ["select_pattern!",        "goto_layer select"] },
+    { key = "s s", actions = ["select_pattern"] },
+
     { key = "s l", actions = ["select_line!",        "goto_layer select"] },
     { key = "s c", actions = ["select_curly!",       "goto_layer select"] },
     { key = "s C", actions = ["select_curly_incl!",  "goto_layer select"] },

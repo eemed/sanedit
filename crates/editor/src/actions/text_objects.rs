@@ -1,15 +1,18 @@
 use sanedit_buffer::PieceTreeSlice;
 use sanedit_core::{
-    find_range,
-    movement::{self, next_line_start},
-    paragraph_at_pos, word_at_pos, BufferRange, Range,
+    find_range, movement::{self, next_line_start}, paragraph_at_pos, word_at_pos, BufferRange, Cursor, Range, Searcher
 };
 
-use crate::editor::{hooks::Hook, Editor};
+use crate::editor::{
+    buffers::Buffer,
+    hooks::Hook,
+    windows::{Cursors, Focus, Prompt, Window, Zone},
+    Editor,
+};
 
 use sanedit_server::ClientId;
 
-use super::{hooks, ActionResult};
+use super::{hooks, window::focus, ActionResult};
 
 fn select_range(
     editor: &mut Editor,
@@ -179,6 +182,79 @@ fn select_paragraph(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Select: Pattern")]
 fn select_pattern(editor: &mut Editor, id: ClientId) -> ActionResult {
-    // TODO
+    let (win, _buf) = editor.win_buf_mut(id);
+
+    win.prompt = Prompt::builder()
+        .prompt("Select pattern")
+        .simple()
+        .on_confirm(move |editor, id, out| {
+            let (win, buf) = editor.win_buf_mut(id);
+            let pattern = get!(out.text());
+            let searcher = get!(get_pattern_searcher(pattern, win));
+            let selections = get_cursor_selections(win, buf);
+
+            let mut cursors = vec![];
+            for range in selections {
+                let slice = buf.slice(&range);
+                for mat in searcher.find_iter(&slice) {
+                    let mut sel = mat.range();
+                    sel.forward(slice.start());
+                    let cursor = if sel.len() <= 1 {
+                        Cursor::new(sel.start)
+                    } else {
+                        Cursor::new_select(&sel)
+                    };
+                    cursors.push(cursor);
+                }
+            }
+
+            win.cursors = Cursors::from(cursors);
+            win.view_to_around_cursor_zone(buf, Zone::Middle);
+        })
+        .build();
+
+    focus(editor, id, Focus::Prompt);
     ActionResult::Ok
+}
+
+fn get_cursor_selections(win: &Window, buf: &Buffer) -> Vec<BufferRange> {
+    let mut ranges: Vec<BufferRange> = vec![];
+    for cursor in win.cursors().iter() {
+        if let Some(sel) = cursor.selection() {
+            ranges.push(sel);
+        }
+    }
+
+    // If no cursor selections select the whole buffer
+    if ranges.is_empty() {
+        ranges.push(Range::new(0, buf.len()));
+    }
+
+    ranges
+}
+
+fn get_pattern_searcher(pattern: &str, win: &mut Window) -> Option<Searcher> {
+    if pattern.is_empty() {
+        // If empty pattern try last search
+        let search = &win.search.current;
+        if search.pattern.is_empty() {
+            win.warn_msg("No pattern found");
+            return None;
+        }
+        let searcher = Searcher::with_options(&search.pattern, &search.opts);
+        if searcher.is_err() {
+            win.warn_msg("Invalid pattern");
+            return None;
+        }
+
+        searcher.unwrap().into()
+    } else {
+        let searcher = Searcher::new(pattern);
+        if searcher.is_err() {
+            win.warn_msg("Invalid pattern");
+            return None;
+        }
+
+        searcher.unwrap().0.into()
+    }
 }

@@ -72,7 +72,6 @@ impl FiletypeConfig {
     pub fn snippets_as_choices(&self) -> Vec<Arc<Choice>> {
         let mut choices = vec![];
         for snip in &self.snippet {
-            log::info!("SNIP: {snip:?}");
             if let Some(loaded) = snip.get() {
                 choices.push(Choice::from_snippet_trigger(loaded));
             }

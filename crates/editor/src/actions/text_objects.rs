@@ -176,3 +176,9 @@ fn select_word(editor: &mut Editor, id: ClientId) -> ActionResult {
 fn select_paragraph(editor: &mut Editor, id: ClientId) -> ActionResult {
     select(editor, id, paragraph_at_pos)
 }
+
+#[action("Select: Pattern")]
+fn select_pattern(editor: &mut Editor, id: ClientId) -> ActionResult {
+    // TODO
+    ActionResult::Ok
+}

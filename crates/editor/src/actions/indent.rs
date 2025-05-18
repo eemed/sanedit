@@ -2,11 +2,11 @@ use std::cmp::min;
 
 use sanedit_core::determine_indent;
 
-use crate::editor::{buffers::BufferConfig, Editor};
+use crate::editor::{buffers::BufferConfig, hooks::Hook, Editor};
 
 use sanedit_server::ClientId;
 
-use super::ActionResult;
+use super::{hooks, ActionResult};
 
 #[action("Detect indentation")]
 fn detect_indent(editor: &mut Editor, id: ClientId) -> ActionResult {
@@ -27,11 +27,23 @@ fn detect_indent(editor: &mut Editor, id: ClientId) -> ActionResult {
 #[action("Buffer: Indent lines")]
 fn indent_line(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = editor.win_buf_mut(id);
-    win.indent_cursor_lines(buf).into()
+    if win.indent_cursor_lines(buf).is_ok() {
+        let bid = buf.id;
+        hooks::run(editor, id, Hook::BufChanged(bid));
+        ActionResult::Ok
+    } else {
+        ActionResult::Failed
+    }
 }
 
 #[action("Buffer: Dedent lines")]
 fn dedent_line(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = editor.win_buf_mut(id);
-    win.dedent_cursor_lines(buf).into()
+    if win.dedent_cursor_lines(buf).is_ok() {
+        let bid = buf.id;
+        hooks::run(editor, id, Hook::BufChanged(bid));
+        ActionResult::Ok
+    } else {
+        ActionResult::Failed
+    }
 }

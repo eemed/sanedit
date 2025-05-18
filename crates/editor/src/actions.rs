@@ -277,6 +277,7 @@ pub(crate) const COMMANDS: &[Action] = &[
     text_objects::select_single_incl,
     text_objects::select_backtick,
     text_objects::select_backtick_incl,
+    text_objects::select_pattern,
 
     window::reload_window,
     window::goto_prev_buffer,

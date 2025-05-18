@@ -365,6 +365,7 @@ impl LSPJob {
     }
 
     fn edit_document(editor: &mut Editor, id: ClientId, edit: FileEdit) {
+        log::info!("Edit doc");
         let path = &edit.path;
         let bid = match editor.buffers().find(&path) {
             Some(bid) => bid,

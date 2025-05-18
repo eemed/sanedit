@@ -48,14 +48,14 @@ markdown = ["*.md"]
 yaml = ["*.yml"]
 make = ["*/Makefile"]
 
-[filetype.peg]
-comment = "# "
+# [filetype.peg]
+# comment = "# "
 
-[filetype.toml]
-comment = "# "
+# [filetype.toml]
+# comment = "# "
 
-[filetype.make]
-comment = "# "
+# [filetype.make]
+# comment = "# "
 
 [keymaps.snippet]
 fallthrough = "insert"
@@ -210,6 +210,7 @@ maps = [
     { key = "alt+j", actions = ["focus_locations"] },
     { key = "alt+h", actions = ["focus_filetree"] },
 
+    { key = "s s", actions = ["select_pattern!",        "goto_layer select"] },
     { key = "s l", actions = ["select_line!",        "goto_layer select"] },
     { key = "s c", actions = ["select_curly!",       "goto_layer select"] },
     { key = "s C", actions = ["select_curly_incl!",  "goto_layer select"] },

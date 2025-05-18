@@ -4,7 +4,7 @@ use crate::{
         buffers::Buffer,
         hooks::Hook,
         keymap::KeymapKind,
-        windows::{Focus, FocusEntry, Jump, JumpGroup, Zone},
+        windows::{Focus, FocusEntry, Zone},
         Editor,
     },
     VERSION,
@@ -22,7 +22,6 @@ pub fn pop_focus(editor: &mut Editor, id: ClientId) {
         return;
     };
 
-    log::info!("POP: {entry:?}");
     let same_keymap = win.keymap_layer == entry.keymap_layer;
     if same_keymap && win.focus() == entry.focus {
         return;
@@ -49,7 +48,6 @@ pub fn push_focus_with_keymap(editor: &mut Editor, id: ClientId, focus: Focus, k
         focus: win.focus(),
         keymap_layer: win.keymap_layer.clone(),
     };
-    log::info!("PUSH: {entry:?}");
     win.focus_stack.push(entry);
 
     let (win, _buf) = editor.win_buf_mut(id);
@@ -333,6 +331,7 @@ fn save_cursor_jump(editor: &mut Editor, id: ClientId) -> ActionResult {
         .unwrap_or(bid);
 
     let (win, _buf) = win_buf!(editor, id);
+    // TODO if jumping not at start?
     let at_start = win.cursor_jumps.current().is_none();
 
     if !at_start {
@@ -340,11 +339,7 @@ fn save_cursor_jump(editor: &mut Editor, id: ClientId) -> ActionResult {
     }
 
     let buffer = editor.buffers.get(bid).unwrap();
-    let primary = win.cursors.primary().pos();
-    let mark = buffer.mark(primary);
-    let jump = Jump::new(mark, None);
-    let group = JumpGroup::new(bid, vec![jump]);
-    win.cursor_jumps.push(group);
+    win.push_new_cursor_jump(buffer);
     ActionResult::Ok
 }
 

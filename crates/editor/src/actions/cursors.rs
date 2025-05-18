@@ -447,3 +447,4 @@ fn cursor_to_view_bottom(editor: &mut Editor, id: ClientId) -> ActionResult {
 
     ActionResult::Ok
 }
+

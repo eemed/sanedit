@@ -591,7 +591,6 @@ impl Handler {
                 kind,
                 is_snippet: snippet,
             };
-            log::info!("Compl Item: {completion:?}");
             results.push(completion);
         }
 

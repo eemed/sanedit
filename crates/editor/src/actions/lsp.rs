@@ -238,6 +238,7 @@ fn sync_document(editor: &mut Editor, id: ClientId) -> ActionResult {
             // Nothing to sync
             return None;
         };
+        log::info!("LSP synchronize edit {}", buf.total_changes_made());
         let enc = lsp.position_encoding();
         let eslice = edit.buf.slice(..);
 
@@ -351,6 +352,7 @@ fn format(editor: &mut Editor, id: ClientId) -> ActionResult {
             indent_kind,
             indent_amount: indent_amount.into(),
         };
+        log::info!("Format");
         Some((
             kind,
             vec![

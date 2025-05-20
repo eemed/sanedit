@@ -6,7 +6,7 @@ use std::{
 };
 
 use crate::{
-    actions::{hooks::run, locations, lsp::lsp_notify_for},
+    actions::{hooks::run, locations, lsp::lsp_notify_for, ActionResult},
     common::matcher::{Choice, MatchStrategy},
     editor::{
         buffers::BufferId,
@@ -338,7 +338,7 @@ impl LSPJob {
         win.prompt = Prompt::builder()
             .prompt("Select code action")
             .on_confirm(move |editor, id, out| {
-                let n = get!(out.number()) as usize;
+                let n = getf!(out.number()) as usize;
                 let action = &actions[n - 1];
 
                 if action.is_resolved() {
@@ -349,9 +349,11 @@ impl LSPJob {
                         action: action.clone(),
                     };
 
-                    let lsp = get!(editor.language_servers.get_mut(&ft));
+                    let lsp = getf!(editor.language_servers.get_mut(&ft));
                     let _ = lsp.request(request, id, vec![]);
                 }
+
+                ActionResult::Ok
             })
             .build();
 

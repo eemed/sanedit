@@ -125,9 +125,10 @@ fn keep_locations(editor: &mut Editor, id: ClientId) -> ActionResult {
         .simple()
         .on_confirm(move |editor, id, out| {
             let (win, _buf) = editor.win_buf_mut(id);
-            let text = get!(out.text());
+            let text = getf!(out.text());
             win.locations.retain(|name| name.contains(text));
             focus(editor, id, Focus::Locations);
+            ActionResult::Ok
         })
         .build();
     focus(editor, id, Focus::Prompt);
@@ -142,9 +143,10 @@ fn reject_locations(editor: &mut Editor, id: ClientId) -> ActionResult {
         .simple()
         .on_confirm(move |editor, id, out| {
             let (win, _buf) = editor.win_buf_mut(id);
-            let text = get!(out.text());
+            let text = getf!(out.text());
             win.locations.retain(|name| !name.contains(text));
             focus(editor, id, Focus::Locations);
+            ActionResult::Ok
         })
         .build();
     focus(editor, id, Focus::Prompt);

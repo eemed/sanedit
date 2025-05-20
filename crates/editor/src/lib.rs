@@ -37,8 +37,6 @@ macro_rules! win_buf {
         (win, buf)
     }};
 }
-pub(crate) use get;
-pub(crate) use win_buf;
 
 pub(crate) mod actions;
 pub(crate) mod common;

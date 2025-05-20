@@ -17,7 +17,7 @@ use crate::{
 
 use super::{
     jobs::MatcherJob,
-    window::{pop_focus, push_focus_with_keymap},
+    window::{pop_focus, push_focus, push_focus_with_keymap},
     ActionResult,
 };
 
@@ -47,8 +47,8 @@ pub(crate) fn insert_snippet(editor: &mut Editor, id: ClientId) -> ActionResult 
         .on_confirm(move |editor, id, out| {
             let (win, _buf) = editor.win_buf(id);
             let primary = win.cursors.primary().pos();
-            let snippet = get!(out.snippet().cloned());
-            insert_snippet_impl(editor, id, snippet, Range::new(primary, primary));
+            let snippet = getf!(out.snippet().cloned());
+            insert_snippet_impl(editor, id, snippet, Range::new(primary, primary))
         })
         .build();
     focus(editor, id, Focus::Prompt);
@@ -60,7 +60,7 @@ pub(crate) fn insert_snippet_impl(
     id: ClientId,
     snippet: Snippet,
     replace: BufferRange,
-) {
+) -> ActionResult {
     let (win, buf) = editor.win_buf_mut(id);
     let pos = replace.start;
     let slice = buf.slice(..);
@@ -111,7 +111,7 @@ pub(crate) fn insert_snippet_impl(
         let hook = Hook::BufChanged(buf.id);
         run(editor, id, hook);
     } else {
-        return;
+        return ActionResult::Failed;
     }
 
     // Convert recorded placeholders to jumps
@@ -145,5 +145,8 @@ pub(crate) fn insert_snippet_impl(
             Focus::Window,
             KeymapKind::Snippet.as_ref().into(),
         );
+        return ActionResult::Ok;
     }
+
+    ActionResult::Failed
 }

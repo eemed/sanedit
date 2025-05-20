@@ -8,15 +8,12 @@ use thiserror::Error;
 
 use sanedit_lsp::{LSPRequestError, Notification, Position, PositionRange, RequestKind, TextEdit};
 
-use crate::{
-    editor::{
-        buffers::{Buffer, BufferConfig, BufferId},
-        hooks::Hook,
-        lsp::{get_diagnostics, Constraint, LSP},
-        windows::{Focus, Prompt, Window},
-        Editor,
-    },
-    get, win_buf,
+use crate::editor::{
+    buffers::{Buffer, BufferConfig, BufferId},
+    hooks::Hook,
+    lsp::{get_diagnostics, Constraint, LSP},
+    windows::{Focus, Prompt, Window},
+    Editor,
 };
 
 use sanedit_server::ClientId;
@@ -377,15 +374,15 @@ fn rename(editor: &mut Editor, id: ClientId) -> ActionResult {
         .simple()
         .input(&word)
         .on_confirm(|editor, id, out| {
-            let name = get!(out.text());
+            let name = getf!(out.text());
             let (win, buf) = editor.win_buf(id);
             let slice = buf.slice(..);
             let offset = win.cursors.primary().pos();
             let total = buf.total_changes_made();
             let bid = buf.id;
-            let path = get!(buf.path().map(Path::to_path_buf));
-            let ft = get!(buf.filetype.clone());
-            let lsp = get!(editor.language_servers.get(&ft));
+            let path = getf!(buf.path().map(Path::to_path_buf));
+            let ft = getf!(buf.filetype.clone());
+            let lsp = getf!(editor.language_servers.get(&ft));
             let position = Position::new(offset, &slice, &lsp.position_encoding());
             let request = RequestKind::Rename {
                 path,
@@ -393,12 +390,13 @@ fn rename(editor: &mut Editor, id: ClientId) -> ActionResult {
                 new_name: name.into(),
             };
 
-            let lsp = get!(editor.language_servers.get_mut(&ft));
+            let lsp = getf!(editor.language_servers.get_mut(&ft));
             let _ = lsp.request(
                 request,
                 id,
                 vec![Constraint::Buffer(bid), Constraint::BufferVersion(total)],
             );
+            ActionResult::Ok
         })
         .build();
     focus(editor, id, Focus::Prompt);

@@ -32,7 +32,12 @@ use crate::{
 use sanedit_server::ClientId;
 
 use super::{
-    find_by_description, hooks, jobs::{MatcherJob, MatcherMessage}, shell, text::save, window::pop_focus, ActionResult
+    find_by_description, hooks,
+    jobs::{MatcherJob, MatcherMessage},
+    shell,
+    text::save,
+    window::pop_focus,
+    ActionResult,
 };
 
 #[action("Editor: Select theme")]
@@ -53,17 +58,19 @@ fn select_theme(editor: &mut Editor, id: ClientId) -> ActionResult {
     win.prompt = Prompt::builder()
         .prompt("Select theme")
         .on_confirm(move |editor, id, out| {
-            let text = get!(out.text());
+            let text = getf!(out.text());
             match editor.themes.get(text) {
                 Ok(t) => {
                     let theme = t.clone();
                     let (win, _buf) = editor.win_buf_mut(id);
                     win.config.theme = text.into();
                     editor.send_to_client(id, ClientMessage::Theme(theme));
+                    ActionResult::Ok
                 }
                 Err(_) => {
                     let (win, _buf) = editor.win_buf_mut(id);
                     win.warn_msg(&format!("No such theme '{}'", text));
+                    ActionResult::Failed
                 }
             }
         })
@@ -86,13 +93,14 @@ fn command_palette(editor: &mut Editor, id: ClientId) -> ActionResult {
     win.prompt = Prompt::builder()
         .prompt("Commands")
         .on_confirm(move |editor, id, out| {
-            let desc = get!(out.text());
+            let desc = getf!(out.text());
             if let Some(action) = find_by_description(desc) {
                 action.execute(editor, id);
-                return;
+                return ActionResult::Ok;
             }
 
             log::error!("No action with name {desc}");
+            ActionResult::Failed
         })
         .build();
 
@@ -115,15 +123,17 @@ fn open_file(editor: &mut Editor, id: ClientId) -> ActionResult {
     win.prompt = Prompt::builder()
         .prompt(PROMPT_MESSAGE)
         .on_confirm(move |editor, id, out| {
-            let path = get!(out.path());
+            let path = getf!(out.path());
 
             match editor.open_file(id, &path) {
                 Ok(()) => {
                     editor.caches.files.insert(path);
+                    ActionResult::Ok
                 }
                 Err(e) => {
                     let (win, _buf) = editor.win_buf_mut(id);
                     win.warn_msg(&format!("Failed to open file {path:?}: {e}"));
+                    ActionResult::Failed
                 }
             }
         })
@@ -202,11 +212,7 @@ fn open_buffer(editor: &mut Editor, id: ClientId) -> ActionResult {
                     path.display().to_string().into()
                 })
                 .unwrap_or(buf.name());
-            let modified = if buf.is_modified() {
-                " *"
-            } else {
-                ""
-            };
+            let modified = if buf.is_modified() { " *" } else { "" };
             let text = format!("{}{}", path, modified);
             Choice::from_numbered_text(bid.id(), text)
         })
@@ -221,9 +227,10 @@ fn open_buffer(editor: &mut Editor, id: ClientId) -> ActionResult {
     win.prompt = Prompt::builder()
         .prompt(PROMPT_MESSAGE)
         .on_confirm(move |editor, id, out| {
-            let num = get!(out.number());
+            let num = getf!(out.number());
             let bid = BufferId::from(num);
             editor.open_buffer(id, bid);
+            ActionResult::Ok
         })
         .build();
     focus(editor, id, Focus::Prompt);
@@ -264,7 +271,7 @@ fn prompt_confirm(editor: &mut Editor, id: ClientId) -> ActionResult {
                 history.push(text);
             }
         }
-        (on_confirm)(editor, id, out)
+        return (on_confirm)(editor, id, out);
     }
     ActionResult::Ok
 }
@@ -346,12 +353,15 @@ fn goto_line(editor: &mut Editor, id: ClientId) -> ActionResult {
         .prompt("Line")
         .simple()
         .on_confirm(move |editor, id, out| {
-            let text = get!(out.text());
+            let text = getf!(out.text());
             if let Ok(num) = text.parse::<u64>() {
                 let (win, buf) = editor.win_buf_mut(id);
                 win.goto_line(num, buf);
                 hooks::run(editor, id, Hook::CursorMoved);
+                return ActionResult::Ok;
             }
+
+            ActionResult::Failed
         })
         .build();
     focus(editor, id, Focus::Prompt);
@@ -366,14 +376,18 @@ fn goto_percentage(editor: &mut Editor, id: ClientId) -> ActionResult {
         .prompt("Percentage")
         .simple()
         .on_confirm(move |editor, id, out| {
-            let text = get!(out.text());
+            let text = getf!(out.text());
             if let Ok(mut num) = text.parse::<u64>() {
                 num = min(100, num);
                 let (win, buf) = editor.win_buf_mut(id);
                 let offset = num * buf.len() / 100;
                 win.goto_offset(offset, buf);
                 hooks::run(editor, id, Hook::CursorMoved);
+
+                return ActionResult::Ok;
             }
+
+            ActionResult::Failed
         })
         .build();
     focus(editor, id, Focus::Prompt);
@@ -389,11 +403,14 @@ fn change_working_dir(editor: &mut Editor, id: ClientId) -> ActionResult {
         .simple()
         .input(&wd.to_string_lossy())
         .on_confirm(move |e, id, out| {
-            let path = get!(out.path());
+            let path = getf!(out.path());
             if let Err(err) = e.change_working_dir(&path) {
                 let (win, _buf) = e.win_buf_mut(id);
                 win.warn_msg(&err.to_string());
+                return ActionResult::Failed;
             }
+
+            ActionResult::Ok
         })
         .build();
     focus(editor, id, Focus::Prompt);
@@ -408,7 +425,7 @@ fn grep(editor: &mut Editor, id: ClientId) -> ActionResult {
         .simple()
         .on_confirm(move |e, id, out| {
             const GREP_JOB: &str = "grep";
-            let patt = get!(out.text());
+            let patt = getf!(out.text());
             let ignore = e.config.editor.ignore_directories();
             let wd = e.working_dir();
             let buffers: FxHashMap<PathBuf, PieceTreeView> = {
@@ -429,6 +446,7 @@ fn grep(editor: &mut Editor, id: ClientId) -> ActionResult {
             };
             let job = Grep::new(patt, wd, &ignore, buffers, id);
             e.job_broker.request_slot(id, GREP_JOB, job);
+            ActionResult::Ok
         })
         .build();
     focus(editor, id, Focus::Prompt);
@@ -436,7 +454,7 @@ fn grep(editor: &mut Editor, id: ClientId) -> ActionResult {
 }
 
 /// Prompt whether buffer changes should be changed or not
-pub(crate) fn unsaved_changes<F: Fn(&mut Editor, ClientId) + 'static>(
+pub(crate) fn unsaved_changes<F: Fn(&mut Editor, ClientId) -> ActionResult + 'static>(
     editor: &mut Editor,
     id: ClientId,
     on_confirm: F,
@@ -446,7 +464,7 @@ pub(crate) fn unsaved_changes<F: Fn(&mut Editor, ClientId) + 'static>(
         .prompt("Save all unsaved changes? (Y/n)")
         .simple()
         .on_confirm(move |editor, id, out| {
-            let ans = get!(out.text());
+            let ans = getf!(out.text());
             let yes = ans.is_empty() || is_yes(ans);
             if yes {
                 let unsaved: Vec<BufferId> = editor
@@ -462,7 +480,7 @@ pub(crate) fn unsaved_changes<F: Fn(&mut Editor, ClientId) + 'static>(
                 }
             }
 
-            (on_confirm)(editor, id);
+            (on_confirm)(editor, id)
         })
         .build();
     focus(editor, id, Focus::Prompt);
@@ -516,9 +534,9 @@ fn prompt_jump(editor: &mut Editor, id: ClientId) -> ActionResult {
     win.prompt = Prompt::builder()
         .prompt(PROMPT_MESSAGE)
         .on_confirm(move |editor, id, out| {
-            let index = get!(out.number()) as usize - 1;
+            let index = getf!(out.number()) as usize - 1;
             let cursor = cursors[index].clone();
-            jump_to_ref(editor, id, cursor);
+            jump_to_ref(editor, id, cursor)
         })
         .build();
     focus(editor, id, Focus::Prompt);
@@ -579,13 +597,17 @@ fn buffer_snapshots(editor: &mut Editor, id: ClientId) -> ActionResult {
     win.prompt = Prompt::builder()
         .prompt(PROMPT_MESSAGE)
         .on_confirm(move |editor, id, out| {
-            let snapshot = nodes_len - get!(out.number()) as usize;
+            let snapshot = nodes_len - getf!(out.number()) as usize;
             let (win, buf) = win_buf!(editor, id);
             if win.undo_jump(buf, snapshot).is_ok() {
                 let hook = Hook::BufChanged(buf.id);
                 run(editor, id, hook);
                 run(editor, id, Hook::CursorMoved);
+
+                return ActionResult::Ok;
             }
+
+            ActionResult::Failed
         })
         .build();
     focus(editor, id, Focus::Prompt);

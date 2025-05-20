@@ -18,6 +18,7 @@ fn quit(editor: &mut Editor, id: ClientId) -> ActionResult {
         if editor.buffers.any_unsaved_changes().is_some() {
             unsaved_changes(editor, id, |editor, id| {
                 editor.quit_client(id);
+                ActionResult::Ok
             })
         } else {
             editor.quit();
@@ -73,10 +74,10 @@ fn prompt_create_and_open_config(editor: &mut Editor, id: ClientId) {
         .prompt("Configuration file is missing. Create default configuration? (Y/n)")
         .simple()
         .on_confirm(|editor, id, out| {
-            let input = get!(out.text());
+            let input = getf!(out.text());
             let yes = input.is_empty() || is_yes(input);
             if !yes {
-                return;
+                return ActionResult::Failed;
             }
 
             let path = editor.config_dir.config();
@@ -84,10 +85,11 @@ fn prompt_create_and_open_config(editor: &mut Editor, id: ClientId) {
                 let (win, _buf) = editor.win_buf_mut(id);
                 win.warn_msg("Failed to create default configuration file.");
                 log::error!("Failed to create default configuration file to: {path:?} {e}");
-                return;
+                return ActionResult::Failed;
             }
 
             let _ = editor.open_file(id, &path);
+            ActionResult::Ok
         })
         .build();
     focus(editor, id, Focus::Prompt);

@@ -1,11 +1,12 @@
 mod default;
 mod filetype;
 
-use std::{path::Path, sync::Arc};
+use std::{collections::VecDeque, path::Path, sync::Arc};
 
 use filetype::ConfigSnippet;
 use sanedit_buffer::utf8::EndOfLine;
 use sanedit_messages::key::{try_parse_keyevents, KeyEvent};
+use sanedit_server::ClientId;
 use serde::{Deserialize, Serialize};
 use toml_edit::{
     ser::to_document,
@@ -22,7 +23,8 @@ use crate::{
 use super::{
     buffers,
     keymap::{KeymapKind, Layer},
-    windows,
+    windows::{self, Focus},
+    Editor,
 };
 use rustc_hash::FxHashMap;
 
@@ -234,9 +236,17 @@ impl EditorConfig {
     }
 }
 
-pub(crate) struct MappingAsKeymap {
+pub(crate) struct Keymapping {
     events: Vec<KeyEvent>,
-    actions: Vec<(Action, Option<ActionResult>)>,
+    actions: VecDeque<MappedAction>,
+}
+
+#[derive(Clone)]
+pub(crate) struct MappedAction {
+    pub action: Action,
+    /// Skip next actions if this action returns an result that is larger than
+    /// this value.
+    pub skip: Option<ActionResult>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -246,11 +256,11 @@ pub(crate) struct Mapping {
 }
 
 impl Mapping {
-    pub fn to_keymap(&self) -> Option<MappingAsKeymap> {
+    pub fn to_keymap(&self) -> Option<Keymapping> {
         let keys = try_parse_keyevents(&self.key).ok()?;
 
         // try to find specified action
-        let mut actions = vec![];
+        let mut actions = VecDeque::new();
 
         for name in &self.actions {
             let mut name = name.as_str();
@@ -274,17 +284,17 @@ impl Mapping {
                     desc: String::new(),
                 };
 
-                actions.push((action, stop));
+                actions.push_back(MappedAction { action, skip: stop });
             } else if let Some(action) = find_by_name(name) {
                 // Try to find action with name
-                actions.push((action, stop));
+                actions.push_back(MappedAction { action, skip: stop });
             }
         }
 
         if actions.is_empty() {
             None
         } else {
-            Some(MappingAsKeymap {
+            Some(Keymapping {
                 events: keys,
                 actions,
             })
@@ -394,34 +404,24 @@ impl KeymapLayer {
 
         for map in &self.maps {
             match map.to_keymap() {
-                Some(MappingAsKeymap { events, actions }) => {
+                Some(Keymapping { events, actions }) => {
                     // Only a single action
                     if actions.len() == 1 {
-                        let (action, _stop) = &actions[0];
-                        layer.bind(&events, action);
+                        let maction = &actions[0];
+                        layer.bind(&events, &maction.action);
                         continue;
                     }
 
                     // Multiple actions combined into one
                     let name = actions
                         .iter()
-                        .map(|(action, _skip)| action.name())
+                        .map(|maction| maction.action.name())
                         .collect::<Vec<&str>>()
                         .join(",");
                     let action = Action::Dynamic {
                         name,
                         fun: Arc::new(move |editor, id| {
-                            for (action, skip) in &actions {
-                                let result = action.execute(editor, id);
-                                let stop =
-                                    skip.as_ref().map(|skip| &result > skip).unwrap_or(false);
-
-                                if stop {
-                                    break;
-                                }
-                            }
-
-                            ActionResult::Ok
+                            run_mapped_action(editor, id, actions.clone())
                         }),
                         desc: String::new(),
                     };
@@ -441,4 +441,57 @@ impl KeymapLayer {
 
         layer
     }
+}
+
+/// Checks if we are prompting, and setups a new on_confirm that will run the
+/// remaining callbacks, otherwise will continue to run actions
+fn run_mapped_action2(
+    editor: &mut Editor,
+    id: ClientId,
+    actions: VecDeque<MappedAction>,
+    result: ActionResult,
+    skip: Option<ActionResult>,
+) -> ActionResult {
+    let (win, _buf) = editor.win_buf_mut(id);
+    let in_prompt = Focus::Prompt == win.focus();
+
+    if in_prompt {
+        let old = win.prompt.on_confirm();
+        win.prompt.set_on_confirm(move |e, id, out| {
+            let mut old_result = ActionResult::Ok;
+            if let Some(old) = old {
+                old_result = (old)(e, id, out);
+            }
+
+            run_mapped_action2(e, id, actions, old_result, skip)
+        });
+        return ActionResult::Ok;
+    }
+
+    let stop = skip.as_ref().map(|skip| &result > skip).unwrap_or(false);
+
+    if stop {
+        return result;
+    }
+
+    run_mapped_action(editor, id, actions)
+}
+
+/// Run mapped action.
+///
+/// If previous action was a promping one, use the result from the prompt
+/// on_confirm callback instead and continue then.
+///
+/// Otherwise just run all the actions one by one
+pub(crate) fn run_mapped_action(
+    editor: &mut Editor,
+    id: ClientId,
+    mut actions: VecDeque<MappedAction>,
+) -> ActionResult {
+    while let Some(maction) = actions.pop_front() {
+        let result = maction.action.execute(editor, id);
+        return run_mapped_action2(editor, id, actions, result, maction.skip.clone());
+    }
+
+    ActionResult::Skipped
 }

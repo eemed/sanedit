@@ -98,7 +98,7 @@ maps = [
     { key = "g c", actions = ["toggle_comment_lines", "goto_layer window"] },
     { key = "I", actions = ["cursors_to_lines_start"] },
     { key = "A", actions = ["cursors_to_lines_end"] },
-    { key = "s", actions = ["select_pattern"] },
+    { key = "s", actions = ["select_pattern!", "goto_layer select"] },
 
     { key = "ctrl+x", actions = ["cut", "goto_layer window"] },
     { key = "ctrl+c", actions = ["copy", "stop_selection", "goto_layer window"] },
@@ -212,7 +212,7 @@ maps = [
     { key = "alt+j", actions = ["focus_locations"] },
     { key = "alt+h", actions = ["focus_filetree"] },
 
-    { key = "s s", actions = ["select_pattern"] },
+    { key = "s s", actions = ["select_pattern!", "goto_layer select"] },
 
     { key = "s l", actions = ["select_line!",        "goto_layer select"] },
     { key = "s c", actions = ["select_curly!",       "goto_layer select"] },

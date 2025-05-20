@@ -11,7 +11,10 @@ use crate::{
 
 use sanedit_server::ClientId;
 
-use super::{window::{focus, push_focus}, ActionResult};
+use super::{
+    window::{focus, push_focus},
+    ActionResult,
+};
 
 #[action("Filetree: Show")]
 fn show_filetree(editor: &mut Editor, id: ClientId) -> ActionResult {
@@ -121,7 +124,7 @@ fn ft_new_file(editor: &mut Editor, id: ClientId) -> ActionResult {
         .prompt("Filename")
         .simple()
         .on_confirm(move |editor, id, out| {
-            let path = get!(out.text());
+            let path = getf!(out.text());
             let file = dir.join(path);
 
             // Create directories leading up to the file
@@ -133,7 +136,7 @@ fn ft_new_file(editor: &mut Editor, id: ClientId) -> ActionResult {
             if let Err(e) = std::fs::File::create_new(&file) {
                 let (win, _buf) = editor.win_buf_mut(id);
                 win.warn_msg(&format!("Failed to create file {e}"));
-                return;
+                return ActionResult::Failed;
             }
 
             // Refresh to show new file on tree
@@ -153,6 +156,7 @@ fn ft_new_file(editor: &mut Editor, id: ClientId) -> ActionResult {
 
             // Open the file
             let _ = editor.open_file(id, &file);
+            ActionResult::Ok
         })
         .build();
     focus(editor, id, Focus::Prompt);
@@ -172,7 +176,7 @@ fn ft_rename_file(editor: &mut Editor, id: ClientId) -> ActionResult {
         .prompt("Rename")
         .simple()
         .on_confirm(move |editor, id, out| {
-            let path = get!(out.text());
+            let path = getf!(out.text());
             let mut new = PathBuf::from(path);
             if new.is_relative() {
                 new = editor.working_dir().join(new);
@@ -187,7 +191,7 @@ fn ft_rename_file(editor: &mut Editor, id: ClientId) -> ActionResult {
             if let Err(e) = std::fs::rename(&old, &new) {
                 let (win, _buf) = editor.win_buf_mut(id);
                 win.warn_msg(&format!("Failed to rename file/dir {e}"));
-                return;
+                return ActionResult::Failed;
             }
 
             // Refresh tree to show moved stuff
@@ -202,6 +206,8 @@ fn ft_rename_file(editor: &mut Editor, id: ClientId) -> ActionResult {
                 let (win, _buf) = editor.win_buf_mut(id);
                 win.ft_view.selection = pos;
             }
+
+            ActionResult::Ok
         })
         .build();
     push_focus(editor, id, Focus::Prompt);
@@ -233,9 +239,9 @@ fn ft_delete_file(editor: &mut Editor, id: ClientId) -> ActionResult {
         .prompt(&prompt)
         .simple()
         .on_confirm(move |editor, id, out| {
-            let ans = get!(out.text());
+            let ans = getf!(out.text());
             if !is_yes(ans) {
-                return;
+                return ActionResult::Failed;
             }
 
             let result = match kind {
@@ -245,7 +251,7 @@ fn ft_delete_file(editor: &mut Editor, id: ClientId) -> ActionResult {
 
             if let Err(e) = result {
                 log::error!("Failed to delete file: {e}");
-                return;
+                return ActionResult::Failed;
             }
 
             if let Some(parent) = path.parent() {
@@ -255,8 +261,8 @@ fn ft_delete_file(editor: &mut Editor, id: ClientId) -> ActionResult {
             }
 
             prev_ft_entry.execute(editor, id);
-
             focus(editor, id, Focus::Filetree);
+            ActionResult::Ok
         })
         .build();
     focus(editor, id, Focus::Prompt);

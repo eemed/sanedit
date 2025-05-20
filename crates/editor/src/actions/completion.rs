@@ -69,77 +69,26 @@ fn completion_confirm(editor: &mut Editor, id: ClientId) -> ActionResult {
     pop_focus(editor, id);
 
     let (win, buf) = win_buf!(editor, id);
-
-    if let Some(opt) = win.completion.selected().cloned() {
-        let choice = opt.choice();
-        match choice {
-            Choice::Snippet { snippet, .. } => {
-                let pos = win.completion.item_start();
-                // Match length
-                let prefix = opt.matches().iter().map(|m| m.end).max().unwrap_or(0);
-                snippets::insert_snippet_impl(
-                    editor,
-                    id,
-                    snippet.clone(),
-                    Range::new(pos, pos + prefix as u64),
-                )
-            }
-            Choice::LSPCompletion { item } => {
-                if item.is_snippet {
-                    let (text, mut replace) = match item.insert_text() {
-                        Either::Left(text) => {
-                            let pos = win.completion.point_offset();
-                            (text, Range::new(pos, pos))
-                        }
-                        Either::Right(edit) => {
-                            let ft = getf!(buf.filetype.clone());
-                            let enc = getf!(editor
-                                .language_servers
-                                .get(&ft)
-                                .map(|x| x.position_encoding()));
-                            let slice = buf.slice(..);
-                            let range = edit.range.to_buffer_range(&slice, &enc);
-                            (edit.text.as_str(), range)
-                        }
-                    };
-
-                    // Distance between completion triggered and current positions
-                    let ppos = win.completion.point_offset();
-                    let cpos = win.primary_cursor().pos();
-                    if ppos <= cpos {
-                        // Added text
-                        // | is completion point \ is cursor now
-                        //
-                        // this.p|ee\
-                        // Select peekable()
-                        // => Remove "ee" also that the completion
-                        // cannot override, because it was triggered at a different point
-                        replace.end += cpos - ppos;
-                    } else {
-                        // Deleted text
-                        //
-                        // this.p\ee|
-                        // Select peekable()
-                        // => The "ee" is already removed thus shorten the range of completion
-                        // So that it does not remove extra data
-                        replace.end -= ppos - cpos;
-                    }
-                    let snippet = match Snippet::new(text) {
-                        Ok(snip) => snip,
-                        Err(e) => {
-                            log::error!("LSP snippet parse failed: {e}");
-                            return ActionResult::Failed;
-                        }
-                    };
-
-                    snippets::insert_snippet_impl(editor, id, snippet, replace);
-                    return ActionResult::Ok;
-                }
-
+    let opt = getf!(win.completion.selected().cloned());
+    let choice = opt.choice();
+    match choice {
+        Choice::Snippet { snippet, .. } => {
+            let pos = win.completion.item_start();
+            // Match length
+            let prefix = opt.matches().iter().map(|m| m.end).max().unwrap_or(0);
+            return snippets::insert_snippet_impl(
+                editor,
+                id,
+                snippet.clone(),
+                Range::new(pos, pos + prefix as u64),
+            );
+        }
+        Choice::LSPCompletion { item } => {
+            if item.is_snippet {
                 let (text, mut replace) = match item.insert_text() {
                     Either::Left(text) => {
                         let pos = win.completion.point_offset();
-                        (text.as_bytes(), Range::new(pos, pos))
+                        (text, Range::new(pos, pos))
                     }
                     Either::Right(edit) => {
                         let ft = getf!(buf.filetype.clone());
@@ -149,35 +98,83 @@ fn completion_confirm(editor: &mut Editor, id: ClientId) -> ActionResult {
                             .map(|x| x.position_encoding()));
                         let slice = buf.slice(..);
                         let range = edit.range.to_buffer_range(&slice, &enc);
-                        (edit.text.as_bytes(), range)
+                        (edit.text.as_str(), range)
                     }
                 };
 
-                // See above
+                // Distance between completion triggered and current positions
                 let ppos = win.completion.point_offset();
                 let cpos = win.primary_cursor().pos();
                 if ppos <= cpos {
+                    // Added text
+                    // | is completion point \ is cursor now
+                    //
+                    // this.p|ee\
+                    // Select peekable()
+                    // => Remove "ee" also that the completion
+                    // cannot override, because it was triggered at a different point
                     replace.end += cpos - ppos;
                 } else {
+                    // Deleted text
+                    //
+                    // this.p\ee|
+                    // Select peekable()
+                    // => The "ee" is already removed thus shorten the range of completion
+                    // So that it does not remove extra data
                     replace.end -= ppos - cpos;
                 }
+                let snippet = match Snippet::new(text) {
+                    Ok(snip) => snip,
+                    Err(e) => {
+                        log::error!("LSP snippet parse failed: {e}");
+                        return ActionResult::Failed;
+                    }
+                };
 
-                let change = Change::replace(replace, text);
-                let changes = Changes::from(vec![change]);
-                // let start = changes.iter().next().unwrap().start();
+                return snippets::insert_snippet_impl(editor, id, snippet, replace);
+            }
 
-                if win.change(buf, &changes).is_ok() {
-                    let hook = Hook::BufChanged(buf.id);
-                    run(editor, id, hook);
-                } else {
-                    return ActionResult::Failed;
+            let (text, mut replace) = match item.insert_text() {
+                Either::Left(text) => {
+                    let pos = win.completion.point_offset();
+                    (text.as_bytes(), Range::new(pos, pos))
                 }
+                Either::Right(edit) => {
+                    let ft = getf!(buf.filetype.clone());
+                    let enc = getf!(editor
+                        .language_servers
+                        .get(&ft)
+                        .map(|x| x.position_encoding()));
+                    let slice = buf.slice(..);
+                    let range = edit.range.to_buffer_range(&slice, &enc);
+                    (edit.text.as_bytes(), range)
+                }
+            };
+
+            // See above
+            let ppos = win.completion.point_offset();
+            let cpos = win.primary_cursor().pos();
+            if ppos <= cpos {
+                replace.end += cpos - ppos;
+            } else {
+                replace.end -= ppos - cpos;
             }
-            _ => {
-                let prefix = opt.matches().iter().map(|m| m.end).max().unwrap_or(0);
-                let opt = choice.text()[prefix..].to_string();
-                text::insert(editor, id, &opt)
+
+            let change = Change::replace(replace, text);
+            let changes = Changes::from(vec![change]);
+            // let start = changes.iter().next().unwrap().start();
+
+            if win.change(buf, &changes).is_ok() {
+                let hook = Hook::BufChanged(buf.id);
+                run(editor, id, hook);
+            } else {
+                return ActionResult::Failed;
             }
+        }
+        _ => {
+            let prefix = opt.matches().iter().map(|m| m.end).max().unwrap_or(0);
+            let opt = choice.text()[prefix..].to_string();
+            text::insert(editor, id, &opt)
         }
     }
 

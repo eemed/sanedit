@@ -134,10 +134,10 @@ fn save_as(editor: &mut Editor, id: ClientId) -> ActionResult {
         .prompt("Save as")
         .simple()
         .on_confirm(|editor, id, out| {
-            let path = get!(out.path());
+            let path = getf!(out.path());
             let (_win, buf) = editor.win_buf_mut(id);
             buf.set_path(path);
-            save.execute(editor, id);
+            save.execute(editor, id)
         })
         .build();
     focus(editor, id, Focus::Prompt);

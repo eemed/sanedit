@@ -158,8 +158,9 @@ fn search_forward(editor: &mut Editor, id: ClientId) -> ActionResult {
         .prompt("Search")
         .history(HistoryKind::Search)
         .on_confirm(|editor, id, out| {
-            let needle = get!(out.text());
+            let needle = getf!(out.text());
             new_search(editor, id, needle, false);
+            ActionResult::Ok
         })
         .on_input(highlight_view_matches_on_input)
         .build();
@@ -177,8 +178,9 @@ fn search_backward(editor: &mut Editor, id: ClientId) -> ActionResult {
         .prompt("Search backwards")
         .history(HistoryKind::Search)
         .on_confirm(|editor, id, out| {
-            let needle = get!(out.text());
+            let needle = getf!(out.text());
             new_search(editor, id, needle, true);
+            ActionResult::Ok
         })
         .on_input(highlight_view_matches_on_input)
         .build();

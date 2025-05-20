@@ -9,6 +9,7 @@ use crate::{
     actions::{
         jobs::{MatchedOptions, MatcherMessage},
         window::focus,
+        ActionResult,
     },
     common::matcher::{Choice, ScoredChoice},
     editor::{snippets::Snippet, windows::Focus, Editor},
@@ -22,9 +23,9 @@ use super::chooser::Chooser;
 #[derive(Default)]
 pub(crate) struct PromptBuilder {
     message: Option<String>,
-    on_confirm: Option<PromptAction>,
+    on_confirm: Option<PromptOnConfirm>,
     on_input: Option<PromptOnInput>,
-    on_abort: Option<PromptAction>,
+    on_abort: Option<PromptOnAbort>,
     kind: PromptKind,
     history_kind: Option<HistoryKind>,
     input: String,
@@ -70,9 +71,9 @@ impl PromptBuilder {
 
     pub fn on_confirm<F>(mut self, fun: F) -> Self
     where
-        F: Fn(&mut Editor, ClientId, PromptOutput) + 'static,
+        F: Fn(&mut Editor, ClientId, PromptOutput) -> ActionResult + 'static,
     {
-        self.on_confirm = Some(Rc::new(fun));
+        self.on_confirm = Some(Box::new(fun));
         self
     }
 
@@ -101,7 +102,9 @@ impl PromptBuilder {
 
 /// Prompt action, similar to a normal `ActionFunction` but also takes the
 /// prompt input as a additional parameter
-pub(crate) type PromptAction = Rc<dyn Fn(&mut Editor, ClientId, PromptOutput)>;
+pub(crate) type PromptOnConfirm =
+    Box<dyn FnOnce(&mut Editor, ClientId, PromptOutput) -> ActionResult>;
+pub(crate) type PromptOnAbort = Rc<dyn Fn(&mut Editor, ClientId, PromptOutput)>;
 pub(crate) type PromptOnInput = Rc<dyn Fn(&mut Editor, ClientId, &str)>;
 
 #[derive(Debug, Eq, PartialEq)]
@@ -165,10 +168,10 @@ pub(crate) struct Prompt {
     chooser: Chooser,
 
     /// Called when prompt is confirmed
-    on_confirm: Option<PromptAction>,
+    on_confirm: Option<PromptOnConfirm>,
 
     /// Called when prompt is aborted
-    on_abort: Option<PromptAction>,
+    on_abort: Option<PromptOnAbort>,
 
     /// Called when input is modified
     on_input: Option<PromptOnInput>,
@@ -238,15 +241,22 @@ impl Prompt {
         self.on_input = Some(Rc::new(fun));
     }
 
+    pub fn set_on_confirm<F>(&mut self, fun: F)
+    where
+        F: FnOnce(&mut Editor, ClientId, PromptOutput) -> ActionResult + 'static,
+    {
+        self.on_confirm = Some(Box::new(fun));
+    }
+
     pub fn on_input(&self) -> Option<PromptOnInput> {
         self.on_input.clone()
     }
 
-    pub fn on_confirm(&self) -> Option<PromptAction> {
-        self.on_confirm.clone()
+    pub fn on_confirm(&mut self) -> Option<PromptOnConfirm> {
+        self.on_confirm.take()
     }
 
-    pub fn on_abort(&self) -> Option<PromptAction> {
+    pub fn on_abort(&self) -> Option<PromptOnAbort> {
         self.on_abort.clone()
     }
 

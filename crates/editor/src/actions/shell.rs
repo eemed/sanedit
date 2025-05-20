@@ -9,9 +9,9 @@ use sanedit_server::ClientId;
 
 use super::{jobs::TmuxShellCommand, ActionResult};
 
-pub(crate) fn execute_prompt(editor: &mut Editor, id: ClientId, out: PromptOutput) {
-    let cmd = get!(out.text());
-    execute(editor, id, true, cmd);
+pub(crate) fn execute_prompt(editor: &mut Editor, id: ClientId, out: PromptOutput) -> ActionResult {
+    let cmd = getf!(out.text());
+    execute(editor, id, true, cmd)
 }
 
 pub(crate) fn execute(

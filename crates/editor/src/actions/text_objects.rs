@@ -1,6 +1,8 @@
 use sanedit_buffer::PieceTreeSlice;
 use sanedit_core::{
-    find_range, movement::{self, next_line_start}, paragraph_at_pos, word_at_pos, BufferRange, Cursor, Range, Searcher
+    find_range,
+    movement::{self, next_line_start},
+    paragraph_at_pos, word_at_pos, BufferRange, Cursor, Range, Searcher,
 };
 
 use crate::editor::{
@@ -189,8 +191,8 @@ fn select_pattern(editor: &mut Editor, id: ClientId) -> ActionResult {
         .simple()
         .on_confirm(move |editor, id, out| {
             let (win, buf) = editor.win_buf_mut(id);
-            let pattern = get!(out.text());
-            let searcher = get!(get_pattern_searcher(pattern, win));
+            let pattern = getf!(out.text());
+            let searcher = getf!(get_pattern_searcher(pattern, win));
             let selections = get_cursor_selections(win, buf);
 
             let mut cursors = vec![];
@@ -208,8 +210,13 @@ fn select_pattern(editor: &mut Editor, id: ClientId) -> ActionResult {
                 }
             }
 
+            if cursors.is_empty() {
+                return ActionResult::Failed;
+            }
+
             win.cursors = Cursors::from(cursors);
             win.view_to_around_cursor_zone(buf, Zone::Middle);
+            ActionResult::Ok
         })
         .build();
 

@@ -831,8 +831,6 @@ impl Editor {
         };
 
         result.extend(ftconfig.snippets_as_choices());
-        log::info!("Snippets: {result:?}");
-
         result
     }
 }

@@ -292,7 +292,7 @@ pub(crate) const COMMANDS: &[Action] = &[
     window::show_diagnostic_highlights,
     window::mode_insert,
     window::mode_normal,
-    window::mode_visual,
+    window::mode_select,
 
     completion::complete,
 

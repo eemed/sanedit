@@ -6,7 +6,7 @@ use strum_macros::{AsRefStr, EnumIter};
 pub(crate) enum Mode {
     Normal,
     Insert,
-    Visual,
+    Select,
 }
 
 impl Mode {
@@ -14,7 +14,7 @@ impl Mode {
         match self {
             Mode::Normal => "NOR",
             Mode::Insert => "INS",
-            Mode::Visual => "VIS",
+            Mode::Select => "SEL",
         }
     }
 }

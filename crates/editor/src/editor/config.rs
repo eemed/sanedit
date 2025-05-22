@@ -228,6 +228,8 @@ pub(crate) struct EditorConfig {
     /// Filetype glob patterns
     /// By default the filetype is the extension of the file
     pub filetype_detect: Map<String, Vec<String>>,
+
+    pub copy_on_delete: bool,
 }
 
 impl EditorConfig {

@@ -7,7 +7,7 @@ use crate::{
     editor::{
         buffers::{BufferId, Buffers},
         hooks::Hook,
-        windows::{Cursors, Jump, JumpGroup, Jumps, Window, Zone},
+        windows::{Cursors, Focus, Jump, JumpGroup, Jumps, Mode, Window, Zone},
         Editor,
     },
 };
@@ -20,8 +20,7 @@ use sanedit_core::{
 };
 
 use super::{
-    hooks::{self, run},
-    movement, ActionResult,
+    hooks::{self, run}, movement::{self, next_grapheme}, window::focus_with_mode, ActionResult
 };
 
 #[action("Cursors: Select next word")]
@@ -143,6 +142,7 @@ pub(crate) fn goto_position(editor: &mut Editor, id: ClientId, point: Point) {
 fn start_selection(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
     win.cursors.start_selection();
+    next_grapheme.execute(editor, id);
     ActionResult::Ok
 }
 
@@ -220,18 +220,20 @@ fn remove_cursor_selections(editor: &mut Editor, id: ClientId) -> ActionResult {
     }
 }
 
-#[action("Cursors: New cursors on line starts")]
+#[action("Cursors: New cursors on line starts and goto insert mode")]
 fn cursors_to_lines_start(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = editor.win_buf_mut(id);
     win.cursors_to_lines_start(buf);
+    focus_with_mode(editor, id, Focus::Window, Mode::Insert);
     hooks::run(editor, id, Hook::CursorMoved);
     ActionResult::Ok
 }
 
-#[action("Cursors: New cursors on line ends")]
+#[action("Cursors: New cursors on line ends and goto insert mode")]
 fn cursors_to_lines_end(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = editor.win_buf_mut(id);
     win.cursors_to_lines_end(buf);
+    focus_with_mode(editor, id, Focus::Window, Mode::Insert);
     hooks::run(editor, id, Hook::CursorMoved);
     ActionResult::Ok
 }
@@ -447,4 +449,3 @@ fn cursor_to_view_bottom(editor: &mut Editor, id: ClientId) -> ActionResult {
 
     ActionResult::Ok
 }
-

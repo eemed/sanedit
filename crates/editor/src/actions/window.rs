@@ -288,6 +288,11 @@ fn on_mode_leave(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Mode: Normal")]
 fn mode_normal(editor: &mut Editor, id: ClientId) -> ActionResult {
+    let (win, _buf) = editor.win_buf_mut(id);
+    if win.mode == Mode::Select {
+        win.cursors.stop_selection();
+    }
+
     focus_with_mode(editor, id, Focus::Window, Mode::Normal);
     ActionResult::Ok
 }
@@ -299,7 +304,7 @@ fn mode_insert(editor: &mut Editor, id: ClientId) -> ActionResult {
 }
 
 #[action("Mode: Visual")]
-fn mode_visual(editor: &mut Editor, id: ClientId) -> ActionResult {
-    focus_with_mode(editor, id, Focus::Window, Mode::Visual);
+fn mode_select(editor: &mut Editor, id: ClientId) -> ActionResult {
+    focus_with_mode(editor, id, Focus::Window, Mode::Select);
     ActionResult::Ok
 }

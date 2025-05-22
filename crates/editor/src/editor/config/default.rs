@@ -13,15 +13,15 @@ macro_rules! make_keymap {
 impl Default for Config {
     fn default() -> Self {
         let mut keymaps: Map<String, KeymapLayer> = Default::default();
-        keymaps.insert("normal".into(), default::normal());
-        keymaps.insert("insert".into(), default::insert());
-        keymaps.insert("visual".into(), default::visual());
+        keymaps.insert(Mode::Normal.as_ref().into(), default::normal());
+        keymaps.insert(Mode::Insert.as_ref().into(), default::insert());
+        keymaps.insert(Mode::Select.as_ref().into(), default::select());
 
-        keymaps.insert("search".into(), default::search());
-        keymaps.insert("locations".into(), default::locations());
-        keymaps.insert("filetree".into(), default::filetree());
-        keymaps.insert("prompt".into(), default::prompt());
-        keymaps.insert("completion".into(), default::completion());
+        keymaps.insert(Focus::Search.as_ref().into(), default::search());
+        keymaps.insert(Focus::Locations.as_ref().into(), default::locations());
+        keymaps.insert(Focus::Filetree.as_ref().into(), default::filetree());
+        keymaps.insert(Focus::Prompt.as_ref().into(), default::prompt());
+        keymaps.insert(Focus::Completion.as_ref().into(), default::completion());
 
         Config {
             editor: Default::default(),
@@ -68,6 +68,7 @@ impl Default for EditorConfig {
             detect_eol: true,
             detect_indent: true,
             filetype_detect: Self::default_filetype_map(),
+            copy_on_delete: true,
         }
     }
 }
@@ -355,7 +356,7 @@ pub(crate) fn insert() -> KeymapLayer {
     }
 }
 
-pub(crate) fn visual() -> KeymapLayer {
+pub(crate) fn select() -> KeymapLayer {
     #[rustfmt::skip]
     let map = make_keymap!(
         "i", nop,
@@ -363,8 +364,8 @@ pub(crate) fn visual() -> KeymapLayer {
         "d", remove_cursor_selections,
         "c", remove_cursor_selections,
         "y", copy,
-        "esc", stop_selection,
-        "§", stop_selection,
+        "esc", mode_normal,
+        "§", mode_normal,
         ".", swap_selection_dir,
 
         "g", nop,

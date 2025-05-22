@@ -8,7 +8,7 @@ use sanedit_core::{
 use crate::editor::{
     buffers::Buffer,
     hooks::Hook,
-    windows::{Cursors, Focus, Mode, Prompt, Window, Zone},
+    windows::{Cursors, Focus, Prompt, Window, Zone},
     Editor,
 };
 
@@ -16,7 +16,7 @@ use sanedit_server::ClientId;
 
 use super::{
     hooks,
-    window::{focus, focus_with_mode},
+    window::{focus, mode_select},
     ActionResult,
 };
 
@@ -56,7 +56,7 @@ fn select_with_col<F: Fn(&PieceTreeSlice, u64) -> Option<(BufferRange, usize)>>(
 
     if changed {
         win.view_to_cursor(buf);
-        focus_with_mode(editor, id, Focus::Window, Mode::Select);
+        mode_select(editor, id);
         hooks::run(editor, id, Hook::CursorMoved);
         ActionResult::Ok
     } else {
@@ -87,7 +87,7 @@ fn select<F: Fn(&PieceTreeSlice, u64) -> Option<BufferRange>>(
 
     if changed {
         win.view_to_around_cursor_zone(buf, Zone::Middle);
-        focus_with_mode(editor, id, Focus::Window, Mode::Select);
+        mode_select(editor, id);
         hooks::run(editor, id, Hook::CursorMoved);
         ActionResult::Ok
     } else {
@@ -222,6 +222,7 @@ fn select_pattern(editor: &mut Editor, id: ClientId) -> ActionResult {
 
             win.cursors = Cursors::from(cursors);
             win.view_to_around_cursor_zone(buf, Zone::Middle);
+            mode_select(editor, id);
             ActionResult::Ok
         })
         .build();

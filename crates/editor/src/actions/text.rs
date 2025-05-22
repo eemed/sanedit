@@ -2,13 +2,16 @@ use std::{mem, sync::Arc};
 
 use sanedit_core::{at_start_of_line, is_indent_at_pos};
 
-use crate::{actions::movement::start_of_buffer, editor::{
-    buffers::{Buffer, BufferError},
-    filetype::Filetypes,
-    hooks::Hook,
-    windows::{Focus, NextKeyFunction, Prompt, Window},
-    Editor,
-}};
+use crate::{
+    actions::movement::start_of_buffer,
+    editor::{
+        buffers::{Buffer, BufferError},
+        filetype::Filetypes,
+        hooks::Hook,
+        windows::{Focus, NextKeyFunction, Prompt, Window},
+        Editor,
+    },
+};
 
 use sanedit_server::ClientId;
 
@@ -246,10 +249,10 @@ fn newline_above(editor: &mut Editor, id: ClientId) -> ActionResult {
     let on_first_line = orig == prev;
     log::info!("ON FIRST LINE: {orig} == {prev}");
     if !on_first_line {
-    log::info!("EOL");
+        log::info!("EOL");
         end_of_line.execute(editor, id);
     } else {
-    log::info!("SOB");
+        log::info!("SOB");
         start_of_buffer.execute(editor, id);
     }
 
@@ -257,7 +260,7 @@ fn newline_above(editor: &mut Editor, id: ClientId) -> ActionResult {
     insert_newline.execute(editor, id);
 
     if on_first_line {
-    log::info!("PLINE");
+        log::info!("PLINE");
         prev_line.execute(editor, id);
     }
 

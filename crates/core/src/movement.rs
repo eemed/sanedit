@@ -1,6 +1,3 @@
-
-
-
 use crate::grapheme_category;
 use sanedit_buffer::utf8;
 use sanedit_buffer::utf8::EndOfLine;

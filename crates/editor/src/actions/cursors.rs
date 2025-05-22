@@ -7,7 +7,7 @@ use crate::{
     editor::{
         buffers::{BufferId, Buffers},
         hooks::Hook,
-        windows::{Cursors, Focus, Jump, JumpGroup, Jumps, Mode, Window, Zone},
+        windows::{Cursors, Jump, JumpGroup, Jumps, Window, Zone},
         Editor,
     },
 };
@@ -20,7 +20,10 @@ use sanedit_core::{
 };
 
 use super::{
-    hooks::{self, run}, movement::{self, next_grapheme}, window::focus_with_mode, ActionResult
+    hooks::{self, run},
+    movement::{self, next_grapheme},
+    window::{mode_insert, mode_normal, mode_select},
+    ActionResult,
 };
 
 #[action("Cursors: Select next word")]
@@ -142,6 +145,7 @@ pub(crate) fn goto_position(editor: &mut Editor, id: ClientId, point: Point) {
 fn start_selection(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
     win.cursors.start_selection();
+    mode_select(editor, id);
     next_grapheme.execute(editor, id);
     ActionResult::Ok
 }
@@ -150,6 +154,7 @@ fn start_selection(editor: &mut Editor, id: ClientId) -> ActionResult {
 fn stop_selection(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
     win.cursors.stop_selection();
+    mode_normal(editor, id);
     ActionResult::Ok
 }
 
@@ -210,21 +215,24 @@ fn merge_overlapping_cursors(editor: &mut Editor, id: ClientId) -> ActionResult 
 #[action("Cursors: Remove selections")]
 fn remove_cursor_selections(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = editor.win_buf_mut(id);
-    match win.remove_cursor_selections(buf) {
+    let res = match win.remove_cursor_selections(buf) {
         Ok(true) => {
             let hook = Hook::BufChanged(buf.id);
             run(editor, id, hook);
             ActionResult::Ok
         }
         _ => ActionResult::Skipped,
-    }
+    };
+
+    mode_normal(editor, id);
+    res
 }
 
 #[action("Cursors: New cursors on line starts and goto insert mode")]
 fn cursors_to_lines_start(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = editor.win_buf_mut(id);
     win.cursors_to_lines_start(buf);
-    focus_with_mode(editor, id, Focus::Window, Mode::Insert);
+    mode_insert(editor, id);
     hooks::run(editor, id, Hook::CursorMoved);
     ActionResult::Ok
 }
@@ -233,7 +241,7 @@ fn cursors_to_lines_start(editor: &mut Editor, id: ClientId) -> ActionResult {
 fn cursors_to_lines_end(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = editor.win_buf_mut(id);
     win.cursors_to_lines_end(buf);
-    focus_with_mode(editor, id, Focus::Window, Mode::Insert);
+    mode_insert(editor, id);
     hooks::run(editor, id, Hook::CursorMoved);
     ActionResult::Ok
 }

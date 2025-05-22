@@ -1,4 +1,7 @@
-use std::{any::Any, sync::{atomic::AtomicBool, Arc}};
+use std::{
+    any::Any,
+    sync::{atomic::AtomicBool, Arc},
+};
 
 use sanedit_buffer::PieceTreeView;
 use sanedit_core::BufferRange;

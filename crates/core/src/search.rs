@@ -132,7 +132,11 @@ impl Searcher {
         self.find_iter_stoppable(slice, Arc::new(AtomicBool::new(false)))
     }
 
-    pub fn find_iter_stoppable<'a, 'b: 'a>(&'a self, slice: &'b PieceTreeSlice, stop: Arc<AtomicBool>) -> MatchIter<'a, 'b> {
+    pub fn find_iter_stoppable<'a, 'b: 'a>(
+        &'a self,
+        slice: &'b PieceTreeSlice,
+        stop: Arc<AtomicBool>,
+    ) -> MatchIter<'a, 'b> {
         match self {
             Searcher::Forward(s) => {
                 let iter = s.find_iter_stoppable(slice, stop);

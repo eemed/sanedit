@@ -34,6 +34,22 @@ pub fn focus_with_mode(editor: &mut Editor, id: ClientId, focus: Focus, mode: Mo
     }
 }
 
+pub fn mode_normal(editor: &mut Editor, id: ClientId) {
+    mode(editor, id, Mode::Normal);
+}
+
+pub fn mode_select(editor: &mut Editor, id: ClientId) {
+    mode(editor, id, Mode::Select);
+}
+
+pub fn mode_insert(editor: &mut Editor, id: ClientId) {
+    mode(editor, id, Mode::Insert);
+}
+
+pub fn mode(editor: &mut Editor, id: ClientId, mode: Mode) {
+    focus_with_mode(editor, id, Focus::Window, mode);
+}
+
 /// Change focus and run hooks
 pub fn focus(editor: &mut Editor, id: ClientId, focus: Focus) {
     let (win, _buf) = editor.win_buf(id);
@@ -287,7 +303,7 @@ fn on_mode_leave(editor: &mut Editor, id: ClientId) -> ActionResult {
 }
 
 #[action("Mode: Normal")]
-fn mode_normal(editor: &mut Editor, id: ClientId) -> ActionResult {
+fn normal_mode(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
     if win.mode == Mode::Select {
         win.cursors.stop_selection();
@@ -298,13 +314,13 @@ fn mode_normal(editor: &mut Editor, id: ClientId) -> ActionResult {
 }
 
 #[action("Mode: Insert")]
-fn mode_insert(editor: &mut Editor, id: ClientId) -> ActionResult {
+fn insert_mode(editor: &mut Editor, id: ClientId) -> ActionResult {
     focus_with_mode(editor, id, Focus::Window, Mode::Insert);
     ActionResult::Ok
 }
 
 #[action("Mode: Visual")]
-fn mode_select(editor: &mut Editor, id: ClientId) -> ActionResult {
+fn select_mode(editor: &mut Editor, id: ClientId) -> ActionResult {
     focus_with_mode(editor, id, Focus::Window, Mode::Select);
     ActionResult::Ok
 }

@@ -290,9 +290,9 @@ pub(crate) const COMMANDS: &[Action] = &[
     window::view_to_cursor_bottom,
     window::hide_diagnostic_highlights,
     window::show_diagnostic_highlights,
-    window::mode_insert,
-    window::mode_normal,
-    window::mode_select,
+    window::insert_mode,
+    window::normal_mode,
+    window::select_mode,
 
     completion::complete,
 

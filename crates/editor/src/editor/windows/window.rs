@@ -44,7 +44,9 @@ use crate::{
     actions::ActionResult,
     common::change::{newline_autopair, newline_empty_line, newline_indent},
     editor::{
-        buffers::{Buffer, BufferId, SnapshotAux, SnapshotId}, keymap::LayerKey, Editor
+        buffers::{Buffer, BufferId, SnapshotAux, SnapshotId},
+        keymap::LayerKey,
+        Editor,
     },
 };
 
@@ -52,7 +54,8 @@ use self::filetree::FiletreeView;
 pub(crate) use cursors::Cursors;
 
 pub(crate) use self::{
-    mode::*, completion::*, config::*, focus::*, jumps::*, prompt::*, search::*, view::*, window_manager::*,
+    completion::*, config::*, focus::*, jumps::*, mode::*, prompt::*, search::*, view::*,
+    window_manager::*,
 };
 
 #[derive(Debug)]

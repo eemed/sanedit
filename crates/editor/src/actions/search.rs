@@ -276,7 +276,13 @@ fn new_search(editor: &mut Editor, id: ClientId, needle: &str, reverse: bool) {
     do_search(editor, id, searcher, cpos, false)
 }
 
-fn do_search(editor: &mut Editor, id: ClientId, searcher: Searcher, starting_position: u64, cont: bool) {
+fn do_search(
+    editor: &mut Editor,
+    id: ClientId,
+    searcher: Searcher,
+    starting_position: u64,
+    cont: bool,
+) {
     let (win, buf) = editor.win_buf_mut(id);
 
     // Triggers match highlighting, it needs to be updated on buffer /

@@ -19,7 +19,11 @@ pub struct FileDescription {
 }
 
 impl FileDescription {
-    pub fn new(path: impl AsRef<Path>, config: &Config, filetypes: &Filetypes) -> io::Result<FileDescription> {
+    pub fn new(
+        path: impl AsRef<Path>,
+        config: &Config,
+        filetypes: &Filetypes,
+    ) -> io::Result<FileDescription> {
         let path = path.as_ref();
         if !path.exists() {
             return Self::new_empty(path, config, filetypes);
@@ -48,7 +52,11 @@ impl FileDescription {
         Ok(file_metadata)
     }
 
-    fn new_empty(path: &Path, config: &Config, filetypes: &Filetypes) -> io::Result<FileDescription> {
+    fn new_empty(
+        path: &Path,
+        config: &Config,
+        filetypes: &Filetypes,
+    ) -> io::Result<FileDescription> {
         let filetype = Filetype::determine(path, &config.editor.filetype_detect);
         let eol = filetype
             .as_ref()

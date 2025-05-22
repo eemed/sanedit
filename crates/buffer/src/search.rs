@@ -1,4 +1,11 @@
-use std::{cmp::max, ops::Range, sync::{atomic::{AtomicBool, Ordering}, Arc}};
+use std::{
+    cmp::max,
+    ops::Range,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
+};
 
 use crate::{Bytes, PieceTreeSlice};
 
@@ -99,7 +106,11 @@ impl Searcher {
         self.find_iter_stoppable(slice, Arc::new(AtomicBool::new(false)))
     }
 
-    pub fn find_iter_stoppable<'a, 'b: 'a>(&'a self, slice: &'b PieceTreeSlice, stop: Arc<AtomicBool>) -> SearchIter<'a, 'b> {
+    pub fn find_iter_stoppable<'a, 'b: 'a>(
+        &'a self,
+        slice: &'b PieceTreeSlice,
+        stop: Arc<AtomicBool>,
+    ) -> SearchIter<'a, 'b> {
         SearchIter::new(
             &self.pattern,
             &self.bad_char,
@@ -344,7 +355,11 @@ impl SearcherRev {
         self.find_iter_stoppable(slice, Arc::new(AtomicBool::new(false)))
     }
 
-    pub fn find_iter_stoppable<'a, 'b: 'a>(&'a self, slice: &'b PieceTreeSlice, stop: Arc<AtomicBool>) -> SearchIterRev<'a, 'b> {
+    pub fn find_iter_stoppable<'a, 'b: 'a>(
+        &'a self,
+        slice: &'b PieceTreeSlice,
+        stop: Arc<AtomicBool>,
+    ) -> SearchIterRev<'a, 'b> {
         SearchIterRev::new(
             &self.pattern,
             &self.bad_char,

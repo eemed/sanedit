@@ -24,7 +24,7 @@ use crate::{
     editor::{
         buffers::BufferId,
         hooks::Hook,
-        windows::{Focus, HistoryKind, Mode, Prompt},
+        windows::{Focus, HistoryKind, Prompt},
         Editor,
     },
 };
@@ -32,7 +32,12 @@ use crate::{
 use sanedit_server::ClientId;
 
 use super::{
-    find_by_description, hooks, jobs::{MatcherJob, MatcherMessage}, shell, text::save, window::focus_with_mode, ActionResult
+    find_by_description, hooks,
+    jobs::{MatcherJob, MatcherMessage},
+    shell,
+    text::save,
+    window::mode_normal,
+    ActionResult,
 };
 
 #[action("Editor: Select theme")]
@@ -234,7 +239,7 @@ fn open_buffer(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Prompt: Close")]
 fn prompt_close(editor: &mut Editor, id: ClientId) -> ActionResult {
-    focus_with_mode(editor, id, Focus::Window, Mode::Normal);
+    mode_normal(editor, id);
 
     let (win, _buf) = editor.win_buf_mut(id);
 
@@ -251,7 +256,7 @@ fn prompt_close(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Prompt: Confirm")]
 fn prompt_confirm(editor: &mut Editor, id: ClientId) -> ActionResult {
-    focus_with_mode(editor, id, Focus::Window, Mode::Normal);
+    mode_normal(editor, id);
     let (win, _buf) = editor.win_buf_mut(id);
 
     let slotname = win.prompt.message().to_string();

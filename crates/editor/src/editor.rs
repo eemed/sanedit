@@ -181,18 +181,14 @@ impl Editor {
                 let focus = Focus::iter().find(|f| f.as_ref() == name);
 
                 match (mode, focus) {
-                    (Some(mode), _) => {
-                        LayerKey {
-                            mode,
-                            focus: Focus::Window,
-                        }
-                    }
-                    (_, Some(focus)) => {
-                        LayerKey {
-                            mode: Mode::Normal,
-                            focus,
-                        }
-                    }
+                    (Some(mode), _) => LayerKey {
+                        mode,
+                        focus: Focus::Window,
+                    },
+                    (_, Some(focus)) => LayerKey {
+                        mode: Mode::Normal,
+                        focus,
+                    },
                     _ => continue,
                 }
             };

@@ -103,6 +103,7 @@ pub(crate) fn prompt() -> KeymapLayer {
              "ctrl+q",    quit,
 
              "esc",       prompt_close,
+             "§",         prompt_close,
              "backspace", prompt_remove_grapheme_before_cursor,
              "left",      prompt_prev_grapheme,
              "right",     prompt_next_grapheme,
@@ -216,7 +217,7 @@ pub(crate) fn normal() -> KeymapLayer {
         "§", cancel,
         "y", select_line,
         "p", paste,
-        "i", mode_insert,
+        "i", insert_mode,
         "u", undo,
         "U", redo,
         "h", prev_grapheme_on_line,
@@ -335,8 +336,8 @@ pub(crate) fn normal() -> KeymapLayer {
 pub(crate) fn insert() -> KeymapLayer {
     #[rustfmt::skip]
     let map = make_keymap!(
-        "esc", mode_normal,
-        "§", mode_normal,
+        "esc", normal_mode,
+        "§", normal_mode,
         "left", prev_grapheme,
         "up", prev_line,
         "down", next_line,
@@ -364,8 +365,8 @@ pub(crate) fn select() -> KeymapLayer {
         "d", remove_cursor_selections,
         "c", remove_cursor_selections,
         "y", copy,
-        "esc", mode_normal,
-        "§", mode_normal,
+        "esc", normal_mode,
+        "§", normal_mode,
         ".", swap_selection_dir,
 
         "g", nop,

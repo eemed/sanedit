@@ -470,10 +470,13 @@ impl View {
     }
 
     fn has_eof(&self) -> bool {
-        let last = self.height().saturating_sub(1);
-        self.cells[last]
-            .iter()
-            .all(|cell| matches!(cell, Cell::Empty | Cell::EOF))
+        for row in &self.cells {
+            if row.iter().any(|cell| matches!(cell, Cell::EOF)) {
+                return true;
+            }
+        }
+
+        false
     }
 
     /// Check wether the position is visible.

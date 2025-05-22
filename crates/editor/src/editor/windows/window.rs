@@ -330,6 +330,7 @@ impl Window {
         self.view.redraw(buf);
 
         if !self.view.is_visible(cursor) {
+        log::info!("view to: {cursor}, len: {}", buf.len());
             self.view.view_to(cursor, buf);
         }
     }

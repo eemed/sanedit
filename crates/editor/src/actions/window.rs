@@ -222,6 +222,13 @@ fn status(editor: &mut Editor, id: ClientId) -> ActionResult {
     ActionResult::Ok
 }
 
+#[action("View: Move to cursor")]
+fn view_to_cursor(editor: &mut Editor, id: ClientId) -> ActionResult {
+    let (win, buf) = editor.win_buf_mut(id);
+    win.view_to_cursor(buf);
+    ActionResult::Ok
+}
+
 #[action("View: Move to cursor high")]
 fn view_to_cursor_top(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = editor.win_buf_mut(id);

@@ -156,6 +156,7 @@ impl Default for Hooks {
         hooks.register(BufLeave, window::save_cursor_jump);
         hooks.register(ModeEnter, window::on_mode_enter);
         hooks.register(ModeLeave, window::on_mode_leave);
+        hooks.register(ModeEnter, window::view_to_cursor);
 
         // TODO handle registration only when needed?
         hooks.register(CursorMoved, completion::completion_abort);

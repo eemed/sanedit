@@ -87,6 +87,7 @@ pub(crate) fn insert(editor: &mut Editor, id: ClientId, text: &str) {
             run(editor, id, Hook::InsertPre);
             let (win, buf) = editor.win_buf_mut(id);
             if win.insert_at_cursors(buf, text).is_ok() {
+                win.view_to_cursor(buf);
                 let hook = Hook::BufChanged(buf.id);
                 run(editor, id, hook);
             }
@@ -152,6 +153,7 @@ fn insert_newline(editor: &mut Editor, id: ClientId) -> ActionResult {
     run(editor, id, Hook::InsertPre);
     let (win, buf) = editor.win_buf_mut(id);
     let _ = win.insert_newline(buf);
+    win.view_to_cursor(buf);
 
     let hook = Hook::BufChanged(buf.id);
     run(editor, id, hook);

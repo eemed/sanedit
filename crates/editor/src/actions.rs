@@ -285,6 +285,7 @@ pub(crate) const COMMANDS: &[Action] = &[
     window::cancel,
     window::new_window,
     window::status,
+    window::view_to_cursor,
     window::view_to_cursor_top,
     window::view_to_cursor_middle,
     window::view_to_cursor_bottom,

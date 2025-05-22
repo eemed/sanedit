@@ -19,6 +19,7 @@ use file_description::FileDescription;
 use filetype::Filetypes;
 use keymap::KeymapResult;
 use keymap::Layer;
+use keymap::LayerKey;
 use rustc_hash::FxHashMap;
 use sanedit_core::Filetype;
 use sanedit_messages::key;
@@ -36,6 +37,8 @@ use sanedit_server::ClientId;
 use sanedit_server::FromJobs;
 use sanedit_server::StartOptions;
 use sanedit_server::ToEditor;
+use strum::IntoEnumIterator;
+use windows::Mode;
 
 use std::collections::HashSet;
 use std::env;
@@ -173,9 +176,29 @@ impl Editor {
         self.keymaps = Keymaps::default();
 
         for (name, kmlayer) in &self.config.keymaps {
+            let key = {
+                let mode = Mode::iter().find(|m| m.as_ref() == name);
+                let focus = Focus::iter().find(|f| f.as_ref() == name);
+
+                match (mode, focus) {
+                    (Some(mode), _) => {
+                        LayerKey {
+                            mode,
+                            focus: Focus::Window,
+                        }
+                    }
+                    (_, Some(focus)) => {
+                        LayerKey {
+                            mode: Mode::Normal,
+                            focus,
+                        }
+                    }
+                    _ => continue,
+                }
+            };
             // Insert new layer
             let layer = kmlayer.to_layer(name);
-            self.keymaps.insert(name, layer);
+            self.keymaps.insert(key, layer);
         }
     }
 
@@ -363,7 +386,6 @@ impl Editor {
             working_dir: &self.working_dir,
             filetree: &self.filetree,
             language_servers: &self.language_servers,
-            keymaps: &self.keymaps,
         }
     }
 
@@ -398,7 +420,7 @@ impl Editor {
         self.send_to_client(id, ClientMessage::Flush);
 
         run(self, id, Hook::BufEnter(bid));
-        run(self, id, Hook::KeymapEnter);
+        run(self, id, Hook::ModeEnter);
     }
 
     fn handle_resize(&mut self, id: ClientId, size: Size) {
@@ -499,7 +521,6 @@ impl Editor {
             working_dir: &self.working_dir,
             filetree: &self.filetree,
             language_servers: &self.language_servers,
-            keymaps: &self.keymaps,
         };
 
         let messages = draw.redraw(ctx);
@@ -744,14 +765,16 @@ impl Editor {
 
     pub fn layer(&self, id: ClientId) -> Option<&Layer> {
         let win = self.windows.get(id).expect("No window found");
-        self.keymaps.get_layer(&win.keymap_layer)
+        let key = win.layer();
+        self.keymaps.get_layer(&key)
     }
 
     /// Return the currently focused elements keymap
     pub fn mapped_action(&self, id: ClientId) -> KeymapResult {
         let (win, _buf) = self.win_buf(id);
         let kmap = &self.keymaps;
-        kmap.get(&win.keymap_layer, &win.keys())
+        let key = win.layer();
+        kmap.get(&key, &win.keys())
     }
 
     pub fn change_working_dir(&mut self, path: &Path) -> Result<()> {

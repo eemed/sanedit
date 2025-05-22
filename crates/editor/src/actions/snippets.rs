@@ -8,24 +8,19 @@ use crate::{
     actions::{hooks::run, window::focus},
     editor::{
         hooks::Hook,
-        keymap::KeymapKind,
         snippets::{Snippet, SnippetAtom},
-        windows::{Focus, Jump, JumpGroup, Jumps, Prompt},
+        windows::{Focus, Jump, JumpGroup, Jumps, Mode, Prompt},
         Editor,
     },
 };
 
-use super::{
-    jobs::MatcherJob,
-    window::{pop_focus, push_focus, push_focus_with_keymap},
-    ActionResult,
-};
+use super::{jobs::MatcherJob, window::focus_with_mode, ActionResult};
 
 #[action("Snippet: Jump to next placeholder")]
 pub(crate) fn snippet_jump_next(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = editor.win_buf_mut(id);
     if !win.cursors_to_next_snippet_jump(buf) {
-        pop_focus(editor, id);
+        focus_with_mode(editor, id, Focus::Window, Mode::Insert);
     }
     ActionResult::Ok
 }
@@ -139,12 +134,7 @@ pub(crate) fn insert_snippet_impl(
     let jumps = Jumps::new(groups);
     win.snippets.push(jumps);
     if win.cursors_to_next_snippet_jump(buf) {
-        push_focus_with_keymap(
-            editor,
-            id,
-            Focus::Window,
-            KeymapKind::Snippet.as_ref().into(),
-        );
+        focus_with_mode(editor, id, Focus::Window, Mode::Insert);
         return ActionResult::Ok;
     }
 

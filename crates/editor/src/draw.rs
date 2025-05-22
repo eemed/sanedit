@@ -15,7 +15,6 @@ use sanedit_messages::redraw::{Redraw, Theme};
 use crate::editor::{
     buffers::Buffer,
     filetree::Filetree,
-    keymap::Keymaps,
     lsp::LSP,
     windows::{Focus, Window},
     Map,
@@ -28,7 +27,6 @@ pub(crate) struct EditorContext<'a> {
     pub(crate) working_dir: &'a Path,
     pub(crate) filetree: &'a Filetree,
     pub(crate) language_servers: &'a Map<Filetype, LSP>,
-    pub(crate) keymaps: &'a Keymaps,
 }
 
 pub(crate) struct DrawContext<'a, 'b> {

@@ -1,6 +1,7 @@
-use std::ops::{Deref, DerefMut};
+use strum_macros::{AsRefStr, EnumIter};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, EnumIter, AsRefStr)]
+#[strum(serialize_all = "lowercase")]
 pub(crate) enum Focus {
     Search,
     Prompt,
@@ -8,28 +9,4 @@ pub(crate) enum Focus {
     Completion,
     Filetree,
     Locations,
-}
-
-/// Stores previously focused elements
-#[derive(Default, Debug)]
-pub(crate) struct FocusStack(Vec<FocusEntry>);
-
-impl Deref for FocusStack {
-    type Target = Vec<FocusEntry>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl DerefMut for FocusStack {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
-
-#[derive(Debug)]
-pub(crate) struct FocusEntry {
-    pub(crate) focus: Focus,
-    pub(crate) keymap_layer: String,
 }

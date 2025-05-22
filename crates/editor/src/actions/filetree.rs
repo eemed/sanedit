@@ -11,10 +11,7 @@ use crate::{
 
 use sanedit_server::ClientId;
 
-use super::{
-    window::{focus, push_focus},
-    ActionResult,
-};
+use super::{window::focus, ActionResult};
 
 #[action("Filetree: Show")]
 fn show_filetree(editor: &mut Editor, id: ClientId) -> ActionResult {
@@ -210,7 +207,7 @@ fn ft_rename_file(editor: &mut Editor, id: ClientId) -> ActionResult {
             ActionResult::Ok
         })
         .build();
-    push_focus(editor, id, Focus::Prompt);
+    focus(editor, id, Focus::Prompt);
     ActionResult::Ok
 }
 

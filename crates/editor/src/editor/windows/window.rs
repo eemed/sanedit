@@ -5,6 +5,7 @@ mod cursors;
 mod filetree;
 mod focus;
 mod jumps;
+mod mode;
 mod prompt;
 mod search;
 mod view;
@@ -43,9 +44,7 @@ use crate::{
     actions::ActionResult,
     common::change::{newline_autopair, newline_empty_line, newline_indent},
     editor::{
-        buffers::{Buffer, BufferId, SnapshotAux, SnapshotId},
-        keymap::KeymapKind,
-        Editor,
+        buffers::{Buffer, BufferId, SnapshotAux, SnapshotId}, keymap::LayerKey, Editor
     },
 };
 
@@ -53,7 +52,7 @@ use self::filetree::FiletreeView;
 pub(crate) use cursors::Cursors;
 
 pub(crate) use self::{
-    completion::*, config::*, focus::*, jumps::*, prompt::*, search::*, view::*, window_manager::*,
+    mode::*, completion::*, config::*, focus::*, jumps::*, prompt::*, search::*, view::*, window_manager::*,
 };
 
 #[derive(Debug)]
@@ -62,16 +61,12 @@ pub(crate) struct Window {
     last_buffer: Option<(BufferId, SnapshotAux)>,
     message: Option<StatusMessage>,
     view: View,
-
     keys: Vec<KeyEvent>,
-
-    /// Focus determines where to direct input
-    pub focus_stack: FocusStack,
-    pub focus: Focus,
-
     popup: Option<Popup>,
 
-    pub keymap_layer: String,
+    /// Focus determines where to direct input
+    pub focus: Focus,
+    pub mode: Mode,
     pub window_manager: WindowManager,
     pub completion: Completion,
     pub cursors: Cursors,
@@ -88,6 +83,7 @@ pub(crate) struct Window {
     /// Last edit jumped to in buffer
     pub last_edit_jump: Option<SnapshotId>,
 
+    /// Handles next keypress, before anything else
     pub next_key_handler: Option<NextKeyFunction>,
 }
 
@@ -99,15 +95,14 @@ impl Window {
             last_buffer: None,
             view: View::new(width, height),
             message: None,
-            keymap_layer: KeymapKind::Window.as_ref().into(),
             window_manager: config.window_manager.get(),
             completion: Completion::default(),
             cursors: Cursors::default(),
             config,
+            mode: Mode::Normal,
             search: Search::default(),
             prompt: Prompt::default(),
             focus: Focus::Window,
-            focus_stack: FocusStack::default(),
             ft_view: FiletreeView::default(),
             locations: Locations::default(),
             popup: None,
@@ -115,6 +110,13 @@ impl Window {
             cursor_jumps: Jumps::with_capacity(512),
             last_edit_jump: None,
             next_key_handler: None,
+        }
+    }
+
+    pub fn layer(&self) -> LayerKey {
+        LayerKey {
+            focus: self.focus,
+            mode: self.mode,
         }
     }
 

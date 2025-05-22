@@ -15,15 +15,15 @@ use toml_edit::{
 };
 
 use crate::{
-    actions::{find_by_name, window::change_keymap, Action, ActionResult},
+    actions::{find_by_name, Action, ActionResult},
     common::matcher::Choice,
     editor::{self, buffers::EndOfLineDef},
 };
 
 use super::{
     buffers,
-    keymap::{KeymapKind, Layer},
-    windows::{self, Focus},
+    keymap::{Layer, LayerKey},
+    windows::{self, Focus, Mode},
     Editor,
 };
 use rustc_hash::FxHashMap;
@@ -273,19 +273,7 @@ impl Mapping {
                 name = &name[..name.len() - 1];
             }
 
-            // Try to parse goto_layer
-            if let Some(goto) = parse_goto_layer(name) {
-                let action = Action::Dynamic {
-                    name: format!("Goto layer {}", goto),
-                    fun: Arc::new(move |editor, id| {
-                        change_keymap(editor, id, goto.clone());
-                        ActionResult::Ok
-                    }),
-                    desc: String::new(),
-                };
-
-                actions.push_back(MappedAction { action, skip: stop });
-            } else if let Some(action) = find_by_name(name) {
+            if let Some(action) = find_by_name(name) {
                 // Try to find action with name
                 actions.push_back(MappedAction { action, skip: stop });
             }
@@ -302,22 +290,14 @@ impl Mapping {
     }
 }
 
-fn parse_goto_layer(action: &str) -> Option<String> {
-    let suffix = action.strip_prefix("goto_layer ")?;
-    Some(suffix.to_string())
-}
-
 #[derive(Debug, Serialize, Deserialize)]
 pub(crate) struct KeymapLayer {
-    fallthrough: Option<String>,
+    fallthrough: Option<Mode>,
 
-    /// Whether to discard not found bindigs or insert them into the buffer
-    discard: Option<bool>,
-
-    /// On enter keymap actions
+    /// On enter actions
     on_enter: Option<Vec<String>>,
 
-    /// On leave keymap actions
+    /// On leave actions
     on_leave: Option<Vec<String>>,
 
     /// Keymappings for this layer
@@ -346,7 +326,7 @@ impl KeymapLayer {
             name: format!("on_enter_{name}"),
             fun: Arc::new(move |editor, id| {
                 let (win, _buf) = editor.win_buf(id);
-                if win.keymap_layer != name {
+                if win.mode.as_ref() != name {
                     return ActionResult::Skipped;
                 }
 
@@ -382,7 +362,7 @@ impl KeymapLayer {
             name: format!("on_leave_{name}"),
             fun: Arc::new(move |editor, id| {
                 let (win, _buf) = editor.win_buf(id);
-                if win.keymap_layer != name {
+                if win.mode.as_ref() != name {
                     return ActionResult::Skipped;
                 }
 
@@ -399,8 +379,10 @@ impl KeymapLayer {
 
     pub fn to_layer(&self, name: &str) -> Layer {
         let mut layer = Layer::new();
-        layer.discard = self.discard.unwrap_or(false);
-        layer.fallthrough = self.fallthrough.clone();
+        layer.fallthrough = self.fallthrough.clone().map(|mode| LayerKey {
+            focus: Focus::Window,
+            mode,
+        });
 
         for map in &self.maps {
             match map.to_keymap() {

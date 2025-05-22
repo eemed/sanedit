@@ -9,14 +9,16 @@ use crate::{
     editor::{
         hooks::Hook,
         snippets::Snippet,
-        windows::{Completion, Focus},
+        windows::{Completion, Focus, Mode},
         Editor,
     },
 };
 
 use sanedit_server::ClientId;
 
-use super::{hooks::run, jobs::MatcherJob, lsp, snippets, text, window::pop_focus, ActionResult};
+use super::{
+    hooks::run, jobs::MatcherJob, lsp, snippets, text, window::focus_with_mode, ActionResult,
+};
 
 #[action("Editor: Complete")]
 fn complete(editor: &mut Editor, id: ClientId) -> ActionResult {
@@ -66,7 +68,7 @@ fn complete_from_syntax(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Completion: Confirm")]
 fn completion_confirm(editor: &mut Editor, id: ClientId) -> ActionResult {
-    pop_focus(editor, id);
+    focus_with_mode(editor, id, Focus::Window, Mode::Normal);
 
     let (win, buf) = win_buf!(editor, id);
     let opt = getf!(win.completion.selected().cloned());
@@ -185,7 +187,7 @@ fn completion_confirm(editor: &mut Editor, id: ClientId) -> ActionResult {
 fn completion_abort(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
     if win.focus() == Focus::Completion {
-        pop_focus(editor, id);
+        focus_with_mode(editor, id, Focus::Window, Mode::Normal);
         return ActionResult::Ok;
     }
 
@@ -221,7 +223,7 @@ fn send_word(editor: &mut Editor, id: ClientId) -> ActionResult {
         let cursor = win.cursors.primary().pos();
         let start = win.completion.item_start();
         if start > cursor {
-            pop_focus(editor, id);
+            focus_with_mode(editor, id, Focus::Window, Mode::Normal);
             return ActionResult::Ok;
         }
         let slice = buf.slice(start..cursor);

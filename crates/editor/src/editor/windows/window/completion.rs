@@ -6,7 +6,7 @@ use sanedit_utils::sorted_vec::SortedVec;
 use crate::{
     actions::{
         jobs::{MatchedOptions, MatcherMessage},
-        window::{pop_focus, push_focus},
+        window::focus,
     },
     common::matcher::ScoredChoice,
     editor::{windows::Focus, Editor},
@@ -113,7 +113,7 @@ impl Completion {
                     MatchedOptions::Done => {
                         if win.completion.chooser.options().is_empty() {
                             win.info_msg("No completion items");
-                            pop_focus(editor, id);
+                            focus(editor, id, Focus::Window);
                         }
                     }
                     MatchedOptions::Options { matched, clear_old } => {
@@ -123,7 +123,7 @@ impl Completion {
                         win.completion.add_choices(matched);
 
                         if win.focus() != Focus::Completion {
-                            push_focus(editor, id, Focus::Completion);
+                            focus(editor, id, Focus::Completion);
                         }
                     }
                 }

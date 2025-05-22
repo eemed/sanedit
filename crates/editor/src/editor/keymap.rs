@@ -1,22 +1,22 @@
 use rustc_hash::FxHashMap;
 use sanedit_messages::key::KeyEvent;
-use strum_macros::AsRefStr;
-use strum_macros::EnumIter;
 
 use crate::actions::Action;
 
+use super::windows::Focus;
+use super::windows::Mode;
 use super::Map;
 
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, AsRefStr, EnumIter)]
-#[strum(serialize_all = "lowercase")]
-pub(crate) enum KeymapKind {
-    Search,
-    Prompt,
-    Window,
-    Completion,
-    Filetree,
-    Locations,
-    Snippet,
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Copy)]
+pub(crate) struct LayerKey {
+    pub(crate) focus: Focus,
+    pub(crate) mode: Mode,
+}
+
+impl LayerKey {
+    pub fn insert(&self) -> bool {
+        self.focus != Focus::Window || self.mode == Mode::Insert
+    }
 }
 
 #[derive(Debug, Clone, Default)]
@@ -30,11 +30,7 @@ pub(crate) struct Layer {
     pub(crate) on_leave: Option<Action>,
 
     /// if no keybinding found whether to fallthrough to the next layer
-    pub(crate) fallthrough: Option<String>,
-
-    /// If no keybindging found whether to insert text or discard it
-    /// will do nothing if fallthrough is enabled
-    pub(crate) discard: bool,
+    pub(crate) fallthrough: Option<LayerKey>,
 }
 
 impl Layer {
@@ -44,7 +40,6 @@ impl Layer {
             on_leave: None,
             root: KeyTrie::default(),
             fallthrough: None,
-            discard: false,
         }
     }
 
@@ -63,30 +58,32 @@ impl Layer {
 
 #[derive(Debug, Clone, Default)]
 pub(crate) struct Keymaps {
-    layers: Map<String, Layer>,
+    layers: Map<LayerKey, Layer>,
 }
 
 impl Keymaps {
-    pub fn get_layer(&self, layer: &str) -> Option<&Layer> {
-        self.layers.get(layer)
+    pub fn get_layer(&self, key: &LayerKey) -> Option<&Layer> {
+        self.layers.get(key)
     }
 
-    pub fn get(&self, layer: &str, events: &[KeyEvent]) -> KeymapResult {
-        let mut layer = &self.layers[layer];
+    pub fn get(&self, key: &LayerKey, events: &[KeyEvent]) -> KeymapResult {
+        let mut key = *key;
+        let mut layer = &self.layers[&key];
         let mut result = layer.get(events);
 
         while matches!(result, KeytrieResult::NotFound) {
             // No fallthrough or no new layer to fallto
             match &layer.fallthrough {
                 Some(l) => {
+                    key = *l;
                     layer = &self.layers[l];
                     result = layer.get(events);
                 }
                 None => {
-                    if layer.discard {
-                        return KeymapResult::Discard;
-                    } else {
+                    if key.insert() {
                         return KeymapResult::Insert;
+                    } else {
+                        return KeymapResult::Discard;
                     }
                 }
             }
@@ -99,12 +96,12 @@ impl Keymaps {
         }
     }
 
-    pub fn insert(&mut self, name: &str, layer: Layer) {
-        self.layers.insert(name.to_string(), layer);
+    pub fn insert(&mut self, key: LayerKey, layer: Layer) {
+        self.layers.insert(key, layer);
     }
 
-    pub fn find_bound_key(&self, layer: &str, name: &str) -> Option<Vec<KeyEvent>> {
-        let mut layer = &self.layers[layer];
+    pub fn find_bound_key(&self, key: &LayerKey, name: &str) -> Option<Vec<KeyEvent>> {
+        let mut layer = &self.layers[key];
         let mut result = layer.find_bound_key(name);
 
         while result.is_none() {

@@ -3,8 +3,7 @@ use crate::{
     editor::{
         buffers::Buffer,
         hooks::Hook,
-        keymap::KeymapKind,
-        windows::{Focus, FocusEntry, Zone},
+        windows::{Focus, Mode, Zone},
         Editor,
     },
     VERSION,
@@ -14,124 +13,32 @@ use sanedit_server::ClientId;
 
 use super::{hooks, ActionResult};
 
-/// Pop focus from focus stack and run hooks
-pub fn pop_focus(editor: &mut Editor, id: ClientId) {
-    let (win, _buf) = editor.win_buf_mut(id);
-    let Some(entry) = win.focus_stack.pop() else {
-        focus(editor, id, Focus::Window);
-        return;
-    };
-
-    let same_keymap = win.keymap_layer == entry.keymap_layer;
-    if same_keymap && win.focus() == entry.focus {
-        return;
-    }
-
-    if !same_keymap {
-        hooks::run(editor, id, Hook::KeymapLeave);
-    }
-
-    let (win, _buf) = editor.win_buf_mut(id);
-    win.focus = entry.focus;
-    win.keymap_layer = entry.keymap_layer;
-
-    if !same_keymap {
-        hooks::run(editor, id, Hook::KeymapEnter);
-    }
-}
-
-/// Focus new focus and keymap and place old one in the focus stack, and run
-/// hooks
-pub fn push_focus_with_keymap(editor: &mut Editor, id: ClientId, focus: Focus, keymap: String) {
-    let (win, _buf) = editor.win_buf_mut(id);
-    let entry = FocusEntry {
-        focus: win.focus(),
-        keymap_layer: win.keymap_layer.clone(),
-    };
-    win.focus_stack.push(entry);
-
-    let (win, _buf) = editor.win_buf_mut(id);
-    let same_keymap = win.keymap_layer == keymap;
-    if same_keymap && win.focus() == focus {
-        return;
-    }
-
-    if !same_keymap {
-        hooks::run(editor, id, Hook::KeymapLeave);
-    }
-
-    let (win, _buf) = editor.win_buf_mut(id);
-    win.focus = focus;
-    win.keymap_layer = keymap;
-
-    if !same_keymap {
-        hooks::run(editor, id, Hook::KeymapEnter);
-    }
-}
-
-/// Focus new focus and place old one in the focus stack, and run hooks
-pub fn push_focus(editor: &mut Editor, id: ClientId, focus: Focus) {
-    let kind = match focus {
-        Focus::Search => KeymapKind::Search,
-        Focus::Prompt => KeymapKind::Prompt,
-        Focus::Window => KeymapKind::Window,
-        Focus::Completion => KeymapKind::Completion,
-        Focus::Filetree => KeymapKind::Filetree,
-        Focus::Locations => KeymapKind::Locations,
-    };
-
-    push_focus_with_keymap(editor, id, focus, kind.as_ref().into())
-}
-
-/// Change keymap and run hooks
-pub fn change_keymap(editor: &mut Editor, id: ClientId, keymap: String) {
-    let (win, _buf) = editor.win_buf_mut(id);
-    if win.keymap_layer == keymap {
-        return;
-    }
-
-    hooks::run(editor, id, Hook::KeymapLeave);
-
-    let (win, _buf) = editor.win_buf_mut(id);
-    win.keymap_layer = keymap;
-
-    hooks::run(editor, id, Hook::KeymapEnter);
-}
-
 /// Change focus and keymap and run hooks
-pub fn focus_with_keymap(editor: &mut Editor, id: ClientId, focus: Focus, keymap: String) {
+pub fn focus_with_mode(editor: &mut Editor, id: ClientId, focus: Focus, mode: Mode) {
     let (win, _buf) = editor.win_buf_mut(id);
-    let same_keymap = win.keymap_layer == keymap;
-    if same_keymap && win.focus() == focus {
+    let same_mode = win.mode == mode;
+    if same_mode && win.focus() == focus {
         return;
     }
 
-    if !same_keymap {
-        hooks::run(editor, id, Hook::KeymapLeave);
+    if !same_mode {
+        hooks::run(editor, id, Hook::ModeLeave);
     }
 
     let (win, _buf) = editor.win_buf_mut(id);
-    win.focus_stack.clear();
     win.focus = focus;
-    win.keymap_layer = keymap;
+    win.mode = mode;
 
-    if !same_keymap {
-        hooks::run(editor, id, Hook::KeymapEnter);
+    if !same_mode {
+        hooks::run(editor, id, Hook::ModeEnter);
     }
 }
 
 /// Change focus and run hooks
 pub fn focus(editor: &mut Editor, id: ClientId, focus: Focus) {
-    let kind = match focus {
-        Focus::Search => KeymapKind::Search,
-        Focus::Prompt => KeymapKind::Prompt,
-        Focus::Window => KeymapKind::Window,
-        Focus::Completion => KeymapKind::Completion,
-        Focus::Filetree => KeymapKind::Filetree,
-        Focus::Locations => KeymapKind::Locations,
-    };
-
-    focus_with_keymap(editor, id, focus, kind.as_ref().into())
+    let (win, _buf) = editor.win_buf(id);
+    let mode = win.mode;
+    focus_with_mode(editor, id, focus, mode)
 }
 
 #[action("Window: Focus window")]
@@ -357,8 +264,8 @@ fn hide_diagnostic_highlights(editor: &mut Editor, id: ClientId) -> ActionResult
     ActionResult::Ok
 }
 
-#[action("Keymap: On keymap enter")]
-fn on_keymap_enter(editor: &mut Editor, id: ClientId) -> ActionResult {
+#[action("Mode: On mode enter")]
+fn on_mode_enter(editor: &mut Editor, id: ClientId) -> ActionResult {
     let Some(layer) = editor.layer(id) else {
         return ActionResult::Failed;
     };
@@ -368,13 +275,31 @@ fn on_keymap_enter(editor: &mut Editor, id: ClientId) -> ActionResult {
     ActionResult::Ok
 }
 
-#[action("Keymap: On keymap leave")]
-fn on_keymap_leave(editor: &mut Editor, id: ClientId) -> ActionResult {
+#[action("Mode: On mode leave")]
+fn on_mode_leave(editor: &mut Editor, id: ClientId) -> ActionResult {
     let Some(layer) = editor.layer(id) else {
         return ActionResult::Failed;
     };
     if let Some(action) = layer.on_leave.clone() {
         action.execute(editor, id);
     }
+    ActionResult::Ok
+}
+
+#[action("Mode: Normal")]
+fn mode_normal(editor: &mut Editor, id: ClientId) -> ActionResult {
+    focus_with_mode(editor, id, Focus::Window, Mode::Normal);
+    ActionResult::Ok
+}
+
+#[action("Mode: Insert")]
+fn mode_insert(editor: &mut Editor, id: ClientId) -> ActionResult {
+    focus_with_mode(editor, id, Focus::Window, Mode::Insert);
+    ActionResult::Ok
+}
+
+#[action("Mode: Visual")]
+fn mode_visual(editor: &mut Editor, id: ClientId) -> ActionResult {
+    focus_with_mode(editor, id, Focus::Window, Mode::Visual);
     ActionResult::Ok
 }

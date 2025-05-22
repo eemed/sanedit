@@ -13,21 +13,15 @@ macro_rules! make_keymap {
 impl Default for Config {
     fn default() -> Self {
         let mut keymaps: Map<String, KeymapLayer> = Default::default();
-        keymaps.insert(KeymapKind::Window.as_ref().to_string(), default::window());
-        keymaps.insert(KeymapKind::Search.as_ref().to_string(), default::search());
-        keymaps.insert(
-            KeymapKind::Locations.as_ref().to_string(),
-            default::locations(),
-        );
-        keymaps.insert(
-            KeymapKind::Filetree.as_ref().to_string(),
-            default::filetree(),
-        );
-        keymaps.insert(KeymapKind::Prompt.as_ref().to_string(), default::prompt());
-        keymaps.insert(
-            KeymapKind::Completion.as_ref().to_string(),
-            default::completion(),
-        );
+        keymaps.insert("normal".into(), default::normal());
+        keymaps.insert("insert".into(), default::insert());
+        keymaps.insert("visual".into(), default::visual());
+
+        keymaps.insert("search".into(), default::search());
+        keymaps.insert("locations".into(), default::locations());
+        keymaps.insert("filetree".into(), default::filetree());
+        keymaps.insert("prompt".into(), default::prompt());
+        keymaps.insert("completion".into(), default::completion());
 
         Config {
             editor: Default::default(),
@@ -98,7 +92,6 @@ pub(crate) fn search() -> KeymapLayer {
         on_enter: None,
         on_leave: None,
         fallthrough: None,
-        discard: None,
         maps: map,
     }
 }
@@ -123,7 +116,6 @@ pub(crate) fn prompt() -> KeymapLayer {
         on_enter: None,
         on_leave: None,
         fallthrough: None,
-        discard: None,
         maps: map,
     }
 }
@@ -140,8 +132,7 @@ pub(crate) fn completion() -> KeymapLayer {
     KeymapLayer {
         on_enter: None,
         on_leave: None,
-        fallthrough: Some(KeymapKind::Window.as_ref().into()),
-        discard: None,
+        fallthrough: Some(Mode::Insert),
         maps: compl,
     }
 }
@@ -171,7 +162,6 @@ pub(crate) fn locations() -> KeymapLayer {
         on_enter: None,
         on_leave: None,
         fallthrough: None,
-        discard: None,
         maps: map,
     }
 }
@@ -202,11 +192,200 @@ pub(crate) fn filetree() -> KeymapLayer {
         on_enter: None,
         on_leave: None,
         fallthrough: None,
-        discard: None,
         maps: map,
     }
 }
 
+pub(crate) fn normal() -> KeymapLayer {
+    #[rustfmt::skip]
+    let map = make_keymap!(
+        "space q", quit,
+        "space s", strip_trailing_whitespace,
+        "alt+v", select_line,
+        "ctrl+w", new_window,
+
+        "ctrl+s", save,
+        "ctrl+c", copy,
+        "ctrl+v", paste,
+        "ctrl+x", cut,
+        "ctrl+d", scroll_down,
+        "ctrl+u", scroll_up,
+
+        "esc", cancel,
+        "§", cancel,
+        "y", select_line,
+        "p", paste,
+        "i", mode_insert,
+        "u", undo,
+        "U", redo,
+        "h", prev_grapheme_on_line,
+        "g k", prev_line,
+        "g j", next_line,
+        "l", next_grapheme_on_line,
+        "k", prev_visual_line,
+        "j", next_visual_line,
+        "ctrl+o", jump_prev,
+        "tab", jump_next,
+        "g ;", jump_prev_change,
+        "g ,", jump_next_change,
+        "z z", view_to_cursor_middle,
+        "z t", view_to_cursor_top,
+        "z b", view_to_cursor_bottom,
+        "H", cursor_to_view_top,
+        "M", cursor_to_view_middle,
+        "L", cursor_to_view_bottom,
+        "g c", toggle_comment_lines,
+        "J", join_lines,
+
+
+        "ctrl+p", open_file,
+        "v", start_selection,
+        "$", end_of_line,
+        "^", start_of_line,
+        "0", first_char_of_line,
+        "w", next_word_start,
+        "b", prev_word_start,
+        "V", select_line,
+        "a", next_grapheme_on_line,
+        "A", end_of_line,
+        "I", first_char_of_line,
+        "!", shell_command,
+        ":", command_palette,
+        "/", search_forward,
+        "?", search_backward,
+        "%", goto_matching_pair,
+        "c", first_char_of_line,
+        "d", select_line,
+        "D", start_selection,
+        "x", remove_grapheme_after_cursor,
+        "G", end_of_buffer,
+        "g g", start_of_buffer,
+        "o", newline_below,
+        "O", newline_above,
+        ">", indent_line,
+        "<", dedent_line,
+        "f", find_next_char_on_line,
+        "F", find_prev_char_on_line,
+        ";", next_searched_char,
+        ",", prev_searched_char,
+        "n", next_search_match,
+        "N", prev_search_match,
+        "#", search_prev_word_under_cursor,
+        "*", search_next_word_under_cursor,
+        "&", align_cursor_columns,
+
+        "right", next_grapheme_on_line,
+        "left", prev_grapheme_on_line,
+
+        "alt+down", new_cursor_to_next_line,
+        "alt+up", new_cursor_to_prev_line,
+        "alt+d", new_cursor_to_next_search_match,
+        "alt+l", new_cursor_to_all_search_matches,
+        "space b", open_buffer,
+        "space g", grep,
+
+        "g l", goto_line,
+        "g d", goto_definition,
+        "g r", references,
+        "g R", rename,
+        "space a", code_action,
+        "space f", format,
+        "space e", show_diagnostics,
+        "space d", diagnostics_to_locations,
+        "K", hover,
+
+        "-", show_filetree,
+        "alt+q", show_locations,
+        "backspace", goto_prev_buffer,
+        "alt+j", focus_locations,
+        "alt+h", focus_filetree,
+
+        "s s", select_pattern,
+
+        "s l", select_line,
+        "s c", select_curly,
+        "s C", select_curly_incl,
+        "s b", select_parens,
+        "s B", select_parens_incl,
+        "s r", select_square,
+        "s R", select_square_incl,
+        "s a", select_angle,
+        "s A", select_angle_incl,
+        "s \"", select_double,
+        "s '", select_single,
+        "s `", select_backtick,
+        "s p", select_paragraph,
+        "s w", select_word,
+
+        "e", next_word_end,
+        "E", prev_word_end,
+
+        "f5", reload_window,
+    );
+
+    KeymapLayer {
+        on_enter: None,
+        on_leave: None,
+        fallthrough: None,
+        maps: map,
+    }
+}
+
+pub(crate) fn insert() -> KeymapLayer {
+    #[rustfmt::skip]
+    let map = make_keymap!(
+        "esc", mode_normal,
+        "§", mode_normal,
+        "left", prev_grapheme,
+        "up", prev_line,
+        "down", next_line,
+        "right", next_grapheme,
+        "backspace", remove_grapheme_before_cursor,
+        "delete", remove_grapheme_after_cursor,
+        "enter", insert_newline,
+        "tab", insert_tab,
+        "btab", backtab,
+    );
+
+    KeymapLayer {
+        on_enter: None,
+        on_leave: None,
+        fallthrough: None,
+        maps: map,
+    }
+}
+
+pub(crate) fn visual() -> KeymapLayer {
+    #[rustfmt::skip]
+    let map = make_keymap!(
+        "i", nop,
+        "x", remove_cursor_selections,
+        "d", remove_cursor_selections,
+        "c", remove_cursor_selections,
+        "y", copy,
+        "esc", stop_selection,
+        "§", stop_selection,
+        ".", swap_selection_dir,
+
+        "g", nop,
+        "g c", toggle_comment_lines,
+        "I", cursors_to_lines_start,
+        "A", cursors_to_lines_end,
+        "s", select_pattern,
+
+        "ctrl+x", cut,
+        "ctrl+c", copy,
+    );
+
+    KeymapLayer {
+        on_enter: None,
+        on_leave: None,
+        fallthrough: Some(Mode::Normal),
+        maps: map,
+    }
+}
+
+#[allow(dead_code)]
 pub(crate) fn window() -> KeymapLayer {
     #[rustfmt::skip]
         let map = make_keymap!(
@@ -306,7 +485,6 @@ pub(crate) fn window() -> KeymapLayer {
         on_enter: None,
         on_leave: None,
         fallthrough: None,
-        discard: None,
         maps: map,
     }
 }

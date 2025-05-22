@@ -49,8 +49,8 @@ pub(crate) enum Hook {
     OnDrawPre,
     Reload,
 
-    KeymapEnter,
-    KeymapLeave,
+    ModeEnter,
+    ModeLeave,
 }
 
 impl Hook {
@@ -154,8 +154,8 @@ impl Default for Hooks {
         hooks.register(CursorMoved, cursors::merge_overlapping_cursors);
         hooks.register(OnMessagePre, window::clear_messages);
         hooks.register(BufLeave, window::save_cursor_jump);
-        hooks.register(KeymapEnter, window::on_keymap_enter);
-        hooks.register(KeymapLeave, window::on_keymap_leave);
+        hooks.register(ModeEnter, window::on_mode_enter);
+        hooks.register(ModeLeave, window::on_mode_leave);
 
         // TODO handle registration only when needed?
         hooks.register(CursorMoved, completion::completion_abort);

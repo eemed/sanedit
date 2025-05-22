@@ -3,7 +3,7 @@ use sanedit_messages::redraw::{self, CursorShape, Style, Theme, ThemeField};
 use crate::editor::{
     buffers::Buffer,
     lsp::get_diagnostics,
-    windows::{Cell, Cursors, Focus, View},
+    windows::{Cell, Cursors, Focus, Mode, View},
 };
 
 use super::{DrawContext, EditorContext};
@@ -17,7 +17,6 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> redraw::window::Window {
         theme,
         buf,
         language_servers,
-        keymaps,
         ..
     } = ctx.editor;
 
@@ -56,10 +55,7 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> redraw::window::Window {
         None
     };
     // if layer does not discard, we can insert
-    let can_insert = keymaps
-        .get_layer(&win.keymap_layer)
-        .map(|kmap| !kmap.discard)
-        .unwrap_or(false);
+    let can_insert = win.mode == Mode::Insert;
 
     draw_syntax(&mut grid, view, theme);
     if let Some(diagnostics) = diagnostics {

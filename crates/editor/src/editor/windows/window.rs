@@ -117,9 +117,16 @@ impl Window {
     }
 
     pub fn layer(&self) -> LayerKey {
-        LayerKey {
-            focus: self.focus,
-            mode: self.mode,
+        if self.focus == Focus::Window {
+            LayerKey {
+                focus: self.focus,
+                mode: self.mode,
+            }
+        } else {
+            LayerKey {
+                focus: self.focus,
+                mode: Mode::Normal,
+            }
         }
     }
 
@@ -330,7 +337,7 @@ impl Window {
         self.view.redraw(buf);
 
         if !self.view.is_visible(cursor) {
-        log::info!("view to: {cursor}, len: {}", buf.len());
+            log::info!("view to: {cursor}, len: {}", buf.len());
             self.view.view_to(cursor, buf);
         }
     }
@@ -817,7 +824,47 @@ impl Window {
         self.change(buf, &changes)
     }
 
-    fn cursor_line_starts(&self, buf: &Buffer) -> Vec<u64> {
+    pub fn cursors_to_eol(&self, buf: &Buffer) -> Vec<BufferRange> {
+        let mut lines = vec![];
+        let slice = buf.slice(..);
+        let mut starts: Vec<u64> = self
+            .cursors()
+            .cursors()
+            .iter()
+            .map(|cursor| cursor.pos())
+            .collect();
+        starts.sort();
+
+        let mut high = 0;
+
+        for start in starts {
+            if high >= start {
+                continue;
+            }
+
+            let end = end_of_line(&slice, start);
+            lines.push(Range::new(start, end));
+            high = end;
+        }
+
+        lines
+    }
+
+    pub fn cursor_lines(&self, buf: &Buffer) -> Vec<BufferRange> {
+        let mut lines = vec![];
+        let slice = buf.slice(..);
+        let starts = self.cursor_line_starts(buf);
+        for start in starts {
+            let next = next_line_start(&slice, start);
+            if next != start {
+                lines.push(Range::new(start, next));
+            }
+        }
+
+        lines
+    }
+
+    pub fn cursor_line_starts(&self, buf: &Buffer) -> Vec<u64> {
         let slice = buf.slice(..);
         let mut starts = FxHashSet::default();
 
@@ -832,7 +879,7 @@ impl Window {
         vstarts
     }
 
-    fn cursor_line_ends(&self, buf: &Buffer) -> Vec<u64> {
+    pub fn cursor_line_ends(&self, buf: &Buffer) -> Vec<u64> {
         let slice = buf.slice(..);
         let mut endset = FxHashSet::default();
 

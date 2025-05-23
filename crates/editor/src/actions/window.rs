@@ -11,7 +11,11 @@ use crate::{
 
 use sanedit_server::ClientId;
 
-use super::{hooks, ActionResult};
+use super::{
+    hooks,
+    movement::{end_of_line, first_char_of_line, prev_grapheme_on_line},
+    ActionResult,
+};
 
 /// Change focus and keymap and run hooks
 pub fn focus_with_mode(editor: &mut Editor, id: ClientId, focus: Focus, mode: Mode) {
@@ -329,5 +333,26 @@ fn insert_mode(editor: &mut Editor, id: ClientId) -> ActionResult {
 #[action("Mode: Visual")]
 fn select_mode(editor: &mut Editor, id: ClientId) -> ActionResult {
     focus_with_mode(editor, id, Focus::Window, Mode::Select);
+    ActionResult::Ok
+}
+
+#[action("Mode: Insert after cursor")]
+fn insert_mode_after(editor: &mut Editor, id: ClientId) -> ActionResult {
+    prev_grapheme_on_line.execute(editor, id);
+    focus_with_mode(editor, id, Focus::Window, Mode::Insert);
+    ActionResult::Ok
+}
+
+#[action("Mode: Insert at the end of the line")]
+fn insert_mode_end_of_line(editor: &mut Editor, id: ClientId) -> ActionResult {
+    end_of_line.execute(editor, id);
+    focus_with_mode(editor, id, Focus::Window, Mode::Insert);
+    ActionResult::Ok
+}
+
+#[action("Mode: Insert at first character of line")]
+fn insert_mode_first_char_of_line(editor: &mut Editor, id: ClientId) -> ActionResult {
+    first_char_of_line.execute(editor, id);
+    focus_with_mode(editor, id, Focus::Window, Mode::Insert);
     ActionResult::Ok
 }

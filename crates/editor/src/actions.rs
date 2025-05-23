@@ -159,6 +159,7 @@ pub(crate) const COMMANDS: &[Action] = &[
     editor::quit,
 
     editor::copy,
+    editor::copy_to_eol,
     editor::paste,
     editor::cut,
     editor::open_config,
@@ -184,6 +185,8 @@ pub(crate) const COMMANDS: &[Action] = &[
     text::toggle_comment_lines,
     text::join_lines,
     text::insert_literal,
+    text::remove_line,
+    text::remove_to_eol,
 
     prompt::open_file,
     prompt::open_buffer,
@@ -294,6 +297,9 @@ pub(crate) const COMMANDS: &[Action] = &[
     window::insert_mode,
     window::normal_mode,
     window::select_mode,
+    window::insert_mode_after,
+    window::insert_mode_end_of_line,
+    window::insert_mode_first_char_of_line,
 
     completion::complete,
 

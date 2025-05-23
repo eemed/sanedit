@@ -203,7 +203,7 @@ impl GraphemeCategory {
     #[inline(always)]
     pub fn is_word(&self) -> bool {
         use GraphemeCategory::*;
-        matches!(self, Word | Punctuation)
+        matches!(self, Word | Punctuation | EOL)
     }
 }
 

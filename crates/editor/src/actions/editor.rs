@@ -9,7 +9,12 @@ use crate::{
 };
 use sanedit_server::ClientId;
 
-use super::{hooks::run, prompt::unsaved_changes, window::focus, ActionResult};
+use super::{
+    hooks::run,
+    prompt::unsaved_changes,
+    window::{focus, mode_normal},
+    ActionResult,
+};
 
 #[action("Editor: Quit")]
 fn quit(editor: &mut Editor, id: ClientId) -> ActionResult {
@@ -30,9 +35,26 @@ fn quit(editor: &mut Editor, id: ClientId) -> ActionResult {
     ActionResult::Ok
 }
 
+#[action("Editor: Copy to next line end clipboard")]
+fn copy_to_eol(editor: &mut Editor, id: ClientId) -> ActionResult {
+    let (win, _buf) = editor.win_buf_mut(id);
+    if win.cursors.has_selections() {
+        return ActionResult::Skipped;
+    }
+
+    editor.copy_to_eol_to_clipboard(id);
+    ActionResult::Ok
+}
+
 #[action("Editor: Copy to clipboard")]
 fn copy(editor: &mut Editor, id: ClientId) -> ActionResult {
-    editor.copy_to_clipboard(id);
+    let (win, _buf) = editor.win_buf_mut(id);
+    if !win.cursors.has_selections() {
+        editor.copy_line_to_clipboard(id);
+    } else {
+        editor.copy_to_clipboard(id);
+    }
+
     ActionResult::Ok
 }
 
@@ -53,6 +75,7 @@ fn cut(editor: &mut Editor, id: ClientId) -> ActionResult {
         run(editor, id, Hook::BufChanged(bid));
     }
 
+    mode_normal(editor, id);
     ActionResult::Ok
 }
 

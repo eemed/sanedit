@@ -470,9 +470,18 @@ impl View {
     }
 
     fn has_eof(&self) -> bool {
-        for row in &self.cells {
-            if row.iter().any(|cell| matches!(cell, Cell::EOF)) {
-                return true;
+        let mut found_text = false;
+        for row in self.cells.iter().rev() {
+            for cell in row {
+                match cell {
+                    Cell::EOF => return true,
+                    Cell::Empty => break,
+                    _ => found_text = true,
+                }
+            }
+
+            if found_text {
+                break;
             }
         }
 

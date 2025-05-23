@@ -13,12 +13,6 @@ pub(crate) struct LayerKey {
     pub(crate) mode: Mode,
 }
 
-impl LayerKey {
-    pub fn insert(&self) -> bool {
-        self.focus != Focus::Window || self.mode == Mode::Insert
-    }
-}
-
 #[derive(Debug, Clone, Default)]
 pub(crate) struct Layer {
     root: KeyTrie,
@@ -47,7 +41,7 @@ impl Layer {
         self.root.bind(events, action)
     }
 
-    pub fn get(&self, events: &[KeyEvent]) -> KeytrieResult {
+    pub fn get(&self, events: &[KeyEvent]) -> KeymapResult {
         self.root.get(events)
     }
 
@@ -67,32 +61,26 @@ impl Keymaps {
     }
 
     pub fn get(&self, key: &LayerKey, events: &[KeyEvent]) -> KeymapResult {
-        let mut key = *key;
         let mut layer = &self.layers[&key];
         let mut result = layer.get(events);
 
-        while matches!(result, KeytrieResult::NotFound) {
+        while matches!(result, KeymapResult::NotFound) {
             // No fallthrough or no new layer to fallto
             match &layer.fallthrough {
                 Some(l) => {
-                    key = *l;
                     layer = &self.layers[l];
                     result = layer.get(events);
                 }
                 None => {
-                    if key.insert() {
-                        return KeymapResult::Insert;
-                    } else {
-                        return KeymapResult::Discard;
-                    }
+                    return KeymapResult::NotFound;
                 }
             }
         }
 
         match result {
-            KeytrieResult::Matched(action) => KeymapResult::Matched(action),
-            KeytrieResult::Pending(action) => KeymapResult::Pending(action),
-            KeytrieResult::NotFound => unreachable!(),
+            KeymapResult::Matched(action) => KeymapResult::Matched(action),
+            KeymapResult::Pending(action) => KeymapResult::Pending(action),
+            KeymapResult::NotFound => unreachable!(),
         }
     }
 
@@ -114,15 +102,8 @@ impl Keymaps {
     }
 }
 
-pub(crate) enum KeymapResult {
-    Matched(Action),
-    Pending(Option<Action>),
-    Insert,
-    Discard,
-}
-
 #[derive(Debug)]
-pub(crate) enum KeytrieResult {
+pub(crate) enum KeymapResult {
     Matched(Action),
     Pending(Option<Action>),
     NotFound,
@@ -134,7 +115,7 @@ struct KeyTrie {
 }
 
 impl KeyTrie {
-    fn get(&self, events: &[KeyEvent]) -> KeytrieResult {
+    fn get(&self, events: &[KeyEvent]) -> KeymapResult {
         self.root.get(events)
     }
 
@@ -180,27 +161,27 @@ impl KeyTrieNode {
         }
     }
 
-    fn get(&self, events: &[KeyEvent]) -> KeytrieResult {
+    fn get(&self, events: &[KeyEvent]) -> KeymapResult {
         if events.is_empty() {
             // If next keys exist keep in pending state and return middle
             // actions
             if !self.map.is_empty() {
-                return KeytrieResult::Pending(self.action.clone());
+                return KeymapResult::Pending(self.action.clone());
             }
 
             // If bound to nothing
             if self.action.is_none() {
-                return KeytrieResult::NotFound;
+                return KeymapResult::NotFound;
             }
 
-            return KeytrieResult::Matched(self.action.clone().unwrap());
+            return KeymapResult::Matched(self.action.clone().unwrap());
         }
 
         if let Some(node) = self.map.get(&events[0]) {
             return node.get(&events[1..]);
         }
 
-        KeytrieResult::NotFound
+        KeymapResult::NotFound
     }
 
     fn find_bound_key(&self, name: &str) -> Option<Vec<KeyEvent>> {

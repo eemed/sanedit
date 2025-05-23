@@ -141,8 +141,10 @@ fn find_range_included(
         // if start is found => search backwards for end or start
         let first_start_after = pos + adv + slen;
         let mut g = slice.graphemes_at(pos);
-        let (adv, is_start) = find_prev_start_or_end(&mut g, start, end)?;
+        let res = find_prev_start_or_end(&mut g, start, end);
+        let is_start = res.map(|(_, is_start)| is_start).unwrap_or(false);
         if is_start {
+            let (adv, _) = res.unwrap();
             // "[ | [ ] ]" select the whole thing
             // Search an end for the previous start instead
             let start_pos = pos - adv;
@@ -163,7 +165,7 @@ fn find_range_included(
 
             Some((start_pos..cpos).into())
         } else {
-            // "] | [ ]"  select next brackets
+            // "(]) | [ ]"  select next brackets
             // Jump forward to the first starting pos and search an end for that
             let mut cpos = first_start_after;
             let mut nest = 1;

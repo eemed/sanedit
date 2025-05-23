@@ -76,7 +76,7 @@ impl Default for EditorConfig {
 pub(crate) fn search() -> KeymapLayer {
     #[rustfmt::skip]
         let map = make_keymap!(
-            "ctrl+q",      quit,
+            "space q",      quit,
 
             "esc",          prompt_close,
             "backspace",    prompt_remove_grapheme_before_cursor,
@@ -100,7 +100,7 @@ pub(crate) fn search() -> KeymapLayer {
 pub(crate) fn prompt() -> KeymapLayer {
     #[rustfmt::skip]
         let map = make_keymap!(
-             "ctrl+q",    quit,
+             "space q",    quit,
 
              "esc",       prompt_close,
              "§",         prompt_close,
@@ -142,23 +142,24 @@ pub(crate) fn completion() -> KeymapLayer {
 pub(crate) fn locations() -> KeymapLayer {
     #[rustfmt::skip]
         let map = make_keymap!(
-             "ctrl+q", quit,
+             "space q", quit,
 
              "alt+up", focus_window,
              "esc",    close_locations,
+             "alt+q",  close_locations,
+             "§",      close_locations,
              "enter",  goto_loc_entry,
-             "up",     prev_loc_entry,
-             "down",   next_loc_entry,
+             "up",      prev_loc_entry,
+             "down",      next_loc_entry,
+             "k",      prev_loc_entry,
+             "j",      next_loc_entry,
              "btab",   prev_loc_entry,
              "tab",    next_loc_entry,
+
              "p",      select_loc_parent,
              "s",      toggle_all_expand_locs,
-             "k",      keep_locations,
-             "r",      reject_locations,
-
-             "alt+1",  focus_window,
-             "alt+2",  show_filetree,
-             "alt+3",  close_locations,
+             "K",      keep_locations,
+             "R",      reject_locations,
         );
     KeymapLayer {
         on_enter: None,
@@ -171,13 +172,16 @@ pub(crate) fn locations() -> KeymapLayer {
 pub(crate) fn filetree() -> KeymapLayer {
     #[rustfmt::skip]
         let map = make_keymap!(
-             "ctrl+q", quit,
+             "space q", quit,
 
              "esc",       close_filetree,
+             "§",         close_filetree,
              "alt+right", focus_window,
              "enter",     goto_ft_entry,
              "up",        prev_ft_entry,
              "down",      next_ft_entry,
+             "j",        prev_ft_entry,
+             "k",      next_ft_entry,
              "btab",      prev_ft_entry,
              "tab",       next_ft_entry,
              "c",         ft_new_file,
@@ -215,7 +219,8 @@ pub(crate) fn normal() -> KeymapLayer {
 
         "esc", cancel,
         "§", cancel,
-        "y", select_line,
+        "y", copy,
+        "Y", copy_to_eol,
         "p", paste,
         "i", insert_mode,
         "u", undo,
@@ -248,17 +253,17 @@ pub(crate) fn normal() -> KeymapLayer {
         "w", next_word_start,
         "b", prev_word_start,
         "V", select_line,
-        "a", next_grapheme_on_line,
-        "A", end_of_line,
-        "I", first_char_of_line,
+        "a", insert_mode_after,
+        "A", insert_mode_end_of_line,
+        "I", insert_mode_first_char_of_line,
         "!", shell_command,
         ":", command_palette,
         "/", search_forward,
         "?", search_backward,
         "%", goto_matching_pair,
         "c", first_char_of_line,
-        "d", select_line,
-        "D", start_selection,
+        "d", remove_line,
+        "D", remove_to_eol,
         "x", remove_grapheme_after_cursor,
         "G", end_of_buffer,
         "g g", start_of_buffer,
@@ -326,7 +331,7 @@ pub(crate) fn normal() -> KeymapLayer {
     );
 
     KeymapLayer {
-        on_enter: None,
+        on_enter: Some(vec!["show_diagnostic_highlights".into()]),
         on_leave: None,
         fallthrough: None,
         maps: map,
@@ -350,8 +355,8 @@ pub(crate) fn insert() -> KeymapLayer {
     );
 
     KeymapLayer {
-        on_enter: None,
         on_leave: None,
+        on_enter: Some(vec!["hide_diagnostic_highlights".into()]),
         fallthrough: None,
         maps: map,
     }
@@ -391,7 +396,7 @@ pub(crate) fn select() -> KeymapLayer {
 pub(crate) fn window() -> KeymapLayer {
     #[rustfmt::skip]
         let map = make_keymap!(
-            "ctrl+q",    quit,
+            "space q",    quit,
             "ctrl+c",    copy,
             "ctrl+v",    paste,
             "ctrl+x",    cut,

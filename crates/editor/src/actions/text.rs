@@ -17,8 +17,10 @@ use sanedit_server::ClientId;
 
 use super::{
     completion,
+    cursors::{remove_cursor_selections, swap_selection_dir},
     hooks::run,
     movement::{end_of_line, prev_line},
+    text_objects::select_line,
     window::focus,
     ActionResult,
 };
@@ -378,4 +380,23 @@ fn insert_literal(editor: &mut Editor, id: ClientId) -> ActionResult {
         ActionResult::Ok
     })));
     ActionResult::Ok
+}
+
+#[action("Buffer: Remove line")]
+fn remove_line(editor: &mut Editor, id: ClientId) -> ActionResult {
+    select_line.execute(editor, id);
+    remove_cursor_selections.execute(editor, id)
+}
+
+#[action("Buffer: Remove to line end")]
+fn remove_to_eol(editor: &mut Editor, id: ClientId) -> ActionResult {
+    let (win, _buf) = editor.win_buf_mut(id);
+    if win.cursors.has_selections() {
+        return ActionResult::Skipped;
+    }
+
+    win.cursors.start_selection();
+    end_of_line.execute(editor, id);
+    swap_selection_dir.execute(editor, id);
+    remove_cursor_selections.execute(editor, id)
 }

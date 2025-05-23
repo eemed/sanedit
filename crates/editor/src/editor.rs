@@ -53,9 +53,7 @@ use anyhow::Result;
 
 use crate::actions;
 use crate::actions::cursors;
-use crate::actions::cursors::swap_selection_dir;
 use crate::actions::hooks::run;
-use crate::actions::text_objects::select_line;
 use crate::common::matcher::Choice;
 use crate::draw::DrawState;
 use crate::draw::EditorContext;
@@ -563,14 +561,13 @@ impl Editor {
                 }
                 return;
             }
-            KeymapResult::Insert => {
+            KeymapResult::NotFound => {
                 let (win, _buf) = self.win_buf_mut(id);
                 events = win.clear_keys();
-            }
-            KeymapResult::Discard => {
-                let (win, _buf) = self.win_buf_mut(id);
-                win.clear_keys();
-                return;
+
+                if win.focus == Focus::Window && win.mode != Mode::Insert {
+                    return;
+                }
             }
         }
 
@@ -721,15 +718,33 @@ impl Editor {
         }
     }
 
-    pub fn copy_to_clipboard(&mut self, id: ClientId) {
-        let (win, _) = self.win_buf_mut(id);
+    pub fn copy_line_to_clipboard(&mut self, id: ClientId) {
+        let (win, buf) = self.win_buf_mut(id);
+        let mut lines = vec![];
 
-        // If no selections select lines without moving cursors
-        if !win.cursors.has_selections() {
-            select_line.execute(self, id);
-            swap_selection_dir.execute(self, id);
+        for range in win.cursor_lines(buf) {
+            let text = String::from(&buf.slice(range));
+            lines.push(text);
         }
 
+        let line = copy_cursors_to_lines(lines, buf.config.eol);
+        self.clipboard.copy(&line);
+    }
+
+    pub fn copy_to_eol_to_clipboard(&mut self, id: ClientId) {
+        let (win, buf) = self.win_buf_mut(id);
+        let mut lines = vec![];
+
+        for range in win.cursors_to_eol(buf) {
+            let text = String::from(&buf.slice(range));
+            lines.push(text);
+        }
+
+        let line = copy_cursors_to_lines(lines, buf.config.eol);
+        self.clipboard.copy(&line);
+    }
+
+    pub fn copy_to_clipboard(&mut self, id: ClientId) {
         let (win, buf) = self.win_buf(id);
         let mut lines = vec![];
         for cursor in win.cursors.cursors() {

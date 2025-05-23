@@ -855,7 +855,7 @@ impl Window {
         let slice = buf.slice(..);
         let starts = self.cursor_line_starts(buf);
         for start in starts {
-            let next = next_line_start(&slice, start);
+            let next = end_of_line(&slice, start);
             if next != start {
                 lines.push(Range::new(start, next));
             }

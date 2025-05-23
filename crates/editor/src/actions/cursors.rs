@@ -214,6 +214,10 @@ fn merge_overlapping_cursors(editor: &mut Editor, id: ClientId) -> ActionResult 
 
 #[action("Cursors: Remove selections")]
 fn remove_cursor_selections(editor: &mut Editor, id: ClientId) -> ActionResult {
+    if editor.config.editor.copy_on_delete {
+        editor.copy_line_to_clipboard(id);
+    }
+
     let (win, buf) = editor.win_buf_mut(id);
     let res = match win.remove_cursor_selections(buf) {
         Ok(true) => {

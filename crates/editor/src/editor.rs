@@ -727,6 +727,10 @@ impl Editor {
             lines.push(text);
         }
 
+        if lines.len() == 1 {
+            lines[0].push_str(buf.config.eol.as_str());
+        }
+
         let line = copy_cursors_to_lines(lines, buf.config.eol);
         self.clipboard.copy(&line);
     }

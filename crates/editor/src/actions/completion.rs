@@ -16,7 +16,7 @@ use crate::{
 
 use sanedit_server::ClientId;
 
-use super::{hooks::run, jobs::MatcherJob, lsp, snippets, text, window::mode_normal, ActionResult};
+use super::{hooks::run, jobs::MatcherJob, lsp, snippets, text, window::{focus, mode_normal}, ActionResult};
 
 #[action("Editor: Complete")]
 fn complete(editor: &mut Editor, id: ClientId) -> ActionResult {
@@ -66,6 +66,8 @@ fn complete_from_syntax(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Completion: Confirm")]
 fn completion_confirm(editor: &mut Editor, id: ClientId) -> ActionResult {
+    focus(editor, id, Focus::Window);
+
     let (win, buf) = win_buf!(editor, id);
     let opt = getf!(win.completion.selected().cloned());
     let choice = opt.choice();
@@ -219,7 +221,7 @@ fn send_word(editor: &mut Editor, id: ClientId) -> ActionResult {
         let cursor = win.cursors.primary().pos();
         let start = win.completion.item_start();
         if start > cursor {
-            mode_normal(editor, id);
+            focus(editor, id, Focus::Window);
             return ActionResult::Ok;
         }
         let slice = buf.slice(start..cursor);

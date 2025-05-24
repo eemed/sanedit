@@ -30,7 +30,48 @@ pub(crate) struct Search {
     ///
     /// Hooks will take care of highlighting,
     /// to trigger automatic highlightin set this to Some(Default::default())
-    pub highlights: Option<SearchHighlights>,
+    highlights: SearchHighlights,
+    show_highlights: bool,
+}
+
+impl Search {
+    pub fn highlights(&self) -> Option<&SearchHighlights> {
+        if self.show_highlights {
+            Some(&self.highlights)
+        } else {
+            None
+        }
+    }
+
+    pub fn highlights_mut(&mut self) -> Option<&mut SearchHighlights> {
+        if self.show_highlights {
+            Some(&mut self.highlights)
+        } else {
+            None
+        }
+    }
+
+    pub fn set_highlights(&mut self, hls: SearchHighlights) {
+        self.show_highlights = true;
+        self.highlights = hls;
+    }
+
+    pub fn is_highlighting_enabled(&self) -> bool {
+        self.show_highlights
+    }
+
+    pub fn enable_highlighting(&mut self) {
+        self.show_highlights = true;
+    }
+
+    pub fn disable_highlighting(&mut self) {
+        self.show_highlights = false;
+        self.reset_highlighting();
+    }
+
+    pub fn reset_highlighting(&mut self) {
+        self.highlights = Default::default();
+    }
 }
 
 impl Default for Search {
@@ -38,7 +79,8 @@ impl Default for Search {
         Search {
             on_line_char_search: None,
             current: SearchResult::default(),
-            highlights: None,
+            show_highlights: false,
+            highlights: Default::default(),
         }
     }
 }

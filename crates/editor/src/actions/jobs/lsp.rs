@@ -172,6 +172,7 @@ impl LSPJob {
     }
 
     fn handle_result(&self, editor: &mut Editor, id: ClientId, result: RequestResult) {
+        let mut on_message_post = true;
         match result {
             RequestResult::Hover { text, .. } => {
                 let (win, _buf) = editor.win_buf_mut(id);
@@ -219,8 +220,15 @@ impl LSPJob {
                 log::error!("LSP '{}' failed to process: {msg}", self.opts.command);
             }
             RequestResult::Diagnostics { path, diagnostics } => {
-                self.handle_diagnostics(editor, path, None, diagnostics)
+                self.handle_diagnostics(editor, path, None, diagnostics);
+                on_message_post = false;
             }
+        }
+
+        // TODO better solution, this currently highlights syntax / searches
+        // and is disabled for if lsp is spamming the response type for example for diagnostics
+        if on_message_post {
+            run(editor, id, Hook::OnMessagePost);
         }
     }
 

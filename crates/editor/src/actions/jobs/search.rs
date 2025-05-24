@@ -97,12 +97,11 @@ impl KeepInTouch for Search {
             let (win, _buf) = editor.win_buf_mut(self.client_id);
             match *output {
                 SearchMessage::Matches(matches) => {
-                    win.search.highlights = SearchHighlights {
+                    win.search.set_highlights(SearchHighlights {
                         highlights: matches,
                         changes_made: self.changes_made,
                         buffer_range: self.range.clone(),
-                    }
-                    .into();
+                    });
                 }
             }
         }

@@ -189,6 +189,8 @@ impl Window {
     }
 
     pub fn open_buffer(&mut self, bid: BufferId) -> BufferId {
+        // Clear highlights if needed
+        self.search.reset_highlighting();
         self.cursor_jumps.goto_start();
 
         let old = self.bid;
@@ -730,6 +732,7 @@ impl Window {
     // Restore aux data, if buffer is provided try to scroll to view position
     // otherwise hard set it
     fn restore(&mut self, aux: &SnapshotAux, buf: Option<&Buffer>) {
+        self.search.reset_highlighting();
         self.cursors = aux.cursors.clone();
 
         match buf {

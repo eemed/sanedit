@@ -423,6 +423,7 @@ fn grep(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
     win.prompt = Prompt::builder()
         .prompt("Grep")
+        .history(HistoryKind::Grep)
         .simple()
         .on_confirm(move |e, id, out| {
             const GREP_JOB: &str = "grep";

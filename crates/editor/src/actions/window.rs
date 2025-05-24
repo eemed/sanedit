@@ -320,6 +320,7 @@ fn normal_mode(editor: &mut Editor, id: ClientId) -> ActionResult {
     }
 
     focus_with_mode(editor, id, Focus::Window, Mode::Normal);
+    prev_grapheme_on_line.execute(editor, id);
     ActionResult::Ok
 }
 

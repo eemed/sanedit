@@ -364,7 +364,6 @@ impl Window {
 
     /// Move primary cursor to offset and the view too
     pub fn goto_offset(&mut self, offset: u64, buf: &Buffer) {
-        self.push_new_cursor_jump(buf);
         let offset = min(offset, buf.len());
         let primary = self.cursors.primary_mut();
         primary.goto(offset);

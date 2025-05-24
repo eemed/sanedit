@@ -20,6 +20,7 @@ use super::{
     cursors::{remove_cursor_selections, swap_selection_dir},
     hooks::run,
     movement::{end_of_line, prev_line},
+    snippets::snippet_jump_next,
     text_objects::select_line,
     window::{focus, mode_insert, mode_normal},
     ActionResult,
@@ -165,31 +166,42 @@ fn insert_newline(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Buffer: Insert tab")]
 fn insert_tab(editor: &mut Editor, id: ClientId) -> ActionResult {
-    run(editor, id, Hook::InsertPre);
-
     let (win, buf) = editor.win_buf_mut(id);
+
+    // Snippet
+    if !win.snippets.is_empty() {
+        snippet_jump_next.execute(editor, id);
+        return ActionResult::Ok;
+    }
+
     let slice = buf.slice(..);
     let primary = win.cursors.primary().pos();
 
     if win.cursors().has_selections() {
+        run(editor, id, Hook::InsertPre);
+        let (win, buf) = editor.win_buf_mut(id);
         if win.indent_cursor_lines(buf).is_ok() {
             let hook = Hook::BufChanged(buf.id);
             run(editor, id, hook);
         }
-        ActionResult::Ok
+        return ActionResult::Ok;
     } else if win.cursors.len() == 1
         && !is_indent_at_pos(&slice, primary)
         && !at_start_of_line(&slice, primary)
     {
         // If single cursor not in indentation try completion
-        completion::complete.execute(editor, id)
-    } else if win.indent(buf).is_ok() {
-        let hook = Hook::BufChanged(buf.id);
-        run(editor, id, hook);
-        ActionResult::Ok
+        return completion::complete.execute(editor, id);
     } else {
-        ActionResult::Skipped
+        run(editor, id, Hook::InsertPre);
+        let (win, buf) = editor.win_buf_mut(id);
+        if win.indent(buf).is_ok() {
+            let hook = Hook::BufChanged(buf.id);
+            run(editor, id, hook);
+            return ActionResult::Ok;
+        }
     }
+
+    ActionResult::Skipped
 }
 
 #[action("Buffer: Dedent")]
@@ -356,7 +368,6 @@ fn toggle_comment_lines(editor: &mut Editor, id: ClientId) -> ActionResult {
         }
         None => ActionResult::Skipped,
     }
-
 }
 
 #[action("Buffer: Join lines")]

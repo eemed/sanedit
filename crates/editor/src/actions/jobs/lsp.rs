@@ -182,14 +182,13 @@ impl LSPJob {
             }
             RequestResult::GotoDefinition { path, position } => {
                 let (win, buf) = editor.win_buf_mut(id);
+                win.push_new_cursor_jump(buf);
+
                 let is_current = buf.path().map(|p| p == path).unwrap_or(false);
                 if !is_current {
                     if !editor.open_file(id, path).is_ok() {
                         return;
                     }
-                } else {
-                    // save cursor jump in same buffer also
-                    win.push_new_cursor_jump(buf);
                 }
 
                 let enc = get!(editor.lsp_for(id).map(|x| x.position_encoding()));

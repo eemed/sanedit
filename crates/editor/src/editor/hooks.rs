@@ -153,7 +153,7 @@ impl Default for Hooks {
         hooks.register(BufChanged, window::sync_windows);
         hooks.register(CursorMoved, cursors::merge_overlapping_cursors);
         hooks.register(OnMessagePre, window::clear_messages);
-        hooks.register(BufLeave, window::save_cursor_jump);
+        // hooks.register(BufLeave, window::save_cursor_jump);
         hooks.register(ModeEnter, window::on_mode_enter);
         hooks.register(ModeLeave, window::on_mode_leave);
         hooks.register(ModeEnter, window::view_to_cursor);

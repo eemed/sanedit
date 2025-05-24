@@ -66,8 +66,6 @@ fn complete_from_syntax(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Completion: Confirm")]
 fn completion_confirm(editor: &mut Editor, id: ClientId) -> ActionResult {
-    mode_normal(editor, id);
-
     let (win, buf) = win_buf!(editor, id);
     let opt = getf!(win.completion.selected().cloned());
     let choice = opt.choice();

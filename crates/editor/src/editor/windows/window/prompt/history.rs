@@ -4,6 +4,7 @@ use std::collections::VecDeque;
 pub(crate) enum HistoryKind {
     Command,
     Search,
+    Grep,
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]

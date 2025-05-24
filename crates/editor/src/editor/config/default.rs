@@ -76,8 +76,6 @@ impl Default for EditorConfig {
 pub(crate) fn search() -> KeymapLayer {
     #[rustfmt::skip]
     let map = make_keymap!(
-        "space q",      quit,
-
         "esc",          prompt_close,
         "backspace",    prompt_remove_grapheme_before_cursor,
         "left",         prompt_prev_grapheme,
@@ -98,8 +96,6 @@ pub(crate) fn search() -> KeymapLayer {
 pub(crate) fn prompt() -> KeymapLayer {
     #[rustfmt::skip]
     let map = make_keymap!(
-            "space q",    quit,
-
             "esc",       prompt_close,
             "§",         prompt_close,
             "backspace", prompt_remove_grapheme_before_cursor,

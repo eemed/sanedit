@@ -257,6 +257,8 @@ fn continue_search(editor: &mut Editor, id: ClientId, reverse: bool) {
         return;
     };
 
+    // Trigger search highlighting
+    win.search.highlights = Some(Default::default());
     do_search(editor, id, searcher, pos, true)
 }
 
@@ -273,6 +275,8 @@ fn new_search(editor: &mut Editor, id: ClientId, needle: &str, reverse: bool) {
     win.search.current.opts = searcher.options();
 
     let cpos = win.cursors.primary().pos();
+    // Trigger search highlighting
+    win.search.highlights = Some(Default::default());
     do_search(editor, id, searcher, cpos, false)
 }
 

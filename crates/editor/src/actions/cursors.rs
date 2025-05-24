@@ -407,6 +407,20 @@ fn jump_prev(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = win_buf!(editor, id);
     let bid = buf.id;
     let cursor = getf!(find_prev_jump(&win, &editor.buffers, bid));
+
+    // Add position if jumping backwards
+    let (win, buf) = win_buf!(editor, id);
+    if win.cursor_jumps.current().is_none() {
+        let primary = win.cursors.primary().pos();
+        let mark = buf.mark(primary);
+        let jump = Jump::new(mark, None);
+        let group = JumpGroup::new(win.buffer_id(), vec![jump]);
+        let is_diff = win.cursor_jumps.last().map(|(_, g)| &group != g).unwrap_or(true);
+        if is_diff {
+            win.push_new_cursor_jump(buf);
+        }
+    }
+
     jump_to_ref(editor, id, cursor)
 }
 

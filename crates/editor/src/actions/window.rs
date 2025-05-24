@@ -1,10 +1,13 @@
 use crate::{
-    actions::shell, common::to_human_readable, editor::{
+    actions::shell,
+    common::to_human_readable,
+    editor::{
         buffers::Buffer,
         hooks::Hook,
         windows::{Focus, Mode, Zone},
         Editor,
-    }, VERSION
+    },
+    VERSION,
 };
 
 use sanedit_server::ClientId;

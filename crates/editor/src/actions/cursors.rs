@@ -415,7 +415,11 @@ fn jump_prev(editor: &mut Editor, id: ClientId) -> ActionResult {
         let mark = buf.mark(primary);
         let jump = Jump::new(mark, None);
         let group = JumpGroup::new(win.buffer_id(), vec![jump]);
-        let is_diff = win.cursor_jumps.last().map(|(_, g)| &group != g).unwrap_or(true);
+        let is_diff = win
+            .cursor_jumps
+            .last()
+            .map(|(_, g)| &group != g)
+            .unwrap_or(true);
         if is_diff {
             win.push_new_cursor_jump(buf);
         }

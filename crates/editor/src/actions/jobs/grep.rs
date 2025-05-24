@@ -50,7 +50,9 @@ impl Grep {
         msend: Sender<GrepResult>,
         buffers: Arc<FxHashMap<PathBuf, PieceTreeView>>,
     ) {
-        let Ok((searcher, _)) = Searcher::new(pattern) else { return };
+        let Ok((searcher, _)) = Searcher::new(pattern) else {
+            return;
+        };
         let searcher = Arc::new(searcher);
 
         while let Some(opt) = orecv.recv().await {

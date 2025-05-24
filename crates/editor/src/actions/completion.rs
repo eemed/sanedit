@@ -16,7 +16,7 @@ use crate::{
 
 use sanedit_server::ClientId;
 
-use super::{hooks::run, jobs::MatcherJob, lsp, snippets, text, window::{focus, mode_normal}, ActionResult};
+use super::{hooks::run, jobs::MatcherJob, lsp, snippets, text, window::focus, ActionResult};
 
 #[action("Editor: Complete")]
 fn complete(editor: &mut Editor, id: ClientId) -> ActionResult {

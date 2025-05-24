@@ -21,7 +21,7 @@ use super::{
     hooks::run,
     movement::{end_of_line, prev_line},
     text_objects::select_line,
-    window::focus,
+    window::{focus, mode_insert, mode_normal},
     ActionResult,
 };
 
@@ -235,6 +235,7 @@ fn newline_below(editor: &mut Editor, id: ClientId) -> ActionResult {
 
     let (win, _buf) = editor.win_buf_mut(id);
     win.config.autopair = restore;
+    mode_insert(editor, id);
     ActionResult::Ok
 }
 
@@ -246,30 +247,25 @@ fn newline_above(editor: &mut Editor, id: ClientId) -> ActionResult {
 
     let (win, _buf) = editor.win_buf_mut(id);
     let orig = win.cursors().primary().pos();
-    log::info!("PLINE");
     prev_line.execute(editor, id);
     let (win, _buf) = editor.win_buf_mut(id);
     let prev = win.cursors().primary().pos();
     let on_first_line = orig == prev;
-    log::info!("ON FIRST LINE: {orig} == {prev}");
     if !on_first_line {
-        log::info!("EOL");
         end_of_line.execute(editor, id);
     } else {
-        log::info!("SOB");
         start_of_buffer.execute(editor, id);
     }
 
-    log::info!("INL");
     insert_newline.execute(editor, id);
 
     if on_first_line {
-        log::info!("PLINE");
         prev_line.execute(editor, id);
     }
 
     let (win, _buf) = editor.win_buf_mut(id);
     win.config.autopair = restore;
+    mode_insert(editor, id);
     ActionResult::Ok
 }
 
@@ -281,6 +277,7 @@ fn align_cursor_columns(editor: &mut Editor, id: ClientId) -> ActionResult {
         run(editor, id, hook);
     }
 
+    mode_normal(editor, id);
     ActionResult::Ok
 }
 
@@ -322,6 +319,7 @@ fn comment_lines(editor: &mut Editor, id: ClientId) -> ActionResult {
                 let hook = Hook::BufChanged(buf.id);
                 run(editor, id, hook);
             }
+            mode_normal(editor, id);
             ActionResult::Ok
         }
         None => ActionResult::Skipped,
@@ -337,6 +335,7 @@ fn uncomment_lines(editor: &mut Editor, id: ClientId) -> ActionResult {
                 let hook = Hook::BufChanged(buf.id);
                 run(editor, id, hook);
             }
+            mode_normal(editor, id);
             ActionResult::Ok
         }
         None => ActionResult::Skipped,
@@ -352,10 +351,12 @@ fn toggle_comment_lines(editor: &mut Editor, id: ClientId) -> ActionResult {
                 let hook = Hook::BufChanged(buf.id);
                 run(editor, id, hook);
             }
+            mode_normal(editor, id);
             ActionResult::Ok
         }
         None => ActionResult::Skipped,
     }
+
 }
 
 #[action("Buffer: Join lines")]
@@ -368,6 +369,7 @@ fn join_lines(editor: &mut Editor, id: ClientId) -> ActionResult {
         run(editor, id, hook);
     }
 
+    mode_normal(editor, id);
     ActionResult::Ok
 }
 

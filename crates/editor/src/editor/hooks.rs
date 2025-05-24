@@ -159,7 +159,7 @@ impl Default for Hooks {
         hooks.register(ModeEnter, window::view_to_cursor);
 
         // TODO handle registration only when needed?
-        hooks.register(CursorMoved, completion::completion_abort);
+        // hooks.register(CursorMoved, completion::completion_abort);
         hooks.register(BufChanged, completion::send_word);
         hooks.register(BufCreated, indent::detect_indent);
         hooks.register(CursorMoved, popup::close);

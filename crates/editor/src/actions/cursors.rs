@@ -215,7 +215,7 @@ fn merge_overlapping_cursors(editor: &mut Editor, id: ClientId) -> ActionResult 
 #[action("Cursors: Remove selections")]
 fn remove_cursor_selections(editor: &mut Editor, id: ClientId) -> ActionResult {
     if editor.config.editor.copy_on_delete {
-        editor.copy_line_to_clipboard(id);
+        editor.copy_to_clipboard(id);
     }
 
     let (win, buf) = editor.win_buf_mut(id);
@@ -230,6 +230,13 @@ fn remove_cursor_selections(editor: &mut Editor, id: ClientId) -> ActionResult {
 
     mode_normal(editor, id);
     res
+}
+
+#[action("Cursors: Change cursor selections")]
+fn change_cursor_selections(editor: &mut Editor, id: ClientId) -> ActionResult {
+    remove_cursor_selections.execute(editor, id);
+    mode_insert(editor, id);
+    ActionResult::Ok
 }
 
 #[action("Cursors: New cursors on line starts and goto insert mode")]

@@ -364,13 +364,14 @@ impl Window {
 
     /// Move primary cursor to offset and the view too
     pub fn goto_offset(&mut self, offset: u64, buf: &Buffer) {
+        self.push_new_cursor_jump(buf);
         let offset = min(offset, buf.len());
         let primary = self.cursors.primary_mut();
         primary.goto(offset);
 
         self.ensure_cursor_on_grapheme_boundary(buf);
-        self.view_to_cursor_zone(buf, Zone::Middle);
-        self.push_new_cursor_jump(buf);
+        self.view_to_around_cursor_zone(buf, Zone::Middle);
+        // self.push_new_cursor_jump(buf);
     }
 
     pub fn ensure_cursor_on_grapheme_boundary(&mut self, buf: &Buffer) {

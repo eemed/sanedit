@@ -1,19 +1,17 @@
 use crate::{
-    actions::shell,
-    editor::{
+    actions::shell, common::to_human_readable, editor::{
         buffers::Buffer,
         hooks::Hook,
         windows::{Focus, Mode, Zone},
         Editor,
-    },
-    VERSION,
+    }, VERSION
 };
 
 use sanedit_server::ClientId;
 
 use super::{
     hooks,
-    movement::{end_of_line, first_char_of_line, prev_grapheme_on_line},
+    movement::{end_of_line, first_char_of_line, next_grapheme_on_line, prev_grapheme_on_line},
     ActionResult,
 };
 
@@ -164,7 +162,7 @@ fn status(editor: &mut Editor, id: ClientId) -> ActionResult {
         .as_ref()
         .map(|ft| ft.as_str())
         .unwrap_or("no filetype");
-    let bufsize = buf.len();
+    let bufsize = to_human_readable(buf.len() as f64);
     let edits = buf.total_changes_made();
     let (lsp, command, args) = buf
         .filetype
@@ -192,15 +190,15 @@ fn status(editor: &mut Editor, id: ClientId) -> ActionResult {
 
     let text = format!(
         "\
-        Sanedit v{VERSION}\n\
+        SanEdit v{VERSION}\n\
         --------------\n\
         \n\
         Buffer:\n  \
         File: {file}\n  \
         Filetype: {ft}\n  \
-        Indent style: {istyle}\n\
-        Indent amount: {iamount}\n\
-        End of line: {eol}\n\
+        Indent style: {istyle}\n  \
+        Indent amount: {iamount}\n  \
+        End of line: {eol}\n  \
         Size: {bufsize}\n  \
         Edits made: {edits}\n\
         \n\
@@ -219,7 +217,8 @@ fn status(editor: &mut Editor, id: ClientId) -> ActionResult {
     "
     );
 
-    let buf = Buffer::from_reader(std::io::Cursor::new(text)).unwrap();
+    let mut buf = Buffer::from_reader(std::io::Cursor::new(text)).unwrap();
+    buf.read_only = true;
     let bid = editor.buffers_mut().insert(buf);
     editor.open_buffer(id, bid);
 
@@ -338,7 +337,7 @@ fn select_mode(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Mode: Insert after cursor")]
 fn insert_mode_after(editor: &mut Editor, id: ClientId) -> ActionResult {
-    prev_grapheme_on_line.execute(editor, id);
+    next_grapheme_on_line.execute(editor, id);
     focus_with_mode(editor, id, Focus::Window, Mode::Insert);
     ActionResult::Ok
 }

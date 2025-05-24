@@ -247,6 +247,7 @@ pub(crate) const COMMANDS: &[Action] = &[
     cursors::select_to_prev_word,
     cursors::keep_only_primary,
     cursors::remove_cursor_selections,
+    cursors::change_cursor_selections,
     cursors::cursors_to_lines_start,
     cursors::cursors_to_lines_end,
     cursors::jump_next,
@@ -315,6 +316,8 @@ pub(crate) const COMMANDS: &[Action] = &[
     lsp::format,
     lsp::pull_diagnostics,
     lsp::diagnostics_to_locations,
+    lsp::next_diagnostic,
+    lsp::prev_diagnostic,
 
     popup::close,
 

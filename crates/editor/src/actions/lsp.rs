@@ -495,3 +495,13 @@ pub(crate) fn diagnostics_to_locations(editor: &mut Editor, id: ClientId) -> Act
 
     ActionResult::Ok
 }
+
+#[action("LSP: Jump to next diagnostic")]
+pub(crate) fn next_diagnostic(editor: &mut Editor, id: ClientId) -> ActionResult {
+    todo!()
+}
+
+#[action("LSP: Jump to previous diagnostic")]
+pub(crate) fn prev_diagnostic(editor: &mut Editor, id: ClientId) -> ActionResult {
+    todo!()
+}

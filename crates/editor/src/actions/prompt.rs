@@ -307,7 +307,6 @@ pub(crate) fn prompt_remove_grapheme_before_cursor(
 
 #[action("Prompt: Select next completion item")]
 fn prompt_next_completion(editor: &mut Editor, id: ClientId) -> ActionResult {
-    log::info!("next completion");
     let (win, _buf) = editor.win_buf_mut(id);
     win.prompt.next_completion();
     ActionResult::Ok

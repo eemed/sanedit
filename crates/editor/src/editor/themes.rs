@@ -1,10 +1,10 @@
-use std::{collections::HashMap, path::PathBuf};
+use std::path::PathBuf;
 
 use anyhow::{anyhow, bail};
-use config::{File, Value};
 use rustc_hash::FxHashMap;
 use sanedit_core::{ConfigDirectory, Directory};
 use sanedit_messages::redraw::{Style, Theme, ThemeField};
+use toml_edit::{Item, Table};
 
 pub(crate) const DEFAULT_THEME: &str = "default";
 
@@ -58,12 +58,24 @@ impl Themes {
             .find(&path)
             .ok_or(anyhow!("Could not find theme"))?;
 
-        let theme_file = config::Config::builder()
-            .add_source(File::from(theme))
-            .build()?;
-        let table = theme_file.get_table("colors")?;
+        use std::io::Read;
+        let mut tomls = String::new();
+        let mut toml = std::fs::File::open(theme)?;
+        toml.read_to_string(&mut tomls)?;
+        let doc = tomls.parse::<toml_edit::DocumentMut>()?;
+
+        if !doc.contains_table("colors") {
+            bail!("No colors table found");
+        }
+
+        let colors = doc.get("colors").unwrap();
+        if !colors.is_table() {
+            bail!("No colors table found");
+        }
+        let colors = colors.as_table().unwrap();
+
         let mut theme = Theme::new(theme_name);
-        fill_theme_colors(&table, &mut theme)?;
+        fill_theme_colors(colors, &mut theme)?;
 
         self.themes.insert(theme_name.to_string(), theme);
         Ok(&self.themes[theme_name])
@@ -79,32 +91,33 @@ impl Default for Themes {
     }
 }
 
-fn fill_theme_colors(table: &HashMap<String, Value>, theme: &mut Theme) -> anyhow::Result<()> {
+fn fill_theme_colors(table: &Table, theme: &mut Theme) -> anyhow::Result<()> {
     fn rec<'a>(
         prefix: &mut Vec<&'a str>,
-        cur: &'a HashMap<String, Value>,
+        table: &'a Table,
         theme: &mut Theme,
     ) -> anyhow::Result<()> {
-        for (k, v) in cur {
+        for (keys, v) in table.iter() {
             let plen = prefix.len();
-            // Add all keys split by .
-            for key in k.split('.') {
+            for key in keys.split('.') {
                 // Dont add default
-                if k != "default" {
+                if key != "default" {
                     prefix.push(key);
                 }
             }
-
-            match &v.kind {
-                config::ValueKind::String(s) => match Style::from_str(s) {
-                    Ok(style) => {
+            match v {
+                Item::Value(value) => match value {
+                    toml_edit::Value::String(formatted) => {
+                        let Ok(style) = Style::from_str(formatted.value().as_str()) else {
+                            bail!("Invalid style for key {}", prefix.join("."))
+                        };
                         let key = prefix.join(".");
                         theme.insert(key, style);
                     }
-                    _ => bail!("Invalid style for key {}", prefix.join(".")),
+                    _ => {}
                 },
-                config::ValueKind::Table(table) => rec(prefix, table, theme)?,
-                _ => unreachable!(),
+                Item::Table(table) => rec(prefix, table, theme)?,
+                _ => {}
             }
 
             prefix.truncate(plen);

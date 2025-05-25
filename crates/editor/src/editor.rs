@@ -15,6 +15,7 @@ pub(crate) mod themes;
 pub(crate) mod windows;
 
 use caches::Caches;
+use config::ProjectConfig;
 use file_description::FileDescription;
 use filetype::Filetypes;
 use keymap::KeymapResult;
@@ -108,6 +109,7 @@ pub(crate) struct Editor {
     pub language_servers: Map<Filetype, LSP>,
     pub filetree: Filetree,
     pub config: Config,
+    pub project_config: ProjectConfig,
     pub caches: Caches,
 }
 
@@ -141,6 +143,7 @@ impl Editor {
             language_servers: Map::default(),
             keymaps: Keymaps::default(),
             config,
+            project_config: ProjectConfig::default(),
             caches,
         }
     }
@@ -165,6 +168,7 @@ impl Editor {
     }
 
     fn reload_config(&mut self) {
+        self.project_config = ProjectConfig::new(&self.working_dir);
         self.config = Config::new(&self.config_dir.config(), &self.working_dir);
         self.caches = Caches::new(&self.config);
         self.configure_keymap();

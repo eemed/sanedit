@@ -498,10 +498,40 @@ pub(crate) fn diagnostics_to_locations(editor: &mut Editor, id: ClientId) -> Act
 
 #[action("LSP: Jump to next diagnostic")]
 pub(crate) fn next_diagnostic(editor: &mut Editor, id: ClientId) -> ActionResult {
-    todo!()
+    let (win, buf) = win_buf!(editor, id);
+    let ft = getf!(buf.filetype.clone());
+    let lsp = getf!(editor.language_servers.get(&ft));
+    let path = getf!(buf.path());
+    let diagnostics = getf!(lsp.diagnostics.get(path));
+
+    let cpos = win.cursors().primary().pos();
+    for diag in diagnostics.iter() {
+        let drange = diag.range();
+        if drange.start > cpos {
+            win.goto_offset(drange.start, buf);
+            return ActionResult::Ok;
+        }
+    }
+
+    ActionResult::Failed
 }
 
 #[action("LSP: Jump to previous diagnostic")]
 pub(crate) fn prev_diagnostic(editor: &mut Editor, id: ClientId) -> ActionResult {
-    todo!()
+    let (win, buf) = win_buf!(editor, id);
+    let ft = getf!(buf.filetype.clone());
+    let lsp = getf!(editor.language_servers.get(&ft));
+    let path = getf!(buf.path());
+    let diagnostics = getf!(lsp.diagnostics.get(path));
+
+    let cpos = win.cursors().primary().pos();
+    for diag in diagnostics.iter().rev() {
+        let drange = diag.range();
+        if drange.end < cpos {
+            win.goto_offset(drange.start, buf);
+            return ActionResult::Ok;
+        }
+    }
+
+    ActionResult::Failed
 }

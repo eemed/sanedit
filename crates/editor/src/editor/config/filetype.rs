@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{common::matcher::Choice, editor::snippets::Snippet};
 
-use super::buffers;
+use super::{buffers, read_toml};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct ConfigSnippet {
@@ -64,9 +64,7 @@ impl FiletypeConfig {
     }
 
     pub fn try_new(config_path: &Path) -> anyhow::Result<FiletypeConfig> {
-        let builder = config::Config::builder().add_source(config::File::from(config_path));
-        let config = builder.build()?.try_deserialize::<FiletypeConfig>()?;
-        Ok(config)
+        read_toml::<FiletypeConfig>(config_path)
     }
 
     pub fn snippets_as_choices(&self) -> Vec<Arc<Choice>> {

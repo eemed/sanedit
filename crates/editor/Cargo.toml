@@ -18,7 +18,6 @@ sanedit-server = { path = "../server" }
 tokio = { workspace = true, features = ["full"] }
 serde = { workspace = true, features = ["derive", "rc"] }
 tokio-util = { workspace = true, features = ["codec"] }
-config = { workspace = true, features = ["toml"] }
 
 # General
 log.workspace = true
@@ -42,4 +41,4 @@ unicode-width.workspace = true
 which.workspace = true
 
 # Configuration handling
-toml_edit.workspace = true
+toml_edit = { workspace = true, features = ["serde"] }

@@ -1,5 +1,6 @@
 mod default;
 mod filetype;
+mod project;
 
 use std::{collections::VecDeque, path::Path, sync::Arc};
 
@@ -7,7 +8,7 @@ use filetype::ConfigSnippet;
 use sanedit_buffer::utf8::EndOfLine;
 use sanedit_messages::key::{try_parse_keyevents, KeyEvent};
 use sanedit_server::ClientId;
-use serde::{Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use toml_edit::{
     ser::to_document,
     visit_mut::{visit_table_like_kv_mut, VisitMut},
@@ -30,6 +31,18 @@ use rustc_hash::FxHashMap;
 
 use super::Map;
 pub(crate) use filetype::{FiletypeConfig, LSPConfig};
+pub(crate) use project::*;
+
+pub fn read_toml<T>(config_path: &Path) -> anyhow::Result<T>
+where T: DeserializeOwned
+{
+    use std::io::Read;
+    let mut tomls = String::new();
+    let mut toml = std::fs::File::open(config_path)?;
+    toml.read_to_string(&mut tomls)?;
+    let config = toml_edit::de::from_str::<T>(&tomls)?;
+    Ok(config)
+}
 
 #[derive(Debug, Serialize, Deserialize, DocComment)]
 #[serde(default)]
@@ -57,9 +70,7 @@ impl Config {
     }
 
     pub fn try_new(config_path: &Path, _working_dir: &Path) -> anyhow::Result<Config> {
-        let builder = config::Config::builder().add_source(config::File::from(config_path));
-        let config = builder.build()?.try_deserialize::<Config>()?;
-        Ok(config)
+        read_toml::<Config>(config_path)
     }
 
     pub(crate) fn serialize_default_configuration(path: &Path) -> anyhow::Result<()> {

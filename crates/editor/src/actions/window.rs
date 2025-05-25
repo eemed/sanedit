@@ -256,29 +256,6 @@ fn view_to_cursor_bottom(editor: &mut Editor, id: ClientId) -> ActionResult {
     ActionResult::Ok
 }
 
-#[action("Save cursor jump")]
-fn save_cursor_jump(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (_win, buf) = editor.win_buf_mut(id);
-    let bid = buf.id;
-    let bid = editor
-        .hooks
-        .running_hook()
-        .and_then(Hook::buffer_id)
-        .unwrap_or(bid);
-
-    let (win, _buf) = win_buf!(editor, id);
-    // TODO if jumping not at start?
-    let at_start = win.cursor_jumps.current().is_none();
-
-    if !at_start {
-        return ActionResult::Skipped;
-    }
-
-    let buffer = editor.buffers.get(bid).unwrap();
-    win.push_new_cursor_jump(buffer);
-    ActionResult::Ok
-}
-
 #[action("LSP: Show diagnostic highlights")]
 fn show_diagnostic_highlights(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);

@@ -11,7 +11,7 @@ use rustc_hash::FxHashSet;
 
 const TMP_DIR: &str = "tmp";
 pub const SANE_DIR: &str = "sanedit";
-pub const FILETYPE_DIR: &str = "filetype";
+pub const LANG_DIR: &str = "language";
 pub const THEME_DIR: &str = "themes";
 pub const CONFIG: &str = "config.toml";
 
@@ -102,9 +102,9 @@ impl ConfigDirectory {
         &self.dir
     }
 
-    pub fn filetype_dir(&self) -> Directory {
-        let global = PathBuf::from(GLOBAL).join(FILETYPE_DIR);
-        let local = self.dir.join(FILETYPE_DIR);
+    pub fn lang_dir(&self) -> Directory {
+        let global = PathBuf::from(GLOBAL).join(LANG_DIR);
+        let local = self.dir.join(LANG_DIR);
         Directory {
             dirs: vec![local, global],
         }
@@ -137,9 +137,9 @@ pub fn config_dir() -> Option<PathBuf> {
     Some(config.join(SANE_DIR))
 }
 
-pub fn filetype_dir() -> Option<PathBuf> {
+pub fn language_dir() -> Option<PathBuf> {
     let mut conf_dir = config_dir()?;
-    conf_dir.push(FILETYPE_DIR);
+    conf_dir.push(LANG_DIR);
     Some(conf_dir)
 }
 

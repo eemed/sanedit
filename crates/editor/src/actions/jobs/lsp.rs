@@ -20,7 +20,7 @@ use crate::{
 };
 use sanedit_buffer::{PieceTree, PieceTreeSlice};
 use sanedit_core::{
-    word_before_pos, Change, Changes, Cursor, Diagnostic, Filetype, Group, Item, Range,
+    word_before_pos, Change, Changes, Cursor, Diagnostic, Language, Group, Item, Range,
 };
 use sanedit_lsp::{
     CodeAction, CompletionItem, FileEdit, LSPClientParams, Notification, Position,
@@ -42,16 +42,16 @@ enum Message {
 #[derive(Clone)]
 pub(crate) struct LSPJob {
     client_id: ClientId,
-    filetype: Filetype,
+    language: Language,
     working_dir: PathBuf,
     opts: LSPConfig,
 }
 
 impl LSPJob {
-    pub fn new(id: ClientId, working_dir: PathBuf, ft: Filetype, opts: &LSPConfig) -> LSPJob {
+    pub fn new(id: ClientId, working_dir: PathBuf, lang: Language, opts: &LSPConfig) -> LSPJob {
         LSPJob {
             client_id: id,
-            filetype: ft,
+            language: lang,
             working_dir,
             opts: opts.clone(),
         }
@@ -62,18 +62,18 @@ impl Job for LSPJob {
     fn run(&self, mut ctx: JobContext) -> JobResult {
         // Clones here
         let wd = self.working_dir.clone();
-        let ft = self.filetype.clone();
+        let lang = self.language.clone();
         let opts = self.opts.clone();
 
         let fut = async move {
             log::info!("Run rust-analyzer");
             let LSPConfig { command, args } = opts;
-            let filetype: String = ft.as_str().into();
+            let lang: String = lang.as_str().into();
             let params = LSPClientParams {
                 run_command: command.clone(),
                 run_args: args,
                 root: wd.clone(),
-                filetype,
+                language: lang,
             };
 
             let (sender, mut reader) = params.spawn().await?;
@@ -101,10 +101,10 @@ impl KeepInTouch for LSPJob {
         if let Ok(output) = msg.downcast::<Message>() {
             match *output {
                 Message::Started(sender) => {
-                    if editor.language_servers.contains_key(&self.filetype) {
+                    if editor.language_servers.contains_key(&self.language) {
                         log::error!(
                             "Language server for {} is already running.",
-                            self.filetype.as_str()
+                            self.language.as_str()
                         );
                         // Shutsdown automatically because sender is dropped
                         // here
@@ -113,9 +113,9 @@ impl KeepInTouch for LSPJob {
                     // Set sender
                     editor
                         .language_servers
-                        .insert(self.filetype.clone(), sender);
+                        .insert(self.language.clone(), sender);
 
-                    // Send all buffers of this filetype
+                    // Send all buffers of this language
                     let ids: Vec<BufferId> = editor.buffers().iter().map(|(id, _buf)| id).collect();
                     for id in ids {
                         let _ = lsp_notify_for(editor, id, |buf, path, slice, _lsp| {
@@ -139,7 +139,7 @@ impl LSPJob {
     fn handle_response(&self, editor: &mut Editor, response: Response) {
         match response {
             Response::Request { id, result } => {
-                let lsp = get!(editor.language_servers.get_mut(&self.filetype));
+                let lsp = get!(editor.language_servers.get_mut(&self.language));
                 let (cid, constraints) = get!(lsp.reponse_of(id));
 
                 // Verify constraints
@@ -288,7 +288,7 @@ impl LSPJob {
 
         let Some(enc) = editor
             .language_servers
-            .get(&self.filetype)
+            .get(&self.language)
             .map(|x| x.position_encoding())
         else {
             return;
@@ -317,7 +317,7 @@ impl LSPJob {
             })
             .collect();
 
-        let lsp = editor.language_servers.get_mut(&self.filetype).unwrap();
+        let lsp = editor.language_servers.get_mut(&self.language).unwrap();
         lsp.diagnostics.insert(path, diagnostics);
     }
 
@@ -341,7 +341,7 @@ impl LSPJob {
             .handler(Prompt::matcher_result_handler)
             .build();
 
-        let ft = self.filetype.clone();
+        let lang = self.language.clone();
         win.prompt = Prompt::builder()
             .prompt("Select code action")
             .on_confirm(move |editor, id, out| {
@@ -356,7 +356,7 @@ impl LSPJob {
                         action: action.clone(),
                     };
 
-                    let lsp = getf!(editor.language_servers.get_mut(&ft));
+                    let lsp = getf!(editor.language_servers.get_mut(&lang));
                     let _ = lsp.request(request, id, vec![]);
                 }
 

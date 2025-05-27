@@ -160,20 +160,20 @@ fn status(editor: &mut Editor, id: ClientId) -> ActionResult {
                 .into()
         })
         .unwrap_or(buf.name());
-    let ft = buf
-        .filetype
+    let lang = buf
+        .language
         .as_ref()
         .map(|ft| ft.as_str())
-        .unwrap_or("no filetype");
+        .unwrap_or("no language");
     let bufsize = to_human_readable(buf.len() as f64);
     let edits = buf.total_changes_made();
     let (lsp, command, args) = buf
-        .filetype
+        .language
         .as_ref()
         .map(|ft| {
             let lsp = editor.language_servers.get(ft)?;
             let name = lsp.server_name();
-            let config = editor.filetypes.get(&ft)?;
+            let config = editor.languages.get(&ft)?;
             let command = config.language_server.command.as_str();
             let args = config.language_server.args.clone();
             Some((name, command, args))
@@ -198,14 +198,14 @@ fn status(editor: &mut Editor, id: ClientId) -> ActionResult {
         \n\
         Buffer:\n  \
         File: {file}\n  \
-        Filetype: {ft}\n  \
+        Language: {lang}\n  \
         Indent style: {istyle}\n  \
         Indent amount: {iamount}\n  \
         End of line: {eol}\n  \
         Size: {bufsize}\n  \
         Edits made: {edits}\n\
         \n\
-        Language server: ({ft})\n  \
+        Language server: ({lang})\n  \
         Running: {lsp}\n  \
         Start command: {command} {args:?}\n\
         \n\

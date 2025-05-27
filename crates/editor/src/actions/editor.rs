@@ -135,8 +135,8 @@ fn nop(_editor: &mut Editor, _id: ClientId) -> ActionResult {
     ActionResult::Ok
 }
 
-#[action("Editor: Load filetype")]
-fn load_filetype(editor: &mut Editor, id: ClientId) -> ActionResult {
+#[action("Editor: Load language")]
+fn load_language(editor: &mut Editor, id: ClientId) -> ActionResult {
     let bid = editor
         .hooks
         .running_hook()
@@ -146,7 +146,7 @@ fn load_filetype(editor: &mut Editor, id: ClientId) -> ActionResult {
             win.buffer_id()
         });
     let buf = editor.buffers().get(bid).unwrap();
-    let ft = getf!(buf.filetype.clone());
-    editor.load_filetype(&ft, false);
+    let lang = getf!(buf.language.clone());
+    editor.load_language(&lang, false);
     ActionResult::Ok
 }

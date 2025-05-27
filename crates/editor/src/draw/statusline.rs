@@ -38,14 +38,6 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> Statusline {
     let cursor = win.primary_cursor();
     let cpos = cursor.pos();
     let blen = buf.len();
-    // let filetype = buf.filetype.as_ref();
-    // let ft = filetype.map(Filetype::as_str).unwrap_or("no filetype");
-    // let lsp = filetype.and_then(|ft| {
-    //     ctx.editor
-    //         .language_servers
-    //         .get(ft)
-    //         .map(|lsp| lsp.server_name().to_string())
-    // });
 
     let right = {
         let mut result = String::new();
@@ -56,9 +48,6 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> Statusline {
             result.push_str(" | ")
         }
 
-        // if let Some(lsp) = lsp {
-        //     result.push_str(&format!(" {lsp} | "));
-        // }
 
         result.push_str(&format!(" {} | ", win.mode.statusline()));
         result.push_str(&format!(

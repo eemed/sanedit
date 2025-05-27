@@ -27,7 +27,7 @@ pub struct LSPClientParams {
     pub run_command: String,
     pub run_args: Vec<String>,
     pub root: PathBuf,
-    pub filetype: String,
+    pub language: String,
 }
 
 impl LSPClientParams {
@@ -710,7 +710,7 @@ impl Handler {
         let params = lsp_types::DidOpenTextDocumentParams {
             text_document: lsp_types::TextDocumentItem {
                 uri: path_to_uri(&path),
-                language_id: self.filetype().to_string(),
+                language_id: self.language().to_string(),
                 version,
                 text,
             },
@@ -819,7 +819,7 @@ impl Handler {
         Ok(result)
     }
 
-    pub fn filetype(&self) -> &str {
-        &self.params.filetype
+    pub fn language(&self) -> &str {
+        &self.params.language
     }
 }

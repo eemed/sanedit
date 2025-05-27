@@ -143,7 +143,7 @@ impl Default for Hooks {
         };
 
         // Editor
-        hooks.register(BufCreated, editor::load_filetype);
+        hooks.register(BufCreated, editor::load_language);
 
         // Search
         hooks.register(OnMessagePost, search::highlight_search);

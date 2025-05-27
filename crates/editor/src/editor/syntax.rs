@@ -2,7 +2,7 @@ use std::{cmp::min, path::Path, sync::Arc};
 
 use rustc_hash::FxHashMap;
 use sanedit_buffer::PieceTreeView;
-use sanedit_core::{BufferRange, Filetype, Range};
+use sanedit_core::{BufferRange, Language, Range};
 use sanedit_server::Kill;
 
 use std::fs::File;
@@ -12,7 +12,7 @@ use sanedit_syntax::{Annotation, Parser};
 
 #[derive(Debug)]
 pub struct Syntaxes {
-    syntaxes: FxHashMap<Filetype, Syntax>,
+    syntaxes: FxHashMap<Language, Syntax>,
 }
 
 impl Syntaxes {
@@ -22,24 +22,24 @@ impl Syntaxes {
         }
     }
 
-    pub fn get(&mut self, ft: &Filetype) -> anyhow::Result<Syntax> {
+    pub fn get(&mut self, ft: &Language) -> anyhow::Result<Syntax> {
         self.syntaxes
             .get(ft)
             .cloned()
             .ok_or(anyhow!("Syntax not loaded"))
     }
 
-    pub fn contains_key(&self, ft: &Filetype) -> bool {
+    pub fn contains_key(&self, ft: &Language) -> bool {
         self.syntaxes.contains_key(ft)
     }
 
-    pub fn reload(&mut self, ft: &Filetype, path: &Path) -> anyhow::Result<()> {
+    pub fn reload(&mut self, ft: &Language, path: &Path) -> anyhow::Result<()> {
         let syntax = Syntax::from_path(path)?;
         self.syntaxes.insert(ft.clone(), syntax);
         Ok(())
     }
 
-    pub fn load(&mut self, ft: &Filetype, path: &Path) -> anyhow::Result<()> {
+    pub fn load(&mut self, ft: &Language, path: &Path) -> anyhow::Result<()> {
         if self.syntaxes.contains_key(ft) {
             return Ok(());
         }

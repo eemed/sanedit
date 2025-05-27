@@ -115,8 +115,8 @@ pub(crate) fn parse_syntax(editor: &mut Editor, id: ClientId) -> ActionResult {
     let range = win.view().range();
     let ropt = buf.ro_view();
 
-    let ft = getf!(buf.filetype.clone());
-    if let Ok(s) = editor.syntaxes.get(&ft) {
+    let lang = getf!(buf.language.clone());
+    if let Ok(s) = editor.syntaxes.get(&lang) {
         editor.job_broker.request_slot(
             id,
             JOB_NAME,

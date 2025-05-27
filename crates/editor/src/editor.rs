@@ -4,7 +4,7 @@ pub(crate) mod clipboard;
 pub(crate) mod config;
 pub(crate) mod file_description;
 pub(crate) mod filetree;
-pub(crate) mod filetype;
+pub(crate) mod language;
 pub(crate) mod hooks;
 pub(crate) mod job_broker;
 pub(crate) mod keymap;
@@ -17,12 +17,12 @@ pub(crate) mod windows;
 use caches::Caches;
 use config::ProjectConfig;
 use file_description::FileDescription;
-use filetype::Filetypes;
+use language::Languages;
 use keymap::KeymapResult;
 use keymap::Layer;
 use keymap::LayerKey;
 use rustc_hash::FxHashMap;
-use sanedit_core::Filetype;
+use sanedit_core::Language;
 use sanedit_messages::key;
 use sanedit_messages::key::KeyEvent;
 use sanedit_messages::redraw::Size;
@@ -100,13 +100,13 @@ pub(crate) struct Editor {
     pub themes: Themes,
     pub config_dir: ConfigDirectory,
     pub syntaxes: Syntaxes,
-    pub filetypes: Filetypes,
+    pub languages: Languages,
     pub job_broker: JobBroker,
     pub hooks: Hooks,
     pub clipboard: Box<dyn Clipboard>,
     pub histories: Map<HistoryKind, History>,
     pub keymaps: Keymaps,
-    pub language_servers: Map<Filetype, LSP>,
+    pub language_servers: Map<Language, LSP>,
     pub filetree: Filetree,
     pub config: Config,
     pub project_config: ProjectConfig,
@@ -128,7 +128,7 @@ impl Editor {
             clients: Map::default(),
             draw_states: Map::default(),
             syntaxes: Syntaxes::new(),
-            filetypes: Filetypes::default(),
+            languages: Languages::default(),
             windows: Windows::default(),
             buffers: Buffers::default(),
             job_broker: JobBroker::new(jobs_handle),
@@ -296,11 +296,11 @@ impl Editor {
 
     /// Create a new buffer from path
     pub fn create_buffer(&mut self, id: ClientId, path: impl AsRef<Path>) -> Result<BufferId> {
-        let file = FileDescription::new(path, &self.config, &self.filetypes)?;
+        let file = FileDescription::new(path, &self.config, &self.languages)?;
         let config = file
-            .filetype
+            .language
             .as_ref()
-            .map(|ft| self.filetypes.get(&ft))
+            .map(|ft| self.languages.get(&ft))
             .flatten()
             .map(|ftconfig| ftconfig.buffer.clone())
             .unwrap_or_default();
@@ -644,10 +644,10 @@ impl Editor {
             self.send_to_client(id, ClientMessage::Theme(theme))
         }
 
-        // Reload filetype
+        // Reload language
         let (_win, buf) = self.win_buf(id);
-        if let Some(ft) = buf.filetype.clone() {
-            self.load_filetype(&ft, true);
+        if let Some(lang) = buf.language.clone() {
+            self.load_language(&lang, true);
         }
 
         // Reload window
@@ -804,8 +804,8 @@ impl Editor {
 
     pub fn has_syntax(&self, id: ClientId) -> bool {
         let (_win, buf) = self.win_buf(id);
-        if let Some(ref ft) = buf.filetype {
-            return self.syntaxes.contains_key(ft);
+        if let Some(ref lang) = buf.language {
+            return self.syntaxes.contains_key(lang);
         }
 
         false
@@ -817,41 +817,41 @@ impl Editor {
 
     pub fn lsp_for(&self, id: ClientId) -> Option<&LSP> {
         let (_win, buf) = self.win_buf(id);
-        let ft = buf.filetype.as_ref()?;
-        self.language_servers.get(ft)
+        let lang = buf.language.as_ref()?;
+        self.language_servers.get(lang)
     }
 
-    pub fn load_filetype(&mut self, ft: &Filetype, reload: bool) {
-        self.load_filetype_syntax(ft, reload);
-        self.load_filetype_config(ft, reload);
+    pub fn load_language(&mut self, lang: &Language, reload: bool) {
+        self.load_language_syntax(lang, reload);
+        self.load_language_config(lang, reload);
     }
 
-    fn load_filetype_config(&mut self, ft: &Filetype, reload: bool) {
-        let dir = self.config_dir.filetype_dir();
-        let path = PathBuf::from(ft.as_str()).join("config.toml");
+    fn load_language_config(&mut self, lang: &Language, reload: bool) {
+        let dir = self.config_dir.lang_dir();
+        let path = PathBuf::from(lang.as_str()).join("config.toml");
         if let Some(path) = dir.find(&path) {
             let result = if reload {
-                self.filetypes.reload(ft, &path)
+                self.languages.reload(lang, &path)
             } else {
-                self.filetypes.load(ft, &path)
+                self.languages.load(lang, &path)
             };
             if let Err(e) = result {
-                log::error!("Failed to load filetype config for {}: {e}", ft.as_str());
+                log::error!("Failed to load language config for {}: {e}", lang.as_str());
             }
         }
     }
 
-    fn load_filetype_syntax(&mut self, ft: &Filetype, reload: bool) {
-        let dir = self.config_dir.filetype_dir();
-        let path = PathBuf::from(ft.as_str()).join("syntax.peg");
+    fn load_language_syntax(&mut self, lang: &Language, reload: bool) {
+        let dir = self.config_dir.lang_dir();
+        let path = PathBuf::from(lang.as_str()).join("syntax.peg");
         if let Some(path) = dir.find(&path) {
             let result = if reload {
-                self.syntaxes.reload(ft, &path)
+                self.syntaxes.reload(lang, &path)
             } else {
-                self.syntaxes.load(ft, &path)
+                self.syntaxes.load(lang, &path)
             };
             if let Err(e) = result {
-                log::error!("Failed to load syntax for {}: {e}", ft.as_str());
+                log::error!("Failed to load syntax for {}: {e}", lang.as_str());
             }
         }
     }
@@ -864,15 +864,15 @@ impl Editor {
             .buffers
             .get(win.buffer_id())
             .expect("No window for {id}");
-        let Some(ft) = buf.filetype.as_ref() else {
+        let Some(lang) = buf.language.as_ref() else {
             return result;
         };
 
-        let Some(ftconfig) = self.filetypes.get(&ft) else {
+        let Some(langconfig) = self.languages.get(&lang) else {
             return result;
         };
 
-        result.extend(ftconfig.snippets_as_choices());
+        result.extend(langconfig.snippets_as_choices());
         result
     }
 }

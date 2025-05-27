@@ -33,7 +33,7 @@ impl Default for Config {
 }
 
 impl EditorConfig {
-    fn default_filetype_map() -> FxHashMap<String, Vec<String>> {
+    fn default_language_map() -> FxHashMap<String, Vec<String>> {
         macro_rules! map {
             ($keymap:ident, $($ft: expr, $patterns:expr),+,) => {
                 $(
@@ -44,13 +44,18 @@ impl EditorConfig {
 
         let mut ftmap = FxHashMap::default();
 
+        // Using LSP language identifiers
         #[rustfmt::skip]
         map!(ftmap,
              "rust", ["*.rs"],
              "toml", ["*/Cargo.lock"],
-             "yaml", ["*.yml"],
+             "yaml", ["*.yml", "*.yaml"],
              "markdown", ["*.md"],
              "make", ["*/Makefile"],
+             "javascript", ["*.js"],
+             "javascriptreact", ["*.jsx"],
+             "python", ["*.py"],
+             "shellscript", ["*.sh"],
         );
 
         ftmap
@@ -67,7 +72,7 @@ impl Default for EditorConfig {
             eol: EndOfLine::default(),
             detect_eol: true,
             detect_indent: true,
-            filetype_detect: Self::default_filetype_map(),
+            language_detect: Self::default_language_map(),
             copy_on_delete: true,
         }
     }
@@ -183,6 +188,8 @@ pub(crate) fn filetree() -> KeymapLayer {
              "d",         ft_delete_file,
              "p",         select_ft_parent,
              "s",         ft_goto_current_file,
+             "r",         ft_rename_file,
+             "m",         ft_rename_file,
         );
 
     KeymapLayer {

@@ -3,7 +3,7 @@ use std::{
     sync::atomic::{AtomicU32, Ordering},
 };
 
-use sanedit_core::{Diagnostic, Filetype};
+use sanedit_core::{Diagnostic, Language};
 use sanedit_lsp::{
     LSPClientSender, LSPRequestError, Notification, PositionEncoding, Request, RequestKind,
 };
@@ -17,11 +17,11 @@ use super::{
 
 pub(crate) fn get_diagnostics<'a>(
     buf: &Buffer,
-    language_servers: &'a Map<Filetype, LSP>,
+    language_servers: &'a Map<Language, LSP>,
 ) -> Option<&'a [Diagnostic]> {
-    let ft = buf.filetype.as_ref()?;
+    let lang = buf.language.as_ref()?;
     let path = buf.path()?;
-    let lsp = language_servers.get(ft)?;
+    let lsp = language_servers.get(lang)?;
     let diags = lsp.diagnostics.get(path)?;
     Some(diags)
 }

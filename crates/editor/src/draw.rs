@@ -9,7 +9,7 @@ mod window;
 
 use std::{mem, path::Path};
 
-use sanedit_core::Filetype;
+use sanedit_core::Language;
 use sanedit_messages::redraw::{Redraw, Theme};
 
 use crate::editor::{
@@ -26,7 +26,7 @@ pub(crate) struct EditorContext<'a> {
     pub(crate) theme: &'a Theme,
     pub(crate) working_dir: &'a Path,
     pub(crate) filetree: &'a Filetree,
-    pub(crate) language_servers: &'a Map<Filetype, LSP>,
+    pub(crate) language_servers: &'a Map<Language, LSP>,
 }
 
 pub(crate) struct DrawContext<'a, 'b> {

@@ -28,17 +28,17 @@ enum LSPActionError {
     #[error("Buffer not found")]
     BufferNotFound,
 
-    #[error("No language server configured for filetype {0:?}")]
+    #[error("No language server configured for language {0:?}")]
     LanguageServerNotConfigured(String),
 
-    #[error("Language server is already running for filetype {0:?}")]
+    #[error("Language server is already running for language {0:?}")]
     LanguageServerAlreadyRunning(String),
 
-    #[error("No language server started for filetype {0:?}")]
+    #[error("No language server started for language {0:?}")]
     LanguageServerNotStarted(String),
 
-    #[error("Filetype not set for buffer")]
-    FiletypeNotSet,
+    #[error("Language not set for buffer")]
+    LanguageNotSet,
 }
 
 /// Helper function to get out all of the mostly used stuff from editor state
@@ -54,15 +54,15 @@ pub(crate) fn lsp_request(
     ) -> Option<(RequestKind, Vec<Constraint>)>,
 ) -> Result<()> {
     let (_win, buf) = editor.win_buf_mut(id);
-    let ft = buf.filetype.clone().ok_or(LSPActionError::FiletypeNotSet)?;
+    let lang = buf.language.clone().ok_or(LSPActionError::LanguageNotSet)?;
     let path = buf
         .path()
         .map(Path::to_path_buf)
         .ok_or(LSPActionError::PathNotSet)?;
     let handle = editor
         .language_servers
-        .get(&ft)
-        .ok_or_else(|| LSPActionError::LanguageServerNotStarted(ft.as_str().to_string()))?;
+        .get(&lang)
+        .ok_or_else(|| LSPActionError::LanguageServerNotStarted(lang.as_str().to_string()))?;
 
     let (win, buf) = editor.win_buf(id);
     let slice = buf.slice(..);
@@ -71,11 +71,11 @@ pub(crate) fn lsp_request(
     if let Some((kind, constraints)) = request {
         let lsp = editor
             .language_servers
-            .get_mut(&ft)
-            .ok_or_else(|| LSPActionError::LanguageServerNotStarted(ft.as_str().to_string()))?;
+            .get_mut(&lang)
+            .ok_or_else(|| LSPActionError::LanguageServerNotStarted(lang.as_str().to_string()))?;
         match lsp.request(kind, id, constraints) {
             Err(LSPRequestError::ServerClosed) => {
-                editor.language_servers.remove(&ft);
+                editor.language_servers.remove(&lang);
             }
             _ => {}
         }
@@ -93,15 +93,15 @@ pub(crate) fn lsp_notify_for(
         .buffers()
         .get(bid)
         .ok_or(LSPActionError::BufferNotFound)?;
-    let ft = buf.filetype.clone().ok_or(LSPActionError::FiletypeNotSet)?;
+    let lang = buf.language.clone().ok_or(LSPActionError::LanguageNotSet)?;
     let path = buf
         .path()
         .map(Path::to_path_buf)
         .ok_or(LSPActionError::PathNotSet)?;
     let handle = editor
         .language_servers
-        .get(&ft)
-        .ok_or_else(|| LSPActionError::LanguageServerNotStarted(ft.as_str().to_string()))?;
+        .get(&lang)
+        .ok_or_else(|| LSPActionError::LanguageServerNotStarted(lang.as_str().to_string()))?;
 
     let slice = buf.slice(..);
     let request = (f)(buf, path, slice, handle);
@@ -109,11 +109,11 @@ pub(crate) fn lsp_notify_for(
     if let Some(notif) = request {
         let lsp = editor
             .language_servers
-            .get_mut(&ft)
-            .ok_or_else(|| LSPActionError::LanguageServerNotStarted(ft.as_str().to_string()))?;
+            .get_mut(&lang)
+            .ok_or_else(|| LSPActionError::LanguageServerNotStarted(lang.as_str().to_string()))?;
         match lsp.notify(notif) {
             Err(LSPRequestError::ServerClosed) => {
-                editor.language_servers.remove(&ft);
+                editor.language_servers.remove(&lang);
             }
             _ => {}
         }
@@ -160,19 +160,19 @@ fn start_lsp_hook(editor: &mut Editor, id: ClientId) -> ActionResult {
 fn start_lsp_impl(editor: &mut Editor, id: ClientId, bid: BufferId) -> Result<()> {
     let wd = editor.working_dir().to_path_buf();
     let buf = editor.buffers().get(bid).unwrap();
-    let ft = buf.filetype.clone().ok_or(LSPActionError::FiletypeNotSet)?;
-    if editor.language_servers.contains_key(&ft) {
+    let lang = buf.language.clone().ok_or(LSPActionError::LanguageNotSet)?;
+    if editor.language_servers.contains_key(&lang) {
         bail!(LSPActionError::LanguageServerAlreadyRunning(
-            ft.as_str().to_string()
+            lang.as_str().to_string()
         ));
     }
-    let lang = editor
-        .filetypes
-        .get(&ft)
+    let langconfig = editor
+        .languages
+        .get(&lang)
         .map(|config| &config.language_server)
-        .ok_or_else(|| LSPActionError::LanguageServerNotConfigured(ft.as_str().to_string()))?;
+        .ok_or_else(|| LSPActionError::LanguageServerNotConfigured(lang.as_str().to_string()))?;
 
-    let lsp = LSPJob::new(id, wd, ft, lang);
+    let lsp = LSPJob::new(id, wd, lang, langconfig);
     editor.job_broker.request(lsp);
 
     Ok(())
@@ -187,8 +187,8 @@ fn stop_lsp(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 fn stop_lsp_impl(editor: &mut Editor, _id: ClientId, bid: BufferId) -> Result<()> {
     let buf = editor.buffers().get(bid).unwrap();
-    let ft = buf.filetype.clone().ok_or(LSPActionError::FiletypeNotSet)?;
-    editor.language_servers.remove(&ft);
+    let lang = buf.language.clone().ok_or(LSPActionError::LanguageNotSet)?;
+    editor.language_servers.remove(&lang);
     Ok(())
 }
 
@@ -381,8 +381,8 @@ fn rename(editor: &mut Editor, id: ClientId) -> ActionResult {
             let total = buf.total_changes_made();
             let bid = buf.id;
             let path = getf!(buf.path().map(Path::to_path_buf));
-            let ft = getf!(buf.filetype.clone());
-            let lsp = getf!(editor.language_servers.get(&ft));
+            let lang = getf!(buf.language.clone());
+            let lsp = getf!(editor.language_servers.get(&lang));
             let position = Position::new(offset, &slice, &lsp.position_encoding());
             let request = RequestKind::Rename {
                 path,
@@ -390,7 +390,7 @@ fn rename(editor: &mut Editor, id: ClientId) -> ActionResult {
                 new_name: name.into(),
             };
 
-            let lsp = getf!(editor.language_servers.get_mut(&ft));
+            let lsp = getf!(editor.language_servers.get_mut(&lang));
             let _ = lsp.request(
                 request,
                 id,
@@ -468,8 +468,8 @@ pub(crate) fn did_save_document(editor: &mut Editor, id: ClientId) -> ActionResu
 #[action("LSP: Diagnostics to locations")]
 pub(crate) fn diagnostics_to_locations(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = win_buf!(editor, id);
-    let ft = getf!(buf.filetype.clone());
-    let lsp = getf!(editor.language_servers.get(&ft));
+    let lang = getf!(buf.language.clone());
+    let lsp = getf!(editor.language_servers.get(&lang));
 
     win.locations.clear();
 
@@ -499,8 +499,8 @@ pub(crate) fn diagnostics_to_locations(editor: &mut Editor, id: ClientId) -> Act
 #[action("LSP: Jump to next diagnostic")]
 pub(crate) fn next_diagnostic(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = win_buf!(editor, id);
-    let ft = getf!(buf.filetype.clone());
-    let lsp = getf!(editor.language_servers.get(&ft));
+    let lang = getf!(buf.language.clone());
+    let lsp = getf!(editor.language_servers.get(&lang));
     let path = getf!(buf.path());
     let diagnostics = getf!(lsp.diagnostics.get(path));
 
@@ -519,8 +519,8 @@ pub(crate) fn next_diagnostic(editor: &mut Editor, id: ClientId) -> ActionResult
 #[action("LSP: Jump to previous diagnostic")]
 pub(crate) fn prev_diagnostic(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = win_buf!(editor, id);
-    let ft = getf!(buf.filetype.clone());
-    let lsp = getf!(editor.language_servers.get(&ft));
+    let lang = getf!(buf.language.clone());
+    let lsp = getf!(editor.language_servers.get(&lang));
     let path = getf!(buf.path());
     let diagnostics = getf!(lsp.diagnostics.get(path));
 

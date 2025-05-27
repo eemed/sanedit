@@ -91,10 +91,10 @@ fn completion_confirm(editor: &mut Editor, id: ClientId) -> ActionResult {
                         (text, Range::new(pos, pos))
                     }
                     Either::Right(edit) => {
-                        let ft = getf!(buf.filetype.clone());
+                        let lang = getf!(buf.language.clone());
                         let enc = getf!(editor
                             .language_servers
-                            .get(&ft)
+                            .get(&lang)
                             .map(|x| x.position_encoding()));
                         let slice = buf.slice(..);
                         let range = edit.range.to_buffer_range(&slice, &enc);
@@ -140,10 +140,10 @@ fn completion_confirm(editor: &mut Editor, id: ClientId) -> ActionResult {
                     (text.as_bytes(), Range::new(pos, pos))
                 }
                 Either::Right(edit) => {
-                    let ft = getf!(buf.filetype.clone());
+                    let lang = getf!(buf.language.clone());
                     let enc = getf!(editor
                         .language_servers
-                        .get(&ft)
+                        .get(&lang)
                         .map(|x| x.position_encoding()));
                     let slice = buf.slice(..);
                     let range = edit.range.to_buffer_range(&slice, &enc);

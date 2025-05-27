@@ -41,9 +41,9 @@ autopair = true
 # Tmux
 window_manager = "Auto"
 
-# Filetype glob patterns
-# By default the filetype is the extension of the file
-[filetype_detect]
+# Language glob patterns
+# By default the language is the extension of the file
+[language_detect]
 rust = ["*.rs"]
 toml = ["*/Cargo.lock"]
 markdown = ["*.md"]

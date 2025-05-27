@@ -1,10 +1,10 @@
 mod default;
-mod filetype;
+mod language;
 mod project;
 
 use std::{collections::VecDeque, path::Path, sync::Arc};
 
-use filetype::ConfigSnippet;
+use language::ConfigSnippet;
 use sanedit_buffer::utf8::EndOfLine;
 use sanedit_messages::key::{try_parse_keyevents, KeyEvent};
 use sanedit_server::ClientId;
@@ -30,7 +30,7 @@ use super::{
 use rustc_hash::FxHashMap;
 
 use super::Map;
-pub(crate) use filetype::{FiletypeConfig, LSPConfig};
+pub(crate) use language::{LanguageConfig, LSPConfig};
 pub(crate) use project::*;
 
 pub fn read_toml<T>(config_path: &Path) -> anyhow::Result<T>
@@ -236,9 +236,9 @@ pub(crate) struct EditorConfig {
     /// Autodetect indentation from file
     pub detect_indent: bool,
 
-    /// Filetype glob patterns
-    /// By default the filetype is the extension of the file
-    pub filetype_detect: Map<String, Vec<String>>,
+    /// Language glob patterns
+    /// By default the language is the extension of the file
+    pub language_detect: Map<String, Vec<String>>,
 
     pub copy_on_delete: bool,
 }

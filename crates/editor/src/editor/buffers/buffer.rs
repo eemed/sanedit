@@ -14,7 +14,7 @@ use anyhow::ensure;
 use anyhow::Result;
 use sanedit_buffer::{Mark, MarkResult, PieceTree, PieceTreeSlice, PieceTreeView};
 use sanedit_core::Edit;
-use sanedit_core::{tmp_file, Changes, Filetype};
+use sanedit_core::{tmp_file, Changes, Language};
 use sanedit_utils::key_type;
 use thiserror::Error;
 
@@ -31,7 +31,7 @@ key_type!(pub(crate) BufferId);
 #[derive(Debug)]
 pub(crate) struct Buffer {
     pub(crate) id: BufferId,
-    pub(crate) filetype: Option<Filetype>,
+    pub(crate) language: Option<Language>,
     pub(crate) config: BufferConfig,
     pub(crate) read_only: bool,
 
@@ -55,7 +55,7 @@ impl Buffer {
         let pt = PieceTree::new();
         Buffer {
             id: BufferId::default(),
-            filetype: None,
+            language: None,
             read_only: false,
             pt,
             is_modified: false,
@@ -85,7 +85,7 @@ impl Buffer {
             id: BufferId::default(),
             read_only: file.read_only(),
             pt,
-            filetype: file.filetype().cloned(),
+            language: file.language().cloned(),
             is_modified: false,
             snapshots: Snapshots::new(),
             config: options,
@@ -106,7 +106,7 @@ impl Buffer {
             Self::from_reader(ffile)?
         };
 
-        buf.filetype = file.filetype().cloned();
+        buf.language = file.language().cloned();
         buf.path = Some(path.into());
         buf.read_only = file.read_only();
         buf.config = options;
@@ -118,7 +118,7 @@ impl Buffer {
         Ok(Buffer {
             id: BufferId::default(),
             pt,
-            filetype: None,
+            language: None,
             read_only: false,
             is_modified: false,
             snapshots: Snapshots::new(),

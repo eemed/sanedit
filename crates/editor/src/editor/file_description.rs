@@ -5,9 +5,9 @@ use std::{
 };
 
 use sanedit_buffer::utf8::EndOfLine;
-use sanedit_core::Filetype;
+use sanedit_core::Language;
 
-use super::{config::Config, filetype::Filetypes};
+use super::{config::Config, language::Languages};
 
 #[derive(Debug)]
 pub struct FileDescription {
@@ -15,18 +15,18 @@ pub struct FileDescription {
     pub(crate) eol: EndOfLine,
     pub(crate) is_big: bool,
     pub(crate) read_only: bool,
-    pub(crate) filetype: Option<Filetype>,
+    pub(crate) language: Option<Language>,
 }
 
 impl FileDescription {
     pub fn new(
         path: impl AsRef<Path>,
         config: &Config,
-        filetypes: &Filetypes,
+        langs: &Languages,
     ) -> io::Result<FileDescription> {
         let path = path.as_ref();
         if !path.exists() {
-            return Self::new_empty(path, config, filetypes);
+            return Self::new_empty(path, config, langs);
         }
 
         let mut file = fs::File::open(path)?;
@@ -39,14 +39,14 @@ impl FileDescription {
 
         let is_big = config.editor.big_file_threshold_bytes <= size;
         let read_only = metadata.permissions().readonly();
-        let filetype = Filetype::determine(path, &config.editor.filetype_detect);
+        let lang = Language::determine(path, &config.editor.language_detect);
 
         let file_metadata = FileDescription {
             absolute_path: path.into(),
             eol,
             is_big,
             read_only,
-            filetype,
+            language: lang,
         };
 
         Ok(file_metadata)
@@ -55,14 +55,14 @@ impl FileDescription {
     fn new_empty(
         path: &Path,
         config: &Config,
-        filetypes: &Filetypes,
+        langs: &Languages,
     ) -> io::Result<FileDescription> {
-        let filetype = Filetype::determine(path, &config.editor.filetype_detect);
-        let eol = filetype
+        let lang = Language::determine(path, &config.editor.language_detect);
+        let eol = lang
             .as_ref()
-            .map(|ft| filetypes.get(&ft))
+            .map(|lang| langs.get(&lang))
             .flatten()
-            .map(|ftconfig| ftconfig.buffer.eol)
+            .map(|langconfig| langconfig.buffer.eol)
             .unwrap_or(config.editor.eol);
 
         let file_metadata = FileDescription {
@@ -70,14 +70,14 @@ impl FileDescription {
             eol,
             is_big: false,
             read_only: false, // TODO can write here?
-            filetype,
+            language: lang,
         };
 
         Ok(file_metadata)
     }
 
-    pub fn filetype(&self) -> Option<&Filetype> {
-        self.filetype.as_ref()
+    pub fn language(&self) -> Option<&Language> {
+        self.language.as_ref()
     }
 
     pub fn read_only(&self) -> bool {

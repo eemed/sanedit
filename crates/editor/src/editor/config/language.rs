@@ -41,7 +41,7 @@ pub(crate) struct LSPConfig {
 
 #[derive(Debug, Clone, Serialize, Default, Deserialize, DocComment)]
 #[serde(default)]
-pub(crate) struct FiletypeConfig {
+pub(crate) struct LanguageConfig {
     /// Used to comment blocks of text
     pub comment: String,
 
@@ -52,19 +52,19 @@ pub(crate) struct FiletypeConfig {
     pub snippet: Vec<ConfigSnippet>,
 }
 
-impl FiletypeConfig {
-    pub fn new(config_path: &Path) -> FiletypeConfig {
+impl LanguageConfig {
+    pub fn new(config_path: &Path) -> LanguageConfig {
         match Self::try_new(config_path) {
             Ok(config) => config,
             Err(e) => {
-                log::warn!("Failed to load filetype configuration, using default instead: {e}");
-                FiletypeConfig::default()
+                log::warn!("Failed to load language configuration, using default instead: {e}");
+                LanguageConfig::default()
             }
         }
     }
 
-    pub fn try_new(config_path: &Path) -> anyhow::Result<FiletypeConfig> {
-        read_toml::<FiletypeConfig>(config_path)
+    pub fn try_new(config_path: &Path) -> anyhow::Result<LanguageConfig> {
+        read_toml::<LanguageConfig>(config_path)
     }
 
     pub fn snippets_as_choices(&self) -> Vec<Arc<Choice>> {

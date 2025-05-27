@@ -6,7 +6,7 @@ use crate::{
     actions::movement::start_of_buffer,
     editor::{
         buffers::{Buffer, BufferError},
-        filetype::Filetypes,
+        language::Languages,
         hooks::Hook,
         windows::{Focus, NextKeyFunction, Prompt, Window},
         Editor,
@@ -294,27 +294,27 @@ fn align_cursor_columns(editor: &mut Editor, id: ClientId) -> ActionResult {
 }
 
 fn get_comment<'a>(
-    filetypes: &'a Filetypes,
+    languages: &'a Languages,
     win: &mut Window,
     buf: &Buffer,
     show_error: bool,
 ) -> Option<&'a str> {
-    let Some(ft) = &buf.filetype else {
+    let Some(ft) = &buf.language else {
         if show_error {
-            win.warn_msg("No filetype set");
+            win.warn_msg("No language set");
         }
         return None;
     };
-    let Some(ftconfig) = filetypes.get(&ft) else {
+    let Some(langconfig) = languages.get(&ft) else {
         if show_error {
-            win.warn_msg("No comment string set for filetype");
+            win.warn_msg("No comment string set for language");
         }
         return None;
     };
-    let comment = &ftconfig.comment;
+    let comment = &langconfig.comment;
     if comment.is_empty() {
         if show_error {
-            win.warn_msg("No comment string set for filetype");
+            win.warn_msg("No comment string set for language");
         }
         return None;
     }
@@ -325,7 +325,7 @@ fn get_comment<'a>(
 #[action("Buffer: Comment lines")]
 fn comment_lines(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = win_buf!(editor, id);
-    match get_comment(&editor.filetypes, win, buf, true) {
+    match get_comment(&editor.languages, win, buf, true) {
         Some(comment) => {
             if win.comment_cursor_lines(buf, comment).is_ok() {
                 let hook = Hook::BufChanged(buf.id);
@@ -341,7 +341,7 @@ fn comment_lines(editor: &mut Editor, id: ClientId) -> ActionResult {
 #[action("Buffer: Uncomment lines")]
 fn uncomment_lines(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = win_buf!(editor, id);
-    match get_comment(&editor.filetypes, win, buf, true) {
+    match get_comment(&editor.languages, win, buf, true) {
         Some(comment) => {
             if win.uncomment_cursor_lines(buf, comment).is_ok() {
                 let hook = Hook::BufChanged(buf.id);
@@ -357,7 +357,7 @@ fn uncomment_lines(editor: &mut Editor, id: ClientId) -> ActionResult {
 #[action("Buffer: Toggle comment lines")]
 fn toggle_comment_lines(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = win_buf!(editor, id);
-    match get_comment(&editor.filetypes, win, buf, true) {
+    match get_comment(&editor.languages, win, buf, true) {
         Some(comment) => {
             if win.toggle_comment_cursor_lines(buf, comment).is_ok() {
                 let hook = Hook::BufChanged(buf.id);
@@ -373,7 +373,7 @@ fn toggle_comment_lines(editor: &mut Editor, id: ClientId) -> ActionResult {
 #[action("Buffer: Join lines")]
 fn join_lines(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = win_buf!(editor, id);
-    let comment = get_comment(&editor.filetypes, win, buf, false).unwrap_or("");
+    let comment = get_comment(&editor.languages, win, buf, false).unwrap_or("");
 
     if win.join_lines(buf, comment).is_ok() {
         let hook = Hook::BufChanged(buf.id);

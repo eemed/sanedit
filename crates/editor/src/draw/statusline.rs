@@ -32,7 +32,7 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> Statusline {
         left.push_str("* ");
     }
     if buf.read_only {
-        left.push_str("RO ");
+        left.push_str("(read-only) ");
     }
 
     let cursor = win.primary_cursor();

@@ -4,10 +4,10 @@ pub(crate) mod clipboard;
 pub(crate) mod config;
 pub(crate) mod file_description;
 pub(crate) mod filetree;
-pub(crate) mod language;
 pub(crate) mod hooks;
 pub(crate) mod job_broker;
 pub(crate) mod keymap;
+pub(crate) mod language;
 pub(crate) mod lsp;
 pub(crate) mod snippets;
 pub(crate) mod syntax;
@@ -16,11 +16,12 @@ pub(crate) mod windows;
 
 use caches::Caches;
 use config::ProjectConfig;
+use crossbeam::channel::Sender;
 use file_description::FileDescription;
-use language::Languages;
 use keymap::KeymapResult;
 use keymap::Layer;
 use keymap::LayerKey;
+use language::Languages;
 use rustc_hash::FxHashMap;
 use sanedit_core::Language;
 use sanedit_messages::key;
@@ -39,13 +40,13 @@ use sanedit_server::FromJobs;
 use sanedit_server::StartOptions;
 use sanedit_server::ToEditor;
 use strum::IntoEnumIterator;
+use tokio::runtime::Runtime;
 use windows::Mode;
 
 use std::collections::HashSet;
 use std::env;
 use std::path::Path;
 use std::path::PathBuf;
-use std::sync::mpsc::Receiver;
 use std::sync::Arc;
 
 use tokio::io;
@@ -62,7 +63,6 @@ use crate::editor::buffers::Buffer;
 use crate::editor::config::Config;
 use crate::editor::hooks::Hook;
 use crate::editor::windows::Focus;
-use crate::runtime::TokioRuntime;
 use sanedit_core::copy_cursors_to_lines;
 use sanedit_core::paste_separate_cursor_lines;
 use sanedit_core::ConfigDirectory;
@@ -96,7 +96,7 @@ pub(crate) struct Editor {
 
     pub windows: Windows,
     pub buffers: Buffers,
-    pub _runtime: TokioRuntime,
+    pub _tokio_runtime: Runtime,
     pub themes: Themes,
     pub config_dir: ConfigDirectory,
     pub syntaxes: Syntaxes,
@@ -114,17 +114,16 @@ pub(crate) struct Editor {
 }
 
 impl Editor {
-    fn new(runtime: TokioRuntime) -> Editor {
-        let handle = runtime.editor_handle();
+    fn new(runtime: Runtime, internal_chan: Sender<ToEditor>) -> Editor {
         // Spawn job runner
-        let jobs_handle = runtime.block_on(spawn_job_runner(handle));
+        let jobs_handle = runtime.block_on(spawn_job_runner(internal_chan));
         let working_dir = env::current_dir().expect("Cannot get current working directory.");
         let config_dir = ConfigDirectory::default();
         let config = Config::default();
         let caches = Caches::new(&config);
 
         Editor {
-            _runtime: runtime,
+            _tokio_runtime: runtime,
             clients: Map::default(),
             draw_states: Map::default(),
             syntaxes: Syntaxes::new(),
@@ -881,51 +880,49 @@ impl Editor {
 /// Editor uses client handles to communicate to clients. Client handles are
 /// sent using the provided reciver.
 pub(crate) fn main_loop(
-    runtime: TokioRuntime,
-    recv: Receiver<ToEditor>,
+    runtime: Runtime,
+    recv: crossbeam::channel::Receiver<ToEditor>,
     opts: StartOptions,
 ) -> Result<(), io::Error> {
-    let mut editor = Editor::new(runtime);
+    // Internal channel
+    let (tx, rx) = crossbeam::channel::unbounded();
+
+    let mut editor = Editor::new(runtime, tx);
     editor.configure(opts);
     editor.on_startup();
 
-    // let framerate = Duration::from_millis(1000 / 30);
-    // let mut redraw = Instant::now();
-    // let mut was_previously_redrawn = false;
+    let receivers = [recv, rx];
+    let mut recv_select = {
+        let mut sel = crossbeam::channel::Select::new();
+        for r in &receivers {
+            sel.recv(r);
+        }
+        sel
+    };
 
     while editor.is_running {
-        // match recv.recv_timeout(framerate) {
-        match recv.recv() {
-            Ok(msg) => {
-                // was_previously_redrawn = false;
+        use ToEditor::*;
 
-                use ToEditor::*;
-                match msg {
-                    NewClient(handle) => editor.on_client_connected(handle),
-                    Jobs(msg) => editor.handle_job_msg(msg),
-                    Message(id, msg) => editor.handle_message(id, msg),
-                    FatalError(e) => {
-                        log::info!("Fatal error: {}", e);
-                        break;
-                    }
-                }
+        // Prioritise outside source over internal
+        let Some(msg) = receivers[0].try_recv().ok().or_else(|| {
+            let oper = recv_select.select();
+            let index = oper.index();
+            oper.recv(&receivers[index]).ok()
+        }) else {
+            continue;
+        };
 
-                editor.redraw_all();
-                // let now = Instant::now();
-                // if now.duration_since(redraw) > framerate {
-                //     was_previously_redrawn = true;
-                //     redraw = Instant::now();
-                //     editor.redraw_all();
-                // }
-            }
-            Err(_) => {
-                // if !was_previously_redrawn {
-                //     was_previously_redrawn = true;
-                //     redraw = Instant::now();
-                //     editor.redraw_all();
-                // }
+        match msg {
+            NewClient(handle) => editor.on_client_connected(handle),
+            Jobs(msg) => editor.handle_job_msg(msg),
+            Message(id, msg) => editor.handle_message(id, msg),
+            FatalError(e) => {
+                log::info!("Fatal error: {}", e);
+                break;
             }
         }
+
+        editor.redraw_all();
     }
 
     Ok(())

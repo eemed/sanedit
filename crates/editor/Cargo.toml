@@ -42,3 +42,5 @@ which.workspace = true
 
 # Configuration handling
 toml_edit = { workspace = true, features = ["serde"] }
+
+crossbeam = "0.8.4"

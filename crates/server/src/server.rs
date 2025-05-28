@@ -27,7 +27,7 @@ pub struct StartOptions {
 /// Editor handle allows us to communicate with the editor
 #[derive(Clone, Debug)]
 pub struct EditorHandle {
-    pub sender: Sender<ToEditor>,
+    pub sender: crossbeam::channel::Sender<ToEditor>,
     pub next_id: Arc<AtomicUsize>,
 }
 

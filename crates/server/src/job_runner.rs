@@ -3,6 +3,7 @@ mod events;
 mod id;
 mod kill;
 
+use crossbeam::channel::Sender;
 pub use futures_core::future::BoxFuture;
 use rustc_hash::FxHashMap;
 use tokio::sync::mpsc::{self, channel};
@@ -53,17 +54,17 @@ impl<T: CPUJob + 'static> Job for T {
 }
 
 /// Spawn a job runner
-pub async fn spawn_job_runner(editor_handle: EditorHandle) -> JobsHandle {
+pub async fn spawn_job_runner(sender: Sender<ToEditor>) -> JobsHandle {
     let (tx, rx) = mpsc::channel(CHANNEL_SIZE);
-    tokio::spawn(jobs_loop(rx, editor_handle));
+    tokio::spawn(jobs_loop(rx, sender));
     tx
 }
 
 // Runs jobs in tokio runtime.
-async fn jobs_loop(mut recv: mpsc::Receiver<ToJobs>, handle: EditorHandle) {
+async fn jobs_loop(mut recv: mpsc::Receiver<ToJobs>, sender: crossbeam::channel::Sender<ToEditor>) {
     let (tx, mut rx) = channel(CHANNEL_SIZE);
     let mut context = JobResponseSender {
-        editor: handle,
+        editor: sender,
         internal: tx,
     };
     let mut jobs = FxHashMap::default();
@@ -73,7 +74,7 @@ async fn jobs_loop(mut recv: mpsc::Receiver<ToJobs>, handle: EditorHandle) {
             Some(msg) = rx.recv() => {
                 let id = msg.id();
                 jobs.remove(&id);
-                context.editor.send(ToEditor::Jobs(msg.into()));
+                let _ = context.editor.send(ToEditor::Jobs(msg.into()));
             },
             Some(msg) = recv.recv() => {
                 use ToJobs::*;

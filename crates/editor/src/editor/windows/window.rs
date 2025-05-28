@@ -731,6 +731,7 @@ impl Window {
     // Restore aux data, if buffer is provided try to scroll to view position
     // otherwise hard set it
     fn restore(&mut self, aux: &SnapshotAux, buf: Option<&Buffer>) {
+        *self.view_syntax() = ViewSyntax::default();
         self.search.reset_highlighting();
         self.cursors = aux.cursors.clone();
 

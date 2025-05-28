@@ -28,7 +28,7 @@ pub struct Matcher {
 }
 
 impl Matcher {
-    const BATCH_SIZE: usize = 1024;
+    const BATCH_SIZE: usize = 512;
     const CHANNEL_SIZE: usize = 1024;
 
     // Create a new matcher.
@@ -56,7 +56,7 @@ impl Matcher {
         self.prev_search.store(true, Ordering::Release);
         self.prev_search = Arc::new(AtomicBool::new(false));
 
-        // Batch candidates to 512 sized blocks
+        // Batch candidates 
         // Send each block to an executor
         // Get the results and send to receiver
         let (out, rx) = channel::<ScoredChoice>(Self::CHANNEL_SIZE);
@@ -105,12 +105,12 @@ impl Matcher {
                 let patterns = patterns.clone();
 
                 rayon::spawn(move || {
-                    if stop.load(Ordering::Acquire) {
-                        return;
-                    }
-
                     let opts = reader.slice(batch);
                     for choice in opts.iter() {
+                        if stop.load(Ordering::Acquire) {
+                            return;
+                        }
+
                         if let Some(ranges) = matches_with(
                             choice.filter_text().as_ref(),
                             &patterns,

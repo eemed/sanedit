@@ -328,6 +328,7 @@ pub(crate) async fn match_options(
             continue;
         }
         patt = t;
+        log::info!("New search");
 
         join.abort();
         let _ = join.await;

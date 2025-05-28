@@ -19,7 +19,8 @@ impl JobContext {
         let any = Box::new(any);
         self.sender
             .editor
-            .send(ToEditor::Jobs(FromJobs::Message(self.id, any)));
+            .send(ToEditor::Jobs(FromJobs::Message(self.id, any)))
+            .expect("Main loop shut down")
     }
 }
 
@@ -50,7 +51,7 @@ impl From<JobsMessage> for FromJobs {
 /// Job context used to communicate back to editor
 #[derive(Clone, Debug)]
 pub struct JobResponseSender {
-    pub(super) editor: EditorHandle,
+    pub(super) editor: crossbeam::channel::Sender<ToEditor>,
     pub(super) internal: Sender<JobsMessage>,
 }
 
@@ -77,7 +78,7 @@ impl JobResponseSender {
 
     pub fn send<A: Any + Send>(&mut self, id: JobId, any: A) {
         let any = Box::new(any);
-        self.editor.send(ToEditor::Jobs(FromJobs::Message(id, any)));
+        let _ = self.editor.send(ToEditor::Jobs(FromJobs::Message(id, any)));
     }
 }
 

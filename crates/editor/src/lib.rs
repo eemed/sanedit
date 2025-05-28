@@ -42,24 +42,31 @@ pub(crate) mod actions;
 pub(crate) mod common;
 pub(crate) mod draw;
 pub(crate) mod editor;
-pub(crate) mod runtime;
 
-use std::{sync::mpsc::channel, thread};
+use std::thread;
 
-use runtime::TokioRuntime;
 use sanedit_server::{spawn_listeners, Address, EditorHandle, StartOptions};
 
 // works only with cargo
 pub(crate) const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 pub fn run_sync(addrs: Vec<Address>, opts: StartOptions) -> Option<thread::JoinHandle<()>> {
-    let (send, recv) = channel();
+    let (send, recv) = crossbeam::channel::unbounded();
     let handle = EditorHandle {
         sender: send,
         next_id: Default::default(),
     };
 
-    let runtime = TokioRuntime::new(handle.clone());
+    // TODO multiworker
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .worker_threads(1)
+        .on_thread_start(|| {
+            log::info!("Thread stater");
+        })
+        .enable_all()
+        .build()
+        .unwrap();
+
     runtime.block_on(spawn_listeners(addrs, handle));
 
     thread::Builder::new()

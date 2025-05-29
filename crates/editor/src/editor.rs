@@ -893,7 +893,8 @@ pub(crate) fn main_loop(
 
     let receivers = [recv, rx];
     let mut recv_select = {
-        let mut sel = crossbeam::channel::Select::new();
+        // Prioritise outside source over internal
+        let mut sel = crossbeam::channel::Select::new_biased();
         for r in &receivers {
             sel.recv(r);
         }
@@ -903,11 +904,10 @@ pub(crate) fn main_loop(
     while editor.is_running {
         use ToEditor::*;
 
-        // Prioritise outside source over internal
-        let Some(msg) = receivers[0].try_recv().ok().or_else(|| {
+        let Ok(msg) = ({
             let oper = recv_select.select();
             let index = oper.index();
-            oper.recv(&receivers[index]).ok()
+            oper.recv(&receivers[index])
         }) else {
             continue;
         };

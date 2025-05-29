@@ -7,7 +7,6 @@ use std::{
     path::PathBuf,
     sync::{
         atomic::{AtomicUsize, Ordering},
-        mpsc::Sender,
         Arc,
     },
 };

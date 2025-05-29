@@ -279,12 +279,7 @@ fn new_search(editor: &mut Editor, id: ClientId, needle: &str, reverse: bool) {
     do_search(editor, id, searcher, cpos)
 }
 
-fn do_search(
-    editor: &mut Editor,
-    id: ClientId,
-    searcher: Searcher,
-    starting_position: u64,
-) {
+fn do_search(editor: &mut Editor, id: ClientId, searcher: Searcher, starting_position: u64) {
     let (win, buf) = editor.win_buf_mut(id);
 
     let (start, mat, wrap) = if searcher.options().is_reversed {

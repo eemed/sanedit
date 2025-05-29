@@ -5,8 +5,9 @@ pub(crate) mod message;
 pub(crate) mod terminal;
 mod ui;
 
-use std::{io, sync::mpsc, thread};
+use std::{io, thread};
 
+use crossbeam::channel::{Select, Sender};
 use sanedit_messages::{ClientMessage, Command, Message, Reader, Writer};
 
 use crate::ui::{UIResult, UI};
@@ -23,7 +24,8 @@ where
 {
     let mut writer: Writer<_, Message> = Writer::new(write);
     let mut ui = UI::new().expect("Failed to start UI");
-    let (tx, rx) = mpsc::channel();
+    let (tx, rx) = crossbeam::channel::unbounded();
+    let (internal_tx, internal_rx) = crossbeam::channel::unbounded();
 
     writer
         .write(Message::Hello(ui.window().size()))
@@ -37,13 +39,23 @@ where
     }
 
     // Input thread
-    let input_sender = tx.clone();
-    thread::spawn(|| input::run_loop(input_sender));
+    thread::spawn(|| input::run_loop(internal_tx));
 
     let read_sender = tx;
     thread::spawn(|| run_read_loop(read, read_sender));
 
-    while let Ok(msg) = rx.recv() {
+    let mut recv_select = Select::new_biased();
+    // Prioritize internal over outside
+    let receivers = [internal_rx, rx];
+    for recv in &receivers {
+        recv_select.recv(recv);
+    }
+
+    while let Ok(msg) = {
+        let oper = recv_select.select();
+        let index = oper.index();
+        oper.recv(&receivers[index])
+    } {
         use ClientInternalMessage::*;
         match msg {
             FromServer(msg) => match ui.handle_message(msg) {
@@ -111,7 +123,7 @@ where
     std::process::exit(0);
 }
 
-fn run_read_loop<R>(read: R, sender: mpsc::Sender<ClientInternalMessage>)
+fn run_read_loop<R>(read: R, sender: Sender<ClientInternalMessage>)
 where
     R: io::Read + Clone + Send + 'static,
 {

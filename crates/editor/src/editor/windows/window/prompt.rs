@@ -179,6 +179,7 @@ pub(crate) struct Prompt {
     history_kind: Option<HistoryKind>,
     history_pos: HistoryPosition,
     kind: PromptKind,
+    discard_until_cleared: bool,
 }
 
 impl Prompt {
@@ -194,6 +195,7 @@ impl Prompt {
             history_kind: None,
             history_pos: HistoryPosition::First,
             kind: PromptKind::Regular,
+            discard_until_cleared: false,
         }
     }
 
@@ -282,6 +284,7 @@ impl Prompt {
     }
 
     pub fn remove_grapheme_before_cursor(&mut self) {
+        self.discard_until_cleared = true;
         let end = self.cursor;
         self.prev_grapheme();
         let start = self.cursor;
@@ -289,6 +292,7 @@ impl Prompt {
     }
 
     pub fn clear_choices(&mut self) {
+        self.discard_until_cleared = false;
         self.chooser = Chooser::new();
     }
 
@@ -301,6 +305,9 @@ impl Prompt {
     }
 
     pub fn add_choices(&mut self, opts: SortedVec<ScoredChoice>) {
+        if self.discard_until_cleared {
+            return;
+        }
         self.chooser.add(opts);
     }
 
@@ -338,11 +345,13 @@ impl Prompt {
     }
 
     pub fn insert_at_cursor(&mut self, string: &str) {
+        self.discard_until_cleared = true;
         self.input.insert_str(self.cursor, string);
         self.cursor += string.len();
     }
 
     pub fn overwrite_input(&mut self, item: &str) {
+        self.discard_until_cleared = true;
         self.cursor = item.len();
         self.input = item.into();
     }

@@ -25,6 +25,7 @@ dirs.workspace = true
 rayon.workspace = true
 rustc-hash.workspace = true
 chrono.workspace = true
+crossbeam.workspace = true
 
 # Useful enum derives
 strum.workspace = true
@@ -43,4 +44,3 @@ which.workspace = true
 # Configuration handling
 toml_edit = { workspace = true, features = ["serde"] }
 
-crossbeam = "0.8.4"

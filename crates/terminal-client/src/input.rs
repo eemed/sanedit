@@ -1,6 +1,7 @@
-use std::{sync::mpsc, time::Duration};
+use std::time::Duration;
 
 use anyhow::Result;
+use crossbeam::channel::Sender;
 use crossterm::event::{poll, read, KeyCode, KeyModifiers};
 use sanedit_messages::{
     key::{self, Key, KeyEvent, KeyMods},
@@ -12,7 +13,7 @@ use crate::message::ClientInternalMessage;
 
 const RE_RESIZE_POLL_DURATION: Duration = Duration::from_millis(100);
 
-pub(crate) fn run_loop(mut sender: mpsc::Sender<ClientInternalMessage>) {
+pub(crate) fn run_loop(mut sender: Sender<ClientInternalMessage>) {
     let msg = match run_loop_impl(&mut sender) {
         Ok(_) => ClientInternalMessage::Bye,
         Err(e) => ClientInternalMessage::Error(e.to_string()),
@@ -21,7 +22,7 @@ pub(crate) fn run_loop(mut sender: mpsc::Sender<ClientInternalMessage>) {
     let _ = sender.send(msg);
 }
 
-pub(crate) fn run_loop_impl(sender: &mut mpsc::Sender<ClientInternalMessage>) -> Result<()> {
+pub(crate) fn run_loop_impl(sender: &mut Sender<ClientInternalMessage>) -> Result<()> {
     loop {
         let event = read()?;
         process_input_event(event, sender)?;
@@ -30,7 +31,7 @@ pub(crate) fn run_loop_impl(sender: &mut mpsc::Sender<ClientInternalMessage>) ->
 
 fn process_input_event(
     event: crossterm::event::Event,
-    sender: &mut mpsc::Sender<ClientInternalMessage>,
+    sender: &mut Sender<ClientInternalMessage>,
 ) -> Result<()> {
     use crossterm::event::Event::*;
 

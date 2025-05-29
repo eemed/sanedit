@@ -9,7 +9,7 @@ use rustc_hash::FxHashMap;
 use tokio::sync::mpsc::{self, channel};
 
 use crate::events::ToEditor;
-use crate::{EditorHandle, CHANNEL_SIZE};
+use crate::CHANNEL_SIZE;
 
 pub use context::*;
 pub use events::*;
@@ -63,7 +63,7 @@ pub async fn spawn_job_runner(sender: Sender<ToEditor>) -> JobsHandle {
 // Runs jobs in tokio runtime.
 async fn jobs_loop(mut recv: mpsc::Receiver<ToJobs>, sender: crossbeam::channel::Sender<ToEditor>) {
     let (tx, mut rx) = channel(CHANNEL_SIZE);
-    let mut context = JobResponseSender {
+    let context = JobResponseSender {
         editor: sender,
         internal: tx,
     };

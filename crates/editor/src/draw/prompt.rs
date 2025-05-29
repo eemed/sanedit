@@ -78,9 +78,6 @@ fn draw_impl(ctx: &mut DrawContext) -> redraw::Redraw {
         selected: selected_relative_pos,
         source,
         max_completions: compl_count,
-
-        total_options: prompt.total_choices(),
-        selected_total_index: prompt.selected_pos(),
     }
     .into()
 }

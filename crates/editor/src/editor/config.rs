@@ -30,11 +30,12 @@ use super::{
 use rustc_hash::FxHashMap;
 
 use super::Map;
-pub(crate) use language::{LanguageConfig, LSPConfig};
+pub(crate) use language::{LSPConfig, LanguageConfig};
 pub(crate) use project::*;
 
 pub fn read_toml<T>(config_path: &Path) -> anyhow::Result<T>
-where T: DeserializeOwned
+where
+    T: DeserializeOwned,
 {
     use std::io::Read;
     let mut tomls = String::new();

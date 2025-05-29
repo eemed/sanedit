@@ -1,7 +1,6 @@
 use std::any::Any;
 
 use crate::events::ToEditor;
-use crate::server::EditorHandle;
 use tokio::sync::mpsc::{error::SendError, Sender};
 
 use super::{FromJobs, JobId, Kill};

@@ -48,7 +48,6 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> Statusline {
             result.push_str(" | ")
         }
 
-
         result.push_str(&format!(" {} | ", win.mode.statusline()));
         result.push_str(&format!(
             "{}% ",

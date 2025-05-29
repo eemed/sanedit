@@ -28,7 +28,7 @@ pub struct Matcher {
 }
 
 impl Matcher {
-    const BATCH_SIZE: usize = 512;
+    const BATCH_SIZE: usize = 1024;
     const CHANNEL_SIZE: usize = 1024;
 
     // Create a new matcher.
@@ -56,7 +56,7 @@ impl Matcher {
         self.prev_search.store(true, Ordering::Release);
         self.prev_search = Arc::new(AtomicBool::new(false));
 
-        // Batch candidates 
+        // Batch candidates
         // Send each block to an executor
         // Get the results and send to receiver
         let (out, rx) = channel::<ScoredChoice>(Self::CHANNEL_SIZE);

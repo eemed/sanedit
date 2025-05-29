@@ -6,8 +6,8 @@ use crate::{
     actions::movement::start_of_buffer,
     editor::{
         buffers::{Buffer, BufferError},
-        language::Languages,
         hooks::Hook,
+        language::Languages,
         windows::{Focus, NextKeyFunction, Prompt, Window},
         Editor,
     },

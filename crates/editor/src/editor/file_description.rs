@@ -52,11 +52,7 @@ impl FileDescription {
         Ok(file_metadata)
     }
 
-    fn new_empty(
-        path: &Path,
-        config: &Config,
-        langs: &Languages,
-    ) -> io::Result<FileDescription> {
+    fn new_empty(path: &Path, config: &Config, langs: &Languages) -> io::Result<FileDescription> {
         let lang = Language::determine(path, &config.editor.language_detect);
         let eol = lang
             .as_ref()

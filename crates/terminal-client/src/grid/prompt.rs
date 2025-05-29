@@ -149,32 +149,9 @@ impl Drawable for CustomPrompt {
                 cells = &mut cells[TITLE_HEIGHT..];
 
                 // Borders
-                let wsize = size(cells);
                 let pcompl = ctx.theme.get(ThemeField::PromptCompletion);
                 set_style(cells, pcompl);
                 draw_border_no_strip(Border::Margin, pcompl, cells);
-
-                // Override border to show how many completions we have
-                let compl_count = format!(
-                    "{}/{}",
-                    self.prompt
-                        .selected_total_index
-                        .map(|i| (i + 1).to_string())
-                        .unwrap_or(String::from("-")),
-                    self.prompt.total_options,
-                );
-                let comple_count_cells = into_cells_with_style(&compl_count, pcompl);
-                // Top border replace
-                if wsize.height != 0 {
-                    // "-/100 "
-                    let clen = comple_count_cells.len();
-                    if wsize.width >= clen + 1 {
-                        for (i, cell) in comple_count_cells.into_iter().enumerate() {
-                            let pos = wsize.width - 1 - clen + i;
-                            cells[0][pos] = cell;
-                        }
-                    }
-                }
 
                 // Ignore border cells from this point on
                 cells = strip_border(cells);

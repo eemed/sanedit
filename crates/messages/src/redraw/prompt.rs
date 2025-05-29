@@ -22,9 +22,6 @@ pub struct Prompt {
     pub selected: Option<usize>,
     pub source: Source,
     pub max_completions: usize,
-
-    pub total_options: usize,
-    pub selected_total_index: Option<usize>,
 }
 
 impl Diffable for Prompt {

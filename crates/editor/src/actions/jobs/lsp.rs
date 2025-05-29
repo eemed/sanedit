@@ -20,7 +20,7 @@ use crate::{
 };
 use sanedit_buffer::{PieceTree, PieceTreeSlice};
 use sanedit_core::{
-    word_before_pos, Change, Changes, Cursor, Diagnostic, Language, Group, Item, Range,
+    word_before_pos, Change, Changes, Cursor, Diagnostic, Group, Item, Language, Range,
 };
 use sanedit_lsp::{
     CodeAction, CompletionItem, FileEdit, LSPClientParams, Notification, Position,

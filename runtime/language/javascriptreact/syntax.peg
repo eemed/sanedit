@@ -1,0 +1,50 @@
+document = ( statements / separated_highlights / (!stop .)* stop)*;
+statements = import_statement / jsx;
+separated_highlights = string / keyword / constant / comment / operator;
+WHITESPACE = [ \t];
+ws = WHITESPACE;
+nl = "\n" / "\r\n";
+stop = WHITESPACE / "(" / nl;
+
+@whitespaced
+import_statement = import (!"from" .)* from string ";"?;
+@show @highlight(preproc)
+import = "import";
+@show @highlight(preproc)
+from = "from";
+
+@show @highlight(keyword)
+keyword = "export" / "const" / "async" / "if" / "else" / "for" / "return" / "default" / "switch" / "case" / "let" / "var";
+
+@show @highlight(operator)
+operator = "await" / "=>" / "==" "="? / "!=" "="? / "...";
+
+@show @highlight(constant)
+constant = "true" / "false" / "undefined" / "null" / number;
+
+@show @highlight(comment)
+comment = "//" (!nl .)* nl;
+
+number = "-"? digit+ ("." digit+)? ("e" "-"? digit+)? / "-"? "Infinity" / "NaN" / "0x" hexdigit+;
+digit = [0..9];
+hexdigit = digit / [a..fA..F];
+
+@show @highlight
+string    = "\"" nstring "\"" / "'" sstring "'" / "`" tstring "`" ;
+nstring    = ("\\" escape_char / [^"\n])*;
+sstring    = ("\\" escape_char / [^'\n])*;
+tstring    = ("\\" escape_char / [^`\n])*;
+escape_char     = "0" / "t" / "n" / "r" / "'" / "`" / "\"" / "\\";
+
+jsx = tag;
+@show @highlight(keyword)
+tag = "<" "/"? ws* tagname (ws* tagattr)* ws* "/"? ">";
+@show @highlight(type)
+tagname = (!(ws / ">" / "/") .)+;
+@show @highlight(default)
+tagattr = attrname ("=" attrvalue)?;
+attrvalue = string / attrref;
+attrref = "{" (!"}" .)* "}";
+
+@show @highlight(identifier)
+attrname = (!(ws / "=" /  "/" / ">") .)+;

@@ -52,8 +52,8 @@ impl EditorConfig {
              "yaml", ["*.yml", "*.yaml"],
              "markdown", ["*.md"],
              "make", ["*/Makefile"],
-             "javascript", ["*.js"],
              "javascriptreact", ["*.jsx"],
+             // "javascript", ["*.js"],
              "python", ["*.py"],
              "shellscript", ["*.sh"],
         );

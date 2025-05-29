@@ -1,0 +1,3 @@
+comment = "// "
+language_server.command = "typescript-language-server"
+language_server.args = ["--stdio"]

@@ -239,6 +239,7 @@ pub(crate) struct EditorConfig {
 
     /// Language glob patterns
     /// By default the language is the extension of the file
+    #[serde(skip_serializing)]
     pub language_detect: Map<String, Vec<String>>,
 
     pub copy_on_delete: bool,

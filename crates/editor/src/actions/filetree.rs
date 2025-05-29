@@ -115,10 +115,15 @@ fn ft_new_file(editor: &mut Editor, id: ClientId) -> ActionResult {
             Kind::Directory { .. } => entry.path().to_path_buf(),
         }
     };
+    let dir_name = dir
+        .strip_prefix(editor.working_dir())
+        .unwrap_or(dir.as_path())
+        .to_string_lossy();
 
     let (win, _buf) = editor.win_buf_mut(id);
     win.prompt = Prompt::builder()
         .prompt("Filename")
+        .input(&dir_name)
         .simple()
         .on_confirm(move |editor, id, out| {
             let path = getf!(out.text());
@@ -167,10 +172,15 @@ fn ft_rename_file(editor: &mut Editor, id: ClientId) -> ActionResult {
         let entry = getf!(editor.filetree.iter().nth(win.ft_view.selection));
         entry.path().to_path_buf()
     };
+    let old_name = old
+        .strip_prefix(editor.working_dir())
+        .unwrap_or(old.as_path())
+        .to_string_lossy();
 
     let (win, _buf) = editor.win_buf_mut(id);
     win.prompt = Prompt::builder()
         .prompt("Rename")
+        .input(&old_name)
         .simple()
         .on_confirm(move |editor, id, out| {
             let path = getf!(out.text());
@@ -204,6 +214,7 @@ fn ft_rename_file(editor: &mut Editor, id: ClientId) -> ActionResult {
                 win.ft_view.selection = pos;
             }
 
+            focus(editor, id, Focus::Filetree);
             ActionResult::Ok
         })
         .build();

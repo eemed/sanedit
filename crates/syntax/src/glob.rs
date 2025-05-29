@@ -91,6 +91,9 @@ impl Glob {
             }
         }
 
+        // Assert end
+        rules.push(Rule::NotFollowedBy(Rule::ByteAny.into()));
+
         let info = RuleInfo {
             top: true,
             annotations: vec![],

@@ -53,7 +53,7 @@ impl EditorConfig {
              "markdown", ["*.md"],
              "make", ["*/Makefile"],
              "javascriptreact", ["*.jsx"],
-             // "javascript", ["*.js"],
+             "javascript", ["*.js"],
              "python", ["*.py"],
              "shellscript", ["*.sh"],
         );

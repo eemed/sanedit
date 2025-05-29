@@ -4,7 +4,7 @@ separated_highlights = string / keyword / constant / comment / operator;
 WHITESPACE = [ \t];
 ws = WHITESPACE;
 nl = "\n" / "\r\n";
-stop = WHITESPACE / "(" / nl;
+stop = WHITESPACE / "(" / "[" / nl;
 
 @whitespaced
 import_statement = import (!"from" .)* from string ";"?;
@@ -17,7 +17,7 @@ from = "from";
 keyword = "export" / "const" / "async" / "if" / "else" / "for" / "return" / "default" / "switch" / "case" / "let" / "var";
 
 @show @highlight(operator)
-operator = "await" / "=>" / "==" "="? / "!=" "="? / "...";
+operator = "await" / "=>" / "==" "="? / "!=" "="? / "..." / "&&" / "||";
 
 @show @highlight(constant)
 constant = "true" / "false" / "undefined" / "null" / number;

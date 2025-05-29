@@ -172,12 +172,21 @@ impl Window {
         self.focus
     }
 
-    pub fn reload(&mut self) {
-        self.focus = Focus::Window;
-        self.view.set_offset(0);
-        self.view.invalidate();
+    pub fn full_reload(&mut self) {
+        let width = self.view.width();
+        let height = self.view.height();
+        self.view = View::new(width, height);
+
         self.cursors = Cursors::default();
-        self.search = Search::default();
+
+        self.reload();
+    }
+
+    pub fn reload(&mut self) {
+        self.search.reset_highlighting();
+
+        self.focus = Focus::Window;
+        self.view.invalidate();
         self.prompt = Prompt::default();
         self.message = None;
         self.completion = Completion::default();
@@ -189,8 +198,6 @@ impl Window {
     }
 
     pub fn open_buffer(&mut self, bid: BufferId) -> BufferId {
-        // Clear highlights if needed
-        self.search.reset_highlighting();
         self.cursor_jumps.goto_start();
 
         let old = self.bid;
@@ -199,7 +206,7 @@ impl Window {
         self.last_buffer = Some((old, odata));
 
         self.bid = bid;
-        self.reload();
+        self.full_reload();
         old
     }
 
@@ -651,7 +658,7 @@ impl Window {
             if let Some(data) = buf.snapshot_aux(restored) {
                 self.restore(data, Some(buf));
             } else {
-                self.reload();
+                self.full_reload();
             }
         }
 
@@ -719,7 +726,7 @@ impl Window {
             if let Some(data) = buf.snapshot_aux(restored) {
                 self.restore(data, Some(buf));
             } else {
-                self.reload();
+                self.full_reload();
             }
         }
 
@@ -757,7 +764,7 @@ impl Window {
             if let Some(data) = buf.snapshot_aux(restored) {
                 self.restore(data, Some(buf));
             } else {
-                self.reload()
+                self.full_reload()
             }
         }
 

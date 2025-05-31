@@ -1,4 +1,8 @@
-use std::{cmp::min, path::PathBuf, sync::Arc};
+use std::{
+    cmp::min,
+    path::{PathBuf, MAIN_SEPARATOR},
+    sync::Arc,
+};
 
 use crate::{
     common::is_yes,
@@ -115,10 +119,18 @@ fn ft_new_file(editor: &mut Editor, id: ClientId) -> ActionResult {
             Kind::Directory { .. } => entry.path().to_path_buf(),
         }
     };
-    let dir_name = dir
-        .strip_prefix(editor.working_dir())
-        .unwrap_or(dir.as_path())
-        .to_string_lossy();
+    let dir_name = {
+        let mut name = dir
+            .strip_prefix(editor.working_dir())
+            .unwrap_or(dir.as_path())
+            .to_string_lossy()
+            .to_string();
+        if !name.ends_with(MAIN_SEPARATOR) {
+            name.push(MAIN_SEPARATOR);
+        }
+        name
+    };
+    let root = editor.working_dir().to_path_buf();
 
     let (win, _buf) = editor.win_buf_mut(id);
     win.prompt = Prompt::builder()
@@ -126,8 +138,8 @@ fn ft_new_file(editor: &mut Editor, id: ClientId) -> ActionResult {
         .input(&dir_name)
         .simple()
         .on_confirm(move |editor, id, out| {
-            let path = getf!(out.text());
-            let file = dir.join(path);
+            let file = getf!(out.text());
+            let file = root.join(file);
 
             // Create directories leading up to the file
             if let Some(parent) = file.parent() {
@@ -141,10 +153,9 @@ fn ft_new_file(editor: &mut Editor, id: ClientId) -> ActionResult {
                 return ActionResult::Failed;
             }
 
+            log::info!("FILE: {file:?}, dir: {dir:?}");
             // Refresh to show new file on tree
-            if let Some(mut node) = editor.filetree.get_mut(&dir) {
-                let _ = node.refresh();
-            }
+            let _ = editor.filetree.refresh();
 
             // Select the new entry if visible
             if let Some(pos) = editor

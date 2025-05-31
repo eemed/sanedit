@@ -1,26 +1,23 @@
-document = ( statements / separated_highlights / (!stop .)* stop)*;
-statements = import_statement / jsx;
-separated_highlights = string / keyword / constant / comment / operator;
+document = ( separated / (!stop .)* stop)*;
+separated = string / keyword / preproc / constant / comment / operator / jsx;
 WHITESPACE = [ \t];
 ws = WHITESPACE;
 nl = "\n" / "\r\n";
-stop = WHITESPACE / "(" / "[" / nl;
+stop = WHITESPACE / "(" / "[" / ";"/ nl;
 
-@whitespaced
-import_statement = import (!"from" .)* from string ";"?;
 @show @highlight(preproc)
-import = "import";
-@show @highlight(preproc)
-from = "from";
+preproc = preproc_words &stop;
+preproc_words = "import" / "from" / "export" / "default" / "as";
 
 @show @highlight(keyword)
-keyword = "export" / "const" / "async" / "if" / "else" / "for" / "return" / "default" / "switch" / "case" / "let" / "var";
+keyword =  words &stop;
+words = "while" / "break" / "constructor" / "class" / "extends" / "static" / "const" / "async" / "if" / "else" / "for" / "return" / "switch" / "case" / "let" / "var" / "in" / "of" / "function" "*"? / "with";
 
 @show @highlight(operator)
-operator = "await" / "=>" / "==" "="? / "!=" "="? / "..." / "&&" / "||";
+operator = "yield" / "await" / "=>" / "==" "="? / "!=" "="? / "..." / "&&" / "||";
 
 @show @highlight(constant)
-constant = "true" / "false" / "undefined" / "null" / number;
+constant = "true" / "false" / "undefined" / "null" / "hlobalThis" / "arguments" / number;
 
 @show @highlight(comment)
 comment = "//" (!nl .)* nl;
@@ -33,8 +30,12 @@ hexdigit = digit / [a..fA..F];
 string    = "\"" nstring "\"" / "'" sstring "'" / "`" tstring "`" ;
 nstring    = ("\\" escape_char / [^"\n])*;
 sstring    = ("\\" escape_char / [^'\n])*;
-tstring    = ("\\" escape_char / [^`\n])*;
+tstring    = ("\\" escape_char / replace / [^`\n])*;
 escape_char     = "0" / "t" / "n" / "r" / "'" / "`" / "\"" / "\\";
+@show @highlight(operator)
+replace = "${" replacement "}";
+@show @highlight(default)
+replacement = [^}]*; 
 
 jsx = tag;
 @show @highlight(keyword)
@@ -44,7 +45,7 @@ tagname = (!(ws / ">" / "/") .)+;
 @show @highlight(default)
 tagattr = attrname ("=" attrvalue)?;
 attrvalue = string / attrref;
-attrref = "{" (!"}" .)* "}";
+attrref = "{" (!("}" (ws / nl / "/" / ">")) .)* "}";
 
 @show @highlight(identifier)
 attrname = (!(ws / "=" /  "/" / ">") .)+;

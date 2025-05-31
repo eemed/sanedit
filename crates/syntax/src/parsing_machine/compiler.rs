@@ -155,6 +155,9 @@ impl<'a> Compiler<'a> {
 
         // Set all call sites to their function addresses
         for (rule, site) in &self.call_sites {
+            if *rule >= compile_addrs.len() {
+                continue;
+            }
             let addr = compile_addrs[*rule];
             self.program[*site] = Operation::Call(addr);
             names.insert(addr, self.rules[*rule].name.clone());

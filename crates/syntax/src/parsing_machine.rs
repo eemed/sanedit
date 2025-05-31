@@ -58,6 +58,10 @@ impl Parser {
     }
 
     pub(crate) fn from_rules(rules: Rules) -> Result<Parser, ParseError> {
+        if rules.is_empty() {
+            return Err(ParseError::NoRules);
+        }
+
         let compiler = Compiler::new(&rules);
         let program = compiler
             .compile()

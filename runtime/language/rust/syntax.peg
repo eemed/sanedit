@@ -47,7 +47,7 @@ combipath = path "{" ((ws / nl)* (combipath / typepath / functionpath) ","?)+ (w
 
 
 @show @highlight
-operator = "|" "|"? / "&&" / "?" / "=" "="? / "!=" / ".." / "+" / "-" / "/" / "*" / "<" "="? " " / ">" "="? " " / "&" / "mut";
+operator = "|" "|"? " " / "&&" / "?" / "=" "="? / "!=" / ".." / "+" / "-" / "/" / "*" / "<" "="? " " / ">" "="? " " / "&" / "mut";
 
 
 preproc = derive / lifetime;

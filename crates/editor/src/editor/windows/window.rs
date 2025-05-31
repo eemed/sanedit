@@ -1302,9 +1302,8 @@ impl Window {
                 if let MarkResult::Found(pos) = buf.mark_to_pos(&mark) {
                     let cursor = Cursor::new(pos);
                     self.cursors = Cursors::new(cursor);
-                    self.view.view_to(aux.view_offset, buf);
                     self.ensure_cursor_on_grapheme_boundary(buf);
-                    self.invalidate();
+                    self.view_to_around_cursor_zone(buf, Zone::Middle);
                     return Some(());
                 }
             }

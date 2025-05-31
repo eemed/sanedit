@@ -46,8 +46,12 @@ typeangle = "<" (lifetime / type / ws)* ">";
 combipath = path "{" ((ws / nl)* (combipath / typepath / functionpath) ","?)+ (ws / nl)* "}";
 
 
-@show @highlight
-operator = "|" "|"? " " / "&&" / "?" / "=" "="? / "!=" / ".." / "+" / "-" / "/" / "*" / "<" "="? " " / ">" "="? " " / "&" / "mut";
+operator = closure / operators;
+@show @highlight(operator)
+operators = "|" "|"? / "&&" / "?" / "=" "="? / "!=" / ".." / "+" / "-" / "/" / "*" / "<" "="? " " / ">" "="? " " / "&" / "mut";
+closure =  bar (type / [^|])* bar;
+@show @highlight(operator)
+bar = "|";
 
 
 preproc = derive / lifetime;

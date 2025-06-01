@@ -198,6 +198,9 @@ impl Window {
     }
 
     pub fn open_buffer(&mut self, bid: BufferId) -> BufferId {
+        if bid == self.bid {
+            return bid;
+        }
         self.cursor_jumps.goto_start();
 
         let old = self.bid;
@@ -368,6 +371,7 @@ impl Window {
         let jump = Jump::new(mark, None);
         let group = JumpGroup::new(self.bid, vec![jump]);
         self.cursor_jumps.push(group);
+        self.cursor_jumps.goto_start();
     }
 
     /// Move primary cursor to offset and the view too
@@ -1320,9 +1324,9 @@ impl Window {
         loop {
             let aux = match self.last_edit_jump {
                 Some(id) => {
-                    let prev = snaps.next_of(id)?;
-                    self.last_edit_jump = Some(prev);
-                    snaps.aux(prev)?
+                    let next = snaps.next_of(id)?;
+                    self.last_edit_jump = Some(next);
+                    snaps.aux(next)?
                 }
                 None => {
                     let id = snaps.current()?;
@@ -1335,9 +1339,8 @@ impl Window {
                 if let MarkResult::Found(pos) = buf.mark_to_pos(&mark) {
                     let cursor = Cursor::new(pos);
                     self.cursors = Cursors::new(cursor);
-                    self.view.view_to(aux.view_offset, buf);
                     self.ensure_cursor_on_grapheme_boundary(buf);
-                    self.invalidate();
+                    self.view_to_around_cursor_zone(buf, Zone::Middle);
                     return Some(());
                 }
             }

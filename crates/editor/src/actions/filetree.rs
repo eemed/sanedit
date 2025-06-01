@@ -15,7 +15,7 @@ use crate::{
 
 use sanedit_server::ClientId;
 
-use super::{window::focus, ActionResult};
+use super::{text::save, window::focus, ActionResult};
 
 #[action("Filetree: Show")]
 fn show_filetree(editor: &mut Editor, id: ClientId) -> ActionResult {
@@ -206,10 +206,25 @@ fn ft_rename_file(editor: &mut Editor, id: ClientId) -> ActionResult {
             }
 
             // Rename
-            if let Err(e) = std::fs::rename(&old, &new) {
-                let (win, _buf) = editor.win_buf_mut(id);
-                win.warn_msg(&format!("Failed to rename file/dir {e}"));
-                return ActionResult::Failed;
+            match editor.buffers_mut().find(&old) {
+                Some(bid) => {
+                    let buf = editor.buffers_mut().get_mut(bid).unwrap();
+                    buf.set_path(&new);
+                    save.execute(editor, id);
+
+                    if old.is_file() {
+                        let _ = std::fs::remove_file(&old);
+                    } else {
+                        let _ = std::fs::remove_dir_all(&old);
+                    }
+                }
+                None => {
+                    if let Err(e) = std::fs::rename(&old, &new) {
+                        let (win, _buf) = editor.win_buf_mut(id);
+                        win.warn_msg(&format!("Failed to rename file/dir {e}"));
+                        return ActionResult::Failed;
+                    }
+                }
             }
 
             // Refresh tree to show moved stuff

@@ -3,7 +3,7 @@ separated = string / keyword / preproc / constant / comment / operator / jsx;
 WHITESPACE = [ \t];
 ws = WHITESPACE;
 nl = "\n" / "\r\n";
-stop = WHITESPACE / "(" / "[" / ";"/ nl;
+stop = WHITESPACE+ / "(" / "[" / ";"/ nl;
 
 @show @highlight(preproc)
 preproc = preproc_words &stop;
@@ -17,7 +17,7 @@ words = "while" / "break" / "constructor" / "class" / "extends" / "static" / "co
 operator = "yield" / "await" / "=>" / "==" "="? / "!=" "="? / "..." / "&&" / "||";
 
 @show @highlight(constant)
-constant = "true" / "false" / "undefined" / "null" / "hlobalThis" / "arguments" / number;
+constant = "true" / "false" / "undefined" / "null" / "globalThis" / "arguments" / number;
 
 @show @highlight(comment)
 comment = "//" (!nl .)* nl;

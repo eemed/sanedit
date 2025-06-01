@@ -38,7 +38,6 @@ fn process_input_event(
     match event {
         Key(key_event) => {
             let key = convert_key_event(key_event);
-            log::info!("Send: {key}");
             sender.send(Message::KeyEvent(key).into())?;
         }
         Resize(mut width, mut height) => {

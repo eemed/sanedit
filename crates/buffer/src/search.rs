@@ -1,5 +1,4 @@
-use std::{
-    cmp::max,
+use std::{ cmp::max,
     ops::Range,
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -404,6 +403,7 @@ impl<'a, 'b> SearchIterRev<'a, 'b> {
             i: slice.len().saturating_sub(pattern.len() as u64),
             case_sensitive,
         }
+
     }
 
     fn find_next(&mut self) -> Option<Range<u64>> {
@@ -418,9 +418,9 @@ impl<'a, 'b> SearchIterRev<'a, 'b> {
         } = self;
 
         let m = pattern.len();
-        let mut check0 = false;
+        let mut continue_search = *i != 0;
 
-        while *i != 0 || check0 {
+        while continue_search {
             if stop.load(Ordering::Acquire) {
                 return None;
             }
@@ -438,8 +438,8 @@ impl<'a, 'b> SearchIterRev<'a, 'b> {
                 *i += 1;
             }
 
-            check0 = *i != 0;
-            let shift = max(bad_char[bytes.at(*i) as usize], good_suffix[j]) as u64;
+            continue_search = *i != 0;
+            let shift = max(bad_char[bytes.at(*i) as usize], good_suffix[j]) as u64 + j as u64;
             *i = i.saturating_sub(shift);
         }
 
@@ -463,9 +463,9 @@ impl<'a, 'b> SearchIterRev<'a, 'b> {
         } = self;
 
         let m = pattern.len();
-        let mut check0 = false;
+        let mut continue_search = *i != 0;
 
-        while *i != 0 || check0 {
+        while continue_search {
             if stop.load(Ordering::Acquire) {
                 return None;
             }
@@ -483,8 +483,9 @@ impl<'a, 'b> SearchIterRev<'a, 'b> {
                 *i += 1;
             }
 
-            check0 = *i != 0;
-            let shift = max(bad_char[lower(bytes.at(*i)) as usize], good_suffix[j]) as u64;
+            continue_search = *i != 0;
+            // TODO is + j correct?
+            let shift = max(bad_char[lower(bytes.at(*i)) as usize], good_suffix[j]) as u64 + j as u64;
             *i = i.saturating_sub(shift);
         }
 

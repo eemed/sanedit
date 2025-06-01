@@ -82,6 +82,7 @@ pub(crate) fn search() -> KeymapLayer {
     #[rustfmt::skip]
     let map = make_keymap!(
         "esc",          prompt_close,
+        "§",            prompt_close,
         "backspace",    prompt_remove_grapheme_before_cursor,
         "left",         prompt_prev_grapheme,
         "right",        prompt_next_grapheme,

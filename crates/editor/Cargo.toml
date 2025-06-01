@@ -21,7 +21,6 @@ tokio-util = { workspace = true, features = ["codec"] }
 
 # General
 log.workspace = true
-dirs.workspace = true
 rayon.workspace = true
 rustc-hash.workspace = true
 chrono.workspace = true

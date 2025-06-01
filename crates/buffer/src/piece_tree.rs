@@ -136,6 +136,7 @@ impl PieceTree {
             poss.into()
         };
 
+        let mut inserted = 0;
         while !bytes.is_empty() {
             let bpos = self.add_writer.len();
             let (n, can_append) = match self.add_writer.append_slice(bytes) {
@@ -147,13 +148,14 @@ impl PieceTree {
                 let piece = Piece::new_with_count(
                     BufferKind::Add,
                     bpos as u64,
-                    bytes.len() as u64,
+                    n as u64,
                     count as u32,
                 );
                 self.view.len += piece.len;
-                self.view.tree.insert(*pos, piece, can_append);
+                self.view.tree.insert(*pos + inserted, piece, can_append);
             }
 
+            inserted += n as u64;
             bytes = &bytes[n..];
         }
     }
@@ -172,6 +174,7 @@ impl PieceTree {
             return;
         }
 
+        let mut inserted = 0;
         while !bytes.is_empty() {
             let bpos = self.add_writer.len();
             let (n, can_append) = match self.add_writer.append_slice(bytes) {
@@ -179,10 +182,11 @@ impl PieceTree {
                 AppendResult::Append(n) => (n, true),
             };
 
-            let piece = Piece::new(BufferKind::Add, bpos as u64, bytes.len() as u64);
+            let piece = Piece::new(BufferKind::Add, bpos as u64, n as u64);
             self.view.len += piece.len;
-            self.view.tree.insert(pos, piece, can_append);
+            self.view.tree.insert(pos + inserted, piece, can_append);
 
+            inserted += n as u64;
             bytes = &bytes[n..];
         }
     }

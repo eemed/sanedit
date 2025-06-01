@@ -311,6 +311,7 @@ impl Prompt {
         self.chooser.add(opts);
     }
 
+    #[allow(dead_code)]
     pub fn total_choices(&self) -> usize {
         self.chooser.len()
     }

@@ -547,6 +547,7 @@ impl Window {
     }
 
     pub fn insert_at_cursors_next_line(&mut self, buf: &mut Buffer, text: &str) -> Result<()> {
+    log::info!("Insert: {text}");
         let slice = buf.slice(..);
         let changes: Vec<Change> = self
             .cursors

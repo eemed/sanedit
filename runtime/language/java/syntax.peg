@@ -1,0 +1,51 @@
+document = (separated / (!stop .)* stop)*;
+separated = todo / keyword / string / constant / comment / preproc / type / operator;
+
+stop = ws+ / nl / "[" / "]" / "(" / ")" / ";" / "<" / ">" / "," / ":" / ".";
+WHITESPACE = [ \t];
+nl = "\n" / "\r\n";
+ws = WHITESPACE;
+
+@show @highlight
+keyword = (
+            "public" / "private" / "protected" / "return" / "for" / "extends" /
+            "new" / "final" / "switch" / "case" / "class" / "if" / "else" /
+            "implements" / "instanceof" / "enum" / "break" / "throw" "s"? /
+            "static" / "synchronized" / "transient" / "try" / "catch" / "var" /
+            "volatile" / "while" / "package" / "exports" / "requires" / "module" /
+            "do" / "abstract" / "assert" / "this" / "import"
+          ) &stop;
+
+@show @highlight
+string = char / sstring;
+char = "'" . "'";
+sstring = "\"" (escape  / [^"])* "\"";
+escape = "\\" .;
+
+@show @highlight
+constant = typecaps / "true" / "false" / "null" / number;
+
+number = "-"? digit+ !"."/ "0x" hexdigit+;
+digit = [0..9];
+hexdigit = digit / [a..fA..F];
+typecaps = [A..Z0..9_]+ &stop;
+
+@show @highlight
+comment = line_comment / block_comment;
+line_comment = "//" (todo / (!nl .))* nl;
+block_comment = "/*" (todo / (!"*/" .))* "*/";
+
+
+preproc = annotation;
+@show @highlight(preproc)
+annotation = "@" [A..Za..z0..9_]+;
+
+@show @highlight
+type = "boolean" / "char" / "void" / number_types / classname;
+number_types = "int" / "float" / "double" / "long" / "short";
+classname = [A..Z] [a..zA..Z0..9_]*;
+
+operator = "||" / "==";
+
+@show @highlight(warn)
+todo = "TODO" / "XXX";

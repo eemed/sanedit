@@ -42,6 +42,7 @@ use sanedit_server::ToEditor;
 use strum::IntoEnumIterator;
 use tokio::runtime::Runtime;
 use windows::Mode;
+use windows::Zone;
 
 use std::collections::HashSet;
 use std::env;
@@ -688,6 +689,7 @@ impl Editor {
         let res = win.insert_at_cursors_next_line(buf, &text);
 
         if res.is_ok() {
+            win.view_to_around_cursor_zone(buf, Zone::Middle);
             run(self, id, Hook::BufChanged(bid));
         }
     }
@@ -715,6 +717,7 @@ impl Editor {
                 .join("");
             win.insert_at_cursors(buf, &text)
         };
+        win.view_to_around_cursor_zone(buf, Zone::Middle);
 
         if res.is_ok() {
             run(self, id, Hook::BufChanged(bid));

@@ -11,11 +11,8 @@ sanedit-syntax = { path = "../syntax" }
 serde = { workspace = true, features = ["derive"] }
 
 anyhow.workspace = true
-tokio.workspace = true
 unicode-width.workspace = true
 rustc-hash.workspace = true 
-rayon.workspace = true
-dirs.workspace = true
+dirs-2.workspace = true
 log.workspace = true
-strum.workspace = true
 strum_macros.workspace = true

@@ -20,7 +20,7 @@ keyword = (
           "ordered-by" / "organization" / "output" / "path" / "pattern" /
           "position" / "prefix" / "presence" / "range" / "reference" / "refine" /
           "require-instance" / "revision" "-date"? / "rpc" / "status" /
-          "submodule" / "type" / "typedef" / "unique" / "units" / "uses" / "value" /
+          "submodule" / "type" "def"? / "unique" / "units" / "uses" / "value" /
           "when" / "yang-version"
           ) &stop;
 

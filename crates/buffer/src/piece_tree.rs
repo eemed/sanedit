@@ -161,7 +161,7 @@ impl PieceTree {
     }
 
     /// Insert bytes to a position
-    pub fn insert<B: AsRef<[u8]>>(&mut self, pos: u64, bytes: B) {
+    pub fn insert<B: AsRef<[u8]>>(&mut self, mut pos: u64, bytes: B) {
         debug_assert!(
             pos <= self.view.len,
             "insert: Attempting to index {} over buffer len {}",
@@ -174,7 +174,6 @@ impl PieceTree {
             return;
         }
 
-        let mut inserted = 0;
         while !bytes.is_empty() {
             let bpos = self.add_writer.len();
             let (n, can_append) = match self.add_writer.append_slice(bytes) {
@@ -184,9 +183,9 @@ impl PieceTree {
 
             let piece = Piece::new(BufferKind::Add, bpos as u64, n as u64);
             self.view.len += piece.len;
-            self.view.tree.insert(pos + inserted, piece, can_append);
+            self.view.tree.insert(pos, piece, can_append);
 
-            inserted += n as u64;
+            pos += n as u64;
             bytes = &bytes[n..];
         }
     }

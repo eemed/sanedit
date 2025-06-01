@@ -109,7 +109,6 @@ impl<T: Copy> Writer<T> {
         let bucket = unsafe { &mut *bucket.get() };
         let alloc = bucket.is_none();
 
-        log::info!("Append: len: {}, loc: {loc:?}", items.len());
         if alloc {
             let mut items = Vec::with_capacity(loc.bucket_len);
             for _ in 0..loc.bucket_len {
@@ -122,7 +121,6 @@ impl<T: Copy> Writer<T> {
         let bucket = bucket.as_mut().unwrap();
         let slice = &mut bucket[loc.pos..];
         let nwrite = min(slice.len(), items.len());
-        log::info!("nwrite: {nwrite}");
         for i in 0..nwrite {
             slice[i].write(items[i]);
         }

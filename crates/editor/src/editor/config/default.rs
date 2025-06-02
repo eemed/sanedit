@@ -56,6 +56,7 @@ impl EditorConfig {
              "javascript", ["*.js"],
              "python", ["*.py"],
              "shellscript", ["*.sh"],
+             "asciidoc", ["*.adoc"],
         );
 
         ftmap

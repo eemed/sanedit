@@ -1,0 +1,64 @@
+document = ( separated / (!stop .)* stop)*;
+separated = code / identifier / keyword / preproc / comment / operator / string;
+WHITESPACE = [ \t];
+ws = WHITESPACE;
+nl = "\n" / "\r\n";
+stop = WHITESPACE+ / nl;
+
+preproc = special / rectangle / angle / tags;
+@show @highlight(preproc)
+special = ":" (!":" .)* ":" &stop;
+@show @highlight(preproc)
+rectangle = "[" (!"]" .)* "]";
+@show @highlight(preproc)
+angle = "<" (!">" .)* ">";
+@show @highlight(preproc)
+tags = [a..zA..Z0..9.]+ ":" ":"? [a..zA..Z0..9.]+ "[" (!"]" .)* "]";
+
+@show @highlight(default)
+code = tick / dash / dot / underscore;
+tick = tickop (!tickop .)* tickop;
+@show @highlight(operator)
+tickop = "```";
+dash = rectangle? nl dashop &nl (!dashop .)* dashop;
+@show @highlight(operator)
+dashop = "----";
+dot =  dotop &nl (!dotop .)* dotop;
+@show @highlight(operator)
+dotop = "...."; 
+underscore =  uscore &nl (!uscore (keyword / .))* uscore;
+@show @highlight(operator)
+uscore = "____";
+
+
+@show @highlight
+identifier = title / description / preindent;
+title = "=" (!nl .)* nl;
+description = "." &[a..zA..Z0..9] (!nl .)* nl;
+preindent = nl ws+ (!nl .)* nl;
+
+@show @highlight(operator)
+operator = ("*"+ / "."+ / "-"+ / "+"+ / "'''") &stop;
+
+@show @highlight(comment)
+comment = block_comment / line_comment;
+line_comment = "//" (!nl .)* nl;
+block_comment = "////" (!"////" .)*  "////";
+
+@show @highlight
+string    = "\"" nstring "\"" / "'" sstring "'" / "`" tstring "`" ;
+nstring    = ("\\" escape_char / [^"\n])*;
+sstring    = ("\\" escape_char / [^'\n])*;
+tstring    = ("\\" escape_char / [^`\n])*;
+escape_char     = "0" / "t" / "n" / "r" / "'" / "`" / "\"" / "\\";
+
+@show @highlight(keyword)
+keyword =   letter / bold / subscript / superscript / force / emphtwo / emph;
+
+bold = "*" (!(nl / ws / "*") .)* "*";
+letter = "**" (!(nl / ws / "**") .)* "**";
+subscript = "~" (!(nl / "~") .)* "~";
+superscript = "^" (!(nl / ws / "^") .)* "^";
+force = "{" (!(nl / ws / "}") .)* "}";
+emphtwo = "__" (!(nl / ws / "__") .)* "__";
+emph = "_" (!(nl / ws / "_") .)* "_";

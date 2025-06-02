@@ -144,7 +144,7 @@ impl PieceTree {
                 AppendResult::Append(n) => (n, true),
             };
 
-            for (count, pos) in positions.iter().rev().enumerate() {
+            for (count, pos) in positions.iter().enumerate() {
                 let piece = Piece::new_with_count(
                     BufferKind::Add,
                     bpos as u64,
@@ -152,7 +152,8 @@ impl PieceTree {
                     count as u32,
                 );
                 self.view.len += piece.len;
-                self.view.tree.insert(*pos + inserted, piece, can_append);
+                let inserted_now = (inserted as u64 * (count as u64 + 1)) + (n as u64 * count as u64);
+                self.view.tree.insert(*pos + inserted_now, piece, can_append);
             }
 
             inserted += n as u64;

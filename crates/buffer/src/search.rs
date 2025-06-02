@@ -174,6 +174,7 @@ impl<'a, 'b> SearchIter<'a, 'b> {
             ..
         } = self;
 
+
         let m = pattern.len();
         let n = *slice_len;
 
@@ -294,7 +295,7 @@ impl SearcherRev {
     fn build_bad_char_table(pattern: &[u8]) -> [usize; 256] {
         let mut table = [pattern.len(); 256];
 
-        for i in (0..pattern.len()).rev() {
+        for i in (1..pattern.len()).rev() {
             table[pattern[i] as usize] = i;
         }
 
@@ -421,6 +422,9 @@ impl<'a, 'b> SearchIterRev<'a, 'b> {
         let mut continue_search = *i != 0;
 
         while continue_search {
+            // Continue until we are checking 0
+            continue_search = *i != 0;
+
             if stop.load(Ordering::Acquire) {
                 return None;
             }
@@ -438,8 +442,7 @@ impl<'a, 'b> SearchIterRev<'a, 'b> {
                 *i += 1;
             }
 
-            continue_search = *i != 0;
-            let shift = max(bad_char[bytes.at(*i) as usize], good_suffix[j]) as u64 + j as u64;
+            let shift = max(bad_char[bytes.at(*i) as usize], good_suffix[j]) as u64;
             *i = i.saturating_sub(shift);
         }
 
@@ -484,8 +487,7 @@ impl<'a, 'b> SearchIterRev<'a, 'b> {
             }
 
             continue_search = *i != 0;
-            // TODO is + j correct?
-            let shift = max(bad_char[lower(bytes.at(*i)) as usize], good_suffix[j]) as u64 + j as u64;
+            let shift = max(bad_char[lower(bytes.at(*i)) as usize], good_suffix[j]) as u64;
             *i = i.saturating_sub(shift);
         }
 
@@ -538,7 +540,7 @@ mod test {
     }
 
     #[test]
-    fn search_bwd() {
+    fn search_bwd1() {
         let pt = PieceTree::from("[dependencies][dev-dependencies]");
 
         let needle = b"dependencies";
@@ -563,5 +565,26 @@ mod test {
         assert_eq!(Some(12..24), iter.next());
         assert_eq!(Some(0..12), iter.next());
         assert_eq!(None, iter.next());
+    }
+
+    #[test]
+    fn search_bwd3() {
+        let err_file = include_str!("../../editor/src/actions/filetree.rs");
+        let pt = PieceTree::from(err_file);
+        let slice = pt.slice(..);
+        let needle = b"remove_dir";
+
+        let searcher = Searcher::new(needle);
+        let mut iter = searcher.find_iter(&slice);
+        while let Some(n) = iter.next() {
+            println!("{n:?}");
+        }
+
+        let searcher = SearcherRev::new(needle);
+        let mut iter = searcher.find_iter(&slice);
+
+        while let Some(n) = iter.next() {
+            println!("{n:?}");
+        }
     }
 }

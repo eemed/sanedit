@@ -13,7 +13,7 @@ rectangle = "[" (!"]" .)* "]";
 @show @highlight(preproc)
 angle = "<" (!">" .)* ">";
 @show @highlight(preproc)
-tags = [a..zA..Z0..9.]+ ":" ":"? [a..zA..Z0..9.]+ "[" (!"]" .)* "]";
+tags = [a..zA..Z0..9.]+ ":" ":"? [a..zA..Z0..9.-]* "[" (!"]" .)* "]";
 
 @show @highlight(default)
 code = tick / dash / dot / underscore;
@@ -52,13 +52,23 @@ sstring    = ("\\" escape_char / [^'\n])*;
 tstring    = ("\\" escape_char / [^`\n])*;
 escape_char     = "0" / "t" / "n" / "r" / "'" / "`" / "\"" / "\\";
 
-@show @highlight(keyword)
-keyword =   letter / bold / subscript / superscript / force / emphtwo / emph;
+# These are found in text
+keyword = (text (letter / bold / subscript / superscript / force / emphtwo / emph / escape))+;
+text = [a..zA..Z0..9-]*;
 
-bold = "*" (!(nl / ws / "*") .)* "*";
-letter = "**" (!(nl / ws / "**") .)* "**";
-subscript = "~" (!(nl / "~") .)* "~";
-superscript = "^" (!(nl / ws / "^") .)* "^";
-force = "{" (!(nl / ws / "}") .)* "}";
-emphtwo = "__" (!(nl / ws / "__") .)* "__";
-emph = "_" (!(nl / ws / "_") .)* "_";
+@show @highlight(keyword)
+bold = "*" (!(nl / ws / "*") .)+ "*";
+@show @highlight(keyword)
+letter = "**" (!(nl / ws / "**") .)+ "**";
+@show @highlight(keyword)
+subscript = "~" (!(nl / "~") .)+ "~";
+@show @highlight(keyword)
+superscript = "^" (!(nl / ws / "^") .)+ "^";
+@show @highlight(keyword)
+force = "{" (!(nl / ws / "}") .)+ "}";
+@show @highlight(keyword)
+emphtwo = "__" (!(nl / ws / "__") .)+ "__";
+@show @highlight(keyword)
+emph = "_" (!(nl / ws / "_") .)+ "_";
+@show @highlight(keyword)
+escape = "\\" .;

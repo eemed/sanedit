@@ -1,0 +1,45 @@
+document = (separated / (!stop .)* stop)*;
+separated = todo / keyword / string / constant / comment / preproc / type / operator;
+
+stop = ws+ / nl / "[" / "]" / "(" / ")" / ";" / "," / ":" / ".";
+WHITESPACE = [ \t];
+nl = "\n" / "\r\n";
+ws = WHITESPACE;
+
+@show @highlight
+keyword = ( "continue" / "def" / "del" / "elif" / "else" / "except" /
+ "finally" / "for" / "global" / "if" /
+ "lambda" / "nonlocal" / "pass" / "raise" / "return" / "try" /
+ "while" / "with" / "yield" / "assert" / "is" / "in" / "break" / "as"
+ ) &stop;
+
+@show @highlight
+constant = number / "False" / "True" / "None";
+
+number = "-"? digit+ !"."/ "0x" hexdigit+;
+digit = [0..9];
+hexdigit = digit / [a..fA..F];
+
+
+@show @highlight
+string = char / lstring / sstring;
+char = "'" . "'";
+lstring = "\"\"\"" (escape / (!"\"\"\"" .))* "\"\"\"";
+sstring = "\"" (escape / [^"])* "\"";
+escape = "\\" .;
+
+
+type = stop;
+
+operator = operators;
+@show @highlight(operator)
+operators = ("and" / "or" / "not" ) &stop;
+
+@show @highlight
+preproc = ("import" / "from") &stop;
+
+@show @highlight
+comment = "#" (todo / (!nl .))*;
+
+@show @highlight(warn)
+todo = "TODO";

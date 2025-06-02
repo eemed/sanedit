@@ -8,18 +8,18 @@ gutter = ",#4C4C4C,bold"
 end_of_buffer = ",#7f755f,"
 trailing_whitespace = ",#7f755f,"
 symbols = ",#606060,"
-match = "#C0A886,,"
+match = "#99bad1,,"
 
 [colors.window.cursor]
-default = "#a4ac86,,"
-selection = "#d0bd97,,"
+default = "#86beaf,,"
+selection = "#d8c8a9,,"
 primary = "#C0A886,,"
 
 [colors.window.view]
-hint = "#B8C5F0,#014CC0,"
-info = "#B8C5F0,#014CC0,"
-warn = "#fde37c,#615413,"
-error = "#f2d8d8,#b22e32,"
+hint = "#99bad1,#000020,"
+info = "#99bad1,#000020,"
+warn = "#fde37c,#413403,"
+error = "#da7073,#000000,"
 
 constant = ",#014CC0,"
 string =  ",#014CC0,"
@@ -33,7 +33,7 @@ preproc = ",#432378,"
 identifier = ",#824b26,"
 
 [colors.window.completion]
-default = "#B8A282,#2a130d,"
+default = "#d8c8a9,#2a130d,"
 description = ",#6f654f,"
 match = ",#b0463a,"
 
@@ -70,7 +70,7 @@ directory = ",#824b26,"
 markers = ",#355d8d,"
 
 [colors.filetree.selected]
-default = "#d0bd97,,"
+default = "#d8c8a9,,"
 # file = ""
 directory = ",#824b26,"
 markers = ",#355d8d,"

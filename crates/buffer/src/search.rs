@@ -66,7 +66,7 @@ impl Searcher {
             slice_len: slice.len(),
             bytes: slice.bytes(),
             i: (self.pattern.len() - 1) as u64,
-            byte_at,
+            byte_at: self.byte_at,
         }
     }
 
@@ -134,7 +134,7 @@ impl<'a, 'b> Iterator for SearchIter<'a, 'b> {
                 *i -= 1;
             }
 
-            *i += max(m - j, bad_char[bytes.at(*i) as usize]) as u64;
+            *i += max(m - j, bad_char[byte_at(bytes, *i) as usize]) as u64;
         }
 
         None
@@ -256,7 +256,7 @@ impl<'a, 'b> Iterator for SearchIterRev<'a, 'b> {
                 *i += 1;
             }
 
-            let shift = max(j + 1, bad_char[bytes.at(*i) as usize]) as u64;
+            let shift = max(j + 1, bad_char[byte_at(bytes, *i) as usize]) as u64;
             *i = i.saturating_sub(shift);
         }
 
@@ -289,6 +289,19 @@ mod test {
 
         let needle = b"dependencies";
         let searcher = Searcher::new(needle);
+        let slice = pt.slice(..);
+        let mut iter = searcher.find_iter(&slice);
+        assert_eq!(Some(0..12), iter.next());
+        assert_eq!(Some(12..24), iter.next());
+        assert_eq!(None, iter.next());
+    }
+
+    #[test]
+    fn search_fwd3() {
+        let pt = PieceTree::from("dependenciesDependencies");
+
+        let needle = "dependencies";
+        let searcher = Searcher::new_ascii_case_insensitive(needle).unwrap();
         let slice = pt.slice(..);
         let mut iter = searcher.find_iter(&slice);
         assert_eq!(Some(0..12), iter.next());

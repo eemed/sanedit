@@ -13,6 +13,7 @@ fn bytes(c: &mut Criterion) {
 
         let iter = pt.bytes();
         let mut i = iter.clone();
+        // Measures a single step, and clones = restarts search after finising
         bench.iter(move || {
             if i.next().is_none() {
                 i = iter.clone();

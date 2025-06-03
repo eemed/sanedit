@@ -163,6 +163,10 @@ fn search_forward(editor: &mut Editor, id: ClientId) -> ActionResult {
             ActionResult::Ok
         })
         .on_input(highlight_view_matches_on_input)
+        .on_abort(|editor, id, _| {
+            let (win, _buf) = editor.win_buf_mut(id);
+            win.search.disable_highlighting();
+        })
         .build();
     focus(editor, id, Focus::Search);
     ActionResult::Ok
@@ -182,6 +186,10 @@ fn search_backward(editor: &mut Editor, id: ClientId) -> ActionResult {
             ActionResult::Ok
         })
         .on_input(highlight_view_matches_on_input)
+        .on_abort(|editor, id, _| {
+            let (win, _buf) = editor.win_buf_mut(id);
+            win.search.disable_highlighting();
+        })
         .build();
 
     focus(editor, id, Focus::Search);

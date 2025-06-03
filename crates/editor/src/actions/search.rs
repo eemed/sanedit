@@ -242,18 +242,7 @@ fn prev_search_match(editor: &mut Editor, id: ClientId) -> ActionResult {
 /// Continue current search
 fn continue_search(editor: &mut Editor, id: ClientId, reverse: bool) {
     let (win, _buf) = editor.win_buf_mut(id);
-    let mut pos = win.primary_cursor().pos();
-
-    // If previous match move to the appropriate position
-    if let Some(last_match) = &win.search.current.result {
-        if last_match.contains(&pos) {
-            if win.search.current.opts.is_reversed {
-                pos = last_match.start;
-            } else {
-                pos = last_match.end;
-            }
-        }
-    }
+    let pos = win.primary_cursor().pos();
 
     let mut opts = win.search.current.opts;
     if reverse {
@@ -292,10 +281,14 @@ fn do_search(editor: &mut Editor, id: ClientId, searcher: Searcher, starting_pos
 
     let (start, mat, wrap) = if searcher.options().is_reversed {
         // Skip first to not match inplace
-        let end = starting_position.saturating_sub(1);
+        let end = starting_position;
         let slice = buf.slice(..end);
-        let mut iter = searcher.find_iter(&slice);
-        let mat = iter.next();
+        let mat = if !slice.is_empty() {
+            let mut iter = searcher.find_iter(&slice);
+            iter.next()
+        } else {
+            None
+        };
 
         // Wrap if no match
         if mat.is_none() {
@@ -312,8 +305,12 @@ fn do_search(editor: &mut Editor, id: ClientId, searcher: Searcher, starting_pos
         // Skip first to not match inplace
         let start = min(blen, starting_position + 1);
         let slice = buf.slice(start..);
-        let mut iter = searcher.find_iter(&slice);
-        let mat = iter.next();
+        let mat = if !slice.is_empty() {
+            let mut iter = searcher.find_iter(&slice);
+            iter.next()
+        } else {
+            None
+        };
 
         // Wrap if no match
         if mat.is_none() {

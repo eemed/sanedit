@@ -118,6 +118,10 @@ impl<'a, 'b> Iterator for SearchIter<'a, 'b> {
         let m = pattern.len();
         let n = *slice_len;
 
+        if n < m as u64 {
+            return None;
+        }
+
         while *i < n {
             if stop.load(Ordering::Acquire) {
                 return None;
@@ -197,6 +201,7 @@ impl SearcherRev {
         SearchIterRev {
             pattern: &self.pattern,
             bad_char: &self.bad_char,
+            slice_len: slice.len(),
             bytes: slice.bytes_at(slice.len()),
             byte_at: self.byte_at,
             stop,
@@ -216,6 +221,7 @@ pub struct SearchIterRev<'a, 'b> {
     bytes: Bytes<'b>,
     i: u64,
     stop: Arc<AtomicBool>,
+    slice_len: u64,
     byte_at: fn(&mut Bytes, u64) -> u8,
 }
 
@@ -230,18 +236,24 @@ impl<'a, 'b> Iterator for SearchIterRev<'a, 'b> {
             i,
             stop,
             byte_at,
+            slice_len,
             ..
         } = self;
 
         let m = pattern.len();
-        let mut continue_search = *i != 0;
+        if *slice_len < m as u64 {
+            return None;
+        }
+        let do_find = *slice_len != 0;
 
-        while continue_search {
+        while do_find {
             if stop.load(Ordering::Acquire) {
                 return None;
             }
             // Continue until we are checking 0
-            continue_search = *i != 0;
+            if *i == 0 {
+                *slice_len = 0;
+            }
             let mut j = 0;
 
             while byte_at(bytes, *i) == pattern[j] {
@@ -297,7 +309,7 @@ mod test {
     }
 
     #[test]
-    fn search_fwd3() {
+    fn insensitive() {
         let pt = PieceTree::from("dependenciesDependencies");
 
         let needle = "dependencies";
@@ -306,6 +318,67 @@ mod test {
         let mut iter = searcher.find_iter(&slice);
         assert_eq!(Some(0..12), iter.next());
         assert_eq!(Some(12..24), iter.next());
+        assert_eq!(None, iter.next());
+    }
+
+    #[test]
+    fn all_matches() {
+        let pt = PieceTree::from("aaa");
+        let searcher = Searcher::new(b"a");
+        let slice = pt.slice(..);
+        let mut iter = searcher.find_iter(&slice);
+        assert_eq!(Some(0..1), iter.next());
+        assert_eq!(Some(1..2), iter.next());
+        assert_eq!(Some(2..3), iter.next());
+        assert_eq!(None, iter.next());
+
+        let pt = PieceTree::from("aaa");
+        let searcher = SearcherRev::new(b"a");
+        let slice = pt.slice(..);
+        let mut iter = searcher.find_iter(&slice);
+        assert_eq!(Some(2..3), iter.next());
+        assert_eq!(Some(1..2), iter.next());
+        assert_eq!(Some(0..1), iter.next());
+        assert_eq!(None, iter.next());
+    }
+
+    #[test]
+    fn all_match_long() {
+        let pt = PieceTree::from("aabaabaab");
+        let searcher = SearcherRev::new(b"aab");
+        let slice = pt.slice(..);
+        let mut iter = searcher.find_iter(&slice);
+        assert_eq!(Some(6..9), iter.next());
+        assert_eq!(Some(3..6), iter.next());
+        assert_eq!(Some(0..3), iter.next());
+        assert_eq!(None, iter.next());
+
+        let pt = PieceTree::from("aabaabaab");
+        let searcher = Searcher::new(b"aab");
+        let slice = pt.slice(..);
+        let mut iter = searcher.find_iter(&slice);
+        assert_eq!(Some(0..3), iter.next());
+        assert_eq!(Some(3..6), iter.next());
+        assert_eq!(Some(6..9), iter.next());
+        assert_eq!(None, iter.next());
+    }
+
+    #[test]
+    fn overlapping() {
+        let pt = PieceTree::from("abbaabbaabba");
+        let searcher = SearcherRev::new(b"abbaabba");
+        let slice = pt.slice(..);
+        let mut iter = searcher.find_iter(&slice);
+        assert_eq!(Some(4..12), iter.next());
+        assert_eq!(Some(0..8), iter.next());
+        assert_eq!(None, iter.next());
+
+        let pt = PieceTree::from("abbaabbaabba");
+        let searcher = Searcher::new(b"abbaabba");
+        let slice = pt.slice(..);
+        let mut iter = searcher.find_iter(&slice);
+        assert_eq!(Some(0..8), iter.next());
+        assert_eq!(Some(4..12), iter.next());
         assert_eq!(None, iter.next());
     }
 
@@ -336,25 +409,4 @@ mod test {
         assert_eq!(Some(0..12), iter.next());
         assert_eq!(None, iter.next());
     }
-
-    // #[test]
-    // fn search_bwd3() {
-    //     let err_file = include_str!("../../editor/src/actions/filetree.rs");
-    //     let pt = PieceTree::from(err_file);
-    //     let slice = pt.slice(..);
-    //     let needle = b"remove_dir";
-
-    //     let searcher = Searcher::new(needle);
-    //     let mut iter = searcher.find_iter(&slice);
-    //     while let Some(n) = iter.next() {
-    //         println!("{n:?}");
-    //     }
-
-    //     let searcher = SearcherRev::new(needle);
-    //     let mut iter = searcher.find_iter(&slice);
-
-    //     while let Some(n) = iter.next() {
-    //         println!("{n:?}");
-    //     }
-    // }
 }

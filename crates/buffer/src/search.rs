@@ -244,9 +244,8 @@ impl<'a, 'b> Iterator for SearchIterRev<'a, 'b> {
         if *slice_len < m as u64 {
             return None;
         }
-        let do_find = *slice_len != 0;
 
-        while do_find {
+        while *slice_len != 0 {
             if stop.load(Ordering::Acquire) {
                 return None;
             }
@@ -409,4 +408,19 @@ mod test {
         assert_eq!(Some(0..12), iter.next());
         assert_eq!(None, iter.next());
     }
+
+    // #[test]
+    // fn cargo_toml() {
+    //     let text = include_str!("../../Cargo.toml");
+    //     let pt = PieceTree::from(text);
+
+    //     let needle = b"is";
+    //     let searcher = SearcherRev::new(needle);
+    //     let slice = pt.slice(..);
+    //     let mut iter = searcher.find_iter(&slice);
+
+    //     while let Some(n) = iter.next() {
+    //         println!("{n:?}");
+    //     }
+    // }
 }

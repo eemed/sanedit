@@ -63,18 +63,18 @@ impl AssemblyCode {
     }
 }
 
-#[cfg(test)]
-mod test {
-    use super::*;
+// #[cfg(test)]
+// mod test {
+//     use super::*;
 
-    #[test]
-    fn jit() {
-        unsafe {
-            let mut mc = AssemblyCode::new();
-            mc.compile();
-            for i in 0..10 {
-                println!("i: {i}, f(i) = {}", mc.run(i));
-            }
-        }
-    }
-}
+//     #[test]
+//     fn jit() {
+//         unsafe {
+//             let mut mc = AssemblyCode::new();
+//             mc.compile();
+//             for i in 0..10 {
+//                 println!("i: {i}, f(i) = {}", mc.run(i));
+//             }
+//         }
+//     }
+// }

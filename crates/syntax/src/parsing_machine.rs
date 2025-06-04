@@ -20,7 +20,7 @@ use crate::{
         compiler::Compiler,
         stack::{Stack, StackEntry},
     },
-    ByteReader, ParseError,
+    ByteSource, ParseError,
 };
 
 pub(crate) use self::op::{Addr, Operation};
@@ -105,7 +105,7 @@ impl Parser {
     }
 
     /// Try to match text multiple times. Skips errors and yields an element only when part of the text matches
-    pub fn captures<'a, B: ByteReader>(&'a self, reader: B) -> CaptureIter<'a, B> {
+    pub fn captures<'a, B: ByteSource>(&'a self, reader: B) -> CaptureIter<'a, B> {
         CaptureIter {
             parser: self,
             reader,
@@ -114,13 +114,13 @@ impl Parser {
     }
 
     /// Match whole text and return captures, fails if the text does not match
-    pub fn parse<B: ByteReader>(&self, mut reader: B) -> Result<CaptureList, ParseError> {
+    pub fn parse<B: ByteSource>(&self, mut reader: B) -> Result<CaptureList, ParseError> {
         self.do_parse(&mut reader, 0)
             .map(|(caps, _)| caps)
             .map_err(|err| ParseError::Parse(err.to_string()))
     }
 
-    fn do_parse<B: ByteReader>(
+    fn do_parse<B: ByteSource>(
         &self,
         reader: &mut B,
         sp: u64,
@@ -148,7 +148,7 @@ impl Parser {
                     ip = *l;
                 }
                 Byte(b) => {
-                    if sp < slen && reader.at(sp) == *b {
+                    if sp < slen && reader.get(sp) == *b {
                         ip += 1;
                         sp += 1;
                     } else {
@@ -189,7 +189,7 @@ impl Parser {
                     }
                 },
                 Set(set) => {
-                    if sp < slen && set.has(reader.at(sp)) {
+                    if sp < slen && set.has(reader.get(sp)) {
                         ip += 1;
                         sp += 1;
                     } else {
@@ -225,7 +225,7 @@ impl Parser {
                     state = State::Failure;
                 }
                 Span(set) => {
-                    while set.has(reader.at(sp)) {
+                    while set.has(reader.get(sp)) {
                         sp += 1;
                     }
 

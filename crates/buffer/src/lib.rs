@@ -1,5 +1,4 @@
 mod piece_tree;
-mod search;
 
 pub use piece_tree::{
     builder::PieceTreeBuilder,
@@ -10,8 +9,6 @@ pub use piece_tree::{
     view::PieceTreeView,
     PieceTree,
 };
-
-pub use search::{SearchIter, SearchIterRev, Searcher, SearcherRev};
 
 pub mod utf8 {
     use super::*;

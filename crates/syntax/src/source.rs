@@ -8,14 +8,14 @@ use std::{
 
 use sanedit_buffer::{utf8::decode_utf8_iter, Bytes};
 
-pub trait ByteReader {
+pub trait ByteSource {
     /// Length of all the bytes in this reader utf8
     fn len(&self) -> u64;
 
     /// Wether to stop parsing and return an error
     fn stop(&self) -> bool;
 
-    fn at(&mut self, at: u64) -> u8;
+    fn get(&mut self, at: u64) -> u8;
 
     fn matches(&mut self, at: u64, exp: &[u8]) -> bool {
         if at + exp.len() as u64 >= self.len() {
@@ -24,7 +24,7 @@ pub trait ByteReader {
 
         let mut cur = at;
         for e in exp {
-            let byte = self.at(cur);
+            let byte = self.get(cur);
             cur += 1;
             if *e != byte {
                 return false;
@@ -38,7 +38,7 @@ pub trait ByteReader {
         let max = min(4, self.len() - at);
         let mut bytes = [0u8; 4];
         for i in 0..max {
-            bytes[i as usize] = self.at(at + i);
+            bytes[i as usize] = self.get(at + i);
         }
         let (ch, size) = decode_utf8_iter(bytes[..max as usize].iter().copied());
         let ch = ch?;
@@ -51,7 +51,7 @@ pub trait ByteReader {
     }
 }
 
-impl<'a> ByteReader for &'a str {
+impl<'a> ByteSource for &'a str {
     fn len(&self) -> u64 {
         self.as_bytes().len() as u64
     }
@@ -60,12 +60,12 @@ impl<'a> ByteReader for &'a str {
         false
     }
 
-    fn at(&mut self, at: u64) -> u8 {
+    fn get(&mut self, at: u64) -> u8 {
         self.as_bytes()[at as usize]
     }
 }
 
-impl<'a> ByteReader for &'a [u8] {
+impl<'a> ByteSource for &'a [u8] {
     fn len(&self) -> u64 {
         <[u8]>::len(self) as u64
     }
@@ -74,12 +74,12 @@ impl<'a> ByteReader for &'a [u8] {
         false
     }
 
-    fn at(&mut self, at: u64) -> u8 {
+    fn get(&mut self, at: u64) -> u8 {
         self[at as usize]
     }
 }
 
-impl<'a> ByteReader for Bytes<'a> {
+impl<'a> ByteSource for Bytes<'a> {
     fn len(&self) -> u64 {
         <Bytes>::len(self)
     }
@@ -88,12 +88,12 @@ impl<'a> ByteReader for Bytes<'a> {
         false
     }
 
-    fn at(&mut self, at: u64) -> u8 {
+    fn get(&mut self, at: u64) -> u8 {
         <Bytes>::at(self, at)
     }
 }
 
-impl<B: ByteReader> ByteReader for (B, Arc<AtomicBool>) {
+impl<B: ByteSource> ByteSource for (B, Arc<AtomicBool>) {
     fn len(&self) -> u64 {
         self.0.len()
     }
@@ -102,7 +102,23 @@ impl<B: ByteReader> ByteReader for (B, Arc<AtomicBool>) {
         self.1.load(Ordering::Acquire)
     }
 
-    fn at(&mut self, at: u64) -> u8 {
-        self.0.at(at)
+    fn get(&mut self, at: u64) -> u8 {
+        self.0.get(at)
+    }
+}
+
+impl<const N: usize> ByteSource for &[u8; N] {
+    #[inline(always)]
+    fn len(&self) -> u64 {
+        N as u64
+    }
+
+    #[inline(always)]
+    fn get(&mut self, i: u64) -> u8 {
+        self[i as usize]
+    }
+
+    fn stop(&self) -> bool {
+        false
     }
 }

@@ -3,7 +3,7 @@ use thiserror::Error;
 use crate::grammar::Rule;
 use crate::grammar::RuleInfo;
 use crate::grammar::Rules;
-use crate::ByteReader;
+use crate::ByteSource;
 use crate::Capture;
 use crate::CaptureIter;
 use crate::Operation;
@@ -50,7 +50,7 @@ impl Regex {
         self.parser.parse(bytes).is_ok()
     }
 
-    pub fn captures<B: ByteReader>(&self, reader: B) -> CaptureIter<B> {
+    pub fn captures<B: ByteSource>(&self, reader: B) -> CaptureIter<B> {
         self.parser.captures(reader)
     }
 }

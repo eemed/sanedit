@@ -1,6 +1,6 @@
 use std::ops::Range;
 
-use crate::{ByteReader, SubjectPosition};
+use crate::{ByteSource, SubjectPosition};
 
 use super::Parser;
 
@@ -66,13 +66,13 @@ impl Capture {
 /// Iterate over matched captures.
 /// Yields captures only when matching succeeds otherwise tries again at the next position
 #[derive(Debug)]
-pub struct CaptureIter<'a, B: ByteReader> {
+pub struct CaptureIter<'a, B: ByteSource> {
     pub(super) parser: &'a Parser,
     pub(super) reader: B,
     pub(super) sp: u64,
 }
 
-impl<'a, B: ByteReader> Iterator for CaptureIter<'a, B> {
+impl<'a, B: ByteSource> Iterator for CaptureIter<'a, B> {
     type Item = CaptureList;
 
     fn next(&mut self) -> Option<Self::Item> {

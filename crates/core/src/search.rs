@@ -3,7 +3,7 @@ use std::sync::{atomic::AtomicBool, Arc};
 use crate::{BufferRange, Range};
 use anyhow::bail;
 use sanedit_buffer::{Bytes, PieceTreeSlice};
-use sanedit_syntax::{CaptureIter, Finder, FinderIter, Regex};
+use sanedit_syntax::{CaptureIter, Finder, FinderIter, FinderIterRev, FinderRev, Regex};
 
 #[derive(Debug, Clone, Copy)]
 pub struct SearchOptions {
@@ -61,7 +61,8 @@ impl Default for SearchOptions {
 
 #[derive(Debug)]
 pub enum Searcher {
-    Finder(Finder, bool),
+    Finder(Finder),
+    FinderRev(FinderRev),
 
     /// Forward search
     Regex(Regex),
@@ -107,16 +108,16 @@ impl Searcher {
         } else {
             Finder::new_case_insensitive(patt.as_bytes())
         };
-        Searcher::Finder(searcher, false)
+        Searcher::Finder(searcher)
     }
 
     fn create_rev(patt: &str, options: &SearchOptions) -> Searcher {
         let searcher = if options.is_case_sensitive || !patt.is_ascii() {
-            Finder::new(patt.as_bytes())
+            FinderRev::new(patt.as_bytes())
         } else {
-            Finder::new_case_insensitive(patt.as_bytes())
+            FinderRev::new_case_insensitive(patt.as_bytes())
         };
-        Searcher::Finder(searcher, true)
+        Searcher::FinderRev(searcher)
     }
 
     pub fn find_iter<'a, 'b: 'a>(&'a self, slice: &'b PieceTreeSlice) -> MatchIter<'a> {
@@ -134,10 +135,15 @@ impl Searcher {
                 let iter = regex.captures((bytes, stop));
                 MatchIter::Regex(iter)
             }
-            Searcher::Finder(finder, reverse) => {
+            Searcher::Finder(finder) => {
                 let bytes = slice.bytes();
                 let iter = finder.iter((bytes, stop));
-                MatchIter::Finder(iter, *reverse)
+                MatchIter::Finder(iter)
+            }
+            Searcher::FinderRev(finder) => {
+                let bytes = slice.bytes();
+                let iter = finder.iter((bytes, stop));
+                MatchIter::FinderRev(iter)
             }
         }
     }
@@ -146,7 +152,8 @@ impl Searcher {
         let is_regex = matches!(self, Self::Regex(..));
         let (is_case_sensitive, is_reversed) = match self {
             Searcher::Regex(_) => (false, false),
-            Searcher::Finder(finder, reverse) => (finder.is_case_sensitive(), *reverse),
+            Searcher::Finder(finder) => (finder.is_case_sensitive(), false),
+            Searcher::FinderRev(finder) => (finder.is_case_sensitive(), true),
         };
 
         SearchOptions {
@@ -169,7 +176,8 @@ impl SearchMatch {
 }
 
 pub enum MatchIter<'a> {
-    Finder(FinderIter<'a, (Bytes<'a>, Arc<AtomicBool>)>, bool),
+    Finder(FinderIter<'a, (Bytes<'a>, Arc<AtomicBool>)>),
+    FinderRev(FinderIterRev<'a, (Bytes<'a>, Arc<AtomicBool>)>),
     Regex(CaptureIter<'a, (Bytes<'a>, Arc<AtomicBool>)>),
 }
 
@@ -178,12 +186,15 @@ impl<'a> Iterator for MatchIter<'a> {
 
     fn next(&mut self) -> Option<Self::Item> {
         match self {
-            MatchIter::Finder(iter, reverse) => {
-                let start = if *reverse {
-                    iter.next_back()?
-                } else {
-                    iter.next()?
-                };
+            MatchIter::Finder(iter) => {
+                let start = iter.next()?;
+                let len = iter.pattern_len();
+                Some(SearchMatch {
+                    range: Range::new(start, start + len as u64),
+                })
+            }
+            MatchIter::FinderRev(iter) => {
+                let start = iter.next()?;
                 let len = iter.pattern_len();
                 Some(SearchMatch {
                     range: Range::new(start, start + len as u64),

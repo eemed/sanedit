@@ -1,16 +1,9 @@
-mod code;
-
-use code::AssemblyCode;
-
 struct Jit {
-    code: AssemblyCode,
 }
 
 impl Jit {
     pub fn new() -> Jit {
-        let code = AssemblyCode::new();
-
-        Jit { code }
+        todo!()
     }
 
     // Compile routines here

@@ -48,6 +48,7 @@ toml_edit            = "0.22"
 unicode-width        = "0.1.13" # Rendering itself has problems
 which                = "5.0.0" # Should be replaced with something simpler
 crossbeam            = "0.8.4" # Can be replaced when crossbeam_channel::Select comes to std
+dynasm = "3.2.0"
 
 [profile.dev.package."*"]
 debug = false

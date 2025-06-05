@@ -13,7 +13,8 @@ rustc-hash.workspace = true
 anyhow.workspace = true
 thiserror.workspace = true
 log.workspace = true
-libc.workspace = true # JIT
+libc.workspace = true
+dynasm.workspace = true
 
 [dev-dependencies]
 criterion.workspace = true

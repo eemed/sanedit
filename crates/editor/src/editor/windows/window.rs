@@ -22,7 +22,7 @@ use std::{
 };
 
 use anyhow::{bail, Result};
-use rustc_hash::FxHashSet;
+use rustc_hash::FxHashSet as Set;
 use sanedit_buffer::{Mark, MarkResult};
 use sanedit_core::{
     grapheme_category, indent_at_line,
@@ -46,7 +46,7 @@ use crate::{
     editor::{
         buffers::{Buffer, BufferId, SnapshotAux, SnapshotId},
         keymap::LayerKey,
-        Editor,
+        Editor, Map,
     },
 };
 
@@ -61,7 +61,8 @@ pub(crate) use self::{
 #[derive(Debug)]
 pub(crate) struct Window {
     bid: BufferId,
-    last_buffer: Option<(BufferId, SnapshotAux)>,
+    last_buffer: Option<BufferId>,
+    visited_buffers: Map<BufferId, SnapshotAux>,
     message: Option<StatusMessage>,
     view: View,
     keys: Vec<KeyEvent>,
@@ -96,6 +97,7 @@ impl Window {
             bid,
             keys: vec![],
             last_buffer: None,
+            visited_buffers: Map::default(),
             view: View::new(width, height),
             message: None,
             window_manager: config.window_manager.get(),
@@ -176,7 +178,6 @@ impl Window {
         let width = self.view.width();
         let height = self.view.height();
         self.view = View::new(width, height);
-
         self.cursors = Cursors::default();
 
         self.reload();
@@ -184,7 +185,6 @@ impl Window {
 
     pub fn reload(&mut self) {
         self.search.reset_highlighting();
-
         self.focus = Focus::Window;
         self.view.invalidate();
         self.prompt = Prompt::default();
@@ -206,7 +206,8 @@ impl Window {
         let old = self.bid;
         // Store old buffer data
         let odata = self.window_aux(None);
-        self.last_buffer = Some((old, odata));
+        self.visited_buffers.insert(old, odata);
+        self.last_buffer = Some(old);
 
         self.bid = bid;
         self.full_reload();
@@ -215,13 +216,18 @@ impl Window {
 
     pub fn goto_prev_buffer(&mut self) -> bool {
         match mem::take(&mut self.last_buffer) {
-            Some((pbid, pdata)) => {
+            Some(pbid) => {
+                // Store current data
                 let old = self.bid;
                 let odata = self.window_aux(None);
-                self.last_buffer = Some((old, odata));
+                self.visited_buffers.insert(old, odata);
+                self.last_buffer = Some(old);
 
+                // Restore prev buffer data
                 self.bid = pbid;
-                self.restore(&pdata, None);
+                if let Some(pdata) = self.visited_buffers.get(&pbid).cloned() {
+                    self.restore(&pdata, None);
+                }
                 true
             }
             None => false,
@@ -431,7 +437,7 @@ impl Window {
     }
 
     pub fn prev_buffer_id(&self) -> Option<BufferId> {
-        self.last_buffer.as_ref().map(|(a, _)| a).copied()
+        self.last_buffer
     }
 
     pub fn view(&self) -> &View {
@@ -881,7 +887,7 @@ impl Window {
 
     pub fn cursor_line_starts(&self, buf: &Buffer) -> Vec<u64> {
         let slice = buf.slice(..);
-        let mut starts = FxHashSet::default();
+        let mut starts = Set::default();
 
         for cursor in self.cursors.iter() {
             let cpos = cursor.pos();
@@ -896,7 +902,7 @@ impl Window {
 
     pub fn cursor_line_ends(&self, buf: &Buffer) -> Vec<u64> {
         let slice = buf.slice(..);
-        let mut endset = FxHashSet::default();
+        let mut endset = Set::default();
 
         for cursor in self.cursors.iter() {
             let cpos = cursor.pos();
@@ -911,7 +917,7 @@ impl Window {
 
     fn cursor_line_first_chars_of_lines_aligned(&self, buf: &Buffer) -> Vec<u64> {
         let slice = buf.slice(..);
-        let mut starts = FxHashSet::default();
+        let mut starts = Set::default();
         let mut dist = u64::MAX;
 
         for cursor in self.cursors.iter() {

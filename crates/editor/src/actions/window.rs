@@ -301,8 +301,17 @@ fn normal_mode(editor: &mut Editor, id: ClientId) -> ActionResult {
 
     win.snippets.clear();
     focus_with_mode(editor, id, Focus::Window, Mode::Normal);
+    remove_auto_inserted_indent(editor, id);
     prev_grapheme_on_line.execute(editor, id);
     ActionResult::Ok
+}
+
+/// Removes auto inserted indentation if it was the last change
+fn remove_auto_inserted_indent(editor: &mut Editor, id: ClientId) {
+    let (win, buf) = editor.win_buf_mut(id);
+    // TODO make sure this was inserted on this insert mode
+    buf.last_edit();
+    todo!()
 }
 
 #[action("Mode: Insert")]

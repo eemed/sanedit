@@ -11,7 +11,7 @@ keyword = ("loop" / "let" / "match" / "if" / "else" / "while" /
           "break" / "move" / "async" / "dyn" / "return" / "for" /
           "in" / "as" / "pub(crate)" / "pub(super)" / "pub" / "use" /
           "fn" / "impl" / "struct" / "enum" / "const" / "trait" /
-          "type" / "crate"  / "extern" / "mod" / "self" ) &stop;
+          "type" / "crate"  / "extern" / "mod" / "self" / "ref" ) &stop;
 
 @show @highlight
 constant = number;
@@ -24,9 +24,10 @@ number_types = "usize" / "isize" / "f64" / "f32" / "u8" / "u16" / "u32" / "u64" 
 
 
 @show @highlight
-string = char / sstring;
+string = char / sstring / rawstring;
 char = "'" . "'";
 sstring = "b"? "\"" (escape / replace / [^"])* "\"";
+rawstring = "r#" (escape / replace / [^#])* "#";
 escape = "\\" .;
 replace = !"{{" "{" replacement "}";
 @show @highlight(default)
@@ -62,7 +63,9 @@ lifetime = "'" [a..z]+;
 
 
 @show @highlight
-comment = "//" (todo / (!nl .))*;
+comment = line_comment / block_comment;
+line_comment = "//" (todo / (!nl .))*;
+block_comment = "/*" (todo / (!"*/" .))* "*/";
 
 
 @show @highlight(warn)

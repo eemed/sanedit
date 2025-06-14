@@ -169,6 +169,7 @@ impl LSPClient {
                     tokio::spawn(async move {
                         let id = req.id();
                         if let Err(e) = handler.run(req).await {
+                            log::error!("LSP error: {e}");
                             // Send error response if failed request
                             if let Some(id) = id {
                                 let _ = handler
@@ -814,6 +815,7 @@ impl Handler {
             .ok_or(LSPError::NoResponse)?
             .map_err(|e| LSPError::InvalidResponse(e))?;
 
+        log::info!("LSP responded");
         let result = serde_json::from_value(response)?;
 
         Ok(result)

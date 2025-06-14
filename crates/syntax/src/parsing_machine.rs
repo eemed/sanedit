@@ -13,6 +13,7 @@ use self::compiler::Program;
 use std::io;
 
 use anyhow::bail;
+use jit::Jit;
 
 use crate::{
     grammar::{Annotation, Rules},
@@ -39,6 +40,7 @@ pub(crate) type SubjectPosition = u64;
 pub struct Parser {
     rules: Rules,
     program: Program,
+    jit: Option<Jit>,
 }
 
 impl Parser {
@@ -53,7 +55,8 @@ impl Parser {
             .compile_unanchored()
             .map_err(|err| ParseError::Preprocess(err.to_string()))?;
 
-        let parser = Parser { rules, program };
+        // TODO enable jit when ready
+        let parser = Parser { rules, program, jit: None };
         Ok(parser)
     }
 
@@ -72,7 +75,38 @@ impl Parser {
         // println!("---- Prgoram ----");
         // println!("{:?}", program);
 
-        let parser = Parser { rules, program };
+        // TODO enable jit when ready
+        let parser = Parser { rules, program, jit: None };
+        Ok(parser)
+    }
+
+    pub fn new_interpreted<R: io::Read>(read: R) -> Result<Parser, ParseError> {
+        let rules = Rules::parse(read).map_err(|err| ParseError::Grammar(err.to_string()))?;
+        if rules.is_empty() {
+            return Err(ParseError::NoRules);
+        }
+
+        let compiler = Compiler::new(&rules);
+        let program = compiler
+            .compile()
+            .map_err(|err| ParseError::Preprocess(err.to_string()))?;
+        let parser = Parser { rules, program, jit: None };
+        Ok(parser)
+    }
+
+    pub fn new_jit<R: io::Read>(read: R) -> Result<Parser, ParseError> {
+        let rules = Rules::parse(read).map_err(|err| ParseError::Grammar(err.to_string()))?;
+        if rules.is_empty() {
+            return Err(ParseError::NoRules);
+        }
+
+        let compiler = Compiler::new(&rules);
+        let program = compiler
+            .compile()
+            .map_err(|err| ParseError::Preprocess(err.to_string()))?;
+        let jit = Jit::new(&program).expect("cannot create JIT, unsupported platform");
+        let parser = Parser { rules, program, jit: Some(jit) };
+
         Ok(parser)
     }
 
@@ -115,6 +149,9 @@ impl Parser {
 
     /// Match whole text and return captures, fails if the text does not match
     pub fn parse<B: ByteSource>(&self, mut reader: B) -> Result<CaptureList, ParseError> {
+        if let Some(ref jit) = self.jit {
+            return jit.parse(&mut reader);
+        }
         self.do_parse(&mut reader, 0)
             .map(|(caps, _)| caps)
             .map_err(|err| ParseError::Parse(err.to_string()))

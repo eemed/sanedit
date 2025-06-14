@@ -120,7 +120,6 @@ where
     }
 
     drop(ui);
-    std::process::exit(0);
 }
 
 fn run_read_loop<R>(read: R, sender: Sender<ClientInternalMessage>)

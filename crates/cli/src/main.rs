@@ -1,6 +1,6 @@
 mod logging;
 
-use std::{fs, io, path::PathBuf};
+use std::{fs, hash::{DefaultHasher, Hash, Hasher}, io, path::PathBuf};
 
 use argh::FromArgs;
 use sanedit_server::{Address, StartOptions};
@@ -35,13 +35,23 @@ fn main() {
     // let open_files = cli.file.clone().map(|f| vec![f]).unwrap_or_default();
     let config_dir = cli.config_dir.clone();
     let working_dir = cli.working_dir.clone();
+    let socket_name = {
+        let cwd = std::env::current_dir();
+        let dir = working_dir
+            .as_ref()
+            .or(cwd.as_ref().ok())
+            .expect("No working directory found");
+        let mut hasher = DefaultHasher::new();
+        dir.as_os_str().hash(&mut hasher);
+        hasher.finish().to_string()
+    };
     let start_opts = StartOptions {
         config_dir,
         working_dir,
     };
     let socket_start_opts = SocketStartOptions { file: cli.file };
 
-    let socket = PathBuf::from("/tmp/sanedit.sock");
+    let socket = PathBuf::from(format!("/tmp/{socket_name}-sanedit.sock"));
     let exists = socket.try_exists().unwrap_or(false);
     if exists {
         log::info!("Connecting to existing socket..");
@@ -78,5 +88,6 @@ fn main() {
         join.join().unwrap()
     }
 
+    log::info!("Removing: {socket:?}");
     let _ = fs::remove_file(socket);
 }

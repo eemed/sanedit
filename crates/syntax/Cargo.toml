@@ -15,10 +15,15 @@ thiserror.workspace = true
 log.workspace = true
 libc.workspace = true
 dynasm.workspace = true
+dynasmrt.workspace = true
 
 [dev-dependencies]
 criterion.workspace = true
 
 [[bench]]
 name = "parse"
+harness = false
+
+[[bench]]
+name = "perf"
 harness = false

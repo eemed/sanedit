@@ -373,7 +373,7 @@ impl Window {
         }
 
         let offset = lines.next().map(|line| line.start()).unwrap_or(buf.len());
-        self.goto_offset(offset, buf);
+        self.jump_to_offset(offset, buf);
     }
 
     pub fn push_new_cursor_jump(&mut self, buf: &Buffer) {
@@ -385,7 +385,14 @@ impl Window {
         self.cursor_jumps.goto_start();
     }
 
-    /// Move primary cursor to offset and the view too
+    /// Move primary cursor to offset and create a jump point at start and end position
+    pub fn jump_to_offset(&mut self, offset: u64, buf: &Buffer) {
+        self.push_new_cursor_jump(buf);
+        self.goto_offset(offset, buf);
+    }
+
+    /// Move primary cursor to offset and create a jump to it.
+    /// Will not create the jump point at current position
     pub fn goto_offset(&mut self, offset: u64, buf: &Buffer) {
         let offset = min(offset, buf.len());
         let primary = self.cursors.primary_mut();
@@ -393,7 +400,7 @@ impl Window {
 
         self.ensure_cursor_on_grapheme_boundary(buf);
         self.view_to_around_cursor_zone(buf, Zone::Middle);
-        // self.push_new_cursor_jump(buf);
+        self.push_new_cursor_jump(buf);
     }
 
     pub fn ensure_cursor_on_grapheme_boundary(&mut self, buf: &Buffer) {

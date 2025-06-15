@@ -58,7 +58,7 @@ fn prev_loc_entry(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Locations: Confirm entry")]
 fn goto_loc_entry(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, buf) = editor.win_buf_mut(id);
 
     if let Some(sel) = win.locations.selected_mut() {
         match sel {
@@ -74,6 +74,11 @@ fn goto_loc_entry(editor: &mut Editor, id: ClientId) -> ActionResult {
                 let offset = item.absolute_offset().unwrap_or(0) + hl_off as u64;
                 let parent = getf!(win.locations.parent_of_selected());
                 let path = parent.path().to_path_buf();
+
+                // Push current position to jumps
+                let (win, buf) = editor.win_buf_mut(id);
+                win.push_new_cursor_jump(buf);
+
                 if let Err(e) = editor.open_file(id, &path) {
                     let (win, _buf) = editor.win_buf_mut(id);
                     win.error_msg(&format!("Failed to open file: {e}"));

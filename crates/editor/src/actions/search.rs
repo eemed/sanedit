@@ -338,8 +338,7 @@ fn do_search(editor: &mut Editor, id: ClientId, searcher: Searcher, starting_pos
             range.start += start;
             range.end += start;
 
-            win.push_new_cursor_jump(buf);
-            win.goto_offset(range.start, buf);
+            win.jump_to_offset(range.start, buf);
             win.search.current.result = Some(range);
         }
         None => {

@@ -508,7 +508,7 @@ pub(crate) fn next_diagnostic(editor: &mut Editor, id: ClientId) -> ActionResult
     for diag in diagnostics.iter() {
         let drange = diag.range();
         if drange.start > cpos {
-            win.goto_offset(drange.start, buf);
+            win.jump_to_offset(drange.start, buf);
             return ActionResult::Ok;
         }
     }
@@ -528,7 +528,7 @@ pub(crate) fn prev_diagnostic(editor: &mut Editor, id: ClientId) -> ActionResult
     for diag in diagnostics.iter().rev() {
         let drange = diag.range();
         if drange.end < cpos {
-            win.goto_offset(drange.start, buf);
+            win.jump_to_offset(drange.start, buf);
             return ActionResult::Ok;
         }
     }

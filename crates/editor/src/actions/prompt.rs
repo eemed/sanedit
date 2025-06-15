@@ -381,7 +381,7 @@ fn goto_percentage(editor: &mut Editor, id: ClientId) -> ActionResult {
                 num = min(100, num);
                 let (win, buf) = editor.win_buf_mut(id);
                 let offset = num * buf.len() / 100;
-                win.goto_offset(offset, buf);
+                win.jump_to_offset(offset, buf);
                 hooks::run(editor, id, Hook::CursorMoved);
 
                 return ActionResult::Ok;

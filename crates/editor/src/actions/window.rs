@@ -1,5 +1,5 @@
 use crate::{
-    actions::shell,
+    actions::{hooks::run, shell},
     common::to_human_readable,
     editor::{
         buffers::Buffer,
@@ -10,6 +10,8 @@ use crate::{
     VERSION,
 };
 
+use sanedit_buffer::utf8::EndOfLine;
+use sanedit_core::{Change, Changes, IndentKind, Range};
 use sanedit_server::ClientId;
 
 use super::{
@@ -300,8 +302,8 @@ fn normal_mode(editor: &mut Editor, id: ClientId) -> ActionResult {
     }
 
     win.snippets.clear();
-    focus_with_mode(editor, id, Focus::Window, Mode::Normal);
     remove_auto_inserted_indent(editor, id);
+    focus_with_mode(editor, id, Focus::Window, Mode::Normal);
     prev_grapheme_on_line.execute(editor, id);
     ActionResult::Ok
 }
@@ -309,9 +311,61 @@ fn normal_mode(editor: &mut Editor, id: ClientId) -> ActionResult {
 /// Removes auto inserted indentation if it was the last change
 fn remove_auto_inserted_indent(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
-    // TODO make sure this was inserted on this insert mode
-    buf.last_edit();
-    todo!()
+    let win_last = get!(win.last_insert_change.as_ref());
+    let buf_last = get!(buf.last_edit());
+
+    // If not last change dont do anything
+    if win_last != &buf_last.changes {
+        return;
+    }
+
+    let mut indents = vec![];
+    // Every change needs to be eol + indent otherwise do nothing
+    for change in win_last.iter() {
+        if !change.is_insert() {
+            return;
+        }
+        let mut text = change.text();
+        let len = text.len();
+
+        // Strip spaces or tabs
+        loop {
+            if let Some(t) = text.strip_suffix(&[IndentKind::Space.as_byte()]) {
+                text = t;
+                continue;
+            }
+
+            if let Some(t) = text.strip_suffix(&[IndentKind::Tab.as_byte()]) {
+                text = t;
+                continue;
+            }
+
+            break;
+        }
+
+        if !EndOfLine::is_eol(&text) {
+            return;
+        }
+
+        let indent = (len - text.len()) as u64;
+        let sol = change.start() + text.len() as u64;
+        indents.push(Change::remove(Range::new(sol, sol + indent)));
+    }
+
+    let mut changes = Changes::from(indents);
+    changes.disable_undo_point_creation();
+
+    if win.change(buf, &changes).is_ok() {
+        let hook = Hook::BufChanged(buf.id);
+        run(editor, id, hook);
+    }
+}
+
+#[action("On insert mode leave")]
+fn on_insert_mode_leave(editor: &mut Editor, id: ClientId) -> ActionResult {
+    let (win, _buf) = editor.win_buf_mut(id);
+    win.last_insert_change = None;
+    ActionResult::Ok
 }
 
 #[action("Mode: Insert")]

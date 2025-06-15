@@ -68,6 +68,7 @@ pub(crate) struct Window {
     keys: Vec<KeyEvent>,
     popup: Option<Popup>,
 
+
     /// Focus determines where to direct input
     pub focus: Focus,
     pub mode: Mode,
@@ -89,6 +90,9 @@ pub(crate) struct Window {
 
     /// Handles next keypress, before anything else
     pub next_key_handler: Option<NextKeyFunction>,
+
+    /// Last change while in insert mode, cleared when insert mode is left
+    pub last_insert_change: Option<Changes>,
 }
 
 impl Window {
@@ -115,6 +119,7 @@ impl Window {
             cursor_jumps: Jumps::with_capacity(512),
             last_edit_jump: None,
             next_key_handler: None,
+            last_insert_change: None,
         }
     }
 
@@ -499,6 +504,10 @@ impl Window {
         let mark = self.cursors.mark_first(buf);
         let aux = self.window_aux(mark.into());
         let result = buf.apply_changes(changes)?;
+
+        if self.mode == Mode::Insert {
+            self.last_insert_change = Some(changes.clone());
+        }
 
         changes.move_cursors(self.cursors.cursors_mut());
         self.cursors.merge_overlapping();

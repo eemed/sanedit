@@ -21,8 +21,8 @@ fn quit(editor: &mut Editor, id: ClientId) -> ActionResult {
     // If is the first client
     if id.0 == 0 {
         if editor.buffers.any_unsaved_changes().is_some() {
-            unsaved_changes(editor, id, |editor, id| {
-                editor.quit_client(id);
+            unsaved_changes(editor, id, |editor, _id| {
+                editor.quit();
                 ActionResult::Ok
             })
         } else {

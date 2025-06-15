@@ -88,6 +88,5 @@ fn main() {
         join.join().unwrap()
     }
 
-    log::info!("Removing: {socket:?}");
     let _ = fs::remove_file(socket);
 }

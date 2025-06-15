@@ -238,6 +238,8 @@ fn strip_trailing_whitespace(editor: &mut Editor, id: ClientId) -> ActionResult 
 
 #[action("Buffer: Newline below")]
 fn newline_below(editor: &mut Editor, id: ClientId) -> ActionResult {
+    mode_insert(editor, id);
+
     // Disable autopair for this action
     let (win, _buf) = editor.win_buf_mut(id);
     let restore = mem::replace(&mut win.config.autopair, false);
@@ -247,12 +249,12 @@ fn newline_below(editor: &mut Editor, id: ClientId) -> ActionResult {
 
     let (win, _buf) = editor.win_buf_mut(id);
     win.config.autopair = restore;
-    mode_insert(editor, id);
     ActionResult::Ok
 }
 
 #[action("Buffer: Newline above")]
 fn newline_above(editor: &mut Editor, id: ClientId) -> ActionResult {
+    mode_insert(editor, id);
     // Disable autopair for this action
     let (win, _buf) = editor.win_buf_mut(id);
     let restore = mem::replace(&mut win.config.autopair, false);
@@ -277,7 +279,6 @@ fn newline_above(editor: &mut Editor, id: ClientId) -> ActionResult {
 
     let (win, _buf) = editor.win_buf_mut(id);
     win.config.autopair = restore;
-    mode_insert(editor, id);
     ActionResult::Ok
 }
 

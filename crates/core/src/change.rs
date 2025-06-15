@@ -16,7 +16,7 @@ pub struct Edit {
     pub changes: Changes,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Changes {
     changes: SortedVec<Change>,
     flags: Flags,

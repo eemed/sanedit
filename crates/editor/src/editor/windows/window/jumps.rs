@@ -111,6 +111,13 @@ impl Jumps {
     }
 
     pub fn push(&mut self, group: JumpGroup) {
+        // No duplicates
+        if let Some((_, jumps)) = self.jumps.last() {
+            if &group == jumps {
+                return;
+            }
+        }
+
         self.jumps.push_overwrite(group);
     }
 

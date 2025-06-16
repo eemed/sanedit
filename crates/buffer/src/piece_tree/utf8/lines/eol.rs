@@ -1,4 +1,4 @@
-use std::{collections::HashSet, sync::OnceLock};
+use std::{cmp::min, collections::HashSet, sync::OnceLock};
 
 use crate::{PieceTree, PieceTreeSlice};
 
@@ -72,6 +72,18 @@ impl EndOfLine {
     pub fn is_eol<B: AsRef<[u8]>>(bytes: B) -> bool {
         let bytes = bytes.as_ref();
         eol_bytes().contains(bytes)
+    }
+
+    pub fn is_eol_prefix<B: AsRef<[u8]>>(bytes: B) -> Option<EndOfLine> {
+        let bytes = bytes.as_ref();
+        let top = min(Self::MAX_EOL_LEN, bytes.len());
+        let pt = PieceTree::from_reader(std::io::Cursor::new(&bytes[..top])).unwrap();
+        let mut bytes = pt.bytes();
+        let mat = next_eol(&mut bytes)?;
+        if mat.range.start != 0 {
+            return None;
+        }
+        Some(mat.eol)
     }
 
     pub fn is_byte_eol(byte: u8) -> bool {

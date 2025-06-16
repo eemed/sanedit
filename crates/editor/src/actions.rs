@@ -187,6 +187,7 @@ pub(crate) const COMMANDS: &[Action] = &[
     text::insert_literal,
     text::remove_line,
     text::remove_to_eol,
+    text::reload_file_from_disk,
 
     prompt::open_file,
     prompt::open_buffer,

@@ -91,8 +91,8 @@ pub(crate) struct Window {
     /// Handles next keypress, before anything else
     pub next_key_handler: Option<NextKeyFunction>,
 
-    /// Last change while in insert mode, cleared when insert mode is left
-    pub last_insert_change: Option<Changes>,
+    /// Delete indent when insert mode is left. Auto indenting changes should set this
+    pub delete_indent_on_insert_leave: bool,
 }
 
 impl Window {
@@ -119,7 +119,7 @@ impl Window {
             cursor_jumps: Jumps::with_capacity(512),
             last_edit_jump: None,
             next_key_handler: None,
-            last_insert_change: None,
+            delete_indent_on_insert_leave: false,
         }
     }
 
@@ -505,16 +505,13 @@ impl Window {
     }
 
     pub fn change(&mut self, buf: &mut Buffer, changes: &Changes) -> Result<()> {
+        self.delete_indent_on_insert_leave = false;
         self.last_edit_jump = None;
         self.cursor_jumps.goto_start();
 
         let mark = self.cursors.mark_first(buf);
         let aux = self.window_aux(mark.into());
         let result = buf.apply_changes(changes)?;
-
-        if self.mode == Mode::Insert {
-            self.last_insert_change = Some(changes.clone());
-        }
 
         changes.move_cursors(self.cursors.cursors_mut());
         self.cursors.merge_overlapping();
@@ -858,7 +855,9 @@ impl Window {
         }
 
         let changes: Changes = changes.into();
-        self.change(buf, &changes)
+        let result = self.change(buf, &changes);
+        self.delete_indent_on_insert_leave = true;
+        result
     }
 
     pub fn cursors_to_eol(&self, buf: &Buffer) -> Vec<BufferRange> {

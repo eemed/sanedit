@@ -123,7 +123,11 @@ fn open_file(editor: &mut Editor, id: ClientId) -> ActionResult {
     win.prompt = Prompt::builder()
         .prompt(PROMPT_MESSAGE)
         .on_confirm(move |editor, id, out| {
-            let path = getf!(out.path());
+            let path = getf!(out.path_selection());
+
+            // Record a jump here before opening a new buffer
+            let (win, buf) = editor.win_buf_mut(id);
+            win.push_new_cursor_jump(buf);
 
             match editor.open_file(id, &path) {
                 Ok(()) => {

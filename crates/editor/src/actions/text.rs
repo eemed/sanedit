@@ -4,13 +4,14 @@ use sanedit_core::{at_start_of_line, is_indent_at_pos};
 
 use crate::{
     actions::movement::start_of_buffer,
+    common::is_yes,
     editor::{
         buffers::{Buffer, BufferError},
         hooks::Hook,
         language::Languages,
-        windows::{Focus, NextKeyFunction, Prompt, Window},
+        windows::{Focus, NextKeyFunction, Prompt, PromptBuilder, Window},
         Editor,
-    },
+    }
 };
 
 use sanedit_server::ClientId;
@@ -413,4 +414,45 @@ fn remove_to_eol(editor: &mut Editor, id: ClientId) -> ActionResult {
     end_of_line.execute(editor, id);
     swap_selection_dir.execute(editor, id);
     remove_cursor_selections.execute(editor, id)
+}
+
+#[action("Buffer: Check if file has been modified")]
+fn check_file_modification(editor: &mut Editor, id: ClientId) -> ActionResult {
+    let (win, buf) = editor.win_buf_mut(id);
+
+    let local = getf!(buf.last_saved_modified_time());
+
+    let path = getf!(buf.path());
+    let in_fs = {
+        let mdata = getf!(path.metadata().ok());
+        getf!(mdata.modified().ok())
+    };
+
+    if local != &in_fs {
+        win.prompt = Prompt::builder()
+            .prompt("File has been changed on disk. Reload file from disk? (Y/n)")
+            .simple()
+            .on_confirm(|editor, id, out| {
+                let input = getf!(out.text());
+                let yes = input.is_empty() || is_yes(input);
+                if !yes {
+                    return ActionResult::Failed;
+                }
+                reload_file_from_disk.execute(editor, id)
+            })
+            .build();
+    }
+
+    ActionResult::Ok
+}
+
+#[action("Buffer: Reload file from disk")]
+fn reload_file_from_disk(editor: &mut Editor, id: ClientId) -> ActionResult {
+    let (win, buf) = editor.win_buf_mut(id);
+    let path = getf!(buf.path());
+
+    // TODO delete buffer and open it again
+    // TODO reload all other clients too that view this
+
+    ActionResult::Ok
 }

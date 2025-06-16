@@ -7,7 +7,7 @@ use std::{
     fs,
     io::{self, Write},
     ops::RangeBounds,
-    path::{Path, PathBuf},
+    path::{Path, PathBuf}, time::SystemTime,
 };
 
 use anyhow::ensure;
@@ -39,6 +39,7 @@ pub(crate) struct Buffer {
     /// Snapshots of the piecetree, used for undo
     snapshots: Snapshots,
     last_saved_snapshot: SnapshotId,
+    last_saved_modified: Option<SystemTime>,
 
     is_modified: bool,
     last_edit: Option<Edit>,
@@ -64,6 +65,7 @@ impl Buffer {
             path: None,
             last_edit: None,
             last_saved_snapshot: 0,
+            last_saved_modified: None,
             total_changes_made: 0,
         }
     }
@@ -92,6 +94,7 @@ impl Buffer {
             path: Some(path.into()),
             last_edit: None,
             last_saved_snapshot: 0,
+            last_saved_modified: None,
             total_changes_made: 0,
         })
     }
@@ -126,6 +129,7 @@ impl Buffer {
             path: None,
             last_edit: None,
             last_saved_snapshot: 0,
+            last_saved_modified: None,
             total_changes_made: 0,
         })
     }
@@ -314,6 +318,9 @@ impl Buffer {
         // TODO does not work across mount points
         fs::rename(copy, path)?;
 
+        let modified = path.metadata()?.modified()?;
+        self.last_saved_modified = Some(modified);
+
         self.is_modified = false;
         let snap = self.snapshots.insert(cur);
         self.last_saved_snapshot = snap;
@@ -341,6 +348,14 @@ impl Buffer {
 
     pub fn mark_to_pos(&self, mark: &Mark) -> MarkResult {
         self.pt.mark_to_pos(mark)
+    }
+
+    pub fn last_saved_modified_time(&self) -> Option<&SystemTime> {
+        self.last_saved_modified.as_ref()
+    }
+
+    pub fn last_saved_modified_checked(&mut self) {
+        self.last_saved_modified = None;
     }
 }
 

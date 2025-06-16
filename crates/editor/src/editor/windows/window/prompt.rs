@@ -124,6 +124,16 @@ impl PromptOutput {
         }
     }
 
+    pub fn path_selection(&self) -> Option<PathBuf> {
+        match &self.inner {
+            Either::Right(choice) => match choice.choice() {
+                Choice::Path { path, .. } => Some(path.clone()),
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+
     pub fn snippet(&self) -> Option<&Snippet> {
         match &self.inner {
             Either::Right(choice) => match choice.choice() {

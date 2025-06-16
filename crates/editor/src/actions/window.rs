@@ -10,8 +10,7 @@ use crate::{
     VERSION,
 };
 
-use sanedit_buffer::utf8::EndOfLine;
-use sanedit_core::{Change, Changes, IndentKind, Range};
+use sanedit_core::{grapheme_category, Change, Changes, GraphemeCategory, Range};
 use sanedit_server::ClientId;
 
 use super::{
@@ -302,54 +301,57 @@ fn normal_mode(editor: &mut Editor, id: ClientId) -> ActionResult {
     }
 
     win.snippets.clear();
-    remove_auto_inserted_indent(editor, id);
+    remove_indent(editor, id);
     focus_with_mode(editor, id, Focus::Window, Mode::Normal);
     prev_grapheme_on_line.execute(editor, id);
     ActionResult::Ok
 }
 
 /// Removes auto inserted indentation if it was the last change
-fn remove_auto_inserted_indent(editor: &mut Editor, id: ClientId) {
+fn remove_indent(editor: &mut Editor, id: ClientId) {
     let (win, buf) = editor.win_buf_mut(id);
-    let win_last = get!(win.last_insert_change.as_ref());
-    let buf_last = get!(buf.last_edit());
-
-    // If not last change dont do anything
-    if win_last != &buf_last.changes {
+    if !win.delete_indent_on_insert_leave {
         return;
     }
 
+    let slice = buf.slice(..);
     let mut indents = vec![];
     // Every change needs to be eol + indent otherwise do nothing
-    for change in win_last.iter() {
-        if !change.is_insert() {
-            return;
-        }
-        let mut text = change.text();
-        let len = text.len();
-
-        // Strip spaces or tabs
-        loop {
-            if let Some(t) = text.strip_suffix(&[IndentKind::Space.as_byte()]) {
-                text = t;
+    for cursor in win.cursors().cursors() {
+        let cpos = cursor.pos();
+        let mut graphemes = slice.graphemes_at(cpos);
+        if let Some(g) = graphemes.next() {
+            if !g.is_eol() {
                 continue;
             }
+            graphemes.prev();
+        }
 
-            if let Some(t) = text.strip_suffix(&[IndentKind::Tab.as_byte()]) {
-                text = t;
-                continue;
+        let mut len = 0;
+        while let Some(g) = graphemes.prev() {
+            if g.is_eol() {
+                break;
             }
 
-            break;
+            match grapheme_category(&g) {
+                GraphemeCategory::Whitespace => len += g.len(),
+                _ => {
+                    len = 0;
+                    break;
+                }
+            }
         }
 
-        if !EndOfLine::is_eol(&text) {
-            return;
+        if len == 0 {
+            continue;
         }
 
-        let indent = (len - text.len()) as u64;
-        let sol = change.start() + text.len() as u64;
-        indents.push(Change::remove(Range::new(sol, sol + indent)));
+        let range = Range::new(cpos - len, cpos);
+        indents.push(Change::remove(range));
+    }
+
+    if indents.is_empty() {
+        return;
     }
 
     let mut changes = Changes::from(indents);
@@ -364,7 +366,7 @@ fn remove_auto_inserted_indent(editor: &mut Editor, id: ClientId) {
 #[action("On insert mode leave")]
 fn on_insert_mode_leave(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
-    win.last_insert_change = None;
+    win.delete_indent_on_insert_leave = false;
     ActionResult::Ok
 }
 

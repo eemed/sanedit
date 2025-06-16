@@ -9,7 +9,7 @@ use crate::{
         buffers::{Buffer, BufferError},
         hooks::Hook,
         language::Languages,
-        windows::{Focus, NextKeyFunction, Prompt, PromptBuilder, Window},
+        windows::{Focus, NextKeyFunction, Prompt, Window},
         Editor,
     }
 };
@@ -429,6 +429,8 @@ fn check_file_modification(editor: &mut Editor, id: ClientId) -> ActionResult {
     };
 
     if local != &in_fs {
+        // Prevent asking all the time
+        buf.last_saved_modified_checked();
         win.prompt = Prompt::builder()
             .prompt("File has been changed on disk. Reload file from disk? (Y/n)")
             .simple()
@@ -441,6 +443,7 @@ fn check_file_modification(editor: &mut Editor, id: ClientId) -> ActionResult {
                 reload_file_from_disk.execute(editor, id)
             })
             .build();
+       focus(editor, id, Focus::Prompt);
     }
 
     ActionResult::Ok
@@ -448,11 +451,22 @@ fn check_file_modification(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Buffer: Reload file from disk")]
 fn reload_file_from_disk(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, buf) = editor.win_buf_mut(id);
-    let path = getf!(buf.path());
+    let (_win, buf) = editor.win_buf_mut(id);
+    let bid = buf.id;
+    let ok = buf.reload_from_disk();
+    if !ok {
+        return ActionResult::Ok;
+    }
 
-    // TODO delete buffer and open it again
-    // TODO reload all other clients too that view this
+    let hook = Hook::BufChanged(buf.id);
+    run(editor, id, hook);
+
+    // Reload all clients that use this buffer
+    let clients = editor.windows().find_clients_with_buf(bid);
+    for client in clients {
+        let (win, _buf) = editor.win_buf_mut(client);
+        win.full_reload();
+    }
 
     ActionResult::Ok
 }

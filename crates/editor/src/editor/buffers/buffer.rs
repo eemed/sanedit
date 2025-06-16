@@ -357,6 +357,10 @@ impl Buffer {
     pub fn last_saved_modified_checked(&mut self) {
         self.last_saved_modified = None;
     }
+
+    pub fn reload_from_disk(&mut self) -> bool {
+        todo!()
+    }
 }
 
 impl Drop for Buffer {

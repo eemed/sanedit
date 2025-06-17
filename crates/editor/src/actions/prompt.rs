@@ -233,6 +233,13 @@ fn open_buffer(editor: &mut Editor, id: ClientId) -> ActionResult {
         .on_confirm(move |editor, id, out| {
             let num = getf!(out.number());
             let bid = BufferId::from(num);
+            let (win, _buf) = editor.win_buf_mut(id);
+            let ok_buf = win.buffer_id() != bid && editor.buffers.get(bid).is_some();
+            if !ok_buf {
+                return ActionResult::Failed;
+            }
+            let (win, buf) = editor.win_buf_mut(id);
+            win.push_new_cursor_jump(buf);
             editor.open_buffer(id, bid);
             ActionResult::Ok
         })
@@ -479,8 +486,7 @@ pub(crate) fn unsaved_changes<F: Fn(&mut Editor, ClientId) -> ActionResult + 'st
                     .map(|(bid, _)| bid)
                     .collect();
                 for bid in unsaved {
-                    let (win, _buf) = win_buf!(editor, id);
-                    win.open_buffer(bid);
+                    editor.open_buffer(id, bid);
                     save.execute(editor, id);
                 }
             }

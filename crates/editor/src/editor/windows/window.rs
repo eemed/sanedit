@@ -61,7 +61,6 @@ pub(crate) use self::{
 #[derive(Debug)]
 pub(crate) struct Window {
     bid: BufferId,
-    last_buffer: Option<BufferId>,
     visited_buffers: Map<BufferId, SnapshotAux>,
     message: Option<StatusMessage>,
     view: View,
@@ -69,6 +68,7 @@ pub(crate) struct Window {
     popup: Option<Popup>,
 
 
+    pub last_buffer: Option<BufferId>,
     /// Focus determines where to direct input
     pub focus: Focus,
     pub mode: Mode,
@@ -202,9 +202,9 @@ impl Window {
         &self.view.options
     }
 
-    pub fn open_buffer(&mut self, bid: BufferId) -> BufferId {
-        if bid == self.bid {
-            return bid;
+    pub fn open_buffer(&mut self, buf: &Buffer) -> BufferId {
+        if buf.id == self.bid {
+            return self.bid;
         }
         self.cursor_jumps.goto_start();
 
@@ -214,30 +214,33 @@ impl Window {
         self.visited_buffers.insert(old, odata);
         self.last_buffer = Some(old);
 
-        self.bid = bid;
+        self.bid = buf.id;
         self.full_reload();
+        if let Some(aux) = self.visited_buffers.get(&self.bid).cloned() {
+            self.restore(&aux, buf);
+        }
         old
     }
 
-    pub fn goto_prev_buffer(&mut self) -> bool {
-        match mem::take(&mut self.last_buffer) {
-            Some(pbid) => {
-                // Store current data
-                let old = self.bid;
-                let odata = self.window_aux(None);
-                self.visited_buffers.insert(old, odata);
-                self.last_buffer = Some(old);
+    // pub fn goto_prev_buffer(&mut self) -> bool {
+    //     match mem::take(&mut self.last_buffer) {
+    //         Some(pbid) => {
+    //             // Store current data
+    //             let old = self.bid;
+    //             let odata = self.window_aux(None);
+    //             self.visited_buffers.insert(old, odata);
+    //             self.last_buffer = Some(old);
 
-                // Restore prev buffer data
-                self.bid = pbid;
-                if let Some(pdata) = self.visited_buffers.get(&pbid).cloned() {
-                    self.restore(&pdata, None);
-                }
-                true
-            }
-            None => false,
-        }
-    }
+    //             // Restore prev buffer data
+    //             self.bid = pbid;
+    //             if let Some(pdata) = self.visited_buffers.get(&pbid).cloned() {
+    //                 self.restore(&pdata, None);
+    //             }
+    //             true
+    //         }
+    //         None => false,
+    //     }
+    // }
 
     pub fn info_msg(&mut self, message: &str) {
         self.message = Some(StatusMessage {
@@ -680,7 +683,7 @@ impl Window {
 
         if let Some(restored) = restored {
             if let Some(data) = buf.snapshot_aux(restored) {
-                self.restore(data, Some(buf));
+                self.restore(data, buf);
             } else {
                 self.full_reload();
             }
@@ -748,7 +751,7 @@ impl Window {
 
         if let Some(restored) = restored {
             if let Some(data) = buf.snapshot_aux(restored) {
-                self.restore(data, Some(buf));
+                self.restore(data, buf);
             } else {
                 self.full_reload();
             }
@@ -761,15 +764,11 @@ impl Window {
 
     // Restore aux data, if buffer is provided try to scroll to view position
     // otherwise hard set it
-    fn restore(&mut self, aux: &SnapshotAux, buf: Option<&Buffer>) {
+    fn restore(&mut self, aux: &SnapshotAux, buf: &Buffer) {
         *self.view_syntax() = ViewSyntax::default();
         self.search.reset_highlighting();
         self.cursors = aux.cursors.clone();
-
-        match buf {
-            Some(buf) => self.view.view_to(aux.view_offset, buf),
-            None => self.view.set_offset(aux.view_offset),
-        }
+        self.view.view_to(aux.view_offset, buf);
         self.invalidate();
     }
 
@@ -786,7 +785,7 @@ impl Window {
 
         if let Some(restored) = restored {
             if let Some(data) = buf.snapshot_aux(restored) {
-                self.restore(data, Some(buf));
+                self.restore(data, buf);
             } else {
                 self.full_reload()
             }

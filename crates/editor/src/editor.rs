@@ -276,22 +276,25 @@ impl Editor {
     pub fn open_buffer(&mut self, id: ClientId, bid: BufferId) {
         let (_win, buf) = self.win_buf_mut(id);
         let old = buf.id;
-        let is_modified = buf.is_modified();
-        let is_used = self
-            .windows
-            .iter()
-            .any(|(_, win)| win.buffer_id() == old || win.prev_buffer_id() == Some(old));
+        // TODO do buffers need to be deleted ever?
+        // let is_modified = buf.is_modified();
+        // let is_used = self
+        //     .windows
+        //     .iter()
+        //     .any(|(_, win)| win.buffer_id() == old || win.prev_buffer_id() == Some(old));
 
-        if !is_modified && !is_used {
-            run(self, id, Hook::BufDeletedPre(old));
-            self.buffers.remove(old);
-        }
+        // if !is_modified && !is_used {
+        //     run(self, id, Hook::BufDeletedPre(old));
+        //     self.buffers.remove(old);
+        // }
 
         run(self, id, Hook::BufLeave(old));
 
-        let (win, _buf) = self.win_buf_mut(id);
-        win.open_buffer(bid);
-        run(self, id, Hook::BufEnter(bid));
+        let (win, _buf) = win_buf!(self, id);
+        if let Some(buf) = self.buffers.get(bid) {
+            win.open_buffer(buf);
+            run(self, id, Hook::BufEnter(bid));
+        }
     }
 
     /// Create a new buffer from path

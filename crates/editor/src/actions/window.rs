@@ -105,14 +105,16 @@ fn sync_windows(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Window: Goto previous buffer")]
 fn goto_prev_buffer(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, buf) = editor.win_buf_mut(id);
-    if win.goto_prev_buffer() {
-        let hook = Hook::BufEnter(buf.id);
-        hooks::run(editor, id, hook);
-        ActionResult::Ok
-    } else {
-        win.warn_msg("No previous buffer");
-        ActionResult::Failed
+    let (win, _buf) = editor.win_buf_mut(id);
+    match std::mem::take(&mut win.last_buffer) {
+        Some(bid) => {
+            editor.open_buffer(id, bid);
+            ActionResult::Ok
+        }
+        _ => {
+            win.warn_msg("No previous buffer");
+            ActionResult::Failed
+        }
     }
 }
 

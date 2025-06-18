@@ -11,7 +11,7 @@ use crate::{
         language::Languages,
         windows::{Focus, NextKeyFunction, Prompt, Window},
         Editor,
-    }
+    },
 };
 
 use sanedit_server::ClientId;
@@ -420,17 +420,17 @@ fn remove_to_eol(editor: &mut Editor, id: ClientId) -> ActionResult {
 fn check_file_modification(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = editor.win_buf_mut(id);
 
-    let local = getf!(buf.last_saved_modified_time());
-
     let path = getf!(buf.path());
     let in_fs = {
         let mdata = getf!(path.metadata().ok());
         getf!(mdata.modified().ok())
     };
+    let local = getf!(buf.last_saved_modified.as_ref());
 
     if local != &in_fs {
         // Prevent asking all the time
-        buf.last_saved_modified_checked();
+        buf.last_saved_modified = Some(in_fs);
+
         win.prompt = Prompt::builder()
             .prompt("File has been changed on disk. Reload file from disk? (Y/n)")
             .simple()
@@ -443,7 +443,7 @@ fn check_file_modification(editor: &mut Editor, id: ClientId) -> ActionResult {
                 reload_file_from_disk.execute(editor, id)
             })
             .build();
-       focus(editor, id, Focus::Prompt);
+        focus(editor, id, Focus::Prompt);
     }
 
     ActionResult::Ok

@@ -273,6 +273,7 @@ fn new_search(editor: &mut Editor, id: ClientId, needle: &str, reverse: bool) {
     let cpos = win.cursors.primary().pos();
     // Trigger search highlighting
     win.search.enable_highlighting();
+    win.search.reset_highlighting();
     do_search(editor, id, searcher, cpos)
 }
 

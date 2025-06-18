@@ -23,39 +23,29 @@ pub(crate) fn prevent_flicker(editor: &mut Editor, id: ClientId) -> ActionResult
         let old = win.view_syntax();
         let edit = getf!(buf.last_edit());
 
-        let mut off = 0i128;
-        let mut iter = edit.changes.iter().peekable();
-
         old.spans_mut().retain_mut(|hl| {
-            while let Some(next) = iter.peek() {
+            for next in edit.changes.iter() {
+                let removed = next.range().len() as i128;
+                let added = next.text().len() as i128;
                 if next.end() <= hl.start() {
                     // Before highlight
-                    off -= next.range().len() as i128;
-                    off += next.text().len() as i128;
+                    hl.add_offset(added - removed);
                 } else if next.start() > hl.end() {
                     // Went past highlight
                     break;
                 } else if hl.range().includes(&next.range()) {
                     // Inside a higlight assume the highlight spans this edit too
-                    let removed = next.range().len() as i128;
-                    let added = next.text().len() as i128;
-                    off -= removed;
-                    off += added;
-
                     // counteract this offset
                     hl.add_offset(removed - added);
                     // Extend or shrink instead
                     hl.extend_by(added as u64);
                     hl.shrink_by(removed as u64);
                 } else {
-                    // When edit is over highlight boundary just remove the higlight
+                    // When edit contains highlight just remove the higlight
                     return false;
                 }
-
-                iter.next();
             }
 
-            hl.add_offset(off);
             true
         });
     }

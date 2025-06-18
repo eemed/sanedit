@@ -158,7 +158,7 @@ impl Default for Hooks {
         hooks.register(ModeEnter, window::view_to_cursor);
         hooks.register(ModeLeave, window::on_insert_mode_leave);
 
-        // hooks.register(BufEnter, text::check_file_modification);
+        hooks.register(BufEnter, text::check_file_modification);
         // hooks.register(Focus, text::check_file_modification);
 
         // TODO handle registration only when needed?

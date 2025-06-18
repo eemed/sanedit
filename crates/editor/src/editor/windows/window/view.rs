@@ -249,8 +249,28 @@ impl View {
         }
     }
 
+    pub fn ensure_view_on_grapheme_boundary(&mut self, buf: &Buffer) {
+        if self.start() > buf.len() {
+            self.set_offset(buf.len());
+        }
+
+        // Ensure view in buf grapheme boundary
+        let ppos = self.start();
+        let slice = buf.slice(..);
+        let mut graphemes = slice.graphemes_at(ppos);
+        let npos = graphemes
+            .next()
+            .map(|slice| slice.start())
+            .unwrap_or(buf.len());
+        if ppos != npos {
+            self.set_offset(npos);
+            self.invalidate();
+        }
+    }
+
     fn draw(&mut self, buf: &Buffer) {
         self.needs_redraw = false;
+        self.ensure_view_on_grapheme_boundary(buf);
 
         if self.range.start > buf.len() {
             self.range.start = buf.len();

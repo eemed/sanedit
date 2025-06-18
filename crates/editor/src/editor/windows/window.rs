@@ -451,10 +451,6 @@ impl Window {
         self.bid
     }
 
-    pub fn prev_buffer_id(&self) -> Option<BufferId> {
-        self.last_buffer
-    }
-
     pub fn view(&self) -> &View {
         &self.view
     }
@@ -486,10 +482,8 @@ impl Window {
             self.bid
         );
 
-        self.cursors.contain_to(Range::new(0, buf.len()));
-        // let primary_pos = self.cursors.primary().pos();
+        self.ensure_cursor_on_grapheme_boundary(buf);
         self.view.redraw(buf);
-        // self.view.view_to(primary_pos, buf);
     }
 
     /// Create snapshot auxilary data for window
@@ -768,7 +762,10 @@ impl Window {
         *self.view_syntax() = ViewSyntax::default();
         self.search.reset_highlighting();
         self.cursors = aux.cursors.clone();
-        self.view.view_to(aux.view_offset, buf);
+        self.invalidate();
+
+        self.view.set_offset(aux.view_offset);
+        self.view_to_around_cursor_zone(buf, Zone::Middle);
         self.invalidate();
     }
 

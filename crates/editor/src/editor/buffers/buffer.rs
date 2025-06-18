@@ -4,10 +4,11 @@ mod snapshots;
 
 use std::{
     borrow::Cow,
-    fs,
+    fs::{self, File},
     io::{self, Write},
     ops::RangeBounds,
-    path::{Path, PathBuf}, time::SystemTime,
+    path::{Path, PathBuf},
+    time::SystemTime,
 };
 
 use anyhow::ensure;
@@ -39,7 +40,7 @@ pub(crate) struct Buffer {
     /// Snapshots of the piecetree, used for undo
     snapshots: Snapshots,
     last_saved_snapshot: SnapshotId,
-    last_saved_modified: Option<SystemTime>,
+    pub(crate) last_saved_modified: Option<SystemTime>,
 
     is_modified: bool,
     last_edit: Option<Edit>,
@@ -83,6 +84,7 @@ impl Buffer {
         log::debug!("creating file backed buffer");
         let path = file.path();
         let pt = PieceTree::from_path(path)?;
+        let modified = path.metadata()?.modified()?;
         Ok(Buffer {
             id: BufferId::default(),
             read_only: file.read_only(),
@@ -94,7 +96,7 @@ impl Buffer {
             path: Some(path.into()),
             last_edit: None,
             last_saved_snapshot: 0,
-            last_saved_modified: None,
+            last_saved_modified: Some(modified),
             total_changes_made: 0,
         })
     }
@@ -109,6 +111,8 @@ impl Buffer {
             Self::from_reader(ffile)?
         };
 
+        let modified = path.metadata()?.modified()?;
+        buf.last_saved_modified = Some(modified);
         buf.language = file.language().cloned();
         buf.path = Some(path.into());
         buf.read_only = file.read_only();
@@ -350,16 +354,32 @@ impl Buffer {
         self.pt.mark_to_pos(mark)
     }
 
-    pub fn last_saved_modified_time(&self) -> Option<&SystemTime> {
-        self.last_saved_modified.as_ref()
-    }
-
-    pub fn last_saved_modified_checked(&mut self) {
-        self.last_saved_modified = None;
-    }
-
     pub fn reload_from_disk(&mut self) -> bool {
-        todo!()
+        let Some(path) = self.path().map(PathBuf::from) else {
+            return false;
+        };
+        self.reload_from_disk_impl(&path).is_ok()
+    }
+
+    fn reload_from_disk_impl(&mut self, path: &Path) -> io::Result<()> {
+        let file_backed = self.pt.is_file_backed();
+        self.pt = if file_backed {
+            PieceTree::from_path(path)?
+        } else {
+            let file = File::open(path)?;
+            PieceTree::from_reader(file)?
+        };
+
+        let modified = path.metadata()?.modified()?;
+        self.last_saved_modified = Some(modified);
+        self.is_modified = false;
+        self.snapshots = Snapshots::new();
+        self.last_edit = None;
+        self.last_saved_snapshot = 0;
+        self.last_saved_modified = None;
+        self.total_changes_made = 0;
+
+        Ok(())
     }
 }
 

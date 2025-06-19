@@ -149,9 +149,9 @@ pub enum ThemeField {
     PromptCompletionSelectedDescription,
     PromptCompletionSelectedMatch,
 
-    PromptOlayDefault,
-    PromptOlayTitle,
-    PromptOlayMessage,
+    PromptOverlayInput,
+    PromptOverlayTitle,
+    PromptOverlayMessage,
 
     FiletreeDefault,
     FiletreeFile,
@@ -231,9 +231,9 @@ impl AsRef<str> for ThemeField {
             PromptCompletionSelectedDescription => "prompt.completion.selected.description",
             PromptCompletionSelectedMatch => "prompt.completion.selected.match",
 
-            PromptOlayDefault => "prompt.overlay",
-            PromptOlayTitle => "prompt.overlay.title",
-            PromptOlayMessage => "prompt.overlay.message",
+            PromptOverlayInput => "prompt.overlay",
+            PromptOverlayTitle => "prompt.overlay.title",
+            PromptOverlayMessage => "prompt.overlay.message",
 
             FiletreeDefault => "filetree",
             FiletreeFile => "filetree.file",

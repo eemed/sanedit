@@ -140,7 +140,7 @@ fn default_theme() -> Theme {
     ins(Default, "#000000,#ffffff,");
     ins(Statusline, "#222222,#ffffff,");
     ins(PromptDefault, "#222222,#ffffff,");
-    ins(PromptOlayDefault, "#222222,#ffffff,");
+    ins(PromptOverlayInput, "#222222,#ffffff,");
     ins(PromptCompletionSelectedMatch, ",#ff0000,");
     ins(PromptCompletionMatch, ",#ff0000,");
     ins(PromptCompletionSelected, "#dddddd,#000000,");

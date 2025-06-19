@@ -103,12 +103,21 @@ pub(crate) fn insert(editor: &mut Editor, id: ClientId, text: &str) {
 
 #[action("Buffer: Save all buffers")]
 fn save_all(editor: &mut Editor, id: ClientId) -> ActionResult {
-    // TODO move all snapshot aux data to window itself?
+    let (_win, buf) = editor.win_buf(id);
+    let original = buf.id;
     let bids: Vec<BufferId> = editor.buffers().iter().map(|(key, _)| key).collect();
 
+    // Save all buffers using this window
     for bid in bids {
-        editor.windows.find_clients_with_buf(bid);
+        let buf = editor.buffers.get(bid).unwrap();
+        if buf.is_modified() {
+            editor.open_buffer(id, bid);
+            save.execute(editor, id);
+        }
     }
+
+    // Return to original buffer
+    editor.open_buffer(id, original);
 
     ActionResult::Ok
 }

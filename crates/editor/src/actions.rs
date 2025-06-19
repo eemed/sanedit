@@ -167,6 +167,7 @@ pub(crate) const COMMANDS: &[Action] = &[
     editor::nop,
 
     text::save,
+    text::save_all,
     text::save_as,
     text::undo,
     text::redo,

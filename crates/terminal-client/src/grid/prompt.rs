@@ -81,11 +81,11 @@ pub(crate) fn prompt_rect(screen: Rect, prompt: &mut CustomPrompt) -> Rect {
 impl Drawable for CustomPrompt {
     fn draw(&self, ctx: &UIContext, mut cells: &mut [&mut [CCell]]) {
         let wsize = size(cells);
-        let default_style = ctx.theme.get(ThemeField::PromptDefault);
-        let input_style = ctx.theme.get(ThemeField::PromptUserInput);
 
         match self.style {
             PromptStyle::Oneline => {
+                let default_style = ctx.theme.get(ThemeField::PromptDefault);
+                let input_style = ctx.theme.get(ThemeField::PromptUserInput);
                 let message_style = ctx.theme.get(ThemeField::PromptMessage);
                 let mut message = into_cells_with_style(&self.prompt.message, message_style);
                 let colon = into_cells_with_style(": ", message_style);
@@ -129,16 +129,18 @@ impl Drawable for CustomPrompt {
                     });
             }
             PromptStyle::Overlay => {
+                let input_style = ctx.theme.get(ThemeField::PromptOverlayInput);
+
                 const TITLE_HEIGHT: usize = 2;
                 if wsize.height > TITLE_HEIGHT {
                     // Title
-                    let title_style = ctx.theme.get(ThemeField::PromptOlayTitle);
+                    let title_style = ctx.theme.get(ThemeField::PromptOverlayTitle);
                     let title = into_cells_with_style(&self.prompt.message, title_style);
                     let title = center_pad(title, title_style, wsize.width);
                     put_line(title, 0, cells);
 
                     // Message
-                    let message_style = ctx.theme.get(ThemeField::PromptOlayMessage);
+                    let message_style = ctx.theme.get(ThemeField::PromptOverlayMessage);
                     let mut message = into_cells_with_style(" > ", message_style);
                     let input = into_cells_with_style(&self.prompt.input, input_style);
                     message.extend(input);

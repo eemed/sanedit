@@ -51,6 +51,9 @@ pub(crate) enum Hook {
 
     ModeEnter,
     ModeLeave,
+
+    Focus,
+    Unfocus,
 }
 
 impl Hook {
@@ -159,7 +162,7 @@ impl Default for Hooks {
         hooks.register(ModeLeave, window::on_insert_mode_leave);
 
         hooks.register(BufEnter, text::check_file_modification);
-        // hooks.register(Focus, text::check_file_modification);
+        hooks.register(Focus, text::check_file_modification);
 
         // TODO handle registration only when needed?
         hooks.register(CursorMoved, completion::completion_abort);

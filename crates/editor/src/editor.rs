@@ -363,6 +363,8 @@ impl Editor {
             Message::MouseEvent(mouse_event) => self.handle_mouse_event(id, mouse_event),
             Message::Resize(size) => self.handle_resize(id, size),
             Message::Command(cmd) => self.handle_command(id, cmd),
+            Message::FocusGained => run(self, id, Hook::Focus),
+            Message::FocusLost => run(self, id, Hook::Unfocus),
             _ => {}
         }
 

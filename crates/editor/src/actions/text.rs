@@ -6,7 +6,7 @@ use crate::{
     actions::movement::start_of_buffer,
     common::is_yes,
     editor::{
-        buffers::{Buffer, BufferError},
+        buffers::{Buffer, BufferError, BufferId},
         hooks::Hook,
         language::Languages,
         windows::{Focus, NextKeyFunction, Prompt, Window},
@@ -101,6 +101,18 @@ pub(crate) fn insert(editor: &mut Editor, id: ClientId, text: &str) {
     }
 }
 
+#[action("Buffer: Save all buffers")]
+fn save_all(editor: &mut Editor, id: ClientId) -> ActionResult {
+    // TODO move all snapshot aux data to window itself?
+    let bids: Vec<BufferId> = editor.buffers().iter().map(|(key, _)| key).collect();
+
+    for bid in bids {
+        editor.windows.find_clients_with_buf(bid);
+    }
+
+    ActionResult::Ok
+}
+
 #[action("Buffer: Save")]
 fn save(editor: &mut Editor, id: ClientId) -> ActionResult {
     run(editor, id, Hook::BufSavedPre);
@@ -121,18 +133,6 @@ fn save(editor: &mut Editor, id: ClientId) -> ActionResult {
             }
         }
     }
-
-    // let big_th = editor.options.big_file_threshold_bytes;
-    // let (win, buf) = editor.win_buf_mut(id);
-    // let size = buf.len() as u64;
-    // let is_big = size >= big_th;
-    // if is_big {
-    //     todo!()
-    //     // buf.read_only = true;
-    //     // let job = jobs::Save::new(id, ropt);
-    //     // editor.job_broker.request(job);
-    // } else {
-    // }
 }
 
 #[action("Buffer: Save as")]

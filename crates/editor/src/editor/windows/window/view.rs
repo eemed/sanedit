@@ -321,7 +321,7 @@ impl View {
         // but stop at a maximum if there are no lines.
         let mut pos = self.range.start;
         let min = pos.saturating_sub((self.height() * self.width()) as u64);
-        let slice = buf.slice(..pos);
+        let slice = buf.slice(min..pos);
         let mut graphemes = slice.graphemes_at(slice.len());
 
         while let Some(grapheme) = graphemes.prev() {
@@ -334,10 +334,6 @@ impl View {
             }
 
             pos -= grapheme.len();
-
-            if min >= pos {
-                break;
-            }
         }
 
         self.range.start = pos;

@@ -21,6 +21,7 @@ use tokio::sync::mpsc::{channel, Receiver, Sender};
 use tokio::sync::oneshot;
 use tokio::{io::BufReader, process::Command};
 
+
 /// a struct to put all the parameters
 #[derive(Clone)]
 pub struct LSPClientParams {
@@ -34,6 +35,7 @@ impl LSPClientParams {
     pub async fn spawn(self) -> Result<(LSPClientSender, LSPClientReader), LSPSpawnError> {
         // Spawn server
         let mut cmd = Command::new(&self.run_command)
+            // .env("RA_LOG", "INFO")
             .args(&*self.run_args)
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
@@ -126,6 +128,7 @@ impl LSPClientSender {
     }
 
     pub fn notify(&mut self, mut notif: Notification) -> Result<(), LSPRequestError> {
+    // log::info!("-> {}", notif.as_ref());
         if !notif.is_supported(&self.init_params) {
             return Err(LSPRequestError::Unsupported);
         }
@@ -195,6 +198,7 @@ impl LSPClient {
     }
 
     async fn handle_notification(&mut self, notif: JsonNotification) -> Result<(), LSPError> {
+        // log::info!("<- {}", notif.method.as_str());
         match notif.method.as_str() {
             lsp_types::notification::PublishDiagnostics::METHOD => {
                 let params =
@@ -815,7 +819,6 @@ impl Handler {
             .ok_or(LSPError::NoResponse)?
             .map_err(|e| LSPError::InvalidResponse(e))?;
 
-        log::info!("LSP responded");
         let result = serde_json::from_value(response)?;
 
         Ok(result)

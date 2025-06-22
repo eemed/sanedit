@@ -52,6 +52,11 @@ impl ProcessHandler {
             return Err(LSPSpawnError::Initialize.into());
         }
 
+        //--------------------
+        // let mut buf = vec![];
+        // use tokio::io::AsyncBufReadExt;
+        //--------------------
+
         loop {
             tokio::select! {
                 msg = self.receiver.recv() => {
@@ -61,6 +66,13 @@ impl ProcessHandler {
                         None => return Err(LSPError::Receive),
                     }
                 }
+
+
+                // Ok(read) = self._stderr.read_until(b'\n', &mut buf) => {
+                //     if let Ok(res) = std::str::from_utf8(&buf[..read]) {
+                //         log::error!("lsp: {res}");
+                //     }
+                // }
                 json = read_from(&mut self.stdout) => {
                     match json? {
                         Either::Right(notification) =>

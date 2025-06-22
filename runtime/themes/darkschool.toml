@@ -12,10 +12,10 @@ default = "#d7875f,#000000,"
 selection = "#3a3f41,#d3d3d3,"
 
 [colors.window.view]
-hint = "#33334a,#66bbe9,"
-info = "#33334a,#66bbe9,"
-warn = "#3F3B31,#F8C75B,"
-error = "#3E3332,#E97866,"
+hint = "#7AA6DA,#222222,"
+info = "#7AA6DA,#222222,"
+warn = "#F8C75B,#222222,"
+error = "#E97866,#222222,"
 
 constant = ",#7AA6DA,"
 string =  ",#7AA6DA,"
@@ -39,12 +39,12 @@ description = ",#777777,"
 match = ",#d7875f,"
 
 [colors.prompt]
-default = "#303030,#d1caca,"
+default = "#B5BD68,#000000,"
 message = ",,bold"
 userinput = ",,"
 
 [colors.prompt.overlay]
-default = ",#d1caca,"
+default = "#303030,#d1caca,"
 title = ",,bold"
 message = ",#d1caca,bold"
 

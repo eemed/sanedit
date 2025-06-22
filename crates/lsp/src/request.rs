@@ -2,6 +2,7 @@ use std::path::PathBuf;
 
 use sanedit_core::IndentKind;
 use sanedit_utils::either::Either;
+use strum_macros::AsRefStr;
 
 use crate::util::{CodeAction, Position, TextEdit};
 
@@ -20,7 +21,7 @@ impl ToLSP {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, AsRefStr)]
 pub enum Notification {
     DidOpen {
         path: PathBuf,
@@ -48,9 +49,17 @@ pub enum Notification {
 impl Notification {
     /// Determines if the notification is supported by the LSP.
     /// May also modify the notification to make it supported.
-    pub fn is_supported(&mut self, _init: &lsp_types::InitializeResult) -> bool {
+    pub fn is_supported(&mut self, init: &lsp_types::InitializeResult) -> bool {
         // TODO determine if server supports this request
-        true
+        let caps = &init.capabilities;
+        match self {
+            // Notification::DidOpen { path, text, version } => todo!(),
+            // Notification::DidChange { path, changes, version } => todo!(),
+            // Notification::DidClose { path } => todo!(),
+            // Notification::DidSave { path, text } => todo!(),
+            Notification::WillSave { .. } => caps .text_document_sync .as_ref() .and_then(|sync| match sync { lsp_types::TextDocumentSyncCapability::Options(text_document_sync_options) => { Some(text_document_sync_options) } _ => None, }) .and_then(|opts| opts.will_save) .unwrap_or(false),
+            _ => true,
+        }
     }
 }
 

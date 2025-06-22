@@ -243,6 +243,7 @@ fn sync_document(editor: &mut Editor, id: ClientId) -> ActionResult {
         let changes = match edit.changes.kind() {
             Undo | Redo => Either::Right(String::from(&slice)),
             _ => {
+                // TODO these need to be calculated in order
                 let changes = edit
                     .changes
                     .iter()
@@ -265,6 +266,7 @@ fn sync_document(editor: &mut Editor, id: ClientId) -> ActionResult {
             }
         };
 
+        log::info!("Changes: {changes:?}");
         Some(Notification::DidChange {
             path,
             changes,
@@ -447,10 +449,11 @@ pub(crate) fn show_diagnostics(editor: &mut Editor, id: ClientId) -> ActionResul
 
 #[action("Will save document notification")]
 pub(crate) fn will_save_document(editor: &mut Editor, id: ClientId) -> ActionResult {
-    lsp_notify(editor, id, |_buf, path, _slice, _lsp| {
-        Some(Notification::WillSave { path: path.clone() })
-    })
-    .into()
+    // lsp_notify(editor, id, |_buf, path, _slice, _lsp| {
+    //     Some(Notification::WillSave { path: path.clone() })
+    // })
+    // .into()
+    ActionResult::Ok
 }
 
 #[action("Did save document notification")]

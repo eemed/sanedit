@@ -374,7 +374,7 @@ impl LSPJob {
     }
 
     fn edit_document(editor: &mut Editor, id: ClientId, edit: FileEdit) {
-        log::info!("Edit doc");
+        // log::info!("edit_document: {edit:?}");
         let path = &edit.path;
         let bid = match editor.buffers().find(&path) {
             Some(bid) => bid,
@@ -400,6 +400,7 @@ impl LSPJob {
                 } else {
                     start
                 };
+                log::info!("edit: {edit:?}, converted: {start}..{end}");
                 Change::replace((start..end).into(), edit.text.as_bytes())
             })
             .collect();

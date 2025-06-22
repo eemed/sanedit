@@ -1,6 +1,11 @@
 mod logging;
 
-use std::{fs, hash::{DefaultHasher, Hash, Hasher}, io, path::PathBuf};
+use std::{
+    fs,
+    hash::{DefaultHasher, Hash, Hasher},
+    io,
+    path::PathBuf,
+};
 
 use argh::FromArgs;
 use sanedit_server::{Address, StartOptions};

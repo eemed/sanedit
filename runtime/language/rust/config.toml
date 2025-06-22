@@ -1,5 +1,6 @@
 comment = "// "
 language_server.command = "rust-analyzer"
+language_server.args = ["-v", "--log-file", "/tmp/rust-analyzer.log"]
 
 [[snippet]]
 trigger="li"

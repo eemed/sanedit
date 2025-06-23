@@ -14,6 +14,7 @@ use sanedit_core::{grapheme_category, Change, Changes, GraphemeCategory, Range};
 use sanedit_server::ClientId;
 
 use super::{
+    editor::open_new_scratch_buffer,
     hooks,
     movement::{end_of_line, first_char_of_line, next_grapheme_on_line, prev_grapheme_on_line},
     ActionResult,
@@ -106,7 +107,7 @@ fn sync_windows(editor: &mut Editor, id: ClientId) -> ActionResult {
 #[action("Window: Goto previous buffer")]
 fn goto_prev_buffer(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
-    match std::mem::take(&mut win.last_buffer) {
+    match win.last_buffer.clone() {
         Some(bid) => {
             editor.open_buffer(id, bid);
             ActionResult::Ok
@@ -114,6 +115,16 @@ fn goto_prev_buffer(editor: &mut Editor, id: ClientId) -> ActionResult {
         _ => {
             win.warn_msg("No previous buffer");
             ActionResult::Failed
+        }
+    }
+}
+
+pub fn goto_other_buffer(editor: &mut Editor, id: ClientId) {
+    let (win, _buf) = editor.win_buf_mut(id);
+    match win.last_buffer.clone() {
+        Some(bid) => editor.open_buffer(id, bid),
+        _ => {
+            open_new_scratch_buffer.execute(editor, id);
         }
     }
 }

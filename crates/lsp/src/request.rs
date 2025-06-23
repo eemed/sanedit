@@ -57,7 +57,17 @@ impl Notification {
             // Notification::DidChange { path, changes, version } => todo!(),
             // Notification::DidClose { path } => todo!(),
             // Notification::DidSave { path, text } => todo!(),
-            Notification::WillSave { .. } => caps .text_document_sync .as_ref() .and_then(|sync| match sync { lsp_types::TextDocumentSyncCapability::Options(text_document_sync_options) => { Some(text_document_sync_options) } _ => None, }) .and_then(|opts| opts.will_save) .unwrap_or(false),
+            Notification::WillSave { .. } => caps
+                .text_document_sync
+                .as_ref()
+                .and_then(|sync| match sync {
+                    lsp_types::TextDocumentSyncCapability::Options(text_document_sync_options) => {
+                        Some(text_document_sync_options)
+                    }
+                    _ => None,
+                })
+                .and_then(|opts| opts.will_save)
+                .unwrap_or(false),
             _ => true,
         }
     }

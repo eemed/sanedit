@@ -14,6 +14,7 @@ pub(crate) mod syntax;
 pub(crate) mod themes;
 pub(crate) mod windows;
 
+use anyhow::bail;
 use caches::Caches;
 use config::ProjectConfig;
 use crossbeam::channel::Sender;
@@ -57,6 +58,7 @@ use anyhow::Result;
 use crate::actions;
 use crate::actions::cursors;
 use crate::actions::hooks::run;
+use crate::actions::window::goto_other_buffer;
 use crate::common::matcher::Choice;
 use crate::draw::DrawState;
 use crate::draw::EditorContext;
@@ -311,6 +313,21 @@ impl Editor {
         run(self, id, Hook::BufCreated(bid));
 
         Ok(bid)
+    }
+
+    pub fn remove_buffer(&mut self, id: ClientId, bid: BufferId) -> Result<()> {
+        if self.buffers.get(bid).is_some() {
+            bail!("No such buffer {bid:?}");
+        }
+
+        run(self, id, Hook::BufDeletedPre(bid));
+        self.buffers.remove(bid);
+
+        let clients = self.windows.find_clients_with_buf(bid);
+        for client in clients {
+            goto_other_buffer(self, client);
+        }
+        Ok(())
     }
 
     /// Open a file in window

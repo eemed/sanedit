@@ -39,7 +39,8 @@ impl Jit {
     }
 
     pub fn parse<B: ByteSource>(&self, reader: &mut B) -> Result<CaptureList, ParseError> {
-        let peg_program: extern "win64" fn() -> bool = unsafe { mem::transmute(self.program.ptr(self.start)) };
+        let peg_program: extern "win64" fn() -> bool =
+            unsafe { mem::transmute(self.program.ptr(self.start)) };
         let ok = peg_program();
         if ok {
             Ok(CaptureList::new())
@@ -66,7 +67,7 @@ impl Jit {
         }
     }
 
-    fn compile(program: &Program) -> (ExecutableBuffer, AssemblyOffset)  {
+    fn compile(program: &Program) -> (ExecutableBuffer, AssemblyOffset) {
         use super::Operation::*;
 
         let mut labels: FxHashMap<String, DynamicLabel> = FxHashMap::default();

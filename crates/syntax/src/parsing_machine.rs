@@ -56,7 +56,11 @@ impl Parser {
             .map_err(|err| ParseError::Preprocess(err.to_string()))?;
 
         // TODO enable jit when ready
-        let parser = Parser { rules, program, jit: None };
+        let parser = Parser {
+            rules,
+            program,
+            jit: None,
+        };
         Ok(parser)
     }
 
@@ -76,7 +80,11 @@ impl Parser {
         // println!("{:?}", program);
 
         // TODO enable jit when ready
-        let parser = Parser { rules, program, jit: None };
+        let parser = Parser {
+            rules,
+            program,
+            jit: None,
+        };
         Ok(parser)
     }
 
@@ -90,7 +98,11 @@ impl Parser {
         let program = compiler
             .compile()
             .map_err(|err| ParseError::Preprocess(err.to_string()))?;
-        let parser = Parser { rules, program, jit: None };
+        let parser = Parser {
+            rules,
+            program,
+            jit: None,
+        };
         Ok(parser)
     }
 
@@ -105,7 +117,11 @@ impl Parser {
             .compile()
             .map_err(|err| ParseError::Preprocess(err.to_string()))?;
         let jit = Jit::new(&program).expect("cannot create JIT, unsupported platform");
-        let parser = Parser { rules, program, jit: Some(jit) };
+        let parser = Parser {
+            rules,
+            program,
+            jit: Some(jit),
+        };
 
         Ok(parser)
     }

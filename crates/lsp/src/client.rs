@@ -21,7 +21,6 @@ use tokio::sync::mpsc::{channel, Receiver, Sender};
 use tokio::sync::oneshot;
 use tokio::{io::BufReader, process::Command};
 
-
 /// a struct to put all the parameters
 #[derive(Clone)]
 pub struct LSPClientParams {
@@ -128,7 +127,7 @@ impl LSPClientSender {
     }
 
     pub fn notify(&mut self, mut notif: Notification) -> Result<(), LSPRequestError> {
-    // log::info!("-> {}", notif.as_ref());
+        // log::info!("-> {}", notif.as_ref());
         if !notif.is_supported(&self.init_params) {
             return Err(LSPRequestError::Unsupported);
         }

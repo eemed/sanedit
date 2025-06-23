@@ -7,8 +7,8 @@ use std::{
     },
 };
 
-use rustc_hash::FxHashSet;
 use dirs_2 as dirs;
+use rustc_hash::FxHashSet;
 
 const TMP_DIR: &str = "tmp";
 pub const SANE_DIR: &str = "sanedit";

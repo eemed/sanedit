@@ -117,7 +117,11 @@ where
             Bye => break,
             Focus(focus) => {
                 ui.on_focus_change(focus);
-                let msg = if focus { Message::FocusGained } else { Message::FocusLost };
+                let msg = if focus {
+                    Message::FocusGained
+                } else {
+                    Message::FocusLost
+                };
                 if let Err(_e) = writer.write(msg) {
                     log::error!("Client failed to send event to server");
                     break;

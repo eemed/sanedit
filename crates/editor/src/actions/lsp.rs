@@ -235,7 +235,6 @@ fn sync_document(editor: &mut Editor, id: ClientId) -> ActionResult {
             // Nothing to sync
             return None;
         };
-        log::info!("LSP synchronize edit {}", buf.total_changes_made());
         let enc = lsp.position_encoding();
         let eslice = edit.buf.slice(..);
 
@@ -243,10 +242,12 @@ fn sync_document(editor: &mut Editor, id: ClientId) -> ActionResult {
         let changes = match edit.changes.kind() {
             Undo | Redo => Either::Right(String::from(&slice)),
             _ => {
-                // TODO these need to be calculated in order
+                // these need to be calculated in order,
+                // so reverse the changes => offsets should not change
                 let changes = edit
                     .changes
                     .iter()
+                    .rev()
                     .map(|change| {
                         let start = Position::new(change.start(), &eslice, &enc);
                         let end = if change.range().is_empty() {
@@ -266,7 +267,6 @@ fn sync_document(editor: &mut Editor, id: ClientId) -> ActionResult {
             }
         };
 
-        log::info!("Changes: {changes:?}");
         Some(Notification::DidChange {
             path,
             changes,

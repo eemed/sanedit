@@ -8,21 +8,25 @@ ws = WHITESPACE;
 
 @show @highlight
 keyword = ("loop" / "let" / "match" / "if" / "else" / "while" /
-          "break" / "move" / "async" / "dyn" / "return" / "for" /
-          "in" / "as" / "pub(crate)" / "pub(super)" / "pub" / "use" /
+          "break" / "continue" / "move" / "async" / "dyn" / "return" /
+          "for" / "in" / "as" / "pub(crate)" / "pub(super)" / "pub" / "use" /
           "fn" / "impl" / "struct" / "enum" / "const" / "trait" /
           "type" / "crate"  / "extern" / "mod" / "self" / "ref" ) &stop;
 
+# Constants
 @show @highlight
-constant = number;
+constant = number / boolean / uppercase_constant;
 
-
+boolean = ("false" / "true") &stop;
 number = "-"? digit+ number_types? !"."/ "0x" hexdigit+;
 digit = [0..9];
 hexdigit = digit / [a..fA..F];
 number_types = "usize" / "isize" / "f64" / "f32" / "u8" / "u16" / "u32" / "u64" / "i8" / "i16" / "i32" / "i64" / "i128" / "u128";
+@show @highlight(constant)
+uppercase_constant = [A..Z] [A..Z0..9_]* &stop;
 
 
+# Strings
 @show @highlight
 string = char / sstring / rawstring;
 char = "'" . "'";
@@ -34,19 +38,23 @@ replace = !"{{" "{" replacement "}";
 replacement = [^}]*;
 
 
+# Types
 type = (combipath / ( typepath / builtintype / typeangle) &stop);
 path = "::"? (pathname "::")+;
 typepath = path? typename ("::" typename)?;
 functionpath = path pathname;
 pathname = [a..z0..9_]+;
+typename = uppercase_constant / capitalized_type;
 @show @highlight(type)
-typename = [A..Z] [a..zA..Z0..9_]*;
+capitalized_type = [A..Z] [a..zA..Z0..9_]*;
 @show @highlight(type)
 builtintype = "str" / "char" / "bool" / number_types;
 typeangle = "<" (lifetime / type / ws)* ">";
+
 combipath = path "{" ((ws / nl)* (combipath / typepath / functionpath) ","?)+ (ws / nl)* "}";
 
 
+# Operators
 operator = closure / operators;
 @show @highlight(operator)
 operators = "|" "|"? / "&&" / "?" / "=" "="? / "!=" / ".." / "+" / "-" / "/" / "*" / "<" "="? " " / ">" "="? " " / "&" / "mut";
@@ -55,6 +63,7 @@ closure =  bar (type / (!(bar / nl) .))* bar;
 bar = "|";
 
 
+# Preprocessor
 preproc = derive / lifetime;
 @show @highlight(preproc)
 derive =  "#" "!"? "[" (!"]" .)* "]";
@@ -62,11 +71,11 @@ derive =  "#" "!"? "[" (!"]" .)* "]";
 lifetime = "'" [a..z]+;
 
 
+# Comments
 @show @highlight
 comment = line_comment / block_comment;
 line_comment = "//" (todo / (!nl .))*;
 block_comment = "/*" (todo / (!"*/" .))* "*/";
-
 
 @show @highlight(warn)
 todo = "TODO";

@@ -17,7 +17,3 @@ criterion.workspace = true
 [[bench]]
 name = "iterators"
 harness = false
-
-[[bench]]
-name = "search"
-harness = false

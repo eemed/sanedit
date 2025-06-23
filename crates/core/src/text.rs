@@ -288,7 +288,7 @@ pub fn selection_line_starts(slice: &PieceTreeSlice, sel: BufferRange) -> Vec<u6
     }
 
     while let Some(line) = lines.next() {
-        if !line.is_empty() {
+        if !line.is_empty() && !line.is_eol() {
             starts.push(line.start());
         }
     }

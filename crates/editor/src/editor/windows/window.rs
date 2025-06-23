@@ -67,7 +67,6 @@ pub(crate) struct Window {
     keys: Vec<KeyEvent>,
     popup: Option<Popup>,
 
-
     pub last_buffer: Option<BufferId>,
     /// Focus determines where to direct input
     pub focus: Focus,
@@ -563,7 +562,6 @@ impl Window {
     }
 
     pub fn insert_at_cursors_next_line(&mut self, buf: &mut Buffer, text: &str) -> Result<()> {
-    log::info!("Insert: {text}");
         let slice = buf.slice(..);
         let changes: Vec<Change> = self
             .cursors
@@ -984,6 +982,9 @@ impl Window {
             .config
             .indent_kind
             .repeat(buf.config.indent_amount as usize);
+        if indent.is_empty() {
+            bail!("No lines to indent");
+        }
         let changes = Changes::multi_insert(&starts, indent.as_bytes());
         self.change(buf, &changes)?;
         Ok(())
@@ -997,7 +998,7 @@ impl Window {
         let starts = self.cursor_line_first_chars_of_lines_aligned(buf);
         self.cursors.stop_selection();
         if starts.is_empty() {
-            return Ok(());
+            bail!("No lines to comment");
         }
         let changes = Changes::multi_insert(&starts, comment.as_bytes());
         self.change(buf, &changes)?;
@@ -1037,6 +1038,9 @@ impl Window {
         }
 
         self.cursors.stop_selection();
+        if changes.is_empty() {
+            bail!("No lines to uncomment");
+        }
         let changes = Changes::new(&changes);
         self.change(buf, &changes)?;
         Ok(())

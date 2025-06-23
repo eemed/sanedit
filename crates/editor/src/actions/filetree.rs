@@ -1,18 +1,19 @@
 use std::{
     cmp::min,
-    path::{PathBuf, MAIN_SEPARATOR},
+    path::{Path, PathBuf, MAIN_SEPARATOR},
     sync::Arc,
 };
 
 use crate::{
     common::is_yes,
     editor::{
-        filetree::Kind,
+        filetree::{Filetree, Kind},
         windows::{Focus, Prompt},
         Editor,
     },
 };
 
+use anyhow::bail;
 use sanedit_server::ClientId;
 
 use super::{text::save, window::focus, ActionResult};
@@ -105,15 +106,12 @@ fn close_filetree(editor: &mut Editor, id: ClientId) -> ActionResult {
     ActionResult::Ok
 }
 
-#[action("Filetree: Create new file")]
-fn ft_new_file(editor: &mut Editor, id: ClientId) -> ActionResult {
+fn new_file_prefill_path(wd: &Path, selection: usize, filetree: &Filetree) -> Option<String> {
     let dir = {
-        let (win, _buf) = editor.win_buf(id);
-        let entry = getf!(editor.filetree.iter().nth(win.ft_view.selection));
-
+        let entry = filetree.iter().nth(selection)?;
         match entry.kind() {
             Kind::File => {
-                let parent = getf!(editor.filetree.parent_of(entry.path()));
+                let parent = filetree.parent_of(entry.path())?;
                 parent.path().to_path_buf()
             }
             Kind::Directory { .. } => entry.path().to_path_buf(),
@@ -121,16 +119,43 @@ fn ft_new_file(editor: &mut Editor, id: ClientId) -> ActionResult {
     };
     let dir_name = {
         let mut name = dir
-            .strip_prefix(editor.working_dir())
+            .strip_prefix(wd)
             .unwrap_or(dir.as_path())
             .to_string_lossy()
             .to_string();
-        if !name.ends_with(MAIN_SEPARATOR) {
+        if !name.is_empty() && !name.ends_with(MAIN_SEPARATOR) {
             name.push(MAIN_SEPARATOR);
         }
         name
     };
+    Some(dir_name)
+}
+
+/// Get a path to a new relative file from userinput.
+fn new_file_result_path(wd: &Path, input: &str) -> anyhow::Result<PathBuf> {
+    let new = PathBuf::from(input);
+    if !new.is_relative() {
+        bail!("Path is not relative")
+    }
+
+    let absolute = wd.join(new);
+
+    if absolute.exists() {
+        bail!("File already exists")
+    }
+
+    Ok(absolute)
+}
+
+#[action("Filetree: Create new file")]
+fn ft_new_file(editor: &mut Editor, id: ClientId) -> ActionResult {
     let root = editor.working_dir().to_path_buf();
+    let (win, _buf) = editor.win_buf(id);
+    let dir_name = getf!(new_file_prefill_path(
+        &root,
+        win.ft_view.selection,
+        &editor.filetree
+    ));
 
     let (win, _buf) = editor.win_buf_mut(id);
     win.prompt = Prompt::builder()
@@ -138,8 +163,15 @@ fn ft_new_file(editor: &mut Editor, id: ClientId) -> ActionResult {
         .input(&dir_name)
         .simple()
         .on_confirm(move |editor, id, out| {
-            let file = getf!(out.text());
-            let file = root.join(file);
+            let input = getf!(out.text());
+            let file = match new_file_result_path(&root, input) {
+                Ok(path) => path,
+                Err(e) => {
+                    let (win, _buf) = editor.win_buf_mut(id);
+                    win.error_msg(&format!("Invalid path {e}"));
+                    return ActionResult::Failed;
+                }
+            };
 
             // Create directories leading up to the file
             if let Some(parent) = file.parent() {
@@ -149,11 +181,10 @@ fn ft_new_file(editor: &mut Editor, id: ClientId) -> ActionResult {
             // Create new file
             if let Err(e) = std::fs::File::create_new(&file) {
                 let (win, _buf) = editor.win_buf_mut(id);
-                win.warn_msg(&format!("Failed to create file {e}"));
+                win.error_msg(&format!("Failed to create file {e}"));
                 return ActionResult::Failed;
             }
 
-            log::info!("FILE: {file:?}, dir: {dir:?}");
             // Refresh to show new file on tree
             let _ = editor.filetree.refresh();
 
@@ -194,11 +225,15 @@ fn ft_rename_file(editor: &mut Editor, id: ClientId) -> ActionResult {
         .input(&old_name)
         .simple()
         .on_confirm(move |editor, id, out| {
-            let path = getf!(out.text());
-            let mut new = PathBuf::from(path);
-            if new.is_relative() {
-                new = editor.working_dir().join(new);
-            }
+            let input = getf!(out.text());
+            let new = match new_file_result_path(editor.working_dir(), input) {
+                Ok(path) => path,
+                Err(e) => {
+                    let (win, _buf) = editor.win_buf_mut(id);
+                    win.error_msg(&format!("Rename error: {e}"));
+                    return ActionResult::Failed;
+                }
+            };
 
             // Create directories leading up to the renamed thing
             if let Some(parent) = new.parent() {
@@ -288,6 +323,7 @@ fn ft_delete_file(editor: &mut Editor, id: ClientId) -> ActionResult {
                 return ActionResult::Failed;
             }
 
+            // Refresh tree
             if let Some(parent) = path.parent() {
                 if let Some(mut node) = editor.filetree.get_mut(parent) {
                     let _ = node.refresh();
@@ -296,11 +332,16 @@ fn ft_delete_file(editor: &mut Editor, id: ClientId) -> ActionResult {
 
             prev_ft_entry.execute(editor, id);
             focus(editor, id, Focus::Filetree);
+
+            // Delete buffer if exists
+            if let Some(bid) = editor.buffers.find(path.as_path()) {
+                let _ = editor.remove_buffer(id, bid);
+            }
             ActionResult::Ok
         })
         .build();
-    focus(editor, id, Focus::Prompt);
 
+    focus(editor, id, Focus::Prompt);
     ActionResult::Ok
 }
 

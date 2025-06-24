@@ -43,7 +43,7 @@ pub(crate) fn insert_snippet(editor: &mut Editor, id: ClientId) -> ActionResult 
             let (win, _buf) = editor.win_buf(id);
             let primary = win.cursors.primary().pos();
             let snippet = getf!(out.snippet().cloned());
-            insert_snippet_impl(editor, id, snippet, Range::new(primary, primary))
+            insert_snippet_impl(editor, id, snippet, Range::new(primary, primary), vec![])
         })
         .build();
     focus(editor, id, Focus::Prompt);
@@ -55,6 +55,7 @@ pub(crate) fn insert_snippet_impl(
     id: ClientId,
     snippet: Snippet,
     replace: BufferRange,
+    additional_changes: Vec<Change>,
 ) -> ActionResult {
     let (win, buf) = editor.win_buf_mut(id);
     let pos = replace.start;
@@ -93,7 +94,7 @@ pub(crate) fn insert_snippet_impl(
         }
     }
 
-    let mut changes = vec![];
+    let mut changes = additional_changes;
     if replace.is_empty() {
         changes.push(Change::insert(pos, text.as_bytes()));
     } else {

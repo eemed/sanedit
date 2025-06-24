@@ -98,6 +98,15 @@ impl From<lsp_types::TextEdit> for TextEdit {
     }
 }
 
+impl From<lsp_types::InsertReplaceEdit> for TextEdit {
+    fn from(value: lsp_types::InsertReplaceEdit) -> Self {
+        TextEdit {
+            range: value.replace.into(),
+            text: value.new_text,
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct TextDiagnostic {
     pub line: u64,
@@ -131,16 +140,17 @@ impl From<lsp_types::Diagnostic> for TextDiagnostic {
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, AsRefStr, Hash)]
 pub enum CompletionItemKind {
     EnumMember,
+    Field,
+    Constant,
+    Property,
     Text,
     Method,
     Function,
     Constructor,
-    Field,
     Variable,
     Class,
     Interface,
     Module,
-    Property,
     Unit,
     Value,
     Enum,
@@ -150,7 +160,6 @@ pub enum CompletionItemKind {
     File,
     Reference,
     Folder,
-    Constant,
     Struct,
     Event,
     Operator,
@@ -194,6 +203,8 @@ impl From<lsp_types::CompletionItemKind> for CompletionItemKind {
 pub struct CompletionItem {
     pub kind: CompletionItemKind,
 
+    pub detail: Option<String>,
+
     /// Text to insert
     pub text: String,
 
@@ -203,6 +214,10 @@ pub struct CompletionItem {
     /// Overrides text to insert
     pub edit: Option<TextEdit>,
 
+    /// Additional text edits, for example import at the top
+    pub additional_edits: Vec<TextEdit>,
+
+    /// If text format is snippet, may contain for example $0
     pub is_snippet: bool,
 }
 
@@ -216,6 +231,15 @@ impl CompletionItem {
             Either::Right(edit)
         } else {
             Either::Left(self.text.as_str())
+        }
+    }
+
+    /// Description to show in completion
+    pub fn description(&self) -> &str {
+        if let Some(ref detail) = self.detail {
+            detail.as_ref()
+        } else {
+            self.kind.as_ref()
         }
     }
 }

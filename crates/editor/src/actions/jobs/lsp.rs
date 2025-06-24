@@ -20,12 +20,10 @@ use crate::{
 };
 use sanedit_buffer::{PieceTree, PieceTreeSlice};
 use sanedit_core::{
-    word_before_pos, Change, Changes, Cursor, Diagnostic, Group, Item, Language, Range,
+    prev_non_word, Change, Changes, Cursor, Diagnostic, GraphemeCategory, Group, Item, Language, Range
 };
 use sanedit_lsp::{
-    CodeAction, CompletionItem, FileEdit, LSPClientParams, Notification, Position,
-    PositionEncoding, PositionRange, RequestKind, RequestResult, Response, TextDiagnostic,
-    WorkspaceEdit,
+    CodeAction, CompletionItem, CompletionItemKind, FileEdit, LSPClientParams, Notification, Position, PositionEncoding, PositionRange, RequestKind, RequestResult, Response, TextDiagnostic, WorkspaceEdit
 };
 
 use sanedit_messages::redraw::PopupMessage;
@@ -246,16 +244,23 @@ impl LSPJob {
         let start = position.to_offset(&slice, &enc);
         let cursor = win.primary_cursor();
         let point = get!(win.view().point_at_pos(cursor.pos()));
-        let (range, word) =
-            word_before_pos(&slice, start).unwrap_or((Range::new(start, start), String::default()));
+        let (start, cat) = prev_non_word(&slice, start);
+        let word = {
+            let slice = slice.slice(start..cursor.pos());
+            String::from(&slice)
+        };
+        let add_own_snippets = matches!(cat, Some(GraphemeCategory::Whitespace) | Some(GraphemeCategory::EOL));
 
-        win.completion = Completion::new(range.start, cursor.pos(), point);
+        win.completion = Completion::new(start, cursor.pos(), point);
 
-        let opts: Vec<Arc<Choice>> = opts
+        let mut opts: Vec<Arc<Choice>> = opts
             .into_iter()
             .map(Choice::from_completion_item)
-            .chain(editor.get_snippets(id))
             .collect();
+
+        if add_own_snippets {
+            opts.extend(editor.get_snippets(id));
+        }
 
         let job = MatcherJob::builder(id)
             .strategy(MatchStrategy::Prefix)

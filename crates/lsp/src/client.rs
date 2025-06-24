@@ -578,21 +578,37 @@ impl Handler {
         };
 
         for item in items {
+            // --------------
+            // let snippet = item.insert_text_format == Some(lsp_types::InsertTextFormat::SNIPPET);
+            // if snippet {
+            //     log::info!("Snippet: {item:?}");
+            // }
+            // --------------
+
             let text = item.insert_text.unwrap_or(item.label);
             let edit = item.text_edit.map(|ctedit| match ctedit {
                 lsp_types::CompletionTextEdit::Edit(edit) => TextEdit::from(edit),
-                lsp_types::CompletionTextEdit::InsertAndReplace(_edit) => unimplemented!(),
+                lsp_types::CompletionTextEdit::InsertAndReplace(edit) => TextEdit::from(edit),
             });
             let kind = match item.kind {
                 Some(kind) => kind.into(),
                 None => CompletionItemKind::Text,
             };
             let snippet = item.insert_text_format == Some(lsp_types::InsertTextFormat::SNIPPET);
+            let additional_edits: Vec<TextEdit> = item
+                .additional_text_edits
+                .unwrap_or_default()
+                .into_iter()
+                .map(|edit| TextEdit::from(edit))
+                .collect();
+
             let completion = CompletionItem {
                 text,
                 filter: item.filter_text,
                 edit,
+                additional_edits,
                 kind,
+                detail: item.detail,
                 is_snippet: snippet,
             };
             results.push(completion);

@@ -58,7 +58,7 @@ pub(crate) fn client_capabilities() -> lsp_types::ClientCapabilities {
                         completion_item: Some(lsp_types::CompletionItemCapability {
                             snippet_support: Some(true),
                             resolve_support: None,
-                            insert_replace_support: Some(false),
+                            insert_replace_support: Some(true),
                             deprecated_support: Some(false),
                             tag_support: None,
                             ..Default::default()

@@ -70,6 +70,11 @@ fn completion_confirm(editor: &mut Editor, id: ClientId) -> ActionResult {
 
     let (win, buf) = win_buf!(editor, id);
     let opt = getf!(win.completion.selected().cloned());
+    let lang = getf!(buf.language.clone());
+    let enc = getf!(editor
+        .language_servers
+        .get(&lang)
+        .map(|x| x.position_encoding()));
     let choice = opt.choice();
     match choice {
         Choice::Snippet { snippet, .. } => {
@@ -81,6 +86,7 @@ fn completion_confirm(editor: &mut Editor, id: ClientId) -> ActionResult {
                 id,
                 snippet.clone(),
                 Range::new(pos, pos + prefix as u64),
+                vec![],
             );
         }
         Choice::LSPCompletion { item } => {
@@ -91,11 +97,6 @@ fn completion_confirm(editor: &mut Editor, id: ClientId) -> ActionResult {
                         (text, Range::new(pos, pos))
                     }
                     Either::Right(edit) => {
-                        let lang = getf!(buf.language.clone());
-                        let enc = getf!(editor
-                            .language_servers
-                            .get(&lang)
-                            .map(|x| x.position_encoding()));
                         let slice = buf.slice(..);
                         let range = edit.range.to_buffer_range(&slice, &enc);
                         (edit.text.as_str(), range)
@@ -131,7 +132,28 @@ fn completion_confirm(editor: &mut Editor, id: ClientId) -> ActionResult {
                     }
                 };
 
-                return snippets::insert_snippet_impl(editor, id, snippet, replace);
+                let slice = buf.slice(..);
+                let additional_changes: Vec<Change> = item
+                    .additional_edits
+                    .iter()
+                    .map(|edit| {
+                        let start = edit.range.start.to_offset(&slice, &enc);
+                        let end = if edit.range.start == edit.range.end {
+                            start
+                        } else {
+                            edit.range.end.to_offset(&slice, &enc)
+                        };
+                        Change::replace(Range::new(start, end), edit.text.as_bytes())
+                    })
+                    .collect();
+
+                return snippets::insert_snippet_impl(
+                    editor,
+                    id,
+                    snippet,
+                    replace,
+                    additional_changes,
+                );
             }
 
             let (text, mut replace) = match item.insert_text() {
@@ -140,11 +162,6 @@ fn completion_confirm(editor: &mut Editor, id: ClientId) -> ActionResult {
                     (text.as_bytes(), Range::new(pos, pos))
                 }
                 Either::Right(edit) => {
-                    let lang = getf!(buf.language.clone());
-                    let enc = getf!(editor
-                        .language_servers
-                        .get(&lang)
-                        .map(|x| x.position_encoding()));
                     let slice = buf.slice(..);
                     let range = edit.range.to_buffer_range(&slice, &enc);
                     (edit.text.as_bytes(), range)

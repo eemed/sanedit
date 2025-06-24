@@ -149,6 +149,26 @@ pub fn word_at_pos(slice: &PieceTreeSlice, pos: u64) -> Option<BufferRange> {
     Some(Range::new(start, end))
 }
 
+pub fn prev_non_word(slice: &PieceTreeSlice, pos: u64) -> (u64, Option<GraphemeCategory>) {
+    let mut start = pos;
+    let mut graphemes = slice.graphemes_at(pos);
+    let mut result_cat = None;
+
+    while let Some(g) = graphemes.prev() {
+        use GraphemeCategory::*;
+        let cat = grapheme_category(&g);
+        match cat {
+            Word => start = g.start(),
+            _ => {
+                result_cat = Some(cat);
+                break;
+            }
+        }
+    }
+
+    (start, result_cat)
+}
+
 pub fn word_before_pos(slice: &PieceTreeSlice, pos: u64) -> Option<(BufferRange, String)> {
     let mut start = pos;
     let mut graphemes = slice.graphemes_at(pos);

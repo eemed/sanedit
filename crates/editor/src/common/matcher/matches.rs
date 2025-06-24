@@ -94,7 +94,7 @@ impl Choice {
         match self {
             Choice::Snippet { .. } => SNIPPET_DESCRIPTION,
             Choice::Text { description, .. } => description,
-            Choice::LSPCompletion { item } => item.kind.as_ref(),
+            Choice::LSPCompletion { item } => item.description(),
             _ => "",
         }
     }

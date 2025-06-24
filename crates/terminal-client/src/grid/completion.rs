@@ -13,6 +13,34 @@ use super::{
 const MIN_WIDTH: usize = 40;
 const MIN_HEIGHT: usize = 5;
 
+/// Size of completion where everything fits on screen
+pub fn preferred_size(compl: &Completion) -> Size {
+    let longest_left = compl
+        .choices
+        .iter()
+        .map(|item| item.text.chars().count())
+        .max()
+        .unwrap_or(0);
+    // [pad] [left_column] [pad] [right_column] [pad]
+    let width = compl
+        .choices
+        .iter()
+        .map(|o| {
+            let mut len = 1 + longest_left + 1;
+
+            if !o.description.is_empty() {
+                len += o.description.chars().count();
+                len += 1;
+            }
+
+            len
+        })
+        .max()
+        .unwrap_or(0);
+    let height = compl.choices.len();
+    Size { width, height }
+}
+
 pub(crate) fn completion_rect(win: Rect, compl: &Completion) -> Rect {
     let below = below(win, compl);
     if win.includes(&below) {
@@ -29,7 +57,7 @@ pub(crate) fn completion_rect(win: Rect, compl: &Completion) -> Rect {
 
 fn fallback(win: Rect, compl: &Completion) -> Rect {
     let mut below = below(win, compl);
-    let Size { width, height } = compl.preferred_size();
+    let Size { width, height } = preferred_size(compl);
     let minw = min(width, win.width);
     if below.width < minw {
         below.width = minw;
@@ -50,7 +78,7 @@ fn below(win: Rect, compl: &Completion) -> Rect {
     let Size {
         mut width,
         mut height,
-    } = compl.preferred_size();
+    } = preferred_size(compl);
 
     if x + width > win.x + win.width {
         width = max(win.width, MIN_WIDTH);
@@ -73,7 +101,7 @@ fn above(win: Rect, compl: &Completion) -> Rect {
     let Size {
         mut width,
         mut height,
-    } = compl.preferred_size();
+    } = preferred_size(compl);
 
     y = y.saturating_sub(compl.choices.len());
     x = x.saturating_sub(compl.item_offset_before_point + 1);
@@ -98,6 +126,17 @@ impl Drawable for Completion {
     fn draw(&self, ctx: &UIContext, cells: &mut [&mut [CCell]]) {
         let wsize = size(cells);
         let max_opts = wsize.height;
+        let pad_left = ctx.rect.x != 0;
+        let mut longest_left = self
+            .choices
+            .iter()
+            .take(max_opts)
+            .map(|item| item.text.chars().count())
+            .max()
+            .unwrap_or(0);
+        if pad_left {
+            longest_left += 1;
+        }
         self.choices
             .iter()
             .take(max_opts)
@@ -120,7 +159,8 @@ impl Drawable for Completion {
                     style,
                     dstyle,
                     wsize.width,
-                    ctx.rect.x != 0,
+                    pad_left,
+                    longest_left,
                 );
 
                 put_line(line, i, cells);
@@ -139,33 +179,42 @@ pub(crate) fn format_completion(
     dstyle: Style,
     width: usize,
     left_pad: bool,
+    longest_left: usize,
 ) -> Vec<CCell> {
-    let mut left = {
-        let mut res = String::new();
+    let left = {
+        let mut lleft = String::new();
         if left_pad {
-            res.push(' ');
+            lleft.push(' ');
         }
 
-        res.push_str(left);
-        res.push(' ');
-        res
+        lleft.push_str(left);
+        // Fill space between
+        let n = lleft.chars().count();
+        let mut i = 0;
+        while i + n < longest_left {
+            lleft.push(' ');
+            i += 1;
+        }
+
+        lleft.push(' ');
+        into_cells_with_style(&lleft, mstyle)
     };
 
     let right = {
-        let mut res = right.to_string();
-        res.push(' ');
-        res
+        let mut right = right.to_string();
+        let n = right.chars().count();
+        let mut i = 0;
+        while i + n < width {
+            right.push(' ');
+            i += 1;
+        }
+
+        into_cells_with_style(&right, dstyle)
     };
 
-    // Fill space between
-    let mut len = left.chars().count() + right.chars().count();
-    while len < width {
-        left.push(' ');
-        len += 1;
-    }
-
-    let mut result = into_cells_with_style(&left, mstyle);
-    result.extend(into_cells_with_style(&right, dstyle));
+    let mut result = left;
+    result.extend(right);
     result.truncate(width);
+
     result
 }

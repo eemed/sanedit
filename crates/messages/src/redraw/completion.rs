@@ -16,24 +16,6 @@ pub struct Completion {
 }
 
 impl Completion {
-    /// Size of completion where everything fits on screen
-    pub fn preferred_size(&self) -> Size {
-        let width = self.choices.iter().fold(0, |acc, o| {
-            // " " + name + " " (+ description + " ")
-            let mut len = 0;
-            len += 1;
-            len += o.text.chars().count();
-            len += 1;
-
-            if !o.description.is_empty() {
-                len += o.description.chars().count();
-                len += 1;
-            }
-            max(acc, len)
-        });
-        let height = self.choices.len();
-        Size { width, height }
-    }
 }
 
 impl Diffable for Completion {

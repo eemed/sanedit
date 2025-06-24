@@ -1,8 +1,8 @@
 use std::cmp::min;
 
 use sanedit_messages::redraw::{
-    prompt::{Prompt, Source},
-    Cursor, CursorShape, IntoCells, Point, Style, ThemeField,
+    prompt::{self, Prompt, Source},
+    Cursor, CursorShape, Diffable, IntoCells, Point, Style, ThemeField,
 };
 
 use crate::{
@@ -40,40 +40,44 @@ impl CustomPrompt {
             prompt,
         }
     }
-}
 
-pub(crate) fn prompt_rect(screen: Rect, prompt: &mut CustomPrompt) -> Rect {
-    use PromptStyle::*;
-    use Source::*;
-    // Try to fit overlay prompt
-    // magic number: overlay paddings 3 + prompt 1 + options + extra space so we
-    // dont attach to window sides 6
-    //
-    // minimum height to draw overlay
-    let Rect { width, height, .. } = screen;
-    let olay_min_height = prompt.prompt.max_completions + 3 + 1 + 6;
-    // height the overlay needs
-    let olay_height = prompt.prompt.max_completions + 3 + 1;
-    let oneline_min_height = prompt.prompt.max_completions + 1;
-    prompt.style = match prompt.prompt.source {
-        Search | Simple => Oneline,
-        Prompt => {
-            if height < olay_min_height {
-                Oneline
-            } else {
-                Overlay
+    pub fn update(&mut self, diff: prompt::Difference) {
+        self.prompt.update(diff);
+    }
+
+    pub fn rect(&mut self, screen: Rect) -> Rect {
+        use PromptStyle::*;
+        use Source::*;
+        // Try to fit overlay prompt
+        // magic number: overlay paddings 3 + prompt 1 + options + extra space so we
+        // dont attach to window sides 6
+        //
+        // minimum height to draw overlay
+        let Rect { width, height, .. } = screen;
+        let olay_min_height = self.prompt.max_completions + 3 + 1 + 6;
+        // height the overlay needs
+        let olay_height = self.prompt.max_completions + 3 + 1;
+        let oneline_min_height = self.prompt.max_completions + 1;
+        self.style = match self.prompt.source {
+            Search | Simple => Oneline,
+            Prompt => {
+                if height < olay_min_height {
+                    Oneline
+                } else {
+                    Overlay
+                }
             }
-        }
-    };
+        };
 
-    match prompt.style {
-        PromptStyle::Oneline => Rect::new(0, 0, width, min(height, oneline_min_height)),
-        PromptStyle::Overlay => {
-            let width = width / 2;
-            let x = width / 2;
-            let extra = height - olay_height;
-            let y = extra / 4;
-            Rect::new(x, y, width, olay_height)
+        match self.style {
+            PromptStyle::Oneline => Rect::new(0, 0, width, min(height, oneline_min_height)),
+            PromptStyle::Overlay => {
+                let width = width / 2;
+                let x = width / 2;
+                let extra = height - olay_height;
+                let y = extra / 4;
+                Rect::new(x, y, width, olay_height)
+            }
         }
     }
 }

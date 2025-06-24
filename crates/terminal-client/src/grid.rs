@@ -9,14 +9,13 @@ mod rect;
 
 use std::sync::Arc;
 
-use completion::completion_rect;
+use completion::CustomCompletion;
 use items::Kind;
 use popup::popup_rect;
-use prompt::prompt_rect;
 use sanedit_messages::{
     redraw::{
-        completion::Completion, statusline::Statusline, window::Window, Cell, Component, Cursor,
-        Diffable as _, Popup, PopupComponent, Redraw, Size, StatusMessage, Theme,
+        statusline::Statusline, window::Window, Cell, Component, Cursor, Diffable as _, Popup,
+        PopupComponent, Redraw, Size, StatusMessage, Theme,
     },
     Message,
 };
@@ -31,16 +30,39 @@ use self::{
     prompt::CustomPrompt,
 };
 
+pub(crate) struct Placed<T> {
+    pub(crate) inner: T,
+    pub(crate) rect: Rect,
+}
+
+impl<T: Default> Default for Placed<T> {
+    fn default() -> Self {
+        Placed {
+            inner: T::default(),
+            rect: Rect::default(),
+        }
+    }
+}
+
+impl<T> From<T> for Placed<T> {
+    fn from(value: T) -> Self {
+        Placed {
+            inner: value,
+            rect: Rect::default(),
+        }
+    }
+}
+
 pub(crate) struct Grid {
     size: Size,
-    window: (Window, Rect),
-    statusline: (Statusline, Rect),
-    prompt: Option<(CustomPrompt, Rect)>,
-    msg: Option<(StatusMessage, Rect)>,
-    completion: Option<(Completion, Rect)>,
-    filetree: Option<(CustomItems, Rect)>,
-    locations: Option<(CustomItems, Rect)>,
-    popup: Option<(Popup, Rect)>,
+    window: Placed<Window>,
+    statusline: Placed<Statusline>,
+    prompt: Option<Placed<CustomPrompt>>,
+    msg: Option<Placed<StatusMessage>>,
+    completion: Option<Placed<CustomCompletion>>,
+    filetree: Option<Placed<CustomItems>>,
+    locations: Option<Placed<CustomItems>>,
+    popup: Option<Placed<Popup>>,
 
     drawn: Vec<Vec<Cell>>,
     cursor: Option<Cursor>,
@@ -52,8 +74,8 @@ impl Grid {
     pub fn new(width: usize, height: usize) -> Grid {
         let mut me = Grid {
             size: Size { width, height },
-            window: (Window::default(), Rect::default()),
-            statusline: (Statusline::default(), Rect::default()),
+            window: Placed::default(),
+            statusline: Placed::default(),
             prompt: None,
             msg: None,
             completion: None,
@@ -84,23 +106,23 @@ impl Grid {
 
         match msg {
             Window(comp) => match comp {
-                Open(win) => self.window.0 = win,
-                Update(diff) => self.window.0.update(diff),
+                Open(win) => self.window.inner = win,
+                Update(diff) => self.window.inner.update(diff),
                 Close => {}
             },
             Statusline(comp) => match comp {
-                Open(status) => self.statusline.0 = status,
-                Update(diff) => self.statusline.0.update(diff),
+                Open(status) => self.statusline.inner = status,
+                Update(diff) => self.statusline.inner.update(diff),
                 Close => {}
             },
             Prompt(comp) => match comp {
                 Open(prompt) => {
-                    self.prompt = Some((CustomPrompt::new(prompt), Rect::default()));
+                    self.prompt = Some(CustomPrompt::new(prompt).into());
                     self.refresh_overlays();
                 }
                 Update(diff) => {
                     if let Some(ref mut custom_prompt) = self.prompt {
-                        custom_prompt.0.prompt.update(diff);
+                        custom_prompt.inner.update(diff);
                     }
                 }
                 Close => {
@@ -108,14 +130,17 @@ impl Grid {
                 }
             },
             StatusMessage(msg) => {
-                self.msg = Some((msg, self.statusline.1.clone()));
+                self.msg = Some(Placed {
+                    inner: msg,
+                    rect: self.statusline.rect.clone(),
+                });
             }
             Completion(comp) => {
                 match comp {
-                    Open(compl) => self.completion = Some((compl, Rect::default())),
+                    Open(compl) => self.completion = Some(CustomCompletion::new(compl).into()),
                     Update(diff) => {
                         if let Some(ref mut compl) = self.completion {
-                            compl.0.update(diff);
+                            compl.inner.update(diff);
                         }
                     }
                     Close => self.completion = None,
@@ -125,13 +150,13 @@ impl Grid {
             }
             Filetree(comp) => match comp {
                 Open(ft) => {
-                    self.filetree = Some((CustomItems::new(ft, Kind::Filetree), Rect::default()));
+                    self.filetree = Some(CustomItems::new(ft, Kind::Filetree).into());
                     self.refresh();
                     return RedrawResult::Resized;
                 }
                 Update(diff) => {
                     if let Some(ref mut ft) = self.filetree {
-                        ft.0.update(diff, ft.1);
+                        ft.inner.update(diff, ft.rect);
                     }
                 }
                 Close => {
@@ -142,14 +167,13 @@ impl Grid {
             },
             Locations(comp) => match comp {
                 Open(locs) => {
-                    self.locations =
-                        Some((CustomItems::new(locs, Kind::Locations), Rect::default()));
+                    self.locations = Some(CustomItems::new(locs, Kind::Locations).into());
                     self.refresh();
                     return RedrawResult::Resized;
                 }
                 Update(diff) => {
                     if let Some(ref mut locs) = self.locations {
-                        locs.0.update(diff, locs.1);
+                        locs.inner.update(diff, locs.rect);
                     }
                 }
                 Close => {
@@ -160,7 +184,7 @@ impl Grid {
             },
             Popup(popup) => match popup {
                 PopupComponent::Open(popup) => {
-                    self.popup = Some((popup, Rect::default()));
+                    self.popup = Some(popup.into());
                     self.refresh_overlays();
                 }
                 PopupComponent::Close => {
@@ -186,42 +210,43 @@ impl Grid {
         let win = self.window();
 
         if let Some(compl) = &mut self.completion {
-            let new = completion_rect(win, &mut compl.0);
+            let new = compl.inner.rect(win);
+            let rect = &mut compl.rect;
             // Update only if bigger or old old does not fit
-            if !compl.1.includes(&new) || !win.includes(&compl.1) {
-                compl.1 = new
+            if !rect.includes(&new) || !win.includes(&rect) {
+                *rect = new
             }
         }
 
         if let Some(prompt) = &mut self.prompt {
-            prompt.1 = prompt_rect(screen, &mut prompt.0);
+            prompt.rect = prompt.inner.rect(screen);
         }
 
         if let Some(popup) = &mut self.popup {
-            popup.1 = popup_rect(screen, win, &popup.0);
+            popup.rect = popup_rect(screen, win, &popup.inner);
         }
     }
 
     /// Calculate locations for all
     pub fn refresh(&mut self) {
         let mut window = self.screen();
-        self.statusline.1 = window.split_off(Split::top_size(1));
+        self.statusline.rect = window.split_off(Split::top_size(1));
 
         // Message same as statusline
         if let Some(msg) = &mut self.msg {
-            msg.1 = self.statusline.1;
+            msg.rect = self.statusline.rect;
         }
 
         // Filetree if present
         if let Some(ft) = &mut self.filetree {
-            ft.1 = window.split_off(Split::left_size((window.width / 6).clamp(40, 50)));
+            ft.rect = window.split_off(Split::left_size((window.width / 6).clamp(40, 50)));
         }
 
         if let Some(loc) = &mut self.locations {
-            loc.1 = window.split_off(Split::bottom_size(15));
+            loc.rect = window.split_off(Split::bottom_size(15));
         }
 
-        self.window.1 = window;
+        self.window.rect = window;
         self.refresh_overlays();
     }
 
@@ -233,7 +258,7 @@ impl Grid {
     }
 
     pub fn window(&self) -> Rect {
-        self.window.1
+        self.window.rect
     }
 
     pub fn clear(&mut self) {
@@ -291,26 +316,26 @@ impl Grid {
 
         let t = &self.theme;
         Self::draw_drawable(
-            &self.window.0,
-            self.window.1,
+            &self.window.inner,
+            self.window.rect,
             t,
             self.client_in_focus,
             &mut self.cursor,
             &mut self.drawn,
         );
         Self::draw_drawable(
-            &self.statusline.0,
-            self.statusline.1,
+            &self.statusline.inner,
+            self.statusline.rect,
             t,
             self.client_in_focus,
             &mut self.cursor,
             &mut self.drawn,
         );
 
-        if let Some((loc, rect)) = &self.locations {
+        if let Some(loc) = &self.locations {
             Self::draw_drawable(
-                loc,
-                *rect,
+                &loc.inner,
+                loc.rect,
                 t,
                 self.client_in_focus,
                 &mut self.cursor,
@@ -318,10 +343,10 @@ impl Grid {
             );
         }
 
-        if let Some((ft, rect)) = &self.filetree {
+        if let Some(ft) = &self.filetree {
             Self::draw_drawable(
-                ft,
-                *rect,
+                &ft.inner,
+                ft.rect,
                 t,
                 self.client_in_focus,
                 &mut self.cursor,
@@ -329,10 +354,10 @@ impl Grid {
             );
         }
 
-        if let Some((prompt, rect)) = &self.prompt {
+        if let Some(prompt) = &self.prompt {
             Self::draw_drawable(
-                prompt,
-                *rect,
+                &prompt.inner,
+                prompt.rect,
                 t,
                 self.client_in_focus,
                 &mut self.cursor,
@@ -340,10 +365,10 @@ impl Grid {
             );
         }
 
-        if let Some((msg, rect)) = &self.msg {
+        if let Some(msg) = &self.msg {
             Self::draw_drawable(
-                msg,
-                *rect,
+                &msg.inner,
+                msg.rect,
                 t,
                 self.client_in_focus,
                 &mut self.cursor,
@@ -351,10 +376,10 @@ impl Grid {
             );
         }
 
-        if let Some((compl, rect)) = &self.completion {
+        if let Some(compl) = &self.completion {
             Self::draw_drawable(
-                compl,
-                *rect,
+                &compl.inner,
+                compl.rect,
                 t,
                 self.client_in_focus,
                 &mut self.cursor,
@@ -362,10 +387,10 @@ impl Grid {
             );
         }
 
-        if let Some((popup, rect)) = &self.popup {
+        if let Some(popup) = &self.popup {
             Self::draw_drawable(
-                popup,
-                *rect,
+                &popup.inner,
+                popup.rect,
                 t,
                 self.client_in_focus,
                 &mut self.cursor,

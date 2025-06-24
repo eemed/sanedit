@@ -58,7 +58,7 @@ fn prev_loc_entry(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Locations: Confirm entry")]
 fn goto_loc_entry(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, _buf) = editor.win_buf_mut(id);
 
     if let Some(sel) = win.locations.selected_mut() {
         match sel {

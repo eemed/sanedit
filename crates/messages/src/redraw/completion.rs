@@ -1,8 +1,6 @@
-use std::cmp::max;
-
 use serde::{Deserialize, Serialize};
 
-use super::{choice::Choice, Component, Diffable, Point, Redraw, Size};
+use super::{choice::Choice, Component, Diffable, Point, Redraw};
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
 pub struct Completion {

@@ -449,11 +449,10 @@ pub(crate) fn show_diagnostics(editor: &mut Editor, id: ClientId) -> ActionResul
 
 #[action("Will save document notification")]
 pub(crate) fn will_save_document(editor: &mut Editor, id: ClientId) -> ActionResult {
-    // lsp_notify(editor, id, |_buf, path, _slice, _lsp| {
-    //     Some(Notification::WillSave { path: path.clone() })
-    // })
-    // .into()
-    ActionResult::Ok
+    lsp_notify(editor, id, |_buf, path, _slice, _lsp| {
+        Some(Notification::WillSave { path: path.clone() })
+    })
+    .into()
 }
 
 #[action("Did save document notification")]

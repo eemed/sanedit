@@ -23,7 +23,7 @@ use sanedit_core::{
     prev_non_word, Change, Changes, Cursor, Diagnostic, GraphemeCategory, Group, Item, Language, Range
 };
 use sanedit_lsp::{
-    CodeAction, CompletionItem, CompletionItemKind, FileEdit, LSPClientParams, Notification, Position, PositionEncoding, PositionRange, RequestKind, RequestResult, Response, TextDiagnostic, WorkspaceEdit
+    CodeAction, CompletionItem, FileEdit, LSPClientParams, Notification, Position, PositionEncoding, PositionRange, RequestKind, RequestResult, Response, TextDiagnostic, WorkspaceEdit
 };
 
 use sanedit_messages::redraw::PopupMessage;

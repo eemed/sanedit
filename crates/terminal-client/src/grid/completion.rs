@@ -1,6 +1,9 @@
 use std::cmp::{max, min};
 
-use sanedit_messages::redraw::{completion::Completion, Point, Size, Style, ThemeField};
+use sanedit_messages::redraw::{
+    completion::{self, Completion},
+    Diffable, Point, Size, Style, ThemeField,
+};
 
 use crate::ui::UIContext;
 
@@ -10,23 +13,67 @@ use super::{
     Rect,
 };
 
+pub(crate) struct CustomCompletion {
+    pub(crate) longest_item_text: usize,
+    pub(crate) completion: Completion,
+}
+
+impl CustomCompletion {
+    pub fn new(completion: Completion) -> CustomCompletion {
+        let longest_item_text = completion
+            .choices
+            .iter()
+            .map(|item| item.text.chars().count())
+            .max()
+            .unwrap_or(0);
+
+        CustomCompletion {
+            longest_item_text,
+            completion,
+        }
+    }
+
+    pub fn update(&mut self, diff: completion::Difference) {
+        self.completion.update(diff);
+
+        let longest_item_text = self
+            .completion
+            .choices
+            .iter()
+            .map(|item| item.text.chars().count())
+            .max()
+            .unwrap_or(0);
+
+        self.longest_item_text = std::cmp::max(self.longest_item_text, longest_item_text);
+    }
+
+    pub fn rect(&self, win: Rect) -> Rect {
+        let below = below(win, &self);
+        if win.includes(&below) {
+            return below;
+        }
+
+        let above = above(win, &self);
+        if win.includes(&above) {
+            return above;
+        }
+
+        fallback(win, &self)
+    }
+}
+
 const MIN_WIDTH: usize = 40;
 const MIN_HEIGHT: usize = 5;
 
 /// Size of completion where everything fits on screen
-pub fn preferred_size(compl: &Completion) -> Size {
-    let longest_left = compl
-        .choices
-        .iter()
-        .map(|item| item.text.chars().count())
-        .max()
-        .unwrap_or(0);
+fn preferred_size(compl: &CustomCompletion) -> Size {
     // [pad] [left_column] [pad] [right_column] [pad]
     let width = compl
+        .completion
         .choices
         .iter()
         .map(|o| {
-            let mut len = 1 + longest_left + 1;
+            let mut len = 1 + compl.longest_item_text + 1;
 
             if !o.description.is_empty() {
                 len += o.description.chars().count();
@@ -37,25 +84,11 @@ pub fn preferred_size(compl: &Completion) -> Size {
         })
         .max()
         .unwrap_or(0);
-    let height = compl.choices.len();
+    let height = compl.completion.choices.len();
     Size { width, height }
 }
 
-pub(crate) fn completion_rect(win: Rect, compl: &Completion) -> Rect {
-    let below = below(win, compl);
-    if win.includes(&below) {
-        return below;
-    }
-
-    let above = above(win, compl);
-    if win.includes(&above) {
-        return above;
-    }
-
-    fallback(win, compl)
-}
-
-fn fallback(win: Rect, compl: &Completion) -> Rect {
+fn fallback(win: Rect, compl: &CustomCompletion) -> Rect {
     let mut below = below(win, compl);
     let Size { width, height } = preferred_size(compl);
     let minw = min(width, win.width);
@@ -72,9 +105,9 @@ fn fallback(win: Rect, compl: &Completion) -> Rect {
     below
 }
 
-fn below(win: Rect, compl: &Completion) -> Rect {
-    let Point { mut x, y } = compl.point + win.position() + Point { x: 0, y: 1 };
-    x = x.saturating_sub(compl.item_offset_before_point + 1);
+fn below(win: Rect, compl: &CustomCompletion) -> Rect {
+    let Point { mut x, y } = compl.completion.point + win.position() + Point { x: 0, y: 1 };
+    x = x.saturating_sub(compl.completion.item_offset_before_point + 1);
     let Size {
         mut width,
         mut height,
@@ -96,15 +129,15 @@ fn below(win: Rect, compl: &Completion) -> Rect {
     }
 }
 
-fn above(win: Rect, compl: &Completion) -> Rect {
-    let Point { mut x, mut y } = compl.point + win.position();
+fn above(win: Rect, compl: &CustomCompletion) -> Rect {
+    let Point { mut x, mut y } = compl.completion.point + win.position();
     let Size {
         mut width,
         mut height,
     } = preferred_size(compl);
 
-    y = y.saturating_sub(compl.choices.len());
-    x = x.saturating_sub(compl.item_offset_before_point + 1);
+    y = y.saturating_sub(compl.completion.choices.len());
+    x = x.saturating_sub(compl.completion.item_offset_before_point + 1);
 
     if x + width > win.x + win.width {
         width = max(win.width, MIN_WIDTH);
@@ -122,27 +155,18 @@ fn above(win: Rect, compl: &Completion) -> Rect {
     }
 }
 
-impl Drawable for Completion {
+impl Drawable for CustomCompletion {
     fn draw(&self, ctx: &UIContext, cells: &mut [&mut [CCell]]) {
         let wsize = size(cells);
         let max_opts = wsize.height;
         let pad_left = ctx.rect.x != 0;
-        let mut longest_left = self
+        self.completion
             .choices
-            .iter()
-            .take(max_opts)
-            .map(|item| item.text.chars().count())
-            .max()
-            .unwrap_or(0);
-        if pad_left {
-            longest_left += 1;
-        }
-        self.choices
             .iter()
             .take(max_opts)
             .enumerate()
             .for_each(|(i, opt)| {
-                let (field, dfield) = if Some(i) == self.selected {
+                let (field, dfield) = if Some(i) == self.completion.selected {
                     (
                         ThemeField::CompletionSelected,
                         ThemeField::CompletionSelectedDescription,
@@ -160,7 +184,7 @@ impl Drawable for Completion {
                     dstyle,
                     wsize.width,
                     pad_left,
-                    longest_left,
+                    self.longest_item_text,
                 );
 
                 put_line(line, i, cells);
@@ -179,7 +203,7 @@ pub(crate) fn format_completion(
     dstyle: Style,
     width: usize,
     left_pad: bool,
-    longest_left: usize,
+    longest_item_text: usize,
 ) -> Vec<CCell> {
     let left = {
         let mut lleft = String::new();
@@ -191,7 +215,8 @@ pub(crate) fn format_completion(
         // Fill space between
         let n = lleft.chars().count();
         let mut i = 0;
-        while i + n < longest_left {
+        let pad_to = longest_item_text + if left_pad { 1 } else { 0 };
+        while i + n < pad_to {
             lleft.push(' ');
             i += 1;
         }

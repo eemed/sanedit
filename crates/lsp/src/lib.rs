@@ -18,6 +18,7 @@ pub use error::LSPRequestError;
 pub use request::{Notification, Request, RequestKind};
 pub use response::{NotificationResult, RequestResult, Response};
 pub use util::{
+    Symbol, SymbolKind,
     CodeAction, CompletionItem, FileEdit, Position, PositionEncoding, PositionRange,
     TextDiagnostic, TextEdit, WorkspaceEdit, CompletionItemKind,
 };

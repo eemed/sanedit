@@ -1,7 +1,7 @@
 use std::{collections::BTreeMap, path::PathBuf};
 
 use crate::util::{
-    CodeAction, CompletionItem, FileEdit, Position, PositionRange, TextDiagnostic, WorkspaceEdit,
+    CodeAction, CompletionItem, FileEdit, Position, PositionRange, Symbol, TextDiagnostic, WorkspaceEdit
 };
 
 #[derive(Debug, Clone)]
@@ -57,5 +57,8 @@ pub enum RequestResult {
     },
     Error {
         msg: String,
+    },
+    Symbols {
+        symbols: Vec<Symbol>,
     },
 }

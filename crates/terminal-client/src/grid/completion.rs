@@ -14,21 +14,27 @@ use super::{
 };
 
 pub(crate) struct CustomCompletion {
-    pub(crate) longest_item_text: usize,
+    pub(crate) column_max_width: Vec<usize>,
     pub(crate) completion: Completion,
 }
 
 impl CustomCompletion {
     pub fn new(completion: Completion) -> CustomCompletion {
-        let longest_item_text = completion
+        let first_col = completion
             .choices
             .iter()
             .map(|item| item.text.chars().count())
             .max()
             .unwrap_or(0);
+        let second_col = completion
+            .choices
+            .iter()
+            .map(|item| item.description.chars().count())
+            .max()
+            .unwrap_or(0);
 
         CustomCompletion {
-            longest_item_text,
+            column_max_width: vec![first_col, second_col],
             completion,
         }
     }
@@ -36,15 +42,23 @@ impl CustomCompletion {
     pub fn update(&mut self, diff: completion::Difference) {
         self.completion.update(diff);
 
-        let longest_item_text = self
+        let first_col = self
             .completion
             .choices
             .iter()
             .map(|item| item.text.chars().count())
             .max()
             .unwrap_or(0);
+        self.column_max_width[0] = max(self.column_max_width[0], first_col);
 
-        self.longest_item_text = std::cmp::max(self.longest_item_text, longest_item_text);
+        let second_col = self
+            .completion
+            .choices
+            .iter()
+            .map(|item| item.description.chars().count())
+            .max()
+            .unwrap_or(0);
+        self.column_max_width[1] = max(self.column_max_width[1], second_col);
     }
 
     pub fn rect(&self, win: Rect) -> Rect {
@@ -67,23 +81,8 @@ const MIN_HEIGHT: usize = 5;
 
 /// Size of completion where everything fits on screen
 fn preferred_size(compl: &CustomCompletion) -> Size {
-    // [pad] [left_column] [pad] [right_column] [pad]
-    let width = compl
-        .completion
-        .choices
-        .iter()
-        .map(|o| {
-            let mut len = 1 + compl.longest_item_text + 1;
-
-            if !o.description.is_empty() {
-                len += o.description.chars().count();
-                len += 1;
-            }
-
-            len
-        })
-        .max()
-        .unwrap_or(0);
+    // [pad] [first_column] [pad] [second_column] [pad]
+    let width = 1 + compl.column_max_width[0] + 1 + compl.column_max_width[1] + 1;
     let height = compl.completion.choices.len();
     Size { width, height }
 }
@@ -184,7 +183,7 @@ impl Drawable for CustomCompletion {
                     dstyle,
                     wsize.width,
                     pad_left,
-                    self.longest_item_text,
+                    &self.column_max_width,
                 );
 
                 put_line(line, i, cells);
@@ -203,7 +202,7 @@ pub(crate) fn format_completion(
     dstyle: Style,
     width: usize,
     left_pad: bool,
-    longest_item_text: usize,
+    max_columns: &[usize],
 ) -> Vec<CCell> {
     let left = {
         let mut lleft = String::new();
@@ -215,7 +214,7 @@ pub(crate) fn format_completion(
         // Fill space between
         let n = lleft.chars().count();
         let mut i = 0;
-        let pad_to = longest_item_text + if left_pad { 1 } else { 0 };
+        let pad_to = max_columns[0] + if left_pad { 1 } else { 0 };
         while i + n < pad_to {
             lleft.push(' ');
             i += 1;

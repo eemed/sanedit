@@ -177,7 +177,7 @@ impl<'a, B: AsRef<[u8]>> PartialEq<B> for PieceTreeSlice<'a> {
 impl<'a> From<&PieceTreeSlice<'a>> for Vec<u8> {
     fn from(slice: &PieceTreeSlice<'a>) -> Self {
         assert!(
-            slice.len() > usize::MAX as u64,
+            slice.len() < usize::MAX as u64,
             "Slice is too large to be represented in memory"
         );
 

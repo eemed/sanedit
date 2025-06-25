@@ -227,6 +227,15 @@ fn goto_definition(editor: &mut Editor, id: ClientId) -> ActionResult {
     .into()
 }
 
+#[action("LSP: Show symbols")]
+fn show_symbols(editor: &mut Editor, id: ClientId) -> ActionResult {
+    lsp_request(editor, id, move |win, _buf, path, slice, lsp| {
+        let kind = RequestKind::DocumentSymbols { path };
+        Some((kind, vec![]))
+    })
+    .into()
+}
+
 #[action("Synchronize document")]
 fn sync_document(editor: &mut Editor, id: ClientId) -> ActionResult {
     lsp_notify(editor, id, |buf, path, slice, lsp| {

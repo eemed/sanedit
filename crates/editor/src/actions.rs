@@ -189,6 +189,10 @@ pub(crate) const COMMANDS: &[Action] = &[
     text::remove_line,
     text::remove_to_eol,
     text::reload_file_from_disk,
+    text::uppercase,
+    text::lowercase,
+    text::rotate_selections,
+    text::rotate_selections_backwards,
 
     prompt::open_file,
     prompt::open_buffer,
@@ -320,6 +324,7 @@ pub(crate) const COMMANDS: &[Action] = &[
     lsp::diagnostics_to_locations,
     lsp::next_diagnostic,
     lsp::prev_diagnostic,
+    lsp::show_symbols,
 
     popup::close,
 

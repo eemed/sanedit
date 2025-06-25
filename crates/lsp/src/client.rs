@@ -8,7 +8,8 @@ use crate::process::{ProcessHandler, ServerRequest};
 use crate::request::{Notification, RequestKind, ToLSP};
 use crate::response::NotificationResult;
 use crate::util::{
-    path_to_uri, CodeAction, CompletionItem, CompletionItemKind, FileEdit, Position,
+    path_to_uri, CodeAction, CompletionItem, CompletionItemKind, FileEdit, Position, Symbol,
+    SymbolKind,
 };
 use crate::{
     PositionEncoding, PositionRange, Request, RequestResult, Response, TextDiagnostic, TextEdit,
@@ -268,6 +269,7 @@ impl Handler {
                 RequestKind::PullDiagnostics { path } => {
                     self.pull_diagnostics(req.id, path).await?
                 }
+                RequestKind::DocumentSymbols { path } => self.document_symbol(req.id, path).await?,
             },
             ToLSP::Notification(notif) => match notif {
                 Notification::DidOpen {
@@ -286,6 +288,63 @@ impl Handler {
             },
         }
 
+        Ok(())
+    }
+
+    async fn document_symbol(&mut self, id: u32, path: PathBuf) -> Result<(), LSPError> {
+        let params = lsp_types::DocumentSymbolParams {
+            text_document: lsp_types::TextDocumentIdentifier {
+                uri: path_to_uri(&path),
+            },
+            work_done_progress_params: lsp_types::WorkDoneProgressParams {
+                work_done_token: None,
+            },
+            partial_result_params: lsp_types::PartialResultParams {
+                partial_result_token: None,
+            },
+        };
+
+        let response = self
+            .request::<lsp_types::request::DocumentSymbolRequest>(id, &params)
+            .await?;
+
+        let result = match response {
+            Some(response) => {
+                let mut result_symbols: Vec<Symbol> = vec![];
+                match response {
+                    lsp_types::DocumentSymbolResponse::Flat(symbols) => {
+                        for symbol in symbols {
+                            result_symbols.push(Symbol::from(symbol));
+                        }
+                    }
+                    lsp_types::DocumentSymbolResponse::Nested(symbols) => {
+                        let mut stack = vec![];
+                        stack.extend(symbols);
+
+                        while let Some(mut symbol) = stack.pop() {
+                            if let Some(children) = std::mem::take(&mut symbol.children) {
+                                stack.extend(children);
+                            }
+                            result_symbols.push(Symbol::from(symbol));
+                        }
+                    }
+                }
+
+                if result_symbols.is_empty() {
+                    RequestResult::Error {
+                        msg: format!("No symbols found"),
+                    }
+                } else {
+                    RequestResult::Symbols {
+                        symbols: result_symbols,
+                    }
+                }
+            }
+            None => RequestResult::Error {
+                msg: format!("No response"),
+            },
+        };
+        self.response.send(Response::Request { id, result }).await?;
         Ok(())
     }
 

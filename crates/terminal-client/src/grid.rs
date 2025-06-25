@@ -30,15 +30,16 @@ use self::{
     prompt::CustomPrompt,
 };
 
+/// An item placed on a rectangle
 pub(crate) struct Placed<T> {
-    pub(crate) inner: T,
+    pub(crate) item: T,
     pub(crate) rect: Rect,
 }
 
 impl<T: Default> Default for Placed<T> {
     fn default() -> Self {
         Placed {
-            inner: T::default(),
+            item: T::default(),
             rect: Rect::default(),
         }
     }
@@ -47,7 +48,7 @@ impl<T: Default> Default for Placed<T> {
 impl<T> From<T> for Placed<T> {
     fn from(value: T) -> Self {
         Placed {
-            inner: value,
+            item: value,
             rect: Rect::default(),
         }
     }
@@ -106,13 +107,13 @@ impl Grid {
 
         match msg {
             Window(comp) => match comp {
-                Open(win) => self.window.inner = win,
-                Update(diff) => self.window.inner.update(diff),
+                Open(win) => self.window.item = win,
+                Update(diff) => self.window.item.update(diff),
                 Close => {}
             },
             Statusline(comp) => match comp {
-                Open(status) => self.statusline.inner = status,
-                Update(diff) => self.statusline.inner.update(diff),
+                Open(status) => self.statusline.item = status,
+                Update(diff) => self.statusline.item.update(diff),
                 Close => {}
             },
             Prompt(comp) => match comp {
@@ -122,16 +123,14 @@ impl Grid {
                 }
                 Update(diff) => {
                     if let Some(ref mut custom_prompt) = self.prompt {
-                        custom_prompt.inner.update(diff);
+                        custom_prompt.item.update(diff);
                     }
                 }
-                Close => {
-                    self.prompt = None;
-                }
+                Close => self.prompt = None,
             },
             StatusMessage(msg) => {
                 self.msg = Some(Placed {
-                    inner: msg,
+                    item: msg,
                     rect: self.statusline.rect.clone(),
                 });
             }
@@ -140,7 +139,7 @@ impl Grid {
                     Open(compl) => self.completion = Some(CustomCompletion::new(compl).into()),
                     Update(diff) => {
                         if let Some(ref mut compl) = self.completion {
-                            compl.inner.update(diff);
+                            compl.item.update(diff);
                         }
                     }
                     Close => self.completion = None,
@@ -156,7 +155,7 @@ impl Grid {
                 }
                 Update(diff) => {
                     if let Some(ref mut ft) = self.filetree {
-                        ft.inner.update(diff, ft.rect);
+                        ft.item.update(diff, ft.rect);
                     }
                 }
                 Close => {
@@ -173,7 +172,7 @@ impl Grid {
                 }
                 Update(diff) => {
                     if let Some(ref mut locs) = self.locations {
-                        locs.inner.update(diff, locs.rect);
+                        locs.item.update(diff, locs.rect);
                     }
                 }
                 Close => {
@@ -210,7 +209,7 @@ impl Grid {
         let win = self.window();
 
         if let Some(compl) = &mut self.completion {
-            let new = compl.inner.rect(win);
+            let new = compl.item.rect(win);
             let rect = &mut compl.rect;
             // Update only if bigger or old old does not fit
             if !rect.includes(&new) || !win.includes(&rect) {
@@ -219,11 +218,11 @@ impl Grid {
         }
 
         if let Some(prompt) = &mut self.prompt {
-            prompt.rect = prompt.inner.rect(screen);
+            prompt.rect = prompt.item.rect(screen);
         }
 
         if let Some(popup) = &mut self.popup {
-            popup.rect = popup_rect(screen, win, &popup.inner);
+            popup.rect = popup_rect(screen, win, &popup.item);
         }
     }
 
@@ -316,7 +315,7 @@ impl Grid {
 
         let t = &self.theme;
         Self::draw_drawable(
-            &self.window.inner,
+            &self.window.item,
             self.window.rect,
             t,
             self.client_in_focus,
@@ -324,7 +323,7 @@ impl Grid {
             &mut self.drawn,
         );
         Self::draw_drawable(
-            &self.statusline.inner,
+            &self.statusline.item,
             self.statusline.rect,
             t,
             self.client_in_focus,
@@ -334,7 +333,7 @@ impl Grid {
 
         if let Some(loc) = &self.locations {
             Self::draw_drawable(
-                &loc.inner,
+                &loc.item,
                 loc.rect,
                 t,
                 self.client_in_focus,
@@ -345,7 +344,7 @@ impl Grid {
 
         if let Some(ft) = &self.filetree {
             Self::draw_drawable(
-                &ft.inner,
+                &ft.item,
                 ft.rect,
                 t,
                 self.client_in_focus,
@@ -356,7 +355,7 @@ impl Grid {
 
         if let Some(prompt) = &self.prompt {
             Self::draw_drawable(
-                &prompt.inner,
+                &prompt.item,
                 prompt.rect,
                 t,
                 self.client_in_focus,
@@ -367,7 +366,7 @@ impl Grid {
 
         if let Some(msg) = &self.msg {
             Self::draw_drawable(
-                &msg.inner,
+                &msg.item,
                 msg.rect,
                 t,
                 self.client_in_focus,
@@ -378,7 +377,7 @@ impl Grid {
 
         if let Some(compl) = &self.completion {
             Self::draw_drawable(
-                &compl.inner,
+                &compl.item,
                 compl.rect,
                 t,
                 self.client_in_focus,
@@ -389,7 +388,7 @@ impl Grid {
 
         if let Some(popup) = &self.popup {
             Self::draw_drawable(
-                &popup.inner,
+                &popup.item,
                 popup.rect,
                 t,
                 self.client_in_focus,

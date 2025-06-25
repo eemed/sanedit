@@ -211,6 +211,12 @@ impl Changes {
             .any(|change| change.range.includes(range))
     }
 
+    fn is_replaced(&self, range: &BufferRange) -> Option<&Change> {
+        self.changes
+            .iter()
+            .find(|change| &change.range == range)
+    }
+
     pub fn keep_cursors_still(&self, cursors: &mut [Cursor]) {
         for cursor in cursors {
             match cursor.selection() {
@@ -251,7 +257,14 @@ impl Changes {
         for cursor in cursors {
             match cursor.selection() {
                 Some(range) => {
-                    if self.is_removed(&range) {
+                    if let Some(change) = self.is_replaced(&range) {
+                        let mut pos = range.start;
+                        pos += self.added(range.start, true);
+                        pos -= self.removed(range.start, true);
+
+                        let nsel = Range::new(pos - change.text().len() as u64, pos);
+                        cursor.select(&nsel);
+                    } else if self.is_removed(&range) {
                         let mut pos = range.start;
                         pos += self.added(range.start, true);
                         pos -= self.removed(range.start, true);

@@ -1433,7 +1433,109 @@ impl Window {
         }
 
         if changes.is_empty() {
-            return Ok(());
+            bail!("No changes");
+        }
+
+        let changes = Changes::from(changes);
+        self.change(buf, &changes)?;
+        Ok(())
+    }
+
+    pub fn uppercase_selections(&mut self, buf: &mut Buffer) -> Result<()> {
+        let mut changes = vec![];
+
+        for cursor in self.cursors.cursors() {
+            if let Some(range) = cursor.selection() {
+                let mut did_change = false;
+                let mut uppercase = String::new();
+                let slice = buf.slice(&range);
+                let mut chars = slice.chars();
+                while let Some((_, _, ch)) = chars.next() {
+                    did_change |= ch.is_lowercase();
+                    for nch in ch.to_uppercase() {
+                        uppercase.push(nch);
+                    }
+                }
+
+                if did_change {
+                    changes.push(Change::replace(range, uppercase.as_bytes()));
+                }
+            }
+        }
+
+        if changes.is_empty() {
+            bail!("No changes");
+        }
+
+        let changes = Changes::from(changes);
+        self.change(buf, &changes)?;
+        Ok(())
+    }
+
+    pub fn lowercase_selections(&mut self, buf: &mut Buffer) -> Result<()> {
+        let mut changes = vec![];
+
+        for cursor in self.cursors.cursors() {
+            if let Some(range) = cursor.selection() {
+                let mut did_change = false;
+                let mut lowercase = String::new();
+                let slice = buf.slice(&range);
+                let mut chars = slice.chars();
+                while let Some((_, _, ch)) = chars.next() {
+                    did_change |= ch.is_uppercase();
+                    for nch in ch.to_lowercase() {
+                        lowercase.push(nch);
+                    }
+                }
+
+                if did_change {
+                    changes.push(Change::replace(range, lowercase.as_bytes()));
+                }
+            }
+        }
+
+        if changes.is_empty() {
+            bail!("No changes");
+        }
+
+        let changes = Changes::from(changes);
+        self.change(buf, &changes)?;
+        Ok(())
+    }
+
+    pub fn rotate_selections(&mut self, buf: &mut Buffer, reverse: bool) -> Result<()> {
+        let mut changes = vec![];
+
+        let cursors = self.cursors.cursors();
+        let selecting: Vec<BufferRange> = cursors
+            .iter()
+            .filter(|c| c.is_selecting())
+            .map(|c| c.selection().unwrap())
+            .collect();
+        if selecting.len() < 2 {
+            bail!("Not enough selections to rotate")
+        }
+
+        if reverse {
+            let mut last = &selecting[0];
+            for range in selecting.iter().rev() {
+                let text: Vec<u8> = (&buf.slice(last)).into();
+                let change = Change::replace(range.clone(), &text);
+                changes.push(change);
+                last = range;
+            }
+        } else {
+            let mut last = selecting.last().unwrap();
+            for range in &selecting {
+                let text: Vec<u8> = (&buf.slice(last)).into();
+                let change = Change::replace(range.clone(), &text);
+                changes.push(change);
+                last = &range;
+            }
+        }
+
+        if changes.is_empty() {
+            bail!("No changes");
         }
 
         let changes = Changes::from(changes);

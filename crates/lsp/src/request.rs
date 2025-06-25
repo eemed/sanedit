@@ -126,4 +126,7 @@ pub enum RequestKind {
     PullDiagnostics {
         path: PathBuf,
     },
+    DocumentSymbols {
+        path: PathBuf,
+    }
 }

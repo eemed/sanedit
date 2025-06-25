@@ -11,6 +11,7 @@ use crate::ParseError;
 use crate::Parser;
 
 pub struct RegexRules(Rules);
+
 impl std::fmt::Display for RegexRules {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.0)

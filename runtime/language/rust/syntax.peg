@@ -23,7 +23,7 @@ digit = [0..9];
 hexdigit = digit / [a..fA..F];
 number_types = "usize" / "isize" / "f64" / "f32" / "u8" / "u16" / "u32" / "u64" / "i8" / "i16" / "i32" / "i64" / "i128" / "u128";
 @show @highlight(constant)
-uppercase_constant = [A..Z] [A..Z0..9_]* &stop;
+uppercase_constant = [A..Z] [A..Z0..9_]+ &stop;
 
 
 # Strings
@@ -57,7 +57,7 @@ combipath = path "{" ((ws / nl)* (combipath / typepath / functionpath) ","?)+ (w
 # Operators
 operator = closure / operators;
 @show @highlight(operator)
-operators = "|" "|"? / "&&" / "?" / "=" "="? / "!=" / ".." / "+" / "-" / "/" / "*" / "<" "="? " " / ">" "="? " " / "&" / "mut";
+operators = "!" !"(" / "|" "|"? / "&&" / "?" / "=" "="? / "!=" / ".." / "+" / "-" / "/" / "*" / "<" "="? " " / ">" "="? " " / "&" / "mut";
 closure =  bar (type / (!(bar / nl) .))* bar;
 @show @highlight(operator)
 bar = "|";

@@ -1,6 +1,6 @@
 [colors.window]
 default = "#1D1F21,#c1c1c1,"
-statusline = "#353535,#b1aaaa,"
+statusline = "#404040,#bbbbbb,"
 gutter = ",#4C4C4C,bold"
 end_of_buffer = ",#555555,"
 trailing_whitespace = ",#666666,"
@@ -39,7 +39,7 @@ description = ",#777777,"
 match = ",#d7875f,"
 
 [colors.prompt]
-default = "#B5BD68,#000000,"
+default = "#758F75,#000000,"
 message = ",,bold"
 userinput = ",,"
 

@@ -20,10 +20,13 @@ use crate::{
 };
 use sanedit_buffer::{PieceTree, PieceTreeSlice};
 use sanedit_core::{
-    prev_non_word, Change, Changes, Cursor, Diagnostic, GraphemeCategory, Group, Item, Language, Range
+    prev_non_word, Change, Changes, Cursor, Diagnostic, GraphemeCategory, Group, Item, Language,
+    Range,
 };
 use sanedit_lsp::{
-    CodeAction, CompletionItem, FileEdit, LSPClientParams, Notification, Position, PositionEncoding, PositionRange, RequestKind, RequestResult, Response, TextDiagnostic, WorkspaceEdit
+    CodeAction, CompletionItem, FileEdit, LSPClientParams, Notification, Position,
+    PositionEncoding, PositionRange, RequestKind, RequestResult, Response, Symbol, TextDiagnostic,
+    WorkspaceEdit,
 };
 
 use sanedit_messages::redraw::PopupMessage;
@@ -221,6 +224,9 @@ impl LSPJob {
                 self.handle_diagnostics(editor, path, None, diagnostics);
                 on_message_post = false;
             }
+            RequestResult::Symbols { symbols } => {
+                self.handle_symbols(editor, id, symbols);
+            }
         }
 
         // TODO better solution, this currently highlights syntax / searches
@@ -228,6 +234,40 @@ impl LSPJob {
         if on_message_post {
             run(editor, id, Hook::OnMessagePost);
         }
+    }
+
+    fn handle_symbols(&self, editor: &mut Editor, id: ClientId, symbols: Vec<Symbol>) {
+        let enc = get!(editor.lsp_for(id).map(|x| x.position_encoding()));
+        let options: Vec<Arc<Choice>> = symbols
+            .iter()
+            .enumerate()
+            .map(|(i, sym)| {
+                Choice::from_numbered_text(
+                    (i + 1) as u32,
+                    format!("{} - {}", sym.name, sym.kind.as_ref()),
+                )
+            })
+            .collect();
+        let job = MatcherJob::builder(id)
+            .options(Arc::new(options))
+            .handler(Prompt::matcher_result_handler)
+            .build();
+
+        let (win, _buf) = editor.win_buf_mut(id);
+        win.prompt = Prompt::builder()
+            .prompt("Select symbol")
+            .on_confirm(move |editor, id, out| {
+                let n = getf!(out.number()) as usize;
+                let symbol = &symbols[n - 1];
+                let (win, buf) = editor.win_buf_mut(id);
+                let slice = buf.slice(..);
+                let offset = symbol.position.to_offset(&slice, &enc);
+                win.goto_offset(offset, buf);
+
+                ActionResult::Ok
+            })
+            .build();
+        editor.job_broker.request(job);
     }
 
     fn complete(
@@ -249,14 +289,15 @@ impl LSPJob {
             let slice = slice.slice(start..cursor.pos());
             String::from(&slice)
         };
-        let add_own_snippets = matches!(cat, Some(GraphemeCategory::Whitespace) | Some(GraphemeCategory::EOL));
+        let add_own_snippets = matches!(
+            cat,
+            Some(GraphemeCategory::Whitespace) | Some(GraphemeCategory::EOL)
+        );
 
         win.completion = Completion::new(start, cursor.pos(), point);
 
-        let mut opts: Vec<Arc<Choice>> = opts
-            .into_iter()
-            .map(Choice::from_completion_item)
-            .collect();
+        let mut opts: Vec<Arc<Choice>> =
+            opts.into_iter().map(Choice::from_completion_item).collect();
 
         if add_own_snippets {
             opts.extend(editor.get_snippets(id));
@@ -405,7 +446,6 @@ impl LSPJob {
                 } else {
                     start
                 };
-                log::info!("edit: {edit:?}, converted: {start}..{end}");
                 Change::replace((start..end).into(), edit.text.as_bytes())
             })
             .collect();

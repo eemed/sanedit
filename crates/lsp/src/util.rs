@@ -401,3 +401,102 @@ impl Position {
         self.pos
     }
 }
+
+#[derive(Debug, Clone)]
+pub struct Symbol {
+    pub name: String,
+    pub kind: SymbolKind,
+    pub position: Position,
+}
+
+impl From<lsp_types::SymbolInformation> for Symbol {
+    fn from(symbol: lsp_types::SymbolInformation) -> Self {
+        let range = symbol.location.range;
+        let name = symbol.name;
+        let kind: SymbolKind = symbol.kind.into();
+
+        Symbol {
+            name,
+            kind,
+            position: range.start.into(),
+        }
+    }
+}
+
+impl From<lsp_types::DocumentSymbol> for Symbol {
+    fn from(symbol: lsp_types::DocumentSymbol) -> Self {
+        let range = symbol.range;
+        let name = symbol.name;
+        let kind: SymbolKind = symbol.kind.into();
+
+        Symbol {
+            name,
+            kind,
+            position: range.start.into(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, AsRefStr, Hash)]
+pub enum SymbolKind {
+    File,
+    Module,
+    Namespace,
+    Package,
+    Class,
+    Method,
+    Property,
+    Field,
+    Constructor,
+    Enum,
+    Interface,
+    Function,
+    Variable,
+    Constant,
+    String,
+    Number,
+    Boolean,
+    Array,
+    Object,
+    Key,
+    Null,
+    EnumMember,
+    Struct,
+    Event,
+    Operator,
+    TypeParameter,
+}
+
+impl From<lsp_types::SymbolKind> for SymbolKind {
+    fn from(value: lsp_types::SymbolKind) -> Self {
+        match value {
+            lsp_types::SymbolKind::FILE => SymbolKind::File,
+            lsp_types::SymbolKind::MODULE => SymbolKind::Module,
+            lsp_types::SymbolKind::NAMESPACE => SymbolKind::Namespace,
+            lsp_types::SymbolKind::PACKAGE => SymbolKind::Package,
+            lsp_types::SymbolKind::CLASS => SymbolKind::Class,
+            lsp_types::SymbolKind::METHOD => SymbolKind::Method,
+            lsp_types::SymbolKind::PROPERTY => SymbolKind::Property,
+            lsp_types::SymbolKind::FIELD => SymbolKind::Field,
+            lsp_types::SymbolKind::CONSTRUCTOR => SymbolKind::Constructor,
+            lsp_types::SymbolKind::ENUM => SymbolKind::Enum,
+            lsp_types::SymbolKind::INTERFACE => SymbolKind::Interface,
+            lsp_types::SymbolKind::FUNCTION => SymbolKind::Function,
+            lsp_types::SymbolKind::VARIABLE => SymbolKind::Variable,
+            lsp_types::SymbolKind::CONSTANT => SymbolKind::Constant,
+            lsp_types::SymbolKind::STRING => SymbolKind::String,
+            lsp_types::SymbolKind::NUMBER => SymbolKind::Number,
+            lsp_types::SymbolKind::BOOLEAN => SymbolKind::Boolean,
+            lsp_types::SymbolKind::ARRAY => SymbolKind::Array,
+            lsp_types::SymbolKind::OBJECT => SymbolKind::Object,
+            lsp_types::SymbolKind::KEY => SymbolKind::Key,
+            lsp_types::SymbolKind::NULL => SymbolKind::Null,
+            lsp_types::SymbolKind::ENUM_MEMBER => SymbolKind::EnumMember,
+            lsp_types::SymbolKind::STRUCT => SymbolKind::Struct,
+            lsp_types::SymbolKind::EVENT => SymbolKind::Event,
+            lsp_types::SymbolKind::OPERATOR => SymbolKind::Operator,
+            lsp_types::SymbolKind::TYPE_PARAMETER => SymbolKind::TypeParameter,
+            _ => unreachable!(),
+        }
+    }
+}

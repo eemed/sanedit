@@ -381,6 +381,11 @@ pub(crate) fn select() -> KeymapLayer {
         "I", cursors_to_lines_start,
         "A", cursors_to_lines_end,
         "s", select_pattern,
+        "u", lowercase,
+        "U", uppercase,
+        "r", rotate_selections,
+        "R", rotate_selections_backwards,
+
 
         "ctrl+x", cut,
         "ctrl+c", copy,

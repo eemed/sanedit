@@ -479,3 +479,51 @@ fn reload_file_from_disk(editor: &mut Editor, id: ClientId) -> ActionResult {
 
     ActionResult::Ok
 }
+
+#[action("Buffer: Selections to uppercase")]
+fn uppercase(editor: &mut Editor, id: ClientId) -> ActionResult {
+    let (win, buf) = editor.win_buf_mut(id);
+    if win.uppercase_selections(buf).is_ok() {
+        let hook = Hook::BufChanged(buf.id);
+        run(editor, id, hook);
+        ActionResult::Ok
+    } else {
+        ActionResult::Failed
+    }
+}
+
+#[action("Buffer: Selections to lowercase")]
+fn lowercase(editor: &mut Editor, id: ClientId) -> ActionResult {
+    let (win, buf) = editor.win_buf_mut(id);
+    if win.lowercase_selections(buf).is_ok() {
+        let hook = Hook::BufChanged(buf.id);
+        run(editor, id, hook);
+        ActionResult::Ok
+    } else {
+        ActionResult::Failed
+    }
+}
+
+#[action("Buffer: Rotate selections")]
+fn rotate_selections(editor: &mut Editor, id: ClientId) -> ActionResult {
+    let (win, buf) = editor.win_buf_mut(id);
+    if win.rotate_selections(buf, false).is_ok() {
+        let hook = Hook::BufChanged(buf.id);
+        run(editor, id, hook);
+        ActionResult::Ok
+    } else {
+        ActionResult::Failed
+    }
+}
+
+#[action("Buffer: Rotate selections backwards")]
+fn rotate_selections_backwards(editor: &mut Editor, id: ClientId) -> ActionResult {
+    let (win, buf) = editor.win_buf_mut(id);
+    if win.rotate_selections(buf, true).is_ok() {
+        let hook = Hook::BufChanged(buf.id);
+        run(editor, id, hook);
+        ActionResult::Ok
+    } else {
+        ActionResult::Failed
+    }
+}

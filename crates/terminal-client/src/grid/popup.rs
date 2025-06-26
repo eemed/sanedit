@@ -62,6 +62,8 @@ fn below(screen: &Rect, win: &Rect, popup: &Popup) -> Rect {
     let Point { mut x, mut y } = popup.point + win.position();
     let Size { width, height } = popup_size(screen, popup);
 
+    y += 1;
+
     if y + height > screen.height {
         y = 0;
     }
@@ -159,7 +161,11 @@ impl Drawable for Popup {
         }
     }
 
-    fn cursor(&self, _ctx: &UIContext) -> DrawCursor {
-        DrawCursor::Hide
+    fn cursor(&self, ctx: &UIContext) -> DrawCursor {
+        if ctx.rect.contains(&ctx.cursor_position) {
+            DrawCursor::Hide
+        } else {
+            DrawCursor::Ignore
+        }
     }
 }

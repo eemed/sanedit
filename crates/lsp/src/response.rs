@@ -1,7 +1,7 @@
 use std::{collections::BTreeMap, path::PathBuf};
 
 use crate::util::{
-    CodeAction, CompletionItem, FileEdit, Position, PositionRange, Symbol, TextDiagnostic, WorkspaceEdit
+    CodeAction, CompletionItem, FileEdit, Position, PositionRange, Signatures, Symbol, TextDiagnostic, WorkspaceEdit
 };
 
 #[derive(Debug, Clone)]
@@ -58,7 +58,10 @@ pub enum RequestResult {
     Error {
         msg: String,
     },
-    Symbols {
-        symbols: Vec<Symbol>,
+    WorkspaceSymbols {
+        symbols: BTreeMap<PathBuf, Vec<Symbol>>,
     },
+    SignatureHelp {
+        signatures: Signatures,
+    }
 }

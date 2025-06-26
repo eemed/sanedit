@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use sanedit_messages::redraw::{Style, Theme, ThemeField};
+use sanedit_messages::redraw::{Point, Style, Theme, ThemeField};
 
 use crate::grid::Rect;
 
@@ -9,6 +9,7 @@ pub(crate) struct UIContext {
     pub theme: Arc<Theme>,
     pub rect: Rect,
     pub client_in_focus: bool,
+    pub cursor_position: Point,
 }
 
 impl UIContext {

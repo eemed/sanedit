@@ -126,7 +126,9 @@ pub enum RequestKind {
     PullDiagnostics {
         path: PathBuf,
     },
-    DocumentSymbols {
+    WorkspaceSymbols,
+    SignatureHelp {
         path: PathBuf,
-    }
+        position: Position,
+    },
 }

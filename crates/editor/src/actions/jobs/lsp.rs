@@ -24,12 +24,10 @@ use sanedit_core::{
     Range,
 };
 use sanedit_lsp::{
-    CodeAction, CompletionItem, FileEdit, LSPClientParams, Notification, Position,
-    PositionEncoding, PositionRange, RequestKind, RequestResult, Response, Symbol, TextDiagnostic,
-    WorkspaceEdit,
+    CodeAction, CompletionItem, FileEdit, LSPClientParams, Notification, Position, PositionEncoding, PositionRange, RequestKind, RequestResult, Response, Signatures, Symbol, TextDiagnostic, WorkspaceEdit
 };
 
-use sanedit_messages::redraw::PopupMessage;
+use sanedit_messages::redraw::{Popup, PopupMessage};
 use sanedit_server::{ClientId, Job, JobContext, JobResult};
 
 use super::MatcherJob;
@@ -224,8 +222,11 @@ impl LSPJob {
                 self.handle_diagnostics(editor, path, None, diagnostics);
                 on_message_post = false;
             }
-            RequestResult::Symbols { symbols } => {
-                self.handle_symbols(editor, id, symbols);
+            RequestResult::WorkspaceSymbols { symbols } => {
+                self.handle_workspace_symbols(editor, id, symbols);
+            }
+            RequestResult::SignatureHelp { signatures } => {
+                self.handle_signature_help(editor, id, signatures);
             }
         }
 
@@ -236,38 +237,47 @@ impl LSPJob {
         }
     }
 
-    fn handle_symbols(&self, editor: &mut Editor, id: ClientId, symbols: Vec<Symbol>) {
-        let enc = get!(editor.lsp_for(id).map(|x| x.position_encoding()));
-        let options: Vec<Arc<Choice>> = symbols
-            .iter()
-            .enumerate()
-            .map(|(i, sym)| {
-                Choice::from_numbered_text(
-                    (i + 1) as u32,
-                    format!("{} - {}", sym.name, sym.kind.as_ref()),
-                )
-            })
-            .collect();
-        let job = MatcherJob::builder(id)
-            .options(Arc::new(options))
-            .handler(Prompt::matcher_result_handler)
-            .build();
-
+    fn handle_signature_help(&self, editor: &mut Editor, id: ClientId, signatures: Signatures) {
         let (win, _buf) = editor.win_buf_mut(id);
-        win.prompt = Prompt::builder()
-            .prompt("Select symbol")
-            .on_confirm(move |editor, id, out| {
-                let n = getf!(out.number()) as usize;
-                let symbol = &symbols[n - 1];
-                let (win, buf) = editor.win_buf_mut(id);
-                let slice = buf.slice(..);
-                let offset = symbol.position.to_offset(&slice, &enc);
-                win.goto_offset(offset, buf);
+        for signature in signatures.signatures {
+            let mut text = signature.name;
+            let msg = PopupMessage { severity: None, text };
+            win.push_popup(msg);
+        }
+    }
 
-                ActionResult::Ok
-            })
-            .build();
-        editor.job_broker.request(job);
+    fn handle_workspace_symbols(
+        &self,
+        editor: &mut Editor,
+        id: ClientId,
+        symbols: BTreeMap<PathBuf, Vec<Symbol>>,
+    ) {
+        let (win, _buf) = editor.win_buf_mut(id);
+        win.locations.clear();
+        locations::show_locations.execute(editor, id);
+
+        let enc = get!(editor.lsp_for(id).map(|x| x.position_encoding()));
+        let (win, _buf) = win_buf!(editor, id);
+
+        for (path, symbols) in symbols {
+            let mut group = Group::new(&path);
+            for sym in symbols {
+                let name = format!("{} {}", sym.kind.as_ref(), sym.name);
+                let offset = if let Some(buf) = editor.buffers.find(&path) {
+                    let buf = editor.buffers.get(buf).unwrap();
+                    let slice = buf.slice(..);
+                    sym.position.to_offset(&slice, &enc)
+                } else if let Ok(pt) = PieceTree::from_path(&path) {
+                    let slice = pt.slice(..);
+                    sym.position.to_offset(&slice, &enc)
+                } else {
+                    continue;
+                };
+                let item = Item::new(&name, None, Some(offset), vec![]);
+                group.push(item);
+            }
+            win.locations.push(group);
+        }
     }
 
     fn complete(
@@ -490,13 +500,13 @@ impl LSPJob {
         let (win, _buf) = editor.win_buf_mut(id);
         win.locations.clear();
 
-        // TODO should this be auto shown?
         locations::show_locations.execute(editor, id);
 
-        let (win, buf) = editor.win_buf_mut(id);
+        let (win, _buf) = win_buf!(editor, id);
 
         for (path, references) in references {
-            if buf.path() == Some(&path) {
+            if let Some(bid) = editor.buffers.find(&path) {
+                let buf = editor.buffers.get(bid).unwrap();
                 let slice = buf.slice(..);
                 let group = read_references(&slice, &path, &references, &enc);
                 win.locations.push(group);

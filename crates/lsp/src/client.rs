@@ -9,10 +9,10 @@ use crate::request::{Notification, RequestKind, ToLSP};
 use crate::response::NotificationResult;
 use crate::util::{
     path_to_uri, CodeAction, CompletionItem, CompletionItemKind, FileEdit, Position, Symbol,
-    SymbolKind,
 };
 use crate::{
-    PositionEncoding, PositionRange, Request, RequestResult, Response, TextDiagnostic, TextEdit,
+    PositionEncoding, PositionRange, Request, RequestResult, Response, Signatures, TextDiagnostic,
+    TextEdit,
 };
 
 use lsp_types::notification::Notification as _;
@@ -269,7 +269,10 @@ impl Handler {
                 RequestKind::PullDiagnostics { path } => {
                     self.pull_diagnostics(req.id, path).await?
                 }
-                RequestKind::DocumentSymbols { path } => self.document_symbol(req.id, path).await?,
+                RequestKind::WorkspaceSymbols => self.workspace_symbol(req.id).await?,
+                RequestKind::SignatureHelp { path, position } => {
+                    self.signature_help(req.id, path, position).await?
+                }
             },
             ToLSP::Notification(notif) => match notif {
                 Notification::DidOpen {
@@ -291,42 +294,92 @@ impl Handler {
         Ok(())
     }
 
-    async fn document_symbol(&mut self, id: u32, path: PathBuf) -> Result<(), LSPError> {
-        let params = lsp_types::DocumentSymbolParams {
-            text_document: lsp_types::TextDocumentIdentifier {
-                uri: path_to_uri(&path),
+    async fn signature_help(
+        &mut self,
+        id: u32,
+        path: PathBuf,
+        position: Position,
+    ) -> Result<(), LSPError> {
+        let params = lsp_types::SignatureHelpParams {
+            context: None,
+            work_done_progress_params: lsp_types::WorkDoneProgressParams {
+                work_done_token: None,
             },
+            text_document_position_params: lsp_types::TextDocumentPositionParams {
+                text_document: lsp_types::TextDocumentIdentifier {
+                    uri: path_to_uri(&path),
+                },
+                position: position.as_lsp(),
+            },
+        };
+
+        let response = self
+            .request::<lsp_types::request::SignatureHelpRequest>(id, &params)
+            .await?;
+
+        let result = match response {
+            Some(help) => RequestResult::SignatureHelp {
+                signatures: Signatures::from(help),
+            },
+            None => RequestResult::Error {
+                msg: format!("No response"),
+            },
+        };
+
+        self.response.send(Response::Request { id, result }).await?;
+        Ok(())
+    }
+
+    async fn workspace_symbol(&mut self, id: u32) -> Result<(), LSPError> {
+        let params = lsp_types::WorkspaceSymbolParams {
             work_done_progress_params: lsp_types::WorkDoneProgressParams {
                 work_done_token: None,
             },
             partial_result_params: lsp_types::PartialResultParams {
                 partial_result_token: None,
             },
+            query: String::new(),
         };
 
         let response = self
-            .request::<lsp_types::request::DocumentSymbolRequest>(id, &params)
+            .request::<lsp_types::request::WorkspaceSymbolRequest>(id, &params)
             .await?;
 
         let result = match response {
             Some(response) => {
-                let mut result_symbols: Vec<Symbol> = vec![];
+                let mut result_symbols: BTreeMap<PathBuf, Vec<Symbol>> = BTreeMap::default();
                 match response {
-                    lsp_types::DocumentSymbolResponse::Flat(symbols) => {
+                    lsp_types::WorkspaceSymbolResponse::Flat(symbols) => {
                         for symbol in symbols {
-                            result_symbols.push(Symbol::from(symbol));
+                            let path = PathBuf::from(symbol.location.uri.path().as_str());
+                            let entry = result_symbols.entry(path);
+                            let value = entry.or_default();
+                            value.push(Symbol::from(symbol));
                         }
                     }
-                    lsp_types::DocumentSymbolResponse::Nested(symbols) => {
-                        let mut stack = vec![];
-                        stack.extend(symbols);
+                    lsp_types::WorkspaceSymbolResponse::Nested(symbols) => {
+                        for symbol in symbols {
+                            let path = {
+                                let uri = match &symbol.location {
+                                    lsp_types::OneOf::Left(l) => &l.uri,
+                                    lsp_types::OneOf::Right(r) => &r.uri,
+                                };
+                                PathBuf::from(uri.path().as_str())
+                            };
 
-                        while let Some(mut symbol) = stack.pop() {
-                            if let Some(children) = std::mem::take(&mut symbol.children) {
-                                stack.extend(children);
-                            }
-                            result_symbols.push(Symbol::from(symbol));
+                            let entry = result_symbols.entry(path);
+                            let value = entry.or_default();
+                            value.push(Symbol::from(symbol));
                         }
+                        // let mut stack = vec![];
+                        // stack.extend(symbols);
+
+                        // while let Some(mut symbol) = stack.pop() {
+                        //     if let Some(children) = std::mem::take(&mut symbol.children) {
+                        //         stack.extend(children);
+                        //     }
+                        //     result_symbols.push(Symbol::from(symbol));
+                        // }
                     }
                 }
 
@@ -335,7 +388,7 @@ impl Handler {
                         msg: format!("No symbols found"),
                     }
                 } else {
-                    RequestResult::Symbols {
+                    RequestResult::WorkspaceSymbols {
                         symbols: result_symbols,
                     }
                 }

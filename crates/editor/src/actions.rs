@@ -325,6 +325,7 @@ pub(crate) const COMMANDS: &[Action] = &[
     lsp::next_diagnostic,
     lsp::prev_diagnostic,
     lsp::show_symbols,
+    lsp::show_signature_help,
 
     popup::close,
 

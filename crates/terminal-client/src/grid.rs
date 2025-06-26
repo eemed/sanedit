@@ -14,8 +14,8 @@ use items::Kind;
 use popup::popup_rect;
 use sanedit_messages::{
     redraw::{
-        statusline::Statusline, window::Window, Cell, Component, Cursor, Diffable as _, Popup,
-        PopupComponent, Redraw, Size, StatusMessage, Theme,
+        statusline::Statusline, window::Window, Cell, Component, Cursor, Diffable as _, Point,
+        Popup, PopupComponent, Redraw, Size, StatusMessage, Theme,
     },
     Message,
 };
@@ -282,6 +282,7 @@ impl Grid {
             theme: theme.clone(),
             rect,
             client_in_focus,
+            cursor_position: cursor.as_ref().map(|c| c.point).unwrap_or(Point::default()),
         };
 
         match drawable.cursor(&ctx) {

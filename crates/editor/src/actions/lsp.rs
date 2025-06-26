@@ -227,11 +227,28 @@ fn goto_definition(editor: &mut Editor, id: ClientId) -> ActionResult {
     .into()
 }
 
-#[action("LSP: Show symbols")]
+#[action("LSP: Workspace symbols to locations")]
 fn show_symbols(editor: &mut Editor, id: ClientId) -> ActionResult {
-    lsp_request(editor, id, move |win, _buf, path, slice, lsp| {
-        let kind = RequestKind::DocumentSymbols { path };
-        Some((kind, vec![]))
+    lsp_request(editor, id, move |_win, _buf, _path, _slice, _lsp| {
+        Some((RequestKind::WorkspaceSymbols, vec![]))
+    })
+    .into()
+}
+
+#[action("LSP: Signature help")]
+fn show_signature_help(editor: &mut Editor, id: ClientId) -> ActionResult {
+    lsp_request(editor, id, move |win, buf, path, slice, lsp| {
+        let offset = win.cursors.primary().pos();
+        let position = Position::new(offset, &slice, &lsp.position_encoding());
+        let kind = RequestKind::SignatureHelp { path, position };
+        Some((
+            kind,
+            vec![
+                Constraint::Buffer(buf.id),
+                Constraint::BufferVersion(buf.total_changes_made()),
+                Constraint::CursorPosition(offset),
+            ],
+        ))
     })
     .into()
 }

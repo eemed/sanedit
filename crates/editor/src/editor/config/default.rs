@@ -354,6 +354,7 @@ pub(crate) fn insert() -> KeymapLayer {
         "enter", insert_newline,
         "tab", insert_tab,
         "btab", backtab,
+        "alt+k", show_signature_help,
     );
 
     KeymapLayer {

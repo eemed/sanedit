@@ -431,7 +431,7 @@ impl Window {
             return;
         };
         let changes = &edit.changes;
-        changes.move_cursors(self.cursors.cursors_mut());
+        changes.move_cursors(self.cursors.cursors_mut(), self.mode == Mode::Select);
 
         self.cursors.merge_overlapping();
         self.ensure_cursor_on_grapheme_boundary(buf);
@@ -509,7 +509,7 @@ impl Window {
         let aux = self.window_aux(mark.into());
         let result = buf.apply_changes(changes)?;
 
-        changes.move_cursors(self.cursors.cursors_mut());
+        changes.move_cursors(self.cursors.cursors_mut(), self.mode == Mode::Select);
         self.cursors.merge_overlapping();
 
         if let Some(id) = result.created_snapshot {

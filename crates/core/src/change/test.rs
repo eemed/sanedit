@@ -8,7 +8,7 @@ fn cursor_insert_after_border() {
 
     let mut cursors = vec![Cursor::new_select(&Range::new(0, 10))];
     let changes = Changes::new(&[Change::insert(10, b"hello")]);
-    changes.move_cursors(&mut cursors);
+    changes.move_cursors(&mut cursors, false);
     let cursor = &cursors[0];
     assert_eq!(0, cursor.start());
     assert_eq!(10, cursor.end());
@@ -22,7 +22,7 @@ fn cursor_insert_after() {
 
     let mut cursors = vec![Cursor::new_select(&Range::new(0, 10))];
     let changes = Changes::new(&[Change::insert(12, b"hello")]);
-    changes.move_cursors(&mut cursors);
+    changes.move_cursors(&mut cursors, false);
     let cursor = &cursors[0];
     assert_eq!(0, cursor.start());
     assert_eq!(10, cursor.end());
@@ -36,7 +36,7 @@ fn cursor_insert_before_border() {
 
     let mut cursors = vec![Cursor::new_select(&Range::new(10, 20))];
     let changes = Changes::new(&[Change::insert(9, b"hello")]);
-    changes.move_cursors(&mut cursors);
+    changes.move_cursors(&mut cursors, false);
     let cursor = &cursors[0];
     assert_eq!(15, cursor.start());
     assert_eq!(25, cursor.end());
@@ -50,7 +50,7 @@ fn cursor_insert_after_() {
 
     let mut cursors = vec![Cursor::new_select(&Range::new(10, 20))];
     let changes = Changes::new(&[Change::insert(5, b"hello")]);
-    changes.move_cursors(&mut cursors);
+    changes.move_cursors(&mut cursors, false);
     let cursor = &cursors[0];
     assert_eq!(15, cursor.start());
     assert_eq!(25, cursor.end());
@@ -64,7 +64,7 @@ fn cursor_insert_middle() {
 
     let mut cursors = vec![Cursor::new_select(&Range::new(0, 10))];
     let changes = Changes::new(&[Change::insert(7, b"hello")]);
-    changes.move_cursors(&mut cursors);
+    changes.move_cursors(&mut cursors, false);
     let cursor = &cursors[0];
     assert_eq!(0, cursor.start());
     assert_eq!(15, cursor.end());
@@ -78,7 +78,7 @@ fn cursor_insert_before_overlap() {
 
     let mut cursors = vec![Cursor::new_select(&Range::new(10, 20))];
     let changes = Changes::new(&[Change::insert(8, b"hello")]);
-    changes.move_cursors(&mut cursors);
+    changes.move_cursors(&mut cursors, false);
     let cursor = &cursors[0];
     assert_eq!(15, cursor.start());
     assert_eq!(25, cursor.end());
@@ -92,7 +92,7 @@ fn cursor_insert_contains() {
 
     let mut cursors = vec![Cursor::new_select(&Range::new(0, 10))];
     let changes = Changes::new(&[Change::insert(2, b"hello")]);
-    changes.move_cursors(&mut cursors);
+    changes.move_cursors(&mut cursors, false);
     let cursor = &cursors[0];
     assert_eq!(0, cursor.start());
     assert_eq!(15, cursor.end());
@@ -108,7 +108,7 @@ fn cursor_insert_middle_of_change() {
     let mut change = Change::insert(0, b"helloworld");
     change.cursor_offset = Some(5);
     let changes = Changes::new(&[change]);
-    changes.move_cursors(&mut cursors);
+    changes.move_cursors(&mut cursors, false);
     let cursor = &cursors[0];
     assert_eq!(5, cursor.pos());
 }

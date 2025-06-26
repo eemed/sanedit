@@ -212,9 +212,7 @@ impl Changes {
     }
 
     fn is_replaced(&self, range: &BufferRange) -> Option<&Change> {
-        self.changes
-            .iter()
-            .find(|change| &change.range == range)
+        self.changes.iter().find(|change| &change.range == range)
     }
 
     pub fn keep_cursors_still(&self, cursors: &mut [Cursor]) {
@@ -253,18 +251,24 @@ impl Changes {
 
     /// Moves cursors according to this change,
     /// Wont handle undo or redo
-    pub fn move_cursors(&self, cursors: &mut [Cursor]) {
+    pub fn move_cursors(&self, cursors: &mut [Cursor], reselect_replacement: bool) {
         for cursor in cursors {
             match cursor.selection() {
                 Some(range) => {
-                    if let Some(change) = self.is_replaced(&range) {
-                        let mut pos = range.start;
-                        pos += self.added(range.start, true);
-                        pos -= self.removed(range.start, true);
+                    if reselect_replacement {
+                        if let Some(change) = self.is_replaced(&range) {
+                            let mut pos = range.start;
+                            pos += self.added(range.start, true);
+                            pos -= self.removed(range.start, true);
 
-                        let nsel = Range::new(pos - change.text().len() as u64, pos);
-                        cursor.select(&nsel);
-                    } else if self.is_removed(&range) {
+                            let nsel = Range::new(pos - change.text().len() as u64, pos);
+                            cursor.select(&nsel);
+
+                            continue;
+                        }
+                    }
+
+                    if self.is_removed(&range) {
                         let mut pos = range.start;
                         pos += self.added(range.start, true);
                         pos -= self.removed(range.start, true);

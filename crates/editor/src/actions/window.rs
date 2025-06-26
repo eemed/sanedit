@@ -309,10 +309,8 @@ fn on_mode_leave(editor: &mut Editor, id: ClientId) -> ActionResult {
 #[action("Mode: Normal")]
 fn normal_mode(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
-    if win.mode == Mode::Select {
-        win.cursors.stop_selection();
-    }
 
+    win.cursors.stop_selection();
     win.snippets.clear();
     remove_indent(editor, id);
     focus_with_mode(editor, id, Focus::Window, Mode::Normal);

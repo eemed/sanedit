@@ -437,6 +437,23 @@ impl From<lsp_types::DocumentSymbol> for Symbol {
     }
 }
 
+impl From<lsp_types::WorkspaceSymbol> for Symbol {
+    fn from(symbol: lsp_types::WorkspaceSymbol) -> Self {
+        let position = match symbol.location {
+            lsp_types::OneOf::Left(left) => left.range.start.into(),
+            lsp_types::OneOf::Right(_) => unreachable!(),
+        };
+        let name = symbol.name;
+        let kind: SymbolKind = symbol.kind.into();
+
+        Symbol {
+            name,
+            kind,
+            position,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, AsRefStr, Hash)]
 pub enum SymbolKind {
     File,
@@ -498,5 +515,86 @@ impl From<lsp_types::SymbolKind> for SymbolKind {
             lsp_types::SymbolKind::TYPE_PARAMETER => SymbolKind::TypeParameter,
             _ => unreachable!(),
         }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Signatures {
+    /// All signatures, functions may be overloaded
+    pub signatures: Vec<Signature>,
+    pub active_signature: Option<usize>,
+}
+
+impl Signatures {
+    pub fn active_signature(&self) -> Option<&Signature> {
+        let pos = self.active_signature?;
+        self.signatures.get(pos)
+    }
+}
+
+impl From<lsp_types::SignatureHelp> for Signatures {
+    fn from(help: lsp_types::SignatureHelp) -> Self {
+        let mut signatures: Vec<Signature> = help.signatures.into_iter().map(Signature::from).collect();
+        let active_signature = help.active_signature.map(|n| n as usize);
+        if let Some(active) = active_signature {
+            let signature = &mut signatures[active];
+            if signature.active_parameter.is_none() {
+                signature.active_parameter = help.active_parameter.map(|n| n as usize);
+            }
+        }
+        Signatures { signatures, active_signature }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Signature {
+    pub name: String,
+    pub params: Vec<SignatureParameter>,
+    pub active_parameter: Option<usize>,
+}
+
+impl Signature {
+    pub fn active_parameter(&self) -> Option<&SignatureParameter> {
+        let pos = self.active_parameter?;
+        self.params.get(pos)
+    }
+}
+
+impl From<lsp_types::SignatureInformation> for Signature {
+    fn from(info: lsp_types::SignatureInformation) -> Self {
+        let params = info
+            .parameters
+            .unwrap_or(vec![])
+            .into_iter()
+            .map(|param| SignatureParameter::new(param, &info.label))
+            .collect();
+
+        let active_parameter = info.active_parameter.map(|n| n as usize);
+
+        Signature {
+            name: info.label,
+            params,
+            active_parameter,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct SignatureParameter {
+    pub name: String,
+}
+
+impl SignatureParameter {
+    pub fn new(param: lsp_types::ParameterInformation, label: &str) -> SignatureParameter {
+        let name = match param.label {
+            lsp_types::ParameterLabel::Simple(name) => name,
+            lsp_types::ParameterLabel::LabelOffsets(offsets) => {
+                let start = offsets[0] as usize;
+                let end = offsets[1] as usize;
+                label[start..end].into()
+            }
+        };
+
+        SignatureParameter { name }
     }
 }

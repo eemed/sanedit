@@ -168,8 +168,8 @@ impl Default for Hooks {
         hooks.register(CursorMoved, completion::completion_abort);
         hooks.register(BufChanged, completion::send_word);
         hooks.register(BufCreated, indent::detect_indent);
-        hooks.register(CursorMoved, popup::close_popup);
-        hooks.register(ModeEnter, popup::close_popup);
+        hooks.register(CursorMoved, popup::close);
+        hooks.register(ModeEnter, popup::close);
 
         // Syntax
         hooks.register(OnMessagePost, syntax::reparse_view);

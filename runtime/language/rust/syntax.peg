@@ -7,7 +7,7 @@ nl = "\n" / "\r\n";
 ws = WHITESPACE;
 
 @show @highlight
-keyword = ("static" / "loop" / "let" / "match" / "if" / "else" / "while" /
+keyword = ("unsafe" / "static" / "loop" / "let" / "match" / "if" / "else" / "while" /
           "break" / "continue" / "move" / "async" / "dyn" / "return" /
           "for" / "in" / "as" / "pub(crate)" / "pub(super)" / "pub" / "use" /
           "fn" / "impl" / "struct" / "enum" / "const" / "trait" /

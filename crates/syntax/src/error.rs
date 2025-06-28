@@ -13,4 +13,7 @@ pub enum ParseError {
 
     #[error("Failed to parse: {0}")]
     Parse(String),
+
+    #[error("JIT is unsupported")]
+    JitUnsupported,
 }

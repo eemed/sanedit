@@ -101,9 +101,9 @@ impl Rect {
 
     pub fn contains(&self, point: &Point) -> bool {
         self.x <= point.x
-            && point.x <= self.x + self.width
+            && point.x < self.x + self.width
             && self.y <= point.y
-            && point.y <= self.y + self.height
+            && point.y < self.y + self.height
     }
 
     /// Rightmost position this rect reaches x + width

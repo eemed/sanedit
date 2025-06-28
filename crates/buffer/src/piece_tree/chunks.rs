@@ -56,6 +56,10 @@ impl<'a> Chunks<'a> {
         let chunk = read_piece(self.pt, &piece)?;
         Some((p_pos, chunk))
     }
+
+    pub fn buffer_len(&self) -> u64 {
+        self.pt.len()
+    }
 }
 
 #[inline(always)]

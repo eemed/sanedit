@@ -13,16 +13,14 @@ use self::compiler::Program;
 use std::io;
 
 use anyhow::bail;
-use jit::Jit;
 
 use crate::{
     grammar::{Annotation, Rules},
-    parsing_machine::{
-        compiler::Compiler,
-        stack::{Stack, StackEntry},
-    },
+    parsing_machine::stack::{Stack, StackEntry},
     ByteSource, ParseError,
 };
+pub(crate) use compiler::Compiler;
+use jit::Jit;
 
 pub(crate) use self::op::{Addr, Operation};
 
@@ -116,7 +114,7 @@ impl Parser {
         let program = compiler
             .compile()
             .map_err(|err| ParseError::Preprocess(err.to_string()))?;
-        let jit = Jit::new(&program).expect("cannot create JIT, unsupported platform");
+        let jit = Jit::from_program(&program).ok_or(ParseError::JitUnsupported)?;
         let parser = Parser {
             rules,
             program,
@@ -165,9 +163,9 @@ impl Parser {
 
     /// Match whole text and return captures, fails if the text does not match
     pub fn parse<B: ByteSource>(&self, mut reader: B) -> Result<CaptureList, ParseError> {
-        if let Some(ref jit) = self.jit {
-            return jit.parse(&mut reader);
-        }
+        // if let Some(ref jit) = self.jit {
+        //     return jit.parse(&mut reader);
+        // }
         self.do_parse(&mut reader, 0)
             .map(|(caps, _)| caps)
             .map_err(|err| ParseError::Parse(err.to_string()))

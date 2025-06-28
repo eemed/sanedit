@@ -12,6 +12,7 @@ use super::{
 pub(crate) fn popup_rect(screen: Rect, win: Rect, popup: &Popup) -> Rect {
     let over = above(&screen, &win, &popup);
     let screen_point = popup.point + win.position();
+    log::info!("OVER: {over:?}, sp: {screen_point:?}");
     if !over.contains(&screen_point) {
         return over;
     }

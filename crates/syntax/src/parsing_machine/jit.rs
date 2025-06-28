@@ -1,7 +1,9 @@
+use crate::grammar::Rules;
+use crate::source::ChunkSource;
 use crate::{ByteSource, ParseError};
 
 use super::compiler::Program;
-use super::CaptureList;
+use super::{CaptureList, Compiler};
 use dynasmrt::{dynasm, AssemblyOffset, DynamicLabel, DynasmApi, DynasmLabelApi, ExecutableBuffer};
 use rustc_hash::FxHashMap;
 
@@ -13,11 +15,41 @@ macro_rules! asm {
         dynasm!($ops
             ; .arch x64
             // ; .alias subject_len, rcx
+            ; .alias var, r13
+            ; .alias state, r12
             ; .alias subject_end, rcx
             ; .alias subject_pointer, rbx
             $($t)*
         )
     }
+}
+
+macro_rules! prologue {
+    ($ops:ident) => {{
+        let start = $ops.offset();
+        asm!($ops
+            ; mov subject_pointer, rdi
+            ; mov subject_end, rsi
+            // ; sub subject_end, subject_pointer
+            // ; mov rax, subject_end
+        );
+        start
+    }};
+}
+struct State<'a, C: ChunkSource> {
+    bytes: &'a mut C,
+}
+
+impl<'a, C: ChunkSource> State<'a, C> {
+    // unsafe extern "C" fn len(state: *mut State<C>) -> u64 {
+    //     let state = &mut *state;
+    //     state.bytes.len() as u64
+    // }
+
+    // unsafe extern "C" fn get(state: *mut State<C>, at: *mut u64) -> u8 {
+    //     let state = &mut *state;
+    //     state.bytes[*at as usize]
+    // }
 }
 
 #[derive(Debug)]
@@ -27,8 +59,16 @@ pub(crate) struct Jit {
 }
 
 impl Jit {
+    pub fn new(rules: &str) -> Result<Jit, ParseError> {
+        let rules = Rules::parse(std::io::Cursor::new(rules)).unwrap();
+        let compiler = Compiler::new(&rules);
+        let program = compiler.compile().unwrap();
+        Jit::from_program(&program).ok_or(ParseError::JitUnsupported)
+    }
+
+
     /// Return compiled verions of pattern if required instruction sets are available
-    pub fn new(program: &Program) -> Option<Jit> {
+    pub fn from_program(program: &Program) -> Option<Jit> {
         if !Self::is_available() {
             return None;
         }
@@ -38,11 +78,19 @@ impl Jit {
         Some(Jit { program, start })
     }
 
-    pub fn parse<B: ByteSource>(&self, reader: &mut B) -> Result<CaptureList, ParseError> {
-        let peg_program: extern "win64" fn() -> bool =
+    pub fn parse<C: ChunkSource>(&self, reader: &mut C) -> Result<CaptureList, ParseError> {
+        let state = State { bytes: reader };
+        let (_start, chunk) = state.bytes.get();
+        let chunk = chunk.as_ref();
+
+        let peg_program: extern "C" fn(*const u8, *const u8) -> i64 =
             unsafe { mem::transmute(self.program.ptr(self.start)) };
-        let ok = peg_program();
-        if ok {
+        let start = chunk.as_ptr();
+        let end = unsafe { start.add(chunk.len()) };
+        println!("Start: {start:?}, end: {end:?}");
+        let res = peg_program(start, end);
+        println!("Return code: {res}");
+        if res == 0 {
             Ok(CaptureList::new())
         } else {
             Err(ParseError::Parse("No match".into()))
@@ -50,21 +98,22 @@ impl Jit {
     }
 
     pub fn is_available() -> bool {
-        #[cfg(not(target_feature = "sse2"))]
-        {
-            false
-        }
-        #[cfg(target_feature = "sse2")]
-        {
-            #[cfg(target_feature = "avx2")]
-            {
-                true
-            }
-            #[cfg(not(target_feature = "avx2"))]
-            {
-                std::is_x86_feature_detected!("avx2")
-            }
-        }
+        true
+        // #[cfg(not(target_feature = "sse2"))]
+        // {
+        //     false
+        // }
+        // #[cfg(target_feature = "sse2")]
+        // {
+        //     #[cfg(target_feature = "avx2")]
+        //     {
+        //         true
+        //     }
+        //     #[cfg(not(target_feature = "avx2"))]
+        //     {
+        //         std::is_x86_feature_detected!("avx2")
+        //     }
+        // }
     }
 
     fn compile(program: &Program) -> (ExecutableBuffer, AssemblyOffset) {
@@ -73,15 +122,16 @@ impl Jit {
         let mut labels: FxHashMap<String, DynamicLabel> = FxHashMap::default();
         let mut ops = dynasmrt::x64::Assembler::new().unwrap();
 
-        let start = ops.offset();
+        let start = prologue!(ops);
         let mut iter = program.ops.iter().enumerate();
         while let Some((i, op)) = iter.next() {
-            println!("------------------");
-            println!("{ops:?}");
+            // println!("------------------");
+            // println!("{ops:?}");
             // Insert labels where necessary
             if let Some(label) = program.names.get(&i) {
                 let entry = labels.entry(label.clone());
                 let dyn_label = entry.or_insert_with(|| ops.new_dynamic_label()).clone();
+                println!("LABEL: {op:?}");
                 asm!(ops
                     ;=>dyn_label
                 );
@@ -92,11 +142,12 @@ impl Jit {
                 Byte(b) => {
                     asm!(ops
                         // TODO should this be done here
-                        // ; cmp subject_pointer, subject_len
-                        // ; jl ->fail
+                        ; cmp subject_pointer, subject_end
+                        ; je ->fail_call
 
-                        ; cmp subject_pointer, BYTE *b as _
-                        ; jne ->fail_state
+                        // Compare subject pointer value if not equal jump to fail
+                        ; cmp [subject_pointer], BYTE *b as _
+                        ; jne ->fail_call
                         ; inc subject_pointer
                     );
                 }
@@ -106,10 +157,16 @@ impl Jit {
                         .get(label)
                         .expect("Could not find call label")
                         .clone();
-                    let dyn_label = ops.new_dynamic_label();
-                    labels.insert(call_label, dyn_label);
+                    let entry = labels.entry(call_label);
+                    let dyn_label = entry.or_insert_with(|| ops.new_dynamic_label()).clone();
                     asm!(ops
-                        ; call =>dyn_label
+                        // Push call continue addr to stack
+                        ; lea var, [>next]
+                        ; push var
+
+                        // Jump to call
+                        ; jmp =>dyn_label
+                        ;next:
                     );
                 }
                 Commit(_) => todo!(),
@@ -119,7 +176,9 @@ impl Jit {
                 Set(set) => todo!(),
                 Return => {
                     asm!(ops
-                        ; ret
+                        // Pop return address and jump to it
+                        ; pop var
+                        ; jmp var
                     );
                 }
                 Fail => todo!(),
@@ -147,46 +206,17 @@ impl Jit {
         }
 
         asm!(ops
-            ; ->fail_state:
-        );
-
-        let buf = ops.finalize().unwrap();
-        (buf, start)
-    }
-
-    fn reference(&mut self) {
-        let mut ops = dynasmrt::x64::Assembler::new().unwrap();
-        let string = "Hello World!";
-
-        dynasm!(ops
-            ; .arch x64
-            ; ->hello:
-            ; .bytes string.as_bytes()
-        );
-
-        let hello = ops.offset();
-        dynasm!(ops
-            ; .arch x64
-            ; lea rcx, [->hello]
-            ; xor edx, edx
-            ; mov dl, BYTE string.len() as _
-            ; mov rax, QWORD print as _
-            ; sub rsp, BYTE 0x28
-            ; call rax
-            ; add rsp, BYTE 0x28
+            ;->fail_call:
+            ; pop var
+            ;->fail:
+            ; mov rax, 1
             ; ret
         );
 
+        // println!("ops: {ops:?}");
         let buf = ops.finalize().unwrap();
-
-        let hello_fn: extern "win64" fn() -> bool = unsafe { mem::transmute(buf.ptr(hello)) };
+        (buf, start)
     }
-}
-
-pub extern "win64" fn print(buffer: *const u8, length: u64) -> bool {
-    io::stdout()
-        .write_all(unsafe { slice::from_raw_parts(buffer, length as usize) })
-        .is_ok()
 }
 
 #[cfg(test)]
@@ -199,12 +229,22 @@ mod test {
         let rules = Rules::parse(std::io::Cursor::new(rules)).unwrap();
         let compiler = Compiler::new(&rules);
         let program = compiler.compile().unwrap();
-        Jit::new(&program).unwrap()
+        Jit::from_program(&program).unwrap()
     }
 
     #[test]
-    fn jit_match() {
+    fn jit_match_1() {
         let rules = r#"document = "abc";"#;
         let jit = make_jit(rules);
+        let mut haystack = "abc";
+        let _ = jit.parse(&mut haystack);
+    }
+
+    #[test]
+    fn jit_no_match_1() {
+        let rules = r#"document = "abc";"#;
+        let jit = make_jit(rules);
+        let mut haystack = "aac";
+        let _ = jit.parse(&mut haystack);
     }
 }

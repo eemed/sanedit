@@ -15,7 +15,7 @@ macro_rules! asm {
         dynasm!($ops
             ; .arch x64
             // ; .alias subject_len, rcx
-            ; .alias var, r13
+            ; .alias label, r13
             ; .alias state, r12
             ; .alias subject_end, rcx
             ; .alias subject_pointer, rbx
@@ -26,13 +26,6 @@ macro_rules! asm {
 
 macro_rules! prologue {
     ($ops:ident) => {{
-        let start = $ops.offset();
-        asm!($ops
-            ; mov subject_pointer, rdi
-            ; mov subject_end, rsi
-            // ; sub subject_end, subject_pointer
-            // ; mov rax, subject_end
-        );
         start
     }};
 }
@@ -63,19 +56,18 @@ impl Jit {
         let rules = Rules::parse(std::io::Cursor::new(rules)).unwrap();
         let compiler = Compiler::new(&rules);
         let program = compiler.compile().unwrap();
-        Jit::from_program(&program).ok_or(ParseError::JitUnsupported)
+        Jit::from_program(&program)
     }
 
-
     /// Return compiled verions of pattern if required instruction sets are available
-    pub fn from_program(program: &Program) -> Option<Jit> {
+    pub fn from_program(program: &Program) -> Result<Jit, ParseError> {
         if !Self::is_available() {
-            return None;
+            return Err(ParseError::JitUnsupported);
         }
 
         println!("Program:\n{program:?}");
         let (program, start) = Self::compile(program);
-        Some(Jit { program, start })
+        Ok(Jit { program, start })
     }
 
     pub fn parse<C: ChunkSource>(&self, reader: &mut C) -> Result<CaptureList, ParseError> {
@@ -118,15 +110,30 @@ impl Jit {
 
     fn compile(program: &Program) -> (ExecutableBuffer, AssemblyOffset) {
         use super::Operation::*;
-
         let mut labels: FxHashMap<String, DynamicLabel> = FxHashMap::default();
         let mut ops = dynasmrt::x64::Assembler::new().unwrap();
 
-        let start = prologue!(ops);
+        // Return without a match
+        asm!(ops
+            ;->nomatch:
+            ; mov rax, 1
+            ; ret
+        );
+
+        let start = ops.offset();
+        asm!(ops
+            // Load passed in subject pointer
+            ; mov subject_pointer, rdi
+            ; mov subject_end, rsi
+
+            // Push stack entry to indicate no match
+            ; lea label, [->nomatch]
+            ; push label
+            ; push subject_pointer
+        );
+
         let mut iter = program.ops.iter().enumerate();
         while let Some((i, op)) = iter.next() {
-            // println!("------------------");
-            // println!("{ops:?}");
             // Insert labels where necessary
             if let Some(label) = program.names.get(&i) {
                 let entry = labels.entry(label.clone());
@@ -143,11 +150,11 @@ impl Jit {
                     asm!(ops
                         // TODO should this be done here
                         ; cmp subject_pointer, subject_end
-                        ; je ->fail_call
+                        ; je ->fail
 
                         // Compare subject pointer value if not equal jump to fail
                         ; cmp [subject_pointer], BYTE *b as _
-                        ; jne ->fail_call
+                        ; jne ->fail
                         ; inc subject_pointer
                     );
                 }
@@ -161,8 +168,9 @@ impl Jit {
                     let dyn_label = entry.or_insert_with(|| ops.new_dynamic_label()).clone();
                     asm!(ops
                         // Push call continue addr to stack
-                        ; lea var, [>next]
-                        ; push var
+                        ; lea label, [>next]
+                        ; push label
+                        ; push 0     // push subject_pointer as 0 or NULL
 
                         // Jump to call
                         ; jmp =>dyn_label
@@ -177,13 +185,16 @@ impl Jit {
                 Return => {
                     asm!(ops
                         // Pop return address and jump to it
-                        ; pop var
-                        ; jmp var
+                        ; pop label // Discard label
+                        ; pop label
+                        ; jmp label
                     );
                 }
                 Fail => todo!(),
                 End => {
                     asm!(ops
+                        ; pop label // Discard subject_pointer
+                        ; pop label // Discard label
                         ; mov rax, 0
                         ; ret
                     );
@@ -205,12 +216,17 @@ impl Jit {
             }
         }
 
+        // Backtrack on failure
         asm!(ops
-            ;->fail_call:
-            ; pop var
             ;->fail:
-            ; mov rax, 1
-            ; ret
+            ; pop subject_pointer
+            ; pop label
+
+            // If subject pointer is 0, this stack entry is from a call
+            // Because we are in a failed state this call was failed, so fetch the next one
+            ; cmp subject_pointer, 0
+            ; je ->fail
+            ; jmp label
         );
 
         // println!("ops: {ops:?}");

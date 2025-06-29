@@ -114,7 +114,7 @@ impl Parser {
         let program = compiler
             .compile()
             .map_err(|err| ParseError::Preprocess(err.to_string()))?;
-        let jit = Jit::from_program(&program).ok_or(ParseError::JitUnsupported)?;
+        let jit = Jit::from_program(&program)?;
         let parser = Parser {
             rules,
             program,

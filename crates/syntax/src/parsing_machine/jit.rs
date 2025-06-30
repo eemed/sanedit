@@ -1,59 +1,41 @@
 use crate::grammar::Rules;
-use crate::source::ChunkSource;
-use crate::{ByteSource, ParseError};
+use crate::ParseError;
 
 use super::compiler::Program;
 use super::{CaptureList, Compiler};
 use dynasmrt::{dynasm, AssemblyOffset, DynamicLabel, DynasmApi, DynasmLabelApi, ExecutableBuffer};
-use rustc_hash::FxHashMap;
-
-use std::io::Write;
-use std::{io, mem, slice};
 
 macro_rules! asm {
     ($ops:ident $($t:tt)*) => {
         dynasm!($ops
             ; .arch x64
             // ; .alias subject_len, rcx
-            ; .alias label, r13
+            ; .alias arg1, rdi
+            ; .alias arg2, rsi
+            ; .alias arg3, rdx
+            ; .alias arg4, rcx
+            ; .alias arg5, r8
+            ; .alias arg6, r9
             ; .alias state, r12
+            ; .alias label, r13
             ; .alias subject_end, rcx
             ; .alias subject_pointer, rbx
+            ; .alias trash, r15
+            ; .alias tmp, r14
             $($t)*
         )
     }
 }
 
-macro_rules! prologue {
-    ($ops:ident) => {{
-        start
-    }};
-}
-struct State<'a, C: ChunkSource> {
-    bytes: &'a mut C,
-}
-
-impl<'a, C: ChunkSource> State<'a, C> {
-    // unsafe extern "C" fn len(state: *mut State<C>) -> u64 {
-    //     let state = &mut *state;
-    //     state.bytes.len() as u64
-    // }
-
-    // unsafe extern "C" fn get(state: *mut State<C>, at: *mut u64) -> u8 {
-    //     let state = &mut *state;
-    //     state.bytes[*at as usize]
-    // }
-}
-
 #[derive(Debug)]
-pub(crate) struct Jit {
+pub struct Jit {
     program: ExecutableBuffer,
     start: AssemblyOffset,
 }
 
 impl Jit {
-    pub fn new(rules: &str) -> Result<Jit, ParseError> {
-        let rules = Rules::parse(std::io::Cursor::new(rules)).unwrap();
+    pub fn new<R: std::io::Read>(rules: R) -> Result<Jit, ParseError> {
+        let rules = Rules::parse(rules).unwrap();
         let compiler = Compiler::new(&rules);
         let program = compiler.compile().unwrap();
         Jit::from_program(&program)
@@ -65,28 +47,31 @@ impl Jit {
             return Err(ParseError::JitUnsupported);
         }
 
-        println!("Program:\n{program:?}");
+        // println!("Program:\n{program:?}");
         let (program, start) = Self::compile(program);
         Ok(Jit { program, start })
     }
 
-    pub fn parse<C: ChunkSource>(&self, reader: &mut C) -> Result<CaptureList, ParseError> {
-        let state = State { bytes: reader };
-        let (_start, chunk) = state.bytes.get();
-        let chunk = chunk.as_ref();
-
+    pub fn parse<B: AsRef<[u8]>>(&self, bytes: B) -> Result<CaptureList, ParseError> {
+        let bytes = bytes.as_ref();
         let peg_program: extern "C" fn(*const u8, *const u8) -> i64 =
-            unsafe { mem::transmute(self.program.ptr(self.start)) };
-        let start = chunk.as_ptr();
-        let end = unsafe { start.add(chunk.len()) };
-        println!("Start: {start:?}, end: {end:?}");
+            unsafe { std::mem::transmute(self.program.ptr(self.start)) };
+        let start = bytes.as_ptr();
+        let end = unsafe { start.add(bytes.len()) };
         let res = peg_program(start, end);
-        println!("Return code: {res}");
+
         if res == 0 {
             Ok(CaptureList::new())
         } else {
             Err(ParseError::Parse("No match".into()))
         }
+    }
+
+    // Safe wrapper for stack alignment
+    fn call_jit(f: extern "C" fn(*const u8, *const u8) -> i64, bytes: &[u8]) -> i64 {
+        let start = bytes.as_ptr();
+        let end = unsafe { start.add(bytes.len()) };
+        f(start, end)
     }
 
     pub fn is_available() -> bool {
@@ -110,21 +95,27 @@ impl Jit {
 
     fn compile(program: &Program) -> (ExecutableBuffer, AssemblyOffset) {
         use super::Operation::*;
-        let mut labels: FxHashMap<String, DynamicLabel> = FxHashMap::default();
         let mut ops = dynasmrt::x64::Assembler::new().unwrap();
+        let mut data: Vec<(DynamicLabel, Vec<u8>)> = vec![];
+        // TODO probably a better way of handling this?
+        let inst_labels: Vec<DynamicLabel> = (0..program.ops.len())
+            .map(|_| ops.new_dynamic_label())
+            .collect();
 
-        // Return without a match
-        asm!(ops
-            ;->nomatch:
-            ; mov rax, 1
-            ; ret
-        );
 
         let start = ops.offset();
         asm!(ops
+            // Prologue: callee-saved registers
+            ; push rbx
+            ; push rbp
+            ; push r12
+            ; push r13
+            ; push r14
+            ; push r15
+
             // Load passed in subject pointer
-            ; mov subject_pointer, rdi
-            ; mov subject_end, rsi
+            ; mov subject_pointer, arg1
+            ; mov subject_end, arg2
 
             // Push stack entry to indicate no match
             ; lea label, [->nomatch]
@@ -134,21 +125,16 @@ impl Jit {
 
         let mut iter = program.ops.iter().enumerate();
         while let Some((i, op)) = iter.next() {
-            // Insert labels where necessary
-            if let Some(label) = program.names.get(&i) {
-                let entry = labels.entry(label.clone());
-                let dyn_label = entry.or_insert_with(|| ops.new_dynamic_label()).clone();
-                println!("LABEL: {op:?}");
-                asm!(ops
-                    ;=>dyn_label
-                );
-            }
+            let ilabel = inst_labels[i];
+            asm!(ops
+                ;=>ilabel
+            );
 
             match op {
                 Jump(_) => todo!(),
                 Byte(b) => {
                     asm!(ops
-                        // TODO should this be done here
+                        // ensure subject pointer is ok
                         ; cmp subject_pointer, subject_end
                         ; je ->fail
 
@@ -159,13 +145,7 @@ impl Jit {
                     );
                 }
                 Call(label) => {
-                    let call_label = program
-                        .names
-                        .get(label)
-                        .expect("Could not find call label")
-                        .clone();
-                    let entry = labels.entry(call_label);
-                    let dyn_label = entry.or_insert_with(|| ops.new_dynamic_label()).clone();
+                    let jump_label = inst_labels[*label];
                     asm!(ops
                         // Push call continue addr to stack
                         ; lea label, [>next]
@@ -173,19 +153,50 @@ impl Jit {
                         ; push 0     // push subject_pointer as 0 or NULL
 
                         // Jump to call
-                        ; jmp =>dyn_label
+                        ; jmp =>jump_label
                         ;next:
                     );
                 }
-                Commit(_) => todo!(),
-                Choice(_) => todo!(),
+                Commit(l) => {
+                    let jump_label = inst_labels[*l];
+                    asm!(ops
+                        ; pop trash
+                        ; pop trash
+                        ; jmp =>jump_label
+                    );
+                }
+                Choice(l) => {
+                    let jump_label = inst_labels[*l];
+                    asm!(ops
+                        // Push a backtrack entry
+                        ; lea label, [=>jump_label]
+                        ; push label
+                        ; push subject_pointer
+                    );
+                }
                 Any(_) => todo!(),
                 UTF8Range(_, _) => todo!(),
-                Set(set) => todo!(),
+                Set(set) => {
+                    let bytes = set.raw().to_vec();
+                    let byte_label = ops.new_dynamic_label();
+                    asm!(ops
+                        // ensure subject pointer is ok
+                        ; cmp subject_pointer, subject_end
+                        ; je ->fail
+
+                        // Compare if byte is found at bitset
+                        ; movzx tmp, BYTE [subject_pointer]
+                        ; bt [=>byte_label], tmp
+                        ; jnc ->fail
+                        ; inc subject_pointer
+                    );
+
+                    data.push((byte_label, bytes));
+                }
                 Return => {
                     asm!(ops
                         // Pop return address and jump to it
-                        ; pop label // Discard label
+                        ; pop trash // Discard label
                         ; pop label
                         ; jmp label
                     );
@@ -193,14 +204,22 @@ impl Jit {
                 Fail => todo!(),
                 End => {
                     asm!(ops
-                        ; pop label // Discard subject_pointer
-                        ; pop label // Discard label
+                        ; pop trash // Discard subject_pointer
+                        ; pop trash // Discard label
+
                         ; mov rax, 0
-                        ; ret
+                        ; jmp ->epilogue
                     );
                 }
                 EndFail => todo!(),
-                PartialCommit(_) => todo!(),
+                PartialCommit(l) => {
+                    let jump_label = inst_labels[*l];
+                    asm!(ops
+                        ; pop trash // Discard subject_pointer
+                        ; push subject_pointer
+                        ; jmp =>jump_label
+                    );
+                }
                 FailTwice => todo!(),
                 Span(set) => todo!(),
                 BackCommit(_) => todo!(),
@@ -216,6 +235,21 @@ impl Jit {
             }
         }
 
+        // Return without a match
+        asm!(ops
+            ;->nomatch:
+            ; mov rax, 1
+            ;->epilogue:
+            ; pop r15
+            ; pop r14
+            ; pop r13
+            ; pop r12
+            ; pop rbp
+            ; pop rbx
+            ; ret
+        );
+
+
         // Backtrack on failure
         asm!(ops
             ;->fail:
@@ -229,6 +263,14 @@ impl Jit {
             ; jmp label
         );
 
+        // Write needed data
+        for (label, bytes) in data {
+            asm!(ops
+                ;=>label
+                ; .bytes bytes
+            );
+        }
+
         // println!("ops: {ops:?}");
         let buf = ops.finalize().unwrap();
         (buf, start)
@@ -237,30 +279,80 @@ impl Jit {
 
 #[cfg(test)]
 mod test {
-    use crate::{grammar::Rules, parsing_machine::compiler::Compiler};
-
     use super::*;
-
-    fn make_jit(rules: &str) -> Jit {
-        let rules = Rules::parse(std::io::Cursor::new(rules)).unwrap();
-        let compiler = Compiler::new(&rules);
-        let program = compiler.compile().unwrap();
-        Jit::from_program(&program).unwrap()
-    }
 
     #[test]
     fn jit_match_1() {
         let rules = r#"document = "abc";"#;
-        let jit = make_jit(rules);
+        let jit = Jit::new(std::io::Cursor::new(rules)).unwrap();
         let mut haystack = "abc";
+        let _ = jit.parse(&mut haystack);
+    }
+
+    #[test]
+    fn jit_match_2() {
+        let rules = r#"document = ("amet" / .)*;"#;
+        let jit = Jit::new(std::io::Cursor::new(rules)).unwrap();
+        let mut haystack = LOREM.repeat(10);
         let _ = jit.parse(&mut haystack);
     }
 
     #[test]
     fn jit_no_match_1() {
         let rules = r#"document = "abc";"#;
-        let jit = make_jit(rules);
+        let jit = Jit::new(std::io::Cursor::new(rules)).unwrap();
         let mut haystack = "aac";
         let _ = jit.parse(&mut haystack);
     }
+
+    const LOREM: &str = "
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Maecenas sit amet tellus
+nec turpis feugiat semper. Nam at nulla laoreet, finibus eros sit amet, fringilla
+mauris. Fusce vestibulum nec ligula efficitur laoreet. Nunc orci leo, varius eget
+ligula vulputate, consequat eleifend nisi. Cras justo purus, imperdiet a augue
+malesuada, convallis cursus libero. Fusce pretium arcu in elementum laoreet. Duis
+mauris nulla, suscipit at est nec, malesuada pellentesque eros. Quisque semper porta
+malesuada. Nunc hendrerit est ac faucibus mollis. Nam fermentum id libero sed
+egestas. Duis a accumsan sapien. Nam neque diam, congue non erat et, porta sagittis
+turpis. Vivamus vitae mauris sit amet massa mollis molestie. Morbi scelerisque,
+augue id congue imperdiet, felis lacus euismod dui, vitae facilisis massa dui quis
+sapien. Vivamus hendrerit a urna a lobortis.
+
+Donec ut suscipit risus. Vivamus dictum auctor vehicula. Sed lacinia ligula sit amet
+urna tristique commodo. Sed sapien risus, egestas ac tempus vel, pellentesque sed
+velit. Duis pulvinar blandit suscipit. Curabitur viverra dignissim est quis ornare.
+Nam et lectus purus. Integer sed augue vehicula, volutpat est vel, convallis justo.
+Suspendisse a convallis nibh, pulvinar rutrum nisi. Fusce ultrices accumsan mauris
+vitae ornare. Cras elementum et ante at tincidunt. Sed luctus scelerisque lobortis.
+Sed vel dictum enim. Fusce quis arcu euismod, iaculis mi id, placerat nulla.
+Pellentesque porttitor felis elementum justo porttitor auctor.
+
+Aliquam finibus metus commodo sem egestas, non mollis odio pretium. Aenean ex
+lectus, rutrum nec laoreet at, posuere sit amet lacus. Nulla eros augue, vehicula et
+molestie accumsan, dictum vel odio. In quis risus finibus, pellentesque ipsum
+blandit, volutpat diam. Etiam suscipit varius mollis. Proin vel luctus nisi, ac
+ornare justo. Integer porttitor quam magna. Donec vitae metus tempor, ultricies
+risus in, dictum erat. Integer porttitor faucibus vestibulum. Class aptent taciti
+sociosqu ad litora torquent per conubia nostra, per inceptos himenaeos. Vestibulum
+ante ipsum primis in faucibus orci luctus et ultrices posuere cubilia Curae; Nam
+semper congue ante, a ultricies velit venenatis vitae. Proin non neque sit amet ex
+commodo congue non nec elit. Nullam vel dignissim ipsum. Duis sed lobortis ante.
+Aenean feugiat rutrum magna ac luctus.
+
+Ut imperdiet non ante sit amet rutrum. Cras vel massa eget nisl gravida auctor.
+Nulla bibendum ut tellus ut rutrum. Quisque malesuada lacinia felis, vitae semper
+elit. Praesent sit amet velit imperdiet, lobortis nunc at, faucibus tellus. Nullam
+porttitor augue mauris, a dapibus tellus ultricies et. Fusce aliquet nec velit in
+mattis. Sed mi ante, lacinia eget ornare vel, faucibus at metus.
+
+Pellentesque nec viverra metus. Sed aliquet pellentesque scelerisque. Duis efficitur
+erat sit amet dui maximus egestas. Nullam blandit ante tortor. Suspendisse vitae
+consectetur sem, at sollicitudin neque. Suspendisse sodales faucibus eros vitae
+pellentesque. Cras non quam dictum, pellentesque urna in, ornare erat. Praesent leo
+est, aliquet et euismod non, hendrerit sed urna. Sed convallis porttitor est, vel
+aliquet felis cursus ac. Vivamus feugiat eget nisi eu molestie. Phasellus tincidunt
+nisl eget molestie consectetur. Phasellus vitae ex ut odio sollicitudin vulputate.
+Sed et nulla accumsan, eleifend arcu eget, gravida neque. Donec sit amet tincidunt
+eros. Ut in volutpat ante.
+";
 }

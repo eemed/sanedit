@@ -1,5 +1,6 @@
 use criterion::{criterion_group, criterion_main, Criterion};
-use sanedit_syntax::Parser;
+use dynasmrt::{AssemblyOffset, DynasmApi as _};
+use sanedit_syntax::{Jit, Parser};
 
 const LOREM: &str = "
 Lorem ipsum dolor sit amet, consectetur adipiscing elit. Maecenas sit amet tellus
@@ -59,15 +60,15 @@ fn word_in_lorem(c: &mut Criterion) {
     let content = LOREM.repeat(10);
     let content = content.as_bytes();
 
-    c.bench_function("word_in_lorem_interpreted", |bench| {
-        let parser = Parser::new_interpreted(std::io::Cursor::new(peg)).unwrap();
-        bench.iter(move || {
-            parser.parse(content).unwrap();
+    c.bench_function("word_in_lorem_jit", |bench| {
+        let parser = Jit::new(std::io::Cursor::new(peg)).unwrap();
+        bench.iter(|| {
+            parser.parse(&content).unwrap();
         });
     });
 
-    c.bench_function("word_in_lorem_jit", |bench| {
-        let parser = Parser::new_jit(std::io::Cursor::new(peg)).unwrap();
+    c.bench_function("word_in_lorem_interpreted", |bench| {
+        let parser = Parser::new(std::io::Cursor::new(peg)).unwrap();
         bench.iter(move || {
             parser.parse(content).unwrap();
         });

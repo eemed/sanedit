@@ -6,84 +6,10 @@ use std::{
     },
 };
 
-use sanedit_buffer::{utf8::decode_utf8_iter, Bytes, Chunk, Chunks};
-
-pub trait ChunkSource {
-    type Chunk: AsRef<[u8]>;
-    /// Length of all the bytes in this reader utf8
-    fn len(&self) -> u64;
-
-    // /// Wether to stop parsing and return an error
-    // fn stop(&self) -> bool;
-
-    fn get(&self) -> (u64, Self::Chunk);
-
-    fn next(&mut self) -> bool;
-    fn prev(&mut self) -> bool;
-}
-
-impl<'a> ChunkSource for &'a [u8] {
-    type Chunk = &'a [u8];
-
-    fn len(&self) -> u64 {
-        <[u8]>::len(self) as u64
-    }
-
-    fn get(&self) -> (u64, Self::Chunk) {
-        (0, self)
-    }
-
-    fn next(&mut self) -> bool {
-        false
-    }
-
-    fn prev(&mut self) -> bool {
-        false
-    }
-}
-
-impl<'a> ChunkSource for &'a str {
-    type Chunk = &'a [u8];
-
-    fn len(&self) -> u64 {
-        <str>::len(self) as u64
-    }
-
-    fn get(&self) -> (u64, Self::Chunk) {
-        (0, self.as_bytes())
-    }
-
-    fn next(&mut self) -> bool {
-        false
-    }
-
-    fn prev(&mut self) -> bool {
-        false
-    }
-}
-
-impl<'a> ChunkSource for Chunks<'a> {
-    type Chunk = Chunk<'a>;
-
-    fn len(&self) -> u64 {
-        self.buffer_len()
-    }
-
-    fn get(&self) -> (u64, Chunk<'a>) {
-        self.get().unwrap()
-    }
-
-    fn next(&mut self) -> bool {
-        todo!()
-    }
-
-    fn prev(&mut self) -> bool {
-        todo!()
-    }
-}
+use sanedit_buffer::{utf8::decode_utf8_iter, Bytes};
 
 pub trait ByteSource {
-    /// Length of all the bytes in this reader utf8
+    /// Length of all the bytes in this reader
     fn len(&self) -> u64;
 
     /// Wether to stop parsing and return an error

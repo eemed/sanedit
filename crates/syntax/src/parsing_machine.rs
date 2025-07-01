@@ -246,7 +246,7 @@ impl Parser {
                             captop = caplevel;
                             captures.truncate(captop);
 
-                            reopen_captures(sp, &mut captures[..captop]);
+                            // reopen_captures(sp, &mut captures[..captop]);
                         }
                         e => bail!("Invalid stack entry pop at back commit: {e:?}"),
                     }
@@ -290,7 +290,7 @@ impl Parser {
                         sp = spos;
                         captop = caplevel;
                         captures.truncate(captop);
-                        reopen_captures(sp, &mut captures[..captop]);
+                        // reopen_captures(sp, &mut captures[..captop]);
                         break;
                     }
 

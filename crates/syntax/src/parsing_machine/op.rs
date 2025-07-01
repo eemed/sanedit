@@ -31,5 +31,4 @@ pub(crate) enum Operation {
     CaptureBegin(CaptureID),
     CaptureBeginMultiEnd(CaptureID),
     CaptureEnd,
-    Checkpoint,
 }

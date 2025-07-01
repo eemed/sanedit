@@ -24,10 +24,12 @@ use sanedit_core::{
     Range,
 };
 use sanedit_lsp::{
-    CodeAction, CompletionItem, FileEdit, LSPClientParams, Notification, Position, PositionEncoding, PositionRange, RequestKind, RequestResult, Response, Signatures, Symbol, TextDiagnostic, WorkspaceEdit
+    CodeAction, CompletionItem, FileEdit, LSPClientParams, Notification, Position,
+    PositionEncoding, PositionRange, RequestKind, RequestResult, Response, Signatures, Symbol,
+    TextDiagnostic, WorkspaceEdit,
 };
 
-use sanedit_messages::redraw::{Popup, PopupMessage};
+use sanedit_messages::redraw::PopupMessage;
 use sanedit_server::{ClientId, Job, JobContext, JobResult};
 
 use super::MatcherJob;
@@ -240,8 +242,11 @@ impl LSPJob {
     fn handle_signature_help(&self, editor: &mut Editor, id: ClientId, signatures: Signatures) {
         let (win, _buf) = editor.win_buf_mut(id);
         for signature in signatures.signatures {
-            let mut text = signature.name;
-            let msg = PopupMessage { severity: None, text };
+            let text = signature.name;
+            let msg = PopupMessage {
+                severity: None,
+                text,
+            };
             win.push_popup(msg);
         }
     }

@@ -5,6 +5,19 @@ use super::compiler::Program;
 use super::{CaptureList, Compiler};
 use dynasmrt::{dynasm, AssemblyOffset, DynamicLabel, DynasmApi, DynasmLabelApi, ExecutableBuffer};
 
+#[repr(u8)]
+enum Kind {
+    Open = 0,
+    Close = 1,
+}
+
+#[repr(C)]
+struct PartialCapture {
+    id: u32,
+    kind: Kind,
+    pos: u64,
+}
+
 macro_rules! asm {
     ($ops:ident $($t:tt)*) => {
         dynasm!($ops
@@ -16,14 +29,40 @@ macro_rules! asm {
             ; .alias arg4, rcx
             ; .alias arg5, r8
             ; .alias arg6, r9
-            ; .alias state, r12
-            ; .alias label, r13
-            ; .alias subject_end, rcx
-            ; .alias subject_pointer, rbx
-            ; .alias trash, r15
-            ; .alias tmp, r14
+
+            // Just for easier handling
+            // available: rbx, rcx, rdx, rsi, rdi
+            ; .alias tmp, r8
+            ; .alias trash, r9
+            ; .alias state, r10
+            ; .alias label, r11
+
+            // These are mandatory
+            ; .alias subject_end, r12
+            ; .alias subject_pointer, r13
+            ; .alias capture_pointer, r14
+            ; .alias captop, r15
             $($t)*
         )
+    }
+}
+
+struct State {
+    captures: Vec<PartialCapture>,
+}
+
+impl State {
+    unsafe extern "C" fn double_cap_size(state: *mut State) -> *mut PartialCapture {
+        todo!()
+    }
+
+}
+
+impl Default for State {
+    fn default() -> Self {
+        State {
+            captures: Vec::with_capacity(512),
+        }
     }
 }
 
@@ -53,25 +92,19 @@ impl Jit {
     }
 
     pub fn parse<B: AsRef<[u8]>>(&self, bytes: B) -> Result<CaptureList, ParseError> {
+        let mut state = State::default();
         let bytes = bytes.as_ref();
-        let peg_program: extern "C" fn(*const u8, *const u8) -> i64 =
+        let peg_program: extern "C" fn(*mut State, *mut PartialCapture, *const u8, *const u8) -> i64 =
             unsafe { std::mem::transmute(self.program.ptr(self.start)) };
         let start = bytes.as_ptr();
         let end = unsafe { start.add(bytes.len()) };
-        let res = peg_program(start, end);
+        let res = peg_program(&mut state, state.captures.as_mut_ptr(), start, end);
 
         if res == 0 {
             Ok(CaptureList::new())
         } else {
             Err(ParseError::Parse("No match".into()))
         }
-    }
-
-    // Safe wrapper for stack alignment
-    fn call_jit(f: extern "C" fn(*const u8, *const u8) -> i64, bytes: &[u8]) -> i64 {
-        let start = bytes.as_ptr();
-        let end = unsafe { start.add(bytes.len()) };
-        f(start, end)
     }
 
     pub fn is_available() -> bool {
@@ -114,13 +147,18 @@ impl Jit {
             ; push r15
 
             // Load passed in subject pointer
-            ; mov subject_pointer, arg1
-            ; mov subject_end, arg2
+            ; mov state, arg1
+            ; mov capture_pointer, arg2
+            ; mov subject_pointer, arg3
+            ; mov subject_end, arg4
+
+            ; mov captop, 0
 
             // Push stack entry to indicate no match
             ; lea label, [->nomatch]
             ; push label
             ; push subject_pointer
+            ; push captop
         );
 
         let mut iter = program.ops.iter().enumerate();
@@ -151,6 +189,7 @@ impl Jit {
                         ; lea label, [>next]
                         ; push label
                         ; push 0     // push subject_pointer as 0 or NULL
+                        ; push captop
 
                         // Jump to call
                         ; jmp =>jump_label
@@ -160,6 +199,7 @@ impl Jit {
                 Commit(l) => {
                     let jump_label = inst_labels[*l];
                     asm!(ops
+                        ; pop trash
                         ; pop trash
                         ; pop trash
                         ; jmp =>jump_label
@@ -172,6 +212,7 @@ impl Jit {
                         ; lea label, [=>jump_label]
                         ; push label
                         ; push subject_pointer
+                        ; push captop
                     );
                 }
                 Any(_) => todo!(),
@@ -196,7 +237,8 @@ impl Jit {
                 Return => {
                     asm!(ops
                         // Pop return address and jump to it
-                        ; pop trash // Discard label
+                        ; pop trash // captop
+                        ; pop trash // subject_pointer
                         ; pop label
                         ; jmp label
                     );
@@ -204,8 +246,9 @@ impl Jit {
                 Fail => todo!(),
                 End => {
                     asm!(ops
-                        ; pop trash // Discard subject_pointer
-                        ; pop trash // Discard label
+                        ; pop trash // captop
+                        ; pop trash // subject_pointer
+                        ; pop trash // label
 
                         ; mov rax, 0
                         ; jmp ->epilogue
@@ -215,8 +258,10 @@ impl Jit {
                 PartialCommit(l) => {
                     let jump_label = inst_labels[*l];
                     asm!(ops
-                        ; pop trash // Discard subject_pointer
+                        ; pop trash // captop
+                        ; pop trash // subject_pointer
                         ; push subject_pointer
+                        ; push captop
                         ; jmp =>jump_label
                     );
                 }
@@ -231,7 +276,6 @@ impl Jit {
                 CaptureBegin(_) => todo!(),
                 CaptureBeginMultiEnd(_) => todo!(),
                 CaptureEnd => todo!(),
-                Checkpoint => todo!(),
             }
         }
 
@@ -253,6 +297,7 @@ impl Jit {
         // Backtrack on failure
         asm!(ops
             ;->fail:
+            ; pop captop
             ; pop subject_pointer
             ; pop label
 
@@ -286,7 +331,7 @@ mod test {
         let rules = r#"document = "abc";"#;
         let jit = Jit::new(std::io::Cursor::new(rules)).unwrap();
         let mut haystack = "abc";
-        let _ = jit.parse(&mut haystack);
+        assert!(jit.parse(&mut haystack).is_ok())
     }
 
     #[test]
@@ -294,7 +339,7 @@ mod test {
         let rules = r#"document = ("amet" / .)*;"#;
         let jit = Jit::new(std::io::Cursor::new(rules)).unwrap();
         let mut haystack = LOREM.repeat(10);
-        let _ = jit.parse(&mut haystack);
+        assert!(jit.parse(&mut haystack).is_ok())
     }
 
     #[test]
@@ -302,7 +347,7 @@ mod test {
         let rules = r#"document = "abc";"#;
         let jit = Jit::new(std::io::Cursor::new(rules)).unwrap();
         let mut haystack = "aac";
-        let _ = jit.parse(&mut haystack);
+        assert!(jit.parse(&mut haystack).is_err())
     }
 
     const LOREM: &str = "

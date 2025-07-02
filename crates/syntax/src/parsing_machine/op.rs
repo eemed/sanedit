@@ -29,6 +29,5 @@ pub(crate) enum Operation {
     TestSetNoChoice(Set, Addr),
     TestAny(usize, Addr),
     CaptureBegin(CaptureID),
-    CaptureBeginMultiEnd(CaptureID),
     CaptureEnd,
 }

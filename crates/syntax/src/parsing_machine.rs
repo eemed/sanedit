@@ -269,11 +269,6 @@ impl Parser {
                     }
                     ip += 1;
                 }
-                CaptureBeginMultiEnd(id) => {
-                    captures.push(Capture::new_reopenable(*id, sp));
-                    captop += 1;
-                    ip += 1;
-                }
                 _ => bail!("Unsupported operation {op:?}"),
             }
 
@@ -308,21 +303,21 @@ impl Parser {
     }
 }
 
-fn reopen_captures(sp: u64, caps: &mut [Capture]) {
-    // If reopenable captures were closed, we need to reopen them
-    for i in (0..caps.len()).rev() {
-        let cap = &mut caps[i];
-        if cap.is_closed() {
-            if cap.range().end <= sp {
-                break;
-            }
+// fn reopen_captures(sp: u64, caps: &mut [Capture]) {
+//     // If reopenable captures were closed, we need to reopen them
+//     for i in (0..caps.len()).rev() {
+//         let cap = &mut caps[i];
+//         if cap.is_closed() {
+//             if cap.range().end <= sp {
+//                 break;
+//             }
 
-            if cap.is_reopenable() {
-                cap.reopen();
-            }
-        }
-    }
-}
+//             if cap.is_reopenable() {
+//                 cap.reopen();
+//             }
+//         }
+//     }
+// }
 
 /// Check that captures exist and all captures all closed
 fn captures_good(caps: &Vec<Capture>) -> bool {
@@ -331,7 +326,7 @@ fn captures_good(caps: &Vec<Capture>) -> bool {
     }
 
     for cap in caps {
-        if cap.len.is_none() {
+        if cap.end == 0 {
             return false;
         }
     }

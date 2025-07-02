@@ -11,8 +11,7 @@ pub type CaptureList = Vec<Capture>;
 pub struct Capture {
     pub(crate) id: CaptureID,
     pub(crate) start: SubjectPosition,
-    pub(crate) len: Option<u64>,
-    pub(crate) reopen: bool,
+    pub(crate) end: SubjectPosition,
 }
 
 impl Capture {
@@ -20,34 +19,16 @@ impl Capture {
         Capture {
             id,
             start,
-            len: None,
-            reopen: false,
+            end: 0,
         }
-    }
-
-    pub(crate) fn new_reopenable(id: CaptureID, start: SubjectPosition) -> Capture {
-        Capture {
-            id,
-            start,
-            len: None,
-            reopen: true,
-        }
-    }
-
-    pub(crate) fn is_reopenable(&self) -> bool {
-        self.reopen
-    }
-
-    pub(crate) fn reopen(&mut self) {
-        self.len = None;
     }
 
     pub(crate) fn is_closed(&self) -> bool {
-        self.len.is_some()
+        self.end != 0
     }
 
     pub(crate) fn close(&mut self, end: SubjectPosition) {
-        self.len = Some(end - self.start);
+        self.end = end;
     }
 
     pub fn id(&self) -> CaptureID {
@@ -55,11 +36,7 @@ impl Capture {
     }
 
     pub fn range(&self) -> Range<u64> {
-        let len = self
-            .len
-            .expect("Should not return a capture without length");
-
-        self.start..self.start + len
+        self.start..self.end
     }
 }
 

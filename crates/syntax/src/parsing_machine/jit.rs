@@ -1,7 +1,7 @@
 use std::alloc::Layout;
 
 use crate::grammar::Rules;
-use crate::ParseError;
+use crate::{Capture, ParseError};
 
 use super::compiler::Program;
 use super::{CaptureList, Compiler};
@@ -93,27 +93,27 @@ macro_rules! double_cap_size {
 struct State {
     cap: usize, // These are always u64
     len: usize,
+    complete: usize,
     ptr: *mut PartialCapture,
 }
 
 impl State {
     unsafe extern "C" fn double_cap_size(state_ptr: *mut State) {
         let state = &mut *state_ptr;
-        println!("double_cap_size: {state_ptr:p} {:?}", state);
+        // println!("double_cap_size: {state_ptr:p} {:?}", state);
         let olayout = Layout::array::<PartialCapture>(state.cap).unwrap();
         state.cap *= 2;
         let nlayout = Layout::array::<PartialCapture>(state.cap).unwrap();
 
-        println!("realloc: {:?} -> {:?}", olayout.size(), nlayout.size());
+        // println!("realloc: {:?} -> {:?}", olayout.size(), nlayout.size());
         let nptr = std::alloc::realloc(state.ptr as *mut u8, olayout, nlayout.size())
             as *mut PartialCapture;
         if nptr.is_null() {
             panic!("Realloc failed")
         }
 
-
         state.ptr = nptr;
-        println!("double_cap_size done: {state:?}");
+        // println!("double_cap_size done: {state:?}");
         // unsafe {
         //     let slice = std::slice::from_raw_parts(state.ptr, state.len);
         //     for (i, cap) in slice.iter().enumerate() {
@@ -125,17 +125,11 @@ impl State {
 
 impl Drop for State {
     fn drop(&mut self) {
-        println!(
-            "Drop: {self:?}, => {}",
-            self.ptr as usize % align_of::<PartialCapture>()
-        );
+        // println!(
+        //     "Drop: {self:?}, => {}",
+        //     self.ptr as usize % align_of::<PartialCapture>()
+        // );
 
-        unsafe {
-            let slice = std::slice::from_raw_parts(self.ptr, self.len);
-            for (i, cap) in slice.iter().enumerate() {
-                println!("Capture {}: {:?}", i, cap);
-            }
-        }
         unsafe {
             let layout = Layout::array::<PartialCapture>(self.cap).unwrap();
 
@@ -158,7 +152,12 @@ impl Default for State {
         if ptr.is_null() {
             panic!("No space")
         }
-        State { cap, len: 0, ptr }
+        State {
+            cap,
+            len: 0,
+            complete: 0,
+            ptr,
+        }
     }
 }
 
@@ -182,7 +181,7 @@ impl Jit {
             return Err(ParseError::JitUnsupported);
         }
 
-        println!("Program:\n{program:?}");
+//         println!("Program:\n{program:?}");
         let (program, start) = Self::compile(program);
         Ok(Jit { program, start })
     }
@@ -196,15 +195,37 @@ impl Jit {
 
         let start = bytes.as_ptr();
         let end = unsafe { start.add(bytes.len()) };
-        println!("start: {state_ref:?}");
         let res = peg_program(state_ref, start, end);
 
-        println!("Result: {res}");
-        if res == 0 {
-            Ok(CaptureList::new())
-        } else {
-            Err(ParseError::Parse("No match".into()))
+        if res != 0 {
+            return Err(ParseError::Parse("No match".into()));
         }
+
+        let mut captures = Vec::with_capacity(state.len / 2);
+
+        let mut stack = vec![];
+        let slice = unsafe { std::slice::from_raw_parts(state.ptr, state.len) };
+        for cap in slice {
+            match cap.kind {
+                Kind::Open => {
+                    stack.push(cap);
+                }
+                Kind::Close => {
+                    let start_cap = stack.pop().unwrap();
+                    let start_pos = start_cap.ptr as usize - start as usize;
+                    let end_pos = start_pos + (cap.ptr as usize - start_cap.ptr as usize);
+                    let capture = Capture {
+                        id: cap.id as usize,
+                        start: start_pos as u64,
+                        end: end_pos as u64,
+                    };
+                    // println!("Capture: {capture:?}: {:?}", std::str::from_utf8_unchecked(&bytes[start_pos..end_pos]));
+                    captures.push(capture);
+                }
+            }
+        }
+
+        Ok(captures)
     }
 
     pub fn is_available() -> bool {
@@ -396,7 +417,6 @@ impl Jit {
                         ; mov [state + offset_i32!(State, len)], captop
                     );
                 }
-                CaptureBeginMultiEnd(_) => todo!(),
                 CaptureEnd => {
                     asm!(ops
                         // Check if needs to grow, jump past if not needed
@@ -430,6 +450,7 @@ impl Jit {
             ;->nomatch:
             ; mov rax, 1
             ;->epilogue:
+            ; mov [state + offset_i32!(State, len)], captop
             ; pop r15
             ; pop r14
             ; pop r13

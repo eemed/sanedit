@@ -26,6 +26,42 @@ pub(crate) use self::op::{Addr, Operation};
 
 // https://github.com/roberto-ieru/LPeg/blob/master/lpvm.c
 
+#[derive(Debug)]
+enum Kind {
+    Open,
+    Close,
+}
+
+#[derive(Debug)]
+struct PartialCapture {
+    id: usize,
+    kind: Kind,
+    pos: SubjectPosition,
+}
+
+fn to_captures(partials: Vec<PartialCapture>) -> Vec<Capture> {
+    let mut captures = Vec::with_capacity(partials.len() / 2);
+    let mut stack = vec![];
+    for cap in partials {
+        match cap.kind {
+            Kind::Open => {
+                stack.push(cap);
+            }
+            Kind::Close => {
+                let start_cap = stack.pop().unwrap();
+                let capture = Capture {
+                    id: start_cap.id,
+                    start: start_cap.pos,
+                    end: cap.pos,
+                };
+                captures.push(capture);
+            }
+        }
+    }
+
+    captures
+}
+
 #[derive(Debug, PartialEq, Eq)]
 enum State {
     Normal,
@@ -52,10 +88,9 @@ impl Parser {
             .compile_unanchored()
             .map_err(|err| ParseError::Preprocess(err.to_string()))?;
 
-        let parser = Parser {
-            rules,
-            program,
-        };
+        log::info!("---- Prgoram unanchor ----");
+        log::info!("{:?}", program);
+        let parser = Parser { rules, program };
         Ok(parser)
     }
 
@@ -68,17 +103,14 @@ impl Parser {
         let program = compiler
             .compile()
             .map_err(|err| ParseError::Preprocess(err.to_string()))?;
-        // log::info!("---- Prgoram ----");
-        // log::info!("{:?}", program);
+        log::info!("---- Prgoram ----");
+        log::info!("{:?}", program);
 
         // println!("---- Prgoram ----");
         // println!("{:?}", program);
 
         // TODO enable jit when ready
-        let parser = Parser {
-            rules,
-            program,
-        };
+        let parser = Parser { rules, program };
         Ok(parser)
     }
 
@@ -143,7 +175,7 @@ impl Parser {
         // Stack for backtracking, choices, returns
         let mut stack: Stack = Stack::new();
         // Parts of text to save
-        let mut captures = CaptureList::new();
+        let mut captures = vec![];
         let mut captop = 0;
 
         loop {
@@ -237,7 +269,10 @@ impl Parser {
 
                     ip += 1;
                 }
-                End => return Ok((captures, sp)),
+                End => {
+                    captures.truncate(captop);
+                    return Ok((to_captures(captures), sp));
+                }
                 EndFail => bail!("Parsing failed"),
                 BackCommit(l) => {
                     match stack.pop() {
@@ -245,28 +280,27 @@ impl Parser {
                             sp = spos;
                             captop = caplevel;
                             captures.truncate(captop);
-
-                            // reopen_captures(sp, &mut captures[..captop]);
                         }
                         e => bail!("Invalid stack entry pop at back commit: {e:?}"),
                     }
                     ip = *l;
                 }
                 CaptureBegin(id) => {
-                    captures.push(Capture::new(*id, sp));
+                    captures.push(PartialCapture {
+                        id: *id,
+                        kind: Kind::Open,
+                        pos: sp,
+                    });
                     captop += 1;
                     ip += 1;
                 }
                 CaptureEnd => {
-                    // Find last unclosed capture
-                    let caps = &mut captures[..captop];
-                    for i in (0..caps.len()).rev() {
-                        let cap = &mut caps[i];
-                        if !cap.is_closed() {
-                            cap.close(sp);
-                            break;
-                        }
-                    }
+                    captures.push(PartialCapture {
+                        id: 0,
+                        kind: Kind::Close,
+                        pos: sp,
+                    });
+                    captop += 1;
                     ip += 1;
                 }
                 _ => bail!("Unsupported operation {op:?}"),
@@ -285,13 +319,14 @@ impl Parser {
                         sp = spos;
                         captop = caplevel;
                         captures.truncate(captop);
-                        // reopen_captures(sp, &mut captures[..captop]);
                         break;
                     }
 
                     None => {
-                        if captures_good(&captures) {
-                            return Ok((captures, sp));
+                        // Used in iterator
+                        let (caps, good) = captures_good(captures);
+                        if good {
+                            return Ok((caps, sp));
                         } else {
                             bail!("No stack entry to backtrack to");
                         }
@@ -303,35 +338,32 @@ impl Parser {
     }
 }
 
-// fn reopen_captures(sp: u64, caps: &mut [Capture]) {
-//     // If reopenable captures were closed, we need to reopen them
-//     for i in (0..caps.len()).rev() {
-//         let cap = &mut caps[i];
-//         if cap.is_closed() {
-//             if cap.range().end <= sp {
-//                 break;
-//             }
-
-//             if cap.is_reopenable() {
-//                 cap.reopen();
-//             }
-//         }
-//     }
-// }
-
 /// Check that captures exist and all captures all closed
-fn captures_good(caps: &Vec<Capture>) -> bool {
-    if caps.is_empty() {
-        return false;
+fn captures_good(partials: Vec<PartialCapture>) -> (Vec<Capture>, bool) {
+    if partials.is_empty() {
+        return (vec![], false);
     }
 
-    for cap in caps {
-        if cap.end == 0 {
-            return false;
+    let mut captures = Vec::with_capacity(partials.len() / 2);
+    let mut stack = vec![];
+    for cap in partials {
+        match cap.kind {
+            Kind::Open => {
+                stack.push(cap);
+            }
+            Kind::Close => {
+                let Some(start_cap) = stack.pop() else { return (captures, false); };
+                let capture = Capture {
+                    id: start_cap.id,
+                    start: start_cap.pos,
+                    end: cap.pos,
+                };
+                captures.push(capture);
+            }
         }
     }
 
-    true
+    (captures, stack.is_empty())
 }
 
 #[cfg(test)]

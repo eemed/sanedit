@@ -112,7 +112,7 @@ fn main() {
         }
         Glob::from_rules(rules).unwrap().into()
     } else if cli.regex {
-        let rules = Regex::parse_pattern(&rules).unwrap();
+        let rules = Regex::parse_rules(&rules).unwrap();
         if cli.print_rules {
             println!("{rules}");
         }

@@ -215,7 +215,7 @@ impl Jit {
                     let start_pos = start_cap.ptr as usize - start as usize;
                     let end_pos = start_pos + (cap.ptr as usize - start_cap.ptr as usize);
                     let capture = Capture {
-                        id: cap.id as usize,
+                        id: start_cap.id as usize,
                         start: start_pos as u64,
                         end: end_pos as u64,
                     };

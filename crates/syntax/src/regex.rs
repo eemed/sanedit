@@ -31,12 +31,13 @@ pub struct Regex {
 
 impl Regex {
     pub fn new(pattern: &str) -> Result<Regex, RegexError> {
+        log::info!("new: {pattern:?}");
         let rules = RegexToPEG::convert(pattern)?;
         let parser = Parser::from_rules_unanchored(rules)?;
         Ok(Regex { parser })
     }
 
-    pub fn parse_pattern(pattern: &str) -> Result<RegexRules, RegexError> {
+    pub fn parse_rules(pattern: &str) -> Result<RegexRules, RegexError> {
         let rules = RegexToPEG::convert(pattern)?;
         Ok(RegexRules(rules))
     }

@@ -7,30 +7,14 @@ use super::Parser;
 pub type CaptureID = usize;
 pub type CaptureList = Vec<Capture>;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Capture {
-    pub(crate) id: CaptureID,
     pub(crate) start: SubjectPosition,
     pub(crate) end: SubjectPosition,
+    pub(crate) id: CaptureID,
 }
 
 impl Capture {
-    pub(crate) fn new(id: CaptureID, start: SubjectPosition) -> Capture {
-        Capture {
-            id,
-            start,
-            end: 0,
-        }
-    }
-
-    pub(crate) fn is_closed(&self) -> bool {
-        self.end != 0
-    }
-
-    pub(crate) fn close(&mut self, end: SubjectPosition) {
-        self.end = end;
-    }
-
     pub fn id(&self) -> CaptureID {
         self.id
     }

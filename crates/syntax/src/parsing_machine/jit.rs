@@ -1,3 +1,5 @@
+use std::alloc::Layout;
+
 use crate::grammar::Rules;
 use crate::ParseError;
 
@@ -5,17 +7,31 @@ use super::compiler::Program;
 use super::{CaptureList, Compiler};
 use dynasmrt::{dynasm, AssemblyOffset, DynamicLabel, DynasmApi, DynasmLabelApi, ExecutableBuffer};
 
+macro_rules! offset_i32 {
+    ($struct:path, $field:tt) => {
+        core::mem::offset_of!($struct, $field) as i32
+    };
+}
+
 #[repr(u8)]
+#[derive(Debug)]
 enum Kind {
     Open = 0,
     Close = 1,
 }
 
 #[repr(C)]
+#[derive(Debug)]
 struct PartialCapture {
     id: u32,
     kind: Kind,
-    pos: u64,
+    ptr: *mut u8,
+}
+
+impl Drop for PartialCapture {
+    fn drop(&mut self) {
+        // println!("Drop: {self:?}");
+    }
 }
 
 macro_rules! asm {
@@ -34,35 +50,115 @@ macro_rules! asm {
             // available: rbx, rcx, rdx, rsi, rdi
             ; .alias tmp, r8
             ; .alias trash, r9
-            ; .alias state, r10
-            ; .alias label, r11
+            ; .alias label, r10
+            ; .alias capture_pointer, r11
 
             // These are mandatory
-            ; .alias subject_end, r12
-            ; .alias subject_pointer, r13
-            ; .alias capture_pointer, r14
+            ; .alias state, r12
+            ; .alias subject_end, r13
+            ; .alias subject_pointer, r14
             ; .alias captop, r15
             $($t)*
         )
     }
 }
 
+macro_rules! double_cap_size {
+    ($ops:ident, $ptr:expr) => {
+        asm!($ops
+            // ; push subject_end
+            // ; push subject_pointer
+            // ; push capture_pointer
+            // ; push captop
+            // ; push state
+
+
+            ; mov rdi, state
+            ; mov rax, QWORD $ptr as _
+
+            // ; sub rsp, 8
+            ; call rax
+            // ; add rsp, 8
+
+            // ; pop state
+            // ; pop captop
+            // ; pop capture_pointer
+            // ; pop subject_pointer
+            // ; pop subject_end
+        )
+    }
+}
+
+#[derive(Debug)]
 struct State {
-    captures: Vec<PartialCapture>,
+    cap: usize, // These are always u64
+    len: usize,
+    ptr: *mut PartialCapture,
 }
 
 impl State {
-    unsafe extern "C" fn double_cap_size(state: *mut State) -> *mut PartialCapture {
-        todo!()
-    }
+    unsafe extern "C" fn double_cap_size(state_ptr: *mut State) {
+        let state = &mut *state_ptr;
+        println!("double_cap_size: {state_ptr:p} {:?}", state);
+        let olayout = Layout::array::<PartialCapture>(state.cap).unwrap();
+        state.cap *= 2;
+        let nlayout = Layout::array::<PartialCapture>(state.cap).unwrap();
 
+        println!("realloc: {:?} -> {:?}", olayout.size(), nlayout.size());
+        let nptr = std::alloc::realloc(state.ptr as *mut u8, olayout, nlayout.size())
+            as *mut PartialCapture;
+        if nptr.is_null() {
+            panic!("Realloc failed")
+        }
+
+
+        state.ptr = nptr;
+        println!("double_cap_size done: {state:?}");
+        // unsafe {
+        //     let slice = std::slice::from_raw_parts(state.ptr, state.len);
+        //     for (i, cap) in slice.iter().enumerate() {
+        //         println!("Capture {}: {:?}", i, cap);
+        //     }
+        // }
+    }
+}
+
+impl Drop for State {
+    fn drop(&mut self) {
+        println!(
+            "Drop: {self:?}, => {}",
+            self.ptr as usize % align_of::<PartialCapture>()
+        );
+
+        unsafe {
+            let slice = std::slice::from_raw_parts(self.ptr, self.len);
+            for (i, cap) in slice.iter().enumerate() {
+                println!("Capture {}: {:?}", i, cap);
+            }
+        }
+        unsafe {
+            let layout = Layout::array::<PartialCapture>(self.cap).unwrap();
+
+            // Drop each element
+            for i in 0..self.len {
+                std::ptr::drop_in_place(self.ptr.add(i));
+            }
+
+            // Free memory
+            std::alloc::dealloc(self.ptr as *mut u8, layout);
+        }
+    }
 }
 
 impl Default for State {
     fn default() -> Self {
-        State {
-            captures: Vec::with_capacity(512),
+        let cap = 2;
+        let layout = Layout::array::<PartialCapture>(cap).expect("Invalid layout");
+        let ptr = unsafe { std::alloc::alloc(layout) as *mut PartialCapture };
+        if ptr.is_null() {
+            panic!("No space")
         }
+        State { cap, len: 0, ptr }
     }
 }
 
@@ -86,20 +182,24 @@ impl Jit {
             return Err(ParseError::JitUnsupported);
         }
 
-        // println!("Program:\n{program:?}");
+        println!("Program:\n{program:?}");
         let (program, start) = Self::compile(program);
         Ok(Jit { program, start })
     }
 
     pub fn parse<B: AsRef<[u8]>>(&self, bytes: B) -> Result<CaptureList, ParseError> {
         let mut state = State::default();
+        let state_ref = &mut state as *mut State;
         let bytes = bytes.as_ref();
-        let peg_program: extern "C" fn(*mut State, *mut PartialCapture, *const u8, *const u8) -> i64 =
+        let peg_program: extern "C" fn(*mut State, *const u8, *const u8) -> i64 =
             unsafe { std::mem::transmute(self.program.ptr(self.start)) };
+
         let start = bytes.as_ptr();
         let end = unsafe { start.add(bytes.len()) };
-        let res = peg_program(&mut state, state.captures.as_mut_ptr(), start, end);
+        println!("start: {state_ref:?}");
+        let res = peg_program(state_ref, start, end);
 
+        println!("Result: {res}");
         if res == 0 {
             Ok(CaptureList::new())
         } else {
@@ -135,7 +235,6 @@ impl Jit {
             .map(|_| ops.new_dynamic_label())
             .collect();
 
-
         let start = ops.offset();
         asm!(ops
             // Prologue: callee-saved registers
@@ -148,9 +247,8 @@ impl Jit {
 
             // Load passed in subject pointer
             ; mov state, arg1
-            ; mov capture_pointer, arg2
-            ; mov subject_pointer, arg3
-            ; mov subject_end, arg4
+            ; mov subject_pointer, arg2
+            ; mov subject_end, arg3
 
             ; mov captop, 0
 
@@ -273,9 +371,57 @@ impl Jit {
                 TestSet(set, _) => todo!(),
                 TestSetNoChoice(set, _) => todo!(),
                 TestAny(_, _) => todo!(),
-                CaptureBegin(_) => todo!(),
+                CaptureBegin(id) => {
+                    asm!(ops
+                        // Check if needs to grow, jump past if not needed
+                        ; cmp captop, [state + offset_i32!(State, cap)]
+                        ; jb >next
+                    );
+
+                    double_cap_size!(ops, State::double_cap_size);
+
+                    asm!(ops
+                        ;next:
+                        ; mov capture_pointer, captop
+                        ; shl capture_pointer, 4 // size_of(PartialCapture) = 16
+                        ; add capture_pointer, [state + offset_i32!(State, ptr)]
+
+                        // Save capture to the capture pointer and advance it
+                        ; mov DWORD [capture_pointer + offset_i32!(PartialCapture, id)], *id as i32
+                        ; mov BYTE [capture_pointer + offset_i32!(PartialCapture, kind)], 0
+                        ; mov QWORD [capture_pointer + offset_i32!(PartialCapture, ptr)], subject_pointer
+
+                        // Increase captop and point to the top
+                        ; inc captop
+                        ; mov [state + offset_i32!(State, len)], captop
+                    );
+                }
                 CaptureBeginMultiEnd(_) => todo!(),
-                CaptureEnd => todo!(),
+                CaptureEnd => {
+                    asm!(ops
+                        // Check if needs to grow, jump past if not needed
+                        ; cmp captop, [state + offset_i32!(State, cap)]
+                        ; jb >next
+                    );
+
+                    double_cap_size!(ops, State::double_cap_size);
+
+                    asm!(ops
+                        ;next:
+                        ; mov capture_pointer, captop
+                        ; shl capture_pointer, 4 // size_of(PartialCapture) = 16
+                        ; add capture_pointer, [state + offset_i32!(State, ptr)]
+
+                        // Save capture to the capture pointer and advance it
+                        ; mov DWORD [capture_pointer + offset_i32!(PartialCapture, id)], 0
+                        ; mov BYTE [capture_pointer + offset_i32!(PartialCapture, kind)], 1
+                        ; mov QWORD [capture_pointer + offset_i32!(PartialCapture, ptr)], subject_pointer
+
+                        // Increase captop and point to the top
+                        ; inc captop
+                        ; mov [state + offset_i32!(State, len)], captop
+                    );
+                }
             }
         }
 
@@ -292,7 +438,6 @@ impl Jit {
             ; pop rbx
             ; ret
         );
-
 
         // Backtrack on failure
         asm!(ops
@@ -337,6 +482,27 @@ mod test {
     #[test]
     fn jit_match_2() {
         let rules = r#"document = ("amet" / .)*;"#;
+        let jit = Jit::new(std::io::Cursor::new(rules)).unwrap();
+        let mut haystack = LOREM.repeat(10);
+        assert!(jit.parse(&mut haystack).is_ok())
+    }
+
+    #[test]
+    fn jit_match_3() {
+        let rules = r#"
+            document = (amet / .)*;
+
+            @show
+            amet = "amet";
+        "#;
+        let jit = Jit::new(std::io::Cursor::new(rules)).unwrap();
+        let mut haystack = LOREM.repeat(10);
+        assert!(jit.parse(&mut haystack).is_ok())
+    }
+
+    #[test]
+    fn jit_match_4() {
+        let rules = r#"@show document = ("amet" / .)*;"#;
         let jit = Jit::new(std::io::Cursor::new(rules)).unwrap();
         let mut haystack = LOREM.repeat(10);
         assert!(jit.parse(&mut haystack).is_ok())

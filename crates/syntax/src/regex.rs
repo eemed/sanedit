@@ -218,7 +218,7 @@ impl<'a> RegexToPEG<'a> {
                 let cont = Rule::Sequence(vec![Rule::Embed(Operation::CaptureEnd), cont.clone()]);
                 let rule = self.convert_rec(children[0], &cont, depth + 1)?;
                 return Ok(Rule::Sequence(vec![
-                    Rule::Embed(Operation::CaptureBeginMultiEnd(self.n)),
+                    Rule::Embed(Operation::CaptureBegin(self.n)),
                     rule,
                 ]));
             }

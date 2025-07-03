@@ -4,11 +4,12 @@ use rustc_hash::FxHashMap;
 use sanedit_buffer::PieceTreeView;
 use sanedit_core::{BufferRange, Language, Range};
 use sanedit_server::Kill;
+use sanedit_utils::sorted_vec::SortedVec;
 
 use std::fs::File;
 
 use anyhow::{anyhow, bail};
-use sanedit_syntax::{Annotation, Parser};
+use sanedit_syntax::{Annotation, Capture, Parser};
 
 #[derive(Debug)]
 pub struct Syntaxes {
@@ -91,7 +92,7 @@ impl Syntax {
         let start = view.start;
         let slice = pt.slice(view.clone());
         let reader = (slice.bytes(), kill.into());
-        let captures = self.parser.parse(reader)?;
+        let captures: SortedVec<Capture> = self.parser.parse(reader)?.into();
         let spans: Vec<Span> = captures
             .into_iter()
             .map(|cap| {

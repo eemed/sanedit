@@ -49,6 +49,7 @@ macro_rules! asm {
             // Just for easier handling
             // available: rbx, rcx, rdx, rsi, rdi
             ; .alias tmp, r8
+            ; .alias tmp2, r11
             ; .alias trash, r9
             ; .alias label, r10
             ; .alias capture_pointer, r11
@@ -163,6 +164,7 @@ impl Default for State {
 
 #[derive(Debug)]
 pub struct Jit {
+    ops: Program,
     program: ExecutableBuffer,
     start: AssemblyOffset,
 }
@@ -172,18 +174,18 @@ impl Jit {
         let rules = Rules::parse(rules).unwrap();
         let compiler = Compiler::new(&rules);
         let program = compiler.compile().unwrap();
-        Jit::from_program(&program)
+        Jit::from_program(program)
     }
 
     /// Return compiled verions of pattern if required instruction sets are available
-    pub fn from_program(program: &Program) -> Result<Jit, ParseError> {
+    pub fn from_program(ops: Program) -> Result<Jit, ParseError> {
         if !Self::is_available() {
             return Err(ParseError::JitUnsupported);
         }
 
 //         println!("Program:\n{program:?}");
-        let (program, start) = Self::compile(program);
-        Ok(Jit { program, start })
+        let (program, start) = Self::compile(&ops);
+        Ok(Jit { ops, program, start })
     }
 
     pub fn parse<B: AsRef<[u8]>>(&self, bytes: B) -> Result<CaptureList, ParseError> {
@@ -288,7 +290,12 @@ impl Jit {
             );
 
             match op {
-                Jump(_) => todo!(),
+                Jump(l) => {
+                    let jump_label = inst_labels[*l];
+                    asm!(ops
+                        ; jmp =>jump_label
+                    );
+                }
                 Byte(b) => {
                     asm!(ops
                         // ensure subject pointer is ok
@@ -332,26 +339,40 @@ impl Jit {
                         ; push label
                         ; push subject_pointer
                         ; push captop
+
                     );
                 }
-                Any(_) => todo!(),
+                Any(n) => {
+                todo!()
+                    // TODO No test
+                    // asm!(ops
+                    //     ; mov tmp, subject_end
+                    //     ; sub tmp, subject_pointer
+                    //     ; cmp tmp, *n as _
+                    //     ; jge >next
+                    //     // if fail, advance to end and jump to fail
+                    //     ; mov subject_pointer, subject_end
+                    //     ; jmp ->fail
+                    //     // if ok
+                    //     ;next:
+                    //     ; add subject_pointer, *n as _
+                    // );
+                }
                 UTF8Range(_, _) => todo!(),
                 Set(set) => {
-                    let bytes = set.raw().to_vec();
-                    let byte_label = ops.new_dynamic_label();
+                    let ptr = set.raw();
                     asm!(ops
                         // ensure subject pointer is ok
                         ; cmp subject_pointer, subject_end
                         ; je ->fail
 
                         // Compare if byte is found at bitset
+                        ; mov tmp2, QWORD ptr as _
                         ; movzx tmp, BYTE [subject_pointer]
-                        ; bt [=>byte_label], tmp
+                        ; bt [tmp2], tmp
                         ; jnc ->fail
                         ; inc subject_pointer
                     );
-
-                    data.push((byte_label, bytes));
                 }
                 Return => {
                     asm!(ops
@@ -359,6 +380,8 @@ impl Jit {
                         ; pop trash // captop
                         ; pop trash // subject_pointer
                         ; pop label
+
+                        // ; jmp ->fail
                         ; jmp label
                     );
                 }
@@ -490,6 +513,8 @@ impl Jit {
 
 #[cfg(test)]
 mod test {
+    use crate::{Parser, Regex};
+
     use super::*;
 
     #[test]
@@ -526,6 +551,26 @@ mod test {
         let rules = r#"@show document = ("amet" / .)*;"#;
         let jit = Jit::new(std::io::Cursor::new(rules)).unwrap();
         let mut haystack = LOREM.repeat(10);
+        assert!(jit.parse(&mut haystack).is_ok())
+    }
+
+    #[test]
+    fn jit_match_5() {
+        let rules = Regex::parse_rules("(a|ab)*c").unwrap();
+        let parser = Parser::from_rules_unanchored(rules.0).unwrap();
+        // println!("{:?}", parser.program);
+        let jit = Jit::from_program(parser.program).unwrap();
+        let mut haystack = "c";
+        assert!(jit.parse(&mut haystack).is_ok())
+    }
+
+    #[test]
+    fn jit_match_6() {
+        let rules = Regex::parse_rules("a").unwrap();
+        let parser = Parser::from_rules_unanchored(rules.0).unwrap();
+        // println!("{:?}", parser.program);
+        let jit = Jit::from_program(parser.program).unwrap();
+        let mut haystack = "a";
         assert!(jit.parse(&mut haystack).is_ok())
     }
 

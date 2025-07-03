@@ -71,7 +71,7 @@ impl RuleInfo {
     pub fn new(name: &str, rule: Rule) -> RuleInfo {
         RuleInfo {
             top: false,
-            annotations: vec![Annotation::Show],
+            annotations: vec![],
             name: name.into(),
             rule,
         }

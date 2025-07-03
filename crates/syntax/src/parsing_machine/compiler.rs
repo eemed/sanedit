@@ -56,17 +56,23 @@ impl<'a> Compiler<'a> {
         };
 
         // Unanchor
-        let unanchor = self.push(Operation::Choice(0));
-
-        // Push top rule call
-        let site = self.push(Operation::Call(0));
+        //     Choice L1
+        //     Call (top)
+        //     Commit L2
+        // L1: any byte
+        //     Jump 0
+        // L2: End
+        let choice = self.push(Operation::Choice(0));
+        let site = self.push(Operation::Call(top));
         self.call_sites.push((top, site));
-        self.push(Operation::End);
-
-        // Unanchor
-        let any = self.push(Operation::Set(Set::any()));
+        let commit = self.push(Operation::Commit(0));
+        self.push(Operation::Set(Set::any()));
         self.push(Operation::Jump(0));
-        self.program[unanchor] = Operation::Choice(any);
+        let end = self.push(Operation::End);
+
+        self.program[choice] = Operation::Choice(end);
+        self.program[commit] = Operation::Commit(end);
+        self.push(Operation::End);
 
         let mut compile_addrs = vec![0; self.rules.len()];
 

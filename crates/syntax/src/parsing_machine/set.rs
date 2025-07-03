@@ -29,8 +29,8 @@ impl Set {
         self.inner[num] & shifted != 0
     }
 
-    pub fn raw(&self) -> &[u8; 32] {
-        &self.inner
+    pub fn raw(&self) -> *const u8 {
+        self.inner.as_ptr()
     }
 }
 

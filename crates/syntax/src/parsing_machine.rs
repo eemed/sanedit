@@ -72,8 +72,8 @@ pub(crate) type SubjectPosition = u64;
 
 #[derive(Debug)]
 pub struct Parser {
-    rules: Rules,
-    program: Program,
+    pub(crate) rules: Rules,
+    pub(crate) program: Program,
 }
 
 impl Parser {
@@ -324,12 +324,12 @@ impl Parser {
 
                     None => {
                         // Used in iterator
-                        let (caps, good) = captures_good(captures);
-                        if good {
-                            return Ok((caps, sp));
-                        } else {
-                            bail!("No stack entry to backtrack to");
-                        }
+                        // let (caps, good) = captures_good(captures);
+                        // if good {
+                        //     return Ok((caps, sp));
+                        // } else {
+                        bail!("No stack entry to backtrack to");
+                        // }
                     }
                     _ => {}
                 }
@@ -352,7 +352,9 @@ fn captures_good(partials: Vec<PartialCapture>) -> (Vec<Capture>, bool) {
                 stack.push(cap);
             }
             Kind::Close => {
-                let Some(start_cap) = stack.pop() else { return (captures, false); };
+                let Some(start_cap) = stack.pop() else {
+                    return (captures, false);
+                };
                 let capture = Capture {
                     id: start_cap.id,
                     start: start_cap.pos,

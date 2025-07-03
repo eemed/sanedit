@@ -1,11 +1,11 @@
 document = regex*;
-regex = alt;
+regex = alt / sequence;
 
 @show
-alt = sequence ("|" sequence)*;
+alt = sequence ("|" sequence)+;
 
 @show
-sequence = (repetition / group / char / escaped_char)+;
+sequence = (repetition / group / char / escaped_char / any)+;
 
 @show
 char = [^\[\]\.+*?\^$(){}|\\];
@@ -15,16 +15,19 @@ escaped_char = "\\" escaped;
 @show
 escaped = .;
 
-repetition = zero_or_more / one_or_more /  optional;
+@show
+any = ".";
+
+repetition = zero_or_more / one_or_more / optional;
 
 @show
-zero_or_more = (group / char) "*";
+zero_or_more = (group / char / any) "*";
 
 @show
-one_or_more = (group / char) "+";
+one_or_more = (group / char / any) "+";
 
 @show
-optional = (group / char) "?";
+optional = (group / char / any) "?";
 
 @show
 group = "(" regex ")";

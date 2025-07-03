@@ -517,6 +517,14 @@ mod test {
 
     use super::*;
 
+    fn jit_json() {
+        let rules = include_str!("../../pegs/json.peg");
+        let jit = Jit::new(std::io::Cursor::new(rules)).expect("Failed to create JIT");
+        let json = r#"{ "nimi": "perkele", "ika": 42, lapset: ["matti", "teppo"]}"#;
+        let captures = jit.parse(json).expect("Parsing failed");
+        // TODO
+    }
+
     #[test]
     fn jit_match_1() {
         let rules = r#"document = "abc";"#;

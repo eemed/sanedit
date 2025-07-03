@@ -1,8 +1,8 @@
+use sanedit_utils::sorted_vec::SortedVec;
 use thiserror::Error;
 
 use crate::{
-    grammar::{Rule, RuleInfo, Rules},
-    ParseError, Parser,
+    grammar::{Rule, RuleInfo, Rules}, Capture, ParseError, Parser
 };
 
 #[derive(Error, Debug)]
@@ -55,11 +55,11 @@ impl Glob {
         // Just testing here that this works OK, should probably do something better => just parse manually as this is prett simple
         let text = include_str!("../pegs/glob.peg");
         let parser = Parser::new(std::io::Cursor::new(text))?;
-        let captures = parser.parse(pattern)?;
+        let captures: SortedVec<Capture> = parser.parse(pattern)?.into();
         let mut rules: Vec<Rule> = vec![];
         let mut many = false;
 
-        for cap in captures {
+        for cap in captures.iter() {
             let label = parser.label_for(cap.id());
             let rule = match label {
                 "text" => {

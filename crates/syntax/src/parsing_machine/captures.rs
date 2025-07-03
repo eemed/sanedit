@@ -7,11 +7,11 @@ use super::Parser;
 pub type CaptureID = usize;
 pub type CaptureList = Vec<Capture>;
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Capture {
+    pub(crate) id: CaptureID,
     pub(crate) start: SubjectPosition,
     pub(crate) end: SubjectPosition,
-    pub(crate) id: CaptureID,
 }
 
 impl Capture {
@@ -21,6 +21,21 @@ impl Capture {
 
     pub fn range(&self) -> Range<u64> {
         self.start..self.end
+    }
+}
+
+impl Ord for Capture {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.start
+            .cmp(&other.start)
+            .then(other.end.cmp(&self.end))
+            .then(self.id.cmp(&other.id))
+    }
+}
+
+impl PartialOrd for Capture {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
     }
 }
 

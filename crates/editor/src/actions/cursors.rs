@@ -22,7 +22,7 @@ use sanedit_core::{
 use super::{
     hooks::{self, run},
     movement::{self, next_grapheme},
-    window::{mode_insert, mode_normal, mode_select},
+    window::{mode_insert, mode_normal, mode_select, select_mode},
     ActionResult,
 };
 
@@ -89,6 +89,8 @@ fn new_cursor_to_next_search_match(editor: &mut Editor, id: ClientId) -> ActionR
             let cursor = win.cursors.primary_mut();
             *cursor = Cursor::new_select(&range);
         }
+
+        mode_select(editor, id);
     }
 
     ActionResult::Ok
@@ -119,6 +121,7 @@ fn new_cursor_to_all_search_matches(editor: &mut Editor, id: ClientId) -> Action
     }
 
     win.cursors = Cursors::from(cursors);
+    mode_select(editor, id);
 
     ActionResult::Ok
 }

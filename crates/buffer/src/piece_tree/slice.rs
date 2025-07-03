@@ -53,9 +53,9 @@ impl<'a> PieceTreeSlice<'a> {
     #[inline]
     pub fn bytes_at(&self, pos: u64) -> Bytes<'a> {
         debug_assert!(
-            self.start() + pos <= self.view.len,
+            pos <= self.view.len,
             "bytes_at: Attempting to index {} over buffer len {}",
-            self.start() + pos,
+            pos,
             self.view.len
         );
         Bytes::new_from_slice(self, pos)
@@ -69,9 +69,9 @@ impl<'a> PieceTreeSlice<'a> {
     #[inline]
     pub fn chunks_at(&self, pos: u64) -> Chunks<'a> {
         debug_assert!(
-            self.start() + pos <= self.view.len,
+            pos <= self.view.len,
             "chunks_at: Attempting to index {} over buffer len {}",
-            self.start() + pos,
+            pos,
             self.view.len
         );
         Chunks::new_from_slice(self, pos)
@@ -85,9 +85,9 @@ impl<'a> PieceTreeSlice<'a> {
     #[inline]
     pub fn chars_at(&self, pos: u64) -> Chars<'a> {
         debug_assert!(
-            self.start() + pos <= self.view.len,
+            pos <= self.view.len,
             "chars_at: Attempting to index {} over buffer len {}",
-            self.start() + pos,
+            pos,
             self.view.len
         );
         Chars::new_from_slice(self, pos)
@@ -107,8 +107,13 @@ impl<'a> PieceTreeSlice<'a> {
             Bound::Unbounded => self.len(),
         };
 
+
+
         let start = self.range.start + sub_start;
         let end = self.range.start + sub_end;
+
+        debug_assert!(self.start() <= start, "Slicing over original slice start");
+        debug_assert!(end <= self.end(), "Slicing over original slice end");
 
         self.view.slice(start..end)
     }

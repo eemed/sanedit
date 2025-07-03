@@ -1,3 +1,4 @@
+use sanedit_utils::sorted_vec::SortedVec;
 use thiserror::Error;
 
 use crate::grammar::Rule;
@@ -66,7 +67,7 @@ impl From<Regex> for Parser {
 struct RegexToPEG<'a> {
     pattern: &'a str,
     parser: Parser,
-    regex: Vec<Capture>,
+    regex: SortedVec<Capture>,
     rules: Vec<RuleInfo>,
     n: usize,
 }
@@ -77,7 +78,7 @@ impl<'a> RegexToPEG<'a> {
         let text = include_str!("../pegs/regex.peg");
         let parser = Parser::new(std::io::Cursor::new(text))?;
         let pattern = format!("({pattern})");
-        let captures = parser.parse(pattern.as_str())?;
+        let captures: SortedVec<Capture> = parser.parse(pattern.as_str())?.into();
 
         let mut state = RegexToPEG {
             pattern: pattern.as_str(),
@@ -112,7 +113,7 @@ impl<'a> RegexToPEG<'a> {
             let mut children = vec![];
             let mut start = range.start;
             let min = std::cmp::min(index + 1, self.regex.len());
-            for (i, icap) in self.regex[min..].iter().enumerate() {
+            for (i, icap) in self.regex.iter().skip(min).enumerate() {
                 let irange = icap.range();
 
                 // If capture is past the current capture

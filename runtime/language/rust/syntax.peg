@@ -7,7 +7,7 @@ nl = "\n" / "\r\n";
 ws = WHITESPACE;
 
 @show @highlight
-keyword = ("unsafe" / "static" / "loop" / "let" / "match" / "if" / "else" / "while" /
+keyword = ("macro_rules!" / "unsafe" / "static" / "loop" / "let" / "match" / "if" / "else" / "while" /
           "break" / "continue" / "move" / "async" / "dyn" / "return" /
           "for" / "in" / "as" / "pub(crate)" / "pub(super)" / "pub" / "use" /
           "fn" / "impl" / "struct" / "enum" / "const" / "trait" /
@@ -57,7 +57,7 @@ combipath = path "{" ((ws / nl)* (combipath / typepath / functionpath) ","?)+ (w
 # Operators
 operator = closure / operators;
 @show @highlight(operator)
-operators = "!" !"(" / "|" "|"? / "&&" / "?" / "=" "="? / "!=" / ".." / "+" / "-" / "/" / "*" / "<" "="? " " / ">" "="? " " / "&" / "mut";
+operators = "!" !"(" / "|" "|"? / "&&" / "?" / "=" "="? / "!=" / ".." / "+" / "-" / "/" / "*" / "<< " / "<= " / "< " / ">> " / ">= " / "> " / "&" / "mut";
 closure =  bar (type / (!(bar / nl) .))* bar;
 @show @highlight(operator)
 bar = "|";

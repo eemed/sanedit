@@ -103,7 +103,6 @@ pub(crate) struct PieceIter<'a> {
 impl<'a> PieceIter<'a> {
     #[inline]
     pub(crate) fn new(pt: &'a PieceTreeView, at: u64) -> Self {
-        // log::info!("new pieces at {at}");
         // Be empty at pt.len
         let (stack, pos) = if at == pt.len {
             (Vec::with_capacity(pt.tree.max_height()), at)

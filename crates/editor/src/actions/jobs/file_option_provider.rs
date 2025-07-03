@@ -57,12 +57,13 @@ fn rayon_read(scope: &rayon::Scope, dir: PathBuf, ctx: ReadDirContext) -> io::Re
             return Ok(());
         }
 
+        // TODO symlink handling
         let path = entry.path();
         let metadata = entry.metadata()?;
         if metadata.is_dir() {
             let ctx = ctx.clone();
             scope.spawn(|s| rayon_spawn(s, path, ctx));
-        } else {
+        } else if metadata.is_file() {
             let _ = ctx.osend.blocking_send(Choice::from_path(path, ctx.strip));
         }
     }

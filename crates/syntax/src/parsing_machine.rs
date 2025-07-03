@@ -341,7 +341,7 @@ impl Parser {
 /// Check that captures exist and all captures all closed
 fn captures_good(partials: Vec<PartialCapture>) -> (Vec<Capture>, bool) {
     if partials.is_empty() {
-        return (vec![], false);
+        return (Vec::default(), false);
     }
 
     let mut captures = Vec::with_capacity(partials.len() / 2);

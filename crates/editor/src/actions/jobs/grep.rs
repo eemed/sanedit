@@ -1,4 +1,5 @@
 use std::any::Any;
+use std::cmp::min;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
@@ -60,10 +61,14 @@ impl Grep {
             let msend = msend.clone();
             let bufs = buffers.clone();
 
+            // let (tx, rx) = tokio::sync::oneshot::channel::<()>();
+
             rayon::spawn(move || {
                 let path = match opt.as_ref() {
                     Choice::Path { path, .. } => path,
-                    _ => return,
+                    _ => {
+                        return;
+                    }
                 };
 
                 match bufs.get(path) {
@@ -80,7 +85,11 @@ impl Grep {
                         Self::grep_buffer(path.clone(), &view, &searcher, msend);
                     }
                 }
+
+                // tx.send(());
             });
+
+            // rx.await;
         }
     }
 
@@ -126,7 +135,7 @@ impl Grep {
         };
 
         let eol = {
-            let limit = start.saturating_add(MAX_BYTES_AFTER_MATCH);
+            let limit = min(slice.len(), start.saturating_add(MAX_BYTES_AFTER_MATCH));
             let slice = slice.slice(..limit);
             end_of_line(&slice, start)
         };
@@ -160,7 +169,7 @@ impl Job for Grep {
 
         let fut = async move {
             // Options channel
-            let (osend, orecv) = channel::<Arc<Choice>>(CHANNEL_SIZE);
+            let (osend, orecv) = channel::<Arc<Choice>>(50000);
             // Results channel
             let (msend, mrecv) = channel::<GrepResult>(CHANNEL_SIZE);
 

@@ -81,7 +81,7 @@ impl Buffer {
     }
 
     fn file_backed(file: FileDescription, options: BufferConfig) -> Result<Buffer> {
-        log::debug!("creating file backed buffer");
+        log::debug!("Creating file backed buffer: {file:?}");
         let path = file.path();
         let pt = PieceTree::from_path(path)?;
         let modified = path.metadata()?.modified()?;
@@ -102,7 +102,7 @@ impl Buffer {
     }
 
     fn in_memory(file: FileDescription, options: BufferConfig) -> Result<Buffer> {
-        log::debug!("creating in memory buffer");
+        log::debug!("Creating in memory buffer: {file:?}");
         let path = file.path();
         let mut buf = if !path.exists() {
             Self::new()

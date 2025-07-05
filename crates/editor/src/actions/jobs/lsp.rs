@@ -153,7 +153,7 @@ impl LSPJob {
                     };
 
                     if !ok {
-                        log::debug!(
+                        log::trace!(
                             "LSP response {result:?} filtered because constraint {constraint:?}"
                         );
                         return;

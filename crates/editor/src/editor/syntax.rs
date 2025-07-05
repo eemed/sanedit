@@ -4,12 +4,12 @@ use rustc_hash::FxHashMap;
 use sanedit_buffer::PieceTreeView;
 use sanedit_core::{BufferRange, Language, Range};
 use sanedit_server::Kill;
-use sanedit_utils::sorted_vec::SortedVec;
+use sanedit_utils::{either::Either, sorted_vec::SortedVec};
 
 use std::fs::File;
 
 use anyhow::{anyhow, bail};
-use sanedit_syntax::{Annotation, Capture, Parser};
+use sanedit_syntax::{Annotation, Capture, Jit, Parser};
 
 #[derive(Debug)]
 pub struct Syntaxes {
@@ -53,7 +53,7 @@ impl Syntaxes {
 
 #[derive(Debug, Clone)]
 pub struct Syntax {
-    parser: Arc<Parser>,
+    parser: Arc<Either<Jit, Parser>>,
 }
 
 impl Syntax {
@@ -63,12 +63,29 @@ impl Syntax {
             Err(e) => bail!("Failed to read PEG file {:?}: {e}", peg),
         };
 
-        match Parser::new(file) {
-            Ok(p) => Ok(Syntax {
-                parser: Arc::new(p),
-            }),
-            Err(e) => bail!("Failed to create grammar from PEG file: {:?}: {e}", peg),
-        }
+        let parser = if let Ok(jit) = Jit::new(&file) {
+            Either::Left(jit)
+        } else {
+            match Parser::new(&file) {
+                Ok(p) => Either::Right(p),
+                Err(e) => {
+                    bail!("Failed to create grammar from PEG file: {:?}: {e}", peg);
+                }
+            }
+        };
+
+        log::info!(
+            "Parsing syntax {peg:?} using {}",
+            if parser.is_left() {
+                "JIT"
+            } else {
+                "Interpreted"
+            }
+        );
+
+        Ok(Syntax {
+            parser: Arc::new(parser),
+        })
     }
 
     pub fn parse(
@@ -91,17 +108,33 @@ impl Syntax {
 
         let start = view.start;
         let slice = pt.slice(view.clone());
-        let reader = (slice.bytes(), kill.into());
-        let captures: SortedVec<Capture> = self.parser.parse(reader)?.into();
+        let captures: SortedVec<Capture> = match self.parser.as_ref() {
+            Either::Left(jit) => {
+                let bytes: Vec<u8> = (&slice).into();
+                jit.parse(&bytes)?.into()
+            }
+            Either::Right(parser) => {
+                let reader = (slice.bytes(), kill.into());
+                parser.parse(reader)?.into()
+            }
+        };
+
+        // .parse(reader)?.into();
         let spans: Vec<Span> = captures
             .into_iter()
             .map(|cap| {
-                let mut name = self.parser.label_for(cap.id());
+                let mut name = match self.parser.as_ref() {
+                    Either::Left(j) => j.label_for(cap.id()),
+                    Either::Right(p) => p.label_for(cap.id()),
+                };
                 let mut range: BufferRange = cap.range().into();
                 range.start += start;
                 range.end += start;
 
-                let anns = self.parser.annotations_for(cap.id());
+                let anns = match self.parser.as_ref() {
+                    Either::Left(j) => j.annotations_for(cap.id()),
+                    Either::Right(p) => p.annotations_for(cap.id()),
+                };
                 let completion = anns.iter().find_map(|ann| match ann {
                     Annotation::Other(aname, cname) if aname == COMPLETION_ANNOTATION => {
                         let completion = cname.clone().unwrap_or(name.into());

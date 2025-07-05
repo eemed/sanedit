@@ -33,7 +33,7 @@ impl JsonRequest {
 
     pub async fn write_to<W: AsyncWriteExt + Unpin>(&self, stdin: &mut W) -> Result<(), LSPError> {
         let json = serde_json::to_string(&self)?;
-        log::debug!("->\n{}", serde_json::to_string_pretty(&self)?);
+        log::trace!("->\n{}", serde_json::to_string_pretty(&self)?);
 
         let clen = format!("{CONTENT_LENGTH}: {}{SEP}", json.len());
         stdin.write_all(clen.as_bytes()).await?;
@@ -101,12 +101,12 @@ pub async fn read_from<R: AsyncBufReadExt + Unpin>(
         }
         reader.read_exact(&mut buf[..content_length]).await?;
         if let Ok(response) = serde_json::from_slice::<JsonResponse>(&buf[..content_length]) {
-            log::debug!("<-\n{}", serde_json::to_string_pretty(&response)?);
+            log::trace!("<-\n{}", serde_json::to_string_pretty(&response)?);
             return Ok(Either::Left(response));
         }
 
         if let Ok(notif) = serde_json::from_slice::<JsonNotification>(&buf[..content_length]) {
-            log::debug!("<-\n{}", serde_json::to_string_pretty(&notif)?);
+            log::trace!("<-\n{}", serde_json::to_string_pretty(&notif)?);
             return Ok(Either::Right(notif));
         }
     }
@@ -138,7 +138,7 @@ impl JsonNotification {
 
     pub async fn write_to<W: AsyncWriteExt + Unpin>(&self, stdin: &mut W) -> Result<(), LSPError> {
         let json = serde_json::to_string(&self)?;
-        log::debug!("->\n{}", serde_json::to_string_pretty(&self)?);
+        log::trace!("->\n{}", serde_json::to_string_pretty(&self)?);
 
         let clen = format!("{CONTENT_LENGTH}: {}{SEP}", json.len());
         stdin.write_all(clen.as_bytes()).await?;

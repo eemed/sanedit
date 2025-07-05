@@ -1,10 +1,10 @@
 use std::alloc::Layout;
 
 use crate::grammar::Rules;
-use crate::{Capture, ParseError};
+use crate::{Annotation, Capture, ParseError};
 
 use super::compiler::Program;
-use super::{CaptureList, Compiler};
+use super::{CaptureID, CaptureList, Compiler};
 use dynasmrt::{dynasm, AssemblyOffset, DynamicLabel, DynasmApi, DynasmLabelApi, ExecutableBuffer};
 use sanedit_buffer::utf8::{ACCEPT, REJECT, UTF8_CHAR_CLASSES, UTF8_TRANSITIONS};
 
@@ -314,6 +314,7 @@ impl Default for State {
 
 #[derive(Debug)]
 pub struct Jit {
+    rules: Rules,
     ops: Program,
     program: ExecutableBuffer,
     start: AssemblyOffset,
@@ -324,11 +325,11 @@ impl Jit {
         let rules = Rules::parse(rules).unwrap();
         let compiler = Compiler::new(&rules);
         let program = compiler.compile().unwrap();
-        Jit::from_program(program)
+        Jit::from_program(rules, program)
     }
 
     /// Return compiled verions of pattern if required instruction sets are available
-    pub fn from_program(ops: Program) -> Result<Jit, ParseError> {
+    pub(crate) fn from_program(rules: Rules, ops: Program) -> Result<Jit, ParseError> {
         if !Self::is_available() {
             return Err(ParseError::JitUnsupported);
         }
@@ -336,6 +337,7 @@ impl Jit {
         //         println!("Program:\n{program:?}");
         let (program, start) = Self::compile(&ops);
         Ok(Jit {
+            rules,
             ops,
             program,
             start,
@@ -701,6 +703,20 @@ impl Jit {
         let buf = ops.finalize().unwrap();
         (buf, start)
     }
+
+    pub fn label_for(&self, id: CaptureID) -> &str {
+        if let Some(rule) = self.rules.get(id) {
+            return &rule.name;
+        }
+
+        // If the capture was not from a rule should be from an embedded
+        // operation
+        "embed"
+    }
+
+    pub fn annotations_for(&self, id: CaptureID) -> &[Annotation] {
+        &self.rules[id].annotations
+    }
 }
 
 #[cfg(test)]
@@ -872,7 +888,7 @@ mod test {
         let rules = Regex::parse_rules("(a|ab)*c").unwrap();
         let parser = Parser::from_rules_unanchored(rules.0).unwrap();
         // println!("{:?}", parser.program);
-        let jit = Jit::from_program(parser.program).unwrap();
+        let jit = Jit::from_program(parser.rules, parser.program).unwrap();
         let mut haystack = "c";
         assert!(jit.parse(&mut haystack).is_ok())
     }
@@ -882,7 +898,7 @@ mod test {
         let rules = Regex::parse_rules("a").unwrap();
         let parser = Parser::from_rules_unanchored(rules.0).unwrap();
         // println!("{:?}", parser.program);
-        let jit = Jit::from_program(parser.program).unwrap();
+        let jit = Jit::from_program(parser.rules, parser.program).unwrap();
         let mut haystack = "a";
         assert!(jit.parse(&mut haystack).is_ok())
     }

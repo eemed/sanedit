@@ -231,7 +231,6 @@ impl Changes {
                         let mut end = range.end;
                         start -= self.removed(range.start, true);
                         end -= self.removed(range.end, false);
-                        log::debug!("Cursor: {cursor:?} to {range:?}");
 
                         cursor.to_range(&Range::new(start, end));
                     }
@@ -283,7 +282,6 @@ impl Changes {
                         start -= self.removed(range.start, true);
                         end += self.added(range.end, false);
                         end -= self.removed(range.end, false);
-                        log::debug!("Cursor: {cursor:?} to {range:?}");
 
                         cursor.to_range(&Range::new(start, end));
                     }

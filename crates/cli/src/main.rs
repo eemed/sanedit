@@ -56,6 +56,7 @@ fn main() {
     let start_opts = StartOptions {
         config_dir,
         working_dir,
+        debug: cli.debug
     };
     let socket_start_opts = SocketStartOptions { file: cli.file };
 

@@ -21,6 +21,7 @@ use self::client::ClientId;
 pub struct StartOptions {
     pub config_dir: Option<PathBuf>,
     pub working_dir: Option<PathBuf>,
+    pub debug: bool,
 }
 
 /// Editor handle allows us to communicate with the editor

@@ -1,5 +1,4 @@
 use criterion::{criterion_group, criterion_main, Criterion};
-use dynasmrt::{AssemblyOffset, DynasmApi as _};
 use sanedit_syntax::{Jit, Parser};
 
 const LOREM: &str = "

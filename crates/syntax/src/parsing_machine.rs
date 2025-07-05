@@ -262,18 +262,17 @@ impl Parser {
                     stack.pop();
                     state = State::Failure;
                 }
-                Span(set) => {
-                    while set.has(reader.get(sp)) {
-                        sp += 1;
-                    }
+                // Span(set) => {
+                //     while set.has(reader.get(sp)) {
+                //         sp += 1;
+                //     }
 
-                    ip += 1;
-                }
+                //     ip += 1;
+                // }
                 End => {
                     captures.truncate(captop);
                     return Ok((to_captures(captures), sp));
                 }
-                EndFail => bail!("Parsing failed"),
                 BackCommit(l) => {
                     match stack.pop() {
                         Some(StackEntry::Backtrack { spos, caplevel, .. }) => {
@@ -303,7 +302,6 @@ impl Parser {
                     captop += 1;
                     ip += 1;
                 }
-                _ => bail!("Unsupported operation {op:?}"),
             }
 
             // Recover from failure state

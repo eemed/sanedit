@@ -31,7 +31,7 @@ uppercase_constant = [A..Z] [A..Z0..9_]+ &stop;
 string = char / sstring / rawstring;
 char = "'" . "'";
 sstring = "b"? "\"" (escape / replace / [^"])* "\"";
-rawstring = "r#" (escape / [^#])* "#";
+rawstring = "r#\"" (escape / (!"\"#" .))* "\"#";
 escape = "\\" .;
 replace = !"{{" "{" replacement "}";
 @show @highlight(default)

@@ -406,7 +406,7 @@ impl Jit {
     fn compile(program: &Program) -> (ExecutableBuffer, AssemblyOffset) {
         use super::Operation::*;
         let mut ops = dynasmrt::x64::Assembler::new().unwrap();
-        let mut data: Vec<(DynamicLabel, Vec<u8>)> = vec![];
+        // let mut data: Vec<(DynamicLabel, Vec<u8>)> = vec![];
         // TODO probably a better way of handling this?
         let inst_labels: Vec<DynamicLabel> = (0..program.ops.len())
             .map(|_| ops.new_dynamic_label())
@@ -556,11 +556,14 @@ impl Jit {
                         ; pop trash // subject_pointer
                         ; pop label
 
-                        // ; jmp ->fail
                         ; jmp label
                     );
                 }
-                Fail => todo!(),
+                Fail => {
+                    asm!(ops
+                        ; jmp ->fail
+                    );
+                }
                 End => {
                     asm!(ops
                         ; pop trash // captop
@@ -571,7 +574,6 @@ impl Jit {
                         ; jmp ->epilogue
                     );
                 }
-                EndFail => todo!(),
                 PartialCommit(l) => {
                     let jump_label = inst_labels[*l];
                     asm!(ops
@@ -582,14 +584,25 @@ impl Jit {
                         ; jmp =>jump_label
                     );
                 }
-                FailTwice => todo!(),
-                Span(_) => todo!(),
-                BackCommit(_) => todo!(),
-                TestChar(_, _) => todo!(),
-                TestCharNoChoice(_, _) => todo!(),
-                TestSet(_, _) => todo!(),
-                TestSetNoChoice(_, _) => todo!(),
-                TestAny(_, _) => todo!(),
+                FailTwice => {
+                    asm!(ops
+                        ; pop trash
+                        ; pop trash
+                        ; pop trash
+
+                        ; jmp ->fail
+                    );
+                }
+                BackCommit(l) => {
+                    let jump_label = inst_labels[*l];
+                    asm!(ops
+                        ; pop captop
+                        ; pop subject_pointer
+                        ; pop label
+
+                        ; jmp =>jump_label
+                    );
+                }
                 CaptureBegin(id) => {
                     asm!(ops
                         // Check if needs to grow, jump past if not needed
@@ -677,12 +690,12 @@ impl Jit {
         validate_utf8!(ops, classes, transitions);
 
         // Write needed data
-        for (label, bytes) in data {
-            asm!(ops
-                ;=>label
-                ; .bytes bytes
-            );
-        }
+        // for (label, bytes) in data {
+        //     asm!(ops
+        //         ;=>label
+        //         ; .bytes bytes
+        //     );
+        // }
 
         // println!("ops: {ops:?}");
         let buf = ops.finalize().unwrap();
@@ -699,8 +712,8 @@ mod test {
     #[test]
     fn jit_validate() {
         let mut ops = dynasmrt::x64::Assembler::new().unwrap();
-        // let haystack = b"\u{0400}".as_bytes();
-        let haystack = b"\xFF";
+        let haystack = "\u{0400}".as_bytes();
+        // let haystack = b"\xFF";
         let hs_start = haystack.as_ptr();
         let hs_end = unsafe { hs_start.add(haystack.len()) };
         let start = ops.offset();
@@ -743,6 +756,48 @@ mod test {
 
         let res = peg_program();
         println!("res: {haystack:?} {res:#02x}");
+        assert_eq!(res, 0x400);
+    }
+
+    #[test]
+    fn jit_rust() {
+        let peg = include_str!("../../../../runtime/language/rust/syntax.peg");
+        let jit = Jit::new(std::io::Cursor::new(peg)).expect("Failed to create JIT");
+        let rust = r#"
+            use crate::editor::snippets::{Snippet, SNIPPET_DESCRIPTION};
+
+            #[derive(Debug, Hash, PartialEq, Eq, Ord, PartialOrd, Clone)]
+            pub(crate) enum Choice {
+                Snippet {
+                    snippet: Snippet,
+                    display: String,
+                },
+                Path {
+                    path: PathBuf,
+                    display: String,
+                },
+                Text {
+                    text: String,
+                    description: String,
+                },
+                Numbered {
+                    n: u32,
+                    text: String,
+                    display: String,
+                },
+                LSPCompletion {
+                    item: Box<CompletionItem>,
+                },
+            }
+            impl Choice {
+                pub fn from_completion_item(completion: CompletionItem) -> Arc<Choice> {
+                    Arc::new(Choice::LSPCompletion {
+                        item: Box::new(completion),
+                    })
+                }
+            }
+        "#;
+        let captures = jit.parse(rust).expect("Parsing failed");
     }
 
     #[test]
@@ -750,6 +805,25 @@ mod test {
         let rules = include_str!("../../pegs/json.peg");
         let jit = Jit::new(std::io::Cursor::new(rules)).expect("Failed to create JIT");
         let json = r#"{ "nimi": "perkele", "ika": 42, lapset: ["matti", "teppo"]}"#;
+        let captures = jit.parse(json).expect("Parsing failed");
+        for cap in captures {
+            println!("{cap:?}: {}", &json[cap.start as usize..cap.end as usize]);
+        }
+    }
+
+    #[test]
+    fn jit_toml() {
+        let rules = include_str!("../../pegs/toml.peg");
+        let jit = Jit::new(std::io::Cursor::new(rules)).expect("Failed to create JIT");
+        let json = r#"
+        [hello]
+        number = 42
+        array = ["bob", "alice"]
+        debug = true
+
+        [another.section]
+        setter = true
+        "#;
         let captures = jit.parse(json).expect("Parsing failed");
         for cap in captures {
             println!("{cap:?}: {}", &json[cap.start as usize..cap.end as usize]);

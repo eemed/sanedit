@@ -308,6 +308,7 @@ mod test {
         }
     }
 
+
     #[test]
     fn compile_json() {
         let peg = include_str!("../../pegs/json.peg");

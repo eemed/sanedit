@@ -140,9 +140,10 @@ impl Matcher {
 fn score(opt: &str, ranges: &[Range<usize>]) -> u32 {
     // Closest match first
     // Shortest item first
-    let match_at = ranges.first().map(|f| f.start as u16).unwrap_or(0);
-    let len = opt.len() as u16;
-    ((match_at as u32) << u16::BITS) | len as u32
+    ranges.first().map(|f| f.start).unwrap_or(opt.len()) as u32
+    // let match_at = ranges.first().map(|f| f.start as u16).unwrap_or(0);
+    // let len = opt.len() as u16;
+    // ((match_at as u32) << u16::BITS) | len as u32
 }
 
 fn with_case_sensitivity(opt: &str, case_sensitive: bool) -> Cow<str> {

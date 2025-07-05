@@ -22,7 +22,7 @@ use sanedit_core::{
 use super::{
     hooks::{self, run},
     movement::{self, next_grapheme},
-    window::{mode_insert, mode_normal, mode_select, select_mode},
+    window::{mode_insert, mode_normal, mode_select},
     ActionResult,
 };
 

@@ -14,7 +14,10 @@ pub mod utf8 {
     use super::*;
 
     pub use piece_tree::utf8::{
-        chars::{decode_utf8, decode_utf8_iter, Chars},
+        chars::{
+            decode_utf8, decode_utf8_iter, Chars, ACCEPT, REJECT, UTF8_CHAR_CLASSES,
+            UTF8_TRANSITIONS,
+        },
         graphemes::{next_grapheme_boundary, prev_grapheme_boundary, Graphemes},
         lines::{next_eol, prev_eol, EOLMatch, EndOfLine, Lines},
     };

@@ -12,7 +12,6 @@ use super::{
 pub(crate) fn popup_rect(screen: Rect, win: Rect, popup: &Popup) -> Rect {
     let over = above(&screen, &win, &popup);
     let screen_point = popup.point + win.position();
-    log::info!("OVER: {over:?}, sp: {screen_point:?}");
     if !over.contains(&screen_point) {
         return over;
     }
@@ -110,6 +109,10 @@ impl Drawable for Popup {
         let mut col = 0;
 
         for (i, msg) in self.messages.iter().enumerate() {
+            if row == wsize.height {
+                break;
+            }
+
             // Add popup message separators
             if i != 0 {
                 let lcells = into_cells_with_style(&"─".repeat(wsize.width - 1), style);

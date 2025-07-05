@@ -6,6 +6,7 @@ use crate::{Capture, ParseError};
 use super::compiler::Program;
 use super::{CaptureList, Compiler};
 use dynasmrt::{dynasm, AssemblyOffset, DynamicLabel, DynasmApi, DynasmLabelApi, ExecutableBuffer};
+use sanedit_buffer::utf8::{ACCEPT, REJECT, UTF8_CHAR_CLASSES, UTF8_TRANSITIONS};
 
 macro_rules! offset_i32 {
     ($struct:path, $field:tt) => {
@@ -38,7 +39,6 @@ macro_rules! asm {
     ($ops:ident $($t:tt)*) => {
         dynasm!($ops
             ; .arch x64
-            // ; .alias subject_len, rcx
             ; .alias arg1, rdi
             ; .alias arg2, rsi
             ; .alias arg3, rdx
@@ -50,6 +50,7 @@ macro_rules! asm {
             // available: rbx, rcx, rdx, rsi, rdi
             ; .alias tmp, r8
             ; .alias tmp2, r11
+            ; .alias tmp3, rdi
             ; .alias trash, r9
             ; .alias label, r10
             ; .alias capture_pointer, r11
@@ -73,7 +74,6 @@ macro_rules! double_cap_size {
             // ; push captop
             // ; push state
 
-
             ; mov rdi, state
             ; mov rax, QWORD $ptr as _
 
@@ -88,6 +88,156 @@ macro_rules! double_cap_size {
             // ; pop subject_end
         )
     }
+}
+
+/// Provide return addr at tmp3
+/// Returns length of codepoint at tmp2
+/// Returns codepoint at rax
+/// If invalid returns -1 at rax
+macro_rules! validate_utf8 {
+    ($ops:ident, $classes:expr, $transitions:expr) => {
+        asm!($ops
+            ; .alias cp, rbx
+            ; .alias dstate, r9 // decode state
+            ; .alias class, rcx
+            ; .alias class_byte, cl
+            ; .alias byte, r10
+
+            ;->validate_utf8:
+            ; mov dstate, ACCEPT as _
+            ; xor cp, cp // zero out
+            ; xor tmp2, tmp2
+
+            ;start:
+            // let byte = byte as u32;
+            // Ensure subject_pointer is ok
+            ; cmp [subject_pointer + tmp2], subject_end
+            ; je >fail
+            ; movzx byte, BYTE [subject_pointer + tmp2]
+
+
+            // let class = UTF8_CHAR_CLASSES[byte as usize];
+            ; mov tmp, QWORD $classes as _
+            ; add tmp, byte
+            ; movzx class, [tmp]
+            // ;  movzx class, [$classes as _ + byte]
+
+
+            ; cmp dstate, ACCEPT as _
+            ; je >ok
+            // dstate != ACCEPT
+            //      *cp = (byte & 0x3f) | (*cp << 6);
+            ; shl cp, 6
+            ; and byte, 0x3f
+            ; or cp, byte
+            ; jmp >next
+
+            // dstate == ACCEPT
+            //    *cp = (0xff >> class) & byte;
+            ;ok:
+            ; mov cp, 0xff
+            ; shr cp, class_byte
+            ; and cp, byte
+
+            ;next:
+            // *dstate = UTF8_TRANSITIONS[(*dstate + (class as u32)) as usize] as u32;
+            ; mov tmp, QWORD $transitions as _
+            ; add tmp, class
+            ; add tmp, dstate
+            ; movzx dstate, [tmp]
+
+
+            ; cmp dstate, ACCEPT as _
+            ; je >done
+
+            ; cmp dstate, REJECT as _
+            ; je >fail
+
+            ; inc tmp2
+            ; jmp <start
+
+            ;done:
+            ; inc tmp2
+
+            ;codepoint:
+            ; cmp tmp2, 1
+            ; je >onebyte
+            ; cmp tmp2, 2
+            ; je >twobyte
+            ; cmp tmp2, 3
+            ; je >threebyte
+            ; jmp >fourbyte
+
+            // 1-byte
+            ; onebyte:
+            ; movzx rax, BYTE [subject_pointer]
+            ; jmp >end
+
+            // 2-byte
+            ;twobyte:
+            ; xor rax, rax
+
+            ; mov tmp, 0b0001_1111
+            ; and tmp, [subject_pointer]
+            ; shl tmp, 6
+            ; add rax, tmp
+
+            ; mov tmp, 0b0011_1111
+            ; and tmp, [subject_pointer + 1]
+            ; add rax, tmp
+            ; jmp >end
+
+            // 3-byte
+            ;threebyte:
+            ; xor rax, rax
+
+            ; mov tmp, 0b0000_1111
+            ; and tmp, [subject_pointer]
+            ; shl tmp, 12
+            ; add rax, tmp
+
+            ; mov tmp, 0b0011_1111
+            ; and tmp, [subject_pointer + 1]
+            ; shl tmp, 6
+            ; add rax, tmp
+
+            ; mov tmp, 0b0011_1111
+            ; and tmp, [subject_pointer + 2]
+            ; add rax, tmp
+
+            ; jmp >end
+
+            // 4-byte
+            ;fourbyte:
+            ; xor rax, rax
+
+            ; mov tmp, 0b0000_0111
+            ; and tmp, [subject_pointer]
+            ; shl tmp, 16
+            ; add rax, tmp
+
+            ; mov tmp, 0b0011_1111
+            ; and tmp, [subject_pointer + 1]
+            ; shl tmp, 12
+            ; add rax, tmp
+
+            ; mov tmp, 0b0011_1111
+            ; and tmp, [subject_pointer + 2]
+            ; shl tmp, 6
+            ; add rax, tmp
+
+            ; mov tmp, 0b0011_1111
+            ; and tmp, [subject_pointer + 3]
+            ; add rax, tmp
+            ; jmp >end
+
+            ;fail:
+            ;  mov rax, -1
+
+            ;end:
+            ; jmp tmp3
+        );
+    };
 }
 
 #[derive(Debug)]
@@ -183,9 +333,13 @@ impl Jit {
             return Err(ParseError::JitUnsupported);
         }
 
-//         println!("Program:\n{program:?}");
+        //         println!("Program:\n{program:?}");
         let (program, start) = Self::compile(&ops);
-        Ok(Jit { ops, program, start })
+        Ok(Jit {
+            ops,
+            program,
+            start,
+        })
     }
 
     pub fn parse<B: AsRef<[u8]>>(&self, bytes: B) -> Result<CaptureList, ParseError> {
@@ -273,7 +427,7 @@ impl Jit {
             ; mov subject_pointer, arg2
             ; mov subject_end, arg3
 
-            ; mov captop, 0
+            ; xor captop, captop
 
             // Push stack entry to indicate no match
             ; lea label, [->nomatch]
@@ -342,8 +496,8 @@ impl Jit {
 
                     );
                 }
-                Any(n) => {
-                todo!()
+                Any(_n) => {
+                    todo!()
                     // TODO No test
                     // asm!(ops
                     //     ; mov tmp, subject_end
@@ -358,7 +512,28 @@ impl Jit {
                     //     ; add subject_pointer, *n as _
                     // );
                 }
-                UTF8Range(_, _) => todo!(),
+                UTF8Range(a, b) => {
+                    let label = ops.new_dynamic_label();
+                    let a = *a as u32;
+                    let b = *b as u32;
+                    asm!(ops
+                        // Prepare validate_utf8
+                        ; lea tmp3, [=>label]
+                        ; jmp ->validate_utf8
+
+                        // Check result and advance subject_pointer, if between a and b
+                        ;=>label
+                        // ; cmp rax, -1
+                        // ; je ->fail
+
+                        ; cmp rax, a as _
+                        ; jl ->fail
+                        ; cmp rax, b as _
+                        ; jg ->fail
+
+                        ; add subject_pointer, tmp2
+                    );
+                }
                 Set(set) => {
                     let ptr = set.raw();
                     asm!(ops
@@ -392,7 +567,7 @@ impl Jit {
                         ; pop trash // subject_pointer
                         ; pop trash // label
 
-                        ; mov rax, 0
+                        ; xor rax, rax
                         ; jmp ->epilogue
                     );
                 }
@@ -408,12 +583,12 @@ impl Jit {
                     );
                 }
                 FailTwice => todo!(),
-                Span(set) => todo!(),
+                Span(_) => todo!(),
                 BackCommit(_) => todo!(),
                 TestChar(_, _) => todo!(),
                 TestCharNoChoice(_, _) => todo!(),
-                TestSet(set, _) => todo!(),
-                TestSetNoChoice(set, _) => todo!(),
+                TestSet(_, _) => todo!(),
+                TestSetNoChoice(_, _) => todo!(),
                 TestAny(_, _) => todo!(),
                 CaptureBegin(id) => {
                     asm!(ops
@@ -497,6 +672,10 @@ impl Jit {
             ; jmp label
         );
 
+        let classes = UTF8_CHAR_CLASSES.as_ptr();
+        let transitions = UTF8_TRANSITIONS.as_ptr();
+        validate_utf8!(ops, classes, transitions);
+
         // Write needed data
         for (label, bytes) in data {
             asm!(ops
@@ -517,12 +696,64 @@ mod test {
 
     use super::*;
 
+    #[test]
+    fn jit_validate() {
+        let mut ops = dynasmrt::x64::Assembler::new().unwrap();
+        // let haystack = b"\u{0400}".as_bytes();
+        let haystack = b"\xFF";
+        let hs_start = haystack.as_ptr();
+        let hs_end = unsafe { hs_start.add(haystack.len()) };
+        let start = ops.offset();
+        asm!(ops
+            // Prologue: callee-saved registers
+            ; push rbx
+            ; push rbp
+            ; push r12
+            ; push r13
+            ; push r14
+            ; push r15
+
+            // Load passed in subject pointer
+            ; mov subject_pointer, QWORD hs_start as _
+            ; mov subject_end, QWORD hs_end as _
+
+            ; lea tmp3, [>prologue]
+        );
+
+        let classes = UTF8_CHAR_CLASSES.as_ptr();
+        let transitions = UTF8_TRANSITIONS.as_ptr();
+        validate_utf8!(ops, classes, transitions);
+
+        asm!(ops
+            ;prologue:
+            // Prologue: callee-saved registers
+            ; pop r15
+            ; pop r14
+            ; pop r13
+            ; pop r12
+            ; pop rbp
+            ; pop rbx
+            // ; mov rax, tmp2
+            ; ret
+        );
+
+        let program = ops.finalize().unwrap();
+        let peg_program: extern "C" fn() -> i64 =
+            unsafe { std::mem::transmute(program.ptr(start)) };
+
+        let res = peg_program();
+        println!("res: {haystack:?} {res:#02x}");
+    }
+
+    #[test]
     fn jit_json() {
         let rules = include_str!("../../pegs/json.peg");
         let jit = Jit::new(std::io::Cursor::new(rules)).expect("Failed to create JIT");
         let json = r#"{ "nimi": "perkele", "ika": 42, lapset: ["matti", "teppo"]}"#;
         let captures = jit.parse(json).expect("Parsing failed");
-        // TODO
+        for cap in captures {
+            println!("{cap:?}: {}", &json[cap.start as usize..cap.end as usize]);
+        }
     }
 
     #[test]

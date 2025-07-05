@@ -4,13 +4,15 @@ use crate::{
 };
 
 const REPLACEMENT_CHAR: char = '\u{FFFD}';
-const ACCEPT: u32 = 0;
-const REJECT: u32 = 12;
+/// UTF8 table accept state
+pub const ACCEPT: u32 = 0;
+/// UTF8 table reject state
+pub const REJECT: u32 = 12;
 
-// The first part of the table maps bytes to character classes that
-// to reduce the size of the transition table and create bitmasks.
+/// The first part of the table maps bytes to character classes that
+/// to reduce the size of the transition table and create bitmasks.
 #[rustfmt::skip]
-const CHAR_CLASSES: [u8; 256] = [
+pub const UTF8_CHAR_CLASSES: [u8; 256] = [
      0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
      0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
      0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
@@ -21,10 +23,10 @@ const CHAR_CLASSES: [u8; 256] = [
     10,3,3,3,3,3,3,3,3,3,3,3,3,4,3,3, 11,6,6,6,5,8,8,8,8,8,8,8,8,8,8,8,
 ];
 
-// The second part is a transition table that maps a combination
-// of a state of the automaton and a character class to a state.
+/// The second part is a transition table that maps a combination
+/// of a state of the automaton and a character class to a state.
 #[rustfmt::skip]
-const TRANSITIONS: [u8; 108] = [
+pub const UTF8_TRANSITIONS: [u8; 108] = [
     0, 12,24,36,60,96,84,12,12,12,48,72, 12,12,12,12,12,12,12,12,12,12,12,12,
     12, 0,12,12,12,12,12, 0,12, 0,12,12, 12,24,12,12,12,12,12,24,12,24,12,12,
     12,12,12,12,12,12,12,24,12,12,12,12, 12,24,12,12,12,12,12,12,12,24,12,12,
@@ -82,13 +84,13 @@ pub fn decode_utf8_iter(bytes: impl Iterator<Item = u8>) -> (Option<char>, u64) 
 #[inline]
 fn decode(state: &mut u32, cp: &mut u32, byte: u8) -> u32 {
     let byte = byte as u32;
-    let class = CHAR_CLASSES[byte as usize];
+    let class = UTF8_CHAR_CLASSES[byte as usize];
     if *state != ACCEPT {
         *cp = (byte & 0x3f) | (*cp << 6);
     } else {
         *cp = (0xff >> class) & byte;
     }
-    *state = TRANSITIONS[(*state + (class as u32)) as usize] as u32;
+    *state = UTF8_TRANSITIONS[(*state + (class as u32)) as usize] as u32;
     *state
 }
 
@@ -146,7 +148,7 @@ impl Decoder {
 #[inline]
 fn decode_rev(state: &mut u32, cp: &mut u32, shift: &mut u32, collect: &mut u32, byte: u8) -> u32 {
     let byte = byte as u32;
-    let class = CHAR_CLASSES[byte as usize];
+    let class = UTF8_CHAR_CLASSES[byte as usize];
     *state = TRANSITIONS_BACKWARDS[(*state + class as u32) as usize] as u32;
 
     if *state <= REJECT {
@@ -356,6 +358,14 @@ mod test {
     use crate::PieceTree;
 
     use super::*;
+
+    #[test]
+    fn codepoint() {
+        let mut pt = PieceTree::new();
+        pt.insert(0, "\u{0400}cd".as_bytes());
+        let mut chars = pt.chars();
+        assert_eq!(Some((0, 2, '\u{0400}')), chars.next());
+    }
 
     #[test]
     fn next() {

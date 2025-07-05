@@ -56,7 +56,7 @@ tasks:
     dir: crates
     deps: [install-pre-commit-hook]
     cmds:
-      - cargo run --bin sane -- --config-dir ../runtime
+      - cargo run --bin sane -- --debug --config-dir ../runtime
     env:
       RUST_BACKTRACE: 1
 

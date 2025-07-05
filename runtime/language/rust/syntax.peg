@@ -1,7 +1,7 @@
 document = (separated / (!stop .)* stop)*;
 separated = todo / keyword / string / constant / comment / preproc / type / operator;
 
-stop = ws+ / nl / "[" / "]" / "(" / ")" / ";" / "<" / ">" / "," / ":" / ".";
+stop = ws+ / nl / "[" / "]" / "(" / ")" / ";" / "<" / ">" / "," / ":" / "." / "}";
 WHITESPACE = [ \t];
 nl = "\n" / "\r\n";
 ws = WHITESPACE;
@@ -18,7 +18,7 @@ keyword = ("macro_rules!" / "unsafe" / "static" / "loop" / "let" / "match" / "if
 constant = number / boolean / uppercase_constant;
 
 boolean = ("false" / "true") &stop;
-number = "-"? digit+ number_types? !"."/ "0x" hexdigit+;
+number = "0x" hexdigit+ / "-"? digit+ number_types? !".";
 digit = [0..9];
 hexdigit = digit / [a..fA..F];
 number_types = "usize" / "isize" / "f64" / "f32" / "u8" / "u16" / "u32" / "u64" / "i8" / "i16" / "i32" / "i64" / "i128" / "u128";
@@ -31,7 +31,7 @@ uppercase_constant = [A..Z] [A..Z0..9_]+ &stop;
 string = char / sstring / rawstring;
 char = "'" . "'";
 sstring = "b"? "\"" (escape / replace / [^"])* "\"";
-rawstring = "r#" (escape / replace / [^#])* "#";
+rawstring = "r#" (escape / [^#])* "#";
 escape = "\\" .;
 replace = !"{{" "{" replacement "}";
 @show @highlight(default)
@@ -39,7 +39,7 @@ replacement = [^}]*;
 
 
 # Types
-type = (combipath / ( typepath / builtintype / typeangle) &stop);
+type = ((combipath /  typepath / builtintype / typeangle) &stop);
 path = "::"? (pathname "::")+;
 typepath = path? typename ("::" typename)?;
 functionpath = path pathname;

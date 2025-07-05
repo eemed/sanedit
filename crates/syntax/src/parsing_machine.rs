@@ -339,34 +339,34 @@ impl Parser {
 }
 
 /// Check that captures exist and all captures all closed
-fn captures_good(partials: Vec<PartialCapture>) -> (Vec<Capture>, bool) {
-    if partials.is_empty() {
-        return (Vec::default(), false);
-    }
+// fn captures_good(partials: Vec<PartialCapture>) -> (Vec<Capture>, bool) {
+//     if partials.is_empty() {
+//         return (Vec::default(), false);
+//     }
 
-    let mut captures = Vec::with_capacity(partials.len() / 2);
-    let mut stack = vec![];
-    for cap in partials {
-        match cap.kind {
-            Kind::Open => {
-                stack.push(cap);
-            }
-            Kind::Close => {
-                let Some(start_cap) = stack.pop() else {
-                    return (captures, false);
-                };
-                let capture = Capture {
-                    id: start_cap.id,
-                    start: start_cap.pos,
-                    end: cap.pos,
-                };
-                captures.push(capture);
-            }
-        }
-    }
+//     let mut captures = Vec::with_capacity(partials.len() / 2);
+//     let mut stack = vec![];
+//     for cap in partials {
+//         match cap.kind {
+//             Kind::Open => {
+//                 stack.push(cap);
+//             }
+//             Kind::Close => {
+//                 let Some(start_cap) = stack.pop() else {
+//                     return (captures, false);
+//                 };
+//                 let capture = Capture {
+//                     id: start_cap.id,
+//                     start: start_cap.pos,
+//                     end: cap.pos,
+//                 };
+//                 captures.push(capture);
+//             }
+//         }
+//     }
 
-    (captures, stack.is_empty())
-}
+//     (captures, stack.is_empty())
+// }
 
 #[cfg(test)]
 mod test {

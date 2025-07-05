@@ -48,6 +48,9 @@ fn main() {
             .expect("No working directory found");
         let mut hasher = DefaultHasher::new();
         dir.as_os_str().hash(&mut hasher);
+        if cli.debug {
+            "-debug".hash(&mut hasher)
+        }
         hasher.finish().to_string()
     };
     let start_opts = StartOptions {

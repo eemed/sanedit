@@ -88,8 +88,8 @@ impl Parser {
             .compile_unanchored()
             .map_err(|err| ParseError::Preprocess(err.to_string()))?;
 
-        log::info!("---- Prgoram unanchor ----");
-        log::info!("{:?}", program);
+        // log::info!("---- Prgoram unanchor ----");
+        // log::info!("{:?}", program);
         let parser = Parser { rules, program };
         Ok(parser)
     }
@@ -103,8 +103,8 @@ impl Parser {
         let program = compiler
             .compile()
             .map_err(|err| ParseError::Preprocess(err.to_string()))?;
-        log::info!("---- Prgoram ----");
-        log::info!("{:?}", program);
+        // log::info!("---- Prgoram ----");
+        // log::info!("{:?}", program);
 
         // println!("---- Prgoram ----");
         // println!("{:?}", program);

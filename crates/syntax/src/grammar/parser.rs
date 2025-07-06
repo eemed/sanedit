@@ -477,7 +477,12 @@ impl<R: io::Read> GrammarParser<R> {
             }
         }
 
-        Ok(Rule::Choice(choices))
+        if choices.len() > 1 {
+            Ok(Rule::Choice(choices))
+        } else {
+            Ok(choices.pop().unwrap())
+        }
+
     }
 }
 

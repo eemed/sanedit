@@ -68,24 +68,19 @@ macro_rules! asm {
 macro_rules! double_cap_size {
     ($ops:ident, $ptr:expr) => {
         asm!($ops
-            // ; push subject_end
-            // ; push subject_pointer
-            // ; push capture_pointer
-            // ; push captop
-            // ; push state
-
             ; mov rdi, state
             ; mov rax, QWORD $ptr as _
 
-            // ; sub rsp, 8
             ; call rax
-            // ; add rsp, 8
+        )
+    }
+}
 
-            // ; pop state
-            // ; pop captop
-            // ; pop capture_pointer
-            // ; pop subject_pointer
-            // ; pop subject_end
+macro_rules! check_subject {
+    ($ops:ident) => {
+        asm!($ops
+            ; cmp subject_pointer, subject_end
+            ; jge ->fail
         )
     }
 }
@@ -111,9 +106,10 @@ macro_rules! validate_utf8 {
             ;start:
             // let byte = byte as u32;
             // Ensure subject_pointer is ok
-            ; cmp [subject_pointer + tmp2], subject_end
-            ; je >fail
-            ; movzx byte, BYTE [subject_pointer + tmp2]
+            ; lea tmp, [subject_pointer + tmp2]
+            ; cmp tmp, subject_end
+            ; jge >fail
+            ; movzx byte, BYTE [tmp]
 
 
             // let class = UTF8_CHAR_CLASSES[byte as usize];
@@ -453,11 +449,8 @@ impl Jit {
                     );
                 }
                 Byte(b) => {
+                    check_subject!(ops);
                     asm!(ops
-                        // ensure subject pointer is ok
-                        ; cmp subject_pointer, subject_end
-                        ; je ->fail
-
                         // Compare subject pointer value if not equal jump to fail
                         ; cmp [subject_pointer], BYTE *b as _
                         ; jne ->fail
@@ -495,24 +488,14 @@ impl Jit {
                         ; push label
                         ; push subject_pointer
                         ; push captop
-
                     );
                 }
-                Any(_n) => {
-                    todo!()
-                    // TODO No test
-                    // asm!(ops
-                    //     ; mov tmp, subject_end
-                    //     ; sub tmp, subject_pointer
-                    //     ; cmp tmp, *n as _
-                    //     ; jge >next
-                    //     // if fail, advance to end and jump to fail
-                    //     ; mov subject_pointer, subject_end
-                    //     ; jmp ->fail
-                    //     // if ok
-                    //     ;next:
-                    //     ; add subject_pointer, *n as _
-                    // );
+                Any(n) => {
+                    // TODO does it matter we advance even in failed case
+                    asm!(ops
+                        ; add subject_pointer, *n as _
+                    );
+                    check_subject!(ops);
                 }
                 UTF8Range(a, b) => {
                     let label = ops.new_dynamic_label();
@@ -537,12 +520,9 @@ impl Jit {
                     );
                 }
                 Set(set) => {
+                    check_subject!(ops);
                     let ptr = set.raw();
                     asm!(ops
-                        // ensure subject pointer is ok
-                        ; cmp subject_pointer, subject_end
-                        ; je ->fail
-
                         // Compare if byte is found at bitset
                         ; mov tmp2, QWORD ptr as _
                         ; movzx tmp, BYTE [subject_pointer]
@@ -653,6 +633,72 @@ impl Jit {
                         // Increase captop and point to the top
                         ; inc captop
                         ; mov [state + offset_i32!(State, len)], captop
+                    );
+                }
+                TestChar(b, l) => {
+                    let jump_label = inst_labels[*l];
+                    asm!(ops
+                        // Check subject manually to jump to label
+                        ; cmp subject_pointer, subject_end
+                        ; jge =>jump_label
+                        // Compare subject pointer value if not equal jump to label
+                        ; cmp [subject_pointer], BYTE *b as _
+                        ; jne =>jump_label
+
+                        // Ok
+                        // Push a backtrack entry
+                        ; lea label, [=>jump_label]
+                        ; push label
+                        ; push subject_pointer
+                        ; push captop
+
+                        ; inc subject_pointer
+                    );
+                }
+                TestSet(set, l) => {
+                    let jump_label = inst_labels[*l];
+                    let ptr = set.raw();
+                    asm!(ops
+                        // Check subject manually to jump to label
+                        ; cmp subject_pointer, subject_end
+                        ; jge =>jump_label
+
+                        // Compare if byte is found at bitset
+                        ; mov tmp2, QWORD ptr as _
+                        ; movzx tmp, BYTE [subject_pointer]
+                        ; bt [tmp2], tmp
+                        ; jnc =>jump_label
+
+                        // Ok
+                        // Push a backtrack entry
+                        ; lea label, [=>jump_label]
+                        ; push label
+                        ; push subject_pointer
+                        ; push captop
+
+                        ; inc subject_pointer
+                    );
+                }
+                Span(set) => {
+                    let ptr = set.raw();
+                    asm!(ops
+                        ;again:
+                        // Check subject manually to jump to label
+                        ; cmp subject_pointer, subject_end
+                        ; jge >next
+
+                        // Compare if byte is found at bitset
+                        ; mov tmp2, QWORD ptr as _
+                        ; movzx tmp, BYTE [subject_pointer]
+                        ; bt [tmp2], tmp
+                        // Jump to next if no match
+                        ; jnc >next
+
+                        // Go again if ok
+                        ; inc subject_pointer
+                        ; jmp <again
+
+                        ;next:
                     );
                 }
             }
@@ -779,6 +825,7 @@ mod test {
     fn jit_rust() {
         let peg = include_str!("../../../../runtime/language/rust/syntax.peg");
         let jit = Jit::new(std::io::Cursor::new(peg)).expect("Failed to create JIT");
+        println!("{:?}", jit.ops);
         let rust = r#"
             use crate::editor::snippets::{Snippet, SNIPPET_DESCRIPTION};
 
@@ -820,11 +867,13 @@ mod test {
     fn jit_json() {
         let rules = include_str!("../../pegs/json.peg");
         let jit = Jit::new(std::io::Cursor::new(rules)).expect("Failed to create JIT");
-        let json = r#"{ "nimi": "perkele", "ika": 42, lapset: ["matti", "teppo"]}"#;
+        // let json = r#"{ "nimi": "perkele", "ika": 42, lapset: ["matti", "teppo"]}"#;
+        println!("{:?}", jit.ops);
+        let json = include_str!("../../benches/large.json");
         let captures = jit.parse(json).expect("Parsing failed");
-        for cap in captures {
-            println!("{cap:?}: {}", &json[cap.start as usize..cap.end as usize]);
-        }
+        // for cap in captures {
+        //     println!("{cap:?}: {}", &json[cap.start as usize..cap.end as usize]);
+        // }
     }
 
     #[test]

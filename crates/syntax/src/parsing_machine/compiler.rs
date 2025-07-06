@@ -1,15 +1,12 @@
-use std::collections::BTreeMap;
-
 use crate::{
     grammar::{self, Rule, Rules},
     parsing_machine::set::Set,
 };
 
-use super::op::Operation;
+use super::{op::Operation, Addr};
 
 pub struct Program {
     pub(crate) ops: Vec<Operation>,
-    pub(crate) names: BTreeMap<usize, String>,
 }
 
 impl std::fmt::Debug for Program {
@@ -17,9 +14,6 @@ impl std::fmt::Debug for Program {
         for (i, op) in self.ops.iter().enumerate() {
             write!(f, "{i}: {op:?} ")?;
 
-            if let Some(name) = self.names.get(&i) {
-                write!(f, " <- {name}")?;
-            }
             writeln!(f)?;
         }
 
@@ -29,16 +23,18 @@ impl std::fmt::Debug for Program {
 
 pub(crate) struct Compiler<'a> {
     program: Vec<Operation>,
-    call_sites: Vec<(usize, usize)>,
+    rule_addrs: Box<[usize]>,
     rules: &'a Rules,
+    rule_head: usize,
 }
 
 impl<'a> Compiler<'a> {
     pub fn new(rules: &Rules) -> Compiler {
         Compiler {
             program: Vec::new(),
-            call_sites: Vec::new(),
+            rule_addrs: vec![0; rules.len()].into(),
             rules,
+            rule_head: 0,
         }
     }
 
@@ -63,24 +59,21 @@ impl<'a> Compiler<'a> {
         //     Jump 0
         // L2: End
         let choice = self.push(Operation::Choice(0));
-        let site = self.push(Operation::Call(top));
-        self.call_sites.push((top, site));
+        self.push(Operation::Call(top));
         let commit = self.push(Operation::Commit(0));
-        self.push(Operation::Set(Set::any()));
+        self.push(Operation::Any(1));
         self.push(Operation::Jump(0));
         let end = self.push(Operation::End);
 
-        self.program[choice] = Operation::Choice(end);
-        self.program[commit] = Operation::Commit(end);
-        self.push(Operation::End);
-
-        let mut compile_addrs = vec![0; self.rules.len()];
+        self.set_address(choice, end);
+        self.set_address(commit, end);
 
         // Compile all the other rules
         for (i, rule) in self.rules.iter().enumerate() {
             let show = rule.show();
 
-            compile_addrs[i] = self.program.len();
+            self.rule_addrs[i] = self.program.len();
+            self.rule_head = self.program.len();
 
             // Add capture if we want to show this in AST
             if show {
@@ -95,23 +88,12 @@ impl<'a> Compiler<'a> {
             }
 
             // Add a return op
-            self.push(Operation::Return);
+            self.push_return();
         }
 
-        // Program addresses to names mapping
-        let mut names = BTreeMap::default();
+        self.finish();
 
-        // Set all call sites to their function addresses
-        for (rule, site) in &self.call_sites {
-            let addr = compile_addrs[*rule];
-            self.program[*site] = Operation::Call(addr);
-            names.insert(addr, self.rules[*rule].name.clone());
-        }
-
-        Ok(Program {
-            ops: self.program,
-            names,
-        })
+        Ok(Program { ops: self.program })
     }
 
     pub(crate) fn compile(mut self) -> anyhow::Result<Program> {
@@ -128,17 +110,15 @@ impl<'a> Compiler<'a> {
         };
 
         // Push top rule call
-        let site = self.push(Operation::Call(0));
-        self.call_sites.push((top, site));
+        self.push(Operation::Call(top));
         self.push(Operation::End);
-
-        let mut compile_addrs = vec![0; self.rules.len()];
 
         // Compile all the other rules
         for (i, rule) in self.rules.iter().enumerate() {
             let show = rule.show();
 
-            compile_addrs[i] = self.program.len();
+            self.rule_addrs[i] = self.program.len();
+            self.rule_head = self.program.len();
 
             // Add capture if we want to show this in AST
             if show {
@@ -153,31 +133,77 @@ impl<'a> Compiler<'a> {
             }
 
             // Add a return op
-            self.push(Operation::Return);
+            self.push_return();
         }
 
-        // Program addresses to names mapping
-        let mut names = BTreeMap::default();
+        self.finish();
 
-        // Set all call sites to their function addresses
-        for (rule, site) in &self.call_sites {
-            if *rule >= compile_addrs.len() {
-                continue;
+        Ok(Program { ops: self.program })
+    }
+
+    fn push_return(&mut self) {
+        let prev = self.program.len() - 2;
+        let last = self.program.len() - 1;
+
+        match (&self.program[prev], &self.program[last]) {
+            // Does not work
+            // (Operation::Call(addr), Operation::CaptureEnd) => {
+            //     // To enable call, return optimization to just use jump,
+            //     // Swap capture and call operation
+            //     self.program[last] = Operation::Jump(*addr);
+            //     self.program[prev] = Operation::CaptureEnd;
+            // }
+            (_, Operation::Call(addr)) => {
+                self.program[last] = Operation::Jump(*addr);
             }
-            let addr = compile_addrs[*rule];
-            self.program[*site] = Operation::Call(addr);
-            names.insert(addr, self.rules[*rule].name.clone());
+            _ => {}
         }
 
-        Ok(Program {
-            ops: self.program,
-            names,
-        })
+        self.push(Operation::Return);
+    }
+
+    fn finish(&mut self) {
+        self.translate_callsites();
+    }
+
+    /// Call/Jump sites initially refer to rules
+    /// This translates them to their program offsets
+    fn translate_callsites(&mut self) {
+        // Set all call sites to their function addresses
+        for i in 0..self.program.len() {
+            let op = &self.program[i];
+            match op {
+                Operation::Jump(addr) => {
+                    let addr = self.rule_addrs[*addr];
+                    self.program[i] = Operation::Jump(addr);
+                }
+                Operation::Call(addr) => {
+                    let addr = self.rule_addrs[*addr];
+                    self.program[i] = Operation::Call(addr);
+                }
+                _ => {}
+            }
+        }
     }
 
     fn push(&mut self, op: Operation) -> usize {
         self.program.push(op);
         self.program.len() - 1
+    }
+
+    fn set_address(&mut self, at: usize, addr: Addr) {
+        let old = match &mut self.program[at] {
+            Operation::Jump(a) => a,
+            Operation::Call(a) => a,
+            Operation::Commit(a) => a,
+            Operation::Choice(a) => a,
+            Operation::PartialCommit(a) => a,
+            Operation::BackCommit(a) => a,
+            Operation::TestChar(_, a) => a,
+            Operation::TestSet(_, a) => a,
+            _ => return,
+        };
+        *old = addr;
     }
 
     fn compile_choice_rec(&mut self, rule: &Rule, rest: &[Rule]) -> anyhow::Result<()> {
@@ -194,15 +220,33 @@ impl<'a> Compiler<'a> {
         let choice = self.push(Operation::Choice(0));
         self.compile_rec(rule)?;
         let commit = self.push(Operation::Commit(0));
-        self.program[choice] = Operation::Choice(self.program.len());
+        self.set_address(choice, self.program.len());
 
         let (next, nrest) = rest
             .split_first()
             .ok_or(anyhow::anyhow!("Choice no items"))?;
         self.compile_choice_rec(next, nrest)?;
 
-        self.program[commit] = Operation::Commit(self.program.len());
+        self.set_address(commit, self.program.len());
         Ok(())
+    }
+
+    fn push_span(&mut self, rule: &Rule) -> bool {
+        // TODO this slows down all parsing?
+        // Is this even correct?
+        //
+        // if let Rule::ByteRange(a, b) = rule {
+        //     let mut set = Set::new();
+        //     for i in *a..=*b {
+        //         set.add(i);
+        //     }
+
+        //     self.push(Operation::Span(set));
+
+        //     return true;
+        // }
+
+        false
     }
 
     fn compile_rec(&mut self, rule: &Rule) -> anyhow::Result<()> {
@@ -214,29 +258,35 @@ impl<'a> Compiler<'a> {
                 self.compile_rec(rule)?;
                 let next = self.program.len() + 1;
                 self.push(Operation::Commit(next));
-                self.program[choice] = Operation::Choice(next);
+                self.set_address(choice, next);
             }
             ZeroOrMore(rule) => {
                 //     Choice L2
                 // L1: <rule>
                 //     PartialCommit L1
                 // L2: ...
+                if self.push_span(rule) {
+                    return Ok(());
+                }
                 let choice = self.push(Operation::Choice(0));
                 self.compile_rec(rule)?;
                 self.push(Operation::PartialCommit(choice + 1));
                 let next = self.program.len();
-                self.program[choice] = Operation::Choice(next);
+                self.set_address(choice, next);
             }
             OneOrMore(rule) => {
                 // One
                 self.compile_rec(rule)?;
 
                 // Zero or more
+                if self.push_span(rule) {
+                    return Ok(());
+                }
                 let choice = self.push(Operation::Choice(0));
                 self.compile_rec(rule)?;
                 self.push(Operation::PartialCommit(choice + 1));
                 let next = self.program.len();
-                self.program[choice] = Operation::Choice(next);
+                self.set_address(choice, next);
             }
             Choice(rules) => {
                 let (first, rest) = rules
@@ -254,19 +304,28 @@ impl<'a> Compiler<'a> {
                 self.compile_rec(rule)?;
                 let bcommit = self.push(Operation::BackCommit(0));
                 let fail = self.push(Operation::Fail);
-                self.program[choice] = Operation::Choice(fail);
+                self.set_address(choice, fail);
                 let next = self.program.len();
-                self.program[bcommit] = Operation::BackCommit(next);
+                self.set_address(bcommit, next);
             }
             NotFollowedBy(rule) => {
                 let choice = self.push(Operation::Choice(0));
                 self.compile_rec(rule)?;
                 self.push(Operation::FailTwice);
                 let next = self.program.len();
-                self.program[choice] = Operation::Choice(next);
+                self.set_address(choice, next);
             }
             ByteSequence(seq) => {
-                for byte in seq {
+                for (i, byte) in seq.iter().enumerate() {
+                    // Head fail optimization
+                    let last = self.program.len() - 1;
+                    if i == 0 && self.rule_head == last {
+                        if let Operation::Choice(addr) = &self.program[last] {
+                            self.program[last] = Operation::TestChar(*byte, *addr);
+                            continue;
+                        }
+                    }
+
                     self.push(Operation::Byte(*byte));
                 }
             }
@@ -274,18 +333,26 @@ impl<'a> Compiler<'a> {
                 self.push(Operation::UTF8Range(*a, *b));
             }
             Ref(idx) => {
-                let site = self.push(Operation::Call(0));
-                self.call_sites.push((*idx, site));
+                self.push(Operation::Call(*idx));
             }
             ByteRange(a, b) => {
                 let mut set = Set::new();
                 for i in *a..=*b {
                     set.add(i);
                 }
+
+                // Head fail optimization
+                let last = self.program.len() - 1;
+                if self.rule_head == last {
+                    if let Operation::Choice(addr) = &self.program[last] {
+                        self.program[last] = Operation::TestSet(set, *addr);
+                        return Ok(());
+                    }
+                }
                 self.push(Operation::Set(set));
             }
             ByteAny => {
-                self.push(Operation::Set(Set::any()));
+                self.push(Operation::Any(1));
             }
             Embed(operation) => {
                 self.push(operation.clone());
@@ -307,7 +374,6 @@ mod test {
             println!("{i}: {op:?}");
         }
     }
-
 
     #[test]
     fn compile_json() {

@@ -5,12 +5,6 @@ pub(crate) struct Set {
 }
 
 impl Set {
-    pub fn any() -> Set {
-        Set {
-            inner: [u8::MAX; 32],
-        }
-    }
-
     pub fn new() -> Set {
         Set { inner: [0u8; 32] }
     }

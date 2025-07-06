@@ -132,16 +132,6 @@ impl Parser {
         &self.rules[id].annotations
     }
 
-    #[allow(dead_code)]
-    fn label_for_op(&self, op: Addr) -> &str {
-        self.program
-            .names
-            .range(..=op)
-            .next_back()
-            .expect("No name for op index {addr}")
-            .1
-    }
-
     /// Try to match text multiple times. Skips errors and yields an element only when part of the text matches
     pub fn captures<'a, B: ByteSource>(&'a self, reader: B) -> CaptureIter<'a, B> {
         CaptureIter {
@@ -262,13 +252,13 @@ impl Parser {
                     stack.pop();
                     state = State::Failure;
                 }
-                // Span(set) => {
-                //     while set.has(reader.get(sp)) {
-                //         sp += 1;
-                //     }
+                Span(set) => {
+                    while set.has(reader.get(sp)) {
+                        sp += 1;
+                    }
 
-                //     ip += 1;
-                // }
+                    ip += 1;
+                }
                 End => {
                     captures.truncate(captop);
                     return Ok((to_captures(captures), sp));
@@ -302,6 +292,34 @@ impl Parser {
                     captop += 1;
                     ip += 1;
                 }
+                TestChar(byte, l) => {
+                    if sp < slen && reader.get(sp) == *byte {
+                        stack.push(StackEntry::Backtrack {
+                            addr: *l,
+                            spos: sp,
+                            caplevel: captop,
+                        });
+
+                        ip += 1;
+                        sp += 1;
+                    } else {
+                        ip = *l;
+                    }
+                }
+                TestSet(set, l) => {
+                    if sp < slen && set.has(reader.get(sp)) {
+                        stack.push(StackEntry::Backtrack {
+                            addr: *l,
+                            spos: sp,
+                            caplevel: captop,
+                        });
+
+                        ip += 1;
+                        sp += 1;
+                    } else {
+                        ip = *l;
+                    }
+                }
             }
 
             // Recover from failure state
@@ -320,15 +338,7 @@ impl Parser {
                         break;
                     }
 
-                    None => {
-                        // Used in iterator
-                        // let (caps, good) = captures_good(captures);
-                        // if good {
-                        //     return Ok((caps, sp));
-                        // } else {
-                        bail!("No stack entry to backtrack to");
-                        // }
-                    }
+                    None => bail!("No stack entry to backtrack to"),
                     _ => {}
                 }
             }

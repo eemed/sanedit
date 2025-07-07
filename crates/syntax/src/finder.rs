@@ -30,6 +30,13 @@ impl<'a, T: ByteSource> ByteSource for Haystack<'a, T> {
             Haystack::CaseInsensitive(inner) => inner.stop(),
         }
     }
+
+    fn as_single_chunk(&mut self) -> Option<&[u8]> {
+        match self {
+            Haystack::CaseSensitive(inner) => inner.as_single_chunk(),
+            Haystack::CaseInsensitive(inner) => inner.as_single_chunk(),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]

@@ -13,6 +13,7 @@ use crate::CaptureIter;
 use crate::Operation;
 use crate::ParseError;
 use crate::Parser;
+use crate::ParsingMachine;
 
 pub struct RegexRules(pub(crate) Rules);
 
@@ -28,11 +29,11 @@ impl std::fmt::Debug for RegexRules {
     }
 }
 
-fn regex_parser() -> &'static Parser {
-    static PARSER: OnceLock<Arc<Parser>> = OnceLock::new();
+fn regex_parser() -> &'static ParsingMachine {
+    static PARSER: OnceLock<Arc<ParsingMachine>> = OnceLock::new();
     let parser = PARSER.get_or_init(|| {
         let text = include_str!("../pegs/regex.peg");
-        let parser = Parser::new(std::io::Cursor::new(text)).unwrap();
+        let parser = ParsingMachine::new(std::io::Cursor::new(text)).unwrap();
         Arc::new(parser)
     });
     parser.as_ref()
@@ -84,15 +85,9 @@ impl Regex {
     }
 }
 
-impl From<Regex> for Parser {
-    fn from(value: Regex) -> Self {
-        value.parser
-    }
-}
-
 struct RegexToPEG<'a> {
     pattern: &'a str,
-    parser: &'static Parser,
+    parser: &'static ParsingMachine,
     regex: SortedVec<Capture>,
     rules: Vec<RuleInfo>,
     n: usize,

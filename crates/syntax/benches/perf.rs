@@ -1,5 +1,5 @@
 use criterion::{criterion_group, criterion_main, Criterion};
-use sanedit_syntax::{Jit, Parser};
+use sanedit_syntax::{Jit, ParsingMachine};
 
 const RUST: &str = r#"
 use crate::{
@@ -435,7 +435,7 @@ fn word_in_lorem(c: &mut Criterion) {
     });
 
     c.bench_function("word_in_lorem_interpreted", |bench| {
-        let parser = Parser::new(std::io::Cursor::new(peg)).unwrap();
+        let parser = ParsingMachine::new(std::io::Cursor::new(peg)).unwrap();
         bench.iter(|| {
             parser.parse(content).unwrap();
         });
@@ -455,7 +455,7 @@ fn json(c: &mut Criterion) {
     });
 
     c.bench_function("json_interpreted", |bench| {
-        let parser = Parser::new(std::io::Cursor::new(peg)).unwrap();
+        let parser = ParsingMachine::new(std::io::Cursor::new(peg)).unwrap();
         bench.iter(|| {
             parser.parse(content).unwrap();
         });
@@ -475,7 +475,7 @@ fn rust(c: &mut Criterion) {
     });
 
     c.bench_function("rust_interpreted", |bench| {
-        let parser = Parser::new(std::io::Cursor::new(peg)).unwrap();
+        let parser = ParsingMachine::new(std::io::Cursor::new(peg)).unwrap();
         bench.iter(|| {
             parser.parse(content).unwrap();
         });

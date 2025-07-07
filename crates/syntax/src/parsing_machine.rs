@@ -8,11 +8,12 @@ mod stack;
 mod jit;
 
 pub use self::captures::{Capture, CaptureID, CaptureIter, CaptureList};
-use self::compiler::Program;
+pub(crate) use self::compiler::Program;
 
 use std::io;
 
 use anyhow::bail;
+use captures::ParserRef;
 
 use crate::{
     grammar::{Annotation, Rules},
@@ -71,18 +72,18 @@ enum State {
 pub(crate) type SubjectPosition = u64;
 
 #[derive(Debug)]
-pub struct Parser {
+pub struct ParsingMachine {
     pub(crate) rules: Rules,
     pub(crate) program: Program,
 }
 
-impl Parser {
-    pub fn new<R: io::Read>(read: R) -> Result<Parser, ParseError> {
+impl ParsingMachine {
+    pub fn new<R: io::Read>(read: R) -> Result<ParsingMachine, ParseError> {
         let rules = Rules::parse(read).map_err(|err| ParseError::Grammar(err.to_string()))?;
         Self::from_rules(rules)
     }
 
-    pub(crate) fn from_rules_unanchored(rules: Rules) -> Result<Parser, ParseError> {
+    pub(crate) fn from_rules_unanchored(rules: Rules) -> Result<ParsingMachine, ParseError> {
         let compiler = Compiler::new(&rules);
         let program = compiler
             .compile_unanchored()
@@ -90,11 +91,11 @@ impl Parser {
 
         // log::info!("---- Prgoram unanchor ----");
         // log::info!("{:?}", program);
-        let parser = Parser { rules, program };
+        let parser = ParsingMachine { rules, program };
         Ok(parser)
     }
 
-    pub(crate) fn from_rules(rules: Rules) -> Result<Parser, ParseError> {
+    pub(crate) fn from_rules(rules: Rules) -> Result<ParsingMachine, ParseError> {
         if rules.is_empty() {
             return Err(ParseError::NoRules);
         }
@@ -110,7 +111,7 @@ impl Parser {
         // println!("{:?}", program);
 
         // TODO enable jit when ready
-        let parser = Parser { rules, program };
+        let parser = ParsingMachine { rules, program };
         Ok(parser)
     }
 
@@ -135,8 +136,8 @@ impl Parser {
     /// Try to match text multiple times. Skips errors and yields an element only when part of the text matches
     pub fn captures<'a, B: ByteSource>(&'a self, reader: B) -> CaptureIter<'a, B> {
         CaptureIter {
-            parser: self,
-            reader,
+            parser: ParserRef::Interpreted(self),
+            source: reader,
             sp: 0,
         }
     }
@@ -387,7 +388,7 @@ mod test {
         let peg = include_str!("../pegs/json.peg");
         let content = include_str!("../benches/large.json");
 
-        let parser = Parser::new(std::io::Cursor::new(peg)).unwrap();
+        let parser = ParsingMachine::new(std::io::Cursor::new(peg)).unwrap();
         let result = parser.parse(content);
         assert!(result.is_ok(), "Parse failed with {result:?}");
     }
@@ -397,7 +398,7 @@ mod test {
         let peg = include_str!("../pegs/toml.peg");
         let content = include_str!("../benches/sample.toml");
 
-        let parser = Parser::new(std::io::Cursor::new(peg)).unwrap();
+        let parser = ParsingMachine::new(std::io::Cursor::new(peg)).unwrap();
         let result = parser.parse(content);
         assert!(result.is_ok(), "Parse failed with {result:?}");
     }
@@ -407,7 +408,7 @@ mod test {
         let peg = include_str!("../pegs/json.peg");
         let content = "{ \"hello\": \"world, \"another\": \"line\" }";
 
-        let parser = Parser::new(std::io::Cursor::new(peg)).unwrap();
+        let parser = ParsingMachine::new(std::io::Cursor::new(peg)).unwrap();
         let result = parser.parse(content);
         assert!(result.is_ok(), "Parse failed with {result:?}");
     }
@@ -422,7 +423,7 @@ mod test {
 
         let content = "abba";
 
-        let parser = Parser::new(std::io::Cursor::new(peg)).unwrap();
+        let parser = ParsingMachine::new(std::io::Cursor::new(peg)).unwrap();
         let result = parser.parse(content);
         assert!(result.is_ok(), "Parse failed with {result:?}");
     }
@@ -436,7 +437,7 @@ mod test {
 
         let content = "\"registry+https://github.com/rust-lang/crates.io-index\"";
 
-        let parser = Parser::new(std::io::Cursor::new(peg)).unwrap();
+        let parser = ParsingMachine::new(std::io::Cursor::new(peg)).unwrap();
         let result = parser.parse(content);
         assert!(result.is_ok(), "Parse failed with {result:?}");
     }
@@ -451,7 +452,7 @@ mod test {
 
         let content = "# abba\n";
 
-        let parser = Parser::new(std::io::Cursor::new(peg)).unwrap();
+        let parser = ParsingMachine::new(std::io::Cursor::new(peg)).unwrap();
         let result = parser.parse(content);
         assert!(result.is_ok(), "Parse failed with {result:?}");
     }

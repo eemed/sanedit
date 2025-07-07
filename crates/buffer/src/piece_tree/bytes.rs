@@ -141,6 +141,10 @@ impl<'a> Bytes<'a> {
 
         self.get().unwrap()
     }
+
+    pub fn chunks(&self) -> Chunks<'a> {
+        self.chunks.clone()
+    }
 }
 
 impl<'a> io::Read for Bytes<'a> {

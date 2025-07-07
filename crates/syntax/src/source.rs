@@ -6,9 +6,30 @@ use std::{
     },
 };
 
-use sanedit_buffer::{utf8::decode_utf8_iter, Bytes};
+use sanedit_buffer::{utf8::decode_utf8_iter, Bytes, Chunk, Chunks, PieceTreeSlice};
 
 pub trait ByteSource {
+    /// If ByteSource is contiguous in memory, returns it as a single chunk
+    fn as_single_chunk(&mut self) -> Option<&[u8]>;
+
+    /// Used if ByteSource is not contiguous in memory and needs to be copied to a sliding window.
+    /// a shitty way to copy. Override to provide a better alternative if possible. this is slow
+    fn copy_to(&mut self, at: u64, buf: &mut [u8]) -> usize {
+        debug_assert!(
+            self.as_single_chunk().is_none(),
+            "Copying a contiguous ByteSource"
+        );
+
+        let start = at;
+        let end = std::cmp::min(self.len(), at + buf.len() as u64);
+
+        for (buf_index, byte_index) in (start..end).enumerate() {
+            buf[buf_index] = self.get(byte_index);
+        }
+
+        (end.saturating_sub(start)) as usize
+    }
+
     /// Length of all the bytes in this reader
     fn len(&self) -> u64;
 
@@ -63,6 +84,10 @@ impl<'a> ByteSource for &'a str {
     fn get(&mut self, at: u64) -> u8 {
         self.as_bytes()[at as usize]
     }
+
+    fn as_single_chunk(&mut self) -> Option<&[u8]> {
+        Some(self.as_bytes())
+    }
 }
 
 impl<'a> ByteSource for &'a [u8] {
@@ -77,19 +102,9 @@ impl<'a> ByteSource for &'a [u8] {
     fn get(&mut self, at: u64) -> u8 {
         self[at as usize]
     }
-}
 
-impl<'a> ByteSource for Bytes<'a> {
-    fn len(&self) -> u64 {
-        <Bytes>::len(self)
-    }
-
-    fn stop(&self) -> bool {
-        false
-    }
-
-    fn get(&mut self, at: u64) -> u8 {
-        <Bytes>::at(self, at)
+    fn as_single_chunk(&mut self) -> Option<&[u8]> {
+        Some(self)
     }
 }
 
@@ -104,6 +119,10 @@ impl<B: ByteSource> ByteSource for (B, Arc<AtomicBool>) {
 
     fn get(&mut self, at: u64) -> u8 {
         self.0.get(at)
+    }
+
+    fn as_single_chunk(&mut self) -> Option<&[u8]> {
+        self.0.as_single_chunk()
     }
 }
 
@@ -120,5 +139,128 @@ impl<const N: usize> ByteSource for &[u8; N] {
 
     fn stop(&self) -> bool {
         false
+    }
+
+    fn as_single_chunk(&mut self) -> Option<&[u8]> {
+        Some(*self)
+    }
+}
+
+#[derive(Debug)]
+pub struct SliceSource<'a, 'b> {
+    slice: &'b PieceTreeSlice<'a>,
+    bytes: Bytes<'a>,
+    chunks: Chunks<'a>,
+    chunk: Option<Chunk<'a>>,
+}
+
+impl<'a, 'b> SliceSource<'a, 'b> {
+    pub fn new(slice: &'b PieceTreeSlice<'a>) -> SliceSource<'a, 'b> {
+        let bytes = slice.bytes();
+        let chunks = slice.chunks();
+        SliceSource {
+            slice,
+            bytes,
+            chunks,
+            chunk: None,
+        }
+    }
+}
+
+impl<'a, 'b> ByteSource for SliceSource<'a, 'b> {
+    fn len(&self) -> u64 {
+        <Bytes>::len(&self.bytes)
+    }
+
+    fn stop(&self) -> bool {
+        false
+    }
+
+    fn get(&mut self, at: u64) -> u8 {
+        <Bytes>::at(&mut self.bytes, at)
+    }
+
+    fn as_single_chunk(&mut self) -> Option<&[u8]> {
+        let (_pos, chunk) = self.chunks.get()?;
+        if chunk.as_ref().len() as u64 == self.slice.len() {
+            self.chunk = Some(chunk);
+            return Some(self.chunk.as_ref()?.as_ref());
+        }
+
+        None
+    }
+
+    fn copy_to(&mut self, at: u64, buf: &mut [u8]) -> usize {
+        let mut pos_chunk = self.chunks.get();
+
+        while let Some((chunk_pos, _)) = pos_chunk.as_ref() {
+            if *chunk_pos <= at {
+                break;
+            } else {
+                pos_chunk = self.chunks.prev();
+            }
+        }
+
+        let mut n = 0;
+        while let Some((chunk_pos, chunk)) = pos_chunk {
+            // println!("at: {at}, chunk_pos: {chunk_pos}");
+            let chunk_bytes = chunk.as_ref();
+            let start = if at > chunk_pos {
+                (at - chunk_pos) as usize
+            } else {
+                0
+            };
+            let end = start + std::cmp::min(buf.len() - n, chunk_bytes.len() - start);
+            // println!("chk: {chunk_pos} len: {}, at: {at}, start: {start}, end: {end}", chunk_bytes.len());
+
+            if end > start {
+                let to_copy = &chunk_bytes[start..end];
+            // println!("Copy: {to_copy:?}");
+                let buf_piece = &mut buf[n..n + to_copy.len()];
+                buf_piece.copy_from_slice(to_copy);
+                n += to_copy.len();
+
+                if n == buf.len() {
+                    break;
+                }
+            }
+
+            // println!("next");
+            pos_chunk = self.chunks.next();
+        }
+
+        // println!("ret n: {n}");
+        n
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use sanedit_buffer::PieceTree;
+
+    #[test]
+    fn slice_source() {
+        let mut pt = PieceTree::new();
+        let base = "hello world ".repeat(20);
+        pt.insert(0, base.as_bytes());
+
+        pt.insert(21, b"aaa");
+        pt.insert(20, b"aaa");
+        pt.insert(15, b"aaa");
+        pt.insert(12, b"aaa");
+
+        let slice = pt.slice(10..);
+        let len = slice.len();
+        let mut source = SliceSource::new(&slice);
+        let mut buf = [0u8; 10];
+        let mut n = 0;
+        while n < len {
+            let l = source.copy_to(n, &mut buf);
+            // println!("{:?}", std::str::from_utf8(&buf[..l]).unwrap());
+            n += l as u64;
+        }
+
+        assert!(n == len);
     }
 }

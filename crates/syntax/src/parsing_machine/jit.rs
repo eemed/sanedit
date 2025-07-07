@@ -1,10 +1,11 @@
 use std::alloc::Layout;
 
 use crate::grammar::Rules;
-use crate::{Annotation, Capture, ParseError};
+use crate::{Annotation, ByteSource, Capture, ParseError};
 
+use super::captures::ParserRef;
 use super::compiler::Program;
-use super::{CaptureID, CaptureList, Compiler};
+use super::{CaptureID, CaptureIter, CaptureList, Compiler};
 use dynasmrt::{dynasm, AssemblyOffset, DynamicLabel, DynasmApi, DynasmLabelApi, ExecutableBuffer};
 use sanedit_buffer::utf8::{ACCEPT, REJECT, UTF8_CHAR_CLASSES, UTF8_TRANSITIONS};
 
@@ -240,7 +241,7 @@ macro_rules! validate_utf8 {
 struct State {
     cap: usize, // These are always u64
     len: usize,
-    complete: usize,
+    sp: *mut u8,
     ptr: *mut PartialCapture,
 }
 
@@ -302,7 +303,7 @@ impl Default for State {
         State {
             cap,
             len: 0,
-            complete: 0,
+            sp: 0 as *mut u8,
             ptr,
         }
     }
@@ -310,10 +311,10 @@ impl Default for State {
 
 #[derive(Debug)]
 pub struct Jit {
-    rules: Rules,
-    ops: Program,
-    program: ExecutableBuffer,
-    start: AssemblyOffset,
+    pub(crate) rules: Rules,
+    pub(crate) ops: Program,
+    pub(crate) program: ExecutableBuffer,
+    pub(crate) start: AssemblyOffset,
 }
 
 impl Jit {
@@ -340,7 +341,78 @@ impl Jit {
         })
     }
 
-    pub fn parse<B: AsRef<[u8]>>(&self, bytes: B) -> Result<CaptureList, ParseError> {
+    /// Try to match text multiple times. Skips errors and yields an element only when part of the text matches
+    pub fn captures<'a, B: ByteSource>(&'a self, reader: B) -> CaptureIter<'a, B> {
+        CaptureIter {
+            parser: ParserRef::Jit(self),
+            source: reader,
+            sp: 0,
+        }
+    }
+
+    pub fn parse<B: ByteSource>(&self, mut bytes: B) -> Result<CaptureList, ParseError> {
+        let (caps, _) = self.do_parse(&mut bytes, 0, false)?;
+        Ok(caps)
+    }
+
+    pub(crate) fn do_parse<B: ByteSource>(
+        &self,
+        bytes: &mut B,
+        offset: u64,
+        stop_on_match: bool,
+    ) -> Result<(CaptureList, u64), ParseError> {
+        if let Some(chunk) = bytes.as_single_chunk() {
+            let chunk = &chunk[offset as usize..];
+            let (caps, sp) = self.parse_chunk(chunk)?;
+            return Ok((caps, sp as u64));
+        }
+
+        // if not contiguous use a sliding window
+        const WINDOW_SIZE: usize = 1024 * 64; // 64kb
+
+        // 2kb overlap between windows to not miss matches on boundaries
+        // This means matches that would have been larger than 2kb may not be found
+        const OVERLAP: usize = 1024 * 2;
+
+        let mut sp = 0;
+        let mut n = offset;
+        let mut window: Box<[u8]> = vec![0u8; WINDOW_SIZE].into();
+        let mut captures = CaptureList::new();
+        let mut copied = bytes.copy_to(n, window.as_mut());
+        n += copied as u64;
+
+        while copied != 0 {
+            let start = n - copied as u64;
+            let win = &window[..copied];
+            let (mut caps, ssp) = self.parse_chunk(win)?;
+            sp = start + ssp as u64;
+            // Adjust indices
+            caps.iter_mut().for_each(|cap| {
+                cap.start += start;
+                cap.end += start;
+            });
+
+            if stop_on_match {
+                return Ok((caps, sp));
+            }
+
+            if captures.is_empty() {
+                captures = caps;
+            } else {
+                // We already have captures thus this is already an overlapping run
+                captures.retain_mut(|cap| cap.start < start);
+                captures.extend(caps);
+            }
+
+            window.copy_within(WINDOW_SIZE - OVERLAP..WINDOW_SIZE, 0);
+            copied = bytes.copy_to(n, &mut window.as_mut()[OVERLAP..]);
+            n += copied as u64;
+        }
+
+        Ok((captures, sp))
+    }
+
+    fn parse_chunk<B: AsRef<[u8]>>(&self, bytes: B) -> Result<(CaptureList, usize), ParseError> {
         let mut state = State::default();
         let state_ref = &mut state as *mut State;
         let bytes = bytes.as_ref();
@@ -378,12 +450,20 @@ impl Jit {
                 }
             }
         }
+        let sp = state.sp as usize - start as usize;
 
-        Ok(captures)
+        Ok((captures, sp))
     }
 
     pub fn is_available() -> bool {
-        true
+        #[cfg(not(target_arch = "x86_64"))]
+        {
+            false
+        }
+        #[cfg(target_arch = "x86_64")]
+        {
+            true
+        }
         // #[cfg(not(target_feature = "sse2"))]
         // {
         //     false
@@ -401,7 +481,7 @@ impl Jit {
         // }
     }
 
-    fn compile(program: &Program) -> (ExecutableBuffer, AssemblyOffset) {
+    pub(crate) fn compile(program: &Program) -> (ExecutableBuffer, AssemblyOffset) {
         use super::Operation::*;
         let mut ops = dynasmrt::x64::Assembler::new().unwrap();
         // let mut data: Vec<(DynamicLabel, Vec<u8>)> = vec![];
@@ -494,8 +574,9 @@ impl Jit {
                     // TODO does it matter we advance even in failed case
                     asm!(ops
                         ; add subject_pointer, *n as _
+                        ; cmp subject_pointer, subject_end
+                        ; jg ->fail
                     );
-                    check_subject!(ops);
                 }
                 UTF8Range(a, b) => {
                     let label = ops.new_dynamic_label();
@@ -710,6 +791,7 @@ impl Jit {
             ; mov rax, 1
             ;->epilogue:
             ; mov [state + offset_i32!(State, len)], captop
+            ; mov [state + offset_i32!(State, sp)], subject_pointer
             ; pop r15
             ; pop r14
             ; pop r13
@@ -767,7 +849,7 @@ impl Jit {
 
 #[cfg(test)]
 mod test {
-    use crate::{Parser, Regex};
+    use crate::{ParsingMachine, Regex};
 
     use super::*;
 
@@ -899,16 +981,16 @@ mod test {
     fn jit_match_1() {
         let rules = r#"document = "abc";"#;
         let jit = Jit::new(std::io::Cursor::new(rules)).unwrap();
-        let mut haystack = "abc";
-        assert!(jit.parse(&mut haystack).is_ok())
+        let haystack = "abc";
+        assert!(jit.parse(haystack).is_ok())
     }
 
     #[test]
     fn jit_match_2() {
         let rules = r#"document = ("amet" / .)*;"#;
         let jit = Jit::new(std::io::Cursor::new(rules)).unwrap();
-        let mut haystack = LOREM.repeat(10);
-        assert!(jit.parse(&mut haystack).is_ok())
+        let haystack = LOREM.repeat(10);
+        assert!(jit.parse(haystack.as_str()).is_ok())
     }
 
     #[test]
@@ -920,44 +1002,44 @@ mod test {
             amet = "amet";
         "#;
         let jit = Jit::new(std::io::Cursor::new(rules)).unwrap();
-        let mut haystack = LOREM.repeat(10);
-        assert!(jit.parse(&mut haystack).is_ok())
+        let haystack = LOREM.repeat(10);
+        assert!(jit.parse(haystack.as_str()).is_ok())
     }
 
     #[test]
     fn jit_match_4() {
         let rules = r#"@show document = ("amet" / .)*;"#;
         let jit = Jit::new(std::io::Cursor::new(rules)).unwrap();
-        let mut haystack = LOREM.repeat(10);
-        assert!(jit.parse(&mut haystack).is_ok())
+        let haystack = LOREM.repeat(10);
+        assert!(jit.parse(haystack.as_str()).is_ok())
     }
 
     #[test]
     fn jit_match_5() {
         let rules = Regex::parse_rules("(a|ab)*c").unwrap();
-        let parser = Parser::from_rules_unanchored(rules.0).unwrap();
+        let parser = ParsingMachine::from_rules_unanchored(rules.0).unwrap();
         // println!("{:?}", parser.program);
         let jit = Jit::from_program(parser.rules, parser.program).unwrap();
-        let mut haystack = "c";
-        assert!(jit.parse(&mut haystack).is_ok())
+        let haystack = "c";
+        assert!(jit.parse(haystack).is_ok())
     }
 
     #[test]
     fn jit_match_6() {
         let rules = Regex::parse_rules("a").unwrap();
-        let parser = Parser::from_rules_unanchored(rules.0).unwrap();
+        let parser = ParsingMachine::from_rules_unanchored(rules.0).unwrap();
         // println!("{:?}", parser.program);
         let jit = Jit::from_program(parser.rules, parser.program).unwrap();
-        let mut haystack = "a";
-        assert!(jit.parse(&mut haystack).is_ok())
+        let haystack = "a";
+        assert!(jit.parse(haystack).is_ok())
     }
 
     #[test]
     fn jit_no_match_1() {
         let rules = r#"document = "abc";"#;
         let jit = Jit::new(std::io::Cursor::new(rules)).unwrap();
-        let mut haystack = "aac";
-        assert!(jit.parse(&mut haystack).is_err())
+        let haystack = "aac";
+        assert!(jit.parse(haystack).is_err())
     }
 
     const LOREM: &str = "

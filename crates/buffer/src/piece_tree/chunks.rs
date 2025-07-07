@@ -18,7 +18,7 @@ impl<'a> AsRef<[u8]> for Chunk<'a> {
 
 #[derive(Debug, Clone)]
 pub struct Chunks<'a> {
-    pt: &'a PieceTreeView,
+    pub(crate) pt: &'a PieceTreeView,
     pieces: Pieces<'a>,
 }
 

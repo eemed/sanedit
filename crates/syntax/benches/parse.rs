@@ -1,5 +1,5 @@
 use criterion::{criterion_group, criterion_main, Criterion};
-use sanedit_syntax::Parser;
+use sanedit_syntax::ParsingMachine;
 
 fn json(c: &mut Criterion) {
     let peg = include_str!("../pegs/json.peg");
@@ -13,7 +13,7 @@ fn json(c: &mut Criterion) {
     // });
     //
     c.bench_function("parse_large_json", |bench| {
-        let parser = Parser::new(std::io::Cursor::new(peg)).unwrap();
+        let parser = ParsingMachine::new(std::io::Cursor::new(peg)).unwrap();
         bench.iter(move || {
             parser.parse(content);
         });
@@ -25,14 +25,14 @@ fn toml(c: &mut Criterion) {
     let content = include_str!("large.toml");
 
     c.bench_function("parse_large_toml", |bench| {
-        let parser = Parser::new(std::io::Cursor::new(peg)).unwrap();
+        let parser = ParsingMachine::new(std::io::Cursor::new(peg)).unwrap();
         bench.iter(move || {
             parser.parse(content);
         });
     });
 
     c.bench_function("parse_large_toml_invalid", |bench| {
-        let parser = Parser::new(std::io::Cursor::new(peg)).unwrap();
+        let parser = ParsingMachine::new(std::io::Cursor::new(peg)).unwrap();
         bench.iter(move || {
             parser.parse(&content[125..]);
         });

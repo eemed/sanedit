@@ -1,8 +1,8 @@
 use std::ops::Range;
 
-use crate::{ByteSource, SubjectPosition};
+use crate::{ByteSource, Parser, SubjectPosition};
 
-use super::Parser;
+use super::{Jit, ParsingMachine};
 
 pub type CaptureID = usize;
 pub type CaptureList = Vec<Capture>;
@@ -39,27 +39,49 @@ impl PartialOrd for Capture {
     }
 }
 
+#[derive(Debug)]
+pub(crate) enum ParserRef<'a> {
+    Interpreted(&'a ParsingMachine),
+    Jit(&'a Jit),
+}
+
 /// Iterate over matched captures.
 /// Yields captures only when matching succeeds otherwise tries again at the next position
 #[derive(Debug)]
 pub struct CaptureIter<'a, B: ByteSource> {
-    pub(super) parser: &'a Parser,
-    pub(super) reader: B,
-    pub(super) sp: u64,
+    pub(crate) parser: ParserRef<'a>,
+    pub(crate) source: B,
+    pub(crate) sp: u64,
 }
 
 impl<'a, B: ByteSource> Iterator for CaptureIter<'a, B> {
     type Item = CaptureList;
 
     fn next(&mut self) -> Option<Self::Item> {
-        match self.parser.do_parse(&mut self.reader, self.sp) {
-            Ok((caps, sp)) => {
-                self.sp = sp;
-                Some(caps)
+        match self.parser {
+            ParserRef::Interpreted(parsing_machine) => {
+                match parsing_machine.do_parse(&mut self.source, self.sp) {
+                    Ok((caps, sp)) => {
+                        self.sp = sp;
+                        Some(caps)
+                    }
+                    Err(_) => {
+                        self.sp = self.source.len();
+                        None
+                    }
+                }
             }
-            Err(_) => {
-                self.sp = self.reader.len();
-                None
+            ParserRef::Jit(jit) => {
+                match jit.do_parse(&mut self.source, self.sp, true) {
+                    Ok((caps, sp)) => {
+                        self.sp = sp;
+                        Some(caps)
+                    }
+                    Err(_) => {
+                        self.sp = self.source.len();
+                        None
+                    }
+                }
             }
         }
     }

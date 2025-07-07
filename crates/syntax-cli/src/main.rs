@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use argh::FromArgs;
-use sanedit_syntax::{Capture, Glob, Parser, Regex};
+use sanedit_syntax::{Capture, Glob, ParsingMachine, Regex};
 
 /// command line options
 #[derive(FromArgs)]
@@ -85,7 +85,7 @@ fn print_capture_json(label: &str, cap: &Capture, last: bool) {
     );
 }
 
-fn print_captures_json(parser: &Parser, caps: &Vec<Capture>) {
+fn print_captures_json(parser: &ParsingMachine, caps: &Vec<Capture>) {
     if caps.is_empty() {
         println!("[]");
         return;
@@ -118,7 +118,7 @@ fn main() {
         }
         Regex::from_rules(rules).unwrap().into()
     } else {
-        Parser::new(std::io::Cursor::new(rules)).unwrap()
+        ParsingMachine::new(std::io::Cursor::new(rules)).unwrap()
     };
 
     if cli.print_byte_code {

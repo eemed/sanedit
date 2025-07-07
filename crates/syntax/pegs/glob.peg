@@ -1,13 +1,29 @@
-document = ( any / many / text)*;
+document = element !.;
+
+element = (recursive_wildcard / (wildcard / any / brackets / negative_brackets / text)+) (separator element)?;
 
 @show
-text = [^\[?*]+;
+separator = "/";
 
+@show
+text = [^/\[?*]+;
+
+@show
 char = [^\]];
-brackets = "[" "]"? char* "]";
+@show
+brackets = "[" "]"? bracket_inner "]";
+@show
+negative_brackets = "[!" "]"? bracket_inner "]";
+
+@show
+range = char "-" char;
+bracket_inner = (range / char)*;
 
 @show
 any = "?";
 
 @show
-many = "*";
+wildcard = "*";
+
+@show
+recursive_wildcard = "**";

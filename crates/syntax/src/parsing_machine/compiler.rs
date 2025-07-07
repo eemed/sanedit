@@ -61,11 +61,11 @@ impl<'a> Compiler<'a> {
         let choice = self.push(Operation::Choice(0));
         self.push(Operation::Call(top));
         let commit = self.push(Operation::Commit(0));
-        self.push(Operation::Any(1));
-        self.push(Operation::Jump(0));
+        let any = self.push(Operation::Any(1));
+        let unanchor_jump = self.push(Operation::Jump(0));
         let end = self.push(Operation::End);
 
-        self.set_address(choice, end);
+        self.set_address(choice, any);
         self.set_address(commit, end);
 
         // Compile all the other rules
@@ -92,6 +92,8 @@ impl<'a> Compiler<'a> {
         }
 
         self.finish();
+        // Fixup unanchor jump
+        self.program[unanchor_jump] = Operation::Jump(0);
 
         Ok(Program { ops: self.program })
     }
@@ -232,19 +234,16 @@ impl<'a> Compiler<'a> {
     }
 
     fn push_span(&mut self, rule: &Rule) -> bool {
-        // TODO this slows down all parsing?
-        // Is this even correct?
-        //
-        // if let Rule::ByteRange(a, b) = rule {
-        //     let mut set = Set::new();
-        //     for i in *a..=*b {
-        //         set.add(i);
-        //     }
+        if let Rule::ByteRange(a, b) = rule {
+            let mut set = Set::new();
+            for i in *a..=*b {
+                set.add(i);
+            }
 
-        //     self.push(Operation::Span(set));
+            self.push(Operation::Span(set));
 
-        //     return true;
-        // }
+            return true;
+        }
 
         false
     }
@@ -382,7 +381,6 @@ mod test {
 
         let compiler = Compiler::new(&rules);
         let program = compiler.compile().unwrap();
-        println!("{program:?}");
     }
 
     #[test]
@@ -392,7 +390,6 @@ mod test {
 
         let compiler = Compiler::new(&rules);
         let program = compiler.compile().unwrap();
-        println!("{program:?}");
     }
 
     #[test]
@@ -401,9 +398,7 @@ mod test {
         let rules = Rules::parse(std::io::Cursor::new(peg)).unwrap();
 
         let compiler = Compiler::new(&rules);
-        let program = compiler.compile();
-
-        println!("{program:?}");
+        let program = compiler.compile().unwrap();
     }
 
     #[test]
@@ -418,8 +413,7 @@ mod test {
         let rules = Rules::parse(std::io::Cursor::new(peg)).unwrap();
 
         let compiler = Compiler::new(&rules);
-        let program = compiler.compile();
-        println!("{program:?}");
+        let program = compiler.compile().unwrap();
     }
 
     #[test]
@@ -434,9 +428,8 @@ mod test {
             combi = [\\u0..\\u20\\u25];
             ";
         let rules = Rules::parse(std::io::Cursor::new(peg)).unwrap();
-        println!("{}", rules);
 
         let compiler = Compiler::new(&rules);
-        let program = compiler.compile();
+        let program = compiler.compile().unwrap();
     }
 }

@@ -8,12 +8,12 @@ use crate::editor::snippets::{Snippet, SNIPPET_DESCRIPTION};
 #[derive(Debug, Hash, PartialEq, Eq, Ord, PartialOrd, Clone)]
 pub(crate) enum Choice {
     Snippet {
-        snippet: Snippet,
         display: String,
+        snippet: Snippet,
     },
     Path {
-        path: PathBuf,
         display: String,
+        path: PathBuf,
     },
     Text {
         text: String,

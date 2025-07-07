@@ -74,14 +74,3 @@ fn table_search(ch: char, table: &'static [(u32, u32, u8)]) -> Option<u8> {
     let (_, _, enum_pos) = &table[pos];
     Some(*enum_pos)
 }
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    #[test]
-    fn ascii() {
-        let gb = grapheme_break('a');
-        println!("GB {gb:?}");
-    }
-}

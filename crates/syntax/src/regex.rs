@@ -1,3 +1,6 @@
+use std::sync::Arc;
+use std::sync::OnceLock;
+
 use sanedit_utils::sorted_vec::SortedVec;
 use thiserror::Error;
 
@@ -23,6 +26,16 @@ impl std::fmt::Debug for RegexRules {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:?}", self.0)
     }
+}
+
+fn regex_parser() -> &'static Parser {
+    static PARSER: OnceLock<Arc<Parser>> = OnceLock::new();
+    let parser = PARSER.get_or_init(|| {
+        let text = include_str!("../pegs/regex.peg");
+        let parser = Parser::new(std::io::Cursor::new(text)).unwrap();
+        Arc::new(parser)
+    });
+    parser.as_ref()
 }
 
 #[derive(Debug)]
@@ -79,7 +92,7 @@ impl From<Regex> for Parser {
 
 struct RegexToPEG<'a> {
     pattern: &'a str,
-    parser: Parser,
+    parser: &'static Parser,
     regex: SortedVec<Capture>,
     rules: Vec<RuleInfo>,
     n: usize,
@@ -88,11 +101,9 @@ struct RegexToPEG<'a> {
 impl<'a> RegexToPEG<'a> {
     /// Convert provided regex to PEG
     pub fn convert(pattern: &str) -> Result<Rules, RegexError> {
-        let text = include_str!("../pegs/regex.peg");
-        let parser = Parser::new(std::io::Cursor::new(text))?;
+        let parser = regex_parser();
         let pattern = format!("({pattern})");
         let captures: SortedVec<Capture> = parser.parse(pattern.as_str())?.into();
-
 
         let mut state = RegexToPEG {
             pattern: pattern.as_str(),
@@ -345,9 +356,11 @@ mod tests {
         assert!(!regex.is_match(b"acdc"));
     }
 
-    // #[test]
-    // fn regex_any() {
-    //     let regex = Regex::new(".*").unwrap();
-    //     println!("{:?}", regex.parser.program);
-    // }
+    #[test]
+    fn regex_any() {
+        let regex = Regex::new(".*").unwrap();
+        assert!(regex.is_match(b"a"));
+        assert!(regex.is_match(b"ab"));
+        assert!(regex.is_match(b"ab\ndc"));
+    }
 }

@@ -482,7 +482,6 @@ impl<R: io::Read> GrammarParser<R> {
         } else {
             Ok(choices.pop().unwrap())
         }
-
     }
 }
 
@@ -490,22 +489,9 @@ impl<R: io::Read> GrammarParser<R> {
 mod test {
     use super::*;
 
-    fn print_rules(rules: &[RuleInfo]) -> String {
-        let mut result = String::new();
-
-        for (i, rule) in rules.iter().enumerate() {
-            let srule = format!("{i}: {}: {};\n", &rule.name, &rule.rule);
-            result.push_str(&srule);
-        }
-        result
-    }
-
     #[test]
     fn grammar_json() {
         let peg = include_str!("../../pegs/json.peg");
-        match Rules::parse(std::io::Cursor::new(peg)) {
-            Ok(rules) => println!("==== Created rules ====\n{}", print_rules(&rules)),
-            Err(e) => println!("Failed to create rules: {e}"),
-        }
+        Rules::parse(std::io::Cursor::new(peg)).unwrap();
     }
 }

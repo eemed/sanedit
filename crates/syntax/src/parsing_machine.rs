@@ -168,8 +168,10 @@ impl Parser {
         let mut captures = vec![];
         let mut captop = 0;
 
+        // println!("{:?}", self.program);
         loop {
             let op = &self.program.ops[ip];
+            // println!("SP: {sp}, op: {op:?}");
 
             match op {
                 Jump(l) => {
@@ -200,7 +202,7 @@ impl Parser {
                     ip += 1;
                 }
                 Any(n) => {
-                    if sp + n < slen {
+                    if sp + n <= slen {
                         ip += 1;
                         sp += n;
                     } else {
@@ -387,7 +389,6 @@ mod test {
 
         let parser = Parser::new(std::io::Cursor::new(peg)).unwrap();
         let result = parser.parse(content);
-        println!("Result: {result:?}");
         assert!(result.is_ok(), "Parse failed with {result:?}");
     }
 
@@ -433,7 +434,6 @@ mod test {
             escape_char     = \"0\" / \"t\" / \"n\" / \"r\" / \"\\\"\" / \"\\\\\";
             ";
 
-        println!("{peg}");
         let content = "\"registry+https://github.com/rust-lang/crates.io-index\"";
 
         let parser = Parser::new(std::io::Cursor::new(peg)).unwrap();

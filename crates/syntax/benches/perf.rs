@@ -424,19 +424,19 @@ fn word_in_lorem(c: &mut Criterion) {
     let peg = r#"
         document = ("amet" / .)*;
     "#;
-    let content = LOREM.repeat(10);
+    let content = LOREM.repeat(20);
     let content = content.as_bytes();
 
     c.bench_function("word_in_lorem_jit", |bench| {
         let parser = Jit::new(std::io::Cursor::new(peg)).unwrap();
         bench.iter(|| {
-            parser.parse(&content).unwrap();
+            parser.parse(content).unwrap();
         });
     });
 
     c.bench_function("word_in_lorem_interpreted", |bench| {
         let parser = Parser::new(std::io::Cursor::new(peg)).unwrap();
-        bench.iter(move || {
+        bench.iter(|| {
             parser.parse(content).unwrap();
         });
     });
@@ -444,19 +444,19 @@ fn word_in_lorem(c: &mut Criterion) {
 
 fn json(c: &mut Criterion) {
     let peg = include_str!("../pegs/json.peg");
-    let content = include_str!("large.json");
+    let content = include_str!("large.json").repeat(20);
     let content = content.as_bytes();
 
     c.bench_function("json_jit", |bench| {
         let parser = Jit::new(std::io::Cursor::new(peg)).unwrap();
         bench.iter(|| {
-            parser.parse(&content).unwrap();
+            parser.parse(content).unwrap();
         });
     });
 
     c.bench_function("json_interpreted", |bench| {
         let parser = Parser::new(std::io::Cursor::new(peg)).unwrap();
-        bench.iter(move || {
+        bench.iter(|| {
             parser.parse(content).unwrap();
         });
     });
@@ -464,23 +464,23 @@ fn json(c: &mut Criterion) {
 
 fn rust(c: &mut Criterion) {
     let peg = include_str!("../../../runtime/language/rust/syntax.peg");
-    let content = RUST;
+    let content = RUST.repeat(20);
     let content = content.as_bytes();
 
     c.bench_function("rust_jit", |bench| {
         let parser = Jit::new(std::io::Cursor::new(peg)).unwrap();
         bench.iter(|| {
-            parser.parse(&content).unwrap();
+            parser.parse(content).unwrap();
         });
     });
 
     c.bench_function("rust_interpreted", |bench| {
         let parser = Parser::new(std::io::Cursor::new(peg)).unwrap();
-        bench.iter(move || {
+        bench.iter(|| {
             parser.parse(content).unwrap();
         });
     });
 }
 
-criterion_group!(benches, rust, json);
+criterion_group!(benches, rust, json, word_in_lorem);
 criterion_main!(benches);

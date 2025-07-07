@@ -1,8 +1,11 @@
-use sanedit_utils::sorted_vec::SortedVec;
+use std::sync::{Arc, OnceLock};
+
+use sanedit_utils::{ranges::OverlappingRanges, sorted_vec::SortedVec};
 use thiserror::Error;
 
 use crate::{
-    grammar::{Rule, RuleInfo, Rules}, Capture, ParseError, Parser
+    grammar::{Rule, RuleInfo, Rules},
+    Capture, ParseError, Parser,
 };
 
 #[derive(Error, Debug)]
@@ -25,8 +28,19 @@ impl std::fmt::Debug for GlobRules {
     }
 }
 
-// https://en.wikipedia.org/wiki/Glob_(programming)
-//
+fn glob_parser() -> &'static Parser {
+    static PARSER: OnceLock<Arc<Parser>> = OnceLock::new();
+    let parser = PARSER.get_or_init(|| {
+        let text = include_str!("../pegs/glob.peg");
+        let parser = Parser::new(std::io::Cursor::new(text)).unwrap();
+        Arc::new(parser)
+    });
+    parser.as_ref()
+}
+
+/// Done like https://en.wikipedia.org/wiki/Glob_(programming)
+///
+/// No extglob
 #[allow(dead_code)]
 #[derive(Debug)]
 pub struct Glob {
@@ -52,55 +66,206 @@ impl Glob {
     }
 
     fn to_rules(pattern: &str) -> Result<Rules, GlobError> {
-        // Just testing here that this works OK, should probably do something better => just parse manually as this is prett simple
-        let text = include_str!("../pegs/glob.peg");
-        let parser = Parser::new(std::io::Cursor::new(text))?;
+        let to_bytes = |cap: &Capture| {
+            let range = cap.range();
+            pattern[range.start as usize..range.end as usize]
+                .as_bytes()
+                .to_vec()
+        };
+
+        let parser = glob_parser();
         let captures: SortedVec<Capture> = parser.parse(pattern)?.into();
-        let mut rules: Vec<Rule> = vec![];
-        let mut many = false;
+        let mut rules: Vec<RuleInfo> = vec![];
+        let mut seq: Vec<Rule> = vec![];
 
-        for cap in captures.iter() {
+        let mut iter = captures.iter().peekable();
+        while let Some(cap) = iter.next() {
             let label = parser.label_for(cap.id());
-            let rule = match label {
-                "text" => {
-                    let range = cap.range();
-                    let text = &pattern[range.start as usize..range.end as usize];
-                    Some(Rule::ByteSequence(text.as_bytes().to_vec()))
-                }
-                "many" => {
-                    many = true;
-                    None
-                }
-                _ => None,
-            };
+            match label {
+                "negative_brackets" => {
+                    let inside = {
+                        let mut inside = vec![];
+                        while let Some(ncap) = iter.peek() {
+                            if ncap.end <= cap.end {
+                                inside.push((*ncap).clone());
+                                iter.next();
+                            } else {
+                                break;
+                            }
+                        }
 
-            if let Some(rule) = rule {
-                if many {
-                    many = false;
-                    // (!text .)* text
-                    rules.push(Rule::Sequence(vec![
-                        Rule::ZeroOrMore(Box::new(Rule::Sequence(vec![
-                            Rule::NotFollowedBy(Box::new(rule.clone())),
-                            Rule::ByteAny,
-                        ]))),
-                        rule,
-                    ]));
-                } else {
-                    rules.push(rule);
+                        inside
+                    };
+
+                    let mut ranges = OverlappingRanges::new();
+                    let mut choices = vec![];
+                    let mut iiter = inside.iter().peekable();
+                    while let Some(ncap) = iiter.next() {
+                        let nlabel = parser.label_for(ncap.id());
+                        match nlabel {
+                            "range" => {
+                                // Next 2 should be chars
+                                let a = iiter.next().expect("No range a");
+                                let b = iiter.next().expect("No range b");
+                                ranges.add(to_bytes(a)[0] as u32..to_bytes(b)[0] as u32 + 1);
+                            }
+                            "char" => {
+                                let a = to_bytes(ncap)[0] as u32;
+                                ranges.add(a..a + 1);
+                            }
+                            _ => unreachable!("Invalid label in brackets"),
+                        }
+                    }
+
+                    ranges.invert(u8::MIN as u32..u8::MAX as u32 + 1);
+                    for range in ranges.iter() {
+                        choices.push(Rule::ByteRange(range.start as u8, (range.end - 1) as u8));
+                    }
+
+                    if choices.len() == 1 {
+                        seq.push(choices.pop().unwrap());
+                    } else {
+                        seq.push(Rule::Choice(choices));
+                    }
                 }
+                "brackets" => {
+                    let inside = {
+                        let mut inside = vec![];
+                        while let Some(ncap) = iter.peek() {
+                            if ncap.end <= cap.end {
+                                inside.push((*ncap).clone());
+                                iter.next();
+                            } else {
+                                break;
+                            }
+                        }
+
+                        inside
+                    };
+
+                    let mut choices = vec![];
+                    let mut iiter = inside.iter().peekable();
+                    while let Some(ncap) = iiter.next() {
+                        let nlabel = parser.label_for(ncap.id());
+                        match nlabel {
+                            "range" => {
+                                // Next 2 should be chars
+                                let a = iiter.next().expect("No range a");
+                                let b = iiter.next().expect("No range b");
+                                choices.push(Rule::ByteRange(to_bytes(a)[0], to_bytes(b)[0]))
+                            }
+                            "char" => choices.push(Rule::ByteSequence(to_bytes(ncap))),
+                            _ => unreachable!("Invalid label in brackets"),
+                        }
+                    }
+                    if choices.len() == 1 {
+                        seq.push(choices.pop().unwrap());
+                    } else {
+                        seq.push(Rule::Choice(choices));
+                    }
+                }
+                "text" => seq.push(Rule::ByteSequence(to_bytes(cap))),
+                "wildcard" => {
+                    let prev_i = rules.len();
+                    let wildcard_i = prev_i + 1;
+                    let next_i = prev_i + 2;
+
+                    let wildcard = Rule::Ref(wildcard_i);
+                    seq.push(wildcard.clone());
+
+                    let prev = RuleInfo {
+                        top: false,
+                        annotations: vec![],
+                        name: format!("rule-{prev_i}"),
+                        rule: Rule::Sequence(std::mem::take(&mut seq)),
+                    };
+                    rules.push(prev);
+
+                    // prev = ... Ref(wildcard)
+                    // wildcard = Ref(next) / [^/] Ref(wildcard)
+
+                    let next = Rule::Ref(next_i);
+                    let rule = Rule::Choice(vec![
+                        next,
+                        Rule::Sequence(vec![
+                            Rule::Choice(vec![
+                                Rule::ByteRange(u8::MIN, '/' as u8 - 1),
+                                Rule::ByteRange('/' as u8 + 1, u8::MAX),
+                            ]),
+                            wildcard,
+                        ]),
+                    ]);
+
+                    let wcard = RuleInfo {
+                        top: false,
+                        annotations: vec![],
+                        name: format!("wildcard-{wildcard_i}"),
+                        rule,
+                    };
+                    rules.push(wcard);
+                }
+                "recursive_wildcard" => {
+                    let prev_i = rules.len();
+                    let wildcard_i = prev_i + 1;
+                    let next_i = prev_i + 2;
+
+                    let wildcard = Rule::Ref(wildcard_i);
+                    seq.push(wildcard.clone());
+
+                    let prev = RuleInfo {
+                        top: false,
+                        annotations: vec![],
+                        name: format!("rule-{prev_i}"),
+                        rule: Rule::Sequence(std::mem::take(&mut seq)),
+                    };
+                    rules.push(prev);
+
+                    // prev = ... Ref(wildcard)
+                    // wildcard = Ref(next) / "/"? [^/]+ Ref(wildcard)
+
+                    let next = Rule::Ref(next_i);
+                    let rule = Rule::Choice(vec![
+                        next,
+                        Rule::Sequence(vec![
+                            Rule::Optional(Rule::ByteSequence("/".into()).into()),
+                            Rule::OneOrMore(
+                                Rule::Choice(vec![
+                                    Rule::ByteRange(u8::MIN, '/' as u8 - 1),
+                                    Rule::ByteRange('/' as u8 + 1, u8::MAX),
+                                ])
+                                .into(),
+                            ),
+                            wildcard,
+                        ]),
+                    ]);
+
+                    let wcard = RuleInfo {
+                        top: false,
+                        annotations: vec![],
+                        name: format!("wildcard-{wildcard_i}"),
+                        rule,
+                    };
+                    rules.push(wcard);
+                }
+                "any" => seq.push(Rule::ByteAny),
+                "separator" => seq.push(Rule::ByteSequence("/".into())),
+                _ => {}
             }
         }
 
         // Assert end
-        rules.push(Rule::NotFollowedBy(Rule::ByteAny.into()));
+        seq.push(Rule::NotFollowedBy(Rule::ByteAny.into()));
 
         let info = RuleInfo {
-            top: true,
+            top: false,
             annotations: vec![],
-            name: "glob".into(),
-            rule: Rule::Sequence(rules),
+            name: "final".into(),
+            rule: Rule::Sequence(seq),
         };
-        let rules = Rules::new(Box::new([info]));
+        rules.push(info);
+        rules[0].top = true;
+
+        let rules = Rules::new(rules.into());
         Ok(rules)
     }
 
@@ -125,7 +290,7 @@ mod test {
 
     #[test]
     fn glob_rust() {
-        let glob = Glob::new("*.rs").unwrap();
+        let glob = Glob::new("**/*.rs").unwrap();
         assert_eq!(glob.is_match(b".hidden"), false);
         assert_eq!(glob.is_match(b"path/to/glob.rs"), true);
         assert_eq!(glob.is_match(b"text/lorem.txt"), false);
@@ -137,6 +302,8 @@ mod test {
         assert_eq!(glob.is_match(b"lawyer"), true);
         assert_eq!(glob.is_match(b"the law"), true);
         assert_eq!(glob.is_match(b"the lew"), false);
+        assert_eq!(glob.is_match(b"xxxxxxxxxawxxxxxxxx"), true);
+        assert_eq!(glob.is_match(b"xxxxxxxxxxxxxxxxx"), false);
     }
 
     #[test]
@@ -156,7 +323,7 @@ mod test {
     }
 
     #[test]
-    fn glob_alt() {
+    fn glob_alt_1() {
         let glob = Glob::new("[CB]at").unwrap();
         assert_eq!(glob.is_match(b"Cat"), true);
         assert_eq!(glob.is_match(b"Bat"), true);
@@ -169,6 +336,6 @@ mod test {
         assert_eq!(glob.is_match(b"Letter8"), true);
         assert_eq!(glob.is_match(b"Letter0"), true);
         assert_eq!(glob.is_match(b"Letter10"), false);
-        assert_eq!(glob.is_match(b"Letter"), true);
+        assert_eq!(glob.is_match(b"Letter"), false);
     }
 }

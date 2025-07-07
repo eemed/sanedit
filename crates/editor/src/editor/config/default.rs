@@ -47,16 +47,16 @@ impl EditorConfig {
         // Using LSP language identifiers
         #[rustfmt::skip]
         map!(ftmap,
-             "rust", ["*.rs"],
-             "toml", ["*/Cargo.lock"],
-             "yaml", ["*.yml", "*.yaml"],
-             "markdown", ["*.md"],
-             "make", ["*/Makefile"],
-             "javascriptreact", ["*.jsx"],
-             "javascript", ["*.js"],
-             "python", ["*.py"],
-             "shellscript", ["*.sh"],
-             "asciidoc", ["*.adoc"],
+             "rust", ["**/*.rs"],
+             "toml", ["**/Cargo.lock"],
+             "yaml", ["**/*.yml"],
+             "markdown", ["**/*.md"],
+             "make", ["**/Makefile"],
+             "javascriptreact", ["**/*.jsx"],
+             "javascript", ["**/*.js"],
+             "python", ["**/*.py"],
+             "shellscript", ["**/*.sh"],
+             "asciidoc", ["**/*.adoc"],
         );
 
         ftmap

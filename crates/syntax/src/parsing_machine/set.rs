@@ -54,10 +54,12 @@ mod tests {
     use super::*;
 
     #[test]
-    fn has_any() {
+    fn contains() {
         let mut set = Set::new();
         set.add(2);
         set.add(50);
-        println!("Set: {set:?}");
+
+        assert!(set.has(2));
+        assert!(set.has(50));
     }
 }

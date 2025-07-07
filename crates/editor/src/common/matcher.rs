@@ -117,9 +117,7 @@ impl Matcher {
                             case_sensitive,
                             match_fn,
                         ) {
-                            let score = choice
-                                .number()
-                                .unwrap_or_else(|| score(&choice.filter_text(), &ranges));
+                            let score = score(&choice, &ranges);
                             let scored = ScoredChoice::new(choice.clone(), score, ranges);
 
                             if out.blocking_send(scored).is_err() {
@@ -136,14 +134,12 @@ impl Matcher {
     }
 }
 
-// Score a match
-fn score(opt: &str, ranges: &[Range<usize>]) -> u32 {
+fn score(choice: &Arc<Choice>, ranges: &[Range<usize>]) -> u32 {
+    if let Some(n) = choice.number() {
+        return n;
+    }
     // Closest match first
-    // Shortest item first
-    ranges.first().map(|f| f.start).unwrap_or(opt.len()) as u32
-    // let match_at = ranges.first().map(|f| f.start as u16).unwrap_or(0);
-    // let len = opt.len() as u16;
-    // ((match_at as u32) << u16::BITS) | len as u32
+    return ranges.first().map(|f| f.start as u32).unwrap_or(0);
 }
 
 fn with_case_sensitivity(opt: &str, case_sensitive: bool) -> Cow<str> {

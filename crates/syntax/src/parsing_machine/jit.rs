@@ -817,7 +817,7 @@ mod test {
             unsafe { std::mem::transmute(program.ptr(start)) };
 
         let res = peg_program();
-        println!("res: {haystack:?} {res:#02x}");
+        // println!("res: {haystack:?} {res:#02x}");
         assert_eq!(res, 0x400);
     }
 
@@ -825,7 +825,7 @@ mod test {
     fn jit_rust() {
         let peg = include_str!("../../../../runtime/language/rust/syntax.peg");
         let jit = Jit::new(std::io::Cursor::new(peg)).expect("Failed to create JIT");
-        println!("{:?}", jit.ops);
+        // println!("{:?}", jit.ops);
         let rust = r#"
             use crate::editor::snippets::{Snippet, SNIPPET_DESCRIPTION};
 
@@ -868,7 +868,7 @@ mod test {
         let rules = include_str!("../../pegs/json.peg");
         let jit = Jit::new(std::io::Cursor::new(rules)).expect("Failed to create JIT");
         // let json = r#"{ "nimi": "perkele", "ika": 42, lapset: ["matti", "teppo"]}"#;
-        println!("{:?}", jit.ops);
+        // println!("{:?}", jit.ops);
         let json = include_str!("../../benches/large.json");
         let captures = jit.parse(json).expect("Parsing failed");
         // for cap in captures {
@@ -890,9 +890,9 @@ mod test {
         setter = true
         "#;
         let captures = jit.parse(json).expect("Parsing failed");
-        for cap in captures {
-            println!("{cap:?}: {}", &json[cap.start as usize..cap.end as usize]);
-        }
+        // for cap in captures {
+        //     println!("{cap:?}: {}", &json[cap.start as usize..cap.end as usize]);
+        // }
     }
 
     #[test]

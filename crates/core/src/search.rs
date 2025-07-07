@@ -204,6 +204,7 @@ impl<'a, 'b> Iterator for MatchIter<'a, 'b> {
             }
             MatchIter::Regex(capture_iter) => {
                 let caps = capture_iter.next()?;
+                log::info!("CAPS: {caps:?}");
                 let cap = &caps[0];
                 Some(SearchMatch {
                     range: cap.range().into(),

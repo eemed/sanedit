@@ -4,12 +4,12 @@ use rustc_hash::FxHashMap;
 use sanedit_buffer::PieceTreeView;
 use sanedit_core::{BufferRange, Language, Range};
 use sanedit_server::Kill;
-use sanedit_utils::{either::Either, sorted_vec::SortedVec};
+use sanedit_utils::sorted_vec::SortedVec;
 
 use std::fs::File;
 
 use anyhow::{anyhow, bail};
-use sanedit_syntax::{Annotation, Capture, Jit, Parser, ParsingMachine, SliceSource};
+use sanedit_syntax::{Annotation, Capture, Parser, SliceSource};
 
 #[derive(Debug)]
 pub struct Syntaxes {

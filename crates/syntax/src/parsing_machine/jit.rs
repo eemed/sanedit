@@ -1,4 +1,5 @@
 use std::alloc::Layout;
+use std::backtrace::Backtrace;
 
 use crate::grammar::Rules;
 use crate::{Annotation, ByteSource, Capture, ParseError};
@@ -363,8 +364,14 @@ impl Jit {
     ) -> Result<(CaptureList, u64), ParseError> {
         if let Some(chunk) = bytes.as_single_chunk() {
             let chunk = &chunk[offset as usize..];
-            let (caps, sp) = self.parse_chunk(chunk)?;
-            return Ok((caps, sp as u64));
+            let (mut caps, sp) = self.parse_chunk(chunk)?;
+            if offset != 0 {
+                caps.iter_mut().for_each(|cap| {
+                    cap.start += offset;
+                    cap.end += offset;
+                });
+            }
+            return Ok((caps, offset + sp as u64));
         }
 
         // if not contiguous use a sliding window
@@ -384,24 +391,28 @@ impl Jit {
         while copied != 0 {
             let start = n - copied as u64;
             let win = &window[..copied];
-            let (mut caps, ssp) = self.parse_chunk(win)?;
-            sp = start + ssp as u64;
-            // Adjust indices
-            caps.iter_mut().for_each(|cap| {
-                cap.start += start;
-                cap.end += start;
-            });
+            match self.parse_chunk(win) {
+                Ok((mut caps, ssp)) => {
+                    sp = start + ssp as u64;
+                    // Adjust indices
+                    caps.iter_mut().for_each(|cap| {
+                        cap.start += start;
+                        cap.end += start;
+                    });
 
-            if stop_on_match {
-                return Ok((caps, sp));
-            }
+                    if stop_on_match {
+                        return Ok((caps, sp));
+                    }
 
-            if captures.is_empty() {
-                captures = caps;
-            } else {
-                // We already have captures thus this is already an overlapping run
-                captures.retain_mut(|cap| cap.start < start);
-                captures.extend(caps);
+                    if captures.is_empty() {
+                        captures = caps;
+                    } else {
+                        // We already have captures thus this is already an overlapping run
+                        captures.retain_mut(|cap| cap.start < start);
+                        captures.extend(caps);
+                    }
+                }
+                Err(_) => {}
             }
 
             window.copy_within(WINDOW_SIZE - OVERLAP..WINDOW_SIZE, 0);
@@ -571,7 +582,6 @@ impl Jit {
                     );
                 }
                 Any(n) => {
-                    // TODO does it matter we advance even in failed case
                     asm!(ops
                         ; add subject_pointer, *n as _
                         ; cmp subject_pointer, subject_end

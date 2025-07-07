@@ -96,7 +96,7 @@ pub(crate) fn reparse_view(editor: &mut Editor, id: ClientId) -> ActionResult {
 pub(crate) fn parse_syntax(editor: &mut Editor, id: ClientId) -> ActionResult {
     const JOB_NAME: &str = "parse-syntax";
 
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, buf) = win_buf!(editor, id);
     if !win.config.highlight_syntax {
         return ActionResult::Skipped;
     }

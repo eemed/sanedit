@@ -1,6 +1,6 @@
 use std::ops::Range;
 
-use crate::{ByteSource, Parser, SubjectPosition};
+use crate::{ByteSource, SubjectPosition};
 
 use super::{Jit, ParsingMachine};
 
@@ -63,7 +63,11 @@ impl<'a, B: ByteSource> Iterator for CaptureIter<'a, B> {
                 match parsing_machine.do_parse(&mut self.source, self.sp) {
                     Ok((caps, sp)) => {
                         self.sp = sp;
-                        Some(caps)
+                        if caps.is_empty() {
+                            None
+                        } else {
+                            Some(caps)
+                        }
                     }
                     Err(_) => {
                         self.sp = self.source.len();
@@ -71,18 +75,20 @@ impl<'a, B: ByteSource> Iterator for CaptureIter<'a, B> {
                     }
                 }
             }
-            ParserRef::Jit(jit) => {
-                match jit.do_parse(&mut self.source, self.sp, true) {
-                    Ok((caps, sp)) => {
-                        self.sp = sp;
+            ParserRef::Jit(jit) => match jit.do_parse(&mut self.source, self.sp, true) {
+                Ok((caps, sp)) => {
+                    self.sp = sp;
+                    if caps.is_empty() {
+                        None
+                    } else {
                         Some(caps)
                     }
-                    Err(_) => {
-                        self.sp = self.source.len();
-                        None
-                    }
                 }
-            }
+                Err(_) => {
+                    self.sp = self.source.len();
+                    None
+                }
+            },
         }
     }
 }

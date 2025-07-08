@@ -83,7 +83,7 @@ impl Syntax {
         &self,
         pt: &PieceTreeView,
         mut view: BufferRange,
-        kill: Kill,
+        _kill: Kill,
     ) -> anyhow::Result<SyntaxResult> {
         const COMPLETION_ANNOTATION: &str = "completion";
         const HIGHLIGHT_ANNOTATION: &str = "highlight";

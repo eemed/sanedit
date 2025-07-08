@@ -83,6 +83,8 @@ impl ParsingMachine {
         Self::from_rules(rules)
     }
 
+    // Used in tests
+    #[allow(dead_code)]
     pub(crate) fn from_rules_unanchored(rules: Rules) -> Result<ParsingMachine, ParseError> {
         let compiler = Compiler::new(&rules);
         let program = compiler

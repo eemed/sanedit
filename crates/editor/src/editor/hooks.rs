@@ -174,7 +174,7 @@ impl Default for Hooks {
         // Syntax
         hooks.register(OnMessagePost, syntax::reparse_view);
         hooks.register(Reload, syntax::parse_syntax);
-        hooks.register(BufEnter, syntax::parse_syntax);
+        // hooks.register(BufEnter, syntax::parse_syntax);
         hooks.register(BufChanged, syntax::prevent_flicker);
 
         // LSP

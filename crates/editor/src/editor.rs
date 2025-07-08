@@ -216,22 +216,16 @@ impl Editor {
     }
 
     pub fn win_buf(&self, id: ClientId) -> (&Window, &Buffer) {
-        let win = self.windows.get(id).expect("no win for cliend id {id}");
+        let win = self.windows.get(id).expect("no win for cliend id");
         let bid = win.buffer_id();
-        let buf = self
-            .buffers
-            .get(bid)
-            .expect("no buffer for buffer id {bid}");
+        let buf = self.buffers.get(bid).expect("no buffer for buffer id");
         (win, buf)
     }
 
     pub fn win_buf_mut(&mut self, id: ClientId) -> (&mut Window, &mut Buffer) {
-        let win = self.windows.get_mut(id).expect("no win for cliend id {id}");
+        let win = self.windows.get_mut(id).expect("no win for cliend id");
         let bid = win.buffer_id();
-        let buf = self
-            .buffers
-            .get_mut(bid)
-            .expect("no buffer for buffer id {bid}");
+        let buf = self.buffers.get_mut(bid).expect("no buffer for buffer id");
         (win, buf)
     }
 
@@ -316,17 +310,17 @@ impl Editor {
     }
 
     pub fn remove_buffer(&mut self, id: ClientId, bid: BufferId) -> Result<()> {
-        if self.buffers.get(bid).is_some() {
+        if self.buffers.get(bid).is_none() {
             bail!("No such buffer {bid:?}");
         }
-
-        run(self, id, Hook::BufDeletedPre(bid));
-        self.buffers.remove(bid);
 
         let clients = self.windows.find_clients_with_buf(bid);
         for client in clients {
             goto_other_buffer(self, client);
         }
+
+        run(self, id, Hook::BufDeletedPre(bid));
+        self.buffers.remove(bid);
         Ok(())
     }
 

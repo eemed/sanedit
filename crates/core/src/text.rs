@@ -139,7 +139,7 @@ pub fn word_at_pos(slice: &PieceTreeSlice, pos: u64) -> Option<BufferRange> {
     };
 
     let end = {
-        let mut end = pos;
+        let mut end = pos + 1;
         if !on_word_end(current, after, pos, slice.len()) {
             end = next_word_end(slice, pos);
         }

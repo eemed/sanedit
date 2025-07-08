@@ -2,7 +2,7 @@ use std::sync::{atomic::AtomicBool, Arc};
 
 use crate::{BufferRange, Range};
 use anyhow::bail;
-use sanedit_buffer::{Bytes, PieceTreeSlice};
+use sanedit_buffer::PieceTreeSlice;
 use sanedit_syntax::{
     CaptureIter, Finder, FinderIter, FinderIterRev, FinderRev, Regex, SliceSource,
 };

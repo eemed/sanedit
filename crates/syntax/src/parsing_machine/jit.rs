@@ -1,5 +1,4 @@
 use std::alloc::Layout;
-use std::backtrace::Backtrace;
 
 use crate::grammar::Rules;
 use crate::{Annotation, ByteSource, Capture, ParseError};
@@ -701,6 +700,33 @@ impl Jit {
                         ; mov [state + offset_i32!(State, len)], captop
                     );
                 }
+                CaptureLate(id, diff) => {
+                    asm!(ops
+                        // Check if needs to grow, jump past if not needed
+                        ; cmp captop, [state + offset_i32!(State, cap)]
+                        ; jb >next
+                    );
+
+                    double_cap_size!(ops, State::double_cap_size);
+
+                    asm!(ops
+                        ;next:
+                        ; mov capture_pointer, captop
+                        ; shl capture_pointer, 4 // size_of(PartialCapture) = 16
+                        ; add capture_pointer, [state + offset_i32!(State, ptr)]
+
+                        // Save capture to the capture pointer and advance it
+                        ; mov DWORD [capture_pointer + offset_i32!(PartialCapture, id)], *id as i32
+                        ; mov BYTE [capture_pointer + offset_i32!(PartialCapture, kind)], 0
+                        ; mov tmp, subject_pointer
+                        ; sub tmp, *diff as _
+                        ; mov QWORD [capture_pointer + offset_i32!(PartialCapture, ptr)], tmp
+
+                        // Increase captop and point to the top
+                        ; inc captop
+                        ; mov [state + offset_i32!(State, len)], captop
+                    );
+                }
                 CaptureEnd => {
                     asm!(ops
                         // Check if needs to grow, jump past if not needed
@@ -726,7 +752,7 @@ impl Jit {
                         ; mov [state + offset_i32!(State, len)], captop
                     );
                 }
-                TestChar(b, l) => {
+                TestByte(b, l) => {
                     let jump_label = inst_labels[*l];
                     asm!(ops
                         // Check subject manually to jump to label
@@ -917,7 +943,7 @@ mod test {
     fn jit_rust() {
         let peg = include_str!("../../../../runtime/language/rust/syntax.peg");
         let jit = Jit::new(std::io::Cursor::new(peg)).expect("Failed to create JIT");
-        // println!("{:?}", jit.ops);
+        println!("{:?}", jit.ops);
         let rust = r#"
             use crate::editor::snippets::{Snippet, SNIPPET_DESCRIPTION};
 

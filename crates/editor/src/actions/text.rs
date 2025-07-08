@@ -462,12 +462,19 @@ fn check_file_modification(editor: &mut Editor, id: ClientId) -> ActionResult {
 fn reload_file_from_disk(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (_win, buf) = editor.win_buf_mut(id);
     let bid = buf.id;
+    let hook = Hook::BufDeletedPre(buf.id);
+    run(editor, id, hook);
+
+    let (_win, buf) = editor.win_buf_mut(id);
     let ok = buf.reload_from_disk();
     if !ok {
         return ActionResult::Ok;
     }
 
-    let hook = Hook::BufChanged(buf.id);
+    let hook = Hook::BufCreated(bid);
+    run(editor, id, hook);
+
+    let hook = Hook::BufEnter(bid);
     run(editor, id, hook);
 
     // Reload all clients that use this buffer

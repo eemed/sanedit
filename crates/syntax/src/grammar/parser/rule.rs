@@ -162,6 +162,14 @@ pub(crate) enum Rule {
 }
 
 impl Rule {
+    pub fn is_byte_range_or_single_byte(&self) -> bool {
+        match self {
+            Rule::ByteSequence(vec) => vec.len() == 1,
+            Rule::ByteRange(_, _) => true,
+            _ => false,
+        }
+    }
+
     pub fn is_repetition(&self) -> bool {
         use Rule::*;
         matches!(self, OneOrMore(_) | Optional(_) | ZeroOrMore(_))

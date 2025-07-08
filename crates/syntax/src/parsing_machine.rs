@@ -256,7 +256,7 @@ impl ParsingMachine {
                     state = State::Failure;
                 }
                 Span(set) => {
-                    while set.has(reader.get(sp)) {
+                    while sp < slen && set.has(reader.get(sp)) {
                         sp += 1;
                     }
 
@@ -277,25 +277,7 @@ impl ParsingMachine {
                     }
                     ip = *l;
                 }
-                CaptureBegin(id) => {
-                    captures.push(PartialCapture {
-                        id: *id,
-                        kind: Kind::Open,
-                        pos: sp,
-                    });
-                    captop += 1;
-                    ip += 1;
-                }
-                CaptureEnd => {
-                    captures.push(PartialCapture {
-                        id: 0,
-                        kind: Kind::Close,
-                        pos: sp,
-                    });
-                    captop += 1;
-                    ip += 1;
-                }
-                TestChar(byte, l) => {
+                TestByte(byte, l) => {
                     if sp < slen && reader.get(sp) == *byte {
                         stack.push(StackEntry::Backtrack {
                             addr: *l,
@@ -322,6 +304,33 @@ impl ParsingMachine {
                     } else {
                         ip = *l;
                     }
+                }
+                CaptureBegin(id) => {
+                    captures.push(PartialCapture {
+                        id: *id,
+                        kind: Kind::Open,
+                        pos: sp,
+                    });
+                    captop += 1;
+                    ip += 1;
+                }
+                CaptureEnd => {
+                    captures.push(PartialCapture {
+                        id: 0,
+                        kind: Kind::Close,
+                        pos: sp,
+                    });
+                    captop += 1;
+                    ip += 1;
+                }
+                CaptureLate(id, diff) => {
+                    captures.push(PartialCapture {
+                        id: *id,
+                        kind: Kind::Open,
+                        pos: sp - *diff,
+                    });
+                    captop += 1;
+                    ip += 1;
                 }
             }
 

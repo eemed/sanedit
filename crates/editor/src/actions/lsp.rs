@@ -377,7 +377,6 @@ fn format(editor: &mut Editor, id: ClientId) -> ActionResult {
             indent_kind,
             indent_amount: indent_amount.into(),
         };
-        log::info!("Format");
         Some((
             kind,
             vec![

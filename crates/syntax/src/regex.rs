@@ -85,6 +85,12 @@ impl Regex {
     }
 }
 
+impl From<Regex> for Parser {
+    fn from(value: Regex) -> Self {
+        value.parser
+    }
+}
+
 struct RegexToPEG<'a> {
     pattern: &'a str,
     parser: &'static ParsingMachine,

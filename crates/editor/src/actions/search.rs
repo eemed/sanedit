@@ -6,7 +6,7 @@ use crate::{
     actions::jobs,
     editor::{
         hooks::Hook,
-        windows::{Focus, HistoryKind, Prompt},
+        windows::{Focus, HistoryKind, Prompt, Window},
         Editor,
     },
 };
@@ -55,7 +55,7 @@ pub(crate) fn prevent_flicker(editor: &mut Editor, id: ClientId) -> ActionResult
                         // Before highlight
                         off -= next.range().len() as i128;
                         off += next.text().len() as i128;
-                    } else if next.start() > hl.end {
+                    } else if next.start() >= hl.end {
                         // Went past highlight
                         break;
                     } else if hl.includes(&next.range()) {
@@ -64,9 +64,6 @@ pub(crate) fn prevent_flicker(editor: &mut Editor, id: ClientId) -> ActionResult
                         let added = next.text().len() as i128;
                         off -= removed;
                         off += added;
-
-                        // counteract this offset
-                        add_offset(hl, removed - added);
 
                         // Extend or shrink instead
                         hl.end += added as u64;
@@ -203,6 +200,7 @@ fn search_next_word_under_cursor(editor: &mut Editor, id: ClientId) -> ActionRes
     let slice = buf.slice(..);
     let range = getf!(word_at_pos(&slice, pos));
     let word = String::from(&slice.slice(range));
+    log::info!("{word}");
 
     new_search(editor, id, &word, false);
     ActionResult::Ok
@@ -277,12 +275,35 @@ fn new_search(editor: &mut Editor, id: ClientId, needle: &str, reverse: bool) {
     do_search(editor, id, searcher, cpos)
 }
 
+/// Skip over a match if starting position is in a highlight
+fn skip_highlighted(win: &Window, starting_position: u64, reverse: bool) -> u64 {
+    win.search
+        .highlights()
+        .as_ref()
+        .map(|hls| {
+            for hl in &hls.highlights {
+                if hl.contains(&starting_position) {
+                    if reverse {
+                        return Some(hl.start);
+                    } else {
+                        return Some(hl.end);
+                    }
+                }
+            }
+
+            None
+        })
+        .flatten()
+        .unwrap_or(starting_position + if !reverse { 1 } else { 0 })
+}
+
 fn do_search(editor: &mut Editor, id: ClientId, searcher: Searcher, starting_position: u64) {
     let (win, buf) = editor.win_buf_mut(id);
 
     let (start, mat, wrap) = if searcher.options().is_reversed {
-        // Skip first to not match inplace
-        let end = starting_position;
+        // Skip current match if needed
+        let pos = skip_highlighted(win, starting_position, true);
+        let end = pos;
         let slice = buf.slice(..end);
         let mat = if !slice.is_empty() {
             let mut iter = searcher.find_iter(&slice);
@@ -303,8 +324,9 @@ fn do_search(editor: &mut Editor, id: ClientId, searcher: Searcher, starting_pos
         }
     } else {
         let blen = buf.len();
-        // Skip first to not match inplace
-        let start = min(blen, starting_position + 1);
+        // Skip current match if needed
+        let pos = skip_highlighted(win, starting_position, false);
+        let start = min(blen, pos);
         let slice = buf.slice(start..);
         let mat = if !slice.is_empty() {
             let mut iter = searcher.find_iter(&slice);

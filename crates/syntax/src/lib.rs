@@ -96,4 +96,11 @@ impl Parser {
             Parser::Jit(jit) => jit.captures(source),
         }
     }
+
+    pub fn program(&self) -> &Program {
+        match self {
+            Parser::Interpreted(parsing_machine) => parsing_machine.program(),
+            Parser::Jit(jit) => &jit.ops,
+        }
+    }
 }

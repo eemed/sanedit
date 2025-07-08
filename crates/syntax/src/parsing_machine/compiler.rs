@@ -21,6 +21,9 @@ impl std::fmt::Debug for Program {
     }
 }
 
+// Read these if confused
+// https://zyedidia.github.io/notes/yedidia_thesis.pdf
+// https://www.inf.puc-rio.br/~roberto/docs/peg.pdf
 pub(crate) struct Compiler<'a> {
     program: Vec<Operation>,
     rule_addrs: Box<[usize]>,
@@ -68,30 +71,8 @@ impl<'a> Compiler<'a> {
         self.set_address(choice, any);
         self.set_address(commit, end);
 
-        // Compile all the other rules
-        for (i, rule) in self.rules.iter().enumerate() {
-            let show = rule.show();
+        self.compile_rules()?;
 
-            self.rule_addrs[i] = self.program.len();
-            self.rule_head = self.program.len();
-
-            // Add capture if we want to show this in AST
-            if show {
-                self.push(Operation::CaptureBegin(i));
-            }
-
-            // Compile the rule
-            self.compile_rec(&rule.rule)?;
-
-            if show {
-                self.push(Operation::CaptureEnd);
-            }
-
-            // Add a return op
-            self.push_return();
-        }
-
-        self.finish();
         // Fixup unanchor jump
         self.program[unanchor_jump] = Operation::Jump(0);
 
@@ -115,6 +96,12 @@ impl<'a> Compiler<'a> {
         self.push(Operation::Call(top));
         self.push(Operation::End);
 
+        self.compile_rules()?;
+
+        Ok(Program { ops: self.program })
+    }
+
+    fn compile_rules(&mut self) -> anyhow::Result<()> {
         // Compile all the other rules
         for (i, rule) in self.rules.iter().enumerate() {
             let show = rule.show();
@@ -123,14 +110,17 @@ impl<'a> Compiler<'a> {
             self.rule_head = self.program.len();
 
             // Add capture if we want to show this in AST
+            let mut capture_begin = 0;
             if show {
-                self.push(Operation::CaptureBegin(i));
+                capture_begin = self.push(Operation::CaptureBegin(i));
             }
 
             // Compile the rule
             self.compile_rec(&rule.rule)?;
 
             if show {
+                // Push capture begin as low as possible
+                self.relocate_capture_begin(capture_begin);
                 self.push(Operation::CaptureEnd);
             }
 
@@ -140,7 +130,44 @@ impl<'a> Compiler<'a> {
 
         self.finish();
 
-        Ok(Program { ops: self.program })
+        Ok(())
+    }
+
+    fn relocate_capture_begin(&mut self, orig: usize) {
+        // We could probably apply head fail optimization
+        // by distributing the capturelates to the choices jump points
+        let mut i = orig + 1;
+        let mut total_bytes = 0;
+        let Operation::CaptureBegin(id) = self.program[orig] else {
+            return;
+        };
+
+        while let Some(op) = self.program.get(i) {
+            let (can_push, total) = match op {
+                Operation::Byte(_) => (true, 1),
+                Operation::Any(n) => (true, *n),
+                Operation::Set(_) => (true, 1),
+                _ => (false, 0),
+            };
+
+            if !can_push {
+                break;
+            }
+
+            total_bytes += total;
+            i += 1;
+        }
+
+        if total_bytes == 0 {
+            return;
+        }
+
+        for m in (orig + 1)..i {
+            let prev = m - 1;
+            self.program.swap(prev, m);
+        }
+
+        self.program[i - 1] = Operation::CaptureLate(id, total_bytes);
     }
 
     fn push_return(&mut self) {
@@ -201,7 +228,7 @@ impl<'a> Compiler<'a> {
             Operation::Choice(a) => a,
             Operation::PartialCommit(a) => a,
             Operation::BackCommit(a) => a,
-            Operation::TestChar(_, a) => a,
+            Operation::TestByte(_, a) => a,
             Operation::TestSet(_, a) => a,
             _ => return,
         };
@@ -209,6 +236,42 @@ impl<'a> Compiler<'a> {
     }
 
     fn compile_choice_rec(&mut self, rule: &Rule, rest: &[Rule]) -> anyhow::Result<()> {
+        // If we have choice ( (byterange / onebyte)* )
+        // we can optimize to a set
+        if rule.is_byte_range_or_single_byte()
+            && rest.iter().all(Rule::is_byte_range_or_single_byte)
+        {
+            let mut set = Set::new();
+            let mut cur_rule = Some(rule);
+            let mut iter = rest.iter();
+
+            while let Some(r) = cur_rule {
+                match r {
+                    Rule::ByteSequence(vec) => set.add(vec[0]),
+                    Rule::ByteRange(a, b) => {
+                        for i in *a..=*b {
+                            set.add(i);
+                        }
+                    }
+                    _ => {}
+                }
+                cur_rule = iter.next();
+            }
+
+            // Head fail optimization
+            let last = self.program.len() - 1;
+            if self.rule_head == last {
+                if let Operation::Choice(addr) = &self.program[last] {
+                    self.program[last] = Operation::TestSet(set, *addr);
+                    return Ok(());
+                }
+            }
+
+            // Otherwise just use set
+            self.push(Operation::Set(set));
+            return Ok(());
+        }
+
         //     Choice L2
         //     <rule 1>
         //     Commit L2
@@ -243,6 +306,27 @@ impl<'a> Compiler<'a> {
             self.push(Operation::Span(set));
 
             return true;
+        }
+
+        if let Rule::Choice(rest) = rule {
+            if rest.iter().all(Rule::is_byte_range_or_single_byte) {
+                let mut set = Set::new();
+
+                for r in rest {
+                    match r {
+                        Rule::ByteSequence(vec) => set.add(vec[0]),
+                        Rule::ByteRange(a, b) => {
+                            for i in *a..=*b {
+                                set.add(i);
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+
+                self.push(Operation::Span(set));
+                return true;
+            }
         }
 
         false
@@ -320,7 +404,7 @@ impl<'a> Compiler<'a> {
                     let last = self.program.len() - 1;
                     if i == 0 && self.rule_head == last {
                         if let Operation::Choice(addr) = &self.program[last] {
-                            self.program[last] = Operation::TestChar(*byte, *addr);
+                            self.program[last] = Operation::TestByte(*byte, *addr);
                             continue;
                         }
                     }

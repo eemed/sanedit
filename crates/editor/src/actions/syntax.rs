@@ -30,17 +30,16 @@ pub(crate) fn prevent_flicker(editor: &mut Editor, id: ClientId) -> ActionResult
                 if next.end() <= hl.start() {
                     // Before highlight
                     hl.add_offset(added - removed);
-                } else if next.start() > hl.end() {
+                } else if next.start() >= hl.end() {
                     // Went past highlight
                     break;
                 } else if hl.range().includes(&next.range()) {
                     // Inside a higlight assume the highlight spans this edit too
-                    // counteract this offset
-                    hl.add_offset(removed - added);
                     // Extend or shrink instead
                     hl.extend_by(added as u64);
                     hl.shrink_by(removed as u64);
                 } else {
+                log::info!("OVER: {hl:?}");
                     // When edit contains highlight just remove the higlight
                     return false;
                 }

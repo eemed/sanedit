@@ -277,6 +277,12 @@ impl Glob {
     }
 }
 
+impl From<Glob> for Parser {
+    fn from(value: Glob) -> Self {
+        value.parser
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;

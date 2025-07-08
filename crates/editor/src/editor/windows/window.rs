@@ -205,41 +205,16 @@ impl Window {
         if buf.id == self.bid {
             return self.bid;
         }
-        self.cursor_jumps.goto_start();
 
         let old = self.bid;
-        // Store old buffer data
-        let odata = self.window_aux(None);
-        self.visited_buffers.insert(old, odata);
-        self.last_buffer = Some(old);
-
-        self.bid = buf.id;
+        self.swap_bid(buf.id);
+        self.cursor_jumps.goto_start();
         self.full_reload();
         if let Some(aux) = self.visited_buffers.get(&self.bid).cloned() {
             self.restore(&aux, buf);
         }
         old
     }
-
-    // pub fn goto_prev_buffer(&mut self) -> bool {
-    //     match mem::take(&mut self.last_buffer) {
-    //         Some(pbid) => {
-    //             // Store current data
-    //             let old = self.bid;
-    //             let odata = self.window_aux(None);
-    //             self.visited_buffers.insert(old, odata);
-    //             self.last_buffer = Some(old);
-
-    //             // Restore prev buffer data
-    //             self.bid = pbid;
-    //             if let Some(pdata) = self.visited_buffers.get(&pbid).cloned() {
-    //                 self.restore(&pdata, None);
-    //             }
-    //             true
-    //         }
-    //         None => false,
-    //     }
-    // }
 
     pub fn info_msg(&mut self, message: &str) {
         self.message = Some(StatusMessage {
@@ -448,6 +423,19 @@ impl Window {
 
     pub fn buffer_id(&self) -> BufferId {
         self.bid
+    }
+
+    fn swap_bid(&mut self, new: BufferId) {
+        if new == self.bid {
+            return;
+        }
+
+        let old = self.bid;
+        // Store old buffer data
+        let odata = self.window_aux(None);
+        self.visited_buffers.insert(old, odata);
+        self.last_buffer = Some(old);
+        self.bid = new;
     }
 
     pub fn view(&self) -> &View {
@@ -1285,16 +1273,17 @@ impl Window {
 
     // Goto current jump, buffer provided should be the one in current jump
     pub fn goto_cursor_jump(&mut self, reference: Ref, buf: &Buffer) {
-        let group = get!(self.cursor_jumps.goto(reference));
+        let bid = get!(self.cursor_jumps.goto(reference.clone())).buffer_id();
 
         debug_assert!(
-            buf.id == group.buffer_id(),
+            buf.id == bid,
             "Invalid buffer provided to window got id {:?}, expected {:?}",
             buf.id,
-            group.buffer_id()
+            bid
         );
 
-        self.bid = group.buffer_id();
+        self.swap_bid(bid);
+        let group = get!(self.cursor_jumps.goto(reference));
         self.cursors = group.to_cursors(buf);
         self.ensure_cursor_on_grapheme_boundary(buf);
         self.invalidate();

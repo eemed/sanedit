@@ -1,5 +1,5 @@
 document = (separated / (!stop .)* stop)*;
-separated = todo / keyword / string / constant / comment / preproc / type / operator;
+separated = todo / tuple / keyword / string / constant / comment / preproc / type / operator;
 
 stop = ws+ / nl / "[" / "]" / "(" / ")" / ";" / "<" / ">" / "," / ":" / "." / "}";
 WHITESPACE = [ \t];
@@ -18,12 +18,14 @@ keyword = ("macro_rules!" / "unsafe" / "static" / "loop" / "let" / "match" / "if
 constant = number / boolean / uppercase_constant;
 
 boolean = ("false" / "true") &stop;
-number = "0x" hexdigit+ / "-"? digit+ number_types? !".";
+number = "0x" hexdigit+ / "-"? digit+ number_types?;
 digit = [0..9];
 hexdigit = digit / [a..fA..F];
 number_types = "usize" / "isize" / "f64" / "f32" / "u8" / "u16" / "u32" / "u64" / "i8" / "i16" / "i32" / "i64" / "i128" / "u128";
 @show @highlight(constant)
 uppercase_constant = [A..Z] [A..Z0..9_]+ &stop;
+
+tuple = [a..z]+ "." number &stop;
 
 
 # Strings
@@ -58,7 +60,8 @@ combipath = path "{" ((ws / nl)* (combipath / typepath / functionpath) ","?)+ (w
 operator = closure / operators;
 @show @highlight(operator)
 operators = "!" !"(" / "|" "|"? / "&&" / "?" / "=" "="? / "!=" / ".." / "+" / "-" / "/" / "*" / "<< " / "<= " / "< " / ">> " / ">= " / "> " / "&" / "mut";
-closure =  bar (type / (!(bar / nl) .))* bar;
+closure =  bar (type / ws / nl / closure_item)* bar;
+closure_item = [a..z() ._]+ ("," [a..z() ._]+ )*;
 @show @highlight(operator)
 bar = "|";
 

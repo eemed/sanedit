@@ -1,11 +1,11 @@
-document = regex*;
+document = regex* !.;
 regex = alt / sequence;
 
 @show
 alt = sequence ("|" sequence)+;
 
 @show
-sequence = (repetition / group / char / escaped_char / any)+;
+sequence = (repetition /brackets / hex / group / char / escaped_char / any / )+;
 
 @show
 char = [^\[\]\.+*?\^$(){}|\\];
@@ -13,21 +13,39 @@ char = [^\[\]\.+*?\^$(){}|\\];
 escaped_char = "\\" escaped;
 
 @show
-escaped = .;
+escaped = [\[\]\.+*?\^$(){}|\\nrt];
 
 @show
 any = ".";
 
 repetition = zero_or_more / one_or_more / optional;
+rep_in = (group / char / any / brackets / hex );
 
 @show
-zero_or_more = (group / char / any) "*";
+zero_or_more =  rep_in "*";
 
 @show
-one_or_more = (group / char / any) "+";
+one_or_more = rep_in "+";
 
 @show
-optional = (group / char / any) "?";
+optional = rep_in "?";
 
 @show
 group = "(" regex ")";
+
+@show
+brackets = "[" neg? (!"]" (range / ch))* "]";
+
+@show
+neg = "^";
+
+@show
+range = ch "-" ch;
+ch = hex / escaped / byte;
+@show
+byte = .;
+
+hex = "\x" hex_value;
+@show
+hex_value = hex_digit+;
+hex_digit = [a..zA..Z0..9];

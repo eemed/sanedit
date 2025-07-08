@@ -4,7 +4,8 @@ use sanedit_utils::{ranges::OverlappingRanges, sorted_vec::SortedVec};
 use thiserror::Error;
 
 use crate::{
-    grammar::{Rule, RuleInfo, Rules}, Capture, ParseError, Parser, ParsingMachine
+    grammar::{Rule, RuleInfo, Rules},
+    Capture, ParseError, Parser,
 };
 
 #[derive(Error, Debug)]
@@ -27,11 +28,11 @@ impl std::fmt::Debug for GlobRules {
     }
 }
 
-fn glob_parser() -> &'static ParsingMachine {
-    static PARSER: OnceLock<Arc<ParsingMachine>> = OnceLock::new();
+fn glob_parser() -> &'static Parser {
+    static PARSER: OnceLock<Arc<Parser>> = OnceLock::new();
     let parser = PARSER.get_or_init(|| {
         let text = include_str!("../pegs/glob.peg");
-        let parser = ParsingMachine::new(std::io::Cursor::new(text)).unwrap();
+        let parser = Parser::new(std::io::Cursor::new(text)).unwrap();
         Arc::new(parser)
     });
     parser.as_ref()

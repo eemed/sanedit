@@ -1,6 +1,8 @@
+use std::ops::Range;
 use std::sync::Arc;
 use std::sync::OnceLock;
 
+use sanedit_utils::ranges::OverlappingRanges;
 use sanedit_utils::sorted_vec::SortedVec;
 use thiserror::Error;
 
@@ -13,7 +15,6 @@ use crate::CaptureIter;
 use crate::Operation;
 use crate::ParseError;
 use crate::Parser;
-use crate::ParsingMachine;
 
 pub struct RegexRules(pub(crate) Rules);
 
@@ -29,11 +30,11 @@ impl std::fmt::Debug for RegexRules {
     }
 }
 
-fn regex_parser() -> &'static ParsingMachine {
-    static PARSER: OnceLock<Arc<ParsingMachine>> = OnceLock::new();
+fn regex_parser() -> &'static Parser {
+    static PARSER: OnceLock<Arc<Parser>> = OnceLock::new();
     let parser = PARSER.get_or_init(|| {
         let text = include_str!("../pegs/regex.peg");
-        let parser = ParsingMachine::new(std::io::Cursor::new(text)).unwrap();
+        let parser = Parser::new(std::io::Cursor::new(text)).unwrap();
         Arc::new(parser)
     });
     parser.as_ref()
@@ -93,7 +94,7 @@ impl From<Regex> for Parser {
 
 struct RegexToPEG<'a> {
     pattern: &'a str,
-    parser: &'static ParsingMachine,
+    parser: &'static Parser,
     regex: SortedVec<Capture>,
     rules: Vec<RuleInfo>,
     n: usize,
@@ -262,8 +263,130 @@ impl<'a> RegexToPEG<'a> {
                     rule,
                 ]));
             }
-            _ => unreachable!(),
+            "hex_value" => {
+                let byte =
+                    u8::from_str_radix(text, 16).map_err(|_e| RegexError::InvalidHexValue)?;
+                match cont {
+                    Rule::ByteSequence(vec) => {
+                        let mut bytes = vec![byte];
+                        bytes.extend(vec);
+                        return Ok(Rule::ByteSequence(bytes));
+                    }
+                    _ => {
+                        let rule = Rule::ByteSequence(vec![byte]);
+                        return Ok(Rule::Sequence(vec![rule, cont.clone()]));
+                    }
+                }
+            }
+            "brackets" => {
+                let mut ranges = OverlappingRanges::new();
+                let mut negative = false;
+                for child in children {
+                    let ccap = &self.regex[child];
+                    let crange = ccap.range();
+                    let clabel = self.parser.label_for(ccap.id());
+                    let text = &self.pattern[crange.start as usize..crange.end as usize];
+
+                    match clabel {
+                        "range" => {
+                            let range = self.convert_bracket_range(child)?;
+                            ranges.add(range);
+                        }
+                        "hex_value" => {
+                            let byte = u8::from_str_radix(text, 16)
+                                .map_err(|_e| RegexError::InvalidHexValue)?
+                                as u32;
+                            ranges.add(byte..byte + 1);
+                        }
+                        "byte" => {
+                            let byte = text.as_bytes()[0] as u32;
+                            ranges.add(byte..byte + 1);
+                        }
+                        "neg" => {
+                            negative = true;
+                        }
+                        p => unreachable!("Invalid label in brackets {p}"),
+                    }
+                }
+
+                if negative {
+                    ranges.invert(u8::MIN as u32..u8::MAX as u32 + 1)
+                }
+
+                let mut choices = vec![];
+
+                for range in ranges.iter() {
+                    choices.push(Rule::ByteRange(range.start as u8, (range.end - 1) as u8))
+                }
+
+                let choice = if choices.len() == 1 {
+                    choices.pop().unwrap()
+                } else {
+                    Rule::Choice(choices)
+                };
+
+                Ok(Rule::Sequence(vec![choice, cont.clone()]))
+            }
+            p => unreachable!("Invalid label {p}"),
         }
+    }
+
+    fn convert_bracket_range(&mut self, index: usize) -> Result<Range<u32>, RegexError> {
+        if index >= self.regex.len() {
+            return Err(RegexError::InvalidPattern);
+        }
+        let cap = &self.regex[index];
+        let range = cap.range();
+
+        let children = {
+            let mut children = vec![];
+            let mut start = range.start;
+            let min = std::cmp::min(index + 1, self.regex.len());
+            for (i, icap) in self.regex.iter().skip(min).enumerate() {
+                let irange = icap.range();
+
+                // If capture is past the current capture
+                if range.end < irange.end {
+                    break;
+                }
+
+                // Skip inner captures by only considering the first encountered
+                if start <= irange.start {
+                    start = irange.end;
+                    children.push(min + i);
+                }
+            }
+            children
+        };
+
+        if children.len() != 2 {
+            return Err(RegexError::InvalidRange);
+        }
+
+        let mut result = [0u32; 2];
+
+        for (i, child) in children.iter().enumerate() {
+            let cap = &self.regex[*child];
+            let range = cap.range();
+            let text = &self.pattern[range.start as usize..range.end as usize];
+            let label = self.parser.label_for(cap.id);
+
+            match label {
+                "hex_value" => {
+                    let byte = u8::from_str_radix(text, 16)
+                        .map_err(|_e| RegexError::InvalidHexValue)?
+                        as u32;
+                    result[i] = byte;
+                }
+                "byte" => {
+                    let byte = text.as_bytes()[0] as u32;
+                    result[i] = byte;
+                }
+                _ => {}
+            }
+        }
+
+        return Ok(result[0]..result[1] + 1);
     }
 }
 
@@ -274,6 +397,12 @@ pub enum RegexError {
 
     #[error("Invalid regex pattern")]
     InvalidPattern,
+
+    #[error("Invalid hex value")]
+    InvalidHexValue,
+
+    #[error("Invalid bracket range")]
+    InvalidRange,
 }
 
 #[cfg(test)]
@@ -363,5 +492,33 @@ mod tests {
         assert!(regex.is_match(b"a"));
         assert!(regex.is_match(b"ab"));
         assert!(regex.is_match(b"ab\ndc"));
+    }
+
+    #[test]
+    fn regex_class() {
+        let regex = Regex::new("[a-z0-9C]+").unwrap();
+        assert!(regex.is_match(b"AAAAAzooom"));
+        assert!(regex.is_match(b"fooCbar"));
+        assert!(regex.is_match(b"f"));
+        assert!(regex.is_match(b"AAAAAbAAAAA"));
+        assert!(regex.is_match(b"AAACAAA"));
+
+        assert!(!regex.is_match(b"AAAAAA"));
+        assert!(!regex.is_match(b""));
+    }
+
+    #[test]
+    fn regex_class_neg() {
+        let regex = Regex::new("[^\x41-\x43\x50]+").unwrap();
+        assert!(regex.is_match(b"perkele"));
+        assert!(regex.is_match(b"hellowarld"));
+        assert!(regex.is_match(b"f"));
+
+        assert!(!regex.is_match(b""));
+        assert!(!regex.is_match(b"A"));
+        assert!(!regex.is_match(b"B"));
+        assert!(!regex.is_match(b"C"));
+        assert!(!regex.is_match(b"P"));
+        assert!(!regex.is_match(b"APBC"));
     }
 }

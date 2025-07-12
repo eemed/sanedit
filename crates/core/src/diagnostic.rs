@@ -22,8 +22,8 @@ impl Diagnostic {
         &self.severity
     }
 
-    pub fn range(&self) -> BufferRange {
-        self.range.clone()
+    pub fn range(&self) -> &BufferRange {
+        &self.range
     }
 
     pub fn description(&self) -> &str {

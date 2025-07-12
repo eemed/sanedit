@@ -3,6 +3,7 @@ use std::collections::VecDeque;
 use sanedit_core::movement::prev_line_start;
 use sanedit_core::{BufferRange, Char, Chars, DisplayOptions, Range, Replacement};
 use sanedit_messages::redraw::{Point, Size};
+use sanedit_utils::sorted_vec::SortedVec;
 
 use crate::editor::buffers::{Buffer, BufferId};
 use crate::editor::syntax::{Span, SyntaxResult};
@@ -106,11 +107,11 @@ impl ViewSyntax {
         self.bid
     }
 
-    pub fn spans(&self) -> &Vec<Span> {
+    pub fn spans(&self) -> &SortedVec<Span> {
         &self.parse.highlights
     }
 
-    pub fn spans_mut(&mut self) -> &mut Vec<Span> {
+    pub fn spans_mut(&mut self) -> &mut SortedVec<Span> {
         &mut self.parse.highlights
     }
 }

@@ -49,36 +49,39 @@ pub(crate) fn prevent_flicker(editor: &mut Editor, id: ClientId) -> ActionResult
             let mut off = 0i128;
             let mut iter = edit.changes.iter().peekable();
 
-            old.highlights.retain_mut(|hl| {
-                while let Some(next) = iter.peek() {
-                    if next.end() <= hl.start {
-                        // Before highlight
-                        off -= next.range().len() as i128;
-                        off += next.text().len() as i128;
-                    } else if next.start() >= hl.end {
-                        // Went past highlight
-                        break;
-                    } else if hl.includes(&next.range()) {
-                        // Inside a higlight assume the highlight spans this edit too
-                        let removed = next.range().len() as i128;
-                        let added = next.text().len() as i128;
-                        off -= removed;
-                        off += added;
+            // Highlights are just moved accordingly, order will not change
+            unsafe {
+                old.highlights.retain_mut(|hl| {
+                    while let Some(next) = iter.peek() {
+                        if next.end() <= hl.start {
+                            // Before highlight
+                            off -= next.range().len() as i128;
+                            off += next.text().len() as i128;
+                        } else if next.start() >= hl.end {
+                            // Went past highlight
+                            break;
+                        } else if hl.includes(&next.range()) {
+                            // Inside a higlight assume the highlight spans this edit too
+                            let removed = next.range().len() as i128;
+                            let added = next.text().len() as i128;
+                            off -= removed;
+                            off += added;
 
-                        // Extend or shrink instead
-                        hl.end += added as u64;
-                        hl.end = hl.end.saturating_sub(removed as u64);
-                    } else {
-                        // When edit is over highlight boundary just remove the higlight
-                        return false;
+                            // Extend or shrink instead
+                            hl.end += added as u64;
+                            hl.end = hl.end.saturating_sub(removed as u64);
+                        } else {
+                            // When edit is over highlight boundary just remove the higlight
+                            return false;
+                        }
+
+                        iter.next();
                     }
 
-                    iter.next();
-                }
-
-                add_offset(hl, off);
-                true
-            });
+                    add_offset(hl, off);
+                    true
+                });
+            }
         }
     }
 
@@ -281,7 +284,7 @@ fn skip_highlighted(win: &Window, starting_position: u64, reverse: bool) -> u64 
         .highlights()
         .as_ref()
         .map(|hls| {
-            for hl in &hls.highlights {
+            for hl in hls.highlights.iter() {
                 if hl.contains(&starting_position) {
                     if reverse {
                         return Some(hl.start);

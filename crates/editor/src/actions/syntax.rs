@@ -23,30 +23,32 @@ pub(crate) fn prevent_flicker(editor: &mut Editor, id: ClientId) -> ActionResult
         let old = win.view_syntax();
         let edit = getf!(buf.last_edit());
 
-        old.spans_mut().retain_mut(|hl| {
-            for next in edit.changes.iter() {
-                let removed = next.range().len() as i128;
-                let added = next.text().len() as i128;
-                if next.end() <= hl.start() {
-                    // Before highlight
-                    hl.add_offset(added - removed);
-                } else if next.start() >= hl.end() {
-                    // Went past highlight
-                    break;
-                } else if hl.range().includes(&next.range()) {
-                    // Inside a higlight assume the highlight spans this edit too
-                    // Extend or shrink instead
-                    hl.extend_by(added as u64);
-                    hl.shrink_by(removed as u64);
-                } else {
-                log::info!("OVER: {hl:?}");
-                    // When edit contains highlight just remove the higlight
-                    return false;
+        // Order is preserved
+        unsafe {
+            old.spans_mut().retain_mut(|hl| {
+                for next in edit.changes.iter() {
+                    let removed = next.range().len() as i128;
+                    let added = next.text().len() as i128;
+                    if next.end() <= hl.start() {
+                        // Before highlight
+                        hl.add_offset(added - removed);
+                    } else if next.start() >= hl.end() {
+                        // Went past highlight
+                        break;
+                    } else if hl.range().includes(&next.range()) {
+                        // Inside a higlight assume the highlight spans this edit too
+                        // Extend or shrink instead
+                        hl.extend_by(added as u64);
+                        hl.shrink_by(removed as u64);
+                    } else {
+                        // When edit contains highlight just remove the higlight
+                        return false;
+                    }
                 }
-            }
 
-            true
-        });
+                true
+            });
+        }
     }
 
     ActionResult::Ok

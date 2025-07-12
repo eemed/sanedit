@@ -55,6 +55,13 @@ impl<T: Ord> SortedVec<T> {
         self.items.retain(f)
     }
 
+    /// # SAFETY
+    ///
+    /// Can be changed in a way that items Ord placement is not changed
+    pub unsafe fn retain_mut<F: FnMut(&mut T) -> bool>(&mut self, f: F) {
+        self.items.retain_mut(f)
+    }
+
     pub fn iter(&self) -> std::slice::Iter<T> {
         self.items.iter()
     }

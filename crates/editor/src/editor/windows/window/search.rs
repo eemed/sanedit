@@ -1,9 +1,10 @@
 use sanedit_core::{BufferRange, SearchOptions};
+use sanedit_utils::sorted_vec::SortedVec;
 
 #[derive(Debug, Default)]
 pub(crate) struct SearchHighlights {
     /// Resulting highlights from the parse
-    pub highlights: Vec<BufferRange>,
+    pub highlights: SortedVec<BufferRange>,
 
     /// How many changes were made when highlights were calculated
     pub changes_made: u32,

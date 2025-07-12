@@ -102,8 +102,7 @@ impl Syntax {
         let source = SliceSource::new(&slice);
         let captures: SortedVec<Capture> = self.parser.parse(source)?.into();
 
-        // .parse(reader)?.into();
-        let spans: Vec<Span> = captures
+        let spans: SortedVec<Span> = captures
             .into_iter()
             .map(|cap| {
                 let mut name = self.parser.label_for(cap.id());
@@ -140,6 +139,7 @@ impl Syntax {
                     range,
                 }
             })
+            .filter(|span| span.completion.is_some() || span.highlight)
             .collect();
 
         Ok(SyntaxResult {
@@ -152,13 +152,13 @@ impl Syntax {
 #[derive(Debug, Default)]
 pub struct SyntaxResult {
     pub buffer_range: BufferRange,
-    pub highlights: Vec<Span>,
+    pub highlights: SortedVec<Span>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Ord, PartialOrd, PartialEq, Eq)]
 pub struct Span {
-    name: String,
     range: Range<u64>,
+    name: String,
     completion: Option<String>,
     highlight: bool,
 }
@@ -176,8 +176,8 @@ impl Span {
         self.range.end
     }
 
-    pub fn range(&self) -> BufferRange {
-        self.range.clone()
+    pub fn range(&self) -> &BufferRange {
+        &self.range
     }
 
     /// Wether this span is completion candidate

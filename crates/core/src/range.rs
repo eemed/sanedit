@@ -15,6 +15,7 @@ impl<T: Ord> Range<T> {
     pub fn new(start: T, end: T) -> Self {
         Range { start, end }
     }
+
     pub fn overlaps(&self, other: &Self) -> bool {
         self.start < other.end && other.start < self.end
     }

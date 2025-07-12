@@ -98,7 +98,7 @@ impl KeepInTouch for Search {
             match *output {
                 SearchMessage::Matches(matches) => {
                     win.search.set_highlights(SearchHighlights {
-                        highlights: matches,
+                        highlights: matches.into(),
                         changes_made: self.changes_made,
                         buffer_range: self.range.clone(),
                     });

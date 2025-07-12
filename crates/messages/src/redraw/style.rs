@@ -6,7 +6,7 @@ use super::{
     Color, HexStringError,
 };
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Copy, Default)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Copy, Default, PartialOrd, Ord)]
 pub struct Style {
     pub text_style: Option<TextStyle>,
     pub bg: Option<Color>,

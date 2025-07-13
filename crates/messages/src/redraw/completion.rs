@@ -13,8 +13,7 @@ pub struct Completion {
     pub item_offset_before_point: usize,
 }
 
-impl Completion {
-}
+impl Completion {}
 
 impl Diffable for Completion {
     type Diff = Difference;

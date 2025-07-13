@@ -5,8 +5,8 @@ mod popup;
 mod prompt;
 mod search;
 mod statusline;
-mod window;
 mod triple;
+mod window;
 
 use std::{mem, path::Path};
 

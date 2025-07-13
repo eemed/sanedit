@@ -107,8 +107,6 @@ impl<'a> PieceTreeSlice<'a> {
             Bound::Unbounded => self.len(),
         };
 
-
-
         let start = self.range.start + sub_start;
         let end = self.range.start + sub_end;
 

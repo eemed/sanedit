@@ -534,7 +534,8 @@ impl Signatures {
 
 impl From<lsp_types::SignatureHelp> for Signatures {
     fn from(help: lsp_types::SignatureHelp) -> Self {
-        let mut signatures: Vec<Signature> = help.signatures.into_iter().map(Signature::from).collect();
+        let mut signatures: Vec<Signature> =
+            help.signatures.into_iter().map(Signature::from).collect();
         let active_signature = help.active_signature.map(|n| n as usize);
         if let Some(active) = active_signature {
             let signature = &mut signatures[active];
@@ -542,7 +543,10 @@ impl From<lsp_types::SignatureHelp> for Signatures {
                 signature.active_parameter = help.active_parameter.map(|n| n as usize);
             }
         }
-        Signatures { signatures, active_signature }
+        Signatures {
+            signatures,
+            active_signature,
+        }
     }
 }
 

@@ -1,4 +1,5 @@
 use core::fmt;
+use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
 
@@ -6,11 +7,7 @@ use super::{Cell, Component, Cursor, Diffable, Redraw};
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Default, Clone)]
 pub struct Window {
-    // TODO optimize cells size
-    // => hl spans?
-    // => iterator of lines
-    // => iter of cells
-    pub cells: Vec<Vec<Cell>>,
+    pub cells: Arc<Vec<Vec<Cell>>>,
     pub cursor: Option<Cursor>,
 }
 

@@ -6,11 +6,13 @@ mod prompt;
 mod search;
 mod statusline;
 mod window;
+mod triple;
 
 use std::{mem, path::Path};
 
 use sanedit_core::Language;
-use sanedit_messages::redraw::{Redraw, Theme};
+use sanedit_messages::redraw::{Cell, Redraw, Theme};
+use triple::TripleBuffer;
 
 use crate::editor::{
     buffers::Buffer,
@@ -54,6 +56,8 @@ pub(crate) struct DrawState {
     compl_scroll_offset: usize,
 
     pub(crate) redraw_window: bool,
+
+    window_buffers: TripleBuffer<Vec<Vec<Cell>>>,
 }
 
 impl DrawState {
@@ -67,6 +71,7 @@ impl DrawState {
             prompt_scroll_offset: 0,
             compl_scroll_offset: 0,
             redraw_window: true,
+            window_buffers: TripleBuffer::default(),
         };
 
         let mut ctx = DrawContext {

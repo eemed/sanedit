@@ -24,11 +24,16 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> redraw::window::Window {
     let style = theme.get(ThemeField::Default);
     let vstyle = theme.get(ThemeField::Virtual);
     let view = win.view();
-    let mut grid = vec![vec![redraw::Cell::with_style(style); view.width()]; view.height()];
+    let mut grid = ctx.state.window_buffers.next_mut();
+    if grid.len() != view.height() || grid.get(0).map(|row| row.len()).unwrap_or(0) != view.width()
+    {
+        *grid = vec![vec![redraw::Cell::with_style(style); view.width()]; view.height()];
+    }
 
     for (line, row) in view.cells().iter().enumerate() {
         for (col, cell) in row.iter().enumerate() {
             if cell.width() == 0 {
+                grid[line][col] = redraw::Cell::with_style(style);
                 continue;
             }
 
@@ -77,7 +82,7 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> redraw::window::Window {
     );
 
     redraw::window::Window {
-        cells: grid,
+        cells: ctx.state.window_buffers.get(),
         cursor,
     }
 }

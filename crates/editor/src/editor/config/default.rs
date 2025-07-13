@@ -192,6 +192,7 @@ pub(crate) fn filetree() -> KeymapLayer {
              "s",         ft_goto_current_file,
              "r",         ft_rename_file,
              "m",         ft_rename_file,
+             "R",         set_root,
         );
 
     KeymapLayer {

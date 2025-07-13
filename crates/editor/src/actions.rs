@@ -155,6 +155,7 @@ pub(crate) const COMMANDS: &[Action] = &[
     filetree::ft_goto_current_file,
     filetree::show_filetree,
     filetree::focus_filetree,
+    filetree::set_root,
 
     editor::quit,
 

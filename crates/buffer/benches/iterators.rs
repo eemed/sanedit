@@ -228,5 +228,5 @@ fn chunks(c: &mut Criterion) {
     });
 }
 
-criterion_group!(benches, bytes, chars, graphemes);
+criterion_group!(benches, chunks, bytes, chars, graphemes);
 criterion_main!(benches);

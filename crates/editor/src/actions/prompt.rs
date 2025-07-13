@@ -87,7 +87,7 @@ fn command_palette(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
     let job = MatcherJob::builder(id)
         .options(opts)
-        .handler(commands::matcher_result_handler)
+        .handler(Prompt::matcher_result_handler)
         .build();
 
     win.prompt = Prompt::builder()

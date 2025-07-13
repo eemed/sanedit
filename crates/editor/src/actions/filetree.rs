@@ -36,6 +36,22 @@ fn show_filetree(editor: &mut Editor, id: ClientId) -> ActionResult {
     ActionResult::Ok
 }
 
+#[action("Filetree: Set root")]
+fn set_root(editor: &mut Editor, id: ClientId) -> ActionResult {
+    let (win, _buf) = editor.win_buf(id);
+    let path = getf!(editor
+        .filetree
+        .iter()
+        .nth(win.ft_view.selection)
+        .map(|f| f.path().to_path_buf()));
+
+    let node = getf!(editor.filetree.get_mut(&path));
+    if matches!(node.kind(), Kind::Directory) {
+        let _ = editor.change_working_dir(&path);
+    }
+    ActionResult::Ok
+}
+
 #[action("Filetree: Focus")]
 fn focus_filetree(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = win_buf!(editor, id);

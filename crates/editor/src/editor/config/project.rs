@@ -9,8 +9,8 @@ const PROJECT_CONFIG: &str = "sanedit-project.toml";
 #[derive(Debug, Serialize, Deserialize, Default)]
 #[serde(default)]
 pub struct ProjectConfig {
-    run_command: String,
-    build_command: String,
+    pub(crate) run_command: String,
+    pub(crate) build_command: String,
 }
 
 impl ProjectConfig {

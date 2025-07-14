@@ -132,15 +132,7 @@ pub fn goto_other_buffer(editor: &mut Editor, id: ClientId) {
 #[action("Window: Cancel")]
 fn cancel(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
-
-    if win.search.is_highlighting_enabled() || win.popup().is_some() {
-        // Clear search matches
-        win.search.disable_highlighting();
-
-        // Close popups
-        win.clear_popup();
-        return ActionResult::Ok;
-    }
+    win.clear_popup();
 
     if win.cursors.cursors().iter().any(|c| c.is_selecting()) {
         win.cursors.stop_selection();
@@ -151,13 +143,28 @@ fn cancel(editor: &mut Editor, id: ClientId) -> ActionResult {
         win.cursors.primary_mut().stop_selection();
     }
 
+    let (win, _buf) = editor.win_buf_mut(id);
+    if win.search.is_highlighting_enabled() {
+        // Clear search matches
+        win.search.disable_highlighting();
+
+        return ActionResult::Ok;
+    }
+
     ActionResult::Ok
 }
 
-#[action("Window: New")]
-fn new_window(editor: &mut Editor, id: ClientId) -> ActionResult {
+#[action("Window: New horizontal")]
+fn new_window_horizontal(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf(id);
-    let command = win.window_manager.new_window();
+    let command = win.window_manager.new_window_horizontal();
+    shell::execute(editor, id, false, &command)
+}
+
+#[action("Window: New vertical")]
+fn new_window_vertical(editor: &mut Editor, id: ClientId) -> ActionResult {
+    let (win, _buf) = editor.win_buf(id);
+    let command = win.window_manager.new_window_vertical();
     shell::execute(editor, id, false, &command)
 }
 

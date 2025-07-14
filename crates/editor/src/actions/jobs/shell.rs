@@ -1,5 +1,3 @@
-mod tmux;
-
 use std::process::Stdio;
 
 use sanedit_buffer::PieceTreeView;
@@ -7,8 +5,6 @@ use tokio::process::Command;
 
 use crate::editor::job_broker::KeepInTouch;
 use sanedit_server::{ClientId, Job, JobContext, JobResult};
-
-pub(crate) use tmux::*;
 
 #[derive(Clone)]
 pub(crate) struct ShellCommand {

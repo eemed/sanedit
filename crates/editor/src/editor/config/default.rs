@@ -209,7 +209,8 @@ pub(crate) fn normal() -> KeymapLayer {
         "space q", quit,
         "space s", strip_trailing_whitespace,
         "alt+v", select_line,
-        "ctrl+w", new_window,
+        "ctrl+w", new_window_vertical,
+        "alt+w", new_window_horizontal,
 
         "ctrl+s", save,
         "ctrl+c", copy,
@@ -330,6 +331,8 @@ pub(crate) fn normal() -> KeymapLayer {
         "e", next_word_end,
         "E", prev_word_end,
 
+        "f3", build_project,
+        "f4", run_project,
         "f5", reload_window,
     );
 

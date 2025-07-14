@@ -55,14 +55,27 @@ pub(crate) enum WindowManagerConfig {
     #[default]
     Auto,
     Tmux,
+    Wezterm,
 }
 
 impl WindowManagerConfig {
     pub fn get(&self) -> WindowManager {
-        match self {
-            // TODO detect
-            WindowManagerConfig::Auto => WindowManager::Wezterm,
-            WindowManagerConfig::Tmux => WindowManager::Tmux { shell_pane: None },
+        if let Ok(prog) = std::env::var("TERM_PROGRAM") {
+            return match prog.as_str() {
+                "WezTerm" => WindowManager::wezterm(),
+                "tmux" => WindowManager::tmux(),
+                _ => WindowManager::None,
+            };
         }
+
+        if std::env::var("TMUX").is_ok() {
+            return WindowManager::tmux();
+        }
+
+        if std::env::var("WEZTERM_PANE").is_ok() {
+            return WindowManager::wezterm();
+        }
+
+        WindowManager::None
     }
 }

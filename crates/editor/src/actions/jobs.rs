@@ -16,6 +16,5 @@ pub(crate) use file_option_provider::*;
 pub(crate) use lsp::*;
 pub(crate) use matcher::*;
 pub(crate) use search::*;
-pub(crate) use shell::*;
 pub(crate) use syntax::*;
 // pub(crate) use text::*;

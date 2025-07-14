@@ -10,10 +10,7 @@ use crate::{
 use sanedit_server::ClientId;
 
 use super::{
-    hooks::run,
-    prompt::unsaved_changes,
-    window::{focus, mode_normal},
-    ActionResult,
+    hooks::run, prompt::unsaved_changes, shell, window::{focus, mode_normal}, ActionResult
 };
 
 #[action("Editor: Quit")]
@@ -119,6 +116,18 @@ fn prompt_create_and_open_config(editor: &mut Editor, id: ClientId) {
         })
         .build();
     focus(editor, id, Focus::Prompt);
+}
+
+#[action("Editor: Run project")]
+fn run_project(editor: &mut Editor, id: ClientId) -> ActionResult {
+    let cmd = editor.project_config.run_command.clone();
+    shell::execute(editor, id, true, &cmd)
+}
+
+#[action("Editor: Build project")]
+fn build_project(editor: &mut Editor, id: ClientId) -> ActionResult {
+    let cmd = editor.project_config.build_command.clone();
+    shell::execute(editor, id, true, &cmd)
 }
 
 #[action("Buffer: New scratch buffer")]

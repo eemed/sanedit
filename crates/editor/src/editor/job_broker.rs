@@ -2,9 +2,7 @@ use std::{any::Any, fmt, rc::Rc};
 
 use sanedit_server::{ClientId, Job, JobId, JobsHandle, ToJobs};
 
-use super::Editor;
-
-use rustc_hash::FxHashMap;
+use super::{Editor, Map};
 
 /// A job that can send messages back to the editor
 pub(crate) trait KeepInTouch {
@@ -24,19 +22,19 @@ impl fmt::Debug for dyn KeepInTouch {
 #[derive(Debug)]
 pub(crate) struct JobBroker {
     handle: JobsHandle,
-    jobs: FxHashMap<JobId, Rc<dyn KeepInTouch>>,
+    jobs: Map<JobId, Rc<dyn KeepInTouch>>,
 
     /// Slots to store one job id that should be cancelled before another one
     /// with the same client id + string combo is requested.
-    slots: FxHashMap<(ClientId, String), JobId>,
+    slots: Map<(ClientId, String), JobId>,
 }
 
 impl JobBroker {
     pub fn new(handle: JobsHandle) -> JobBroker {
         JobBroker {
             handle,
-            jobs: FxHashMap::default(),
-            slots: FxHashMap::default(),
+            jobs: Map::default(),
+            slots: Map::default(),
         }
     }
 

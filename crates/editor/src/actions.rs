@@ -166,6 +166,8 @@ pub(crate) const COMMANDS: &[Action] = &[
     editor::open_config,
     editor::open_new_scratch_buffer,
     editor::nop,
+    editor::build_project,
+    editor::run_project,
 
     text::save,
     text::save_all,
@@ -294,7 +296,8 @@ pub(crate) const COMMANDS: &[Action] = &[
     window::goto_prev_buffer,
     window::focus_window,
     window::cancel,
-    window::new_window,
+    window::new_window_horizontal,
+    window::new_window_vertical,
     window::status,
     window::view_to_cursor,
     window::view_to_cursor_top,

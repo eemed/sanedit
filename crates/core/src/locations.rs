@@ -26,6 +26,20 @@ impl Locations {
         }
     }
 
+    pub fn select_first(&mut self) {
+        self.selection = Some(0);
+    }
+
+    pub fn select_last(&mut self) {
+        let count = self.iter().count();
+        if count == 0 {
+            self.selection = None
+        } else {
+            let pos = count - 1;
+            self.selection = Some(pos);
+        }
+    }
+
     pub fn clear(&mut self) {
         self.selection = None;
         self.groups.clear();

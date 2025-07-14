@@ -239,6 +239,7 @@ impl Grid {
         // Filetree if present
         if let Some(ft) = &mut self.filetree {
             ft.rect = window.split_off(Split::left_size((window.width / 6).clamp(40, 50)));
+            ft.item.update_position(ft.rect);
         }
 
         if let Some(loc) = &mut self.locations {

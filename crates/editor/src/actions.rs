@@ -143,6 +143,8 @@ pub(crate) const COMMANDS: &[Action] = &[
     locations::goto_next_loc_item,
     locations::goto_prev_loc_item,
     locations::focus_locations,
+    locations::loc_select_first,
+    locations::loc_select_last,
 
     filetree::close_filetree,
     filetree::next_ft_entry,
@@ -156,6 +158,8 @@ pub(crate) const COMMANDS: &[Action] = &[
     filetree::show_filetree,
     filetree::focus_filetree,
     filetree::set_root,
+    filetree::ft_select_first,
+    filetree::ft_select_last,
 
     editor::quit,
 

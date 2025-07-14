@@ -9,6 +9,20 @@ use sanedit_server::ClientId;
 
 use super::{window::focus, ActionResult};
 
+#[action("Locations: Select first entry")]
+fn loc_select_first(editor: &mut Editor, id: ClientId) -> ActionResult {
+    let (win, _buf) = editor.win_buf_mut(id);
+    win.locations.select_first();
+    ActionResult::Ok
+}
+
+#[action("Locations: Select last entry")]
+fn loc_select_last(editor: &mut Editor, id: ClientId) -> ActionResult {
+    let (win, _buf) = editor.win_buf_mut(id);
+    win.locations.select_last();
+    ActionResult::Ok
+}
+
 #[action("Locations: Clear")]
 fn clear_locations(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);

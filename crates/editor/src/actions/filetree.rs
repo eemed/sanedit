@@ -18,6 +18,21 @@ use sanedit_server::ClientId;
 
 use super::{text::save, window::focus, ActionResult};
 
+#[action("Filetree: Select first entry")]
+fn ft_select_first(editor: &mut Editor, id: ClientId) -> ActionResult {
+    let (win, _buf) = win_buf!(editor, id);
+    win.ft_view.selection = 0;
+    ActionResult::Ok
+}
+
+#[action("Filetree: Select last entry")]
+fn ft_select_last(editor: &mut Editor, id: ClientId) -> ActionResult {
+    let (win, _buf) = win_buf!(editor, id);
+    let max = editor.filetree.iter().count() - 1;
+    win.ft_view.selection = max;
+    ActionResult::Ok
+}
+
 #[action("Filetree: Show")]
 fn show_filetree(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = win_buf!(editor, id);
@@ -48,6 +63,8 @@ fn set_root(editor: &mut Editor, id: ClientId) -> ActionResult {
     let node = getf!(editor.filetree.get_mut(&path));
     if matches!(node.kind(), Kind::Directory) {
         let _ = editor.change_working_dir(&path);
+        let (win, _buf) = editor.win_buf_mut(id);
+        win.ft_view.selection = 0;
     }
     ActionResult::Ok
 }
@@ -65,32 +82,29 @@ fn focus_filetree(editor: &mut Editor, id: ClientId) -> ActionResult {
 #[action("Filetree: Confirm entry")]
 fn goto_ft_entry(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf(id);
-    let path = editor
+    let path = getf!(editor
         .filetree
         .iter()
         .nth(win.ft_view.selection)
-        .map(|f| f.path().to_path_buf());
+        .map(|f| f.path().to_path_buf()));
 
-    if let Some(path) = path {
-        if let Some(mut node) = editor.filetree.get_mut(&path) {
-            match node.kind() {
-                Kind::Directory => {
-                    if node.is_dir_expanded() {
-                        node.collapse();
-                    } else {
-                        let _ = node.expand();
-                    }
-                }
-                Kind::File => {
-                    if let Err(_e) = editor.open_file(id, path) {
-                        let (win, _buf) = editor.win_buf_mut(id);
-                        win.error_msg("failed to open file {path:?}: {e}");
-                        return ActionResult::Failed;
-                    }
-
-                    focus(editor, id, Focus::Window);
-                }
+    let mut node = getf!(editor.filetree.get_mut(&path));
+    match node.kind() {
+        Kind::Directory => {
+            if node.is_dir_expanded() {
+                node.collapse();
+            } else {
+                let _ = node.expand();
             }
+        }
+        Kind::File => {
+            if let Err(_e) = editor.open_file(id, path) {
+                let (win, _buf) = editor.win_buf_mut(id);
+                win.error_msg("failed to open file {path:?}: {e}");
+                return ActionResult::Failed;
+            }
+
+            focus(editor, id, Focus::Window);
         }
     }
 
@@ -349,8 +363,17 @@ fn ft_delete_file(editor: &mut Editor, id: ClientId) -> ActionResult {
             prev_ft_entry.execute(editor, id);
             focus(editor, id, Focus::Filetree);
 
-            // Delete buffer if exists
-            if let Some(bid) = editor.buffers.find(path.as_path()) {
+            // Delete buffers
+            let mut bids = vec![];
+            for (bid, buf) in editor.buffers.iter() {
+                if let Some(bpath) = buf.path() {
+                    if bpath.strip_prefix(path.as_path()).is_ok() {
+                        bids.push(bid);
+                    }
+                }
+            }
+
+            for bid in bids {
                 let _ = editor.remove_buffer(id, bid);
             }
             ActionResult::Ok

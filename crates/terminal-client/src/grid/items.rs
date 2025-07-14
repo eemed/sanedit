@@ -37,7 +37,10 @@ impl CustomItems {
 
     pub fn update(&mut self, diff: Difference, rect: Rect) {
         self.items.update(diff);
+        self.update_position(rect);
+    }
 
+    pub fn update_position(&mut self, rect: Rect) {
         let area_reserved = if matches!(self.kind, Kind::Locations) {
             1
         } else {
@@ -50,6 +53,10 @@ impl CustomItems {
 
         if self.scroll > sel {
             self.scroll = sel;
+        }
+
+        if self.scroll + height < sel {
+            self.scroll = sel - (height / 2);
         }
     }
 }

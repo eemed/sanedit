@@ -162,6 +162,8 @@ pub(crate) fn locations() -> KeymapLayer {
             "s",      toggle_all_expand_locs,
             "K",      keep_locations,
             "R",      reject_locations,
+            "g g",    loc_select_first,
+            "G",      loc_select_last,
     );
     KeymapLayer {
         on_enter: None,
@@ -193,6 +195,8 @@ pub(crate) fn filetree() -> KeymapLayer {
              "r",         ft_rename_file,
              "m",         ft_rename_file,
              "R",         set_root,
+             "g g",       ft_select_first,
+             "G",         ft_select_last,
         );
 
     KeymapLayer {

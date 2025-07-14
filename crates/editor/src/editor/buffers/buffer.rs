@@ -24,7 +24,7 @@ use crate::editor::file_description::FileDescription;
 use self::snapshots::Snapshots;
 
 pub(crate) use change::ChangeResult;
-pub(crate) use config::{BufferConfig, EndOfLineDef};
+pub(crate) use config::BufferConfig;
 pub(crate) use snapshots::{SnapshotAux, SnapshotId};
 
 key_type!(pub(crate) BufferId);

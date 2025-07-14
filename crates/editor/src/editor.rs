@@ -295,14 +295,17 @@ impl Editor {
 
     /// Create a new buffer from path
     pub fn create_buffer(&mut self, id: ClientId, path: impl AsRef<Path>) -> Result<BufferId> {
-        let file = FileDescription::new(path, &self.config, &self.languages)?;
+        let file = FileDescription::new(path, &self.config)?;
         let config = file
             .language
             .as_ref()
-            .map(|ft| self.languages.get(&ft))
+            .map(|lang| self.languages.get(&lang))
             .flatten()
-            .map(|ftconfig| ftconfig.buffer.clone())
-            .unwrap_or_default();
+            .map(|lang_config| lang_config.buffer.clone())
+            .unwrap_or_else(|| {
+                // If eol and indent are detected automatically they will override using the hook
+                self.config.buffer.clone()
+            });
         let bid = self.buffers.new(file, config)?;
         run(self, id, Hook::BufCreated(bid));
 

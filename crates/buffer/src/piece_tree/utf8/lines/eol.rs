@@ -29,7 +29,7 @@ impl<'a> PieceTreeSlice<'a> {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum EndOfLine {
     LF,   // LF: Line Feed, U+000A (UTF-8 in hex: 0A)
     VT,   // VT: Vertical Tab, U+000B (UTF-8 in hex: 0B)

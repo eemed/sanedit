@@ -91,6 +91,8 @@ pub(crate) fn prevent_flicker(editor: &mut Editor, id: ClientId) -> ActionResult
 /// setups async job to handle matches within the view range.
 fn highlight_view_matches_on_input(editor: &mut Editor, id: ClientId, pattern: &str) {
     let Ok((searcher, _)) = Searcher::new(pattern) else {
+        let (win, _buf) = editor.win_buf_mut(id);
+        win.search.reset_highlighting();
         return;
     };
     highlight_view_matches(editor, id, searcher)

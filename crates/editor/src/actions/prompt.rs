@@ -24,7 +24,7 @@ use crate::{
     editor::{
         buffers::BufferId,
         hooks::Hook,
-        windows::{Focus, HistoryKind, Prompt},
+        windows::{Focus, HistoryKind, Mode, Prompt},
         Editor,
     },
 };
@@ -36,7 +36,7 @@ use super::{
     jobs::{MatcherJob, MatcherMessage},
     shell,
     text::save,
-    window::mode_normal,
+    window::{focus_with_mode, mode_normal},
     ActionResult,
 };
 
@@ -344,15 +344,21 @@ fn prompt_history_prev(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Editor: Run a shell command")]
 fn shell_command(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, buf) = editor.win_buf_mut(id);
+    let mut input = String::new();
+    if let Some(sel) = win.cursors.primary_mut().take_selection() {
+        let slice = buf.slice(sel);
+        input = String::from(&slice);
+    }
 
     win.prompt = Prompt::builder()
         .prompt("Shell")
+        .input(&input)
         .history(HistoryKind::Command)
         .simple()
         .on_confirm(shell::execute_prompt)
         .build();
-    focus(editor, id, Focus::Prompt);
+    focus_with_mode(editor, id, Focus::Prompt, Mode::Normal);
     ActionResult::Ok
 }
 

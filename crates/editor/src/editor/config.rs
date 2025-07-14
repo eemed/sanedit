@@ -5,7 +5,6 @@ mod project;
 use std::{collections::VecDeque, path::Path, sync::Arc};
 
 use language::ConfigSnippet;
-use sanedit_buffer::utf8::EndOfLine;
 use sanedit_messages::key::{try_parse_keyevents, KeyEvent};
 use sanedit_server::ClientId;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
@@ -18,7 +17,7 @@ use toml_edit::{
 use crate::{
     actions::{find_by_name, Action, ActionResult},
     common::matcher::Choice,
-    editor::{self, buffers::EndOfLineDef},
+    editor::{self},
 };
 
 use super::{
@@ -53,6 +52,9 @@ pub(crate) struct Config {
 
     #[serde(flatten)]
     pub window: windows::WindowConfig,
+
+    #[serde(flatten)]
+    pub buffer: buffers::BufferConfig,
 
     pub keymaps: Map<String, KeymapLayer>,
 
@@ -229,10 +231,6 @@ pub(crate) struct EditorConfig {
 
     /// Autodetect eol from file
     pub detect_eol: bool,
-
-    /// Default eol
-    #[serde(with = "EndOfLineDef")]
-    pub eol: EndOfLine,
 
     /// Autodetect indentation from file
     pub detect_indent: bool,

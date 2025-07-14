@@ -26,6 +26,7 @@ impl Default for Config {
         Config {
             editor: Default::default(),
             window: Default::default(),
+            buffer: Default::default(),
             keymaps,
             snippet: Default::default(),
         }
@@ -70,7 +71,6 @@ impl Default for EditorConfig {
             big_file_threshold_bytes: 1024 * 1024, // 1MB
             ignore_directories: [".git", "target"].into_iter().map(String::from).collect(),
             shell: "/bin/bash".into(),
-            eol: EndOfLine::default(),
             detect_eol: true,
             detect_indent: true,
             language_detect: Self::default_language_map(),
@@ -372,6 +372,7 @@ pub(crate) fn insert() -> KeymapLayer {
 pub(crate) fn select() -> KeymapLayer {
     #[rustfmt::skip]
     let map = make_keymap!(
+        "!", shell_command,
         "i", nop,
         "x", remove_cursor_selections,
         "d", remove_cursor_selections,

@@ -2,7 +2,7 @@ mod commands;
 
 use std::{
     cmp::min,
-    path::PathBuf,
+    path::{Path, PathBuf},
     sync::Arc,
     time::{Duration, Instant},
 };
@@ -20,7 +20,10 @@ use crate::{
         jobs::{FileOptionProvider, Grep, MatchedOptions},
         window::focus,
     },
-    common::{is_yes, matcher::Choice},
+    common::{
+        is_yes,
+        matcher::{Choice, MatchStrategy},
+    },
     editor::{
         buffers::BufferId,
         hooks::Hook,
@@ -33,7 +36,7 @@ use sanedit_server::ClientId;
 
 use super::{
     find_by_description, hooks,
-    jobs::{MatcherJob, MatcherMessage},
+    jobs::{DirectoryOptionProvider, MatcherJob, MatcherMessage},
     shell,
     text::save,
     window::{focus_with_mode, mode_normal},
@@ -114,7 +117,7 @@ fn open_file(editor: &mut Editor, id: ClientId) -> ActionResult {
     let ignore = editor.config.editor.ignore_directories();
     let wd = editor.working_dir().to_path_buf();
     let job = MatcherJob::builder(id)
-        .options(FileOptionProvider::new(&wd, &ignore))
+        .options(FileOptionProvider::new(&wd, ignore))
         .handler(open_file_handler)
         .build();
     editor.job_broker.request_slot(id, PROMPT_MESSAGE, job);
@@ -155,7 +158,7 @@ fn open_file_handler(editor: &mut Editor, id: ClientId, msg: MatcherMessage) {
     let (win, _buf) = win_buf!(editor, id);
     match msg {
         Init(sender) => {
-            win.prompt.set_on_input(move |_editor, _id, input| {
+            win.prompt.add_on_input(move |_editor, _id, input| {
                 let _ = sender.blocking_send(input.to_string());
             });
             win.prompt.clear_choices();
@@ -414,25 +417,106 @@ fn goto_percentage(editor: &mut Editor, id: ClientId) -> ActionResult {
 #[action("Editor: Change working directory")]
 fn change_working_dir(editor: &mut Editor, id: ClientId) -> ActionResult {
     let wd = editor.working_dir().to_path_buf();
+    prompt_change_dir(editor, id, &wd, true);
+    ActionResult::Ok
+}
+
+pub(crate) fn get_directory_searcher_term<'a>(display: &'a str) -> &'a str {
+    let mut len = 0;
+
+    for ch in display.chars().rev() {
+        if ch == std::path::MAIN_SEPARATOR {
+            break;
+        }
+
+        len += ch.len_utf8();
+    }
+
+    &display[display.len() - len..]
+}
+
+fn prompt_change_dir(editor: &mut Editor, id: ClientId, input: &Path, is_dir: bool) {
+    const JOB_NAME: &str = "directory-select";
+    let mut path = PathBuf::from(input);
+    while !path.is_dir() {
+        match path.parent() {
+            Some(parent) => {
+                path = parent.into();
+            }
+            None => break,
+        }
+    }
+    let ignore = editor.config.editor.ignore_directories();
     let (win, _buf) = editor.win_buf_mut(id);
+    let display = if is_dir {
+        format!(
+            "{}{}",
+            input.to_string_lossy(),
+            std::path::MAIN_SEPARATOR_STR
+        )
+        .into()
+    } else {
+        input.to_string_lossy()
+    };
+    let search = get_directory_searcher_term(&display);
+    let job = MatcherJob::builder(id)
+        .options(DirectoryOptionProvider::new_non_recursive(&path, ignore))
+        .handler(Prompt::matcher_result_handler_directory_selector)
+        .strategy(MatchStrategy::Prefix)
+        .search(search.to_string())
+        .build();
     win.prompt = Prompt::builder()
-        .prompt("Working directory")
+        .prompt("Select directory")
         .simple()
-        .input(&wd.to_string_lossy())
-        .on_confirm(move |e, id, out| {
+        .input(&display)
+        .on_input(move |e, id, input| {
+            let npath = PathBuf::from(input);
+            if npath.strip_prefix(&path).is_err() {
+                prompt_change_dir(e, id, &npath, false);
+            }
+        })
+        .on_confirm(|e, id, out| {
             let path = getf!(out.path());
-            if let Err(err) = e.change_working_dir(&path) {
-                let (win, _buf) = e.win_buf_mut(id);
-                win.warn_msg(&err.to_string());
-                return ActionResult::Failed;
+            if !out.is_selection() {
+                if let Err(err) = e.change_working_dir(&path) {
+                    let (win, _buf) = e.win_buf_mut(id);
+                    win.warn_msg(&err.to_string());
+                    return ActionResult::Failed;
+                }
+
+                return ActionResult::Ok;
             }
 
+            prompt_change_dir(e, id, &path, true);
             ActionResult::Ok
         })
         .build();
     focus(editor, id, Focus::Prompt);
-    ActionResult::Ok
+    editor.job_broker.request_slot(id, JOB_NAME, job);
 }
+
+// #[action("Editor: Change working directory")]
+// fn change_working_dir(editor: &mut Editor, id: ClientId) -> ActionResult {
+//     let wd = editor.working_dir().to_path_buf();
+//     let (win, _buf) = editor.win_buf_mut(id);
+//     win.prompt = Prompt::builder()
+//         .prompt("Working directory")
+//         .simple()
+//         .input(&wd.to_string_lossy())
+//         .on_confirm(move |e, id, out| {
+//             let path = getf!(out.path());
+//             if let Err(err) = e.change_working_dir(&path) {
+//                 let (win, _buf) = e.win_buf_mut(id);
+//                 win.warn_msg(&err.to_string());
+//                 return ActionResult::Failed;
+//             }
+
+//             ActionResult::Ok
+//         })
+//         .build();
+//     focus(editor, id, Focus::Prompt);
+//     ActionResult::Ok
+// }
 
 #[action("Grep")]
 fn grep(editor: &mut Editor, id: ClientId) -> ActionResult {
@@ -462,7 +546,7 @@ fn grep(editor: &mut Editor, id: ClientId) -> ActionResult {
 
                 map
             };
-            let job = Grep::new(patt, wd, &ignore, buffers, id);
+            let job = Grep::new(patt, wd, ignore, buffers, id);
             e.job_broker.request_slot(id, GREP_JOB, job);
             ActionResult::Ok
         })

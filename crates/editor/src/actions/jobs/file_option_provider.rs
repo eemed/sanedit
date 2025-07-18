@@ -29,10 +29,10 @@ pub(crate) struct FileOptionProvider {
 }
 
 impl FileOptionProvider {
-    pub fn new(path: &Path, ignore: &[String]) -> FileOptionProvider {
+    pub fn new(path: &Path, ignore: Arc<Vec<String>>) -> FileOptionProvider {
         FileOptionProvider {
             path: path.to_owned(),
-            ignore: Arc::new(ignore.into()),
+            ignore,
         }
     }
 }

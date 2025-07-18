@@ -31,7 +31,7 @@ impl Grep {
     pub fn new(
         pattern: &str,
         path: &Path,
-        ignore: &[String],
+        ignore: Arc<Vec<String>>,
         buffers: FxHashMap<PathBuf, PieceTreeView>,
         id: ClientId,
     ) -> Grep {

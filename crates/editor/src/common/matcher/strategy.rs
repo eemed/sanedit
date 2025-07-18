@@ -20,8 +20,8 @@ pub enum MatchStrategy {
 impl MatchStrategy {
     pub fn get(&self) -> MatchFn {
         match self {
-            MatchStrategy::Prefix => prefix_match,
             MatchStrategy::Default => default_match,
+            MatchStrategy::Prefix => prefix_match,
         }
     }
 

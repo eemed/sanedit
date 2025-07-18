@@ -7,9 +7,7 @@ use sanedit_utils::{either::Either, sorted_vec::SortedVec};
 
 use crate::{
     actions::{
-        jobs::{MatchedOptions, MatcherMessage},
-        window::focus,
-        ActionResult,
+        jobs::{MatchedOptions, MatcherMessage}, prompt::get_directory_searcher_term, window::focus, ActionResult
     },
     common::matcher::{Choice, ScoredChoice},
     editor::{snippets::Snippet, windows::Focus, Editor},
@@ -160,6 +158,13 @@ impl PromptOutput {
             Either::Right(choice) => choice.choice().number(),
         }
     }
+
+    pub fn is_selection(&self) -> bool {
+        match self.inner {
+            Either::Left(_) => false,
+            Either::Right(_) => true,
+        }
+    }
 }
 
 #[derive(Default, Debug, Eq, PartialEq)]
@@ -217,7 +222,11 @@ impl Prompt {
         self.history_kind
     }
 
-    pub fn matcher_result_handler(editor: &mut Editor, id: ClientId, msg: MatcherMessage) {
+    pub fn matcher_result_handler_directory_selector(
+        editor: &mut Editor,
+        id: ClientId,
+        msg: MatcherMessage,
+    ) {
         use MatcherMessage::*;
 
         let draw = editor.draw_state(id);
@@ -226,7 +235,10 @@ impl Prompt {
         let (win, _buf) = editor.win_buf_mut(id);
         match msg {
             Init(sender) => {
-                win.prompt.set_on_input(move |_editor, _id, input| {
+                win.prompt.add_on_input(move |_editor, _id, input| {
+                    let path = PathBuf::from(input);
+                    let input = path.to_string_lossy();
+                    let input = get_directory_searcher_term(&input);
                     let _ = sender.blocking_send(input.to_string());
                 });
                 win.prompt.clear_choices();
@@ -246,11 +258,49 @@ impl Prompt {
         }
     }
 
-    pub fn set_on_input<F>(&mut self, fun: F)
+    pub fn matcher_result_handler(editor: &mut Editor, id: ClientId, msg: MatcherMessage) {
+        use MatcherMessage::*;
+
+        let draw = editor.draw_state(id);
+        draw.no_redraw_window();
+
+        let (win, _buf) = editor.win_buf_mut(id);
+        match msg {
+            Init(sender) => {
+                win.prompt.add_on_input(move |_editor, _id, input| {
+                    let _ = sender.blocking_send(input.to_string());
+                });
+                win.prompt.clear_choices();
+            }
+            Progress(opts) => {
+                if let MatchedOptions::Options { matched, clear_old } = opts {
+                    if clear_old {
+                        win.prompt.clear_choices();
+                    }
+
+                    let (win, _buf) = editor.win_buf_mut(id);
+                    win.prompt.add_choices(matched.into());
+
+                    focus(editor, id, Focus::Prompt);
+                }
+            }
+        }
+    }
+
+    pub fn add_on_input<F>(&mut self, fun: F)
     where
         F: Fn(&mut Editor, ClientId, &str) + 'static,
     {
-        self.on_input = Some(Rc::new(fun));
+        let fun = Rc::new(fun);
+        if let Some(on_input) = std::mem::take(&mut self.on_input) {
+            // Add both
+            self.on_input = Some(Rc::new(move |e, id, input| {
+                (on_input)(e, id, input);
+                (fun)(e, id, input);
+            }));
+        } else {
+            self.on_input = Some(fun);
+        }
     }
 
     pub fn set_on_confirm<F>(&mut self, fun: F)

@@ -69,7 +69,7 @@ impl Default for EditorConfig {
         EditorConfig {
             // big_file_threshold_bytes: 100 * 1024 * 1024, // 100MB
             big_file_threshold_bytes: 1024 * 1024, // 1MB
-            ignore_directories: [".git", "target"].into_iter().map(String::from).collect(),
+            ignore_directories: [".git", "target"].into_iter().map(String::from).collect::<Vec<String>>().into(),
             shell: "/bin/bash".into(),
             detect_eol: true,
             detect_indent: true,

@@ -224,7 +224,7 @@ pub(crate) struct EditorConfig {
     pub big_file_threshold_bytes: u64,
 
     /// Directories to ignore, when opening files etc.
-    pub ignore_directories: Vec<String>,
+    pub ignore_directories: Arc<Vec<String>>,
 
     /// Default shell command
     pub shell: String,
@@ -244,7 +244,7 @@ pub(crate) struct EditorConfig {
 }
 
 impl EditorConfig {
-    pub fn ignore_directories(&self) -> Vec<String> {
+    pub fn ignore_directories(&self) -> Arc<Vec<String>> {
         self.ignore_directories.clone()
     }
 }

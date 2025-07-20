@@ -1,5 +1,4 @@
-document        = (ws (key_group / string / .))* !.;
-key_group       = header_line? value_line+ ignore;
+document        = (ws (header_line / value_line / string / .))* !.;
 header_line     = ignore "["+ key_name "]"+ line_end;
 
 @show @completion @highlight(identifier)

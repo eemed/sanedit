@@ -29,7 +29,7 @@ use sanedit_lsp::{
     TextDiagnostic, WorkspaceEdit,
 };
 
-use sanedit_messages::redraw::PopupMessage;
+use sanedit_messages::redraw::{PopupKind, PopupMessage};
 use sanedit_server::{ClientId, Job, JobContext, JobResult};
 
 use super::MatcherJob;
@@ -180,7 +180,7 @@ impl LSPJob {
                 win.push_popup(PopupMessage {
                     severity: None,
                     text,
-                });
+                }, PopupKind::Hover);
             }
             RequestResult::GotoDefinition { path, position } => {
                 let (win, buf) = editor.win_buf_mut(id);
@@ -247,7 +247,7 @@ impl LSPJob {
                 severity: None,
                 text,
             };
-            win.push_popup(msg);
+            win.push_popup(msg, PopupKind::SignatureHelp);
         }
     }
 

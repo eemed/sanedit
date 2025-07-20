@@ -12,6 +12,18 @@ macro_rules! make_keymap {
 
 impl Default for Config {
     fn default() -> Self {
+        Config {
+            editor: Default::default(),
+            window: Default::default(),
+            buffer: Default::default(),
+            keymaps: Default::default(),
+            snippet: Default::default(),
+        }
+    }
+}
+
+impl Config {
+    pub fn default_keymap() -> Map<String, KeymapLayer> {
         let mut keymaps: Map<String, KeymapLayer> = Default::default();
         keymaps.insert(Mode::Normal.as_ref().into(), default::normal());
         keymaps.insert(Mode::Insert.as_ref().into(), default::insert());
@@ -22,19 +34,12 @@ impl Default for Config {
         keymaps.insert(Focus::Filetree.as_ref().into(), default::filetree());
         keymaps.insert(Focus::Prompt.as_ref().into(), default::prompt());
         keymaps.insert(Focus::Completion.as_ref().into(), default::completion());
-
-        Config {
-            editor: Default::default(),
-            window: Default::default(),
-            buffer: Default::default(),
-            keymaps,
-            snippet: Default::default(),
-        }
+        keymaps
     }
 }
 
 impl EditorConfig {
-    fn default_language_map() -> FxHashMap<String, Vec<String>> {
+    pub(crate) fn default_language_map() -> Map<String, Vec<String>> {
         macro_rules! map {
             ($keymap:ident, $($ft: expr, $patterns:expr),+,) => {
                 $(
@@ -43,7 +48,7 @@ impl EditorConfig {
             }
         }
 
-        let mut ftmap = FxHashMap::default();
+        let mut ftmap = Map::default();
 
         // Using LSP language identifiers
         #[rustfmt::skip]
@@ -69,7 +74,11 @@ impl Default for EditorConfig {
         EditorConfig {
             // big_file_threshold_bytes: 100 * 1024 * 1024, // 100MB
             big_file_threshold_bytes: 1024 * 1024, // 1MB
-            ignore_directories: [".git", "target"].into_iter().map(String::from).collect::<Vec<String>>().into(),
+            ignore_directories: [".git", "target"]
+                .into_iter()
+                .map(String::from)
+                .collect::<Vec<String>>()
+                .into(),
             shell: "/bin/bash".into(),
             detect_eol: true,
             detect_indent: true,
@@ -97,6 +106,7 @@ pub(crate) fn search() -> KeymapLayer {
         on_leave: None,
         fallthrough: None,
         maps: map,
+        no_default: None,
     }
 }
 
@@ -120,6 +130,7 @@ pub(crate) fn prompt() -> KeymapLayer {
         on_leave: None,
         fallthrough: None,
         maps: map,
+        no_default: None,
     }
 }
 
@@ -138,6 +149,7 @@ pub(crate) fn completion() -> KeymapLayer {
         on_leave: None,
         fallthrough: Some(Mode::Insert),
         maps: compl,
+        no_default: None,
     }
 }
 
@@ -170,6 +182,7 @@ pub(crate) fn locations() -> KeymapLayer {
         on_leave: None,
         fallthrough: None,
         maps: map,
+        no_default: None,
     }
 }
 
@@ -204,6 +217,7 @@ pub(crate) fn filetree() -> KeymapLayer {
         on_leave: None,
         fallthrough: None,
         maps: map,
+        no_default: None,
     }
 }
 
@@ -345,6 +359,7 @@ pub(crate) fn normal() -> KeymapLayer {
         on_leave: None,
         fallthrough: None,
         maps: map,
+        no_default: None,
     }
 }
 
@@ -370,6 +385,7 @@ pub(crate) fn insert() -> KeymapLayer {
         on_enter: Some(vec!["hide_diagnostic_highlights".into()]),
         fallthrough: None,
         maps: map,
+        no_default: None,
     }
 }
 
@@ -406,6 +422,7 @@ pub(crate) fn select() -> KeymapLayer {
         on_leave: None,
         fallthrough: Some(Mode::Normal),
         maps: map,
+        no_default: None,
     }
 }
 
@@ -505,5 +522,6 @@ pub(crate) fn window() -> KeymapLayer {
         on_leave: None,
         fallthrough: None,
         maps: map,
+        no_default: None,
     }
 }

@@ -9,6 +9,7 @@ end_of_buffer = ",#7f755f,"
 trailing_whitespace = ",#7f755f,"
 symbols = ",#606060,"
 match = "#99bad1,,"
+virtual = ",#7f755f,"
 
 [colors.window.cursor]
 default = "#86beaf,,"

@@ -24,11 +24,9 @@ use super::{
     buffers,
     keymap::{Layer, LayerKey},
     windows::{self, Focus, Mode},
-    Editor,
+    Editor, Map,
 };
-use rustc_hash::FxHashMap;
 
-use super::Map;
 pub(crate) use language::{LSPConfig, LanguageConfig};
 pub(crate) use project::*;
 
@@ -63,16 +61,43 @@ pub(crate) struct Config {
 
 impl Config {
     pub fn new(config_path: &Path, working_dir: &Path) -> Config {
-        match Self::try_new(config_path, working_dir) {
+        let mut config = match Self::try_new(config_path, working_dir) {
             Ok(config) => config,
             Err(e) => {
                 log::warn!("Failed to load configuration, using default instead: {e}");
                 Config::default()
             }
+        };
+
+        let kmaps = Config::default_keymap();
+        for (name, mut kmap) in kmaps {
+            if let Some(mut configured) = config.keymaps.remove(&name) {
+                if configured.no_default.unwrap_or(false) {
+                    continue;
+                }
+
+                // Override everything from default
+                kmap.fallthrough = configured.fallthrough.or(kmap.fallthrough);
+                kmap.on_enter = configured.on_enter.take().or(kmap.on_enter);
+                kmap.on_leave = configured.on_leave.take().or(kmap.on_leave);
+                for mapping in configured.maps {
+                    kmap.maps.push(mapping);
+                }
+            }
+
+            config.keymaps.insert(name, kmap);
         }
+
+
+        // Extend default detect from user configuration
+        let mut detect = EditorConfig::default_language_map();
+        detect.extend(config.editor.language_detect);
+        config.editor.language_detect = detect;
+
+        config
     }
 
-    pub fn try_new(config_path: &Path, _working_dir: &Path) -> anyhow::Result<Config> {
+    fn try_new(config_path: &Path, _working_dir: &Path) -> anyhow::Result<Config> {
         read_toml::<Config>(config_path)
     }
 
@@ -240,6 +265,7 @@ pub(crate) struct EditorConfig {
     #[serde(skip_serializing)]
     pub language_detect: Map<String, Vec<String>>,
 
+    /// Copy text to clipboard when deleting
     pub copy_on_delete: bool,
 }
 
@@ -305,6 +331,9 @@ impl Mapping {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub(crate) struct KeymapLayer {
+    /// Do not merge in default keymappings
+    no_default: Option<bool>,
+
     fallthrough: Option<Mode>,
 
     /// On enter actions

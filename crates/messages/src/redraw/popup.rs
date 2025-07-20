@@ -9,6 +9,13 @@ pub enum PopupComponent {
     Close,
 }
 
+#[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
+pub enum PopupKind {
+    SignatureHelp,
+    Hover,
+    Diagnostic,
+}
+
 /// A read only window that pops up at a position.
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
 pub struct Popup {
@@ -16,6 +23,7 @@ pub struct Popup {
     pub messages: Vec<PopupMessage>,
     // Just for UI
     pub line_offset: usize,
+    pub kind: PopupKind,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]

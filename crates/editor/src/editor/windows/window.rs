@@ -35,7 +35,7 @@ use sanedit_core::{
 };
 use sanedit_messages::{
     key::KeyEvent,
-    redraw::{Popup, PopupMessage, Severity, Size, StatusMessage},
+    redraw::{Popup, PopupKind, PopupMessage, Severity, Size, StatusMessage},
 };
 use sanedit_server::ClientId;
 use sanedit_utils::{ring::Ref, sorted_vec::SortedVec};
@@ -153,7 +153,7 @@ impl Window {
     }
 
     /// Push a new popup message
-    pub fn push_popup(&mut self, msg: PopupMessage) {
+    pub fn push_popup(&mut self, msg: PopupMessage, kind: PopupKind) {
         match self.popup.as_mut() {
             Some(popup) => {
                 popup.messages.push(msg);
@@ -165,6 +165,7 @@ impl Window {
                     point,
                     messages: vec![msg],
                     line_offset: 0,
+                    kind,
                 });
             }
         }

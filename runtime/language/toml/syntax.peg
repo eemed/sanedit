@@ -1,1 +1,76 @@
-../../../crates/syntax/pegs/toml.peg
+document        = (header_line / value_line / string / comment / .)* !.;
+header_line     = "["+ key_name "]"+ line_end;
+
+@show @completion @highlight(identifier)
+key_name        = key_segment ("." key_segment)*;
+key_segment     = [^\[\]\.\n\r]+;
+value_line      = name ws "=" ws value line_end;
+name            = (!space !nl .)+;
+value           = string / datetime / float / integer / boolean / array / object;
+array           = (empty_array / string_array / datetime_array / float_array / integer_array / boolean_array / array_array / object_array);
+
+@show @highlight
+string    = "\"" compl_string "\"";
+
+@show @completion @highlight(string)
+compl_string    = ("\\" escape_char / [^"\n])*;
+escape_char     = "0" / "t" / "n" / "r" / "\"" / "\\";
+digit           = [0..9];
+
+@show @highlight(number)
+integer         = "-"? [1..9] digit*;
+
+@show @highlight(number)
+float           = integer "." digit+;
+
+@show @highlight(constant)
+boolean         = ("true" / "false");
+datetime        = ([1..9] digit digit digit) "-"
+                   (digit digit) "-"
+                   (digit digit) "T"
+                   (digit digit) ":"
+                   (digit digit) ":"
+                   (digit digit)
+                   ("." digit+)?
+                   "Z";
+
+@whitespaced
+object           = "{" object_value? ("," object_value)* ","? "}";
+
+@whitespaced
+object_value = name "=" value;
+
+@whitespaced
+empty_array     = "[" "]";
+
+@whitespaced
+string_array    = "[" string  ("," string)*  ","? "]";
+
+@whitespaced
+integer_array   = "[" integer  ("," integer)* ","? "]";
+
+@whitespaced
+float_array     = "[" float    ("," float)*   ","? "]";
+
+@whitespaced
+boolean_array   = "[" boolean  ("," boolean)*  ","? "]";
+
+@whitespaced
+datetime_array  = "[" datetime ("," datetime)* ","? "]";
+
+@whitespaced
+array_array     = "[" array ("," array)*  ","? "]";
+
+@whitespaced
+object_array    = "[" object ("," object)*  ","? "]";
+
+line_end        = ws comment? !(!nl .);
+
+
+ws              = space*;
+WHITESPACE      = space / nl;
+space           = [ \t];
+
+@show @highlight(comment)
+comment         = "#" (!nl .)*;
+nl              = "\r\n" / "\r" / "\n";

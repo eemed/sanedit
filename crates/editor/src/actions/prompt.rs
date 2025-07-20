@@ -448,15 +448,10 @@ fn prompt_change_dir(editor: &mut Editor, id: ClientId, input: &Path, is_dir: bo
     }
     let ignore = editor.config.editor.ignore_directories();
     let (win, _buf) = editor.win_buf_mut(id);
-    let display = if is_dir {
-        format!(
-            "{}{}",
-            input.to_string_lossy(),
-            std::path::MAIN_SEPARATOR_STR
-        )
-        .into()
-    } else {
-        input.to_string_lossy()
+    let mut display = input.to_string_lossy().to_string();
+    let has_end = display.chars().rev().next() == Some(std::path::MAIN_SEPARATOR);
+    if !has_end && is_dir {
+        display.push(std::path::MAIN_SEPARATOR);
     };
     let search = get_directory_searcher_term(&display);
     let job = MatcherJob::builder(id)

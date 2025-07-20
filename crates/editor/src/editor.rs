@@ -818,6 +818,7 @@ impl Editor {
     }
 
     pub fn change_working_dir(&mut self, path: &Path) -> Result<()> {
+        std::env::set_current_dir(path)?;
         self.working_dir = path.into();
         self.filetree = Filetree::new(&self.working_dir);
         Ok(())

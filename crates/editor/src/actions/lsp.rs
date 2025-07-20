@@ -1,7 +1,7 @@
 use anyhow::{bail, Result};
 use sanedit_buffer::PieceTreeSlice;
 use sanedit_core::{word_at_pos, ChangesKind, Group, Item};
-use sanedit_messages::redraw::PopupMessage;
+use sanedit_messages::redraw::{PopupKind, PopupMessage};
 use sanedit_utils::either::Either;
 use std::path::{Path, PathBuf};
 use thiserror::Error;
@@ -462,10 +462,13 @@ pub(crate) fn show_diagnostics(editor: &mut Editor, id: ClientId) -> ActionResul
 
     for diag in diagnostics {
         if range.overlaps(&diag.range()) {
-            win.push_popup(PopupMessage {
-                severity: Some(*diag.severity()),
-                text: diag.description().to_string(),
-            });
+            win.push_popup(
+                PopupMessage {
+                    severity: Some(*diag.severity()),
+                    text: diag.description().to_string(),
+                },
+                PopupKind::Diagnostic,
+            );
         }
     }
 

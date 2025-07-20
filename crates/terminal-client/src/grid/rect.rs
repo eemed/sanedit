@@ -93,6 +93,7 @@ impl Rect {
 
     /// Whether this rect can include other rect
     pub fn includes(&self, other: &Rect) -> bool {
+        log::info!("Contains: {self:?}, other: {other:?}");
         self.x <= other.x
             && self.y <= other.y
             && self.x + self.width >= other.x + other.width

@@ -1,11 +1,13 @@
 [colors.window]
 default = "#1D1F21,#c1c1c1,"
 statusline = "#404040,#bbbbbb,"
+statusline_no_focus = "#0d0d0d,#bbbbbb,"
 gutter = ",#4C4C4C,bold"
-end_of_buffer = ",#555555,"
+end_of_buffer = ",#666666,"
 trailing_whitespace = ",#666666,"
 symbols = ",#444444,"
 match = "#B5BD68,#222222,"
+virtual = ",#666666,"
 
 [colors.window.cursor]
 default = "#d7875f,#000000,"

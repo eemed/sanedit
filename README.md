@@ -6,7 +6,25 @@ SanEdit is a UTF-8 text editor inspired by [Neovim](https://neovim.io/), [Emacs]
 
 ## Features
 
-* Large file support (buffer implementation supports any size)
+* Any file size
+* Multiple cursors
+* Filetree
+* Terminal UI
+* Snippets
+* Comment block
+* Search text
+* File picker
+* Undo, redo
+* Align cursors
+* Automatic indentation
+* Automatic pair insertion on enter
+* Syntax highlighting using JPEGs
+    * Regex and glob patterns are handled by converting them to PEGs
+    * JIT compiler for PEG patterns to improve performance
+* Jumps
+    * to last change
+    * to last cursor position
+    * to last file
 * Language server protocol support
     * Hover information
     * Go to definition
@@ -16,28 +34,10 @@ SanEdit is a UTF-8 text editor inspired by [Neovim](https://neovim.io/), [Emacs]
     * Rename variable
     * Format
     * Code actions
-* Multiple cursors
-* Filetree
-* Syntax highlighting using PEGs
-* Regex and glob patterns are handled by converting them to PEGs
-* Terminal UI
-* Snippets
-* Comment block
-* Search text
-* File picker
-* Undo, redo
-* Jumps
-    * to last change
-    * to last cursor position
-    * to last file
-* Align cursors
-* Automatic indentation
-* Automatic pair insertion on enter
 
 ## Planned features
 
 * GUI using non web technologies
-* JIT compiler for PEG patterns to improve performance
 * More syntax highlighted languages
 
 ## Building and running

@@ -64,20 +64,19 @@ impl CustomCompletion {
     pub fn rect(&self, win: Rect) -> Rect {
         let below = below(win, &self);
         if win.includes(&below) {
+            log::info!("BELOW");
             return below;
         }
 
         let above = above(win, &self);
         if win.includes(&above) {
+            log::info!("ABOVE");
             return above;
         }
 
         fallback(win, &self)
     }
 }
-
-const MIN_WIDTH: usize = 40;
-const MIN_HEIGHT: usize = 5;
 
 /// Size of completion where everything fits on screen
 fn preferred_size(compl: &CustomCompletion) -> Size {
@@ -99,8 +98,14 @@ fn fallback(win: Rect, compl: &CustomCompletion) -> Rect {
         below.x -= below.rightmost() - win.rightmost();
     }
 
+
     below.height = min(height, win.height - win.y);
 
+    if below.y + below.height > win.y + win.height {
+        below.y = (win.y + win.height).saturating_sub(below.height + 1);
+    }
+
+    log::info!("FB: WIN: {win:?}, rect: {below:?}");
     below
 }
 
@@ -113,11 +118,15 @@ fn below(win: Rect, compl: &CustomCompletion) -> Rect {
     } = preferred_size(compl);
 
     if x + width > win.x + win.width {
-        width = max(win.width, MIN_WIDTH);
+        x = win.width - width;
+    }
+
+    if x + width > win.x + win.width {
+        width = win.width;
     }
 
     if y + height > win.y + win.height {
-        height = max(win.height, MIN_HEIGHT);
+        height = win.height;
     }
 
     Rect {
@@ -139,11 +148,15 @@ fn above(win: Rect, compl: &CustomCompletion) -> Rect {
     x = x.saturating_sub(compl.completion.item_offset_before_point + 1);
 
     if x + width > win.x + win.width {
-        width = max(win.width, MIN_WIDTH);
+        x = win.width - width;
+    }
+
+    if x + width > win.x + win.width {
+        width = win.width;
     }
 
     if y + height > win.y + win.height {
-        height = max(win.height, MIN_HEIGHT);
+        height = win.height;
     }
 
     Rect {

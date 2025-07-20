@@ -139,7 +139,7 @@ fn score(choice: &Arc<Choice>, ranges: &[Range<usize>]) -> u32 {
         return n;
     }
     // Closest match first
-    return ranges.first().map(|f| f.start as u32).unwrap_or(0);
+   ranges.first().map(|f| f.start as u32).unwrap_or(0)
 }
 
 fn with_case_sensitivity(opt: &str, case_sensitive: bool) -> Cow<str> {

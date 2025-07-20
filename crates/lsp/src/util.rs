@@ -1,4 +1,5 @@
 use std::{
+    cmp::Ordering,
     path::{Path, PathBuf},
     str::FromStr,
 };
@@ -199,17 +200,17 @@ impl From<lsp_types::CompletionItemKind> for CompletionItemKind {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CompletionItem {
     pub kind: CompletionItemKind,
-
-    pub detail: Option<String>,
 
     /// Text to insert
     pub text: String,
 
     /// Text to use to filter or text if not present
     pub filter: Option<String>,
+
+    pub detail: Option<String>,
 
     /// Overrides text to insert
     pub edit: Option<TextEdit>,
@@ -219,6 +220,24 @@ pub struct CompletionItem {
 
     /// If text format is snippet, may contain for example $0
     pub is_snippet: bool,
+}
+
+impl PartialOrd for CompletionItem {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for CompletionItem {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        match self.kind.cmp(&other.kind) {
+            Ordering::Equal => match self.text.len().cmp(&other.text.len()) {
+                Ordering::Equal => self.text.cmp(&other.text),
+                len_order => len_order,
+            },
+            kind_order => kind_order,
+        }
+    }
 }
 
 impl CompletionItem {

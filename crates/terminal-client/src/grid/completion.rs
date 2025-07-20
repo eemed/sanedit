@@ -118,7 +118,7 @@ fn below(win: Rect, compl: &CustomCompletion) -> Rect {
     } = preferred_size(compl);
 
     if x + width > win.x + win.width {
-        x = win.width - width;
+        x = win.width.saturating_sub(width);
     }
 
     if x + width > win.x + win.width {
@@ -148,7 +148,7 @@ fn above(win: Rect, compl: &CustomCompletion) -> Rect {
     x = x.saturating_sub(compl.completion.item_offset_before_point + 1);
 
     if x + width > win.x + win.width {
-        x = win.width - width;
+        x = win.width.saturating_sub(width);
     }
 
     if x + width > win.x + win.width {

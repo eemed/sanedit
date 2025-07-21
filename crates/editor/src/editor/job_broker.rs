@@ -96,15 +96,6 @@ impl JobBroker {
         }
     }
 
-    pub fn get_slot(&self, id: ClientId, name: &str) -> Option<Rc<dyn KeepInTouch>> {
-        let key = (id, name.to_string());
-        let id = self.slots.get(&key)?;
-        if !self.jobs.contains_key(id) {
-            return None;
-        }
-        self.get(*id)
-    }
-
     pub fn get(&self, id: JobId) -> Option<Rc<dyn KeepInTouch>> {
         self.jobs.get(&id).cloned()
     }

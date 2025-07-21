@@ -38,7 +38,6 @@ use sanedit_server::spawn_job_runner;
 use sanedit_server::ClientHandle;
 use sanedit_server::ClientId;
 use sanedit_server::FromJobs;
-use sanedit_server::JobId;
 use sanedit_server::StartOptions;
 use sanedit_server::ToEditor;
 use strum::IntoEnumIterator;

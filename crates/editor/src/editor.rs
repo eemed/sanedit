@@ -642,21 +642,14 @@ impl Editor {
                 }
                 self.job_broker.done(id);
             }
+            Stopped(id) => {
+                log::info!("Job {id} stopped.");
+                if let Some(prog) = self.job_broker.get(id) {
+                    prog.on_stop(self);
+                }
+                self.job_broker.done(id);
+            }
         }
-    }
-
-    pub fn stop_job(&mut self, jid: JobId) {
-        if let Some(prog) = self.job_broker.get(jid) {
-            prog.on_stop(self);
-        }
-        self.job_broker.stop(jid);
-    }
-
-    pub fn stop_slot_job(&mut self, id: ClientId, name: &str) {
-        if let Some(prog) = self.job_broker.get_slot(id, name) {
-            prog.on_stop(self);
-        }
-        self.job_broker.stop_slot(id, name);
     }
 
     pub fn working_dir(&self) -> &Path {

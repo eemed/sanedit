@@ -258,7 +258,7 @@ fn prompt_close(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
 
     let slotname = win.prompt.message().to_string();
-    editor.stop_slot_job(id, &slotname);
+    editor.job_broker.stop_slot(id, &slotname);
 
     let (win, _buf) = editor.win_buf_mut(id);
     if let Some(on_abort) = win.prompt.on_abort() {
@@ -274,7 +274,7 @@ fn prompt_confirm(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
 
     let slotname = win.prompt.message().to_string();
-    editor.stop_slot_job(id, &slotname);
+    editor.job_broker.stop_slot(id, &slotname);
 
     let (win, _buf) = editor.win_buf_mut(id);
     if let Some(on_confirm) = win.prompt.on_confirm() {
@@ -736,8 +736,8 @@ fn kill_jobs(editor: &mut Editor, id: ClientId) -> ActionResult {
             let n = getf!(out.number());
             let jid = JobId::from(n);
             match jobs.get(&jid) {
-                Some(Some((id, name))) => editor.stop_slot_job(*id, name),
-                _ => editor.stop_job(jid),
+                Some(Some((id, name))) => editor.job_broker.stop_slot(*id, name),
+                _ => editor.job_broker.stop(jid),
             }
             ActionResult::Ok
         })

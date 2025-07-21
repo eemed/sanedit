@@ -82,16 +82,16 @@ impl JobBroker {
         self.jobs.remove(&id);
     }
 
-    pub(super) fn stop_slot(&mut self, id: ClientId, name: &str) {
+    pub fn stop_slot(&mut self, id: ClientId, name: &str) {
         let key = (id, name.to_string());
-        if let Some(jid) = self.slots.remove(&key) {
-            self.stop(jid);
+        if let Some(jid) = self.slots.get(&key) {
+            self.stop(*jid);
         }
     }
 
     /// Prefer editor.stop_job to run the keepintouch on_stop also
-    pub(super) fn stop(&mut self, id: JobId) {
-        if self.jobs.remove(&id).is_some() {
+    pub fn stop(&mut self, id: JobId) {
+        if self.jobs.get(&id).is_some() {
             let _ = self.handle.blocking_send(ToJobs::Stop(id));
         }
     }
@@ -99,6 +99,9 @@ impl JobBroker {
     pub fn get_slot(&self, id: ClientId, name: &str) -> Option<Rc<dyn KeepInTouch>> {
         let key = (id, name.to_string());
         let id = self.slots.get(&key)?;
+        if !self.jobs.contains_key(id) {
+            return None;
+        }
         self.get(*id)
     }
 
@@ -113,7 +116,9 @@ impl JobBroker {
         }
 
         for (slot, job) in &self.slots {
-            result.insert(*job, Some(slot.clone()));
+            if self.jobs.contains_key(job) {
+                result.insert(*job, Some(slot.clone()));
+            }
         }
 
         result

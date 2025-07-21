@@ -1,22 +1,23 @@
 use std::path::PathBuf;
 
 use anyhow::{anyhow, bail};
-use rustc_hash::FxHashMap;
 use sanedit_core::{ConfigDirectory, Directory};
 use sanedit_messages::redraw::{Style, Theme, ThemeField};
 use toml_edit::{Item, Table};
+
+use super::Map;
 
 pub(crate) const DEFAULT_THEME: &str = "default";
 
 #[derive(Debug)]
 pub(crate) struct Themes {
     theme_dir: Directory,
-    themes: FxHashMap<String, Theme>,
+    themes: Map<String, Theme>,
 }
 
 impl Themes {
     pub fn new(path: Directory) -> Themes {
-        let mut themes = FxHashMap::default();
+        let mut themes = Map::default();
         themes.insert(DEFAULT_THEME.into(), default_theme());
 
         Themes {
@@ -85,7 +86,7 @@ impl Themes {
 impl Default for Themes {
     fn default() -> Self {
         let theme_dir = ConfigDirectory::default().theme_dir();
-        let mut themes = FxHashMap::default();
+        let mut themes = Map::default();
         themes.insert(DEFAULT_THEME.into(), default_theme());
         Themes { theme_dir, themes }
     }

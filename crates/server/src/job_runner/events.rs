@@ -19,4 +19,7 @@ pub enum FromJobs {
 
     /// Sent when a job fails with a reason why it failed.
     Failed(JobId, String),
+
+    /// Sent when a job is stopped by user
+    Stopped(JobId),
 }

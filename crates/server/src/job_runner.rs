@@ -99,7 +99,7 @@ async fn jobs_loop(mut recv: mpsc::Receiver<ToJobs>, sender: crossbeam::channel:
                             kill.stop();
                             join.abort();
                             let _ = join.await;
-                            log::info!("Job {id} stopped");
+                            let _ = context.editor.send(ToEditor::Jobs(FromJobs::Stopped(id)));
                         }
                     }
                 }

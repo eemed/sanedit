@@ -3,7 +3,7 @@
 version: '3'
 
 vars:
-  LOG_FILE: /tmp/sanedit.log
+  LOG_FILE: '{{ .HOME }}/.local/share/sanedit/tmp/sanedit.log'
   UCD_VERSION: 15.0.0
   UCD_DIR: /tmp/ucd-{{ .UCD_VERSION }}
   PRECOMMIT_FILE: .git/hooks/pre-commit

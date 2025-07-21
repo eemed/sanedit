@@ -64,13 +64,11 @@ impl CustomCompletion {
     pub fn rect(&self, win: Rect) -> Rect {
         let below = below(win, &self);
         if win.includes(&below) {
-            log::info!("BELOW");
             return below;
         }
 
         let above = above(win, &self);
         if win.includes(&above) {
-            log::info!("ABOVE");
             return above;
         }
 
@@ -104,8 +102,8 @@ fn fallback(win: Rect, compl: &CustomCompletion) -> Rect {
     if below.y + below.height > win.y + win.height {
         below.y = (win.y + win.height).saturating_sub(below.height + 1);
     }
+    log::info!("Window: {win:?}");
 
-    log::info!("FB: WIN: {win:?}, rect: {below:?}");
     below
 }
 
@@ -118,7 +116,7 @@ fn below(win: Rect, compl: &CustomCompletion) -> Rect {
     } = preferred_size(compl);
 
     if x + width > win.x + win.width {
-        x = win.width.saturating_sub(width);
+        x = win.x + win.width.saturating_sub(width);
     }
 
     if x + width > win.x + win.width {
@@ -148,7 +146,7 @@ fn above(win: Rect, compl: &CustomCompletion) -> Rect {
     x = x.saturating_sub(compl.completion.item_offset_before_point + 1);
 
     if x + width > win.x + win.width {
-        x = win.width.saturating_sub(width);
+        x = win.x + win.width.saturating_sub(width);
     }
 
     if x + width > win.x + win.width {

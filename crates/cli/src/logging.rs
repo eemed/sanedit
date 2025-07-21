@@ -7,8 +7,6 @@ use std::sync::{Arc, Mutex, OnceLock};
 
 use log::LevelFilter;
 
-const LOG_FILE: &str = "/tmp/sanedit.log";
-
 pub(crate) fn init_panic() {
     panic::set_hook(Box::new(|panic_info| {
         let backtrace = std::backtrace::Backtrace::capture();
@@ -37,7 +35,7 @@ pub(crate) fn init_panic() {
 }
 
 pub(crate) fn init_logger(debug: bool) {
-    static LOGGER: OnceLock<Logger> = OnceLock::new();
+    static LOGGER: OnceLock<Option<Logger>> = OnceLock::new();
     let logger = LOGGER.get_or_init(|| {
         let level = if debug {
             LevelFilter::Debug
@@ -50,11 +48,16 @@ pub(crate) fn init_logger(debug: bool) {
         //     .map(String::from)
         //     .collect();
         // Logger::new(level, LOG_FILE, ignore)
-        Logger::new(level, LOG_FILE, vec![])
+        let tmp = sanedit_core::tmp_dir()?;
+        let log_file = tmp.join("sanedit.log");
+
+        Some(Logger::new(level, log_file, vec![]))
     });
 
-    log::set_max_level(logger.level);
-    let _ = log::set_logger(logger);
+    if let Some(logger) = logger {
+        log::set_max_level(logger.level);
+        let _ = log::set_logger(logger);
+    }
 }
 
 struct Logger {
@@ -64,11 +67,11 @@ struct Logger {
 }
 
 impl Logger {
-    pub fn new(level: LevelFilter, path: &str, ignore: Vec<String>) -> Logger {
+    pub fn new(level: LevelFilter, path: PathBuf, ignore: Vec<String>) -> Logger {
         Logger {
             level,
             output_file: Arc::new(Mutex::new(
-                File::create(PathBuf::from(path)).expect("Failed to open log file"),
+                File::create(path).expect("Failed to open log file"),
             )),
             ignore_crates: ignore,
         }

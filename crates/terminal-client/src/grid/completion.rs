@@ -102,7 +102,6 @@ fn fallback(win: Rect, compl: &CustomCompletion) -> Rect {
     if below.y + below.height > win.y + win.height {
         below.y = (win.y + win.height).saturating_sub(below.height + 1);
     }
-    log::info!("Window: {win:?}");
 
     below
 }

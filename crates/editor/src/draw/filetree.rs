@@ -54,6 +54,7 @@ fn draw_impl(ctx: &mut DrawContext) -> redraw::Redraw {
         items,
         selected,
         in_focus,
+        is_loading: false,
     };
     redraw::Redraw::Filetree(Component::Open(items))
 }

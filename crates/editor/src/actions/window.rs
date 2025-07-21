@@ -204,7 +204,7 @@ fn status(editor: &mut Editor, id: ClientId) -> ActionResult {
     let options = &win.view().options;
     let width = options.width;
     let height = options.height;
-    let client_id = id.0;
+    let client_id = id.as_usize();
     let working_dir = editor.working_dir();
     let shell = &editor.config.editor.shell;
     let config_dir = editor.config_dir.root();

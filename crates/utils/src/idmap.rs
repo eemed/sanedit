@@ -2,7 +2,7 @@ use std::{
     collections::BTreeMap,
     marker::PhantomData,
     ops::{Index, IndexMut},
-    sync::atomic::{AtomicU32, Ordering},
+    sync::atomic::{AtomicUsize, Ordering},
 };
 
 #[macro_export]
@@ -34,14 +34,14 @@ pub trait AsID {
     fn to_id(id: ID) -> Self;
 }
 
-pub type ID = u32;
+pub type ID = usize;
 
 /// Map that stores values and returns their id.
 /// TODO?: IDs are not reused, should they?
 #[derive(Debug)]
 pub struct IdMap<K: AsID, V> {
     map: BTreeMap<ID, V>,
-    next_id: AtomicU32,
+    next_id: AtomicUsize,
     _phantom: PhantomData<K>,
 }
 
@@ -131,7 +131,7 @@ impl<K: AsID, V> Default for IdMap<K, V> {
     fn default() -> Self {
         Self {
             map: BTreeMap::default(),
-            next_id: AtomicU32::new(1),
+            next_id: AtomicUsize::new(1),
             _phantom: PhantomData,
         }
     }

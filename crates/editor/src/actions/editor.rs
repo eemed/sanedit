@@ -16,7 +16,7 @@ use super::{
 #[action("Editor: Quit")]
 fn quit(editor: &mut Editor, id: ClientId) -> ActionResult {
     // If is the first client
-    if id.0 == 0 {
+    if id.as_usize() == 0 {
         if editor.buffers.any_unsaved_changes().is_some() {
             unsaved_changes(editor, id, |editor, _id| {
                 editor.quit();

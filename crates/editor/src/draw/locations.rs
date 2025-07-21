@@ -73,6 +73,7 @@ fn draw_impl(ctx: &mut DrawContext) -> redraw::Redraw {
         items,
         selected,
         in_focus,
+        is_loading: locs.is_loading,
     };
     redraw::Redraw::Locations(Component::Open(items))
 }

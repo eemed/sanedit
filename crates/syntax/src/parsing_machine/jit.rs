@@ -417,6 +417,10 @@ impl Jit {
             window.copy_within(WINDOW_SIZE - OVERLAP..WINDOW_SIZE, 0);
             copied = bytes.copy_to(n, &mut window.as_mut()[OVERLAP..]);
             n += copied as u64;
+
+            if bytes.stop() {
+                return Err(ParseError::UserStop);
+            }
         }
 
         Ok((captures, sp))

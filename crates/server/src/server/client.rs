@@ -21,7 +21,13 @@ use self::draw::ClientDrawState;
 use super::EditorHandle;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct ClientId(pub usize);
+pub struct ClientId(pub(crate) usize);
+
+impl ClientId {
+    pub fn as_usize(&self) -> usize {
+        self.0
+    }
+}
 
 impl From<ClientId> for String {
     fn from(value: ClientId) -> Self {

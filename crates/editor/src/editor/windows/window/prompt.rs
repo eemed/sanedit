@@ -152,9 +152,9 @@ impl PromptOutput {
         }
     }
 
-    pub fn number(&self) -> Option<u32> {
+    pub fn number(&self) -> Option<usize> {
         match &self.inner {
-            Either::Left(text) => text.parse::<u32>().ok(),
+            Either::Left(text) => text.parse::<usize>().ok(),
             Either::Right(choice) => choice.choice().number(),
         }
     }

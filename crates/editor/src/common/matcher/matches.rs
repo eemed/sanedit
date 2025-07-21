@@ -20,7 +20,7 @@ pub(crate) enum Choice {
         description: String,
     },
     Numbered {
-        n: u32,
+        n: usize,
         text: String,
         display: String,
     },
@@ -36,7 +36,7 @@ impl Choice {
         })
     }
 
-    pub fn from_numbered_text(n: u32, text: String) -> Arc<Choice> {
+    pub fn from_numbered_text(n: usize, text: String) -> Arc<Choice> {
         Arc::new(Choice::Numbered {
             display: format!("{}: {}", n, text),
             n,
@@ -99,7 +99,7 @@ impl Choice {
         }
     }
 
-    pub fn number(&self) -> Option<u32> {
+    pub fn number(&self) -> Option<usize> {
         match self {
             Choice::Numbered { n, .. } => Some(*n),
             _ => None,
@@ -109,7 +109,7 @@ impl Choice {
 
 #[derive(Debug, Eq, Ord, PartialOrd, Clone)]
 pub(crate) struct ScoredChoice {
-    score: u32,
+    score: usize,
     matches: Vec<Range<usize>>,
     choice: Arc<Choice>,
 }
@@ -125,7 +125,7 @@ impl PartialEq for ScoredChoice {
 }
 
 impl ScoredChoice {
-    pub fn new(choice: Arc<Choice>, score: u32, matches: Vec<Range<usize>>) -> ScoredChoice {
+    pub fn new(choice: Arc<Choice>, score: usize, matches: Vec<Range<usize>>) -> ScoredChoice {
         ScoredChoice {
             score,
             matches,
@@ -133,7 +133,7 @@ impl ScoredChoice {
         }
     }
 
-    pub fn rescore(&mut self, score: u32) {
+    pub fn rescore(&mut self, score: usize) {
         self.score = score;
     }
 
@@ -141,7 +141,7 @@ impl ScoredChoice {
         &self.matches
     }
 
-    pub fn score(&self) -> u32 {
+    pub fn score(&self) -> usize {
         self.score
     }
 

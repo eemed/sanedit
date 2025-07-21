@@ -387,7 +387,7 @@ impl LSPJob {
             .iter()
             .enumerate()
             .map(|(i, action)| {
-                Choice::from_numbered_text((i + 1) as u32, action.name().to_string())
+                Choice::from_numbered_text(i + 1, action.name().to_string())
             })
             .collect();
         let (win, _buf) = editor.win_buf_mut(id);

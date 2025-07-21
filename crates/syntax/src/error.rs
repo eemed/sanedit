@@ -16,4 +16,7 @@ pub enum ParseError {
 
     #[error("JIT is unsupported")]
     JitUnsupported,
+
+    #[error("Stopped by user")]
+    UserStop,
 }

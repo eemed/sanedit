@@ -15,7 +15,7 @@ use crate::actions::jobs::{OptionProvider, CHANNEL_SIZE};
 use crate::actions::locations;
 use crate::common::matcher::Choice;
 use crate::editor::{job_broker::KeepInTouch, Editor};
-use sanedit_server::{ClientId, Job, JobContext, JobResult};
+use sanedit_server::{ClientId, Job, JobContext, JobResult, Kill};
 
 use super::FileOptionProvider;
 
@@ -50,6 +50,7 @@ impl Grep {
         pattern: &str,
         msend: Sender<GrepResult>,
         buffers: Arc<FxHashMap<PathBuf, PieceTreeView>>,
+        kill: Kill,
     ) {
         let Ok((searcher, _)) = Searcher::new(pattern) else {
             return;
@@ -60,6 +61,7 @@ impl Grep {
             let searcher = searcher.clone();
             let msend = msend.clone();
             let bufs = buffers.clone();
+            let stop = kill.clone();
 
             // let (tx, rx) = tokio::sync::oneshot::channel::<()>();
 
@@ -74,7 +76,7 @@ impl Grep {
                 match bufs.get(path) {
                     Some(view) => {
                         // Grep editor buffers
-                        Self::grep_buffer(path.clone(), view, &searcher, msend);
+                        Self::grep_buffer(path.clone(), view, &searcher, msend, stop.clone());
                     }
                     None => {
                         // Grep files outside editor
@@ -82,7 +84,7 @@ impl Grep {
                             return;
                         };
                         let view = pt.view();
-                        Self::grep_buffer(path.clone(), &view, &searcher, msend);
+                        Self::grep_buffer(path.clone(), &view, &searcher, msend, stop.clone());
                     }
                 }
 
@@ -106,11 +108,12 @@ impl Grep {
         view: &PieceTreeView,
         searcher: &Searcher,
         result_sender: Sender<GrepResult>,
+        kill: Kill,
     ) {
         let slice = view.slice(..);
         let mut matches = SortedVec::new();
 
-        for mat in searcher.find_iter(&slice) {
+        for mat in searcher.find_iter_stoppable(&slice, kill.into()) {
             let gmat = Self::prepare_match(&slice, mat);
             matches.push(gmat);
         }
@@ -175,7 +178,7 @@ impl Job for Grep {
 
             tokio::join!(
                 fopts.provide(osend, ctx.kill.clone()),
-                Self::grep(orecv, &pattern, msend, bufs),
+                Self::grep(orecv, &pattern, msend, bufs, ctx.kill.clone()),
                 Self::send_results(mrecv, ctx),
             );
 
@@ -193,6 +196,8 @@ impl KeepInTouch for Grep {
 
     fn on_message(&self, editor: &mut Editor, mut msg: Box<dyn Any>) {
         if let Some(_msg) = msg.downcast_mut::<Start>() {
+            let (win, _buf) = editor.win_buf_mut(self.client_id);
+            win.locations.is_loading = true;
             locations::clear_locations.execute(editor, self.client_id);
             locations::show_locations.execute(editor, self.client_id);
             return;
@@ -205,16 +210,24 @@ impl KeepInTouch for Grep {
             let (win, _buf) = editor.win_buf_mut(self.client_id);
             win.locations.push(group);
         }
+
     }
 
     fn on_success(&self, editor: &mut Editor) {
-        let (_win, _buf) = editor.win_buf_mut(self.client_id);
+        let (win, _buf) = editor.win_buf_mut(self.client_id);
+        win.locations.is_loading = false;
+    }
+
+    fn on_stop(&self, editor: &mut Editor) {
+        let (win, _buf) = editor.win_buf_mut(self.client_id);
+        win.locations.is_loading = false;
     }
 
     fn on_failure(&self, editor: &mut Editor, reason: &str) {
         log::error!("Grep error: {reason}");
         let (win, _buf) = editor.win_buf_mut(self.client_id);
         win.locations.clear();
+        win.locations.is_loading = false;
     }
 }
 

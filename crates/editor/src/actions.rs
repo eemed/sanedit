@@ -124,6 +124,7 @@ pub(crate) const COMMANDS: &[Action] = &[
     prompt::prompt_confirm,
     prompt::prompt_close,
     prompt::prompt_jump,
+    prompt::kill_jobs,
 
     completion::completion_confirm,
     completion::completion_abort,

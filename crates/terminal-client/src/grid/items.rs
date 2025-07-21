@@ -162,7 +162,14 @@ impl CustomItems {
 
         let Size { width, .. } = size(cells);
         if !cells.is_empty() {
-            let mut line = into_cells_with_style(" Locations", title);
+            let loading = if self.items.is_loading {
+                " (loading..)"
+            } else {
+                ""
+            };
+            let title_text = format!(" Locations{}", loading);
+
+            let mut line = into_cells_with_style(&title_text, title);
 
             for _ in line.len()..cells[0].len() {
                 let mut ccell = CCell::from(' ');

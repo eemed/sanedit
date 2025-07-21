@@ -139,6 +139,9 @@ impl<'a, T: ByteSource> Iterator for FinderIterRev<'a, T> {
         let bc = &finder.bad_char_table;
 
         loop {
+            if haystack.stop() {
+                break;
+            }
             if same(&mut haystack, self.pos, needle) {
                 let match_pos = self.pos;
                 if self.pos == 0 {
@@ -256,6 +259,9 @@ impl<'a, T: ByteSource> Iterator for FinderIter<'a, T> {
         let bc = &finder.bad_char_table;
 
         while n - self.pos >= m {
+            if haystack.stop() {
+                break;
+            }
             if same(&mut haystack, self.pos, needle) {
                 let match_pos = self.pos;
                 self.pos += 1;

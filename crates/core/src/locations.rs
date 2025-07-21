@@ -9,6 +9,7 @@ use crate::Range;
 
 #[derive(Debug, Default)]
 pub struct Locations {
+    pub is_loading: bool,
     pub show: bool,
     selection: Option<usize>,
 

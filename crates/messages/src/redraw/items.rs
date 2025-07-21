@@ -15,6 +15,7 @@ pub struct Items {
     pub items: Vec<Item>,
     pub selected: usize,
     pub in_focus: bool,
+    pub is_loading: bool,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]

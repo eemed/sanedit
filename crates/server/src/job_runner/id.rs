@@ -14,6 +14,16 @@ impl JobId {
         let id = NEXT_ID.fetch_add(1, Ordering::Relaxed);
         JobId { id }
     }
+
+    pub fn as_usize(&self) -> usize {
+        self.id
+    }
+}
+
+impl From<usize> for JobId {
+    fn from(value: usize) -> Self {
+        JobId { id: value }
+    }
 }
 
 impl Display for JobId {

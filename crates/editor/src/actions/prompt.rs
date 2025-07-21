@@ -32,7 +32,7 @@ use crate::{
     },
 };
 
-use sanedit_server::ClientId;
+use sanedit_server::{ClientId, JobId};
 
 use super::{
     find_by_description, hooks,
@@ -187,9 +187,9 @@ fn open_file_handler(editor: &mut Editor, id: ClientId, msg: MatcherMessage) {
                             _ => unreachable!(),
                         };
                         if let Some(score) = lru.get(path.as_path()) {
-                            mat.rescore(*score as u32);
+                            mat.rescore(*score);
                         } else {
-                            mat.rescore(mat.score() + max as u32);
+                            mat.rescore(mat.score() + max);
                         }
                         rescored.push(mat);
                     }
@@ -221,7 +221,7 @@ fn open_buffer(editor: &mut Editor, id: ClientId) -> ActionResult {
                 .unwrap_or(buf.name());
             let modified = if buf.is_modified() { " *" } else { "" };
             let text = format!("{}{}", path, modified);
-            Choice::from_numbered_text(bid.id(), text)
+            Choice::from_numbered_text(bid.id() as usize, text)
         })
         .collect();
     let job = MatcherJob::builder(id)
@@ -258,7 +258,7 @@ fn prompt_close(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
 
     let slotname = win.prompt.message().to_string();
-    editor.job_broker.stop_slot(id, &slotname);
+    editor.stop_slot_job(id, &slotname);
 
     let (win, _buf) = editor.win_buf_mut(id);
     if let Some(on_abort) = win.prompt.on_abort() {
@@ -274,7 +274,7 @@ fn prompt_confirm(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
 
     let slotname = win.prompt.message().to_string();
-    editor.job_broker.stop_slot(id, &slotname);
+    editor.stop_slot_job(id, &slotname);
 
     let (win, _buf) = editor.win_buf_mut(id);
     if let Some(on_confirm) = win.prompt.on_confirm() {
@@ -521,7 +521,6 @@ fn grep(editor: &mut Editor, id: ClientId) -> ActionResult {
         .history(HistoryKind::Grep)
         .simple()
         .on_confirm(move |e, id, out| {
-            const GREP_JOB: &str = "grep";
             let patt = getf!(out.text());
             let ignore = e.config.editor.ignore_directories();
             let wd = e.working_dir();
@@ -542,7 +541,8 @@ fn grep(editor: &mut Editor, id: ClientId) -> ActionResult {
                 map
             };
             let job = Grep::new(patt, wd, ignore, buffers, id);
-            e.job_broker.request_slot(id, GREP_JOB, job);
+            let job_name = format!("Grep '{patt}'");
+            e.job_broker.request_slot(id, &job_name, job);
             ActionResult::Ok
         })
         .build();
@@ -612,7 +612,7 @@ fn prompt_jump(editor: &mut Editor, id: ClientId) -> ActionResult {
             let current_indicator = if is_current { "> " } else { "" };
             format!("{}{} @ {}", current_indicator, name, positions)
         };
-        let choice = Choice::from_numbered_text(items.len() as u32 + 1, text);
+        let choice = Choice::from_numbered_text(items.len() + 1, text);
         items.push(choice);
         cursors.push(cursor.clone());
         item = win.cursor_jumps.prev(&cursor);
@@ -677,7 +677,7 @@ fn buffer_snapshots(editor: &mut Editor, id: ClientId) -> ActionResult {
                 format!("Snapshot at {ts}")
             };
             // Reverse order using numbering
-            Choice::from_numbered_text((nodes_len - snapshot.id) as u32, text)
+            Choice::from_numbered_text(nodes_len - snapshot.id, text)
         })
         .collect();
 
@@ -704,6 +704,42 @@ fn buffer_snapshots(editor: &mut Editor, id: ClientId) -> ActionResult {
             }
 
             ActionResult::Failed
+        })
+        .build();
+    focus(editor, id, Focus::Prompt);
+    ActionResult::Ok
+}
+
+#[action("Editor: Kill jobs")]
+fn kill_jobs(editor: &mut Editor, id: ClientId) -> ActionResult {
+    const PROMPT_MESSAGE: &str = "Kill a job";
+    let jobs = editor.job_broker.jobs();
+    let options: Vec<Arc<Choice>> = jobs
+        .iter()
+        .map(|(jid, slot)| {
+            let text = match slot {
+                Some((id, name)) => format!("{name} Client: {}", id.as_usize()),
+                None => "No description".into(),
+            };
+            Choice::from_numbered_text(jid.as_usize(), text)
+        })
+        .collect();
+    let job = MatcherJob::builder(id)
+        .options(Arc::new(options))
+        .handler(Prompt::matcher_result_handler)
+        .build();
+    editor.job_broker.request_slot(id, PROMPT_MESSAGE, job);
+    let (win, _buf) = editor.win_buf_mut(id);
+    win.prompt = Prompt::builder()
+        .prompt(PROMPT_MESSAGE)
+        .on_confirm(move |editor, _id, out| {
+            let n = getf!(out.number());
+            let jid = JobId::from(n);
+            match jobs.get(&jid) {
+                Some(Some((id, name))) => editor.stop_slot_job(*id, name),
+                _ => editor.stop_job(jid),
+            }
+            ActionResult::Ok
         })
         .build();
     focus(editor, id, Focus::Prompt);

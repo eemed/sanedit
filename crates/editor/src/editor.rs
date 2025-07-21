@@ -38,6 +38,7 @@ use sanedit_server::spawn_job_runner;
 use sanedit_server::ClientHandle;
 use sanedit_server::ClientId;
 use sanedit_server::FromJobs;
+use sanedit_server::JobId;
 use sanedit_server::StartOptions;
 use sanedit_server::ToEditor;
 use strum::IntoEnumIterator;
@@ -642,6 +643,20 @@ impl Editor {
                 self.job_broker.done(id);
             }
         }
+    }
+
+    pub fn stop_job(&mut self, jid: JobId) {
+        if let Some(prog) = self.job_broker.get(jid) {
+            prog.on_stop(self);
+        }
+        self.job_broker.stop(jid);
+    }
+
+    pub fn stop_slot_job(&mut self, id: ClientId, name: &str) {
+        if let Some(prog) = self.job_broker.get_slot(id, name) {
+            prog.on_stop(self);
+        }
+        self.job_broker.stop_slot(id, name);
     }
 
     pub fn working_dir(&self) -> &Path {

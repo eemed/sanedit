@@ -10,6 +10,7 @@ pub(crate) trait KeepInTouch {
     fn on_message(&self, _editor: &mut Editor, _msg: Box<dyn Any>) {}
     fn on_success(&self, _editor: &mut Editor) {}
     fn on_failure(&self, _editor: &mut Editor, _reason: &str) {}
+    fn on_stop(&self, _editor: &mut Editor) {}
     fn client_id(&self) -> ClientId;
 }
 
@@ -81,20 +82,40 @@ impl JobBroker {
         self.jobs.remove(&id);
     }
 
-    pub fn stop_slot(&mut self, id: ClientId, name: &str) {
+    pub(super) fn stop_slot(&mut self, id: ClientId, name: &str) {
         let key = (id, name.to_string());
         if let Some(jid) = self.slots.remove(&key) {
             self.stop(jid);
         }
     }
 
-    pub fn stop(&mut self, id: JobId) {
+    /// Prefer editor.stop_job to run the keepintouch on_stop also
+    pub(super) fn stop(&mut self, id: JobId) {
         if self.jobs.remove(&id).is_some() {
             let _ = self.handle.blocking_send(ToJobs::Stop(id));
         }
     }
 
+    pub fn get_slot(&self, id: ClientId, name: &str) -> Option<Rc<dyn KeepInTouch>> {
+        let key = (id, name.to_string());
+        let id = self.slots.get(&key)?;
+        self.get(*id)
+    }
+
     pub fn get(&self, id: JobId) -> Option<Rc<dyn KeepInTouch>> {
         self.jobs.get(&id).cloned()
+    }
+
+    pub fn jobs(&self) -> Map<JobId, Option<(ClientId, String)>> {
+        let mut result = Map::default();
+        for job in self.jobs.keys() {
+            result.insert(*job, None);
+        }
+
+        for (slot, job) in &self.slots {
+            result.insert(*job, Some(slot.clone()));
+        }
+
+        result
     }
 }

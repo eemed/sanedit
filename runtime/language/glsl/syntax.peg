@@ -1,0 +1,275 @@
+document = (keywords / types / operators / string / comment / version / (!stop .)* stop)*;
+WHITESPACE = [ \t];
+ws = WHITESPACE;
+nl = "\n" / "\r\n";
+stop = WHITESPACE+ / nl / "(" / ")" / "[" / "]" / "." / ";";
+
+@show @highlight(preproc)
+version = "#version" (!nl .)*;
+
+@show @highlight
+comment = "//" (!nl .)*;
+
+@show @highlight(constant)
+number =  "-"? digit+ ("." digit+)? "f"?;
+digit = [0..9];
+
+@show @highlight(constant)
+boolean = "true" / "false";
+
+@show @highlight(operator)
+operators = ("*" / "/" / "+" / "-") &stop;
+
+@show @highlight(string)
+string = "\"" (!"\"" .)* "\"";
+
+@show @highlight(keyword)
+keywords = (
+     "writeonly" /
+     "while" /
+     "volatile" /
+     "varying" /
+     "using" /
+     "union" /
+     "uniform" /
+     "typedef" /
+     "this" /
+     "template" /
+     "switch" /
+     "superp" /
+     "subroutine" /
+     "struct" /
+     "static" /
+     "smooth" /
+     "sizeof" /
+     "short" /
+     "shared" /
+     "sample" /
+     "return" /
+     "restrict" /
+     "resource" /
+     "readonly" /
+     "public" /
+     "precision" /
+     "precise" /
+     "patch" /
+     "partition" /
+     "output" /
+     "out" /
+     "noperspective" /
+     "noinline" /
+     "namespace" /
+     "mediump" /
+     "lowp" /
+     "layout" /
+     "invariant" /
+     "interface" /
+     "input" /
+     "inout" /
+     "inline" /
+     "in" /
+     "if" /
+     "highp" /
+     "half" /
+     "goto" /
+     "for" /
+     "flat" /
+     "fixed" /
+     "filter" /
+     "external" /
+     "extern" /
+     "enum" /
+     "else" /
+     "do" /
+     "discard" /
+     "default" /
+     "continue" /
+     "const" /
+     "common" /
+     "coherent" /
+     "class" /
+     "centroid" /
+     "cast" /
+     "case" /
+     "buffer" /
+     "break" /
+     "attribute" /
+     "asm" /
+     "active"
+     ) &stop;
+
+@show @highlight(type)
+types = (
+     "void" /
+     "vec4" /
+     "vec3" /
+     "vec2" /
+     "uvec4" /
+     "uvec3" /
+     "uvec2" /
+     "utextureCubeArray" /
+     "utextureCube" /
+     "utextureBuffer" /
+     "utexture3D" /
+     "utexture2DRect" /
+     "utexture2DMSArray" /
+     "utexture2DMS" /
+     "utexture2DArray" /
+     "utexture2D" /
+     "utexture1DArray" /
+     "utexture1D" /
+     "usubpassInputMS" /
+     "usubpassInput" /
+     "usamplerCubeArray" /
+     "usamplerCube" /
+     "usamplerBuffer" /
+     "usampler3D" /
+     "usampler2DRect" /
+     "usampler2DMSArray" /
+     "usampler2DMS" /
+     "usampler2DArray" /
+     "usampler2D" /
+     "usampler1DArray" /
+     "usampler1D" /
+     "unsigned" /
+     "uint" /
+     "uimageCubeArray" /
+     "uimageCube" /
+     "uimageBuffer" /
+     "uimage3D" /
+     "uimage2DRect" /
+     "uimage2DMSArray" /
+     "uimage2DMS" /
+     "uimage2DArray" /
+     "uimage2D" /
+     "uimage1DArray" /
+     "uimage1D" /
+     "textureCubeArray" /
+     "textureCube" /
+     "textureBuffer" /
+     "texture3D" /
+     "texture2DRect" /
+     "texture2DMSArray" /
+     "texture2DMS" /
+     "texture2DArray" /
+     "texture2D" /
+     "texture1DArray" /
+     "texture1D" /
+     "subpassInputMS" /
+     "subpassInput" /
+     "samplerShadow" /
+     "samplerCubeShadow" /
+     "samplerCubeArrayShadow" /
+     "samplerCubeArray" /
+     "samplerCube" /
+     "samplerBuffer" /
+     "sampler3DRect" /
+     "sampler3D" /
+     "sampler2DShadow" /
+     "sampler2DRectShadow" /
+     "sampler2DRect" /
+     "sampler2DMSArray" /
+     "sampler2DMS" /
+     "sampler2DArrayShadow" /
+     "sampler2DArray" /
+     "sampler2D" /
+     "sampler1DShadow" /
+     "sampler1DArrayShadow" /
+     "sampler1DArray" /
+     "sampler1D" /
+     "sampler" /
+     "sample" /
+     "mat4x4" /
+     "mat4x3" /
+     "mat4x2" /
+     "mat4" /
+     "mat3x4" /
+     "mat3x3" /
+     "mat3x2" /
+     "mat3" /
+     "mat2x4" /
+     "mat2x3" /
+     "mat2x2" /
+     "mat2" /
+     "long" /
+     "ivec4" /
+     "ivec3" /
+     "ivec2" /
+     "itextureCubeArray" /
+     "itextureCube" /
+     "itextureBuffer" /
+     "itexture3D" /
+     "itexture2DRect" /
+     "itexture2DMSArray" /
+     "itexture2DMS" /
+     "itexture2DArray" /
+     "itexture2D" /
+     "itexture1DArray" /
+     "itexture1D" /
+     "isubpassInputMS" /
+     "isubpassInput" /
+     "isamplerCubeArray" /
+     "isamplerCube" /
+     "isamplerBuffer" /
+     "isampler3D" /
+     "isampler2DRect" /
+     "isampler2DMSArray" /
+     "isampler2DMS" /
+     "isampler2DArray" /
+     "isampler2D" /
+     "isampler1DArray" /
+     "isampler1D" /
+     "invariant" /
+     "interface" /
+     "int" /
+     "imageCubeArray" /
+     "imageCube" /
+     "imageBuffer" /
+     "image3D" /
+     "image2DRect" /
+     "image2DMSArray" /
+     "image2DMS" /
+     "image2DArray" /
+     "image2D" /
+     "image1DArray" /
+     "image1D" /
+     "iimageCubeArray" /
+     "iimageCube" /
+     "iimageBuffer" /
+     "iimage3D" /
+     "iimage2DRect" /
+     "iimage2DMSArray" /
+     "iimage2DMS" /
+     "iimage2DArray" /
+     "iimage2D" /
+     "iimage1DArray" /
+     "iimage1D" /
+     "hvec4" /
+     "hvec3" /
+     "hvec2" /
+     "fvec4" /
+     "fvec3" /
+     "fvec2" /
+     "float" /
+     "dvec4" /
+     "dvec3" /
+     "dvec2" /
+     "double" /
+     "dmat4x4" /
+     "dmat4x3" /
+     "dmat4x2" /
+     "dmat4" /
+     "dmat3x4" /
+     "dmat3x3" /
+     "dmat3x2" /
+     "dmat3" /
+     "dmat2x4" /
+     "dmat2x3" /
+     "dmat2x2" /
+     "dmat2" /
+     "bvec4" /
+     "bvec3" /
+     "bvec2" /
+     "bool" /
+     "atomic_uint"
+     ) &stop;

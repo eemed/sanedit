@@ -63,6 +63,7 @@ impl EditorConfig {
              "python", ["**/*.py"],
              "shellscript", ["**/*.sh"],
              "asciidoc", ["**/*.adoc"],
+             "glsl", ["**/*.vert", "**/*.frag", "**/*.geom", "**/*.tesc", "**/*.tese", "**/*.comp"],
         );
 
         ftmap

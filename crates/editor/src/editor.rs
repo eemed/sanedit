@@ -448,7 +448,9 @@ impl Editor {
     fn handle_command(&mut self, id: ClientId, cmd: Command) {
         match cmd {
             Command::OpenFile(path_buf) => {
-                let _ = self.open_file(id, &path_buf);
+                if let Err(e) = self.open_file(id, &path_buf) {
+                    log::error!("Failed to open file: {e}");
+                }
             }
         }
     }

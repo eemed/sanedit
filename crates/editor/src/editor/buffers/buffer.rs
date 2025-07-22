@@ -102,7 +102,7 @@ impl Buffer {
     }
 
     fn in_memory(file: FileDescription, options: BufferConfig) -> Result<Buffer> {
-        log::debug!("Creating in memory buffer: {file:?}");
+        log::debug!("Creating in memory buffer: {file:?}, exists: {}", file.path().exists());
         let path = file.path();
         let mut buf = if !path.exists() {
             Self::new()
@@ -111,8 +111,18 @@ impl Buffer {
             Self::from_reader(ffile)?
         };
 
-        let modified = path.metadata()?.modified()?;
-        buf.last_saved_modified = Some(modified);
+        let modified = {
+            let mut modif = None;
+            if let Ok(mdata) = path.metadata() {
+                if let Ok(modified) = mdata.modified() {
+                    modif = Some(modified);
+                }
+            }
+
+            modif
+        };
+        buf.is_modified = !path.exists();
+        buf.last_saved_modified = modified;
         buf.language = file.language().cloned();
         buf.path = Some(path.into());
         buf.read_only = file.read_only();

@@ -1,8 +1,10 @@
 use rustc_hash::FxHashMap;
 use sanedit_messages::key::KeyEvent;
+use strum::IntoEnumIterator as _;
 
 use crate::actions::Action;
 
+use super::config::Config;
 use super::windows::Focus;
 use super::windows::Mode;
 use super::Map;
@@ -56,6 +58,32 @@ pub(crate) struct Keymaps {
 }
 
 impl Keymaps {
+    pub fn from_config(config: &Config) -> Keymaps {
+        let mut keymaps = Self::default();
+        for (name, kmlayer) in &config.keymaps {
+            let key = {
+                let mode = Mode::iter().find(|m| m.as_ref() == name);
+                let focus = Focus::iter().find(|f| f.as_ref() == name);
+
+                match (mode, focus) {
+                    (Some(mode), _) => LayerKey {
+                        mode,
+                        focus: Focus::Window,
+                    },
+                    (_, Some(focus)) => LayerKey {
+                        mode: Mode::Normal,
+                        focus,
+                    },
+                    _ => continue,
+                }
+            };
+            // Insert new layer
+            let layer = kmlayer.to_layer(name);
+            keymaps.insert(key, layer);
+        }
+        keymaps
+    }
+
     pub fn get_layer(&self, key: &LayerKey) -> Option<&Layer> {
         self.layers.get(key)
     }

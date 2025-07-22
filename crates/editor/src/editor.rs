@@ -21,7 +21,6 @@ use crossbeam::channel::Sender;
 use file_description::FileDescription;
 use keymap::KeymapResult;
 use keymap::Layer;
-use keymap::LayerKey;
 use language::Languages;
 use rustc_hash::FxHashMap;
 use sanedit_core::Language;
@@ -35,12 +34,12 @@ use sanedit_messages::MouseButton;
 use sanedit_messages::MouseEvent;
 use sanedit_messages::MouseEventKind;
 use sanedit_server::spawn_job_runner;
+use sanedit_server::Address;
 use sanedit_server::ClientHandle;
 use sanedit_server::ClientId;
 use sanedit_server::FromJobs;
 use sanedit_server::StartOptions;
 use sanedit_server::ToEditor;
-use strum::IntoEnumIterator;
 use tokio::runtime::Runtime;
 use windows::Mode;
 use windows::Zone;
@@ -92,6 +91,7 @@ use self::windows::Windows;
 pub(crate) type Map<K, V> = FxHashMap<K, V>;
 
 pub(crate) struct Editor {
+    listen_address: Address,
     clients: Map<ClientId, ClientHandle>,
     draw_states: Map<ClientId, DrawState>,
     is_running: bool,
@@ -117,16 +117,26 @@ pub(crate) struct Editor {
 }
 
 impl Editor {
-    fn new(runtime: Runtime, internal_chan: Sender<ToEditor>) -> Editor {
+    fn new(runtime: Runtime, internal_chan: Sender<ToEditor>, opts: StartOptions) -> Editor {
         // Spawn job runner
         let jobs_handle = runtime.block_on(spawn_job_runner(internal_chan));
-        let working_dir = env::current_dir().expect("Cannot get current working directory.");
-        let config_dir = ConfigDirectory::default();
-        let config = Config::default();
+        let working_dir = opts
+            .working_dir
+            .map(|dir| dir.canonicalize().ok())
+            .flatten()
+            .unwrap_or_else(|| env::current_dir().expect("Cannot get current working directory."));
+        let config_dir = opts
+            .config_dir
+            .map(|dir| dir.canonicalize().ok())
+            .flatten()
+            .map(|dir| ConfigDirectory::new(&dir))
+            .unwrap_or_default();
+        let config = Config::new(&config_dir.config(), &working_dir);
         let caches = Caches::new(&config);
 
         Editor {
             _tokio_runtime: runtime,
+            listen_address: opts.addr,
             clients: Map::default(),
             draw_states: Map::default(),
             syntaxes: Syntaxes::new(),
@@ -136,75 +146,34 @@ impl Editor {
             job_broker: JobBroker::new(jobs_handle),
             hooks: Hooks::default(),
             is_running: true,
+            themes: Themes::new(config_dir.theme_dir()),
             config_dir,
             filetree: Filetree::new(&working_dir),
+            project_config: ProjectConfig::new(&working_dir),
             working_dir,
-            themes: Themes::default(),
             histories: Default::default(),
             clipboard: DefaultClipboard::new(),
             language_servers: Map::default(),
-            keymaps: Keymaps::default(),
+            keymaps: Keymaps::from_config(&config),
             config,
-            project_config: ProjectConfig::default(),
             caches,
         }
-    }
-
-    pub fn configure(&mut self, mut opts: StartOptions) {
-        if let Some(cd) = opts.config_dir.take() {
-            log::info!("Config directory: {cd:?}");
-            if let Ok(cd) = cd.canonicalize() {
-                self.config_dir = ConfigDirectory::new(&cd);
-                self.syntaxes = Syntaxes::new();
-                self.themes = Themes::new(self.config_dir.theme_dir());
-            }
-        }
-
-        if let Some(wd) = opts.working_dir.take() {
-            if let Ok(wd) = wd.canonicalize() {
-                let _ = self.change_working_dir(&wd);
-            }
-        }
-
-        self.reload_config();
     }
 
     fn reload_config(&mut self) {
         self.project_config = ProjectConfig::new(&self.working_dir);
         self.config = Config::new(&self.config_dir.config(), &self.working_dir);
         self.caches = Caches::new(&self.config);
-        self.configure_keymap();
-    }
-
-    fn configure_keymap(&mut self) {
-        self.keymaps = Keymaps::default();
-
-        for (name, kmlayer) in &self.config.keymaps {
-            let key = {
-                let mode = Mode::iter().find(|m| m.as_ref() == name);
-                let focus = Focus::iter().find(|f| f.as_ref() == name);
-
-                match (mode, focus) {
-                    (Some(mode), _) => LayerKey {
-                        mode,
-                        focus: Focus::Window,
-                    },
-                    (_, Some(focus)) => LayerKey {
-                        mode: Mode::Normal,
-                        focus,
-                    },
-                    _ => continue,
-                }
-            };
-            // Insert new layer
-            let layer = kmlayer.to_layer(name);
-            self.keymaps.insert(key, layer);
-        }
+        self.keymaps = Keymaps::from_config(&self.config);
     }
 
     /// Ran after the startup configuration is complete
     pub fn on_startup(&mut self) {
         self.themes.load_all();
+    }
+
+    pub fn attach_to_session_command(&self) -> String {
+        format!("sane --connect {}", self.listen_address.as_connect())
     }
 
     pub fn buffers(&self) -> &Buffers {
@@ -919,8 +888,7 @@ pub(crate) fn main_loop(
     // Internal channel
     let (tx, rx) = crossbeam::channel::unbounded();
 
-    let mut editor = Editor::new(runtime, tx);
-    editor.configure(opts);
+    let mut editor = Editor::new(runtime, tx, opts);
     editor.on_startup();
 
     let receivers = [recv, rx];

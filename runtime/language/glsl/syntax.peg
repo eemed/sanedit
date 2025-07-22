@@ -1,17 +1,17 @@
-document = (keywords / types / operators / string / comment / version / (!stop .)* stop)*;
+document = (keywords / types / operators / number / string / comment / preproc / (!stop .)* stop)*;
 WHITESPACE = [ \t];
 ws = WHITESPACE;
 nl = "\n" / "\r\n";
-stop = WHITESPACE+ / nl / "(" / ")" / "[" / "]" / "." / ";";
+stop = WHITESPACE+ / nl / "(" / ")" / "[" / "]" / "." / ";" / ",";
 
 @show @highlight(preproc)
-version = "#version" (!nl .)*;
+preproc = "#" [a..zA..Z] [a..zA..Z0..9_]*;
 
 @show @highlight
 comment = "//" (!nl .)*;
 
 @show @highlight(constant)
-number =  "-"? digit+ ("." digit+)? "f"?;
+number =  ("-"? digit+ ("." digit+)? "f"?) &stop;
 digit = [0..9];
 
 @show @highlight(constant)

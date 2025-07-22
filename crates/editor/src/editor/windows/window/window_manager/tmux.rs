@@ -8,12 +8,12 @@ pub(crate) struct Tmux {
 }
 
 impl Tmux {
-    pub fn new_window_horizontal(&self) -> String {
-        "tmux split-window 'sane'".into()
+    pub fn new_window_horizontal(&self, cmd: &str) -> String {
+        format!("tmux split-window '{cmd}'")
     }
 
-    pub fn new_window_vertical(&self) -> String {
-        "tmux split-window -h 'sane'".into()
+    pub fn new_window_vertical(&self, cmd: &str) -> String {
+        format!("tmux split-window -h '{cmd}'")
     }
 
     pub fn has_linked_window(&self, shell: &str) -> bool {

@@ -6,12 +6,12 @@ pub(crate) struct Wezterm {
 }
 
 impl Wezterm {
-    pub fn new_window_horizontal(&self) -> String {
-        "wezterm cli split-pane -- sane".into()
+    pub fn new_window_horizontal(&self, cmd: &str) -> String {
+        format!("wezterm cli split-pane -- {cmd}")
     }
 
-    pub fn new_window_vertical(&self) -> String {
-        "wezterm cli split-pane --horizontal -- sane".into()
+    pub fn new_window_vertical(&self, cmd: &str) -> String {
+        format!("wezterm cli split-pane --horizontal -- {cmd}")
     }
 
     pub fn has_linked_window(&self, shell: &str) -> bool {

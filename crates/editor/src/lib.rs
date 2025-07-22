@@ -45,13 +45,13 @@ pub(crate) mod editor;
 
 use std::thread;
 
-use sanedit_server::{spawn_listeners, Address, EditorHandle, StartOptions};
+use sanedit_server::{spawn_listener, EditorHandle, StartOptions};
 use tokio::runtime::Builder;
 
 // works only with cargo
 pub(crate) const VERSION: &str = env!("CARGO_PKG_VERSION");
 
-pub fn run_sync(addrs: Vec<Address>, opts: StartOptions) -> Option<thread::JoinHandle<()>> {
+pub fn run_sync(opts: StartOptions) -> Option<thread::JoinHandle<()>> {
     let (send, recv) = crossbeam::channel::unbounded();
     let handle = EditorHandle {
         sender: send,
@@ -68,7 +68,7 @@ pub fn run_sync(addrs: Vec<Address>, opts: StartOptions) -> Option<thread::JoinH
 
     let runtime = builder.build().unwrap();
 
-    runtime.block_on(spawn_listeners(addrs, handle));
+    runtime.block_on(spawn_listener(opts.addr.clone(), handle));
 
     thread::Builder::new()
         .name("sanedit".into())

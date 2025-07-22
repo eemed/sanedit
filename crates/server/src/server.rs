@@ -11,7 +11,7 @@ use std::{
     },
 };
 
-use tokio::{net::unix::SocketAddr, sync::Notify};
+use tokio::sync::Notify;
 
 use crate::events::ToEditor;
 
@@ -22,6 +22,7 @@ pub struct StartOptions {
     pub config_dir: Option<PathBuf>,
     pub working_dir: Option<PathBuf>,
     pub debug: bool,
+    pub addr: Address,
 }
 
 /// Editor handle allows us to communicate with the editor
@@ -44,9 +45,9 @@ impl EditorHandle {
     }
 }
 
+#[derive(Debug, Clone)]
 pub enum Address {
     UnixDomainSocket(PathBuf),
-    Tcp(SocketAddr),
 }
 
 impl Display for Address {
@@ -64,36 +65,36 @@ impl Address {
     pub fn protocol(&self) -> &str {
         match self {
             Address::UnixDomainSocket(_) => "unix-domain-socket",
-            Address::Tcp(_) => "tcp",
         }
     }
 
     pub fn address_name(&self) -> Option<Cow<str>> {
         match self {
             Address::UnixDomainSocket(p) => Some(p.as_os_str().to_string_lossy()),
-            Address::Tcp(addr) => addr.as_pathname().map(|p| p.as_os_str().to_string_lossy()),
+        }
+    }
+
+    /// Return address in a way that can be used with sane --connect <addr>
+    pub fn as_connect(&self) -> String {
+        match self {
+            Address::UnixDomainSocket(p) => p.as_os_str().to_string_lossy().to_string(),
         }
     }
 }
 
-pub async fn spawn_listeners(addrs: Vec<Address>, handle: EditorHandle) {
-    for addr in addrs.into_iter() {
-        let addr_ready = Arc::new(Notify::new());
+pub async fn spawn_listener(addr: Address, handle: EditorHandle) {
+    let addr_ready = Arc::new(Notify::new());
 
-        let n = addr_ready.clone();
-        let h = handle.clone();
-        let display = format!("{}", addr);
+    let n = addr_ready.clone();
+    let h = handle.clone();
+    let display = format!("{}", addr);
 
-        match addr {
-            Address::UnixDomainSocket(addr) => {
-                tokio::spawn(accept::unix::accept_loop(addr.clone(), h, n));
-            }
-            Address::Tcp(addr) => {
-                tokio::spawn(accept::tcp::accept_loop(addr, h, n));
-            }
+    match addr {
+        Address::UnixDomainSocket(addr) => {
+            tokio::spawn(accept::unix::accept_loop(addr.clone(), h, n));
         }
-
-        addr_ready.notified().await;
-        log::info!("Server listening at {display}");
     }
+
+    addr_ready.notified().await;
+    log::info!("Server listening at {display}");
 }

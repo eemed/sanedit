@@ -102,7 +102,10 @@ impl Buffer {
     }
 
     fn in_memory(file: FileDescription, options: BufferConfig) -> Result<Buffer> {
-        log::debug!("Creating in memory buffer: {file:?}, exists: {}", file.path().exists());
+        log::debug!(
+            "Creating in memory buffer: {file:?}, exists: {}",
+            file.path().exists()
+        );
         let path = file.path();
         let mut buf = if !path.exists() {
             Self::new()
@@ -314,12 +317,18 @@ impl Buffer {
         ensure!(!self.read_only, BufferError::ReadOnly);
         // No save path before unmodified to execute save as even if buffer is
         // unmodified without path
-        let path = self.path().ok_or(BufferError::NoSavePath)?;
+        self.path().ok_or(BufferError::NoSavePath)?;
         ensure!(self.is_modified, BufferError::Unmodified);
 
-        let cur = self.ro_view();
-        let copy = Self::save_copy(&cur)?;
+        let copy_view = self.ro_view();
+        let copy = Self::save_copy(&copy_view)?;
+        let saved = self.save_rename_copy(copy_view, &copy);
+        let _ = fs::remove_file(&copy);
+        saved
+    }
 
+    fn save_rename_copy(&mut self, copy_view: PieceTreeView, copy: &Path) -> Result<Saved> {
+        let path = self.path().ok_or(BufferError::NoSavePath)?;
         // Rename backing file if it is the same as our path
         if self.pt.is_file_backed() {
             let backing = self.pt.backing_file().unwrap();
@@ -329,14 +338,16 @@ impl Buffer {
             }
         }
 
-        // TODO does not work across mount points
-        fs::rename(copy, path)?;
+        if let Err(e) = fs::rename(copy, path) {
+            log::error!("Rename failed while saving {path:?}: {e}");
+            fs::copy(copy, path)?;
+        }
 
         let modified = path.metadata()?.modified()?;
         self.last_saved_modified = Some(modified);
 
         self.is_modified = false;
-        let snap = self.snapshots.insert(cur);
+        let snap = self.snapshots.insert(copy_view);
         self.last_saved_snapshot = snap;
         Ok(Saved { snapshot: snap })
     }

@@ -12,7 +12,7 @@ pub use futures_core::Future;
 
 pub use server::{
     client::{ClientHandle, ClientId},
-    spawn_listeners, Address, EditorHandle, StartOptions,
+    spawn_listener, Address, EditorHandle, StartOptions,
 };
 
 pub(crate) const CHANNEL_SIZE: usize = 256;

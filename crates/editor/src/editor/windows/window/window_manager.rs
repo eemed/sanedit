@@ -20,18 +20,18 @@ impl WindowManager {
         WindowManager::Wezterm(Wezterm::default())
     }
 
-    pub fn new_window_horizontal(&self) -> String {
+    pub fn new_window_horizontal(&self, cmd: &str) -> String {
         match self {
-            WindowManager::Tmux(tmux) => tmux.new_window_horizontal(),
-            WindowManager::Wezterm(wezterm) => wezterm.new_window_horizontal(),
+            WindowManager::Tmux(tmux) => tmux.new_window_horizontal(cmd),
+            WindowManager::Wezterm(wezterm) => wezterm.new_window_horizontal(cmd),
             WindowManager::None => "".into(),
         }
     }
 
-    pub fn new_window_vertical(&self) -> String {
+    pub fn new_window_vertical(&self, cmd: &str) -> String {
         match self {
-            WindowManager::Tmux(tmux) => tmux.new_window_vertical(),
-            WindowManager::Wezterm(wezterm) => wezterm.new_window_vertical(),
+            WindowManager::Tmux(tmux) => tmux.new_window_vertical(cmd),
+            WindowManager::Wezterm(wezterm) => wezterm.new_window_vertical(cmd),
             WindowManager::None => "".into(),
         }
     }

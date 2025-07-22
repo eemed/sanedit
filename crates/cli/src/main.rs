@@ -5,6 +5,7 @@ use std::{
     hash::{DefaultHasher, Hash, Hasher},
     io,
     path::PathBuf,
+    time::SystemTime,
 };
 
 use argh::FromArgs;
@@ -29,6 +30,10 @@ struct Cli {
     /// set working directory
     #[argh(option)]
     working_dir: Option<PathBuf>,
+
+    /// connect to an existing instance
+    #[argh(option)]
+    connect: Option<PathBuf>,
 }
 
 fn main() {
@@ -51,18 +56,18 @@ fn main() {
         if cli.debug {
             "-debug".hash(&mut hasher)
         }
-        hasher.finish().to_string()
+        if let Ok(n) = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH) {
+            n.hash(&mut hasher);
+        }
+        format!("{:x}", hasher.finish())
     };
-    let start_opts = StartOptions {
-        config_dir,
-        working_dir,
-        debug: cli.debug,
-    };
+    let connect = cli.connect.is_some();
+    let socket = cli
+        .connect
+        .unwrap_or_else(|| PathBuf::from(format!("/tmp/{socket_name}-sanedit.sock")));
     let socket_start_opts = SocketStartOptions { file: cli.file };
-
-    let socket = PathBuf::from(format!("/tmp/{socket_name}-sanedit.sock"));
-    let exists = socket.try_exists().unwrap_or(false);
-    if exists {
+    let try_connect = connect || socket.try_exists().unwrap_or(false);
+    if try_connect {
         log::info!("Connecting to existing socket..");
         // if socket already exists try to connect
         match UnixDomainSocketClient::connect(&socket) {
@@ -80,11 +85,15 @@ fn main() {
         }
     }
 
+    let start_opts = StartOptions {
+        config_dir,
+        working_dir,
+        debug: cli.debug,
+        addr: Address::UnixDomainSocket(socket.clone()),
+    };
     log::info!("Creating a new socket..");
     // If no socket startup server
-    let s = socket.clone();
-    let addrs = vec![Address::UnixDomainSocket(s)];
-    let join = sanedit_editor::run_sync(addrs, start_opts);
+    let join = sanedit_editor::run_sync(start_opts);
     if let Some(join) = join {
         match UnixDomainSocketClient::connect(&socket) {
             Ok(socket) => {

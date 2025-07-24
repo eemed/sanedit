@@ -21,7 +21,6 @@ use super::{
     cursors::{remove_cursor_selections, swap_selection_dir},
     hooks::run,
     movement::{end_of_line, prev_line},
-    snippets::snippet_jump_next,
     text_objects::select_line,
     window::{focus, mode_insert, mode_normal},
     ActionResult,
@@ -177,12 +176,6 @@ fn insert_newline(editor: &mut Editor, id: ClientId) -> ActionResult {
 #[action("Buffer: Insert tab")]
 fn insert_tab(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = editor.win_buf_mut(id);
-
-    // Snippet
-    if !win.snippets.is_empty() {
-        snippet_jump_next.execute(editor, id);
-        return ActionResult::Ok;
-    }
 
     let slice = buf.slice(..);
     let primary = win.cursors.primary().pos();

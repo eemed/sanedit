@@ -10,7 +10,7 @@ use crate::ui::UIContext;
 use super::{
     ccell::{clear_all, into_cells_with_style, pad_line, size, CCell},
     drawable::{DrawCursor, Drawable},
-    Rect,
+    Rect, Split,
 };
 
 #[derive(Debug)]
@@ -35,12 +35,36 @@ impl CustomItems {
         }
     }
 
-    pub fn update(&mut self, diff: Difference, rect: Rect) {
-        self.items.update(diff);
-        self.update_position(rect);
+    pub fn split_off(&self, win: &mut Rect) -> Rect {
+        match self.kind {
+            Kind::Filetree => {
+                const MIN: usize = 30;
+                // Each level is indented by 2, and root starts at indent 2
+                let max_item_width = self
+                    .items
+                    .items
+                    .iter()
+                    .map(|item| (item.level + 1) * 2 + item.name.chars().count())
+                    .max()
+                    .unwrap_or(0);
+                let max_screen = max(MIN, win.width / 3);
+                let width = max_item_width.clamp(MIN, max_screen);
+                win.split_off(Split::left_size(width))
+            }
+            Kind::Locations => {
+                // +1 = title
+                let items = self.items.items.len() + 1;
+                let height = items.clamp(3, 15);
+                win.split_off(Split::bottom_size(height))
+            }
+        }
     }
 
-    pub fn update_position(&mut self, rect: Rect) {
+    pub fn update(&mut self, diff: Difference) {
+        self.items.update(diff);
+    }
+
+    pub fn update_scroll_position(&mut self, rect: &Rect) {
         let area_reserved = if matches!(self.kind, Kind::Locations) {
             1
         } else {

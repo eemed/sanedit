@@ -114,7 +114,7 @@ fn command_palette(editor: &mut Editor, id: ClientId) -> ActionResult {
 #[action("Editor: Open file")]
 fn open_file(editor: &mut Editor, id: ClientId) -> ActionResult {
     const PROMPT_MESSAGE: &str = "Open a file";
-    let ignore = editor.config.editor.ignore_directories();
+    let ignore = editor.ignore_directories();
     let wd = editor.working_dir().to_path_buf();
     let job = MatcherJob::builder(id)
         .options(FileOptionProvider::new(&wd, ignore))
@@ -446,7 +446,7 @@ fn prompt_change_dir(editor: &mut Editor, id: ClientId, input: &Path, is_dir: bo
             None => break,
         }
     }
-    let ignore = editor.config.editor.ignore_directories();
+    let ignore = editor.ignore_directories();
     let (win, _buf) = editor.win_buf_mut(id);
     let mut display = input.to_string_lossy().to_string();
     let has_end = display.chars().rev().next() == Some(std::path::MAIN_SEPARATOR);
@@ -522,7 +522,7 @@ fn grep(editor: &mut Editor, id: ClientId) -> ActionResult {
         .simple()
         .on_confirm(move |e, id, out| {
             let patt = getf!(out.text());
-            let ignore = e.config.editor.ignore_directories();
+            let ignore = e.ignore_directories();
             let wd = e.working_dir();
             let buffers: FxHashMap<PathBuf, PieceTreeView> = {
                 let mut map = FxHashMap::default();

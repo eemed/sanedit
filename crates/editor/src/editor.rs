@@ -875,6 +875,14 @@ impl Editor {
         result.extend(langconfig.snippets_as_choices());
         result
     }
+
+    pub fn ignore_directories(&self) -> Arc<Vec<String>> {
+        if !self.project_config.ignore_directories.is_empty() {
+            return self.project_config.ignore_directories.clone();
+        }
+
+        self.config.editor.ignore_directories.clone()
+    }
 }
 
 /// Execute editor logic, getting each message from the passed receiver.

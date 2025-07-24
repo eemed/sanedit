@@ -155,7 +155,9 @@ impl Grid {
                 }
                 Update(diff) => {
                     if let Some(ref mut ft) = self.filetree {
-                        ft.item.update(diff, ft.rect);
+                        ft.item.update(diff);
+                        self.refresh();
+                        return RedrawResult::Resized;
                     }
                 }
                 Close => {
@@ -172,7 +174,9 @@ impl Grid {
                 }
                 Update(diff) => {
                     if let Some(ref mut locs) = self.locations {
-                        locs.item.update(diff, locs.rect);
+                        locs.item.update(diff);
+                        self.refresh();
+                        return RedrawResult::Resized;
                     }
                 }
                 Close => {
@@ -238,12 +242,13 @@ impl Grid {
 
         // Filetree if present
         if let Some(ft) = &mut self.filetree {
-            ft.rect = window.split_off(Split::left_size((window.width / 6).clamp(40, 50)));
-            ft.item.update_position(ft.rect);
+            ft.rect = ft.item.split_off(&mut window);
+            ft.item.update_scroll_position(&ft.rect);
         }
 
         if let Some(loc) = &mut self.locations {
-            loc.rect = window.split_off(Split::bottom_size(15));
+            loc.rect = loc.item.split_off(&mut window);
+            loc.item.update_scroll_position(&loc.rect);
         }
 
         self.window.rect = window;

@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::{path::Path, sync::Arc};
 
 use serde::{Deserialize, Serialize};
 
@@ -11,6 +11,7 @@ const PROJECT_CONFIG: &str = "sanedit-project.toml";
 pub struct ProjectConfig {
     pub(crate) run_command: String,
     pub(crate) build_command: String,
+    pub(crate) ignore_directories: Arc<Vec<String>>,
 }
 
 impl ProjectConfig {

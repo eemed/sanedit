@@ -108,6 +108,11 @@ fn select_line(editor: &mut Editor, id: ClientId) -> ActionResult {
     })
 }
 
+#[action("Select: Buffer")]
+fn select_buffer(editor: &mut Editor, id: ClientId) -> ActionResult {
+    select(editor, id, |slice, _| Some(Range::new(0, slice.len())))
+}
+
 #[action("Select: In curly brackets")]
 fn select_curly(editor: &mut Editor, id: ClientId) -> ActionResult {
     select_range(editor, id, "{", "}", false)

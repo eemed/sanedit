@@ -269,12 +269,6 @@ pub(crate) struct EditorConfig {
     pub copy_on_delete: bool,
 }
 
-impl EditorConfig {
-    pub fn ignore_directories(&self) -> Arc<Vec<String>> {
-        self.ignore_directories.clone()
-    }
-}
-
 pub(crate) struct Keymapping {
     events: Vec<KeyEvent>,
     actions: VecDeque<MappedAction>,

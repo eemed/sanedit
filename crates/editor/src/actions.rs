@@ -278,6 +278,7 @@ pub(crate) const COMMANDS: &[Action] = &[
     indent::indent_line,
     indent::dedent_line,
 
+    text_objects::select_buffer,
     text_objects::select_line,
     text_objects::select_parens_incl,
     text_objects::select_parens,

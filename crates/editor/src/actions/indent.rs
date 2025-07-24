@@ -17,7 +17,16 @@ fn detect_indent(editor: &mut Editor, id: ClientId) -> ActionResult {
         return ActionResult::Ok;
     }
 
-    let (_win, buf) = editor.win_buf_mut(id);
+    let (win, _buf) = editor.win_buf_mut(id);
+    let wbid = win.buffer_id();
+    let bid = editor
+        .hooks
+        .running_hook()
+        .map(Hook::buffer_id)
+        .flatten()
+        .unwrap_or(wbid);
+    let buf = getf!(editor.buffers.get_mut(bid));
+
     let len = buf.len();
     let slice = buf.slice(..min(len, MAX));
     let (kind, n) = determine_indent(&slice).unwrap_or_else(|| {
@@ -37,7 +46,16 @@ fn detect_eol(editor: &mut Editor, id: ClientId) -> ActionResult {
         return ActionResult::Ok;
     }
 
-    let (_win, buf) = editor.win_buf_mut(id);
+    let (win, _buf) = editor.win_buf_mut(id);
+    let wbid = win.buffer_id();
+    let bid = editor
+        .hooks
+        .running_hook()
+        .map(Hook::buffer_id)
+        .flatten()
+        .unwrap_or(wbid);
+    let buf = getf!(editor.buffers.get_mut(bid));
+
     let len = buf.len();
     let slice = buf.slice(..min(len, MAX));
     let mut bytes = slice.bytes();

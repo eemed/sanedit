@@ -18,6 +18,13 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> Statusline {
         return Statusline { left, right };
     }
 
+
+    if win.focus() == Focus::Locations {
+        let left = " Locations".to_string();
+        let right = String::new();
+        return Statusline { left, right };
+    }
+
     let name = {
         match buf.path() {
             Some(path) => {

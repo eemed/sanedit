@@ -256,7 +256,6 @@ pub(crate) const COMMANDS: &[Action] = &[
     cursors::make_next_cursor_primary,
     cursors::make_prev_cursor_primary,
     cursors::remove_primary_cursor,
-    cursors::keep_only_primary,
     cursors::select_to_next_word,
     cursors::select_to_prev_word,
     cursors::keep_only_primary,

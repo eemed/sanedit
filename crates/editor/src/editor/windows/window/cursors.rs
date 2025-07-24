@@ -206,14 +206,14 @@ impl Cursors {
 
         let pos = self.cursors[self.primary].pos();
         let mut n = self.primary;
-        let mut next = 0;
+        let mut prev = 0;
 
         for (i, cursor) in self.cursors.iter().enumerate() {
             let cp = cursor.pos();
 
             // prev cursor with smallest amount of distance to current
-            if i != self.primary && cp < pos && pos - next < pos - cp {
-                next = cp;
+            if i != self.primary && cp < pos && pos - prev > pos - cp {
+                prev = cp;
                 n = i;
             }
         }
@@ -222,8 +222,8 @@ impl Cursors {
             // Take largest
             for (i, cursor) in self.cursors.iter().enumerate() {
                 let cp = cursor.pos();
-                if next < cp {
-                    next = cp;
+                if prev < cp {
+                    prev = cp;
                     n = i;
                 }
             }

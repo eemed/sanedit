@@ -235,6 +235,10 @@ pub(crate) fn normal() -> KeymapLayer {
         "2",     show_filetree,
         "3",     show_locations,
 
+        "alt+n", make_next_cursor_primary,
+        "alt+N", make_prev_cursor_primary,
+        "alt+c", remove_primary_cursor,
+
         "alt+j", next_paragraph,
         "alt+k", prev_paragraph,
         "alt+l", end_of_line,
@@ -384,7 +388,7 @@ pub(crate) fn insert() -> KeymapLayer {
         "tab", insert_tab,
         "btab", backtab,
         "alt+k", show_signature_help,
-        "alt+n", snippet_jump_next,
+        "alt+j", snippet_jump_next,
     );
 
     KeymapLayer {

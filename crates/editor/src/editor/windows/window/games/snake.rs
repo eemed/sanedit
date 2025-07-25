@@ -160,8 +160,8 @@ impl Game for Snake {
             Key::Char('q') => return true,
             Key::Enter | Key::Char('r') => {
                 let tick_sender = std::mem::take(&mut self.tick_sender).unwrap();
+                let _ = tick_sender.send(0);
                 *self = Self::new(&self.map).unwrap();
-                self.set_tick_sender(tick_sender);
                 return false;
             }
             _ => return false,
@@ -171,6 +171,10 @@ impl Game for Snake {
     }
 
     fn tick(&mut self) {
+        if self.tick_sender.is_none() {
+            return;
+        }
+
         match &mut self.state {
             State::Starting(n) => {
                 *n -= 1;
@@ -202,32 +206,16 @@ impl Game for Snake {
                 let mut new_head = self.snake.front().unwrap().clone();
                 match self.direction {
                     Direction::Up => {
-                        if new_head.y == 0 {
-                            dead = true;
-                        } else {
-                            new_head.y -= 1;
-                        }
+                        new_head.y = (height + new_head.y - 1) % height;
                     }
                     Direction::Down => {
-                        if new_head.y + 1 == height {
-                            dead = true;
-                        } else {
-                            new_head.y += 1;
-                        }
+                        new_head.y = (new_head.y + 1) % height;
                     }
                     Direction::Left => {
-                        if new_head.x == 0 {
-                            dead = true;
-                        } else {
-                            new_head.x -= 2;
-                        }
+                        new_head.x = (width + new_head.x - 2) % width;
                     }
                     Direction::Right => {
-                        if new_head.x + 1 == width {
-                            dead = true;
-                        } else {
-                            new_head.x += 2;
-                        }
+                        new_head.x = (new_head.x + 2) % width;
                     }
                 }
 
@@ -303,13 +291,29 @@ impl Game for Snake {
                 for point in self.snake.iter().skip(1) {
                     use Direction::*;
                     let to = if point.y > last.y {
-                        Down
+                        if point.y - last.y > 1 {
+                            Up
+                        } else {
+                            Down
+                        }
                     } else if point.y < last.y {
-                        Up
+                        if last.y - point.y > 1 {
+                            Down
+                        } else {
+                            Up
+                        }
                     } else if point.x < last.x {
-                        Left
+                        if last.x - point.x > 2 {
+                            Right
+                        } else {
+                            Left
+                        }
                     } else {
-                        Right
+                        if point.x - last.x > 2 {
+                            Left
+                        } else {
+                            Right
+                        }
                     };
 
                     if let Some(from) = last_direction {
@@ -320,18 +324,19 @@ impl Game for Snake {
                             (Left, Up) | (Down, Right) => "╚",
                             (Down, Down) | (Up, Up) => "║",
                             (Left, Left) | (Right, Right) => "═",
-                            _ => unreachable!("Wrong directions"),
+                            _ => &cells[last.y][last.x].text,
                         };
                         cells[last.y][last.x].text = last_body.into();
                     }
 
+                    let Size { width, ..} = Self::size(cells);
                     if to == Left {
-                        cells[point.y][point.x + 1].text = "═".into();
-                        cells[point.y][point.x + 1].style = snake_style;
+                        cells[point.y][(point.x + 1) % width].text = "═".into();
+                        cells[point.y][(point.x + 1) % width].style = snake_style;
                     }
                     if to == Right {
-                        cells[point.y][point.x - 1].text = "═".into();
-                        cells[point.y][point.x - 1].style = snake_style;
+                        cells[point.y][(width + point.x - 1) % width].text = "═".into();
+                        cells[point.y][(width + point.x - 1) % width].style = snake_style;
                     }
 
                     cells[point.y][point.x].style = snake_style;
@@ -366,7 +371,7 @@ impl Game for Snake {
                             (Left, Up) | (Down, Right) => "╚",
                             (Down, Down) | (Up, Up) => "║",
                             (Left, Left) | (Right, Right) => "═",
-                            _ => unreachable!("Wrong directions"),
+                            _ => &cells[last.y][last.x].text,
                         };
                         cells[last.y][last.x].text = last_body.into();
                     }
@@ -389,7 +394,7 @@ impl Game for Snake {
         }
     }
 
-    fn set_tick_sender(&mut self, tick_sender: std::sync::mpsc::Sender<u64>) {
+    fn set_tick_sender(&mut self, tick_sender: Sender<u64>) {
         let _ = tick_sender.send(1000);
         self.tick_sender = Some(tick_sender);
     }

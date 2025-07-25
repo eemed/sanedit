@@ -20,7 +20,7 @@ impl GameTick {
 
 impl Job for GameTick {
     fn run(&self, mut ctx: sanedit_server::JobContext) -> sanedit_server::JobResult {
-        let (send, recv) = channel::<u64>();
+        let (send, mut recv) = channel::<u64>();
 
         let fut = async move {
             ctx.send(Start(send));
@@ -31,11 +31,15 @@ impl Job for GameTick {
 
                 match recv.try_recv() {
                     Ok(nrate) => {
-                        let sleep_again = nrate > rate;
-                        rate = nrate;
-                        if sleep_again {
+                        if nrate == 0 {
+                            let (chan_send, chan_rx) = channel::<u64>();
+                            recv = chan_rx;
+                            ctx.send(Start(chan_send));
+                            rate = recv.recv()?;
                             continue;
                         }
+
+                        rate = nrate;
                     }
                     Err(e) => match e {
                         std::sync::mpsc::TryRecvError::Empty => {}

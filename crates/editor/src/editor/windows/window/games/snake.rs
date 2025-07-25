@@ -22,7 +22,7 @@ enum Direction {
     Right,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 enum State {
     Starting(u8),
     Running,
@@ -254,12 +254,6 @@ impl Game for Snake {
     }
 
     fn draw(&self, cells: &mut Vec<Vec<Cell>>, theme: &Theme) {
-        // if cells.len() != self.map.len()
-        //     || cells.get(0).map(|line| line.len()).unwrap_or(0)
-        //         != self.map.get(0).map(|line| line.len()).unwrap_or(0)
-        // {
-        // }
-
         *cells = self.map.clone();
         let Point {
             x: center_x,
@@ -267,129 +261,128 @@ impl Game for Snake {
         } = Self::center(&self.map);
         let msg_style = theme.get(ThemeField::Statusline);
 
-        match self.state {
-            State::Starting(n) => {
-                let msg = format!("Starting in {n}...");
-                let start = center_x.saturating_sub(msg.chars().count() / 2);
-                for (i, ch) in msg.chars().enumerate() {
-                    cells[middle_y][start + i] = Cell {
-                        text: ch.to_string(),
-                        style: msg_style,
-                    };
-                }
+        if let State::Starting(n) = &self.state {
+            let msg = format!("Starting in {n}...");
+            let start = center_x.saturating_sub(msg.chars().count() / 2);
+            for (i, ch) in msg.chars().enumerate() {
+                cells[middle_y][start + i] = Cell {
+                    text: ch.to_string(),
+                    style: msg_style,
+                };
             }
 
-            State::Running => {
-                let mut snake_style = theme.get(ThemeField::String);
-                snake_style.text_style = Some(text_style::BOLD);
+            return;
+        }
 
-                let mut last_direction = None;
-                let mut last = self.snake.front().unwrap();
-                cells[last.y][last.x].style = snake_style;
-                cells[last.y][last.x].text = "O".into();
+        let mut snake_style = theme.get(ThemeField::String);
+        snake_style.text_style = Some(text_style::BOLD);
 
-                for point in self.snake.iter().skip(1) {
-                    use Direction::*;
-                    let to = if point.y > last.y {
-                        if point.y - last.y > 1 {
-                            Up
-                        } else {
-                            Down
-                        }
-                    } else if point.y < last.y {
-                        if last.y - point.y > 1 {
-                            Down
-                        } else {
-                            Up
-                        }
-                    } else if point.x < last.x {
-                        if last.x - point.x > 2 {
-                            Right
-                        } else {
-                            Left
-                        }
-                    } else {
-                        if point.x - last.x > 2 {
-                            Left
-                        } else {
-                            Right
-                        }
-                    };
+        let mut last_direction = None;
+        let mut last = self.snake.front().unwrap();
+        cells[last.y][last.x].style = snake_style;
+        cells[last.y][last.x].text = "O".into();
 
-                    if let Some(from) = last_direction {
-                        let last_body = match (from, to) {
-                            (Right, Down) | (Up, Left) => "╗",
-                            (Left, Down) | (Up, Right) => "╔",
-                            (Right, Up) | (Down, Left) => "╝",
-                            (Left, Up) | (Down, Right) => "╚",
-                            (Down, Down) | (Up, Up) => "║",
-                            (Left, Left) | (Right, Right) => "═",
-                            _ => &cells[last.y][last.x].text,
-                        };
-                        cells[last.y][last.x].text = last_body.into();
-                    }
-
-                    let Size { width, ..} = Self::size(cells);
-                    if to == Left {
-                        cells[point.y][(point.x + 1) % width].text = "═".into();
-                        cells[point.y][(point.x + 1) % width].style = snake_style;
-                    }
-                    if to == Right {
-                        cells[point.y][(width + point.x - 1) % width].text = "═".into();
-                        cells[point.y][(width + point.x - 1) % width].style = snake_style;
-                    }
-
-                    cells[point.y][point.x].style = snake_style;
-                    cells[point.y][point.x].text = if matches!(to, Left | Right) {
-                        "═"
-                    } else {
-                        "║"
-                    }
-                    .into();
-
-                    last_direction = Some(to);
-                    last = point;
+        for point in self.snake.iter().skip(1) {
+            use Direction::*;
+            let to = if point.y > last.y {
+                if point.y - last.y > 1 {
+                    Up
+                } else {
+                    Down
                 }
-
-                if let Some(point) = self.prev_pop {
-                    use Direction::*;
-                    let to = if point.y > last.y {
-                        Down
-                    } else if point.y < last.y {
-                        Up
-                    } else if point.x < last.x {
-                        Left
-                    } else {
-                        Right
-                    };
-
-                    if let Some(from) = last_direction {
-                        let last_body = match (from, to) {
-                            (Right, Down) | (Up, Left) => "╗",
-                            (Left, Down) | (Up, Right) => "╔",
-                            (Right, Up) | (Down, Left) => "╝",
-                            (Left, Up) | (Down, Right) => "╚",
-                            (Down, Down) | (Up, Up) => "║",
-                            (Left, Left) | (Right, Right) => "═",
-                            _ => &cells[last.y][last.x].text,
-                        };
-                        cells[last.y][last.x].text = last_body.into();
-                    }
+            } else if point.y < last.y {
+                if last.y - point.y > 1 {
+                    Down
+                } else {
+                    Up
                 }
+            } else if point.x < last.x {
+                if last.x - point.x > 2 {
+                    Right
+                } else {
+                    Left
+                }
+            } else {
+                if point.x - last.x > 2 {
+                    Left
+                } else {
+                    Right
+                }
+            };
 
-                let apple_style = theme.get(ThemeField::Comment);
-                cells[self.apple.y][self.apple.x].style = apple_style;
-                cells[self.apple.y][self.apple.x].text = "🍎".into()
+            if let Some(from) = last_direction {
+                let last_body = match (from, to) {
+                    (Right, Down) | (Up, Left) => "╗",
+                    (Left, Down) | (Up, Right) => "╔",
+                    (Right, Up) | (Down, Left) => "╝",
+                    (Left, Up) | (Down, Right) => "╚",
+                    (Down, Down) | (Up, Up) => "║",
+                    (Left, Left) | (Right, Right) => "═",
+                    _ => &cells[last.y][last.x].text,
+                };
+                cells[last.y][last.x].text = last_body.into();
             }
-            State::Done => {
-                let msg = format!("Snake died. Score {}...", self.score);
-                let start = center_x - msg.chars().count() / 2;
-                for (i, ch) in msg.chars().enumerate() {
-                    cells[middle_y][start + i] = Cell {
-                        text: ch.to_string(),
-                        style: msg_style,
-                    };
-                }
+
+            let Size { width, .. } = Self::size(cells);
+            if to == Left {
+                cells[point.y][(point.x + 1) % width].text = "═".into();
+                cells[point.y][(point.x + 1) % width].style = snake_style;
+            }
+            if to == Right {
+                cells[point.y][(width + point.x - 1) % width].text = "═".into();
+                cells[point.y][(width + point.x - 1) % width].style = snake_style;
+            }
+
+            cells[point.y][point.x].style = snake_style;
+            cells[point.y][point.x].text = if matches!(to, Left | Right) {
+                "═"
+            } else {
+                "║"
+            }
+            .into();
+
+            last_direction = Some(to);
+            last = point;
+        }
+
+        if let Some(point) = self.prev_pop {
+            use Direction::*;
+            let to = if point.y > last.y {
+                Down
+            } else if point.y < last.y {
+                Up
+            } else if point.x < last.x {
+                Left
+            } else {
+                Right
+            };
+
+            if let Some(from) = last_direction {
+                let last_body = match (from, to) {
+                    (Right, Down) | (Up, Left) => "╗",
+                    (Left, Down) | (Up, Right) => "╔",
+                    (Right, Up) | (Down, Left) => "╝",
+                    (Left, Up) | (Down, Right) => "╚",
+                    (Down, Down) | (Up, Up) => "║",
+                    (Left, Left) | (Right, Right) => "═",
+                    _ => &cells[last.y][last.x].text,
+                };
+                cells[last.y][last.x].text = last_body.into();
+            }
+        }
+
+        let apple_style = theme.get(ThemeField::Comment);
+        cells[self.apple.y][self.apple.x].style = apple_style;
+        cells[self.apple.y][self.apple.x].text = "🍎".into();
+
+        if self.state == State::Done {
+            let msg = format!("Snake died. Score {}...", self.score);
+            let start = center_x - msg.chars().count() / 2;
+            for (i, ch) in msg.chars().enumerate() {
+                cells[middle_y][start + i] = Cell {
+                    text: ch.to_string(),
+                    style: msg_style,
+                };
             }
         }
     }

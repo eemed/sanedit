@@ -6,12 +6,13 @@ use anyhow::bail;
 use sanedit_messages::redraw::{text_style, Size, Theme, ThemeField};
 use sanedit_messages::{
     key::{Key, KeyEvent},
-    redraw::{Cell, Color, Point, Rgb, Style},
+    redraw::{Cell, Point},
 };
 
 use super::Game;
 
 const BASE_TICK_RATE: u64 = 100;
+const GROWTH_RATE: usize = 3;
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 enum Direction {
@@ -189,11 +190,10 @@ impl Game for Snake {
                     if self.score <= 0 {
                         BASE_TICK_RATE
                     } else {
-                        let decay = 1.0 / (1.0 + (1.0 + self.score as f64).ln().ln()); // double log
+                        let decay = 0.94_f64.powf(self.score as f64);
                         (BASE_TICK_RATE as f64 * decay) as u64
                     }
                 };
-                log::info!("{tick_rate}");
                 self.set_tick_rate(tick_rate);
                 self.prev_pop = None;
 
@@ -255,8 +255,9 @@ impl Game for Snake {
                 }
 
                 if set.contains(&self.apple) {
+                    self.map[self.apple.y][self.apple.x].text = " ".into();
                     self.apple = Self::apple(width, height, &self.snake);
-                    self.grow += 1;
+                    self.grow += GROWTH_RATE;
                     self.score += 1;
                 }
             }
@@ -297,7 +298,7 @@ impl Game for Snake {
                 let mut last_direction = None;
                 let mut last = self.snake.front().unwrap();
                 cells[last.y][last.x].style = snake_style;
-                cells[last.y][last.x].text = "0".into();
+                cells[last.y][last.x].text = "O".into();
 
                 for point in self.snake.iter().skip(1) {
                     use Direction::*;
@@ -326,9 +327,11 @@ impl Game for Snake {
 
                     if to == Left {
                         cells[point.y][point.x + 1].text = "═".into();
+                        cells[point.y][point.x + 1].style = snake_style;
                     }
                     if to == Right {
                         cells[point.y][point.x - 1].text = "═".into();
+                        cells[point.y][point.x - 1].style = snake_style;
                     }
 
                     cells[point.y][point.x].style = snake_style;
@@ -371,7 +374,7 @@ impl Game for Snake {
 
                 let apple_style = theme.get(ThemeField::Comment);
                 cells[self.apple.y][self.apple.x].style = apple_style;
-                cells[self.apple.y][self.apple.x].text = "●".into()
+                cells[self.apple.y][self.apple.x].text = "🍎".into()
             }
             State::Done => {
                 let msg = format!("Snake died. Score {}...", self.score);

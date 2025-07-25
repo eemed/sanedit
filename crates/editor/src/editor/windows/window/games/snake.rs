@@ -173,15 +173,15 @@ impl Game for Snake {
     fn tick(&mut self) {
         match &mut self.state {
             State::Starting(n) => {
+                *n -= 1;
+
+                if *n == 1 {
+                    if let Some(tick_sender) = &self.tick_sender {
+                        let _ = tick_sender.send(BASE_TICK_RATE);
+                    }
+                }
                 if *n == 0 {
                     self.state = State::Running;
-                } else {
-                    if *n == 1 {
-                        if let Some(tick_sender) = &self.tick_sender {
-                            let _ = tick_sender.send(BASE_TICK_RATE);
-                        }
-                    }
-                    *n -= 1;
                 }
             }
             State::Running => {

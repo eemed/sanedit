@@ -27,15 +27,21 @@ impl Job for GameTick {
 
             let mut rate = recv.recv()?;
             loop {
+                tokio::time::sleep(Duration::from_millis(rate)).await;
+
                 match recv.try_recv() {
-                    Ok(nrate) => rate = nrate,
+                    Ok(nrate) => {
+                        let sleep_again = nrate > rate;
+                        rate = nrate;
+                        if sleep_again {
+                            continue;
+                        }
+                    }
                     Err(e) => match e {
                         std::sync::mpsc::TryRecvError::Empty => {}
                         std::sync::mpsc::TryRecvError::Disconnected => break,
                     },
                 }
-
-                tokio::time::sleep(Duration::from_millis(rate)).await;
 
                 ctx.send(Tick);
             }

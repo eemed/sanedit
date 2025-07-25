@@ -212,11 +212,7 @@ fn select_pattern(editor: &mut Editor, id: ClientId) -> ActionResult {
                 for mat in searcher.find_iter(&slice) {
                     let mut sel = mat.range();
                     sel.forward(slice.start());
-                    let cursor = if sel.len() <= 1 {
-                        Cursor::new(sel.start)
-                    } else {
-                        Cursor::new_select(&sel)
-                    };
+                    let cursor = Cursor::new_select(&sel);
                     cursors.push(cursor);
                 }
             }

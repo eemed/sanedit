@@ -21,10 +21,18 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> redraw::window::Window {
         ..
     } = ctx.editor;
 
+    let mut grid = ctx.state.window_buffers.next_mut();
+    if let Some(game) = &win.game {
+        game.draw(grid, theme);
+        return redraw::window::Window {
+            cells: ctx.state.window_buffers.get(),
+            cursor: None,
+        };
+    }
+
     let style = theme.get(ThemeField::Default);
     let vstyle = theme.get(ThemeField::Virtual);
     let view = win.view();
-    let mut grid = ctx.state.window_buffers.next_mut();
     if grid.len() != view.height() || grid.get(0).map(|row| row.len()).unwrap_or(0) != view.width()
     {
         *grid = vec![vec![redraw::Cell::with_style(style); view.width()]; view.height()];

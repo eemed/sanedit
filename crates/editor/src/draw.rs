@@ -57,7 +57,7 @@ pub(crate) struct DrawState {
 
     pub(crate) redraw_window: bool,
 
-    window_buffers: TripleBuffer<Vec<Vec<Cell>>>,
+    pub(crate) window_buffers: TripleBuffer<Vec<Vec<Cell>>>,
 }
 
 impl DrawState {

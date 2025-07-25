@@ -316,6 +316,7 @@ pub(crate) const COMMANDS: &[Action] = &[
     window::insert_mode_after,
     window::insert_mode_end_of_line,
     window::insert_mode_first_char_of_line,
+    window::snake,
 
     completion::complete,
 

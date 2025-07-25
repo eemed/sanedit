@@ -4,6 +4,7 @@ mod config;
 mod cursors;
 mod filetree;
 mod focus;
+pub(crate) mod games;
 mod jumps;
 mod mode;
 mod prompt;
@@ -22,6 +23,7 @@ use std::{
 };
 
 use anyhow::{bail, Result};
+use games::Game;
 use rustc_hash::FxHashSet as Set;
 use sanedit_buffer::{Mark, MarkResult};
 use sanedit_core::{
@@ -92,6 +94,8 @@ pub(crate) struct Window {
 
     /// Delete indent when insert mode is left. Auto indenting changes should set this
     pub delete_indent_on_insert_leave: bool,
+
+    pub game: Option<Box<dyn Game>>,
 }
 
 impl Window {
@@ -119,6 +123,7 @@ impl Window {
             last_edit_jump: None,
             next_key_handler: None,
             delete_indent_on_insert_leave: false,
+            game: None,
         }
     }
 
@@ -456,6 +461,7 @@ impl Window {
         );
         self.view.resize(size);
         self.view_to_cursor(buf);
+        self.game = None;
     }
 
     pub fn message(&self) -> Option<&StatusMessage> {
@@ -1199,14 +1205,24 @@ impl Window {
         //
         let mut align: BTreeMap<u64, SortedVec<(u64, u64)>> = BTreeMap::default();
 
+        let mut sorted_cursors = SortedVec::with_capacity(self.cursors.len());
         for cursor in self.cursors().iter() {
-            let lstart = start_of_line(&slice, cursor.pos());
+            sorted_cursors.push(cursor.pos());
+        }
+
+        for cursor in sorted_cursors.iter() {
+            let lstart = start_of_line(&slice, *cursor);
             let entry = align.entry(lstart);
-            let line = slice.slice(lstart..cursor.pos());
-            let insert = find_prev_whitespace(&line, line.len())
+            let line = slice.slice(lstart..*cursor);
+            let mut insert = find_prev_whitespace(&line, line.len())
                 .map(|pos| pos)
                 .unwrap_or(lstart);
-            entry.or_default().push((cursor.pos(), insert));
+            // must ensure we are not inserting to same position for 2 different cursors
+            let value = entry.or_default();
+            if value.iter().any(|(_, opos)| opos == &insert) {
+                insert = *cursor;
+            }
+            value.push((*cursor, insert));
         }
 
         let most_on_one_line = align

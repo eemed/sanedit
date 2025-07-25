@@ -4,7 +4,7 @@ use crate::{
     editor::{
         buffers::Buffer,
         hooks::Hook,
-        windows::{Focus, Mode, Zone},
+        windows::{games::snake::Snake, Focus, Mode, Zone},
         Editor,
     },
     VERSION,
@@ -16,6 +16,7 @@ use sanedit_server::ClientId;
 use super::{
     editor::open_new_scratch_buffer,
     hooks,
+    jobs::GameTick,
     movement::{end_of_line, first_char_of_line, next_grapheme_on_line, prev_grapheme_on_line},
     ActionResult,
 };
@@ -210,7 +211,9 @@ fn status(editor: &mut Editor, id: ClientId) -> ActionResult {
     let working_dir = editor.working_dir();
     let shell = &editor.config.editor.shell;
     let config_dir = editor.config_dir.root();
-    let tmp_dir = tmp_dir().map(|dir| format!("{dir:?}")).unwrap_or("-".into());
+    let tmp_dir = tmp_dir()
+        .map(|dir| format!("{dir:?}"))
+        .unwrap_or("-".into());
     let istyle = format!("{:?}", buf.config.indent_kind);
     let iamount = &buf.config.indent_amount;
     let eol = format!("{:?}", buf.config.eol);
@@ -422,5 +425,21 @@ fn insert_mode_end_of_line(editor: &mut Editor, id: ClientId) -> ActionResult {
 fn insert_mode_first_char_of_line(editor: &mut Editor, id: ClientId) -> ActionResult {
     first_char_of_line.execute(editor, id);
     focus_with_mode(editor, id, Focus::Window, Mode::Insert);
+    ActionResult::Ok
+}
+
+#[action("Games: Snake")]
+fn snake(editor: &mut Editor, id: ClientId) -> ActionResult {
+    let dstate = editor.draw_state(id);
+    let grid = dstate.window_buffers.get();
+    let (win, _) = editor.win_buf_mut(id);
+    match Snake::new(&grid) {
+        Ok(game) => {
+            win.game = Some(Box::new(game));
+            let job = GameTick::new(id);
+            editor.job_broker.request(job);
+        }
+        Err(e) => log::error!("Cannot launch game: {e}"),
+    }
     ActionResult::Ok
 }

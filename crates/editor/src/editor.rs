@@ -526,8 +526,15 @@ impl Editor {
 
         // Add key to buffer
         let (win, _buf) = self.win_buf_mut(id);
-        win.push_key(event);
+        if let Some(game) = win.game.as_mut() {
+            if game.handle_input(event) {
+                win.game = None;
+            }
 
+            return;
+        }
+
+        win.push_key(event);
         run(self, id, Hook::KeyPressedPre);
 
         // If next key handler specified

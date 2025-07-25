@@ -7,6 +7,7 @@ mod matcher;
 mod search;
 mod shell;
 mod syntax;
+mod games;
 // mod text;
 
 pub(crate) const CHANNEL_SIZE: usize = 64;
@@ -18,4 +19,5 @@ pub(crate) use lsp::*;
 pub(crate) use matcher::*;
 pub(crate) use search::*;
 pub(crate) use syntax::*;
+pub(crate) use games::*;
 // pub(crate) use text::*;

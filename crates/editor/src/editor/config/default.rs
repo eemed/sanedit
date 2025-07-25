@@ -157,8 +157,8 @@ pub(crate) fn completion() -> KeymapLayer {
 pub(crate) fn locations() -> KeymapLayer {
     #[rustfmt::skip]
     let map = make_keymap!(
-             "1",     focus_window,
-             "2",     show_filetree,
+            "alt+k",  focus_window,
+            "alt+h",  focus_filetree,
             "esc",    close_locations,
             "alt+q",  close_locations,
             "space q",close_locations,
@@ -194,8 +194,8 @@ pub(crate) fn filetree() -> KeymapLayer {
              "esc",       close_filetree,
              "§",         close_filetree,
 
-             "1",         focus_window,
-             "3",         show_locations,
+             "alt+l",     focus_window,
+             "alt+j",     focus_locations,
 
              "enter",     goto_ft_entry,
              "up",        prev_ft_entry,
@@ -227,22 +227,13 @@ pub(crate) fn filetree() -> KeymapLayer {
 pub(crate) fn normal() -> KeymapLayer {
     #[rustfmt::skip]
     let map = make_keymap!(
-        "space q", quit,
-        "space s", strip_trailing_whitespace,
         "ctrl+w", new_window_vertical,
         "alt+w", new_window_horizontal,
 
-        "2",     show_filetree,
-        "3",     show_locations,
-
-        "alt+n", make_next_cursor_primary,
-        "alt+N", make_prev_cursor_primary,
-        "alt+c", remove_primary_cursor,
-
-        "alt+j", next_paragraph,
-        "alt+k", prev_paragraph,
-        "alt+l", end_of_line,
-        "alt+h", start_of_line,
+        "-",     show_filetree,
+        "alt+q", show_locations,
+        "alt+h", focus_filetree,
+        "alt+j", focus_locations,
 
         "ctrl+a", select_buffer,
         "ctrl+s", save,
@@ -312,35 +303,39 @@ pub(crate) fn normal() -> KeymapLayer {
         "#", search_prev_word_under_cursor,
         "*", search_next_word_under_cursor,
         "&", align_cursor_columns,
+        "e", next_word_end,
+        "E", prev_word_end,
 
-        "right", next_grapheme_on_line,
-        "left", prev_grapheme_on_line,
-
+        "alt+n", make_next_cursor_primary,
+        "alt+N", make_prev_cursor_primary,
+        "alt+d", remove_primary_cursor,
+        "alt+s",    new_cursor_to_next_search_match,
+        "alt+S",    new_cursor_to_all_search_matches,
         "alt+down", new_cursor_to_next_line,
         "alt+up",   new_cursor_to_prev_line,
-        "alt+d",    new_cursor_to_next_search_match,
-        "alt+D",    new_cursor_to_all_search_matches,
-        "space b",  open_buffer,
-        "space g",  grep,
 
         "g n",     goto_line,
         "g l",     goto_next_loc_item,
         "g L",     goto_prev_loc_item,
         "g d",     goto_definition,
         "g r",     references,
-        "g R",     rename,
         "g e",     next_diagnostic,
         "g E",     prev_diagnostic,
+        "K",       hover,
+
+        "space r", rename,
+        "space q", quit,
+        "space s", strip_trailing_whitespace,
+        "space b", open_buffer,
+        "space g", grep,
         "space a", code_action,
         "space f", format,
         "space e", show_diagnostics,
         "space d", diagnostics_to_locations,
-        "K",       hover,
 
         "backspace", goto_prev_buffer,
 
         "s s", select_pattern,
-
         "s l", select_line,
         "s c", select_curly,
         "s C", select_curly_incl,
@@ -356,8 +351,6 @@ pub(crate) fn normal() -> KeymapLayer {
         "s p", select_paragraph,
         "s w", select_word,
 
-        "e", next_word_end,
-        "E", prev_word_end,
 
         "f3", build_project,
         "f4", run_project,

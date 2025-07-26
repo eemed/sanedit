@@ -1,9 +1,9 @@
-document = ( separated / (!stop .)* stop)*;
-separated = string / keyword / preproc / constant / comment / operator / func / types / jsx;
+document = ( no_jsx / jsx / (!stop .)* stop)*;
+no_jsx = string / keyword / preproc / constant / comment / operator / func / types;
 WHITESPACE = [ \t];
 ws = WHITESPACE;
 nl = "\n" / "\r\n";
-stop = WHITESPACE+ / "(" / "[" / ";" / "." / nl;
+stop = WHITESPACE+ / "(" / ")" / "[" / ";" / "." / nl;
 
 @show @highlight(preproc)
 preproc = preproc_words &stop;
@@ -74,14 +74,21 @@ types =  ("Object" /
 @show @highlight(function)
 func = [a..z] [a..zA..Z0..9]* &"(";
 
+operator = ternary / ops;
 @show @highlight(operator)
-operator = "yield" / "await" /  "=>" / "=" "="? "="? / "!=" "="? / "..." / "&&" / "||" / ":" / "?" / "*" / "+" "="? / "-" "="?;
+ops = "yield" / "await" /  "=>" / "=" "="? "="? / "!=" "="? / "..." / "&&" / "||" / ":" / "?" / "+=" / "-=" /
+    ((">" / "<" / "*" / "/" / "+" / "-") &stop);
+ternary = [a..z][A..Za..z0..9]* ternary_op  &stop;
+@show @highlight(operator)
+ternary_op = ("++" / "--");
 
 @show @highlight(constant)
 constant = "true" / "false" / "undefined" / "null" / "globalThis" / "arguments" / number;
 
 @show @highlight(comment)
-comment = "//" (!nl .)* nl;
+comment = line_comment / block_comment;
+line_comment = "//" (!nl .)* nl;
+block_comment = "/*" (!"*/" .)* "*/";
 
 number = "-"? digit+ ("." digit+)? ("e" "-"? digit+)? / "-"? "Infinity" / "NaN" / "0x" hexdigit+;
 digit = [0..9];
@@ -106,7 +113,7 @@ tagname = (!(ws / ">" / "/") .)+;
 @show @highlight(default)
 tagattr = attrname ("=" attrvalue)?;
 attrvalue = string / attrref;
-attrref = "{" (!("}" (ws / nl / "/" / ">")) .)* "}";
+attrref = "{" (!"}" ( no_jsx / attrref / .))* "}";
 
 @show @highlight(identifier)
 attrname = (!(ws / "=" /  "/" / ">") .)+;

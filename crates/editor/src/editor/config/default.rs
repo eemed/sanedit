@@ -64,6 +64,7 @@ impl EditorConfig {
              "shellscript", ["**/*.sh"],
              "asciidoc", ["**/*.adoc"],
              "glsl", ["**/*.vert", "**/*.frag", "**/*.geom", "**/*.tesc", "**/*.tese", "**/*.comp"],
+             "css", ["**/*.css", "**/*.scss", "**/*.sass"],
         );
 
         ftmap

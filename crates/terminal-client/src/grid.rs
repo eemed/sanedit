@@ -1,5 +1,5 @@
 mod border;
-pub(crate) mod ccell;
+pub(crate) mod cell_format;
 mod completion;
 mod drawable;
 mod items;
@@ -10,6 +10,7 @@ mod rect;
 use std::sync::Arc;
 
 use completion::CustomCompletion;
+use drawable::Subgrid;
 use items::Kind;
 use popup::popup_rect;
 use sanedit_messages::{
@@ -24,7 +25,6 @@ use crate::ui::UIContext;
 
 pub(crate) use self::rect::{Rect, Split};
 use self::{
-    ccell::CCell,
     drawable::{DrawCursor, Drawable},
     items::CustomItems,
     prompt::CustomPrompt,
@@ -278,15 +278,15 @@ impl Grid {
 
     fn draw_drawable<D: Drawable>(
         drawable: &D,
-        rect: Rect,
+        rect: &Rect,
         theme: &Arc<Theme>,
         client_in_focus: bool,
         cursor: &mut Option<Cursor>,
-        cells: &mut [Vec<Cell>],
+        cells: &mut Vec<Vec<Cell>>,
     ) {
         let ctx = UIContext {
             theme: theme.clone(),
-            rect,
+            rect: rect.clone(),
             client_in_focus,
             cursor_position: cursor.as_ref().map(|c| c.point).unwrap_or(Point::default()),
         };
@@ -300,21 +300,8 @@ impl Grid {
             DrawCursor::Ignore => {}
         }
 
-        let top_left = rect.position();
-        let mut grid = rect.grid();
-        let mut g: Vec<&mut [CCell]> = grid.iter_mut().map(|v| v.as_mut_slice()).collect();
-        drawable.draw(&ctx, &mut g);
-
-        for (line, row) in grid.into_iter().enumerate() {
-            for (col, cell) in row.into_iter().enumerate() {
-                if cell.is_transparent {
-                    continue;
-                }
-                let x = top_left.x + col;
-                let y = top_left.y + line;
-                cells[y][x] = cell.cell;
-            }
-        }
+        let subgrid = Subgrid { cells, rect };
+        drawable.draw(&ctx, subgrid);
     }
 
     pub fn draw(&mut self) -> (&Vec<Vec<Cell>>, Option<Cursor>) {
@@ -323,7 +310,7 @@ impl Grid {
         let t = &self.theme;
         Self::draw_drawable(
             &self.window.item,
-            self.window.rect,
+            &self.window.rect,
             t,
             self.client_in_focus,
             &mut self.cursor,
@@ -331,7 +318,7 @@ impl Grid {
         );
         Self::draw_drawable(
             &self.statusline.item,
-            self.statusline.rect,
+            &self.statusline.rect,
             t,
             self.client_in_focus,
             &mut self.cursor,
@@ -341,7 +328,7 @@ impl Grid {
         if let Some(loc) = &self.locations {
             Self::draw_drawable(
                 &loc.item,
-                loc.rect,
+                &loc.rect,
                 t,
                 self.client_in_focus,
                 &mut self.cursor,
@@ -352,7 +339,7 @@ impl Grid {
         if let Some(ft) = &self.filetree {
             Self::draw_drawable(
                 &ft.item,
-                ft.rect,
+                &ft.rect,
                 t,
                 self.client_in_focus,
                 &mut self.cursor,
@@ -363,7 +350,7 @@ impl Grid {
         if let Some(prompt) = &self.prompt {
             Self::draw_drawable(
                 &prompt.item,
-                prompt.rect,
+                &prompt.rect,
                 t,
                 self.client_in_focus,
                 &mut self.cursor,
@@ -374,7 +361,7 @@ impl Grid {
         if let Some(msg) = &self.msg {
             Self::draw_drawable(
                 &msg.item,
-                msg.rect,
+                &msg.rect,
                 t,
                 self.client_in_focus,
                 &mut self.cursor,
@@ -385,7 +372,7 @@ impl Grid {
         if let Some(compl) = &self.completion {
             Self::draw_drawable(
                 &compl.item,
-                compl.rect,
+                &compl.rect,
                 t,
                 self.client_in_focus,
                 &mut self.cursor,
@@ -396,7 +383,7 @@ impl Grid {
         if let Some(popup) = &self.popup {
             Self::draw_drawable(
                 &popup.item,
-                popup.rect,
+                &popup.rect,
                 t,
                 self.client_in_focus,
                 &mut self.cursor,

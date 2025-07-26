@@ -2,7 +2,6 @@ use std::cmp::min;
 
 use sanedit_messages::redraw::{Point, Size};
 
-use super::ccell::CCell;
 
 #[derive(Clone, Debug, Copy, Default)]
 pub(crate) struct Rect {
@@ -36,9 +35,9 @@ impl Rect {
         }
     }
 
-    pub fn grid(&self) -> Vec<Vec<CCell>> {
-        vec![vec![CCell::transparent(); self.width]; self.height]
-    }
+    // pub fn grid(&self) -> Vec<Vec<CCell>> {
+    //     vec![vec![CCell::transparent(); self.width]; self.height]
+    // }
 
     pub fn split_off(&mut self, split: Split) -> Rect {
         match split {

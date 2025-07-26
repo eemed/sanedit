@@ -421,14 +421,44 @@ fn remove_to_eol(editor: &mut Editor, id: ClientId) -> ActionResult {
 #[action("Buffer: Check if file has been modified")]
 fn check_file_modification(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = editor.win_buf_mut(id);
+    let bid = buf.id;
 
     let path = getf!(buf.path());
-    let in_fs = {
-        let mdata = getf!(path.metadata().ok());
-        getf!(mdata.modified().ok())
-    };
+    let in_fs = path
+        .metadata()
+        .ok()
+        .map(|mdata| mdata.modified().ok())
+        .flatten();
     let local = getf!(buf.last_saved_modified.as_ref());
 
+    // File is deleted
+    if in_fs.is_none() {
+        if buf.ro_view().is_file_backed() {
+            win.error_msg("Filebacked buffer was removed from disk.");
+            let _ = editor.remove_buffer(id, bid);
+        } else {
+            win.prompt = Prompt::builder()
+                .prompt("File has been removed from disk. Keep buffer anyway? (y/N)")
+                .simple()
+                .on_confirm(|editor, id, out| {
+                    let input = getf!(out.text());
+                    let yes = input.is_empty() || is_yes(input);
+                    let (_win, buf) = editor.win_buf_mut(id);
+                    let bid = buf.id;
+                    if yes {
+                        buf.set_unsaved();
+                    } else {
+                        let _ = editor.remove_buffer(id, bid);
+                    }
+                    ActionResult::Ok
+                })
+                .build();
+            focus(editor, id, Focus::Prompt);
+        }
+        return ActionResult::Ok;
+    }
+
+    let in_fs = in_fs.unwrap();
     if local != &in_fs {
         // Prevent asking all the time
         buf.last_saved_modified = Some(in_fs);

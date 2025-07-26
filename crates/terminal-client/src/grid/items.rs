@@ -2,14 +2,14 @@ use std::cmp::max;
 
 use sanedit_messages::redraw::{
     items::{Difference, Item, ItemKind, ItemLocation, Items},
-    Diffable, Size, Style, ThemeField,
+    Cell, Diffable, Size, Style, ThemeField,
 };
 
 use crate::ui::UIContext;
 
 use super::{
-    ccell::{clear_all, into_cells_with_style, pad_line, size, CCell},
-    drawable::{DrawCursor, Drawable},
+    cell_format::{into_cells_with_style, pad_line},
+    drawable::{DrawCursor, Drawable, Subgrid},
     Rect, Split,
 };
 
@@ -46,7 +46,8 @@ impl CustomItems {
                     .iter()
                     .map(|item| (item.level + 1) * 2 + item.name.chars().count())
                     .max()
-                    .unwrap_or(0) + 1;
+                    .unwrap_or(0)
+                    + 1;
                 let max_screen = max(MIN, win.width / 3);
                 let width = max_item_width.clamp(MIN, max_screen);
                 win.split_off(Split::left_size(width))
@@ -86,7 +87,7 @@ impl CustomItems {
 }
 
 impl CustomItems {
-    fn draw_filetree(&self, ctx: &UIContext, cells: &mut [&mut [CCell]]) {
+    fn draw_filetree(&self, ctx: &UIContext, mut grid: Subgrid) {
         let fill = ctx.style(ThemeField::FiletreeDefault);
         let file = ctx.style(ThemeField::FiletreeFile);
         let dir = ctx.style(ThemeField::FiletreeDir);
@@ -96,25 +97,15 @@ impl CustomItems {
         let dsel = ctx.style(ThemeField::FiletreeSelectedDir);
         let msel = ctx.style(ThemeField::FiletreeSelectedMarkers);
 
-        clear_all(cells, fill);
+        grid.clear_all(fill);
 
-        let Size { width, .. } = size(cells);
-        let last = width.saturating_sub(1);
+        let sep = Cell::new_char('│', markers);
+        let inside = grid.draw_separator_right(sep);
+        let mut grid = grid.subgrid(&inside);
 
-        for l in cells.iter_mut() {
-            let mut ccell = CCell::from('│');
-            ccell.style = markers;
-            l[last] = ccell;
-        }
-
-        for l in cells.iter_mut() {
-            let line = std::mem::take(l);
-            *l = &mut line[..last];
-        }
-
-        let Size { width, .. } = size(cells);
+        let width = grid.width();
         for (row, item) in self.items.items.iter().skip(self.scroll).enumerate() {
-            if row >= cells.len() {
+            if row >= grid.height() {
                 break;
             }
 
@@ -139,12 +130,12 @@ impl CustomItems {
             pad_line(&mut titem, fill, width);
 
             for (i, cell) in titem.into_iter().enumerate() {
-                cells[row][i] = cell;
+                grid.replace(row, i, cell);
             }
         }
     }
 
-    fn format_ft_item(item: &Item, name: Style, fill: Style, markers: Style) -> Vec<CCell> {
+    fn format_ft_item(item: &Item, name: Style, fill: Style, markers: Style) -> Vec<Cell> {
         let mut result = vec![];
         result.extend(into_cells_with_style(&"  ".repeat(item.level), fill));
 
@@ -170,7 +161,7 @@ impl CustomItems {
         result
     }
 
-    fn draw_locations(&self, ctx: &UIContext, mut cells: &mut [&mut [CCell]]) {
+    fn draw_locations(&self, ctx: &UIContext, mut grid: Subgrid) {
         let fill = ctx.style(ThemeField::LocationsDefault);
         let entry = ctx.style(ThemeField::LocationsEntry);
         let group = ctx.style(ThemeField::LocationsGroup);
@@ -182,10 +173,10 @@ impl CustomItems {
         let lmat = ctx.style(ThemeField::LocationsMatch);
         let smat = ctx.style(ThemeField::LocationsSelectedMatch);
 
-        clear_all(cells, fill);
+        grid.clear_all(fill);
 
-        let Size { width, .. } = size(cells);
-        if !cells.is_empty() {
+        let Size { width, .. } = grid.size();
+        if grid.height() != 0 {
             let loading = if self.items.is_loading {
                 " (loading..)"
             } else {
@@ -195,8 +186,8 @@ impl CustomItems {
 
             let mut line = into_cells_with_style(&title_text, title);
 
-            for _ in line.len()..cells[0].len() {
-                let mut ccell = CCell::from(' ');
+            for _ in line.len()..width {
+                let mut ccell = Cell::from(' ');
                 ccell.style = title;
                 line.push(ccell);
             }
@@ -204,18 +195,18 @@ impl CustomItems {
             line.truncate(width);
 
             for (i, c) in line.into_iter().enumerate() {
-                cells[0][i] = c;
+                grid.replace(0, i, c);
             }
 
-            cells = &mut cells[1..];
+            // cells = &mut cells[1..];
         }
 
         for (row, item) in self.items.items.iter().skip(self.scroll).enumerate() {
-            if row >= cells.len() {
+            if row >= grid.height() {
                 break;
             }
 
-            let width = cells.first().map(|c| c.len()).unwrap_or(0);
+            let width = grid.width();
             let is_selected = self.scroll + row == self.items.selected;
             let style = {
                 if is_selected {
@@ -237,7 +228,8 @@ impl CustomItems {
             pad_line(&mut titem, fil, width);
 
             for (i, cell) in titem.into_iter().enumerate() {
-                cells[row][i] = cell;
+                // cells[row][i] = cell;
+                grid.replace(row, i, cell);
             }
         }
     }
@@ -248,7 +240,7 @@ impl CustomItems {
         extra: Style,
         mat: Style,
         fill: Style,
-    ) -> Vec<CCell> {
+    ) -> Vec<Cell> {
         let mut result = vec![];
         result.extend(into_cells_with_style(&"  ".repeat(item.level), fill));
 
@@ -283,7 +275,7 @@ impl CustomItems {
                 if hl.contains(&pos) {
                     cell.style = mat;
                 }
-                pos += cell.cell.text.len();
+                pos += cell.text.len();
             }
         }
 
@@ -293,10 +285,10 @@ impl CustomItems {
 }
 
 impl Drawable for CustomItems {
-    fn draw(&self, ctx: &UIContext, cells: &mut [&mut [CCell]]) {
+    fn draw(&self, ctx: &UIContext, grid: Subgrid) {
         match self.kind {
-            Kind::Filetree => self.draw_filetree(ctx, cells),
-            Kind::Locations => self.draw_locations(ctx, cells),
+            Kind::Filetree => self.draw_filetree(ctx, grid),
+            Kind::Locations => self.draw_locations(ctx, grid),
         }
     }
 

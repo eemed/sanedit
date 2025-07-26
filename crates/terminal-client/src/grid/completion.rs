@@ -2,14 +2,14 @@ use std::cmp::{max, min};
 
 use sanedit_messages::redraw::{
     completion::{self, Completion},
-    Diffable, Point, Size, Style, ThemeField,
+    Cell, Diffable, Point, Size, Style, ThemeField,
 };
 
 use crate::ui::UIContext;
 
 use super::{
-    ccell::{into_cells_with_style, put_line, size, CCell},
-    drawable::{DrawCursor, Drawable},
+    cell_format::into_cells_with_style,
+    drawable::{DrawCursor, Drawable, Subgrid},
     Rect,
 };
 
@@ -96,7 +96,6 @@ fn fallback(win: Rect, compl: &CustomCompletion) -> Rect {
         below.x -= below.rightmost() - win.rightmost();
     }
 
-
     below.height = min(height, win.height - win.y);
 
     if below.y + below.height > win.y + win.height {
@@ -165,8 +164,8 @@ fn above(win: Rect, compl: &CustomCompletion) -> Rect {
 }
 
 impl Drawable for CustomCompletion {
-    fn draw(&self, ctx: &UIContext, cells: &mut [&mut [CCell]]) {
-        let wsize = size(cells);
+    fn draw(&self, ctx: &UIContext, mut grid: Subgrid) {
+        let wsize = grid.size();
         let max_opts = wsize.height;
         let pad_left = ctx.rect.x != 0;
         self.completion
@@ -196,7 +195,7 @@ impl Drawable for CustomCompletion {
                     &self.column_max_width,
                 );
 
-                put_line(line, i, cells);
+                grid.put_line(i, line);
             });
     }
 
@@ -213,7 +212,7 @@ pub(crate) fn format_completion(
     width: usize,
     left_pad: bool,
     max_columns: &[usize],
-) -> Vec<CCell> {
+) -> Vec<Cell> {
     let left = {
         let mut lleft = String::new();
         if left_pad {

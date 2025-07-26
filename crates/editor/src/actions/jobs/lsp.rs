@@ -177,6 +177,7 @@ impl LSPJob {
         match result {
             RequestResult::Hover { text, .. } => {
                 let (win, _buf) = editor.win_buf_mut(id);
+                win.clear_popup();
                 win.push_popup(PopupMessage {
                     severity: None,
                     text,

@@ -10,6 +10,7 @@ sanedit-core = { path = "../core" }
 
 serde = { workspace = true, features = ["derive"] }
 tokio-util = { workspace = true, features = ["codec"] }
+smol_str = { workspace = true, features = ["serde"] }
 
 bincode.workspace = true
 thiserror.workspace = true

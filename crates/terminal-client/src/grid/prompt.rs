@@ -2,20 +2,14 @@ use std::cmp::min;
 
 use sanedit_messages::redraw::{
     prompt::{self, Prompt, Source},
-    Cursor, CursorShape, Diffable, IntoCells, Point, Style, ThemeField,
+    Cell, Cursor, CursorShape, Diffable, IntoCells, Point, Style, ThemeField,
 };
 
-use crate::{
-    grid::{
-        border::{draw_border_no_strip, strip_border, Border},
-        ccell::{center_pad, set_style},
-    },
-    ui::UIContext,
-};
+use crate::{grid::border::Border, ui::UIContext};
 
 use super::{
-    ccell::{into_cells_with_style, into_cells_with_style_pad, pad_line, put_line, size, CCell},
-    drawable::{DrawCursor, Drawable},
+    cell_format::{center_pad, into_cells_with_style, into_cells_with_style_pad, pad_line},
+    drawable::{DrawCursor, Drawable, Subgrid},
     Rect,
 };
 
@@ -83,8 +77,8 @@ impl CustomPrompt {
 }
 
 impl Drawable for CustomPrompt {
-    fn draw(&self, ctx: &UIContext, mut cells: &mut [&mut [CCell]]) {
-        let wsize = size(cells);
+    fn draw(&self, ctx: &UIContext, mut grid: Subgrid) {
+        let wsize = grid.size();
 
         match self.style {
             PromptStyle::Oneline => {
@@ -98,11 +92,9 @@ impl Drawable for CustomPrompt {
                 let input = into_cells_with_style(&self.prompt.input, input_style);
                 message.extend(input);
                 pad_line(&mut message, default_style, wsize.width);
-                put_line(message, 0, cells);
+                grid.put_line(0, message);
 
-                cells = &mut cells[1..];
-                let wsize = size(cells);
-                let max_opts = wsize.height;
+                let max_opts = wsize.height.saturating_sub(1);
                 self.prompt
                     .options
                     .iter()
@@ -125,11 +117,11 @@ impl Drawable for CustomPrompt {
                                 if mat.contains(&pos) {
                                     cell.style = mstyle;
                                 }
-                                pos += cell.cell.text.len();
+                                pos += cell.text.len();
                             }
                         }
 
-                        put_line(line, i, cells);
+                        grid.put_line(i + 1, line);
                     });
             }
             PromptStyle::Overlay => {
@@ -141,7 +133,7 @@ impl Drawable for CustomPrompt {
                     let title_style = ctx.theme.get(ThemeField::PromptOverlayTitle);
                     let title = into_cells_with_style(&self.prompt.message, title_style);
                     let title = center_pad(title, title_style, wsize.width);
-                    put_line(title, 0, cells);
+                    grid.put_line(0, title);
 
                     // Message
                     let message_style = ctx.theme.get(ThemeField::PromptOverlayMessage);
@@ -149,20 +141,19 @@ impl Drawable for CustomPrompt {
                     let input = into_cells_with_style(&self.prompt.input, input_style);
                     message.extend(input);
                     pad_line(&mut message, message_style, wsize.width);
-                    put_line(message, 1, cells);
+                    grid.put_line(1, message);
                 }
 
-                cells = &mut cells[TITLE_HEIGHT..];
+                let mut rect = grid.rect().clone();
+                rect.y += TITLE_HEIGHT;
+                let mut grid = grid.subgrid(&rect);
 
                 // Borders
                 let pcompl = ctx.theme.get(ThemeField::PromptCompletion);
-                set_style(cells, pcompl);
-                draw_border_no_strip(Border::Margin, pcompl, cells);
-
-                // Ignore border cells from this point on
-                cells = strip_border(cells);
-
-                let wsize = size(cells);
+                grid.set_style(pcompl);
+                let inside = grid.draw_border(Border::Margin, pcompl);
+                let mut grid = grid.subgrid(&inside);
+                let wsize = grid.size();
                 let max_opts = wsize.height;
 
                 self.prompt
@@ -204,11 +195,11 @@ impl Drawable for CustomPrompt {
                                 if mat.contains(&pos) {
                                     cell.style = mstyle;
                                 }
-                                pos += cell.cell.text.len();
+                                pos += cell.text.len();
                             }
                         }
 
-                        put_line(line, i, cells);
+                        grid.put_line(i, line);
                     });
             }
         }
@@ -263,7 +254,7 @@ pub(crate) fn cells_left_right(
     mstyle: Style,
     dstyle: Style,
     width: usize,
-) -> Vec<CCell> {
+) -> Vec<Cell> {
     let mut left = {
         let mut res = String::from(" ");
         res.push_str(left);

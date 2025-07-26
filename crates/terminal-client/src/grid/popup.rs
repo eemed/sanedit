@@ -3,9 +3,9 @@ use sanedit_messages::redraw::{Point, Popup, Severity, Size, ThemeField};
 use crate::ui::UIContext;
 
 use super::{
-    border::{draw_border, Border},
-    ccell::{clear_all, into_cells_with_style, size, CCell},
-    drawable::{DrawCursor, Drawable},
+    border::Border,
+    cell_format::into_cells_with_style,
+    drawable::{DrawCursor, Drawable, Subgrid},
     Rect,
 };
 
@@ -98,12 +98,13 @@ fn above(screen: &Rect, win: &Rect, popup: &Popup) -> Rect {
 }
 
 impl Drawable for Popup {
-    fn draw(&self, ctx: &UIContext, mut cells: &mut [&mut [CCell]]) {
+    fn draw(&self, ctx: &UIContext, mut grid: Subgrid) {
         let style = ctx.style(ThemeField::PopupDefault);
 
-        clear_all(cells, style);
-        cells = draw_border(BORDER, style, cells);
-        let wsize = size(cells);
+        grid.clear_all(style);
+        let inside = grid.draw_border(BORDER, style);
+        let mut grid = grid.subgrid(&inside);
+        let wsize = grid.size();
 
         let mut row = 0;
         let mut col = 0;
@@ -117,7 +118,7 @@ impl Drawable for Popup {
             if i != 0 {
                 let lcells = into_cells_with_style(&"─".repeat(wsize.width - 1), style);
                 lcells.into_iter().enumerate().for_each(|(i, cell)| {
-                    cells[row][i] = cell;
+                    grid.replace(row, i, cell);
                 });
 
                 row += 1;
@@ -150,7 +151,7 @@ impl Drawable for Popup {
                         }
                     }
 
-                    cells[row][col] = cell;
+                    grid.replace(row, col, cell);
                     col += 1;
                 }
 

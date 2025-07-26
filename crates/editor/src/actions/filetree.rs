@@ -16,7 +16,7 @@ use crate::{
 use anyhow::bail;
 use sanedit_server::ClientId;
 
-use super::{text::save, window::focus, ActionResult};
+use super::{window::focus, ActionResult};
 
 #[action("Filetree: Select first entry")]
 fn ft_select_first(editor: &mut Editor, id: ClientId) -> ActionResult {
@@ -95,6 +95,7 @@ fn goto_ft_entry(editor: &mut Editor, id: ClientId) -> ActionResult {
                 node.collapse();
             } else {
                 let _ = node.expand();
+                let _ = node.refresh();
             }
         }
         Kind::File => {
@@ -271,25 +272,19 @@ fn ft_rename_file(editor: &mut Editor, id: ClientId) -> ActionResult {
             }
 
             // Rename
-            match editor.buffers_mut().find(&old) {
-                Some(bid) => {
-                    let buf = editor.buffers_mut().get_mut(bid).unwrap();
-                    buf.set_path(&new);
-                    save.execute(editor, id);
+            if let Err(_) = std::fs::rename(&old, &new) {
+                if let Err(e) = std::fs::copy(&old, &new) {
+                    let (win, _buf) = editor.win_buf_mut(id);
+                    win.warn_msg(&format!("Failed to rename file/dir {e}"));
+                    return ActionResult::Failed;
+                }
 
-                    if old.is_file() {
-                        let _ = std::fs::remove_file(&old);
-                    } else {
-                        let _ = std::fs::remove_dir_all(&old);
-                    }
-                }
-                None => {
-                    if let Err(e) = std::fs::rename(&old, &new) {
-                        let (win, _buf) = editor.win_buf_mut(id);
-                        win.warn_msg(&format!("Failed to rename file/dir {e}"));
-                        return ActionResult::Failed;
-                    }
-                }
+                let _ = std::fs::remove_file(&old);
+            }
+
+            if let Some(bid) = editor.buffers_mut().find(&old) {
+                let buf = editor.buffers_mut().get_mut(bid).unwrap();
+                buf.set_path(&new);
             }
 
             // Refresh tree to show moved stuff

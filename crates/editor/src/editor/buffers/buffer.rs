@@ -374,6 +374,10 @@ impl Buffer {
         self.pt.mark_to_pos(mark)
     }
 
+    pub fn set_unsaved(&mut self) {
+        self.is_modified = true;
+    }
+
     pub fn reload_from_disk(&mut self) -> bool {
         let Some(path) = self.path().map(PathBuf::from) else {
             return false;

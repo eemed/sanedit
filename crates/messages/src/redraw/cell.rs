@@ -1,6 +1,7 @@
 use std::fmt::Display;
 
 use serde::{Deserialize, Serialize};
+use smol_str::SmolStr;
 
 use super::Style;
 
@@ -14,18 +15,33 @@ impl IntoCells for &str {
     }
 }
 
+const EMPTY: SmolStr = SmolStr::new_static(" ");
+
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
 pub struct Cell {
-    pub text: String,
+    pub text: SmolStr,
     pub style: Style,
 }
 
 impl Cell {
-    pub fn with_style(style: Style) -> Cell {
+    pub fn new<A: AsRef<str>>(item: A, style: Style) -> Cell {
         Cell {
-            text: String::from(" "),
+            text: SmolStr::from(item.as_ref()),
             style,
         }
+    }
+
+    pub fn new_char(ch: char, style: Style) -> Cell {
+        let mut buf = [0u8; 4];
+        let string = ch.encode_utf8(&mut buf);
+        Cell {
+            text: SmolStr::from(string),
+            style,
+        }
+    }
+
+    pub fn with_style(style: Style) -> Cell {
+        Cell { text: EMPTY, style }
     }
 
     pub fn is_blank(&self) -> bool {
@@ -36,7 +52,7 @@ impl Cell {
 impl Default for Cell {
     fn default() -> Self {
         Cell {
-            text: String::from(" "),
+            text: EMPTY,
             style: Style::default(),
         }
     }
@@ -45,7 +61,7 @@ impl Default for Cell {
 impl From<&str> for Cell {
     fn from(string: &str) -> Self {
         Cell {
-            text: string.to_string(),
+            text: SmolStr::from(string),
             style: Style::default(),
         }
     }
@@ -56,7 +72,7 @@ impl From<char> for Cell {
         let mut buf = [0u8; 4];
         let string = ch.encode_utf8(&mut buf);
         Cell {
-            text: string.to_string(),
+            text: SmolStr::from(string),
             style: Style::default(),
         }
     }

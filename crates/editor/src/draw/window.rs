@@ -1,4 +1,6 @@
-use sanedit_messages::redraw::{self, CursorShape, Point, Style, Theme, ThemeField};
+use sanedit_messages::redraw::{
+    self, window::WindowGrid, CursorShape, Point, Style, Theme, ThemeField,
+};
 use sanedit_utils::sorted_vec::SortedVec;
 
 use crate::editor::{
@@ -33,9 +35,8 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> redraw::window::Window {
     let style = theme.get(ThemeField::Default);
     let vstyle = theme.get(ThemeField::Virtual);
     let view = win.view();
-    if grid.len() != view.height() || grid.get(0).map(|row| row.len()).unwrap_or(0) != view.width()
-    {
-        *grid = vec![vec![redraw::Cell::with_style(style); view.width()]; view.height()];
+    if grid.height() != view.height() || grid.width() != view.width() {
+        *grid = WindowGrid::new(view.width(), view.height(), redraw::Cell::with_style(style));
     }
 
     for (line, row) in view.cells().iter().enumerate() {
@@ -53,10 +54,7 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> redraw::window::Window {
             };
 
             for i in 1..cell.width() {
-                grid[line][col + i] = redraw::Cell {
-                    text: String::new(),
-                    style,
-                };
+                grid[line][col + i] = redraw::Cell::with_style(style);
             }
         }
     }
@@ -291,10 +289,7 @@ fn draw_end_of_buffer(grid: &mut [Vec<redraw::Cell>], view: &View, theme: &Theme
         let is_empty = row.iter().all(|cell| matches!(cell, Cell::Empty));
         if is_empty {
             if let Some(rep) = view.options.replacements.get(&Replacement::BufferEnd) {
-                grid[line][0] = redraw::Cell {
-                    text: rep.to_string(),
-                    style,
-                };
+                grid[line][0] = redraw::Cell::new_char(*rep, style);
             }
         }
     }
@@ -352,10 +347,7 @@ fn draw_trailing_whitespace(
             }
 
             if let Some(point) = view.point_at_pos(g.start()) {
-                grid[point.y][point.x] = redraw::Cell {
-                    text: rep.to_string(),
-                    style,
-                };
+                grid[point.y][point.x] = redraw::Cell::new_char(*rep, style);
             }
         }
     }

@@ -290,6 +290,8 @@ pub(crate) fn normal() -> KeymapLayer {
         "x", remove_grapheme_after_cursor,
         "G", end_of_buffer,
         "g g", start_of_buffer,
+        "g p", next_paragraph,
+        "g P", prev_paragraph,
         "o", newline_below,
         "O", newline_above,
         ">", indent_line,

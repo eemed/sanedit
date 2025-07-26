@@ -11,7 +11,7 @@ mod window;
 use std::{mem, path::Path};
 
 use sanedit_core::Language;
-use sanedit_messages::redraw::{Cell, Redraw, Theme};
+use sanedit_messages::redraw::{window::WindowGrid, Redraw, Theme};
 use triple::TripleBuffer;
 
 use crate::editor::{
@@ -57,7 +57,7 @@ pub(crate) struct DrawState {
 
     pub(crate) redraw_window: bool,
 
-    pub(crate) window_buffers: TripleBuffer<Vec<Vec<Cell>>>,
+    pub(crate) window_buffers: TripleBuffer<WindowGrid>,
 }
 
 impl DrawState {

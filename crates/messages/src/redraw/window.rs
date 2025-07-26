@@ -1,5 +1,8 @@
 use core::fmt;
-use std::sync::Arc;
+use std::{
+    ops::{Deref, DerefMut},
+    sync::Arc,
+};
 
 use serde::{Deserialize, Serialize};
 
@@ -7,7 +10,7 @@ use super::{Cell, Component, Cursor, Diffable, Redraw};
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Default, Clone)]
 pub struct Window {
-    pub cells: Arc<Vec<Vec<Cell>>>,
+    pub cells: Arc<WindowGrid>,
     pub cursor: Option<Cursor>,
 }
 
@@ -41,6 +44,41 @@ impl fmt::Debug for Window {
         }
         write!(f, "==========")?;
         Ok(())
+    }
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Eq, Default, Clone, Debug)]
+pub struct WindowGrid {
+    grid: Vec<Vec<Cell>>,
+}
+
+impl Deref for WindowGrid {
+    type Target = Vec<Vec<Cell>>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.grid
+    }
+}
+
+impl DerefMut for WindowGrid {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.grid
+    }
+}
+
+impl WindowGrid {
+    pub fn new(width: usize, height: usize, cell: Cell) -> WindowGrid {
+        Self {
+            grid: vec![vec![cell; width]; height],
+        }
+    }
+
+    pub fn width(&self) -> usize {
+        self.grid.get(0).map(|line| line.len()).unwrap_or(0)
+    }
+
+    pub fn height(&self) -> usize {
+        self.grid.len()
     }
 }
 

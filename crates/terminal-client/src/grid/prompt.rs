@@ -146,6 +146,7 @@ impl Drawable for CustomPrompt {
 
                 let mut rect = grid.rect().clone();
                 rect.y += TITLE_HEIGHT;
+                rect.height -= 2;
                 let mut grid = grid.subgrid(&rect);
 
                 // Borders

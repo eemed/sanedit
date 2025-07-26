@@ -53,14 +53,6 @@ impl<'a, 'b> Subgrid<'a, 'b> {
         }
     }
 
-    pub fn set_style(&mut self, style: Style) {
-        for y in 0..self.rect.height {
-            for x in 0..self.rect.width {
-                self.at(y, x).style = style;
-            }
-        }
-    }
-
     pub fn draw_border(&mut self, border: Border, style: Style) -> Rect {
         if self.width() <= 2 && self.height() <= 2 {
             return self.rect.clone();

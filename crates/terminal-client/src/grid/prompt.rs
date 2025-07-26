@@ -150,7 +150,7 @@ impl Drawable for CustomPrompt {
 
                 // Borders
                 let pcompl = ctx.theme.get(ThemeField::PromptCompletion);
-                grid.set_style(pcompl);
+                grid.clear_all(pcompl);
                 let inside = grid.draw_border(Border::Margin, pcompl);
                 let mut grid = grid.subgrid(&inside);
                 let wsize = grid.size();

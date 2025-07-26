@@ -28,10 +28,11 @@ number = ",#014CC0,"
 
 keyword = ",#a84d1f,"
 type =  ",#824b26,"
-operator =  ",#005c76,"
+operator =  ",#456882,"
 comment = ",#006200,"
 preproc = ",#432378,"
 identifier = ",#824b26,"
+# function = ",#1B3C53,"
 
 [colors.window.completion]
 default = "#d8c8a9,#2a130d,"

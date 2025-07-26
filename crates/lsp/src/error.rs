@@ -36,7 +36,7 @@ pub(crate) enum LSPError {
     #[error("Failed spawn LSP server")]
     Spawn(#[from] LSPSpawnError),
 
-    #[error("Faile to receive LSP request")]
+    #[error("Failed to receive LSP request")]
     Receive,
 
     #[error("Failed to send response to client: {0}")]

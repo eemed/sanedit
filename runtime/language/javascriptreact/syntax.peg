@@ -1,9 +1,9 @@
 document = ( separated / (!stop .)* stop)*;
-separated = string / keyword / preproc / constant / comment / operator / jsx;
+separated = string / keyword / preproc / constant / comment / operator / func / types / jsx;
 WHITESPACE = [ \t];
 ws = WHITESPACE;
 nl = "\n" / "\r\n";
-stop = WHITESPACE+ / "(" / "[" / ";"/ nl;
+stop = WHITESPACE+ / "(" / "[" / ";" / "." / nl;
 
 @show @highlight(preproc)
 preproc = preproc_words &stop;
@@ -11,10 +11,71 @@ preproc_words = "import" / "from" / "export" / "default" / "as";
 
 @show @highlight(keyword)
 keyword =  words &stop;
-words = "while" / "break" / "constructor" / "class" / "extends" / "static" / "const" / "async" / "if" / "else" / "for" / "return" / "switch" / "case" / "let" / "var" / "in" / "of" / "function" "*"? / "with";
+words = "instanceof" / "while" / "break" / "constructor" / "class" / "extends" / "static" / "const" / "async" / "if" / "else" / "for" / "return" / "switch" / "case" / "let" / "var" / "in" / "of" / "function" "*"? / "with" / "this" / "console" / "try" / "catch" / "continue" / "throw" / "new";
+
+@show @highlight(type)
+types =  ("Object" /
+    "Function" /
+    "Boolean" /
+    "Symbol" /
+    "Error" /
+    "AggregateError" /
+    "EvalError" /
+    "RangeError" /
+    "ReferenceError" /
+    "SyntaxError" /
+    "TypeError" /
+    "URIError" /
+    "InternalError " /
+    "Number" /
+    "BigInt" /
+    "Math" /
+    "Date" /
+    "Temporal" /
+    "String" /
+    "RegExp" /
+    "TypedArray" /
+    "Int8Array" /
+    "Uint8Array" /
+    "Uint8ClampedArray" /
+    "Int16Array" /
+    "Uint16Array" /
+    "Int32Array" /
+    "Uint32Array" /
+    "BigInt64Array" /
+    "BigUint64Array" /
+    "Float16Array" /
+    "Float32Array" /
+    "Float64Array" /
+    "Map" /
+    "Set" /
+    "WeakMap" /
+    "WeakSet" /
+    "ArrayBuffer" /
+    "SharedArrayBuffer" /
+    "DataView" /
+    "Atomics" /
+    "JSON" /
+    "Array" /
+    "WeakRef" /
+    "FinalizationRegistry" /
+    "Iterator" /
+    "AsyncIterator" /
+    "Promise" /
+    "GeneratorFunction" /
+    "AsyncGeneratorFunction" /
+    "Generator" /
+    "AsyncGenerator" /
+    "AsyncFunction" /
+    "Reflect" /
+    "Proxy" /
+    "Intl") &stop;
+
+@show @highlight(function)
+func = [a..z] [a..zA..Z0..9]* &"(";
 
 @show @highlight(operator)
-operator = "yield" / "await" / "=>" / "==" "="? / "!=" "="? / "..." / "&&" / "||";
+operator = "yield" / "await" /  "=>" / "=" "="? "="? / "!=" "="? / "..." / "&&" / "||" / ":" / "?" / "*" / "+" "="? / "-" "="?;
 
 @show @highlight(constant)
 constant = "true" / "false" / "undefined" / "null" / "globalThis" / "arguments" / number;

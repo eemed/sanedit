@@ -205,7 +205,6 @@ fn search_next_word_under_cursor(editor: &mut Editor, id: ClientId) -> ActionRes
     let slice = buf.slice(..);
     let range = getf!(word_at_pos(&slice, pos));
     let word = String::from(&slice.slice(range));
-    log::info!("{word}");
 
     new_search(editor, id, &word, false);
     ActionResult::Ok

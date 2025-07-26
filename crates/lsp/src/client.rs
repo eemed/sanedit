@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 use std::{path::PathBuf, process::Stdio};
 
+use crate::capabilities::client_capabilities;
 use crate::error::{LSPError, LSPRequestError, LSPSpawnError};
 use crate::jsonrpc::{JsonNotification, JsonRequest};
 use crate::process::{ProcessHandler, ServerRequest};
@@ -19,7 +20,6 @@ use lsp_types::notification::Notification as _;
 use sanedit_core::IndentKind;
 use sanedit_utils::either::Either;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
-use tokio::sync::oneshot;
 use tokio::{io::BufReader, process::Command};
 
 /// a struct to put all the parameters
@@ -35,7 +35,6 @@ impl LSPClientParams {
     pub async fn spawn(self) -> Result<(LSPClientSender, LSPClientReader), LSPSpawnError> {
         // Spawn server
         let mut cmd = Command::new(&self.run_command)
-            // .env("RA_LOG", "INFO")
             .args(&*self.run_args)
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
@@ -50,37 +49,34 @@ impl LSPClientParams {
         let (server_sender, server_recv) = channel(256);
         let (req_sender, req_receiver) = channel(256);
         let (res_sender, res_receiver) = channel(256);
-        let (init_send, init_recv) = oneshot::channel();
 
         let params = Arc::new(self);
         let server = ProcessHandler {
-            params: params.clone(),
             _process: cmd,
             stdin,
             stdout,
             _stderr: stderr,
             receiver: server_recv,
             notification_sender: server_notif_sender,
-            initialized: Some(init_send),
             in_flight: BTreeMap::default(),
         };
 
         tokio::spawn(server.run());
 
-        // Wait for initialization
-        let init = init_recv
-            .await
-            .map_err(|_| LSPSpawnError::Initialize)?
-            .map_err(|_| LSPSpawnError::Initialize)?;
-        let init_params = Arc::new(init);
-
-        let client = LSPClient {
+        let mut client = LSPClient {
             params,
             receiver: req_receiver,
             sender: res_sender,
             server_sender,
             server_notification_receiver: server_notif_recv,
         };
+
+        let init = client
+            .initialize()
+            .await
+            .map_err(|_| LSPSpawnError::Initialize)?;
+        let init_params = Arc::new(init);
+
         tokio::spawn(async {
             match client.run().await {
                 Ok(_) => log::error!("LSP client exited"),
@@ -197,6 +193,16 @@ impl LSPClient {
         }
     }
 
+    async fn initialize(&mut self) -> Result<lsp_types::InitializeResult, LSPError> {
+        let mut handler = Handler {
+            params: self.params.clone(),
+            server: self.server_sender.clone(),
+            response: self.sender.clone(),
+        };
+
+        handler.initialize(0).await
+    }
+
     async fn handle_notification(&mut self, notif: JsonNotification) -> Result<(), LSPError> {
         // log::info!("<- {}", notif.method.as_str());
         match notif.method.as_str() {
@@ -292,6 +298,38 @@ impl Handler {
         }
 
         Ok(())
+    }
+
+    async fn initialize(&mut self, id: u32) -> Result<lsp_types::InitializeResult, LSPError> {
+        let params = lsp_types::InitializeParams {
+            process_id: std::process::id().into(),
+            initialization_options: None,
+            capabilities: client_capabilities(),
+            trace: None,
+            workspace_folders: Some(vec![lsp_types::WorkspaceFolder {
+                uri: path_to_uri(&self.params.root),
+                name: "root".into(),
+            }]),
+            // workspace_folders: None,
+            client_info: Some(lsp_types::ClientInfo {
+                name: String::from("sanedit"),
+                version: None,
+            }),
+            locale: None,
+            work_done_progress_params: lsp_types::WorkDoneProgressParams::default(),
+            ..Default::default()
+        };
+
+        let response = self
+            .request::<lsp_types::request::Initialize>(id, &params)
+            .await?;
+
+        // Send initialized notification
+        let params = lsp_types::InitializedParams {};
+        self.notify::<lsp_types::notification::Initialized>(&params)
+            .await?;
+
+        Ok(response)
     }
 
     async fn signature_help(

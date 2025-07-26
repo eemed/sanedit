@@ -176,30 +176,34 @@ impl CustomItems {
         grid.clear_all(fill);
 
         let Size { width, .. } = grid.size();
-        if grid.height() != 0 {
-            let loading = if self.items.is_loading {
-                " (loading..)"
-            } else {
-                ""
-            };
-            let title_text = format!(" Locations{}", loading);
-
-            let mut line = into_cells_with_style(&title_text, title);
-
-            for _ in line.len()..width {
-                let mut ccell = Cell::from(' ');
-                ccell.style = title;
-                line.push(ccell);
-            }
-
-            line.truncate(width);
-
-            for (i, c) in line.into_iter().enumerate() {
-                grid.replace(0, i, c);
-            }
-
-            // cells = &mut cells[1..];
+        if grid.height() == 0 {
+            return;
         }
+
+        let loading = if self.items.is_loading {
+            " (loading..)"
+        } else {
+            ""
+        };
+        let title_text = format!(" Locations{}", loading);
+
+        let mut line = into_cells_with_style(&title_text, title);
+
+        for _ in line.len()..width {
+            let mut ccell = Cell::from(' ');
+            ccell.style = title;
+            line.push(ccell);
+        }
+
+        line.truncate(width);
+
+        for (i, c) in line.into_iter().enumerate() {
+            grid.replace(0, i, c);
+        }
+
+        let mut rect = grid.rect().clone();
+        rect.y += 1;
+        let mut grid = grid.subgrid(&rect);
 
         for (row, item) in self.items.items.iter().skip(self.scroll).enumerate() {
             if row >= grid.height() {

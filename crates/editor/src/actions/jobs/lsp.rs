@@ -67,7 +67,7 @@ impl Job for LSPJob {
         let opts = self.opts.clone();
 
         let fut = async move {
-            log::info!("Run rust-analyzer");
+            log::info!("Run LSP {:?}", opts);
             let LSPConfig { command, args } = opts;
             let lang: String = lang.as_str().into();
             let params = LSPClientParams {

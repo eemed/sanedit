@@ -29,6 +29,7 @@ type =  ",#d7af5f,"
 comment = ",#B5BD68,"
 preproc = ",#B294BB,"
 identifier = ",#d7875f,"
+# function = ",#B294BB,"
 
 [colors.window.completion]
 default = "#303030,#d1caca,"

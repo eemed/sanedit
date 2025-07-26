@@ -133,6 +133,7 @@ pub enum ThemeField {
     Type,
     Keyword,
     Preproc,
+    Function,
 
     Hint,
     Info,
@@ -213,6 +214,7 @@ impl AsRef<str> for ThemeField {
             Type => "window.view.type",
             Keyword => "window.view.keyword",
             Preproc => "window.view.preproc",
+            Function => "window.view.function",
 
             Completion => "window.completion",
             CompletionDescription => "window.completion.description",

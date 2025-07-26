@@ -11,10 +11,12 @@ preproc_words = "import" / "from" / "export" / "default" / "as";
 
 @show @highlight(keyword)
 keyword =  words &stop;
-words = "instanceof" / "while" / "break" / "constructor" / "class" / "extends" / "static" / "const" / "async" / "if" / "else" / "for" / "return" / "switch" / "case" / "let" / "var" / "in" / "of" / "function" "*"? / "with" / "this" / "console" / "try" / "catch" / "continue" / "throw" / "new";
+words = "instanceof" / "while" / "break" / "constructor" / "class" / "extends" / "static" / "const" / "async" / "if" / "else" / "for" / "return" / "switch" / "case" / "let" / "var" / "in" / "of" / "function" "*"? / "with" / "this" /  "try" / "catch" / "continue" / "throw" / "new";
 
 @show @highlight(type)
-types =  ("Object" /
+types =  (
+    "console" /
+    "Object" /
     "Function" /
     "Boolean" /
     "Symbol" /

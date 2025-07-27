@@ -1,6 +1,6 @@
 use sanedit_buffer::Mark;
 use sanedit_core::{Cursor, Range};
-use sanedit_utils::ring::{Ref, RingBuffer};
+use sanedit_utils::ring::{Ref, RingBuffer, RingRandomAccess as _};
 
 use crate::editor::buffers::{Buffer, BufferId};
 
@@ -74,29 +74,22 @@ impl JumpGroup {
     }
 }
 
-#[derive(Debug)]
-pub(crate) struct Jumps {
-    jumps: RingBuffer<JumpGroup>,
+#[derive(Debug, Default)]
+pub(crate) struct Jumps<const N: usize> {
+    jumps: RingBuffer<JumpGroup, N>,
 
     /// None = back
     position: Option<Ref>,
 }
 
-impl Jumps {
-    pub fn new(groups: Vec<JumpGroup>) -> Jumps {
-        let len = groups.len();
-        let mut deque = RingBuffer::with_capacity(len.next_power_of_two());
+
+impl<const N: usize> Jumps<N> {
+    pub fn from_groups(groups: Vec<JumpGroup>) -> Jumps<32> {
+        let mut deque = RingBuffer::default();
         deque.extend(groups);
 
         Jumps {
             jumps: deque,
-            position: None,
-        }
-    }
-
-    pub fn with_capacity(cap: usize) -> Jumps {
-        Jumps {
-            jumps: RingBuffer::with_capacity(cap),
             position: None,
         }
     }
@@ -145,11 +138,11 @@ impl Jumps {
         self.jumps.last()
     }
 
-    pub fn next(&self, reference: &Ref) -> Option<(Ref, &JumpGroup)> {
-        self.jumps.next(reference)
+    pub fn next_of_ref(&self, reference: &Ref) -> Option<(Ref, &JumpGroup)> {
+        self.jumps.next_of_ref(reference)
     }
 
-    pub fn prev(&self, reference: &Ref) -> Option<(Ref, &JumpGroup)> {
-        self.jumps.previous(reference)
+    pub fn prev_of_ref(&self, reference: &Ref) -> Option<(Ref, &JumpGroup)> {
+        self.jumps.previous_of_ref(reference)
     }
 }

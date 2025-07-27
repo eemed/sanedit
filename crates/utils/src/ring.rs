@@ -12,36 +12,33 @@ use std::mem::MaybeUninit;
 ///     - Use references to go back and forth
 ///
 #[derive(Debug)]
-pub struct RingBuffer<T> {
-    items: Box<[MaybeUninit<T>]>,
+pub struct RingBuffer<T, const N: usize> {
+    items: [MaybeUninit<T>; N],
     write: usize,
     read: usize,
 }
 
-impl<T> RingBuffer<T> {
-    pub fn with_capacity(cap: usize) -> RingBuffer<T> {
+impl<T, const N: usize> Default for RingBuffer<T, N> {
+    fn default() -> Self {
         assert!(
-            cap.count_ones() == 1,
+            N.count_ones() == 1,
             "Ring buffer must have capacity of a power of 2!"
         );
         assert!(
-            cap <= (usize::MAX >> 1),
+            N <= (usize::MAX >> 1),
             "Ring buffer must have capacity lower than {}!",
             (usize::MAX >> 1)
         );
 
-        let mut items = Vec::with_capacity(cap);
-        for _ in 0..cap {
-            items.push(MaybeUninit::uninit());
-        }
-
         RingBuffer {
-            items: items.into_boxed_slice(),
+            items: unsafe { MaybeUninit::<[MaybeUninit<T>; N]>::uninit().assume_init() },
             write: 0,
             read: 0,
         }
     }
+}
 
+impl<T, const N: usize> RingBuffer<T, N> {
     pub fn capacity(&self) -> usize {
         self.items.len()
     }
@@ -109,31 +106,6 @@ impl<T> RingBuffer<T> {
         Some(item)
     }
 
-    /// Try to read a reference if it has already been overwritten returns None
-    pub fn read_reference(&self, reference: &Ref) -> Option<&T> {
-        if !self.is_valid_reference(reference) {
-            return None;
-        }
-
-        let (_, item) = self.read(reference.read)?;
-        Some(item)
-    }
-
-    /// Look at last written element
-    pub fn last(&self) -> Option<(Ref, &T)> {
-        if self.is_empty() {
-            return None;
-        }
-
-        let last_write = self.write.wrapping_sub(1);
-        self.read(last_write)
-    }
-
-    /// Return whether a reference still points to the same entry
-    pub fn is_valid_reference(&self, reference: &Ref) -> bool {
-        self.is_valid_read(reference.read)
-    }
-
     fn is_valid_read(&self, read: usize) -> bool {
         if self.read <= self.write {
             self.read <= read && read < self.write
@@ -145,35 +117,91 @@ impl<T> RingBuffer<T> {
         }
     }
 
-    fn read(&self, read: usize) -> Option<(Ref, &T)> {
+    fn read_index(&self, read: usize) -> Option<&T> {
         let pos = self.position(read);
         let item = unsafe { self.items[pos].assume_init_ref() };
-        let item_ref = Ref { read: pos };
-        Some((item_ref, item))
+        Some(item)
     }
+}
 
-    /// Get the previous element from reference
-    /// Does not affect read pointer
-    pub fn previous(&self, reference: &Ref) -> Option<(Ref, &T)> {
-        let previous = reference.read.wrapping_sub(1);
-
-        if !self.is_valid_read(previous) {
-            return None;
-        }
-
-        self.read(previous)
-    }
+/// Sometimes random access to a ring is needed
+/// This trait provides a way to reference items in a Weak ref manner.
+/// This avoids allocation for each element that would be needed with Rc or Arc.
+/// The trait is separated from the main ring functionality for clarity
+/// The functions do not affect the ring buffers natural read mechanism.
+pub trait RingRandomAccess {
+    /// Item type
+    type T;
+    /// Reference type
+    type R;
 
     /// Get the next element from reference
     /// Does not affect read pointer
-    pub fn next(&self, reference: &Ref) -> Option<(Ref, &T)> {
+    fn next_of_ref(&self, reference: &Self::R) -> Option<(Self::R, &Self::T)>;
+
+    /// Get the previous element from reference
+    /// Does not affect read pointer
+    fn previous_of_ref(&self, reference: &Self::R) -> Option<(Self::R, &Self::T)>;
+
+    /// Return whether a reference still points to the same entry
+    fn is_valid_reference(&self, reference: &Self::R) -> bool;
+
+    /// Try to read a reference if it has already been overwritten returns None
+    fn read_reference(&self, reference: &Self::R) -> Option<&Self::T>;
+
+    /// Read last written element
+    fn last(&self) -> Option<(Self::R, &Self::T)>;
+}
+
+impl<T, const N: usize> RingRandomAccess for RingBuffer<T, N> {
+    type T = T;
+    type R = Ref;
+
+    fn next_of_ref(&self, reference: &Ref) -> Option<(Ref, &Self::T)> {
         let next = reference.read.wrapping_add(1);
 
         if !self.is_valid_read(next) {
             return None;
         }
 
-        self.read(next)
+        let refe = Ref { read: next };
+        let elem = self.read_index(refe.read)?;
+        Some((refe, elem))
+    }
+
+    fn previous_of_ref(&self, reference: &Ref) -> Option<(Ref, &Self::T)> {
+        let previous = reference.read.wrapping_sub(1);
+
+        if !self.is_valid_read(previous) {
+            return None;
+        }
+
+        let refe = Ref { read: previous };
+        let elem = self.read_index(refe.read)?;
+        Some((refe, elem))
+    }
+
+    fn is_valid_reference(&self, reference: &Ref) -> bool {
+        self.is_valid_read(reference.read)
+    }
+
+    fn read_reference(&self, reference: &Ref) -> Option<&Self::T> {
+        if !self.is_valid_reference(reference) {
+            return None;
+        }
+
+        self.read_index(reference.read)
+    }
+
+    fn last(&self) -> Option<(Ref, &T)> {
+        if self.is_empty() {
+            return None;
+        }
+
+        let last_write = self.write.wrapping_sub(1);
+        let refe = Ref { read: last_write };
+        let elem = self.read_index(refe.read)?;
+        Some((refe, elem))
     }
 }
 

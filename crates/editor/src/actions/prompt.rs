@@ -615,7 +615,7 @@ fn prompt_jump(editor: &mut Editor, id: ClientId) -> ActionResult {
         let choice = Choice::from_numbered_text(items.len() + 1, text);
         items.push(choice);
         cursors.push(cursor.clone());
-        item = win.cursor_jumps.prev(&cursor);
+        item = win.cursor_jumps.prev_of_ref(&cursor);
     }
 
     let items = Arc::new(items);

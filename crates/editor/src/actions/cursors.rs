@@ -303,7 +303,7 @@ fn find_prev_jump(win: &Window, buffers: &Buffers, original_bid: BufferId) -> Op
     // Take previous or last if none selected
     let mut item = {
         match cursor_jumps.current() {
-            Some((cursor, _)) => cursor_jumps.prev(&cursor),
+            Some((cursor, _)) => cursor_jumps.prev_of_ref(&cursor),
             None => cursor_jumps.last(),
         }
     };
@@ -312,7 +312,7 @@ fn find_prev_jump(win: &Window, buffers: &Buffers, original_bid: BufferId) -> Op
     // Skip to if this is current position
     if let Some((cursor, group)) = &item {
         if *group == &current {
-            item = cursor_jumps.prev(&cursor);
+            item = cursor_jumps.prev_of_ref(&cursor);
         }
     }
 
@@ -340,7 +340,7 @@ fn find_prev_jump(win: &Window, buffers: &Buffers, original_bid: BufferId) -> Op
         }
 
         // Goto previous element and record current
-        item = cursor_jumps.prev(&cursor);
+        item = cursor_jumps.prev_of_ref(&cursor);
         previous = Some((cursor, gbid));
     }
 
@@ -354,7 +354,7 @@ fn find_prev_jump(win: &Window, buffers: &Buffers, original_bid: BufferId) -> Op
     None
 }
 
-fn find_next_jump(cursor_jumps: &Jumps, buffers: &Buffers, original_bid: BufferId) -> Option<Ref> {
+fn find_next_jump<const N: usize>(cursor_jumps: &Jumps<N>, buffers: &Buffers, original_bid: BufferId) -> Option<Ref> {
     // for example iter backwards
     // until mark is Found
     // or
@@ -368,7 +368,7 @@ fn find_next_jump(cursor_jumps: &Jumps, buffers: &Buffers, original_bid: BufferI
     let (mut cursor, _) = cursor_jumps.current()?;
     let mut previous: Option<(Ref, BufferId)> = None;
 
-    while let Some((gcursor, group)) = cursor_jumps.next(&cursor) {
+    while let Some((gcursor, group)) = cursor_jumps.next_of_ref(&cursor) {
         cursor = gcursor;
 
         let gbid = group.buffer_id();

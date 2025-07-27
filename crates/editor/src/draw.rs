@@ -5,14 +5,14 @@ mod popup;
 mod prompt;
 mod search;
 mod statusline;
-mod triple;
 mod window;
+mod window_buffers;
 
 use std::{mem, path::Path};
 
 use sanedit_core::Language;
-use sanedit_messages::redraw::{window::WindowGrid, Redraw, Theme};
-use triple::TripleBuffer;
+use sanedit_messages::redraw::{Redraw, Theme};
+use window_buffers::WindowBuffers;
 
 use crate::editor::{
     buffers::Buffer,
@@ -57,7 +57,7 @@ pub(crate) struct DrawState {
 
     pub(crate) redraw_window: bool,
 
-    pub(crate) window_buffers: TripleBuffer<WindowGrid>,
+    pub(crate) window_buffers: WindowBuffers,
 }
 
 impl DrawState {
@@ -71,7 +71,7 @@ impl DrawState {
             prompt_scroll_offset: 0,
             compl_scroll_offset: 0,
             redraw_window: true,
-            window_buffers: TripleBuffer::default(),
+            window_buffers: WindowBuffers::default(),
         };
 
         let mut ctx = DrawContext {

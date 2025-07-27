@@ -81,10 +81,10 @@ pub(crate) struct Window {
     pub config: WindowConfig,
     pub ft_view: FiletreeView,
     pub locations: Locations,
-    pub snippets: Vec<Jumps>,
+    pub snippets: Vec<Jumps<32>>,
 
     /// Cursor jumps across files
-    pub cursor_jumps: Jumps,
+    pub cursor_jumps: Jumps<512>,
 
     /// Last edit jumped to in buffer
     pub last_edit_jump: Option<SnapshotId>,
@@ -119,7 +119,7 @@ impl Window {
             locations: Locations::default(),
             popup: None,
             snippets: vec![],
-            cursor_jumps: Jumps::with_capacity(512),
+            cursor_jumps: Jumps::default(),
             last_edit_jump: None,
             next_key_handler: None,
             delete_indent_on_insert_leave: false,

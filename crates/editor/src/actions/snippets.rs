@@ -132,7 +132,7 @@ pub(crate) fn insert_snippet_impl(
         groups.push(group);
     }
 
-    let jumps = Jumps::new(groups);
+    let jumps = Jumps::<32>::from_groups(groups);
     win.snippets.push(jumps);
     if win.cursors_to_next_snippet_jump(buf) {
         mode_insert(editor, id);

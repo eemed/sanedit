@@ -67,11 +67,14 @@ bar = "|";
 
 
 # Preprocessor
-preproc = derive / lifetime;
+preproc = derive / lifetime / macro;
 @show @highlight(preproc)
 derive =  "#" "!"? "[" (!"]" .)* "]";
 @show @highlight(preproc)
 lifetime = "'" [a..z]+;
+
+@show @highlight(preproc)
+macro = [a..z] [a..z0..9_]+ "!";
 
 
 # Comments

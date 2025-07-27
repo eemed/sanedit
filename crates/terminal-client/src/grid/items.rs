@@ -203,6 +203,7 @@ impl CustomItems {
 
         let mut rect = grid.rect().clone();
         rect.y += 1;
+        rect.height -= 1;
         let mut grid = grid.subgrid(&rect);
 
         for (row, item) in self.items.items.iter().skip(self.scroll).enumerate() {

@@ -1,4 +1,4 @@
-document = (comment / keyword / units / number / (!stop .)* stop)*;
+document = (comment / keyword / units / number / preproc / identifier / (!stop .)* stop)*;
 WHITESPACE = [ \t];
 ws = WHITESPACE;
 nl = "\n" / "\r\n";
@@ -10,6 +10,12 @@ comment = "/*" (!"*/" .)* "*/";
 digit = [0..9];
 @show @highlight(constant)
 number = digit+ ("." digit+)?;
+
+@show @highlight
+preproc = "@" [a..zA..Z0..9]+;
+
+@show @highlight
+identifier = "$" [a..zA..Z0..9]+;
 
 @show @highlight(constant)
 units = number (
@@ -30,7 +36,7 @@ units = number (
     "%"
     ) &stop;
 
-@show @highlight
+@show @highlight @static-completion
 keyword =  (
     "zoom" /
     "z-index" /

@@ -54,16 +54,29 @@ impl Syntaxes {
 #[derive(Debug, Clone)]
 pub struct Syntax {
     parser: Arc<Parser>,
+    static_completions: Arc<Vec<String>>,
 }
 
 impl Syntax {
     pub fn from_path(peg: &Path) -> anyhow::Result<Syntax> {
+        const STATIC_COMPLETION_ANNOTATION: &str = "static-completion";
         let file = match File::open(peg) {
             Ok(f) => f,
             Err(e) => bail!("Failed to read PEG file {:?}: {e}", peg),
         };
 
         let parser = Parser::new(&file)?;
+        let static_completions: Vec<String> = parser
+            .static_bytes_per_rule(|_, anns| {
+                anns.iter().any(|ann| match ann {
+                    Annotation::Other(name, _) => name == STATIC_COMPLETION_ANNOTATION,
+                    _ => false,
+                })
+            })
+            .into_iter()
+            .map(|compl| String::from_utf8(compl))
+            .filter_map(|compl| compl.ok())
+            .collect();
 
         log::info!(
             "Parsing syntax {peg:?} using {}",
@@ -76,7 +89,12 @@ impl Syntax {
 
         Ok(Syntax {
             parser: Arc::new(parser),
+            static_completions: Arc::new(static_completions),
         })
+    }
+
+    pub fn static_completions(&self) -> Arc<Vec<String>> {
+        self.static_completions.clone()
     }
 
     pub fn parse(
@@ -87,12 +105,8 @@ impl Syntax {
     ) -> anyhow::Result<SyntaxResult> {
         const COMPLETION_ANNOTATION: &str = "completion";
         const HIGHLIGHT_ANNOTATION: &str = "highlight";
-
-        // TODO try to match these to newlines
         const HORIZON_TOP: u64 = 1024 * 8;
         const HORIZON_BOTTOM: u64 = 1024 * 16;
-        // prev_line_start(view.start)
-        // next_line_start(view.start)
 
         view.start = view.start.saturating_sub(HORIZON_TOP);
         view.end = min(pt.len(), view.end + HORIZON_BOTTOM);

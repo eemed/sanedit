@@ -38,7 +38,7 @@ fn complete_from_syntax(editor: &mut Editor, id: ClientId) -> ActionResult {
     win.completion = Completion::new(range.start, cursor.pos(), point);
 
     // Fetch completions from buffer
-    let opts: FxHashSet<Arc<Choice>> = win
+    let dyn_compls: FxHashSet<Arc<Choice>> = win
         .view_syntax()
         .spans()
         .iter()
@@ -51,8 +51,25 @@ fn complete_from_syntax(editor: &mut Editor, id: ClientId) -> ActionResult {
         .filter(|(compl, _)| compl != &word)
         .map(|(compl, desc)| Choice::from_text_with_description(compl, desc))
         .collect();
+    let static_compls = buf
+        .language
+        .as_ref()
+        .map(|lang| editor.syntaxes.get(&lang).ok())
+        .flatten()
+        .map(|syntax| syntax.static_completions())
+        .map(|compls| {
+            compls
+                .iter()
+                .map(|compl| Choice::from_text_with_description(compl.clone(), "static".into()))
+                .collect::<Vec<Arc<Choice>>>()
+        })
+        .unwrap_or_default();
 
-    let opts: Vec<Arc<Choice>> = opts.into_iter().chain(editor.get_snippets(id)).collect();
+    let opts: Vec<Arc<Choice>> = dyn_compls
+        .into_iter()
+        .chain(static_compls)
+        .chain(editor.get_snippets(id))
+        .collect();
     let job = MatcherJob::builder(id)
         .strategy(MatchStrategy::Prefix)
         .search(word)
@@ -70,11 +87,6 @@ fn completion_confirm(editor: &mut Editor, id: ClientId) -> ActionResult {
 
     let (win, buf) = win_buf!(editor, id);
     let opt = getf!(win.completion.selected().cloned());
-    let lang = getf!(buf.language.clone());
-    let enc = getf!(editor
-        .language_servers
-        .get(&lang)
-        .map(|x| x.position_encoding()));
     let choice = opt.choice();
     match choice {
         Choice::Snippet { snippet, .. } => {
@@ -90,6 +102,11 @@ fn completion_confirm(editor: &mut Editor, id: ClientId) -> ActionResult {
             );
         }
         Choice::LSPCompletion { item } => {
+            let lang = getf!(buf.language.clone());
+            let enc = getf!(editor
+                .language_servers
+                .get(&lang)
+                .map(|x| x.position_encoding()));
             if item.is_snippet {
                 let (text, mut replace) = match item.insert_text() {
                     Either::Left(text) => {

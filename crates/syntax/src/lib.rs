@@ -8,6 +8,7 @@ mod regex;
 mod source;
 
 pub use error::ParseError;
+use grammar::Rule;
 use grammar::Rules;
 pub use source::{ByteSource, SliceSource};
 
@@ -102,5 +103,38 @@ impl Parser {
             Parser::Interpreted(parsing_machine) => parsing_machine.program(),
             Parser::Jit(jit) => &jit.ops,
         }
+    }
+
+    pub fn static_bytes_per_rule<F>(&self, should_extract: F) -> Vec<Vec<u8>>
+    where
+        F: Fn(&str, &[Annotation]) -> bool,
+    {
+        let rules = match self {
+            Parser::Interpreted(parsing_machine) => &parsing_machine.rules,
+            Parser::Jit(jit) => &jit.rules,
+        };
+
+        let mut byte_sequences = vec![];
+        let mut stack = vec![];
+        for rule in rules.iter() {
+            let extract = should_extract(&rule.name, &rule.annotations);
+
+            if extract {
+                stack.push(&rule.rule);
+
+                while let Some(current) = stack.pop() {
+                    use Rule::*;
+                    match current {
+                        NotFollowedBy(rule) | FollowedBy(rule) | OneOrMore(rule)
+                        | ZeroOrMore(rule) | Optional(rule) => stack.push(rule),
+                        Choice(vec) | Sequence(vec) => vec.iter().for_each(|r| stack.push(r)),
+                        ByteSequence(vec) => byte_sequences.push(vec.clone()),
+                        _ => {}
+                    }
+                }
+            }
+        }
+
+        byte_sequences
     }
 }

@@ -1,7 +1,12 @@
-use sanedit_messages::redraw::{
-    self, window::WindowGrid, CursorShape, Point, Style, Theme, ThemeField,
+use std::ops::DerefMut as _;
+
+use sanedit_messages::{
+    redraw::{
+        self, window::WindowGrid, Component, CursorShape, Point, Redraw, Style, Theme, ThemeField,
+    },
+    ClientMessage,
 };
-use sanedit_server::FromEditorSharedMessage;
+use sanedit_server::{FromEditor, FromEditorSharedMessage};
 use sanedit_utils::sorted_vec::SortedVec;
 
 use crate::editor::{
@@ -24,12 +29,22 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> FromEditorSharedMessage {
         ..
     } = ctx.editor;
 
-    let window_buffer = ctx.state.window_buffers.next_mut();
-    let mut grid = &mut window_buffer.cells;
+    let mut window_buffer = ctx.state.window_buffer.blocking_lock();
+    let window_grid =
+        if let FromEditor::Message(ClientMessage::Redraw(Redraw::Window(Component::Open(win)))) =
+            window_buffer.deref_mut()
+        {
+            win
+        } else {
+            unreachable!()
+        };
+    let grid = &mut window_grid.cells;
     if let Some(game) = &win.game {
         game.draw(grid, theme);
-        window_buffer.cursor = None;
-        return ctx.state.window_buffers.get();
+        window_grid.cursor = None;
+        return FromEditorSharedMessage::Shared {
+            message: ctx.state.window_buffer.clone(),
+        };
     }
 
     let style = theme.get(ThemeField::Default);
@@ -74,25 +89,27 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> FromEditorSharedMessage {
     // if layer does not discard, we can insert
     let can_insert = win.mode == Mode::Insert;
 
-    draw_syntax(&mut grid, view, theme);
+    draw_syntax(grid, view, theme);
     if let Some(diagnostics) = diagnostics {
-        draw_diagnostics(&mut grid, diagnostics, view, theme);
+        draw_diagnostics(grid, diagnostics, view, theme);
     }
-    draw_end_of_buffer(&mut grid, view, theme);
-    draw_trailing_whitespace(&mut grid, view, theme, buf);
+    draw_end_of_buffer(grid, view, theme);
+    draw_trailing_whitespace(grid, view, theme, buf);
     if let Some(hls) = win.search.highlights() {
-        draw_search_highlights(&mut grid, &hls.highlights, view, theme);
+        draw_search_highlights(grid, &hls.highlights, view, theme);
     }
-    draw_secondary_cursors(&mut grid, cursors, focus_on_win, view, theme);
-    window_buffer.cursor = draw_primary_cursor(
-        &mut grid,
+    draw_secondary_cursors(grid, cursors, focus_on_win, view, theme);
+    window_grid.cursor = draw_primary_cursor(
+        grid,
         cursors.primary(),
         can_insert && focus_on_win,
         view,
         theme,
     );
 
-    ctx.state.window_buffers.get()
+    FromEditorSharedMessage::Shared {
+        message: ctx.state.window_buffer.clone(),
+    }
 }
 
 fn draw_syntax(grid: &mut WindowGrid, view: &View, theme: &Theme) {

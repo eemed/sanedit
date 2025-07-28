@@ -1,3 +1,5 @@
+use std::ops::DerefMut as _;
+
 use crate::{
     actions::{hooks::run, shell},
     common::to_human_readable,
@@ -11,7 +13,11 @@ use crate::{
 };
 
 use sanedit_core::{grapheme_category, tmp_dir, Change, Changes, GraphemeCategory, Range};
-use sanedit_server::ClientId;
+use sanedit_messages::{
+    redraw::{Component, Redraw},
+    ClientMessage,
+};
+use sanedit_server::{ClientId, FromEditor};
 
 use super::{
     editor::open_new_scratch_buffer,
@@ -430,16 +436,31 @@ fn insert_mode_first_char_of_line(editor: &mut Editor, id: ClientId) -> ActionRe
 
 #[action("Games: Snake")]
 fn snake(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let dstate = editor.draw_state(id);
-    let grid = dstate.window_buffers.get_window();
-    match Snake::new(&grid.cells) {
-        Ok(game) => {
-            let (win, _) = win_buf!(editor, id);
-            win.game = Some(Box::new(game));
-            let job = GameTick::new(id);
-            editor.job_broker.request(job);
+    let snake_game = {
+        let dstate = editor.draw_state(id);
+
+        let mut window_buffer = dstate.window_buffer.blocking_lock();
+        let window_grid = if let FromEditor::Message(ClientMessage::Redraw(Redraw::Window(
+            Component::Open(win),
+        ))) = window_buffer.deref_mut()
+        {
+            win
+        } else {
+            unreachable!()
+        };
+        let grid = &mut window_grid.cells;
+        match Snake::new(grid) {
+            Ok(game) => game,
+            Err(e) => {
+                log::error!("Cannot launch game: {e}");
+                return ActionResult::Failed;
+            }
         }
-        Err(e) => log::error!("Cannot launch game: {e}"),
-    }
+    };
+
+    let (win, _) = win_buf!(editor, id);
+    win.game = Some(Box::new(snake_game));
+    let job = GameTick::new(id);
+    editor.job_broker.request(job);
     ActionResult::Ok
 }

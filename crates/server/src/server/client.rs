@@ -1,13 +1,13 @@
 pub(crate) mod tcp;
 pub(crate) mod unix;
 
-use std::{borrow::Cow, path::PathBuf, sync::Arc};
+use std::{borrow::Cow, ops::Deref as _, path::PathBuf, sync::Arc};
 
 use futures_util::{SinkExt as _, StreamExt};
 use sanedit_messages::{redraw::Redraw, BinCodec, ClientMessage, Message};
 use tokio::{
     io::{self, AsyncRead, AsyncWrite},
-    sync::mpsc::{Receiver, Sender},
+    sync::{mpsc::{Receiver, Sender}, Mutex},
     task::JoinHandle,
 };
 use tokio_util::codec::{FramedRead, FramedWrite};
@@ -33,9 +33,8 @@ impl From<ClientId> for String {
 
 #[derive(Debug)]
 pub enum FromEditorSharedMessage {
-    Window {
-        notify: std::sync::mpsc::Sender<()>,
-        message: Arc<FromEditor>,
+    Shared {
+        message: Arc<Mutex<FromEditor>>,
     },
     Owned {
         message: FromEditor,
@@ -122,17 +121,17 @@ async fn conn_write(
 
     while let Some(msg) = server_recv.recv().await {
         match msg {
-            FromEditorSharedMessage::Window { notify, message } => match message.as_ref() {
-                FromEditor::Message(client_message) => {
-                    if let Err(e) = writer.send(client_message).await {
-                        log::error!("conn_write error: {}", e);
-                        let _ = notify.send(());
-                        break;
+            FromEditorSharedMessage::Shared { message } => {
+                let lock = message.lock().await;
+                match lock.deref() {
+                    FromEditor::Message(client_message) => {
+                        if let Err(e) = writer.send(client_message).await {
+                            log::error!("conn_write error: {}", e);
+                            break;
+                        }
                     }
-
-                    let _ = notify.send(());
                 }
-            },
+            }
             FromEditorSharedMessage::Owned { message } => match message {
                 FromEditor::Message(client_message) => {
                     if let Err(e) = writer.send(client_message).await {

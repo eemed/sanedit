@@ -6,14 +6,16 @@ mod prompt;
 mod search;
 mod statusline;
 mod window;
-mod window_buffers;
 
-use std::{mem, path::Path};
+use std::{mem, path::Path, sync::Arc};
 
 use sanedit_core::Language;
-use sanedit_messages::redraw::{Redraw, Theme};
-use sanedit_server::FromEditorSharedMessage;
-use window_buffers::WindowBuffers;
+use sanedit_messages::{
+    redraw::{self, Component, Redraw, Theme},
+    ClientMessage,
+};
+use sanedit_server::{FromEditor, FromEditorSharedMessage};
+use tokio::sync::Mutex;
 
 use crate::editor::{
     buffers::Buffer,
@@ -58,7 +60,7 @@ pub(crate) struct DrawState {
 
     pub(crate) redraw_window: bool,
 
-    pub(crate) window_buffers: WindowBuffers,
+    pub(crate) window_buffer: Arc<Mutex<FromEditor>>,
 }
 
 impl DrawState {
@@ -72,7 +74,9 @@ impl DrawState {
             prompt_scroll_offset: 0,
             compl_scroll_offset: 0,
             redraw_window: true,
-            window_buffers: WindowBuffers::default(),
+            window_buffer: Arc::new(Mutex::new(FromEditor::Message(ClientMessage::Redraw(
+                Redraw::Window(Component::Open(redraw::window::Window::default())),
+            )))),
         };
 
         let mut ctx = DrawContext {

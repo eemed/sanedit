@@ -1,5 +1,6 @@
 use core::fmt;
 
+use rustc_hash::FxHashMap;
 use serde::{Deserialize, Serialize};
 
 use super::{Cell, Component, Cursor, Redraw};
@@ -27,10 +28,7 @@ impl fmt::Debug for Window {
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Default, Clone, Debug)]
 pub struct WindowGrid {
-    v: Vec<Cell>,
-    col: Vec<u32>,
-    row: Vec<u32>,
-
+    cells: FxHashMap<(u32, u32), Cell>,
     empty: Cell,
     width: u32,
     height: u32,
@@ -39,9 +37,7 @@ pub struct WindowGrid {
 impl WindowGrid {
     pub fn new(width: usize, height: usize, cell: Cell) -> WindowGrid {
         Self {
-            v: vec![],
-            col: vec![],
-            row: vec![],
+            cells: FxHashMap::default(),
             empty: cell,
             width: width as u32,
             height: height as u32,
@@ -57,9 +53,7 @@ impl WindowGrid {
     }
 
     pub fn clear(&mut self) {
-        self.v.clear();
-        self.col.clear();
-        self.row.clear();
+        self.cells.clear();
     }
 
     pub fn clear_with(&mut self, cell: Cell) {
@@ -68,24 +62,16 @@ impl WindowGrid {
     }
 
     pub fn draw(&mut self, y: usize, x: usize, cell: Cell) {
-        self.v.push(cell);
-        self.col.push(x as u32);
-        self.row.push(y as u32);
+        self.cells.insert((y as u32, x as u32), cell);
     }
 
     pub fn at(&mut self, y: usize, x: usize) -> &mut Cell {
-        todo!()
-        // let y = y as u32;
-        // let x = x as u32;
-        // for (i, ys) in self.row.iter().enumerate() {
-        //     if *ys == y && self.col[i] == x {
-        //         return &mut self.v[i];
-        //     }
-        // }
+        let entry = self.cells.entry((y as u32, x as u32));
+        entry.or_insert(self.empty.clone())
     }
 
     pub fn get(&self, y: usize, x: usize) -> &Cell {
-        todo!()
+        self.cells.get(&(y as u32, x as u32)).unwrap_or(&self.empty)
     }
 }
 

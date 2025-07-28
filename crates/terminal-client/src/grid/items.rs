@@ -1,8 +1,8 @@
 use std::cmp::max;
 
 use sanedit_messages::redraw::{
-    items::{Difference, Item, ItemKind, ItemLocation, Items},
-    Cell, Diffable, Size, Style, ThemeField,
+    items::{Item, ItemKind, ItemLocation, Items},
+    Cell, Size, Style, ThemeField,
 };
 
 use crate::ui::UIContext;
@@ -59,10 +59,6 @@ impl CustomItems {
                 win.split_off(Split::bottom_size(height))
             }
         }
-    }
-
-    pub fn update(&mut self, diff: Difference) {
-        self.items.update(diff);
     }
 
     pub fn update_scroll_position(&mut self, rect: &Rect) {

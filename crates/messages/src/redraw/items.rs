@@ -1,8 +1,6 @@
 use sanedit_core::Range;
 use serde::{Deserialize, Serialize};
 
-use super::Diffable;
-
 /// Container to draw filesystem like structure
 /// Groups that contain other groups or items directly
 ///
@@ -41,27 +39,4 @@ pub struct Item {
     pub kind: ItemKind,
     /// What level this item resides on
     pub level: usize,
-}
-
-impl Diffable for Items {
-    type Diff = Difference;
-
-    fn diff(&self, other: &Self) -> Option<Self::Diff> {
-        if self == other {
-            return None;
-        }
-
-        Some(Difference {
-            full: other.clone(),
-        })
-    }
-
-    fn update(&mut self, diff: Self::Diff) {
-        *self = diff.full
-    }
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
-pub struct Difference {
-    full: Items,
 }

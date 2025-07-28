@@ -1,8 +1,8 @@
 use std::cmp::min;
 
 use sanedit_messages::redraw::{
-    prompt::{self, Prompt, Source},
-    Cell, Cursor, CursorShape, Diffable, IntoCells, Point, Style, ThemeField,
+    prompt::{Prompt, Source},
+    Cell, Cursor, CursorShape, IntoCells, Point, Style, ThemeField,
 };
 
 use crate::{grid::border::Border, ui::UIContext};
@@ -33,10 +33,6 @@ impl CustomPrompt {
             style: PromptStyle::Oneline,
             prompt,
         }
-    }
-
-    pub fn update(&mut self, diff: prompt::Difference) {
-        self.prompt.update(diff);
     }
 
     pub fn rect(&mut self, screen: Rect) -> Rect {

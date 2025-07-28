@@ -3,30 +3,12 @@ use std::ops::{Deref, DerefMut};
 
 use serde::{Deserialize, Serialize};
 
-use super::{Cell, Component, Cursor, Diffable, Redraw};
+use super::{Cell, Component, Cursor, Redraw};
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Default, Clone)]
 pub struct Window {
     pub cells: WindowGrid,
     pub cursor: Option<Cursor>,
-}
-
-impl Diffable for Window {
-    type Diff = Difference;
-
-    fn diff(&self, other: &Self) -> Option<Self::Diff> {
-        if self == other {
-            return None;
-        }
-
-        Some(Difference {
-            window: other.clone(),
-        })
-    }
-
-    fn update(&mut self, diff: Self::Diff) {
-        *self = diff.window;
-    }
 }
 
 impl fmt::Debug for Window {
@@ -82,16 +64,5 @@ impl WindowGrid {
 impl From<Window> for Redraw {
     fn from(value: Window) -> Self {
         Redraw::Window(Component::Open(value))
-    }
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
-pub struct Difference {
-    window: Window,
-}
-
-impl From<Difference> for Redraw {
-    fn from(diff: Difference) -> Self {
-        Redraw::Window(Component::Update(diff))
     }
 }

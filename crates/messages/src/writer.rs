@@ -1,6 +1,6 @@
 use std::io;
 
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use thiserror::Error;
 use tokio_util::bytes::BytesMut;
 use tokio_util::codec::Encoder;

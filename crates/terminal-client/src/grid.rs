@@ -15,8 +15,8 @@ use items::Kind;
 use popup::popup_rect;
 use sanedit_messages::{
     redraw::{
-        statusline::Statusline, window::Window, Cell, Component, Cursor, Diffable as _, Point,
-        Popup, PopupComponent, Redraw, Size, StatusMessage, Theme,
+        statusline::Statusline, window::Window, Cell, Component, Cursor, Point, Popup,
+        PopupComponent, Redraw, Size, StatusMessage, Theme,
     },
     Message,
 };
@@ -107,13 +107,11 @@ impl Grid {
 
         match msg {
             Window(comp) => match comp {
-                Open(win) => self.window.item = win,
-                Update(diff) => self.window.item.update(diff),
+                Open(win) | Update(win) => self.window.item = win,
                 Close => {}
             },
             Statusline(comp) => match comp {
-                Open(status) => self.statusline.item = status,
-                Update(diff) => self.statusline.item.update(diff),
+                Open(status) | Update(status) => self.statusline.item = status,
                 Close => {}
             },
             Prompt(comp) => match comp {
@@ -121,9 +119,9 @@ impl Grid {
                     self.prompt = Some(CustomPrompt::new(prompt).into());
                     self.refresh_overlays();
                 }
-                Update(diff) => {
+                Update(prompt) => {
                     if let Some(ref mut custom_prompt) = self.prompt {
-                        custom_prompt.item.update(diff);
+                        custom_prompt.item.prompt = prompt;
                     }
                 }
                 Close => self.prompt = None,
@@ -153,9 +151,9 @@ impl Grid {
                     self.refresh();
                     return RedrawResult::Resized;
                 }
-                Update(diff) => {
+                Update(items) => {
                     if let Some(ref mut ft) = self.filetree {
-                        ft.item.update(diff);
+                        ft.item.items = items;
                         self.refresh();
                         return RedrawResult::Resized;
                     }
@@ -172,9 +170,9 @@ impl Grid {
                     self.refresh();
                     return RedrawResult::Resized;
                 }
-                Update(diff) => {
+                Update(items) => {
                     if let Some(ref mut locs) = self.locations {
-                        locs.item.update(diff);
+                        locs.item.items = items;
                         self.refresh();
                         return RedrawResult::Resized;
                     }

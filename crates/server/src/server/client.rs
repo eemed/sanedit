@@ -1,4 +1,3 @@
-mod draw;
 pub(crate) mod tcp;
 pub(crate) mod unix;
 
@@ -118,17 +117,13 @@ async fn conn_write(
     write: impl AsyncWrite,
     mut server_recv: Receiver<FromEditorSharedMessage>,
 ) -> Result<(), io::Error> {
-        log::info!("conn write");
     let codec: BinCodec<ClientMessage> = BinCodec::new();
     let mut writer = Box::pin(FramedWrite::new(write, codec));
 
     while let Some(msg) = server_recv.recv().await {
-        log::info!("Here: {msg:?}");
         match msg {
             FromEditorSharedMessage::Window { notify, message } => match message.as_ref() {
                 FromEditor::Message(client_message) => {
-                    // match msg {
-                    // }
                     if let Err(e) = writer.send(client_message).await {
                         log::error!("conn_write error: {}", e);
                         let _ = notify.send(());

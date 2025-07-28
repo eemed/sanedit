@@ -1,9 +1,6 @@
 use std::cmp::{max, min};
 
-use sanedit_messages::redraw::{
-    completion::{self, Completion},
-    Cell, Diffable, Point, Size, Style, ThemeField,
-};
+use sanedit_messages::redraw::{completion::Completion, Cell, Point, Size, Style, ThemeField};
 
 use crate::ui::UIContext;
 
@@ -39,8 +36,8 @@ impl CustomCompletion {
         }
     }
 
-    pub fn update(&mut self, diff: completion::Difference) {
-        self.completion.update(diff);
+    pub fn update(&mut self, compl: Completion) {
+        self.completion = compl;
 
         let first_col = self
             .completion

@@ -39,23 +39,28 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> FromEditorSharedMessage {
         *grid = WindowGrid::new(view.width(), view.height(), redraw::Cell::with_style(style));
     }
 
+    grid.clear_with(redraw::Cell::with_style(style));
+
     for (line, row) in view.cells().iter().enumerate() {
         for (col, cell) in row.iter().enumerate() {
             if cell.width() == 0 {
-                grid[line][col] = redraw::Cell::with_style(style);
                 continue;
             }
 
             // Has to be char because it has width
             let ch = cell.char().unwrap();
-            grid[line][col] = redraw::Cell {
-                text: ch.display().into(),
-                style: if cell.is_virtual() { vstyle } else { style },
-            };
+            grid.draw(
+                line,
+                col,
+                redraw::Cell {
+                    text: ch.display().into(),
+                    style: if cell.is_virtual() { vstyle } else { style },
+                },
+            );
 
-            for i in 1..cell.width() {
-                grid[line][col + i] = redraw::Cell::with_style(style);
-            }
+            // for i in 1..cell.width() {
+            //     grid.draw(line, col + i, redraw::Cell::with_style(style));
+            // }
         }
     }
 
@@ -90,7 +95,7 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> FromEditorSharedMessage {
     ctx.state.window_buffers.get()
 }
 
-fn draw_syntax(grid: &mut Vec<Vec<redraw::Cell>>, view: &View, theme: &Theme) {
+fn draw_syntax(grid: &mut WindowGrid, view: &View, theme: &Theme) {
     const HL_PREFIX: &str = "window.view.";
     let syntax = view.syntax();
     draw_ordered_highlights(syntax.spans(), grid, view, |span| {
@@ -102,7 +107,7 @@ fn draw_syntax(grid: &mut Vec<Vec<redraw::Cell>>, view: &View, theme: &Theme) {
     });
 }
 
-fn draw_ordered_highlights<T, F>(items: &[T], grid: &mut [Vec<redraw::Cell>], view: &View, f: F)
+fn draw_ordered_highlights<T, F>(items: &[T], grid: &mut WindowGrid, view: &View, f: F)
 where
     F: Fn(&T) -> Option<(Style, &BufferRange)>,
 {
@@ -138,7 +143,7 @@ where
 
                 if (!cell.is_virtual() && !cell.is_empty() && range.contains(&pos)) || cell.is_eof()
                 {
-                    grid[line][col].style = style;
+                    grid.at(line, col).style = style;
                 }
 
                 if !start_found && pos + cell.len_in_buffer() >= range.start {
@@ -160,12 +165,7 @@ where
     }
 }
 
-fn draw_diagnostics(
-    grid: &mut [Vec<redraw::Cell>],
-    diagnostics: &[Diagnostic],
-    view: &View,
-    theme: &Theme,
-) {
+fn draw_diagnostics(grid: &mut WindowGrid, diagnostics: &[Diagnostic], view: &View, theme: &Theme) {
     const HL_PREFIX: &str = "window.view.";
     draw_ordered_highlights(diagnostics, grid, view, |diag| {
         let key = format!("{}{}", HL_PREFIX, diag.severity().as_ref());
@@ -175,7 +175,7 @@ fn draw_diagnostics(
 }
 
 // Prefer draw_ordered_highlights for multiple hls
-fn draw_sigle_hl(grid: &mut [Vec<redraw::Cell>], view: &View, style: Style, range: &BufferRange) {
+fn draw_sigle_hl(grid: &mut WindowGrid, view: &View, style: Style, range: &BufferRange) {
     let vrange = view.range();
     if !vrange.overlaps(range) {
         return;
@@ -188,7 +188,7 @@ fn draw_sigle_hl(grid: &mut [Vec<redraw::Cell>], view: &View, style: Style, rang
             for (col, cell) in row.iter().enumerate() {
                 if (!cell.is_virtual() && !cell.is_empty() && range.contains(&pos)) || cell.is_eof()
                 {
-                    grid[line][col].style = style;
+                    grid.at(line, col).style = style;
                 }
 
                 pos += cell.len_in_buffer();
@@ -202,7 +202,7 @@ fn draw_sigle_hl(grid: &mut [Vec<redraw::Cell>], view: &View, style: Style, rang
 }
 
 fn draw_search_highlights(
-    grid: &mut Vec<Vec<redraw::Cell>>,
+    grid: &mut WindowGrid,
     matches: &SortedVec<BufferRange>,
     view: &View,
     theme: &Theme,
@@ -212,7 +212,7 @@ fn draw_search_highlights(
 }
 
 fn draw_secondary_cursors(
-    grid: &mut Vec<Vec<redraw::Cell>>,
+    grid: &mut WindowGrid,
     cursors: &Cursors,
     focus_on_win: bool,
     view: &View,
@@ -251,7 +251,7 @@ fn draw_secondary_cursors(
 }
 
 fn draw_primary_cursor(
-    grid: &mut [Vec<redraw::Cell>],
+    grid: &mut WindowGrid,
     cursor: &Cursor,
     show_as_line: bool,
     view: &View,
@@ -280,24 +280,19 @@ fn draw_primary_cursor(
     .into()
 }
 
-fn draw_end_of_buffer(grid: &mut [Vec<redraw::Cell>], view: &View, theme: &Theme) {
+fn draw_end_of_buffer(grid: &mut WindowGrid, view: &View, theme: &Theme) {
     let style = theme.get(ThemeField::EndOfBuffer);
     for (line, row) in view.cells().iter().enumerate() {
         let is_empty = row.iter().all(|cell| matches!(cell, Cell::Empty));
         if is_empty {
             if let Some(rep) = view.options.replacements.get(&Replacement::BufferEnd) {
-                grid[line][0] = redraw::Cell::new_char(*rep, style);
+                grid.draw(line, 0, redraw::Cell::new_char(*rep, style));
             }
         }
     }
 }
 
-fn draw_trailing_whitespace(
-    grid: &mut Vec<Vec<redraw::Cell>>,
-    view: &View,
-    theme: &Theme,
-    buf: &Buffer,
-) {
+fn draw_trailing_whitespace(grid: &mut WindowGrid, view: &View, theme: &Theme, buf: &Buffer) {
     let Some(rep) = view
         .options
         .replacements
@@ -344,7 +339,7 @@ fn draw_trailing_whitespace(
             }
 
             if let Some(point) = view.point_at_pos(g.start()) {
-                grid[point.y][point.x] = redraw::Cell::new_char(*rep, style);
+                grid.draw(point.y, point.x, redraw::Cell::new_char(*rep, style));
             }
         }
     }

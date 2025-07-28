@@ -1,5 +1,4 @@
 use core::fmt;
-use std::ops::{Deref, DerefMut};
 
 use serde::{Deserialize, Serialize};
 
@@ -14,13 +13,13 @@ pub struct Window {
 impl fmt::Debug for Window {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "===Window===")?;
-        for row in self.cells.iter() {
-            write!(f, "\"")?;
-            for cell in row.iter() {
-                write!(f, "{}", cell.text)?;
-            }
-            writeln!(f, "\"")?;
-        }
+        // for row in self.cells.iter() {
+        //     write!(f, "\"")?;
+        //     for cell in row.iter() {
+        //         write!(f, "{}", cell.text)?;
+        //     }
+        //     writeln!(f, "\"")?;
+        // }
         write!(f, "==========")?;
         Ok(())
     }
@@ -28,36 +27,65 @@ impl fmt::Debug for Window {
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Default, Clone, Debug)]
 pub struct WindowGrid {
-    grid: Vec<Vec<Cell>>,
-}
+    v: Vec<Cell>,
+    col: Vec<u32>,
+    row: Vec<u32>,
 
-impl Deref for WindowGrid {
-    type Target = Vec<Vec<Cell>>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.grid
-    }
-}
-
-impl DerefMut for WindowGrid {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.grid
-    }
+    empty: Cell,
+    width: u32,
+    height: u32,
 }
 
 impl WindowGrid {
     pub fn new(width: usize, height: usize, cell: Cell) -> WindowGrid {
         Self {
-            grid: vec![vec![cell; width]; height],
+            v: vec![],
+            col: vec![],
+            row: vec![],
+            empty: cell,
+            width: width as u32,
+            height: height as u32,
         }
     }
 
     pub fn width(&self) -> usize {
-        self.grid.get(0).map(|line| line.len()).unwrap_or(0)
+        self.width as usize
     }
 
     pub fn height(&self) -> usize {
-        self.grid.len()
+        self.height as usize
+    }
+
+    pub fn clear(&mut self) {
+        self.v.clear();
+        self.col.clear();
+        self.row.clear();
+    }
+
+    pub fn clear_with(&mut self, cell: Cell) {
+        self.empty = cell;
+        self.clear();
+    }
+
+    pub fn draw(&mut self, y: usize, x: usize, cell: Cell) {
+        self.v.push(cell);
+        self.col.push(x as u32);
+        self.row.push(y as u32);
+    }
+
+    pub fn at(&mut self, y: usize, x: usize) -> &mut Cell {
+        todo!()
+        // let y = y as u32;
+        // let x = x as u32;
+        // for (i, ys) in self.row.iter().enumerate() {
+        //     if *ys == y && self.col[i] == x {
+        //         return &mut self.v[i];
+        //     }
+        // }
+    }
+
+    pub fn get(&self, y: usize, x: usize) -> &Cell {
+        todo!()
     }
 }
 

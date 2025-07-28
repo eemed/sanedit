@@ -38,14 +38,30 @@ impl<'a, 'b> Subgrid<'a, 'b> {
     }
 
     pub fn at(&mut self, y: usize, x: usize) -> &mut Cell {
-        debug_assert!(y < self.rect.height, "Invalid y: {y}, height: {}", self.rect.height);
-        debug_assert!(x < self.rect.width, "Invalid x: {x}, width: {}", self.rect.width);
+        debug_assert!(
+            y < self.rect.height,
+            "Invalid y: {y}, height: {}",
+            self.rect.height
+        );
+        debug_assert!(
+            x < self.rect.width,
+            "Invalid x: {x}, width: {}",
+            self.rect.width
+        );
         &mut self.cells[self.rect.y + y][self.rect.x + x]
     }
 
     pub fn replace(&mut self, y: usize, x: usize, cell: Cell) {
-        debug_assert!(y < self.rect.height, "Invalid y: {y}, height: {}", self.rect.height);
-        debug_assert!(x < self.rect.width, "Invalid x: {x}, width: {}", self.rect.width);
+        debug_assert!(
+            y < self.rect.height,
+            "Invalid y: {y}, height: {}",
+            self.rect.height
+        );
+        debug_assert!(
+            x < self.rect.width,
+            "Invalid x: {x}, width: {}",
+            self.rect.width
+        );
         self.cells[self.rect.y + y][self.rect.x + x] = cell;
     }
 
@@ -165,7 +181,7 @@ impl Drawable for Window {
 
         for x in 0..width {
             for y in 0..height {
-                grid.replace(y, x, self.cells[y][x].clone().into());
+                grid.replace(y, x, self.cells.get(y, x).clone().into());
             }
         }
     }

@@ -3,6 +3,7 @@ use std::hash::{BuildHasher, Hasher};
 use std::{collections::VecDeque, hash::RandomState, sync::mpsc::Sender};
 
 use anyhow::bail;
+use sanedit_messages::redraw::window::WindowGrid;
 use sanedit_messages::redraw::{text_style, Size, Theme, ThemeField};
 use sanedit_messages::{
     key::{Key, KeyEvent},
@@ -54,15 +55,15 @@ pub(crate) struct Snake {
     prev_dir: Option<Direction>,
     prev_pop: Option<Point>,
     tick_sender: Option<Sender<u64>>,
-    map: Vec<Vec<Cell>>,
+    map: WindowGrid,
     state: State,
     score: usize,
     left_pad: bool,
 }
 
 impl Snake {
-    pub fn new(drawn: &Vec<Vec<Cell>>) -> anyhow::Result<Snake> {
-        let Size { width, height } = Self::size(&drawn);
+    pub fn new(drawn: &WindowGrid) -> anyhow::Result<Snake> {
+        let Size { width, height } = Self::size(drawn);
         let Point {
             x: center,
             y: middle,
@@ -89,7 +90,7 @@ impl Snake {
             snake
         };
 
-        let read_width = drawn.get(0).map(|line| line.len()).unwrap_or(0);
+        let read_width = drawn.width();
 
         Ok(Snake {
             apple: Self::apple(width, height, &snake),
@@ -129,24 +130,24 @@ impl Snake {
         }
     }
 
-    fn center(cells: &Vec<Vec<Cell>>) -> Point {
-        let mut center_x = cells.get(0).map(|line| line.len() / 2).unwrap_or(0);
+    fn center(cells: &WindowGrid) -> Point {
+        let mut center_x = cells.width() / 2;
         if center_x & 1 == 1 {
             center_x -= 1;
         }
-        let middle_y = cells.len() / 2;
+        let middle_y = cells.height() / 2;
         Point {
             x: center_x,
             y: middle_y,
         }
     }
 
-    fn size(cells: &Vec<Vec<Cell>>) -> Size {
-        let mut width = cells.get(0).map(|line| line.len()).unwrap_or(0);
+    fn size(cells: &WindowGrid) -> Size {
+        let mut width = cells.width();
         if width & 1 == 1 {
             width -= 1;
         }
-        let height = cells.len();
+        let height = cells.height();
         Size { width, height }
     }
 
@@ -186,7 +187,7 @@ impl Snake {
         }
     }
 
-    fn draw_snake(&self, cells: &mut Vec<Vec<Cell>>, theme: &Theme) {
+    fn draw_snake(&self, grid: &mut WindowGrid, theme: &Theme) {
         let mut snake_style = theme.get(ThemeField::String);
         snake_style.text_style = Some(text_style::BOLD);
 
@@ -198,22 +199,26 @@ impl Snake {
             let to = Self::get_direction(point, last);
 
             if let Some(from) = last_direction {
-                let last_body = from.glyph(&to).unwrap_or(&cells[last.y][last.x].text);
-                cells[last.y][last.x].text = last_body.into();
+                let cell = grid.at(last.y, last.x);
+                let last_body = from.glyph(&to).unwrap_or(&cell.text);
+                cell.text = last_body.into();
             }
 
-            let Size { width, .. } = Self::size(cells);
+            let Size { width, .. } = Self::size(grid);
             if to == Left {
-                cells[point.y][(point.x + 1) % width].text = "═".into();
-                cells[point.y][(point.x + 1) % width].style = snake_style;
+                let cell = grid.at(point.y, (point.x + 1) % width);
+                cell.text = "═".into();
+                cell.style = snake_style;
             }
             if to == Right {
-                cells[point.y][(width + point.x - 1) % width].text = "═".into();
-                cells[point.y][(width + point.x - 1) % width].style = snake_style;
+                let cell = grid.at(point.y, (width + point.x - 1) % width);
+                cell.text = "═".into();
+                cell.style = snake_style;
             }
 
-            cells[point.y][point.x].style = snake_style;
-            cells[point.y][point.x].text = if matches!(to, Left | Right) {
+            let cell = grid.at(point.y, point.x);
+            cell.style = snake_style;
+            cell.text = if matches!(to, Left | Right) {
                 "═"
             } else {
                 "║"
@@ -228,21 +233,24 @@ impl Snake {
             let to = Self::get_direction(&point, last);
 
             if let Some(from) = last_direction {
-                let last_body = from.glyph(&to).unwrap_or(&cells[last.y][last.x].text);
-                cells[last.y][last.x].text = last_body.into();
+                let cell = grid.at(last.y, last.x);
+                let last_body = from.glyph(&to).unwrap_or(&cell.text);
+                cell.text = last_body.into();
             }
         }
 
         let head = self.snake.front().unwrap();
-        cells[head.y][head.x].style = snake_style;
-        cells[head.y][head.x].text = "O".into();
+        let cell = grid.at(head.y, head.x);
+        cell.style = snake_style;
+        cell.text = "O".into();
     }
 
-    fn draw_apple(&self, cells: &mut Vec<Vec<Cell>>, theme: &Theme) {
+    fn draw_apple(&self, grid: &mut WindowGrid, theme: &Theme) {
         let apple_style = theme.get(ThemeField::Preproc);
-        cells[self.apple.y][self.apple.x].style = apple_style;
-        cells[self.apple.y][self.apple.x].style.text_style = Some(text_style::BOLD);
-        cells[self.apple.y][self.apple.x].text = "●".into();
+        let cell = grid.at(self.apple.y, self.apple.x);
+        cell.style = apple_style;
+        cell.style.text_style = Some(text_style::BOLD);
+        cell.text = "●".into();
     }
 }
 
@@ -351,8 +359,8 @@ impl Game for Snake {
 
                 // Respawn apple
                 if set.contains(&self.apple) {
-                    self.map[self.apple.y][self.apple.x].text = " ".into();
-                    self.map[self.apple.y][(width + self.apple.x + 1) % width].text = " ".into();
+                    self.map.at(self.apple.y, self.apple.x).text = " ".into();
+                    self.map.at(self.apple.y, (width + self.apple.x + 1) % width).text = " ".into();
                     self.apple = Self::apple(width, height, &self.snake);
                     self.grow += GROWTH_RATE;
                     self.score += 1;
@@ -362,14 +370,14 @@ impl Game for Snake {
         }
     }
 
-    fn draw(&self, cells: &mut Vec<Vec<Cell>>, theme: &Theme) {
-        *cells = self.map.clone();
+    fn draw(&self, grid: &mut WindowGrid, theme: &Theme) {
+        *grid = self.map.clone();
 
         let Size { width, height } = Self::size(&self.map);
         if self.left_pad {
             let statusline = theme.get(ThemeField::Statusline);
             for y in 0..height {
-                cells[y][width] = Cell::with_style(statusline);
+                grid.draw(y, width, Cell::with_style(statusline));
             }
         }
 
@@ -383,20 +391,20 @@ impl Game for Snake {
             let msg = format!("Starting in {n}...");
             let start = center_x.saturating_sub(msg.chars().count() / 2);
             for (i, ch) in msg.chars().enumerate() {
-                cells[middle_y][start + i] = Cell::new_char(ch, msg_style);
+                grid.draw(middle_y, start + i, Cell::new_char(ch, msg_style));
             }
 
             return;
         }
 
-        self.draw_snake(cells, theme);
-        self.draw_apple(cells, theme);
+        self.draw_snake(grid, theme);
+        self.draw_apple(grid, theme);
 
         if self.state == State::Done {
             let msg = format!("Snake died. Score {}...", self.score);
             let start = center_x - msg.chars().count() / 2;
             for (i, ch) in msg.chars().enumerate() {
-                cells[middle_y][start + i] = Cell::new_char(ch, msg_style);
+                grid.draw(middle_y, start + i, Cell::new_char(ch, msg_style));
             }
         }
     }

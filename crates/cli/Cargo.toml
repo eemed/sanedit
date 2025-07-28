@@ -1,5 +1,6 @@
 [package]
 name = "sanedit-cli"
+description = "text editor"
 version.workspace = true
 edition.workspace = true
 
@@ -7,7 +8,7 @@ edition.workspace = true
 name = "sanedit"
 maintainer = "eemed <eemed@protonmail.com>"
 copyright = "2024, eemed"
-depends = "$auto"
+depends = ""
 section = "utils"
 priority = "optional"
 assets = [
@@ -16,6 +17,7 @@ assets = [
     ["../../additional/sanedit.svg", "usr/share/sanedit/", "644"],
     ["../../additional/sanedit.desktop", "usr/share/applications/", "644"],
 ]
+license-file = ["../../LICENSE"]
 
 [[bin]]
 name = "sane"

@@ -316,8 +316,13 @@ impl Buffer {
         ensure!(!self.read_only, BufferError::ReadOnly);
         // No save path before unmodified to execute save as even if buffer is
         // unmodified without path
-        self.path().ok_or(BufferError::NoSavePath)?;
+        let path = self.path().ok_or(BufferError::NoSavePath)?;
         ensure!(self.is_modified, BufferError::Unmodified);
+
+        // Create directiories upto file
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
 
         let copy_view = self.ro_view();
         let copy = Self::save_copy(&copy_view)?;

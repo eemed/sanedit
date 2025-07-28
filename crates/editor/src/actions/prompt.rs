@@ -67,7 +67,7 @@ fn select_theme(editor: &mut Editor, id: ClientId) -> ActionResult {
                     let theme = t.clone();
                     let (win, _buf) = editor.win_buf_mut(id);
                     win.config.theme = text.into();
-                    editor.send_to_client(id, ClientMessage::Theme(theme));
+                    editor.send_to_client(id, ClientMessage::Theme(theme).into());
                     ActionResult::Ok
                 }
                 Err(_) => {

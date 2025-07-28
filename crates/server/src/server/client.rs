@@ -2,11 +2,10 @@ mod draw;
 pub(crate) mod tcp;
 pub(crate) mod unix;
 
-use std::{borrow::Cow, path::PathBuf};
+use std::{borrow::Cow, path::PathBuf, sync::Arc};
 
-use futures_util::sink::SinkExt;
-use futures_util::StreamExt;
-use sanedit_messages::{BinCodec, ClientMessage, Message};
+use futures_util::{SinkExt as _, StreamExt};
+use sanedit_messages::{redraw::Redraw, BinCodec, ClientMessage, Message};
 use tokio::{
     io::{self, AsyncRead, AsyncWrite},
     sync::mpsc::{Receiver, Sender},
@@ -15,8 +14,6 @@ use tokio::{
 use tokio_util::codec::{FramedRead, FramedWrite};
 
 use crate::events::{FromEditor, ToEditor};
-
-use self::draw::ClientDrawState;
 
 use super::EditorHandle;
 
@@ -35,12 +32,39 @@ impl From<ClientId> for String {
     }
 }
 
+#[derive(Debug)]
+pub enum FromEditorSharedMessage {
+    Window {
+        notify: std::sync::mpsc::Sender<()>,
+        message: Arc<FromEditor>,
+    },
+    Owned {
+        message: FromEditor,
+    },
+}
+
+impl From<ClientMessage> for FromEditorSharedMessage {
+    fn from(message: ClientMessage) -> Self {
+        FromEditorSharedMessage::Owned {
+            message: message.into(),
+        }
+    }
+}
+
+impl From<Redraw> for FromEditorSharedMessage {
+    fn from(value: Redraw) -> Self {
+        FromEditorSharedMessage::Owned {
+            message: FromEditor::Message(ClientMessage::Redraw(value)),
+        }
+    }
+}
+
 /// Client handle allows us to communicate with the client
 #[derive(Debug)]
 pub struct ClientHandle {
     pub(crate) id: ClientId,
     pub(crate) info: ClientConnectionInfo,
-    pub(crate) send: Sender<FromEditor>,
+    pub(crate) send: Sender<FromEditorSharedMessage>,
     pub(crate) _kill: JoinHandle<()>,
 }
 
@@ -55,7 +79,7 @@ impl ClientHandle {
         }
     }
 
-    pub fn send(&mut self, msg: FromEditor) -> anyhow::Result<()> {
+    pub fn send(&mut self, msg: FromEditorSharedMessage) -> anyhow::Result<()> {
         self.send.blocking_send(msg)?;
         Ok(())
     }
@@ -92,45 +116,37 @@ async fn conn_read(
 
 async fn conn_write(
     write: impl AsyncWrite,
-    mut server_recv: Receiver<FromEditor>,
+    mut server_recv: Receiver<FromEditorSharedMessage>,
 ) -> Result<(), io::Error> {
-    let mut state = ClientDrawState::default();
+        log::info!("conn write");
     let codec: BinCodec<ClientMessage> = BinCodec::new();
-    let mut write = Box::pin(FramedWrite::new(write, codec));
-    let mut needs_flush = false;
+    let mut writer = Box::pin(FramedWrite::new(write, codec));
 
     while let Some(msg) = server_recv.recv().await {
+        log::info!("Here: {msg:?}");
         match msg {
-            FromEditor::Message(mut msg) => {
-                // TODO move diffing away from here? This basically acts as a
-                // middleware to diff changes before they are sent to the
-                // client. Diffing is done here so editor can just send stuff
-                // without diffing all the changes itself.
-
-                match msg {
-                    ClientMessage::Redraw(redraw) => match state.handle_redraw(redraw) {
-                        Some(new_redraw) => {
-                            msg = new_redraw.into();
-                            needs_flush = true;
-                        }
-                        None => continue,
-                    },
-                    ClientMessage::Flush => {
-                        if !needs_flush {
-                            continue;
-                        }
-
-                        needs_flush = false;
+            FromEditorSharedMessage::Window { notify, message } => match message.as_ref() {
+                FromEditor::Message(client_message) => {
+                    // match msg {
+                    // }
+                    if let Err(e) = writer.send(client_message).await {
+                        log::error!("conn_write error: {}", e);
+                        let _ = notify.send(());
+                        break;
                     }
-                    _ => {}
-                }
 
-                if let Err(e) = write.send(msg).await {
-                    log::error!("conn_write error: {}", e);
-                    break;
+                    let _ = notify.send(());
                 }
-            }
-        }
+            },
+            FromEditorSharedMessage::Owned { message } => match message {
+                FromEditor::Message(client_message) => {
+                    if let Err(e) = writer.send(client_message).await {
+                        log::error!("conn_write error: {}", e);
+                        break;
+                    }
+                }
+            },
+        };
     }
 
     Ok(())

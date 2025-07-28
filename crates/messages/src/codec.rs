@@ -17,8 +17,8 @@ pub struct BinCodec<T> {
 }
 
 impl<T> BinCodec<T>
-where
-    for<'de> T: Deserialize<'de> + Serialize,
+// where
+//     for<'de> T: Deserialize<'de> + Serialize,
 {
     pub fn new() -> BinCodec<T> {
         BinCodec {
@@ -82,7 +82,7 @@ where
 
 impl<T> Decoder for BinCodec<T>
 where
-    for<'de> T: Deserialize<'de> + Serialize,
+    for<'de> T: Deserialize<'de>,
 {
     type Item = T;
 
@@ -112,9 +112,37 @@ where
     }
 }
 
+impl<'a, T> Encoder<&'a T> for BinCodec<T>
+where
+    for<'de> T: Serialize,
+{
+    type Error = bincode::Error;
+
+    fn encode(&mut self, item: &'a T, dst: &mut BytesMut) -> Result<(), Self::Error> {
+        let bcode = bincode::options()
+            .with_big_endian()
+            .with_fixint_encoding()
+            .with_limit(u32::MAX as u64);
+
+        let size = bcode.serialized_size(&item)? as u32;
+        let total = U32_BYTES + size as usize;
+        let available = dst.capacity() - dst.len();
+        let missing = available.saturating_sub(total);
+        if missing != 0 {
+            dst.reserve(missing);
+        }
+
+        let mut writer = dst.writer();
+
+        let bytes = size.to_be_bytes();
+        writer.write_all(&bytes)?;
+        bcode.serialize_into(writer, &item)
+    }
+}
+
 impl<T> Encoder<T> for BinCodec<T>
 where
-    for<'de> T: Deserialize<'de> + Serialize,
+    for<'de> T: Serialize,
 {
     type Error = bincode::Error;
 
@@ -139,3 +167,4 @@ where
         bcode.serialize_into(writer, &item)
     }
 }
+

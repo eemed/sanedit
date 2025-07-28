@@ -7,6 +7,7 @@ vars:
   UCD_VERSION: 15.0.0
   UCD_DIR: /tmp/ucd-{{ .UCD_VERSION }}
   PRECOMMIT_FILE: .git/hooks/pre-commit
+  TARGET: x86_64-unknown-linux-musl
 
 tasks:
   release:build:
@@ -14,15 +15,16 @@ tasks:
     dir: crates
     deps: [install-pre-commit-hook]
     cmds:
-      - cargo build --release
+      - cargo build --release --target={{.TARGET}}
 
   release:deb:
     desc: Build a deb package
     dir: crates
     deps: [install-pre-commit-hook]
     cmds:
+        - task: release:build
         - mkdir -p ../deb
-        - cargo deb -p sanedit-cli -o ../deb
+        - cargo deb --target={{.TARGET}} -p sanedit-cli -o ../deb --no-build
 
   release:run:
     desc: Build and run the release build

@@ -37,6 +37,7 @@ use sanedit_server::spawn_job_runner;
 use sanedit_server::Address;
 use sanedit_server::ClientHandle;
 use sanedit_server::ClientId;
+use sanedit_server::FromEditorSharedMessage;
 use sanedit_server::FromJobs;
 use sanedit_server::StartOptions;
 use sanedit_server::ToEditor;
@@ -204,7 +205,7 @@ impl Editor {
 
     pub fn quit_client(&mut self, id: ClientId) {
         log::info!("Quit client: {id:?}");
-        self.send_to_client(id, ClientMessage::Bye);
+        self.send_to_client(id, ClientMessage::Bye.into());
 
         if let Some(win) = self.windows.remove(id) {
             let old = win.buffer_id();
@@ -223,7 +224,7 @@ impl Editor {
         for id in client_ids {
             log::info!("Quit to {:?}", id);
             // Dont care about errors here we are quitting anyway
-            self.send_to_client(id, ClientMessage::Bye);
+            self.send_to_client(id, ClientMessage::Bye.into());
         }
         self.is_running = false;
     }
@@ -321,7 +322,8 @@ impl Editor {
         Ok(())
     }
 
-    pub fn send_to_client(&mut self, id: ClientId, msg: ClientMessage) {
+    pub fn send_to_client(&mut self, id: ClientId, msg: FromEditorSharedMessage) {
+        log::info!("Send to client");
         if let Some(client) = self.clients.get_mut(&id) {
             if let Err(_e) = client.send(msg.into()) {
                 log::info!(
@@ -398,12 +400,12 @@ impl Editor {
         let (draw, messages) = DrawState::new(self.create_context(id));
         self.draw_states.insert(id, draw);
 
-        self.send_to_client(id, ClientMessage::Hello);
-        self.send_to_client(id, ClientMessage::Theme(theme));
+        self.send_to_client(id, ClientMessage::Hello.into());
+        self.send_to_client(id, ClientMessage::Theme(theme).into());
         for msg in messages {
-            self.send_to_client(id, ClientMessage::Redraw(msg));
+            self.send_to_client(id, msg);
         }
-        self.send_to_client(id, ClientMessage::Flush);
+        self.send_to_client(id, ClientMessage::Flush.into());
 
         run(self, id, Hook::BufEnter(bid));
         run(self, id, Hook::ModeEnter);
@@ -514,9 +516,9 @@ impl Editor {
         let messages = draw.redraw(ctx);
         if !messages.is_empty() {
             for msg in messages {
-                self.send_to_client(id, ClientMessage::Redraw(msg));
+                self.send_to_client(id, msg);
             }
-            self.send_to_client(id, ClientMessage::Flush);
+            self.send_to_client(id, ClientMessage::Flush.into());
         }
     }
 
@@ -645,7 +647,7 @@ impl Editor {
         let (win, _buf) = self.win_buf(id);
         let theme = win.config.theme.to_string();
         if let Ok(theme) = self.themes.load(&theme).cloned() {
-            self.send_to_client(id, ClientMessage::Theme(theme))
+            self.send_to_client(id, ClientMessage::Theme(theme).into())
         }
 
         // Reload language

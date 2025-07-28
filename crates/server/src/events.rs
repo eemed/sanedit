@@ -13,7 +13,7 @@ pub enum ToEditor {
     FatalError(io::Error),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum FromEditor {
     Message(ClientMessage),
 }

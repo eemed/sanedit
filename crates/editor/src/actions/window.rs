@@ -431,10 +431,10 @@ fn insert_mode_first_char_of_line(editor: &mut Editor, id: ClientId) -> ActionRe
 #[action("Games: Snake")]
 fn snake(editor: &mut Editor, id: ClientId) -> ActionResult {
     let dstate = editor.draw_state(id);
-    let grid = dstate.window_buffers.get();
-    let (win, _) = editor.win_buf_mut(id);
-    match Snake::new(&grid) {
+    let grid = dstate.window_buffers.get_window();
+    match Snake::new(&grid.cells) {
         Ok(game) => {
+            let (win, _) = win_buf!(editor, id);
             win.game = Some(Box::new(game));
             let job = GameTick::new(id);
             editor.job_broker.request(job);

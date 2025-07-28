@@ -11,7 +11,7 @@ use tokio::{
 };
 
 use crate::{
-    events::{FromEditor, ToEditor},
+    events::ToEditor,
     server::{
         client::{conn_read, conn_write},
         EditorHandle,
@@ -19,7 +19,7 @@ use crate::{
     CHANNEL_SIZE,
 };
 
-use super::{ClientConnectionInfo, ClientHandle, ClientId};
+use super::{ClientConnectionInfo, ClientHandle, ClientId, FromEditorSharedMessage};
 
 /// Data passed on to spawn client when acceptor accepts a new client.
 #[derive(Debug)]
@@ -58,7 +58,7 @@ pub(crate) fn spawn_client(info: ClientInfo) {
 
 async fn run_client(
     my_handle: oneshot::Receiver<ClientHandle>,
-    server_recv: Receiver<FromEditor>,
+    server_recv: Receiver<FromEditorSharedMessage>,
     mut info: ClientInfo,
 ) {
     let my_handle = match my_handle.await {
@@ -79,7 +79,7 @@ async fn run_client(
 }
 
 async fn client_loop(
-    server_recv: Receiver<FromEditor>,
+    server_recv: Receiver<FromEditorSharedMessage>,
     mut info: ClientInfo,
 ) -> Result<(), io::Error> {
     let (read, write) = info.conn.split();

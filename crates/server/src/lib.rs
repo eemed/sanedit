@@ -11,7 +11,7 @@ pub use job_runner::{
 pub use futures_core::Future;
 
 pub use server::{
-    client::{ClientHandle, ClientId},
+    client::{FromEditorSharedMessage, ClientHandle, ClientId},
     spawn_listener, Address, EditorHandle, StartOptions,
 };
 

@@ -48,7 +48,7 @@ pub trait Diffable {
 
 /// Component sent to the client. Components can be opened, updated and closed.
 /// Updating is done through diffs to reduce data sent.
-#[derive(Serialize, Deserialize, PartialEq, Eq, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
 pub enum Component<F, D>
 where
     F: Diffable<Diff = D>,
@@ -58,7 +58,7 @@ where
     Close,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Eq, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
 pub enum Redraw {
     Window(Component<window::Window, window::Difference>),
     Statusline(Component<statusline::Statusline, statusline::Difference>),

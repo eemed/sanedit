@@ -1,6 +1,7 @@
 use sanedit_messages::redraw::{
     self, window::WindowGrid, CursorShape, Point, Style, Theme, ThemeField,
 };
+use sanedit_server::FromEditorSharedMessage;
 use sanedit_utils::sorted_vec::SortedVec;
 
 use crate::editor::{
@@ -14,7 +15,7 @@ use sanedit_core::{
     grapheme_category, BufferRange, Cursor, Diagnostic, GraphemeCategory, Range, Replacement,
 };
 
-pub(crate) fn draw(ctx: &mut DrawContext) -> redraw::window::Window {
+pub(crate) fn draw(ctx: &mut DrawContext) -> FromEditorSharedMessage {
     let EditorContext {
         win,
         theme,
@@ -23,13 +24,12 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> redraw::window::Window {
         ..
     } = ctx.editor;
 
-    let mut grid = ctx.state.window_buffers.next_mut();
+    let window_buffer = ctx.state.window_buffers.next_mut();
+    let mut grid = &mut window_buffer.cells;
     if let Some(game) = &win.game {
         game.draw(grid, theme);
-        return redraw::window::Window {
-            cells: ctx.state.window_buffers.get(),
-            cursor: None,
-        };
+        window_buffer.cursor = None;
+        return ctx.state.window_buffers.get();
     }
 
     let style = theme.get(ThemeField::Default);
@@ -79,7 +79,7 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> redraw::window::Window {
         draw_search_highlights(&mut grid, &hls.highlights, view, theme);
     }
     draw_secondary_cursors(&mut grid, cursors, focus_on_win, view, theme);
-    let cursor = draw_primary_cursor(
+    window_buffer.cursor = draw_primary_cursor(
         &mut grid,
         cursors.primary(),
         can_insert && focus_on_win,
@@ -87,10 +87,7 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> redraw::window::Window {
         theme,
     );
 
-    redraw::window::Window {
-        cells: ctx.state.window_buffers.get(),
-        cursor,
-    }
+    ctx.state.window_buffers.get()
 }
 
 fn draw_syntax(grid: &mut Vec<Vec<redraw::Cell>>, view: &View, theme: &Theme) {

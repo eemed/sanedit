@@ -1,8 +1,5 @@
 use core::fmt;
-use std::{
-    ops::{Deref, DerefMut},
-    sync::Arc,
-};
+use std::ops::{Deref, DerefMut};
 
 use serde::{Deserialize, Serialize};
 
@@ -10,7 +7,7 @@ use super::{Cell, Component, Cursor, Diffable, Redraw};
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Default, Clone)]
 pub struct Window {
-    pub cells: Arc<WindowGrid>,
+    pub cells: WindowGrid,
     pub cursor: Option<Cursor>,
 }
 
@@ -88,7 +85,7 @@ impl From<Window> for Redraw {
     }
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Eq, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
 pub struct Difference {
     window: Window,
 }

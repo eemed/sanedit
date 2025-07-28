@@ -12,6 +12,7 @@ use std::{mem, path::Path};
 
 use sanedit_core::Language;
 use sanedit_messages::redraw::{Redraw, Theme};
+use sanedit_server::FromEditorSharedMessage;
 use window_buffers::WindowBuffers;
 
 use crate::editor::{
@@ -61,7 +62,7 @@ pub(crate) struct DrawState {
 }
 
 impl DrawState {
-    pub fn new(ectx: EditorContext) -> (DrawState, Vec<Redraw>) {
+    pub fn new(ectx: EditorContext) -> (DrawState, Vec<FromEditorSharedMessage>) {
         let mut state = DrawState {
             last_prompt: None,
             last_focus: None,
@@ -80,14 +81,15 @@ impl DrawState {
         };
 
         let window = window::draw(&mut ctx).into();
-        let statusline = statusline::draw(&mut ctx).into();
+        let statusline: Redraw = statusline::draw(&mut ctx).into();
+        let statusline = FromEditorSharedMessage::from(statusline);
 
         (state, vec![window, statusline])
     }
 
-    pub fn redraw(&mut self, ectx: EditorContext) -> Vec<Redraw> {
+    pub fn redraw(&mut self, ectx: EditorContext) -> Vec<FromEditorSharedMessage> {
         let EditorContext { win, .. } = ectx;
-        let mut redraw: Vec<Redraw> = vec![];
+        let mut redraw: Vec<FromEditorSharedMessage> = vec![];
         let mut ctx = DrawContext {
             editor: ectx,
             state: self,
@@ -95,36 +97,43 @@ impl DrawState {
 
         if mem::replace(&mut ctx.state.redraw_window, true) {
             let window = window::draw(&mut ctx);
-            redraw.push(window.into());
+            redraw.push(window);
         }
 
-        let statusline = statusline::draw(&mut ctx).into();
+        let statusline: Redraw = statusline::draw(&mut ctx).into();
+        let statusline = FromEditorSharedMessage::from(statusline);
         redraw.push(statusline);
 
         if let Some(msg) = win.message() {
-            redraw.push(msg.clone().into());
+            let msg: Redraw = msg.clone().into();
+            let msg = FromEditorSharedMessage::from(msg);
+            redraw.push(msg);
         }
 
         if let Some(current) = search::draw(&mut ctx) {
-            redraw.push(current);
+            redraw.push(current.into());
         }
 
-        redraw.extend(prompt::draw(&mut ctx));
+        redraw.extend(
+            prompt::draw(&mut ctx)
+                .into_iter()
+                .map(FromEditorSharedMessage::from),
+        );
 
         if let Some(current) = completion::draw(&mut ctx) {
-            redraw.push(current);
+            redraw.push(current.into());
         }
 
         if let Some(current) = locations::draw(&mut ctx) {
-            redraw.push(current);
+            redraw.push(current.into());
         }
 
         if let Some(current) = filetree::draw(&mut ctx) {
-            redraw.push(current);
+            redraw.push(current.into());
         }
 
         if let Some(current) = popup::draw(&mut ctx) {
-            redraw.push(current);
+            redraw.push(current.into());
         }
 
         self.last_focus = Some(win.focus());

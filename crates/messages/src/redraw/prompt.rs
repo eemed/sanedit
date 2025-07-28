@@ -48,7 +48,7 @@ impl From<Prompt> for Redraw {
     }
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Eq, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
 pub struct Difference {
     prompt: Prompt,
 }

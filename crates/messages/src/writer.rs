@@ -15,7 +15,7 @@ pub struct Writer<W: io::Write, T> {
 
 impl<W: io::Write, T> Writer<W, T>
 where
-    for<'de> T: Deserialize<'de> + Serialize,
+    for<'de> T: Serialize,
 {
     #[inline]
     pub fn new(write: W) -> Writer<W, T> {
@@ -27,6 +27,13 @@ where
     }
 
     pub fn write(&mut self, msg: T) -> Result<(), WriteError> {
+        self.codec.encode(msg, &mut self.buf)?;
+        self.write.write_all(&self.buf)?;
+        self.buf.clear();
+        Ok(())
+    }
+
+    pub fn write_ref(&mut self, msg: &T) -> Result<(), WriteError> {
         self.codec.encode(msg, &mut self.buf)?;
         self.write.write_all(&self.buf)?;
         self.buf.clear();

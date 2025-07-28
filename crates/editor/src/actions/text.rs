@@ -442,7 +442,7 @@ fn check_file_modification(editor: &mut Editor, id: ClientId) -> ActionResult {
                 .simple()
                 .on_confirm(|editor, id, out| {
                     let input = getf!(out.text());
-                    let yes = input.is_empty() || is_yes(input);
+                    let yes = is_yes(input);
                     let (_win, buf) = editor.win_buf_mut(id);
                     let bid = buf.id;
                     if yes {

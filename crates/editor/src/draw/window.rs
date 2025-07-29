@@ -1,8 +1,8 @@
-use std::sync::Arc;
+use std::{mem::take, sync::Arc};
 
 use sanedit_messages::{
     redraw::{
-        self, window::WindowGrid, Component, CursorShape, Point, Redraw, Style, Theme, ThemeField,
+        self, window::Window, Component, CursorShape, Point, Redraw, Style, Theme, ThemeField,
     },
     ClientMessage,
 };
@@ -15,10 +15,40 @@ use crate::editor::{
     windows::{Cell, Cursors, Focus, Mode, View},
 };
 
-use super::{DrawContext, EditorContext};
+use super::{DrawContext, EditorContext, Hash};
 use sanedit_core::{
     grapheme_category, BufferRange, Cursor, Diagnostic, GraphemeCategory, Range, Replacement,
 };
+
+fn calculate_message(
+    ctx: &mut DrawContext,
+    mut window_buffer: Arc<FromEditor>,
+) -> FromEditorSharedMessage {
+    let wb = Arc::make_mut(&mut window_buffer);
+    let grid =
+        if let FromEditor::Message(ClientMessage::Redraw(Redraw::Window(Component::Update(win)))) =
+            wb
+        {
+            win
+        } else {
+            unreachable!()
+        };
+    // Calculate hash without cursor value so it is independent of cursor position
+    let cursor = take(&mut grid.cursor);
+    let hash = Hash::new(grid);
+    grid.cursor = cursor;
+
+    if ctx.state.last_window.as_ref() == Some(&hash) {
+        let _ = ctx.state.window_buffer_sender.send(window_buffer);
+        return Redraw::WindowCursor(cursor).into();
+    }
+    ctx.state.last_window = Some(hash);
+
+    FromEditorSharedMessage::Shared {
+        message: window_buffer,
+        sender: ctx.state.window_buffer_sender.clone(),
+    }
+}
 
 pub(crate) fn draw(ctx: &mut DrawContext) -> Option<FromEditorSharedMessage> {
     let EditorContext {
@@ -29,31 +59,29 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> Option<FromEditorSharedMessage> {
         ..
     } = ctx.editor;
 
-    let mut window_buffer = ctx.state.window_buffer.recv().ok()?;
-    let wb = Arc::make_mut(&mut window_buffer);
-    let window_grid = if let FromEditor::Message(ClientMessage::Redraw(Redraw::Window(
-        Component::Open(win),
-    ))) = wb
-    {
-        win
-    } else {
-        unreachable!()
+    let Ok(mut window_buffer) = ctx.state.window_buffer.recv() else {
+        return None;
     };
-    let grid = &mut window_grid.cells;
+    let wb = Arc::make_mut(&mut window_buffer);
+    let grid =
+        if let FromEditor::Message(ClientMessage::Redraw(Redraw::Window(Component::Update(win)))) =
+            wb
+        {
+            win
+        } else {
+            unreachable!()
+        };
+
     if let Some(game) = &win.game {
         game.draw(grid, theme);
-        window_grid.cursor = None;
-        return Some(FromEditorSharedMessage::Shared {
-            message: window_buffer,
-            sender: ctx.state.window_buffer_sender.clone(),
-        });
+        return calculate_message(ctx, window_buffer).into();
     }
 
     let style = theme.get(ThemeField::Default);
     let vstyle = theme.get(ThemeField::Virtual);
     let view = win.view();
     if grid.height() != view.height() || grid.width() != view.width() {
-        *grid = WindowGrid::new(view.width(), view.height(), redraw::Cell::with_style(style));
+        *grid = Window::new(view.width(), view.height(), redraw::Cell::with_style(style));
     } else {
         grid.clear_with(redraw::Cell::with_style(style));
     }
@@ -97,7 +125,7 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> Option<FromEditorSharedMessage> {
         draw_search_highlights(grid, &hls.highlights, view, theme);
     }
     draw_secondary_cursors(grid, cursors, focus_on_win, view, theme);
-    window_grid.cursor = draw_primary_cursor(
+    grid.cursor = draw_primary_cursor(
         grid,
         cursors.primary(),
         can_insert && focus_on_win,
@@ -105,13 +133,10 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> Option<FromEditorSharedMessage> {
         theme,
     );
 
-    Some(FromEditorSharedMessage::Shared {
-        message: window_buffer,
-        sender: ctx.state.window_buffer_sender.clone(),
-    })
+    calculate_message(ctx, window_buffer).into()
 }
 
-fn draw_syntax(grid: &mut WindowGrid, view: &View, theme: &Theme) {
+fn draw_syntax(grid: &mut Window, view: &View, theme: &Theme) {
     const HL_PREFIX: &str = "window.view.";
     let syntax = view.syntax();
     draw_ordered_highlights(syntax.spans(), grid, view, |span| {
@@ -123,7 +148,7 @@ fn draw_syntax(grid: &mut WindowGrid, view: &View, theme: &Theme) {
     });
 }
 
-fn draw_ordered_highlights<T, F>(items: &[T], grid: &mut WindowGrid, view: &View, f: F)
+fn draw_ordered_highlights<T, F>(items: &[T], grid: &mut Window, view: &View, f: F)
 where
     F: Fn(&T) -> Option<(Style, &BufferRange)>,
 {
@@ -181,7 +206,7 @@ where
     }
 }
 
-fn draw_diagnostics(grid: &mut WindowGrid, diagnostics: &[Diagnostic], view: &View, theme: &Theme) {
+fn draw_diagnostics(grid: &mut Window, diagnostics: &[Diagnostic], view: &View, theme: &Theme) {
     const HL_PREFIX: &str = "window.view.";
     draw_ordered_highlights(diagnostics, grid, view, |diag| {
         let key = format!("{}{}", HL_PREFIX, diag.severity().as_ref());
@@ -191,7 +216,7 @@ fn draw_diagnostics(grid: &mut WindowGrid, diagnostics: &[Diagnostic], view: &Vi
 }
 
 // Prefer draw_ordered_highlights for multiple hls
-fn draw_sigle_hl(grid: &mut WindowGrid, view: &View, style: Style, range: &BufferRange) {
+fn draw_sigle_hl(grid: &mut Window, view: &View, style: Style, range: &BufferRange) {
     let vrange = view.range();
     if !vrange.overlaps(range) {
         return;
@@ -218,7 +243,7 @@ fn draw_sigle_hl(grid: &mut WindowGrid, view: &View, style: Style, range: &Buffe
 }
 
 fn draw_search_highlights(
-    grid: &mut WindowGrid,
+    grid: &mut Window,
     matches: &SortedVec<BufferRange>,
     view: &View,
     theme: &Theme,
@@ -228,7 +253,7 @@ fn draw_search_highlights(
 }
 
 fn draw_secondary_cursors(
-    grid: &mut WindowGrid,
+    grid: &mut Window,
     cursors: &Cursors,
     focus_on_win: bool,
     view: &View,
@@ -267,7 +292,7 @@ fn draw_secondary_cursors(
 }
 
 fn draw_primary_cursor(
-    grid: &mut WindowGrid,
+    grid: &mut Window,
     cursor: &Cursor,
     show_as_line: bool,
     view: &View,
@@ -296,7 +321,7 @@ fn draw_primary_cursor(
     .into()
 }
 
-fn draw_end_of_buffer(grid: &mut WindowGrid, view: &View, theme: &Theme) {
+fn draw_end_of_buffer(grid: &mut Window, view: &View, theme: &Theme) {
     let style = theme.get(ThemeField::EndOfBuffer);
     for (line, row) in view.cells().iter().enumerate() {
         let is_empty = row.iter().all(|cell| matches!(cell, Cell::Empty));
@@ -308,7 +333,7 @@ fn draw_end_of_buffer(grid: &mut WindowGrid, view: &View, theme: &Theme) {
     }
 }
 
-fn draw_trailing_whitespace(grid: &mut WindowGrid, view: &View, theme: &Theme, buf: &Buffer) {
+fn draw_trailing_whitespace(grid: &mut Window, view: &View, theme: &Theme, buf: &Buffer) {
     let Some(rep) = view
         .options
         .replacements

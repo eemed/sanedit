@@ -51,14 +51,29 @@ impl<'a, 'b> DrawContext<'a, 'b> {
     }
 }
 
+#[derive(Debug, PartialEq, Eq)]
+pub(crate) struct Hash(u64);
+
+impl Hash {
+    pub fn new<H: std::hash::Hash>(typ: &H) -> Hash {
+        use std::hash::Hasher;
+
+        let mut hasher = rustc_hash::FxHasher::default();
+        typ.hash(&mut hasher);
+        Hash(hasher.finish())
+    }
+}
+
 #[derive(Debug)]
 pub(crate) struct DrawState {
-    /// Used to detect when prompt is different
-    last_prompt: Option<String>,
     last_focus: Option<Focus>,
-    last_show_ft: Option<bool>,
-    last_show_loc: Option<bool>,
+    last_prompt: Option<Hash>,
+    last_compl: Option<Hash>,
+    last_loc: Option<Hash>,
+    last_ft: Option<Hash>,
+
     last_show_popup: Option<bool>,
+    last_statusline: Option<Hash>,
 
     /// Used to track scroll position when drawing prompt
     prompt_scroll_offset: usize,
@@ -68,12 +83,13 @@ pub(crate) struct DrawState {
 
     pub(crate) window_buffer: Receiver<Arc<FromEditor>>,
     pub(crate) window_buffer_sender: Sender<Arc<FromEditor>>,
+    last_window: Option<Hash>,
 }
 
 impl DrawState {
     pub fn new(ectx: EditorContext) -> (DrawState, Vec<FromEditorSharedMessage>) {
         let buffer = Arc::new(FromEditor::Message(ClientMessage::Redraw(Redraw::Window(
-            Component::Open(redraw::window::Window::default()),
+            Component::Update(redraw::window::Window::default()),
         ))));
         let (tx, rx) = channel();
         let _ = tx.send(buffer);
@@ -81,14 +97,17 @@ impl DrawState {
         let mut state = DrawState {
             last_prompt: None,
             last_focus: None,
-            last_show_ft: None,
-            last_show_loc: None,
+            last_compl: None,
+            last_loc: None,
+            last_ft: None,
             last_show_popup: None,
+            last_statusline: None,
             prompt_scroll_offset: 0,
             compl_scroll_offset: 0,
             redraw_window: true,
             window_buffer: rx,
             window_buffer_sender: tx,
+            last_window: None,
         };
 
         let mut ctx = DrawContext {
@@ -100,9 +119,10 @@ impl DrawState {
         if let Some(window) = window::draw(&mut ctx) {
             redraw.push(window);
         }
-        let statusline: Redraw = statusline::draw(&mut ctx).into();
-        let statusline = FromEditorSharedMessage::from(statusline);
-        redraw.push(statusline);
+
+        if let Some(statusline) = statusline::draw(&mut ctx) {
+            redraw.push(statusline);
+        }
 
         (state, redraw)
     }
@@ -121,9 +141,9 @@ impl DrawState {
             }
         }
 
-        let statusline: Redraw = statusline::draw(&mut ctx).into();
-        let statusline = FromEditorSharedMessage::from(statusline);
-        redraw.push(statusline);
+        if let Some(current) = statusline::draw(&mut ctx) {
+            redraw.push(current.into());
+        }
 
         if let Some(msg) = win.message() {
             let msg: Redraw = msg.clone().into();

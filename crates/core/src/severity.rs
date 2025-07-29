@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use strum_macros::AsRefStr;
 
 #[derive(
-    Clone, Debug, Copy, Default, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, AsRefStr,
+    Clone, Debug, Copy, Default, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, AsRefStr, Hash
 )]
 #[strum(serialize_all = "lowercase")]
 pub enum Severity {

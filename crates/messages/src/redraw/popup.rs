@@ -3,13 +3,13 @@ use serde::{Deserialize, Serialize};
 
 use super::{Point, Redraw};
 
-#[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone, Hash)]
 pub enum PopupComponent {
     Open(Popup),
     Close,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone, Hash)]
 pub enum PopupKind {
     SignatureHelp,
     Hover,
@@ -17,7 +17,7 @@ pub enum PopupKind {
 }
 
 /// A read only window that pops up at a position.
-#[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone, Hash)]
 pub struct Popup {
     pub point: Point,
     pub messages: Vec<PopupMessage>,
@@ -26,7 +26,7 @@ pub struct Popup {
     pub kind: PopupKind,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone, Hash)]
 pub struct PopupMessage {
     pub severity: Option<Severity>,
     pub text: String,

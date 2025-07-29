@@ -1,8 +1,5 @@
-use std::cmp::min;
-
 use sanedit_messages::redraw::{
-    statusline::Statusline, window::Window, Cell, Cursor, Severity, Size, StatusMessage, Style,
-    ThemeField,
+    statusline::Statusline, Cell, Cursor, Severity, Size, StatusMessage, Style, ThemeField,
 };
 
 use crate::ui::UIContext;
@@ -172,26 +169,6 @@ impl<'a, 'b> Subgrid<'a, 'b> {
 pub(crate) trait Drawable {
     fn draw(&self, ctx: &UIContext, cells: Subgrid);
     fn cursor(&self, ctx: &UIContext) -> DrawCursor;
-}
-
-impl Drawable for Window {
-    fn draw(&self, _ctx: &UIContext, mut grid: Subgrid) {
-        let width = min(grid.width(), self.cells.width());
-        let height = min(grid.height(), self.cells.height());
-
-        for x in 0..width {
-            for y in 0..height {
-                grid.replace(y, x, self.cells.get(y, x).clone().into());
-            }
-        }
-    }
-
-    fn cursor(&self, _ctx: &UIContext) -> DrawCursor {
-        match self.cursor {
-            Some(cursor) => DrawCursor::Show(cursor),
-            None => DrawCursor::Ignore,
-        }
-    }
 }
 
 impl Drawable for Statusline {

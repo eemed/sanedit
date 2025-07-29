@@ -23,7 +23,7 @@ use redraw::{Redraw, Size, Theme};
 use serde::{Deserialize, Serialize};
 
 /// Messages sent to the client
-#[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone, Hash)]
 pub enum ClientMessage {
     Hello,
     Theme(Theme),

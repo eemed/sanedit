@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 ///
 /// Note: The structure is not treelike instead the items contain a level
 /// property that tells at which level they should be displayed
-#[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone, Hash)]
 pub struct Items {
     pub items: Vec<Item>,
     pub selected: usize,
@@ -16,19 +16,19 @@ pub struct Items {
     pub is_loading: bool,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone, Hash)]
 pub enum ItemKind {
     Group { expanded: bool },
     Item,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone, Hash)]
 pub enum ItemLocation {
     Line(u64),
     ByteOffset(u64),
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone, Hash)]
 pub struct Item {
     pub location: Option<ItemLocation>,
 

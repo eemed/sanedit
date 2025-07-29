@@ -36,23 +36,32 @@ use serde::{Deserialize, Serialize};
 use crate::ClientMessage;
 
 /// Component sent to the client. Components can be opened, updated and closed.
-#[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone, Hash)]
 pub enum Component<F> {
-    Open(F),
     Update(F),
     Close,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone, Hash)]
+pub enum Kind {
+    Prompt,
+    Completion,
+    Filetree,
+    Locations,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone, Hash)]
 pub enum Redraw {
+    WindowCursor(Option<Cursor>),
     Window(Component<window::Window>),
     Statusline(Component<statusline::Statusline>),
+    /// Updates just the selection
+    Selection(Kind, Option<usize>),
     Prompt(Component<prompt::Prompt>),
     Completion(Component<completion::Completion>),
     Filetree(Component<items::Items>),
     Locations(Component<items::Items>),
     StatusMessage(StatusMessage),
-    // LineNumbers(LineNumbers),
     Popup(PopupComponent),
 }
 

@@ -1,38 +1,37 @@
-use std::cmp;
+use std::{cmp, mem::take};
 
-use sanedit_messages::redraw::{self, prompt::Source, Component, Redraw};
+use sanedit_messages::redraw::{self, prompt::Source, Component, Kind, Redraw};
 
 use crate::editor::windows::Focus;
 
-use super::DrawContext;
+use super::{DrawContext, Hash};
 
-pub(crate) fn draw(ctx: &mut DrawContext) -> Vec<redraw::Redraw> {
-    let mut results: Vec<redraw::Redraw> = vec![];
-
-    let reopened = ctx
-        .state
-        .last_prompt
-        .as_ref()
-        .map(|p| p != ctx.editor.win.prompt.message())
-        .unwrap_or(false);
-
-    if ctx.focus_changed_from(Focus::Prompt) || reopened {
+pub(crate) fn draw(ctx: &mut DrawContext) -> Option<Redraw> {
+    if ctx.focus_changed_from(Focus::Prompt) {
         ctx.state.prompt_scroll_offset = 0;
         ctx.state.last_prompt = None;
-        results.push(Redraw::Prompt(Component::Close));
+        return Some(Redraw::Prompt(Component::Close));
     }
 
     let in_focus = ctx.editor.win.focus() == Focus::Prompt;
-
     if !in_focus {
-        return results;
+        ctx.state.last_prompt = None;
+        return None;
     }
 
-    results.push(draw_impl(ctx));
-    results
+    let mut prompt = draw_impl(ctx);
+    let selected = take(&mut prompt.selected);
+    let hash = Hash::new(&prompt);
+    if ctx.state.last_prompt.as_ref() == Some(&hash) {
+        return Some(redraw::Redraw::Selection(Kind::Prompt, selected));
+    }
+
+    ctx.state.last_prompt = Some(hash);
+    prompt.selected = selected;
+    Some(redraw::Redraw::Prompt(Component::Update(prompt)))
 }
 
-fn draw_impl(ctx: &mut DrawContext) -> redraw::Redraw {
+fn draw_impl(ctx: &mut DrawContext) -> redraw::prompt::Prompt {
     let prompt = &ctx.editor.win.prompt;
     let compl_count = ctx.editor.win.config.max_prompt_completions;
     let offset = &mut ctx.state.prompt_scroll_offset;
@@ -46,7 +45,6 @@ fn draw_impl(ctx: &mut DrawContext) -> redraw::Redraw {
             cmp::min(*offset, selected)
         }
     };
-    ctx.state.last_prompt = Some(prompt.message().to_string());
 
     let msg = prompt.message().to_string();
     let input = prompt.input().into();
@@ -79,5 +77,4 @@ fn draw_impl(ctx: &mut DrawContext) -> redraw::Redraw {
         source,
         max_completions: compl_count,
     }
-    .into()
 }

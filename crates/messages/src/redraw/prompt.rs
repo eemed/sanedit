@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{choice::Choice, Component, Redraw};
 
-#[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone, Hash)]
 pub enum Source {
     /// Search prompt
     Search,
@@ -12,7 +12,7 @@ pub enum Source {
     Simple,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone, Hash)]
 pub struct Prompt {
     pub message: String,
     pub input: String,
@@ -26,6 +26,6 @@ pub struct Prompt {
 
 impl From<Prompt> for Redraw {
     fn from(value: Prompt) -> Self {
-        Redraw::Prompt(Component::Open(value))
+        Redraw::Prompt(Component::Update(value))
     }
 }

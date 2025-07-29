@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use super::Redraw;
 
-#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub struct StatusMessage {
     pub severity: Severity,
     pub message: String,

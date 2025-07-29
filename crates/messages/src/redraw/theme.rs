@@ -1,9 +1,10 @@
-use rustc_hash::FxHashMap;
+use std::collections::BTreeMap;
+
 use serde::{Deserialize, Serialize};
 
 use crate::redraw::Style;
 
-#[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone, Default)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone, Default, Hash)]
 pub struct Theme {
     name: String,
     node: ThemeNode,
@@ -30,7 +31,7 @@ impl Theme {
                     node = entry.or_insert_with(|| ThemeNode::Leaf(Style::default()));
                 }
                 ThemeNode::Leaf(style) => {
-                    let mut nodes = FxHashMap::default();
+                    let mut nodes = BTreeMap::default();
                     nodes.insert(comp.to_string(), ThemeNode::Leaf(Style::default()));
                     *node = ThemeNode::Node {
                         style: *style,
@@ -70,11 +71,11 @@ impl Theme {
     }
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone, Hash)]
 pub enum ThemeNode {
     Node {
         style: Style,
-        nodes: FxHashMap<String, ThemeNode>,
+        nodes: BTreeMap<String, ThemeNode>,
     },
     Leaf(Style),
 }

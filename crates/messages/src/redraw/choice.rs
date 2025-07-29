@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 pub use sanedit_core::Range;
 
-#[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone, Hash)]
 pub struct Choice {
     pub text: String,
     pub description: String,

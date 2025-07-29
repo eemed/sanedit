@@ -17,7 +17,7 @@ impl IntoCells for &str {
 
 const EMPTY: SmolStr = SmolStr::new_static(" ");
 
-#[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone, Hash)]
 pub struct Cell {
     pub text: SmolStr,
     pub style: Style,

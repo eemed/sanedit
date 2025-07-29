@@ -1,43 +1,42 @@
-use core::fmt;
+use std::collections::BTreeMap;
 
-use rustc_hash::FxHashMap;
 use serde::{Deserialize, Serialize};
-
 use super::{Cell, Component, Cursor, Redraw};
+//
+// #[derive(Serialize, Deserialize, PartialEq, Eq, Default, Clone)]
+// pub struct Window {
+//     pub cells: WindowGrid,
+// }
 
-#[derive(Serialize, Deserialize, PartialEq, Eq, Default, Clone)]
+// impl fmt::Debug for Window {
+//     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+//         writeln!(f, "===Window===")?;
+//         // for row in self.cells.iter() {
+//         //     write!(f, "\"")?;
+//         //     for cell in row.iter() {
+//         //         write!(f, "{}", cell.text)?;
+//         //     }
+//         //     writeln!(f, "\"")?;
+//         // }
+//         write!(f, "==========")?;
+//         Ok(())
+//     }
+// }
+
+#[derive(Serialize, Deserialize, PartialEq, Eq, Default, Clone, Debug, Hash)]
 pub struct Window {
-    pub cells: WindowGrid,
     pub cursor: Option<Cursor>,
-}
-
-impl fmt::Debug for Window {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(f, "===Window===")?;
-        // for row in self.cells.iter() {
-        //     write!(f, "\"")?;
-        //     for cell in row.iter() {
-        //         write!(f, "{}", cell.text)?;
-        //     }
-        //     writeln!(f, "\"")?;
-        // }
-        write!(f, "==========")?;
-        Ok(())
-    }
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Eq, Default, Clone, Debug)]
-pub struct WindowGrid {
-    cells: FxHashMap<(u32, u32), Cell>,
+    cells: BTreeMap<(u32, u32), Cell>,
     empty: Cell,
     width: u32,
     height: u32,
 }
 
-impl WindowGrid {
-    pub fn new(width: usize, height: usize, cell: Cell) -> WindowGrid {
+impl Window {
+    pub fn new(width: usize, height: usize, cell: Cell) -> Window {
         Self {
-            cells: FxHashMap::default(),
+            cursor: None,
+            cells: BTreeMap::default(),
             empty: cell,
             width: width as u32,
             height: height as u32,
@@ -73,10 +72,18 @@ impl WindowGrid {
     pub fn get(&self, y: usize, x: usize) -> &Cell {
         self.cells.get(&(y as u32, x as u32)).unwrap_or(&self.empty)
     }
+
+    pub fn used(&self) -> std::collections::btree_map::Iter<'_, (u32, u32), Cell> {
+        self.cells.iter()
+    }
+
+    pub fn empty_cell(&self) -> Cell {
+        self.empty.clone()
+    }
 }
 
 impl From<Window> for Redraw {
     fn from(value: Window) -> Self {
-        Redraw::Window(Component::Open(value))
+        Redraw::Window(Component::Update(value))
     }
 }

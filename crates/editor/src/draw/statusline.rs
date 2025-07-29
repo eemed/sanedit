@@ -1,10 +1,23 @@
-use sanedit_messages::redraw::statusline::Statusline;
+use sanedit_messages::redraw::{statusline::Statusline, Redraw};
+use sanedit_server::FromEditorSharedMessage;
 
 use crate::editor::windows::Focus;
 
-use super::{DrawContext, EditorContext};
+use super::{DrawContext, EditorContext, Hash};
 
-pub(crate) fn draw(ctx: &mut DrawContext) -> Statusline {
+pub(crate) fn draw(ctx: &mut DrawContext) -> Option<FromEditorSharedMessage> {
+    let statusline = draw_statusline(ctx);
+    let hash = Hash::new(&statusline);
+    if ctx.state.last_statusline.as_ref() == Some(&hash) {
+        return None;
+    }
+
+    ctx.state.last_statusline = Some(hash);
+    let redraw: Redraw = statusline.into();
+    Some(FromEditorSharedMessage::from(redraw))
+}
+
+fn draw_statusline(ctx: &mut DrawContext) -> Statusline {
     let EditorContext {
         win,
         buf,
@@ -17,7 +30,6 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> Statusline {
         let right = String::new();
         return Statusline { left, right };
     }
-
 
     if win.focus() == Focus::Locations {
         let left = " Locations".to_string();

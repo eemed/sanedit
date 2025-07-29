@@ -1,19 +1,21 @@
+use std::mem::take;
+
 use sanedit_messages::redraw::{
     self,
     items::{Item, ItemKind},
-    Component,
+    Component, Kind,
 };
 
 use crate::editor::windows::Focus;
 
-use super::DrawContext;
+use super::{DrawContext, Hash};
 
 pub(crate) fn draw(ctx: &mut DrawContext) -> Option<redraw::Redraw> {
     let show_ft = ctx.editor.win.ft_view.show;
-    let close_ft = !show_ft && ctx.state.last_show_ft == Some(true);
-    ctx.state.last_show_ft = Some(show_ft);
+    let close_ft = !show_ft && ctx.state.last_ft.is_some();
 
     if close_ft {
+        ctx.state.last_ft = None;
         return Some(redraw::Redraw::Filetree(Component::Close));
     }
 
@@ -21,10 +23,19 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> Option<redraw::Redraw> {
         return None;
     }
 
-    draw_impl(ctx).into()
+    let mut items = draw_impl(ctx);
+    let selected = take(&mut items.selected);
+    let hash = Hash::new(&items);
+    if ctx.state.last_ft.as_ref() == Some(&hash) {
+        return Some(redraw::Redraw::Selection(Kind::Filetree, Some(selected)));
+    }
+
+    ctx.state.last_ft = Some(hash);
+    items.selected = selected;
+    Some(redraw::Redraw::Filetree(Component::Update(items)))
 }
 
-fn draw_impl(ctx: &mut DrawContext) -> redraw::Redraw {
+fn draw_impl(ctx: &mut DrawContext) -> redraw::items::Items {
     let tree = ctx.editor.filetree;
     let selected = ctx.editor.win.ft_view.selection;
     let mut items = vec![];
@@ -50,11 +61,10 @@ fn draw_impl(ctx: &mut DrawContext) -> redraw::Redraw {
     }
 
     let in_focus = ctx.editor.win.focus() == Focus::Filetree;
-    let items = redraw::items::Items {
+    redraw::items::Items {
         items,
         selected,
         in_focus,
         is_loading: false,
-    };
-    redraw::Redraw::Filetree(Component::Open(items))
+    }
 }

@@ -6,6 +6,7 @@ mod items;
 mod popup;
 mod prompt;
 mod rect;
+mod window;
 
 use std::sync::Arc;
 
@@ -15,8 +16,7 @@ use items::Kind;
 use popup::popup_rect;
 use sanedit_messages::{
     redraw::{
-        statusline::Statusline, window::Window, Cell, Component, Cursor, Point, Popup,
-        PopupComponent, Redraw, Size, StatusMessage, Theme,
+        self, statusline::Statusline, window::Window, Cell, Component, Cursor, Point, Popup, PopupComponent, Redraw, Size, StatusMessage, Theme
     },
     Message,
 };
@@ -107,23 +107,24 @@ impl Grid {
 
         match msg {
             Window(comp) => match comp {
-                Open(win) | Update(win) => self.window.item = win,
+                Update(win) => self.window.item = win,
                 Close => {}
             },
+            WindowCursor(cursor) => self.window.item.cursor = cursor,
             Statusline(comp) => match comp {
-                Open(status) | Update(status) => self.statusline.item = status,
+                Update(status) => self.statusline.item = status,
                 Close => {}
             },
             Prompt(comp) => match comp {
-                Open(prompt) => {
-                    self.prompt = Some(CustomPrompt::new(prompt).into());
-                    self.refresh_overlays();
-                }
-                Update(prompt) => {
-                    if let Some(ref mut custom_prompt) = self.prompt {
+                Update(prompt) => match self.prompt {
+                    Some(ref mut custom_prompt) => {
                         custom_prompt.item.prompt = prompt;
                     }
-                }
+                    None => {
+                        self.prompt = Some(CustomPrompt::new(prompt).into());
+                        self.refresh_overlays();
+                    }
+                },
                 Close => self.prompt = None,
             },
             StatusMessage(msg) => {
@@ -134,29 +135,32 @@ impl Grid {
             }
             Completion(comp) => {
                 match comp {
-                    Open(compl) => self.completion = Some(CustomCompletion::new(compl).into()),
-                    Update(diff) => {
-                        if let Some(ref mut compl) = self.completion {
-                            compl.item.update(diff);
+                    Update(completion) => match self.completion {
+                        Some(ref mut compl) => {
+                            compl.item.update(completion);
                         }
-                    }
+                        None => {
+                            self.completion = Some(CustomCompletion::new(completion).into());
+                        }
+                    },
                     Close => self.completion = None,
                 }
 
                 self.refresh_overlays();
             }
             Filetree(comp) => match comp {
-                Open(ft) => {
-                    self.filetree = Some(CustomItems::new(ft, Kind::Filetree).into());
-                    self.refresh();
-                    return RedrawResult::Resized;
-                }
                 Update(items) => {
-                    if let Some(ref mut ft) = self.filetree {
-                        ft.item.items = items;
-                        self.refresh();
-                        return RedrawResult::Resized;
+                    match self.filetree {
+                        Some(ref mut ft) => {
+                            ft.item.items = items;
+                            self.refresh();
+                        }
+                        None => {
+                            self.filetree = Some(CustomItems::new(items, Kind::Filetree).into());
+                            self.refresh();
+                        }
                     }
+                    return RedrawResult::Resized;
                 }
                 Close => {
                     self.filetree = None;
@@ -165,17 +169,18 @@ impl Grid {
                 }
             },
             Locations(comp) => match comp {
-                Open(locs) => {
-                    self.locations = Some(CustomItems::new(locs, Kind::Locations).into());
-                    self.refresh();
-                    return RedrawResult::Resized;
-                }
                 Update(items) => {
-                    if let Some(ref mut locs) = self.locations {
-                        locs.item.items = items;
-                        self.refresh();
-                        return RedrawResult::Resized;
+                    match self.locations {
+                        Some(ref mut locs) => {
+                            locs.item.items = items;
+                            self.refresh();
+                        }
+                        None => {
+                            self.locations = Some(CustomItems::new(items, Kind::Locations).into());
+                            self.refresh();
+                        }
                     }
+                    return RedrawResult::Resized;
                 }
                 Close => {
                     self.locations = None;
@@ -190,6 +195,28 @@ impl Grid {
                 }
                 PopupComponent::Close => {
                     self.popup = None;
+                }
+            },
+            Selection(kind, pos) => match kind {
+                redraw::Kind::Prompt => {
+                    if let Some(prompt) = &mut self.prompt {
+                        prompt.item.prompt.selected = pos;
+                    }
+                }
+                redraw::Kind::Completion => {
+                    if let Some(compl) = &mut self.completion {
+                        compl.item.completion.selected = pos;
+                    }
+                }
+                redraw::Kind::Filetree => {
+                    if let Some(ft) = &mut self.filetree {
+                        ft.item.items.selected = pos.unwrap_or(0);
+                    }
+                }
+                redraw::Kind::Locations => {
+                    if let Some(loc) = &mut self.locations {
+                        loc.item.items.selected = pos.unwrap_or(0);
+                    }
                 }
             },
         }

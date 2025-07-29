@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{choice::Choice, Component, Point, Redraw};
 
-#[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone, Hash)]
 pub struct Completion {
     pub point: Point,
     pub choices: Vec<Choice>,
@@ -17,6 +17,6 @@ impl Completion {}
 
 impl From<Completion> for Redraw {
     fn from(value: Completion) -> Self {
-        Redraw::Completion(Component::Open(value))
+        Redraw::Completion(Component::Update(value))
     }
 }

@@ -438,17 +438,19 @@ fn snake(editor: &mut Editor, id: ClientId) -> ActionResult {
         let dstate = editor.draw_state(id);
 
         let window_buffer = getf!(dstate.window_buffer.recv().ok());
-        let window_grid = if let FromEditor::Message(ClientMessage::Redraw(Redraw::Window(
-            Component::Open(win),
+        let grid = if let FromEditor::Message(ClientMessage::Redraw(Redraw::Window(
+            Component::Update(win),
         ))) = window_buffer.as_ref()
         {
             win
         } else {
             unreachable!()
         };
-        let grid = &window_grid.cells;
         match Snake::new(grid) {
-            Ok(game) => game,
+            Ok(game) => {
+                let _ = dstate.window_buffer_sender.send(window_buffer);
+                game
+            }
             Err(e) => {
                 log::error!("Cannot launch game: {e}");
                 return ActionResult::Failed;

@@ -3,7 +3,7 @@ use std::hash::{BuildHasher, Hasher};
 use std::{collections::VecDeque, hash::RandomState, sync::mpsc::Sender};
 
 use anyhow::bail;
-use sanedit_messages::redraw::window::WindowGrid;
+use sanedit_messages::redraw::window::Window;
 use sanedit_messages::redraw::{text_style, Size, Theme, ThemeField};
 use sanedit_messages::{
     key::{Key, KeyEvent},
@@ -55,14 +55,14 @@ pub(crate) struct Snake {
     prev_dir: Option<Direction>,
     prev_pop: Option<Point>,
     tick_sender: Option<Sender<u64>>,
-    map: WindowGrid,
+    map: Window,
     state: State,
     score: usize,
     left_pad: bool,
 }
 
 impl Snake {
-    pub fn new(drawn: &WindowGrid) -> anyhow::Result<Snake> {
+    pub fn new(drawn: &Window) -> anyhow::Result<Snake> {
         let Size { width, height } = Self::size(drawn);
         let Point {
             x: center,
@@ -130,7 +130,7 @@ impl Snake {
         }
     }
 
-    fn center(cells: &WindowGrid) -> Point {
+    fn center(cells: &Window) -> Point {
         let mut center_x = cells.width() / 2;
         if center_x & 1 == 1 {
             center_x -= 1;
@@ -142,7 +142,7 @@ impl Snake {
         }
     }
 
-    fn size(cells: &WindowGrid) -> Size {
+    fn size(cells: &Window) -> Size {
         let mut width = cells.width();
         if width & 1 == 1 {
             width -= 1;
@@ -187,7 +187,7 @@ impl Snake {
         }
     }
 
-    fn draw_snake(&self, grid: &mut WindowGrid, theme: &Theme) {
+    fn draw_snake(&self, grid: &mut Window, theme: &Theme) {
         let mut snake_style = theme.get(ThemeField::String);
         snake_style.text_style = Some(text_style::BOLD);
 
@@ -245,7 +245,7 @@ impl Snake {
         cell.text = "O".into();
     }
 
-    fn draw_apple(&self, grid: &mut WindowGrid, theme: &Theme) {
+    fn draw_apple(&self, grid: &mut Window, theme: &Theme) {
         let apple_style = theme.get(ThemeField::Preproc);
         let cell = grid.at(self.apple.y, self.apple.x);
         cell.style = apple_style;
@@ -370,7 +370,7 @@ impl Game for Snake {
         }
     }
 
-    fn draw(&self, grid: &mut WindowGrid, theme: &Theme) {
+    fn draw(&self, grid: &mut Window, theme: &Theme) {
         *grid = self.map.clone();
 
         let Size { width, height } = Self::size(&self.map);

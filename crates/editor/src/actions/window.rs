@@ -1,5 +1,3 @@
-use std::ops::DerefMut as _;
-
 use crate::{
     actions::{hooks::run, shell},
     common::to_human_readable,
@@ -439,16 +437,16 @@ fn snake(editor: &mut Editor, id: ClientId) -> ActionResult {
     let snake_game = {
         let dstate = editor.draw_state(id);
 
-        let mut window_buffer = dstate.window_buffer.blocking_lock();
+        let window_buffer = getf!(dstate.window_buffer.recv().ok());
         let window_grid = if let FromEditor::Message(ClientMessage::Redraw(Redraw::Window(
             Component::Open(win),
-        ))) = window_buffer.deref_mut()
+        ))) = window_buffer.as_ref()
         {
             win
         } else {
             unreachable!()
         };
-        let grid = &mut window_grid.cells;
+        let grid = &window_grid.cells;
         match Snake::new(grid) {
             Ok(game) => game,
             Err(e) => {

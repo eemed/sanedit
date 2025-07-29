@@ -201,6 +201,7 @@ pub(crate) const COMMANDS: &[Action] = &[
     text::lowercase,
     text::rotate_selections,
     text::rotate_selections_backwards,
+    text::set_language,
 
     prompt::open_file,
     prompt::open_buffer,

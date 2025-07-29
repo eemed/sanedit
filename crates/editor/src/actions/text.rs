@@ -1,6 +1,6 @@
 use std::{mem, sync::Arc};
 
-use sanedit_core::{at_start_of_line, is_indent_at_pos};
+use sanedit_core::{at_start_of_line, is_indent_at_pos, Language};
 
 use crate::{
     actions::movement::start_of_buffer,
@@ -9,7 +9,7 @@ use crate::{
         buffers::{Buffer, BufferError, BufferId},
         hooks::Hook,
         language::Languages,
-        windows::{Focus, NextKeyFunction, Prompt, Window},
+        windows::{Focus, NextKeyFunction, Prompt, ViewSyntax, Window},
         Editor,
     },
 };
@@ -556,4 +556,26 @@ fn rotate_selections_backwards(editor: &mut Editor, id: ClientId) -> ActionResul
     } else {
         ActionResult::Failed
     }
+}
+
+#[action("Buffer: Set language")]
+fn set_language(editor: &mut Editor, id: ClientId) -> ActionResult {
+    let (win, _buf) = editor.win_buf_mut(id);
+
+    win.prompt = Prompt::builder()
+        .prompt("Language")
+        .simple()
+        .on_confirm(|editor, id, input| {
+            let text = getf!(input.text());
+            let lang = Language::from(text);
+            let (win, buf) = editor.win_buf_mut(id);
+            buf.language = Some(lang);
+            *win.view_syntax() = ViewSyntax::default();
+
+            ActionResult::Ok
+        })
+        .build();
+    focus(editor, id, Focus::Prompt);
+
+    ActionResult::Ok
 }

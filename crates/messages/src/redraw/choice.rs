@@ -1,5 +1,6 @@
-use sanedit_core::Range;
 use serde::{Deserialize, Serialize};
+
+pub use sanedit_core::Range;
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
 pub struct Choice {

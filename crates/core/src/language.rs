@@ -37,3 +37,9 @@ impl Language {
         &self.name
     }
 }
+
+impl From<&str> for Language {
+    fn from(value: &str) -> Self {
+        Language { name: value.to_string() }
+    }
+}

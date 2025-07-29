@@ -37,8 +37,8 @@ pub(crate) struct WindowConfig {
 impl Default for WindowConfig {
     fn default() -> Self {
         WindowConfig {
-            max_prompt_completions: 10,
-            max_completions: 10,
+            max_prompt_completions: 15,
+            max_completions: 15,
             theme: DEFAULT_THEME.into(),
             highlight_syntax: true,
             highlight_diagnostics: true,

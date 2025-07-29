@@ -10,12 +10,6 @@ pub(crate) fn into_cells_with_style(string: &str, style: Style) -> Vec<Cell> {
     cells
 }
 
-pub(crate) fn into_cells_with_style_pad(string: &str, style: Style, width: usize) -> Vec<Cell> {
-    let mut cells = into_cells_with_style(string, style);
-    pad_line(&mut cells, style, width);
-    cells
-}
-
 pub(crate) fn into_cells_with_theme_pad_with(
     string: &str,
     style: &Style,

@@ -323,7 +323,6 @@ impl Editor {
     }
 
     pub fn send_to_client(&mut self, id: ClientId, msg: FromEditorSharedMessage) {
-        log::info!("Send to client");
         if let Some(client) = self.clients.get_mut(&id) {
             if let Err(_e) = client.send(msg.into()) {
                 log::info!(

@@ -1,13 +1,13 @@
 pub(crate) mod tcp;
 pub(crate) mod unix;
 
-use std::{borrow::Cow, ops::Deref as _, path::PathBuf, sync::Arc};
+use std::{borrow::Cow, path::PathBuf, sync::Arc};
 
 use futures_util::{SinkExt as _, StreamExt};
 use sanedit_messages::{redraw::Redraw, BinCodec, ClientMessage, Message};
 use tokio::{
     io::{self, AsyncRead, AsyncWrite},
-    sync::{mpsc::{Receiver, Sender}, Mutex},
+    sync::mpsc::{Receiver, Sender},
     task::JoinHandle,
 };
 use tokio_util::codec::{FramedRead, FramedWrite};
@@ -34,7 +34,8 @@ impl From<ClientId> for String {
 #[derive(Debug)]
 pub enum FromEditorSharedMessage {
     Shared {
-        message: Arc<Mutex<FromEditor>>,
+        message: Arc<FromEditor>,
+        sender: std::sync::mpsc::Sender<Arc<FromEditor>>,
     },
     Owned {
         message: FromEditor,
@@ -121,9 +122,8 @@ async fn conn_write(
 
     while let Some(msg) = server_recv.recv().await {
         match msg {
-            FromEditorSharedMessage::Shared { message } => {
-                let lock = message.lock().await;
-                match lock.deref() {
+            FromEditorSharedMessage::Shared { message, sender } => {
+                match message.as_ref() {
                     FromEditor::Message(client_message) => {
                         if let Err(e) = writer.send(client_message).await {
                             log::error!("conn_write error: {}", e);
@@ -131,6 +131,8 @@ async fn conn_write(
                         }
                     }
                 }
+
+                let _ = sender.send(message);
             }
             FromEditorSharedMessage::Owned { message } => match message {
                 FromEditor::Message(client_message) => {

@@ -129,7 +129,7 @@ impl<T, const N: usize> RingBuffer<T, N> {
 /// This avoids allocation for each element that would be needed with Rc or Arc.
 /// The trait is separated from the main ring functionality for clarity
 /// The functions do not affect the ring buffers natural read mechanism.
-pub trait RingRandomAccess {
+pub trait RingItemReference {
     /// Item type
     type T;
     /// Reference type
@@ -153,7 +153,7 @@ pub trait RingRandomAccess {
     fn last(&self) -> Option<(Self::R, &Self::T)>;
 }
 
-impl<T, const N: usize> RingRandomAccess for RingBuffer<T, N> {
+impl<T, const N: usize> RingItemReference for RingBuffer<T, N> {
     type T = T;
     type R = Ref;
 

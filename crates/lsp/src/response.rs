@@ -20,12 +20,10 @@ pub enum NotificationResult {
     },
 }
 
-// TODO should clear out lsp_types::* from here
-// to provide a simple interface to the editor.
 #[derive(Debug, Clone)]
 pub enum RequestResult {
     Hover {
-        text: String,
+        markdown_messages: Vec<String>,
         position: Position,
     },
     GotoDefinition {

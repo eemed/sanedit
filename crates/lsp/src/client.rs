@@ -847,16 +847,40 @@ impl Handler {
             .await?;
         let response = response.ok_or(LSPError::EmptyResponse)?;
 
-        let text;
+        let mut texts = vec![];
         match response.contents {
-            lsp_types::HoverContents::Scalar(_) => todo!(),
-            lsp_types::HoverContents::Array(_) => todo!(),
+            lsp_types::HoverContents::Scalar(mstring) => {
+                match mstring {
+                    lsp_types::MarkedString::String(s) => texts.push(s),
+                    lsp_types::MarkedString::LanguageString(language_string) => {
+                        // Just format as markdown
+                        texts.push(format!(
+                            "```{}\n{}\n```",
+                            language_string.language, language_string.value
+                        ));
+                    }
+                }
+            }
+            lsp_types::HoverContents::Array(arr) => {
+                for mstring in arr {
+                    match mstring {
+                        lsp_types::MarkedString::String(s) => texts.push(s),
+                        lsp_types::MarkedString::LanguageString(language_string) => {
+                            // Just format as markdown
+                            texts.push(format!(
+                                "```{}\n{}\n```",
+                                language_string.language, language_string.value
+                            ));
+                        }
+                    }
+                }
+            }
             lsp_types::HoverContents::Markup(cont) => match cont.kind {
                 lsp_types::MarkupKind::PlainText => {
-                    text = cont.value;
+                    texts.push(cont.value);
                 }
                 lsp_types::MarkupKind::Markdown => {
-                    text = cont.value;
+                    texts.push(cont.value);
                 }
             },
         }
@@ -864,7 +888,10 @@ impl Handler {
         self.response
             .send(Response::Request {
                 id,
-                result: RequestResult::Hover { text, position },
+                result: RequestResult::Hover {
+                    markdown_messages: texts,
+                    position,
+                },
             })
             .await?;
 

@@ -345,17 +345,6 @@ impl Grid {
             );
         }
 
-        if let Some(prompt) = &self.prompt {
-            Self::draw_drawable(
-                &prompt.item,
-                &prompt.rect,
-                t,
-                self.client_in_focus,
-                &mut self.cursor,
-                &mut self.drawn,
-            );
-        }
-
         if let Some(msg) = &self.msg {
             Self::draw_drawable(
                 &msg.item,
@@ -382,6 +371,17 @@ impl Grid {
             Self::draw_drawable(
                 &popup.item,
                 &popup.rect,
+                t,
+                self.client_in_focus,
+                &mut self.cursor,
+                &mut self.drawn,
+            );
+        }
+
+        if let Some(prompt) = &self.prompt {
+            Self::draw_drawable(
+                &prompt.item,
+                &prompt.rect,
                 t,
                 self.client_in_focus,
                 &mut self.cursor,

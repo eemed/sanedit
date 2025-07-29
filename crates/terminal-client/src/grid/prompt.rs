@@ -1,6 +1,7 @@
 use std::cmp::min;
 
 use sanedit_messages::redraw::{
+    choice::Range,
     prompt::{Prompt, Source},
     Cell, Cursor, CursorShape, IntoCells, Point, Style, ThemeField,
 };
@@ -8,7 +9,7 @@ use sanedit_messages::redraw::{
 use crate::{grid::border::Border, ui::UIContext};
 
 use super::{
-    cell_format::{center_pad, into_cells_with_style, into_cells_with_style_pad, pad_line},
+    cell_format::{center_pad, into_cells_with_style, pad_line},
     drawable::{DrawCursor, Drawable, Subgrid},
     Rect,
 };
@@ -62,11 +63,11 @@ impl CustomPrompt {
         match self.style {
             PromptStyle::Oneline => Rect::new(0, 0, width, min(height, oneline_min_height)),
             PromptStyle::Overlay => {
-                let width = width / 2;
-                let x = width / 2;
+                let rect_width = (width as f64 * 0.7) as usize;
+                let x = (width - rect_width) / 2;
                 let extra = height - olay_height;
                 let y = extra / 4;
-                Rect::new(x, y, width, olay_height)
+                Rect::new(x, y, rect_width, olay_height)
             }
         }
     }
@@ -91,34 +92,18 @@ impl Drawable for CustomPrompt {
                 grid.put_line(0, message);
 
                 let max_opts = wsize.height.saturating_sub(1);
-                self.prompt
-                    .options
-                    .iter()
-                    .take(max_opts)
-                    .enumerate()
-                    .for_each(|(i, opt)| {
-                        let field = if Some(i) == self.prompt.selected {
-                            ThemeField::PromptCompletionSelected
-                        } else {
-                            ThemeField::PromptCompletion
-                        };
-                        let style = ctx.style(field);
-                        let mstyle = ctx.style(field);
-                        let mut line = into_cells_with_style_pad(&opt.text, style, wsize.width);
+                for (i, opt) in self.prompt.options.iter().take(max_opts).enumerate() {
+                    let field = if Some(i) == self.prompt.selected {
+                        ThemeField::PromptCompletionSelected
+                    } else {
+                        ThemeField::PromptCompletion
+                    };
+                    let style = ctx.style(field);
+                    let mstyle = ctx.style(field);
+                    let line = format_option(&opt.text, style, &opt.matches, mstyle, wsize.width, true);
 
-                        // Highlight matches
-                        for mat in &opt.matches {
-                            let mut pos = 0;
-                            for cell in &mut line {
-                                if mat.contains(&pos) {
-                                    cell.style = mstyle;
-                                }
-                                pos += cell.text.len();
-                            }
-                        }
-
-                        grid.put_line(i + 1, line);
-                    });
+                    grid.put_line(i + 1, line);
+                }
             }
             PromptStyle::Overlay => {
                 let input_style = ctx.theme.get(ThemeField::PromptOverlayInput);
@@ -153,51 +138,27 @@ impl Drawable for CustomPrompt {
                 let wsize = grid.size();
                 let max_opts = wsize.height;
 
-                self.prompt
-                    .options
-                    .iter()
-                    .take(max_opts)
-                    .enumerate()
-                    .for_each(|(i, opt)| {
-                        let (field, dfield, mfield) = if Some(i) == self.prompt.selected {
-                            (
-                                ThemeField::PromptCompletionSelected,
-                                ThemeField::PromptCompletionSelectedDescription,
-                                ThemeField::PromptCompletionSelectedMatch,
-                            )
-                        } else {
-                            (
-                                ThemeField::PromptCompletion,
-                                ThemeField::PromptCompletionDescription,
-                                ThemeField::PromptCompletionMatch,
-                            )
-                        };
-                        let style = ctx.style(field);
-                        let dstyle = ctx.style(dfield);
-                        let mstyle = ctx.style(mfield);
+                for (i, opt) in self.prompt.options.iter().take(max_opts).enumerate() {
+                    let (field, dfield, mfield) = if Some(i) == self.prompt.selected {
+                        (
+                            ThemeField::PromptCompletionSelected,
+                            ThemeField::PromptCompletionSelectedDescription,
+                            ThemeField::PromptCompletionSelectedMatch,
+                        )
+                    } else {
+                        (
+                            ThemeField::PromptCompletion,
+                            ThemeField::PromptCompletionDescription,
+                            ThemeField::PromptCompletionMatch,
+                        )
+                    };
+                    let style = ctx.style(field);
+                    let dstyle = ctx.style(dfield);
+                    let mstyle = ctx.style(mfield);
+                    let line = format_two_columns(&opt.text, &opt.description, style, &opt.matches, mstyle, dstyle, wsize.width);
 
-                        let mut line = cells_left_right(
-                            &opt.text,
-                            &opt.description,
-                            style,
-                            dstyle,
-                            wsize.width,
-                        );
-
-                        // Highlight matches
-                        for mat in &opt.matches {
-                            let mut pos = 0;
-                            // dont count padding
-                            for cell in &mut line[1..] {
-                                if mat.contains(&pos) {
-                                    cell.style = mstyle;
-                                }
-                                pos += cell.text.len();
-                            }
-                        }
-
-                        grid.put_line(i, line);
-                    });
+                    grid.put_line(i, line);
+                }
             }
         }
     }
@@ -245,36 +206,67 @@ impl Drawable for CustomPrompt {
     }
 }
 
-pub(crate) fn cells_left_right(
-    left: &str,
-    right: &str,
-    mstyle: Style,
-    dstyle: Style,
+pub fn format_option(
+    item: &str,
+    style: Style,
+    item_hls: &[Range<usize>],
+    match_style: Style,
+    width: usize,
+    pad: bool,
+) -> Vec<Cell> {
+    let start = item.chars().count().saturating_sub(width);
+    let mut cells: Vec<Cell> = item
+        .chars()
+        .skip(start)
+        .map(|ch| Cell::new_char(ch, style))
+        .collect();
+
+    if start != 0 && width > 2 {
+        cells[0].text = ".".into();
+        cells[1].text = ".".into();
+    }
+
+    for hl in item_hls {
+        let mut pos = start;
+        for cell in &mut cells {
+            if hl.contains(&pos) {
+                cell.style = match_style;
+            }
+            pos += cell.text.len();
+        }
+    }
+
+    if pad {
+        while cells.len() < width {
+            cells.push(Cell::with_style(style));
+        }
+    }
+
+    cells
+}
+
+pub(crate) fn format_two_columns(
+    item: &str,
+    description: &str,
+    style: Style,
+    item_matches: &[Range<usize>],
+    match_style: Style,
+    description_style: Style,
     width: usize,
 ) -> Vec<Cell> {
-    let mut left = {
-        let mut res = String::from(" ");
-        res.push_str(left);
-        res.push(' ');
-        res
-    };
+    let mut result = vec![Cell::with_style(style)];
+    let item =  format_option(item, style, item_matches, match_style, width - 2, false);
+    result.extend(item);
+    result.push(Cell::with_style(style));
+    let descr = into_cells_with_style(&description, description_style);
 
-    let right = {
-        let mut res = String::from("");
-        res.push_str(right);
-        res.push(' ');
-        res
-    };
-
-    // Fill space between
-    let mut len = left.len() + right.len();
+    let mut len = result.len() + descr.len() + 1;
     while len < width {
-        left.push(' ');
+        result.push(Cell::with_style(style));
         len += 1;
     }
 
-    let mut result = into_cells_with_style(&left, mstyle);
-    result.extend(into_cells_with_style(&right, dstyle));
-    result.truncate(width);
+    result.extend(descr);
+    result.push(Cell::with_style(style));
     result
 }

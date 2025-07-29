@@ -175,13 +175,21 @@ impl LSPJob {
     fn handle_result(&self, editor: &mut Editor, id: ClientId, result: RequestResult) {
         let mut on_message_post = true;
         match result {
-            RequestResult::Hover { text, .. } => {
+            RequestResult::Hover {
+                markdown_messages, ..
+            } => {
                 let (win, _buf) = editor.win_buf_mut(id);
                 win.clear_popup();
-                win.push_popup(PopupMessage {
-                    severity: None,
-                    text,
-                }, PopupKind::Hover);
+
+                for msg in markdown_messages {
+                    win.push_popup(
+                        PopupMessage {
+                            severity: None,
+                            text: msg,
+                        },
+                        PopupKind::Hover,
+                    );
+                }
             }
             RequestResult::GotoDefinition { path, position } => {
                 let (win, buf) = editor.win_buf_mut(id);
@@ -387,9 +395,7 @@ impl LSPJob {
         let options: Vec<Arc<Choice>> = actions
             .iter()
             .enumerate()
-            .map(|(i, action)| {
-                Choice::from_numbered_text(i + 1, action.name().to_string())
-            })
+            .map(|(i, action)| Choice::from_numbered_text(i + 1, action.name().to_string()))
             .collect();
         let (win, _buf) = editor.win_buf_mut(id);
 

@@ -7,7 +7,14 @@ mod search;
 mod statusline;
 mod window;
 
-use std::{mem, path::Path, sync::Arc};
+use std::{
+    mem,
+    path::Path,
+    sync::{
+        mpsc::{channel, Receiver, Sender},
+        Arc,
+    },
+};
 
 use sanedit_core::Language;
 use sanedit_messages::{
@@ -15,7 +22,6 @@ use sanedit_messages::{
     ClientMessage,
 };
 use sanedit_server::{FromEditor, FromEditorSharedMessage};
-use tokio::sync::Mutex;
 
 use crate::editor::{
     buffers::Buffer,
@@ -60,11 +66,18 @@ pub(crate) struct DrawState {
 
     pub(crate) redraw_window: bool,
 
-    pub(crate) window_buffer: Arc<Mutex<FromEditor>>,
+    pub(crate) window_buffer: Receiver<Arc<FromEditor>>,
+    pub(crate) window_buffer_sender: Sender<Arc<FromEditor>>,
 }
 
 impl DrawState {
     pub fn new(ectx: EditorContext) -> (DrawState, Vec<FromEditorSharedMessage>) {
+        let buffer = Arc::new(FromEditor::Message(ClientMessage::Redraw(Redraw::Window(
+            Component::Open(redraw::window::Window::default()),
+        ))));
+        let (tx, rx) = channel();
+        let _ = tx.send(buffer);
+
         let mut state = DrawState {
             last_prompt: None,
             last_focus: None,
@@ -74,9 +87,8 @@ impl DrawState {
             prompt_scroll_offset: 0,
             compl_scroll_offset: 0,
             redraw_window: true,
-            window_buffer: Arc::new(Mutex::new(FromEditor::Message(ClientMessage::Redraw(
-                Redraw::Window(Component::Open(redraw::window::Window::default())),
-            )))),
+            window_buffer: rx,
+            window_buffer_sender: tx,
         };
 
         let mut ctx = DrawContext {
@@ -84,11 +96,15 @@ impl DrawState {
             state: &mut state,
         };
 
-        let window = window::draw(&mut ctx).into();
+        let mut redraw = vec![];
+        if let Some(window) = window::draw(&mut ctx) {
+            redraw.push(window);
+        }
         let statusline: Redraw = statusline::draw(&mut ctx).into();
         let statusline = FromEditorSharedMessage::from(statusline);
+        redraw.push(statusline);
 
-        (state, vec![window, statusline])
+        (state, redraw)
     }
 
     pub fn redraw(&mut self, ectx: EditorContext) -> Vec<FromEditorSharedMessage> {
@@ -100,8 +116,9 @@ impl DrawState {
         };
 
         if mem::replace(&mut ctx.state.redraw_window, true) {
-            let window = window::draw(&mut ctx);
-            redraw.push(window);
+            if let Some(window) = window::draw(&mut ctx) {
+                redraw.push(window);
+            }
         }
 
         let statusline: Redraw = statusline::draw(&mut ctx).into();

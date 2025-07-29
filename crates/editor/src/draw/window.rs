@@ -1,4 +1,4 @@
-use std::ops::DerefMut as _;
+use std::sync::Arc;
 
 use sanedit_messages::{
     redraw::{
@@ -20,7 +20,7 @@ use sanedit_core::{
     grapheme_category, BufferRange, Cursor, Diagnostic, GraphemeCategory, Range, Replacement,
 };
 
-pub(crate) fn draw(ctx: &mut DrawContext) -> FromEditorSharedMessage {
+pub(crate) fn draw(ctx: &mut DrawContext) -> Option<FromEditorSharedMessage> {
     let EditorContext {
         win,
         theme,
@@ -29,22 +29,24 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> FromEditorSharedMessage {
         ..
     } = ctx.editor;
 
-    let mut window_buffer = ctx.state.window_buffer.blocking_lock();
-    let window_grid =
-        if let FromEditor::Message(ClientMessage::Redraw(Redraw::Window(Component::Open(win)))) =
-            window_buffer.deref_mut()
-        {
-            win
-        } else {
-            unreachable!()
-        };
+    let mut window_buffer = ctx.state.window_buffer.recv().ok()?;
+    let wb = Arc::make_mut(&mut window_buffer);
+    let window_grid = if let FromEditor::Message(ClientMessage::Redraw(Redraw::Window(
+        Component::Open(win),
+    ))) = wb
+    {
+        win
+    } else {
+        unreachable!()
+    };
     let grid = &mut window_grid.cells;
     if let Some(game) = &win.game {
         game.draw(grid, theme);
         window_grid.cursor = None;
-        return FromEditorSharedMessage::Shared {
-            message: ctx.state.window_buffer.clone(),
-        };
+        return Some(FromEditorSharedMessage::Shared {
+            message: window_buffer,
+            sender: ctx.state.window_buffer_sender.clone(),
+        });
     }
 
     let style = theme.get(ThemeField::Default);
@@ -52,9 +54,9 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> FromEditorSharedMessage {
     let view = win.view();
     if grid.height() != view.height() || grid.width() != view.width() {
         *grid = WindowGrid::new(view.width(), view.height(), redraw::Cell::with_style(style));
+    } else {
+        grid.clear_with(redraw::Cell::with_style(style));
     }
-
-    grid.clear_with(redraw::Cell::with_style(style));
 
     for (line, row) in view.cells().iter().enumerate() {
         for (col, cell) in row.iter().enumerate() {
@@ -72,10 +74,6 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> FromEditorSharedMessage {
                     style: if cell.is_virtual() { vstyle } else { style },
                 },
             );
-
-            // for i in 1..cell.width() {
-            //     grid.draw(line, col + i, redraw::Cell::with_style(style));
-            // }
         }
     }
 
@@ -107,9 +105,10 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> FromEditorSharedMessage {
         theme,
     );
 
-    FromEditorSharedMessage::Shared {
-        message: ctx.state.window_buffer.clone(),
-    }
+    Some(FromEditorSharedMessage::Shared {
+        message: window_buffer,
+        sender: ctx.state.window_buffer_sender.clone(),
+    })
 }
 
 fn draw_syntax(grid: &mut WindowGrid, view: &View, theme: &Theme) {

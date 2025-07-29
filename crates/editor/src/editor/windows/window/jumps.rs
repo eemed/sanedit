@@ -1,6 +1,6 @@
 use sanedit_buffer::Mark;
 use sanedit_core::{Cursor, Range};
-use sanedit_utils::ring::{Ref, RingBuffer, RingRandomAccess as _};
+use sanedit_utils::ring::{Ref, RingBuffer, RingItemReference as _};
 
 use crate::editor::buffers::{Buffer, BufferId};
 

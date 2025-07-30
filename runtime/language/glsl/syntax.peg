@@ -1,8 +1,8 @@
-document = (keywords / types / operators / number / string / comment / preproc / (!stop .)* stop)*;
+document = (keywords / comment / types / number / string  / preproc / operator / (!stop .)* stop)*;
 WHITESPACE = [ \t];
-ws = WHITESPACE;
+ws = WHITESPACE / nl;
 nl = "\n" / "\r\n";
-stop = WHITESPACE+ / nl / "(" / ")" / "[" / "]" / "." / ";" / ",";
+stop = ws+ / "(" / ")" / "[" / "]" / "." / ";" / ",";
 
 @show @highlight(preproc)
 preproc = "#" [a..zA..Z] [a..zA..Z0..9_]*;
@@ -17,8 +17,8 @@ digit = [0..9];
 @show @highlight(constant)
 boolean = "true" / "false";
 
-@show @highlight(operator)
-operators = ("*" / "/" / "+" / "-") &stop;
+@show @highlight
+operator = [\[\]{}():,.<>&|=+*/?!<>-];
 
 @show @highlight(string)
 string = "\"" (!"\"" .)* "\"";

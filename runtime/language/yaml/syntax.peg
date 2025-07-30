@@ -1,16 +1,32 @@
 document =  (comment / block / value / .)*;
 
 WHITESPACE = [ \t];
-ws = WHITESPACE*;
 nl = "\r\n" / "\n";
+ws = WHITESPACE / nl;
 
 @whitespaced
-block = (name ":")+ value? (!nl .)* nl;
+block = (name assign_op)+ value? (!nl .)* nl;
+
+@show @highlight(operator)
+assign_op = ":";
 
 @show @completion @highlight(identifier)
 name = [a..zA..Z0..9_-]+;
-value = string / char / bool / dash;
-dash = "-" (!nl .)*;
+value = string / char / bool / dash / array / number;
+dash = dash_op (!nl (string / char / .))*;
+
+@show @highlight(operator)
+dash_op =  "-";
+
+@whitespaced
+array = array_open (array_element (array_sep array_element )*)? array_close;
+array_element = (!(array_close / array_sep) .)*;
+@show @highlight(operator)
+array_open = "[";
+@show @highlight(operator)
+array_close = "]";
+@show @highlight(operator)
+array_sep = ",";
 
 @show @highlight(constant)
 bool = "true" / "false";
@@ -26,3 +42,6 @@ string_inner = ([^\u0..\u19\u22\u5c])*;
 
 @show @highlight
 comment = "#" (!nl .)*;
+
+@show @highlight(constant)
+number = [0..9]+ ("." [0..9])*;

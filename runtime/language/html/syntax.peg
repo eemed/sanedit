@@ -1,0 +1,158 @@
+document = separated*;
+separated = comment / macro / tag / alpha / ws+ / . ;
+
+WHITESPACE = ws;
+ws = [ \t] / nl;
+nl = "\n" / "\r\n";
+alpha = [a..zA..Z0..9_-.]+;
+
+@show @highlight
+comment = "<!--" (!"-->" .)* "-->";
+
+@show @highlight(preproc)
+macro = "<!" (!">" .)* ">";
+
+tag = tag_open (!tag_close (separated / .))* tag_close / one_tag / tag_no_end;
+
+
+@whitespaced
+one_tag = "<" tag_name attr* "/>";
+@whitespaced
+tag_open = "<" tag_name attr* ">";
+@whitespaced
+tag_close = "</" tag_name ">";
+@whitespaced
+tag_no_end = "<" no_end attr* ">";
+
+@whitespaced
+attr = [a..zA..Z0..9._-]+ "=" string;
+@show @highlight
+string = "\"" (escape  / [^"])* "\"";
+escape = "\\" .;
+
+@show @highlight(identifier)
+no_end =
+    "meta" /
+    "link"
+    ;
+
+@show @highlight(identifier)
+tag_name =
+    "xmp" /
+    "wbr" /
+    "video" /
+    "var" /
+    "underline" /
+    "tt" /
+    "track" /
+    "tr" /
+    "title" /
+    "time" /
+    "thead" /
+    "th" /
+    "tfoot" /
+    "template" /
+    "td" /
+    "tbody" /
+    "table" /
+    "svg" /
+    "summary" /
+    "sub" /
+    "style" /
+    "strong" /
+    "strike" /
+    "span" /
+    "spacer" /
+    "source" /
+    "small" /
+    "section" /
+    "script" /
+    "samp" /
+    "ruby" /
+    "rt" /
+    "rp" /
+    "progress" /
+    "pre" /
+    "phrase" /
+    "path" /
+    "param" /
+    "paragraphs" /
+    "output" /
+    "option" /
+    "optgroup" /
+    "object" /
+    "noscript" /
+    "noembed" /
+    "nobreak" /
+    "nav" /
+    "meter" /
+    "menuitem" /
+    "marquee" /
+    "mark" /
+    "main" /
+    "list" /
+    "legend" /
+    "label" /
+    "keygen" /
+    "kbd" /
+    "italic" /
+    "isindex" /
+    "ins" /
+    "input" /
+    "image" /
+    "Iframes" /
+    "html" /
+    "hr" /
+    "hgroup" /
+    "heading" /
+    "header" /
+    "head" /
+    "frameset" /
+    "frame" /
+    "form" /
+    "footer" /
+    "font" /
+    "figure" /
+    "figcaption" /
+    "fieldset" /
+    "embed" /
+    "dt" /
+    "dl" /
+    "div" /
+    "dir" /
+    "dialog" /
+    "details" /
+    "delete" /
+    "define" /
+    "dd" /
+    "datalist" /
+    "data" /
+    "comment" /
+    "column" /
+    "colgroup" /
+    "code" /
+    "cite" /
+    "center" /
+    "caption" /
+    "canvas" /
+    "button" /
+    "break" /
+    "bold" /
+    "body" /
+    "blockquote" /
+    "big" /
+    "bgsound" /
+    "bdo" /
+    "bdi" /
+    "basefont" /
+    "base" /
+    "audio" /
+    "aside" /
+    "article" /
+    "area" /
+    "applet" /
+    "anchor" /
+    "address" /
+    "acronym" /
+    "abbreviation"
+    ;

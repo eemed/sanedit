@@ -65,6 +65,7 @@ impl EditorConfig {
              "asciidoc", ["**/*.adoc"],
              "glsl", ["**/*.vert", "**/*.frag", "**/*.geom", "**/*.tesc", "**/*.tese", "**/*.comp"],
              "css", ["**/*.css", "**/*.scss", "**/*.sass"],
+             "dockerfile", ["**/Dockerfile", "**/Dockerfile.*"],
         );
 
         ftmap

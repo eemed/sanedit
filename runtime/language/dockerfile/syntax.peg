@@ -1,0 +1,35 @@
+document = separated*;
+separated = comment / string / keyword / ws+ / alpha / .;
+
+alpha = [a..zA..Z_.-]+;
+ws = [ \t] / nl;
+nl = "\n" / "\r\n";
+
+@show @highlight
+comment = "#" (!nl .)*;
+
+@show @highlight
+string = ostring / sstring;
+ostring = "'" (escape  / [^"])* "'";
+sstring = "\"" (escape  / [^"])* "\"";
+escape = "\\" .;
+
+@show @highlight
+keyword =   "ADD" /
+    "ARG" /
+    "CMD" /
+    "COPY" /
+    "ENTRYPOINT" /
+    "ENV" /
+    "EXPOSE" /
+    "FROM" /
+    "HEALTHCHECK" /
+    "LABEL" /
+    "MAINTAINER" /
+    "ONBUILD" /
+    "RUN" /
+    "SHELL" /
+    "STOPSIGNAL" /
+    "USER" /
+    "VOLUME" /
+    "WORKDIR";

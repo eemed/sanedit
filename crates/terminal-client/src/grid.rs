@@ -118,7 +118,11 @@ impl Grid {
             Prompt(comp) => match comp {
                 Update(prompt) => match self.prompt {
                     Some(ref mut custom_prompt) => {
+                        let is_new = custom_prompt.item.prompt.message != prompt.message;
                         custom_prompt.item.prompt = prompt;
+                        if is_new {
+                            self.refresh_overlays();
+                        }
                     }
                     None => {
                         self.prompt = Some(CustomPrompt::new(prompt).into());

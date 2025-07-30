@@ -1,17 +1,80 @@
-document = ( no_jsx / jsx / (!stop .)* stop)*;
-no_jsx = string / keyword / preproc / constant / comment / operator / func / types;
+document = (
+    jsx / string / keyword / preproc / constant /
+    comment / class / types  / alpha / ops /  ws+ / .
+)*;
+
 WHITESPACE = [ \t];
 ws = WHITESPACE;
 nl = "\n" / "\r\n";
 stop = WHITESPACE+ / "(" / ")" / "[" / ";" / "." / nl;
 
+alpha = [a..zA..Z0..9_]+;
+@show @highlight(type)
+class = [A..Z] alpha;
+
+# operator = ternary / ops;
+@show @highlight(operator)
+ops = [\[\]{}():,.<>&|=+*/?<>-];
+
+@show @highlight(constant)
+constant = "true" / "false" / "undefined" / "null" / "globalThis" / "arguments" / number;
+
+@show @highlight(comment)
+comment = line_comment / block_comment;
+line_comment = "//" (!nl .)* nl;
+block_comment = "/*" (!"*/" .)* "*/";
+
+number = "-"? digit+ ("." digit+)? ("e" "-"? digit+)? / "-"? "Infinity" / "NaN" / "0x" hexdigit+;
+digit = [0..9];
+hexdigit = digit / [a..fA..F];
+
+@show @highlight
+string    = "\"" nstring "\"" / "'" sstring "'" / "`" tstring "`" ;
+nstring    = ("\\" escape_char / [^"\n])*;
+sstring    = ("\\" escape_char / [^'\n])*;
+tstring    = ("\\" escape_char / replace / [^`\n])*;
+escape_char     = "0" / "t" / "n" / "r" / "'" / "`" / "\"" / "\\";
+@show @highlight(operator)
+replace = "${" replacement "}";
+@show @highlight(string)
+replacement = [^}]*;
+
+jsx = tag;
+
+tag = tag_open (!tag_close (jsx_comment / jsx_code / .))* tag_close / one_tag;
+jsx_code = "{" (!"}"
+    (jsx / string / keyword / preproc / constant /
+    comment / class / types / ops)
+)* "}";
+@show @highlight(comment)
+jsx_comment = "{/*" (!"*/}" .)* "*/}";
+@whitespaced
+one_tag = "<" tagname tagattr* "/>";
+@whitespaced
+tag_open = "<" tagname tagattr* ">";
+@whitespaced
+tag_close ="</" tagname ">";
+
+@show @highlight(type)
+tagname = [a..zA..Z0..9]+ ("." [a..zA..Z0..9]+)+;
+@show @highlight(default)
+tagattr = attrname ("=" attrvalue)?;
+attrvalue = string / jsx_code_any;
+@show @highlight(keyword)
+jsx_code_any = "{" (!"}" string / . )* "}";
+
+@show @highlight(identifier)
+attrname = (!(ws / "=" /  "/" / ">") .)+;
+
+end = ws / ";" / nl;
+
 @show @highlight(preproc)
-preproc = preproc_words &stop;
+preproc = preproc_words &end;
 preproc_words = "import" / "from" / "export" / "default" / "as";
 
 @show @highlight(keyword)
-keyword =  words &stop;
-words = "instanceof" / "while" / "break" / "constructor" / "class" / "extends" / "static" / "const" / "async" / "if" / "else" / "for" / "return" / "switch" / "case" / "let" / "var" / "in" / "of" / "function" "*"? / "with" / "this" /  "try" / "catch" / "continue" / "throw" / "new";
+keyword =  words &end;
+words = "yield" / "await" / "instanceof" / "while" / "break" / "constructor" / "class" / "extends" / "static" / "const" / "async" / "if" / "else" / "for" / "return" / "switch" / "case" / "let" / "var" / "in" / "of" / "function" "*"? / "with" / "this" /  "try" / "catch" / "continue" / "throw" / "new";
 
 @show @highlight(type)
 types =  (
@@ -72,50 +135,3 @@ types =  (
     "Reflect" /
     "Proxy" /
     "Intl") &stop;
-
-@show @highlight(function)
-func = [a..z] [a..zA..Z0..9]* &"(";
-
-operator = ternary / ops;
-@show @highlight(operator)
-ops = "yield" / "await" /  "=>" / "=" "="? "="? / "!=" "="? / "..." / "&&" / "||" / ":" / "?" / "+=" / "-=" /
-    ((">" / "<" / "*" / "/" / "+" / "-") &stop);
-ternary = [a..z][A..Za..z0..9]* ternary_op  &stop;
-@show @highlight(operator)
-ternary_op = ("++" / "--");
-
-@show @highlight(constant)
-constant = "true" / "false" / "undefined" / "null" / "globalThis" / "arguments" / number;
-
-@show @highlight(comment)
-comment = line_comment / block_comment;
-line_comment = "//" (!nl .)* nl;
-block_comment = "/*" (!"*/" .)* "*/";
-
-number = "-"? digit+ ("." digit+)? ("e" "-"? digit+)? / "-"? "Infinity" / "NaN" / "0x" hexdigit+;
-digit = [0..9];
-hexdigit = digit / [a..fA..F];
-
-@show @highlight
-string    = "\"" nstring "\"" / "'" sstring "'" / "`" tstring "`" ;
-nstring    = ("\\" escape_char / [^"\n])*;
-sstring    = ("\\" escape_char / [^'\n])*;
-tstring    = ("\\" escape_char / replace / [^`\n])*;
-escape_char     = "0" / "t" / "n" / "r" / "'" / "`" / "\"" / "\\";
-@show @highlight(operator)
-replace = "${" replacement "}";
-@show @highlight(default)
-replacement = [^}]*; 
-
-jsx = tag;
-@show @highlight(keyword)
-tag = "<" "/"? ws* tagname (ws* tagattr)* ws* "/"? ">";
-@show @highlight(type)
-tagname = (!(ws / ">" / "/") .)+;
-@show @highlight(default)
-tagattr = attrname ("=" attrvalue)?;
-attrvalue = string / attrref;
-attrref = "{" (!"}" ( no_jsx / attrref / .))* "}";
-
-@show @highlight(identifier)
-attrname = (!(ws / "=" /  "/" / ">") .)+;

@@ -1,8 +1,9 @@
 document = (separated / (!stop .)* stop)*;
-separated = todo / tuple / keyword / string / constant / comment / preproc / type / operator;
+separated = todo / tuple / keyword / string / constant / comment / preproc / type / operator / alpha;
 
-stop = ws+ / nl / "[" / "]" / "(" / ")" / ";" / "<" / ">" / "," / ":" / "." / "}";
-WHITESPACE = [ \t];
+alpha = [a..zA..Z_]+;
+stop = ws+ / "[" / "]" / "(" / ")" / ";" / "<" / ">" / "," / ":" / "." / "}";
+WHITESPACE = [ \t] / nl;
 nl = "\n" / "\r\n";
 ws = WHITESPACE;
 
@@ -42,8 +43,10 @@ replacement = [^}]*;
 
 # Types
 type = ((combipath /  typepath / builtintype / typeangle) &stop);
-path = "::"? (pathname "::")+;
-typepath = path? typename ("::" typename)?;
+path = path_sep? (pathname path_sep)+;
+@show @highlight(operator)
+path_sep = "::";
+typepath = path? typename (path_sep typename)?;
 functionpath = path pathname;
 pathname = [a..z0..9_]+;
 typename = uppercase_constant / capitalized_type;
@@ -57,13 +60,16 @@ combipath = path "{" ((ws / nl)* (combipath / typepath / functionpath) ","?)+ (w
 
 
 # Operators
-operator = closure / operators;
-@show @highlight(operator)
-operators = "!" !"(" / "|" "|"? / "&&" / "?" / "=" "="? / "!=" / ".." / "+" / "-" / "/" / "*" / "<< " / "<= " / "< " / ">> " / ">= " / "> " / "&" / "mut";
-closure =  bar (type / ws / nl / closure_item)* bar;
-closure_item = [a..z() ._]+ ("," [a..z() ._]+ )*;
-@show @highlight(operator)
-bar = "|";
+@show @highlight
+operator = marks / "mut";
+marks = [\[\]{}():,.<>&|=+*/?<>!-];
+# operator = closure / operators;
+# @show @highlight(operator)
+# operators = "!" !"(" / "|" "|"? / "&&" / "?" / "=" "="? / "!=" / ".." / "+" / "-" / "/" / "*" / "<< " / "<= " / "< " / ">> " / ">= " / "> " / "&" / "mut";
+# closure =  bar (type / ws / nl / closure_item)* bar;
+# closure_item = [a..z() ._]+ ("," [a..z() ._]+ )*;
+# @show @highlight(operator)
+# bar = "|";
 
 
 # Preprocessor

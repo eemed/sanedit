@@ -1,8 +1,9 @@
 document = (separated / (!stop .)* stop)*;
-separated = todo / keyword / string / constant / comment / preproc / type / operator;
+separated = todo / keyword / string / constant / comment / preproc / type / operator / alpha;
 
-stop = ws+ / nl / "[" / "]" / "(" / ")" / ";" / "<" / ">" / "," / ":" / ".";
-WHITESPACE = [ \t];
+alpha = [a..zA..Z0..9_]+;
+stop = ws+ / "[" / "]" / "(" / ")" / ";" / "<" / ">" / "," / ":" / ".";
+WHITESPACE = [ \t] / nl;
 nl = "\n" / "\r\n";
 ws = WHITESPACE;
 
@@ -45,7 +46,8 @@ type = "boolean" / "char" / "void" / number_types / classname;
 number_types = "int" / "float" / "double" / "long" / "short";
 classname = [A..Z] [a..zA..Z0..9_]*;
 
-operator = "||" / "==";
+@show @highlight
+operator = [\[\]{}():,.<>&|=+*/?!<>-];
 
 @show @highlight(warn)
 todo = "TODO" / "XXX";

@@ -1,20 +1,23 @@
-document = (
-    jsx / string / keyword / preproc / constant /
-    comment / class / types  / alpha / ops /  ws+ / .
-)*;
+document = document_items*;
+document_items =  block_match / jsx / string / keyword / preproc / constant /
+    comment / class / types  / alpha / ops /  ws+ / . ;
 
-WHITESPACE = [ \t];
+block_match = block_open (!block_close document_items)* block_close;
+@show @highlight(operator)
+block_open = "{";
+@show @highlight(operator)
+block_close = "}";
+
+WHITESPACE = [ \t] / nl;
 ws = WHITESPACE;
 nl = "\n" / "\r\n";
-stop = WHITESPACE+ / "(" / ")" / "[" / ";" / "." / nl;
 
 alpha = [a..zA..Z0..9_]+;
 @show @highlight(type)
 class = [A..Z] alpha;
 
-# operator = ternary / ops;
 @show @highlight(operator)
-ops = [\[\]{}():,.<>&|=+*/?<>-];
+ops = [\[\]{}():,.<>&|=+*/?!<>-];
 
 @show @highlight(constant)
 constant = "true" / "false" / "undefined" / "null" / "globalThis" / "arguments" / number;
@@ -41,11 +44,11 @@ replacement = [^}]*;
 
 jsx = tag;
 
-tag = tag_open (!tag_close (jsx_comment / jsx_code / .))* tag_close / one_tag;
-jsx_code = "{" (!"}"
-    (jsx / string / keyword / preproc / constant /
-    comment / class / types / ops)
-)* "}";
+tag = tag_with_children / one_tag;
+tag_with_children = tag_open (!tag_close tag_children)* tag_close;
+
+tag_children = jsx_comment / jsx_code / tag / . ;
+jsx_code = block_open (!block_close document_items)* block_close;
 @show @highlight(comment)
 jsx_comment = "{/*" (!"*/}" .)* "*/}";
 @whitespaced
@@ -56,17 +59,16 @@ tag_open = "<" tagname tagattr* ">";
 tag_close ="</" tagname ">";
 
 @show @highlight(type)
-tagname = [a..zA..Z0..9]+ ("." [a..zA..Z0..9]+)+;
+tagname = [a..zA..Z0..9]+ ("." [a..zA..Z0..9]+)*;
+tagattr = attrname (tagattr_eq attrvalue)?;
+@show @highlight(operator)
+tagattr_eq = "=";
+attrvalue = string / block_open (!block_close document_items)* block_close;
+
 @show @highlight(default)
-tagattr = attrname ("=" attrvalue)?;
-attrvalue = string / jsx_code_any;
-@show @highlight(keyword)
-jsx_code_any = "{" (!"}" string / . )* "}";
+attrname = [a..zA..Z0..9_]+;
 
-@show @highlight(identifier)
-attrname = (!(ws / "=" /  "/" / ">") .)+;
-
-end = ws / ";" / nl;
+end = ws / ";" / "(";
 
 @show @highlight(preproc)
 preproc = preproc_words &end;
@@ -74,7 +76,7 @@ preproc_words = "import" / "from" / "export" / "default" / "as";
 
 @show @highlight(keyword)
 keyword =  words &end;
-words = "yield" / "await" / "instanceof" / "while" / "break" / "constructor" / "class" / "extends" / "static" / "const" / "async" / "if" / "else" / "for" / "return" / "switch" / "case" / "let" / "var" / "in" / "of" / "function" "*"? / "with" / "this" /  "try" / "catch" / "continue" / "throw" / "new";
+words = "constructor" / "yield" / "await" / "instanceof" / "while" / "break" / "constructor" / "class" / "extends" / "static" / "const" / "async" / "if" / "else" / "for" / "return" / "switch" / "case" / "let" / "var" / "in" / "of" / "function" "*"? / "with" / "this" /  "try" / "catch" !"(" / "continue" / "throw" / "new";
 
 @show @highlight(type)
 types =  (
@@ -134,4 +136,4 @@ types =  (
     "AsyncFunction" /
     "Reflect" /
     "Proxy" /
-    "Intl") &stop;
+    "Intl") &end;

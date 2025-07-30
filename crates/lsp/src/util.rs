@@ -132,7 +132,7 @@ impl From<lsp_types::Diagnostic> for TextDiagnostic {
         TextDiagnostic {
             line: diag.range.start.line as u64,
             severity,
-            description: diag.message,
+            description: diag.message.trim().into(),
             range: diag.range.into(),
         }
     }

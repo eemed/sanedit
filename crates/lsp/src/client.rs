@@ -217,6 +217,7 @@ impl LSPClient {
                         .diagnostics
                         .into_iter()
                         .map(TextDiagnostic::from)
+                        .filter(|diag| !diag.description.is_empty())
                         .collect(),
                 };
 
@@ -884,6 +885,11 @@ impl Handler {
                 }
             },
         }
+
+        texts.retain_mut(|text| {
+            *text = text.trim().into();
+            !text.is_empty()
+        });
 
         self.response
             .send(Response::Request {

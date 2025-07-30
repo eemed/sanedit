@@ -459,6 +459,7 @@ pub(crate) fn show_diagnostics(editor: &mut Editor, id: ClientId) -> ActionResul
     let pos = win.cursors.primary().pos();
     let range = getf!(view.line_at_pos(pos));
     let diagnostics = getf!(get_diagnostics(buf, &editor.language_servers));
+    win.clear_popup();
 
     for diag in diagnostics {
         if range.overlaps(&diag.range()) {

@@ -266,6 +266,9 @@ impl Editor {
     /// Create a new buffer from path
     pub fn create_buffer(&mut self, id: ClientId, path: impl AsRef<Path>) -> Result<BufferId> {
         let file = FileDescription::new(path, &self.config)?;
+        if let Some(lang) = &file.language {
+            self.load_language(lang, false);
+        }
         let config = file
             .language
             .as_ref()
@@ -276,6 +279,7 @@ impl Editor {
                 // If eol and indent are detected automatically they will override using the hook
                 self.config.buffer.clone()
             });
+
         let bid = self.buffers.new(file, config)?;
         run(self, id, Hook::BufCreated(bid));
 
@@ -843,8 +847,13 @@ impl Editor {
             } else {
                 self.languages.load(lang, &path)
             };
-            if let Err(e) = result {
-                log::error!("Failed to load language config for {}: {e}", lang.as_str());
+            match result {
+                Ok(()) => {
+                    log::debug!("Loaded language config for {}", lang.as_str());
+                }
+                Err(e) => {
+                    log::error!("Failed to load language config for {}: {e}", lang.as_str());
+                }
             }
         }
     }

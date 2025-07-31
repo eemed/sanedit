@@ -1,6 +1,11 @@
 rules =  (assign / subshell / string / comment / conditional / specials / target / silenced / .)*;
 
-subshell = subshell_start gnu_statement? (!subshell_end .)* subshell_end;
+
+subshell = subshell_start gnu_statement? (!subshell_end (subshell / .))* subshell_end;
+@show @highlight(operator)
+subshell_start = "$(";
+@show @highlight(operator)
+subshell_end = ")";
 
 silenced = tab silence;
 
@@ -8,21 +13,24 @@ silenced = tab silence;
 silence = "@";
 tab = "\t";
 
+
+assign = assign_id ws+ assign_op (subshell / next_line / (!nl .))*;
 @show @highlight(operator)
-subshell_start = "$(";
-
-@show @highlight(operator)
-subshell_end = ")";
-
-@whitespaced
-assign = assign_id "=";
-
-assign_id = [a..zA..Z0..9]+;
-
-target =  nl target_id ":";
+assign_op = ":"? "=";
 
 @show @highlight(identifier)
-target_id = [a..zA..Z0..9_ -]+;
+assign_id = [a..zA..Z0..9_-]+;
+
+target =  target_id (ws* target_id)* target_sep (ws* (depend_id / next_line))*;
+@show @highlight(operator)
+target_sep = ":";
+
+@show @highlight(identifier)
+target_id = [a..zA..Z0..9_.-]+;
+depend_id = [a..zA..Z0..9_.-]+;
+
+@show @highlight(operator)
+next_line = "\\" nl;
 
 @show @highlight(keyword)
 gnu_statement = "abspath" / "addprefix" / "addsuffix" / "and" / "basename" /
@@ -36,8 +44,10 @@ gnu_statement = "abspath" / "addprefix" / "addsuffix" / "and" / "basename" /
 @show @highlight(keyword)
 conditional = "ifndef" / "ifeq" / "ifneq" / "ifdef" / "endif";
 
+specials = special_names spec_end;
 @show @highlight(preproc)
-specials = "." ("SUFFIXES" / "PHONY" / "DEFAULT" / "PRECIOUS" / "IGNORE" / "SILENT" / "NOTPARALLEL" / "POSIX");
+special_names = "." ("SUFFIXES" / "PHONY" / "DEFAULT" / "PRECIOUS" / "IGNORE" / "SILENT" / "NOTPARALLEL" / "POSIX") ;
+spec_end = (!nl .)*;
 
 @show @highlight
 comment = "#" (!nl .)*;
@@ -59,3 +69,4 @@ escape_char     = "0" / "t" / "n" / "r" / "\"" / "\\";
 
 WHITESPACE = [ \t\r\n];
 nl = "\r\n" / "\n";
+ws = WHITESPACE;

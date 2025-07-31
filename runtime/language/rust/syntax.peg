@@ -1,8 +1,8 @@
 document = (separated / (!stop .)* stop)*;
-separated = todo / tuple / keyword / string / constant / comment / preproc / type / operator / alpha;
+separated = todo / tuple / keyword / type / string / constant / comment / preproc / operator / alpha;
 
 alpha = [a..zA..Z_]+;
-stop = ws+ / "[" / "]" / "(" / ")" / ";" / "<" / ">" / "," / ":" / "." / "}";
+stop = ws+ / "[" / "]" / "(" / ")" / ";" / "<" / ">" / "," / ":" / "." / "}" / ":";
 WHITESPACE = [ \t] / nl;
 nl = "\n" / "\r\n";
 ws = WHITESPACE;
@@ -32,7 +32,7 @@ tuple = [a..z]+ "." number &stop;
 # Strings
 @show @highlight
 string = char / sstring / rawstring;
-char = "'" . "'";
+char = "b"? "'" (escape / .) "'";
 sstring = ("b" / "c")? "\"" (escape / replace / [^"])* "\"";
 rawstring = "r#\"" (escape / (!"\"#" .))* "\"#";
 escape = "\\" .;
@@ -42,7 +42,7 @@ replacement = [^}]*;
 
 
 # Types
-type = ((combipath /  typepath / builtintype / typeangle) &stop);
+type = (builtintype / combipath /  typepath /  typeangle) &stop;
 path = path_sep? (pathname path_sep)+;
 @show @highlight(operator)
 path_sep = "::";

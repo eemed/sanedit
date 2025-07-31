@@ -1,0 +1,5 @@
+comment = "# "
+
+[buffer]
+indent_kind = "Tab"
+indent_amount = 1

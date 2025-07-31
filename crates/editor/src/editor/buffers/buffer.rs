@@ -270,7 +270,7 @@ impl Buffer {
             .get(snapshot)
             .ok_or(BufferError::NoSuchSnapshot)?;
         let restored = node.id;
-        self.is_modified = restored != self.last_saved_snapshot;
+        self.is_modified = self.last_saved_modified.is_none() || restored != self.last_saved_snapshot;
         self.pt.restore(node.snapshot.clone());
         Ok(())
     }

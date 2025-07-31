@@ -3,7 +3,7 @@ use std::{cmp::min, collections::BTreeMap};
 use sanedit_buffer::utf8::{next_eol, EndOfLine};
 use sanedit_core::determine_indent;
 
-use crate::editor::{buffers::BufferConfig, hooks::Hook, Editor};
+use crate::editor::{hooks::Hook, Editor};
 
 use sanedit_server::ClientId;
 
@@ -29,10 +29,7 @@ fn detect_indent(editor: &mut Editor, id: ClientId) -> ActionResult {
 
     let len = buf.len();
     let slice = buf.slice(..min(len, MAX));
-    let (kind, n) = determine_indent(&slice).unwrap_or_else(|| {
-        let opts = BufferConfig::default();
-        (opts.indent_kind, opts.indent_amount)
-    });
+    let (kind, n) = getf!(determine_indent(&slice));
     buf.config.indent_kind = kind;
     buf.config.indent_amount = n;
     ActionResult::Ok
@@ -77,7 +74,9 @@ fn detect_eol(editor: &mut Editor, id: ClientId) -> ActionResult {
         }
     }
 
-    buf.config.eol = eol.unwrap_or_default();
+    if let Some(eol) = eol {
+        buf.config.eol = eol;
+    }
     ActionResult::Ok
 }
 

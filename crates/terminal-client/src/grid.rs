@@ -215,11 +215,13 @@ impl Grid {
                 redraw::Kind::Filetree => {
                     if let Some(ft) = &mut self.filetree {
                         ft.item.items.selected = pos.unwrap_or(0);
+                        self.refresh();
                     }
                 }
                 redraw::Kind::Locations => {
                     if let Some(loc) = &mut self.locations {
                         loc.item.items.selected = pos.unwrap_or(0);
+                        self.refresh();
                     }
                 }
             },

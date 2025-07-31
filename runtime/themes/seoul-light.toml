@@ -1,6 +1,6 @@
 [colors.window]
 default = "#DADADA,#3A3A3A,"
-statusline = "#5F885F,#000000,"
+statusline = "#7Fa87F,#000000,"
 statusline_no_focus = "#888888,#000000,"
 gutter = ",#4C4C4C,bold"
 end_of_buffer = ",#4E4E4E,"
@@ -24,11 +24,11 @@ constant = ",#274172,"
 string =  ",#0750b1,"
 number = ",#274172,"
 keyword = ",#005F00,"
-type =  ",#824b26,"
-operator =  ",#2e503f,"
-comment = ",#870100,"
+type =  ",#822b16,"
+operator =  ",#007f58,"
+comment = ",#777777,"
 preproc = ",#533388,"
-identifier = ",#824b26,"
+identifier = ",#822b16,"
 
 [colors.window.completion]
 default = "#E8E8E8,#3A3A3A,"
@@ -41,7 +41,8 @@ description = ",#808080,"
 match = ",,"
 
 [colors.prompt]
-default = "#5F885F,#000000,"
+
+default = "#7fa87f,#000000,"
 message = ",,"
 userinput = ",#000000,"
 
@@ -65,19 +66,19 @@ match = ",#b0463a,"
 default = "#DADADA,#3A3A3A,"
 markers = ",#014CC0,"
 # file = ""
-directory = ",#824b26,"
+directory = ",#822b16,"
 
 [colors.filetree.selected]
 default = "#c2c2c2,,"
 # file = ""
-directory = ",#824b26,"
+directory = ",#822b16,"
 markers = ",#014CC0,"
 
 [colors.locations]
 default = "#DADADA,#3A3A3A,"
-title = "#5F885F,#202020,"
+title = "#7fa87f,#202020,"
 entry = ""
-group = ",#824b26,"
+group = ",#822b16,"
 markers = ",#355d8d,"
 match = ",#b0463a,"
 

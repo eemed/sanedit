@@ -1,7 +1,12 @@
-@whitespaced
-rules =  (assign / subshell / string / comment / specials / target / .)*;
+rules =  (assign / subshell / string / comment / conditional / specials / target / silenced / .)*;
 
 subshell = subshell_start gnu_statement? (!subshell_end .)* subshell_end;
+
+silenced = tab silence;
+
+@show @highlight(operator)
+silence = "@";
+tab = "\t";
 
 @show @highlight(operator)
 subshell_start = "$(";
@@ -12,14 +17,12 @@ subshell_end = ")";
 @whitespaced
 assign = assign_id "=";
 
-@show @highlight(identifier)
 assign_id = [a..zA..Z0..9]+;
 
-@whitespaced
-target =  target_id ":";
+target =  nl target_id ":";
 
 @show @highlight(identifier)
-target_id = [a..zA..Z0..9]+;
+target_id = [a..zA..Z0..9_ -]+;
 
 @show @highlight(keyword)
 gnu_statement = "abspath" / "addprefix" / "addsuffix" / "and" / "basename" /
@@ -30,21 +33,29 @@ gnu_statement = "abspath" / "addprefix" / "addsuffix" / "and" / "basename" /
  "subst" / "suffix" / "value" / "warning" / "wildcard" / "word" /
  "wordlist" / "words";
 
-@show @highlight(constant)
+@show @highlight(keyword)
+conditional = "ifndef" / "ifeq" / "ifneq" / "ifdef" / "endif";
+
+@show @highlight(preproc)
 specials = "." ("SUFFIXES" / "PHONY" / "DEFAULT" / "PRECIOUS" / "IGNORE" / "SILENT" / "NOTPARALLEL" / "POSIX");
 
 @show @highlight
-comment = "#" (!nl .)* nl;
+comment = "#" (!nl .)*;
 
 @show @highlight
-string    = "\"" compl_string "\"";
+string    =  sstring / nstring;
+nstring = "\"" nstring_inner "\"";
+@show @completion
+nstring_inner    = ("\\" escape_char / [^"\n])*;
 
-@show @completion @highlight(string)
-compl_string    = ("\\" escape_char / [^"\n])*;
+@show @highlight
+sstring    = "'" sstring_inner "'";
+@show @completion
+sstring_inner    = ("\\" escape_char / [^'\n])*;
 
 escape_char     = "0" / "t" / "n" / "r" / "\"" / "\\";
 
 # Commons
 
 WHITESPACE = [ \t\r\n];
-nl = "\r\n" / "\r" / "\n";
+nl = "\r\n" / "\n";

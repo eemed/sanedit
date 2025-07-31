@@ -60,15 +60,15 @@ tag_close ="</" tagname ">";
 
 @show @highlight(type)
 tagname = [a..zA..Z0..9]+ ("." [a..zA..Z0..9]+)*;
-tagattr = attrname (tagattr_eq attrvalue)?;
+tagattr = attrname (tagattr_eq attrvalue)? / comment;
 @show @highlight(operator)
 tagattr_eq = "=";
 attrvalue = string / block_open (!block_close document_items)* block_close;
 
 @show @highlight(default)
-attrname = [a..zA..Z0..9_]+;
+attrname = [a..zA..Z0..9_-]+;
 
-end = ws / ";" / "(";
+end = ws / ";" / "(" / ".";
 
 @show @highlight(preproc)
 preproc = preproc_words &end;

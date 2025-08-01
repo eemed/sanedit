@@ -1,7 +1,7 @@
 document = (separated / (!stop .)* stop)*;
 separated = todo / tuple / keyword / type / string / constant / comment / preproc / operator / alpha;
 
-alpha = [a..zA..Z_]+;
+alpha = [a..zA..Z0..9_]+;
 stop = ws+ / "[" / "]" / "(" / ")" / ";" / "<" / ">" / "," / ":" / "." / "}" / ":";
 WHITESPACE = [ \t] / nl;
 nl = "\n" / "\r\n";
@@ -19,8 +19,8 @@ keyword = ("macro_rules!" / "unsafe" / "static" / "loop" / "let" / "match" / "if
 constant = number / boolean / uppercase_constant;
 
 boolean = ("false" / "true") &stop;
-number = "0x" hexdigit+ / "-"? digit+ number_types?;
-digit = [0..9];
+number = "0b" ("0" / "1" / "_")* / "0x" hexdigit+ / "-"? digit+ number_types?;
+digit = [0..9_];
 hexdigit = digit / [a..fA..F];
 number_types = "usize" / "isize" / "f64" / "f32" / "u8" / "u16" / "u32" / "u64" / "i8" / "i16" / "i32" / "i64" / "i128" / "u128";
 @show @highlight(constant)

@@ -3,6 +3,7 @@ pub(crate) mod grammar;
 mod error;
 mod finder;
 mod glob;
+mod loader;
 mod parsing_machine;
 mod regex;
 mod source;
@@ -16,24 +17,94 @@ pub use finder::{Finder, FinderIter, FinderIterRev, FinderRev};
 pub use glob::Glob;
 pub use glob::GlobError;
 pub use grammar::Annotation;
-pub use parsing_machine::*;
+pub use loader::LanguageLoader;
 pub use regex::{Regex, RegexError, RegexRules};
+
+pub use parsing_machine::{Capture, CaptureID, CaptureIter, CaptureList};
+pub(crate) use parsing_machine::{
+    Compiler, Jit, Operation, ParsingMachine, Program, SubjectPosition,
+};
 
 /// Wrapper around JIT and Interpreted parser.
 /// Try to create JIT and fallback to interpreted if necessary.
 #[derive(Debug)]
-pub enum Parser {
+pub struct Parser {
+    inner: ParserKind,
+}
+
+impl Parser {
+    /// Create a new parser.
+    ///
+    /// NOTE: if syntax contains injected languages you should use `from_loader` instead.
+    pub fn new<R: std::io::Read>(read: R) -> Result<Parser, ParseError> {
+        let inner = ParserKind::new(read)?;
+        Ok(Parser { inner })
+    }
+
+    /// Create a parser using a LanguageLoader.
+    /// If injected languages are present, the loader will be asked to load the rules for them.
+    pub fn from_loader<L: LanguageLoader>(
+        mut loader: L,
+        language: &str,
+    ) -> Result<Parser, ParseError> {
+        let parser = loader.load(language)?;
+        todo!()
+    }
+
+    /// Parse bytes and return the list of captures
+    pub fn parse<B: ByteSource>(&self, bytes: B) -> Result<CaptureList, ParseError> {
+        self.inner.parse(bytes)
+    }
+
+    /// Get label for a capture
+    pub fn label_for(&self, id: CaptureID) -> &str {
+        self.inner.label_for(id)
+    }
+
+    /// Get annotations for a capture
+    pub fn annotations_for(&self, id: CaptureID) -> &[Annotation] {
+        self.inner.annotations_for(id)
+    }
+
+    /// Try to match text multiple times. Skips errors and yields an element only when part of the text matches
+    pub fn captures<'a, B: ByteSource>(&'a self, source: B) -> CaptureIter<'a, B> {
+        self.inner.captures(source)
+    }
+
+    /// Underlying program, useful only for printing the instrcutions
+    pub fn program(&self) -> &Program {
+        self.inner.program()
+    }
+
+    /// Extracts static byte sequences from a rule
+    pub fn static_bytes_per_rule<F>(&self, should_extract: F) -> Vec<Vec<u8>>
+    where
+        F: Fn(&str, &[Annotation]) -> bool,
+    {
+        self.inner.static_bytes_per_rule(should_extract)
+    }
+
+    pub fn kind(&self) -> &str {
+        match self.inner {
+            ParserKind::Interpreted(_) => "Interpreted",
+            ParserKind::Jit(_) => "JIT",
+        }
+    }
+}
+
+#[derive(Debug)]
+pub(crate) enum ParserKind {
     Interpreted(ParsingMachine),
     Jit(Jit),
 }
 
-impl Parser {
-    pub fn new<R: std::io::Read>(read: R) -> Result<Parser, ParseError> {
+impl ParserKind {
+    fn new<R: std::io::Read>(read: R) -> Result<ParserKind, ParseError> {
         let rules = Rules::parse(read).map_err(|err| ParseError::Grammar(err.to_string()))?;
         Self::from_rules(rules)
     }
 
-    pub(crate) fn from_rules(rules: Rules) -> Result<Parser, ParseError> {
+    fn from_rules(rules: Rules) -> Result<ParserKind, ParseError> {
         let compiler = Compiler::new(&rules);
         let ops = compiler
             .compile()
@@ -42,26 +113,17 @@ impl Parser {
         Self::from_ops(rules, ops)
     }
 
-    pub(crate) fn from_ops(rules: Rules, ops: Program) -> Result<Parser, ParseError> {
+    fn from_ops(rules: Rules, ops: Program) -> Result<ParserKind, ParseError> {
         if !Jit::is_available() {
-            let parser = ParsingMachine {
-                rules,
-                program: ops,
-            };
-            return Ok(Parser::Interpreted(parser));
+            let parser = ParsingMachine::new(rules, ops);
+            return Ok(ParserKind::Interpreted(parser));
         }
 
-        let (program, start) = Jit::compile(&ops);
-        let jit = Jit {
-            rules,
-            ops,
-            program,
-            start,
-        };
-        Ok(Parser::Jit(jit))
+        let jit = Jit::new(rules, ops);
+        Ok(ParserKind::Jit(jit))
     }
 
-    pub(crate) fn from_rules_unanchored(rules: Rules) -> Result<Parser, ParseError> {
+    fn from_rules_unanchored(rules: Rules) -> Result<ParserKind, ParseError> {
         let compiler = Compiler::new(&rules);
         let program = compiler
             .compile_unanchored()
@@ -69,49 +131,49 @@ impl Parser {
         Self::from_ops(rules, program)
     }
 
-    pub fn parse<B: ByteSource>(&self, bytes: B) -> Result<CaptureList, ParseError> {
+    fn parse<B: ByteSource>(&self, bytes: B) -> Result<CaptureList, ParseError> {
         match self {
-            Parser::Interpreted(parsing_machine) => parsing_machine.parse(bytes),
-            Parser::Jit(jit) => jit.parse(bytes),
+            ParserKind::Interpreted(parsing_machine) => parsing_machine.parse(bytes),
+            ParserKind::Jit(jit) => jit.parse(bytes),
         }
     }
 
-    pub fn label_for(&self, id: CaptureID) -> &str {
+    fn label_for(&self, id: CaptureID) -> &str {
         match self {
-            Parser::Interpreted(parsing_machine) => parsing_machine.label_for(id),
-            Parser::Jit(jit) => jit.label_for(id),
+            ParserKind::Interpreted(parsing_machine) => parsing_machine.label_for(id),
+            ParserKind::Jit(jit) => jit.label_for(id),
         }
     }
 
-    pub fn annotations_for(&self, id: CaptureID) -> &[Annotation] {
+    fn annotations_for(&self, id: CaptureID) -> &[Annotation] {
         match self {
-            Parser::Interpreted(parsing_machine) => parsing_machine.annotations_for(id),
-            Parser::Jit(jit) => jit.annotations_for(id),
+            ParserKind::Interpreted(parsing_machine) => parsing_machine.annotations_for(id),
+            ParserKind::Jit(jit) => jit.annotations_for(id),
         }
     }
 
     /// Try to match text multiple times. Skips errors and yields an element only when part of the text matches
-    pub fn captures<'a, B: ByteSource>(&'a self, source: B) -> CaptureIter<'a, B> {
+    fn captures<'a, B: ByteSource>(&'a self, source: B) -> CaptureIter<'a, B> {
         match self {
-            Parser::Interpreted(parsing_machine) => parsing_machine.captures(source),
-            Parser::Jit(jit) => jit.captures(source),
+            ParserKind::Interpreted(parsing_machine) => parsing_machine.captures(source),
+            ParserKind::Jit(jit) => jit.captures(source),
         }
     }
 
-    pub fn program(&self) -> &Program {
+    fn program(&self) -> &Program {
         match self {
-            Parser::Interpreted(parsing_machine) => parsing_machine.program(),
-            Parser::Jit(jit) => &jit.ops,
+            ParserKind::Interpreted(parsing_machine) => parsing_machine.program(),
+            ParserKind::Jit(jit) => jit.program(),
         }
     }
 
-    pub fn static_bytes_per_rule<F>(&self, should_extract: F) -> Vec<Vec<u8>>
+    fn static_bytes_per_rule<F>(&self, should_extract: F) -> Vec<Vec<u8>>
     where
         F: Fn(&str, &[Annotation]) -> bool,
     {
         let rules = match self {
-            Parser::Interpreted(parsing_machine) => &parsing_machine.rules,
-            Parser::Jit(jit) => &jit.rules,
+            ParserKind::Interpreted(parsing_machine) => parsing_machine.rules(),
+            ParserKind::Jit(jit) => jit.rules(),
         };
 
         let mut byte_sequences = vec![];

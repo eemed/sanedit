@@ -5,7 +5,7 @@ use thiserror::Error;
 
 use crate::{
     grammar::{Rule, RuleInfo, Rules},
-    Capture, ParseError, Parser,
+    Capture, ParseError, ParserKind as Parser,
 };
 
 #[derive(Error, Debug)]

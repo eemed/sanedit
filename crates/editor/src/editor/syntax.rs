@@ -1,53 +1,136 @@
-use std::{cmp::min, path::Path, sync::Arc};
+use std::{
+    cmp::min,
+    path::{Path, PathBuf},
+    sync::{Arc, Mutex},
+};
 
-use rustc_hash::FxHashMap;
 use sanedit_buffer::PieceTreeView;
-use sanedit_core::{BufferRange, Language, Range};
+use sanedit_core::{BufferRange, Directory, Language, Range};
 use sanedit_server::Kill;
 use sanedit_utils::sorted_vec::SortedVec;
 
 use std::fs::File;
 
 use anyhow::{anyhow, bail};
-use sanedit_syntax::{Annotation, Capture, Parser, SliceSource};
+use sanedit_syntax::{Annotation, Capture, LanguageLoader, Parser, SliceSource};
+
+use super::Map;
+
+pub const SYNTAX_FILE: &str = "syntax.peg";
 
 #[derive(Debug)]
 pub struct Syntaxes {
-    syntaxes: FxHashMap<Language, Syntax>,
+    syntaxes: Arc<Mutex<Map<Language, Syntax>>>,
 }
 
 impl Syntaxes {
     pub fn new() -> Syntaxes {
         Syntaxes {
-            syntaxes: FxHashMap::default(),
+            syntaxes: Arc::new(Mutex::new(Map::default())),
         }
     }
 
     pub fn get(&mut self, ft: &Language) -> anyhow::Result<Syntax> {
-        self.syntaxes
-            .get(ft)
-            .cloned()
-            .ok_or(anyhow!("Syntax not loaded"))
+        let syns = self
+            .syntaxes
+            .lock()
+            .map_err(|_| anyhow!("Syntax locking failed"))?;
+        syns.get(ft).cloned().ok_or(anyhow!("Syntax not loaded"))
     }
 
     pub fn contains_key(&self, ft: &Language) -> bool {
-        self.syntaxes.contains_key(ft)
+        match self.syntaxes.lock() {
+            Ok(guard) => guard.contains_key(ft),
+            Err(e) => {
+                log::error!("Syntax locking failed: {e}");
+                false
+            }
+        }
     }
 
     pub fn reload(&mut self, ft: &Language, path: &Path) -> anyhow::Result<()> {
         let syntax = Syntax::from_path(path)?;
-        self.syntaxes.insert(ft.clone(), syntax);
+        let mut syns = self
+            .syntaxes
+            .lock()
+            .map_err(|_| anyhow!("Syntax locking failed"))?;
+        syns.insert(ft.clone(), syntax);
         Ok(())
     }
 
     pub fn load(&mut self, ft: &Language, path: &Path) -> anyhow::Result<()> {
-        if self.syntaxes.contains_key(ft) {
+        let mut syns = self
+            .syntaxes
+            .lock()
+            .map_err(|_| anyhow!("Syntax locking failed"))?;
+        if syns.contains_key(ft) {
             return Ok(());
         }
 
         let syntax = Syntax::from_path(path)?;
-        self.syntaxes.insert(ft.clone(), syntax);
+        syns.insert(ft.clone(), syntax);
         Ok(())
+    }
+
+    pub fn loader(&self, config_dir: Directory) -> SyntaxLoader {
+        SyntaxLoader {
+            dir: config_dir,
+            syntaxes: self.syntaxes.clone(),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub(crate) struct SyntaxLoader {
+    dir: Directory,
+    syntaxes: Arc<Mutex<Map<Language, Syntax>>>,
+}
+
+impl SyntaxLoader {
+    pub fn load_language(&mut self, lang: &Language, reload: bool) {
+        let path = PathBuf::from(lang.as_str()).join(SYNTAX_FILE);
+        if let Some(path) = self.dir.find(&path) {
+            let result = if reload {
+                self.reload_path(lang, &path)
+            } else {
+                self.load_path(lang, &path)
+            };
+            if let Err(e) = result {
+                log::error!("Failed to load syntax for {}: {e}", lang.as_str());
+            }
+        }
+    }
+
+    pub fn reload_path(&mut self, ft: &Language, path: &Path) -> anyhow::Result<()> {
+        let syntax = Syntax::from_path(path)?;
+        let mut syns = self
+            .syntaxes
+            .lock()
+            .map_err(|_| anyhow!("Syntax locking failed"))?;
+        syns.insert(ft.clone(), syntax);
+        Ok(())
+    }
+
+    pub fn load_path(&mut self, ft: &Language, path: &Path) -> anyhow::Result<()> {
+        let mut syns = self
+            .syntaxes
+            .lock()
+            .map_err(|_| anyhow!("Syntax locking failed"))?;
+        if syns.contains_key(ft) {
+            return Ok(());
+        }
+
+        let syntax = Syntax::from_path(path)?;
+        syns.insert(ft.clone(), syntax);
+        Ok(())
+    }
+}
+
+impl LanguageLoader for SyntaxLoader {
+    fn load(&mut self, language: &str) -> Result<Parser, sanedit_syntax::ParseError> {
+        // self.config_dir.join(language).join(SYNTAX_FILE);
+
+        todo!()
     }
 }
 
@@ -78,14 +161,7 @@ impl Syntax {
             .filter_map(|compl| compl.ok())
             .collect();
 
-        log::info!(
-            "Parsing syntax {peg:?} using {}",
-            if matches!(parser, Parser::Jit(..)) {
-                "Jit"
-            } else {
-                "Interpreted"
-            }
-        );
+        log::info!("Parsing syntax {peg:?} using {}", parser.kind());
 
         Ok(Syntax {
             parser: Arc::new(parser),

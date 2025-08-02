@@ -19,3 +19,12 @@ link_url = (!")" .)*;
 
 @show @highlight(operator)
 backtick = "`" (!"`" .)* "`";
+
+@show
+code_fence = fence spaces code_name spaces nl code fence;
+@show
+code_name = [a..zA..Z0..9_]+;
+@show
+code = (!fence / .)*;
+spaces = WHITESPACE*;
+fence = "```";

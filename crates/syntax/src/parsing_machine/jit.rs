@@ -310,23 +310,41 @@ impl Default for State {
 }
 
 #[derive(Debug)]
-pub struct Jit {
-    pub(crate) rules: Rules,
-    pub(crate) ops: Program,
-    pub(crate) program: ExecutableBuffer,
-    pub(crate) start: AssemblyOffset,
+pub(crate) struct Jit {
+    rules: Rules,
+    ops: Program,
+    program: ExecutableBuffer,
+    start: AssemblyOffset,
 }
 
 impl Jit {
-    pub fn new<R: std::io::Read>(rules: R) -> Result<Jit, ParseError> {
+    pub fn new(rules: Rules, ops: Program) -> Jit {
+        let (program, start) = Self::compile(&ops);
+        Jit {
+            rules,
+            ops,
+            program,
+            start
+        }
+    }
+
+    fn from_read<R: std::io::Read>(rules: R) -> Result<Jit, ParseError> {
         let rules = Rules::parse(rules).unwrap();
         let compiler = Compiler::new(&rules);
         let program = compiler.compile().unwrap();
         Jit::from_program(rules, program)
     }
 
+    pub fn program(&self) -> &Program {
+        &self.ops
+    }
+
+    pub fn rules(&self) -> &Rules {
+        &self.rules
+    }
+
     /// Return compiled verions of pattern if required instruction sets are available
-    pub(crate) fn from_program(rules: Rules, ops: Program) -> Result<Jit, ParseError> {
+    fn from_program(rules: Rules, ops: Program) -> Result<Jit, ParseError> {
         if !Self::is_available() {
             return Err(ParseError::JitUnsupported);
         }
@@ -946,7 +964,7 @@ mod test {
     #[test]
     fn jit_rust() {
         let peg = include_str!("../../../../runtime/language/rust/syntax.peg");
-        let jit = Jit::new(std::io::Cursor::new(peg)).expect("Failed to create JIT");
+        let jit = Jit::from_read(std::io::Cursor::new(peg)).expect("Failed to create JIT");
         println!("{:?}", jit.ops);
         let rust = r#"
             use crate::editor::snippets::{Snippet, SNIPPET_DESCRIPTION};
@@ -988,7 +1006,7 @@ mod test {
     #[test]
     fn jit_json() {
         let rules = include_str!("../../pegs/json.peg");
-        let jit = Jit::new(std::io::Cursor::new(rules)).expect("Failed to create JIT");
+        let jit = Jit::from_read(std::io::Cursor::new(rules)).expect("Failed to create JIT");
         // let json = r#"{ "nimi": "perkele", "ika": 42, lapset: ["matti", "teppo"]}"#;
         // println!("{:?}", jit.ops);
         let json = include_str!("../../benches/large.json");
@@ -1001,7 +1019,7 @@ mod test {
     #[test]
     fn jit_toml() {
         let rules = include_str!("../../pegs/toml.peg");
-        let jit = Jit::new(std::io::Cursor::new(rules)).expect("Failed to create JIT");
+        let jit = Jit::from_read(std::io::Cursor::new(rules)).expect("Failed to create JIT");
         let json = r#"
         [hello]
         number = 42
@@ -1020,7 +1038,7 @@ mod test {
     #[test]
     fn jit_match_1() {
         let rules = r#"document = "abc";"#;
-        let jit = Jit::new(std::io::Cursor::new(rules)).unwrap();
+        let jit = Jit::from_read(std::io::Cursor::new(rules)).unwrap();
         let haystack = "abc";
         assert!(jit.parse(haystack).is_ok())
     }
@@ -1028,7 +1046,7 @@ mod test {
     #[test]
     fn jit_match_2() {
         let rules = r#"document = ("amet" / .)*;"#;
-        let jit = Jit::new(std::io::Cursor::new(rules)).unwrap();
+        let jit = Jit::from_read(std::io::Cursor::new(rules)).unwrap();
         let haystack = LOREM.repeat(10);
         assert!(jit.parse(haystack.as_str()).is_ok())
     }
@@ -1041,7 +1059,7 @@ mod test {
             @show
             amet = "amet";
         "#;
-        let jit = Jit::new(std::io::Cursor::new(rules)).unwrap();
+        let jit = Jit::from_read(std::io::Cursor::new(rules)).unwrap();
         let haystack = LOREM.repeat(10);
         assert!(jit.parse(haystack.as_str()).is_ok())
     }
@@ -1049,7 +1067,7 @@ mod test {
     #[test]
     fn jit_match_4() {
         let rules = r#"@show document = ("amet" / .)*;"#;
-        let jit = Jit::new(std::io::Cursor::new(rules)).unwrap();
+        let jit = Jit::from_read(std::io::Cursor::new(rules)).unwrap();
         let haystack = LOREM.repeat(10);
         assert!(jit.parse(haystack.as_str()).is_ok())
     }
@@ -1077,7 +1095,7 @@ mod test {
     #[test]
     fn jit_no_match_1() {
         let rules = r#"document = "abc";"#;
-        let jit = Jit::new(std::io::Cursor::new(rules)).unwrap();
+        let jit = Jit::from_read(std::io::Cursor::new(rules)).unwrap();
         let haystack = "aac";
         assert!(jit.parse(haystack).is_err())
     }

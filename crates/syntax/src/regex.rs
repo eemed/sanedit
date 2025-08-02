@@ -14,7 +14,7 @@ use crate::Capture;
 use crate::CaptureIter;
 use crate::Operation;
 use crate::ParseError;
-use crate::Parser;
+use crate::ParserKind as Parser;
 
 pub struct RegexRules(pub(crate) Rules);
 
@@ -47,37 +47,15 @@ pub struct Regex {
 
 impl Regex {
     pub fn new(pattern: &str) -> Result<Regex, RegexError> {
-        // println!("Pattern: {pattern}");
         let rules = RegexToPEG::convert(pattern)?;
         let parser = Parser::from_rules_unanchored(rules)?;
         Ok(Regex { parser })
     }
 
-    pub fn parse_rules(pattern: &str) -> Result<RegexRules, RegexError> {
-        let rules = RegexToPEG::convert(pattern)?;
-        Ok(RegexRules(rules))
-    }
-
-    pub fn from_rules(rules: RegexRules) -> Result<Regex, RegexError> {
-        let parser = Parser::from_rules(rules.0)?;
-        Ok(Regex { parser })
-    }
 
     pub fn is_match<B: AsRef<[u8]>>(&self, bytes: &B) -> bool {
         let bytes = bytes.as_ref();
         let captures = self.parser.parse(bytes);
-        // println!(
-        //     "=======================================\nBYTES: {}",
-        //     std::str::from_utf8(bytes).unwrap()
-        // );
-        // if let Ok(caps) = &captures {
-        //     for cap in caps {
-        //         println!(
-        //             "Capture: {cap:?}, {}",
-        //             std::str::from_utf8(&bytes[cap.start as usize..cap.end as usize]).unwrap()
-        //         );
-        //     }
-        // }
         captures.is_ok()
     }
 
@@ -124,7 +102,6 @@ impl<'a> RegexToPEG<'a> {
         state.rules.push(info);
         state.rules[0].rule = state.convert_rec(0, &empty, 1)?;
         let rules = Rules::new(state.rules.into_boxed_slice());
-        // println!("==========\n{}", rules);
         Ok(rules)
     }
 
@@ -157,10 +134,6 @@ impl<'a> RegexToPEG<'a> {
             }
             children
         };
-        // println!(
-        //     "Enter depth: {depth}, capture: {} / {label} {text:?}: Children: {children:?}, n: {}",
-        //     cap.id, self.n
-        // );
         let is_full_match = cap.start == 0 && cap.end == self.pattern.len() as u64;
 
         match label {

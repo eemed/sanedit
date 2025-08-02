@@ -1,8 +1,8 @@
 use std::ops::Range;
 
-use crate::{ByteSource, SubjectPosition};
+use crate::ByteSource;
 
-use super::{Jit, ParsingMachine};
+use super::{Jit, ParsingMachine, SubjectPosition};
 
 pub type CaptureID = usize;
 pub type CaptureList = Vec<Capture>;

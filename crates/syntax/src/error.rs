@@ -2,6 +2,9 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum ParseError {
+    #[error("No language found: {0}")]
+    NoLanguage(String),
+
     #[error("No rules found")]
     NoRules,
 

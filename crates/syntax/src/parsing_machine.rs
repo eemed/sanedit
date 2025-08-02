@@ -10,8 +10,6 @@ mod jit;
 pub use self::captures::{Capture, CaptureID, CaptureIter, CaptureList};
 pub(crate) use self::compiler::Program;
 
-use std::io;
-
 use anyhow::bail;
 use captures::ParserRef;
 
@@ -21,7 +19,7 @@ use crate::{
     ByteSource, ParseError,
 };
 pub(crate) use compiler::Compiler;
-pub use jit::Jit;
+pub(crate) use jit::Jit;
 
 pub(crate) use self::op::{Addr, Operation};
 
@@ -72,49 +70,18 @@ enum State {
 pub(crate) type SubjectPosition = u64;
 
 #[derive(Debug)]
-pub struct ParsingMachine {
-    pub(crate) rules: Rules,
-    pub(crate) program: Program,
+pub(crate) struct ParsingMachine {
+    rules: Rules,
+    program: Program,
 }
 
 impl ParsingMachine {
-    pub fn new<R: io::Read>(read: R) -> Result<ParsingMachine, ParseError> {
-        let rules = Rules::parse(read).map_err(|err| ParseError::Grammar(err.to_string()))?;
-        Self::from_rules(rules)
+    pub fn new(rules: Rules, program: Program) -> ParsingMachine {
+        ParsingMachine { rules, program }
     }
 
-    // Used in tests
-    #[allow(dead_code)]
-    pub(crate) fn from_rules_unanchored(rules: Rules) -> Result<ParsingMachine, ParseError> {
-        let compiler = Compiler::new(&rules);
-        let program = compiler
-            .compile_unanchored()
-            .map_err(|err| ParseError::Preprocess(err.to_string()))?;
-
-        // log::info!("---- Prgoram unanchor ----");
-        // log::info!("{:?}", program);
-        let parser = ParsingMachine { rules, program };
-        Ok(parser)
-    }
-
-    pub(crate) fn from_rules(rules: Rules) -> Result<ParsingMachine, ParseError> {
-        if rules.is_empty() {
-            return Err(ParseError::NoRules);
-        }
-
-        let compiler = Compiler::new(&rules);
-        let program = compiler
-            .compile()
-            .map_err(|err| ParseError::Preprocess(err.to_string()))?;
-        // log::info!("---- Prgoram ----");
-        // log::info!("{:?}", program);
-
-        // println!("---- Prgoram ----");
-        // println!("{:?}", program);
-
-        // TODO enable jit when ready
-        let parser = ParsingMachine { rules, program };
-        Ok(parser)
+    pub fn rules(&self) -> &Rules {
+        &self.rules
     }
 
     pub fn program(&self) -> &Program {
@@ -360,46 +327,54 @@ impl ParsingMachine {
     }
 }
 
-/// Check that captures exist and all captures all closed
-// fn captures_good(partials: Vec<PartialCapture>) -> (Vec<Capture>, bool) {
-//     if partials.is_empty() {
-//         return (Vec::default(), false);
-//     }
-
-//     let mut captures = Vec::with_capacity(partials.len() / 2);
-//     let mut stack = vec![];
-//     for cap in partials {
-//         match cap.kind {
-//             Kind::Open => {
-//                 stack.push(cap);
-//             }
-//             Kind::Close => {
-//                 let Some(start_cap) = stack.pop() else {
-//                     return (captures, false);
-//                 };
-//                 let capture = Capture {
-//                     id: start_cap.id,
-//                     start: start_cap.pos,
-//                     end: cap.pos,
-//                 };
-//                 captures.push(capture);
-//             }
-//         }
-//     }
-
-//     (captures, stack.is_empty())
-// }
-
 #[cfg(test)]
 mod test {
     use super::*;
+
+    impl ParsingMachine {
+        pub fn from_read<R: io::Read>(read: R) -> Result<ParsingMachine, ParseError> {
+            let rules = Rules::parse(read).map_err(|err| ParseError::Grammar(err.to_string()))?;
+            Self::from_rules(rules)
+        }
+
+        pub(crate) fn from_rules_unanchored(rules: Rules) -> Result<ParsingMachine, ParseError> {
+            let compiler = Compiler::new(&rules);
+            let program = compiler
+                .compile_unanchored()
+                .map_err(|err| ParseError::Preprocess(err.to_string()))?;
+
+            // log::info!("---- Prgoram unanchor ----");
+            // log::info!("{:?}", program);
+            let parser = ParsingMachine { rules, program };
+            Ok(parser)
+        }
+
+        pub fn from_rules(rules: Rules) -> Result<ParsingMachine, ParseError> {
+            if rules.is_empty() {
+                return Err(ParseError::NoRules);
+            }
+
+            let compiler = Compiler::new(&rules);
+            let program = compiler
+                .compile()
+                .map_err(|err| ParseError::Preprocess(err.to_string()))?;
+            // log::info!("---- Prgoram ----");
+            // log::info!("{:?}", program);
+
+            // println!("---- Prgoram ----");
+            // println!("{:?}", program);
+
+            let parser = ParsingMachine { rules, program };
+            Ok(parser)
+        }
+    }
 
     #[test]
     fn parse_large_json() {
         let peg = include_str!("../pegs/json.peg");
         let content = include_str!("../benches/large.json");
 
-        let parser = ParsingMachine::new(std::io::Cursor::new(peg)).unwrap();
+        let parser = ParsingMachine::from_read(std::io::Cursor::new(peg)).unwrap();
         let result = parser.parse(content);
         assert!(result.is_ok(), "Parse failed with {result:?}");
     }
@@ -409,7 +384,7 @@ mod test {
         let peg = include_str!("../pegs/toml.peg");
         let content = include_str!("../benches/sample.toml");
 
-        let parser = ParsingMachine::new(std::io::Cursor::new(peg)).unwrap();
+        let parser = ParsingMachine::from_read(std::io::Cursor::new(peg)).unwrap();
         let result = parser.parse(content);
         assert!(result.is_ok(), "Parse failed with {result:?}");
     }
@@ -419,7 +394,7 @@ mod test {
         let peg = include_str!("../pegs/json.peg");
         let content = "{ \"hello\": \"world, \"another\": \"line\" }";
 
-        let parser = ParsingMachine::new(std::io::Cursor::new(peg)).unwrap();
+        let parser = ParsingMachine::from_read(std::io::Cursor::new(peg)).unwrap();
         let result = parser.parse(content);
         assert!(result.is_ok(), "Parse failed with {result:?}");
     }
@@ -434,7 +409,7 @@ mod test {
 
         let content = "abba";
 
-        let parser = ParsingMachine::new(std::io::Cursor::new(peg)).unwrap();
+        let parser = ParsingMachine::from_read(std::io::Cursor::new(peg)).unwrap();
         let result = parser.parse(content);
         assert!(result.is_ok(), "Parse failed with {result:?}");
     }
@@ -448,7 +423,7 @@ mod test {
 
         let content = "\"registry+https://github.com/rust-lang/crates.io-index\"";
 
-        let parser = ParsingMachine::new(std::io::Cursor::new(peg)).unwrap();
+        let parser = ParsingMachine::from_read(std::io::Cursor::new(peg)).unwrap();
         let result = parser.parse(content);
         assert!(result.is_ok(), "Parse failed with {result:?}");
     }
@@ -463,7 +438,7 @@ mod test {
 
         let content = "# abba\n";
 
-        let parser = ParsingMachine::new(std::io::Cursor::new(peg)).unwrap();
+        let parser = ParsingMachine::from_read(std::io::Cursor::new(peg)).unwrap();
         let result = parser.parse(content);
         assert!(result.is_ok(), "Parse failed with {result:?}");
     }

@@ -137,7 +137,7 @@ impl<R: io::Read> GrammarParser<R> {
                 "whitespaced" => anns.push(Annotation::Whitespaced),
                 "show" => anns.push(Annotation::Show),
                 "inject" => anns.push(Annotation::Inject(specifiers)),
-                "injection_language" => anns.push(Annotation::InjectionLanguage),
+                "injection-language" => anns.push(Annotation::InjectionLanguage),
                 _ => anns.push(Annotation::Other(ann, specifiers)),
             }
         }

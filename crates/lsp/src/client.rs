@@ -9,7 +9,7 @@ use crate::process::{ProcessHandler, ServerRequest};
 use crate::request::{Notification, RequestKind, ToLSP};
 use crate::response::NotificationResult;
 use crate::util::{
-    path_to_uri, CodeAction, CompletionItem, CompletionItemKind, FileEdit, Position, Symbol,
+    path_to_uri, CodeAction, CompletionItem, CompletionItemKind, FileEdit, Position, Symbol, Text,
 };
 use crate::{
     PositionEncoding, PositionRange, Request, RequestResult, Response, Signatures, TextDiagnostic,
@@ -848,56 +848,49 @@ impl Handler {
             .await?;
         let response = response.ok_or(LSPError::EmptyResponse)?;
 
+        log::info!("Response: {response:?}");
         let mut texts = vec![];
         match response.contents {
             lsp_types::HoverContents::Scalar(mstring) => {
                 match mstring {
-                    lsp_types::MarkedString::String(s) => texts.push(s),
+                    lsp_types::MarkedString::String(s) => texts.push(Text::plain(s)),
                     lsp_types::MarkedString::LanguageString(language_string) => {
                         // Just format as markdown
-                        texts.push(format!(
+                        texts.push(Text::markdown(format!(
                             "```{}\n{}\n```",
                             language_string.language, language_string.value
-                        ));
+                        )));
                     }
                 }
             }
             lsp_types::HoverContents::Array(arr) => {
                 for mstring in arr {
                     match mstring {
-                        lsp_types::MarkedString::String(s) => texts.push(s),
+                        lsp_types::MarkedString::String(s) => texts.push(Text::plain(s)),
                         lsp_types::MarkedString::LanguageString(language_string) => {
                             // Just format as markdown
-                            texts.push(format!(
+                            texts.push(Text::markdown(format!(
                                 "```{}\n{}\n```",
                                 language_string.language, language_string.value
-                            ));
+                            )));
                         }
                     }
                 }
             }
             lsp_types::HoverContents::Markup(cont) => match cont.kind {
-                lsp_types::MarkupKind::PlainText => {
-                    texts.push(cont.value);
-                }
+                lsp_types::MarkupKind::PlainText => texts.push(Text::plain(cont.value)),
                 lsp_types::MarkupKind::Markdown => {
-                    texts.push(cont.value);
+                    texts.push(Text::markdown(cont.value));
                 }
             },
         }
 
-        texts.retain_mut(|text| {
-            *text = text.trim().into();
-            !text.is_empty()
-        });
+        texts.retain_mut(|t| !t.text.is_empty());
 
         self.response
             .send(Response::Request {
                 id,
-                result: RequestResult::Hover {
-                    markdown_messages: texts,
-                    position,
-                },
+                result: RequestResult::Hover { texts, position },
             })
             .await?;
 

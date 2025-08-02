@@ -21,7 +21,7 @@ pub use grammar::Annotation;
 pub use loader::LanguageLoader;
 pub use regex::{Regex, RegexError, RegexRules};
 
-pub use parsing_machine::{Capture, CaptureID, CaptureIter, CaptureList};
+pub use parsing_machine::{Capture, CaptureID, CaptureIter, CaptureList, Captures};
 pub(crate) use parsing_machine::{
     Compiler, Jit, Operation, ParsingMachine, Program, SubjectPosition,
 };
@@ -31,7 +31,7 @@ pub(crate) use parsing_machine::{
 #[derive(Debug)]
 pub struct Parser {
     inner: ParserKind,
-    loader: Option<Arc<dyn LanguageLoader>>,
+    pub loader: Option<Arc<dyn LanguageLoader>>,
 }
 
 impl Parser {
@@ -58,7 +58,7 @@ impl Parser {
     }
 
     /// Parse bytes and return the list of captures
-    pub fn parse<B: ByteSource>(&self, bytes: B) -> Result<CaptureList, ParseError> {
+    pub fn parse<B: ByteSource>(&self, bytes: B) -> Result<Captures, ParseError> {
         self.inner.parse_with_loader(bytes, self.loader.as_ref())
     }
 
@@ -137,10 +137,7 @@ impl ParserKind {
         Self::from_ops(rules, program)
     }
 
-    fn parse<B: ByteSource>(
-        &self,
-        bytes: B,
-    ) -> Result<CaptureList, ParseError> {
+    fn parse<B: ByteSource>(&self, bytes: B) -> Result<CaptureList, ParseError> {
         match self {
             ParserKind::Interpreted(parsing_machine) => parsing_machine.parse(bytes),
             ParserKind::Jit(jit) => jit.parse(bytes),
@@ -149,19 +146,33 @@ impl ParserKind {
 
     fn parse_with_loader<B: ByteSource>(
         &self,
-        bytes: B,
+        mut bytes: B,
         loader: Option<&Arc<dyn LanguageLoader>>,
-    ) -> Result<CaptureList, ParseError> {
+    ) -> Result<Captures, ParseError> {
         let capture_list = match self {
-            ParserKind::Interpreted(parsing_machine) => parsing_machine.parse(bytes),
-            ParserKind::Jit(jit) => jit.parse(bytes),
-        }?;
+            ParserKind::Interpreted(parsing_machine) => parsing_machine
+                .do_parse(&mut bytes, 0)
+                .map(|(caps, _)| caps)
+                .map_err(|err| ParseError::Parse(err.to_string()))?,
+            ParserKind::Jit(jit) => jit.do_parse(&mut bytes, 0, false)?.0,
+        };
 
         if loader.is_none() {
-            return Ok(capture_list);
+            return Ok(Captures {
+                captures: capture_list,
+                injections: vec![],
+            });
         }
 
-        let loader = loader.unwrap();
+        self.handle_injections(bytes, loader.unwrap(), capture_list)
+    }
+
+    fn handle_injections<B: ByteSource>(
+        &self,
+        mut bytes: B,
+        loader: &Arc<dyn LanguageLoader>,
+        mut capture_list: CaptureList,
+    ) -> Result<Captures, ParseError> {
         let rules = match self {
             ParserKind::Interpreted(parsing_machine) => parsing_machine.rules(),
             ParserKind::Jit(jit) => jit.rules(),
@@ -169,33 +180,101 @@ impl ParserKind {
 
         let injection_ids = rules.injection_ids();
         if injection_ids.is_empty() {
-            return Ok(capture_list);
+            return Ok(Captures {
+                captures: capture_list,
+                injections: vec![],
+            });
         }
 
-        enum InjectKind {
-            Language,
-            Place,
-        }
+        let mut injections = vec![];
+        let mut last_pos = None;
+        let mut last_lang = None;
+        let mut i = 0;
 
-        for (i, cap) in capture_list.iter().enumerate() {
+        while i < capture_list.len() {
             use Annotation::*;
+            let cap = &capture_list[i];
 
-            if injection_ids.contains(&cap.id) {
-                let annotations = self.annotations_for(cap.id);
-                let inject_ann = annotations.iter().find(|ann| matches!(ann, Inject(..)));
-                let inject_lang_ann = annotations.iter().find(|ann| matches!(ann, InjectionLanguage));
+            if !injection_ids.contains(&cap.id) {
+                i += 1;
+                continue;
+            }
 
-                match (inject_ann, inject_lang_ann) {
-                    (Some(Inject(Some(lang))), None) => {
-                        let parser = loader.load(&lang);
+            let annotations = self.annotations_for(cap.id);
+            let inject_ann = annotations.iter().find(|ann| matches!(ann, Inject(..)));
+            let inject_lang_ann = annotations
+                .iter()
+                .find(|ann| matches!(ann, InjectionLanguage));
+
+            match (inject_ann, inject_lang_ann) {
+                (Some(Inject(Some(lang))), None) => {
+                    if let Ok(parser) = loader.load(&lang) {
+                        let range = cap.range();
+                        let mut buf = vec![0; (range.end - range.start) as usize];
+                        let n = bytes.copy_to(range.start, &mut buf);
+
+                        debug_assert!(n == buf.len(), "Invalid language read");
+
+                        let mut caps = parser.parse(buf.as_slice())?;
+                        let start = cap.range().start;
+                        caps.captures.iter_mut().for_each(|cap| {
+                            cap.start += start;
+                            cap.end += start;
+                        });
+
+                        // capture_list.remove(i);
+                        injections.push((lang.clone(), caps));
+                        continue;
                     }
-                    (Some(Inject(None)), None) => {}
-                    (None, Some(InjectionLanguage)) => {}
-                    _ => {}
                 }
+                (Some(Inject(None)), None) => {
+                    last_pos = Some(i);
+                    i += 1;
+                }
+                (None, Some(InjectionLanguage)) => {
+                    last_lang = Some(i);
+                    i += 1;
+                }
+                _ => {}
+            }
+
+            if let (Some(a), Some(b)) = (last_pos, last_lang) {
+                let lang_cap = &capture_list[b];
+                let range = lang_cap.range();
+                let mut buf = vec![0; (range.end - range.start) as usize];
+                let n = bytes.copy_to(range.start, &mut buf);
+                debug_assert!(n == buf.len(), "Invalid language read");
+
+                if let Ok(lang) = String::from_utf8(buf) {
+                    if let Ok(parser) = loader.load(&lang) {
+                        let pos_cap = &capture_list[a];
+                        let range = pos_cap.range();
+                        let mut buf = vec![0; (range.end - range.start) as usize];
+                        let n = bytes.copy_to(range.start, &mut buf);
+                        debug_assert!(n == buf.len(), "Invalid injection read");
+
+                        let mut caps = parser.parse(buf.as_slice())?;
+                        let start = pos_cap.range().start;
+                        caps.captures.iter_mut().for_each(|cap| {
+                            cap.start += start;
+                            cap.end += start;
+                        });
+
+                        // capture_list.remove(a);
+                        // capture_list.remove(b);
+                        injections.push((lang, caps));
+                    }
+                }
+
+                last_pos = None;
+                last_lang = None;
             }
         }
-        todo!()
+
+        Ok(Captures {
+            captures: capture_list,
+            injections,
+        })
     }
 
     fn label_for(&self, id: CaptureID) -> &str {

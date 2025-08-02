@@ -1,8 +1,7 @@
 use std::{collections::BTreeMap, path::PathBuf};
 
 use crate::util::{
-    CodeAction, CompletionItem, FileEdit, Position, PositionRange, Signatures, Symbol,
-    TextDiagnostic, WorkspaceEdit,
+    CodeAction, CompletionItem, FileEdit, Position, PositionRange, Signatures, Symbol, Text, TextDiagnostic, WorkspaceEdit
 };
 
 #[derive(Debug, Clone)]
@@ -20,10 +19,11 @@ pub enum NotificationResult {
     },
 }
 
+
 #[derive(Debug, Clone)]
 pub enum RequestResult {
     Hover {
-        markdown_messages: Vec<String>,
+        texts: Vec<Text>,
         position: Position,
     },
     GotoDefinition {

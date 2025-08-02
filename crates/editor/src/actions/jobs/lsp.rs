@@ -26,10 +26,10 @@ use sanedit_core::{
 use sanedit_lsp::{
     CodeAction, CompletionItem, FileEdit, LSPClientParams, Notification, Position,
     PositionEncoding, PositionRange, RequestKind, RequestResult, Response, Signatures, Symbol,
-    TextDiagnostic, WorkspaceEdit,
+    Text, TextDiagnostic, TextKind, WorkspaceEdit,
 };
 
-use sanedit_messages::redraw::{PopupKind, PopupMessage};
+use sanedit_messages::redraw::{PopupKind, PopupMessage, PopupMessageText};
 use sanedit_server::{ClientId, Job, JobContext, JobResult};
 
 use super::MatcherJob;
@@ -172,41 +172,84 @@ impl LSPJob {
         }
     }
 
-    fn handle_result(&self, editor: &mut Editor, id: ClientId, result: RequestResult) {
-        let mut on_message_post = true;
-        match result {
-            RequestResult::Hover {
-                markdown_messages, ..
-            } => {
-                let (win, _buf) = editor.win_buf_mut(id);
-                win.clear_popup();
+    fn hover(&self, editor: &mut Editor, id: ClientId, texts: Vec<Text>) {
+        let markdown = Language::from("markdown");
+        editor.load_language(&markdown, false);
+        let syntax = editor.syntaxes.get(&markdown);
+        let (win, _buf) = win_buf!(editor, id);
+        let theme = {
+            let theme_name = &win.config.theme;
+            editor.themes.get(theme_name).expect("Invalid theme")
+        };
+        win.clear_popup();
 
-                for msg in markdown_messages {
+        for text in texts {
+            match text.kind {
+                TextKind::Plain => {
                     win.push_popup(
                         PopupMessage {
                             severity: None,
-                            text: msg,
+                            text: PopupMessageText::Plain(text.text),
                         },
                         PopupKind::Hover,
                     );
                 }
-            }
-            RequestResult::GotoDefinition { path, position } => {
-                let (win, buf) = editor.win_buf_mut(id);
-                win.push_new_cursor_jump(buf);
-
-                let is_current = buf.path().map(|p| p == path).unwrap_or(false);
-                if !is_current {
-                    if !editor.open_file(id, path).is_ok() {
-                        return;
+                TextKind::Markdown => match &syntax {
+                    Ok(syn) => {
+                        let text = syn.highlight_popup(text.text, theme);
+                        win.push_popup(
+                            PopupMessage {
+                                severity: None,
+                                text,
+                            },
+                            PopupKind::Hover,
+                        );
                     }
-                }
+                    _ => {
+                        win.push_popup(
+                            PopupMessage {
+                                severity: None,
+                                text: PopupMessageText::Plain(text.text),
+                            },
+                            PopupKind::Hover,
+                        );
+                    }
+                },
+            }
+        }
+    }
 
-                let enc = get!(editor.lsp_for(id).map(|x| x.position_encoding()));
-                let (win, buf) = editor.win_buf_mut(id);
-                let slice = buf.slice(..);
-                let offset = position.to_offset(&slice, &enc);
-                win.goto_offset(offset, buf);
+    fn goto_definition(
+        &self,
+        editor: &mut Editor,
+        id: ClientId,
+        path: PathBuf,
+        position: Position,
+    ) {
+        let (win, buf) = editor.win_buf_mut(id);
+        win.push_new_cursor_jump(buf);
+
+        let is_current = buf.path().map(|p| p == path).unwrap_or(false);
+        if !is_current {
+            if !editor.open_file(id, path).is_ok() {
+                return;
+            }
+        }
+
+        let enc = get!(editor.lsp_for(id).map(|x| x.position_encoding()));
+        let (win, buf) = editor.win_buf_mut(id);
+        let slice = buf.slice(..);
+        let offset = position.to_offset(&slice, &enc);
+        win.goto_offset(offset, buf);
+    }
+
+    fn handle_result(&self, editor: &mut Editor, id: ClientId, result: RequestResult) {
+        let mut on_message_post = true;
+
+        match result {
+            RequestResult::Hover { texts, .. } => self.hover(editor, id, texts),
+            RequestResult::GotoDefinition { path, position } => {
+                self.goto_definition(editor, id, path, position)
             }
             RequestResult::Complete {
                 path,
@@ -254,7 +297,7 @@ impl LSPJob {
             let text = signature.name;
             let msg = PopupMessage {
                 severity: None,
-                text,
+                text: PopupMessageText::Plain(text),
             };
             win.push_popup(msg, PopupKind::SignatureHelp);
         }

@@ -1,4 +1,4 @@
-document = (title / list_op / link / backtick / (!WHITESPACE .) WHITESPACE / .)*;
+document = (title / list_op / link / code_fence / backtick / (!WHITESPACE .) WHITESPACE / .)*;
 
 WHITESPACE = [ \t];
 ws = WHITESPACE*;
@@ -20,11 +20,13 @@ link_url = (!")" .)*;
 @show @highlight(operator)
 backtick = "`" (!"`" .)* "`";
 
-@show
-code_fence = fence spaces code_name spaces nl code fence;
-@show
+code_fence = fence code_name nl code fence;
+
+@injection-language @highlight(operator)
 code_name = [a..zA..Z0..9_]+;
-@show
-code = (!fence / .)*;
+
+@inject
+code = (!fence .)*;
 spaces = WHITESPACE*;
+@show @highlight(operator)
 fence = "```";

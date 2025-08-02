@@ -1,9 +1,10 @@
 use std::{
     cmp::min,
+    ops::Range,
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc,
-    }, ops::Range
+    },
 };
 
 use sanedit_buffer::{utf8::decode_utf8_iter, Bytes, Chunk, Chunks, PieceTreeSlice};
@@ -15,10 +16,10 @@ pub trait ByteSource {
     /// Used if ByteSource is not contiguous in memory and needs to be copied to a sliding window.
     /// a shitty way to copy. Override to provide a better alternative if possible. this is slow
     fn copy_to(&mut self, at: u64, buf: &mut [u8]) -> usize {
-        debug_assert!(
-            self.as_single_chunk().is_none(),
-            "Copying a contiguous ByteSource"
-        );
+        // debug_assert!(
+        //     self.as_single_chunk().is_none(),
+        //     "Copying a contiguous ByteSource"
+        // );
 
         let start = at;
         let end = std::cmp::min(self.len(), at + buf.len() as u64);
@@ -175,6 +176,9 @@ impl<'a, 'b> ByteSource for PTSliceSource<'a, 'b> {
 
     fn copy_to(&mut self, at: u64, buf: &mut [u8]) -> usize {
         let mut pos_chunk = self.chunks.get();
+        if pos_chunk.is_none() {
+            self.chunks.prev();
+        }
 
         while let Some((chunk_pos, _)) = pos_chunk.as_ref() {
             if *chunk_pos <= at {
@@ -186,19 +190,34 @@ impl<'a, 'b> ByteSource for PTSliceSource<'a, 'b> {
 
         let mut n = 0;
         while let Some((chunk_pos, chunk)) = pos_chunk {
-            // println!("at: {at}, chunk_pos: {chunk_pos}");
             let chunk_bytes = chunk.as_ref();
             let start = if at > chunk_pos {
                 (at - chunk_pos) as usize
             } else {
                 0
             };
+
+            if chunk_bytes.len() < start {
+                pos_chunk = self.chunks.next();
+                continue;
+            }
+
+            log::info!(
+                "start: {start}, min({}, {})",
+                buf.len() - n,
+                chunk_bytes.len() - start
+            );
             let end = start + std::cmp::min(buf.len() - n, chunk_bytes.len() - start);
-            // println!("chk: {chunk_pos} len: {}, at: {at}, start: {start}, end: {end}", chunk_bytes.len());
+            // log::info!(
+            //     "start: {start}, end: {end}, min({}, {})",
+            //     buf.len() - n,
+            //     chunk_bytes.len() - start
+            // );
+            // log::info!("chk: {chunk_pos} len: {}, at: {at}, start: {start}, end: {end}", chunk_bytes.len());
 
             if end > start {
                 let to_copy = &chunk_bytes[start..end];
-                // println!("Copy: {to_copy:?}");
+                // log::info!("Copy: {to_copy:?}");
                 let buf_piece = &mut buf[n..n + to_copy.len()];
                 buf_piece.copy_from_slice(to_copy);
                 n += to_copy.len();
@@ -212,17 +231,17 @@ impl<'a, 'b> ByteSource for PTSliceSource<'a, 'b> {
             pos_chunk = self.chunks.next();
         }
 
-        // println!("ret n: {n}");
+        // log::info!("ret n: {n}");
         n
     }
 }
 
-pub(crate) struct SliceSource<B: ByteSource> {
-    source: B,
-    range: Range<u64>,
+pub(crate) struct SliceSource<'a, B: ByteSource> {
+    pub(crate) source: &'a mut B,
+    pub(crate) range: Range<u64>,
 }
 
-impl<B: ByteSource> ByteSource for SliceSource<B> {
+impl<'a, B: ByteSource> ByteSource for SliceSource<'a, B> {
     fn as_single_chunk(&mut self) -> Option<&[u8]> {
         let chunk = self.source.as_single_chunk()?;
         Some(&chunk[self.range.start as usize..self.range.end as usize])
@@ -241,8 +260,14 @@ impl<B: ByteSource> ByteSource for SliceSource<B> {
         self.source.get(index)
     }
 
-    fn copy_to(&mut self, at: u64, buf: &mut [u8]) -> usize {
-    todo!()
+    fn copy_to(&mut self, at: u64, mut buf: &mut [u8]) -> usize {
+        let index = at + self.range.start;
+        let end = index + buf.len() as u64;
+        if end > self.range.end {
+            buf = &mut buf[..(self.range.end - index) as usize];
+        }
+
+        self.source.copy_to(index, buf)
     }
 
     fn char_between(&mut self, at: u64, start: char, end: char) -> Option<u64> {

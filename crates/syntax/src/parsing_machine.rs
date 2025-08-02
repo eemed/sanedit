@@ -7,7 +7,7 @@ mod stack;
 #[allow(dead_code)]
 mod jit;
 
-pub use self::captures::{Capture, CaptureID, CaptureIter, CaptureList};
+pub use self::captures::{Capture, CaptureID, CaptureIter, CaptureList, Captures};
 pub(crate) use self::compiler::Program;
 
 use anyhow::bail;
@@ -99,7 +99,10 @@ impl ParsingMachine {
     }
 
     pub fn annotations_for(&self, id: CaptureID) -> &[Annotation] {
-        &self.rules[id].annotations
+        self.rules
+            .get(id)
+            .map(|info| info.annotations.as_slice())
+            .unwrap_or(&[])
     }
 
     /// Try to match text multiple times. Skips errors and yields an element only when part of the text matches
@@ -118,7 +121,7 @@ impl ParsingMachine {
             .map_err(|err| ParseError::Parse(err.to_string()))
     }
 
-    fn do_parse<B: ByteSource>(
+    pub(crate) fn do_parse<B: ByteSource>(
         &self,
         reader: &mut B,
         sp: u64,

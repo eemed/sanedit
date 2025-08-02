@@ -8,6 +8,12 @@ pub type CaptureID = usize;
 pub type CaptureList = Vec<Capture>;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Captures {
+    pub captures: CaptureList,
+    pub injections: Vec<(String, Captures)>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Capture {
     pub(crate) id: CaptureID,
     pub(crate) start: SubjectPosition,

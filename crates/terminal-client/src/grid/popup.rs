@@ -1,4 +1,4 @@
-use sanedit_messages::redraw::{Point, Popup, Severity, Size, ThemeField};
+use sanedit_messages::redraw::{Point, Popup, PopupMessageText, Severity, Size, ThemeField};
 
 use crate::ui::UIContext;
 
@@ -33,11 +33,15 @@ fn popup_size(screen: &Rect, popup: &Popup) -> Size {
     let width = popup
         .messages
         .iter()
-        .filter_map(|msg| {
-            msg.text
-                .lines()
+        .filter_map(|msg| match &msg.text {
+            PopupMessageText::Formatted(cells) => cells
+                .iter()
                 .map(|line| line.len() + BORDER_HORIZONTAL)
-                .max()
+                .max(),
+            PopupMessageText::Plain(text) => text
+                .lines()
+                .map(|line| line.chars().count() + BORDER_HORIZONTAL)
+                .max(),
         })
         .max()
         .unwrap_or(0)
@@ -45,11 +49,19 @@ fn popup_size(screen: &Rect, popup: &Popup) -> Size {
     let height = (popup
         .messages
         .iter()
-        .map(|msg| {
-            msg.text
-                .lines()
+        .map(|msg| match &msg.text {
+            PopupMessageText::Formatted(cells) => cells
+                .iter()
                 .map(|line| (line.len()).div_ceil(width - BORDER_HORIZONTAL).max(1))
-                .sum::<usize>()
+                .sum::<usize>(),
+            PopupMessageText::Plain(text) => text
+                .lines()
+                .map(|line| {
+                    (line.chars().count())
+                        .div_ceil(width - BORDER_HORIZONTAL)
+                        .max(1)
+                })
+                .sum::<usize>(),
         })
         .sum::<usize>()
         + BORDER_VERTICAL
@@ -138,11 +150,27 @@ impl Drawable for Popup {
                 };
                 ctx.style(field)
             };
+
+            // log::info!("msg: {:?}", msg.text);
             // Add popup messages
-            for line in msg.text.lines().skip(self.line_offset) {
-                let lcells = into_cells_with_style(line, mstyle);
-                for cell in lcells {
-                    if col >= wsize.width {
+            match &msg.text {
+                PopupMessageText::Formatted(cells) => {
+                    for line in cells.iter().skip(self.line_offset) {
+                        for cell in line {
+                            if col >= wsize.width {
+                                row += 1;
+                                col = 0;
+
+                                if row >= wsize.height {
+                                    break;
+                                }
+                            }
+
+                            grid.replace(row, col, cell.clone());
+                            col += 1;
+                        }
+
+                        // Line processed goto next
                         row += 1;
                         col = 0;
 
@@ -150,17 +178,32 @@ impl Drawable for Popup {
                             break;
                         }
                     }
-
-                    grid.replace(row, col, cell);
-                    col += 1;
                 }
+                PopupMessageText::Plain(text) => {
+                    for line in text.lines().skip(self.line_offset) {
+                        let lcells = into_cells_with_style(line, mstyle);
+                        for cell in lcells {
+                            if col >= wsize.width {
+                                row += 1;
+                                col = 0;
 
-                // Line processed goto next
-                row += 1;
-                col = 0;
+                                if row >= wsize.height {
+                                    break;
+                                }
+                            }
 
-                if row >= wsize.height {
-                    break;
+                            grid.replace(row, col, cell);
+                            col += 1;
+                        }
+
+                        // Line processed goto next
+                        row += 1;
+                        col = 0;
+
+                        if row >= wsize.height {
+                            break;
+                        }
+                    }
                 }
             }
         }

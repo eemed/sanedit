@@ -901,7 +901,10 @@ impl Jit {
     }
 
     pub fn annotations_for(&self, id: CaptureID) -> &[Annotation] {
-        &self.rules[id].annotations
+        self.rules
+            .get(id)
+            .map(|info| info.annotations.as_slice())
+            .unwrap_or(&[])
     }
 }
 

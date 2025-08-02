@@ -4,15 +4,18 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use sanedit_buffer::PieceTreeView;
+use sanedit_buffer::{utf8::EndOfLine, PieceTreeView};
 use sanedit_core::{BufferRange, Directory, Language, Range};
+use sanedit_messages::redraw::{Cell, PopupMessageText, Style, Theme, ThemeField};
 use sanedit_server::Kill;
 use sanedit_utils::sorted_vec::SortedVec;
 
 use std::fs::File;
 
 use anyhow::{anyhow, bail};
-use sanedit_syntax::{Annotation, Capture, LanguageLoader, Parser, PTSliceSource};
+use sanedit_syntax::{Annotation, Capture, Captures, LanguageLoader, PTSliceSource, Parser};
+
+use crate::draw::draw_popup_highlight;
 
 use super::Map;
 
@@ -51,21 +54,26 @@ impl Syntaxes {
     pub fn loader(&self, config_dir: Directory) -> SyntaxLoader {
         SyntaxLoader {
             dir: config_dir,
-            syntaxes: self.syntaxes.clone(),
+            global: self.syntaxes.clone(),
         }
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) struct SyntaxLoader {
     dir: Directory,
-    syntaxes: Arc<Mutex<Map<Language, Syntax>>>,
+    global: Arc<Mutex<Map<Language, Syntax>>>,
+    // TODO
+    // there is a bug here if syntaxes are reloaded while the syntax loader is active
+    // It may return wrong rule indices for captures.
+    // If old syntax was used to parse and new syntax is used to reference the rules
+    //
+    // Not sure if worth fixing, probably will never happen
 }
 
 impl SyntaxLoader {
     pub fn load_language(&self, lang: &Language, reload: bool) {
-        let path = PathBuf::from(lang.as_str()).join(SYNTAX_FILE);
-        if let Some(path) = self.dir.find(&path) {
+        if let Ok(path) = self.path(lang.as_str()) {
             let result = if reload {
                 self.reload_path(lang, &path)
             } else {
@@ -78,9 +86,9 @@ impl SyntaxLoader {
     }
 
     pub fn reload_path(&self, ft: &Language, path: &Path) -> anyhow::Result<()> {
-        let syntax = Syntax::from_path(path)?;
+        let syntax = Syntax::from_path(path, self.clone())?;
         let mut syns = self
-            .syntaxes
+            .global
             .lock()
             .map_err(|_| anyhow!("Syntax locking failed"))?;
         syns.insert(ft.clone(), syntax);
@@ -89,29 +97,29 @@ impl SyntaxLoader {
 
     pub fn load_path(&self, ft: &Language, path: &Path) -> anyhow::Result<()> {
         let mut syns = self
-            .syntaxes
+            .global
             .lock()
             .map_err(|_| anyhow!("Syntax locking failed"))?;
         if syns.contains_key(ft) {
             return Ok(());
         }
 
-        let syntax = Syntax::from_path(path)?;
+        let syntax = Syntax::from_path(path, self.clone())?;
         syns.insert(ft.clone(), syntax);
         Ok(())
     }
 
     pub fn load_or_get(&self, lang: Language) -> Result<Syntax, sanedit_syntax::ParseError> {
         let mut syns = self
-            .syntaxes
+            .global
             .lock()
             .map_err(|_| sanedit_syntax::ParseError::NoLanguage(lang.as_str().into()))?;
         if let Some(syntax) = syns.get(&lang) {
             return Ok(syntax.clone());
         }
 
-        let path = PathBuf::from(lang.as_str()).join(SYNTAX_FILE);
-        match Syntax::from_path(&path) {
+        let path = self.path(lang.as_str())?;
+        match Syntax::from_path(&path, self.clone()) {
             Ok(syntax) => {
                 syns.insert(lang, syntax.clone());
                 Ok(syntax)
@@ -122,6 +130,13 @@ impl SyntaxLoader {
             }
         }
     }
+
+    fn path(&self, lang: &str) -> Result<PathBuf, sanedit_syntax::ParseError> {
+        let path = PathBuf::from(lang).join(SYNTAX_FILE);
+        self.dir
+            .find(&path)
+            .ok_or(sanedit_syntax::ParseError::NoLanguage(lang.into()))
+    }
 }
 
 impl LanguageLoader for SyntaxLoader {
@@ -130,7 +145,18 @@ impl LanguageLoader for SyntaxLoader {
         let syntax = self.load_or_get(language)?;
         Ok(syntax.parser)
     }
+
+    fn get(&self, language: &str) -> Option<Arc<Parser>> {
+        let language = Language::from(language);
+        let syns = self.global.lock().ok()?;
+        syns.get(&language).map(|syn| syn.parser.clone())
+    }
 }
+
+const COMPLETION_ANNOTATION: &str = "completion";
+const HIGHLIGHT_ANNOTATION: &str = "highlight";
+const HORIZON_TOP: u64 = 1024 * 8;
+const HORIZON_BOTTOM: u64 = 1024 * 16;
 
 #[derive(Debug, Clone)]
 pub struct Syntax {
@@ -139,14 +165,14 @@ pub struct Syntax {
 }
 
 impl Syntax {
-    pub fn from_path(peg: &Path) -> anyhow::Result<Syntax> {
+    pub fn from_path(peg: &Path, loader: SyntaxLoader) -> anyhow::Result<Syntax> {
         const STATIC_COMPLETION_ANNOTATION: &str = "static-completion";
         let file = match File::open(peg) {
             Ok(f) => f,
             Err(e) => bail!("Failed to read PEG file {:?}: {e}", peg),
         };
 
-        let parser = Parser::new(&file)?;
+        let parser = Parser::with_loader(&file, loader)?;
         let static_completions: Vec<String> = parser
             .static_bytes_per_rule(|_, anns| {
                 anns.iter().any(|ann| match ann {
@@ -171,34 +197,96 @@ impl Syntax {
         self.static_completions.clone()
     }
 
+    pub fn highlight_popup(&self, text: String, theme: &Theme) -> PopupMessageText {
+        match self.parser.parse(text.as_str()) {
+            Ok(captures) => {
+                let mut spans = self.to_spans(0, &self.parser, captures.captures);
+
+                let mut stack = captures.injections;
+                while let Some((lang, captures)) = stack.pop() {
+                    stack.extend(captures.injections);
+                    let loader = self.parser.loader.as_ref().unwrap();
+                    let parser = loader.get(&lang).unwrap();
+                    let inj_spans = self.to_spans(0, &parser, captures.captures);
+                    spans.merge(inj_spans)
+                }
+
+                let base = theme.get(ThemeField::PopupDefault);
+                let mut lines = vec![];
+                let mut row = vec![];
+                let mut pos = 0;
+                for ch in text.chars() {
+                    if EndOfLine::is_eol_char(ch) {
+                        // Wont change order
+                        unsafe {
+                            spans.iter_mut().for_each(|span| {
+                                if span.range.start > pos {
+                                    span.range.backward(ch.len_utf8() as u64)
+                                }
+                            })
+                        };
+                        lines.push(std::mem::take(&mut row));
+                    } else {
+                        row.push(Cell::new_char(ch, base));
+                        pos += ch.len_utf8() as u64;
+                    }
+                }
+
+                draw_popup_highlight(&mut lines, &spans, theme);
+
+                lines.retain(|line| {
+                    line.len() < 3
+                        || line[0].text != "`"
+                        || line[1].text != "`"
+                        || line[2].text != "`"
+                });
+
+                PopupMessageText::Formatted(lines)
+            }
+            Err(_) => PopupMessageText::Plain(text),
+        }
+    }
+
     pub fn parse(
         &self,
         pt: &PieceTreeView,
         mut view: BufferRange,
         _kill: Kill,
     ) -> anyhow::Result<SyntaxResult> {
-        const COMPLETION_ANNOTATION: &str = "completion";
-        const HIGHLIGHT_ANNOTATION: &str = "highlight";
-        const HORIZON_TOP: u64 = 1024 * 8;
-        const HORIZON_BOTTOM: u64 = 1024 * 16;
-
         view.start = view.start.saturating_sub(HORIZON_TOP);
         view.end = min(pt.len(), view.end + HORIZON_BOTTOM);
 
         let start = view.start;
         let slice = pt.slice(view.clone());
         let source = PTSliceSource::new(&slice);
-        let captures: SortedVec<Capture> = self.parser.parse(source)?.into();
+        let captures: Captures = self.parser.parse(source)?;
+        let mut spans = self.to_spans(start, &self.parser, captures.captures);
 
-        let spans: SortedVec<Span> = captures
+        let mut stack = captures.injections;
+        while let Some((lang, captures)) = stack.pop() {
+            stack.extend(captures.injections);
+            let loader = self.parser.loader.as_ref().unwrap();
+            let parser = loader.get(&lang).unwrap();
+            let inj_spans = self.to_spans(start, &parser, captures.captures);
+            spans.merge(inj_spans)
+        }
+
+        Ok(SyntaxResult {
+            buffer_range: view,
+            highlights: spans,
+        })
+    }
+
+    fn to_spans(&self, start: u64, parser: &Parser, captures: Vec<Capture>) -> SortedVec<Span> {
+        captures
             .into_iter()
             .map(|cap| {
-                let mut name = self.parser.label_for(cap.id());
+                let mut name = parser.label_for(cap.id());
                 let mut range: BufferRange = cap.range().into();
                 range.start += start;
                 range.end += start;
 
-                let anns = self.parser.annotations_for(cap.id());
+                let anns = parser.annotations_for(cap.id());
                 let completion = anns.iter().find_map(|ann| match ann {
                     Annotation::Other(aname, cname) if aname == COMPLETION_ANNOTATION => {
                         let completion = cname.clone().unwrap_or(name.into());
@@ -228,12 +316,7 @@ impl Syntax {
                 }
             })
             .filter(|span| span.completion.is_some() || span.highlight)
-            .collect();
-
-        Ok(SyntaxResult {
-            buffer_range: view,
-            highlights: spans,
-        })
+            .collect()
     }
 }
 

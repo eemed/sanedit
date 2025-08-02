@@ -1,7 +1,7 @@
 use sanedit_core::Severity;
 use serde::{Deserialize, Serialize};
 
-use super::{Point, Redraw};
+use super::{Cell, Point, Redraw};
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone, Hash)]
 pub enum PopupComponent {
@@ -29,7 +29,13 @@ pub struct Popup {
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone, Hash)]
 pub struct PopupMessage {
     pub severity: Option<Severity>,
-    pub text: String,
+    pub text: PopupMessageText,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone, Hash)]
+pub enum PopupMessageText {
+    Formatted(Vec<Vec<Cell>>),
+    Plain(String),
 }
 
 impl From<Popup> for Redraw {

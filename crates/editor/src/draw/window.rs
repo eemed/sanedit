@@ -12,6 +12,7 @@ use sanedit_utils::sorted_vec::SortedVec;
 use crate::editor::{
     buffers::Buffer,
     lsp::get_diagnostics,
+    syntax::Span,
     windows::{Cell, Cursors, Focus, Mode, View},
 };
 
@@ -237,6 +238,36 @@ fn draw_sigle_hl(grid: &mut Window, view: &View, style: Style, range: &BufferRan
 
             if pos >= range.end {
                 break;
+            }
+        }
+    }
+}
+
+pub(crate) fn draw_popup_highlight(cells: &mut Vec<Vec<redraw::Cell>>, spans: &[Span], theme: &Theme) {
+    const HL_PREFIX: &str = "window.view.";
+    // let key = format!("{}{}", HL_PREFIX, diag.severity().as_ref());
+    let base = theme.get(ThemeField::PopupDefault);
+
+    // TODO optimize
+    'spans: for span in spans {
+        if !span.highlight() {
+            continue;
+        }
+
+        let key = format!("{}{}", HL_PREFIX, span.name());
+        let mut style = theme.get(&key);
+        style.bg = base.bg.or(style.bg);
+        log::info!("Range: {:?}", span.range());
+
+        let mut pos = 0;
+        for row in cells.iter_mut() {
+            for cell in row {
+                if span.range().contains(&pos) {
+                    cell.style = style;
+                } else if span.range().end < pos {
+                    continue 'spans;
+                }
+                pos += cell.text.len() as u64;
             }
         }
     }

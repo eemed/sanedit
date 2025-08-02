@@ -6,4 +6,5 @@ pub trait LanguageLoader: std::fmt::Debug + Send + Sync {
     /// Get language parser for another language
     /// None if not found or failed
     fn load(&self, language: &str) -> Result<Arc<Parser>, ParseError>;
+    fn get(&self, language: &str) -> Option<Arc<Parser>>;
 }

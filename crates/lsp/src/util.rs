@@ -109,6 +109,34 @@ impl From<lsp_types::InsertReplaceEdit> for TextEdit {
 }
 
 #[derive(Debug, Clone)]
+pub enum TextKind {
+    Markdown,
+    Plain,
+}
+
+#[derive(Debug, Clone)]
+pub struct Text {
+    pub kind: TextKind,
+    pub text: String,
+}
+
+impl Text {
+    pub fn plain(text: String) -> Text {
+        Text {
+            kind: TextKind::Plain,
+            text: text.trim().into(),
+        }
+    }
+
+    pub fn markdown(text: String) -> Text {
+        Text {
+            kind: TextKind::Markdown,
+            text: text.trim().into(),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct TextDiagnostic {
     pub line: u64,
     pub severity: Severity,

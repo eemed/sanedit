@@ -12,7 +12,7 @@ use sanedit_utils::sorted_vec::SortedVec;
 use std::fs::File;
 
 use anyhow::{anyhow, bail};
-use sanedit_syntax::{Annotation, Capture, LanguageLoader, Parser, SliceSource};
+use sanedit_syntax::{Annotation, Capture, LanguageLoader, Parser, PTSliceSource};
 
 use super::Map;
 
@@ -48,30 +48,6 @@ impl Syntaxes {
         }
     }
 
-    pub fn reload(&mut self, ft: &Language, path: &Path) -> anyhow::Result<()> {
-        let syntax = Syntax::from_path(path)?;
-        let mut syns = self
-            .syntaxes
-            .lock()
-            .map_err(|_| anyhow!("Syntax locking failed"))?;
-        syns.insert(ft.clone(), syntax);
-        Ok(())
-    }
-
-    pub fn load(&mut self, ft: &Language, path: &Path) -> anyhow::Result<()> {
-        let mut syns = self
-            .syntaxes
-            .lock()
-            .map_err(|_| anyhow!("Syntax locking failed"))?;
-        if syns.contains_key(ft) {
-            return Ok(());
-        }
-
-        let syntax = Syntax::from_path(path)?;
-        syns.insert(ft.clone(), syntax);
-        Ok(())
-    }
-
     pub fn loader(&self, config_dir: Directory) -> SyntaxLoader {
         SyntaxLoader {
             dir: config_dir,
@@ -87,7 +63,7 @@ pub(crate) struct SyntaxLoader {
 }
 
 impl SyntaxLoader {
-    pub fn load_language(&mut self, lang: &Language, reload: bool) {
+    pub fn load_language(&self, lang: &Language, reload: bool) {
         let path = PathBuf::from(lang.as_str()).join(SYNTAX_FILE);
         if let Some(path) = self.dir.find(&path) {
             let result = if reload {
@@ -101,7 +77,7 @@ impl SyntaxLoader {
         }
     }
 
-    pub fn reload_path(&mut self, ft: &Language, path: &Path) -> anyhow::Result<()> {
+    pub fn reload_path(&self, ft: &Language, path: &Path) -> anyhow::Result<()> {
         let syntax = Syntax::from_path(path)?;
         let mut syns = self
             .syntaxes
@@ -111,7 +87,7 @@ impl SyntaxLoader {
         Ok(())
     }
 
-    pub fn load_path(&mut self, ft: &Language, path: &Path) -> anyhow::Result<()> {
+    pub fn load_path(&self, ft: &Language, path: &Path) -> anyhow::Result<()> {
         let mut syns = self
             .syntaxes
             .lock()
@@ -124,13 +100,35 @@ impl SyntaxLoader {
         syns.insert(ft.clone(), syntax);
         Ok(())
     }
+
+    pub fn load_or_get(&self, lang: Language) -> Result<Syntax, sanedit_syntax::ParseError> {
+        let mut syns = self
+            .syntaxes
+            .lock()
+            .map_err(|_| sanedit_syntax::ParseError::NoLanguage(lang.as_str().into()))?;
+        if let Some(syntax) = syns.get(&lang) {
+            return Ok(syntax.clone());
+        }
+
+        let path = PathBuf::from(lang.as_str()).join(SYNTAX_FILE);
+        match Syntax::from_path(&path) {
+            Ok(syntax) => {
+                syns.insert(lang, syntax.clone());
+                Ok(syntax)
+            }
+            Err(e) => {
+                log::error!("Failed to load syntax for {}: {e}", lang.as_str());
+                Err(sanedit_syntax::ParseError::NoLanguage(lang.as_str().into()))
+            }
+        }
+    }
 }
 
 impl LanguageLoader for SyntaxLoader {
-    fn load(&mut self, language: &str) -> Result<Parser, sanedit_syntax::ParseError> {
-        // self.config_dir.join(language).join(SYNTAX_FILE);
-
-        todo!()
+    fn load(&self, language: &str) -> Result<Arc<Parser>, sanedit_syntax::ParseError> {
+        let language = Language::from(language);
+        let syntax = self.load_or_get(language)?;
+        Ok(syntax.parser)
     }
 }
 
@@ -189,7 +187,7 @@ impl Syntax {
 
         let start = view.start;
         let slice = pt.slice(view.clone());
-        let source = SliceSource::new(&slice);
+        let source = PTSliceSource::new(&slice);
         let captures: SortedVec<Capture> = self.parser.parse(source)?.into();
 
         let spans: SortedVec<Span> = captures

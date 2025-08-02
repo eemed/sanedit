@@ -4,7 +4,7 @@ use crate::{BufferRange, Range};
 use anyhow::bail;
 use sanedit_buffer::PieceTreeSlice;
 use sanedit_syntax::{
-    CaptureIter, Finder, FinderIter, FinderIterRev, FinderRev, Regex, SliceSource,
+    CaptureIter, Finder, FinderIter, FinderIterRev, FinderRev, Regex, PTSliceSource,
 };
 
 #[derive(Debug, Clone, Copy)]
@@ -133,17 +133,17 @@ impl Searcher {
     ) -> MatchIter<'a, 'b> {
         match self {
             Searcher::Regex(regex) => {
-                let source = SliceSource::new(slice);
+                let source = PTSliceSource::new(slice);
                 let iter = regex.captures((source, stop));
                 MatchIter::Regex(iter)
             }
             Searcher::Finder(finder) => {
-                let source = SliceSource::new(slice);
+                let source = PTSliceSource::new(slice);
                 let iter = finder.iter((source, stop));
                 MatchIter::Finder(iter)
             }
             Searcher::FinderRev(finder) => {
-                let source = SliceSource::new(slice);
+                let source = PTSliceSource::new(slice);
                 let iter = finder.iter((source, stop));
                 MatchIter::FinderRev(iter)
             }
@@ -178,9 +178,9 @@ impl SearchMatch {
 }
 
 pub enum MatchIter<'a, 'b> {
-    Finder(FinderIter<'a, (SliceSource<'a, 'b>, Arc<AtomicBool>)>),
-    FinderRev(FinderIterRev<'a, (SliceSource<'a, 'b>, Arc<AtomicBool>)>),
-    Regex(CaptureIter<'a, (SliceSource<'a, 'b>, Arc<AtomicBool>)>),
+    Finder(FinderIter<'a, (PTSliceSource<'a, 'b>, Arc<AtomicBool>)>),
+    FinderRev(FinderIterRev<'a, (PTSliceSource<'a, 'b>, Arc<AtomicBool>)>),
+    Regex(CaptureIter<'a, (PTSliceSource<'a, 'b>, Arc<AtomicBool>)>),
 }
 
 impl<'a, 'b> Iterator for MatchIter<'a, 'b> {

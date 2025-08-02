@@ -3,7 +3,7 @@ use std::{
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc,
-    },
+    }, ops::Range
 };
 
 use sanedit_buffer::{utf8::decode_utf8_iter, Bytes, Chunk, Chunks, PieceTreeSlice};
@@ -37,23 +37,6 @@ pub trait ByteSource {
     fn stop(&self) -> bool;
 
     fn get(&mut self, at: u64) -> u8;
-
-    fn matches(&mut self, at: u64, exp: &[u8]) -> bool {
-        if at + exp.len() as u64 >= self.len() {
-            return false;
-        }
-
-        let mut cur = at;
-        for e in exp {
-            let byte = self.get(cur);
-            cur += 1;
-            if *e != byte {
-                return false;
-            }
-        }
-
-        true
-    }
 
     fn char_between(&mut self, at: u64, start: char, end: char) -> Option<u64> {
         let max = min(4, self.len() - at);
@@ -147,18 +130,18 @@ impl<const N: usize> ByteSource for &[u8; N] {
 }
 
 #[derive(Debug)]
-pub struct SliceSource<'a, 'b> {
+pub struct PTSliceSource<'a, 'b> {
     slice: &'b PieceTreeSlice<'a>,
     bytes: Bytes<'a>,
     chunks: Chunks<'a>,
     chunk: Option<Chunk<'a>>,
 }
 
-impl<'a, 'b> SliceSource<'a, 'b> {
-    pub fn new(slice: &'b PieceTreeSlice<'a>) -> SliceSource<'a, 'b> {
+impl<'a, 'b> PTSliceSource<'a, 'b> {
+    pub fn new(slice: &'b PieceTreeSlice<'a>) -> PTSliceSource<'a, 'b> {
         let bytes = slice.bytes();
         let chunks = slice.chunks();
-        SliceSource {
+        PTSliceSource {
             slice,
             bytes,
             chunks,
@@ -167,7 +150,7 @@ impl<'a, 'b> SliceSource<'a, 'b> {
     }
 }
 
-impl<'a, 'b> ByteSource for SliceSource<'a, 'b> {
+impl<'a, 'b> ByteSource for PTSliceSource<'a, 'b> {
     fn len(&self) -> u64 {
         <Bytes>::len(&self.bytes)
     }
@@ -234,6 +217,40 @@ impl<'a, 'b> ByteSource for SliceSource<'a, 'b> {
     }
 }
 
+pub(crate) struct SliceSource<B: ByteSource> {
+    source: B,
+    range: Range<u64>,
+}
+
+impl<B: ByteSource> ByteSource for SliceSource<B> {
+    fn as_single_chunk(&mut self) -> Option<&[u8]> {
+        let chunk = self.source.as_single_chunk()?;
+        Some(&chunk[self.range.start as usize..self.range.end as usize])
+    }
+
+    fn len(&self) -> u64 {
+        self.range.end - self.range.start
+    }
+
+    fn stop(&self) -> bool {
+        self.source.stop()
+    }
+
+    fn get(&mut self, at: u64) -> u8 {
+        let index = at + self.range.start;
+        self.source.get(index)
+    }
+
+    fn copy_to(&mut self, at: u64, buf: &mut [u8]) -> usize {
+    todo!()
+    }
+
+    fn char_between(&mut self, at: u64, start: char, end: char) -> Option<u64> {
+        let index = at + self.range.start;
+        self.source.char_between(index, start, end)
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -252,7 +269,7 @@ mod test {
 
         let slice = pt.slice(10..);
         let len = slice.len();
-        let mut source = SliceSource::new(&slice);
+        let mut source = PTSliceSource::new(&slice);
         let mut buf = [0u8; 10];
         let mut n = 0;
         while n < len {

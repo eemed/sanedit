@@ -11,7 +11,8 @@ mod source;
 pub use error::ParseError;
 use grammar::Rule;
 use grammar::Rules;
-pub use source::{ByteSource, SliceSource};
+pub use source::{ByteSource, PTSliceSource};
+use std::sync::Arc;
 
 pub use finder::{Finder, FinderIter, FinderIterRev, FinderRev};
 pub use glob::Glob;
@@ -30,6 +31,7 @@ pub(crate) use parsing_machine::{
 #[derive(Debug)]
 pub struct Parser {
     inner: ParserKind,
+    loader: Option<Arc<dyn LanguageLoader>>,
 }
 
 impl Parser {
@@ -38,22 +40,26 @@ impl Parser {
     /// NOTE: if syntax contains injected languages you should use `from_loader` instead.
     pub fn new<R: std::io::Read>(read: R) -> Result<Parser, ParseError> {
         let inner = ParserKind::new(read)?;
-        Ok(Parser { inner })
+        Ok(Parser {
+            inner,
+            loader: None,
+        })
     }
 
     /// Create a parser using a LanguageLoader.
     /// If injected languages are present, the loader will be asked to load the rules for them.
-    pub fn from_loader<L: LanguageLoader>(
-        mut loader: L,
-        language: &str,
+    pub fn with_loader<L: LanguageLoader + 'static, R: std::io::Read>(
+        read: R,
+        loader: L,
     ) -> Result<Parser, ParseError> {
-        let parser = loader.load(language)?;
-        todo!()
+        let mut parser = Self::new(read)?;
+        parser.loader = Some(Arc::new(loader));
+        Ok(parser)
     }
 
     /// Parse bytes and return the list of captures
     pub fn parse<B: ByteSource>(&self, bytes: B) -> Result<CaptureList, ParseError> {
-        self.inner.parse(bytes)
+        self.inner.parse_with_loader(bytes, self.loader.as_ref())
     }
 
     /// Get label for a capture
@@ -131,11 +137,65 @@ impl ParserKind {
         Self::from_ops(rules, program)
     }
 
-    fn parse<B: ByteSource>(&self, bytes: B) -> Result<CaptureList, ParseError> {
+    fn parse<B: ByteSource>(
+        &self,
+        bytes: B,
+    ) -> Result<CaptureList, ParseError> {
         match self {
             ParserKind::Interpreted(parsing_machine) => parsing_machine.parse(bytes),
             ParserKind::Jit(jit) => jit.parse(bytes),
         }
+    }
+
+    fn parse_with_loader<B: ByteSource>(
+        &self,
+        bytes: B,
+        loader: Option<&Arc<dyn LanguageLoader>>,
+    ) -> Result<CaptureList, ParseError> {
+        let capture_list = match self {
+            ParserKind::Interpreted(parsing_machine) => parsing_machine.parse(bytes),
+            ParserKind::Jit(jit) => jit.parse(bytes),
+        }?;
+
+        if loader.is_none() {
+            return Ok(capture_list);
+        }
+
+        let loader = loader.unwrap();
+        let rules = match self {
+            ParserKind::Interpreted(parsing_machine) => parsing_machine.rules(),
+            ParserKind::Jit(jit) => jit.rules(),
+        };
+
+        let injection_ids = rules.injection_ids();
+        if injection_ids.is_empty() {
+            return Ok(capture_list);
+        }
+
+        enum InjectKind {
+            Language,
+            Place,
+        }
+
+        for (i, cap) in capture_list.iter().enumerate() {
+            use Annotation::*;
+
+            if injection_ids.contains(&cap.id) {
+                let annotations = self.annotations_for(cap.id);
+                let inject_ann = annotations.iter().find(|ann| matches!(ann, Inject(..)));
+                let inject_lang_ann = annotations.iter().find(|ann| matches!(ann, InjectionLanguage));
+
+                match (inject_ann, inject_lang_ann) {
+                    (Some(Inject(Some(lang))), None) => {
+                        let parser = loader.load(&lang);
+                    }
+                    (Some(Inject(None)), None) => {}
+                    (None, Some(InjectionLanguage)) => {}
+                    _ => {}
+                }
+            }
+        }
+        todo!()
     }
 
     fn label_for(&self, id: CaptureID) -> &str {

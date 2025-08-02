@@ -1,8 +1,8 @@
-use std::{fmt, ops::Deref};
+use std::{fmt, ops::Deref ,collections::HashSet};
 
 use rustc_hash::{FxHashMap, FxHashSet};
 
-use crate::{grammar::lexer::Lexer, Operation};
+use crate::{grammar::lexer::Lexer, Operation ,CaptureID};
 
 use super::GrammarParser;
 
@@ -11,6 +11,10 @@ use super::GrammarParser;
 pub enum Annotation {
     Whitespaced,
     Show,
+    /// Parse matches of this rule using another parser
+    Inject(Option<String>),
+    /// This matches injection language that can be used with Inject
+    InjectionLanguage,
     Other(String, Option<String>),
 }
 
@@ -36,6 +40,21 @@ impl Rules {
             seen: FxHashSet::default(),
         };
         parser.parse()
+    }
+
+    pub fn injection_ids(&self) -> HashSet<CaptureID> {
+        let mut result = HashSet::new();
+        for (i, rule) in self.rules.iter().enumerate() {
+            if rule
+                .annotations
+                .iter()
+                .any(|ann| matches!(ann, Annotation::Inject(..) | Annotation::InjectionLanguage))
+            {
+                result.insert(i);
+            }
+        }
+
+        result
     }
 }
 

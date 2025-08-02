@@ -41,7 +41,6 @@ use sanedit_server::FromEditorSharedMessage;
 use sanedit_server::FromJobs;
 use sanedit_server::StartOptions;
 use sanedit_server::ToEditor;
-use syntax::SYNTAX_FILE;
 use tokio::runtime::Runtime;
 use windows::Mode;
 use windows::Zone;
@@ -860,18 +859,8 @@ impl Editor {
     }
 
     fn load_language_syntax(&mut self, lang: &Language, reload: bool) {
-        let dir = self.config_dir.lang_dir();
-        let path = PathBuf::from(lang.as_str()).join(SYNTAX_FILE);
-        if let Some(path) = dir.find(&path) {
-            let result = if reload {
-                self.syntaxes.reload(lang, &path)
-            } else {
-                self.syntaxes.load(lang, &path)
-            };
-            if let Err(e) = result {
-                log::error!("Failed to load syntax for {}: {e}", lang.as_str());
-            }
-        }
+        let loader = self.syntaxes.loader(self.config_dir.lang_dir());
+        loader.load_language(lang, reload);
     }
 
     pub fn get_snippets(&self, id: ClientId) -> Vec<Arc<Choice>> {

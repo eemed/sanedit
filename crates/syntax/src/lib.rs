@@ -113,11 +113,18 @@ impl Parser {
     }
 }
 
+impl From<ParserKind> for Parser {
+    fn from(value: ParserKind) -> Self {
+        Parser { inner: value, loader: None }
+    }
+}
+
 #[derive(Debug)]
 pub(crate) enum ParserKind {
     Interpreted(ParsingMachine),
     Jit(Jit),
 }
+
 
 impl ParserKind {
     fn new<R: std::io::Read>(read: R) -> Result<ParserKind, ParseError> {

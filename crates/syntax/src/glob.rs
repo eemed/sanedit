@@ -278,9 +278,9 @@ impl Glob {
     }
 }
 
-impl From<Glob> for Parser {
+impl From<Glob> for crate::Parser {
     fn from(value: Glob) -> Self {
-        value.parser
+        value.parser.into()
     }
 }
 

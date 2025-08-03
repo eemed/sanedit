@@ -149,7 +149,7 @@ fn main() {
     match parser.parse(reader.as_str()) {
         Ok(caps) => {
             if cli.print_captures {
-                print_captures_json(&parser, &caps);
+                print_captures_json(&parser, &caps.captures);
             }
         }
         Err(e) => {

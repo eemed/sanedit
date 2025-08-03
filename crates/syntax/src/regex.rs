@@ -52,7 +52,6 @@ impl Regex {
         Ok(Regex { parser })
     }
 
-
     pub fn is_match<B: AsRef<[u8]>>(&self, bytes: &B) -> bool {
         let bytes = bytes.as_ref();
         let captures = self.parser.parse(bytes);
@@ -62,11 +61,21 @@ impl Regex {
     pub fn captures<B: ByteSource>(&self, reader: B) -> CaptureIter<B> {
         self.parser.captures(reader)
     }
+
+    pub fn parse_rules(pattern: &str) -> Result<RegexRules, RegexError> {
+        let rules = RegexToPEG::convert(pattern)?;
+        Ok(RegexRules(rules))
+    }
+
+    pub fn from_rules(rules: RegexRules) -> Result<Regex, RegexError> {
+        let parser = Parser::from_rules(rules.0)?;
+        Ok(Regex { parser })
+    }
 }
 
-impl From<Regex> for Parser {
+impl From<Regex> for crate::Parser {
     fn from(value: Regex) -> Self {
-        value.parser
+        value.parser.into()
     }
 }
 

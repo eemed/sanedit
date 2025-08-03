@@ -1065,12 +1065,14 @@ impl Window {
 
     pub fn toggle_comment_cursor_lines(&mut self, buf: &mut Buffer, comment: &str) -> Result<()> {
         let starts = self.cursor_line_starts(buf);
-        let start = starts[0];
+        let has_uncommented_line = starts
+            .iter()
+            .any(|start| !self.has_comment_on_line(buf, comment, *start));
 
-        if self.has_comment_on_line(buf, comment, start) {
-            self.uncomment_cursor_lines(buf, comment)
-        } else {
+        if has_uncommented_line {
             self.comment_cursor_lines(buf, comment)
+        } else {
+            self.uncomment_cursor_lines(buf, comment)
         }
     }
 

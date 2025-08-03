@@ -111,9 +111,10 @@ fn sync_windows(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Window: Goto previous buffer")]
 fn goto_prev_buffer(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, buf) = editor.win_buf_mut(id);
     match win.last_buffer.clone() {
         Some(bid) => {
+            win.push_new_cursor_jump(buf);
             editor.open_buffer(id, bid);
             ActionResult::Ok
         }

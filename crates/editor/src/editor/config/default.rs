@@ -176,6 +176,8 @@ pub(crate) fn locations() -> KeymapLayer {
             "p",      select_loc_parent,
             "s",      toggle_all_expand_locs,
             "K",      keep_locations,
+            "/",      keep_locations,
+            "?",      keep_locations,
             "R",      reject_locations,
             "g g",    loc_select_first,
             "G",      loc_select_last,

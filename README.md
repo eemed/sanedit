@@ -2,7 +2,7 @@
 
 ---
 
-SanEdit is a UTF-8 text editor inspired by [Neovim](https://neovim.io/), [Emacs](https://www.gnu.org/software/emacs/), [Kakoune](https://kakoune.org/) and [Helix](https://helix-editor.com/).
+SanEdit is a UTF-8 text editor inspired by [Neovim](https://neovim.io/), [Emacs](https://www.gnu.org/software/emacs/), [Kakoune](https://kakoune.org/), [Helix](https://helix-editor.com/) and [Vis](https://github.com/martanne/vis).
 
 ## Features
 

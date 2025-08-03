@@ -40,6 +40,16 @@ impl Language {
 
 impl From<&str> for Language {
     fn from(value: &str) -> Self {
-        Language { name: value.to_string() }
+        // Transform common names to LSP language identifiers
+        let name = match value {
+            "tsx" => "typescriptreact",
+            "jsx" => "javascriptreact",
+            "js" => "javascript",
+            "ts" => "typescript",
+            v => v,
+        };
+        Language {
+            name: name.to_string(),
+        }
     }
 }

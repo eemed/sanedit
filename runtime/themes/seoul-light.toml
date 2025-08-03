@@ -24,11 +24,11 @@ constant = ",#274172,"
 string =  ",#0750b1,"
 number = ",#274172,"
 keyword = ",#005F00,"
-type =  ",#822b16,"
+type =  ",#824116,"
 operator =  ",#007f58,"
 comment = ",#777777,"
 preproc = ",#533388,"
-identifier = ",#822b16,"
+identifier = ",#824116,"
 
 [colors.window.completion]
 default = "#E8E8E8,#3A3A3A,"
@@ -66,19 +66,19 @@ match = ",#b0463a,"
 default = "#DADADA,#3A3A3A,"
 markers = ",#014CC0,"
 # file = ""
-directory = ",#822b16,"
+directory = ",#824116,"
 
 [colors.filetree.selected]
 default = "#c2c2c2,,"
 # file = ""
-directory = ",#822b16,"
+directory = ",#824116,"
 markers = ",#014CC0,"
 
 [colors.locations]
 default = "#DADADA,#3A3A3A,"
 title = "#7fa87f,#202020,"
 entry = ""
-group = ",#822b16,"
+group = ",#824116,"
 markers = ",#355d8d,"
 match = ",#b0463a,"
 

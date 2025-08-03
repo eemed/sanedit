@@ -47,8 +47,6 @@ impl<T: Ord + Copy> OverlappingRanges<T> {
         self.ranges.insert(start, end);
     }
 
-    // pub fn remove(&self) {}
-
     pub fn invert(&mut self, full: Range<T>) {
         let mut inverted = OverlappingRanges::default();
 

@@ -2,6 +2,7 @@ pub(crate) mod change;
 pub(crate) mod matcher;
 pub(crate) mod text;
 pub(crate) mod window;
+pub(crate) mod markdown;
 
 use std::cmp;
 

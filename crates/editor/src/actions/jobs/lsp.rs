@@ -7,7 +7,10 @@ use std::{
 
 use crate::{
     actions::{hooks::run, locations, lsp::lsp_notify_for, ActionResult},
-    common::matcher::{Choice, MatchStrategy},
+    common::{
+        markdown,
+        matcher::{Choice, MatchStrategy},
+    },
     editor::{
         buffers::BufferId,
         config::LSPConfig,
@@ -196,7 +199,7 @@ impl LSPJob {
                 }
                 TextKind::Markdown => match &syntax {
                     Ok(syn) => {
-                        let text = syn.highlight_popup(text.text, theme);
+                        let text = markdown::render_markdown_to_popup(text.text, syn, theme);
                         win.push_popup(
                             PopupMessage {
                                 severity: None,

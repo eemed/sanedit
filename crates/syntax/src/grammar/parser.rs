@@ -142,15 +142,6 @@ impl<R: io::Read> GrammarParser<R> {
             }
         }
 
-        let has_inject = anns
-            .iter()
-            .any(|ann| matches!(ann, Annotation::Inject(..) | Annotation::InjectionLanguage));
-        let has_show = anns.iter().any(|ann| matches!(ann, Annotation::Show));
-
-        if has_inject && !has_show {
-            anns.push(Annotation::Show);
-        }
-
         Ok(anns)
     }
 

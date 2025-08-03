@@ -56,4 +56,4 @@ postop = "?" / "*" / "+";
 @show @highlight(operator)
 preop = "!" / "&";
 
-id_chars = [a..zA..Z_-];
+id_chars = [a..zA..Z0..9_-];

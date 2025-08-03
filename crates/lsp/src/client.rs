@@ -848,7 +848,6 @@ impl Handler {
             .await?;
         let response = response.ok_or(LSPError::EmptyResponse)?;
 
-        log::info!("Response: {response:?}");
         let mut texts = vec![];
         match response.contents {
             lsp_types::HoverContents::Scalar(mstring) => {

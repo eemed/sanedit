@@ -1,6 +1,6 @@
 use std::{
+    borrow::Cow,
     cmp::min,
-    ops::Range,
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc,
@@ -16,10 +16,10 @@ pub trait ByteSource {
     /// Used if ByteSource is not contiguous in memory and needs to be copied to a sliding window.
     /// a shitty way to copy. Override to provide a better alternative if possible. this is slow
     fn copy_to(&mut self, at: u64, buf: &mut [u8]) -> usize {
-        // debug_assert!(
-        //     self.as_single_chunk().is_none(),
-        //     "Copying a contiguous ByteSource"
-        // );
+        debug_assert!(
+            self.as_single_chunk().is_none(),
+            "Copying a contiguous ByteSource"
+        );
 
         let start = at;
         let end = std::cmp::min(self.len(), at + buf.len() as u64);
@@ -130,6 +130,25 @@ impl<const N: usize> ByteSource for &[u8; N] {
     }
 }
 
+impl<'a> ByteSource for Cow<'a, [u8]> {
+    fn len(&self) -> u64 {
+        let r = self.as_ref();
+        r.len() as u64
+    }
+
+    fn get(&mut self, i: u64) -> u8 {
+        self[i as usize]
+    }
+
+    fn stop(&self) -> bool {
+        false
+    }
+
+    fn as_single_chunk(&mut self) -> Option<&[u8]> {
+        Some(self)
+    }
+}
+
 #[derive(Debug)]
 pub struct PTSliceSource<'a, 'b> {
     slice: &'b PieceTreeSlice<'a>,
@@ -233,46 +252,6 @@ impl<'a, 'b> ByteSource for PTSliceSource<'a, 'b> {
 
         // log::info!("ret n: {n}");
         n
-    }
-}
-
-pub(crate) struct SliceSource<'a, B: ByteSource> {
-    pub(crate) source: &'a mut B,
-    pub(crate) range: Range<u64>,
-}
-
-impl<'a, B: ByteSource> ByteSource for SliceSource<'a, B> {
-    fn as_single_chunk(&mut self) -> Option<&[u8]> {
-        let chunk = self.source.as_single_chunk()?;
-        Some(&chunk[self.range.start as usize..self.range.end as usize])
-    }
-
-    fn len(&self) -> u64 {
-        self.range.end - self.range.start
-    }
-
-    fn stop(&self) -> bool {
-        self.source.stop()
-    }
-
-    fn get(&mut self, at: u64) -> u8 {
-        let index = at + self.range.start;
-        self.source.get(index)
-    }
-
-    fn copy_to(&mut self, at: u64, mut buf: &mut [u8]) -> usize {
-        let index = at + self.range.start;
-        let end = index + buf.len() as u64;
-        if end > self.range.end {
-            buf = &mut buf[..(self.range.end - index) as usize];
-        }
-
-        self.source.copy_to(index, buf)
-    }
-
-    fn char_between(&mut self, at: u64, start: char, end: char) -> Option<u64> {
-        let index = at + self.range.start;
-        self.source.char_between(index, start, end)
     }
 }
 

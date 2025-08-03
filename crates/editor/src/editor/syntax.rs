@@ -1,12 +1,11 @@
 use std::{
-    cmp::min,
+    cmp::{min, Ordering},
     path::{Path, PathBuf},
     sync::{Arc, Mutex},
 };
 
-use sanedit_buffer::{utf8::EndOfLine, PieceTreeView};
+use sanedit_buffer::PieceTreeView;
 use sanedit_core::{BufferRange, Directory, Language, Range};
-use sanedit_messages::redraw::{Cell, PopupMessageText, Style, Theme, ThemeField};
 use sanedit_server::Kill;
 use sanedit_utils::sorted_vec::SortedVec;
 
@@ -14,8 +13,6 @@ use std::fs::File;
 
 use anyhow::{anyhow, bail};
 use sanedit_syntax::{Annotation, Capture, Captures, LanguageLoader, PTSliceSource, Parser};
-
-use crate::draw::draw_popup_highlight;
 
 use super::Map;
 
@@ -197,54 +194,8 @@ impl Syntax {
         self.static_completions.clone()
     }
 
-    pub fn highlight_popup(&self, text: String, theme: &Theme) -> PopupMessageText {
-        match self.parser.parse(text.as_str()) {
-            Ok(captures) => {
-                let mut spans = self.to_spans(0, &self.parser, captures.captures);
-
-                let mut stack = captures.injections;
-                while let Some((lang, captures)) = stack.pop() {
-                    stack.extend(captures.injections);
-                    let loader = self.parser.loader.as_ref().unwrap();
-                    let parser = loader.get(&lang).unwrap();
-                    let inj_spans = self.to_spans(0, &parser, captures.captures);
-                    spans.merge(inj_spans)
-                }
-
-                let base = theme.get(ThemeField::PopupDefault);
-                let mut lines = vec![];
-                let mut row = vec![];
-                let mut pos = 0;
-                for ch in text.chars() {
-                    if EndOfLine::is_eol_char(ch) {
-                        // Wont change order
-                        unsafe {
-                            spans.iter_mut().for_each(|span| {
-                                if span.range.start > pos {
-                                    span.range.backward(ch.len_utf8() as u64)
-                                }
-                            })
-                        };
-                        lines.push(std::mem::take(&mut row));
-                    } else {
-                        row.push(Cell::new_char(ch, base));
-                        pos += ch.len_utf8() as u64;
-                    }
-                }
-
-                draw_popup_highlight(&mut lines, &spans, theme);
-
-                lines.retain(|line| {
-                    line.len() < 3
-                        || line[0].text != "`"
-                        || line[1].text != "`"
-                        || line[2].text != "`"
-                });
-
-                PopupMessageText::Formatted(lines)
-            }
-            Err(_) => PopupMessageText::Plain(text),
-        }
+    pub fn get_parser(&self) -> &Parser {
+        &self.parser
     }
 
     pub fn parse(
@@ -260,14 +211,14 @@ impl Syntax {
         let slice = pt.slice(view.clone());
         let source = PTSliceSource::new(&slice);
         let captures: Captures = self.parser.parse(source)?;
-        let mut spans = self.to_spans(start, &self.parser, captures.captures);
+        let mut spans = Self::to_spans(start, &self.parser, captures.captures);
 
         let mut stack = captures.injections;
         while let Some((lang, captures)) = stack.pop() {
             stack.extend(captures.injections);
             let loader = self.parser.loader.as_ref().unwrap();
             let parser = loader.get(&lang).unwrap();
-            let inj_spans = self.to_spans(start, &parser, captures.captures);
+            let inj_spans = Self::to_spans(start, &parser, captures.captures);
             spans.merge(inj_spans)
         }
 
@@ -277,7 +228,7 @@ impl Syntax {
         })
     }
 
-    fn to_spans(&self, start: u64, parser: &Parser, captures: Vec<Capture>) -> SortedVec<Span> {
+    pub fn to_spans(start: u64, parser: &Parser, captures: Vec<Capture>) -> SortedVec<Span> {
         captures
             .into_iter()
             .map(|cap| {
@@ -326,12 +277,36 @@ pub struct SyntaxResult {
     pub highlights: SortedVec<Span>,
 }
 
-#[derive(Debug, Ord, PartialOrd, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Span {
     range: Range<u64>,
     name: String,
     completion: Option<String>,
     highlight: bool,
+}
+
+impl PartialOrd for Span {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for Span {
+    fn cmp(&self, other: &Self) -> Ordering {
+        let res = match self.range.start.cmp(&other.range.start) {
+            Ordering::Equal => other.range.end.cmp(&self.range.end), // Larger end comes first
+            other => other,
+        };
+
+        match res {
+            Ordering::Equal => (&self.name, &self.completion, &self.highlight).cmp(&(
+                &other.name,
+                &other.completion,
+                &other.highlight,
+            )),
+            _ => res,
+        }
+    }
 }
 
 impl Span {

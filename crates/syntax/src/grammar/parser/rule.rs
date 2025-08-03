@@ -1,8 +1,8 @@
-use std::{fmt, ops::Deref ,collections::HashSet};
+use std::{fmt, ops::Deref};
 
 use rustc_hash::{FxHashMap, FxHashSet};
 
-use crate::{grammar::lexer::Lexer, Operation ,CaptureID};
+use crate::{grammar::lexer::Lexer, Operation};
 
 use super::GrammarParser;
 
@@ -42,19 +42,25 @@ impl Rules {
         parser.parse()
     }
 
-    pub fn injection_ids(&self) -> HashSet<CaptureID> {
-        let mut result = HashSet::new();
+    pub fn injection_ids(&self) -> Option<Box<[bool]>> {
+        let mut found = false;
+        let mut result = vec![false; self.rules.len()].into_boxed_slice();
         for (i, rule) in self.rules.iter().enumerate() {
             if rule
                 .annotations
                 .iter()
                 .any(|ann| matches!(ann, Annotation::Inject(..) | Annotation::InjectionLanguage))
             {
-                result.insert(i);
+                found = true;
+                result[i] = true;
             }
         }
 
-        result
+        if !found {
+            return None;
+        }
+
+        Some(result)
     }
 }
 
@@ -97,9 +103,12 @@ impl RuleInfo {
     }
 
     pub fn show(&self) -> bool {
-        self.annotations
-            .iter()
-            .any(|ann| matches!(ann, Annotation::Show))
+        self.annotations.iter().any(|ann| {
+            matches!(
+                ann,
+                Annotation::Show | Annotation::Inject(..) | Annotation::InjectionLanguage
+            )
+        })
     }
 
     pub fn apply_whitespaced(&mut self, ws: usize) {

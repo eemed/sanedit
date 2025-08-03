@@ -30,7 +30,6 @@ use crate::editor::{
     windows::{Focus, Window},
     Map,
 };
-pub(crate) use window::draw_popup_highlight;
 
 pub(crate) struct EditorContext<'a> {
     pub(crate) win: &'a Window,

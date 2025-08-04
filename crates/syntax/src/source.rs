@@ -221,11 +221,11 @@ impl<'a, 'b> ByteSource for PTSliceSource<'a, 'b> {
                 continue;
             }
 
-            log::info!(
-                "start: {start}, min({}, {})",
-                buf.len() - n,
-                chunk_bytes.len() - start
-            );
+            // log::info!(
+            //     "start: {start}, min({}, {})",
+            //     buf.len() - n,
+            //     chunk_bytes.len() - start
+            // );
             let end = start + std::cmp::min(buf.len() - n, chunk_bytes.len() - start);
             // log::info!(
             //     "start: {start}, end: {end}, min({}, {})",

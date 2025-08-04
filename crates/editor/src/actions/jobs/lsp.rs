@@ -517,6 +517,9 @@ impl LSPJob {
                 Change::replace((start..end).into(), edit.text.as_bytes())
             })
             .collect();
+        if changes.is_empty() {
+            return;
+        }
         let changes = Changes::from(changes);
         let start = changes.iter().next().unwrap().start();
 

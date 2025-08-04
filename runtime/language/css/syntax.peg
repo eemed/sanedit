@@ -152,6 +152,7 @@ keyword =  (
     "overflow-y" /
     "overflow-x" /
     "overflow-wrap" /
+    "overflow" /
     "outline-width" /
     "outline-style" /
     "outline-offset" /

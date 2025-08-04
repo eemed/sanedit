@@ -68,15 +68,15 @@ attrvalue = string / block_open (!block_close document_items)* block_close;
 @show @highlight(default)
 attrname = [a..zA..Z0..9_-]+;
 
-end = ws / ";" / "(" / ".";
+end = ws / ";" / "(" / "." / ":";
 
 @show @highlight(preproc)
 preproc = preproc_words &end;
-preproc_words = "import" / "from" / "export" / "default" / "as";
+preproc_words = "import" / "from" / "export" / "default" !":" / "as";
 
 @show @highlight(keyword)
 keyword =  words &end;
-words = "constructor" / "yield" / "await" / "instanceof" / "while" / "break" / "constructor" / "class" / "extends" / "static" / "const" / "async" / "if" / "else" / "for" / "return" / "switch" / "case" / "let" / "var" / "in" / "of" / "function" "*"? / "with" / "this" /  "try" / "catch" !"(" / "continue" / "throw" / "new";
+words = "constructor" / "yield" / "await" / "instanceof" / "while" / "break" / "constructor" / "class" / "extends" / "static" / "const" / "async" / "if" / "else" / "for" / "return" / "switch" / "case" / "let" / "var" / "in" / "of" / "function" "*"? / "with" / "this" /  "try" / "catch" !"(" / "continue" / "throw" / "new" / "default";
 
 @show @highlight(type)
 types =  (

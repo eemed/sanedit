@@ -19,7 +19,7 @@ fn view_lines(win: &mut Window, buf: &Buffer) -> Vec<String> {
 fn with_buf(content: &str) -> (Window, Buffer) {
     let mut buf = Buffer::new();
     let changes = Changes::multi_insert(&[0], content.as_bytes());
-    buf.apply_changes(&changes);
+    let _ = buf.apply_changes(&changes);
     let mut win = Window::new(buf.id, 50, 10, WindowConfig::default());
     win.redraw_view(&buf);
     (win, buf)
@@ -32,12 +32,12 @@ fn indent() {
     buf.config.indent_kind = IndentKind::Space;
     buf.config.indent_amount = 4;
 
-    win.indent_cursor_lines(&mut buf);
+    let _ = win.indent_cursor_lines(&mut buf);
     let lines = view_lines(&mut win, &buf);
     assert_eq!(lines[0], "    hello");
 
     win.cursors.primary_mut().goto(buf.len());
-    win.indent_cursor_lines(&mut buf);
+    let _ = win.indent_cursor_lines(&mut buf);
     let lines = view_lines(&mut win, &buf);
     assert_eq!(lines[0], "        hello");
 }
@@ -49,11 +49,11 @@ fn dedent() {
     buf.config.indent_amount = 4;
 
     win.cursors.primary_mut().goto(buf.len());
-    win.dedent_cursor_lines(&mut buf);
+    let _ = win.dedent_cursor_lines(&mut buf);
     let lines = view_lines(&mut win, &buf);
     assert_eq!(lines[0], "    ");
 
-    win.dedent_cursor_lines(&mut buf);
+    let _ = win.dedent_cursor_lines(&mut buf);
     let lines = view_lines(&mut win, &buf);
     assert_eq!(lines[0], "");
 }
@@ -65,7 +65,7 @@ fn dedent_missing_spaces() {
     buf.config.indent_amount = 4;
 
     win.cursors.primary_mut().goto(buf.len() - 5);
-    win.dedent_cursor_lines(&mut buf);
+    let _ = win.dedent_cursor_lines(&mut buf);
     let lines = view_lines(&mut win, &buf);
     assert_eq!(lines[0], "hello ");
     assert_eq!(lines[1], "bar");
@@ -79,7 +79,7 @@ fn indent_multiline() {
     buf.config.indent_amount = 4;
 
     win.cursors.primary_mut().select(&Range::new(13, buf.len()));
-    win.indent_cursor_lines(&mut buf);
+    let _ = win.indent_cursor_lines(&mut buf);
     let lines = view_lines(&mut win, &buf);
     assert_eq!(lines[1], "    hello ");
     assert_eq!(lines[2], "    world");

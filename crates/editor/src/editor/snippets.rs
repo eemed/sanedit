@@ -182,6 +182,6 @@ mod test {
     #[test]
     fn parse_snippet() {
         let text = "line 1\\n\\tline2 $0\\nline3 ${3:shitter}\nline4 ${3:worse}";
-        let snip = dbg!(Snippet::new(text));
+        let _snip = Snippet::new(text).unwrap();
     }
 }

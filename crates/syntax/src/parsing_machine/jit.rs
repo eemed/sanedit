@@ -15,6 +15,7 @@ macro_rules! offset_i32 {
     };
 }
 
+#[allow(dead_code)]
 #[repr(u8)]
 #[derive(Debug)]
 enum Kind {
@@ -318,7 +319,7 @@ pub struct Jit {
 }
 
 impl Jit {
-    pub fn new(rules: Rules, ops: Program) -> Jit {
+    pub(crate) fn new(rules: Rules, ops: Program) -> Jit {
         let (program, start) = Self::compile(&ops);
         Jit {
             rules,
@@ -339,7 +340,7 @@ impl Jit {
         &self.ops
     }
 
-    pub fn rules(&self) -> &Rules {
+    pub(crate) fn rules(&self) -> &Rules {
         &self.rules
     }
 
@@ -1003,7 +1004,7 @@ mod test {
                 }
             }
         "#;
-        let captures = jit.parse(rust).expect("Parsing failed");
+        let _captures = jit.parse(rust).expect("Parsing failed");
     }
 
     #[test]
@@ -1013,7 +1014,7 @@ mod test {
         // let json = r#"{ "nimi": "perkele", "ika": 42, lapset: ["matti", "teppo"]}"#;
         // println!("{:?}", jit.ops);
         let json = include_str!("../../benches/large.json");
-        let captures = jit.parse(json).expect("Parsing failed");
+        let _captures = jit.parse(json).expect("Parsing failed");
         // for cap in captures {
         //     println!("{cap:?}: {}", &json[cap.start as usize..cap.end as usize]);
         // }
@@ -1032,7 +1033,7 @@ mod test {
         [another.section]
         setter = true
         "#;
-        let captures = jit.parse(json).expect("Parsing failed");
+        let _captures = jit.parse(json).expect("Parsing failed");
         // for cap in captures {
         //     println!("{cap:?}: {}", &json[cap.start as usize..cap.end as usize]);
         // }

@@ -74,7 +74,7 @@ pub struct ParsingMachine {
 }
 
 impl ParsingMachine {
-    pub fn new(rules: Rules, program: Program) -> ParsingMachine {
+    pub(crate) fn new(rules: Rules, program: Program) -> ParsingMachine {
         ParsingMachine { rules, program }
     }
 
@@ -83,7 +83,7 @@ impl ParsingMachine {
         Self::from_rules(rules)
     }
 
-    pub fn from_rules(rules: Rules) -> Result<ParsingMachine, ParseError> {
+    pub(crate) fn from_rules(rules: Rules) -> Result<ParsingMachine, ParseError> {
         if rules.is_empty() {
             return Err(ParseError::NoRules);
         }
@@ -102,7 +102,7 @@ impl ParsingMachine {
         Ok(parser)
     }
 
-    pub fn rules(&self) -> &Rules {
+    pub(crate) fn rules(&self) -> &Rules {
         &self.rules
     }
 

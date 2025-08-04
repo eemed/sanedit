@@ -464,7 +464,7 @@ mod test {
         let rules = Rules::parse(std::io::Cursor::new(peg)).unwrap();
 
         let compiler = Compiler::new(&rules);
-        let program = compiler.compile().unwrap();
+        let _program = compiler.compile().unwrap();
     }
 
     #[test]
@@ -473,7 +473,7 @@ mod test {
         let rules = Rules::parse(std::io::Cursor::new(peg)).unwrap();
 
         let compiler = Compiler::new(&rules);
-        let program = compiler.compile().unwrap();
+        let _program = compiler.compile().unwrap();
     }
 
     #[test]
@@ -482,7 +482,7 @@ mod test {
         let rules = Rules::parse(std::io::Cursor::new(peg)).unwrap();
 
         let compiler = Compiler::new(&rules);
-        let program = compiler.compile().unwrap();
+        let _program = compiler.compile().unwrap();
     }
 
     #[test]
@@ -497,7 +497,7 @@ mod test {
         let rules = Rules::parse(std::io::Cursor::new(peg)).unwrap();
 
         let compiler = Compiler::new(&rules);
-        let program = compiler.compile().unwrap();
+        let _program = compiler.compile().unwrap();
     }
 
     #[test]
@@ -514,6 +514,6 @@ mod test {
         let rules = Rules::parse(std::io::Cursor::new(peg)).unwrap();
 
         let compiler = Compiler::new(&rules);
-        let program = compiler.compile().unwrap();
+        let _program = compiler.compile().unwrap();
     }
 }

@@ -15,7 +15,7 @@ fn json(c: &mut Criterion) {
     c.bench_function("parse_large_json", |bench| {
         let parser = ParsingMachine::from_read(std::io::Cursor::new(peg)).unwrap();
         bench.iter(move || {
-            parser.parse(content);
+            assert!(parser.parse(content).is_ok());
         });
     });
 }
@@ -27,18 +27,17 @@ fn toml(c: &mut Criterion) {
     c.bench_function("parse_large_toml", |bench| {
         let parser = ParsingMachine::from_read(std::io::Cursor::new(peg)).unwrap();
         bench.iter(move || {
-            parser.parse(content);
+            assert!(parser.parse(content).is_ok());
         });
     });
 
     c.bench_function("parse_large_toml_invalid", |bench| {
         let parser = ParsingMachine::from_read(std::io::Cursor::new(peg)).unwrap();
         bench.iter(move || {
-            parser.parse(&content[125..]);
+            assert!(parser.parse(&content[125..]).is_ok());
         });
     });
 }
 
-// criterion_group!(benches, json, toml);
-criterion_group!(benches, toml);
+criterion_group!(benches, json, toml);
 criterion_main!(benches);

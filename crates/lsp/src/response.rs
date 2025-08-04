@@ -1,7 +1,8 @@
 use std::{collections::BTreeMap, path::PathBuf};
 
 use crate::util::{
-    CodeAction, CompletionItem, FileEdit, Position, PositionRange, Signatures, Symbol, Text, TextDiagnostic, WorkspaceEdit
+    CodeAction, CompletionItem, FileEdit, Position, PositionRange, Signatures, Symbol, Text,
+    TextDiagnostic, WorkspaceEdit,
 };
 
 #[derive(Debug, Clone)]
@@ -18,7 +19,6 @@ pub enum NotificationResult {
         diagnostics: Vec<TextDiagnostic>,
     },
 }
-
 
 #[derive(Debug, Clone)]
 pub enum RequestResult {

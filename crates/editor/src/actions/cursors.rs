@@ -354,7 +354,11 @@ fn find_prev_jump(win: &Window, buffers: &Buffers, original_bid: BufferId) -> Op
     None
 }
 
-fn find_next_jump<const N: usize>(cursor_jumps: &Jumps<N>, buffers: &Buffers, original_bid: BufferId) -> Option<Ref> {
+fn find_next_jump<const N: usize>(
+    cursor_jumps: &Jumps<N>,
+    buffers: &Buffers,
+    original_bid: BufferId,
+) -> Option<Ref> {
     // for example iter backwards
     // until mark is Found
     // or

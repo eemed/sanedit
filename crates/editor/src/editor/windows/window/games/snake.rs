@@ -360,7 +360,9 @@ impl Game for Snake {
                 // Respawn apple
                 if set.contains(&self.apple) {
                     self.map.at(self.apple.y, self.apple.x).text = " ".into();
-                    self.map.at(self.apple.y, (width + self.apple.x + 1) % width).text = " ".into();
+                    self.map
+                        .at(self.apple.y, (width + self.apple.x + 1) % width)
+                        .text = " ".into();
                     self.apple = Self::apple(width, height, &self.snake);
                     self.grow += GROWTH_RATE;
                     self.score += 1;

@@ -13,4 +13,3 @@ impl From<Statusline> for Redraw {
         Redraw::Statusline(Component::Update(status))
     }
 }
-

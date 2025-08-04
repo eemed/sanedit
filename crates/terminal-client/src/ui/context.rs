@@ -4,7 +4,6 @@ use sanedit_messages::redraw::{Point, Style, Theme, ThemeField};
 
 use crate::grid::Rect;
 
-
 #[derive(Debug, Clone)]
 pub(crate) struct UIContext {
     pub theme: Arc<Theme>,

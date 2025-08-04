@@ -40,7 +40,7 @@ pub fn first_char_of_line(slice: &PieceTreeSlice, pos: u64) -> u64 {
     while let Some(grapheme) = graphemes.next() {
         let cat = grapheme_category(&grapheme);
         if cat != GraphemeCategory::Whitespace {
-           return grapheme.start() - slice.start();
+            return grapheme.start() - slice.start();
         }
     }
 

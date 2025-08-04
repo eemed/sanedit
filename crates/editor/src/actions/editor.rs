@@ -10,7 +10,11 @@ use crate::{
 use sanedit_server::ClientId;
 
 use super::{
-    hooks::run, prompt::unsaved_changes, shell, window::{focus, mode_normal}, ActionResult
+    hooks::run,
+    prompt::unsaved_changes,
+    shell,
+    window::{focus, mode_normal},
+    ActionResult,
 };
 
 #[action("Editor: Quit")]

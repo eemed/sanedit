@@ -27,6 +27,11 @@ pub(crate) use parsing_machine::{
     Compiler, Jit, Operation, ParsingMachine, Program, SubjectPosition,
 };
 
+pub mod bench {
+    pub use super::parsing_machine::Jit;
+    pub use super::parsing_machine::ParsingMachine;
+}
+
 /// Get slice of bytesource efficiently
 macro_rules! get_slice {
     ($bytes:expr, $range:expr) => {{
@@ -115,7 +120,10 @@ impl Parser {
 
 impl From<ParserKind> for Parser {
     fn from(value: ParserKind) -> Self {
-        Parser { inner: value, loader: None }
+        Parser {
+            inner: value,
+            loader: None,
+        }
     }
 }
 
@@ -124,7 +132,6 @@ pub(crate) enum ParserKind {
     Interpreted(ParsingMachine),
     Jit(Jit),
 }
-
 
 impl ParserKind {
     fn new<R: std::io::Read>(read: R) -> Result<ParserKind, ParseError> {

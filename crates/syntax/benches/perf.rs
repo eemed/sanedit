@@ -1,5 +1,5 @@
 use criterion::{criterion_group, criterion_main, Criterion};
-use sanedit_syntax::{Jit, ParsingMachine};
+use sanedit_syntax::bench::{Jit, ParsingMachine};
 
 const RUST: &str = r#"
 use crate::{
@@ -428,14 +428,14 @@ fn word_in_lorem(c: &mut Criterion) {
     let content = content.as_bytes();
 
     c.bench_function("word_in_lorem_jit", |bench| {
-        let parser = Jit::new(std::io::Cursor::new(peg)).unwrap();
+        let parser = Jit::from_read(std::io::Cursor::new(peg)).unwrap();
         bench.iter(|| {
             parser.parse(content).unwrap();
         });
     });
 
     c.bench_function("word_in_lorem_interpreted", |bench| {
-        let parser = ParsingMachine::new(std::io::Cursor::new(peg)).unwrap();
+        let parser = ParsingMachine::from_read(std::io::Cursor::new(peg)).unwrap();
         bench.iter(|| {
             parser.parse(content).unwrap();
         });
@@ -448,14 +448,14 @@ fn json(c: &mut Criterion) {
     let content = content.as_bytes();
 
     c.bench_function("json_jit", |bench| {
-        let parser = Jit::new(std::io::Cursor::new(peg)).unwrap();
+        let parser = Jit::from_read(std::io::Cursor::new(peg)).unwrap();
         bench.iter(|| {
             parser.parse(content).unwrap();
         });
     });
 
     c.bench_function("json_interpreted", |bench| {
-        let parser = ParsingMachine::new(std::io::Cursor::new(peg)).unwrap();
+        let parser = ParsingMachine::from_read(std::io::Cursor::new(peg)).unwrap();
         bench.iter(|| {
             parser.parse(content).unwrap();
         });
@@ -468,14 +468,14 @@ fn rust(c: &mut Criterion) {
     let content = content.as_bytes();
 
     c.bench_function("rust_jit", |bench| {
-        let parser = Jit::new(std::io::Cursor::new(peg)).unwrap();
+        let parser = Jit::from_read(std::io::Cursor::new(peg)).unwrap();
         bench.iter(|| {
             parser.parse(content).unwrap();
         });
     });
 
     c.bench_function("rust_interpreted", |bench| {
-        let parser = ParsingMachine::new(std::io::Cursor::new(peg)).unwrap();
+        let parser = ParsingMachine::from_read(std::io::Cursor::new(peg)).unwrap();
         bench.iter(|| {
             parser.parse(content).unwrap();
         });

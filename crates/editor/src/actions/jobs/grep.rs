@@ -210,7 +210,6 @@ impl KeepInTouch for Grep {
             let (win, _buf) = editor.win_buf_mut(self.client_id);
             win.locations.push(group);
         }
-
     }
 
     fn on_success(&self, editor: &mut Editor) {

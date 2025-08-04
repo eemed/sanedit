@@ -4,7 +4,7 @@ use crate::{BufferRange, Range};
 use anyhow::bail;
 use sanedit_buffer::PieceTreeSlice;
 use sanedit_syntax::{
-    CaptureIter, Finder, FinderIter, FinderIterRev, FinderRev, Regex, PTSliceSource,
+    CaptureIter, Finder, FinderIter, FinderIterRev, FinderRev, PTSliceSource, Regex,
 };
 
 #[derive(Debug, Clone, Copy)]

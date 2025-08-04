@@ -16,7 +16,8 @@ use items::Kind;
 use popup::popup_rect;
 use sanedit_messages::{
     redraw::{
-        self, statusline::Statusline, window::Window, Cell, Component, Cursor, Point, Popup, PopupComponent, Redraw, Size, StatusMessage, Theme
+        self, statusline::Statusline, window::Window, Cell, Component, Cursor, Point, Popup,
+        PopupComponent, Redraw, Size, StatusMessage, Theme,
     },
     Message,
 };

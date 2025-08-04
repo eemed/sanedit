@@ -100,7 +100,8 @@ impl Drawable for CustomPrompt {
                     };
                     let style = ctx.style(field);
                     let mstyle = ctx.style(field);
-                    let line = format_option(&opt.text, style, &opt.matches, mstyle, wsize.width, true);
+                    let line =
+                        format_option(&opt.text, style, &opt.matches, mstyle, wsize.width, true);
 
                     grid.put_line(i + 1, line);
                 }
@@ -155,7 +156,15 @@ impl Drawable for CustomPrompt {
                     let style = ctx.style(field);
                     let dstyle = ctx.style(dfield);
                     let mstyle = ctx.style(mfield);
-                    let line = format_two_columns(&opt.text, &opt.description, style, &opt.matches, mstyle, dstyle, wsize.width);
+                    let line = format_two_columns(
+                        &opt.text,
+                        &opt.description,
+                        style,
+                        &opt.matches,
+                        mstyle,
+                        dstyle,
+                        wsize.width,
+                    );
 
                     grid.put_line(i, line);
                 }
@@ -255,7 +264,7 @@ pub(crate) fn format_two_columns(
     width: usize,
 ) -> Vec<Cell> {
     let mut result = vec![Cell::with_style(style)];
-    let item =  format_option(item, style, item_matches, match_style, width - 2, false);
+    let item = format_option(item, style, item_matches, match_style, width - 2, false);
     result.extend(item);
     result.push(Cell::with_style(style));
     let descr = into_cells_with_style(&description, description_style);

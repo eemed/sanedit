@@ -310,7 +310,7 @@ impl Default for State {
 }
 
 #[derive(Debug)]
-pub(crate) struct Jit {
+pub struct Jit {
     rules: Rules,
     ops: Program,
     program: ExecutableBuffer,
@@ -324,11 +324,11 @@ impl Jit {
             rules,
             ops,
             program,
-            start
+            start,
         }
     }
 
-    fn from_read<R: std::io::Read>(rules: R) -> Result<Jit, ParseError> {
+    pub fn from_read<R: std::io::Read>(rules: R) -> Result<Jit, ParseError> {
         let rules = Rules::parse(rules).unwrap();
         let compiler = Compiler::new(&rules);
         let program = compiler.compile().unwrap();

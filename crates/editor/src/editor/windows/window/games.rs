@@ -1,6 +1,9 @@
 use std::sync::mpsc::Sender;
 
-use sanedit_messages::{key::KeyEvent, redraw::{window::Window, Theme}};
+use sanedit_messages::{
+    key::KeyEvent,
+    redraw::{window::Window, Theme},
+};
 
 pub(crate) mod snake;
 

@@ -7,7 +7,10 @@ use sanedit_utils::{either::Either, sorted_vec::SortedVec};
 
 use crate::{
     actions::{
-        jobs::{MatchedOptions, MatcherMessage}, prompt::get_directory_searcher_term, window::focus, ActionResult
+        jobs::{MatchedOptions, MatcherMessage},
+        prompt::get_directory_searcher_term,
+        window::focus,
+        ActionResult,
     },
     common::matcher::{Choice, ScoredChoice},
     editor::{snippets::Snippet, windows::Focus, Editor},

@@ -1,26 +1,21 @@
-# https://taskfile.dev
-
 version: '3'
 
 vars:
   LOG_FILE: '{{ .HOME }}/.local/share/sanedit/tmp/sanedit.log'
-  UCD_VERSION: 15.0.0
+  UCD_VERSION: 16.0.0
   UCD_DIR: /tmp/ucd-{{ .UCD_VERSION }}
-  PRECOMMIT_FILE: .git/hooks/pre-commit
   TARGET: x86_64-unknown-linux-musl
 
 tasks:
   release:build:
     desc: Build a release build
     dir: crates
-    deps: [install-pre-commit-hook]
     cmds:
       - cargo build --release --target={{.TARGET}}
 
   release:deb:
     desc: Build a deb package
     dir: crates
-    deps: [install-pre-commit-hook]
     cmds:
         - task: release:build
         - mkdir -p ../deb
@@ -29,40 +24,41 @@ tasks:
   release:run:
     desc: Build and run the release build
     dir: crates
-    deps: [install-pre-commit-hook]
     cmds:
       - cargo run --bin sane --release
+
+  install:
+    desc: Download and install development requirements
+    dir: crates
+    cmds:
+      - rustup target add {{.TARGET}}
+      - cargo install ucd-generate cargo-deb flamegraph
+      - task: generate:ucd
+      - task: format
 
   build:
     desc: Build a debug build
     dir: crates
-    deps: [install-pre-commit-hook]
     cmds:
       - cargo build
 
   flamegraph:
     desc: Build and run with release build and produce a flamegraph of the session
     dir: crates
-    deps: [flamegraph:prepare, install-pre-commit-hook]
-    cmds:
-      - rm -rf perf.data* flamegraph.svg
-      - cargo flamegraph --profile perf --verbose --bin sane -- --config-dir ../runtime/config
-
-  flamegraph:prepare:
-    desc: Prepare to capture using perf
     cmds:
       - echo 0 | sudo tee /proc/sys/kernel/perf_event_paranoid
+      - rm -rf perf.data* flamegraph.svg
+      - cargo flamegraph --profile perf --verbose --bin sane -- --config-dir ../runtime/config
 
   run:
     desc: Build and run the debug build
     dir: crates
-    deps: [install-pre-commit-hook]
     cmds:
       - cargo run --bin sane -- --debug --config-dir ../runtime
     env:
       RUST_BACKTRACE: 1
 
-  debug-glob:
+  debug:glob:
     desc: Build and run the debug glob pattern
     dir: crates
     requires:
@@ -70,7 +66,7 @@ tasks:
     cmds:
       - echo "{{ .INPUT }}" | cargo run --bin syntax -- --rules "{{ .PATTERN }}" --glob --print-rules --print-byte-code --print-captures
 
-  debug-regex:
+  debug:regex:
     desc: Build and run the debug regex pattern
     dir: crates
     requires:
@@ -78,7 +74,7 @@ tasks:
     cmds:
       - echo "{{ .INPUT }}" | cargo run --bin syntax -- --rules "{{ .PATTERN }}" --regex --print-rules --print-byte-code --print-captures
 
-  debug-peg:
+  debug:peg:
     desc: Build and run the debug regex pattern
     dir: crates
     requires:
@@ -86,10 +82,9 @@ tasks:
     cmds:
       - echo "{{ .INPUT }}" | cargo run --bin syntax -- --rules "{{ .PATTERN }}" --print-rules --print-byte-code --print-captures
 
-  run:debug:
+  debug:run:
     desc: Build and run the debug build with debug logging
     dir: crates
-    deps: [install-pre-commit-hook]
     cmds:
       - cargo run --bin sane -- --config-dir ../runtime --debug
     env:
@@ -114,34 +109,21 @@ tasks:
       - touch {{ .LOG_FILE }}
       - tail -f {{ .LOG_FILE }}
 
-  download:ucd:
-    desc: Download unicode character database
+  generate:ucd:
+    desc: Download and regenerate unicode tables in the ucd crate
     internal: true
     cmds:
       - rm -rf {{ .UCD_DIR }}
       - mkdir -p {{ .UCD_DIR }}
       - cd {{ .UCD_DIR }} && curl -LO https://www.unicode.org/Public/zipped/{{ .UCD_VERSION }}/UCD.zip
       - unzip {{ .UCD_DIR }}/UCD.zip -d {{ .UCD_DIR }}
+      - ucd-generate word-break {{ .UCD_DIR }} --enum > crates/ucd/src/word_break.rs
+      - ucd-generate sentence-break {{ .UCD_DIR }} --enum > crates/ucd/src/sentence_break.rs
+      - ucd-generate grapheme-cluster-break {{ .UCD_DIR }} --enum > crates/ucd/src/grapheme_break.rs
+      - ucd-generate general-category {{ .UCD_DIR }} --enum > crates/ucd/src/general_category.rs
+      - ucd-generate property-bool {{ .UCD_DIR }} --include Extended_Pictographic > crates/ucd/src/properties.rs
     status:
       - test -d {{ .UCD_DIR }}
-
-  generate:ucd-run:
-    desc: Generate UCD tables to the ucd crate
-    internal: true
-    dir: crates/ucd/src
-    cmds:
-      - ucd-generate word-break {{ .UCD_DIR }} --enum > word_break.rs
-      - ucd-generate sentence-break {{ .UCD_DIR }} --enum > sentence_break.rs
-      - ucd-generate grapheme-cluster-break {{ .UCD_DIR }} --enum > grapheme_break.rs
-      - ucd-generate general-category {{ .UCD_DIR }} --enum > general_category.rs
-      - ucd-generate property-bool {{ .UCD_DIR }} --include Extended_Pictographic > properties.rs
-
-  generate:ucd:
-    desc: Regenerate unicode tables in the ucd crate
-    cmds:
-      - task: download:ucd
-      - task: generate:ucd-run
-      - task: format
 
   format:
     desc: Run code formatter on all files
@@ -174,22 +156,9 @@ tasks:
       - cargo clean
 
   debug:kill:
-    desc: Kill debug run process
+    desc: Kill debug process
     cmds:
       - ps aux | grep target | grep sane | awk '{ print $2 }' | xargs kill -9
-
-  install-pre-commit-hook:
-    internal: true
-    cmds:
-      - echo "task pre-commit" > {{ .PRECOMMIT_FILE }}
-      - chmod +x {{ .PRECOMMIT_FILE }}
-    status:
-      - test -f {{ .PRECOMMIT_FILE }}
-
-  pre-commit:
-    desc: Run pre-commit operations
-    cmds:
-      - task: check
 
   docs:images:
     internal: true
@@ -223,15 +192,6 @@ tasks:
     cmds:
       - sudo apt remove -y sanedit
       - sudo apt install -y ./deb/sanedit_*.deb
-
-
-  jit:test:
-    desc: Run parser JIT tests
-    dir: crates/parser
-    cmds:
-      - "cargo test -- jit:: --nocapture"
-    env:
-      RUST_BACKTRACE: 1
 
   default:
     cmds:

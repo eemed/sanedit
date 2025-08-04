@@ -88,7 +88,6 @@ impl Config {
             config.keymaps.insert(name, kmap);
         }
 
-
         // Extend default detect from user configuration
         let mut detect = EditorConfig::default_language_map();
         detect.extend(config.editor.language_detect);

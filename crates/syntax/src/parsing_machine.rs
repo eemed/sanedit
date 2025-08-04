@@ -1,11 +1,9 @@
 mod captures;
 mod compiler;
+mod jit;
 mod op;
 mod set;
 mod stack;
-
-#[allow(dead_code)]
-mod jit;
 
 pub use self::captures::{Capture, CaptureID, CaptureIter, CaptureList, Captures};
 pub(crate) use self::compiler::Program;
@@ -19,7 +17,7 @@ use crate::{
     ByteSource, ParseError,
 };
 pub(crate) use compiler::Compiler;
-pub(crate) use jit::Jit;
+pub use jit::Jit;
 
 pub(crate) use self::op::{Addr, Operation};
 
@@ -70,7 +68,7 @@ enum State {
 pub(crate) type SubjectPosition = u64;
 
 #[derive(Debug)]
-pub(crate) struct ParsingMachine {
+pub struct ParsingMachine {
     rules: Rules,
     program: Program,
 }
@@ -78,6 +76,30 @@ pub(crate) struct ParsingMachine {
 impl ParsingMachine {
     pub fn new(rules: Rules, program: Program) -> ParsingMachine {
         ParsingMachine { rules, program }
+    }
+
+    pub fn from_read<R: std::io::Read>(read: R) -> Result<ParsingMachine, ParseError> {
+        let rules = Rules::parse(read).map_err(|err| ParseError::Grammar(err.to_string()))?;
+        Self::from_rules(rules)
+    }
+
+    pub fn from_rules(rules: Rules) -> Result<ParsingMachine, ParseError> {
+        if rules.is_empty() {
+            return Err(ParseError::NoRules);
+        }
+
+        let compiler = Compiler::new(&rules);
+        let program = compiler
+            .compile()
+            .map_err(|err| ParseError::Preprocess(err.to_string()))?;
+        // log::info!("---- Prgoram ----");
+        // log::info!("{:?}", program);
+
+        // println!("---- Prgoram ----");
+        // println!("{:?}", program);
+
+        let parser = ParsingMachine { rules, program };
+        Ok(parser)
     }
 
     pub fn rules(&self) -> &Rules {
@@ -335,11 +357,6 @@ mod test {
     use super::*;
 
     impl ParsingMachine {
-        pub fn from_read<R: io::Read>(read: R) -> Result<ParsingMachine, ParseError> {
-            let rules = Rules::parse(read).map_err(|err| ParseError::Grammar(err.to_string()))?;
-            Self::from_rules(rules)
-        }
-
         pub(crate) fn from_rules_unanchored(rules: Rules) -> Result<ParsingMachine, ParseError> {
             let compiler = Compiler::new(&rules);
             let program = compiler
@@ -348,25 +365,6 @@ mod test {
 
             // log::info!("---- Prgoram unanchor ----");
             // log::info!("{:?}", program);
-            let parser = ParsingMachine { rules, program };
-            Ok(parser)
-        }
-
-        pub fn from_rules(rules: Rules) -> Result<ParsingMachine, ParseError> {
-            if rules.is_empty() {
-                return Err(ParseError::NoRules);
-            }
-
-            let compiler = Compiler::new(&rules);
-            let program = compiler
-                .compile()
-                .map_err(|err| ParseError::Preprocess(err.to_string()))?;
-            // log::info!("---- Prgoram ----");
-            // log::info!("{:?}", program);
-
-            // println!("---- Prgoram ----");
-            // println!("{:?}", program);
-
             let parser = ParsingMachine { rules, program };
             Ok(parser)
         }

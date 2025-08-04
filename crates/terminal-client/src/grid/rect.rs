@@ -2,7 +2,6 @@ use std::cmp::min;
 
 use sanedit_messages::redraw::{Point, Size};
 
-
 #[derive(Clone, Debug, Copy, Default)]
 pub(crate) struct Rect {
     pub x: usize,

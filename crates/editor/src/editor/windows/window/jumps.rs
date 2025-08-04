@@ -82,7 +82,6 @@ pub(crate) struct Jumps<const N: usize> {
     position: Option<Ref>,
 }
 
-
 impl<const N: usize> Jumps<N> {
     pub fn from_groups(groups: Vec<JumpGroup>) -> Jumps<32> {
         let mut deque = RingBuffer::default();

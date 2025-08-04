@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
-use serde::{Deserialize, Serialize};
 use super::{Cell, Component, Cursor, Redraw};
+use serde::{Deserialize, Serialize};
 //
 // #[derive(Serialize, Deserialize, PartialEq, Eq, Default, Clone)]
 // pub struct Window {

@@ -32,7 +32,7 @@ operator =  ",#456882,"
 comment = ",#006200,"
 preproc = ",#432378,"
 identifier = ",#824b26,"
-# function = ",#1B3C53,"
+# function = ",#b0463a,"
 
 [colors.window.completion]
 default = "#d8c8a9,#2a130d,"

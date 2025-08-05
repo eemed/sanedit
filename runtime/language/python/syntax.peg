@@ -1,20 +1,22 @@
-document = (separated / (!stop .)* stop)*;
-separated = todo / keyword / string / constant / comment / preproc / type / operator;
+document = (separated / alpha_num / .)*;
+separated = todo / keyword / string / constant / comment / preproc / type / function / operator;
 
-stop = ws+ / nl / "[" / "]" / "(" / ")" / ";" / "," / ":" / ".";
+alpha_num = [a..zA..Z0..9_]+;
+break = ws+ / nl / "[" / "]" / "(" / ")" / ";" / "," / ":" / ".";
 WHITESPACE = [ \t];
 nl = "\n" / "\r\n";
 ws = WHITESPACE;
 
-@show @highlight
+@show @highlight @static-completion
 keyword = ( "continue" / "def" / "del" / "elif" / "else" / "except" /
  "finally" / "for" / "global" / "if" /
  "lambda" / "nonlocal" / "pass" / "raise" / "return" / "try" /
  "while" / "with" / "yield" / "assert" / "is" / "in" / "break" / "as"
- ) &stop;
+ ) &break;
 
 @show @highlight
-constant = number / "False" / "True" / "None";
+constant = uppercase_constant / number / "False" / "True" / "None";
+uppercase_constant = [A..Z] [A..Z_]+ &break;
 
 number = "-"? digit+ !"."/ "0x" hexdigit+;
 digit = [0..9];
@@ -22,24 +24,133 @@ hexdigit = digit / [a..fA..F];
 
 
 @show @highlight
-string = char / lstring / sstring;
-char = "'" . "'";
-lstring = "\"\"\"" (escape / (!"\"\"\"" .))* "\"\"\"";
-sstring = "\"" (escape / [^"])* "\"";
+string = doc_string / line_string / fdoc_string / fline_string;
+doc_string = "\"\"\"" (string_content / (!"\"\"\"" .))* "\"\"\""  /
+             "'''" (string_content / (!"'''" .))* "'''";
+
+line_string = "\"" (string_content / [^"])* "\"" /
+              "'" (string_content / [^'])* "'";
+string_content = escape;
+
+fdoc_string = "f\"\"\"" (fstring_content / (!"\"\"\"" .))* "\"\"\""  /
+             "f'''" (fstring_content / (!"'''" .))* "'''";
+
+fline_string = "f\"" (fstring_content / [^"])* "\"" /
+              "f'" (fstring_content / [^'])* "'";
+fstring_content = string_content / fstring_holder;
+fstring_holder = "{" (!"}" .)* "}";
+@show @highlight(operator)
+fstring_open = "{";
+@show @highlight(operator)
+fstring_close = "}";
+
 escape = "\\" .;
 
+@show @highlight(type) @static-completion
+type = builtin_types / [A..Z] [a..zA..Z0..9_]+ &break;
 
-type = stop;
+@static-completion
+builtin_types =(
+ "str" /
+ "int" /
+ "float" /
+ "complex" /
+ "list " /
+ "tuple " /
+ "range" /
+ "dict" /
+ "set" /
+ "frozenset" /
+ "bool" /
+ "bytes" /
+ "bytearray" /
+ "memoryview" /
+ "NoneType")
+ !"("
+ &break;
 
-operator = operators;
 @show @highlight(operator)
-operators = ("and" / "or" / "not" ) &stop;
+operator = named_operators / operator_mark;
+named_operators =  ("and" / "or" / "not" ) &break;
+operator_mark = [\[\]{}():,.<>&|=+*/?!<>-];
 
 @show @highlight
-preproc = ("import" / "from") &stop;
+preproc = ("import" / "from") &break;
 
 @show @highlight
 comment = "#" (todo / (!nl .))*;
 
 @show @highlight(warn)
 todo = "TODO";
+
+@show @highlight
+function = builtin_functions &"(";
+@static-completion
+builtin_functions =
+ "zip" /
+ "vars" /
+ "type" /
+ "tuple" /
+ "super" /
+ "sum" /
+ "str" /
+ "staticmethod" /
+ "sorted" /
+ "slice" /
+ "setattr" /
+ "set" /
+ "round" /
+ "reversed" /
+ "repr" /
+ "range" /
+ "property" /
+ "print" /
+ "pow" /
+ "ord" /
+ "open" /
+ "oct" /
+ "object" /
+ "next" /
+ "min" /
+ "memoryview" /
+ "max" /
+ "map" /
+ "locals" /
+ "list" /
+ "len" /
+ "iter" /
+ "issubclass" /
+ "isinstance" /
+ "int" /
+ "input" /
+ "id" /
+ "hex" /
+ "help" /
+ "hash" /
+ "hasattr" /
+ "globals" /
+ "getattr" /
+ "frozenset" /
+ "format" /
+ "float" /
+ "filter" /
+ "exec" /
+ "eval" /
+ "enumerate" /
+ "divmod" /
+ "dir" /
+ "dict" /
+ "delattr" /
+ "complex" /
+ "compile" /
+ "classmethod" /
+ "chr" /
+ "callable" /
+ "bytes" /
+ "bytearray" /
+ "bool" /
+ "bin" /
+ "ascii" /
+ "any" /
+ "all" /
+ "abs";

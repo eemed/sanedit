@@ -158,7 +158,7 @@ const HORIZON_BOTTOM: u64 = 1024 * 16;
 #[derive(Debug, Clone)]
 pub struct Syntax {
     parser: Arc<Parser>,
-    static_completions: Arc<Vec<String>>,
+    static_completions: Arc<Map<String, Vec<String>>>,
 }
 
 impl Syntax {
@@ -170,7 +170,8 @@ impl Syntax {
         };
 
         let parser = Parser::with_loader(&file, loader)?;
-        let static_completions: Vec<String> = parser
+        let mut static_completions: Map<String, Vec<String>> = Map::default();
+        for (name, compls) in parser
             .static_bytes_per_rule(|_, anns| {
                 anns.iter().any(|ann| match ann {
                     Annotation::Other(name, _) => name == STATIC_COMPLETION_ANNOTATION,
@@ -178,9 +179,21 @@ impl Syntax {
                 })
             })
             .into_iter()
-            .map(|compl| String::from_utf8(compl))
-            .filter_map(|compl| compl.ok())
-            .collect();
+        {
+            let mut all = vec![];
+            for compl in compls {
+                if let Ok(compl) = String::from_utf8(compl) {
+                    all.push(compl)
+                }
+            }
+
+            if !all.is_empty() {
+                static_completions.insert(name, all);
+            }
+        }
+        // .map(|compl| String::from_utf8(compl))
+        // .filter_map(|compl| compl.ok())
+        // .collect();
 
         log::info!("Parsing syntax {peg:?} using {}", parser.kind());
 
@@ -190,7 +203,7 @@ impl Syntax {
         })
     }
 
-    pub fn static_completions(&self) -> Arc<Vec<String>> {
+    pub fn static_completions(&self) -> Arc<Map<String, Vec<String>>> {
         self.static_completions.clone()
     }
 

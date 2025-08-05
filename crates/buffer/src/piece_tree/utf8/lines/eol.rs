@@ -90,7 +90,7 @@ impl EndOfLine {
         matches!(byte, 0x0a..=0x0d)
     }
 
-    fn is_slice_eol(slice: &PieceTreeSlice) -> bool {
+    pub fn is_slice_eol(slice: &PieceTreeSlice) -> bool {
         if slice.len() > Self::MAX_EOL_LEN as u64 {
             return false;
         }

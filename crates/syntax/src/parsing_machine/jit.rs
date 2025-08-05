@@ -457,7 +457,7 @@ impl Jit {
         let res = peg_program(state_ref, start, end);
 
         if res != 0 {
-            return Err(ParseError::Parse("No match".into()));
+            return Err(ParseError::Parse(format!("No match, error: {res}")));
         }
 
         let mut captures = Vec::with_capacity(state.len / 2);
@@ -969,7 +969,7 @@ mod test {
     fn jit_rust() {
         let peg = include_str!("../../../../runtime/language/rust/syntax.peg");
         let jit = Jit::from_read(std::io::Cursor::new(peg)).expect("Failed to create JIT");
-        println!("{:?}", jit.ops);
+        // println!("{:?}", jit.ops);
         let rust = r#"
             use crate::editor::snippets::{Snippet, SNIPPET_DESCRIPTION};
 
@@ -1033,7 +1033,7 @@ mod test {
         [another.section]
         setter = true
         "#;
-        let _captures = jit.parse(json).expect("Parsing failed");
+        let _captures = jit.parse(json).unwrap();
         // for cap in captures {
         //     println!("{cap:?}: {}", &json[cap.start as usize..cap.end as usize]);
         // }

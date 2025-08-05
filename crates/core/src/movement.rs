@@ -343,28 +343,28 @@ pub fn find_prev_char(
 }
 
 pub fn next_grapheme_on_line(slice: &PieceTreeSlice, pos: u64) -> u64 {
-    let mut chars = slice.chars_at(pos);
+    let mut graphemes = slice.graphemes_at(pos);
 
-    while let Some((start, end, ch)) = chars.next() {
-        if EndOfLine::is_eol_char(ch) {
-            return start;
+    while let Some(slice) = graphemes.next() {
+        if EndOfLine::is_slice_eol(&slice) {
+            return slice.start();
         }
 
-        return end;
+        return slice.end();
     }
 
     pos
 }
 
 pub fn prev_grapheme_on_line(slice: &PieceTreeSlice, pos: u64) -> u64 {
-    let mut chars = slice.chars_at(pos);
+    let mut graphemes = slice.graphemes_at(pos);
 
-    while let Some((start, end, ch)) = chars.prev() {
-        if EndOfLine::is_eol_char(ch) {
-            return end;
+    while let Some(slice) = graphemes.prev() {
+        if EndOfLine::is_slice_eol(&slice) {
+            return slice.end();
         }
 
-        return start;
+        return slice.start();
     }
 
     pos

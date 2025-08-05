@@ -1,4 +1,4 @@
-rules =  (assign / subshell / string / comment / conditional / specials / target / silenced / .)*;
+rules =  (assign / subshell / string / comment / keywords / specials / target / silenced / .)*;
 
 
 subshell = subshell_start gnu_statement? (!subshell_end (subshell / .))* subshell_end;
@@ -13,15 +13,14 @@ silenced = tab silence;
 silence = "@";
 tab = "\t";
 
-
-assign = assign_id ws+ assign_op (subshell / next_line / (!nl .))*;
+assign = assign_id ws* assign_op; # (subshell / next_line / (!nl .))+;
 @show @highlight(operator)
 assign_op = ":"? "=";
 
 @show @highlight(identifier)
 assign_id = [a..zA..Z0..9_-]+;
 
-target =  target_id (ws* target_id)* target_sep (ws* (depend_id / next_line))*;
+target =  nl target_id (ws* target_id)* target_sep (ws* (depend_id / next_line))*;
 @show @highlight(operator)
 target_sep = ":";
 
@@ -32,7 +31,7 @@ depend_id = [a..zA..Z0..9_.-]+;
 @show @highlight(operator)
 next_line = "\\" nl;
 
-@show @highlight(keyword)
+@show @highlight(keyword) @static-completion
 gnu_statement = "abspath" / "addprefix" / "addsuffix" / "and" / "basename" /
  "call" / "dir" / "error" / "eval" / "file" / "filter-out" / "filter" /
  "findstring" / "firstword" / "flavor" / "foreach" / "guile" / "if" /
@@ -41,12 +40,15 @@ gnu_statement = "abspath" / "addprefix" / "addsuffix" / "and" / "basename" /
  "subst" / "suffix" / "value" / "warning" / "wildcard" / "word" /
  "wordlist" / "words";
 
-@show @highlight(keyword)
-conditional = "ifndef" / "ifeq" / "ifneq" / "ifdef" / "endif";
+@show @highlight(keyword) @static-completion
+keywords = "ifndef" / "ifeq" / "ifneq" / "ifdef" / "endif" / "else" / "define" / "vpath" / "endef" / "undefine" / "-include" / "sinclude" / "include" / "override" / "export" / "unexport" / "private";
 
-specials = special_names spec_end;
-@show @highlight(preproc)
-special_names = "." ("SUFFIXES" / "PHONY" / "DEFAULT" / "PRECIOUS" / "IGNORE" / "SILENT" / "NOTPARALLEL" / "POSIX") ;
+@static-completion @highlight(preproc)
+gnu_extras = ".LIBPATTERNS" / "SUFFIXES" / "CURDIR" / "MAKECMDGOALS" / "GNUMAKEFLAGS" / "MAKEFLAGS" / "MAKELEVEL" / "MAKE_HOST" / "MAKEFILES" / "MAKE_VERSION" / "VPATH" / "MAKESHELL" / "MAKE";
+
+specials = special_names spec_end / gnu_extras;
+@show @highlight(preproc) @static-completion
+special_names = (".SUFFIXES" / ".PHONY" / ".DEFAULT" / ".PRECIOUS" / ".IGNORE" / ".SILENT" / ".NOTPARALLEL" / ".POSIX") ;
 spec_end = (!nl .)*;
 
 @show @highlight
@@ -67,6 +69,6 @@ escape_char     = "0" / "t" / "n" / "r" / "\"" / "\\";
 
 # Commons
 
-WHITESPACE = [ \t\r\n];
+WHITESPACE = [ \t];
 nl = "\r\n" / "\n";
 ws = WHITESPACE;

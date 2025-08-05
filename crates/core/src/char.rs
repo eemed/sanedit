@@ -35,7 +35,7 @@ impl Chars {
             chars.push(Char {
                 character: ' ',
                 extra: None,
-                flags: flags::NO_WIDTH,
+                flags: flags::NO_WIDTH | flags::CONTINUE,
                 len_in_buffer: 0,
             });
         }
@@ -500,7 +500,7 @@ mod test {
         pt.insert(0, "❤️");
         let slice = pt.slice(..);
         let ch = Chars::new(&slice, 0, &DisplayOptions::default());
-        assert_eq!("❤️", ch.display());
+        assert_eq!("❤️ ", ch.display());
     }
 
     #[test]

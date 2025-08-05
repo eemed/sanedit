@@ -1,10 +1,10 @@
-document        = (ws (header_line / value_line / string / .))* !.;
-header_line     = ignore "["+ key_name "]"+ line_end;
+document        = (header_line / value_line / string / comment / .)* !.;
+header_line     = "["+ key_name "]"+ line_end;
 
 @show @completion @highlight(identifier)
 key_name        = key_segment ("." key_segment)*;
 key_segment     = [^\[\]\.\n\r]+;
-value_line      = ignore name ws "=" ws value line_end;
+value_line      = name ws "=" ws value line_end;
 name            = (!space !nl .)+;
 value           = string / datetime / float / integer / boolean / array / object;
 array           = (empty_array / string_array / datetime_array / float_array / integer_array / boolean_array / array_array / object_array);

@@ -60,7 +60,12 @@ fn complete_from_syntax(editor: &mut Editor, id: ClientId) -> ActionResult {
         .map(|compls| {
             compls
                 .iter()
-                .map(|compl| Choice::from_text_with_description(compl.clone(), "static".into()))
+                .map(|(name, compl)| {
+                    compl.into_iter().map(|compl| {
+                        Choice::from_text_with_description(compl.clone(), name.clone())
+                    })
+                })
+                .flatten()
                 .collect::<Vec<Arc<Choice>>>()
         })
         .unwrap_or_default();

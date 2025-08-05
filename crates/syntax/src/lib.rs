@@ -13,6 +13,8 @@ use grammar::Rule;
 use grammar::Rules;
 pub use source::{ByteSource, PTSliceSource};
 use std::borrow::Cow;
+
+use std::collections::HashMap;
 use std::sync::Arc;
 
 pub use finder::{Finder, FinderIter, FinderIterRev, FinderRev};
@@ -103,7 +105,7 @@ impl Parser {
     }
 
     /// Extracts static byte sequences from a rule
-    pub fn static_bytes_per_rule<F>(&self, should_extract: F) -> Vec<Vec<u8>>
+    pub fn static_bytes_per_rule<F>(&self, should_extract: F) -> HashMap<String, Vec<Vec<u8>>>
     where
         F: Fn(&str, &[Annotation]) -> bool,
     {
@@ -318,7 +320,7 @@ impl ParserKind {
         }
     }
 
-    fn static_bytes_per_rule<F>(&self, should_extract: F) -> Vec<Vec<u8>>
+    fn static_bytes_per_rule<F>(&self, should_extract: F) -> HashMap<String, Vec<Vec<u8>>>
     where
         F: Fn(&str, &[Annotation]) -> bool,
     {
@@ -327,13 +329,16 @@ impl ParserKind {
             ParserKind::Jit(jit) => jit.rules(),
         };
 
-        let mut byte_sequences = vec![];
+        let mut map: HashMap<String, Vec<Vec<u8>>> = HashMap::default();
         let mut stack = vec![];
         for rule in rules.iter() {
             let extract = should_extract(&rule.name, &rule.annotations);
 
             if extract {
                 stack.push(&rule.rule);
+                if !map.contains_key(&rule.name) {
+                    map.insert(rule.name.clone(), vec![]);
+                }
 
                 while let Some(current) = stack.pop() {
                     use Rule::*;
@@ -341,13 +346,15 @@ impl ParserKind {
                         NotFollowedBy(rule) | FollowedBy(rule) | OneOrMore(rule)
                         | ZeroOrMore(rule) | Optional(rule) => stack.push(rule),
                         Choice(vec) | Sequence(vec) => vec.iter().for_each(|r| stack.push(r)),
-                        ByteSequence(vec) => byte_sequences.push(vec.clone()),
+                        ByteSequence(vec) => {
+                            map.get_mut(&rule.name).unwrap().push(vec.clone());
+                        }
                         _ => {}
                     }
                 }
             }
         }
 
-        byte_sequences
+        map
     }
 }

@@ -1,0 +1,35 @@
+document = separated*;
+separated = comment / macro / tag / alpha / ws+ / . ;
+
+WHITESPACE = ws;
+ws = [ \t] / nl;
+nl = "\n" / "\r\n";
+alpha = [a..zA..Z0..9_-.]+;
+
+@show @highlight
+comment = "<!--" (!"-->" .)* "-->";
+
+@show @highlight(preproc)
+macro = "<!" (!">" (attr / .))* ">" / "<?" (!"?>" (attr / .))* "?>";
+
+tag = tag_open (!tag_close (separated / .))* tag_close / one_tag;
+
+@whitespaced
+one_tag = "<" tag_name attr* "/>";
+@whitespaced
+tag_open = "<" tag_name attr* ">";
+@whitespaced
+tag_close = "</" tag_name ">";
+
+@whitespaced
+attr = [a..zA..Z0..9._:-]+ "=" string;
+@show @highlight
+string = nstring / sstring;
+nstring = "\"" (escape  / [^"])* "\"";
+escape = "\\" .;
+
+sstring = "'" (escape  / [^'])* "'";
+escape = "\\" .;
+
+@show @highlight(identifier)
+tag_name = [a..zA..Z] [a..zA..Z0..9._-]+;

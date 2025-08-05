@@ -1,5 +1,5 @@
 document = separated*;
-separated = comment / macro / tag / alpha / ws+ / . ;
+separated = comment / style_tag / script_tag / macro / tag / alpha / ws+ / . ;
 
 WHITESPACE = ws;
 ws = [ \t] / nl;
@@ -14,6 +14,17 @@ macro = "<!" (!">" .)* ">";
 
 tag = tag_open (!tag_close (separated / .))* tag_close / one_tag / tag_no_end;
 
+style_tag = "<" style ">" style_content "</" style ">";
+@inject(css)
+style_content = (!("</" style ">") .)*;
+@show @highlight(identifier)
+style = "style";
+
+script_tag = "<" script ">" script_content "</" script ">";
+@inject(javascript)
+script_content = (!("</" script ">") .)*;
+@show @highlight(identifier)
+script = "script";
 
 @whitespaced
 one_tag = "<" tag_name attr* "/>";
@@ -27,7 +38,11 @@ tag_no_end = "<" no_end attr* ">";
 @whitespaced
 attr = [a..zA..Z0..9._-]+ "=" string;
 @show @highlight
-string = "\"" (escape  / [^"])* "\"";
+string = nstring / sstring;
+nstring = "\"" (escape  / [^"])* "\"";
+escape = "\\" .;
+
+sstring = "'" (escape  / [^'])* "'";
 escape = "\\" .;
 
 @show @highlight(identifier)

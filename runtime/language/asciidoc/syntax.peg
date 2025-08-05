@@ -9,17 +9,21 @@ preproc = special / rectangle / angle / tags;
 @show @highlight(preproc)
 special = ":" (!":" .)* ":" &stop;
 @show @highlight(preproc)
-rectangle = "[" (!"]" .)* "]";
+rectangle = "["+ (!"]" .)* "]"+;
 @show @highlight(preproc)
-angle = "<" (!">" .)* ">";
+angle = "<<" (!">>" .)* ">>";
 @show @highlight(preproc)
 tags = [a..zA..Z0..9.]+ ":" ":"? [a..zA..Z0..9.-]* "[" (!"]" .)* "]";
 
 @show @highlight(default)
-code = tick / dash / dot / underscore;
-tick = tickop (!tickop .)* tickop;
+code = fenced_code / dash / dot / underscore;
+fenced_code = fence fenced_lang fence_content fence;
+@injection-language
+fenced_lang = [a..zA..Z]+;
+@inject
+fence_content = (!fence .)*;
 @show @highlight(operator)
-tickop = "```";
+fence = "```";
 dash = rectangle? nl dashop &nl (!dashop .)* dashop;
 @show @highlight(operator)
 dashop = "----";
@@ -56,19 +60,20 @@ escape_char     = "0" / "t" / "n" / "r" / "'" / "`" / "\"" / "\\";
 keyword = (text (letter / bold / subscript / superscript / force / emphtwo / emph / escape))+;
 text = [a..zA..Z0..9-]*;
 
-@show @highlight(keyword)
-bold = "*" (!(nl / ws / "*") .)+ "*";
-@show @highlight(keyword)
-letter = "**" (!(nl / ws / "**") .)+ "**";
-@show @highlight(keyword)
-subscript = "~" (!(nl / "~") .)+ "~";
-@show @highlight(keyword)
-superscript = "^" (!(nl / ws / "^") .)+ "^";
-@show @highlight(keyword)
-force = "{" (!(nl / ws / "}") .)+ "}";
-@show @highlight(keyword)
-emphtwo = "__" (!(nl / ws / "__") .)+ "__";
-@show @highlight(keyword)
-emph = "_" (!(nl / ws / "_") .)+ "_";
+@show @highlight(operator)
+bold = "*" (!(nl / "*") ( escape / .))+ "*";
+@show @highlight(operator)
+letter = "**" (!(nl / "**") ( escape / .))+ "**";
+@show @highlight(operator)
+subscript = "~" (!(nl / "~") ( escape / .))+ "~";
+@show @highlight(operator)
+superscript = "^" (!(nl / "^") .( escape / ))+ "^";
+@show @highlight(operator)
+force = "{" (!(nl / "}") ( escape / .))+ "}";
+@show @highlight(operator)
+emphtwo = "__" (!(nl / "__") ( escape / .))+ "__";
+@show @highlight(operator)
+emph = "_" (!(nl / "_") ( escape / .))+ "_";
+
 @show @highlight(keyword)
 escape = "\\" .;

@@ -71,16 +71,16 @@ attrname = [a..zA..Z0..9_-]+;
 end = ws / ";" / "(" / "." / ":";
 
 @show @highlight(preproc)
-preproc = preproc_words &end;
+preproc = preproc_words &end / special &end;
 preproc_words = "import" / "from" / "export" / "default" !":" / "as";
+special = "console";
 
 @show @highlight(keyword)
 keyword =  words &end;
-words = "constructor" / "yield" / "await" / "instanceof" / "while" / "break" / "constructor" / "class" / "extends" / "static" / "const" / "async" / "if" / "else" / "for" / "return" / "switch" / "case" / "let" / "var" / "in" / "of" / "function" "*"? / "with" / "this" /  "try" / "catch" !"(" / "continue" / "throw" / "new" / "default";
+words = "constructor" / "yield" / "await" / "instanceof" / "while" / "break" / "constructor" / "class" / "extends" / "static" / "const" / "async" / "if" / "else" / "for" / "return" / "switch" / "case" / "let" / "var" / "in" / "of" / "function" "*"? / "with" / "this" /  "try" / "catch" !"(" / "continue" / "throw" / "new" / "default" ;
 
 @show @highlight(type)
 types =  (
-    "console" /
     "Object" /
     "Function" /
     "Boolean" /

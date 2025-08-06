@@ -2,7 +2,7 @@
 # modfied for more contrast
 
 [colors.window]
-default = "#faf4ed,#575279,"
+default = "#eee6dd,#575279,"
 statusline = "#d3c9c0,#333a40,"
 statusline_no_focus = "#ebe5df,,"
 end_of_buffer = ",#969896,"
@@ -31,7 +31,7 @@ preproc = ",#B3628C,"
 identifier = ",#a5576d,"
 
 [colors.window.completion]
-default = "#ebe5df,#575279,"
+default = "#e7dccf,#575279,"
 description = ",#969896,"
 match = ",#d9605a,"
 
@@ -41,17 +41,17 @@ description = ",#969896,"
 match = ",#d9605a,"
 
 [colors.prompt]
-default = "#d0d8d8,#575279,"
+default = "#d8cbbb,#575279,"
 message = ",,bold"
 userinput = ",,"
 
 [colors.prompt.overlay]
-default = "#ebe5df,#625c87,"
+default = "#e7dccf,#625c87,"
 title = ",,bold"
 message = ",#575279,bold"
 
 [colors.prompt.completion]
-default = "#ebe5df,#575279,"
+default = "#e7dccf,#575279,"
 description = ",#969896,"
 match = ",#d9605a,"
 
@@ -61,17 +61,17 @@ description = ",#969896,"
 match = ",#d9605a,"
 
 [colors.filetree]
-default = "#faf4ed,#575279,"
+default = "#eee6dd,#575279,"
 markers = ",#2d81a3,"
 directory = ",#9E7777,"
 
 [colors.filetree.selected]
-default = "#ebe5df,,"
+default = "#ddd2c8,,"
 directory = ",#9E7777,"
 markers = ",#2d81a3,"
 
 [colors.locations]
-default = "#faf4ed,#575279,"
+default = "#eee6dd,#575279,"
 title = "#d3c9c0,#333a40,"
 entry = ""
 group = ",#9E7777,"
@@ -79,11 +79,11 @@ markers = ",#2d81a3,"
 match = ",#d9605a,"
 
 [colors.locations.selected]
-default = "#ebe5df,,"
+default = "#ddd2c8,,"
 match = ",#d9605a,"
 markers = ",#2d81a3,"
 entry = ""
 group = ",#9E7777,"
 
 [colors.popup]
-default = "#ebe5df,#625c87,"
+default = "#e7dccf,#625c87,"

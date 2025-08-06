@@ -24,10 +24,10 @@ error = "#FF9E99,#8A3A5A,"
 constant = ",#1a6582,"
 string =  ",#0d8751,"
 keyword = ",#ca6e69,"
-operator =  ",#836853,"
-type =  ",#2d81a3,"
+operator =  ",#2d81a3,"
+type =  ",#7d644f,"
 comment = ",#969896,"
-preproc = ",#9362c4,"
+preproc = ",#B3628C,"
 identifier = ",#a5576d,"
 
 [colors.window.completion]

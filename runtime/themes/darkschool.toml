@@ -2,7 +2,6 @@
 default = "#1D1F21,#c1c1c1,"
 statusline = "#404040,#bbbbbb,"
 statusline_no_focus = "#0d0d0d,#bbbbbb,"
-gutter = ",#4C4C4C,bold"
 end_of_buffer = ",#666666,"
 trailing_whitespace = ",#666666,"
 symbols = ",#444444,"
@@ -21,7 +20,6 @@ error = "#E97866,#222222,"
 
 constant = ",#7AA6DA,"
 string =  ",#7AA6DA,"
-number = ",#7AA6DA,"
 
 keyword = ",#d7875f,"
 operator =  ",#83a4af,"
@@ -29,7 +27,6 @@ type =  ",#d7af5f,"
 comment = ",#B5BD68,"
 preproc = ",#B294BB,"
 identifier = ",#d7875f,"
-# function = ",#83C092,"
 
 [colors.window.completion]
 default = "#303030,#d1caca,"

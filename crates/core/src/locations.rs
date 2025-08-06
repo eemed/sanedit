@@ -219,15 +219,10 @@ impl Locations {
         self.ensure_selection_in_range();
     }
 
-    /// Keep gropups or items that match the predicate.
-    /// If group matches keeps all the entries.
-    /// If group no match, matches against all the items.
+    /// Keep items that match the predicate.
     pub fn retain<F: Fn(&str) -> bool + Copy>(&mut self, f: F) {
         for group in &mut self.groups {
-            let gmatch = (f)(&group.path.to_string_lossy());
-            if !gmatch {
-                group.items.retain(|item| (f)(item.name()));
-            }
+            group.items.retain(|item| (f)(item.name()));
         }
 
         self.groups.retain(|group| !group.items.is_empty());

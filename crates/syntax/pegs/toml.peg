@@ -17,10 +17,10 @@ compl_string    = ("\\" escape_char / [^"\n])*;
 escape_char     = "0" / "t" / "n" / "r" / "\"" / "\\";
 digit           = [0..9];
 
-@show @highlight(number)
+@show @highlight(constant)
 integer         = "-"? [1..9] digit*;
 
-@show @highlight(number)
+@show @highlight(constant)
 float           = integer "." digit+;
 
 @show @highlight(constant)

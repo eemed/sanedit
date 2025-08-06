@@ -1,30 +1,17 @@
-# let s:foreground = "c5c8c6"
-# let s:background = "1d1f21"
-# let s:selection = "373b41"
-# let s:line = "282a2e"
-# let s:comment = "969896"
-# let s:red = "cc6666"
-# let s:orange = "de935f"
-# let s:yellow = "f0c674"
-# let s:green = "b5bd68"
-# let s:aqua = "8abeb7"
-# let s:blue = "81a2be"
-# let s:purple = "b294bb"
-# let s:window = "4d5057"
+# Colors from https://github.com/chriskempson/tomorrow-theme
 
 [colors.window]
 default = "#1d1f21,#c5c8c6,"
-statusline = "#4d5057,#c5c8c6,"
-statusline_no_focus = "#0d0d0d,#bbbbbb,"
-gutter = ",#4C4C4C,bold"
-end_of_buffer = ",#666666,"
-trailing_whitespace = ",#666666,"
-symbols = ",#444444,"
+statusline = "#373b41,#c5c8c6,"
+statusline_no_focus = "#282a2e,,"
+end_of_buffer = ",#969896,"
+trailing_whitespace = ",#969896,"
+symbols = ",#969896,"
 match = "#f0c674,#1d1f21,"
-virtual = ",#666666,"
+virtual = ",#969896,"
 
 [colors.window.cursor]
-default = "#d7875f,#000000,"
+default = "#81a2be,#1d1f21,"
 selection = "#373b41,#c5c8c6,"
 
 [colors.window.view]
@@ -35,24 +22,22 @@ error = "#cc6666,#1d1f21,"
 
 constant = ",#81a2be,"
 string =  ",#b5bd68,"
-
 keyword = ",#de935f,"
 operator =  ",#8abeb7,"
 type =  ",#f0c674,"
 comment = ",#969896,"
 preproc = ",#b294bb,"
 identifier = ",#cc6666,"
-# function = ",#83C092,"
 
 [colors.window.completion]
-default = "#303030,#d1caca,"
-description = ",#777777,"
-match = ",#d7875f,"
+default = "#282a2e,#c5c8c6,"
+description = ",#969896,"
+match = ",#de935f,"
 
 [colors.window.completion.selected]
-default = "#4a4a4a,,"
-description = ",#777777,"
-match = ",#d7875f,"
+default = "#373b41,,"
+description = ",#969896,"
+match = ",#de935f,"
 
 [colors.prompt]
 default = "#b5bd68,#1d1f21,"
@@ -60,44 +45,44 @@ message = ",,bold"
 userinput = ",,"
 
 [colors.prompt.overlay]
-default = "#303030,#d1caca,"
+default = "#282a2e,#c5c8c6,"
 title = ",,bold"
-message = ",#d1caca,bold"
+message = ",#c5c8c6,bold"
 
 [colors.prompt.completion]
-default = "#303030,#c1baba,"
-description = ",#777777,"
-match = ",#d7875f,"
+default = "#282a2e,#c5c8c6,"
+description = ",#969896,"
+match = ",#de935f,"
 
 [colors.prompt.completion.selected]
-default = "#4a4a4a,,"
-description = ",#777777,"
-match = ",#d7875f,"
+default = "#373b41,,"
+description = ",#969896,"
+match = ",#de935f,"
 
 [colors.filetree]
-default = "#1D1F21,#c1c1c1,"
-markers = ",#B5BD68,"
-directory = ",#81a2be,"
+default = "#1d1f21,#c5c8c6,"
+markers = ",#81a2be,"
+directory = ",#b5bd68,"
 
 [colors.filetree.selected]
-default = "#353535,,"
-directory = ",#81a2be,"
-markers = ",#B5BD68,"
+default = "#373b41,,"
+directory = ",#b5bd68,"
+markers = ",#81a2be,"
 
 [colors.locations]
-default = "#1D1F21,#c1c1c1,"
-title = "#353535,#b1aaaa,"
+default = "#1d1f21,#c5c8c6,"
+title = "#373b41,#c5c8c6,"
 entry = ""
-group = ",#7AA6DA,"
-markers = ",#B5BD68,"
-match = ",#d7875f,"
+group = ",#b5bd68,"
+markers = ",#81a2be,"
+match = ",#de935f,"
 
 [colors.locations.selected]
-default = "#353535,,"
-match = ",#d7875f,"
-markers = ",#B5BD68,"
+default = "#373b41,,"
+match = ",#de935f,"
+markers = ",#81a2be,"
 entry = ""
-group = ",#7AA6DA,"
+group = ",#b5bd68,"
 
 [colors.popup]
-default = "#303030,#d1caca,"
+default = "#282a2e,#c5c8c6,"

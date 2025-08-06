@@ -4,7 +4,6 @@
 default = "#E2DBC8,#202020,"
 statusline = "#B8A282,#2a130d,"
 statusline_no_focus = "#B8B4A9,#2a130d,"
-gutter = ",#4C4C4C,bold"
 end_of_buffer = ",#7f755f,"
 trailing_whitespace = ",#7f755f,"
 symbols = ",#606060,"
@@ -24,7 +23,6 @@ error = "#da7073,#000000,"
 
 constant = ",#014CC0,"
 string =  ",#014CC0,"
-number = ",#014CC0,"
 
 keyword = ",#a84d1f,"
 type =  ",#824b26,"
@@ -32,7 +30,6 @@ operator =  ",#456882,"
 comment = ",#006200,"
 preproc = ",#432378,"
 identifier = ",#824b26,"
-# function = ",#b0463a,"
 
 [colors.window.completion]
 default = "#d8c8a9,#2a130d,"

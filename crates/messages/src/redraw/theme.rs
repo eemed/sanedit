@@ -112,7 +112,6 @@ pub enum ThemeField {
     TrailingWhitespace,
     Symbols,
     Cursor,
-    Gutter,
     Completion,
     CompletionDescription,
     CompletionMatch,
@@ -125,8 +124,6 @@ pub enum ThemeField {
 
     Constant,
     String,
-    Number,
-
     Identifier,
 
     Comment,
@@ -134,7 +131,6 @@ pub enum ThemeField {
     Type,
     Keyword,
     Preproc,
-    Function,
 
     Hint,
     Info,
@@ -193,7 +189,6 @@ impl AsRef<str> for ThemeField {
             StatuslineNoFocus => "window.statusline_no_focus",
             Selection => "window.cursor.selection",
             Cursor => "window.cursor",
-            Gutter => "window.gutter",
             EndOfBuffer => "window.end_of_buffer",
             TrailingWhitespace => "window.trailing_whitespace",
             Symbols => "window.symbols",
@@ -207,7 +202,6 @@ impl AsRef<str> for ThemeField {
 
             Constant => "window.view.constant",
             String => "window.view.string",
-            Number => "window.view.number",
 
             Identifier => "window.view.identifier",
             Comment => "window.view.comment",
@@ -215,7 +209,6 @@ impl AsRef<str> for ThemeField {
             Type => "window.view.type",
             Keyword => "window.view.keyword",
             Preproc => "window.view.preproc",
-            Function => "window.view.function",
 
             Completion => "window.completion",
             CompletionDescription => "window.completion.description",

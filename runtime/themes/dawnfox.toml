@@ -1,0 +1,89 @@
+# base colors from https://github.com/EdenEast/nightfox.nvim
+# modfied for more contrast
+
+[colors.window]
+default = "#faf4ed,#575279,"
+statusline = "#d3c9c0,#333a40,"
+statusline_no_focus = "#ebe5df,,"
+end_of_buffer = ",#969896,"
+trailing_whitespace = ",#969896,"
+symbols = ",#969896,"
+match = "#b8cece,#575279,"
+virtual = ",#969896,"
+
+[colors.window.cursor]
+default = "#70C99B,#575279,"
+selection = "#d0d8d8,#575279,"
+
+[colors.window.view]
+hint = "#aed3ff,,"
+info = "#aed3ff,,"
+warn = "#fdffa2,,"
+error = "#f39eb2,,"
+
+constant = ",#1a6582,"
+string =  ",#0d8751,"
+keyword = ",#d9605a,"
+operator =  ",#2894a4,"
+type =  ",#1083b2,"
+comment = ",#969896,"
+preproc = ",#7f4abb,"
+identifier = ",#b34967,"
+
+[colors.window.completion]
+default = "#ebe5df,#575279,"
+description = ",#969896,"
+match = ",#d9605a,"
+
+[colors.window.completion.selected]
+default = "#ddd2c8,,"
+description = ",#969896,"
+match = ",#d9605a,"
+
+[colors.prompt]
+default = "#d0d8d8,#575279,"
+message = ",,bold"
+userinput = ",,"
+
+[colors.prompt.overlay]
+default = "#ebe5df,#625c87,"
+title = ",,bold"
+message = ",#575279,bold"
+
+[colors.prompt.completion]
+default = "#ebe5df,#575279,"
+description = ",#969896,"
+match = ",#d9605a,"
+
+[colors.prompt.completion.selected]
+default = "#ddd2c8,,"
+description = ",#969896,"
+match = ",#d9605a,"
+
+[colors.filetree]
+default = "#faf4ed,#575279,"
+markers = ",#1083b2,"
+directory = ",#b34967,"
+
+[colors.filetree.selected]
+default = "#ebe5df,,"
+directory = ",#b34967,"
+markers = ",#1083b2,"
+
+[colors.locations]
+default = "#faf4ed,#575279,"
+title = "#d3c9c0,#333a40,"
+entry = ""
+group = ",#7f4abb,"
+markers = ",#1083b2,"
+match = ",#d9605a,"
+
+[colors.locations.selected]
+default = "#ebe5df,,"
+match = ",#d9605a,"
+markers = ",#1083b2,"
+entry = ""
+group = ",#7f4abb,"
+
+[colors.popup]
+default = "#ebe5df,#625c87,"

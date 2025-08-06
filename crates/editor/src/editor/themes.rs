@@ -147,7 +147,6 @@ fn default_theme() -> Theme {
     ins(PromptCompletionSelected, "#dddddd,#000000,");
 
     ins(Constant, ",#0000ff,");
-    ins(Number, ",#0000ff,");
     ins(String, ",#00ff00,");
 
     theme

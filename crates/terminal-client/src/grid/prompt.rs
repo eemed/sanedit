@@ -93,15 +93,32 @@ impl Drawable for CustomPrompt {
 
                 let max_opts = wsize.height.saturating_sub(1);
                 for (i, opt) in self.prompt.options.iter().take(max_opts).enumerate() {
-                    let field = if Some(i) == self.prompt.selected {
-                        ThemeField::PromptCompletionSelected
+                    let (field, dfield, mfield) = if Some(i) == self.prompt.selected {
+                        (
+                            ThemeField::PromptCompletionSelected,
+                            ThemeField::PromptCompletionSelectedDescription,
+                            ThemeField::PromptCompletionSelectedMatch,
+                        )
                     } else {
-                        ThemeField::PromptCompletion
+                        (
+                            ThemeField::PromptCompletion,
+                            ThemeField::PromptCompletionDescription,
+                            ThemeField::PromptCompletionMatch,
+                        )
                     };
                     let style = ctx.style(field);
-                    let mstyle = ctx.style(field);
-                    let line =
-                        format_option(&opt.text, style, &opt.matches, mstyle, wsize.width, true);
+                    let dstyle = ctx.style(dfield);
+                    let mstyle = ctx.style(mfield);
+                    let line = format_two_columns(
+                        &opt.text,
+                        &opt.description,
+                        style,
+                        &opt.matches,
+                        mstyle,
+                        dstyle,
+                        wsize.width,
+                        false
+                    );
 
                     grid.put_line(i + 1, line);
                 }
@@ -164,6 +181,7 @@ impl Drawable for CustomPrompt {
                         mstyle,
                         dstyle,
                         wsize.width,
+                        true,
                     );
 
                     grid.put_line(i, line);
@@ -262,20 +280,26 @@ pub(crate) fn format_two_columns(
     match_style: Style,
     description_style: Style,
     width: usize,
+    pad: bool,
 ) -> Vec<Cell> {
-    let mut result = vec![Cell::with_style(style)];
+    let mut result = vec![];
+    if pad {
+        result.push(Cell::with_style(style));
+    }
     let item = format_option(item, style, item_matches, match_style, width - 2, false);
     result.extend(item);
     result.push(Cell::with_style(style));
     let descr = into_cells_with_style(&description, description_style);
 
-    let mut len = result.len() + descr.len() + 1;
+    let mut len = result.len() + descr.len() + if pad { 1 } else { 0 };
     while len < width {
         result.push(Cell::with_style(style));
         len += 1;
     }
 
     result.extend(descr);
-    result.push(Cell::with_style(style));
+    if pad {
+        result.push(Cell::with_style(style));
+    }
     result
 }

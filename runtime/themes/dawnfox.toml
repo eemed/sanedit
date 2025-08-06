@@ -24,7 +24,7 @@ error = "#FF9E99,#8A3A5A,"
 constant = ",#1a6582,"
 string =  ",#0d8751,"
 keyword = ",#ca6e69,"
-operator =  ",#6F574E,"
+operator =  ",#836853,"
 type =  ",#2d81a3,"
 comment = ",#969896,"
 preproc = ",#7f4abb,"
@@ -63,18 +63,18 @@ match = ",#d9605a,"
 [colors.filetree]
 default = "#faf4ed,#575279,"
 markers = ",#2d81a3,"
-directory = ",#6F574E,"
+directory = ",#836853,"
 
 [colors.filetree.selected]
 default = "#ebe5df,,"
-directory = ",#6F4E37,"
+directory = ",#836853,"
 markers = ",#2d81a3,"
 
 [colors.locations]
 default = "#faf4ed,#575279,"
 title = "#d3c9c0,#333a40,"
 entry = ""
-group = ",#6F4E37,"
+group = ",#836853,"
 markers = ",#2d81a3,"
 match = ",#d9605a,"
 
@@ -83,7 +83,7 @@ default = "#ebe5df,,"
 match = ",#d9605a,"
 markers = ",#2d81a3,"
 entry = ""
-group = ",#6F4E37,"
+group = ",#836853,"
 
 [colors.popup]
 default = "#ebe5df,#625c87,"

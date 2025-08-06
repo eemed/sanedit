@@ -304,7 +304,7 @@ impl Editor {
     /// Open a file in window
     /// if the buffer already exists open that or create new if it doesnt
     pub fn open_file(&mut self, id: ClientId, path: impl AsRef<Path>) -> Result<()> {
-        let path = path.as_ref();
+        let path = path.as_ref().canonicalize()?;
         let path = if path.is_relative() {
             self.working_dir.join(path)
         } else {

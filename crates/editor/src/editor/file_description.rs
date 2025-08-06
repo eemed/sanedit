@@ -18,18 +18,18 @@ pub struct FileDescription {
 
 impl FileDescription {
     pub fn new(path: impl AsRef<Path>, config: &Config) -> io::Result<FileDescription> {
-        let path = path.as_ref();
+        let path = path.as_ref().canonicalize()?;
         if !path.exists() {
-            return Self::new_empty(path, config);
+            return Self::new_empty(&path, config);
         }
 
-        let file = fs::File::open(path)?;
+        let file = fs::File::open(&path)?;
         let metadata = file.metadata()?;
         let size = metadata.len();
 
         let is_big = config.editor.big_file_threshold_bytes <= size;
         let read_only = metadata.permissions().readonly();
-        let lang = Language::determine(path, &config.editor.language_detect);
+        let lang = Language::determine(&path, &config.editor.language_detect);
 
         let file_metadata = FileDescription {
             absolute_path: path.into(),

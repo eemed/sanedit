@@ -57,7 +57,6 @@ fn rayon_read(scope: &rayon::Scope, dir: PathBuf, ctx: ReadDirContext) -> io::Re
             return Ok(());
         }
 
-        // TODO symlink handling
         let path = entry.path();
         let metadata = entry.metadata()?;
         if metadata.is_dir() {
@@ -65,6 +64,12 @@ fn rayon_read(scope: &rayon::Scope, dir: PathBuf, ctx: ReadDirContext) -> io::Re
             scope.spawn(|s| rayon_spawn(s, path, ctx));
         } else if metadata.is_file() {
             let _ = ctx.osend.blocking_send(Choice::from_path(path, ctx.strip));
+        } else if metadata.is_symlink() {
+            if let Ok(cpath) = path.canonicalize() {
+                if cpath.is_file() {
+                    let _ = ctx.osend.blocking_send(Choice::from_path(path, ctx.strip));
+                }
+            }
         }
     }
 

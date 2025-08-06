@@ -14,6 +14,8 @@ use std::fs::File;
 use anyhow::{anyhow, bail};
 use sanedit_syntax::{Annotation, Capture, Captures, LanguageLoader, PTSliceSource, Parser};
 
+use crate::common::matcher::Choice;
+
 use super::Map;
 
 pub const SYNTAX_FILE: &str = "syntax.peg";
@@ -158,20 +160,28 @@ const HORIZON_BOTTOM: u64 = 1024 * 16;
 #[derive(Debug, Clone)]
 pub struct Syntax {
     parser: Arc<Parser>,
-    static_completions: Arc<Map<String, Vec<String>>>,
 }
 
 impl Syntax {
     pub fn from_path(peg: &Path, loader: SyntaxLoader) -> anyhow::Result<Syntax> {
-        const STATIC_COMPLETION_ANNOTATION: &str = "static-completion";
         let file = match File::open(peg) {
             Ok(f) => f,
             Err(e) => bail!("Failed to read PEG file {:?}: {e}", peg),
         };
 
         let parser = Parser::with_loader(&file, loader)?;
-        let mut static_completions: Map<String, Vec<String>> = Map::default();
-        for (name, compls) in parser
+        log::info!("Parsing syntax {peg:?} using {}", parser.kind());
+
+        Ok(Syntax {
+            parser: Arc::new(parser),
+        })
+    }
+
+    pub fn static_completions(&self) -> Arc<Vec<Arc<Choice>>> {
+        const STATIC_COMPLETION_ANNOTATION: &str = "static-completion";
+        let mut static_completions = vec![];
+        for (name, compls) in self
+            .parser
             .static_bytes_per_rule(|_, anns| {
                 anns.iter().any(|ann| match ann {
                     Annotation::Other(name, _) => name == STATIC_COMPLETION_ANNOTATION,
@@ -180,31 +190,13 @@ impl Syntax {
             })
             .into_iter()
         {
-            let mut all = vec![];
             for compl in compls {
                 if let Ok(compl) = String::from_utf8(compl) {
-                    all.push(compl)
+                    static_completions.push(Choice::from_text_with_description(compl, name.clone()));
                 }
             }
-
-            if !all.is_empty() {
-                static_completions.insert(name, all);
-            }
         }
-        // .map(|compl| String::from_utf8(compl))
-        // .filter_map(|compl| compl.ok())
-        // .collect();
-
-        log::info!("Parsing syntax {peg:?} using {}", parser.kind());
-
-        Ok(Syntax {
-            parser: Arc::new(parser),
-            static_completions: Arc::new(static_completions),
-        })
-    }
-
-    pub fn static_completions(&self) -> Arc<Map<String, Vec<String>>> {
-        self.static_completions.clone()
+        Arc::new(static_completions)
     }
 
     pub fn get_parser(&self) -> &Parser {

@@ -56,18 +56,8 @@ fn complete_from_syntax(editor: &mut Editor, id: ClientId) -> ActionResult {
         .as_ref()
         .map(|lang| editor.syntaxes.get(&lang).ok())
         .flatten()
-        .map(|syntax| syntax.static_completions())
-        .map(|compls| {
-            compls
-                .iter()
-                .map(|(name, compl)| {
-                    compl.into_iter().map(|compl| {
-                        Choice::from_text_with_description(compl.clone(), name.clone())
-                    })
-                })
-                .flatten()
-                .collect::<Vec<Arc<Choice>>>()
-        })
+        .map(|syntax| Arc::into_inner(syntax.static_completions()))
+        .flatten()
         .unwrap_or_default();
 
     let opts: Vec<Arc<Choice>> = dyn_compls

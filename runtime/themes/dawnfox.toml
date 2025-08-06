@@ -27,7 +27,7 @@ keyword = ",#ca6e69,"
 operator =  ",#836853,"
 type =  ",#2d81a3,"
 comment = ",#969896,"
-preproc = ",#7f4abb,"
+preproc = ",#9362c4,"
 identifier = ",#a5576d,"
 
 [colors.window.completion]

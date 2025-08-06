@@ -195,16 +195,17 @@ fn remove_primary_cursor(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Cursors: Make next cursor primary")]
 fn make_next_cursor_primary(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, buf) = editor.win_buf_mut(id);
     win.cursors.primary_next();
-
+    win.view_to_around_cursor_zone(buf, Zone::Middle);
     ActionResult::Ok
 }
 
 #[action("Cursors: Make previous cursor primary")]
 fn make_prev_cursor_primary(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, buf) = editor.win_buf_mut(id);
     win.cursors.primary_prev();
+    win.view_to_around_cursor_zone(buf, Zone::Middle);
     ActionResult::Ok
 }
 
@@ -224,6 +225,7 @@ fn remove_cursor_selections(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = editor.win_buf_mut(id);
     let res = match win.remove_cursor_selections(buf) {
         Ok(true) => {
+            win.view_to_around_cursor_zone(buf, Zone::Middle);
             let hook = Hook::BufChanged(buf.id);
             run(editor, id, hook);
             ActionResult::Ok

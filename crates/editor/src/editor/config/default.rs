@@ -75,8 +75,7 @@ impl EditorConfig {
 impl Default for EditorConfig {
     fn default() -> Self {
         EditorConfig {
-            // big_file_threshold_bytes: 100 * 1024 * 1024, // 100MB
-            big_file_threshold_bytes: 1024 * 1024, // 1MB
+            big_file_threshold_bytes: 100 * 1024 * 1024, // 100MB
             ignore_directories: [".git", "target", "node_modules"]
                 .into_iter()
                 .map(String::from)

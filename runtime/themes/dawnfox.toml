@@ -16,19 +16,19 @@ default = "#70C99B,#575279,"
 selection = "#d0d8d8,#575279,"
 
 [colors.window.view]
-hint = "#aed3ff,,"
-info = "#aed3ff,,"
-warn = "#fdffa2,,"
-error = "#f39eb2,,"
+hint = "#D1E5F4,#00576B,"
+info = "#D1E5F4,#00576B,"
+warn = "#FFD8B2,#8C4C1F,"
+error = "#FF9E99,#8A3A5A,"
 
 constant = ",#1a6582,"
 string =  ",#0d8751,"
-keyword = ",#d9605a,"
-operator =  ",#2894a4,"
-type =  ",#1083b2,"
+keyword = ",#ca6e69,"
+operator =  ",#6F574E,"
+type =  ",#2d81a3,"
 comment = ",#969896,"
 preproc = ",#7f4abb,"
-identifier = ",#b34967,"
+identifier = ",#a5576d,"
 
 [colors.window.completion]
 default = "#ebe5df,#575279,"
@@ -62,28 +62,28 @@ match = ",#d9605a,"
 
 [colors.filetree]
 default = "#faf4ed,#575279,"
-markers = ",#1083b2,"
-directory = ",#b34967,"
+markers = ",#2d81a3,"
+directory = ",#6F574E,"
 
 [colors.filetree.selected]
 default = "#ebe5df,,"
-directory = ",#b34967,"
-markers = ",#1083b2,"
+directory = ",#6F4E37,"
+markers = ",#2d81a3,"
 
 [colors.locations]
 default = "#faf4ed,#575279,"
 title = "#d3c9c0,#333a40,"
 entry = ""
-group = ",#7f4abb,"
-markers = ",#1083b2,"
+group = ",#6F4E37,"
+markers = ",#2d81a3,"
 match = ",#d9605a,"
 
 [colors.locations.selected]
 default = "#ebe5df,,"
 match = ",#d9605a,"
-markers = ",#1083b2,"
+markers = ",#2d81a3,"
 entry = ""
-group = ",#7f4abb,"
+group = ",#6F4E37,"
 
 [colors.popup]
 default = "#ebe5df,#625c87,"

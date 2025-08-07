@@ -18,7 +18,7 @@ pub struct FileDescription {
 
 impl FileDescription {
     pub fn new(path: impl AsRef<Path>, config: &Config) -> io::Result<FileDescription> {
-        let path = path.as_ref().canonicalize()?;
+        let path = path.as_ref().canonicalize().unwrap_or_else(|_| path.as_ref().into());
         if !path.exists() {
             return Self::new_empty(&path, config);
         }

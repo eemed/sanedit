@@ -1,26 +1,30 @@
 document = separated*;
-separated = comment / style_tag / script_tag / macro / tag / alpha / ws+ / . ;
+separated = comment / style_tag / script_tag / macro / tag / string / alpha / ws+ / . ;
 
 WHITESPACE = ws;
 ws = [ \t] / nl;
 nl = "\n" / "\r\n";
 alpha = [a..zA..Z0..9_-.]+;
+@show @highlight(warn)
+todo = "TODO" / "XXX";
 
 @show @highlight
-comment = "<!--" (!"-->" .)* "-->";
+comment = "<!--" (!"-->" (todo / .))* "-->";
 
 @show @highlight(preproc)
 macro = "<!" (!">" .)* ">";
 
-tag = tag_open (!tag_close (separated / .))* tag_close / one_tag / tag_no_end;
+tag = tag_no_end / tag_open (!tag_close (separated / .))* tag_close / one_tag ;
 
-style_tag = "<" style ">" style_content "</" style ">";
+@whitespaced
+style_tag = "<" style attr* ">" style_content "</" style ">";
 @inject(css)
 style_content = (!("</" style ">") .)*;
 @show @highlight(identifier)
 style = "style";
 
-script_tag = "<" script ">" script_content "</" script ">";
+@whitespaced
+script_tag = "<" script attr* ">" script_content "</" script ">";
 @inject(javascript)
 script_content = (!("</" script ">") .)*;
 @show @highlight(identifier)
@@ -46,10 +50,7 @@ sstring = "'" (escape  / [^'])* "'";
 escape = "\\" .;
 
 @show @highlight(identifier)
-no_end =
-    "meta" /
-    "link"
-    ;
+no_end = "meta" / "link";
 
 @show @highlight(identifier)
 tag_name =
@@ -101,11 +102,13 @@ tag_name =
     "nobreak" /
     "nav" /
     "meter" /
+    "meta" /
     "menuitem" /
     "marquee" /
     "mark" /
     "main" /
     "list" /
+    "link" /
     "legend" /
     "label" /
     "keygen" /
@@ -118,6 +121,12 @@ tag_name =
     "Iframes" /
     "html" /
     "hr" /
+    "h1" /
+    "h2" /
+    "h3" /
+    "h4" /
+    "h5" /
+    "h6" /
     "hgroup" /
     "heading" /
     "header" /

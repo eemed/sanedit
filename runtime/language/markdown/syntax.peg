@@ -1,4 +1,4 @@
-document = (title / list_op / link / code_fence / backtick / (!WHITESPACE .) WHITESPACE / .)*;
+document = title? (nl title / list_op / link / code_fence / backtick / (!WHITESPACE .) WHITESPACE / .)*;
 
 WHITESPACE = [ \t];
 ws = WHITESPACE*;

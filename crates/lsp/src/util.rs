@@ -9,9 +9,20 @@ use sanedit_core::{BufferRange, Range, Severity};
 use sanedit_utils::either::Either;
 use strum_macros::AsRefStr;
 
+/// Create a file path uri from fs path
 pub fn path_to_uri(path: &Path) -> lsp_types::Uri {
     let uri = format!("file://{}", path.to_string_lossy());
     lsp_types::Uri::from_str(&uri).unwrap()
+}
+
+/// Decode uri path component to usable filepath
+pub fn uri_to_path(uri: &lsp_types::Uri) -> Option<PathBuf> {
+    uri.path()
+        .as_estr()
+        .decode()
+        .into_string()
+        .map(|path| PathBuf::from(path.as_ref()))
+        .ok()
 }
 
 #[derive(Debug, Clone)]
@@ -31,9 +42,10 @@ impl From<lsp_types::WorkspaceEdit> for WorkspaceEdit {
 
         if let Some(changes) = changes {
             for (uri, edits) in changes.into_iter() {
-                let path = PathBuf::from(uri.path().as_str());
-                let edits = edits.into_iter().map(TextEdit::from).collect();
-                file_edits.push(FileEdit { path, edits });
+                if let Some(path) = uri_to_path(&uri) {
+                    let edits = edits.into_iter().map(TextEdit::from).collect();
+                    file_edits.push(FileEdit { path, edits });
+                }
             }
         }
 
@@ -41,7 +53,9 @@ impl From<lsp_types::WorkspaceEdit> for WorkspaceEdit {
             match changes {
                 lsp_types::DocumentChanges::Edits(edits) => {
                     for edit in edits {
-                        file_edits.push(edit.into());
+                        if let Ok(edit) = edit.try_into() {
+                            file_edits.push(edit);
+                        }
                     }
                 }
                 lsp_types::DocumentChanges::Operations(ops) => {
@@ -49,7 +63,9 @@ impl From<lsp_types::WorkspaceEdit> for WorkspaceEdit {
                         match op {
                             lsp_types::DocumentChangeOperation::Op(_op) => todo!(),
                             lsp_types::DocumentChangeOperation::Edit(edit) => {
-                                file_edits.push(edit.into())
+                                if let Ok(edit) = edit.try_into() {
+                                    file_edits.push(edit);
+                                }
                             }
                         }
                     }
@@ -67,20 +83,25 @@ pub struct FileEdit {
     pub edits: Vec<TextEdit>,
 }
 
-impl From<lsp_types::TextDocumentEdit> for FileEdit {
-    fn from(value: lsp_types::TextDocumentEdit) -> Self {
-        let path = PathBuf::from(value.text_document.uri.path().as_str());
-        let edits = value
-            .edits
-            .into_iter()
-            .map(|edit| match edit {
-                lsp_types::OneOf::Left(a) => a,
-                lsp_types::OneOf::Right(b) => b.text_edit,
-            })
-            .map(TextEdit::from)
-            .collect();
+impl TryFrom<lsp_types::TextDocumentEdit> for FileEdit {
+    type Error = &'static str;
 
-        FileEdit { path, edits }
+    fn try_from(value: lsp_types::TextDocumentEdit) -> Result<Self, Self::Error> {
+        if let Some(path) = uri_to_path(&value.text_document.uri) {
+            let edits = value
+                .edits
+                .into_iter()
+                .map(|edit| match edit {
+                    lsp_types::OneOf::Left(a) => a,
+                    lsp_types::OneOf::Right(b) => b.text_edit,
+                })
+                .map(TextEdit::from)
+                .collect();
+
+            Ok(FileEdit { path, edits })
+        } else {
+            Err("Invalid path")
+        }
     }
 }
 

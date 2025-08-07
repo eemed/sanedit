@@ -442,6 +442,8 @@ impl Window {
         self.visited_buffers.insert(old, odata);
         self.last_buffer = Some(old);
         self.bid = new;
+
+        self.view.syntax = ViewSyntax::default();
     }
 
     pub fn view(&self) -> &View {

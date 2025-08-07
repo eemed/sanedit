@@ -9,7 +9,8 @@ use crate::process::{ProcessHandler, ServerRequest};
 use crate::request::{Notification, RequestKind, ToLSP};
 use crate::response::NotificationResult;
 use crate::util::{
-    path_to_uri, CodeAction, CompletionItem, CompletionItemKind, FileEdit, Position, Symbol, Text,
+    path_to_uri, uri_to_path, CodeAction, CompletionItem, CompletionItemKind, FileEdit, Position,
+    Symbol, Text,
 };
 use crate::{
     PositionEncoding, PositionRange, Request, RequestResult, Response, Signatures, TextDiagnostic,
@@ -209,21 +210,22 @@ impl LSPClient {
             lsp_types::notification::PublishDiagnostics::METHOD => {
                 let params =
                     serde_json::from_value::<lsp_types::PublishDiagnosticsParams>(notif.params)?;
-                let path = PathBuf::from(params.uri.path().as_str());
-                let diagnostics = NotificationResult::Diagnostics {
-                    path,
-                    version: params.version,
-                    diagnostics: params
-                        .diagnostics
-                        .into_iter()
-                        .map(TextDiagnostic::from)
-                        .filter(|diag| !diag.description.is_empty())
-                        .collect(),
-                };
+                if let Some(path) = uri_to_path(&params.uri) {
+                    let diagnostics = NotificationResult::Diagnostics {
+                        path,
+                        version: params.version,
+                        diagnostics: params
+                            .diagnostics
+                            .into_iter()
+                            .map(TextDiagnostic::from)
+                            .filter(|diag| !diag.description.is_empty())
+                            .collect(),
+                    };
 
-                self.sender
-                    .send(Response::Notification(diagnostics))
-                    .await?;
+                    self.sender
+                        .send(Response::Notification(diagnostics))
+                        .await?;
+                }
             }
             lsp_types::notification::Progress::METHOD => {}
             lsp_types::notification::ShowMessage::METHOD => {}
@@ -390,25 +392,26 @@ impl Handler {
                 match response {
                     lsp_types::WorkspaceSymbolResponse::Flat(symbols) => {
                         for symbol in symbols {
-                            let path = PathBuf::from(symbol.location.uri.path().as_str());
-                            let entry = result_symbols.entry(path);
-                            let value = entry.or_default();
-                            value.push(Symbol::from(symbol));
+                            if let Some(path) = uri_to_path(&symbol.location.uri) {
+                                let entry = result_symbols.entry(path);
+                                let value = entry.or_default();
+                                value.push(Symbol::from(symbol));
+                            }
                         }
                     }
                     lsp_types::WorkspaceSymbolResponse::Nested(symbols) => {
                         for symbol in symbols {
-                            let path = {
+                            if let Some(path) = {
                                 let uri = match &symbol.location {
                                     lsp_types::OneOf::Left(l) => &l.uri,
                                     lsp_types::OneOf::Right(r) => &r.uri,
                                 };
-                                PathBuf::from(uri.path().as_str())
-                            };
-
-                            let entry = result_symbols.entry(path);
-                            let value = entry.or_default();
-                            value.push(Symbol::from(symbol));
+                                uri_to_path(&uri)
+                            } {
+                                let entry = result_symbols.entry(path);
+                                let value = entry.or_default();
+                                value.push(Symbol::from(symbol));
+                            }
                         }
                         // let mut stack = vec![];
                         // stack.extend(symbols);
@@ -811,21 +814,35 @@ impl Handler {
             lsp_types::GotoDefinitionResponse::Scalar(_) => todo!("Scalar goto def"),
             lsp_types::GotoDefinitionResponse::Array(locations) => {
                 let location = locations.first().ok_or(LSPError::EmptyResponse)?;
-                path = PathBuf::from(location.uri.path().as_str());
+                path = uri_to_path(&location.uri);
                 position = location.range.start;
             }
             lsp_types::GotoDefinitionResponse::Link(_) => todo!("Link gotodef"),
         }
 
-        self.response
-            .send(Response::Request {
-                id,
-                result: RequestResult::GotoDefinition {
-                    path,
-                    position: position.into(),
-                },
-            })
-            .await?;
+        match path {
+            Some(path) => {
+                self.response
+                    .send(Response::Request {
+                        id,
+                        result: RequestResult::GotoDefinition {
+                            path,
+                            position: position.into(),
+                        },
+                    })
+                    .await?;
+            }
+            None => {
+                self.response
+                    .send(Response::Request {
+                        id,
+                        result: RequestResult::Error {
+                            msg: format!("Invalid path"),
+                        },
+                    })
+                    .await?;
+            }
+        }
 
         Ok(())
     }
@@ -960,10 +977,11 @@ impl Handler {
         let locations = response.ok_or(LSPError::EmptyResponse)?;
         let mut references = BTreeMap::new();
         for loc in locations {
-            let path = PathBuf::from(loc.uri.path().as_str());
-            let entry = references.entry(path);
-            let value: &mut Vec<PositionRange> = entry.or_default();
-            value.push(loc.range.into());
+            if let Some(path) = uri_to_path(&loc.uri) {
+                let entry = references.entry(path);
+                let value: &mut Vec<PositionRange> = entry.or_default();
+                value.push(loc.range.into());
+            }
         }
 
         self.response

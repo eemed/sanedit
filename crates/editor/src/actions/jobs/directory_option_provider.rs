@@ -9,7 +9,7 @@ use tokio::{
     sync::{mpsc::Sender, oneshot},
 };
 
-use crate::common::matcher::Choice;
+use crate::{common::matcher::Choice, editor::ignore::Ignore};
 
 use super::OptionProvider;
 
@@ -18,28 +18,28 @@ struct ReadDirContext {
     osend: Sender<Arc<Choice>>,
     strip: usize,
     kill: Kill,
-    ignore: Arc<Vec<String>>,
+    ignore: Ignore,
     recurse: bool,
 }
 
 #[derive(Debug)]
 pub(crate) struct DirectoryOptionProvider {
     path: PathBuf,
-    ignore: Arc<Vec<String>>,
+    ignore: Ignore,
     recurse: bool,
 }
 
 #[allow(dead_code)]
 impl DirectoryOptionProvider {
-    pub fn new(path: &Path, ignore: &[String]) -> DirectoryOptionProvider {
+    pub fn new(path: &Path, ignore: Ignore) -> DirectoryOptionProvider {
         DirectoryOptionProvider {
             path: path.to_owned(),
-            ignore: Arc::new(ignore.into()),
+            ignore,
             recurse: true,
         }
     }
 
-    pub fn new_non_recursive(path: &Path, ignore: Arc<Vec<String>>) -> DirectoryOptionProvider {
+    pub fn new_non_recursive(path: &Path, ignore: Ignore) -> DirectoryOptionProvider {
         DirectoryOptionProvider {
             path: path.to_owned(),
             ignore,
@@ -74,12 +74,8 @@ fn rayon_read(scope: &rayon::Scope, dir: PathBuf, ctx: ReadDirContext) -> io::Re
             continue;
         }
 
-        if let Some(fname) = dir.file_name().map(|fname| fname.to_string_lossy()) {
-            for ig in ctx.ignore.iter() {
-                if ig.as_str() == fname {
-                    continue;
-                }
-            }
+        if ctx.ignore.is_match(&path) {
+            continue;
         }
 
         if ctx.recurse {
@@ -95,7 +91,7 @@ fn rayon_read(scope: &rayon::Scope, dir: PathBuf, ctx: ReadDirContext) -> io::Re
 async fn read_directory_recursive(
     dir: PathBuf,
     osend: Sender<Arc<Choice>>,
-    ignore: Arc<Vec<String>>,
+    ignore: Ignore,
     kill: Kill,
     recurse: bool,
 ) {

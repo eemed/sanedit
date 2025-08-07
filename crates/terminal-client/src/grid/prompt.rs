@@ -117,7 +117,7 @@ impl Drawable for CustomPrompt {
                         mstyle,
                         dstyle,
                         wsize.width,
-                        false
+                        false,
                     );
 
                     grid.put_line(i + 1, line);

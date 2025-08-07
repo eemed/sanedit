@@ -1,4 +1,4 @@
-use std::{path::Path, sync::Arc};
+use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
@@ -9,9 +9,11 @@ const PROJECT_CONFIG: &str = "sanedit-project.toml";
 #[derive(Debug, Serialize, Deserialize, Default)]
 #[serde(default)]
 pub struct ProjectConfig {
+    #[serde(skip)]
+    pub(crate) project_file_path: Option<PathBuf>,
     pub(crate) run_command: String,
     pub(crate) build_command: String,
-    pub(crate) ignore_directories: Arc<Vec<String>>,
+    pub(crate) ignore: Vec<String>,
 }
 
 impl ProjectConfig {
@@ -34,7 +36,10 @@ impl ProjectConfig {
         };
 
         match Self::try_new(&path) {
-            Ok(config) => config,
+            Ok(mut config) => {
+                config.project_file_path = path.into();
+                config
+            }
             Err(e) => {
                 log::warn!("Failed to project configuration, using default instead: {e}");
                 ProjectConfig::default()

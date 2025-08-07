@@ -10,7 +10,7 @@ use tokio::{
 
 use sanedit_server::{BoxFuture, Kill};
 
-use crate::common::matcher::Choice;
+use crate::{common::matcher::Choice, editor::ignore::Ignore};
 
 use super::OptionProvider;
 
@@ -19,17 +19,17 @@ struct ReadDirContext {
     osend: Sender<Arc<Choice>>,
     strip: usize,
     kill: Kill,
-    ignore: Arc<Vec<String>>,
+    ignore: Ignore,
 }
 
 #[derive(Debug, Clone)]
 pub(crate) struct FileOptionProvider {
     path: PathBuf,
-    ignore: Arc<Vec<String>>,
+    ignore: Ignore,
 }
 
 impl FileOptionProvider {
-    pub fn new(path: &Path, ignore: Arc<Vec<String>>) -> FileOptionProvider {
+    pub fn new(path: &Path, ignore: Ignore) -> FileOptionProvider {
         FileOptionProvider {
             path: path.to_owned(),
             ignore,
@@ -58,10 +58,16 @@ fn rayon_read(scope: &rayon::Scope, dir: PathBuf, ctx: ReadDirContext) -> io::Re
         }
 
         let path = entry.path();
+        if ctx.ignore.is_match(&path) {
+            continue;
+        }
+
         let metadata = entry.metadata()?;
         if metadata.is_dir() {
             let ctx = ctx.clone();
-            scope.spawn(|s| rayon_spawn(s, path, ctx));
+            scope.spawn(|s| {
+                let _ = rayon_read(s, path, ctx);
+            });
         } else if metadata.is_file() {
             let _ = ctx.osend.blocking_send(Choice::from_path(path, ctx.strip));
         } else if metadata.is_symlink() {
@@ -76,22 +82,10 @@ fn rayon_read(scope: &rayon::Scope, dir: PathBuf, ctx: ReadDirContext) -> io::Re
     Ok(())
 }
 
-fn rayon_spawn(scope: &rayon::Scope, dir: PathBuf, ctx: ReadDirContext) {
-    if let Some(fname) = dir.file_name().map(|fname| fname.to_string_lossy()) {
-        for ig in ctx.ignore.iter() {
-            if ig.as_str() == fname {
-                return;
-            }
-        }
-    }
-
-    let _ = rayon_read(scope, dir, ctx);
-}
-
 async fn read_directory_recursive(
     dir: PathBuf,
     osend: Sender<Arc<Choice>>,
-    ignore: Arc<Vec<String>>,
+    ignore: Ignore,
     kill: Kill,
 ) {
     let strip = {

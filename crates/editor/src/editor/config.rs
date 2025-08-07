@@ -247,8 +247,8 @@ pub(crate) struct EditorConfig {
     /// Large file threshold in bytes
     pub big_file_threshold_bytes: u64,
 
-    /// Directories to ignore, when opening files etc.
-    pub ignore_directories: Arc<Vec<String>>,
+    /// Glob patterns to ignore, when opening files etc.
+    pub ignore: Vec<String>,
 
     /// Default shell command
     pub shell: String,

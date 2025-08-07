@@ -192,7 +192,8 @@ impl Syntax {
         {
             for compl in compls {
                 if let Ok(compl) = String::from_utf8(compl) {
-                    static_completions.push(Choice::from_text_with_description(compl, name.clone()));
+                    static_completions
+                        .push(Choice::from_text_with_description(compl, name.clone()));
                 }
             }
         }

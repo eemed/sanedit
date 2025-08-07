@@ -77,6 +77,7 @@ impl Glob {
         let captures: SortedVec<Capture> = parser.parse(pattern)?.into();
         let mut rules: Vec<RuleInfo> = vec![];
         let mut seq: Vec<Rule> = vec![];
+        let mut last_was_rec_wildcard = false;
 
         let mut iter = captures.iter().peekable();
         while let Some(cap) = iter.next() {
@@ -248,13 +249,25 @@ impl Glob {
                     rules.push(wcard);
                 }
                 "any" => seq.push(Rule::ByteAny),
-                "separator" => seq.push(Rule::ByteSequence("/".into())),
+                "separator" => {
+                    // Recursive wildcard a/**/b matches also a/b, we need to possibly eat the /
+                    if last_was_rec_wildcard {
+                        seq.push(Rule::Optional(Rule::ByteSequence("/".into()).into()));
+                    } else {
+                        seq.push(Rule::ByteSequence("/".into()));
+                    }
+                }
                 _ => {}
             }
+
+            last_was_rec_wildcard = label == "recursive_wildcard";
         }
 
-        // Assert end
-        seq.push(Rule::NotFollowedBy(Rule::ByteAny.into()));
+        // Assert end or separator
+        seq.push(Rule::Choice(vec![
+            Rule::ByteSequence("/".into()),
+            Rule::NotFollowedBy(Rule::ByteAny.into()),
+        ]));
 
         let info = RuleInfo {
             top: false,
@@ -294,6 +307,22 @@ mod test {
         assert_eq!(glob.is_match(b".hidden"), false);
         assert_eq!(glob.is_match(b"path/to/glob.rs"), true);
         assert_eq!(glob.is_match(b"text/lorem.txt"), false);
+    }
+
+    #[test]
+    fn glob_directory() {
+        let glob = Glob::new("**/node_modules").unwrap();
+        assert_eq!(glob.is_match(b"/root/user/node_modules/library"), true);
+        assert_eq!(glob.is_match(b"/root/user/node_modules"), true);
+        assert_eq!(glob.is_match(b"text/lorem.txt"), false);
+    }
+
+    #[test]
+    fn glob_zero_dirs() {
+        let glob = Glob::new("a/**/b").unwrap();
+        assert_eq!(glob.is_match(b"a/b"), true);
+        assert_eq!(glob.is_match(b"a/x/y/b"), true);
+        assert_eq!(glob.is_match(b"b/x/a"), false);
     }
 
     #[test]

@@ -5,6 +5,7 @@ pub(crate) mod config;
 pub(crate) mod file_description;
 pub(crate) mod filetree;
 pub(crate) mod hooks;
+pub(crate) mod ignore;
 pub(crate) mod job_broker;
 pub(crate) mod keymap;
 pub(crate) mod language;
@@ -19,6 +20,7 @@ use caches::Caches;
 use config::ProjectConfig;
 use crossbeam::channel::Sender;
 use file_description::FileDescription;
+use ignore::Ignore;
 use keymap::KeymapResult;
 use keymap::Layer;
 use language::Languages;
@@ -98,6 +100,7 @@ pub(crate) struct Editor {
     is_running: bool,
     working_dir: PathBuf,
 
+    pub ignore: Ignore,
     pub windows: Windows,
     pub buffers: Buffers,
     pub _tokio_runtime: Runtime,
@@ -134,6 +137,8 @@ impl Editor {
             .unwrap_or_default();
         let config = Config::new(&config_dir.config(), &working_dir);
         let caches = Caches::new(&config);
+        let project_config = ProjectConfig::new(&working_dir);
+        let ignore = Ignore::new(&working_dir, &config, &project_config);
 
         Editor {
             _tokio_runtime: runtime,
@@ -150,7 +155,7 @@ impl Editor {
             themes: Themes::new(config_dir.theme_dir()),
             config_dir,
             filetree: Filetree::new(&working_dir),
-            project_config: ProjectConfig::new(&working_dir),
+            project_config,
             working_dir,
             histories: Default::default(),
             clipboard: DefaultClipboard::new(),
@@ -158,12 +163,14 @@ impl Editor {
             keymaps: Keymaps::from_config(&config),
             config,
             caches,
+            ignore,
         }
     }
 
     fn reload_config(&mut self) {
         self.project_config = ProjectConfig::new(&self.working_dir);
         self.config = Config::new(&self.config_dir.config(), &self.working_dir);
+        self.ignore = Ignore::new(&self.working_dir, &self.config, &self.project_config);
         self.caches = Caches::new(&self.config);
         self.keymaps = Keymaps::from_config(&self.config);
     }
@@ -304,7 +311,10 @@ impl Editor {
     /// Open a file in window
     /// if the buffer already exists open that or create new if it doesnt
     pub fn open_file(&mut self, id: ClientId, path: impl AsRef<Path>) -> Result<()> {
-        let path = path.as_ref().canonicalize().unwrap_or_else(|_| path.as_ref().into());
+        let path = path
+            .as_ref()
+            .canonicalize()
+            .unwrap_or_else(|_| path.as_ref().into());
         let path = if path.is_relative() {
             self.working_dir.join(path)
         } else {
@@ -881,14 +891,6 @@ impl Editor {
 
         result.extend(langconfig.snippets_as_choices());
         result
-    }
-
-    pub fn ignore_directories(&self) -> Arc<Vec<String>> {
-        if !self.project_config.ignore_directories.is_empty() {
-            return self.project_config.ignore_directories.clone();
-        }
-
-        self.config.editor.ignore_directories.clone()
     }
 }
 

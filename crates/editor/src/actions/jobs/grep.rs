@@ -14,6 +14,7 @@ use tokio::sync::mpsc::{channel, Receiver, Sender};
 use crate::actions::jobs::{OptionProvider, CHANNEL_SIZE};
 use crate::actions::locations;
 use crate::common::matcher::Choice;
+use crate::editor::ignore::Ignore;
 use crate::editor::{job_broker::KeepInTouch, Editor};
 use sanedit_server::{ClientId, Job, JobContext, JobResult, Kill};
 
@@ -31,7 +32,7 @@ impl Grep {
     pub fn new(
         pattern: &str,
         path: &Path,
-        ignore: Arc<Vec<String>>,
+        ignore: Ignore,
         buffers: FxHashMap<PathBuf, PieceTreeView>,
         id: ClientId,
     ) -> Grep {

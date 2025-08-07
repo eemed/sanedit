@@ -248,7 +248,15 @@ impl Glob {
                     };
                     rules.push(wcard);
                 }
-                "any" => seq.push(Rule::ByteAny),
+                "any" => {
+                    seq.push(
+                        Rule::Choice(vec![
+                            Rule::ByteRange(u8::MIN, '/' as u8 - 1),
+                            Rule::ByteRange('/' as u8 + 1, u8::MAX),
+                        ])
+                        .into(),
+                    );
+                }
                 "separator" => {
                     // Recursive wildcard a/**/b matches also a/b, we need to possibly eat the /
                     if last_was_rec_wildcard {
@@ -349,6 +357,14 @@ mod test {
         assert_eq!(glob.is_match(b"Cat"), true);
         assert_eq!(glob.is_match(b"Bat"), true);
         assert_eq!(glob.is_match(b"ccat"), false);
+    }
+
+    #[test]
+    fn glob_question_no_separator() {
+        let glob = Glob::new("foo?ar").unwrap();
+        assert_eq!(glob.is_match(b"foobar"), true);
+        assert_eq!(glob.is_match(b"foocar"), true);
+        assert_eq!(glob.is_match(b"foo/ar"), false);
     }
 
     #[test]

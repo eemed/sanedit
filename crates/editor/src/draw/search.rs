@@ -28,6 +28,7 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> Option<redraw::Redraw> {
     }
 
     ctx.state.last_prompt = Some(LastPrompt {
+        input_hash: Hash::new(&""),
         hash,
         cursor: selected,
         time: Instant::now(),

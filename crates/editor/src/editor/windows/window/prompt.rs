@@ -425,11 +425,13 @@ impl Prompt {
     }
 
     pub fn remove_grapheme_before_cursor(&mut self) {
-        self.discard_until_cleared = true;
         let end = self.cursor;
         self.prev_grapheme();
         let start = self.cursor;
-        self.input.replace_range(start..end, "");
+        if start != end {
+            self.discard_until_cleared = true;
+            self.input.replace_range(start..end, "");
+        }
     }
 
     pub fn clear_choices(&mut self) {

@@ -242,14 +242,7 @@ pub(crate) async fn match_options(
             let mut last_sent = Instant::now();
 
             loop {
-                let result = if matches.is_empty() {
-                    let received = recv.recv().await;
-                    Ok(received)
-                } else {
-                    timeout(limit, recv.recv()).await
-                };
-
-                match result {
+                match timeout(limit, recv.recv()).await {
                     Ok(Some(res)) => {
                         matches.push(res);
 
@@ -278,7 +271,7 @@ pub(crate) async fn match_options(
                         last_sent = Instant::now();
                         let opts = mem::take(&mut matches);
 
-                        if !opts.is_empty()
+                        if (!opts.is_empty() || clear_old)
                             && msend
                                 .send(MatchedOptions::Options {
                                     matched: opts,

@@ -539,7 +539,6 @@ impl Editor {
         log::info!("KeyEvent '{event}'");
         use sanedit_messages::key::Key::*;
 
-        // Add key to buffer
         let (win, _buf) = self.win_buf_mut(id);
         if let Some(game) = win.game.as_mut() {
             if game.handle_input(event) {
@@ -549,6 +548,7 @@ impl Editor {
             return;
         }
 
+        // Add key to buffer
         win.push_key(event);
         run(self, id, Hook::KeyPressedPre);
 

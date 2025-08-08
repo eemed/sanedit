@@ -14,6 +14,7 @@ const MIN_DELAY_BETWEEN_DRAWS: Duration = Duration::from_millis(30);
 
 #[derive(Debug)]
 pub(crate) struct LastPrompt {
+    pub(crate) input_hash: Hash,
     pub(crate) hash: Hash,
     pub(crate) cursor: Option<usize>,
     pub(crate) time: Instant,
@@ -23,32 +24,38 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> Option<Redraw> {
     if ctx.focus_changed_from(Focus::Prompt) {
         ctx.state.prompt_scroll_offset = 0;
         ctx.state.last_prompt = None;
-        // ctx.state.last_prompt_draw = None;
-        // ctx.state.last_prompt_cursor = None;
         return Some(Redraw::Prompt(Component::Close));
     }
 
     let in_focus = ctx.editor.win.focus() == Focus::Prompt;
     if !in_focus {
         ctx.state.last_prompt = None;
-        // ctx.state.last_prompt_draw = None;
-        // ctx.state.last_prompt_cursor = None;
         return None;
     }
 
     // Basically:
+    // If input event => draw
+    // If prompt is discarding => no draw
     // If options are not loading => draw
     // If time elapsed => draw
-    // If prompt is discarding => never draw
-    let draw = ctx
+    let input_hash = Hash::new(&ctx.editor.win.prompt.input());
+    let is_input_event = ctx
         .state
         .last_prompt
         .as_ref()
-        .map(|lp| lp.time.elapsed() > MIN_DELAY_BETWEEN_DRAWS)
-        .unwrap_or(true)
-        || !ctx.editor.win.prompt.is_options_loading();
-    if !draw || ctx.editor.win.prompt.is_discarding() {
-        return None;
+        .map(|lp| lp.input_hash != input_hash)
+        .unwrap_or(true);
+    if !is_input_event {
+        let draw = ctx
+            .state
+            .last_prompt
+            .as_ref()
+            .map(|lp| lp.time.elapsed() > MIN_DELAY_BETWEEN_DRAWS)
+            .unwrap_or(true)
+            || !ctx.editor.win.prompt.is_options_loading();
+        if !draw || ctx.editor.win.prompt.is_discarding() {
+            return None;
+        }
     }
 
     let mut prompt = draw_impl(ctx);
@@ -67,6 +74,7 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> Option<Redraw> {
     }
 
     ctx.state.last_prompt = Some(LastPrompt {
+        input_hash,
         hash,
         cursor: selected,
         time: Instant::now(),

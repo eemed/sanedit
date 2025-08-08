@@ -16,8 +16,8 @@ default = "#70C99B,#575279,"
 selection = "#d0d8d8,#575279,"
 
 [colors.window.view]
-hint = "#D1E5F4,#00576B,"
-info = "#D1E5F4,#00576B,"
+hint = "#b7d8eb,#00576B,"
+info = "#b7d8eb,#00576B,"
 warn = "#FFD8B2,#8C4C1F,"
 error = "#FF9E99,#8A3A5A,"
 

@@ -1,8 +1,9 @@
 use std::{
     path::{Path, PathBuf},
-    sync::Arc,
+    sync::{Arc, OnceLock},
 };
 
+use rayon::ThreadPool;
 use tokio::{
     io,
     sync::{mpsc::Sender, oneshot},
@@ -13,6 +14,23 @@ use sanedit_server::{BoxFuture, Kill};
 use crate::{common::matcher::Choice, editor::ignore::Ignore};
 
 use super::OptionProvider;
+
+pub fn get_option_provider_pool() -> &'static ThreadPool {
+    static POOL: OnceLock<ThreadPool> = OnceLock::new();
+    POOL.get_or_init(|| {
+        const MIN: usize = 2;
+        let n = std::thread::available_parallelism()
+            .map(|n| n.get() / 2)
+            .unwrap_or(MIN)
+            .max(MIN);
+        log::info!("Starting option provider pool with {n} threads.");
+        rayon::ThreadPoolBuilder::new()
+            .thread_name(|n| format!("Option provider {n}"))
+            .num_threads(n)
+            .build()
+            .unwrap()
+    })
+}
 
 #[derive(Clone)]
 struct ReadDirContext {
@@ -39,7 +57,7 @@ impl FileOptionProvider {
 
 async fn rayon_reader(dir: PathBuf, ctx: ReadDirContext) -> io::Result<()> {
     let (tx, rx) = oneshot::channel();
-    rayon::spawn(|| {
+    get_option_provider_pool().spawn(|| {
         rayon::scope(|s| {
             let _ = rayon_read(s, dir, ctx);
         });

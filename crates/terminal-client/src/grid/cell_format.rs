@@ -46,9 +46,7 @@ pub(crate) fn pad_line(cells: &mut Vec<Cell>, style: Style, width: usize) {
         cells.push(Cell::with_style(style));
     }
 
-    while cells.len() > width {
-        cells.pop();
-    }
+    cells.truncate(width);
 }
 
 pub(crate) fn center_pad(message: Vec<Cell>, pad_style: Style, width: usize) -> Vec<Cell> {

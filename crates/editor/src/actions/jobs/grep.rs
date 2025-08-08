@@ -3,7 +3,6 @@ use std::cmp::min;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use rustc_hash::FxHashMap;
 use sanedit_buffer::utf8::EndOfLine;
 use sanedit_buffer::{PieceTree, PieceTreeSlice, PieceTreeView};
 use sanedit_core::movement::{end_of_line, start_of_line};
@@ -14,7 +13,9 @@ use tokio::sync::mpsc::{channel, Receiver, Sender};
 use crate::actions::jobs::{OptionProvider, CHANNEL_SIZE};
 use crate::actions::locations;
 use crate::common::matcher::Choice;
+
 use crate::editor::ignore::Ignore;
+use crate::editor::Map;
 use crate::editor::{job_broker::KeepInTouch, Editor};
 use sanedit_server::{ClientId, Job, JobContext, JobResult, Kill};
 
@@ -25,7 +26,7 @@ pub(crate) struct Grep {
     client_id: ClientId,
     pattern: String,
     file_opt_provider: FileOptionProvider,
-    buffers: Arc<FxHashMap<PathBuf, PieceTreeView>>,
+    buffers: Arc<Map<PathBuf, PieceTreeView>>,
 }
 
 impl Grep {
@@ -33,7 +34,7 @@ impl Grep {
         pattern: &str,
         path: &Path,
         ignore: Ignore,
-        buffers: FxHashMap<PathBuf, PieceTreeView>,
+        buffers: Map<PathBuf, PieceTreeView>,
         id: ClientId,
     ) -> Grep {
         let fprovider = FileOptionProvider::new(path, ignore);
@@ -50,7 +51,7 @@ impl Grep {
         mut orecv: Receiver<Arc<Choice>>,
         pattern: &str,
         msend: Sender<GrepResult>,
-        buffers: Arc<FxHashMap<PathBuf, PieceTreeView>>,
+        buffers: Arc<Map<PathBuf, PieceTreeView>>,
         kill: Kill,
     ) {
         let Ok((searcher, _)) = Searcher::new(pattern) else {
@@ -111,6 +112,10 @@ impl Grep {
         result_sender: Sender<GrepResult>,
         kill: Kill,
     ) {
+        if !Self::should_search(view) {
+            return;
+        }
+
         let slice = view.slice(..);
         let mut matches = SortedVec::new();
 
@@ -123,6 +128,29 @@ impl Grep {
             let result = GrepResult { path, matches };
             let _ = result_sender.blocking_send(result);
         }
+    }
+
+    fn should_search(view: &PieceTreeView) -> bool {
+        // Try to filter out atleast large binary files
+        // Atleast 512kb to even bother with detection
+        const MIN_SIZE: u64 = 1024 * 512;
+        const BINARY_DETECT_WINDOW: u64 = 1024 * 8;
+
+        if view.len() <= MIN_SIZE {
+            return true;
+        }
+
+        let cap = min(BINARY_DETECT_WINDOW as u64, view.len());
+        let slice = view.slice(..cap);
+        let mut bytes = slice.bytes();
+
+        while let Some(byte) = bytes.next() {
+            if byte == '\0' as u8 {
+                return false;
+            }
+        }
+
+        true
     }
 
     fn prepare_match(slice: &PieceTreeSlice, mat: SearchMatch) -> GrepMatch {

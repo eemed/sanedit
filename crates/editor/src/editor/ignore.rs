@@ -62,12 +62,6 @@ impl Ignore {
     }
 
     fn is_match_bytes(&self, bytes: &[u8]) -> bool {
-        for glob in &self.globs.patterns {
-            if glob.is_match(&bytes) {
-                return true;
-            }
-        }
-
-        false
+        self.globs.patterns.iter().any(|glob| glob.is_match(&bytes))
     }
 }

@@ -71,7 +71,7 @@ impl<'a, 'b> Subgrid<'a, 'b> {
     }
 
     pub fn draw_border(&mut self, border: Border, style: Style) -> Rect {
-        if self.width() <= 2 && self.height() <= 2 {
+        if self.width() <= 2 || self.height() <= 2 {
             return self.rect.clone();
         }
 
@@ -124,8 +124,8 @@ impl<'a, 'b> Subgrid<'a, 'b> {
         let mut result = self.rect.clone();
         result.x += 1;
         result.y += 1;
-        result.width -= 2;
-        result.height -= 2;
+        result.width = result.width.saturating_sub(2);
+        result.height = result.height.saturating_sub(2);
         result
     }
 
@@ -187,7 +187,7 @@ impl Drawable for Statusline {
 
         let right = into_cells_with_style(&self.right, style);
         for (i, cell) in right.into_iter().rev().enumerate() {
-            let pos = width - 1 - i;
+            let pos = width.saturating_sub(1 + i);
             let c = grid.at(0, pos);
             if c.is_blank() {
                 *c = cell;

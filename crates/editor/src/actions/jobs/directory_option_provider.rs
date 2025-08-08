@@ -11,7 +11,7 @@ use tokio::{
 
 use crate::{common::matcher::Choice, editor::ignore::Ignore};
 
-use super::OptionProvider;
+use super::{OptionProvider, get_option_provider_pool};
 
 #[derive(Clone)]
 struct ReadDirContext {
@@ -50,7 +50,7 @@ impl DirectoryOptionProvider {
 
 async fn rayon_reader(dir: PathBuf, ctx: ReadDirContext) -> io::Result<()> {
     let (tx, rx) = oneshot::channel();
-    rayon::spawn(|| {
+    get_option_provider_pool().spawn(|| {
         rayon::scope(|s| {
             let _ = rayon_read(s, dir, ctx);
         });

@@ -48,7 +48,7 @@ impl CustomItems {
                     .max()
                     .unwrap_or(0)
                     + 1;
-                let max_screen = max(MIN, win.width / 3);
+                let max_screen = max(MIN, win.width / 4);
                 let width = max_item_width.clamp(MIN, max_screen);
                 win.split_off(Split::left_size(width))
             }
@@ -122,8 +122,7 @@ impl CustomItems {
                 }
             };
 
-            let mut titem = Self::format_ft_item(item, name, fill, markers);
-            pad_line(&mut titem, fill, width);
+            let titem = Self::format_ft_item(item, name, fill, markers, width);
 
             for (i, cell) in titem.into_iter().enumerate() {
                 grid.replace(row, i, cell);
@@ -131,29 +130,48 @@ impl CustomItems {
         }
     }
 
-    fn format_ft_item(item: &Item, name: Style, fill: Style, markers: Style) -> Vec<Cell> {
+    fn format_ft_item(
+        item: &Item,
+        nstyle: Style,
+        fill_style: Style,
+        mark_style: Style,
+        width: usize,
+    ) -> Vec<Cell> {
         let mut result = vec![];
-        result.extend(into_cells_with_style(&"  ".repeat(item.level), fill));
+        result.extend(into_cells_with_style(&"  ".repeat(item.level), fill_style));
 
         match item.kind {
             ItemKind::Group { expanded } => {
                 if expanded {
-                    result.extend(into_cells_with_style("-", markers));
+                    result.extend(into_cells_with_style("-", mark_style));
                 } else {
-                    result.extend(into_cells_with_style("+", markers));
+                    result.extend(into_cells_with_style("+", mark_style));
                 }
             }
             ItemKind::Item => {
-                result.extend(into_cells_with_style("#", markers));
+                result.extend(into_cells_with_style("#", mark_style));
             }
         }
-        result.extend(into_cells_with_style(" ", fill));
-        result.extend(into_cells_with_style(&item.name, name));
+        result.extend(into_cells_with_style(" ", fill_style));
 
-        if matches!(item.kind, ItemKind::Group { .. }) {
-            result.extend(into_cells_with_style("/", name));
+        let is_group = matches!(item.kind, ItemKind::Group { .. });
+        let prefix = result.len();
+        let suffix = if is_group { 1 } else { 0 };
+        let available = width.saturating_sub(prefix + suffix);
+        let name = into_cells_with_style(&item.name, nstyle);
+        let start = name.len().saturating_sub(available);
+        let mut cells: Vec<Cell> = name.into_iter().skip(start).collect();
+        if start != 0 && cells.len() > 2 {
+            cells[0].text = ".".into();
+            cells[1].text = ".".into();
+        }
+        result.extend(cells);
+
+        if is_group {
+            result.extend(into_cells_with_style("/", nstyle));
         }
 
+        pad_line(&mut result, fill_style, width);
         result
     }
 
@@ -199,7 +217,7 @@ impl CustomItems {
 
         let mut rect = grid.rect().clone();
         rect.y += 1;
-        rect.height -= 1;
+        rect.height = rect.height.saturating_sub(1);
         let mut grid = grid.subgrid(&rect);
 
         for (row, item) in self.items.items.iter().skip(self.scroll).enumerate() {
@@ -225,11 +243,9 @@ impl CustomItems {
             let mat = if is_selected { smat } else { lmat };
             let fil = if is_selected { sel } else { fill };
             let mark = if is_selected { smarkers } else { markers };
-            let mut titem = Self::format_loc_item(item, style, mark, mat, fil);
-            pad_line(&mut titem, fil, width);
+            let titem = Self::format_loc_item(item, style, mark, mat, fil, width);
 
             for (i, cell) in titem.into_iter().enumerate() {
-                // cells[row][i] = cell;
                 grid.replace(row, i, cell);
             }
         }
@@ -237,21 +253,34 @@ impl CustomItems {
 
     fn format_loc_item(
         item: &Item,
-        name: Style,
-        extra: Style,
-        mat: Style,
-        fill: Style,
+        name_style: Style,
+        extra_style: Style,
+        match_style: Style,
+        fill_style: Style,
+        width: usize,
     ) -> Vec<Cell> {
         let mut result = vec![];
-        result.extend(into_cells_with_style(&"  ".repeat(item.level), fill));
+        result.extend(into_cells_with_style(&"  ".repeat(item.level), fill_style));
 
         match item.kind {
             ItemKind::Group { expanded } => {
                 if expanded {
-                    result.extend(into_cells_with_style("- ", extra));
+                    result.extend(into_cells_with_style("- ", extra_style));
                 } else {
-                    result.extend(into_cells_with_style("+ ", extra));
+                    result.extend(into_cells_with_style("+ ", extra_style));
                 }
+
+                let prefix = result.len();
+                let available = width.saturating_sub(prefix);
+                let name = into_cells_with_style(&item.name, name_style);
+                let start = name.len().saturating_sub(available);
+                let mut cells: Vec<Cell> = name.into_iter().skip(start).collect();
+                if start != 0 && cells.len() > 2 {
+                    cells[0].text = ".".into();
+                    cells[1].text = ".".into();
+                }
+                result.extend(cells);
+                pad_line(&mut result, fill_style, width);
             }
             ItemKind::Item => {
                 let line = item
@@ -262,25 +291,25 @@ impl CustomItems {
                         ItemLocation::ByteOffset(n) => format!("{n:#x}"),
                     })
                     .unwrap_or("?".into());
-                result.extend(into_cells_with_style(&format!("{line}: "), extra));
-            }
-        }
+                result.extend(into_cells_with_style(&format!("{line}: "), extra_style));
+                let mut name = into_cells_with_style(&item.name, name_style);
 
-        let mut name = into_cells_with_style(&item.name, name);
-
-        // Highlight matches
-        for hl in &item.highlights {
-            let mut pos = 0;
-            // dont count padding
-            for cell in &mut name {
-                if hl.contains(&pos) {
-                    cell.style = mat;
+                // Highlight matches
+                for hl in &item.highlights {
+                    let mut pos = 0;
+                    for cell in &mut name {
+                        if hl.contains(&pos) {
+                            cell.style = match_style;
+                        }
+                        pos += cell.text.len();
+                    }
                 }
-                pos += cell.text.len();
+
+                result.extend(name);
+                pad_line(&mut result, fill_style, width);
             }
         }
 
-        result.extend(name);
         result
     }
 }

@@ -42,7 +42,7 @@ preproc = annotation;
 annotation = "@" [A..Za..z0..9_]+;
 
 @show @highlight
-type = "boolean" / "char" / "void" / number_types / classname;
+type = ("boolean" / "char" / "void" / number_types / classname) &stop;
 number_types = "int" / "float" / "double" / "long" / "short";
 classname = [A..Z] [a..zA..Z0..9_]*;
 

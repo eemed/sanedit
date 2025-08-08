@@ -145,7 +145,7 @@ impl Drawable for CustomPrompt {
 
                 let mut rect = grid.rect().clone();
                 rect.y += TITLE_HEIGHT;
-                rect.height -= 2;
+                rect.height = rect.height.saturating_sub(2);
                 let mut grid = grid.subgrid(&rect);
 
                 // Borders
@@ -157,6 +157,9 @@ impl Drawable for CustomPrompt {
                 let max_opts = wsize.height;
 
                 for (i, opt) in self.prompt.options.iter().take(max_opts).enumerate() {
+                    if i >= wsize.height {
+                        break;
+                    }
                     let (field, dfield, mfield) = if Some(i) == self.prompt.selected {
                         (
                             ThemeField::PromptCompletionSelected,
@@ -282,24 +285,28 @@ pub(crate) fn format_two_columns(
     width: usize,
     pad: bool,
 ) -> Vec<Cell> {
+    let padding = if pad { 1 } else { 0 };
     let mut result = vec![];
     if pad {
         result.push(Cell::with_style(style));
     }
-    let item = format_option(item, style, item_matches, match_style, width - 2, false);
+    let item = format_option(item, style, item_matches, match_style, width.saturating_sub(2), false);
     result.extend(item);
     result.push(Cell::with_style(style));
-    let descr = into_cells_with_style(&description, description_style);
 
-    let mut len = result.len() + descr.len() + if pad { 1 } else { 0 };
+    let descr = into_cells_with_style(&description, description_style);
+    let mut len = result.len() + descr.len() + padding;
     while len < width {
         result.push(Cell::with_style(style));
         len += 1;
     }
 
-    result.extend(descr);
-    if pad {
+    if result.len() + padding + descr.len() <= width {
+        result.extend(descr);
+    }
+    if result.len() < width {
         result.push(Cell::with_style(style));
     }
+    result.truncate(width);
     result
 }

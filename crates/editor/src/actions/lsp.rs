@@ -521,7 +521,7 @@ pub(crate) fn diagnostics_to_locations(editor: &mut Editor, id: ClientId) -> Act
         win.locations.push(group);
     }
 
-    win.locations.show = true;
+    win.locations.extra.show = true;
     focus(editor, id, Focus::Locations);
 
     ActionResult::Ok

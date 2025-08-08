@@ -12,7 +12,7 @@ match = "#C1E1C1,#356E35,"
 virtual = ",#969896,"
 
 [colors.window.cursor]
-default = "#70C99B,#575279,"
+default = "#BABBD1,#575279,"
 selection = "#d0d8d8,#575279,"
 
 [colors.window.view]

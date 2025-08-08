@@ -39,7 +39,8 @@ where
     }
 
     // Input thread
-    thread::spawn(|| input::run_loop(internal_tx));
+    let itx = internal_tx.clone();
+    thread::spawn(|| input::run_loop(itx));
 
     let read_sender = tx;
     thread::spawn(|| run_read_loop(read, read_sender));

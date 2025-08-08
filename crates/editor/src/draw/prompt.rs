@@ -1,4 +1,8 @@
-use std::{cmp, mem::take};
+use std::{
+    cmp,
+    mem::take,
+    time::{Duration, Instant},
+};
 
 use sanedit_messages::redraw::{self, prompt::Source, Component, Kind, Redraw};
 
@@ -6,27 +10,67 @@ use crate::editor::windows::Focus;
 
 use super::{DrawContext, Hash};
 
+const MIN_DELAY_BETWEEN_DRAWS: Duration = Duration::from_millis(30);
+
+#[derive(Debug)]
+pub(crate) struct LastPrompt {
+    pub(crate) hash: Hash,
+    pub(crate) cursor: Option<usize>,
+    pub(crate) time: Instant,
+}
+
 pub(crate) fn draw(ctx: &mut DrawContext) -> Option<Redraw> {
     if ctx.focus_changed_from(Focus::Prompt) {
         ctx.state.prompt_scroll_offset = 0;
         ctx.state.last_prompt = None;
+        // ctx.state.last_prompt_draw = None;
+        // ctx.state.last_prompt_cursor = None;
         return Some(Redraw::Prompt(Component::Close));
     }
 
     let in_focus = ctx.editor.win.focus() == Focus::Prompt;
     if !in_focus {
         ctx.state.last_prompt = None;
+        // ctx.state.last_prompt_draw = None;
+        // ctx.state.last_prompt_cursor = None;
+        return None;
+    }
+
+    // Basically:
+    // If options are not loading => draw
+    // If time elapsed => draw
+    // If prompt is discarding => never draw
+    let draw = ctx
+        .state
+        .last_prompt
+        .as_ref()
+        .map(|lp| lp.time.elapsed() > MIN_DELAY_BETWEEN_DRAWS)
+        .unwrap_or(true)
+        || !ctx.editor.win.prompt.is_options_loading();
+    if !draw || ctx.editor.win.prompt.is_discarding() {
         return None;
     }
 
     let mut prompt = draw_impl(ctx);
     let selected = take(&mut prompt.selected);
     let hash = Hash::new(&prompt);
-    if ctx.state.last_prompt.as_ref() == Some(&hash) {
-        return Some(redraw::Redraw::Selection(Kind::Prompt, selected));
+    if let Some(lp) = ctx.state.last_prompt.as_mut() {
+        if &lp.hash == &hash {
+            if lp.cursor == selected {
+                return None;
+            } else {
+                lp.time = Instant::now();
+                lp.cursor = selected;
+                return Some(redraw::Redraw::Selection(Kind::Prompt, selected));
+            }
+        }
     }
 
-    ctx.state.last_prompt = Some(hash);
+    ctx.state.last_prompt = Some(LastPrompt {
+        hash,
+        cursor: selected,
+        time: Instant::now(),
+    });
     prompt.selected = selected;
     Some(redraw::Redraw::Prompt(Component::Update(prompt)))
 }

@@ -174,12 +174,13 @@ pub(crate) fn locations() -> KeymapLayer {
             "btab",   prev_loc_entry,
             "tab",    next_loc_entry,
 
+            "s",      loc_stop_job,
             "p",      select_loc_parent,
-            "s",      toggle_all_expand_locs,
-            "K",      keep_locations,
+            "t",      toggle_all_expand_locs,
+            "r",      reject_locations,
+
             "/",      keep_locations,
             "?",      keep_locations,
-            "R",      reject_locations,
             "g g",    loc_select_first,
             "G",      loc_select_last,
     );

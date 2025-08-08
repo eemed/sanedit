@@ -6,6 +6,7 @@ mod filetree;
 mod focus;
 pub(crate) mod games;
 mod jumps;
+mod locations;
 mod mode;
 mod prompt;
 mod search;
@@ -54,6 +55,7 @@ use crate::{
 
 use self::filetree::FiletreeView;
 pub(crate) use cursors::Cursors;
+pub(crate) use locations::LocationsView;
 
 pub(crate) use self::{
     completion::*, config::*, focus::*, jumps::*, mode::*, prompt::*, search::*, view::*,
@@ -80,7 +82,7 @@ pub(crate) struct Window {
     pub prompt: Prompt,
     pub config: WindowConfig,
     pub ft_view: FiletreeView,
-    pub locations: Locations,
+    pub locations: Locations<LocationsView>,
     pub snippets: Vec<Jumps<32>>,
 
     /// Cursor jumps across files

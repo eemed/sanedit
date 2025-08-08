@@ -146,6 +146,7 @@ pub(crate) const COMMANDS: &[Action] = &[
     locations::focus_locations,
     locations::loc_select_first,
     locations::loc_select_last,
+    locations::loc_stop_job,
 
     filetree::close_filetree,
     filetree::next_ft_entry,

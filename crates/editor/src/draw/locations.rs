@@ -12,7 +12,7 @@ use crate::editor::windows::Focus;
 use super::{DrawContext, Hash};
 
 pub(crate) fn draw(ctx: &mut DrawContext) -> Option<redraw::Redraw> {
-    let show_loc = ctx.editor.win.locations.show;
+    let show_loc = ctx.editor.win.locations.extra.show;
     let close_loc = !show_loc && ctx.state.last_loc.is_some();
 
     if close_loc {
@@ -83,6 +83,6 @@ fn draw_impl(ctx: &mut DrawContext) -> redraw::items::Items {
         items,
         selected,
         in_focus,
-        is_loading: locs.is_loading,
+        is_loading: locs.extra.is_loading,
     }
 }

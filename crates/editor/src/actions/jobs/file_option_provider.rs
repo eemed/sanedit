@@ -19,10 +19,11 @@ pub fn get_option_provider_pool() -> &'static ThreadPool {
     static POOL: OnceLock<ThreadPool> = OnceLock::new();
     POOL.get_or_init(|| {
         const MIN: usize = 2;
+        const MAX: usize = 4;
         let n = std::thread::available_parallelism()
             .map(|n| n.get() / 2)
             .unwrap_or(MIN)
-            .max(MIN);
+            .clamp(MIN, MAX);
         log::info!("Starting option provider pool with {n} threads.");
         rayon::ThreadPoolBuilder::new()
             .thread_name(|n| format!("Option provider {n}"))

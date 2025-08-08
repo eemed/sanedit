@@ -54,7 +54,7 @@ impl UI {
     /// Called when client will send input to server
     pub fn on_focus_change(&mut self, focus: bool) {
         self.grid.on_focus_change(focus);
-        let _ = self.draw_all();
+        let _ = self.flush();
     }
 
     pub fn handle_message(&mut self, msg: ClientMessage) -> anyhow::Result<UIResult> {
@@ -68,7 +68,9 @@ impl UI {
                 RedrawResult::Resized => return Ok(UIResult::Resize),
                 RedrawResult::Ok => {}
             },
-            Flush => self.draw_all()?,
+            Flush => {
+                let _ = self.flush();
+            }
             Bye => {
                 log::info!("UI got bye, exiting.");
                 return Ok(UIResult::Exit);
@@ -78,7 +80,7 @@ impl UI {
         Ok(UIResult::Nothing)
     }
 
-    fn draw_all(&mut self) -> anyhow::Result<()> {
+    pub fn flush(&mut self) -> anyhow::Result<()> {
         // log::info!("Flush ui");
         let (cells, cursor) = self.grid.draw();
         for (line, row) in cells.iter().enumerate() {

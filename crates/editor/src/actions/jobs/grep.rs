@@ -17,7 +17,7 @@ use crate::common::matcher::Choice;
 use crate::editor::ignore::Ignore;
 use crate::editor::Map;
 use crate::editor::{job_broker::KeepInTouch, Editor};
-use sanedit_server::{ClientId, Job, JobContext, JobResult, Kill};
+use sanedit_server::{ClientId, Job, JobContext, JobId, JobResult, Kill};
 
 use super::FileOptionProvider;
 
@@ -98,7 +98,7 @@ impl Grep {
     }
 
     async fn send_results(mut recv: Receiver<GrepResult>, mut ctx: JobContext) {
-        ctx.send(Start);
+        ctx.send(Start(ctx.id));
 
         while let Some(msg) = recv.recv().await {
             ctx.send(msg);
@@ -224,9 +224,10 @@ impl KeepInTouch for Grep {
     }
 
     fn on_message(&self, editor: &mut Editor, mut msg: Box<dyn Any>) {
-        if let Some(_msg) = msg.downcast_mut::<Start>() {
+        if let Some(Start(id)) = msg.downcast_mut::<Start>() {
             let (win, _buf) = editor.win_buf_mut(self.client_id);
-            win.locations.is_loading = true;
+            win.locations.extra.is_loading = true;
+            win.locations.extra.job = Some(*id);
             locations::clear_locations.execute(editor, self.client_id);
             locations::show_locations.execute(editor, self.client_id);
             return;
@@ -243,23 +244,26 @@ impl KeepInTouch for Grep {
 
     fn on_success(&self, editor: &mut Editor) {
         let (win, _buf) = editor.win_buf_mut(self.client_id);
-        win.locations.is_loading = false;
+        win.locations.extra.is_loading = false;
+        win.locations.extra.job = None;
     }
 
     fn on_stop(&self, editor: &mut Editor) {
         let (win, _buf) = editor.win_buf_mut(self.client_id);
-        win.locations.is_loading = false;
+        win.locations.extra.is_loading = false;
+        win.locations.extra.job = None;
     }
 
     fn on_failure(&self, editor: &mut Editor, reason: &str) {
         log::error!("Grep error: {reason}");
         let (win, _buf) = editor.win_buf_mut(self.client_id);
         win.locations.clear();
-        win.locations.is_loading = false;
+        win.locations.extra.is_loading = false;
+        win.locations.extra.job = None;
     }
 }
 
-struct Start;
+struct Start(JobId);
 
 #[derive(Debug, PartialEq, Eq)]
 struct GrepMatch {

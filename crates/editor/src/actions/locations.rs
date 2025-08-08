@@ -33,7 +33,7 @@ fn clear_locations(editor: &mut Editor, id: ClientId) -> ActionResult {
 #[action("Locations: Show")]
 fn show_locations(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
-    win.locations.show = true;
+    win.locations.extra.show = true;
     focus(editor, id, Focus::Locations);
     ActionResult::Ok
 }
@@ -41,7 +41,7 @@ fn show_locations(editor: &mut Editor, id: ClientId) -> ActionResult {
 #[action("Locations: Close")]
 fn close_locations(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
-    win.locations.show = false;
+    win.locations.extra.show = false;
     focus(editor, id, Focus::Window);
     ActionResult::Ok
 }
@@ -49,7 +49,7 @@ fn close_locations(editor: &mut Editor, id: ClientId) -> ActionResult {
 #[action("Locations: Focus")]
 fn focus_locations(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
-    if win.locations.show {
+    if win.locations.extra.show {
         focus(editor, id, Focus::Locations);
     }
 
@@ -145,7 +145,15 @@ fn keep_locations(editor: &mut Editor, id: ClientId) -> ActionResult {
         .on_confirm(move |editor, id, out| {
             let (win, _buf) = editor.win_buf_mut(id);
             let text = getf!(out.text());
-            win.locations.retain(|name| name.contains(text));
+            let case_sensitive = text.chars().any(|ch| ch.is_uppercase());
+            win.locations.retain(|name| {
+                if case_sensitive {
+                    name.contains(text)
+                } else {
+                    let lowercase_name = name.to_lowercase();
+                    lowercase_name.contains(text)
+                }
+            });
             focus(editor, id, Focus::Locations);
             ActionResult::Ok
         })
@@ -163,7 +171,15 @@ fn reject_locations(editor: &mut Editor, id: ClientId) -> ActionResult {
         .on_confirm(move |editor, id, out| {
             let (win, _buf) = editor.win_buf_mut(id);
             let text = getf!(out.text());
-            win.locations.retain(|name| !name.contains(text));
+            let case_sensitive = text.chars().any(|ch| ch.is_uppercase());
+            win.locations.retain(|name| {
+                if case_sensitive {
+                    !name.contains(text)
+                } else {
+                    let lowercase_name = name.to_lowercase();
+                    !lowercase_name.contains(text)
+                }
+            });
             focus(editor, id, Focus::Locations);
             ActionResult::Ok
         })
@@ -186,6 +202,15 @@ fn goto_prev_loc_item(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
     if win.locations.select_prev_item() {
         goto_loc_entry.execute(editor, id);
+    }
+    ActionResult::Ok
+}
+
+#[action("Locations: Stop backing job")]
+fn loc_stop_job(editor: &mut Editor, id: ClientId) -> ActionResult {
+    let (win, _buf) = editor.win_buf_mut(id);
+    if let Some(job) = win.locations.extra.job.take() {
+        editor.job_broker.stop(job);
     }
     ActionResult::Ok
 }

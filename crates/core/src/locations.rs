@@ -8,9 +8,9 @@ use sanedit_utils::{either::Either, sorted_vec::SortedVec};
 use crate::Range;
 
 #[derive(Debug, Default)]
-pub struct Locations {
-    pub is_loading: bool,
-    pub show: bool,
+pub struct Locations<T> {
+    /// Extra data stored for this instance
+    pub extra: Box<T>,
     selection: Option<usize>,
 
     // not sorted because results may be coming in while we are already browsing
@@ -18,7 +18,7 @@ pub struct Locations {
     groups: Vec<Group>,
 }
 
-impl Locations {
+impl<T> Locations<T> {
     pub fn push(&mut self, group: Group) {
         self.groups.push(group);
 

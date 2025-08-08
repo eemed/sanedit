@@ -8,7 +8,6 @@ use std::{
 };
 
 use chrono::{DateTime, Local, TimeDelta};
-use rustc_hash::FxHashMap;
 use sanedit_buffer::PieceTreeView;
 use sanedit_messages::ClientMessage;
 use sanedit_utils::idmap::AsID;
@@ -17,7 +16,7 @@ use crate::{
     actions::{
         cursors::jump_to_ref,
         hooks::run,
-        jobs::{FileOptionProvider, Grep, MatchedOptions},
+        jobs::{FileOptionProvider, Grep},
         window::focus,
     },
     common::{
@@ -28,7 +27,7 @@ use crate::{
         buffers::BufferId,
         hooks::Hook,
         windows::{Focus, HistoryKind, Mode, Prompt},
-        Editor,
+        Editor, Map,
     },
 };
 
@@ -36,7 +35,7 @@ use sanedit_server::{ClientId, JobId};
 
 use super::{
     find_by_description, hooks,
-    jobs::{DirectoryOptionProvider, MatcherJob, MatcherMessage},
+    jobs::{DirectoryOptionProvider, MatcherJob},
     shell,
     text::save,
     window::{focus_with_mode, mode_normal},
@@ -118,7 +117,7 @@ fn open_file(editor: &mut Editor, id: ClientId) -> ActionResult {
     let wd = editor.working_dir().to_path_buf();
     let job = MatcherJob::builder(id)
         .options(FileOptionProvider::new(&wd, ignore))
-        .handler(open_file_handler)
+        .handler(Prompt::open_file_handler)
         .build();
     editor.job_broker.request_slot(id, PROMPT_MESSAGE, job);
     let (win, _buf) = editor.win_buf_mut(id);
@@ -147,61 +146,6 @@ fn open_file(editor: &mut Editor, id: ClientId) -> ActionResult {
         .build();
     focus(editor, id, Focus::Prompt);
     ActionResult::Ok
-}
-
-fn open_file_handler(editor: &mut Editor, id: ClientId, msg: MatcherMessage) {
-    use MatcherMessage::*;
-
-    let draw = editor.draw_state(id);
-    draw.no_redraw_window();
-
-    let (win, _buf) = win_buf!(editor, id);
-    match msg {
-        Init(sender) => {
-            win.prompt.add_on_input(move |_editor, _id, input| {
-                let _ = sender.blocking_send(input.to_string());
-            });
-            win.prompt.clear_choices();
-        }
-        Progress(opts) => {
-            if let MatchedOptions::Options { matched, clear_old } = opts {
-                if clear_old {
-                    win.prompt.clear_choices();
-                }
-
-                let no_input = matched
-                    .get(0)
-                    .map(|choice| choice.matches().is_empty())
-                    .unwrap_or(false);
-
-                let mut rescored = matched;
-                if no_input {
-                    // If no input is matched, sort results using LRU
-
-                    let cache = &mut editor.caches.files;
-                    let lru = cache.to_map();
-                    let max = lru.len();
-                    for mut mat in std::mem::take(&mut rescored).into_iter() {
-                        let path = match mat.choice() {
-                            Choice::Path { path, .. } => path,
-                            _ => unreachable!(),
-                        };
-                        if let Some(score) = lru.get(path.as_path()) {
-                            mat.rescore(*score);
-                        } else {
-                            mat.rescore(mat.score() + max);
-                        }
-                        rescored.push(mat);
-                    }
-                }
-
-                let (win, _buf) = editor.win_buf_mut(id);
-                win.prompt.add_choices(rescored);
-
-                focus(editor, id, Focus::Prompt);
-            }
-        }
-    }
 }
 
 #[action("Editor: Open buffer")]
@@ -490,29 +434,6 @@ fn prompt_change_dir(editor: &mut Editor, id: ClientId, input: &Path, is_dir: bo
     editor.job_broker.request_slot(id, JOB_NAME, job);
 }
 
-// #[action("Editor: Change working directory")]
-// fn change_working_dir(editor: &mut Editor, id: ClientId) -> ActionResult {
-//     let wd = editor.working_dir().to_path_buf();
-//     let (win, _buf) = editor.win_buf_mut(id);
-//     win.prompt = Prompt::builder()
-//         .prompt("Working directory")
-//         .simple()
-//         .input(&wd.to_string_lossy())
-//         .on_confirm(move |e, id, out| {
-//             let path = getf!(out.path());
-//             if let Err(err) = e.change_working_dir(&path) {
-//                 let (win, _buf) = e.win_buf_mut(id);
-//                 win.warn_msg(&err.to_string());
-//                 return ActionResult::Failed;
-//             }
-
-//             ActionResult::Ok
-//         })
-//         .build();
-//     focus(editor, id, Focus::Prompt);
-//     ActionResult::Ok
-// }
-
 #[action("Grep")]
 fn grep(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
@@ -524,8 +445,8 @@ fn grep(editor: &mut Editor, id: ClientId) -> ActionResult {
             let patt = getf!(out.text());
             let ignore = e.ignore.clone();
             let wd = e.working_dir();
-            let buffers: FxHashMap<PathBuf, PieceTreeView> = {
-                let mut map = FxHashMap::default();
+            let buffers: Map<PathBuf, PieceTreeView> = {
+                let mut map = Map::default();
 
                 for (_, buf) in e.buffers().iter() {
                     // If not modified we grep from disk

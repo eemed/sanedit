@@ -11,7 +11,7 @@ use tokio::{
 
 use crate::{common::matcher::Choice, editor::ignore::Ignore};
 
-use super::{OptionProvider, get_option_provider_pool};
+use super::{get_option_provider_pool, OptionProvider};
 
 #[derive(Clone)]
 struct ReadDirContext {

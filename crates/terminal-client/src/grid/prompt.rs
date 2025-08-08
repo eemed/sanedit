@@ -290,7 +290,14 @@ pub(crate) fn format_two_columns(
     if pad {
         result.push(Cell::with_style(style));
     }
-    let item = format_option(item, style, item_matches, match_style, width.saturating_sub(2), false);
+    let item = format_option(
+        item,
+        style,
+        item_matches,
+        match_style,
+        width.saturating_sub(2),
+        false,
+    );
     result.extend(item);
     result.push(Cell::with_style(style));
 

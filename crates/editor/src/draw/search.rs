@@ -31,7 +31,7 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> Option<redraw::Redraw> {
         input_hash: Hash::new(&""),
         hash,
         cursor: selected,
-        time: Instant::now(),
+        // time: Instant::now(),
     });
     Some(redraw::Redraw::Prompt(Component::Update(prompt)))
 }

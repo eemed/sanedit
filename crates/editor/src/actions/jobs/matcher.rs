@@ -1,18 +1,20 @@
 use std::{
-    fmt, mem,
-    sync::{atomic::Ordering, Arc},
-    time::Duration,
+    fmt,
+    sync::{
+        atomic::{AtomicUsize, Ordering},
+        Arc,
+    },
 };
 
-use sanedit_utils::{appendlist::Appendlist, sorted_vec::SortedVec};
-use tokio::{
-    sync::mpsc::{channel, Receiver, Sender},
-    time::{timeout, Instant},
+use sanedit_utils::{
+    appendlist::{Appendlist, Reader, Writer},
+    sorted_vec::SortedVec,
 };
+use tokio::sync::mpsc::{channel, Receiver, Sender};
 
 use crate::{
     actions::jobs::CHANNEL_SIZE,
-    common::matcher::{Choice, MatchReceiver, MatchStrategy, Matcher, ScoredChoice},
+    common::matcher::{Choice, MatchStrategy, Matcher, ScoredChoice},
     editor::{job_broker::KeepInTouch, Editor},
 };
 
@@ -26,19 +28,31 @@ pub(crate) enum MatcherMessage {
 
 /// Provides options to match
 pub(crate) trait OptionProvider: fmt::Debug + Sync + Send {
-    fn provide(&self, sender: Sender<Arc<Choice>>, kill: Kill) -> BoxFuture<'static, ()>;
+    fn provide(
+        &self,
+        sender: Writer<Arc<Choice>>,
+        kill: Kill,
+        done: Arc<AtomicUsize>,
+    ) -> BoxFuture<'static, ()>;
 }
 
 impl OptionProvider for Arc<Vec<String>> {
-    fn provide(&self, sender: Sender<Arc<Choice>>, _kill: Kill) -> BoxFuture<'static, ()> {
+    fn provide(
+        &self,
+        sender: Writer<Arc<Choice>>,
+        _kill: Kill,
+        done: Arc<AtomicUsize>,
+    ) -> BoxFuture<'static, ()> {
         let items = self.clone();
 
         let fut = async move {
+            let mut n = 0;
             for opt in items.iter() {
-                if sender.send(Choice::from_text(opt.clone())).await.is_err() {
-                    break;
-                }
+                n += 1;
+                sender.append(Choice::from_text(opt.clone()));
             }
+
+            done.store(n, Ordering::Release);
         };
 
         Box::pin(fut)
@@ -46,15 +60,22 @@ impl OptionProvider for Arc<Vec<String>> {
 }
 
 impl OptionProvider for Arc<Vec<Arc<Choice>>> {
-    fn provide(&self, sender: Sender<Arc<Choice>>, _kill: Kill) -> BoxFuture<'static, ()> {
+    fn provide(
+        &self,
+        sender: Writer<Arc<Choice>>,
+        _kill: Kill,
+        done: Arc<AtomicUsize>,
+    ) -> BoxFuture<'static, ()> {
         let items = self.clone();
 
         let fut = async move {
+            let mut n = 0;
             for opt in items.iter() {
-                if sender.send(opt.clone()).await.is_err() {
-                    break;
-                }
+                n += 1;
+                sender.append(opt.clone());
             }
+
+            done.store(n, Ordering::Release);
         };
 
         Box::pin(fut)
@@ -70,8 +91,15 @@ impl Empty {
     fn none_result_handler(_editor: &mut Editor, _id: ClientId, _msg: MatcherMessage) {}
 }
 impl OptionProvider for Empty {
-    fn provide(&self, _sender: Sender<Arc<Choice>>, _kill: Kill) -> BoxFuture<'static, ()> {
-        Box::pin(async {})
+    fn provide(
+        &self,
+        _sender: Writer<Arc<Choice>>,
+        _kill: Kill,
+        done: Arc<AtomicUsize>,
+    ) -> BoxFuture<'static, ()> {
+        Box::pin(async move {
+            done.store(0, Ordering::Release);
+        })
     }
 }
 
@@ -159,35 +187,37 @@ impl MatcherJob {
     pub fn builder(cid: ClientId) -> MatcherJobBuilder {
         MatcherJobBuilder::new(cid)
     }
-
-    async fn send_matched_options(mut ctx: JobContext, mut mrecv: Receiver<MatchedOptions>) {
-        while let Some(msg) = mrecv.recv().await {
-            ctx.send(MatcherMessage::Progress(msg));
-        }
-    }
 }
 
 impl Job for MatcherJob {
     fn run(&self, mut ctx: JobContext) -> JobResult {
         let strat = self.strat;
         let opts = self.opts.clone();
-        let patt = self.pattern.clone();
+        let mut patt = self.pattern.clone();
 
         let fut = async move {
             // Term channel
-            let (psend, precv) = channel::<String>(CHANNEL_SIZE);
-            // Options channel
-            let (osend, orecv) = channel::<Arc<Choice>>(CHANNEL_SIZE);
-            // Results channel
-            let (msend, mrecv) = channel::<MatchedOptions>(CHANNEL_SIZE);
+            let (psend, mut precv) = channel::<String>(CHANNEL_SIZE);
+            let (reader, writer) = Appendlist::<Arc<Choice>>::new();
 
             ctx.send(MatcherMessage::Init(psend));
 
-            tokio::join!(
-                opts.provide(osend, ctx.kill.clone()),
-                match_options(orecv, precv, msend, strat, patt),
-                Self::send_matched_options(ctx, mrecv),
-            );
+            let kill = ctx.kill.clone();
+            let mut matcher = Matcher::new(reader, strat, ctx);
+            let read_done = matcher.read_done();
+
+            tokio::join!(opts.provide(writer, kill, read_done), async {
+                // Start matching
+                matcher.do_match(&patt);
+
+                while let Some(t) = precv.recv().await {
+                    if patt == t {
+                        continue;
+                    }
+                    patt = t;
+                    matcher.do_match(&patt);
+                }
+            });
 
             Ok(())
         };
@@ -216,116 +246,4 @@ pub(crate) enum MatchedOptions {
         matched: SortedVec<ScoredChoice>,
         clear_old: bool,
     },
-}
-
-/// Reads options and filter term from channels and send results to progress
-pub(crate) async fn match_options(
-    mut orecv: Receiver<Arc<Choice>>,
-    mut precv: Receiver<String>,
-    msend: Sender<MatchedOptions>,
-    strat: MatchStrategy,
-    mut patt: String,
-) {
-    fn spawn(
-        msend: Sender<MatchedOptions>,
-        mut recv: MatchReceiver,
-    ) -> tokio::task::JoinHandle<()> {
-        tokio::spawn(async move {
-            // send matches once we have MAX_SIZE of them.
-            const MAX_SIZE: usize = 256;
-            let mut matches = SortedVec::with_capacity(MAX_SIZE);
-            let mut clear_old = true;
-
-            // If matches come in slowly (large search) the MAX_SIZE will not be met.
-            // Add in a time limit to send any matches
-            let limit = Duration::from_millis(1000 / 30); // 30fps
-            let mut last_sent = Instant::now();
-
-            loop {
-                match timeout(limit, recv.recv()).await {
-                    Ok(Some(res)) => {
-                        matches.push(res);
-
-                        // Check time incase we are dripfed results
-                        let now = Instant::now();
-                        if matches.len() >= MAX_SIZE || now.duration_since(last_sent) >= limit {
-                            last_sent = now;
-                            let opts = mem::take(&mut matches);
-
-                            if msend
-                                .send(MatchedOptions::Options {
-                                    matched: opts,
-                                    clear_old,
-                                })
-                                .await
-                                .is_err()
-                            {
-                                break;
-                            }
-                            clear_old = false;
-                        }
-                    }
-                    Err(_) => {
-                        // Timeout
-                        // no results for a while, send remaining results
-                        last_sent = Instant::now();
-                        let opts = mem::take(&mut matches);
-
-                        if (!opts.is_empty() || clear_old)
-                            && msend
-                                .send(MatchedOptions::Options {
-                                    matched: opts,
-                                    clear_old,
-                                })
-                                .await
-                                .is_err()
-                        {
-                            break;
-                        }
-                        clear_old = false;
-                    }
-                    Ok(None) => break,
-                }
-            }
-
-            // Clear old in case of no results
-            let _ = msend
-                .send(MatchedOptions::Options {
-                    clear_old,
-                    matched: matches,
-                })
-                .await;
-            let _ = msend.send(MatchedOptions::Done).await;
-        })
-    }
-
-    let (reader, writer) = Appendlist::<Arc<Choice>>::new();
-    let mut matcher = Matcher::new(reader, strat);
-    let read_done = matcher.read_done();
-
-    // Send options to appendlist
-    tokio::spawn(async move {
-        while let Some(choice) = orecv.recv().await {
-            writer.append(choice);
-        }
-
-        read_done.store(writer.len(), Ordering::Release);
-    });
-
-    // Start matching
-    let recv = matcher.do_match(&patt);
-    let mut join = spawn(msend.clone(), recv);
-
-    while let Some(t) = precv.recv().await {
-        if patt == t {
-            continue;
-        }
-        patt = t;
-
-        join.abort();
-        let _ = join.await;
-
-        let recv = matcher.do_match(&patt);
-        join = spawn(msend.clone(), recv);
-    }
 }

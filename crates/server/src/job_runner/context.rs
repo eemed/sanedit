@@ -7,10 +7,11 @@ use super::{FromJobs, JobId, Kill};
 
 /// Job context used to provide jobs the means to communicate back to the
 /// editor.
+#[derive(Debug, Clone)]
 pub struct JobContext {
     pub id: JobId,
     pub kill: Kill,
-    pub sender: JobResponseSender,
+    sender: JobResponseSender,
 }
 
 impl JobContext {
@@ -49,7 +50,7 @@ impl From<JobsMessage> for FromJobs {
 
 /// Job context used to communicate back to editor
 #[derive(Clone, Debug)]
-pub struct JobResponseSender {
+pub(crate) struct JobResponseSender {
     pub(super) editor: crossbeam::channel::Sender<ToEditor>,
     pub(super) internal: Sender<JobsMessage>,
 }

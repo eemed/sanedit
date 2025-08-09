@@ -7,6 +7,7 @@ use sanedit_buffer::utf8::EndOfLine;
 use sanedit_buffer::{PieceTree, PieceTreeSlice, PieceTreeView};
 use sanedit_core::movement::{end_of_line, start_of_line};
 use sanedit_core::{Group, Item, Range, SearchMatch, Searcher};
+use sanedit_utils::appendlist::{Appendlist, Reader};
 use sanedit_utils::sorted_vec::SortedVec;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 
@@ -48,7 +49,7 @@ impl Grep {
     }
 
     async fn grep(
-        mut orecv: Receiver<Arc<Choice>>,
+        mut orecv: Reader<Arc<Choice>>,
         pattern: &str,
         msend: Sender<GrepResult>,
         buffers: Arc<Map<PathBuf, PieceTreeView>>,
@@ -59,42 +60,43 @@ impl Grep {
         };
         let searcher = Arc::new(searcher);
 
-        while let Some(opt) = orecv.recv().await {
-            let searcher = searcher.clone();
-            let msend = msend.clone();
-            let bufs = buffers.clone();
-            let stop = kill.clone();
+        todo!()
+        // while let Some(opt) = orecv.recv().await {
+        //     let searcher = searcher.clone();
+        //     let msend = msend.clone();
+        //     let bufs = buffers.clone();
+        //     let stop = kill.clone();
 
-            // let (tx, rx) = tokio::sync::oneshot::channel::<()>();
+        //     // let (tx, rx) = tokio::sync::oneshot::channel::<()>();
 
-            rayon::spawn(move || {
-                let path = match opt.as_ref() {
-                    Choice::Path { path, .. } => path,
-                    _ => {
-                        return;
-                    }
-                };
+        //     rayon::spawn(move || {
+        //         let path = match opt.as_ref() {
+        //             Choice::Path { path, .. } => path,
+        //             _ => {
+        //                 return;
+        //             }
+        //         };
 
-                match bufs.get(path) {
-                    Some(view) => {
-                        // Grep editor buffers
-                        Self::grep_buffer(path.clone(), view, &searcher, msend, stop.clone());
-                    }
-                    None => {
-                        // Grep files outside editor
-                        let Ok(pt) = PieceTree::from_path(&path) else {
-                            return;
-                        };
-                        let view = pt.view();
-                        Self::grep_buffer(path.clone(), &view, &searcher, msend, stop.clone());
-                    }
-                }
+        //         match bufs.get(path) {
+        //             Some(view) => {
+        //                 // Grep editor buffers
+        //                 Self::grep_buffer(path.clone(), view, &searcher, msend, stop.clone());
+        //             }
+        //             None => {
+        //                 // Grep files outside editor
+        //                 let Ok(pt) = PieceTree::from_path(&path) else {
+        //                     return;
+        //                 };
+        //                 let view = pt.view();
+        //                 Self::grep_buffer(path.clone(), &view, &searcher, msend, stop.clone());
+        //             }
+        //         }
 
-                // tx.send(());
-            });
+        //         // tx.send(());
+        //     });
 
             // rx.await;
-        }
+        // }
     }
 
     async fn send_results(mut recv: Receiver<GrepResult>, mut ctx: JobContext) {
@@ -200,18 +202,18 @@ impl Job for Grep {
         let bufs = self.buffers.clone();
 
         let fut = async move {
-            // Options channel
-            let (osend, orecv) = channel::<Arc<Choice>>(50000);
             // Results channel
             let (msend, mrecv) = channel::<GrepResult>(CHANNEL_SIZE);
+            let (reader, writer) = Appendlist::<Arc<Choice>>::new();
 
-            tokio::join!(
-                fopts.provide(osend, ctx.kill.clone()),
-                Self::grep(orecv, &pattern, msend, bufs, ctx.kill.clone()),
-                Self::send_results(mrecv, ctx),
-            );
+            todo!()
+            // tokio::join!(
+            //     fopts.provide(writer, ctx.kill.clone()),
+            //     Self::grep(reader, &pattern, msend, bufs, ctx.kill.clone()),
+            //     Self::send_results(mrecv, ctx),
+            // );
 
-            Ok(())
+            // Ok(())
         };
 
         Box::pin(fut)

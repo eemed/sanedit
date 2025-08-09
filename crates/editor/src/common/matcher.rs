@@ -1,5 +1,4 @@
 mod matches;
-mod receiver;
 mod strategy;
 
 use std::{
@@ -8,15 +7,21 @@ use std::{
         atomic::{AtomicBool, AtomicUsize, Ordering},
         Arc,
     },
+    thread,
 };
 
+use rayon::{
+    iter::{IntoParallelRefIterator as _, ParallelIterator as _},
+    slice::ParallelSliceMut as _,
+};
 use sanedit_core::Range;
-use sanedit_utils::appendlist::Reader;
-use tokio::sync::mpsc::channel;
+use sanedit_server::JobContext;
+use sanedit_utils::{appendlist::Reader, sorted_vec::SortedVec};
 
 pub(crate) use matches::*;
-pub use receiver::*;
 pub use strategy::*;
+
+use crate::actions::jobs::{MatchedOptions, MatcherMessage};
 
 /// Matches options to a pattern
 pub struct Matcher {
@@ -24,14 +29,18 @@ pub struct Matcher {
     read_done: Arc<AtomicUsize>,
     prev_search: Arc<AtomicBool>,
     strategy: MatchStrategy,
+    job_context: JobContext,
 }
 
 impl Matcher {
     const BATCH_SIZE: usize = 1024;
-    const CHANNEL_SIZE: usize = 1024;
 
     // Create a new matcher.
-    pub fn new(reader: Reader<Arc<Choice>>, strategy: MatchStrategy) -> Matcher {
+    pub fn new(
+        reader: Reader<Arc<Choice>>,
+        strategy: MatchStrategy,
+        job_context: JobContext,
+    ) -> Matcher {
         let read_done = Arc::new(AtomicUsize::new(usize::MAX));
         let prev_search = Arc::new(AtomicBool::new(false));
 
@@ -40,6 +49,7 @@ impl Matcher {
             read_done,
             strategy,
             prev_search,
+            job_context,
         }
     }
 
@@ -50,7 +60,7 @@ impl Matcher {
     /// Match the candidates with the pattern. Returns a receiver where the results
     /// can be read from in chunks.
     /// Dropping the receiver stops the matching process.
-    pub fn do_match(&mut self, pattern: &str) -> MatchReceiver {
+    pub fn do_match(&mut self, pattern: &str) {
         // Cancel possible previous search
         self.prev_search.store(true, Ordering::Release);
         self.prev_search = Arc::new(AtomicBool::new(false));
@@ -58,9 +68,10 @@ impl Matcher {
         // Batch candidates
         // Send each block to an executor
         // Get the results and send to receiver
-        let (out, rx) = channel::<ScoredChoice>(Self::CHANNEL_SIZE);
+        // let (out, rx) = channel::<ScoredChoice>(Self::CHANNEL_SIZE);
         let reader = self.reader.clone();
         let read_done = self.read_done.clone();
+        let mut sender = self.job_context.clone();
         let case_sensitive = pattern.chars().any(|ch| ch.is_uppercase());
         let strat = self.strategy;
 
@@ -79,6 +90,7 @@ impl Matcher {
         let mut taken = 0;
         let local_stop = self.prev_search.clone();
 
+            log::info!("Start");
         rayon::spawn(move || loop {
             if local_stop.load(Ordering::Acquire) {
                 break;
@@ -90,6 +102,8 @@ impl Matcher {
 
             // If we are done reading all available options
             if fully_read && available == taken {
+            log::info!("Done");
+                sender.send(MatcherMessage::Progress(MatchedOptions::Done));
                 break;
             }
 
@@ -98,33 +112,25 @@ impl Matcher {
                 let batch = taken..taken + size;
                 taken += size;
 
-                let out = out.clone();
-                let stop = local_stop.clone();
-                let reader = reader.clone();
-                let matcher = matcher.clone();
+                let opts = reader.slice(batch);
+                let mut results: Vec<ScoredChoice> = opts
+                    .par_iter()
+                    .filter_map(|choice| {
+                        let ranges = matches_with(choice.filter_text().as_ref(), &matcher)?;
+                        let score = score(&choice, &ranges);
+                        let scored = ScoredChoice::new(choice.clone(), score, ranges);
+                        Some(scored)
+                    })
+                    .collect();
 
-                rayon::spawn(move || {
-                    let opts = reader.slice(batch);
-                    for choice in opts.iter() {
-                        if stop.load(Ordering::Acquire) {
-                            return;
-                        }
+                results.par_sort();
 
-                        if let Some(ranges) = matches_with(choice.filter_text().as_ref(), &matcher) {
-                            let score = score(&choice, &ranges);
-                            let scored = ScoredChoice::new(choice.clone(), score, ranges);
-
-                            if out.blocking_send(scored).is_err() {
-                                stop.store(true, Ordering::Release);
-                                return;
-                            }
-                        }
-                    }
-                });
+                sender.send(MatcherMessage::Progress(MatchedOptions::Options {
+                    clear_old: taken == size,
+                    matched: unsafe { SortedVec::from_sorted_unchecked(results) },
+                }));
             }
         });
-
-        MatchReceiver { receiver: rx }
     }
 }
 
@@ -139,7 +145,7 @@ fn score(choice: &Arc<Choice>, ranges: &[Range<usize>]) -> usize {
 fn matches_with(opt: &str, matcher: &MultiMatcher) -> Option<Vec<Range<usize>>> {
     let mut matches = vec![];
     if matcher.is_empty() {
-        return Some(matches)
+        return Some(matches);
     }
 
     matcher.is_match(opt, &mut matches);

@@ -1,13 +1,14 @@
 use std::{
     path::{Path, PathBuf},
-    sync::Arc,
+    sync::{
+        atomic::{AtomicUsize, Ordering},
+        Arc,
+    },
 };
 
 use sanedit_server::{BoxFuture, Kill};
-use tokio::{
-    io,
-    sync::{mpsc::Sender, oneshot},
-};
+use sanedit_utils::appendlist::Writer;
+use tokio::{io, sync::oneshot};
 
 use crate::{common::matcher::Choice, editor::ignore::Ignore};
 
@@ -15,11 +16,18 @@ use super::{get_option_provider_pool, OptionProvider};
 
 #[derive(Clone)]
 struct ReadDirContext {
-    osend: Sender<Arc<Choice>>,
+    osend: Writer<Arc<Choice>>,
     strip: usize,
     kill: Kill,
     ignore: Ignore,
     recurse: bool,
+    n: Arc<AtomicUsize>,
+}
+impl ReadDirContext {
+    pub fn send(&self, opt: Arc<Choice>) {
+        self.osend.append(opt);
+        self.n.fetch_add(1, Ordering::Release);
+    }
 }
 
 #[derive(Debug)]
@@ -82,7 +90,7 @@ fn rayon_read(scope: &rayon::Scope, dir: PathBuf, ctx: ReadDirContext) -> io::Re
             let _ = rayon_read(scope, dir.clone(), ctx.clone());
         }
 
-        let _ = ctx.osend.blocking_send(Choice::from_path(path, ctx.strip));
+        let _ = ctx.send(Choice::from_path(path, ctx.strip));
     }
 
     Ok(())
@@ -90,10 +98,11 @@ fn rayon_read(scope: &rayon::Scope, dir: PathBuf, ctx: ReadDirContext) -> io::Re
 
 async fn read_directory_recursive(
     dir: PathBuf,
-    osend: Sender<Arc<Choice>>,
+    osend: Writer<Arc<Choice>>,
     ignore: Ignore,
     kill: Kill,
     recurse: bool,
+    done: Arc<AtomicUsize>,
 ) {
     let strip = {
         let dir = dir.as_os_str().to_string_lossy();
@@ -103,19 +112,28 @@ async fn read_directory_recursive(
         }
         len
     };
+    let n = Arc::new(AtomicUsize::new(0));
     let ctx = ReadDirContext {
         osend,
         strip,
         kill,
         ignore,
         recurse,
+        n: n.clone(),
     };
 
     let _ = rayon_reader(dir, ctx).await;
+    let n = n.load(Ordering::Acquire);
+    done.store(n, Ordering::Release);
 }
 
 impl OptionProvider for DirectoryOptionProvider {
-    fn provide(&self, sender: Sender<Arc<Choice>>, kill: Kill) -> BoxFuture<'static, ()> {
+    fn provide(
+        &self,
+        sender: Writer<Arc<Choice>>,
+        kill: Kill,
+        done: Arc<AtomicUsize>,
+    ) -> BoxFuture<'static, ()> {
         let dir = self.path.clone();
         Box::pin(read_directory_recursive(
             dir,
@@ -123,6 +141,7 @@ impl OptionProvider for DirectoryOptionProvider {
             self.ignore.clone(),
             kill,
             self.recurse,
+            done,
         ))
     }
 }

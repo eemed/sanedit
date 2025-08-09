@@ -6,7 +6,7 @@ use std::{
     ops::{Index, Range},
     sync::{
         atomic::{AtomicUsize, Ordering},
-        Arc,
+        Arc, Condvar, Mutex,
     },
 };
 
@@ -73,6 +73,7 @@ pub struct Appendlist<T> {
 impl<T> Appendlist<T> {
     pub fn new() -> (Reader<T>, Writer<T>) {
         let list = Arc::new(List {
+            write: AtomicUsize::new(0),
             len: AtomicUsize::new(0),
             buckets: array!(|_| Bucket::default(); BUCKET_COUNT),
         });
@@ -92,7 +93,7 @@ pub enum AppendResult {
     Append(usize),
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Writer<T> {
     list: Arc<List<T>>,
 }
@@ -102,8 +103,8 @@ impl<T: Copy> Writer<T> {
         // Using the len here as an index.
         // This is safe because we are the only writer so no one can write to
         // the same location in the meanwhile
-        let len = self.len();
-        let loc = BucketLocation::of(len);
+        let windex = self.write_index(items.len());
+        let loc = BucketLocation::of(windex);
         let bucket = &self.list.buckets[loc.bucket];
         // SAFETY: we are the only writer, and readers will not read after len
         let bucket = unsafe { &mut *bucket.get() };
@@ -125,7 +126,8 @@ impl<T: Copy> Writer<T> {
             slice[i].write(items[i]);
         }
 
-        self.list.len.store(len + nwrite, Ordering::Release);
+        let idx = self.list.len.fetch_add(nwrite, Ordering::Release);
+        debug_assert!(windex == idx, "windex: {} != len: {}", windex, idx);
 
         if alloc {
             AppendResult::NewBlock(nwrite)
@@ -137,8 +139,8 @@ impl<T: Copy> Writer<T> {
 
 impl<T> Writer<T> {
     pub fn append_vec(&self, mut items: Vec<T>) -> AppendResult {
-        let len = self.len();
-        let loc = BucketLocation::of(len);
+        let windex = self.write_index(items.len());
+        let loc = BucketLocation::of(windex);
         let bucket = &self.list.buckets[loc.bucket];
         // SAFETY: we are the only writer, and readers will not read after len
         let bucket = unsafe { &mut *bucket.get() };
@@ -160,7 +162,8 @@ impl<T> Writer<T> {
             slice[i].write(items.pop().unwrap());
         }
 
-        self.list.len.store(len + nwrite, Ordering::Release);
+        let idx = self.list.len.fetch_add(nwrite, Ordering::Release);
+        debug_assert!(windex == idx, "windex: {} != len: {}", windex, idx);
 
         if alloc {
             AppendResult::NewBlock(nwrite)
@@ -170,8 +173,8 @@ impl<T> Writer<T> {
     }
 
     pub fn append(&self, item: T) {
-        let len = self.len();
-        let loc = BucketLocation::of(len);
+        let windex = self.write_index(1);
+        let loc = BucketLocation::of(windex);
         let bucket = &self.list.buckets[loc.bucket];
         // SAFETY: we are the only writer, and readers will not read after len
         let bucket = unsafe { &mut *bucket.get() };
@@ -188,10 +191,18 @@ impl<T> Writer<T> {
         // SAFETY: we just allocated it if it was not there
         let bucket = bucket.as_mut().unwrap();
         let slice = &mut bucket[loc.pos..];
-        // let nwrite = min(slice.len(), bytes.len());
         slice[0].write(item);
 
-        self.list.len.store(len + 1, Ordering::Release);
+        let idx = self.list.len.fetch_add(1, Ordering::AcqRel);
+        debug_assert!(windex == idx, "windex: {} != len: {}", windex, idx);
+    }
+
+    fn write_index(&self, n: usize) -> usize {
+        let n = self.list.write.fetch_add(n, Ordering::AcqRel);
+        while self.len() < n {
+            std::hint::spin_loop();
+        }
+        n
     }
 
     pub fn len(&self) -> usize {
@@ -262,6 +273,7 @@ type Bucket<T> = UnsafeCell<Option<Box<[MaybeUninit<T>]>>>;
 
 #[derive(Debug)]
 struct List<T> {
+    write: AtomicUsize,
     len: AtomicUsize,
     buckets: [Bucket<T>; BUCKET_COUNT],
 }

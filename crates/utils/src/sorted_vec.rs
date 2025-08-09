@@ -27,6 +27,10 @@ impl<T: Ord> SortedVec<T> {
         SortedVec { items }
     }
 
+    pub unsafe fn from_sorted_unchecked(items: Vec<T>) -> SortedVec<T> {
+        SortedVec { items }
+    }
+
     pub fn with_capacity(cap: usize) -> SortedVec<T> {
         SortedVec {
             items: Vec::with_capacity(cap),

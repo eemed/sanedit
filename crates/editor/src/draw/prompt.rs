@@ -18,7 +18,7 @@ pub(crate) struct LastPrompt {
     pub(crate) input_hash: Hash,
     pub(crate) hash: Hash,
     pub(crate) cursor: Option<usize>,
-    pub(crate) time: Instant,
+    // pub(crate) time: Instant,
 }
 
 pub(crate) fn draw(ctx: &mut DrawContext) -> Option<Redraw> {
@@ -47,14 +47,16 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> Option<Redraw> {
         .map(|lp| lp.input_hash != input_hash)
         .unwrap_or(true);
     if !is_input_event {
-        let draw = ctx
-            .state
-            .last_prompt
-            .as_ref()
-            .map(|lp| lp.time.elapsed() > MIN_DELAY_BETWEEN_DRAWS)
-            .unwrap_or(true)
-            || !ctx.editor.win.prompt.is_options_loading();
-        if !draw || ctx.editor.win.prompt.is_discarding() {
+        // let draw = !ctx.editor.win.prompt.is_options_loading();
+        // ctx
+        //     .state
+        //     .last_prompt
+        //     .as_ref()
+        //     .map(|lp| lp.time.elapsed() > MIN_DELAY_BETWEEN_DRAWS)
+        //     .unwrap_or(true)
+        //     || !ctx.editor.win.prompt.is_options_loading();
+        // if !draw || ctx.editor.win.prompt.is_discarding() {
+        if ctx.editor.win.prompt.is_discarding() {
             return None;
         }
     }
@@ -67,7 +69,7 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> Option<Redraw> {
             if lp.cursor == selected {
                 return None;
             } else {
-                lp.time = Instant::now();
+                // lp.time = Instant::now();
                 lp.cursor = selected;
                 return Some(redraw::Redraw::Selection(Kind::Prompt, selected));
             }
@@ -78,7 +80,7 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> Option<Redraw> {
         input_hash,
         hash,
         cursor: selected,
-        time: Instant::now(),
+        // time: Instant::now(),
     });
     prompt.selected = selected;
     Some(redraw::Redraw::Prompt(Component::Update(prompt)))

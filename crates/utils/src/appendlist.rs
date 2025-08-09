@@ -6,7 +6,7 @@ use std::{
     ops::{Index, Range},
     sync::{
         atomic::{AtomicUsize, Ordering},
-        Arc, Condvar, Mutex,
+        Arc, OnceLock,
     },
 };
 
@@ -100,26 +100,21 @@ pub struct Writer<T> {
 
 impl<T: Copy> Writer<T> {
     pub fn append_slice(&self, items: &[T]) -> AppendResult {
-        // Using the len here as an index.
-        // This is safe because we are the only writer so no one can write to
-        // the same location in the meanwhile
         let windex = self.write_index(items.len());
         let loc = BucketLocation::of(windex);
-        let bucket = &self.list.buckets[loc.bucket];
-        // SAFETY: we are the only writer, and readers will not read after len
-        let bucket = unsafe { &mut *bucket.get() };
-        let alloc = bucket.is_none();
-
-        if alloc {
-            let mut items = Vec::with_capacity(loc.bucket_len);
+        let mut alloc = false;
+        let bucket = self.list.buckets[loc.bucket].get_or_init(|| {
+            alloc = true;
+            let mut vec = Vec::with_capacity(loc.bucket_len);
             for _ in 0..loc.bucket_len {
-                items.push(MaybeUninit::uninit());
+                vec.push(MaybeUninit::uninit());
             }
-            *bucket = Some(items.into());
-        }
+            UnsafeCell::new(vec.into())
+        });
 
         // SAFETY: we just allocated it if it was not there
-        let bucket = bucket.as_mut().unwrap();
+        let bucket = unsafe { &mut *bucket.get() };
+        let bucket = bucket.as_mut();
         let slice = &mut bucket[loc.pos..];
         let nwrite = min(slice.len(), items.len());
         for i in 0..nwrite {
@@ -141,21 +136,19 @@ impl<T> Writer<T> {
     pub fn append_vec(&self, mut items: Vec<T>) -> AppendResult {
         let windex = self.write_index(items.len());
         let loc = BucketLocation::of(windex);
-        let bucket = &self.list.buckets[loc.bucket];
-        // SAFETY: we are the only writer, and readers will not read after len
-        let bucket = unsafe { &mut *bucket.get() };
-        let alloc = bucket.is_none();
-
-        if alloc {
-            let mut items = Vec::with_capacity(loc.bucket_len);
+        let mut alloc = false;
+        let bucket = self.list.buckets[loc.bucket].get_or_init(|| {
+            alloc = true;
+            let mut vec = Vec::with_capacity(loc.bucket_len);
             for _ in 0..loc.bucket_len {
-                items.push(MaybeUninit::uninit());
+                vec.push(MaybeUninit::uninit());
             }
-            *bucket = Some(items.into());
-        }
+            UnsafeCell::new(vec.into())
+        });
 
         // SAFETY: we just allocated it if it was not there
-        let bucket = bucket.as_mut().unwrap();
+        let bucket = unsafe { &mut *bucket.get() };
+        let bucket = bucket.as_mut();
         let slice = &mut bucket[loc.pos..];
         let nwrite = min(slice.len(), items.len());
         for i in (0..nwrite).rev() {
@@ -175,34 +168,25 @@ impl<T> Writer<T> {
     pub fn append(&self, item: T) {
         let windex = self.write_index(1);
         let loc = BucketLocation::of(windex);
-        let bucket = &self.list.buckets[loc.bucket];
-        // SAFETY: we are the only writer, and readers will not read after len
-        let bucket = unsafe { &mut *bucket.get() };
-        let alloc = bucket.is_none();
-
-        if alloc {
+        let bucket = self.list.buckets[loc.bucket].get_or_init(|| {
             let mut vec = Vec::with_capacity(loc.bucket_len);
             for _ in 0..loc.bucket_len {
                 vec.push(MaybeUninit::uninit());
             }
-            *bucket = Some(vec.into());
-        }
-
-        // SAFETY: we just allocated it if it was not there
-        let bucket = bucket.as_mut().unwrap();
+            UnsafeCell::new(vec.into())
+        });
+        let bucket = unsafe { &mut *bucket.get() };
+        let bucket = bucket.as_mut();
         let slice = &mut bucket[loc.pos..];
         slice[0].write(item);
 
+        // TODO ensure added correcylt
         let idx = self.list.len.fetch_add(1, Ordering::AcqRel);
         debug_assert!(windex == idx, "windex: {} != len: {}", windex, idx);
     }
 
     fn write_index(&self, n: usize) -> usize {
-        let n = self.list.write.fetch_add(n, Ordering::AcqRel);
-        while self.len() < n {
-            std::hint::spin_loop();
-        }
-        n
+        self.list.write.fetch_add(n, Ordering::AcqRel)
     }
 
     pub fn len(&self) -> usize {
@@ -232,9 +216,9 @@ impl<T> Reader<T> {
         // TODO assert we dont read over bucket boundaries
         let loc = BucketLocation::of(range.start);
         let bucket = {
-            let bucket: &UnsafeCell<Option<Box<[MaybeUninit<T>]>>> = &self.list.buckets[loc.bucket];
-            let bucket: Option<&Box<[MaybeUninit<T>]>> = unsafe { (*bucket.get()).as_ref() };
-            let bucket: &[MaybeUninit<T>] = bucket.unwrap();
+            let bucket: &UnsafeCell<Box<[MaybeUninit<T>]>> =
+                &self.list.buckets[loc.bucket].get().unwrap();
+            let bucket: &[MaybeUninit<T>] = unsafe { (*bucket.get()).as_ref() };
             bucket
         };
         let brange = loc.pos..loc.pos + range.len();
@@ -244,9 +228,9 @@ impl<T> Reader<T> {
     pub fn get(&self, idx: usize) -> Option<&T> {
         let loc = BucketLocation::of(idx);
         let bucket = {
-            let bucket: &UnsafeCell<Option<Box<[MaybeUninit<T>]>>> = &self.list.buckets[loc.bucket];
-            let bucket: Option<&Box<[MaybeUninit<T>]>> = unsafe { (*bucket.get()).as_ref() };
-            let bucket: &[MaybeUninit<T>] = bucket.unwrap();
+            let bucket: &UnsafeCell<Box<[MaybeUninit<T>]>> =
+                &self.list.buckets[loc.bucket].get().unwrap();
+            let bucket: &[MaybeUninit<T>] = unsafe { (*bucket.get()).as_ref() };
             bucket
         };
         unsafe { mem::transmute(&bucket[loc.pos]) }
@@ -269,7 +253,7 @@ impl<T> Index<usize> for Reader<T> {
     }
 }
 
-type Bucket<T> = UnsafeCell<Option<Box<[MaybeUninit<T>]>>>;
+type Bucket<T> = OnceLock<UnsafeCell<Box<[MaybeUninit<T>]>>>;
 
 #[derive(Debug)]
 struct List<T> {

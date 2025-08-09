@@ -3,7 +3,6 @@ mod receiver;
 mod strategy;
 
 use std::{
-    borrow::Cow,
     cmp::min,
     sync::{
         atomic::{AtomicBool, AtomicUsize, Ordering},
@@ -64,7 +63,6 @@ impl Matcher {
         let read_done = self.read_done.clone();
         let case_sensitive = pattern.chars().any(|ch| ch.is_uppercase());
         let strat = self.strategy;
-        let match_fn = strat.get();
 
         // Apply strategy to pattern
         // Split pattern by whitespace and use the resulting patterns as independent
@@ -77,6 +75,7 @@ impl Matcher {
                 Arc::new(vec![pattern.into()])
             }
         };
+        let matcher = strat.get_match_func(&patterns, case_sensitive);
         let mut taken = 0;
         let local_stop = self.prev_search.clone();
 
@@ -102,7 +101,7 @@ impl Matcher {
                 let out = out.clone();
                 let stop = local_stop.clone();
                 let reader = reader.clone();
-                let patterns = patterns.clone();
+                let matcher = matcher.clone();
 
                 rayon::spawn(move || {
                     let opts = reader.slice(batch);
@@ -111,12 +110,7 @@ impl Matcher {
                             return;
                         }
 
-                        if let Some(ranges) = matches_with(
-                            choice.filter_text().as_ref(),
-                            &patterns,
-                            case_sensitive,
-                            match_fn,
-                        ) {
+                        if let Some(ranges) = matches_with(choice.filter_text().as_ref(), &matcher) {
                             let score = score(&choice, &ranges);
                             let scored = ScoredChoice::new(choice.clone(), score, ranges);
 
@@ -142,32 +136,16 @@ fn score(choice: &Arc<Choice>, ranges: &[Range<usize>]) -> usize {
     ranges.first().map(|f| f.start).unwrap_or(0)
 }
 
-fn with_case_sensitivity(opt: &str, case_sensitive: bool) -> Cow<str> {
-    if case_sensitive {
-        return opt.into();
-    }
-
-    let has_upper = opt.chars().any(|ch| ch.is_ascii_uppercase());
-    if !has_upper {
-        return opt.into();
-    }
-
-    Cow::from(opt.to_ascii_lowercase())
-}
-
-fn matches_with(
-    opt: &str,
-    patterns: &Arc<Vec<String>>,
-    case_sensitive: bool,
-    f: fn(&str, &str) -> Option<Range<usize>>,
-) -> Option<Vec<Range<usize>>> {
-    let string: Cow<str> = with_case_sensitivity(opt, case_sensitive);
+fn matches_with(opt: &str, matcher: &MultiMatcher) -> Option<Vec<Range<usize>>> {
     let mut matches = vec![];
-    for pattern in patterns.iter() {
-        // Calculate match and apply offset
-        let range = (f)(&string, pattern)?;
-        matches.push(range);
+    if matcher.is_empty() {
+        return Some(matches)
     }
 
-    Some(matches)
+    matcher.is_match(opt, &mut matches);
+    if matches.is_empty() {
+        None
+    } else {
+        Some(matches)
+    }
 }

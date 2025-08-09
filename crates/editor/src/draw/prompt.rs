@@ -10,7 +10,8 @@ use crate::editor::windows::Focus;
 
 use super::{DrawContext, Hash};
 
-const MIN_DELAY_BETWEEN_DRAWS: Duration = Duration::from_millis(30);
+// 30fps
+const MIN_DELAY_BETWEEN_DRAWS: Duration = Duration::from_millis(1000 / 30);
 
 #[derive(Debug)]
 pub(crate) struct LastPrompt {

@@ -214,6 +214,10 @@ impl Finder {
     pub fn is_case_sensitive(&self) -> bool {
         !self.case_insensitive
     }
+
+    pub fn pattern(&self) -> &[u8] {
+        &self.pattern
+    }
 }
 
 #[derive(Debug)]

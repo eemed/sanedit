@@ -1,6 +1,75 @@
-use sanedit_core::Range;
+use std::sync::Arc;
 
-pub(crate) type MatchFn = fn(&str, &str) -> Option<Range<usize>>;
+use sanedit_core::Range;
+use sanedit_syntax::Finder;
+
+trait MatchFn: Send + Sync {
+    fn is_match(&self, opt: &str, results: &mut Vec<Range<usize>>);
+}
+
+/// Matches anywhere
+impl MatchFn for Finder {
+    fn is_match(&self, opt: &str, results: &mut Vec<Range<usize>>) {
+        let mut iter = self.iter(opt);
+        while let Some(start) = iter.next() {
+            let start = start as usize;
+            results.push(Range::new(start, start + self.pattern().len()));
+        }
+    }
+}
+
+/// Matches prefixes
+pub(crate) struct Prefix {
+    is_case_sensitive: bool,
+    term: String,
+}
+
+impl MatchFn for Prefix {
+    fn is_match(&self, opt: &str, results: &mut Vec<Range<usize>>) {
+        if opt.len() < self.term.len() {
+            return;
+        }
+
+        let part = &opt[..self.term.len()];
+        let result = if self.is_case_sensitive {
+            part == self.term
+        } else {
+            part.eq_ignore_ascii_case(&self.term)
+        };
+
+        if result {
+            results.push(Range::new(0, self.term.len()));
+        }
+    }
+}
+
+#[derive(Clone)]
+pub(crate) struct MultiMatcher {
+    is_empty: bool,
+    matchers: Arc<Vec<Box<dyn MatchFn>>>,
+}
+
+impl MultiMatcher {
+    pub fn is_match(&self, opt: &str, results: &mut Vec<Range<usize>>) {
+        let start = results.len();
+        let mut current = start;
+        for mat in self.matchers.as_ref() {
+            mat.is_match(opt, results);
+            // If we dont find a match for term consider this filtered
+            if current == results.len() {
+                results.truncate(start);
+                break;
+            }
+
+            current = results.len();
+        }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.is_empty
+    }
+}
+
 
 /// Where to match
 ///
@@ -18,11 +87,31 @@ pub enum MatchStrategy {
 }
 
 impl MatchStrategy {
-    pub fn get(&self) -> MatchFn {
-        match self {
-            MatchStrategy::Default => default_match,
-            MatchStrategy::Prefix => prefix_match,
+    pub fn get_match_func(&self, terms: &[String], case_sensitive: bool) -> MultiMatcher {
+        let mut matchers: Vec<Box<dyn MatchFn>> = Vec::with_capacity(terms.len());
+        if terms.len() == 0 {
+            return MultiMatcher { is_empty: true, matchers: Arc::new(matchers) };
         }
+        match self {
+            MatchStrategy::Default => {
+                for term in terms {
+                    let finder = if case_sensitive {
+                        Finder::new(term.as_str().as_bytes())
+                    } else {
+                        Finder::new_case_insensitive(term.as_str().as_bytes())
+                    };
+                    matchers.push(Box::new(finder));
+                }
+            }
+            MatchStrategy::Prefix => {
+                for term in terms {
+                    let pfix = Prefix { is_case_sensitive: case_sensitive, term: term.clone() };
+                    matchers.push(Box::new(pfix));
+                }
+            }
+        }
+
+        MultiMatcher { is_empty: false, matchers: Arc::new(matchers) }
     }
 
     /// Whether to split term from whitespace, and match using all of them
@@ -32,22 +121,5 @@ impl MatchStrategy {
             MatchStrategy::Default => true,
             MatchStrategy::Prefix => false,
         }
-    }
-}
-
-/// Default match function
-/// matches if term is found anywhere on the searched string
-fn default_match(me: &str, term: &str) -> Option<Range<usize>> {
-    let start = me.find(term)?;
-    Some(Range::new(start, start + term.len()))
-}
-
-/// Prefix match function
-/// matches only if searched string starts with term
-fn prefix_match(me: &str, term: &str) -> Option<Range<usize>> {
-    if me.starts_with(term) {
-        Some(Range::new(0, term.len()))
-    } else {
-        None
     }
 }

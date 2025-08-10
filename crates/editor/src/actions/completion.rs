@@ -5,7 +5,7 @@ use sanedit_core::{word_before_pos, Change, Changes, Range};
 use sanedit_utils::either::Either;
 
 use crate::{
-    common::matcher::{Choice, MatchStrategy},
+    common::Choice,
     editor::{
         hooks::Hook,
         snippets::Snippet,
@@ -16,7 +16,13 @@ use crate::{
 
 use sanedit_server::ClientId;
 
-use super::{hooks::run, jobs::MatcherJob, lsp, snippets, text, window::focus, ActionResult};
+use super::{
+    hooks::run,
+    jobs::{MatchStrategy, MatcherJob},
+    lsp, snippets, text,
+    window::focus,
+    ActionResult,
+};
 
 #[action("Editor: Complete")]
 fn complete(editor: &mut Editor, id: ClientId) -> ActionResult {

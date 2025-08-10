@@ -1,18 +1,22 @@
 use std::any::Any;
 use std::cmp::min;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
+use std::thread;
+use std::time::{Duration, Instant};
 
 use sanedit_buffer::utf8::EndOfLine;
 use sanedit_buffer::{PieceTree, PieceTreeSlice, PieceTreeView};
 use sanedit_core::movement::{end_of_line, start_of_line};
 use sanedit_core::{Group, Item, Range, SearchMatch, Searcher};
+use sanedit_utils::appendlist::Appendlist;
 use sanedit_utils::sorted_vec::SortedVec;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 
 use crate::actions::jobs::{OptionProvider, CHANNEL_SIZE};
 use crate::actions::locations;
-use crate::common::matcher::Choice;
+use crate::common::Choice;
 
 use crate::editor::ignore::Ignore;
 use crate::editor::Map;
@@ -48,7 +52,8 @@ impl Grep {
     }
 
     async fn grep(
-        mut orecv: Receiver<Arc<Choice>>,
+        reader: Appendlist<Arc<Choice>>,
+        write_done: Arc<AtomicUsize>,
         pattern: &str,
         msend: Sender<GrepResult>,
         buffers: Arc<Map<PathBuf, PieceTreeView>>,
@@ -58,50 +63,83 @@ impl Grep {
             return;
         };
         let searcher = Arc::new(searcher);
+        let mut taken = 0;
+        const INITIAL_BACKOFF: u64 = 10;
+        let mut backoff = INITIAL_BACKOFF;
 
-        while let Some(opt) = orecv.recv().await {
-            let searcher = searcher.clone();
-            let msend = msend.clone();
-            let bufs = buffers.clone();
-            let stop = kill.clone();
+        rayon::spawn(move || loop {
+            if kill.should_stop() {
+                break;
+            }
 
-            // let (tx, rx) = tokio::sync::oneshot::channel::<()>();
+            let total = write_done.load(Ordering::Acquire);
+            let available = reader.len();
+            let fully_read = available == total;
 
-            rayon::spawn(move || {
-                let path = match opt.as_ref() {
-                    Choice::Path { path, .. } => path,
-                    _ => {
-                        return;
-                    }
-                };
+            // If we are done reading all available options
+            if fully_read && available == taken {
+                break;
+            }
 
-                match bufs.get(path) {
-                    Some(view) => {
-                        // Grep editor buffers
-                        Self::grep_buffer(path.clone(), view, &searcher, msend, stop.clone());
-                    }
-                    None => {
-                        // Grep files outside editor
-                        let Ok(pt) = PieceTree::from_path(&path) else {
+            if available > taken {
+                backoff = INITIAL_BACKOFF;
+
+                let searcher = searcher.clone();
+                let msend = msend.clone();
+                let bufs = buffers.clone();
+                let stop = kill.clone();
+                let nreader = reader.clone();
+                taken += 1;
+
+                rayon::spawn(move || {
+                    let opt = nreader.get(taken - 1).unwrap();
+                    let path = match opt.as_ref() {
+                        Choice::Path { path, .. } => path,
+                        _ => {
                             return;
-                        };
-                        let view = pt.view();
-                        Self::grep_buffer(path.clone(), &view, &searcher, msend, stop.clone());
+                        }
+                    };
+
+                    match bufs.get(path) {
+                        Some(view) => {
+                            // Grep editor buffers
+                            Self::grep_buffer(path.clone(), view, &searcher, msend, stop.clone());
+                        }
+                        None => {
+                            // Grep files outside editor
+                            let Ok(pt) = PieceTree::from_path(&path) else {
+                                return;
+                            };
+                            let view = pt.view();
+                            Self::grep_buffer(path.clone(), &view, &searcher, msend, stop.clone());
+                        }
                     }
-                }
-
-                // tx.send(());
-            });
-
-            // rx.await;
-        }
+                });
+            } else {
+                thread::sleep(Duration::from_micros(backoff));
+                backoff = (backoff * 2).min(200);
+            }
+        });
     }
 
     async fn send_results(mut recv: Receiver<GrepResult>, mut ctx: JobContext) {
+        const FPS: Duration = Duration::from_millis(1000 / 30);
+        let mut last_sent = Instant::now();
+        let mut results = vec![];
+
         ctx.send(Start(ctx.id));
 
         while let Some(msg) = recv.recv().await {
-            ctx.send(msg);
+            results.push(msg);
+
+            if last_sent.elapsed() > FPS {
+                ctx.send(std::mem::take(&mut results));
+                last_sent = Instant::now();
+            }
+        }
+
+        if !results.is_empty() {
+            ctx.send(std::mem::take(&mut results));
         }
     }
 
@@ -200,14 +238,14 @@ impl Job for Grep {
         let bufs = self.buffers.clone();
 
         let fut = async move {
-            // Options channel
-            let (osend, orecv) = channel::<Arc<Choice>>(50000);
             // Results channel
             let (msend, mrecv) = channel::<GrepResult>(CHANNEL_SIZE);
+            let list = Appendlist::<Arc<Choice>>::new();
+            let write_done = Arc::new(AtomicUsize::new(usize::MAX));
 
             tokio::join!(
-                fopts.provide(osend, ctx.kill.clone()),
-                Self::grep(orecv, &pattern, msend, bufs, ctx.kill.clone()),
+                fopts.provide(list.clone(), ctx.kill.clone(), write_done.clone()),
+                Self::grep(list, write_done, &pattern, msend, bufs, ctx.kill.clone()),
                 Self::send_results(mrecv, ctx),
             );
 
@@ -233,12 +271,14 @@ impl KeepInTouch for Grep {
             return;
         }
 
-        if let Ok(msg) = msg.downcast::<GrepResult>() {
-            let items: Vec<Item> = msg.matches.into_iter().map(Item::from).collect();
-            let mut group = Group::new(&msg.path);
-            items.into_iter().for_each(|i| group.push(i));
+        if let Ok(results) = msg.downcast::<Vec<GrepResult>>() {
             let (win, _buf) = editor.win_buf_mut(self.client_id);
-            win.locations.push(group);
+            for res in results.into_iter() {
+                let items: Vec<Item> = res.matches.into_iter().map(Item::from).collect();
+                let mut group = Group::new(&res.path);
+                items.into_iter().for_each(|i| group.push(i));
+                win.locations.push(group);
+            }
         }
     }
 

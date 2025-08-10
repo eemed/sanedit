@@ -14,7 +14,7 @@ use std::fs::File;
 use anyhow::{anyhow, bail};
 use sanedit_syntax::{Annotation, Capture, Captures, LanguageLoader, PTSliceSource, Parser};
 
-use crate::common::matcher::Choice;
+use crate::common::Choice;
 
 use super::Map;
 

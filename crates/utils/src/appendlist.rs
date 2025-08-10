@@ -1,13 +1,14 @@
 use std::{
     cell::UnsafeCell,
     cmp::min,
-    marker::PhantomData,
     mem::{self, MaybeUninit},
     ops::{Index, Range},
     sync::{
         atomic::{AtomicUsize, Ordering},
-        Arc,
+        Arc, OnceLock,
     },
+    thread,
+    time::Duration,
 };
 
 // Idea is to create a array of pointers to blocks of data.
@@ -66,24 +67,6 @@ macro_rules! array {
     }};
 }
 
-pub struct Appendlist<T> {
-    _phantom: PhantomData<T>,
-}
-
-impl<T> Appendlist<T> {
-    pub fn new() -> (Reader<T>, Writer<T>) {
-        let list = Arc::new(List {
-            len: AtomicUsize::new(0),
-            buckets: array!(|_| Bucket::default(); BUCKET_COUNT),
-        });
-
-        let writer = Writer { list: list.clone() };
-        let reader = Reader { list };
-
-        (reader, writer)
-    }
-}
-
 #[derive(Debug, PartialEq)]
 pub enum AppendResult {
     /// Allocated a new block and appended usize bytes to it.
@@ -92,181 +75,17 @@ pub enum AppendResult {
     Append(usize),
 }
 
-#[derive(Debug)]
-pub struct Writer<T> {
-    list: Arc<List<T>>,
-}
-
-impl<T: Copy> Writer<T> {
-    pub fn append_slice(&self, items: &[T]) -> AppendResult {
-        // Using the len here as an index.
-        // This is safe because we are the only writer so no one can write to
-        // the same location in the meanwhile
-        let len = self.len();
-        let loc = BucketLocation::of(len);
-        let bucket = &self.list.buckets[loc.bucket];
-        // SAFETY: we are the only writer, and readers will not read after len
-        let bucket = unsafe { &mut *bucket.get() };
-        let alloc = bucket.is_none();
-
-        if alloc {
-            let mut items = Vec::with_capacity(loc.bucket_len);
-            for _ in 0..loc.bucket_len {
-                items.push(MaybeUninit::uninit());
-            }
-            *bucket = Some(items.into());
-        }
-
-        // SAFETY: we just allocated it if it was not there
-        let bucket = bucket.as_mut().unwrap();
-        let slice = &mut bucket[loc.pos..];
-        let nwrite = min(slice.len(), items.len());
-        for i in 0..nwrite {
-            slice[i].write(items[i]);
-        }
-
-        self.list.len.store(len + nwrite, Ordering::Release);
-
-        if alloc {
-            AppendResult::NewBlock(nwrite)
-        } else {
-            AppendResult::Append(nwrite)
-        }
-    }
-}
-
-impl<T> Writer<T> {
-    pub fn append_vec(&self, mut items: Vec<T>) -> AppendResult {
-        let len = self.len();
-        let loc = BucketLocation::of(len);
-        let bucket = &self.list.buckets[loc.bucket];
-        // SAFETY: we are the only writer, and readers will not read after len
-        let bucket = unsafe { &mut *bucket.get() };
-        let alloc = bucket.is_none();
-
-        if alloc {
-            let mut items = Vec::with_capacity(loc.bucket_len);
-            for _ in 0..loc.bucket_len {
-                items.push(MaybeUninit::uninit());
-            }
-            *bucket = Some(items.into());
-        }
-
-        // SAFETY: we just allocated it if it was not there
-        let bucket = bucket.as_mut().unwrap();
-        let slice = &mut bucket[loc.pos..];
-        let nwrite = min(slice.len(), items.len());
-        for i in (0..nwrite).rev() {
-            slice[i].write(items.pop().unwrap());
-        }
-
-        self.list.len.store(len + nwrite, Ordering::Release);
-
-        if alloc {
-            AppendResult::NewBlock(nwrite)
-        } else {
-            AppendResult::Append(nwrite)
-        }
-    }
-
-    pub fn append(&self, item: T) {
-        let len = self.len();
-        let loc = BucketLocation::of(len);
-        let bucket = &self.list.buckets[loc.bucket];
-        // SAFETY: we are the only writer, and readers will not read after len
-        let bucket = unsafe { &mut *bucket.get() };
-        let alloc = bucket.is_none();
-
-        if alloc {
-            let mut vec = Vec::with_capacity(loc.bucket_len);
-            for _ in 0..loc.bucket_len {
-                vec.push(MaybeUninit::uninit());
-            }
-            *bucket = Some(vec.into());
-        }
-
-        // SAFETY: we just allocated it if it was not there
-        let bucket = bucket.as_mut().unwrap();
-        let slice = &mut bucket[loc.pos..];
-        // let nwrite = min(slice.len(), bytes.len());
-        slice[0].write(item);
-
-        self.list.len.store(len + 1, Ordering::Release);
-    }
-
-    pub fn len(&self) -> usize {
-        self.list.len.load(Ordering::Acquire)
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.len() == 0
-    }
-}
-
-#[derive(Debug)]
-pub struct Reader<T> {
-    list: Arc<List<T>>,
-}
-
-impl<T> Clone for Reader<T> {
-    fn clone(&self) -> Self {
-        Self {
-            list: self.list.clone(),
-        }
-    }
-}
-
-impl<T> Reader<T> {
-    pub fn slice(&self, range: Range<usize>) -> &[T] {
-        // TODO assert we dont read over bucket boundaries
-        let loc = BucketLocation::of(range.start);
-        let bucket = {
-            let bucket: &UnsafeCell<Option<Box<[MaybeUninit<T>]>>> = &self.list.buckets[loc.bucket];
-            let bucket: Option<&Box<[MaybeUninit<T>]>> = unsafe { (*bucket.get()).as_ref() };
-            let bucket: &[MaybeUninit<T>] = bucket.unwrap();
-            bucket
-        };
-        let brange = loc.pos..loc.pos + range.len();
-        unsafe { mem::transmute(&bucket[brange]) }
-    }
-
-    pub fn get(&self, idx: usize) -> Option<&T> {
-        let loc = BucketLocation::of(idx);
-        let bucket = {
-            let bucket: &UnsafeCell<Option<Box<[MaybeUninit<T>]>>> = &self.list.buckets[loc.bucket];
-            let bucket: Option<&Box<[MaybeUninit<T>]>> = unsafe { (*bucket.get()).as_ref() };
-            let bucket: &[MaybeUninit<T>] = bucket.unwrap();
-            bucket
-        };
-        unsafe { mem::transmute(&bucket[loc.pos]) }
-    }
-
-    pub fn len(&self) -> usize {
-        self.list.len.load(Ordering::Acquire)
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.len() == 0
-    }
-}
-
-impl<T> Index<usize> for Reader<T> {
-    type Output = T;
-
-    fn index(&self, index: usize) -> &Self::Output {
-        self.get(index).unwrap()
-    }
-}
-
-type Bucket<T> = UnsafeCell<Option<Box<[MaybeUninit<T>]>>>;
+type Bucket<T> = OnceLock<UnsafeCell<Box<[MaybeUninit<T>]>>>;
 
 #[derive(Debug)]
 struct List<T> {
+    write: AtomicUsize,
     len: AtomicUsize,
     buckets: [Bucket<T>; BUCKET_COUNT],
 }
 
-unsafe impl<T> Sync for List<T> {}
+unsafe impl<T: Send> Send for List<T> {}
+unsafe impl<T: Sync + Send> Sync for List<T> {}
 
 #[derive(Debug, PartialEq)]
 struct BucketLocation {
@@ -297,5 +116,173 @@ impl BucketLocation {
             bucket_len,
             pos,
         }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Appendlist<T> {
+    list: Arc<List<T>>,
+}
+
+unsafe impl<T: Send> Send for Appendlist<T> {}
+unsafe impl<T: Sync + Send> Sync for Appendlist<T> {}
+
+impl<T> Appendlist<T> {
+    pub fn new() -> Appendlist<T> {
+        let list = Arc::new(List {
+            write: AtomicUsize::new(0),
+            len: AtomicUsize::new(0),
+            buckets: array!(|_| Bucket::default(); BUCKET_COUNT),
+        });
+
+        Appendlist { list }
+    }
+}
+
+impl<T: Copy> Appendlist<T> {
+    pub fn append_slice(&self, items: &[T]) -> AppendResult {
+        let windex = self.write_index(items.len());
+        let loc = BucketLocation::of(windex);
+        let mut alloc = false;
+        let bucket = self.list.buckets[loc.bucket].get_or_init(|| {
+            alloc = true;
+            let mut vec = Vec::with_capacity(loc.bucket_len);
+            for _ in 0..loc.bucket_len {
+                vec.push(MaybeUninit::uninit());
+            }
+            UnsafeCell::new(vec.into())
+        });
+
+        // SAFETY: we just allocated it if it was not there
+        let bucket = unsafe { &mut *bucket.get() };
+        let bucket = bucket.as_mut();
+        let slice = &mut bucket[loc.pos..];
+        let nwrite = min(slice.len(), items.len());
+        for i in 0..nwrite {
+            slice[i].write(items[i]);
+        }
+
+        let idx = self.list.len.fetch_add(nwrite, Ordering::Release);
+        debug_assert!(windex == idx, "windex: {} != len: {}", windex, idx);
+
+        if alloc {
+            AppendResult::NewBlock(nwrite)
+        } else {
+            AppendResult::Append(nwrite)
+        }
+    }
+}
+
+impl<T> Appendlist<T> {
+    fn write_index(&self, n: usize) -> usize {
+        self.list.write.fetch_add(n, Ordering::AcqRel)
+    }
+
+    fn inc_len(&self, write_index: usize, written: usize) {
+        let mut backoff = 1;
+        while self
+            .list
+            .len
+            .compare_exchange(
+                write_index,
+                write_index + written,
+                Ordering::Release,
+                Ordering::Relaxed,
+            )
+            .is_err()
+        {
+            thread::sleep(Duration::from_micros(backoff));
+            backoff = (backoff * 2).min(100); // Cap the delay
+        }
+    }
+
+    pub fn append_vec(&self, mut items: Vec<T>) -> AppendResult {
+        let windex = self.write_index(items.len());
+        let loc = BucketLocation::of(windex);
+        let mut alloc = false;
+        let bucket = self.list.buckets[loc.bucket].get_or_init(|| {
+            alloc = true;
+            let mut vec = Vec::with_capacity(loc.bucket_len);
+            for _ in 0..loc.bucket_len {
+                vec.push(MaybeUninit::uninit());
+            }
+            UnsafeCell::new(vec.into())
+        });
+
+        // SAFETY: we just allocated it if it was not there
+        let bucket = unsafe { &mut *bucket.get() };
+        let bucket = bucket.as_mut();
+        let slice = &mut bucket[loc.pos..];
+        let nwrite = min(slice.len(), items.len());
+        for i in (0..nwrite).rev() {
+            slice[i].write(items.pop().unwrap());
+        }
+
+        let idx = self.list.len.fetch_add(nwrite, Ordering::Release);
+        debug_assert!(windex == idx, "windex: {} != len: {}", windex, idx);
+
+        if alloc {
+            AppendResult::NewBlock(nwrite)
+        } else {
+            AppendResult::Append(nwrite)
+        }
+    }
+
+    pub fn append(&self, item: T) {
+        let write_index = self.write_index(1);
+        let loc = BucketLocation::of(write_index);
+        let bucket = self.list.buckets[loc.bucket].get_or_init(|| {
+            let mut vec = Vec::with_capacity(loc.bucket_len);
+            for _ in 0..loc.bucket_len {
+                vec.push(MaybeUninit::uninit());
+            }
+            UnsafeCell::new(vec.into())
+        });
+        let bucket = unsafe { &mut *bucket.get() };
+        let bucket = bucket.as_mut();
+        let slice = &mut bucket[loc.pos..];
+        slice[0].write(item);
+
+        self.inc_len(write_index, 1);
+    }
+
+    pub fn slice(&self, range: Range<usize>) -> &[T] {
+        // TODO assert we dont read over bucket boundaries
+        let loc = BucketLocation::of(range.start);
+        let bucket = {
+            let bucket: &UnsafeCell<Box<[MaybeUninit<T>]>> =
+                &self.list.buckets[loc.bucket].get().unwrap();
+            let bucket: &[MaybeUninit<T>] = unsafe { (*bucket.get()).as_ref() };
+            bucket
+        };
+        let brange = loc.pos..loc.pos + range.len();
+        unsafe { mem::transmute(&bucket[brange]) }
+    }
+
+    pub fn get(&self, idx: usize) -> Option<&T> {
+        let loc = BucketLocation::of(idx);
+        let bucket = {
+            let bucket: &UnsafeCell<Box<[MaybeUninit<T>]>> =
+                &self.list.buckets[loc.bucket].get().unwrap();
+            let bucket: &[MaybeUninit<T>] = unsafe { (*bucket.get()).as_ref() };
+            bucket
+        };
+        unsafe { mem::transmute(&bucket[loc.pos]) }
+    }
+
+    pub fn len(&self) -> usize {
+        self.list.len.load(Ordering::Acquire)
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+}
+
+impl<T> Index<usize> for Appendlist<T> {
+    type Output = T;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        self.get(index).unwrap()
     }
 }

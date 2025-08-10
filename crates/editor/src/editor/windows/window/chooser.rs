@@ -2,7 +2,7 @@ mod choices;
 
 use sanedit_utils::sorted_vec::SortedVec;
 
-use crate::common::matcher::ScoredChoice;
+use crate::common::ScoredChoice;
 
 use self::choices::Choices;
 

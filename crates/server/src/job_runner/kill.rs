@@ -5,7 +5,7 @@ use std::sync::{
 
 /// Wrapper around a atomic bool to stop multiple things in multiple threads at
 /// once
-#[derive(Clone, Default)]
+#[derive(Debug, Clone, Default)]
 pub struct Kill {
     atomic: Arc<AtomicBool>,
 }

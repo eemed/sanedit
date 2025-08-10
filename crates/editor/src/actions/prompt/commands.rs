@@ -1,5 +1,5 @@
 use crate::actions::*;
-use crate::common::matcher::Choice;
+use crate::common::Choice;
 use sanedit_messages::key::keyevents_to_string;
 
 pub(crate) fn command_palette(editor: &Editor, id: ClientId) -> Vec<Arc<Choice>> {

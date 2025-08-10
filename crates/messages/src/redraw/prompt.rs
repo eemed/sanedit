@@ -22,6 +22,7 @@ pub struct Prompt {
     pub selected: Option<usize>,
     pub source: Source,
     pub max_completions: usize,
+    pub is_loading: bool,
 }
 
 impl From<Prompt> for Redraw {

@@ -1,6 +1,9 @@
 use std::{
     path::{Path, PathBuf},
-    sync::{atomic::{AtomicUsize, Ordering}, Arc, OnceLock},
+    sync::{
+        atomic::{AtomicUsize, Ordering},
+        Arc, OnceLock,
+    },
 };
 
 use rayon::ThreadPool;
@@ -112,7 +115,7 @@ async fn read_directory_recursive(
     osend: Appendlist<Arc<Choice>>,
     ignore: Ignore,
     kill: Kill,
-    done: Arc<AtomicUsize>
+    done: Arc<AtomicUsize>,
 ) {
     let strip = {
         let dir = dir.as_os_str().to_string_lossy();
@@ -137,7 +140,12 @@ async fn read_directory_recursive(
 }
 
 impl OptionProvider for FileOptionProvider {
-    fn provide(&self, sender: Appendlist<Arc<Choice>>, kill: Kill, done: Arc<AtomicUsize>) -> BoxFuture<'static, ()> {
+    fn provide(
+        &self,
+        sender: Appendlist<Arc<Choice>>,
+        kill: Kill,
+        done: Arc<AtomicUsize>,
+    ) -> BoxFuture<'static, ()> {
         let dir = self.path.clone();
         Box::pin(read_directory_recursive(
             dir,

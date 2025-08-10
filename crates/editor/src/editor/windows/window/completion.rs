@@ -30,6 +30,8 @@ pub(crate) struct Completion {
 
     /// Called when input is modified.
     pub(crate) on_input: Option<CompletionAction>,
+
+    input_id: u64,
 }
 
 impl Completion {
@@ -38,7 +40,9 @@ impl Completion {
             item_start: started_at,
             point_offset: started_at_cursor,
             point,
-            ..Default::default()
+            chooser: Chooser::default(),
+            on_input: None,
+            input_id: 0,
         }
     }
 
@@ -95,16 +99,24 @@ impl Completion {
                 let start = win.completion.item_start;
                 let slice = buf.slice(start..cursor);
                 let word = String::from(&slice);
-                let _ = sender.blocking_send(word);
+                let _ = sender.blocking_send((word, win.completion.input_id));
 
                 let (win, _buf) = editor.win_buf_mut(id);
-                win.completion.on_input = Some(Rc::new(move |_editor, _id, input| {
-                    let _ = sender.blocking_send(input.to_string());
+                win.completion.on_input = Some(Rc::new(move |editor, id, input| {
+                    let (win, _buf) = editor.win_buf_mut(id);
+                    let _ = sender.blocking_send((input.to_string(), win.completion.input_id));
                 }));
                 win.completion.clear_choices();
             }
-            Progress { results, clear_old } => {
+            Progress {
+                results,
+                clear_old,
+                input_id,
+            } => {
                 let (win, _buf) = editor.win_buf_mut(id);
+                if input_id != win.completion.input_id {
+                    return;
+                }
                 if clear_old {
                     win.completion.clear_choices();
                 }
@@ -116,8 +128,15 @@ impl Completion {
                     focus(editor, id, Focus::Completion);
                 }
             }
-            Done { results, clear_old } => {
+            Done {
+                results,
+                clear_old,
+                input_id,
+            } => {
                 let (win, _buf) = editor.win_buf_mut(id);
+                if input_id != win.completion.input_id {
+                    return;
+                }
                 if clear_old {
                     win.completion.clear_choices();
                 }

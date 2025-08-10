@@ -1,6 +1,6 @@
 pub(crate) mod change;
-pub(crate) mod markdown;
 pub(crate) mod choice;
+pub(crate) mod markdown;
 pub(crate) mod text;
 pub(crate) mod window;
 

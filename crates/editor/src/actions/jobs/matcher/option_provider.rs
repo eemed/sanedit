@@ -1,4 +1,10 @@
-use std::{fmt, sync::{atomic::{AtomicUsize, Ordering}, Arc}};
+use std::{
+    fmt,
+    sync::{
+        atomic::{AtomicUsize, Ordering},
+        Arc,
+    },
+};
 
 use sanedit_server::{BoxFuture, ClientId, Kill};
 use sanedit_utils::appendlist::Appendlist;

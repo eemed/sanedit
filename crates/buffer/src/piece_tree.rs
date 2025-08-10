@@ -76,9 +76,7 @@ impl PieceTree {
     #[inline]
     fn from_original_buffer(orig: OriginalBuffer) -> PieceTree {
         let orig = Arc::new(orig);
-        let add_buf = AddBuffer::new();
-        let aread = add_buf.clone();
-        let awrite = add_buf;
+        let (aread, awrite) = AddBuffer::split();
         let mut pieces = Tree::new();
 
         if !orig.is_empty() {

@@ -82,7 +82,9 @@ impl Drawable for CustomPrompt {
                 let default_style = ctx.theme.get(ThemeField::PromptDefault);
                 let input_style = ctx.theme.get(ThemeField::PromptUserInput);
                 let message_style = ctx.theme.get(ThemeField::PromptMessage);
-                let mut message = into_cells_with_style(&self.prompt.message, message_style);
+                let loading = if self.prompt.is_loading { " (..)" } else { "" };
+                let title_message = format!("{}{}", self.prompt.message, loading);
+                let mut message = into_cells_with_style(&title_message, message_style);
                 let colon = into_cells_with_style(": ", message_style);
                 message.extend(colon);
 
@@ -152,6 +154,10 @@ impl Drawable for CustomPrompt {
                 let pcompl = ctx.theme.get(ThemeField::PromptCompletion);
                 grid.clear_all(pcompl);
                 let inside = grid.draw_border(Border::Margin, pcompl);
+                if self.prompt.is_loading && &inside != grid.rect() && grid.width() >= 4 {
+                    grid.replace(0, grid.width() - 2, Cell::new_char('.', pcompl));
+                    grid.replace(0, grid.width() - 3, Cell::new_char('.', pcompl));
+                }
                 let mut grid = grid.subgrid(&inside);
                 let wsize = grid.size();
                 let max_opts = wsize.height;

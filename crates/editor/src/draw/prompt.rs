@@ -85,5 +85,6 @@ fn draw_impl(ctx: &mut DrawContext) -> redraw::prompt::Prompt {
         selected: selected_relative_pos,
         source,
         max_completions: compl_count,
+        is_loading: prompt.is_options_loading(),
     }
 }

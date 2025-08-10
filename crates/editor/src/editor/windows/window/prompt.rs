@@ -195,7 +195,10 @@ pub(crate) struct Prompt {
     history_pos: HistoryPosition,
     kind: PromptKind,
 
-    discard_until_cleared: bool,
+    /// Id that changes every time input is changed.
+    /// used to identify matcher messages that are relevant
+    /// as there may be old messages coming in too
+    input_id: u64,
     is_options_loading: bool,
 }
 
@@ -212,8 +215,8 @@ impl Prompt {
             history_kind: None,
             history_pos: HistoryPosition::First,
             kind: PromptKind::Regular,
-            discard_until_cleared: false,
             is_options_loading: false,
+            input_id: 0,
         }
     }
 
@@ -225,14 +228,8 @@ impl Prompt {
         self.history_kind
     }
 
-    #[allow(dead_code)]
     pub fn is_options_loading(&self) -> bool {
         self.is_options_loading
-    }
-
-    #[allow(dead_code)]
-    pub fn is_discarding(&self) -> bool {
-        self.discard_until_cleared
     }
 
     pub fn matcher_result_handler_directory_selector(
@@ -249,16 +246,30 @@ impl Prompt {
         let is_progress = matches!(msg, Progress { .. });
         match msg {
             Init(sender) => {
-                win.prompt.add_on_input(move |_editor, _id, input| {
+                win.prompt.input_id = 0;
+                win.prompt.add_on_input(move |editor, id, input| {
                     let path = PathBuf::from(input);
                     let input = path.to_string_lossy();
                     let input = get_directory_searcher_term(&input);
-                    let _ = sender.blocking_send(input.to_string());
+                    let (win, _buf) = editor.win_buf_mut(id);
+                    let _ = sender.blocking_send((input.to_string(), win.prompt.input_id));
                 });
                 win.prompt.clear_choices();
                 win.prompt.is_options_loading = true;
             }
-            Done { results, clear_old } | Progress { results, clear_old } => {
+            Done {
+                results,
+                clear_old,
+                input_id,
+            }
+            | Progress {
+                results,
+                clear_old,
+                input_id,
+            } => {
+                if input_id != win.prompt.input_id {
+                    return;
+                }
                 win.prompt.is_options_loading = is_progress;
                 if clear_old {
                     win.prompt.clear_choices();
@@ -284,13 +295,26 @@ impl Prompt {
         let is_progress = matches!(msg, Progress { .. });
         match msg {
             Init(sender) => {
-                win.prompt.add_on_input(move |_editor, _id, input| {
-                    let _ = sender.blocking_send(input.to_string());
+                win.prompt.add_on_input(move |editor, id, input| {
+                    let (win, _buf) = editor.win_buf(id);
+                    let _ = sender.blocking_send((input.to_string(), win.prompt.input_id));
                 });
                 win.prompt.clear_choices();
                 win.prompt.is_options_loading = true;
             }
-            Done { results, clear_old } | Progress { results, clear_old } => {
+            Done {
+                results,
+                clear_old,
+                input_id,
+            }
+            | Progress {
+                results,
+                clear_old,
+                input_id,
+            } => {
+                if input_id != win.prompt.input_id {
+                    return;
+                }
                 win.prompt.is_options_loading = is_progress;
                 if clear_old {
                     win.prompt.clear_choices();
@@ -316,13 +340,27 @@ impl Prompt {
         let is_progress = matches!(msg, Progress { .. });
         match msg {
             Init(sender) => {
-                win.prompt.add_on_input(move |_editor, _id, input| {
-                    let _ = sender.blocking_send(input.to_string());
+                win.prompt.add_on_input(move |editor, id, input| {
+                    let (win, _buf) = editor.win_buf_mut(id);
+                    let _ = sender.blocking_send((input.to_string(), win.prompt.input_id));
                 });
                 win.prompt.clear_choices();
                 win.prompt.is_options_loading = true;
             }
-            Done { results, clear_old } | Progress { results, clear_old } => {
+            Done {
+                results,
+                clear_old,
+                input_id,
+            }
+            | Progress {
+                results,
+                clear_old,
+                input_id,
+            } => {
+                if input_id != win.prompt.input_id {
+                    return;
+                }
+
                 win.prompt.is_options_loading = is_progress;
                 if clear_old {
                     win.prompt.clear_choices();
@@ -434,13 +472,12 @@ impl Prompt {
         self.prev_grapheme();
         let start = self.cursor;
         if start != end {
-            self.discard_until_cleared = true;
+            self.input_id += 1;
             self.input.replace_range(start..end, "");
         }
     }
 
     pub fn clear_choices(&mut self) {
-        self.discard_until_cleared = false;
         self.chooser = Chooser::new();
     }
 
@@ -453,9 +490,6 @@ impl Prompt {
     }
 
     pub fn add_choices(&mut self, opts: SortedVec<ScoredChoice>) {
-        if self.discard_until_cleared {
-            return;
-        }
         self.chooser.add(opts);
     }
 
@@ -494,13 +528,13 @@ impl Prompt {
     }
 
     pub fn insert_at_cursor(&mut self, string: &str) {
-        self.discard_until_cleared = true;
+        self.input_id += 1;
         self.input.insert_str(self.cursor, string);
         self.cursor += string.len();
     }
 
     pub fn overwrite_input(&mut self, item: &str) {
-        self.discard_until_cleared = true;
+        self.input_id += 1;
         self.cursor = item.len();
         self.input = item.into();
     }

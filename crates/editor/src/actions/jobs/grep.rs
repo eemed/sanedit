@@ -63,61 +63,76 @@ impl Grep {
             return;
         };
         let searcher = Arc::new(searcher);
-        let mut taken = 0;
-        const INITIAL_BACKOFF: u64 = 10;
-        let mut backoff = INITIAL_BACKOFF;
 
-        rayon::spawn(move || loop {
-            if kill.should_stop() {
-                break;
-            }
+        rayon::spawn(move || {
+            let mut taken = 0;
+            const INITIAL_BACKOFF: u64 = 10;
+            let mut backoff = INITIAL_BACKOFF;
 
-            let total = write_done.load(Ordering::Acquire);
-            let available = reader.len();
-            let fully_read = available == total;
+            loop {
+                if kill.should_stop() {
+                    break;
+                }
 
-            // If we are done reading all available options
-            if fully_read && available == taken {
-                break;
-            }
+                let total = write_done.load(Ordering::Acquire);
+                let available = reader.len();
+                let fully_read = available == total;
 
-            if available > taken {
-                backoff = INITIAL_BACKOFF;
+                // If we are done reading all available options
+                if fully_read && available == taken {
+                    break;
+                }
 
-                let searcher = searcher.clone();
-                let msend = msend.clone();
-                let bufs = buffers.clone();
-                let stop = kill.clone();
-                let nreader = reader.clone();
-                taken += 1;
+                if available > taken {
+                    backoff = INITIAL_BACKOFF;
 
-                rayon::spawn(move || {
-                    let opt = nreader.get(taken - 1).unwrap();
-                    let path = match opt.as_ref() {
-                        Choice::Path { path, .. } => path,
-                        _ => {
-                            return;
-                        }
-                    };
+                    let searcher = searcher.clone();
+                    let msend = msend.clone();
+                    let bufs = buffers.clone();
+                    let stop = kill.clone();
+                    let nreader = reader.clone();
+                    taken += 1;
 
-                    match bufs.get(path) {
-                        Some(view) => {
-                            // Grep editor buffers
-                            Self::grep_buffer(path.clone(), view, &searcher, msend, stop.clone());
-                        }
-                        None => {
-                            // Grep files outside editor
-                            let Ok(pt) = PieceTree::from_path(&path) else {
+                    rayon::spawn(move || {
+                        let opt = nreader.get(taken - 1).unwrap();
+                        let path = match opt.as_ref() {
+                            Choice::Path { path, .. } => path,
+                            _ => {
                                 return;
-                            };
-                            let view = pt.view();
-                            Self::grep_buffer(path.clone(), &view, &searcher, msend, stop.clone());
+                            }
+                        };
+
+                        match bufs.get(path) {
+                            Some(view) => {
+                                // Grep editor buffers
+                                Self::grep_buffer(
+                                    path.clone(),
+                                    view,
+                                    &searcher,
+                                    msend,
+                                    stop.clone(),
+                                );
+                            }
+                            None => {
+                                // Grep files outside editor
+                                let Ok(pt) = PieceTree::from_path(&path) else {
+                                    return;
+                                };
+                                let view = pt.view();
+                                Self::grep_buffer(
+                                    path.clone(),
+                                    &view,
+                                    &searcher,
+                                    msend,
+                                    stop.clone(),
+                                );
+                            }
                         }
-                    }
-                });
-            } else {
-                thread::sleep(Duration::from_micros(backoff));
-                backoff = (backoff * 2).min(200);
+                    });
+                } else {
+                    thread::sleep(Duration::from_micros(backoff));
+                    backoff = (backoff * 2).min(200);
+                }
             }
         });
     }

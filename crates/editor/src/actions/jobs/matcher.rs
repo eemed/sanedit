@@ -34,12 +34,14 @@ pub use strategy::*;
 
 #[derive(Debug)]
 pub(crate) enum MatcherMessage {
-    Init(Sender<String>),
+    Init(Sender<(String, u64)>),
     Done {
+        input_id: u64,
         results: Vec<SortedVec<ScoredChoice>>,
         clear_old: bool,
     },
     Progress {
+        input_id: u64,
         results: Vec<SortedVec<ScoredChoice>>,
         clear_old: bool,
     },
@@ -142,7 +144,7 @@ impl Job for MatcherJob {
 
         let fut = async move {
             // Term channel
-            let (psend, mut precv) = channel::<String>(CHANNEL_SIZE);
+            let (psend, mut precv) = channel::<(String, u64)>(CHANNEL_SIZE);
             let list = Appendlist::<Arc<Choice>>::new();
 
             ctx.send(MatcherMessage::Init(psend));
@@ -151,14 +153,15 @@ impl Job for MatcherJob {
             let mut matcher = Matcher::new(list.clone(), strat, ctx);
             let write_done = matcher.write_done();
             let do_matching = async {
-                matcher.do_match(&patt);
+                matcher.do_match(&patt, 0);
 
-                while let Some(t) = precv.recv().await {
+                while let Some((t, n)) = precv.recv().await {
                     if patt == t {
+                        log::info!("SAME");
                         continue;
                     }
                     patt = t;
-                    matcher.do_match(&patt);
+                    matcher.do_match(&patt, n);
                 }
             };
 
@@ -221,7 +224,7 @@ impl Matcher {
     /// Match the candidates with the pattern. Returns a receiver where the results
     /// can be read from in chunks.
     /// Dropping the receiver stops the matching process.
-    pub fn do_match(&mut self, pattern: &str) {
+    pub fn do_match(&mut self, pattern: &str, id: u64) {
         // Cancel possible previous search
         self.prev_search.store(true, Ordering::Release);
         self.prev_search = Arc::new(AtomicBool::new(false));
@@ -244,64 +247,75 @@ impl Matcher {
             }
         };
         let matcher = strat.get_match_func(&patterns, case_sensitive);
-        let mut taken = 0;
         let local_stop = self.prev_search.clone();
-        const INITIAL_BACKOFF: u64 = 1;
-        let mut backoff = INITIAL_BACKOFF;
-        let send_rate = Duration::from_millis(1000 / 30);
-        let mut last_sent = Instant::now();
-        let mut first_sent = true;
-        let mut locally_sorted = vec![];
 
-        rayon::spawn(move || loop {
-            if local_stop.load(Ordering::Acquire) {
-                break;
-            }
+        rayon::spawn(move || {
+            const INITIAL_BACKOFF: u64 = 1;
+            let mut backoff = INITIAL_BACKOFF;
+            let mut taken = 0;
+            let send_rate = Duration::from_millis(1000 / 30);
+            let mut last_sent = Instant::now();
+            let mut first_sent = true;
+            let mut locally_sorted = vec![];
 
-            let total = write_done.load(Ordering::Acquire);
-            let available = reader.len();
-            let fully_read = available == total;
+            loop {
+                if local_stop.load(Ordering::Acquire) {
+                    break;
+                }
 
-            // If we are done reading all available options
-            if fully_read && available == taken {
-                sender.send(MatcherMessage::Done {
-                    clear_old: first_sent,
-                    results: std::mem::take(&mut locally_sorted),
-                });
-                break;
-            }
+                let total = write_done.load(Ordering::Acquire);
+                let available = reader.len();
+                let fully_read = available == total;
 
-            if available >= taken + Self::BATCH_SIZE || fully_read {
-                backoff = INITIAL_BACKOFF;
-                let size = min(available - taken, Self::BATCH_SIZE);
-                let batch = taken..taken + size;
-                taken += size;
-
-                let opts = reader.slice(batch);
-                let mut results: Vec<ScoredChoice> = opts
-                    .par_iter()
-                    .filter_map(|choice| {
-                        let ranges = matches_with(choice.filter_text().as_ref(), &matcher)?;
-                        let score = score(&choice, &ranges);
-                        let scored = ScoredChoice::new(choice.clone(), score, ranges);
-                        Some(scored)
-                    })
-                    .collect();
-
-                results.par_sort();
-                locally_sorted.push(unsafe { SortedVec::from_sorted_unchecked(results) });
-
-                if last_sent.elapsed() > send_rate {
-                    sender.send(MatcherMessage::Progress {
+                // If we are done reading all available options
+                if fully_read && available == taken {
+                    if local_stop.load(Ordering::Acquire) {
+                        break;
+                    }
+                    sender.send(MatcherMessage::Done {
+                        input_id: id,
                         clear_old: first_sent,
                         results: std::mem::take(&mut locally_sorted),
                     });
-                    last_sent = Instant::now();
-                    first_sent = false;
+                    break;
                 }
-            } else {
-                thread::sleep(Duration::from_micros(backoff));
-                backoff = (backoff * 2).min(100);
+
+                if available >= taken + Self::BATCH_SIZE || fully_read {
+                    backoff = INITIAL_BACKOFF;
+                    let size = min(available - taken, Self::BATCH_SIZE);
+                    let batch = taken..taken + size;
+                    taken += size;
+
+                    let opts = reader.slice(batch);
+                    let mut results: Vec<ScoredChoice> = opts
+                        .par_iter()
+                        .filter_map(|choice| {
+                            let ranges = matches_with(choice.filter_text().as_ref(), &matcher)?;
+                            let score = score(&choice, &ranges);
+                            let scored = ScoredChoice::new(choice.clone(), score, ranges);
+                            Some(scored)
+                        })
+                        .collect();
+
+                    results.par_sort();
+                    locally_sorted.push(unsafe { SortedVec::from_sorted_unchecked(results) });
+
+                    if last_sent.elapsed() > send_rate {
+                        if local_stop.load(Ordering::Acquire) {
+                            break;
+                        }
+                        sender.send(MatcherMessage::Progress {
+                            input_id: id,
+                            clear_old: first_sent,
+                            results: std::mem::take(&mut locally_sorted),
+                        });
+                        last_sent = Instant::now();
+                        first_sent = false;
+                    }
+                } else {
+                    thread::sleep(Duration::from_micros(backoff));
+                    backoff = (backoff * 2).min(100);
+                }
             }
         });
     }

@@ -70,7 +70,6 @@ impl MultiMatcher {
     }
 }
 
-
 /// Where to match
 ///
 /// Prefix matches from the start
@@ -90,7 +89,10 @@ impl MatchStrategy {
     pub fn get_match_func(&self, terms: &[String], case_sensitive: bool) -> MultiMatcher {
         let mut matchers: Vec<Box<dyn MatchFn>> = Vec::with_capacity(terms.len());
         if terms.len() == 0 {
-            return MultiMatcher { is_empty: true, matchers: Arc::new(matchers) };
+            return MultiMatcher {
+                is_empty: true,
+                matchers: Arc::new(matchers),
+            };
         }
         match self {
             MatchStrategy::Default => {
@@ -105,13 +107,19 @@ impl MatchStrategy {
             }
             MatchStrategy::Prefix => {
                 for term in terms {
-                    let pfix = Prefix { is_case_sensitive: case_sensitive, term: term.clone() };
+                    let pfix = Prefix {
+                        is_case_sensitive: case_sensitive,
+                        term: term.clone(),
+                    };
                     matchers.push(Box::new(pfix));
                 }
             }
         }
 
-        MultiMatcher { is_empty: false, matchers: Arc::new(matchers) }
+        MultiMatcher {
+            is_empty: false,
+            matchers: Arc::new(matchers),
+        }
     }
 
     /// Whether to split term from whitespace, and match using all of them

@@ -19,10 +19,7 @@ use crate::{
         jobs::{FileOptionProvider, Grep, MatchStrategy},
         window::focus,
     },
-    common::{
-        is_yes,
-        Choice,
-    },
+    common::{is_yes, Choice},
     editor::{
         buffers::BufferId,
         hooks::Hook,

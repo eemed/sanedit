@@ -7,10 +7,7 @@ use std::{
 
 use crate::{
     actions::{hooks::run, locations, lsp::lsp_notify_for, ActionResult},
-    common::{
-        markdown,
-        Choice,
-    },
+    common::{markdown, Choice},
     editor::{
         buffers::BufferId,
         config::LSPConfig,

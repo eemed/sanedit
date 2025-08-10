@@ -45,5 +45,6 @@ fn draw_impl(ctx: &mut DrawContext) -> redraw::prompt::Prompt {
         selected: None,
         source: Source::Search,
         max_completions: 0,
+        is_loading: false,
     }
 }

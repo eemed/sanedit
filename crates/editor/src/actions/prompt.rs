@@ -16,12 +16,12 @@ use crate::{
     actions::{
         cursors::jump_to_ref,
         hooks::run,
-        jobs::{FileOptionProvider, Grep},
+        jobs::{FileOptionProvider, Grep, MatchStrategy},
         window::focus,
     },
     common::{
         is_yes,
-        matcher::{Choice, MatchStrategy},
+        Choice,
     },
     editor::{
         buffers::BufferId,

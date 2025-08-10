@@ -2,7 +2,7 @@ use std::cell::RefCell;
 
 use sanedit_utils::sorted_vec::SortedVec;
 
-use crate::common::matcher::ScoredChoice;
+use crate::common::ScoredChoice;
 
 #[derive(Debug, Default)]
 struct MergedOptions {

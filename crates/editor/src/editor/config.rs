@@ -16,7 +16,7 @@ use toml_edit::{
 
 use crate::{
     actions::{find_by_name, Action, ActionResult},
-    common::matcher::Choice,
+    common::Choice,
     editor::{self},
 };
 

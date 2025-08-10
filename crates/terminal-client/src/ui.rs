@@ -81,7 +81,7 @@ impl UI {
     }
 
     pub fn flush(&mut self) -> anyhow::Result<()> {
-        log::info!("Flush ui");
+        // log::info!("Flush ui");
         let (cells, cursor) = self.grid.draw();
         for (line, row) in cells.iter().enumerate() {
             for (col, cell) in row.iter().enumerate() {

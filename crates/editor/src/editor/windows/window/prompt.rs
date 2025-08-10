@@ -7,12 +7,9 @@ use sanedit_utils::{either::Either, sorted_vec::SortedVec};
 
 use crate::{
     actions::{
-        jobs::{MatchedOptions, MatcherMessage},
-        prompt::get_directory_searcher_term,
-        window::focus,
-        ActionResult,
+        jobs::MatcherMessage, prompt::get_directory_searcher_term, window::focus, ActionResult,
     },
-    common::matcher::{Choice, ScoredChoice},
+    common::{Choice, ScoredChoice},
     editor::{snippets::Snippet, windows::Focus, Editor},
 };
 use sanedit_server::ClientId;
@@ -197,6 +194,7 @@ pub(crate) struct Prompt {
     history_kind: Option<HistoryKind>,
     history_pos: HistoryPosition,
     kind: PromptKind,
+
     discard_until_cleared: bool,
     is_options_loading: bool,
 }
@@ -215,7 +213,7 @@ impl Prompt {
             history_pos: HistoryPosition::First,
             kind: PromptKind::Regular,
             discard_until_cleared: false,
-            is_options_loading: true,
+            is_options_loading: false,
         }
     }
 
@@ -227,10 +225,12 @@ impl Prompt {
         self.history_kind
     }
 
+    #[allow(dead_code)]
     pub fn is_options_loading(&self) -> bool {
         self.is_options_loading
     }
 
+    #[allow(dead_code)]
     pub fn is_discarding(&self) -> bool {
         self.discard_until_cleared
     }
@@ -246,6 +246,7 @@ impl Prompt {
         draw.no_redraw_window();
 
         let (win, _buf) = editor.win_buf_mut(id);
+        let is_progress = matches!(msg, Progress { .. });
         match msg {
             Init(sender) => {
                 win.prompt.add_on_input(move |_editor, _id, input| {
@@ -255,23 +256,21 @@ impl Prompt {
                     let _ = sender.blocking_send(input.to_string());
                 });
                 win.prompt.clear_choices();
+                win.prompt.is_options_loading = true;
             }
-            Progress(opts) => match opts {
-                MatchedOptions::Options { matched, clear_old } => {
-                    win.prompt.is_options_loading = true;
-                    if clear_old {
-                        win.prompt.clear_choices();
-                    }
-
-                    let (win, _buf) = editor.win_buf_mut(id);
-                    win.prompt.add_choices(matched.into());
-
-                    focus(editor, id, Focus::Prompt);
+            Done { results, clear_old } | Progress { results, clear_old } => {
+                win.prompt.is_options_loading = is_progress;
+                if clear_old {
+                    win.prompt.clear_choices();
                 }
-                MatchedOptions::Done => {
-                    win.prompt.is_options_loading = false;
-                }
-            },
+
+                let (win, _buf) = editor.win_buf_mut(id);
+                results
+                    .into_iter()
+                    .for_each(|res| win.prompt.add_choices(res));
+
+                focus(editor, id, Focus::Prompt);
+            }
         }
     }
 
@@ -282,29 +281,28 @@ impl Prompt {
         draw.no_redraw_window();
 
         let (win, _buf) = editor.win_buf_mut(id);
+        let is_progress = matches!(msg, Progress { .. });
         match msg {
             Init(sender) => {
                 win.prompt.add_on_input(move |_editor, _id, input| {
                     let _ = sender.blocking_send(input.to_string());
                 });
                 win.prompt.clear_choices();
+                win.prompt.is_options_loading = true;
             }
-            Progress(opts) => match opts {
-                MatchedOptions::Options { matched, clear_old } => {
-                    win.prompt.is_options_loading = true;
-                    if clear_old {
-                        win.prompt.clear_choices();
-                    }
-
-                    let (win, _buf) = editor.win_buf_mut(id);
-                    win.prompt.add_choices(matched.into());
-
-                    focus(editor, id, Focus::Prompt);
+            Done { results, clear_old } | Progress { results, clear_old } => {
+                win.prompt.is_options_loading = is_progress;
+                if clear_old {
+                    win.prompt.clear_choices();
                 }
-                MatchedOptions::Done => {
-                    win.prompt.is_options_loading = false;
-                }
-            },
+
+                let (win, _buf) = editor.win_buf_mut(id);
+                results
+                    .into_iter()
+                    .for_each(|res| win.prompt.add_choices(res));
+
+                focus(editor, id, Focus::Prompt);
+            }
         }
     }
 
@@ -315,55 +313,62 @@ impl Prompt {
         draw.no_redraw_window();
 
         let (win, _buf) = win_buf!(editor, id);
+        let is_progress = matches!(msg, Progress { .. });
         match msg {
             Init(sender) => {
                 win.prompt.add_on_input(move |_editor, _id, input| {
                     let _ = sender.blocking_send(input.to_string());
                 });
                 win.prompt.clear_choices();
+                win.prompt.is_options_loading = true;
             }
-            Progress(opts) => {
-                match opts {
-                    MatchedOptions::Options { matched, clear_old } => {
-                        win.prompt.is_options_loading = true;
-                        if clear_old {
-                            win.prompt.clear_choices();
-                        }
+            Done { results, clear_old } | Progress { results, clear_old } => {
+                win.prompt.is_options_loading = is_progress;
+                if clear_old {
+                    win.prompt.clear_choices();
+                }
 
-                        let no_input = matched
-                            .get(0)
+                let no_input = results
+                    .get(0)
+                    .map(|res| {
+                        res.get(0)
                             .map(|choice| choice.matches().is_empty())
-                            .unwrap_or(false);
+                            .unwrap_or(false)
+                    })
+                    .unwrap_or(false);
+                let (win, _buf) = editor.win_buf_mut(id);
 
-                        let mut rescored = matched;
-                        if no_input {
-                            // If no input is matched, sort results using LRU
-                            let cache = &mut editor.caches.files;
-                            let lru = cache.to_map();
-                            let max = lru.len();
-                            for mut mat in std::mem::take(&mut rescored).into_iter() {
-                                let path = match mat.choice() {
-                                    Choice::Path { path, .. } => path,
-                                    _ => unreachable!(),
-                                };
-                                if let Some(score) = lru.get(path.as_path()) {
-                                    mat.rescore(*score);
-                                } else {
-                                    mat.rescore(mat.score() + max);
-                                }
-                                rescored.push(mat);
+                if no_input {
+                    // If no input is matched, sort results using LRU
+                    let cache = &mut editor.caches.files;
+                    let lru = cache.to_map();
+                    let max = lru.len();
+
+                    for res in results {
+                        let mut rescored_batch = Vec::with_capacity(res.len());
+                        for mut choice in res.into_iter() {
+                            let path = match choice.choice() {
+                                Choice::Path { path, .. } => path,
+                                _ => unreachable!(),
+                            };
+                            if let Some(score) = lru.get(path.as_path()) {
+                                choice.rescore(*score);
+                            } else {
+                                choice.rescore(choice.score() + max);
                             }
+                            rescored_batch.push(choice);
                         }
 
                         let (win, _buf) = editor.win_buf_mut(id);
-                        win.prompt.add_choices(rescored);
-
-                        focus(editor, id, Focus::Prompt);
+                        win.prompt.add_choices(SortedVec::from(rescored_batch))
                     }
-                    MatchedOptions::Done => {
-                        win.prompt.is_options_loading = false;
-                    }
+                } else {
+                    results
+                        .into_iter()
+                        .for_each(|res| win.prompt.add_choices(res));
                 }
+
+                focus(editor, id, Focus::Prompt);
             }
         }
     }

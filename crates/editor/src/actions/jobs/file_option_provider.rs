@@ -4,12 +4,12 @@ use std::{
 };
 
 use rayon::ThreadPool;
-use sanedit_utils::appendlist::Writer;
+use sanedit_utils::appendlist::Appendlist;
 use tokio::{io, sync::oneshot};
 
 use sanedit_server::{BoxFuture, Kill};
 
-use crate::{common::matcher::Choice, editor::ignore::Ignore};
+use crate::{common::Choice, editor::ignore::Ignore};
 
 use super::OptionProvider;
 
@@ -33,7 +33,7 @@ pub fn get_option_provider_pool() -> &'static ThreadPool {
 
 #[derive(Clone)]
 struct ReadDirContext {
-    osend: Writer<Arc<Choice>>,
+    osend: Appendlist<Arc<Choice>>,
     n: Arc<AtomicUsize>,
     strip: usize,
     kill: Kill,
@@ -109,7 +109,7 @@ fn rayon_read(scope: &rayon::Scope, dir: PathBuf, ctx: ReadDirContext) -> io::Re
 
 async fn read_directory_recursive(
     dir: PathBuf,
-    osend: Writer<Arc<Choice>>,
+    osend: Appendlist<Arc<Choice>>,
     ignore: Ignore,
     kill: Kill,
     done: Arc<AtomicUsize>
@@ -137,7 +137,7 @@ async fn read_directory_recursive(
 }
 
 impl OptionProvider for FileOptionProvider {
-    fn provide(&self, sender: Writer<Arc<Choice>>, kill: Kill, done: Arc<AtomicUsize>) -> BoxFuture<'static, ()> {
+    fn provide(&self, sender: Appendlist<Arc<Choice>>, kill: Kill, done: Arc<AtomicUsize>) -> BoxFuture<'static, ()> {
         let dir = self.path.clone();
         Box::pin(read_directory_recursive(
             dir,

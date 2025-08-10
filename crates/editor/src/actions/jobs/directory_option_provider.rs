@@ -7,16 +7,16 @@ use std::{
 };
 
 use sanedit_server::{BoxFuture, Kill};
-use sanedit_utils::appendlist::Writer;
+use sanedit_utils::appendlist::Appendlist;
 use tokio::{io, sync::oneshot};
 
-use crate::{common::matcher::Choice, editor::ignore::Ignore};
+use crate::{common::Choice, editor::ignore::Ignore};
 
 use super::{get_option_provider_pool, OptionProvider};
 
 #[derive(Clone)]
 struct ReadDirContext {
-    osend: Writer<Arc<Choice>>,
+    osend: Appendlist<Arc<Choice>>,
     strip: usize,
     kill: Kill,
     ignore: Ignore,
@@ -98,7 +98,7 @@ fn rayon_read(scope: &rayon::Scope, dir: PathBuf, ctx: ReadDirContext) -> io::Re
 
 async fn read_directory_recursive(
     dir: PathBuf,
-    osend: Writer<Arc<Choice>>,
+    osend: Appendlist<Arc<Choice>>,
     ignore: Ignore,
     kill: Kill,
     recurse: bool,
@@ -130,7 +130,7 @@ async fn read_directory_recursive(
 impl OptionProvider for DirectoryOptionProvider {
     fn provide(
         &self,
-        sender: Writer<Arc<Choice>>,
+        sender: Appendlist<Arc<Choice>>,
         kill: Kill,
         done: Arc<AtomicUsize>,
     ) -> BoxFuture<'static, ()> {

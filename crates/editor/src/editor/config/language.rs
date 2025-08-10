@@ -2,7 +2,7 @@ use std::{cell::OnceCell, path::Path, sync::Arc};
 
 use serde::{Deserialize, Serialize};
 
-use crate::{common::matcher::Choice, editor::snippets::Snippet};
+use crate::{common::Choice, editor::snippets::Snippet};
 
 use super::{buffers, read_toml};
 

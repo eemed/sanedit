@@ -61,7 +61,7 @@ use crate::actions;
 use crate::actions::cursors;
 use crate::actions::hooks::run;
 use crate::actions::window::goto_other_buffer;
-use crate::common::matcher::Choice;
+use crate::common::Choice;
 use crate::draw::DrawState;
 use crate::draw::EditorContext;
 use crate::editor::buffers::Buffer;

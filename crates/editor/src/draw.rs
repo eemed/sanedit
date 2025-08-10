@@ -16,7 +16,6 @@ use std::{
     },
 };
 
-use prompt::LastPrompt;
 use sanedit_core::Language;
 use sanedit_messages::{
     redraw::{self, Component, Redraw, Theme},
@@ -68,7 +67,7 @@ impl Hash {
 #[derive(Debug)]
 pub(crate) struct DrawState {
     last_focus: Option<Focus>,
-    last_prompt: Option<LastPrompt>,
+    last_prompt: Option<Hash>,
     last_compl: Option<Hash>,
     last_loc: Option<Hash>,
     last_ft: Option<Hash>,
@@ -85,6 +84,7 @@ pub(crate) struct DrawState {
     pub(crate) window_buffer: Receiver<Arc<FromEditor>>,
     pub(crate) window_buffer_sender: Sender<Arc<FromEditor>>,
     last_window: Option<Hash>,
+    last_prompt_selection: Option<usize>,
 }
 
 impl DrawState {
@@ -109,6 +109,7 @@ impl DrawState {
             window_buffer: rx,
             window_buffer_sender: tx,
             last_window: None,
+            last_prompt_selection: None,
         };
 
         let mut ctx = DrawContext {

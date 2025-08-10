@@ -4,11 +4,8 @@ use sanedit_messages::redraw::Point;
 use sanedit_utils::sorted_vec::SortedVec;
 
 use crate::{
-    actions::{
-        jobs::{MatchedOptions, MatcherMessage},
-        window::focus,
-    },
-    common::matcher::ScoredChoice,
+    actions::{jobs::MatcherMessage, window::focus},
+    common::ScoredChoice,
     editor::{windows::Focus, Editor},
 };
 use sanedit_server::ClientId;
@@ -106,25 +103,36 @@ impl Completion {
                 }));
                 win.completion.clear_choices();
             }
-            Progress(opts) => {
+            Progress { results, clear_old } => {
                 let (win, _buf) = editor.win_buf_mut(id);
-                match opts {
-                    MatchedOptions::Done => {
-                        if win.completion.chooser.options().is_empty() {
-                            win.info_msg("No completion items");
-                            focus(editor, id, Focus::Window);
-                        }
-                    }
-                    MatchedOptions::Options { matched, clear_old } => {
-                        if clear_old {
-                            win.completion.clear_choices();
-                        }
-                        win.completion.add_choices(matched);
+                if clear_old {
+                    win.completion.clear_choices();
+                }
+                results
+                    .into_iter()
+                    .for_each(|res| win.completion.add_choices(res));
 
-                        if win.focus() != Focus::Completion {
-                            focus(editor, id, Focus::Completion);
-                        }
-                    }
+                if win.focus() != Focus::Completion {
+                    focus(editor, id, Focus::Completion);
+                }
+            }
+            Done { results, clear_old } => {
+                let (win, _buf) = editor.win_buf_mut(id);
+                if clear_old {
+                    win.completion.clear_choices();
+                }
+                results
+                    .into_iter()
+                    .for_each(|res| win.completion.add_choices(res));
+
+                if win.focus() != Focus::Completion {
+                    focus(editor, id, Focus::Completion);
+                }
+
+                let (win, _buf) = editor.win_buf_mut(id);
+                if win.completion.chooser.options().is_empty() {
+                    win.info_msg("No completion items");
+                    focus(editor, id, Focus::Window);
                 }
             }
         }

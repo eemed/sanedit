@@ -1,10 +1,10 @@
-use std::{mem::take, time::Instant};
+use std::mem::take;
 
 use sanedit_messages::redraw::{self, prompt::Source, Component, Kind, Redraw};
 
 use crate::editor::windows::Focus;
 
-use super::{prompt::LastPrompt, DrawContext, Hash};
+use super::{DrawContext, Hash};
 
 pub(crate) fn draw(ctx: &mut DrawContext) -> Option<redraw::Redraw> {
     if ctx.focus_changed_from(Focus::Search) {
@@ -21,18 +21,13 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> Option<redraw::Redraw> {
     let mut prompt = draw_impl(ctx);
     let selected = take(&mut prompt.selected);
     let hash = Hash::new(&prompt);
-    if let Some(lp) = ctx.state.last_prompt.as_ref() {
-        if &lp.hash == &hash {
+    if let Some(lhash) = ctx.state.last_prompt.as_ref() {
+        if lhash == &hash {
             return Some(redraw::Redraw::Selection(Kind::Prompt, selected));
         }
     }
 
-    ctx.state.last_prompt = Some(LastPrompt {
-        input_hash: Hash::new(&""),
-        hash,
-        cursor: selected,
-        // time: Instant::now(),
-    });
+    ctx.state.last_prompt = Some(hash);
     Some(redraw::Redraw::Prompt(Component::Update(prompt)))
 }
 

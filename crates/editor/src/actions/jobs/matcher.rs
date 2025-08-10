@@ -1,107 +1,52 @@
+mod option_provider;
+mod strategy;
+
 use std::{
-    fmt,
     sync::{
         atomic::{AtomicUsize, Ordering},
         Arc,
     },
+    thread,
+    time::{Duration, Instant},
 };
 
-use sanedit_utils::{
-    appendlist::{Appendlist, Reader, Writer},
-    sorted_vec::SortedVec,
-};
-use tokio::sync::mpsc::{channel, Receiver, Sender};
+pub(crate) use option_provider::{Empty, OptionProvider};
+use sanedit_utils::{appendlist::Appendlist, sorted_vec::SortedVec};
+use tokio::sync::mpsc::{channel, Sender};
 
 use crate::{
     actions::jobs::CHANNEL_SIZE,
-    common::matcher::{Choice, MatchStrategy, Matcher, ScoredChoice},
+    common::choice::{Choice, ScoredChoice},
     editor::{job_broker::KeepInTouch, Editor},
 };
 
-use sanedit_server::{BoxFuture, ClientId, Job, JobContext, JobResult, Kill};
+use sanedit_server::{ClientId, Job, JobContext, JobResult};
+
+use std::{cmp::min, sync::atomic::AtomicBool};
+
+use rayon::{
+    iter::{IntoParallelRefIterator as _, ParallelIterator as _},
+    slice::ParallelSliceMut as _,
+};
+use sanedit_core::Range;
+
+pub use strategy::*;
 
 #[derive(Debug)]
 pub(crate) enum MatcherMessage {
     Init(Sender<String>),
-    Progress(MatchedOptions),
-}
-
-/// Provides options to match
-pub(crate) trait OptionProvider: fmt::Debug + Sync + Send {
-    fn provide(
-        &self,
-        sender: Writer<Arc<Choice>>,
-        kill: Kill,
-        done: Arc<AtomicUsize>,
-    ) -> BoxFuture<'static, ()>;
-}
-
-impl OptionProvider for Arc<Vec<String>> {
-    fn provide(
-        &self,
-        sender: Writer<Arc<Choice>>,
-        _kill: Kill,
-        done: Arc<AtomicUsize>,
-    ) -> BoxFuture<'static, ()> {
-        let items = self.clone();
-
-        let fut = async move {
-            let mut n = 0;
-            for opt in items.iter() {
-                n += 1;
-                sender.append(Choice::from_text(opt.clone()));
-            }
-
-            done.store(n, Ordering::Release);
-        };
-
-        Box::pin(fut)
-    }
-}
-
-impl OptionProvider for Arc<Vec<Arc<Choice>>> {
-    fn provide(
-        &self,
-        sender: Writer<Arc<Choice>>,
-        _kill: Kill,
-        done: Arc<AtomicUsize>,
-    ) -> BoxFuture<'static, ()> {
-        let items = self.clone();
-
-        let fut = async move {
-            let mut n = 0;
-            for opt in items.iter() {
-                n += 1;
-                sender.append(opt.clone());
-            }
-
-            done.store(n, Ordering::Release);
-        };
-
-        Box::pin(fut)
-    }
+    Done {
+        results: Vec<SortedVec<ScoredChoice>>,
+        clear_old: bool,
+    },
+    Progress {
+        results: Vec<SortedVec<ScoredChoice>>,
+        clear_old: bool,
+    },
 }
 
 /// What to do with the matched results
 pub(crate) type MatchResultHandler = fn(&mut Editor, ClientId, MatcherMessage);
-
-#[derive(Debug)]
-struct Empty;
-impl Empty {
-    fn none_result_handler(_editor: &mut Editor, _id: ClientId, _msg: MatcherMessage) {}
-}
-impl OptionProvider for Empty {
-    fn provide(
-        &self,
-        _sender: Writer<Arc<Choice>>,
-        _kill: Kill,
-        done: Arc<AtomicUsize>,
-    ) -> BoxFuture<'static, ()> {
-        Box::pin(async move {
-            done.store(0, Ordering::Release);
-        })
-    }
-}
 
 pub(crate) struct MatcherJobBuilder {
     cid: ClientId,
@@ -198,16 +143,14 @@ impl Job for MatcherJob {
         let fut = async move {
             // Term channel
             let (psend, mut precv) = channel::<String>(CHANNEL_SIZE);
-            let (reader, writer) = Appendlist::<Arc<Choice>>::new();
+            let list = Appendlist::<Arc<Choice>>::new();
 
             ctx.send(MatcherMessage::Init(psend));
 
             let kill = ctx.kill.clone();
-            let mut matcher = Matcher::new(reader, strat, ctx);
-            let read_done = matcher.read_done();
-
-            tokio::join!(opts.provide(writer, kill, read_done), async {
-                // Start matching
+            let mut matcher = Matcher::new(list.clone(), strat, ctx);
+            let write_done = matcher.write_done();
+            let do_matching = async {
                 matcher.do_match(&patt);
 
                 while let Some(t) = precv.recv().await {
@@ -217,7 +160,9 @@ impl Job for MatcherJob {
                     patt = t;
                     matcher.do_match(&patt);
                 }
-            });
+            };
+
+            tokio::join!(opts.provide(list, kill, write_done), do_matching);
 
             Ok(())
         };
@@ -239,11 +184,147 @@ impl KeepInTouch for MatcherJob {
     }
 }
 
-#[derive(Debug)]
-pub(crate) enum MatchedOptions {
-    Done,
-    Options {
-        matched: SortedVec<ScoredChoice>,
-        clear_old: bool,
-    },
+/// Matches options to a pattern
+pub struct Matcher {
+    reader: Appendlist<Arc<Choice>>,
+    write_done: Arc<AtomicUsize>,
+    prev_search: Arc<AtomicBool>,
+    strategy: MatchStrategy,
+    job_context: JobContext,
+}
+
+impl Matcher {
+    const BATCH_SIZE: usize = 1024;
+
+    // Create a new matcher.
+    pub fn new(
+        reader: Appendlist<Arc<Choice>>,
+        strategy: MatchStrategy,
+        job_context: JobContext,
+    ) -> Matcher {
+        let write_done = Arc::new(AtomicUsize::new(usize::MAX));
+        let prev_search = Arc::new(AtomicBool::new(false));
+
+        Matcher {
+            reader,
+            write_done,
+            strategy,
+            prev_search,
+            job_context,
+        }
+    }
+
+    pub fn write_done(&self) -> Arc<AtomicUsize> {
+        self.write_done.clone()
+    }
+
+    /// Match the candidates with the pattern. Returns a receiver where the results
+    /// can be read from in chunks.
+    /// Dropping the receiver stops the matching process.
+    pub fn do_match(&mut self, pattern: &str) {
+        // Cancel possible previous search
+        self.prev_search.store(true, Ordering::Release);
+        self.prev_search = Arc::new(AtomicBool::new(false));
+
+        let reader = self.reader.clone();
+        let write_done = self.write_done.clone();
+        let mut sender = self.job_context.clone();
+        let case_sensitive = pattern.chars().any(|ch| ch.is_uppercase());
+        let strat = self.strategy;
+
+        // Apply strategy to pattern
+        // Split pattern by whitespace and use the resulting patterns as independent
+        // searches
+        let patterns: Arc<Vec<String>> = {
+            if strat.split() {
+                let patterns = pattern.split_whitespace().map(String::from).collect();
+                Arc::new(patterns)
+            } else {
+                Arc::new(vec![pattern.into()])
+            }
+        };
+        let matcher = strat.get_match_func(&patterns, case_sensitive);
+        let mut taken = 0;
+        let local_stop = self.prev_search.clone();
+        const INITIAL_BACKOFF: u64 = 1;
+        let mut backoff = INITIAL_BACKOFF;
+        let send_rate = Duration::from_millis(1000 / 30);
+        let mut last_sent = Instant::now();
+        let mut first_sent = true;
+        let mut locally_sorted = vec![];
+
+        rayon::spawn(move || loop {
+            if local_stop.load(Ordering::Acquire) {
+                break;
+            }
+
+            let total = write_done.load(Ordering::Acquire);
+            let available = reader.len();
+            let fully_read = available == total;
+
+            // If we are done reading all available options
+            if fully_read && available == taken {
+                sender.send(MatcherMessage::Done {
+                    clear_old: first_sent,
+                    results: std::mem::take(&mut locally_sorted),
+                });
+                break;
+            }
+
+            if available >= taken + Self::BATCH_SIZE || fully_read {
+                backoff = INITIAL_BACKOFF;
+                let size = min(available - taken, Self::BATCH_SIZE);
+                let batch = taken..taken + size;
+                taken += size;
+
+                let opts = reader.slice(batch);
+                let mut results: Vec<ScoredChoice> = opts
+                    .par_iter()
+                    .filter_map(|choice| {
+                        let ranges = matches_with(choice.filter_text().as_ref(), &matcher)?;
+                        let score = score(&choice, &ranges);
+                        let scored = ScoredChoice::new(choice.clone(), score, ranges);
+                        Some(scored)
+                    })
+                    .collect();
+
+                results.par_sort();
+                locally_sorted.push(unsafe { SortedVec::from_sorted_unchecked(results) });
+
+                if last_sent.elapsed() > send_rate {
+                    sender.send(MatcherMessage::Progress {
+                        clear_old: first_sent,
+                        results: std::mem::take(&mut locally_sorted),
+                    });
+                    last_sent = Instant::now();
+                    first_sent = false;
+                }
+            } else {
+                thread::sleep(Duration::from_micros(backoff));
+                backoff = (backoff * 2).min(100);
+            }
+        });
+    }
+}
+
+fn score(choice: &Arc<Choice>, ranges: &[Range<usize>]) -> usize {
+    if let Some(n) = choice.number() {
+        return n;
+    }
+    // Closest match first
+    ranges.first().map(|f| f.start).unwrap_or(0)
+}
+
+fn matches_with(opt: &str, matcher: &MultiMatcher) -> Option<Vec<Range<usize>>> {
+    let mut matches = vec![];
+    if matcher.is_empty() {
+        return Some(matches);
+    }
+
+    matcher.is_match(opt, &mut matches);
+    if matches.is_empty() {
+        None
+    } else {
+        Some(matches)
+    }
 }

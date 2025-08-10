@@ -1,8 +1,10 @@
 pub(crate) mod change;
 pub(crate) mod markdown;
-pub(crate) mod matcher;
+pub(crate) mod choice;
 pub(crate) mod text;
 pub(crate) mod window;
+
+pub(crate) use choice::*;
 
 use std::cmp;
 

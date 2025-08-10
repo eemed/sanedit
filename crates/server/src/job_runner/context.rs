@@ -75,11 +75,6 @@ impl JobResponseSender {
         self.internal.send(JobsMessage::Failed(id, reason)).await?;
         Ok(())
     }
-
-    pub fn send<A: Any + Send>(&mut self, id: JobId, any: A) {
-        let any = Box::new(any);
-        let _ = self.editor.send(ToEditor::Jobs(FromJobs::Message(id, any)));
-    }
 }
 
 impl From<JobContext> for JobResponseSender {

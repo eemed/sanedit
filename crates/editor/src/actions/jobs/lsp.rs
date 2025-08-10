@@ -9,7 +9,7 @@ use crate::{
     actions::{hooks::run, locations, lsp::lsp_notify_for, ActionResult},
     common::{
         markdown,
-        matcher::{Choice, MatchStrategy},
+        Choice,
     },
     editor::{
         buffers::BufferId,
@@ -35,7 +35,7 @@ use sanedit_lsp::{
 use sanedit_messages::redraw::{PopupKind, PopupMessage, PopupMessageText};
 use sanedit_server::{ClientId, Job, JobContext, JobResult};
 
-use super::MatcherJob;
+use super::{MatchStrategy, MatcherJob};
 
 #[derive(Debug)]
 enum Message {

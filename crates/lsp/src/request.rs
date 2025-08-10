@@ -50,14 +50,25 @@ impl Notification {
     /// Determines if the notification is supported by the LSP.
     /// May also modify the notification to make it supported.
     pub fn is_supported(&mut self, init: &lsp_types::InitializeResult) -> bool {
-        // TODO determine if server supports this request
+        use Notification::*;
         let caps = &init.capabilities;
         match self {
-            // Notification::DidOpen { path, text, version } => todo!(),
-            // Notification::DidChange { path, changes, version } => todo!(),
-            // Notification::DidClose { path } => todo!(),
-            // Notification::DidSave { path, text } => todo!(),
-            Notification::WillSave { .. } => caps
+            DidSave { .. } => caps
+                .text_document_sync
+                .as_ref()
+                .and_then(|sync| match sync {
+                    lsp_types::TextDocumentSyncCapability::Options(text_document_sync_options) => {
+                        Some(text_document_sync_options)
+                    }
+                    _ => None,
+                })
+                .and_then(|opts| opts.save.as_ref())
+                .map(|opts| match opts {
+                    lsp_types::TextDocumentSyncSaveOptions::Supported(want) => *want,
+                    lsp_types::TextDocumentSyncSaveOptions::SaveOptions(_save_options) => true,
+                })
+                .unwrap_or(false),
+            WillSave { .. } => caps
                 .text_document_sync
                 .as_ref()
                 .and_then(|sync| match sync {

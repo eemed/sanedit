@@ -119,7 +119,6 @@ impl ConfigDirectory {
         }
     }
 
-    // TODO should be split into global and local config
     pub fn config(&self) -> PathBuf {
         self.dir.join(CONFIG)
     }
@@ -132,19 +131,12 @@ impl Default for ConfigDirectory {
     }
 }
 
-// TODO remove these
-pub fn config_dir() -> Option<PathBuf> {
+fn config_dir() -> Option<PathBuf> {
     let config = dirs::config_dir()?;
     Some(config.join(SANE_DIR))
 }
 
-pub fn language_dir() -> Option<PathBuf> {
-    let mut conf_dir = config_dir()?;
-    conf_dir.push(LANG_DIR);
-    Some(conf_dir)
-}
-
-pub fn data_dir() -> Option<PathBuf> {
+fn data_dir() -> Option<PathBuf> {
     let data = dirs::data_dir()?;
     Some(data.join(SANE_DIR))
 }

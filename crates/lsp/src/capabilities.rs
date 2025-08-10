@@ -88,7 +88,7 @@ pub(crate) fn client_capabilities() -> lsp_types::ClientCapabilities {
                     // }),
                     rename: Some(lsp_types::RenameClientCapabilities {
                         dynamic_registration: Some(false),
-                        prepare_support: Some(true),
+                        prepare_support: Some(false),
                         prepare_support_default_behavior: None,
                         honors_change_annotations: Some(false),
                     }),
@@ -113,8 +113,8 @@ pub(crate) fn client_capabilities() -> lsp_types::ClientCapabilities {
                                 .collect(),
                             },
                         }),
-                        is_preferred_support: Some(true),
-                        disabled_support: Some(true),
+                        is_preferred_support: Some(false),
+                        disabled_support: Some(false),
                         data_support: Some(true),
                         resolve_support: Some(CodeActionCapabilityResolveSupport {
                             properties: vec!["edit".to_owned(), "command".to_owned()],

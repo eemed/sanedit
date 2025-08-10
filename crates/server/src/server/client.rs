@@ -1,4 +1,3 @@
-pub(crate) mod tcp;
 pub(crate) mod unix;
 
 use std::{borrow::Cow, path::PathBuf, sync::Arc};

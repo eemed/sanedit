@@ -1,4 +1,4 @@
-use std::{io, ops::Range};
+use std::ops::Range;
 
 use crate::PieceTreeSlice;
 
@@ -144,12 +144,6 @@ impl<'a> Bytes<'a> {
 
     pub fn chunks(&self) -> Chunks<'a> {
         self.chunks.clone()
-    }
-}
-
-impl<'a> io::Read for Bytes<'a> {
-    fn read(&mut self, _buf: &mut [u8]) -> io::Result<usize> {
-        todo!()
     }
 }
 

@@ -616,7 +616,7 @@ impl Handler {
 
         for cmd in response {
             match cmd {
-                lsp_types::CodeActionOrCommand::Command(_cmd) => todo!(),
+                lsp_types::CodeActionOrCommand::Command(_cmd) => {}
                 lsp_types::CodeActionOrCommand::CodeAction(action) => {
                     actions.push(CodeAction { action });
                 }
@@ -811,13 +811,20 @@ impl Handler {
         let path;
         let position;
         match response {
-            lsp_types::GotoDefinitionResponse::Scalar(_) => todo!("Scalar goto def"),
+            lsp_types::GotoDefinitionResponse::Scalar(location) => {
+                path = uri_to_path(&location.uri);
+                position = location.range.start;
+            }
             lsp_types::GotoDefinitionResponse::Array(locations) => {
                 let location = locations.first().ok_or(LSPError::EmptyResponse)?;
                 path = uri_to_path(&location.uri);
                 position = location.range.start;
             }
-            lsp_types::GotoDefinitionResponse::Link(_) => todo!("Link gotodef"),
+            lsp_types::GotoDefinitionResponse::Link(links) => {
+                let link = links.first().ok_or(LSPError::EmptyResponse)?;
+                path = uri_to_path(&link.target_uri);
+                position = link.target_range.start;
+            }
         }
 
         match path {

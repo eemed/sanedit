@@ -3,12 +3,11 @@ use std::process::Stdio;
 use sanedit_buffer::PieceTreeView;
 use tokio::process::Command;
 
-use crate::editor::job_broker::KeepInTouch;
 use sanedit_server::{ClientId, Job, JobContext, JobResult};
 
 #[derive(Clone)]
 pub(crate) struct ShellCommand {
-    client_id: ClientId,
+    _client_id: ClientId,
     command: String,
     pipe_input: Option<PieceTreeView>,
 }
@@ -17,7 +16,7 @@ pub(crate) struct ShellCommand {
 impl ShellCommand {
     pub fn new(client_id: ClientId, command: &str) -> ShellCommand {
         ShellCommand {
-            client_id,
+            _client_id: client_id,
             command: command.into(),
             pipe_input: None,
         }
@@ -61,15 +60,5 @@ impl Job for ShellCommand {
         };
 
         Box::pin(fut)
-    }
-}
-
-impl KeepInTouch for ShellCommand {
-    fn on_message(&self, _editor: &mut crate::editor::Editor, _msg: Box<dyn std::any::Any>) {
-        todo!()
-    }
-
-    fn client_id(&self) -> ClientId {
-        self.client_id
     }
 }

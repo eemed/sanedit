@@ -61,7 +61,9 @@ impl From<lsp_types::WorkspaceEdit> for WorkspaceEdit {
                 lsp_types::DocumentChanges::Operations(ops) => {
                     for op in ops {
                         match op {
-                            lsp_types::DocumentChangeOperation::Op(_op) => todo!(),
+                            lsp_types::DocumentChangeOperation::Op(_op) => {
+                                log::error!("Resource operations are unsupported");
+                            }
                             lsp_types::DocumentChangeOperation::Edit(edit) => {
                                 if let Ok(edit) = edit.try_into() {
                                     file_edits.push(edit);

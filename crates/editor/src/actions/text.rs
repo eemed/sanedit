@@ -1,4 +1,4 @@
-use std::{fs, mem, path::PathBuf, sync::Arc};
+use std::{mem, sync::Arc};
 
 use sanedit_core::{at_start_of_line, is_indent_at_pos, Language};
 
@@ -19,10 +19,9 @@ use sanedit_server::ClientId;
 use super::{
     completion,
     cursors::{remove_cursor_selections, swap_selection_dir},
-    filetree,
     hooks::run,
     movement::{end_of_line, prev_line},
-    text_objects::select_line,
+    text_objects::{select_line, select_line_content, select_line_without_eol},
     window::{focus, mode_insert, mode_normal},
     ActionResult,
 };
@@ -303,7 +302,7 @@ fn get_comment<'a>(
     win: &mut Window,
     buf: &Buffer,
     show_error: bool,
-) -> Option<&'a str> {
+) -> Option<(&'a str, &'a str)> {
     let Some(ft) = &buf.language else {
         if show_error {
             win.warn_msg("No language set");
@@ -324,15 +323,15 @@ fn get_comment<'a>(
         return None;
     }
 
-    Some(comment)
+    Some((comment, &langconfig.comment_end))
 }
 
 #[action("Buffer: Comment lines")]
 fn comment_lines(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = win_buf!(editor, id);
     match get_comment(&editor.languages, win, buf, true) {
-        Some(comment) => {
-            if win.comment_cursor_lines(buf, comment).is_ok() {
+        Some((comment, end)) => {
+            if win.comment_cursor_lines(buf, comment, end).is_ok() {
                 let hook = Hook::BufChanged(buf.id);
                 run(editor, id, hook);
             }
@@ -347,8 +346,8 @@ fn comment_lines(editor: &mut Editor, id: ClientId) -> ActionResult {
 fn uncomment_lines(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = win_buf!(editor, id);
     match get_comment(&editor.languages, win, buf, true) {
-        Some(comment) => {
-            if win.uncomment_cursor_lines(buf, comment).is_ok() {
+        Some((comment, end)) => {
+            if win.uncomment_cursor_lines(buf, comment, end).is_ok() {
                 let hook = Hook::BufChanged(buf.id);
                 run(editor, id, hook);
             }
@@ -363,8 +362,8 @@ fn uncomment_lines(editor: &mut Editor, id: ClientId) -> ActionResult {
 fn toggle_comment_lines(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = win_buf!(editor, id);
     match get_comment(&editor.languages, win, buf, true) {
-        Some(comment) => {
-            if win.toggle_comment_cursor_lines(buf, comment).is_ok() {
+        Some((comment, end)) => {
+            if win.toggle_comment_cursor_lines(buf, comment, end).is_ok() {
                 let hook = Hook::BufChanged(buf.id);
                 run(editor, id, hook);
             }
@@ -378,9 +377,9 @@ fn toggle_comment_lines(editor: &mut Editor, id: ClientId) -> ActionResult {
 #[action("Buffer: Join lines")]
 fn join_lines(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = win_buf!(editor, id);
-    let comment = get_comment(&editor.languages, win, buf, false).unwrap_or("");
+    let (comment, com_end) = get_comment(&editor.languages, win, buf, false).unwrap_or(("", ""));
 
-    if win.join_lines(buf, comment).is_ok() {
+    if win.join_lines(buf, comment, com_end).is_ok() {
         let hook = Hook::BufChanged(buf.id);
         run(editor, id, hook);
     }
@@ -417,6 +416,21 @@ fn remove_to_eol(editor: &mut Editor, id: ClientId) -> ActionResult {
     end_of_line.execute(editor, id);
     swap_selection_dir.execute(editor, id);
     remove_cursor_selections.execute(editor, id)
+}
+
+#[action("Buffer: Change line")]
+fn change_line(editor: &mut Editor, id: ClientId) -> ActionResult {
+    select_line_content.execute(editor, id);
+    remove_cursor_selections.execute(editor, id);
+    mode_insert(editor, id);
+    ActionResult::Ok
+}
+
+#[action("Buffer: Change to line end")]
+fn change_to_eol(editor: &mut Editor, id: ClientId) -> ActionResult {
+    remove_to_eol.execute(editor, id);
+    mode_insert(editor, id);
+    ActionResult::Ok
 }
 
 #[action("Buffer: Check if file has been modified")]
@@ -580,4 +594,3 @@ fn set_language(editor: &mut Editor, id: ClientId) -> ActionResult {
 
     ActionResult::Ok
 }
-

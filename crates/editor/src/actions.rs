@@ -206,6 +206,8 @@ pub(crate) const COMMANDS: &[Action] = &[
     text::rotate_selections,
     text::rotate_selections_backwards,
     text::set_language,
+    text::change_to_eol,
+    text::change_line,
 
     prompt::open_file,
     prompt::open_buffer,
@@ -275,6 +277,10 @@ pub(crate) const COMMANDS: &[Action] = &[
     cursors::cursor_to_view_top,
     cursors::cursor_to_view_middle,
     cursors::cursor_to_view_bottom,
+    cursors::cursor_sort,
+    cursors::cursor_sort_rev,
+    cursors::cursor_trim_whitespace,
+    cursors::cursor_select_individual_lines,
 
     view::scroll_up,
     view::scroll_down,

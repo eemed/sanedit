@@ -3,7 +3,7 @@ mod slice;
 
 use std::{
     cmp::min,
-    fs::{self, File},
+    fs::File,
     io::{self, Read, Seek, SeekFrom},
     ops::Range,
     path::{Path, PathBuf},

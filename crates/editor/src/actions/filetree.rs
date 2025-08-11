@@ -2,7 +2,6 @@ use std::{
     cmp::min,
     fs, io,
     path::{Path, PathBuf, MAIN_SEPARATOR},
-    sync::Arc,
 };
 
 use crate::{

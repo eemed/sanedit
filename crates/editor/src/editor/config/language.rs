@@ -44,6 +44,7 @@ pub(crate) struct LSPConfig {
 pub(crate) struct LanguageConfig {
     /// Used to comment blocks of text
     pub comment: String,
+    pub comment_end: String,
 
     pub language_server: LSPConfig,
 

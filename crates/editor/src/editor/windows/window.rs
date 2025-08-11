@@ -989,22 +989,51 @@ impl Window {
         Ok(())
     }
 
-    pub fn comment_cursor_lines(&mut self, buf: &mut Buffer, comment: &str) -> Result<()> {
+    pub fn comment_cursor_lines(
+        &mut self,
+        buf: &mut Buffer,
+        comment: &str,
+        comment_end: &str,
+    ) -> Result<()> {
         if comment.is_empty() {
             return Ok(());
         }
 
         let starts = self.cursor_line_first_chars_of_lines_aligned(buf);
+        let ends = self.cursor_line_ends(buf);
+
         self.cursors.stop_selection();
         if starts.is_empty() {
             bail!("No lines to comment");
         }
-        let changes = Changes::multi_insert(&starts, comment.as_bytes());
-        self.change(buf, &changes)?;
-        Ok(())
+
+        if comment_end.is_empty() {
+            let changes = Changes::multi_insert(&starts, comment.as_bytes());
+            return self.change(buf, &changes);
+        }
+
+        let mut changes = Vec::with_capacity(starts.len() * 2);
+        for start in starts {
+            let change = Change::insert(start, comment.as_bytes());
+            changes.push(change);
+        }
+
+        log::info!("ends: {ends:?}");
+        for end in ends {
+            let change = Change::insert(end, comment_end.as_bytes());
+            changes.push(change);
+        }
+
+        let changes = Changes::from(changes);
+        self.change(buf, &changes)
     }
 
-    pub fn uncomment_cursor_lines(&mut self, buf: &mut Buffer, comment: &str) -> Result<()> {
+    pub fn uncomment_cursor_lines(
+        &mut self,
+        buf: &mut Buffer,
+        comment: &str,
+        comment_end: &str,
+    ) -> Result<()> {
         if comment.is_empty() {
             return Ok(());
         }
@@ -1021,15 +1050,46 @@ impl Window {
             let line = buf.slice(start..end);
             let mut chars = line.chars();
 
+            let mut start_change = None;
             while let Some((_, e, ch)) = chars.next() {
                 if ch == patt[npatt] {
                     npatt += 1;
                     if npatt == patt.len() {
                         let end = e + line.start();
                         let start = end - comment.len() as u64;
-                        changes.push(Change::remove(Range::new(start, end)));
+                        start_change = Change::remove(Range::new(start, end)).into();
                         break;
                     }
+                } else if !ch.is_whitespace() {
+                    continue 'outer;
+                }
+            }
+
+            let Some(start_change) = start_change else {
+                continue;
+            };
+
+            if comment_end.is_empty() {
+                changes.push(start_change);
+                continue;
+            }
+
+            let patt: Vec<char> = comment_end.chars().collect();
+            npatt = patt.len() - 1;
+            let mut chars = line.chars_at(line.len());
+            while let Some((s, _, ch)) = chars.prev() {
+                if ch == patt[npatt] {
+                    if npatt == 0 {
+                        let start = s + line.start();
+                        let end = start + comment_end.len() as u64;
+                        if start_change.end() < start {
+                            changes.push(Change::remove(Range::new(start, end)).into());
+                            changes.push(start_change);
+                            log::info!("{start}..{end}");
+                            break;
+                        }
+                    }
+                    npatt -= 1;
                 } else if !ch.is_whitespace() {
                     continue 'outer;
                 }
@@ -1041,8 +1101,7 @@ impl Window {
             bail!("No lines to uncomment");
         }
         let changes = Changes::new(&changes);
-        self.change(buf, &changes)?;
-        Ok(())
+        self.change(buf, &changes)
     }
 
     fn has_comment_on_line(&self, buf: &Buffer, comment: &str, start_of_line: u64) -> bool {
@@ -1067,16 +1126,21 @@ impl Window {
         false
     }
 
-    pub fn toggle_comment_cursor_lines(&mut self, buf: &mut Buffer, comment: &str) -> Result<()> {
+    pub fn toggle_comment_cursor_lines(
+        &mut self,
+        buf: &mut Buffer,
+        comment: &str,
+        comment_end: &str,
+    ) -> Result<()> {
         let starts = self.cursor_line_starts(buf);
         let has_uncommented_line = starts
             .iter()
             .any(|start| !self.has_comment_on_line(buf, comment, *start));
 
         if has_uncommented_line {
-            self.comment_cursor_lines(buf, comment)
+            self.comment_cursor_lines(buf, comment, comment_end)
         } else {
-            self.uncomment_cursor_lines(buf, comment)
+            self.uncomment_cursor_lines(buf, comment, comment_end)
         }
     }
 
@@ -1402,7 +1466,7 @@ impl Window {
         }
     }
 
-    pub fn join_lines(&mut self, buf: &mut Buffer, comment: &str) -> Result<()> {
+    pub fn join_lines(&mut self, buf: &mut Buffer, comment: &str, comment_end: &str) -> Result<()> {
         let ends = self.cursor_line_ends(buf);
         let slice = buf.slice(..);
         let mut changes = Vec::with_capacity(ends.len());
@@ -1420,7 +1484,7 @@ impl Window {
                 }
             }
 
-            // Strip comment
+            // Strip comment TODO fix this too should strip whitespace
             let mut bytes = slice.bytes_at(end);
             let has_comment = comment
                 .as_bytes()
@@ -1449,6 +1513,58 @@ impl Window {
         }
 
         let changes = Changes::from(changes);
+        self.change(buf, &changes)?;
+        Ok(())
+    }
+
+    pub fn cursor_trim_whitespace(&mut self, buf: &Buffer) -> bool {
+        let changed = self.cursors.trim_whitespace(buf);
+        if changed {
+            self.invalidate();
+        }
+        changed
+    }
+
+    pub fn cursor_sort(&mut self, buf: &mut Buffer, reverse: bool) -> Result<()> {
+        let mut sorted_cursors = SortedVec::with_capacity(self.cursors.len());
+        for cursor in self.cursors().iter() {
+            if let Some(sel) = cursor.selection() {
+                sorted_cursors.push(sel);
+            }
+        }
+
+        let mut strings = Vec::with_capacity(self.cursors.len());
+        for range in sorted_cursors.iter() {
+            let slice = buf.slice(range);
+            let string = String::from(&slice);
+            strings.push(string);
+        }
+
+        let is_sorted =
+            reverse && strings.is_sorted_by(|a, b| b < a) || !reverse && strings.is_sorted();
+        if is_sorted {
+            bail!("Already sorted")
+        }
+
+        if reverse {
+            strings.sort_by(|a, b| b.cmp(a));
+        } else {
+            strings.sort();
+        }
+
+        let changes: Vec<Change> = strings
+            .into_iter()
+            .enumerate()
+            .map(|(i, string)| {
+                let range = &sorted_cursors[i];
+                Change::replace(range.clone(), string.as_bytes())
+            })
+            .collect();
+
+        if changes.is_empty() {
+            bail!("No selections")
+        }
+        let changes = Changes::new(&changes);
         self.change(buf, &changes)?;
         Ok(())
     }

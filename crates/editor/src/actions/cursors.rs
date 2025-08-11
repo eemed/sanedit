@@ -20,10 +20,7 @@ use sanedit_core::{
 };
 
 use super::{
-    hooks::{self, run},
-    movement::{self, next_grapheme},
-    window::{mode_insert, mode_normal, mode_select},
-    ActionResult,
+    hooks::{self, run}, movement::{self, next_grapheme}, text_objects::select_line_without_eol, window::{mode_insert, mode_normal, mode_select}, ActionResult
 };
 
 #[action("Cursors: Select next word")]
@@ -187,9 +184,9 @@ fn swap_selection_dir(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Cursors: Remove primary cursor")]
 fn remove_primary_cursor(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, buf) = editor.win_buf_mut(id);
     win.cursors.remove_primary();
-
+    win.view_to_around_cursor_zone(buf, Zone::Middle);
     ActionResult::Ok
 }
 
@@ -493,5 +490,48 @@ fn cursor_to_view_bottom(editor: &mut Editor, id: ClientId) -> ActionResult {
         run(editor, id, Hook::CursorMoved);
     }
 
+    ActionResult::Ok
+}
+
+#[action("Cursors: Trim whitespace")]
+fn cursor_trim_whitespace(editor: &mut Editor, id: ClientId) -> ActionResult {
+    let (win, buf) = editor.win_buf_mut(id);
+    if win.cursor_trim_whitespace(&buf) {
+        run(editor, id, Hook::CursorMoved);
+    }
+
+    ActionResult::Ok
+}
+
+#[action("Cursors: Sort")]
+fn cursor_sort(editor: &mut Editor, id: ClientId) -> ActionResult {
+    let (win, buf) = editor.win_buf_mut(id);
+    let bid = buf.id;
+    if win.cursor_sort(buf, false).is_ok() {
+        run(editor, id, Hook::CursorMoved);
+        run(editor, id, Hook::BufChanged(bid));
+    }
+
+    ActionResult::Ok
+}
+
+#[action("Cursors: Sort reverse")]
+fn cursor_sort_rev(editor: &mut Editor, id: ClientId) -> ActionResult {
+    let (win, buf) = editor.win_buf_mut(id);
+    let bid = buf.id;
+    if win.cursor_sort(buf, true).is_ok() {
+        run(editor, id, Hook::CursorMoved);
+        run(editor, id, Hook::BufChanged(bid));
+    }
+
+    ActionResult::Ok
+}
+
+#[action("Cursors: Split to select individual lines")]
+fn cursor_select_individual_lines(editor: &mut Editor, id: ClientId) -> ActionResult {
+    let (win, buf) = editor.win_buf_mut(id);
+    win.cursors_to_lines_start(buf);
+    run(editor, id, Hook::CursorMoved);
+    select_line_without_eol.execute(editor, id);
     ActionResult::Ok
 }

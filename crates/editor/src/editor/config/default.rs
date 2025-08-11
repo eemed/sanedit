@@ -313,6 +313,8 @@ pub(crate) fn normal() -> KeymapLayer {
         "&", align_cursor_columns,
         "e", next_word_end,
         "E", prev_word_end,
+        "c", change_line,
+        "C", change_to_eol,
 
         "alt+n", make_next_cursor_primary,
         "alt+N", make_prev_cursor_primary,
@@ -415,6 +417,7 @@ pub(crate) fn select() -> KeymapLayer {
     let map = make_keymap!(
         "!", shell_command,
         "i", nop,
+        "a", cursor_select_individual_lines,
         "x", remove_cursor_selections,
         "d", remove_cursor_selections,
         "c", change_cursor_selections,
@@ -432,6 +435,9 @@ pub(crate) fn select() -> KeymapLayer {
         "U", uppercase,
         "r", rotate_selections,
         "R", rotate_selections_backwards,
+        "-", cursor_trim_whitespace,
+        "g s", cursor_sort,
+        "g S", cursor_sort_rev,
 
         "alt+j", next_paragraph,
         "alt+k", prev_paragraph,

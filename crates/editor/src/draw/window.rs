@@ -184,7 +184,7 @@ where
 
                 if (!cell.is_virtual() && !cell.is_empty() && range.contains(&pos)) || cell.is_eof()
                 {
-                    grid.at(line, col).style = style;
+                    grid.at(line, col).style.merge(&style);
                 }
 
                 if !start_found && pos + cell.len_in_buffer() >= range.start {
@@ -229,7 +229,7 @@ fn draw_sigle_hl(grid: &mut Window, view: &View, style: Style, range: &BufferRan
             for (col, cell) in row.iter().enumerate() {
                 if (!cell.is_virtual() && !cell.is_empty() && range.contains(&pos)) || cell.is_eof()
                 {
-                    grid.at(line, col).style = style;
+                    grid.at(line, col).style.merge(&style);
                 }
 
                 pos += cell.len_in_buffer();
@@ -252,6 +252,30 @@ fn draw_search_highlights(
     draw_ordered_highlights(matches, grid, view, |hl| Some((style, hl)));
 }
 
+#[derive(PartialEq, Eq)]
+struct HLRange {
+    range: BufferRange,
+    style: Style,
+}
+
+impl PartialOrd for HLRange {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for HLRange {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        match self.range.start.cmp(&other.range.start) {
+            std::cmp::Ordering::Equal => match other.range.end.cmp(&self.range.end) {
+                std::cmp::Ordering::Equal => self.style.cmp(&other.style),
+                res => res,
+            },
+            res => res,
+        }
+    }
+}
+
 fn draw_secondary_cursors(
     grid: &mut Window,
     cursors: &Cursors,
@@ -261,34 +285,31 @@ fn draw_secondary_cursors(
 ) {
     let mut cursor_hls = SortedVec::new();
     for cursor in cursors.cursors() {
-        match cursor.selection() {
-            Some(area) => {
-                let style = theme.get(ThemeField::Selection);
-                cursor_hls.push((area, style));
-            }
-            None => {
-                let is_primary = cursor == cursors.primary();
-
-                // Assume client draws the primary cursor here instead of us if
-                // window is focused
-                if is_primary && focus_on_win {
-                    continue;
-                }
-
-                let style = if is_primary {
-                    theme.get(ThemeField::Default)
-                } else {
-                    theme.get(ThemeField::Cursor)
-                };
-
-                cursor_hls.push((Range::new(cursor.pos(), cursor.pos() + 1), style));
-            }
+        if let Some(area) = cursor.selection() {
+            let style = theme.get(ThemeField::Selection);
+            cursor_hls.push(HLRange { range: area, style });
         }
+        let is_primary = cursor == cursors.primary();
+
+        // Assume client draws the primary cursor here instead of us if
+        // window is focused
+        if is_primary && focus_on_win {
+            continue;
+        }
+
+        let style = if is_primary {
+            theme.get(ThemeField::Default)
+        } else {
+            theme.get(ThemeField::Cursor)
+        };
+
+        cursor_hls.push(HLRange {
+            range: Range::new(cursor.pos(), cursor.pos() + 1),
+            style,
+        });
     }
 
-    draw_ordered_highlights(&cursor_hls, grid, view, |(range, style)| {
-        Some((*style, range))
-    });
+    draw_ordered_highlights(&cursor_hls, grid, view, |hl| Some((hl.style, &hl.range)));
 }
 
 fn draw_primary_cursor(

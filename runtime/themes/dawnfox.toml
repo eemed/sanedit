@@ -11,9 +11,9 @@ symbols = ",#969896,"
 match = "#C1E1C1,#356E35,"
 virtual = ",#969896,"
 
-[colors.window.cursor]
-default = "#BABBD1,#575279,"
-selection = "#d0d8d8,#575279,"
+[colors.cursor]
+default = "#BABBD1,,"
+selection = "#d0d8d8,,"
 
 [colors.window.view]
 hint = "#b7d8eb,#00576B,"

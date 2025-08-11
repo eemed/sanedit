@@ -60,6 +60,54 @@ impl Cursors {
         &mut self.cursors
     }
 
+    pub fn trim_whitespace(&mut self, buf: &Buffer) -> bool {
+        let mut last_pos = 0;
+        let mut changed = false;
+        self.cursors.retain_mut(|cursor| {
+            let Some(mut sel) = cursor.selection() else {
+                return true;
+            };
+            let slice = buf.slice(sel.clone());
+            let mut chars = slice.chars();
+            let mut left = 0;
+            while let Some((start, end, ch)) = chars.next() {
+                if ch.is_whitespace() {
+                    left += end - start;
+                } else {
+                    break;
+                }
+            }
+
+            let mut chars_rev = slice.chars_at(slice.len());
+            let mut right = 0;
+            while let Some((start, end, ch)) = chars_rev.prev() {
+                if ch.is_whitespace() {
+                    right += end - start;
+                } else {
+                    break;
+                }
+            }
+
+            if left + right >= slice.len() {
+                last_pos = sel.start;
+                false
+            } else {
+                changed = true;
+                sel.start += left;
+                sel.end -= right;
+                cursor.select(&sel);
+                true
+            }
+        });
+
+        if self.cursors.is_empty() {
+            self.cursors.push(Cursor::new(last_pos));
+        }
+
+        self.primary = min(self.primary, self.cursors.len() - 1);
+        changed
+    }
+
     /// Add a new cursor
     pub fn push(&mut self, cursor: Cursor) {
         self.cursors.push(cursor);

@@ -64,7 +64,7 @@ impl Theme {
                 }
                 ThemeNode::Leaf(_) => break,
             }
-            cur.override_with(node.style());
+            cur.merge(node.style());
         }
 
         cur
@@ -187,8 +187,8 @@ impl AsRef<str> for ThemeField {
             Default => "window",
             Statusline => "window.statusline",
             StatuslineNoFocus => "window.statusline_no_focus",
-            Selection => "window.cursor.selection",
-            Cursor => "window.cursor",
+            Selection => "cursor.selection",
+            Cursor => "cursor",
             EndOfBuffer => "window.end_of_buffer",
             TrailingWhitespace => "window.trailing_whitespace",
             Symbols => "window.symbols",

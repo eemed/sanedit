@@ -10,7 +10,7 @@ symbols = ",#969896,"
 match = "#f0c674,#1d1f21,"
 virtual = ",#969896,"
 
-[colors.window.cursor]
+[colors.cursor]
 default = "#81a2be,#1d1f21,"
 selection = "#373b41,#c5c8c6,"
 

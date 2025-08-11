@@ -8,7 +8,7 @@ symbols = ",#444444,"
 match = "#B5BD68,#222222,"
 virtual = ",#666666,"
 
-[colors.window.cursor]
+[colors.cursor]
 default = "#d7875f,#000000,"
 selection = "#3a3f41,#d3d3d3,"
 

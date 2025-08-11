@@ -21,7 +21,7 @@ impl Style {
     // }
 
     /// use self as a base style and apply overrides
-    pub fn override_with(&mut self, style: &Style) {
+    pub fn merge(&mut self, style: &Style) {
         if let Some(bg) = style.bg {
             self.bg = Some(bg);
         }

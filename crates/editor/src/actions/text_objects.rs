@@ -108,6 +108,19 @@ fn select_line(editor: &mut Editor, id: ClientId) -> ActionResult {
     })
 }
 
+#[action("Select: Line content")]
+fn select_line_content(editor: &mut Editor, id: ClientId) -> ActionResult {
+    select_with_col(editor, id, |slice, pos| {
+        let start = movement::first_char_of_line(&slice, pos);
+        let end = movement::end_of_line(&slice, pos);
+        if start == end {
+            None
+        } else {
+            Some((Range::new(start, end), 0))
+        }
+    })
+}
+
 #[action("Select: Line without end of line")]
 fn select_line_without_eol(editor: &mut Editor, id: ClientId) -> ActionResult {
     select_with_col(editor, id, |slice, pos| {

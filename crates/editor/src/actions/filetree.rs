@@ -245,7 +245,8 @@ pub fn rename_file(editor: &mut Editor, id: ClientId, old: PathBuf) -> ActionRes
         .simple()
         .on_confirm(move |editor, id, out| {
             let input = getf!(out.text());
-            let new = match new_file_result_path(editor.working_dir(), input) {
+            let root = editor.working_dir();
+            let new = match new_file_result_path(root, input) {
                 Ok(path) => path,
                 Err(e) => {
                     let (win, _buf) = editor.win_buf_mut(id);
@@ -278,7 +279,6 @@ pub fn rename_file(editor: &mut Editor, id: ClientId, old: PathBuf) -> ActionRes
                         log::error!("Failed to rename buffer: {} to {path:?}: {e}", buf.name());
                     }
                 }
-                let _ = editor.remove_buffer(id, bid);
             }
 
             if let Err(e) = rename(&old, &new) {
@@ -309,9 +309,8 @@ pub fn rename_file(editor: &mut Editor, id: ClientId, old: PathBuf) -> ActionRes
 }
 
 fn rename(src: impl AsRef<Path>, dst: impl AsRef<Path>) -> io::Result<()> {
-    fs::create_dir_all(&dst)?;
-
     if src.as_ref().is_dir() {
+        fs::create_dir_all(&dst)?;
         for entry in fs::read_dir(src)? {
             let entry = entry?;
             let dst = dst.as_ref().join(entry.file_name());

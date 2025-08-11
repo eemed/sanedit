@@ -316,6 +316,7 @@ fn rename(src: impl AsRef<Path>, dst: impl AsRef<Path>) -> io::Result<()> {
             let dst = dst.as_ref().join(entry.file_name());
             rename(entry.path(), dst)?;
         }
+        fs::remove_dir(src.as_ref())?;
     } else if !dst.as_ref().exists() {
         if let Err(_) = std::fs::rename(src.as_ref(), dst.as_ref()) {
             fs::copy(src.as_ref(), dst.as_ref())?;

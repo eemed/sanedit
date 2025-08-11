@@ -149,11 +149,11 @@ fn new_file_prefill_path(wd: &Path, selection: usize, filetree: &Filetree) -> Op
             Kind::Directory { .. } => entry.path().to_path_buf(),
         }
     };
-    let dir_name = prefill_path(wd, &dir);
+    let dir_name = prefill_dir(wd, &dir);
     Some(dir_name)
 }
 
-fn prefill_path(root: &Path, path: &Path) -> String {
+fn prefill_dir(root: &Path, path: &Path) -> String {
     let mut name = path
         .strip_prefix(root)
         .unwrap_or(path)
@@ -378,11 +378,12 @@ fn buffer_remove_file(editor: &mut Editor, id: ClientId) -> ActionResult {
 fn buffer_create_file(editor: &mut Editor, id: ClientId) -> ActionResult {
     let root = editor.working_dir();
     let (_win, buf) = editor.win_buf(id);
-    let prefill = if let Some(path) = buf.path() {
-        prefill_path(root, path)
-    } else {
-        String::new()
-    };
+    let prefill = buf
+        .path()
+        .map(Path::parent)
+        .flatten()
+        .map(|parent| prefill_dir(root, parent))
+        .unwrap_or(String::new());
     create_new_file(editor, id, prefill)
 }
 

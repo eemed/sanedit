@@ -264,7 +264,7 @@ pub fn rename_file(editor: &mut Editor, id: ClientId, old: PathBuf) -> ActionRes
             for (bid, buf) in editor.buffers.iter() {
                 if let Some(bpath) = buf.path() {
                     if bpath == old {
-                        bids.push((bid, new));
+                        bids.push((bid, new.clone()));
                         continue;
                     }
 

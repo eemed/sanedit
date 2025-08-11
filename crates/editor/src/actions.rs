@@ -162,6 +162,9 @@ pub(crate) const COMMANDS: &[Action] = &[
     filetree::set_root,
     filetree::ft_select_first,
     filetree::ft_select_last,
+    filetree::buffer_rename_file,
+    filetree::buffer_remove_file,
+    filetree::buffer_create_file,
 
     editor::quit,
 
@@ -281,6 +284,7 @@ pub(crate) const COMMANDS: &[Action] = &[
 
     text_objects::select_buffer,
     text_objects::select_line,
+    text_objects::select_line_without_eol,
     text_objects::select_parens_incl,
     text_objects::select_parens,
     text_objects::select_square_incl,

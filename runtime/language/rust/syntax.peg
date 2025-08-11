@@ -38,7 +38,7 @@ rawstring = "r#\"" (escape / (!"\"#" .))* "\"#";
 escape = "\\" .;
 replace = !"{{" "{" replacement "}";
 @show @highlight(default)
-replacement = [^}]*;
+replacement = [^"}]*;
 
 
 # Types

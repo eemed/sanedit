@@ -1,5 +1,6 @@
 use std::{
     cmp::min,
+    fs, io,
     path::{Path, PathBuf, MAIN_SEPARATOR},
     sync::Arc,
 };
@@ -148,22 +149,24 @@ fn new_file_prefill_path(wd: &Path, selection: usize, filetree: &Filetree) -> Op
             Kind::Directory { .. } => entry.path().to_path_buf(),
         }
     };
-    let dir_name = {
-        let mut name = dir
-            .strip_prefix(wd)
-            .unwrap_or(dir.as_path())
-            .to_string_lossy()
-            .to_string();
-        if !name.is_empty() && !name.ends_with(MAIN_SEPARATOR) {
-            name.push(MAIN_SEPARATOR);
-        }
-        name
-    };
+    let dir_name = prefill_path(wd, &dir);
     Some(dir_name)
 }
 
+fn prefill_path(root: &Path, path: &Path) -> String {
+    let mut name = path
+        .strip_prefix(root)
+        .unwrap_or(path)
+        .to_string_lossy()
+        .to_string();
+    if !name.is_empty() && !name.ends_with(MAIN_SEPARATOR) {
+        name.push(MAIN_SEPARATOR);
+    }
+    name
+}
+
 /// Get a path to a new relative file from userinput.
-fn new_file_result_path(wd: &Path, input: &str) -> anyhow::Result<PathBuf> {
+pub fn new_file_result_path(wd: &Path, input: &str) -> anyhow::Result<PathBuf> {
     let new = PathBuf::from(input);
     if !new.is_relative() {
         bail!("Path is not relative")
@@ -178,20 +181,12 @@ fn new_file_result_path(wd: &Path, input: &str) -> anyhow::Result<PathBuf> {
     Ok(absolute)
 }
 
-#[action("Filetree: Create new file")]
-fn ft_new_file(editor: &mut Editor, id: ClientId) -> ActionResult {
+pub fn create_new_file(editor: &mut Editor, id: ClientId, name: String) -> ActionResult {
     let root = editor.working_dir().to_path_buf();
-    let (win, _buf) = editor.win_buf(id);
-    let dir_name = getf!(new_file_prefill_path(
-        &root,
-        win.ft_view.selection,
-        &editor.filetree
-    ));
-
     let (win, _buf) = editor.win_buf_mut(id);
     win.prompt = Prompt::builder()
         .prompt("Filename")
-        .input(&dir_name)
+        .input(&name)
         .simple()
         .on_confirm(move |editor, id, out| {
             let input = getf!(out.text());
@@ -238,18 +233,11 @@ fn ft_new_file(editor: &mut Editor, id: ClientId) -> ActionResult {
     ActionResult::Ok
 }
 
-#[action("Filetree: Rename file or folder")]
-fn ft_rename_file(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let old = {
-        let (win, _buf) = editor.win_buf(id);
-        let entry = getf!(editor.filetree.iter().nth(win.ft_view.selection));
-        entry.path().to_path_buf()
-    };
+pub fn rename_file(editor: &mut Editor, id: ClientId, old: PathBuf) -> ActionResult {
     let old_name = old
         .strip_prefix(editor.working_dir())
-        .unwrap_or(old.as_path())
+        .unwrap_or(&old)
         .to_string_lossy();
-
     let (win, _buf) = editor.win_buf_mut(id);
     win.prompt = Prompt::builder()
         .prompt("Rename")
@@ -271,20 +259,32 @@ fn ft_rename_file(editor: &mut Editor, id: ClientId) -> ActionResult {
                 let _ = std::fs::create_dir_all(parent);
             }
 
-            // Rename
-            if let Err(_) = std::fs::rename(&old, &new) {
-                if let Err(e) = std::fs::copy(&old, &new) {
-                    let (win, _buf) = editor.win_buf_mut(id);
-                    win.warn_msg(&format!("Failed to rename file/dir {e}"));
-                    return ActionResult::Failed;
+            let mut bids = vec![];
+            for (bid, buf) in editor.buffers.iter() {
+                if let Some(bpath) = buf.path() {
+                    match bpath.strip_prefix(&old) {
+                        Ok(suffix) => {
+                            let new_location = new.join(suffix);
+                            bids.push((bid, new_location));
+                        }
+                        Err(_) => {}
+                    }
                 }
-
-                let _ = std::fs::remove_file(&old);
             }
 
-            if let Some(bid) = editor.buffers_mut().find(&old) {
-                let buf = editor.buffers_mut().get_mut(bid).unwrap();
-                buf.set_path(&new);
+            for (bid, path) in bids {
+                if let Some(buf) = editor.buffers.get_mut(bid) {
+                    if let Err(e) = buf.rename(&path) {
+                        log::error!("Failed to rename buffer: {} to {path:?}: {e}", buf.name());
+                    }
+                }
+                let _ = editor.remove_buffer(id, bid);
+            }
+
+            if let Err(e) = rename(&old, &new) {
+                let (win, _buf) = editor.win_buf_mut(id);
+                win.warn_msg(&format!("Failed to rename file/dir {e}"));
+                return ActionResult::Failed;
             }
 
             // Refresh tree to show moved stuff
@@ -308,26 +308,96 @@ fn ft_rename_file(editor: &mut Editor, id: ClientId) -> ActionResult {
     ActionResult::Ok
 }
 
+fn rename(src: impl AsRef<Path>, dst: impl AsRef<Path>) -> io::Result<()> {
+    fs::create_dir_all(&dst)?;
+
+    if src.as_ref().is_dir() {
+        for entry in fs::read_dir(src)? {
+            let entry = entry?;
+            let dst = dst.as_ref().join(entry.file_name());
+            rename(entry.path(), dst)?;
+        }
+    } else if !dst.as_ref().exists() {
+        if let Err(_) = std::fs::rename(src.as_ref(), dst.as_ref()) {
+            fs::copy(src.as_ref(), dst.as_ref())?;
+            fs::remove_file(src.as_ref())?;
+        }
+    } else {
+        fs::remove_file(src.as_ref())?;
+    }
+
+    Ok(())
+}
+
+#[action("Filetree: Create new file")]
+fn ft_new_file(editor: &mut Editor, id: ClientId) -> ActionResult {
+    let root = editor.working_dir().to_path_buf();
+    let (win, _buf) = editor.win_buf(id);
+
+    let dir_name = getf!(new_file_prefill_path(
+        &root,
+        win.ft_view.selection,
+        &editor.filetree
+    ));
+
+    create_new_file(editor, id, dir_name)
+}
+
+#[action("Filetree: Rename file or folder")]
+fn ft_rename_file(editor: &mut Editor, id: ClientId) -> ActionResult {
+    let old = {
+        let (win, _buf) = editor.win_buf(id);
+        let entry = getf!(editor.filetree.iter().nth(win.ft_view.selection));
+        entry.path().to_path_buf()
+    };
+    rename_file(editor, id, old)
+}
+
+#[action("Buffer: Rename file")]
+fn buffer_rename_file(editor: &mut Editor, id: ClientId) -> ActionResult {
+    let (_win, buf) = editor.win_buf_mut(id);
+    let initial_path = buf.path().map(PathBuf::from).unwrap_or(PathBuf::new());
+    rename_file(editor, id, initial_path)
+}
+
+#[action("Buffer: Remove file")]
+fn buffer_remove_file(editor: &mut Editor, id: ClientId) -> ActionResult {
+    let (_win, buf) = editor.win_buf_mut(id);
+    if let Some(path) = buf.path().map(PathBuf::from) {
+        return delete_file(editor, id, path);
+    }
+    ActionResult::Skipped
+}
+
+#[action("Buffer: Create file")]
+fn buffer_create_file(editor: &mut Editor, id: ClientId) -> ActionResult {
+    let root = editor.working_dir();
+    let (_win, buf) = editor.win_buf(id);
+    let prefill = if let Some(path) = buf.path() {
+        prefill_path(root, path)
+    } else {
+        String::new()
+    };
+    create_new_file(editor, id, prefill)
+}
+
 #[action("Filetree: Delete file")]
 fn ft_delete_file(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (kind, path) = {
+    let path = {
         let (win, _buf) = editor.win_buf(id);
         let entry = getf!(editor.filetree.iter().nth(win.ft_view.selection));
         let path = entry.path().to_path_buf();
-        let kind = entry.kind();
-
-        (kind, Arc::new(path))
+        path
     };
+    delete_file(editor, id, path)
+}
 
+fn delete_file(editor: &mut Editor, id: ClientId, path: PathBuf) -> ActionResult {
     let prompt = {
-        let kind = match kind {
-            Kind::Directory => "directory",
-            Kind::File => "file",
-        };
+        let kind = if path.is_dir() { "directory" } else { "file" };
         let path = path.strip_prefix(editor.working_dir()).unwrap_or(&path);
         format!("Delete {} {:?}? (y/N)", kind, path)
     };
-
     let (win, _buf) = editor.win_buf_mut(id);
     win.prompt = Prompt::builder()
         .prompt(&prompt)
@@ -338,9 +408,24 @@ fn ft_delete_file(editor: &mut Editor, id: ClientId) -> ActionResult {
                 return ActionResult::Failed;
             }
 
-            let result = match kind {
-                Kind::Directory => std::fs::remove_dir_all(path.as_path()),
-                Kind::File => std::fs::remove_file(path.as_path()),
+            // Delete buffers
+            let mut bids = vec![];
+            for (bid, buf) in editor.buffers.iter() {
+                if let Some(bpath) = buf.path() {
+                    if bpath.strip_prefix(path.as_path()).is_ok() {
+                        bids.push(bid);
+                    }
+                }
+            }
+
+            for bid in bids {
+                let _ = editor.remove_buffer(id, bid);
+            }
+
+            let result = if path.is_dir() {
+                std::fs::remove_dir_all(path.as_path())
+            } else {
+                std::fs::remove_file(path.as_path())
             };
 
             if let Err(e) = result {
@@ -357,20 +442,6 @@ fn ft_delete_file(editor: &mut Editor, id: ClientId) -> ActionResult {
 
             prev_ft_entry.execute(editor, id);
             focus(editor, id, Focus::Filetree);
-
-            // Delete buffers
-            let mut bids = vec![];
-            for (bid, buf) in editor.buffers.iter() {
-                if let Some(bpath) = buf.path() {
-                    if bpath.strip_prefix(path.as_path()).is_ok() {
-                        bids.push(bid);
-                    }
-                }
-            }
-
-            for bid in bids {
-                let _ = editor.remove_buffer(id, bid);
-            }
             ActionResult::Ok
         })
         .build();
@@ -401,9 +472,3 @@ fn ft_goto_current_file(editor: &mut Editor, id: ClientId) -> ActionResult {
     win.ft_view.selection = getf!(editor.filetree.select(path));
     ActionResult::Ok
 }
-
-// #[action("Search for an entry in filetree")]
-// fn search_forward(editor: &mut Editor, id: ClientId) {}
-
-// #[action("Search for an entry in filetree backwards")]
-// fn search_backwards(editor: &mut Editor, id: ClientId) {}

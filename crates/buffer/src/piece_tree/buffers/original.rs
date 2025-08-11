@@ -148,7 +148,10 @@ impl OriginalBuffer {
             OriginalBuffer::File { file, .. } => {
                 if let Ok(mut pfile) = file.lock() {
                     let target = path.as_ref();
-                    fs::rename(&pfile.path, target)?;
+                    if let Err(_) = std::fs::rename(&pfile.path, target) {
+                        std::fs::copy(&pfile.path, target)?;
+                        let _ = std::fs::remove_file(&pfile.path);
+                    }
                     pfile.path = target.into();
                     pfile.file = File::open(target)?;
                     Ok(())

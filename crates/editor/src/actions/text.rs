@@ -1,4 +1,4 @@
-use std::{mem, sync::Arc};
+use std::{fs, mem, path::PathBuf, sync::Arc};
 
 use sanedit_core::{at_start_of_line, is_indent_at_pos, Language};
 
@@ -19,6 +19,7 @@ use sanedit_server::ClientId;
 use super::{
     completion,
     cursors::{remove_cursor_selections, swap_selection_dir},
+    filetree,
     hooks::run,
     movement::{end_of_line, prev_line},
     text_objects::select_line,
@@ -579,3 +580,4 @@ fn set_language(editor: &mut Editor, id: ClientId) -> ActionResult {
 
     ActionResult::Ok
 }
+

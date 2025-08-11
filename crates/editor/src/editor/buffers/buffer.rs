@@ -411,6 +411,21 @@ impl Buffer {
 
         Ok(())
     }
+
+    /// Rename or move the buffer to a different location
+    pub fn rename(&mut self, path: &Path) -> io::Result<()> {
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+
+        if self.pt.is_file_backed() {
+            self.pt.rename_backing_file(path)?;
+        } else {
+            self.set_path(path);
+        }
+
+        Ok(())
+    }
 }
 
 impl Drop for Buffer {

@@ -263,6 +263,11 @@ pub fn rename_file(editor: &mut Editor, id: ClientId, old: PathBuf) -> ActionRes
             let mut bids = vec![];
             for (bid, buf) in editor.buffers.iter() {
                 if let Some(bpath) = buf.path() {
+                    if bpath == old {
+                        bids.push((bid, new));
+                        continue;
+                    }
+
                     match bpath.strip_prefix(&old) {
                         Ok(suffix) => {
                             let new_location = new.join(suffix);

@@ -311,7 +311,7 @@ pub fn rename_file(editor: &mut Editor, id: ClientId, old: PathBuf) -> ActionRes
 fn rename(src: impl AsRef<Path>, dst: impl AsRef<Path>) -> io::Result<()> {
     if src.as_ref().is_dir() {
         fs::create_dir_all(&dst)?;
-        for entry in fs::read_dir(src)? {
+        for entry in fs::read_dir(src.as_ref())? {
             let entry = entry?;
             let dst = dst.as_ref().join(entry.file_name());
             rename(entry.path(), dst)?;

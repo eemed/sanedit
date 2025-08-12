@@ -11,8 +11,8 @@ match = "#f0c674,#1d1f21,"
 virtual = ",#969896,"
 
 [colors.cursor]
-default = "#81a2be,#1d1f21,"
-selection = "#373b41,#c5c8c6,"
+normal = "#81a2be,#1d1f21,"
+selection = "#373b41,,"
 
 [colors.window.view]
 hint = "#8abeb7,#1d1f21,"

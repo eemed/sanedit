@@ -189,7 +189,7 @@ impl AsRef<str> for ThemeField {
             Statusline => "window.statusline",
             StatuslineNoFocus => "window.statusline_no_focus",
             Selection => "cursor.selection",
-            Cursor => "cursor",
+            Cursor => "cursor.normal",
             EndOfBuffer => "window.end_of_buffer",
             TrailingWhitespace => "window.trailing_whitespace",
             Symbols => "window.symbols",

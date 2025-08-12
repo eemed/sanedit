@@ -11,7 +11,7 @@ match = "#99bad1,,"
 virtual = ",#7f755f,"
 
 [colors.cursor]
-default = "#86beaf,,"
+normal = "#86beaf,,"
 selection = "#d8c8a9,,"
 primary = "#C0A886,,"
 

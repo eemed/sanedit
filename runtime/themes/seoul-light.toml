@@ -9,7 +9,7 @@ match = "#8FB88F,,"
 virtual = ",#999999,"
 
 [colors.cursor]
-default = "#8FB7DE,,"
+normal = "#8FB7DE,,"
 selection = "#c2c2c2,,"
 primary = "#5F87AE,,"
 

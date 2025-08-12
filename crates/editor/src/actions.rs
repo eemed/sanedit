@@ -167,7 +167,6 @@ pub(crate) const COMMANDS: &[Action] = &[
     filetree::buffer_create_file,
 
     editor::quit,
-
     editor::copy,
     editor::copy_to_eol,
     editor::paste,
@@ -219,6 +218,7 @@ pub(crate) const COMMANDS: &[Action] = &[
     prompt::grep,
     prompt::command_palette,
     prompt::buffer_snapshots,
+    prompt::show_keymaps,
 
     search::search_forward,
     search::search_backward,

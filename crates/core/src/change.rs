@@ -503,7 +503,7 @@ impl Change {
     }
 
     pub fn remove<R: RangeBounds<u64>>(range: R) -> Change {
-        let range = Range::<u64>::from_bounds(range);
+        let range = BufferRange::from_bounds(range);
         Change {
             range,
             text: Rc::new(Vec::new()),
@@ -512,7 +512,7 @@ impl Change {
     }
 
     pub fn replace<R: RangeBounds<u64>>(range: R, text: &[u8]) -> Change {
-        let range = Range::<u64>::from_bounds(range);
+        let range = BufferRange::from_bounds(range);
         Change {
             range,
             text: Rc::new(text.into()),

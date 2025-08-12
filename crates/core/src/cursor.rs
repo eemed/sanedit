@@ -24,7 +24,7 @@ impl Cursor {
     }
 
     pub fn new_select<R: RangeBounds<u64>>(range: R) -> Cursor {
-        let range = Range::<u64>::from_bounds(range);
+        let range = BufferRange::from_bounds(range);
         Cursor {
             pos: range.end,
             col: None,
@@ -73,7 +73,7 @@ impl Cursor {
     }
 
     pub fn select<R: RangeBounds<u64>>(&mut self, range: R) {
-        let range = Range::<u64>::from_bounds(range);
+        let range = BufferRange::from_bounds(range);
         let is_select = self.anchor.is_some();
         if is_select {
             self.extend_to_include(range);
@@ -114,7 +114,7 @@ impl Cursor {
     }
 
     pub fn contain_to<R: RangeBounds<u64>>(&mut self, range: R) {
-        let range = Range::<u64>::from_bounds(range);
+        let range = BufferRange::from_bounds(range);
         if self.pos > range.end {
             self.pos = range.end
         }
@@ -135,7 +135,7 @@ impl Cursor {
     }
 
     pub fn to_range<R: RangeBounds<u64>>(&mut self, other: R) {
-        let other = Range::<u64>::from_bounds(other);
+        let other = BufferRange::from_bounds(other);
         // Dont extend into a selection in not necessary
         if other.end - other.start <= 1 && self.anchor.is_none() {
             self.goto(other.start);
@@ -184,7 +184,7 @@ impl Cursor {
     /// If the range is a single value this will not convert the
     /// cursor into an selection.
     pub fn extend_to_include<R: RangeBounds<u64>>(&mut self, other: R) {
-        let other = Range::<u64>::from_bounds(other);
+        let other = BufferRange::from_bounds(other);
         let sel = self
             .selection()
             .unwrap_or(Range::from(self.pos()..self.pos() + 1));

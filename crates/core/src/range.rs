@@ -4,8 +4,8 @@ use std::ops::{Add, RangeBounds, Sub};
 pub type BufferRange = Range<u64>;
 
 /// Normal range is shit for u64
-/// Cannot implement rangebounds for &Range<u64>
-/// A just works range type with copy
+/// Cannot implement rangebounds for &Range<u64>, Ord missing
+/// This is a just works range type with copy
 /// Start is inclusive, end is exclusive
 #[derive(
     Default, Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, Hash,
@@ -14,8 +14,6 @@ pub struct Range<T: Ord> {
     pub start: T,
     pub end: T,
 }
-
-impl<T: Ord> Range<T> {}
 
 impl<T: Ord + Sub + Clone + Copy> Range<T> {
     pub fn len(&self) -> <T as Sub<T>>::Output {
@@ -38,8 +36,8 @@ impl Range<u64> {
     pub fn from_bounds<R: RangeBounds<u64>>(bounds: R) -> Range<u64> {
         let start = match bounds.start_bound() {
             std::ops::Bound::Included(n) => *n,
-            std::ops::Bound::Excluded(n) => n.saturating_sub(1),
-            std::ops::Bound::Unbounded => 0,
+            std::ops::Bound::Excluded(n) => *n + 1,
+            std::ops::Bound::Unbounded => u64::MIN,
         };
         let end = match bounds.end_bound() {
             std::ops::Bound::Included(n) => *n + 1,
@@ -51,12 +49,12 @@ impl Range<u64> {
     }
 
     pub fn overlaps<R: RangeBounds<u64>>(&self, other: R) -> bool {
-        let other = Range::<u64>::from_bounds(other);
+        let other = BufferRange::from_bounds(other);
         self.start < other.end && other.start < self.end
     }
 
     pub fn includes<R: RangeBounds<u64>>(&self, other: R) -> bool {
-        let other = Range::<u64>::from_bounds(other);
+        let other = BufferRange::from_bounds(other);
         self.start <= other.start && other.end <= self.end
     }
 
@@ -69,8 +67,8 @@ impl Range<usize> {
     pub fn from_bounds<R: RangeBounds<usize>>(bounds: R) -> Range<usize> {
         let start = match bounds.start_bound() {
             std::ops::Bound::Included(n) => *n,
-            std::ops::Bound::Excluded(n) => n.saturating_sub(1),
-            std::ops::Bound::Unbounded => 0,
+            std::ops::Bound::Excluded(n) => *n + 1,
+            std::ops::Bound::Unbounded => usize::MIN,
         };
         let end = match bounds.end_bound() {
             std::ops::Bound::Included(n) => *n + 1,

@@ -117,6 +117,7 @@ pub(crate) fn search() -> KeymapLayer {
 pub(crate) fn prompt() -> KeymapLayer {
     #[rustfmt::skip]
     let map = make_keymap!(
+            "f1",        show_keymaps,
             "esc",       prompt_close,
             "§",         prompt_close,
             "backspace", prompt_remove_grapheme_before_cursor,
@@ -141,6 +142,7 @@ pub(crate) fn prompt() -> KeymapLayer {
 pub(crate) fn completion() -> KeymapLayer {
     #[rustfmt::skip]
     let compl = make_keymap!(
+        "f1",     show_keymaps,
         "tab",    completion_next,
         "btab",   completion_prev,
         "enter",  completion_confirm,
@@ -160,6 +162,7 @@ pub(crate) fn completion() -> KeymapLayer {
 pub(crate) fn locations() -> KeymapLayer {
     #[rustfmt::skip]
     let map = make_keymap!(
+            "f1",     show_keymaps,
             "alt+k",  focus_window,
             "alt+h",  focus_filetree,
             "esc",    close_locations,
@@ -196,6 +199,7 @@ pub(crate) fn locations() -> KeymapLayer {
 pub(crate) fn filetree() -> KeymapLayer {
     #[rustfmt::skip]
         let map = make_keymap!(
+             "f1",        show_keymaps,
              "space q",   close_filetree,
              "esc",       close_filetree,
              "§",         close_filetree,
@@ -233,8 +237,9 @@ pub(crate) fn filetree() -> KeymapLayer {
 pub(crate) fn normal() -> KeymapLayer {
     #[rustfmt::skip]
     let map = make_keymap!(
+        "f1",     show_keymaps,
         "ctrl+w", new_window_vertical,
-        "alt+w", new_window_horizontal,
+        "alt+w",  new_window_horizontal,
 
         "-",     show_filetree,
         "alt+q", show_locations,
@@ -388,6 +393,7 @@ pub(crate) fn normal() -> KeymapLayer {
 pub(crate) fn insert() -> KeymapLayer {
     #[rustfmt::skip]
     let map = make_keymap!(
+        "f1",  show_keymaps,
         "esc", normal_mode,
         "§", normal_mode,
         "left", prev_grapheme,
@@ -415,6 +421,7 @@ pub(crate) fn insert() -> KeymapLayer {
 pub(crate) fn select() -> KeymapLayer {
     #[rustfmt::skip]
     let map = make_keymap!(
+        "f1",  show_keymaps,
         "!", shell_command,
         "i", nop,
         "a", cursor_select_individual_lines,

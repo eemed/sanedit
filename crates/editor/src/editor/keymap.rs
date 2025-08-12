@@ -1,4 +1,5 @@
 use rustc_hash::FxHashMap;
+use sanedit_messages::key::keyevents_to_string;
 use sanedit_messages::key::KeyEvent;
 use strum::IntoEnumIterator as _;
 
@@ -116,6 +117,16 @@ impl Keymaps {
         self.layers.insert(key, layer);
     }
 
+    pub fn list(&self, key: &LayerKey) -> Vec<(String, String)> {
+        let layer = &self.layers[key];
+        let node = &layer.root.root;
+        let mut results = vec![];
+        let mut path = vec![];
+        node.list(&mut path, &mut results);
+
+        results
+    }
+
     pub fn find_bound_key(&self, key: &LayerKey, name: &str) -> Option<Vec<KeyEvent>> {
         let mut layer = &self.layers[key];
         let mut result = layer.find_bound_key(name);
@@ -227,5 +238,18 @@ impl KeyTrieNode {
         }
 
         None
+    }
+
+    fn list(&self, path: &mut Vec<KeyEvent>, results: &mut Vec<(String, String)>) {
+        if let Some(action) = &self.action {
+            let keybind = keyevents_to_string(&path);
+            results.push((keybind, action.description().into()))
+        }
+
+        for (k, v) in &self.map {
+            path.push(k.clone());
+            v.list(path, results);
+            path.pop();
+        }
     }
 }

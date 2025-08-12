@@ -663,3 +663,26 @@ fn kill_jobs(editor: &mut Editor, id: ClientId) -> ActionResult {
     focus(editor, id, Focus::Prompt);
     ActionResult::Ok
 }
+
+#[action("Editor: Show key mappings")]
+fn show_keymaps(editor: &mut Editor, id: ClientId) -> ActionResult {
+    const PROMPT_MESSAGE: &str = "Maps";
+
+    let (win, _buf) = editor.win_buf(id);
+    let key = win.layer();
+    let maps: Vec<Arc<Choice>> = editor
+        .keymaps
+        .list(&key)
+        .into_iter()
+        .map(|(map, name)| Choice::from_text_with_description(map, name))
+        .collect();
+    let job = MatcherJob::builder(id)
+        .options(Arc::new(maps))
+        .handler(Prompt::matcher_result_handler)
+        .build();
+    editor.job_broker.request_slot(id, PROMPT_MESSAGE, job);
+    let (win, _buf) = editor.win_buf_mut(id);
+    win.prompt = Prompt::builder().prompt(PROMPT_MESSAGE).build();
+    focus(editor, id, Focus::Prompt);
+    ActionResult::Ok
+}

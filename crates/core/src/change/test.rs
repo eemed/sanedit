@@ -6,7 +6,7 @@ fn cursor_insert_after_border() {
     // Change:              |+++++++++|
     // Result:  |-----------|
 
-    let mut cursors = vec![Cursor::new_select(&Range::new(0, 10))];
+    let mut cursors = vec![Cursor::new_select(0..10)];
     let changes = Changes::new(&[Change::insert(10, b"hello")]);
     changes.move_cursors(&mut cursors, false);
     let cursor = &cursors[0];
@@ -20,7 +20,7 @@ fn cursor_insert_after() {
     // Change:                   |+++++++++|
     // Result:  |-----------|
 
-    let mut cursors = vec![Cursor::new_select(&Range::new(0, 10))];
+    let mut cursors = vec![Cursor::new_select(0..10)];
     let changes = Changes::new(&[Change::insert(12, b"hello")]);
     changes.move_cursors(&mut cursors, false);
     let cursor = &cursors[0];
@@ -34,7 +34,7 @@ fn cursor_insert_before_border() {
     // Change: |+++++++++|
     // Result:           |-----------|
 
-    let mut cursors = vec![Cursor::new_select(&Range::new(10, 20))];
+    let mut cursors = vec![Cursor::new_select(10..20)];
     let changes = Changes::new(&[Change::insert(9, b"hello")]);
     changes.move_cursors(&mut cursors, false);
     let cursor = &cursors[0];
@@ -48,7 +48,7 @@ fn cursor_insert_after_() {
     // Change: |+++++++++|
     // Result:              |-----------|
 
-    let mut cursors = vec![Cursor::new_select(&Range::new(10, 20))];
+    let mut cursors = vec![Cursor::new_select(10..20)];
     let changes = Changes::new(&[Change::insert(5, b"hello")]);
     changes.move_cursors(&mut cursors, false);
     let cursor = &cursors[0];
@@ -62,7 +62,7 @@ fn cursor_insert_middle() {
     // Change:        |+++++++++|
     // Result:  |-----|+++++++++|---|
 
-    let mut cursors = vec![Cursor::new_select(&Range::new(0, 10))];
+    let mut cursors = vec![Cursor::new_select(0..10)];
     let changes = Changes::new(&[Change::insert(7, b"hello")]);
     changes.move_cursors(&mut cursors, false);
     let cursor = &cursors[0];
@@ -76,7 +76,7 @@ fn cursor_insert_before_overlap() {
     // Change: |+++++++++|
     // Result:           |-----------|
 
-    let mut cursors = vec![Cursor::new_select(&Range::new(10, 20))];
+    let mut cursors = vec![Cursor::new_select(10..20)];
     let changes = Changes::new(&[Change::insert(8, b"hello")]);
     changes.move_cursors(&mut cursors, false);
     let cursor = &cursors[0];
@@ -90,7 +90,7 @@ fn cursor_insert_contains() {
     // Change:    |++++++|
     // Result: |--|++++++|-----------|
 
-    let mut cursors = vec![Cursor::new_select(&Range::new(0, 10))];
+    let mut cursors = vec![Cursor::new_select(0..10)];
     let changes = Changes::new(&[Change::insert(2, b"hello")]);
     changes.move_cursors(&mut cursors, false);
     let cursor = &cursors[0];

@@ -71,7 +71,7 @@ impl ClientHandle {
         self.id
     }
 
-    pub fn connection_info(&self) -> Cow<str> {
+    pub fn connection_info(&self) -> Cow<'_, str> {
         match &self.info {
             ClientConnectionInfo::UnixDomainSocket(sock) => sock.as_os_str().to_string_lossy(),
         }

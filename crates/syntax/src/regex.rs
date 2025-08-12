@@ -58,7 +58,7 @@ impl Regex {
         captures.is_ok()
     }
 
-    pub fn captures<B: ByteSource>(&self, reader: B) -> CaptureIter<B> {
+    pub fn captures<B: ByteSource>(&self, reader: B) -> CaptureIter<'_, B> {
         self.parser.captures(reader)
     }
 

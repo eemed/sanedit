@@ -304,7 +304,7 @@ fn draw_secondary_cursors(
         };
 
         cursor_hls.push(HLRange {
-            range: Range::new(cursor.pos(), cursor.pos() + 1),
+            range: Range::from(cursor.pos()..cursor.pos() + 1),
             style,
         });
     }

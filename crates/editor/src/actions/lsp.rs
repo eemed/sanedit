@@ -462,7 +462,7 @@ pub(crate) fn show_diagnostics(editor: &mut Editor, id: ClientId) -> ActionResul
     win.clear_popup();
 
     for diag in diagnostics {
-        if range.overlaps(&diag.range()) {
+        if range.overlaps(diag.range()) {
             win.push_popup(
                 PopupMessage {
                     severity: Some(*diag.severity()),

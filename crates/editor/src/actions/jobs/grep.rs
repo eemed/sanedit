@@ -229,7 +229,7 @@ impl Grep {
             let mut range = mat.range();
             range.start -= sol;
             range.end -= sol;
-            Range::new(range.start as usize, range.end as usize)
+            Range::from(range.start as usize..range.end as usize)
         };
 
         let text = {

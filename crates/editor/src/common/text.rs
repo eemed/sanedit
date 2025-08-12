@@ -28,3 +28,67 @@ pub(crate) fn only_whitespace_before(slice: &PieceTreeSlice, pos: u64) -> Option
 
     None
 }
+
+pub(crate) fn trim_whitespace<'a>(slice: &PieceTreeSlice<'a>) -> PieceTreeSlice<'a> {
+    let mut n = 0;
+    let mut graphemes = slice.graphemes();
+    while let Some(g) = graphemes.next() {
+        let cat = grapheme_category(&g);
+        if matches!(cat, GraphemeCategory::Whitespace) {
+            n += g.len();
+        } else {
+            break;
+        }
+    }
+
+    slice.slice(n..)
+}
+
+pub(crate) fn trim_whitespace_back<'a>(slice: &PieceTreeSlice<'a>) -> PieceTreeSlice<'a> {
+    let mut n = 0;
+    let mut graphemes = slice.graphemes_at(slice.len());
+    while let Some(g) = graphemes.prev() {
+        let cat = grapheme_category(&g);
+        if matches!(cat, GraphemeCategory::Whitespace) {
+            n += g.len();
+        } else {
+            break;
+        }
+    }
+
+    slice.slice(..slice.len() - n)
+}
+
+pub(crate) fn trim_comment_on_line<'a>(
+    line: &PieceTreeSlice<'a>,
+    comment: &str,
+) -> Option<PieceTreeSlice<'a>> {
+    let line = trim_whitespace(line);
+    if line.len() < comment.len() as u64 {
+        return None;
+    }
+    let possible_comment = line.slice(..comment.len() as u64);
+    if possible_comment == comment.as_bytes() {
+        let line = line.slice(comment.len() as u64..);
+        return Some(line);
+    }
+
+    None
+}
+
+pub(crate) fn trim_comment_on_line_back<'a>(
+    line: &PieceTreeSlice<'a>,
+    comment: &str,
+) -> Option<PieceTreeSlice<'a>> {
+    let line = trim_whitespace_back(line);
+    if line.len() < comment.len() as u64 {
+        return None;
+    }
+    let possible_comment = line.slice(line.len() - comment.len() as u64..);
+    if possible_comment == comment.as_bytes() {
+        let line = line.slice(..line.len() - comment.len() as u64);
+        return Some(line);
+    }
+
+    None
+}

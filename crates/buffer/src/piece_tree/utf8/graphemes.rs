@@ -97,7 +97,7 @@ impl<'a> Graphemes<'a> {
         }
     }
 
-    pub fn next(&mut self) -> Option<PieceTreeSlice> {
+    pub fn next(&mut self) -> Option<PieceTreeSlice<'_>> {
         if !self.at_start && self.last_call_fwd == Some(false) {
             self.chars.next();
         }
@@ -138,7 +138,7 @@ impl<'a> Graphemes<'a> {
         }
     }
 
-    pub fn prev(&mut self) -> Option<PieceTreeSlice> {
+    pub fn prev(&mut self) -> Option<PieceTreeSlice<'_>> {
         if self.last_call_fwd == Some(true) {
             self.chars.prev();
             self.prev = None;

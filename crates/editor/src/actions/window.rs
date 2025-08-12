@@ -376,7 +376,7 @@ fn remove_indent(editor: &mut Editor, id: ClientId) {
             continue;
         }
 
-        let range = Range::new(cpos - len, cpos);
+        let range = Range::from(cpos - len..cpos);
         indents.push(Change::remove(range));
     }
 

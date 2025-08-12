@@ -100,7 +100,7 @@ impl ViewSyntax {
     }
 
     pub fn parsed_range(&self) -> BufferRange {
-        self.parse.buffer_range.clone()
+        self.parse.buffer_range
     }
 
     pub fn buffer_id(&self) -> BufferId {
@@ -135,7 +135,7 @@ pub(crate) struct View {
 impl View {
     pub fn new(width: usize, height: usize) -> View {
         View {
-            range: Range::new(0, 0),
+            range: Range::from(0..0),
             cells: Self::make_default_cells(width, height),
             options: DisplayOptions::new(width, height),
             needs_redraw: true,
@@ -241,7 +241,7 @@ impl View {
             }
         }
 
-        self.range = Range::new(self.range.start, self.range.start + pos);
+        self.range = Range::from(self.range.start..self.range.start + pos);
     }
 
     pub fn redraw(&mut self, buf: &Buffer) {
@@ -342,7 +342,7 @@ impl View {
     }
 
     pub fn range(&self) -> BufferRange {
-        self.range.clone()
+        self.range
     }
 
     // Is used but not detected?
@@ -386,7 +386,7 @@ impl View {
             let llen = self.line_len_in_buffer(y);
 
             if cur <= pos && pos < cur + llen {
-                return Some(Range::new(cur, cur + llen));
+                return Some(Range::from(cur..cur + llen));
             }
 
             cur += llen;

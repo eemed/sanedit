@@ -299,7 +299,7 @@ impl Buffer {
         self.path.as_deref()
     }
 
-    pub fn slice<R: RangeBounds<u64>>(&self, range: R) -> PieceTreeSlice {
+    pub fn slice<R: RangeBounds<u64>>(&self, range: R) -> PieceTreeSlice<'_> {
         self.pt.slice(range)
     }
 

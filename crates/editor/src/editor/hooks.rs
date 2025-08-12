@@ -170,6 +170,7 @@ impl Default for Hooks {
         hooks.register(BufCreated, indent::detect_indent);
         hooks.register(BufCreated, indent::detect_eol);
         hooks.register(CursorMoved, popup::close);
+        hooks.register(BufChanged, popup::close);
         hooks.register(ModeEnter, popup::close);
 
         // Syntax

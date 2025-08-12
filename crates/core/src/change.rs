@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod test;
 
-use std::{borrow::Cow, rc::Rc};
+use std::{borrow::Cow, ops::RangeBounds, rc::Rc};
 
 use sanedit_buffer::{utf8::EndOfLine, PieceTree, PieceTreeView};
 use sanedit_utils::sorted_vec::SortedVec;
@@ -34,7 +34,7 @@ impl Changes {
     pub fn undo_jump(index: usize) -> Changes {
         let index = index as u64;
         Changes {
-            changes: SortedVec::from(Change::remove(Range::new(index, index))),
+            changes: SortedVec::from(Change::remove(index..index)),
             flags: flags::UNDO_JUMP,
         }
     }
@@ -137,10 +137,7 @@ impl Changes {
     }
 
     pub fn multi_remove(ranges: &[BufferRange]) -> Changes {
-        let changes: Vec<Change> = ranges
-            .iter()
-            .map(|range| Change::remove(range.clone()))
-            .collect();
+        let changes: Vec<Change> = ranges.iter().map(|range| Change::remove(range)).collect();
         Changes::from(changes)
     }
 
@@ -232,7 +229,7 @@ impl Changes {
                         start -= self.removed(range.start, true);
                         end -= self.removed(range.end, false);
 
-                        cursor.to_range(&Range::new(start, end));
+                        cursor.to_range(start..end);
                     }
                 }
                 None => {
@@ -260,8 +257,7 @@ impl Changes {
                             pos += self.added(range.start, true);
                             pos -= self.removed(range.start, true);
 
-                            let nsel = Range::new(pos - change.text().len() as u64, pos);
-                            cursor.select(&nsel);
+                            cursor.select(pos - change.text().len() as u64..pos);
 
                             continue;
                         }
@@ -283,7 +279,7 @@ impl Changes {
                         end += self.added(range.end, false);
                         end -= self.removed(range.end, false);
 
-                        cursor.to_range(&Range::new(start, end));
+                        cursor.to_range(start..end);
                     }
                 }
                 None => {
@@ -380,7 +376,7 @@ impl Changes {
                 // Insert
                 end += change.text.len() as u64;
             }
-            ranges.push(Range::new(start, end));
+            ranges.push(Range::from(start..end));
         }
 
         ranges
@@ -492,7 +488,7 @@ pub struct Change {
 impl Change {
     pub fn insert(at: u64, text: &[u8]) -> Change {
         Change {
-            range: Range::new(at, at),
+            range: Range::from(at..at),
             text: Rc::new(text.into()),
             cursor_offset: None,
         }
@@ -500,13 +496,14 @@ impl Change {
 
     fn insert_rc(at: u64, text: Rc<Vec<u8>>) -> Change {
         Change {
-            range: Range::new(at, at),
+            range: Range::from(at..at),
             text,
             cursor_offset: None,
         }
     }
 
-    pub fn remove(range: BufferRange) -> Change {
+    pub fn remove<R: RangeBounds<u64>>(range: R) -> Change {
+        let range = Range::<u64>::from_bounds(range);
         Change {
             range,
             text: Rc::new(Vec::new()),
@@ -514,7 +511,8 @@ impl Change {
         }
     }
 
-    pub fn replace(range: BufferRange, text: &[u8]) -> Change {
+    pub fn replace<R: RangeBounds<u64>>(range: R, text: &[u8]) -> Change {
+        let range = Range::<u64>::from_bounds(range);
         Change {
             range,
             text: Rc::new(text.into()),
@@ -523,7 +521,7 @@ impl Change {
     }
 
     pub fn range(&self) -> BufferRange {
-        self.range.clone()
+        self.range
     }
 
     pub fn start(&self) -> u64 {

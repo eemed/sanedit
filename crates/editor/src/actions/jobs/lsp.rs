@@ -421,12 +421,7 @@ impl LSPJob {
                     start = d.range.start.to_offset(&slice, &enc);
                     end = d.range.end.to_offset(&slice, &enc);
                 }
-                Diagnostic::new(
-                    d.severity,
-                    (start..end).into(),
-                    d.line,
-                    d.description.trim(),
-                )
+                Diagnostic::new(d.severity, (start..end).into(), d.line, &d.description)
             })
             .collect();
 
@@ -511,7 +506,7 @@ impl LSPJob {
                 } else {
                     start
                 };
-                Change::replace((start..end).into(), edit.text.as_bytes())
+                Change::replace(start..end, edit.text.as_bytes())
             })
             .collect();
         if changes.is_empty() {
@@ -599,7 +594,7 @@ fn read_references(
             text,
             Some(row),
             Some(lstart),
-            vec![Range::new(hlstart, hlend)],
+            vec![Range::from(hlstart..hlend)],
         );
 
         group.push(item);

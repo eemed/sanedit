@@ -49,12 +49,12 @@ impl Buffers {
         self.buffers.remove(&bid)
     }
 
-    pub fn iter(&self) -> sanedit_utils::idmap::Iter<BufferId, Buffer> {
+    pub fn iter(&self) -> sanedit_utils::idmap::Iter<'_, BufferId, Buffer> {
         self.buffers.iter()
     }
 
     #[allow(dead_code)]
-    pub fn iter_mut(&mut self) -> sanedit_utils::idmap::IterMut<BufferId, Buffer> {
+    pub fn iter_mut(&mut self) -> sanedit_utils::idmap::IterMut<'_, BufferId, Buffer> {
         self.buffers.iter_mut()
     }
 

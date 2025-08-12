@@ -165,7 +165,7 @@ impl Char {
         width.max(1)
     }
 
-    pub fn display(&self) -> Cow<str> {
+    pub fn display(&self) -> Cow<'_, str> {
         if self.flags & flags::WIDE != 0 {
             let extra = self.extra.as_ref().unwrap();
             Cow::Borrowed(extra.wide.as_str())

@@ -38,7 +38,7 @@ fn complete_from_syntax(editor: &mut Editor, id: ClientId) -> ActionResult {
     let cursor = win.cursors.primary().pos();
     let slice = buf.slice(..);
     let (range, word) =
-        word_before_pos(&slice, cursor).unwrap_or((Range::new(cursor, cursor), String::new()));
+        word_before_pos(&slice, cursor).unwrap_or((Range::from(cursor..cursor), String::new()));
     let cursor = win.primary_cursor();
     let point = getf!(win.view().point_at_pos(cursor.pos()));
     win.completion = Completion::new(range.start, cursor.pos(), point);
@@ -98,7 +98,7 @@ fn completion_confirm(editor: &mut Editor, id: ClientId) -> ActionResult {
                 editor,
                 id,
                 snippet.clone(),
-                Range::new(pos, pos + prefix as u64),
+                Range::from(pos..pos + prefix as u64),
                 vec![],
             );
         }
@@ -112,7 +112,7 @@ fn completion_confirm(editor: &mut Editor, id: ClientId) -> ActionResult {
                 let (text, mut replace) = match item.insert_text() {
                     Either::Left(text) => {
                         let pos = win.completion.point_offset();
-                        (text, Range::new(pos, pos))
+                        (text, Range::from(pos..pos))
                     }
                     Either::Right(edit) => {
                         let slice = buf.slice(..);
@@ -161,7 +161,7 @@ fn completion_confirm(editor: &mut Editor, id: ClientId) -> ActionResult {
                         } else {
                             edit.range.end.to_offset(&slice, &enc)
                         };
-                        Change::replace(Range::new(start, end), edit.text.as_bytes())
+                        Change::replace(start..end, edit.text.as_bytes())
                     })
                     .collect();
 
@@ -177,7 +177,7 @@ fn completion_confirm(editor: &mut Editor, id: ClientId) -> ActionResult {
             let (text, mut replace) = match item.insert_text() {
                 Either::Left(text) => {
                     let pos = win.completion.point_offset();
-                    (text.as_bytes(), Range::new(pos, pos))
+                    (text.as_bytes(), Range::from(pos..pos))
                 }
                 Either::Right(edit) => {
                     let slice = buf.slice(..);

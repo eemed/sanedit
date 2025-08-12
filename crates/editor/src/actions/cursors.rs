@@ -20,7 +20,11 @@ use sanedit_core::{
 };
 
 use super::{
-    hooks::{self, run}, movement::{self, next_grapheme}, text_objects::select_line_without_eol, window::{mode_insert, mode_normal, mode_select}, ActionResult
+    hooks::{self, run},
+    movement::{self, next_grapheme},
+    text_objects::select_line_without_eol,
+    window::{mode_insert, mode_normal, mode_select},
+    ActionResult,
 };
 
 #[action("Cursors: Select next word")]
@@ -81,10 +85,10 @@ fn new_cursor_to_next_search_match(editor: &mut Editor, id: ClientId) -> ActionR
 
         let selecting = win.primary_cursor().selection().is_some();
         if selecting {
-            win.cursors.push_primary(Cursor::new_select(&range));
+            win.cursors.push_primary(Cursor::new_select(range));
         } else {
             let cursor = win.cursors.primary_mut();
-            *cursor = Cursor::new_select(&range);
+            *cursor = Cursor::new_select(range);
         }
 
         mode_select(editor, id);
@@ -109,7 +113,7 @@ fn new_cursor_to_all_search_matches(editor: &mut Editor, id: ClientId) -> Action
         .find_iter(&slice)
         .map(|mat| {
             let range = mat.range();
-            Cursor::new_select(&range)
+            Cursor::new_select(range)
         })
         .collect();
 

@@ -5,7 +5,7 @@ use std::{
 };
 
 use sanedit_buffer::PieceTreeView;
-use sanedit_core::{BufferRange, Directory, Language, Range};
+use sanedit_core::{movement, BufferRange, Directory, Language, Range};
 use sanedit_server::Kill;
 use sanedit_utils::sorted_vec::SortedVec;
 
@@ -210,8 +210,18 @@ impl Syntax {
         mut view: BufferRange,
         _kill: Kill,
     ) -> anyhow::Result<SyntaxResult> {
-        view.start = view.start.saturating_sub(HORIZON_TOP);
-        view.end = min(pt.len(), view.end + HORIZON_BOTTOM);
+        let mut hstart = view.start.saturating_sub(HORIZON_TOP);
+        let hend = min(pt.len(), view.end + HORIZON_BOTTOM);
+
+        // Align to line start
+        if hstart != view.start {
+            let top = pt.slice(hstart..view.start);
+            let npos = movement::next_line_start(&top, 0);
+            hstart = npos;
+        }
+
+        view.start = hstart;
+        view.end = hend;
 
         let start = view.start;
         let slice = pt.slice(view.clone());

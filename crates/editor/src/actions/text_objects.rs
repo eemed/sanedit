@@ -47,7 +47,7 @@ fn select_with_col<F: Fn(&PieceTreeSlice, u64) -> Option<(BufferRange, usize)>>(
 
         if let Some((range, col)) = range {
             if !range.is_empty() {
-                cursor.select(&range);
+                cursor.select(range);
                 cursor.set_column(col);
                 changed = true;
             }
@@ -79,7 +79,7 @@ fn select<F: Fn(&PieceTreeSlice, u64) -> Option<BufferRange>>(
 
         if let Some(range) = range {
             if !range.is_empty() {
-                cursor.select(&range);
+                cursor.select(range);
                 changed = true;
             }
         }
@@ -103,7 +103,7 @@ fn select_line(editor: &mut Editor, id: ClientId) -> ActionResult {
         if start == end {
             None
         } else {
-            Some((Range::new(start, end), 0))
+            Some((Range::from(start..end), 0))
         }
     })
 }
@@ -116,7 +116,7 @@ fn select_line_content(editor: &mut Editor, id: ClientId) -> ActionResult {
         if start == end {
             None
         } else {
-            Some((Range::new(start, end), 0))
+            Some((Range::from(start..end), 0))
         }
     })
 }
@@ -129,14 +129,14 @@ fn select_line_without_eol(editor: &mut Editor, id: ClientId) -> ActionResult {
         if start == end {
             None
         } else {
-            Some((Range::new(start, end), 0))
+            Some((Range::from(start..end), 0))
         }
     })
 }
 
 #[action("Select: Buffer")]
 fn select_buffer(editor: &mut Editor, id: ClientId) -> ActionResult {
-    select(editor, id, |slice, _| Some(Range::new(0, slice.len())))
+    select(editor, id, |slice, _| Some(Range::from(0..slice.len())))
 }
 
 #[action("Select: In curly brackets")]
@@ -238,7 +238,7 @@ fn select_pattern(editor: &mut Editor, id: ClientId) -> ActionResult {
                 for mat in searcher.find_iter(&slice) {
                     let mut sel = mat.range();
                     sel.forward(slice.start());
-                    let cursor = Cursor::new_select(&sel);
+                    let cursor = Cursor::new_select(sel);
                     cursors.push(cursor);
                 }
             }
@@ -268,7 +268,7 @@ fn get_cursor_selections(win: &Window, buf: &Buffer) -> Vec<BufferRange> {
 
     // If no cursor selections select the whole buffer
     if ranges.is_empty() {
-        ranges.push(Range::new(0, buf.len()));
+        ranges.push(Range::from(0..buf.len()));
     }
 
     ranges

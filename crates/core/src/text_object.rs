@@ -42,13 +42,13 @@ fn find_range_delim_included(slice: &PieceTreeSlice, pos: u64, delim: &str) -> O
     // Try to find previous delimiter
     // "abc|e"
     if let Some(prev) = find_prev_delim(&mut pgraphemes, delim) {
-        return Some(Range::new(pos - prev, pos + next + dlen));
+        return Some(Range::from(pos - prev..pos + next + dlen));
     }
 
     // Find next of next
     // | "abce"
     let next_next = find_next_delim(&mut ngraphemes, delim)?;
-    Some(Range::new(pos + next, pos + next + next_next + dlen * 2))
+    Some(Range::from(pos + next..pos + next + next_next + dlen * 2))
 }
 
 fn find_prev_delim(graphemes: &mut Graphemes, delim: &str) -> Option<u64> {

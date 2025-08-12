@@ -31,12 +31,12 @@ pub struct PieceTreeView {
 
 impl PieceTreeView {
     #[inline]
-    pub fn bytes(&self) -> Bytes {
+    pub fn bytes(&self) -> Bytes<'_> {
         self.bytes_at(0)
     }
 
     #[inline]
-    pub fn bytes_at(&self, pos: u64) -> Bytes {
+    pub fn bytes_at(&self, pos: u64) -> Bytes<'_> {
         debug_assert!(
             pos <= self.len,
             "bytes_at: Attempting to index {} over buffer len {}",
@@ -47,12 +47,12 @@ impl PieceTreeView {
     }
 
     #[inline]
-    pub fn chunks(&self) -> Chunks {
+    pub fn chunks(&self) -> Chunks<'_> {
         self.chunks_at(0)
     }
 
     #[inline]
-    pub fn chunks_at(&self, pos: u64) -> Chunks {
+    pub fn chunks_at(&self, pos: u64) -> Chunks<'_> {
         debug_assert!(
             pos <= self.len,
             "chunks_at: Attempting to index {} over buffer len {}",
@@ -63,7 +63,7 @@ impl PieceTreeView {
     }
 
     #[inline]
-    pub fn slice<R: RangeBounds<u64>>(&self, range: R) -> PieceTreeSlice {
+    pub fn slice<R: RangeBounds<u64>>(&self, range: R) -> PieceTreeSlice<'_> {
         let start = match range.start_bound() {
             Bound::Included(n) => *n,
             Bound::Excluded(n) => *n + 1,
@@ -80,22 +80,22 @@ impl PieceTreeView {
     }
 
     #[inline]
-    pub fn chars(&self) -> Chars {
+    pub fn chars(&self) -> Chars<'_> {
         self.chars_at(0)
     }
 
     #[inline]
-    pub fn chars_at(&self, at: u64) -> Chars {
+    pub fn chars_at(&self, at: u64) -> Chars<'_> {
         Chars::new(self, at)
     }
 
     #[inline]
-    pub fn lines(&self) -> Lines {
+    pub fn lines(&self) -> Lines<'_> {
         self.lines_at(0)
     }
 
     #[inline]
-    pub fn lines_at(&self, pos: u64) -> Lines {
+    pub fn lines_at(&self, pos: u64) -> Lines<'_> {
         debug_assert!(
             pos <= self.len,
             "lines_at: Attempting to index {} over buffer len {}",
@@ -106,7 +106,7 @@ impl PieceTreeView {
     }
 
     #[inline]
-    pub fn line_at(&self, pos: u64) -> (u64, PieceTreeSlice) {
+    pub fn line_at(&self, pos: u64) -> (u64, PieceTreeSlice<'_>) {
         debug_assert!(
             pos <= self.len,
             "line_at: Attempting to index {} over buffer len {}",
@@ -122,12 +122,12 @@ impl PieceTreeView {
     }
 
     #[inline]
-    pub fn graphemes(&self) -> Graphemes {
+    pub fn graphemes(&self) -> Graphemes<'_> {
         self.graphemes_at(0)
     }
 
     #[inline]
-    pub fn graphemes_at(&self, pos: u64) -> Graphemes {
+    pub fn graphemes_at(&self, pos: u64) -> Graphemes<'_> {
         debug_assert!(
             pos <= self.len,
             "graphemes_at: Attempting to index {} over buffer len {}",

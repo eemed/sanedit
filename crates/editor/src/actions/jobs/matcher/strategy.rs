@@ -13,7 +13,7 @@ impl MatchFn for Finder {
         let mut iter = self.iter(opt);
         while let Some(start) = iter.next() {
             let start = start as usize;
-            results.push(Range::new(start, start + self.pattern().len()));
+            results.push(Range::from(start..start + self.pattern().len()));
         }
     }
 }
@@ -38,7 +38,7 @@ impl MatchFn for Prefix {
         };
 
         if result {
-            results.push(Range::new(0, self.term.len()));
+            results.push(Range::from(0..self.term.len()));
         }
     }
 }

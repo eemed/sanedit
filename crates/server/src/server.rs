@@ -68,7 +68,7 @@ impl Address {
         }
     }
 
-    pub fn address_name(&self) -> Option<Cow<str>> {
+    pub fn address_name(&self) -> Option<Cow<'_, str>> {
         match self {
             Address::UnixDomainSocket(p) => Some(p.as_os_str().to_string_lossy()),
         }

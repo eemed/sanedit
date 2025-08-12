@@ -1,4 +1,4 @@
-use std::{cmp, mem};
+use std::{cmp, mem, ops::RangeBounds};
 
 use crate::{BufferRange, Range};
 
@@ -23,7 +23,8 @@ impl Cursor {
         }
     }
 
-    pub fn new_select(range: &BufferRange) -> Cursor {
+    pub fn new_select<R: RangeBounds<u64>>(range: R) -> Cursor {
+        let range = Range::<u64>::from_bounds(range);
         Cursor {
             pos: range.end,
             col: None,
@@ -71,7 +72,8 @@ impl Cursor {
         self.anchor = None;
     }
 
-    pub fn select(&mut self, range: &BufferRange) {
+    pub fn select<R: RangeBounds<u64>>(&mut self, range: R) {
+        let range = Range::<u64>::from_bounds(range);
         let is_select = self.anchor.is_some();
         if is_select {
             self.extend_to_include(range);
@@ -86,7 +88,7 @@ impl Cursor {
         let anc = self.anchor.as_ref()?;
         let min = self.pos.min(*anc);
         let max = self.pos.max(*anc);
-        Some(Range::new(min, max))
+        Some(Range::from(min..max))
     }
 
     pub fn start(&self) -> u64 {
@@ -111,7 +113,8 @@ impl Cursor {
         Some(sel)
     }
 
-    pub fn contain_to(&mut self, range: &BufferRange) {
+    pub fn contain_to<R: RangeBounds<u64>>(&mut self, range: R) {
+        let range = Range::<u64>::from_bounds(range);
         if self.pos > range.end {
             self.pos = range.end
         }
@@ -131,7 +134,8 @@ impl Cursor {
         }
     }
 
-    pub fn to_range(&mut self, other: &BufferRange) {
+    pub fn to_range<R: RangeBounds<u64>>(&mut self, other: R) {
+        let other = Range::<u64>::from_bounds(other);
         // Dont extend into a selection in not necessary
         if other.end - other.start <= 1 && self.anchor.is_none() {
             self.goto(other.start);
@@ -154,7 +158,7 @@ impl Cursor {
     pub fn extend_to_include_pos(&mut self, pos: u64) {
         let sel = self
             .selection()
-            .unwrap_or(Range::new(self.pos(), self.pos() + 1));
+            .unwrap_or(Range::from(self.pos()..self.pos() + 1));
         if sel.start <= pos && pos < sel.end {
             return;
         }
@@ -179,10 +183,11 @@ impl Cursor {
     /// Extend this cursor to cover the specified range.
     /// If the range is a single value this will not convert the
     /// cursor into an selection.
-    pub fn extend_to_include(&mut self, other: &BufferRange) {
+    pub fn extend_to_include<R: RangeBounds<u64>>(&mut self, other: R) {
+        let other = Range::<u64>::from_bounds(other);
         let sel = self
             .selection()
-            .unwrap_or(Range::new(self.pos(), self.pos() + 1));
+            .unwrap_or(Range::from(self.pos()..self.pos() + 1));
         if sel.includes(other) {
             return;
         }

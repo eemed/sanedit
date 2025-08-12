@@ -228,52 +228,52 @@ impl PieceTree {
     }
 
     #[inline]
-    pub fn bytes(&self) -> Bytes {
+    pub fn bytes(&self) -> Bytes<'_> {
         self.view.bytes()
     }
 
     #[inline]
-    pub fn bytes_at(&self, pos: u64) -> Bytes {
+    pub fn bytes_at(&self, pos: u64) -> Bytes<'_> {
         self.view.bytes_at(pos)
     }
 
     #[inline]
-    pub fn chunks(&self) -> Chunks {
+    pub fn chunks(&self) -> Chunks<'_> {
         self.view.chunks()
     }
 
     #[inline]
-    pub fn chunks_at(&self, pos: u64) -> Chunks {
+    pub fn chunks_at(&self, pos: u64) -> Chunks<'_> {
         self.view.chunks_at(pos)
     }
 
     #[inline]
-    pub fn slice<R: RangeBounds<u64>>(&self, range: R) -> PieceTreeSlice {
+    pub fn slice<R: RangeBounds<u64>>(&self, range: R) -> PieceTreeSlice<'_> {
         self.view.slice(range)
     }
 
     #[inline]
-    pub fn chars(&self) -> Chars {
+    pub fn chars(&self) -> Chars<'_> {
         self.view.chars()
     }
 
     #[inline]
-    pub fn chars_at(&self, at: u64) -> Chars {
+    pub fn chars_at(&self, at: u64) -> Chars<'_> {
         self.view.chars_at(at)
     }
 
     #[inline]
-    pub fn lines(&self) -> Lines {
+    pub fn lines(&self) -> Lines<'_> {
         self.view.lines()
     }
 
     #[inline]
-    pub fn lines_at(&self, pos: u64) -> Lines {
+    pub fn lines_at(&self, pos: u64) -> Lines<'_> {
         self.view.lines_at(pos)
     }
 
     #[inline]
-    pub fn line_at(&self, pos: u64) -> (u64, PieceTreeSlice) {
+    pub fn line_at(&self, pos: u64) -> (u64, PieceTreeSlice<'_>) {
         self.view.line_at(pos)
     }
 
@@ -283,12 +283,12 @@ impl PieceTree {
     }
 
     #[inline]
-    pub fn graphemes(&self) -> Graphemes {
+    pub fn graphemes(&self) -> Graphemes<'_> {
         self.view.graphemes()
     }
 
     #[inline]
-    pub fn graphemes_at(&self, pos: u64) -> Graphemes {
+    pub fn graphemes_at(&self, pos: u64) -> Graphemes<'_> {
         self.view.graphemes_at(pos)
     }
 

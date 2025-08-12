@@ -44,9 +44,7 @@ impl SyntaxParser {
 
 impl CPUJob for SyntaxParser {
     fn run(&self, mut ctx: JobContext) -> anyhow::Result<()> {
-        let ast = self
-            .syntax
-            .parse(&self.pt, self.range.clone(), ctx.kill.clone())?;
+        let ast = self.syntax.parse(&self.pt, self.range, ctx.kill.clone())?;
         ctx.send(ast);
         Ok(())
     }

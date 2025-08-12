@@ -21,7 +21,7 @@ use super::{
     cursors::{remove_cursor_selections, swap_selection_dir},
     hooks::run,
     movement::{end_of_line, prev_line},
-    text_objects::{select_line, select_line_content, select_line_without_eol},
+    text_objects::{select_line, select_line_content},
     window::{focus, mode_insert, mode_normal},
     ActionResult,
 };

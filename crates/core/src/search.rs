@@ -173,7 +173,7 @@ pub struct SearchMatch {
 
 impl SearchMatch {
     pub fn range(&self) -> BufferRange {
-        self.range.clone()
+        self.range
     }
 }
 
@@ -192,14 +192,14 @@ impl<'a, 'b> Iterator for MatchIter<'a, 'b> {
                 let start = iter.next()?;
                 let len = iter.pattern_len();
                 Some(SearchMatch {
-                    range: Range::new(start, start + len as u64),
+                    range: Range::from(start..start + len as u64),
                 })
             }
             MatchIter::FinderRev(iter) => {
                 let start = iter.next()?;
                 let len = iter.pattern_len();
                 Some(SearchMatch {
-                    range: Range::new(start, start + len as u64),
+                    range: Range::from(start..start + len as u64),
                 })
             }
             MatchIter::Regex(capture_iter) => {

@@ -370,7 +370,7 @@ impl PositionRange {
             self.end.to_offset(slice, enc)
         };
 
-        Range::new(start, end)
+        Range::from(start..end)
     }
 }
 

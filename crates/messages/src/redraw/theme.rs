@@ -122,6 +122,7 @@ pub enum ThemeField {
 
     Match,
 
+    Special,
     Constant,
     String,
     Identifier,
@@ -200,6 +201,7 @@ impl AsRef<str> for ThemeField {
             Warn => "window.view.warn",
             Error => "window.view.error",
 
+            Special => "window.view.special",
             Constant => "window.view.constant",
             String => "window.view.string",
 

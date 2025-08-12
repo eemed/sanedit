@@ -26,6 +26,7 @@ type =  ",#824116,"
 operator =  ",#007f58,"
 comment = ",#777777,"
 preproc = ",#533388,"
+special = ",#533388,"
 identifier = ",#824116,"
 
 [colors.window.completion]

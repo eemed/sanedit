@@ -32,7 +32,7 @@ pub(crate) struct Compiler<'a> {
 }
 
 impl<'a> Compiler<'a> {
-    pub fn new(rules: &Rules) -> Compiler {
+    pub fn new(rules: &Rules) -> Compiler<'_> {
         Compiler {
             program: Vec::new(),
             rule_addrs: vec![0; rules.len()].into(),

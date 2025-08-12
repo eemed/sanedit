@@ -56,7 +56,7 @@ impl<K: AsID, V> IdMap<K, V> {
         self.map.remove(&key.id())
     }
 
-    pub fn iter(&self) -> Iter<K, V> {
+    pub fn iter(&self) -> Iter<'_, K, V> {
         let iter = self.map.iter();
         Iter {
             iter,
@@ -64,7 +64,7 @@ impl<K: AsID, V> IdMap<K, V> {
         }
     }
 
-    pub fn iter_mut(&mut self) -> IterMut<K, V> {
+    pub fn iter_mut(&mut self) -> IterMut<'_, K, V> {
         let iter = self.map.iter_mut();
         IterMut {
             iter,

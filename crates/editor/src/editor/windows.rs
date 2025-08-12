@@ -35,7 +35,7 @@ impl Windows {
         self.windows.remove(&id)
     }
 
-    pub fn iter(&self) -> std::collections::hash_map::Iter<ClientId, Window> {
+    pub fn iter(&self) -> std::collections::hash_map::Iter<'_, ClientId, Window> {
         self.windows.iter()
     }
 

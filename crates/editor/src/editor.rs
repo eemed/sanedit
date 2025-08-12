@@ -369,7 +369,7 @@ impl Editor {
         run(self, id, Hook::OnMessagePost);
     }
 
-    fn create_context(&mut self, id: ClientId) -> EditorContext {
+    fn create_context(&mut self, id: ClientId) -> EditorContext<'_> {
         let win = self.windows.get(id).expect("No window for {id}");
         let buf = self
             .buffers

@@ -5,7 +5,10 @@ use sanedit_buffer::Mark;
 use sanedit_core::{BufferRange, Cursor};
 use sanedit_utils::ranges::OverlappingRanges;
 
-use crate::editor::buffers::Buffer;
+use crate::{
+    common::text::{trim_whitespace, trim_whitespace_back},
+    editor::buffers::Buffer,
+};
 
 #[derive(Debug, Clone)]
 pub(crate) struct Cursors {
@@ -64,38 +67,20 @@ impl Cursors {
         let mut last_pos = 0;
         let mut changed = false;
         self.cursors.retain_mut(|cursor| {
-            let Some(mut sel) = cursor.selection() else {
+            let Some(sel) = cursor.selection() else {
                 return true;
             };
-            let slice = buf.slice(sel.clone());
-            let mut chars = slice.chars();
-            let mut left = 0;
-            while let Some((start, end, ch)) = chars.next() {
-                if ch.is_whitespace() {
-                    left += end - start;
-                } else {
-                    break;
-                }
-            }
+            let slice = buf.slice(sel);
+            let slice = trim_whitespace(&slice);
+            let slice = trim_whitespace_back(&slice);
 
-            let mut chars_rev = slice.chars_at(slice.len());
-            let mut right = 0;
-            while let Some((start, end, ch)) = chars_rev.prev() {
-                if ch.is_whitespace() {
-                    right += end - start;
-                } else {
-                    break;
-                }
-            }
-
-            if left + right >= slice.len() {
+            let srange = slice.range();
+            if sel.start == srange.start && sel.end == srange.end {
                 last_pos = sel.start;
                 false
             } else {
                 changed = true;
-                sel.start += left;
-                sel.end -= right;
-                cursor.select(&sel);
+                cursor.select(slice.range());
                 true
             }
         });
@@ -161,9 +146,9 @@ impl Cursors {
                 match cursor.selection() {
                     Some(crange) => {
                         if cursor.start() == range.start {
-                            cursor.select(&range);
+                            cursor.select(range);
                             i += 1;
-                        } else if range.includes(&crange) {
+                        } else if range.includes(crange) {
                             // remove if contained in another range
                             self.cursors.remove(i);
                         } else {
@@ -202,7 +187,7 @@ impl Cursors {
     /// Moves / shrinks cursors if needed
     pub fn contain_to(&mut self, range: BufferRange) {
         for cursor in &mut self.cursors {
-            cursor.contain_to(&range)
+            cursor.contain_to(range)
         }
     }
 
@@ -294,7 +279,7 @@ impl Cursors {
         }
     }
 
-    pub fn iter(&self) -> std::slice::Iter<Cursor> {
+    pub fn iter(&self) -> std::slice::Iter<'_, Cursor> {
         self.cursors.iter()
     }
 

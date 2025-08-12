@@ -43,7 +43,7 @@ pub(crate) fn insert_snippet(editor: &mut Editor, id: ClientId) -> ActionResult 
             let (win, _buf) = editor.win_buf(id);
             let primary = win.cursors.primary().pos();
             let snippet = getf!(out.snippet().cloned());
-            insert_snippet_impl(editor, id, snippet, Range::new(primary, primary), vec![])
+            insert_snippet_impl(editor, id, snippet, Range::from(primary..primary), vec![])
         })
         .build();
     focus(editor, id, Focus::Prompt);

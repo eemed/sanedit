@@ -78,7 +78,7 @@ fn indent_multiline() {
     buf.config.indent_kind = IndentKind::Space;
     buf.config.indent_amount = 4;
 
-    win.cursors.primary_mut().select(&Range::new(13, buf.len()));
+    win.cursors.primary_mut().select(13..buf.len());
     let _ = win.indent_cursor_lines(&mut buf);
     let lines = view_lines(&mut win, &buf);
     assert_eq!(lines[1], "    hello ");

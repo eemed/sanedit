@@ -296,7 +296,7 @@ impl Filetree {
         self.iter().position(|entry| entry.path() == path)
     }
 
-    pub fn get_mut(&mut self, mut target: &Path) -> Option<TreeNodeMut> {
+    pub fn get_mut(&mut self, mut target: &Path) -> Option<TreeNodeMut<'_>> {
         let absolute = target.to_path_buf();
         target = target.strip_prefix(&self.absolute).unwrap_or(target);
         let mut node = &mut self.root;
@@ -326,7 +326,7 @@ impl Filetree {
         None
     }
 
-    pub fn parent_of(&self, mut target: &Path) -> Option<TreeNode> {
+    pub fn parent_of(&self, mut target: &Path) -> Option<TreeNode<'_>> {
         let mut absolute = target.to_path_buf();
         target = target.strip_prefix(&self.absolute).unwrap_or(target);
         let mut node = &self.root;
@@ -359,7 +359,7 @@ impl Filetree {
         None
     }
 
-    pub fn iter(&self) -> FiletreeIterator {
+    pub fn iter(&self) -> FiletreeIterator<'_> {
         let absolute = self.absolute.join(&self.root.local);
         let entry = FiletreeEntry {
             node: &self.root,

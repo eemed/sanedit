@@ -45,7 +45,12 @@ use sanedit_utils::{ring::Ref, sorted_vec::SortedVec};
 
 use crate::{
     actions::ActionResult,
-    common::change::{newline_autopair, newline_empty_line, newline_indent},
+    common::{
+        change::{newline_autopair, newline_empty_line, newline_indent},
+        text::{
+            trim_comment_on_line, trim_comment_on_line_back, trim_whitespace, trim_whitespace_back,
+        },
+    },
     editor::{
         buffers::{Buffer, BufferId, SnapshotAux, SnapshotId},
         keymap::LayerKey,
@@ -390,7 +395,7 @@ impl Window {
 
     pub fn ensure_cursor_on_grapheme_boundary(&mut self, buf: &Buffer) {
         // Ensure cursor in buf range
-        self.cursors.contain_to(Range::new(0, buf.len()));
+        self.cursors.contain_to(Range::from(0..buf.len()));
 
         // Ensure cursor in buf grapheme boundary
         let primary = self.cursors.primary_mut();
@@ -608,7 +613,7 @@ impl Window {
             .map(Cursor::pos)
             .map(|pos| {
                 let next = next_grapheme_boundary(&slice, pos);
-                Range::new(pos, next)
+                Range::from(pos..next)
             })
             .collect();
         let changes = Changes::multi_remove(&ranges);
@@ -802,7 +807,7 @@ impl Window {
             for cursor in self.cursors.cursors() {
                 let cpos = cursor.pos();
                 let pos = prev_grapheme_boundary(&buf.slice(..), cpos);
-                ranges.push(Range::new(pos, cpos));
+                ranges.push(Range::from(pos..cpos));
             }
 
             ranges
@@ -872,7 +877,7 @@ impl Window {
             }
 
             let end = end_of_line(&slice, start);
-            lines.push(Range::new(start, end));
+            lines.push(Range::from(start..end));
             high = end;
         }
 
@@ -886,7 +891,7 @@ impl Window {
         for start in starts {
             let next = end_of_line(&slice, start);
             if next != start {
-                lines.push(Range::new(start, next));
+                lines.push(Range::from(start..next));
             }
         }
 
@@ -899,7 +904,7 @@ impl Window {
 
         for cursor in self.cursors.iter() {
             let cpos = cursor.pos();
-            let sel = cursor.selection().unwrap_or(Range::new(cpos, cpos));
+            let sel = cursor.selection().unwrap_or(Range::from(cpos..cpos));
             let cstarts = selection_line_starts(&slice, sel);
             starts.extend(cstarts);
         }
@@ -914,7 +919,7 @@ impl Window {
 
         for cursor in self.cursors.iter() {
             let cpos = cursor.pos();
-            let sel = cursor.selection().unwrap_or(Range::new(cpos, cpos));
+            let sel = cursor.selection().unwrap_or(Range::from(cpos..cpos));
             let ends = selection_line_ends(&slice, sel);
             endset.extend(ends);
         }
@@ -930,7 +935,7 @@ impl Window {
 
         for cursor in self.cursors.iter() {
             let cpos = cursor.pos();
-            let sel = cursor.selection().unwrap_or(Range::new(cpos, cpos));
+            let sel = cursor.selection().unwrap_or(Range::from(cpos..cpos));
             let cstarts = selection_first_chars_of_lines(&slice, sel);
             for (sol, fch) in cstarts {
                 starts.insert(sol);
@@ -960,7 +965,7 @@ impl Window {
                 }
 
                 if off != 0 {
-                    ranges.push(Range::new(pos, pos + off));
+                    ranges.push(Range::from(pos..pos + off));
                 }
             }
             ranges
@@ -1018,7 +1023,6 @@ impl Window {
             changes.push(change);
         }
 
-        log::info!("ends: {ends:?}");
         for end in ends {
             let change = Change::insert(end, comment_end.as_bytes());
             changes.push(change);
@@ -1040,60 +1044,29 @@ impl Window {
 
         let starts = self.cursor_line_starts(buf);
         let slice = buf.slice(..);
-        let patt: Vec<char> = comment.chars().collect();
 
         let mut changes = vec![];
 
-        'outer: for start in starts {
-            let mut npatt = 0;
+        for start in starts {
             let end = end_of_line(&slice, start);
             let line = buf.slice(start..end);
-            let mut chars = line.chars();
-
-            let mut start_change = None;
-            while let Some((_, e, ch)) = chars.next() {
-                if ch == patt[npatt] {
-                    npatt += 1;
-                    if npatt == patt.len() {
-                        let end = e + line.start();
-                        let start = end - comment.len() as u64;
-                        start_change = Change::remove(Range::new(start, end)).into();
-                        break;
-                    }
-                } else if !ch.is_whitespace() {
-                    continue 'outer;
-                }
-            }
-
-            let Some(start_change) = start_change else {
+            let line = trim_whitespace(&line);
+            let Some(start) = trim_comment_on_line(&line, comment) else {
                 continue;
             };
+            let start_change = Change::remove(line.start()..start.start());
 
             if comment_end.is_empty() {
                 changes.push(start_change);
                 continue;
             }
 
-            let patt: Vec<char> = comment_end.chars().collect();
-            npatt = patt.len() - 1;
-            let mut chars = line.chars_at(line.len());
-            while let Some((s, _, ch)) = chars.prev() {
-                if ch == patt[npatt] {
-                    if npatt == 0 {
-                        let start = s + line.start();
-                        let end = start + comment_end.len() as u64;
-                        if start_change.end() < start {
-                            changes.push(Change::remove(Range::new(start, end)).into());
-                            changes.push(start_change);
-                            log::info!("{start}..{end}");
-                            break;
-                        }
-                    }
-                    npatt -= 1;
-                } else if !ch.is_whitespace() {
-                    continue 'outer;
-                }
-            }
+            let Some(end) = trim_comment_on_line_back(&line, comment_end) else {
+                continue;
+            };
+            let end_change = Change::remove(end.end()..line.end());
+            changes.push(start_change);
+            changes.push(end_change);
         }
 
         self.cursors.stop_selection();
@@ -1105,25 +1078,10 @@ impl Window {
     }
 
     fn has_comment_on_line(&self, buf: &Buffer, comment: &str, start_of_line: u64) -> bool {
-        let patt: Vec<char> = comment.chars().collect();
-        let mut npatt = 0;
         let slice = buf.slice(..);
         let end = end_of_line(&slice, start_of_line);
         let line = buf.slice(start_of_line..end);
-        let mut chars = line.chars();
-
-        while let Some((_, _, ch)) = chars.next() {
-            if ch == patt[npatt] {
-                npatt += 1;
-                if npatt == patt.len() {
-                    return true;
-                }
-            } else if !ch.is_whitespace() {
-                return false;
-            }
-        }
-
-        false
+        trim_comment_on_line(&line, comment).is_some()
     }
 
     pub fn toggle_comment_cursor_lines(
@@ -1218,7 +1176,7 @@ impl Window {
             .map(Cursor::pos)
             .map(|pos| {
                 let npos = next_line_end(&slice, pos);
-                Range::new(pos, npos)
+                Range::from(pos..npos)
             })
             .collect();
 
@@ -1248,7 +1206,7 @@ impl Window {
             }
 
             if let (Some(start), end) = (start, end) {
-                ranges.push(Range::new(start, end));
+                ranges.push(Range::from(start..end));
             }
         }
 
@@ -1472,40 +1430,24 @@ impl Window {
         let mut changes = Vec::with_capacity(ends.len());
 
         for start in ends {
-            let mut end = next_line_start(&slice, start);
-
-            // Strip whitespace
-            let mut graphemes = slice.graphemes_at(end);
-            while let Some(g) = graphemes.next() {
-                let cat = grapheme_category(&g);
-                if cat != GraphemeCategory::Whitespace {
-                    end = g.start();
-                    break;
-                }
-            }
-
-            // Strip comment TODO fix this too should strip whitespace
-            let mut bytes = slice.bytes_at(end);
-            let has_comment = comment
-                .as_bytes()
-                .iter()
-                .all(|comment_byte| Some(*comment_byte) == bytes.next());
-            if has_comment {
-                end += comment.as_bytes().len() as u64;
-            }
-
-            // Strip whitespace
-            let mut graphemes = slice.graphemes_at(end);
-            while let Some(g) = graphemes.next() {
-                let cat = grapheme_category(&g);
-                if cat != GraphemeCategory::Whitespace {
-                    end = g.start();
-                    break;
+            let end = next_line_start(&slice, start);
+            let eol = end_of_line(&slice, end);
+            let mut nline = buf.slice(end..eol);
+            nline = trim_whitespace(&nline);
+            nline = trim_whitespace_back(&nline);
+            if let Some(line) = trim_comment_on_line(&nline, comment) {
+                if comment_end.is_empty() {
+                    nline = line;
+                } else if let Some(line) = trim_comment_on_line_back(&line, comment_end) {
+                    nline = line;
                 }
             }
 
             // Replace everything with one space
-            changes.push(Change::replace(Range::new(start, end), b" "));
+            changes.push(Change::replace(start..nline.start(), b" "));
+            if eol != nline.end() {
+                changes.push(Change::remove(nline.end()..eol));
+            }
         }
 
         if changes.is_empty() {
@@ -1557,7 +1499,7 @@ impl Window {
             .enumerate()
             .map(|(i, string)| {
                 let range = &sorted_cursors[i];
-                Change::replace(range.clone(), string.as_bytes())
+                Change::replace(range, string.as_bytes())
             })
             .collect();
 
@@ -1648,7 +1590,7 @@ impl Window {
             let mut last = &selecting[0];
             for range in selecting.iter().rev() {
                 let text: Vec<u8> = (&buf.slice(last)).into();
-                let change = Change::replace(range.clone(), &text);
+                let change = Change::replace(range, &text);
                 changes.push(change);
                 last = range;
             }
@@ -1656,7 +1598,7 @@ impl Window {
             let mut last = selecting.last().unwrap();
             for range in &selecting {
                 let text: Vec<u8> = (&buf.slice(last)).into();
-                let change = Change::replace(range.clone(), &text);
+                let change = Change::replace(range, &text);
                 changes.push(change);
                 last = &range;
             }

@@ -75,7 +75,7 @@ impl Search {
 impl Job for Search {
     fn run(&self, ctx: JobContext) -> JobResult {
         let pt = self.ropt.clone();
-        let range = self.range.clone();
+        let range = self.range;
         let searcher = self.searcher.clone();
 
         let fut = async move {
@@ -100,7 +100,7 @@ impl KeepInTouch for Search {
                     win.search.set_highlights(SearchHighlights {
                         highlights: matches.into(),
                         changes_made: self.changes_made,
-                        buffer_range: self.range.clone(),
+                        buffer_range: self.range,
                     });
                 }
             }

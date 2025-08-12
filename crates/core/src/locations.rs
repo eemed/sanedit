@@ -46,7 +46,7 @@ impl<T> Locations<T> {
         self.groups.clear();
     }
 
-    pub fn iter(&self) -> LocationIter {
+    pub fn iter(&self) -> LocationIter<'_> {
         LocationIter::new(&self.groups)
     }
 

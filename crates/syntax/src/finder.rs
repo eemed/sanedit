@@ -78,7 +78,7 @@ impl FinderRev {
         table
     }
 
-    pub fn iter<T: ByteSource>(&self, haystack: T) -> FinderIterRev<T> {
+    pub fn iter<T: ByteSource>(&self, haystack: T) -> FinderIterRev<'_, T> {
         let len = haystack.len();
         let m = self.pattern.len() as u64;
 
@@ -203,7 +203,7 @@ impl Finder {
         table
     }
 
-    pub fn iter<T: ByteSource>(&self, haystack: T) -> FinderIter<T> {
+    pub fn iter<T: ByteSource>(&self, haystack: T) -> FinderIter<'_, T> {
         FinderIter {
             haystack,
             finder: self,

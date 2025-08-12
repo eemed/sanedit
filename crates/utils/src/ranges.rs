@@ -79,7 +79,7 @@ impl<T: Ord + Copy> OverlappingRanges<T> {
         *self = inverted;
     }
 
-    pub fn iter(&self) -> OverlappingRangeIter<T> {
+    pub fn iter(&self) -> OverlappingRangeIter<'_, T> {
         let iter = self.ranges.iter();
         OverlappingRangeIter { iter }
     }

@@ -146,7 +146,7 @@ pub fn word_at_pos(slice: &PieceTreeSlice, pos: u64) -> Option<BufferRange> {
         end
     };
 
-    Some(Range::new(start, end))
+    Some(Range::from(start..end))
 }
 
 pub fn prev_non_word(slice: &PieceTreeSlice, pos: u64) -> (u64, Option<GraphemeCategory>) {
@@ -182,7 +182,7 @@ pub fn word_before_pos(slice: &PieceTreeSlice, pos: u64) -> Option<(BufferRange,
 
     let word = slice.slice(start..pos);
     let word = String::from(&word);
-    Some((Range::new(start, pos), word))
+    Some((Range::from(start..pos), word))
 }
 
 pub fn paragraph_at_pos(slice: &PieceTreeSlice, pos: u64) -> Option<BufferRange> {
@@ -211,7 +211,7 @@ pub fn paragraph_at_pos(slice: &PieceTreeSlice, pos: u64) -> Option<BufferRange>
 
     let end = end.unwrap_or(slice.len());
 
-    Some(Range::new(start, end))
+    Some(Range::from(start..end))
 }
 
 pub fn eol_len(slice: &PieceTreeSlice) -> Option<u64> {

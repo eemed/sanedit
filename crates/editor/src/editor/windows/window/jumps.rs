@@ -1,5 +1,5 @@
 use sanedit_buffer::Mark;
-use sanedit_core::{Cursor, Range};
+use sanedit_core::Cursor;
 use sanedit_utils::ring::{Ref, RingBuffer, RingItemReference as _};
 
 use crate::editor::buffers::{Buffer, BufferId};
@@ -57,7 +57,7 @@ impl JumpGroup {
             let end = jump.end().map(|mark| buf.mark_to_pos(mark));
 
             let cursor = if let Some(end) = end {
-                Cursor::new_select(&Range::new(start, end.pos()))
+                Cursor::new_select(start..end.pos())
             } else {
                 Cursor::new(start)
             };

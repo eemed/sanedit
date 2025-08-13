@@ -2,53 +2,41 @@
 document = regex* !.;
 regex = alt / sequence;
 
-@show
-alt = sequence ("|" sequence)+;
-
-@show
-sequence = (repetition / brackets / hex / group / char / char_classes / escaped_char / any )+;
-
-@show
-char = [^\[\]\.+*?\^$(){}|\\];
+@show alt = sequence ("|" sequence)+;
+@show sequence = (repetition / brackets / hex / group / char / char_classes / escaped_char / any )+;
+@show char = [^\[\]\.+*?\^$(){}|\\];
 
 escaped_char = "\\" escaped;
+@show escaped = [\[\]\.+*?\^$(){}|\\];
+@show any = ".";
 
-@show
-escaped = [\[\]\.+*?\^$(){}|\\];
-
-@show
-any = ".";
-
-repetition = zero_or_more / one_or_more / optional;
+repetition = zero_or_more / one_or_more / optional / counted_rep;
 rep_in = (group / char / any / brackets / hex / char_classes / escaped_char);
 
-@show
-zero_or_more =  rep_in "*";
+@show lazy = "?";
 
-@show
-one_or_more = rep_in "+";
+@show counted_rep =  rep_in "{" counted_from (counted_sep counted_to?)?  "}" lazy?;
+@show counted_from = digit+;
+@show counted_to = digit+;
+@show counted_sep = ",";
+digit = [0..9];
 
-@show
-optional = rep_in "?";
+@show zero_or_more =  rep_in "*" lazy?;
+@show one_or_more = rep_in "+" lazy?;
+@show optional = rep_in "?" lazy?;
 
-@show
-group = "(" regex ")";
+@show group = "(" regex ")";
 
-@show
-brackets = "[" neg? (!"]" (range / ch))* "]";
+@show brackets = "[" neg? (!"]" (range / backspace / ch))* "]";
+@show backspace = "\b";
+@show neg = "^";
 
-@show
-neg = "^";
-
-@show
-range = ch "-" ch;
+@show range = ch "-" ch;
 ch = hex / escaped / byte;
-@show
-byte = .;
+@show byte = .;
 
 hex = "\x" hex_value;
-@show
-hex_value = hex_digit hex_digit;
+@show hex_value = hex_digit hex_digit;
 hex_digit = [a..zA..Z0..9];
 
 char_classes = "\\" (
@@ -81,26 +69,5 @@ char_classes = "\\" (
 @show cc_null = "0";
 @show cc_control = "c" [A..Z];
 
-codepoint = "\u" (codepoint_digits / "{" codepoint_digits "}" );
-@show codepoint_digits = hex_digit hex_digit hex_digit hex_digit hex_digit?;
-
-
-# TODO atleast these then its fine
-# cc_backspace = "[\b]";
-# x{n,m}
-# x{n}
-# x{n,}
-# x*?
-# x+?
-# x??
-# x{n}?
-# x{n,}?
-# x{n,m}?
-
-# Hard?
-#
-# \b word boundaries + \B non word boundary
-# ^ $  assertions
-
-# others
-# \p{UnicodeProperty}, \P{UnicodeProperty}
+codepoint = "\u" "{" codepoint_digits "}";
+@show codepoint_digits = hex_digit+;

@@ -40,6 +40,24 @@ fn regex_parser() -> &'static Parser {
     parser.as_ref()
 }
 
+/// Matches regex using an iterator or all at once
+///
+/// # Supported
+///
+/// * character classes \d \D \w \W \s \S \c(A-Z) \f \v \r \n \0
+/// * hex \xff
+/// * brackets: [^a-z] also backspace matching with [\b]
+/// * repetitions x* x? x+ x{2} x{2,} x{2,5}
+/// * lazy repetitions x*? x?? x+? x{2}? x{2,}? x{2,5}?
+///
+/// # Unsupported
+///
+/// * unicode support
+/// * various lookaheads
+/// * backreferences
+/// * \b word boundaries + \B non word boundary
+/// * ^ $  assertions
+/// * \p{UnicodeProperty}, \P{UnicodeProperty}
 #[derive(Debug)]
 pub struct Regex {
     parser: Parser,
@@ -141,15 +159,15 @@ impl<'a> RegexToPEG<'a> {
             Rule::ByteRange(0x09_u8, 0x09_u8),
             Rule::ByteRange(0x0d_u8, 0x0d_u8),
             Rule::ByteRange(0x0a_u8, 0x0a_u8),
-            Rule::UTF8Range('\u{0020}', '\u{0020}'),
-            Rule::UTF8Range('\u{00a0}', '\u{00a0}'),
-            Rule::UTF8Range('\u{1680}', '\u{1680}'),
-            Rule::UTF8Range('\u{2000}', '\u{200a}'),
-            Rule::UTF8Range('\u{2028}', '\u{2029}'),
-            Rule::UTF8Range('\u{202f}', '\u{202f}'),
-            Rule::UTF8Range('\u{205f}', '\u{205f}'),
-            Rule::UTF8Range('\u{3000}', '\u{3000}'),
-            Rule::UTF8Range('\u{feff}', '\u{feff}'),
+            // Rule::UTF8Range('\u{0020}', '\u{0020}'),
+            // Rule::UTF8Range('\u{00a0}', '\u{00a0}'),
+            // Rule::UTF8Range('\u{1680}', '\u{1680}'),
+            // Rule::UTF8Range('\u{2000}', '\u{200a}'),
+            // Rule::UTF8Range('\u{2028}', '\u{2029}'),
+            // Rule::UTF8Range('\u{202f}', '\u{202f}'),
+            // Rule::UTF8Range('\u{205f}', '\u{205f}'),
+            // Rule::UTF8Range('\u{3000}', '\u{3000}'),
+            // Rule::UTF8Range('\u{feff}', '\u{feff}'),
         ])
     }
 
@@ -170,6 +188,18 @@ impl<'a> RegexToPEG<'a> {
             Rule::ByteRange(u8::MIN, '0' as u8 - 1),
             Rule::ByteRange('9' as u8 + 1, u8::MAX),
         ])
+    }
+
+    fn is_lazy(&self, children: &[usize]) -> bool {
+        for child in children.iter().rev() {
+            let cap = &self.regex[*child];
+            let label = self.parser.label_for(cap.id);
+            if label == "lazy" {
+                return true;
+            }
+        }
+
+        false
     }
 
     fn convert_rec(&mut self, index: usize, cont: &Rule, depth: usize) -> Result<Rule, RegexError> {
@@ -289,12 +319,14 @@ impl<'a> RegexToPEG<'a> {
             }
             "optional" => {
                 // e? = e | ε
-                if children.len() != 1 {
-                    panic!("Optional has wrong number of children");
-                }
                 let e = self.convert_rec(children[0], &cont, depth + 1)?;
                 let epsilon = cont.clone();
-                return Ok(Rule::Choice(vec![e, epsilon]));
+                let choices = if self.is_lazy(&children) {
+                    vec![epsilon, e]
+                } else {
+                    vec![e, epsilon]
+                };
+                return Ok(Rule::Choice(choices));
             }
             "group" => {
                 if children.len() != 1 {
@@ -310,74 +342,13 @@ impl<'a> RegexToPEG<'a> {
                     rule,
                 ]));
             }
+            "counted_rep" => Ok(self.convert_counted_rep(children, cont, depth)?),
             "hex_value" => {
                 let byte =
                     u8::from_str_radix(text, 16).map_err(|_e| RegexError::InvalidHexValue)?;
                 add_text(vec![byte])
             }
-            "brackets" => {
-                // TODO use UTF8 range if contents have unicode specific shit
-                let mut ranges = OverlappingRanges::new();
-                let mut negative = false;
-                for child in children {
-                    let ccap = &self.regex[child];
-                    let crange = ccap.range();
-                    let clabel = self.parser.label_for(ccap.id());
-                    let text = &self.pattern[crange.start as usize..crange.end as usize];
-
-                    match clabel {
-                        "range" => {
-                            let range = self.convert_bracket_range(child)?;
-                            ranges.add(range);
-                        }
-                        "hex_value" => {
-                            let byte = u8::from_str_radix(text, 16)
-                                .map_err(|_e| RegexError::InvalidHexValue)?
-                                as u32;
-                            ranges.add(byte..byte + 1);
-                        }
-                        "byte" => {
-                            let byte = text.as_bytes()[0] as u32;
-                            ranges.add(byte..byte + 1);
-                        }
-                        "neg" => {
-                            negative = true;
-                        }
-                        "cc_control" => {}
-                        "cc_null" => {}
-                        "cc_ff" => {}
-                        "cc_vtab" => {}
-                        "cc_tab" => {}
-                        "cc_cr" => {}
-                        "cc_newline" => {}
-                        "cc_nws" => {}
-                        "cc_ws" => {}
-                        "cc_word" => {}
-                        "cc_nword" => {}
-                        "cc_digit" => {}
-                        "cc_ndigit" => {}
-                        p => unreachable!("Invalid label in brackets {p}"),
-                    }
-                }
-
-                if negative {
-                    ranges.invert(u8::MIN as u32..u8::MAX as u32 + 1)
-                }
-
-                let mut choices = vec![];
-
-                for range in ranges.iter() {
-                    choices.push(Rule::ByteRange(range.start as u8, (range.end - 1) as u8))
-                }
-
-                let choice = if choices.len() == 1 {
-                    choices.pop().unwrap()
-                } else {
-                    Rule::Choice(choices)
-                };
-
-                Ok(seq(choice))
-            }
+            "brackets" => Ok(seq(self.convert_brackets(children)?)),
             "cc_control" => add_text(vec![(text.as_bytes()[1] as u8 - 'A' as u8) + 1]),
             "cc_null" => add_text(vec![0x00_u8]),
             "cc_ff" => add_text(vec![0x0c_u8]),
@@ -391,11 +362,163 @@ impl<'a> RegexToPEG<'a> {
             "cc_nword" => Ok(seq(Self::cc_nword())),
             "cc_digit" => Ok(seq(Self::cc_digit())),
             "cc_ndigit" => Ok(seq(Self::cc_ndigit())),
-            p => unreachable!("Invalid label {p}"),
+            // "codepoint_digits" => Ok(seq(self.convert_codepoints(cap)?)),
+            _ => return Err(RegexError::InvalidPattern),
         }
     }
 
-    fn convert_bracket_range(&mut self, index: usize) -> Result<Range<u32>, RegexError> {
+    fn convert_counted_rep(
+        &mut self,
+        children: Vec<usize>,
+        cont: &Rule,
+        depth: usize,
+    ) -> Result<Rule, RegexError> {
+        let mut lazy = false;
+        let mut start = 0_usize;
+        let mut end: Option<usize> = None;
+        let mut is_range = false;
+
+        for child in &children {
+            let ccap = &self.regex[*child];
+            let crange = ccap.range();
+            let text = &self.pattern[crange.start as usize..crange.end as usize];
+            let label = self.parser.label_for(ccap.id);
+
+            println!("{label:?} -> {text:?}");
+            match label {
+                "lazy" => lazy = true,
+                "counted_from" => start = text.parse().map_err(|_| RegexError::InvalidRepCount)?,
+                "counted_to" => end = Some(text.parse().map_err(|_| RegexError::InvalidRepCount)?),
+                "counted_sep" => is_range = true,
+                _ => {}
+            }
+        }
+
+        let empty = Rule::ByteSequence(vec![]);
+        let e = self.convert_rec(children[0], &empty, depth + 1)?;
+
+        println!("start: {start:?}, end: {end:?}, is_range: {is_range:?}, cont: {cont:?}");
+
+        // Does lazy even do anything here?
+        // patt{x} (?)
+        if !is_range {
+            let mut repeat = Vec::with_capacity(start);
+            for _ in 0..start {
+                repeat.push(e.clone());
+            }
+            repeat.push(cont.clone());
+            return Ok(Rule::Sequence(repeat));
+        }
+
+        match end {
+            Some(end) => {
+                // patt{x,y} (?)
+                if start >= end {
+                    return Err(RegexError::InvalidRepCount);
+                }
+                let mut repeat = Vec::with_capacity(start);
+                for _ in 0..start {
+                    repeat.push(e.clone());
+                }
+
+                if lazy {
+                    let mut rule = e.clone();
+                    for _ in start..end {
+                        rule = Rule::Choice(vec![cont.clone(), rule]);
+                    }
+                    repeat.push(rule);
+                    return Ok(Rule::Choice(repeat));
+                } else {
+                    for _ in start..end {
+                        repeat.push(Rule::Optional(e.clone().into()));
+                    }
+                    repeat.push(cont.clone());
+                    return Ok(Rule::Sequence(repeat));
+                }
+            }
+            None => {
+                // patt{x,} (?)
+                let mut repeat = Vec::with_capacity(start);
+                for _ in 0..start {
+                    repeat.push(e.clone());
+                }
+
+                todo!()
+            }
+        }
+    }
+
+    // fn convert_codepoints(&self, cap: &Capture) -> Result<Rule, RegexError> {
+    //     let range = cap.range();
+    //     let text = &self.pattern[range.start as usize..range.end as usize];
+    //     let cp = u32::from_str_radix(text, 16).map_err(|_e| RegexError::InvalidCodepointValue)?;
+    //     let ch = char::from_u32(cp).ok_or(RegexError::InvalidCodepointValue)?;
+    //     Ok(Rule::UTF8Range(ch, ch))
+    // }
+
+    fn convert_brackets(&self, children: Vec<usize>) -> Result<Rule, RegexError> {
+        let mut ranges = OverlappingRanges::new();
+        let mut negative = false;
+        for child in children {
+            let ccap = &self.regex[child];
+            let crange = ccap.range();
+            let clabel = self.parser.label_for(ccap.id());
+            let text = &self.pattern[crange.start as usize..crange.end as usize];
+
+            match clabel {
+                "range" => {
+                    let range = self.convert_bracket_range(child)?;
+                    ranges.add(range);
+                }
+                "hex_value" => {
+                    let byte = u8::from_str_radix(text, 16)
+                        .map_err(|_e| RegexError::InvalidHexValue)?
+                        as u32;
+                    ranges.add(byte..byte + 1);
+                }
+                "byte" => {
+                    let byte = text.as_bytes()[0] as u32;
+                    ranges.add(byte..byte + 1);
+                }
+                "neg" => {
+                    negative = true;
+                }
+                "cc_control" => {}
+                "cc_null" => {}
+                "cc_ff" => {}
+                "cc_vtab" => {}
+                "cc_tab" => {}
+                "cc_cr" => {}
+                "cc_newline" => {}
+                "cc_nws" => {}
+                "cc_ws" => {}
+                "cc_word" => {}
+                "cc_nword" => {}
+                "cc_digit" => {}
+                "cc_ndigit" => {}
+                _ => return Err(RegexError::InvalidPattern),
+            }
+        }
+
+        if negative {
+            ranges.invert(u8::MIN as u32..u8::MAX as u32 + 1)
+        }
+
+        let mut choices = vec![];
+
+        for range in ranges.iter() {
+            choices.push(Rule::ByteRange(range.start as u8, (range.end - 1) as u8))
+        }
+
+        let choice = if choices.len() == 1 {
+            choices.pop().unwrap()
+        } else {
+            Rule::Choice(choices)
+        };
+        Ok(choice)
+    }
+
+    fn convert_bracket_range(&self, index: usize) -> Result<Range<u32>, RegexError> {
         if index >= self.regex.len() {
             return Err(RegexError::InvalidPattern);
         }
@@ -462,9 +585,14 @@ pub enum RegexError {
     #[error("Invalid regex pattern")]
     InvalidPattern,
 
+    #[error("Invalid repetiontion count")]
+    InvalidRepCount,
+
     #[error("Invalid hex value")]
     InvalidHexValue,
 
+    // #[error("Invalid codepoint value")]
+    // InvalidCodepointValue,
     #[error("Invalid bracket range")]
     InvalidRange,
 }
@@ -609,4 +737,31 @@ mod tests {
         assert!(!regex.is_match(b"9"));
         assert!(!regex.is_match(b"1234567890"));
     }
+
+    #[test]
+    fn regex_counted_rep() {
+        let regex = Regex::new(r"\d{3}.\d{3}").unwrap();
+        assert!(regex.is_match(b"222.222"));
+        assert!(regex.is_match(b"192.168"));
+
+        assert!(!regex.is_match(b"123"));
+        assert!(!regex.is_match(b"0"));
+        assert!(!regex.is_match(b"9"));
+        assert!(!regex.is_match(b"123..213"));
+    }
+
+    #[test]
+    fn regex_lazy_optional() {
+        let regex = Regex::new(r"a??ab").unwrap();
+        println!("{:?}", regex.parser.program());
+        assert!(regex.is_match(b"ab"));
+        assert!(regex.is_match(b"aab"));
+        assert!(regex.is_match(b"xxab"));
+        assert!(regex.is_match(b"xxaab"));
+
+        assert!(!regex.is_match(b"xxxx"));
+        assert!(!regex.is_match(b"a"));
+    }
+
+    // TODO test out all lazy operators, character classes, [\b] match
 }

@@ -387,7 +387,7 @@ impl<R: io::Read> Lexer<R> {
                     }
                 }
 
-                Ok(Token::Char('.'))
+                Ok(Token::Byte('.' as u8))
             }
             ch => {
                 self.advance()?;

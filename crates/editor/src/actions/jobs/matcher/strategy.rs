@@ -30,11 +30,20 @@ impl MatchFn for Prefix {
             return;
         }
 
-        let part = &opt[..self.term.len()];
         let result = if self.is_case_sensitive {
-            part == self.term
+            opt.starts_with(&self.term)
         } else {
-            part.eq_ignore_ascii_case(&self.term)
+            let mut result = true;
+            let tbytes = self.term.as_bytes();
+            let obytes = opt.as_bytes();
+            for i in 0..self.term.len() {
+                let low = obytes[i].to_ascii_lowercase();
+                if tbytes[i] != low {
+                    result = false;
+                    break;
+                }
+            }
+            result
         };
 
         if result {

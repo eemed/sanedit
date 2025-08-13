@@ -114,6 +114,64 @@ impl<'a> RegexToPEG<'a> {
         Ok(rules)
     }
 
+    fn cc_nword() -> Rule {
+        Rule::Choice(vec![
+            Rule::ByteRange(u8::MIN, '0' as u8 - 1),
+            Rule::ByteRange('9' as u8 + 1, 'A' as u8 - 1),
+            Rule::ByteRange('Z' as u8 + 1, '_' as u8 - 1),
+            Rule::ByteRange('_' as u8 + 1, 'a' as u8 - 1),
+            Rule::ByteRange('z' as u8 + 1, u8::MAX),
+        ])
+    }
+
+    fn cc_word() -> Rule {
+        Rule::Choice(vec![
+            Rule::ByteRange('A' as u8, 'Z' as u8),
+            Rule::ByteRange('_' as u8, '_' as u8),
+            Rule::ByteRange('a' as u8, 'z' as u8),
+            Rule::ByteRange('0' as u8, '9' as u8),
+        ])
+    }
+
+    fn cc_space() -> Rule {
+        // [\f\n\r\t\v\u0020\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff]
+        Rule::Choice(vec![
+            Rule::ByteRange(0x0c_u8, 0x0c_u8),
+            Rule::ByteRange(0x0b_u8, 0x0b_u8),
+            Rule::ByteRange(0x09_u8, 0x09_u8),
+            Rule::ByteRange(0x0d_u8, 0x0d_u8),
+            Rule::ByteRange(0x0a_u8, 0x0a_u8),
+            Rule::UTF8Range('\u{0020}', '\u{0020}'),
+            Rule::UTF8Range('\u{00a0}', '\u{00a0}'),
+            Rule::UTF8Range('\u{1680}', '\u{1680}'),
+            Rule::UTF8Range('\u{2000}', '\u{200a}'),
+            Rule::UTF8Range('\u{2028}', '\u{2029}'),
+            Rule::UTF8Range('\u{202f}', '\u{202f}'),
+            Rule::UTF8Range('\u{205f}', '\u{205f}'),
+            Rule::UTF8Range('\u{3000}', '\u{3000}'),
+            Rule::UTF8Range('\u{feff}', '\u{feff}'),
+        ])
+    }
+
+    fn cc_nspace() -> Rule {
+        // TODO calculate this and replace here
+        Rule::Sequence(vec![
+            Rule::NotFollowedBy(Self::cc_space().into()),
+            Rule::UTF8Range(char::MIN, char::MAX),
+        ])
+    }
+
+    fn cc_digit() -> Rule {
+        Rule::ByteRange('0' as u8, '9' as u8)
+    }
+
+    fn cc_ndigit() -> Rule {
+        Rule::Choice(vec![
+            Rule::ByteRange(u8::MIN, '0' as u8 - 1),
+            Rule::ByteRange('9' as u8 + 1, u8::MAX),
+        ])
+    }
+
     fn convert_rec(&mut self, index: usize, cont: &Rule, depth: usize) -> Result<Rule, RegexError> {
         if index >= self.regex.len() {
             return Err(RegexError::InvalidPattern);
@@ -144,27 +202,34 @@ impl<'a> RegexToPEG<'a> {
             children
         };
         let is_full_match = cap.start == 0 && cap.end == self.pattern.len() as u64;
+        let add_text = |mut bytes: Vec<u8>| match cont {
+            Rule::ByteSequence(vec) => {
+                bytes.extend(vec);
+                return Ok(Rule::ByteSequence(bytes));
+            }
+            _ => {
+                let rule = Rule::ByteSequence(bytes);
+                return Ok(Rule::Sequence(vec![rule, cont.clone()]));
+            }
+        };
+        let seq = |rule: Rule| match cont {
+            Rule::Sequence(vec) => {
+                let mut seq = Vec::with_capacity(vec.len() + 1);
+                seq.push(rule);
+                seq.extend_from_slice(vec);
+                Rule::Sequence(seq)
+            }
+            _ => Rule::Sequence(vec![rule, cont.clone()]),
+        };
 
         match label {
             "escaped" | "char" => {
                 // Π(ε, k) = k (1)
                 // Π(c, k) = c k (2)
-                let mut text = text.as_bytes().to_vec();
-                match cont {
-                    Rule::ByteSequence(vec) => {
-                        text.extend(vec);
-                        return Ok(Rule::ByteSequence(text));
-                    }
-                    _ => {
-                        let rule = Rule::ByteSequence(text);
-                        return Ok(Rule::Sequence(vec![rule, cont.clone()]));
-                    }
-                }
+                let text = text.as_bytes().to_vec();
+                add_text(text)
             }
-            "any" => {
-                let rule = Rule::ByteAny;
-                return Ok(Rule::Sequence(vec![rule, cont.clone()]));
-            }
+            "any" => Ok(seq(Rule::ByteAny)),
             "sequence" => {
                 // Π(e1e2, k) = Π(e1, Π(e2, k)) (3)
                 let mut cont = cont.clone();
@@ -248,19 +313,10 @@ impl<'a> RegexToPEG<'a> {
             "hex_value" => {
                 let byte =
                     u8::from_str_radix(text, 16).map_err(|_e| RegexError::InvalidHexValue)?;
-                match cont {
-                    Rule::ByteSequence(vec) => {
-                        let mut bytes = vec![byte];
-                        bytes.extend(vec);
-                        return Ok(Rule::ByteSequence(bytes));
-                    }
-                    _ => {
-                        let rule = Rule::ByteSequence(vec![byte]);
-                        return Ok(Rule::Sequence(vec![rule, cont.clone()]));
-                    }
-                }
+                add_text(vec![byte])
             }
             "brackets" => {
+                // TODO use UTF8 range if contents have unicode specific shit
                 let mut ranges = OverlappingRanges::new();
                 let mut negative = false;
                 for child in children {
@@ -287,6 +343,19 @@ impl<'a> RegexToPEG<'a> {
                         "neg" => {
                             negative = true;
                         }
+                        "cc_control" => {}
+                        "cc_null" => {}
+                        "cc_ff" => {}
+                        "cc_vtab" => {}
+                        "cc_tab" => {}
+                        "cc_cr" => {}
+                        "cc_newline" => {}
+                        "cc_nws" => {}
+                        "cc_ws" => {}
+                        "cc_word" => {}
+                        "cc_nword" => {}
+                        "cc_digit" => {}
+                        "cc_ndigit" => {}
                         p => unreachable!("Invalid label in brackets {p}"),
                     }
                 }
@@ -307,8 +376,21 @@ impl<'a> RegexToPEG<'a> {
                     Rule::Choice(choices)
                 };
 
-                Ok(Rule::Sequence(vec![choice, cont.clone()]))
+                Ok(seq(choice))
             }
+            "cc_control" => add_text(vec![(text.as_bytes()[1] as u8 - 'A' as u8) + 1]),
+            "cc_null" => add_text(vec![0x00_u8]),
+            "cc_ff" => add_text(vec![0x0c_u8]),
+            "cc_vtab" => add_text(vec![0x0b_u8]),
+            "cc_tab" => add_text(vec![0x09_u8]),
+            "cc_cr" => add_text(vec![0x0d_u8]),
+            "cc_newline" => add_text(vec![0x0a_u8]),
+            "cc_nws" => Ok(seq(Self::cc_nspace())),
+            "cc_ws" => Ok(seq(Self::cc_space())),
+            "cc_word" => Ok(seq(Self::cc_word())),
+            "cc_nword" => Ok(seq(Self::cc_nword())),
+            "cc_digit" => Ok(seq(Self::cc_digit())),
+            "cc_ndigit" => Ok(seq(Self::cc_ndigit())),
             p => unreachable!("Invalid label {p}"),
         }
     }
@@ -502,5 +584,29 @@ mod tests {
         assert!(!regex.is_match(b"C"));
         assert!(!regex.is_match(b"P"));
         assert!(!regex.is_match(b"APBC"));
+    }
+
+    #[test]
+    fn regex_digit() {
+        let regex = Regex::new(r"\d+").unwrap();
+        assert!(!regex.is_match(b"perkele"));
+        assert!(!regex.is_match(b"f"));
+
+        assert!(regex.is_match(b"123"));
+        assert!(regex.is_match(b"0"));
+        assert!(regex.is_match(b"9"));
+        assert!(regex.is_match(b"1234567890"));
+    }
+
+    #[test]
+    fn regex_ndigit() {
+        let regex = Regex::new(r"\D+").unwrap();
+        assert!(regex.is_match(b"perkele"));
+        assert!(regex.is_match(b"f"));
+
+        assert!(!regex.is_match(b"123"));
+        assert!(!regex.is_match(b"0"));
+        assert!(!regex.is_match(b"9"));
+        assert!(!regex.is_match(b"1234567890"));
     }
 }

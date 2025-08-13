@@ -9,7 +9,7 @@ use std::{
 
 use chrono::{DateTime, Local, TimeDelta};
 use sanedit_buffer::PieceTreeView;
-use sanedit_messages::ClientMessage;
+use sanedit_messages::{key::try_parse_keyevents, ClientMessage};
 use sanedit_utils::idmap::AsID;
 
 use crate::{
@@ -23,6 +23,7 @@ use crate::{
     editor::{
         buffers::BufferId,
         hooks::Hook,
+        keymap::KeymapResult,
         windows::{Focus, HistoryKind, Mode, Prompt},
         Editor, Map,
     },
@@ -670,19 +671,40 @@ fn show_keymaps(editor: &mut Editor, id: ClientId) -> ActionResult {
 
     let (win, _buf) = editor.win_buf(id);
     let key = win.layer();
-    let maps: Vec<Arc<Choice>> = editor
-        .keymaps
-        .list(&key)
-        .into_iter()
-        .map(|(map, name)| Choice::from_text_with_description(map, name))
-        .collect();
+    let maps: Arc<Vec<Arc<Choice>>> = Arc::new(
+        editor
+            .keymaps
+            .list(&key)
+            .into_iter()
+            .map(|(map, name)| Choice::from_text_with_description(map, name))
+            .collect(),
+    );
     let job = MatcherJob::builder(id)
-        .options(Arc::new(maps))
+        .options(maps.clone())
         .handler(Prompt::matcher_result_handler)
         .build();
     editor.job_broker.request_slot(id, PROMPT_MESSAGE, job);
     let (win, _buf) = editor.win_buf_mut(id);
-    win.prompt = Prompt::builder().prompt(PROMPT_MESSAGE).build();
+    win.prompt = Prompt::builder()
+        .prompt(PROMPT_MESSAGE)
+        .on_abort(move |editor, id, _out| {
+            if key.focus != Focus::Prompt {
+                focus_with_mode(editor, id, key.focus, key.mode);
+            }
+        })
+        .on_confirm(move |editor, id, out| {
+            if key.focus != Focus::Prompt {
+                focus_with_mode(editor, id, key.focus, key.mode);
+
+                let text = getf!(out.text());
+                let events = getf!(try_parse_keyevents(text).ok());
+                if let KeymapResult::Matched(action) = editor.keymaps.get(&key, &events) {
+                    action.execute(editor, id);
+                }
+            }
+            ActionResult::Ok
+        })
+        .build();
     focus(editor, id, Focus::Prompt);
     ActionResult::Ok
 }

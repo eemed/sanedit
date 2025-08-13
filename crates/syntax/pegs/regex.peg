@@ -1,3 +1,4 @@
+# Something like this https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_expressions/Cheatsheet
 document = regex* !.;
 regex = alt / sequence;
 
@@ -5,7 +6,7 @@ regex = alt / sequence;
 alt = sequence ("|" sequence)+;
 
 @show
-sequence = (repetition /brackets / hex / group / char / escaped_char / any / )+;
+sequence = (repetition / brackets / hex / group / char / char_classes / escaped_char / any )+;
 
 @show
 char = [^\[\]\.+*?\^$(){}|\\];
@@ -13,13 +14,13 @@ char = [^\[\]\.+*?\^$(){}|\\];
 escaped_char = "\\" escaped;
 
 @show
-escaped = [\[\]\.+*?\^$(){}|\\nrt];
+escaped = [\[\]\.+*?\^$(){}|\\];
 
 @show
 any = ".";
 
 repetition = zero_or_more / one_or_more / optional;
-rep_in = (group / char / any / brackets / hex );
+rep_in = (group / char / any / brackets / hex / char_classes / escaped_char);
 
 @show
 zero_or_more =  rep_in "*";
@@ -47,5 +48,59 @@ byte = .;
 
 hex = "\x" hex_value;
 @show
-hex_value = hex_digit+;
+hex_value = hex_digit hex_digit;
 hex_digit = [a..zA..Z0..9];
+
+char_classes = "\\" (
+    cc_digit /
+    cc_ndigit /
+    cc_word /
+    cc_nword /
+    cc_ws /
+    cc_nws /
+    cc_newline /
+    cc_cr /
+    cc_tab /
+    cc_vtab /
+    cc_ff /
+    cc_null /
+    cc_control
+);
+
+@show cc_digit = "d";
+@show cc_ndigit = "D";
+@show cc_word = "w";
+@show cc_nword = "W";
+@show cc_ws = "s";
+@show cc_nws = "S";
+@show cc_newline = "n";
+@show cc_cr = "r";
+@show cc_tab = "t";
+@show cc_vtab = "v";
+@show cc_ff = "f";
+@show cc_null = "0";
+@show cc_control = "c" [A..Z];
+
+codepoint = "\u" (codepoint_digits / "{" codepoint_digits "}" );
+@show codepoint_digits = hex_digit hex_digit hex_digit hex_digit hex_digit?;
+
+
+# TODO atleast these then its fine
+# cc_backspace = "[\b]";
+# x{n,m}
+# x{n}
+# x{n,}
+# x*?
+# x+?
+# x??
+# x{n}?
+# x{n,}?
+# x{n,m}?
+
+# Hard?
+#
+# \b word boundaries + \B non word boundary
+# ^ $  assertions
+
+# others
+# \p{UnicodeProperty}, \P{UnicodeProperty}

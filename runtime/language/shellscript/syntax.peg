@@ -1,0 +1,113 @@
+document = (string / var / comment / keyword / builtin / constant / operator / alpha / .)*;
+
+alpha = [a..zA..Z0..9_]+;
+
+@show @highlight
+string    = qstring / sstring;
+qstring = "\"" (var / [^"\n])* "\"";
+sstring = "'" [^'\n]* "'";
+
+@show @highlight(identifier)
+var = "$" [A..Za..z0..9_]+ ![A..Za..z0..9_];
+
+@show @highlight
+operator = [\[\]{}()\\;:,.<>&$|=+*/?!<>];
+
+@show @highlight
+keyword =  (
+    "while" /
+    "until" /
+    "typeset" /
+    "time" /
+    "then" /
+    "set" /
+    "select" /
+    "return" /
+    "readonly" /
+    "local" /
+    "let" /
+    "in" /
+    "if" /
+    "function" /
+    "for" /
+    "fi" /
+    "export" /
+    "esac" /
+    "else" /
+    "elif" /
+    "done" /
+    "do" /
+    "declare" /
+    "coproc" /
+    "continue" /
+    "case" /
+    "break"
+    ) &(ws / ";" / ":");
+
+
+@show @highlight
+constant = boolean / number;
+boolean = (
+    "true" /
+    "false"
+    ) &(ws / ":" / ";");
+number = digit+;
+digit = [0..9];
+
+@show @highlight(special)
+builtin = (
+    "wait" /
+    "unset" /
+    "unalias" /
+    "umask" /
+    "ulimit" /
+    "type" /
+    "trap" /
+    "times" /
+    "test" /
+    "suspend" /
+    "source" /
+    "shopt" /
+    "shift" /
+    "readarray" /
+    "read" /
+    "pwd" /
+    "pushd" /
+    "printf" /
+    "popd" /
+    "mapfile" /
+    "logout" /
+    "kill" /
+    "jobs" /
+    "history" /
+    "help" /
+    "hash" /
+    "getopts" /
+    "fg" /
+    "fc" /
+    "exit" /
+    "exec" /
+    "eval" /
+    "enable" /
+    "echo" /
+    "disown" /
+    "dirs" /
+    "compopt" /
+    "complete" /
+    "compgen" /
+    "command" /
+    "cd" /
+    "caller" /
+    "builtin" /
+    "bind" /
+    "bg" /
+    "alias"
+    ) &(ws / ":" / ";");
+
+ws              = space*;
+WHITESPACE      = space / nl;
+space           = [ \t];
+
+@show @highlight(comment)
+comment         = "#" (!nl .)*;
+nl              = "\r\n" / "\r" / "\n";

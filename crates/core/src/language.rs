@@ -46,6 +46,8 @@ impl From<&str> for Language {
             "jsx" => "javascriptreact",
             "js" => "javascript",
             "ts" => "typescript",
+            "sh" => "shellscript",
+            "bash" => "shellscript",
             v => v,
         };
         Language {

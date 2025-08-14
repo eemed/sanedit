@@ -63,7 +63,7 @@ impl EditorConfig {
              "javascript", ["**/*.js"],
              "typescript", ["**/*.ts"],
              "python", ["**/*.py"],
-             "shellscript", ["**/*.sh"],
+             "shellscript", ["**/*.sh", "**/*.bash"],
              "asciidoc", ["**/*.adoc"],
              "glsl", ["**/*.vert", "**/*.frag", "**/*.geom", "**/*.tesc", "**/*.tese", "**/*.comp"],
              "css", ["**/*.css", "**/*.scss", "**/*.sass"],

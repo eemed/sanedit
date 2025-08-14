@@ -364,8 +364,9 @@ impl Jit {
     pub fn captures<'a, B: ByteSource>(&'a self, reader: B) -> CaptureIter<'a, B> {
         CaptureIter {
             parser: ParserRef::Jit(self),
-            source: reader,
             sp: 0,
+            sp_rev: reader.len(),
+            source: reader,
         }
     }
 

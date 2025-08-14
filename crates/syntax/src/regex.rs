@@ -49,10 +49,10 @@ fn regex_parser() -> &'static Parser {
 /// * brackets: [^a-z] also backspace matching with [\b]
 /// * repetitions x* x? x+ x{2} x{2,} x{2,5}
 /// * lazy repetitions x*? x?? x+? x{2}? x{2,}? x{2,5}?
+/// * unicodepoints \u{fefe}
 ///
 /// # Unsupported
 ///
-/// * unicode support
 /// * various lookaheads
 /// * backreferences
 /// * \b word boundaries + \B non word boundary
@@ -154,11 +154,12 @@ impl<'a> RegexToPEG<'a> {
     fn cc_space() -> Rule {
         // [\f\n\r\t\v\u0020\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff]
         Rule::Choice(vec![
-            Rule::ByteRange(0x0c_u8, 0x0c_u8),
-            Rule::ByteRange(0x0b_u8, 0x0b_u8),
-            Rule::ByteRange(0x09_u8, 0x09_u8),
-            Rule::ByteRange(0x0d_u8, 0x0d_u8),
-            Rule::ByteRange(0x0a_u8, 0x0a_u8),
+            Rule::ByteRange(0x09_u8, 0x0d_u8),
+            Rule::ByteRange(0x20_u8, 0x20_u8),
+            // Rule::ByteRange(0x0b_u8, 0x0b_u8),
+            // Rule::ByteRange(0x09_u8, 0x09_u8),
+            // Rule::ByteRange(0x0d_u8, 0x0d_u8),
+            // Rule::ByteRange(0x0a_u8, 0x0a_u8),
             // Rule::UTF8Range('\u{0020}', '\u{0020}'),
             // Rule::UTF8Range('\u{00a0}', '\u{00a0}'),
             // Rule::UTF8Range('\u{1680}', '\u{1680}'),
@@ -172,10 +173,10 @@ impl<'a> RegexToPEG<'a> {
     }
 
     fn cc_nspace() -> Rule {
-        // TODO calculate this and replace here
-        Rule::Sequence(vec![
-            Rule::NotFollowedBy(Self::cc_space().into()),
-            Rule::UTF8Range(char::MIN, char::MAX),
+        Rule::Choice(vec![
+            Rule::ByteRange(0x0_u8, 0x08_u8),
+            Rule::ByteRange(0x0e_u8, 0x1f_u8),
+            Rule::ByteRange(0x21_u8, 0xff_u8),
         ])
     }
 
@@ -266,7 +267,7 @@ impl<'a> RegexToPEG<'a> {
                 for child in children.iter().rev() {
                     cont = self.convert_rec(*child, &cont, depth + 1)?;
                 }
-                return Ok(cont);
+                Ok(cont)
             }
             "alt" => {
                 // Distribute continuation to all alternatives
@@ -280,14 +281,10 @@ impl<'a> RegexToPEG<'a> {
                     let rule = self.convert_rec(child, &cont, depth + 1)?;
                     choices.push(rule);
                 }
-                return Ok(Rule::Choice(choices));
+                Ok(Rule::Choice(choices))
             }
             "zero_or_more" => {
                 // e∗ = e e∗ | ε
-                if children.len() != 1 {
-                    panic!("Zero or more has wrong number of children");
-                }
-
                 let pos = self.rules.len();
                 let self_ref = Rule::Ref(pos);
                 let name = format!("{index}-zero-or-more");
@@ -295,16 +292,19 @@ impl<'a> RegexToPEG<'a> {
 
                 let epsilon = cont.clone();
                 let e = self.convert_rec(children[0], &self_ref, depth + 1)?;
-                let rule = Rule::Choice(vec![e, epsilon]);
+                let choices = if self.is_lazy(&children) {
+                    vec![epsilon, e]
+                } else {
+                    vec![e, epsilon]
+                };
+                let rule = Rule::Choice(choices);
 
                 self.rules[pos].rule = rule;
-                return Ok(self_ref);
+                Ok(self_ref)
             }
             "one_or_more" => {
                 // e+ = e e+ | e
-                if children.len() != 1 {
-                    panic!("One or more has wrong number of children");
-                }
+                // XXX e+ = e e*
                 let pos = self.rules.len();
                 let self_ref = Rule::Ref(pos);
                 let name = format!("{index}-one-or-more");
@@ -312,10 +312,15 @@ impl<'a> RegexToPEG<'a> {
 
                 let right = self.convert_rec(children[0], cont, depth + 1)?;
                 let left = self.convert_rec(children[0], &self_ref, depth + 1)?;
-                let rule = Rule::Choice(vec![left, right]);
+                let choices = if self.is_lazy(&children) {
+                    vec![right, left]
+                } else {
+                    vec![left, right]
+                };
+                let rule = Rule::Choice(choices);
 
                 self.rules[pos].rule = rule;
-                return Ok(self_ref);
+                Ok(self_ref)
             }
             "optional" => {
                 // e? = e | ε
@@ -326,7 +331,7 @@ impl<'a> RegexToPEG<'a> {
                 } else {
                     vec![e, epsilon]
                 };
-                return Ok(Rule::Choice(choices));
+                Ok(Rule::Choice(choices))
             }
             "group" => {
                 if children.len() != 1 {
@@ -337,12 +342,12 @@ impl<'a> RegexToPEG<'a> {
                 let rule = self.convert_rec(children[0], &cont, depth + 1)?;
                 self.n += 1;
                 let n = if is_full_match { 0 } else { self.n };
-                return Ok(Rule::Sequence(vec![
+                Ok(Rule::Sequence(vec![
                     Rule::Embed(Operation::CaptureBegin(n)),
                     rule,
-                ]));
+                ]))
             }
-            "counted_rep" => Ok(self.convert_counted_rep(children, cont, depth)?),
+            "counted_rep" => Ok(self.convert_counted_rep(children, cont, depth, index)?),
             "hex_value" => {
                 let byte =
                     u8::from_str_radix(text, 16).map_err(|_e| RegexError::InvalidHexValue)?;
@@ -362,8 +367,8 @@ impl<'a> RegexToPEG<'a> {
             "cc_nword" => Ok(seq(Self::cc_nword())),
             "cc_digit" => Ok(seq(Self::cc_digit())),
             "cc_ndigit" => Ok(seq(Self::cc_ndigit())),
-            // "codepoint_digits" => Ok(seq(self.convert_codepoints(cap)?)),
-            _ => return Err(RegexError::InvalidPattern),
+            "codepoint_digits" => Ok(seq(self.convert_codepoint_to_rule(cap)?)),
+            _ => Err(RegexError::InvalidPattern),
         }
     }
 
@@ -372,6 +377,7 @@ impl<'a> RegexToPEG<'a> {
         children: Vec<usize>,
         cont: &Rule,
         depth: usize,
+        index: usize,
     ) -> Result<Rule, RegexError> {
         let mut lazy = false;
         let mut start = 0_usize;
@@ -384,7 +390,6 @@ impl<'a> RegexToPEG<'a> {
             let text = &self.pattern[crange.start as usize..crange.end as usize];
             let label = self.parser.label_for(ccap.id);
 
-            println!("{label:?} -> {text:?}");
             match label {
                 "lazy" => lazy = true,
                 "counted_from" => start = text.parse().map_err(|_| RegexError::InvalidRepCount)?,
@@ -397,12 +402,10 @@ impl<'a> RegexToPEG<'a> {
         let empty = Rule::ByteSequence(vec![]);
         let e = self.convert_rec(children[0], &empty, depth + 1)?;
 
-        println!("start: {start:?}, end: {end:?}, is_range: {is_range:?}, cont: {cont:?}");
-
         // Does lazy even do anything here?
         // patt{x} (?)
         if !is_range {
-            let mut repeat = Vec::with_capacity(start);
+            let mut repeat = Vec::with_capacity(start + 1);
             for _ in 0..start {
                 repeat.push(e.clone());
             }
@@ -416,7 +419,7 @@ impl<'a> RegexToPEG<'a> {
                 if start >= end {
                     return Err(RegexError::InvalidRepCount);
                 }
-                let mut repeat = Vec::with_capacity(start);
+                let mut repeat = vec![];
                 for _ in 0..start {
                     repeat.push(e.clone());
                 }
@@ -427,38 +430,77 @@ impl<'a> RegexToPEG<'a> {
                         rule = Rule::Choice(vec![cont.clone(), rule]);
                     }
                     repeat.push(rule);
-                    return Ok(Rule::Choice(repeat));
+                    Ok(Rule::Sequence(repeat))
                 } else {
                     for _ in start..end {
                         repeat.push(Rule::Optional(e.clone().into()));
                     }
                     repeat.push(cont.clone());
-                    return Ok(Rule::Sequence(repeat));
+                    Ok(Rule::Sequence(repeat))
                 }
             }
             None => {
                 // patt{x,} (?)
-                let mut repeat = Vec::with_capacity(start);
+                let mut repeat = vec![];
                 for _ in 0..start {
                     repeat.push(e.clone());
                 }
 
-                todo!()
+                // Zero or more rest
+                let pos = self.rules.len();
+                let self_ref = Rule::Ref(pos);
+                let name = format!("{index}-counted-rep");
+                self.rules.push(RuleInfo::new(&name, Rule::ByteAny));
+
+                let epsilon = cont.clone();
+                let e = self.convert_rec(children[0], &self_ref, depth + 1)?;
+                let choices = if lazy {
+                    vec![epsilon, e]
+                } else {
+                    vec![e, epsilon]
+                };
+                let rule = Rule::Choice(choices);
+
+                self.rules[pos].rule = rule;
+                repeat.push(self_ref);
+                Ok(Rule::Sequence(repeat))
             }
         }
     }
 
-    // fn convert_codepoints(&self, cap: &Capture) -> Result<Rule, RegexError> {
-    //     let range = cap.range();
-    //     let text = &self.pattern[range.start as usize..range.end as usize];
-    //     let cp = u32::from_str_radix(text, 16).map_err(|_e| RegexError::InvalidCodepointValue)?;
-    //     let ch = char::from_u32(cp).ok_or(RegexError::InvalidCodepointValue)?;
-    //     Ok(Rule::UTF8Range(ch, ch))
-    // }
+    fn convert_codepoint(&self, cap: &Capture) -> Result<u32, RegexError> {
+        let range = cap.range();
+        let text = &self.pattern[range.start as usize..range.end as usize];
+        u32::from_str_radix(text, 16).map_err(|_e| RegexError::InvalidCodepointValue)
+    }
+
+    fn convert_codepoint_to_rule(&self, cap: &Capture) -> Result<Rule, RegexError> {
+        let cp = self.convert_codepoint(cap)?;
+        let ch = char::from_u32(cp).ok_or(RegexError::InvalidCodepointValue)?;
+        Ok(Rule::UTF8Range(ch, ch))
+    }
+
+    fn collect_ranges_and_insert(ranges: &mut OverlappingRanges<u32>, rule: Rule) {
+        match rule {
+            Rule::Choice(choices) => {
+                for choice in choices {
+                    match choice {
+                        Rule::ByteRange(a, b) => ranges.add(a as u32..b as u32 + 1),
+                        Rule::UTF8Range(a, b) => ranges.add(a as u32..b as u32 + 1),
+                        _ => {}
+                    }
+                }
+            }
+            Rule::ByteRange(a, b) => ranges.add(a as u32..b as u32 + 1),
+            Rule::UTF8Range(a, b) => ranges.add(a as u32..b as u32 + 1),
+            _ => {}
+        }
+    }
 
     fn convert_brackets(&self, children: Vec<usize>) -> Result<Rule, RegexError> {
         let mut ranges = OverlappingRanges::new();
         let mut negative = false;
+        let mut unicode = false;
         for child in children {
             let ccap = &self.regex[child];
             let crange = ccap.range();
@@ -468,6 +510,9 @@ impl<'a> RegexToPEG<'a> {
             match clabel {
                 "range" => {
                     let range = self.convert_bracket_range(child)?;
+                    if range.end >= u8::MAX as u32 + 1 {
+                        unicode = true;
+                    }
                     ranges.add(range);
                 }
                 "hex_value" => {
@@ -476,38 +521,75 @@ impl<'a> RegexToPEG<'a> {
                         as u32;
                     ranges.add(byte..byte + 1);
                 }
-                "byte" => {
+                "any_utf8" => {
+                    let ch = text
+                        .chars()
+                        .next()
+                        .ok_or(RegexError::InvalidCodepointValue)?
+                        as u32;
+                    ranges.add(ch..ch + 1);
+                    let is_utf8 = ch > u8::MAX as u32;
+                    unicode |= is_utf8;
+                }
+                "neg" => negative = true,
+                "cc_control" => {
+                    let ctrl = (text.as_bytes()[1] as u32 - 'A' as u32) + 1;
+                    ranges.add(ctrl..ctrl + 1);
+                }
+                "cc_null" => ranges.add(0x00_u32..0x00_u32 + 1),
+                "cc_ff" => ranges.add(0x0c_u32..0x0c_u32 + 1),
+                "cc_vtab" => ranges.add(0x0b_u32..0x0b_u32 + 1),
+                "cc_tab" => ranges.add(0x09_u32..0x09_u32 + 1),
+                "cc_cr" => ranges.add(0x0d_u32..0x0d_u32 + 1),
+                "cc_newline" => ranges.add(0x0a_u32..0x0a_u32 + 1),
+                "backspace" => ranges.add(0x08_u32..0x08_u32 + 1),
+                "cc_nws" => Self::collect_ranges_and_insert(&mut ranges, Self::cc_nspace()),
+                "cc_ws" => Self::collect_ranges_and_insert(&mut ranges, Self::cc_space()),
+                "cc_word" => Self::collect_ranges_and_insert(&mut ranges, Self::cc_word()),
+                "cc_nword" => Self::collect_ranges_and_insert(&mut ranges, Self::cc_nword()),
+                "cc_digit" => Self::collect_ranges_and_insert(&mut ranges, Self::cc_digit()),
+                "cc_ndigit" => Self::collect_ranges_and_insert(&mut ranges, Self::cc_ndigit()),
+                "escaped" => {
                     let byte = text.as_bytes()[0] as u32;
                     ranges.add(byte..byte + 1);
                 }
-                "neg" => {
-                    negative = true;
+                "codepoint_digits" => {
+                    unicode = true;
+                    let cp = self.convert_codepoint(ccap)?;
+                    ranges.add(cp..cp + 1);
                 }
-                "cc_control" => {}
-                "cc_null" => {}
-                "cc_ff" => {}
-                "cc_vtab" => {}
-                "cc_tab" => {}
-                "cc_cr" => {}
-                "cc_newline" => {}
-                "cc_nws" => {}
-                "cc_ws" => {}
-                "cc_word" => {}
-                "cc_nword" => {}
-                "cc_digit" => {}
-                "cc_ndigit" => {}
                 _ => return Err(RegexError::InvalidPattern),
             }
         }
 
-        if negative {
-            ranges.invert(u8::MIN as u32..u8::MAX as u32 + 1)
+        if !unicode {
+            if negative {
+                ranges.invert(u8::MIN as u32..u8::MAX as u32 + 1)
+            }
+
+            let mut choices = vec![];
+
+            for range in ranges.iter() {
+                choices.push(Rule::ByteRange(range.start as u8, (range.end - 1) as u8))
+            }
+
+            let choice = if choices.len() == 1 {
+                choices.pop().unwrap()
+            } else {
+                Rule::Choice(choices)
+            };
+            return Ok(choice);
         }
 
+        if negative {
+            ranges.invert('\u{0000}' as u32..'\u{10ffff}' as u32 + 1)
+        }
         let mut choices = vec![];
 
         for range in ranges.iter() {
-            choices.push(Rule::ByteRange(range.start as u8, (range.end - 1) as u8))
+            let fch = char::from_u32(range.start).ok_or(RegexError::InvalidCodepointValue)?;
+            let sch = char::from_u32(range.end - 1).ok_or(RegexError::InvalidCodepointValue)?;
+            choices.push(Rule::UTF8Range(fch, sch));
         }
 
         let choice = if choices.len() == 1 {
@@ -565,11 +647,26 @@ impl<'a> RegexToPEG<'a> {
                         as u32;
                     result[i] = byte;
                 }
-                "byte" => {
-                    let byte = text.as_bytes()[0] as u32;
+                "any_utf8" => {
+                    let ch = text
+                        .chars()
+                        .next()
+                        .ok_or(RegexError::InvalidCodepointValue)?
+                        as u32;
+                    result[i] = ch;
+                }
+                "escaped" => {
+                    let byte = u8::from_str_radix(text, 16)
+                        .map_err(|_e| RegexError::InvalidHexValue)?
+                        as u32;
                     result[i] = byte;
                 }
-                _ => {}
+                "codepoint_digits" => result[i] = self.convert_codepoint(cap)?,
+                "cc_control" => {
+                    let ctrl = (text.as_bytes()[1] as u32 - 'A' as u32) + 1;
+                    result[i] = ctrl;
+                }
+                _ => return Err(RegexError::InvalidPattern),
             }
         }
 
@@ -591,8 +688,9 @@ pub enum RegexError {
     #[error("Invalid hex value")]
     InvalidHexValue,
 
-    // #[error("Invalid codepoint value")]
-    // InvalidCodepointValue,
+    #[error("Invalid codepoint value")]
+    InvalidCodepointValue,
+
     #[error("Invalid bracket range")]
     InvalidRange,
 }
@@ -600,6 +698,15 @@ pub enum RegexError {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn cap_len(cap: &Capture) -> u64 {
+        cap.end - cap.start
+    }
+
+    fn is_total_match(regex: &Regex, bytes: &[u8]) {
+        let caps = regex.captures(bytes).next().expect("No match");
+        assert_eq!(cap_len(&caps[0]), bytes.len() as u64)
+    }
 
     #[test]
     fn regex_literal() {
@@ -701,7 +808,7 @@ mod tests {
 
     #[test]
     fn regex_class_neg() {
-        let regex = Regex::new("[^\x41-\x43\x50]+").unwrap();
+        let regex = Regex::new(r"[^\x41-\x43\x50]+").unwrap();
         assert!(regex.is_match(b"perkele"));
         assert!(regex.is_match(b"hellowarld"));
         assert!(regex.is_match(b"f"));
@@ -739,6 +846,55 @@ mod tests {
     }
 
     #[test]
+    fn regex_word() {
+        let regex = Regex::new(r"\w+").unwrap();
+        is_total_match(&regex, b"aaaaa");
+        is_total_match(&regex, b"aNOTHer123");
+        assert!(!regex.is_match(b"$"));
+        assert!(!regex.is_match(b"("));
+        assert!(!regex.is_match(b"!"));
+    }
+
+    #[test]
+    fn regex_nword() {
+        let regex = Regex::new(r"\W+").unwrap();
+        assert!(!regex.is_match(b"hello_world"));
+        assert!(!regex.is_match(b"another"));
+        assert!(!regex.is_match(b"0"));
+        assert!(regex.is_match(b"$"));
+        assert!(regex.is_match(b"("));
+        assert!(regex.is_match(b"!"));
+    }
+
+    #[test]
+    fn regex_space() {
+        let regex = Regex::new(r"\s+").unwrap();
+        is_total_match(&regex, b"   ");
+        is_total_match(&regex, b"\t");
+        // is_total_match(&regex, &"\u{2028}".as_bytes());
+        assert!(!regex.is_match(b"a"));
+        assert!(!regex.is_match(b"b"));
+        assert!(!regex.is_match(b"123"));
+    }
+
+    #[test]
+    fn regex_nspace() {
+        let regex = Regex::new(r"\S+").unwrap();
+        assert!(!regex.is_match(b"   "));
+        assert!(!regex.is_match(b"\t"));
+        assert!(regex.is_match(b"a"));
+        assert!(regex.is_match(b"b"));
+        assert!(regex.is_match(b"123"));
+    }
+
+    #[test]
+    fn regex_nspace_group() {
+        let regex = Regex::new(r"[\S ]+").unwrap();
+        is_total_match(&regex, b"what the fuck");
+        assert!(!regex.is_match(b"\t"));
+    }
+
+    #[test]
     fn regex_counted_rep() {
         let regex = Regex::new(r"\d{3}.\d{3}").unwrap();
         assert!(regex.is_match(b"222.222"));
@@ -751,9 +907,48 @@ mod tests {
     }
 
     #[test]
+    fn regex_counted_rep_inf() {
+        let regex = Regex::new(r"\d{3,}").unwrap();
+        assert!(regex.is_match(b"222"));
+        assert!(regex.is_match(b"192"));
+        assert!(regex.is_match(b"192168111"));
+        assert!(regex.is_match(b"1234567890"));
+
+        assert!(!regex.is_match(b"13"));
+        assert!(!regex.is_match(b"0"));
+        assert!(!regex.is_match(b"9"));
+    }
+
+    #[test]
+    fn regex_counted_rep_capped() {
+        let regex = Regex::new(r"\d{3,5}").unwrap();
+        assert!(regex.is_match(b"222"));
+        assert!(regex.is_match(b"1924"));
+        assert!(regex.is_match(b"19245"));
+        let cap = regex
+            .captures(b"1111111111111")
+            .next()
+            .expect("Did not match");
+        assert_eq!(cap_len(&cap[0]), 5);
+
+        assert!(!regex.is_match(b"13"));
+        assert!(!regex.is_match(b"0"));
+        assert!(!regex.is_match(b"9"));
+    }
+
+    #[test]
+    fn regex_hex() {
+        let regex = Regex::new(r"\x41").unwrap();
+        assert!(regex.is_match(b"A"));
+
+        assert!(!regex.is_match(b"B"));
+        assert!(!regex.is_match(b"xxxx"));
+        assert!(!regex.is_match(b"a"));
+    }
+
+    #[test]
     fn regex_lazy_optional() {
         let regex = Regex::new(r"a??ab").unwrap();
-        println!("{:?}", regex.parser.program());
         assert!(regex.is_match(b"ab"));
         assert!(regex.is_match(b"aab"));
         assert!(regex.is_match(b"xxab"));
@@ -763,5 +958,73 @@ mod tests {
         assert!(!regex.is_match(b"a"));
     }
 
-    // TODO test out all lazy operators, character classes, [\b] match
+    #[test]
+    fn regex_lazy_zero_or_more() {
+        let regex = Regex::new(r"ab*?c").unwrap();
+        assert!(regex.is_match(b"ac"));
+        assert!(regex.is_match(b"abc"));
+        assert!(regex.is_match(b"abbbc"));
+
+        let regex = Regex::new(r"a[bc]*?").unwrap();
+        let cap = regex.captures(b"abc").next().expect("Did not match");
+        assert_eq!(cap_len(&cap[0]), 1);
+        assert!(regex.is_match(b"ac"));
+        assert!(regex.is_match(b"abc"));
+        assert!(regex.is_match(b"abbbc"));
+    }
+
+    #[test]
+    fn regex_lazy_one_or_more() {
+        let regex = Regex::new(r"ab+?").unwrap();
+        assert!(regex.is_match(b"ab"));
+        let cap = regex.captures(b"abbbb").next().expect("Did not match");
+        assert_eq!(cap_len(&cap[0]), 2);
+        assert!(!regex.is_match(b"xaxbxx"));
+        assert!(!regex.is_match(b"a"));
+        assert!(!regex.is_match(b"b"));
+    }
+
+    #[test]
+    fn regex_lazy_counted_rep_capped() {
+        let regex = Regex::new(r"\d{3,5}?").unwrap();
+        assert!(regex.is_match(b"222"));
+        let cap = regex
+            .captures(b"1111111111111")
+            .next()
+            .expect("Did not match");
+        assert_eq!(cap_len(&cap[0]), 3);
+
+        assert!(!regex.is_match(b"13"));
+        assert!(!regex.is_match(b"0"));
+        assert!(!regex.is_match(b"9"));
+    }
+
+    #[test]
+    fn regex_lazy_counted_rep_inf() {
+        let regex = Regex::new(r"\d{3,}?").unwrap();
+        assert!(regex.is_match(b"222"));
+        let cap = regex
+            .captures(b"1111111111111")
+            .next()
+            .expect("Did not match");
+        assert_eq!(cap_len(&cap[0]), 3);
+
+        assert!(!regex.is_match(b"13"));
+        assert!(!regex.is_match(b"0"));
+        assert!(!regex.is_match(b"9"));
+
+        let regex = Regex::new(r"\d{3,}?a").unwrap();
+        assert!(regex.is_match(b"123456789a"));
+        assert!(!regex.is_match(b"123456789b"));
+    }
+
+    #[test]
+    fn regex_utf8_range() {
+        let regex = Regex::new(r"[Ά-Ϋ]+").unwrap();
+        assert!(regex.is_match(&"ΨΕΖ".as_bytes()));
+        assert!(!regex.is_match(b"a"));
+        assert!(!regex.is_match(b"A"));
+        assert!(!regex.is_match(b"Y"));
+        assert!(!regex.is_match(b"0"));
+    }
 }

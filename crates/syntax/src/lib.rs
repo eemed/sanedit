@@ -320,6 +320,14 @@ impl ParserKind {
         }
     }
 
+    #[allow(dead_code)]
+    fn rules(&self) -> &Rules {
+        match self {
+            ParserKind::Interpreted(parsing_machine) => parsing_machine.rules(),
+            ParserKind::Jit(jit) => jit.rules(),
+        }
+    }
+
     fn static_bytes_per_rule<F>(&self, should_extract: F) -> HashMap<String, Vec<Vec<u8>>>
     where
         F: Fn(&str, &[Annotation]) -> bool,

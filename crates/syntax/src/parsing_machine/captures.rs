@@ -1,4 +1,4 @@
-use std::ops::Range;
+use std::{cmp::min, ops::Range};
 
 use crate::ByteSource;
 
@@ -58,6 +58,7 @@ pub struct CaptureIter<'a, B: ByteSource> {
     pub(crate) parser: ParserRef<'a>,
     pub(crate) source: B,
     pub(crate) sp: u64,
+    pub(crate) sp_rev: u64,
 }
 
 impl<'a, B: ByteSource> Iterator for CaptureIter<'a, B> {
@@ -96,5 +97,74 @@ impl<'a, B: ByteSource> Iterator for CaptureIter<'a, B> {
                 }
             },
         }
+    }
+}
+
+impl<'a, B: ByteSource> DoubleEndedIterator for CaptureIter<'a, B> {
+    fn next_back(&mut self) -> Option<Self::Item> {
+        const SIZE: u64 = 4096;
+        const OVERLAP: u64 = 2048;
+        let mut buf = vec![0u8; SIZE as usize];
+
+        while self.sp_rev != 0 {
+            let start = self.sp_rev.saturating_sub(SIZE);
+            let mut chunk = if let Some(chunk) = self.source.as_single_chunk() {
+                let start = start as usize;
+                let end: usize = min(chunk.len() as usize, start + SIZE as usize);
+                std::borrow::Cow::from(&chunk[start..end])
+            } else {
+                let n = self.source.copy_to(start, &mut buf);
+                std::borrow::Cow::from(&buf[..n])
+            };
+
+            let mut found = None;
+            let mut pos = 0;
+            loop {
+                match self.parser {
+                    ParserRef::Interpreted(parsing_machine) => {
+                        match parsing_machine.do_parse(&mut chunk, pos) {
+                            Ok((mut caps, sp)) => {
+                                pos = sp;
+                                if caps.is_empty() {
+                                    continue;
+                                }
+                                caps.iter_mut().for_each(|cap| {
+                                    cap.start += start;
+                                    cap.end += start;
+                                });
+                                found = Some((caps, sp));
+                            }
+                            Err(_) => break,
+                        }
+                    }
+                    ParserRef::Jit(jit) => match jit.do_parse(&mut chunk, pos, true) {
+                        Ok((mut caps, sp)) => {
+                            pos = sp;
+                            if caps.is_empty() {
+                                continue;
+                            }
+                            caps.iter_mut().for_each(|cap| {
+                                cap.start += start;
+                                cap.end += start;
+                            });
+                            found = Some((caps, sp));
+                        }
+                        Err(_) => break,
+                    },
+                }
+            }
+
+            match found {
+                Some((caps, sp)) => {
+                    self.sp_rev = start + sp;
+                    return Some(caps);
+                }
+                None => {
+                    self.sp_rev = self.sp_rev.saturating_sub(SIZE - OVERLAP);
+                }
+            }
+        }
+
+        None
     }
 }

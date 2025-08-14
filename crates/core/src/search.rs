@@ -66,8 +66,8 @@ pub enum Searcher {
     Finder(Finder),
     FinderRev(FinderRev),
 
-    /// Forward search
     Regex(Regex),
+    RegexRev(Regex),
 }
 
 impl Searcher {
@@ -77,7 +77,9 @@ impl Searcher {
             bail!("Empty pattern");
         }
 
-        if options.is_regex {
+        if options.is_regex && options.is_reversed {
+            Self::create_regex_rev(pattern, options)
+        } else if options.is_regex {
             Self::create_regex(pattern, options)
         } else if options.is_reversed {
             Ok(Self::create_rev(pattern, options))
@@ -96,9 +98,13 @@ impl Searcher {
         Ok((searcher, pattern))
     }
 
-    fn create_regex(patt: &str, _options: &SearchOptions) -> anyhow::Result<Searcher> {
-        // TODO currently options not supported
+    fn create_regex_rev(patt: &str, _options: &SearchOptions) -> anyhow::Result<Searcher> {
+        let regex = Regex::new(patt)?;
+        let searcher = Searcher::RegexRev(regex);
+        Ok(searcher)
+    }
 
+    fn create_regex(patt: &str, _options: &SearchOptions) -> anyhow::Result<Searcher> {
         let regex = Regex::new(patt)?;
         let searcher = Searcher::Regex(regex);
         Ok(searcher)
@@ -137,6 +143,11 @@ impl Searcher {
                 let iter = regex.captures((source, stop));
                 MatchIter::Regex(iter)
             }
+            Searcher::RegexRev(regex) => {
+                let source = PTSliceSource::new(slice);
+                let iter = regex.captures((source, stop));
+                MatchIter::RegexRev(iter)
+            }
             Searcher::Finder(finder) => {
                 let source = PTSliceSource::new(slice);
                 let iter = finder.iter((source, stop));
@@ -154,6 +165,7 @@ impl Searcher {
         let is_regex = matches!(self, Self::Regex(..));
         let (is_case_sensitive, is_reversed) = match self {
             Searcher::Regex(_) => (false, false),
+            Searcher::RegexRev(_) => (false, true),
             Searcher::Finder(finder) => (finder.is_case_sensitive(), false),
             Searcher::FinderRev(finder) => (finder.is_case_sensitive(), true),
         };
@@ -181,6 +193,7 @@ pub enum MatchIter<'a, 'b> {
     Finder(FinderIter<'a, (PTSliceSource<'a, 'b>, Arc<AtomicBool>)>),
     FinderRev(FinderIterRev<'a, (PTSliceSource<'a, 'b>, Arc<AtomicBool>)>),
     Regex(CaptureIter<'a, (PTSliceSource<'a, 'b>, Arc<AtomicBool>)>),
+    RegexRev(CaptureIter<'a, (PTSliceSource<'a, 'b>, Arc<AtomicBool>)>),
 }
 
 impl<'a, 'b> Iterator for MatchIter<'a, 'b> {
@@ -204,7 +217,13 @@ impl<'a, 'b> Iterator for MatchIter<'a, 'b> {
             }
             MatchIter::Regex(capture_iter) => {
                 let caps = capture_iter.next()?;
-                log::info!("CAPS: {caps:?}");
+                let cap = &caps[0];
+                Some(SearchMatch {
+                    range: cap.range().into(),
+                })
+            }
+            MatchIter::RegexRev(capture_iter) => {
+                let caps = capture_iter.next_back()?;
                 let cap = &caps[0];
                 Some(SearchMatch {
                     range: cap.range().into(),

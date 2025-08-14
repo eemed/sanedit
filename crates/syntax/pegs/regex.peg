@@ -27,15 +27,15 @@ digit = [0..9];
 
 @show group = "(" regex ")";
 
-@show brackets = "[" neg? (!"]" (range / backspace / ch))* "]";
-@show backspace = "\b";
+@show brackets = "[" neg? (!"]" (range / char_classes / backspace / ch))* "]";
+@show backspace = "\\b";
 @show neg = "^";
 
 @show range = ch "-" ch;
-ch = hex / escaped / byte;
-@show byte = .;
+ch = hex / escaped / any_utf8;
+@show any_utf8 = [\u{0}..\u{10ffff}];
 
-hex = "\x" hex_value;
+hex = "\\x" hex_value;
 @show hex_value = hex_digit hex_digit;
 hex_digit = [a..zA..Z0..9];
 
@@ -69,5 +69,5 @@ char_classes = "\\" (
 @show cc_null = "0";
 @show cc_control = "c" [A..Z];
 
-codepoint = "\u" "{" codepoint_digits "}";
+codepoint = "\\u{" codepoint_digits "}";
 @show codepoint_digits = hex_digit+;

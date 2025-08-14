@@ -24,7 +24,6 @@ pub(crate) enum Token {
     End,
     LBracket,
     RBracket,
-    /// Character >= unicode 0080
     Char(char),
     Byte(u8),
     Range,
@@ -337,6 +336,7 @@ impl<R: io::Read> Lexer<R> {
                     }
                     Some('u') => {
                         self.advance()?;
+                        self.read.consume('{')?;
                         let hex = self.consume_hex()?;
                         if hex.len() > 6 {
                             bail!(
@@ -345,6 +345,7 @@ impl<R: io::Read> Lexer<R> {
                                 self.read.pos()
                             );
                         }
+                        self.read.consume('}')?;
                         let num = u32::from_str_radix(&hex, 16)?;
                         match char::from_u32(num) {
                             Some(c) => Ok(Token::Char(c)),

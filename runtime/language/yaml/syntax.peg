@@ -35,10 +35,10 @@ bool = "true" / "false";
 string = "\"" string_inner "\"";
 
 @show @highlight(string)
-char = "'" ([^\u0..\u19\u27\u5c])* "'";
+char = "'" ([^\u{0}..\u{19}\u{27}\u{5c}])* "'";
 
 @show @completion @highlight(string)
-string_inner = ([^\u0..\u19\u22\u5c])*;
+string_inner = ([^\u{0}..\u{19}\u{22}\u{5c}])*;
 
 @show @highlight
 comment = "#" (!nl .)*;

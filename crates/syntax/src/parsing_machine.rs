@@ -131,8 +131,9 @@ impl ParsingMachine {
     pub fn captures<'a, B: ByteSource>(&'a self, reader: B) -> CaptureIter<'a, B> {
         CaptureIter {
             parser: ParserRef::Interpreted(self),
-            source: reader,
             sp: 0,
+            sp_rev: reader.len(),
+            source: reader,
         }
     }
 
@@ -166,7 +167,7 @@ impl ParsingMachine {
         // println!("{:?}", self.program);
         loop {
             let op = &self.program.ops[ip];
-            // println!("SP: {sp}, op: {op:?}");
+            // println!("SP: {sp}, ip: {ip}, op: {op:?}");
 
             match op {
                 Jump(l) => {
@@ -442,5 +443,19 @@ mod test {
         let parser = ParsingMachine::from_read(std::io::Cursor::new(peg)).unwrap();
         let result = parser.parse(content);
         assert!(result.is_ok(), "Parse failed with {result:?}");
+    }
+
+    #[test]
+    fn parse_any_utf8() {
+        let peg = r"any = [\u{0}..\u{10ffff}];";
+        let parser = ParsingMachine::from_read(std::io::Cursor::new(peg)).unwrap();
+
+        for i in 0..'\u{10ffff}' as u32 {
+            if let Some(ch) = char::from_u32(i) {
+                let content = ch.to_string();
+                let result = parser.parse(content.as_str());
+                assert!(result.is_ok(), "Failed to parse char: {ch:?},  {result:?}");
+            }
+        }
     }
 }

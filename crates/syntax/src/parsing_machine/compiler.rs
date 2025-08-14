@@ -502,15 +502,15 @@ mod test {
 
     #[test]
     fn compile_recovery_small() {
-        let peg = "
+        let peg = r#"
             document = _ value _;
-            WHITESPACE = [ \\t\\r\\n];
+            WHITESPACE = [ \t\r\n];
             _ = WHITESPACE*;
-            value = \"abba\";
-            single = [\\uff];
-            range = [\\u00..\\u20];
-            combi = [\\u0..\\u20\\u25];
-            ";
+            value = "abba";
+            single = [\u{ff}];
+            range = [\u{00}..\u{20}];
+            combi = [\u{0}..\u{20}\u{25}];
+            "#;
         let rules = Rules::parse(std::io::Cursor::new(peg)).unwrap();
 
         let compiler = Compiler::new(&rules);

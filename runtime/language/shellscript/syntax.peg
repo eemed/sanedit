@@ -1,17 +1,19 @@
-document = (string / var / comment / keyword / builtin / constant / operator / alpha / .)*;
+document = (string / identifier / comment / keyword / builtin / constant / operator / alpha / .)*;
 
 alpha = [a..zA..Z0..9_]+;
 
 @show @highlight
 string    = qstring / sstring;
-qstring = "\"" (var / [^"\n])* "\"";
+qstring = "\"" (identifier / [^"\n])* "\"";
 sstring = "'" [^'\n]* "'";
 
 @show @highlight(identifier)
+identifier = var / var2;
 var = "$" [A..Za..z0..9_]+ ![A..Za..z0..9_];
+var2 = "${" (!"}" .)* "}";
 
 @show @highlight
-operator = [\[\]{}()\\;:,.<>&$|=+*/?!<>];
+operator = [\[\]{}()\\;:,<>&$|=+*?!<>];
 
 @show @highlight
 keyword =  (
@@ -104,7 +106,7 @@ builtin = (
     "alias"
     ) &(ws / ":" / ";");
 
-ws              = space*;
+ws              = space / nl;
 WHITESPACE      = space / nl;
 space           = [ \t];
 

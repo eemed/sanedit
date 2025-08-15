@@ -1,9 +1,12 @@
-document = ( separated / (!stop .)* stop)*;
-separated = code / identifier / keyword / preproc / comment / operator / string;
+document = list? ( separated / ws+ / .)*;
+separated = code / identifier / keyword / preproc / comment / operator / string / specials / list;
 WHITESPACE = [ \t];
 ws = WHITESPACE;
 nl = "\n" / "\r\n";
 stop = WHITESPACE+ / nl;
+
+@show @highlight(operator)
+list = nl "*"+;
 
 preproc = special / rectangle / angle / tags;
 @show @highlight(preproc)
@@ -13,7 +16,7 @@ rectangle = "["+ (!"]" .)* "]"+;
 @show @highlight(preproc)
 angle = "<<" (!">>" .)* ">>";
 @show @highlight(preproc)
-tags = [a..zA..Z0..9.]+ ":" ":"? [a..zA..Z0..9.-]* "[" (!"]" .)* "]";
+tags = [a..zA..Z0..9.]+ ":" ":"? [a..zA..Z0..9./_-]* "[" (!"]" .)* "]";
 
 @show @highlight(default)
 code = fenced_code / dash / dot / underscore;
@@ -42,7 +45,9 @@ description = "." &[a..zA..Z0..9] (!nl .)* nl;
 preindent = nl ws+ (!nl .)* nl;
 
 @show @highlight(operator)
-operator = ("*"+ / "."+ / "-"+ / "+"+ / "'''") &stop;
+operator = ops / table_border;
+ops = ("*"+ / "."+ / "-"+ / "+"+ / "'''") &stop;
+table_border = "|==" "="* nl;
 
 @show @highlight(comment)
 comment = block_comment / line_comment;
@@ -59,6 +64,8 @@ escape_char     = "0" / "t" / "n" / "r" / "'" / "`" / "\"" / "\\";
 # These are found in text
 keyword = (text (letter / bold / subscript / superscript / force / emphtwo / emph / escape))+;
 text = [a..zA..Z0..9-]*;
+@show @highlight(keyword)
+specials = ("NOTE" / "WARNING" / "IMPORTANT" / "TIP" / "CAUTION") &":";
 
 @show @highlight(operator)
 bold = "*" (!(nl / "*") ( escape / .))+ "*";

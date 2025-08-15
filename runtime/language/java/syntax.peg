@@ -14,8 +14,9 @@ keyword = (
             "implements" / "instanceof" / "enum" / "break" / "throw" "s"? /
             "static" / "synchronized" / "transient" / "try" / "catch" / "var" /
             "volatile" / "while" / "package" / "exports" / "requires" / "module" /
-            "do" / "abstract" / "assert" / "this" / "import"
+            "do" / "abstract" / "assert" / "this" 
           ) &stop;
+
 
 @show @highlight
 string = char / sstring;
@@ -37,7 +38,9 @@ line_comment = "//" (todo / (!nl .))* nl;
 block_comment = "/*" (todo / (!"*/" .))* "*/";
 
 
-preproc = annotation;
+preproc = annotation / preproc_words;
+@show @highlight(preproc)
+preproc_words = "import" &stop;
 @show @highlight(preproc)
 annotation = "@" [A..Za..z0..9_]+;
 

@@ -217,14 +217,14 @@ impl<'a, 'b> Iterator for MatchIter<'a, 'b> {
             }
             MatchIter::Regex(capture_iter) => {
                 let caps = capture_iter.next()?;
-                let cap = &caps[0];
+                let cap = caps.last().unwrap();
                 Some(SearchMatch {
                     range: cap.range().into(),
                 })
             }
             MatchIter::RegexRev(capture_iter) => {
                 let caps = capture_iter.next_back()?;
-                let cap = &caps[0];
+                let cap = caps.last().unwrap();
                 Some(SearchMatch {
                     range: cap.range().into(),
                 })

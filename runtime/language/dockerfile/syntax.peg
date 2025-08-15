@@ -15,21 +15,24 @@ sstring = "\"" (escape  / [^"])* "\"";
 escape = "\\" .;
 
 @show @highlight
-keyword =   "ADD" /
-    "ARG" /
-    "CMD" /
-    "COPY" /
-    "ENTRYPOINT" /
-    "ENV" /
-    "EXPOSE" /
-    "FROM" /
-    "HEALTHCHECK" /
-    "LABEL" /
-    "MAINTAINER" /
-    "ONBUILD" /
-    "RUN" /
-    "SHELL" /
-    "STOPSIGNAL" /
-    "USER" /
+keyword = (
+    "WORKDIR"/
     "VOLUME" /
-    "WORKDIR";
+    "USER" /
+    "STOPSIGNAL" /
+    "SHELL" /
+    "RUN" /
+    "ONBUILD" /
+    "MAINTAINER" /
+    "LABEL" /
+    "HEALTHCHECK" /
+    "FROM" /
+    "EXPOSE" /
+    "ENV" /
+    "ENTRYPOINT" /
+    "COPY" /
+    "CMD" /
+    "AS" /
+    "ARG" /
+    "ADD"
+    ) &ws;

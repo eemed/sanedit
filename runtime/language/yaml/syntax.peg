@@ -8,11 +8,11 @@ ws = WHITESPACE / nl;
 block = (name assign_op)+ value? (!nl .)* nl;
 
 @show @highlight(operator)
-assign_op = ":";
+assign_op = ":" ws;
 
 @show @completion @highlight(identifier)
-name = [a..zA..Z0..9_-]+;
-value = string / char / bool / dash / array / number;
+name = [a..zA..Z0..9_-]+ / sstring;
+value = block / string / char / bool / dash / array / number;
 dash = dash_op (!nl (block / string / char / .))*;
 
 @show @highlight(operator)
@@ -32,16 +32,18 @@ array_sep = ",";
 bool = "true" / "false";
 
 @show @highlight
-string = "\"" string_inner "\"";
+string = sstring;
+
+sstring = "\"" string_inner "\"";
 
 @show @highlight(string)
-char = "'" ([^\u{0}..\u{19}\u{27}\u{5c}])* "'";
+char = "'" ([^\u{0}..\u{19}\u{27}])* "'";
 
-@show @completion @highlight(string)
-string_inner = ([^\u{0}..\u{19}\u{22}\u{5c}])*;
+@show @completion
+string_inner = ([^\u{0}..\u{19}\u{22}])*;
 
 @show @highlight
 comment = "#" (!nl .)*;
 
 @show @highlight(constant)
-number = [0..9]+ ("." [0..9])*;
+number = [0..9]+ ("." [0..9])* &ws;

@@ -583,6 +583,8 @@ fn set_language(editor: &mut Editor, id: ClientId) -> ActionResult {
         .on_confirm(|editor, id, input| {
             let text = getf!(input.text());
             let lang = Language::from(text);
+            editor.load_language(&lang, false);
+
             let (win, buf) = editor.win_buf_mut(id);
             buf.language = Some(lang);
             *win.view_syntax() = ViewSyntax::default();

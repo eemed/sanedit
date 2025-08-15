@@ -16,7 +16,7 @@ _ = WHITESPACE*;
 value =  object / array / number / string / constant;
 
 @show @whitespaced @highlight
-object = "{" member ("," member)* "}";
+object = "{" (member ("," member)*)? "}";
 
 @show @whitespaced @highlight
 member = identifier ":" value;

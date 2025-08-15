@@ -61,18 +61,25 @@ pub(crate) struct WeztermPane {
     pane: usize,
 }
 
+fn cmd_ok(cmd: &mut Command) -> bool {
+    match cmd.status() {
+        Ok(status) => status.success(),
+        Err(_) => false,
+    }
+}
+
 impl WeztermPane {
     fn exists(&self, shell: &str) -> bool {
         let Ok(current_pane) = std::env::var("WEZTERM_PANE") else {
             return false;
         };
         let cmd = format!("wezterm cli activate-pane --pane-id {}", self.pane);
-        if !Command::new(shell).args(["-c", &cmd]).output().is_ok() {
+        if !cmd_ok(Command::new(shell).args(["-c", &cmd])) {
             return false;
         }
 
         let cmd = format!("wezterm cli activate-pane --pane-id {current_pane}");
-        if !Command::new(shell).args(["-c", &cmd]).output().is_ok() {
+        if !cmd_ok(Command::new(shell).args(["-c", &cmd])) {
             return false;
         }
 

@@ -20,7 +20,8 @@ class = [A..Z] alpha;
 ops = [\[\]{}():,.<>&|=+*/?!<>-];
 
 @show @highlight(constant)
-constant = "true" / "false" / "undefined" / "null" / "globalThis" / "arguments" / number;
+constant = "true" / "false" / "undefined" / "null" / "globalThis" / "arguments" / number / uppercase_constant;
+uppercase_constant = [A..Z] [A..Z0..9_]* &end;
 
 @show @highlight(comment)
 comment = line_comment / block_comment;
@@ -74,7 +75,7 @@ preproc_words = ("import" / "from" / "export" / "default" !":" / "as") &ws;
 @show @highlight(special)
 special = "console" &(ws / ".");
 
-end = ws / ";" / "(" / "." / ":";
+end = ws / ";" / "(" / "." / ":" / "=";
 @show @highlight(keyword)
 keyword =  words / simple_words / "default" &(ws / ":");
 simple_words = ("yield" / "await" / "instanceof" / "break"/ "extends" / "static" / "const" / "async" / "return"/ "in" / "of" / "continue" / "let" / "var" ) &(ws / ";");

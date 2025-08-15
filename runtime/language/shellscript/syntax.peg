@@ -1,6 +1,7 @@
 document = (string / identifier / comment / keyword / builtin / constant / operator / alpha / .)*;
 
-alpha = [a..zA..Z0..9_]+;
+alpha = [a..zA..Z0..9_.-]+;
+stop = ws / ";";
 
 @show @highlight
 string    = qstring / sstring;
@@ -44,7 +45,7 @@ keyword =  (
     "continue" /
     "case" /
     "break"
-    ) &(ws / ";" / ":");
+    ) &stop;
 
 
 @show @highlight
@@ -52,11 +53,10 @@ constant = boolean / number;
 boolean = (
     "true" /
     "false"
-    ) &(ws / ":" / ";");
-number = digit+;
+    ) &stop;
+number = digit+ &stop;
 digit = [0..9];
 
-@show @highlight(special)
 builtin = (
     "wait" /
     "unset" /
@@ -104,7 +104,7 @@ builtin = (
     "bind" /
     "bg" /
     "alias"
-    ) &(ws / ":" / ";");
+    ) &stop;
 
 ws              = space / nl;
 WHITESPACE      = space / nl;

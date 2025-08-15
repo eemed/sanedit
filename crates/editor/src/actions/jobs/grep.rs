@@ -234,9 +234,9 @@ impl Grep {
 
         let text = {
             let line = EndOfLine::strip_eol(&line);
-            let mut line = String::from(&line);
-            line = line.replace("\t", "        ");
-            line
+            let line = String::from(&line);
+            // Keep byteoffset the same
+            line.replace("\t", " ").replace("\n", " ")
         };
 
         GrepMatch {

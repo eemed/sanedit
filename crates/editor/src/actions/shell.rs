@@ -75,6 +75,7 @@ impl Job for ShellCommand {
             let escaped_command = escape_cmd(&command);
 
             let exists = manager.has_linked_window(&shell);
+            log::info!("Hash linked window: {exists}");
             if exists {
                 manager.reset_linked_window(&shell)?;
                 manager.run(&shell, &escaped_command)?;

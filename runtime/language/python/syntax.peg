@@ -2,7 +2,7 @@ document = (separated / alpha_num / .)*;
 separated = todo / keyword / string / constant / comment / preproc / type / function / operator;
 
 alpha_num = [a..zA..Z0..9_]+;
-break = ws+ / nl / "[" / "]" / "(" / ")" / ";" / "," / ":" / ".";
+break = ws / nl / "[" / "]" / "(" / ")" / ";" / "," / ":" / "." / "=";
 WHITESPACE = [ \t];
 nl = "\n" / "\r\n";
 ws = WHITESPACE;
@@ -11,7 +11,7 @@ ws = WHITESPACE;
 keyword = ( "continue" / "def" / "del" / "elif" / "else" / "except" /
  "finally" / "for" / "global" / "if" /
  "lambda" / "nonlocal" / "pass" / "raise" / "return" / "try" /
- "while" / "with" / "yield" / "assert" / "is" / "in" / "break" / "as"
+ "while" / "with" / "yield" / "assert" / "is" / "in" / "break" / "as" / "class"
  ) &break;
 
 @show @highlight

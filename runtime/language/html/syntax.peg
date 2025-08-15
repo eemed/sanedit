@@ -1,5 +1,5 @@
 document = separated*;
-separated = comment / style_tag / script_tag / macro / tag / string / alpha / ws+ / . ;
+separated = comment / style_tag / script_tag / macro / entity / tag / string / alpha / ws+ / . ;
 
 WHITESPACE = ws;
 ws = [ \t] / nl;
@@ -14,7 +14,10 @@ comment = "<!--" (!"-->" (todo / .))* "-->";
 @show @highlight(preproc)
 macro = "<!" (!">" .)* ">";
 
-tag = tag_no_end / tag_open (!tag_close (separated / .))* tag_close / one_tag ;
+@show @highlight(special)
+entity = "&" [^;]* ";";
+
+tag = tag_no_end / tag_open (!tag_close (separated / .))* tag_close / one_tag / tag_open / tag_close ;
 
 @whitespaced
 style_tag = "<" style attr* ">" style_content "</" style ">";
@@ -59,6 +62,7 @@ tag_name =
     "video" /
     "var" /
     "underline" /
+    "ul" /
     "tt" /
     "track" /
     "tr" /
@@ -93,9 +97,11 @@ tag_name =
     "path" /
     "param" /
     "paragraphs" /
+    "p" /
     "output" /
     "option" /
     "optgroup" /
+    "ol" /
     "object" /
     "noscript" /
     "noembed" /
@@ -109,6 +115,7 @@ tag_name =
     "main" /
     "list" /
     "link" /
+    "li" /
     "legend" /
     "label" /
     "keygen" /
@@ -118,19 +125,18 @@ tag_name =
     "ins" /
     "input" /
     "image" /
-    "Iframes" /
     "html" /
     "hr" /
-    "h1" /
-    "h2" /
-    "h3" /
-    "h4" /
-    "h5" /
-    "h6" /
     "hgroup" /
     "heading" /
     "header" /
     "head" /
+    "h6" /
+    "h5" /
+    "h4" /
+    "h3" /
+    "h2" /
+    "h1" /
     "frameset" /
     "frame" /
     "form" /
@@ -178,5 +184,6 @@ tag_name =
     "anchor" /
     "address" /
     "acronym" /
-    "abbreviation"
+    "abbreviation" /
+    "Iframes"
     ;

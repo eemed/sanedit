@@ -10,12 +10,8 @@ pub struct Diagnostic {
 
 impl Diagnostic {
     pub fn new(severity: Severity, range: BufferRange, line: u64, description: &str) -> Diagnostic {
-        let description = description
-            .lines()
-            .map(|line| line.replace("\t", "        "))
-            .collect::<Vec<String>>()
-            .join(" ");
-
+        // Keep byteoffset the same
+        let description = description.replace("\t", " ").replace("\n", " ");
         Diagnostic {
             severity,
             range,

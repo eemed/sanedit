@@ -2,7 +2,7 @@ use std::fs::File;
 use std::io::Write;
 use std::ops::Deref;
 use std::panic;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, OnceLock};
 
 use log::LevelFilter;
@@ -34,7 +34,7 @@ pub(crate) fn init_panic() {
     }));
 }
 
-pub(crate) fn init_logger(debug: bool) {
+pub(crate) fn init_logger(log_file: &Path, debug: bool) {
     static LOGGER: OnceLock<Option<Logger>> = OnceLock::new();
     let logger = LOGGER.get_or_init(|| {
         let level = if debug {
@@ -48,10 +48,10 @@ pub(crate) fn init_logger(debug: bool) {
         //     .map(String::from)
         //     .collect();
         // Logger::new(level, LOG_FILE, ignore)
-        let tmp = sanedit_core::tmp_dir()?;
-        let log_file = tmp.join("sanedit.log");
+        // let tmp = sanedit_core::tmp_dir()?;
+        // let log_file = tmp.join(format!("sanedit-{hash}.log"));
 
-        Some(Logger::new(level, log_file, vec![]))
+        Some(Logger::new(level, log_file.to_path_buf(), vec![]))
     });
 
     if let Some(logger) = logger {

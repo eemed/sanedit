@@ -34,18 +34,19 @@ struct Cli {
     /// connect to an existing instance
     #[argh(option)]
     connect: Option<PathBuf>,
+
+    /// set log file location
+    #[argh(option)]
+    log_file: Option<PathBuf>,
 }
 
 fn main() {
     let cli: Cli = argh::from_env();
 
-    logging::init_panic();
-    logging::init_logger(cli.debug);
-
     // let open_files = cli.file.clone().map(|f| vec![f]).unwrap_or_default();
     let config_dir = cli.config_dir.clone();
     let working_dir = cli.working_dir.clone();
-    let socket_name = {
+    let socket_hash = {
         let cwd = std::env::current_dir();
         let dir = working_dir
             .as_ref()
@@ -61,10 +62,23 @@ fn main() {
         }
         format!("{:x}", hasher.finish())
     };
+    let tmp = sanedit_core::tmp_dir();
+    if tmp.is_none() {
+        eprintln!("TMP directory not accessible");
+        return;
+    }
+    let tmp = tmp.unwrap();
+
+    let log_file = cli
+        .log_file
+        .unwrap_or_else(|| tmp.join(format!("sanedit-{socket_hash}.log")));
+    logging::init_panic();
+    logging::init_logger(&log_file, cli.debug);
+
     let connect = cli.connect.is_some();
     let socket = cli
         .connect
-        .unwrap_or_else(|| PathBuf::from(format!("/tmp/{socket_name}-sanedit.sock")));
+        .unwrap_or_else(|| PathBuf::from(format!("/tmp/{socket_hash}-sanedit.sock")));
     let socket_start_opts = SocketStartOptions { file: cli.file };
     let try_connect = connect || socket.try_exists().unwrap_or(false);
     if try_connect {
@@ -107,4 +121,5 @@ fn main() {
     }
 
     let _ = fs::remove_file(socket);
+    let _ = fs::remove_file(&log_file);
 }

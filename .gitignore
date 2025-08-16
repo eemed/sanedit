@@ -10,3 +10,4 @@ docs/images/*.png
 crates/samples
 runtime/config.toml
 deb/
+crates/*.log

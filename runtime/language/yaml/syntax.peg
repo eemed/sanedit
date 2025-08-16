@@ -1,26 +1,27 @@
-document =  (comment / block / value / .)*;
+document =  (comment / block / value / skip / .)*;
 
 WHITESPACE = [ \t];
 nl = "\r\n" / "\n";
 ws = WHITESPACE / nl;
+skip = (!ws .)+;
 
 @whitespaced
-block = (name assign_op)+ value? (!nl .)* nl;
+block = (name assign_op)+ (!nl (value / skip / .))*;
 
 @show @highlight(operator)
 assign_op = ":" ws;
 
 @show @completion @highlight(identifier)
 name = [a..zA..Z0..9_-]+ / sstring;
-value = block / string / char / bool / dash / array / number;
-dash = dash_op (!nl (block / string / char / .))*;
+value = block / string / char / bool / dash / array / number / comment;
+dash = dash_op (!nl (block / string / char / comment / .))*;
 
 @show @highlight(operator)
 dash_op =  "-";
 
 @whitespaced
 array = array_open (array_element (array_sep array_element )*)? array_close;
-array_element = (!(array_close / array_sep) .)*;
+array_element = (!(array_close / array_sep) (value / .))*;
 @show @highlight(operator)
 array_open = "[";
 @show @highlight(operator)

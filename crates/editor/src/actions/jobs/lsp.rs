@@ -452,7 +452,7 @@ impl LSPJob {
             .prompt("Select code action")
             .on_confirm(move |editor, id, out| {
                 let n = getf!(out.number()) as usize;
-                let action = &actions[n - 1];
+                let action = getf!(actions.get(n - 1));
 
                 if action.is_resolved() {
                     let edit = action.workspace_edit().unwrap();

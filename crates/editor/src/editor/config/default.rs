@@ -39,38 +39,46 @@ impl Config {
 }
 
 impl EditorConfig {
-    pub(crate) fn default_language_map() -> Map<String, Vec<String>> {
+    #[rustfmt::skip]
+    pub(crate) fn default_language_map() -> Map<String, Detect> {
         macro_rules! map {
-            ($keymap:ident, $($ft: expr, $patterns:expr),+,) => {
-                $(
-                    $keymap.insert($ft.into(), $patterns.into_iter().map(String::from).collect());
-                 )*
-            }
+            ($keymap:ident, $ft: expr, $globs:expr, []) => {
+                $keymap.insert(
+                    $ft.into(),
+                    Detect::new($globs.into_iter().map(String::from).collect(), vec![]),
+                );
+            };
+            ($keymap:ident, $ft: expr, $globs:expr, $shebangs:expr) => {
+                $keymap.insert(
+                    $ft.into(),
+                    Detect::new(
+                        $globs.into_iter().map(String::from).collect(),
+                        $shebangs.into_iter().map(String::from).collect(),
+                    ),
+                );
+            };
         }
 
-        let mut ftmap = Map::default();
+        let mut d = Map::default();
 
         // Using LSP language identifiers
-        #[rustfmt::skip]
-        map!(ftmap,
-             "rust", ["**/*.rs"],
-             "toml", ["**/Cargo.lock"],
-             "yaml", ["**/*.yml"],
-             "markdown", ["**/*.md"],
-             "make", ["**/Makefile"],
-             "javascriptreact", ["**/*.jsx"],
-             "typescriptreact", ["**/*.tsx"],
-             "javascript", ["**/*.js"],
-             "typescript", ["**/*.ts"],
-             "python", ["**/*.py"],
-             "shellscript", ["**/*.sh", "**/*.bash", "**/.bashrc"],
-             "asciidoc", ["**/*.adoc"],
-             "glsl", ["**/*.vert", "**/*.frag", "**/*.geom", "**/*.tesc", "**/*.tese", "**/*.comp"],
-             "css", ["**/*.css", "**/*.scss", "**/*.sass"],
-             "dockerfile", ["**/Dockerfile", "**/Dockerfile.*"],
-        );
+        map!(d, "asciidoc",        ["**/*.adoc"],                                                                  []);
+        map!(d, "css",             ["**/*.css", "**/*.scss", "**/*.sass"],                                         []);
+        map!(d, "dockerfile",      ["**/Dockerfile", "**/Dockerfile.*"],                                           []);
+        map!(d, "glsl",            ["**/*.vert", "**/*.frag", "**/*.geom", "**/*.tesc", "**/*.tese", "**/*.comp"], []);
+        map!(d, "javascript",      ["**/*.js"],                                                                    []);
+        map!(d, "javascriptreact", ["**/*.jsx"],                                                                   []);
+        map!(d, "make",            ["**/Makefile"],                                                                []);
+        map!(d, "markdown",        ["**/*.md"],                                                                    []);
+        map!(d, "python",          ["**/*.py"],                                                                    ["#!/usr/bin/env python3", "#!/usr/bin/env python"]);
+        map!(d, "rust",            ["**/*.rs"],                                                                    []);
+        map!(d, "shellscript",     ["**/*.sh", "**/*.bash", "**/.bashrc"],                                         ["#!/bin/bash", "#!/usr/bin/env bash", "#!/bin/sh" ]);
+        map!(d, "toml",            ["**/Cargo.lock"],                                                              []);
+        map!(d, "typescript",      ["**/*.ts"],                                                                    []);
+        map!(d, "typescriptreact", ["**/*.tsx"],                                                                   []);
+        map!(d, "yaml",            ["**/*.yml"],                                                                   []);
 
-        ftmap
+        d
     }
 }
 
@@ -324,8 +332,6 @@ pub(crate) fn normal() -> KeymapLayer {
         "alt+n", make_next_cursor_primary,
         "alt+N", make_prev_cursor_primary,
         "alt+d", remove_primary_cursor,
-        "alt+s",    new_cursor_to_next_search_match,
-        "alt+S",    new_cursor_to_all_search_matches,
         "alt+down", new_cursor_to_next_line,
         "alt+up",   new_cursor_to_prev_line,
 

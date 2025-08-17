@@ -1,5 +1,5 @@
 document = (separated / (!stop .)* stop)*;
-separated = keyword / string  / comment;
+separated = keyword / string  / comment / constant;
 
 stop = ws+ / nl / "[" / "]" / "(" / ")" / ";" / "<" / ">" / "," / ":" / ".";
 WHITESPACE = [ \t];
@@ -34,6 +34,13 @@ string =  sstring;
 char = "'" . "'";
 sstring = "\"" (escape / [^"])* "\"";
 escape = "\\" .;
+
+@show @highlight(constant)
+constant = number / boolean;
+number = digit+ ("." digit+)? &stop;
+digit = [0..9];
+
+boolean = ("true" / "false") &stop;
 
 @show @highlight(warn)
 todo = "TODO" / "XXX";

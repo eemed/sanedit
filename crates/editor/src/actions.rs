@@ -257,8 +257,6 @@ pub(crate) const COMMANDS: &[Action] = &[
     cursors::stop_selection,
     cursors::new_cursor_to_next_line,
     cursors::new_cursor_to_prev_line,
-    cursors::new_cursor_to_next_search_match,
-    cursors::new_cursor_to_all_search_matches,
     cursors::swap_selection_dir,
     cursors::make_next_cursor_primary,
     cursors::make_prev_cursor_primary,

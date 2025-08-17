@@ -89,6 +89,7 @@ fn graphemes(c: &mut Criterion) {
             }
         });
     });
+
     c.bench_function("grapheme_iterator_prev", |bench| {
         let large = io::Cursor::new(include_str!("large.txt"));
         let pt = PieceTree::from_reader(large).unwrap();

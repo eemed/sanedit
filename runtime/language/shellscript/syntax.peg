@@ -1,7 +1,7 @@
 document = (string / identifier / comment / keyword / builtin / constant / operator / alpha / .)*;
 
 alpha = [a..zA..Z0..9_.-]+;
-stop = ws / ";";
+stop = ws / ";" / ">";
 
 @show @highlight
 string    = qstring / sstring;

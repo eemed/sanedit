@@ -110,7 +110,6 @@ pub enum ThemeField {
     Selection,
     EndOfBuffer,
     TrailingWhitespace,
-    Symbols,
     Cursor,
     Completion,
     CompletionDescription,
@@ -192,7 +191,6 @@ impl AsRef<str> for ThemeField {
             Cursor => "cursor.normal",
             EndOfBuffer => "window.end_of_buffer",
             TrailingWhitespace => "window.trailing_whitespace",
-            Symbols => "window.symbols",
             Match => "window.match",
             Virtual => "window.virtual",
 

@@ -412,6 +412,51 @@ impl Window {
         }
     }
 
+    fn on_buffer_changed_undo_redo(&mut self, buf: &Buffer) {
+        self.view.syntax = ViewSyntax::default();
+
+        let Some(edit) = buf.last_edit() else {
+            return;
+        };
+        let old = &edit.buf;
+        let vstart = self.view.start();
+        let mark = old.mark(vstart);
+        let nmark_pos = buf.mark_to_pos(&mark);
+        self.view.set_offset(nmark_pos.pos());
+
+        for cursor in self.cursors.cursors_mut() {
+            let pos = cursor.pos();
+            match cursor.selection() {
+                Some(range) => {
+                    let mark = old.mark(range.start);
+                    let start_nmark_pos = buf.mark_to_pos(&mark);
+
+                    let mark = old.mark(range.end);
+                    let end_nmark_pos = buf.mark_to_pos(&mark);
+
+                    if start_nmark_pos.is_found() && end_nmark_pos.is_found() {
+                        cursor.select(start_nmark_pos.pos()..end_nmark_pos.pos());
+                        if range.end != pos {
+                            cursor.swap_selection_dir();
+                        }
+                    } else {
+                        cursor.stop_selection();
+                        cursor.goto(start_nmark_pos.pos());
+                    }
+                }
+                _ => {
+                    let mark = old.mark(pos);
+                    let nmark_pos = buf.mark_to_pos(&mark);
+                    cursor.goto(nmark_pos.pos());
+                }
+            }
+        }
+
+        self.ensure_cursor_on_grapheme_boundary(buf);
+        self.view.invalidate();
+        self.view.redraw(buf);
+    }
+
     /// Called when buffer is changed by another client and we should correct
     /// this window.
     pub fn on_buffer_changed(&mut self, buf: &Buffer) {
@@ -419,6 +464,11 @@ impl Window {
             return;
         };
         let changes = &edit.changes;
+        if changes.is_undo() || changes.is_redo() {
+            self.on_buffer_changed_undo_redo(buf);
+            return;
+        }
+
         changes.move_cursors(self.cursors.cursors_mut(), self.mode == Mode::Select);
 
         self.cursors.merge_overlapping();

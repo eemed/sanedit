@@ -7,7 +7,7 @@ use crate::{
     editor::{
         buffers::{BufferId, Buffers},
         hooks::Hook,
-        windows::{Cursors, Jump, JumpGroup, Jumps, Window, Zone},
+        windows::{Jump, JumpGroup, Jumps, Window, Zone},
         Editor,
     },
 };
@@ -16,7 +16,7 @@ use sanedit_server::ClientId;
 
 use sanedit_core::{
     movement::{next_line, prev_line},
-    Cursor, Searcher,
+    Cursor,
 };
 
 use super::{
@@ -64,66 +64,6 @@ fn new_cursor_to_prev_line(editor: &mut Editor, id: ClientId) -> ActionResult {
     let cursor = win.cursors.primary();
     let (pos, _col) = prev_line(&buf.slice(..), cursor, win.display_options());
     win.cursors.push_primary(Cursor::new(pos));
-    ActionResult::Ok
-}
-
-#[action("Cursors: New on next search match")]
-fn new_cursor_to_next_search_match(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, buf) = editor.win_buf_mut(id);
-    let last_search = &win.search.current;
-    let ppos = win.cursors.primary().pos();
-
-    let Ok(searcher) = Searcher::with_options(&last_search.pattern, &last_search.opts) else {
-        return ActionResult::Failed;
-    };
-    let slice = buf.slice(ppos..);
-    let mut iter = searcher.find_iter(&slice);
-    if let Some(mat) = iter.next() {
-        let mut range = mat.range();
-        range.start += ppos;
-        range.end += ppos;
-
-        let selecting = win.primary_cursor().selection().is_some();
-        if selecting {
-            win.cursors.push_primary(Cursor::new_select(range));
-        } else {
-            let cursor = win.cursors.primary_mut();
-            *cursor = Cursor::new_select(range);
-        }
-
-        mode_select(editor, id);
-    }
-
-    ActionResult::Ok
-}
-
-#[action("Cursors: New on each search match")]
-fn new_cursor_to_all_search_matches(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, buf) = editor.win_buf_mut(id);
-    // win.cursors.remove_secondary_cursors();
-
-    let last_search = &win.search.current;
-
-    let Ok(searcher) = Searcher::with_options(&last_search.pattern, &last_search.opts) else {
-        return ActionResult::Failed;
-    };
-    let slice = buf.slice(..);
-
-    let cursors: Vec<Cursor> = searcher
-        .find_iter(&slice)
-        .map(|mat| {
-            let range = mat.range();
-            Cursor::new_select(range)
-        })
-        .collect();
-
-    if cursors.is_empty() {
-        return ActionResult::Skipped;
-    }
-
-    win.cursors = Cursors::from(cursors);
-    mode_select(editor, id);
-
     ActionResult::Ok
 }
 

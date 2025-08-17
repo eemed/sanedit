@@ -27,7 +27,7 @@ impl Chars {
         let mut chars = vec![Char {
             character: ' ',
             extra: Some(Box::new(CharExtra { wide: grapheme })),
-            flags: flags::WIDE,
+            flags: flags::WIDE | flags::CONTINUE_START,
             len_in_buffer: len,
         }];
 
@@ -43,21 +43,21 @@ impl Chars {
         Chars { chars }
     }
 
-    fn from_str(string: &str, len: u64) -> Chars {
+    fn from_str_virtual(string: &str, len: u64) -> Chars {
         let mut chars = vec![];
         for ch in string.chars() {
             let ch2 = if chars.is_empty() {
                 Char {
                     character: ch,
                     extra: None,
-                    flags: Flags::default(),
+                    flags: flags::VIRTUAL | flags::CONTINUE_START,
                     len_in_buffer: len,
                 }
             } else {
                 Char {
                     character: ch,
                     extra: None,
-                    flags: flags::CONTINUE,
+                    flags: flags::VIRTUAL | flags::CONTINUE,
                     len_in_buffer: 0,
                 }
             };
@@ -121,6 +121,13 @@ mod flags {
 
     /// Just keep eol status so we can fetch it whenever
     pub(crate) const EOL: u8 = 1 << 3;
+
+    /// The display character is different than the actual character in buffer
+    /// or it may not exist at all in the buffer
+    pub(crate) const VIRTUAL: u8 = 1 << 4;
+
+    /// This char starts the continue block
+    pub(crate) const CONTINUE_START: u8 = 1 << 5;
 }
 
 #[derive(Debug, Clone, PartialEq, Hash, Default)]
@@ -143,7 +150,7 @@ impl Char {
         Char {
             character: ch,
             extra: None,
-            flags: Flags::default(),
+            flags: flags::VIRTUAL,
             len_in_buffer: 0,
         }
     }
@@ -184,6 +191,14 @@ impl Char {
 
     pub fn is_continue(&self) -> bool {
         self.flags & flags::CONTINUE != 0
+    }
+
+    pub fn is_continue_start(&self) -> bool {
+        self.flags & flags::CONTINUE_START != 0
+    }
+
+    pub fn is_virtual(&self) -> bool {
+        self.flags & flags::VIRTUAL != 0
     }
 }
 
@@ -362,35 +377,39 @@ fn tab_to_char(blen: u64, column: usize, options: &DisplayOptions) -> Chars {
         .unwrap_or(' ')
         .to_string();
     let tab = format!("{}{}", first, fill.repeat(width - 1));
-    Chars::from_str(&tab, blen)
+    Chars::from_str_virtual(&tab, blen)
 }
 
 fn eol_to_char(blen: u64, options: &DisplayOptions) -> Char {
-    let character = options
-        .replacements
-        .get(&Replacement::EOL)
-        .cloned()
-        .unwrap_or(' ');
+    let repl = options.replacements.get(&Replacement::EOL);
+    let character = repl.cloned().unwrap_or(' ');
+
+    let mut flags = flags::EOL;
+    if repl.is_some() {
+        flags |= flags::VIRTUAL;
+    }
 
     Char {
         character,
         extra: None,
-        flags: flags::EOL,
+        flags,
         len_in_buffer: blen,
     }
 }
 
 fn nbsp_to_char(blen: u64, options: &DisplayOptions) -> Char {
-    let character = options
-        .replacements
-        .get(&Replacement::NonBreakingSpace)
-        .cloned()
-        .unwrap_or(' ');
+    let repl = options.replacements.get(&Replacement::NonBreakingSpace);
+    let character = repl.cloned().unwrap_or(' ');
+
+    let mut flags = flags::EOL;
+    if repl.is_some() {
+        flags |= flags::VIRTUAL;
+    }
 
     Char {
         character,
         extra: None,
-        flags: Flags::default(),
+        flags,
         len_in_buffer: blen,
     }
 }
@@ -404,7 +423,7 @@ fn control_to_char(grapheme: String, blen: u64) -> Chars {
 
     // C1 control codes, unicode control codes of form [0xc2, xx]
     let hex: String = format!("<{:02x}>", grapheme.as_bytes()[1]);
-    Chars::from_str(&hex, blen)
+    Chars::from_str_virtual(&hex, blen)
 }
 
 fn ascii_control_to_char(byte: u8) -> Chars {
@@ -445,7 +464,7 @@ fn ascii_control_to_char(byte: u8) -> Chars {
         _ => unreachable!("non ascii control char"),
     };
 
-    Chars::from_str(rep, 1)
+    Chars::from_str_virtual(rep, 1)
 }
 
 pub fn grapheme_category(grapheme: &PieceTreeSlice) -> GraphemeCategory {

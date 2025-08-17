@@ -30,4 +30,8 @@ impl MarkResult {
             MarkResult::Found(n) => *n,
         }
     }
+
+    pub fn is_found(&self) -> bool {
+        matches!(self, MarkResult::Found(..))
+    }
 }

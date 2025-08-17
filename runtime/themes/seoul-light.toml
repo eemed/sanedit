@@ -4,7 +4,6 @@ statusline = "#b5b5b5,#000000,"
 statusline_no_focus = "#DADADA,#000000,"
 end_of_buffer = ",#4E4E4E,"
 trailing_whitespace = ",#7f755f,"
-symbols = ",#606060,"
 match = "#8FB88F,,"
 virtual = ",#999999,"
 

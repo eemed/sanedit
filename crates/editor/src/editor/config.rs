@@ -5,6 +5,7 @@ mod project;
 use std::{collections::VecDeque, path::Path, sync::Arc};
 
 use language::ConfigSnippet;
+use sanedit_core::Detect;
 use sanedit_messages::key::{try_parse_keyevents, KeyEvent};
 use sanedit_server::ClientId;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
@@ -90,7 +91,14 @@ impl Config {
 
         // Extend default detect from user configuration
         let mut detect = EditorConfig::default_language_map();
-        detect.extend(config.editor.language_detect);
+        for (lang, user_detect) in config.editor.language_detect {
+            match detect.get_mut(&lang) {
+                Some(detect) => detect.merge(user_detect),
+                None => {
+                    detect.insert(lang, user_detect);
+                }
+            }
+        }
         config.editor.language_detect = detect;
 
         config
@@ -262,7 +270,7 @@ pub(crate) struct EditorConfig {
     /// Language glob patterns
     /// By default the language is the extension of the file
     #[serde(skip_serializing)]
-    pub language_detect: Map<String, Vec<String>>,
+    pub language_detect: Map<String, Detect>,
 
     /// Copy text to clipboard when deleting
     pub copy_on_delete: bool,

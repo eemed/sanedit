@@ -99,7 +99,7 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> Option<FromEditorSharedMessage> {
                 col,
                 redraw::Cell {
                     text: ch.display().into(),
-                    style: if cell.is_virtual() { vstyle } else { style },
+                    style: if ch.is_virtual() { vstyle } else { style },
                 },
             );
         }
@@ -174,6 +174,7 @@ where
         let row_offset = point.y;
         let mut col_offset = point.x;
         let mut pos = ppos;
+        let mut in_continue = false;
 
         for i in 0..(view.cells().len() - row_offset) {
             let line = row_offset + i;
@@ -182,9 +183,19 @@ where
                 let col = col_offset + j;
                 let cell = &view.cells()[line][col];
 
-                if (!cell.is_virtual() && !cell.is_empty() && range.contains(&pos)) || cell.is_eof()
+                // Handle continuation chars as one block
+                if in_continue && !cell.is_continue() {
+                    in_continue = false;
+                }
+
+                if (in_continue || !cell.is_continue() && range.contains(&pos)) && !cell.is_empty()
+                    || cell.is_eof()
                 {
                     grid.at(line, col).style.merge(&style);
+
+                    if cell.is_continue_start() {
+                        in_continue = true;
+                    }
                 }
 
                 if !start_found && pos + cell.len_in_buffer() >= range.start {
@@ -196,7 +207,7 @@ where
 
                 pos += cell.len_in_buffer();
 
-                if pos >= range.end {
+                if pos >= range.end && !in_continue {
                     continue 'hls;
                 }
             }
@@ -223,11 +234,16 @@ fn draw_sigle_hl(grid: &mut Window, view: &View, style: Style, range: &BufferRan
     }
 
     let mut pos = vrange.start;
+    let mut in_continue = false;
     if let Some(point) = view.point_at_pos(pos) {
         for (i, row) in view.cells().iter().skip(point.y).enumerate() {
             let line = point.y + i;
             for (col, cell) in row.iter().enumerate() {
-                if (!cell.is_virtual() && !cell.is_empty() && range.contains(&pos)) || cell.is_eof()
+                if in_continue && !cell.is_continue() {
+                    in_continue = false;
+                }
+                if (in_continue || !cell.is_continue() && range.contains(&pos)) && !cell.is_empty()
+                    || cell.is_eof()
                 {
                     grid.at(line, col).style.merge(&style);
                 }
@@ -235,7 +251,7 @@ fn draw_sigle_hl(grid: &mut Window, view: &View, style: Style, range: &BufferRan
                 pos += cell.len_in_buffer();
             }
 
-            if pos >= range.end {
+            if pos >= range.end && !in_continue {
                 break;
             }
         }

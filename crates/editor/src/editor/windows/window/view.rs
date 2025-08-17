@@ -19,12 +19,8 @@ pub(crate) enum Zone {
 pub(crate) enum Cell {
     #[default]
     Empty,
-    // Continue, // Continuation of a previous char
     EOF, // End of file where cursor can be placed
     Char {
-        ch: Char,
-    },
-    Virtual {
         ch: Char,
     },
 }
@@ -33,7 +29,6 @@ impl Cell {
     pub fn char(&self) -> Option<&Char> {
         match self {
             Cell::Char { ch } => Some(ch),
-            Cell::Virtual { ch } => Some(ch),
             _ => None,
         }
     }
@@ -41,7 +36,6 @@ impl Cell {
     pub fn width(&self) -> usize {
         match self {
             Cell::Char { ch } => ch.width(),
-            Cell::Virtual { ch } => ch.width(),
             _ => 0,
         }
     }
@@ -64,12 +58,24 @@ impl Cell {
         matches!(self, Cell::EOF)
     }
 
-    pub fn is_virtual(&self) -> bool {
-        matches!(self, Cell::Virtual { .. })
-    }
-
     pub fn is_empty(&self) -> bool {
         matches!(self, Cell::Empty)
+    }
+
+    pub fn is_continue(&self) -> bool {
+        match self {
+            Cell::Empty => false,
+            Cell::EOF => false,
+            Cell::Char { ch } => ch.is_continue(),
+        }
+    }
+
+    pub fn is_continue_start(&self) -> bool {
+        match self {
+            Cell::Empty => false,
+            Cell::EOF => false,
+            Cell::Char { ch } => ch.is_continue_start(),
+        }
     }
 }
 
@@ -203,7 +209,7 @@ impl View {
                 if let Some(wrap) = self.options.replacements.get(&Replacement::Wrap) {
                     let char = Char::new_virtual(*wrap);
                     let wrap_ch_width = char.width();
-                    self.cells[line][col] = Cell::Virtual { ch: char };
+                    self.cells[line][col] = Cell::Char { ch: char };
                     col += wrap_ch_width;
                 }
 
@@ -418,11 +424,11 @@ impl View {
                             pos += ch.len_in_buffer();
                         }
                     }
-                    Cell::Virtual { .. } => {
-                        if point.y == y && point.x == x {
-                            return Some(pos);
-                        }
-                    }
+                    // Cell::Virtual { .. } => {
+                    //     if point.y == y && point.x == x {
+                    //         return Some(pos);
+                    //     }
+                    // }
                     _ => {}
                 }
             }

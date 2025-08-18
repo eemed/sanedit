@@ -1,28 +1,11 @@
-document = (separated / (!stop .)* stop)*;
-separated = keyword / string  / comment / constant;
+document = (separated / alpha / .)*;
+separated = keyword_line / string  / comment / constant / operator;
+alpha = [a..zA..Z0..9_-]+;
 
 stop = ws+ / nl / "[" / "]" / "(" / ")" / ";" / "<" / ">" / "," / ":" / ".";
 WHITESPACE = [ \t];
 nl = "\n" / "\r\n";
 ws = WHITESPACE;
-
-
-@show @highlight
-keyword = (
-          "action" / "anydata" / "anyxml" / "argument" / "augment" /
-          "base" / "belongs-to" / "bit" / "case" / "choice" / "config" /
-          "contact" / "container" / "default" / "description" / "deviate" /
-          "deviation" / "enum" / "error-app-tag" / "error-message" / "extension" /
-          "feature" / "fraction-digits" / "grouping" / "identity" / "if-feature" /
-          "import" / "include" / "input" / "key" / "leaf" / "leaf-list" /
-          "length" / "list" / "mandatory" / "max-elements" / "min-elements" /
-          "modifier" / "module" / "must" / "namespace" / "notification" /
-          "ordered-by" / "organization" / "output" / "path" / "pattern" /
-          "position" / "prefix" / "presence" / "range" / "reference" / "refine" /
-          "require-instance" / "revision" "-date"? / "rpc" / "status" /
-          "submodule" / "type" "def"? / "unique" / "units" / "uses" / "value" /
-          "when" / "yang-version"
-          ) &stop;
 
 @show @highlight
 comment = line_comment / block_comment;
@@ -42,5 +25,80 @@ digit = [0..9];
 
 boolean = ("true" / "false") &stop;
 
+@show @highlight
+operator = [\[\]{}();:,.<>&|=+*/?!<>-];
+
 @show @highlight(warn)
 todo = "TODO" / "XXX";
+
+kw_end = nl / "{" / ";";
+keyword_line = keyword ws* (!kw_end (string  / comment / constant / alpha / operator / .))* ws* &(nl / "{" / ";");
+
+@show @highlight(keyword)
+keyword = (
+          "yang-version" /
+          "when" /
+          "value" /
+          "uses" /
+          "units" /
+          "unique" /
+          "type" "def"? /
+          "submodule" /
+          "status" /
+          "rpc" /
+          "revision" "-date"? /
+          "require-instance" /
+          "refine" /
+          "reference" /
+          "range" /
+          "presence" /
+          "prefix" /
+          "position" /
+          "pattern" /
+          "path" /
+          "output" /
+          "organization" /
+          "ordered-by" /
+          "notification" /
+          "namespace" /
+          "must" /
+          "module" /
+          "modifier" /
+          "min-elements" /
+          "max-elements" /
+          "mandatory" /
+          "list" /
+          "length" /
+          "leaf-list" /
+          "leaf" /
+          "key" /
+          "input" /
+          "include" /
+          "import" /
+          "if-feature" /
+          "identity" /
+          "grouping" /
+          "fraction-digits" /
+          "feature" /
+          "extension" /
+          "error-message" /
+          "error-app-tag" /
+          "enum" /
+          "deviation" /
+          "deviate" /
+          "description" /
+          "default" /
+          "container" /
+          "contact" /
+          "config" /
+          "choice" /
+          "case" /
+          "bit" /
+          "belongs-to" /
+          "base" /
+          "augment" /
+          "argument" /
+          "anyxml" /
+          "anydata" /
+          "action"
+          );

@@ -48,7 +48,7 @@ impl CustomItems {
                     .max()
                     .unwrap_or(0)
                     + 1;
-                let max_screen = max(MIN, win.width / 4);
+                let max_screen = max(MIN, win.width / 3);
                 let width = max_item_width.clamp(MIN, max_screen);
                 win.split_off(Split::left_size(width))
             }

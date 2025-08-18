@@ -566,6 +566,11 @@ impl Window {
         changes.move_cursors(self.cursors.cursors_mut(), self.mode == Mode::Select);
         self.cursors.merge_overlapping();
 
+        let offset = changes.move_offset(self.view().start());
+        if offset != self.view().start() {
+            self.view.set_offset(offset);
+        }
+
         if let Some(id) = result.created_snapshot {
             *buf.snapshot_aux_mut(id).unwrap() = aux;
         } else if let Some(id) = result.forked_snapshot {

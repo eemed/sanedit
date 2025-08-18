@@ -33,11 +33,13 @@ digit = [0..9];
 hexdigit = digit / [a..fA..F];
 
 @show @highlight
-string    = "\"" nstring "\"" / "'" sstring "'" / "`" tstring "`" ;
-nstring    = ("\\" escape_char / [^"\n])*;
-sstring    = ("\\" escape_char / [^'\n])*;
-tstring    = ("\\" escape_char / replace / [^`\n])*;
-escape_char     = "0" / "t" / "n" / "r" / "'" / "`" / "\"" / "\\";
+string    = nstring / sstring / tstring / restring;
+nstring    = "\"" (escape / [^"\n])* "\"";
+sstring    = "'"  (escape / [^'\n])* "'";
+tstring    = "`" (escape / replace / [^`\n])* "`";
+restring   = "/" (escape / [^/\n])+ "/";
+@show @highlight(special)
+escape     = "\\" ("0" / "t" / "n" / "r" / "'" / "`" / "\"" / "\\" / "/");
 @show @highlight(operator)
 replace = "${" replacement "}";
 @show @highlight(string)

@@ -1,14 +1,16 @@
-document = list? ( separated / ws+ / .)*;
-separated = code / identifier / keyword / preproc / comment / operator / string / specials / list;
+document = (special / list)? (separated / ws+ / .)*;
+separated = code / identifier / keyword / preproc / comment / operator / string / specials / list_nl;
 WHITESPACE = [ \t];
 ws = WHITESPACE;
 nl = "\n" / "\r\n";
 stop = WHITESPACE+ / nl;
 
+list_nl = nl list;
 @show @highlight(operator)
-list = nl "*"+;
+list = "*"+;
 
-preproc = special / rectangle / angle / tags;
+preproc = special_nl / rectangle / angle / tags;
+special_nl = nl special;
 @show @highlight(preproc)
 special = ":" (!(":" / nl) .)* ":" &stop;
 @show @highlight(preproc)

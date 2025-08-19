@@ -13,9 +13,10 @@ line_comment = "//" (todo / (!nl .))* nl;
 block_comment = "/*" (todo / (!"*/" .))* "*/";
 
 @show @highlight
-string =  sstring;
+string =  dstring / sstring;
 char = "'" . "'";
-sstring = "\"" (escape / [^"])* "\"";
+dstring = "\"" (escape / [^"])* "\"";
+sstring = "'" (escape / [^'])* "'";
 escape = "\\" .;
 
 @show @highlight(constant)
@@ -32,7 +33,7 @@ operator = [\[\]{}();:,.<>&|=+*/?!<>-];
 todo = "TODO" / "XXX";
 
 kw_end = nl / "{" / ";";
-keyword_line = keyword ws* (!kw_end (string  / comment / constant / alpha / operator / .))* ws* &(nl / "{" / ";");
+keyword_line = keyword  (ws+ (!kw_end (string  / comment / constant / alpha / operator / .))*)? &(nl / "{" / ";");
 
 @show @highlight(keyword)
 keyword = (

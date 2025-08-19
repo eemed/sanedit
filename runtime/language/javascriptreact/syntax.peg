@@ -38,7 +38,7 @@ nstring    = "\"" (escape / [^"\n])* "\"";
 sstring    = "'"  (escape / [^'\n])* "'";
 tstring    = "`" (escape / replace / [^`\n])* "`";
 restring   = "/" (escape / [^/\n])+ "/";
-@show @highlight(special)
+@show @highlight(keyword)
 escape     = "\\" ("0" / "t" / "n" / "r" / "'" / "`" / "\"" / "\\" / "/");
 @show @highlight(operator)
 replace = "${" replacement "}";

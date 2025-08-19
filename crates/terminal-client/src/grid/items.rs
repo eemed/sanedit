@@ -39,12 +39,12 @@ impl CustomItems {
         match self.kind {
             Kind::Filetree => {
                 const MIN: usize = 30;
-                // Each level is indented by 2, and root starts at indent 2
+                // Each level is indented by 2, and root starts at indent 2, +1 for possible directory marker
                 let max_item_width = self
                     .items
                     .items
                     .iter()
-                    .map(|item| (item.level + 1) * 2 + item.name.chars().count())
+                    .map(|item| (item.level + 1) * 2 + item.name.chars().count() + 1)
                     .max()
                     .unwrap_or(0)
                     + 1;

@@ -31,7 +31,7 @@ use sanedit_core::{
     grapheme_category, indent_at_line,
     movement::{
         end_of_line, find_prev_whitespace, next_grapheme_boundary, next_line_end, next_line_start,
-        prev_grapheme_boundary, start_of_line,
+        prev_grapheme_boundary, prev_line_start, start_of_line,
     },
     selection_first_chars_of_lines, selection_line_ends, selection_line_starts, width_at_pos,
     BufferRange, Change, Changes, Cursor, DisplayOptions, GraphemeCategory, Locations, Range,
@@ -422,7 +422,15 @@ impl Window {
         let vstart = self.view.start();
         let mark = old.mark(vstart);
         let nmark_pos = buf.mark_to_pos(&mark);
-        self.view.set_offset(nmark_pos.pos());
+        match nmark_pos {
+            MarkResult::Deleted(pos) => {
+                let start = pos.saturating_sub(1024);
+                let slice = buf.slice(start..);
+                let npos = prev_line_start(&slice, pos - start);
+                self.view.set_offset(npos);
+            }
+            MarkResult::Found(pos) => self.view.set_offset(pos),
+        }
 
         for cursor in self.cursors.cursors_mut() {
             let pos = cursor.pos();

@@ -298,8 +298,8 @@ impl Changes {
 
     pub fn move_offset(&self, offset: u64) -> u64 {
         let mut npos = offset;
-        npos += self.added(offset, true);
-        npos -= self.removed(offset, true);
+        npos += self.added(offset, false);
+        npos -= self.removed(offset, false);
         npos
     }
 

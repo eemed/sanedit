@@ -8,7 +8,7 @@ use sanedit_core::{
 use crate::editor::{
     buffers::Buffer,
     hooks::Hook,
-    windows::{Cursors, Focus, Prompt, Window, Zone},
+    windows::{Cursors, Focus, HistoryKind, Prompt, Window, Zone},
     Editor,
 };
 
@@ -226,6 +226,7 @@ fn select_pattern(editor: &mut Editor, id: ClientId) -> ActionResult {
     win.prompt = Prompt::builder()
         .prompt("Select pattern")
         .simple()
+        .history(HistoryKind::Search)
         .on_confirm(move |editor, id, out| {
             let (win, buf) = editor.win_buf_mut(id);
             let pattern = getf!(out.text());

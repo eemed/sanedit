@@ -10,7 +10,7 @@ list = nl "*"+;
 
 preproc = special / rectangle / angle / tags;
 @show @highlight(preproc)
-special = ":" (!":" .)* ":" &stop;
+special = ":" (!(":" / nl) .)* ":" &stop;
 @show @highlight(preproc)
 rectangle = "["+ (!"]" .)* "]"+;
 @show @highlight(preproc)
@@ -74,7 +74,7 @@ letter = "**" (!(nl / "**") ( escape / .))+ "**";
 @show @highlight(operator)
 subscript = "~" (!(nl / "~") ( escape / .))+ "~";
 @show @highlight(operator)
-superscript = "^" (!(nl / "^") .( escape / ))+ "^";
+superscript = "^" (!(nl / "^") ( escape / . ))+ "^";
 @show @highlight(operator)
 force = "{" (!(nl / "}") ( escape / .))+ "}";
 @show @highlight(operator)

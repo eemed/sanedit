@@ -82,9 +82,7 @@ impl Drawable for CustomPrompt {
                 let default_style = ctx.theme.get(ThemeField::PromptDefault);
                 let input_style = ctx.theme.get(ThemeField::PromptUserInput);
                 let message_style = ctx.theme.get(ThemeField::PromptMessage);
-                let loading = if self.prompt.is_loading { " (..)" } else { "" };
-                let title_message = format!("{}{}", self.prompt.message, loading);
-                let mut message = into_cells_with_style(&title_message, message_style);
+                let mut message = into_cells_with_style(&self.prompt.message, message_style);
                 let colon = into_cells_with_style(": ", message_style);
                 message.extend(colon);
 

@@ -38,6 +38,10 @@ struct Cli {
     /// set log file location
     #[argh(option)]
     log_file: Option<PathBuf>,
+
+    /// parent client, used to inherit options
+    #[argh(option)]
+    parent: Option<usize>,
 }
 
 fn main() {
@@ -79,7 +83,10 @@ fn main() {
     let socket = cli
         .connect
         .unwrap_or_else(|| PathBuf::from(format!("/tmp/{socket_hash}-sanedit.sock")));
-    let socket_start_opts = SocketStartOptions { file: cli.file };
+    let socket_start_opts = SocketStartOptions {
+        file: cli.file,
+        parent_client: cli.parent,
+    };
     let try_connect = connect || socket.try_exists().unwrap_or(false);
     if try_connect {
         log::info!("Connecting to existing socket..");

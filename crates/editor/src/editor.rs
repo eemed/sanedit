@@ -180,8 +180,12 @@ impl Editor {
         self.themes.load_all();
     }
 
-    pub fn attach_to_session_command(&self) -> String {
-        format!("sane --connect {}", self.listen_address.as_connect())
+    pub fn attach_to_session_command(&self, id: ClientId) -> String {
+        format!(
+            "sane --connect {} --parent {}",
+            self.listen_address.as_connect(),
+            id.as_usize()
+        )
     }
 
     pub fn buffers(&self) -> &Buffers {
@@ -349,8 +353,8 @@ impl Editor {
     }
 
     fn handle_message(&mut self, id: ClientId, msg: Message) {
-        if let Message::Hello(size) = msg {
-            self.handle_hello(id, size);
+        if let Message::Hello { size, parent } = msg {
+            self.handle_hello(id, size, parent);
             return;
         }
 
@@ -390,21 +394,36 @@ impl Editor {
         }
     }
 
-    fn handle_hello(&mut self, id: ClientId, size: Size) {
+    fn handle_hello(&mut self, id: ClientId, size: Size, parent: Option<usize>) {
         // Create buffer and window
-        let bid = self.buffers.insert(Buffer::default());
+        let bid = parent
+            .map(|parent| {
+                let win = self
+                    .windows
+                    .get_mut(ClientId::temporary(parent))
+                    .expect("Window not present");
+                win.buffer_id()
+            })
+            .unwrap_or_else(|| self.buffers.insert(Buffer::default()));
+        let config = parent
+            .map(|parent| {
+                let win = self
+                    .windows
+                    .get_mut(ClientId::temporary(parent))
+                    .expect("Window not present");
+                win.config.clone()
+            })
+            .unwrap_or_else(|| self.config.window.clone());
         self.windows
-            .new_window(id, bid, size.width, size.height, self.config.window.clone());
+            .new_window(id, bid, size.width, size.height, config);
 
-        let win = self.windows.get_mut(id).expect("Window not present");
         let buf = self.buffers.get(bid).expect("Buffer not present");
-        let theme = {
-            let theme_name = &win.config.theme;
-            self.themes
-                .get(theme_name)
-                .expect("Theme not present")
-                .clone()
-        };
+        let win = self.windows.get_mut(id).expect("Window not present");
+        let theme = self
+            .themes
+            .get(&win.config.theme)
+            .expect("Theme not present")
+            .clone();
 
         // Redraw view
         win.redraw_view(buf);

@@ -28,7 +28,10 @@ where
     let (internal_tx, internal_rx) = crossbeam::channel::unbounded();
 
     writer
-        .write(Message::Hello(ui.window().size()))
+        .write(Message::Hello {
+            size: ui.window().size(),
+            parent: opts.parent_client.clone(),
+        })
         .expect("Failed to send hello");
 
     // Open file if exists

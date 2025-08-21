@@ -163,7 +163,7 @@ fn cancel(editor: &mut Editor, id: ClientId) -> ActionResult {
 #[action("Window: New horizontal")]
 fn new_window_horizontal(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf(id);
-    let cmd = editor.attach_to_session_command();
+    let cmd = editor.attach_to_session_command(id);
     let command = win.window_manager.new_window_horizontal(&cmd);
     shell::execute(editor, id, false, &command)
 }
@@ -171,7 +171,7 @@ fn new_window_horizontal(editor: &mut Editor, id: ClientId) -> ActionResult {
 #[action("Window: New vertical")]
 fn new_window_vertical(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf(id);
-    let cmd = editor.attach_to_session_command();
+    let cmd = editor.attach_to_session_command(id);
     let command = win.window_manager.new_window_vertical(&cmd);
     shell::execute(editor, id, false, &command)
 }

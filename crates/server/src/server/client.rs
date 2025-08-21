@@ -22,6 +22,10 @@ impl ClientId {
     pub fn as_usize(&self) -> usize {
         self.0
     }
+
+    pub fn temporary(n: usize) -> ClientId {
+        ClientId(n)
+    }
 }
 
 impl From<ClientId> for String {

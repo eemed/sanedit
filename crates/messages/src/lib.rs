@@ -40,7 +40,10 @@ pub enum Command {
 /// Messages sent to the server
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug)]
 pub enum Message {
-    Hello(Size),
+    Hello {
+        size: Size,
+        parent: Option<usize>,
+    },
     Command(Command),
     KeyEvent(KeyEvent),
     MouseEvent(MouseEvent),

@@ -46,6 +46,15 @@ The project is built using a [Taskfile](https://taskfile.dev/installation/) and 
 
 To quickly run the project in the repo run `task run`.
 
+## Gifs
+
+### File picker, filetree, locations, selection sorting
+![demo](https://github.com/user-attachments/assets/4f80b067-3981-45b0-8e07-6c7eccd23785)
+
+### Fenced code blocks
+![fenced](https://github.com/user-attachments/assets/9002a797-9b72-4543-bd14-fc9e38bd3452)
+
+
 ## Why
 
 There are more than enough editors out there and this one was born because of my

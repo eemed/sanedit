@@ -65,6 +65,7 @@ impl EditorConfig {
         map!(d, "asciidoc",        ["**/*.adoc"],                                                                  []);
         map!(d, "css",             ["**/*.css", "**/*.scss", "**/*.sass"],                                         []);
         map!(d, "dockerfile",      ["**/Dockerfile", "**/Dockerfile.*"],                                           []);
+        map!(d, "gitcommit",       ["**/.git/COMMIT_EDITMSG"],                                                     []);
         map!(d, "glsl",            ["**/*.vert", "**/*.frag", "**/*.geom", "**/*.tesc", "**/*.tese", "**/*.comp"], []);
         map!(d, "javascript",      ["**/*.js"],                                                                    []);
         map!(d, "javascriptreact", ["**/*.jsx"],                                                                   []);

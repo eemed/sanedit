@@ -396,29 +396,28 @@ impl Editor {
 
     fn handle_hello(&mut self, id: ClientId, size: Size, parent: Option<usize>) {
         // Create buffer and window
-        let bid = parent
+        let (bid, config, view_offset) = parent
             .map(|parent| {
                 let win = self
                     .windows
                     .get_mut(ClientId::temporary(parent))
                     .expect("Window not present");
-                win.buffer_id()
+                let bid = win.buffer_id();
+                let config = win.config.clone();
+                let offset = win.view().start();
+                (bid, config, offset)
             })
-            .unwrap_or_else(|| self.buffers.insert(Buffer::default()));
-        let config = parent
-            .map(|parent| {
-                let win = self
-                    .windows
-                    .get_mut(ClientId::temporary(parent))
-                    .expect("Window not present");
-                win.config.clone()
-            })
-            .unwrap_or_else(|| self.config.window.clone());
+            .unwrap_or_else(|| {
+                let bid = self.buffers.insert(Buffer::default());
+                let config = self.config.window.clone();
+                (bid, config, 0)
+            });
         self.windows
             .new_window(id, bid, size.width, size.height, config);
-
         let buf = self.buffers.get(bid).expect("Buffer not present");
         let win = self.windows.get_mut(id).expect("Window not present");
+        win.goto_view_offset(view_offset, buf);
+
         let theme = self
             .themes
             .get(&win.config.theme)

@@ -137,6 +137,10 @@ pub enum ThemeField {
     Warn,
     Error,
 
+    Added,
+    Deleted,
+    Modified,
+
     PromptDefault,
     PromptMessage,
     PromptUserInput,
@@ -198,6 +202,10 @@ impl AsRef<str> for ThemeField {
             Info => "window.view.info",
             Warn => "window.view.warn",
             Error => "window.view.error",
+
+            Added => "window.view.added",
+            Deleted => "window.view.deleted",
+            Modified => "window.view.modified",
 
             Special => "window.view.special",
             Constant => "window.view.constant",

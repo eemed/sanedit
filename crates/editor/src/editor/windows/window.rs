@@ -511,6 +511,11 @@ impl Window {
         self.view.syntax = ViewSyntax::default();
     }
 
+    pub fn goto_view_offset(&mut self, offset: u64, buf: &Buffer) {
+        self.view.set_offset(offset);
+        self.goto_offset(offset, buf);
+    }
+
     pub fn view(&self) -> &View {
         &self.view
     }
@@ -1674,6 +1679,53 @@ impl Window {
         let changes = Changes::from(changes);
         self.change(buf, &changes)?;
         Ok(())
+    }
+
+    pub fn reindent(&mut self, buf: &mut Buffer) -> Result<()> {
+        let slice = buf.slice(..);
+        let mut changes = vec![];
+        let mut graphemes = slice.graphemes();
+        let mut stack: Vec<(usize, usize)> = vec![(0, 0)];
+        let mut level = 0;
+        let mut ch_found = false;
+        let mut start = 0;
+
+        while let Some(grapheme) = graphemes.next() {
+            if grapheme.is_eol() {
+                start = grapheme.end();
+                level = 0;
+                ch_found = false;
+            }
+
+            if ch_found {
+                continue;
+            }
+
+            if grapheme == "\t" {
+                level += buf.config.tabstop as usize;
+            } else if grapheme == " " {
+                level += 1;
+            } else {
+                let (mut plevel, mut pn) = stack.last().unwrap().clone();
+                while plevel > level {
+                    (plevel, pn) = stack.pop().unwrap();
+                }
+
+                let mut n = pn;
+                if level > plevel {
+                    n += 1;
+                }
+
+                let ilevel = n * buf.config.indent_amount as usize;
+                let indent = buf.config.indent_kind.repeat(ilevel);
+                let change = Change::replace(start..grapheme.start(), indent.as_bytes());
+                changes.push(change);
+                ch_found = true;
+            }
+        }
+
+        let changes = Changes::from(changes);
+        self.change(buf, &changes)
     }
 }
 

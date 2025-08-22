@@ -1,0 +1,15 @@
+document = (separated / .)*;
+separated = comment;
+
+nl = "\r\n" / "\n";
+
+@show @highlight
+comment = "#" (!nl (added / modified / deleted / .))*;
+
+@show @highlight
+added = "new file:" (!nl .)*;
+@show @highlight
+modified = ("modified:" / "renamed:" / "copied:") (!nl .)*;
+@show @highlight
+deleted = ("deleted:") (!nl .)*;
+

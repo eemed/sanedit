@@ -20,6 +20,10 @@ info = "#b7d8eb,#00576B,"
 warn = "#FFD8B2,#8C4C1F,"
 error = "#FF9E99,#8A3A5A,"
 
+added = "#C1E1C1,#356E35,"
+modified = "#FFD8B2,#8C4C1F,"
+deleted = "#FF9E99,#8A3A5A,"
+
 constant = ",#1a6582,"
 string =  ",#0d8751,"
 keyword = ",#ca6e69,"

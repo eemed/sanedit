@@ -19,6 +19,10 @@ info = "#81a2be,#1d1f21,"
 warn = "#f0c674,#1d1f21,"
 error = "#cc6666,#1d1f21,"
 
+added = "#b5bd68,#1d1f21,"
+modified = "#f0c674,#1d1f21,"
+deleted = "#cc6666,#1d1f21,"
+
 constant = ",#81a2be,"
 string =  ",#b5bd68,"
 keyword = ",#de935f,"

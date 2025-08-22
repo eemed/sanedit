@@ -207,6 +207,8 @@ pub(crate) const COMMANDS: &[Action] = &[
     text::set_language,
     text::change_to_eol,
     text::change_line,
+    text::set_indentation,
+    text::reindent,
 
     prompt::open_file,
     prompt::open_buffer,

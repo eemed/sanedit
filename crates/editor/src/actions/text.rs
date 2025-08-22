@@ -1,6 +1,6 @@
 use std::{mem, sync::Arc};
 
-use sanedit_core::{at_start_of_line, is_indent_at_pos, Language};
+use sanedit_core::{at_start_of_line, is_indent_at_pos, IndentKind, Language ,Change};
 
 use crate::{
     actions::movement::start_of_buffer,
@@ -20,6 +20,7 @@ use super::{
     completion,
     cursors::{remove_cursor_selections, swap_selection_dir},
     hooks::run,
+    jobs::MatcherJob,
     movement::{end_of_line, prev_line},
     text_objects::{select_line, select_line_content},
     window::{focus, mode_insert, mode_normal},
@@ -595,4 +596,62 @@ fn set_language(editor: &mut Editor, id: ClientId) -> ActionResult {
     focus(editor, id, Focus::Prompt);
 
     ActionResult::Ok
+}
+
+#[action("Buffer: Set indent")]
+fn set_indentation(editor: &mut Editor, id: ClientId) -> ActionResult {
+    const TAB: &str = "Tab";
+    const SPACE: &str = "Space";
+    let (win, _buf) = editor.win_buf_mut(id);
+
+    let options: Arc<Vec<String>> = Arc::new(vec![TAB.into(), SPACE.into()]);
+    let job = MatcherJob::builder(id)
+        .options(options)
+        .handler(Prompt::matcher_result_handler)
+        .build();
+
+    win.prompt = Prompt::builder()
+        .prompt("Indent kind")
+        .simple()
+        .on_confirm(|editor, id, input| match getf!(input.text()) {
+            SPACE => indentation_amount(editor, id, IndentKind::Space),
+            TAB => indentation_amount(editor, id, IndentKind::Tab),
+            _ => ActionResult::Failed,
+        })
+        .build();
+    focus(editor, id, Focus::Prompt);
+    editor.job_broker.request(job);
+
+    ActionResult::Ok
+}
+
+fn indentation_amount(editor: &mut Editor, id: ClientId, kind: IndentKind) -> ActionResult {
+    let (win, buf) = editor.win_buf_mut(id);
+    win.prompt = Prompt::builder()
+        .prompt("Indent amount")
+        .input(&format!("{}", buf.config.indent_amount))
+        .simple()
+        .on_confirm(move |editor, id, input| {
+            let n = getf!(input.number());
+            let (_win, buf) = editor.win_buf_mut(id);
+            buf.config.indent_kind = kind;
+            buf.config.indent_amount = n as u8;
+            ActionResult::Ok
+        })
+        .build();
+    focus(editor, id, Focus::Prompt);
+
+    ActionResult::Ok
+}
+
+#[action("Buffer: Reindent")]
+fn reindent(editor: &mut Editor, id: ClientId) -> ActionResult {
+    let (win, buf) = editor.win_buf_mut(id);
+    if win.reindent(buf).is_ok() {
+        let hook = Hook::BufChanged(buf.id);
+        run(editor, id, hook);
+        ActionResult::Ok
+    } else {
+        ActionResult::Failed
+    }
 }

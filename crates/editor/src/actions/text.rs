@@ -1,6 +1,6 @@
 use std::{mem, sync::Arc};
 
-use sanedit_core::{at_start_of_line, is_indent_at_pos, IndentKind, Language ,Change};
+use sanedit_core::{at_start_of_line, is_indent_at_pos, IndentKind, Language};
 
 use crate::{
     actions::movement::start_of_buffer,

@@ -22,6 +22,18 @@ pub(crate) struct Ignore {
 }
 
 impl Ignore {
+    pub fn empty(working_dir: &Path) -> Ignore {
+        let globs = Globs {
+            root: working_dir.to_path_buf(),
+            patterns: vec![],
+        };
+        Ignore { globs: Arc::new(globs) }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.globs.patterns.is_empty()
+    }
+
     pub fn new(working_dir: &Path, config: &Config, project_config: &ProjectConfig) -> Ignore {
         let (patterns, root) = {
             let mut dir = project_config

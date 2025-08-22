@@ -3,6 +3,7 @@ use crate::{
     editor::{
         config::Config,
         hooks::Hook,
+        ignore::Ignore,
         windows::{Focus, Prompt},
         Editor,
     },
@@ -143,6 +144,20 @@ fn open_new_scratch_buffer(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Editor: Do nothing")]
 fn nop(_editor: &mut Editor, _id: ClientId) -> ActionResult {
+    ActionResult::Ok
+}
+
+#[action("Editor: Toggle ignore")]
+fn toggle_ignore(editor: &mut Editor, id: ClientId) -> ActionResult {
+    if editor.ignore.is_empty() {
+        editor.ignore = Ignore::new(editor.working_dir(), &editor.config, &editor.project_config);
+        let (win, _buf) = editor.win_buf_mut(id);
+        win.info_msg("File ignoring enabled");
+    } else {
+        editor.ignore = Ignore::empty(editor.working_dir());
+        let (win, _buf) = editor.win_buf_mut(id);
+        win.info_msg("File ignoring disabled");
+    }
     ActionResult::Ok
 }
 

@@ -176,6 +176,7 @@ pub(crate) const COMMANDS: &[Action] = &[
     editor::nop,
     editor::build_project,
     editor::run_project,
+    editor::toggle_ignore,
 
     text::save,
     text::save_all,

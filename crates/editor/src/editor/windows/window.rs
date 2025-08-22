@@ -1695,6 +1695,7 @@ impl Window {
                 start = grapheme.end();
                 level = 0;
                 ch_found = false;
+                continue;
             }
 
             if ch_found {
@@ -1706,6 +1707,8 @@ impl Window {
             } else if grapheme == " " {
                 level += 1;
             } else {
+                ch_found = true;
+
                 let (mut plevel, mut pn) = stack.last().unwrap().clone();
                 while plevel > level {
                     (plevel, pn) = stack.pop().unwrap();
@@ -1716,12 +1719,21 @@ impl Window {
                     n += 1;
                 }
 
+
+                stack.push((level, n));
+
                 let ilevel = n * buf.config.indent_amount as usize;
                 let indent = buf.config.indent_kind.repeat(ilevel);
+                if start == grapheme.start() && indent.is_empty()  {
+                    continue;
+                }
                 let change = Change::replace(start..grapheme.start(), indent.as_bytes());
                 changes.push(change);
-                ch_found = true;
             }
+        }
+
+        if changes.is_empty() {
+            bail!("No changes");
         }
 
         let changes = Changes::from(changes);

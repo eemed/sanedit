@@ -219,13 +219,10 @@ impl<T> Locations<T> {
         self.ensure_selection_in_range();
     }
 
-    /// Keep items that match the predicate.
+    /// Keep groups that match the predicate.
     pub fn retain<F: Fn(&str) -> bool + Copy>(&mut self, f: F) {
-        for group in &mut self.groups {
-            group.items.retain(|item| (f)(item.name()));
-        }
-
-        self.groups.retain(|group| !group.items.is_empty());
+        self.groups
+            .retain(|group| (f)(&group.path.to_string_lossy()));
         self.ensure_selection_in_range();
     }
 }

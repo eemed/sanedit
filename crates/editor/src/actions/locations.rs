@@ -136,11 +136,11 @@ fn toggle_all_expand_locs(editor: &mut Editor, id: ClientId) -> ActionResult {
     ActionResult::Ok
 }
 
-#[action("Locations: Keep entries with")]
+#[action("Locations: Keep groups with")]
 fn keep_locations(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
     win.prompt = Prompt::builder()
-        .prompt("Keep locations")
+        .prompt("Keep location groups")
         .simple()
         .on_confirm(move |editor, id, out| {
             let (win, _buf) = editor.win_buf_mut(id);
@@ -162,11 +162,11 @@ fn keep_locations(editor: &mut Editor, id: ClientId) -> ActionResult {
     ActionResult::Ok
 }
 
-#[action("Locations: Reject entries with")]
+#[action("Locations: Reject groups with")]
 fn reject_locations(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
     win.prompt = Prompt::builder()
-        .prompt("Reject locations")
+        .prompt("Reject location groups")
         .simple()
         .on_confirm(move |editor, id, out| {
             let (win, _buf) = editor.win_buf_mut(id);

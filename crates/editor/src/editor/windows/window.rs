@@ -8,6 +8,7 @@ pub(crate) mod games;
 mod jumps;
 mod locations;
 mod mode;
+mod mouse;
 mod prompt;
 mod search;
 mod view;
@@ -25,6 +26,7 @@ use std::{
 
 use anyhow::{bail, Result};
 use games::Game;
+pub(crate) use mouse::{Mouse, MouseClick};
 use rustc_hash::FxHashSet as Set;
 use sanedit_buffer::{Mark, MarkResult};
 use sanedit_core::{
@@ -102,6 +104,8 @@ pub(crate) struct Window {
     /// Delete indent when insert mode is left. Auto indenting changes should set this
     pub delete_indent_on_insert_leave: bool,
 
+    pub mouse: Mouse,
+
     pub game: Option<Box<dyn Game>>,
 }
 
@@ -130,6 +134,7 @@ impl Window {
             last_edit_jump: None,
             next_key_handler: None,
             delete_indent_on_insert_leave: false,
+            mouse: Mouse::default(),
             game: None,
         }
     }
@@ -1719,12 +1724,11 @@ impl Window {
                     n += 1;
                 }
 
-
                 stack.push((level, n));
 
                 let ilevel = n * buf.config.indent_amount as usize;
                 let indent = buf.config.indent_kind.repeat(ilevel);
-                if start == grapheme.start() && indent.is_empty()  {
+                if start == grapheme.start() && indent.is_empty() {
                     continue;
                 }
                 let change = Change::replace(start..grapheme.start(), indent.as_bytes());

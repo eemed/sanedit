@@ -13,7 +13,7 @@ pub mod redraw;
 use std::path::PathBuf;
 
 pub use codec::BinCodec;
-pub use mouse::{MouseButton, MouseEvent, MouseEventKind};
+pub use mouse::{Element, MouseButton, MouseEvent, MouseEventKind};
 pub use reader::Reader;
 pub use tokio_util::codec::{Decoder, Encoder};
 pub use writer::{WriteError, Writer};

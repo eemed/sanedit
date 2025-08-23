@@ -26,11 +26,11 @@ use keymap::Layer;
 use language::Languages;
 use rustc_hash::FxHashMap;
 use sanedit_core::Language;
-use sanedit_messages::key;
 use sanedit_messages::key::KeyEvent;
 use sanedit_messages::redraw::Size;
 use sanedit_messages::ClientMessage;
 use sanedit_messages::Command;
+use sanedit_messages::Element;
 use sanedit_messages::Message;
 use sanedit_messages::MouseButton;
 use sanedit_messages::MouseEvent;
@@ -45,6 +45,7 @@ use sanedit_server::StartOptions;
 use sanedit_server::ToEditor;
 use tokio::runtime::Runtime;
 use windows::Mode;
+use windows::MouseClick;
 use windows::Zone;
 
 use std::collections::HashSet;
@@ -52,14 +53,17 @@ use std::env;
 use std::path::Path;
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::time::Instant;
 
 use tokio::io;
 
 use anyhow::Result;
 
 use crate::actions;
-use crate::actions::cursors;
 use crate::actions::hooks::run;
+use crate::actions::mouse;
+use crate::actions::window::focus;
+use crate::actions::window::focus_with_mode;
 use crate::actions::window::goto_other_buffer;
 use crate::common::Choice;
 use crate::draw::DrawState;
@@ -458,27 +462,64 @@ impl Editor {
     }
 
     fn handle_mouse_event(&mut self, id: ClientId, event: MouseEvent) {
-        let (win, buf) = self.win_buf_mut(id);
-        if win.focus() != Focus::Window {
-            return;
-        }
+        // if win.focus() != Focus::Window {
+        //     return;
+        // }
 
-        // TODO keybindings
-        match event.kind {
-            MouseEventKind::ScrollDown => {
-                win.scroll_down_n(buf, 3);
-            }
-            MouseEventKind::ScrollUp => {
-                win.scroll_up_n(buf, 3);
-            }
-            MouseEventKind::ButtonDown(MouseButton::Left) => {
-                if event.mods & key::CONTROL != 0 {
-                    cursors::new_to_point(self, id, event.point);
-                } else if event.mods == 0 {
-                    cursors::goto_position(self, id, event.point);
+        match event.element {
+            Element::Filetree => match event.kind {
+                MouseEventKind::ButtonDown(MouseButton::Left) => {
+                    focus_with_mode(self, id, Focus::Filetree, Mode::Normal);
+                    let (win, _buf) = self.win_buf_mut(id);
+                    win.ft_view.mouse.on_click(event.point);
+                    match win.ft_view.mouse.clicks() {
+                        MouseClick::Single => {
+                            win.ft_view.selection = event.point.y;
+                        }
+                        MouseClick::Double => {
+                            actions::filetree::goto_ft_entry.execute(self, id);
+                        }
+                        _ => {}
+                    }
+                }
+                _ => {}
+            },
+            Element::Locations => match event.kind {
+                MouseEventKind::ButtonDown(MouseButton::Left) => {
+                    focus_with_mode(self, id, Focus::Locations, Mode::Normal);
+                    let (win, _buf) = self.win_buf_mut(id);
+                    let mouse = &mut win.locations.extra.mouse;
+                    mouse.on_click(event.point);
+                    match mouse.clicks() {
+                        MouseClick::Single => {
+                            win.locations.select(event.point.y);
+                        }
+                        MouseClick::Double => {
+                            actions::locations::goto_loc_entry.execute(self, id);
+                        }
+                        _ => {}
+                    }
+                }
+                _ => {}
+            },
+            Element::Window => {
+                let (win, _buf) = self.win_buf_mut(id);
+                if win.focus != Focus::Window {
+                    focus_with_mode(self, id, Focus::Filetree, Mode::Normal);
+                }
+                let (win, buf) = self.win_buf_mut(id);
+                match event.kind {
+                    MouseEventKind::ScrollDown => win.scroll_down_n(buf, 3),
+                    MouseEventKind::ScrollUp => win.scroll_up_n(buf, 3),
+                    MouseEventKind::ButtonDown(MouseButton::Left) => {
+                        mouse::on_button_down_left_click(self, id, event);
+                    }
+                    MouseEventKind::Drag(MouseButton::Left) => {
+                        mouse::on_drag(self, id, event.point);
+                    }
+                    _ => {}
                 }
             }
-            _ => {}
         }
     }
 

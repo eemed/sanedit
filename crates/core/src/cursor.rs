@@ -32,6 +32,10 @@ impl Cursor {
         }
     }
 
+    pub fn anchor(&self) -> Option<u64> {
+        self.anchor
+    }
+
     pub fn pos(&self) -> u64 {
         self.pos
     }
@@ -194,11 +198,11 @@ impl Cursor {
 
         if let Some(anc) = self.anchor.as_mut() {
             if *anc < self.pos {
-                *anc = other.start;
-                self.pos = other.end;
+                *anc = cmp::min(*anc, other.start);
+                self.pos = cmp::max(self.pos, other.end);
             } else {
-                *anc = other.end;
-                self.pos = other.start;
+                *anc = cmp::max(*anc, other.end);
+                self.pos = cmp::min(self.pos, other.start);
             }
             return;
         }

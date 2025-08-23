@@ -1,5 +1,6 @@
 pub(crate) mod completion;
 pub(crate) mod cursors;
+pub(crate) mod mouse;
 pub(crate) mod editor;
 pub(crate) mod filetree;
 pub(crate) mod hooks;

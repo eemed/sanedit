@@ -91,21 +91,10 @@ where
                         let rect = ui.window();
                         msg = Message::Resize(rect.size());
                     }
-                    Message::MouseEvent(ref mut ev) => {
-                        let win = ui.window();
-                        let position = win.position();
-                        let size = win.size();
-                        let point = &mut ev.point;
-
-                        if point.x < position.x
-                            || point.x >= position.x + size.width
-                            || point.y < position.y
-                            || point.y >= position.y + size.height
-                        {
-                            continue;
-                        }
-                        ev.point = ev.point - position;
-                    }
+                    Message::MouseEvent(ev) => match ui.handle_mouse_event(ev) {
+                        Some(mmsg) => msg = mmsg,
+                        _ => continue,
+                    },
                     _ => {}
                 }
 

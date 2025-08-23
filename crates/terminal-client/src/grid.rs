@@ -298,6 +298,14 @@ impl Grid {
         self.window.rect
     }
 
+    pub fn filetree(&mut self) -> Option<&mut Placed<CustomItems>> {
+        self.filetree.as_mut()
+    }
+
+    pub fn locations(&mut self) -> Option<&mut Placed<CustomItems>> {
+        self.locations.as_mut()
+    }
+
     pub fn clear(&mut self) {
         for row in self.drawn.iter_mut() {
             for cell in row.iter_mut() {

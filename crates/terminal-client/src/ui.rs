@@ -1,9 +1,10 @@
 mod context;
 
+use std::cmp::{max, min};
+
 use anyhow::Result;
 use sanedit_messages::{
-    redraw::{Point, Size, Style},
-    ClientMessage, Message,
+    redraw::{Point, Size, Style}, ClientMessage, Element, Message, MouseButton, MouseEvent
 };
 
 use crate::{
@@ -55,6 +56,72 @@ impl UI {
     pub fn on_focus_change(&mut self, focus: bool) {
         self.grid.on_focus_change(focus);
         let _ = self.flush();
+    }
+
+    pub fn handle_mouse_event(&mut self, mut ev: MouseEvent) -> Option<Message> {
+        if let Some(ft) = self.grid.filetree() {
+            if ft.rect.contains(&ev.point) {
+                match ev.kind {
+                    sanedit_messages::MouseEventKind::ScrollDown => {
+                        ft.item.scroll = min(
+                            ft.item.scroll + 2,
+                            ft.item.items.items.len().saturating_sub(1),
+                        );
+                        let _ = self.flush();
+                        return None;
+                    }
+                    sanedit_messages::MouseEventKind::ScrollUp => {
+                        ft.item.scroll = ft.item.scroll.saturating_sub(2);
+                        let _ = self.flush();
+                        return None;
+                    }
+                    sanedit_messages::MouseEventKind::ButtonDown(MouseButton::Left) => {
+                        ev.point = ev.point - ft.rect.position();
+                        ev.point.y += ft.item.scroll;
+                        ev.element = Element::Filetree;
+                        return Some(Message::MouseEvent(ev));
+                    }
+                    _ => {}
+                }
+            }
+        }
+
+        if let Some(loc) = self.grid.locations() {
+            if loc.rect.contains(&ev.point) {
+                match ev.kind {
+                    sanedit_messages::MouseEventKind::ScrollDown => {
+                        loc.item.scroll = min(
+                            loc.item.scroll + 2,
+                            loc.item.items.items.len().saturating_sub(1),
+                        );
+                        let _ = self.flush();
+                        return None;
+                    }
+                    sanedit_messages::MouseEventKind::ScrollUp => {
+                        loc.item.scroll = loc.item.scroll.saturating_sub(2);
+                        let _ = self.flush();
+                        return None;
+                    }
+                    sanedit_messages::MouseEventKind::ButtonDown(MouseButton::Left) => {
+                        ev.point = ev.point - loc.rect.position();
+                        // -1 = header
+                        ev.point.y += loc.item.scroll;
+                        ev.point.y = ev.point.y.saturating_sub(1);
+                        ev.element = Element::Locations;
+                        return Some(Message::MouseEvent(ev));
+                    }
+                    _ => {}
+                }
+            }
+        }
+
+        let win = self.grid.window();
+        if win.contains(&ev.point) {
+            ev.point = ev.point - win.position();
+            return Some(Message::MouseEvent(ev));
+        }
+
+        None
     }
 
     pub fn handle_message(&mut self, msg: ClientMessage) -> anyhow::Result<UIResult> {

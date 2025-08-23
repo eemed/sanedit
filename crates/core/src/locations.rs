@@ -41,6 +41,10 @@ impl<T> Locations<T> {
         }
     }
 
+    pub fn select(&mut self, n: usize) {
+        self.selection = Some(min(n, self.visible_len()));
+    }
+
     pub fn clear(&mut self) {
         self.selection = None;
         self.groups.clear();

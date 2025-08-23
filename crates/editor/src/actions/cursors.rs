@@ -1,15 +1,11 @@
 use sanedit_buffer::MarkResult;
-use sanedit_messages::redraw::Point;
 use sanedit_utils::ring::Ref;
 
-use crate::{
-    common::window::pos_at_point,
-    editor::{
-        buffers::{BufferId, Buffers},
-        hooks::Hook,
-        windows::{Jump, JumpGroup, Jumps, Window, Zone},
-        Editor,
-    },
+use crate::editor::{
+    buffers::{BufferId, Buffers},
+    hooks::Hook,
+    windows::{Jump, JumpGroup, Jumps, Window, Zone},
+    Editor,
 };
 
 use sanedit_server::ClientId;
@@ -65,24 +61,6 @@ fn new_cursor_to_prev_line(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (pos, _col) = prev_line(&buf.slice(..), cursor, win.display_options());
     win.cursors.push_primary(Cursor::new(pos));
     ActionResult::Ok
-}
-
-pub(crate) fn new_to_point(editor: &mut Editor, id: ClientId, point: Point) {
-    let (win, _buf) = editor.win_buf_mut(id);
-    if let Some(pos) = pos_at_point(win, point) {
-        win.cursors.push(Cursor::new(pos));
-    }
-}
-
-pub(crate) fn goto_position(editor: &mut Editor, id: ClientId, point: Point) {
-    let (win, _buf) = editor.win_buf_mut(id);
-    win.cursors.remove_except_primary();
-    if let Some(pos) = pos_at_point(win, point) {
-        let primary = win.cursors.primary_mut();
-        primary.stop_selection();
-        primary.goto(pos);
-        hooks::run(editor, id, Hook::CursorMoved);
-    }
 }
 
 #[action("Cursors: Start selection")]

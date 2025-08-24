@@ -1,4 +1,4 @@
-use std::cmp::min;
+use std::{cmp::min, ops::RangeBounds};
 
 use rustc_hash::FxHashSet;
 use sanedit_buffer::Mark;
@@ -185,7 +185,8 @@ impl Cursors {
 
     /// Make sure all cursors are contained in range
     /// Moves / shrinks cursors if needed
-    pub fn contain_to(&mut self, range: BufferRange) {
+    pub fn contain_to<R: RangeBounds<u64>>(&mut self, range: R) {
+        let range = BufferRange::from_bounds(range);
         for cursor in &mut self.cursors {
             cursor.contain_to(range)
         }

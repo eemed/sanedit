@@ -396,7 +396,7 @@ impl Window {
 
     pub fn ensure_cursor_on_grapheme_boundary(&mut self, buf: &Buffer) {
         // Ensure cursor in buf range
-        self.cursors.contain_to(Range::from(0..buf.len()));
+        self.cursors.contain_to(0..buf.len());
 
         // Ensure cursor in buf grapheme boundary
         let primary = self.cursors.primary_mut();
@@ -833,9 +833,11 @@ impl Window {
         *self.view_syntax() = ViewSyntax::default();
         self.search.reset_highlighting();
         self.cursors = aux.cursors.clone();
+        self.ensure_cursor_on_grapheme_boundary(buf);
         self.invalidate();
 
         self.view.set_offset(aux.view_offset);
+        self.view.ensure_view_on_grapheme_boundary(buf);
         self.view_to_around_cursor_zone(buf, Zone::Middle);
         self.invalidate();
     }

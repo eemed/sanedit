@@ -12,7 +12,6 @@ pub(crate) mod movement;
 pub(crate) mod popup;
 pub(crate) mod prompt;
 pub(crate) mod search;
-pub(crate) mod shell;
 pub(crate) mod snippets;
 pub(crate) mod syntax;
 pub(crate) mod text;
@@ -175,8 +174,6 @@ pub(crate) const COMMANDS: &[Action] = &[
     editor::open_config,
     editor::open_new_scratch_buffer,
     editor::nop,
-    editor::build_project,
-    editor::run_project,
     editor::toggle_ignore,
 
     text::save,
@@ -214,7 +211,6 @@ pub(crate) const COMMANDS: &[Action] = &[
 
     prompt::open_file,
     prompt::open_buffer,
-    prompt::shell_command,
     prompt::select_theme,
     prompt::goto_line,
     prompt::goto_percentage,

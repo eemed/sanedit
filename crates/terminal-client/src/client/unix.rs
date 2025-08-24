@@ -1,6 +1,6 @@
 use std::{io, os::unix::net::UnixStream, path::Path};
 
-use super::SocketStartOptions;
+use super::ClientOptions;
 
 #[derive(Debug)]
 struct UnixDomainSocket(UnixStream);
@@ -42,7 +42,7 @@ impl UnixDomainSocketClient {
         Ok(UnixDomainSocketClient { socket })
     }
 
-    pub fn run(self, opts: SocketStartOptions) {
+    pub fn run(self, opts: ClientOptions) {
         let read = self.socket.clone();
         let write = self.socket;
         crate::run(read, write, opts);

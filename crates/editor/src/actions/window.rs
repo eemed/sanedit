@@ -1,5 +1,5 @@
 use crate::{
-    actions::{hooks::run, shell},
+    actions::hooks::run,
     common::to_human_readable,
     editor::{
         buffers::Buffer,
@@ -162,18 +162,24 @@ fn cancel(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Window: New horizontal")]
 fn new_window_horizontal(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, _buf) = editor.win_buf(id);
-    let cmd = editor.attach_to_session_command(id);
-    let command = win.window_manager.new_window_horizontal(&cmd);
-    shell::execute(editor, id, false, &command)
+    editor.send_to_client(
+        id,
+        sanedit_server::FromEditorSharedMessage::Owned {
+            message: FromEditor::Message(ClientMessage::SplitHorizontal),
+        },
+    );
+    ActionResult::Ok
 }
 
 #[action("Window: New vertical")]
 fn new_window_vertical(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, _buf) = editor.win_buf(id);
-    let cmd = editor.attach_to_session_command(id);
-    let command = win.window_manager.new_window_vertical(&cmd);
-    shell::execute(editor, id, false, &command)
+    editor.send_to_client(
+        id,
+        sanedit_server::FromEditorSharedMessage::Owned {
+            message: FromEditor::Message(ClientMessage::SplitVertical),
+        },
+    );
+    ActionResult::Ok
 }
 
 #[action("Editor: Status")]
@@ -214,7 +220,6 @@ fn status(editor: &mut Editor, id: ClientId) -> ActionResult {
     let height = options.height;
     let client_id = id.as_usize();
     let working_dir = editor.working_dir();
-    let shell = &editor.config.editor.shell;
     let config_dir = editor.config_dir.root();
     let tmp_dir = tmp_dir()
         .map(|dir| format!("{dir:?}"))
@@ -222,6 +227,7 @@ fn status(editor: &mut Editor, id: ClientId) -> ActionResult {
     let istyle = format!("{:?}", buf.config.indent_kind);
     let iamount = &buf.config.indent_amount;
     let eol = format!("{:?}", buf.config.eol);
+    let listen_address = format!("{}", editor.listen_address());
 
     let text = format!(
         "\
@@ -249,7 +255,7 @@ fn status(editor: &mut Editor, id: ClientId) -> ActionResult {
         Working directory: {working_dir:?}\n  \
         Config directory: {config_dir:?}\n  \
         TMP/LOG directory: {tmp_dir}\n  \
-        Shell: {shell}\n\
+        Listen address: {listen_address}\n\
     "
     );
 

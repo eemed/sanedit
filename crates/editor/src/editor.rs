@@ -41,7 +41,7 @@ use sanedit_server::ClientHandle;
 use sanedit_server::ClientId;
 use sanedit_server::FromEditorSharedMessage;
 use sanedit_server::FromJobs;
-use sanedit_server::StartOptions;
+use sanedit_server::ServerOptions;
 use sanedit_server::ToEditor;
 use tokio::runtime::Runtime;
 use windows::Mode;
@@ -53,7 +53,6 @@ use std::env;
 use std::path::Path;
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::time::Instant;
 
 use tokio::io;
 
@@ -62,7 +61,6 @@ use anyhow::Result;
 use crate::actions;
 use crate::actions::hooks::run;
 use crate::actions::mouse;
-use crate::actions::window::focus;
 use crate::actions::window::focus_with_mode;
 use crate::actions::window::goto_other_buffer;
 use crate::common::Choice;
@@ -98,11 +96,11 @@ use self::windows::Windows;
 pub(crate) type Map<K, V> = FxHashMap<K, V>;
 
 pub(crate) struct Editor {
-    listen_address: Address,
     clients: Map<ClientId, ClientHandle>,
     draw_states: Map<ClientId, DrawState>,
     is_running: bool,
     working_dir: PathBuf,
+    listen_address: Address,
 
     pub ignore: Ignore,
     pub windows: Windows,
@@ -125,7 +123,7 @@ pub(crate) struct Editor {
 }
 
 impl Editor {
-    fn new(runtime: Runtime, internal_chan: Sender<ToEditor>, opts: StartOptions) -> Editor {
+    fn new(runtime: Runtime, internal_chan: Sender<ToEditor>, opts: ServerOptions) -> Editor {
         // Spawn job runner
         let jobs_handle = runtime.block_on(spawn_job_runner(internal_chan));
         let working_dir = opts
@@ -146,7 +144,7 @@ impl Editor {
 
         Editor {
             _tokio_runtime: runtime,
-            listen_address: opts.addr,
+            listen_address: opts.addr.clone(),
             clients: Map::default(),
             draw_states: Map::default(),
             syntaxes: Syntaxes::new(),
@@ -179,17 +177,13 @@ impl Editor {
         self.keymaps = Keymaps::from_config(&self.config);
     }
 
+    pub fn listen_address(&self) -> &Address {
+        &self.listen_address
+    }
+
     /// Ran after the startup configuration is complete
     pub fn on_startup(&mut self) {
         self.themes.load_all();
-    }
-
-    pub fn attach_to_session_command(&self, id: ClientId) -> String {
-        format!(
-            "sane --connect {} --parent {}",
-            self.listen_address.as_connect(),
-            id.as_usize()
-        )
     }
 
     pub fn buffers(&self) -> &Buffers {
@@ -232,6 +226,10 @@ impl Editor {
 
         self.draw_states.remove(&id);
         self.clients.remove(&id);
+    }
+
+    pub fn is_last_client(&self) -> bool {
+        self.clients.len() == 1
     }
 
     pub fn quit(&mut self) {
@@ -435,7 +433,7 @@ impl Editor {
         let (draw, messages) = DrawState::new(self.create_context(id));
         self.draw_states.insert(id, draw);
 
-        self.send_to_client(id, ClientMessage::Hello.into());
+        self.send_to_client(id, ClientMessage::Hello { id: id.as_usize() }.into());
         self.send_to_client(id, ClientMessage::Theme(theme).into());
         for msg in messages {
             self.send_to_client(id, msg);
@@ -959,7 +957,7 @@ impl Editor {
 pub(crate) fn main_loop(
     runtime: Runtime,
     recv: crossbeam::channel::Receiver<ToEditor>,
-    opts: StartOptions,
+    opts: ServerOptions,
 ) -> Result<(), io::Error> {
     // Internal channel
     let (tx, rx) = crossbeam::channel::unbounded();

@@ -24,7 +24,7 @@ use crate::{
         buffers::BufferId,
         hooks::Hook,
         keymap::KeymapResult,
-        windows::{Focus, HistoryKind, Mode, Prompt},
+        windows::{Focus, HistoryKind, Prompt},
         Editor, Map,
     },
 };
@@ -34,7 +34,6 @@ use sanedit_server::{ClientId, JobId};
 use super::{
     find_by_description, hooks,
     jobs::{DirectoryOptionProvider, MatcherJob},
-    shell,
     text::save,
     window::{focus_with_mode, mode_normal},
     ActionResult,
@@ -284,26 +283,6 @@ fn prompt_history_next(editor: &mut Editor, id: ClientId) -> ActionResult {
 #[action("Prompt: Select previous history entry")]
 fn prompt_history_prev(editor: &mut Editor, id: ClientId) -> ActionResult {
     editor.prompt_history_prev(id);
-    ActionResult::Ok
-}
-
-#[action("Editor: Run a shell command")]
-fn shell_command(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, buf) = editor.win_buf_mut(id);
-    let mut input = String::new();
-    if let Some(sel) = win.cursors.primary_mut().take_selection() {
-        let slice = buf.slice(sel);
-        input = String::from(&slice);
-    }
-
-    win.prompt = Prompt::builder()
-        .prompt("Shell")
-        .input(&input)
-        .history(HistoryKind::Command)
-        .simple()
-        .on_confirm(shell::execute_prompt)
-        .build();
-    focus_with_mode(editor, id, Focus::Prompt, Mode::Normal);
     ActionResult::Ok
 }
 

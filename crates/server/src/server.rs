@@ -18,7 +18,7 @@ use crate::events::ToEditor;
 use self::client::ClientId;
 
 #[derive(Clone, Debug)]
-pub struct StartOptions {
+pub struct ServerOptions {
     pub config_dir: Option<PathBuf>,
     pub working_dir: Option<PathBuf>,
     pub debug: bool,
@@ -74,7 +74,7 @@ impl Address {
         }
     }
 
-    /// Return address in a way that can be used with sane --connect <addr>
+    /// Return address in a way that can be used with sane --address <addr>
     pub fn as_connect(&self) -> String {
         match self {
             Address::UnixDomainSocket(p) => p.as_os_str().to_string_lossy().to_string(),

@@ -4,11 +4,13 @@ pub(crate) mod input;
 pub(crate) mod message;
 pub(crate) mod terminal;
 mod ui;
+mod window_manager;
 
 use std::{io, thread};
 
 use crossbeam::channel::{Select, Sender};
 use sanedit_messages::{ClientMessage, Command, Message, Reader, Writer};
+use window_manager::WindowManager;
 
 use crate::ui::{UIResult, UI};
 pub use client::*;
@@ -17,7 +19,7 @@ use message::ClientInternalMessage;
 // We have 2 tasks that need to be running
 // Input thread: polls inputs and writes them to the server.
 // Logic thread: Reacts to server messages, draws screen.
-pub fn run<R, W>(read: R, write: W, opts: SocketStartOptions)
+pub fn run<R, W>(read: R, write: W, opts: ClientOptions)
 where
     R: io::Read + Clone + Send + 'static,
     W: io::Write + 'static,
@@ -55,6 +57,8 @@ where
         recv_select.recv(recv);
     }
 
+    let mut wm = None;
+
     while let Ok(msg) = {
         let oper = recv_select.select();
         let index = oper.index();
@@ -62,6 +66,19 @@ where
     } {
         use ClientInternalMessage::*;
         match msg {
+            FromServer(ClientMessage::Hello { id }) => {
+                wm = Some(WindowManager::new(id, &opts.session));
+            }
+            FromServer(ClientMessage::SplitVertical) => {
+                if let Some(ref mut wm) = wm {
+                    wm.new_window_vertical();
+                }
+            }
+            FromServer(ClientMessage::SplitHorizontal) => {
+                if let Some(ref mut wm) = wm {
+                    wm.new_window_horizontal();
+                }
+            }
             FromServer(msg) => match ui.handle_message(msg) {
                 Ok(UIResult::Exit) => break,
                 Ok(UIResult::Nothing) => {}

@@ -12,7 +12,6 @@ mod mouse;
 mod prompt;
 mod search;
 mod view;
-mod window_manager;
 
 #[cfg(test)]
 mod tests;
@@ -66,7 +65,6 @@ pub(crate) use locations::LocationsView;
 
 pub(crate) use self::{
     completion::*, config::*, focus::*, jumps::*, mode::*, prompt::*, search::*, view::*,
-    window_manager::*,
 };
 
 #[derive(Debug)]
@@ -82,7 +80,6 @@ pub(crate) struct Window {
     /// Focus determines where to direct input
     pub focus: Focus,
     pub mode: Mode,
-    pub window_manager: WindowManager,
     pub completion: Completion,
     pub cursors: Cursors,
     pub search: Search,
@@ -118,7 +115,6 @@ impl Window {
             visited_buffers: Map::default(),
             view: View::new(width, height),
             message: None,
-            window_manager: config.window_manager.get(),
             completion: Completion::default(),
             cursors: Cursors::default(),
             config,

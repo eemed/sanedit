@@ -1,7 +1,7 @@
 version: '3'
 
 vars:
-  LOG_FILE: 'sanedit-debug.log'
+  LOG_FILE: '{{.HOME}}/.local/share/sanedit/tmp/sanedit-debug.log'
   UCD_VERSION: 16.0.0
   UCD_DIR: /tmp/ucd-{{ .UCD_VERSION }}
   TARGET: x86_64-unknown-linux-musl
@@ -20,12 +20,6 @@ tasks:
         - task: release:build
         - mkdir -p ../deb
         - cargo deb --target={{.TARGET}} -p sanedit-cli -o ../deb --no-build
-
-  release:run:
-    desc: Build and run the release build
-    dir: crates
-    cmds:
-      - cargo run --bin sane --release
 
   install:
     desc: Download and install development requirements
@@ -54,7 +48,13 @@ tasks:
     desc: Build and run the debug build
     dir: crates
     cmds:
-      - cargo run --bin sane -- --debug --config-dir ../runtime --log-file sanedit-debug.log
+      - rm -f /tmp/sanedit-debug.sock
+      - cargo run --bin sane -- --server-only --session debug --debug --config-dir ../runtime &
+      - |
+        until [ -e /tmp/sanedit-debug.sock ]; do \
+          sleep 0.1; \
+        done
+      - cargo run --bin sane -- --debug --session debug --config-dir ../runtime
     env:
       RUST_BACKTRACE: 1
 
@@ -106,7 +106,6 @@ tasks:
     desc: Tail the log file
     dir: crates
     cmds:
-      - touch {{ .LOG_FILE }}
       - tail -f {{ .LOG_FILE }}
 
   generate:ucd:
@@ -158,7 +157,7 @@ tasks:
   debug:kill:
     desc: Kill debug process
     cmds:
-      - ps aux | grep target | grep sane | awk '{ print $2 }' | xargs kill -9
+      - ps aux | grep "target/debug/sane" | awk '{ print $2 }' | xargs kill -9
 
   docs:images:
     internal: true

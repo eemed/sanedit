@@ -45,13 +45,37 @@ pub(crate) mod editor;
 
 use std::thread;
 
-use sanedit_server::{spawn_listener, EditorHandle, StartOptions};
+use sanedit_server::{spawn_listener, EditorHandle, ServerOptions};
 use tokio::runtime::Builder;
 
 // works only with cargo
 pub(crate) const VERSION: &str = env!("CARGO_PKG_VERSION");
 
-pub fn run_sync(opts: StartOptions) -> Option<thread::JoinHandle<()>> {
+pub fn run(opts: ServerOptions) {
+    let (send, recv) = crossbeam::channel::unbounded();
+    let handle = EditorHandle {
+        sender: send,
+        next_id: Default::default(),
+    };
+
+    let mut builder: Builder = tokio::runtime::Builder::new_multi_thread();
+    builder.enable_all();
+
+    // Just make sure this works
+    if opts.debug {
+        builder.worker_threads(1);
+    }
+
+    let runtime = builder.build().unwrap();
+
+    runtime.block_on(spawn_listener(opts.addr.clone(), handle));
+
+    if let Err(e) = editor::main_loop(runtime, recv, opts) {
+        log::error!("Editor main loop exited with error {}.", e);
+    }
+}
+
+pub fn run_sync(opts: ServerOptions) -> Option<thread::JoinHandle<()>> {
     let (send, recv) = crossbeam::channel::unbounded();
     let handle = EditorHandle {
         sender: send,

@@ -1,10 +1,11 @@
 mod context;
 
-use std::cmp::{max, min};
+use std::cmp::min;
 
 use anyhow::Result;
 use sanedit_messages::{
-    redraw::{Point, Size, Style}, ClientMessage, Element, Message, MouseButton, MouseEvent
+    redraw::{Point, Size, Style},
+    ClientMessage, Element, Message, MouseButton, MouseEvent,
 };
 
 use crate::{
@@ -127,7 +128,6 @@ impl UI {
     pub fn handle_message(&mut self, msg: ClientMessage) -> anyhow::Result<UIResult> {
         use ClientMessage::*;
         match msg {
-            Hello => {}
             Theme(theme) => {
                 self.grid.theme = theme.into();
             }
@@ -142,6 +142,7 @@ impl UI {
                 log::info!("UI got bye, exiting.");
                 return Ok(UIResult::Exit);
             }
+            _ => {}
         }
 
         Ok(UIResult::Nothing)

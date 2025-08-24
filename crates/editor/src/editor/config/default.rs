@@ -92,7 +92,6 @@ impl Default for EditorConfig {
                 .map(String::from)
                 .collect::<Vec<String>>()
                 .into(),
-            shell: "/bin/bash".into(),
             detect_eol: true,
             detect_indent: true,
             language_detect: Self::default_language_map(),
@@ -300,7 +299,6 @@ pub(crate) fn normal() -> KeymapLayer {
         "a", insert_mode_after,
         "A", insert_mode_end_of_line,
         "I", insert_mode_first_char_of_line,
-        "!", shell_command,
         ":", command_palette,
         "/", search_forward,
         "?", search_backward,
@@ -382,9 +380,6 @@ pub(crate) fn normal() -> KeymapLayer {
         "s p", select_paragraph,
         "s w", select_word,
 
-
-        "f3", build_project,
-        "f4", run_project,
         "f5", reload_window,
     );
 
@@ -429,7 +424,6 @@ pub(crate) fn select() -> KeymapLayer {
     #[rustfmt::skip]
     let map = make_keymap!(
         "f1",  show_keymaps,
-        "!", shell_command,
         "i", nop,
         "a", cursor_select_individual_lines,
         "x", remove_cursor_selections,

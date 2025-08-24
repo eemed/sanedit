@@ -258,9 +258,6 @@ pub(crate) struct EditorConfig {
     /// Glob patterns to ignore, when opening files etc.
     pub ignore: Vec<String>,
 
-    /// Default shell command
-    pub shell: String,
-
     /// Autodetect eol from file
     pub detect_eol: bool,
 

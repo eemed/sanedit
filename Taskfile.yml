@@ -2,6 +2,7 @@ version: '3'
 
 vars:
   LOG_FILE: '{{.HOME}}/.local/share/sanedit/tmp/sanedit-debug.log'
+  LOG_FILE_CLIENT: '{{.HOME}}/.local/share/sanedit/tmp/sanedit-debug-client.log'
   UCD_VERSION: 16.0.0
   UCD_DIR: /tmp/ucd-{{ .UCD_VERSION }}
   TARGET: x86_64-unknown-linux-musl
@@ -49,6 +50,7 @@ tasks:
     dir: crates
     cmds:
       - rm -f /tmp/sanedit-debug.sock
+      - rm -f {{.LOG_FILE}} {{.LOG_FILE_CLIENT}}
       - cargo run --bin sane -- --server-only --session debug --debug --config-dir ../runtime &
       - |
         until [ -e /tmp/sanedit-debug.sock ]; do \

@@ -261,6 +261,7 @@ fn status(editor: &mut Editor, id: ClientId) -> ActionResult {
 
     let mut buf = Buffer::from_reader(std::io::Cursor::new(text)).unwrap();
     buf.read_only = true;
+    buf.remove_on_exit = true;
     let bid = editor.buffers_mut().insert(buf);
     editor.open_buffer(id, bid);
 

@@ -77,7 +77,7 @@ preproc_words = ("import" / "from" / "export" / "default" !":" / "as") &ws;
 @show @highlight(special)
 special = "console" &(ws / ".");
 
-end = ws / ";" / "(" / "." / ":" / "=";
+end = ws / ";" / "(" / "." / ":" / "=" / ",";
 @show @highlight(keyword)
 keyword =  words / simple_words / "default" &(ws / ":");
 simple_words = ("yield" / "await" / "instanceof" / "break"/ "extends" / "static" / "const" / "async" / "return"/ "in" / "of" / "continue" / "let" / "var" ) &(ws / ";");

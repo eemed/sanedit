@@ -277,7 +277,7 @@ impl Game for Snake {
                     self.direction = Direction::Right;
                 }
             }
-            Key::Char('q') => return true,
+            Key::Esc | Key::Char('q') => return true,
             Key::Enter | Key::Char('r') => {
                 let tick_sender = std::mem::take(&mut self.tick_sender).unwrap();
                 let _ = tick_sender.send(0);

@@ -35,6 +35,9 @@ pub(crate) struct Buffer {
     pub(crate) language: Option<Language>,
     pub(crate) config: BufferConfig,
     pub(crate) read_only: bool,
+    /// Whether the buffer should be removed when it is no longer shown
+    /// Useful for example status buffers that should always be destroyed once left
+    pub(crate) remove_on_exit: bool,
 
     pt: PieceTree,
     /// Snapshots of the piecetree, used for undo
@@ -61,6 +64,7 @@ impl Buffer {
             read_only: false,
             pt,
             is_modified: false,
+            remove_on_exit: false,
             snapshots: Snapshots::new(),
             config: BufferConfig::default(),
             path: None,
@@ -90,6 +94,7 @@ impl Buffer {
             pt,
             language: file.language().cloned(),
             is_modified: false,
+            remove_on_exit: false,
             snapshots: Snapshots::new(),
             config: options,
             path: Some(path.into()),
@@ -140,6 +145,7 @@ impl Buffer {
             language: None,
             read_only: false,
             is_modified: false,
+            remove_on_exit: false,
             snapshots: Snapshots::new(),
             config: BufferConfig::default(),
             path: None,

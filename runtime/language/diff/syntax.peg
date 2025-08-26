@@ -1,0 +1,29 @@
+document =  (file_block / .)*;
+
+file_block = (comments nl)* old_file nl new_file nl (line_numbers (code / changes)*)+;
+
+@inject
+code = (!("@@" / comment / nl old_file / changes) .)+;
+
+comment = nl comments;
+@show @highlight(comment)
+comments = ("diff" / "index") (!nl .)*;
+
+@show @highlight(comment)
+new_file = "+++ " name;
+@show @highlight(comment)
+old_file = "--- " (!nl .)+;
+
+@injection-language
+name = (!nl .)+;
+
+nl = "\r\n" / "\n";
+
+@show @highlight(preproc)
+line_numbers = "@@" (!"@@" .)* "@@";
+
+changes = nl (added / deleted);
+@show @highlight
+added = "+" (!nl .)*;
+@show @highlight
+deleted = "-" (!nl .)*;

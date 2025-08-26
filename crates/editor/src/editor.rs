@@ -457,6 +457,13 @@ impl Editor {
                     log::error!("Failed to open file: {e}");
                 }
             }
+            Command::ReadStdin(data) => {
+                if let Ok(buf) = Buffer::from_reader(std::io::Cursor::new(data)) {
+                    let bid = self.buffers.insert(buf);
+                    run(self, id, Hook::BufCreated(bid));
+                    self.open_buffer(id, bid);
+                }
+            }
         }
     }
 
@@ -927,7 +934,10 @@ impl Editor {
     }
 
     fn load_language_syntax(&mut self, lang: &Language, reload: bool) {
-        let loader = self.syntaxes.loader(self.config_dir.lang_dir());
+        let loader = self.syntaxes.loader(
+            self.config_dir.lang_dir(),
+            self.config.editor.language_detect.clone(),
+        );
         loader.load_language(lang, reload);
     }
 

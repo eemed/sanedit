@@ -5,7 +5,7 @@ use std::{
 };
 
 use sanedit_buffer::PieceTreeView;
-use sanedit_core::{movement, BufferRange, Directory, Language, Range};
+use sanedit_core::{movement, BufferRange, Detect, Directory, Language, Range};
 use sanedit_server::Kill;
 use sanedit_utils::sorted_vec::SortedVec;
 
@@ -50,10 +50,11 @@ impl Syntaxes {
         }
     }
 
-    pub fn loader(&self, config_dir: Directory) -> SyntaxLoader {
+    pub fn loader(&self, config_dir: Directory, detect: Arc<Map<String, Detect>>) -> SyntaxLoader {
         SyntaxLoader {
             dir: config_dir,
             global: self.syntaxes.clone(),
+            detect,
         }
     }
 }
@@ -62,6 +63,7 @@ impl Syntaxes {
 pub(crate) struct SyntaxLoader {
     dir: Directory,
     global: Arc<Mutex<Map<Language, Syntax>>>,
+    detect: Arc<Map<String, Detect>>,
     // TODO
     // there is a bug here if syntaxes are reloaded while the syntax loader is active
     // It may return wrong rule indices for captures.
@@ -140,13 +142,14 @@ impl SyntaxLoader {
 
 impl LanguageLoader for SyntaxLoader {
     fn load(&self, language: &str) -> Result<Arc<Parser>, sanedit_syntax::ParseError> {
-        let language = Language::from(language);
+        let language =
+            Language::determine_str(language, &self.detect).unwrap_or(Language::new(language));
         let syntax = self.load_or_get(language)?;
         Ok(syntax.parser)
     }
 
     fn get(&self, language: &str) -> Option<Arc<Parser>> {
-        let language = Language::from(language);
+        let language = Language::determine_str(language, &self.detect)?;
         let syns = self.global.lock().ok()?;
         syns.get(&language).map(|syn| syn.parser.clone())
     }

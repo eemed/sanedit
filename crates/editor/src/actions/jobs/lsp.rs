@@ -173,7 +173,7 @@ impl LSPJob {
     }
 
     fn hover(&self, editor: &mut Editor, id: ClientId, texts: Vec<Text>) {
-        let markdown = Language::from("markdown");
+        let markdown = Language::new("markdown");
         editor.load_language(&markdown, false);
         let syntax = editor.syntaxes.get(&markdown);
         let (win, _buf) = win_buf!(editor, id);

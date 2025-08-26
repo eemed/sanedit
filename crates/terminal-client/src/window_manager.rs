@@ -13,7 +13,7 @@ pub(crate) struct WindowManager {
 impl WindowManager {
     pub fn new(window_id: usize, session: &str) -> WindowManager {
         let shell = "/bin/bash".to_string();
-        let new_instance_command = format!("sane --session {session} --parent-client {window_id}; {shell}");
+        let new_instance_command = format!("sane --session {session} --parent-client {window_id}");
         let wm = Self::new_wm();
 
         WindowManager {

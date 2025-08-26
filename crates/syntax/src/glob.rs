@@ -322,6 +322,7 @@ mod test {
         let glob = Glob::new("**/node_modules").unwrap();
         assert_eq!(glob.is_match(b"/root/user/node_modules/library"), true);
         assert_eq!(glob.is_match(b"/root/user/node_modules"), true);
+        assert_eq!(glob.is_match(b"node_modules"), true);
         assert_eq!(glob.is_match(b"text/lorem.txt"), false);
     }
 

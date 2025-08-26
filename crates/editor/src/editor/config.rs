@@ -90,8 +90,10 @@ impl Config {
         }
 
         // Extend default detect from user configuration
-        let mut detect = EditorConfig::default_language_map();
-        for (lang, user_detect) in config.editor.language_detect {
+        let mut detect = Arc::unwrap_or_clone(EditorConfig::default_language_map());
+        let ld = Arc::unwrap_or_clone(config.editor.language_detect);
+
+        for (lang, user_detect) in ld {
             match detect.get_mut(&lang) {
                 Some(detect) => detect.merge(user_detect),
                 None => {
@@ -99,7 +101,7 @@ impl Config {
                 }
             }
         }
-        config.editor.language_detect = detect;
+        config.editor.language_detect = Arc::new(detect);
 
         config
     }
@@ -267,7 +269,7 @@ pub(crate) struct EditorConfig {
     /// Language glob patterns
     /// By default the language is the extension of the file
     #[serde(skip_serializing)]
-    pub language_detect: Map<String, Detect>,
+    pub language_detect: Arc<Map<String, Detect>>,
 
     /// Copy text to clipboard when deleting
     pub copy_on_delete: bool,

@@ -19,7 +19,7 @@ use message::ClientInternalMessage;
 // We have 2 tasks that need to be running
 // Input thread: polls inputs and writes them to the server.
 // Logic thread: Reacts to server messages, draws screen.
-pub fn run<R, W>(read: R, write: W, opts: ClientOptions)
+pub fn run<R, W>(read: R, write: W, mut opts: ClientOptions)
 where
     R: io::Read + Clone + Send + 'static,
     W: io::Write + 'static,
@@ -37,10 +37,15 @@ where
         .expect("Failed to send hello");
 
     // Open file if exists
-    if let Some(file) = opts.file.as_ref() {
+    if let Some(file) = opts.file.take() {
+        let command = match file {
+            InitialFile::Path(path_buf) => Command::OpenFile(path_buf),
+            InitialFile::Stdin(vec) => Command::ReadStdin(vec),
+        };
+
         writer
-            .write(Message::Command(Command::OpenFile(file.clone())))
-            .expect("Failed to open file");
+            .write(Message::Command(command))
+            .expect("Failed to send command");
     }
 
     // Input thread

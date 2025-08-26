@@ -39,6 +39,7 @@ pub enum ClientMessage {
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug)]
 pub enum Command {
     OpenFile(PathBuf),
+    ReadStdin(Vec<u8>),
 }
 
 /// Messages sent to the server

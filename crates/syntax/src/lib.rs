@@ -279,7 +279,7 @@ impl ParserKind {
                 }
 
                 last_pos = None;
-                last_lang = None;
+                // last_lang = None;
             }
 
             i += 1;

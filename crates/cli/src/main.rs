@@ -2,6 +2,7 @@ mod logging;
 
 use std::{
     fs,
+    io::Read as _,
     path::{Path, PathBuf},
     process::Stdio,
     time::Duration,
@@ -9,7 +10,7 @@ use std::{
 
 use argh::FromArgs;
 use sanedit_server::{Address, ServerOptions};
-use sanedit_terminal_client::{unix::UnixDomainSocketClient, ClientOptions};
+use sanedit_terminal_client::{unix::UnixDomainSocketClient, ClientOptions, InitialFile};
 
 const SESSION_NAMES: [&str; 10] = [
     "wolf",
@@ -26,10 +27,15 @@ const SESSION_NAMES: [&str; 10] = [
 
 /// command line options
 #[derive(FromArgs)]
+#[argh(help_triggers("-h", "--help", "help"))]
 struct Cli {
     /// file to open
     #[argh(positional)]
     file: Option<PathBuf>,
+
+    /// read from stdin
+    #[argh(switch)]
+    stdin: bool,
 
     /// turn debugging information on
     #[argh(switch)]
@@ -43,25 +49,34 @@ struct Cli {
     #[argh(option)]
     working_dir: Option<PathBuf>,
 
-    /// connect to an existing session
-    #[argh(option)]
+    /// connect or create a new session
+    #[argh(option, short = 's')]
     session: Option<String>,
 
     /// parent client, used to inherit options
-    #[argh(option)]
+    #[argh(option, hidden_help)]
     parent_client: Option<usize>,
 
     /// create server only, no UI
     #[argh(switch)]
     server_only: bool,
 
-    /// list available sessions
-    #[argh(switch)]
+    /// print available sessions
+    #[argh(switch, short = 'l')]
     list_sessions: bool,
+
+    /// print version
+    #[argh(switch, short = 'v')]
+    version: bool,
 }
 
 fn main() {
     let cli: Cli = argh::from_env();
+
+    if cli.version {
+        print_version();
+        return;
+    }
 
     if cli.list_sessions {
         list_sessions();
@@ -73,17 +88,14 @@ fn main() {
         .as_ref()
         .map(|session| session_name_to_socket(&session))
         .unwrap_or_else(|| next_available_session_socket());
-
     let session = socket_to_session_name(&socket);
     let log_file = init_logging(&cli, &session);
-
-    let connect_to_session = cli.session.is_some();
     let client_opts = ClientOptions {
-        file: cli.file.clone(),
+        file: file_to_open(&cli),
         parent_client: cli.parent_client,
         session: session.clone(),
     };
-    let existing_session = connect_to_session || socket.try_exists().unwrap_or(false);
+    let existing_session = socket.try_exists().unwrap_or(false);
     let server_opts = ServerOptions {
         config_dir: cli.config_dir.clone(),
         working_dir: cli.working_dir.clone(),
@@ -104,6 +116,22 @@ fn main() {
     if let Some(log_file) = log_file {
         let _ = fs::remove_file(&log_file);
     }
+}
+
+fn file_to_open(cli: &Cli) -> Option<InitialFile> {
+    if cli.stdin {
+        let mut buf = vec![];
+        let _ = std::io::stdin().read_to_end(&mut buf);
+        Some(InitialFile::Stdin(buf))
+    } else {
+        let path = cli.file.as_ref()?;
+        Some(InitialFile::Path(path.clone()))
+    }
+}
+
+fn print_version() {
+    const VERSION: &str = env!("CARGO_PKG_VERSION");
+    println!("{VERSION}");
 }
 
 fn list_sessions() {

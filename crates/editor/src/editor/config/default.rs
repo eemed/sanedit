@@ -39,19 +39,43 @@ impl Config {
 }
 
 impl EditorConfig {
-    #[rustfmt::skip]
-    pub(crate) fn default_language_map() -> Map<String, Detect> {
+    pub(crate) fn default_language_map() -> Arc<Map<String, Detect>> {
         macro_rules! map {
-            ($keymap:ident, $ft: expr, $globs:expr, []) => {
-                $keymap.insert(
-                    $ft.into(),
-                    Detect::new($globs.into_iter().map(String::from).collect(), vec![]),
-                );
-            };
-            ($keymap:ident, $ft: expr, $globs:expr, $shebangs:expr) => {
+            ($keymap:ident, $ft: expr, $exts:expr, [], []) => {
                 $keymap.insert(
                     $ft.into(),
                     Detect::new(
+                        $exts.into_iter().map(String::from).collect(),
+                        vec![],
+                        vec![],
+                    ),
+                );
+            };
+            ($keymap:ident, $ft: expr, [], $globs:expr, []) => {
+                $keymap.insert(
+                    $ft.into(),
+                    Detect::new(
+                        vec![],
+                        $globs.into_iter().map(String::from).collect(),
+                        vec![],
+                    ),
+                );
+            };
+            ($keymap:ident, $ft: expr, $exts:expr, [], $shebangs:expr) => {
+                $keymap.insert(
+                    $ft.into(),
+                    Detect::new(
+                        $exts.into_iter().map(String::from).collect(),
+                        vec![],
+                        $shebangs.into_iter().map(String::from).collect(),
+                    ),
+                );
+            };
+            ($keymap:ident, $ft: expr, $exts:expr, $globs:expr, $shebangs:expr) => {
+                $keymap.insert(
+                    $ft.into(),
+                    Detect::new(
+                        $exts.into_iter().map(String::from).collect(),
                         $globs.into_iter().map(String::from).collect(),
                         $shebangs.into_iter().map(String::from).collect(),
                     ),
@@ -62,24 +86,42 @@ impl EditorConfig {
         let mut d = Map::default();
 
         // Using LSP language identifiers
-        map!(d, "asciidoc",        ["**/*.adoc"],                                                                  []);
-        map!(d, "css",             ["**/*.css", "**/*.scss", "**/*.sass"],                                         []);
-        map!(d, "dockerfile",      ["**/Dockerfile", "**/Dockerfile.*"],                                           []);
-        map!(d, "gitcommit",       ["**/.git/COMMIT_EDITMSG"],                                                     []);
-        map!(d, "glsl",            ["**/*.vert", "**/*.frag", "**/*.geom", "**/*.tesc", "**/*.tese", "**/*.comp"], []);
-        map!(d, "javascript",      ["**/*.js"],                                                                    []);
-        map!(d, "javascriptreact", ["**/*.jsx"],                                                                   []);
-        map!(d, "make",            ["**/Makefile"],                                                                []);
-        map!(d, "markdown",        ["**/*.md"],                                                                    []);
-        map!(d, "python",          ["**/*.py"],                                                                    ["#!/usr/bin/env python3", "#!/usr/bin/env python"]);
-        map!(d, "rust",            ["**/*.rs"],                                                                    []);
-        map!(d, "shellscript",     ["**/*.sh", "**/*.bash", "**/.bashrc"],                                         ["#!/bin/bash", "#!/usr/bin/env bash", "#!/bin/sh" ]);
-        map!(d, "toml",            ["**/Cargo.lock"],                                                              []);
-        map!(d, "typescript",      ["**/*.ts"],                                                                    []);
-        map!(d, "typescriptreact", ["**/*.tsx"],                                                                   []);
-        map!(d, "yaml",            ["**/*.yml"],                                                                   []);
+        map!(d, "asciidoc", ["adoc"], [], []);
+        map!(d, "css", ["css", "scss", "sass"], [], []);
+        map!(
+            d,
+            "dockerfile",
+            [],
+            ["**/Dockerfile", "**/Dockerfile.*"],
+            []
+        );
+        map!(d, "gitcommit", [], ["**/.git/COMMIT_EDITMSG"], []);
+        map!(d, "glsl", ["vert", "geom", "tesc", "tese", "comp"], [], []);
+        map!(d, "javascript", ["js"], [], []);
+        map!(d, "javascriptreact", ["jsx"], [], []);
+        map!(d, "make", [], ["**/Makefile"], []);
+        map!(d, "markdown", ["md"], [], []);
+        map!(
+            d,
+            "python",
+            ["py"],
+            [],
+            ["#!/usr/bin/env python3", "#!/usr/bin/env python"]
+        );
+        map!(d, "rust", ["rs"], [], []);
+        map!(
+            d,
+            "shellscript",
+            ["sh", "bash"],
+            ["**/.bashrc"],
+            ["#!/bin/bash", "#!/usr/bin/env bash", "#!/bin/sh"]
+        );
+        map!(d, "toml", [], ["**/Cargo.lock"], []);
+        map!(d, "typescript", ["ts"], [], []);
+        map!(d, "typescriptreact", ["tsx"], [], []);
+        map!(d, "yaml", ["yml"], [], []);
 
-        d
+        Arc::new(d)
     }
 }
 

@@ -49,9 +49,13 @@ struct Cli {
     #[argh(option)]
     working_dir: Option<PathBuf>,
 
-    /// connect or create a new session
+    /// session to connect or create
     #[argh(option, short = 's')]
     session: Option<String>,
+
+    /// set language for file provided / read from stdin
+    #[argh(option)]
+    language: Option<String>,
 
     /// parent client, used to inherit options
     #[argh(option, hidden_help)]
@@ -94,6 +98,7 @@ fn main() {
         file: file_to_open(&cli),
         parent_client: cli.parent_client,
         session: session.clone(),
+        language: cli.language.clone(),
     };
     let existing_session = socket.try_exists().unwrap_or(false);
     let server_opts = ServerOptions {

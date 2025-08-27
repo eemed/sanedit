@@ -452,26 +452,37 @@ impl Editor {
 
     fn handle_command(&mut self, id: ClientId, cmd: Command) {
         match cmd {
-            Command::OpenFile(path_buf) => {
-                if let Err(e) = self.open_file(id, &path_buf) {
+            Command::OpenFile { path, language } => {
+                if let Err(e) = self.open_file(id, &path) {
                     log::error!("Failed to open file: {e}");
+                    return;
+                }
+
+                if let Some(lang) = language {
+                    let language = Language::new(&lang);
+                    self.load_language(&language, false);
+                    let (_win, buf) = self.win_buf_mut(id);
+                    buf.language = Some(language);
                 }
             }
-            Command::ReadStdin(data) => {
-                if let Ok(buf) = Buffer::from_reader(std::io::Cursor::new(data)) {
+            Command::ReadStdin { bytes, language } => {
+                if let Ok(buf) = Buffer::from_reader(std::io::Cursor::new(bytes)) {
                     let bid = self.buffers.insert(buf);
                     run(self, id, Hook::BufCreated(bid));
                     self.open_buffer(id, bid);
+
+                    if let Some(lang) = language {
+                        let language = Language::new(&lang);
+                        self.load_language(&language, false);
+                        let buf = self.buffers.get_mut(bid).unwrap();
+                        buf.language = Some(language);
+                    }
                 }
             }
         }
     }
 
     fn handle_mouse_event(&mut self, id: ClientId, event: MouseEvent) {
-        // if win.focus() != Focus::Window {
-        //     return;
-        // }
-
         match event.element {
             Element::Filetree => match event.kind {
                 MouseEventKind::ButtonDown(MouseButton::Left) => {

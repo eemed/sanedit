@@ -39,8 +39,14 @@ where
     // Open file if exists
     if let Some(file) = opts.file.take() {
         let command = match file {
-            InitialFile::Path(path_buf) => Command::OpenFile(path_buf),
-            InitialFile::Stdin(vec) => Command::ReadStdin(vec),
+            InitialFile::Path(path_buf) => Command::OpenFile {
+                path: path_buf,
+                language: opts.language,
+            },
+            InitialFile::Stdin(vec) => Command::ReadStdin {
+                bytes: vec,
+                language: opts.language,
+            },
         };
 
         writer

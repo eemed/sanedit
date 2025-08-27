@@ -38,8 +38,14 @@ pub enum ClientMessage {
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug)]
 pub enum Command {
-    OpenFile(PathBuf),
-    ReadStdin(Vec<u8>),
+    OpenFile {
+        path: PathBuf,
+        language: Option<String>,
+    },
+    ReadStdin {
+        bytes: Vec<u8>,
+        language: Option<String>,
+    }
 }
 
 /// Messages sent to the server

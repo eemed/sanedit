@@ -52,6 +52,7 @@ pub enum Command {
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug)]
 pub enum Message {
     Hello {
+        color_count: usize,
         size: Size,
         parent: Option<usize>,
     },

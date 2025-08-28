@@ -25,6 +25,22 @@ const SESSION_NAMES: [&str; 10] = [
     "wine",
 ];
 
+struct Session {
+    name: String,
+    socket: PathBuf,
+}
+
+impl Session {
+    pub fn new(sessions: &Path, name: &str) -> Session {
+        let fname = format!("{name}.sock");
+        let socket = sessions.join(fname);
+        Session {
+            name: name.into(),
+            socket,
+        }
+    }
+}
+
 /// command line options
 #[derive(FromArgs)]
 #[argh(help_triggers("-h", "--help", "help"))]
@@ -75,6 +91,17 @@ struct Cli {
 }
 
 fn main() {
+    let tmp = sanedit_core::tmp_dir().expect("TMP directory not accessible");
+    let log_tmp = {
+        let log_tmp = tmp.join("log");
+        std::fs::create_dir_all(&log_tmp).expect("Failed to create log directory");
+        log_tmp
+    };
+    let sessions = {
+        let sessions = tmp.join("session");
+        std::fs::create_dir_all(&sessions).expect("Failed to create sessions directory");
+        sessions
+    };
     let cli: Cli = argh::from_env();
 
     if cli.version {
@@ -83,39 +110,38 @@ fn main() {
     }
 
     if cli.list_sessions {
-        list_sessions();
+        list_sessions(&sessions);
         return;
     }
 
-    let socket = cli
+    let session = cli
         .session
         .as_ref()
-        .map(|session| session_name_to_socket(&session))
-        .unwrap_or_else(|| next_available_session_socket());
-    let session = socket_to_session_name(&socket);
-    let log_file = init_logging(&cli, &session);
+        .map(|name| Session::new(&sessions, &name))
+        .unwrap_or_else(|| next_available_session(&sessions));
+    let log_file = init_logging(&cli, &log_tmp, &session);
     let client_opts = ClientOptions {
         file: file_to_open(&cli),
         parent_client: cli.parent_client,
-        session: session.clone(),
+        session: session.name.clone(),
         language: cli.language.clone(),
     };
-    let existing_session = socket.try_exists().unwrap_or(false);
+    let existing_session = session.socket.try_exists().unwrap_or(false);
     let server_opts = ServerOptions {
         config_dir: cli.config_dir.clone(),
         working_dir: cli.working_dir.clone(),
         debug: cli.debug,
-        addr: Address::UnixDomainSocket(socket.clone()),
+        addr: Address::UnixDomainSocket(session.socket.clone()),
     };
 
     if cli.server_only {
         start_server(server_opts);
-        let _ = fs::remove_file(socket);
+        let _ = fs::remove_file(session.socket);
     } else if existing_session {
-        connect_to_socket(&socket, client_opts);
+        connect_to_socket(&session.socket, client_opts);
     } else {
-        start_server_process(&cli, &session, &socket);
-        connect_to_socket(&socket, client_opts);
+        start_server_process(&cli, &session);
+        connect_to_socket(&session.socket, client_opts);
     }
 
     if let Some(log_file) = log_file {
@@ -139,26 +165,19 @@ fn print_version() {
     println!("{VERSION}");
 }
 
-fn list_sessions() {
+fn list_sessions(sessions: &Path) {
     println!("Available sessions:");
-    let mut paths = fs::read_dir("/tmp").unwrap();
+    let mut paths = fs::read_dir(sessions).unwrap();
     while let Some(Ok(path)) = paths.next() {
         let path = path.path();
-        let name = path.to_string_lossy();
-        if name.starts_with("/tmp/sanedit-") && name.ends_with(".sock") {
-            let session = socket_to_session_name(&path);
-            println!("{session}");
+        if let Some(fname) = path.file_name() {
+            let name = fname.to_string_lossy();
+            println!("{}", &name[..name.len() - ".sock".len()]);
         }
     }
 }
 
-fn init_logging(cli: &Cli, session: &str) -> Option<PathBuf> {
-    let tmp = sanedit_core::tmp_dir();
-    if tmp.is_none() {
-        eprintln!("TMP directory not accessible");
-        return None;
-    }
-    let tmp = tmp.unwrap();
+fn init_logging(cli: &Cli, tmp: &Path, session: &Session) -> Option<PathBuf> {
     let log_file = next_available_log_file(&tmp, cli, session);
     logging::init_panic();
     logging::init_logger(&log_file, cli.debug);
@@ -166,7 +185,7 @@ fn init_logging(cli: &Cli, session: &str) -> Option<PathBuf> {
     Some(log_file)
 }
 
-fn next_available_log_file(tmp: &Path, cli: &Cli, session: &str) -> PathBuf {
+fn next_available_log_file(tmp: &Path, cli: &Cli, session: &Session) -> PathBuf {
     let mut i = 0;
     loop {
         let mut id = String::new();
@@ -178,7 +197,7 @@ fn next_available_log_file(tmp: &Path, cli: &Cli, session: &str) -> PathBuf {
             client = format!("-client");
         };
 
-        let name = format!("sanedit-{session}{client}{id}.log",);
+        let name = format!("{}{client}{id}.log", session.name);
         let file = tmp.join(name);
         if !file.exists() {
             return file;
@@ -188,7 +207,7 @@ fn next_available_log_file(tmp: &Path, cli: &Cli, session: &str) -> PathBuf {
     }
 }
 
-fn next_available_session_socket() -> PathBuf {
+fn next_available_session(sessions: &Path) -> Session {
     let mut i = 0;
     loop {
         for session in SESSION_NAMES {
@@ -198,9 +217,9 @@ fn next_available_session_socket() -> PathBuf {
                 format!("-{i}")
             };
             let session_name = format!("{session}{number}");
-            let socket = session_name_to_socket(&session_name);
-            if !socket.exists() {
-                return socket;
+            let session = Session::new(sessions, &session_name);
+            if !session.socket.exists() {
+                return session;
             }
         }
 
@@ -208,19 +227,9 @@ fn next_available_session_socket() -> PathBuf {
     }
 }
 
-fn session_name_to_socket(name: &str) -> PathBuf {
-    let socket = format!("/tmp/sanedit-{name}.sock");
-    PathBuf::from(socket)
-}
-
-fn socket_to_session_name(path: &Path) -> String {
-    let name = path.to_string_lossy();
-    name["/tmp/sanedit-".len()..name.len() - ".sock".len()].into()
-}
-
-fn start_server_process(cli: &Cli, session: &str, socket: &Path) {
+fn start_server_process(cli: &Cli, session: &Session) {
     log::info!("Start server process..");
-    let mut opts = vec!["sane", "--server-only", "--session", session];
+    let mut opts = vec!["sane", "--server-only", "--session", &session.name];
     if cli.debug {
         opts.push("--debug");
     }
@@ -243,7 +252,7 @@ fn start_server_process(cli: &Cli, session: &str, socket: &Path) {
         .stdin(Stdio::null())
         .spawn();
 
-    while !socket.exists() {
+    while !session.socket.exists() {
         std::thread::sleep(Duration::from_millis(10));
     }
 }

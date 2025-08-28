@@ -28,9 +28,11 @@ where
     let mut ui = UI::new().expect("Failed to start UI");
     let (tx, rx) = crossbeam::channel::unbounded();
     let (internal_tx, internal_rx) = crossbeam::channel::unbounded();
+    let color_count = ui.color_count();
 
     writer
         .write(Message::Hello {
+            color_count,
             size: ui.window().size(),
             parent: opts.parent_client.clone(),
         })

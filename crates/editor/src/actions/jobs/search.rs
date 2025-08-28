@@ -7,7 +7,7 @@ use sanedit_buffer::PieceTreeView;
 use sanedit_core::BufferRange;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 
-use crate::editor::{job_broker::KeepInTouch, windows::SearchHighlights, Editor};
+use crate::editor::{buffers::BufferId, job_broker::KeepInTouch, windows::SearchHighlights, Editor};
 use sanedit_server::{ClientId, Job, JobContext, JobResult};
 
 use super::CHANNEL_SIZE;
@@ -22,6 +22,7 @@ pub(crate) struct Search {
     client_id: ClientId,
     searcher: Arc<Searcher>,
     ropt: PieceTreeView,
+    bid: BufferId,
     range: BufferRange,
     changes_made: u32,
 }
@@ -30,6 +31,7 @@ impl Search {
     pub fn new(
         id: ClientId,
         searcher: Searcher,
+        bid: BufferId,
         ropt: PieceTreeView,
         range: BufferRange,
         changes_made: u32,
@@ -37,6 +39,7 @@ impl Search {
         Search {
             client_id: id,
             searcher: Arc::new(searcher),
+            bid,
             ropt,
             range,
             changes_made,
@@ -94,7 +97,11 @@ impl Job for Search {
 impl KeepInTouch for Search {
     fn on_message(&self, editor: &mut Editor, msg: Box<dyn Any>) {
         if let Ok(output) = msg.downcast::<SearchMessage>() {
-            let (win, _buf) = editor.win_buf_mut(self.client_id);
+            let (win, buf) = editor.win_buf_mut(self.client_id);
+            if buf.id != self.bid || buf.total_changes_made() != self.changes_made {
+                return;
+            }
+
             match *output {
                 SearchMessage::Matches(matches) => {
                     win.search.set_highlights(SearchHighlights {

@@ -31,6 +31,10 @@ impl UI {
         })
     }
 
+    pub fn color_count(&self) -> usize {
+        crossterm::style::available_color_count() as usize
+    }
+
     pub fn window(&self) -> Rect {
         // Atleast size of 1 cell
         let mut rect = self.grid.window();

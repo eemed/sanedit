@@ -356,8 +356,13 @@ impl Editor {
     }
 
     fn handle_message(&mut self, id: ClientId, msg: Message) {
-        if let Message::Hello { size, parent } = msg {
-            self.handle_hello(id, size, parent);
+        if let Message::Hello {
+            color_count,
+            size,
+            parent,
+        } = msg
+        {
+            self.handle_hello(id, color_count, size, parent);
             return;
         }
 
@@ -397,7 +402,13 @@ impl Editor {
         }
     }
 
-    fn handle_hello(&mut self, id: ClientId, size: Size, parent: Option<usize>) {
+    fn handle_hello(
+        &mut self,
+        id: ClientId,
+        color_count: usize,
+        size: Size,
+        parent: Option<usize>,
+    ) {
         // Create buffer and window
         let (bid, config, view_offset) = parent
             .map(|parent| {
@@ -421,11 +432,15 @@ impl Editor {
         let win = self.windows.get_mut(id).expect("Window not present");
         win.goto_view_offset(view_offset, buf);
 
-        let theme = self
-            .themes
-            .get(&win.config.theme)
-            .expect("Theme not present")
-            .clone();
+        let theme = {
+            log::info!("color count: {color_count}");
+            let name = if color_count <= 16 {
+                "less"
+            } else {
+                &win.config.theme
+            };
+            self.themes.get(name).expect("Theme not present").clone()
+        };
 
         // Redraw view
         win.redraw_view(buf);

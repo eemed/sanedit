@@ -1,0 +1,74 @@
+[colors.window]
+default = "#000000,,"
+statusline = "#ffffff,#000000,"
+match = "#FF00FF,#000000,"
+virtual = ",#00ffff,"
+
+[colors.cursor]
+normal = "#ffffff,,"
+selection = "#ffffff,#000000,"
+
+[colors.window.view]
+hint = "#0000FF,#000000,"
+info = "#0000FF,#000000,"
+warn = "#FFFF00,#000000,"
+error = "#FF0000,#000000,"
+
+added = "#00FF00,#000000,"
+modified = "#FFFF00,#000000,"
+deleted = "#FF0000,#000000,"
+
+constant = ",#FF00FF,"
+string =  ",#00FF00,"
+keyword = ",#FFFF00,"
+operator =  ",#00FFFF,"
+type =  ",#00FF00,"
+preproc = ",#FF00FF,"
+special = ",#FF00FF,"
+identifier = ",#FF00FF,"
+
+[colors.window.completion]
+default = "#ffffff,#000000,"
+match = ",#00FFFF,"
+
+[colors.window.completion.selected]
+default = "#000000,#ffffff,"
+match = ",#00FFFF,"
+
+[colors.prompt]
+default = "#ffffff,#000000,"
+
+[colors.prompt.overlay]
+default = "#ffffff,#000000,"
+message = ",#0000FF,"
+
+[colors.prompt.completion]
+match = ",#00FFFF,"
+
+[colors.prompt.completion.selected]
+default = "#000000,#ffffff,"
+match = ",#00FFFF,"
+
+[colors.filetree]
+default = "#000000,#ffffff,"
+markers = ",#00FFFF,"
+directory = ",#FFFF00,"
+
+[colors.filetree.selected]
+default = "#ffffff,#000000,"
+markers = ",#00FFFF,"
+
+[colors.locations]
+default = "#000000,#ffffff,"
+title = "#ffffff,#000000,"
+group = ",#FFFF00,"
+markers = ",#00FFFF,"
+match = ",#00FFFF,"
+
+[colors.locations.selected]
+default = "#ffffff,#000000,"
+match = ",#00FFFF,"
+markers = ",#00FFFF,"
+
+[colors.popup]
+default = "#ffffff,#000000,"

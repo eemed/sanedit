@@ -510,6 +510,7 @@ impl Window {
         self.bid = new;
 
         self.view.syntax = ViewSyntax::default();
+        self.search.reset_highlighting();
     }
 
     pub fn goto_view_offset(&mut self, offset: u64, buf: &Buffer) {

@@ -1,24 +1,25 @@
 version: '3'
 
 vars:
-  LOG_FILE: '{{.HOME}}/.local/share/sanedit/tmp/sanedit-debug.log'
-  LOG_FILE_CLIENT: '{{.HOME}}/.local/share/sanedit/tmp/sanedit-debug-client.log'
+  LOG_FILE: '{{.HOME}}/.local/share/sanedit/tmp/log/debug.log'
+  LOG_FILE_CLIENT: '{{.HOME}}/.local/share/sanedit/tmp/log/debug-client.log'
+  DEBUG_SOCKET: '{{.HOME}}/.local/share/sanedit/tmp/session/debug.sock'
   UCD_VERSION: 16.0.0
   UCD_DIR: /tmp/ucd-{{ .UCD_VERSION }}
   TARGET: x86_64-unknown-linux-musl
 
 tasks:
-  release:build:
+  release-build:
     desc: Build a release build
     dir: crates
     cmds:
       - cargo build --release --target={{.TARGET}}
 
-  release:deb:
+  release-deb:
     desc: Build a deb package
     dir: crates
     cmds:
-        - task: release:build
+        - task: release-build
         - mkdir -p ../deb
         - cargo deb --target={{.TARGET}} -p sanedit-cli -o ../deb --no-build
 
@@ -28,7 +29,7 @@ tasks:
     cmds:
       - rustup target add {{.TARGET}}
       - cargo install ucd-generate cargo-deb flamegraph
-      - task: generate:ucd
+      - task: generate-ucd
       - task: format
 
   build:
@@ -49,18 +50,18 @@ tasks:
     desc: Build and run the debug build
     dir: crates
     cmds:
-      - rm -f /tmp/sanedit-debug.sock
+      - rm -f {{.DEBUG_SOCKET}}
       - rm -f {{.LOG_FILE}} {{.LOG_FILE_CLIENT}}
       - cargo run --bin sane -- --server-only --session debug --debug --config-dir ../runtime &
       - |
-        until [ -e /tmp/sanedit-debug.sock ]; do \
+        until [ -e {{.DEBUG_SOCKET}} ]; do \
           sleep 0.1; \
         done
       - cargo run --bin sane -- --debug --session debug --config-dir ../runtime
     env:
       RUST_BACKTRACE: 1
 
-  debug:glob:
+  debug-glob:
     desc: Build and run the debug glob pattern
     dir: crates
     requires:
@@ -68,7 +69,7 @@ tasks:
     cmds:
       - echo "{{ .INPUT }}" | cargo run --bin syntax -- --rules "{{ .PATTERN }}" --glob --print-rules --print-byte-code --print-captures
 
-  debug:regex:
+  debug-regex:
     desc: Build and run the debug regex pattern
     dir: crates
     requires:
@@ -76,7 +77,7 @@ tasks:
     cmds:
       - echo "{{ .INPUT }}" | cargo run --bin syntax -- --rules "{{ .PATTERN }}" --regex --print-rules --print-byte-code --print-captures
 
-  debug:peg:
+  debug-peg:
     desc: Build and run the debug regex pattern
     dir: crates
     requires:
@@ -84,7 +85,7 @@ tasks:
     cmds:
       - echo "{{ .INPUT }}" | cargo run --bin syntax -- --rules "{{ .PATTERN }}" --print-rules --print-byte-code --print-captures
 
-  debug:run:
+  debug-run:
     desc: Build and run the debug build with debug logging
     dir: crates
     cmds:
@@ -110,7 +111,13 @@ tasks:
     cmds:
       - tail -f {{ .LOG_FILE }}
 
-  generate:ucd:
+  log-client:
+    desc: Tail the log file
+    dir: crates
+    cmds:
+      - tail -f {{ .LOG_FILE_CLIENT }}
+
+  generate-ucd:
     desc: Download and regenerate unicode tables in the ucd crate
     internal: true
     cmds:
@@ -156,7 +163,7 @@ tasks:
       - rm -rf {{ .LOG_FILE }}
       - cargo clean
 
-  debug:kill:
+  debug-kill:
     desc: Kill debug process
     cmds:
       - ps aux | grep "target/debug/sane" | awk '{ print $2 }' | xargs kill -9
@@ -174,22 +181,22 @@ tasks:
     cmds:
       - typst compile impl-notes.typ implementation-notes.pdf
 
-  docs:watch:
+  docs-watch:
     desc: Watch and compile when typst files change
     dir: docs
     deps: [docs:images]
     cmds:
       - typst watch impl-notes.typ implementation-notes.pdf
 
-  docs:open:
+  docs-open:
     desc: Open documentation pdf
     dir: docs
     cmds:
       - gio open implementation-notes.pdf
 
-  release:install-deb:
+  release-install-deb:
     desc: Build release deb and install it to local machine
-    deps: [release:deb]
+    deps: [release-deb]
     cmds:
       - sudo apt remove -y sanedit
       - sudo apt install -y ./deb/sanedit_*.deb

@@ -117,7 +117,7 @@ fn highlight_view_matches(editor: &mut Editor, id: ClientId, searcher: Searcher)
     let mut view = win.view().range();
     view.start = view.start.saturating_sub(HORIZON_TOP);
     view.end = min(pt.len(), view.end + HORIZON_BOTTOM);
-    let job = jobs::Search::new(id, searcher, pt, view, buf.total_changes_made());
+    let job = jobs::Search::new(id, searcher, buf.id, pt, view, buf.total_changes_made());
     editor.job_broker.request_slot(id, JOB_NAME, job);
 }
 

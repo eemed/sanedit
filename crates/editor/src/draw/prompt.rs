@@ -29,6 +29,8 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> Option<Redraw> {
             if ctx.state.last_prompt_selection == selected {
                 return None;
             } else {
+                ctx.state.last_prompt_selection = selected;
+                prompt.selected = selected;
                 return Some(redraw::Redraw::Selection(Kind::Prompt, selected));
             }
         }

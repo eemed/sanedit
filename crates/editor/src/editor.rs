@@ -432,14 +432,15 @@ impl Editor {
         let win = self.windows.get_mut(id).expect("Window not present");
         win.goto_view_offset(view_offset, buf);
 
-        let theme = {
-            let name = if color_count <= 16 {
-                "less"
-            } else {
-                &win.config.theme
-            };
-            self.themes.get(name).expect("Theme not present").clone()
-        };
+        if color_count <= 16 {
+            win.config.theme = "less".into();
+        }
+
+        let theme = self
+            .themes
+            .get(&win.config.theme)
+            .expect("Theme not present")
+            .clone();
 
         // Redraw view
         win.redraw_view(buf);

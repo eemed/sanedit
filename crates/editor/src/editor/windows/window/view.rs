@@ -70,6 +70,14 @@ impl Cell {
         }
     }
 
+    pub fn is_virtual(&self) -> bool {
+        match self {
+            Cell::Empty => false,
+            Cell::EOF => false,
+            Cell::Char { ch } => ch.is_virtual(),
+        }
+    }
+
     pub fn is_continue_start(&self) -> bool {
         match self {
             Cell::Empty => false,

@@ -188,7 +188,7 @@ where
                     in_continue = false;
                 }
 
-                if (in_continue || !cell.is_continue() && range.contains(&pos)) && !cell.is_empty()
+                if !cell.is_virtual() && (in_continue || !cell.is_continue() && range.contains(&pos)) && !cell.is_empty()
                     || cell.is_eof()
                 {
                     grid.at(line, col).style.merge(&style);

@@ -433,7 +433,6 @@ impl Editor {
         win.goto_view_offset(view_offset, buf);
 
         let theme = {
-            log::info!("color count: {color_count}");
             let name = if color_count <= 16 {
                 "less"
             } else {

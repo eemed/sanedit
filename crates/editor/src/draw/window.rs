@@ -139,7 +139,7 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> Option<FromEditorSharedMessage> {
 fn draw_syntax(grid: &mut Window, view: &View, theme: &Theme) {
     const HL_PREFIX: &str = "window.view.";
     let syntax = view.syntax();
-    draw_ordered_highlights(syntax.spans(), grid, view, |span| {
+    draw_ordered_highlights(syntax.spans(), grid, view, false, |span| {
         if !span.highlight() {
             return None;
         }
@@ -148,8 +148,13 @@ fn draw_syntax(grid: &mut Window, view: &View, theme: &Theme) {
     });
 }
 
-fn draw_ordered_highlights<T, F>(items: &[T], grid: &mut Window, view: &View, f: F)
-where
+fn draw_ordered_highlights<T, F>(
+    items: &[T],
+    grid: &mut Window,
+    view: &View,
+    overwrite_virtual: bool,
+    f: F,
+) where
     F: Fn(&T) -> Option<(Style, &BufferRange)>,
 {
     let vrange = view.range();
@@ -188,7 +193,9 @@ where
                     in_continue = false;
                 }
 
-                if !cell.is_virtual() && (in_continue || !cell.is_continue() && range.contains(&pos)) && !cell.is_empty()
+                if (overwrite_virtual || !cell.is_virtual())
+                    && (in_continue || !cell.is_continue() && range.contains(&pos))
+                    && !cell.is_empty()
                     || cell.is_eof()
                 {
                     grid.at(line, col).style.merge(&style);
@@ -219,7 +226,7 @@ where
 
 fn draw_diagnostics(grid: &mut Window, diagnostics: &[Diagnostic], view: &View, theme: &Theme) {
     const HL_PREFIX: &str = "window.view.";
-    draw_ordered_highlights(diagnostics, grid, view, |diag| {
+    draw_ordered_highlights(diagnostics, grid, view, false, |diag| {
         let key = format!("{}{}", HL_PREFIX, diag.severity().as_ref());
         let style = theme.get(key);
         Some((style, diag.range()))
@@ -265,7 +272,7 @@ fn draw_search_highlights(
     theme: &Theme,
 ) {
     let style = theme.get(ThemeField::Match);
-    draw_ordered_highlights(matches, grid, view, |hl| Some((style, hl)));
+    draw_ordered_highlights(matches, grid, view, false, |hl| Some((style, hl)));
 }
 
 #[derive(PartialEq, Eq)]
@@ -325,7 +332,7 @@ fn draw_secondary_cursors(
         });
     }
 
-    draw_ordered_highlights(&cursor_hls, grid, view, |hl| Some((hl.style, &hl.range)));
+    draw_ordered_highlights(&cursor_hls, grid, view, true, |hl| Some((hl.style, &hl.range)));
 }
 
 fn draw_primary_cursor(

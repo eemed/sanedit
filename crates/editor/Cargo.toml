@@ -25,6 +25,7 @@ rayon.workspace = true
 rustc-hash.workspace = true
 chrono.workspace = true
 crossbeam.workspace = true
+xattr.workspace = true
 
 # Useful enum derives
 strum.workspace = true

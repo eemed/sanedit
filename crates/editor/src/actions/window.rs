@@ -111,9 +111,14 @@ fn sync_windows(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Window: Goto previous buffer")]
 fn goto_prev_buffer(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, _buf) = editor.win_buf_mut(id);
     match win.last_buffer.clone() {
         Some(bid) => {
+            if editor.buffers.get(bid).is_none() {
+                return ActionResult::Failed;
+            }
+
+            let (win, buf) = editor.win_buf_mut(id);
             win.push_new_cursor_jump(buf);
             editor.open_buffer(id, bid);
             ActionResult::Ok
@@ -127,7 +132,12 @@ fn goto_prev_buffer(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 pub fn goto_other_buffer(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
-    match win.last_buffer.clone() {
+    let bid = win
+        .last_buffer
+        .clone()
+        .filter(|bid| editor.buffers.get(*bid).is_some());
+
+    match bid {
         Some(bid) => editor.open_buffer(id, bid),
         _ => {
             open_new_scratch_buffer.execute(editor, id);

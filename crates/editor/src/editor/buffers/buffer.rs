@@ -4,9 +4,11 @@ mod snapshots;
 
 use std::{
     borrow::Cow,
+    ffi::OsString,
     fs::{self, File},
     io::{self, Write},
     ops::RangeBounds,
+    os::unix::fs::MetadataExt as _,
     path::{Path, PathBuf},
     time::SystemTime,
 };
@@ -340,6 +342,19 @@ impl Buffer {
 
     fn save_rename_copy(&mut self, copy_view: PieceTreeView, copy: &Path) -> Result<Saved> {
         let path = self.path().ok_or(BufferError::NoSavePath)?;
+        let metadata = path.metadata().ok();
+        let xattrs = {
+            let mut attrs = Vec::new();
+            if let Ok(attr_names) = xattr::list(path) {
+                for attr in attr_names {
+                    if let Ok(Some(value)) = xattr::get(path, &attr) {
+                        attrs.push((attr, value));
+                    }
+                }
+            }
+            attrs
+        };
+
         // Rename backing file if it is the same as our path
         if self.pt.is_file_backed() {
             let backing = self.pt.backing_file().unwrap();
@@ -352,6 +367,10 @@ impl Buffer {
         if let Err(e) = fs::rename(copy, path) {
             log::error!("Rename failed while saving {path:?}: {e}");
             fs::copy(copy, path)?;
+        }
+
+        if let Some(metadata) = metadata {
+            copy_metadata(metadata, xattrs, path)?;
         }
 
         let modified = path.metadata()?.modified()?;
@@ -454,6 +473,31 @@ impl Default for Buffer {
     fn default() -> Self {
         Buffer::new()
     }
+}
+
+fn copy_metadata(
+    metadata: std::fs::Metadata,
+    xattrs: Vec<(OsString, Vec<u8>)>,
+    to: &Path,
+) -> Result<()> {
+    // Permissions
+    std::fs::set_permissions(to, metadata.permissions())?;
+
+    // User and group
+    let usergroup = (metadata.uid(), metadata.gid());
+    let current = to.metadata()?;
+    let current_user_group = (current.uid(), current.gid());
+    if usergroup != current_user_group {
+        // Dont care if this fails, we have succesfully written to this already
+        let _ = std::os::unix::fs::chown(to, Some(usergroup.0), Some(usergroup.1));
+    }
+
+    // User and group
+    for (attr, value) in &xattrs {
+        xattr::set(to, attr, value)?;
+    }
+
+    Ok(())
 }
 
 #[derive(Debug, Error)]

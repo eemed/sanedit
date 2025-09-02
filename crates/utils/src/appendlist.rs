@@ -198,8 +198,8 @@ impl<T> Appendlist<T> {
         let loc = BucketLocation::of(range.start);
         let end = BucketLocation::of(range.end);
         debug_assert!(
-            loc.bucket == end.bucket,
-            "Slicing from different buckets slice: {range:?}"
+            (loc.bucket == end.bucket) || (loc.bucket + 1 == end.bucket  && end.pos == 0),
+            "Slicing from different buckets slice: {range:?}, start: {loc:?}, end: {end:?}"
         );
 
         let bucket = {

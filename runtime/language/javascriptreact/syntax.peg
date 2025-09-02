@@ -1,6 +1,6 @@
 document = document_items*;
 document_items =  block_match / jsx / string / keyword / preproc / constant /
-    comment / class / types  / alpha / ops /  ws+ / . ;
+    comment / class / types  / alpha / ops /  (!end .)+ / ws+ / . ;
 
 block_match = block_open (!block_close document_items)* block_close;
 @show @highlight(operator)

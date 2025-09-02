@@ -158,6 +158,7 @@ impl LanguageLoader for SyntaxLoader {
 const COMPLETION_ANNOTATION: &str = "completion";
 const HIGHLIGHT_ANNOTATION: &str = "highlight";
 const HORIZON_TOP: u64 = 1024 * 8;
+const HORIZON_TOP_MIN: u64 = 1024;
 const HORIZON_BOTTOM: u64 = 1024 * 16;
 
 #[derive(Debug, Clone)]
@@ -217,10 +218,10 @@ impl Syntax {
         let hend = min(pt.len(), view.end + HORIZON_BOTTOM);
 
         // Align to line start
-        if hstart != view.start {
-            let top = pt.slice(hstart..view.start);
+        if hstart != 0 && hstart != view.start {
+            let top = pt.slice(hstart..view.start.saturating_sub(HORIZON_TOP_MIN));
             let npos = movement::next_line_start(&top, 0);
-            hstart = npos;
+            hstart += npos;
         }
 
         view.start = hstart;

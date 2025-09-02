@@ -1,4 +1,4 @@
-document = (separated / (!stop .)* stop)*;
+document = (separated / (!stop .)+ / .)*;
 separated = todo / keyword / string / constant / comment / preproc / type / operator / alpha;
 
 alpha = [a..zA..Z0..9_]+;
@@ -6,17 +6,6 @@ stop = ws+ / "[" / "]" / "(" / ")" / ";" / "<" / ">" / "," / ":" / ".";
 WHITESPACE = [ \t] / nl;
 nl = "\n" / "\r\n";
 ws = WHITESPACE;
-
-@show @highlight
-keyword = (
-            "public" / "private" / "protected" / "return" / "for" / "extends" /
-            "new" / "final" / "switch" / "case" / "class" / "if" / "else" /
-            "implements" / "instanceof" / "enum" / "break" / "throw" "s"? /
-            "static" / "synchronized" / "transient" / "try" / "catch" / "var" /
-            "volatile" / "while" / "package" / "exports" / "requires" / "module" /
-            "do" / "abstract" / "assert" / "this" 
-          ) &stop;
-
 
 @show @highlight
 string = char / sstring;
@@ -45,7 +34,7 @@ preproc_words = "import" &stop;
 annotation = "@" [A..Za..z0..9_]+;
 
 @show @highlight
-type = ("boolean" / "char" / "void" / number_types / classname) &stop;
+type = ("boolean" / "char" / "void" / "byte" / number_types / classname) &stop;
 number_types = "int" / "float" / "double" / "long" / "short";
 classname = [A..Z] [a..zA..Z0..9_]*;
 
@@ -54,3 +43,51 @@ operator = [\[\]{}():,.<>&|=+*/?!<>-];
 
 @show @highlight(warn)
 todo = "TODO" / "XXX";
+
+@show @highlight
+keyword = (
+    "while" /
+    "volatile" /
+    "var" /
+    "try" /
+    "transient" /
+    "throws" /
+    "throw" /
+    "this" /
+    "synchronized" /
+    "switch" /
+    "super" /
+    "strictfp" /
+    "static" /
+    "return" /
+    "requires" /
+    "public" /
+    "protected" /
+    "private" /
+    "package" /
+    "new" /
+    "native" /
+    "module" /
+    "interface" /
+    "instanceof" /
+    "implements" /
+    "if" /
+    "goto" /
+    "for" /
+    "finally" /
+    "final" /
+    "extends" /
+    "exports" /
+    "enum" /
+    "else" /
+    "do" /
+    "default" /
+    "continue" /
+    "const" /
+    "class" /
+    "catch" /
+    "case" /
+    "break" /
+    "assert" /
+    "abstract"
+    ) &stop;

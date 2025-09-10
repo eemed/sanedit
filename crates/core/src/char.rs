@@ -336,6 +336,10 @@ fn grapheme_to_char(slice: &PieceTreeSlice, column: usize, options: &DisplayOpti
             }
         }
 
+        if EndOfLine::is_eol_char(ch) {
+            return eol_to_char(blen, options).into();
+        }
+
         // is nbsp
         if ch == '\u{00A0}' {
             return nbsp_to_char(blen, options).into();

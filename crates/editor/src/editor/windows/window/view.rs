@@ -47,28 +47,14 @@ impl Cell {
         }
     }
 
-    // pub fn is_non_continue_char(&self) -> bool {
-    //     match self {
-    //         Cell::Char { ch } => !ch.is_continue(),
-    //         _ => false,
-    //     }
-    // }
-
-    pub fn is_eof(&self) -> bool {
-        matches!(self, Cell::EOF)
-    }
-
     pub fn is_empty(&self) -> bool {
         matches!(self, Cell::Empty)
     }
 
-    // pub fn is_continue(&self) -> bool {
-    //     match self {
-    //         Cell::Empty => false,
-    //         Cell::EOF => false,
-    //         Cell::Char { ch } => ch.is_continue(),
-    //     }
-    // }
+
+    pub fn is_valid_cursor_cell(&self) -> bool {
+        !self.is_virtual() && !self.is_empty()
+    }
 
     pub fn is_virtual(&self) -> bool {
         match self {
@@ -78,11 +64,11 @@ impl Cell {
         }
     }
 
-    pub fn is_virtual_start(&self) -> bool {
+    pub fn is_representing(&self) -> bool {
         match self {
             Cell::Empty => false,
             Cell::EOF => false,
-            Cell::Char { ch } => ch.is_virtual_start(),
+            Cell::Char { ch } => ch.is_representing(),
         }
     }
 }

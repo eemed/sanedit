@@ -94,12 +94,17 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> Option<FromEditorSharedMessage> {
 
             // Has to be char because it has width
             let ch = cell.char().unwrap();
+            let cell_style = if ch.is_virtual() || ch.is_representing() {
+                vstyle
+            } else {
+                style
+            };
             grid.draw(
                 line,
                 col,
                 redraw::Cell {
                     text: ch.display().into(),
-                    style: if ch.is_virtual() { vstyle } else { style },
+                    style: cell_style,
                 },
             );
         }
@@ -152,7 +157,7 @@ fn draw_ordered_highlights<T, F>(
     items: &[T],
     grid: &mut Window,
     view: &View,
-    overwrite_virtual: bool,
+    overwrite_repr_and_virtual: bool,
     f: F,
 ) where
     F: Fn(&T) -> Option<(Style, &BufferRange)>,
@@ -179,7 +184,7 @@ fn draw_ordered_highlights<T, F>(
         let row_offset = point.y;
         let mut col_offset = point.x;
         let mut pos = ppos;
-        let mut in_continue = false;
+        let mut in_repr_block = false;
 
         for i in 0..(view.cells().len() - row_offset) {
             let line = row_offset + i;
@@ -189,19 +194,23 @@ fn draw_ordered_highlights<T, F>(
                 let cell = &view.cells()[line][col];
 
                 // Handle continuation chars as one block
-                if in_continue && !cell.is_virtual() {
-                    in_continue = false;
+                if in_repr_block && !cell.is_virtual() {
+                    in_repr_block = false;
                 }
 
-                if (overwrite_virtual || !cell.is_virtual())
-                    && (in_continue || !cell.is_virtual() && range.contains(&pos))
-                    && !cell.is_empty()
-                    || cell.is_eof()
-                {
+                if overwrite_repr_and_virtual && in_repr_block {
                     grid.at(line, col).style.merge(&style);
+                }
 
-                    if cell.is_virtual_start() {
-                        in_continue = true;
+                if (cell.is_valid_cursor_cell()) && range.contains(&pos) {
+                    if cell.is_representing() {
+                        in_repr_block = true;
+
+                        if overwrite_repr_and_virtual {
+                            grid.at(line, col).style.merge(&style);
+                        }
+                    } else {
+                        grid.at(line, col).style.merge(&style);
                     }
                 }
 
@@ -214,7 +223,7 @@ fn draw_ordered_highlights<T, F>(
 
                 pos += cell.len_in_buffer();
 
-                if pos >= range.end && !in_continue {
+                if pos >= range.end && !in_repr_block {
                     continue 'hls;
                 }
             }
@@ -231,42 +240,6 @@ fn draw_diagnostics(grid: &mut Window, diagnostics: &[Diagnostic], view: &View, 
         let style = theme.get(key);
         Some((style, diag.range()))
     });
-}
-
-// Prefer draw_ordered_highlights for multiple hls
-fn draw_sigle_hl(grid: &mut Window, view: &View, style: Style, range: &BufferRange) {
-    let vrange = view.range();
-    if !vrange.overlaps(range) {
-        return;
-    }
-
-    let mut pos = vrange.start;
-    let mut in_virt_block = false;
-    if let Some(point) = view.point_at_pos(pos) {
-        for (i, row) in view.cells().iter().skip(point.y).enumerate() {
-            let line = point.y + i;
-            for (col, cell) in row.iter().enumerate() {
-                if in_virt_block && !cell.is_virtual() {
-                    in_virt_block = false;
-                }
-                if (in_virt_block || !cell.is_virtual() && range.contains(&pos)) && !cell.is_empty()
-                    || cell.is_eof()
-                {
-                    grid.at(line, col).style.merge(&style);
-
-                    if cell.is_virtual_start() {
-                        in_virt_block = true;
-                    }
-                }
-
-                pos += cell.len_in_buffer();
-            }
-
-            if pos >= range.end && !in_virt_block {
-                break;
-            }
-        }
-    }
 }
 
 fn draw_search_highlights(
@@ -351,7 +324,7 @@ fn draw_primary_cursor(
     let style = theme.get(ThemeField::Selection);
 
     if let Some(area) = cursor.selection() {
-        draw_sigle_hl(grid, view, style, &area);
+        draw_ordered_highlights(&[(style, area)], grid, view, true, |(a, b)| Some((*a, b)));
     }
 
     let line_style = cursor.selection().is_some() || show_as_line;

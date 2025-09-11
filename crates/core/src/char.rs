@@ -27,7 +27,7 @@ impl Chars {
         let mut chars = vec![Char {
             character: ' ',
             extra: Some(Box::new(CharExtra { wide: grapheme })),
-            flags: flags::VIRTUAL_START,
+            flags: flags::NONE,
             len_in_buffer: len,
         }];
 
@@ -50,7 +50,7 @@ impl Chars {
                 Char {
                     character: ch,
                     extra: None,
-                    flags: flags::VIRTUAL_START,
+                    flags: flags::REPR,
                     len_in_buffer: len,
                 }
             } else {
@@ -119,18 +119,16 @@ mod flags {
     // pub(crate) const WIDE: u8 = 1 << 1;
 
     /// This char is place holder, used as padding with wide chars
-    pub(crate) const DISCARD: u8 = 1 << 2;
+    pub(crate) const DISCARD: u8 = 1 << 1;
 
     /// Just keep eol status so we can fetch it whenever
-    pub(crate) const EOL: u8 = 1 << 3;
+    pub(crate) const EOL: u8 = 1 << 2;
 
-    /// The display character is different than the actual character in buffer
-    /// or it may not exist at all in the buffer
-    pub(crate) const VIRTUAL: u8 = 1 << 4;
+    /// The character does not exist in the buffer at all
+    pub(crate) const VIRTUAL: u8 = 1 << 3;
 
-    /// This char starts the virtual block. This is a buffer backed characer
-    /// and can be followed by virtual elements that should be considered as part of thisone
-    pub(crate) const VIRTUAL_START: u8 = 1 << 5;
+    /// Character is represented differently from the one in buffer
+    pub(crate) const REPR: u8 = 1 << 4;
 }
 
 #[derive(Debug, Clone, PartialEq, Hash, Default)]
@@ -190,16 +188,12 @@ impl Char {
         self.flags & flags::EOL == flags::EOL
     }
 
-    // pub fn is_continue(&self) -> bool {
-    //     self.flags & flags::CONTINUE == flags::CONTINUE
-    // }
-
-    pub fn is_virtual_start(&self) -> bool {
-        self.flags & flags::VIRTUAL_START == flags::VIRTUAL_START
-    }
-
     pub fn is_virtual(&self) -> bool {
         self.flags & flags::VIRTUAL == flags::VIRTUAL
+    }
+
+    pub fn is_representing(&self) -> bool {
+        self.flags & flags::REPR == flags::REPR
     }
 }
 

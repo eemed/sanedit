@@ -49,8 +49,7 @@ use crate::{
     common::{
         change::{newline_autopair, newline_empty_line, newline_indent},
         text::{
-            is_sol, trim_comment_on_line, trim_comment_on_line_back, trim_whitespace,
-            trim_whitespace_back,
+            trim_comment_on_line, trim_comment_on_line_back, trim_whitespace, trim_whitespace_back,
         },
     },
     editor::{

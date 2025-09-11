@@ -1,2 +1,1 @@
-run_command = "task run"
-ignore = [".git", "deb", "crates/target", "crates/Cargo.lock"]
+ignore = [".git", "deb", "crates/target", "crates/Cargo.lock", "docs"]

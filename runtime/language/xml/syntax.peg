@@ -12,7 +12,7 @@ comment = "<!--" (!"-->" .)* "-->";
 @show @highlight(preproc)
 macro = "<!" (!">" (attr / .))* ">" / "<?" (!"?>" (attr / .))* "?>";
 
-tag = tag_open (!tag_close (separated / .))* tag_close / one_tag;
+tag = tag_open (!tag_close (separated / .))* tag_close / one_tag / tag_open / tag_close;
 
 @whitespaced
 one_tag = "<" tag_name attr* "/>";
@@ -32,4 +32,4 @@ sstring = "'" (escape  / [^'])* "'";
 escape = "\\" .;
 
 @show @highlight(identifier)
-tag_name = [a..zA..Z] [a..zA..Z0..9._-]+;
+tag_name = [a..zA..Z] [a..zA..Z0..9._-]*;

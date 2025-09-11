@@ -49,7 +49,8 @@ use crate::{
     common::{
         change::{newline_autopair, newline_empty_line, newline_indent},
         text::{
-            trim_comment_on_line, trim_comment_on_line_back, trim_whitespace, trim_whitespace_back,
+            is_sol, trim_comment_on_line, trim_comment_on_line_back, trim_whitespace,
+            trim_whitespace_back,
         },
     },
     editor::{
@@ -326,13 +327,19 @@ impl Window {
         self.view.set_offset(cursor);
 
         match zone {
-            Zone::Top => self.view.scroll_up_n(buf, 1),
+            Zone::Top => {
+                let slice = buf.slice(..);
+                let sol = is_sol(&slice, cursor);
+                if !sol {
+                    self.view.scroll_up_n(buf, 1);
+                }
+            }
             Zone::Middle => {
                 let lines = (self.view.height() / 2) as u64;
                 self.view.scroll_up_n(buf, lines);
             }
             Zone::Bottom => {
-                let lines = self.view.height().saturating_sub(2) as u64;
+                let lines = self.view.height() as u64;
                 self.view.scroll_up_n(buf, lines);
             }
         }
@@ -1477,9 +1484,9 @@ impl Window {
 
     pub fn cursor_to_view_zone(&mut self, zone: Zone) -> bool {
         let line = match zone {
-            Zone::Top => 1,
+            Zone::Top => 0,
             Zone::Middle => self.view.height() / 2,
-            Zone::Bottom => self.view.height().saturating_sub(2),
+            Zone::Bottom => self.view.height().saturating_sub(1),
         };
 
         let mut pos = self.view.start();

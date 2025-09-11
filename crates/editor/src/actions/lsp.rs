@@ -218,11 +218,18 @@ fn hover(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("LSP: Goto definition")]
 fn goto_definition(editor: &mut Editor, id: ClientId) -> ActionResult {
-    lsp_request(editor, id, move |win, _buf, path, slice, lsp| {
+    lsp_request(editor, id, move |win, buf, path, slice, lsp| {
         let offset = win.cursors.primary().pos();
         let position = Position::new(offset, &slice, &lsp.position_encoding());
         let kind = RequestKind::GotoDefinition { path, position };
-        Some((kind, vec![]))
+        Some((
+            kind,
+            vec![
+                Constraint::Buffer(buf.id),
+                Constraint::BufferVersion(buf.total_changes_made()),
+                Constraint::CursorPosition(offset),
+            ],
+        ))
     })
     .into()
 }

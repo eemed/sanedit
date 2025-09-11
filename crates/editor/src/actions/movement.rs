@@ -336,10 +336,9 @@ pub(crate) fn prev_visual_line(editor: &mut Editor, id: ClientId) -> ActionResul
 
     win.view_to_cursor(buf);
     let cursor_pos = win.cursors().primary().pos();
-    let cursor_point = win
+    let cursor_point = getf!(win
         .view()
-        .point_at_pos(cursor_pos)
-        .expect("cursor not in view");
+        .point_at_pos(cursor_pos));
     let cursor_at_start = cursor_point.y == 0;
     let view_at_start = win.view().at_start();
 
@@ -408,10 +407,9 @@ fn next_visual_line(editor: &mut Editor, id: ClientId) -> ActionResult {
 
     win.view_to_cursor(buf);
     let cursor_pos = win.cursors().primary().pos();
-    let cursor_point = win
+    let cursor_point = getf!(win
         .view()
-        .point_at_pos(cursor_pos)
-        .expect("cursor not in view");
+        .point_at_pos(cursor_pos));
     let last_line = win.view().height().saturating_sub(1);
     let cursor_at_end = cursor_point.y == last_line;
     let view_at_end = win.view().at_end();
@@ -442,7 +440,7 @@ fn next_visual_line(editor: &mut Editor, id: ClientId) -> ActionResult {
 // scrolled down and do so. returns wether cursor was moved.
 fn next_visual_line_impl(view: &View, cursor: &Cursor, buf_len: u64) -> Option<(u64, usize)> {
     let cursor_pos = cursor.pos();
-    let cursor_point = view.point_at_pos(cursor_pos).expect("cursor not in view");
+    let cursor_point = view.point_at_pos(cursor_pos)?;
     let last_line = view.height().saturating_sub(1);
     let target_line = cmp::min(cursor_point.y + 1, last_line);
 

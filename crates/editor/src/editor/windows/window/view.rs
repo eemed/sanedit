@@ -191,8 +191,6 @@ impl View {
     }
 
     fn draw_cells(&mut self, buf: &Buffer) {
-        // self.draw_old(buf);
-
         let slice = buf.slice(self.range.start..);
         let mut pos = 0;
         let mut line = 0;
@@ -332,20 +330,27 @@ impl View {
             return;
         }
 
+        n = n.min(self.height() as u64);
+
         // Go up until we find newlines,
         // but stop at a maximum if there are no lines.
         let mut pos = self.range.start;
         let min = pos.saturating_sub((self.height().saturating_sub(1) * self.width()) as u64);
         let slice = buf.slice(min..pos);
         let mut graphemes = slice.graphemes_at(slice.len());
+        let mut line_offset = 0u64;
 
         while let Some(grapheme) = graphemes.prev() {
-            if grapheme.is_eol() && pos != self.range.start {
-                n -= 1;
+            line_offset += grapheme.len();
 
-                if n == 0 {
+            if grapheme.is_eol() || line_offset >= self.width() as u64 {
+                n = n.saturating_sub(1);
+
+                if n == 0 && pos != self.range.start {
                     break;
                 }
+
+                line_offset = 0;
             }
 
             pos -= grapheme.len();

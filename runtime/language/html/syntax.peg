@@ -43,7 +43,7 @@ tag_close = "</" tag_name ">";
 tag_no_end = "<" no_end attr* ">";
 
 @whitespaced
-attr = [a..zA..Z0..9._-]+ "=" string;
+attr = [a..zA..Z0..9._:-]+ "=" string;
 @show @highlight
 string = nstring / sstring;
 nstring = "\"" (escape  / [^"])* "\"";

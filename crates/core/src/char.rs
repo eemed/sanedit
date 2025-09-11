@@ -27,7 +27,7 @@ impl Chars {
         let mut chars = vec![Char {
             character: ' ',
             extra: Some(Box::new(CharExtra { wide: grapheme })),
-            flags: flags::WIDE | flags::CONTINUE_START,
+            flags: flags::VIRTUAL_START,
             len_in_buffer: len,
         }];
 
@@ -35,7 +35,7 @@ impl Chars {
             chars.push(Char {
                 character: ' ',
                 extra: None,
-                flags: flags::NO_WIDTH | flags::CONTINUE,
+                flags: flags::VIRTUAL | flags::DISCARD,
                 len_in_buffer: 0,
             });
         }
@@ -43,21 +43,21 @@ impl Chars {
         Chars { chars }
     }
 
-    fn from_str_virtual(string: &str, len: u64) -> Chars {
+    fn from_str(string: &str, len: u64) -> Chars {
         let mut chars = vec![];
         for ch in string.chars() {
             let ch2 = if chars.is_empty() {
                 Char {
                     character: ch,
                     extra: None,
-                    flags: flags::VIRTUAL | flags::CONTINUE_START,
+                    flags: flags::VIRTUAL_START,
                     len_in_buffer: len,
                 }
             } else {
                 Char {
                     character: ch,
                     extra: None,
-                    flags: flags::VIRTUAL | flags::CONTINUE,
+                    flags: flags::VIRTUAL,
                     len_in_buffer: 0,
                 }
             };
@@ -109,15 +109,17 @@ impl From<Chars> for Vec<Char> {
 mod flags {
     pub(crate) type Flags = u8;
 
-    /// This char continues the previous one, for example Tab + tab fills
-    pub(crate) const CONTINUE: u8 = 1 << 0;
+    pub(crate) const NONE: u8 = 0;
 
-    /// Grapheme is not one char, something like zerowidth joiner used to merge
-    /// multiple together
-    pub(crate) const WIDE: u8 = 1 << 1;
+    // /// This char continues the previous one, for example Tab + tab fills
+    // pub(crate) const CONTINUE: u8 = 1 << 0;
 
-    /// This char has no width, used as padding with wide chars
-    pub(crate) const NO_WIDTH: u8 = 1 << 2;
+    // /// Grapheme is not one char, something like zerowidth joiner used to merge
+    // /// multiple together
+    // pub(crate) const WIDE: u8 = 1 << 1;
+
+    /// This char is place holder, used as padding with wide chars
+    pub(crate) const DISCARD: u8 = 1 << 2;
 
     /// Just keep eol status so we can fetch it whenever
     pub(crate) const EOL: u8 = 1 << 3;
@@ -126,8 +128,9 @@ mod flags {
     /// or it may not exist at all in the buffer
     pub(crate) const VIRTUAL: u8 = 1 << 4;
 
-    /// This char starts the continue block
-    pub(crate) const CONTINUE_START: u8 = 1 << 5;
+    /// This char starts the virtual block. This is a buffer backed characer
+    /// and can be followed by virtual elements that should be considered as part of thisone
+    pub(crate) const VIRTUAL_START: u8 = 1 << 5;
 }
 
 #[derive(Debug, Clone, PartialEq, Hash, Default)]
@@ -156,12 +159,11 @@ impl Char {
     }
 
     pub fn width(&self) -> usize {
-        if self.flags & flags::NO_WIDTH != 0 {
+        if self.flags & flags::DISCARD == flags::DISCARD {
             return 0;
         }
 
-        let width = if self.flags & flags::WIDE != 0 {
-            let extra = self.extra.as_ref().unwrap();
+        let width = if let Some(extra) = self.extra.as_ref() {
             extra.wide.width()
         } else {
             let mut buf = [0u8; 4];
@@ -173,8 +175,7 @@ impl Char {
     }
 
     pub fn display(&self) -> Cow<'_, str> {
-        if self.flags & flags::WIDE != 0 {
-            let extra = self.extra.as_ref().unwrap();
+        if let Some(extra) = self.extra.as_ref() {
             Cow::Borrowed(extra.wide.as_str())
         } else {
             Cow::Owned(self.character.to_string())
@@ -186,19 +187,19 @@ impl Char {
     }
 
     pub fn is_eol(&self) -> bool {
-        self.flags & flags::EOL != 0
+        self.flags & flags::EOL == flags::EOL
     }
 
-    pub fn is_continue(&self) -> bool {
-        self.flags & flags::CONTINUE != 0
-    }
+    // pub fn is_continue(&self) -> bool {
+    //     self.flags & flags::CONTINUE == flags::CONTINUE
+    // }
 
-    pub fn is_continue_start(&self) -> bool {
-        self.flags & flags::CONTINUE_START != 0
+    pub fn is_virtual_start(&self) -> bool {
+        self.flags & flags::VIRTUAL_START == flags::VIRTUAL_START
     }
 
     pub fn is_virtual(&self) -> bool {
-        self.flags & flags::VIRTUAL != 0
+        self.flags & flags::VIRTUAL == flags::VIRTUAL
     }
 }
 
@@ -381,22 +382,17 @@ fn tab_to_char(blen: u64, column: usize, options: &DisplayOptions) -> Chars {
         .unwrap_or(' ')
         .to_string();
     let tab = format!("{}{}", first, fill.repeat(width - 1));
-    Chars::from_str_virtual(&tab, blen)
+    Chars::from_str(&tab, blen)
 }
 
 fn eol_to_char(blen: u64, options: &DisplayOptions) -> Char {
     let repl = options.replacements.get(&Replacement::EOL);
     let character = repl.cloned().unwrap_or(' ');
 
-    let mut flags = flags::EOL;
-    if repl.is_some() {
-        flags |= flags::VIRTUAL;
-    }
-
     Char {
         character,
         extra: None,
-        flags,
+        flags: flags::EOL,
         len_in_buffer: blen,
     }
 }
@@ -405,15 +401,10 @@ fn nbsp_to_char(blen: u64, options: &DisplayOptions) -> Char {
     let repl = options.replacements.get(&Replacement::NonBreakingSpace);
     let character = repl.cloned().unwrap_or(' ');
 
-    let mut flags = flags::EOL;
-    if repl.is_some() {
-        flags |= flags::VIRTUAL;
-    }
-
     Char {
         character,
         extra: None,
-        flags,
+        flags: flags::NONE,
         len_in_buffer: blen,
     }
 }
@@ -427,7 +418,7 @@ fn control_to_char(grapheme: String, blen: u64) -> Chars {
 
     // C1 control codes, unicode control codes of form [0xc2, xx]
     let hex: String = format!("<{:02x}>", grapheme.as_bytes()[1]);
-    Chars::from_str_virtual(&hex, blen)
+    Chars::from_str(&hex, blen)
 }
 
 fn ascii_control_to_char(byte: u8) -> Chars {
@@ -468,7 +459,7 @@ fn ascii_control_to_char(byte: u8) -> Chars {
         _ => unreachable!("non ascii control char"),
     };
 
-    Chars::from_str_virtual(rep, 1)
+    Chars::from_str(rep, 1)
 }
 
 pub fn grapheme_category(grapheme: &PieceTreeSlice) -> GraphemeCategory {

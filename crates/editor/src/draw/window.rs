@@ -189,18 +189,18 @@ fn draw_ordered_highlights<T, F>(
                 let cell = &view.cells()[line][col];
 
                 // Handle continuation chars as one block
-                if in_continue && !cell.is_continue() {
+                if in_continue && !cell.is_virtual() {
                     in_continue = false;
                 }
 
                 if (overwrite_virtual || !cell.is_virtual())
-                    && (in_continue || !cell.is_continue() && range.contains(&pos))
+                    && (in_continue || !cell.is_virtual() && range.contains(&pos))
                     && !cell.is_empty()
                     || cell.is_eof()
                 {
                     grid.at(line, col).style.merge(&style);
 
-                    if cell.is_continue_start() {
+                    if cell.is_virtual_start() {
                         in_continue = true;
                     }
                 }
@@ -241,24 +241,28 @@ fn draw_sigle_hl(grid: &mut Window, view: &View, style: Style, range: &BufferRan
     }
 
     let mut pos = vrange.start;
-    let mut in_continue = false;
+    let mut in_virt_block = false;
     if let Some(point) = view.point_at_pos(pos) {
         for (i, row) in view.cells().iter().skip(point.y).enumerate() {
             let line = point.y + i;
             for (col, cell) in row.iter().enumerate() {
-                if in_continue && !cell.is_continue() {
-                    in_continue = false;
+                if in_virt_block && !cell.is_virtual() {
+                    in_virt_block = false;
                 }
-                if (in_continue || !cell.is_continue() && range.contains(&pos)) && !cell.is_empty()
+                if (in_virt_block || !cell.is_virtual() && range.contains(&pos)) && !cell.is_empty()
                     || cell.is_eof()
                 {
                     grid.at(line, col).style.merge(&style);
+
+                    if cell.is_virtual_start() {
+                        in_virt_block = true;
+                    }
                 }
 
                 pos += cell.len_in_buffer();
             }
 
-            if pos >= range.end && !in_continue {
+            if pos >= range.end && !in_virt_block {
                 break;
             }
         }
@@ -332,7 +336,9 @@ fn draw_secondary_cursors(
         });
     }
 
-    draw_ordered_highlights(&cursor_hls, grid, view, true, |hl| Some((hl.style, &hl.range)));
+    draw_ordered_highlights(&cursor_hls, grid, view, true, |hl| {
+        Some((hl.style, &hl.range))
+    });
 }
 
 fn draw_primary_cursor(

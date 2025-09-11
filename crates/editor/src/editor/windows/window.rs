@@ -323,23 +323,18 @@ impl Window {
             self.bid
         );
         let cursor = self.primary_cursor().pos();
-
         self.view.set_offset(cursor);
 
         match zone {
             Zone::Top => {
-                let slice = buf.slice(..);
-                let sol = is_sol(&slice, cursor);
-                if !sol {
-                    self.view.scroll_up_n(buf, 1);
-                }
+                self.view.scroll_up_n(buf, 0);
             }
             Zone::Middle => {
                 let lines = (self.view.height() / 2) as u64;
                 self.view.scroll_up_n(buf, lines);
             }
             Zone::Bottom => {
-                let lines = self.view.height() as u64;
+                let lines = self.view.height().saturating_sub(1) as u64;
                 self.view.scroll_up_n(buf, lines);
             }
         }
@@ -366,7 +361,7 @@ impl Window {
     pub fn goto_line(&mut self, line: u64, buf: &Buffer) {
         let slice = buf.slice(..);
         let mut lines = slice.lines();
-        for _ in 1..max(line, 1) {
+        for _ in 0..max(line, 1) {
             lines.next();
         }
 

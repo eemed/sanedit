@@ -47,12 +47,12 @@ impl Cell {
         }
     }
 
-    pub fn is_non_continue_char(&self) -> bool {
-        match self {
-            Cell::Char { ch } => !ch.is_continue(),
-            _ => false,
-        }
-    }
+    // pub fn is_non_continue_char(&self) -> bool {
+    //     match self {
+    //         Cell::Char { ch } => !ch.is_continue(),
+    //         _ => false,
+    //     }
+    // }
 
     pub fn is_eof(&self) -> bool {
         matches!(self, Cell::EOF)
@@ -62,13 +62,13 @@ impl Cell {
         matches!(self, Cell::Empty)
     }
 
-    pub fn is_continue(&self) -> bool {
-        match self {
-            Cell::Empty => false,
-            Cell::EOF => false,
-            Cell::Char { ch } => ch.is_continue(),
-        }
-    }
+    // pub fn is_continue(&self) -> bool {
+    //     match self {
+    //         Cell::Empty => false,
+    //         Cell::EOF => false,
+    //         Cell::Char { ch } => ch.is_continue(),
+    //     }
+    // }
 
     pub fn is_virtual(&self) -> bool {
         match self {
@@ -78,11 +78,11 @@ impl Cell {
         }
     }
 
-    pub fn is_continue_start(&self) -> bool {
+    pub fn is_virtual_start(&self) -> bool {
         match self {
             Cell::Empty => false,
             Cell::EOF => false,
-            Cell::Char { ch } => ch.is_continue_start(),
+            Cell::Char { ch } => ch.is_virtual_start(),
         }
     }
 }
@@ -326,7 +326,7 @@ impl View {
     pub fn scroll_up_n(&mut self, buf: &Buffer, mut n: u64) {
         self.redraw(buf);
 
-        if n == 0 || self.range.start == 0 {
+        if self.range.start == 0 {
             return;
         }
 
@@ -335,18 +335,30 @@ impl View {
         // Go up until we find newlines,
         // but stop at a maximum if there are no lines.
         let mut pos = self.range.start;
-        let min = pos.saturating_sub((self.height().saturating_sub(1) * self.width()) as u64);
+        let min = pos.saturating_sub((self.height() * self.width()) as u64);
         let slice = buf.slice(min..pos);
         let mut graphemes = slice.graphemes_at(slice.len());
         let mut line_offset = 0u64;
 
+        // Skip eol if present
+        if let Some(grapheme) = graphemes.prev() {
+            line_offset += grapheme.len();
+            if n == 0 && grapheme.is_eol() {
+                return;
+            }
+        }
+
+        pos -= line_offset;
+        line_offset = 0;
+        let width_minus1 = self.width().saturating_sub(1) as u64;
+
         while let Some(grapheme) = graphemes.prev() {
             line_offset += grapheme.len();
 
-            if grapheme.is_eol() || line_offset >= self.width() as u64 {
+            if grapheme.is_eol() || line_offset >= width_minus1 {
                 n = n.saturating_sub(1);
 
-                if n == 0 && pos != self.range.start {
+                if n == 0 {
                     break;
                 }
 
@@ -415,33 +427,34 @@ impl View {
 
     pub fn pos_at_point(&self, point: Point) -> Option<u64> {
         let mut pos = self.range.start;
-        let mut last_ch_pos = None;
+        let mut ret_next = false;
         for (y, row) in self.cells.iter().enumerate() {
             for (x, cell) in row.iter().enumerate() {
                 match cell {
                     Cell::EOF => {
+                        if ret_next {
+                            return Some(pos);
+                        }
                         if point.y == y && point.x == x {
                             return Some(pos);
                         }
                     }
                     Cell::Char { ch } => {
-                        if ch.is_continue() {
-                            if point.y == y && point.x == x {
-                                return last_ch_pos;
-                            }
-                        } else {
-                            if point.y == y && point.x == x {
+                        let is_valid_cursor_cell = !cell.is_virtual() && !cell.is_empty();
+                        if ret_next && is_valid_cursor_cell {
+                            return Some(pos);
+                        }
+
+                        if point.y == y && point.x == x {
+                            if ch.is_virtual() {
+                                ret_next = true;
+                            } else if is_valid_cursor_cell {
                                 return Some(pos);
                             }
-                            last_ch_pos = Some(pos);
-                            pos += ch.len_in_buffer();
                         }
+
+                        pos += ch.len_in_buffer();
                     }
-                    // Cell::Virtual { .. } => {
-                    //     if point.y == y && point.x == x {
-                    //         return Some(pos);
-                    //     }
-                    // }
                     _ => {}
                 }
             }
@@ -451,17 +464,25 @@ impl View {
     }
 
     pub fn point_at_pos(&self, pos: u64) -> Option<Point> {
-        let mut cur = self.range.start;
+        let mut ret_next = false;
+        let mut cpos = self.range.start;
 
         for (y, row) in self.cells.iter().enumerate() {
             for (x, cell) in row.iter().enumerate() {
-                if (cell.is_eof() || cell.is_non_continue_char()) && cur == pos {
+                let is_valid_cursor_cell = !cell.is_virtual() && !cell.is_empty();
+                if ret_next && is_valid_cursor_cell {
                     return Some(Point { x, y });
                 }
 
-                if let Cell::Char { ch } = cell {
-                    cur += ch.len_in_buffer();
+                if cpos == pos {
+                    if cell.is_virtual() {
+                        ret_next = true;
+                    } else if is_valid_cursor_cell {
+                        return Some(Point { x, y });
+                    }
                 }
+
+                cpos += cell.len_in_buffer();
             }
         }
 

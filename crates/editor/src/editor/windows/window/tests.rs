@@ -1,4 +1,5 @@
 use sanedit_core::IndentKind;
+use sanedit_messages::redraw::Point;
 
 use super::*;
 
@@ -23,6 +24,37 @@ fn with_buf(content: &str) -> (Window, Buffer) {
     let mut win = Window::new(buf.id, 50, 10, WindowConfig::default());
     win.redraw_view(&buf);
     (win, buf)
+}
+
+fn with_buf_size(content: &str, width: usize, height: usize) -> (Window, Buffer) {
+    let mut buf = Buffer::new();
+    let changes = Changes::multi_insert(&[0], content.as_bytes());
+    let _ = buf.apply_changes(&changes);
+    let mut win = Window::new(buf.id, width, height, WindowConfig::default());
+    win.redraw_view(&buf);
+    (win, buf)
+}
+
+fn assert_cursor_at(win: &Window, point: Point) {
+    let pos = win.cursors.primary().pos();
+    let cpoint = win.view.point_at_pos(pos).expect("Cursor not in view");
+    assert_eq!(point, cpoint);
+}
+
+fn print_view(win: &Window) {
+    println!("---");
+    for line in win.view().cells() {
+        print!("|");
+        for cell in line {
+            if let Some(ch) = cell.char() {
+                print!("{}", ch.display())
+            } else {
+                print!(" ")
+            }
+        }
+        println!("|");
+    }
+    println!("---");
 }
 
 #[test]
@@ -83,4 +115,62 @@ fn indent_multiline() {
     let lines = view_lines(&mut win, &buf);
     assert_eq!(lines[1], "    hello ");
     assert_eq!(lines[2], "    world");
+}
+
+#[test]
+fn cursor_zones_no_wrap() {
+    let (mut win, buf) = with_buf_size("one\ntwo\nthree\nfour\nfive", 6, 3);
+    win.goto_line(2, &buf);
+    assert_cursor_at(&win, Point { x: 0, y: 2 });
+
+    print_view(&win);
+    win.view_to_cursor_zone(&buf, Zone::Top);
+    win.redraw_view(&buf);
+    print_view(&win);
+    assert_cursor_at(&win, Point { x: 0, y: 0 });
+
+    win.view_to_cursor_zone(&buf, Zone::Bottom);
+    win.redraw_view(&buf);
+    assert_cursor_at(&win, Point { x: 0, y: 2 });
+
+    win.view_to_cursor_zone(&buf, Zone::Middle);
+    win.redraw_view(&buf);
+    assert_cursor_at(&win, Point { x: 0, y: 1 });
+
+    win.cursor_to_view_zone(Zone::Top);
+    assert_cursor_at(&win, Point { x: 0, y: 0 });
+
+    win.cursor_to_view_zone(Zone::Middle);
+    assert_cursor_at(&win, Point { x: 0, y: 1 });
+
+    win.cursor_to_view_zone(Zone::Bottom);
+    assert_cursor_at(&win, Point { x: 0, y: 2 });
+}
+
+#[test]
+fn cursor_zones_wrap() {
+    let (mut win, buf) = with_buf_size("one long\ntwoo longer\nthree long\nfour long\nfivelong", 9, 3);
+    win.goto_line(1, &buf);
+    win.cursors_to_lines_end(&buf);
+    win.redraw_view(&buf);
+    assert_cursor_at(&win, Point { x: 3, y: 2 });
+
+    win.view_to_cursor_zone(&buf, Zone::Top);
+    win.redraw_view(&buf);
+    assert_cursor_at(&win, Point { x: 8, y: 0 });
+
+    win.goto_line(3, &buf);
+    win.cursors_to_lines_end(&buf);
+    win.redraw_view(&buf);
+    assert_cursor_at(&win, Point { x: 1, y: 2 });
+
+    win.view_to_cursor_zone(&buf, Zone::Top);
+    win.redraw_view(&buf);
+    assert_cursor_at(&win, Point { x: 8, y: 0 });
+}
+
+#[test]
+fn cursor_zones_wrap_long() {
+    let (mut win, buf) = with_buf_size("one longtwoo longerthree longfour longfivelong", 9, 3);
+
 }

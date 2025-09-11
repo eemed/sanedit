@@ -51,7 +51,6 @@ impl Cell {
         matches!(self, Cell::Empty)
     }
 
-
     pub fn is_valid_cursor_cell(&self) -> bool {
         !self.is_virtual() && !self.is_empty()
     }
@@ -325,18 +324,29 @@ impl View {
         let slice = buf.slice(min..pos);
         let mut graphemes = slice.graphemes_at(slice.len());
         let mut line_offset = 0u64;
+        let width_minus1 = self.width().saturating_sub(1) as u64;
 
-        // Skip eol if present
-        if let Some(grapheme) = graphemes.prev() {
+        // Find start of current line
+        while let Some(grapheme) = graphemes.prev() {
             line_offset += grapheme.len();
-            if n == 0 && grapheme.is_eol() {
-                return;
+
+            if grapheme.is_eol() || line_offset > width_minus1 {
+                if n == 0 {
+                    pos -= line_offset;
+                    pos += grapheme.len();
+                    self.range.start = pos;
+                    self.needs_redraw = true;
+                    return;
+                }
+
+                break;
             }
         }
 
         pos -= line_offset;
         line_offset = 0;
-        let width_minus1 = self.width().saturating_sub(1) as u64;
+
+        // println!("n: {n}, pos: {pos}");
 
         while let Some(grapheme) = graphemes.prev() {
             line_offset += grapheme.len();

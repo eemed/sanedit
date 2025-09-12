@@ -167,7 +167,7 @@ fn scroll_wrap() {
 }
 
 #[test]
-fn scroll_wrap_long() {
+fn scroll_long_wrap() {
     let (mut win, buf) = with_buf_size("one longtwoo longerthree longfour longfivelong", 9, 3);
     win.scroll_down_n(&buf, 1);
     let lines = view_lines(&mut win, &buf);
@@ -268,7 +268,7 @@ fn cursor_zones_wrap() {
 }
 
 #[test]
-fn cursor_zones_wrap_long() {
+fn cursor_zones_long_wrap() {
     let (mut win, buf) = with_buf_size("one longtwoo longerthree longfour longfivelong", 9, 3);
     win.redraw_view(&buf);
     win.cursors.primary_mut().goto(9 * 2 - 1);
@@ -278,11 +278,9 @@ fn cursor_zones_wrap_long() {
     win.redraw_view(&buf);
     assert_cursor_at(&win, Point { x: 8, y: 0 });
 
-    print_view(&win);
     win.view_to_cursor_zone(&buf, Zone::Middle);
     win.redraw_view(&buf);
-    print_view(&win);
-    assert_cursor_at(&win, Point { x: 8, y: 1 });
+    assert_cursor_at(&win, Point { x: 1, y: 1 });
 
     win.view_to_cursor_zone(&buf, Zone::Bottom);
     win.redraw_view(&buf);

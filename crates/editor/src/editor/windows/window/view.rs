@@ -322,12 +322,14 @@ impl View {
         let min = pos.saturating_sub((self.height() * self.width()) as u64);
         let slice = buf.slice(min..pos);
         let mut graphemes = slice.graphemes_at(slice.len());
-        let mut line_offset = 0u64;
+        let mut line_width = 0u64;
 
         while let Some(grapheme) = graphemes.prev() {
-            line_offset += grapheme.len();
+            let ch = Chars::new(&grapheme, 0, &self.options);
+            line_width += ch.width() as u64;
+            println!("Grapheme2: {:?} width: {line_width}, screen width: {}", String::from(&grapheme), self.width());
 
-            if grapheme.is_eol() || line_offset >= self.width() as u64 {
+            if grapheme.is_eol() || line_width >= self.width() as u64 {
                 break;
             }
 
@@ -354,14 +356,17 @@ impl View {
         let slice = buf.slice(min..pos);
         let mut graphemes = slice.graphemes_at(slice.len());
         let mut line_width = 0u64;
-        let line_wrap_len = self
+        let line_wrap_width = self
             .options
             .replacements
             .get(&Replacement::Wrap)
             .map(|ch| ch.width().unwrap_or(1))
             .unwrap_or(0) as u64;
-        let mut on_first_line = true;
-        // TODO columns not handled
+        let width = self.width() as u64;
+        let mut wrap_symbol_width = 0; // No wrap symbol on first line ever
+        // let mut wrap_symbol_width = line_wrap_width; // No wrap symbol on first line ever
+
+        // TODO columns not handled, the lines can jump anyway so maybe not necessary
 
         if let Some(grapheme) = graphemes.prev() {
             line_width += Chars::new(&grapheme, 0, &self.options).width() as u64;
@@ -369,19 +374,22 @@ impl View {
         }
 
         while let Some(grapheme) = graphemes.prev() {
-            line_width += Chars::new(&grapheme, 0, &self.options).width() as u64;
+            let ch = Chars::new(&grapheme, 0, &self.options);
+            line_width += ch.width() as u64;
+            println!("Grapheme: {:?} width: {line_width}, screen width: {width}", String::from(&grapheme));
 
-            let line_total_width =
-                line_width.saturating_sub(if on_first_line { line_wrap_len } else { 0 });
-            if grapheme.is_eol() || line_total_width >= self.width() as u64 {
-                on_first_line = false;
+            let is_eol = grapheme.is_eol();
+            if is_eol || line_width > width.saturating_sub(wrap_symbol_width) {
+                // if is_eol || line_width >= width.saturating_sub(wrap_symbol_width) {
+                wrap_symbol_width = if is_eol { 0 } else { line_wrap_width };
+                // wrap_symbol_width = line_wrap_width;
                 n = n.saturating_sub(1);
 
                 if n == 0 {
                     break;
                 }
 
-                line_width = 0;
+                line_width = ch.width() as u64;
             }
 
             pos -= grapheme.len();

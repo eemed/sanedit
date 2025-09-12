@@ -323,15 +323,17 @@ impl Window {
         );
         let cursor = self.primary_cursor().pos();
         self.view.set_offset(cursor);
-        self.view.align_start(buf);
 
         match zone {
-            Zone::Top => {}
+            Zone::Top => {
+                self.view.align_start(buf);
+            }
             Zone::Middle => {
                 let lines = (self.view.height() / 2) as u64;
                 self.view.scroll_up_n(buf, lines);
             }
             Zone::Bottom => {
+                self.view.align_start(buf);
                 let lines = self.view.height().saturating_sub(1) as u64;
                 self.view.scroll_up_n(buf, lines);
             }

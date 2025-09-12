@@ -360,19 +360,21 @@ impl View {
             .get(&Replacement::Wrap)
             .map(|ch| ch.width().unwrap_or(1))
             .unwrap_or(0) as u64;
+        let mut on_first_line = true;
+        // TODO columns not handled
 
         if let Some(grapheme) = graphemes.prev() {
-            line_width += grapheme.len();
+            line_width += Chars::new(&grapheme, 0, &self.options).width() as u64;
             pos -= grapheme.len();
         }
 
         while let Some(grapheme) = graphemes.prev() {
-            let on_first_line = self.range.start == pos + line_width;
-            line_width += grapheme.len();
+            line_width += Chars::new(&grapheme, 0, &self.options).width() as u64;
 
             let line_total_width =
                 line_width.saturating_sub(if on_first_line { line_wrap_len } else { 0 });
             if grapheme.is_eol() || line_total_width >= self.width() as u64 {
+                on_first_line = false;
                 n = n.saturating_sub(1);
 
                 if n == 0 {

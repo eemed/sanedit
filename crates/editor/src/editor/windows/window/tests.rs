@@ -278,8 +278,10 @@ fn cursor_zones_wrap_long() {
     win.redraw_view(&buf);
     assert_cursor_at(&win, Point { x: 8, y: 0 });
 
+    print_view(&win);
     win.view_to_cursor_zone(&buf, Zone::Middle);
     win.redraw_view(&buf);
+    print_view(&win);
     assert_cursor_at(&win, Point { x: 8, y: 1 });
 
     win.view_to_cursor_zone(&buf, Zone::Bottom);

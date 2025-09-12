@@ -4,6 +4,7 @@ use sanedit_core::movement::prev_line_start;
 use sanedit_core::{BufferRange, Char, Chars, DisplayOptions, Range, Replacement};
 use sanedit_messages::redraw::{Point, Size};
 use sanedit_utils::sorted_vec::SortedVec;
+use unicode_width::UnicodeWidthChar;
 
 use crate::editor::buffers::{Buffer, BufferId};
 use crate::editor::syntax::{Span, SyntaxResult};
@@ -308,14 +309,12 @@ impl View {
         }
     }
 
-    pub fn scroll_up_n(&mut self, buf: &Buffer, mut n: u64) {
+    pub fn align_start(&mut self, buf: &Buffer) {
         self.redraw(buf);
 
         if self.range.start == 0 {
             return;
         }
-
-        n = n.min(self.height() as u64);
 
         // Go up until we find newlines,
         // but stop at a maximum if there are no lines.
@@ -324,41 +323,63 @@ impl View {
         let slice = buf.slice(min..pos);
         let mut graphemes = slice.graphemes_at(slice.len());
         let mut line_offset = 0u64;
-        let width_minus1 = self.width().saturating_sub(1) as u64;
 
-        // Find start of current line
         while let Some(grapheme) = graphemes.prev() {
             line_offset += grapheme.len();
 
-            if grapheme.is_eol() || line_offset > width_minus1 {
-                if n == 0 {
-                    pos -= line_offset;
-                    pos += grapheme.len();
-                    self.range.start = pos;
-                    self.needs_redraw = true;
-                    return;
-                }
-
+            if grapheme.is_eol() || line_offset >= self.width() as u64 {
                 break;
             }
+
+            pos -= grapheme.len();
         }
 
-        pos -= line_offset;
-        line_offset = 0;
+        self.range.start = pos;
+        self.needs_redraw = true;
+    }
 
-        // println!("n: {n}, pos: {pos}");
+    pub fn scroll_up_n(&mut self, buf: &Buffer, mut n: u64) {
+        self.redraw(buf);
+
+        if self.range.start == 0 {
+            return;
+        }
+
+        n = n.clamp(1, self.height().saturating_sub(1) as u64);
+
+        // Go up until we find newlines,
+        // but stop at a maximum if there are no lines.
+        let mut pos = self.range.start;
+        let min = pos.saturating_sub((self.height() * self.width()) as u64);
+        let slice = buf.slice(min..pos);
+        let mut graphemes = slice.graphemes_at(slice.len());
+        let mut line_width = 0u64;
+        let line_wrap_len = self
+            .options
+            .replacements
+            .get(&Replacement::Wrap)
+            .map(|ch| ch.width().unwrap_or(1))
+            .unwrap_or(0) as u64;
+
+        if let Some(grapheme) = graphemes.prev() {
+            line_width += grapheme.len();
+            pos -= grapheme.len();
+        }
 
         while let Some(grapheme) = graphemes.prev() {
-            line_offset += grapheme.len();
+            let on_first_line = self.range.start == pos + line_width;
+            line_width += grapheme.len();
 
-            if grapheme.is_eol() || line_offset >= width_minus1 {
+            let line_total_width =
+                line_width.saturating_sub(if on_first_line { line_wrap_len } else { 0 });
+            if grapheme.is_eol() || line_total_width >= self.width() as u64 {
                 n = n.saturating_sub(1);
 
                 if n == 0 {
                     break;
                 }
 
-                line_offset = 0;
+                line_width = 0;
             }
 
             pos -= grapheme.len();

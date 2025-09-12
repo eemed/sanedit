@@ -119,6 +119,82 @@ fn indent_multiline() {
 }
 
 #[test]
+fn scroll_no_wrap() {
+    let (mut win, buf) = with_buf_size("one\ntwo\nthree\nfour\nfive", 6, 3);
+    win.scroll_down_n(&buf, 1);
+    let lines = view_lines(&mut win, &buf);
+    assert_eq!(lines[0], "two ");
+
+    win.scroll_down_n(&buf, 1);
+    let lines = view_lines(&mut win, &buf);
+    assert_eq!(lines[0], "three ");
+
+    win.scroll_up_n(&buf, 1);
+    let lines = view_lines(&mut win, &buf);
+    assert_eq!(lines[0], "two ");
+
+    win.scroll_up_n(&buf, 1);
+    let lines = view_lines(&mut win, &buf);
+    assert_eq!(lines[0], "one ");
+}
+
+#[test]
+fn scroll_wrap() {
+    let (mut win, buf) = with_buf_size(
+        "one long\ntwoo longer\nthree long\nfour long\nfivelong",
+        9,
+        3,
+    );
+    win.scroll_down_n(&buf, 1);
+    let lines = view_lines(&mut win, &buf);
+    assert_eq!(lines[0], "twoo long");
+
+    win.scroll_down_n(&buf, 1);
+    let lines = view_lines(&mut win, &buf);
+    assert_eq!(lines[0], "er ");
+
+    win.scroll_down_n(&buf, 1);
+    let lines = view_lines(&mut win, &buf);
+    assert_eq!(lines[0], "three lon");
+
+    win.scroll_up_n(&buf, 1);
+    let lines = view_lines(&mut win, &buf);
+    assert_eq!(lines[0], "o longer ");
+
+    win.scroll_up_n(&buf, 1);
+    let lines = view_lines(&mut win, &buf);
+    assert_eq!(lines[0], "twoo long");
+}
+
+#[test]
+fn scroll_wrap_long() {
+    let (mut win, buf) = with_buf_size("one longtwoo longerthree longfour longfivelong", 9, 3);
+    win.scroll_down_n(&buf, 1);
+    let lines = view_lines(&mut win, &buf);
+    assert_eq!(lines[0], "woo longe");
+
+    win.scroll_down_n(&buf, 1);
+    let lines = view_lines(&mut win, &buf);
+    assert_eq!(lines[0], "rthree lo");
+
+    win.scroll_down_n(&buf, 1);
+    let lines = view_lines(&mut win, &buf);
+    assert_eq!(lines[0], "ngfour lo");
+
+    win.scroll_up_n(&buf, 1);
+    let lines = view_lines(&mut win, &buf);
+    assert_eq!(lines[0], "rthree lo");
+
+    win.scroll_up_n(&buf, 1);
+    let lines = view_lines(&mut win, &buf);
+    assert_eq!(lines[0], "woo longe");
+
+    win.scroll_up_n(&buf, 2);
+    let lines = view_lines(&mut win, &buf);
+    assert_eq!(lines[0], "one longt");
+}
+
+#[test]
 fn cursor_zones_no_wrap() {
     let (mut win, buf) = with_buf_size("one\ntwo\nthree\nfour\nfive", 6, 3);
     win.goto_line(2, &buf);
@@ -146,7 +222,6 @@ fn cursor_zones_no_wrap() {
     win.redraw_view(&buf);
     assert_cursor_at(&win, Point { x: 5, y: 0 });
 
-
     win.goto_line(2, &buf);
     win.cursor_to_view_zone(Zone::Top);
     assert_cursor_at(&win, Point { x: 0, y: 0 });
@@ -160,7 +235,11 @@ fn cursor_zones_no_wrap() {
 
 #[test]
 fn cursor_zones_wrap() {
-    let (mut win, buf) = with_buf_size("one long\ntwoo longer\nthree long\nfour long\nfivelong", 9, 3);
+    let (mut win, buf) = with_buf_size(
+        "one long\ntwoo longer\nthree long\nfour long\nfivelong",
+        9,
+        3,
+    );
     win.goto_line(1, &buf);
     win.cursors_to_lines_end(&buf);
     win.redraw_view(&buf);
@@ -191,11 +270,19 @@ fn cursor_zones_wrap() {
 #[test]
 fn cursor_zones_wrap_long() {
     let (mut win, buf) = with_buf_size("one longtwoo longerthree longfour longfivelong", 9, 3);
+    win.redraw_view(&buf);
+    win.cursors.primary_mut().goto(9 * 2 - 1);
+    assert_cursor_at(&win, Point { x: 1, y: 2 });
 
+    win.view_to_cursor_zone(&buf, Zone::Top);
+    win.redraw_view(&buf);
+    assert_cursor_at(&win, Point { x: 8, y: 0 });
+
+    win.view_to_cursor_zone(&buf, Zone::Middle);
+    win.redraw_view(&buf);
+    assert_cursor_at(&win, Point { x: 8, y: 1 });
+
+    win.view_to_cursor_zone(&buf, Zone::Bottom);
+    win.redraw_view(&buf);
+    assert_cursor_at(&win, Point { x: 1, y: 2 });
 }
-
-// #[test]
-// fn virtu() {
-//     let (mut win, buf) = with_buf_size("one longtwoo longerthree longfour longfivelong", 9, 3);
-
-// }

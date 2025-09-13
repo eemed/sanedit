@@ -247,7 +247,7 @@ fn cursor_zones_wrap() {
 
     win.view_to_cursor_zone(&buf, Zone::Top);
     win.redraw_view(&buf);
-    assert_cursor_at(&win, Point { x: 8, y: 0 });
+    assert_cursor_at(&win, Point { x: 3, y: 0 });
 
     win.goto_line(3, &buf);
     win.cursors_to_lines_end(&buf);
@@ -256,7 +256,7 @@ fn cursor_zones_wrap() {
 
     win.view_to_cursor_zone(&buf, Zone::Top);
     win.redraw_view(&buf);
-    assert_cursor_at(&win, Point { x: 8, y: 0 });
+    assert_cursor_at(&win, Point { x: 1, y: 0 });
 
     win.view_to_cursor_zone(&buf, Zone::Bottom);
     win.redraw_view(&buf);
@@ -276,11 +276,11 @@ fn cursor_zones_long_wrap() {
 
     win.view_to_cursor_zone(&buf, Zone::Top);
     win.redraw_view(&buf);
-    assert_cursor_at(&win, Point { x: 8, y: 0 });
+    assert_cursor_at(&win, Point { x: 1, y: 0 });
 
     win.view_to_cursor_zone(&buf, Zone::Middle);
     win.redraw_view(&buf);
-    assert_cursor_at(&win, Point { x: 1, y: 1 });
+    assert_cursor_at(&win, Point { x: 2, y: 1 });
 
     win.view_to_cursor_zone(&buf, Zone::Bottom);
     win.redraw_view(&buf);

@@ -309,12 +309,14 @@ impl View {
         }
     }
 
-    pub fn align_start(&mut self, buf: &Buffer) {
+    pub fn align_start(&mut self, mut cap: usize, buf: &Buffer) {
         self.redraw(buf);
 
         if self.range.start == 0 {
             return;
         }
+
+        cap = cap.min(self.width());
 
         // Go up until we find newlines,
         // but stop at a maximum if there are no lines.
@@ -327,9 +329,9 @@ impl View {
         while let Some(grapheme) = graphemes.prev() {
             let ch = Chars::new(&grapheme, 0, &self.options);
             line_width += ch.width() as u64;
-            println!("Grapheme2: {:?} width: {line_width}, screen width: {}", String::from(&grapheme), self.width());
+            // println!("Grapheme2: {:?} width: {line_wdth}, screen width: {}", String::from(&grapheme), self.width());
 
-            if grapheme.is_eol() || line_width >= self.width() as u64 {
+            if grapheme.is_eol() || line_width > cap as u64 {
                 break;
             }
 
@@ -364,8 +366,6 @@ impl View {
             .unwrap_or(0) as u64;
         let width = self.width() as u64;
         let mut wrap_symbol_width = 0; // No wrap symbol on first line ever
-        // let mut wrap_symbol_width = line_wrap_width; // No wrap symbol on first line ever
-
         // TODO columns not handled, the lines can jump anyway so maybe not necessary
 
         if let Some(grapheme) = graphemes.prev() {
@@ -376,13 +376,11 @@ impl View {
         while let Some(grapheme) = graphemes.prev() {
             let ch = Chars::new(&grapheme, 0, &self.options);
             line_width += ch.width() as u64;
-            println!("Grapheme: {:?} width: {line_width}, screen width: {width}", String::from(&grapheme));
+            // println!("Grapheme: {:?} width: {line_width}, screen width: {width}", String::from(&grapheme));
 
             let is_eol = grapheme.is_eol();
             if is_eol || line_width > width.saturating_sub(wrap_symbol_width) {
-                // if is_eol || line_width >= width.saturating_sub(wrap_symbol_width) {
                 wrap_symbol_width = if is_eol { 0 } else { line_wrap_width };
-                // wrap_symbol_width = line_wrap_width;
                 n = n.saturating_sub(1);
 
                 if n == 0 {

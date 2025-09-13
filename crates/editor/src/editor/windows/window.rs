@@ -322,18 +322,21 @@ impl Window {
             self.bid
         );
         let cursor = self.primary_cursor().pos();
+        let cap = self
+            .view
+            .point_at_pos(cursor)
+            .map(|point| point.x)
+            .unwrap_or(0);
         self.view.set_offset(cursor);
+        self.view.align_start(cap, buf);
 
         match zone {
-            Zone::Top => {
-                self.view.align_start(buf);
-            }
+            Zone::Top => {}
             Zone::Middle => {
                 let lines = (self.view.height() / 2) as u64;
                 self.view.scroll_up_n(buf, lines);
             }
             Zone::Bottom => {
-                self.view.align_start(buf);
                 let lines = self.view.height().saturating_sub(1) as u64;
                 self.view.scroll_up_n(buf, lines);
             }

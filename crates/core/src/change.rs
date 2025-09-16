@@ -406,12 +406,8 @@ impl Changes {
 
         while n < changes.len() {
             let change = &changes[n];
-            if change.start() <= pos {
-                if pos == change.start() && change.cursor_offset.is_some() {
-                    offset += change.cursor_offset.unwrap() as i128;
-                } else {
-                    offset += change.text().len() as i128;
-                }
+            if change.start() < pos {
+                offset += change.text().len() as i128;
 
                 if change.end() < pos || pos < change.start() {
                     offset -= change.range().len() as i128;

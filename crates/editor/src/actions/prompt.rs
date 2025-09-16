@@ -297,7 +297,7 @@ fn goto_line(editor: &mut Editor, id: ClientId) -> ActionResult {
             let text = getf!(out.text());
             if let Ok(num) = text.parse::<u64>() {
                 let (win, buf) = editor.win_buf_mut(id);
-                win.goto_line(num + 1, buf);
+                win.goto_line(num, buf);
                 hooks::run(editor, id, Hook::CursorMoved);
                 return ActionResult::Ok;
             }

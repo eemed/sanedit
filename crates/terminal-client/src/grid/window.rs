@@ -13,9 +13,7 @@ impl Drawable for Window {
 
         grid.clear_all(self.empty_cell().style);
 
-        for ((y, x), cell) in self.used() {
-            let y = *y as usize;
-            let x = *x as usize;
+        for (y, x, cell) in self.used() {
             if y < height && x < width {
                 grid.replace(y, x, cell.clone());
             }

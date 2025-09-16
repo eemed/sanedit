@@ -360,7 +360,7 @@ impl Window {
     pub fn goto_line(&mut self, line: u64, buf: &Buffer) {
         let slice = buf.slice(..);
         let mut lines = slice.lines();
-        for _ in 0..max(line, 1) {
+        for _ in 1..max(line, 1) {
             lines.next();
         }
 

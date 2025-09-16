@@ -1,5 +1,3 @@
-use std::collections::BTreeMap;
-
 use super::{Cell, Component, Cursor, Redraw};
 use serde::{Deserialize, Serialize};
 //
@@ -26,7 +24,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, PartialEq, Eq, Default, Clone, Debug, Hash)]
 pub struct Window {
     pub cursor: Option<Cursor>,
-    cells: BTreeMap<(u32, u32), Cell>,
+    cells: Vec<Vec<Cell>>,
     empty: Cell,
     width: u32,
     height: u32,
@@ -36,7 +34,7 @@ impl Window {
     pub fn new(width: usize, height: usize, cell: Cell) -> Window {
         Self {
             cursor: None,
-            cells: BTreeMap::default(),
+            cells: vec![vec![]; width],
             empty: cell,
             width: width as u32,
             height: height as u32,
@@ -52,7 +50,9 @@ impl Window {
     }
 
     pub fn clear(&mut self) {
-        self.cells.clear();
+        for line in &mut self.cells {
+            line.clear();
+        }
     }
 
     pub fn clear_with(&mut self, cell: Cell) {
@@ -61,20 +61,37 @@ impl Window {
     }
 
     pub fn draw(&mut self, y: usize, x: usize, cell: Cell) {
-        self.cells.insert((y as u32, x as u32), cell);
+        let line = &mut self.cells[y];
+        while line.len() <= x {
+            line.push(self.empty.clone());
+        }
+
+        line[x] = cell;
     }
 
     pub fn at(&mut self, y: usize, x: usize) -> &mut Cell {
-        let entry = self.cells.entry((y as u32, x as u32));
-        entry.or_insert(self.empty.clone())
+        let line = &mut self.cells[y];
+        while line.len() <= x {
+            line.push(self.empty.clone());
+        }
+
+        &mut line[x]
     }
 
     pub fn get(&self, y: usize, x: usize) -> &Cell {
-        self.cells.get(&(y as u32, x as u32)).unwrap_or(&self.empty)
+        self.cells
+            .get(y)
+            .map(|line| line.get(x))
+            .flatten()
+            .unwrap_or(&self.empty)
     }
 
-    pub fn used(&self) -> std::collections::btree_map::Iter<'_, (u32, u32), Cell> {
-        self.cells.iter()
+    pub fn used<'a>(&'a self) -> Iter<'a> {
+        Iter {
+            cells: &self.cells,
+            line: 0,
+            col: 0,
+        }
     }
 
     pub fn empty_cell(&self) -> Cell {
@@ -85,5 +102,31 @@ impl Window {
 impl From<Window> for Redraw {
     fn from(value: Window) -> Self {
         Redraw::Window(Component::Update(value))
+    }
+}
+
+pub struct Iter<'a> {
+    cells: &'a Vec<Vec<Cell>>,
+    line: usize,
+    col: usize,
+}
+
+impl<'a> Iterator for Iter<'a> {
+    type Item = (usize, usize, &'a Cell);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let line = self.cells.get(self.line)?;
+        match line.get(self.col) {
+            Some(cell) => {
+                let item = (self.line, self.col, cell);
+                self.col += 1;
+                Some(item)
+            }
+            None => {
+                self.col = 0;
+                self.line += 1;
+                self.next()
+            }
+        }
     }
 }

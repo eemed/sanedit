@@ -56,7 +56,7 @@ impl Theme {
         for comp in path {
             match node {
                 ThemeNode::Node { nodes, .. } => {
-                    if let Some(n) = nodes.get(&comp.to_string()) {
+                    if let Some(n) = nodes.get(comp) {
                         node = n;
                     } else {
                         break;

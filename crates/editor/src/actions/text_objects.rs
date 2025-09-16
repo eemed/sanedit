@@ -41,15 +41,18 @@ fn select_with_col<F: Fn(&PieceTreeSlice, u64) -> Option<(BufferRange, usize)>>(
     let (win, buf) = editor.win_buf_mut(id);
     let slice = buf.slice(..);
 
-    for cursor in win.cursors.cursors_mut() {
-        let pos = cursor.pos();
-        let range = (f)(&slice, pos);
+    {
+        let mut cursors = win.cursors.cursors_mut();
+        for cursor in cursors.iter_mut() {
+            let pos = cursor.pos();
+            let range = (f)(&slice, pos);
 
-        if let Some((range, col)) = range {
-            if !range.is_empty() {
-                cursor.select(range);
-                cursor.set_column(col);
-                changed = true;
+            if let Some((range, col)) = range {
+                if !range.is_empty() {
+                    cursor.select(range);
+                    cursor.set_column(col);
+                    changed = true;
+                }
             }
         }
     }
@@ -73,7 +76,7 @@ fn select<F: Fn(&PieceTreeSlice, u64) -> Option<BufferRange>>(
     let (win, buf) = editor.win_buf_mut(id);
     let slice = buf.slice(..);
 
-    for cursor in win.cursors.cursors_mut() {
+    for cursor in win.cursors.cursors_mut().iter_mut() {
         let pos = cursor.pos();
         let range = (f)(&slice, pos);
 

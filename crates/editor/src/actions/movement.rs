@@ -336,9 +336,7 @@ pub(crate) fn prev_visual_line(editor: &mut Editor, id: ClientId) -> ActionResul
 
     win.view_to_cursor(buf);
     let cursor_pos = win.cursors().primary().pos();
-    let cursor_point = getf!(win
-        .view()
-        .point_at_pos(cursor_pos));
+    let cursor_point = getf!(win.view().point_at_pos(cursor_pos));
     let cursor_at_start = cursor_point.y == 0;
     let view_at_start = win.view().at_start();
 
@@ -354,9 +352,7 @@ pub(crate) fn prev_visual_line(editor: &mut Editor, id: ClientId) -> ActionResul
     let cursor = win.cursors.primary();
     let view = win.view();
     if let Some((pos, col)) = prev_visual_line_impl(view, cursor) {
-        let primary = win.primary_cursor_mut();
-        primary.goto_with_col(pos, col);
-
+        win.cursors.cursors_mut().primary().goto_with_col(pos, col);
         hooks::run(editor, id, Hook::CursorMoved);
     }
 
@@ -407,9 +403,7 @@ fn next_visual_line(editor: &mut Editor, id: ClientId) -> ActionResult {
 
     win.view_to_cursor(buf);
     let cursor_pos = win.cursors().primary().pos();
-    let cursor_point = getf!(win
-        .view()
-        .point_at_pos(cursor_pos));
+    let cursor_point = getf!(win.view().point_at_pos(cursor_pos));
     let last_line = win.view().height().saturating_sub(1);
     let cursor_at_end = cursor_point.y == last_line;
     let view_at_end = win.view().at_end();
@@ -426,9 +420,7 @@ fn next_visual_line(editor: &mut Editor, id: ClientId) -> ActionResult {
     let view = win.view();
     let cursor = win.cursors.primary();
     if let Some((pos, col)) = next_visual_line_impl(view, cursor, buf.len()) {
-        let primary = win.primary_cursor_mut();
-        primary.goto_with_col(pos, col);
-
+        win.cursors.cursors_mut().primary().goto_with_col(pos, col);
         hooks::run(editor, id, Hook::CursorMoved);
     }
 

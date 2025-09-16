@@ -61,7 +61,7 @@ combipath = path "{" ((ws / nl)* (combipath / typepath / functionpath) ","?)+ (w
 
 # Operators
 @show @highlight
-operator = marks / "mut";
+operator = marks / "mut" &(ws / nl);
 marks = [\[\]{}():,.<>&|=+*/?<>!-];
 # operator = closure / operators;
 # @show @highlight(operator)

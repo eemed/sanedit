@@ -283,7 +283,7 @@ fn draw_secondary_cursors(
     view: &View,
     theme: &Theme,
 ) {
-    let mut cursor_hls = SortedVec::new();
+    let mut cursor_hls = Vec::new();
     for cursor in cursors.cursors() {
         if let Some(area) = cursor.selection() {
             let style = theme.get(ThemeField::Selection);

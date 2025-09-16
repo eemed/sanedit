@@ -154,7 +154,7 @@ impl Default for Hooks {
 
         // Window
         hooks.register(BufChanged, window::sync_windows);
-        hooks.register(CursorMoved, cursors::merge_overlapping_cursors);
+        // hooks.register(CursorMoved, cursors::merge_overlapping_cursors);
         hooks.register(OnMessagePre, window::clear_messages);
         hooks.register(ModeEnter, window::on_mode_enter);
         hooks.register(ModeLeave, window::on_mode_leave);

@@ -69,7 +69,7 @@ fn indent() {
     let lines = view_lines(&mut win, &buf);
     assert_eq!(lines[0], "    hello");
 
-    win.cursors.primary_mut().goto(buf.len());
+    win.cursors.cursors_mut().primary().goto(buf.len());
     let _ = win.indent_cursor_lines(&mut buf);
     let lines = view_lines(&mut win, &buf);
     assert_eq!(lines[0], "        hello");
@@ -81,7 +81,7 @@ fn dedent() {
     buf.config.indent_kind = IndentKind::Space;
     buf.config.indent_amount = 4;
 
-    win.cursors.primary_mut().goto(buf.len());
+    win.cursors.cursors_mut().primary().goto(buf.len());
     let _ = win.dedent_cursor_lines(&mut buf);
     let lines = view_lines(&mut win, &buf);
     assert_eq!(lines[0], "    ");
@@ -97,7 +97,7 @@ fn dedent_missing_spaces() {
     buf.config.indent_kind = IndentKind::Space;
     buf.config.indent_amount = 4;
 
-    win.cursors.primary_mut().goto(buf.len() - 5);
+    win.cursors.cursors_mut().primary().goto(buf.len() - 5);
     let _ = win.dedent_cursor_lines(&mut buf);
     let lines = view_lines(&mut win, &buf);
     assert_eq!(lines[0], "hello ");
@@ -111,7 +111,7 @@ fn indent_multiline() {
     buf.config.indent_kind = IndentKind::Space;
     buf.config.indent_amount = 4;
 
-    win.cursors.primary_mut().select(13..buf.len());
+    win.cursors.cursors_mut().primary().select(13..buf.len());
     let _ = win.indent_cursor_lines(&mut buf);
     let lines = view_lines(&mut win, &buf);
     assert_eq!(lines[1], "    hello ");
@@ -271,7 +271,7 @@ fn cursor_zones_wrap() {
 fn cursor_zones_long_wrap() {
     let (mut win, buf) = with_buf_size("one longtwoo longerthree longfour longfivelong", 9, 3);
     win.redraw_view(&buf);
-    win.cursors.primary_mut().goto(9 * 2 - 1);
+    win.cursors.cursors_mut().primary().goto(9 * 2 - 1);
     assert_cursor_at(&win, Point { x: 1, y: 2 });
 
     win.view_to_cursor_zone(&buf, Zone::Top);

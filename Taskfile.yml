@@ -44,7 +44,14 @@ tasks:
     cmds:
       - echo 0 | sudo tee /proc/sys/kernel/perf_event_paranoid
       - rm -rf perf.data* flamegraph.svg
-      - cargo flamegraph --profile perf --verbose --bin sane -- --config-dir ../runtime/config
+      - rm -f {{.DEBUG_SOCKET}}
+      - rm -f {{.LOG_FILE}} {{.LOG_FILE_CLIENT}}
+      - cargo flamegraph --profile perf --verbose --bin sane -- --server-only --session debug --debug --config-dir ../runtime &
+      - |
+        until [ -e {{.DEBUG_SOCKET}} ]; do \
+          sleep 0.1; \
+        done
+      - cargo run --bin sane -- --debug --session debug --config-dir ../runtime
 
   run:
     desc: Build and run the debug build

@@ -153,10 +153,10 @@ fn cancel(editor: &mut Editor, id: ClientId) -> ActionResult {
     if win.cursors.cursors().iter().any(|c| c.is_selecting()) {
         win.cursors.stop_selection();
     } else if win.cursors().len() > 1 {
-        win.cursors.remove_except_primary();
+        win.cursors.cursors_mut().remove_except_primary();
 
         let (win, _buf) = editor.win_buf_mut(id);
-        win.cursors.primary_mut().stop_selection();
+        win.cursors.stop_selection();
     }
 
     let (win, _buf) = editor.win_buf_mut(id);

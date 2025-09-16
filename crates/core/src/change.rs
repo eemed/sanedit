@@ -162,145 +162,273 @@ impl Changes {
         self.changes.iter()
     }
 
-    fn added(&self, pos: u64, inclusive: bool) -> u64 {
-        self.changes
-            .iter()
-            .take_while(|change| {
-                if inclusive {
-                    change.start() <= pos
-                } else {
-                    change.start() < pos
-                }
-            })
-            .map(|change| {
-                if pos == change.start() && change.cursor_offset.is_some() {
-                    change.cursor_offset.unwrap()
-                } else {
-                    change.text().len() as u64
-                }
-            })
-            .sum()
-    }
-
-    fn removed(&self, pos: u64, inclusive: bool) -> u64 {
-        self.changes
-            .iter()
-            .take_while(|change| {
-                if inclusive {
-                    change.start() <= pos
-                } else {
-                    change.start() < pos
-                }
-            })
-            .map(|change| {
-                if change.end() < pos || pos < change.start() {
-                    change.range().len()
-                } else {
-                    pos - change.start()
-                }
-            })
-            .sum()
-    }
-
-    fn is_removed(&self, range: &BufferRange) -> bool {
-        self.changes
-            .iter()
-            .any(|change| change.range.includes(range))
-    }
-
-    fn is_replaced(&self, range: &BufferRange) -> Option<&Change> {
-        self.changes.iter().find(|change| &change.range == range)
-    }
-
     pub fn keep_cursors_still(&self, cursors: &mut [Cursor]) {
+        let mut global_offset: i128 = 0;
+        let changes: &[Change] = &self.changes;
+        // Global change
+        let mut nchange = 0;
+
         for cursor in cursors {
+            // Local change
+            let mut n = nchange;
+            let mut prev_offset = global_offset;
+            let mut offset = global_offset;
+
             match cursor.selection() {
                 Some(range) => {
-                    if self.is_removed(&range) {
-                        let mut pos = range.start;
-                        pos -= self.removed(range.start, true);
+                    let pos = range.start;
+                    let epos = range.end;
+                    let mut end_offset = global_offset;
+                    let mut prev_end_offset = global_offset;
+                    let mut is_removed = false;
 
-                        // Stop selection is completely removed
+                    while n < changes.len() {
+                        let change = &changes[n];
+
+                        if change.start() <= pos {
+                            if change.end() < pos || pos < change.start() {
+                                offset -= change.range().len() as i128;
+                            } else {
+                                offset -= (pos - change.start()) as i128;
+                            }
+                        }
+
+                        if change.start() < epos {
+                            if change.end() < epos || epos < change.start() {
+                                end_offset -= change.range().len() as i128;
+                            } else {
+                                end_offset -= (epos - change.start()) as i128;
+                            }
+                        }
+
+                        // Completely replaced
+                        is_removed = change.range.includes(range);
+                        let offsets_changed =
+                            offset != prev_offset || end_offset != prev_end_offset;
+
+                        prev_offset = offset;
+                        prev_end_offset = end_offset;
+
+                        // We cannot go over a change unless it is completely before us
+                        if change.end() <= pos {
+                            nchange += 1;
+                            global_offset = offset;
+                        }
+
+                        if is_removed || !offsets_changed {
+                            break;
+                        }
+
+                        n += 1;
+                    }
+
+                    let nstart = (pos as i128 + offset) as u64;
+                    let nend = (epos as i128 + end_offset) as u64;
+                    if is_removed {
                         cursor.stop_selection();
-                        cursor.goto(pos);
+                        cursor.goto(nstart);
                     } else {
-                        let mut start = range.start;
-                        let mut end = range.end;
-                        start -= self.removed(range.start, true);
-                        end -= self.removed(range.end, false);
-
-                        cursor.to_range(start..end);
+                        cursor.to_range(nstart..nend);
                     }
                 }
                 None => {
-                    let mut npos = cursor.pos();
+                    let pos = cursor.pos();
 
-                    npos -= self.removed(cursor.pos(), true);
+                    while n < changes.len() {
+                        let change = &changes[n];
+                        if change.start() <= pos {
+                            if change.end() < pos || pos < change.start() {
+                                offset -= change.range().len() as i128;
+                            } else {
+                                offset -= (pos - change.start()) as i128;
+                            }
+                        }
 
+                        if change.end() <= pos {
+                            nchange += 1;
+                            global_offset = offset;
+                        }
+
+                        if offset == prev_offset {
+                            break;
+                        }
+
+                        n += 1;
+                        prev_offset = offset;
+                    }
+
+                    let npos = (pos as i128 + offset) as u64;
                     cursor.goto(npos);
                 }
             }
-
-            // log::debug!("Cursor: {cursor:?}");
         }
     }
 
     /// Moves cursors according to this change,
+    /// Cursors must be sorted
     /// Wont handle undo or redo
     pub fn move_cursors(&self, cursors: &mut [Cursor], reselect_replacement: bool) {
+        let mut global_offset: i128 = 0;
+        let changes: &[Change] = &self.changes;
+        // Global change
+        let mut nchange = 0;
+
         for cursor in cursors {
+            // Local change
+            let mut n = nchange;
+            let mut prev_offset = global_offset;
+            let mut offset = global_offset;
+
             match cursor.selection() {
                 Some(range) => {
-                    if reselect_replacement {
-                        if let Some(change) = self.is_replaced(&range) {
-                            let mut pos = range.start;
-                            pos += self.added(range.start, true);
-                            pos -= self.removed(range.start, true);
+                    let pos = range.start;
+                    let epos = range.end;
+                    let mut end_offset = global_offset;
+                    let mut prev_end_offset = global_offset;
+                    let mut is_replaced = false;
+                    let mut is_removed = false;
 
-                            cursor.select(pos - change.text().len() as u64..pos);
+                    while n < changes.len() {
+                        let change = &changes[n];
 
-                            continue;
+                        is_replaced = change.start() == pos && change.end() == epos;
+                        if is_replaced {
+                            nchange += 1;
+                            global_offset = offset;
+                            break;
                         }
+
+                        if change.start() <= pos {
+                            if pos == change.start() && change.cursor_offset.is_some() {
+                                offset += change.cursor_offset.unwrap() as i128;
+                            } else {
+                                offset += change.text().len() as i128;
+                            }
+
+                            if change.end() < pos || pos < change.start() {
+                                offset -= change.range().len() as i128;
+                            } else {
+                                offset -= (pos - change.start()) as i128;
+                            }
+                        }
+
+                        if change.start() < epos {
+                            if epos == change.start() && change.cursor_offset.is_some() {
+                                end_offset += change.cursor_offset.unwrap() as i128;
+                            } else {
+                                end_offset += change.text().len() as i128;
+                            }
+
+                            if change.end() < epos || epos < change.start() {
+                                end_offset -= change.range().len() as i128;
+                            } else {
+                                end_offset -= (epos - change.start()) as i128;
+                            }
+                        }
+
+                        // Completely replaced
+                        is_removed = change.range.includes(range);
+                        let offsets_changed =
+                            offset != prev_offset || end_offset != prev_end_offset;
+
+                        prev_offset = offset;
+                        prev_end_offset = end_offset;
+
+                        // We cannot go over a change unless it is completely before us
+                        if change.end() <= pos {
+                            nchange += 1;
+                            global_offset = offset;
+                        }
+
+                        if is_removed || !offsets_changed {
+                            break;
+                        }
+
+                        n += 1;
                     }
 
-                    if self.is_removed(&range) {
-                        let mut pos = range.start;
-                        pos += self.added(range.start, true);
-                        pos -= self.removed(range.start, true);
-
-                        // Stop selection is completely removed
+                    let nstart = (pos as i128 + offset) as u64;
+                    let nend = (epos as i128 + end_offset) as u64;
+                    if reselect_replacement && is_replaced {
+                        let change = &changes[n];
+                        cursor.select(nstart..nstart + change.text().len() as u64);
+                    } else if is_removed {
                         cursor.stop_selection();
-                        cursor.goto(pos);
+                        cursor.goto(nstart);
                     } else {
-                        let mut start = range.start;
-                        let mut end = range.end;
-                        start += self.added(range.start, true);
-                        start -= self.removed(range.start, true);
-                        end += self.added(range.end, false);
-                        end -= self.removed(range.end, false);
-
-                        cursor.to_range(start..end);
+                        cursor.to_range(nstart..nend);
                     }
                 }
                 None => {
-                    let mut npos = cursor.pos();
+                    let pos = cursor.pos();
 
-                    npos += self.added(cursor.pos(), true);
-                    npos -= self.removed(cursor.pos(), true);
+                    while n < changes.len() {
+                        let change = &changes[n];
+                        if change.start() <= pos {
+                            if pos == change.start() && change.cursor_offset.is_some() {
+                                offset += change.cursor_offset.unwrap() as i128;
+                            } else {
+                                offset += change.text().len() as i128;
+                            }
 
+                            if change.end() < pos || pos < change.start() {
+                                offset -= change.range().len() as i128;
+                            } else {
+                                offset -= (pos - change.start()) as i128;
+                            }
+                        }
+
+                        if change.end() <= pos {
+                            nchange += 1;
+                            global_offset = offset;
+                        }
+
+                        if offset == prev_offset {
+                            break;
+                        }
+
+                        n += 1;
+                        prev_offset = offset;
+                    }
+
+                    let npos = (pos as i128 + offset) as u64;
                     cursor.goto(npos);
                 }
             }
-
-            // log::debug!("Cursor: {cursor:?}");
         }
     }
 
-    pub fn move_offset(&self, offset: u64) -> u64 {
-        let mut npos = offset;
-        npos += self.added(offset, false);
-        npos -= self.removed(offset, false);
-        npos
+    pub fn move_offset(&self, pos: u64) -> u64 {
+        let mut offset = 0;
+        let mut prev_offset = 0;
+        let changes: &[Change] = &self.changes;
+        let mut n = 0;
+
+        while n < changes.len() {
+            let change = &changes[n];
+            if change.start() <= pos {
+                if pos == change.start() && change.cursor_offset.is_some() {
+                    offset += change.cursor_offset.unwrap() as i128;
+                } else {
+                    offset += change.text().len() as i128;
+                }
+
+                if change.end() < pos || pos < change.start() {
+                    offset -= change.range().len() as i128;
+                } else {
+                    offset -= (pos - change.start()) as i128;
+                }
+            }
+
+            if offset == prev_offset {
+                break;
+            }
+
+            n += 1;
+            prev_offset = offset;
+        }
+
+        (pos as i128 + offset) as u64
     }
 
     pub fn kind(&self) -> ChangesKind {

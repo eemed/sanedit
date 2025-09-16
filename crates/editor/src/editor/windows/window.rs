@@ -259,10 +259,6 @@ impl Window {
         self.cursors.primary()
     }
 
-    pub fn primary_cursor_mut(&mut self) -> &mut Cursor {
-        self.cursors.primary_mut()
-    }
-
     pub fn cursors(&self) -> &Cursors {
         &self.cursors
     }
@@ -390,9 +386,12 @@ impl Window {
     /// Move primary cursor to offset and create a jump to it.
     /// Will not create the jump point at current position
     pub fn goto_offset(&mut self, offset: u64, buf: &Buffer) {
-        let offset = min(offset, buf.len());
-        let primary = self.cursors.primary_mut();
-        primary.goto(offset);
+        {
+            let offset = min(offset, buf.len());
+            let mut cursors = self.cursors.cursors_mut();
+            let primary = cursors.primary();
+            primary.goto(offset);
+        }
 
         self.ensure_cursor_on_grapheme_boundary(buf);
         self.view_to_around_cursor_zone(buf, Zone::Middle);
@@ -404,7 +403,8 @@ impl Window {
         self.cursors.contain_to(0..buf.len());
 
         // Ensure cursor in buf grapheme boundary
-        let primary = self.cursors.primary_mut();
+        let mut cursors = self.cursors.cursors_mut();
+        let primary = cursors.primary();
         let ppos = primary.pos();
         let slice = buf.slice(..);
         let mut graphemes = slice.graphemes_at(ppos);
@@ -438,30 +438,33 @@ impl Window {
             MarkResult::Found(pos) => self.view.set_offset(pos),
         }
 
-        for cursor in self.cursors.cursors_mut() {
-            let pos = cursor.pos();
-            match cursor.selection() {
-                Some(range) => {
-                    let mark = old.mark(range.start);
-                    let start_nmark_pos = buf.mark_to_pos(&mark);
+        {
+            let mut cursors = self.cursors.cursors_mut();
+            for cursor in cursors.iter_mut() {
+                let pos = cursor.pos();
+                match cursor.selection() {
+                    Some(range) => {
+                        let mark = old.mark(range.start);
+                        let start_nmark_pos = buf.mark_to_pos(&mark);
 
-                    let mark = old.mark(range.end);
-                    let end_nmark_pos = buf.mark_to_pos(&mark);
+                        let mark = old.mark(range.end);
+                        let end_nmark_pos = buf.mark_to_pos(&mark);
 
-                    if start_nmark_pos.is_found() && end_nmark_pos.is_found() {
-                        cursor.select(start_nmark_pos.pos()..end_nmark_pos.pos());
-                        if range.end != pos {
-                            cursor.swap_selection_dir();
+                        if start_nmark_pos.is_found() && end_nmark_pos.is_found() {
+                            cursor.select(start_nmark_pos.pos()..end_nmark_pos.pos());
+                            if range.end != pos {
+                                cursor.swap_selection_dir();
+                            }
+                        } else {
+                            cursor.stop_selection();
+                            cursor.goto(start_nmark_pos.pos());
                         }
-                    } else {
-                        cursor.stop_selection();
-                        cursor.goto(start_nmark_pos.pos());
                     }
-                }
-                _ => {
-                    let mark = old.mark(pos);
-                    let nmark_pos = buf.mark_to_pos(&mark);
-                    cursor.goto(nmark_pos.pos());
+                    _ => {
+                        let mark = old.mark(pos);
+                        let nmark_pos = buf.mark_to_pos(&mark);
+                        cursor.goto(nmark_pos.pos());
+                    }
                 }
             }
         }
@@ -483,9 +486,11 @@ impl Window {
             return;
         }
 
-        changes.move_cursors(self.cursors.cursors_mut(), self.mode == Mode::Select);
+        {
+            let mut cursors = self.cursors.cursors_mut();
+            changes.move_cursors(&mut cursors, self.mode == Mode::Select);
+        }
 
-        self.cursors.merge_overlapping();
         self.ensure_cursor_on_grapheme_boundary(buf);
 
         // Redraw view
@@ -583,8 +588,10 @@ impl Window {
         let aux = self.window_aux(mark.into());
         let result = buf.apply_changes(changes)?;
 
-        changes.move_cursors(self.cursors.cursors_mut(), self.mode == Mode::Select);
-        self.cursors.merge_overlapping();
+        {
+            let mut cursors = self.cursors.cursors_mut();
+            changes.move_cursors(&mut cursors, self.mode == Mode::Select);
+        }
 
         let offset = changes.move_offset(self.view().start());
         if offset != self.view().start() {
@@ -700,25 +707,29 @@ impl Window {
 
     fn cursors_from_changes(changes: &Changes) -> Cursors {
         let mut cursors = Cursors::default();
+        {
+            let mut all = cursors.cursors_mut();
 
-        let mut diff: i128 = 0;
-        for change in changes.iter() {
-            let total = change.text().len() as i128 - change.range().len() as i128;
-            diff += total;
+            let mut diff: i128 = 0;
+            for change in changes.iter() {
+                let total = change.text().len() as i128 - change.range().len() as i128;
+                diff += total;
 
-            let mut pos = change.range().end;
-            if total < 0 {
-                pos -= diff.abs() as u64;
-            } else {
-                pos += diff.abs() as u64;
+                let mut pos = change.range().end;
+                if total < 0 {
+                    pos -= diff.abs() as u64;
+                } else {
+                    pos += diff.abs() as u64;
+                }
+
+                all.push(Cursor::new(pos));
             }
 
-            cursors.push(Cursor::new(pos));
+            if all.len() != 1 {
+                all.remove_primary();
+            }
         }
 
-        if cursors.len() != 1 {
-            cursors.remove_primary();
-        }
         cursors
     }
 
@@ -1181,24 +1192,26 @@ impl Window {
 
     pub fn cursors_to_lines_start(&mut self, buf: &Buffer) {
         let starts = self.cursor_line_starts(buf);
-        self.cursors.remove_except_primary();
+        let mut cursors = self.cursors.cursors_mut();
+        cursors.remove_except_primary();
         for (i, start) in starts.iter().enumerate() {
             if i == 0 {
-                self.cursors.replace_primary(Cursor::new(*start));
+                cursors.replace_primary(Cursor::new(*start));
             } else {
-                self.cursors.push(Cursor::new(*start));
+                cursors.push(Cursor::new(*start));
             }
         }
     }
 
     pub fn cursors_to_lines_end(&mut self, buf: &Buffer) {
         let ends = self.cursor_line_ends(buf);
-        self.cursors.remove_except_primary();
+        let mut cursors = self.cursors.cursors_mut();
+        cursors.remove_except_primary();
         for (i, end) in ends.iter().enumerate() {
             if i == 0 {
-                self.cursors.replace_primary(Cursor::new(*end));
+                cursors.replace_primary(Cursor::new(*end));
             } else {
-                self.cursors.push(Cursor::new(*end));
+                cursors.push(Cursor::new(*end));
             }
         }
     }
@@ -1492,7 +1505,8 @@ impl Window {
             pos += self.view.line_len_in_buffer(i);
         }
 
-        let primary = self.cursors.primary_mut();
+        let mut cursors = self.cursors.cursors_mut();
+        let primary = cursors.primary();
         if primary.pos() != pos {
             primary.goto(pos);
             true

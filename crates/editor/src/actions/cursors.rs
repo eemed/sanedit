@@ -26,22 +26,14 @@ use super::{
 #[action("Cursors: Select next word")]
 fn select_to_next_word(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
-    for cursor in win.cursors.cursors_mut() {
-        if !cursor.is_selecting() {
-            cursor.start_selection();
-        }
-    }
+    win.cursors.start_selection();
     movement::next_word_end.execute(editor, id)
 }
 
 #[action("Cursors: Select previous word")]
 fn select_to_prev_word(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
-    for cursor in win.cursors.cursors_mut() {
-        if !cursor.is_selecting() {
-            cursor.start_selection();
-        }
-    }
+    win.cursors.start_selection();
     movement::prev_word_start.execute(editor, id)
 }
 
@@ -50,7 +42,7 @@ fn new_cursor_to_next_line(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = editor.win_buf_mut(id);
     let cursor = win.cursors.primary();
     let (pos, _col) = next_line(&buf.slice(..), cursor, win.display_options());
-    win.cursors.push_primary(Cursor::new(pos));
+    win.cursors.cursors_mut().push_primary(Cursor::new(pos));
     ActionResult::Ok
 }
 
@@ -59,7 +51,7 @@ fn new_cursor_to_prev_line(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = editor.win_buf_mut(id);
     let cursor = win.cursors.primary();
     let (pos, _col) = prev_line(&buf.slice(..), cursor, win.display_options());
-    win.cursors.push_primary(Cursor::new(pos));
+    win.cursors.cursors_mut().push_primary(Cursor::new(pos));
     ActionResult::Ok
 }
 
@@ -87,10 +79,10 @@ fn keep_only_primary(editor: &mut Editor, id: ClientId) -> ActionResult {
     if win.cursors.cursors().iter().any(|c| c.is_selecting()) {
         win.cursors.stop_selection();
     } else {
-        win.cursors.remove_except_primary();
+        win.cursors.cursors_mut().remove_except_primary();
 
         let (win, _buf) = editor.win_buf_mut(id);
-        win.cursors.primary_mut().stop_selection();
+        win.cursors.stop_selection();
     }
 
     ActionResult::Ok
@@ -107,7 +99,7 @@ fn swap_selection_dir(editor: &mut Editor, id: ClientId) -> ActionResult {
 #[action("Cursors: Remove primary cursor")]
 fn remove_primary_cursor(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = editor.win_buf_mut(id);
-    win.cursors.remove_primary();
+    win.cursors.cursors_mut().remove_primary();
     win.view_to_around_cursor_zone(buf, Zone::Middle);
     ActionResult::Ok
 }
@@ -125,13 +117,6 @@ fn make_prev_cursor_primary(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = editor.win_buf_mut(id);
     win.cursors.primary_prev();
     win.view_to_around_cursor_zone(buf, Zone::Middle);
-    ActionResult::Ok
-}
-
-#[action("Cursors: Merge overlapping")]
-fn merge_overlapping_cursors(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, _buf) = editor.win_buf_mut(id);
-    win.cursors.merge_overlapping();
     ActionResult::Ok
 }
 

@@ -1,5 +1,6 @@
 use sanedit_core::{
-    movement::{end_of_line, start_of_line}, word_at_pos, BufferRange, Cursor
+    movement::{end_of_line, start_of_line},
+    word_at_pos, BufferRange, Cursor,
 };
 use sanedit_messages::{key, redraw::Point, MouseEvent};
 use sanedit_server::ClientId;
@@ -50,19 +51,23 @@ pub(crate) fn on_drag(editor: &mut Editor, id: ClientId, point: Point) -> Action
 
 fn drag_normal(editor: &mut Editor, id: ClientId, point: Point) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
-    win.cursors.remove_except_primary();
+    win.cursors.cursors_mut().remove_except_primary();
     let pos = getf!(pos_at_point(win, point));
-    let primary = win.cursors.primary_mut();
-    if !primary.is_selecting() {
-        let ppos = primary.pos();
-        if ppos < pos {
-            primary.select(ppos..pos);
+
+    {
+        let mut cursors = win.cursors.cursors_mut();
+        let primary = cursors.primary();
+        if !primary.is_selecting() {
+            let ppos = primary.pos();
+            if ppos < pos {
+                primary.select(ppos..pos);
+            } else {
+                primary.select(pos..ppos);
+                primary.swap_selection_dir();
+            }
         } else {
-            primary.select(pos..ppos);
-            primary.swap_selection_dir();
+            primary.goto(pos);
         }
-    } else {
-        primary.goto(pos);
     }
     hooks::run(editor, id, Hook::CursorMoved);
     mode_select(editor, id);
@@ -72,7 +77,7 @@ fn drag_normal(editor: &mut Editor, id: ClientId, point: Point) -> ActionResult 
 
 fn drag_word(editor: &mut Editor, id: ClientId, point: Point) -> ActionResult {
     let (win, buf) = editor.win_buf_mut(id);
-    win.cursors.remove_except_primary();
+    win.cursors.cursors_mut().remove_except_primary();
     let slice = buf.slice(..);
     let pos = getf!(pos_at_point(win, point));
     let word = getf!(word_at_pos(&slice, pos));
@@ -81,7 +86,7 @@ fn drag_word(editor: &mut Editor, id: ClientId, point: Point) -> ActionResult {
 
 fn drag_line(editor: &mut Editor, id: ClientId, point: Point) -> ActionResult {
     let (win, buf) = editor.win_buf_mut(id);
-    win.cursors.remove_except_primary();
+    win.cursors.cursors_mut().remove_except_primary();
     let slice = buf.slice(..);
     let pos = getf!(pos_at_point(win, point));
     let sol = start_of_line(&slice, pos);
@@ -91,25 +96,28 @@ fn drag_line(editor: &mut Editor, id: ClientId, point: Point) -> ActionResult {
 
 fn drag_impl(editor: &mut Editor, id: ClientId, range: BufferRange) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
-    win.cursors.remove_except_primary();
-    let primary = win.cursors.primary_mut();
+    {
+        let mut cursors = win.cursors.cursors_mut();
+        cursors.remove_except_primary();
+        let primary = cursors.primary();
 
-    let sel = getf!(primary.selection());
+        let sel = getf!(primary.selection());
 
-    if sel.includes(range) && (sel.start != range.start || sel.end != range.end) {
-        if primary.pos() == sel.start {
-            primary.goto(range.start);
+        if sel.includes(range) && (sel.start != range.start || sel.end != range.end) {
+            if primary.pos() == sel.start {
+                primary.goto(range.start);
+            } else {
+                primary.goto(range.end);
+            }
         } else {
-            primary.goto(range.end);
-        }
-    } else {
-        if range.end <= sel.start && primary.pos() != sel.start {
-            primary.swap_selection_dir();
-        } else if range.start >= sel.end && primary.pos() != sel.end {
-            primary.swap_selection_dir();
-        }
+            if range.end <= sel.start && primary.pos() != sel.start {
+                primary.swap_selection_dir();
+            } else if range.start >= sel.end && primary.pos() != sel.end {
+                primary.swap_selection_dir();
+            }
 
-        primary.extend_to_include(range);
+            primary.extend_to_include(range);
+        }
     }
 
     hooks::run(editor, id, Hook::CursorMoved);
@@ -120,17 +128,20 @@ fn drag_impl(editor: &mut Editor, id: ClientId, range: BufferRange) -> ActionRes
 fn new_to_point(editor: &mut Editor, id: ClientId, point: Point) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
     let pos = getf!(pos_at_point(win, point));
-    win.cursors.push(Cursor::new(pos));
+    win.cursors.cursors_mut().push(Cursor::new(pos));
     ActionResult::Ok
 }
 
 fn goto_position(editor: &mut Editor, id: ClientId, point: Point) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
-    win.cursors.remove_except_primary();
     let pos = getf!(pos_at_point(win, point));
-    let primary = win.cursors.primary_mut();
-    primary.stop_selection();
-    primary.goto(pos);
+    {
+        let mut cursors = win.cursors.cursors_mut();
+        cursors.remove_except_primary();
+        let primary = cursors.primary();
+        primary.stop_selection();
+        primary.goto(pos);
+    }
     hooks::run(editor, id, Hook::CursorMoved);
     mode_normal(editor, id);
 
@@ -143,10 +154,13 @@ fn select_word(editor: &mut Editor, id: ClientId, point: Point) -> ActionResult 
     let pos = getf!(pos_at_point(win, point));
     let word = getf!(word_at_pos(&slice, pos));
 
-    win.cursors.remove_except_primary();
-    let primary = win.cursors.primary_mut();
-    primary.stop_selection();
-    primary.select(word);
+    {
+        let mut cursors = win.cursors.cursors_mut();
+        cursors.remove_except_primary();
+        let primary = cursors.primary();
+        primary.stop_selection();
+        primary.select(word);
+    }
     hooks::run(editor, id, Hook::CursorMoved);
     mode_select(editor, id);
 
@@ -160,10 +174,13 @@ fn select_line(editor: &mut Editor, id: ClientId, point: Point) -> ActionResult 
     let sol = start_of_line(&slice, pos);
     let eol = end_of_line(&slice, pos);
 
-    win.cursors.remove_except_primary();
-    let primary = win.cursors.primary_mut();
-    primary.stop_selection();
-    primary.select(sol..eol);
+    {
+        let mut cursors = win.cursors.cursors_mut();
+        cursors.remove_except_primary();
+        let primary = cursors.primary();
+        primary.stop_selection();
+        primary.select(sol..eol);
+    }
     hooks::run(editor, id, Hook::CursorMoved);
     mode_select(editor, id);
     ActionResult::Ok

@@ -51,22 +51,25 @@ impl JumpGroup {
 
     pub fn to_cursors(&self, buf: &Buffer) -> Cursors {
         let mut cursors = Cursors::default();
+        {
+            let mut all = cursors.cursors_mut();
 
-        for (i, jump) in self.jumps().iter().enumerate() {
-            let start = buf.mark_to_pos(jump.start()).pos();
-            let end = jump.end().map(|mark| buf.mark_to_pos(mark));
+            for (i, jump) in self.jumps().iter().enumerate() {
+                let start = buf.mark_to_pos(jump.start()).pos();
+                let end = jump.end().map(|mark| buf.mark_to_pos(mark));
 
-            let cursor = if let Some(end) = end {
-                Cursor::new_select(start..end.pos())
-            } else {
-                Cursor::new(start)
-            };
+                let cursor = if let Some(end) = end {
+                    Cursor::new_select(start..end.pos())
+                } else {
+                    Cursor::new(start)
+                };
 
-            let first = i == 0;
-            if first {
-                cursors.replace_primary(cursor);
-            } else {
-                cursors.push(cursor);
+                let first = i == 0;
+                if first {
+                    all.replace_primary(cursor);
+                } else {
+                    all.push(cursor);
+                }
             }
         }
 

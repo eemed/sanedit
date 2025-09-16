@@ -1,20 +1,87 @@
 use std::{cmp::min, ops::RangeBounds};
 
-use rustc_hash::FxHashSet;
 use sanedit_buffer::Mark;
 use sanedit_core::{BufferRange, Cursor};
-use sanedit_utils::ranges::OverlappingRanges;
 
 use crate::{
     common::text::{trim_whitespace, trim_whitespace_back},
     editor::buffers::Buffer,
 };
 
+/// Guard for cursors to ensure it is sorted and non overlapping after mutation
+#[derive(Debug)]
+pub(crate) struct CursorsGuard<'a> {
+    cursors: &'a mut Cursors,
+}
+
+impl<'a> CursorsGuard<'a> {
+    pub fn primary(&mut self) -> &mut Cursor {
+        &mut self.cursors.cursors[self.cursors.primary]
+    }
+
+    /// Add a new cursor
+    pub fn push(&mut self, cursor: Cursor) {
+        self.cursors.cursors.push(cursor);
+    }
+
+    /// Push a new primary cursor
+    pub fn push_primary(&mut self, cursor: Cursor) {
+        let pos = self.cursors.len();
+        self.cursors.cursors.push(cursor);
+        self.cursors.primary = pos;
+    }
+
+    pub fn replace_primary(&mut self, cursor: Cursor) {
+        let primary = &mut self.cursors.cursors[self.cursors.primary];
+        *primary = cursor;
+    }
+
+    /// Remove primary cursor if more cursors exist
+    pub fn remove_primary(&mut self) {
+        if self.cursors.len() < 2 {
+            return;
+        }
+
+        let old = self.cursors.primary;
+        self.cursors.primary_next();
+        self.cursors.cursors.remove(old);
+        if self.cursors.primary > old {
+            self.cursors.primary -= 1;
+        }
+    }
+
+    /// Remove all cursors except the primary one
+    pub fn remove_except_primary(&mut self) {
+        let cursor = self.cursors.cursors.swap_remove(self.cursors.primary);
+        self.cursors.cursors.clear();
+        self.cursors.cursors.push(cursor);
+        self.cursors.primary = 0;
+    }
+}
+
+impl<'a> std::ops::Deref for CursorsGuard<'a> {
+    type Target = [Cursor];
+
+    fn deref(&self) -> &Self::Target {
+        &self.cursors.cursors
+    }
+}
+
+impl<'a> std::ops::DerefMut for CursorsGuard<'a> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.cursors.cursors
+    }
+}
+
+impl<'a> Drop for CursorsGuard<'a> {
+    fn drop(&mut self) {
+        self.cursors.sort_and_merge_overlapping();
+    }
+}
+
 #[derive(Debug, Clone)]
 pub(crate) struct Cursors {
-    // I would like this to be sorted but sortedvec ensures nothing because
-    // cursors move all the time. It should be sorted/checked after every
-    // change. So its unsorted for now.
+    /// Non overlapping, sorted set of cursors.
     cursors: Vec<Cursor>,
     primary: usize,
 }
@@ -39,10 +106,6 @@ impl Cursors {
         &self.cursors[self.primary]
     }
 
-    pub fn primary_mut(&mut self) -> &mut Cursor {
-        &mut self.cursors[self.primary]
-    }
-
     pub fn start_selection(&mut self) {
         for cursor in &mut self.cursors {
             cursor.start_selection();
@@ -59,8 +122,8 @@ impl Cursors {
         &self.cursors
     }
 
-    pub fn cursors_mut(&mut self) -> &mut [Cursor] {
-        &mut self.cursors
+    pub fn cursors_mut<'a>(&'a mut self) -> CursorsGuard<'a> {
+        CursorsGuard { cursors: self }
     }
 
     pub fn trim_whitespace(&mut self, buf: &Buffer) -> bool {
@@ -93,94 +156,46 @@ impl Cursors {
         changed
     }
 
-    /// Add a new cursor
-    pub fn push(&mut self, cursor: Cursor) {
-        self.cursors.push(cursor);
+    fn sort(&mut self) {
+        let primary = self.cursors.swap_remove(self.primary);
+        self.cursors.sort();
+        let pos = match self.cursors.binary_search(&primary) {
+            Ok(n) => n,
+            Err(n) => n,
+        };
+        self.cursors.insert(pos, primary);
     }
 
-    /// Push a new primary cursor
-    pub fn push_primary(&mut self, cursor: Cursor) {
-        let len = self.cursors.len();
-        self.push(cursor);
-        self.primary = len;
-    }
+    fn merge_overlapping(&mut self) {
+        let mut merged = Vec::with_capacity(self.cursors.len());
 
-    pub fn replace_primary(&mut self, cursor: Cursor) {
-        let primary = self.cursors.get_mut(self.primary).unwrap();
-        *primary = cursor;
-    }
+        for cursor in std::mem::take(&mut self.cursors) {
+            if merged.is_empty() {
+                merged.push(cursor);
+                continue;
+            }
 
-    /// Remove all cursors except the primary one
-    pub fn remove_except_primary(&mut self) {
-        let cursor = self.cursors.swap_remove(self.primary);
-        self.cursors.clear();
-        self.cursors.push(cursor);
-        self.primary = 0;
+            let last = merged.last_mut().unwrap();
+            if last.end() < cursor.start() {
+                merged.push(cursor);
+            } else {
+                let end = std::cmp::max(last.end(), cursor.end());
+                last.extend_to_include_pos(end);
+            }
+        }
+
+        self.cursors = merged;
+        self.primary = min(self.primary, self.cursors.len() - 1);
     }
 
     /// Merge overlapping cursors into one
-    pub fn merge_overlapping(&mut self) {
+    pub fn sort_and_merge_overlapping(&mut self) {
         if self.cursors.len() <= 1 {
             return;
         }
 
-        let mut singles = FxHashSet::default();
-        let mut selections = OverlappingRanges::default();
-        for cursor in &self.cursors {
-            match cursor.selection() {
-                Some(range) => {
-                    selections.add(range.into());
-                }
-                _ => {
-                    singles.insert(cursor.pos());
-                }
-            }
-        }
-
-        // Handle ranges
-        for range in selections.iter() {
-            let range: BufferRange = range.into();
-            let mut i = 0;
-            while i < self.cursors.len() {
-                let cursor = &mut self.cursors[i];
-                match cursor.selection() {
-                    Some(crange) => {
-                        if cursor.start() == range.start {
-                            cursor.select(range);
-                            i += 1;
-                        } else if range.includes(crange) {
-                            // remove if contained in another range
-                            self.cursors.remove(i);
-                        } else {
-                            i += 1;
-                        }
-                    }
-                    None => {
-                        // Just remove single cursors that are in ranges
-                        let cp = cursor.pos();
-                        if range.contains(&cp) {
-                            self.cursors.remove(i);
-                            singles.remove(&cp);
-                        } else {
-                            i += 1;
-                        }
-                    }
-                }
-            }
-        }
-
-        // Handle single cursors
-        self.cursors.retain(|cursor| {
-            let cp = cursor.pos();
-            let keep = singles.contains(&cp) || cursor.selection().is_some();
-            if keep {
-                singles.remove(&cp);
-            }
-
-            keep
-        });
-
-        self.primary = min(self.primary, self.cursors.len() - 1);
+        self.sort();
+        self.merge_overlapping();
     }
 
     /// Make sure all cursors are contained in range
@@ -190,6 +205,8 @@ impl Cursors {
         for cursor in &mut self.cursors {
             cursor.contain_to(range)
         }
+
+        self.sort_and_merge_overlapping();
     }
 
     pub fn swap_selection_dir(&mut self) {
@@ -200,82 +217,18 @@ impl Cursors {
 
     /// Selects the next cursor in terms of position
     pub fn primary_next(&mut self) {
-        if self.cursors.len() < 2 {
-            return;
+        if self.primary >= self.cursors.len() {
+            self.primary = 0;
+        } else {
+            self.primary += 1;
         }
-
-        let pos = self.cursors[self.primary].pos();
-        let mut n = self.primary;
-        let mut next = u64::MAX;
-
-        for (i, cursor) in self.cursors.iter().enumerate() {
-            let cp = cursor.pos();
-
-            // Next cursor with smallest amount of distance to current
-            if i != self.primary && cp > pos && next - pos > cp - pos {
-                next = cp;
-                n = i;
-            }
-        }
-
-        if n == self.primary {
-            // Take smallest
-            for (i, cursor) in self.cursors.iter().enumerate() {
-                let cp = cursor.pos();
-                if next > cp {
-                    next = cp;
-                    n = i;
-                }
-            }
-        }
-
-        self.primary = n;
     }
 
     /// Selects the previous cursor in terms of position
     pub fn primary_prev(&mut self) {
-        if self.cursors.len() < 2 {
-            return;
-        }
-
-        let pos = self.cursors[self.primary].pos();
-        let mut n = self.primary;
-        let mut prev = 0;
-
-        for (i, cursor) in self.cursors.iter().enumerate() {
-            let cp = cursor.pos();
-
-            // prev cursor with smallest amount of distance to current
-            if i != self.primary && cp < pos && pos - prev > pos - cp {
-                prev = cp;
-                n = i;
-            }
-        }
-
-        if n == self.primary {
-            // Take largest
-            for (i, cursor) in self.cursors.iter().enumerate() {
-                let cp = cursor.pos();
-                if prev < cp {
-                    prev = cp;
-                    n = i;
-                }
-            }
-        }
-
-        self.primary = n;
-    }
-
-    /// Remove primary cursor if more cursors exist
-    pub fn remove_primary(&mut self) {
-        if self.cursors.len() < 2 {
-            return;
-        }
-
-        let old = self.primary;
-        self.primary_next();
-        self.cursors.remove(old);
-        if self.primary > old {
+        if self.primary == 0 {
+            self.primary = self.cursors.len().saturating_sub(1);
+        } else {
             self.primary -= 1;
         }
     }

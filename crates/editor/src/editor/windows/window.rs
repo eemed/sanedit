@@ -192,12 +192,11 @@ impl Window {
         self.focus
     }
 
-    pub fn full_reload(&mut self) {
-        let width = self.view.width();
-        let height = self.view.height();
-        self.view = View::new(width, height);
-        self.cursors = Cursors::default();
-
+    pub fn full_reload(&mut self, buf: &Buffer) {
+        self.view.invalidate();
+        self.view.ensure_view_on_grapheme_boundary(buf);
+        self.ensure_cursor_on_grapheme_boundary(buf);
+        self.align_view_to_line(buf);
         self.reload();
     }
 
@@ -209,6 +208,10 @@ impl Window {
         self.message = None;
         self.completion = Completion::default();
         self.view.syntax = ViewSyntax::default();
+    }
+
+    pub fn align_view_to_line(&mut self, buf: &Buffer) {
+        self.scroll_up_n(buf, 1);
     }
 
     pub fn display_options(&self) -> &DisplayOptions {
@@ -223,7 +226,7 @@ impl Window {
         let old = self.bid;
         self.swap_bid(buf.id);
         self.cursor_jumps.goto_start();
-        self.full_reload();
+        self.full_reload(buf);
         if let Some(aux) = self.visited_buffers.get(&self.bid).cloned() {
             self.restore(&aux, buf);
         }
@@ -767,7 +770,7 @@ impl Window {
             if let Some(data) = buf.snapshot_aux(restored) {
                 self.restore(data, buf);
             } else {
-                self.full_reload();
+                self.full_reload(buf);
             }
         }
 
@@ -835,7 +838,7 @@ impl Window {
             if let Some(data) = buf.snapshot_aux(restored) {
                 self.restore(data, buf);
             } else {
-                self.full_reload();
+                self.full_reload(buf);
             }
         }
 
@@ -874,7 +877,7 @@ impl Window {
             if let Some(data) = buf.snapshot_aux(restored) {
                 self.restore(data, buf);
             } else {
-                self.full_reload()
+                self.full_reload(buf)
             }
         }
 

@@ -138,6 +138,7 @@ impl Default for EditorConfig {
             detect_indent: true,
             language_detect: Self::default_language_map(),
             copy_on_delete: true,
+            auto_reload_changed_or_removed_file: false,
         }
     }
 }

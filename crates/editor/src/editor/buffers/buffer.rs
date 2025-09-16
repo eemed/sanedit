@@ -431,7 +431,6 @@ impl Buffer {
         self.snapshots = Snapshots::new();
         self.last_edit = None;
         self.last_saved_snapshot = 0;
-        self.last_saved_modified = None;
         self.total_changes_made = 0;
 
         Ok(())

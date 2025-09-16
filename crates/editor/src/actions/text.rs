@@ -436,6 +436,7 @@ fn change_to_eol(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Buffer: Check if file has been modified")]
 fn check_file_modification(editor: &mut Editor, id: ClientId) -> ActionResult {
+    let prompt = editor.config.editor.auto_reload_changed_or_removed_file;
     let (win, buf) = editor.win_buf_mut(id);
     let bid = buf.id;
 
@@ -453,6 +454,11 @@ fn check_file_modification(editor: &mut Editor, id: ClientId) -> ActionResult {
             win.error_msg("Filebacked buffer was removed from disk.");
             let _ = editor.remove_buffer(id, bid);
         } else {
+            if !prompt {
+                let _ = editor.remove_buffer(id, bid);
+                return ActionResult::Ok;
+            }
+
             win.prompt = Prompt::builder()
                 .prompt("File has been removed from disk. Keep buffer anyway? (y/N)")
                 .simple()
@@ -478,6 +484,10 @@ fn check_file_modification(editor: &mut Editor, id: ClientId) -> ActionResult {
     if local != &in_fs {
         // Prevent asking all the time
         buf.last_saved_modified = Some(in_fs);
+
+        if !prompt {
+            return reload_file_from_disk.execute(editor, id);
+        }
 
         win.prompt = Prompt::builder()
             .prompt("File has been changed on disk. Reload file from disk? (Y/n)")
@@ -519,8 +529,8 @@ fn reload_file_from_disk(editor: &mut Editor, id: ClientId) -> ActionResult {
     // Reload all clients that use this buffer
     let clients = editor.windows().find_clients_with_buf(bid);
     for client in clients {
-        let (win, _buf) = editor.win_buf_mut(client);
-        win.full_reload();
+        let (win, buf) = editor.win_buf_mut(client);
+        win.full_reload(buf);
     }
 
     ActionResult::Ok

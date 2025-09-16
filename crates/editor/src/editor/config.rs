@@ -273,6 +273,9 @@ pub(crate) struct EditorConfig {
 
     /// Copy text to clipboard when deleting
     pub copy_on_delete: bool,
+
+    /// Prompt whether to load when file changes on disk
+    pub auto_reload_changed_or_removed_file: bool,
 }
 
 pub(crate) struct Keymapping {

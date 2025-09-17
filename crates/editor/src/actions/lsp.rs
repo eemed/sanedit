@@ -529,6 +529,7 @@ pub(crate) fn diagnostics_to_locations(editor: &mut Editor, id: ClientId) -> Act
     }
 
     win.locations.extra.show = true;
+    win.locations.extra.title = format!("LSP diagnostics");
     focus(editor, id, Focus::Locations);
 
     ActionResult::Ok

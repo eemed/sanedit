@@ -556,6 +556,7 @@ impl LSPJob {
         locations::show_locations.execute(editor, id);
 
         let (win, _buf) = win_buf!(editor, id);
+        win.locations.extra.title = format!("LSP references");
 
         for (path, references) in references {
             if let Some(bid) = editor.buffers.find(&path) {

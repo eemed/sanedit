@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 /// property that tells at which level they should be displayed
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone, Hash)]
 pub struct Items {
+    pub title: String,
     pub items: Vec<Item>,
     pub selected: usize,
     pub in_focus: bool,

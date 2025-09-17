@@ -10,4 +10,5 @@ pub(crate) struct LocationsView {
     /// Backing job that loads stuff to locations
     pub job: Option<JobId>,
     pub mouse: Mouse,
+    pub title: String,
 }

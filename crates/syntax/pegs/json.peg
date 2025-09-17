@@ -25,13 +25,15 @@ member = identifier ":" value;
 identifier = quote identifier_inner quote;
 
 @show @completion
-identifier_inner = ([^\u{0}..\u{19}\u{22}\u{5c}])*;
+identifier_inner = (escape / !"\"" .)*;
+escape = "\\" .;
 
 @show @highlight
 string = quote string_inner quote;
 
 @show @completion @highlight(string)
-string_inner = ([^\u{0}..\u{19}\u{22}\u{5c}])*;
+string_inner = (escape / !"\"" .)*;
+escape = "\\" .;
 
 @whitespaced
 array = "[" value ("," value )* "]";

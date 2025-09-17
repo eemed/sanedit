@@ -152,3 +152,12 @@ fn cursor_multi_remove() {
     assert_eq!(1, cursors[1].start());
     assert_eq!(2, cursors[2].start());
 }
+
+#[test]
+fn cursor_select_remove() {
+    let mut cursors = vec![Cursor::new_select(1..5)];
+    let changes = Changes::new(&[Change::replace(1..5, b"p")]);
+    changes.move_cursors(&mut cursors, false);
+    assert_eq!(2, cursors[0].start());
+    assert_eq!(2, cursors[0].end());
+}

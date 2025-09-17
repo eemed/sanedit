@@ -62,6 +62,7 @@ fn draw_impl(ctx: &mut DrawContext) -> redraw::items::Items {
 
     let in_focus = ctx.editor.win.focus() == Focus::Filetree;
     redraw::items::Items {
+        title: String::new(),
         items,
         selected,
         in_focus,

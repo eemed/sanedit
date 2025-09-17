@@ -151,7 +151,7 @@ fn scroll_wrap() {
 
     win.scroll_down_n(&buf, 1);
     let lines = view_lines(&mut win, &buf);
-    assert_eq!(lines[0], "er ");
+    assert_eq!(lines[0], "↳er ");
 
     win.scroll_down_n(&buf, 1);
     let lines = view_lines(&mut win, &buf);
@@ -159,7 +159,7 @@ fn scroll_wrap() {
 
     win.scroll_up_n(&buf, 1);
     let lines = view_lines(&mut win, &buf);
-    assert_eq!(lines[0], "o longer ");
+    assert_eq!(lines[0], "↳ longer ");
 
     win.scroll_up_n(&buf, 1);
     let lines = view_lines(&mut win, &buf);
@@ -171,23 +171,23 @@ fn scroll_long_wrap() {
     let (mut win, buf) = with_buf_size("one longtwoo longerthree longfour longfivelong", 9, 3);
     win.scroll_down_n(&buf, 1);
     let lines = view_lines(&mut win, &buf);
-    assert_eq!(lines[0], "woo longe");
+    assert_eq!(lines[0], "↳woo long");
 
     win.scroll_down_n(&buf, 1);
     let lines = view_lines(&mut win, &buf);
-    assert_eq!(lines[0], "rthree lo");
+    assert_eq!(lines[0], "↳erthree ");
 
     win.scroll_down_n(&buf, 1);
     let lines = view_lines(&mut win, &buf);
-    assert_eq!(lines[0], "ngfour lo");
+    assert_eq!(lines[0], "↳longfour");
 
     win.scroll_up_n(&buf, 1);
     let lines = view_lines(&mut win, &buf);
-    assert_eq!(lines[0], "rthree lo");
+    assert_eq!(lines[0], "↳erthree ");
 
     win.scroll_up_n(&buf, 1);
     let lines = view_lines(&mut win, &buf);
-    assert_eq!(lines[0], "woo longe");
+    assert_eq!(lines[0], "↳woo long");
 
     win.scroll_up_n(&buf, 2);
     let lines = view_lines(&mut win, &buf);
@@ -197,7 +197,7 @@ fn scroll_long_wrap() {
 #[test]
 fn cursor_zones_no_wrap() {
     let (mut win, buf) = with_buf_size("one\ntwo\nthree\nfour\nfive", 6, 3);
-    win.goto_line(2, &buf);
+    win.goto_line(3, &buf);
     assert_cursor_at(&win, Point { x: 0, y: 2 });
 
     win.view_to_cursor_zone(&buf, Zone::Top);
@@ -240,7 +240,7 @@ fn cursor_zones_wrap() {
         9,
         3,
     );
-    win.goto_line(1, &buf);
+    win.goto_line(2, &buf);
     win.cursors_to_lines_end(&buf);
     win.redraw_view(&buf);
     assert_cursor_at(&win, Point { x: 3, y: 2 });
@@ -252,19 +252,19 @@ fn cursor_zones_wrap() {
     win.goto_line(3, &buf);
     win.cursors_to_lines_end(&buf);
     win.redraw_view(&buf);
-    assert_cursor_at(&win, Point { x: 1, y: 2 });
+    assert_cursor_at(&win, Point { x: 2, y: 2 });
 
     win.view_to_cursor_zone(&buf, Zone::Top);
     win.redraw_view(&buf);
-    assert_cursor_at(&win, Point { x: 1, y: 0 });
+    assert_cursor_at(&win, Point { x: 2, y: 0 });
 
     win.view_to_cursor_zone(&buf, Zone::Bottom);
     win.redraw_view(&buf);
-    assert_cursor_at(&win, Point { x: 1, y: 2 });
+    assert_cursor_at(&win, Point { x: 2, y: 2 });
 
     win.view_to_cursor_zone(&buf, Zone::Bottom);
     win.redraw_view(&buf);
-    assert_cursor_at(&win, Point { x: 1, y: 2 });
+    assert_cursor_at(&win, Point { x: 2, y: 2 });
 }
 
 #[test]
@@ -280,7 +280,7 @@ fn cursor_zones_long_wrap() {
 
     win.view_to_cursor_zone(&buf, Zone::Middle);
     win.redraw_view(&buf);
-    assert_cursor_at(&win, Point { x: 2, y: 1 });
+    assert_cursor_at(&win, Point { x: 1, y: 1 });
 
     win.view_to_cursor_zone(&buf, Zone::Bottom);
     win.redraw_view(&buf);

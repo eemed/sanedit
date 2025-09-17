@@ -80,6 +80,7 @@ fn draw_impl(ctx: &mut DrawContext) -> redraw::items::Items {
 
     let in_focus = ctx.editor.win.focus() == Focus::Locations;
     redraw::items::Items {
+        title: locs.extra.title.clone(),
         items,
         selected,
         in_focus,

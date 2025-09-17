@@ -138,7 +138,11 @@ fn main() {
         start_server(server_opts);
         let _ = fs::remove_file(session.socket);
     } else if existing_session {
-        connect_to_socket(&session.socket, client_opts);
+        // Try to connect if it doest work create a new one
+        if let Some(opts) = connect_to_socket(&session.socket, client_opts) {
+            start_server_process(&cli, &session);
+            connect_to_socket(&session.socket, opts);
+        }
     } else {
         start_server_process(&cli, &session);
         connect_to_socket(&session.socket, client_opts);
@@ -261,17 +265,23 @@ fn start_server(opts: ServerOptions) {
     sanedit_editor::run(opts);
 }
 
-fn connect_to_socket(socket: &Path, opts: ClientOptions) {
+/// Returns options back if could not connect to socket
+fn connect_to_socket(socket: &Path, opts: ClientOptions) -> Option<ClientOptions> {
     log::info!("Connecting to existing socket..");
     // if socket already exists try to connect
     match UnixDomainSocketClient::connect(&socket) {
         Ok(socket) => {
             socket.run(opts);
-            return;
+            return None;
         }
         Err(e) => {
             println!("Invalid session: {e}");
             let _ = std::fs::remove_file(socket);
+            if matches!(e.kind(), std::io::ErrorKind::ConnectionRefused) {
+                Some(opts)
+            } else {
+                None
+            }
         }
     }
 }

@@ -184,6 +184,28 @@ impl View {
         let mut is_eol = false;
         let mut graphemes = slice.graphemes_at(pos);
 
+        let wrap = {
+            let slice = buf.slice(..self.range.start);
+            let mut graphemes = slice.graphemes_at(slice.len());
+            let prev = graphemes.prev();
+            if let Some(prev) = prev {
+                let is_eol = prev.is_eol();
+                !is_eol
+            } else {
+                false
+            }
+        };
+
+        // Wrap mark on first line if not on eol boundary
+        if wrap {
+            if let Some(wrap) = self.options.replacements.get(&Replacement::Wrap) {
+                let char = Char::new_virtual(*wrap);
+                let wrap_ch_width = char.width();
+                self.cells[line][col] = Cell::Char { ch: char };
+                col += wrap_ch_width;
+            }
+        }
+
         while let Some(grapheme) = graphemes.next() {
             let chars = Chars::new(&grapheme, col, &self.options);
             let ch_width: usize = chars.width();
@@ -309,14 +331,14 @@ impl View {
         }
     }
 
-    pub fn align_start(&mut self, mut cap: usize, buf: &Buffer) {
+    pub fn align_start(&mut self, mut width: usize, buf: &Buffer) {
         self.redraw(buf);
 
         if self.range.start == 0 {
             return;
         }
 
-        cap = cap.min(self.width());
+        width = width.min(self.width());
 
         // Go up until we find newlines,
         // but stop at a maximum if there are no lines.
@@ -324,18 +346,37 @@ impl View {
         let min = pos.saturating_sub((self.height() * self.width()) as u64);
         let slice = buf.slice(min..pos);
         let mut graphemes = slice.graphemes_at(slice.len());
-        let mut line_width = 0u64;
+        let mut line_width = 0;
+        let line_wrap_width = self
+            .options
+            .replacements
+            .get(&Replacement::Wrap)
+            .map(|ch| ch.width().unwrap_or(1))
+            .unwrap_or(0);
 
         while let Some(grapheme) = graphemes.prev() {
             let ch = Chars::new(&grapheme, 0, &self.options);
-            line_width += ch.width() as u64;
+            line_width += ch.width();
             // println!("Grapheme2: {:?} width: {line_wdth}, screen width: {}", String::from(&grapheme), self.width());
 
-            if grapheme.is_eol() || line_width > cap as u64 {
+            if grapheme.is_eol() {
                 break;
             }
 
             pos -= grapheme.len();
+
+            if line_width > width {
+                while let Some(g) = graphemes.next() {
+                    let ch = Chars::new(&g, 0, &self.options);
+                    line_width -= ch.width();
+                    pos += g.len();
+
+                    if line_width + line_wrap_width <= width {
+                        break;
+                    }
+                }
+                break;
+            }
         }
 
         self.range.start = pos;
@@ -357,40 +398,62 @@ impl View {
         let min = pos.saturating_sub((self.height() * self.width()) as u64);
         let slice = buf.slice(min..pos);
         let mut graphemes = slice.graphemes_at(slice.len());
-        let mut line_width = 0u64;
+        let mut line_width = 0;
         let line_wrap_width = self
             .options
             .replacements
             .get(&Replacement::Wrap)
             .map(|ch| ch.width().unwrap_or(1))
-            .unwrap_or(0) as u64;
-        let width = self.width() as u64;
-        let mut wrap_symbol_width = 0; // No wrap symbol on first line ever
+            .unwrap_or(0);
+        let width = self.width();
+        // let mut wrap_symbol_width = 0; // No wrap symbol on first line ever
         // TODO columns not handled, the lines can jump anyway so maybe not necessary
 
         if let Some(grapheme) = graphemes.prev() {
-            line_width += Chars::new(&grapheme, 0, &self.options).width() as u64;
+            line_width += Chars::new(&grapheme, 0, &self.options).width();
             pos -= grapheme.len();
         }
 
         while let Some(grapheme) = graphemes.prev() {
             let ch = Chars::new(&grapheme, 0, &self.options);
-            line_width += ch.width() as u64;
+            line_width += ch.width();
             // println!("Grapheme: {:?} width: {line_width}, screen width: {width}", String::from(&grapheme));
 
             let is_eol = grapheme.is_eol();
-            if is_eol || line_width > width.saturating_sub(wrap_symbol_width) {
-                wrap_symbol_width = if is_eol { 0 } else { line_wrap_width };
+            if is_eol {
                 n = n.saturating_sub(1);
 
                 if n == 0 {
                     break;
                 }
 
-                line_width = ch.width() as u64;
+                line_width = ch.width();
             }
 
-            pos -= grapheme.len();
+            pos = pos.saturating_sub(grapheme.len());
+
+            if pos == 0 {
+                break;
+            }
+
+            if line_width > width {
+                while let Some(g) = graphemes.next() {
+                    let ch = Chars::new(&g, 0, &self.options);
+                    line_width -= ch.width();
+                    pos += g.len();
+
+                    if line_width + line_wrap_width <= width {
+                        break;
+                    }
+                }
+                n = n.saturating_sub(1);
+
+                if n == 0 {
+                    break;
+                }
+
+                line_width = 0;
+            }
         }
 
         self.range.start = pos;

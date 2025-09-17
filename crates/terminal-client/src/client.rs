@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 pub mod unix;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ClientOptions {
     pub session: String,
     pub file: Option<InitialFile>,
@@ -10,7 +10,7 @@ pub struct ClientOptions {
     pub language: Option<String>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum InitialFile {
     Path(PathBuf),
     Stdin(Vec<u8>)

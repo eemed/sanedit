@@ -291,12 +291,14 @@ impl Changes {
                     while n < changes.len() {
                         let change = &changes[n];
 
-                        is_replaced = change.start() == pos && change.end() == epos;
+                        is_replaced = reselect_replacement && change.start() == pos && change.end() == epos;
+                        is_removed = change.range.includes(range);
                         if is_replaced {
                             nchange += 1;
                             global_offset = offset;
                             break;
                         }
+
 
                         if change.start() <= pos {
                             if pos == change.start() && change.cursor_offset.is_some() {
@@ -326,8 +328,8 @@ impl Changes {
                             }
                         }
 
+
                         // Completely replaced
-                        is_removed = change.range.includes(range);
                         let offsets_changed =
                             offset != prev_offset || end_offset != prev_end_offset;
 
@@ -347,9 +349,10 @@ impl Changes {
                         n += 1;
                     }
 
+
                     let nstart = (pos as i128 + offset) as u64;
                     let nend = (epos as i128 + end_offset) as u64;
-                    if reselect_replacement && is_replaced {
+                    if is_replaced {
                         let change = &changes[n];
                         cursor.select(nstart..nstart + change.text().len() as u64);
                     } else if is_removed {

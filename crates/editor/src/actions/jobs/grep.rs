@@ -283,6 +283,7 @@ impl KeepInTouch for Grep {
             let (win, _buf) = editor.win_buf_mut(self.client_id);
             win.locations.extra.is_loading = true;
             win.locations.extra.job = Some(*id);
+            win.locations.extra.title = format!("Grep {:?}", self.pattern);
             locations::clear_locations.execute(editor, self.client_id);
             locations::show_locations.execute(editor, self.client_id);
             return;

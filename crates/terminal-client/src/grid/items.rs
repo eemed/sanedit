@@ -195,7 +195,7 @@ impl CustomItems {
         }
 
         let loading = if self.items.is_loading { " (..)" } else { "" };
-        let title_text = format!(" Locations{}", loading);
+        let title_text = format!(" Locations ({}){}", self.items.title, loading);
 
         let mut line = into_cells_with_style(&title_text, title);
 

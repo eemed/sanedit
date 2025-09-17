@@ -200,6 +200,14 @@ impl Window {
         self.reload();
     }
 
+    pub fn reset(&mut self) {
+        let width = self.view.width();
+        let height = self.view.height();
+        self.view = View::new(width, height);
+        self.cursors = Cursors::default();
+        self.reload();
+    }
+
     pub fn reload(&mut self) {
         self.search.reset_highlighting();
         self.focus = Focus::Window;
@@ -211,7 +219,8 @@ impl Window {
     }
 
     pub fn align_view_to_line(&mut self, buf: &Buffer) {
-        self.scroll_up_n(buf, 1);
+        // Not good but ok
+        self.view.scroll_up_n(buf, 1);
     }
 
     pub fn display_options(&self) -> &DisplayOptions {
@@ -226,7 +235,7 @@ impl Window {
         let old = self.bid;
         self.swap_bid(buf.id);
         self.cursor_jumps.goto_start();
-        self.full_reload(buf);
+        self.reset();
         if let Some(aux) = self.visited_buffers.get(&self.bid).cloned() {
             self.restore(&aux, buf);
         }
@@ -321,13 +330,13 @@ impl Window {
             self.bid
         );
         let cursor = self.primary_cursor().pos();
-        let cap = self
+        let width = self
             .view
             .point_at_pos(cursor)
             .map(|point| point.x)
             .unwrap_or(0);
         self.view.set_offset(cursor);
-        self.view.align_start(cap, buf);
+        self.view.align_start(width, buf);
 
         match zone {
             Zone::Top => {}

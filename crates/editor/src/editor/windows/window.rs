@@ -27,7 +27,7 @@ use anyhow::{bail, Result};
 use games::Game;
 pub(crate) use mouse::{Mouse, MouseClick};
 use rustc_hash::FxHashSet as Set;
-use sanedit_buffer::{Mark, MarkResult};
+use sanedit_buffer::{utf8::next_eol, Mark, MarkResult};
 use sanedit_core::{
     grapheme_category, indent_at_line,
     movement::{
@@ -1772,6 +1772,27 @@ impl Window {
 
         let changes = Changes::from(changes);
         self.change(buf, &changes)
+    }
+
+    pub fn set_eols(&mut self, buf: &mut Buffer) -> Result<()> {
+        let target_eol = buf.config.eol;
+        let slice = buf.slice(..);
+        let mut bytes = slice.bytes();
+        let mut changes = vec![];
+
+        while let Some(mat) = next_eol(&mut bytes) {
+            if mat.eol != target_eol {
+                changes.push(Change::replace(mat.range, target_eol.as_ref()))
+            }
+        }
+
+        if changes.is_empty() {
+            bail!("No changes");
+        }
+
+        let changes = Changes::from(changes);
+        self.change(buf, &changes)?;
+        Ok(())
     }
 }
 

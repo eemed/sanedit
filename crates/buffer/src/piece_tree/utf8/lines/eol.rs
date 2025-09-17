@@ -45,6 +45,11 @@ impl EndOfLine {
     /// Maximum eol length in bytes
     pub const MAX_EOL_LEN: usize = 3;
 
+    pub fn all() -> &'static [EndOfLine] {
+        use EndOfLine::*;
+        &[LF, VT, FF, CR, CRLF, NEL, LS, PS]
+    }
+
     pub fn strip_eol<'a>(slice: &PieceTreeSlice<'a>) -> PieceTreeSlice<'a> {
         let start = slice.len().saturating_sub(Self::MAX_EOL_LEN as u64);
         let end = slice.len();

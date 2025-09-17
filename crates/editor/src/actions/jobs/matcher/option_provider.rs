@@ -46,6 +46,29 @@ impl OptionProvider for Arc<Vec<String>> {
     }
 }
 
+impl OptionProvider for Arc<Vec<&'static str>> {
+    fn provide(
+        &self,
+        sender: Appendlist<Arc<Choice>>,
+        _kill: Kill,
+        done: Arc<AtomicUsize>,
+    ) -> BoxFuture<'static, ()> {
+        let items = self.clone();
+
+        let fut = async move {
+            let mut n = 0;
+            for opt in items.iter() {
+                n += 1;
+                sender.append(Choice::from_text(opt.to_string()));
+            }
+
+            done.store(n, Ordering::Release);
+        };
+
+        Box::pin(fut)
+    }
+}
+
 impl OptionProvider for Arc<Vec<Arc<Choice>>> {
     fn provide(
         &self,

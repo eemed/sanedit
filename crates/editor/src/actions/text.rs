@@ -1,5 +1,6 @@
 use std::{mem, sync::Arc};
 
+use sanedit_buffer::utf8::EndOfLine;
 use sanedit_core::{at_start_of_line, is_indent_at_pos, IndentKind, Language};
 
 use crate::{
@@ -654,10 +655,67 @@ fn indentation_amount(editor: &mut Editor, id: ClientId, kind: IndentKind) -> Ac
     ActionResult::Ok
 }
 
-#[action("Buffer: Reindent")]
-fn reindent(editor: &mut Editor, id: ClientId) -> ActionResult {
+#[action("Buffer: Fix indent")]
+fn fix_indent(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = editor.win_buf_mut(id);
     if win.reindent(buf).is_ok() {
+        let hook = Hook::BufChanged(buf.id);
+        run(editor, id, hook);
+        ActionResult::Ok
+    } else {
+        ActionResult::Failed
+    }
+}
+
+#[action("Buffer: Set end of line")]
+fn set_eol(editor: &mut Editor, id: ClientId) -> ActionResult {
+    let (win, _buf) = editor.win_buf_mut(id);
+
+    let eols: Vec<&'static str> = EndOfLine::all()
+        .iter()
+        .map(|eol| match eol {
+            EndOfLine::LF => "LF",
+            EndOfLine::VT => "VT",
+            EndOfLine::FF => "FF",
+            EndOfLine::CR => "CR",
+            EndOfLine::CRLF => "CRLF",
+            EndOfLine::NEL => "NEL",
+            EndOfLine::LS => "LS",
+            EndOfLine::PS => "PS",
+        })
+        .collect();
+    let options: Arc<Vec<&'static str>> = Arc::new(eols);
+    let job = MatcherJob::builder(id)
+        .options(options.clone())
+        .handler(Prompt::matcher_result_handler)
+        .build();
+
+    win.prompt = Prompt::builder()
+        .prompt("Line ending")
+        .simple()
+        .on_confirm(move |editor, id, input| {
+            let (_win, buf) = editor.win_buf_mut(id);
+            let input = getf!(input.text());
+            for (i, eol) in options.iter().enumerate() {
+                if *eol == input {
+                    buf.config.eol = EndOfLine::all()[i];
+                    return ActionResult::Ok;
+                }
+            }
+
+            ActionResult::Failed
+        })
+        .build();
+    focus(editor, id, Focus::Prompt);
+    editor.job_broker.request(job);
+
+    ActionResult::Ok
+}
+
+#[action("Buffer: Fix end of lines")]
+fn fix_eols(editor: &mut Editor, id: ClientId) -> ActionResult {
+    let (win, buf) = editor.win_buf_mut(id);
+    if win.set_eols(buf).is_ok() {
         let hook = Hook::BufChanged(buf.id);
         run(editor, id, hook);
         ActionResult::Ok

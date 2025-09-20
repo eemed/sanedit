@@ -176,8 +176,6 @@ pub(crate) fn prompt() -> KeymapLayer {
             "right",     prompt_next_grapheme,
             "tab",       prompt_next_completion,
             "btab",      prompt_prev_completion,
-            "right",     prompt_next_completion,
-            "left",      prompt_prev_completion,
             "enter",     prompt_confirm,
             "up",        prompt_history_next,
             "down",      prompt_history_prev,

@@ -275,11 +275,11 @@ fn connect_to_socket(socket: &Path, opts: ClientOptions) -> Option<ClientOptions
             return None;
         }
         Err(e) => {
-            println!("Invalid session: {e}");
             let _ = std::fs::remove_file(socket);
             if matches!(e.kind(), std::io::ErrorKind::ConnectionRefused) {
                 Some(opts)
             } else {
+                println!("Invalid session: {e}");
                 None
             }
         }

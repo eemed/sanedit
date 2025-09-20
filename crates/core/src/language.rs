@@ -116,9 +116,12 @@ impl Language {
             }
         }
 
-        let ext = path.extension()?;
-        let lang = ext.to_string_lossy();
-        Some(Language { name: lang.into() })
+        if let Some(ext) = path.extension() {
+            let lang = ext.to_string_lossy();
+            return Some(Language { name: lang.into() });
+        }
+
+        Some(Language { name: pattern.into() })
     }
 
     pub fn determine(path: &Path, patterns: &FxHashMap<String, Detect>) -> Option<Language> {

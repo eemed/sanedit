@@ -149,7 +149,8 @@ impl LanguageLoader for SyntaxLoader {
     }
 
     fn get(&self, language: &str) -> Option<Arc<Parser>> {
-        let language = Language::determine_str(language, &self.detect)?;
+        let language =
+            Language::determine_str(language, &self.detect).unwrap_or(Language::new(language));
         let syns = self.global.lock().ok()?;
         syns.get(&language).map(|syn| syn.parser.clone())
     }

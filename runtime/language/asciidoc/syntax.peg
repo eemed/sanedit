@@ -9,7 +9,7 @@ list_nl = nl list;
 @show @highlight(operator)
 list = "*"+;
 
-preproc = special_nl / rectangle / angle / tags;
+preproc = special_nl / rectangle / angle / tags / link;
 special_nl = nl special;
 @show @highlight(preproc)
 special = ":" (!(":" / nl) .)* ":" &stop;
@@ -17,6 +17,8 @@ special = ":" (!(":" / nl) .)* ":" &stop;
 rectangle = "["+ (!"]" .)* "]"+;
 @show @highlight(preproc)
 angle = "<<" (!">>" .)* ">>";
+@show @highlight(preproc)
+link = "<" (!">" .)* ">";
 @show @highlight(preproc)
 tags = [a..zA..Z0..9.]+ ":" ":"? [a..zA..Z0..9./_-]* "[" (!"]" .)* "]";
 
@@ -34,7 +36,7 @@ dash = rectangle? nl dashop &nl (!dashop .)* dashop;
 dashop = "----";
 dot =  dotop &nl (!dotop .)* dotop;
 @show @highlight(operator)
-dotop = "...."; 
+dotop = "....";
 underscore =  uscore &nl (!uscore (keyword / .))* uscore;
 @show @highlight(operator)
 uscore = "____";
@@ -42,8 +44,8 @@ uscore = "____";
 
 @show @highlight
 identifier = title / description / preindent;
-title = "=" (!nl .)* nl;
-description = "." &[a..zA..Z0..9] (!nl .)* nl;
+title = "=" (!nl .)*;
+description = nl "." &[a..zA..Z0..9] (!nl .)*;
 preindent = nl ws+ (!nl .)* nl;
 
 @show @highlight(operator)
@@ -53,7 +55,7 @@ table_border = "|==" "="* nl;
 
 @show @highlight(comment)
 comment = block_comment / line_comment;
-line_comment = "//" (!nl .)* nl;
+line_comment = "//" (!nl .)*;
 block_comment = "////" (!"////" .)*  "////";
 
 @show @highlight

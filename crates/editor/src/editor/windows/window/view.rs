@@ -417,23 +417,23 @@ impl View {
         while let Some(grapheme) = graphemes.prev() {
             let ch = Chars::new(&grapheme, 0, &self.options);
             line_width += ch.width();
-            // println!("Grapheme: {:?} width: {line_width}, screen width: {width}", String::from(&grapheme));
+
+            pos = pos.saturating_sub(grapheme.len());
+
+            if pos == 0 {
+                break;
+            }
 
             let is_eol = grapheme.is_eol();
             if is_eol {
                 n = n.saturating_sub(1);
 
                 if n == 0 {
+                    pos += grapheme.len();
                     break;
                 }
 
                 line_width = ch.width();
-            }
-
-            pos = pos.saturating_sub(grapheme.len());
-
-            if pos == 0 {
-                break;
             }
 
             if line_width > width {
@@ -443,6 +443,7 @@ impl View {
                     pos += g.len();
 
                     if line_width + line_wrap_width <= width {
+                        graphemes.prev();
                         break;
                     }
                 }

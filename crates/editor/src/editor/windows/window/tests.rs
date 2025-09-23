@@ -286,3 +286,19 @@ fn cursor_zones_long_wrap() {
     win.redraw_view(&buf);
     assert_cursor_at(&win, Point { x: 1, y: 2 });
 }
+
+#[test]
+fn scroll_multi_line() {
+    let (mut win, buf) = with_buf_size(
+        "one long\ntwoo longer\nthree long\nfour long\nfivelong",
+        9,
+        3,
+    );
+
+    win.redraw_view(&buf);
+    print_view(&win);
+    win.scroll_down_n(&buf, 3);
+    print_view(&win);
+    win.scroll_up_n(&buf, 2);
+    print_view(&win);
+}

@@ -21,7 +21,9 @@ ops = [\[\]{}():,.<>&|=+*/?!<>-];
 
 @show @highlight(constant)
 constant = "true" / "false" / "undefined" / "null" / "globalThis" / "arguments" / number / uppercase_constant;
-uppercase_constant = [A..Z] [A..Z0..9_]* &end;
+
+constant_end = ws / ";" / ")" / "." / ":" / "=" / "," / "}" / "]" / "[";
+uppercase_constant = [A..Z] [A..Z0..9_]* &constant_end;
 
 @show @highlight(comment)
 comment = line_comment / block_comment;

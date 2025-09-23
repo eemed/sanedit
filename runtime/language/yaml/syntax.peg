@@ -26,7 +26,7 @@ assign_op = ":" ws;
 name = name_chars (":" name_chars)* / sstring ;
 name_chars = [A..Za..z0..9/._-]+;
 value = block / string / char / bool / dash / array / number / comment / env;
-dash = dash_op (!nl (block / string / char / comment / .))*;
+dash = dash_op (!nl (block / env / string / char / comment / .))*;
 
 @show @highlight(operator)
 dash_op =  "-";
@@ -53,7 +53,8 @@ sstring = "\"" string_inner "\"";
 char = "'" ([^\u{0}..\u{19}\u{27}])* "'";
 
 @show @completion
-string_inner = (env / [^\u{0}..\u{19}\u{22}])*;
+string_inner = (escape / env / [^\u{0}..\u{19}\u{22}])*;
+escape = "\\" .;
 
 @show @highlight
 comment = "#" (!nl .)*;

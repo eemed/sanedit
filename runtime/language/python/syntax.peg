@@ -18,7 +18,7 @@ keyword = ( "continue" / "def" / "del" / "elif" / "else" / "except" /
 constant = uppercase_constant / number / "False" / "True" / "None";
 uppercase_constant = [A..Z] [A..Z_]+ &break;
 
-number = "-"? digit+ !"."/ "0x" hexdigit+;
+number = "-"? digit+ ("." digit+)? / "0x" hexdigit+;
 digit = [0..9];
 hexdigit = digit / [a..fA..F];
 

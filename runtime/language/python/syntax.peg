@@ -22,7 +22,6 @@ number = "-"? digit+ !"."/ "0x" hexdigit+;
 digit = [0..9];
 hexdigit = digit / [a..fA..F];
 
-
 @show @highlight
 string = doc_string / line_string / fdoc_string / fline_string;
 doc_string = "\"\"\"" (string_content / (!"\"\"\"" .))* "\"\"\""  /
@@ -75,7 +74,8 @@ named_operators =  ("and" / "or" / "not" ) &break;
 operator_mark = [\[\]{}():,.<>&|=+*/?!<>-];
 
 @show @highlight
-preproc = ("import" / "from") &break;
+preproc = decorator / ("import" / "from") &break;
+decorator = nl ws* "@" (!nl .)+;
 
 @show @highlight
 comment = "#" (todo / (!nl .))*;

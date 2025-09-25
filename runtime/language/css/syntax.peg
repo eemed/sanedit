@@ -1,8 +1,8 @@
-document = (comment / keyword / units / number / preproc / identifier / (!stop .)* stop)*;
+document = (comment / keyword / units / number / preproc / identifier / important / (!stop .)* stop)*;
 WHITESPACE = [ \t];
 ws = WHITESPACE;
 nl = "\n" / "\r\n";
-stop = WHITESPACE+ / nl / ":" / ";" / "(" / ",";
+stop = WHITESPACE+ / nl / ";" / "(" / ",";
 
 @show @highlight
 comment = "/*" (!"*/" .)* "*/" / "//" (!nl .)*;
@@ -16,6 +16,9 @@ preproc = "@" [a..zA..Z0..9]+;
 
 @show @highlight
 identifier = "$" [a..zA..Z0..9]+;
+
+@show @highlight(warn)
+important = "!important" &stop;
 
 @show @highlight(constant)
 units = number (
@@ -406,6 +409,6 @@ keyword =  (
     "align-items" /
     "align-content" /
     "accent-color"
-    ) &stop
+    ) &(ws / ":")
     ;
 

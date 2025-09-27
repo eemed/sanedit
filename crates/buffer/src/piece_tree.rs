@@ -417,3 +417,18 @@ fn is_sorted(arr: &[u64]) -> bool {
 
     true
 }
+
+// #[cfg(test)]
+// pub(crate) mod test {
+//     use super::*;
+
+//     #[test]
+//     fn crash_test() {
+//         let mut pt = PieceTree::new();
+
+//         loop {
+//             println!("Insert: {}", pt.piece_count());
+//             pt.insert(0, b"a");
+//         }
+//     }
+// }

@@ -143,14 +143,14 @@ impl SyntaxLoader {
 impl LanguageLoader for SyntaxLoader {
     fn load(&self, language: &str) -> Result<Arc<Parser>, sanedit_syntax::ParseError> {
         let language =
-            Language::determine_str(language, &self.detect).unwrap_or(Language::new(language));
+            Language::determine(language, &self.detect).unwrap_or(Language::new(language));
         let syntax = self.load_or_get(language)?;
         Ok(syntax.parser)
     }
 
     fn get(&self, language: &str) -> Option<Arc<Parser>> {
         let language =
-            Language::determine_str(language, &self.detect).unwrap_or(Language::new(language));
+            Language::determine(language, &self.detect).unwrap_or(Language::new(language));
         let syns = self.global.lock().ok()?;
         syns.get(&language).map(|syn| syn.parser.clone())
     }

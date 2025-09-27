@@ -378,19 +378,18 @@ impl Prompt {
 
                 if no_input {
                     // If no input is matched, sort results using LRU
-                    let cache = &mut editor.caches.files;
-                    let lru = cache.to_map();
-                    let max = lru.len();
-
                     for res in results {
+                        let mru = &mut editor.caches.files;
+                        let max = mru.len();
                         let mut rescored_batch = Vec::with_capacity(res.len());
                         for mut choice in res.into_iter() {
                             let path = match choice.choice() {
                                 Choice::Path { path, .. } => path,
                                 _ => unreachable!(),
                             };
-                            if let Some(score) = lru.get(path.as_path()) {
-                                choice.rescore(*score);
+                            if let Some(score) = mru.position(&path) {
+                                // Smallest first so reverse position
+                                choice.rescore(max - (score + 1));
                             } else {
                                 choice.rescore(choice.score() + max);
                             }

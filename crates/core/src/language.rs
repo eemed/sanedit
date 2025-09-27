@@ -1,6 +1,6 @@
 use std::{
     io::Read as _,
-    path::{Path, PathBuf},
+    path::Path,
     sync::{Arc, OnceLock},
 };
 
@@ -69,12 +69,16 @@ impl Language {
     /// * Language name itself eg. "rust"
     /// * A file path "/path/to/language.rs"
     /// * Extension of a file "rs"
-    pub fn determine_str(pattern: &str, patterns: &FxHashMap<String, Detect>) -> Option<Language> {
-        let path = PathBuf::from(pattern);
+    pub fn determine<P: AsRef<Path>>(
+        pattern: P,
+        patterns: &FxHashMap<String, Detect>,
+    ) -> Option<Language> {
+        let path = pattern.as_ref();
+        let pattern = path.as_os_str().to_string_lossy();
         let mut buf = [0u8; 128];
 
         for (ft, detect) in patterns {
-            if ft == pattern {
+            if ft.as_ref() == pattern {
                 return Some(Language {
                     name: ft.to_string(),
                 });
@@ -121,12 +125,9 @@ impl Language {
             return Some(Language { name: lang.into() });
         }
 
-        Some(Language { name: pattern.into() })
-    }
-
-    pub fn determine(path: &Path, patterns: &FxHashMap<String, Detect>) -> Option<Language> {
-        let path = path.as_os_str().to_string_lossy();
-        Self::determine_str(&path, patterns)
+        Some(Language {
+            name: pattern.into(),
+        })
     }
 
     pub fn as_str(&self) -> &str {

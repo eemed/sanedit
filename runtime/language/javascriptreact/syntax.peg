@@ -30,7 +30,7 @@ comment = line_comment / block_comment;
 line_comment = "//" (!nl .)* nl;
 block_comment = "/*" (!"*/" .)* "*/";
 
-number = "-"? digit+ ("." digit+)? ("e" "-"? digit+)? / "-"? "Infinity" / "NaN" / "0x" hexdigit+;
+number = "-"? ("0" ("x" / "X") hexdigit+ / "0" ("b" / "B") ("0" / "1")+ / "0" ("o" / "O") digit+ / digit+ ("." digit+)? ("e" "-"? digit+)? / "Infinity" / "NaN" );
 digit = [0..9];
 hexdigit = digit / [a..fA..F];
 

@@ -78,7 +78,7 @@ impl Language {
         let mut buf = [0u8; 128];
 
         for (ft, detect) in patterns {
-            if ft.as_ref() == pattern {
+            if ft.as_str() == pattern {
                 return Some(Language {
                     name: ft.to_string(),
                 });

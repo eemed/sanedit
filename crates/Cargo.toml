@@ -50,7 +50,7 @@ tokio         = "1.40.0"
 tokio-util    = "0.7.12"
 toml_edit     = "0.22"
 unicode-width = "0.1.13" # Rendering itself has problems
-which         = "5.0.0" # Should be replaced with something simpler
+which         = "8.0.0" # Should be replaced with something simpler
 xattr         = "1.5.1" # xattrs preservation
 
 [profile.dev.package."*"]

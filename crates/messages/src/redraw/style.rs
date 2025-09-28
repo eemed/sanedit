@@ -16,10 +16,6 @@ pub struct Style {
 }
 
 impl Style {
-    // pub fn invert(&mut self) {
-    //     mem::swap(&mut self.bg, &mut self.fg);
-    // }
-
     /// use self as a base style and apply overrides
     pub fn merge(&mut self, style: &Style) {
         if let Some(bg) = style.bg {
@@ -36,7 +32,7 @@ impl Style {
     }
 
     /// Parse a style from a string of form "bg,fg,text_styles[,tex_styles]"
-    pub fn from_str(string: &str) -> Result<Style, StyleError> {
+    pub fn parse(string: &str) -> Result<Style, StyleError> {
         if string.is_empty() {
             return Ok(Style {
                 text_style: None,
@@ -50,8 +46,8 @@ impl Style {
             return Err(StyleError::Split);
         }
 
-        let bg = Color::from_str(splits[0]).ok();
-        let fg = Color::from_str(splits[1]).ok();
+        let bg = Color::parse(splits[0]).ok();
+        let fg = Color::parse(splits[1]).ok();
         let text_style = text_style::from_str(splits[2]);
 
         Ok(Style {

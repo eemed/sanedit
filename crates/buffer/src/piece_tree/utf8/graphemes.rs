@@ -97,6 +97,7 @@ impl<'a> Graphemes<'a> {
         }
     }
 
+    #[allow(clippy::should_implement_trait)]
     pub fn next(&mut self) -> Option<PieceTreeSlice<'_>> {
         if !self.at_start && self.last_call_fwd == Some(false) {
             self.chars.next();

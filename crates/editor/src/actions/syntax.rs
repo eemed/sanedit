@@ -35,7 +35,7 @@ pub(crate) fn prevent_flicker(editor: &mut Editor, id: ClientId) -> ActionResult
                     } else if next.start() >= hl.end() {
                         // Went past highlight
                         break;
-                    } else if hl.range().includes(&next.range()) {
+                    } else if hl.range().includes(next.range()) {
                         // Inside a higlight assume the highlight spans this edit too
                         // Extend or shrink instead
                         hl.extend_by(added as u64);
@@ -84,7 +84,7 @@ pub(crate) fn reparse_view(editor: &mut Editor, id: ClientId) -> ActionResult {
 
         if old.buffer_id() != bid
             || old.total_changes_made() != total
-            || !old.parsed_range().includes(&view)
+            || !old.parsed_range().includes(view)
         {
             parse_syntax.execute(editor, client);
         }

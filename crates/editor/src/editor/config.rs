@@ -2,7 +2,7 @@ mod default;
 mod language;
 mod project;
 
-use std::{collections::VecDeque, path::Path, sync::Arc};
+use std::{collections::VecDeque, path::Path, rc::Rc, sync::Arc};
 
 use language::ConfigSnippet;
 use sanedit_core::Detect;
@@ -43,7 +43,7 @@ where
     Ok(config)
 }
 
-#[derive(Debug, Serialize, Deserialize, DocComment)]
+#[derive(Debug, Serialize, Default, Deserialize, DocComment)]
 #[serde(default)]
 pub(crate) struct Config {
     #[serde(flatten)]
@@ -369,7 +369,7 @@ impl KeymapLayer {
 
         Action::Dynamic {
             name: format!("on_enter_{name}"),
-            fun: Arc::new(move |editor, id| {
+            fun: Rc::new(move |editor, id| {
                 let (win, _buf) = editor.win_buf(id);
                 if win.mode.as_ref() != name {
                     return ActionResult::Skipped;
@@ -405,7 +405,7 @@ impl KeymapLayer {
 
         Action::Dynamic {
             name: format!("on_leave_{name}"),
-            fun: Arc::new(move |editor, id| {
+            fun: Rc::new(move |editor, id| {
                 let (win, _buf) = editor.win_buf(id);
                 if win.mode.as_ref() != name {
                     return ActionResult::Skipped;
@@ -424,7 +424,7 @@ impl KeymapLayer {
 
     pub fn to_layer(&self, name: &str) -> Layer {
         let mut layer = Layer::new();
-        layer.fallthrough = self.fallthrough.clone().map(|mode| LayerKey {
+        layer.fallthrough = self.fallthrough.map(|mode| LayerKey {
             focus: Focus::Window,
             mode,
         });
@@ -447,7 +447,7 @@ impl KeymapLayer {
                         .join(",");
                     let action = Action::Dynamic {
                         name,
-                        fun: Arc::new(move |editor, id| {
+                        fun: Rc::new(move |editor, id| {
                             run_mapped_action(editor, id, actions.clone())
                         }),
                         desc: String::new(),
@@ -515,7 +515,7 @@ pub(crate) fn run_mapped_action(
     id: ClientId,
     mut actions: VecDeque<MappedAction>,
 ) -> ActionResult {
-    while let Some(maction) = actions.pop_front() {
+    if let Some(maction) = actions.pop_front() {
         let result = maction.action.execute(editor, id);
         return run_mapped_action2(editor, id, actions, result, maction.skip.clone());
     }

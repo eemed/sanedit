@@ -15,7 +15,7 @@ impl Color {
         Rgb::from_hex(string).map(Color::Rgb)
     }
 
-    pub fn from_str(string: &str) -> Result<Color, HexStringError> {
+    pub fn parse(string: &str) -> Result<Color, HexStringError> {
         match string {
             "black" => Ok(Color::Black),
             "white" => Ok(Color::White),

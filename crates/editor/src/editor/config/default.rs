@@ -10,18 +10,6 @@ macro_rules! make_keymap {
     }
 }
 
-impl Default for Config {
-    fn default() -> Self {
-        Config {
-            editor: Default::default(),
-            window: Default::default(),
-            buffer: Default::default(),
-            keymaps: Default::default(),
-            snippet: Default::default(),
-        }
-    }
-}
-
 impl Config {
     pub fn default_keymap() -> Map<String, KeymapLayer> {
         let mut keymaps: Map<String, KeymapLayer> = Default::default();
@@ -132,8 +120,7 @@ impl Default for EditorConfig {
             ignore: ["**/.git", "**/target", "**/node_modules"]
                 .into_iter()
                 .map(String::from)
-                .collect::<Vec<String>>()
-                .into(),
+                .collect::<Vec<String>>(),
             detect_eol: true,
             detect_indent: true,
             language_detect: Self::default_language_map(),

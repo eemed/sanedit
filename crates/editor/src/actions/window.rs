@@ -112,7 +112,7 @@ fn sync_windows(editor: &mut Editor, id: ClientId) -> ActionResult {
 #[action("Window: Goto previous buffer")]
 fn goto_prev_buffer(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
-    match win.last_buffer.clone() {
+    match win.last_buffer {
         Some(bid) => {
             if editor.buffers.get(bid).is_none() {
                 return ActionResult::Failed;
@@ -134,7 +134,6 @@ pub fn goto_other_buffer(editor: &mut Editor, id: ClientId) {
     let (win, _buf) = editor.win_buf_mut(id);
     let bid = win
         .last_buffer
-        .clone()
         .filter(|bid| editor.buffers.get(*bid).is_some());
 
     match bid {
@@ -215,15 +214,14 @@ fn status(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (lsp, command, args) = buf
         .language
         .as_ref()
-        .map(|ft| {
+        .and_then(|ft| {
             let lsp = editor.language_servers.get(ft)?;
             let name = lsp.server_name();
-            let config = editor.languages.get(&ft)?;
+            let config = editor.languages.get(ft)?;
             let command = config.language_server.command.as_str();
             let args = config.language_server.args.clone();
             Some((name, command, args))
         })
-        .flatten()
         .unwrap_or(("no", "-", vec![]));
     let options = &win.view().options;
     let width = options.width;

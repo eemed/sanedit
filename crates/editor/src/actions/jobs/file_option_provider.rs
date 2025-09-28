@@ -97,11 +97,11 @@ fn rayon_read(scope: &rayon::Scope, dir: PathBuf, ctx: ReadDirContext) -> io::Re
                 let _ = rayon_read(s, path, ctx);
             });
         } else if metadata.is_file() {
-            let _ = ctx.send(Choice::from_path(path, ctx.strip));
+            ctx.send(Choice::from_path(path, ctx.strip));
         } else if metadata.is_symlink() {
             if let Ok(cpath) = path.canonicalize() {
                 if cpath.is_file() {
-                    let _ = ctx.send(Choice::from_path(path, ctx.strip));
+                    ctx.send(Choice::from_path(path, ctx.strip));
                 }
             }
         }

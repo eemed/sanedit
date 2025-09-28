@@ -17,7 +17,7 @@ use super::{
 
 pub(crate) fn get_diagnostics<'a>(
     buf: &Buffer,
-    language_servers: &'a Map<Language, LSP>,
+    language_servers: &'a Map<Language, Lsp>,
 ) -> Option<&'a [Diagnostic]> {
     let lang = buf.language.as_ref()?;
     let path = buf.path()?;
@@ -41,7 +41,7 @@ pub(crate) enum Constraint {
 /// LSP is running in a job slot and communicates back using messages.
 ///
 #[derive(Debug)]
-pub(crate) struct LSP {
+pub(crate) struct Lsp {
     /// Name of the LSP server
     name: String,
 
@@ -57,9 +57,9 @@ pub(crate) struct LSP {
     pub diagnostics: Map<PathBuf, SortedVec<Diagnostic>>,
 }
 
-impl LSP {
-    pub fn new(name: &str, sender: LSPClientSender) -> LSP {
-        LSP {
+impl Lsp {
+    pub fn new(name: &str, sender: LSPClientSender) -> Lsp {
+        Lsp {
             name: name.into(),
             sender,
             requests: Map::default(),

@@ -26,7 +26,7 @@ impl ProjectConfig {
                 } else {
                     // Try to go level up
                     // if no parent found return default conf
-                    match config.parent().map(|parent| parent.parent()).flatten() {
+                    match config.parent().and_then(|parent| parent.parent()) {
                         Some(dir) => config = dir.join(PROJECT_CONFIG),
                         None => return Default::default(),
                     }

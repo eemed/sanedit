@@ -290,8 +290,8 @@ impl Matcher {
                     let mut results: Vec<ScoredChoice> = opts
                         .par_iter()
                         .filter_map(|choice| {
-                            let ranges = matches_with(choice.filter_text().as_ref(), &matcher)?;
-                            let score = score(&choice, &ranges);
+                            let ranges = matches_with(choice.filter_text(), &matcher)?;
+                            let score = score(choice, &ranges);
                             let scored = ScoredChoice::new(choice.clone(), score, ranges);
                             Some(scored)
                         })

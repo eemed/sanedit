@@ -44,6 +44,7 @@ impl<'a> Chunks<'a> {
     }
 
     #[inline]
+    #[allow(clippy::should_implement_trait)]
     pub fn next(&mut self) -> Option<(u64, Chunk<'a>)> {
         let (p_pos, piece) = self.pieces.next()?;
         let chunk = read_piece(self.pt, &piece)?;

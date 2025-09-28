@@ -42,7 +42,7 @@ pub(crate) struct GrammarParser<R: io::Read> {
 
 impl<R: io::Read> GrammarParser<R> {
     fn parse(mut self) -> Result<Rules> {
-        while self.token != Token::EOF {
+        while self.token != Token::Eof {
             let rule = self.rule()?;
             self.seen.insert(rule.name.clone());
 

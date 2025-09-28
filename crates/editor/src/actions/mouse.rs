@@ -110,9 +110,9 @@ fn drag_impl(editor: &mut Editor, id: ClientId, range: BufferRange) -> ActionRes
                 primary.goto(range.end);
             }
         } else {
-            if range.end <= sel.start && primary.pos() != sel.start {
-                primary.swap_selection_dir();
-            } else if range.start >= sel.end && primary.pos() != sel.end {
+            if range.end <= sel.start && primary.pos() != sel.start
+                || range.start >= sel.end && primary.pos() != sel.end
+            {
                 primary.swap_selection_dir();
             }
 

@@ -115,7 +115,7 @@ impl Grep {
                             }
                             None => {
                                 // Grep files outside editor
-                                let Ok(pt) = PieceTree::from_path(&path) else {
+                                let Ok(pt) = PieceTree::from_path(path) else {
                                     return;
                                 };
                                 let view = pt.view();
@@ -193,12 +193,12 @@ impl Grep {
             return true;
         }
 
-        let cap = min(BINARY_DETECT_WINDOW as u64, view.len());
+        let cap = min(BINARY_DETECT_WINDOW, view.len());
         let slice = view.slice(..cap);
         let mut bytes = slice.bytes();
 
         while let Some(byte) = bytes.next() {
-            if byte == '\0' as u8 {
+            if byte == b'\0' {
                 return false;
             }
         }

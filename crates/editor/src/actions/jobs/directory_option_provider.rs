@@ -59,9 +59,7 @@ impl DirectoryOptionProvider {
 async fn rayon_reader(dir: PathBuf, ctx: ReadDirContext) -> io::Result<()> {
     let (tx, rx) = oneshot::channel();
     get_option_provider_pool().spawn(|| {
-        rayon::scope(|s| {
-            let _ = rayon_read(s, dir, ctx);
-        });
+        let _ = rayon_read(dir, ctx);
         let _ = tx.send(());
     });
 
@@ -69,7 +67,7 @@ async fn rayon_reader(dir: PathBuf, ctx: ReadDirContext) -> io::Result<()> {
     Ok(())
 }
 
-fn rayon_read(scope: &rayon::Scope, dir: PathBuf, ctx: ReadDirContext) -> io::Result<()> {
+fn rayon_read(dir: PathBuf, ctx: ReadDirContext) -> io::Result<()> {
     let mut rdir = std::fs::read_dir(&dir)?;
     while let Some(Ok(entry)) = rdir.next() {
         if ctx.kill.should_stop() {
@@ -87,10 +85,10 @@ fn rayon_read(scope: &rayon::Scope, dir: PathBuf, ctx: ReadDirContext) -> io::Re
         }
 
         if ctx.recurse {
-            let _ = rayon_read(scope, dir.clone(), ctx.clone());
+            let _ = rayon_read(dir.clone(), ctx.clone());
         }
 
-        let _ = ctx.send(Choice::from_path(path, ctx.strip));
+        ctx.send(Choice::from_path(path, ctx.strip));
     }
 
     Ok(())

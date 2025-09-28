@@ -72,6 +72,10 @@ impl Chars {
         self.chars.len()
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.chars.len() == 0
+    }
+
     pub fn width(&self) -> usize {
         self.chars.iter().map(Char::width).sum()
     }

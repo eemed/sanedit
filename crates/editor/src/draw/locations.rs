@@ -56,8 +56,8 @@ fn draw_impl(ctx: &mut DrawContext) -> redraw::items::Items {
             Either::Right(item) => {
                 let location = item
                     .line()
-                    .map(|l| ItemLocation::Line(l))
-                    .or_else(|| item.absolute_offset().map(|o| ItemLocation::ByteOffset(o)));
+                    .map(ItemLocation::Line)
+                    .or_else(|| item.absolute_offset().map(ItemLocation::ByteOffset));
                 (
                     item.name().into(),
                     ItemKind::Item,

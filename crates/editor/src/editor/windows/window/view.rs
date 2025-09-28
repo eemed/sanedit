@@ -20,7 +20,7 @@ pub(crate) enum Zone {
 pub(crate) enum Cell {
     #[default]
     Empty,
-    EOF, // End of file where cursor can be placed
+    Eof, // End of file where cursor can be placed
     Char {
         ch: Char,
     },
@@ -59,7 +59,7 @@ impl Cell {
     pub fn is_virtual(&self) -> bool {
         match self {
             Cell::Empty => false,
-            Cell::EOF => false,
+            Cell::Eof => false,
             Cell::Char { ch } => ch.is_virtual(),
         }
     }
@@ -67,7 +67,7 @@ impl Cell {
     pub fn is_representing(&self) -> bool {
         match self {
             Cell::Empty => false,
-            Cell::EOF => false,
+            Cell::Eof => false,
             Cell::Char { ch } => ch.is_representing(),
         }
     }
@@ -255,9 +255,9 @@ impl View {
         // Add in EOF if we have space
         if pos == slice.len() {
             if !is_eol && col < self.width() {
-                self.cells[line][col] = Cell::EOF;
+                self.cells[line][col] = Cell::Eof;
             } else if is_eol && col == 0 {
-                self.cells[line][0] = Cell::EOF;
+                self.cells[line][0] = Cell::Eof;
             }
         }
 
@@ -520,7 +520,7 @@ impl View {
         for (y, row) in self.cells.iter().enumerate() {
             for (x, cell) in row.iter().enumerate() {
                 match cell {
-                    Cell::EOF => {
+                    Cell::Eof => {
                         if ret_next {
                             return Some(pos);
                         }
@@ -621,7 +621,7 @@ impl View {
         for row in self.cells.iter().rev() {
             for cell in row {
                 match cell {
-                    Cell::EOF => return true,
+                    Cell::Eof => return true,
                     Cell::Empty => break,
                     _ => found_text = true,
                 }

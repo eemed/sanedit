@@ -60,10 +60,8 @@ fn complete_from_syntax(editor: &mut Editor, id: ClientId) -> ActionResult {
     let static_compls = buf
         .language
         .as_ref()
-        .map(|lang| editor.syntaxes.get(&lang).ok())
-        .flatten()
-        .map(|syntax| Arc::into_inner(syntax.static_completions()))
-        .flatten()
+        .and_then(|lang| editor.syntaxes.get(lang).ok())
+        .and_then(|syntax| Arc::into_inner(syntax.static_completions()))
         .unwrap_or_default();
 
     let opts: Vec<Arc<Choice>> = dyn_compls

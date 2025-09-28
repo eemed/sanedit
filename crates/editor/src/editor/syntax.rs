@@ -229,7 +229,7 @@ impl Syntax {
         view.end = hend;
 
         let start = view.start;
-        let slice = pt.slice(view.clone());
+        let slice = pt.slice(view);
         let source = PTSliceSource::new(&slice);
         let captures: Captures = self.parser.parse(source)?;
         let mut spans = Self::to_spans(start, &self.parser, captures.captures);

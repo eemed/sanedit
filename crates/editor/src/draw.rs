@@ -26,7 +26,7 @@ use sanedit_server::{FromEditor, FromEditorSharedMessage};
 use crate::editor::{
     buffers::Buffer,
     filetree::Filetree,
-    lsp::LSP,
+    lsp::Lsp,
     windows::{Focus, Window},
     Map,
 };
@@ -37,7 +37,7 @@ pub(crate) struct EditorContext<'a> {
     pub(crate) theme: &'a Theme,
     pub(crate) working_dir: &'a Path,
     pub(crate) filetree: &'a Filetree,
-    pub(crate) language_servers: &'a Map<Language, LSP>,
+    pub(crate) language_servers: &'a Map<Language, Lsp>,
 }
 
 pub(crate) struct DrawContext<'a, 'b> {
@@ -144,7 +144,7 @@ impl DrawState {
         }
 
         if let Some(current) = statusline::draw(&mut ctx) {
-            redraw.push(current.into());
+            redraw.push(current);
         }
 
         if let Some(msg) = win.message() {

@@ -145,7 +145,7 @@ fn new_file_prefill_path(wd: &Path, selection: usize, filetree: &Filetree) -> Op
                 let parent = filetree.parent_of(entry.path())?;
                 parent.path().to_path_buf()
             }
-            Kind::Directory { .. } => entry.path().to_path_buf(),
+            Kind::Directory => entry.path().to_path_buf(),
         }
     };
     let dir_name = prefill_dir(wd, &dir);
@@ -267,12 +267,9 @@ pub fn rename_file(editor: &mut Editor, id: ClientId, old: PathBuf) -> ActionRes
                         continue;
                     }
 
-                    match bpath.strip_prefix(&old) {
-                        Ok(suffix) => {
-                            let new_location = new.join(suffix);
-                            bids.push((bid, new_location));
-                        }
-                        Err(_) => {}
+                    if let Ok(suffix) = bpath.strip_prefix(&old) {
+                        let new_location = new.join(suffix);
+                        bids.push((bid, new_location));
                     }
                 }
             }
@@ -322,7 +319,7 @@ fn rename(src: impl AsRef<Path>, dst: impl AsRef<Path>) -> io::Result<()> {
         }
         fs::remove_dir(src.as_ref())?;
     } else if !dst.as_ref().exists() {
-        if let Err(_) = std::fs::rename(src.as_ref(), dst.as_ref()) {
+        if std::fs::rename(src.as_ref(), dst.as_ref()).is_err() {
             fs::copy(src.as_ref(), dst.as_ref())?;
             fs::remove_file(src.as_ref())?;
         }
@@ -379,8 +376,7 @@ fn buffer_create_file(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (_win, buf) = editor.win_buf(id);
     let prefill = buf
         .path()
-        .map(Path::parent)
-        .flatten()
+        .and_then(Path::parent)
         .map(|parent| prefill_dir(root, parent))
         .unwrap_or(String::new());
     create_new_file(editor, id, prefill)

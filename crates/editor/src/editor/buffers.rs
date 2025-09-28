@@ -16,7 +16,7 @@ pub(crate) struct Buffers {
 }
 
 impl Buffers {
-    pub fn new(
+    pub fn create_new(
         &mut self,
         file: FileDescription,
         options: BufferConfig,

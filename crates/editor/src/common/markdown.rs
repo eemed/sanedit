@@ -33,7 +33,7 @@ pub(crate) fn render_markdown_to_popup(
 fn render_markdown(text: &str, syn: &Syntax, theme: &Theme) -> anyhow::Result<Vec<Vec<Cell>>> {
     let parser = syn.get_parser();
     let captures = parser.parse(text)?;
-    let mut highlights = Syntax::to_spans(0, &parser, captures.captures);
+    let mut highlights = Syntax::to_spans(0, parser, captures.captures);
 
     let mut stack = captures.injections;
     while let Some((lang, captures)) = stack.pop() {
@@ -46,15 +46,15 @@ fn render_markdown(text: &str, syn: &Syntax, theme: &Theme) -> anyhow::Result<Ve
 
     let discard_parser = discard_parser();
     let discard_caps = discard_parser.parse(text)?;
-    let mut discards = Syntax::to_spans(0, &discard_parser, discard_caps.captures);
+    let discards = Syntax::to_spans(0, discard_parser, discard_caps.captures);
 
-    let mut lines = to_lines(&text, &highlights, theme);
-    lines = discard(&lines, &mut discards);
+    let mut lines = to_lines(text, &highlights, theme);
+    lines = discard(&lines, &discards);
     strip_unnecessary_lines(&mut lines);
     Ok(lines)
 }
 
-fn discard(lines: &Vec<Vec<Cell>>, spans: &[Span]) -> Vec<Vec<Cell>> {
+fn discard(lines: &[Vec<Cell>], spans: &[Span]) -> Vec<Vec<Cell>> {
     let mut result = vec![vec![]; lines.len()];
     let mut spos = 0;
     let mut sline = 0;

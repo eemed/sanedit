@@ -21,7 +21,7 @@ pub(crate) struct SearchResult {
     pub result: Option<BufferRange>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub(crate) struct Search {
     // Used for on line searches
     pub on_line_char_search: Option<char>,
@@ -72,16 +72,5 @@ impl Search {
 
     pub fn reset_highlighting(&mut self) {
         self.highlights = Default::default();
-    }
-}
-
-impl Default for Search {
-    fn default() -> Self {
-        Search {
-            on_line_char_search: None,
-            current: SearchResult::default(),
-            show_highlights: false,
-            highlights: Default::default(),
-        }
     }
 }

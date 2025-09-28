@@ -13,7 +13,7 @@ use crate::{
         config::LSPConfig,
         hooks::Hook,
         job_broker::KeepInTouch,
-        lsp::{Constraint, LSP},
+        lsp::{Constraint, Lsp},
         windows::{Completion, Cursors, Prompt},
         Editor,
     },
@@ -36,8 +36,8 @@ use super::{MatchStrategy, MatcherJob};
 
 #[derive(Debug)]
 enum Message {
-    Started(LSP),
-    Response(Response),
+    Started(Lsp),
+    Response(Box<Response>),
 }
 
 #[derive(Clone)]
@@ -79,11 +79,11 @@ impl Job for LSPJob {
 
             let (sender, mut reader) = params.spawn().await?;
 
-            let handle = LSP::new(&command, sender);
+            let handle = Lsp::new(&command, sender);
             ctx.send(Message::Started(handle));
 
             while let Some(response) = reader.recv().await {
-                ctx.send(Message::Response(response));
+                ctx.send(Message::Response(Box::new(response)));
             }
 
             Ok(())
@@ -130,7 +130,7 @@ impl KeepInTouch for LSPJob {
                         });
                     }
                 }
-                Message::Response(response) => self.handle_response(editor, response),
+                Message::Response(response) => self.handle_response(editor, *response),
             }
         }
     }
@@ -160,7 +160,7 @@ impl LSPJob {
                     }
                 }
 
-                self.handle_result(editor, cid, result);
+                self.handle_result(editor, cid, *result);
             }
             Response::Notification(notif) => match notif {
                 sanedit_lsp::NotificationResult::Diagnostics {
@@ -230,10 +230,8 @@ impl LSPJob {
         win.push_new_cursor_jump(buf);
 
         let is_current = buf.path().map(|p| p == path).unwrap_or(false);
-        if !is_current {
-            if !editor.open_file(id, path).is_ok() {
-                return;
-            }
+        if !is_current && editor.open_file(id, path).is_err() {
+            return;
         }
 
         let enc = get!(editor.lsp_for(id).map(|x| x.position_encoding()));
@@ -451,7 +449,7 @@ impl LSPJob {
         win.prompt = Prompt::builder()
             .prompt("Select code action")
             .on_confirm(move |editor, id, out| {
-                let n = getf!(out.number()) as usize;
+                let n = getf!(out.number());
                 let action = getf!(actions.get(n - 1));
 
                 if action.is_resolved() {
@@ -459,7 +457,7 @@ impl LSPJob {
                     Self::edit_workspace(editor, id, edit)
                 } else {
                     let request = RequestKind::CodeActionResolve {
-                        action: action.clone(),
+                        action: action.clone().into(),
                     };
 
                     let lsp = getf!(editor.language_servers.get_mut(&lang));
@@ -482,9 +480,9 @@ impl LSPJob {
     fn edit_document(editor: &mut Editor, id: ClientId, edit: FileEdit) {
         // log::info!("edit_document: {edit:?}");
         let path = &edit.path;
-        let bid = match editor.buffers().find(&path) {
+        let bid = match editor.buffers().find(path) {
             Some(bid) => bid,
-            None => match editor.create_buffer(id, &path) {
+            None => match editor.create_buffer(id, path) {
                 Ok(bid) => bid,
                 Err(e) => {
                     log::error!("Failed to create buffer for {path:?} {e}");
@@ -556,7 +554,7 @@ impl LSPJob {
         locations::show_locations.execute(editor, id);
 
         let (win, _buf) = win_buf!(editor, id);
-        win.locations.extra.title = format!("LSP references");
+        win.locations.extra.title = "LSP references".to_string();
 
         for (path, references) in references {
             if let Some(bid) = editor.buffers.find(&path) {

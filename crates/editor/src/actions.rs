@@ -1,6 +1,5 @@
 pub(crate) mod completion;
 pub(crate) mod cursors;
-pub(crate) mod mouse;
 pub(crate) mod editor;
 pub(crate) mod filetree;
 pub(crate) mod hooks;
@@ -8,6 +7,7 @@ pub(crate) mod indent;
 pub(crate) mod jobs;
 pub(crate) mod locations;
 pub(crate) mod lsp;
+pub(crate) mod mouse;
 pub(crate) mod movement;
 pub(crate) mod popup;
 pub(crate) mod prompt;
@@ -19,7 +19,7 @@ pub(crate) mod text_objects;
 pub(crate) mod view;
 pub(crate) mod window;
 
-use std::{fmt, sync::Arc};
+use std::{fmt, rc::Rc, sync::Arc};
 
 use crate::editor::Editor;
 use sanedit_server::ClientId;
@@ -46,6 +46,8 @@ impl<T, E> From<Result<T, E>> for ActionResult {
     }
 }
 
+pub(crate) type DynamicActionFunction = dyn Fn(&mut Editor, ClientId) -> ActionResult;
+
 #[derive(Clone)]
 pub(crate) enum Action {
     Static {
@@ -55,7 +57,7 @@ pub(crate) enum Action {
     },
     Dynamic {
         name: String,
-        fun: Arc<dyn Fn(&mut Editor, ClientId) -> ActionResult>,
+        fun: Rc<DynamicActionFunction>,
         desc: String,
     },
 }
@@ -71,14 +73,14 @@ impl Action {
     pub fn name(&self) -> &str {
         match self {
             Action::Static { name, .. } => name,
-            Action::Dynamic { name, .. } => &name,
+            Action::Dynamic { name, .. } => name,
         }
     }
 
     pub fn description(&self) -> &str {
         match self {
             Action::Static { desc, .. } => desc,
-            Action::Dynamic { desc, .. } => &desc,
+            Action::Dynamic { desc, .. } => desc,
         }
     }
 }

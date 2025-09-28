@@ -16,21 +16,21 @@ pub fn next_eol(bytes: &mut Bytes) -> Option<EOLMatch> {
             0x0a => {
                 let pos = bytes.pos();
                 return Some(EOLMatch {
-                    eol: EndOfLine::LF,
+                    eol: EndOfLine::Lf,
                     range: pos - 1..pos,
                 });
             }
             0x0b => {
                 let pos = bytes.pos();
                 return Some(EOLMatch {
-                    eol: EndOfLine::VT,
+                    eol: EndOfLine::Vt,
                     range: pos - 1..pos,
                 });
             }
             0x0c => {
                 let pos = bytes.pos();
                 return Some(EOLMatch {
-                    eol: EndOfLine::FF,
+                    eol: EndOfLine::Ff,
                     range: pos - 1..pos,
                 });
             }
@@ -41,13 +41,13 @@ pub fn next_eol(bytes: &mut Bytes) -> Option<EOLMatch> {
                     bytes.next();
                     let pos = bytes.pos();
                     return Some(EOLMatch {
-                        eol: EndOfLine::CRLF,
+                        eol: EndOfLine::Crlf,
                         range: pos - 2..pos,
                     });
                 } else {
                     let pos = bytes.pos();
                     return Some(EOLMatch {
-                        eol: EndOfLine::CR,
+                        eol: EndOfLine::Cr,
                         range: pos - 1..pos,
                     });
                 }
@@ -59,7 +59,7 @@ pub fn next_eol(bytes: &mut Bytes) -> Option<EOLMatch> {
                     bytes.next();
                     let pos = bytes.pos();
                     return Some(EOLMatch {
-                        eol: EndOfLine::NEL,
+                        eol: EndOfLine::Nel,
                         range: pos - 2..pos,
                     });
                 }
@@ -79,7 +79,7 @@ pub fn next_eol(bytes: &mut Bytes) -> Option<EOLMatch> {
                         bytes.next();
                         let pos = bytes.pos();
                         return Some(EOLMatch {
-                            eol: EndOfLine::LS,
+                            eol: EndOfLine::Ls,
                             range: pos - 3..pos,
                         });
                     }
@@ -87,7 +87,7 @@ pub fn next_eol(bytes: &mut Bytes) -> Option<EOLMatch> {
                         bytes.next();
                         let pos = bytes.pos();
                         return Some(EOLMatch {
-                            eol: EndOfLine::PS,
+                            eol: EndOfLine::Ps,
                             range: pos - 3..pos,
                         });
                     }
@@ -109,21 +109,21 @@ pub fn prev_eol(bytes: &mut Bytes) -> Option<EOLMatch> {
             0x0d => {
                 let pos = bytes.pos();
                 return Some(EOLMatch {
-                    eol: EndOfLine::CR,
+                    eol: EndOfLine::Cr,
                     range: pos..pos + 1,
                 });
             }
             0x0b => {
                 let pos = bytes.pos();
                 return Some(EOLMatch {
-                    eol: EndOfLine::VT,
+                    eol: EndOfLine::Vt,
                     range: pos..pos + 1,
                 });
             }
             0x0c => {
                 let pos = bytes.pos();
                 return Some(EOLMatch {
-                    eol: EndOfLine::FF,
+                    eol: EndOfLine::Ff,
                     range: pos..pos + 1,
                 });
             }
@@ -138,12 +138,12 @@ pub fn prev_eol(bytes: &mut Bytes) -> Option<EOLMatch> {
                 let pos = bytes.pos();
                 if crlf {
                     return Some(EOLMatch {
-                        eol: EndOfLine::CRLF,
+                        eol: EndOfLine::Crlf,
                         range: pos..pos + 2,
                     });
                 } else {
                     return Some(EOLMatch {
-                        eol: EndOfLine::LF,
+                        eol: EndOfLine::Lf,
                         range: pos..pos + 1,
                     });
                 }
@@ -157,7 +157,7 @@ pub fn prev_eol(bytes: &mut Bytes) -> Option<EOLMatch> {
 
                 let pos = bytes.pos();
                 return Some(EOLMatch {
-                    eol: EndOfLine::NEL,
+                    eol: EndOfLine::Nel,
                     range: pos..pos + 2,
                 });
             }
@@ -175,7 +175,7 @@ pub fn prev_eol(bytes: &mut Bytes) -> Option<EOLMatch> {
 
                 let pos = bytes.pos();
                 return Some(EOLMatch {
-                    eol: EndOfLine::PS,
+                    eol: EndOfLine::Ps,
                     range: pos..pos + 3,
                 });
             }
@@ -191,7 +191,7 @@ pub fn prev_eol(bytes: &mut Bytes) -> Option<EOLMatch> {
                 }
                 let pos = bytes.pos();
                 return Some(EOLMatch {
-                    eol: EndOfLine::LS,
+                    eol: EndOfLine::Ls,
                     range: pos..pos + 3,
                 });
             }
@@ -284,6 +284,7 @@ impl<'a> Lines<'a> {
         }
     }
 
+    #[allow(clippy::should_implement_trait)]
     pub fn next(&mut self) -> Option<PieceTreeSlice<'a>> {
         let start = self.bytes.pos();
 

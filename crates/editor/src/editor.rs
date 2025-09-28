@@ -84,7 +84,7 @@ use self::job_broker::JobBroker;
 use self::keymap::Keymaps;
 
 use self::filetree::Filetree;
-use self::lsp::LSP;
+use self::lsp::Lsp;
 use self::syntax::Syntaxes;
 use self::themes::Themes;
 use self::windows::History;
@@ -115,7 +115,7 @@ pub(crate) struct Editor {
     pub clipboard: Box<dyn Clipboard>,
     pub histories: Map<HistoryKind, History>,
     pub keymaps: Keymaps,
-    pub language_servers: Map<Language, LSP>,
+    pub language_servers: Map<Language, Lsp>,
     pub filetree: Filetree,
     pub config: Config,
     pub project_config: ProjectConfig,
@@ -128,13 +128,11 @@ impl Editor {
         let jobs_handle = runtime.block_on(spawn_job_runner(internal_chan));
         let working_dir = opts
             .working_dir
-            .map(|dir| dir.canonicalize().ok())
-            .flatten()
+            .and_then(|dir| dir.canonicalize().ok())
             .unwrap_or_else(|| env::current_dir().expect("Cannot get current working directory."));
         let config_dir = opts
             .config_dir
-            .map(|dir| dir.canonicalize().ok())
-            .flatten()
+            .and_then(|dir| dir.canonicalize().ok())
             .map(|dir| ConfigDirectory::new(&dir))
             .unwrap_or_default();
         let config = Config::new(&config_dir.config(), &working_dir);
@@ -160,7 +158,7 @@ impl Editor {
             project_config,
             working_dir,
             histories: Default::default(),
-            clipboard: DefaultClipboard::new(),
+            clipboard: DefaultClipboard::new_default(),
             language_servers: Map::default(),
             keymaps: Keymaps::from_config(&config),
             config,
@@ -286,15 +284,14 @@ impl Editor {
         let config = file
             .language
             .as_ref()
-            .map(|lang| self.languages.get(&lang))
-            .flatten()
+            .and_then(|lang| self.languages.get(lang))
             .map(|lang_config| lang_config.buffer.clone())
             .unwrap_or_else(|| {
                 // If eol and indent are detected automatically they will override using the hook
                 self.config.buffer.clone()
             });
 
-        let bid = self.buffers.new(file, config)?;
+        let bid = self.buffers.create_new(file, config)?;
         run(self, id, Hook::BufCreated(bid));
 
         Ok(bid)
@@ -345,7 +342,7 @@ impl Editor {
 
     pub fn send_to_client(&mut self, id: ClientId, msg: FromEditorSharedMessage) {
         if let Some(client) = self.clients.get_mut(&id) {
-            if let Err(_e) = client.send(msg.into()) {
+            if let Err(_e) = client.send(msg) {
                 log::info!(
                     "Server failed to send to client {:?}, removing from client map",
                     id
@@ -499,8 +496,8 @@ impl Editor {
 
     fn handle_mouse_event(&mut self, id: ClientId, event: MouseEvent) {
         match event.element {
-            Element::Filetree => match event.kind {
-                MouseEventKind::ButtonDown(MouseButton::Left) => {
+            Element::Filetree => {
+                if let MouseEventKind::ButtonDown(MouseButton::Left) = event.kind {
                     focus_with_mode(self, id, Focus::Filetree, Mode::Normal);
                     let (win, _buf) = self.win_buf_mut(id);
                     win.ft_view.mouse.on_click(event.point);
@@ -514,10 +511,9 @@ impl Editor {
                         _ => {}
                     }
                 }
-                _ => {}
-            },
-            Element::Locations => match event.kind {
-                MouseEventKind::ButtonDown(MouseButton::Left) => {
+            }
+            Element::Locations => {
+                if let MouseEventKind::ButtonDown(MouseButton::Left) = event.kind {
                     focus_with_mode(self, id, Focus::Locations, Mode::Normal);
                     let (win, _buf) = self.win_buf_mut(id);
                     let mouse = &mut win.locations.extra.mouse;
@@ -532,8 +528,7 @@ impl Editor {
                         _ => {}
                     }
                 }
-                _ => {}
-            },
+            }
             Element::Window => {
                 let (win, _buf) = self.win_buf_mut(id);
                 if win.focus != Focus::Window {
@@ -905,7 +900,7 @@ impl Editor {
         let (win, _buf) = self.win_buf(id);
         let kmap = &self.keymaps;
         let key = win.layer();
-        kmap.get(&key, &win.keys())
+        kmap.get(&key, win.keys())
     }
 
     pub fn change_working_dir(&mut self, path: &Path) -> Result<()> {
@@ -928,7 +923,7 @@ impl Editor {
         self.lsp_for(id).is_some()
     }
 
-    pub fn lsp_for(&self, id: ClientId) -> Option<&LSP> {
+    pub fn lsp_for(&self, id: ClientId) -> Option<&Lsp> {
         let (_win, buf) = self.win_buf(id);
         let lang = buf.language.as_ref()?;
         self.language_servers.get(lang)
@@ -979,7 +974,7 @@ impl Editor {
             return result;
         };
 
-        let Some(langconfig) = self.languages.get(&lang) else {
+        let Some(langconfig) = self.languages.get(lang) else {
             return result;
         };
 

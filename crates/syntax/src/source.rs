@@ -34,6 +34,10 @@ pub trait ByteSource {
     /// Length of all the bytes in this reader
     fn len(&self) -> u64;
 
+    fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
     /// Wether to stop parsing and return an error
     fn stop(&self) -> bool;
 

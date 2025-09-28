@@ -25,7 +25,7 @@ pub(crate) trait Clipboard: fmt::Debug {
 pub(crate) struct DefaultClipboard;
 impl DefaultClipboard {
     #[cfg(unix)]
-    pub fn new() -> Box<dyn Clipboard> {
+    pub fn new_default() -> Box<dyn Clipboard> {
         try_clipboard!(XClip);
 
         // Fallback

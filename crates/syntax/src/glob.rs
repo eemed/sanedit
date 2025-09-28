@@ -68,9 +68,7 @@ impl Glob {
     fn to_rules(pattern: &str) -> Result<Rules, GlobError> {
         let to_bytes = |cap: &Capture| {
             let range = cap.range();
-            pattern[range.start as usize..range.end as usize]
-                .as_bytes()
-                .to_vec()
+            pattern.as_bytes()[range.start as usize..range.end as usize].to_vec()
         };
 
         let parser = glob_parser();

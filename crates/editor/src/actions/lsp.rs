@@ -11,7 +11,7 @@ use sanedit_lsp::{LSPRequestError, Notification, Position, PositionRange, Reques
 use crate::editor::{
     buffers::{Buffer, BufferConfig, BufferId},
     hooks::Hook,
-    lsp::{get_diagnostics, Constraint, LSP},
+    lsp::{get_diagnostics, Constraint, Lsp},
     windows::{Focus, Prompt, Window},
     Editor,
 };
@@ -41,18 +41,11 @@ enum LSPActionError {
     LanguageNotSet,
 }
 
+pub(crate) type LspRequestFunction =
+    fn(&Window, &Buffer, PathBuf, PieceTreeSlice, &Lsp) -> Option<(RequestKind, Vec<Constraint>)>;
+
 /// Helper function to get out all of the mostly used stuff from editor state
-pub(crate) fn lsp_request(
-    editor: &mut Editor,
-    id: ClientId,
-    f: fn(
-        &Window,
-        &Buffer,
-        PathBuf,
-        PieceTreeSlice,
-        &LSP,
-    ) -> Option<(RequestKind, Vec<Constraint>)>,
-) -> Result<()> {
+pub(crate) fn lsp_request(editor: &mut Editor, id: ClientId, f: LspRequestFunction) -> Result<()> {
     let (_win, buf) = editor.win_buf_mut(id);
     let lang = buf.language.clone().ok_or(LSPActionError::LanguageNotSet)?;
     let path = buf
@@ -73,11 +66,8 @@ pub(crate) fn lsp_request(
             .language_servers
             .get_mut(&lang)
             .ok_or_else(|| LSPActionError::LanguageServerNotStarted(lang.as_str().to_string()))?;
-        match lsp.request(kind, id, constraints) {
-            Err(LSPRequestError::ServerClosed) => {
-                editor.language_servers.remove(&lang);
-            }
-            _ => {}
+        if let Err(LSPRequestError::ServerClosed) = lsp.request(kind, id, constraints) {
+            editor.language_servers.remove(&lang);
         }
     }
 
@@ -87,7 +77,7 @@ pub(crate) fn lsp_request(
 pub(crate) fn lsp_notify_for(
     editor: &mut Editor,
     bid: BufferId,
-    f: fn(&Buffer, PathBuf, PieceTreeSlice, &LSP) -> Option<Notification>,
+    f: fn(&Buffer, PathBuf, PieceTreeSlice, &Lsp) -> Option<Notification>,
 ) -> Result<()> {
     let buf = editor
         .buffers()
@@ -111,11 +101,8 @@ pub(crate) fn lsp_notify_for(
             .language_servers
             .get_mut(&lang)
             .ok_or_else(|| LSPActionError::LanguageServerNotStarted(lang.as_str().to_string()))?;
-        match lsp.notify(notif) {
-            Err(LSPRequestError::ServerClosed) => {
-                editor.language_servers.remove(&lang);
-            }
-            _ => {}
+        if let Err(LSPRequestError::ServerClosed) = lsp.notify(notif) {
+            editor.language_servers.remove(&lang);
         }
     }
 
@@ -125,7 +112,7 @@ pub(crate) fn lsp_notify_for(
 pub(crate) fn lsp_notify(
     editor: &mut Editor,
     id: ClientId,
-    f: fn(&Buffer, PathBuf, PieceTreeSlice, &LSP) -> Option<Notification>,
+    f: fn(&Buffer, PathBuf, PieceTreeSlice, &Lsp) -> Option<Notification>,
 ) -> Result<()> {
     let (_win, buf) = editor.win_buf_mut(id);
     let bid = buf.id;
@@ -529,7 +516,7 @@ pub(crate) fn diagnostics_to_locations(editor: &mut Editor, id: ClientId) -> Act
     }
 
     win.locations.extra.show = true;
-    win.locations.extra.title = format!("LSP diagnostics");
+    win.locations.extra.title = "LSP diagnostics".to_string();
     focus(editor, id, Focus::Locations);
 
     ActionResult::Ok

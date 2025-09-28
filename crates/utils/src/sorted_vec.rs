@@ -27,6 +27,8 @@ impl<T: Ord> SortedVec<T> {
         SortedVec { items }
     }
 
+    /// # SAFETY
+    /// Order must be sorted
     pub unsafe fn from_sorted_unchecked(items: Vec<T>) -> SortedVec<T> {
         SortedVec { items }
     }
@@ -83,10 +85,6 @@ impl<T: Ord> SortedVec<T> {
         self.items.insert(pos, item);
     }
 
-    pub fn into_iter(self) -> std::vec::IntoIter<T> {
-        self.items.into_iter()
-    }
-
     pub fn clear(&mut self) {
         self.items.clear();
     }
@@ -132,6 +130,16 @@ impl<T: Ord> SortedVec<T> {
 
         self.items.extend(iiter);
         self.items.extend(oiter);
+    }
+}
+
+impl<T: Ord> std::iter::IntoIterator for SortedVec<T> {
+    type Item = T;
+
+    type IntoIter = std::vec::IntoIter<T>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.items.into_iter()
     }
 }
 

@@ -91,7 +91,7 @@ impl JobBroker {
 
     /// Prefer editor.stop_job to run the keepintouch on_stop also
     pub fn stop(&mut self, id: JobId) {
-        if self.jobs.get(&id).is_some() {
+        if self.jobs.contains_key(&id) {
             let _ = self.handle.blocking_send(ToJobs::Stop(id));
         }
     }

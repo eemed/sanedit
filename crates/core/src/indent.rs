@@ -46,7 +46,8 @@ pub fn determine_indent(slice: &PieceTreeSlice) -> Option<(IndentKind, u8)> {
         return None;
     }
 
-    let (spaces, tabs): (Vec<(IndentKind, u64)>, Vec<(IndentKind, u64)>) = indents
+    type KindLength = Vec<(IndentKind, u64)>;
+    let (spaces, tabs): (KindLength, KindLength) = indents
         .into_iter()
         .partition(|(kind, _)| *kind == IndentKind::Space);
 

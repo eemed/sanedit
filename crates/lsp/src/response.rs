@@ -7,7 +7,7 @@ use crate::util::{
 
 #[derive(Debug, Clone)]
 pub enum Response {
-    Request { id: u32, result: RequestResult },
+    Request { id: u32, result: Box<RequestResult> },
     Notification(NotificationResult),
 }
 
@@ -42,7 +42,7 @@ pub enum RequestResult {
         actions: Vec<CodeAction>,
     },
     ResolvedAction {
-        action: CodeAction,
+        action: Box<CodeAction>,
     },
     Rename {
         workspace_edit: WorkspaceEdit,

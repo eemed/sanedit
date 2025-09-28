@@ -729,9 +729,9 @@ impl Window {
 
                 let mut pos = change.range().end;
                 if total < 0 {
-                    pos -= diff.abs() as u64;
+                    pos -= diff.unsigned_abs() as u64;
                 } else {
-                    pos += diff.abs() as u64;
+                    pos += diff.unsigned_abs() as u64;
                 }
 
                 all.push(Cursor::new(pos));
@@ -751,7 +751,7 @@ impl Window {
             let cursors = buf
                 .last_edit()
                 .map(|edit| Self::cursors_from_changes(&edit.changes))
-                .unwrap_or(Cursors::default());
+                .unwrap_or_default();
             let mark = cursors.mark_first(buf);
 
             SnapshotAux {
@@ -819,7 +819,7 @@ impl Window {
             let cursors = buf
                 .last_edit()
                 .map(|edit| Self::cursors_from_changes(&edit.changes))
-                .unwrap_or(Cursors::default());
+                .unwrap_or_default();
             let mark = cursors.mark_first(buf);
 
             SnapshotAux {
@@ -1344,9 +1344,7 @@ impl Window {
             let lstart = start_of_line(&slice, *cursor);
             let entry = align.entry(lstart);
             let line = slice.slice(lstart..*cursor);
-            let mut insert = find_prev_whitespace(&line, line.len())
-                .map(|pos| pos)
-                .unwrap_or(lstart);
+            let mut insert = find_prev_whitespace(&line, line.len()).unwrap_or(lstart);
             // must ensure we are not inserting to same position for 2 different cursors
             let value = entry.or_default();
             if value.iter().any(|(_, opos)| opos == &insert) {
@@ -1621,7 +1619,7 @@ impl Window {
             if let Some(range) = cursor.selection() {
                 let mut did_change = false;
                 let mut uppercase = String::new();
-                let slice = buf.slice(&range);
+                let slice = buf.slice(range);
                 let mut chars = slice.chars();
                 while let Some((_, _, ch)) = chars.next() {
                     did_change |= ch.is_lowercase();
@@ -1652,7 +1650,7 @@ impl Window {
             if let Some(range) = cursor.selection() {
                 let mut did_change = false;
                 let mut lowercase = String::new();
-                let slice = buf.slice(&range);
+                let slice = buf.slice(range);
                 let mut chars = slice.chars();
                 while let Some((_, _, ch)) = chars.next() {
                     did_change |= ch.is_uppercase();
@@ -1703,7 +1701,7 @@ impl Window {
                 let text: Vec<u8> = (&buf.slice(last)).into();
                 let change = Change::replace(range, &text);
                 changes.push(change);
-                last = &range;
+                last = range;
             }
         }
 
@@ -1744,7 +1742,7 @@ impl Window {
             } else {
                 ch_found = true;
 
-                let (mut plevel, mut pn) = stack.last().unwrap().clone();
+                let (mut plevel, mut pn) = *stack.last().unwrap();
                 while plevel > level {
                     (plevel, pn) = stack.pop().unwrap();
                 }
@@ -1796,7 +1794,8 @@ impl Window {
     }
 }
 
-pub struct NextKeyFunction(pub Arc<dyn Fn(&mut Editor, ClientId, KeyEvent) -> ActionResult>);
+pub struct NextKeyFunction(pub Arc<NextKey>);
+type NextKey = dyn Fn(&mut Editor, ClientId, KeyEvent) -> ActionResult;
 
 impl std::fmt::Debug for NextKeyFunction {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

@@ -85,7 +85,7 @@ fn print_capture_json(label: &str, cap: &Capture, last: bool) {
     );
 }
 
-fn print_captures_json(parser: &Parser, caps: &Vec<Capture>) {
+fn print_captures_json(parser: &Parser, caps: &[Capture]) {
     if caps.is_empty() {
         println!("[]");
         return;

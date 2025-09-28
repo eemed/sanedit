@@ -7,14 +7,14 @@ use sanedit_core::IndentKind;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(remote = "EndOfLine")]
 pub(crate) enum EndOfLineDef {
-    LF,
-    VT,
-    FF,
-    CR,
-    CRLF,
-    NEL,
-    LS,
-    PS,
+    Lf,
+    Vt,
+    Ff,
+    Cr,
+    Crlf,
+    Nel,
+    Ls,
+    Ps,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, DocComment)]

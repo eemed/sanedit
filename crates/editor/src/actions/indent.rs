@@ -22,8 +22,7 @@ fn detect_indent(editor: &mut Editor, id: ClientId) -> ActionResult {
     let bid = editor
         .hooks
         .running_hook()
-        .map(Hook::buffer_id)
-        .flatten()
+        .and_then(Hook::buffer_id)
         .unwrap_or(wbid);
     let buf = getf!(editor.buffers.get_mut(bid));
 
@@ -48,8 +47,7 @@ fn detect_eol(editor: &mut Editor, id: ClientId) -> ActionResult {
     let bid = editor
         .hooks
         .running_hook()
-        .map(Hook::buffer_id)
-        .flatten()
+        .and_then(Hook::buffer_id)
         .unwrap_or(wbid);
     let buf = getf!(editor.buffers.get_mut(bid));
 

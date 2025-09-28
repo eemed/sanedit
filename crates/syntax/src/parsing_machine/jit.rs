@@ -69,12 +69,14 @@ macro_rules! asm {
 
 macro_rules! double_cap_size {
     ($ops:ident, $ptr:expr) => {
-        asm!($ops
-            ; mov rdi, state
-            ; mov rax, QWORD $ptr as _
+        #[allow(clippy::fn_to_numeric_cast)] {
+            asm!($ops
+                ; mov rdi, state
+                ; mov rax, QWORD $ptr as _
 
-            ; call rax
-        )
+                ; call rax
+            )
+        }
     }
 }
 

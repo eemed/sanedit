@@ -174,7 +174,7 @@ impl<'a> Compiler<'a> {
         let prev = self.program.len() - 2;
         let last = self.program.len() - 1;
 
-        match (&self.program[prev], &self.program[last]) {
+        if let (_, Operation::Call(addr)) = (&self.program[prev], &self.program[last]) {
             // Does not work
             // (Operation::Call(addr), Operation::CaptureEnd) => {
             //     // To enable call, return optimization to just use jump,
@@ -182,10 +182,8 @@ impl<'a> Compiler<'a> {
             //     self.program[last] = Operation::Jump(*addr);
             //     self.program[prev] = Operation::CaptureEnd;
             // }
-            (_, Operation::Call(addr)) => {
-                self.program[last] = Operation::Jump(*addr);
-            }
-            _ => {}
+
+            self.program[last] = Operation::Jump(*addr);
         }
 
         self.push(Operation::Return);

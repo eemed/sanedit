@@ -109,16 +109,15 @@ impl Drawable for CustomPrompt {
                     let style = ctx.style(field);
                     let dstyle = ctx.style(dfield);
                     let mstyle = ctx.style(mfield);
-                    let line = format_two_columns(
-                        &opt.text,
-                        &opt.description,
+
+                    let opts = ColumnFormatterOptions {
                         style,
-                        &opt.matches,
-                        mstyle,
-                        dstyle,
-                        wsize.width,
-                        false,
-                    );
+                        match_style: mstyle,
+                        description_style: dstyle,
+                        width: wsize.width,
+                        pad: true,
+                    };
+                    let line = format_two_columns(&opt.text, &opt.description, &opt.matches, opts);
 
                     grid.put_line(i + 1, line);
                 }
@@ -180,16 +179,14 @@ impl Drawable for CustomPrompt {
                     let style = ctx.style(field);
                     let dstyle = ctx.style(dfield);
                     let mstyle = ctx.style(mfield);
-                    let line = format_two_columns(
-                        &opt.text,
-                        &opt.description,
+                    let opts = ColumnFormatterOptions {
                         style,
-                        &opt.matches,
-                        mstyle,
-                        dstyle,
-                        wsize.width,
-                        true,
-                    );
+                        match_style: mstyle,
+                        description_style: dstyle,
+                        width: wsize.width,
+                        pad: true,
+                    };
+                    let line = format_two_columns(&opt.text, &opt.description, &opt.matches, opts);
 
                     grid.put_line(i, line);
                 }
@@ -279,16 +276,27 @@ pub fn format_option(
     cells
 }
 
-pub(crate) fn format_two_columns(
-    item: &str,
-    description: &str,
+pub(crate) struct ColumnFormatterOptions {
     style: Style,
-    item_matches: &[Range<usize>],
     match_style: Style,
     description_style: Style,
     width: usize,
     pad: bool,
+}
+
+pub(crate) fn format_two_columns(
+    item: &str,
+    description: &str,
+    item_matches: &[Range<usize>],
+    opts: ColumnFormatterOptions,
 ) -> Vec<Cell> {
+    let ColumnFormatterOptions {
+        style,
+        match_style,
+        description_style,
+        width,
+        pad,
+    } = opts;
     let padding = if pad { 1 } else { 0 };
     let mut result = vec![];
     if pad {

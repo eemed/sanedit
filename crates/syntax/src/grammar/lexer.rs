@@ -20,7 +20,7 @@ pub(crate) enum Token {
     LParen,
     RParen,
     Quote,
-    EOF,
+    Eof,
     End,
     LBracket,
     RBracket,
@@ -181,7 +181,7 @@ impl<R: io::Read> Lexer<R> {
     fn normal(&mut self) -> Result<Token> {
         let ch = match self.read.peek() {
             Some(ch) => ch,
-            None => return Ok(Token::EOF),
+            None => return Ok(Token::Eof),
         };
 
         match ch {
@@ -267,7 +267,7 @@ impl<R: io::Read> Lexer<R> {
     fn quote(&mut self) -> Result<Token> {
         let ch = match self.read.peek() {
             Some(ch) => ch,
-            None => return Ok(Token::EOF),
+            None => return Ok(Token::Eof),
         };
 
         match ch {
@@ -286,7 +286,7 @@ impl<R: io::Read> Lexer<R> {
     fn brackets(&mut self) -> Result<Token> {
         let ch = match self.read.peek() {
             Some(ch) => ch,
-            None => return Ok(Token::EOF),
+            None => return Ok(Token::Eof),
         };
 
         match ch {

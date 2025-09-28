@@ -218,7 +218,7 @@ fn find_prev_jump(win: &Window, buffers: &Buffers, original_bid: BufferId) -> Op
     // Skip to if this is current position
     if let Some((cursor, group)) = &item {
         if *group == &current {
-            item = cursor_jumps.prev_of_ref(&cursor);
+            item = cursor_jumps.prev_of_ref(cursor);
         }
     }
 
@@ -319,7 +319,7 @@ fn find_next_jump<const N: usize>(
 fn jump_prev(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = win_buf!(editor, id);
     let bid = buf.id;
-    let cursor = getf!(find_prev_jump(&win, &editor.buffers, bid));
+    let cursor = getf!(find_prev_jump(win, &editor.buffers, bid));
 
     // Add position if jumping backwards
     let (win, buf) = win_buf!(editor, id);
@@ -403,7 +403,7 @@ fn cursor_to_view_bottom(editor: &mut Editor, id: ClientId) -> ActionResult {
 #[action("Cursors: Trim whitespace")]
 fn cursor_trim_whitespace(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = editor.win_buf_mut(id);
-    if win.cursor_trim_whitespace(&buf) {
+    if win.cursor_trim_whitespace(buf) {
         run(editor, id, Hook::CursorMoved);
     }
 

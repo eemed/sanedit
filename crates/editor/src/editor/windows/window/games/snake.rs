@@ -67,7 +67,7 @@ impl Snake {
         let Point {
             x: center,
             y: middle,
-        } = Self::center(&drawn);
+        } = Self::center(drawn);
         let snake = {
             const BODY_LEN: usize = 3;
 
@@ -78,7 +78,7 @@ impl Snake {
             let mut snake = VecDeque::new();
             snake.push_back(head);
             for i in 1..BODY_LEN + 1 {
-                let mut point = head.clone();
+                let mut point = head;
                 point.y += i;
                 snake.push_back(point);
             }
@@ -178,12 +178,10 @@ impl Snake {
             } else {
                 Left
             }
+        } else if tail.x - head.x > 2 {
+            Left
         } else {
-            if tail.x - head.x > 2 {
-                Left
-            } else {
-                Right
-            }
+            Right
         }
     }
 
@@ -311,7 +309,7 @@ impl Game for Snake {
             State::Running => {
                 // Tick snake forward
                 let tick_rate = {
-                    if self.score <= 0 {
+                    if self.score == 0 {
                         BASE_TICK_RATE
                     } else {
                         let decay = 0.94_f64.powf(self.score as f64);
@@ -324,7 +322,7 @@ impl Game for Snake {
                 // Advance snake
                 let Size { width, height } = Self::size(&self.map);
                 let mut dead = false;
-                let mut new_head = self.snake.front().unwrap().clone();
+                let mut new_head = *self.snake.front().unwrap();
                 match self.direction {
                     Direction::Up => new_head.y = (height + new_head.y - 1) % height,
                     Direction::Down => new_head.y = (new_head.y + 1) % height,

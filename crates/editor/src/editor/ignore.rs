@@ -39,8 +39,7 @@ impl Ignore {
             let mut dir = project_config
                 .project_file_path
                 .as_ref()
-                .map(|path| path.parent())
-                .flatten()
+                .and_then(|path| path.parent())
                 .map(PathBuf::from)
                 .unwrap_or_else(|| working_dir.into());
             let mut patts = &project_config.ignore;

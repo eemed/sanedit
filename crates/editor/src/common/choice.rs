@@ -40,21 +40,21 @@ impl Choice {
         Arc::new(Choice::Numbered {
             display: format!("{}: {}", n, text),
             n,
-            text: text.into(),
+            text,
         })
     }
 
     pub fn from_text(text: String) -> Arc<Choice> {
         Arc::new(Choice::Text {
-            text: text.into(),
+            text,
             description: String::new(),
         })
     }
 
     pub fn from_text_with_description(text: String, desc: String) -> Arc<Choice> {
         Arc::new(Choice::Text {
-            text: text.into(),
-            description: desc.into(),
+            text,
+            description: desc,
         })
     }
 

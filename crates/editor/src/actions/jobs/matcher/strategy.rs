@@ -10,8 +10,7 @@ trait MatchFn: Send + Sync {
 /// Matches anywhere
 impl MatchFn for Finder {
     fn is_match(&self, opt: &str, results: &mut Vec<Range<usize>>) {
-        let mut iter = self.iter(opt);
-        while let Some(start) = iter.next() {
+        for start in self.iter(opt) {
             let start = start as usize;
             results.push(Range::from(start..start + self.pattern().len()));
         }
@@ -97,7 +96,7 @@ pub enum MatchStrategy {
 impl MatchStrategy {
     pub fn get_match_func(&self, terms: &[String], case_sensitive: bool) -> MultiMatcher {
         let mut matchers: Vec<Box<dyn MatchFn>> = Vec::with_capacity(terms.len());
-        if terms.len() == 0 {
+        if terms.is_empty() {
             return MultiMatcher {
                 is_empty: true,
                 matchers: Arc::new(matchers),

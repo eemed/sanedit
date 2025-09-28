@@ -305,13 +305,13 @@ fn get_comment<'a>(
     buf: &Buffer,
     show_error: bool,
 ) -> Option<(&'a str, &'a str)> {
-    let Some(ft) = &buf.language else {
+    let Some(lang) = &buf.language else {
         if show_error {
             win.warn_msg("No language set");
         }
         return None;
     };
-    let Some(langconfig) = languages.get(&ft) else {
+    let Some(langconfig) = languages.get(lang) else {
         if show_error {
             win.warn_msg("No comment string set for language");
         }
@@ -445,8 +445,7 @@ fn check_file_modification(editor: &mut Editor, id: ClientId) -> ActionResult {
     let in_fs = path
         .metadata()
         .ok()
-        .map(|mdata| mdata.modified().ok())
-        .flatten();
+        .and_then(|mdata| mdata.modified().ok());
     let local = getf!(buf.last_saved_modified.as_ref());
 
     // File is deleted
@@ -674,14 +673,14 @@ fn set_eol(editor: &mut Editor, id: ClientId) -> ActionResult {
     let eols: Vec<&'static str> = EndOfLine::all()
         .iter()
         .map(|eol| match eol {
-            EndOfLine::LF => "LF",
-            EndOfLine::VT => "VT",
-            EndOfLine::FF => "FF",
-            EndOfLine::CR => "CR",
-            EndOfLine::CRLF => "CRLF",
-            EndOfLine::NEL => "NEL",
-            EndOfLine::LS => "LS",
-            EndOfLine::PS => "PS",
+            EndOfLine::Lf => "LF",
+            EndOfLine::Vt => "VT",
+            EndOfLine::Ff => "FF",
+            EndOfLine::Cr => "CR",
+            EndOfLine::Crlf => "CRLF",
+            EndOfLine::Nel => "NEL",
+            EndOfLine::Ls => "LS",
+            EndOfLine::Ps => "PS",
         })
         .collect();
     let options: Arc<Vec<&'static str>> = Arc::new(eols);

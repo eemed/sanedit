@@ -162,7 +162,7 @@ fn open_buffer(editor: &mut Editor, id: ClientId) -> ActionResult {
                 .unwrap_or(buf.name());
             let modified = if buf.is_modified() { " *" } else { "" };
             let text = format!("{}{}", path, modified);
-            Choice::from_numbered_text(bid.id() as usize, text)
+            Choice::from_numbered_text(bid.id(), text)
         })
         .collect();
     let job = MatcherJob::builder(id)
@@ -342,7 +342,7 @@ fn change_working_dir(editor: &mut Editor, id: ClientId) -> ActionResult {
     ActionResult::Ok
 }
 
-pub(crate) fn get_directory_searcher_term<'a>(display: &'a str) -> &'a str {
+pub(crate) fn get_directory_searcher_term(display: &str) -> &str {
     let mut len = 0;
 
     for ch in display.chars().rev() {
@@ -370,7 +370,7 @@ fn prompt_change_dir(editor: &mut Editor, id: ClientId, input: &Path, is_dir: bo
     let ignore = editor.ignore.clone();
     let (win, _buf) = editor.win_buf_mut(id);
     let mut display = input.to_string_lossy().to_string();
-    let has_end = display.chars().rev().next() == Some(std::path::MAIN_SEPARATOR);
+    let has_end = display.ends_with(std::path::MAIN_SEPARATOR);
     if !has_end && is_dir {
         display.push(std::path::MAIN_SEPARATOR);
     };
@@ -528,7 +528,7 @@ fn prompt_jump(editor: &mut Editor, id: ClientId) -> ActionResult {
     win.prompt = Prompt::builder()
         .prompt(PROMPT_MESSAGE)
         .on_confirm(move |editor, id, out| {
-            let index = getf!(out.number()) as usize - 1;
+            let index = getf!(out.number()) - 1;
             let cursor = cursors[index].clone();
             jump_to_ref(editor, id, cursor)
         })
@@ -566,7 +566,7 @@ fn buffer_snapshots(editor: &mut Editor, id: ClientId) -> ActionResult {
     let snapshots: Vec<Arc<Choice>> = nodes
         .iter()
         .map(|snapshot| {
-            let since = now.duration_since(snapshot.timestamp.clone());
+            let since = now.duration_since(snapshot.timestamp);
             let ts = timestamp_to_string(&local, since);
             let is_current = current.map(|c| c == snapshot.id).unwrap_or(false);
             let text = if is_current {
@@ -591,7 +591,7 @@ fn buffer_snapshots(editor: &mut Editor, id: ClientId) -> ActionResult {
     win.prompt = Prompt::builder()
         .prompt(PROMPT_MESSAGE)
         .on_confirm(move |editor, id, out| {
-            let snapshot = nodes_len - getf!(out.number()) as usize;
+            let snapshot = nodes_len - getf!(out.number());
             let (win, buf) = win_buf!(editor, id);
             if win.undo_jump(buf, snapshot).is_ok() {
                 let hook = Hook::BufChanged(buf.id);

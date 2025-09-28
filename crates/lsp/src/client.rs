@@ -119,7 +119,7 @@ impl LSPClientSender {
             return Err(LSPRequestError::Unsupported);
         }
         self.sender
-            .blocking_send(ToLSP::Request(req))
+            .blocking_send(ToLSP::Request(req.into()))
             .map_err(|_| LSPRequestError::ServerClosed)?;
         Ok(())
     }
@@ -178,7 +178,7 @@ impl LSPClient {
                                         id,
                                         result: RequestResult::Error {
                                             msg: format!("{e}"),
-                                        },
+                                        }.into(),
                                     })
                                     .await;
                             }
@@ -260,7 +260,7 @@ impl Handler {
                     self.code_action(req.id, path, position).await?
                 }
                 RequestKind::CodeActionResolve { action } => {
-                    self.code_action_resolve(req.id, action).await?
+                    self.code_action_resolve(req.id, *action).await?
                 }
                 RequestKind::Rename {
                     path,
@@ -367,7 +367,7 @@ impl Handler {
             },
         };
 
-        self.response.send(Response::Request { id, result }).await?;
+        self.response.send(Response::Request { id, result: result.into() }).await?;
         Ok(())
     }
 
@@ -439,7 +439,7 @@ impl Handler {
                 msg: "No response".to_string(),
             },
         };
-        self.response.send(Response::Request { id, result }).await?;
+        self.response.send(Response::Request { id, result: result.into() }).await?;
         Ok(())
     }
 
@@ -477,7 +477,7 @@ impl Handler {
         self.response
             .send(Response::Request {
                 id,
-                result: RequestResult::Diagnostics { path, diagnostics },
+                result: RequestResult::Diagnostics { path, diagnostics }.into(),
             })
             .await?;
 
@@ -521,7 +521,7 @@ impl Handler {
                         path,
                         edits: result.into_iter().map(TextEdit::from).collect(),
                     },
-                },
+                }.into(),
             })
             .await?;
 
@@ -558,7 +558,7 @@ impl Handler {
                 id,
                 result: RequestResult::Rename {
                     workspace_edit: result.into(),
-                },
+                }.into(),
             })
             .await?;
 
@@ -574,8 +574,8 @@ impl Handler {
             .send(Response::Request {
                 id,
                 result: RequestResult::ResolvedAction {
-                    action: CodeAction { action: response },
-                },
+                    action: CodeAction { action: response }.into(),
+                }.into(),
             })
             .await?;
         Ok(())
@@ -626,7 +626,7 @@ impl Handler {
         self.response
             .send(Response::Request {
                 id,
-                result: RequestResult::CodeAction { actions },
+                result: RequestResult::CodeAction { actions }.into(),
             })
             .await?;
 
@@ -775,7 +775,7 @@ impl Handler {
                     path,
                     position,
                     results,
-                },
+                }.into(),
             })
             .await?;
 
@@ -835,7 +835,7 @@ impl Handler {
                         result: RequestResult::GotoDefinition {
                             path,
                             position: position.into(),
-                        },
+                        }.into(),
                     })
                     .await?;
             }
@@ -845,7 +845,7 @@ impl Handler {
                         id,
                         result: RequestResult::Error {
                             msg: "Invalid path".to_string(),
-                        },
+                        }.into(),
                     })
                     .await?;
             }
@@ -913,7 +913,7 @@ impl Handler {
         self.response
             .send(Response::Request {
                 id,
-                result: RequestResult::Hover { texts, position },
+                result: RequestResult::Hover { texts, position }.into(),
             })
             .await?;
 
@@ -994,7 +994,7 @@ impl Handler {
         self.response
             .send(Response::Request {
                 id,
-                result: RequestResult::References { references },
+                result: RequestResult::References { references }.into(),
             })
             .await?;
 

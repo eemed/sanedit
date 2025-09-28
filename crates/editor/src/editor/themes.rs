@@ -107,16 +107,13 @@ fn fill_theme_colors(table: &Table, theme: &mut Theme) -> anyhow::Result<()> {
                 }
             }
             match v {
-                Item::Value(value) => match value {
-                    toml_edit::Value::String(formatted) => {
-                        let Ok(style) = Style::from_str(formatted.value().as_str()) else {
-                            bail!("Invalid style for key {}", prefix.join("."))
-                        };
-                        let key = prefix.join(".");
-                        theme.insert(key, style);
-                    }
-                    _ => {}
-                },
+                Item::Value(toml_edit::Value::String(formatted)) => {
+                    let Ok(style) = Style::parse(formatted.value().as_str()) else {
+                        bail!("Invalid style for key {}", prefix.join("."))
+                    };
+                    let key = prefix.join(".");
+                    theme.insert(key, style);
+                }
                 Item::Table(table) => rec(prefix, table, theme)?,
                 _ => {}
             }
@@ -135,7 +132,7 @@ fn default_theme() -> Theme {
     use ThemeField::*;
     let mut theme = Theme::new(DEFAULT_THEME);
     let mut ins = |field: ThemeField, style: &str| {
-        theme.insert(field, Style::from_str(style).unwrap());
+        theme.insert(field, Style::parse(style).unwrap());
     };
 
     ins(Default, "#000000,#ffffff,");

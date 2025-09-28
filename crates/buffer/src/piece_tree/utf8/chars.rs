@@ -114,6 +114,7 @@ impl Decoder {
         }
     }
 
+    #[allow(clippy::should_implement_trait)]
     pub fn next(&mut self, byte: u8) -> DecodeResult {
         use DecodeResult::*;
 
@@ -253,6 +254,7 @@ impl<'a> Chars<'a> {
         }
     }
 
+    #[allow(clippy::should_implement_trait)]
     pub fn next(&mut self) -> Option<(u64, u64, char)> {
         use DecodeResult::*;
         let start = self.bytes.pos();

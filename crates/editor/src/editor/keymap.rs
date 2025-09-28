@@ -90,7 +90,7 @@ impl Keymaps {
     }
 
     pub fn get(&self, key: &LayerKey, events: &[KeyEvent]) -> KeymapResult {
-        let mut layer = &self.layers[&key];
+        let mut layer = &self.layers[key];
         let mut result = layer.get(events);
 
         while matches!(result, KeymapResult::NotFound) {
@@ -242,7 +242,7 @@ impl KeyTrieNode {
 
     fn list(&self, path: &mut Vec<KeyEvent>, results: &mut Vec<(String, String)>) {
         if let Some(action) = &self.action {
-            let keybind = keyevents_to_string(&path);
+            let keybind = keyevents_to_string(path);
             results.push((keybind, action.description().into()))
         }
 

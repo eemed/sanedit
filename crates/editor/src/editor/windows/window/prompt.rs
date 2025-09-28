@@ -367,7 +367,7 @@ impl Prompt {
                 }
 
                 let no_input = results
-                    .get(0)
+                .first()
                     .map(|res| {
                         res.get(0)
                             .map(|choice| choice.matches().is_empty())
@@ -387,7 +387,7 @@ impl Prompt {
                                 Choice::Path { path, .. } => path,
                                 _ => unreachable!(),
                             };
-                            if let Some(score) = mru.position(&path) {
+                            if let Some(score) = mru.position(path) {
                                 // Smallest first so reverse position
                                 choice.rescore(max - (score + 1));
                             } else {

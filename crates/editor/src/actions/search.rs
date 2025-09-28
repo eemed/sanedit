@@ -60,7 +60,7 @@ pub(crate) fn prevent_flicker(editor: &mut Editor, id: ClientId) -> ActionResult
                         } else if next.start() >= hl.end {
                             // Went past highlight
                             break;
-                        } else if hl.includes(&next.range()) {
+                        } else if hl.includes(next.range()) {
                             // Inside a higlight assume the highlight spans this edit too
                             let removed = next.range().len() as i128;
                             let added = next.text().len() as i128;
@@ -143,7 +143,7 @@ fn highlight_search(editor: &mut Editor, id: ClientId) -> ActionResult {
         let view = win.view().range();
         let old = win.search.highlights().unwrap();
 
-        if old.changes_made != total || !old.buffer_range.includes(&view) {
+        if old.changes_made != total || !old.buffer_range.includes(view) {
             highlight_current_search_matches(editor, client);
         }
     }
@@ -284,7 +284,7 @@ fn skip_highlighted(win: &Window, starting_position: u64, reverse: bool) -> u64 
     win.search
         .highlights()
         .as_ref()
-        .map(|hls| {
+        .and_then(|hls| {
             for hl in hls.highlights.iter() {
                 if hl.contains(&starting_position) {
                     if reverse {
@@ -297,7 +297,6 @@ fn skip_highlighted(win: &Window, starting_position: u64, reverse: bool) -> u64 
 
             None
         })
-        .flatten()
         .unwrap_or(starting_position + if !reverse { 1 } else { 0 })
 }
 

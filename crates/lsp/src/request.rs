@@ -8,7 +8,7 @@ use crate::util::{CodeAction, Position, TextEdit};
 
 #[derive(Debug, Clone)]
 pub(crate) enum ToLSP {
-    Request(Request),
+    Request(Box<Request>),
     Notification(Notification),
 }
 
@@ -122,7 +122,7 @@ pub enum RequestKind {
         position: Position,
     },
     CodeActionResolve {
-        action: CodeAction,
+        action: Box<CodeAction>,
     },
     Rename {
         path: PathBuf,

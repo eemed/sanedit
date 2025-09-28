@@ -87,6 +87,7 @@ impl<'a> Bytes<'a> {
     }
 
     #[inline]
+    #[allow(clippy::should_implement_trait)]
     pub fn next(&mut self) -> Option<u8> {
         let byte = self.get()?;
         self.pos += 1;
@@ -118,6 +119,10 @@ impl<'a> Bytes<'a> {
 
     pub fn len(&self) -> u64 {
         self.range.end - self.range.start
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
     }
 
     /// Get byte at a position. This will iterate the iterator to the specific

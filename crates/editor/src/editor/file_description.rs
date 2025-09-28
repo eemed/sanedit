@@ -35,7 +35,7 @@ impl FileDescription {
         let lang = Language::determine(&path, &config.editor.language_detect);
 
         let file_metadata = FileDescription {
-            absolute_path: path.into(),
+            absolute_path: path,
             is_big,
             read_only,
             language: lang,

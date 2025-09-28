@@ -127,7 +127,7 @@ impl SnippetInner {
 
             // name}
             let mut name = String::new();
-            while let Some(ch) = chars.next() {
+            for ch in chars.by_ref() {
                 if ch == '}' {
                     break;
                 }
@@ -146,7 +146,7 @@ impl SnippetInner {
     fn parse_num(chars: &mut Peekable<Chars>) -> Result<u8, SnippetError> {
         let mut num = String::new();
         while let Some(ch) = chars.peek() {
-            if !ch.is_digit(10) {
+            if !ch.is_ascii_digit() {
                 break;
             }
 

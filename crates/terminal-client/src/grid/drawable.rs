@@ -72,7 +72,7 @@ impl<'a, 'b> Subgrid<'a, 'b> {
 
     pub fn draw_border(&mut self, border: Border, style: Style) -> Rect {
         if self.width() <= 2 || self.height() <= 2 {
-            return self.rect.clone();
+            return *self.rect;
         }
 
         // Top and bottom
@@ -121,7 +121,7 @@ impl<'a, 'b> Subgrid<'a, 'b> {
             style,
         };
 
-        let mut result = self.rect.clone();
+        let mut result = *self.rect;
         result.x += 1;
         result.y += 1;
         result.width = result.width.saturating_sub(2);
@@ -160,7 +160,7 @@ impl<'a, 'b> Subgrid<'a, 'b> {
             self.cells[y][self.rect.x + self.rect.width - 1] = cell.clone();
         }
 
-        let mut result = self.rect.clone();
+        let mut result = *self.rect;
         result.width -= 1;
         result
     }

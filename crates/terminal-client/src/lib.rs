@@ -34,7 +34,7 @@ where
         .write(Message::Hello {
             color_count,
             size: ui.window().size(),
-            parent: opts.parent_client.clone(),
+            parent: opts.parent_client,
         })
         .expect("Failed to send hello");
 

@@ -59,17 +59,17 @@ impl CustomCompletion {
     }
 
     pub fn rect(&self, win: Rect) -> Rect {
-        let below = below(win, &self);
+        let below = below(win, self);
         if win.includes(&below) {
             return below;
         }
 
-        let above = above(win, &self);
+        let above = above(win, self);
         if win.includes(&above) {
             return above;
         }
 
-        fallback(win, &self)
+        fallback(win, self)
     }
 }
 

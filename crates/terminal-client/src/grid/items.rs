@@ -211,7 +211,7 @@ impl CustomItems {
             grid.replace(0, i, c);
         }
 
-        let mut rect = grid.rect().clone();
+        let mut rect = *grid.rect();
         rect.y += 1;
         rect.height = rect.height.saturating_sub(1);
         let mut grid = grid.subgrid(&rect);

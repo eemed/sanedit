@@ -16,7 +16,7 @@ use items::Kind;
 use popup::popup_rect;
 use sanedit_messages::{
     redraw::{
-        self, statusline::Statusline, window::Window, Cell, Component, Cursor, Point, Popup,
+        self, statusline::Statusline, window::Window, Cell, Component, Cursor, Popup,
         PopupComponent, Redraw, Size, StatusMessage, Theme,
     },
     Message,
@@ -135,7 +135,7 @@ impl Grid {
             StatusMessage(msg) => {
                 self.msg = Some(Placed {
                     item: msg,
-                    rect: self.statusline.rect.clone(),
+                    rect: self.statusline.rect,
                 });
             }
             Completion(comp) => {
@@ -248,7 +248,7 @@ impl Grid {
             let new = compl.item.rect(win);
             let rect = &mut compl.rect;
             // Update only if bigger or old old does not fit
-            if !rect.includes(&new) || !win.includes(&rect) {
+            if !rect.includes(&new) || !win.includes(rect) {
                 *rect = new
             }
         }
@@ -326,9 +326,9 @@ impl Grid {
     ) {
         let ctx = UIContext {
             theme: theme.clone(),
-            rect: rect.clone(),
+            rect: *rect,
             client_in_focus,
-            cursor_position: cursor.as_ref().map(|c| c.point).unwrap_or(Point::default()),
+            cursor_position: cursor.as_ref().map(|c| c.point).unwrap_or_default(),
         };
 
         match drawable.cursor(&ctx) {

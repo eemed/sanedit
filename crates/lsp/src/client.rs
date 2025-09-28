@@ -363,7 +363,7 @@ impl Handler {
                 signatures: Signatures::from(help),
             },
             None => RequestResult::Error {
-                msg: format!("No response"),
+                msg: "No response".to_string(),
             },
         };
 
@@ -406,7 +406,7 @@ impl Handler {
                                     lsp_types::OneOf::Left(l) => &l.uri,
                                     lsp_types::OneOf::Right(r) => &r.uri,
                                 };
-                                uri_to_path(&uri)
+                                uri_to_path(uri)
                             } {
                                 let entry = result_symbols.entry(path);
                                 let value = entry.or_default();
@@ -427,7 +427,7 @@ impl Handler {
 
                 if result_symbols.is_empty() {
                     RequestResult::Error {
-                        msg: format!("No symbols found"),
+                        msg: "No symbols found".to_string(),
                     }
                 } else {
                     RequestResult::WorkspaceSymbols {
@@ -436,7 +436,7 @@ impl Handler {
                 }
             }
             None => RequestResult::Error {
-                msg: format!("No response"),
+                msg: "No response".to_string(),
             },
         };
         self.response.send(Response::Request { id, result }).await?;
@@ -753,7 +753,7 @@ impl Handler {
                 .additional_text_edits
                 .unwrap_or_default()
                 .into_iter()
-                .map(|edit| TextEdit::from(edit))
+                .map(TextEdit::from)
                 .collect();
 
             let completion = CompletionItem {
@@ -844,7 +844,7 @@ impl Handler {
                     .send(Response::Request {
                         id,
                         result: RequestResult::Error {
-                            msg: format!("Invalid path"),
+                            msg: "Invalid path".to_string(),
                         },
                     })
                     .await?;
@@ -1032,7 +1032,7 @@ impl Handler {
             .recv()
             .await
             .ok_or(LSPError::NoResponse)?
-            .map_err(|e| LSPError::InvalidResponse(e))?;
+            .map_err(LSPError::InvalidResponse)?;
 
         let result = serde_json::from_value(response)?;
 

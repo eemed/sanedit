@@ -117,7 +117,7 @@ fn main() {
     let session = cli
         .session
         .as_ref()
-        .map(|name| Session::new(&sessions, &name))
+        .map(|name| Session::new(&sessions, name))
         .unwrap_or_else(|| next_available_session(&sessions));
     let log_file = init_logging(&cli, &log_tmp, &session);
     let client_opts = ClientOptions {
@@ -182,7 +182,7 @@ fn list_sessions(sessions: &Path) {
 }
 
 fn init_logging(cli: &Cli, tmp: &Path, session: &Session) -> Option<PathBuf> {
-    let log_file = next_available_log_file(&tmp, cli, session);
+    let log_file = next_available_log_file(tmp, cli, session);
     logging::init_panic();
     logging::init_logger(&log_file, cli.debug);
 
@@ -198,7 +198,7 @@ fn next_available_log_file(tmp: &Path, cli: &Cli, session: &Session) -> PathBuf 
         }
         let mut client = String::new();
         if !cli.server_only {
-            client = format!("-client");
+            client = "-client".to_string();
         };
 
         let name = format!("{}{client}{id}.log", session.name);
@@ -240,13 +240,13 @@ fn start_server_process(cli: &Cli, session: &Session) {
     let config_dir = cli.config_dir.as_ref().map(|dir| dir.to_string_lossy());
     if let Some(ref dir) = config_dir {
         opts.push("--config-dir");
-        opts.push(&dir);
+        opts.push(dir);
     }
 
     let working_dir = cli.working_dir.as_ref().map(|dir| dir.to_string_lossy());
     if let Some(ref dir) = working_dir {
         opts.push("--working-dir");
-        opts.push(&dir);
+        opts.push(dir);
     }
 
     let _ = std::process::Command::new("nohup")
@@ -269,10 +269,10 @@ fn start_server(opts: ServerOptions) {
 fn connect_to_socket(socket: &Path, opts: ClientOptions) -> Option<ClientOptions> {
     log::info!("Connecting to existing socket..");
     // if socket already exists try to connect
-    match UnixDomainSocketClient::connect(&socket) {
+    match UnixDomainSocketClient::connect(socket) {
         Ok(socket) => {
             socket.run(opts);
-            return None;
+            None
         }
         Err(e) => {
             let _ = std::fs::remove_file(socket);

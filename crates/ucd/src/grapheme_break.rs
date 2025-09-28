@@ -6,7 +6,7 @@
 //
 // ucd-generate 0.3.1 is available on crates.io.
 
-pub const GRAPHEME_CLUSTER_BREAK_ENUM: &'static [&'static str] = &[
+pub const GRAPHEME_CLUSTER_BREAK_ENUM: &[&str] = &[
     "CR",
     "Control",
     "Extend",
@@ -22,7 +22,7 @@ pub const GRAPHEME_CLUSTER_BREAK_ENUM: &'static [&'static str] = &[
     "ZWJ",
 ];
 
-pub const GRAPHEME_CLUSTER_BREAK: &'static [(u32, u32, u8)] = &[
+pub const GRAPHEME_CLUSTER_BREAK: &[(u32, u32, u8)] = &[
     (0, 9, 1),
     (10, 10, 4),
     (11, 12, 1),

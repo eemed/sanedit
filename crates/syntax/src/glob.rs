@@ -190,8 +190,8 @@ impl Glob {
                         next,
                         Rule::Sequence(vec![
                             Rule::Choice(vec![
-                                Rule::ByteRange(u8::MIN, '/' as u8 - 1),
-                                Rule::ByteRange('/' as u8 + 1, u8::MAX),
+                                Rule::ByteRange(u8::MIN, b'/' - 1),
+                                Rule::ByteRange(b'/' + 1, u8::MAX),
                             ]),
                             wildcard,
                         ]),
@@ -231,8 +231,8 @@ impl Glob {
                             Rule::Optional(Rule::ByteSequence("/".into()).into()),
                             Rule::OneOrMore(
                                 Rule::Choice(vec![
-                                    Rule::ByteRange(u8::MIN, '/' as u8 - 1),
-                                    Rule::ByteRange('/' as u8 + 1, u8::MAX),
+                                    Rule::ByteRange(u8::MIN, b'/' - 1),
+                                    Rule::ByteRange(b'/' + 1, u8::MAX),
                                 ])
                                 .into(),
                             ),
@@ -251,10 +251,9 @@ impl Glob {
                 "any" => {
                     seq.push(
                         Rule::Choice(vec![
-                            Rule::ByteRange(u8::MIN, '/' as u8 - 1),
-                            Rule::ByteRange('/' as u8 + 1, u8::MAX),
-                        ])
-                        .into(),
+                            Rule::ByteRange(u8::MIN, b'/' - 1),
+                            Rule::ByteRange(b'/' + 1, u8::MAX),
+                        ]),
                     );
                 }
                 "separator" => {

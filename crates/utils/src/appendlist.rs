@@ -134,6 +134,12 @@ impl<T> Clone for Appendlist<T> {
 unsafe impl<T: Send> Send for Appendlist<T> {}
 unsafe impl<T: Sync + Send> Sync for Appendlist<T> {}
 
+impl<T> Default for Appendlist<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<T> Appendlist<T> {
     pub fn new() -> Appendlist<T> {
         let list = Arc::new(List {
@@ -204,7 +210,7 @@ impl<T> Appendlist<T> {
 
         let bucket = {
             let bucket: &UnsafeCell<Box<[MaybeUninit<T>]>> =
-                &self.list.buckets[loc.bucket].get().unwrap();
+                self.list.buckets[loc.bucket].get().unwrap();
             let bucket: &[MaybeUninit<T>] = unsafe { (*bucket.get()).as_ref() };
             bucket
         };
@@ -216,7 +222,7 @@ impl<T> Appendlist<T> {
         let loc = BucketLocation::of(idx);
         let bucket = {
             let bucket: &UnsafeCell<Box<[MaybeUninit<T>]>> =
-                &self.list.buckets[loc.bucket].get().unwrap();
+                self.list.buckets[loc.bucket].get().unwrap();
             let bucket: &[MaybeUninit<T>] = unsafe { (*bucket.get()).as_ref() };
             bucket
         };

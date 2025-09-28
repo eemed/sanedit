@@ -110,7 +110,7 @@ impl<'a, B: ByteSource> DoubleEndedIterator for CaptureIter<'a, B> {
             let start = self.sp_rev.saturating_sub(SIZE);
             let mut chunk = if let Some(chunk) = self.source.as_single_chunk() {
                 let start = start as usize;
-                let end: usize = min(chunk.len() as usize, start + SIZE as usize);
+                let end: usize = min(chunk.len(), start + SIZE as usize);
                 std::borrow::Cow::from(&chunk[start..end])
             } else {
                 let n = self.source.copy_to(start, &mut buf);

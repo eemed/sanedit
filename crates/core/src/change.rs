@@ -83,7 +83,7 @@ impl Changes {
 
         for change in self.changes.iter() {
             let mut range = change.range();
-            let abs = off.abs() as u64;
+            let abs = off.unsigned_abs() as u64;
             if off.is_negative() {
                 range.backward(abs);
             } else {
@@ -95,7 +95,7 @@ impl Changes {
             }
 
             if !change.text().is_empty() {
-                let abs = off.abs() as u64;
+                let abs = off.unsigned_abs() as u64;
                 let start = if off.is_negative() {
                     change.start() - abs
                 } else {
@@ -137,7 +137,7 @@ impl Changes {
     }
 
     pub fn multi_remove(ranges: &[BufferRange]) -> Changes {
-        let changes: Vec<Change> = ranges.iter().map(|range| Change::remove(range)).collect();
+        let changes: Vec<Change> = ranges.iter().map(Change::remove).collect();
         Changes::from(changes)
     }
 

@@ -6,7 +6,7 @@
 //
 // ucd-generate 0.3.1 is available on crates.io.
 
-pub const WORD_BREAK_ENUM: &'static [&'static str] = &[
+pub const WORD_BREAK_ENUM: &[&str] = &[
     "ALetter",
     "CR",
     "Double_Quote",
@@ -27,7 +27,7 @@ pub const WORD_BREAK_ENUM: &'static [&'static str] = &[
     "ZWJ",
 ];
 
-pub const WORD_BREAK: &'static [(u32, u32, u8)] = &[
+pub const WORD_BREAK: &[(u32, u32, u8)] = &[
     (10, 10, 8),
     (11, 12, 12),
     (13, 13, 1),

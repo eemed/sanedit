@@ -61,7 +61,7 @@ fn find_prev_delim(graphemes: &mut Graphemes, delim: &str) -> Option<u64> {
 
         adv += g.len();
 
-        if &g == &delim {
+        if g == delim {
             return Some(adv);
         }
     }
@@ -77,7 +77,7 @@ fn find_next_delim(graphemes: &mut Graphemes, delim: &str) -> Option<u64> {
             break;
         }
 
-        if &g == &delim {
+        if g == delim {
             return Some(adv);
         }
 

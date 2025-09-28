@@ -143,7 +143,7 @@ impl Drawable for CustomPrompt {
                     grid.put_line(1, message);
                 }
 
-                let mut rect = grid.rect().clone();
+                let mut rect = *grid.rect();
                 rect.y += TITLE_HEIGHT;
                 rect.height = rect.height.saturating_sub(2);
                 let mut grid = grid.subgrid(&rect);
@@ -305,7 +305,7 @@ pub(crate) fn format_two_columns(
     result.extend(item);
     result.push(Cell::with_style(style));
 
-    let descr = into_cells_with_style(&description, description_style);
+    let descr = into_cells_with_style(description, description_style);
     let mut len = result.len() + descr.len() + padding;
     while len < width {
         result.push(Cell::with_style(style));

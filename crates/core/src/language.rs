@@ -104,10 +104,9 @@ impl Language {
                 }
             }
 
-            let n = std::fs::File::open(&path)
+            let n = std::fs::File::open(path)
                 .ok()
-                .map(|mut file| file.read(&mut buf).ok())
-                .flatten();
+                .and_then(|mut file| file.read(&mut buf).ok());
             if let Some(n) = n {
                 let read = &buf[..n];
                 for shebang in &detect.shebang {

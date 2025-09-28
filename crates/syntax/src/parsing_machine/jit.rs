@@ -304,7 +304,7 @@ impl Default for State {
         State {
             cap,
             len: 0,
-            sp: 0 as *mut u8,
+            sp: std::ptr::null_mut::<u8>(),
             ptr,
         }
     }
@@ -410,28 +410,25 @@ impl Jit {
         while copied != 0 {
             let start = n - copied as u64;
             let win = &window[..copied];
-            match self.parse_chunk(win) {
-                Ok((mut caps, ssp)) => {
-                    sp = start + ssp as u64;
-                    // Adjust indices
-                    caps.iter_mut().for_each(|cap| {
-                        cap.start += start;
-                        cap.end += start;
-                    });
+            if let Ok((mut caps, ssp)) = self.parse_chunk(win) {
+                sp = start + ssp as u64;
+                // Adjust indices
+                caps.iter_mut().for_each(|cap| {
+                    cap.start += start;
+                    cap.end += start;
+                });
 
-                    if stop_on_match {
-                        return Ok((caps, sp));
-                    }
-
-                    if captures.is_empty() {
-                        captures = caps;
-                    } else {
-                        // We already have captures thus this is already an overlapping run
-                        captures.retain_mut(|cap| cap.start < start);
-                        captures.extend(caps);
-                    }
+                if stop_on_match {
+                    return Ok((caps, sp));
                 }
-                Err(_) => {}
+
+                if captures.is_empty() {
+                    captures = caps;
+                } else {
+                    // We already have captures thus this is already an overlapping run
+                    captures.retain_mut(|cap| cap.start < start);
+                    captures.extend(caps);
+                }
             }
 
             window.copy_within(WINDOW_SIZE - OVERLAP..WINDOW_SIZE, 0);
@@ -548,8 +545,8 @@ impl Jit {
             ; push captop
         );
 
-        let mut iter = program.ops.iter().enumerate();
-        while let Some((i, op)) = iter.next() {
+        let iter = program.ops.iter().enumerate();
+        for (i, op) in iter {
             let ilabel = inst_labels[i];
             asm!(ops
                 ;=>ilabel

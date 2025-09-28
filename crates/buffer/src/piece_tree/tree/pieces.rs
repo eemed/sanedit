@@ -136,7 +136,7 @@ impl<'a> PieceIter<'a> {
                 // If we came from left
                 if left
                     .internal_ref()
-                    .map_or(false, |left| std::ptr::eq(left, node))
+                    .is_some_and(|left| std::ptr::eq(left, node))
                 {
                     return Some(&self.stack.last()?.piece);
                 }
@@ -172,7 +172,7 @@ impl<'a> PieceIter<'a> {
                 // If we came from right
                 if right
                     .internal_ref()
-                    .map_or(false, |right| std::ptr::eq(right, node))
+                    .is_some_and(|right| std::ptr::eq(right, node))
                 {
                     return Some(&self.stack.last()?.piece);
                 }

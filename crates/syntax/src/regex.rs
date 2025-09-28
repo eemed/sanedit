@@ -134,20 +134,20 @@ impl<'a> RegexToPEG<'a> {
 
     fn cc_nword() -> Rule {
         Rule::Choice(vec![
-            Rule::ByteRange(u8::MIN, '0' as u8 - 1),
-            Rule::ByteRange('9' as u8 + 1, 'A' as u8 - 1),
-            Rule::ByteRange('Z' as u8 + 1, '_' as u8 - 1),
-            Rule::ByteRange('_' as u8 + 1, 'a' as u8 - 1),
-            Rule::ByteRange('z' as u8 + 1, u8::MAX),
+            Rule::ByteRange(u8::MIN, b'0' - 1),
+            Rule::ByteRange(b'9' + 1, b'A' - 1),
+            Rule::ByteRange(b'Z' + 1, b'_' - 1),
+            Rule::ByteRange(b'_' + 1, b'a' - 1),
+            Rule::ByteRange(b'z' + 1, u8::MAX),
         ])
     }
 
     fn cc_word() -> Rule {
         Rule::Choice(vec![
-            Rule::ByteRange('A' as u8, 'Z' as u8),
-            Rule::ByteRange('_' as u8, '_' as u8),
-            Rule::ByteRange('a' as u8, 'z' as u8),
-            Rule::ByteRange('0' as u8, '9' as u8),
+            Rule::ByteRange(b'A', b'Z'),
+            Rule::ByteRange(b'_', b'_'),
+            Rule::ByteRange(b'a', b'z'),
+            Rule::ByteRange(b'0', b'9'),
         ])
     }
 
@@ -181,13 +181,13 @@ impl<'a> RegexToPEG<'a> {
     }
 
     fn cc_digit() -> Rule {
-        Rule::ByteRange('0' as u8, '9' as u8)
+        Rule::ByteRange(b'0', b'9')
     }
 
     fn cc_ndigit() -> Rule {
         Rule::Choice(vec![
-            Rule::ByteRange(u8::MIN, '0' as u8 - 1),
-            Rule::ByteRange('9' as u8 + 1, u8::MAX),
+            Rule::ByteRange(u8::MIN, b'0' - 1),
+            Rule::ByteRange(b'9' + 1, u8::MAX),
         ])
     }
 
@@ -236,11 +236,11 @@ impl<'a> RegexToPEG<'a> {
         let add_text = |mut bytes: Vec<u8>| match cont {
             Rule::ByteSequence(vec) => {
                 bytes.extend(vec);
-                return Ok(Rule::ByteSequence(bytes));
+                Ok(Rule::ByteSequence(bytes))
             }
             _ => {
                 let rule = Rule::ByteSequence(bytes);
-                return Ok(Rule::Sequence(vec![rule, cont.clone()]));
+                Ok(Rule::Sequence(vec![rule, cont.clone()]))
             }
         };
         let seq = |rule: Rule| match cont {
@@ -273,12 +273,12 @@ impl<'a> RegexToPEG<'a> {
                 // Distribute continuation to all alternatives
                 // Π(e1|e2, k) = Π(e1, k) / Π(e2, k) (4)
                 if children.len() == 1 {
-                    return self.convert_rec(children[0], &cont, depth + 1);
+                    return self.convert_rec(children[0], cont, depth + 1);
                 }
 
                 let mut choices = vec![];
                 for child in children {
-                    let rule = self.convert_rec(child, &cont, depth + 1)?;
+                    let rule = self.convert_rec(child, cont, depth + 1)?;
                     choices.push(rule);
                 }
                 Ok(Rule::Choice(choices))
@@ -324,7 +324,7 @@ impl<'a> RegexToPEG<'a> {
             }
             "optional" => {
                 // e? = e | ε
-                let e = self.convert_rec(children[0], &cont, depth + 1)?;
+                let e = self.convert_rec(children[0], cont, depth + 1)?;
                 let epsilon = cont.clone();
                 let choices = if self.is_lazy(&children) {
                     vec![epsilon, e]
@@ -354,7 +354,7 @@ impl<'a> RegexToPEG<'a> {
                 add_text(vec![byte])
             }
             "brackets" => Ok(seq(self.convert_brackets(children)?)),
-            "cc_control" => add_text(vec![(text.as_bytes()[1] as u8 - 'A' as u8) + 1]),
+            "cc_control" => add_text(vec![(text.as_bytes()[1] - b'A') + 1]),
             "cc_null" => add_text(vec![0x00_u8]),
             "cc_ff" => add_text(vec![0x0c_u8]),
             "cc_vtab" => add_text(vec![0x0b_u8]),
@@ -510,7 +510,7 @@ impl<'a> RegexToPEG<'a> {
             match clabel {
                 "range" => {
                     let range = self.convert_bracket_range(child)?;
-                    if range.end >= u8::MAX as u32 + 1 {
+                    if range.end > u8::MAX as u32 {
                         unicode = true;
                     }
                     ranges.add(range);
@@ -536,7 +536,7 @@ impl<'a> RegexToPEG<'a> {
                     let ctrl = (text.as_bytes()[1] as u32 - 'A' as u32) + 1;
                     ranges.add(ctrl..ctrl + 1);
                 }
-                "cc_null" => ranges.add(0x00_u32..0x00_u32 + 1),
+                "cc_null" => ranges.add(0x00_u32..1),
                 "cc_ff" => ranges.add(0x0c_u32..0x0c_u32 + 1),
                 "cc_vtab" => ranges.add(0x0b_u32..0x0b_u32 + 1),
                 "cc_tab" => ranges.add(0x09_u32..0x09_u32 + 1),

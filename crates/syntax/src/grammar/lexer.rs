@@ -261,7 +261,7 @@ impl<R: io::Read> Lexer<R> {
 
     fn allowed_in_string(ch: char) -> bool {
         let allowed = ['-', '_'];
-        ch.is_alphabetic() || ch.is_digit(10) || allowed.contains(&ch)
+        ch.is_alphabetic() || ch.is_ascii_digit() || allowed.contains(&ch)
     }
 
     fn quote(&mut self) -> Result<Token> {
@@ -388,7 +388,7 @@ impl<R: io::Read> Lexer<R> {
                     }
                 }
 
-                Ok(Token::Byte('.' as u8))
+                Ok(Token::Byte(b'.'))
             }
             ch => {
                 self.advance()?;

@@ -133,7 +133,7 @@ fn in_place_write_ops(pt: &PieceTreeView) -> Vec<WriteOp> {
 }
 
 fn do_write_in_place(pt: &PieceTreeView, ops: &[WriteOp]) -> io::Result<()> {
-    let mut iter = ops.into_iter();
+    let mut iter = ops.iter();
     let mut op = iter.next();
     let path = pt.orig.file_path().unwrap();
 

@@ -67,11 +67,7 @@ impl Piece {
     /// Minimum absolute distance to buffer position
     pub fn min_abs_distance(&self, bpos: u64) -> u64 {
         fn abs_diff(x: u64, y: u64) -> u64 {
-            if x < y {
-                y - x
-            } else {
-                x - y
-            }
+            y.abs_diff(x)
         }
 
         if self.pos <= bpos && bpos < self.pos + self.len {

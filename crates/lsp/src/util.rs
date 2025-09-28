@@ -638,7 +638,7 @@ impl From<lsp_types::SignatureInformation> for Signature {
     fn from(info: lsp_types::SignatureInformation) -> Self {
         let params = info
             .parameters
-            .unwrap_or(vec![])
+            .unwrap_or_default()
             .into_iter()
             .map(|param| SignatureParameter::new(param, &info.label))
             .collect();

@@ -248,7 +248,7 @@ impl ParserKind {
 
             match (inject_ann, inject_lang_ann) {
                 (Some(Inject(Some(lang))), None) => {
-                    if let Ok(parser) = loader.load(&lang) {
+                    if let Ok(parser) = loader.load(lang) {
                         let slice = get_slice!(bytes, cap.range());
                         let caps = parser.parse(slice)?;
                         let start = cap.range().start;

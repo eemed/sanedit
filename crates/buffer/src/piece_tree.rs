@@ -149,7 +149,7 @@ impl PieceTree {
                     Piece::new_with_count(BufferKind::Add, bpos as u64, n as u64, count as u32);
                 self.view.len += piece.len;
                 let inserted_now =
-                    (inserted as u64 * (count as u64 + 1)) + (n as u64 * count as u64);
+                    (inserted * (count as u64 + 1)) + (n as u64 * count as u64);
                 self.view
                     .tree
                     .insert(*pos + inserted_now, piece, can_append);

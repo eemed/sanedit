@@ -109,7 +109,7 @@ impl log::Log for Logger {
             record
                 .line()
                 .map(|n| n.to_string())
-                .unwrap_or(String::new()),
+                .unwrap_or_default(),
             record.args()
         );
     }

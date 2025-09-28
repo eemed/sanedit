@@ -151,7 +151,7 @@ impl<'a, T: ByteSource> Iterator for FinderIterRev<'a, T> {
                 }
                 return Some(match_pos);
             }
-            let shift = bc[haystack.get(self.pos) as usize] as u64;
+            let shift = bc[haystack.get(self.pos) as usize];
             if self.pos < shift {
                 break;
             } else {
@@ -271,7 +271,7 @@ impl<'a, T: ByteSource> Iterator for FinderIter<'a, T> {
                 self.pos += 1;
                 return Some(match_pos);
             }
-            self.pos += bc[haystack.get(self.pos + m - 1) as usize] as u64;
+            self.pos += bc[haystack.get(self.pos + m - 1) as usize];
         }
 
         None

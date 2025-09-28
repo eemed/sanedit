@@ -10,13 +10,13 @@ use super::{
 };
 
 pub(crate) fn popup_rect(screen: Rect, win: Rect, popup: &Popup) -> Rect {
-    let over = above(&screen, &win, &popup);
+    let over = above(&screen, &win, popup);
     let screen_point = popup.point + win.position();
     if !over.contains(&screen_point) {
         return over;
     }
 
-    let under = below(&screen, &win, &popup);
+    let under = below(&screen, &win, popup);
     if under.contains(&screen_point) {
         over
     } else {

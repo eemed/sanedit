@@ -6,7 +6,7 @@
 //
 // ucd-generate 0.3.1 is available on crates.io.
 
-pub const GENERAL_CATEGORY_ENUM: &'static [&'static str] = &[
+pub const GENERAL_CATEGORY_ENUM: &[&str] = &[
     "Close_Punctuation",
     "Connector_Punctuation",
     "Control",
@@ -39,7 +39,7 @@ pub const GENERAL_CATEGORY_ENUM: &'static [&'static str] = &[
     "Uppercase_Letter",
 ];
 
-pub const GENERAL_CATEGORY: &'static [(u32, u32, u8)] = &[
+pub const GENERAL_CATEGORY: &[(u32, u32, u8)] = &[
     (0, 31, 2),
     (32, 32, 24),
     (33, 35, 20),

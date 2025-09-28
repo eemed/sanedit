@@ -56,9 +56,9 @@ pub trait ByteSource {
     }
 }
 
-impl<'a> ByteSource for &'a str {
+impl ByteSource for &str {
     fn len(&self) -> u64 {
-        self.as_bytes().len() as u64
+        <str>::len(self) as u64
     }
 
     fn stop(&self) -> bool {
@@ -74,7 +74,7 @@ impl<'a> ByteSource for &'a str {
     }
 }
 
-impl<'a> ByteSource for &'a [u8] {
+impl ByteSource for &[u8] {
     fn len(&self) -> u64 {
         <[u8]>::len(self) as u64
     }

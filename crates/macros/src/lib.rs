@@ -106,7 +106,7 @@ fn parse_doc_comment(attrs: &[syn::Attribute]) -> Option<String> {
                     ..
                 }) = &name_value.value
                 {
-                    result.push_str(&doc.value().trim());
+                    result.push_str(doc.value().trim());
                     result.push('\n');
                 }
             }

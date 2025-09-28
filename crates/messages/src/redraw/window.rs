@@ -81,8 +81,7 @@ impl Window {
     pub fn get(&self, y: usize, x: usize) -> &Cell {
         self.cells
             .get(y)
-            .map(|line| line.get(x))
-            .flatten()
+            .and_then(|line| line.get(x))
             .unwrap_or(&self.empty)
     }
 

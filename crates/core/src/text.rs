@@ -238,8 +238,8 @@ pub fn paste_separate_cursor_lines(text: &str) -> Vec<(String, bool)> {
     }
 
     let mut result = vec![];
-    let mut iter = slices.into_iter().peekable();
-    while let Some(mut line) = iter.next() {
+    let iter = slices.into_iter().peekable();
+    for mut line in iter {
         let mut eol = false;
         if let Some(len) = eol_len(&line) {
             eol = true;

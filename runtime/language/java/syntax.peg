@@ -26,7 +26,6 @@ comment = line_comment / block_comment;
 line_comment = "//" (todo / (!nl .))* nl;
 block_comment = "/*" (todo / (!"*/" .))* "*/";
 
-
 preproc = annotation / preproc_words;
 @show @highlight(preproc)
 preproc_words = "import" &stop;

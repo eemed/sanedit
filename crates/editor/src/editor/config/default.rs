@@ -83,6 +83,7 @@ impl EditorConfig {
             ["**/Dockerfile", "**/Dockerfile.*"],
             []
         );
+        map!(d, "go", ["go"], [], []);
         map!(d, "gitcommit", [], ["**/.git/COMMIT_EDITMSG"], []);
         map!(d, "glsl", ["vert", "geom", "tesc", "tese", "comp"], [], []);
         map!(d, "javascript", ["js"], [], []);
@@ -107,6 +108,7 @@ impl EditorConfig {
         map!(d, "toml", [], ["**/Cargo.lock"], []);
         map!(d, "typescript", ["ts"], [], []);
         map!(d, "typescriptreact", ["tsx"], [], []);
+        map!(d, "vue", ["vue"], [], []);
         map!(d, "yaml", ["yml"], [], []);
 
         Arc::new(d)

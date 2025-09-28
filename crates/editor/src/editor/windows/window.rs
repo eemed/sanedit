@@ -234,8 +234,9 @@ impl Window {
 
         let old = self.bid;
         self.swap_bid(buf.id);
-        self.cursor_jumps.goto_start();
         self.reset();
+        self.cursor_jumps.goto_start();
+        self.view.options.tabstop = buf.config.tabstop;
         if let Some(aux) = self.visited_buffers.get(&self.bid).cloned() {
             self.restore(&aux, buf);
         }

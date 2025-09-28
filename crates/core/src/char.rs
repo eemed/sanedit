@@ -248,7 +248,7 @@ pub enum Replacement {
 pub struct DisplayOptions {
     pub width: usize,
     pub height: usize,
-    pub tabstop: u32,
+    pub tabstop: u8,
     pub replacements: FxHashMap<Replacement, char>,
 }
 

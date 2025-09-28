@@ -1,0 +1,9 @@
+comment = "// "
+
+language_server.command = "gopls"
+# language_server.args = ["--stdio"]
+
+[buffer]
+indent_kind = "Tab"
+indent_amount = 1
+tabstop = 4

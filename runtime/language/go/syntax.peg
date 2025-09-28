@@ -1,0 +1,95 @@
+document = (separated / alpha / ws+ / .)*;
+separated = keyword / string / comment / number / types / operator;
+stop = ws+ / "[" / "]" / "(" / ")" / ";" / "<" / ">" / "," / ":" / ".";
+alpha = [a..zA..Z0..9_]+;
+WHITESPACE = [ \t] / nl;
+nl = "\n" / "\r\n";
+ws = WHITESPACE;
+
+@show @highlight(warn)
+todo = "TODO" / "XXX";
+
+@show @highlight
+comment = line_comment / block_comment;
+line_comment = "//" (todo / (!nl .))* nl;
+block_comment = "/*" (todo / (!"*/" .))* "*/";
+
+@show @highlight
+operator = [\[\]{}():,.<>&|=+*/?!<>-];
+
+number = int / hex / octal / binary;
+int = "-"? digit+ ("." (digit / "_")+)? (("e" / "E") ("-" / "+")? digit+)? (("p" / "P") ("+" / "-")? digit+)? "i"?;
+hex = "-"? "0" ("x" / "X") (hexdigit / "_")+;
+octal = "-"? "0" ("o" / "O") (digit / "_")+;
+binary = "-"? "0" ("b" / "B") ("0" / "1" / "_")+;
+digit = [0..9];
+hexdigit = digit / [a..fA..F];
+
+@show @highlight
+string    = nstring / sstring / tstring;
+nstring    = "\"" (escape / [^"\n])* "\"";
+sstring    = "'"  (escape / [^'\n])* "'";
+tstring    = "`" (escape / [^`\n])* "`";
+@show @highlight(keyword)
+escape     = "\\" ("0" / "t" / "n" / "r" / "'" / "`" / "\"" / "\\" / "/");
+
+@show @highlight(constant)
+constant = (uppercase_constant / number / "true" / "false") &stop;
+uppercase_constant = [A..Z]+;
+
+@show @highlight(type)
+types = type_name / builtin_types;
+type_name = [A..Z] [a..zA..Z0..9_]+ &stop;
+builtin_types = (
+    "uint8" /
+    "uint16" /
+    "uint32" /
+    "uint64" /
+    "int8" /
+    "int16" /
+    "int32" /
+    "int64" /
+    "float32" /
+    "float64" /
+    "complex64" /
+    "complex128" /
+    "byte" /
+    "rune" /
+    "uint" /
+    "int" /
+    "uintptr"
+    "nil" /
+    "error"
+    ) &stop;
+
+keyword = words;
+
+@show @highlight(keyword)
+words = (
+    "break" /
+    "func" /
+    "default" /
+    "interface" /
+    "select" /
+    "defer" /
+    "go" /
+    "map" /
+    "struct" /
+    "else" /
+    "goto" /
+    "package" /
+    "switch" /
+    "fallthrough" /
+    "if" /
+    "range" /
+    "type" /
+    "for" /
+    "import" /
+    "return" /
+    "var" /
+    "make" /
+    "new" /
+    "recover" /
+    "panic" /
+    "iota"
+    ) &stop;

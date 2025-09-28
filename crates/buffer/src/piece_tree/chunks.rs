@@ -84,7 +84,7 @@ mod test {
     use super::*;
     use crate::PieceTree;
 
-    fn chunk(pos: u64, string: &str) -> Option<(u64, Chunk)> {
+    fn chunk<'a>(pos: u64, string: &'a str) -> Option<(u64, Chunk<'a>)> {
         let bytes = string.as_bytes().into();
         Some((pos, Chunk(bytes)))
     }

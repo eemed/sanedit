@@ -1,0 +1,189 @@
+document = separated*;
+separated = comment / style_tag / script_tag / macro / entity / tag / string / alpha / ws+ / . ;
+
+WHITESPACE = ws;
+ws = [ \t] / nl;
+nl = "\n" / "\r\n";
+alpha = [a..zA..Z0..9_-.]+;
+@show @highlight(warn)
+todo = "TODO" / "XXX";
+
+@show @highlight
+comment = "<!--" (!"-->" (todo / .))* "-->";
+
+@show @highlight(preproc)
+macro = "<!" (!">" .)* ">";
+
+@show @highlight(special)
+entity = "&" [^;]* ";";
+
+tag = tag_no_end / tag_open (!tag_close (separated / .))* tag_close / one_tag / tag_open / tag_close ;
+
+@whitespaced
+style_tag = "<" style attr* ">" style_content "</" style ">";
+@inject(css)
+style_content = (!("</" style ">") .)*;
+@show @highlight(identifier)
+style = "style";
+
+@whitespaced
+script_tag = "<" script attr* ">" script_content "</" script ">";
+@inject(javascript)
+script_content = (!("</" script ">") .)*;
+@show @highlight(identifier)
+script = "script";
+
+@whitespaced
+one_tag = "<" tag_name attr* "/>";
+@whitespaced
+tag_open = "<" tag_name attr* ">";
+@whitespaced
+tag_close = "</" tag_name ">";
+@whitespaced
+tag_no_end = "<" no_end attr* ">";
+
+@whitespaced
+attr = [a..zA..Z0..9._:-]+ ("=" string)?;
+@show @highlight
+string = nstring / sstring;
+nstring = "\"" (escape  / [^"])* "\"";
+escape = "\\" .;
+
+sstring = "'" (escape  / [^'])* "'";
+escape = "\\" .;
+
+@show @highlight(identifier)
+no_end = "meta" / "link";
+
+@show @highlight(identifier)
+tag_name =
+    "xmp" /
+    "wbr" /
+    "video" /
+    "var" /
+    "underline" /
+    "ul" /
+    "tt" /
+    "track" /
+    "tr" /
+    "title" /
+    "time" /
+    "thead" /
+    "th" /
+    "tfoot" /
+    "template" /
+    "td" /
+    "tbody" /
+    "table" /
+    "svg" /
+    "summary" /
+    "sub" /
+    "style" /
+    "strong" /
+    "strike" /
+    "span" /
+    "spacer" /
+    "source" /
+    "small" /
+    "section" /
+    "script" /
+    "samp" /
+    "ruby" /
+    "rt" /
+    "rp" /
+    "progress" /
+    "pre" /
+    "phrase" /
+    "path" /
+    "param" /
+    "paragraphs" /
+    "p" /
+    "output" /
+    "option" /
+    "optgroup" /
+    "ol" /
+    "object" /
+    "noscript" /
+    "noembed" /
+    "nobreak" /
+    "nav" /
+    "meter" /
+    "meta" /
+    "menuitem" /
+    "marquee" /
+    "mark" /
+    "main" /
+    "list" /
+    "link" /
+    "li" /
+    "legend" /
+    "label" /
+    "keygen" /
+    "kbd" /
+    "italic" /
+    "isindex" /
+    "ins" /
+    "input" /
+    "image" /
+    "html" /
+    "hr" /
+    "hgroup" /
+    "heading" /
+    "header" /
+    "head" /
+    "h6" /
+    "h5" /
+    "h4" /
+    "h3" /
+    "h2" /
+    "h1" /
+    "frameset" /
+    "frame" /
+    "form" /
+    "footer" /
+    "font" /
+    "figure" /
+    "figcaption" /
+    "fieldset" /
+    "embed" /
+    "dt" /
+    "dl" /
+    "div" /
+    "dir" /
+    "dialog" /
+    "details" /
+    "delete" /
+    "define" /
+    "dd" /
+    "datalist" /
+    "data" /
+    "comment" /
+    "column" /
+    "colgroup" /
+    "code" /
+    "cite" /
+    "center" /
+    "caption" /
+    "canvas" /
+    "button" /
+    "break" /
+    "bold" /
+    "body" /
+    "blockquote" /
+    "big" /
+    "bgsound" /
+    "bdo" /
+    "bdi" /
+    "basefont" /
+    "base" /
+    "audio" /
+    "aside" /
+    "article" /
+    "area" /
+    "applet" /
+    "anchor" /
+    "address" /
+    "acronym" /
+    "abbreviation" /
+    "Iframes"
+    ;

@@ -121,16 +121,34 @@ fn cursor_select_replacement() {
     // Cursor1:  |yyyy|
     // Cursor2:            |xxxx|
 
-    let mut cursors = vec![Cursor::new_select(1..5), Cursor::new_select(10..16)];
-    let changes = Changes::new(&[Change::replace(1..5, b"abcd"), Change::replace(10..16, b"efghd")]);
+    let mut cursors = vec![
+        Cursor::new_select(0..1),
+        Cursor::new_select(2..3),
+        Cursor::new_select(4..5),
+        Cursor::new_select(6..7),
+    ];
+    let changes = Changes::new(&[
+        Change::replace(0..1, b"a"),
+        Change::replace(2..3, b"b"),
+        Change::replace(4..5, b"c"),
+        Change::replace(6..7, b"d"),
+    ]);
     changes.move_cursors(&mut cursors, true);
     let cursor = &cursors[0];
-    assert_eq!(1, cursor.start());
-    assert_eq!(5, cursor.end());
+    assert_eq!(0, cursor.start());
+    assert_eq!(1, cursor.end());
 
     let cursor = &cursors[1];
-    assert_eq!(10, cursor.start());
-    assert_eq!(15, cursor.end());
+    assert_eq!(2, cursor.start());
+    assert_eq!(3, cursor.end());
+
+    let cursor = &cursors[2];
+    assert_eq!(4, cursor.start());
+    assert_eq!(5, cursor.end());
+
+    let cursor = &cursors[3];
+    assert_eq!(6, cursor.start());
+    assert_eq!(7, cursor.end());
 }
 
 #[test]
@@ -146,7 +164,11 @@ fn cursor_multi_insert() {
 #[test]
 fn cursor_multi_remove() {
     let mut cursors = vec![Cursor::new(1), Cursor::new(3), Cursor::new(5)];
-    let changes = Changes::multi_remove(&[BufferRange::from(0..1), BufferRange::from(2..3), BufferRange::from(4..5)]);
+    let changes = Changes::multi_remove(&[
+        BufferRange::from(0..1),
+        BufferRange::from(2..3),
+        BufferRange::from(4..5),
+    ]);
     changes.move_cursors(&mut cursors, true);
     assert_eq!(0, cursors[0].start());
     assert_eq!(1, cursors[1].start());

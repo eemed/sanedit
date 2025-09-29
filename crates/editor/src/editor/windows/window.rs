@@ -14,7 +14,7 @@ mod search;
 mod view;
 
 #[cfg(test)]
-mod tests;
+mod test;
 
 use std::{
     cmp::{max, min},

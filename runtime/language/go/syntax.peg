@@ -41,55 +41,55 @@ uppercase_constant = [A..Z]+;
 types = type_name / builtin_types;
 type_name = [A..Z] [a..zA..Z0..9_]+ &stop;
 builtin_types = (
+    "uintptr"
     "uint8" /
-    "uint16" /
-    "uint32" /
     "uint64" /
+    "uint32" /
+    "uint16" /
+    "uint" /
+    "rune" /
+    "nil" /
     "int8" /
-    "int16" /
-    "int32" /
     "int64" /
-    "float32" /
+    "int32" /
+    "int16" /
+    "int" /
     "float64" /
+    "float32" /
+    "error" /
     "complex64" /
     "complex128" /
-    "byte" /
-    "rune" /
-    "uint" /
-    "int" /
-    "uintptr"
-    "nil" /
-    "error"
+    "byte"
     ) &stop;
 
 keyword = words;
 
 @show @highlight(keyword)
 words = (
-    "break" /
-    "func" /
-    "default" /
-    "interface" /
-    "select" /
-    "defer" /
-    "go" /
-    "map" /
-    "struct" /
-    "else" /
-    "goto" /
-    "package" /
-    "switch" /
-    "fallthrough" /
-    "if" /
-    "range" /
-    "type" /
-    "for" /
-    "import" /
-    "return" /
     "var" /
-    "make" /
-    "new" /
+    "type" /
+    "switch" /
+    "struct" /
+    "select" /
+    "return" /
     "recover" /
+    "range" /
     "panic" /
-    "iota"
+    "package" /
+    "new" /
+    "map" /
+    "make" /
+    "iota" /
+    "interface" /
+    "import" /
+    "if" /
+    "goto" /
+    "go" /
+    "func" /
+    "for" /
+    "fallthrough" /
+    "else" /
+    "defer" /
+    "default" /
+    "break"
     ) &stop;

@@ -134,7 +134,6 @@ pub fn prev_word_start(slice: &PieceTreeSlice, mut pos: u64) -> u64 {
 pub fn next_word_end(slice: &PieceTreeSlice, mut pos: u64) -> u64 {
     let mut prev: Option<(GraphemeCategory, u64)> = None;
     let mut graphemes = slice.graphemes_at(pos);
-    pos += graphemes.next().map(|g| g.len()).unwrap_or(0);
 
     while let Some(g) = graphemes.next() {
         let cat = grapheme_category(&g);
@@ -156,7 +155,6 @@ pub fn next_word_end(slice: &PieceTreeSlice, mut pos: u64) -> u64 {
 pub fn next_word_end_next(slice: &PieceTreeSlice, mut pos: u64) -> u64 {
     let mut prev: Option<(GraphemeCategory, u64)> = None;
     let mut graphemes = slice.graphemes_at(pos);
-    pos += graphemes.next().map(|g| g.len()).unwrap_or(0);
 
     while let Some(g) = graphemes.next() {
         let cat = grapheme_category(&g);

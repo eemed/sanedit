@@ -123,6 +123,7 @@ impl UI {
         let win = self.grid.window();
         if win.contains(&ev.point) {
             ev.point = ev.point - win.position();
+            ev.element = Element::Window;
             return Some(Message::MouseEvent(ev));
         }
 

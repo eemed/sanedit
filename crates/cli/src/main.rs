@@ -42,7 +42,7 @@ impl Session {
 }
 
 /// command line options
-#[derive(FromArgs)]
+#[derive(Debug, FromArgs)]
 #[argh(help_triggers("-h", "--help", "help"))]
 struct Cli {
     /// file to open
@@ -129,7 +129,7 @@ fn main() {
     let existing_session = session.socket.try_exists().unwrap_or(false);
     let server_opts = ServerOptions {
         config_dir: cli.config_dir.clone(),
-        working_dir: cli.working_dir.clone(),
+        working_dir: working_dir(&cli),
         debug: cli.debug,
         addr: Address::UnixDomainSocket(session.socket.clone()),
     };
@@ -140,17 +140,25 @@ fn main() {
     } else if existing_session {
         // Try to connect if it doest work create a new one
         if let Some(opts) = connect_to_socket(&session.socket, client_opts) {
-            start_server_process(&cli, &session);
+            start_server_process(&cli, &session, server_opts);
             connect_to_socket(&session.socket, opts);
         }
     } else {
-        start_server_process(&cli, &session);
+        start_server_process(&cli, &session, server_opts);
         connect_to_socket(&session.socket, client_opts);
     }
 
     if let Some(log_file) = log_file {
         let _ = fs::remove_file(&log_file);
     }
+}
+
+fn working_dir(cli: &Cli) -> Option<PathBuf> {
+    cli.file
+        .as_ref()
+        .and_then(|f| f.canonicalize().ok())
+        .and_then(|f| if f.is_dir() { Some(f.clone()) } else { None })
+        .or(cli.working_dir.clone())
 }
 
 fn file_to_open(cli: &Cli) -> Option<InitialFile> {
@@ -160,7 +168,12 @@ fn file_to_open(cli: &Cli) -> Option<InitialFile> {
         Some(InitialFile::Stdin(buf))
     } else {
         let path = cli.file.as_ref()?;
-        Some(InitialFile::Path(path.clone()))
+        let path = path.canonicalize().ok()?;
+        if !path.is_dir() {
+            Some(InitialFile::Path(path.clone()))
+        } else {
+            None
+        }
     }
 }
 
@@ -231,7 +244,7 @@ fn next_available_session(sessions: &Path) -> Session {
     }
 }
 
-fn start_server_process(cli: &Cli, session: &Session) {
+fn start_server_process(cli: &Cli, session: &Session, server_opts: ServerOptions) {
     log::info!("Start server process..");
     let mut opts = vec!["sane", "--server-only", "--session", &session.name];
     if cli.debug {
@@ -243,7 +256,7 @@ fn start_server_process(cli: &Cli, session: &Session) {
         opts.push(dir);
     }
 
-    let working_dir = cli.working_dir.as_ref().map(|dir| dir.to_string_lossy());
+    let working_dir = server_opts.working_dir.as_ref().map(|dir| dir.to_string_lossy());
     if let Some(ref dir) = working_dir {
         opts.push("--working-dir");
         opts.push(dir);

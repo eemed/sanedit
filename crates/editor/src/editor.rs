@@ -532,7 +532,7 @@ impl Editor {
             Element::Window => {
                 let (win, _buf) = self.win_buf_mut(id);
                 if win.focus != Focus::Window {
-                    focus_with_mode(self, id, Focus::Filetree, Mode::Normal);
+                    focus_with_mode(self, id, Focus::Window, Mode::Normal);
                 }
                 let (win, buf) = self.win_buf_mut(id);
                 match event.kind {

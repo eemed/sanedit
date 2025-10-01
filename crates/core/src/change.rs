@@ -268,8 +268,6 @@ impl Changes {
     /// Cursors must be sorted
     /// Wont handle undo or redo
     pub fn move_cursors(&self, cursors: &mut [Cursor], reselect_replacement: bool) {
-        log::info!("MOVE CURSORS: {cursors:?}");
-        log::info!("MOVE CHANGES: {:?}", self.changes);
         let mut global_offset: i128 = 0;
         let changes: &[Change] = &self.changes;
         // Global change

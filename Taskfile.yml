@@ -59,7 +59,7 @@ tasks:
     cmds:
       - rm -f {{.DEBUG_SOCKET}}
       - rm -f {{.LOG_FILE}} {{.LOG_FILE_CLIENT}}
-      - cargo run --bin sane -- --server-only --session debug --debug --config-dir ../runtime &
+      - cargo run --bin sane -- --server-only --session debug --debug --config-dir ../runtime .. &
       - |
         until [ -e {{.DEBUG_SOCKET}} ]; do \
           sleep 0.1; \

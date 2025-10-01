@@ -8,11 +8,12 @@ use rustc_hash::FxHashMap;
 use sanedit_syntax::Glob;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+#[serde(default)]
 pub struct Detect {
     extensions: Vec<String>,
-    glob: Vec<String>,
-    shebang: Vec<String>,
+    globs: Vec<String>,
+    shebangs: Vec<String>,
 
     #[serde(skip)]
     compiled_globs: Arc<OnceLock<Vec<Glob>>>,
@@ -22,16 +23,16 @@ impl Detect {
     pub fn new(extensions: Vec<String>, globs: Vec<String>, shebangs: Vec<String>) -> Detect {
         Detect {
             extensions,
-            glob: globs,
-            shebang: shebangs,
+            globs,
+            shebangs,
             compiled_globs: Arc::new(OnceLock::new()),
         }
     }
 
     pub fn compile_globs(&self) -> &Vec<Glob> {
         self.compiled_globs.get_or_init(move || {
-            let mut globs = Vec::with_capacity(self.glob.len());
-            for pat in &self.glob {
+            let mut globs = Vec::with_capacity(self.globs.len());
+            for pat in &self.globs {
                 if let Ok(glob) = Glob::new(pat) {
                     globs.push(glob);
                 }
@@ -41,19 +42,17 @@ impl Detect {
     }
 
     pub fn merge(&mut self, detect: Detect) {
-        let extensions = std::mem::take(&mut self.extensions);
+    log::info!("MERGE: {detect:?}");
         self.extensions.extend(detect.extensions);
         self.extensions.dedup();
 
-        let glob = std::mem::take(&mut self.glob);
-        self.glob.extend(detect.glob);
-        self.glob.dedup();
+        self.globs.extend(detect.globs);
+        self.globs.dedup();
 
-        let shebang = std::mem::take(&mut self.shebang);
-        self.shebang.extend(detect.shebang);
-        self.shebang.dedup();
+        self.shebangs.extend(detect.shebangs);
+        self.shebangs.dedup();
 
-        *self = Detect::new(extensions, glob, shebang);
+        self.compiled_globs = Arc::new(OnceLock::new());
     }
 }
 
@@ -109,7 +108,7 @@ impl Language {
                 .and_then(|mut file| file.read(&mut buf).ok());
             if let Some(n) = n {
                 let read = &buf[..n];
-                for shebang in &detect.shebang {
+                for shebang in &detect.shebangs {
                     if read.starts_with(shebang.as_bytes()) {
                         return Some(Language {
                             name: ft.to_string(),

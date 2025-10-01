@@ -42,7 +42,6 @@ impl Detect {
     }
 
     pub fn merge(&mut self, detect: Detect) {
-    log::info!("MERGE: {detect:?}");
         self.extensions.extend(detect.extensions);
         self.extensions.dedup();
 

@@ -185,5 +185,6 @@ tag_name =
     "address" /
     "acronym" /
     "abbreviation" /
+    "a" /
     "Iframes"
     ;

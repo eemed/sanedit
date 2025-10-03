@@ -12,7 +12,7 @@ digit = [0..9];
 number = digit+ ("." digit+)?;
 
 @show @highlight
-preproc = "@" [a..zA..Z0..9]+;
+preproc = "@" [a..zA..Z0..9-]+;
 
 @show @highlight
 identifier = "$" [a..zA..Z0..9]+;
@@ -172,13 +172,11 @@ keyword =  (
     "offset" /
     "object-position" /
     "object-fit" /
-    "@namespace" /
     "mix-blend-mode" /
     "min-width" /
     "min-inline-size" /
     "min-height" /
     "min-block-size" /
-    "@media" /
     "max-width" /
     "max-inline-size" /
     "max-height" /
@@ -216,8 +214,6 @@ keyword =  (
     "line-break" /
     "letter-spacing" /
     "left" /
-    "@layer" /
-    "@keyframes" /
     "justify-self" /
     "justify-items" /
     "justify-content" /
@@ -231,7 +227,6 @@ keyword =  (
     "inset" /
     "inline-size" /
     "initial-letter" /
-    "@import" /
     "image-rendering" /
     "hyphens" /
     "hypenate-character" /
@@ -266,12 +261,10 @@ keyword =  (
     "font-stretch" /
     "font-size-adjust" /
     "font-size" /
-    "@font-palette-values" /
     "font-language-override" /
     "font-kerning" /
     "font-feature-settings" /
     "font-family" /
-    "@font-face" /
     "font" /
     "float" /
     "flex-wrap" /
@@ -286,12 +279,10 @@ keyword =  (
     "display" /
     "direction" /
     "cursor" /
-    "@counter-style" /
     "counter-set" /
     "counter-reset" /
     "counter-increment" /
     "content" /
-    "@container" /
     "column-width" /
     "column-span" /
     "columns" /
@@ -307,7 +298,6 @@ keyword =  (
     "clip-path" /
     "clip" /
     "clear" /
-    "@charset" /
     "caret-color" /
     "caption-side" /
     "break-inside" /

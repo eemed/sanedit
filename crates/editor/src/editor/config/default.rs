@@ -109,6 +109,7 @@ impl EditorConfig {
         map!(d, "typescript", ["ts"], [], []);
         map!(d, "typescriptreact", ["tsx"], [], []);
         map!(d, "vue", ["vue"], [], []);
+        map!(d, "xml", ["xml", "svg"], [], ["<?xml version=\"1.0\" encoding=\"UTF-8\"?>"]);
         map!(d, "yaml", ["yml"], [], []);
 
         Arc::new(d)

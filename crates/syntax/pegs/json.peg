@@ -21,7 +21,7 @@ object = "{" (member ("," member)*)? "}";
 @whitespaced
 member = identifier ":" value;
 
-@show @highlight
+@show @highlight(identifier)
 identifier = quote identifier_inner quote;
 
 @show @completion
@@ -36,7 +36,7 @@ string_inner = (escape / !"\"" .)*;
 escape = "\\" .;
 
 @whitespaced
-array = "[" value ("," value )* "]";
+array = "[" (value ("," value)*)? "]";
 
 @show @highlight(constant)
 number = "-"? integer ("." [0..9]+)?;

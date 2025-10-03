@@ -35,7 +35,7 @@ escape     = "\\" ("0" / "t" / "n" / "r" / "'" / "`" / "\"" / "\\" / "/");
 
 @show @highlight(constant)
 constant = (uppercase_constant / number / "true" / "false") &stop;
-uppercase_constant = [A..Z]+;
+uppercase_constant = [A..Z] [A..Z0..9_]+;
 
 @show @highlight(type)
 types = type_name / builtin_types;

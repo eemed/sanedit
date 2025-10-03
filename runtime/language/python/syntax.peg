@@ -16,7 +16,7 @@ keyword = ( "continue" / "def" / "del" / "elif" / "else" / "except" /
 
 @show @highlight
 constant = uppercase_constant / number / "False" / "True" / "None";
-uppercase_constant = [A..Z] [A..Z_]+ &break;
+uppercase_constant = [A..Z] [A..Z0..9_]+ &break;
 
 number = "-"? digit+ ("." digit+)? / "0x" hexdigit+;
 digit = [0..9];

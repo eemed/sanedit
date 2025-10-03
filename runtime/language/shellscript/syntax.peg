@@ -10,7 +10,7 @@ sstring = "'" [^'\n]* "'";
 
 @show @highlight(identifier)
 identifier = var / var2;
-var = "$" [A..Za..z0..9_]+ ![A..Za..z0..9_];
+var = "$" ([A..Za..z0..9_]+ ![A..Za..z0..9_] / "#" / "@");
 var2 = "${" (!"}" .)* "}";
 
 @show @highlight

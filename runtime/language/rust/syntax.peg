@@ -32,7 +32,7 @@ tuple = [a..z]+ "." number &stop;
 # Strings
 @show @highlight
 string = char / sstring / rawstring;
-char = "b"? "'" (ch_block / escape / .) "'";
+char = "b"? "'" (ch_block / escape / [\u{0}..\u{10ffff}]) "'";
 ch_block = "\\" . "{" (!"}" .)* "}";
 sstring = ("b" / "c")? "\"" (escape / replace / [^"])* "\"";
 rawstring = "r#\"" (escape / (!"\"#" .))* "\"#";

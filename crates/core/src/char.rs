@@ -263,7 +263,7 @@ impl DisplayOptions {
         use Replacement::*;
 
         const DEFAULT: [(Replacement, char); 7] = [
-            (Tab, '⭢'),
+            (Tab, ' '),
             (TabFill, ' '),
             (EOL, ' '),
             (BufferEnd, '~'),

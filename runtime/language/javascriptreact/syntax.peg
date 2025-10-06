@@ -71,7 +71,7 @@ tagattr_eq = "=";
 attrvalue = string / block_open (!block_close document_items)* block_close;
 
 @show @highlight(default)
-attrname = [a..zA..Z0..9_-]+;
+attrname = [a..zA..Z0..9_:@-]+;
 
 @show @highlight(preproc)
 preproc = preproc_words;
@@ -81,65 +81,136 @@ special = "console" &(ws / ".");
 
 end = ws / ";" / "(" / "." / ":" / "=" / ",";
 @show @highlight(keyword)
-keyword =  words / simple_words / "default" &(ws / ":");
-simple_words = ("yield" / "await" / "instanceof" / "break"/ "extends" / "static" / "const" / "async" / "return"/ "in" / "of" / "continue" / "let" / "var" ) &(ws / ";");
-words = ("constructor" / "while"  / "constructor" / "class"   / "if" / "else" / "for"  / "switch" / "case" / "function" "*"? / "with" / "this" /  "try" / "catch" !"(" /  "throw" / "new") &end;
+keyword =  words / "default" &(ws / ":");
+words = (
+    "yield" /
+    "with" /
+    "while" /
+    "void" /
+    "var" /
+    "unknown" /
+    "typeof" /
+    "type" /
+    "try" /
+    "true" /
+    "throw" /
+    "this" /
+    "switch" /
+    "super" /
+    "static" /
+    "set" /
+    "return" /
+    "require" /
+    "readonly" /
+    "public" /
+    "protected" /
+    "private" /
+    "package" /
+    "of" /
+    "null" /
+    "new" /
+    "never" /
+    "namespace" /
+    "module" /
+    "let" /
+    "keyof" /
+    "is" /
+    "interface" /
+    "instanceof" /
+    "infer" /
+    "in" /
+    "implements" /
+    "if" /
+    "get" /
+    "function" /
+    "for" /
+    "finally" /
+    "false" /
+    "extends" /
+    "enum" /
+    "else" /
+    "do" /
+    "delete" /
+    "declare" /
+    "debugger" /
+    "continue" /
+    "constructor" /
+    "const" /
+    "class" /
+    "catch"  !"("/
+    "case" /
+    "break" /
+    "await" /
+    "async" /
+    "asserts" /
+    "any" /
+    "abstract")
+    &end;
+
 
 @show @highlight(type)
 types =  (
-    "Object" /
-    "Function" /
-    "Boolean" /
-    "Symbol" /
-    "Error" /
-    "AggregateError" /
-    "EvalError" /
-    "RangeError" /
-    "ReferenceError" /
-    "SyntaxError" /
-    "TypeError" /
-    "URIError" /
-    "InternalError " /
-    "Number" /
-    "BigInt" /
-    "Math" /
-    "Date" /
-    "Temporal" /
-    "String" /
-    "RegExp" /
-    "TypedArray" /
-    "Int8Array" /
-    "Uint8Array" /
-    "Uint8ClampedArray" /
-    "Int16Array" /
-    "Uint16Array" /
-    "Int32Array" /
-    "Uint32Array" /
-    "BigInt64Array" /
-    "BigUint64Array" /
-    "Float16Array" /
-    "Float32Array" /
-    "Float64Array" /
-    "Map" /
-    "Set" /
-    "WeakMap" /
+    "undefined" /
+    "symbol" /
+    "string" /
+    "object" /
+    "number" /
+    "boolean" /
     "WeakSet" /
-    "ArrayBuffer" /
-    "SharedArrayBuffer" /
-    "DataView" /
-    "Atomics" /
-    "JSON" /
-    "Array" /
     "WeakRef" /
-    "FinalizationRegistry" /
-    "Iterator" /
-    "AsyncIterator" /
+    "WeakMap" /
+    "Uint8ClampedArray" /
+    "Uint8Array" /
+    "Uint32Array" /
+    "Uint16Array" /
+    "URIError" /
+    "TypedArray" /
+    "TypeError" /
+    "Temporal" /
+    "SyntaxError" /
+    "Symbol" /
+    "String" /
+    "SharedArrayBuffer" /
+    "Set" /
+    "RegExp" /
+    "Reflect" /
+    "ReferenceError" /
+    "RangeError" /
+    "Proxy" /
     "Promise" /
+    "Object" /
+    "Number" /
+    "Math" /
+    "Map" /
+    "JSON" /
+    "Iterator" /
+    "Intl" /
+    "InternalError " /
+    "Int8Array" /
+    "Int32Array" /
+    "Int16Array" /
     "GeneratorFunction" /
-    "AsyncGeneratorFunction" /
     "Generator" /
+    "Function" /
+    "Float64Array" /
+    "Float32Array" /
+    "Float16Array" /
+    "FinalizationRegistry" /
+    "EvalError" /
+    "Error" /
+    "Date" /
+    "DataView" /
+    "Boolean" /
+    "BigUint64Array" /
+    "BigInt64Array" /
+    "BigInt" /
+    "Atomics" /
+    "AsyncIterator" /
+    "AsyncGeneratorFunction" /
     "AsyncGenerator" /
     "AsyncFunction" /
-    "Reflect" /
-    "Proxy" /
-    "Intl") &end;
+    "ArrayBuffer" /
+    "Array" /
+    "AggregateError" /
+    "bigint"
+    ) &end;

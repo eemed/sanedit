@@ -1,2 +1,4 @@
 comment = "<!-- "
 comment_end = " -->"
+
+language_server.command = "vls"

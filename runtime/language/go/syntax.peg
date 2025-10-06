@@ -29,7 +29,7 @@ hexdigit = digit / [a..fA..F];
 string    = nstring / sstring / tstring;
 nstring    = "\"" (escape / [^"\n])* "\"";
 sstring    = "'"  (escape / [^'\n])* "'";
-tstring    = "`" (escape / [^`\n])* "`";
+tstring    = "`" (escape / [^`])* "`";
 @show @highlight(keyword)
 escape     = "\\" ("0" / "t" / "n" / "r" / "'" / "`" / "\"" / "\\" / "/");
 
@@ -91,5 +91,7 @@ words = (
     "else" /
     "defer" /
     "default" /
+    "const" /
+    "case" /
     "break"
     ) &stop;

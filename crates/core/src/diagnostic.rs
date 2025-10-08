@@ -10,12 +10,10 @@ pub struct Diagnostic {
 
 impl Diagnostic {
     pub fn new(severity: Severity, range: BufferRange, line: u64, description: &str) -> Diagnostic {
-        // Keep byteoffset the same
-        let description = description.replace("\t", " ").replace("\n", " ");
         Diagnostic {
             severity,
             range,
-            description,
+            description: description.into(),
             line,
         }
     }

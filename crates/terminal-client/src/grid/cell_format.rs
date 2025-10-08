@@ -1,7 +1,11 @@
 use sanedit_messages::redraw::{Cell, Style};
 
 pub(crate) fn into_cells(string: &str) -> Vec<Cell> {
-    string.chars().map(Cell::from).collect()
+    string
+        .chars()
+        .map(|c| if c.is_control() { ' ' } else { c })
+        .map(Cell::from)
+        .collect()
 }
 
 pub(crate) fn into_cells_with_style(string: &str, style: Style) -> Vec<Cell> {

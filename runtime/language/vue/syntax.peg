@@ -43,7 +43,27 @@ tag_close = "</" tag_name ">";
 tag_no_end = "<" no_end attr* ">";
 
 @whitespaced
-attr = [a..zA..Z0..9._:-]+ ("=" string)?;
+attr = attrname ("=" string)?;
+attrname = special_attr / [a..zA..Z0..9_:@-]+;
+@show @highlight(keyword)
+special_attr = ("@" / ":") [a..zA..Z0..9_:@-]+ / vattrs;
+vattrs =
+    "v-text" /
+    "v-slot" /
+    "v-show" /
+    "v-pre" /
+    "v-once" /
+    "v-on" /
+    "v-model" /
+    "v-memo" /
+    "v-if" /
+    "v-html" /
+    "v-for" /
+    "v-else-if" /
+    "v-else" /
+    "v-cloak" /
+    "v-bind"
+    ;
 @show @highlight
 string = nstring / sstring;
 nstring = "\"" (escape  / [^"])* "\"";

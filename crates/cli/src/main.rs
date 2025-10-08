@@ -168,7 +168,7 @@ fn file_to_open(cli: &Cli) -> Option<InitialFile> {
         Some(InitialFile::Stdin(buf))
     } else {
         let path = cli.file.as_ref()?;
-        let path = path.canonicalize().ok()?;
+        let path = path.canonicalize().ok().unwrap_or(path.clone());
         if !path.is_dir() {
             Some(InitialFile::Path(path.clone()))
         } else {

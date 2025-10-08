@@ -37,6 +37,7 @@ escape     = "\\" ("0" / "t" / "n" / "r" / "'" / "`" / "\"" / "\\" / "/");
 constant = (uppercase_constant / number / "true" / "false") &stop;
 uppercase_constant = [A..Z] [A..Z0..9_]+;
 
+# Can actually be functions or types but ok
 @show @highlight(type)
 types = (type_name / builtin_types) !"(";
 type_name = [A..Z] [a..zA..Z0..9_]* &stop;
@@ -47,6 +48,7 @@ builtin_types = (
     "uint32" /
     "uint16" /
     "uint" /
+    "string"
     "rune" /
     "nil" /
     "int8" /
@@ -59,7 +61,8 @@ builtin_types = (
     "error" /
     "complex64" /
     "complex128" /
-    "byte"
+    "byte" /
+    "bool"
     ) &stop;
 
 keyword = words;
@@ -92,6 +95,7 @@ words = (
     "defer" /
     "default" /
     "const" /
+    "chan" /
     "case" /
     "break"
     ) &stop;

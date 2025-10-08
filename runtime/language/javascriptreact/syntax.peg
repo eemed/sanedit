@@ -79,9 +79,9 @@ preproc_words = ("import" / "from" / "export" / "default" !":" / "as") &ws;
 @show @highlight(special)
 special = "console" &(ws / ".");
 
-end = ws / ";" / "(" / "." / ":" / "=" / ",";
+end = ws / ";" / "(" / "." / "=" / ",";
 @show @highlight(keyword)
-keyword =  words / "default" &(ws / ":");
+keyword =  words / ("case" / "default") &(ws / ":");
 words = (
     "yield" /
     "with" /
@@ -92,7 +92,6 @@ words = (
     "typeof" /
     "type" /
     "try" /
-    "true" /
     "throw" /
     "this" /
     "switch" /
@@ -107,7 +106,6 @@ words = (
     "private" /
     "package" /
     "of" /
-    "null" /
     "new" /
     "never" /
     "namespace" /
@@ -125,7 +123,6 @@ words = (
     "function" /
     "for" /
     "finally" /
-    "false" /
     "extends" /
     "enum" /
     "else" /
@@ -138,7 +135,6 @@ words = (
     "const" /
     "class" /
     "catch"  !"("/
-    "case" /
     "break" /
     "await" /
     "async" /
@@ -150,7 +146,6 @@ words = (
 
 @show @highlight(type)
 types =  (
-    "undefined" /
     "symbol" /
     "string" /
     "object" /

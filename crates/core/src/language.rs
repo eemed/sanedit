@@ -82,15 +82,15 @@ impl Language {
                 });
             }
 
-            if let Some(ext) = path.extension() {
-                if let Some(ext) = ext.to_str() {
-                    for dext in &detect.extensions {
-                        if ext == dext {
-                            return Some(Language {
-                                name: ft.to_string(),
-                            });
-                        }
-                    }
+            let ext = path
+                .extension()
+                .and_then(std::ffi::OsStr::to_str)
+                .unwrap_or(pattern.as_ref());
+            for dext in &detect.extensions {
+                if ext == dext {
+                    return Some(Language {
+                        name: ft.to_string(),
+                    });
                 }
             }
 

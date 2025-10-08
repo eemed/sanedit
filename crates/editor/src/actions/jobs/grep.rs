@@ -6,7 +6,6 @@ use std::sync::Arc;
 use std::thread;
 use std::time::{Duration, Instant};
 
-use sanedit_buffer::utf8::EndOfLine;
 use sanedit_buffer::{PieceTree, PieceTreeSlice, PieceTreeView};
 use sanedit_core::movement::{end_of_line, start_of_line};
 use sanedit_core::{Group, Item, Range, SearchMatch, Searcher};
@@ -232,16 +231,9 @@ impl Grep {
             Range::from(range.start as usize..range.end as usize)
         };
 
-        let text = {
-            let line = EndOfLine::strip_eol(&line);
-            let line = String::from(&line);
-            // Keep byteoffset the same
-            line.replace("\t", " ").replace("\n", " ")
-        };
-
         GrepMatch {
             line: None,
-            text,
+            text: String::from(&line),
             matches: vec![line_mat],
             absolute_offset: Some(line.start()),
         }

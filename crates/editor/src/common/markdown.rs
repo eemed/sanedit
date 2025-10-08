@@ -31,6 +31,7 @@ pub(crate) fn render_markdown_to_popup(
 }
 
 fn render_markdown(text: &str, syn: &Syntax, theme: &Theme) -> anyhow::Result<Vec<Vec<Cell>>> {
+    // Replace tabs with spaces
     let text = text.replace("\t", "    ");
     let parser = syn.get_parser();
     let captures = parser.parse(text.as_str())?;

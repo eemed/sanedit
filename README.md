@@ -18,7 +18,7 @@ SanEdit is a UTF-8 text editor inspired by [Neovim](https://neovim.io/), [Emacs]
 * Align cursors
 * Automatic indentation
 * Automatic pair insertion on enter
-* Syntax highlighting using JPEGs
+* Syntax highlighting using PEGs
     * Regex and glob patterns are handled by converting them to PEGs
     * JIT compiler for PEG patterns to improve performance
 * Jumps

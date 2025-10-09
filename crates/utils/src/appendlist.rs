@@ -84,6 +84,32 @@ struct List<T> {
     buckets: [Bucket<T>; BUCKET_COUNT],
 }
 
+impl<T> Drop for List<T> {
+    fn drop(&mut self) {
+        let len = self.len.load(Ordering::Acquire);
+        let mut remaining = len;
+
+        for bucket in self.buckets.iter_mut() {
+            if remaining == 0 {
+                break;
+            }
+
+            if let Some(bucket_cell) = bucket.get_mut() {
+                let bucket = unsafe { &mut *bucket_cell.get() };
+                let bucket_len = bucket.len().min(remaining);
+
+                for j in 0..bucket_len {
+                    unsafe {
+                        std::ptr::drop_in_place(bucket[j].as_mut_ptr());
+                    }
+                }
+
+                remaining -= bucket_len;
+            }
+        }
+    }
+}
+
 unsafe impl<T: Send> Send for List<T> {}
 unsafe impl<T: Sync + Send> Sync for List<T> {}
 
@@ -204,7 +230,7 @@ impl<T> Appendlist<T> {
         let loc = BucketLocation::of(range.start);
         let end = BucketLocation::of(range.end);
         debug_assert!(
-            (loc.bucket == end.bucket) || (loc.bucket + 1 == end.bucket  && end.pos == 0),
+            (loc.bucket == end.bucket) || (loc.bucket + 1 == end.bucket && end.pos == 0),
             "Slicing from different buckets slice: {range:?}, start: {loc:?}, end: {end:?}"
         );
 
@@ -351,5 +377,21 @@ impl<T> Reader<T> {
 
     pub fn is_empty(&self) -> bool {
         self.list.is_empty()
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn appendlist_push_read() {
+        let (read, write) = Appendlist::split();
+
+        write.append_slice(&[1, 2]);
+        write.append_vec(vec![3, 4]);
+
+        let items = read.slice(0..4);
+        assert_eq!(items, &[1, 2, 3, 4])
     }
 }

@@ -121,6 +121,10 @@ impl Terminal {
     }
 
     fn set_text_style(&mut self, style: Option<TextStyle>) -> Result<()> {
+        if self.brush.text_style == style {
+            return Ok(());
+        }
+
         queue!(self.out, style::SetAttribute(style::Attribute::Reset))?;
 
         if let Some(style) = style {

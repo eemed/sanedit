@@ -7,7 +7,6 @@ use std::{
     },
 };
 
-use dirs_2 as dirs;
 use rustc_hash::FxHashSet;
 
 const TMP_DIR: &str = "tmp";
@@ -132,12 +131,26 @@ impl Default for ConfigDirectory {
 }
 
 fn config_dir() -> Option<PathBuf> {
-    let config = dirs::config_dir()?;
+    let config = std::env::var("XDG_CONFIG_HOME")
+        .map(PathBuf::from)
+        .ok()
+        .or_else(|| {
+            std::env::var("HOME")
+                .ok()
+                .map(|home| PathBuf::from(home).join(".config"))
+        })?;
     Some(config.join(SANE_DIR))
 }
 
 fn data_dir() -> Option<PathBuf> {
-    let data = dirs::data_dir()?;
+    let data = std::env::var("XDG_DATA_HOME")
+        .map(PathBuf::from)
+        .ok()
+        .or_else(|| {
+            std::env::var("HOME")
+                .ok()
+                .map(|home| PathBuf::from(home).join(".local/share"))
+        })?;
     Some(data.join(SANE_DIR))
 }
 

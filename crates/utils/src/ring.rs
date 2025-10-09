@@ -124,6 +124,20 @@ impl<T, const N: usize> RingBuffer<T, N> {
     }
 }
 
+impl<T, const N: usize> Drop for RingBuffer<T, N> {
+    fn drop(&mut self) {
+        let mut idx = self.read;
+        while idx != self.write {
+            // SAFETY: The range from read to write contains initialized elements
+            unsafe {
+                let ptr = self.items[idx].as_mut_ptr();
+                std::ptr::drop_in_place(ptr);
+            }
+            idx = (idx + 1) % N;
+        }
+    }
+}
+
 /// Sometimes random access to a ring is needed
 /// This trait provides a way to reference items in a Weak ref manner.
 /// This avoids allocation for each element that would be needed with Rc or Arc.

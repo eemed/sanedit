@@ -446,6 +446,7 @@ mod test {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn parse_any_utf8() {
         let peg = r"any = [\u{0}..\u{10ffff}];";
         let parser = ParsingMachine::from_read(std::io::Cursor::new(peg)).unwrap();

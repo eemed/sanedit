@@ -34,7 +34,7 @@ impl Window {
     pub fn new(width: usize, height: usize, cell: Cell) -> Window {
         Self {
             cursor: None,
-            cells: vec![vec![]; width],
+            cells: vec![Vec::with_capacity(width); height],
             empty: cell,
             width: width as u32,
             height: height as u32,

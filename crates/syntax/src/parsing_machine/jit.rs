@@ -916,6 +916,7 @@ mod test {
     use super::*;
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn jit_validate() {
         let mut ops = dynasmrt::x64::Assembler::new().unwrap();
         let haystack = "\u{0400}".as_bytes();
@@ -966,6 +967,7 @@ mod test {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn jit_rust() {
         let peg = include_str!("../../../../runtime/language/rust/syntax.peg");
         let jit = Jit::from_read(std::io::Cursor::new(peg)).expect("Failed to create JIT");
@@ -1008,6 +1010,7 @@ mod test {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn jit_json() {
         let rules = include_str!("../../pegs/json.peg");
         let jit = Jit::from_read(std::io::Cursor::new(rules)).expect("Failed to create JIT");
@@ -1021,6 +1024,7 @@ mod test {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn jit_toml() {
         let rules = include_str!("../../pegs/toml.peg");
         let jit = Jit::from_read(std::io::Cursor::new(rules)).expect("Failed to create JIT");
@@ -1040,6 +1044,7 @@ mod test {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn jit_match_1() {
         let rules = r#"document = "abc";"#;
         let jit = Jit::from_read(std::io::Cursor::new(rules)).unwrap();
@@ -1048,6 +1053,7 @@ mod test {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn jit_match_2() {
         let rules = r#"document = ("amet" / .)*;"#;
         let jit = Jit::from_read(std::io::Cursor::new(rules)).unwrap();
@@ -1056,6 +1062,7 @@ mod test {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn jit_match_3() {
         let rules = r#"
             document = (amet / .)*;
@@ -1069,6 +1076,7 @@ mod test {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn jit_match_4() {
         let rules = r#"@show document = ("amet" / .)*;"#;
         let jit = Jit::from_read(std::io::Cursor::new(rules)).unwrap();
@@ -1077,6 +1085,7 @@ mod test {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn jit_match_5() {
         let rules = Regex::parse_rules("(a|ab)*c").unwrap();
         let parser = ParsingMachine::from_rules_unanchored(rules.0).unwrap();
@@ -1087,6 +1096,7 @@ mod test {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn jit_match_6() {
         let rules = Regex::parse_rules("a").unwrap();
         let parser = ParsingMachine::from_rules_unanchored(rules.0).unwrap();
@@ -1097,6 +1107,7 @@ mod test {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn jit_no_match_1() {
         let rules = r#"document = "abc";"#;
         let jit = Jit::from_read(std::io::Cursor::new(rules)).unwrap();

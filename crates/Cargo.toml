@@ -28,7 +28,6 @@ chrono        = "0.4"
 criterion     = "0.7.0" # Benchmarking
 crossbeam     = "0.8.4" # Can be replaced when crossbeam_channel::Select comes to std
 crossterm     = "0.29.0"
-dirs-2        = "3.0.1"
 dynasm        = "4.0.1"
 dynasmrt      = "4.0.1"
 futures-core  = "0.3"

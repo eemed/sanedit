@@ -49,11 +49,10 @@ impl Theme {
     }
 
     pub fn get<S: AsRef<str>>(&self, path: S) -> Style {
-        let path: Vec<&str> = path.as_ref().split(Self::SEPARATOR).collect();
         let mut node = &self.node;
         let mut cur = *node.style();
 
-        for comp in path {
+        for comp in path.as_ref().split(Self::SEPARATOR) {
             match node {
                 ThemeNode::Node { nodes, .. } => {
                     if let Some(n) = nodes.get(comp) {

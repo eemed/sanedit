@@ -208,6 +208,29 @@ tasks:
       - sudo apt remove -y sanedit
       - sudo apt install -y ./deb/sanedit_*.deb
 
+  heaptrack-server:
+    desc: Track allocations using heaptrack
+    dir: crates
+    cmds:
+      - RUSTFLAGS=-g cargo build --profile perf
+      - echo "Attach to debug session now"
+      - heaptrack target/perf/sane --server-only --session debug
+      - rm -f *.zst
+
+  heaptrack-client:
+    desc: Track allocations using heaptrack
+    dir: crates
+    cmds:
+      - RUSTFLAGS=-g cargo build --profile perf
+      - heaptrack target/perf/sane --session debug
+      - rm -f *.zst
+
+  miri:
+    desc: Run miri on test cases to find out bugs
+    dir: crates
+    cmds:
+      - RUST_BACKTRACE=1 MIRIFLAGS="-Zmiri-disable-isolation" cargo +nightly miri test
+
   default:
     cmds:
       - task -l

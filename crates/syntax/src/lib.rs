@@ -151,13 +151,13 @@ impl ParserKind {
     }
 
     fn from_ops(rules: Rules, ops: Program) -> Result<ParserKind, ParseError> {
-        if !Jit::is_available() {
+        // if !Jit::is_available() {
             let parser = ParsingMachine::new(rules, ops);
             return Ok(ParserKind::Interpreted(parser));
-        }
+        // }
 
-        let jit = Jit::new(rules, ops);
-        Ok(ParserKind::Jit(jit))
+        // let jit = Jit::new(rules, ops);
+        // Ok(ParserKind::Jit(jit))
     }
 
     fn from_rules_unanchored(rules: Rules) -> Result<ParserKind, ParseError> {

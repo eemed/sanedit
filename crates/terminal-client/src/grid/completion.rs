@@ -5,7 +5,6 @@ use sanedit_messages::redraw::{completion::Completion, Cell, Point, Size, Style,
 use crate::ui::UIContext;
 
 use super::{
-    cell_format::into_cells_with_style,
     drawable::{DrawCursor, Drawable, Subgrid},
     Rect,
 };
@@ -164,7 +163,7 @@ impl Drawable for CustomCompletion {
     fn draw(&self, ctx: &UIContext, mut grid: Subgrid) {
         let wsize = grid.size();
         let max_opts = wsize.height;
-        let pad_left = ctx.rect.x != 0;
+        let left_pad = ctx.rect.x != 0;
         self.completion
             .choices
             .iter()
@@ -182,17 +181,16 @@ impl Drawable for CustomCompletion {
                 let style = ctx.style(field);
                 let dstyle = ctx.style(dfield);
 
-                let line = format_completion(
-                    &opt.text,
-                    &opt.description,
-                    style,
+                let opts = CompletionFormatOptions {
+                    line: i,
+                    x: 0,
+                    mstyle: style,
                     dstyle,
-                    wsize.width,
-                    pad_left,
-                    &self.column_max_width,
-                );
-
-                grid.put_line(i, line);
+                    width: wsize.width,
+                    left_pad,
+                    max_columns: &self.column_max_width,
+                };
+                format_completion(&mut grid, &opt.text, &opt.description, &opts);
             });
     }
 
@@ -201,50 +199,75 @@ impl Drawable for CustomCompletion {
     }
 }
 
-pub(crate) fn format_completion(
-    left: &str,
-    right: &str,
+pub(crate) struct CompletionFormatOptions<'a> {
+    line: usize,
+    x: usize,
     mstyle: Style,
     dstyle: Style,
     width: usize,
     left_pad: bool,
-    max_columns: &[usize],
-) -> Vec<Cell> {
-    let left = {
-        let mut lleft = String::new();
-        if left_pad {
-            lleft.push(' ');
+    max_columns: &'a [usize],
+}
+
+pub(crate) fn format_completion<'a>(
+    grid: &mut Subgrid<'_, '_>,
+    left: &str,
+    right: &str,
+    opts: &CompletionFormatOptions<'a>,
+) {
+    let CompletionFormatOptions {
+        mstyle,
+        dstyle,
+        width,
+        left_pad,
+        max_columns,
+        x: ox,
+        line,
+    } = opts;
+    let mut x = *ox;
+
+    if *left_pad {
+        grid.replace(*line, x, Cell::with_style(*mstyle));
+        x += 1;
+    }
+
+    for ch in left
+        .chars()
+        .map(|ch| if ch.is_control() { ' ' } else { ch })
+    {
+        if x >= *width {
+            break;
         }
 
-        lleft.push_str(left);
-        // Fill space between
-        let n = lleft.chars().count();
-        let mut i = 0;
-        let pad_to = max_columns[0] + if left_pad { 1 } else { 0 };
-        while i + n < pad_to {
-            lleft.push(' ');
-            i += 1;
+        grid.replace(*line, x, Cell::new_char(ch, *mstyle));
+        x += 1;
+    }
+
+    let pad_to = max_columns[0] + if *left_pad { 1 } else { 0 };
+    while x < pad_to {
+        grid.replace(*line, x, Cell::with_style(*mstyle));
+        x += 1;
+    }
+
+    if x < *width {
+        grid.replace(*line, x, Cell::with_style(*mstyle));
+        x += 1;
+    }
+
+    for ch in right
+        .chars()
+        .map(|ch| if ch.is_control() { ' ' } else { ch })
+    {
+        if x >= *width {
+            break;
         }
 
-        lleft.push(' ');
-        into_cells_with_style(&lleft, mstyle)
-    };
+        grid.replace(*line, x, Cell::new_char(ch, *dstyle));
+        x += 1;
+    }
 
-    let right = {
-        let mut right = right.to_string();
-        let n = right.chars().count();
-        let mut i = 0;
-        while i + n < width {
-            right.push(' ');
-            i += 1;
-        }
-
-        into_cells_with_style(&right, dstyle)
-    };
-
-    let mut result = left;
-    result.extend(right);
-    result.truncate(width);
-
-    result
+    while x < *width {
+        grid.replace(*line, x, Cell::with_style(*mstyle));
+        x += 1;
+    }
 }

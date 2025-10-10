@@ -9,7 +9,6 @@ use sanedit_messages::redraw::{
 use crate::{grid::border::Border, ui::UIContext};
 
 use super::{
-    cell_format::{center_pad, into_cells_with_style, pad_line},
     drawable::{DrawCursor, Drawable, Subgrid},
     Rect,
 };
@@ -76,20 +75,47 @@ impl CustomPrompt {
 impl Drawable for CustomPrompt {
     fn draw(&self, ctx: &UIContext, mut grid: Subgrid) {
         let wsize = grid.size();
+        let width = wsize.width;
 
         match self.style {
             PromptStyle::Oneline => {
                 let default_style = ctx.theme.get(ThemeField::PromptDefault);
                 let input_style = ctx.theme.get(ThemeField::PromptUserInput);
                 let message_style = ctx.theme.get(ThemeField::PromptMessage);
-                let mut message = into_cells_with_style(&self.prompt.message, message_style);
-                let colon = into_cells_with_style(": ", message_style);
-                message.extend(colon);
+                let y = 0;
+                let mut x = 0;
 
-                let input = into_cells_with_style(&self.prompt.input, input_style);
-                message.extend(input);
-                pad_line(&mut message, default_style, wsize.width);
-                grid.put_line(0, message);
+                for ch in self.prompt.message.chars() {
+                    if x >= width {
+                        break;
+                    }
+
+                    grid.replace(y, x, Cell::new_char(ch, message_style));
+                    x += 1;
+                }
+
+                if x < width {
+                    grid.replace(y, x, Cell::new_char(':', message_style));
+                    x += 1;
+                }
+                if x < width {
+                    grid.replace(y, x, Cell::new_char(' ', message_style));
+                    x += 1;
+                }
+
+                for ch in self.prompt.input.chars() {
+                    if x >= width {
+                        break;
+                    }
+
+                    grid.replace(y, x, Cell::new_char(ch, input_style));
+                    x += 1;
+                }
+
+                while x < width {
+                    grid.replace(y, x, Cell::with_style(default_style));
+                    x += 1;
+                }
 
                 let max_opts = wsize.height.saturating_sub(1);
                 for (i, opt) in self.prompt.options.iter().take(max_opts).enumerate() {
@@ -111,15 +137,15 @@ impl Drawable for CustomPrompt {
                     let mstyle = ctx.style(mfield);
 
                     let opts = ColumnFormatterOptions {
+                        x: 0,
+                        line: i + 1,
                         style,
                         match_style: mstyle,
                         description_style: dstyle,
                         width: wsize.width,
-                        pad: true,
                     };
-                    let line = format_two_columns(&opt.text, &opt.description, &opt.matches, opts);
 
-                    grid.put_line(i + 1, line);
+                    format_two_columns(&mut grid, &opt.text, &opt.description, &opt.matches, opts);
                 }
             }
             PromptStyle::Overlay => {
@@ -129,17 +155,32 @@ impl Drawable for CustomPrompt {
                 if wsize.height > TITLE_HEIGHT {
                     // Title
                     let title_style = ctx.theme.get(ThemeField::PromptOverlayTitle);
-                    let title = into_cells_with_style(&self.prompt.message, title_style);
-                    let title = center_pad(title, title_style, wsize.width);
-                    grid.put_line(0, title);
+                    let mut x = 0;
+                    let mlen = self.prompt.message.chars().count();
+                    let pad = (width.saturating_sub(mlen)) / 2;
+                    for i in 0..pad {
+                        grid.replace(0, i, Cell::with_style(title_style));
+                        x += 1;
+                    }
+
+                    x += grid.put_string(0, x, &self.prompt.message, title_style);
+
+                    while x < width {
+                        grid.replace(0, x, Cell::with_style(title_style));
+                        x += 1;
+                    }
 
                     // Message
+                    x = 0;
                     let message_style = ctx.theme.get(ThemeField::PromptOverlayMessage);
-                    let mut message = into_cells_with_style(" > ", message_style);
-                    let input = into_cells_with_style(&self.prompt.input, input_style);
-                    message.extend(input);
-                    pad_line(&mut message, message_style, wsize.width);
-                    grid.put_line(1, message);
+
+                    x += grid.put_string(1, x, " > ", message_style);
+                    x += grid.put_string(1, x, &self.prompt.input, input_style);
+
+                    while x < width {
+                        grid.replace(1, x, Cell::with_style(message_style));
+                        x += 1;
+                    }
                 }
 
                 let mut rect = *grid.rect();
@@ -180,15 +221,14 @@ impl Drawable for CustomPrompt {
                     let dstyle = ctx.style(dfield);
                     let mstyle = ctx.style(mfield);
                     let opts = ColumnFormatterOptions {
+                        x: 0,
+                        line: i,
                         style,
                         match_style: mstyle,
                         description_style: dstyle,
                         width: wsize.width,
-                        pad: true,
                     };
-                    let line = format_two_columns(&opt.text, &opt.description, &opt.matches, opts);
-
-                    grid.put_line(i, line);
+                    format_two_columns(&mut grid, &opt.text, &opt.description, &opt.matches, opts);
                 }
             }
         }
@@ -238,94 +278,112 @@ impl Drawable for CustomPrompt {
 }
 
 pub fn format_option(
+    grid: &mut Subgrid<'_, '_>,
     item: &str,
-    style: Style,
     item_hls: &[Range<usize>],
-    match_style: Style,
-    width: usize,
-    pad: bool,
-) -> Vec<Cell> {
-    let start = item.chars().count().saturating_sub(width);
-    let mut cells: Vec<Cell> = item
+    opts: &ColumnFormatterOptions,
+) -> usize {
+    let ColumnFormatterOptions {
+        style,
+        match_style,
+        width,
+        line,
+        x: ox,
+        ..
+    } = opts;
+    let mut x = *ox;
+    let start = item.chars().count().saturating_sub(*width);
+
+    for ch in item
         .chars()
         .skip(start)
-        .map(|ch| Cell::new_char(ch, style))
-        .collect();
-
-    if start != 0 && width > 2 {
-        cells[0].text = ".".into();
-        cells[1].text = ".".into();
+        .map(|c| if c.is_control() { ' ' } else { c })
+    {
+        grid.replace(*line, x, Cell::new_char(ch, *style));
+        x += 1;
     }
 
     for hl in item_hls {
         let mut pos = start;
-        for cell in &mut cells {
+
+        for i in *ox..x {
+            let cell = grid.at(*line, i);
             if hl.contains(&pos) {
-                cell.style = match_style;
+                cell.style = *match_style;
             }
-            pos += cell.text.len();
+            pos += cell.text.len()
         }
     }
 
-    if pad {
-        while cells.len() < width {
-            cells.push(Cell::with_style(style));
-        }
+    if start != 0 && *width > 2 {
+        grid.at(*line, *ox).text = ".".into();
+        grid.at(*line, *ox + 1).text = ".".into();
     }
 
-    cells
+    x - ox
 }
 
 pub(crate) struct ColumnFormatterOptions {
+    line: usize,
+    x: usize,
     style: Style,
     match_style: Style,
     description_style: Style,
     width: usize,
-    pad: bool,
 }
 
 pub(crate) fn format_two_columns(
+    grid: &mut Subgrid<'_, '_>,
     item: &str,
     description: &str,
     item_matches: &[Range<usize>],
-    opts: ColumnFormatterOptions,
-) -> Vec<Cell> {
+    mut opts: ColumnFormatterOptions,
+) -> usize {
     let ColumnFormatterOptions {
         style,
-        match_style,
         description_style,
         width,
-        pad,
+        line,
+        x: ox,
+        ..
     } = opts;
-    let padding = if pad { 1 } else { 0 };
-    let mut result = vec![];
-    if pad {
-        result.push(Cell::with_style(style));
-    }
-    let item = format_option(
-        item,
-        style,
-        item_matches,
-        match_style,
-        width.saturating_sub(2),
-        false,
-    );
-    result.extend(item);
-    result.push(Cell::with_style(style));
+    // Pad first and last char as ' '
+    let mut x = 0;
+    grid.replace(line, x, Cell::with_style(style));
+    x += 1;
 
-    let descr = into_cells_with_style(description, description_style);
-    let mut len = result.len() + descr.len() + padding;
-    while len < width {
-        result.push(Cell::with_style(style));
-        len += 1;
+    opts.width = opts.width.saturating_sub(2);
+    opts.x = x;
+    let ilen = format_option(grid, item, item_matches, &opts);
+    x += ilen;
+
+    if x < width {
+        grid.replace(line, x, Cell::with_style(style));
+        x += 1;
     }
 
-    if result.len() + padding + descr.len() <= width {
-        result.extend(descr);
+    let dlen = description.chars().count();
+    while x + dlen < width - 1 {
+        grid.replace(line, x, Cell::with_style(style));
+        x += 1;
     }
-    if result.len() < width {
-        result.push(Cell::with_style(style));
+
+    for ch in description
+        .chars()
+        .map(|c| if c.is_control() { ' ' } else { c })
+    {
+        if x >= width {
+            break;
+        }
+
+        grid.replace(line, x, Cell::new_char(ch, description_style));
+        x += 1;
     }
-    result.truncate(width);
-    result
+
+    while x < width {
+        grid.replace(line, x, Cell::with_style(style));
+        x += 1;
+    }
+
+    x - ox
 }

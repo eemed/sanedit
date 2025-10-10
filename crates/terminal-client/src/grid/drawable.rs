@@ -4,11 +4,7 @@ use sanedit_messages::redraw::{
 
 use crate::ui::UIContext;
 
-use super::{
-    border::Border,
-    cell_format::{into_cells_with_style, into_cells_with_theme_pad_with},
-    Rect,
-};
+use super::{border::Border, Rect};
 
 #[derive(Debug)]
 pub enum DrawCursor {
@@ -136,12 +132,19 @@ impl<'a, 'b> Subgrid<'a, 'b> {
         }
     }
 
-    pub fn put_line(&mut self, row: usize, line: Vec<Cell>) {
-        let y = self.rect.y + row;
-        for (mut x, cell) in line.into_iter().enumerate() {
-            x += self.rect.x;
-            self.cells[y][x] = cell;
+    /// Will put a string on a line will and will cut short if it would go over the column
+    /// Returns the added amount
+    pub fn put_string(&mut self, row: usize, mut col: usize, string: &str, style: Style) -> usize {
+        let ocol = col;
+        for ch in string.chars().map(|ch| if ch.is_control() { ' ' } else { ch }) {
+            if col >= self.rect.width {
+                break;
+            }
+
+            self.replace(row, col, Cell::new_char(ch, style));
+            col += 1;
         }
+        col - ocol
     }
 
     pub fn rect(&self) -> &Rect {
@@ -180,13 +183,34 @@ impl Drawable for Statusline {
         };
         let style = ctx.style(field);
         let width = grid.width();
-        let left = into_cells_with_theme_pad_with(&self.left, &style, width);
-        for (i, cell) in left.into_iter().enumerate() {
+        let mut written = 0;
+        for (i, cell) in self
+            .left
+            .chars()
+            .map(|ch| if ch.is_control() { ' ' } else { ch })
+            .map(|ch| Cell::new_char(ch, style))
+            .enumerate()
+            .take(width)
+        {
             grid.replace(0, i, cell);
+            written = i;
         }
 
-        let right = into_cells_with_style(&self.right, style);
-        for (i, cell) in right.into_iter().rev().enumerate() {
+        written += 1;
+
+        while written < width {
+            grid.replace(0, written, Cell::with_style(style));
+            written += 1;
+        }
+
+        for (i, cell) in self
+            .right
+            .chars()
+            .map(|ch| if ch.is_control() { ' ' } else { ch })
+            .map(|ch| Cell::new_char(ch, style))
+            .rev()
+            .enumerate()
+        {
             let pos = width.saturating_sub(1 + i);
             let c = grid.at(0, pos);
             if c.is_blank() {
@@ -212,9 +236,13 @@ impl Drawable for StatusMessage {
         };
         let style = ctx.style(field);
         let width = grid.width();
-        for (i, cell) in into_cells_with_theme_pad_with(&self.message, &style, width)
-            .into_iter()
+        for (i, cell) in self
+            .message
+            .chars()
+            .map(|ch| if ch.is_control() { ' ' } else { ch })
+            .map(|ch| Cell::new_char(ch, style))
             .enumerate()
+            .take(width)
         {
             grid.replace(0, i, cell);
         }

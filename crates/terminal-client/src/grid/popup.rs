@@ -1,10 +1,9 @@
-use sanedit_messages::redraw::{Point, Popup, PopupMessageText, Severity, Size, ThemeField};
+use sanedit_messages::redraw::{Cell, Point, Popup, PopupMessageText, Severity, Size, ThemeField};
 
 use crate::ui::UIContext;
 
 use super::{
     border::Border,
-    cell_format::into_cells_with_style,
     drawable::{DrawCursor, Drawable, Subgrid},
     Rect,
 };
@@ -128,10 +127,9 @@ impl Drawable for Popup {
 
             // Add popup message separators
             if i != 0 {
-                let lcells = into_cells_with_style(&"─".repeat(wsize.width - 1), style);
-                lcells.into_iter().enumerate().for_each(|(i, cell)| {
-                    grid.replace(row, i, cell);
-                });
+                for i in 0..wsize.width {
+                    grid.replace(row, i, Cell::new_char('─', style))
+                }
 
                 row += 1;
 
@@ -181,8 +179,11 @@ impl Drawable for Popup {
                 }
                 PopupMessageText::Plain(text) => {
                     for line in text.lines().skip(self.line_offset) {
-                        let lcells = into_cells_with_style(line, mstyle);
-                        for cell in lcells {
+                        for cell in line
+                            .chars()
+                            .map(|ch| if ch.is_control() { ' ' } else { ch })
+                            .map(|ch| Cell::new_char(ch, mstyle))
+                        {
                             if col >= wsize.width {
                                 row += 1;
                                 col = 0;

@@ -8,7 +8,6 @@ use sanedit_messages::redraw::{
 use crate::ui::UIContext;
 
 use super::{
-    cell_format::{into_cells_with_style, pad_line},
     drawable::{DrawCursor, Drawable, Subgrid},
     Rect, Split,
 };
@@ -122,57 +121,80 @@ impl CustomItems {
                 }
             };
 
-            let titem = Self::format_ft_item(item, name, fill, markers, width);
-
-            for (i, cell) in titem.into_iter().enumerate() {
-                grid.replace(row, i, cell);
-            }
+            let opts = FormatItemOptions {
+                line: row,
+                name_style: name,
+                fill_style: fill,
+                mark_style: markers,
+                match_style: markers,
+                width,
+            };
+            Self::format_ft_item(&mut grid, item, &opts);
         }
     }
 
-    fn format_ft_item(
-        item: &Item,
-        nstyle: Style,
-        fill_style: Style,
-        mark_style: Style,
-        width: usize,
-    ) -> Vec<Cell> {
-        let mut result = vec![];
-        result.extend(into_cells_with_style(&"  ".repeat(item.level), fill_style));
+    fn format_ft_item(grid: &mut Subgrid<'_, '_>, item: &Item, opts: &FormatItemOptions) {
+        let FormatItemOptions {
+            line,
+            name_style,
+            fill_style,
+            mark_style,
+            width,
+            ..
+        } = opts;
+        let mut x = 0;
+        for _ in 0..item.level {
+            x += grid.put_string(*line, x, "  ", *fill_style);
+        }
 
         match item.kind {
             ItemKind::Group { expanded } => {
                 if expanded {
-                    result.extend(into_cells_with_style("-", mark_style));
+                    x += grid.put_string(*line, x, "-", *mark_style);
                 } else {
-                    result.extend(into_cells_with_style("+", mark_style));
+                    x += grid.put_string(*line, x, "+", *mark_style);
                 }
             }
             ItemKind::Item => {
-                result.extend(into_cells_with_style("#", mark_style));
+                x += grid.put_string(*line, x, "#", *mark_style);
             }
         }
-        result.extend(into_cells_with_style(" ", fill_style));
+
+        grid.put_string(*line, x, " ", *fill_style);
+        x += 1;
 
         let is_group = matches!(item.kind, ItemKind::Group { .. });
-        let prefix = result.len();
         let suffix = if is_group { 1 } else { 0 };
-        let available = width.saturating_sub(prefix + suffix);
-        let name = into_cells_with_style(&item.name, nstyle);
-        let start = name.len().saturating_sub(available);
-        let mut cells: Vec<Cell> = name.into_iter().skip(start).collect();
-        if start != 0 && cells.len() > 2 {
-            cells[0].text = ".".into();
-            cells[1].text = ".".into();
+        let available = width.saturating_sub(x + suffix);
+        let nlen = item.name.chars().count();
+        let start = nlen.saturating_sub(available);
+        let px = x;
+        for ch in item
+            .name
+            .chars()
+            .skip(start)
+            .map(|ch| if ch.is_control() { ' ' } else { ch })
+        {
+            if x >= *width {
+                break;
+            }
+
+            grid.replace(*line, x, Cell::new_char(ch, *name_style));
+            x += 1;
         }
-        result.extend(cells);
+        if start != 0 && nlen > 2 && px + 1 < *width {
+            grid.at(*line, px).text = ".".into();
+            grid.at(*line, px + 1).text = ".".into();
+        }
 
         if is_group {
-            result.extend(into_cells_with_style("/", nstyle));
+            x += grid.put_string(*line, x, "/", *name_style);
         }
 
-        pad_line(&mut result, fill_style, width);
-        result
+        while x < *width {
+            grid.replace(*line, x, Cell::with_style(*fill_style));
+            x += 1;
+        }
     }
 
     fn draw_locations(&self, ctx: &UIContext, mut grid: Subgrid) {
@@ -194,21 +216,14 @@ impl CustomItems {
             return;
         }
 
+        let mut x = 0;
         let loading = if self.items.is_loading { " (..)" } else { "" };
         let title_text = format!(" Locations ({}){}", self.items.title, loading);
 
-        let mut line = into_cells_with_style(&title_text, title);
-
-        for _ in line.len()..width {
-            let mut ccell = Cell::from(' ');
-            ccell.style = title;
-            line.push(ccell);
-        }
-
-        line.truncate(width);
-
-        for (i, c) in line.into_iter().enumerate() {
-            grid.replace(0, i, c);
+        x += grid.put_string(0, x, &title_text, title);
+        while x < width {
+            grid.replace(0, x, Cell::with_style(title));
+            x += 1;
         }
 
         let mut rect = *grid.rect();
@@ -239,47 +254,70 @@ impl CustomItems {
             let mat = if is_selected { smat } else { lmat };
             let fil = if is_selected { sel } else { fill };
             let mark = if is_selected { smarkers } else { markers };
-            let titem = Self::format_loc_item(item, style, mark, mat, fil, width);
-
-            for (i, cell) in titem.into_iter().enumerate() {
-                grid.replace(row, i, cell);
-            }
+            let opts = FormatItemOptions {
+                line: row,
+                name_style: style,
+                fill_style: fil,
+                mark_style: mark,
+                match_style: mat,
+                width,
+            };
+            Self::format_loc_item(&mut grid, item, &opts);
         }
     }
 
-    fn format_loc_item(
-        item: &Item,
-        name_style: Style,
-        extra_style: Style,
-        match_style: Style,
-        fill_style: Style,
-        width: usize,
-    ) -> Vec<Cell> {
-        let mut result = vec![];
-        result.extend(into_cells_with_style(&"  ".repeat(item.level), fill_style));
+    fn format_loc_item(grid: &mut Subgrid<'_, '_>, item: &Item, opts: &FormatItemOptions) {
+        let FormatItemOptions {
+            line,
+            name_style,
+            fill_style,
+            mark_style,
+            match_style,
+            width,
+        } = opts;
+        let mut x = 0;
+        for _ in 0..item.level {
+            x += grid.put_string(*line, x, "  ", *fill_style)
+        }
 
         match item.kind {
             ItemKind::Group { expanded } => {
                 if expanded {
-                    result.extend(into_cells_with_style("- ", extra_style));
+                    x += grid.put_string(*line, x, "- ", *mark_style);
                 } else {
-                    result.extend(into_cells_with_style("+ ", extra_style));
+                    x += grid.put_string(*line, x, "+ ", *mark_style);
                 }
 
-                let prefix = result.len();
-                let available = width.saturating_sub(prefix);
-                let name = into_cells_with_style(&item.name, name_style);
-                let start = name.len().saturating_sub(available);
-                let mut cells: Vec<Cell> = name.into_iter().skip(start).collect();
-                if start != 0 && cells.len() > 2 {
-                    cells[0].text = ".".into();
-                    cells[1].text = ".".into();
+                let available = width.saturating_sub(x);
+                let nlen = item.name.chars().count();
+                let start = nlen.saturating_sub(available);
+
+                let px = x;
+                for ch in item
+                    .name
+                    .chars()
+                    .skip(start)
+                    .map(|ch| if ch.is_control() { ' ' } else { ch })
+                {
+                    if x >= *width {
+                        break;
+                    }
+
+                    grid.replace(*line, x, Cell::new_char(ch, *name_style));
+                    x += 1;
                 }
-                result.extend(cells);
-                pad_line(&mut result, fill_style, width);
+                if start != 0 && nlen > 2  && px + 1 < *width {
+                    grid.at(*line, px).text = ".".into();
+                    grid.at(*line, px + 1).text = ".".into();
+                }
+
+                while x < *width {
+                    grid.replace(*line, x, Cell::with_style(*fill_style));
+                    x += 1;
+                }
             }
             ItemKind::Item => {
-                let line = item
+                let prefix = item
                     .location
                     .as_ref()
                     .map(|loc| match loc {
@@ -287,27 +325,41 @@ impl CustomItems {
                         ItemLocation::ByteOffset(n) => format!("{n:#x}"),
                     })
                     .unwrap_or("?".into());
-                result.extend(into_cells_with_style(&format!("{line}: "), extra_style));
-                let mut name = into_cells_with_style(&item.name, name_style);
+                let line_start = format!("{prefix}: ");
+                x += grid.put_string(*line, x, &line_start, *mark_style);
+                let px = x;
+                x += grid.put_string(*line, x, &item.name, *name_style);
 
                 // Highlight matches
                 for hl in &item.highlights {
                     let mut pos = 0;
-                    for cell in &mut name {
+                    let mut i = px;
+                    while i < x {
+                        let cell = grid.at(*line, i);
                         if hl.contains(&pos) {
-                            cell.style = match_style;
+                            cell.style = *match_style;
                         }
                         pos += cell.text.len();
+                        i += 1;
                     }
                 }
 
-                result.extend(name);
-                pad_line(&mut result, fill_style, width);
+                while x < *width {
+                    grid.replace(*line, x, Cell::with_style(*fill_style));
+                    x += 1;
+                }
             }
         }
-
-        result
     }
+}
+
+struct FormatItemOptions {
+    line: usize,
+    name_style: Style,
+    fill_style: Style,
+    mark_style: Style,
+    match_style: Style,
+    width: usize,
 }
 
 impl Drawable for CustomItems {

@@ -1,5 +1,4 @@
 mod border;
-pub(crate) mod cell_format;
 mod completion;
 mod drawable;
 mod items;

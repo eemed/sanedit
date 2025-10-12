@@ -7,7 +7,7 @@ use sanedit_messages::{
     ClientMessage,
 };
 use sanedit_server::{FromEditor, FromEditorSharedMessage};
-use sanedit_utils::sorted_vec::SortedVec;
+use sanedit_utils::{either::Either, sorted_vec::SortedVec};
 
 use crate::editor::{
     buffers::Buffer,
@@ -103,7 +103,14 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> Option<FromEditorSharedMessage> {
                 line,
                 col,
                 redraw::Cell {
-                    text: ch.display().into(),
+                    text: match ch.display() {
+                        Either::Left(s) => s.into(),
+                        Either::Right(ch) => {
+                            let mut buf = [0u8; 4];
+                            let utf8 = ch.encode_utf8(&mut buf);
+                            utf8.into()
+                        }
+                    },
                     style: cell_style,
                 },
             );
@@ -148,7 +155,7 @@ fn draw_syntax(grid: &mut Window, view: &View, theme: &Theme) {
         if !span.highlight() {
             return None;
         }
-        let style = theme.get(HL_PREFIX.to_owned() + span.name());
+        let style = theme.get_from_arr(&[HL_PREFIX, span.name()]);
         Some((style, span.range()))
     });
 }

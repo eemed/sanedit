@@ -1,9 +1,8 @@
-use std::borrow::Cow;
-
 use rustc_hash::FxHashMap;
 use sanedit_buffer::PieceTreeSlice;
 
 use sanedit_buffer::utf8::EndOfLine;
+use sanedit_utils::either::Either;
 use unicode_width::UnicodeWidthStr;
 
 use self::flags::Flags;
@@ -91,7 +90,10 @@ impl Chars {
     pub fn display(&self) -> String {
         let mut result = String::new();
         for ch in &self.chars {
-            result.push_str(ch.display().as_ref());
+            match ch.display() {
+                Either::Left(s) => result.push_str(s),
+                Either::Right(ch) => result.push(ch),
+            }
         }
 
         result
@@ -176,11 +178,11 @@ impl Char {
         width.max(1)
     }
 
-    pub fn display(&self) -> Cow<'_, str> {
+    pub fn display(&self) -> Either<&'_ str, char> {
         if let Some(extra) = self.extra.as_ref() {
-            Cow::Borrowed(extra.wide.as_str())
+            Either::Left(extra.wide.as_str())
         } else {
-            Cow::Owned(self.character.to_string())
+            Either::Right(self.character)
         }
     }
 
@@ -296,6 +298,7 @@ impl DisplayOptions {
 #[inline]
 fn grapheme_to_char(slice: &PieceTreeSlice, column: usize, options: &DisplayOptions) -> Chars {
     let blen = slice.len();
+    // TODO fix this too
     let chars: Vec<char> = {
         let mut all = vec![];
         let mut chars = slice.chars();

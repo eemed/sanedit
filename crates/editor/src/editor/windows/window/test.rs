@@ -1,5 +1,6 @@
 use sanedit_core::IndentKind;
 use sanedit_messages::redraw::Point;
+use sanedit_utils::either::Either;
 
 use super::*;
 
@@ -8,7 +9,10 @@ fn view_lines(win: &mut Window, buf: &Buffer) -> Vec<String> {
         let mut string = String::new();
         for cell in row {
             if let Some(ch) = cell.char() {
-                string.push_str(&ch.display());
+                match ch.display() {
+                    Either::Left(s) => string.push_str(s),
+                    Either::Right(ch) => string.push(ch),
+                }
             }
         }
         string
@@ -48,7 +52,10 @@ fn print_view(win: &Window) {
         print!("|");
         for cell in line {
             if let Some(ch) = cell.char() {
-                print!("{}", ch.display())
+                match ch.display() {
+                    Either::Left(s) => print!("{s}"),
+                    Either::Right(ch) => print!("{ch}"),
+                }
             } else {
                 print!(" ")
             }

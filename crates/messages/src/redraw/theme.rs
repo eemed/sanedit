@@ -48,6 +48,29 @@ impl Theme {
         node.set_style(nstyle);
     }
 
+    pub fn get_from_arr<S: AsRef<str>>(&self, paths: &[S]) -> Style {
+        let mut node = &self.node;
+        let mut cur = *node.style();
+
+        for path in paths {
+            for comp in path.as_ref().split(Self::SEPARATOR) {
+                match node {
+                    ThemeNode::Node { nodes, .. } => {
+                        if let Some(n) = nodes.get(comp) {
+                            node = n;
+                        } else {
+                            break;
+                        }
+                    }
+                    ThemeNode::Leaf(_) => break,
+                }
+                cur.merge(node.style());
+            }
+        }
+
+        cur
+    }
+
     pub fn get<S: AsRef<str>>(&self, path: S) -> Style {
         let mut node = &self.node;
         let mut cur = *node.style();

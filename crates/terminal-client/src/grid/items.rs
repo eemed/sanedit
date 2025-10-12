@@ -217,10 +217,13 @@ impl CustomItems {
         }
 
         let mut x = 0;
-        let loading = if self.items.is_loading { " (..)" } else { "" };
-        let title_text = format!(" Locations ({}){}", self.items.title, loading);
+        x += grid.put_string(0, x, " Locations (", title);
+        x += grid.put_string(0, x, &self.items.title, title);
+        x += grid.put_string(0, x, ")", title);
+        if self.items.is_loading {
+            x += grid.put_string(0, x, " (..)", title);
+        }
 
-        x += grid.put_string(0, x, &title_text, title);
         while x < width {
             grid.replace(0, x, Cell::with_style(title));
             x += 1;
@@ -306,7 +309,7 @@ impl CustomItems {
                     grid.replace(*line, x, Cell::new_char(ch, *name_style));
                     x += 1;
                 }
-                if start != 0 && nlen > 2  && px + 1 < *width {
+                if start != 0 && nlen > 2 && px + 1 < *width {
                     grid.at(*line, px).text = ".".into();
                     grid.at(*line, px + 1).text = ".".into();
                 }
@@ -317,16 +320,18 @@ impl CustomItems {
                 }
             }
             ItemKind::Item => {
-                let prefix = item
-                    .location
-                    .as_ref()
-                    .map(|loc| match loc {
-                        ItemLocation::Line(n) => format!("{n}"),
-                        ItemLocation::ByteOffset(n) => format!("{n:#x}"),
-                    })
-                    .unwrap_or("?".into());
-                let line_start = format!("{prefix}: ");
-                x += grid.put_string(*line, x, &line_start, *mark_style);
+                let mut buf = [0u8; 20];
+                match item.location.as_ref() {
+                    Some(ItemLocation::Line(n)) => {
+                        x += grid.put_string(*line, x, u64_to_str(*n, &mut buf), *mark_style)
+                    }
+                    Some(ItemLocation::ByteOffset(n)) => {
+                        x += grid.put_string(*line, x, u64_to_hex_str(*n, &mut buf), *mark_style)
+                    }
+                    None => x += grid.put_string(*line, x, "?", *mark_style),
+                }
+                x += grid.put_string(*line, x, ": ", *mark_style);
+
                 let px = x;
                 x += grid.put_string(*line, x, &item.name, *name_style);
 
@@ -351,6 +356,43 @@ impl CustomItems {
             }
         }
     }
+}
+
+fn u64_to_str<'a>(num: u64, buf: &'a mut [u8; 20]) -> &'a str {
+    use std::io::Write;
+    let mut cursor = std::io::Cursor::new(buf.as_mut());
+    write!(cursor, "{}", num).unwrap();
+    let len = cursor.position() as usize;
+    std::str::from_utf8(&buf[..len]).unwrap()
+}
+
+fn u64_to_hex_str<'a>(num: u64, buf: &'a mut [u8; 20]) -> &'a str {
+    let mut i = 20;
+    let mut n = num;
+
+    if n == 0 {
+        i -= 1;
+        buf[i] = b'0';
+    } else {
+        while n != 0 {
+            i -= 1;
+            let digit = (n & 0xF) as u8;
+            buf[i] = match digit {
+                0..=9 => b'0' + digit,
+                10..=15 => b'a' + (digit - 10),
+                _ => unreachable!(),
+            };
+            n >>= 4;
+        }
+    }
+
+    // Add "0x" prefix
+    i -= 1;
+    buf[i] = b'x';
+    i -= 1;
+    buf[i] = b'0';
+
+    std::str::from_utf8(&buf[i..]).unwrap()
 }
 
 struct FormatItemOptions {

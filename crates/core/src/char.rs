@@ -295,7 +295,6 @@ impl DisplayOptions {
     }
 }
 
-#[inline]
 fn grapheme_to_char(slice: &PieceTreeSlice, column: usize, options: &DisplayOptions) -> Chars {
     let blen = slice.len();
     let ch = slice.chars().next().and_then(|(start, end, ch)| {

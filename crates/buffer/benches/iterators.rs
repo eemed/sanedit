@@ -62,17 +62,6 @@ fn chars(c: &mut Criterion) {
         });
     });
 
-    c.bench_function("chars_create_10_000", |bench| {
-        let large = io::Cursor::new(include_str!("large.txt"));
-        let mut pt = PieceTree::from_reader(large).unwrap();
-        for _ in 0..10_000 {
-            pt.insert(0, "A");
-        }
-
-        bench.iter(move || {
-            let _iter = pt.chars();
-        });
-    });
 }
 
 fn graphemes(c: &mut Criterion) {
@@ -229,5 +218,44 @@ fn chunks(c: &mut Criterion) {
     });
 }
 
-criterion_group!(benches, chunks, bytes, chars, graphemes);
+fn create(c: &mut Criterion) {
+    c.bench_function("create_bytes_iter_10_000", |bench| {
+        let large = io::Cursor::new(include_str!("large.txt"));
+        let mut pt = PieceTree::from_reader(large).unwrap();
+        for _ in 0..10_000 {
+            pt.insert(0, "A");
+        }
+
+        bench.iter(move || {
+            let _iter = pt.bytes();
+        });
+    });
+
+    c.bench_function("create_chars_iter_10_000", |bench| {
+        let large = io::Cursor::new(include_str!("large.txt"));
+        let mut pt = PieceTree::from_reader(large).unwrap();
+        for _ in 0..10_000 {
+            pt.insert(0, "A");
+        }
+
+        bench.iter(move || {
+            let _iter = pt.chars();
+        });
+    });
+
+    c.bench_function("create_graphemes_iter_10_000", |bench| {
+        let large = io::Cursor::new(include_str!("large.txt"));
+        let mut pt = PieceTree::from_reader(large).unwrap();
+        for _ in 0..10_000 {
+            pt.insert(0, "A");
+        }
+
+        bench.iter(move || {
+            let _iter = pt.graphemes();
+        });
+    });
+}
+
+// criterion_group!(benches, chunks, bytes, chars, graphemes);
+criterion_group!(benches, create);
 criterion_main!(benches);

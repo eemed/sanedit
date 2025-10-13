@@ -298,19 +298,15 @@ impl DisplayOptions {
 #[inline]
 fn grapheme_to_char(slice: &PieceTreeSlice, column: usize, options: &DisplayOptions) -> Chars {
     let blen = slice.len();
-    // TODO fix this too
-    let chars: Vec<char> = {
-        let mut all = vec![];
-        let mut chars = slice.chars();
-        while let Some((_, _, ch)) = chars.next() {
-            all.push(ch);
+    let ch = slice.chars().next().and_then(|(start, end, ch)| {
+        if end - start == slice.len() {
+            Some(ch)
+        } else {
+            None
         }
-        all
-    };
-    let single_char = chars.len() == 1;
+    });
 
-    if single_char {
-        let ch = chars[0];
+    if let Some(ch) = ch {
         let is_byte = ch.len_utf8() == 1;
 
         if is_byte {
@@ -352,7 +348,7 @@ fn grapheme_to_char(slice: &PieceTreeSlice, column: usize, options: &DisplayOpti
         }
 
         Char {
-            character: chars[0],
+            character: ch,
             extra: None,
             flags: Flags::default(),
             len_in_buffer: blen,

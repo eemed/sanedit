@@ -1,24 +1,33 @@
-use std::{collections::VecDeque, sync::Arc};
+use std::sync::Arc;
 
 use super::slice::OriginalBufferSlice;
 
 #[derive(Debug)]
+pub(crate) struct BufferPart {
+    off: u64,
+    ptr: Arc<[u8]>,
+}
+
+#[derive(Debug)]
 pub(crate) struct Cache {
-    /// Buffer data. (buf_offset, data) tuples
-    pub(super) cache: VecDeque<(u64, Arc<[u8]>)>,
+    n: usize,
+    parts: [BufferPart; 8],
 }
 
 impl Cache {
-    const CACHE_SIZE: usize = 10;
-
     pub fn new() -> Cache {
         Cache {
-            cache: VecDeque::new(),
+            n: 0,
+            parts: std::array::from_fn(|_| BufferPart {
+                off: 0,
+                ptr: Arc::new([]),
+            }),
         }
     }
 
     pub fn get(&self, start: u64, end: u64) -> Option<OriginalBufferSlice> {
-        for (off, ptr) in &self.cache {
+        for part in &self.parts {
+            let BufferPart { off, ptr } = part;
             if *off <= start && end <= off + ptr.len() as u64 {
                 let s = start - off;
                 let e = s + end - start;
@@ -34,11 +43,13 @@ impl Cache {
     }
 
     pub fn push(&mut self, off: u64, ptr: Arc<[u8]>) -> OriginalBufferSlice {
-        while self.cache.len() >= Self::CACHE_SIZE {
-            self.cache.pop_front();
-        }
+        let part = BufferPart {
+            off,
+            ptr: ptr.clone(),
+        };
 
-        self.cache.push_back((off, ptr.clone()));
+        self.parts[self.n] = part;
+        self.n = (self.n + 1) % self.parts.len();
 
         OriginalBufferSlice {
             offset: 0,

@@ -106,19 +106,6 @@ impl Chars {
             Chars::Multi { chars } => chars.iter().any(Char::is_eol),
         }
     }
-
-    pub fn display(&self) -> String {
-        todo!()
-        // let mut result = String::new();
-        // for ch in &self.chars {
-        //     match ch.display() {
-        //         Either::Left(s) => result.push_str(s),
-        //         Either::Right(ch) => result.push(ch),
-        //     }
-        // }
-
-        // result
-    }
 }
 
 impl From<Char> for Chars {
@@ -511,6 +498,27 @@ mod test {
     use sanedit_buffer::PieceTree;
 
     use super::*;
+
+    impl Chars {
+        pub fn display(&self) -> String {
+            let mut result = String::new();
+            match self {
+                Chars::Single { ch } => match ch.display() {
+                    Either::Left(s) => result.push_str(s),
+                    Either::Right(ch) => result.push(ch),
+                },
+                Chars::Multi { chars } => {
+                    for ch in chars {
+                        match ch.display() {
+                            Either::Left(s) => result.push_str(s),
+                            Either::Right(ch) => result.push(ch),
+                        }
+                    }
+                }
+            }
+            result
+        }
+    }
 
     #[test]
     fn emoji() {

@@ -6,7 +6,7 @@ use crate::{
     BufferRange, Chars, DisplayOptions, GraphemeCategory, Range,
 };
 use sanedit_buffer::{
-    utf8::{self, EndOfLine},
+    utf8::{self, EndOfLine, Grapheme},
     PieceTree, PieceTreeSlice,
 };
 
@@ -111,9 +111,9 @@ pub fn on_word_start(
 
 /// Returns the range of the word that includes position pos
 pub fn word_at_pos(slice: &PieceTreeSlice, pos: u64) -> Option<BufferRange> {
-    let make_pair = |slice: PieceTreeSlice| {
-        let len = slice.len();
-        let cat = grapheme_category(&slice);
+    let make_pair = |grapheme: Grapheme| {
+        let len = grapheme.len();
+        let cat = grapheme_category(&grapheme);
         (len, cat)
     };
     let mut graphemes = slice.graphemes_at(pos);

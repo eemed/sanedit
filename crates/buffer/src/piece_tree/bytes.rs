@@ -150,6 +150,13 @@ impl<'a> Bytes<'a> {
     pub fn chunks(&self) -> Chunks<'a> {
         self.chunks.clone()
     }
+
+    /// Get current chunk with its absolute position in the buffer
+    pub(crate) fn current_chunk(&self) -> Option<(u64, Chunk<'a>)> {
+        let start = self.chunks.get_bounds().start;
+        let chunk = self.chunk.as_ref()?.clone();
+        Some((start + self.chunk_pos, chunk))
+    }
 }
 
 #[cfg(test)]

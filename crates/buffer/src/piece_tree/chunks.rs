@@ -1,3 +1,5 @@
+use std::ops::Range;
+
 use crate::PieceTreeSlice;
 
 use super::{
@@ -60,6 +62,10 @@ impl<'a> Chunks<'a> {
 
     pub fn buffer_len(&self) -> u64 {
         self.pt.len()
+    }
+
+    pub(crate) fn get_bounds(&self) -> &Range<u64> {
+        self.pieces.get_bounds()
     }
 }
 

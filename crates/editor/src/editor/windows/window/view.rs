@@ -233,9 +233,15 @@ impl View {
                 }
             }
 
-            let chars: Vec<Char> = chars.into();
-            for (i, ch) in chars.into_iter().enumerate() {
-                self.cells[line][col + i] = ch.into();
+            match chars {
+                Chars::Single { ch } => {
+                    self.cells[line][col] = ch.into();
+                }
+                Chars::Multi { chars } => {
+                    for (i, ch) in chars.into_iter().enumerate() {
+                        self.cells[line][col + i] = ch.into();
+                    }
+                }
             }
 
             // Increment pos, col once we have written the character to grid

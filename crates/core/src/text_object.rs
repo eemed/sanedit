@@ -195,12 +195,11 @@ fn find_prev_start_or_end(
 ) -> Option<(u64, bool)> {
     let mut advanced = 0;
     while let Some(g) = graphemes.prev() {
-        let gs = String::from(&g);
         advanced += g.len();
 
-        if gs == start {
+        if g == start {
             return Some((advanced, true));
-        } else if gs == end {
+        } else if g == end {
             return Some((advanced, false));
         }
     }
@@ -216,11 +215,9 @@ fn find_next_start_or_end(
 ) -> Option<(u64, bool)> {
     let mut advanced = 0;
     while let Some(g) = graphemes.next() {
-        let gs = String::from(&g);
-
-        if gs == start {
+        if g == start {
             return Some((advanced, true));
-        } else if gs == end {
+        } else if g == end {
             return Some((advanced, false));
         }
 

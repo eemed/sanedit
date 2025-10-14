@@ -1,6 +1,12 @@
+use std::ops::Range;
+
 use sanedit_ucd::{grapheme_break, GraphemeBreak, Property};
 
-use crate::{piece_tree::PieceTreeSlice, PieceTreeView};
+use crate::{
+    piece_tree::{utf8::chars::REPLACEMENT_CHAR, PieceTreeSlice},
+    utf8::{decode_utf8, EndOfLine},
+    Chunk, PieceTreeView,
+};
 
 use super::chars::Chars;
 
@@ -28,22 +34,77 @@ pub fn prev_grapheme_boundary(slice: &PieceTreeSlice, pos: u64) -> u64 {
     }
 }
 
-#[derive(Debug, Clone)]
-struct Char {
-    start: u64,
-    end: u64,
-    ch: char,
-    gbreak: GraphemeBreak,
+#[derive(Debug)]
+pub enum Grapheme<'a> {
+    Ref {
+        chunk_start: u64,
+        chunk: Chunk<'a>,
+        range: Range<u64>,
+    },
+    Owned {
+        start: u64,
+        text: Vec<u8>,
+    },
 }
 
-impl Char {
-    pub fn new(ch: (u64, u64, char)) -> Char {
-        Char {
-            start: ch.0,
-            end: ch.1,
-            ch: ch.2,
-            gbreak: grapheme_break(ch.2),
+impl<'a> Grapheme<'a> {
+    pub fn len(&self) -> u64 {
+        match self {
+            Grapheme::Ref { range, .. } => range.end - range.start,
+            Grapheme::Owned { text, .. } => text.len() as u64,
         }
+    }
+
+    pub fn start(&self) -> u64 {
+        match self {
+            Grapheme::Ref {
+                chunk_start, range, ..
+            } => chunk_start + range.start,
+            Grapheme::Owned { start, .. } => *start,
+        }
+    }
+
+    pub fn end(&self) -> u64 {
+        match self {
+            Grapheme::Ref {
+                chunk_start, range, ..
+            } => chunk_start + range.end,
+            Grapheme::Owned { start, text } => *start + text.len() as u64,
+        }
+    }
+
+    pub fn is_eol(&self) -> bool {
+        EndOfLine::is_eol(self.as_ref())
+    }
+
+    pub fn to_string(&self) -> String {
+        let mut string = String::new();
+        let mut bytes = self.as_ref();
+        while !bytes.is_empty() {
+            let (ch, n) = decode_utf8(bytes);
+            let ch = ch.unwrap_or(REPLACEMENT_CHAR);
+            string.push(ch);
+            bytes = &bytes[n..];
+        }
+
+        string
+    }
+}
+
+impl<'a> AsRef<[u8]> for Grapheme<'a> {
+    fn as_ref(&self) -> &[u8] {
+        match self {
+            Grapheme::Ref { chunk, range, .. } => {
+                &chunk.as_ref()[range.start as usize..range.end as usize]
+            }
+            Grapheme::Owned { text, .. } => &text,
+        }
+    }
+}
+
+impl<'a> PartialEq<&str> for Grapheme<'a> {
+    fn eq(&self, other: &&str) -> bool {
+        other.as_bytes() == self.as_ref()
     }
 }
 
@@ -52,12 +113,12 @@ pub struct Graphemes<'a> {
     slice: PieceTreeSlice<'a>,
     chars: Chars<'a>,
     /// Used for next iteration
-    prev: Option<Char>,
+    prev: Option<GbChar>,
     /// Wether we have returned the last element or not
     at_end: bool,
 
     // Used for prev iteration
-    next: Option<Char>,
+    next: Option<GbChar>,
     /// Wether we have returned the first element or not
     at_start: bool,
 
@@ -97,8 +158,7 @@ impl<'a> Graphemes<'a> {
         }
     }
 
-    #[allow(clippy::should_implement_trait)]
-    pub fn next(&mut self) -> Option<PieceTreeSlice<'_>> {
+    pub fn next_slice(&mut self) -> Option<PieceTreeSlice<'a>> {
         if !self.at_start && self.last_call_fwd == Some(false) {
             self.chars.next();
         }
@@ -108,8 +168,8 @@ impl<'a> Graphemes<'a> {
         let mut current = self
             .prev
             .take()
-            .or_else(|| self.chars.next().map(Char::new));
-        let mut after = self.chars.next().map(Char::new);
+            .or_else(|| self.chars.next().map(GbChar::new));
+        let mut after = self.chars.next().map(GbChar::new);
         let start = current.as_ref().map(|c| c.start).unwrap_or(0);
 
         loop {
@@ -122,7 +182,7 @@ impl<'a> Graphemes<'a> {
                     }
 
                     current = Some(a);
-                    after = self.chars.next().map(Char::new);
+                    after = self.chars.next().map(GbChar::new);
                 }
                 (Some(_), None) => {
                     if self.at_end {
@@ -139,7 +199,7 @@ impl<'a> Graphemes<'a> {
         }
     }
 
-    pub fn prev(&mut self) -> Option<PieceTreeSlice<'_>> {
+    pub fn prev_slice(&mut self) -> Option<PieceTreeSlice<'a>> {
         if self.last_call_fwd == Some(true) {
             self.chars.prev();
             self.prev = None;
@@ -150,9 +210,9 @@ impl<'a> Graphemes<'a> {
         let mut after = self
             .next
             .take()
-            .or_else(|| self.chars.prev().map(Char::new));
+            .or_else(|| self.chars.prev().map(GbChar::new));
 
-        let mut current = self.chars.prev().map(Char::new);
+        let mut current = self.chars.prev().map(GbChar::new);
         let end = after.as_ref().map(|a| a.end).unwrap_or(self.slice.len());
 
         loop {
@@ -165,7 +225,7 @@ impl<'a> Graphemes<'a> {
                     }
 
                     after = Some(c);
-                    current = self.chars.prev().map(Char::new);
+                    current = self.chars.prev().map(GbChar::new);
                 }
                 (None, Some(_)) => {
                     if self.at_start {
@@ -179,6 +239,81 @@ impl<'a> Graphemes<'a> {
                 (None, None) => return None,
                 (Some(_), None) => unreachable!(),
             }
+        }
+    }
+
+    #[allow(clippy::should_implement_trait)]
+    pub fn next(&mut self) -> Option<Grapheme<'a>> {
+        let prev_chunk = self.chars.current_chunk();
+        let slice = self.next_slice()?;
+        let next_chunk = self.chars.current_chunk();
+
+        let chunks = [prev_chunk, next_chunk];
+        for chk in chunks {
+            if let Some((start, chk)) = chk {
+                let chunk = chk.as_ref();
+                let end = start + chunk.len() as u64;
+                if start <= slice.start() && slice.end() <= end {
+                    let chk_start = slice.start() - start;
+                    return Some(Grapheme::Ref {
+                        chunk_start: start,
+                        chunk: chk,
+                        range: chk_start..chk_start + slice.len(),
+                    });
+                }
+            }
+        }
+
+        Some(Grapheme::Owned {
+            start: slice.start(),
+            text: Vec::from(&slice),
+        })
+    }
+
+    pub fn prev(&mut self) -> Option<Grapheme<'a>> {
+        let next_chunk = self.chars.current_chunk();
+        let slice = self.prev_slice()?;
+        let prev_chunk = self.chars.current_chunk();
+
+        let chunks = [prev_chunk, next_chunk];
+        for chk in chunks {
+            if let Some((start, chk)) = chk {
+                let chunk = chk.as_ref();
+                let end = start + chunk.len() as u64;
+                if start <= slice.start() && slice.end() <= end {
+                    let chk_start = slice.start() - start;
+                    return Some(Grapheme::Ref {
+                        chunk_start: start,
+                        chunk: chk,
+                        range: chk_start..chk_start + slice.len(),
+                    });
+                }
+            }
+        }
+
+        Some(Grapheme::Owned {
+            start: slice.start(),
+            text: Vec::from(&slice),
+        })
+    }
+}
+
+/// Grapheme break character. Used to determine a grapheme break.
+#[derive(Debug, Clone)]
+struct GbChar {
+    start: u64,
+    end: u64,
+    ch: char,
+    gbreak: GraphemeBreak,
+}
+
+impl GbChar {
+    pub fn new(ch: (u64, u64, char)) -> GbChar {
+        GbChar {
+            start: ch.0,
+            end: ch.1,
+            ch: ch.2,
+            gbreak: grapheme_break(ch.2),
         }
     }
 }
@@ -220,7 +355,7 @@ enum BreakResult {
     Regional,
 }
 
-fn is_break(slice: &PieceTreeSlice, before: &Char, after: &Char) -> bool {
+fn is_break(slice: &PieceTreeSlice, before: &GbChar, after: &GbChar) -> bool {
     use BreakResult::*;
 
     match pair_break(before, after) {
@@ -239,7 +374,7 @@ fn is_break(slice: &PieceTreeSlice, before: &Char, after: &Char) -> bool {
 
 // https://www.unicode.org/reports/tr29/
 /// Check if a grapheme break exists between the two characters
-fn pair_break(before: &Char, after: &Char) -> BreakResult {
+fn pair_break(before: &GbChar, after: &GbChar) -> BreakResult {
     use sanedit_ucd::GraphemeBreak::*;
     use BreakResult::*;
 
@@ -274,7 +409,7 @@ mod test {
     macro_rules! assert_str {
         ($expect:expr, $slice:expr) => {{
             let slice = $slice.expect("No grapheme present");
-            let actual = String::from(&slice);
+            let actual = std::str::from_utf8(slice.as_ref()).unwrap();
             assert_eq!($expect, actual);
         }};
     }

@@ -1,9 +1,8 @@
 use crate::{
-    piece_tree::{Bytes, PieceTreeView},
-    PieceTreeSlice,
+    piece_tree::{Bytes, PieceTreeView}, Chunk, PieceTreeSlice
 };
 
-const REPLACEMENT_CHAR: char = '\u{FFFD}';
+pub(crate) const REPLACEMENT_CHAR: char = '\u{FFFD}';
 /// UTF8 table accept state
 pub const ACCEPT: u32 = 0;
 /// UTF8 table reject state
@@ -352,6 +351,11 @@ impl<'a> Chars<'a> {
                 Incomplete => {}
             }
         }
+    }
+
+    /// Get current chunk with its absolute position in the buffer
+    pub(crate) fn current_chunk(&self) -> Option<(u64, Chunk<'a>)> {
+        self.bytes.current_chunk()
     }
 }
 

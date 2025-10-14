@@ -90,6 +90,10 @@ impl<'a> BoundedPieceIter<'a> {
         let pos_piece = self.iter.prev()?;
         self.shrink_to_range(pos_piece)
     }
+
+    pub(crate) fn get_bounds(&self) -> &Range<u64> {
+        &self.range
+    }
 }
 
 /// Traverse pieces in the tree, in order

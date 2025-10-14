@@ -1,7 +1,6 @@
 use rustc_hash::FxHashMap;
-use sanedit_buffer::PieceTreeSlice;
 
-use sanedit_buffer::utf8::EndOfLine;
+use sanedit_buffer::utf8::{decode_utf8, EndOfLine, Grapheme};
 use sanedit_utils::either::Either;
 use unicode_width::UnicodeWidthStr;
 
@@ -11,13 +10,22 @@ use self::flags::Flags;
 /// character) in the buffer.
 /// This is a separate type to distinguish graphemes that have already been
 /// converted to the format we want the user to see.
-#[derive(Debug, Default, Clone, PartialEq, Hash)]
-pub struct Chars {
-    chars: Vec<Char>,
+#[derive(Debug, Clone, PartialEq, Hash)]
+pub enum Chars {
+    Single { ch: Char },
+    Multi { chars: Vec<Char> },
+}
+
+impl Default for Chars {
+    fn default() -> Self {
+        Chars::Single {
+            ch: Char::default(),
+        }
+    }
 }
 
 impl Chars {
-    pub fn new(grapheme: &PieceTreeSlice, column: usize, options: &DisplayOptions) -> Chars {
+    pub fn new(grapheme: &Grapheme, column: usize, options: &DisplayOptions) -> Chars {
         grapheme_to_char(grapheme, column, options)
     }
 
@@ -39,7 +47,7 @@ impl Chars {
             });
         }
 
-        Chars { chars }
+        Chars::Multi { chars }
     }
 
     fn from_str(string: &str, len: u64) -> Chars {
@@ -64,51 +72,58 @@ impl Chars {
             chars.push(ch2);
         }
 
-        Chars { chars }
+        Chars::Multi { chars }
     }
 
     pub fn len(&self) -> usize {
-        self.chars.len()
+        match self {
+            Chars::Single { .. } => 1,
+            Chars::Multi { chars } => chars.len(),
+        }
     }
 
     pub fn is_empty(&self) -> bool {
-        self.chars.len() == 0
+        self.len() == 0
     }
 
     pub fn width(&self) -> usize {
-        self.chars.iter().map(Char::width).sum()
+        match self {
+            Chars::Single { ch } => ch.width(),
+            Chars::Multi { chars } => chars.iter().map(Char::width).sum(),
+        }
     }
 
     pub fn len_in_buffer(&self) -> u64 {
-        self.chars.iter().map(Char::len_in_buffer).sum()
+        match self {
+            Chars::Single { ch } => ch.len_in_buffer(),
+            Chars::Multi { chars } => chars.iter().map(Char::len_in_buffer).sum(),
+        }
     }
 
     pub fn is_eol(&self) -> bool {
-        self.chars.iter().any(Char::is_eol)
+        match self {
+            Chars::Single { ch } => ch.is_eol(),
+            Chars::Multi { chars } => chars.iter().any(Char::is_eol),
+        }
     }
 
     pub fn display(&self) -> String {
-        let mut result = String::new();
-        for ch in &self.chars {
-            match ch.display() {
-                Either::Left(s) => result.push_str(s),
-                Either::Right(ch) => result.push(ch),
-            }
-        }
+        todo!()
+        // let mut result = String::new();
+        // for ch in &self.chars {
+        //     match ch.display() {
+        //         Either::Left(s) => result.push_str(s),
+        //         Either::Right(ch) => result.push(ch),
+        //     }
+        // }
 
-        result
+        // result
     }
 }
 
 impl From<Char> for Chars {
     fn from(value: Char) -> Self {
-        Chars { chars: vec![value] }
-    }
-}
-
-impl From<Chars> for Vec<Char> {
-    fn from(value: Chars) -> Self {
-        value.chars
+        Chars::Single { ch: value }
     }
 }
 
@@ -295,15 +310,11 @@ impl DisplayOptions {
     }
 }
 
-fn grapheme_to_char(slice: &PieceTreeSlice, column: usize, options: &DisplayOptions) -> Chars {
-    let blen = slice.len();
-    let ch = slice.chars().next().and_then(|(start, end, ch)| {
-        if end - start == slice.len() {
-            Some(ch)
-        } else {
-            None
-        }
-    });
+fn grapheme_to_char(grapheme: &Grapheme, column: usize, options: &DisplayOptions) -> Chars {
+    let blen = grapheme.len();
+    let bytes = grapheme.as_ref();
+    let (ch, n) = decode_utf8(bytes);
+    let ch = if n == bytes.len() { ch } else { None };
 
     if let Some(ch) = ch {
         let is_byte = ch.len_utf8() == 1;
@@ -354,12 +365,11 @@ fn grapheme_to_char(slice: &PieceTreeSlice, column: usize, options: &DisplayOpti
         }
         .into()
     } else {
-        let grapheme = String::from(slice);
-        if EndOfLine::is_eol(&grapheme) {
+        if grapheme.is_eol() {
             return eol_to_char(blen, options).into();
         }
 
-        Chars::wide(grapheme, blen)
+        Chars::wide(grapheme.to_string(), blen)
     }
 }
 
@@ -458,42 +468,40 @@ fn ascii_control_to_char(byte: u8) -> Chars {
     Chars::from_str(rep, 1)
 }
 
-pub fn grapheme_category(grapheme: &PieceTreeSlice) -> GraphemeCategory {
-    let (chars, len) = {
-        // read chars to a buf for easier handling
-        let mut chars = ['\0'; 4];
-        let mut n = 0;
-        let mut iter = grapheme.chars();
-        while let Some((_, _, ch)) = iter.next() {
-            chars[n] = ch;
-            n += 1;
-        }
-        (chars, n)
-    };
-    let chars = &chars[..len];
-
-    if chars.iter().all(|ch| ch.is_alphanumeric() || *ch == '_') {
-        return GraphemeCategory::Word;
-    }
-
+pub fn grapheme_category(grapheme: &Grapheme) -> GraphemeCategory {
     if grapheme.is_eol() {
         return GraphemeCategory::EOL;
     }
 
-    if chars.iter().all(|ch| ch.is_whitespace()) {
+    let bytes = grapheme.as_ref();
+    // let (mut ch, mut n) = decode_utf8(bytes);
+    let (ch, _n) = decode_utf8(bytes);
+
+    // if n == bytes.len() {
+    let ch = ch.unwrap_or('\u{fffd}');
+
+    if ch.is_whitespace() {
         return GraphemeCategory::Whitespace;
     }
 
-    if chars.len() == 1 {
-        let ch = chars[0];
-        if ch.is_ascii() && !ch.is_alphanumeric() {
-            return GraphemeCategory::Punctuation;
-        }
-
-        if ch.is_control() {
-            return GraphemeCategory::ControlCode;
-        }
+    if ch.is_alphanumeric() || ch == '_' {
+        return GraphemeCategory::Word;
     }
+
+    if ch.is_ascii() && !ch.is_alphanumeric() {
+        return GraphemeCategory::Punctuation;
+    }
+
+    if ch.is_control() {
+        return GraphemeCategory::ControlCode;
+    }
+
+    // return GraphemeCategory::Unknown;
+    // }
+
+    // while !bytes.is_empty() {
+    //     (ch, n) = decode_utf8(bytes);
+    // }
 
     GraphemeCategory::Unknown
 }
@@ -508,8 +516,8 @@ mod test {
     fn emoji() {
         let mut pt = PieceTree::new();
         pt.insert(0, "❤️");
-        let slice = pt.slice(..);
-        let ch = Chars::new(&slice, 0, &DisplayOptions::default());
+        let g = pt.slice(..).graphemes().next().unwrap();
+        let ch = Chars::new(&g, 0, &DisplayOptions::default());
         assert_eq!("❤️ ", ch.display());
     }
 
@@ -517,8 +525,8 @@ mod test {
     fn control_sequence_null() {
         let mut pt = PieceTree::new();
         pt.insert(0, b"\0");
-        let slice = pt.slice(..);
-        let ch = Chars::new(&slice, 0, &DisplayOptions::default());
+        let g = pt.slice(..).graphemes().next().unwrap();
+        let ch = Chars::new(&g, 0, &DisplayOptions::default());
         assert_eq!("^@", ch.display());
     }
 
@@ -526,8 +534,8 @@ mod test {
     fn invalid_utf8() {
         let mut pt = PieceTree::new();
         pt.insert(0, b"\xFF");
-        let slice = pt.slice(..);
-        let ch = Chars::new(&slice, 0, &DisplayOptions::default());
+        let g = pt.slice(..).graphemes().next().unwrap();
+        let ch = Chars::new(&g, 0, &DisplayOptions::default());
         assert_eq!("\u{fffd}", ch.display());
     }
 
@@ -535,7 +543,7 @@ mod test {
     fn tab() {
         let mut pt = PieceTree::new();
         pt.insert(0, "\t");
-        let slice = pt.slice(..);
+        let g = pt.slice(..).graphemes().next().unwrap();
         let opts = DisplayOptions::default();
         let expected = {
             let mut first = opts
@@ -549,7 +557,7 @@ mod test {
             }
             first
         };
-        let ch = Chars::new(&slice, 0, &DisplayOptions::default());
+        let ch = Chars::new(&g, 0, &DisplayOptions::default());
         assert_eq!(expected, ch.display());
     }
 
@@ -557,9 +565,9 @@ mod test {
     fn non_breaking_space() {
         let mut pt = PieceTree::new();
         pt.insert(0, "\u{00A0}");
-        let slice = pt.slice(..);
+        let g = pt.slice(..).graphemes().next().unwrap();
         let opts = DisplayOptions::default();
-        let ch = Chars::new(&slice, 0, &opts);
+        let ch = Chars::new(&g, 0, &opts);
         let expected = opts
             .replacements
             .get(&Replacement::NonBreakingSpace)

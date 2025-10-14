@@ -18,7 +18,7 @@ pub mod utf8 {
             decode_utf8, decode_utf8_iter, Chars, ACCEPT, REJECT, UTF8_CHAR_CLASSES,
             UTF8_TRANSITIONS,
         },
-        graphemes::{next_grapheme_boundary, prev_grapheme_boundary, Graphemes},
+        graphemes::{next_grapheme_boundary, prev_grapheme_boundary, Grapheme, Graphemes},
         lines::{next_eol, prev_eol, EOLMatch, EndOfLine, Lines},
     };
 }

@@ -4,7 +4,7 @@
 [colors.window]
 default = "#eee6dd,#575279,"
 statusline = "#d3c9c0,#333a40,"
-statusline_no_focus = "#ebe5df,,"
+statusline_no_focus = "#d5d1ce,,"
 end_of_buffer = ",#969896,"
 trailing_whitespace = ",#969896,"
 match = "#C1E1C1,#356E35,"

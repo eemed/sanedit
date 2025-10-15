@@ -183,24 +183,12 @@ impl Drawable for Statusline {
         };
         let style = ctx.style(field);
         let width = grid.width();
-        let mut written = 0;
-        for (i, cell) in self
-            .left
-            .chars()
-            .map(|ch| if ch.is_control() { ' ' } else { ch })
-            .map(|ch| Cell::new_char(ch, style))
-            .enumerate()
-            .take(width)
-        {
-            grid.replace(0, i, cell);
-            written = i;
-        }
+        let mut x = 0;
+        x += grid.put_string(0, x, &self.left, style);
 
-        written += 1;
-
-        while written < width {
-            grid.replace(0, written, Cell::with_style(style));
-            written += 1;
+        while x < width {
+            grid.replace(0, x, Cell::with_style(style));
+            x += 1;
         }
 
         for (i, cell) in self
@@ -236,15 +224,12 @@ impl Drawable for StatusMessage {
         };
         let style = ctx.style(field);
         let width = grid.width();
-        for (i, cell) in self
-            .message
-            .chars()
-            .map(|ch| if ch.is_control() { ' ' } else { ch })
-            .map(|ch| Cell::new_char(ch, style))
-            .enumerate()
-            .take(width)
-        {
-            grid.replace(0, i, cell);
+        let mut x = 0;
+        x += grid.put_string(0, x, &self.message, style);
+
+        while x < width {
+            grid.replace(0, x, Cell::with_style(style));
+            x+=1;
         }
     }
 

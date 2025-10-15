@@ -54,7 +54,7 @@ typename = uppercase_constant / capitalized_type;
 @show @highlight(type)
 capitalized_type = [A..Z] [a..zA..Z0..9_]*;
 @show @highlight(type)
-builtintype = "str" / "char" / "bool" / number_types;
+builtintype = ("str" / "char" / "bool" / number_types) !"(";
 typeangle = "<" (lifetime / type / ws)* ">";
 
 combipath = path "{" ((ws / nl)* (combipath / typepath / functionpath) ","?)+ (ws / nl)* "}";

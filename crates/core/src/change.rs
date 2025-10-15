@@ -573,7 +573,7 @@ impl Changes {
                         return true;
                     }
 
-                    rem += prang.end - prang.start;
+                    rem += crang.end - crang.start;
                 }
 
                 false

@@ -30,43 +30,24 @@ impl Chars {
     }
 
     fn wide(grapheme: String, len: u64) -> Chars {
-        let fill = grapheme.width().max(1) - 1;
-        let mut chars = vec![Char {
+        let ch = Char {
             character: ' ',
             extra: Some(Box::new(CharExtra { wide: grapheme })),
             flags: flags::NONE,
             len_in_buffer: len,
-        }];
+        };
 
-        for _ in 0..fill {
-            chars.push(Char {
-                character: ' ',
-                extra: None,
-                flags: flags::VIRTUAL | flags::DISCARD,
-                len_in_buffer: 0,
-            });
-        }
-
-        Chars::Multi { chars }
+        Chars::Single { ch }
     }
 
     fn from_str(string: &str, len: u64) -> Chars {
         let mut chars = vec![];
         for ch in string.chars() {
-            let ch2 = if chars.is_empty() {
-                Char {
-                    character: ch,
-                    extra: None,
-                    flags: flags::REPR,
-                    len_in_buffer: len,
-                }
-            } else {
-                Char {
-                    character: ch,
-                    extra: None,
-                    flags: flags::VIRTUAL,
-                    len_in_buffer: 0,
-                }
+            let ch2 = Char {
+                character: ch,
+                extra: None,
+                flags: flags::VIRTUAL,
+                len_in_buffer: if chars.is_empty() { len } else { 0 },
             };
 
             chars.push(ch2);
@@ -119,24 +100,11 @@ mod flags {
 
     pub(crate) const NONE: u8 = 0;
 
-    // /// This char continues the previous one, for example Tab + tab fills
-    // pub(crate) const CONTINUE: u8 = 1 << 0;
-
-    // /// Grapheme is not one char, something like zerowidth joiner used to merge
-    // /// multiple together
-    // pub(crate) const WIDE: u8 = 1 << 1;
-
-    /// This char is place holder, used as padding with wide chars
-    pub(crate) const DISCARD: u8 = 1 << 1;
-
     /// Just keep eol status so we can fetch it whenever
-    pub(crate) const EOL: u8 = 1 << 2;
+    pub(crate) const EOL: u8 = 1;
 
     /// The character does not exist in the buffer at all
-    pub(crate) const VIRTUAL: u8 = 1 << 3;
-
-    /// Character is represented differently from the one in buffer
-    pub(crate) const REPR: u8 = 1 << 4;
+    pub(crate) const VIRTUAL: u8 = 1 << 1;
 }
 
 #[derive(Debug, Clone, PartialEq, Hash, Default)]
@@ -165,10 +133,6 @@ impl Char {
     }
 
     pub fn width(&self) -> usize {
-        if self.flags & flags::DISCARD == flags::DISCARD {
-            return 0;
-        }
-
         let width = if let Some(extra) = self.extra.as_ref() {
             extra.wide.width()
         } else {
@@ -198,10 +162,6 @@ impl Char {
 
     pub fn is_virtual(&self) -> bool {
         self.flags & flags::VIRTUAL == flags::VIRTUAL
-    }
-
-    pub fn is_representing(&self) -> bool {
-        self.flags & flags::REPR == flags::REPR
     }
 }
 

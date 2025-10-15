@@ -306,8 +306,7 @@ impl CustomItems {
                         break;
                     }
 
-                    grid.replace(*line, x, Cell::new_char(ch, *name_style));
-                    x += 1;
+                    x += grid.put_ch(*line, x, ch, *name_style);
                 }
                 if start != 0 && nlen > 2 && px + 1 < *width {
                     grid.at(*line, px).text = ".".into();
@@ -344,7 +343,10 @@ impl CustomItems {
                         if hl.contains(&pos) {
                             cell.style = *match_style;
                         }
-                        pos += cell.text.len();
+
+                        if !cell.is_padding() {
+                            pos += cell.text.len();
+                        }
                         i += 1;
                     }
                 }

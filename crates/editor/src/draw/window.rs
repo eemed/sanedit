@@ -80,10 +80,13 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> Option<FromEditorSharedMessage> {
     let style = theme.get(ThemeField::Default);
     let vstyle = theme.get(ThemeField::Virtual);
     let view = win.view();
+
+    // This is a hack to separate empty cells from cells that fill space for example if emojis are width = 2
+    let fill = redraw::Cell::padding(style);
     if grid.height() != view.height() || grid.width() != view.width() {
-        *grid = Window::new(view.width(), view.height(), redraw::Cell::with_style(style));
+        *grid = Window::new(view.width(), view.height(), fill);
     } else {
-        grid.clear_with(redraw::Cell::with_style(style));
+        grid.clear_with(fill);
     }
 
     for (line, row) in view.cells().iter().enumerate() {
@@ -94,11 +97,7 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> Option<FromEditorSharedMessage> {
 
             // Has to be char because it has width
             let ch = cell.char().unwrap();
-            let cell_style = if ch.is_virtual() || ch.is_representing() {
-                vstyle
-            } else {
-                style
-            };
+            let cell_style = if ch.is_virtual() { vstyle } else { style };
             grid.draw(
                 line,
                 col,
@@ -164,7 +163,7 @@ fn draw_ordered_highlights<T, F>(
     items: &[T],
     grid: &mut Window,
     view: &View,
-    overwrite_repr_and_virtual: bool,
+    overwrite_virtual: bool,
     f: F,
 ) where
     F: Fn(&T) -> Option<(Style, &BufferRange)>,
@@ -191,7 +190,8 @@ fn draw_ordered_highlights<T, F>(
         let row_offset = point.y;
         let mut col_offset = point.x;
         let mut pos = ppos;
-        let mut in_repr_block = false;
+        let mut last_was_virtual = false;
+        let mut in_virtual_block = false;
 
         for i in 0..(view.cells().len() - row_offset) {
             let line = row_offset + i;
@@ -199,26 +199,17 @@ fn draw_ordered_highlights<T, F>(
             for j in 0..(row.len() - col_offset) {
                 let col = col_offset + j;
                 let cell = &view.cells()[line][col];
+                let first_virtual = overwrite_virtual && !last_was_virtual && cell.is_virtual();
 
-                // Handle continuation chars as one block
-                if in_repr_block && !cell.is_virtual() {
-                    in_repr_block = false;
-                }
-
-                if overwrite_repr_and_virtual && in_repr_block {
+                // Handle virtual chars as one block
+                if in_virtual_block {
                     grid.at(line, col).style.merge(&style);
                 }
 
-                if (cell.is_valid_cursor_cell()) && range.contains(&pos) {
-                    if cell.is_representing() {
-                        in_repr_block = true;
-
-                        if overwrite_repr_and_virtual {
-                            grid.at(line, col).style.merge(&style);
-                        }
-                    } else {
-                        grid.at(line, col).style.merge(&style);
-                    }
+                if range.contains(&pos) && !cell.is_empty() && (!cell.is_virtual() || first_virtual)
+                {
+                    grid.at(line, col).style.merge(&style);
+                    in_virtual_block = first_virtual;
                 }
 
                 if !start_found && pos + cell.len_in_buffer() >= range.start {
@@ -229,8 +220,9 @@ fn draw_ordered_highlights<T, F>(
                 }
 
                 pos += cell.len_in_buffer();
+                last_was_virtual = cell.is_virtual();
 
-                if pos >= range.end && !in_repr_block {
+                if pos >= range.end && !cell.is_virtual() {
                     continue 'hls;
                 }
             }
@@ -243,8 +235,7 @@ fn draw_ordered_highlights<T, F>(
 fn draw_diagnostics(grid: &mut Window, diagnostics: &[Diagnostic], view: &View, theme: &Theme) {
     const HL_PREFIX: &str = "window.view.";
     draw_ordered_highlights(diagnostics, grid, view, false, |diag| {
-        let key = format!("{}{}", HL_PREFIX, diag.severity().as_ref());
-        let style = theme.get(key);
+        let style = theme.get_from_arr(&[HL_PREFIX, diag.severity().as_ref()]);
         Some((style, diag.range()))
     });
 }

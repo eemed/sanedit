@@ -12,6 +12,7 @@ tokio = { workspace = true, features = ["full"] }
 
 # Drawing to the terminal
 crossterm.workspace = true
+unicode-width.workspace = true
 
 anyhow.workspace = true
 log.workspace = true

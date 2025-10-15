@@ -1,6 +1,7 @@
 use sanedit_messages::redraw::{
     statusline::Statusline, Cell, Cursor, Severity, Size, StatusMessage, Style, ThemeField,
 };
+use unicode_width::UnicodeWidthChar as _;
 
 use crate::ui::UIContext;
 
@@ -132,17 +133,45 @@ impl<'a, 'b> Subgrid<'a, 'b> {
         }
     }
 
+    pub fn put_ch(&mut self, row: usize, mut col: usize, ch: char, style: Style) -> usize {
+        let ocol = col;
+        if col >= self.rect.width {
+            return 0;
+        }
+        let width = ch.width().unwrap_or(1).max(1);
+
+        self.replace(row, col, Cell::new_char(ch, style));
+        col += 1;
+
+        while col < ocol + width {
+            self.replace(row, col, Cell::padding(style));
+            col += 1;
+        }
+
+        col - ocol
+    }
+
     /// Will put a string on a line will and will cut short if it would go over the column
     /// Returns the added amount
     pub fn put_string(&mut self, row: usize, mut col: usize, string: &str, style: Style) -> usize {
         let ocol = col;
-        for ch in string.chars().map(|ch| if ch.is_control() { ' ' } else { ch }) {
+        for ch in string
+            .chars()
+            .map(|ch| if ch.is_control() { ' ' } else { ch })
+        {
             if col >= self.rect.width {
                 break;
             }
+            let width = ch.width().unwrap_or(1).max(1);
+            let target = col + width;
 
             self.replace(row, col, Cell::new_char(ch, style));
             col += 1;
+
+            while col < target {
+                self.replace(row, col, Cell::padding(style));
+                col += 1;
+            }
         }
         col - ocol
     }
@@ -229,7 +258,7 @@ impl Drawable for StatusMessage {
 
         while x < width {
             grid.replace(0, x, Cell::with_style(style));
-            x+=1;
+            x += 1;
         }
     }
 

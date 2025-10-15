@@ -31,6 +31,13 @@ impl Cell {
         }
     }
 
+    pub fn padding(style: Style) -> Cell {
+        Cell {
+            text: SmolStr::from("\0"),
+            style,
+        }
+    }
+
     pub fn new_char(ch: char, style: Style) -> Cell {
         let mut buf = [0u8; 4];
         let string = ch.encode_utf8(&mut buf);
@@ -46,6 +53,10 @@ impl Cell {
 
     pub fn is_blank(&self) -> bool {
         self.text.chars().all(char::is_whitespace)
+    }
+
+    pub fn is_padding(&self) -> bool {
+        self.text == "\0"
     }
 }
 

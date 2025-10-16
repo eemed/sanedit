@@ -82,7 +82,7 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> Option<FromEditorSharedMessage> {
     let view = win.view();
 
     // This is a hack to separate empty cells from cells that fill space for example if emojis are width = 2
-    let fill = redraw::Cell::padding(style);
+    let fill = redraw::Cell::empty(style);
     if grid.height() != view.height() || grid.width() != view.width() {
         *grid = Window::new(view.width(), view.height(), fill);
     } else {
@@ -91,6 +91,11 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> Option<FromEditorSharedMessage> {
 
     for (line, row) in view.cells().iter().enumerate() {
         for (col, cell) in row.iter().enumerate() {
+            if cell.is_fill() {
+                grid.draw(line, col, redraw::Cell::padding(style));
+                continue;
+            }
+
             if cell.width() == 0 {
                 continue;
             }
@@ -190,7 +195,6 @@ fn draw_ordered_highlights<T, F>(
         let row_offset = point.y;
         let mut col_offset = point.x;
         let mut pos = ppos;
-        let mut last_was_virtual = false;
         let mut in_virtual_block = false;
 
         for i in 0..(view.cells().len() - row_offset) {
@@ -199,7 +203,8 @@ fn draw_ordered_highlights<T, F>(
             for j in 0..(row.len() - col_offset) {
                 let col = col_offset + j;
                 let cell = &view.cells()[line][col];
-                let first_virtual = overwrite_virtual && !last_was_virtual && cell.is_virtual();
+                let first_virtual = overwrite_virtual && cell.is_virtual() && cell.can_place_cursor();
+                in_virtual_block &= cell.is_virtual();
 
                 // Handle virtual chars as one block
                 if in_virtual_block {
@@ -220,7 +225,6 @@ fn draw_ordered_highlights<T, F>(
                 }
 
                 pos += cell.len_in_buffer();
-                last_was_virtual = cell.is_virtual();
 
                 if pos >= range.end && !cell.is_virtual() {
                     continue 'hls;
@@ -372,7 +376,7 @@ fn draw_trailing_whitespace(grid: &mut Window, view: &View, theme: &Theme, buf: 
         let cat = grapheme_category(&g);
         match cat {
             GraphemeCategory::Whitespace => {}
-            GraphemeCategory::EOL => {
+            GraphemeCategory::Eol => {
                 break;
             }
             _ => {
@@ -388,7 +392,7 @@ fn draw_trailing_whitespace(grid: &mut Window, view: &View, theme: &Theme, buf: 
     while let Some(g) = graphemes.prev() {
         let cat = grapheme_category(&g);
         match cat {
-            GraphemeCategory::EOL => in_eol = true,
+            GraphemeCategory::Eol => in_eol = true,
             GraphemeCategory::Whitespace => {}
             _ => in_eol = false,
         }

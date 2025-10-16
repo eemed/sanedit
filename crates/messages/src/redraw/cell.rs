@@ -38,6 +38,13 @@ impl Cell {
         }
     }
 
+    pub fn empty(style: Style) -> Cell {
+        Cell {
+            text: SmolStr::from(" "),
+            style,
+        }
+    }
+
     pub fn new_char(ch: char, style: Style) -> Cell {
         let mut buf = [0u8; 4];
         let string = ch.encode_utf8(&mut buf);

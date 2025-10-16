@@ -356,7 +356,7 @@ impl LSPJob {
         };
         let add_own_snippets = matches!(
             cat,
-            Some(GraphemeCategory::Whitespace) | Some(GraphemeCategory::EOL)
+            Some(GraphemeCategory::Whitespace) | Some(GraphemeCategory::Eol)
         );
 
         win.completion = Completion::new(start, cursor.pos(), point);

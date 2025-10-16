@@ -20,7 +20,8 @@ pub(crate) enum Zone {
 pub(crate) enum Cell {
     #[default]
     Empty,
-    Eof, // End of file where cursor can be placed
+    Eof,  // End of file where cursor can be placed
+    Fill, // If Chars have width >= 2, fills the space
     Char {
         ch: Char,
     },
@@ -52,11 +53,23 @@ impl Cell {
         matches!(self, Cell::Empty)
     }
 
+    pub fn is_fill(&self) -> bool {
+        matches!(self, Cell::Fill)
+    }
+
     pub fn is_virtual(&self) -> bool {
         match self {
-            Cell::Empty => false,
-            Cell::Eof => false,
             Cell::Char { ch } => ch.is_virtual(),
+            Cell::Fill => true,
+            _ => false,
+        }
+    }
+
+    pub fn can_place_cursor(&self) -> bool {
+        match self {
+            Cell::Fill | Cell::Empty => false,
+            Cell::Eof => true,
+            Cell::Char { ch } => ch.can_place_cursor(),
         }
     }
 }
@@ -164,6 +177,15 @@ impl View {
         self.options.height
     }
 
+    fn draw_ch(&mut self, line: usize, col: usize, ch: Char) -> usize {
+        let width = ch.width();
+        self.cells[line][col] = Cell::Char { ch };
+        for i in 1..width {
+            self.cells[line][col + i] = Cell::Fill;
+        }
+        width
+    }
+
     fn draw_cells(&mut self, buf: &Buffer) {
         let slice = buf.slice(self.range.start..);
         let mut pos = 0;
@@ -188,9 +210,7 @@ impl View {
         if wrap {
             if let Some(wrap) = self.options.replacements.get(&Replacement::Wrap) {
                 let vch = Char::new_virtual(*wrap);
-                let wrap_ch_width = vch.width();
-                self.cells[line][col] = Cell::Char { ch: vch };
-                col += wrap_ch_width;
+                col += self.draw_ch(line, col, vch);
             }
         }
 
@@ -210,9 +230,7 @@ impl View {
 
                 if let Some(wrap) = self.options.replacements.get(&Replacement::Wrap) {
                     let vch = Char::new_virtual(*wrap);
-                    let wrap_ch_width = vch.width();
-                    self.cells[line][col] = Cell::Char { ch: vch };
-                    col += wrap_ch_width;
+                    col += self.draw_ch(line, col, vch);
                 }
 
                 // Cannot fit this grapheme in any way
@@ -223,20 +241,15 @@ impl View {
 
             match chars {
                 Chars::Single { ch } => {
-                    self.cells[line][col] = ch.into();
+                    col += self.draw_ch(line, col, ch);
                 }
                 Chars::Multi { chars } => {
-                    let mut w = col;
                     for ch in chars {
-                        let oldw = w;
-                        w += ch.width();
-                        self.cells[line][col + oldw] = ch.into();
+                        col += self.draw_ch(line, col, ch);
                     }
                 }
             }
 
-            // Increment pos, col once we have written the character to grid
-            col += ch_width;
             pos += grapheme.len();
 
             // Goto next line if eol
@@ -318,7 +331,7 @@ impl View {
         let mut line = 0;
         while n > 0 {
             let len = self.line_len_in_buffer(line);
-            if len == 0 {
+            if len == 0 || self.range.start + len == buf.len() {
                 break;
             }
             self.range.start += len;
@@ -513,72 +526,60 @@ impl View {
 
     pub fn pos_at_point(&self, point: Point) -> Option<u64> {
         let mut pos = self.range.start;
-        let mut ret_next = false;
-        let mut last_virtual = false;
 
         for (y, row) in self.cells.iter().enumerate() {
-            for (x, cell) in row.iter().enumerate() {
-                match cell {
-                    Cell::Eof => {
-                        if ret_next {
-                            return Some(pos);
-                        }
-                        if point.y == y && point.x == x {
-                            return Some(pos);
-                        }
-                    }
-                    Cell::Char { ch } => {
-                        let first_virtual = !last_virtual && cell.is_virtual() && !cell.is_empty();
-                        let ch_cell = !cell.is_virtual() && !cell.is_empty();
-                        let is_valid_cursor_cell = first_virtual || ch_cell;
-                        if ret_next && is_valid_cursor_cell {
-                            return Some(pos);
-                        }
-
-                        if point.y == y && point.x == x {
-                            if is_valid_cursor_cell {
-                                return Some(pos);
-                            } else if ch.is_virtual() {
-                                ret_next = true;
-                            }
-                        }
-
-                        pos += ch.len_in_buffer();
-                        last_virtual = cell.is_virtual();
-                    }
-                    _ => {}
-                }
+            if y != point.y {
+                pos += row.iter().map(|cell| cell.len_in_buffer()).sum::<u64>();
+                continue;
             }
+
+            let mut in_virtual_block = false;
+            let mut prev = pos;
+
+            for (x, cell) in row.iter().enumerate() {
+                if !in_virtual_block {
+                    in_virtual_block = cell.can_place_cursor() && cell.is_virtual();
+                } else {
+                    in_virtual_block &= cell.is_virtual();
+                }
+
+                if cell.can_place_cursor() && point.x == x {
+                    return Some(pos);
+                }
+
+                if (in_virtual_block || cell.is_fill()) && point.x == x {
+                    return Some(prev);
+                }
+
+                if point.x < x {
+                    return Some(prev);
+                }
+
+                if cell.can_place_cursor() {
+                    prev = pos;
+                }
+
+                pos += cell.len_in_buffer();
+            }
+
+            break;
         }
 
         None
     }
 
     pub fn point_at_pos(&self, pos: u64) -> Option<Point> {
-        let mut ret_next = false;
         let mut cpos = self.range.start;
-        let mut last_virtual = false;
 
         for (y, row) in self.cells.iter().enumerate() {
             for (x, cell) in row.iter().enumerate() {
-                let first_virtual = !last_virtual && cell.is_virtual() && !cell.is_empty();
-                let ch_cell = !cell.is_virtual() && !cell.is_empty();
-                let is_valid_cursor_cell = first_virtual || ch_cell;
+                let point = Point { x, y };
 
-                if ret_next && is_valid_cursor_cell {
-                    return Some(Point { x, y });
-                }
-
-                if cpos == pos {
-                    if is_valid_cursor_cell {
-                        return Some(Point { x, y });
-                    } else if cell.is_virtual() {
-                        ret_next = true;
-                    }
+                if cpos == pos && cell.can_place_cursor() {
+                    return Some(point);
                 }
 
                 cpos += cell.len_in_buffer();
-                last_virtual = cell.is_virtual() && !cell.is_empty();
             }
         }
 
@@ -630,6 +631,7 @@ impl View {
                 match cell {
                     Cell::Eof => return true,
                     Cell::Empty => break,
+                    Cell::Fill => {}
                     _ => found_text = true,
                 }
             }

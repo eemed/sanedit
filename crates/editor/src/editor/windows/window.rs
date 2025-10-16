@@ -1300,7 +1300,7 @@ impl Window {
             while let Some(g) = graphemes.prev() {
                 let cat = grapheme_category(&g);
                 match cat {
-                    GraphemeCategory::EOL => {
+                    GraphemeCategory::Eol => {
                         end = g.start();
                     }
                     GraphemeCategory::Whitespace => start = Some(g.start()),

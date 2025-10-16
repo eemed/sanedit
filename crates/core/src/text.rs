@@ -345,7 +345,7 @@ pub fn selection_line_ends(slice: &PieceTreeSlice, sel: BufferRange) -> Vec<u64>
 pub fn at_start_of_line(slice: &PieceTreeSlice, pos: u64) -> bool {
     let mut graphemes = slice.graphemes_at(pos);
     match graphemes.prev() {
-        Some(g) => grapheme_category(&g) == GraphemeCategory::EOL,
+        Some(g) => grapheme_category(&g) == GraphemeCategory::Eol,
         None => true,
     }
 }

@@ -46,7 +46,11 @@ impl Chars {
             let ch2 = Char {
                 character: ch,
                 extra: None,
-                flags: flags::VIRTUAL,
+                flags: if chars.is_empty() {
+                    flags::PLACE_CURSOR | flags::VIRTUAL
+                } else {
+                    flags::VIRTUAL
+                },
                 len_in_buffer: if chars.is_empty() { len } else { 0 },
             };
 
@@ -103,8 +107,11 @@ mod flags {
     /// Just keep eol status so we can fetch it whenever
     pub(crate) const EOL: u8 = 1;
 
-    /// The character does not exist in the buffer at all
+    /// The character does not exist in the buffer at all or is a representation of it
     pub(crate) const VIRTUAL: u8 = 1 << 1;
+
+    /// Can place cursor on this block
+    pub(crate) const PLACE_CURSOR: u8 = 1 << 2;
 }
 
 #[derive(Debug, Clone, PartialEq, Hash, Default)]
@@ -163,11 +170,19 @@ impl Char {
     pub fn is_virtual(&self) -> bool {
         self.flags & flags::VIRTUAL == flags::VIRTUAL
     }
+
+    pub fn can_place_cursor(&self) -> bool {
+        if self.is_virtual() {
+            self.flags & flags::PLACE_CURSOR == flags::PLACE_CURSOR
+        } else {
+            true
+        }
+    }
 }
 
 #[derive(PartialEq, Default, Clone, Copy, Debug, Hash)]
 pub enum GraphemeCategory {
-    EOL,
+    Eol,
     Whitespace,
     Word,
     Punctuation,
@@ -181,7 +196,7 @@ impl GraphemeCategory {
     #[inline(always)]
     pub fn is_word(&self) -> bool {
         use GraphemeCategory::*;
-        matches!(self, Word | Punctuation | EOL)
+        matches!(self, Word | Punctuation | Eol)
     }
 }
 
@@ -227,7 +242,7 @@ impl DisplayOptions {
         use Replacement::*;
 
         const DEFAULT: [(Replacement, char); 7] = [
-            (Tab, ' '),
+            (Tab, '⏵'),
             (TabFill, ' '),
             (EOL, ' '),
             (BufferEnd, '~'),
@@ -417,7 +432,7 @@ fn ascii_control_to_char(byte: u8) -> Chars {
 
 pub fn grapheme_category(grapheme: &Grapheme) -> GraphemeCategory {
     if grapheme.is_eol() {
-        return GraphemeCategory::EOL;
+        return GraphemeCategory::Eol;
     }
 
     let bytes = grapheme.as_ref();

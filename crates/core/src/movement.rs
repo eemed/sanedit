@@ -197,7 +197,7 @@ pub fn is_empty_or_whitespace(slice: &PieceTreeSlice) -> bool {
     let mut graphemes = slice.graphemes();
     while let Some(g) = graphemes.next() {
         let cat = grapheme_category(&g);
-        if !matches!(cat, GraphemeCategory::EOL | GraphemeCategory::Whitespace) {
+        if !matches!(cat, GraphemeCategory::Eol | GraphemeCategory::Whitespace) {
             return false;
         }
     }

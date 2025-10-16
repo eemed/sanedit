@@ -501,7 +501,7 @@ mod test {
         pt.insert(0, "❤️");
         let g = pt.slice(..).graphemes().next().unwrap();
         let ch = Chars::new(&g, 0, &DisplayOptions::default());
-        assert_eq!("❤️ ", ch.display());
+        assert_eq!("❤️", ch.display());
     }
 
     #[test]

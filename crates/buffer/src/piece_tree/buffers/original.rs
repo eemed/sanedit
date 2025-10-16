@@ -25,7 +25,7 @@ pub(crate) struct PathFile {
 pub(crate) enum OriginalBuffer {
     File {
         file: Mutex<PathFile>,
-        cache: RwLock<Cache>,
+        cache: Box<RwLock<Cache>>,
     },
     Memory {
         bytes: Vec<u8>,
@@ -54,7 +54,7 @@ impl OriginalBuffer {
                 file,
                 path: path.into(),
             }),
-            cache: RwLock::new(Cache::new()),
+            cache: RwLock::new(Cache::new()).into(),
         })
     }
 

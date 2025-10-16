@@ -360,7 +360,7 @@ impl CustomItems {
     }
 }
 
-fn u64_to_str<'a>(num: u64, buf: &'a mut [u8; 20]) -> &'a str {
+fn u64_to_str(num: u64, buf: &mut [u8; 20]) -> &str {
     use std::io::Write;
     let mut cursor = std::io::Cursor::new(buf.as_mut());
     write!(cursor, "{}", num).unwrap();
@@ -368,7 +368,7 @@ fn u64_to_str<'a>(num: u64, buf: &'a mut [u8; 20]) -> &'a str {
     std::str::from_utf8(&buf[..len]).unwrap()
 }
 
-fn u64_to_hex_str<'a>(num: u64, buf: &'a mut [u8; 20]) -> &'a str {
+fn u64_to_hex_str(num: u64, buf: &mut [u8; 20]) -> &str {
     let mut i = 20;
     let mut n = num;
 

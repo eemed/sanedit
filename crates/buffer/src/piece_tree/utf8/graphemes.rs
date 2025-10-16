@@ -1,4 +1,4 @@
-use std::ops::Range;
+use std::{fmt::Display, ops::Range};
 
 use sanedit_ucd::{grapheme_break, GraphemeBreak, Property};
 
@@ -55,6 +55,10 @@ impl<'a> Grapheme<'a> {
         }
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
     pub fn start(&self) -> u64 {
         match self {
             Grapheme::Ref {
@@ -77,17 +81,31 @@ impl<'a> Grapheme<'a> {
         EndOfLine::is_eol(self.as_ref())
     }
 
-    pub fn to_string(&self) -> String {
-        let mut string = String::new();
+    // pub fn to_string(&self) -> String {
+    //     let mut string = String::new();
+    //     let mut bytes = self.as_ref();
+    //     while !bytes.is_empty() {
+    //         let (ch, n) = decode_utf8(bytes);
+    //         let ch = ch.unwrap_or(REPLACEMENT_CHAR);
+    //         string.push(ch);
+    //         bytes = &bytes[n..];
+    //     }
+
+    //     string
+    // }
+}
+
+impl<'a> Display for Grapheme<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut bytes = self.as_ref();
         while !bytes.is_empty() {
             let (ch, n) = decode_utf8(bytes);
             let ch = ch.unwrap_or(REPLACEMENT_CHAR);
-            string.push(ch);
+            write!(f, "{}", ch)?;
             bytes = &bytes[n..];
         }
 
-        string
+        Ok(())
     }
 }
 
@@ -97,7 +115,7 @@ impl<'a> AsRef<[u8]> for Grapheme<'a> {
             Grapheme::Ref { chunk, range, .. } => {
                 &chunk.as_ref()[range.start as usize..range.end as usize]
             }
-            Grapheme::Owned { text, .. } => &text,
+            Grapheme::Owned { text, .. } => text,
         }
     }
 }
@@ -249,18 +267,16 @@ impl<'a> Graphemes<'a> {
         let next_chunk = self.chars.current_chunk();
 
         let chunks = [prev_chunk, next_chunk];
-        for chk in chunks {
-            if let Some((start, chk)) = chk {
-                let chunk = chk.as_ref();
-                let end = start + chunk.len() as u64;
-                if start <= slice.start() && slice.end() <= end {
-                    let chk_start = slice.start() - start;
-                    return Some(Grapheme::Ref {
-                        chunk_start: start,
-                        chunk: chk,
-                        range: chk_start..chk_start + slice.len(),
-                    });
-                }
+        for (start, chk) in chunks.into_iter().flatten() {
+            let chunk = chk.as_ref();
+            let end = start + chunk.len() as u64;
+            if start <= slice.start() && slice.end() <= end {
+                let chk_start = slice.start() - start;
+                return Some(Grapheme::Ref {
+                    chunk_start: start,
+                    chunk: chk,
+                    range: chk_start..chk_start + slice.len(),
+                });
             }
         }
 
@@ -276,18 +292,16 @@ impl<'a> Graphemes<'a> {
         let prev_chunk = self.chars.current_chunk();
 
         let chunks = [prev_chunk, next_chunk];
-        for chk in chunks {
-            if let Some((start, chk)) = chk {
-                let chunk = chk.as_ref();
-                let end = start + chunk.len() as u64;
-                if start <= slice.start() && slice.end() <= end {
-                    let chk_start = slice.start() - start;
-                    return Some(Grapheme::Ref {
-                        chunk_start: start,
-                        chunk: chk,
-                        range: chk_start..chk_start + slice.len(),
-                    });
-                }
+        for (start, chk) in chunks.into_iter().flatten() {
+            let chunk = chk.as_ref();
+            let end = start + chunk.len() as u64;
+            if start <= slice.start() && slice.end() <= end {
+                let chk_start = slice.start() - start;
+                return Some(Grapheme::Ref {
+                    chunk_start: start,
+                    chunk: chk,
+                    range: chk_start..chk_start + slice.len(),
+                });
             }
         }
 

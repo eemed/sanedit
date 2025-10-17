@@ -309,3 +309,26 @@ fn scroll_multi_line() {
     win.scroll_up_n(&buf, 2);
     print_view(&win);
 }
+
+#[test]
+fn pos_at_point_tabs() {
+    let (mut win, buf) = with_buf_size("one long line is\n\t\twoo longer", 20, 3);
+
+    win.redraw_view(&buf);
+    assert_eq!(Some(0), win.view().pos_at_point(Point { x: 0, y: 0 }));
+    assert_eq!(Some(17), win.view().pos_at_point(Point { x: 0, y: 1 }));
+    assert_eq!(Some(17), win.view().pos_at_point(Point { x: 7, y: 1 }));
+    assert_eq!(Some(18), win.view().pos_at_point(Point { x: 8, y: 1 }));
+    assert_eq!(Some(18), win.view().pos_at_point(Point { x: 15, y: 1 }));
+}
+
+#[test]
+fn pos_at_point_emoji() {
+    let (mut win, buf) = with_buf_size("one\n🤍", 5, 3);
+
+    win.redraw_view(&buf);
+    assert_eq!(Some(0), win.view().pos_at_point(Point { x: 0, y: 0 }));
+    assert_eq!(Some(4), win.view().pos_at_point(Point { x: 0, y: 1 }));
+    assert_eq!(Some(4), win.view().pos_at_point(Point { x: 1, y: 1 }));
+    assert_eq!(Some(8), win.view().pos_at_point(Point { x: 2, y: 1 }));
+}

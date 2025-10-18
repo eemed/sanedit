@@ -303,11 +303,14 @@ fn scroll_multi_line() {
     );
 
     win.redraw_view(&buf);
-    print_view(&win);
+    let lines = view_lines(&mut win, &buf);
+    assert_eq!(lines[0], "one long ");
     win.scroll_down_n(&buf, 3);
-    print_view(&win);
+    let lines = view_lines(&mut win, &buf);
+    assert_eq!(lines[0], "three lon");
     win.scroll_up_n(&buf, 2);
-    print_view(&win);
+    let lines = view_lines(&mut win, &buf);
+    assert_eq!(lines[0], "twoo long");
 }
 
 #[test]

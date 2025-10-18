@@ -332,3 +332,13 @@ fn pos_at_point_emoji() {
     assert_eq!(Some(4), win.view().pos_at_point(Point { x: 1, y: 1 }));
     assert_eq!(Some(8), win.view().pos_at_point(Point { x: 2, y: 1 }));
 }
+
+#[test]
+fn pos_at_point_wrap() {
+    let (mut win, buf) = with_buf_size("one line", 5, 3);
+
+    win.redraw_view(&buf);
+    assert_eq!(Some(4), win.view().pos_at_point(Point { x: 4, y: 0 }));
+    assert_eq!(Some(5), win.view().pos_at_point(Point { x: 0, y: 1 }));
+    assert_eq!(Some(5), win.view().pos_at_point(Point { x: 1, y: 1 }));
+}

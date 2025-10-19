@@ -164,8 +164,8 @@ impl Searcher {
     pub fn options(&self) -> SearchOptions {
         let is_regex = matches!(self, Self::Regex(..));
         let (is_case_sensitive, is_reversed) = match self {
-            Searcher::Regex(_) => (false, false),
-            Searcher::RegexRev(_) => (false, true),
+            Searcher::Regex(_) => (true, false),
+            Searcher::RegexRev(_) => (true, true),
             Searcher::Finder(finder) => (finder.is_case_sensitive(), false),
             Searcher::FinderRev(finder) => (finder.is_case_sensitive(), true),
         };

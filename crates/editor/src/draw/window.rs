@@ -204,7 +204,7 @@ fn draw_ordered_highlights<T, F>(
                 let col = col_offset + j;
                 let cell = &view.cells()[line][col];
                 let first_virtual = overwrite_virtual && cell.is_virtual() && cell.can_place_cursor();
-                in_virtual_block &= cell.is_virtual();
+                in_virtual_block &= cell.is_virtual() && !cell.can_place_cursor();
 
                 // Handle virtual chars as one block
                 if in_virtual_block {

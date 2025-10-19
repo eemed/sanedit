@@ -224,6 +224,8 @@ impl Editor {
 
         self.draw_states.remove(&id);
         self.clients.remove(&id);
+
+        self.is_running = !self.clients.is_empty();
     }
 
     pub fn is_last_client(&self) -> bool {
@@ -372,6 +374,7 @@ impl Editor {
             Message::Command(cmd) => self.handle_command(id, cmd),
             Message::FocusGained => run(self, id, Hook::Focus),
             Message::FocusLost => run(self, id, Hook::Unfocus),
+            Message::Bye => self.quit_client(id),
             _ => {}
         }
 

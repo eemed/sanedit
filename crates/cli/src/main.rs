@@ -246,7 +246,7 @@ fn next_available_session(sessions: &Path) -> Session {
 
 fn start_server_process(cli: &Cli, session: &Session, server_opts: ServerOptions) {
     log::info!("Start server process..");
-    let mut opts = vec!["sane", "--server-only", "--session", &session.name];
+    let mut opts = vec!["--server-only", "--session", &session.name];
     if cli.debug {
         opts.push("--debug");
     }
@@ -256,13 +256,16 @@ fn start_server_process(cli: &Cli, session: &Session, server_opts: ServerOptions
         opts.push(dir);
     }
 
-    let working_dir = server_opts.working_dir.as_ref().map(|dir| dir.to_string_lossy());
+    let working_dir = server_opts
+        .working_dir
+        .as_ref()
+        .map(|dir| dir.to_string_lossy());
     if let Some(ref dir) = working_dir {
         opts.push("--working-dir");
         opts.push(dir);
     }
 
-    let _ = std::process::Command::new("nohup")
+    let _ = std::process::Command::new("sane")
         .args(&opts)
         .stderr(Stdio::null())
         .stdout(Stdio::null())

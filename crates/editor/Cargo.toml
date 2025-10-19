@@ -20,6 +20,7 @@ serde = { workspace = true, features = ["derive", "rc"] }
 tokio-util = { workspace = true, features = ["codec"] }
 
 # General
+libc.workspace = true
 log.workspace = true
 rayon.workspace = true
 rustc-hash.workspace = true

@@ -29,6 +29,8 @@ sanedit-editor = { path = "../editor" }
 sanedit-server = { path = "../server" }
 sanedit-core = { path = "../core" }
 
-argh.workspace = true
-log.workspace = true
 chrono = { workspace = true, features = ["alloc"]}
+
+argh.workspace = true
+crossbeam.workspace = true
+log.workspace = true

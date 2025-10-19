@@ -36,8 +36,13 @@ pub fn determine_indent(slice: &PieceTreeSlice) -> Option<(IndentKind, u8)> {
     while let Some(line) = lines.next() {
         let mut bytes = line.bytes();
         let indent = indent_from_bytes(&mut bytes);
-        if let Some(indent) = indent {
-            indents.push(indent);
+        if let Some((kind, amount)) = indent {
+            // this may happen in comments etc, and should not be considered, no one uses 1 space indent
+            if kind == IndentKind::Space && amount == 1 {
+                continue;
+            }
+
+            indents.push((kind, amount));
         }
     }
 

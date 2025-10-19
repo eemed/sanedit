@@ -13,5 +13,5 @@ pub struct ClientOptions {
 #[derive(Debug, Clone)]
 pub enum InitialFile {
     Path(PathBuf),
-    Stdin(Vec<u8>)
+    Stdin(Vec<u8>),
 }

@@ -1,7 +1,7 @@
 use sanedit_messages::{ClientMessage, Message};
 
 #[derive(Debug)]
-pub(crate) enum ClientInternalMessage {
+pub enum ClientInternalMessage {
     FromServer(ClientMessage),
     ToServer(Message),
     Error(String),

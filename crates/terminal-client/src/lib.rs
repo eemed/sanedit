@@ -2,6 +2,7 @@ pub(crate) mod client;
 mod grid;
 pub(crate) mod input;
 pub(crate) mod message;
+mod signals;
 pub(crate) mod terminal;
 mod ui;
 mod window_manager;
@@ -14,7 +15,7 @@ use window_manager::WindowManager;
 
 use crate::ui::{UIResult, UI};
 pub use client::*;
-use message::ClientInternalMessage;
+pub use message::ClientInternalMessage;
 
 // We have 2 tasks that need to be running
 // Input thread: polls inputs and writes them to the server.
@@ -29,6 +30,8 @@ where
     let (tx, rx) = crossbeam::channel::unbounded();
     let (internal_tx, internal_rx) = crossbeam::channel::unbounded();
     let color_count = ui.color_count();
+
+    signals::register_signal_handlers(internal_tx.clone());
 
     writer
         .write(Message::Hello {
@@ -137,7 +140,10 @@ where
                 log::error!("Client got error {}. Exiting.", e);
                 break;
             }
-            Bye => break,
+            Bye => {
+                let _ = writer.write(Message::Bye);
+                break;
+            }
             Focus(focus) => {
                 ui.on_focus_change(focus);
                 let msg = if focus {

@@ -16,4 +16,5 @@ unicode-width.workspace = true
 
 anyhow.workspace = true
 log.workspace = true
+libc.workspace = true
 crossbeam.workspace = true

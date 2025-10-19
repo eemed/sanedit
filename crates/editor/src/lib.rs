@@ -42,6 +42,7 @@ pub(crate) mod actions;
 pub(crate) mod common;
 pub(crate) mod draw;
 pub(crate) mod editor;
+mod signals;
 
 use std::thread;
 
@@ -52,6 +53,8 @@ use tokio::runtime::Builder;
 pub(crate) const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 pub fn run(opts: ServerOptions) {
+    signals::register_signal_handlers();
+
     let (send, recv) = crossbeam::channel::unbounded();
     let handle = EditorHandle {
         sender: send,

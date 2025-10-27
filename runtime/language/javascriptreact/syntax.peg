@@ -79,7 +79,7 @@ preproc_words = ("import" / "from" / "export" / "default" !":" / "as") &ws;
 @show @highlight(special)
 special = "console" &(ws / ".");
 
-end = ws / ";" / "(" / "." / "=" / ",";
+end = ws / ";" / "." / "=" / ",";
 @show @highlight(keyword)
 keyword =  words / ("case" / "default") &(ws / ":");
 words = (
@@ -134,7 +134,7 @@ words = (
     "constructor" /
     "const" /
     "class" /
-    "catch"  !"("/
+    "catch" /
     "break" /
     "await" /
     "async" /

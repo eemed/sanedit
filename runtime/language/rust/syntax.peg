@@ -43,7 +43,7 @@ replacement = [^"}]*;
 
 
 # Types
-type = (builtintype / combipath /  typepath /  typeangle) &stop;
+type = (builtintype / combipath /  typepath ) &stop;
 path = path_sep? (pathname path_sep)+;
 @show @highlight(operator)
 path_sep = "::";
@@ -55,7 +55,10 @@ typename = uppercase_constant / capitalized_type;
 capitalized_type = [A..Z] [a..zA..Z0..9_]*;
 @show @highlight(type)
 builtintype = ("str" / "char" / "bool" / number_types) !"(";
-typeangle = "<" (lifetime / type / ws)* ">";
+
+# Proper but not needed now
+# normal_type = capitalized_type angle?;
+# angle = "<" (ws* ","? ws* (lifetime / normal_type / builtintype))* ">";
 
 combipath = path "{" ((ws / nl)* (combipath / typepath / functionpath) ","?)+ (ws / nl)* "}";
 
@@ -64,14 +67,6 @@ combipath = path "{" ((ws / nl)* (combipath / typepath / functionpath) ","?)+ (w
 @show @highlight
 operator = marks / "mut" &(ws / nl);
 marks = [\[\]{}():,.<>&|=+*/?<>!-];
-# operator = closure / operators;
-# @show @highlight(operator)
-# operators = "!" !"(" / "|" "|"? / "&&" / "?" / "=" "="? / "!=" / ".." / "+" / "-" / "/" / "*" / "<< " / "<= " / "< " / ">> " / ">= " / "> " / "&" / "mut";
-# closure =  bar (type / ws / nl / closure_item)* bar;
-# closure_item = [a..z() ._]+ ("," [a..z() ._]+ )*;
-# @show @highlight(operator)
-# bar = "|";
-
 
 # Preprocessor
 preproc = derive / lifetime / macro;

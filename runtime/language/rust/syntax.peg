@@ -73,7 +73,7 @@ preproc = derive / lifetime / macro;
 @show @highlight(preproc)
 derive =  "#" "!"? "[" (!"]" .)* "]";
 @show @highlight(preproc)
-lifetime = "'" [a..z]+;
+lifetime = "'" [a..z_]+;
 
 @show @highlight(preproc)
 macro = [a..z] [a..z0..9_]+ "!";

@@ -1,7 +1,7 @@
 use std::any::Any;
 
-use sanedit_buffer::PieceTreeView;
-use sanedit_core::BufferRange;
+
+use sanedit_buffer::PieceTreeSlice;use sanedit_core::BufferRange;
 
 use crate::editor::{
     buffers::BufferId,
@@ -18,7 +18,7 @@ pub(crate) struct SyntaxParser {
     syntax: Syntax,
     bid: BufferId,
     total_changes_made: u32,
-    pt: PieceTreeView,
+    pt: PieceTreeSlice,
     range: BufferRange,
 }
 
@@ -28,7 +28,7 @@ impl SyntaxParser {
         bid: BufferId,
         total_changes_made: u32,
         syntax: Syntax,
-        ropt: PieceTreeView,
+        ropt: PieceTreeSlice,
         range: BufferRange,
     ) -> Self {
         SyntaxParser {

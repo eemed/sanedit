@@ -4,8 +4,8 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use sanedit_buffer::PieceTreeView;
-use sanedit_core::{movement, BufferRange, Detect, Directory, Language, Range};
+
+use sanedit_buffer::PieceTreeSlice;use sanedit_core::{movement, BufferRange, Detect, Directory, Language, Range};
 use sanedit_server::Kill;
 use sanedit_utils::sorted_vec::SortedVec;
 
@@ -211,7 +211,7 @@ impl Syntax {
 
     pub fn parse(
         &self,
-        pt: &PieceTreeView,
+        pt: &PieceTreeSlice,
         mut view: BufferRange,
         _kill: Kill,
     ) -> anyhow::Result<SyntaxResult> {

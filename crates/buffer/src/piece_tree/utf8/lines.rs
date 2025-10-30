@@ -2,7 +2,7 @@ mod eol;
 
 use std::ops::Range;
 
-use crate::{Bytes, PieceTreeSlice, PieceTreeView};
+use crate::{Bytes, PieceTreeSlice};
 
 pub use self::eol::EndOfLine;
 
@@ -203,7 +203,7 @@ pub fn prev_eol(bytes: &mut Bytes) -> Option<EOLMatch> {
 }
 
 /// return position at line start of line
-pub(crate) fn pos_at_line(slice: &PieceTreeSlice<'_>, line: u64) -> Option<u64> {
+pub(crate) fn pos_at_line(slice: &PieceTreeSlice, line: u64) -> Option<u64> {
     let mut n = 0;
     let mut lines = slice.lines();
 
@@ -219,7 +219,7 @@ pub(crate) fn pos_at_line(slice: &PieceTreeSlice<'_>, line: u64) -> Option<u64> 
 }
 
 /// return the line and its number at pos
-pub(crate) fn line_at<'a>(slice: &PieceTreeSlice<'a>, pos: u64) -> (u64, PieceTreeSlice<'a>) {
+pub(crate) fn line_at<'a>(slice: &PieceTreeSlice, pos: u64) -> (u64, PieceTreeSlice) {
     let mut lines = slice.lines();
     let mut cur = lines.next();
     let mut n = 0;
@@ -242,28 +242,14 @@ pub(crate) fn line_at<'a>(slice: &PieceTreeSlice<'a>, pos: u64) -> (u64, PieceTr
 #[derive(Debug, Clone)]
 pub struct Lines<'a> {
     bytes: Bytes<'a>,
-    slice: PieceTreeSlice<'a>,
+    slice: &'a PieceTreeSlice,
     at_end: bool,
 }
 
 impl<'a> Lines<'a> {
     #[inline]
-    pub fn new(pt: &'a PieceTreeView, at: u64) -> Lines<'a> {
-        let slice = pt.slice(..);
-        let bytes = Bytes::new(pt, at);
-        let mut lines = Lines {
-            at_end: at == pt.len() && !pt.is_empty(),
-            slice,
-            bytes,
-        };
-        lines.goto_bol();
-        lines
-    }
-
-    #[inline]
-    pub fn new_from_slice(slice: &PieceTreeSlice<'a>, at: u64) -> Lines<'a> {
-        let slice = slice.clone();
-        let bytes = Bytes::new_from_slice(&slice, at);
+    pub fn new(slice: &PieceTreeSlice, at: u64) -> Lines<'_> {
+        let bytes = Bytes::new(&slice, at);
         let mut lines = Lines {
             at_end: bytes.pos() == slice.len() && !slice.is_empty(),
             slice,
@@ -285,7 +271,7 @@ impl<'a> Lines<'a> {
     }
 
     #[allow(clippy::should_implement_trait)]
-    pub fn next(&mut self) -> Option<PieceTreeSlice<'a>> {
+    pub fn next(&mut self) -> Option<PieceTreeSlice> {
         let start = self.bytes.pos();
 
         match next_eol(&mut self.bytes) {
@@ -302,7 +288,7 @@ impl<'a> Lines<'a> {
         }
     }
 
-    pub fn prev(&mut self) -> Option<PieceTreeSlice<'a>> {
+    pub fn prev(&mut self) -> Option<PieceTreeSlice> {
         let at_end = self.at_end;
         let end = self.bytes.pos();
 

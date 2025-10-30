@@ -29,7 +29,7 @@ pub(crate) fn only_whitespace_before(slice: &PieceTreeSlice, pos: u64) -> Option
     None
 }
 
-pub(crate) fn trim_whitespace<'a>(slice: &PieceTreeSlice<'a>) -> PieceTreeSlice<'a> {
+pub(crate) fn trim_whitespace<'a>(slice: &PieceTreeSlice) -> PieceTreeSlice {
     let mut n = 0;
     let mut graphemes = slice.graphemes();
     while let Some(g) = graphemes.next() {
@@ -44,7 +44,7 @@ pub(crate) fn trim_whitespace<'a>(slice: &PieceTreeSlice<'a>) -> PieceTreeSlice<
     slice.slice(n..)
 }
 
-pub(crate) fn trim_whitespace_back<'a>(slice: &PieceTreeSlice<'a>) -> PieceTreeSlice<'a> {
+pub(crate) fn trim_whitespace_back<'a>(slice: &PieceTreeSlice) -> PieceTreeSlice {
     let mut n = 0;
     let mut graphemes = slice.graphemes_at(slice.len());
     while let Some(g) = graphemes.prev() {
@@ -60,9 +60,9 @@ pub(crate) fn trim_whitespace_back<'a>(slice: &PieceTreeSlice<'a>) -> PieceTreeS
 }
 
 pub(crate) fn trim_comment_on_line<'a>(
-    line: &PieceTreeSlice<'a>,
+    line: &PieceTreeSlice,
     comment: &str,
-) -> Option<PieceTreeSlice<'a>> {
+) -> Option<PieceTreeSlice> {
     let line = trim_whitespace(line);
     if line.len() < comment.len() as u64 {
         return None;
@@ -77,9 +77,9 @@ pub(crate) fn trim_comment_on_line<'a>(
 }
 
 pub(crate) fn trim_comment_on_line_back<'a>(
-    line: &PieceTreeSlice<'a>,
+    line: &PieceTreeSlice,
     comment: &str,
-) -> Option<PieceTreeSlice<'a>> {
+) -> Option<PieceTreeSlice> {
     let line = trim_whitespace_back(line);
     if line.len() < comment.len() as u64 {
         return None;

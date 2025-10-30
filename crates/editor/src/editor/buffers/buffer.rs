@@ -15,7 +15,7 @@ use std::{
 
 use anyhow::ensure;
 use anyhow::Result;
-use sanedit_buffer::{Mark, MarkResult, PieceTree, PieceTreeSlice, PieceTreeView};
+use sanedit_buffer::{Mark, MarkResult, PieceTree, PieceTreeSlice};
 use sanedit_core::Edit;
 use sanedit_core::{tmp_file, Changes, Language};
 use sanedit_utils::key_type;
@@ -214,7 +214,7 @@ impl Buffer {
         ensure!(!self.read_only, BufferError::ReadOnly);
 
         let mut result = ChangeResult::default();
-        let rollback = self.ro_view();
+        let rollback = self.slice(..);
         let snapshot = self.snapshots.current();
         let needs_undo = self.needs_undo_point(changes);
         let forks = self.on_undopoint() && !changes.is_undo() && !changes.is_redo();
@@ -224,7 +224,7 @@ impl Buffer {
         }
 
         if needs_undo {
-            let snapshot = self.ro_view();
+            let snapshot = self.slice(..);
             let id = self.snapshots.insert(snapshot);
             result.created_snapshot = Some(id);
         }
@@ -307,12 +307,8 @@ impl Buffer {
         self.path.as_deref()
     }
 
-    pub fn slice<R: RangeBounds<u64>>(&self, range: R) -> PieceTreeSlice<'_> {
+    pub fn slice<R: RangeBounds<u64>>(&self, range: R) -> PieceTreeSlice {
         self.pt.slice(range)
-    }
-
-    pub fn ro_view(&self) -> PieceTreeView {
-        self.pt.view()
     }
 
     pub fn is_modified(&self) -> bool {
@@ -333,14 +329,14 @@ impl Buffer {
             std::fs::create_dir_all(parent)?;
         }
 
-        let copy_view = self.ro_view();
+        let copy_view = self.slice(..);
         let copy = Self::save_copy(&copy_view)?;
         let saved = self.save_rename_copy(copy_view, &copy);
         let _ = fs::remove_file(&copy);
         saved
     }
 
-    fn save_rename_copy(&mut self, copy_view: PieceTreeView, copy: &Path) -> Result<Saved> {
+    fn save_rename_copy(&mut self, copy_view: PieceTreeSlice, copy: &Path) -> Result<Saved> {
         let path = self.path().ok_or(BufferError::NoSavePath)?;
         let metadata = path.metadata().ok();
         let xattrs = {
@@ -382,7 +378,7 @@ impl Buffer {
         Ok(Saved { snapshot: snap })
     }
 
-    fn save_copy(buf: &PieceTreeView) -> Result<PathBuf> {
+    fn save_copy(buf: &PieceTreeSlice) -> Result<PathBuf> {
         let (path, mut file) = tmp_file().ok_or(BufferError::CannotCreateTmpFile)?;
 
         let mut chunks = buf.chunks();
@@ -414,6 +410,10 @@ impl Buffer {
             return false;
         };
         self.reload_from_disk_impl(&path).is_ok()
+    }
+
+    pub fn is_file_backed(&self) -> bool {
+        self.pt.is_file_backed()
     }
 
     fn reload_from_disk_impl(&mut self, path: &Path) -> io::Result<()> {

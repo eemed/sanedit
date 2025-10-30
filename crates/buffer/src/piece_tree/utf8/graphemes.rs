@@ -5,7 +5,7 @@ use sanedit_ucd::{grapheme_break, GraphemeBreak, Property};
 use crate::{
     piece_tree::{utf8::chars::REPLACEMENT_CHAR, PieceTreeSlice},
     utf8::{decode_utf8, EndOfLine},
-    Chunk, PieceTreeView,
+    Chunk,
 };
 
 use super::chars::Chars;
@@ -80,19 +80,6 @@ impl<'a> Grapheme<'a> {
     pub fn is_eol(&self) -> bool {
         EndOfLine::is_eol(self.as_ref())
     }
-
-    // pub fn to_string(&self) -> String {
-    //     let mut string = String::new();
-    //     let mut bytes = self.as_ref();
-    //     while !bytes.is_empty() {
-    //         let (ch, n) = decode_utf8(bytes);
-    //         let ch = ch.unwrap_or(REPLACEMENT_CHAR);
-    //         string.push(ch);
-    //         bytes = &bytes[n..];
-    //     }
-
-    //     string
-    // }
 }
 
 impl<'a> Display for Grapheme<'a> {
@@ -128,7 +115,7 @@ impl<'a> PartialEq<&str> for Grapheme<'a> {
 
 #[derive(Debug, Clone)]
 pub struct Graphemes<'a> {
-    slice: PieceTreeSlice<'a>,
+    slice: &'a PieceTreeSlice,
     chars: Chars<'a>,
     /// Used for next iteration
     prev: Option<GbChar>,
@@ -144,29 +131,16 @@ pub struct Graphemes<'a> {
 }
 
 impl<'a> Graphemes<'a> {
-    pub(crate) fn new(pt: &'a PieceTreeView, at: u64) -> Graphemes<'a> {
-        let chars = Chars::new(pt, at);
-        Graphemes {
-            slice: pt.slice(..),
-            chars,
-            prev: None,
-            next: None,
-            at_start: at == 0,
-            at_end: at == pt.len(),
-            last_call_fwd: None,
-        }
-    }
-
-    pub(crate) fn new_from_slice(slice: &PieceTreeSlice<'a>, at: u64) -> Graphemes<'a> {
+    pub(crate) fn new(slice: &PieceTreeSlice, at: u64) -> Graphemes<'_> {
         debug_assert!(
             slice.len() >= at,
             "Attempting to index {} over slice len {} ",
             at,
             slice.len(),
         );
-        let chars = Chars::new_from_slice(slice, at);
+        let chars = Chars::new(slice, at);
         Graphemes {
-            slice: slice.clone(),
+            slice,
             chars,
             prev: None,
             next: None,
@@ -176,7 +150,7 @@ impl<'a> Graphemes<'a> {
         }
     }
 
-    pub fn next_slice(&mut self) -> Option<PieceTreeSlice<'a>> {
+    pub fn next_slice(&mut self) -> Option<PieceTreeSlice> {
         if !self.at_start && self.last_call_fwd == Some(false) {
             self.chars.next();
         }
@@ -217,7 +191,7 @@ impl<'a> Graphemes<'a> {
         }
     }
 
-    pub fn prev_slice(&mut self) -> Option<PieceTreeSlice<'a>> {
+    pub fn prev_slice(&mut self) -> Option<PieceTreeSlice> {
         if self.last_call_fwd == Some(true) {
             self.chars.prev();
             self.prev = None;

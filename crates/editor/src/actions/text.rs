@@ -450,7 +450,7 @@ fn check_file_modification(editor: &mut Editor, id: ClientId) -> ActionResult {
 
     // File is deleted
     if in_fs.is_none() {
-        if buf.ro_view().is_file_backed() {
+        if buf.is_file_backed() {
             win.error_msg("Filebacked buffer was removed from disk.");
             let _ = editor.remove_buffer(id, bid);
         } else {

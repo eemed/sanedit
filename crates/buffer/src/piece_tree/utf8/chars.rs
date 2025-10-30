@@ -1,6 +1,4 @@
-use crate::{
-    piece_tree::{Bytes, PieceTreeView}, Chunk, PieceTreeSlice
-};
+use crate::{piece_tree::Bytes, Chunk, PieceTreeSlice};
 
 pub(crate) const REPLACEMENT_CHAR: char = '\u{FFFD}';
 /// UTF8 table accept state
@@ -228,24 +226,14 @@ pub struct Chars<'a> {
 
 impl<'a> Chars<'a> {
     #[inline]
-    pub(crate) fn new(pt: &'a PieceTreeView, at: u64) -> Chars<'a> {
-        let bytes = Bytes::new(pt, at);
-        Chars {
-            bytes,
-            decoder: Decoder::new(),
-            decoder_rev: DecoderRev::new(),
-        }
-    }
-
-    #[inline]
-    pub(crate) fn new_from_slice(slice: &PieceTreeSlice<'a>, at: u64) -> Chars<'a> {
+    pub(crate) fn new(slice: &'a PieceTreeSlice, at: u64) -> Chars<'a> {
         debug_assert!(
             slice.len() >= at,
             "Attempting to index {} over slice len {} ",
             at,
             slice.len(),
         );
-        let bytes = Bytes::new_from_slice(slice, at);
+        let bytes = Bytes::new(slice, at);
         Chars {
             bytes,
             decoder: Decoder::new(),

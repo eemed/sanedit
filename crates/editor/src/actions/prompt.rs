@@ -8,8 +8,8 @@ use std::{
 };
 
 use chrono::{DateTime, Local, TimeDelta};
-use sanedit_buffer::PieceTreeView;
-use sanedit_messages::{key::try_parse_keyevents, ClientMessage};
+
+use sanedit_buffer::PieceTreeSlice;use sanedit_messages::{key::try_parse_keyevents, ClientMessage};
 use sanedit_utils::idmap::AsID;
 
 use crate::{
@@ -422,7 +422,7 @@ fn grep(editor: &mut Editor, id: ClientId) -> ActionResult {
             let patt = getf!(out.text());
             let ignore = e.ignore.clone();
             let wd = e.working_dir();
-            let buffers: Map<PathBuf, PieceTreeView> = {
+            let buffers: Map<PathBuf, PieceTreeSlice> = {
                 let mut map = Map::default();
 
                 for (_, buf) in e.buffers().iter() {
@@ -432,7 +432,7 @@ fn grep(editor: &mut Editor, id: ClientId) -> ActionResult {
                     }
 
                     if let Some(path) = buf.path() {
-                        map.insert(path.to_path_buf(), buf.ro_view());
+                        map.insert(path.to_path_buf(), buf.slice(..));
                     }
                 }
 

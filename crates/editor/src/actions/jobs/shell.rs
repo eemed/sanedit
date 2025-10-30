@@ -1,7 +1,7 @@
 use std::process::Stdio;
 
-use sanedit_buffer::PieceTreeView;
-use tokio::process::Command;
+
+use sanedit_buffer::PieceTreeSlice;use tokio::process::Command;
 
 use sanedit_server::{ClientId, Job, JobContext, JobResult};
 
@@ -9,7 +9,7 @@ use sanedit_server::{ClientId, Job, JobContext, JobResult};
 pub(crate) struct ShellCommand {
     _client_id: ClientId,
     command: String,
-    pipe_input: Option<PieceTreeView>,
+    pipe_input: Option<PieceTreeSlice>,
 }
 
 #[allow(dead_code)]
@@ -22,8 +22,8 @@ impl ShellCommand {
         }
     }
 
-    pub fn pipe(mut self, ropt: PieceTreeView) -> Self {
-        self.pipe_input = Some(ropt);
+    pub fn pipe(mut self, slice: PieceTreeSlice) -> Self {
+        self.pipe_input = Some(slice);
         self
     }
 }

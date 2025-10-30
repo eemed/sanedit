@@ -6,7 +6,6 @@ pub use piece_tree::{
     chunks::{Chunk, Chunks},
     mark::{Mark, MarkResult},
     slice::PieceTreeSlice,
-    view::PieceTreeView,
     PieceTree,
 };
 

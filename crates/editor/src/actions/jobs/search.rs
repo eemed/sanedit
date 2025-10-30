@@ -3,11 +3,15 @@ use std::{
     sync::{atomic::AtomicBool, Arc},
 };
 
-use sanedit_buffer::PieceTreeView;
+use sanedit_buffer::PieceTreeSlice;
 use sanedit_core::BufferRange;
+
+use sanedit_syntax::PTSliceSource;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 
-use crate::editor::{buffers::BufferId, job_broker::KeepInTouch, windows::SearchHighlights, Editor};
+use crate::editor::{
+    buffers::BufferId, job_broker::KeepInTouch, windows::SearchHighlights, Editor,
+};
 use sanedit_server::{ClientId, Job, JobContext, JobResult};
 
 use super::CHANNEL_SIZE;
@@ -21,9 +25,8 @@ enum SearchMessage {
 pub(crate) struct Search {
     client_id: ClientId,
     searcher: Arc<Searcher>,
-    ropt: PieceTreeView,
+    slice: PieceTreeSlice,
     bid: BufferId,
-    range: BufferRange,
     changes_made: u32,
 }
 
@@ -32,16 +35,14 @@ impl Search {
         id: ClientId,
         searcher: Searcher,
         bid: BufferId,
-        ropt: PieceTreeView,
-        range: BufferRange,
+        slice: PieceTreeSlice,
         changes_made: u32,
     ) -> Search {
         Search {
             client_id: id,
             searcher: Arc::new(searcher),
             bid,
-            ropt,
-            range,
+            slice,
             changes_made,
         }
     }
@@ -49,15 +50,15 @@ impl Search {
     async fn search(
         msend: Sender<Vec<BufferRange>>,
         searcher: Arc<Searcher>,
-        ropt: PieceTreeView,
-        view: BufferRange,
+        slice: PieceTreeSlice,
         stop: Arc<AtomicBool>,
     ) {
-        let slice = ropt.slice(view);
         let start = slice.start();
+        let mut source = PTSliceSource::from(&slice);
+        source.stop = stop;
 
         let matches = searcher
-            .find_iter_stoppable(&slice, stop)
+            .find_iter(source)
             .map(|mat| {
                 let mut range = mat.range();
                 range.start += start;
@@ -77,14 +78,13 @@ impl Search {
 
 impl Job for Search {
     fn run(&self, ctx: JobContext) -> JobResult {
-        let pt = self.ropt.clone();
-        let range = self.range;
+        let pt = self.slice.clone();
         let searcher = self.searcher.clone();
 
         let fut = async move {
             let (msend, mrecv) = channel::<Vec<BufferRange>>(CHANNEL_SIZE);
             tokio::join!(
-                Self::search(msend, searcher, pt, range, ctx.kill.clone().into()),
+                Self::search(msend, searcher, pt, ctx.kill.clone().into()),
                 Self::send_matches(ctx, mrecv),
             );
             Ok(())
@@ -107,7 +107,9 @@ impl KeepInTouch for Search {
                     win.search.set_highlights(SearchHighlights {
                         highlights: matches.into(),
                         changes_made: self.changes_made,
-                        buffer_range: self.range,
+                        buffer_range: BufferRange::from_bounds(
+                            self.slice.start()..self.slice.end(),
+                        ),
                     });
                 }
             }

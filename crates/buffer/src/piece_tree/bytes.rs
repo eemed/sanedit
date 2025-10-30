@@ -2,10 +2,7 @@ use std::ops::Range;
 
 use crate::PieceTreeSlice;
 
-use super::{
-    chunks::{Chunk, Chunks},
-    PieceTreeView,
-};
+use super::chunks::{Chunk, Chunks};
 
 #[derive(Debug, Clone)]
 pub struct Bytes<'a> {
@@ -19,25 +16,7 @@ pub struct Bytes<'a> {
 
 impl<'a> Bytes<'a> {
     #[inline]
-    pub(crate) fn new(pt: &'a PieceTreeView, at: u64) -> Bytes<'a> {
-        let chunks = Chunks::new(pt, at);
-        let chunk = chunks.get();
-        let pos = chunk.as_ref().map(|(pos, _)| at - pos).unwrap_or(0) as usize;
-        let chunk_pos = chunk.as_ref().map(|(p, _)| *p).unwrap_or(pt.len());
-        let chunk = chunk.map(|(_, c)| c);
-        let chunk_len = chunk.as_ref().map(|c| c.as_ref().len()).unwrap_or(0);
-        Bytes {
-            chunk,
-            chunks,
-            chunk_pos,
-            chunk_len,
-            pos,
-            range: 0..pt.len(),
-        }
-    }
-
-    #[inline]
-    pub(crate) fn new_from_slice(slice: &PieceTreeSlice<'a>, at: u64) -> Bytes<'a> {
+    pub(crate) fn new(slice: &PieceTreeSlice, at: u64) -> Bytes<'_> {
         debug_assert!(
             slice.len() >= at,
             "Attempting to index {} over slice len {} ",
@@ -45,7 +24,7 @@ impl<'a> Bytes<'a> {
             slice.len(),
         );
         let srange = slice.range.clone();
-        let chunks = Chunks::new_from_slice(slice, at);
+        let chunks = Chunks::new(slice, at);
         let chunk = chunks.get();
         let chunk_pos = chunk
             .as_ref()

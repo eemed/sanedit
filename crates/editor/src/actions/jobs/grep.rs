@@ -1,14 +1,20 @@
 use std::any::Any;
 use std::cmp::min;
+
+use std::fs::File;
+
+use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::thread;
 use std::time::{Duration, Instant};
 
-use sanedit_buffer::{PieceTree, PieceTreeSlice, PieceTreeView};
+use sanedit_buffer::{PieceTree, PieceTreeSlice};
 use sanedit_core::movement::{end_of_line, start_of_line};
 use sanedit_core::{Group, Item, Range, SearchMatch, Searcher};
+
+use sanedit_syntax::{FileSource, PTSliceSource};
 use sanedit_utils::appendlist::Appendlist;
 use sanedit_utils::sorted_vec::SortedVec;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
@@ -29,7 +35,7 @@ pub(crate) struct Grep {
     client_id: ClientId,
     pattern: String,
     file_opt_provider: FileOptionProvider,
-    buffers: Arc<Map<PathBuf, PieceTreeView>>,
+    buffers: Arc<Map<PathBuf, PieceTreeSlice>>,
 }
 
 impl Grep {
@@ -37,7 +43,7 @@ impl Grep {
         pattern: &str,
         path: &Path,
         ignore: Ignore,
-        buffers: Map<PathBuf, PieceTreeView>,
+        buffers: Map<PathBuf, PieceTreeSlice>,
         id: ClientId,
     ) -> Grep {
         let fprovider = FileOptionProvider::new(path, ignore);
@@ -55,7 +61,7 @@ impl Grep {
         write_done: Arc<AtomicUsize>,
         pattern: &str,
         msend: Sender<GrepResult>,
-        buffers: Arc<Map<PathBuf, PieceTreeView>>,
+        modified_buffers: Arc<Map<PathBuf, PieceTreeSlice>>,
         kill: Kill,
     ) {
         let Ok((searcher, _)) = Searcher::new(pattern) else {
@@ -87,7 +93,7 @@ impl Grep {
 
                     let searcher = searcher.clone();
                     let msend = msend.clone();
-                    let bufs = buffers.clone();
+                    let bufs = modified_buffers.clone();
                     let stop = kill.clone();
                     let nreader = reader.clone();
                     taken += 1;
@@ -102,30 +108,14 @@ impl Grep {
                         };
 
                         match bufs.get(path) {
-                            Some(view) => {
-                                // Grep editor buffers
-                                Self::grep_buffer(
-                                    path.clone(),
-                                    view,
-                                    &searcher,
-                                    msend,
-                                    stop.clone(),
-                                );
-                            }
-                            None => {
-                                // Grep files outside editor
-                                let Ok(pt) = PieceTree::from_path(path) else {
-                                    return;
-                                };
-                                let view = pt.view();
-                                Self::grep_buffer(
-                                    path.clone(),
-                                    &view,
-                                    &searcher,
-                                    msend,
-                                    stop.clone(),
-                                );
-                            }
+                            Some(slice) => Self::grep_buffer(
+                                path.clone(),
+                                slice,
+                                &searcher,
+                                msend,
+                                stop.clone(),
+                            ),
+                            None => Self::grep_file(path.clone(), &searcher, msend, stop.clone()),
                         }
                     });
                 } else {
@@ -157,21 +147,49 @@ impl Grep {
         }
     }
 
-    fn grep_buffer(
+    fn grep_file(
         path: PathBuf,
-        view: &PieceTreeView,
         searcher: &Searcher,
         result_sender: Sender<GrepResult>,
         kill: Kill,
     ) {
-        if !Self::should_search(view) {
+        if !Self::should_search_file(path.as_path()) {
             return;
         }
 
-        let slice = view.slice(..);
         let mut matches = SortedVec::new();
+        let Ok(mut source) = FileSource::new(path.as_path()) else {
+            return;
+        };
+        source.stop = kill.into();
 
-        for mat in searcher.find_iter_stoppable(&slice, kill.into()) {
+        for mat in searcher.find_iter(source) {
+            log::info!("Match in {path:?}: {mat:?}");
+        }
+
+        if !matches.is_empty() {
+            let result = GrepResult { path, matches };
+            let _ = result_sender.blocking_send(result);
+        }
+    }
+
+    fn grep_buffer(
+        path: PathBuf,
+        slice: &PieceTreeSlice,
+        searcher: &Searcher,
+        result_sender: Sender<GrepResult>,
+        kill: Kill,
+    ) {
+        if !Self::should_search(slice) {
+            return;
+        }
+
+        let slice = slice.slice(..);
+        let mut matches = SortedVec::new();
+        let mut source = PTSliceSource::from(&slice);
+        source.stop = kill.into();
+
+        for mat in searcher.find_iter(source) {
             let gmat = Self::prepare_match(&slice, mat);
             matches.push(gmat);
         }
@@ -182,7 +200,46 @@ impl Grep {
         }
     }
 
-    fn should_search(view: &PieceTreeView) -> bool {
+    fn should_search_file(path: &Path) -> bool {
+        // Try to filter out atleast large binary files
+        // Atleast 512kb to even bother with detection
+        const MIN_SIZE: u64 = 1024 * 512;
+        const BINARY_DETECT_WINDOW: u64 = 1024 * 8;
+
+        let len = path.metadata().map(|metadata| metadata.len()).unwrap_or(0);
+        if len <= MIN_SIZE {
+            return true;
+        }
+
+        let cap = min(BINARY_DETECT_WINDOW, len);
+        let mut buf = vec![0u8; BINARY_DETECT_WINDOW as usize].into_boxed_slice();
+        let Ok(mut file) = File::open(path) else {
+            return false;
+        };
+        let mut n = 0;
+        while n < cap {
+            match file.read(&mut buf) {
+                Ok(read) => {
+                    if read == 0 {
+                        break;
+                    }
+                    n += read as u64;
+                }
+                Err(_) => return false,
+            }
+        }
+
+        for i in 0..(n as usize) {
+            let byte = buf[i];
+            if byte == b'\0' {
+                return false;
+            }
+        }
+
+        true
+    }
+
+    fn should_search(view: &PieceTreeSlice) -> bool {
         // Try to filter out atleast large binary files
         // Atleast 512kb to even bother with detection
         const MIN_SIZE: u64 = 1024 * 512;

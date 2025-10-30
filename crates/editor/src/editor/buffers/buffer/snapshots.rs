@@ -1,6 +1,6 @@
 use std::time::Instant;
 
-use sanedit_buffer::{Mark, PieceTreeView};
+use sanedit_buffer::{Mark, PieceTreeSlice};
 
 use crate::editor::windows::Cursors;
 
@@ -61,7 +61,7 @@ impl Snapshots {
         self.current
     }
 
-    pub fn insert(&mut self, snapshot: PieceTreeView) -> SnapshotId {
+    pub fn insert(&mut self, snapshot: PieceTreeSlice) -> SnapshotId {
         let next_pos = self.snapshots.len();
         let mut node = SnapshotNode::new(snapshot, next_pos);
         if let Some(cur) = self.current {
@@ -135,7 +135,7 @@ impl Snapshots {
 #[derive(Debug, Clone)]
 pub(crate) struct SnapshotNode {
     pub(crate) id: SnapshotId,
-    pub(crate) snapshot: PieceTreeView,
+    pub(crate) snapshot: PieceTreeSlice,
     pub(crate) timestamp: Instant,
 
     previous: Vec<SnapshotId>,
@@ -146,7 +146,7 @@ pub(crate) struct SnapshotNode {
 }
 
 impl SnapshotNode {
-    pub fn new(snapshot: PieceTreeView, id: SnapshotId) -> SnapshotNode {
+    pub fn new(snapshot: PieceTreeSlice, id: SnapshotId) -> SnapshotNode {
         SnapshotNode {
             id,
             snapshot,

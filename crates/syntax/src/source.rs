@@ -1,6 +1,9 @@
 use std::{
     borrow::Cow,
     cmp::min,
+    fs::File,
+    io::{self, Read, Seek},
+    path::Path,
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc,
@@ -154,15 +157,16 @@ impl<'a> ByteSource for Cow<'a, [u8]> {
 }
 
 #[derive(Debug)]
-pub struct PTSliceSource<'a, 'b> {
-    slice: &'b PieceTreeSlice<'a>,
+pub struct PTSliceSource<'a> {
+    slice: &'a PieceTreeSlice,
     bytes: Bytes<'a>,
     chunks: Chunks<'a>,
     chunk: Option<Chunk<'a>>,
+    pub stop: Arc<AtomicBool>,
 }
 
-impl<'a, 'b> PTSliceSource<'a, 'b> {
-    pub fn new(slice: &'b PieceTreeSlice<'a>) -> PTSliceSource<'a, 'b> {
+impl<'a> PTSliceSource<'a> {
+    pub fn new(slice: &PieceTreeSlice) -> PTSliceSource<'_> {
         let bytes = slice.bytes();
         let chunks = slice.chunks();
         PTSliceSource {
@@ -170,17 +174,24 @@ impl<'a, 'b> PTSliceSource<'a, 'b> {
             bytes,
             chunks,
             chunk: None,
+            stop: Arc::new(AtomicBool::new(false)),
         }
     }
 }
 
-impl<'a, 'b> ByteSource for PTSliceSource<'a, 'b> {
+impl<'a> From<&'a PieceTreeSlice> for PTSliceSource<'a> {
+    fn from(value: &'a PieceTreeSlice) -> Self {
+        PTSliceSource::new(value)
+    }
+}
+
+impl<'a> ByteSource for PTSliceSource<'a> {
     fn len(&self) -> u64 {
         <Bytes>::len(&self.bytes)
     }
 
     fn stop(&self) -> bool {
-        false
+        self.stop.load(Ordering::Acquire)
     }
 
     fn get(&mut self, at: u64) -> u8 {
@@ -256,6 +267,90 @@ impl<'a, 'b> ByteSource for PTSliceSource<'a, 'b> {
 
         // log::info!("ret n: {n}");
         n
+    }
+}
+
+#[derive(Debug)]
+pub struct FileSource {
+    size: u64,
+    file: File,
+    buf: Box<[u8]>,
+    buf_pos: u64,
+    buf_len: usize,
+    pub stop: Arc<AtomicBool>,
+}
+
+impl FileSource {
+    const SIZE: usize = 1024 * 256;
+
+    pub fn new(path: &Path) -> io::Result<FileSource> {
+        let size = path.metadata()?.len();
+        let mut file = File::open(path)?;
+        let mut buf = vec![0u8; Self::SIZE].into_boxed_slice();
+        let n = Self::fill(&mut buf, &mut file, 0)?;
+
+        Ok(FileSource {
+            file,
+            buf_pos: 0,
+            buf,
+            buf_len: n,
+            size,
+            stop: Arc::new(AtomicBool::new(false)),
+        })
+    }
+
+    pub fn fill(buf: &mut [u8], file: &mut File, offset: u64) -> io::Result<usize> {
+        file.seek(io::SeekFrom::Start(offset))?;
+
+        let mut n = 0;
+        while n < buf.len() {
+            let read = file.read(buf)?;
+            if read == 0 {
+                break;
+            }
+
+            n += read;
+        }
+
+        Ok(n)
+    }
+}
+
+impl ByteSource for FileSource {
+    fn as_single_chunk(&mut self) -> Option<&[u8]> {
+        if self.size == self.buf_len as u64 {
+            return Some(&self.buf);
+        }
+
+        None
+    }
+
+    fn len(&self) -> u64 {
+        self.size
+    }
+
+    fn stop(&self) -> bool {
+        self.stop.load(Ordering::Acquire)
+    }
+
+    fn get(&mut self, at: u64) -> u8 {
+        if at < self.buf_pos || (self.buf_pos + self.buf.len() as u64) <= at {
+            let block = at / Self::SIZE as u64;
+            let off = block * Self::SIZE as u64;
+            match Self::fill(&mut self.buf, &mut self.file, off) {
+                Ok(n) => {
+                    self.buf_pos = off;
+                    self.buf_len = n;
+                }
+                _ => {
+                    self.stop.store(true, Ordering::Release);
+                    return 0;
+                }
+            }
+        }
+
+        let relative = (at - self.buf_pos) as usize;
+        self.buf[relative]
     }
 }
 

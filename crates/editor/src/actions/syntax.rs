@@ -104,7 +104,7 @@ pub(crate) fn parse_syntax(editor: &mut Editor, id: ClientId) -> ActionResult {
     let bid = buf.id;
     let total_changes_made = buf.total_changes_made();
     let range = win.view().range();
-    let ropt = buf.ro_view();
+    let ropt = buf.slice(..);
 
     let lang = getf!(buf.language.clone());
     if let Ok(s) = editor.syntaxes.get(&lang) {

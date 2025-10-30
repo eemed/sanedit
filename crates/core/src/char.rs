@@ -458,13 +458,6 @@ pub fn grapheme_category(grapheme: &Grapheme) -> GraphemeCategory {
         return GraphemeCategory::ControlCode;
     }
 
-    // return GraphemeCategory::Unknown;
-    // }
-
-    // while !bytes.is_empty() {
-    //     (ch, n) = decode_utf8(bytes);
-    // }
-
     GraphemeCategory::Unknown
 }
 
@@ -499,7 +492,8 @@ mod test {
     fn emoji() {
         let mut pt = PieceTree::new();
         pt.insert(0, "❤️");
-        let g = pt.slice(..).graphemes().next().unwrap();
+        let slice = pt.slice(..);
+        let g = slice.graphemes().next().unwrap();
         let ch = Chars::new(&g, 0, &DisplayOptions::default());
         assert_eq!("❤️", ch.display());
     }
@@ -508,7 +502,8 @@ mod test {
     fn control_sequence_null() {
         let mut pt = PieceTree::new();
         pt.insert(0, b"\0");
-        let g = pt.slice(..).graphemes().next().unwrap();
+        let slice = pt.slice(..);
+        let g = slice.graphemes().next().unwrap();
         let ch = Chars::new(&g, 0, &DisplayOptions::default());
         assert_eq!("^@", ch.display());
     }
@@ -517,7 +512,8 @@ mod test {
     fn invalid_utf8() {
         let mut pt = PieceTree::new();
         pt.insert(0, b"\xFF");
-        let g = pt.slice(..).graphemes().next().unwrap();
+        let slice = pt.slice(..);
+        let g = slice.graphemes().next().unwrap();
         let ch = Chars::new(&g, 0, &DisplayOptions::default());
         assert_eq!("\u{fffd}", ch.display());
     }
@@ -526,7 +522,8 @@ mod test {
     fn tab() {
         let mut pt = PieceTree::new();
         pt.insert(0, "\t");
-        let g = pt.slice(..).graphemes().next().unwrap();
+        let slice = pt.slice(..);
+        let g = slice.graphemes().next().unwrap();
         let opts = DisplayOptions::default();
         let expected = {
             let mut first = opts
@@ -548,7 +545,9 @@ mod test {
     fn non_breaking_space() {
         let mut pt = PieceTree::new();
         pt.insert(0, "\u{00A0}");
-        let g = pt.slice(..).graphemes().next().unwrap();
+
+        let slice = pt.slice(..);
+        let g = slice.graphemes().next().unwrap();
         let opts = DisplayOptions::default();
         let ch = Chars::new(&g, 0, &opts);
         let expected = opts

@@ -3,7 +3,7 @@ mod test;
 
 use std::{borrow::Cow, ops::RangeBounds, rc::Rc};
 
-use sanedit_buffer::{utf8::EndOfLine, PieceTree, PieceTreeView};
+use sanedit_buffer::{utf8::EndOfLine, PieceTree, PieceTreeSlice};
 use sanedit_utils::sorted_vec::SortedVec;
 
 use crate::{range::BufferRange, Cursor, Range};
@@ -12,7 +12,7 @@ use self::flags::Flags;
 
 #[derive(Debug)]
 pub struct Edit {
-    pub buf: PieceTreeView,
+    pub buf: PieceTreeSlice,
     pub changes: Changes,
 }
 

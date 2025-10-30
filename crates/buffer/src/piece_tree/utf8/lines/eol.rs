@@ -22,7 +22,7 @@ fn eol_bytes() -> &'static HashSet<Vec<u8>> {
     })
 }
 
-impl<'a> PieceTreeSlice<'a> {
+impl PieceTreeSlice {
     /// Whether this slice is a single EOL
     pub fn is_eol(&self) -> bool {
         EndOfLine::is_slice_eol(self)
@@ -50,7 +50,7 @@ impl EndOfLine {
         &[Lf, Vt, Ff, Cr, Crlf, Nel, Ls, Ps]
     }
 
-    pub fn strip_eol<'a>(slice: &PieceTreeSlice<'a>) -> PieceTreeSlice<'a> {
+    pub fn strip_eol<'a>(slice: &PieceTreeSlice) -> PieceTreeSlice {
         let start = slice.len().saturating_sub(Self::MAX_EOL_LEN as u64);
         let end = slice.len();
         let potential = slice.slice(start..end);

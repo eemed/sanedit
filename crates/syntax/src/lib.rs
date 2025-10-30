@@ -8,23 +8,22 @@ mod parsing_machine;
 mod regex;
 mod source;
 
-pub use error::ParseError;
 use grammar::Rule;
 use grammar::Rules;
-pub use source::{ByteSource, PTSliceSource};
 use std::borrow::Cow;
-
 use std::collections::HashMap;
 use std::sync::Arc;
 
+pub use error::ParseError;
 pub use finder::{Finder, FinderIter, FinderIterRev, FinderRev};
 pub use glob::Glob;
 pub use glob::GlobError;
 pub use grammar::Annotation;
 pub use loader::LanguageLoader;
-pub use regex::{Regex, RegexError, RegexRules};
-
 pub use parsing_machine::{Capture, CaptureID, CaptureIter, CaptureList, Captures};
+pub use regex::{Regex, RegexError, RegexRules};
+pub use source::{ByteSource, FileSource, PTSliceSource};
+
 pub(crate) use parsing_machine::{
     Compiler, Jit, Operation, ParsingMachine, Program, SubjectPosition,
 };

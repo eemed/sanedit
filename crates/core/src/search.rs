@@ -1,10 +1,7 @@
-use std::sync::{atomic::AtomicBool, Arc};
-
 use crate::{BufferRange, Range};
 use anyhow::bail;
-use sanedit_buffer::PieceTreeSlice;
 use sanedit_syntax::{
-    CaptureIter, Finder, FinderIter, FinderIterRev, FinderRev, PTSliceSource, Regex,
+    ByteSource, CaptureIter, Finder, FinderIter, FinderIterRev, FinderRev, Regex,
 };
 
 #[derive(Debug, Clone, Copy)]
@@ -17,7 +14,7 @@ pub struct SearchOptions {
 impl SearchOptions {
     pub fn from_pattern(pattern: &str) -> (SearchOptions, String) {
         let case_sensitive = pattern.chars().any(|ch| ch.is_ascii_uppercase());
-        let is_regex = pattern.starts_with("/") && pattern.ends_with("/") && pattern.len() >= 2;
+        let is_regex = pattern.starts_with("/") && pattern.ends_with("/") && pattern.len() > 2;
         let options = SearchOptions {
             is_case_sensitive: is_regex || case_sensitive,
             is_reversed: false,
@@ -128,34 +125,22 @@ impl Searcher {
         Searcher::FinderRev(searcher)
     }
 
-    pub fn find_iter<'a, 'b: 'a>(&'a self, slice: &'b PieceTreeSlice) -> MatchIter<'a, 'b> {
-        self.find_iter_stoppable(slice, Arc::new(AtomicBool::new(false)))
-    }
-
-    pub fn find_iter_stoppable<'a, 'b: 'a>(
-        &'a self,
-        slice: &'b PieceTreeSlice,
-        stop: Arc<AtomicBool>,
-    ) -> MatchIter<'a, 'b> {
+    pub fn find_iter<T: ByteSource>(&self, source: T) -> MatchIter<'_, T> {
         match self {
             Searcher::Regex(regex) => {
-                let source = PTSliceSource::new(slice);
-                let iter = regex.captures((source, stop));
+                let iter = regex.captures(source);
                 MatchIter::Regex(iter)
             }
             Searcher::RegexRev(regex) => {
-                let source = PTSliceSource::new(slice);
-                let iter = regex.captures((source, stop));
+                let iter = regex.captures(source);
                 MatchIter::RegexRev(iter)
             }
             Searcher::Finder(finder) => {
-                let source = PTSliceSource::new(slice);
-                let iter = finder.iter((source, stop));
+                let iter = finder.iter(source);
                 MatchIter::Finder(iter)
             }
             Searcher::FinderRev(finder) => {
-                let source = PTSliceSource::new(slice);
-                let iter = finder.iter((source, stop));
+                let iter = finder.iter(source);
                 MatchIter::FinderRev(iter)
             }
         }
@@ -189,14 +174,14 @@ impl SearchMatch {
     }
 }
 
-pub enum MatchIter<'a, 'b> {
-    Finder(FinderIter<'a, (PTSliceSource<'a, 'b>, Arc<AtomicBool>)>),
-    FinderRev(FinderIterRev<'a, (PTSliceSource<'a, 'b>, Arc<AtomicBool>)>),
-    Regex(CaptureIter<'a, (PTSliceSource<'a, 'b>, Arc<AtomicBool>)>),
-    RegexRev(CaptureIter<'a, (PTSliceSource<'a, 'b>, Arc<AtomicBool>)>),
+pub enum MatchIter<'a, T: ByteSource> {
+    Finder(FinderIter<'a, T>),
+    FinderRev(FinderIterRev<'a, T>),
+    Regex(CaptureIter<'a, T>),
+    RegexRev(CaptureIter<'a, T>),
 }
 
-impl<'a, 'b> Iterator for MatchIter<'a, 'b> {
+impl<'a, 'b, T: ByteSource> Iterator for MatchIter<'a, T> {
     type Item = SearchMatch;
 
     fn next(&mut self) -> Option<Self::Item> {

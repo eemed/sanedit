@@ -304,7 +304,7 @@ pub(crate) mod test {
     //
     impl PieceTree {
         pub(crate) fn tree(&self) -> &Tree {
-            &self.view.tree
+            &self.slice.tree
         }
     }
 

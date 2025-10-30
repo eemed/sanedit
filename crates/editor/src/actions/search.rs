@@ -1,6 +1,7 @@
 use std::cmp::min;
 
 use sanedit_core::{word_at_pos, Range, SearchOptions, Searcher};
+use sanedit_syntax::PTSliceSource;
 
 use crate::{
     actions::jobs,
@@ -113,11 +114,11 @@ fn highlight_current_search_matches(editor: &mut Editor, id: ClientId) {
 fn highlight_view_matches(editor: &mut Editor, id: ClientId, searcher: Searcher) {
     const JOB_NAME: &str = "search-highlight";
     let (win, buf) = editor.win_buf_mut(id);
-    let pt = buf.ro_view();
     let mut view = win.view().range();
     view.start = view.start.saturating_sub(HORIZON_TOP);
-    view.end = min(pt.len(), view.end + HORIZON_BOTTOM);
-    let job = jobs::Search::new(id, searcher, buf.id, pt, view, buf.total_changes_made());
+    view.end = min(buf.len(), view.end + HORIZON_BOTTOM);
+    let slice = buf.slice(view);
+    let job = jobs::Search::new(id, searcher, buf.id, slice, buf.total_changes_made());
     editor.job_broker.request_slot(id, JOB_NAME, job);
 }
 
@@ -309,7 +310,8 @@ fn do_search(editor: &mut Editor, id: ClientId, searcher: Searcher, starting_pos
         let end = pos;
         let slice = buf.slice(..end);
         let mat = if !slice.is_empty() {
-            let mut iter = searcher.find_iter(&slice);
+            let source = PTSliceSource::from(&slice);
+            let mut iter = searcher.find_iter(source);
             iter.next()
         } else {
             None
@@ -319,7 +321,8 @@ fn do_search(editor: &mut Editor, id: ClientId, searcher: Searcher, starting_pos
         if mat.is_none() {
             // let first = pos.saturating_sub(input.len() as u64 - 1);
             let slice = buf.slice(..);
-            let mut iter = searcher.find_iter(&slice);
+            let source = PTSliceSource::from(&slice);
+            let mut iter = searcher.find_iter(source);
             let mat = iter.next();
             (slice.start(), mat, true)
         } else {
@@ -331,8 +334,9 @@ fn do_search(editor: &mut Editor, id: ClientId, searcher: Searcher, starting_pos
         let pos = skip_highlighted(win, starting_position, false);
         let start = min(blen, pos);
         let slice = buf.slice(start..);
+        let source = PTSliceSource::from(&slice);
         let mat = if !slice.is_empty() {
-            let mut iter = searcher.find_iter(&slice);
+            let mut iter = searcher.find_iter(source);
             iter.next()
         } else {
             None
@@ -342,7 +346,8 @@ fn do_search(editor: &mut Editor, id: ClientId, searcher: Searcher, starting_pos
         if mat.is_none() {
             // let last = min(blen, pos + input.len() as u64);
             let slice = buf.slice(..);
-            let mut iter = searcher.find_iter(&slice);
+            let source = PTSliceSource::from(&slice);
+            let mut iter = searcher.find_iter(source);
             let mat = iter.next();
             (slice.start(), mat, true)
         } else {

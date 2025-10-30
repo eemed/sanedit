@@ -51,6 +51,7 @@ toml_edit     = "0.23.6"
 unicode-width = "0.2.1" # Rendering itself has problems
 which         = "8.0.0" # Should be replaced with something simpler
 xattr         = "1.5.1" # xattrs preservation
+memchr = "2.7.6"
 
 [profile.dev.package."*"]
 debug = false

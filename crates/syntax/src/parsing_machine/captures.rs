@@ -66,22 +66,22 @@ impl<'a, B: ByteSource> Iterator for CaptureIter<'a, B> {
 
     fn next(&mut self) -> Option<Self::Item> {
         match self.parser {
-            ParserRef::Interpreted(parsing_machine) => {
-                match parsing_machine.do_parse(&mut self.source, self.sp) {
-                    Ok((caps, sp)) => {
-                        self.sp = sp;
-                        if caps.is_empty() {
-                            None
-                        } else {
-                            Some(caps)
-                        }
-                    }
-                    Err(_) => {
-                        self.sp = self.source.len();
-                        None
-                    }
-                }
-            }
+            // ParserRef::Interpreted(parsing_machine) => {
+            //     match parsing_machine.do_parse(&mut self.source, self.sp) {
+            //         Ok((caps, sp)) => {
+            //             self.sp = sp;
+            //             if caps.is_empty() {
+            //                 None
+            //             } else {
+            //                 Some(caps)
+            //             }
+            //         }
+            //         Err(_) => {
+            //             self.sp = self.source.len();
+            //             None
+            //         }
+            //     }
+            // }
             ParserRef::Jit(jit) => match jit.do_parse(&mut self.source, self.sp, true) {
                 Ok((caps, sp)) => {
                     self.sp = sp;
@@ -96,6 +96,7 @@ impl<'a, B: ByteSource> Iterator for CaptureIter<'a, B> {
                     None
                 }
             },
+            _ => None,
         }
     }
 }
@@ -121,22 +122,22 @@ impl<'a, B: ByteSource> DoubleEndedIterator for CaptureIter<'a, B> {
             let mut pos = 0;
             loop {
                 match self.parser {
-                    ParserRef::Interpreted(parsing_machine) => {
-                        match parsing_machine.do_parse(&mut chunk, pos) {
-                            Ok((mut caps, sp)) => {
-                                pos = sp;
-                                if caps.is_empty() {
-                                    continue;
-                                }
-                                caps.iter_mut().for_each(|cap| {
-                                    cap.start += start;
-                                    cap.end += start;
-                                });
-                                found = Some((caps, sp));
-                            }
-                            Err(_) => break,
-                        }
-                    }
+                    // ParserRef::Interpreted(parsing_machine) => {
+                    //     match parsing_machine.do_parse(&mut chunk, pos) {
+                    //         Ok((mut caps, sp)) => {
+                    //             pos = sp;
+                    //             if caps.is_empty() {
+                    //                 continue;
+                    //             }
+                    //             caps.iter_mut().for_each(|cap| {
+                    //                 cap.start += start;
+                    //                 cap.end += start;
+                    //             });
+                    //             found = Some((caps, sp));
+                    //         }
+                    //         Err(_) => break,
+                    //     }
+                    // }
                     ParserRef::Jit(jit) => match jit.do_parse(&mut chunk, pos, true) {
                         Ok((mut caps, sp)) => {
                             pos = sp;
@@ -151,6 +152,7 @@ impl<'a, B: ByteSource> DoubleEndedIterator for CaptureIter<'a, B> {
                         }
                         Err(_) => break,
                     },
+                    _ => return None,
                 }
             }
 

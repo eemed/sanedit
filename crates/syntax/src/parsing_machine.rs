@@ -5,6 +5,8 @@ mod op;
 mod set;
 mod stack;
 
+use std::cmp::min;
+
 pub use self::captures::{Capture, CaptureID, CaptureIter, CaptureList, Captures};
 pub(crate) use self::compiler::Program;
 
@@ -254,8 +256,21 @@ impl ParsingMachine {
                     state = State::Failure;
                 }
                 Span(set) => {
-                    while sp < slen && set.has(reader.get(sp)) {
-                        sp += 1;
+                    'done: loop {
+                        let next16 = min(sp + 32, reader.len());
+                        if next16 == sp {
+                            break;
+                        }
+                        let Some(slice) = reader.slice(sp..next16) else {
+                            break;
+                        };
+                        for byte in slice {
+                            if set.has(*byte) {
+                                sp += 1;
+                            } else {
+                                break 'done;
+                            }
+                        }
                     }
 
                     ip += 1;
@@ -427,8 +442,7 @@ mod test {
             escape_char     = \"0\" / \"t\" / \"n\" / \"r\" / \"\\\"\" / \"\\\\\";
             ";
 
-        let content =
-            b"\"registry+https://github.com/rust-lang/crates.io-index\"";
+        let content = b"\"registry+https://github.com/rust-lang/crates.io-index\"";
         let parser = ParsingMachine::from_read(std::io::Cursor::new(peg)).unwrap();
         let result = parser.parse(content);
         assert!(result.is_ok(), "Parse failed with {result:?}");

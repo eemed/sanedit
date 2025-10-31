@@ -11,7 +11,10 @@ use std::{
     },
 };
 
-use sanedit_buffer::{utf8::decode_utf8_iter, Bytes, Chunk, Chunks, PieceTreeSlice};
+use sanedit_buffer::{
+    utf8::{decode_utf8, decode_utf8_iter},
+    Bytes, Chunk, Chunks, PieceTreeSlice,
+};
 
 const BUF_SIZE: usize = 128 * 1024;
 
@@ -24,6 +27,19 @@ pub trait Source {
 
     fn is_empty(&self) -> bool {
         self.len() == 0
+    }
+
+    fn char_between(&mut self, at: u64, start: char, end: char) -> Option<u64> {
+        let max = min(4, self.len() - at);
+        let bytes = self.slice(at..at + max)?;
+        let (ch, size) = decode_utf8(bytes);
+        let ch = ch?;
+
+        if start <= ch && ch <= end {
+            Some(size as u64)
+        } else {
+            None
+        }
     }
 }
 
@@ -43,11 +59,20 @@ impl<'a, const N: usize> Source for &'a [u8; N] {
     fn slice(&mut self, range: Range<u64>) -> Option<&[u8]> {
         let start = range.start as usize;
         let end = range.end as usize;
-        Some(&self[start..end])
+        if N < end {
+            None
+        } else {
+            Some(&self[start..end])
+        }
     }
 
     fn get(&mut self, at: u64) -> Option<u8> {
-        Some(self[at as usize])
+        let at = at as usize;
+        if N <= at {
+            None
+        } else {
+            Some(self[at])
+        }
     }
 }
 
@@ -67,11 +92,20 @@ impl<'a> Source for &'a [u8] {
     fn slice(&mut self, range: Range<u64>) -> Option<&[u8]> {
         let start = range.start as usize;
         let end = range.end as usize;
-        Some(&self[start..end])
+        if <[u8]>::len(self) < end {
+            None
+        } else {
+            Some(&self[start..end])
+        }
     }
 
     fn get(&mut self, at: u64) -> Option<u8> {
-        Some(self[at as usize])
+        let at = at as usize;
+        if <[u8]>::len(self) <= at {
+            None
+        } else {
+            Some(self[at])
+        }
     }
 }
 
@@ -91,11 +125,20 @@ impl<'a> Source for &'a str {
     fn slice(&mut self, range: Range<u64>) -> Option<&[u8]> {
         let start = range.start as usize;
         let end = range.end as usize;
-        Some(&self.as_bytes()[start..end])
+        if <str>::len(self) < end {
+            None
+        } else {
+            Some(&self.as_bytes()[start..end])
+        }
     }
 
     fn get(&mut self, at: u64) -> Option<u8> {
-        Some(self.as_bytes()[at as usize])
+        let at = at as usize;
+        if <str>::len(self) <= at {
+            None
+        } else {
+            Some(self.as_bytes()[at])
+        }
     }
 }
 

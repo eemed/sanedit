@@ -16,7 +16,7 @@ log.workspace = true
 libc.workspace = true
 dynasm.workspace = true
 dynasmrt.workspace = true
-memchr.workspace = true
+bstr = { workspace = true, features = ["std"] }
 
 [dev-dependencies]
 criterion.workspace = true

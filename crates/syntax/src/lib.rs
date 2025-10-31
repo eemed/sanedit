@@ -169,8 +169,9 @@ impl ParserKind {
 
     fn parse<B: ByteSource>(&self, bytes: B) -> Result<CaptureList, ParseError> {
         match self {
-            ParserKind::Interpreted(parsing_machine) => parsing_machine.parse(bytes),
+            // ParserKind::Interpreted(parsing_machine) => parsing_machine.parse(bytes),
             ParserKind::Jit(jit) => jit.parse(bytes),
+            _ => todo!()
         }
     }
 
@@ -180,11 +181,12 @@ impl ParserKind {
         loader: Option<&Arc<dyn LanguageLoader>>,
     ) -> Result<Captures, ParseError> {
         let capture_list = match self {
-            ParserKind::Interpreted(parsing_machine) => parsing_machine
-                .do_parse(&mut bytes, 0)
-                .map(|(caps, _)| caps)
-                .map_err(|err| ParseError::Parse(err.to_string()))?,
+            // ParserKind::Interpreted(parsing_machine) => parsing_machine
+            //     .do_parse(&mut bytes, 0)
+            //     .map(|(caps, _)| caps)
+            //     .map_err(|err| ParseError::Parse(err.to_string()))?,
             ParserKind::Jit(jit) => jit.do_parse(&mut bytes, 0, false)?.0,
+            _ => todo!(),
         };
 
         if loader.is_none() {

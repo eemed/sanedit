@@ -14,6 +14,7 @@ use captures::ParserRef;
 use crate::{
     grammar::{Annotation, Rules},
     parsing_machine::stack::{Stack, StackEntry},
+    source::Source,
     ByteSource, ParseError,
 };
 pub(crate) use compiler::Compiler;
@@ -138,15 +139,15 @@ impl ParsingMachine {
     }
 
     /// Match whole text and return captures, fails if the text does not match
-    pub fn parse<B: ByteSource>(&self, mut reader: B) -> Result<CaptureList, ParseError> {
+    pub fn parse<S: Source>(&self, mut reader: S) -> Result<CaptureList, ParseError> {
         self.do_parse(&mut reader, 0)
             .map(|(caps, _)| caps)
             .map_err(|err| ParseError::Parse(err.to_string()))
     }
 
-    pub(crate) fn do_parse<B: ByteSource>(
+    pub(crate) fn do_parse<S: Source>(
         &self,
-        reader: &mut B,
+        reader: &mut S,
         sp: u64,
     ) -> anyhow::Result<(CaptureList, u64)> {
         use Operation::*;
@@ -174,7 +175,8 @@ impl ParsingMachine {
                     ip = *l;
                 }
                 Byte(b) => {
-                    if sp < slen && reader.get(sp) == *b {
+                    // if sp < slen && reader.get(sp) == *b {
+                    if reader.get(sp).map(|byte| byte == *b).unwrap_or(false) {
                         ip += 1;
                         sp += 1;
                     } else {
@@ -215,7 +217,8 @@ impl ParsingMachine {
                     }
                 },
                 Set(set) => {
-                    if sp < slen && set.has(reader.get(sp)) {
+                    // if sp < slen && set.has(reader.get(sp)) {
+                    if reader.get(sp).map(|byte| set.has(byte)).unwrap_or(false) {
                         ip += 1;
                         sp += 1;
                     } else {
@@ -273,7 +276,8 @@ impl ParsingMachine {
                     ip = *l;
                 }
                 TestByte(byte, l) => {
-                    if sp < slen && reader.get(sp) == *byte {
+                    // if sp < slen && reader.get(sp) == *byte {
+                    if reader.get(sp).map(|b| b == *byte).unwrap_or(false) {
                         stack.push(StackEntry::Backtrack {
                             addr: *l,
                             spos: sp,
@@ -287,7 +291,8 @@ impl ParsingMachine {
                     }
                 }
                 TestSet(set, l) => {
-                    if sp < slen && set.has(reader.get(sp)) {
+                    // if sp < slen && set.has(reader.get(sp)) {
+                    if reader.get(sp).map(|byte| set.has(byte)).unwrap_or(false) {
                         stack.push(StackEntry::Backtrack {
                             addr: *l,
                             spos: sp,
@@ -374,7 +379,7 @@ mod test {
     #[test]
     fn parse_large_json() {
         let peg = include_str!("../pegs/json.peg");
-        let content = include_str!("../benches/large.json");
+        let content = include_bytes!("../benches/large.json");
 
         let parser = ParsingMachine::from_read(std::io::Cursor::new(peg)).unwrap();
         let result = parser.parse(content);
@@ -384,7 +389,7 @@ mod test {
     #[test]
     fn parse_toml() {
         let peg = include_str!("../pegs/toml.peg");
-        let content = include_str!("../benches/sample.toml");
+        let content = include_bytes!("../benches/sample.toml");
 
         let parser = ParsingMachine::from_read(std::io::Cursor::new(peg)).unwrap();
         let result = parser.parse(content);
@@ -409,8 +414,7 @@ mod test {
             nl              = \"\\r\\n\" / \"\\r\" / \"\\n\";
             ";
 
-        let content = "abba";
-
+        let content = b"abba";
         let parser = ParsingMachine::from_read(std::io::Cursor::new(peg)).unwrap();
         let result = parser.parse(content);
         assert!(result.is_ok(), "Parse failed with {result:?}");
@@ -423,8 +427,8 @@ mod test {
             escape_char     = \"0\" / \"t\" / \"n\" / \"r\" / \"\\\"\" / \"\\\\\";
             ";
 
-        let content = "\"registry+https://github.com/rust-lang/crates.io-index\"";
-
+        let content =
+            b"\"registry+https://github.com/rust-lang/crates.io-index\"";
         let parser = ParsingMachine::from_read(std::io::Cursor::new(peg)).unwrap();
         let result = parser.parse(content);
         assert!(result.is_ok(), "Parse failed with {result:?}");
@@ -438,8 +442,7 @@ mod test {
             comment         = \"#\" (!nl .)*;
             ";
 
-        let content = "# abba\n";
-
+        let content = b"# abba\n";
         let parser = ParsingMachine::from_read(std::io::Cursor::new(peg)).unwrap();
         let result = parser.parse(content);
         assert!(result.is_ok(), "Parse failed with {result:?}");
@@ -453,8 +456,7 @@ mod test {
 
         for i in 0..'\u{10ffff}' as u32 {
             if let Some(ch) = char::from_u32(i) {
-                let content = ch.to_string();
-                let result = parser.parse(content.as_str());
+                let result = parser.parse(ch.to_string().as_str());
                 assert!(result.is_ok(), "Failed to parse char: {ch:?},  {result:?}");
             }
         }

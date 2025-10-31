@@ -2,7 +2,8 @@ use std::{
     borrow::Cow,
     cmp::min,
     fs::File,
-    io::{self, Read, Seek},
+    io::{self, Read, Seek, SeekFrom},
+    ops::Range,
     path::Path,
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -11,6 +12,185 @@ use std::{
 };
 
 use sanedit_buffer::{utf8::decode_utf8_iter, Bytes, Chunk, Chunks, PieceTreeSlice};
+
+const BUF_SIZE: usize = 128 * 1024;
+
+pub trait Source {
+    fn buffer(&self) -> (u64, &[u8]);
+    fn refill_buffer(&mut self, pos: u64) -> io::Result<()>;
+    fn len(&self) -> u64;
+    fn slice(&mut self, range: Range<u64>) -> Option<&[u8]>;
+    fn get(&mut self, at: u64) -> Option<u8>;
+
+    fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+}
+
+impl<'a, const N: usize> Source for &'a [u8; N] {
+    fn buffer(&self) -> (u64, &[u8]) {
+        (0, *self)
+    }
+
+    fn refill_buffer(&mut self, pos: u64) -> io::Result<()> {
+        Ok(())
+    }
+
+    fn len(&self) -> u64 {
+        N as u64
+    }
+
+    fn slice(&mut self, range: Range<u64>) -> Option<&[u8]> {
+        let start = range.start as usize;
+        let end = range.end as usize;
+        Some(&self[start..end])
+    }
+
+    fn get(&mut self, at: u64) -> Option<u8> {
+        Some(self[at as usize])
+    }
+}
+
+impl<'a> Source for &'a [u8] {
+    fn buffer(&self) -> (u64, &[u8]) {
+        (0, self)
+    }
+
+    fn refill_buffer(&mut self, pos: u64) -> io::Result<()> {
+        Ok(())
+    }
+
+    fn len(&self) -> u64 {
+        <[u8]>::len(self) as u64
+    }
+
+    fn slice(&mut self, range: Range<u64>) -> Option<&[u8]> {
+        let start = range.start as usize;
+        let end = range.end as usize;
+        Some(&self[start..end])
+    }
+
+    fn get(&mut self, at: u64) -> Option<u8> {
+        Some(self[at as usize])
+    }
+}
+
+impl<'a> Source for &'a str {
+    fn buffer(&self) -> (u64, &[u8]) {
+        (0, self.as_bytes())
+    }
+
+    fn refill_buffer(&mut self, _pos: u64) -> io::Result<()> {
+        Ok(())
+    }
+
+    fn len(&self) -> u64 {
+        <str>::len(self) as u64
+    }
+
+    fn slice(&mut self, range: Range<u64>) -> Option<&[u8]> {
+        let start = range.start as usize;
+        let end = range.end as usize;
+        Some(&self.as_bytes()[start..end])
+    }
+
+    fn get(&mut self, at: u64) -> Option<u8> {
+        Some(self.as_bytes()[at as usize])
+    }
+}
+
+#[derive(Debug)]
+pub struct BufferedSource<R: Read + Seek> {
+    reader: R,
+    buf: Box<[u8]>,
+    buf_len: usize,
+    pos: u64,
+    len: u64,
+}
+
+impl<R: Read + Seek> BufferedSource<R> {
+    pub fn new(mut reader: R) -> io::Result<BufferedSource<R>> {
+        let len = reader.seek(SeekFrom::End(0))?;
+
+        Ok(BufferedSource {
+            reader,
+            buf: vec![0u8; BUF_SIZE].into_boxed_slice(),
+            buf_len: 0,
+            pos: 0,
+            len,
+        })
+    }
+}
+
+impl<R: Read + Seek> Source for BufferedSource<R> {
+    fn buffer(&self) -> (u64, &[u8]) {
+        let pos = self.pos;
+        let buf = &self.buf[..self.buf_len];
+        (pos, buf)
+    }
+
+    fn refill_buffer(&mut self, mut pos: u64) -> io::Result<()> {
+        debug_assert!(
+            pos >= self.len,
+            "Requesting pos {pos} from source of length {}",
+            self.len
+        );
+        if self.pos == pos {
+            return Ok(());
+        };
+
+        let mut n = 0;
+
+        if self.pos < pos && pos < self.pos + (self.buf_len as u64) {
+            let start = (pos - self.pos) as usize;
+            let end = self.buf_len;
+            self.buf.copy_within(start..end, 0);
+            n = end - start;
+            pos += n as u64;
+        }
+
+        let total = min(self.buf.len() as u64, self.len() - pos) as usize;
+        self.reader.seek(SeekFrom::Start(pos))?;
+
+        while n < total {
+            n += self.reader.read(&mut self.buf[n..])?;
+        }
+
+        self.pos = pos;
+        self.buf_len = n;
+
+        Ok(())
+    }
+
+    fn len(&self) -> u64 {
+        self.len
+    }
+
+    fn slice(&mut self, range: Range<u64>) -> Option<&[u8]> {
+        // Assume mostly forward
+        let in_range = self.pos <= range.start && range.end <= self.pos + self.buf_len as u64;
+        if !in_range && self.refill_buffer(range.start).is_err() {
+            return None;
+        }
+
+        let relative_start = (range.start - self.pos) as usize;
+        let relative_end = (range.end - self.pos) as usize;
+
+        Some(&self.buf[relative_start..relative_end])
+    }
+
+    fn get(&mut self, at: u64) -> Option<u8> {
+        let in_range = self.pos <= at && at < self.pos + self.buf_len as u64;
+        if !in_range && self.refill_buffer(at).is_err() {
+            return None;
+        }
+
+        let relative = (at - self.pos) as usize;
+        Some(self.buf[relative])
+    }
+}
+
+// ------------------------------------
 
 pub trait ByteSource {
     /// If ByteSource is contiguous in memory, returns it as a single chunk

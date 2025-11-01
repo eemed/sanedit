@@ -52,8 +52,8 @@ impl<'a> Chunks<'a> {
         Some((p_pos, chunk))
     }
 
-    pub fn buffer_len(&self) -> u64 {
-        self.pt.len()
+    pub fn slice(&self) -> &'a PieceTreeSlice {
+        self.pt
     }
 
     pub(crate) fn get_bounds(&self) -> &Range<u64> {

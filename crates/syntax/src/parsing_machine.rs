@@ -17,7 +17,7 @@ use crate::{
     grammar::{Annotation, Rules},
     parsing_machine::stack::{Stack, StackEntry},
     source::Source,
-    ByteSource, ParseError,
+    ParseError,
 };
 pub(crate) use compiler::Compiler;
 pub use jit::Jit;
@@ -131,7 +131,7 @@ impl ParsingMachine {
     }
 
     /// Try to match text multiple times. Skips errors and yields an element only when part of the text matches
-    pub fn captures<'a, B: ByteSource>(&'a self, reader: B) -> CaptureIter<'a, B> {
+    pub fn captures<'a, S: Source>(&'a self, reader: S) -> CaptureIter<'a, S> {
         CaptureIter {
             parser: ParserRef::Interpreted(self),
             sp: 0,

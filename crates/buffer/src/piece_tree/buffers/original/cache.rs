@@ -26,7 +26,23 @@ impl Cache {
     }
 
     pub fn get(&self, start: u64, end: u64) -> Option<OriginalBufferSlice> {
-        for part in &self.parts {
+        // self.n is the next to get removed, try to find part in the most recent onne first
+        for n in (0..self.n).rev() {
+            let part = &self.parts[n];
+            let BufferPart { off, ptr } = part;
+            if *off <= start && end <= off + ptr.len() as u64 {
+                let s = start - off;
+                let e = s + end - start;
+                return Some(OriginalBufferSlice {
+                    ptr: ptr.clone(),
+                    offset: s as usize,
+                    len: (e - s) as usize,
+                });
+            }
+        }
+
+        for n in (self.n..self.parts.len()).rev() {
+            let part = &self.parts[n];
             let BufferPart { off, ptr } = part;
             if *off <= start && end <= off + ptr.len() as u64 {
                 let s = start - off;

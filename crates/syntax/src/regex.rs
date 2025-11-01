@@ -9,7 +9,7 @@ use thiserror::Error;
 use crate::grammar::Rule;
 use crate::grammar::RuleInfo;
 use crate::grammar::Rules;
-use crate::ByteSource;
+use crate::source::Source;
 use crate::Capture;
 use crate::CaptureIter;
 use crate::Operation;
@@ -76,7 +76,7 @@ impl Regex {
         captures.is_ok()
     }
 
-    pub fn captures<B: ByteSource>(&self, reader: B) -> CaptureIter<'_, B> {
+    pub fn captures<S: Source>(&self, reader: S) -> CaptureIter<'_, S> {
         self.parser.captures(reader)
     }
 

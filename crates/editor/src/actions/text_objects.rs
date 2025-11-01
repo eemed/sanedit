@@ -4,7 +4,7 @@ use sanedit_core::{
     movement::{self, next_line_start},
     paragraph_at_pos, word_at_pos, BufferRange, Cursor, Range, Searcher,
 };
-use sanedit_syntax::PTSliceSource;
+use sanedit_syntax::PieceTreeSliceSource;
 
 use crate::editor::{
     buffers::Buffer,
@@ -240,7 +240,7 @@ fn select_pattern(editor: &mut Editor, id: ClientId) -> ActionResult {
             let mut cursors = vec![];
             for range in selections {
                 let slice = buf.slice(range);
-                let source = PTSliceSource::new(&slice);
+                let source = getf!(PieceTreeSliceSource::new(&slice).ok());
                 for mat in searcher.find_iter(source) {
                     let mut sel = mat.range();
                     sel.forward(slice.start());

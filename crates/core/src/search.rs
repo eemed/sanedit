@@ -1,7 +1,7 @@
 use crate::{BufferRange, Range};
 use anyhow::bail;
 use sanedit_syntax::{
-    ByteSource, CaptureIter, Finder, FinderIter, FinderIterRev, FinderRev, Regex,
+    CaptureIter, Finder, FinderIter, FinderIterRev, FinderRev, Regex, Source,
 };
 
 #[derive(Debug, Clone, Copy)]
@@ -125,7 +125,7 @@ impl Searcher {
         Searcher::FinderRev(searcher)
     }
 
-    pub fn find_iter<T: ByteSource>(&self, source: T) -> MatchIter<'_, T> {
+    pub fn find_iter<T: Source>(&self, source: T) -> MatchIter<'_, T> {
         match self {
             Searcher::Regex(regex) => {
                 let iter = regex.captures(source);
@@ -174,28 +174,28 @@ impl SearchMatch {
     }
 }
 
-pub enum MatchIter<'a, T: ByteSource> {
+pub enum MatchIter<'a, T: Source> {
     Finder(FinderIter<'a, T>),
     FinderRev(FinderIterRev<'a, T>),
     Regex(CaptureIter<'a, T>),
     RegexRev(CaptureIter<'a, T>),
 }
 
-impl<'a, 'b, T: ByteSource> Iterator for MatchIter<'a, T> {
+impl<'a, 'b, T: Source> Iterator for MatchIter<'a, T> {
     type Item = SearchMatch;
 
     fn next(&mut self) -> Option<Self::Item> {
         match self {
             MatchIter::Finder(iter) => {
                 let start = iter.next()?;
-                let len = iter.pattern_len();
+                let len = iter.needle().len();
                 Some(SearchMatch {
                     range: Range::from(start..start + len as u64),
                 })
             }
             MatchIter::FinderRev(iter) => {
                 let start = iter.next()?;
-                let len = iter.pattern_len();
+                let len = iter.needle().len();
                 Some(SearchMatch {
                     range: Range::from(start..start + len as u64),
                 })

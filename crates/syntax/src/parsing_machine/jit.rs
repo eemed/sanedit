@@ -1,7 +1,8 @@
 use std::alloc::Layout;
 
 use crate::grammar::Rules;
-use crate::{Annotation, ByteSource, Capture, ParseError};
+use crate::source::Source;
+use crate::{Annotation, Capture, ParseError};
 
 use super::captures::ParserRef;
 use super::compiler::Program;
@@ -363,7 +364,7 @@ impl Jit {
     }
 
     /// Try to match text multiple times. Skips errors and yields an element only when part of the text matches
-    pub fn captures<'a, B: ByteSource>(&'a self, reader: B) -> CaptureIter<'a, B> {
+    pub fn captures<'a, S: Source>(&'a self, reader: S) -> CaptureIter<'a, S> {
         CaptureIter {
             parser: ParserRef::Jit(self),
             sp: 0,
@@ -372,52 +373,35 @@ impl Jit {
         }
     }
 
-    pub fn parse<B: ByteSource>(&self, mut bytes: B) -> Result<CaptureList, ParseError> {
+    pub fn parse<S: Source>(&self, mut bytes: S) -> Result<CaptureList, ParseError> {
         let (caps, _) = self.do_parse(&mut bytes, 0, false)?;
         Ok(caps)
     }
 
-    pub(crate) fn do_parse<B: ByteSource>(
+    pub(crate) fn do_parse<S: Source>(
         &self,
-        bytes: &mut B,
+        source: &mut S,
         offset: u64,
         stop_on_match: bool,
     ) -> Result<(CaptureList, u64), ParseError> {
-        if let Some(chunk) = bytes.as_single_chunk() {
-            let chunk = &chunk[offset as usize..];
-            let (mut caps, sp) = self.parse_chunk(chunk)?;
-            if offset != 0 {
-                caps.iter_mut().for_each(|cap| {
-                    cap.start += offset;
-                    cap.end += offset;
-                });
-            }
-            return Ok((caps, offset + sp as u64));
-        }
-
-        // if not contiguous use a sliding window
-        const WINDOW_SIZE: usize = 1024 * 64; // 64kb
-
         // 2kb overlap between windows to not miss matches on boundaries
         // This means matches that would have been larger than 2kb may not be found
         const OVERLAP: usize = 1024 * 2;
 
-        let mut sp = 0;
-        let mut n = offset;
-        let mut window: Box<[u8]> = vec![0u8; WINDOW_SIZE].into();
-        let mut captures = CaptureList::new();
-        let mut copied = bytes.copy_to(n, window.as_mut());
-        n += copied as u64;
+        source.refill_buffer(offset)?;
 
-        while copied != 0 {
-            let start = n - copied as u64;
-            let win = &window[..copied];
-            if let Ok((mut caps, ssp)) = self.parse_chunk(win) {
-                sp = start + ssp as u64;
+        let mut succesful_parse = false;
+        let mut captures = CaptureList::new();
+        let mut sp = 0;
+        while sp != source.len() {
+            let (buf_pos, buf) = source.buffer();
+            if let Ok((mut caps, ssp)) = self.parse_chunk(buf) {
+                succesful_parse = true;
+                sp = buf_pos + ssp as u64;
                 // Adjust indices
                 caps.iter_mut().for_each(|cap| {
-                    cap.start += start;
-                    cap.end += start;
+                    cap.start += buf_pos;
+                    cap.end += buf_pos;
                 });
 
                 if stop_on_match {
@@ -428,18 +412,19 @@ impl Jit {
                     captures = caps;
                 } else {
                     // We already have captures thus this is already an overlapping run
-                    captures.retain_mut(|cap| cap.start < start);
+                    captures.retain_mut(|cap| cap.start < buf_pos);
                     captures.extend(caps);
                 }
             }
 
-            window.copy_within(WINDOW_SIZE - OVERLAP..WINDOW_SIZE, 0);
-            copied = bytes.copy_to(n, &mut window.as_mut()[OVERLAP..]);
-            n += copied as u64;
-
-            if bytes.stop() {
-                return Err(ParseError::UserStop);
+            let overlapping_start = buf_pos + buf.len().saturating_sub(OVERLAP) as u64;
+            if !source.refill_buffer(overlapping_start)? {
+                break;
             }
+        }
+
+        if !succesful_parse {
+            return Err(ParseError::ParsingFailed);
         }
 
         Ok((captures, sp))
@@ -457,7 +442,7 @@ impl Jit {
         let res = peg_program(state_ref, start, end);
 
         if res != 0 {
-            return Err(ParseError::Parse(format!("No match, error: {res}")));
+            return Err(ParseError::ParsingFailed);
         }
 
         let mut captures = Vec::with_capacity(state.len / 2);

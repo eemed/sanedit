@@ -1,12 +1,6 @@
 use bstr::ByteSlice;
-use std::{
-    cmp::max,
-    io::{self, Read, Seek, SeekFrom},
-};
 
 use crate::source::Source;
-
-const BUF_SIZE: usize = 128 * 1024;
 
 #[derive(Debug, Clone)]
 pub struct Finder {
@@ -93,27 +87,21 @@ impl<'a, S: Source> FinderIter<'a, S> {
         }
     }
 
-    pub fn find_next(&mut self) -> Option<u64> {
+    fn find_next(&mut self) -> Option<u64> {
         let pattern = self.finder.needle();
         let (buf_pos, buf) = self.haystack.buffer();
         let buf_end = buf_pos + (buf.len() as u64);
 
         loop {
-            let remaining = (buf_end - self.pos) as usize;
-            if remaining < pattern.len() && self.haystack.refill_buffer(self.pos).is_err() {
+            let remaining = buf_end.saturating_sub(self.pos) as usize;
+            if remaining < pattern.len() && !self.haystack.refill_buffer(self.pos).ok()? {
                 return None;
             }
 
             let (buf_pos, buf) = self.haystack.buffer();
-            // let buf_end = buf_pos + (buf.len() as u64);
             let relative_start = (self.pos - buf_pos) as usize;
             let relative_end = relative_start + (buf_pos + buf.len() as u64 - self.pos) as usize;
-
             let search_slice = &buf[relative_start..relative_end];
-
-            if search_slice.len() < pattern.len() {
-                return None;
-            }
 
             if let Some(relative_pos) = self.find_in_slice(search_slice) {
                 let absolute_pos = self.pos + relative_pos as u64;
@@ -127,6 +115,10 @@ impl<'a, S: Source> FinderIter<'a, S> {
                 self.pos += advance_by;
             }
         }
+    }
+
+    pub fn needle(&self) -> &[u8] {
+        self.finder.needle()
     }
 }
 
@@ -159,7 +151,7 @@ impl FinderRev {
         }
     }
 
-    pub fn iter<S: Source>(&self, haystack: S) -> io::Result<FinderIterRev<'_, S>> {
+    pub fn iter<S: Source>(&self, haystack: S) -> FinderIterRev<'_, S> {
         FinderIterRev::new(haystack, self)
     }
 
@@ -181,7 +173,7 @@ pub struct FinderIterRev<'a, S: Source> {
 }
 
 impl<'a, S: Source> FinderIterRev<'a, S> {
-    fn new(haystack: S, finder: &'a FinderRev) -> io::Result<Self> {
+    fn new(haystack: S, finder: &'a FinderRev) -> Self {
         let file_size = haystack.len();
 
         let leading_case_insentive = if finder.is_case_sensitive() {
@@ -195,68 +187,28 @@ impl<'a, S: Source> FinderIterRev<'a, S> {
             Some([lower, upper])
         };
 
-        Ok(Self {
+        Self {
             haystack,
             finder,
             pos: file_size,
             leading_case_insentive,
-        })
-    }
-
-    fn refill_buffer_rev(&mut self) -> io::Result<bool> {
-        // let remaining = self.buf_len as usize;
-        // let remaining_from_end = self.buf.len() - remaining;
-        // let remaining_start = self.buf_pos as usize;
-        // let remaining_end = remaining_start + self.buf_len as usize;
-        // self.buf
-        //     .copy_within(remaining_start..remaining_end, remaining_from_end);
-        // self.buf_pos = remaining as u64;
-        // self.buf_len = remaining as u64;
-        // println!(
-        //     "remaining: {remaining:?}, bpos: {}, blen: {}",
-        //     self.buf_pos, self.buf_len
-        // );
-
-        // let available_space = self.buf.len() as u64 - self.buf_pos;
-        // let read_start = self.pos.saturating_sub(available_space);
-        // let buf_start = remaining_from_end as u64 - (self.pos - read_start);
-        // println!("space: {available_space:?}, read at: {read_start:?}, bstart: {buf_start:?}");
-
-        // if buf_start == remaining_from_end as u64 {
-        //     return Ok(false);
-        // }
-
-        // println!("{buf_start:?}..{remaining_from_end:?}");
-        // // self.haystack.seek(SeekFrom::Start(read_start))?;
-        // // self.haystack
-        // //     .read_exact(&mut self.buf[buf_start as usize..remaining_from_end as usize])?;
-
-        // self.pos = read_start;
-        // self.buf_pos = buf_start;
-        // self.buf_len = self.buf.len() as u64 - buf_start;
-
-        // println!(
-        //     "pos: {:?}, buf-pos: {:?}, buf-len: {:?}",
-        //     self.pos, self.buf_pos, self.buf_len
-        // );
-        Ok(true)
+        }
     }
 
     fn rfind_in_slice(&self, data: &[u8]) -> Option<usize> {
         if let Some(ref case_insensitive_set) = self.leading_case_insentive {
             let pattern = self.finder.needle();
             let mut n = data.len();
-            while n != 0 {
-                let slice = &data[..n];
-                let pos = slice.rfind_byteset(case_insensitive_set)?;
-                // if pos + pattern.len() <= data.len() {
-                // }
-                // let end = candidate + self.finder.needle().len();
-                // let candidate_data = &data[candidate..end];
-                // if self.finder.needle().eq_ignore_ascii_case(candidate_data) {
-                //     return Some(candidate);
-                // } else {
-                // }
+            while n > pattern.len() {
+                let slice = &data[..n - pattern.len()];
+                n = slice.rfind_byteset(case_insensitive_set)?;
+                let end = n + pattern.len();
+                let candidate_data = &data[n..end];
+                if self.finder.needle().eq_ignore_ascii_case(candidate_data) {
+                    return Some(n);
+                } else {
+                    n = n.saturating_sub(1);
+                }
             }
 
             None
@@ -265,28 +217,32 @@ impl<'a, S: Source> FinderIterRev<'a, S> {
         }
     }
 
-    pub fn find_prev(&mut self) -> Option<u64> {
-        None
-        // let pattern = self.finder.needle();
+    fn find_prev(&mut self) -> Option<u64> {
+        let pattern = self.finder.needle();
+        let (buf_pos, _) = self.haystack.buffer();
 
-        // loop {
-        //     if self.buf_len < (pattern.len() as u64) && self.refill_buffer_rev().is_err() {
-        //         return None;
-        //     }
+        loop {
+            let remaining = (self.pos - buf_pos) as usize;
+            if remaining < pattern.len() && !self.haystack.refill_buffer_rev(self.pos).ok()? {
+                return None;
+            }
 
-        //     let start = self.buf_pos as usize;
-        //     let end = start + self.buf_len as usize;
-        //     let search_slice = &self.buf[start..end];
+            let (buf_pos, buf) = self.haystack.buffer();
+            let relative_end = (self.pos - buf_pos) as usize;
+            let search_slice = &buf[..relative_end];
 
-        //     if let Some(relative_pos) = self.rfind_in_slice(search_slice) {
-        //         let absolute_pos = self.pos + relative_pos as u64;
-        //         self.buf_len = relative_pos as u64;
+            if let Some(relative_pos) = self.rfind_in_slice(search_slice) {
+                let absolute_pos = buf_pos + relative_pos as u64;
+                self.pos = absolute_pos;
+                return Some(absolute_pos);
+            } else {
+                self.pos = buf_pos;
+            }
+        }
+    }
 
-        //         return Some(absolute_pos);
-        //     } else {
-        //         self.buf_len = (pattern.len() - 1) as u64;
-        //     }
-        // }
+    pub fn needle(&self) -> &[u8] {
+        self.finder.needle()
     }
 }
 
@@ -350,7 +306,7 @@ mod tests {
     fn test_finder_rev_single_match() {
         let finder = FinderRev::new(b"needle");
         let haystack = b"find the needle in the haystack";
-        let result = positions(finder.iter(haystack).unwrap());
+        let result = positions(finder.iter(haystack));
         assert_eq!(result, vec![9]);
     }
 
@@ -358,7 +314,7 @@ mod tests {
     fn test_finder_rev_multiple_matches() {
         let finder = FinderRev::new(b"an");
         let haystack = b"banana";
-        let result = positions(finder.iter(haystack).unwrap());
+        let result = positions(finder.iter(haystack));
         assert_eq!(result, vec![3, 1]); // reverse order
     }
 
@@ -366,7 +322,7 @@ mod tests {
     fn test_finder_rev_case_insensitive() {
         let finder = FinderRev::new_case_insensitive(b"NeEdLe");
         let haystack = b"find the NEEDLE in the haystack";
-        let result = positions(finder.iter(haystack).unwrap());
+        let result = positions(finder.iter(haystack));
         assert_eq!(result, vec![9]);
     }
 
@@ -374,7 +330,7 @@ mod tests {
     fn test_finder_rev_no_match() {
         let finder = FinderRev::new(b"zzz");
         let haystack = b"banana";
-        let result = positions(finder.iter(haystack).unwrap());
+        let result = positions(finder.iter(haystack));
         assert!(result.is_empty());
     }
 
@@ -382,7 +338,7 @@ mod tests {
     fn test_finder_rev_match_at_start() {
         let finder = FinderRev::new(b"find");
         let haystack = b"find the needle";
-        let result = positions(finder.iter(haystack).unwrap());
+        let result = positions(finder.iter(haystack));
         assert_eq!(result, vec![0]);
     }
 }

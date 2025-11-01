@@ -2,6 +2,9 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum ParseError {
+    #[error("Failed to read source: {0}")]
+    SourceReadError(#[from] std::io::Error),
+
     #[error("No language found: {0}")]
     NoLanguage(String),
 
@@ -16,6 +19,9 @@ pub enum ParseError {
 
     #[error("Failed to parse: {0}")]
     Parse(String),
+
+    #[error("Failed to parse text does not match rules")]
+    ParsingFailed,
 
     #[error("JIT is unsupported")]
     JitUnsupported,

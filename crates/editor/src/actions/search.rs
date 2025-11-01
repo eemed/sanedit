@@ -1,7 +1,7 @@
 use std::cmp::min;
 
 use sanedit_core::{word_at_pos, Range, SearchOptions, Searcher};
-use sanedit_syntax::PTSliceSource;
+use sanedit_syntax::PieceTreeSliceSource;
 
 use crate::{
     actions::jobs,
@@ -310,7 +310,9 @@ fn do_search(editor: &mut Editor, id: ClientId, searcher: Searcher, starting_pos
         let end = pos;
         let slice = buf.slice(..end);
         let mat = if !slice.is_empty() {
-            let source = PTSliceSource::from(&slice);
+            let Ok(source) = PieceTreeSliceSource::new(&slice) else {
+                return;
+            };
             let mut iter = searcher.find_iter(source);
             iter.next()
         } else {
@@ -321,7 +323,9 @@ fn do_search(editor: &mut Editor, id: ClientId, searcher: Searcher, starting_pos
         if mat.is_none() {
             // let first = pos.saturating_sub(input.len() as u64 - 1);
             let slice = buf.slice(..);
-            let source = PTSliceSource::from(&slice);
+            let Ok(source) = PieceTreeSliceSource::new(&slice) else {
+                return;
+            };
             let mut iter = searcher.find_iter(source);
             let mat = iter.next();
             (slice.start(), mat, true)
@@ -334,7 +338,9 @@ fn do_search(editor: &mut Editor, id: ClientId, searcher: Searcher, starting_pos
         let pos = skip_highlighted(win, starting_position, false);
         let start = min(blen, pos);
         let slice = buf.slice(start..);
-        let source = PTSliceSource::from(&slice);
+        let Ok(source) = PieceTreeSliceSource::new(&slice) else {
+            return;
+        };
         let mat = if !slice.is_empty() {
             let mut iter = searcher.find_iter(source);
             iter.next()
@@ -346,7 +352,9 @@ fn do_search(editor: &mut Editor, id: ClientId, searcher: Searcher, starting_pos
         if mat.is_none() {
             // let last = min(blen, pos + input.len() as u64);
             let slice = buf.slice(..);
-            let source = PTSliceSource::from(&slice);
+            let Ok(source) = PieceTreeSliceSource::new(&slice) else {
+                return;
+            };
             let mut iter = searcher.find_iter(source);
             let mat = iter.next();
             (slice.start(), mat, true)

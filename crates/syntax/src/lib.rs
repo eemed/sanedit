@@ -10,7 +10,6 @@ mod source;
 
 use grammar::Rule;
 use grammar::Rules;
-use std::borrow::Cow;
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -22,29 +21,16 @@ pub use grammar::Annotation;
 pub use loader::LanguageLoader;
 pub use parsing_machine::{Capture, CaptureID, CaptureIter, CaptureList, Captures};
 pub use regex::{Regex, RegexError, RegexRules};
-pub use source::{ByteSource, FileSource, PTSliceSource};
 
 pub(crate) use parsing_machine::{
     Compiler, Jit, Operation, ParsingMachine, Program, SubjectPosition,
 };
 
+pub use crate::source::{PieceTreeSliceSource, BufferedSource, Source};
+
 pub mod bench {
     pub use super::parsing_machine::Jit;
     pub use super::parsing_machine::ParsingMachine;
-}
-
-/// Get slice of bytesource efficiently
-macro_rules! get_slice {
-    ($bytes:expr, $range:expr) => {{
-        if let Some(arr) = $bytes.as_single_chunk() {
-            Cow::from(&arr[$range.start as usize..$range.end as usize])
-        } else {
-            let mut buf = vec![0; ($range.end - $range.start) as usize];
-            let n = $bytes.copy_to($range.start, &mut buf);
-            debug_assert!(n == buf.len(), "Invalid read");
-            Cow::from(buf)
-        }
-    }};
 }
 
 /// Wrapper around JIT and Interpreted parser.
@@ -79,7 +65,7 @@ impl Parser {
     }
 
     /// Parse bytes and return the list of captures
-    pub fn parse<B: ByteSource>(&self, bytes: B) -> Result<Captures, ParseError> {
+    pub fn parse<S: Source>(&self, bytes: S) -> Result<Captures, ParseError> {
         self.inner.parse_with_loader(bytes, self.loader.as_ref())
     }
 
@@ -94,7 +80,7 @@ impl Parser {
     }
 
     /// Try to match text multiple times. Skips errors and yields an element only when part of the text matches
-    pub fn captures<'a, B: ByteSource>(&'a self, source: B) -> CaptureIter<'a, B> {
+    pub fn captures<'a, S: Source>(&'a self, source: S) -> CaptureIter<'a, S> {
         self.inner.captures(source)
     }
 
@@ -167,26 +153,24 @@ impl ParserKind {
         Self::from_ops(rules, program)
     }
 
-    fn parse<B: ByteSource>(&self, bytes: B) -> Result<CaptureList, ParseError> {
+    fn parse<S: Source>(&self, bytes: S) -> Result<CaptureList, ParseError> {
         match self {
-            // ParserKind::Interpreted(parsing_machine) => parsing_machine.parse(bytes),
+            ParserKind::Interpreted(parsing_machine) => parsing_machine.parse(bytes),
             ParserKind::Jit(jit) => jit.parse(bytes),
-            _ => todo!()
         }
     }
 
-    fn parse_with_loader<B: ByteSource>(
+    fn parse_with_loader<S: Source>(
         &self,
-        mut bytes: B,
+        mut bytes: S,
         loader: Option<&Arc<dyn LanguageLoader>>,
     ) -> Result<Captures, ParseError> {
         let capture_list = match self {
-            // ParserKind::Interpreted(parsing_machine) => parsing_machine
-            //     .do_parse(&mut bytes, 0)
-            //     .map(|(caps, _)| caps)
-            //     .map_err(|err| ParseError::Parse(err.to_string()))?,
+            ParserKind::Interpreted(parsing_machine) => parsing_machine
+                .do_parse(&mut bytes, 0)
+                .map(|(caps, _)| caps)
+                .map_err(|err| ParseError::Parse(err.to_string()))?,
             ParserKind::Jit(jit) => jit.do_parse(&mut bytes, 0, false)?.0,
-            _ => todo!(),
         };
 
         if loader.is_none() {
@@ -199,9 +183,9 @@ impl ParserKind {
         self.handle_injections(bytes, loader.unwrap(), capture_list)
     }
 
-    fn handle_injections<B: ByteSource>(
+    fn handle_injections<S: Source>(
         &self,
-        mut bytes: B,
+        mut source: S,
         loader: &Arc<dyn LanguageLoader>,
         capture_list: CaptureList,
     ) -> Result<Captures, ParseError> {
@@ -250,7 +234,12 @@ impl ParserKind {
             match (inject_ann, inject_lang_ann) {
                 (Some(Inject(Some(lang))), None) => {
                     if let Ok(parser) = loader.load(lang) {
-                        let slice = get_slice!(bytes, cap.range());
+                        let slice =
+                            source
+                                .slice(cap.range())
+                                .ok_or(ParseError::SourceReadError(
+                                    std::io::ErrorKind::InvalidData.into(),
+                                ))?;
                         let caps = parser.parse(slice)?;
                         let start = cap.range().start;
                         push_injections(caps, lang.clone(), start);
@@ -267,12 +256,21 @@ impl ParserKind {
 
             if let (Some(a), Some(b)) = (last_pos, last_lang) {
                 let lang_cap = &capture_list[b];
-                let slice = get_slice!(bytes, lang_cap.range());
+                let slice = source
+                    .slice(lang_cap.range())
+                    .ok_or(ParseError::SourceReadError(
+                        std::io::ErrorKind::InvalidData.into(),
+                    ))?;
 
                 if let Ok(lang) = std::str::from_utf8(&slice).map(String::from) {
                     if let Ok(parser) = loader.load(&lang) {
                         let pos_cap = &capture_list[a];
-                        let slice = get_slice!(bytes, pos_cap.range());
+                        let slice =
+                            source
+                                .slice(pos_cap.range())
+                                .ok_or(ParseError::SourceReadError(
+                                    std::io::ErrorKind::InvalidData.into(),
+                                ))?;
                         let caps = parser.parse(slice)?;
                         let start = pos_cap.range().start;
                         push_injections(caps, lang.clone(), start);
@@ -307,7 +305,7 @@ impl ParserKind {
     }
 
     /// Try to match text multiple times. Skips errors and yields an element only when part of the text matches
-    fn captures<'a, B: ByteSource>(&'a self, source: B) -> CaptureIter<'a, B> {
+    fn captures<'a, S: Source>(&'a self, source: S) -> CaptureIter<'a, S> {
         match self {
             ParserKind::Interpreted(parsing_machine) => parsing_machine.captures(source),
             ParserKind::Jit(jit) => jit.captures(source),

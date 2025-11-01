@@ -10,11 +10,11 @@ use std::sync::Arc;
 use std::thread;
 use std::time::{Duration, Instant};
 
-use sanedit_buffer::{PieceTree, PieceTreeSlice};
+use sanedit_buffer::PieceTreeSlice;
 use sanedit_core::movement::{end_of_line, start_of_line};
 use sanedit_core::{Group, Item, Range, SearchMatch, Searcher};
 
-use sanedit_syntax::{FileSource, PTSliceSource};
+use sanedit_syntax::{BufferedSource, PieceTreeSliceSource};
 use sanedit_utils::appendlist::Appendlist;
 use sanedit_utils::sorted_vec::SortedVec;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
@@ -158,10 +158,13 @@ impl Grep {
         }
 
         let mut matches = SortedVec::new();
-        let Ok(mut source) = FileSource::new(path.as_path()) else {
+        let Ok(file) = File::open(&path) else {
             return;
         };
-        source.stop = kill.into();
+        let Ok(mut source) = BufferedSource::new(file) else {
+            return;
+        };
+        // source.stop = kill.into();
 
         for mat in searcher.find_iter(source) {
             log::info!("Match in {path:?}: {mat:?}");
@@ -184,10 +187,12 @@ impl Grep {
             return;
         }
 
-        let slice = slice.slice(..);
+        // let slice = slice.slice(..);
         let mut matches = SortedVec::new();
-        let mut source = PTSliceSource::from(&slice);
-        source.stop = kill.into();
+        let Ok(source) = PieceTreeSliceSource::new(slice) else {
+            return;
+        };
+        // source.stop = kill.into();
 
         for mat in searcher.find_iter(source) {
             let gmat = Self::prepare_match(&slice, mat);

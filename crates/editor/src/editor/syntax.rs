@@ -12,7 +12,7 @@ use sanedit_utils::sorted_vec::SortedVec;
 use std::fs::File;
 
 use anyhow::{anyhow, bail};
-use sanedit_syntax::{Annotation, Capture, Captures, LanguageLoader, PTSliceSource, Parser};
+use sanedit_syntax::{Annotation, Capture, Captures, LanguageLoader, Parser, PieceTreeSliceSource};
 
 use crate::common::Choice;
 
@@ -230,7 +230,7 @@ impl Syntax {
 
         let start = view.start;
         let slice = pt.slice(view);
-        let source = PTSliceSource::new(&slice);
+        let source = PieceTreeSliceSource::new(&slice)?;
         let captures: Captures = self.parser.parse(source)?;
         let mut spans = Self::to_spans(start, &self.parser, captures.captures);
 

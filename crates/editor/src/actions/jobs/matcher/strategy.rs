@@ -12,7 +12,7 @@ impl MatchFn for Finder {
     fn is_match(&self, opt: &str, results: &mut Vec<Range<usize>>) {
         for start in self.iter(opt) {
             let start = start as usize;
-            results.push(Range::from(start..start + self.pattern().len()));
+            results.push(Range::from(start..start + self.needle().len()));
         }
     }
 }

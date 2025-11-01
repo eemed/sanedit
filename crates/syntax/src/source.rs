@@ -216,12 +216,6 @@ impl<R: Read + Seek> Source for BufferedSource<R> {
             n += amount;
         }
 
-        log::info!(
-            "REFILL old_pos: {:?}, old_len: {}, npos: {pos}, nlen: {n}, TOTAL read: {total}, total: {}",
-            self.pos,
-            self.buf_len,
-            self.len()
-        );
         self.pos = pos;
         self.buf_len = n;
 
@@ -281,11 +275,11 @@ impl<'a> SliceChunks<'a> {
         }
         let (mut chunk_pos, mut chunk) = self.chunks.get()?;
 
-        while chunk_pos > self.pos {
+        while self.pos < chunk_pos {
             (chunk_pos, chunk) = self.chunks.prev()?;
         }
 
-        while chunk_pos + (chunk.as_ref().len() as u64) < self.pos {
+        while chunk_pos + (chunk.as_ref().len() as u64) <= self.pos {
             (chunk_pos, chunk) = self.chunks.next()?;
         }
 

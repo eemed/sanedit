@@ -10,10 +10,14 @@ value           = string / datetime / float / integer / boolean / array / object
 array           = (empty_array / string_array / datetime_array / float_array / integer_array / boolean_array / array_array / object_array);
 
 @show @highlight
-string    = "\"" compl_string "\"";
+string = qstring / sstring;
+qstring = "\"" compl_string "\"";
+sstring = "'" compl_string2 "'";
 
 @show @completion @highlight(string)
 compl_string    = ("\\" escape_char / [^"\n])*;
+@show @completion @highlight(string)
+compl_string2    = ("\\" escape_char / [^'\n])*;
 escape_char     = "0" / "t" / "n" / "r" / "\"" / "\\";
 digit           = [0..9];
 

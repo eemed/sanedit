@@ -59,10 +59,7 @@ pub(crate) fn trim_whitespace_back(slice: &PieceTreeSlice) -> PieceTreeSlice {
     slice.slice(..slice.len() - n)
 }
 
-pub(crate) fn trim_comment_on_line(
-    line: &PieceTreeSlice,
-    comment: &str,
-) -> Option<PieceTreeSlice> {
+pub(crate) fn trim_comment_on_line(line: &PieceTreeSlice, comment: &str) -> Option<PieceTreeSlice> {
     let line = trim_whitespace(line);
     if line.len() < comment.len() as u64 {
         return None;

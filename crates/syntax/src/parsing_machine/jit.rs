@@ -373,7 +373,7 @@ impl Jit {
         }
     }
 
-    pub fn parse<'b, S: Source>(&self, bytes: &'b mut S) -> Result<CaptureList, ParseError> {
+    pub fn parse<S: Source>(&self, bytes: &mut S) -> Result<CaptureList, ParseError> {
         let (caps, _) = self.do_parse(bytes, 0, false)?;
         Ok(caps)
     }

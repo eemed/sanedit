@@ -219,7 +219,7 @@ pub(crate) fn pos_at_line(slice: &PieceTreeSlice, line: u64) -> Option<u64> {
 }
 
 /// return the line and its number at pos
-pub(crate) fn line_at<'a>(slice: &PieceTreeSlice, pos: u64) -> (u64, PieceTreeSlice) {
+pub(crate) fn line_at(slice: &PieceTreeSlice, pos: u64) -> (u64, PieceTreeSlice) {
     let mut lines = slice.lines();
     let mut cur = lines.next();
     let mut n = 0;
@@ -249,7 +249,7 @@ pub struct Lines<'a> {
 impl<'a> Lines<'a> {
     #[inline]
     pub fn new(slice: &PieceTreeSlice, at: u64) -> Lines<'_> {
-        let bytes = Bytes::new(&slice, at);
+        let bytes = Bytes::new(slice, at);
         let mut lines = Lines {
             at_end: bytes.pos() == slice.len() && !slice.is_empty(),
             slice,

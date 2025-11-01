@@ -167,7 +167,7 @@ impl<'a> Graphemes<'a> {
         loop {
             match (current, after) {
                 (Some(c), Some(a)) => {
-                    if is_break(&self.slice, &c, &a) {
+                    if is_break(self.slice, &c, &a) {
                         let range = start..a.start;
                         self.prev = Some(a);
                         return Some(self.slice.slice(range));
@@ -210,7 +210,7 @@ impl<'a> Graphemes<'a> {
         loop {
             match (current, after) {
                 (Some(c), Some(a)) => {
-                    if is_break(&self.slice, &c, &a) {
+                    if is_break(self.slice, &c, &a) {
                         let range = a.start..end;
                         self.next = Some(c);
                         return Some(self.slice.slice(range));

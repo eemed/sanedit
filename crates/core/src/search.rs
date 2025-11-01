@@ -58,8 +58,8 @@ impl Default for SearchOptions {
 
 #[derive(Debug)]
 pub enum Searcher {
-    Finder(Finder),
-    FinderRev(FinderRev),
+    Finder(Box<Finder>),
+    FinderRev(Box<FinderRev>),
 
     Regex(Regex),
     RegexRev(Regex),
@@ -111,7 +111,7 @@ impl Searcher {
         } else {
             Finder::new_case_insensitive(patt.as_bytes())
         };
-        Searcher::Finder(searcher)
+        Searcher::Finder(searcher.into())
     }
 
     fn create_rev(patt: &str, options: &SearchOptions) -> Searcher {
@@ -120,7 +120,7 @@ impl Searcher {
         } else {
             FinderRev::new_case_insensitive(patt.as_bytes())
         };
-        Searcher::FinderRev(searcher)
+        Searcher::FinderRev(searcher.into())
     }
 
     pub fn find_iter<'b, T: Source>(&self, source: &'b mut T) -> MatchIter<'_, 'b, T> {

@@ -50,7 +50,7 @@ impl EndOfLine {
         &[Lf, Vt, Ff, Cr, Crlf, Nel, Ls, Ps]
     }
 
-    pub fn strip_eol<'a>(slice: &PieceTreeSlice) -> PieceTreeSlice {
+    pub fn strip_eol(slice: &PieceTreeSlice) -> PieceTreeSlice {
         let start = slice.len().saturating_sub(Self::MAX_EOL_LEN as u64);
         let end = slice.len();
         let potential = slice.slice(start..end);

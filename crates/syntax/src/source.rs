@@ -39,7 +39,7 @@ pub trait Source {
     }
 }
 
-impl<'a, const N: usize> Source for &'a [u8; N] {
+impl<const N: usize> Source for &[u8; N] {
     fn buffer(&self) -> (u64, &[u8]) {
         (0, *self)
     }
@@ -76,7 +76,7 @@ impl<'a, const N: usize> Source for &'a [u8; N] {
     }
 }
 
-impl<'a> Source for &'a [u8] {
+impl Source for &[u8] {
     fn buffer(&self) -> (u64, &[u8]) {
         (0, self)
     }
@@ -113,7 +113,7 @@ impl<'a> Source for &'a [u8] {
     }
 }
 
-impl<'a> Source for &'a str {
+impl Source for &str {
     fn buffer(&self) -> (u64, &[u8]) {
         (0, self.as_bytes())
     }
@@ -330,13 +330,13 @@ impl<'a> Seek for SliceChunks<'a> {
             }
             SeekFrom::End(n) => {
                 debug_assert!(n >= 0);
-                let abs = n.abs() as u64;
+                let abs = n.unsigned_abs();
 
                 debug_assert!(abs < end);
                 self.pos = end - abs;
             }
             SeekFrom::Current(n) => {
-                let abs = n.abs() as u64;
+                let abs = n.unsigned_abs();
                 if n.is_negative() {
                     debug_assert!(abs <= self.pos);
                     self.pos -= abs;

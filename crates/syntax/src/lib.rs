@@ -153,7 +153,7 @@ impl ParserKind {
         Self::from_ops(rules, program)
     }
 
-    fn parse<'b, S: Source>(&self, bytes: &'b mut S) -> Result<CaptureList, ParseError> {
+    fn parse<S: Source>(&self, bytes: &mut S) -> Result<CaptureList, ParseError> {
         match self {
             ParserKind::Interpreted(parsing_machine) => parsing_machine.parse(bytes),
             ParserKind::Jit(jit) => jit.parse(bytes),
@@ -262,7 +262,7 @@ impl ParserKind {
                         std::io::ErrorKind::InvalidData.into(),
                     ))?;
 
-                if let Ok(lang) = std::str::from_utf8(&slice).map(String::from) {
+                if let Ok(lang) = std::str::from_utf8(slice).map(String::from) {
                     if let Ok(parser) = loader.load(&lang) {
                         let pos_cap = &capture_list[a];
                         let slice =

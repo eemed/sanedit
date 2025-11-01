@@ -141,7 +141,7 @@ impl ParsingMachine {
     }
 
     /// Match whole text and return captures, fails if the text does not match
-    pub fn parse<'b, S: Source>(&self, reader: &'b mut S) -> Result<CaptureList, ParseError> {
+    pub fn parse<S: Source>(&self, reader: &mut S) -> Result<CaptureList, ParseError> {
         self.do_parse(reader, 0)
             .map(|(caps, _)| caps)
             .map_err(|err| ParseError::Parse(err.to_string()))

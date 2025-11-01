@@ -287,7 +287,7 @@ impl PieceTreeSlice {
     }
 }
 
-impl<'a, B: AsRef<[u8]>> PartialEq<B> for PieceTreeSlice {
+impl<B: AsRef<[u8]>> PartialEq<B> for PieceTreeSlice {
     fn eq(&self, other: &B) -> bool {
         if other.as_ref().len() as u64 != self.len() {
             return false;
@@ -315,7 +315,7 @@ impl<'a, B: AsRef<[u8]>> PartialEq<B> for PieceTreeSlice {
     }
 }
 
-impl<'a> From<&PieceTreeSlice> for Vec<u8> {
+impl From<&PieceTreeSlice> for Vec<u8> {
     fn from(slice: &PieceTreeSlice) -> Self {
         assert!(
             slice.len() < usize::MAX as u64,
@@ -336,7 +336,7 @@ impl<'a> From<&PieceTreeSlice> for Vec<u8> {
     }
 }
 
-impl<'a> From<&PieceTreeSlice> for String {
+impl From<&PieceTreeSlice> for String {
     fn from(slice: &PieceTreeSlice) -> Self {
         let mut result = String::new();
         let mut chars = slice.chars();

@@ -310,10 +310,10 @@ fn do_search(editor: &mut Editor, id: ClientId, searcher: Searcher, starting_pos
         let end = pos;
         let slice = buf.slice(..end);
         let mat = if !slice.is_empty() {
-            let Ok(source) = PieceTreeSliceSource::new(&slice) else {
+            let Ok(mut source) = PieceTreeSliceSource::new(&slice) else {
                 return;
             };
-            let mut iter = searcher.find_iter(source);
+            let mut iter = searcher.find_iter(&mut source);
             iter.next()
         } else {
             None
@@ -323,10 +323,10 @@ fn do_search(editor: &mut Editor, id: ClientId, searcher: Searcher, starting_pos
         if mat.is_none() {
             // let first = pos.saturating_sub(input.len() as u64 - 1);
             let slice = buf.slice(..);
-            let Ok(source) = PieceTreeSliceSource::new(&slice) else {
+            let Ok(mut source) = PieceTreeSliceSource::new(&slice) else {
                 return;
             };
-            let mut iter = searcher.find_iter(source);
+            let mut iter = searcher.find_iter(&mut source);
             let mat = iter.next();
             (slice.start(), mat, true)
         } else {
@@ -338,11 +338,11 @@ fn do_search(editor: &mut Editor, id: ClientId, searcher: Searcher, starting_pos
         let pos = skip_highlighted(win, starting_position, false);
         let start = min(blen, pos);
         let slice = buf.slice(start..);
-        let Ok(source) = PieceTreeSliceSource::new(&slice) else {
+        let Ok(mut source) = PieceTreeSliceSource::new(&slice) else {
             return;
         };
         let mat = if !slice.is_empty() {
-            let mut iter = searcher.find_iter(source);
+            let mut iter = searcher.find_iter(&mut source);
             iter.next()
         } else {
             None
@@ -352,10 +352,10 @@ fn do_search(editor: &mut Editor, id: ClientId, searcher: Searcher, starting_pos
         if mat.is_none() {
             // let last = min(blen, pos + input.len() as u64);
             let slice = buf.slice(..);
-            let Ok(source) = PieceTreeSliceSource::new(&slice) else {
+            let Ok(mut source) = PieceTreeSliceSource::new(&slice) else {
                 return;
             };
-            let mut iter = searcher.find_iter(source);
+            let mut iter = searcher.find_iter(&mut source);
             let mat = iter.next();
             (slice.start(), mat, true)
         } else {

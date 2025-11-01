@@ -131,7 +131,7 @@ impl ParsingMachine {
     }
 
     /// Try to match text multiple times. Skips errors and yields an element only when part of the text matches
-    pub fn captures<'a, S: Source>(&'a self, reader: S) -> CaptureIter<'a, S> {
+    pub fn captures<'a, 'b, S: Source>(&'a self, reader: &'b mut S) -> CaptureIter<'a, 'b, S> {
         CaptureIter {
             parser: ParserRef::Interpreted(self),
             sp: 0,
@@ -141,8 +141,8 @@ impl ParsingMachine {
     }
 
     /// Match whole text and return captures, fails if the text does not match
-    pub fn parse<S: Source>(&self, mut reader: S) -> Result<CaptureList, ParseError> {
-        self.do_parse(&mut reader, 0)
+    pub fn parse<'b, S: Source>(&self, reader: &'b mut S) -> Result<CaptureList, ParseError> {
+        self.do_parse(reader, 0)
             .map(|(caps, _)| caps)
             .map_err(|err| ParseError::Parse(err.to_string()))
     }
@@ -394,30 +394,30 @@ mod test {
     #[test]
     fn parse_large_json() {
         let peg = include_str!("../pegs/json.peg");
-        let content = include_bytes!("../benches/large.json");
+        let mut content = include_bytes!("../benches/large.json");
 
         let parser = ParsingMachine::from_read(std::io::Cursor::new(peg)).unwrap();
-        let result = parser.parse(content);
+        let result = parser.parse(&mut content);
         assert!(result.is_ok(), "Parse failed with {result:?}");
     }
 
     #[test]
     fn parse_toml() {
         let peg = include_str!("../pegs/toml.peg");
-        let content = include_bytes!("../benches/sample.toml");
+        let mut content = include_bytes!("../benches/sample.toml");
 
         let parser = ParsingMachine::from_read(std::io::Cursor::new(peg)).unwrap();
-        let result = parser.parse(content);
+        let result = parser.parse(&mut content);
         assert!(result.is_ok(), "Parse failed with {result:?}");
     }
 
     #[test]
     fn parse_invalid_json() {
         let peg = include_str!("../pegs/json.peg");
-        let content = "{ \"hello\": \"world, \"another\": \"line\" }";
+        let mut content = "{ \"hello\": \"world, \"another\": \"line\" }";
 
         let parser = ParsingMachine::from_read(std::io::Cursor::new(peg)).unwrap();
-        let result = parser.parse(content);
+        let result = parser.parse(&mut content);
         assert!(result.is_ok(), "Parse failed with {result:?}");
     }
 
@@ -429,9 +429,9 @@ mod test {
             nl              = \"\\r\\n\" / \"\\r\" / \"\\n\";
             ";
 
-        let content = b"abba";
+        let mut content = b"abba";
         let parser = ParsingMachine::from_read(std::io::Cursor::new(peg)).unwrap();
-        let result = parser.parse(content);
+        let result = parser.parse(&mut content);
         assert!(result.is_ok(), "Parse failed with {result:?}");
     }
 
@@ -442,9 +442,9 @@ mod test {
             escape_char     = \"0\" / \"t\" / \"n\" / \"r\" / \"\\\"\" / \"\\\\\";
             ";
 
-        let content = b"\"registry+https://github.com/rust-lang/crates.io-index\"";
+        let mut content = b"\"registry+https://github.com/rust-lang/crates.io-index\"";
         let parser = ParsingMachine::from_read(std::io::Cursor::new(peg)).unwrap();
-        let result = parser.parse(content);
+        let result = parser.parse(&mut content);
         assert!(result.is_ok(), "Parse failed with {result:?}");
     }
 
@@ -456,9 +456,9 @@ mod test {
             comment         = \"#\" (!nl .)*;
             ";
 
-        let content = b"# abba\n";
+        let mut content = b"# abba\n";
         let parser = ParsingMachine::from_read(std::io::Cursor::new(peg)).unwrap();
-        let result = parser.parse(content);
+        let result = parser.parse(&mut content);
         assert!(result.is_ok(), "Parse failed with {result:?}");
     }
 
@@ -470,7 +470,7 @@ mod test {
 
         for i in 0..'\u{10ffff}' as u32 {
             if let Some(ch) = char::from_u32(i) {
-                let result = parser.parse(ch.to_string().as_str());
+                let result = parser.parse(&mut ch.to_string().as_str());
                 assert!(result.is_ok(), "Failed to parse char: {ch:?},  {result:?}");
             }
         }

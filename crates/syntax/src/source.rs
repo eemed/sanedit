@@ -209,9 +209,19 @@ impl<R: Read + Seek> Source for BufferedSource<R> {
         self.reader.seek(SeekFrom::Start(pos))?;
 
         while n < total {
-            n += self.reader.read(&mut self.buf[n..])?;
+            let amount = self.reader.read(&mut self.buf[n..])?;
+            if amount == 0 {
+                break;
+            }
+            n += amount;
         }
 
+        log::info!(
+            "REFILL old_pos: {:?}, old_len: {}, npos: {pos}, nlen: {n}, TOTAL read: {total}, total: {}",
+            self.pos,
+            self.buf_len,
+            self.len()
+        );
         self.pos = pos;
         self.buf_len = n;
 
@@ -229,8 +239,8 @@ impl<R: Read + Seek> Source for BufferedSource<R> {
 
     fn slice(&mut self, range: Range<u64>) -> Option<&[u8]> {
         // Assume mostly forward
-        let in_range = self.pos <= range.start && range.end <= self.pos + self.buf_len as u64;
-        if !in_range && self.refill_buffer(range.start).is_err() {
+        let in_range = self.pos <= range.start && range.end <= (self.pos + self.buf_len as u64);
+        if !in_range && !self.refill_buffer(range.start).ok()? {
             return None;
         }
 
@@ -242,7 +252,7 @@ impl<R: Read + Seek> Source for BufferedSource<R> {
 
     fn get(&mut self, at: u64) -> Option<u8> {
         let in_range = self.pos <= at && at < self.pos + self.buf_len as u64;
-        if !in_range && self.refill_buffer(at).is_err() {
+        if !in_range && !self.refill_buffer(at).ok()? {
             return None;
         }
 

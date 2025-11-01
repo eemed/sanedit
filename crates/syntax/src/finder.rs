@@ -23,7 +23,7 @@ impl Finder {
         }
     }
 
-    pub fn iter<S: Source>(&self, haystack: S) -> FinderIter<'_, S> {
+    pub fn iter<'a, 'b, S: Source>(&'a self, haystack: &'b mut S) -> FinderIter<'a, 'b, S> {
         let leading_case_insentive = if self.is_case_sensitive() {
             None
         } else {
@@ -53,14 +53,14 @@ impl Finder {
 }
 
 #[derive(Debug)]
-pub struct FinderIter<'a, S: Source> {
-    haystack: S,
+pub struct FinderIter<'a, 'b, S: Source> {
+    haystack: &'b mut S,
     pos: u64,
     finder: &'a Finder,
     leading_case_insentive: Option<[u8; 2]>,
 }
 
-impl<'a, S: Source> FinderIter<'a, S> {
+impl<'a, 'b, S: Source> FinderIter<'a, 'b, S> {
     fn find_in_slice(&self, data: &[u8]) -> Option<usize> {
         if let Some(ref case_insensitive_set) = self.leading_case_insentive {
             let pattern = self.finder.needle();
@@ -122,7 +122,7 @@ impl<'a, S: Source> FinderIter<'a, S> {
     }
 }
 
-impl<'a, S: Source> Iterator for FinderIter<'a, S> {
+impl<'a, 'b, S: Source> Iterator for FinderIter<'a, 'b, S> {
     type Item = u64;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -151,7 +151,7 @@ impl FinderRev {
         }
     }
 
-    pub fn iter<S: Source>(&self, haystack: S) -> FinderIterRev<'_, S> {
+    pub fn iter<'b, S: Source>(&self, haystack: &'b mut S) -> FinderIterRev<'_, 'b, S> {
         FinderIterRev::new(haystack, self)
     }
 
@@ -165,15 +165,15 @@ impl FinderRev {
 }
 
 #[derive(Debug)]
-pub struct FinderIterRev<'a, S: Source> {
-    haystack: S,
+pub struct FinderIterRev<'a, 'b, S: Source> {
+    haystack: &'b mut S,
     finder: &'a FinderRev,
     pos: u64,
     leading_case_insentive: Option<[u8; 2]>,
 }
 
-impl<'a, S: Source> FinderIterRev<'a, S> {
-    fn new(haystack: S, finder: &'a FinderRev) -> Self {
+impl<'a, 'b, S: Source> FinderIterRev<'a, 'b, S> {
+    fn new(haystack: &'b mut S, finder: &'a FinderRev) -> Self {
         let file_size = haystack.len();
 
         let leading_case_insentive = if finder.is_case_sensitive() {
@@ -246,7 +246,7 @@ impl<'a, S: Source> FinderIterRev<'a, S> {
     }
 }
 
-impl<'a, S: Source> Iterator for FinderIterRev<'a, S> {
+impl<'a, 'b, S: Source> Iterator for FinderIterRev<'a, 'b, S> {
     type Item = u64;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -265,80 +265,80 @@ mod tests {
     #[test]
     fn test_finder_single_match() {
         let finder = Finder::new(b"needle");
-        let haystack = b"find the needle in the haystack";
-        let result = positions(finder.iter(haystack));
+        let mut haystack = b"find the needle in the haystack";
+        let result = positions(finder.iter(&mut haystack));
         assert_eq!(result, vec![9]);
     }
 
     #[test]
     fn test_finder_multiple_matches() {
         let finder = Finder::new(b"an");
-        let haystack = b"banana";
-        let result = positions(finder.iter(haystack));
+        let mut haystack = b"banana";
+        let result = positions(finder.iter(&mut haystack));
         assert_eq!(result, vec![1, 3]);
     }
 
     #[test]
     fn test_finder_no_match() {
         let finder = Finder::new(b"zzz");
-        let haystack = b"banana";
-        let result = positions(finder.iter(haystack));
+        let mut haystack = b"banana";
+        let result = positions(finder.iter(&mut haystack));
         assert!(result.is_empty());
     }
 
     #[test]
     fn test_finder_case_insensitive() {
         let finder = Finder::new_case_insensitive(b"NeedLe");
-        let haystack = b"find the NEEDLE in the haystack";
-        let result = positions(finder.iter(haystack));
+        let mut haystack = b"find the NEEDLE in the haystack";
+        let result = positions(finder.iter(&mut haystack));
         assert_eq!(result, vec![9]);
     }
 
     #[test]
     fn test_finder_match_at_end() {
         let finder = Finder::new(b"stack");
-        let haystack = b"find the needle in the haystack";
-        let result = positions(finder.iter(haystack));
+        let mut haystack = b"find the needle in the haystack";
+        let result = positions(finder.iter(&mut haystack));
         assert_eq!(result, vec![26]);
     }
 
     #[test]
     fn test_finder_rev_single_match() {
         let finder = FinderRev::new(b"needle");
-        let haystack = b"find the needle in the haystack";
-        let result = positions(finder.iter(haystack));
+        let mut haystack = b"find the needle in the haystack";
+        let result = positions(finder.iter(&mut haystack));
         assert_eq!(result, vec![9]);
     }
 
     #[test]
     fn test_finder_rev_multiple_matches() {
         let finder = FinderRev::new(b"an");
-        let haystack = b"banana";
-        let result = positions(finder.iter(haystack));
+        let mut haystack = b"banana";
+        let result = positions(finder.iter(&mut haystack));
         assert_eq!(result, vec![3, 1]); // reverse order
     }
 
     #[test]
     fn test_finder_rev_case_insensitive() {
         let finder = FinderRev::new_case_insensitive(b"NeEdLe");
-        let haystack = b"find the NEEDLE in the haystack";
-        let result = positions(finder.iter(haystack));
+        let mut haystack = b"find the NEEDLE in the haystack";
+        let result = positions(finder.iter(&mut haystack));
         assert_eq!(result, vec![9]);
     }
 
     #[test]
     fn test_finder_rev_no_match() {
         let finder = FinderRev::new(b"zzz");
-        let haystack = b"banana";
-        let result = positions(finder.iter(haystack));
+        let mut haystack = b"banana";
+        let result = positions(finder.iter(&mut haystack));
         assert!(result.is_empty());
     }
 
     #[test]
     fn test_finder_rev_match_at_start() {
         let finder = FinderRev::new(b"find");
-        let haystack = b"find the needle";
-        let result = positions(finder.iter(haystack));
+        let mut haystack = b"find the needle";
+        let result = positions(finder.iter(&mut haystack));
         assert_eq!(result, vec![0]);
     }
 }

@@ -26,7 +26,7 @@ pub(crate) use parsing_machine::{
     Compiler, Jit, Operation, ParsingMachine, Program, SubjectPosition,
 };
 
-pub use crate::source::{PieceTreeSliceSource, BufferedSource, Source};
+pub use crate::source::{BufferedSource, PieceTreeSliceSource, Source};
 
 pub mod bench {
     pub use super::parsing_machine::Jit;
@@ -80,7 +80,7 @@ impl Parser {
     }
 
     /// Try to match text multiple times. Skips errors and yields an element only when part of the text matches
-    pub fn captures<'a, S: Source>(&'a self, source: S) -> CaptureIter<'a, S> {
+    pub fn captures<'a, 'b, S: Source>(&'a self, source: &'b mut S) -> CaptureIter<'a, 'b, S> {
         self.inner.captures(source)
     }
 
@@ -153,7 +153,7 @@ impl ParserKind {
         Self::from_ops(rules, program)
     }
 
-    fn parse<S: Source>(&self, bytes: S) -> Result<CaptureList, ParseError> {
+    fn parse<'b, S: Source>(&self, bytes: &'b mut S) -> Result<CaptureList, ParseError> {
         match self {
             ParserKind::Interpreted(parsing_machine) => parsing_machine.parse(bytes),
             ParserKind::Jit(jit) => jit.parse(bytes),
@@ -305,7 +305,7 @@ impl ParserKind {
     }
 
     /// Try to match text multiple times. Skips errors and yields an element only when part of the text matches
-    fn captures<'a, S: Source>(&'a self, source: S) -> CaptureIter<'a, S> {
+    fn captures<'a, 'b, S: Source>(&'a self, source: &'b mut S) -> CaptureIter<'a, 'b, S> {
         match self {
             ParserKind::Interpreted(parsing_machine) => parsing_machine.captures(source),
             ParserKind::Jit(jit) => jit.captures(source),

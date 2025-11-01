@@ -9,8 +9,8 @@ trait MatchFn: Send + Sync {
 
 /// Matches anywhere
 impl MatchFn for Finder {
-    fn is_match(&self, opt: &str, results: &mut Vec<Range<usize>>) {
-        for start in self.iter(opt) {
+    fn is_match(&self, mut opt: &str, results: &mut Vec<Range<usize>>) {
+        for start in self.iter(&mut opt) {
             let start = start as usize;
             results.push(Range::from(start..start + self.needle().len()));
         }

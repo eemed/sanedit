@@ -322,7 +322,6 @@ impl<'a> From<&PieceTreeSlice> for Vec<u8> {
             "Slice is too large to be represented in memory"
         );
 
-        log::info!("SELF: {:?}", slice.range);
         let mut bytes = Vec::with_capacity(slice.len() as usize);
         let mut chunks = slice.chunks();
         let mut pos_chunk = chunks.get();

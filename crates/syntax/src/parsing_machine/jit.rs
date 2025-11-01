@@ -364,7 +364,7 @@ impl Jit {
     }
 
     /// Try to match text multiple times. Skips errors and yields an element only when part of the text matches
-    pub fn captures<'a, S: Source>(&'a self, reader: S) -> CaptureIter<'a, S> {
+    pub fn captures<'a, 'b, S: Source>(&'a self, reader: &'b mut S) -> CaptureIter<'a, 'b, S> {
         CaptureIter {
             parser: ParserRef::Jit(self),
             sp: 0,
@@ -373,8 +373,8 @@ impl Jit {
         }
     }
 
-    pub fn parse<S: Source>(&self, mut bytes: S) -> Result<CaptureList, ParseError> {
-        let (caps, _) = self.do_parse(&mut bytes, 0, false)?;
+    pub fn parse<'b, S: Source>(&self, bytes: &'b mut S) -> Result<CaptureList, ParseError> {
+        let (caps, _) = self.do_parse(bytes, 0, false)?;
         Ok(caps)
     }
 
@@ -957,7 +957,7 @@ mod test {
         let peg = include_str!("../../../../runtime/language/rust/syntax.peg");
         let jit = Jit::from_read(std::io::Cursor::new(peg)).expect("Failed to create JIT");
         // println!("{:?}", jit.ops);
-        let rust = r#"
+        let mut rust = r#"
             use crate::editor::snippets::{Snippet, SNIPPET_DESCRIPTION};
 
             #[derive(Debug, Hash, PartialEq, Eq, Ord, PartialOrd, Clone)]
@@ -991,7 +991,7 @@ mod test {
                 }
             }
         "#;
-        let _captures = jit.parse(rust).expect("Parsing failed");
+        let _captures = jit.parse(&mut rust).expect("Parsing failed");
     }
 
     #[test]
@@ -1001,8 +1001,8 @@ mod test {
         let jit = Jit::from_read(std::io::Cursor::new(rules)).expect("Failed to create JIT");
         // let json = r#"{ "nimi": "perkele", "ika": 42, lapset: ["matti", "teppo"]}"#;
         // println!("{:?}", jit.ops);
-        let json = include_str!("../../benches/large.json");
-        let _captures = jit.parse(json).expect("Parsing failed");
+        let mut json = include_str!("../../benches/large.json");
+        let _captures = jit.parse(&mut json).expect("Parsing failed");
         // for cap in captures {
         //     println!("{cap:?}: {}", &json[cap.start as usize..cap.end as usize]);
         // }
@@ -1013,7 +1013,7 @@ mod test {
     fn jit_toml() {
         let rules = include_str!("../../pegs/toml.peg");
         let jit = Jit::from_read(std::io::Cursor::new(rules)).expect("Failed to create JIT");
-        let json = r#"
+        let mut json = r#"
         [hello]
         number = 42
         array = ["bob", "alice"]
@@ -1022,7 +1022,7 @@ mod test {
         [another.section]
         setter = true
         "#;
-        let _captures = jit.parse(json).unwrap();
+        let _captures = jit.parse(&mut json).unwrap();
         // for cap in captures {
         //     println!("{cap:?}: {}", &json[cap.start as usize..cap.end as usize]);
         // }
@@ -1033,8 +1033,8 @@ mod test {
     fn jit_match_1() {
         let rules = r#"document = "abc";"#;
         let jit = Jit::from_read(std::io::Cursor::new(rules)).unwrap();
-        let haystack = "abc";
-        assert!(jit.parse(haystack).is_ok())
+        let mut haystack = "abc";
+        assert!(jit.parse(&mut haystack).is_ok())
     }
 
     #[test]
@@ -1043,7 +1043,7 @@ mod test {
         let rules = r#"document = ("amet" / .)*;"#;
         let jit = Jit::from_read(std::io::Cursor::new(rules)).unwrap();
         let haystack = LOREM.repeat(10);
-        assert!(jit.parse(haystack.as_str()).is_ok())
+        assert!(jit.parse(&mut haystack.as_str()).is_ok())
     }
 
     #[test]
@@ -1057,7 +1057,7 @@ mod test {
         "#;
         let jit = Jit::from_read(std::io::Cursor::new(rules)).unwrap();
         let haystack = LOREM.repeat(10);
-        assert!(jit.parse(haystack.as_str()).is_ok())
+        assert!(jit.parse(&mut haystack.as_str()).is_ok())
     }
 
     #[test]
@@ -1066,7 +1066,7 @@ mod test {
         let rules = r#"@show document = ("amet" / .)*;"#;
         let jit = Jit::from_read(std::io::Cursor::new(rules)).unwrap();
         let haystack = LOREM.repeat(10);
-        assert!(jit.parse(haystack.as_str()).is_ok())
+        assert!(jit.parse(&mut haystack.as_str()).is_ok())
     }
 
     #[test]
@@ -1076,8 +1076,8 @@ mod test {
         let parser = ParsingMachine::from_rules_unanchored(rules.0).unwrap();
         // println!("{:?}", parser.program);
         let jit = Jit::from_program(parser.rules, parser.program).unwrap();
-        let haystack = "c";
-        assert!(jit.parse(haystack).is_ok())
+        let mut haystack = "c";
+        assert!(jit.parse(&mut haystack).is_ok())
     }
 
     #[test]
@@ -1087,8 +1087,8 @@ mod test {
         let parser = ParsingMachine::from_rules_unanchored(rules.0).unwrap();
         // println!("{:?}", parser.program);
         let jit = Jit::from_program(parser.rules, parser.program).unwrap();
-        let haystack = "a";
-        assert!(jit.parse(haystack).is_ok())
+        let mut haystack = "a";
+        assert!(jit.parse(&mut haystack).is_ok())
     }
 
     #[test]
@@ -1096,8 +1096,8 @@ mod test {
     fn jit_no_match_1() {
         let rules = r#"document = "abc";"#;
         let jit = Jit::from_read(std::io::Cursor::new(rules)).unwrap();
-        let haystack = "aac";
-        assert!(jit.parse(haystack).is_err())
+        let mut haystack = "aac";
+        assert!(jit.parse(&mut haystack).is_err())
     }
 
     const LOREM: &str = "

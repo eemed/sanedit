@@ -65,14 +65,14 @@ impl Glob {
         Ok(Glob { parser })
     }
 
-    fn to_rules(pattern: &str) -> Result<Rules, GlobError> {
+    fn to_rules(mut pattern: &str) -> Result<Rules, GlobError> {
         let to_bytes = |cap: &Capture| {
             let range = cap.range();
             pattern.as_bytes()[range.start as usize..range.end as usize].to_vec()
         };
 
         let parser = glob_parser();
-        let captures: SortedVec<Capture> = parser.parse(pattern)?.into();
+        let captures: SortedVec<Capture> = parser.parse(&mut pattern)?.into();
         let mut rules: Vec<RuleInfo> = vec![];
         let mut seq: Vec<Rule> = vec![];
         let mut last_was_rec_wildcard = false;
@@ -288,8 +288,8 @@ impl Glob {
     }
 
     pub fn is_match<B: AsRef<[u8]>>(&self, bytes: &B) -> bool {
-        let bytes = bytes.as_ref();
-        match self.parser.parse(bytes) {
+        let mut bytes = bytes.as_ref();
+        match self.parser.parse(&mut bytes) {
             Ok(_) => true,
             Err(_e) => false,
         }

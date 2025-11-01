@@ -10,11 +10,12 @@ use std::sync::Arc;
 use std::thread;
 use std::time::{Duration, Instant};
 
-use sanedit_buffer::PieceTreeSlice;
+use sanedit_buffer::utf8::prev_eol;
+use sanedit_buffer::{PieceTree, PieceTreeSlice};
 use sanedit_core::movement::{end_of_line, start_of_line};
-use sanedit_core::{Group, Item, Range, SearchMatch, Searcher};
+use sanedit_core::{BufferRange, Group, Item, Range, SearchMatch, Searcher};
 
-use sanedit_syntax::{BufferedSource, PieceTreeSliceSource};
+use sanedit_syntax::{BufferedSource, PieceTreeSliceSource, Source};
 use sanedit_utils::appendlist::Appendlist;
 use sanedit_utils::sorted_vec::SortedVec;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
@@ -157,17 +158,29 @@ impl Grep {
             return;
         }
 
-        let mut matches = SortedVec::new();
         let Ok(file) = File::open(&path) else {
             return;
         };
         let Ok(mut source) = BufferedSource::new(file) else {
             return;
         };
-        // source.stop = kill.into();
 
-        for mat in searcher.find_iter(source) {
-            log::info!("Match in {path:?}: {mat:?}");
+        let results = {
+            let mut results = vec![];
+            for mat in searcher.find_iter(&mut source) {
+                if kill.should_stop() {
+                    return;
+                }
+                results.push(mat);
+            }
+            results
+        };
+
+        let mut matches = SortedVec::new();
+        for mat in results {
+            if let Some(gmat) = Self::prepare_match(&mut source, mat) {
+                matches.push(gmat);
+            }
         }
 
         if !matches.is_empty() {
@@ -187,16 +200,26 @@ impl Grep {
             return;
         }
 
-        // let slice = slice.slice(..);
-        let mut matches = SortedVec::new();
-        let Ok(source) = PieceTreeSliceSource::new(slice) else {
+        let Ok(mut source) = PieceTreeSliceSource::new(slice) else {
             return;
         };
-        // source.stop = kill.into();
 
-        for mat in searcher.find_iter(source) {
-            let gmat = Self::prepare_match(&slice, mat);
-            matches.push(gmat);
+        let results = {
+            let mut results = vec![];
+            for mat in searcher.find_iter(&mut source) {
+                if kill.should_stop() {
+                    return;
+                }
+                results.push(mat);
+            }
+            results
+        };
+
+        let mut matches = SortedVec::new();
+        for mat in results {
+            if let Some(gmat) = Self::prepare_match(&mut source, mat) {
+                matches.push(gmat);
+            }
         }
 
         if !matches.is_empty() {
@@ -266,39 +289,42 @@ impl Grep {
 
         true
     }
+    const MAX_BYTES_BEFORE_MATCH: u64 = 128;
+    const MAX_BYTES_AFTER_MATCH: u64 = 128;
 
-    fn prepare_match(slice: &PieceTreeSlice, mat: SearchMatch) -> GrepMatch {
-        const MAX_BYTES_BEFORE_MATCH: u64 = 128;
-        const MAX_BYTES_AFTER_MATCH: u64 = 256;
-
+    fn prepare_match<S: Source>(source: &mut S, mat: SearchMatch) -> Option<GrepMatch> {
         let start = mat.range().start;
+        let start_limit = start.saturating_sub(Self::MAX_BYTES_BEFORE_MATCH);
+        let end = mat.range().end;
+        let end_limit = min(
+            source.len(),
+            end.saturating_add(Self::MAX_BYTES_AFTER_MATCH),
+        );
+        let bytes = source.slice(start_limit..end_limit)?;
 
-        let sol = {
-            let limit = start.saturating_sub(MAX_BYTES_BEFORE_MATCH);
-            let mat_start = start - limit;
-            let slice = slice.slice(limit..);
-            start_of_line(&slice, mat_start) + limit
-        };
+        // Just create piecetree for convinience
+        let pt = PieceTree::from(bytes);
+        let slice = pt.slice(..);
 
-        let eol = {
-            let limit = min(slice.len(), start.saturating_add(MAX_BYTES_AFTER_MATCH));
-            let slice = slice.slice(..limit);
-            end_of_line(&slice, start)
-        };
+        let relative_mat_start = start - start_limit;
+        let sol = start_of_line(&slice, relative_mat_start);
+        let relative_mat_end = relative_mat_start + mat.range().len();
+        let eol = end_of_line(&slice, relative_mat_end);
+        // log::info!("slice: {}..{} SOL: {sol}, EOL: {eol}", slice.start(), slice.end());
         let line = slice.slice(sol..eol);
         let line_mat = {
             let mut range = mat.range();
-            range.start -= sol;
-            range.end -= sol;
+            range.start -= start_limit + sol;
+            range.end -= start_limit + sol;
             Range::from(range.start as usize..range.end as usize)
         };
 
-        GrepMatch {
+        Some(GrepMatch {
             line: None,
             text: String::from(&line),
             matches: vec![line_mat],
-            absolute_offset: Some(line.start()),
-        }
+            absolute_offset: Some(line.start() + start_limit),
+        })
     }
 }
 

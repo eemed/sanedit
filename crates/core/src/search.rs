@@ -1,8 +1,6 @@
 use crate::{BufferRange, Range};
 use anyhow::bail;
-use sanedit_syntax::{
-    CaptureIter, Finder, FinderIter, FinderIterRev, FinderRev, Regex, Source,
-};
+use sanedit_syntax::{CaptureIter, Finder, FinderIter, FinderIterRev, FinderRev, Regex, Source};
 
 #[derive(Debug, Clone, Copy)]
 pub struct SearchOptions {
@@ -125,7 +123,7 @@ impl Searcher {
         Searcher::FinderRev(searcher)
     }
 
-    pub fn find_iter<T: Source>(&self, source: T) -> MatchIter<'_, T> {
+    pub fn find_iter<'b, T: Source>(&self, source: &'b mut T) -> MatchIter<'_, 'b, T> {
         match self {
             Searcher::Regex(regex) => {
                 let iter = regex.captures(source);
@@ -174,14 +172,14 @@ impl SearchMatch {
     }
 }
 
-pub enum MatchIter<'a, T: Source> {
-    Finder(FinderIter<'a, T>),
-    FinderRev(FinderIterRev<'a, T>),
-    Regex(CaptureIter<'a, T>),
-    RegexRev(CaptureIter<'a, T>),
+pub enum MatchIter<'a, 'b, T: Source> {
+    Finder(FinderIter<'a, 'b, T>),
+    FinderRev(FinderIterRev<'a, 'b, T>),
+    Regex(CaptureIter<'a, 'b, T>),
+    RegexRev(CaptureIter<'a, 'b, T>),
 }
 
-impl<'a, 'b, T: Source> Iterator for MatchIter<'a, T> {
+impl<'a, 'b, T: Source> Iterator for MatchIter<'a, 'b, T> {
     type Item = SearchMatch;
 
     fn next(&mut self) -> Option<Self::Item> {

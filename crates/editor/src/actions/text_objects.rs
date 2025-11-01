@@ -240,8 +240,8 @@ fn select_pattern(editor: &mut Editor, id: ClientId) -> ActionResult {
             let mut cursors = vec![];
             for range in selections {
                 let slice = buf.slice(range);
-                let source = getf!(PieceTreeSliceSource::new(&slice).ok());
-                for mat in searcher.find_iter(source) {
+                let mut source = getf!(PieceTreeSliceSource::new(&slice).ok());
+                for mat in searcher.find_iter(&mut source) {
                     let mut sel = mat.range();
                     sel.forward(slice.start());
                     let cursor = Cursor::new_select(sel);

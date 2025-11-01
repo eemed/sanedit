@@ -1,6 +1,6 @@
 use std::{
     any::Any,
-    sync::{atomic::AtomicBool, Arc},
+    sync::{atomic::{AtomicBool, Ordering}, Arc},
 };
 
 use sanedit_buffer::PieceTreeSlice;
@@ -51,16 +51,15 @@ impl Search {
         msend: Sender<Vec<BufferRange>>,
         searcher: Arc<Searcher>,
         slice: PieceTreeSlice,
-        stop: Arc<AtomicBool>,
+        _stop: Arc<AtomicBool>,
     ) {
         let start = slice.start();
-        let Ok(source) = PieceTreeSliceSource::new(&slice) else {
+        let Ok(mut source) = PieceTreeSliceSource::new(&slice) else {
             return;
         };
-        // source.stop = stop;
 
         let matches = searcher
-            .find_iter(source)
+            .find_iter(&mut source)
             .map(|mat| {
                 let mut range = mat.range();
                 range.start += start;

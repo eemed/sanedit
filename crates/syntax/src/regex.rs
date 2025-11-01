@@ -71,12 +71,12 @@ impl Regex {
     }
 
     pub fn is_match<B: AsRef<[u8]>>(&self, bytes: &B) -> bool {
-        let bytes = bytes.as_ref();
-        let captures = self.parser.parse(bytes);
+        let mut bytes = bytes.as_ref();
+        let captures = self.parser.parse(&mut bytes);
         captures.is_ok()
     }
 
-    pub fn captures<S: Source>(&self, reader: S) -> CaptureIter<'_, S> {
+    pub fn captures<'b, S: Source>(&self, reader: &'b mut S) -> CaptureIter<'_, 'b, S> {
         self.parser.captures(reader)
     }
 
@@ -110,7 +110,7 @@ impl<'a> RegexToPEG<'a> {
     pub fn convert(pattern: &str) -> Result<Rules, RegexError> {
         let parser = regex_parser();
         let pattern = format!("({pattern})");
-        let captures: SortedVec<Capture> = parser.parse(pattern.as_str())?.into();
+        let captures: SortedVec<Capture> = parser.parse(&mut pattern.as_str())?.into();
 
         let mut state = RegexToPEG {
             pattern: pattern.as_str(),
@@ -703,8 +703,8 @@ mod tests {
         cap.end - cap.start
     }
 
-    fn is_total_match(regex: &Regex, bytes: &[u8]) {
-        let caps = regex.captures(bytes).next().expect("No match");
+    fn is_total_match(regex: &Regex, mut bytes: &[u8]) {
+        let caps = regex.captures(&mut bytes).next().expect("No match");
         assert_eq!(cap_len(&caps[0]), bytes.len() as u64)
     }
 
@@ -926,7 +926,7 @@ mod tests {
         assert!(regex.is_match(b"1924"));
         assert!(regex.is_match(b"19245"));
         let cap = regex
-            .captures(b"1111111111111")
+            .captures(&mut b"1111111111111")
             .next()
             .expect("Did not match");
         assert_eq!(cap_len(&cap[0]), 5);
@@ -966,7 +966,7 @@ mod tests {
         assert!(regex.is_match(b"abbbc"));
 
         let regex = Regex::new(r"a[bc]*?").unwrap();
-        let cap = regex.captures(b"abc").next().expect("Did not match");
+        let cap = regex.captures(&mut b"abc").next().expect("Did not match");
         assert_eq!(cap_len(&cap[0]), 1);
         assert!(regex.is_match(b"ac"));
         assert!(regex.is_match(b"abc"));
@@ -977,7 +977,7 @@ mod tests {
     fn regex_lazy_one_or_more() {
         let regex = Regex::new(r"ab+?").unwrap();
         assert!(regex.is_match(b"ab"));
-        let cap = regex.captures(b"abbbb").next().expect("Did not match");
+        let cap = regex.captures(&mut b"abbbb").next().expect("Did not match");
         assert_eq!(cap_len(&cap[0]), 2);
         assert!(!regex.is_match(b"xaxbxx"));
         assert!(!regex.is_match(b"a"));
@@ -989,7 +989,7 @@ mod tests {
         let regex = Regex::new(r"\d{3,5}?").unwrap();
         assert!(regex.is_match(b"222"));
         let cap = regex
-            .captures(b"1111111111111")
+            .captures(&mut b"1111111111111")
             .next()
             .expect("Did not match");
         assert_eq!(cap_len(&cap[0]), 3);
@@ -1004,7 +1004,7 @@ mod tests {
         let regex = Regex::new(r"\d{3,}?").unwrap();
         assert!(regex.is_match(b"222"));
         let cap = regex
-            .captures(b"1111111111111")
+            .captures(&mut b"1111111111111")
             .next()
             .expect("Did not match");
         assert_eq!(cap_len(&cap[0]), 3);

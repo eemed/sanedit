@@ -39,4 +39,3 @@ impl Default for WindowConfig {
         }
     }
 }
-

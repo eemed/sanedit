@@ -247,12 +247,10 @@ impl Glob {
                     rules.push(wcard);
                 }
                 "any" => {
-                    seq.push(
-                        Rule::Choice(vec![
-                            Rule::ByteRange(u8::MIN, b'/' - 1),
-                            Rule::ByteRange(b'/' + 1, u8::MAX),
-                        ]),
-                    );
+                    seq.push(Rule::Choice(vec![
+                        Rule::ByteRange(u8::MIN, b'/' - 1),
+                        Rule::ByteRange(b'/' + 1, u8::MAX),
+                    ]));
                 }
                 "separator" => {
                     // Recursive wildcard a/**/b matches also a/b, we need to possibly eat the /

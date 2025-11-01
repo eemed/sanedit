@@ -61,7 +61,6 @@ fn chars(c: &mut Criterion) {
             }
         });
     });
-
 }
 
 fn graphemes(c: &mut Criterion) {

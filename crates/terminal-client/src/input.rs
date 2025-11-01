@@ -4,7 +4,9 @@ use anyhow::Result;
 use crossbeam::channel::Sender;
 use crossterm::event::{poll, read, KeyCode, KeyModifiers};
 use sanedit_messages::{
-    key::{self, Key, KeyEvent, KeyMods}, redraw::{Point, Size}, Element, Message, MouseButton, MouseEvent, MouseEventKind
+    key::{self, Key, KeyEvent, KeyMods},
+    redraw::{Point, Size},
+    Element, Message, MouseButton, MouseEvent, MouseEventKind,
 };
 
 use crate::message::ClientInternalMessage;
@@ -158,7 +160,12 @@ pub(crate) fn convert_mouse_event(
         y: event.row as usize,
     };
 
-    Some(MouseEvent { kind, mods, point, element: Element::Window })
+    Some(MouseEvent {
+        kind,
+        mods,
+        point,
+        element: Element::Window,
+    })
 }
 
 fn convert_mouse_button(btn: crossterm::event::MouseButton) -> MouseButton {

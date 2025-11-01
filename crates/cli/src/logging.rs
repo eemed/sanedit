@@ -106,10 +106,7 @@ impl log::Log for Logger {
             record.level(),
             timestamp,
             record.file().unwrap_or(""),
-            record
-                .line()
-                .map(|n| n.to_string())
-                .unwrap_or_default(),
+            record.line().map(|n| n.to_string()).unwrap_or_default(),
             record.args()
         );
     }

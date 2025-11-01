@@ -6,8 +6,7 @@
 //
 // ucd-generate 0.3.1 is available on crates.io.
 
-pub const BY_NAME: &[(&str, &[(u32, u32)])] =
-    &[("Extended_Pictographic", EXTENDED_PICTOGRAPHIC)];
+pub const BY_NAME: &[(&str, &[(u32, u32)])] = &[("Extended_Pictographic", EXTENDED_PICTOGRAPHIC)];
 
 pub const EXTENDED_PICTOGRAPHIC: &[(u32, u32)] = &[
     (169, 169),

@@ -10,10 +10,9 @@ use std::sync::Arc;
 use std::thread;
 use std::time::{Duration, Instant};
 
-use sanedit_buffer::utf8::prev_eol;
 use sanedit_buffer::{PieceTree, PieceTreeSlice};
 use sanedit_core::movement::{end_of_line, start_of_line};
-use sanedit_core::{BufferRange, Group, Item, Range, SearchMatch, Searcher};
+use sanedit_core::{Group, Item, Range, SearchMatch, Searcher};
 
 use sanedit_syntax::{BufferedSource, PieceTreeSliceSource, Source};
 use sanedit_utils::appendlist::Appendlist;
@@ -310,7 +309,6 @@ impl Grep {
         let sol = start_of_line(&slice, relative_mat_start);
         let relative_mat_end = relative_mat_start + mat.range().len();
         let eol = end_of_line(&slice, relative_mat_end);
-        // log::info!("slice: {}..{} SOL: {sol}, EOL: {eol}", slice.start(), slice.end());
         let line = slice.slice(sol..eol);
         let line_mat = {
             let mut range = mat.range();

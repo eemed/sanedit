@@ -1,7 +1,7 @@
 use std::process::Stdio;
 
-
-use sanedit_buffer::PieceTreeSlice;use tokio::process::Command;
+use sanedit_buffer::PieceTreeSlice;
+use tokio::process::Command;
 
 use sanedit_server::{ClientId, Job, JobContext, JobResult};
 

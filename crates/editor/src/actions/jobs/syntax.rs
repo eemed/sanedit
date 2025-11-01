@@ -1,7 +1,7 @@
 use std::any::Any;
 
-
-use sanedit_buffer::PieceTreeSlice;use sanedit_core::BufferRange;
+use sanedit_buffer::PieceTreeSlice;
+use sanedit_core::BufferRange;
 
 use crate::editor::{
     buffers::BufferId,

@@ -7,7 +7,8 @@ pub(crate) struct Wezterm {}
 
 impl TerminalWindowManager for Wezterm {
     fn new_window_horizontal(&mut self, shell: &str, new_instance_cmd: &str) {
-        let split = format!("wezterm cli split-pane -- {shell} -c '{new_instance_cmd} && exec {shell}'");
+        let split =
+            format!("wezterm cli split-pane -- {shell} -c '{new_instance_cmd} && exec {shell}'");
         let _ = Command::new(shell).args(["-c", &split]).output();
     }
 

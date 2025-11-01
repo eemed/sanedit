@@ -1,6 +1,6 @@
 use std::{
     any::Any,
-    sync::{atomic::{AtomicBool, Ordering}, Arc},
+    sync::{atomic::AtomicBool, Arc},
 };
 
 use sanedit_buffer::PieceTreeSlice;

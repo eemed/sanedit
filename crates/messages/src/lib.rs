@@ -25,9 +25,7 @@ use serde::{Deserialize, Serialize};
 /// Messages sent to the client
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone, Hash)]
 pub enum ClientMessage {
-    Hello {
-        id: usize,
-    },
+    Hello { id: usize },
     Theme(Theme),
     Redraw(Redraw),
     SplitHorizontal,
@@ -45,7 +43,7 @@ pub enum Command {
     ReadStdin {
         bytes: Vec<u8>,
         language: Option<String>,
-    }
+    },
 }
 
 /// Messages sent to the server

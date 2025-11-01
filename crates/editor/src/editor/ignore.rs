@@ -27,7 +27,9 @@ impl Ignore {
             root: working_dir.to_path_buf(),
             patterns: vec![],
         };
-        Ignore { globs: Arc::new(globs) }
+        Ignore {
+            globs: Arc::new(globs),
+        }
     }
 
     pub fn is_empty(&self) -> bool {

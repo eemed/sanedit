@@ -9,7 +9,8 @@ use std::{
 
 use chrono::{DateTime, Local, TimeDelta};
 
-use sanedit_buffer::PieceTreeSlice;use sanedit_messages::{key::try_parse_keyevents, ClientMessage};
+use sanedit_buffer::PieceTreeSlice;
+use sanedit_messages::{key::try_parse_keyevents, ClientMessage};
 use sanedit_utils::idmap::AsID;
 
 use crate::{

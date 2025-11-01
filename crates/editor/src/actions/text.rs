@@ -442,10 +442,7 @@ fn check_file_modification(editor: &mut Editor, id: ClientId) -> ActionResult {
     let bid = buf.id;
 
     let path = getf!(buf.path());
-    let in_fs = path
-        .metadata()
-        .ok()
-        .and_then(|mdata| mdata.modified().ok());
+    let in_fs = path.metadata().ok().and_then(|mdata| mdata.modified().ok());
     let local = getf!(buf.last_saved_modified.as_ref());
 
     // File is deleted

@@ -367,7 +367,12 @@ impl Handler {
             },
         };
 
-        self.response.send(Response::Request { id, result: result.into() }).await?;
+        self.response
+            .send(Response::Request {
+                id,
+                result: result.into(),
+            })
+            .await?;
         Ok(())
     }
 
@@ -439,7 +444,12 @@ impl Handler {
                 msg: "No response".to_string(),
             },
         };
-        self.response.send(Response::Request { id, result: result.into() }).await?;
+        self.response
+            .send(Response::Request {
+                id,
+                result: result.into(),
+            })
+            .await?;
         Ok(())
     }
 
@@ -521,7 +531,8 @@ impl Handler {
                         path,
                         edits: result.into_iter().map(TextEdit::from).collect(),
                     },
-                }.into(),
+                }
+                .into(),
             })
             .await?;
 
@@ -558,7 +569,8 @@ impl Handler {
                 id,
                 result: RequestResult::Rename {
                     workspace_edit: result.into(),
-                }.into(),
+                }
+                .into(),
             })
             .await?;
 
@@ -575,7 +587,8 @@ impl Handler {
                 id,
                 result: RequestResult::ResolvedAction {
                     action: CodeAction { action: response }.into(),
-                }.into(),
+                }
+                .into(),
             })
             .await?;
         Ok(())
@@ -775,7 +788,8 @@ impl Handler {
                     path,
                     position,
                     results,
-                }.into(),
+                }
+                .into(),
             })
             .await?;
 
@@ -835,7 +849,8 @@ impl Handler {
                         result: RequestResult::GotoDefinition {
                             path,
                             position: position.into(),
-                        }.into(),
+                        }
+                        .into(),
                     })
                     .await?;
             }
@@ -845,7 +860,8 @@ impl Handler {
                         id,
                         result: RequestResult::Error {
                             msg: "Invalid path".to_string(),
-                        }.into(),
+                        }
+                        .into(),
                     })
                     .await?;
             }

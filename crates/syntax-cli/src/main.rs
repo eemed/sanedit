@@ -130,7 +130,8 @@ fn main() {
 
     if cli.regex {
         let mut found = false;
-        let iter = parser.captures(reader.as_str());
+        let mut as_str = reader.as_str();
+        let iter = parser.captures(&mut as_str);
         for caps in iter {
             found = true;
 

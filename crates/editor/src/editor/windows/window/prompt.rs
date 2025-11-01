@@ -367,7 +367,7 @@ impl Prompt {
                 }
 
                 let no_input = results
-                .first()
+                    .first()
                     .map(|res| {
                         res.get(0)
                             .map(|choice| choice.matches().is_empty())

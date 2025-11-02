@@ -75,7 +75,7 @@ markers = ",#7A8478,"
 
 [colors.locations]
 default = "#2d353b,#d3c6aa,"
-title = "#3D484D,#d3c6aa,"
+title = "#4F585E,#d3c6aa,"
 entry = ""
 group = ",#83C092,"
 markers = ",#7A8478,"

@@ -229,7 +229,7 @@ impl<'a> Graphemes<'a> {
                     return Some(self.slice.slice(0..end));
                 }
                 (None, None) => return None,
-                (Some(_), None) => unreachable!(),
+                (Some(g), None) => unreachable!("Graphemes: {g:?}"),
             }
         }
     }
@@ -461,8 +461,8 @@ mod test {
     #[test]
     fn grapheme_iter_prev_next() {
         let mut pt = PieceTree::new();
-        const CONTENT: &str = "abba";
-        pt.insert(0, CONTENT);
+        pt.insert(0, "ba");
+        pt.insert(0, "ab");
 
         let slice = pt.slice(..);
         let mut graphemes = slice.graphemes_at(slice.len());
@@ -568,5 +568,45 @@ mod test {
 
         pos = next_grapheme_boundary(&slice, pos);
         assert_eq!(1, pos);
+    }
+
+    #[test]
+    fn slice_and_chunks() {
+        let mut pt = PieceTree::new();
+        let bytes = include_bytes!("../../../benches/large.txt");
+        pt.insert(0, bytes);
+        pt.remove(83..166);
+
+        let slice = pt.slice(..83);
+        let mut graphemes = slice.graphemes_at(slice.len());
+        while let Some(_g) = graphemes.prev() {}
+        assert!(graphemes.prev().is_none());
+
+        let slice = pt.slice(82..83);
+        let mut graphemes = slice.graphemes();
+
+        while let Some(_g) = graphemes.next() {}
+        assert!(graphemes.next().is_none());
+
+        while let Some(_g) = graphemes.prev() {}
+        assert!(graphemes.prev().is_none());
+
+        let slice = pt.slice(80..85);
+        let mut graphemes = slice.graphemes();
+
+        while let Some(_g) = graphemes.next() {}
+        assert!(graphemes.next().is_none());
+
+        while let Some(_g) = graphemes.prev() {}
+        assert!(graphemes.prev().is_none());
+
+        let slice = pt.slice(83..84);
+        let mut graphemes = slice.graphemes();
+
+        while let Some(_g) = graphemes.next() {}
+        assert!(graphemes.next().is_none());
+
+        while let Some(_g) = graphemes.prev() {}
+        assert!(graphemes.prev().is_none());
     }
 }

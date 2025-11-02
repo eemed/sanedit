@@ -206,7 +206,7 @@ tasks:
     deps: [release-deb]
     cmds:
       - sudo apt remove -y sanedit
-      - sudo apt install -y ./deb/sanedit_*.deb
+      - find ./deb -type f -exec ls -t {} + | head -1 | xargs sudo apt install -y
 
   heaptrack-server:
     desc: Track allocations using heaptrack

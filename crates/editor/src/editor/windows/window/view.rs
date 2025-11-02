@@ -319,26 +319,28 @@ impl View {
             .unwrap_or(0)
     }
 
-    pub fn scroll_down_n(&mut self, buf: &Buffer, mut n: u64) {
+    pub fn scroll_down_n(&mut self, buf: &Buffer, mut n: u64) -> bool {
         self.redraw(buf);
 
         if n >= self.height() as u64 {
             self.range.start = self.range.end;
             self.needs_redraw = true;
-            return;
+            return true;
         }
 
         let mut line = 0;
         while n > 0 {
             let len = self.line_len_in_buffer(line);
             if len == 0 || self.range.start + len == buf.len() {
-                break;
+                return false;
             }
             self.range.start += len;
             self.needs_redraw = true;
             n -= 1;
             line += 1;
         }
+
+        true
     }
 
     pub fn align_start(&mut self, mut width: usize, buf: &Buffer) {
@@ -605,8 +607,7 @@ impl View {
             self.draw(buf);
         }
 
-        while !self.is_visible(pos) {
-            self.scroll_down_n(buf, 1);
+        while !self.is_visible(pos) && self.scroll_down_n(buf, 1) {
             self.draw(buf);
         }
     }

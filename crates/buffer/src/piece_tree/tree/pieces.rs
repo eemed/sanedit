@@ -17,7 +17,7 @@ pub(crate) struct BoundedPieceIter<'a> {
 impl<'a> BoundedPieceIter<'a> {
     #[inline]
     pub(crate) fn new(slice: &'a PieceTreeSlice, at: u64) -> BoundedPieceIter<'a> {
-        let iter = PieceIter::new(slice, slice.start() + at);
+        let iter = PieceIter::new(slice, at);
         BoundedPieceIter {
             range: slice.range.clone(),
             iter,
@@ -98,11 +98,12 @@ pub(crate) struct PieceIter<'a> {
 impl<'a> PieceIter<'a> {
     #[inline]
     pub(crate) fn new(slice: &'a PieceTreeSlice, at: u64) -> Self {
+        let absolute_pos = slice.start() + at;
         // Be empty at pt.len
-        let (stack, pos) = if at == slice.end() {
-            (Vec::with_capacity(slice.tree.max_height()), at)
+        let (stack, pos) = if absolute_pos == slice.end() {
+            (Vec::with_capacity(slice.tree.max_height()), absolute_pos)
         } else {
-            slice.tree.find_node(at)
+            slice.tree.find_node(absolute_pos)
         };
         PieceIter { slice, stack, pos }
     }
@@ -209,7 +210,10 @@ impl<'a> PieceIter<'a> {
             self.pos -= p.len;
             Some((self.pos, p))
         } else {
-            let (stack, index) = self.slice.tree.find_node(self.slice.end());
+            let (stack, index) = self
+                .slice
+                .tree
+                .find_node(self.slice.end().saturating_sub(1));
             self.stack = stack;
             self.pos = index;
             self.get()
@@ -326,7 +330,6 @@ pub(crate) mod test {
         assert_eq!(add_piece(4, 0, 1), pieces.next()); // b
         assert_eq!(None, pieces.next());
         assert_eq!(None, pieces.get());
-        println!("REVERSE");
         assert_eq!(add_piece(4, 0, 1), pieces.prev());
         assert_eq!(add_piece(1, 3, 3), pieces.prev());
         assert_eq!(add_piece(0, 8, 1), pieces.prev());

@@ -7,7 +7,7 @@ statusline_no_focus = "#2D353B,,"
 end_of_buffer = ",#475258,"
 trailing_whitespace = ",#475258,"
 match = "#A7C080,#2D353B,"
-virtual = ",#859289,"
+virtual = ",#4F585E,"
 
 [colors.cursor]
 normal = "#7FBBB3,#2d353b,"
@@ -41,10 +41,10 @@ match = ",#de935f,"
 [colors.window.completion.selected]
 default = "#A7C080,#2D353B,"
 description = ",,"
-match = ",#B8795D,"
+match = ",#c55809,"
 
 [colors.prompt]
-default = "#343F44,#d3c6aa,"
+default = "#9DA9A0,#2d353b,"
 message = ",,bold"
 userinput = ",,"
 
@@ -56,12 +56,12 @@ message = ",#d3c6aa,bold"
 [colors.prompt.completion]
 default = "#3D484D,#d3c6aa,"
 description = ",,"
-match = ",#E69875,"
+match = ",#de935f,"
 
 [colors.prompt.completion.selected]
 default = "#A7C080,#2D353B,"
 description = ",,"
-match = ",#B8795D,"
+match = ",#c55809,"
 
 [colors.filetree]
 default = "#2d353b,#d3c6aa,"

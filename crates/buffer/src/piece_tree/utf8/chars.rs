@@ -383,7 +383,9 @@ mod test {
     #[test]
     fn prev() {
         let mut pt = PieceTree::new();
-        pt.insert(0, b"ab\xFF\xF0\x90\x8D\xFF\x90\x8Dcd");
+        pt.insert(0, b"\x90\x8Dcd");
+        pt.insert(0, b"\x90\x8D\xFF");
+        pt.insert(0, b"ab\xFF\xF0");
         let mut chars = pt.chars_at(pt.len());
 
         assert_eq!(Some((10, 11, 'd')), chars.prev());

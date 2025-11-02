@@ -1,0 +1,92 @@
+# Colors from https://github.com/sainnhe/everforest/blob/master/palette.md
+
+[colors.window]
+default = "#2d353b,#d3c6aa,"
+statusline = "#343F44,#d3c6aa,"
+statusline_no_focus = "#2D353B,,"
+end_of_buffer = ",#475258,"
+trailing_whitespace = ",#475258,"
+match = "#A7C080,#2D353B,"
+virtual = ",#859289,"
+
+[colors.cursor]
+normal = "#7FBBB3,#2d353b,"
+selection = "#56635f,,"
+
+[colors.window.view]
+hint = "#3A515D,#7FBBB3,"
+info = "#3A515D,#7FBBB3,"
+warn = "#4D4C43,#DBBC7F,"
+error = "#514045,#E67E80,"
+
+added = "#425047,#A7C080,"
+modified = "#4D4C43,#DBBC7F,"
+deleted = "#514045,#E67E80,"
+
+constant = ",#83C092,"
+string =  ",#A7C080,"
+keyword = ",#E67E80,"
+operator =  ",#E69875,"
+type =  ",#DBBC7F,"
+comment = ",#859289,"
+preproc = ",#D699B6,"
+special = ",#E69875,"
+identifier = ",#E67E80,"
+
+[colors.window.completion]
+default = "#3D484D,#d3c6aa,"
+description = ",#969896,"
+match = ",#de935f,"
+
+[colors.window.completion.selected]
+default = "#A7C080,#2D353B,"
+description = ",,"
+match = ",#B8795D,"
+
+[colors.prompt]
+default = "#343F44,#d3c6aa,"
+message = ",,bold"
+userinput = ",,"
+
+[colors.prompt.overlay]
+default = "#3D484D,#d3c6aa,"
+title = ",,bold"
+message = ",#d3c6aa,bold"
+
+[colors.prompt.completion]
+default = "#3D484D,#d3c6aa,"
+description = ",,"
+match = ",#E69875,"
+
+[colors.prompt.completion.selected]
+default = "#A7C080,#2D353B,"
+description = ",,"
+match = ",#B8795D,"
+
+[colors.filetree]
+default = "#2d353b,#d3c6aa,"
+markers = ",#7A8478,"
+directory = ",#DBBC7F,"
+
+[colors.filetree.selected]
+default = "#3D484D,,"
+directory = ",#DBBC7F,"
+markers = ",#7A8478,"
+
+[colors.locations]
+default = "#2d353b,#d3c6aa,"
+title = "#3D484D,#d3c6aa,"
+entry = ""
+group = ",#83C092,"
+markers = ",#7A8478,"
+match = ",#E69875,"
+
+[colors.locations.selected]
+default = "#3D484D,,"
+match = ",#E69875,"
+markers = ",#7A8478,"
+entry = ""
+group = ",#83C092,"
+
+[colors.popup]
+default = "#3D484D,#D3C6AA,"

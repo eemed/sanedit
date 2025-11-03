@@ -6,7 +6,7 @@ use std::{
 use sanedit_buffer::PieceTreeSlice;
 use sanedit_core::BufferRange;
 
-use sanedit_syntax::{PieceTreeSliceSource, Source as _};
+use sanedit_syntax::PieceTreeSliceSource;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 
 use crate::editor::{

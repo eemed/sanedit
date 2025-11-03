@@ -6,7 +6,7 @@ use std::{
 use sanedit_buffer::PieceTreeSlice;
 use sanedit_core::BufferRange;
 
-use sanedit_syntax::PieceTreeSliceSource;
+use sanedit_syntax::{PieceTreeSliceSource, Source as _};
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 
 use crate::editor::{
@@ -51,10 +51,10 @@ impl Search {
         msend: Sender<Vec<BufferRange>>,
         searcher: Arc<Searcher>,
         slice: PieceTreeSlice,
-        _stop: Arc<AtomicBool>,
+        stop: Arc<AtomicBool>,
     ) {
         let start = slice.start();
-        let Ok(mut source) = PieceTreeSliceSource::new(&slice) else {
+        let Ok(mut source) = PieceTreeSliceSource::with_stop(&slice, stop) else {
             return;
         };
 

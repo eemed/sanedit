@@ -90,15 +90,19 @@ impl<'a, 'b, S: Source> FinderIter<'a, 'b, S> {
 
     fn find_next(&mut self) -> Option<u64> {
         let pattern = self.finder.needle();
+        if self.haystack.stop() {
+            return None;
+        }
 
         loop {
             let (buf_pos, buf) = self.haystack.buffer();
             let remaining = buf.len() - self.pos;
             if remaining < pattern.len() {
-                if self
-                    .haystack
-                    .refill_buffer(buf_pos + self.pos as u64)
-                    .ok()?
+                if !self.haystack.stop()
+                    && self
+                        .haystack
+                        .refill_buffer(buf_pos + self.pos as u64)
+                        .ok()?
                 {
                     self.pos = 0;
                 } else {
@@ -223,14 +227,23 @@ impl<'a, 'b, S: Source> FinderIterRev<'a, 'b, S> {
         let pattern = self.finder.needle();
         let (buf_pos, _) = self.haystack.buffer();
 
+        if self.haystack.stop() {
+            return None;
+        }
+
         loop {
             if self.pos < pattern.len() {
-                 if self.haystack.refill_buffer_rev(buf_pos + self.pos as u64).ok()? {
+                if !self.haystack.stop()
+                    && self
+                        .haystack
+                        .refill_buffer_rev(buf_pos + self.pos as u64)
+                        .ok()?
+                {
                     let (_, buf) = self.haystack.buffer();
                     self.pos = buf.len();
-                 } else {
+                } else {
                     return None;
-                 }
+                }
             }
 
             let (buf_pos, buf) = self.haystack.buffer();

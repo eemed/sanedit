@@ -2,6 +2,10 @@ use std::{
     cmp::min,
     io::{self, Read, Seek, SeekFrom},
     ops::Range,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
 };
 
 use sanedit_buffer::{utf8::decode_utf8, Chunks, PieceTreeSlice};
@@ -15,6 +19,12 @@ pub trait Source {
     fn len(&self) -> u64;
     fn slice(&mut self, range: Range<u64>) -> Option<&[u8]>;
     fn get(&mut self, at: u64) -> Option<u8>;
+
+    fn stop(&self) -> bool {
+        false
+    }
+
+    fn stop_flag(&mut self, _flag: Arc<AtomicBool>) {}
 
     fn is_empty(&self) -> bool {
         self.len() == 0
@@ -157,6 +167,7 @@ pub struct BufferedSource<R: Read + Seek> {
     buf_len: usize,
     pos: u64,
     len: u64,
+    stop: Arc<AtomicBool>,
 }
 
 impl<R: Read + Seek> BufferedSource<R> {
@@ -168,10 +179,17 @@ impl<R: Read + Seek> BufferedSource<R> {
             buf_len: 0,
             pos: 0,
             len,
+            stop: Arc::new(AtomicBool::new(false)),
         };
         let _ = source.refill_buffer(0);
 
         Ok(source)
+    }
+
+    pub fn with_stop(reader: R, stop: Arc<AtomicBool>) -> io::Result<BufferedSource<R>> {
+        let mut me = Self::new(reader)?;
+        me.stop_flag(stop);
+        Ok(me)
     }
 }
 
@@ -251,6 +269,14 @@ impl<R: Read + Seek> Source for BufferedSource<R> {
 
         let relative = (at - self.pos) as usize;
         Some(self.buf[relative])
+    }
+
+    fn stop(&self) -> bool {
+        self.stop.load(Ordering::Acquire)
+    }
+
+    fn stop_flag(&mut self, flag: Arc<AtomicBool>) {
+        self.stop = flag;
     }
 }
 
@@ -351,6 +377,15 @@ impl<'a> PieceTreeSliceSource<'a> {
     pub fn new(slice: &PieceTreeSlice) -> io::Result<PieceTreeSliceSource<'_>> {
         let inner = BufferedSource::new(SliceChunks::new(slice))?;
         Ok(PieceTreeSliceSource(inner))
+    }
+
+    pub fn with_stop(
+        slice: &PieceTreeSlice,
+        stop: Arc<AtomicBool>,
+    ) -> io::Result<PieceTreeSliceSource<'_>> {
+        let mut me = Self::new(slice)?;
+        me.stop_flag(stop);
+        Ok(me)
     }
 }
 

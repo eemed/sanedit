@@ -160,16 +160,13 @@ impl Grep {
         let Ok(file) = File::open(&path) else {
             return;
         };
-        let Ok(mut source) = BufferedSource::new(file) else {
+        let Ok(mut source) = BufferedSource::with_stop(file, kill.into()) else {
             return;
         };
 
         let results = {
             let mut results = vec![];
             for mat in searcher.find_iter(&mut source) {
-                if kill.should_stop() {
-                    return;
-                }
                 results.push(mat);
             }
             results
@@ -199,16 +196,13 @@ impl Grep {
             return;
         }
 
-        let Ok(mut source) = PieceTreeSliceSource::new(slice) else {
+        let Ok(mut source) = PieceTreeSliceSource::with_stop(slice, kill.into()) else {
             return;
         };
 
         let results = {
             let mut results = vec![];
             for mat in searcher.find_iter(&mut source) {
-                if kill.should_stop() {
-                    return;
-                }
                 results.push(mat);
             }
             results

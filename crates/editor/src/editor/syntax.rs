@@ -213,7 +213,7 @@ impl Syntax {
         &self,
         pt: &PieceTreeSlice,
         mut view: BufferRange,
-        _kill: Kill,
+        kill: Kill,
     ) -> anyhow::Result<SyntaxResult> {
         let mut hstart = view.start.saturating_sub(HORIZON_TOP);
         let hend = min(pt.len(), view.end + HORIZON_BOTTOM);
@@ -230,7 +230,7 @@ impl Syntax {
 
         let start = view.start;
         let slice = pt.slice(view);
-        let source = PieceTreeSliceSource::new(&slice)?;
+        let source = PieceTreeSliceSource::with_stop(&slice, kill.into())?;
         let captures: Captures = self.parser.parse(source)?;
         let mut spans = Self::to_spans(start, &self.parser, captures.captures);
 

@@ -417,6 +417,10 @@ impl Jit {
                 }
             }
 
+            if source.stop() {
+                return Err(ParseError::UserStop);
+            }
+
             let overlapping_start = buf_pos + buf.len().saturating_sub(OVERLAP) as u64;
             if !source.refill_buffer(overlapping_start)? {
                 break;

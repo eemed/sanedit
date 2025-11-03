@@ -30,8 +30,8 @@ operator =  ",#E69875,"
 type =  ",#DBBC7F,"
 comment = ",#859289,"
 preproc = ",#D699B6,"
-special = ",#E69875,"
-identifier = ",#E67E80,"
+special = ",#DBBC7F,"
+identifier = ",#7FBBB3,"
 
 [colors.window.completion]
 default = "#3D484D,#d3c6aa,"

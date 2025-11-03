@@ -177,7 +177,6 @@ impl ParsingMachine {
                     ip = *l;
                 }
                 Byte(b) => {
-                    // if sp < slen && reader.get(sp) == *b {
                     if reader.get(sp).map(|byte| byte == *b).unwrap_or(false) {
                         ip += 1;
                         sp += 1;
@@ -219,7 +218,6 @@ impl ParsingMachine {
                     }
                 },
                 Set(set) => {
-                    // if sp < slen && set.has(reader.get(sp)) {
                     if reader.get(sp).map(|byte| set.has(byte)).unwrap_or(false) {
                         ip += 1;
                         sp += 1;
@@ -291,7 +289,6 @@ impl ParsingMachine {
                     ip = *l;
                 }
                 TestByte(byte, l) => {
-                    // if sp < slen && reader.get(sp) == *byte {
                     if reader.get(sp).map(|b| b == *byte).unwrap_or(false) {
                         stack.push(StackEntry::Backtrack {
                             addr: *l,
@@ -306,7 +303,6 @@ impl ParsingMachine {
                     }
                 }
                 TestSet(set, l) => {
-                    // if sp < slen && set.has(reader.get(sp)) {
                     if reader.get(sp).map(|byte| set.has(byte)).unwrap_or(false) {
                         stack.push(StackEntry::Backtrack {
                             addr: *l,
@@ -362,6 +358,11 @@ impl ParsingMachine {
                         sp = spos;
                         captop = caplevel;
                         captures.truncate(captop);
+
+                        if reader.stop() {
+                            return Err(ParseError::UserStop.into());
+                        }
+
                         break;
                     }
 

@@ -55,7 +55,8 @@ impl Finder {
 #[derive(Debug)]
 pub struct FinderIter<'a, 'b, S: Source> {
     haystack: &'b mut S,
-    pos: u64,
+    /// Relative current buffer pos
+    pos: usize,
     finder: &'a Finder,
     leading_case_insentive: Option<[u8; 2]>,
 }
@@ -89,30 +90,31 @@ impl<'a, 'b, S: Source> FinderIter<'a, 'b, S> {
 
     fn find_next(&mut self) -> Option<u64> {
         let pattern = self.finder.needle();
-        let (buf_pos, buf) = self.haystack.buffer();
-        let buf_end = buf_pos + (buf.len() as u64);
 
         loop {
-            let remaining = buf_end.saturating_sub(self.pos) as usize;
-            if remaining < pattern.len() && !self.haystack.refill_buffer(self.pos).ok()? {
-                return None;
+            let (buf_pos, buf) = self.haystack.buffer();
+            let remaining = buf.len() - self.pos;
+            if remaining < pattern.len() {
+                if self
+                    .haystack
+                    .refill_buffer(buf_pos + self.pos as u64)
+                    .ok()?
+                {
+                    self.pos = 0;
+                } else {
+                    return None;
+                }
             }
 
             let (buf_pos, buf) = self.haystack.buffer();
-            let relative_start = (self.pos - buf_pos) as usize;
-            let relative_end = relative_start + (buf_pos + buf.len() as u64 - self.pos) as usize;
-            let search_slice = &buf[relative_start..relative_end];
+            let search_slice = &buf[self.pos..];
 
             if let Some(relative_pos) = self.find_in_slice(search_slice) {
-                let absolute_pos = self.pos + relative_pos as u64;
-
-                let advance_by = (relative_pos + pattern.len()) as u64;
-                self.pos += advance_by;
-
+                let absolute_pos = buf_pos + self.pos as u64 + relative_pos as u64;
+                self.pos += relative_pos + pattern.len();
                 return Some(absolute_pos);
             } else {
-                let advance_by = search_slice.len().saturating_sub(pattern.len() - 1) as u64;
-                self.pos += advance_by;
+                self.pos += search_slice.len().saturating_sub(pattern.len() - 1);
             }
         }
     }
@@ -168,14 +170,13 @@ impl FinderRev {
 pub struct FinderIterRev<'a, 'b, S: Source> {
     haystack: &'b mut S,
     finder: &'a FinderRev,
-    pos: u64,
+    /// Relative position to current buffer
+    pos: usize,
     leading_case_insentive: Option<[u8; 2]>,
 }
 
 impl<'a, 'b, S: Source> FinderIterRev<'a, 'b, S> {
     fn new(haystack: &'b mut S, finder: &'a FinderRev) -> Self {
-        let file_size = haystack.len();
-
         let leading_case_insentive = if finder.is_case_sensitive() {
             None
         } else {
@@ -186,12 +187,13 @@ impl<'a, 'b, S: Source> FinderIterRev<'a, 'b, S> {
             lower.make_ascii_lowercase();
             Some([lower, upper])
         };
+        let (_, buf) = haystack.buffer();
 
         Self {
-            haystack,
             finder,
-            pos: file_size,
+            pos: buf.len(),
             leading_case_insentive,
+            haystack,
         }
     }
 
@@ -222,21 +224,24 @@ impl<'a, 'b, S: Source> FinderIterRev<'a, 'b, S> {
         let (buf_pos, _) = self.haystack.buffer();
 
         loop {
-            let remaining = (self.pos - buf_pos) as usize;
-            if remaining < pattern.len() && !self.haystack.refill_buffer_rev(self.pos).ok()? {
-                return None;
+            if self.pos < pattern.len() {
+                 if self.haystack.refill_buffer_rev(buf_pos + self.pos as u64).ok()? {
+                    let (_, buf) = self.haystack.buffer();
+                    self.pos = buf.len();
+                 } else {
+                    return None;
+                 }
             }
 
             let (buf_pos, buf) = self.haystack.buffer();
-            let relative_end = (self.pos - buf_pos) as usize;
-            let search_slice = &buf[..relative_end];
+            let search_slice = &buf[..self.pos];
 
             if let Some(relative_pos) = self.rfind_in_slice(search_slice) {
+                self.pos = relative_pos;
                 let absolute_pos = buf_pos + relative_pos as u64;
-                self.pos = absolute_pos;
                 return Some(absolute_pos);
             } else {
-                self.pos = buf_pos;
+                self.pos = pattern.len() - 1;
             }
         }
     }

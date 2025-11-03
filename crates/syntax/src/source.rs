@@ -173,10 +173,6 @@ impl<R: Read + Seek> BufferedSource<R> {
 
         Ok(source)
     }
-
-    pub fn buffer_size(&self) -> usize {
-        self.buf.len()
-    }
 }
 
 impl<R: Read + Seek> Source for BufferedSource<R> {
@@ -192,7 +188,7 @@ impl<R: Read + Seek> Source for BufferedSource<R> {
             "Requesting pos {pos} from source of length {}",
             self.len
         );
-        if self.pos == self.len() || (self.pos == pos && self.buf_len != 0) {
+        if self.pos == pos && self.buf_len != 0 {
             return Ok(false);
         };
 
@@ -205,15 +201,18 @@ impl<R: Read + Seek> Source for BufferedSource<R> {
             n = end - start;
         }
 
-        let total = min(self.buf.len() as u64, self.len() - pos) as usize;
-        self.reader.seek(SeekFrom::Start(pos))?;
+        self.reader.seek(SeekFrom::Start(pos + n as u64))?;
 
-        while n < total {
+        while n < self.buf.len() {
             let amount = self.reader.read(&mut self.buf[n..])?;
             if amount == 0 {
                 break;
             }
             n += amount;
+        }
+
+        if n == 0 {
+            return Ok(false);
         }
 
         self.pos = pos;
@@ -223,7 +222,7 @@ impl<R: Read + Seek> Source for BufferedSource<R> {
     }
 
     fn refill_buffer_rev(&mut self, pos: u64) -> io::Result<bool> {
-        let start = pos.saturating_sub(self.buffer_size() as u64);
+        let start = pos.saturating_sub(self.buf.len() as u64);
         self.refill_buffer(start)
     }
 

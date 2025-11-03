@@ -191,6 +191,7 @@ impl<'a, 'b, S: Source> FinderIterRev<'a, 'b, S> {
             lower.make_ascii_lowercase();
             Some([lower, upper])
         };
+        let _ = haystack.refill_buffer_rev(haystack.len());
         let (_, buf) = haystack.buffer();
 
         Self {

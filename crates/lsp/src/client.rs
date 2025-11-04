@@ -303,17 +303,16 @@ impl Handler {
         Ok(())
     }
 
+
+    #[allow(deprecated)]
     async fn initialize(&mut self, id: u32) -> Result<lsp_types::InitializeResult, LSPError> {
         let params = lsp_types::InitializeParams {
             process_id: std::process::id().into(),
             initialization_options: None,
             capabilities: client_capabilities(),
             trace: None,
-            workspace_folders: Some(vec![lsp_types::WorkspaceFolder {
-                uri: path_to_uri(&self.params.root),
-                name: "root".into(),
-            }]),
-            // workspace_folders: None,
+            root_uri: Some(path_to_uri(&self.params.root)),
+            workspace_folders: None,
             client_info: Some(lsp_types::ClientInfo {
                 name: String::from("sanedit"),
                 version: None,

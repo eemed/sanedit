@@ -15,7 +15,8 @@ pub(crate) fn client_capabilities() -> lsp_types::ClientCapabilities {
                             dynamic_registration: Some(false),
                         },
                     ),
-                    workspace_folders: Some(true),
+                    // workspace_folders: Some(true),
+                    workspace_folders: Some(false),
                     apply_edit: Some(true),
                     symbol: Some(lsp_types::WorkspaceSymbolClientCapabilities {
                         dynamic_registration: Some(false),

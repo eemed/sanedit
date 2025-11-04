@@ -1,2 +1,5 @@
 comment = "<!-- "
 comment_end = " -->"
+
+[buffer]
+tabstop = 4

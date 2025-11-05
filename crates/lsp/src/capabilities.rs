@@ -8,15 +8,7 @@ pub(crate) fn client_capabilities() -> lsp_types::ClientCapabilities {
         .get_or_init(|| {
             lsp_types::ClientCapabilities {
                 workspace: Some(lsp_types::WorkspaceClientCapabilities {
-                    configuration: None,
-                    // configuration: Some(true),
-                    did_change_configuration: Some(
-                        lsp_types::DynamicRegistrationClientCapabilities {
-                            dynamic_registration: Some(false),
-                        },
-                    ),
-                    // workspace_folders: Some(true),
-                    workspace_folders: Some(false),
+                    workspace_folders: Some(true),
                     apply_edit: Some(true),
                     symbol: Some(lsp_types::WorkspaceSymbolClientCapabilities {
                         dynamic_registration: Some(false),
@@ -41,12 +33,6 @@ pub(crate) fn client_capabilities() -> lsp_types::ClientCapabilities {
                         change_annotation_support: None,
                     }),
                     did_change_watched_files: None,
-                    // Some(
-                    //     lsp_types::DidChangeWatchedFilesClientCapabilities {
-                    //         dynamic_registration: Some(false),
-                    //         relative_pattern_support: Some(false),
-                    //     },
-                    // ),
                     file_operations: Some(lsp_types::WorkspaceFileOperationsClientCapabilities {
                         // will_rename: Some(true),
                         // did_rename: Some(true),
@@ -65,9 +51,35 @@ pub(crate) fn client_capabilities() -> lsp_types::ClientCapabilities {
                             ..Default::default()
                         }),
                         completion_item_kind: Some(lsp_types::CompletionItemKindCapability {
-                            ..Default::default()
+                            value_set: Some(vec![
+                                lsp_types::CompletionItemKind::TEXT,
+                                lsp_types::CompletionItemKind::METHOD,
+                                lsp_types::CompletionItemKind::FUNCTION,
+                                lsp_types::CompletionItemKind::CONSTRUCTOR,
+                                lsp_types::CompletionItemKind::FIELD,
+                                lsp_types::CompletionItemKind::VARIABLE,
+                                lsp_types::CompletionItemKind::CLASS,
+                                lsp_types::CompletionItemKind::INTERFACE,
+                                lsp_types::CompletionItemKind::MODULE,
+                                lsp_types::CompletionItemKind::PROPERTY,
+                                lsp_types::CompletionItemKind::UNIT,
+                                lsp_types::CompletionItemKind::VALUE,
+                                lsp_types::CompletionItemKind::ENUM,
+                                lsp_types::CompletionItemKind::KEYWORD,
+                                lsp_types::CompletionItemKind::SNIPPET,
+                                lsp_types::CompletionItemKind::COLOR,
+                                lsp_types::CompletionItemKind::FILE,
+                                lsp_types::CompletionItemKind::REFERENCE,
+                                lsp_types::CompletionItemKind::FOLDER,
+                                lsp_types::CompletionItemKind::ENUM_MEMBER,
+                                lsp_types::CompletionItemKind::CONSTANT,
+                                lsp_types::CompletionItemKind::STRUCT,
+                                lsp_types::CompletionItemKind::EVENT,
+                                lsp_types::CompletionItemKind::OPERATOR,
+                                lsp_types::CompletionItemKind::TYPE_PARAMETER,
+                            ]),
                         }),
-                        context_support: None, // additional context information Some(true)
+                        context_support: None,
                         ..Default::default()
                     }),
                     hover: Some(lsp_types::HoverClientCapabilities {
@@ -76,17 +88,16 @@ pub(crate) fn client_capabilities() -> lsp_types::ClientCapabilities {
                         content_format: Some(vec![lsp_types::MarkupKind::Markdown]),
                         ..Default::default()
                     }),
-                    signature_help: None,
-                    // signature_help: Some(lsp_types::SignatureHelpClientCapabilities {
-                    //     signature_information: Some(lsp_types::SignatureInformationSettings {
-                    //         documentation_format: Some(vec![lsp_types::MarkupKind::Markdown]),
-                    //         parameter_information: Some(lsp_types::ParameterInformationSettings {
-                    //             label_offset_support: Some(true),
-                    //         }),
-                    //         active_parameter_support: Some(true),
-                    //     }),
-                    //     ..Default::default()
-                    // }),
+                    signature_help: Some(lsp_types::SignatureHelpClientCapabilities {
+                        signature_information: Some(lsp_types::SignatureInformationSettings {
+                            documentation_format: Some(vec![lsp_types::MarkupKind::Markdown]),
+                            parameter_information: Some(lsp_types::ParameterInformationSettings {
+                                label_offset_support: Some(false),
+                            }),
+                            active_parameter_support: Some(true),
+                        }),
+                        ..Default::default()
+                    }),
                     rename: Some(lsp_types::RenameClientCapabilities {
                         dynamic_registration: Some(false),
                         prepare_support: Some(false),
@@ -108,6 +119,7 @@ pub(crate) fn client_capabilities() -> lsp_types::ClientCapabilities {
                                     CodeActionKind::REFACTOR_REWRITE,
                                     CodeActionKind::SOURCE,
                                     CodeActionKind::SOURCE_ORGANIZE_IMPORTS,
+                                    CodeActionKind::SOURCE_FIX_ALL,
                                 ]
                                 .iter()
                                 .map(|kind| kind.as_str().to_string())
@@ -168,11 +180,10 @@ pub(crate) fn client_capabilities() -> lsp_types::ClientCapabilities {
                                          // inline_value: todo!(),
                                          // diagnostic: todo!(),
                 }),
-                // window: Some(lsp_types::WindowClientCapabilities {
-                //     work_done_progress: Some(true),
-                //     ..Default::default()
-                // }),
-                window: None,
+                window: Some(lsp_types::WindowClientCapabilities {
+                    work_done_progress: Some(true),
+                    ..Default::default()
+                }),
                 general: Some(lsp_types::GeneralClientCapabilities {
                     position_encodings: Some(vec![
                         PositionEncodingKind::UTF8,

@@ -227,8 +227,12 @@ impl LSPClient {
                         .await?;
                 }
             }
-            lsp_types::notification::Progress::METHOD => {}
-            lsp_types::notification::ShowMessage::METHOD => {}
+            lsp_types::notification::Progress::METHOD => {
+                log::info!("<- {}", notif.method.as_str());
+            }
+            lsp_types::notification::ShowMessage::METHOD => {
+                log::info!("<- {}", notif.method.as_str());
+            }
             _ => {}
         }
 
@@ -303,7 +307,6 @@ impl Handler {
         Ok(())
     }
 
-
     #[allow(deprecated)]
     async fn initialize(&mut self, id: u32) -> Result<lsp_types::InitializeResult, LSPError> {
         let params = lsp_types::InitializeParams {
@@ -311,14 +314,20 @@ impl Handler {
             initialization_options: None,
             capabilities: client_capabilities(),
             trace: None,
+            root_path: Some(self.params.root.to_string_lossy().to_string()),
             root_uri: Some(path_to_uri(&self.params.root)),
-            workspace_folders: None,
+            workspace_folders: Some(vec![lsp_types::WorkspaceFolder {
+                uri: path_to_uri(&self.params.root),
+                name: "root".into(),
+            }]),
             client_info: Some(lsp_types::ClientInfo {
                 name: String::from("sanedit"),
                 version: None,
             }),
             locale: None,
-            work_done_progress_params: lsp_types::WorkDoneProgressParams::default(),
+            work_done_progress_params: lsp_types::WorkDoneProgressParams {
+                work_done_token: Some(lsp_types::NumberOrString::String("initialize".into())),
+            },
             ..Default::default()
         };
 

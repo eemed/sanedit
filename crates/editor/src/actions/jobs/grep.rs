@@ -165,16 +165,27 @@ impl Grep {
         };
 
         let results = {
-            let mut results = vec![];
+            let mut results: Vec<SearchMatch> = vec![];
             for mat in searcher.find_iter(&mut source) {
                 results.push(mat);
             }
             results
         };
 
-        let mut matches = SortedVec::new();
+        let mut matches: SortedVec<GrepMatch> = SortedVec::new();
         for mat in results {
             if let Some(gmat) = Self::prepare_match(&mut source, mat) {
+                // If already got this offset, combine them
+                if let Some(mut prev) = matches.pop() {
+                    if prev.absolute_offset == gmat.absolute_offset {
+                        prev.matches.extend(gmat.matches);
+                        matches.push(prev);
+                        continue;
+                    } else {
+                        matches.push(prev);
+                    }
+                }
+
                 matches.push(gmat);
             }
         }

@@ -7,7 +7,11 @@ use std::{
 
 use crate::{
     actions::{
-        filetree::{handle_file_delete, handle_file_rename}, hooks::run, locations, lsp::lsp_notify_for, ActionResult,
+        filetree::{handle_file_delete, handle_file_rename},
+        hooks::run,
+        locations,
+        lsp::lsp_notify_for,
+        ActionResult,
     },
     common::{markdown, Choice},
     editor::{

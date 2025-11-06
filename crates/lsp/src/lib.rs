@@ -18,7 +18,7 @@ pub use error::LSPRequestError;
 pub use request::{Notification, Request, RequestKind};
 pub use response::{NotificationResult, RequestResult, Response};
 pub use util::{
-    CodeAction, CompletionItem, CompletionItemKind, FileOperation, FileEdit, Position, PositionEncoding,
-    PositionRange, Signature, SignatureParameter, Signatures, Symbol, SymbolKind, Text,
-    TextDiagnostic, TextEdit, TextKind, WorkspaceEdit,
+    CodeAction, CompletionItem, CompletionItemKind, FileEdit, FileOperation, Position,
+    PositionEncoding, PositionRange, Signature, SignatureParameter, Signatures, Symbol, SymbolKind,
+    Text, TextDiagnostic, TextEdit, TextKind, WorkspaceEdit,
 };

@@ -39,6 +39,10 @@ impl<T: Ord> SortedVec<T> {
         }
     }
 
+    pub fn pop(&mut self) -> Option<T> {
+        self.items.pop()
+    }
+
     pub fn get(&self, i: usize) -> Option<&T> {
         self.items.get(i)
     }

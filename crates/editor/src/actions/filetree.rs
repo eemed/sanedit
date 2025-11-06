@@ -232,7 +232,7 @@ pub fn create_new_file(editor: &mut Editor, id: ClientId, name: String) -> Actio
     ActionResult::Ok
 }
 
-pub fn rename_file(editor: &mut Editor, id: ClientId, old: PathBuf) -> ActionResult {
+fn rename_file(editor: &mut Editor, id: ClientId, old: PathBuf) -> ActionResult {
     let old_name = old
         .strip_prefix(editor.working_dir())
         .unwrap_or(&old)
@@ -254,42 +254,10 @@ pub fn rename_file(editor: &mut Editor, id: ClientId, old: PathBuf) -> ActionRes
                 }
             };
 
-            // Create directories leading up to the renamed thing
-            if let Some(parent) = new.parent() {
-                let _ = std::fs::create_dir_all(parent);
+            let res = handle_file_rename(editor, id, &old, &new);
+            if res == ActionResult::Failed {
+                return res;
             }
-
-            let mut bids = vec![];
-            for (bid, buf) in editor.buffers.iter() {
-                if let Some(bpath) = buf.path() {
-                    if bpath == old {
-                        bids.push((bid, new.clone()));
-                        continue;
-                    }
-
-                    if let Ok(suffix) = bpath.strip_prefix(&old) {
-                        let new_location = new.join(suffix);
-                        bids.push((bid, new_location));
-                    }
-                }
-            }
-
-            for (bid, path) in bids {
-                if let Some(buf) = editor.buffers.get_mut(bid) {
-                    if let Err(e) = buf.rename(&path) {
-                        log::error!("Failed to rename buffer: {} to {path:?}: {e}", buf.name());
-                    }
-                }
-            }
-
-            if let Err(e) = rename(&old, &new) {
-                let (win, _buf) = editor.win_buf_mut(id);
-                win.warn_msg(&format!("Failed to rename file/dir {e}"));
-                return ActionResult::Failed;
-            }
-
-            // Refresh tree to show moved stuff
-            let _ = editor.filetree.refresh();
 
             // Select the new entry if visible
             if let Some(pos) = editor
@@ -309,6 +277,53 @@ pub fn rename_file(editor: &mut Editor, id: ClientId, old: PathBuf) -> ActionRes
     ActionResult::Ok
 }
 
+pub(crate) fn handle_file_rename(
+    editor: &mut Editor,
+    id: ClientId,
+    old: &Path,
+    new: &Path,
+) -> ActionResult {
+    // Create directories leading up to the renamed thing
+    if let Some(parent) = new.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+
+    let mut bids = vec![];
+    for (bid, buf) in editor.buffers.iter() {
+        if let Some(bpath) = buf.path() {
+            if bpath == old {
+                bids.push((bid, new.to_path_buf()));
+                continue;
+            }
+
+            if let Ok(suffix) = bpath.strip_prefix(old) {
+                let new_location = new.join(suffix);
+                bids.push((bid, new_location));
+            }
+        }
+    }
+
+    for (bid, path) in bids {
+        if let Some(buf) = editor.buffers.get_mut(bid) {
+            if let Err(e) = buf.rename(&path) {
+                log::error!("Failed to rename buffer: {} to {path:?}: {e}", buf.name());
+            }
+        }
+    }
+
+    if let Err(e) = rename(old, new) {
+        let (win, _buf) = editor.win_buf_mut(id);
+        win.warn_msg(&format!("Failed to rename file/dir {e}"));
+        return ActionResult::Failed;
+    }
+
+    // Refresh tree to show moved stuff
+    let _ = editor.filetree.refresh();
+    ActionResult::Ok
+}
+
+/// Rename a file or directory does not overwrite if a file already exists
+/// Directories are copied recursively
 fn rename(src: impl AsRef<Path>, dst: impl AsRef<Path>) -> io::Result<()> {
     if src.as_ref().is_dir() {
         fs::create_dir_all(&dst)?;
@@ -409,36 +424,9 @@ fn delete_file(editor: &mut Editor, id: ClientId, path: PathBuf) -> ActionResult
                 return ActionResult::Failed;
             }
 
-            // Delete buffers
-            let mut bids = vec![];
-            for (bid, buf) in editor.buffers.iter() {
-                if let Some(bpath) = buf.path() {
-                    if bpath.strip_prefix(path.as_path()).is_ok() {
-                        bids.push(bid);
-                    }
-                }
-            }
-
-            for bid in bids {
-                let _ = editor.remove_buffer(id, bid);
-            }
-
-            let result = if path.is_dir() {
-                std::fs::remove_dir_all(path.as_path())
-            } else {
-                std::fs::remove_file(path.as_path())
-            };
-
-            if let Err(e) = result {
-                log::error!("Failed to delete file: {e}");
-                return ActionResult::Failed;
-            }
-
-            // Refresh tree
-            if let Some(parent) = path.parent() {
-                if let Some(mut node) = editor.filetree.get_mut(parent) {
-                    let _ = node.refresh();
-                }
+            let res = handle_file_delete(editor, id, path.as_path());
+            if res == ActionResult::Failed {
+                return res;
             }
 
             prev_ft_entry.execute(editor, id);
@@ -448,6 +436,42 @@ fn delete_file(editor: &mut Editor, id: ClientId, path: PathBuf) -> ActionResult
         .build();
 
     focus(editor, id, Focus::Prompt);
+    ActionResult::Ok
+}
+
+pub(crate) fn handle_file_delete(editor: &mut Editor, id: ClientId, path: &Path) -> ActionResult {
+    // Delete buffers
+    let mut bids = vec![];
+    for (bid, buf) in editor.buffers.iter() {
+        if let Some(bpath) = buf.path() {
+            if bpath.strip_prefix(path).is_ok() {
+                bids.push(bid);
+            }
+        }
+    }
+
+    for bid in bids {
+        let _ = editor.remove_buffer(id, bid);
+    }
+
+    let result = if path.is_dir() {
+        std::fs::remove_dir_all(path)
+    } else {
+        std::fs::remove_file(path)
+    };
+
+    if let Err(e) = result {
+        log::error!("Failed to delete file: {e}");
+        return ActionResult::Failed;
+    }
+
+    // Refresh tree
+    if let Some(parent) = path.parent() {
+        if let Some(mut node) = editor.filetree.get_mut(parent) {
+            let _ = node.refresh();
+        }
+    }
+
     ActionResult::Ok
 }
 

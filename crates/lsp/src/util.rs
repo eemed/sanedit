@@ -26,13 +26,53 @@ pub fn uri_to_path(uri: &lsp_types::Uri) -> Option<PathBuf> {
 }
 
 #[derive(Debug, Clone)]
+pub enum FileOperation {
+    Create { path: PathBuf },
+    Rename { from: PathBuf, to: PathBuf },
+    Delete { path: PathBuf },
+}
+
+impl TryFrom<lsp_types::RenameFile> for FileOperation {
+    type Error = &'static str;
+
+    fn try_from(value: lsp_types::RenameFile) -> Result<Self, Self::Error> {
+        Ok(FileOperation::Rename {
+            from: uri_to_path(&value.old_uri).ok_or("No from uri")?,
+            to: uri_to_path(&value.new_uri).ok_or("No to uri")?,
+        })
+    }
+}
+
+impl TryFrom<lsp_types::DeleteFile> for FileOperation {
+    type Error = &'static str;
+
+    fn try_from(value: lsp_types::DeleteFile) -> Result<Self, Self::Error> {
+        Ok(FileOperation::Delete {
+            path: uri_to_path(&value.uri).ok_or("No uri")?,
+        })
+    }
+}
+
+impl TryFrom<lsp_types::CreateFile> for FileOperation {
+    type Error = &'static str;
+
+    fn try_from(value: lsp_types::CreateFile) -> Result<Self, Self::Error> {
+        Ok(FileOperation::Create {
+            path: uri_to_path(&value.uri).ok_or("No uri")?,
+        })
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct WorkspaceEdit {
     pub file_edits: Vec<FileEdit>,
+    pub file_ops: Vec<FileOperation>,
 }
 
 impl From<lsp_types::WorkspaceEdit> for WorkspaceEdit {
     fn from(value: lsp_types::WorkspaceEdit) -> Self {
         let mut file_edits = vec![];
+        let mut file_ops: Vec<FileOperation> = vec![];
 
         let lsp_types::WorkspaceEdit {
             changes,
@@ -61,8 +101,21 @@ impl From<lsp_types::WorkspaceEdit> for WorkspaceEdit {
                 lsp_types::DocumentChanges::Operations(ops) => {
                     for op in ops {
                         match op {
-                            lsp_types::DocumentChangeOperation::Op(_op) => {
-                                log::error!("Resource operations are unsupported");
+                            lsp_types::DocumentChangeOperation::Op(res) => {
+                                let op = match res {
+                                    lsp_types::ResourceOp::Create(create_file) => {
+                                        create_file.try_into()
+                                    }
+                                    lsp_types::ResourceOp::Rename(rename_file) => {
+                                        rename_file.try_into()
+                                    }
+                                    lsp_types::ResourceOp::Delete(delete_file) => {
+                                        delete_file.try_into()
+                                    }
+                                };
+                                if let Ok(op) = op {
+                                    file_ops.push(op);
+                                }
                             }
                             lsp_types::DocumentChangeOperation::Edit(edit) => {
                                 if let Ok(edit) = edit.try_into() {
@@ -75,7 +128,10 @@ impl From<lsp_types::WorkspaceEdit> for WorkspaceEdit {
             }
         }
 
-        WorkspaceEdit { file_edits }
+        WorkspaceEdit {
+            file_edits,
+            file_ops,
+        }
     }
 }
 

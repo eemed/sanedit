@@ -21,9 +21,6 @@ bstr = { workspace = true, features = ["std"] }
 [dev-dependencies]
 criterion.workspace = true
 
-[profile.bench]
-debug = true
-
 [[bench]]
 name = "parse"
 harness = false

@@ -205,7 +205,6 @@ impl LSPClient {
     }
 
     async fn handle_notification(&mut self, notif: JsonNotification) -> Result<(), LSPError> {
-        // log::info!("<- {}", notif.method.as_str());
         match notif.method.as_str() {
             lsp_types::notification::PublishDiagnostics::METHOD => {
                 let params =
@@ -227,13 +226,9 @@ impl LSPClient {
                         .await?;
                 }
             }
-            lsp_types::notification::Progress::METHOD => {
+            _ => {
                 log::info!("<- {}", notif.method.as_str());
             }
-            lsp_types::notification::ShowMessage::METHOD => {
-                log::info!("<- {}", notif.method.as_str());
-            }
-            _ => {}
         }
 
         Ok(())
@@ -326,9 +321,8 @@ impl Handler {
             }),
             locale: None,
             work_done_progress_params: lsp_types::WorkDoneProgressParams {
-                work_done_token: Some(lsp_types::NumberOrString::String("initialize".into())),
+                work_done_token: None,
             },
-            ..Default::default()
         };
 
         let response = self

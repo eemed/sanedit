@@ -6,7 +6,9 @@ use std::{
 };
 
 use crate::{
-    actions::{hooks::run, locations, lsp::lsp_notify_for, ActionResult},
+    actions::{
+        filetree::{handle_file_delete, handle_file_rename}, hooks::run, locations, lsp::lsp_notify_for, ActionResult,
+    },
     common::{markdown, Choice},
     editor::{
         buffers::BufferId,
@@ -24,7 +26,7 @@ use sanedit_core::{
     Range,
 };
 use sanedit_lsp::{
-    CodeAction, CompletionItem, FileEdit, LSPClientParams, Notification, Position,
+    CodeAction, CompletionItem, FileEdit, FileOperation, LSPClientParams, Notification, Position,
     PositionEncoding, PositionRange, RequestKind, RequestResult, Response, Signatures, Symbol,
     Text, TextDiagnostic, TextKind, WorkspaceEdit,
 };
@@ -472,8 +474,25 @@ impl LSPJob {
     }
 
     fn edit_workspace(editor: &mut Editor, id: ClientId, edit: WorkspaceEdit) {
+        for op in edit.file_ops {
+            Self::handle_file_operation(editor, id, op);
+        }
         for edit in edit.file_edits {
             Self::edit_document(editor, id, edit);
+        }
+    }
+
+    fn handle_file_operation(editor: &mut Editor, id: ClientId, op: FileOperation) {
+        match op {
+            FileOperation::Create { path } => {
+                let _ = std::fs::File::create(path);
+            }
+            FileOperation::Rename { from, to } => {
+                handle_file_rename(editor, id, &from, &to);
+            }
+            FileOperation::Delete { path } => {
+                handle_file_delete(editor, id, path.as_path());
+            }
         }
     }
 

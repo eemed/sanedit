@@ -22,22 +22,17 @@ pub(crate) fn client_capabilities() -> lsp_types::ClientCapabilities {
                     }),
                     workspace_edit: Some(lsp_types::WorkspaceEditClientCapabilities {
                         document_changes: Some(true),
-                        resource_operations: None,
-                        // Some(vec![
-                        //     lsp_types::ResourceOperationKind::Create,
-                        //     lsp_types::ResourceOperationKind::Rename,
-                        //     lsp_types::ResourceOperationKind::Delete,
-                        // ]),
+                        resource_operations: Some(vec![
+                            lsp_types::ResourceOperationKind::Create,
+                            lsp_types::ResourceOperationKind::Rename,
+                            lsp_types::ResourceOperationKind::Delete,
+                        ]),
                         failure_handling: Some(lsp_types::FailureHandlingKind::Abort),
                         normalizes_line_endings: Some(false),
                         change_annotation_support: None,
                     }),
                     did_change_watched_files: None,
-                    file_operations: Some(lsp_types::WorkspaceFileOperationsClientCapabilities {
-                        // will_rename: Some(true),
-                        // did_rename: Some(true),
-                        ..Default::default()
-                    }),
+                    file_operations: None,
                     ..Default::default()
                 }),
                 text_document: Some(lsp_types::TextDocumentClientCapabilities {
@@ -90,7 +85,7 @@ pub(crate) fn client_capabilities() -> lsp_types::ClientCapabilities {
                     }),
                     signature_help: Some(lsp_types::SignatureHelpClientCapabilities {
                         signature_information: Some(lsp_types::SignatureInformationSettings {
-                            documentation_format: Some(vec![lsp_types::MarkupKind::Markdown]),
+                            documentation_format: Some(vec![lsp_types::MarkupKind::PlainText]),
                             parameter_information: Some(lsp_types::ParameterInformationSettings {
                                 label_offset_support: Some(false),
                             }),
@@ -180,10 +175,10 @@ pub(crate) fn client_capabilities() -> lsp_types::ClientCapabilities {
                                          // inline_value: todo!(),
                                          // diagnostic: todo!(),
                 }),
-                window: Some(lsp_types::WindowClientCapabilities {
-                    work_done_progress: Some(true),
-                    ..Default::default()
-                }),
+                // window: Some(lsp_types::WindowClientCapabilities {
+                //     work_done_progress: Some(true),
+                //     ..Default::default()
+                // }),
                 general: Some(lsp_types::GeneralClientCapabilities {
                     position_encodings: Some(vec![
                         PositionEncodingKind::UTF8,

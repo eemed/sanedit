@@ -10,7 +10,7 @@ use crate::{
     VERSION,
 };
 
-use sanedit_core::{grapheme_category, tmp_dir, Change, Changes, GraphemeCategory, Range};
+use sanedit_core::{grapheme_category, Change, Changes, GraphemeCategory, Range};
 use sanedit_messages::{
     redraw::{Component, Redraw},
     ClientMessage,
@@ -229,9 +229,6 @@ fn status(editor: &mut Editor, id: ClientId) -> ActionResult {
     let client_id = id.as_usize();
     let working_dir = editor.working_dir();
     let config_dir = editor.config_dir.root();
-    let tmp_dir = tmp_dir()
-        .map(|dir| format!("{dir:?}"))
-        .unwrap_or("-".into());
     let istyle = format!("{:?}", buf.config.indent_kind);
     let iamount = &buf.config.indent_amount;
     let eol = format!("{:?}", buf.config.eol);
@@ -262,7 +259,6 @@ fn status(editor: &mut Editor, id: ClientId) -> ActionResult {
         Editor:\n  \
         Working directory: {working_dir:?}\n  \
         Config directory: {config_dir:?}\n  \
-        TMP/LOG directory: {tmp_dir}\n  \
         Listen address: {listen_address}\n\
     "
     );

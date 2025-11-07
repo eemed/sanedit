@@ -25,7 +25,7 @@ pub fn get_option_provider_pool() -> &'static ThreadPool {
             .map(|n| n.get() / 2)
             .unwrap_or(MIN)
             .clamp(MIN, MAX);
-        log::info!("Starting option provider pool with {n} threads.");
+        log::debug!("Starting option provider pool with {n} threads.");
         rayon::ThreadPoolBuilder::new()
             .thread_name(|n| format!("Option provider {n}"))
             .num_threads(n)

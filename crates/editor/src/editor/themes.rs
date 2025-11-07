@@ -39,7 +39,6 @@ impl Themes {
 
     pub fn load_all(&mut self) {
         for path in self.theme_dir.find_all_distinct_files() {
-            log::info!("Loading theme: {:?}", path);
             let Some(fname) = path.file_name() else {
                 continue;
             };
@@ -48,6 +47,8 @@ impl Themes {
 
             if let Err(e) = self.load(stripped) {
                 log::error!("Loading theme '{name}' failed: {e}");
+            } else {
+                log::debug!("Loaded theme: {name:?}");
             }
         }
     }

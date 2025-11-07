@@ -11,6 +11,8 @@ use rustc_hash::FxHashSet;
 
 const TMP_DIR: &str = "tmp";
 pub const SANE_DIR: &str = "sanedit";
+pub const SESSION_DIR: &str = "session";
+pub const TMP_FILE_DIR: &str = "tmp-file";
 pub const LANG_DIR: &str = "language";
 pub const THEME_DIR: &str = "themes";
 pub const CONFIG: &str = "config.toml";
@@ -154,6 +156,11 @@ fn data_dir() -> Option<PathBuf> {
     Some(data.join(SANE_DIR))
 }
 
+pub fn session_dir() -> Option<PathBuf> {
+    let data = data_dir()?;
+    Some(data.join(SESSION_DIR))
+}
+
 pub fn tmp_dir() -> Option<PathBuf> {
     let data = data_dir()?;
     let tmp = data.join(TMP_DIR);
@@ -165,10 +172,27 @@ pub fn tmp_dir() -> Option<PathBuf> {
     Some(tmp)
 }
 
+pub fn cache_dir() -> Option<PathBuf> {
+    let data = std::env::var("XDG_CACHE_HOME")
+        .map(PathBuf::from)
+        .ok()
+        .or_else(|| {
+            std::env::var("HOME")
+                .ok()
+                .map(|home| PathBuf::from(home).join(".cache"))
+        })?;
+    Some(data.join(SANE_DIR))
+}
+
+pub fn tmp_file_dir() -> Option<PathBuf> {
+    let data = data_dir()?;
+    Some(data.join(TMP_FILE_DIR))
+}
+
 pub fn tmp_file() -> Option<(PathBuf, File)> {
     loop {
         let name = format!("tmp-file-{}", next_id());
-        let mut path = tmp_dir()?;
+        let mut path = tmp_file_dir()?;
 
         path.push(PathBuf::from(name));
 

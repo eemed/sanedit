@@ -91,17 +91,12 @@ struct Cli {
 }
 
 fn main() {
-    let tmp = sanedit_core::tmp_dir().expect("TMP directory not accessible");
-    let log_tmp = {
-        let log_tmp = tmp.join("log");
-        std::fs::create_dir_all(&log_tmp).expect("Failed to create log directory");
-        log_tmp
-    };
-    let sessions = {
-        let sessions = tmp.join("session");
-        std::fs::create_dir_all(&sessions).expect("Failed to create sessions directory");
-        sessions
-    };
+    let log_tmp = sanedit_core::cache_dir().expect("cache directory not accessible");
+    std::fs::create_dir_all(&log_tmp).expect("Failed to create log directory");
+
+    let sessions = sanedit_core::session_dir().expect("sessions directory not accessible");
+    std::fs::create_dir_all(&sessions).expect("Failed to create sessions directory");
+
     let cli: Cli = argh::from_env();
 
     if cli.version {

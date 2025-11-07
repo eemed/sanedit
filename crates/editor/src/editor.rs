@@ -235,7 +235,7 @@ impl Editor {
     pub fn quit(&mut self) {
         let client_ids: Vec<ClientId> = self.clients.keys().copied().collect();
         for id in client_ids {
-            log::info!("Quit to {:?}", id);
+            log::info!("Client {} quit", id.as_usize());
             // Dont care about errors here we are quitting anyway
             self.send_to_client(id, ClientMessage::Bye.into());
         }
@@ -244,9 +244,8 @@ impl Editor {
 
     fn on_client_connected(&mut self, handle: ClientHandle) {
         log::info!(
-            "Client connected: {:?}, id: {:?}",
-            handle.connection_info(),
-            handle.id()
+            "Client {} connected",
+            handle.id().as_usize()
         );
         self.clients.insert(handle.id(), handle);
     }
@@ -625,7 +624,7 @@ impl Editor {
     }
 
     fn handle_key_event(&mut self, id: ClientId, event: KeyEvent) {
-        log::info!("KeyEvent '{event}'");
+        log::debug!("KeyEvent '{event}'");
         use sanedit_messages::key::Key::*;
 
         let (win, _buf) = self.win_buf_mut(id);

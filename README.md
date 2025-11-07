@@ -48,12 +48,9 @@ To quickly run the project in the repo run `task run`.
 
 ## Gifs
 
-### File picker, filetree, locations, selection sorting
-![demo](https://github.com/user-attachments/assets/4f80b067-3981-45b0-8e07-6c7eccd23785)
+Showcasing filepicker, LSP hover, LSP completion, multiselection, undo, filetree, locations, fenced code blocks with highlighting.
 
-### Fenced code blocks
-![fenced](https://github.com/user-attachments/assets/9002a797-9b72-4543-bd14-fc9e38bd3452)
-
+![all](https://github.com/user-attachments/assets/7109eae1-926c-40cf-bd7b-254937ef68fd)
 
 ## Why
 

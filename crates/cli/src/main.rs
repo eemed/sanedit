@@ -12,17 +12,23 @@ use argh::FromArgs;
 use sanedit_server::{Address, ServerOptions};
 use sanedit_terminal_client::{unix::UnixDomainSocketClient, ClientOptions, InitialFile};
 
-const SESSION_NAMES: [&str; 10] = [
-    "wolf",
-    "tiger",
-    "lion",
-    "ghost",
+const SESSION_NAMES: [&str; 16] = [
+    "boar",
+    "willow",
     "pidgeon",
     "bunny",
     "diamond",
     "scarecrow",
-    "wheat",
-    "wine",
+    "jupiter",
+    "pluto",
+    "wolf",
+    "blueberry",
+    "squirrel",
+    "hawk",
+    "toad",
+    "ghost",
+    "wukong",
+    "candle",
 ];
 
 struct Session {
@@ -231,6 +237,10 @@ fn next_available_session(sessions: &Path) -> Session {
             let session_name = format!("{session}{number}");
             let session = Session::new(sessions, &session_name);
             if !session.socket.exists() {
+                return session;
+            } else if UnixDomainSocketClient::connect(&session.socket).is_err() {
+                // We should be able to connect to the socket if its ok, otherwise cleanup old socket
+                let _ = std::fs::remove_file(&session.socket);
                 return session;
             }
         }

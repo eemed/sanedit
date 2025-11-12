@@ -194,6 +194,10 @@ pub fn tmp_file() -> Option<(PathBuf, File)> {
         let name = format!("tmp-file-{}", next_id());
         let mut path = tmp_file_dir()?;
 
+        if !path.exists() {
+            fs::create_dir_all(&path).ok()?;
+        }
+
         path.push(PathBuf::from(name));
 
         match OpenOptions::new().write(true).create_new(true).open(&path) {

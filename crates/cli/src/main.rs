@@ -191,7 +191,7 @@ fn list_sessions(sessions: &Path) {
 
 fn init_logging(cli: &Cli, tmp: &Path, session: &Session) -> Option<PathBuf> {
     let log_file = next_available_log_file(tmp, cli, session);
-    logging::init_panic();
+    logging::init_panic(&log_file, &session.socket);
     logging::init_logger(&log_file, cli.debug);
 
     Some(log_file)

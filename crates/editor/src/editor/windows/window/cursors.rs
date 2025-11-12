@@ -217,10 +217,10 @@ impl Cursors {
 
     /// Selects the next cursor in terms of position
     pub fn primary_next(&mut self) {
+        self.primary += 1;
+
         if self.primary >= self.cursors.len() {
             self.primary = 0;
-        } else {
-            self.primary += 1;
         }
     }
 

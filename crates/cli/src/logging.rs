@@ -7,8 +7,11 @@ use std::sync::{Arc, Mutex, OnceLock};
 
 use log::LevelFilter;
 
-pub(crate) fn init_panic() {
-    panic::set_hook(Box::new(|panic_info| {
+pub(crate) fn init_panic(log_file: &Path, session_socket: &Path) {
+    let log_file = log_file.to_path_buf();
+    let session = session_socket.to_path_buf();
+
+    panic::set_hook(Box::new(move |panic_info| {
         let backtrace = std::backtrace::Backtrace::capture();
         log::error!("{backtrace}");
 
@@ -31,6 +34,24 @@ pub(crate) fn init_panic() {
         });
 
         log::error!("A panic occurred at {}:{}: {}", filename, line, cause);
+
+        if log_file.exists() {
+            let log_file = &log_file;
+
+            // Rename to <original>-crash.log if possible
+            if let Some(new_path) = log_file.file_stem().and_then(|fname| {
+                let mut fname = fname.to_os_string();
+                fname.push("-crash.log");
+
+                log_file.parent().map(|parent| parent.join(fname))
+            }) {
+                let _ = std::fs::rename(log_file, new_path);
+            }
+        }
+
+        if session.exists() {
+            let _ = std::fs::remove_file(&session);
+        }
     }));
 }
 

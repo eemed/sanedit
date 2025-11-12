@@ -16,7 +16,7 @@ skip = "{" / "[";
 value =  object / array / number / string / constant;
 
 @whitespaced
-object = "{" (member ("," member)*)? "}";
+object = "{" (member ("," member)*)? "}"?;
 
 @whitespaced
 member = identifier ":" value;

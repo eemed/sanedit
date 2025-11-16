@@ -215,7 +215,6 @@ impl<'a, 'b, S: Source> FinderIterRev<'a, 'b, S> {
                 }
                 let candidate_data = &data[n..end];
                 if pattern.eq_ignore_ascii_case(candidate_data) {
-                    log::info!("FOUND {n}");
                     return Some(n);
                 } else {
                     n = n.saturating_sub(1);

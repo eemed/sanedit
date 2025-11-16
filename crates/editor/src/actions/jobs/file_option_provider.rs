@@ -6,32 +6,143 @@ use std::{
     },
 };
 
-use rayon::ThreadPool;
+use rayon::{
+    iter::{IntoParallelIterator as _, ParallelIterator as _},
+    ThreadPool,
+};
 use sanedit_utils::appendlist::Appendlist;
-use tokio::{io, sync::oneshot};
 
 use sanedit_server::{BoxFuture, Kill};
 
 use crate::{common::Choice, editor::ignore::Ignore};
 
 use super::OptionProvider;
+use crossbeam::deque::{Injector, Steal, Worker};
 
 pub fn get_option_provider_pool() -> &'static ThreadPool {
     static POOL: OnceLock<ThreadPool> = OnceLock::new();
     POOL.get_or_init(|| {
-        const MIN: usize = 2;
-        const MAX: usize = 4;
-        let n = std::thread::available_parallelism()
-            .map(|n| n.get() / 2)
-            .unwrap_or(MIN)
-            .clamp(MIN, MAX);
-        log::debug!("Starting option provider pool with {n} threads.");
+        let parallelism = std::thread::available_parallelism()
+            .map(|n| n.get())
+            .unwrap_or(4);
+
+        let threads = parallelism.clamp(2, 8);
+
+        log::debug!("Option provider pool: {threads} threads.");
+
         rayon::ThreadPoolBuilder::new()
-            .thread_name(|n| format!("Option provider {n}"))
-            .num_threads(n)
+            .num_threads(threads)
+            .thread_name(|n| format!("option-provider-{n}"))
             .build()
             .unwrap()
     })
+}
+
+fn fast_parallel_read(root: PathBuf, ctx: ReadDirContext) {
+    let injector = Injector::<PathBuf>::new();
+    injector.push(root);
+
+    get_option_provider_pool().install(|| {
+        let threads = rayon::current_num_threads();
+        (0..threads).into_par_iter().for_each_init(
+            Worker::new_fifo,
+            |local, _thread_idx| loop {
+                if ctx.kill.should_stop() {
+                    return;
+                }
+
+                let job = local
+                    .pop()
+                    .or_else(|| match injector.steal_batch_and_pop(local) {
+                        Steal::Success(p) => Some(p),
+                        _ => None,
+                    });
+
+                let Some(dir) = job else {
+                    break;
+                };
+
+                if let Ok(mut rd) = std::fs::read_dir(&dir) {
+                    while let Some(Ok(entry)) = rd.next() {
+                        if ctx.kill.should_stop() {
+                            return;
+                        }
+
+                        let path = entry.path();
+                        if ctx.ignore.is_match(&path) {
+                            continue;
+                        }
+
+                        let Ok(metadata) = entry.metadata() else {
+                            continue;
+                        };
+
+                        if metadata.is_dir() {
+                            injector.push(path);
+                        } else if metadata.is_file() {
+                            ctx.send(Choice::from_path(path, ctx.strip));
+                        } else if metadata.is_symlink() {
+                            if let Ok(cpath) = path.canonicalize() {
+                                if cpath.is_file() {
+                                    ctx.send(Choice::from_path(path, ctx.strip));
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+        );
+    });
+}
+
+async fn rayon_reader(dir: PathBuf, ctx: ReadDirContext) {
+    tokio::task::spawn_blocking(move || fast_parallel_read(dir, ctx))
+        .await
+        .unwrap()
+}
+
+async fn read_directory_recursive(
+    dir: PathBuf,
+    osend: Appendlist<Arc<Choice>>,
+    ignore: Ignore,
+    kill: Kill,
+    done: Arc<AtomicUsize>,
+) {
+    let strip = {
+        let s = dir.as_os_str().to_string_lossy();
+        let mut len = s.len();
+        if !s.ends_with(std::path::MAIN_SEPARATOR) {
+            len += 1;
+        }
+        len
+    };
+
+    let n = Arc::new(AtomicUsize::new(0));
+    let ctx = ReadDirContext {
+        osend,
+        n: n.clone(),
+        strip,
+        kill,
+        ignore,
+    };
+
+    rayon_reader(dir, ctx).await;
+
+    let count = n.load(Ordering::Acquire);
+    done.store(count, Ordering::Release);
+}
+
+impl OptionProvider for FileOptionProvider {
+    fn provide(
+        &self,
+        sender: Appendlist<Arc<Choice>>,
+        kill: Kill,
+        done: Arc<AtomicUsize>,
+    ) -> BoxFuture<'static, ()> {
+        let dir = self.path.clone();
+        let ignore = self.ignore.clone();
+        Box::pin(read_directory_recursive(dir, sender, ignore, kill, done))
+    }
 }
 
 #[derive(Clone)]
@@ -62,97 +173,5 @@ impl FileOptionProvider {
             path: path.to_owned(),
             ignore,
         }
-    }
-}
-
-async fn rayon_reader(dir: PathBuf, ctx: ReadDirContext) -> io::Result<()> {
-    let (tx, rx) = oneshot::channel();
-    get_option_provider_pool().spawn(|| {
-        rayon::scope(|s| {
-            let _ = rayon_read(s, dir, ctx);
-        });
-        let _ = tx.send(());
-    });
-
-    let _ = rx.await;
-    Ok(())
-}
-
-fn rayon_read(scope: &rayon::Scope, dir: PathBuf, ctx: ReadDirContext) -> io::Result<()> {
-    let mut rdir = std::fs::read_dir(&dir)?;
-    while let Some(Ok(entry)) = rdir.next() {
-        if ctx.kill.should_stop() {
-            return Ok(());
-        }
-
-        let path = entry.path();
-        if ctx.ignore.is_match(&path) {
-            continue;
-        }
-
-        let metadata = entry.metadata()?;
-        if metadata.is_dir() {
-            let ctx = ctx.clone();
-            scope.spawn(|s| {
-                let _ = rayon_read(s, path, ctx);
-            });
-        } else if metadata.is_file() {
-            ctx.send(Choice::from_path(path, ctx.strip));
-        } else if metadata.is_symlink() {
-            if let Ok(cpath) = path.canonicalize() {
-                if cpath.is_file() {
-                    ctx.send(Choice::from_path(path, ctx.strip));
-                }
-            }
-        }
-    }
-
-    Ok(())
-}
-
-async fn read_directory_recursive(
-    dir: PathBuf,
-    osend: Appendlist<Arc<Choice>>,
-    ignore: Ignore,
-    kill: Kill,
-    done: Arc<AtomicUsize>,
-) {
-    let strip = {
-        let dir = dir.as_os_str().to_string_lossy();
-        let mut len = dir.len();
-        if !dir.ends_with(std::path::MAIN_SEPARATOR) {
-            len += 1;
-        }
-        len
-    };
-    let n = Arc::new(AtomicUsize::new(0));
-    let ctx = ReadDirContext {
-        osend,
-        strip,
-        kill,
-        ignore,
-        n: n.clone(),
-    };
-
-    let _ = rayon_reader(dir, ctx).await;
-    let n = n.load(Ordering::Acquire);
-    done.store(n, Ordering::Release);
-}
-
-impl OptionProvider for FileOptionProvider {
-    fn provide(
-        &self,
-        sender: Appendlist<Arc<Choice>>,
-        kill: Kill,
-        done: Arc<AtomicUsize>,
-    ) -> BoxFuture<'static, ()> {
-        let dir = self.path.clone();
-        Box::pin(read_directory_recursive(
-            dir,
-            sender,
-            self.ignore.clone(),
-            kill,
-            done,
-        ))
     }
 }

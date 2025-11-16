@@ -7,9 +7,9 @@ use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
-use std::thread;
 use std::time::{Duration, Instant};
 
+use rayon::iter::{ParallelBridge as _, ParallelIterator as _};
 use sanedit_buffer::{PieceTree, PieceTreeSlice};
 use sanedit_core::movement::{end_of_line, start_of_line};
 use sanedit_core::{Group, Item, Range, SearchMatch, Searcher};
@@ -69,65 +69,75 @@ impl Grep {
         };
         let searcher = Arc::new(searcher);
 
-        rayon::spawn(move || {
-            let mut taken = 0;
-            const INITIAL_BACKOFF: u64 = 10;
-            let mut backoff = INITIAL_BACKOFF;
+        let (tx, rx) = crossbeam::channel::unbounded::<usize>();
+        let kill_p = kill.clone();
+        let reader_p = reader.clone();
+
+        let producer = tokio::task::spawn(async move {
+            let mut next = 0;
 
             loop {
-                if kill.should_stop() {
+                if kill_p.should_stop() {
                     break;
                 }
 
+                let available = reader_p.len();
                 let total = write_done.load(Ordering::Acquire);
-                let available = reader.len();
-                let fully_read = available == total;
 
-                // If we are done reading all available options
-                if fully_read && available == taken {
+                // push new work indices
+                while next < available {
+                    if tx.send(next).is_err() {
+                        return;
+                    }
+                    next += 1;
+                }
+
+                if next == total && available == total {
                     break;
                 }
 
-                if available > taken {
-                    backoff = INITIAL_BACKOFF;
-
-                    let searcher = searcher.clone();
-                    let msend = msend.clone();
-                    let bufs = modified_buffers.clone();
-                    let stop = kill.clone();
-                    let nreader = reader.clone();
-                    taken += 1;
-
-                    rayon::spawn(move || {
-                        let opt = nreader.get(taken - 1).unwrap();
-                        let path = match opt.as_ref() {
-                            Choice::Path { path, .. } => path,
-                            _ => {
-                                return;
-                            }
-                        };
-
-                        match bufs.get(path) {
-                            Some(slice) => Self::grep_buffer(
-                                path.clone(),
-                                slice,
-                                &searcher,
-                                msend,
-                                stop.clone(),
-                            ),
-                            None => Self::grep_file(path.clone(), &searcher, msend, stop.clone()),
-                        }
-                    });
-                } else {
-                    thread::sleep(Duration::from_micros(backoff));
-                    backoff = (backoff * 2).min(200);
-                }
+                tokio::task::yield_now().await;
             }
         });
+
+        let searcher2 = searcher.clone();
+        let msend2 = msend.clone();
+        let modified2 = modified_buffers.clone();
+        let kill2 = kill.clone();
+
+        let worker = tokio::task::spawn_blocking(move || {
+            rx.into_iter().par_bridge().for_each(|idx| {
+                if kill2.should_stop() {
+                    return;
+                }
+
+                let choice = reader.get(idx).unwrap();
+
+                let path = match choice.as_ref() {
+                    Choice::Path { path, .. } => path,
+                    _ => return,
+                };
+
+                if let Some(slice) = modified2.get(path) {
+                    Self::grep_buffer(
+                        path.clone(),
+                        slice,
+                        &searcher2,
+                        msend2.clone(),
+                        kill2.clone(),
+                    );
+                } else {
+                    Self::grep_file(path.clone(), &searcher2, msend2.clone(), kill2.clone());
+                }
+            });
+        });
+
+        let _ = producer.await;
+        let _ = worker.await;
     }
 
     async fn send_results(mut recv: Receiver<GrepResult>, mut ctx: JobContext) {
-        const FPS: Duration = Duration::from_millis(1000 / 30);
+        const FPS: Duration = Duration::from_millis(1000 / 5);
         let mut last_sent = Instant::now();
         let mut results = vec![];
 

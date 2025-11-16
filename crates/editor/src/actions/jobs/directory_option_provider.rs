@@ -6,9 +6,10 @@ use std::{
     },
 };
 
+use crossbeam::deque::{Injector, Steal, Worker};
+use rayon::iter::{IntoParallelIterator as _, ParallelIterator as _};
 use sanedit_server::{BoxFuture, Kill};
 use sanedit_utils::appendlist::Appendlist;
-use tokio::{io, sync::oneshot};
 
 use crate::{common::Choice, editor::ignore::Ignore};
 
@@ -56,42 +57,60 @@ impl DirectoryOptionProvider {
     }
 }
 
-async fn rayon_reader(dir: PathBuf, ctx: ReadDirContext) -> io::Result<()> {
-    let (tx, rx) = oneshot::channel();
-    get_option_provider_pool().spawn(|| {
-        let _ = rayon_read(dir, ctx);
-        let _ = tx.send(());
-    });
+fn fast_parallel_read(root: PathBuf, ctx: ReadDirContext) {
+    let injector = Injector::<PathBuf>::new();
+    injector.push(root);
 
-    let _ = rx.await;
-    Ok(())
+    get_option_provider_pool().install(|| {
+        let threads = rayon::current_num_threads();
+        (0..threads).into_par_iter().for_each_init(
+            Worker::new_fifo,
+            |local, _thread_idx| loop {
+                if ctx.kill.should_stop() {
+                    return;
+                }
+
+                let job = local
+                    .pop()
+                    .or_else(|| match injector.steal_batch_and_pop(local) {
+                        Steal::Success(p) => Some(p),
+                        _ => None,
+                    });
+
+                let Some(dir) = job else {
+                    break;
+                };
+
+                if let Ok(mut rd) = std::fs::read_dir(&dir) {
+                    while let Some(Ok(entry)) = rd.next() {
+                        if ctx.kill.should_stop() {
+                            return;
+                        }
+
+                        let path = entry.path();
+                        let Ok(metadata) = entry.metadata() else {
+                            continue;
+                        };
+                        if !metadata.is_dir() || ctx.ignore.is_match(&path) {
+                            continue;
+                        }
+
+                        if ctx.recurse {
+                            injector.push(path.clone());
+                        }
+
+                        ctx.send(Choice::from_path(path, ctx.strip));
+                    }
+                }
+            },
+        );
+    });
 }
 
-fn rayon_read(dir: PathBuf, ctx: ReadDirContext) -> io::Result<()> {
-    let mut rdir = std::fs::read_dir(&dir)?;
-    while let Some(Ok(entry)) = rdir.next() {
-        if ctx.kill.should_stop() {
-            return Ok(());
-        }
-
-        let path = entry.path();
-        let metadata = entry.metadata()?;
-        if !metadata.is_dir() {
-            continue;
-        }
-
-        if ctx.ignore.is_match(&path) {
-            continue;
-        }
-
-        if ctx.recurse {
-            let _ = rayon_read(dir.clone(), ctx.clone());
-        }
-
-        ctx.send(Choice::from_path(path, ctx.strip));
-    }
-
-    Ok(())
+async fn rayon_reader(dir: PathBuf, ctx: ReadDirContext) {
+    tokio::task::spawn_blocking(move || fast_parallel_read(dir, ctx))
+        .await
+        .unwrap()
 }
 
 async fn read_directory_recursive(
@@ -103,13 +122,14 @@ async fn read_directory_recursive(
     done: Arc<AtomicUsize>,
 ) {
     let strip = {
-        let dir = dir.as_os_str().to_string_lossy();
-        let mut len = dir.len();
-        if !dir.ends_with(std::path::MAIN_SEPARATOR) {
+        let s = dir.as_os_str().to_string_lossy();
+        let mut len = s.len();
+        if !s.ends_with(std::path::MAIN_SEPARATOR) {
             len += 1;
         }
         len
     };
+
     let n = Arc::new(AtomicUsize::new(0));
     let ctx = ReadDirContext {
         osend,
@@ -120,9 +140,10 @@ async fn read_directory_recursive(
         n: n.clone(),
     };
 
-    let _ = rayon_reader(dir, ctx).await;
-    let n = n.load(Ordering::Acquire);
-    done.store(n, Ordering::Release);
+    rayon_reader(dir, ctx).await;
+
+    let count = n.load(Ordering::Acquire);
+    done.store(count, Ordering::Release);
 }
 
 impl OptionProvider for DirectoryOptionProvider {

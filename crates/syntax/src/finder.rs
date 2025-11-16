@@ -207,11 +207,15 @@ impl<'a, 'b, S: Source> FinderIterRev<'a, 'b, S> {
             let pattern = self.finder.needle();
             let mut n = data.len();
             while n > pattern.len() {
-                let slice = &data[..n - pattern.len()];
+                let slice = &data[..n];
                 n = slice.rfind_byteset(case_insensitive_set)?;
                 let end = n + pattern.len();
+                if end > data.len() {
+                    continue;
+                }
                 let candidate_data = &data[n..end];
-                if self.finder.needle().eq_ignore_ascii_case(candidate_data) {
+                if pattern.eq_ignore_ascii_case(candidate_data) {
+                    log::info!("FOUND {n}");
                     return Some(n);
                 } else {
                     n = n.saturating_sub(1);

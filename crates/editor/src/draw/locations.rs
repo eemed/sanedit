@@ -1,5 +1,3 @@
-use std::mem::take;
-
 use sanedit_messages::redraw::{
     self,
     items::{ItemKind, ItemLocation, ItemsUpdate},
@@ -23,18 +21,22 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> Option<redraw::Redraw> {
     }
 
     let locs = &ctx.editor.win.locations;
+    let extra = &locs.extra;
     let groups = locs.groups();
-    let hash = Hash::new(&groups);
+    let in_focus = ctx.editor.win.focus() == Focus::Locations;
+
+    let mut hash = Hash::new(&groups);
+    hash.add(&extra);
+    hash.add(&in_focus);
+
     if ctx.state.last_loc.as_ref() == Some(&hash) {
         return Some(redraw::Redraw::Locations(ItemsUpdate::Selection(
             locs.selection_index(),
         )));
     }
 
-    let mut items = draw_impl(ctx);
-    let selected = take(&mut items.selected);
     ctx.state.last_loc = Some(hash);
-    items.selected = selected;
+    let items = draw_impl(ctx);
 
     // TODO only send per group additions
 

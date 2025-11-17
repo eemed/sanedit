@@ -3,7 +3,7 @@ use sanedit_server::JobId;
 use super::Mouse;
 
 /// Extra data about locations
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Hash)]
 pub(crate) struct LocationsView {
     pub show: bool,
     pub is_loading: bool,

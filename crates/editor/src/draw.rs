@@ -8,6 +8,7 @@ mod statusline;
 mod window;
 
 use std::{
+    hash::Hash as _,
     mem,
     path::{Path, PathBuf},
     sync::{
@@ -61,6 +62,15 @@ impl Hash {
         let mut hasher = rustc_hash::FxHasher::default();
         typ.hash(&mut hasher);
         Hash(hasher.finish())
+    }
+
+    pub fn add<H: std::hash::Hash>(&mut self, typ: &H) {
+        use std::hash::Hasher;
+
+        let mut hasher = rustc_hash::FxHasher::default();
+        self.0.hash(&mut hasher);
+        typ.hash(&mut hasher);
+        self.0 = hasher.finish();
     }
 }
 

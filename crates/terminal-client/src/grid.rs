@@ -15,8 +15,12 @@ use items::Kind;
 use popup::popup_rect;
 use sanedit_messages::{
     redraw::{
-        self, statusline::Statusline, window::Window, Cell, Component, Cursor, Popup,
-        PopupComponent, Redraw, Size, StatusMessage, Theme,
+        completion::CompletionUpdate,
+        items::ItemsUpdate,
+        prompt::PromptUpdate,
+        statusline::Statusline,
+        window::{Window, WindowUpdate},
+        Cell, Cursor, Popup, PopupComponent, Redraw, Size, StatusMessage, Theme,
     },
     Message,
 };
@@ -102,21 +106,16 @@ impl Grid {
     }
 
     pub fn handle_redraw(&mut self, msg: Redraw) -> RedrawResult {
-        use Component::*;
         use Redraw::*;
 
         match msg {
-            Window(comp) => match comp {
-                Update(win) => self.window.item = win,
-                Close => {}
+            Window(update) => match update {
+                WindowUpdate::Full(win) => self.window.item = win,
+                WindowUpdate::Cursor(cursor) => self.window.item.cursor = cursor,
             },
-            WindowCursor(cursor) => self.window.item.cursor = cursor,
-            Statusline(comp) => match comp {
-                Update(status) => self.statusline.item = status,
-                Close => {}
-            },
-            Prompt(comp) => match comp {
-                Update(prompt) => match self.prompt {
+            Statusline(statusline) => self.statusline.item = statusline,
+            Prompt(update) => match update {
+                PromptUpdate::Full(prompt) => match self.prompt {
                     Some(ref mut custom_prompt) => {
                         let is_new = custom_prompt.item.prompt.message != prompt.message;
                         custom_prompt.item.prompt = prompt;
@@ -129,7 +128,12 @@ impl Grid {
                         self.refresh_overlays();
                     }
                 },
-                Close => self.prompt = None,
+                PromptUpdate::Selection(pos) => {
+                    if let Some(prompt) = &mut self.prompt {
+                        prompt.item.prompt.selected = pos;
+                    }
+                }
+                PromptUpdate::Close => self.prompt = None,
             },
             StatusMessage(msg) => {
                 self.msg = Some(Placed {
@@ -137,9 +141,9 @@ impl Grid {
                     rect: self.statusline.rect,
                 });
             }
-            Completion(comp) => {
-                match comp {
-                    Update(completion) => match self.completion {
+            Completion(update) => {
+                match update {
+                    CompletionUpdate::Full(completion) => match self.completion {
                         Some(ref mut compl) => {
                             compl.item.update(completion);
                         }
@@ -147,13 +151,18 @@ impl Grid {
                             self.completion = Some(CustomCompletion::new(completion).into());
                         }
                     },
-                    Close => self.completion = None,
+                    CompletionUpdate::Selection(pos) => {
+                        if let Some(compl) = &mut self.completion {
+                            compl.item.completion.selected = pos;
+                        }
+                    }
+                    CompletionUpdate::Close => self.completion = None,
                 }
 
                 self.refresh_overlays();
             }
-            Filetree(comp) => match comp {
-                Update(items) => {
+            Filetree(update) => match update {
+                ItemsUpdate::Full(items) => {
                     match self.filetree {
                         Some(ref mut ft) => {
                             ft.item.items = items;
@@ -166,14 +175,21 @@ impl Grid {
                     }
                     return RedrawResult::Resized;
                 }
-                Close => {
+                ItemsUpdate::Selection(pos) => {
+                    if let Some(ft) = &mut self.filetree {
+                        ft.item.items.selected = pos;
+                        self.refresh();
+                    }
+                }
+                ItemsUpdate::Close => {
                     self.filetree = None;
                     self.refresh();
                     return RedrawResult::Resized;
                 }
+                ItemsUpdate::Add => todo!(),
             },
-            Locations(comp) => match comp {
-                Update(items) => {
+            Locations(update) => match update {
+                ItemsUpdate::Full(items) => {
                     match self.locations {
                         Some(ref mut locs) => {
                             locs.item.items = items;
@@ -186,11 +202,18 @@ impl Grid {
                     }
                     return RedrawResult::Resized;
                 }
-                Close => {
+                ItemsUpdate::Selection(pos) => {
+                    if let Some(loc) = &mut self.locations {
+                        loc.item.items.selected = pos;
+                        self.refresh();
+                    }
+                }
+                ItemsUpdate::Close => {
                     self.locations = None;
                     self.refresh();
                     return RedrawResult::Resized;
                 }
+                ItemsUpdate::Add => todo!(),
             },
             Popup(popup) => match popup {
                 PopupComponent::Open(popup) => {
@@ -199,30 +222,6 @@ impl Grid {
                 }
                 PopupComponent::Close => {
                     self.popup = None;
-                }
-            },
-            Selection(kind, pos) => match kind {
-                redraw::Kind::Prompt => {
-                    if let Some(prompt) = &mut self.prompt {
-                        prompt.item.prompt.selected = pos;
-                    }
-                }
-                redraw::Kind::Completion => {
-                    if let Some(compl) = &mut self.completion {
-                        compl.item.completion.selected = pos;
-                    }
-                }
-                redraw::Kind::Filetree => {
-                    if let Some(ft) = &mut self.filetree {
-                        ft.item.items.selected = pos.unwrap_or(0);
-                        self.refresh();
-                    }
-                }
-                redraw::Kind::Locations => {
-                    if let Some(loc) = &mut self.locations {
-                        loc.item.items.selected = pos.unwrap_or(0);
-                        self.refresh();
-                    }
                 }
             },
         }

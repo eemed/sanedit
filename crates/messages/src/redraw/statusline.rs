@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use super::{Component, Redraw};
+use super::Redraw;
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone, Default, Hash)]
 pub struct Statusline {
@@ -10,6 +10,6 @@ pub struct Statusline {
 
 impl From<Statusline> for Redraw {
     fn from(status: Statusline) -> Self {
-        Redraw::Statusline(Component::Update(status))
+        Redraw::Statusline(status)
     }
 }

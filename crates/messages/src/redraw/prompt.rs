@@ -1,6 +1,13 @@
 use serde::{Deserialize, Serialize};
 
-use super::{choice::Choice, Component, Redraw};
+use super::{choice::Choice, Redraw};
+
+#[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone, Hash)]
+pub enum PromptUpdate {
+    Selection(Option<usize>),
+    Full(Prompt),
+    Close,
+}
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone, Hash)]
 pub enum Source {
@@ -27,6 +34,6 @@ pub struct Prompt {
 
 impl From<Prompt> for Redraw {
     fn from(value: Prompt) -> Self {
-        Redraw::Prompt(Component::Update(value))
+        Redraw::Prompt(PromptUpdate::Full(value))
     }
 }

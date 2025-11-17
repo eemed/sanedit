@@ -1,4 +1,4 @@
-use super::{Cell, Component, Cursor, Redraw};
+use super::{Cell, Cursor, Redraw};
 use serde::{Deserialize, Serialize};
 //
 // #[derive(Serialize, Deserialize, PartialEq, Eq, Default, Clone)]
@@ -20,6 +20,12 @@ use serde::{Deserialize, Serialize};
 //         Ok(())
 //     }
 // }
+
+#[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Debug, Hash)]
+pub enum WindowUpdate {
+    Full(Window),
+    Cursor(Option<Cursor>),
+}
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Default, Clone, Debug, Hash)]
 pub struct Window {
@@ -100,7 +106,7 @@ impl Window {
 
 impl From<Window> for Redraw {
     fn from(value: Window) -> Self {
-        Redraw::Window(Component::Update(value))
+        Redraw::Window(WindowUpdate::Full(value))
     }
 }
 

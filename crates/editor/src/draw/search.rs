@@ -1,6 +1,10 @@
 use std::mem::take;
 
-use sanedit_messages::redraw::{self, prompt::Source, Component, Kind, Redraw};
+use sanedit_messages::redraw::{
+    self,
+    prompt::{PromptUpdate, Source},
+    Redraw,
+};
 
 use crate::editor::windows::Focus;
 
@@ -10,7 +14,7 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> Option<redraw::Redraw> {
     if ctx.focus_changed_from(Focus::Search) {
         ctx.state.prompt_scroll_offset = 0;
         ctx.state.last_prompt = None;
-        return Redraw::Prompt(Component::Close).into();
+        return Redraw::Prompt(PromptUpdate::Close).into();
     }
 
     let in_focus = ctx.editor.win.focus() == Focus::Search;
@@ -23,12 +27,12 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> Option<redraw::Redraw> {
     let hash = Hash::new(&prompt);
     if let Some(lhash) = ctx.state.last_prompt.as_ref() {
         if lhash == &hash {
-            return Some(redraw::Redraw::Selection(Kind::Prompt, selected));
+            return Some(redraw::Redraw::Prompt(PromptUpdate::Selection(selected)));
         }
     }
 
     ctx.state.last_prompt = Some(hash);
-    Some(redraw::Redraw::Prompt(Component::Update(prompt)))
+    Some(redraw::Redraw::Prompt(PromptUpdate::Full(prompt)))
 }
 
 fn draw_impl(ctx: &mut DrawContext) -> redraw::prompt::Prompt {

@@ -33,7 +33,7 @@ pub use sanedit_core::Severity;
 
 use serde::{Deserialize, Serialize};
 
-use crate::ClientMessage;
+use crate::{redraw::{completion::CompletionUpdate, items::ItemsUpdate, prompt::PromptUpdate, window::WindowUpdate}, ClientMessage};
 
 /// Component sent to the client. Components can be opened, updated and closed.
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone, Hash)]
@@ -52,15 +52,13 @@ pub enum Kind {
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone, Hash)]
 pub enum Redraw {
-    WindowCursor(Option<Cursor>),
-    Window(Component<window::Window>),
-    Statusline(Component<statusline::Statusline>),
-    /// Updates just the selection
-    Selection(Kind, Option<usize>),
-    Prompt(Component<prompt::Prompt>),
-    Completion(Component<completion::Completion>),
-    Filetree(Component<items::Items>),
-    Locations(Component<items::Items>),
+    Window(WindowUpdate),
+    Statusline(statusline::Statusline),
+    Prompt(PromptUpdate),
+    Completion(CompletionUpdate),
+    Filetree(ItemsUpdate),
+    Locations(ItemsUpdate),
+
     StatusMessage(StatusMessage),
     Popup(PopupComponent),
 }

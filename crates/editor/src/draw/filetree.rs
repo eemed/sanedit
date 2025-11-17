@@ -2,8 +2,7 @@ use std::mem::take;
 
 use sanedit_messages::redraw::{
     self,
-    items::{Item, ItemKind},
-    Component, Kind,
+    items::{Item, ItemKind, ItemsUpdate},
 };
 
 use crate::editor::windows::Focus;
@@ -16,7 +15,7 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> Option<redraw::Redraw> {
 
     if close_ft {
         ctx.state.last_ft = None;
-        return Some(redraw::Redraw::Filetree(Component::Close));
+        return Some(redraw::Redraw::Filetree(ItemsUpdate::Close));
     }
 
     if !show_ft {
@@ -27,12 +26,12 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> Option<redraw::Redraw> {
     let selected = take(&mut items.selected);
     let hash = Hash::new(&items);
     if ctx.state.last_ft.as_ref() == Some(&hash) {
-        return Some(redraw::Redraw::Selection(Kind::Filetree, Some(selected)));
+        return Some(redraw::Redraw::Filetree(ItemsUpdate::Selection(selected)));
     }
 
     ctx.state.last_ft = Some(hash);
     items.selected = selected;
-    Some(redraw::Redraw::Filetree(Component::Update(items)))
+    Some(redraw::Redraw::Filetree(ItemsUpdate::Full(items)))
 }
 
 fn draw_impl(ctx: &mut DrawContext) -> redraw::items::Items {

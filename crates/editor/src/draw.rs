@@ -18,7 +18,7 @@ use std::{
 
 use sanedit_core::Language;
 use sanedit_messages::{
-    redraw::{self, Component, Redraw, Theme},
+    redraw::{self, window::WindowUpdate, Redraw, Theme},
     ClientMessage,
 };
 use sanedit_server::{FromEditor, FromEditorSharedMessage};
@@ -90,7 +90,7 @@ pub(crate) struct DrawState {
 impl DrawState {
     pub fn new(ectx: EditorContext) -> (DrawState, Vec<FromEditorSharedMessage>) {
         let buffer = Arc::new(FromEditor::Message(ClientMessage::Redraw(Redraw::Window(
-            Component::Update(redraw::window::Window::default()),
+            WindowUpdate::Full(redraw::window::Window::default()),
         ))));
         let (tx, rx) = channel();
         let _ = tx.send(buffer);

@@ -2,7 +2,7 @@ use std::{mem::take, sync::Arc};
 
 use sanedit_messages::{
     redraw::{
-        self, window::Window, Component, CursorShape, Point, Redraw, Style, Theme, ThemeField,
+        self, window::{Window, WindowUpdate}, CursorShape, Point, Redraw, Style, Theme, ThemeField,
     },
     ClientMessage,
 };
@@ -26,7 +26,7 @@ fn calculate_message(
 ) -> FromEditorSharedMessage {
     let wb = Arc::make_mut(&mut window_buffer);
     let grid =
-        if let FromEditor::Message(ClientMessage::Redraw(Redraw::Window(Component::Update(win)))) =
+        if let FromEditor::Message(ClientMessage::Redraw(Redraw::Window(WindowUpdate::Full(win)))) =
             wb
         {
             win
@@ -40,7 +40,7 @@ fn calculate_message(
 
     if ctx.state.last_window.as_ref() == Some(&hash) {
         let _ = ctx.state.window_buffer_sender.send(window_buffer);
-        return Redraw::WindowCursor(cursor).into();
+        return Redraw::Window(WindowUpdate::Cursor(cursor)).into();
     }
     ctx.state.last_window = Some(hash);
 
@@ -64,7 +64,7 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> Option<FromEditorSharedMessage> {
     };
     let wb = Arc::make_mut(&mut window_buffer);
     let grid =
-        if let FromEditor::Message(ClientMessage::Redraw(Redraw::Window(Component::Update(win)))) =
+        if let FromEditor::Message(ClientMessage::Redraw(Redraw::Window(WindowUpdate::Full(win)))) =
             wb
         {
             win

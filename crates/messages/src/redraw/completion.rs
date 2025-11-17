@@ -1,6 +1,13 @@
 use serde::{Deserialize, Serialize};
 
-use super::{choice::Choice, Component, Point, Redraw};
+use super::{choice::Choice, Point, Redraw};
+
+#[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone, Hash)]
+pub enum CompletionUpdate {
+    Full(Completion),
+    Selection(Option<usize>),
+    Close,
+}
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone, Hash)]
 pub struct Completion {
@@ -17,6 +24,6 @@ impl Completion {}
 
 impl From<Completion> for Redraw {
     fn from(value: Completion) -> Self {
-        Redraw::Completion(Component::Update(value))
+        Redraw::Completion(CompletionUpdate::Full(value))
     }
 }

@@ -1,6 +1,14 @@
 use sanedit_core::Range;
 use serde::{Deserialize, Serialize};
 
+#[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone, Hash)]
+pub enum ItemsUpdate {
+    Full(Items),
+    Add,
+    Selection(usize),
+    Close,
+}
+
 /// Container to draw filesystem like structure
 /// Groups that contain other groups or items directly
 ///

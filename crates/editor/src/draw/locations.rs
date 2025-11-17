@@ -2,8 +2,7 @@ use std::mem::take;
 
 use sanedit_messages::redraw::{
     self,
-    items::{ItemKind, ItemLocation},
-    Component, Kind,
+    items::{ItemKind, ItemLocation, ItemsUpdate},
 };
 use sanedit_utils::either::Either;
 
@@ -17,7 +16,7 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> Option<redraw::Redraw> {
 
     if close_loc {
         ctx.state.last_loc = None;
-        return Some(redraw::Redraw::Locations(Component::Close));
+        return Some(redraw::Redraw::Locations(ItemsUpdate::Close));
     }
     if !show_loc {
         return None;
@@ -27,12 +26,12 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> Option<redraw::Redraw> {
     let selected = take(&mut items.selected);
     let hash = Hash::new(&items);
     if ctx.state.last_loc.as_ref() == Some(&hash) {
-        return Some(redraw::Redraw::Selection(Kind::Locations, Some(selected)));
+        return Some(redraw::Redraw::Locations(ItemsUpdate::Selection(selected)));
     }
 
     ctx.state.last_loc = Some(hash);
     items.selected = selected;
-    Some(redraw::Redraw::Locations(Component::Update(items)))
+    Some(redraw::Redraw::Locations(ItemsUpdate::Full(items)))
 }
 
 fn draw_impl(ctx: &mut DrawContext) -> redraw::items::Items {

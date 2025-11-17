@@ -1,6 +1,6 @@
 use std::{cmp, mem::take};
 
-use sanedit_messages::redraw::{self, Component, Kind, Redraw};
+use sanedit_messages::redraw::{self, completion::CompletionUpdate, Redraw};
 
 use crate::editor::windows::Focus;
 
@@ -10,7 +10,7 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> Option<redraw::Redraw> {
     if ctx.focus_changed_from(Focus::Completion) {
         ctx.state.compl_scroll_offset = 0;
         ctx.state.last_compl = None;
-        return Redraw::Completion(Component::Close).into();
+        return Redraw::Completion(CompletionUpdate::Close).into();
     }
 
     let in_focus = ctx.editor.win.focus() == Focus::Completion;
@@ -23,12 +23,12 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> Option<redraw::Redraw> {
     let selected = take(&mut compl.selected);
     let hash = Hash::new(&compl);
     if ctx.state.last_compl.as_ref() == Some(&hash) {
-        return Some(redraw::Redraw::Selection(Kind::Completion, selected));
+        return Some(redraw::Redraw::Completion(CompletionUpdate::Selection(selected)));
     }
 
     ctx.state.last_compl = Some(hash);
     compl.selected = selected;
-    Some(redraw::Redraw::Completion(Component::Update(compl)))
+    Some(redraw::Redraw::Completion(CompletionUpdate::Full(compl)))
 }
 
 fn draw_impl(ctx: &mut DrawContext) -> redraw::completion::Completion {

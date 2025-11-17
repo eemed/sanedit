@@ -12,7 +12,7 @@ use crate::{
 
 use sanedit_core::{grapheme_category, Change, Changes, GraphemeCategory, Range};
 use sanedit_messages::{
-    redraw::{Component, Redraw},
+    redraw::{window::WindowUpdate, Redraw},
     ClientMessage,
 };
 use sanedit_server::{ClientId, FromEditor};
@@ -451,7 +451,7 @@ fn snake(editor: &mut Editor, id: ClientId) -> ActionResult {
 
         let window_buffer = getf!(dstate.window_buffer.recv().ok());
         let grid = if let FromEditor::Message(ClientMessage::Redraw(Redraw::Window(
-            Component::Update(win),
+            WindowUpdate::Full(win),
         ))) = window_buffer.as_ref()
         {
             win

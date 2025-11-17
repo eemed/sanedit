@@ -28,6 +28,9 @@ pub enum LSPRequestError {
 
     #[error("Server is closed")]
     ServerClosed,
+
+    #[error("Server is not started yet")]
+    ServerNotStarted,
 }
 
 /// Internal error type

@@ -22,15 +22,22 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> Option<redraw::Redraw> {
         return None;
     }
 
-    let mut items = draw_impl(ctx);
-    let selected = take(&mut items.selected);
-    let hash = Hash::new(&items);
+    let locs = &ctx.editor.win.locations;
+    let groups = locs.groups();
+    let hash = Hash::new(&groups);
     if ctx.state.last_loc.as_ref() == Some(&hash) {
-        return Some(redraw::Redraw::Locations(ItemsUpdate::Selection(selected)));
+        return Some(redraw::Redraw::Locations(ItemsUpdate::Selection(
+            locs.selection_index(),
+        )));
     }
 
+    let mut items = draw_impl(ctx);
+    let selected = take(&mut items.selected);
     ctx.state.last_loc = Some(hash);
     items.selected = selected;
+
+    // TODO only send per group additions
+
     Some(redraw::Redraw::Locations(ItemsUpdate::Full(items)))
 }
 

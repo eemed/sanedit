@@ -9,6 +9,12 @@ pub struct SortedVec<T: Ord> {
     items: Vec<T>,
 }
 
+impl<T: std::hash::Hash + Ord> std::hash::Hash for SortedVec<T> {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.items.hash(state);
+    }
+}
+
 impl<T: Ord + Clone> SortedVec<T> {
     pub fn from_unsorted(items: &[T]) -> SortedVec<T> {
         let mut items = items.to_vec();

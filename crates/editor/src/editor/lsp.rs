@@ -36,6 +36,7 @@ pub(crate) enum Constraint {
     CursorPosition(u64),
 }
 
+
 /// A handle to send operations to LSP instance.
 ///
 /// LSP is running in a job slot and communicates back using messages.
@@ -46,7 +47,7 @@ pub(crate) struct Lsp {
     name: String,
 
     /// Client to send messages to LSP server
-    sender: LSPClientSender,
+    sender: Option<LSPClientSender>,
 
     /// Constraints that need to be met in order to execute request responses
     requests: Map<u32, (ClientId, Vec<Constraint>)>,
@@ -58,14 +59,18 @@ pub(crate) struct Lsp {
 }
 
 impl Lsp {
-    pub fn new(name: &str, sender: LSPClientSender) -> Lsp {
+    pub fn new(name: &str) -> Lsp {
         Lsp {
             name: name.into(),
-            sender,
+            sender: None,
             requests: Map::default(),
             request_id: AtomicU32::new(1),
             diagnostics: Map::default(),
         }
+    }
+
+    pub fn start(&mut self, sender: LSPClientSender) {
+        self.sender = Some(sender);
     }
 
     pub fn server_name(&self) -> &str {
@@ -88,16 +93,19 @@ impl Lsp {
     ) -> Result<(), LSPRequestError> {
         let id = self.next_id();
         self.requests.insert(id, (cid, constraints));
-        self.sender.request(Request { id, kind: req })?;
+        let sender = self.sender.as_mut().ok_or(LSPRequestError::ServerNotStarted)?;
+        sender.request(Request { id, kind: req })?;
         Ok(())
     }
 
     pub fn notify(&mut self, op: Notification) -> Result<(), LSPRequestError> {
-        self.sender.notify(op)?;
+        let sender = self.sender.as_mut().ok_or(LSPRequestError::ServerNotStarted)?;
+        sender.notify(op)?;
         Ok(())
     }
 
     pub fn position_encoding(&self) -> PositionEncoding {
-        self.sender.position_encoding()
+        let sender = self.sender.as_ref().unwrap();
+        sender.position_encoding()
     }
 }

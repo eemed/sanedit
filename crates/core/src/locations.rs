@@ -133,7 +133,16 @@ impl<T> Locations<T> {
     }
 
     fn visible_len(&self) -> usize {
-        self.iter().count()
+        let mut n = 0;
+
+        for group in &self.groups {
+            n += 1;
+            if group.is_expanded() {
+                n += group.items.len();
+            }
+        }
+
+        n
     }
 
     /// Select next item, expand groups if needed
@@ -232,7 +241,7 @@ impl<T> Locations<T> {
 }
 
 /// Location group
-#[derive(Debug)]
+#[derive(Debug, Hash)]
 pub struct Group {
     path: PathBuf,
     expanded: bool,
@@ -277,7 +286,7 @@ impl Group {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Item {
     line: Option<u64>,
     /// Absolute offset where data starts
@@ -323,18 +332,18 @@ impl Item {
 
 #[derive(Debug)]
 pub struct LocationIter<'a> {
-    stack: Vec<Either<&'a Group, &'a Item>>,
+    group: usize,
+    item: usize,
+    groups: &'a [Group],
 }
 
 impl<'a> LocationIter<'a> {
     fn new(locs: &'a [Group]) -> Self {
-        let mut stack = Vec::with_capacity(locs.len());
-
-        for loc in locs.iter().rev() {
-            stack.push(Either::Left(loc));
+        LocationIter {
+            group: 0,
+            item: usize::MAX,
+            groups: locs,
         }
-
-        LocationIter { stack }
     }
 }
 
@@ -342,19 +351,26 @@ impl<'a> Iterator for LocationIter<'a> {
     type Item = Either<&'a Group, &'a Item>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let next = self.stack.pop()?;
+        let group = self.groups.get(self.group)?;
 
-        if let Either::Left(Group {
-            expanded, items, ..
-        }) = next
-        {
-            if *expanded {
-                for loc in items.iter().rev() {
-                    self.stack.push(Either::Right(loc));
-                }
+        // Item usize::MAX is group itself
+        if self.item == usize::MAX {
+            if group.is_expanded() {
+                self.item = 0;
+            } else {
+                self.group += 1;
             }
+            return Some(Either::Left(group));
         }
 
-        Some(next)
+        let item = group.items.get(self.item)?;
+        self.item += 1;
+
+        if group.items.len() <= self.item {
+            self.group += 1;
+            self.item = usize::MAX;
+        }
+
+        Some(Either::Right(item))
     }
 }

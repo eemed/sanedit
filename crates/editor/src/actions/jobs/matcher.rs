@@ -157,7 +157,6 @@ impl Job for MatcherJob {
 
                 while let Some((t, n)) = precv.recv().await {
                     if patt == t {
-                        log::info!("SAME");
                         continue;
                     }
                     patt = t;

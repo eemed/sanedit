@@ -19,7 +19,7 @@ use crate::{
         config::LSPConfig,
         hooks::Hook,
         job_broker::KeepInTouch,
-        lsp::{Constraint, Lsp},
+        lsp::Constraint,
         windows::{Completion, Cursors, Prompt},
         Editor,
     },
@@ -30,9 +30,9 @@ use sanedit_core::{
     Range,
 };
 use sanedit_lsp::{
-    CodeAction, CompletionItem, FileEdit, FileOperation, LSPClientParams, Notification, Position,
-    PositionEncoding, PositionRange, RequestKind, RequestResult, Response, Signatures, Symbol,
-    Text, TextDiagnostic, TextKind, WorkspaceEdit,
+    CodeAction, CompletionItem, FileEdit, FileOperation, LSPClientParams, LSPClientSender,
+    Notification, Position, PositionEncoding, PositionRange, RequestKind, RequestResult, Response,
+    Signatures, Symbol, Text, TextDiagnostic, TextKind, WorkspaceEdit,
 };
 
 use sanedit_messages::redraw::{PopupKind, PopupMessage, PopupMessageText};
@@ -42,7 +42,7 @@ use super::{MatchStrategy, MatcherJob};
 
 #[derive(Debug)]
 enum Message {
-    Started(Lsp),
+    Started(LSPClientSender),
     Response(Box<Response>),
 }
 
@@ -85,8 +85,7 @@ impl Job for LSPJob {
 
             let (sender, mut reader) = params.spawn().await?;
 
-            let handle = Lsp::new(&command, sender);
-            ctx.send(Message::Started(handle));
+            ctx.send(Message::Started(sender));
 
             while let Some(response) = reader.recv().await {
                 ctx.send(Message::Response(Box::new(response)));
@@ -108,19 +107,10 @@ impl KeepInTouch for LSPJob {
         if let Ok(output) = msg.downcast::<Message>() {
             match *output {
                 Message::Started(sender) => {
-                    if editor.language_servers.contains_key(&self.language) {
-                        log::error!(
-                            "Language server for {} is already running.",
-                            self.language.as_str()
-                        );
-                        // Shutsdown automatically because sender is dropped
-                        // here
+                    let Some(lsp) = editor.language_servers.get_mut(&self.language) else {
                         return;
-                    }
-                    // Set sender
-                    editor
-                        .language_servers
-                        .insert(self.language.clone(), sender);
+                    };
+                    lsp.start(sender);
 
                     // Send all buffers of this language
                     let ids: Vec<BufferId> = editor.buffers().iter().map(|(id, _buf)| id).collect();
@@ -139,6 +129,18 @@ impl KeepInTouch for LSPJob {
                 Message::Response(response) => self.handle_response(editor, *response),
             }
         }
+    }
+
+    fn on_success(&self, editor: &mut Editor) {
+        editor.language_servers.remove(&self.language);
+    }
+
+    fn on_failure(&self, editor: &mut Editor, _reason: &str) {
+        editor.language_servers.remove(&self.language);
+    }
+
+    fn on_stop(&self, editor: &mut Editor) {
+        editor.language_servers.remove(&self.language);
     }
 }
 

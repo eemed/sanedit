@@ -22,11 +22,12 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> Option<redraw::Redraw> {
         return None;
     }
 
+    // TODO optimize this draw
     let mut items = draw_impl(ctx);
     let selected = take(&mut items.selected);
     let hash = Hash::new(&items);
     if ctx.state.last_ft.as_ref() == Some(&hash) {
-        return Some(redraw::Redraw::Filetree(ItemsUpdate::Selection(selected)));
+        return Some(redraw::Redraw::Filetree(ItemsUpdate::Selection(Some(selected))));
     }
 
     ctx.state.last_ft = Some(hash);

@@ -177,7 +177,7 @@ impl Grid {
                 }
                 ItemsUpdate::Selection(pos) => {
                     if let Some(ft) = &mut self.filetree {
-                        ft.item.items.selected = pos;
+                        ft.item.items.selected = pos.unwrap_or(0);
                         self.refresh();
                     }
                 }
@@ -186,7 +186,6 @@ impl Grid {
                     self.refresh();
                     return RedrawResult::Resized;
                 }
-                ItemsUpdate::Add => todo!(),
             },
             Locations(update) => match update {
                 ItemsUpdate::Full(items) => {
@@ -204,7 +203,7 @@ impl Grid {
                 }
                 ItemsUpdate::Selection(pos) => {
                     if let Some(loc) = &mut self.locations {
-                        loc.item.items.selected = pos;
+                        loc.item.items.selected = pos.unwrap_or(0);
                         self.refresh();
                     }
                 }
@@ -213,7 +212,6 @@ impl Grid {
                     self.refresh();
                     return RedrawResult::Resized;
                 }
-                ItemsUpdate::Add => todo!(),
             },
             Popup(popup) => match popup {
                 PopupComponent::Open(popup) => {

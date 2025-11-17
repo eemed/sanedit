@@ -709,7 +709,6 @@ impl Editor {
                 }
             }
             Succesful(id) => {
-                log::info!("Job {id} succesful.");
                 if let Some(prog) = self.job_broker.get(id) {
                     prog.on_success(self);
                 }
@@ -723,7 +722,6 @@ impl Editor {
                 self.job_broker.done(id);
             }
             Stopped(id) => {
-                log::info!("Job {id} stopped.");
                 if let Some(prog) = self.job_broker.get(id) {
                     prog.on_stop(self);
                 }

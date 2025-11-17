@@ -153,11 +153,16 @@ fn start_lsp_impl(editor: &mut Editor, id: ClientId, bid: BufferId) -> Result<()
             lang.as_str().to_string()
         ));
     }
+
     let langconfig = editor
         .languages
         .get(&lang)
         .map(|config| &config.language_server)
         .ok_or_else(|| LSPActionError::LanguageServerNotConfigured(lang.as_str().to_string()))?;
+
+    editor
+        .language_servers
+        .insert(lang.clone(), Lsp::new(&langconfig.command));
 
     let lsp = LSPJob::new(id, wd, lang, langconfig);
     editor.job_broker.request(lsp);

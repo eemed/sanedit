@@ -9,7 +9,7 @@ mod window;
 
 use std::{
     mem,
-    path::Path,
+    path::{Path, PathBuf},
     sync::{
         mpsc::{channel, Receiver, Sender},
         Arc,
@@ -70,6 +70,8 @@ pub(crate) struct DrawState {
     last_prompt: Option<Hash>,
     last_compl: Option<Hash>,
     last_loc: Option<Hash>,
+    last_loc_per_group: Map<PathBuf, Hash>,
+
     last_ft: Option<Hash>,
 
     last_show_popup: Option<bool>,
@@ -100,6 +102,7 @@ impl DrawState {
             last_focus: None,
             last_compl: None,
             last_loc: None,
+            last_loc_per_group: Map::default(),
             last_ft: None,
             last_show_popup: None,
             last_statusline: None,

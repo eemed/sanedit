@@ -4,8 +4,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone, Hash)]
 pub enum ItemsUpdate {
     Full(Items),
-    Add,
-    Selection(usize),
+    Selection(Option<usize>),
     Close,
 }
 

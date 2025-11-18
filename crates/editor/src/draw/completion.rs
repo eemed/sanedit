@@ -23,7 +23,9 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> Option<redraw::Redraw> {
     let selected = take(&mut compl.selected);
     let hash = Hash::new(&compl);
     if ctx.state.last_compl.as_ref() == Some(&hash) {
-        return Some(redraw::Redraw::Completion(CompletionUpdate::Selection(selected)));
+        return Some(redraw::Redraw::Completion(CompletionUpdate::Selection(
+            selected,
+        )));
     }
 
     ctx.state.last_compl = Some(hash);

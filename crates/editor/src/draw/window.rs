@@ -2,7 +2,9 @@ use std::{mem::take, sync::Arc};
 
 use sanedit_messages::{
     redraw::{
-        self, window::{Window, WindowUpdate}, CursorShape, Point, Redraw, Style, Theme, ThemeField,
+        self,
+        window::{Window, WindowUpdate},
+        CursorShape, Point, Redraw, Style, Theme, ThemeField,
     },
     ClientMessage,
 };
@@ -25,14 +27,14 @@ fn calculate_message(
     mut window_buffer: Arc<FromEditor>,
 ) -> FromEditorSharedMessage {
     let wb = Arc::make_mut(&mut window_buffer);
-    let grid =
-        if let FromEditor::Message(ClientMessage::Redraw(Redraw::Window(WindowUpdate::Full(win)))) =
-            wb
-        {
-            win
-        } else {
-            unreachable!()
-        };
+    let grid = if let FromEditor::Message(ClientMessage::Redraw(Redraw::Window(
+        WindowUpdate::Full(win),
+    ))) = wb
+    {
+        win
+    } else {
+        unreachable!()
+    };
     // Calculate hash without cursor value so it is independent of cursor position
     let cursor = take(&mut grid.cursor);
     let hash = Hash::new(grid);
@@ -63,14 +65,14 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> Option<FromEditorSharedMessage> {
         return None;
     };
     let wb = Arc::make_mut(&mut window_buffer);
-    let grid =
-        if let FromEditor::Message(ClientMessage::Redraw(Redraw::Window(WindowUpdate::Full(win)))) =
-            wb
-        {
-            win
-        } else {
-            unreachable!()
-        };
+    let grid = if let FromEditor::Message(ClientMessage::Redraw(Redraw::Window(
+        WindowUpdate::Full(win),
+    ))) = wb
+    {
+        win
+    } else {
+        unreachable!()
+    };
 
     if let Some(game) = &win.game {
         game.draw(grid, theme);

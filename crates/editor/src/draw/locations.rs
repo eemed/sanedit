@@ -38,7 +38,9 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> Option<redraw::Redraw> {
             } else {
                 ctx.state.last_loc_selection = Some(selected);
                 locs.selected = selected;
-                return Some(redraw::Redraw::Locations(ItemsUpdate::Selection(Some(selected))));
+                return Some(redraw::Redraw::Locations(ItemsUpdate::Selection(Some(
+                    selected,
+                ))));
             }
         }
     }

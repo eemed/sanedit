@@ -63,9 +63,9 @@ fn fast_parallel_read(root: PathBuf, ctx: ReadDirContext) {
 
     get_option_provider_pool().install(|| {
         let threads = rayon::current_num_threads();
-        (0..threads).into_par_iter().for_each_init(
-            Worker::new_fifo,
-            |local, _thread_idx| loop {
+        (0..threads)
+            .into_par_iter()
+            .for_each_init(Worker::new_fifo, |local, _thread_idx| loop {
                 if ctx.kill.should_stop() {
                     return;
                 }
@@ -102,8 +102,7 @@ fn fast_parallel_read(root: PathBuf, ctx: ReadDirContext) {
                         ctx.send(Choice::from_path(path, ctx.strip));
                     }
                 }
-            },
-        );
+            });
     });
 }
 

@@ -515,7 +515,10 @@ impl Editor {
             Element::Locations => match event.kind {
                 MouseEventKind::ScrollDown => {
                     let (win, _buf) = self.win_buf_mut(id);
-                    let max_offset = win.locations.visible_len().saturating_sub(win.config.max_locations);
+                    let max_offset = win
+                        .locations
+                        .visible_len()
+                        .saturating_sub(win.config.max_locations);
                     let Some(draw) = self.draw_states.get_mut(&id) else {
                         return;
                     };

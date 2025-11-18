@@ -36,7 +36,6 @@ pub(crate) enum Constraint {
     CursorPosition(u64),
 }
 
-
 /// A handle to send operations to LSP instance.
 ///
 /// LSP is running in a job slot and communicates back using messages.
@@ -93,13 +92,19 @@ impl Lsp {
     ) -> Result<(), LSPRequestError> {
         let id = self.next_id();
         self.requests.insert(id, (cid, constraints));
-        let sender = self.sender.as_mut().ok_or(LSPRequestError::ServerNotStarted)?;
+        let sender = self
+            .sender
+            .as_mut()
+            .ok_or(LSPRequestError::ServerNotStarted)?;
         sender.request(Request { id, kind: req })?;
         Ok(())
     }
 
     pub fn notify(&mut self, op: Notification) -> Result<(), LSPRequestError> {
-        let sender = self.sender.as_mut().ok_or(LSPRequestError::ServerNotStarted)?;
+        let sender = self
+            .sender
+            .as_mut()
+            .ok_or(LSPRequestError::ServerNotStarted)?;
         sender.notify(op)?;
         Ok(())
     }

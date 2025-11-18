@@ -100,7 +100,7 @@ impl UI {
                         // -1 = header
                         ev.point.y = ev.point.y.saturating_sub(1);
                         ev.element = Element::Locations;
-                        return Some(Message::MouseEvent(ev))
+                        return Some(Message::MouseEvent(ev));
                     }
                     sanedit_messages::MouseEventKind::ButtonDown(MouseButton::Left) => {
                         ev.point = ev.point - loc.rect.position();

@@ -33,7 +33,13 @@ pub use sanedit_core::Severity;
 
 use serde::{Deserialize, Serialize};
 
-use crate::{redraw::{completion::CompletionUpdate, items::ItemsUpdate, prompt::PromptUpdate, window::WindowUpdate}, ClientMessage};
+use crate::{
+    redraw::{
+        completion::CompletionUpdate, items::ItemsUpdate, prompt::PromptUpdate,
+        window::WindowUpdate,
+    },
+    ClientMessage,
+};
 
 /// Component sent to the client. Components can be opened, updated and closed.
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone, Hash)]

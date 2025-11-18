@@ -57,7 +57,7 @@ impl DirectoryOptionProvider {
     }
 }
 
-fn fast_parallel_read(root: PathBuf, ctx: ReadDirContext) {
+fn read_directory(root: PathBuf, ctx: ReadDirContext) {
     let injector = Injector::<PathBuf>::new();
     injector.push(root);
 
@@ -107,7 +107,7 @@ fn fast_parallel_read(root: PathBuf, ctx: ReadDirContext) {
 }
 
 async fn rayon_reader(dir: PathBuf, ctx: ReadDirContext) {
-    tokio::task::spawn_blocking(move || fast_parallel_read(dir, ctx))
+    tokio::task::spawn_blocking(move || read_directory(dir, ctx))
         .await
         .unwrap()
 }

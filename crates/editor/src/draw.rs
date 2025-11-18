@@ -8,9 +8,8 @@ mod statusline;
 mod window;
 
 use std::{
-    hash::Hash as _,
     mem,
-    path::{Path, PathBuf},
+    path::Path,
     sync::{
         mpsc::{channel, Receiver, Sender},
         Arc,
@@ -63,15 +62,6 @@ impl Hash {
         typ.hash(&mut hasher);
         Hash(hasher.finish())
     }
-
-    pub fn add<H: std::hash::Hash>(&mut self, typ: &H) {
-        use std::hash::Hasher;
-
-        let mut hasher = rustc_hash::FxHasher::default();
-        self.0.hash(&mut hasher);
-        typ.hash(&mut hasher);
-        self.0 = hasher.finish();
-    }
 }
 
 #[derive(Debug)]
@@ -80,15 +70,19 @@ pub(crate) struct DrawState {
     last_prompt: Option<Hash>,
     last_compl: Option<Hash>,
     last_loc: Option<Hash>,
-    last_loc_per_group: Map<PathBuf, Hash>,
 
     last_ft: Option<Hash>,
 
     last_show_popup: Option<bool>,
     last_statusline: Option<Hash>,
 
-    /// Used to track scroll position when drawing prompt
+    /// Used to track scroll position when drawing
+    pub(crate) loc_scroll_offset: usize,
+    last_loc_selection: Option<usize>,
+
     prompt_scroll_offset: usize,
+    last_prompt_selection: Option<usize>,
+
     compl_scroll_offset: usize,
 
     pub(crate) redraw_window: bool,
@@ -96,7 +90,6 @@ pub(crate) struct DrawState {
     pub(crate) window_buffer: Receiver<Arc<FromEditor>>,
     pub(crate) window_buffer_sender: Sender<Arc<FromEditor>>,
     last_window: Option<Hash>,
-    last_prompt_selection: Option<usize>,
 }
 
 impl DrawState {
@@ -112,10 +105,11 @@ impl DrawState {
             last_focus: None,
             last_compl: None,
             last_loc: None,
-            last_loc_per_group: Map::default(),
             last_ft: None,
             last_show_popup: None,
             last_statusline: None,
+            loc_scroll_offset: 0,
+            last_loc_selection: None,
             prompt_scroll_offset: 0,
             compl_scroll_offset: 0,
             redraw_window: true,

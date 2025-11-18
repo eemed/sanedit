@@ -54,7 +54,7 @@ impl<T> Locations<T> {
         LocationIter::new(&self.groups)
     }
 
-    pub fn selection_index(&self) -> Option<usize> {
+    pub fn selected_pos(&self) -> Option<usize> {
         self.selection
     }
 
@@ -132,7 +132,7 @@ impl<T> Locations<T> {
         }
     }
 
-    fn visible_len(&self) -> usize {
+    pub fn visible_len(&self) -> usize {
         let mut n = 0;
 
         for group in &self.groups {

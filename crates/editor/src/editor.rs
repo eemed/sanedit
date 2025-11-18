@@ -48,6 +48,7 @@ use windows::Mode;
 use windows::MouseClick;
 use windows::Zone;
 
+use std::cmp::min;
 use std::collections::HashSet;
 use std::env;
 use std::path::Path;
@@ -243,10 +244,7 @@ impl Editor {
     }
 
     fn on_client_connected(&mut self, handle: ClientHandle) {
-        log::info!(
-            "Client {} connected",
-            handle.id().as_usize()
-        );
+        log::info!("Client {} connected", handle.id().as_usize());
         self.clients.insert(handle.id(), handle);
     }
 
@@ -514,15 +512,52 @@ impl Editor {
                     }
                 }
             }
-            Element::Locations => {
-                if let MouseEventKind::ButtonDown(MouseButton::Left) = event.kind {
+            Element::Locations => match event.kind {
+                MouseEventKind::ScrollDown => {
+                    let (win, _buf) = self.win_buf_mut(id);
+                    let max_offset = win.locations.visible_len().saturating_sub(win.config.max_locations);
+                    let Some(draw) = self.draw_states.get_mut(&id) else {
+                        return;
+                    };
+                    let offset = min(draw.loc_scroll_offset + 2, max_offset);
+                    draw.loc_scroll_offset = offset;
+                    let (win, _buf) = self.win_buf_mut(id);
+                    while let Some(sel) = win.locations.selected_pos() {
+                        if sel < offset {
+                            win.locations.select_next();
+                        } else {
+                            break;
+                        }
+                    }
+                }
+                MouseEventKind::ScrollUp => {
+                    let Some(draw) = self.draw_states.get_mut(&id) else {
+                        return;
+                    };
+                    let offset = draw.loc_scroll_offset.saturating_sub(2);
+                    draw.loc_scroll_offset = offset;
+                    let (win, _buf) = self.win_buf_mut(id);
+                    while let Some(sel) = win.locations.selected_pos() {
+                        if sel >= offset + win.config.max_locations {
+                            win.locations.select_prev();
+                        } else {
+                            break;
+                        }
+                    }
+                }
+                MouseEventKind::ButtonDown(MouseButton::Left) => {
                     focus_with_mode(self, id, Focus::Locations, Mode::Normal);
+                    let Some(draw) = self.draw_states.get(&id) else {
+                        return;
+                    };
+                    let offset = draw.loc_scroll_offset;
                     let (win, _buf) = self.win_buf_mut(id);
                     let mouse = &mut win.locations.extra.mouse;
                     mouse.on_click(event.point);
+
                     match mouse.clicks() {
                         MouseClick::Single => {
-                            win.locations.select(event.point.y);
+                            win.locations.select(event.point.y + offset);
                         }
                         MouseClick::Double => {
                             actions::locations::goto_loc_entry.execute(self, id);
@@ -530,7 +565,8 @@ impl Editor {
                         _ => {}
                     }
                 }
-            }
+                _ => {}
+            },
             Element::Window => {
                 let (win, _buf) = self.win_buf_mut(id);
                 if win.focus != Focus::Window {

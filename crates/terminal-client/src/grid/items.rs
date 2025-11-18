@@ -54,7 +54,7 @@ impl CustomItems {
             Kind::Locations => {
                 // +1 = title
                 let items = self.items.items.len() + 1;
-                let height = items.clamp(3, 15);
+                let height = items.max(3);
                 win.split_off(Split::bottom_size(height))
             }
         }

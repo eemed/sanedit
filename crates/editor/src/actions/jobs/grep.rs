@@ -383,6 +383,9 @@ impl KeepInTouch for Grep {
         }
 
         if let Ok(results) = msg.downcast::<Vec<GrepResult>>() {
+            let draw = editor.draw_state(self.client_id);
+            draw.no_redraw_window();
+
             let (win, _buf) = editor.win_buf_mut(self.client_id);
             for res in results.into_iter() {
                 let items: Vec<Item> = res.matches.into_iter().map(Item::from).collect();

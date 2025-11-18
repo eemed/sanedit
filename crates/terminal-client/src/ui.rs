@@ -94,23 +94,17 @@ impl UI {
         if let Some(loc) = self.grid.locations() {
             if loc.rect.contains(&ev.point) {
                 match ev.kind {
-                    sanedit_messages::MouseEventKind::ScrollDown => {
-                        loc.item.scroll = min(
-                            loc.item.scroll + 2,
-                            loc.item.items.items.len().saturating_sub(1),
-                        );
-                        let _ = self.flush();
-                        return None;
-                    }
-                    sanedit_messages::MouseEventKind::ScrollUp => {
-                        loc.item.scroll = loc.item.scroll.saturating_sub(2);
-                        let _ = self.flush();
-                        return None;
+                    sanedit_messages::MouseEventKind::ScrollUp
+                    | sanedit_messages::MouseEventKind::ScrollDown => {
+                        ev.point = ev.point - loc.rect.position();
+                        // -1 = header
+                        ev.point.y = ev.point.y.saturating_sub(1);
+                        ev.element = Element::Locations;
+                        return Some(Message::MouseEvent(ev))
                     }
                     sanedit_messages::MouseEventKind::ButtonDown(MouseButton::Left) => {
                         ev.point = ev.point - loc.rect.position();
                         // -1 = header
-                        ev.point.y += loc.item.scroll;
                         ev.point.y = ev.point.y.saturating_sub(1);
                         ev.element = Element::Locations;
                         return Some(Message::MouseEvent(ev));

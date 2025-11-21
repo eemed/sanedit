@@ -205,23 +205,15 @@ impl<'a, 'b, S: Source> FinderIterRev<'a, 'b, S> {
     fn rfind_in_slice(&self, data: &[u8]) -> Option<usize> {
         if let Some(ref case_insensitive_set) = self.leading_case_insentive {
             let pattern = self.finder.needle();
-            let mut n = data.len();
-            while n > pattern.len() {
+            let mut n = data.len().saturating_sub(pattern.len().saturating_sub(1));
+            loop {
                 let slice = &data[..n];
                 n = slice.rfind_byteset(case_insensitive_set)?;
                 let end = n + pattern.len();
-                if end > data.len() {
-                    continue;
-                }
-                let candidate_data = &data[n..end];
-                if pattern.eq_ignore_ascii_case(candidate_data) {
+                if pattern.eq_ignore_ascii_case(&data[n..end]) {
                     return Some(n);
-                } else {
-                    n = n.saturating_sub(1);
                 }
             }
-
-            None
         } else {
             self.finder.searcher.rfind(data)
         }

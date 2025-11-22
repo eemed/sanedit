@@ -651,8 +651,8 @@ fn indentation_amount(editor: &mut Editor, id: ClientId, kind: IndentKind) -> Ac
     ActionResult::Ok
 }
 
-#[action("Buffer: Fix indent")]
-fn fix_indent(editor: &mut Editor, id: ClientId) -> ActionResult {
+#[action("Buffer: Reindent")]
+fn redindent(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = editor.win_buf_mut(id);
     if win.reindent(buf).is_ok() {
         let hook = Hook::BufChanged(buf.id);

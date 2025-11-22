@@ -209,7 +209,7 @@ pub(crate) const COMMANDS: &[Action] = &[
     text::change_to_eol,
     text::change_line,
     text::set_indentation,
-    text::fix_indent,
+    text::redindent,
     text::set_eol,
     text::fix_eols,
 

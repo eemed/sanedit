@@ -7,8 +7,6 @@ use std::{
     time::{Duration, Instant},
 };
 
-use chrono::{DateTime, Local, TimeDelta};
-
 use sanedit_buffer::PieceTreeSlice;
 use sanedit_messages::{key::try_parse_keyevents, ClientMessage};
 use sanedit_utils::idmap::AsID;
@@ -538,23 +536,20 @@ fn prompt_jump(editor: &mut Editor, id: ClientId) -> ActionResult {
     ActionResult::Ok
 }
 
-fn timestamp_to_string(local: &DateTime<Local>, since: Duration) -> String {
-    let Ok(delta) = TimeDelta::from_std(since) else {
-        return "<no-time>".into();
-    };
-
-    let Some(time) = local.checked_sub_signed(delta) else {
-        return "<no-time>".into();
-    };
-
-    time.format("%H:%M:%S").to_string()
+fn human_readable_duration(since: Duration) -> String {
+    if since.as_secs() < 60 {
+        format!("{} seconds ago", since.as_secs())
+    } else if since.as_secs() < 60 * 60 {
+        format!("{} minutes ago", since.as_secs() / 60)
+    } else {
+        format!("{} hours ago", since.as_secs() / (60 * 60))
+    }
 }
 
 #[action("Buffer: Show snapshots")]
 fn buffer_snapshots(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (_win, buf) = win_buf!(editor, id);
     let now = Instant::now();
-    let local = Local::now();
     let on_snapshot = buf.on_undopoint();
     let current = if on_snapshot {
         buf.snapshots().current()
@@ -568,12 +563,12 @@ fn buffer_snapshots(editor: &mut Editor, id: ClientId) -> ActionResult {
         .iter()
         .map(|snapshot| {
             let since = now.duration_since(snapshot.timestamp);
-            let ts = timestamp_to_string(&local, since);
+            let ts = human_readable_duration(since);
             let is_current = current.map(|c| c == snapshot.id).unwrap_or(false);
             let text = if is_current {
-                format!("> Snapshot at {ts}")
+                format!("> Snapshot {ts}")
             } else {
-                format!("Snapshot at {ts}")
+                format!("Snapshot {ts}")
             };
             // Reverse order using numbering
             Choice::from_numbered_text(nodes_len - snapshot.id, text)

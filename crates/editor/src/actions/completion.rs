@@ -100,7 +100,7 @@ fn completion_confirm(editor: &mut Editor, id: ClientId) -> ActionResult {
                 vec![],
             );
         }
-        Choice::LSPCompletion { item } => {
+        Choice::LSPCompletion { item, .. } => {
             let lang = getf!(buf.language.clone());
             let enc = getf!(editor
                 .language_servers
@@ -152,14 +152,20 @@ fn completion_confirm(editor: &mut Editor, id: ClientId) -> ActionResult {
                 let additional_changes: Vec<Change> = item
                     .additional_edits
                     .iter()
-                    .map(|edit| {
+                    .filter_map(|edit| {
                         let start = edit.range.start.to_offset(&slice, &enc);
                         let end = if edit.range.start == edit.range.end {
                             start
                         } else {
                             edit.range.end.to_offset(&slice, &enc)
                         };
-                        Change::replace(start..end, edit.text.as_bytes())
+
+                        // LSP sometimes may send empty edits for whatever reason
+                        if start != end || !edit.text.is_empty() {
+                            Some(Change::replace(start..end, edit.text.as_bytes()))
+                        } else {
+                            None
+                        }
                     })
                     .collect();
 

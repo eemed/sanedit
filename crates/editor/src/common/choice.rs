@@ -25,13 +25,24 @@ pub(crate) enum Choice {
         display: String,
     },
     LSPCompletion {
+        display: String,
         item: Box<CompletionItem>,
     },
 }
 
 impl Choice {
     pub fn from_completion_item(completion: CompletionItem) -> Arc<Choice> {
+        let display = if completion.is_snippet {
+            if let Ok(snippet) = Snippet::new(&completion.text) {
+                snippet.as_text()
+            } else {
+                completion.text.clone()
+            }
+        } else {
+            completion.text.clone()
+        };
         Arc::new(Choice::LSPCompletion {
+            display,
             item: Box::new(completion),
         })
     }
@@ -78,14 +89,14 @@ impl Choice {
             Choice::Path { display, .. } => display.as_str(),
             Choice::Text { text, .. } => text.as_str(),
             Choice::Numbered { display, .. } => display.as_str(),
-            Choice::LSPCompletion { item } => item.text.as_str(),
+            Choice::LSPCompletion { display, .. } => display.as_str(),
         }
     }
 
     /// Text used to filter / match this option
     pub fn filter_text(&self) -> &str {
         match self {
-            Choice::LSPCompletion { item } => item.filter_text(),
+            Choice::LSPCompletion { item, .. } => item.filter_text(),
             _ => self.text(),
         }
     }
@@ -94,7 +105,7 @@ impl Choice {
         match self {
             Choice::Snippet { .. } => SNIPPET_DESCRIPTION,
             Choice::Text { description, .. } => description,
-            Choice::LSPCompletion { item } => item.description(),
+            Choice::LSPCompletion { item, .. } => item.description(),
             _ => "",
         }
     }

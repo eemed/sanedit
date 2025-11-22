@@ -57,8 +57,22 @@ pub(crate) fn insert_snippet_impl(
     replace: BufferRange,
     additional_changes: Vec<Change>,
 ) -> ActionResult {
+    let mut pos = replace.start;
+
+    // Apply additional edits first
+    if !additional_changes.is_empty() {
+        let (win, buf) = editor.win_buf_mut(id);
+        let changes = Changes::new(&additional_changes);
+        if win.change(buf, &changes).is_ok() {
+            let hook = Hook::BufChanged(buf.id);
+            run(editor, id, hook);
+        } else {
+            return ActionResult::Failed;
+        }
+        pos = changes.move_offset(pos);
+    }
+
     let (win, buf) = editor.win_buf_mut(id);
-    let pos = replace.start;
     let slice = buf.slice(..);
     let indent_line = indent_at_line(&slice, pos);
     let preindent = {
@@ -67,7 +81,6 @@ pub(crate) fn insert_snippet_impl(
             None => String::new(),
         }
     };
-
     let kind = buf.config.indent_kind;
     let amount = buf.config.indent_amount;
     let bufindent = kind.repeat(amount as usize);
@@ -94,15 +107,18 @@ pub(crate) fn insert_snippet_impl(
         }
     }
 
-    let mut changes = additional_changes;
+    // Insert the snippet into the buffer
+    let mut changes = vec![];
     if replace.is_empty() {
         changes.push(Change::insert(pos, text.as_bytes()));
     } else {
         changes.push(Change::replace(replace, text.as_bytes()));
     }
-    let changes = Changes::new(&changes);
+    let mut changes = Changes::new(&changes);
+    if !additional_changes.is_empty() {
+        changes.disable_undo_point_creation();
+    }
 
-    // Insert snippet to buffer
     if win.change(buf, &changes).is_ok() {
         let hook = Hook::BufChanged(buf.id);
         run(editor, id, hook);

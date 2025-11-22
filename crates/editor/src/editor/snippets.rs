@@ -33,6 +33,10 @@ impl Snippet {
     pub fn trigger(&self) -> &str {
         &self.0.trigger
     }
+
+    pub fn as_text(&self) -> String {
+        self.0.as_text()
+    }
 }
 
 #[derive(Debug, Hash, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -99,6 +103,21 @@ impl SnippetInner {
         }
 
         atoms.push(atom);
+    }
+
+    /// As readable text instead of snippet
+    pub fn as_text(&self) -> String {
+        let mut text = String::new();
+        for atom in &self.atoms {
+            match atom {
+                SnippetAtom::Text(txt) => text.push_str(txt),
+                SnippetAtom::Placeholder(_, name) => text.push_str(name.as_str()),
+                SnippetAtom::Newline => {}
+                SnippetAtom::Indent => {}
+            }
+        }
+
+        text
     }
 
     fn parse_placeholder(chars: &mut Peekable<Chars>) -> Result<SnippetAtom, SnippetError> {

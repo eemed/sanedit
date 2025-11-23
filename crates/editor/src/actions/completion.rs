@@ -152,7 +152,7 @@ fn completion_confirm(editor: &mut Editor, id: ClientId) -> ActionResult {
                 let additional_changes: Vec<Change> = item
                     .additional_edits
                     .iter()
-                    .filter_map(|edit| {
+                    .map(|edit| {
                         let start = edit.range.start.to_offset(&slice, &enc);
                         let end = if edit.range.start == edit.range.end {
                             start
@@ -160,12 +160,7 @@ fn completion_confirm(editor: &mut Editor, id: ClientId) -> ActionResult {
                             edit.range.end.to_offset(&slice, &enc)
                         };
 
-                        // LSP sometimes may send empty edits for whatever reason
-                        if start != end || !edit.text.is_empty() {
-                            Some(Change::replace(start..end, edit.text.as_bytes()))
-                        } else {
-                            None
-                        }
+                        Change::replace(start..end, edit.text.as_bytes())
                     })
                     .collect();
 

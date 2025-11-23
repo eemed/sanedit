@@ -531,7 +531,10 @@ impl Handler {
                 result: RequestResult::Format {
                     edit: FileEdit {
                         path,
-                        edits: result.into_iter().map(TextEdit::from).collect(),
+                        edits: result
+                            .into_iter()
+                            .filter_map(|edit| TextEdit::try_from(edit).ok())
+                            .collect(),
                     },
                 }
                 .into(),
@@ -755,10 +758,14 @@ impl Handler {
             // --------------
 
             let text = item.insert_text.unwrap_or(item.label);
-            let edit = item.text_edit.map(|ctedit| match ctedit {
-                lsp_types::CompletionTextEdit::Edit(edit) => TextEdit::from(edit),
-                lsp_types::CompletionTextEdit::InsertAndReplace(edit) => TextEdit::from(edit),
-            });
+            let edit = item
+                .text_edit
+                .and_then(|ctedit| match ctedit {
+                    lsp_types::CompletionTextEdit::Edit(edit) => TextEdit::try_from(edit).ok(),
+                    lsp_types::CompletionTextEdit::InsertAndReplace(edit) => {
+                        TextEdit::try_from(edit).ok()
+                    }
+                });
             let kind = match item.kind {
                 Some(kind) => kind.into(),
                 None => CompletionItemKind::Text,
@@ -768,7 +775,7 @@ impl Handler {
                 .additional_text_edits
                 .unwrap_or_default()
                 .into_iter()
-                .map(TextEdit::from)
+                .filter_map(|edit| TextEdit::try_from(edit).ok())
                 .collect();
 
             let completion = CompletionItem {

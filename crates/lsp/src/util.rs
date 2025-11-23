@@ -83,7 +83,10 @@ impl From<lsp_types::WorkspaceEdit> for WorkspaceEdit {
         if let Some(changes) = changes {
             for (uri, edits) in changes.into_iter() {
                 if let Some(path) = uri_to_path(&uri) {
-                    let edits = edits.into_iter().map(TextEdit::from).collect();
+                    let edits = edits
+                        .into_iter()
+                        .filter_map(|edit| TextEdit::try_from(edit).ok())
+                        .collect();
                     file_edits.push(FileEdit { path, edits });
                 }
             }
@@ -153,7 +156,7 @@ impl TryFrom<lsp_types::TextDocumentEdit> for FileEdit {
                     lsp_types::OneOf::Left(a) => a,
                     lsp_types::OneOf::Right(b) => b.text_edit,
                 })
-                .map(TextEdit::from)
+                .filter_map(|edit| TextEdit::try_from(edit).ok())
                 .collect();
 
             Ok(FileEdit { path, edits })
@@ -169,21 +172,33 @@ pub struct TextEdit {
     pub text: String,
 }
 
-impl From<lsp_types::TextEdit> for TextEdit {
-    fn from(value: lsp_types::TextEdit) -> Self {
-        TextEdit {
+impl TryFrom<lsp_types::TextEdit> for TextEdit {
+    type Error = &'static str;
+
+    fn try_from(value: lsp_types::TextEdit) -> Result<Self, Self::Error> {
+        // These unfortunately exist, atleast jdtls 1.53 sends empty edits on snippet completions as additional edits
+        if value.range.start == value.range.end && value.new_text.is_empty() {
+            return Err("Empty text edit");
+        }
+
+        Ok(TextEdit {
             range: value.range.into(),
             text: value.new_text,
-        }
+        })
     }
 }
 
-impl From<lsp_types::InsertReplaceEdit> for TextEdit {
-    fn from(value: lsp_types::InsertReplaceEdit) -> Self {
-        TextEdit {
+impl TryFrom<lsp_types::InsertReplaceEdit> for TextEdit {
+    type Error = &'static str;
+
+    fn try_from(value: lsp_types::InsertReplaceEdit) -> Result<Self, Self::Error> {
+        if value.replace.start == value.replace.end && value.new_text.is_empty() {
+            return Err("Empty text edit");
+        }
+        Ok(TextEdit {
             range: value.replace.into(),
             text: value.new_text,
-        }
+        })
     }
 }
 

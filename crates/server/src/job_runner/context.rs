@@ -20,7 +20,7 @@ impl JobContext {
         self.sender
             .editor
             .send(ToEditor::Jobs(FromJobs::Message(self.id, any)))
-            .expect("Main loop shut down")
+            .expect("Main loop shut down");
     }
 }
 

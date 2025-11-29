@@ -39,18 +39,6 @@ impl JobBroker {
         }
     }
 
-    #[allow(dead_code)]
-    /// Run a job in the background
-    pub fn run<T>(&mut self, job: T) -> JobId
-    where
-        T: Job + Send + Sync + Clone + 'static,
-    {
-        let job = Box::new(job.clone());
-        let id = JobId::next();
-        let _ = self.handle.blocking_send(ToJobs::Request(id, job));
-        id
-    }
-
     /// Request a job to be ran in a slot.
     /// If the slot (id, name) pair already contains a job stop it.
     pub fn request_slot<T>(&mut self, id: ClientId, name: &str, task: T) -> JobId

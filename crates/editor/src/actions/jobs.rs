@@ -8,6 +8,7 @@ mod matcher;
 mod search;
 mod shell;
 mod syntax;
+mod git;
 // mod text;
 
 pub(crate) const CHANNEL_SIZE: usize = 64;
@@ -20,4 +21,5 @@ pub(crate) use lsp::*;
 pub(crate) use matcher::*;
 pub(crate) use search::*;
 pub(crate) use syntax::*;
+pub(crate) use git::*;
 // pub(crate) use text::*;

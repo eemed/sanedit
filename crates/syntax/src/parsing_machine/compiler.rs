@@ -5,6 +5,7 @@ use crate::{
 
 use super::{op::Operation, Addr};
 
+#[derive(Clone)]
 pub struct Program {
     pub(crate) ops: Vec<Operation>,
 }

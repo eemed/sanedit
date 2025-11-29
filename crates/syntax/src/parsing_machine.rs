@@ -70,7 +70,7 @@ enum State {
 
 pub(crate) type SubjectPosition = u64;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ParsingMachine {
     rules: Rules,
     program: Program,

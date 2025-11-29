@@ -1,4 +1,5 @@
 use crate::{
+    actions::jobs::GitJob,
     common::is_yes,
     editor::{
         config::Config,
@@ -139,6 +140,10 @@ fn nop(_editor: &mut Editor, _id: ClientId) -> ActionResult {
 fn toggle_ignore(editor: &mut Editor, id: ClientId) -> ActionResult {
     if editor.ignore.is_empty() {
         editor.ignore = Ignore::new(editor.working_dir(), &editor.config, &editor.project_config);
+        editor.job_broker.request(GitJob {
+            client_id: id,
+            working_dir: editor.working_dir().to_path_buf(),
+        });
         let (win, _buf) = editor.win_buf_mut(id);
         win.info_msg("File ignoring enabled");
     } else {

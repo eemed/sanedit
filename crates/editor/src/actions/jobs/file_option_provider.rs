@@ -26,7 +26,7 @@ pub fn get_option_provider_pool() -> &'static ThreadPool {
             .map(|n| n.get())
             .unwrap_or(4);
 
-        let threads = parallelism.clamp(2, 8);
+        let threads = parallelism.clamp(2, 4);
 
         log::debug!("Option provider pool: {threads} threads.");
 

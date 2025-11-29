@@ -19,7 +19,7 @@ pub enum Annotation {
 }
 
 /// Ordered set of rules, rules are identified by their indices
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) struct Rules {
     rules: Box<[RuleInfo]>,
 }

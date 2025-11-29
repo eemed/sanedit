@@ -4,7 +4,7 @@ document = (code_fence / inline / hr / other / keepany)*;
 keepany = .;
 @show @highlight(keep)
 other = (!stop .)+;
-stop = [*_`\r\n-];
+stop = [*_`\r\n\[-];
 
 WHITESPACE = [ \t];
 ws = WHITESPACE*;
@@ -24,19 +24,23 @@ bold_und_cont = (!(bold_und / nl) (inline / .))*;
 italic = italic_star italic_star_cont italic_star / italic_und italic_und_cont italic_und;
 italic_star = "*";
 @show @highlight(italic)
-italic_star_cont = (!(italic_star / nl / WHITESPACE) (inline / .)) (!(italic_star / nl) (inline / .))*;
+italic_star_cont = (!(italic_star / nl / WHITESPACE) (inline / .));
 
 italic_und = "_";
 @show @highlight(italic)
-italic_und_cont = (!(italic_und / nl / WHITESPACE) (inline / .))* (!(italic_und / nl) (inline / .))*;
+italic_und_cont = (!(italic_und / nl / WHITESPACE) (inline / .))*;
 
-backtick = backtick_op backtick_cont backtick_op;
+backtick = backtick_op backtick_cont backtick_op / dbacktick_op dbacktick_cont dbacktick_op;
 backtick_op = "`";
 @show @highlight(keep)
-backtick_cont = (!(backtick_op / nl) (inline / .))*;
+backtick_cont = [^`]*;
+
+dbacktick_op = "``";
+@show @highlight(keep)
+dbacktick_cont = (!"``" .)*;
 
 code_fence = start_fence fence_cont end_fence;
-start_fence = "```" [a..zA..Z0..9_]+ nl;
+start_fence = "```" [a..zA..Z0..9_:-]+ nl;
 end_fence = "```";
 
 @show @highlight(keep)

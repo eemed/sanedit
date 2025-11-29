@@ -14,7 +14,7 @@ pub enum GlobError {
     Parsing(#[from] ParseError),
 }
 
-pub struct GlobRules(Rules);
+pub struct GlobRules(Rules, GlobOptions);
 
 impl std::fmt::Display for GlobRules {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -38,34 +38,47 @@ fn glob_parser() -> &'static Parser {
     parser.as_ref()
 }
 
-/// Done like https://en.wikipedia.org/wiki/Glob_(programming)
-///
-/// No extglob
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub struct GlobOptions {
+    pub negated: bool,
+    pub directory_only: bool,
+}
+
+/// Git ignore globs
+/// https://git-scm.com/docs/gitignore
 #[allow(dead_code)]
 #[derive(Debug)]
 pub struct Glob {
     parser: Parser,
+    options: GlobOptions,
 }
 
 #[allow(dead_code)]
 impl Glob {
     pub fn new(pattern: &str) -> Result<Glob, GlobError> {
-        let rules = Self::to_rules(pattern)?;
+        let (rules, options) = Self::to_rules(pattern)?;
         let parser = Parser::from_rules(rules)?;
-        Ok(Glob { parser })
+        Ok(Glob { parser, options })
     }
 
     pub fn parse_pattern(pattern: &str) -> Result<GlobRules, GlobError> {
-        let rules = Self::to_rules(pattern)?;
-        Ok(GlobRules(rules))
+        let (rules, options) = Self::to_rules(pattern)?;
+        Ok(GlobRules(rules, options))
+    }
+
+    pub fn options(&self) -> &GlobOptions {
+        &self.options
     }
 
     pub fn from_rules(rules: GlobRules) -> Result<Glob, GlobError> {
         let parser = Parser::from_rules(rules.0)?;
-        Ok(Glob { parser })
+        Ok(Glob {
+            parser,
+            options: rules.1,
+        })
     }
 
-    fn to_rules(mut pattern: &str) -> Result<Rules, GlobError> {
+    fn to_rules(mut pattern: &str) -> Result<(Rules, GlobOptions), GlobError> {
         let to_bytes = |cap: &Capture| {
             let range = cap.range();
             pattern.as_bytes()[range.start as usize..range.end as usize].to_vec()
@@ -75,12 +88,21 @@ impl Glob {
         let captures: SortedVec<Capture> = parser.parse(&mut pattern)?.into();
         let mut rules: Vec<RuleInfo> = vec![];
         let mut seq: Vec<Rule> = vec![];
-        let mut last_was_rec_wildcard = false;
-
+        let mut negated = false;
+        let mut separator_at_beginning_or_middle = false;
+        let mut last_label = None;
         let mut iter = captures.iter().peekable();
+
         while let Some(cap) = iter.next() {
+            if let Some(ll) = last_label {
+                if ll == "separator" {
+                    separator_at_beginning_or_middle = true;
+                }
+            }
+
             let label = parser.label_for(cap.id());
             match label {
+                "negate" => negated = true,
                 "negative_brackets" => {
                     let inside = {
                         let mut inside = vec![];
@@ -163,7 +185,7 @@ impl Glob {
                         seq.push(Rule::Choice(choices));
                     }
                 }
-                "text" => seq.push(Rule::ByteSequence(to_bytes(cap))),
+                "escape_char" | "text" => seq.push(Rule::ByteSequence(to_bytes(cap))),
                 "wildcard" => {
                     let prev_i = rules.len();
                     let wildcard_i = prev_i + 1;
@@ -254,7 +276,7 @@ impl Glob {
                 }
                 "separator" => {
                     // Recursive wildcard a/**/b matches also a/b, we need to possibly eat the /
-                    if last_was_rec_wildcard {
+                    if last_label == Some("recursive_wildcard") {
                         seq.push(Rule::Optional(Rule::ByteSequence("/".into()).into()));
                     } else {
                         seq.push(Rule::ByteSequence("/".into()));
@@ -263,26 +285,62 @@ impl Glob {
                 _ => {}
             }
 
-            last_was_rec_wildcard = label == "recursive_wildcard";
+            last_label = Some(label);
         }
 
-        // Assert end or separator
-        seq.push(Rule::Choice(vec![
-            Rule::ByteSequence("/".into()),
-            Rule::NotFollowedBy(Rule::ByteAny.into()),
-        ]));
+        let directory_only = last_label == Some("separator");
+        if directory_only {
+            seq.pop();
+        }
 
-        let info = RuleInfo {
-            top: false,
-            annotations: vec![],
-            name: "final".into(),
-            rule: Rule::Sequence(seq),
-        };
-        rules.push(info);
+        seq.push(Rule::Optional(Rule::ByteSequence("/".into()).into()));
+        seq.push(Rule::NotFollowedBy(Rule::ByteAny.into()));
+
+        if !separator_at_beginning_or_middle {
+            // Should match at any level => add recursive wildcard to start
+            // rule = "/"? (<<original>> / [^/]+ Ref(rule))
+            let original_i = rules.len();
+            let rule = Rule::Sequence(vec![
+                Rule::Optional(Rule::ByteSequence("/".into()).into()),
+                Rule::Choice(vec![
+                    Rule::Sequence(seq),
+                    Rule::Sequence(vec![
+                        Rule::OneOrMore(
+                            Rule::Choice(vec![
+                                Rule::ByteRange(u8::MIN, b'/' - 1),
+                                Rule::ByteRange(b'/' + 1, u8::MAX),
+                            ])
+                            .into(),
+                        ),
+                        Rule::Ref(original_i),
+                    ]),
+                ]),
+            ]);
+            let info = RuleInfo {
+                top: false,
+                annotations: vec![],
+                name: "final".into(),
+                rule,
+            };
+            rules.push(info);
+        } else {
+            let info = RuleInfo {
+                top: false,
+                annotations: vec![],
+                name: "final".into(),
+                rule: Rule::Sequence(seq),
+            };
+            rules.push(info);
+        }
+
         rules[0].top = true;
 
         let rules = Rules::new(rules.into());
-        Ok(rules)
+        let options = GlobOptions {
+            negated,
+            directory_only,
+        };
+        Ok((rules, options))
     }
 
     pub fn is_match<B: AsRef<[u8]>>(&self, bytes: &B) -> bool {
@@ -315,7 +373,6 @@ mod test {
     #[test]
     fn glob_directory() {
         let glob = Glob::new("**/node_modules").unwrap();
-        assert_eq!(glob.is_match(b"/root/user/node_modules/library"), true);
         assert_eq!(glob.is_match(b"/root/user/node_modules"), true);
         assert_eq!(glob.is_match(b"node_modules"), true);
         assert_eq!(glob.is_match(b"text/lorem.txt"), false);
@@ -369,6 +426,7 @@ mod test {
         assert_eq!(glob.is_match(b"Cat"), true);
         assert_eq!(glob.is_match(b"Bat"), true);
         assert_eq!(glob.is_match(b"ccat"), false);
+        assert_eq!(glob.is_match(b"Catt"), false);
     }
 
     #[test]
@@ -378,5 +436,26 @@ mod test {
         assert_eq!(glob.is_match(b"Letter0"), true);
         assert_eq!(glob.is_match(b"Letter10"), false);
         assert_eq!(glob.is_match(b"Letter"), false);
+    }
+
+    #[test]
+    fn glob_negate() {
+        let glob = Glob::new("!Letter[0-9]").unwrap();
+        assert_eq!(glob.is_match(b"Letter8"), true);
+        assert_eq!(glob.is_match(b"Letter0"), true);
+        assert_eq!(glob.is_match(b"Letter10"), false);
+        assert_eq!(glob.is_match(b"Letter"), false);
+        assert_eq!(glob.options().negated, true)
+    }
+
+    #[test]
+    fn glob_dir_level() {
+        let glob = Glob::new("deb/").unwrap();
+        assert_eq!(glob.is_match(b"deb"), true);
+        assert_eq!(glob.is_match(b"deb/"), true);
+        assert_eq!(glob.is_match(b"burbur/hurdurr/deb"), true);
+        assert_eq!(glob.is_match(b"/hurdurr/deb"), true);
+        assert_eq!(glob.is_match(b"deb/shit"), false);
+        assert_eq!(glob.is_match(b"hurdurr/deb/shit"), false);
     }
 }

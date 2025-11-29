@@ -25,8 +25,8 @@ pub(crate) enum Choice {
         display: String,
     },
     LSPCompletion {
-        display: String,
         item: Box<CompletionItem>,
+        display: Option<String>,
     },
 }
 
@@ -34,12 +34,12 @@ impl Choice {
     pub fn from_completion_item(completion: CompletionItem) -> Arc<Choice> {
         let display = if completion.is_snippet {
             if let Ok(snippet) = Snippet::new(&completion.text) {
-                snippet.as_text()
+                Some(snippet.as_text())
             } else {
-                completion.text.clone()
+                None
             }
         } else {
-            completion.text.clone()
+            None
         };
         Arc::new(Choice::LSPCompletion {
             display,
@@ -89,7 +89,7 @@ impl Choice {
             Choice::Path { display, .. } => display.as_str(),
             Choice::Text { text, .. } => text.as_str(),
             Choice::Numbered { display, .. } => display.as_str(),
-            Choice::LSPCompletion { display, .. } => display.as_str(),
+            Choice::LSPCompletion { display, item } => display.as_ref().unwrap_or(&item.text),
         }
     }
 

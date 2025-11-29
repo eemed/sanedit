@@ -260,6 +260,9 @@ pub(crate) struct EditorConfig {
     /// Glob patterns to ignore, when opening files etc.
     pub ignore: Vec<String>,
 
+    /// Respect git ignore values
+    pub git_ignore: bool,
+
     /// Autodetect eol from file
     pub detect_eol: bool,
 

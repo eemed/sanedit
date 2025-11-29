@@ -126,10 +126,8 @@ impl Default for EditorConfig {
     fn default() -> Self {
         EditorConfig {
             big_file_threshold_bytes: 100 * 1024 * 1024, // 100MB
-            ignore: ["**/.git", "**/target", "**/node_modules"]
-                .into_iter()
-                .map(String::from)
-                .collect::<Vec<String>>(),
+            ignore: vec![],
+            git_ignore: true,
             detect_eol: true,
             detect_indent: true,
             language_detect: Self::default_language_map(),

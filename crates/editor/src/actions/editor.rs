@@ -142,7 +142,7 @@ fn toggle_ignore(editor: &mut Editor, id: ClientId) -> ActionResult {
         let (win, _buf) = editor.win_buf_mut(id);
         win.info_msg("File ignoring enabled");
     } else {
-        editor.ignore = Ignore::empty(editor.working_dir());
+        editor.ignore = Ignore::empty();
         let (win, _buf) = editor.win_buf_mut(id);
         win.info_msg("File ignoring disabled");
     }

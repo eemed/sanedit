@@ -7,10 +7,7 @@ use sanedit_utils::either::Either;
 use crate::{
     common::Choice,
     editor::{
-        hooks::Hook,
-        snippets::Snippet,
-        windows::{Completion, Focus},
-        Editor,
+        hooks::Hook, lsp::Lsp, snippets::Snippet, windows::{Completion, Focus}, Editor
     },
 };
 
@@ -105,7 +102,7 @@ fn completion_confirm(editor: &mut Editor, id: ClientId) -> ActionResult {
             let enc = getf!(editor
                 .language_servers
                 .get(&lang)
-                .map(|x| x.position_encoding()));
+                .and_then(Lsp::position_encoding));
             if item.is_snippet {
                 let (text, mut replace) = match item.insert_text() {
                     Either::Left(text) => {

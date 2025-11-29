@@ -109,8 +109,8 @@ impl Lsp {
         Ok(())
     }
 
-    pub fn position_encoding(&self) -> PositionEncoding {
-        let sender = self.sender.as_ref().unwrap();
-        sender.position_encoding()
+    pub fn position_encoding(&self) -> Option<PositionEncoding> {
+        let sender = self.sender.as_ref()?;
+        Some(sender.position_encoding())
     }
 }

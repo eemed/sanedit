@@ -8,7 +8,7 @@ nl = "\r\n" / "\n";
 title = "#"+ (!nl .)*;
 
 @show @highlight(operator)
-list_op = nl ws "*" / "-" / "+";
+list_op = nl ws ("*" / "-" / "+");
 
 link = "[" link_name "](" link_url ")";
 @show @highlight(keyword)
@@ -23,7 +23,7 @@ backtick = "`" (!"`" .)* "`";
 code_fence = fence code_name nl code fence;
 
 @injection-language @highlight(operator)
-code_name = [a..zA..Z0..9_]+;
+code_name = [a..zA..Z0..9_:-]+;
 
 @inject
 code = (!fence .)*;

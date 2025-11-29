@@ -1,6 +1,13 @@
-document = element !.;
+document = negate? element separator? !.;
 
-element = (recursive_wildcard / (wildcard / any / brackets / negative_brackets / text)+) (separator element)?;
+element = (recursive_wildcard / (wildcard / any / brackets / negative_brackets / text / escape)+) (separator element)?;
+
+@show
+negate = "!";
+escape = "\\" escape_char;
+
+@show
+escape_char = .;
 
 @show
 separator = "/";

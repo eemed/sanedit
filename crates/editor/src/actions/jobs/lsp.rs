@@ -19,7 +19,7 @@ use crate::{
         config::LSPConfig,
         hooks::Hook,
         job_broker::KeepInTouch,
-        lsp::Constraint,
+        lsp::{Constraint, Lsp},
         windows::{Completion, Cursors, Prompt},
         Editor,
     },
@@ -242,7 +242,7 @@ impl LSPJob {
             return;
         }
 
-        let enc = get!(editor.lsp_for(id).map(|x| x.position_encoding()));
+        let enc = get!(editor.lsp_for(id).and_then(Lsp::position_encoding));
         let (win, buf) = editor.win_buf_mut(id);
         let slice = buf.slice(..);
         let offset = position.to_offset(&slice, &enc);
@@ -319,7 +319,7 @@ impl LSPJob {
         win.locations.clear();
         locations::show_locations.execute(editor, id);
 
-        let enc = get!(editor.lsp_for(id).map(|x| x.position_encoding()));
+        let enc = get!(editor.lsp_for(id).and_then(Lsp::position_encoding));
         let (win, _buf) = win_buf!(editor, id);
 
         for (path, symbols) in symbols {
@@ -351,7 +351,7 @@ impl LSPJob {
         position: Position,
         opts: Vec<CompletionItem>,
     ) {
-        let enc = get!(editor.lsp_for(id).map(|x| x.position_encoding()));
+        let enc = get!(editor.lsp_for(id).and_then(Lsp::position_encoding));
         let (win, buf) = win_buf!(editor, id);
         let slice = buf.slice(..);
         let start = position.to_offset(&slice, &enc);
@@ -408,7 +408,7 @@ impl LSPJob {
         let Some(enc) = editor
             .language_servers
             .get(&self.language)
-            .map(|x| x.position_encoding())
+            .and_then(Lsp::position_encoding)
         else {
             return;
         };
@@ -515,7 +515,7 @@ impl LSPJob {
                 }
             },
         };
-        let enc = get!(editor.lsp_for(id).map(|x| x.position_encoding()));
+        let enc = get!(editor.lsp_for(id).and_then(Lsp::position_encoding));
 
         let buf = editor.buffers_mut().get_mut(bid).unwrap();
         let slice = buf.slice(..);
@@ -569,7 +569,7 @@ impl LSPJob {
         id: ClientId,
         references: BTreeMap<PathBuf, Vec<PositionRange>>,
     ) {
-        let Some(enc) = editor.lsp_for(id).map(|handle| handle.position_encoding()) else {
+        let Some(enc) = editor.lsp_for(id).and_then(Lsp::position_encoding) else {
             return;
         };
 

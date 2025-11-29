@@ -1,1 +1,0 @@
-ignore = [".git", "deb", "crates/target", "crates/Cargo.lock", "docs"]

@@ -194,7 +194,7 @@ fn restart_lsp(editor: &mut Editor, id: ClientId) -> ActionResult {
 fn hover(editor: &mut Editor, id: ClientId) -> ActionResult {
     lsp_request(editor, id, move |win, buf, path, slice, lsp| {
         let offset = win.cursors.primary().pos();
-        let position = Position::new(offset, &slice, &lsp.position_encoding());
+        let position = Position::new(offset, &slice, &lsp.position_encoding()?);
         let kind = RequestKind::Hover { path, position };
         Some((
             kind,
@@ -212,7 +212,7 @@ fn hover(editor: &mut Editor, id: ClientId) -> ActionResult {
 fn goto_definition(editor: &mut Editor, id: ClientId) -> ActionResult {
     lsp_request(editor, id, move |win, buf, path, slice, lsp| {
         let offset = win.cursors.primary().pos();
-        let position = Position::new(offset, &slice, &lsp.position_encoding());
+        let position = Position::new(offset, &slice, &lsp.position_encoding()?);
         let kind = RequestKind::GotoDefinition { path, position };
         Some((
             kind,
@@ -238,7 +238,7 @@ fn show_symbols(editor: &mut Editor, id: ClientId) -> ActionResult {
 fn show_signature_help(editor: &mut Editor, id: ClientId) -> ActionResult {
     lsp_request(editor, id, move |win, buf, path, slice, lsp| {
         let offset = win.cursors.primary().pos();
-        let position = Position::new(offset, &slice, &lsp.position_encoding());
+        let position = Position::new(offset, &slice, &lsp.position_encoding()?);
         let kind = RequestKind::SignatureHelp { path, position };
         Some((
             kind,
@@ -260,7 +260,7 @@ fn sync_document(editor: &mut Editor, id: ClientId) -> ActionResult {
             // Nothing to sync
             return None;
         };
-        let enc = lsp.position_encoding();
+        let enc = lsp.position_encoding()?;
         let eslice = edit.buf.slice(..);
 
         use ChangesKind::*;
@@ -305,7 +305,7 @@ fn sync_document(editor: &mut Editor, id: ClientId) -> ActionResult {
 fn complete(editor: &mut Editor, id: ClientId) -> ActionResult {
     lsp_request(editor, id, move |win, buf, path, slice, lsp| {
         let offset = win.cursors.primary().pos();
-        let position = Position::new(offset, &slice, &lsp.position_encoding());
+        let position = Position::new(offset, &slice, &lsp.position_encoding()?);
         let kind = RequestKind::Complete { path, position };
         Some((
             kind,
@@ -338,7 +338,7 @@ fn pull_diagnostics(editor: &mut Editor, id: ClientId) -> ActionResult {
 fn references(editor: &mut Editor, id: ClientId) -> ActionResult {
     lsp_request(editor, id, move |win, _buf, path, slice, lsp| {
         let offset = win.cursors.primary().pos();
-        let position = Position::new(offset, &slice, &lsp.position_encoding());
+        let position = Position::new(offset, &slice, &lsp.position_encoding()?);
         let kind = RequestKind::References { path, position };
 
         Some((kind, vec![]))
@@ -350,7 +350,7 @@ fn references(editor: &mut Editor, id: ClientId) -> ActionResult {
 fn code_action(editor: &mut Editor, id: ClientId) -> ActionResult {
     lsp_request(editor, id, move |win, buf, path, slice, lsp| {
         let offset = win.cursors.primary().pos();
-        let position = Position::new(offset, &slice, &lsp.position_encoding());
+        let position = Position::new(offset, &slice, &lsp.position_encoding()?);
         let kind = RequestKind::CodeAction { path, position };
         Some((
             kind,
@@ -409,7 +409,8 @@ fn rename(editor: &mut Editor, id: ClientId) -> ActionResult {
             let path = getf!(buf.path().map(Path::to_path_buf));
             let lang = getf!(buf.language.clone());
             let lsp = getf!(editor.language_servers.get(&lang));
-            let position = Position::new(offset, &slice, &lsp.position_encoding());
+            let enc = getf!(lsp.position_encoding());
+            let position = Position::new(offset, &slice, &enc);
             let request = RequestKind::Rename {
                 path,
                 position,

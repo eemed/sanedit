@@ -83,7 +83,6 @@ impl GitIgnore {
                 continue;
             }
 
-            log::info!("PATTERN: {line:?}");
             match GitGlob::new(&line) {
                 Ok(glob) => patterns.push(glob),
                 Err(e) => log::error!("Failed to parse pattern: {} at {:?}: {}", line, &path, e),

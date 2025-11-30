@@ -30,9 +30,9 @@ pub fn get_option_provider_pool() -> &'static ThreadPool {
     POOL.get_or_init(|| {
         let parallelism = std::thread::available_parallelism()
             .map(|n| n.get())
-            .unwrap_or(4);
+            .unwrap_or(2);
 
-        let threads = parallelism.clamp(2, 4);
+        let threads = parallelism.clamp(2, 8);
 
         log::debug!("Option provider pool: {threads} threads.");
 

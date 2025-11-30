@@ -24,10 +24,6 @@ use sanedit_server::{ClientId, Job, JobContext, JobResult};
 
 use std::{cmp::min, sync::atomic::AtomicBool};
 
-use rayon::{
-    iter::{IntoParallelRefIterator as _, ParallelIterator as _},
-    slice::ParallelSliceMut as _,
-};
 use sanedit_core::Range;
 
 pub use strategy::*;
@@ -287,7 +283,7 @@ impl Matcher {
 
                     let opts = reader.slice(batch);
                     let mut results: Vec<ScoredChoice> = opts
-                        .par_iter()
+                        .iter()
                         .filter_map(|choice| {
                             let ranges = matches_with(choice.filter_text(), &matcher)?;
                             let score = score(choice, &ranges);
@@ -296,7 +292,7 @@ impl Matcher {
                         })
                         .collect();
 
-                    results.par_sort();
+                    results.sort();
                     locally_sorted.push(unsafe { SortedVec::from_sorted_unchecked(results) });
 
                     if last_sent.elapsed() > send_rate {

@@ -9,11 +9,12 @@ use std::{
     sync::{Arc, OnceLock},
 };
 
+pub const GIT_DIR_NAME: &str = ".git";
 pub const GIT_IGNORE_FILENAME: &str = ".gitignore";
 
 pub fn git_dir() -> &'static OsStr {
     static S: OnceLock<&'static OsStr> = OnceLock::new();
-    S.get_or_init(|| OsStr::new(".git"))
+    S.get_or_init(|| OsStr::new(GIT_DIR_NAME))
 }
 
 pub fn git_ignore() -> &'static OsStr {
@@ -25,13 +26,15 @@ pub fn git_ignore() -> &'static OsStr {
 pub(crate) struct GitIgnoreList(Vec<Arc<GitIgnore>>);
 
 impl GitIgnoreList {
-    pub fn new(ignore: Vec<Arc<GitIgnore>>)  -> GitIgnoreList {
+    pub fn new(ignore: Vec<Arc<GitIgnore>>) -> GitIgnoreList {
         GitIgnoreList(ignore)
     }
 
     pub fn is_ignored(&self, path: &Path) -> bool {
         for ignore in &self.0 {
-            let local = path.strip_prefix(&ignore.root).unwrap_or(path);
+            let Ok(local) = path.strip_prefix(&ignore.root) else {
+                continue;
+            };
             let bytes = local.to_string_lossy();
 
             for glob in &ignore.patterns {
@@ -80,6 +83,7 @@ impl GitIgnore {
                 continue;
             }
 
+            log::info!("PATTERN: {line:?}");
             match GitGlob::new(&line) {
                 Ok(glob) => patterns.push(glob),
                 Err(e) => log::error!("Failed to parse pattern: {} at {:?}: {}", line, &path, e),
@@ -89,13 +93,18 @@ impl GitIgnore {
         patterns.sort_by(|a, b| b.options().cmp(a.options()));
 
         Ok(GitIgnore {
-            root: path.to_path_buf(),
+            root: path
+                .parent()
+                .ok_or(std::io::Error::from(std::io::ErrorKind::NotFound))?
+                .to_path_buf(),
             patterns,
         })
     }
 
     pub fn is_ignored(&self, path: &Path) -> bool {
-        let local = path.strip_prefix(&self.root).unwrap_or(path);
+        let Ok(local) = path.strip_prefix(&self.root) else {
+            return false;
+        };
         let bytes = local.to_string_lossy();
 
         for glob in &self.patterns {

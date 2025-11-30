@@ -10,6 +10,7 @@ use rayon::{
     iter::{IntoParallelIterator as _, ParallelIterator as _},
     ThreadPool,
 };
+use sanedit_syntax::GitGlob;
 use sanedit_utils::appendlist::Appendlist;
 
 use sanedit_server::{BoxFuture, Kill};
@@ -76,6 +77,7 @@ fn read_directory(root: PathBuf, mut ctx: ReadDirContext) {
                 if ctx.git_ignore {
                     let ignore_path = dir.join(GIT_IGNORE_FILENAME);
                     if ignore_path.exists() {
+                        log::info!("IGNORE: {ignore_path:?}");
                         if let Ok(git_ignore) = GitIgnore::new(&ignore_path) {
                             let ig = Arc::make_mut(&mut ignore);
                             ig.push(Arc::new(git_ignore));
@@ -160,6 +162,11 @@ fn get_ignore(dir: &Path, ignore: Ignore, git_ignore: bool) -> GitIgnoreList {
     if !git_ignore {
         return GitIgnoreList::new(ignores);
     }
+
+    ignores.push(Arc::new(GitIgnore {
+        root: dir.to_path_buf(),
+        patterns: vec![GitGlob::new(".git/").unwrap()],
+    }));
 
     if let Ok((_root, git_ignores)) = find_git_root(dir) {
         for ignore in git_ignores {

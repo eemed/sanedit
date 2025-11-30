@@ -296,14 +296,22 @@ impl GitGlob {
         seq.push(Rule::Optional(Rule::ByteSequence("/".into()).into()));
         seq.push(Rule::NotFollowedBy(Rule::ByteAny.into()));
 
+        let info = RuleInfo {
+            top: false,
+            annotations: vec![],
+            name: "final".into(),
+            rule: Rule::Sequence(seq),
+        };
+        rules.push(info);
+
         if !separator_at_beginning_or_middle {
             // Should match at any level => add recursive wildcard to start
-            // rule = "/"? (<<original>> / [^/]+ Ref(rule))
-            let original_i = rules.len();
+            // rule = "/"? (Ref(top_level) / [^/]+ Ref(rule))
+            let rule_i = rules.len();
             let rule = Rule::Sequence(vec![
                 Rule::Optional(Rule::ByteSequence("/".into()).into()),
                 Rule::Choice(vec![
-                    Rule::Sequence(seq),
+                    Rule::Ref(0),
                     Rule::Sequence(vec![
                         Rule::OneOrMore(
                             Rule::Choice(vec![
@@ -312,7 +320,7 @@ impl GitGlob {
                             ])
                             .into(),
                         ),
-                        Rule::Ref(original_i),
+                        Rule::Ref(rule_i),
                     ]),
                 ]),
             ]);
@@ -323,17 +331,10 @@ impl GitGlob {
                 rule,
             };
             rules.push(info);
+            rules[rule_i].top = true;
         } else {
-            let info = RuleInfo {
-                top: false,
-                annotations: vec![],
-                name: "final".into(),
-                rule: Rule::Sequence(seq),
-            };
-            rules.push(info);
+            rules[0].top = true;
         }
-
-        rules[0].top = true;
 
         let rules = Rules::new(rules.into());
         let options = GlobOptions {
@@ -456,6 +457,33 @@ mod test {
         assert_eq!(glob.is_match(b"burbur/hurdurr/deb"), true);
         assert_eq!(glob.is_match(b"/hurdurr/deb"), true);
         assert_eq!(glob.is_match(b"deb/shit"), false);
+        assert_eq!(glob.is_match(b"hurdurr/deb/shit"), false);
+    }
+
+    #[test]
+    fn glob_star_end() {
+        let glob = GitGlob::new("perf.data*").unwrap();
+        assert_eq!(glob.is_match(b"perf.data"), true);
+        assert_eq!(glob.is_match(b"perf.data.old"), true);
+        assert_eq!(glob.is_match(b"burbur/hurdurr/perf.data"), true);
+        assert_eq!(glob.is_match(b"deb/shit"), false);
+        assert_eq!(glob.is_match(b"hurdurr/deb/shit"), false);
+    }
+
+    #[test]
+    fn glob_recstar_end() {
+        let glob = GitGlob::new("perf/**").unwrap();
+        assert_eq!(glob.is_match(b"perf/bar"), true);
+        assert_eq!(glob.is_match(b"perf/"), true);
+        assert_eq!(glob.is_match(b"foo/perf/bar"), false);
+        assert_eq!(glob.is_match(b"deb/shit"), false);
+        assert_eq!(glob.is_match(b"hurdurr/deb/shit"), false);
+    }
+
+    #[test]
+    fn glob_direct_match() {
+        let glob = GitGlob::new("runtime/config.toml").unwrap();
+        assert_eq!(glob.is_match(b"runtime/config.toml"), true);
         assert_eq!(glob.is_match(b"hurdurr/deb/shit"), false);
     }
 }

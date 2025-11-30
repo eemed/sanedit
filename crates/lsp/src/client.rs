@@ -758,14 +758,12 @@ impl Handler {
             // --------------
 
             let text = item.insert_text.unwrap_or(item.label);
-            let edit = item
-                .text_edit
-                .and_then(|ctedit| match ctedit {
-                    lsp_types::CompletionTextEdit::Edit(edit) => TextEdit::try_from(edit).ok(),
-                    lsp_types::CompletionTextEdit::InsertAndReplace(edit) => {
-                        TextEdit::try_from(edit).ok()
-                    }
-                });
+            let edit = item.text_edit.and_then(|ctedit| match ctedit {
+                lsp_types::CompletionTextEdit::Edit(edit) => TextEdit::try_from(edit).ok(),
+                lsp_types::CompletionTextEdit::InsertAndReplace(edit) => {
+                    TextEdit::try_from(edit).ok()
+                }
+            });
             let kind = match item.kind {
                 Some(kind) => kind.into(),
                 None => CompletionItemKind::Text,

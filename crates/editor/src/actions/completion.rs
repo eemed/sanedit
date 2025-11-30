@@ -7,7 +7,11 @@ use sanedit_utils::either::Either;
 use crate::{
     common::Choice,
     editor::{
-        hooks::Hook, lsp::Lsp, snippets::Snippet, windows::{Completion, Focus}, Editor
+        hooks::Hook,
+        lsp::Lsp,
+        snippets::Snippet,
+        windows::{Completion, Focus},
+        Editor,
     },
 };
 

@@ -5,7 +5,7 @@ use std::{
 };
 
 use rustc_hash::FxHashMap;
-use sanedit_syntax::Glob;
+use sanedit_syntax::GitGlob;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
@@ -16,7 +16,7 @@ pub struct Detect {
     shebangs: Vec<String>,
 
     #[serde(skip)]
-    compiled_globs: Arc<OnceLock<Vec<Glob>>>,
+    compiled_globs: Arc<OnceLock<Vec<GitGlob>>>,
 }
 
 impl Detect {
@@ -29,11 +29,11 @@ impl Detect {
         }
     }
 
-    pub fn compile_globs(&self) -> &Vec<Glob> {
+    pub fn compile_globs(&self) -> &Vec<GitGlob> {
         self.compiled_globs.get_or_init(move || {
             let mut globs = Vec::with_capacity(self.globs.len());
             for pat in &self.globs {
-                if let Ok(glob) = Glob::new(pat) {
+                if let Ok(glob) = GitGlob::new(pat) {
                     globs.push(glob);
                 }
             }

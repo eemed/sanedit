@@ -112,7 +112,11 @@ fn open_file(editor: &mut Editor, id: ClientId) -> ActionResult {
     let ignore = editor.ignore.clone();
     let wd = editor.working_dir().to_path_buf();
     let job = MatcherJob::builder(id)
-        .options(FileOptionProvider::new(&wd, ignore))
+        .options(FileOptionProvider::new(
+            &wd,
+            ignore,
+            editor.config.editor.git_ignore,
+        ))
         .handler(Prompt::open_file_handler)
         .build();
     editor.job_broker.request_slot(id, PROMPT_MESSAGE, job);
@@ -437,7 +441,7 @@ fn grep(editor: &mut Editor, id: ClientId) -> ActionResult {
 
                 map
             };
-            let job = Grep::new(patt, wd, ignore, buffers, id);
+            let job = Grep::new(patt, wd, ignore, buffers, id, e.config.editor.git_ignore);
             let job_name = format!("Grep '{patt}'");
             e.job_broker.request_slot(id, &job_name, job);
             ActionResult::Ok
@@ -496,7 +500,7 @@ fn prompt_jump(editor: &mut Editor, id: ClientId) -> ActionResult {
                 .map(|jump| jump.start().original_position().to_string())
                 .collect::<Vec<String>>()
                 .join(", ");
-            let buf = editor.buffers().get(bid).unwrap();
+            let buf = getf!(editor.buffers().get(bid));
             let wd = editor.working_dir();
             let name = match buf.path() {
                 Some(path) => path.strip_prefix(wd).unwrap_or(path).to_string_lossy(),

@@ -61,7 +61,6 @@ use anyhow::Result;
 
 use crate::actions;
 use crate::actions::hooks::run;
-use crate::actions::jobs::GitJob;
 use crate::actions::mouse;
 use crate::actions::window::focus_with_mode;
 use crate::actions::window::goto_other_buffer;
@@ -175,10 +174,6 @@ impl Editor {
         self.ignore = Ignore::new(&self.working_dir, &self.config, &self.project_config);
         self.caches = Caches::new(&self.config);
         self.keymaps = Keymaps::from_config(&self.config);
-        self.job_broker.request(GitJob {
-            client_id: ClientId::temporary(0),
-            working_dir: self.working_dir().to_path_buf(),
-        });
     }
 
     pub fn listen_address(&self) -> &Address {
@@ -188,10 +183,6 @@ impl Editor {
     /// Ran after the startup configuration is complete
     pub fn on_startup(&mut self) {
         self.themes.load_all();
-        self.job_broker.request(GitJob {
-            client_id: ClientId::temporary(0),
-            working_dir: self.working_dir().to_path_buf(),
-        });
     }
 
     pub fn buffers(&self) -> &Buffers {

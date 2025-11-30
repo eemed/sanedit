@@ -91,7 +91,7 @@ fn read_directory(root: PathBuf, ctx: ReadDirContext) {
                         let Ok(metadata) = entry.metadata() else {
                             continue;
                         };
-                        if !metadata.is_dir() || ctx.ignore.is_match(&path) {
+                        if !metadata.is_dir() || ctx.ignore.is_ignored(&path) {
                             continue;
                         }
 

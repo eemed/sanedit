@@ -4,7 +4,7 @@ use sanedit_utils::ring::Ref;
 use crate::editor::{
     buffers::{BufferId, Buffers},
     hooks::Hook,
-    windows::{Jump, JumpGroup, Jumps, Window, Zone},
+    windows::{Jump, JumpGroup, Window, Zone},
     Editor,
 };
 
@@ -185,17 +185,6 @@ fn jump_next_change(editor: &mut Editor, id: ClientId) -> ActionResult {
 }
 
 fn find_prev_jump(win: &Window, buffers: &Buffers, original_bid: BufferId) -> Option<Ref> {
-    // for example iter backwards
-    // until mark is Found
-    // or
-    //  buf changes => iter until mark is Found
-    //      or
-    //      if not goto Deleted marker once
-    //
-    // This would go to previous buffers even if mark is not found
-    // but skip all other deleted markers
-    //
-
     // If curent position was a jump group, used to skip over jump that would do
     // nothing
     let current = {
@@ -213,15 +202,8 @@ fn find_prev_jump(win: &Window, buffers: &Buffers, original_bid: BufferId) -> Op
             None => cursor_jumps.last(),
         }
     };
+
     let mut previous: Option<(Ref, BufferId)> = None;
-
-    // Skip to if this is current position
-    if let Some((cursor, group)) = &item {
-        if *group == &current {
-            item = cursor_jumps.prev_of_ref(cursor);
-        }
-    }
-
     while let Some((cursor, group)) = item {
         let gbid = group.buffer_id();
 
@@ -232,7 +214,7 @@ fn find_prev_jump(win: &Window, buffers: &Buffers, original_bid: BufferId) -> Op
                 matches!(mark, MarkResult::Found(_))
             });
 
-            if found {
+            if found && group != &current {
                 return Some(cursor);
             }
         }
@@ -260,21 +242,15 @@ fn find_prev_jump(win: &Window, buffers: &Buffers, original_bid: BufferId) -> Op
     None
 }
 
-fn find_next_jump<const N: usize>(
-    cursor_jumps: &Jumps<N>,
-    buffers: &Buffers,
-    original_bid: BufferId,
-) -> Option<Ref> {
-    // for example iter backwards
-    // until mark is Found
-    // or
-    //  buf changes => iter until mark is Found
-    //      or
-    //      if not goto Deleted marker once
-    //
-    // This would go to previous buffers even if mark is not found
-    // but skip all other deleted markers
+fn find_next_jump(win: &Window, buffers: &Buffers, original_bid: BufferId) -> Option<Ref> {
+    let current = {
+        let primary = win.cursors.primary().pos();
+        let mark = buffers.get(win.buffer_id()).unwrap().mark(primary);
+        let jump = Jump::new(mark, None);
+        JumpGroup::new(win.buffer_id(), vec![jump])
+    };
 
+    let cursor_jumps = &win.cursor_jumps;
     let (mut cursor, _) = cursor_jumps.current()?;
     let mut previous: Option<(Ref, BufferId)> = None;
 
@@ -290,7 +266,7 @@ fn find_next_jump<const N: usize>(
                 matches!(mark, MarkResult::Found(_))
             });
 
-            if found {
+            if found && group != &current {
                 return Some(cursor);
             }
         }
@@ -345,7 +321,7 @@ fn jump_prev(editor: &mut Editor, id: ClientId) -> ActionResult {
 fn jump_next(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = win_buf!(editor, id);
     let bid = buf.id;
-    let cursor = getf!(find_next_jump(&win.cursor_jumps, &editor.buffers, bid));
+    let cursor = getf!(find_next_jump(win, &editor.buffers, bid));
     jump_to_ref(editor, id, cursor)
 }
 

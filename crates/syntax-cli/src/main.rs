@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use argh::FromArgs;
-use sanedit_syntax::{Capture, Glob, Parser, Regex};
+use sanedit_syntax::{Capture, GitGlob, Parser, Regex};
 
 /// command line options
 #[derive(FromArgs)]
@@ -106,11 +106,11 @@ fn main() {
 
     let rules = read_rules(&cli);
     let parser = if cli.glob {
-        let rules = Glob::parse_pattern(&rules).unwrap();
+        let rules = GitGlob::parse_pattern(&rules).unwrap();
         if cli.print_rules {
             println!("{rules}");
         }
-        Glob::from_rules(rules).unwrap().into()
+        GitGlob::from_rules(rules).unwrap().into()
     } else if cli.regex {
         let rules = Regex::parse_rules(&rules).unwrap();
         if cli.print_rules {

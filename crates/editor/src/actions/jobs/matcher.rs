@@ -196,7 +196,7 @@ pub struct Matcher {
 }
 
 impl Matcher {
-    const BATCH_SIZE: usize = 1024;
+    const BATCH_SIZE: usize = 512;
 
     // Create a new matcher.
     pub fn new(

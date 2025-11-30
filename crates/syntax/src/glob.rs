@@ -48,17 +48,17 @@ pub struct GlobOptions {
 /// https://git-scm.com/docs/gitignore
 #[allow(dead_code)]
 #[derive(Debug)]
-pub struct Glob {
+pub struct GitGlob {
     parser: Parser,
     options: GlobOptions,
 }
 
 #[allow(dead_code)]
-impl Glob {
-    pub fn new(pattern: &str) -> Result<Glob, GlobError> {
+impl GitGlob {
+    pub fn new(pattern: &str) -> Result<GitGlob, GlobError> {
         let (rules, options) = Self::to_rules(pattern)?;
         let parser = Parser::from_rules(rules)?;
-        Ok(Glob { parser, options })
+        Ok(GitGlob { parser, options })
     }
 
     pub fn parse_pattern(pattern: &str) -> Result<GlobRules, GlobError> {
@@ -70,9 +70,9 @@ impl Glob {
         &self.options
     }
 
-    pub fn from_rules(rules: GlobRules) -> Result<Glob, GlobError> {
+    pub fn from_rules(rules: GlobRules) -> Result<GitGlob, GlobError> {
         let parser = Parser::from_rules(rules.0)?;
-        Ok(Glob {
+        Ok(GitGlob {
             parser,
             options: rules.1,
         })
@@ -352,8 +352,8 @@ impl Glob {
     }
 }
 
-impl From<Glob> for crate::Parser {
-    fn from(value: Glob) -> Self {
+impl From<GitGlob> for crate::Parser {
+    fn from(value: GitGlob) -> Self {
         value.parser.into()
     }
 }
@@ -364,7 +364,7 @@ mod test {
 
     #[test]
     fn glob_rust() {
-        let glob = Glob::new("**/*.rs").unwrap();
+        let glob = GitGlob::new("**/*.rs").unwrap();
         assert_eq!(glob.is_match(b".hidden"), false);
         assert_eq!(glob.is_match(b"path/to/glob.rs"), true);
         assert_eq!(glob.is_match(b"text/lorem.txt"), false);
@@ -372,7 +372,7 @@ mod test {
 
     #[test]
     fn glob_directory() {
-        let glob = Glob::new("**/node_modules").unwrap();
+        let glob = GitGlob::new("**/node_modules").unwrap();
         assert_eq!(glob.is_match(b"/root/user/node_modules"), true);
         assert_eq!(glob.is_match(b"node_modules"), true);
         assert_eq!(glob.is_match(b"text/lorem.txt"), false);
@@ -380,7 +380,7 @@ mod test {
 
     #[test]
     fn glob_zero_dirs() {
-        let glob = Glob::new("a/**/b").unwrap();
+        let glob = GitGlob::new("a/**/b").unwrap();
         assert_eq!(glob.is_match(b"a/b"), true);
         assert_eq!(glob.is_match(b"a/x/y/b"), true);
         assert_eq!(glob.is_match(b"b/x/a"), false);
@@ -388,7 +388,7 @@ mod test {
 
     #[test]
     fn glob_wildcard() {
-        let glob = Glob::new("*aw*").unwrap();
+        let glob = GitGlob::new("*aw*").unwrap();
         assert_eq!(glob.is_match(b"lawyer"), true);
         assert_eq!(glob.is_match(b"the law"), true);
         assert_eq!(glob.is_match(b"the lew"), false);
@@ -398,7 +398,7 @@ mod test {
 
     #[test]
     fn glob_hidden() {
-        let glob = Glob::new(".*").unwrap();
+        let glob = GitGlob::new(".*").unwrap();
         assert_eq!(glob.is_match(b".hidden"), true);
         assert_eq!(glob.is_match(b"path/to/glob.rs"), false);
         assert_eq!(glob.is_match(b"text/lorem.txt"), false);
@@ -406,7 +406,7 @@ mod test {
 
     #[test]
     fn glob_question() {
-        let glob = Glob::new("?at").unwrap();
+        let glob = GitGlob::new("?at").unwrap();
         assert_eq!(glob.is_match(b"Cat"), true);
         assert_eq!(glob.is_match(b"Bat"), true);
         assert_eq!(glob.is_match(b"ccat"), false);
@@ -414,7 +414,7 @@ mod test {
 
     #[test]
     fn glob_question_no_separator() {
-        let glob = Glob::new("foo?ar").unwrap();
+        let glob = GitGlob::new("foo?ar").unwrap();
         assert_eq!(glob.is_match(b"foobar"), true);
         assert_eq!(glob.is_match(b"foocar"), true);
         assert_eq!(glob.is_match(b"foo/ar"), false);
@@ -422,7 +422,7 @@ mod test {
 
     #[test]
     fn glob_alt_1() {
-        let glob = Glob::new("[CB]at").unwrap();
+        let glob = GitGlob::new("[CB]at").unwrap();
         assert_eq!(glob.is_match(b"Cat"), true);
         assert_eq!(glob.is_match(b"Bat"), true);
         assert_eq!(glob.is_match(b"ccat"), false);
@@ -431,7 +431,7 @@ mod test {
 
     #[test]
     fn glob_alt_range() {
-        let glob = Glob::new("Letter[0-9]").unwrap();
+        let glob = GitGlob::new("Letter[0-9]").unwrap();
         assert_eq!(glob.is_match(b"Letter8"), true);
         assert_eq!(glob.is_match(b"Letter0"), true);
         assert_eq!(glob.is_match(b"Letter10"), false);
@@ -440,7 +440,7 @@ mod test {
 
     #[test]
     fn glob_negate() {
-        let glob = Glob::new("!Letter[0-9]").unwrap();
+        let glob = GitGlob::new("!Letter[0-9]").unwrap();
         assert_eq!(glob.is_match(b"Letter8"), true);
         assert_eq!(glob.is_match(b"Letter0"), true);
         assert_eq!(glob.is_match(b"Letter10"), false);
@@ -450,7 +450,7 @@ mod test {
 
     #[test]
     fn glob_dir_level() {
-        let glob = Glob::new("deb/").unwrap();
+        let glob = GitGlob::new("deb/").unwrap();
         assert_eq!(glob.is_match(b"deb"), true);
         assert_eq!(glob.is_match(b"deb/"), true);
         assert_eq!(glob.is_match(b"burbur/hurdurr/deb"), true);

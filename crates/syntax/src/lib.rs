@@ -15,7 +15,7 @@ use std::sync::Arc;
 
 pub use error::ParseError;
 pub use finder::{Finder, FinderIter, FinderIterRev, FinderRev};
-pub use glob::Glob;
+pub use glob::GitGlob;
 pub use glob::GlobError;
 pub use grammar::Annotation;
 pub use loader::LanguageLoader;

@@ -14,7 +14,13 @@ use sanedit_utils::appendlist::Appendlist;
 
 use sanedit_server::{BoxFuture, Kill};
 
-use crate::{common::Choice, editor::ignore::Ignore};
+use crate::{
+    common::{
+        git::{find_git_root, GitIgnore, GitIgnoreList, GIT_IGNORE_FILENAME},
+        Choice,
+    },
+    editor::ignore::Ignore,
+};
 
 use super::OptionProvider;
 use crossbeam::deque::{Injector, Steal, Worker};
@@ -38,9 +44,14 @@ pub fn get_option_provider_pool() -> &'static ThreadPool {
     })
 }
 
-fn read_directory(root: PathBuf, ctx: ReadDirContext) {
-    let injector = Injector::<PathBuf>::new();
-    injector.push(root);
+fn read_directory(root: PathBuf, mut ctx: ReadDirContext) {
+    // If at already ignored directory, list everything
+    if ctx.ignore.is_ignored(&root) {
+        ctx.git_ignore = false;
+    }
+
+    let injector = Injector::<(PathBuf, Arc<GitIgnoreList>)>::new();
+    injector.push((root, Arc::new(ctx.ignore.clone())));
 
     get_option_provider_pool().install(|| {
         let threads = rayon::current_num_threads();
@@ -58,9 +69,19 @@ fn read_directory(root: PathBuf, ctx: ReadDirContext) {
                         _ => None,
                     });
 
-                let Some(dir) = job else {
+                let Some((dir, mut ignore)) = job else {
                     break;
                 };
+
+                if ctx.git_ignore {
+                    let ignore_path = dir.join(GIT_IGNORE_FILENAME);
+                    if ignore_path.exists() {
+                        if let Ok(git_ignore) = GitIgnore::new(&ignore_path) {
+                            let ig = Arc::make_mut(&mut ignore);
+                            ig.push(Arc::new(git_ignore));
+                        }
+                    }
+                }
 
                 if let Ok(mut rd) = std::fs::read_dir(&dir) {
                     while let Some(Ok(entry)) = rd.next() {
@@ -69,7 +90,7 @@ fn read_directory(root: PathBuf, ctx: ReadDirContext) {
                         }
 
                         let path = entry.path();
-                        if ctx.ignore.is_match(&path) {
+                        if ignore.is_ignored(&path) {
                             continue;
                         }
 
@@ -78,7 +99,7 @@ fn read_directory(root: PathBuf, ctx: ReadDirContext) {
                         };
 
                         if metadata.is_dir() {
-                            injector.push(path);
+                            injector.push((path, ignore.clone()));
                         } else if metadata.is_file() {
                             ctx.send(Choice::from_path(path, ctx.strip));
                         } else if metadata.is_symlink() {
@@ -106,6 +127,7 @@ async fn read_directory_recursive(
     ignore: Ignore,
     kill: Kill,
     done: Arc<AtomicUsize>,
+    git_ignore: bool,
 ) {
     let strip = {
         let s = dir.as_os_str().to_string_lossy();
@@ -116,6 +138,7 @@ async fn read_directory_recursive(
         len
     };
 
+    let ignore = get_ignore(&dir, ignore, git_ignore);
     let n = Arc::new(AtomicUsize::new(0));
     let ctx = ReadDirContext {
         osend,
@@ -123,12 +146,28 @@ async fn read_directory_recursive(
         strip,
         kill,
         ignore,
+        git_ignore,
     };
 
     rayon_reader(dir, ctx).await;
 
     let count = n.load(Ordering::Acquire);
     done.store(count, Ordering::Release);
+}
+
+fn get_ignore(dir: &Path, ignore: Ignore, git_ignore: bool) -> GitIgnoreList {
+    let mut ignores = vec![ignore.into()];
+    if !git_ignore {
+        return GitIgnoreList::new(ignores);
+    }
+
+    if let Ok((_root, git_ignores)) = find_git_root(dir) {
+        for ignore in git_ignores {
+            ignores.push(Arc::new(ignore));
+        }
+    }
+
+    GitIgnoreList::new(ignores)
 }
 
 impl OptionProvider for FileOptionProvider {
@@ -140,7 +179,14 @@ impl OptionProvider for FileOptionProvider {
     ) -> BoxFuture<'static, ()> {
         let dir = self.path.clone();
         let ignore = self.ignore.clone();
-        Box::pin(read_directory_recursive(dir, sender, ignore, kill, done))
+        Box::pin(read_directory_recursive(
+            dir,
+            sender,
+            ignore,
+            kill,
+            done,
+            self.git_ignore,
+        ))
     }
 }
 
@@ -149,8 +195,9 @@ struct ReadDirContext {
     osend: Appendlist<Arc<Choice>>,
     n: Arc<AtomicUsize>,
     strip: usize,
+    ignore: GitIgnoreList,
+    git_ignore: bool,
     kill: Kill,
-    ignore: Ignore,
 }
 
 impl ReadDirContext {
@@ -164,13 +211,15 @@ impl ReadDirContext {
 pub(crate) struct FileOptionProvider {
     path: PathBuf,
     ignore: Ignore,
+    git_ignore: bool,
 }
 
 impl FileOptionProvider {
-    pub fn new(path: &Path, ignore: Ignore) -> FileOptionProvider {
+    pub fn new(path: &Path, ignore: Ignore, git_ignore: bool) -> FileOptionProvider {
         FileOptionProvider {
             path: path.to_owned(),
             ignore,
+            git_ignore,
         }
     }
 }

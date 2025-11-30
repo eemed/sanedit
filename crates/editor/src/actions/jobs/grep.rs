@@ -45,8 +45,9 @@ impl Grep {
         ignore: Ignore,
         buffers: Map<PathBuf, PieceTreeSlice>,
         id: ClientId,
+        git_ignore: bool,
     ) -> Grep {
-        let fprovider = FileOptionProvider::new(path, ignore);
+        let fprovider = FileOptionProvider::new(path, ignore, git_ignore);
 
         Grep {
             client_id: id,

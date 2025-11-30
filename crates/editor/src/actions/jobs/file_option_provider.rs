@@ -77,7 +77,6 @@ fn read_directory(root: PathBuf, mut ctx: ReadDirContext) {
                 if ctx.git_ignore {
                     let ignore_path = dir.join(GIT_IGNORE_FILENAME);
                     if ignore_path.exists() {
-                        log::info!("IGNORE: {ignore_path:?}");
                         if let Ok(git_ignore) = GitIgnore::new(&ignore_path) {
                             let ig = Arc::make_mut(&mut ignore);
                             ig.push(Arc::new(git_ignore));

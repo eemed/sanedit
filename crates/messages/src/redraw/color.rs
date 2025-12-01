@@ -19,7 +19,17 @@ impl Color {
         match string {
             "black" => Ok(Color::Black),
             "white" => Ok(Color::White),
-            _ => Rgb::from_hex(string).map(Color::Rgb),
+            _ => {
+                let res = Rgb::from_hex(string).map(Color::Rgb);
+
+                if res.is_err() {
+                    if let Some(color) = Rgb::from_rgba(string).map(Color::Rgb) {
+                        return Ok(color);
+                    }
+                }
+
+                res
+            }
         }
     }
 }
@@ -45,6 +55,28 @@ impl fmt::Debug for Rgb {
 impl Rgb {
     pub fn new(red: u8, green: u8, blue: u8) -> Rgb {
         Rgb { red, green, blue }
+    }
+
+    /// rgb(100,100,100)
+    /// rgba(100,100,100,0.2)
+    pub fn from_rgba(string: &str) -> Option<Rgb> {
+        let bytes = string.as_bytes();
+        let start = bytes.iter().position(|c| c.is_ascii_digit()).unwrap_or(0);
+        let end = bytes
+            .iter()
+            .rposition(|c| c.is_ascii_digit())
+            .map(|i| i + 1)
+            .unwrap_or(string.len());
+        let inside = &string[start..end];
+        let mut splits = inside.split(",").map(str::trim);
+        let red: u8 = splits.next()?.parse().ok()?;
+        let green: u8 = splits.next()?.parse().ok()?;
+        let blue: u8 = splits.next()?.parse().ok()?;
+        if splits.next().is_some() {
+            return None;
+        }
+
+        Some(Rgb::new(red, green, blue))
     }
 
     pub fn from_hex(string: &str) -> Result<Rgb, HexStringError> {

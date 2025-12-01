@@ -1,4 +1,4 @@
-use std::{collections::BTreeMap, sync::Arc};
+use std::sync::Arc;
 
 use sanedit_buffer::Mark;
 use sanedit_core::{indent_at_line, BufferRange, Change, Changes, Range};
@@ -91,9 +91,8 @@ pub(crate) fn insert_snippet_impl(
     for atom in snippet.atoms() {
         match atom {
             SnippetAtom::Text(txt) => text.push_str(txt),
-            SnippetAtom::Placeholder(n, sel) => {
+            SnippetAtom::Placeholder(_, sel) => {
                 placeholders.push((
-                    n,
                     pos + text.len() as u64,
                     pos + text.len() as u64 + sel.len() as u64,
                 ));
@@ -128,8 +127,8 @@ pub(crate) fn insert_snippet_impl(
 
     // Convert recorded placeholders to jumps
     let (win, buf) = editor.win_buf_mut(id);
-    let mut jumps: BTreeMap<u8, Vec<Jump>> = BTreeMap::new();
-    for (n, start, end) in placeholders {
+    let mut groups = vec![];
+    for (start, end) in placeholders {
         let smark = buf.mark(start);
         let mut emark: Option<Mark> = None;
 
@@ -137,14 +136,7 @@ pub(crate) fn insert_snippet_impl(
             emark = Some(buf.mark(end));
         }
 
-        let entry = jumps.entry(*n);
-        let value = entry.or_default();
-        value.push(Jump::new(smark, emark));
-    }
-
-    let mut groups = vec![];
-    for (_, jumps) in jumps.into_iter().rev() {
-        let group = JumpGroup::new(buf.id, jumps);
+        let group = JumpGroup::new(buf.id, vec![Jump::new(smark, emark)]);
         groups.push(group);
     }
 

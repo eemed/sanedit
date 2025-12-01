@@ -149,7 +149,6 @@ impl Drawable for Popup {
                 ctx.style(field)
             };
 
-            // log::info!("msg: {:?}", msg.text);
             // Add popup messages
             match &msg.text {
                 PopupMessageText::Formatted(cells) => {

@@ -1,4 +1,4 @@
-document = (comment / keyword / units / number / preproc / identifier / important / (!stop .)* stop)*;
+document = (comment / keyword / units / number / preproc / identifier / important / color / (!stop .)* stop)*;
 WHITESPACE = [ \t];
 ws = WHITESPACE;
 nl = "\n" / "\r\n";
@@ -19,6 +19,16 @@ identifier = "$" [a..zA..Z0..9]+;
 
 @show @highlight(warn)
 important = "!important" &stop;
+
+color = hex_color / rgb_color;
+decimal = "."? digit+ ("." digit+)?;
+@whitespaced
+rgb_color = "rgb" "a"? "(" rgb ")";
+@show @highlight(color) @whitespaced
+rgb = decimal "," decimal "," decimal ("," decimal)?;
+@show @highlight(color)
+hex_color = "#" hex hex hex hex hex hex !hex;
+hex = [a..fA..F0..9];
 
 @show @highlight(constant)
 units = number (

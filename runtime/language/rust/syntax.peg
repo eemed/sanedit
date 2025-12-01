@@ -2,7 +2,7 @@ document = (separated / (!stop .)* stop)*;
 separated = todo / tuple / keyword / type / string / constant / comment / preproc / operator / alpha;
 
 alpha = [a..zA..Z0..9_]+;
-stop = ws+ / "[" / "]" / "(" / ")" / ";" / "<" / ">" / "," / ":" / "." / "}" / ":";
+stop = ws+ / "[" / "]" / "(" / ")" / ";" / "<" / ">" / "," / ":" / "." / "}" / ":" /  "|";
 WHITESPACE = [ \t] / nl;
 nl = "\n" / "\r\n";
 ws = WHITESPACE;

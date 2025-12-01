@@ -6,6 +6,7 @@ use std::{
 
 use sanedit_buffer::PieceTreeSlice;
 use sanedit_core::{movement, BufferRange, Detect, Directory, Language, Range};
+use sanedit_messages::redraw::{Color, Style};
 use sanedit_server::Kill;
 use sanedit_utils::sorted_vec::SortedVec;
 
@@ -243,6 +244,19 @@ impl Syntax {
             spans.merge(inj_spans)
         }
 
+        // Apply custom colors based on text
+        const COLOR_HL: &str = "color";
+        // SAFETY: Will not change order
+        for span in unsafe { spans.iter_mut() } {
+            if span.name() != COLOR_HL {
+                continue;
+            }
+
+            let text = pt.slice(span.range());
+            let text = String::from(&text);
+            span.style = style_from_color(text.as_str());
+        }
+
         Ok(SyntaxResult {
             buffer_range: view,
             highlights: spans,
@@ -285,11 +299,35 @@ impl Syntax {
                     completion,
                     name: name.into(),
                     range,
+                    style: None,
                 }
             })
             .filter(|span| span.completion.is_some() || span.highlight)
             .collect()
     }
+}
+
+fn style_from_color(text: &str) -> Option<Style> {
+    let color = Color::parse(text).ok()?;
+    let fg = match color {
+        Color::Black => Color::White,
+        Color::White => Color::Black,
+        Color::Rgb(color) => {
+            let (r, g, b) = color.get();
+            let brightness = (r as u32 * 299 + g as u32 * 587 + b as u32 * 114) / 1000;
+            if brightness > 128 {
+                Color::Black
+            } else {
+                Color::White
+            }
+        }
+    };
+
+    Some(Style {
+        text_style: None,
+        bg: Some(color),
+        fg: Some(fg),
+    })
 }
 
 #[derive(Debug, Default)]
@@ -304,6 +342,7 @@ pub struct Span {
     name: String,
     completion: Option<String>,
     highlight: bool,
+    style: Option<Style>,
 }
 
 impl PartialOrd for Span {
@@ -333,6 +372,10 @@ impl Ord for Span {
 impl Span {
     pub fn name(&self) -> &str {
         &self.name
+    }
+
+    pub fn style(&self) -> Option<&Style> {
+        self.style.as_ref()
     }
 
     pub fn start(&self) -> u64 {

@@ -44,13 +44,11 @@ impl WindowManager {
     }
 
     pub fn new_window_horizontal(&mut self) {
-        log::info!("Split: {:?}", self.new_instance_command);
         self.wm
             .new_window_horizontal(&self.shell, &self.new_instance_command);
     }
 
     pub fn new_window_vertical(&mut self) {
-        log::info!("Split: {:?}", self.new_instance_command);
         self.wm
             .new_window_vertical(&self.shell, &self.new_instance_command);
     }

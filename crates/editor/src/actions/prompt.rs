@@ -550,8 +550,8 @@ fn human_readable_duration(since: Duration) -> String {
     }
 }
 
-#[action("Buffer: Show snapshots")]
-fn buffer_snapshots(editor: &mut Editor, id: ClientId) -> ActionResult {
+#[action("Buffer: Show undopoints")]
+fn buffer_undopoints(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (_win, buf) = win_buf!(editor, id);
     let now = Instant::now();
     let on_snapshot = buf.on_undopoint();

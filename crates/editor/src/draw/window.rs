@@ -161,7 +161,10 @@ fn draw_syntax(grid: &mut Window, view: &View, theme: &Theme) {
         if !span.highlight() {
             return None;
         }
-        let style = theme.get_from_arr(&[HL_PREFIX, span.name()]);
+        let style = span
+            .style()
+            .cloned()
+            .unwrap_or(theme.get_from_arr(&[HL_PREFIX, span.name()]));
         Some((style, span.range()))
     });
 }

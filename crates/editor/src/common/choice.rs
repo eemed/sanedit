@@ -31,15 +31,26 @@ pub(crate) enum Choice {
 }
 
 impl Choice {
-    pub fn from_completion_item(completion: CompletionItem) -> Arc<Choice> {
+    pub fn from_completion_item(mut completion: CompletionItem) -> Arc<Choice> {
         let display = if completion.is_snippet {
-            if let Ok(snippet) = Snippet::new(&completion.text) {
-                Some(snippet.as_text())
-            } else {
-                None
-            }
+            Snippet::new(completion.text.as_str())
+                .ok()
+                .as_ref()
+                .map(Snippet::as_text)
         } else {
             None
+        };
+
+        completion.detail = if completion.is_snippet {
+            completion
+                .detail
+                .as_ref()
+                .and_then(|detail| Snippet::new(&detail).ok())
+                .as_ref()
+                .map(Snippet::as_text)
+                .or(completion.detail)
+        } else {
+            completion.detail
         };
         Arc::new(Choice::LSPCompletion {
             display,

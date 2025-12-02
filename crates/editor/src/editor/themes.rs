@@ -2,10 +2,7 @@ use std::path::PathBuf;
 
 use anyhow::{anyhow, bail};
 use sanedit_core::{ConfigDirectory, Directory};
-use sanedit_messages::redraw::{
-    text_style::{self, TextStyle},
-    Color, Style, Theme, ThemeField,
-};
+use sanedit_messages::redraw::{text_style, Color, Style, Theme};
 use toml_edit::{InlineTable, Item, Table, Value};
 
 use super::Map;
@@ -20,12 +17,9 @@ pub(crate) struct Themes {
 
 impl Themes {
     pub fn new(path: Directory) -> Themes {
-        let mut themes = Map::default();
-        themes.insert(DEFAULT_THEME.into(), default_theme());
-
         Themes {
             theme_dir: path,
-            themes,
+            themes: Map::default(),
         }
     }
 
@@ -92,8 +86,7 @@ impl Themes {
 impl Default for Themes {
     fn default() -> Self {
         let theme_dir = ConfigDirectory::default().theme_dir();
-        let mut themes = Map::default();
-        themes.insert(DEFAULT_THEME.into(), default_theme());
+        let themes = Map::default();
         Themes { theme_dir, themes }
     }
 }
@@ -181,25 +174,4 @@ fn get_style(variables: Option<&Table>, table: &InlineTable) -> anyhow::Result<S
     }
 
     Ok(style)
-}
-
-fn default_theme() -> Theme {
-    use ThemeField::*;
-    let mut theme = Theme::new(DEFAULT_THEME);
-    let mut ins = |field: ThemeField, style: &str| {
-        // theme.insert(field, Style::parse(style).unwrap());
-    };
-
-    ins(Default, "#000000,#ffffff,");
-    ins(Statusline, "#222222,#ffffff,");
-    ins(PromptDefault, "#222222,#ffffff,");
-    ins(PromptOverlayInput, "#222222,#ffffff,");
-    ins(PromptCompletionSelectedMatch, ",#ff0000,");
-    ins(PromptCompletionMatch, ",#ff0000,");
-    ins(PromptCompletionSelected, "#dddddd,#000000,");
-
-    ins(Constant, ",#0000ff,");
-    ins(String, ",#00ff00,");
-
-    theme
 }

@@ -214,11 +214,7 @@ pub fn create_new_file(editor: &mut Editor, id: ClientId, name: String) -> Actio
             let _ = editor.filetree.refresh();
 
             // Select the new entry if visible
-            if let Some(pos) = editor
-                .filetree
-                .iter()
-                .position(|entry| entry.path() == file)
-            {
+            if let Some(pos) = editor.filetree.select(&file) {
                 let (win, _buf) = editor.win_buf_mut(id);
                 win.ft_view.selection = pos;
             }

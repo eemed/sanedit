@@ -2,92 +2,92 @@
 # modfied for more contrast
 
 [colors.window]
-default = "#eee6dd,#575279,"
-statusline = "#d3c9c0,#333a40,"
-statusline_no_focus = "#d5d1ce,,"
-end_of_buffer = ",#969896,"
-trailing_whitespace = ",#969896,"
-match = "#C1E1C1,#356E35,"
-virtual = ",#969896,"
+default = { bg = "#eee6dd", fg = "#575279" }
+statusline = { bg = "#d3c9c0", fg = "#333a40" }
+statusline_no_focus = { bg = "#d5d1ce" }
+end_of_buffer = { fg = "#969896" }
+trailing_whitespace = { fg = "#969896" }
+match = { bg = "#C1E1C1", fg = "#356E35" }
+virtual = { fg = "#969896" }
 
 [colors.cursor]
-normal = "#bbb0aa,,"
-selection = "#e1d4c3,,"
+normal = { bg = "#bbb0aa" }
+selection = { bg = "#e1d4c3" }
 
 [colors.window.view]
-hint = "#b7d8eb,#00576B,"
-info = "#b7d8eb,#00576B,"
-warn = "#FFD8B2,#8C4C1F,"
-error = "#FF9E99,#8A3A5A,"
+hint = { bg = "#b7d8eb", fg = "#00576B" }
+info = { bg = "#b7d8eb", fg = "#00576B" }
+warn = { bg = "#FFD8B2", fg = "#8C4C1F" }
+error = { bg = "#FF9E99", fg = "#8A3A5A" }
 
-added = "#C1E1C1,#356E35,"
-modified = "#FFD8B2,#8C4C1F,"
-deleted = "#FF9E99,#8A3A5A,"
+added = { bg = "#C1E1C1", fg = "#356E35" }
+modified = { bg = "#FFD8B2", fg = "#8C4C1F" }
+deleted = { bg = "#FF9E99", fg = "#8A3A5A" }
 
-constant = ",#1a6582,"
-string =  ",#0d8751,"
-keyword = ",#ca6e69,"
-operator =  ",#2d81a3,"
-type =  ",#916767,"
-comment = ",#969896,"
-preproc = ",#8c5cc2,"
-special = ",#8c5cc2,"
-identifier = ",#a5576d,"
+constant = { fg = "#1a6582" }
+string =  { fg = "#0d8751" }
+keyword = { fg = "#ca6e69" }
+operator =  { fg = "#2d81a3" }
+type =  { fg = "#916767" }
+comment = { fg = "#969896" }
+preproc = { fg = "#8c5cc2" }
+special = { fg = "#8c5cc2" }
+identifier = { fg = "#a5576d" }
 
 [colors.window.completion]
-default = "#e7dccf,#575279,"
-description = ",#969896,"
-match = ",#d9605a,"
+default = { bg = "#e7dccf", fg = "#575279" }
+description = { fg = "#969896" }
+match = { fg = "#d9605a" }
 
 [colors.window.completion.selected]
-default = "#ddd2c8,,"
-description = ",#969896,"
-match = ",#d9605a,"
+default = { bg = "#ddd2c8" }
+description = { fg = "#969896" }
+match = { fg = "#d9605a" }
 
 [colors.prompt]
-default = "#c2cdcd,#494565,"
-message = ",,bold"
-userinput = ",,"
+default = { bg = "#c2cdcd", fg = "#494565" }
+# message = { }
+# userinput = { }
 
 [colors.prompt.overlay]
-default = "#e7dccf,#625c87,"
-title = ",,bold"
-message = ",#575279,bold"
+default = { bg = "#e7dccf", fg = "#625c87" }
+# title = { }
+message = { fg = "#575279" }
 
 [colors.prompt.completion]
-default = "#e7dccf,#575279,"
-description = ",#969896,"
-match = ",#d9605a,"
+default = { bg = "#e7dccf", fg = "#575279" }
+description = { fg = "#969896" }
+match = { fg = "#d9605a" }
 
 [colors.prompt.completion.selected]
-default = "#ddd2c8,,"
-description = ",#969896,"
-match = ",#d9605a,"
+default = { bg = "#ddd2c8" }
+description = { fg = "#969896" }
+match = { fg = "#d9605a" }
 
 [colors.filetree]
-default = "#eee6dd,#575279,"
-markers = ",#2d81a3,"
-directory = ",#9E7777,"
+default = { bg = "#eee6dd", fg = "#575279" }
+markers = { fg = "#2d81a3" }
+directory = { fg = "#9E7777" }
 
 [colors.filetree.selected]
-default = "#ddd2c8,,"
-directory = ",#9E7777,"
-markers = ",#2d81a3,"
+default = { bg = "#ddd2c8" }
+directory = { fg = "#9E7777" }
+markers = { fg = "#2d81a3" }
 
 [colors.locations]
-default = "#eee6dd,#575279,"
-title = "#d3c9c0,#333a40,"
-entry = ""
-group = ",#9E7777,"
-markers = ",#2d81a3,"
-match = ",#d9605a,"
+default = { bg = "#eee6dd", fg = "#575279" }
+title = { bg = "#d3c9c0", fg = "#333a40" }
+# entry = {  }
+group = { fg = "#9E7777" }
+markers = { fg = "#2d81a3" }
+match = { fg = "#d9605a" }
 
 [colors.locations.selected]
-default = "#ddd2c8,,"
-match = ",#d9605a,"
-markers = ",#2d81a3,"
-entry = ""
-group = ",#9E7777,"
+default = { bg = "#ddd2c8" }
+match = { fg = "#d9605a" }
+markers = { fg = "#2d81a3" }
+# entry = { }
+group = { fg = "#9E7777" }
 
 [colors.popup]
-default = "#e7dccf,#625c87,"
+default = { bg = "#e7dccf", fg = "#625c87" }

@@ -2,8 +2,11 @@ use std::path::PathBuf;
 
 use anyhow::{anyhow, bail};
 use sanedit_core::{ConfigDirectory, Directory};
-use sanedit_messages::redraw::{Style, Theme, ThemeField};
-use toml_edit::{Item, Table};
+use sanedit_messages::redraw::{
+    text_style::{self, TextStyle},
+    Color, Style, Theme, ThemeField,
+};
+use toml_edit::{InlineTable, Item, Table, Value};
 
 use super::Map;
 
@@ -76,8 +79,10 @@ impl Themes {
         }
         let colors = colors.as_table().unwrap();
 
+        let variables = doc.get("variables").and_then(|v| v.as_table());
+
         let mut theme = Theme::new(theme_name);
-        fill_theme_colors(colors, &mut theme)?;
+        fill_theme_colors(variables, colors, &mut theme)?;
 
         self.themes.insert(theme_name.to_string(), theme);
         Ok(&self.themes[theme_name])
@@ -93,13 +98,18 @@ impl Default for Themes {
     }
 }
 
-fn fill_theme_colors(table: &Table, theme: &mut Theme) -> anyhow::Result<()> {
+fn fill_theme_colors(
+    variables: Option<&Table>,
+    colors: &Table,
+    theme: &mut Theme,
+) -> anyhow::Result<()> {
     fn rec<'a>(
         prefix: &mut Vec<&'a str>,
-        table: &'a Table,
+        variables: Option<&Table>,
+        colors: &'a Table,
         theme: &mut Theme,
     ) -> anyhow::Result<()> {
-        for (keys, v) in table.iter() {
+        for (keys, v) in colors.iter() {
             let plen = prefix.len();
             for key in keys.split('.') {
                 // Dont add default
@@ -107,16 +117,15 @@ fn fill_theme_colors(table: &Table, theme: &mut Theme) -> anyhow::Result<()> {
                     prefix.push(key);
                 }
             }
+
             match v {
-                Item::Value(toml_edit::Value::String(formatted)) => {
-                    let Ok(style) = Style::parse(formatted.value().as_str()) else {
-                        bail!("Invalid style for key {}", prefix.join("."))
-                    };
+                Item::Value(Value::InlineTable(table)) => {
                     let key = prefix.join(".");
+                    let style = get_style(variables, table)?;
                     theme.insert(key, style);
                 }
-                Item::Table(table) => rec(prefix, table, theme)?,
-                _ => {}
+                Item::Table(table) => rec(prefix, variables, table, theme)?,
+                _ => (),
             }
 
             prefix.truncate(plen);
@@ -126,14 +135,59 @@ fn fill_theme_colors(table: &Table, theme: &mut Theme) -> anyhow::Result<()> {
     }
 
     let mut stack = vec![];
-    rec(&mut stack, table, theme)
+    rec(&mut stack, variables, colors, theme)
+}
+
+fn get_style(variables: Option<&Table>, table: &InlineTable) -> anyhow::Result<Style> {
+    let mut style = Style::default();
+
+    for (name, value) in table.iter() {
+        if let toml_edit::Value::String(formatted) = value {
+            let value = formatted.value().as_str();
+
+            match name {
+                "fg" => {
+                    let text = variables
+                        .and_then(|vars| vars.get(value))
+                        .and_then(|value| {
+                            if let Item::Value(toml_edit::Value::String(formatted)) = value {
+                                Some(formatted.value().as_str())
+                            } else {
+                                None
+                            }
+                        })
+                        .unwrap_or(value);
+                    style.fg = Some(Color::try_from(text)?);
+                }
+                "bg" => {
+                    let text = variables
+                        .and_then(|vars| vars.get(value))
+                        .and_then(|value| {
+                            if let Item::Value(toml_edit::Value::String(formatted)) = value {
+                                Some(formatted.value().as_str())
+                            } else {
+                                None
+                            }
+                        })
+                        .unwrap_or(value);
+                    style.bg = Some(Color::try_from(text)?);
+                }
+                "text_style" => {
+                    style.text_style = Some(text_style::from_str(value));
+                }
+                _ => bail!("Invalid key {}", name),
+            }
+        }
+    }
+
+    Ok(style)
 }
 
 fn default_theme() -> Theme {
     use ThemeField::*;
     let mut theme = Theme::new(DEFAULT_THEME);
     let mut ins = |field: ThemeField, style: &str| {
-        theme.insert(field, Style::parse(style).unwrap());
+        // theme.insert(field, Style::parse(style).unwrap());
     };
 
     ins(Default, "#000000,#ffffff,");

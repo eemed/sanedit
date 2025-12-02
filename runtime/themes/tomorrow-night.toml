@@ -1,92 +1,92 @@
 # Colors from https://github.com/chriskempson/tomorrow-theme
 
 [colors.window]
-default = "#1d1f21,#c5c8c6,"
-statusline = "#373b41,#c5c8c6,"
-statusline_no_focus = "#282a2e,,"
-end_of_buffer = ",#969896,"
-trailing_whitespace = ",#969896,"
-match = "#f0c674,#1d1f21,"
-virtual = ",#969896,"
+default = { bg = "#1d1f21", fg = "#c5c8c6" }
+statusline = { bg = "#373b41", fg = "#c5c8c6" }
+statusline_no_focus = { bg = "#282a2e" }
+end_of_buffer = { fg = "#969896" }
+trailing_whitespace = { fg = "#969896" }
+match = { bg = "#f0c674", fg = "#1d1f21" }
+virtual = { fg = "#969896" }
 
 [colors.cursor]
-normal = "#81a2be,#1d1f21,"
-selection = "#373b41,,"
+normal = { bg = "#81a2be", fg = "#1d1f21" }
+selection = { bg = "#373b41" }
 
 [colors.window.view]
-hint = "#8abeb7,#1d1f21,"
-info = "#81a2be,#1d1f21,"
-warn = "#f0c674,#1d1f21,"
-error = "#cc6666,#1d1f21,"
+hint = { bg = "#8abeb7", fg = "#1d1f21" }
+info = { bg = "#81a2be", fg = "#1d1f21" }
+warn = { bg = "#f0c674", fg = "#1d1f21" }
+error = { bg = "#cc6666", fg = "#1d1f21" }
 
-added = "#b5bd68,#1d1f21,"
-modified = "#f0c674,#1d1f21,"
-deleted = "#cc6666,#1d1f21,"
+added = { bg = "#b5bd68", fg = "#1d1f21" }
+modified = { bg = "#f0c674", fg = "#1d1f21" }
+deleted = { bg = "#cc6666", fg = "#1d1f21" }
 
-constant = ",#81a2be,"
-string =  ",#b5bd68,"
-keyword = ",#de935f,"
-operator =  ",#8abeb7,"
-type =  ",#f0c674,"
-comment = ",#969896,"
-preproc = ",#b294bb,"
-special = ",#b294bb,"
-identifier = ",#cc6666,"
+constant = { fg = "#81a2be" }
+string =  { fg = "#b5bd68" }
+keyword = { fg = "#de935f" }
+operator =  { fg = "#8abeb7" }
+type =  { fg = "#f0c674" }
+comment = { fg = "#969896" }
+preproc = { fg = "#b294bb" }
+special = { fg = "#b294bb" }
+identifier = { fg = "#cc6666" }
 
 [colors.window.completion]
-default = "#282a2e,#c5c8c6,"
-description = ",#969896,"
-match = ",#de935f,"
+default = { bg = "#282a2e", fg = "#c5c8c6" }
+description = { fg = "#969896" }
+match = { fg = "#de935f" }
 
 [colors.window.completion.selected]
-default = "#373b41,,"
-description = ",#969896,"
-match = ",#de935f,"
+default = { bg = "#373b41" }
+description = { fg = "#969896" }
+match = { fg = "#de935f" }
 
 [colors.prompt]
-default = "#b5bd68,#1d1f21,"
-message = ",,bold"
-userinput = ",,"
+default = { bg = "#b5bd68", fg = "#1d1f21" }
+message = { }
+userinput = { }
 
 [colors.prompt.overlay]
-default = "#282a2e,#c5c8c6,"
-title = ",,bold"
-message = ",#c5c8c6,bold"
+default = { bg = "#282a2e", fg = "#c5c8c6" }
+title = { }
+message = { fg = "#c5c8c6" }
 
 [colors.prompt.completion]
-default = "#282a2e,#c5c8c6,"
-description = ",#969896,"
-match = ",#de935f,"
+default = { bg = "#282a2e", fg = "#c5c8c6" }
+description = { fg = "#969896" }
+match = { fg = "#de935f" }
 
 [colors.prompt.completion.selected]
-default = "#373b41,,"
-description = ",#969896,"
-match = ",#de935f,"
+default = { bg = "#373b41" }
+description = { fg = "#969896" }
+match = { fg = "#de935f" }
 
 [colors.filetree]
-default = "#1d1f21,#c5c8c6,"
-markers = ",#81a2be,"
-directory = ",#b5bd68,"
+default = { bg = "#1d1f21", fg = "#c5c8c6" }
+markers = { fg = "#81a2be" }
+directory = { fg = "#b5bd68" }
 
 [colors.filetree.selected]
-default = "#373b41,,"
-directory = ",#b5bd68,"
-markers = ",#81a2be,"
+default = { bg = "#373b41" }
+directory = { fg = "#b5bd68" }
+markers = { fg = "#81a2be" }
 
 [colors.locations]
-default = "#1d1f21,#c5c8c6,"
-title = "#373b41,#c5c8c6,"
-entry = ""
-group = ",#b5bd68,"
-markers = ",#81a2be,"
-match = ",#de935f,"
+default = { bg = "#1d1f21", fg = "#c5c8c6" }
+title = { bg = "#373b41", fg = "#c5c8c6" }
+# entry = {  }
+group = { fg = "#b5bd68" }
+markers = { fg = "#81a2be" }
+match = { fg = "#de935f" }
 
 [colors.locations.selected]
-default = "#373b41,,"
-match = ",#de935f,"
-markers = ",#81a2be,"
-entry = ""
-group = ",#b5bd68,"
+default = { bg = "#373b41" }
+match = { fg = "#de935f" }
+markers = { fg = "#81a2be" }
+# entry = {  }
+group = { fg = "#b5bd68" }
 
 [colors.popup]
-default = "#282a2e,#c5c8c6,"
+default = { bg = "#282a2e", fg = "#c5c8c6" }

@@ -1,92 +1,115 @@
 # Colors from https://github.com/sainnhe/everforest/blob/master/palette.md
 
+[variables]
+bg = "#2d353b"
+fg = "#d3c6aa"
+
+bg_alt = "#3D484D"
+bg_alt2 = "#9DA9A0"
+
+green = "#A7C080"
+magenta = "#D699B6"
+yellow = "#DBBC7F"
+orange = "#E69875"
+red = "#E67E80"
+blue = "#7FBBB3"
+aqua = "#83C092"
+
+blue_fg = "#3A515D"
+yellow_fg = "#4D4C43"
+red_fg = "#514045"
+green_fg = "#425047"
+gray_fg = "#7A8478"
+
+
+
 [colors.window]
-default = "#2d353b,#d3c6aa,"
-statusline = "#343F44,#d3c6aa,"
-statusline_no_focus = "#2D353B,,"
-end_of_buffer = ",#475258,"
-trailing_whitespace = ",#475258,"
-match = "#A7C080,#2D353B,"
-virtual = ",#4F585E,"
+default = { bg = "bg", fg = "fg" }
+statusline = { bg = "#343F44", fg = "fg" }
+statusline_no_focus = { bg = "bg" }
+end_of_buffer = { fg = "#475258" }
+trailing_whitespace = { fg = "#475258" }
+match = { bg = "green", fg = "bg" }
+virtual = { fg = "#4F585E" }
 
 [colors.cursor]
-normal = "#7FBBB3,#2d353b,"
-selection = "#56635f,,"
+normal = { bg = "blue", fg = "bg" }
+selection = { bg = "#56635f" }
 
 [colors.window.view]
-hint = "#3A515D,#7FBBB3,"
-info = "#3A515D,#7FBBB3,"
-warn = "#4D4C43,#DBBC7F,"
-error = "#514045,#E67E80,"
+hint = { bg = "blue_fg", fg = "blue" }
+info = { bg = "blue_fg", fg = "blue" }
+warn = { bg = "yellow_fg", fg = "yellow" }
+error = { bg = "red_fg", fg = "red" }
 
-added = "#425047,#A7C080,"
-modified = "#4D4C43,#DBBC7F,"
-deleted = "#514045,#E67E80,"
+added = { bg = "green_fg", fg = "green" }
+modified = { bg = "yellow_fg", fg = "yellow" }
+deleted = { bg = "red_fg", fg = "red" }
 
-constant = ",#83C092,"
-string =  ",#A7C080,"
-keyword = ",#E67E80,"
-operator =  ",#E69875,"
-type =  ",#DBBC7F,"
-comment = ",#859289,"
-preproc = ",#D699B6,"
-special = ",#DBBC7F,"
-identifier = ",#7FBBB3,"
+constant = { fg = "aqua" }
+string =  { fg = "green" }
+keyword = { fg = "red" }
+operator =  { fg = "orange" }
+type =  { fg = "yellow" }
+comment = { fg = "#859289" }
+preproc = { fg = "#D699B6" }
+special = { fg = "yellow" }
+identifier = { fg = "blue" }
 
 [colors.window.completion]
-default = "#3D484D,#d3c6aa,"
-description = ",#969896,"
-match = ",#de935f,"
+default = { bg = "bg_alt", fg = "fg" }
+description = {  fg = "#969896" }
+match = { fg = "#de935f" }
 
 [colors.window.completion.selected]
-default = "#A7C080,#2D353B,"
-description = ",,"
-match = ",#c55809,"
+default = { bg = "green", fg = "bg" }
+# description = { }
+match = { fg = "#c55809" }
 
 [colors.prompt]
-default = "#9DA9A0,#2d353b,"
-message = ",,bold"
-userinput = ",,"
+default = { bg = "#9DA9A0", fg = "bg" }
+message = { text_style = "bold" }
+# userinput = { }
 
 [colors.prompt.overlay]
-default = "#3D484D,#d3c6aa,"
-title = ",,bold"
-message = ",#d3c6aa,bold"
+default = { bg = "bg_alt", fg = "fg" }
+title = { text_style = "bold" }
+message = { fg = "fg", text_style = "bold" }
 
 [colors.prompt.completion]
-default = "#3D484D,#d3c6aa,"
-description = ",,"
-match = ",#de935f,"
+default = { bg = "bg_alt", fg = "fg" }
+# description = { }
+match = { fg = "#de935f" }
 
 [colors.prompt.completion.selected]
-default = "#A7C080,#2D353B,"
-description = ",,"
-match = ",#c55809,"
+default = { bg = "green", fg = "bg" }
+# description = { }
+match = { fg = "#c55809" }
 
 [colors.filetree]
-default = "#2d353b,#d3c6aa,"
-markers = ",#7A8478,"
-directory = ",#DBBC7F,"
+default = { bg = "bg", fg = "fg" }
+markers = { fg = "gray_fg" }
+directory = { fg = "yellow" }
 
 [colors.filetree.selected]
-default = "#3D484D,,"
-directory = ",#DBBC7F,"
-markers = ",#7A8478,"
+default = { bg = "bg_alt" }
+directory = { fg = "yellow" }
+markers = { fg = "gray_fg" }
 
 [colors.locations]
-default = "#2d353b,#d3c6aa,"
-title = "#4F585E,#d3c6aa,"
-entry = ""
-group = ",#83C092,"
-markers = ",#7A8478,"
-match = ",#E69875,"
+default = { bg = "bg", fg = "fg" }
+title = { bg = "#4F585E", fg = "fg" }
+# entry = {  }
+group = { fg = "aqua" }
+markers = { fg = "gray_fg" }
+match = { fg = "orange" }
 
 [colors.locations.selected]
-default = "#3D484D,,"
-match = ",#E69875,"
-markers = ",#7A8478,"
-entry = ""
-group = ",#83C092,"
+default = { bg = "bg_alt" }
+match = { fg = "orange" }
+markers = { fg = "gray_fg" }
+# entry = {  }
+group = { fg = "aqua" }
 
 [colors.popup]
-default = "#3D484D,#D3C6AA,"
+default = { bg = "#3D484D", fg = "fg" }

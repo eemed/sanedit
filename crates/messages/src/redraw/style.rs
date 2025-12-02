@@ -1,10 +1,7 @@
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use super::{
-    text_style::{self, TextStyle},
-    Color, HexStringError,
-};
+use super::{text_style::TextStyle, Color, HexStringError};
 
 #[derive(
     Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Copy, Default, PartialOrd, Ord, Hash,
@@ -29,32 +26,6 @@ impl Style {
         if let Some(s) = style.text_style {
             self.text_style = Some(s);
         }
-    }
-
-    /// Parse a style from a string of form "bg,fg,text_styles[,tex_styles]"
-    pub fn parse(string: &str) -> Result<Style, StyleError> {
-        if string.is_empty() {
-            return Ok(Style {
-                text_style: None,
-                bg: None,
-                fg: None,
-            });
-        }
-
-        let splits: Vec<&str> = string.splitn(3, ',').collect();
-        if splits.len() < 3 {
-            return Err(StyleError::Split);
-        }
-
-        let bg = Color::parse(splits[0]).ok();
-        let fg = Color::parse(splits[1]).ok();
-        let text_style = text_style::from_str(splits[2]);
-
-        Ok(Style {
-            bg,
-            fg,
-            text_style: Some(text_style),
-        })
     }
 }
 

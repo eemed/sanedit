@@ -34,6 +34,28 @@ impl Color {
     }
 }
 
+impl TryFrom<&str> for Color {
+    type Error = HexStringError;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        match value {
+            "black" => Ok(Color::Black),
+            "white" => Ok(Color::White),
+            _ => {
+                let res = Rgb::from_hex(value).map(Color::Rgb);
+
+                if res.is_err() {
+                    if let Some(color) = Rgb::from_rgba(value).map(Color::Rgb) {
+                        return Ok(color);
+                    }
+                }
+
+                res
+            }
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Copy, PartialOrd, Ord, Hash)]
 pub struct Rgb {
     pub(crate) red: u8,

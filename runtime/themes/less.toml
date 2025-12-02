@@ -1,74 +1,74 @@
 [colors.window]
-default = "#000000,,"
-statusline = "#ffffff,#000000,"
-match = "#FF00FF,#000000,"
-virtual = ",#00ffff,"
+default = { bg = "#000000" }
+statusline = { bg = "#ffffff", fg = "#000000" }
+match = { bg = "#FF00FF", fg = "#000000" }
+virtual = { fg = "#00ffff" }
 
 [colors.cursor]
-normal = "#ffffff,,"
-selection = "#ffffff,#000000,"
+normal = { bg = "#ffffff" }
+selection = { bg = "#ffffff", fg = "#000000" }
 
 [colors.window.view]
-hint = "#0000FF,#000000,"
-info = "#0000FF,#000000,"
-warn = "#FFFF00,#000000,"
-error = "#FF0000,#000000,"
+hint = { bg = "#0000FF", fg = "#000000" }
+info = { bg = "#0000FF", fg = "#000000" }
+warn = { bg = "#FFFF00", fg = "#000000" }
+error = { bg = "#FF0000", fg = "#000000" }
 
-added = "#00FF00,#000000,"
-modified = "#FFFF00,#000000,"
-deleted = "#FF0000,#000000,"
+added = { bg = "#00FF00", fg = "#000000" }
+modified = { bg = "#FFFF00", fg = "#000000" }
+deleted = { bg = "#FF0000", fg = "#000000" }
 
-constant = ",#FF00FF,"
-string =  ",#00FF00,"
-keyword = ",#FFFF00,"
-operator =  ",#00FFFF,"
-type =  ",#00FF00,"
-preproc = ",#FF00FF,"
-special = ",#FF00FF,"
-identifier = ",#FF00FF,"
+constant = { fg = "#FF00FF" }
+string = { fg = "#00FF00" }
+keyword = { fg = "#FFFF00" }
+operator = { fg = "#00FFFF" }
+type = { fg = "#00FF00" }
+preproc = { fg = "#FF00FF" }
+special = { fg = "#FF00FF" }
+identifier = { fg = "#FF00FF" }
 
 [colors.window.completion]
-default = "#ffffff,#000000,"
-match = ",#00FFFF,"
+default = { bg = "#ffffff", fg = "#000000" }
+match = { fg = "#00FFFF" }
 
 [colors.window.completion.selected]
-default = "#000000,#ffffff,"
-match = ",#00FFFF,"
+default = { bg = "#000000", fg = "#ffffff" }
+match = { fg = "#00FFFF" }
 
 [colors.prompt]
-default = "#ffffff,#000000,"
+default = { bg = "#ffffff", fg = "#000000" }
 
 [colors.prompt.overlay]
-default = "#ffffff,#000000,"
-message = ",#0000FF,"
+default = { bg = "#ffffff", fg = "#000000" }
+message = { fg = "#0000FF" }
 
 [colors.prompt.completion]
-match = ",#00FFFF,"
+match = { fg = "#00FFFF" }
 
 [colors.prompt.completion.selected]
-default = "#000000,#ffffff,"
-match = ",#00FFFF,"
+default = { bg = "#000000", fg = "#ffffff" }
+match = { fg = "#00FFFF" }
 
 [colors.filetree]
-default = "#000000,#ffffff,"
-markers = ",#00FFFF,"
-directory = ",#FFFF00,"
+default = { bg = "#000000", fg = "#ffffff" }
+markers = { fg = "#00FFFF" }
+directory = { fg = "#FFFF00" }
 
 [colors.filetree.selected]
-default = "#ffffff,#000000,"
-markers = ",#00FFFF,"
+default = { bg = "#ffffff", fg = "#000000" }
+markers = { fg = "#00FFFF" }
 
 [colors.locations]
-default = "#000000,#ffffff,"
-title = "#ffffff,#000000,"
-group = ",#FFFF00,"
-markers = ",#00FFFF,"
-match = ",#00FFFF,"
+default = { bg = "#000000", fg = "#ffffff" }
+title = { bg = "#ffffff", fg = "#000000" }
+group = { fg = "#FFFF00" }
+markers = { fg = "#00FFFF" }
+match = { fg = "#00FFFF" }
 
 [colors.locations.selected]
-default = "#ffffff,#000000,"
-match = ",#00FFFF,"
-markers = ",#00FFFF,"
+default = { bg = "#ffffff", fg = "#000000" }
+match = { fg = "#00FFFF" }
+markers = { fg = "#00FFFF" }
 
 [colors.popup]
-default = "#ffffff,#000000,"
+default = { bg = "#ffffff", fg = "#000000" }

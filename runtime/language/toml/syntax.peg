@@ -9,14 +9,14 @@ name            = (!space !nl .)+;
 value           = string / datetime / float / integer / boolean / array / object;
 array           = (empty_array / string_array / datetime_array / float_array / integer_array / boolean_array / array_array / object_array);
 
-@show @highlight
+@show @highlight @highlight(string)
 string = qstring / sstring;
 qstring = "\"" compl_string "\"";
 sstring = "'" compl_string2 "'";
 
-@show @completion @highlight(string)
+@show @completion
 compl_string    =  (color / "\\" escape_char / [^"\n])*;
-@show @completion @highlight(string)
+@show @completion
 compl_string2    = (color / "\\" escape_char / [^'\n])*;
 escape_char     = "0" / "t" / "n" / "r" / "\"" / "\\";
 digit           = [0..9];
@@ -80,5 +80,5 @@ comment         = "#" (!nl .)*;
 nl              = "\r\n" / "\r" / "\n";
 
 @show @highlight(color)
-color = "#" hex hex hex hex hex hex !hex;
+color = "#" hex hex hex hex hex hex;
 hex = [a..fA..F0..9];

@@ -399,6 +399,20 @@ impl<'a> FiletreeEntry<'a> {
         &self.absolute
     }
 
+    /// Some directory entries combine multiple directories
+    /// This will get the top most directory, or if file just the regular path
+    pub fn top_level_path(&self) -> PathBuf {
+        let mut path = self.path().to_path_buf();
+
+        let local = &self.node().local;
+        let components = local.components();
+        for _ in components.skip(1) {
+            path.pop();
+        }
+
+        path
+    }
+
     pub fn node(&self) -> &Node {
         self.node
     }

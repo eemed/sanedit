@@ -360,7 +360,7 @@ fn ft_rename_file(editor: &mut Editor, id: ClientId) -> ActionResult {
     let old = {
         let (win, _buf) = editor.win_buf(id);
         let entry = getf!(editor.filetree.iter().nth(win.ft_view.selection));
-        entry.path().to_path_buf()
+        entry.top_level_path()
     };
     rename_file(editor, id, old)
 }
@@ -398,8 +398,7 @@ fn ft_delete_file(editor: &mut Editor, id: ClientId) -> ActionResult {
     let path = {
         let (win, _buf) = editor.win_buf(id);
         let entry = getf!(editor.filetree.iter().nth(win.ft_view.selection));
-        let path = entry.path().to_path_buf();
-        path
+        entry.top_level_path()
     };
     delete_file(editor, id, path)
 }
@@ -462,11 +461,7 @@ pub(crate) fn handle_file_delete(editor: &mut Editor, id: ClientId, path: &Path)
     }
 
     // Refresh tree
-    if let Some(parent) = path.parent() {
-        if let Some(mut node) = editor.filetree.get_mut(parent) {
-            let _ = node.refresh();
-        }
-    }
+    let _ = editor.filetree.refresh();
 
     ActionResult::Ok
 }

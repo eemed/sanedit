@@ -351,7 +351,7 @@ impl<'a> Seek for SliceChunks<'a> {
                 debug_assert!(n >= 0);
                 let abs = n.unsigned_abs();
 
-                debug_assert!(abs < end);
+                debug_assert!(abs <= end);
                 self.pos = end - abs;
             }
             SeekFrom::Current(n) => {

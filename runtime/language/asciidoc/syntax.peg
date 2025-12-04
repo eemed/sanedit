@@ -5,7 +5,7 @@ ws = WHITESPACE;
 nl = "\n" / "\r\n";
 stop = WHITESPACE+ / nl;
 
-list_nl = nl list;
+list_nl = nl ws* list ws;
 @show @highlight(operator)
 list = "*"+;
 
@@ -48,10 +48,15 @@ title = "=" (!nl .)*;
 description = nl "." &[a..zA..Z0..9] (!nl .)*;
 preindent = nl ws+ (!nl .)* nl;
 
+operator = ops / table;
 @show @highlight(operator)
-operator = ops / table_border;
 ops = ("*"+ / "."+ / "-"+ / "+"+ / "'''") &stop;
+table = table_border (table_cell nl?)+ table_border;
+@show @highlight(operator)
 table_border = "|==" "="* nl;
+@show @highlight(operator)
+table_cell_border = "|";
+table_cell = table_cell_border [^|]+ &(nl / "|");
 
 @show @highlight(comment)
 comment = block_comment / line_comment;
@@ -71,19 +76,19 @@ text = [a..zA..Z0..9-]*;
 @show @highlight(keyword)
 specials = ("NOTE" / "WARNING" / "IMPORTANT" / "TIP" / "CAUTION") &":";
 
-@show @highlight(operator)
+@show @highlight(keyword)
 bold = "*" (!(nl / "*") ( escape / .))+ "*";
-@show @highlight(operator)
+@show @highlight(keyword)
 letter = "**" (!(nl / "**") ( escape / .))+ "**";
-@show @highlight(operator)
+@show @highlight(keyword)
 subscript = "~" (!(nl / "~") ( escape / .))+ "~";
-@show @highlight(operator)
+@show @highlight(keyword)
 superscript = "^" (!(nl / "^") ( escape / . ))+ "^";
-@show @highlight(operator)
+@show @highlight(keyword)
 force = "{" (!(nl / "}") ( escape / .))+ "}";
-@show @highlight(operator)
+@show @highlight(keyword)
 emphtwo = "__" (!(nl / "__") ( escape / .))+ "__";
-@show @highlight(operator)
+@show @highlight(keyword)
 emph = "_" (!(nl / "_") ( escape / .))+ "_";
 
 @show @highlight(keyword)

@@ -1,6 +1,6 @@
 document = (string / identifier / comment / keyword / builtin / constant / operator / alpha / .)*;
 
-alpha = [a..zA..Z0..9_.-]+;
+alpha = [a..zA..Z0..9_./-]+;
 stop = ws / ";" / ">";
 
 @show @highlight

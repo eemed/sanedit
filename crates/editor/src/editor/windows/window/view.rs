@@ -395,6 +395,82 @@ impl View {
         self.needs_redraw = true;
     }
 
+    fn free_width_on_line(&self, line: usize) -> usize {
+        let mut n = 0;
+        let line = &self.cells[line];
+        for cell in line.iter().rev() {
+            if cell.is_empty() {
+                n += 1;
+            } else {
+                break;
+            }
+        }
+
+        n
+    }
+
+    pub fn align_view_to_line(&mut self, buf: &Buffer) {
+        self.ensure_view_on_grapheme_boundary(buf);
+        self.redraw(buf);
+
+        // Go up until we find newlines,
+        // but stop at a maximum if there are no lines.
+        let mut pos = self.range.start;
+        let limit = self.free_width_on_line(0);
+
+        let min = pos.saturating_sub((self.height() * self.width()) as u64);
+        let slice = buf.slice(min..pos);
+        let mut graphemes = slice.graphemes_at(slice.len());
+        let mut line_width = 0;
+        let line_wrap_width = self
+            .options
+            .replacements
+            .get(&Replacement::Wrap)
+            .map(|ch| ch.width().unwrap_or(1))
+            .unwrap_or(0);
+        let width = limit;
+
+        if let Some(grapheme) = graphemes.prev() {
+            line_width += Chars::new(&grapheme, 0, &self.options).width();
+            pos -= grapheme.len();
+        }
+
+        while let Some(grapheme) = graphemes.prev() {
+            let ch = Chars::new(&grapheme, 0, &self.options);
+            line_width += ch.width();
+
+            pos = pos.saturating_sub(grapheme.len());
+
+            if pos == 0 {
+                break;
+            }
+
+            let is_eol = grapheme.is_eol();
+            if is_eol {
+                pos += grapheme.len();
+                break;
+            }
+
+            if line_width > width {
+                while let Some(g) = graphemes.next() {
+                    let ch = Chars::new(&g, 0, &self.options);
+                    line_width -= ch.width();
+                    pos += g.len();
+
+                    if line_width + line_wrap_width <= width {
+                        graphemes.prev();
+                        break;
+                    }
+                }
+
+                break;
+            }
+        }
+
+        self.range.start = pos;
+        self.needs_redraw = true;
+    }
+
     pub fn scroll_up_n(&mut self, buf: &Buffer, mut n: u64) {
         self.redraw(buf);
 

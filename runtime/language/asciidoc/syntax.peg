@@ -1,4 +1,4 @@
-document = (special / list)? (separated / ws+ / .)*;
+document = (special / list / line_comment)? (separated / ws+ / .)*;
 separated = code / identifier / keyword / preproc / comment / operator / string / specials / list_nl;
 WHITESPACE = [ \t];
 ws = WHITESPACE;
@@ -58,9 +58,10 @@ table_border = "|==" "="* nl;
 table_cell_border = "|";
 table_cell = table_cell_border [^|]+ &(nl / "|");
 
+comment = block_comment / nl line_comment;
 @show @highlight(comment)
-comment = block_comment / line_comment;
 line_comment = "//" (!nl .)*;
+@show @highlight(comment)
 block_comment = "////" (!"////" .)*  "////";
 
 @show @highlight

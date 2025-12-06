@@ -14,6 +14,7 @@ pub(crate) mod snippets;
 pub(crate) mod syntax;
 pub(crate) mod themes;
 pub(crate) mod windows;
+pub(crate) mod macros;
 
 use anyhow::bail;
 use caches::Caches;
@@ -70,6 +71,7 @@ use crate::draw::EditorContext;
 use crate::editor::buffers::Buffer;
 use crate::editor::config::Config;
 use crate::editor::hooks::Hook;
+use crate::editor::macros::Macros;
 use crate::editor::windows::Focus;
 use sanedit_core::copy_cursors_to_lines;
 use sanedit_core::paste_separate_cursor_lines;
@@ -121,6 +123,7 @@ pub(crate) struct Editor {
     pub config: Config,
     pub project_config: ProjectConfig,
     pub caches: Caches,
+    pub macros: Macros,
 }
 
 impl Editor {
@@ -165,6 +168,7 @@ impl Editor {
             config,
             caches,
             ignore,
+            macros: Default::default(),
         }
     }
 
@@ -999,6 +1003,10 @@ impl Editor {
             self.config.editor.language_detect.clone(),
         );
         loader.load_language(lang, reload);
+    }
+
+    pub fn replay_macro(&mut self, macr: Vec<KeyEvent>) {
+        todo!()
     }
 
     pub fn get_snippets(&self, id: ClientId) -> Vec<Arc<Choice>> {

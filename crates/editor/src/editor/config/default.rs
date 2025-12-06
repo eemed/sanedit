@@ -303,6 +303,8 @@ pub(crate) fn normal() -> KeymapLayer {
 
         "esc", cancel,
         "§", cancel,
+        "q", macro_record_toggle,
+        "Q", macro_replay,
         "y", copy,
         "Y", copy_to_eol,
         "p", paste,

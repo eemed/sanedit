@@ -25,18 +25,6 @@ fn draw_statusline(ctx: &mut DrawContext) -> Statusline {
         ..
     } = ctx.editor;
 
-    if win.focus() == Focus::Filetree {
-        let left = " File browser".to_string();
-        let right = String::new();
-        return Statusline { left, right };
-    }
-
-    if win.focus() == Focus::Locations {
-        let left = " Locations".to_string();
-        let right = String::new();
-        return Statusline { left, right };
-    }
-
     let name = {
         match buf.path() {
             Some(path) => {
@@ -58,6 +46,14 @@ fn draw_statusline(ctx: &mut DrawContext) -> Statusline {
     let cpos = cursor.pos();
     let blen = buf.len();
 
+    if win.focus() == Focus::Filetree {
+        left = " File browser".to_string();
+    }
+
+    if win.focus() == Focus::Locations {
+        left = " Locations".to_string();
+    }
+
     let right = {
         let mut result = String::new();
         let keys = win.keys();
@@ -67,11 +63,14 @@ fn draw_statusline(ctx: &mut DrawContext) -> Statusline {
             result.push_str(" | ")
         }
 
-        result.push_str(&format!(" {} | ", win.mode.statusline()));
+        if win.macro_record.is_recording() {
+            result.push_str(" REC | ")
+        }
+
         result.push_str(&format!(
-            "{}% ",
-            ((cpos as f64 / blen.max(1) as f64) * 100.0).floor(),
-            // to_human_readable(blen as f64)
+            " {} | {}% ",
+            win.mode.statusline(),
+            ((cpos as f64 / blen.max(1) as f64) * 100.0).floor()
         ));
 
         result

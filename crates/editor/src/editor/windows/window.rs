@@ -7,6 +7,7 @@ mod focus;
 pub(crate) mod games;
 mod jumps;
 mod locations;
+mod macro_record;
 mod mode;
 mod mouse;
 mod prompt;
@@ -32,7 +33,7 @@ use sanedit_core::{
     grapheme_category, indent_at_line,
     movement::{
         end_of_line, find_prev_whitespace, next_grapheme_boundary, next_line_end, next_line_start,
-        prev_grapheme_boundary, prev_line_start, start_of_line,
+        prev_grapheme_boundary, start_of_line,
     },
     selection_first_chars_of_lines, selection_line_ends, selection_line_starts, width_at_pos,
     BufferRange, Change, Changes, Cursor, DisplayOptions, GraphemeCategory, Locations, Range,
@@ -64,7 +65,8 @@ pub(crate) use cursors::Cursors;
 pub(crate) use locations::LocationsView;
 
 pub(crate) use self::{
-    completion::*, config::*, focus::*, jumps::*, mode::*, prompt::*, search::*, view::*,
+    completion::*, config::*, focus::*, jumps::*, macro_record::*, mode::*, prompt::*, search::*,
+    view::*,
 };
 
 #[derive(Debug)]
@@ -88,21 +90,16 @@ pub(crate) struct Window {
     pub ft_view: FiletreeView,
     pub locations: Locations<LocationsView>,
     pub snippets: Vec<Jumps<32>>,
-
+    pub macro_record: MacroRecord,
+    pub mouse: Mouse,
     /// Cursor jumps across files
     pub cursor_jumps: Jumps<512>,
-
     /// Last edit jumped to in buffer
     pub last_edit_jump: Option<SnapshotId>,
-
     /// Handles next keypress, before anything else
     pub next_key_handler: Option<NextKeyFunction>,
-
     /// Delete indent when insert mode is left. Auto indenting changes should set this
     pub delete_indent_on_insert_leave: bool,
-
-    pub mouse: Mouse,
-
     pub game: Option<Box<dyn Game>>,
 }
 
@@ -132,6 +129,7 @@ impl Window {
             delete_indent_on_insert_leave: false,
             mouse: Mouse::default(),
             game: None,
+            macro_record: Default::default(),
         }
     }
 
@@ -194,9 +192,8 @@ impl Window {
 
     pub fn full_reload(&mut self, buf: &Buffer) {
         self.view.invalidate();
-        self.view.ensure_view_on_grapheme_boundary(buf);
+        self.view.align_view_to_line(buf);
         self.ensure_cursor_on_grapheme_boundary(buf);
-        self.align_view_to_line(buf);
         self.reload();
     }
 
@@ -216,11 +213,6 @@ impl Window {
         self.message = None;
         self.completion = Completion::default();
         self.view.syntax = ViewSyntax::default();
-    }
-
-    pub fn align_view_to_line(&mut self, buf: &Buffer) {
-        // Not good but ok
-        self.view.scroll_up_n(buf, 1);
     }
 
     pub fn display_options(&self) -> &DisplayOptions {
@@ -440,16 +432,9 @@ impl Window {
         let old = &edit.buf;
         let vstart = self.view.start();
         let mark = old.mark(vstart);
-        let nmark_pos = buf.mark_to_pos(&mark);
-        match nmark_pos {
-            MarkResult::Deleted(pos) => {
-                let start = pos.saturating_sub(1024);
-                let slice = buf.slice(start..);
-                let npos = prev_line_start(&slice, pos - start);
-                self.view.set_offset(npos);
-            }
-            MarkResult::Found(pos) => self.view.set_offset(pos),
-        }
+        let pos = buf.mark_to_pos(&mark).pos();
+        self.view.set_offset(pos);
+        self.view.align_view_to_line(buf);
 
         {
             let mut cursors = self.cursors.cursors_mut();
@@ -510,6 +495,7 @@ impl Window {
         let offset = changes.move_offset(self.view().start());
         if offset != self.view().start() {
             self.view.set_offset(offset);
+            self.view.align_view_to_line(buf);
         }
 
         self.view.invalidate();
@@ -867,7 +853,7 @@ impl Window {
         self.invalidate();
 
         self.view.set_offset(aux.view_offset);
-        self.view.ensure_view_on_grapheme_boundary(buf);
+        self.view.align_view_to_line(buf);
         self.view_to_around_cursor_zone(buf, Zone::Middle);
         self.invalidate();
     }

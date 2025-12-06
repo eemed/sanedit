@@ -7,6 +7,7 @@ pub(crate) mod indent;
 pub(crate) mod jobs;
 pub(crate) mod locations;
 pub(crate) mod lsp;
+pub(crate) mod macros;
 pub(crate) mod mouse;
 pub(crate) mod movement;
 pub(crate) mod popup;
@@ -352,6 +353,13 @@ pub(crate) const COMMANDS: &[Action] = &[
     lsp::show_signature_help,
 
     popup::close,
+
+    macros::macro_record,
+    macros::macro_record_toggle,
+    macros::macro_stop_record,
+    macros::macro_record_named,
+    macros::macro_replay,
+    macros::macro_replay_named,
 
     // syntax::parse_syntax,
 

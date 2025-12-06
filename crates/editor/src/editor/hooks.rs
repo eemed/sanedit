@@ -164,7 +164,6 @@ impl Default for Hooks {
         hooks.register(BufEnter, text::check_file_modification);
         hooks.register(Focus, text::check_file_modification);
 
-        // TODO handle registration only when needed?
         hooks.register(CursorMoved, completion::completion_abort);
         hooks.register(BufChanged, completion::send_word);
         hooks.register(BufCreated, indent::detect_indent);
@@ -172,6 +171,7 @@ impl Default for Hooks {
         hooks.register(CursorMoved, popup::close);
         hooks.register(BufChanged, popup::close);
         hooks.register(ModeEnter, popup::close);
+        hooks.register(KeyPressedPre, macros::macro_on_char);
 
         // Syntax
         hooks.register(OnMessagePost, syntax::reparse_view);

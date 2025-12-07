@@ -344,7 +344,7 @@ impl GitGlob {
         Ok((rules, options))
     }
 
-    pub fn is_match<B: AsRef<[u8]>>(&self, bytes: &B) -> bool {
+    pub fn is_match<B: AsRef<[u8]>>(&self, bytes: B) -> bool {
         let mut bytes = bytes.as_ref();
         match self.parser.parse(&mut bytes) {
             Ok(_) => true,

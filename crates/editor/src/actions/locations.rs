@@ -1,9 +1,12 @@
+use std::{path::Path, sync::Arc};
+
+use sanedit_core::Group;
 use sanedit_utils::either::Either;
 
-use crate::editor::{
+use crate::{actions::jobs::{FileOptionProvider, LocationsGlobAdd}, editor::{
     windows::{Focus, Prompt},
     Editor,
-};
+}};
 
 use sanedit_server::ClientId;
 
@@ -136,11 +139,11 @@ fn toggle_all_expand_locs(editor: &mut Editor, id: ClientId) -> ActionResult {
     ActionResult::Ok
 }
 
-#[action("Locations: Keep groups with")]
+#[action("Locations: Keep files with")]
 fn keep_locations(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
     win.prompt = Prompt::builder()
-        .prompt("Keep location groups")
+        .prompt("Keep location files")
         .simple()
         .on_confirm(move |editor, id, out| {
             let (win, _buf) = editor.win_buf_mut(id);
@@ -162,11 +165,11 @@ fn keep_locations(editor: &mut Editor, id: ClientId) -> ActionResult {
     ActionResult::Ok
 }
 
-#[action("Locations: Reject groups with")]
+#[action("Locations: Reject files with")]
 fn reject_locations(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
     win.prompt = Prompt::builder()
-        .prompt("Reject location groups")
+        .prompt("Reject location files")
         .simple()
         .on_confirm(move |editor, id, out| {
             let (win, _buf) = editor.win_buf_mut(id);
@@ -212,5 +215,65 @@ fn loc_stop_job(editor: &mut Editor, id: ClientId) -> ActionResult {
     if let Some(job) = win.locations.extra.job.take() {
         editor.job_broker.stop(job);
     }
+    ActionResult::Ok
+}
+
+#[action("Locations: Open next file")]
+fn goto_next_loc_file(editor: &mut Editor, id: ClientId) -> ActionResult {
+    let (win, _buf) = editor.win_buf_mut(id);
+    if !win.locations.select_next_group() {
+        return ActionResult::Skipped;
+    }
+
+    if let Some(path) = win
+        .locations
+        .selected()
+        .and_then(Either::take_left)
+        .map(Group::path)
+        .map(Path::to_path_buf)
+    {
+        return editor.open_file(id, &path).into();
+    }
+
+    ActionResult::Ok
+}
+
+#[action("Locations: Open previous file")]
+fn goto_prev_loc_file(editor: &mut Editor, id: ClientId) -> ActionResult {
+    let (win, _buf) = editor.win_buf_mut(id);
+    if !win.locations.select_prev_group() {
+        return ActionResult::Skipped;
+    }
+
+    if let Some(path) = win
+        .locations
+        .selected()
+        .and_then(Either::take_left)
+        .map(Group::path)
+        .map(Path::to_path_buf)
+    {
+        return editor.open_file(id, &path).into();
+    }
+
+    ActionResult::Ok
+}
+
+#[action("Locations: Add files to locations")]
+fn loc_add_groups(editor: &mut Editor, id: ClientId) -> ActionResult {
+    let (win, _buf) = editor.win_buf_mut(id);
+    win.prompt = Prompt::builder()
+        .prompt("Add location files (glob)")
+        .simple()
+        .on_confirm(move |editor, id, out| {
+            let pattern = getf!(out.text());
+            let ignore = editor.ignore.clone();
+            let wd = editor.working_dir().to_path_buf();
+            let opts = FileOptionProvider::new(&wd, ignore, editor.config.editor.git_ignore);
+            let Ok(job) = LocationsGlobAdd::new(id, pattern, Arc::new(opts)) else { return ActionResult::Failed; };
+            editor.job_broker.request(job);
+            ActionResult::Ok
+        })
+        .build();
+    focus(editor, id, Focus::Prompt);
     ActionResult::Ok
 }

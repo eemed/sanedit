@@ -169,6 +169,30 @@ impl<T> Locations<T> {
         false
     }
 
+    /// Select next group
+    pub fn select_next_group(&mut self) -> bool {
+        while self.select_next() {
+            match self.selected_mut().unwrap() {
+                Either::Left(_group) => return true,
+                Either::Right(_) => {}
+            }
+        }
+
+        false
+    }
+
+    /// Select previous group
+    pub fn select_prev_group(&mut self) -> bool {
+        while self.select_prev() {
+            match self.selected_mut().unwrap() {
+                Either::Left(_group) => return true,
+                Either::Right(_) => {}
+            }
+        }
+
+        false
+    }
+
     pub fn select_next(&mut self) -> bool {
         if self.groups.is_empty() {
             self.selection = None;
@@ -355,7 +379,7 @@ impl<'a> Iterator for LocationIter<'a> {
 
         // Item usize::MAX is group itself
         if self.item == usize::MAX {
-            if group.is_expanded() {
+            if group.is_expanded() && !group.items.is_empty() {
                 self.item = 0;
             } else {
                 self.group += 1;

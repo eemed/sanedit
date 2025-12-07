@@ -150,6 +150,9 @@ pub(crate) const COMMANDS: &[Action] = &[
     locations::loc_select_first,
     locations::loc_select_last,
     locations::loc_stop_job,
+    locations::goto_next_loc_file,
+    locations::goto_prev_loc_file,
+    locations::loc_add_groups,
 
     filetree::close_filetree,
     filetree::next_ft_entry,

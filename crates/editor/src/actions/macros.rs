@@ -4,12 +4,20 @@ use sanedit_messages::key::KeyEvent;
 use sanedit_server::ClientId;
 
 use crate::{
-    actions::{jobs::MatcherJob, ActionResult},
-    editor::{windows::Prompt, Editor},
+    actions::{jobs::MatcherJob, window::focus, ActionResult},
+    editor::{
+        windows::{Focus, Prompt},
+        Editor,
+    },
 };
 
 #[action("Macro: Record and stop recording")]
 fn macro_record_toggle(editor: &mut Editor, id: ClientId) -> ActionResult {
+    let in_macro = editor.macros.is_replaying;
+    if in_macro {
+        return ActionResult::Skipped;
+    }
+
     let (win, _buf) = editor.win_buf_mut(id);
     if win.macro_record.is_recording() {
         win.macro_record.stop_recording();
@@ -21,6 +29,10 @@ fn macro_record_toggle(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Macro: Record")]
 fn macro_record(editor: &mut Editor, id: ClientId) -> ActionResult {
+    let in_macro = editor.macros.is_replaying;
+    if in_macro {
+        return ActionResult::Skipped;
+    }
     let (win, _buf) = editor.win_buf_mut(id);
     win.macro_record.record();
     ActionResult::Ok
@@ -28,6 +40,10 @@ fn macro_record(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Macro: Record named macro")]
 fn macro_record_named(editor: &mut Editor, id: ClientId) -> ActionResult {
+    let in_macro = editor.macros.is_replaying;
+    if in_macro {
+        return ActionResult::Skipped;
+    }
     let (win, _buf) = editor.win_buf_mut(id);
 
     win.prompt = Prompt::builder()
@@ -39,12 +55,17 @@ fn macro_record_named(editor: &mut Editor, id: ClientId) -> ActionResult {
             ActionResult::Ok
         })
         .build();
+    focus(editor, id, Focus::Prompt);
 
     ActionResult::Ok
 }
 
 #[action("Macro: Stop recording")]
 fn macro_stop_record(editor: &mut Editor, id: ClientId) -> ActionResult {
+    let in_macro = editor.macros.is_replaying;
+    if in_macro {
+        return ActionResult::Skipped;
+    }
     let (win, _buf) = editor.win_buf_mut(id);
     win.macro_record.stop_recording();
     let is_named = win.macro_record.name().is_some();
@@ -60,14 +81,22 @@ fn macro_stop_record(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Macro: Replay")]
 fn macro_replay(editor: &mut Editor, id: ClientId) -> ActionResult {
+    let in_macro = editor.macros.is_replaying;
+    if in_macro {
+        return ActionResult::Skipped;
+    }
     let (win, _buf) = editor.win_buf_mut(id);
     let macr = win.macro_record.events().to_vec();
-    editor.replay_macro(macr.to_vec());
+    editor.replay_macro(id, macr.to_vec());
     ActionResult::Ok
 }
 
-#[action("Macro: Replay")]
+#[action("Macro: Replay named")]
 fn macro_replay_named(editor: &mut Editor, id: ClientId) -> ActionResult {
+    let in_macro = editor.macros.is_replaying;
+    if in_macro {
+        return ActionResult::Skipped;
+    }
     let macros: Vec<String> = editor.macros.names().map(String::from).collect();
     let (win, _buf) = editor.win_buf_mut(id);
 
@@ -81,17 +110,21 @@ fn macro_replay_named(editor: &mut Editor, id: ClientId) -> ActionResult {
         .on_confirm(move |editor, _id, out| {
             let text = getf!(out.text());
             let macr = getf!(editor.macros.get(text));
-            editor.replay_macro(macr.to_vec());
+            editor.replay_macro(id, macr.to_vec());
             ActionResult::Ok
         })
         .build();
-
+    focus(editor, id, Focus::Prompt);
     editor.job_broker.request(job);
     ActionResult::Ok
 }
 
 #[action("Macro: On character")]
 fn macro_on_char(editor: &mut Editor, id: ClientId) -> ActionResult {
+    let in_macro = editor.macros.is_replaying;
+    if in_macro {
+        return ActionResult::Skipped;
+    }
     let (win, _buf) = editor.win_buf_mut(id);
     let is_recording = win.macro_record.is_recording();
     if !is_recording {

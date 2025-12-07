@@ -10,11 +10,11 @@ pub(crate) mod job_broker;
 pub(crate) mod keymap;
 pub(crate) mod language;
 pub(crate) mod lsp;
+pub(crate) mod macros;
 pub(crate) mod snippets;
 pub(crate) mod syntax;
 pub(crate) mod themes;
 pub(crate) mod windows;
-pub(crate) mod macros;
 
 use anyhow::bail;
 use caches::Caches;
@@ -1005,8 +1005,44 @@ impl Editor {
         loader.load_language(lang, reload);
     }
 
-    pub fn replay_macro(&mut self, macr: Vec<KeyEvent>) {
-        todo!()
+    pub fn replay_macro(&mut self, id: ClientId, macr: Vec<KeyEvent>) {
+        if self.macros.is_replaying {
+            return;
+        }
+
+        let (win, _buf) = self.win_buf_mut(id);
+        win.clear_keys();
+
+        self.macros.is_replaying = true;
+
+        for i in 0..macr.len() {
+            let event = macr[i].clone();
+            self.handle_key_event(id, event);
+
+            if !self.is_running {
+                self.quit();
+                return;
+            }
+
+            let Some(win) = self.windows().get(id) else {
+                return;
+            };
+
+            let hand_off_control = match win.focus() {
+                Focus::Prompt => win.prompt.is_options_loading(),
+                Focus::Completion => false, // TODO loading not implemented yet
+                Focus::Locations => win.locations.extra.is_loading,
+                _ => false,
+            };
+
+            if hand_off_control {
+                let (_, rest) = macr.split_at(i);
+                self.macros.keys = rest.into();
+                return;
+            }
+        }
+
+        self.macros.is_replaying = false;
     }
 
     pub fn get_snippets(&self, id: ClientId) -> Vec<Arc<Choice>> {

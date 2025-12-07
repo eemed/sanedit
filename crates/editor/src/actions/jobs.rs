@@ -2,6 +2,7 @@
 mod directory_option_provider;
 mod file_option_provider;
 mod games;
+mod glob;
 mod grep;
 mod lsp;
 mod matcher;
@@ -16,6 +17,7 @@ pub(crate) use self::grep::*;
 pub(crate) use directory_option_provider::*;
 pub(crate) use file_option_provider::*;
 pub(crate) use games::*;
+pub(crate) use glob::*;
 pub(crate) use lsp::*;
 pub(crate) use matcher::*;
 pub(crate) use search::*;

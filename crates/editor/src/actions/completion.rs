@@ -220,7 +220,7 @@ fn completion_confirm(editor: &mut Editor, id: ClientId) -> ActionResult {
 fn completion_abort(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
     if win.focus() == Focus::Completion {
-        win.focus = Focus::Window;
+        focus(editor, id, Focus::Window);
         return ActionResult::Ok;
     }
 

@@ -5,6 +5,8 @@ use crate::editor::Map;
 #[derive(Debug, Default)]
 pub struct Macros {
     macros: Map<String, Vec<KeyEvent>>,
+    pub is_replaying: bool,
+    pub keys: Vec<KeyEvent>,
 }
 
 impl Macros {

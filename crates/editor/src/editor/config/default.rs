@@ -378,6 +378,8 @@ pub(crate) fn normal() -> KeymapLayer {
         "g n",     goto_line,
         "g l",     goto_next_loc_item,
         "g L",     goto_prev_loc_item,
+        "g h",     goto_next_loc_file,
+        "g H",     goto_prev_loc_file,
         "g d",     goto_definition,
         "g r",     references,
         "g e",     next_diagnostic,

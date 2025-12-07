@@ -43,7 +43,7 @@ impl GitIgnoreList {
                     continue;
                 }
 
-                if glob.is_match(&bytes.as_bytes()) {
+                if glob.is_match(bytes.as_bytes()) {
                     return !opts.negated;
                 }
             }
@@ -112,7 +112,7 @@ impl GitIgnore {
                 continue;
             }
 
-            if glob.is_match(&bytes.as_bytes()) {
+            if glob.is_match(bytes.as_bytes()) {
                 return !opts.negated;
             }
         }

@@ -755,7 +755,7 @@ impl Editor {
         }
     }
 
-    pub fn handle_job_msg(&mut self, msg: FromJobs) {
+    pub fn handle_job_message(&mut self, msg: FromJobs) {
         use FromJobs::*;
         match msg {
             Message(id, msg) => {
@@ -783,6 +783,8 @@ impl Editor {
                 self.job_broker.done(id);
             }
         }
+
+        run(self, ClientId::temporary(0), Hook::OnJobMessagePost);
     }
 
     pub fn working_dir(&self) -> &Path {
@@ -1017,7 +1019,7 @@ impl Editor {
         loader.load_language(lang, reload);
     }
 
-    fn replay_macro_continue(&mut self) {
+    pub fn replay_macro_continue(&mut self) {
         while let Some(event) = self
             .macros
             .replay
@@ -1059,7 +1061,6 @@ impl Editor {
 
         let (win, _buf) = self.win_buf_mut(id);
         win.clear_keys();
-        log::info!("Replay: {macr:?}");
         self.macros.replay = Some(MacroReplay { keys: macr, id });
         self.replay_macro_continue();
     }
@@ -1122,7 +1123,7 @@ pub(crate) fn main_loop(
 
         match msg {
             NewClient(handle) => editor.on_client_connected(handle),
-            Jobs(msg) => editor.handle_job_msg(msg),
+            Jobs(msg) => editor.handle_job_message(msg),
             Message(id, msg) => editor.handle_message(id, msg),
             FatalError(e) => {
                 log::info!("Fatal error: {}", e);

@@ -41,6 +41,9 @@ pub(crate) enum Hook {
     /// After client message is processed
     OnMessagePost,
 
+    /// After job message is processed
+    OnJobMessagePost,
+
     /// Before buffer is saved
     BufSavedPre,
     /// After buffer has been saved
@@ -154,7 +157,6 @@ impl Default for Hooks {
 
         // Window
         hooks.register(BufChanged, window::sync_windows);
-        // hooks.register(CursorMoved, cursors::merge_overlapping_cursors);
         hooks.register(OnMessagePre, window::clear_messages);
         hooks.register(ModeEnter, window::on_mode_enter);
         hooks.register(ModeLeave, window::on_mode_leave);
@@ -172,6 +174,7 @@ impl Default for Hooks {
         hooks.register(BufChanged, popup::close);
         hooks.register(ModeEnter, popup::close);
         hooks.register(KeyPressedPre, macros::macro_on_char);
+        hooks.register(OnJobMessagePost, macros::macro_continue);
 
         // Syntax
         hooks.register(OnMessagePost, syntax::reparse_view);

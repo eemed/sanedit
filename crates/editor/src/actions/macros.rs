@@ -132,3 +132,25 @@ fn macro_on_char(editor: &mut Editor, id: ClientId) -> ActionResult {
     win.macro_record.push_event(event);
     ActionResult::Ok
 }
+
+#[action("Macro: Continue execution")]
+fn macro_continue(editor: &mut Editor, _id: ClientId) -> ActionResult {
+    if !editor.macros.is_replaying() {
+        return ActionResult::Ok;
+    }
+
+    let id = editor.macros.replay.as_ref().unwrap().id;
+    let (win, _buf) = editor.win_buf_mut(id);
+
+    let hand_off_control = match win.focus() {
+        Focus::Prompt => win.prompt.is_options_loading(),
+        Focus::Completion => false, // TODO loading not implemented yet
+        Focus::Locations => win.locations.extra.is_loading,
+        _ => false,
+    };
+
+    if !hand_off_control {
+        editor.replay_macro_continue();
+    }
+    ActionResult::Ok
+}

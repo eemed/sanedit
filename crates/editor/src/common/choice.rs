@@ -45,7 +45,7 @@ impl Choice {
             completion
                 .detail
                 .as_ref()
-                .and_then(|detail| Snippet::new(&detail).ok())
+                .and_then(|detail| Snippet::new(detail).ok())
                 .as_ref()
                 .map(Snippet::as_text)
                 .or(completion.detail)

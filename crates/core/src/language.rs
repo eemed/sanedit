@@ -95,7 +95,7 @@ impl Language {
             }
 
             for glob in detect.compile_globs() {
-                if glob.is_match(&pattern.as_bytes()) {
+                if glob.is_match(pattern.as_bytes()) {
                     return Some(Language {
                         name: ft.to_string(),
                     });

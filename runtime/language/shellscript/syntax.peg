@@ -5,8 +5,11 @@ stop = ws / ";" / ">";
 
 @show @highlight
 string    = qstring / sstring;
-qstring = "\"" (identifier / [^"\n])* "\"";
+qstring = "\"" (identifier / escaped / [^"\n])* "\"";
 sstring = "'" [^'\n]* "'";
+
+@show @highlight(special)
+escaped = "\\" .;
 
 @show @highlight(identifier)
 identifier = var / var2;

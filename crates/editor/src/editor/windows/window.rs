@@ -574,6 +574,10 @@ impl Window {
     }
 
     fn remove(&mut self, buf: &mut Buffer, ranges: &[BufferRange]) -> Result<()> {
+        if ranges.is_empty() {
+            return Ok(());
+        }
+
         let changes = Changes::multi_remove(ranges);
         self.change(buf, &changes)
     }

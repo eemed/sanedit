@@ -82,7 +82,7 @@ impl XClip {
 impl Clipboard for XClip {
     fn copy(&mut self, text: &str) {
         let mut child = Command::new("xclip")
-            .args(["-in", "-selection", "clipboard"])
+            .args(["-in"])
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .spawn()
@@ -96,7 +96,7 @@ impl Clipboard for XClip {
 
     fn paste(&mut self) -> Result<String> {
         let output = Command::new("xclip")
-            .args(["-out", "-selection", "clipboard"])
+            .args(["-out"])
             .stdin(Stdio::null())
             .stdout(Stdio::piped())
             .output()
@@ -119,7 +119,7 @@ impl XSel {
 impl Clipboard for XSel {
     fn copy(&mut self, text: &str) {
         let mut child = Command::new("xsel")
-            .args(["--input", "--clipboard"])
+            .args(["--input"])
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .spawn()
@@ -133,7 +133,7 @@ impl Clipboard for XSel {
 
     fn paste(&mut self) -> Result<String> {
         let output = Command::new("xsel")
-            .args(["--output", "--clipboard"])
+            .args(["--output"])
             .stdin(Stdio::null())
             .stdout(Stdio::piped())
             .output()

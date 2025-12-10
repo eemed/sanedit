@@ -456,6 +456,7 @@ impl LSPJob {
         let lang = self.language.clone();
         win.prompt = Prompt::builder()
             .prompt("Select code action")
+            .loads_options()
             .on_confirm(move |editor, id, out| {
                 let n = getf!(out.number());
                 let action = getf!(actions.get(n - 1));

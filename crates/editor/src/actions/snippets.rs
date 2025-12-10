@@ -39,6 +39,7 @@ pub(crate) fn insert_snippet(editor: &mut Editor, id: ClientId) -> ActionResult 
 
     win.prompt = Prompt::builder()
         .prompt(MESSAGE)
+        .loads_options()
         .on_confirm(move |editor, id, out| {
             let (win, _buf) = editor.win_buf(id);
             let primary = win.cursors.primary().pos();

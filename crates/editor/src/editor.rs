@@ -1034,23 +1034,32 @@ impl Editor {
                 return;
             }
 
-            let Some(win) = self.windows().get(id) else {
-                return;
-            };
-
-            let hand_off_control = match win.focus() {
-                Focus::Prompt => win.prompt.is_options_loading(),
-                Focus::Completion => false, // TODO loading not implemented yet
-                Focus::Locations => win.locations.extra.is_loading,
-                _ => false,
-            };
-
-            if hand_off_control {
+            if !self.should_continue_macro(id) {
                 return;
             }
         }
 
         self.macros.replay = None;
+    }
+
+    pub fn should_continue_macro(&self, id: ClientId) -> bool {
+        let Some(win) = self.windows().get(id) else {
+            return false;
+        };
+
+        if let Some(lsp) = self.lsp_for(id) {
+            if lsp.inflight_requests(id) != 0 {
+                return false;
+            }
+        }
+
+
+        match win.focus() {
+            Focus::Prompt => win.prompt.is_options_loading(),
+            Focus::Completion => false, // TODO loading not implemented yet
+            Focus::Locations => win.locations.extra.is_loading,
+            _ => false,
+        }
     }
 
     pub fn replay_macro(&mut self, id: ClientId, macr: VecDeque<KeyEvent>) {

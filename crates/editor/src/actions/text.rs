@@ -619,6 +619,7 @@ fn set_indentation(editor: &mut Editor, id: ClientId) -> ActionResult {
 
     win.prompt = Prompt::builder()
         .prompt("Indent kind")
+        .loads_options()
         .simple()
         .on_confirm(|editor, id, input| match getf!(input.text()) {
             SPACE => indentation_amount(editor, id, IndentKind::Space),
@@ -688,6 +689,7 @@ fn set_eol(editor: &mut Editor, id: ClientId) -> ActionResult {
 
     win.prompt = Prompt::builder()
         .prompt("Line ending")
+        .loads_options()
         .simple()
         .on_confirm(move |editor, id, input| {
             let (_win, buf) = editor.win_buf_mut(id);

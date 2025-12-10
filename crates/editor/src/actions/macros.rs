@@ -105,6 +105,7 @@ fn macro_replay_named(editor: &mut Editor, id: ClientId) -> ActionResult {
 
     win.prompt = Prompt::builder()
         .prompt("Macro to replay")
+        .loads_options()
         .on_confirm(move |editor, _id, out| {
             let text = getf!(out.text());
             let macr = getf!(editor.macros.get(text));
@@ -140,17 +141,10 @@ fn macro_continue(editor: &mut Editor, _id: ClientId) -> ActionResult {
     }
 
     let id = editor.macros.replay.as_ref().unwrap().id;
-    let (win, _buf) = editor.win_buf_mut(id);
 
-    let hand_off_control = match win.focus() {
-        Focus::Prompt => win.prompt.is_options_loading(),
-        Focus::Completion => false, // TODO loading not implemented yet
-        Focus::Locations => win.locations.extra.is_loading,
-        _ => false,
-    };
-
-    if !hand_off_control {
+    if editor.should_continue_macro(id) {
         editor.replay_macro_continue();
     }
+
     ActionResult::Ok
 }

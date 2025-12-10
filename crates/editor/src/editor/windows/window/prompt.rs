@@ -27,6 +27,7 @@ pub(crate) struct PromptBuilder {
     kind: PromptKind,
     history_kind: Option<HistoryKind>,
     input: String,
+    loads_options: bool,
 }
 
 impl PromptBuilder {
@@ -37,6 +38,11 @@ impl PromptBuilder {
 
     pub fn simple(mut self) -> Self {
         self.kind = PromptKind::Simple;
+        self
+    }
+
+    pub fn loads_options(mut self) -> Self {
+        self.loads_options = true;
         self
     }
 
@@ -84,6 +90,7 @@ impl PromptBuilder {
             kind,
             history_kind,
             input,
+            loads_options,
         } = self;
         let mut prompt = Prompt::new(&message.unwrap_or(String::new()));
         prompt.on_confirm = on_confirm;
@@ -93,6 +100,7 @@ impl PromptBuilder {
         prompt.kind = kind;
         prompt.cursor = input.len();
         prompt.input = input;
+        prompt.is_options_loading = loads_options;
 
         prompt
     }

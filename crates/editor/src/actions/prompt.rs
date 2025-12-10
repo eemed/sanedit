@@ -55,6 +55,7 @@ fn select_theme(editor: &mut Editor, id: ClientId) -> ActionResult {
 
     win.prompt = Prompt::builder()
         .prompt("Select theme")
+        .loads_options()
         .on_confirm(move |editor, id, out| {
             let text = getf!(out.text());
             match editor.themes.get(text) {
@@ -90,6 +91,7 @@ fn command_palette(editor: &mut Editor, id: ClientId) -> ActionResult {
 
     win.prompt = Prompt::builder()
         .prompt("Commands")
+        .loads_options()
         .on_confirm(move |editor, id, out| {
             let desc = getf!(out.text());
             if let Some(action) = find_by_description(desc) {
@@ -124,6 +126,7 @@ fn open_file(editor: &mut Editor, id: ClientId) -> ActionResult {
 
     win.prompt = Prompt::builder()
         .prompt(PROMPT_MESSAGE)
+        .loads_options()
         .on_confirm(move |editor, id, out| {
             let path = getf!(out.path_selection());
 
@@ -177,6 +180,7 @@ fn open_buffer(editor: &mut Editor, id: ClientId) -> ActionResult {
 
     win.prompt = Prompt::builder()
         .prompt(PROMPT_MESSAGE)
+        .loads_options()
         .on_confirm(move |editor, id, out| {
             let num = getf!(out.number());
             let bid = BufferId::from(num);
@@ -386,6 +390,7 @@ fn prompt_change_dir(editor: &mut Editor, id: ClientId, input: &Path, is_dir: bo
         .build();
     win.prompt = Prompt::builder()
         .prompt("Select directory")
+        .loads_options()
         .simple()
         .input(&display)
         .on_input(move |e, id, input| {
@@ -530,6 +535,7 @@ fn prompt_jump(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
     win.prompt = Prompt::builder()
         .prompt(PROMPT_MESSAGE)
+        .loads_options()
         .on_confirm(move |editor, id, out| {
             let index = getf!(out.number()) - 1;
             let cursor = cursors[index].clone();
@@ -590,6 +596,7 @@ fn buffer_undopoints(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
     win.prompt = Prompt::builder()
         .prompt(PROMPT_MESSAGE)
+        .loads_options()
         .on_confirm(move |editor, id, out| {
             let snapshot = nodes_len - getf!(out.number());
             let (win, buf) = win_buf!(editor, id);
@@ -630,6 +637,7 @@ fn kill_jobs(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
     win.prompt = Prompt::builder()
         .prompt(PROMPT_MESSAGE)
+        .loads_options()
         .on_confirm(move |editor, _id, out| {
             let n = getf!(out.number());
             let jid = JobId::from(n);
@@ -666,6 +674,7 @@ fn show_keymaps(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
     win.prompt = Prompt::builder()
         .prompt(PROMPT_MESSAGE)
+        .loads_options()
         .on_abort(move |editor, id, _out| {
             if key.focus != Focus::Prompt {
                 focus_with_mode(editor, id, key.focus, key.mode);

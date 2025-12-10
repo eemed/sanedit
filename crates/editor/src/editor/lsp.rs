@@ -113,4 +113,8 @@ impl Lsp {
         let sender = self.sender.as_ref()?;
         Some(sender.position_encoding())
     }
+
+    pub fn inflight_requests(&self, client: ClientId) -> usize {
+        self.requests.iter().filter(|(_, (id, _))| id == &client).count()
+    }
 }

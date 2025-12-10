@@ -258,8 +258,7 @@ impl<T> Locations<T> {
 
     /// Keep groups that match the predicate.
     pub fn retain<F: Fn(&Group) -> bool + Copy>(&mut self, f: F) {
-        self.groups
-            .retain(|group| (f)(&group));
+        self.groups.retain(f);
         self.ensure_selection_in_range();
     }
 }

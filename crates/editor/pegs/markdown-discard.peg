@@ -10,7 +10,7 @@ WHITESPACE = [ \t];
 ws = WHITESPACE*;
 nl = "\r\n" / "\n";
 
-inline = bold / italic / backtick;
+inline = bold / italic / backtick / strikethrough / subscript / superscript / highlight;
 
 bold = bold_star bold_star_cont bold_star / bold_und bold_und_cont bold_und;
 bold_star = "**";
@@ -24,7 +24,7 @@ bold_und_cont = (!(bold_und / nl) (inline / .))*;
 italic = italic_star italic_star_cont italic_star / italic_und italic_und_cont italic_und;
 italic_star = "*";
 @show @highlight(italic)
-italic_star_cont = (!(italic_star / nl / WHITESPACE) (inline / .));
+italic_star_cont = (!(italic_star / nl / WHITESPACE) (inline / .))*;
 
 italic_und = "_";
 @show @highlight(italic)
@@ -38,6 +38,26 @@ backtick_cont = [^`]*;
 dbacktick_op = "``";
 @show @highlight(keep)
 dbacktick_cont = (!"``" .)*;
+
+highlight = highlight_op highlight_cont highlight_op;
+highlight_op = "==";
+@show @highlight(keep)
+highlight_cont = (!"==" .)*;
+
+subscript = subscript_tilde subscript_content subscript_tilde;
+subscript_tilde = "~";
+@show @highlight(italic)
+subscript_content = (!(subscript_tilde / nl / WHITESPACE) (inline / .))*;
+
+superscript = superscript_tilde superscript_content superscript_tilde;
+superscript_tilde = "^";
+@show @highlight(italic)
+superscript_content = (!(superscript_tilde / nl / WHITESPACE) (inline / .))*;
+
+strikethrough = strikethrough_tilde strikethrough_content strikethrough_tilde;
+strikethrough_tilde = "~~";
+@show @highlight(italic)
+strikethrough_content = (!(strikethrough_tilde / nl / WHITESPACE) (inline / .))*;
 
 code_fence = start_fence fence_cont end_fence;
 start_fence = "```" [a..zA..Z0..9_:-]+ nl;

@@ -1,14 +1,14 @@
-document = title? (nl title / list_op / link / code_fence / backtick / (!WHITESPACE .) WHITESPACE / .)*;
+document = title? (nl title / list_op / link / code_fence / inline / block_quote / hr / (!WHITESPACE .) WHITESPACE / .)*;
 
 WHITESPACE = [ \t];
-ws = WHITESPACE*;
+ws = WHITESPACE;
 nl = "\r\n" / "\n";
 
 @show @whitespaced @highlight(identifier)
 title = "#"+ (!nl .)*;
 
 @show @highlight(operator)
-list_op = nl ws ("*" / "-" / "+")+ ws;
+list_op = nl ws* ("*" / "-" / "+")+ ws;
 
 link = "[" link_name "](" link_url ")";
 @show @highlight(keyword)
@@ -16,9 +16,6 @@ link_name = (!"]" .)*;
 
 @show @highlight(constant)
 link_url = (!")" .)*;
-
-@show @highlight(operator)
-backtick = "`" (!"`" .)* "`";
 
 code_fence = fence code_name nl code fence;
 
@@ -30,3 +27,15 @@ code = (!fence .)*;
 spaces = WHITESPACE*;
 @show @highlight(operator)
 fence = "```";
+
+@show @highlight(keyword)
+hr = nl "---";
+
+@show @highlight(keyword)
+block_quote =  nl ">" (!nl .)*;
+
+@show @highlight(operator)
+inline = bold / italic / backtick;
+bold = "**" (!"**" .)+ "**";
+italic = "*" (!"*" .)+ "*";
+backtick = "`" (!"`" .)+ "`";

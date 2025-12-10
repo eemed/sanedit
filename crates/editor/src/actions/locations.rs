@@ -146,10 +146,13 @@ fn keep_locations(editor: &mut Editor, id: ClientId) -> ActionResult {
         .prompt("Keep location files")
         .simple()
         .on_confirm(move |editor, id, out| {
+            let wd = editor.working_dir().to_path_buf();
             let (win, _buf) = editor.win_buf_mut(id);
             let text = getf!(out.text());
             let case_sensitive = text.chars().any(|ch| ch.is_uppercase());
-            win.locations.retain(|name| {
+            win.locations.retain(|group| {
+                let relative = group.path().strip_prefix(&wd).unwrap_or(group.path());
+                let name = relative.to_string_lossy();
                 if case_sensitive {
                     name.contains(text)
                 } else {
@@ -172,10 +175,13 @@ fn reject_locations(editor: &mut Editor, id: ClientId) -> ActionResult {
         .prompt("Reject location files")
         .simple()
         .on_confirm(move |editor, id, out| {
+            let wd = editor.working_dir().to_path_buf();
             let (win, _buf) = editor.win_buf_mut(id);
             let text = getf!(out.text());
             let case_sensitive = text.chars().any(|ch| ch.is_uppercase());
-            win.locations.retain(|name| {
+            win.locations.retain(|group| {
+                let relative = group.path().strip_prefix(&wd).unwrap_or(group.path());
+                let name = relative.to_string_lossy();
                 if case_sensitive {
                     !name.contains(text)
                 } else {

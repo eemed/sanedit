@@ -1026,7 +1026,6 @@ impl Editor {
             .as_mut()
             .and_then(|replay| replay.keys.pop_front())
         {
-            log::info!("ID: {event:?}");
             let id = self.macros.replay.as_ref().unwrap().id;
             self.handle_key_event(id, event);
 

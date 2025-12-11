@@ -284,7 +284,6 @@ fn loc_add_groups(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
     win.prompt = Prompt::builder()
         .prompt(MESSAGE)
-        .simple()
         .loads_options()
         .on_confirm(move |editor, id, _out| {
             let (win, _buf) = editor.win_buf_mut(id);

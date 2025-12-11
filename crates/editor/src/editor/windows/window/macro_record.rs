@@ -5,19 +5,22 @@ use sanedit_messages::key::KeyEvent;
 #[derive(Debug, Default, Clone)]
 pub struct MacroReplay {
     keys: VecDeque<KeyEvent>,
+    is_replaying: bool,
 }
 
 impl MacroReplay {
     pub fn is_replaying(&self) -> bool {
-        self.keys.is_empty()
+        self.is_replaying
     }
 
     pub fn replay(&mut self, keys: VecDeque<KeyEvent>) {
         self.keys = keys;
+        self.is_replaying = true;
     }
 
     pub fn stop_replaying(&mut self) {
         self.keys.clear();
+        self.is_replaying = false;
     }
 
     pub fn pop(&mut self) -> Option<KeyEvent> {

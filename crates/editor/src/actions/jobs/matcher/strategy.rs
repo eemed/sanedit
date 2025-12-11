@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use sanedit_core::Range;
-use sanedit_syntax::Finder;
+use sanedit_syntax::{Finder, GitGlob};
 
 trait MatchFn: Send + Sync {
     fn is_match(&self, opt: &str, results: &mut Vec<Range<usize>>);
@@ -51,6 +51,19 @@ impl MatchFn for Prefix {
     }
 }
 
+/// Matches prefixes
+pub(crate) struct Glob {
+    glob: GitGlob,
+}
+
+impl MatchFn for Glob {
+    fn is_match(&self, opt: &str, results: &mut Vec<Range<usize>>) {
+        if self.glob.is_match(opt.as_bytes()) {
+            results.push(Range::from(0..opt.len()));
+        }
+    }
+}
+
 #[derive(Clone)]
 pub(crate) struct MultiMatcher {
     is_empty: bool,
@@ -91,17 +104,14 @@ pub enum MatchStrategy {
 
     /// Match the prefix
     Prefix,
+
+    /// The pattern is a glob
+    Glob,
 }
 
 impl MatchStrategy {
     pub fn get_match_func(&self, terms: &[String], case_sensitive: bool) -> MultiMatcher {
         let mut matchers: Vec<Box<dyn MatchFn>> = Vec::with_capacity(terms.len());
-        if terms.is_empty() {
-            return MultiMatcher {
-                is_empty: true,
-                matchers: Arc::new(matchers),
-            };
-        }
         match self {
             MatchStrategy::Default => {
                 for term in terms {
@@ -122,10 +132,17 @@ impl MatchStrategy {
                     matchers.push(Box::new(pfix));
                 }
             }
+            MatchStrategy::Glob => {
+                for term in terms {
+                    if let Ok(glob) = GitGlob::new(term) {
+                        matchers.push(Box::new(Glob { glob }));
+                    }
+                }
+            }
         }
 
         MultiMatcher {
-            is_empty: false,
+            is_empty: matchers.is_empty(),
             matchers: Arc::new(matchers),
         }
     }
@@ -136,6 +153,7 @@ impl MatchStrategy {
         match self {
             MatchStrategy::Default => true,
             MatchStrategy::Prefix => false,
+            MatchStrategy::Glob => false,
         }
     }
 }

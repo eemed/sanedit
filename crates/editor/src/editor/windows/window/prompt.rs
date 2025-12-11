@@ -10,7 +10,7 @@ use crate::{
         jobs::MatcherMessage, prompt::get_directory_searcher_term, window::focus, ActionResult,
     },
     common::{Choice, ScoredChoice},
-    editor::{snippets::Snippet, windows::Focus, Editor},
+    editor::{snippets::Snippet, windows::{window::chooser::Choices, Focus}, Editor},
 };
 use sanedit_server::ClientId;
 
@@ -507,6 +507,10 @@ impl Prompt {
 
     pub fn options_window(&self, count: usize, offset: usize) -> Vec<&ScoredChoice> {
         self.chooser.matches_window(count, offset)
+    }
+
+    pub fn options(&self) -> &Choices {
+        self.chooser.options()
     }
 
     pub fn selected(&self) -> Option<&ScoredChoice> {

@@ -1,12 +1,16 @@
-use std::{path::Path, sync::Arc};
+use std::path::Path;
 
 use sanedit_core::Group;
 use sanedit_utils::either::Either;
 
-use crate::{actions::jobs::{FileOptionProvider, LocationsGlobAdd}, editor::{
-    windows::{Focus, Prompt},
-    Editor,
-}};
+use crate::{
+    actions::jobs::{FileOptionProvider, MatchStrategy, MatcherJob},
+    common::Choice,
+    editor::{
+        windows::{Focus, Prompt},
+        Editor,
+    },
+};
 
 use sanedit_server::ClientId;
 
@@ -266,17 +270,37 @@ fn goto_prev_loc_file(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Locations: Add files to locations")]
 fn loc_add_groups(editor: &mut Editor, id: ClientId) -> ActionResult {
+    const MESSAGE: &str = "Add location files (glob)";
+    let ignore = editor.ignore.clone();
+    let wd = editor.working_dir().to_path_buf();
+    let opts = FileOptionProvider::new(&wd, ignore, editor.config.editor.git_ignore);
+    let job = MatcherJob::builder(id)
+        .options(opts)
+        .strategy(MatchStrategy::Glob)
+        .handler(Prompt::matcher_result_handler)
+        .build();
+    editor.job_broker.request_slot(id, MESSAGE, job);
+
     let (win, _buf) = editor.win_buf_mut(id);
     win.prompt = Prompt::builder()
-        .prompt("Add location files (glob)")
+        .prompt(MESSAGE)
         .simple()
-        .on_confirm(move |editor, id, out| {
-            let pattern = getf!(out.text());
-            let ignore = editor.ignore.clone();
-            let wd = editor.working_dir().to_path_buf();
-            let opts = FileOptionProvider::new(&wd, ignore, editor.config.editor.git_ignore);
-            let Ok(job) = LocationsGlobAdd::new(id, pattern, Arc::new(opts)) else { return ActionResult::Failed; };
-            editor.job_broker.request(job);
+        .loads_options()
+        .on_confirm(move |editor, id, _out| {
+            let (win, _buf) = editor.win_buf_mut(id);
+            let choices = win.prompt.options();
+            for i in 0..choices.len() {
+                let choice = choices.get(i).unwrap();
+
+                if let Choice::Path { path, .. } = choice.choice() {
+                    let groups = win.locations.groups();
+                    let exists = groups.iter().any(|g| g.path() == path.as_path());
+
+                    if !exists {
+                        win.locations.push(Group::new(path.as_path()));
+                    }
+                }
+            }
             ActionResult::Ok
         })
         .build();

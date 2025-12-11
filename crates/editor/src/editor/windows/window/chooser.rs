@@ -4,7 +4,7 @@ use sanedit_utils::sorted_vec::SortedVec;
 
 use crate::common::ScoredChoice;
 
-use self::choices::Choices;
+pub use self::choices::Choices;
 
 /// Selects one item from a list of options.
 /// Options can be filtered down using an input string.

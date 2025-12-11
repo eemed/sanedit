@@ -1034,6 +1034,9 @@ impl Editor {
                 return;
             }
         }
+
+        let (win, _buf) = self.win_buf_mut(id);
+        win.macro_replay.stop_replaying();
     }
 
     pub fn should_continue_macro(&self, id: ClientId) -> bool {
@@ -1048,10 +1051,10 @@ impl Editor {
         }
 
         match win.focus() {
-            Focus::Prompt => win.prompt.is_options_loading(),
-            Focus::Completion => false, // TODO loading not implemented yet
-            Focus::Locations => win.locations.extra.is_loading,
-            _ => false,
+            Focus::Prompt => !win.prompt.is_options_loading(),
+            Focus::Completion => true, // TODO loading not implemented yet
+            Focus::Locations => !win.locations.extra.is_loading,
+            _ => true,
         }
     }
 

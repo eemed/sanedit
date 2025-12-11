@@ -175,6 +175,7 @@ impl Default for Hooks {
         hooks.register(ModeEnter, popup::close);
         hooks.register(KeyPressedPre, macros::macro_on_char);
         hooks.register(OnJobMessagePost, macros::macro_continue);
+        hooks.register(OnMessagePost, macros::macro_continue);
 
         // Syntax
         hooks.register(OnMessagePost, syntax::reparse_view);

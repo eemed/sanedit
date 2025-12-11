@@ -91,6 +91,7 @@ pub(crate) struct Window {
     pub locations: Locations<LocationsView>,
     pub snippets: Vec<Jumps<32>>,
     pub macro_record: MacroRecord,
+    pub macro_replay: MacroReplay,
     pub mouse: Mouse,
     /// Cursor jumps across files
     pub cursor_jumps: Jumps<512>,
@@ -130,6 +131,7 @@ impl Window {
             mouse: Mouse::default(),
             game: None,
             macro_record: Default::default(),
+            macro_replay: Default::default(),
         }
     }
 

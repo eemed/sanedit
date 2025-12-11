@@ -10,7 +10,6 @@ pub(crate) mod job_broker;
 pub(crate) mod keymap;
 pub(crate) mod language;
 pub(crate) mod lsp;
-pub(crate) mod macros;
 pub(crate) mod snippets;
 pub(crate) mod syntax;
 pub(crate) mod themes;
@@ -72,8 +71,6 @@ use crate::draw::EditorContext;
 use crate::editor::buffers::Buffer;
 use crate::editor::config::Config;
 use crate::editor::hooks::Hook;
-use crate::editor::macros::MacroReplay;
-use crate::editor::macros::Macros;
 use crate::editor::windows::Focus;
 use sanedit_core::copy_cursors_to_lines;
 use sanedit_core::paste_separate_cursor_lines;
@@ -125,7 +122,7 @@ pub(crate) struct Editor {
     pub config: Config,
     pub project_config: ProjectConfig,
     pub caches: Caches,
-    pub macros: Macros,
+    pub macros: Map<String, VecDeque<KeyEvent>>,
 }
 
 impl Editor {
@@ -372,14 +369,16 @@ impl Editor {
 
         match msg {
             Message::KeyEvent(key_event) => {
-                if self.macros.is_replaying() {
-                    return;
+                let (win, _buf) = self.win_buf_mut(id);
+                if win.macro_replay.is_replaying() {
+                    win.macro_replay.stop_replaying();
                 }
                 self.handle_key_event(id, key_event);
             }
             Message::MouseEvent(mouse_event) => {
-                if self.macros.is_replaying() {
-                    return;
+                let (win, _buf) = self.win_buf_mut(id);
+                if win.macro_replay.is_replaying() {
+                    win.macro_replay.stop_replaying();
                 }
                 self.handle_mouse_event(id, mouse_event);
             }
@@ -1019,14 +1018,11 @@ impl Editor {
         loader.load_language(lang, reload);
     }
 
-    pub fn replay_macro_continue(&mut self) {
-        while let Some(event) = self
-            .macros
-            .replay
-            .as_mut()
-            .and_then(|replay| replay.keys.pop_front())
-        {
-            let id = self.macros.replay.as_ref().unwrap().id;
+    pub fn replay_macro_continue(&mut self, id: ClientId) {
+        while let Some(event) = {
+            let (win, _buf) = self.win_buf_mut(id);
+            win.macro_replay.pop()
+        } {
             self.handle_key_event(id, event);
 
             if !self.is_running {
@@ -1038,8 +1034,6 @@ impl Editor {
                 return;
             }
         }
-
-        self.macros.replay = None;
     }
 
     pub fn should_continue_macro(&self, id: ClientId) -> bool {
@@ -1053,7 +1047,6 @@ impl Editor {
             }
         }
 
-
         match win.focus() {
             Focus::Prompt => win.prompt.is_options_loading(),
             Focus::Completion => false, // TODO loading not implemented yet
@@ -1063,14 +1056,14 @@ impl Editor {
     }
 
     pub fn replay_macro(&mut self, id: ClientId, macr: VecDeque<KeyEvent>) {
-        if self.macros.is_replaying() {
+        let (win, _buf) = self.win_buf_mut(id);
+        if win.macro_replay.is_replaying() {
             return;
         }
 
-        let (win, _buf) = self.win_buf_mut(id);
         win.clear_keys();
-        self.macros.replay = Some(MacroReplay { keys: macr, id });
-        self.replay_macro_continue();
+        win.macro_replay.replay(macr);
+        self.replay_macro_continue(id);
     }
 
     pub fn get_snippets(&self, id: ClientId) -> Vec<Arc<Choice>> {

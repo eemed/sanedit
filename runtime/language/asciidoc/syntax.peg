@@ -51,12 +51,12 @@ preindent = nl ws+ (!nl .)* nl;
 operator = ops / table;
 @show @highlight(operator)
 ops = ("*"+ / "."+ / "-"+ / "+"+ / "'''") &stop;
-table = table_border (table_cell nl?)+ table_border;
+table = table_border (!table_border table_cell nl?)+ table_border;
 @show @highlight(operator)
 table_border = "|==" "="* nl;
 @show @highlight(operator)
 table_cell_border = "|";
-table_cell = table_cell_border [^|]+ &(nl / "|");
+table_cell = table_cell_border (!(table_cell_border / nl) .)*;
 
 comment = block_comment / nl line_comment;
 @show @highlight(comment)

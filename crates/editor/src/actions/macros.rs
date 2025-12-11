@@ -12,7 +12,8 @@ use crate::{
 
 #[action("Macro: Record and stop recording")]
 fn macro_record_toggle(editor: &mut Editor, id: ClientId) -> ActionResult {
-    if editor.macros.is_replaying() {
+    let (win, _buf) = editor.win_buf_mut(id);
+    if win.macro_replay.is_replaying() {
         return ActionResult::Skipped;
     }
 
@@ -26,7 +27,8 @@ fn macro_record_toggle(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Macro: Record")]
 fn macro_record(editor: &mut Editor, id: ClientId) -> ActionResult {
-    if editor.macros.is_replaying() {
+    let (win, _buf) = editor.win_buf_mut(id);
+    if win.macro_replay.is_replaying() {
         return ActionResult::Skipped;
     }
     let (win, _buf) = editor.win_buf_mut(id);
@@ -36,7 +38,8 @@ fn macro_record(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Macro: Record named macro")]
 fn macro_record_named(editor: &mut Editor, id: ClientId) -> ActionResult {
-    if editor.macros.is_replaying() {
+    let (win, _buf) = editor.win_buf_mut(id);
+    if win.macro_replay.is_replaying() {
         return ActionResult::Skipped;
     }
     let (win, _buf) = editor.win_buf_mut(id);
@@ -58,7 +61,8 @@ fn macro_record_named(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Macro: Stop recording")]
 fn macro_stop_record(editor: &mut Editor, id: ClientId) -> ActionResult {
-    if editor.macros.is_replaying() {
+    let (win, _buf) = editor.win_buf_mut(id);
+    if win.macro_replay.is_replaying() {
         return ActionResult::Skipped;
     }
     let (win, _buf) = editor.win_buf_mut(id);
@@ -77,7 +81,8 @@ fn macro_stop_record(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Macro: Replay")]
 fn macro_replay(editor: &mut Editor, id: ClientId) -> ActionResult {
-    if editor.macros.is_replaying() {
+    let (win, _buf) = editor.win_buf_mut(id);
+    if win.macro_replay.is_replaying() {
         return ActionResult::Skipped;
     }
     let (win, _buf) = editor.win_buf_mut(id);
@@ -92,10 +97,11 @@ fn macro_replay(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Macro: Replay named")]
 fn macro_replay_named(editor: &mut Editor, id: ClientId) -> ActionResult {
-    if editor.macros.is_replaying() {
+    let (win, _buf) = editor.win_buf_mut(id);
+    if win.macro_replay.is_replaying() {
         return ActionResult::Skipped;
     }
-    let macros: Vec<String> = editor.macros.names().map(String::from).collect();
+    let macros: Vec<String> = editor.macros.keys().map(String::from).collect();
     let (win, _buf) = editor.win_buf_mut(id);
 
     let job = MatcherJob::builder(id)
@@ -120,7 +126,8 @@ fn macro_replay_named(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Macro: On character")]
 fn macro_on_char(editor: &mut Editor, id: ClientId) -> ActionResult {
-    if editor.macros.is_replaying() {
+    let (win, _buf) = editor.win_buf_mut(id);
+    if win.macro_replay.is_replaying() {
         return ActionResult::Skipped;
     }
     let (win, _buf) = editor.win_buf_mut(id);
@@ -135,15 +142,14 @@ fn macro_on_char(editor: &mut Editor, id: ClientId) -> ActionResult {
 }
 
 #[action("Macro: Continue execution")]
-fn macro_continue(editor: &mut Editor, _id: ClientId) -> ActionResult {
-    if !editor.macros.is_replaying() {
+fn macro_continue(editor: &mut Editor, id: ClientId) -> ActionResult {
+    let (win, _buf) = editor.win_buf_mut(id);
+    if win.macro_replay.is_replaying() {
         return ActionResult::Ok;
     }
 
-    let id = editor.macros.replay.as_ref().unwrap().id;
-
     if editor.should_continue_macro(id) {
-        editor.replay_macro_continue();
+        editor.replay_macro_continue(id);
     }
 
     ActionResult::Ok

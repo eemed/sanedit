@@ -1,4 +1,29 @@
+use std::collections::VecDeque;
+
 use sanedit_messages::key::KeyEvent;
+
+#[derive(Debug, Default, Clone)]
+pub struct MacroReplay {
+    keys: VecDeque<KeyEvent>,
+}
+
+impl MacroReplay {
+    pub fn is_replaying(&self) -> bool {
+        self.keys.is_empty()
+    }
+
+    pub fn replay(&mut self, keys: VecDeque<KeyEvent>) {
+        self.keys = keys;
+    }
+
+    pub fn stop_replaying(&mut self) {
+        self.keys.clear();
+    }
+
+    pub fn pop(&mut self) -> Option<KeyEvent> {
+        self.keys.pop_front()
+    }
+}
 
 #[derive(Debug, Default)]
 pub struct MacroRecord {

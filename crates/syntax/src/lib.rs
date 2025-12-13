@@ -183,49 +183,32 @@ impl ParserKind {
         self.handle_injections(bytes, loader.unwrap(), capture_list)
     }
 
-    fn handle_injections<S: Source>(
-        &self,
-        mut source: S,
+    fn calculate_injections<S: Source>(
+        parser: &ParserKind,
+        source: &mut S,
         loader: &Arc<dyn LanguageLoader>,
-        capture_list: CaptureList,
-    ) -> Result<Captures, ParseError> {
-        let rules = match self {
-            ParserKind::Interpreted(parsing_machine) => parsing_machine.rules(),
-            ParserKind::Jit(jit) => jit.rules(),
-        };
-
-        let injection_ids = rules.injection_ids();
-        if injection_ids.is_none() {
-            return Ok(Captures {
-                captures: capture_list,
-                injections: vec![],
-            });
-        }
-
-        let injection_ids = injection_ids.unwrap();
+        capture_list: &CaptureList,
+    ) -> Result<Vec<(String, Captures)>, ParseError> {
         let mut injections = vec![];
         let mut last_pos = None;
         let mut last_lang = None;
         let mut i = 0;
-        let mut push_injections = |mut caps: Captures, lang: String, start: u64| {
-            caps.captures.iter_mut().for_each(|cap| {
-                cap.start += start;
-                cap.end += start;
-            });
+        let rules = parser.rules();
+        let injection_ids = rules.injection_ids();
+        if injection_ids.is_none() {
+            return Ok(vec![]);
+        }
 
-            injections.push((lang.clone(), caps));
-        };
-
+        let injection_ids = injection_ids.unwrap();
         while i < capture_list.len() {
             use Annotation::*;
             let cap = &capture_list[i];
-
             if !injection_ids[cap.id] {
                 i += 1;
                 continue;
             }
 
-            let annotations = self.annotations_for(cap.id);
+            let annotations = parser.annotations_for(cap.id);
             let inject_ann = annotations.iter().find(|ann| matches!(ann, Inject(..)));
             let inject_lang_ann = annotations
                 .iter()
@@ -240,9 +223,22 @@ impl ParserKind {
                                 .ok_or(ParseError::SourceReadError(
                                     std::io::ErrorKind::InvalidData.into(),
                                 ))?;
-                        let caps = parser.parse(slice)?;
+                        let mut caps = parser.parse(slice)?;
                         let start = cap.range().start;
-                        push_injections(caps, lang.clone(), start);
+
+                        caps.captures.iter_mut().for_each(|cap| {
+                            cap.start += start;
+                            cap.end += start;
+                        });
+
+                        let subinjections = Self::calculate_injections(
+                            &parser.inner,
+                            source,
+                            loader,
+                            &caps.captures,
+                        )?;
+                        caps.injections = subinjections;
+                        injections.push((lang.clone(), caps));
                     }
                 }
                 (Some(Inject(None)), None) => {
@@ -271,19 +267,41 @@ impl ParserKind {
                                 .ok_or(ParseError::SourceReadError(
                                     std::io::ErrorKind::InvalidData.into(),
                                 ))?;
-                        let caps = parser.parse(slice)?;
+                        let mut caps = parser.parse(slice)?;
                         let start = pos_cap.range().start;
-                        push_injections(caps, lang.clone(), start);
+                        caps.captures.iter_mut().for_each(|cap| {
+                            cap.start += start;
+                            cap.end += start;
+                        });
+
+                        let subinjections = Self::calculate_injections(
+                            &parser.inner,
+                            source,
+                            loader,
+                            &caps.captures,
+                        )?;
+
+                        caps.injections = subinjections;
+                        injections.push((lang.clone(), caps));
                     }
                 }
 
                 last_pos = None;
-                // last_lang = None;
             }
 
             i += 1;
         }
 
+        Ok(injections)
+    }
+
+    fn handle_injections<S: Source>(
+        &self,
+        mut source: S,
+        loader: &Arc<dyn LanguageLoader>,
+        capture_list: CaptureList,
+    ) -> Result<Captures, ParseError> {
+        let injections = Self::calculate_injections(self, &mut source, loader, &capture_list)?;
         Ok(Captures {
             captures: capture_list,
             injections,
@@ -319,7 +337,6 @@ impl ParserKind {
         }
     }
 
-    #[allow(dead_code)]
     fn rules(&self) -> &Rules {
         match self {
             ParserKind::Interpreted(parsing_machine) => parsing_machine.rules(),

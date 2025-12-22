@@ -830,6 +830,7 @@ impl Jit {
                         ;next:
                     );
                 }
+                Backreference(_) => todo!(),
             }
         }
 

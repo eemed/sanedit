@@ -15,6 +15,8 @@ rule = ws (_ annotation)* rule_name "=" def+ ";" ws ;
 @show @completion(rule) @highlight(identifier) @whitespaced
 rule_name = id_chars+;
 
+@show @highlight(preproc)
+inline_annotation = "@backref(" (!")" .)* ")";
 
 @show @highlight(preproc)
 annotation = "@" annotation_name ("(" ann_spec ")")?;
@@ -30,7 +32,7 @@ def = clause (op? clause)*;
 op = "/";
 
 @whitespaced
-clause = preop? (parens / brackets / id_chars+ / string / dot) postop?;
+clause = preop? (parens / brackets / id_chars+ / string / dot) postop? / inline_annotation;
 
 dot = ".";
 

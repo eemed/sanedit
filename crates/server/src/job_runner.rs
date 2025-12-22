@@ -7,6 +7,7 @@ use crossbeam::channel::Sender;
 pub use futures_core::future::BoxFuture;
 use rustc_hash::FxHashMap;
 use tokio::sync::mpsc::{self, channel};
+use tokio::task::JoinHandle;
 
 use crate::events::ToEditor;
 use crate::CHANNEL_SIZE;
@@ -60,6 +61,32 @@ pub async fn spawn_job_runner(sender: Sender<ToEditor>) -> JobsHandle {
     tx
 }
 
+#[derive(Debug, Default)]
+struct Jobs(FxHashMap<JobId, (Kill, JoinHandle<()>)>);
+
+impl std::ops::Deref for Jobs {
+    type Target = FxHashMap<JobId, (Kill, JoinHandle<()>)>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for Jobs {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+impl Drop for Jobs {
+    fn drop(&mut self) {
+        for (_id, (kill, join)) in &self.0 {
+            kill.stop();
+            join.abort();
+        }
+    }
+}
+
 // Runs jobs in tokio runtime.
 async fn jobs_loop(mut recv: mpsc::Receiver<ToJobs>, sender: crossbeam::channel::Sender<ToEditor>) {
     let (tx, mut rx) = channel(CHANNEL_SIZE);
@@ -67,7 +94,7 @@ async fn jobs_loop(mut recv: mpsc::Receiver<ToJobs>, sender: crossbeam::channel:
         editor: sender,
         internal: tx,
     };
-    let mut jobs = FxHashMap::default();
+    let mut jobs = Jobs::default();
 
     loop {
         tokio::select!(

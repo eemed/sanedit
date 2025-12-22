@@ -76,10 +76,95 @@ to restart the parsing process after corrections. Copying the parser state
 (stack) is rather expensive and would slow down performance.
 
 
-== Current solution 
+== Current solution
 
-Wrote a LPEG like parsing machine and would like to investigate making a JIT.
+Wrote a LPEG like parsing machine and a JIT to version.
 
 The grammars are matching parts of the structure instead of the whole
 structure, to allow most things to be highlighted while we are writing
-code.
+code. The current implementation supports injecting other languages into other languages recursively. For example fenced code blocks can be highlighted in their own syntax, that in turn can contain other injected languages. The implementation also supports backreferences so you can match previously matched text again, useful for example in HTML or XML.
+
+=== Defining rules
+
+Rules are specified in special files called `syntax.peg`. They use a simple PEG like syntax with custom annotations. Special rules are capitalized.
+
+```peg
+document = (!skip .)* (member / value / .)*;
+
+WHITESPACE = [ \t\r\n];
+_ = WHITESPACE*;
+
+skip = "{" / "[";
+value =  object / array / number / string / constant;
+
+@whitespaced
+object = "{" (member ("," member)*)? "}"?;
+
+@whitespaced
+member = identifier ":" value;
+
+@show @highlight(identifier)
+identifier = quote identifier_inner quote;
+
+@show @completion
+identifier_inner = (escape / !"\"" .)*;
+escape = "\\" .;
+
+@show @highlight
+string = quote string_inner quote;
+
+@show @completion @highlight(string)
+string_inner = (escape / !"\"" .)*;
+escape = "\\" .;
+
+@whitespaced
+array = "[" (value ("," value)*)? "]";
+
+@show @highlight(constant)
+number = "-"? integer ("." [0..9]+)?;
+
+@show @highlight
+constant = true / false / null;
+
+true = "true";
+false = "false";
+null = "null";
+integer = "0" / [1..9] [0..9]*;
+quote = "\"";
+```
+
+Supported annotations are:
+
+#table(
+  columns: (auto, auto),
+  inset: 10pt,
+  align: horizon,
+  table.header(
+    [*Annotation*], [*Usage*],
+  ),
+  [\@show],                [Show the rule in captures],
+  [\@highlight],           [Highlight text matched by this rule],
+  [\@highlight(anything)], [Highlight text matched by this rule, and use the <anything> provided as a name],
+  [\@completion],          [Use the text matched by this rule as a completion item],
+  [\@static-completion],   [Use the strings defined in this rule directly as completion items],
+  [\@injection-language],  [Matches the dynamic name of the language to be injected],
+  [\@inject],              [Injects previously matched \@injection-language to this portion of text],
+  [\@inject(javascript)],  [Injects static language name to a portion of text],
+ [\@whitespaced],          [Convert the rule to a form that allows whitespace in between every element. \
+                 a special WHITESPACE rule defines what is considered whitespace. \
+                 Example:\
+                     Original:   array = "\["             value (              "\,"            value )\*             "\]";\
+                     Generated:  array = "\[" WHITESPACE\* value ( WHITESPACE\* "\," WHITESPACE\* value )\* WHITESPACE\* "\]";],
+)
+
+Supported inline annotations are:
+
+#table(
+  columns: (auto, auto),
+  inset: 10pt,
+  align: horizon,
+  table.header(
+    [*Inline annotation*], [*Usage*],
+  ),
+  [\@backref(rule_name)],  [References the same text as rule_name previously matched],
+)

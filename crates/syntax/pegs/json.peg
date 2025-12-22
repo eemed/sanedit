@@ -1,11 +1,21 @@
 #
 # Annotations:
-#    @show        show the rule in the generated AST
-#    @whitespaced convert the rule to a form that allows whitespace in between every element.
+#    @show                Show the rule in captures
+#    @highlight           Highlight text matched by this rule
+#    @highlight(anything) Highlight text matched by this rule, and use the <anything> provided as a name
+#    @completion          Use the text matched by this rule as a completion item
+#    @static-completion   Use the strings defined in this rule directly as completion items
+#    @injection-language  Matches the dynamic name of the language to be injected
+#    @inject              Injects previously matched @injection-language to this portion of text
+#    @inject(javascript)  Injects static language name to a portion of text
+#    @whitespaced         convert the rule to a form that allows whitespace in between every element.
 #                 a special WHITESPACE rule defines what is considered whitespace.
 #                 Example:
 #                     Original:   array = "["             value (              ","            value )*             "]";
 #                     Generated:  array = "[" WHITESPACE* value ( WHITESPACE* "," WHITESPACE* value )* WHITESPACE* "]";
+#
+# Inline annotations:
+#    @backref(rule_name)  References the same text as rule_name previously matched
 #
 document = (!skip .)* (member / value / .)*;
 

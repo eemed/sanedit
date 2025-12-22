@@ -26,4 +26,5 @@ pub(crate) enum Operation {
     CaptureBegin(CaptureID),
     CaptureEnd,
     CaptureLate(CaptureID, u64),
+    Backreference(CaptureID),
 }

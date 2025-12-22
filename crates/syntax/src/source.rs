@@ -47,6 +47,12 @@ pub trait Source {
             None
         }
     }
+
+    fn matches_self(&mut self, at: u64, at2: u64, len: u64) -> bool {
+        let one = self.slice(at..at + len).map(|bytes| bytes.to_vec());
+        let two = self.slice(at2..at2 + len);
+        !one.is_none() && one.as_ref().map(|vec| vec.as_slice()) == two
+    }
 }
 
 impl<const N: usize> Source for &[u8; N] {

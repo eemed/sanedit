@@ -30,6 +30,7 @@ pub(crate) use self::op::{Addr, Operation};
 enum Kind {
     Open,
     Close,
+    Backref,
 }
 
 #[derive(Debug)]
@@ -56,10 +57,43 @@ fn to_captures(partials: Vec<PartialCapture>) -> Vec<Capture> {
                 };
                 captures.push(capture);
             }
+            _ => {}
         }
     }
 
     captures
+}
+
+/// Find backreference for capture id in current captures stack.
+/// Returns (position, length) pair of the match in the source
+pub(crate) fn find_backreference(bref: CaptureID, captures: &[PartialCapture]) -> (u64, u64) {
+    let mut nbackrefs = 0;
+    let mut start = 0;
+    let mut end = 0;
+    for pcap in captures.iter().rev().filter(|pcap| pcap.id == bref) {
+        match pcap.kind {
+            Kind::Open => {
+                if end != 0 {
+                    start = pcap.pos;
+                    break;
+                }
+            }
+            Kind::Close => {
+                // Skip if the capture is already referenced
+                if nbackrefs == 0 {
+                    end = pcap.pos;
+                } else {
+                    nbackrefs -= 1;
+                }
+            }
+            Kind::Backref => nbackrefs += 1,
+        }
+    }
+
+    // Assume this exists, otherwise the rule is used wrong
+    debug_assert!(start < end);
+
+    (start, end - start)
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -343,6 +377,19 @@ impl ParsingMachine {
                     captop += 1;
                     ip += 1;
                 }
+                Backreference(r) => {
+                    let (br_start, br_len) = find_backreference(*r, &captures);
+                    if reader.matches_self(sp, br_start, br_len) {
+                        captures.push(PartialCapture {
+                            id: *r,
+                            kind: Kind::Backref,
+                            pos: sp,
+                        });
+                        captop += 1;
+                    } else {
+                        state = State::Failure;
+                    }
+                }
             }
 
             // Recover from failure state
@@ -461,6 +508,31 @@ mod test {
         let parser = ParsingMachine::from_read(std::io::Cursor::new(peg)).unwrap();
         let result = parser.parse(&mut content);
         assert!(result.is_ok(), "Parse failed with {result:?}");
+    }
+
+    #[test]
+    fn parse_backrefs() {
+        let peg = r#"
+            doc = (tag / ws)*;
+            ws = [ \t] / "\n";
+            tag = "<" name ">"  (!"</" ws* ( tag / .) )*  ws* "</" @backref(name) ">";
+
+            @show
+            name = [a..zA..Z0..9]+;
+            "#;
+
+        let mut content = b"<html><body></body></html>";
+        let parser = ParsingMachine::from_read(std::io::Cursor::new(peg)).unwrap();
+        let result = parser.parse(&mut content);
+        assert!(result.is_ok(), "Parse failed with {result:?}");
+
+        for m in result.unwrap() {
+            let label = parser.label_for(m.id);
+            println!(
+                "{label}: {:?}",
+                std::str::from_utf8(&content[m.start as usize..m.end as usize])
+            );
+        }
     }
 
     #[test]

@@ -116,7 +116,7 @@ always separate when appending to the add buffer cannot be done contiguously.
 == Searching
 
 Searching the buffer should be fast and with possibly gigabyte sized buffers
-searching should be supported forwards and backwards. The search algorithm used
-here is Boyer Moore. Boyer Moore is good at searching text that has a large
-alphabet and not much repeating. It runs in sub-linear time in the best case,
-and the performance increases as the length of the searched term increases.
+searching should be supported forwards and backwards. Currently searching using
+SIMD for the first character and matching normally the rest of the text. Regex
+queries are implemented using the syntax highlighting engine and are compiled to
+ JIT accelerated PEG patterns.

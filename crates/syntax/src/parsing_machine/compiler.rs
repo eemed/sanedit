@@ -439,6 +439,9 @@ impl<'a> Compiler<'a> {
             Embed(operation) => {
                 self.push(operation.clone());
             }
+            Backreference(r) => {
+                self.push(Operation::Backreference(*r));
+            }
         }
 
         Ok(())

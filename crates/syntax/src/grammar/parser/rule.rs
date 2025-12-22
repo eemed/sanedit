@@ -185,6 +185,8 @@ pub(crate) enum Rule {
     /// Inclusive UTF8 range
     UTF8Range(char, char),
     Ref(usize),
+    /// Reference text matched by a previous rule
+    Backreference(usize),
     /// Add an instruction directly
     Embed(Operation),
 }
@@ -285,7 +287,7 @@ impl fmt::Display for Rule {
             }
             NotFollowedBy(r) => write!(f, "!({})", r),
             FollowedBy(r) => write!(f, "&({})", r),
-            Ref(r) => write!(f, "<{r}>"),
+            Ref(r) => write!(f, "ref({r})"),
             OneOrMore(r) => write!(f, "({})+", r),
             Optional(r) => write!(f, "({})?", r),
             ZeroOrMore(r) => write!(f, "({})*", r),
@@ -293,6 +295,7 @@ impl fmt::Display for Rule {
             ByteRange(a, b) => write!(f, "[{:?}..{:?}]", a, b),
             ByteAny => write!(f, "."),
             Embed(operation) => write!(f, "<{operation:?}>"),
+            Backreference(r) => write!(f, "backref({r})"),
         }
     }
 }

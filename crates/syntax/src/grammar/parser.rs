@@ -231,6 +231,31 @@ impl<R: io::Read> GrammarParser<R> {
     fn simple_rule(&mut self) -> Result<Rule> {
         // Prefix + rule
         let mut rule = match &self.token {
+            Token::Annotation => {
+                self.consume(Token::Annotation)?;
+                let name = self.text()?;
+                self.consume(Token::LParen)?;
+                let in_parens = self.text()?;
+                self.consume(Token::RParen)?;
+                match name.as_str() {
+                    "backref" => match self.indices.get(&in_parens) {
+                        Some(i) => Rule::Ref(*i),
+                        None => {
+                            let i = self.rules.len();
+                            let rrule = RuleInfo {
+                                name: in_parens.clone(),
+                                rule: Rule::Ref(0),
+                                annotations: vec![],
+                                top: false,
+                            };
+                            self.indices.insert(in_parens, i);
+                            self.rules.push(rrule);
+                            Rule::Backreference(i)
+                        }
+                    },
+                    _ => bail!("Invalid annotation rule {}", name),
+                }
+            }
             Token::And => {
                 self.consume(Token::And)?;
                 let rule = self.simple_rule()?;

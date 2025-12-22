@@ -35,7 +35,7 @@ string = char / sstring / rawstring;
 char = "b"? "'" (ch_block / escape / [\u{0}..\u{10ffff}]) "'";
 ch_block = "\\" . "{" (!"}" .)* "}";
 sstring = ("b" / "c")? "\"" (escape / replace / [^"])* "\"";
-rawstring = "r#\"" (escape / (!"\"#" .))* "\"#";
+rawstring = "r#\"" (escape / (!"\"#" .))* "\"#" / "r\"" [^"]* "\"";
 escape = "\\" .;
 replace = !"{{" "{" replacement "}";
 @show @highlight(default)

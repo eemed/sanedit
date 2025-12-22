@@ -66,30 +66,26 @@ fn to_captures(partials: Vec<PartialCapture>) -> Vec<Capture> {
 
 /// Find backreference for capture id in current captures stack.
 /// Returns (position, length) pair of the match in the source
-pub(crate) fn find_backreference(bref: CaptureID, captures: &[PartialCapture]) -> (u64, u64) {
+fn find_backreference(bref: CaptureID, captures: &[PartialCapture]) -> (u64, u64) {
     let mut nbackrefs = 0;
     let mut start = 0;
     let mut end = 0;
-    for pcap in captures.iter().rev().filter(|pcap| pcap.id == bref) {
+    let mut stack = vec![];
+    for pcap in captures.iter().rev() {
         match pcap.kind {
             Kind::Open => {
-                if end != 0 {
-                    start = pcap.pos;
-                    break;
+                let end = stack.pop();
+                if pcap.id == bref {
                 }
             }
             Kind::Close => {
-                // Skip if the capture is already referenced
-                if nbackrefs == 0 {
-                    end = pcap.pos;
-                } else {
-                    nbackrefs -= 1;
-                }
+                stack.push(pcap.pos);
             }
             Kind::Backref => nbackrefs += 1,
         }
     }
 
+    println!("BREF: {start}..{end}");
     // Assume this exists, otherwise the rule is used wrong
     debug_assert!(start < end);
 
@@ -378,6 +374,7 @@ impl ParsingMachine {
                     ip += 1;
                 }
                 Backreference(r) => {
+                    println!("sp: {sp}, captures: {captures:?}, ref: {r}");
                     let (br_start, br_len) = find_backreference(*r, &captures);
                     if reader.matches_self(sp, br_start, br_len) {
                         captures.push(PartialCapture {
@@ -386,6 +383,7 @@ impl ParsingMachine {
                             pos: sp,
                         });
                         captop += 1;
+                        ip += 1;
                     } else {
                         state = State::Failure;
                     }

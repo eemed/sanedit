@@ -239,7 +239,7 @@ impl<R: io::Read> GrammarParser<R> {
                 self.consume(Token::RParen)?;
                 match name.as_str() {
                     "backref" => match self.indices.get(&in_parens) {
-                        Some(i) => Rule::Ref(*i),
+                        Some(i) => Rule::Backreference(*i),
                         None => {
                             let i = self.rules.len();
                             let rrule = RuleInfo {

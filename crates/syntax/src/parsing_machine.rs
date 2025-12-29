@@ -68,28 +68,28 @@ fn to_captures(partials: Vec<PartialCapture>) -> Vec<Capture> {
 /// Returns (position, length) pair of the match in the source
 fn find_backreference(bref: CaptureID, captures: &[PartialCapture]) -> (u64, u64) {
     let mut nbackrefs = 0;
-    let mut start = 0;
-    let mut end = 0;
     let mut stack = vec![];
     for pcap in captures.iter().rev() {
         match pcap.kind {
             Kind::Open => {
-                let end = stack.pop();
-                if pcap.id == bref {
+                if let Some(end) = stack.pop() {
+                    if pcap.id != bref {
+                        continue;
+                    }
+
+                    if nbackrefs == 0 {
+                        return (pcap.pos, end - pcap.pos);
+                    } else {
+                        nbackrefs -= 1;
+                    }
                 }
             }
-            Kind::Close => {
-                stack.push(pcap.pos);
-            }
+            Kind::Close => stack.push(pcap.pos),
             Kind::Backref => nbackrefs += 1,
         }
     }
 
-    println!("BREF: {start}..{end}");
-    // Assume this exists, otherwise the rule is used wrong
-    debug_assert!(start < end);
-
-    (start, end - start)
+    unreachable!()
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -374,7 +374,6 @@ impl ParsingMachine {
                     ip += 1;
                 }
                 Backreference(r) => {
-                    println!("sp: {sp}, captures: {captures:?}, ref: {r}");
                     let (br_start, br_len) = find_backreference(*r, &captures);
                     if reader.matches_self(sp, br_start, br_len) {
                         captures.push(PartialCapture {
@@ -384,6 +383,7 @@ impl ParsingMachine {
                         });
                         captop += 1;
                         ip += 1;
+                        sp += br_len;
                     } else {
                         state = State::Failure;
                     }
@@ -510,6 +510,38 @@ mod test {
 
     #[test]
     fn parse_backrefs() {
+        fn text(parser: &ParsingMachine, cap: &Capture, content: &[u8]) -> String {
+            let label = parser.label_for(cap.id);
+            format!(
+                "{label}: {:?}",
+                std::str::from_utf8(&content[cap.start as usize..cap.end as usize]).unwrap()
+            )
+        }
+
+        let peg = r#"
+            doc = (tag / ws)*;
+            ws = [ \t] / "\n";
+            tag = "<" name ">"  (!"</" ws* ( tag / .) )*  ws* "</" bref_name ">";
+
+            @show
+            bref_name = @backref(name);
+
+            @show
+            name = [a..zA..Z0..9]+;
+            "#;
+
+        let mut content = b"<document><body></body></document>";
+        let parser = ParsingMachine::from_read(std::io::Cursor::new(peg)).unwrap();
+        let result = parser.parse(&mut content);
+        assert!(result.is_ok(), "Parse failed with {result:?}");
+
+        let caps = result.unwrap();
+        assert_eq!(caps.len(), 4);
+        assert_eq!(text(&parser, &caps[0], content), r#"name: "document""#);
+        assert_eq!(text(&parser, &caps[1], content), r#"name: "body""#);
+        assert_eq!(text(&parser, &caps[2], content), r#"bref_name: "body""#);
+        assert_eq!(text(&parser, &caps[3], content), r#"bref_name: "document""#);
+
         let peg = r#"
             doc = (tag / ws)*;
             ws = [ \t] / "\n";
@@ -519,18 +551,15 @@ mod test {
             name = [a..zA..Z0..9]+;
             "#;
 
-        let mut content = b"<html><body></body></html>";
+        let mut content = b"<document><body></body></document>";
         let parser = ParsingMachine::from_read(std::io::Cursor::new(peg)).unwrap();
         let result = parser.parse(&mut content);
         assert!(result.is_ok(), "Parse failed with {result:?}");
 
-        for m in result.unwrap() {
-            let label = parser.label_for(m.id);
-            println!(
-                "{label}: {:?}",
-                std::str::from_utf8(&content[m.start as usize..m.end as usize])
-            );
-        }
+        let caps = result.unwrap();
+        assert_eq!(caps.len(), 2);
+        assert_eq!(text(&parser, &caps[0], content), r#"name: "document""#);
+        assert_eq!(text(&parser, &caps[1], content), r#"name: "body""#);
     }
 
     #[test]

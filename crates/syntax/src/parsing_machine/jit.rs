@@ -22,6 +22,7 @@ macro_rules! offset_i32 {
 enum Kind {
     Open = 0,
     Close = 1,
+    Backref = 2,
 }
 
 #[repr(C)]
@@ -76,6 +77,77 @@ macro_rules! double_cap_size {
                 ; mov rax, QWORD $ptr as _
 
                 ; call rax
+            )
+        }
+    }
+}
+
+macro_rules! find_backref {
+    ($ops:ident) => {
+        #[allow(clippy::fn_to_numeric_cast)] {
+            asm!($ops
+                ; .alias end, rbx
+                ; .alias cap_pos, r9 // decode state
+                ; .alias cur_cap, rcx
+                ; .alias bref_id, ebx
+                ; .alias kind, cl
+                ; .alias nbackref, r8
+                ; .alias old_stack_pos, r11
+
+
+                ;->find_backref:
+                ; xor nbackref, nbackref // number of backrefs
+                ; mov cap_pos, captop // capture position
+                ; mov old_stack_pos, rsp // initial stack position
+
+
+                ;for_loop:
+                ; test cap_pos, cap_pos
+                ; je >end
+
+                // Get capture
+                ; dec cap_pos
+                ; imul cur_cap, cap_pos, 16 // size of partial capture
+                ; add cur_cap, [state + offset_i32!(State, ptr)]
+
+                ; mov kind, BYTE [cur_cap + offset_i32!(PartialCapture, kind)]
+
+                ;open:
+                ; cmp kind, 0
+                ; jne >close
+
+                // if not pushed to stack continue loop
+                ; cmp rsp, old_stack_pos
+                ; je <for_loop
+
+                ; pop end
+
+                // if capture id is not same continue
+                ; cmp bref_id, DWORD [cur_cap + offset_i32!(PartialCapture, id)]
+                ; jne <for_loop
+
+                // if backrefs == 0 return otherwise -1 nbackrefs
+                ; test nbackref, nbackref
+                ; je >end
+                ; dec nbackref
+                ; jmp <for_loop
+
+                ;close:
+                ; cmp kind, 1
+                ; jne >backref
+                ; push cur_cap
+                ; jmp <for_loop
+
+                ;backref:
+                ; inc nbackref
+                ; jmp <for_loop
+
+                ;end:
+                // Close is current cur_cap
+                ; mov rsp, old_stack_pos // Restore stack
+                ; lea tmp, [cur_cap + offset_i32!(PartialCapture, ptr)]
+                ; lea tmp2, [end + offset_i32!(PartialCapture, ptr)]
+                ; jmp tmp3
             )
         }
     }
@@ -470,6 +542,7 @@ impl Jit {
                     // println!("Capture: {capture:?}: {:?}", std::str::from_utf8_unchecked(&bytes[start_pos..end_pos]));
                     captures.push(capture);
                 }
+                Kind::Backref => {}
             }
         }
         let sp = state.sp as usize - start as usize;
@@ -830,7 +903,28 @@ impl Jit {
                         ;next:
                     );
                 }
-                Backreference(_) => todo!(),
+                Backreference(id) => {
+                    let label = ops.new_dynamic_label();
+                    asm!(ops
+                        ; .alias cpos, rbx
+                        ; .alias byte, cl
+                        ; mov r11, QWORD *id as _
+                        ; lea tmp3, [=>label]
+                        ; jmp ->find_backref
+                        ;=>label
+                        ; xor cpos, cpos
+
+                        ;again:
+                        ; cmp tmp, tmp2
+                        ; jge >next
+                        ; mov byte, [tmp + cpos]
+                        ; cmp byte, BYTE [subject_pointer + cpos]
+                        ; inc cpos
+                        ; jmp <again
+
+                        ;next:
+                    );
+                }
             }
         }
 
@@ -867,6 +961,7 @@ impl Jit {
         let classes = UTF8_CHAR_CLASSES.as_ptr();
         let transitions = UTF8_TRANSITIONS.as_ptr();
         validate_utf8!(ops, classes, transitions);
+        find_backref!(ops);
 
         // Write needed data
         // for (label, bytes) in data {

@@ -86,13 +86,12 @@ macro_rules! find_backref {
     ($ops:ident) => {
         #[allow(clippy::fn_to_numeric_cast)] {
             asm!($ops
-                ; .alias end, rbx
                 ; .alias cap_pos, r9 // decode state
                 ; .alias cur_cap, rcx
-                ; .alias bref_id, ebx
-                ; .alias kind, cl
+                ; .alias bref_id, r10d
+                ; .alias kind, al
                 ; .alias nbackref, r8
-                ; .alias old_stack_pos, r11
+                ; .alias old_stack_pos, rsi
 
 
                 ;->find_backref:
@@ -120,7 +119,7 @@ macro_rules! find_backref {
                 ; cmp rsp, old_stack_pos
                 ; je <for_loop
 
-                ; pop end
+                ; pop tmp2
 
                 // if capture id is not same continue
                 ; cmp bref_id, DWORD [cur_cap + offset_i32!(PartialCapture, id)]
@@ -139,6 +138,8 @@ macro_rules! find_backref {
                 ; jmp <for_loop
 
                 ;backref:
+                ; cmp bref_id, DWORD [cur_cap + offset_i32!(PartialCapture, id)]
+                ; jne <for_loop
                 ; inc nbackref
                 ; jmp <for_loop
 
@@ -146,7 +147,18 @@ macro_rules! find_backref {
                 // Close is current cur_cap
                 ; mov rsp, old_stack_pos // Restore stack
                 ; lea tmp, [cur_cap + offset_i32!(PartialCapture, ptr)]
-                ; lea tmp2, [end + offset_i32!(PartialCapture, ptr)]
+                // ; mov tmp, cur_cap
+                // ; add tmp, offset_i32!(PartialCapture, ptr)
+
+                    ; movzx rbx, BYTE [tmp]
+                    // ; mov rbx, tmp
+                    // ; movzx rbx, bref_id
+                    // ; mov ebx, DWORD [cur_cap + 4]
+                    // ; movzx rbx, BYTE [cur_cap + 5]
+
+                ; lea tmp2, [tmp2 + offset_i32!(PartialCapture, ptr)]
+                // ; add tmp2, offset_i32!(PartialCapture, ptr)
+                    // ; movzx rbx, BYTE [tmp2]
                 ; jmp tmp3
             )
         }
@@ -517,6 +529,7 @@ impl Jit {
         let end = unsafe { start.add(bytes.len()) };
         let res = peg_program(state_ref, start, end);
 
+        println!("RES: {res:?}");
         if res != 0 {
             return Err(ParseError::ParsingFailed);
         }
@@ -906,24 +919,61 @@ impl Jit {
                 Backreference(id) => {
                     let label = ops.new_dynamic_label();
                     asm!(ops
-                        ; .alias cpos, rbx
+                        ; .alias cpos, r9
                         ; .alias byte, cl
-                        ; mov r11, QWORD *id as _
+                        ; .alias total, rbx
+
+                        ; mov r10d, *id as _
                         ; lea tmp3, [=>label]
+
                         ; jmp ->find_backref
                         ;=>label
                         ; xor cpos, cpos
+                        // ; mov total, tmp2
+                        // ; sub total, tmp
+                        ; sub tmp2, tmp
 
                         ;again:
-                        ; cmp tmp, tmp2
-                        ; jge >next
-                        ; mov byte, [tmp + cpos]
+                        ; cmp cpos, tmp2
+                        ; jge >cont
+                        ; mov byte, BYTE [tmp + cpos]
                         ; cmp byte, BYTE [subject_pointer + cpos]
+
+                            // TEST
+                            // ; movzx rbx, BYTE [tmp]
+                            // ; mov rbx, tmp2
+
+                        ; jne ->fail
                         ; inc cpos
                         ; jmp <again
 
-                        ;next:
+                        ;cont:
+
+                        // ; add subject_pointer, total
+                        // // Check if needs to grow, jump past if not needed
+                        // ; cmp captop, [state + offset_i32!(State, cap)]
+                        // ; jb >next
                     );
+// 
+//                     double_cap_size!(ops, State::double_cap_size);
+
+//                     asm!(ops
+//                         ; .alias total, rbx
+//                         ;next:
+//                         ; mov capture_pointer, captop
+//                         ; shl capture_pointer, 4 // size_of(PartialCapture) = 16
+//                         ; add capture_pointer, [state + offset_i32!(State, ptr)]
+
+//                         // Save capture to the capture pointer and advance it
+//                         ; mov DWORD [capture_pointer + offset_i32!(PartialCapture, id)], *id as _
+//                         ; mov BYTE [capture_pointer + offset_i32!(PartialCapture, kind)], 2
+//                         ; mov QWORD [capture_pointer + offset_i32!(PartialCapture, ptr)], subject_pointer
+
+//                         // Increase captop and point to the top
+//                         ; inc captop
+//                         ; mov [state + offset_i32!(State, len)], captop
+//                         ; add subject_pointer, total
+//                     );
                 }
             }
         }
@@ -933,6 +983,10 @@ impl Jit {
             ;->nomatch:
             ; mov rax, 1
             ;->epilogue:
+
+                // TEST
+                ; mov rax, rbx
+
             ; mov [state + offset_i32!(State, len)], captop
             ; mov [state + offset_i32!(State, sp)], subject_pointer
             ; pop r15
@@ -962,14 +1016,6 @@ impl Jit {
         let transitions = UTF8_TRANSITIONS.as_ptr();
         validate_utf8!(ops, classes, transitions);
         find_backref!(ops);
-
-        // Write needed data
-        // for (label, bytes) in data {
-        //     asm!(ops
-        //         ;=>label
-        //         ; .bytes bytes
-        //     );
-        // }
 
         // println!("ops: {ops:?}");
         let buf = ops.finalize().unwrap();
@@ -1049,6 +1095,61 @@ mod test {
         let res = peg_program();
         // println!("res: {haystack:?} {res:#02x}");
         assert_eq!(res, 0x400);
+    }
+
+    #[test]
+    #[cfg_attr(miri, ignore)]
+    fn jit_backrefs() {
+        fn text(parser: &Jit, cap: &Capture, content: &[u8]) -> String {
+            let label = parser.label_for(cap.id);
+            format!(
+                "{label}: {:?}",
+                std::str::from_utf8(&content[cap.start as usize..cap.end as usize]).unwrap()
+            )
+        }
+
+        let peg = r#"
+            doc = (tag / ws)*;
+            ws = [ \t] / "\n";
+            tag = "<" name ">"  (!"</" ws* ( tag / .) )*  ws* "</" bref_name ">";
+
+            @show
+            bref_name = @backref(name);
+
+            @show
+            name = [a..zA..Z0..9]+;
+            "#;
+
+        let mut content = b"<document><body></body></document>";
+        let parser = Jit::from_read(std::io::Cursor::new(peg)).unwrap();
+        let result = parser.parse(&mut content);
+        assert!(result.is_ok(), "Parse failed with {result:?}");
+
+        let caps = result.unwrap();
+        assert_eq!(caps.len(), 4);
+        assert_eq!(text(&parser, &caps[0], content), r#"name: "document""#);
+        assert_eq!(text(&parser, &caps[1], content), r#"name: "body""#);
+        assert_eq!(text(&parser, &caps[2], content), r#"bref_name: "body""#);
+        assert_eq!(text(&parser, &caps[3], content), r#"bref_name: "document""#);
+
+        let peg = r#"
+            doc = (tag / ws)*;
+            ws = [ \t] / "\n";
+            tag = "<" name ">"  (!"</" ws* ( tag / .) )*  ws* "</" @backref(name) ">";
+
+            @show
+            name = [a..zA..Z0..9]+;
+            "#;
+
+        let mut content = b"<document><body></body></document>";
+        let parser = Jit::from_read(std::io::Cursor::new(peg)).unwrap();
+        let result = parser.parse(&mut content);
+        assert!(result.is_ok(), "Parse failed with {result:?}");
+
+        let caps = result.unwrap();
+        assert_eq!(caps.len(), 2);
+        assert_eq!(text(&parser, &caps[0], content), r#"name: "document""#);
+        assert_eq!(text(&parser, &caps[1], content), r#"name: "body""#);
     }
 
     #[test]

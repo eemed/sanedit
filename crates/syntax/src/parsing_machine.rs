@@ -85,7 +85,13 @@ fn find_backreference(bref: CaptureID, captures: &[PartialCapture]) -> (u64, u64
                 }
             }
             Kind::Close => stack.push(pcap.pos),
-            Kind::Backref => nbackrefs += 1,
+            Kind::Backref => {
+                if pcap.id != bref {
+                    continue;
+                }
+
+                nbackrefs += 1;
+            }
         }
     }
 

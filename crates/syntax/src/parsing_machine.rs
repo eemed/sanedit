@@ -381,6 +381,7 @@ impl ParsingMachine {
                 }
                 Backreference(r) => {
                     let (br_start, br_len) = find_backreference(*r, &captures);
+                    // println!("sp: {sp}, start: {br_start}, len: {br_len}");
                     if reader.matches_self(sp, br_start, br_len) {
                         captures.push(PartialCapture {
                             id: *r,

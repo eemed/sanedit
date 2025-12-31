@@ -133,7 +133,6 @@ macro_rules! find_backref {
                 ;close:
                 ; cmp kind, 1
                 ; jne >backref
-                ; jmp >for_end
                 ; push cur_cap
                 ; jmp <for_loop
 
@@ -146,28 +145,8 @@ macro_rules! find_backref {
                 ;for_end:
                 // Close is current cur_cap
                 ; mov rsp, old_stack_pos // Restore stack
-
                 ; mov tmp, [cur_cap + offset_i32!(PartialCapture, ptr)]
-                // ; lea tmp, [cur_cap + offset_i32!(PartialCapture, ptr)]
-                // ; mov tmp, cur_cap
-                // ; add tmp, offset_i32!(PartialCapture, ptr)
-
-                    // ; movzx rbx, BYTE [tmp]
-                    // ; mov rbx, captop
-                    // ; movzx rbx, bref_id
-
-                    // ; mov ebx, DWORD [cur_cap + offset_i32!(PartialCapture, id)]
-                    // ; movzx rbx, BYTE [cur_cap + offset_i32!(PartialCapture, kind)]
-
-                    // ; mov rbx, [cur_cap + offset_i32!(PartialCapture, ptr)]
-                    // ; movzx rbx, BYTE [rbx - 1]
-
-                    // ; mov ebx, DWORD [cur_cap + 4]
-
                 ; mov tmp2, [tmp2 + offset_i32!(PartialCapture, ptr)]
-                // ; add tmp2, offset_i32!(PartialCapture, ptr)
-                    // ; mov rbx, tmp2
-                    // ; sub rbx, tmp
                 ; jmp tmp3
             )
         }
@@ -938,21 +917,13 @@ impl Jit {
                         ; jmp ->find_backref
                         ;=>label
                         ; xor cpos, cpos
-
-                        // ; mov total, tmp2
-                        // ; sub total, tmp
-                        ; sub tmp2, tmp
+                        ; sub tmp2, tmp // tmp2 contains total length now
 
                         ;again:
                         ; cmp cpos, tmp2
                         ; jge >cont
                         ; mov byte, BYTE [tmp + cpos]
                         ; cmp byte, BYTE [subject_pointer + cpos]
-
-                            // TEST
-                            // ; movzx rbx, BYTE [tmp + cpos]
-                            // ; movzx rbx, BYTE [subject_pointer + cpos]
-                            // ; mov rbx, tmp2
 
                         ; jne ->fail
                         ; inc cpos
@@ -991,9 +962,6 @@ impl Jit {
             ;->nomatch:
             ; mov rax, 1
             ;->epilogue:
-
-                // TEST
-                // ; mov rax, rbx
 
             ; mov [state + offset_i32!(State, len)], captop
             ; mov [state + offset_i32!(State, sp)], subject_pointer

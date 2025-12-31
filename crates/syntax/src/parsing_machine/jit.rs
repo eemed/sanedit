@@ -519,9 +519,8 @@ impl Jit {
         let end = unsafe { start.add(bytes.len()) };
         let res = peg_program(state_ref, start, end);
 
-        println!("RES: {res:?}");
         if res != 0 {
-            return Err(ParseError::ParsingFailed);
+            return Err(ParseError::JitParsingFailed(res));
         }
 
         let mut captures = Vec::with_capacity(state.len / 2);

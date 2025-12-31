@@ -23,6 +23,9 @@ pub enum ParseError {
     #[error("Failed to parse text does not match rules")]
     ParsingFailed,
 
+    #[error("JIT failed to text, exit code: {0}")]
+    JitParsingFailed(i64),
+
     #[error("JIT is unsupported")]
     JitUnsupported,
 

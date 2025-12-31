@@ -99,10 +99,9 @@ macro_rules! find_backref {
                 ; mov cap_pos, captop // capture position
                 ; mov old_stack_pos, rsp // initial stack position
 
-
                 ;for_loop:
                 ; test cap_pos, cap_pos
-                ; je >end
+                ; je >for_end
 
                 // Get capture
                 ; dec cap_pos
@@ -127,13 +126,14 @@ macro_rules! find_backref {
 
                 // if backrefs == 0 return otherwise -1 nbackrefs
                 ; test nbackref, nbackref
-                ; je >end
+                ; je >for_end
                 ; dec nbackref
                 ; jmp <for_loop
 
                 ;close:
                 ; cmp kind, 1
                 ; jne >backref
+                ; jmp >for_end
                 ; push cur_cap
                 ; jmp <for_loop
 
@@ -143,22 +143,31 @@ macro_rules! find_backref {
                 ; inc nbackref
                 ; jmp <for_loop
 
-                ;end:
+                ;for_end:
                 // Close is current cur_cap
                 ; mov rsp, old_stack_pos // Restore stack
-                ; lea tmp, [cur_cap + offset_i32!(PartialCapture, ptr)]
+
+                ; mov tmp, [cur_cap + offset_i32!(PartialCapture, ptr)]
+                // ; lea tmp, [cur_cap + offset_i32!(PartialCapture, ptr)]
                 // ; mov tmp, cur_cap
                 // ; add tmp, offset_i32!(PartialCapture, ptr)
 
-                    ; movzx rbx, BYTE [tmp]
-                    // ; mov rbx, tmp
+                    // ; movzx rbx, BYTE [tmp]
+                    // ; mov rbx, captop
                     // ; movzx rbx, bref_id
-                    // ; mov ebx, DWORD [cur_cap + 4]
-                    // ; movzx rbx, BYTE [cur_cap + 5]
 
-                ; lea tmp2, [tmp2 + offset_i32!(PartialCapture, ptr)]
+                    // ; mov ebx, DWORD [cur_cap + offset_i32!(PartialCapture, id)]
+                    // ; movzx rbx, BYTE [cur_cap + offset_i32!(PartialCapture, kind)]
+
+                    // ; mov rbx, [cur_cap + offset_i32!(PartialCapture, ptr)]
+                    // ; movzx rbx, BYTE [rbx - 1]
+
+                    // ; mov ebx, DWORD [cur_cap + 4]
+
+                ; mov tmp2, [tmp2 + offset_i32!(PartialCapture, ptr)]
                 // ; add tmp2, offset_i32!(PartialCapture, ptr)
-                    // ; movzx rbx, BYTE [tmp2]
+                    // ; mov rbx, tmp2
+                    // ; sub rbx, tmp
                 ; jmp tmp3
             )
         }
@@ -929,6 +938,7 @@ impl Jit {
                         ; jmp ->find_backref
                         ;=>label
                         ; xor cpos, cpos
+
                         // ; mov total, tmp2
                         // ; sub total, tmp
                         ; sub tmp2, tmp
@@ -940,7 +950,8 @@ impl Jit {
                         ; cmp byte, BYTE [subject_pointer + cpos]
 
                             // TEST
-                            // ; movzx rbx, BYTE [tmp]
+                            // ; movzx rbx, BYTE [tmp + cpos]
+                            // ; movzx rbx, BYTE [subject_pointer + cpos]
                             // ; mov rbx, tmp2
 
                         ; jne ->fail
@@ -948,32 +959,29 @@ impl Jit {
                         ; jmp <again
 
                         ;cont:
-
-                        // ; add subject_pointer, total
-                        // // Check if needs to grow, jump past if not needed
-                        // ; cmp captop, [state + offset_i32!(State, cap)]
-                        // ; jb >next
+                        ; add subject_pointer, tmp2
+                        // Check if needs to grow, jump past if not needed
+                        ; cmp captop, [state + offset_i32!(State, cap)]
+                        ; jb >next
                     );
-// 
-//                     double_cap_size!(ops, State::double_cap_size);
 
-//                     asm!(ops
-//                         ; .alias total, rbx
-//                         ;next:
-//                         ; mov capture_pointer, captop
-//                         ; shl capture_pointer, 4 // size_of(PartialCapture) = 16
-//                         ; add capture_pointer, [state + offset_i32!(State, ptr)]
+                    double_cap_size!(ops, State::double_cap_size);
 
-//                         // Save capture to the capture pointer and advance it
-//                         ; mov DWORD [capture_pointer + offset_i32!(PartialCapture, id)], *id as _
-//                         ; mov BYTE [capture_pointer + offset_i32!(PartialCapture, kind)], 2
-//                         ; mov QWORD [capture_pointer + offset_i32!(PartialCapture, ptr)], subject_pointer
+                    asm!(ops
+                        ;next:
+                        ; mov capture_pointer, captop
+                        ; shl capture_pointer, 4 // size_of(PartialCapture) = 16
+                        ; add capture_pointer, [state + offset_i32!(State, ptr)]
 
-//                         // Increase captop and point to the top
-//                         ; inc captop
-//                         ; mov [state + offset_i32!(State, len)], captop
-//                         ; add subject_pointer, total
-//                     );
+                        // Save capture to the capture pointer and advance it
+                        ; mov DWORD [capture_pointer + offset_i32!(PartialCapture, id)], *id as _
+                        ; mov BYTE [capture_pointer + offset_i32!(PartialCapture, kind)], 2
+                        ; mov QWORD [capture_pointer + offset_i32!(PartialCapture, ptr)], subject_pointer
+
+                        // Increase captop and point to the top
+                        ; inc captop
+                        ; mov [state + offset_i32!(State, len)], captop
+                    );
                 }
             }
         }
@@ -985,7 +993,7 @@ impl Jit {
             ;->epilogue:
 
                 // TEST
-                ; mov rax, rbx
+                // ; mov rax, rbx
 
             ; mov [state + offset_i32!(State, len)], captop
             ; mov [state + offset_i32!(State, sp)], subject_pointer

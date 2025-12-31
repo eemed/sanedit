@@ -86,7 +86,7 @@ macro_rules! find_backref {
     ($ops:ident) => {
         #[allow(clippy::fn_to_numeric_cast)] {
             asm!($ops
-                ; .alias cap_pos, r9 // decode state
+                ; .alias topcap, r9
                 ; .alias cur_cap, rcx
                 ; .alias bref_id, r10d
                 ; .alias kind, al
@@ -96,17 +96,19 @@ macro_rules! find_backref {
 
                 ;->find_backref:
                 ; xor nbackref, nbackref // number of backrefs
-                ; mov cap_pos, captop // capture position
                 ; mov old_stack_pos, rsp // initial stack position
 
-                ;for_loop:
-                ; test cap_pos, cap_pos
-                ; je >for_end
-
-                // Get capture
-                ; dec cap_pos
-                ; imul cur_cap, cap_pos, 16 // size of partial capture
+                ; mov cur_cap, captop
+                ; shl cur_cap, 4 // partialcapture = 16
                 ; add cur_cap, [state + offset_i32!(State, ptr)]
+
+                ; mov topcap, [state + offset_i32!(State, ptr)]
+
+                ;for_loop:
+                ; cmp cur_cap, topcap
+                ; jl >for_end
+
+                ; sub cur_cap, 16
 
                 ; mov kind, BYTE [cur_cap + offset_i32!(PartialCapture, kind)]
 

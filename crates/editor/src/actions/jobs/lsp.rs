@@ -234,7 +234,7 @@ impl LSPJob {
         path: PathBuf,
         position: Position,
     ) {
-    log::info!("GOTO DEF");
+        log::info!("GOTO DEF");
         let (win, buf) = editor.win_buf_mut(id);
         win.push_new_cursor_jump(buf);
 

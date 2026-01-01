@@ -41,7 +41,7 @@ impl MacroRecord {
         self.record();
     }
 
-    pub fn name(&self) -> Option<&str>  {
+    pub fn name(&self) -> Option<&str> {
         self.name.as_deref()
     }
 

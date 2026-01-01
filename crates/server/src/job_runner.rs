@@ -80,7 +80,7 @@ impl std::ops::DerefMut for Jobs {
 
 impl Drop for Jobs {
     fn drop(&mut self) {
-        for (_id, (kill, join)) in &self.0 {
+        for (kill, join) in self.0.values() {
             kill.stop();
             join.abort();
         }

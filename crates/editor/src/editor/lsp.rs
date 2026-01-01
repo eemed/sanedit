@@ -115,6 +115,9 @@ impl Lsp {
     }
 
     pub fn inflight_requests(&self, client: ClientId) -> usize {
-        self.requests.iter().filter(|(_, (id, _))| id == &client).count()
+        self.requests
+            .iter()
+            .filter(|(_, (id, _))| id == &client)
+            .count()
     }
 }

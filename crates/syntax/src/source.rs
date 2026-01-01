@@ -51,7 +51,7 @@ pub trait Source {
     fn matches_self(&mut self, at: u64, at2: u64, len: u64) -> bool {
         let one = self.slice(at..at + len).map(|bytes| bytes.to_vec());
         let two = self.slice(at2..at2 + len);
-        !one.is_none() && one.as_ref().map(|vec| vec.as_slice()) == two
+        one.is_some() && one.as_deref() == two
     }
 }
 

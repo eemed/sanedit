@@ -10,7 +10,11 @@ use crate::{
         jobs::MatcherMessage, prompt::get_directory_searcher_term, window::focus, ActionResult,
     },
     common::{Choice, ScoredChoice},
-    editor::{snippets::Snippet, windows::{window::chooser::Choices, Focus}, Editor},
+    editor::{
+        snippets::Snippet,
+        windows::{window::chooser::Choices, Focus},
+        Editor,
+    },
 };
 use sanedit_server::ClientId;
 
@@ -389,8 +393,8 @@ impl Prompt {
                     for res in results {
                         let mru = &mut editor.caches.files;
                         let max = mru.len();
-                        let mut rescored_batch = Vec::with_capacity(res.len());
-                        for mut choice in res.into_iter() {
+                        let mut rescored: Vec<ScoredChoice> = res.into();
+                        for choice in &mut rescored {
                             let path = match choice.choice() {
                                 Choice::Path { path, .. } => path,
                                 _ => unreachable!(),
@@ -401,11 +405,10 @@ impl Prompt {
                             } else {
                                 choice.rescore(choice.score() + max);
                             }
-                            rescored_batch.push(choice);
                         }
 
                         let (win, _buf) = editor.win_buf_mut(id);
-                        win.prompt.add_choices(SortedVec::from(rescored_batch))
+                        win.prompt.add_choices(SortedVec::from(rescored))
                     }
                 } else {
                     results

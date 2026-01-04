@@ -164,6 +164,7 @@ impl Cursors {
             Err(n) => n,
         };
         self.cursors.insert(pos, primary);
+        self.primary = pos;
     }
 
     fn merge_overlapping(&mut self) {

@@ -1,5 +1,5 @@
 document = (separated / alpha / ws+ / .)*;
-separated = keyword / string / comment / number / types / operator;
+separated = keyword / string / comment / types / constant /operator;
 stop = ws+ / "{" / "[" / "]" / "(" / ")" / ";" / "<" / ">" / "," / ":" / ".";
 alpha = [a..zA..Z0..9_]+;
 WHITESPACE = [ \t] / nl;

@@ -1,0 +1,111 @@
+document = (separated / alpha / ws+ / .)*;
+separated = preproc / types / keyword / string / comment / constant / operator;
+stop = ws+ / "{" / "[" / "]" / "(" / ")" / ";" / "<" / ">" / "," / ":" / ".";
+alpha = [a..zA..Z0..9_]+;
+WHITESPACE = [ \t] / nl;
+nl = "\n" / "\r\n";
+ws = WHITESPACE;
+
+preproc = include / define;
+@show @highlight(preproc)
+define = "#define" (!(nl / comment) .)*;
+include = include_word ws* include_in;
+@show @highlight(preproc)
+include_word = "#include";
+include_in = (!(nl / comment) (string / operator / .))*;
+
+@show @highlight(type)
+types = type_names &stop;
+type_names =
+    "void" /
+    "unsigned" /
+    "signed" /
+    "short" /
+    "long" /
+    "int" /
+    "float" /
+    "double" /
+    "char" /
+    "bool";
+
+@show @highlight(warn)
+todo = "TODO" / "XXX";
+
+@show @highlight
+comment = line_comment / block_comment;
+line_comment = "//" (todo / (!nl .))* nl;
+block_comment = "/*" (todo / (!"*/" .))* "*/";
+
+@show @highlight
+operator = [\[\]{}():,.<>&|=+*/?!<>-];
+
+@show @highlight(constant)
+constant = (uppercase_constant / number / "true" / "false") &stop;
+uppercase_constant = [A..Z] [A..Z0..9_]+;
+
+@show @highlight
+string    = nstring / sstring;
+nstring    = "\"" (escape / [^"\n])* "\"";
+sstring    = "'"  (escape / [^'\n])* "'";
+@show @highlight(keyword)
+escape     = "\\" ("0" / "t" / "n" / "r" / "'" / "`" / "\"" / "\\" / "/");
+
+number = int / hex / octal / binary;
+int = "-"? digit+ ("." (digit / "_")+)? (("e" / "E") ("-" / "+")? digit+)? (("p" / "P") ("+" / "-")? digit+)? "i"?;
+hex = "-"? "0" ("x" / "X") (hexdigit / "_")+;
+octal = "-"? "0" ("o" / "O") (digit / "_")+;
+binary = "-"? "0" ("b" / "B") ("0" / "1" / "_")+;
+digit = [0..9];
+hexdigit = digit / [a..fA..F];
+
+
+@show @highlight
+keyword = (
+    "while" /
+    "volatile" /
+    "union" /
+    "typeof_unqual" /
+    "typeof" /
+    "typedef" /
+    "thread_local" /
+    "switch" /
+    "struct" /
+    "static_assert" /
+    "static" /
+    "sizeof" /
+    "return" /
+    "restrict" /
+    "register" /
+    "nullptr" /
+    "inline" /
+    "if" /
+    "goto" /
+    "for" /
+    "extern" /
+    "enum" /
+    "else" /
+    "do" /
+    "default" /
+    "continue" /
+    "constexpr" /
+    "const" /
+    "case" /
+    "break" /
+    "auto" /
+    "alignof" /
+    "alignas" /
+    "_Thread_local" /
+    "_Static_assert" /
+    "_Noreturn" /
+    "_Imaginary" /
+    "_Generic" /
+    "_Decimal64" /
+    "_Decimal32" /
+    "_Decimal128" /
+    "_Complex" /
+    "_Bool" /
+    "_BitInt" /
+    "_Atomic" /
+    "_Alignof" /
+    "_Alignas"
+    ) &stop;

@@ -75,6 +75,7 @@ impl EditorConfig {
 
         // Using LSP language identifiers
         map!(d, "asciidoc", ["adoc"], [], []);
+        map!(d, "c", ["c", "h"], [], []);
         map!(d, "css", ["css", "scss", "sass"], [], []);
         map!(
             d,

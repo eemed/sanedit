@@ -90,6 +90,7 @@ impl EditorConfig {
         map!(d, "glsl", ["vert", "geom", "tesc", "tese", "comp"], [], []);
         map!(d, "javascript", ["js"], [], []);
         map!(d, "javascriptreact", ["jsx"], [], []);
+        map!(d, "lua", ["lua"], [], []);
         map!(d, "make", [], ["**/Makefile"], []);
         map!(d, "markdown", ["md"], [], []);
         map!(

@@ -1,0 +1,77 @@
+document = (separated / alpha / ws+ / .)*;
+separated = preproc / types / keyword / string / comment / constant / operator;
+stop = ws+ / "{" / "[" / "]" / "(" / ")" / ";" / "<" / ">" / "," / ":" / "." / "*" / "&" / "}";
+alpha = [a..zA..Z0..9_]+;
+WHITESPACE = [ \t] / nl;
+nl = "\n" / "\r\n";
+ws = WHITESPACE;
+
+@show @highlight(preproc)
+preproc = ( "require" ) &stop;
+
+@show @highlight(type)
+types = type_names &stop;
+type_names =
+    "nil" /
+    "boolean" /
+    "number" /
+    "string" /
+    "function" /
+    "userdata" /
+    "thread" /
+    "table"
+    ;
+
+@show @highlight(warn)
+todo = "TODO" / "XXX";
+
+@show @highlight
+comment = block_comment / line_comment ;
+line_comment = "--" (todo / (!nl .))* nl;
+block_comment = "--[[" (todo / (!"*/" .))* "--]]";
+
+@show @highlight
+operator = [\[\]{}():,.<>&|=+*/?!<>-];
+
+@show @highlight(constant)
+constant = (uppercase_constant / number / "true" / "false") &stop;
+uppercase_constant = [A..Z] [A..Z0..9_]+;
+
+@show @highlight
+string    = nstring / sstring;
+nstring    = "\"" (escape / [^"\n])* "\"";
+sstring    = "'"  (escape / [^'\n])* "'";
+@show @highlight(keyword)
+escape     = "\\" ("0" / "t" / "n" / "r" / "'" / "`" / "\"" / "\\" / "/");
+
+number = int / hex / octal / binary;
+int = "-"? digit+ ("." (digit / "_")+)? (("e" / "E") ("-" / "+")? digit+)? (("p" / "P") ("+" / "-")? digit+)? "i"?;
+hex = "-"? "0" ("x" / "X") (hexdigit / "_")+;
+octal = "-"? "0" ("o" / "O") (digit / "_")+;
+binary = "-"? "0" ("b" / "B") ("0" / "1" / "_")+;
+digit = [0..9];
+hexdigit = digit / [a..fA..F];
+
+
+@show @highlight
+keyword = (
+    "until" /
+    "then" /
+    "return" /
+    "repeat" /
+    "or" /
+    "not" /
+    "nil" /
+    "local" /
+    "in" /
+    "if" /
+    "function" /
+    "for" /
+    "end" /
+    "elseif" /
+    "else" /
+    "do" /
+    "break" /
+    "and" /
+    "while"
+ ) &stop;

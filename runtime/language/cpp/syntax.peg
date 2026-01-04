@@ -1,0 +1,153 @@
+document = (separated / alpha / ws+ / .)*;
+separated = preproc / types / keyword / string / comment / constant / operator;
+stop = ws+ / "{" / "[" / "]" / "(" / ")" / ";" / "<" / ">" / "," / ":" / "." / "*" / "&";
+alpha = [a..zA..Z0..9_]+;
+WHITESPACE = [ \t] / nl;
+nl = "\n" / "\r\n";
+ws = WHITESPACE;
+
+preproc = include / define;
+@show @highlight(preproc)
+define = "#define" (!(nl / comment) .)*;
+include = include_word ws* include_in;
+@show @highlight(preproc)
+include_word = "#include";
+include_in = (!(nl / comment) (string / operator / .))*;
+
+@show @highlight(type)
+types = (className / type_names) &stop;
+type_names =
+    "void" /
+    "unsigned" /
+    "signed" /
+    "short" /
+    "long" /
+    "int" /
+    "float" /
+    "double" /
+    "char" /
+    "bool" /
+    "char8_t" /
+    "char16_t" /
+    "char32_t" /
+    "wchar_t"
+    ;
+className = [A..Z] [A..Za..z0..9]+;
+
+@show @highlight(warn)
+todo = "TODO" / "XXX";
+
+@show @highlight
+comment = line_comment / block_comment;
+line_comment = "//" (todo / (!nl .))* nl;
+block_comment = "/*" (todo / (!"*/" .))* "*/";
+
+@show @highlight
+operator = [\[\]{}():,.<>&|=+*/?!<>-];
+
+@show @highlight(constant)
+constant = (uppercase_constant / number / "true" / "false") &stop;
+uppercase_constant = [A..Z] [A..Z0..9_]+;
+
+@show @highlight
+string    = nstring / sstring;
+nstring    = "\"" (escape / [^"\n])* "\"";
+sstring    = "'"  (escape / [^'\n])* "'";
+@show @highlight(keyword)
+escape     = "\\" ("0" / "t" / "n" / "r" / "'" / "`" / "\"" / "\\" / "/");
+
+number = int / hex / octal / binary;
+int = "-"? digit+ ("." (digit / "_")+)? (("e" / "E") ("-" / "+")? digit+)? (("p" / "P") ("+" / "-")? digit+)? "i"?;
+hex = "-"? "0" ("x" / "X") (hexdigit / "_")+;
+octal = "-"? "0" ("o" / "O") (digit / "_")+;
+binary = "-"? "0" ("b" / "B") ("0" / "1" / "_")+;
+digit = [0..9];
+hexdigit = digit / [a..fA..F];
+
+
+@show @highlight
+keyword = (
+    "xor_eq " /
+    "xor" /
+    "while" /
+    "volatile" /
+    "virtual" /
+    "using" /
+    "union" /
+    "typename" /
+    "typeid" /
+    "typedef" /
+    "try" /
+    "throw" /
+    "thread_local" /
+    "this" /
+    "template" /
+    "synchronized" /
+    "switch" /
+    "struct" /
+    "static_cast" /
+    "static_assert" /
+    "static" /
+    "sizeof" /
+    "return" /
+    "requires" /
+    "reinterpret_cast" /
+    "register" /
+    "reflexpr" /
+    "public" /
+    "protected" /
+    "private" /
+    "or_eq" /
+    "or" /
+    "operator" /
+    "nullptr" /
+    "not_eq" /
+    "not" /
+    "noexcept" /
+    "new" /
+    "namespace" /
+    "mutable" /
+    "inline" /
+    "if" /
+    "goto" /
+    "friend" /
+    "for" /
+    "extern" /
+    "export" /
+    "explicit" /
+    "enum" /
+    "else" /
+    "dynamic_cast" /
+    "do" /
+    "delete" /
+    "default" /
+    "decltype" /
+    "contract_assert" /
+    "continue" /
+    "constinit" /
+    "constexpr" /
+    "consteval" /
+    "const_cast" /
+    "const" /
+    "concept" /
+    "compl" /
+    "co_yield" /
+    "co_return" /
+    "co_await" /
+    "class" /
+    "catch" /
+    "case" /
+    "break" /
+    "bool" /
+    "bitor" /
+    "bitand" /
+    "auto" /
+    "atomic_noexcept" /
+    "atomic_commit" /
+    "atomic_cancel" /
+    "asm" /
+    "and_eq" /
+    "and" /
+    "alignof" /
+    "alignas"
+    ) &stop;

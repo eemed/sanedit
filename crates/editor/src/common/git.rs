@@ -126,6 +126,7 @@ pub fn find_git_root(dir: &Path) -> std::io::Result<(PathBuf, Vec<GitIgnore>)> {
     let mut dir = Some(dir);
     while let Some(d) = dir {
         if let Ok(mut rd) = d.read_dir() {
+            let mut root = false;
             while let Some(Ok(entry)) = rd.next() {
                 if entry.file_name().as_os_str() == git_ignore() {
                     if let Ok(ignore) = GitIgnore::new(&entry.path()) {
@@ -134,8 +135,12 @@ pub fn find_git_root(dir: &Path) -> std::io::Result<(PathBuf, Vec<GitIgnore>)> {
                 }
 
                 if entry.file_name().as_os_str() == git_dir() {
-                    return Ok((d.to_path_buf(), found_ignores));
+                    root = true;
                 }
+            }
+
+            if root {
+                return Ok((d.to_path_buf(), found_ignores));
             }
         }
 

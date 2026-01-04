@@ -17,7 +17,7 @@ members = [
 ]
 
 [workspace.package]
-version = "1.4.0"
+version = "1.4.1"
 edition = "2021"
 
 [workspace.dependencies]
@@ -25,7 +25,7 @@ anyhow        = "1.0"
 argh          = "0.1.13"
 bincode       = "1.3" # version 2 available but does not support serialized_size calculation, could replace with something else also?
 chrono        = "0.4"
-criterion     = "0.7.0" # Benchmarking
+criterion     = "0.8.1" # Benchmarking
 crossbeam     = "0.8.4" # Can be replaced when crossbeam_channel::Select comes to std
 crossterm     = "0.29.0"
 dynasm        = "4.0.1" # JIT
@@ -47,7 +47,7 @@ syn           = "2"
 thiserror     = "2.0"
 tokio         = "1.40.0"
 tokio-util    = "0.7.12"
-toml_edit     = "0.23.6"
+toml_edit     = "0.24.0"
 unicode-width = "0.2.1" # Rendering itself has problems
 which         = "8.0.0" # Should be replaced with something simpler
 xattr         = "1.5.1" # xattrs preservation

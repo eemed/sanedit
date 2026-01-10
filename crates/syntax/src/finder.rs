@@ -221,13 +221,13 @@ impl<'a, 'b, S: Source> FinderIterRev<'a, 'b, S> {
 
     fn find_prev(&mut self) -> Option<u64> {
         let pattern = self.finder.needle();
-        let (buf_pos, _) = self.haystack.buffer();
 
         if self.haystack.stop() {
             return None;
         }
 
         loop {
+            let (buf_pos, _) = self.haystack.buffer();
             if self.pos < pattern.len() {
                 if !self.haystack.stop()
                     && self

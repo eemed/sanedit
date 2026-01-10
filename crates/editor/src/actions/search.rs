@@ -265,8 +265,7 @@ fn continue_search(editor: &mut Editor, id: ClientId, reverse: bool) {
 fn new_search(editor: &mut Editor, id: ClientId, needle: &str, reverse: bool) {
     let (win, _buf) = editor.win_buf_mut(id);
 
-    let (mut options, pattern) = SearchOptions::from_pattern(needle);
-    options.is_reversed = reverse;
+    let (options, pattern) = SearchOptions::from_pattern(needle, reverse);
     let Ok(searcher) = Searcher::with_options(&pattern, &options) else {
         return;
     };

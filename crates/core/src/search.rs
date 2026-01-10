@@ -10,12 +10,12 @@ pub struct SearchOptions {
 }
 
 impl SearchOptions {
-    pub fn from_pattern(pattern: &str) -> (SearchOptions, String) {
+    pub fn from_pattern(pattern: &str, is_reversed: bool) -> (SearchOptions, String) {
         let case_sensitive = pattern.chars().any(|ch| ch.is_ascii_uppercase());
         let is_regex = pattern.starts_with("/") && pattern.ends_with("/") && pattern.len() > 2;
         let options = SearchOptions {
             is_case_sensitive: is_regex || case_sensitive,
-            is_reversed: false,
+            is_reversed,
             is_regex,
         };
 
@@ -88,7 +88,7 @@ impl Searcher {
     /// Otherwise search literal string
     /// If contains uppercase letters search is case sensitive if only lowercase its case insensitive
     pub fn new(pattern: &str) -> anyhow::Result<(Searcher, String)> {
-        let (options, pattern) = SearchOptions::from_pattern(pattern);
+        let (options, pattern) = SearchOptions::from_pattern(pattern, false);
         let searcher = Self::with_options(&pattern, &options)?;
         Ok((searcher, pattern))
     }
@@ -145,7 +145,7 @@ impl Searcher {
     }
 
     pub fn options(&self) -> SearchOptions {
-        let is_regex = matches!(self, Self::Regex(..));
+        let is_regex = matches!(self, Self::Regex(..) | Self::RegexRev(..));
         let (is_case_sensitive, is_reversed) = match self {
             Searcher::Regex(_) => (true, false),
             Searcher::RegexRev(_) => (true, true),

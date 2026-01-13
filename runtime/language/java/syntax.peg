@@ -28,7 +28,7 @@ block_comment = "/*" (todo / (!"*/" .))* "*/";
 
 preproc = annotation / preproc_words;
 @show @highlight(preproc)
-preproc_words = "import" &stop;
+preproc_words = ("import" / "package") &stop;
 @show @highlight(preproc)
 annotation = "@" [A..Za..z0..9_]+;
 
@@ -63,7 +63,6 @@ keyword = (
     "public" /
     "protected" /
     "private" /
-    "package" /
     "new" /
     "native" /
     "module" /

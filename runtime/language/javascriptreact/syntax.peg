@@ -74,8 +74,9 @@ attrvalue = string / block_open (!block_close document_items)* block_close;
 attrname = [a..zA..Z0..9_:@-]+;
 
 @show @highlight(preproc)
-preproc = preproc_words;
+preproc = preproc_words / preproc_require;
 preproc_words = ("import" / "from" / "export" / "default" !":" / "as") &ws;
+preproc_require = "require" &(ws / nl / "(");
 @show @highlight(special)
 special = "console" &(ws / ".");
 
@@ -99,7 +100,6 @@ words = (
     "static" /
     "set" /
     "return" /
-    "require" /
     "readonly" /
     "public" /
     "protected" /

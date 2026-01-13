@@ -420,26 +420,13 @@ impl KeepInTouch for Grep {
 
 struct Start(JobId);
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 struct GrepMatch {
+    absolute_offset: Option<u64>,
     line: Option<u64>,
-    text: String,
-
     /// Matches found in text
     matches: Vec<Range<usize>>,
-    absolute_offset: Option<u64>,
-}
-
-impl PartialOrd for GrepMatch {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl Ord for GrepMatch {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        (other.line, &other.text).cmp(&(self.line, &self.text))
-    }
+    text: String,
 }
 
 impl From<GrepMatch> for Item {

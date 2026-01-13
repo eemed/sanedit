@@ -53,9 +53,7 @@ impl SnippetInner {
         let mut chars = snip.chars().peekable();
 
         while let Some(ch) = chars.next() {
-            if escaped {
-                escaped = false;
-
+            if std::mem::take(&mut escaped) {
                 match ch {
                     'n' => Self::push(&mut atoms, &mut text, SnippetAtom::Newline),
                     't' => Self::push(&mut atoms, &mut text, SnippetAtom::Indent),
@@ -80,7 +78,7 @@ impl SnippetInner {
         }
 
         if atoms.is_empty() {
-            log::error!("snip: {snip:?}");
+            log::error!("Failed to create snippet from text: {snip:?}");
             return Err(SnippetError::Empty);
         }
 

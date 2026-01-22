@@ -15,10 +15,14 @@ escape = "\\" .;
 
 @show @highlight
 constant = typecaps / "true" / "false" / "null" / number;
-
-number = "-"? digit+ !"."/ "0x" hexdigit+;
+number = hex / octal / binary / int;
+int = "-"? digit+ ("." (digit / "_")+)? (("e" / "E") ("-" / "+")? digit+)? (("p" / "P") ("+" / "-")? digit+)? "i"?;
+hex = "-"? "0" ("x" / "X") (hexdigit / "_")+;
+octal = "-"? "0" ("o" / "O") (digit / "_")+;
+binary = "-"? "0" ("b" / "B") ("0" / "1" / "_")+;
 digit = [0..9];
 hexdigit = digit / [a..fA..F];
+
 typecaps = [A..Z0..9_]+ &stop;
 
 @show @highlight

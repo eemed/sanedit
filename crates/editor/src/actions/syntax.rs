@@ -1,4 +1,8 @@
-use crate::editor::{hooks::Hook, Editor};
+use crate::editor::{
+    hooks::Hook,
+    syntax::{HORIZON_BOTTOM, HORIZON_TOP_MIN},
+    Editor,
+};
 
 use sanedit_server::ClientId;
 
@@ -81,10 +85,15 @@ pub(crate) fn reparse_view(editor: &mut Editor, id: ClientId) -> ActionResult {
 
         let view = win.view().range();
         let old = win.view_syntax();
+        let old_range = old.parsed_range();
+
+        let view_start_forward = view.start.saturating_sub(HORIZON_TOP_MIN / 2);
+        let view_end_forward = (view.end + HORIZON_BOTTOM / 4).min(buf.len());
 
         if old.buffer_id() != bid
             || old.total_changes_made() != total
-            || !old.parsed_range().includes(view)
+            || !old_range.contains(&view_start_forward)
+            || !old_range.contains(&view_end_forward)
         {
             parse_syntax.execute(editor, client);
         }

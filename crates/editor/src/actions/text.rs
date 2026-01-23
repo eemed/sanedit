@@ -154,7 +154,25 @@ fn save_as(editor: &mut Editor, id: ClientId) -> ActionResult {
         .on_confirm(|editor, id, out| {
             let path = getf!(out.path());
             let (_win, buf) = editor.win_buf_mut(id);
-            buf.set_path(path);
+            let bid = buf.id;
+
+            // Leave the current buffer
+            run(editor, id, Hook::BufLeave(bid));
+            run(editor, id, Hook::BufDeletedPre(bid));
+
+            // Set path
+            let (_win, buf) = editor.win_buf_mut(id);
+            buf.set_path(&path);
+
+            // Detect language and set it
+            let lang = Language::determine(&path, &editor.config.editor.language_detect);
+            let (_win, buf) = editor.win_buf_mut(id);
+            buf.language = lang;
+
+            // Rejoin buffer
+            run(editor, id, Hook::BufCreated(bid));
+            run(editor, id, Hook::BufEnter(bid));
+
             save.execute(editor, id)
         })
         .build();

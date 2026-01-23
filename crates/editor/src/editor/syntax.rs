@@ -159,9 +159,9 @@ impl LanguageLoader for SyntaxLoader {
 
 const COMPLETION_ANNOTATION: &str = "completion";
 const HIGHLIGHT_ANNOTATION: &str = "highlight";
-const HORIZON_TOP: u64 = 1024 * 8;
-const HORIZON_TOP_MIN: u64 = 1024;
-const HORIZON_BOTTOM: u64 = 1024 * 16;
+pub const HORIZON_TOP: u64 = 1024 * 8;
+pub const HORIZON_TOP_MIN: u64 = 2048;
+pub const HORIZON_BOTTOM: u64 = 1024 * 16;
 
 #[derive(Debug, Clone)]
 pub struct Syntax {

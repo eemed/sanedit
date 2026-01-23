@@ -1,5 +1,5 @@
 document = (special / list / line_comment)? (separated / ws+ / .)*;
-separated = code / identifier / keyword / preproc / comment / operator / string / specials / list_nl;
+separated = code / keyword / preproc / comment / operator / string / specials / list_nl / identifier;
 WHITESPACE = [ \t];
 ws = WHITESPACE;
 nl = "\n" / "\r\n";

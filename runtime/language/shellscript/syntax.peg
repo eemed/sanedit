@@ -1,4 +1,11 @@
-document = (string / identifier / comment / keyword / builtin / constant / operator / alpha / .)*;
+document = (string / identifier / comment / keyword / builtin / constant / here_doc / operator / alpha / .)*;
+ws              = space / nl;
+WHITESPACE      = space / nl;
+space           = [ \t];
+
+@show @highlight(comment)
+comment         = "#" (!nl .)*;
+nl              = "\r\n" / "\r" / "\n";
 
 alpha = [a..zA..Z0..9_./-]+;
 stop = ws / ";" / ">";
@@ -18,6 +25,19 @@ var2 = "${" (!"}" .)* "}";
 
 @show @highlight
 operator = [\[\]{}()\\;:,<>&$|=+*?!<>];
+
+here_doc = here_doc_op space* here_content;
+
+@show @highlight(string)
+here_content = here_tag here_extra (!here_stop .)* here_stop;
+@show @highlight(default)
+here_extra = (!nl (operator / .))*;
+@show @highlight(operator)
+here_doc_op = "<<" "-"?;
+@show @highlight(preproc)
+here_tag = string / (!ws .)+;
+@show @highlight(preproc)
+here_stop = nl @backref(here_tag) nl;
 
 @show @highlight
 keyword =  (
@@ -108,11 +128,3 @@ builtin = (
     "bg" /
     "alias"
     ) &stop;
-
-ws              = space / nl;
-WHITESPACE      = space / nl;
-space           = [ \t];
-
-@show @highlight(comment)
-comment         = "#" (!nl .)*;
-nl              = "\r\n" / "\r" / "\n";

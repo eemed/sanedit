@@ -331,6 +331,7 @@ pub(crate) fn normal() -> KeymapLayer {
         "M", cursor_to_view_middle,
         "L", cursor_to_view_bottom,
         "g c", toggle_comment_lines,
+        "g v", select_last_selection,
         "J", join_lines,
         "ctrl+p", open_file,
         "v", start_selection,

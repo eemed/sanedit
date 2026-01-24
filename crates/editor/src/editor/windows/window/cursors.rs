@@ -112,12 +112,6 @@ impl Cursors {
         }
     }
 
-    pub fn stop_selection(&mut self) {
-        for cursor in &mut self.cursors {
-            cursor.stop_selection();
-        }
-    }
-
     pub fn cursors(&self) -> &[Cursor] {
         &self.cursors
     }

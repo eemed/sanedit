@@ -150,12 +150,12 @@ fn cancel(editor: &mut Editor, id: ClientId) -> ActionResult {
     win.clear_popup();
 
     if win.cursors.cursors().iter().any(|c| c.is_selecting()) {
-        win.cursors.stop_selection();
+        win.stop_selection();
     } else if win.cursors().len() > 1 {
         win.cursors.cursors_mut().remove_except_primary();
 
         let (win, _buf) = editor.win_buf_mut(id);
-        win.cursors.stop_selection();
+        win.stop_selection();
     }
 
     let (win, _buf) = editor.win_buf_mut(id);
@@ -339,12 +339,12 @@ fn on_mode_leave(editor: &mut Editor, id: ClientId) -> ActionResult {
 #[action("Mode: Normal")]
 fn normal_mode(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
-
-    win.cursors.stop_selection();
+    win.stop_selection();
     win.snippets.clear();
     remove_indent(editor, id);
-    focus_with_mode(editor, id, Focus::Window, Mode::Normal);
     prev_grapheme_on_line.execute(editor, id);
+
+    focus_with_mode(editor, id, Focus::Window, Mode::Normal);
     ActionResult::Ok
 }
 

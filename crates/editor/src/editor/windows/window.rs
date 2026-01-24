@@ -54,7 +54,7 @@ use crate::{
         },
     },
     editor::{
-        buffers::{Buffer, BufferId, SnapshotAux, SnapshotId},
+        buffers::{AdditionalSnapshotData, Buffer, BufferId, SnapshotId},
         keymap::LayerKey,
         Editor, Map,
     },
@@ -69,15 +69,22 @@ pub(crate) use self::{
     view::*,
 };
 
+#[derive(Debug, Clone)]
+struct VisitedBufferData {
+    snap: AdditionalSnapshotData,
+    last_selection: Option<Cursors>,
+}
+
 #[derive(Debug)]
 pub(crate) struct Window {
     bid: BufferId,
-    visited_buffers: Map<BufferId, SnapshotAux>,
+    visited_buffers: Map<BufferId, VisitedBufferData>,
     message: Option<StatusMessage>,
     view: View,
     keys: Vec<KeyEvent>,
     popup: Option<Popup>,
 
+    pub last_selection: Option<Cursors>,
     pub last_buffer: Option<BufferId>,
     /// Focus determines where to direct input
     pub focus: Focus,
@@ -111,6 +118,7 @@ impl Window {
             keys: vec![],
             last_buffer: None,
             visited_buffers: Map::default(),
+            last_selection: None,
             view: View::new(width, height),
             message: None,
             completion: Completion::default(),
@@ -204,6 +212,7 @@ impl Window {
         let height = self.view.height();
         self.view = View::new(width, height);
         self.cursors = Cursors::default();
+        self.last_selection = None;
         self.reload();
     }
 
@@ -231,8 +240,9 @@ impl Window {
         self.reset();
         self.cursor_jumps.goto_start();
         self.view.options.tabstop = buf.config.tabstop;
-        if let Some(aux) = self.visited_buffers.get(&self.bid).cloned() {
-            self.restore(&aux, buf);
+        if let Some(data) = self.visited_buffers.get(&self.bid).cloned() {
+            self.restore(&data.snap, buf);
+            self.last_selection = data.last_selection;
         }
         old
     }
@@ -515,7 +525,7 @@ impl Window {
 
         let old = self.bid;
         // Store old buffer data
-        let odata = self.window_aux(None);
+        let odata = self.window_visited_buffer(None);
         self.visited_buffers.insert(old, odata);
         self.last_buffer = Some(old);
         self.bid = new;
@@ -565,10 +575,17 @@ impl Window {
         self.view.redraw(buf);
     }
 
-    /// Create snapshot auxilary data for window
+    fn window_visited_buffer(&self, mark: Option<Mark>) -> VisitedBufferData {
+        VisitedBufferData {
+            last_selection: self.last_selection.clone(),
+            snap: self.window_additional(mark),
+        }
+    }
+
+    /// Create snapshot additinal data for window
     /// Provide mark to store in aux
-    fn window_aux(&self, mark: Option<Mark>) -> SnapshotAux {
-        SnapshotAux {
+    fn window_additional(&self, mark: Option<Mark>) -> AdditionalSnapshotData {
+        AdditionalSnapshotData {
             cursors: self.cursors.clone(),
             view_offset: self.view.start(),
             change_start: mark,
@@ -590,7 +607,7 @@ impl Window {
         self.cursor_jumps.goto_start();
 
         let mark = self.cursors.mark_first(buf);
-        let aux = self.window_aux(mark.into());
+        let aux = self.window_additional(mark.into());
         let result = buf.apply_changes(changes)?;
 
         {
@@ -604,9 +621,9 @@ impl Window {
         }
 
         if let Some(id) = result.created_snapshot {
-            *buf.snapshot_aux_mut(id).unwrap() = aux;
+            *buf.snapshot_additional_mut(id).unwrap() = aux;
         } else if let Some(id) = result.forked_snapshot {
-            *buf.snapshot_aux_mut(id).unwrap() = aux;
+            *buf.snapshot_additional_mut(id).unwrap() = aux;
         }
 
         self.view.invalidate();
@@ -620,7 +637,7 @@ impl Window {
             return Ok(false);
         }
 
-        self.cursors.stop_selection();
+        self.stop_selection();
         self.remove(buf, &selections)?;
         self.invalidate();
 
@@ -747,7 +764,7 @@ impl Window {
                 .unwrap_or_default();
             let mark = cursors.mark_first(buf);
 
-            SnapshotAux {
+            AdditionalSnapshotData {
                 cursors,
                 view_offset: self.view.start(),
                 change_start: mark.into(),
@@ -765,11 +782,11 @@ impl Window {
         let restored = change.restored_snapshot;
 
         if let Some(id) = created {
-            *buf.snapshot_aux_mut(id).unwrap() = aux;
+            *buf.snapshot_additional_mut(id).unwrap() = aux;
         }
 
         if let Some(restored) = restored {
-            if let Some(data) = buf.snapshot_aux(restored) {
+            if let Some(data) = buf.snapshot_additional(restored) {
                 self.restore(data, buf);
             } else {
                 self.full_reload(buf);
@@ -815,7 +832,7 @@ impl Window {
                 .unwrap_or_default();
             let mark = cursors.mark_first(buf);
 
-            SnapshotAux {
+            AdditionalSnapshotData {
                 cursors,
                 view_offset: self.view.start(),
                 change_start: mark.into(),
@@ -833,11 +850,11 @@ impl Window {
         let restored = change.restored_snapshot;
 
         if let Some(id) = created {
-            *buf.snapshot_aux_mut(id).unwrap() = aux;
+            *buf.snapshot_additional_mut(id).unwrap() = aux;
         }
 
         if let Some(restored) = restored {
-            if let Some(data) = buf.snapshot_aux(restored) {
+            if let Some(data) = buf.snapshot_additional(restored) {
                 self.restore(data, buf);
             } else {
                 self.full_reload(buf);
@@ -851,7 +868,7 @@ impl Window {
 
     // Restore aux data, if buffer is provided try to scroll to view position
     // otherwise hard set it
-    fn restore(&mut self, aux: &SnapshotAux, buf: &Buffer) {
+    fn restore(&mut self, aux: &AdditionalSnapshotData, buf: &Buffer) {
         *self.view_syntax() = ViewSyntax::default();
         self.search.reset_highlighting();
         self.cursors = aux.cursors.clone();
@@ -876,7 +893,7 @@ impl Window {
         let restored = change.restored_snapshot;
 
         if let Some(restored) = restored {
-            if let Some(data) = buf.snapshot_aux(restored) {
+            if let Some(data) = buf.snapshot_additional(restored) {
                 self.restore(data, buf);
             } else {
                 self.full_reload(buf)
@@ -1100,7 +1117,7 @@ impl Window {
         let starts = self.cursor_line_first_chars_of_lines_aligned(buf);
         let ends = self.cursor_line_ends(buf);
 
-        self.cursors.stop_selection();
+        self.stop_selection();
         if starts.is_empty() {
             bail!("No lines to comment");
         }
@@ -1162,12 +1179,22 @@ impl Window {
             changes.push(end_change);
         }
 
-        self.cursors.stop_selection();
+        self.stop_selection();
         if changes.is_empty() {
             bail!("No lines to uncomment");
         }
         let changes = Changes::new(&changes);
         self.change(buf, &changes)
+    }
+
+    pub fn stop_selection(&mut self) {
+        if self.cursors.has_selections() {
+            self.last_selection = Some(self.cursors.clone());
+            let mut cursors = self.cursors.cursors_mut();
+            for cursor in cursors.iter_mut() {
+                cursor.stop_selection();
+            }
+        }
     }
 
     fn has_comment_on_line(&self, buf: &Buffer, comment: &str, start_of_line: u64) -> bool {
@@ -1252,8 +1279,8 @@ impl Window {
             }
         };
         let mark = self.cursors.mark_first(buf);
-        let waux = self.window_aux(mark.into());
-        let aux = buf.snapshot_aux_mut(saved.snapshot).unwrap();
+        let waux = self.window_additional(mark.into());
+        let aux = buf.snapshot_additional_mut(saved.snapshot).unwrap();
         *aux = waux;
         Ok(())
     }
@@ -1442,12 +1469,12 @@ impl Window {
                 Some(id) => {
                     let prev = snaps.prev_of(id)?;
                     self.last_edit_jump = Some(prev);
-                    snaps.aux(prev)?
+                    snaps.additional_data(prev)?
                 }
                 None => {
                     let id = snaps.current()?;
                     self.last_edit_jump = Some(id);
-                    snaps.aux(id)?
+                    snaps.additional_data(id)?
                 }
             };
 
@@ -1475,12 +1502,12 @@ impl Window {
                 Some(id) => {
                     let next = snaps.next_of(id)?;
                     self.last_edit_jump = Some(next);
-                    snaps.aux(next)?
+                    snaps.additional_data(next)?
                 }
                 None => {
                     let id = snaps.current()?;
                     self.last_edit_jump = Some(id);
-                    snaps.aux(id)?
+                    snaps.additional_data(id)?
                 }
             };
 

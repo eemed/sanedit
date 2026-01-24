@@ -58,7 +58,7 @@ fn copy(editor: &mut Editor, id: ClientId) -> ActionResult {
     }
 
     let (win, _buf) = editor.win_buf_mut(id);
-    win.cursors.stop_selection();
+    win.stop_selection();
     mode_normal(editor, id);
     ActionResult::Ok
 }

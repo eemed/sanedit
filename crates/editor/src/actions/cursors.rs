@@ -67,7 +67,7 @@ fn start_selection(editor: &mut Editor, id: ClientId) -> ActionResult {
 #[action("Cursors: Cancel selection")]
 fn stop_selection(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
-    win.cursors.stop_selection();
+    win.stop_selection();
     mode_normal(editor, id);
     ActionResult::Ok
 }
@@ -76,13 +76,13 @@ fn stop_selection(editor: &mut Editor, id: ClientId) -> ActionResult {
 fn keep_only_primary(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
 
-    if win.cursors.cursors().iter().any(|c| c.is_selecting()) {
-        win.cursors.stop_selection();
+    if win.cursors.has_selections() {
+        win.stop_selection();
     } else {
         win.cursors.cursors_mut().remove_except_primary();
 
         let (win, _buf) = editor.win_buf_mut(id);
-        win.cursors.stop_selection();
+        win.stop_selection();
     }
 
     ActionResult::Ok
@@ -416,5 +416,15 @@ fn cursor_select_individual_lines(editor: &mut Editor, id: ClientId) -> ActionRe
     win.cursors_to_lines_start(buf);
     run(editor, id, Hook::CursorMoved);
     select_line_without_eol.execute(editor, id);
+    ActionResult::Ok
+}
+
+#[action("Cursors: Select last selection")]
+fn select_last_selection(editor: &mut Editor, id: ClientId) -> ActionResult {
+    let (win, buf) = editor.win_buf_mut(id);
+    if let Some(cursors) = win.last_selection.clone() {
+        win.cursors = cursors;
+    }
+    win.view_to_cursor_zone(buf, Zone::Middle);
     ActionResult::Ok
 }

@@ -542,7 +542,7 @@ impl LSPJob {
         match buf.apply_changes(&changes) {
             Ok(result) => {
                 if let Some(id) = result.created_snapshot {
-                    if let Some(aux) = buf.snapshot_aux_mut(id) {
+                    if let Some(aux) = buf.snapshot_additional_mut(id) {
                         aux.cursors = Cursors::new(Cursor::new(start));
                         aux.view_offset = start;
                     }

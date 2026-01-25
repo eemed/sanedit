@@ -27,7 +27,7 @@ use self::snapshots::Snapshots;
 
 pub(crate) use change::ChangeResult;
 pub(crate) use config::BufferConfig;
-pub(crate) use snapshots::{AdditionalSnapshotData, SnapshotId};
+pub(crate) use snapshots::{SavedWindowState, SnapshotId};
 
 key_type!(pub(crate) BufferId);
 
@@ -177,13 +177,13 @@ impl Buffer {
     pub fn snapshot_additional_mut(
         &mut self,
         id: SnapshotId,
-    ) -> Option<&mut AdditionalSnapshotData> {
-        self.snapshots.additional_data_mut(id)
+    ) -> Option<&mut SavedWindowState> {
+        self.snapshots.window_state_mut(id)
     }
 
     /// Get access to auxilary data for a snapshot
-    pub fn snapshot_additional(&self, id: SnapshotId) -> Option<&AdditionalSnapshotData> {
-        self.snapshots.additional_data(id)
+    pub fn snapshot_additional(&self, id: SnapshotId) -> Option<&SavedWindowState> {
+        self.snapshots.window_state(id)
     }
 
     /// Get the last change done to buffer

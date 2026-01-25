@@ -5,10 +5,11 @@ use sanedit_buffer::{Mark, PieceTreeSlice};
 use crate::editor::windows::Cursors;
 
 #[derive(Debug, Clone, Default)]
-pub(crate) struct AdditionalSnapshotData {
+pub(crate) struct SavedWindowState {
     pub(crate) cursors: Cursors,
     pub(crate) view_offset: u64,
     pub(crate) change_start: Option<Mark>,
+    pub(crate) last_selection: Option<Cursors>,
 }
 
 pub(crate) type SnapshotId = usize;
@@ -97,12 +98,12 @@ impl Snapshots {
         node.into()
     }
 
-    pub fn additional_data_mut(&mut self, id: SnapshotId) -> Option<&mut AdditionalSnapshotData> {
+    pub fn window_state_mut(&mut self, id: SnapshotId) -> Option<&mut SavedWindowState> {
         let node = self.snapshots.get_mut(id)?;
         Some(&mut node.data)
     }
 
-    pub fn additional_data(&self, id: SnapshotId) -> Option<&AdditionalSnapshotData> {
+    pub fn window_state(&self, id: SnapshotId) -> Option<&SavedWindowState> {
         let node = self.snapshots.get(id)?;
         Some(&node.data)
     }
@@ -142,7 +143,7 @@ pub(crate) struct SnapshotNode {
     next: Vec<SnapshotId>,
 
     /// Extra data we can save to a snapshot
-    pub(crate) data: AdditionalSnapshotData,
+    pub(crate) data: SavedWindowState,
 }
 
 impl SnapshotNode {
@@ -154,7 +155,7 @@ impl SnapshotNode {
             previous: vec![],
             next: vec![],
 
-            data: AdditionalSnapshotData::default(),
+            data: SavedWindowState::default(),
         }
     }
 }

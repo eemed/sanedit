@@ -5,7 +5,7 @@ use std::path::Path;
 use sanedit_utils::idmap::IdMap;
 
 pub(crate) use self::buffer::{
-    AdditionalSnapshotData, Buffer, BufferConfig, BufferError, BufferId, SnapshotId,
+    SavedWindowState, Buffer, BufferConfig, BufferError, BufferId, SnapshotId,
 };
 
 use super::file_description::FileDescription;

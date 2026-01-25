@@ -54,7 +54,7 @@ use crate::{
         },
     },
     editor::{
-        buffers::{AdditionalSnapshotData, Buffer, BufferId, SnapshotId},
+        buffers::{SavedWindowState, Buffer, BufferId, SnapshotId},
         keymap::LayerKey,
         Editor, Map,
     },
@@ -69,16 +69,10 @@ pub(crate) use self::{
     view::*,
 };
 
-#[derive(Debug, Clone)]
-struct VisitedBufferData {
-    snap: AdditionalSnapshotData,
-    last_selection: Option<Cursors>,
-}
-
 #[derive(Debug)]
 pub(crate) struct Window {
     bid: BufferId,
-    visited_buffers: Map<BufferId, VisitedBufferData>,
+    visited_buffers: Map<BufferId, SavedWindowState>,
     message: Option<StatusMessage>,
     view: View,
     keys: Vec<KeyEvent>,
@@ -241,8 +235,7 @@ impl Window {
         self.cursor_jumps.goto_start();
         self.view.options.tabstop = buf.config.tabstop;
         if let Some(data) = self.visited_buffers.get(&self.bid).cloned() {
-            self.restore(&data.snap, buf);
-            self.last_selection = data.last_selection;
+            self.restore(&data, buf);
         }
         old
     }
@@ -525,7 +518,7 @@ impl Window {
 
         let old = self.bid;
         // Store old buffer data
-        let odata = self.window_visited_buffer(None);
+        let odata = self.save_window_state(None);
         self.visited_buffers.insert(old, odata);
         self.last_buffer = Some(old);
         self.bid = new;
@@ -575,20 +568,14 @@ impl Window {
         self.view.redraw(buf);
     }
 
-    fn window_visited_buffer(&self, mark: Option<Mark>) -> VisitedBufferData {
-        VisitedBufferData {
-            last_selection: self.last_selection.clone(),
-            snap: self.window_additional(mark),
-        }
-    }
-
     /// Create snapshot additinal data for window
     /// Provide mark to store in aux
-    fn window_additional(&self, mark: Option<Mark>) -> AdditionalSnapshotData {
-        AdditionalSnapshotData {
+    fn save_window_state(&self, mark: Option<Mark>) -> SavedWindowState {
+        SavedWindowState {
             cursors: self.cursors.clone(),
             view_offset: self.view.start(),
             change_start: mark,
+            last_selection: self.last_selection.clone(),
         }
     }
 
@@ -607,7 +594,7 @@ impl Window {
         self.cursor_jumps.goto_start();
 
         let mark = self.cursors.mark_first(buf);
-        let aux = self.window_additional(mark.into());
+        let aux = self.save_window_state(mark.into());
         let result = buf.apply_changes(changes)?;
 
         {
@@ -764,10 +751,11 @@ impl Window {
                 .unwrap_or_default();
             let mark = cursors.mark_first(buf);
 
-            AdditionalSnapshotData {
+            SavedWindowState {
                 cursors,
                 view_offset: self.view.start(),
                 change_start: mark.into(),
+                last_selection: self.last_selection.clone(),
             }
         };
 
@@ -832,10 +820,11 @@ impl Window {
                 .unwrap_or_default();
             let mark = cursors.mark_first(buf);
 
-            AdditionalSnapshotData {
+            SavedWindowState {
                 cursors,
                 view_offset: self.view.start(),
                 change_start: mark.into(),
+                last_selection: self.last_selection.clone(),
             }
         };
 
@@ -868,7 +857,7 @@ impl Window {
 
     // Restore aux data, if buffer is provided try to scroll to view position
     // otherwise hard set it
-    fn restore(&mut self, aux: &AdditionalSnapshotData, buf: &Buffer) {
+    fn restore(&mut self, aux: &SavedWindowState, buf: &Buffer) {
         *self.view_syntax() = ViewSyntax::default();
         self.search.reset_highlighting();
         self.cursors = aux.cursors.clone();
@@ -879,6 +868,8 @@ impl Window {
         self.view.align_view_to_line(buf);
         self.view_to_around_cursor_zone(buf, Zone::Middle);
         self.invalidate();
+
+        self.last_selection = aux.last_selection.clone();
     }
 
     pub fn redo(&mut self, buf: &mut Buffer) -> Result<()> {
@@ -1279,7 +1270,7 @@ impl Window {
             }
         };
         let mark = self.cursors.mark_first(buf);
-        let waux = self.window_additional(mark.into());
+        let waux = self.save_window_state(mark.into());
         let aux = buf.snapshot_additional_mut(saved.snapshot).unwrap();
         *aux = waux;
         Ok(())
@@ -1469,12 +1460,12 @@ impl Window {
                 Some(id) => {
                     let prev = snaps.prev_of(id)?;
                     self.last_edit_jump = Some(prev);
-                    snaps.additional_data(prev)?
+                    snaps.window_state(prev)?
                 }
                 None => {
                     let id = snaps.current()?;
                     self.last_edit_jump = Some(id);
-                    snaps.additional_data(id)?
+                    snaps.window_state(id)?
                 }
             };
 
@@ -1502,12 +1493,12 @@ impl Window {
                 Some(id) => {
                     let next = snaps.next_of(id)?;
                     self.last_edit_jump = Some(next);
-                    snaps.additional_data(next)?
+                    snaps.window_state(next)?
                 }
                 None => {
                     let id = snaps.current()?;
                     self.last_edit_jump = Some(id);
-                    snaps.additional_data(id)?
+                    snaps.window_state(id)?
                 }
             };
 

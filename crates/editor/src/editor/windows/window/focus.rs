@@ -9,4 +9,5 @@ pub(crate) enum Focus {
     Completion,
     Filetree,
     Locations,
+    Snapshots,
 }

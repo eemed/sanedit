@@ -97,8 +97,7 @@ pub(crate) fn insert(editor: &mut Editor, id: ClientId, text: &str) {
                 run(editor, id, hook);
             }
         }
-        Filetree => {}
-        Locations => {}
+        _ => {}
     }
 }
 

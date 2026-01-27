@@ -4,6 +4,7 @@ mod locations;
 mod popup;
 mod prompt;
 mod search;
+mod snapshots;
 mod statusline;
 mod window;
 
@@ -72,6 +73,7 @@ pub(crate) struct DrawState {
     last_loc: Option<Hash>,
 
     last_ft: Option<Hash>,
+    last_snaps: Option<Hash>,
 
     last_show_popup: Option<bool>,
     last_statusline: Option<Hash>,
@@ -106,6 +108,7 @@ impl DrawState {
             last_compl: None,
             last_loc: None,
             last_ft: None,
+            last_snaps: None,
             last_show_popup: None,
             last_statusline: None,
             loc_scroll_offset: 0,

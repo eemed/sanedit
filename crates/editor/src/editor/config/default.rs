@@ -22,6 +22,7 @@ impl Config {
         keymaps.insert(Focus::Filetree.as_ref().into(), default::filetree());
         keymaps.insert(Focus::Prompt.as_ref().into(), default::prompt());
         keymaps.insert(Focus::Completion.as_ref().into(), default::completion());
+        keymaps.insert(Focus::Snapshots.as_ref().into(), default::snapshots());
         keymaps
     }
 }
@@ -204,6 +205,31 @@ pub(crate) fn completion() -> KeymapLayer {
         on_enter: None,
         on_leave: None,
         fallthrough: Some(Mode::Insert),
+        maps: compl,
+        no_default: None,
+    }
+}
+
+pub(crate) fn snapshots() -> KeymapLayer {
+    #[rustfmt::skip]
+    let compl = make_keymap!(
+        "esc",    close_snapshots,
+        "§",      close_snapshots,
+        "space q",      close_snapshots,
+
+        "enter",  goto_snapshot_entry,
+        "up",     prev_snapshot_entry,
+        "down",   next_snapshot_entry,
+        "k",      prev_snapshot_entry,
+        "j",      next_snapshot_entry,
+        "g g",    snapshots_select_first,
+        "G",      snapshots_select_last,
+    );
+
+    KeymapLayer {
+        on_enter: None,
+        on_leave: None,
+        fallthrough: None,
         maps: compl,
         no_default: None,
     }

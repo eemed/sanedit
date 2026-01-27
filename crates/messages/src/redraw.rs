@@ -64,6 +64,7 @@ pub enum Redraw {
     Completion(CompletionUpdate),
     Filetree(ItemsUpdate),
     Locations(ItemsUpdate),
+    Snapshots(ItemsUpdate),
 
     StatusMessage(StatusMessage),
     Popup(PopupComponent),

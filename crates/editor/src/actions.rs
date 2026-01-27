@@ -13,6 +13,7 @@ pub(crate) mod movement;
 pub(crate) mod popup;
 pub(crate) mod prompt;
 pub(crate) mod search;
+pub(crate) mod snapshots;
 pub(crate) mod snippets;
 pub(crate) mod syntax;
 pub(crate) mod text;
@@ -171,6 +172,15 @@ pub(crate) const COMMANDS: &[Action] = &[
     filetree::buffer_rename_file,
     filetree::buffer_remove_file,
     filetree::buffer_create_file,
+
+    snapshots::close_snapshots,
+    snapshots::focus_snapshots,
+    snapshots::goto_snapshot_entry,
+    snapshots::next_snapshot_entry,
+    snapshots::prev_snapshot_entry,
+    snapshots::show_snapshots,
+    snapshots::snapshots_select_first,
+    snapshots::snapshots_select_last,
 
     editor::quit,
     editor::copy,

@@ -12,6 +12,7 @@ mod mode;
 mod mouse;
 mod prompt;
 mod search;
+mod snapshot;
 mod view;
 
 #[cfg(test)]
@@ -54,7 +55,7 @@ use crate::{
         },
     },
     editor::{
-        buffers::{SavedWindowState, Buffer, BufferId, SnapshotId},
+        buffers::{Buffer, BufferId, SavedWindowState, SnapshotId},
         keymap::LayerKey,
         Editor, Map,
     },
@@ -66,7 +67,7 @@ pub(crate) use locations::LocationsView;
 
 pub(crate) use self::{
     completion::*, config::*, focus::*, jumps::*, macro_record::*, mode::*, prompt::*, search::*,
-    view::*,
+    view::*, snapshot::*,
 };
 
 #[derive(Debug)]
@@ -89,6 +90,7 @@ pub(crate) struct Window {
     pub prompt: Prompt,
     pub config: WindowConfig,
     pub ft_view: FiletreeView,
+    pub snapshot_view: SnapshotView,
     pub locations: Locations<LocationsView>,
     pub snippets: Vec<Jumps<32>>,
     pub macro_record: MacroRecord,
@@ -122,6 +124,7 @@ impl Window {
             search: Search::default(),
             prompt: Prompt::default(),
             focus: Focus::Window,
+            snapshot_view: SnapshotView::default(),
             ft_view: FiletreeView::default(),
             locations: Locations::default(),
             popup: None,

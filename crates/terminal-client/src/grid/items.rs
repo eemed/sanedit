@@ -79,9 +79,7 @@ impl CustomItems {
             self.scroll = sel - (height / 2);
         }
     }
-}
 
-impl CustomItems {
     fn draw_filetree(&self, ctx: &UIContext, mut grid: Subgrid) {
         let fill = ctx.style(ThemeField::FiletreeDefault);
         let file = ctx.style(ThemeField::FiletreeFile);

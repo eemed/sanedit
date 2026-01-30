@@ -416,6 +416,7 @@ pub(crate) fn normal() -> KeymapLayer {
         "g E",     prev_diagnostic,
         "K",       hover,
 
+        "space u", show_snapshots,
         "space r", rename,
         "space q", quit,
         "space s", strip_trailing_whitespace,

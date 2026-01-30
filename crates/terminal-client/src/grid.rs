@@ -5,6 +5,7 @@ mod items;
 mod popup;
 mod prompt;
 mod rect;
+mod snapshots;
 mod window;
 
 use std::sync::Arc;
@@ -18,6 +19,7 @@ use sanedit_messages::{
         completion::CompletionUpdate,
         items::ItemsUpdate,
         prompt::PromptUpdate,
+        snapshots::SnapshotsUpdate,
         statusline::Statusline,
         window::{Window, WindowUpdate},
         Cell, Cursor, Popup, PopupComponent, Redraw, Size, StatusMessage, Theme,
@@ -25,7 +27,7 @@ use sanedit_messages::{
     Message,
 };
 
-use crate::ui::UIContext;
+use crate::{grid::snapshots::CustomSnapshots, ui::UIContext};
 
 pub(crate) use self::rect::{Rect, Split};
 use self::{
@@ -67,6 +69,7 @@ pub(crate) struct Grid {
     completion: Option<Placed<CustomCompletion>>,
     filetree: Option<Placed<CustomItems>>,
     locations: Option<Placed<CustomItems>>,
+    snapshots: Option<Placed<CustomSnapshots>>,
     popup: Option<Placed<Popup>>,
 
     drawn: Vec<Vec<Cell>>,
@@ -86,6 +89,7 @@ impl Grid {
             completion: None,
             filetree: None,
             locations: None,
+            snapshots: None,
             popup: None,
 
             drawn: vec![vec![Cell::default(); width]; height],
@@ -222,6 +226,32 @@ impl Grid {
                     self.popup = None;
                 }
             },
+            Snapshots(update) => match update {
+                SnapshotsUpdate::Full(nsnaps) => {
+                    match self.snapshots {
+                        Some(ref mut snaps) => {
+                            snaps.item.snapshots = nsnaps;
+                            self.refresh();
+                        }
+                        None => {
+                            self.snapshots = Some(CustomSnapshots::new(nsnaps).into());
+                            self.refresh();
+                        }
+                    }
+                    return RedrawResult::Resized;
+                }
+                SnapshotsUpdate::Selection(pos) => {
+                    if let Some(snaps) = &mut self.snapshots {
+                        snaps.item.snapshots.selected = pos.unwrap_or(0);
+                        self.refresh();
+                    }
+                }
+                SnapshotsUpdate::Close => {
+                    self.snapshots = None;
+                    self.refresh();
+                    return RedrawResult::Resized;
+                }
+            },
         }
 
         RedrawResult::Ok
@@ -268,7 +298,11 @@ impl Grid {
             msg.rect = self.statusline.rect;
         }
 
-        // Filetree if present
+        if let Some(snaps) = &mut self.snapshots {
+            snaps.rect = snaps.item.split_off(&mut window);
+            snaps.item.update_scroll_position(&snaps.rect);
+        }
+
         if let Some(ft) = &mut self.filetree {
             ft.rect = ft.item.split_off(&mut window);
             ft.item.update_scroll_position(&ft.rect);
@@ -365,6 +399,17 @@ impl Grid {
             Self::draw_drawable(
                 &loc.item,
                 &loc.rect,
+                t,
+                self.client_in_focus,
+                &mut self.cursor,
+                &mut self.drawn,
+            );
+        }
+
+        if let Some(snaps) = &self.snapshots {
+            Self::draw_drawable(
+                &snaps.item,
+                &snaps.rect,
                 t,
                 self.client_in_focus,
                 &mut self.cursor,

@@ -1,6 +1,6 @@
 use crate::{
     actions::hooks::run,
-    common::to_human_readable,
+    common::to_human_readable_size,
     editor::{
         buffers::Buffer,
         hooks::Hook,
@@ -209,7 +209,7 @@ fn status(editor: &mut Editor, id: ClientId) -> ActionResult {
         .as_ref()
         .map(|ft| ft.as_str())
         .unwrap_or("no language");
-    let bufsize = to_human_readable(buf.len() as f64);
+    let bufsize = to_human_readable_size(buf.len() as f64);
     let edits = buf.total_changes_made();
     let (lsp, command, args) = buf
         .language

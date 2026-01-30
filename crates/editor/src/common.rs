@@ -7,7 +7,7 @@ pub(crate) mod window;
 
 pub(crate) use choice::*;
 
-use std::cmp;
+use std::{cmp, time::Duration};
 
 pub(crate) fn is_yes(input: &str) -> bool {
     input.eq_ignore_ascii_case("y")
@@ -15,7 +15,7 @@ pub(crate) fn is_yes(input: &str) -> bool {
         || input.eq_ignore_ascii_case("yes")
 }
 
-pub(crate) fn to_human_readable(num: f64) -> String {
+pub(crate) fn to_human_readable_size(num: f64) -> String {
     let num = num.abs();
     let units = ["B", "K", "M", "G", "T"];
     if num < 1_f64 {
@@ -32,4 +32,14 @@ pub(crate) fn to_human_readable(num: f64) -> String {
         * 1_f64;
     let unit = units[exponent as usize];
     format!("{}{}", pretty_bytes, unit)
+}
+
+pub(crate) fn human_readable_duration(since: Duration) -> String {
+    if since.as_secs() < 60 {
+        format!("{} seconds ago", since.as_secs())
+    } else if since.as_secs() < 60 * 60 {
+        format!("{} minutes ago", since.as_secs() / 60)
+    } else {
+        format!("{} hours ago", since.as_secs() / (60 * 60))
+    }
 }

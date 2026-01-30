@@ -18,7 +18,7 @@ use crate::{
         jobs::{FileOptionProvider, Grep, MatchStrategy},
         window::focus,
     },
-    common::{is_yes, Choice},
+    common::{human_readable_duration, is_yes, Choice},
     editor::{
         buffers::BufferId,
         hooks::Hook,
@@ -546,15 +546,6 @@ fn prompt_jump(editor: &mut Editor, id: ClientId) -> ActionResult {
     ActionResult::Ok
 }
 
-fn human_readable_duration(since: Duration) -> String {
-    if since.as_secs() < 60 {
-        format!("{} seconds ago", since.as_secs())
-    } else if since.as_secs() < 60 * 60 {
-        format!("{} minutes ago", since.as_secs() / 60)
-    } else {
-        format!("{} hours ago", since.as_secs() / (60 * 60))
-    }
-}
 
 #[action("Buffer: Show undopoints")]
 fn buffer_undopoints(editor: &mut Editor, id: ClientId) -> ActionResult {

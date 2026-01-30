@@ -2,14 +2,14 @@ use sanedit_server::ClientId;
 
 use crate::{actions::{window::focus, ActionResult}, editor::{windows::Focus, Editor}};
 
-#[action("Filetree: Select first entry")]
+#[action("Snapshots: Select first entry")]
 fn snapshots_select_first(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = win_buf!(editor, id);
     win.snapshot_view.selection = 0;
     ActionResult::Ok
 }
 
-#[action("Filetree: Select last entry")]
+#[action("Snapshots: Select last entry")]
 fn snapshots_select_last(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = win_buf!(editor, id);
     // let max = editor.filetree.iter().count() - 1;
@@ -17,7 +17,7 @@ fn snapshots_select_last(editor: &mut Editor, id: ClientId) -> ActionResult {
     ActionResult::Ok
 }
 
-#[action("Filetree: Show")]
+#[action("Snapshots: Show")]
 fn show_snapshots(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = win_buf!(editor, id);
     if win.snapshot_view.show {
@@ -26,8 +26,8 @@ fn show_snapshots(editor: &mut Editor, id: ClientId) -> ActionResult {
     }
 
     // let visible = editor.filetree.iter().count();
-    // win.ft_view.selection = min(visible - 1, win.ft_view.selection);
-    // win.ft_view.show = true;
+    win.snapshot_view.selection = 0;
+    win.snapshot_view.show = true;
     focus(editor, id, Focus::Snapshots);
 
     // ft_goto_current_file.execute(editor, id);
@@ -35,7 +35,7 @@ fn show_snapshots(editor: &mut Editor, id: ClientId) -> ActionResult {
     ActionResult::Ok
 }
 
-#[action("Filetree: Focus")]
+#[action("Snapshots: Focus")]
 fn focus_snapshots(editor: &mut Editor, id: ClientId) -> ActionResult {
     // let (win, _buf) = win_buf!(editor, id);
     // if win.snapshot_view.show {
@@ -45,12 +45,12 @@ fn focus_snapshots(editor: &mut Editor, id: ClientId) -> ActionResult {
     ActionResult::Ok
 }
 
-#[action("Filetree: Confirm entry")]
+#[action("Snapshots: Confirm entry")]
 fn goto_snapshot_entry(editor: &mut Editor, id: ClientId) -> ActionResult {
     ActionResult::Ok
 }
 
-#[action("Filetree: Next entry")]
+#[action("Snapshots: Next entry")]
 fn next_snapshot_entry(editor: &mut Editor, id: ClientId) -> ActionResult {
     // let visible = editor.filetree.iter().count();
     // let (win, _buf) = editor.win_buf_mut(id);
@@ -59,18 +59,18 @@ fn next_snapshot_entry(editor: &mut Editor, id: ClientId) -> ActionResult {
     ActionResult::Ok
 }
 
-#[action("Filetree: Previous entry")]
+#[action("Snapshots: Previous entry")]
 fn prev_snapshot_entry(editor: &mut Editor, id: ClientId) -> ActionResult {
     // let (win, _buf) = editor.win_buf_mut(id);
     // win.ft_view.selection = win.ft_view.selection.saturating_sub(1);
     ActionResult::Ok
 }
 
-#[action("Filetree: Close")]
+#[action("Snapshots: Close")]
 fn close_snapshots(editor: &mut Editor, id: ClientId) -> ActionResult {
-    // let (win, _buf) = editor.win_buf_mut(id);
-    // win.ft_view.show = false;
-    // focus(editor, id, Focus::Window);
+    let (win, _buf) = editor.win_buf_mut(id);
+    win.snapshot_view.show = false;
+    focus(editor, id, Focus::Window);
 
     ActionResult::Ok
 }

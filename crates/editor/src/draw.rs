@@ -181,6 +181,10 @@ impl DrawState {
             redraw.push(current.into());
         }
 
+        if let Some(current) = snapshots::draw(&mut ctx) {
+            redraw.push(current.into());
+        }
+
         if let Some(current) = filetree::draw(&mut ctx) {
             redraw.push(current.into());
         }

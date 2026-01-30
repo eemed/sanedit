@@ -1,10 +1,11 @@
-use std::{cmp, mem::take};
+use std::{mem::take, time::Instant};
 
 use sanedit_messages::redraw::{
     self,
-    items::{ItemKind, ItemLocation, ItemsUpdate},
+    snapshots::{SnapshotPoint, SnapshotsUpdate},
 };
 
+use crate::{common::human_readable_duration, editor::windows::Focus};
 
 use super::{DrawContext, Hash};
 
@@ -14,7 +15,7 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> Option<redraw::Redraw> {
 
     if close_snaps {
         ctx.state.last_snaps = None;
-        return Some(redraw::Redraw::Snapshots(ItemsUpdate::Close));
+        return Some(redraw::Redraw::Snapshots(SnapshotsUpdate::Close));
     }
 
     if !show_snaps {
@@ -25,26 +26,38 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> Option<redraw::Redraw> {
     let selected = take(&mut items.selected);
     let hash = Hash::new(&items);
     if ctx.state.last_snaps.as_ref() == Some(&hash) {
-        return Some(redraw::Redraw::Snapshots(ItemsUpdate::Selection(Some(
+        return Some(redraw::Redraw::Snapshots(SnapshotsUpdate::Selection(Some(
             selected,
         ))));
     }
 
     ctx.state.last_snaps = Some(hash);
     items.selected = selected;
-    Some(redraw::Redraw::Snapshots(ItemsUpdate::Full(items)))
+    Some(redraw::Redraw::Snapshots(SnapshotsUpdate::Full(items)))
 }
 
-fn draw_impl(ctx: &mut DrawContext) -> redraw::items::Items {
-    let tree = ctx.editor.filetree;
-    let selected = ctx.editor.win.snapshot_view.selection;
-    let mut items = vec![];
+fn draw_impl(ctx: &mut DrawContext) -> redraw::snapshots::Snapshots {
+    let now = Instant::now();
+    let snaps = ctx.editor.buf.snapshots();
+    let points: Vec<SnapshotPoint> = snaps
+        .nodes()
+        .iter()
+        .map(|node| {
+            let since = now.duration_since(node.timestamp);
+            let ts = human_readable_duration(since);
+            SnapshotPoint {
+                title: format!("{ts}"),
+                children: node.next.clone(),
+            }
+        })
+        .collect();
 
-    redraw::items::Items {
-        title: todo!(),
-        items,
-        selected: todo!(),
-        in_focus: todo!(),
-        is_loading: todo!(),
+    let selected = ctx.editor.win.snapshot_view.selection;
+    let in_focus = ctx.editor.win.focus() == Focus::Snapshots;
+
+    redraw::snapshots::Snapshots {
+        selected,
+        in_focus,
+        points,
     }
 }

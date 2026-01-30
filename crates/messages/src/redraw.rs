@@ -14,6 +14,7 @@ pub mod choice;
 pub mod completion;
 pub mod items;
 pub mod prompt;
+pub mod snapshots;
 pub mod statusline;
 pub mod text_style;
 pub mod window;
@@ -36,7 +37,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     redraw::{
         completion::CompletionUpdate, items::ItemsUpdate, prompt::PromptUpdate,
-        window::WindowUpdate,
+        snapshots::SnapshotsUpdate, window::WindowUpdate,
     },
     ClientMessage,
 };
@@ -64,7 +65,7 @@ pub enum Redraw {
     Completion(CompletionUpdate),
     Filetree(ItemsUpdate),
     Locations(ItemsUpdate),
-    Snapshots(ItemsUpdate),
+    Snapshots(SnapshotsUpdate),
 
     StatusMessage(StatusMessage),
     Popup(PopupComponent),

@@ -34,7 +34,7 @@ impl Snapshots {
         &self.snapshots
     }
 
-    pub fn get(&mut self, id: SnapshotId) -> Option<&SnapshotNode> {
+    pub fn get(&self, id: SnapshotId) -> Option<&SnapshotNode> {
         self.snapshots.get(id)
     }
 
@@ -139,8 +139,8 @@ pub(crate) struct SnapshotNode {
     pub(crate) snapshot: PieceTreeSlice,
     pub(crate) timestamp: Instant,
 
-    previous: Vec<SnapshotId>,
-    next: Vec<SnapshotId>,
+    pub(crate) previous: Vec<SnapshotId>,
+    pub(crate) next: Vec<SnapshotId>,
 
     /// Extra data we can save to a snapshot
     pub(crate) data: SavedWindowState,

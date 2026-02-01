@@ -47,7 +47,7 @@ fn draw_impl(ctx: &mut DrawContext) -> redraw::snapshots::Snapshots {
             let ts = human_readable_duration(since);
             SnapshotPoint {
                 title: format!("{ts}"),
-                children: node.next.clone(),
+                next: node.next.clone(),
             }
         })
         .collect();
@@ -61,3 +61,5 @@ fn draw_impl(ctx: &mut DrawContext) -> redraw::snapshots::Snapshots {
         points,
     }
 }
+
+

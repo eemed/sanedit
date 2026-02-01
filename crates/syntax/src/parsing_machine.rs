@@ -2,7 +2,6 @@ mod captures;
 mod compiler;
 mod jit;
 mod op;
-mod set;
 mod stack;
 
 use std::cmp::min;
@@ -254,7 +253,7 @@ impl ParsingMachine {
                     }
                 },
                 Set(set) => {
-                    if reader.get(sp).map(|byte| set.has(byte)).unwrap_or(false) {
+                    if reader.get(sp).map(|byte| set.contains(byte)).unwrap_or(false) {
                         ip += 1;
                         sp += 1;
                     } else {
@@ -299,7 +298,7 @@ impl ParsingMachine {
                             break;
                         };
                         for byte in slice {
-                            if set.has(*byte) {
+                            if set.contains(*byte) {
                                 sp += 1;
                             } else {
                                 break 'done;
@@ -339,7 +338,7 @@ impl ParsingMachine {
                     }
                 }
                 TestSet(set, l) => {
-                    if reader.get(sp).map(|byte| set.has(byte)).unwrap_or(false) {
+                    if reader.get(sp).map(|byte| set.contains(byte)).unwrap_or(false) {
                         stack.push(StackEntry::Backtrack {
                             addr: *l,
                             spos: sp,

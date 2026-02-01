@@ -17,5 +17,5 @@ pub struct Snapshots {
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone, Hash)]
 pub struct SnapshotPoint {
     pub title: String,
-    pub children: Vec<usize>,
+    pub next: Vec<usize>,
 }

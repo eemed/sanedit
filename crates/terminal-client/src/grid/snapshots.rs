@@ -1,6 +1,10 @@
-use std::cmp::max;
+use std::{cmp::max, collections::HashSet};
 
-use sanedit_messages::redraw::snapshots::Snapshots;
+use sanedit_messages::redraw::{
+    snapshots::{SnapshotPoint, Snapshots},
+    Cell, ThemeField,
+};
+use sanedit_utils::bitset::Bitset256;
 
 use crate::{
     grid::{
@@ -57,7 +61,33 @@ impl CustomSnapshots {
 }
 
 impl Drawable for CustomSnapshots {
-    fn draw(&self, ctx: &UIContext, cells: Subgrid) {
+    fn draw(&self, ctx: &UIContext, mut cells: Subgrid) {
+        let markers = ctx.style(ThemeField::FiletreeMarkers);
+        let default = ctx.style(ThemeField::FiletreeDefault);
+        let entry = ctx.style(ThemeField::FiletreeDir);
+
+        let sforward = "│";
+        let sfork = "├";
+        let shoriz = "─";
+        let sfork_continue = "┴";
+        let spoint_continue = "┼";
+        let sroot = "┴";
+        let sleaf = "┬";
+
+        cells.clear_all(default);
+        let sep = Cell::new_char('│', markers);
+        let sub = cells.draw_separator_right(sep);
+        let mut content_area = cells.subgrid(&sub);
+        let rendered = render_snapshots(&self.snapshots);
+
+        log::info!("--------------");
+        for (i, snap) in self.snapshots.points.iter().enumerate() {
+            log::info!("{i}: {snap:?}");
+        }
+
+        for (row, line) in rendered.iter().enumerate() {
+            content_area.put_string(row, 0, &line, default);
+        }
     }
 
     fn cursor(&self, ctx: &UIContext) -> DrawCursor {
@@ -67,4 +97,81 @@ impl Drawable for CustomSnapshots {
             DrawCursor::Ignore
         }
     }
+}
+
+struct RenderedLine {
+    graph: String,
+    title: String,
+}
+
+fn render_snapshots(snapshots: &Snapshots) -> Vec<RenderedLine> {
+    let mut result = vec![];
+    let mut used_lanes = Bitset256::new();
+    dfs(&snapshots.points, 0, 0, &mut used_lanes, &mut result);
+    result
+}
+
+fn format_lanes_before(max: u8, used_lanes: &Bitset256) -> String {
+    log::info!("MAX: {max:?}, {used_lanes:?}");
+    let mut result = String::new();
+    for i in 0..max {
+        if used_lanes.contains(i) {
+            result.push_str("│ ");
+        } else {
+            result.push_str("  ");
+        }
+    }
+
+    result
+}
+
+fn dfs(
+    snapshots: &[SnapshotPoint],
+    node: usize,
+    lane: usize,
+    used_lanes: &Bitset256,
+    result: &mut Vec<RenderedLine>,
+) {
+    if lane > u8::MAX as usize {
+        return;
+    }
+
+    let mut lanes = used_lanes.clone();
+    lanes.insert(lane as u8);
+
+    let lanes_before = format_lanes_before(lane as u8, used_lanes);
+    let point = &snapshots[node];
+
+    // Leaf
+    if point.next.is_empty() {
+        let line = RenderedLine {
+            graph: format!("{}{}", lanes_before, "┬ "),
+            title: point.title.clone(),
+        };
+        result.push(line);
+        return;
+    }
+
+    let last = point.next.len() - 1;
+    dfs(snapshots, point.next[last], lane, &lanes, result);
+
+    for (i, n) in point.next[..last].iter().rev().enumerate() {
+        dfs(snapshots, *n, lane + 1 + i, &lanes, result);
+    }
+
+    let nmid_lanes = point.next.len().saturating_sub(2);
+    let fork = point.next.len() > 1;
+    let first = node == 0;
+    let (mylane, next_lanes) = match (lane, fork, first) {
+        (0, false, true) => ("┴ ", String::new()),
+        (0, true, true) => ("┴─", format!("{}{}", "┴─".repeat(nmid_lanes), "┘ ")),
+        (_, true, _) => ("├─", format!("{}{}", "┴─".repeat(nmid_lanes), "┘ ")),
+        (_, false, _) => ("┼ ", String::new()),
+    };
+
+    let line = RenderedLine {
+        graph: format!("{}{}{}", lanes_before, mylane, next_lanes),
+        title: point.title.clone(),
+    };
+    result.push(line);
 }

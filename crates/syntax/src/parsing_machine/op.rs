@@ -1,6 +1,6 @@
-use crate::CaptureID;
+use sanedit_utils::bitset::Bitset256;
 
-use super::set::Set;
+use crate::CaptureID;
 
 pub(crate) type Addr = usize;
 
@@ -13,16 +13,16 @@ pub(crate) enum Operation {
     Choice(Addr),
     Any(u64),
     UTF8Range(char, char),
-    Set(Set),
+    Set(Bitset256),
     Return,
     Fail,
     End,
     PartialCommit(Addr),
     FailTwice,
-    Span(Set),
+    Span(Bitset256),
     BackCommit(Addr),
     TestByte(u8, Addr),
-    TestSet(Set, Addr),
+    TestSet(Bitset256, Addr),
     CaptureBegin(CaptureID),
     CaptureEnd,
     CaptureLate(CaptureID, u64),

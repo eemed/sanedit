@@ -1,6 +1,7 @@
+use sanedit_utils::bitset::Bitset256;
+
 use crate::{
     grammar::{self, Rule, Rules},
-    parsing_machine::set::Set,
 };
 
 use super::{op::Operation, Addr};
@@ -240,16 +241,16 @@ impl<'a> Compiler<'a> {
         if rule.is_byte_range_or_single_byte()
             && rest.iter().all(Rule::is_byte_range_or_single_byte)
         {
-            let mut set = Set::new();
+            let mut set = Bitset256::new();
             let mut cur_rule = Some(rule);
             let mut iter = rest.iter();
 
             while let Some(r) = cur_rule {
                 match r {
-                    Rule::ByteSequence(vec) => set.add(vec[0]),
+                    Rule::ByteSequence(vec) => set.insert(vec[0]),
                     Rule::ByteRange(a, b) => {
                         for i in *a..=*b {
-                            set.add(i);
+                            set.insert(i);
                         }
                     }
                     _ => {}
@@ -297,9 +298,9 @@ impl<'a> Compiler<'a> {
 
     fn push_span(&mut self, rule: &Rule) -> bool {
         if let Rule::ByteRange(a, b) = rule {
-            let mut set = Set::new();
+            let mut set = Bitset256::new();
             for i in *a..=*b {
-                set.add(i);
+                set.insert(i);
             }
 
             self.push(Operation::Span(set));
@@ -309,14 +310,14 @@ impl<'a> Compiler<'a> {
 
         if let Rule::Choice(rest) = rule {
             if rest.iter().all(Rule::is_byte_range_or_single_byte) {
-                let mut set = Set::new();
+                let mut set = Bitset256::new();
 
                 for r in rest {
                     match r {
-                        Rule::ByteSequence(vec) => set.add(vec[0]),
+                        Rule::ByteSequence(vec) => set.insert(vec[0]),
                         Rule::ByteRange(a, b) => {
                             for i in *a..=*b {
-                                set.add(i);
+                                set.insert(i);
                             }
                         }
                         _ => {}
@@ -418,9 +419,9 @@ impl<'a> Compiler<'a> {
                 self.push(Operation::Call(*idx));
             }
             ByteRange(a, b) => {
-                let mut set = Set::new();
+                let mut set = Bitset256::new();
                 for i in *a..=*b {
-                    set.add(i);
+                    set.insert(i);
                 }
 
                 // Head fail optimization

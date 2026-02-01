@@ -121,7 +121,7 @@ impl Node {
                 children: SortedVec::default(),
             };
             if node.is_dir() {
-                node.add_single_directories_to_local(&path)?;
+                let _ = node.add_single_directories_to_local(&path);
             }
             self.children.push(node);
         }
@@ -165,7 +165,7 @@ impl Node {
             if let Some(index) = self.children.iter().position(|child| child.local == local) {
                 let mut child = self.children.remove(index);
                 if child.is_dir_expanded() {
-                    child.refresh(&path)?;
+                    let _ = child.refresh(&path);
                 }
                 new_children.push(child);
             } else {
@@ -177,7 +177,7 @@ impl Node {
                     children: SortedVec::default(),
                 };
                 if node.is_dir() {
-                    node.add_single_directories_to_local(&path)?;
+                    let _ = node.add_single_directories_to_local(&path);
                 }
                 new_children.push(node);
             }

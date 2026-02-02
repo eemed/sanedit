@@ -86,7 +86,7 @@ impl Drawable for CustomSnapshots {
         }
 
         for (row, line) in rendered.iter().enumerate() {
-            content_area.put_string(row, 0, &line, default);
+            content_area.put_string(row, 0, &line.graph, default);
         }
     }
 

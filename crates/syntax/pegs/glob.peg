@@ -1,4 +1,4 @@
-document = negate? element separator? !.;
+document = negate? separator? element separator? !.;
 
 element = (recursive_wildcard / (wildcard / any / brackets / negative_brackets / text / escape)+) (separator element)?;
 

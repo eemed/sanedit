@@ -278,6 +278,9 @@ impl GitGlob {
                     // Recursive wildcard a/**/b matches also a/b, we need to possibly eat the /
                     if last_label == Some("recursive_wildcard") {
                         seq.push(Rule::Optional(Rule::ByteSequence("/".into()).into()));
+                    } else if seq.is_empty() {
+                        // Leading slash is optional
+                        seq.push(Rule::Optional(Rule::ByteSequence("/".into()).into()));
                     } else {
                         seq.push(Rule::ByteSequence("/".into()));
                     }
@@ -485,5 +488,13 @@ mod test {
         let glob = GitGlob::new("runtime/config.toml").unwrap();
         assert_eq!(glob.is_match(b"runtime/config.toml"), true);
         assert_eq!(glob.is_match(b"hurdurr/deb/shit"), false);
+    }
+
+    #[test]
+    fn leading_slash() {
+        let glob = GitGlob::new("/config.toml").unwrap();
+        assert_eq!(glob.is_match(b"/config.toml"), true);
+        assert_eq!(glob.is_match(b"config.toml"), true);
+        assert_eq!(glob.is_match(b"/runtime/config.toml"), false);
     }
 }

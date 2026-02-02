@@ -5,7 +5,7 @@ Cargo.lock
 flamegraph.svg
 perf.data*
 *.ignore
-test-files
+/test-files
 docs/images/*.png
 docs/*.pdf
 crates/samples

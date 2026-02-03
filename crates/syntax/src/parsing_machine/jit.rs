@@ -372,7 +372,7 @@ impl Drop for State {
 
 impl Default for State {
     fn default() -> Self {
-        let cap = 2;
+        let cap = 64;
         let layout = Layout::array::<PartialCapture>(cap).expect("Invalid layout");
         let ptr = unsafe { std::alloc::alloc(layout) as *mut PartialCapture };
         if ptr.is_null() {

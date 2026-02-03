@@ -31,6 +31,26 @@ impl Bitset256 {
         self.inner[num] & shifted != 0
     }
 
+    pub fn max(&self) -> Option<u8> {
+        for i in (0u8..=255u8).rev() {
+            if self.contains(i) {
+                return Some(i)
+            }
+        }
+
+        None
+    }
+
+    pub fn min(&self) -> Option<u8> {
+        for i in 0u8..=255u8 {
+            if self.contains(i) {
+                return Some(i)
+            }
+        }
+
+        None
+    }
+
     pub fn raw(&self) -> *const u8 {
         self.inner.as_ptr()
     }

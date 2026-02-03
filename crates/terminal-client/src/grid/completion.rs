@@ -226,7 +226,7 @@ pub(crate) fn format_completion<'a>(
     } = opts;
     let mut x = *ox;
 
-    if *left_pad {
+    if *left_pad && x < *width {
         grid.replace(*line, x, Cell::with_style(*mstyle));
         x += 1;
     }
@@ -244,7 +244,7 @@ pub(crate) fn format_completion<'a>(
     }
 
     let pad_to = max_columns[0] + if *left_pad { 1 } else { 0 };
-    while x < pad_to {
+    while x < pad_to && x < *width {
         grid.replace(*line, x, Cell::with_style(*mstyle));
         x += 1;
     }

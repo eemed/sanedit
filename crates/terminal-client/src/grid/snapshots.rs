@@ -66,14 +66,6 @@ impl Drawable for CustomSnapshots {
         let default = ctx.style(ThemeField::FiletreeDefault);
         let entry = ctx.style(ThemeField::FiletreeDir);
 
-        let sforward = "│";
-        let sfork = "├";
-        let shoriz = "─";
-        let sfork_continue = "┴";
-        let spoint_continue = "┼";
-        let sroot = "┴";
-        let sleaf = "┬";
-
         cells.clear_all(default);
         let sep = Cell::new_char('│', markers);
         let sub = cells.draw_separator_right(sep);
@@ -106,13 +98,15 @@ struct RenderedLine {
 
 fn render_snapshots(snapshots: &Snapshots) -> Vec<RenderedLine> {
     let mut result = vec![];
-    let mut used_lanes = Bitset256::new();
-    dfs(&snapshots.points, 0, 0, &mut used_lanes, &mut result);
+
+    if !snapshots.points.is_empty() {
+        dfs(&snapshots.points, 0, 0, &mut Bitset256::new(), &mut result);
+    }
+
     result
 }
 
 fn format_lanes_before(max: u8, used_lanes: &Bitset256) -> String {
-    log::info!("MAX: {max:?}, {used_lanes:?}");
     let mut result = String::new();
     for i in 0..max {
         if used_lanes.contains(i) {
@@ -131,9 +125,9 @@ fn dfs(
     lane: usize,
     used_lanes: &Bitset256,
     result: &mut Vec<RenderedLine>,
-) {
+) -> usize {
     if lane > u8::MAX as usize {
-        return;
+        return 0;
     }
 
     let mut lanes = used_lanes.clone();
@@ -144,24 +138,29 @@ fn dfs(
 
     // Leaf
     if point.next.is_empty() {
+        let symbol = if snapshots.len() == 1 { "• " } else { "┬ " };
         let line = RenderedLine {
-            graph: format!("{}{}", lanes_before, "┬ "),
+            graph: format!("{lanes_before}{symbol}"),
             title: point.title.clone(),
         };
         result.push(line);
-        return;
+        return 0;
     }
 
+    let mut width = 0;
     let last = point.next.len() - 1;
-    dfs(snapshots, point.next[last], lane, &lanes, result);
+    width += dfs(snapshots, point.next[last], lane, &lanes, result);
 
     for (i, n) in point.next[..last].iter().rev().enumerate() {
-        dfs(snapshots, *n, lane + 1 + i, &lanes, result);
+        // current lane + previously drawn lanes widths + next branch
+        let next_free_lane = lane + width + (1 + i);
+        width += dfs(snapshots, *n, next_free_lane, &lanes, result) + 1;
     }
 
     let nmid_lanes = point.next.len().saturating_sub(2);
     let fork = point.next.len() > 1;
     let first = node == 0;
+    // TODO draw these dynamically based on width
     let (mylane, next_lanes) = match (lane, fork, first) {
         (0, false, true) => ("┴ ", String::new()),
         (0, true, true) => ("┴─", format!("{}{}", "┴─".repeat(nmid_lanes), "┘ ")),
@@ -174,4 +173,6 @@ fn dfs(
         title: point.title.clone(),
     };
     result.push(line);
+
+    width
 }

@@ -72,13 +72,14 @@ impl Drawable for CustomSnapshots {
         let mut content_area = cells.subgrid(&sub);
         let rendered = render_snapshots(&self.snapshots);
 
-        log::info!("--------------");
-        for (i, snap) in self.snapshots.points.iter().enumerate() {
-            log::info!("{i}: {snap:?}");
-        }
-
         for (row, line) in rendered.iter().enumerate() {
-            content_area.put_string(row, 0, &line.graph, default);
+            content_area.put_string(row, 0, &line.graph, entry);
+            content_area.put_string(
+                row,
+                content_area.width() - line.title.chars().count(),
+                &line.title,
+                markers,
+            );
         }
     }
 
@@ -147,6 +148,7 @@ fn dfs(
         return 0;
     }
 
+    let mut next_lanes = String::new();
     let mut width = 0;
     let last = point.next.len() - 1;
     width += dfs(snapshots, point.next[last], lane, &lanes, result);
@@ -154,18 +156,23 @@ fn dfs(
     for (i, n) in point.next[..last].iter().rev().enumerate() {
         // current lane + previously drawn lanes widths + next branch
         let next_free_lane = lane + width + (1 + i);
-        width += dfs(snapshots, *n, next_free_lane, &lanes, result) + 1;
+        width += dfs(snapshots, *n, next_free_lane, &lanes, result);
+        lanes.insert(next_free_lane as u8);
+
+        if i + 1 == last {
+            next_lanes.push_str("┘ ");
+        } else {
+            next_lanes.push_str("┴─");
+        }
     }
 
-    let nmid_lanes = point.next.len().saturating_sub(2);
     let fork = point.next.len() > 1;
     let first = node == 0;
-    // TODO draw these dynamically based on width
-    let (mylane, next_lanes) = match (lane, fork, first) {
-        (0, false, true) => ("┴ ", String::new()),
-        (0, true, true) => ("┴─", format!("{}{}", "┴─".repeat(nmid_lanes), "┘ ")),
-        (_, true, _) => ("├─", format!("{}{}", "┴─".repeat(nmid_lanes), "┘ ")),
-        (_, false, _) => ("┼ ", String::new()),
+    let mylane = match (lane, fork, first) {
+        (0, false, true) => "┴ ",
+        (0, true, true) => "┴─",
+        (_, true, _) => "├─",
+        (_, false, _) => "┼ ",
     };
 
     let line = RenderedLine {

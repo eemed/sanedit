@@ -46,12 +46,17 @@ fn draw_statusline(ctx: &mut DrawContext) -> Statusline {
     let cpos = cursor.pos();
     let blen = buf.len();
 
-    if win.focus() == Focus::Filetree {
-        left = " File browser".to_string();
-    }
-
-    if win.focus() == Focus::Locations {
-        left = " Locations".to_string();
+    match win.focus() {
+        Focus::Filetree => {
+            left = " File browser".to_string();
+        }
+        Focus::Locations => {
+            left = " Locations".to_string();
+        }
+        Focus::Snapshots => {
+            left = " Undotree".to_string();
+        }
+        _ => {}
     }
 
     let right = {

@@ -1,15 +1,15 @@
 use sanedit_server::ClientId;
 
-use crate::{actions::{window::focus, ActionResult}, editor::{windows::Focus, Editor}};
+use crate::{actions::{text::insert, window::focus, ActionResult}, editor::{windows::Focus, Editor}};
 
-#[action("Snapshots: Select first entry")]
+#[action("Undotree: Select first entry")]
 fn snapshots_select_first(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = win_buf!(editor, id);
     win.snapshot_view.selection = 0;
     ActionResult::Ok
 }
 
-#[action("Snapshots: Select last entry")]
+#[action("Undotree: Select last entry")]
 fn snapshots_select_last(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = win_buf!(editor, id);
     // let max = editor.filetree.iter().count() - 1;
@@ -17,7 +17,7 @@ fn snapshots_select_last(editor: &mut Editor, id: ClientId) -> ActionResult {
     ActionResult::Ok
 }
 
-#[action("Snapshots: Show")]
+#[action("Undotree: Show")]
 fn show_snapshots(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = win_buf!(editor, id);
     if win.snapshot_view.show {
@@ -25,17 +25,93 @@ fn show_snapshots(editor: &mut Editor, id: ClientId) -> ActionResult {
         return ActionResult::Ok;
     }
 
-    // let visible = editor.filetree.iter().count();
+    // Simulate tree
+    let mut events = std::collections::VecDeque::new();
+    events.push_back(sanedit_messages::key::KeyEvent::new(sanedit_messages::key::Key::Char('i'), 0));
+    events.push_back(sanedit_messages::key::KeyEvent::new(sanedit_messages::key::Key::Char('a'), 0));
+    events.push_back(sanedit_messages::key::KeyEvent::new(sanedit_messages::key::Key::Char('§'), 0));
+    events.push_back(sanedit_messages::key::KeyEvent::new(sanedit_messages::key::Key::Char('i'), 0));
+    events.push_back(sanedit_messages::key::KeyEvent::new(sanedit_messages::key::Key::Char('a'), 0));
+    events.push_back(sanedit_messages::key::KeyEvent::new(sanedit_messages::key::Key::Char('§'), 0));
+
+    events.push_back(sanedit_messages::key::KeyEvent::new(sanedit_messages::key::Key::Char('u'), 0));
+    events.push_back(sanedit_messages::key::KeyEvent::new(sanedit_messages::key::Key::Char('i'), 0));
+    events.push_back(sanedit_messages::key::KeyEvent::new(sanedit_messages::key::Key::Char('b'), 0));
+    events.push_back(sanedit_messages::key::KeyEvent::new(sanedit_messages::key::Key::Char('§'), 0));
+
+    events.push_back(sanedit_messages::key::KeyEvent::new(sanedit_messages::key::Key::Char('u'), 0));
+    events.push_back(sanedit_messages::key::KeyEvent::new(sanedit_messages::key::Key::Char('i'), 0));
+    events.push_back(sanedit_messages::key::KeyEvent::new(sanedit_messages::key::Key::Char('b'), 0));
+    events.push_back(sanedit_messages::key::KeyEvent::new(sanedit_messages::key::Key::Char('§'), 0));
+
+
+    events.push_back(sanedit_messages::key::KeyEvent::new(sanedit_messages::key::Key::Char('i'), 0));
+    events.push_back(sanedit_messages::key::KeyEvent::new(sanedit_messages::key::Key::Char('a'), 0));
+    events.push_back(sanedit_messages::key::KeyEvent::new(sanedit_messages::key::Key::Char('§'), 0));
+
+
+    events.push_back(sanedit_messages::key::KeyEvent::new(sanedit_messages::key::Key::Char('u'), 0));
+
+    events.push_back(sanedit_messages::key::KeyEvent::new(sanedit_messages::key::Key::Char('i'), 0));
+    events.push_back(sanedit_messages::key::KeyEvent::new(sanedit_messages::key::Key::Char('b'), 0));
+    events.push_back(sanedit_messages::key::KeyEvent::new(sanedit_messages::key::Key::Char('§'), 0));
+
+    events.push_back(sanedit_messages::key::KeyEvent::new(sanedit_messages::key::Key::Char('U'), 0));
+
+    events.push_back(sanedit_messages::key::KeyEvent::new(sanedit_messages::key::Key::Char('u'), 0));
+
+    events.push_back(sanedit_messages::key::KeyEvent::new(sanedit_messages::key::Key::Char('i'), 0));
+    events.push_back(sanedit_messages::key::KeyEvent::new(sanedit_messages::key::Key::Char('b'), 0));
+    events.push_back(sanedit_messages::key::KeyEvent::new(sanedit_messages::key::Key::Char('§'), 0));
+
+    events.push_back(sanedit_messages::key::KeyEvent::new(sanedit_messages::key::Key::Char('u'), 0));
+    events.push_back(sanedit_messages::key::KeyEvent::new(sanedit_messages::key::Key::Char('u'), 0));
+
+    events.push_back(sanedit_messages::key::KeyEvent::new(sanedit_messages::key::Key::Char('i'), 0));
+    events.push_back(sanedit_messages::key::KeyEvent::new(sanedit_messages::key::Key::Char('b'), 0));
+    events.push_back(sanedit_messages::key::KeyEvent::new(sanedit_messages::key::Key::Char('§'), 0));
+
+    events.push_back(sanedit_messages::key::KeyEvent::new(sanedit_messages::key::Key::Char('u'), 0));
+
+    events.push_back(sanedit_messages::key::KeyEvent::new(sanedit_messages::key::Key::Char('i'), 0));
+    events.push_back(sanedit_messages::key::KeyEvent::new(sanedit_messages::key::Key::Char('c'), 0));
+    events.push_back(sanedit_messages::key::KeyEvent::new(sanedit_messages::key::Key::Char('§'), 0));
+    events.push_back(sanedit_messages::key::KeyEvent::new(sanedit_messages::key::Key::Char('i'), 0));
+    events.push_back(sanedit_messages::key::KeyEvent::new(sanedit_messages::key::Key::Char('c'), 0));
+    events.push_back(sanedit_messages::key::KeyEvent::new(sanedit_messages::key::Key::Char('§'), 0));
+
+    events.push_back(sanedit_messages::key::KeyEvent::new(sanedit_messages::key::Key::Char('u'), 0));
+
+    events.push_back(sanedit_messages::key::KeyEvent::new(sanedit_messages::key::Key::Char('i'), 0));
+    events.push_back(sanedit_messages::key::KeyEvent::new(sanedit_messages::key::Key::Char('d'), 0));
+    events.push_back(sanedit_messages::key::KeyEvent::new(sanedit_messages::key::Key::Char('§'), 0));
+    events.push_back(sanedit_messages::key::KeyEvent::new(sanedit_messages::key::Key::Char('i'), 0));
+    events.push_back(sanedit_messages::key::KeyEvent::new(sanedit_messages::key::Key::Char('d'), 0));
+    events.push_back(sanedit_messages::key::KeyEvent::new(sanedit_messages::key::Key::Char('§'), 0));
+
+    events.push_back(sanedit_messages::key::KeyEvent::new(sanedit_messages::key::Key::Char('u'), 0));
+
+    events.push_back(sanedit_messages::key::KeyEvent::new(sanedit_messages::key::Key::Char('i'), 0));
+    events.push_back(sanedit_messages::key::KeyEvent::new(sanedit_messages::key::Key::Char('d'), 0));
+    events.push_back(sanedit_messages::key::KeyEvent::new(sanedit_messages::key::Key::Char('§'), 0));
+
+    events.push_back(sanedit_messages::key::KeyEvent::new(sanedit_messages::key::Key::Char('u'), 0));
+
+    events.push_back(sanedit_messages::key::KeyEvent::new(sanedit_messages::key::Key::Char('i'), 0));
+    events.push_back(sanedit_messages::key::KeyEvent::new(sanedit_messages::key::Key::Char('d'), 0));
+    events.push_back(sanedit_messages::key::KeyEvent::new(sanedit_messages::key::Key::Char('§'), 0));
+
+    editor.replay_macro(id, events);
+
+    let (win, _buf) = win_buf!(editor, id);
     win.snapshot_view.selection = 0;
     win.snapshot_view.show = true;
     focus(editor, id, Focus::Snapshots);
 
-    // ft_goto_current_file.execute(editor, id);
-
     ActionResult::Ok
 }
 
-#[action("Snapshots: Focus")]
+#[action("Undotree: Focus")]
 fn focus_snapshots(editor: &mut Editor, id: ClientId) -> ActionResult {
     // let (win, _buf) = win_buf!(editor, id);
     // if win.snapshot_view.show {
@@ -45,12 +121,12 @@ fn focus_snapshots(editor: &mut Editor, id: ClientId) -> ActionResult {
     ActionResult::Ok
 }
 
-#[action("Snapshots: Confirm entry")]
+#[action("Undotree: Confirm entry")]
 fn goto_snapshot_entry(editor: &mut Editor, id: ClientId) -> ActionResult {
     ActionResult::Ok
 }
 
-#[action("Snapshots: Next entry")]
+#[action("Undotree: Next entry")]
 fn next_snapshot_entry(editor: &mut Editor, id: ClientId) -> ActionResult {
     // let visible = editor.filetree.iter().count();
     // let (win, _buf) = editor.win_buf_mut(id);
@@ -59,14 +135,14 @@ fn next_snapshot_entry(editor: &mut Editor, id: ClientId) -> ActionResult {
     ActionResult::Ok
 }
 
-#[action("Snapshots: Previous entry")]
+#[action("Undotree: Previous entry")]
 fn prev_snapshot_entry(editor: &mut Editor, id: ClientId) -> ActionResult {
     // let (win, _buf) = editor.win_buf_mut(id);
     // win.ft_view.selection = win.ft_view.selection.saturating_sub(1);
     ActionResult::Ok
 }
 
-#[action("Snapshots: Close")]
+#[action("Undotree: Close")]
 fn close_snapshots(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
     win.snapshot_view.show = false;

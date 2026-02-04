@@ -29,19 +29,17 @@ impl CustomSnapshots {
     }
 
     pub fn split_off(&self, win: &mut Rect) -> Rect {
-        const MIN: usize = 30;
-        // Each level is indented by 2, and root starts at indent 2, +1 for possible directory marker
-        // let max_item_width = self
-        //     .items
-        //     .items
-        //     .iter()
-        //     .map(|item| (item.level + 1) * 2 + item.name.chars().count() + 1)
-        //     .max()
-        //     .unwrap_or(0)
-        //     + 1;
+        const MIN: usize = 15;
+
+        let rendered = render_snapshots(&self.snapshots);
+        let max_width = rendered
+            .iter()
+            .map(|line| line.graph.chars().count() + 2 + line.title.chars().count())
+            .max()
+            .unwrap_or(0);
         let max_screen = max(MIN, win.width / 3);
-        // let width = max_item_width.clamp(MIN, max_screen);
-        win.split_off(Split::left_size(max_screen))
+        let width = max_width.clamp(MIN, max_screen);
+        win.split_off(Split::left_size(width))
     }
 
     pub fn update_scroll_position(&mut self, rect: &Rect) {

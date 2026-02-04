@@ -26,7 +26,7 @@ pub struct Items {
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone, Hash)]
 pub enum ItemKind {
-    Group { expanded: bool },
+    Group { expanded: bool, is_readable: bool },
     Item,
 }
 

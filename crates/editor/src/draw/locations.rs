@@ -80,6 +80,7 @@ fn draw_impl(ctx: &mut DrawContext) -> redraw::items::Items {
             Either::Left(group) => {
                 let kind = ItemKind::Group {
                     expanded: group.is_expanded(),
+                    is_readable: true,
                 };
                 let name = {
                     let gp = group.path();

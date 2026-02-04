@@ -90,11 +90,13 @@ match = { fg = "#c55809" }
 default = { bg = "bg", fg = "fg" }
 markers = { fg = "gray_fg" }
 directory = { fg = "yellow" }
+error = { fg = "red" }
 
 [colors.filetree.selected]
 default = { bg = "bg_alt" }
 directory = { fg = "yellow" }
 markers = { fg = "gray_fg" }
+error = { fg = "red" }
 
 [colors.locations]
 default = { bg = "bg", fg = "fg" }

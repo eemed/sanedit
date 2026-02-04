@@ -85,10 +85,12 @@ impl CustomItems {
         let file = ctx.style(ThemeField::FiletreeFile);
         let dir = ctx.style(ThemeField::FiletreeDir);
         let markers = ctx.style(ThemeField::FiletreeMarkers);
+        let err = ctx.style(ThemeField::FiletreeError);
         let selfill = ctx.style(ThemeField::FiletreeSelected);
         let sel = ctx.style(ThemeField::FiletreeSelectedFile);
         let dsel = ctx.style(ThemeField::FiletreeSelectedDir);
         let msel = ctx.style(ThemeField::FiletreeSelectedMarkers);
+        let selerr = ctx.style(ThemeField::FiletreeSelectedError);
 
         grid.clear_all(fill);
 
@@ -106,13 +108,25 @@ impl CustomItems {
             let (name, fill, markers) = {
                 if is_selected {
                     let name = match item.kind {
-                        ItemKind::Group { .. } => dsel,
+                        ItemKind::Group { is_readable, .. } => {
+                            if is_readable {
+                                dsel
+                            } else {
+                                selerr
+                            }
+                        }
                         ItemKind::Item => sel,
                     };
                     (name, selfill, msel)
                 } else {
                     let name = match item.kind {
-                        ItemKind::Group { .. } => dir,
+                        ItemKind::Group { is_readable, .. } => {
+                            if is_readable {
+                                dir
+                            } else {
+                                err
+                            }
+                        }
                         ItemKind::Item => file,
                     };
                     (name, fill, markers)
@@ -146,8 +160,10 @@ impl CustomItems {
         }
 
         match item.kind {
-            ItemKind::Group { expanded } => {
-                if expanded {
+            ItemKind::Group { expanded, is_readable } => {
+                if !is_readable {
+                    x += grid.put_string(*line, x, "!", *mark_style);
+                } else if expanded {
                     x += grid.put_string(*line, x, "-", *mark_style);
                 } else {
                     x += grid.put_string(*line, x, "+", *mark_style);
@@ -282,8 +298,10 @@ impl CustomItems {
         }
 
         match item.kind {
-            ItemKind::Group { expanded } => {
-                if expanded {
+            ItemKind::Group { expanded, is_readable } => {
+                if !is_readable {
+                    x += grid.put_string(*line, x, "! ", *mark_style);
+                } else if expanded {
                     x += grid.put_string(*line, x, "- ", *mark_style);
                 } else {
                     x += grid.put_string(*line, x, "+ ", *mark_style);

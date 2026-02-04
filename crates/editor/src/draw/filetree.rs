@@ -46,6 +46,7 @@ fn draw_impl(ctx: &mut DrawContext) -> redraw::items::Items {
         let kind = if entry.node().is_dir() {
             ItemKind::Group {
                 expanded: entry.node().is_dir_expanded(),
+                is_readable: entry.node().is_readable(),
             }
         } else {
             ItemKind::Item

@@ -79,11 +79,14 @@ mod flags {
     pub(super) type NodeFlag = u8;
 
     pub(super) const NONE: NodeFlag = 0;
-    pub(super) const SYMLINK: NodeFlag = 1;
-    pub(super) const PERMISSION_DENIED: NodeFlag = 1 << 1;
+
+    /// If directory cannot be expanded show some error indication
+    pub(super) const PERMISSION_DENIED: NodeFlag = 1;
 
     /// Whether this entry is expanded, if directory
-    pub(super) const EXPANDED: NodeFlag = 1 << 2;
+    pub(super) const EXPANDED: NodeFlag = 1 << 1;
+
+    // TODO symlinks?
 }
 
 #[derive(Debug, Clone)]
@@ -98,28 +101,44 @@ pub(crate) struct Node {
 }
 
 impl Node {
-    fn new(local: &Path, kind: Kind) -> Node {
-        Node {
-            local: local.into(),
-            kind,
-            children: SortedVec::default(),
-            flags: flags::NONE,
-        }
+    pub fn collapse(&mut self) {
+        self.flags &= !flags::EXPANDED;
     }
 
-    pub fn collapse(&mut self) {
-        self.expanded = false;
+    pub fn is_expanded(&self) -> bool {
+        self.flags & flags::EXPANDED == flags::EXPANDED
+    }
+
+    pub fn is_readable(&self) -> bool {
+        self.flags & flags::PERMISSION_DENIED != flags::PERMISSION_DENIED
+    }
+
+    fn read_dir(&mut self, absolute: &Path) -> io::Result<Vec<PathBuf>> {
+        fn read(absolute: &Path) -> io::Result<Vec<PathBuf>> {
+            std::fs::read_dir(absolute)?
+                .map(|res| res.map(|e| e.path()))
+                .collect::<Result<Vec<_>, io::Error>>()
+        }
+
+        self.flags &= !flags::PERMISSION_DENIED;
+
+        let result = read(absolute);
+        if let Err(e) = &result {
+            if let io::ErrorKind::PermissionDenied = e.kind() {
+                self.flags |= flags::PERMISSION_DENIED;
+            }
+        }
+
+        result
     }
 
     fn expand(&mut self, absolute: &Path) -> Result<()> {
-        if self.expanded || !self.children.is_empty() {
-            self.expanded = true;
+        if self.is_expanded() || !self.children.is_empty() {
+            self.flags |= flags::EXPANDED;
             return Ok(());
         }
 
-        let paths = std::fs::read_dir(absolute)?
-            .map(|res| res.map(|e| e.path()))
-            .collect::<Result<Vec<_>, io::Error>>()?;
+        let paths = self.read_dir(absolute)?;
 
         for path in paths {
             let local = path.strip_prefix(absolute).unwrap().to_path_buf();
@@ -127,7 +146,7 @@ impl Node {
             let mut node = Node {
                 local,
                 kind,
-                expanded: false,
+                flags: flags::NONE,
                 children: SortedVec::default(),
             };
             if node.is_dir() {
@@ -136,16 +155,14 @@ impl Node {
             self.children.push(node);
         }
 
-        self.expanded = true;
+        self.flags |= flags::EXPANDED;
 
         Ok(())
     }
 
     fn add_single_directories_to_local(&mut self, absolute: &Path) -> Result<()> {
         let mut absolute = absolute.to_path_buf();
-        let mut paths = std::fs::read_dir(absolute)?
-            .map(|res| res.map(|e| e.path()))
-            .collect::<Result<Vec<_>, io::Error>>()?;
+        let mut paths = self.read_dir(&absolute)?;
 
         while paths.len() == 1 {
             let path = paths.pop().unwrap();
@@ -156,9 +173,7 @@ impl Node {
             self.local.push(name);
             absolute = path;
 
-            paths = std::fs::read_dir(absolute)?
-                .map(|res| res.map(|e| e.path()))
-                .collect::<Result<Vec<_>, io::Error>>()?;
+            paths = self.read_dir(&absolute)?;
         }
 
         Ok(())
@@ -166,9 +181,7 @@ impl Node {
 
     fn refresh(&mut self, absolute: &Path) -> Result<()> {
         let mut new_children = SortedVec::new();
-        let paths = std::fs::read_dir(absolute)?
-            .map(|res| res.map(|e| e.path()))
-            .collect::<Result<Vec<_>, io::Error>>()?;
+        let paths = self.read_dir(absolute)?;
 
         for path in paths {
             let local = path.strip_prefix(absolute).unwrap().to_path_buf();
@@ -183,7 +196,7 @@ impl Node {
                 let mut node = Node {
                     local,
                     kind,
-                    expanded: false,
+                    flags: flags::NONE,
                     children: SortedVec::default(),
                 };
                 if node.is_dir() {
@@ -228,7 +241,7 @@ impl Node {
     }
 
     pub fn is_dir_expanded(&self) -> bool {
-        self.kind == Kind::Directory && self.expanded
+        self.kind == Kind::Directory && self.is_expanded()
     }
 }
 
@@ -266,7 +279,13 @@ impl Filetree {
         let local = PathBuf::from(name);
         absolute.pop();
 
-        let mut root = Node::new(&local, kind);
+        let mut root = Node {
+            local,
+            kind,
+            children: SortedVec::default(),
+            flags: flags::NONE,
+        };
+
         // Auto expand first
         let _ = root.expand(path);
         Filetree { absolute, root }
@@ -444,7 +463,7 @@ impl<'a> Iterator for FiletreeIterator<'a> {
     fn next(&mut self) -> Option<Self::Item> {
         let entry = self.stack.pop()?;
         let n = entry.node;
-        if Kind::Directory == n.kind && n.expanded {
+        if Kind::Directory == n.kind && n.is_expanded() {
             for child in n.children.iter().rev() {
                 let absolute = entry.absolute.join(&child.local);
                 let child_entry = FiletreeEntry {

@@ -467,7 +467,7 @@ impl Jit {
         let mut succesful_parse = false;
         let mut captures = CaptureList::new();
         let mut sp = 0;
-        while sp != source.len() {
+        loop {
             let (buf_pos, buf) = source.buffer();
             if let Ok((mut caps, ssp)) = self.parse_chunk(buf) {
                 succesful_parse = true;
@@ -496,7 +496,7 @@ impl Jit {
             }
 
             let overlapping_start = buf_pos + buf.len().saturating_sub(OVERLAP) as u64;
-            if !source.refill_buffer(overlapping_start)? {
+            if sp >= source.len() || !source.refill_buffer(overlapping_start)? {
                 break;
             }
         }
@@ -1266,6 +1266,17 @@ mod test {
         // println!("{:?}", parser.program);
         let jit = Jit::from_program(parser.rules, parser.program).unwrap();
         let mut haystack = "a";
+        assert!(jit.parse(&mut haystack).is_ok())
+    }
+
+    #[test]
+    #[cfg_attr(miri, ignore)]
+    fn jit_match_empty() {
+        let rules = r#"
+            document = "a"*;
+        "#;
+        let jit = Jit::from_read(std::io::Cursor::new(rules)).unwrap();
+        let mut haystack = "";
         assert!(jit.parse(&mut haystack).is_ok())
     }
 

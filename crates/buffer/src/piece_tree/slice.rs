@@ -202,7 +202,7 @@ impl PieceTreeSlice {
             .unwrap_or_else(|| panic!("Cannot find a piece for position {}", pos));
         let off = pos - p_pos;
         Mark {
-            orig: pos,
+            orig: self.start() + pos,
             kind: piece.kind,
             pos: piece.pos + off,
             count: piece.count,

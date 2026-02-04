@@ -217,30 +217,28 @@ impl ParserKind {
             match (inject_ann, inject_lang_ann) {
                 (Some(Inject(Some(lang))), None) => {
                     if let Ok(parser) = loader.load(lang) {
-                        if !cap.range().is_empty() {
-                            let slice =
-                                source
-                                    .slice(cap.range())
-                                    .ok_or(ParseError::SourceReadError(
-                                        std::io::ErrorKind::InvalidData.into(),
-                                    ))?;
-                            let mut caps = parser.parse(slice)?;
-                            let start = cap.range().start;
+                        let slice =
+                            source
+                                .slice(cap.range())
+                                .ok_or(ParseError::SourceReadError(
+                                    std::io::ErrorKind::InvalidData.into(),
+                                ))?;
+                        let mut caps = parser.parse(slice)?;
+                        let start = cap.range().start;
 
-                            caps.captures.iter_mut().for_each(|cap| {
-                                cap.start += start;
-                                cap.end += start;
-                            });
+                        caps.captures.iter_mut().for_each(|cap| {
+                            cap.start += start;
+                            cap.end += start;
+                        });
 
-                            let subinjections = Self::calculate_injections(
-                                &parser.inner,
-                                source,
-                                loader,
-                                &caps.captures,
-                            )?;
-                            caps.injections = subinjections;
-                            injections.push((lang.clone(), caps));
-                        }
+                        let subinjections = Self::calculate_injections(
+                            &parser.inner,
+                            source,
+                            loader,
+                            &caps.captures,
+                        )?;
+                        caps.injections = subinjections;
+                        injections.push((lang.clone(), caps));
                     }
                 }
                 (Some(Inject(None)), None) => {
@@ -263,27 +261,28 @@ impl ParserKind {
                 if let Ok(lang) = std::str::from_utf8(slice).map(String::from) {
                     if let Ok(parser) = loader.load(&lang) {
                         let pos_cap = &capture_list[a];
-                        if !pos_cap.range().is_empty() {
-                            let slice = source.slice(pos_cap.range()).ok_or(
-                                ParseError::SourceReadError(std::io::ErrorKind::InvalidData.into()),
-                            )?;
-                            let mut caps = parser.parse(slice)?;
-                            let start = pos_cap.range().start;
-                            caps.captures.iter_mut().for_each(|cap| {
-                                cap.start += start;
-                                cap.end += start;
-                            });
+                        let slice =
+                            source
+                                .slice(pos_cap.range())
+                                .ok_or(ParseError::SourceReadError(
+                                    std::io::ErrorKind::InvalidData.into(),
+                                ))?;
+                        let mut caps = parser.parse(slice)?;
+                        let start = pos_cap.range().start;
+                        caps.captures.iter_mut().for_each(|cap| {
+                            cap.start += start;
+                            cap.end += start;
+                        });
 
-                            let subinjections = Self::calculate_injections(
-                                &parser.inner,
-                                source,
-                                loader,
-                                &caps.captures,
-                            )?;
+                        let subinjections = Self::calculate_injections(
+                            &parser.inner,
+                            source,
+                            loader,
+                            &caps.captures,
+                        )?;
 
-                            caps.injections = subinjections;
-                            injections.push((lang.clone(), caps));
-                        }
+                        caps.injections = subinjections;
+                        injections.push((lang.clone(), caps));
                     }
                 }
 

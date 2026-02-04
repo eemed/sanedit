@@ -75,14 +75,24 @@ impl<'a> TreeNodeMut<'a> {
     }
 }
 
+mod flags {
+    pub(super) type NodeFlag = u8;
+
+    pub(super) const NONE: NodeFlag = 0;
+    pub(super) const SYMLINK: NodeFlag = 1;
+    pub(super) const PERMISSION_DENIED: NodeFlag = 1 << 1;
+
+    /// Whether this entry is expanded, if directory
+    pub(super) const EXPANDED: NodeFlag = 1 << 2;
+}
+
 #[derive(Debug, Clone)]
 pub(crate) struct Node {
     /// File or directory
     kind: Kind,
     /// Local name for this node, may contain multiple path components
     local: PathBuf,
-    /// Whether this entry is expanded, if directory
-    expanded: bool,
+    flags: flags::NodeFlag,
     /// Entries children, if directory
     children: SortedVec<Node>,
 }
@@ -93,7 +103,7 @@ impl Node {
             local: local.into(),
             kind,
             children: SortedVec::default(),
-            expanded: false,
+            flags: flags::NONE,
         }
     }
 

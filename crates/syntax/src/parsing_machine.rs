@@ -515,6 +515,18 @@ mod test {
     }
 
     #[test]
+    fn parse_match_empty() {
+        let peg = r#"
+            document = "a"*;
+            "#;
+
+        let mut content = b"";
+        let parser = ParsingMachine::from_read(std::io::Cursor::new(peg)).unwrap();
+        let result = parser.parse(&mut content);
+        assert!(result.is_ok(), "Parse failed with {result:?}");
+    }
+
+    #[test]
     fn parse_backrefs() {
         fn text(parser: &ParsingMachine, cap: &Capture, content: &[u8]) -> String {
             let label = parser.label_for(cap.id);

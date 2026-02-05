@@ -4,7 +4,7 @@ use std::{
     cmp::min,
     path::{Path, PathBuf},
     sync::Arc,
-    time::{Duration, Instant},
+    time::Instant,
 };
 
 use sanedit_buffer::PieceTreeSlice;

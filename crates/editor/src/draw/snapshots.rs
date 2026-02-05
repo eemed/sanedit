@@ -46,7 +46,7 @@ fn draw_impl(ctx: &mut DrawContext) -> redraw::snapshots::Snapshots {
             let since = now.duration_since(node.timestamp);
             let ts = human_readable_duration(since);
             SnapshotPoint {
-                title: format!("{ts}"),
+                title: ts.to_string(),
                 next: node.next.clone(),
             }
         })

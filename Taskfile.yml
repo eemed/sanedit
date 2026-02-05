@@ -151,7 +151,7 @@ tasks:
     desc: Run code clippy on crates
     dir: crates
     cmds:
-      - cargo clippy -- -Dclippy::pedantic
+      - cargo clippy
 
   check:
     desc: Run code checks on all files

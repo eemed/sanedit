@@ -71,87 +71,83 @@ macro_rules! asm {
 
 macro_rules! double_cap_size {
     ($ops:ident, $ptr:expr) => {
-        #[allow(clippy::fn_to_numeric_cast)] {
-            asm!($ops
-                ; mov rdi, state
-                ; mov rax, QWORD $ptr as *const() as _
+        asm!($ops
+            ; mov rdi, state
+            ; mov rax, QWORD $ptr as *const() as _
 
-                ; call rax
-            )
-        }
+            ; call rax
+        )
     }
 }
 
 macro_rules! find_backref {
     ($ops:ident) => {
-        #[allow(clippy::fn_to_numeric_cast)] {
-            asm!($ops
-                ; .alias topcap, r9
-                ; .alias cur_cap, rcx
-                ; .alias bref_id, r10d
-                ; .alias kind, al
-                ; .alias nbackref, r8
-                ; .alias old_stack_pos, rsi
+        asm!($ops
+            ; .alias topcap, r9
+            ; .alias cur_cap, rcx
+            ; .alias bref_id, r10d
+            ; .alias kind, al
+            ; .alias nbackref, r8
+            ; .alias old_stack_pos, rsi
 
 
-                ;->find_backref:
-                ; xor nbackref, nbackref // number of backrefs
-                ; mov old_stack_pos, rsp // initial stack position
+            ;->find_backref:
+            ; xor nbackref, nbackref // number of backrefs
+            ; mov old_stack_pos, rsp // initial stack position
 
-                ; mov cur_cap, captop
-                ; shl cur_cap, 4 // partialcapture = 16
-                ; add cur_cap, [state + offset_i32!(State, ptr)]
+            ; mov cur_cap, captop
+            ; shl cur_cap, 4 // partialcapture = 16
+            ; add cur_cap, [state + offset_i32!(State, ptr)]
 
-                ; mov topcap, [state + offset_i32!(State, ptr)]
+            ; mov topcap, [state + offset_i32!(State, ptr)]
 
-                ;for_loop:
-                ; cmp cur_cap, topcap
-                ; jl >for_end
+            ;for_loop:
+            ; cmp cur_cap, topcap
+            ; jl >for_end
 
-                ; sub cur_cap, 16
+            ; sub cur_cap, 16
 
-                ; mov kind, BYTE [cur_cap + offset_i32!(PartialCapture, kind)]
+            ; mov kind, BYTE [cur_cap + offset_i32!(PartialCapture, kind)]
 
-                ;open:
-                ; cmp kind, 0
-                ; jne >close
+            ;open:
+            ; cmp kind, 0
+            ; jne >close
 
-                // if not pushed to stack continue loop
-                ; cmp rsp, old_stack_pos
-                ; je <for_loop
+            // if not pushed to stack continue loop
+            ; cmp rsp, old_stack_pos
+            ; je <for_loop
 
-                ; pop tmp2
+            ; pop tmp2
 
-                // if capture id is not same continue
-                ; cmp bref_id, DWORD [cur_cap + offset_i32!(PartialCapture, id)]
-                ; jne <for_loop
+            // if capture id is not same continue
+            ; cmp bref_id, DWORD [cur_cap + offset_i32!(PartialCapture, id)]
+            ; jne <for_loop
 
-                // if backrefs == 0 return otherwise -1 nbackrefs
-                ; test nbackref, nbackref
-                ; je >for_end
-                ; dec nbackref
-                ; jmp <for_loop
+            // if backrefs == 0 return otherwise -1 nbackrefs
+            ; test nbackref, nbackref
+            ; je >for_end
+            ; dec nbackref
+            ; jmp <for_loop
 
-                ;close:
-                ; cmp kind, 1
-                ; jne >backref
-                ; push cur_cap
-                ; jmp <for_loop
+            ;close:
+            ; cmp kind, 1
+            ; jne >backref
+            ; push cur_cap
+            ; jmp <for_loop
 
-                ;backref:
-                ; cmp bref_id, DWORD [cur_cap + offset_i32!(PartialCapture, id)]
-                ; jne <for_loop
-                ; inc nbackref
-                ; jmp <for_loop
+            ;backref:
+            ; cmp bref_id, DWORD [cur_cap + offset_i32!(PartialCapture, id)]
+            ; jne <for_loop
+            ; inc nbackref
+            ; jmp <for_loop
 
-                ;for_end:
-                // Close is current cur_cap
-                ; mov rsp, old_stack_pos // Restore stack
-                ; mov tmp, [cur_cap + offset_i32!(PartialCapture, ptr)]
-                ; mov tmp2, [tmp2 + offset_i32!(PartialCapture, ptr)]
-                ; jmp tmp3
-            )
-        }
+            ;for_end:
+            // Close is current cur_cap
+            ; mov rsp, old_stack_pos // Restore stack
+            ; mov tmp, [cur_cap + offset_i32!(PartialCapture, ptr)]
+            ; mov tmp2, [tmp2 + offset_i32!(PartialCapture, ptr)]
+            ; jmp tmp3
+        )
     }
 }
 

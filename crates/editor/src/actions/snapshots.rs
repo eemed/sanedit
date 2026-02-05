@@ -1,6 +1,6 @@
 use sanedit_server::ClientId;
 
-use crate::{actions::{text::insert, window::focus, ActionResult}, editor::{windows::Focus, Editor}};
+use crate::{actions::{window::focus, ActionResult}, editor::{windows::Focus, Editor}};
 
 #[action("Undotree: Select first entry")]
 fn snapshots_select_first(editor: &mut Editor, id: ClientId) -> ActionResult {
@@ -11,7 +11,7 @@ fn snapshots_select_first(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Undotree: Select last entry")]
 fn snapshots_select_last(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, _buf) = win_buf!(editor, id);
+    let (_win, _buf) = win_buf!(editor, id);
     // let max = editor.filetree.iter().count() - 1;
     // win.ft_view.selection = max;
     ActionResult::Ok
@@ -112,7 +112,7 @@ fn show_snapshots(editor: &mut Editor, id: ClientId) -> ActionResult {
 }
 
 #[action("Undotree: Focus")]
-fn focus_snapshots(editor: &mut Editor, id: ClientId) -> ActionResult {
+fn focus_snapshots(_editor: &mut Editor, _id: ClientId) -> ActionResult {
     // let (win, _buf) = win_buf!(editor, id);
     // if win.snapshot_view.show {
     //     focus(editor, id, Focus::Filetree);
@@ -122,12 +122,12 @@ fn focus_snapshots(editor: &mut Editor, id: ClientId) -> ActionResult {
 }
 
 #[action("Undotree: Confirm entry")]
-fn goto_snapshot_entry(editor: &mut Editor, id: ClientId) -> ActionResult {
+fn goto_snapshot_entry(_editor: &mut Editor, _id: ClientId) -> ActionResult {
     ActionResult::Ok
 }
 
 #[action("Undotree: Next entry")]
-fn next_snapshot_entry(editor: &mut Editor, id: ClientId) -> ActionResult {
+fn next_snapshot_entry(_editor: &mut Editor, _id: ClientId) -> ActionResult {
     // let visible = editor.filetree.iter().count();
     // let (win, _buf) = editor.win_buf_mut(id);
     // win.ft_view.selection = min(visible - 1, win.ft_view.selection + 1);
@@ -136,7 +136,7 @@ fn next_snapshot_entry(editor: &mut Editor, id: ClientId) -> ActionResult {
 }
 
 #[action("Undotree: Previous entry")]
-fn prev_snapshot_entry(editor: &mut Editor, id: ClientId) -> ActionResult {
+fn prev_snapshot_entry(_editor: &mut Editor, _id: ClientId) -> ActionResult {
     // let (win, _buf) = editor.win_buf_mut(id);
     // win.ft_view.selection = win.ft_view.selection.saturating_sub(1);
     ActionResult::Ok

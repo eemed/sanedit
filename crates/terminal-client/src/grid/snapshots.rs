@@ -1,4 +1,4 @@
-use std::{cmp::max, collections::HashSet};
+use std::cmp::max;
 
 use sanedit_messages::redraw::{
     snapshots::{SnapshotPoint, Snapshots},
@@ -81,7 +81,7 @@ impl Drawable for CustomSnapshots {
         }
     }
 
-    fn cursor(&self, ctx: &UIContext) -> DrawCursor {
+    fn cursor(&self, _ctx: &UIContext) -> DrawCursor {
         if self.snapshots.in_focus {
             DrawCursor::Hide
         } else {
@@ -99,7 +99,7 @@ fn render_snapshots(snapshots: &Snapshots) -> Vec<RenderedLine> {
     let mut result = vec![];
 
     if !snapshots.points.is_empty() {
-        dfs(&snapshots.points, 0, 0, &mut Bitset256::new(), &mut result);
+        dfs(&snapshots.points, 0, 0, &Bitset256::new(), &mut result);
     }
 
     result

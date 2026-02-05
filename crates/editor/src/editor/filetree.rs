@@ -7,12 +7,12 @@ use std::{
 };
 
 trait PathExtended {
-    fn is_empty(&self) -> bool;
+    fn is_empty_path(&self) -> bool;
     fn kind(&self) -> Kind;
 }
 
 impl<A: AsRef<Path> + ?Sized> PathExtended for &A {
-    fn is_empty(&self) -> bool {
+    fn is_empty_path(&self) -> bool {
         self.as_ref().as_os_str().is_empty()
     }
 
@@ -208,7 +208,7 @@ impl Node {
 
         for path in paths {
             let local = path.strip_prefix(absolute).unwrap();
-            if let Some(index) = self.children.iter().position(|child| &child.local == local) {
+            if let Some(index) = self.children.iter().position(|child| child.local == local) {
                 let mut child = self.children.remove(index);
                 child.refresh_metadata(&path);
 
@@ -311,14 +311,14 @@ impl Filetree {
         let _ = node.expand(&absolute);
 
         if let Ok(suffix) = target.strip_prefix(&node.local) {
-            if suffix.is_empty() {
+            if suffix.is_empty_path() {
                 return;
             }
             target = suffix;
         }
 
         while let Some((child, suffix)) = node.child_mut(target) {
-            if suffix.is_empty() {
+            if suffix.is_empty_path() {
                 return;
             }
 
@@ -342,7 +342,7 @@ impl Filetree {
         let mut node = &mut self.root;
 
         if let Ok(suffix) = target.strip_prefix(&node.local) {
-            if suffix.is_empty() {
+            if suffix.is_empty_path() {
                 return Some(TreeNodeMut {
                     internal: node,
                     absolute,
@@ -352,7 +352,7 @@ impl Filetree {
         }
 
         while let Some((child, suffix)) = node.child_mut(target) {
-            if suffix.is_empty() {
+            if suffix.is_empty_path() {
                 return Some(TreeNodeMut {
                     internal: child,
                     absolute,
@@ -372,7 +372,7 @@ impl Filetree {
         let mut node = &self.root;
 
         if let Ok(suffix) = target.strip_prefix(&node.local) {
-            if suffix.is_empty() {
+            if suffix.is_empty_path() {
                 return Some(TreeNode {
                     _internal: node,
                     absolute,
@@ -382,7 +382,7 @@ impl Filetree {
         }
 
         while let Some((child, suffix)) = node.child(target) {
-            if suffix.is_empty() {
+            if suffix.is_empty_path() {
                 for _ in 0..target.components().count() {
                     absolute.pop();
                 }

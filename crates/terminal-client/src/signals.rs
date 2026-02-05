@@ -17,8 +17,8 @@ pub fn register_signal_handlers(exit: Sender<ClientInternalMessage>) {
     EXIT.get_or_init(|| exit);
 
     unsafe {
-        signal(libc::SIGHUP, stop as usize);
-        signal(libc::SIGINT, stop as usize);
-        signal(libc::SIGTERM, stop as usize);
+        signal(libc::SIGHUP, stop as *const () as usize);
+        signal(libc::SIGINT, stop as *const () as usize);
+        signal(libc::SIGTERM, stop as *const () as usize);
     }
 }

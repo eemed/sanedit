@@ -89,7 +89,7 @@ impl<T> Drop for List<T> {
         let len = self.len.load(Ordering::Acquire);
         let mut remaining = len;
 
-        for bucket in self.buckets.iter_mut() {
+        for bucket in &mut self.buckets {
             if remaining == 0 {
                 break;
             }

@@ -303,11 +303,10 @@ impl Changes {
                         }
 
                         if change.start() <= pos {
-                            if pos == change.start() && change.cursor_offset.is_some() {
-                                offset += change.cursor_offset.unwrap() as i128;
-                            } else {
-                                offset += change.text().len() as i128;
-                            }
+                            offset += match (pos == change.start(), change.cursor_offset) {
+                                (true, Some(cursor_off)) => cursor_off as i128,
+                                _ => change.text().len() as i128,
+                            };
 
                             if change.end() < pos || pos < change.start() {
                                 offset -= change.range().len() as i128;
@@ -317,11 +316,10 @@ impl Changes {
                         }
 
                         if change.start() < epos {
-                            if epos == change.start() && change.cursor_offset.is_some() {
-                                end_offset += change.cursor_offset.unwrap() as i128;
-                            } else {
-                                end_offset += change.text().len() as i128;
-                            }
+                            end_offset += match (epos == change.start(), change.cursor_offset) {
+                                (true, Some(cursor_off)) => cursor_off as i128,
+                                _ => change.text().len() as i128,
+                            };
 
                             if change.end() < epos || epos < change.start() {
                                 end_offset -= change.range().len() as i128;
@@ -369,11 +367,10 @@ impl Changes {
                     while n < changes.len() {
                         let change = &changes[n];
                         if change.start() <= pos {
-                            if pos == change.start() && change.cursor_offset.is_some() {
-                                offset += change.cursor_offset.unwrap() as i128;
-                            } else {
-                                offset += change.text().len() as i128;
-                            }
+                            offset += match (pos == change.start(), change.cursor_offset) {
+                                (true, Some(cursor_off)) => cursor_off as i128,
+                                _ => change.text().len() as i128,
+                            };
 
                             if change.end() < pos || pos < change.start() {
                                 offset -= change.range().len() as i128;

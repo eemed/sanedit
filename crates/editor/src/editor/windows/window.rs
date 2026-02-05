@@ -67,7 +67,7 @@ pub(crate) use locations::LocationsView;
 
 pub(crate) use self::{
     completion::*, config::*, focus::*, jumps::*, macro_record::*, mode::*, prompt::*, search::*,
-    view::*, snapshot::*,
+    snapshot::*, view::*,
 };
 
 #[derive(Debug)]
@@ -1542,6 +1542,13 @@ impl Window {
     pub fn join_lines(&mut self, buf: &mut Buffer, comment: &str, comment_end: &str) -> Result<()> {
         let ends = self.cursor_line_ends(buf);
         let slice = buf.slice(..);
+        let has_comment_on_line = ends
+            .first()
+            .map(|end| {
+                let start = start_of_line(&slice, *end);
+                self.has_comment_on_line(buf, comment, start)
+            })
+            .unwrap_or(false);
         let mut changes = Vec::with_capacity(ends.len());
 
         for start in ends {
@@ -1550,11 +1557,13 @@ impl Window {
             let mut nline = buf.slice(end..eol);
             nline = trim_whitespace(&nline);
             nline = trim_whitespace_back(&nline);
-            if let Some(line) = trim_comment_on_line(&nline, comment) {
-                if comment_end.is_empty() {
-                    nline = line;
-                } else if let Some(line) = trim_comment_on_line_back(&line, comment_end) {
-                    nline = line;
+            if has_comment_on_line {
+                if let Some(line) = trim_comment_on_line(&nline, comment) {
+                    if comment_end.is_empty() {
+                        nline = line;
+                    } else if let Some(line) = trim_comment_on_line_back(&line, comment_end) {
+                        nline = line;
+                    }
                 }
             }
 

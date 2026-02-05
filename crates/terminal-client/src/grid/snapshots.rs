@@ -137,7 +137,7 @@ fn dfs(
 
     // Leaf
     if point.next.is_empty() {
-        let symbol = if snapshots.len() == 1 { "• " } else { "┬ " };
+        let symbol = if snapshots.len() == 1 { "- " } else { "* " };
         let line = RenderedLine {
             graph: format!("{lanes_before}{symbol}"),
             title: point.title.clone(),
@@ -167,10 +167,10 @@ fn dfs(
     let fork = point.next.len() > 1;
     let first = node == 0;
     let mylane = match (lane, fork, first) {
-        (0, false, true) => "┴ ",
+        (0, false, true) => "* ",
         (0, true, true) => "┴─",
-        (_, true, _) => "├─",
-        (_, false, _) => "┼ ",
+        (_, true, _) => "*─",
+        (_, false, _) => "* ",
     };
 
     let line = RenderedLine {

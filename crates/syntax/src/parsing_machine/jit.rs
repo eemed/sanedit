@@ -74,7 +74,7 @@ macro_rules! double_cap_size {
         #[allow(clippy::fn_to_numeric_cast)] {
             asm!($ops
                 ; mov rdi, state
-                ; mov rax, QWORD $ptr as _
+                ; mov rax, QWORD $ptr as *const() as _
 
                 ; call rax
             )

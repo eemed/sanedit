@@ -86,11 +86,13 @@ impl CustomItems {
         let dir = ctx.style(ThemeField::FiletreeDir);
         let markers = ctx.style(ThemeField::FiletreeMarkers);
         let err = ctx.style(ThemeField::FiletreeError);
+        let symlink = ctx.style(ThemeField::FiletreeSymlink);
         let selfill = ctx.style(ThemeField::FiletreeSelected);
         let sel = ctx.style(ThemeField::FiletreeSelectedFile);
         let dsel = ctx.style(ThemeField::FiletreeSelectedDir);
         let msel = ctx.style(ThemeField::FiletreeSelectedMarkers);
         let selerr = ctx.style(ThemeField::FiletreeSelectedError);
+        let selsymlink = ctx.style(ThemeField::FiletreeSelectedSymlink);
 
         grid.clear_all(fill);
 
@@ -107,28 +109,21 @@ impl CustomItems {
             let is_selected = self.scroll + row == self.items.selected;
             let (name, fill, markers) = {
                 if is_selected {
-                    let name = match item.kind {
-                        ItemKind::Group { is_readable, .. } => {
-                            if is_readable {
-                                dsel
-                            } else {
-                                selerr
-                            }
-                        }
-                        ItemKind::Item => sel,
+                    let name = match (item.is_readable, item.is_symlink, &item.kind) {
+                        (true, false, ItemKind::Item) => sel,
+                        (true, false, ItemKind::Group { .. }) => dsel,
+                        (true, true, _) => selsymlink,
+                        (false, _, _) => selerr,
                     };
                     (name, selfill, msel)
                 } else {
-                    let name = match item.kind {
-                        ItemKind::Group { is_readable, .. } => {
-                            if is_readable {
-                                dir
-                            } else {
-                                err
-                            }
-                        }
-                        ItemKind::Item => file,
+                    let name = match (item.is_readable, item.is_symlink, &item.kind) {
+                        (true, false, ItemKind::Item) => file,
+                        (true, false, ItemKind::Group { .. }) => dir,
+                        (true, true, _) => symlink,
+                        (false, _, _) => err,
                     };
+
                     (name, fill, markers)
                 }
             };
@@ -160,8 +155,10 @@ impl CustomItems {
         }
 
         match item.kind {
-            ItemKind::Group { expanded, is_readable } => {
-                if !is_readable {
+            ItemKind::Group {
+                expanded,
+            } => {
+                if !item.is_readable {
                     x += grid.put_string(*line, x, "!", *mark_style);
                 } else if expanded {
                     x += grid.put_string(*line, x, "-", *mark_style);
@@ -170,7 +167,11 @@ impl CustomItems {
                 }
             }
             ItemKind::Item => {
-                x += grid.put_string(*line, x, "#", *mark_style);
+                if !item.is_readable {
+                    x += grid.put_string(*line, x, "!", *mark_style);
+                } else {
+                    x += grid.put_string(*line, x, "#", *mark_style);
+                }
             }
         }
 
@@ -298,8 +299,10 @@ impl CustomItems {
         }
 
         match item.kind {
-            ItemKind::Group { expanded, is_readable } => {
-                if !is_readable {
+            ItemKind::Group {
+                expanded,
+            } => {
+                if !item.is_readable {
                     x += grid.put_string(*line, x, "! ", *mark_style);
                 } else if expanded {
                     x += grid.put_string(*line, x, "- ", *mark_style);

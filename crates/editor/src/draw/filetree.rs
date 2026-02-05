@@ -46,7 +46,6 @@ fn draw_impl(ctx: &mut DrawContext) -> redraw::items::Items {
         let kind = if entry.node().is_dir() {
             ItemKind::Group {
                 expanded: entry.node().is_dir_expanded(),
-                is_readable: entry.node().is_readable(),
             }
         } else {
             ItemKind::Item
@@ -59,6 +58,8 @@ fn draw_impl(ctx: &mut DrawContext) -> redraw::items::Items {
             kind,
             level: entry.level(),
             highlights: vec![],
+            is_readable: entry.is_readable(),
+            is_symlink: entry.is_symlink(),
         };
         items.push(item);
     }

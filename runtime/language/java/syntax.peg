@@ -14,7 +14,7 @@ sstring = "\"" (escape  / [^"])* "\"";
 escape = "\\" .;
 
 @show @highlight
-constant = typecaps / "true" / "false" / "null" / number;
+constant = (typecaps / "true" / "false" / "null" / number) &stop;
 number = hex / octal / binary / int;
 int = "-"? digit+ ("." (digit / "_")+)? (("e" / "E") ("-" / "+")? digit+)? (("p" / "P") ("+" / "-")? digit+)? "i"?;
 hex = "-"? "0" ("x" / "X") (hexdigit / "_")+;
@@ -23,7 +23,7 @@ binary = "-"? "0" ("b" / "B") ("0" / "1" / "_")+;
 digit = [0..9];
 hexdigit = digit / [a..fA..F];
 
-typecaps = [A..Z0..9_]+ &stop;
+typecaps = [A..Z0..9_]+;
 
 @show @highlight
 comment = line_comment / block_comment;

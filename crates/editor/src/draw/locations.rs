@@ -80,7 +80,6 @@ fn draw_impl(ctx: &mut DrawContext) -> redraw::items::Items {
             Either::Left(group) => {
                 let kind = ItemKind::Group {
                     expanded: group.is_expanded(),
-                    is_readable: true,
                 };
                 let name = {
                     let gp = group.path();
@@ -93,6 +92,8 @@ fn draw_impl(ctx: &mut DrawContext) -> redraw::items::Items {
                     highlights: vec![],
                     kind,
                     level: 0,
+                    is_symlink: false,
+                    is_readable: true,
                 }
             }
             Either::Right(item) => {
@@ -107,6 +108,8 @@ fn draw_impl(ctx: &mut DrawContext) -> redraw::items::Items {
                     highlights: item.highlights().to_vec(),
                     kind: ItemKind::Item,
                     level: 1,
+                    is_symlink: false,
+                    is_readable: true,
                 }
             }
         })

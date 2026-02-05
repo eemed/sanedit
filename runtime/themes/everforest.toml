@@ -91,12 +91,14 @@ default = { bg = "bg", fg = "fg" }
 markers = { fg = "gray_fg" }
 directory = { fg = "yellow" }
 error = { fg = "red" }
+symlink = { fg = "blue" }
 
 [colors.filetree.selected]
 default = { bg = "bg_alt" }
 directory = { fg = "yellow" }
 markers = { fg = "gray_fg" }
 error = { fg = "red" }
+symlink = { fg = "blue" }
 
 [colors.locations]
 default = { bg = "bg", fg = "fg" }

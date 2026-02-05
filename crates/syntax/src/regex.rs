@@ -670,7 +670,7 @@ impl<'a> RegexToPEG<'a> {
             }
         }
 
-        return Ok(result[0]..result[1] + 1);
+        Ok(result[0]..result[1] + 1)
     }
 }
 

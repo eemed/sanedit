@@ -99,9 +99,9 @@ fn goto_ft_entry(editor: &mut Editor, id: ClientId) -> ActionResult {
             }
         }
         Kind::File => {
-            if let Err(_e) = editor.open_file(id, path) {
+            if let Err(e) = editor.open_file(id, &path) {
                 let (win, _buf) = editor.win_buf_mut(id);
-                win.error_msg("failed to open file {path:?}: {e}");
+                win.error_msg(&format!("Failed to open file {path:?}: {e}"));
                 return ActionResult::Failed;
             }
 

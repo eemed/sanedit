@@ -20,7 +20,7 @@ impl Bitset256 {
     pub fn remove(&mut self, n: u8) {
         let num = (n / 8) as usize;
         let pos = n % 8;
-        let shifted = 0xff & 0 << pos;
+        let shifted = 0 << pos;
         self.inner[num] &= shifted;
     }
 
@@ -53,6 +53,12 @@ impl Bitset256 {
 
     pub fn raw(&self) -> *const u8 {
         self.inner.as_ptr()
+    }
+}
+
+impl Default for Bitset256 {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

@@ -79,14 +79,11 @@ mod flags {
     pub(super) type NodeFlag = u8;
 
     pub(super) const NONE: NodeFlag = 0;
-
-    /// If directory cannot be expanded show some error indication
-    pub(super) const PERMISSION_DENIED: NodeFlag = 1;
+    pub(super) const UNREADABLE: NodeFlag = 1;
 
     /// Whether this entry is expanded, if directory
     pub(super) const EXPANDED: NodeFlag = 1 << 1;
-
-    // TODO symlinks?
+    pub(super) const SYMLINK: NodeFlag = 1 << 2;
 }
 
 #[derive(Debug, Clone)]
@@ -101,6 +98,37 @@ pub(crate) struct Node {
 }
 
 impl Node {
+    pub fn new(absolute: &Path, local: &Path) -> Node {
+        let mut node = Node {
+            local: local.to_path_buf(),
+            kind: absolute.kind(),
+            flags: flags::NONE,
+            children: SortedVec::default(),
+        };
+
+        node.refresh_metadata(absolute);
+        node
+    }
+
+    fn refresh_metadata(&mut self, absolute: &Path) {
+        // Reset flags
+        self.flags &= !flags::SYMLINK;
+        self.flags &= !flags::UNREADABLE;
+
+        if absolute.is_symlink() {
+            self.flags |= flags::SYMLINK;
+        }
+
+        if self.is_dir() {
+            let _ = self.add_single_directories_to_local(absolute);
+        } else {
+            let readable = std::fs::File::open(absolute).is_ok();
+            if !readable {
+                self.flags |= flags::UNREADABLE;
+            }
+        }
+    }
+
     pub fn collapse(&mut self) {
         self.flags &= !flags::EXPANDED;
     }
@@ -110,7 +138,11 @@ impl Node {
     }
 
     pub fn is_readable(&self) -> bool {
-        self.flags & flags::PERMISSION_DENIED != flags::PERMISSION_DENIED
+        self.flags & flags::UNREADABLE != flags::UNREADABLE
+    }
+
+    pub fn is_symlink(&self) -> bool {
+        self.flags & flags::SYMLINK == flags::SYMLINK
     }
 
     fn read_dir(&mut self, absolute: &Path) -> io::Result<Vec<PathBuf>> {
@@ -120,12 +152,12 @@ impl Node {
                 .collect::<Result<Vec<_>, io::Error>>()
         }
 
-        self.flags &= !flags::PERMISSION_DENIED;
+        self.flags &= !flags::UNREADABLE;
 
         let result = read(absolute);
         if let Err(e) = &result {
             if let io::ErrorKind::PermissionDenied = e.kind() {
-                self.flags |= flags::PERMISSION_DENIED;
+                self.flags |= flags::UNREADABLE;
             }
         }
 
@@ -142,16 +174,7 @@ impl Node {
 
         for path in paths {
             let local = path.strip_prefix(absolute).unwrap().to_path_buf();
-            let kind = path.as_path().kind();
-            let mut node = Node {
-                local,
-                kind,
-                flags: flags::NONE,
-                children: SortedVec::default(),
-            };
-            if node.is_dir() {
-                let _ = node.add_single_directories_to_local(&path);
-            }
+            let node = Node::new(&path, &local);
             self.children.push(node);
         }
 
@@ -184,24 +207,18 @@ impl Node {
         let paths = self.read_dir(absolute)?;
 
         for path in paths {
-            let local = path.strip_prefix(absolute).unwrap().to_path_buf();
-            if let Some(index) = self.children.iter().position(|child| child.local == local) {
+            let local = path.strip_prefix(absolute).unwrap();
+            if let Some(index) = self.children.iter().position(|child| &child.local == local) {
                 let mut child = self.children.remove(index);
+                child.refresh_metadata(&path);
+
                 if child.is_dir_expanded() {
                     let _ = child.refresh(&path);
                 }
+
                 new_children.push(child);
             } else {
-                let kind = path.as_path().kind();
-                let mut node = Node {
-                    local,
-                    kind,
-                    flags: flags::NONE,
-                    children: SortedVec::default(),
-                };
-                if node.is_dir() {
-                    let _ = node.add_single_directories_to_local(&path);
-                }
+                let node = Node::new(&path, local);
                 new_children.push(node);
             }
         }
@@ -273,18 +290,12 @@ pub(crate) struct Filetree {
 
 impl Filetree {
     pub fn new(path: &Path) -> Filetree {
-        let kind = path.kind();
         let mut absolute = path.to_path_buf();
         let name = absolute.file_name().expect("Could not create filetree");
         let local = PathBuf::from(name);
         absolute.pop();
 
-        let mut root = Node {
-            local,
-            kind,
-            children: SortedVec::default(),
-            flags: flags::NONE,
-        };
+        let mut root = Node::new(path, &local);
 
         // Auto expand first
         let _ = root.expand(path);

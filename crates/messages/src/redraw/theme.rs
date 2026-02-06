@@ -207,12 +207,15 @@ pub enum ThemeField {
     LocationsMatch,
 
     SnapshotsDefault,
+    SnapshotsMarkers,
     SnapshotsGraph,
+    SnapshotsGraphPoint,
     SnapshotsLabel,
     SnapshotsCurrent,
     SnapshotsSelected,
     SnapshotsSelectedCurrent,
     SnapshotsSelectedGraph,
+    SnapshotsSelectedGraphPoint,
     SnapshotsSelectedLabel,
 
     PopupDefault,
@@ -304,12 +307,15 @@ impl AsRef<str> for ThemeField {
             LocationsSelectedGroup => "locations.selected.group",
 
             SnapshotsDefault => "snapshots",
+            SnapshotsMarkers => "snapshots.markers",
             SnapshotsGraph => "snapshots.graph",
+            SnapshotsGraphPoint => "snapshots.graph_point",
             SnapshotsLabel => "snapshots.label",
             SnapshotsCurrent => "snapshots.current",
             SnapshotsSelected => "snapshots.selected",
             SnapshotsSelectedCurrent => "snapshots.selected.current",
             SnapshotsSelectedGraph => "snapshots.selected.graph",
+            SnapshotsSelectedGraphPoint => "snapshots.selected.graph_point",
             SnapshotsSelectedLabel => "snapshots.selected.label",
 
             PopupDefault => "popup",

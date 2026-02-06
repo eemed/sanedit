@@ -60,9 +60,17 @@ impl CustomSnapshots {
 
 impl Drawable for CustomSnapshots {
     fn draw(&self, ctx: &UIContext, mut cells: Subgrid) {
-        let markers = ctx.style(ThemeField::FiletreeMarkers);
-        let default = ctx.style(ThemeField::FiletreeDefault);
-        let entry = ctx.style(ThemeField::FiletreeDir);
+        let markers = ctx.style(ThemeField::SnapshotsMarkers);
+        let default = ctx.style(ThemeField::SnapshotsDefault);
+        let graph = ctx.style(ThemeField::SnapshotsGraph);
+        let graph_point = ctx.style(ThemeField::SnapshotsGraphPoint);
+        let label = ctx.style(ThemeField::SnapshotsLabel);
+        let sel = ctx.style(ThemeField::SnapshotsSelected);
+        let selgraph = ctx.style(ThemeField::SnapshotsSelectedGraph);
+        let selgraph_point = ctx.style(ThemeField::SnapshotsSelectedGraphPoint);
+        let sellabel = ctx.style(ThemeField::SnapshotsSelectedLabel);
+        let current = ctx.style(ThemeField::SnapshotsCurrent);
+        let selected = self.snapshots.selected;
 
         cells.clear_all(default);
         let sep = Cell::new_char('│', markers);
@@ -71,12 +79,31 @@ impl Drawable for CustomSnapshots {
         let rendered = render_snapshots(&self.snapshots);
 
         for (row, line) in rendered.iter().enumerate() {
-            content_area.put_string(row, 0, &line.graph, entry);
+            if row == selected {
+                content_area.style_line(row, sel);
+            }
+            let (sgraph, sgraph_point, slabel) = if row == selected {
+                (selgraph, selgraph_point, sellabel)
+            } else {
+                (graph, graph_point, label)
+            };
+            let mut x = 0;
+
+            for (i, split) in line.graph.split("*").enumerate() {
+                if i & 1 == 1 && x < content_area.width() {
+                    x += content_area.put_string(row, x, "*", sgraph_point);
+                }
+
+                if x < content_area.width() {
+                    x += content_area.put_string(row, x, &split, sgraph);
+                }
+            }
+
             content_area.put_string(
                 row,
                 content_area.width() - line.title.chars().count(),
                 &line.title,
-                markers,
+                slabel,
             );
         }
     }

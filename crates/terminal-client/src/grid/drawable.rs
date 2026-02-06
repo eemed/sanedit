@@ -151,6 +151,14 @@ impl<'a, 'b> Subgrid<'a, 'b> {
         col - ocol
     }
 
+    pub fn style_line(&mut self, row: usize, style: Style) {
+        let mut x = 0;
+        while x < self.width() {
+            self.cells[self.rect.y + row][self.rect.x + x].style = style;
+            x += 1;
+        }
+    }
+
     /// Will put a string on a line will and will cut short if it would go over the column
     /// Returns the added amount
     pub fn put_string(&mut self, row: usize, mut col: usize, string: &str, style: Style) -> usize {

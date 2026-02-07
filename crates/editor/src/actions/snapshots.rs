@@ -4,8 +4,26 @@ use sanedit_server::ClientId;
 
 use crate::{
     actions::{window::focus, ActionResult},
-    editor::{windows::Focus, Editor},
+    editor::{hooks::Hook, windows::Focus, Editor},
 };
+
+#[action("Undotree: Toggle preview based on focus")]
+fn toggle_preview(editor: &mut Editor, id: ClientId) -> ActionResult {
+    let (win, buf) = win_buf!(editor, id);
+    if let Focus::Snapshots = win.focus() {
+        win.open_snapshot_preview(buf);
+
+        return ActionResult::Ok;
+    }
+
+    let prev_focus = getf!(editor.hooks.running_hook().and_then(Hook::previous_focus));
+    if prev_focus != Focus::Snapshots {
+        return ActionResult::Skipped;
+    }
+
+    win.close_snapshot_preview(buf);
+    ActionResult::Ok
+}
 
 #[action("Undotree: Select first entry")]
 fn snapshots_select_first(editor: &mut Editor, id: ClientId) -> ActionResult {

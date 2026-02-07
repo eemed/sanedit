@@ -3,7 +3,10 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use rustc_hash::FxHashMap;
 use strum_macros::EnumDiscriminants;
 
-use crate::actions::{Action, *};
+use crate::{
+    actions::{Action, *},
+    editor::windows::Focus,
+};
 
 use super::buffers::BufferId;
 
@@ -55,13 +58,22 @@ pub(crate) enum Hook {
     ModeEnter,
     ModeLeave,
 
-    Focus,
-    Unfocus,
+    OnFocusChanged(Focus),
+
+    WindowFocus,
+    WindowUnfocus,
 }
 
 impl Hook {
     pub fn kind(&self) -> HookKind {
         HookKind::from(self)
+    }
+
+    pub fn previous_focus(&self) -> Option<Focus> {
+        match self {
+            Hook::OnFocusChanged(focus) => Some(*focus),
+            _ => None,
+        }
     }
 
     pub fn buffer_id(&self) -> Option<BufferId> {
@@ -158,13 +170,14 @@ impl Default for Hooks {
         // Window
         hooks.register(BufChanged, window::sync_windows);
         hooks.register(OnMessagePre, window::clear_messages);
-        hooks.register(ModeEnter, window::on_mode_enter);
+        hooks.register(ModeEnter, window::run_keymap_mode_enter);
         hooks.register(ModeLeave, window::on_insert_mode_leave);
-        hooks.register(ModeLeave, window::on_mode_leave);
+        hooks.register(ModeLeave, window::run_keymap_mode_leave);
         hooks.register(ModeEnter, window::view_to_cursor);
+        hooks.register(OnFocusChanged, snapshots::toggle_preview);
 
         hooks.register(BufEnter, text::check_file_modification);
-        hooks.register(Focus, text::check_file_modification);
+        hooks.register(WindowFocus, text::check_file_modification);
 
         hooks.register(CursorMoved, completion::completion_abort);
         hooks.register(BufChanged, completion::send_word);

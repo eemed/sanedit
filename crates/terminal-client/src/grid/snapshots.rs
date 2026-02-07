@@ -95,7 +95,7 @@ impl Drawable for CustomSnapshots {
                 }
 
                 if x < content_area.width() {
-                    x += content_area.put_string(row, x, &split, sgraph);
+                    x += content_area.put_string(row, x, split, sgraph);
                 }
             }
 

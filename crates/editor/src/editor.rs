@@ -384,8 +384,8 @@ impl Editor {
             }
             Message::Resize(size) => self.handle_resize(id, size),
             Message::Command(cmd) => self.handle_command(id, cmd),
-            Message::FocusGained => run(self, id, Hook::Focus),
-            Message::FocusLost => run(self, id, Hook::Unfocus),
+            Message::FocusGained => run(self, id, Hook::WindowFocus),
+            Message::FocusLost => run(self, id, Hook::WindowUnfocus),
             Message::Bye => self.quit_client(id),
             _ => {}
         }

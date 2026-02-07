@@ -21,52 +21,6 @@ const BUCKET_START: usize = 14;
 const BUCKET_START_POS: usize = 1 << BUCKET_START;
 const BUCKET_COUNT: usize = usize::BITS as usize - BUCKET_START;
 
-macro_rules! array {
-    (
-    $closure:expr; $N:expr
-) => {{
-        use ::core::{
-            mem::{forget, MaybeUninit},
-            ptr, slice,
-        };
-
-        const N: usize = $N;
-
-        #[inline(always)]
-        fn gen_array<T>(mut closure: impl FnMut(usize) -> T) -> [T; N] {
-            unsafe {
-                let mut array = MaybeUninit::uninit();
-
-                struct PartialRawSlice<T> {
-                    ptr: *mut T,
-                    len: usize,
-                }
-
-                impl<T> Drop for PartialRawSlice<T> {
-                    fn drop(self: &'_ mut Self) {
-                        unsafe { ptr::drop_in_place(slice::from_raw_parts_mut(self.ptr, self.len)) }
-                    }
-                }
-
-                let mut raw_slice = PartialRawSlice {
-                    ptr: array.as_mut_ptr() as *mut T,
-                    len: 0,
-                };
-
-                (0..N).for_each(|i| {
-                    ptr::write(raw_slice.ptr.add(i), closure(i));
-                    raw_slice.len += 1;
-                });
-
-                forget(raw_slice);
-                array.assume_init()
-            }
-        }
-
-        gen_array($closure)
-    }};
-}
-
 #[derive(Debug, PartialEq)]
 pub enum AppendResult {
     /// Allocated a new block and appended usize bytes to it.
@@ -171,7 +125,7 @@ impl<T> Appendlist<T> {
         let list = Arc::new(List {
             write: AtomicUsize::new(0),
             len: AtomicUsize::new(0),
-            buckets: array!(|_| Bucket::default(); BUCKET_COUNT),
+            buckets: [(); BUCKET_COUNT].map(|_| Bucket::default()),
         });
 
         Appendlist { list }

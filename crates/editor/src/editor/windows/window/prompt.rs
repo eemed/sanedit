@@ -400,8 +400,7 @@ impl Prompt {
                                 _ => unreachable!(),
                             };
                             if let Some(score) = mru.position(path) {
-                                // Smallest first so reverse position
-                                choice.rescore(max - (score + 1));
+                                choice.rescore(score);
                             } else {
                                 choice.rescore(choice.score() + max);
                             }

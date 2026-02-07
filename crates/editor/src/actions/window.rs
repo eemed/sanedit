@@ -38,7 +38,13 @@ pub fn focus_with_mode(editor: &mut Editor, id: ClientId, focus: Focus, mode: Mo
     }
 
     let (win, _buf) = editor.win_buf_mut(id);
-    win.focus = focus;
+    let old = std::mem::replace(&mut win.focus, focus);
+
+    if win.focus != old {
+        hooks::run(editor, id, Hook::OnFocusChanged(old));
+    }
+
+    let (win, _buf) = editor.win_buf_mut(id);
     win.mode = mode;
 
     if !same_mode {
@@ -315,7 +321,7 @@ fn hide_diagnostic_highlights(editor: &mut Editor, id: ClientId) -> ActionResult
 }
 
 #[action("Mode: On mode enter")]
-fn on_mode_enter(editor: &mut Editor, id: ClientId) -> ActionResult {
+fn run_keymap_mode_enter(editor: &mut Editor, id: ClientId) -> ActionResult {
     let Some(layer) = editor.layer(id) else {
         return ActionResult::Failed;
     };
@@ -326,7 +332,7 @@ fn on_mode_enter(editor: &mut Editor, id: ClientId) -> ActionResult {
 }
 
 #[action("Mode: On mode leave")]
-fn on_mode_leave(editor: &mut Editor, id: ClientId) -> ActionResult {
+fn run_keymap_mode_leave(editor: &mut Editor, id: ClientId) -> ActionResult {
     let Some(layer) = editor.layer(id) else {
         return ActionResult::Failed;
     };

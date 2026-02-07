@@ -174,10 +174,7 @@ impl Buffer {
     }
 
     /// Get mutable access to auxilary data for a snapshot
-    pub fn snapshot_additional_mut(
-        &mut self,
-        id: SnapshotId,
-    ) -> Option<&mut SavedWindowState> {
+    pub fn snapshot_additional_mut(&mut self, id: SnapshotId) -> Option<&mut SavedWindowState> {
         self.snapshots.window_state_mut(id)
     }
 
@@ -211,6 +208,24 @@ impl Buffer {
             .map(|edit| edit.changes.is_undo() || edit.changes.is_redo())
             .unwrap_or(false);
         on_save || on_previous_point
+    }
+
+    pub fn create_undopoint(&mut self, wstate: SavedWindowState) {
+        if !self.is_modified() && Some(self.last_saved_snapshot) == self.snapshots().current() {
+            return;
+        }
+
+        let slice = self.pt.slice(..);
+        let id = self.snapshots.insert(slice);
+        if let Some(state) = self.snapshots.window_state_mut(id) {
+            *state = wstate;
+        }
+    }
+
+    pub fn goto_snapshot(&mut self, snap: SnapshotId) {
+        if let Some(ss) = self.snapshots.goto_get(snap) {
+            self.pt.restore(ss.snapshot.clone());
+        }
     }
 
     pub fn apply_changes(&mut self, changes: &Changes) -> Result<ChangeResult> {

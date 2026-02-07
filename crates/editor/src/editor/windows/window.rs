@@ -571,6 +571,19 @@ impl Window {
         self.view.redraw(buf);
     }
 
+    pub fn open_snapshot_preview(&mut self, buf: &mut Buffer) {
+        let state = self.save_window_state(None);
+        buf.create_undopoint(state);
+
+        let sel = self.snapshot_view.selection;
+
+        // buf.snapshots().get(sel)
+        // buf.goto_snapshot(snap);
+    }
+
+    pub fn close_snapshot_preview(&mut self, buf: &mut Buffer) {
+    }
+
     /// Create snapshot additinal data for window
     /// Provide mark to store in aux
     fn save_window_state(&self, mark: Option<Mark>) -> SavedWindowState {

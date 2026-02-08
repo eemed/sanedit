@@ -41,14 +41,12 @@ impl Snapshots {
     pub fn goto_get(&mut self, id: SnapshotId) -> Option<&SnapshotNode> {
         let node = self.snapshots.get(id)?;
         self.current = Some(id);
-        log::info!("Goto: {id}");
         Some(node)
     }
 
     /// Remove current snapshot called in case something went wrong when
     /// applying changes
     pub fn remove_current_and_set(&mut self, id: Option<SnapshotId>) {
-        log::info!("remove_current_and_set: {id:?}");
         if let Some(cur) = self.current {
             let current = self.snapshots.remove(cur);
             // Cut links
@@ -65,7 +63,6 @@ impl Snapshots {
     }
 
     pub fn insert(&mut self, snapshot: PieceTreeSlice) -> SnapshotId {
-        log::info!("insert");
         let next_pos = self.snapshots.len();
         let mut node = SnapshotNode::new(snapshot, next_pos);
         if let Some(cur) = self.current {
@@ -83,7 +80,6 @@ impl Snapshots {
     }
 
     pub fn undo(&mut self) -> Option<&SnapshotNode> {
-        log::info!("undo");
         let latest = self.undo_pos()?;
         let node = self.snapshots.get(latest)?;
         self.current = Some(node.id);
@@ -96,7 +92,6 @@ impl Snapshots {
     }
 
     pub fn redo(&mut self) -> Option<&SnapshotNode> {
-        log::info!("redo");
         let latest = self.redo_pos()?;
         let node = self.snapshots.get(latest)?;
         self.current = Some(node.id);

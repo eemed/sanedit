@@ -44,248 +44,12 @@ fn snapshots_select_last(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Undotree: Show")]
 fn show_snapshots(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, _buf) = win_buf!(editor, id);
+    let (win, buf) = win_buf!(editor, id);
     if win.snapshot_view.show {
         focus(editor, id, Focus::Snapshots);
         return ActionResult::Ok;
     }
 
-    // Simulate tree
-    let mut events = std::collections::VecDeque::new();
-    events.push_back(sanedit_messages::key::KeyEvent::new(
-        sanedit_messages::key::Key::Char('i'),
-        0,
-    ));
-    events.push_back(sanedit_messages::key::KeyEvent::new(
-        sanedit_messages::key::Key::Char('a'),
-        0,
-    ));
-    events.push_back(sanedit_messages::key::KeyEvent::new(
-        sanedit_messages::key::Key::Char('§'),
-        0,
-    ));
-    events.push_back(sanedit_messages::key::KeyEvent::new(
-        sanedit_messages::key::Key::Char('i'),
-        0,
-    ));
-    events.push_back(sanedit_messages::key::KeyEvent::new(
-        sanedit_messages::key::Key::Char('a'),
-        0,
-    ));
-    events.push_back(sanedit_messages::key::KeyEvent::new(
-        sanedit_messages::key::Key::Char('§'),
-        0,
-    ));
-
-    events.push_back(sanedit_messages::key::KeyEvent::new(
-        sanedit_messages::key::Key::Char('u'),
-        0,
-    ));
-    events.push_back(sanedit_messages::key::KeyEvent::new(
-        sanedit_messages::key::Key::Char('i'),
-        0,
-    ));
-    events.push_back(sanedit_messages::key::KeyEvent::new(
-        sanedit_messages::key::Key::Char('b'),
-        0,
-    ));
-    events.push_back(sanedit_messages::key::KeyEvent::new(
-        sanedit_messages::key::Key::Char('§'),
-        0,
-    ));
-
-    events.push_back(sanedit_messages::key::KeyEvent::new(
-        sanedit_messages::key::Key::Char('u'),
-        0,
-    ));
-    events.push_back(sanedit_messages::key::KeyEvent::new(
-        sanedit_messages::key::Key::Char('i'),
-        0,
-    ));
-    events.push_back(sanedit_messages::key::KeyEvent::new(
-        sanedit_messages::key::Key::Char('b'),
-        0,
-    ));
-    events.push_back(sanedit_messages::key::KeyEvent::new(
-        sanedit_messages::key::Key::Char('§'),
-        0,
-    ));
-
-    events.push_back(sanedit_messages::key::KeyEvent::new(
-        sanedit_messages::key::Key::Char('i'),
-        0,
-    ));
-    events.push_back(sanedit_messages::key::KeyEvent::new(
-        sanedit_messages::key::Key::Char('a'),
-        0,
-    ));
-    events.push_back(sanedit_messages::key::KeyEvent::new(
-        sanedit_messages::key::Key::Char('§'),
-        0,
-    ));
-
-    events.push_back(sanedit_messages::key::KeyEvent::new(
-        sanedit_messages::key::Key::Char('u'),
-        0,
-    ));
-
-    events.push_back(sanedit_messages::key::KeyEvent::new(
-        sanedit_messages::key::Key::Char('i'),
-        0,
-    ));
-    events.push_back(sanedit_messages::key::KeyEvent::new(
-        sanedit_messages::key::Key::Char('b'),
-        0,
-    ));
-    events.push_back(sanedit_messages::key::KeyEvent::new(
-        sanedit_messages::key::Key::Char('§'),
-        0,
-    ));
-
-    events.push_back(sanedit_messages::key::KeyEvent::new(
-        sanedit_messages::key::Key::Char('U'),
-        0,
-    ));
-
-    events.push_back(sanedit_messages::key::KeyEvent::new(
-        sanedit_messages::key::Key::Char('u'),
-        0,
-    ));
-
-    events.push_back(sanedit_messages::key::KeyEvent::new(
-        sanedit_messages::key::Key::Char('i'),
-        0,
-    ));
-    events.push_back(sanedit_messages::key::KeyEvent::new(
-        sanedit_messages::key::Key::Char('b'),
-        0,
-    ));
-    events.push_back(sanedit_messages::key::KeyEvent::new(
-        sanedit_messages::key::Key::Char('§'),
-        0,
-    ));
-
-    events.push_back(sanedit_messages::key::KeyEvent::new(
-        sanedit_messages::key::Key::Char('u'),
-        0,
-    ));
-    events.push_back(sanedit_messages::key::KeyEvent::new(
-        sanedit_messages::key::Key::Char('u'),
-        0,
-    ));
-
-    events.push_back(sanedit_messages::key::KeyEvent::new(
-        sanedit_messages::key::Key::Char('i'),
-        0,
-    ));
-    events.push_back(sanedit_messages::key::KeyEvent::new(
-        sanedit_messages::key::Key::Char('b'),
-        0,
-    ));
-    events.push_back(sanedit_messages::key::KeyEvent::new(
-        sanedit_messages::key::Key::Char('§'),
-        0,
-    ));
-
-    events.push_back(sanedit_messages::key::KeyEvent::new(
-        sanedit_messages::key::Key::Char('u'),
-        0,
-    ));
-
-    events.push_back(sanedit_messages::key::KeyEvent::new(
-        sanedit_messages::key::Key::Char('i'),
-        0,
-    ));
-    events.push_back(sanedit_messages::key::KeyEvent::new(
-        sanedit_messages::key::Key::Char('c'),
-        0,
-    ));
-    events.push_back(sanedit_messages::key::KeyEvent::new(
-        sanedit_messages::key::Key::Char('§'),
-        0,
-    ));
-    events.push_back(sanedit_messages::key::KeyEvent::new(
-        sanedit_messages::key::Key::Char('i'),
-        0,
-    ));
-    events.push_back(sanedit_messages::key::KeyEvent::new(
-        sanedit_messages::key::Key::Char('c'),
-        0,
-    ));
-    events.push_back(sanedit_messages::key::KeyEvent::new(
-        sanedit_messages::key::Key::Char('§'),
-        0,
-    ));
-
-    events.push_back(sanedit_messages::key::KeyEvent::new(
-        sanedit_messages::key::Key::Char('u'),
-        0,
-    ));
-
-    events.push_back(sanedit_messages::key::KeyEvent::new(
-        sanedit_messages::key::Key::Char('i'),
-        0,
-    ));
-    events.push_back(sanedit_messages::key::KeyEvent::new(
-        sanedit_messages::key::Key::Char('d'),
-        0,
-    ));
-    events.push_back(sanedit_messages::key::KeyEvent::new(
-        sanedit_messages::key::Key::Char('§'),
-        0,
-    ));
-    events.push_back(sanedit_messages::key::KeyEvent::new(
-        sanedit_messages::key::Key::Char('i'),
-        0,
-    ));
-    events.push_back(sanedit_messages::key::KeyEvent::new(
-        sanedit_messages::key::Key::Char('d'),
-        0,
-    ));
-    events.push_back(sanedit_messages::key::KeyEvent::new(
-        sanedit_messages::key::Key::Char('§'),
-        0,
-    ));
-
-    events.push_back(sanedit_messages::key::KeyEvent::new(
-        sanedit_messages::key::Key::Char('u'),
-        0,
-    ));
-
-    events.push_back(sanedit_messages::key::KeyEvent::new(
-        sanedit_messages::key::Key::Char('i'),
-        0,
-    ));
-    events.push_back(sanedit_messages::key::KeyEvent::new(
-        sanedit_messages::key::Key::Char('d'),
-        0,
-    ));
-    events.push_back(sanedit_messages::key::KeyEvent::new(
-        sanedit_messages::key::Key::Char('§'),
-        0,
-    ));
-
-    events.push_back(sanedit_messages::key::KeyEvent::new(
-        sanedit_messages::key::Key::Char('u'),
-        0,
-    ));
-
-    events.push_back(sanedit_messages::key::KeyEvent::new(
-        sanedit_messages::key::Key::Char('i'),
-        0,
-    ));
-    events.push_back(sanedit_messages::key::KeyEvent::new(
-        sanedit_messages::key::Key::Char('d'),
-        0,
-    ));
-    events.push_back(sanedit_messages::key::KeyEvent::new(
-        sanedit_messages::key::Key::Char('§'),
-        0,
-    ));
-
-    editor.replay_macro(id, events);
-
-    let (win, buf) = win_buf!(editor, id);
     win.snapshot_view.selection = 0;
     win.snapshot_view.show = true;
     win.update_snapshot_preview(buf);
@@ -339,3 +103,241 @@ fn close_snapshots(editor: &mut Editor, id: ClientId) -> ActionResult {
 
     ActionResult::Ok
 }
+
+// #[action("Simulate")]
+// fn simulate_tree(editor: &mut Editor, id: ClientId) -> ActionResult {
+// // Simulate tree
+// let mut events = std::collections::VecDeque::new();
+// events.push_back(sanedit_messages::key::KeyEvent::new(
+//     sanedit_messages::key::Key::Char('i'),
+//     0,
+// ));
+// events.push_back(sanedit_messages::key::KeyEvent::new(
+//     sanedit_messages::key::Key::Char('a'),
+//     0,
+// ));
+// events.push_back(sanedit_messages::key::KeyEvent::new(
+//     sanedit_messages::key::Key::Char('§'),
+//     0,
+// ));
+// events.push_back(sanedit_messages::key::KeyEvent::new(
+//     sanedit_messages::key::Key::Char('i'),
+//     0,
+// ));
+// events.push_back(sanedit_messages::key::KeyEvent::new(
+//     sanedit_messages::key::Key::Char('a'),
+//     0,
+// ));
+// events.push_back(sanedit_messages::key::KeyEvent::new(
+//     sanedit_messages::key::Key::Char('§'),
+//     0,
+// ));
+
+// events.push_back(sanedit_messages::key::KeyEvent::new(
+//     sanedit_messages::key::Key::Char('u'),
+//     0,
+// ));
+// events.push_back(sanedit_messages::key::KeyEvent::new(
+//     sanedit_messages::key::Key::Char('i'),
+//     0,
+// ));
+// events.push_back(sanedit_messages::key::KeyEvent::new(
+//     sanedit_messages::key::Key::Char('b'),
+//     0,
+// ));
+// events.push_back(sanedit_messages::key::KeyEvent::new(
+//     sanedit_messages::key::Key::Char('§'),
+//     0,
+// ));
+
+// events.push_back(sanedit_messages::key::KeyEvent::new(
+//     sanedit_messages::key::Key::Char('u'),
+//     0,
+// ));
+// events.push_back(sanedit_messages::key::KeyEvent::new(
+//     sanedit_messages::key::Key::Char('i'),
+//     0,
+// ));
+// events.push_back(sanedit_messages::key::KeyEvent::new(
+//     sanedit_messages::key::Key::Char('b'),
+//     0,
+// ));
+// events.push_back(sanedit_messages::key::KeyEvent::new(
+//     sanedit_messages::key::Key::Char('§'),
+//     0,
+// ));
+
+// events.push_back(sanedit_messages::key::KeyEvent::new(
+//     sanedit_messages::key::Key::Char('i'),
+//     0,
+// ));
+// events.push_back(sanedit_messages::key::KeyEvent::new(
+//     sanedit_messages::key::Key::Char('a'),
+//     0,
+// ));
+// events.push_back(sanedit_messages::key::KeyEvent::new(
+//     sanedit_messages::key::Key::Char('§'),
+//     0,
+// ));
+
+// events.push_back(sanedit_messages::key::KeyEvent::new(
+//     sanedit_messages::key::Key::Char('u'),
+//     0,
+// ));
+
+// events.push_back(sanedit_messages::key::KeyEvent::new(
+//     sanedit_messages::key::Key::Char('i'),
+//     0,
+// ));
+// events.push_back(sanedit_messages::key::KeyEvent::new(
+//     sanedit_messages::key::Key::Char('b'),
+//     0,
+// ));
+// events.push_back(sanedit_messages::key::KeyEvent::new(
+//     sanedit_messages::key::Key::Char('§'),
+//     0,
+// ));
+
+// events.push_back(sanedit_messages::key::KeyEvent::new(
+//     sanedit_messages::key::Key::Char('U'),
+//     0,
+// ));
+
+// events.push_back(sanedit_messages::key::KeyEvent::new(
+//     sanedit_messages::key::Key::Char('u'),
+//     0,
+// ));
+
+// events.push_back(sanedit_messages::key::KeyEvent::new(
+//     sanedit_messages::key::Key::Char('i'),
+//     0,
+// ));
+// events.push_back(sanedit_messages::key::KeyEvent::new(
+//     sanedit_messages::key::Key::Char('b'),
+//     0,
+// ));
+// events.push_back(sanedit_messages::key::KeyEvent::new(
+//     sanedit_messages::key::Key::Char('§'),
+//     0,
+// ));
+
+// events.push_back(sanedit_messages::key::KeyEvent::new(
+//     sanedit_messages::key::Key::Char('u'),
+//     0,
+// ));
+// events.push_back(sanedit_messages::key::KeyEvent::new(
+//     sanedit_messages::key::Key::Char('u'),
+//     0,
+// ));
+
+// events.push_back(sanedit_messages::key::KeyEvent::new(
+//     sanedit_messages::key::Key::Char('i'),
+//     0,
+// ));
+// events.push_back(sanedit_messages::key::KeyEvent::new(
+//     sanedit_messages::key::Key::Char('b'),
+//     0,
+// ));
+// events.push_back(sanedit_messages::key::KeyEvent::new(
+//     sanedit_messages::key::Key::Char('§'),
+//     0,
+// ));
+
+// events.push_back(sanedit_messages::key::KeyEvent::new(
+//     sanedit_messages::key::Key::Char('u'),
+//     0,
+// ));
+
+// events.push_back(sanedit_messages::key::KeyEvent::new(
+//     sanedit_messages::key::Key::Char('i'),
+//     0,
+// ));
+// events.push_back(sanedit_messages::key::KeyEvent::new(
+//     sanedit_messages::key::Key::Char('c'),
+//     0,
+// ));
+// events.push_back(sanedit_messages::key::KeyEvent::new(
+//     sanedit_messages::key::Key::Char('§'),
+//     0,
+// ));
+// events.push_back(sanedit_messages::key::KeyEvent::new(
+//     sanedit_messages::key::Key::Char('i'),
+//     0,
+// ));
+// events.push_back(sanedit_messages::key::KeyEvent::new(
+//     sanedit_messages::key::Key::Char('c'),
+//     0,
+// ));
+// events.push_back(sanedit_messages::key::KeyEvent::new(
+//     sanedit_messages::key::Key::Char('§'),
+//     0,
+// ));
+
+// events.push_back(sanedit_messages::key::KeyEvent::new(
+//     sanedit_messages::key::Key::Char('u'),
+//     0,
+// ));
+
+// events.push_back(sanedit_messages::key::KeyEvent::new(
+//     sanedit_messages::key::Key::Char('i'),
+//     0,
+// ));
+// events.push_back(sanedit_messages::key::KeyEvent::new(
+//     sanedit_messages::key::Key::Char('d'),
+//     0,
+// ));
+// events.push_back(sanedit_messages::key::KeyEvent::new(
+//     sanedit_messages::key::Key::Char('§'),
+//     0,
+// ));
+// events.push_back(sanedit_messages::key::KeyEvent::new(
+//     sanedit_messages::key::Key::Char('i'),
+//     0,
+// ));
+// events.push_back(sanedit_messages::key::KeyEvent::new(
+//     sanedit_messages::key::Key::Char('d'),
+//     0,
+// ));
+// events.push_back(sanedit_messages::key::KeyEvent::new(
+//     sanedit_messages::key::Key::Char('§'),
+//     0,
+// ));
+
+// events.push_back(sanedit_messages::key::KeyEvent::new(
+//     sanedit_messages::key::Key::Char('u'),
+//     0,
+// ));
+
+// events.push_back(sanedit_messages::key::KeyEvent::new(
+//     sanedit_messages::key::Key::Char('i'),
+//     0,
+// ));
+// events.push_back(sanedit_messages::key::KeyEvent::new(
+//     sanedit_messages::key::Key::Char('d'),
+//     0,
+// ));
+// events.push_back(sanedit_messages::key::KeyEvent::new(
+//     sanedit_messages::key::Key::Char('§'),
+//     0,
+// ));
+
+// events.push_back(sanedit_messages::key::KeyEvent::new(
+//     sanedit_messages::key::Key::Char('u'),
+//     0,
+// ));
+
+// events.push_back(sanedit_messages::key::KeyEvent::new(
+//     sanedit_messages::key::Key::Char('i'),
+//     0,
+// ));
+// events.push_back(sanedit_messages::key::KeyEvent::new(
+//     sanedit_messages::key::Key::Char('d'),
+//     0,
+// ));
+// events.push_back(sanedit_messages::key::KeyEvent::new(
+//     sanedit_messages::key::Key::Char('§'),
+//     0,
+// ));
+// editor.replay_macro(id, events);
+//     ActionResult::Ok
+// }

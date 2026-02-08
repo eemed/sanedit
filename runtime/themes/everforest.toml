@@ -121,7 +121,6 @@ graph = { fg = "aqua" }
 graph_point = { fg = "orange" }
 # label = { fg = "gray_fg" }
 markers = { fg = "gray_fg" }
-saved = { fg = "orange" }
 
 [colors.snapshots.selected]
 default = { bg = "bg_alt" }
@@ -129,7 +128,6 @@ graph = { fg = "aqua" }
 graph_point = { fg = "orange" }
 # label = { fg = "fg" }
 markers = { fg = "gray_fg" }
-saved = { fg = "orange" }
 
 [colors.popup]
 default = { bg = "#3D484D", fg = "fg" }

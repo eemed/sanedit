@@ -88,5 +88,19 @@ markers = { fg = "#81a2be" }
 # entry = {  }
 group = { fg = "#b5bd68" }
 
+[colors.snapshots]
+default = { bg = "#1d1f21", fg = "#c5c8c6" }
+graph = { fg = "#b5bd68" }
+graph_point = { fg = "#de935f" }
+# label = { fg = "gray_fg" }
+markers = { fg = "#81a2be" }
+
+[colors.snapshots.selected]
+default = { bg = "#373b41" }
+graph = { fg = "#b5bd68" }
+graph_point = { fg = "#de935f" }
+# label = { fg = "fg" }
+markers = { fg = "#81a2be" }
+
 [colors.popup]
 default = { bg = "#282a2e", fg = "#c5c8c6" }

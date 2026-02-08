@@ -70,5 +70,19 @@ default = { bg = "#ffffff", fg = "#000000" }
 match = { fg = "#00FFFF" }
 markers = { fg = "#00FFFF" }
 
+[colors.snapshots]
+default = { bg = "#000000", fg = "#ffffff" }
+graph = { fg = "#00FFFF" }
+graph_point = { fg = "#FFFF00" }
+# label = { fg = "gray_fg" }
+markers = { fg = "#00FFFF" }
+
+[colors.snapshots.selected]
+default = { bg = "#ffffff", fg="#000000" }
+graph = { fg = "#2d81a3" }
+graph_point = { fg = "#000000" }
+# label = { fg = "gray_fg" }
+markers = { fg = "#00FFFF" }
+
 [colors.popup]
 default = { bg = "#ffffff", fg = "#000000" }

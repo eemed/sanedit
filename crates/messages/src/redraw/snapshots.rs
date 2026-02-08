@@ -11,6 +11,7 @@ pub enum SnapshotsUpdate {
 pub struct Snapshots {
     pub points: Vec<SnapshotPoint>,
     pub selected: usize,
+    pub last_saved: usize,
     pub in_focus: bool,
 }
 

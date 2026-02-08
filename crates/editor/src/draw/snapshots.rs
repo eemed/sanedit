@@ -37,6 +37,7 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> Option<redraw::Redraw> {
 }
 
 fn draw_impl(ctx: &mut DrawContext) -> redraw::snapshots::Snapshots {
+    let last_saved = ctx.editor.buf.last_saved_snapshot();
     let now = Instant::now();
     let snaps = ctx.editor.buf.snapshots();
     let points: Vec<SnapshotPoint> = snaps
@@ -59,5 +60,6 @@ fn draw_impl(ctx: &mut DrawContext) -> redraw::snapshots::Snapshots {
         selected,
         in_focus,
         points,
+        last_saved,
     }
 }

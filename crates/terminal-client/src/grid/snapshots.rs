@@ -42,22 +42,51 @@ impl CustomSnapshots {
         let height = rect.height;
         let sel = self.snapshots.selected;
 
-        let mut n = 0;
+        let mut visible_entries = 0;
+        let mut rows = 0;
         for point in &self.snapshots.points {
+            if point.next.len() > 1 {
+                rows += 2;
+            } else {
+                rows += 1;
+            }
+
+            if sel == visible_entries {
+                break;
+            }
+            visible_entries += 1;
         }
 
-        todo!()
+        let mut min_scroll = 0;
+        let mut iter = self.snapshots.points.iter();
+        while rows > height {
+            let point = iter.next().unwrap();
 
-        // let at_least = sel.saturating_sub(height.saturating_sub(1));
-        // self.scroll = max(self.scroll, at_least);
+            if point.next.len() > 1 {
+                rows -= 2;
+            } else {
+                rows -= 1;
+            }
 
-        // if self.scroll > sel {
-        //     self.scroll = sel;
-        // }
+            min_scroll += 1;
+        }
 
-        // if self.scroll + height < sel {
-        //     self.scroll = sel - (height / 2);
-        // }
+        let mut max_scroll = min_scroll;
+        while rows != 0 {
+            let point = iter.next().unwrap();
+
+            if point.next.len() > 1 {
+                rows -= 2;
+            } else {
+                rows -= 1;
+            }
+
+            if rows != 0 {
+                max_scroll += 1;
+            }
+        }
+
+        self.scroll = self.scroll.clamp(min_scroll, max_scroll)
     }
 }
 

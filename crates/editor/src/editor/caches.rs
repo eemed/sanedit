@@ -20,7 +20,7 @@ impl Caches {
 /// Most recently used files
 #[derive(Debug)]
 pub(crate) struct FilesMRU {
-    items: LinkedArray<PathBuf, 2>,
+    items: LinkedArray<PathBuf, 32>,
 }
 
 impl FilesMRU {

@@ -397,6 +397,10 @@ impl Buffer {
         Ok(Saved { snapshot: snap })
     }
 
+    pub fn last_saved_snapshot(&self) -> usize {
+        self.last_saved_snapshot
+    }
+
     fn save_copy(buf: &PieceTreeSlice) -> Result<PathBuf> {
         let (path, mut file) = tmp_file().ok_or(BufferError::CannotCreateTmpFile)?;
 

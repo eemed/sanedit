@@ -572,6 +572,13 @@ impl Window {
     }
 
     pub fn open_snapshot_preview(&mut self, buf: &mut Buffer) {
+        if self.snapshot_view.original_buffer.is_some() {
+            return;
+        }
+
+        self.snapshot_view.selection = 0;
+        self.snapshot_view.show = true;
+
         let state = self.save_window_state(None);
         buf.create_undopoint(state);
         if let Some(cur) = buf.snapshots().current() {
@@ -584,27 +591,19 @@ impl Window {
     pub fn update_snapshot_preview(&mut self, buf: &mut Buffer) {
         let sel = self.snapshot_view.selection;
         if let Some(selected) = buf.snapshots().iter().nth(sel).map(|node| node.id) {
-            buf.goto_snapshot(selected);
-            if let Some(data) = buf.snapshot_additional(selected) {
-                self.restore(data, buf);
-            } else {
-                self.invalidate();
-            }
+            let _ = self.undo_jump(buf, selected);
         }
     }
 
     pub fn confirm_snapshot_preview(&mut self, _buf: &mut Buffer) {
+        self.snapshot_view.show = false;
         self.snapshot_view.original_buffer = None;
     }
 
     pub fn close_snapshot_preview(&mut self, buf: &mut Buffer) {
+        self.snapshot_view.show = false;
         if let Some(id) = std::mem::take(&mut self.snapshot_view.original_buffer) {
-            buf.goto_snapshot(id);
-            if let Some(data) = buf.snapshot_additional(id) {
-                self.restore(data, buf);
-            } else {
-                self.invalidate();
-            }
+            let _ = self.undo_jump(buf, id);
         }
     }
 
@@ -749,13 +748,15 @@ impl Window {
             .collect();
         let changes = Changes::multi_remove(&ranges);
         self.change(buf, &changes)?;
-        // buf.apply_changes(&changes)?;
-        // self.invalidate();
         Ok(())
     }
 
     fn cursors_from_changes(changes: &Changes) -> Cursors {
         let mut cursors = Cursors::default();
+        if changes.is_undo_jump() {
+            return cursors;
+        }
+
         {
             let mut all = cursors.cursors_mut();
 
@@ -782,7 +783,15 @@ impl Window {
         cursors
     }
 
+    pub fn undo_jump(&mut self, buf: &mut Buffer, snapshot: SnapshotId) -> Result<()> {
+        self.undo_impl(&Changes::undo_jump(snapshot), buf)
+    }
+
     pub fn undo(&mut self, buf: &mut Buffer) -> Result<()> {
+        self.undo_impl(&Changes::undo(), buf)
+    }
+
+    fn undo_impl(&mut self, changes: &Changes, buf: &mut Buffer) -> Result<()> {
         // Nothing -> insert h -> SNAP A -> insert ello
         //
         // undo -> SNAP B hello| after/berfore
@@ -824,7 +833,7 @@ impl Window {
             }
         };
 
-        let change = match buf.apply_changes(&Changes::undo()) {
+        let change = match buf.apply_changes(changes) {
             Ok(res) => res,
             Err(e) => {
                 self.warn_msg(&format!("{e}"));

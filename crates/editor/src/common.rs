@@ -36,7 +36,7 @@ pub(crate) fn to_human_readable_size(num: f64) -> String {
 
 pub(crate) fn human_readable_duration(since: Duration) -> String {
     if since.as_secs() < 60 {
-        format!("{}s ago", since.as_secs())
+        "now".to_string()
     } else if since.as_secs() < 60 * 60 {
         format!("{}m ago", since.as_secs() / 60)
     } else {

@@ -50,9 +50,7 @@ fn show_snapshots(editor: &mut Editor, id: ClientId) -> ActionResult {
         return ActionResult::Ok;
     }
 
-    win.snapshot_view.selection = 0;
-    win.snapshot_view.show = true;
-    win.update_snapshot_preview(buf);
+    win.open_snapshot_preview(buf);
     focus(editor, id, Focus::Snapshots);
 
     ActionResult::Ok
@@ -71,7 +69,6 @@ fn focus_snapshots(editor: &mut Editor, id: ClientId) -> ActionResult {
 #[action("Undotree: Confirm entry")]
 fn goto_snapshot_entry(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = editor.win_buf_mut(id);
-    win.snapshot_view.show = false;
     win.confirm_snapshot_preview(buf);
     focus(editor, id, Focus::Window);
     ActionResult::Ok
@@ -97,8 +94,8 @@ fn prev_snapshot_entry(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Undotree: Close")]
 fn close_snapshots(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, _buf) = editor.win_buf_mut(id);
-    win.snapshot_view.show = false;
+    let (win, buf) = editor.win_buf_mut(id);
+    win.close_snapshot_preview(buf);
     focus(editor, id, Focus::Window);
 
     ActionResult::Ok

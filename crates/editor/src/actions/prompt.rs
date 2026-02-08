@@ -546,66 +546,6 @@ fn prompt_jump(editor: &mut Editor, id: ClientId) -> ActionResult {
     ActionResult::Ok
 }
 
-
-#[action("Buffer: Show undopoints")]
-fn buffer_undopoints(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (_win, buf) = win_buf!(editor, id);
-    let now = Instant::now();
-    let on_snapshot = buf.on_undopoint();
-    let current = if on_snapshot {
-        buf.snapshots().current()
-    } else {
-        None
-    };
-
-    let nodes = buf.snapshots().nodes();
-    let nodes_len = nodes.len();
-    let snapshots: Vec<Arc<Choice>> = nodes
-        .iter()
-        .map(|snapshot| {
-            let since = now.duration_since(snapshot.timestamp);
-            let ts = human_readable_duration(since);
-            let is_current = current.map(|c| c == snapshot.id).unwrap_or(false);
-            let text = if is_current {
-                format!("> Snapshot {ts}")
-            } else {
-                format!("Snapshot {ts}")
-            };
-            // Reverse order using numbering
-            Choice::from_numbered_text(nodes_len - snapshot.id, text)
-        })
-        .collect();
-
-    let items = Arc::new(snapshots);
-    const PROMPT_MESSAGE: &str = "Goto a undopoint";
-    let job = MatcherJob::builder(id)
-        .options(items.clone())
-        .handler(Prompt::matcher_result_handler)
-        .build();
-    editor.job_broker.request_slot(id, PROMPT_MESSAGE, job);
-
-    let (win, _buf) = editor.win_buf_mut(id);
-    win.prompt = Prompt::builder()
-        .prompt(PROMPT_MESSAGE)
-        .loads_options()
-        .on_confirm(move |editor, id, out| {
-            let snapshot = nodes_len - getf!(out.number());
-            let (win, buf) = win_buf!(editor, id);
-            if win.undo_jump(buf, snapshot).is_ok() {
-                let hook = Hook::BufChanged(buf.id);
-                run(editor, id, hook);
-                run(editor, id, Hook::CursorMoved);
-
-                return ActionResult::Ok;
-            }
-
-            ActionResult::Failed
-        })
-        .build();
-    focus(editor, id, Focus::Prompt);
-    ActionResult::Ok
-}
-
 #[action("Editor: Kill jobs")]
 fn kill_jobs(editor: &mut Editor, id: ClientId) -> ActionResult {
     const PROMPT_MESSAGE: &str = "Kill a job";

@@ -6,5 +6,5 @@ pub(crate) struct SnapshotView {
     pub(crate) show: bool,
 
     /// Buffer is changed if snapshot is previewed, this is to restore it
-    pub(crate) original_buffer: Option<(SnapshotId, SavedWindowState)>,
+    pub(crate) original_buffer: Option<SnapshotId>,
 }

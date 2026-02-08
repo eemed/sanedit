@@ -572,18 +572,43 @@ impl Window {
     }
 
     pub fn open_snapshot_preview(&mut self, buf: &mut Buffer) {
+        log::info!("open preview");
         let state = self.save_window_state(None);
         buf.create_undopoint(state);
+        if let Some(cur) = buf.snapshots().current() {
+            self.snapshot_view.original_buffer = Some(cur);
+        }
 
+        self.update_snapshot_preview(buf);
+    }
+
+    pub fn update_snapshot_preview(&mut self, buf: &mut Buffer) {
         let sel = self.snapshot_view.selection;
-        if let Some(selected) = buf.snapshots().iter().nth(sel) {
-            buf.goto_snapshot(selected.id);
-            // self.snapshot_view.original_buffer = 
-            self.invalidate();
+        if let Some(selected) = buf.snapshots().iter().nth(sel).map(|node| node.id) {
+            buf.goto_snapshot(selected);
+            if let Some(data) = buf.snapshot_additional(selected) {
+                self.restore(data, buf);
+            } else {
+                self.invalidate();
+            }
         }
     }
 
-    pub fn close_snapshot_preview(&mut self, buf: &mut Buffer) {}
+    pub fn confirm_snapshot_preview(&mut self, _buf: &mut Buffer) {
+        self.snapshot_view.original_buffer = None;
+    }
+
+    pub fn close_snapshot_preview(&mut self, buf: &mut Buffer) {
+        log::info!("Close preview");
+        if let Some(id) = std::mem::take(&mut self.snapshot_view.original_buffer) {
+            buf.goto_snapshot(id);
+            if let Some(data) = buf.snapshot_additional(id) {
+                self.restore(data, buf);
+            } else {
+                self.invalidate();
+            }
+        }
+    }
 
     /// Create snapshot additinal data for window
     /// Provide mark to store in aux

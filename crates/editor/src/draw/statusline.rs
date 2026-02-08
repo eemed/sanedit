@@ -54,7 +54,7 @@ fn draw_statusline(ctx: &mut DrawContext) -> Statusline {
             left = " Locations".to_string();
         }
         Focus::Snapshots => {
-            left = " Undotree".to_string();
+            left = " Undotree (preview)".to_string();
         }
         _ => {}
     }

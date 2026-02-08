@@ -27,8 +27,9 @@ fn toggle_preview(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Undotree: Select first entry")]
 fn snapshots_select_first(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, _buf) = win_buf!(editor, id);
+    let (win, buf) = win_buf!(editor, id);
     win.snapshot_view.selection = 0;
+    win.update_snapshot_preview(buf);
     ActionResult::Ok
 }
 
@@ -37,6 +38,7 @@ fn snapshots_select_last(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = editor.win_buf_mut(id);
     let nodes = buf.snapshots().nodes().len();
     win.snapshot_view.selection = nodes - 1;
+    win.update_snapshot_preview(buf);
     ActionResult::Ok
 }
 
@@ -283,9 +285,10 @@ fn show_snapshots(editor: &mut Editor, id: ClientId) -> ActionResult {
 
     editor.replay_macro(id, events);
 
-    let (win, _buf) = win_buf!(editor, id);
+    let (win, buf) = win_buf!(editor, id);
     win.snapshot_view.selection = 0;
     win.snapshot_view.show = true;
+    win.update_snapshot_preview(buf);
     focus(editor, id, Focus::Snapshots);
 
     ActionResult::Ok
@@ -302,7 +305,11 @@ fn focus_snapshots(editor: &mut Editor, id: ClientId) -> ActionResult {
 }
 
 #[action("Undotree: Confirm entry")]
-fn goto_snapshot_entry(_editor: &mut Editor, _id: ClientId) -> ActionResult {
+fn goto_snapshot_entry(editor: &mut Editor, id: ClientId) -> ActionResult {
+    let (win, buf) = editor.win_buf_mut(id);
+    win.snapshot_view.show = false;
+    win.confirm_snapshot_preview(buf);
+    focus(editor, id, Focus::Window);
     ActionResult::Ok
 }
 
@@ -311,14 +318,16 @@ fn next_snapshot_entry(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = editor.win_buf_mut(id);
     let nodes = buf.snapshots().nodes().len();
     win.snapshot_view.selection = min(nodes - 1, win.snapshot_view.selection + 1);
+    win.update_snapshot_preview(buf);
 
     ActionResult::Ok
 }
 
 #[action("Undotree: Previous entry")]
 fn prev_snapshot_entry(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, buf) = editor.win_buf_mut(id);
     win.snapshot_view.selection = win.snapshot_view.selection.saturating_sub(1);
+    win.update_snapshot_preview(buf);
     ActionResult::Ok
 }
 

@@ -225,6 +225,7 @@ impl Buffer {
     pub fn goto_snapshot(&mut self, snap: SnapshotId) {
         if let Some(ss) = self.snapshots.goto_get(snap) {
             self.pt.restore(ss.snapshot.clone());
+            self.is_modified = self.last_saved_snapshot != snap;
         }
     }
 

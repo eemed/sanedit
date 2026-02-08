@@ -42,7 +42,7 @@ impl CustomSnapshots {
         let height = rect.height;
         let sel = self.snapshots.selected;
 
-        let mut visible_entries = 0;
+        let mut visible_n = 0;
         let mut rows = 0;
         for point in &self.snapshots.points {
             if point.next.len() > 1 {
@@ -51,10 +51,10 @@ impl CustomSnapshots {
                 rows += 1;
             }
 
-            if sel == visible_entries {
+            if sel == visible_n {
                 break;
             }
-            visible_entries += 1;
+            visible_n += 1;
         }
 
         let mut min_scroll = 0;
@@ -101,7 +101,6 @@ impl Drawable for CustomSnapshots {
         let selgraph = ctx.style(ThemeField::SnapshotsSelectedGraph);
         let selgraph_point = ctx.style(ThemeField::SnapshotsSelectedGraphPoint);
         let sellabel = ctx.style(ThemeField::SnapshotsSelectedLabel);
-        // let current = ctx.style(ThemeField::SnapshotsCurrent);
 
         cells.clear_all(default);
         let sep = Cell::new_char('│', markers);
@@ -180,6 +179,7 @@ struct PointData {
     used_lanes: HashSet<usize>,
 }
 
+// This is terrible, but drawing graphs is terrible so i dont care
 fn render_snapshots(snapshots: &Snapshots) -> Vec<RenderedLine> {
     let mut stack = vec![PointData {
         lane: 0,
@@ -190,6 +190,12 @@ fn render_snapshots(snapshots: &Snapshots) -> Vec<RenderedLine> {
     // Start iterating from bottom up
     for (i, point) in snapshots.points.iter().rev().enumerate() {
         let selected = snapshots.points.len() - 1 - i == snapshots.selected;
+        let last_saved = snapshots.points.len() - 1 - i == snapshots.last_saved;
+        let title = if last_saved {
+            format!("(s) {}", point.title)
+        } else {
+            point.title.clone()
+        };
         let Some(PointData { lane, used_lanes }) = stack.pop() else {
             continue;
         };
@@ -204,7 +210,7 @@ fn render_snapshots(snapshots: &Snapshots) -> Vec<RenderedLine> {
             let symbol = "* ";
             let line = RenderedLine {
                 graph: format!("{lanes_before}{symbol}"),
-                title: point.title.clone(),
+                title,
                 selected,
             };
             result.push(line);
@@ -243,7 +249,7 @@ fn render_snapshots(snapshots: &Snapshots) -> Vec<RenderedLine> {
             (_, true, _) => {
                 let line = RenderedLine {
                     graph: format!("{}{}{}", lanes_before, "* ", String::new()),
-                    title: point.title.clone(),
+                    title,
                     selected,
                 };
                 result.push(line);
@@ -259,7 +265,7 @@ fn render_snapshots(snapshots: &Snapshots) -> Vec<RenderedLine> {
 
         let line = RenderedLine {
             graph: format!("{}{}{}", lanes_before, mylane, next_lanes),
-            title: point.title.clone(),
+            title,
             selected,
         };
         result.push(line);

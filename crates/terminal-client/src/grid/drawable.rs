@@ -196,6 +196,9 @@ impl<'a, 'b> Subgrid<'a, 'b> {
     }
 
     pub fn draw_separator_right(&mut self, cell: Cell) -> Rect {
+        if self.rect.width <= 1 {
+            return *self.rect;
+        }
         for y in self.rect.y..self.rect.y + self.rect.height {
             self.cells[y][self.rect.x + self.rect.width - 1] = cell.clone();
         }

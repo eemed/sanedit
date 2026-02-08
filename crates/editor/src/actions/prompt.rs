@@ -4,7 +4,6 @@ use std::{
     cmp::min,
     path::{Path, PathBuf},
     sync::Arc,
-    time::Instant,
 };
 
 use sanedit_buffer::PieceTreeSlice;
@@ -14,11 +13,10 @@ use sanedit_utils::idmap::AsID;
 use crate::{
     actions::{
         cursors::jump_to_ref,
-        hooks::run,
         jobs::{FileOptionProvider, Grep, MatchStrategy},
         window::focus,
     },
-    common::{human_readable_duration, is_yes, Choice},
+    common::{is_yes, Choice},
     editor::{
         buffers::BufferId,
         hooks::Hook,

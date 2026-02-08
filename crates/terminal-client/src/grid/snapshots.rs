@@ -41,16 +41,23 @@ impl CustomSnapshots {
     pub fn update_scroll_position(&mut self, rect: &Rect) {
         let height = rect.height;
         let sel = self.snapshots.selected;
-        let at_least = sel.saturating_sub(height.saturating_sub(1));
-        self.scroll = max(self.scroll, at_least);
 
-        if self.scroll > sel {
-            self.scroll = sel;
+        let mut n = 0;
+        for point in &self.snapshots.points {
         }
 
-        if self.scroll + height < sel {
-            self.scroll = sel - (height / 2);
-        }
+        todo!()
+
+        // let at_least = sel.saturating_sub(height.saturating_sub(1));
+        // self.scroll = max(self.scroll, at_least);
+
+        // if self.scroll > sel {
+        //     self.scroll = sel;
+        // }
+
+        // if self.scroll + height < sel {
+        //     self.scroll = sel - (height / 2);
+        // }
     }
 }
 
@@ -65,15 +72,29 @@ impl Drawable for CustomSnapshots {
         let selgraph = ctx.style(ThemeField::SnapshotsSelectedGraph);
         let selgraph_point = ctx.style(ThemeField::SnapshotsSelectedGraphPoint);
         let sellabel = ctx.style(ThemeField::SnapshotsSelectedLabel);
-        let current = ctx.style(ThemeField::SnapshotsCurrent);
+        // let current = ctx.style(ThemeField::SnapshotsCurrent);
 
         cells.clear_all(default);
         let sep = Cell::new_char('│', markers);
         let sub = cells.draw_separator_right(sep);
         let mut content_area = cells.subgrid(&sub);
         let rendered = render_snapshots(&self.snapshots);
+        let mut skipped = 0;
 
-        for (row, line) in rendered.iter().enumerate() {
+        for (row, line) in rendered
+            .iter()
+            .filter(|line| {
+                if skipped < self.scroll {
+                    if line.graph.contains("*") {
+                        skipped += 1;
+                    }
+                    return false;
+                }
+
+                true
+            })
+            .enumerate()
+        {
             if row >= content_area.height() {
                 break;
             }
@@ -98,12 +119,14 @@ impl Drawable for CustomSnapshots {
                 }
             }
 
-            content_area.put_string(
-                row,
-                content_area.width() - line.title.chars().count(),
-                &line.title,
-                slabel,
-            );
+            let left = content_area.width().saturating_sub(x);
+            let size = line.title.chars().count();
+            let at = if left > size {
+                content_area.width() - size
+            } else {
+                content_area.width().saturating_sub(left)
+            };
+            content_area.put_string(row, at, &line.title, slabel);
         }
     }
 

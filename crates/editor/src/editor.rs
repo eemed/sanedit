@@ -544,6 +544,23 @@ impl Editor {
 
     fn handle_mouse_event(&mut self, id: ClientId, event: MouseEvent) {
         match event.element {
+            Element::Snapshots => {
+                if let MouseEventKind::ButtonDown(MouseButton::Left) = event.kind {
+                    focus_with_mode(self, id, Focus::Snapshots, Mode::Normal);
+                    let (win, buf) = self.win_buf_mut(id);
+                    win.snapshot_view.mouse.on_click(event.point);
+                    match win.snapshot_view.mouse.clicks() {
+                        MouseClick::Single => {
+                            win.snapshot_view.selection = event.point.y;
+                            win.update_snapshot_preview(buf);
+                        }
+                        MouseClick::Double => {
+                            actions::snapshots::goto_snapshot_entry.execute(self, id);
+                        }
+                        _ => {}
+                    }
+                }
+            }
             Element::Filetree => {
                 if let MouseEventKind::ButtonDown(MouseButton::Left) = event.kind {
                     focus_with_mode(self, id, Focus::Filetree, Mode::Normal);

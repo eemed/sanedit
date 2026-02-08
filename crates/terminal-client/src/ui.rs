@@ -64,10 +64,56 @@ impl UI {
     }
 
     pub fn handle_mouse_event(&mut self, mut ev: MouseEvent) -> Option<Message> {
+        use sanedit_messages::MouseEventKind::*;
+
+        if let Some(snap) = self.grid.snapshots() {
+            if snap.rect.contains(&ev.point) {
+                match ev.kind {
+                    ScrollDown => {
+                        snap.item.scroll = min(
+                            snap.item.scroll + 2,
+                            snap.item.snapshots.points.len().saturating_sub(1),
+                        );
+                        let _ = self.flush();
+                        return None;
+                    }
+                    ScrollUp => {
+                        snap.item.scroll = snap.item.scroll.saturating_sub(2);
+                        let _ = self.flush();
+                        return None;
+                    }
+                    ButtonDown(MouseButton::Left) => {
+                        ev.point = ev.point - snap.rect.position();
+                        let line = ev.point.y;
+
+                        // Forks are 2 lines
+                        let mut n = 0;
+                        for point in snap.item.snapshots.points.iter().skip(snap.item.scroll) {
+                            if n >= line {
+                                break;
+                            }
+
+                            if point.next.len() <= 1 {
+                                n += 1;
+                            } else {
+                                n += 2;
+                                ev.point.y -= 1;
+                            }
+                        }
+
+                        ev.point.y += snap.item.scroll;
+                        ev.element = Element::Snapshots;
+                        return Some(Message::MouseEvent(ev));
+                    }
+                    _ => {}
+                }
+            }
+        }
+
         if let Some(ft) = self.grid.filetree() {
             if ft.rect.contains(&ev.point) {
                 match ev.kind {
-                    sanedit_messages::MouseEventKind::ScrollDown => {
+                    ScrollDown => {
                         ft.item.scroll = min(
                             ft.item.scroll + 2,
                             ft.item.items.items.len().saturating_sub(1),
@@ -75,12 +121,12 @@ impl UI {
                         let _ = self.flush();
                         return None;
                     }
-                    sanedit_messages::MouseEventKind::ScrollUp => {
+                    ScrollUp => {
                         ft.item.scroll = ft.item.scroll.saturating_sub(2);
                         let _ = self.flush();
                         return None;
                     }
-                    sanedit_messages::MouseEventKind::ButtonDown(MouseButton::Left) => {
+                    ButtonDown(MouseButton::Left) => {
                         ev.point = ev.point - ft.rect.position();
                         ev.point.y += ft.item.scroll;
                         ev.element = Element::Filetree;
@@ -94,15 +140,14 @@ impl UI {
         if let Some(loc) = self.grid.locations() {
             if loc.rect.contains(&ev.point) {
                 match ev.kind {
-                    sanedit_messages::MouseEventKind::ScrollUp
-                    | sanedit_messages::MouseEventKind::ScrollDown => {
+                    ScrollUp | ScrollDown => {
                         ev.point = ev.point - loc.rect.position();
                         // -1 = header
                         ev.point.y = ev.point.y.saturating_sub(1);
                         ev.element = Element::Locations;
                         return Some(Message::MouseEvent(ev));
                     }
-                    sanedit_messages::MouseEventKind::ButtonDown(MouseButton::Left) => {
+                    ButtonDown(MouseButton::Left) => {
                         ev.point = ev.point - loc.rect.position();
                         // -1 = header
                         ev.point.y = ev.point.y.saturating_sub(1);

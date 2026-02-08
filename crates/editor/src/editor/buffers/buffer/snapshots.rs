@@ -1,7 +1,6 @@
 use std::time::Instant;
 
 use sanedit_buffer::{Mark, PieceTreeSlice};
-use sanedit_utils::bitset::Bitset256;
 
 use crate::editor::windows::Cursors;
 

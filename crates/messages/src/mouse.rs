@@ -37,4 +37,5 @@ pub enum Element {
     Filetree,
     Locations,
     Window,
+    Snapshots,
 }

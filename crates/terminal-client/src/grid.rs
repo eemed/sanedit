@@ -328,6 +328,10 @@ impl Grid {
         self.window.rect
     }
 
+    pub fn snapshots(&mut self) -> Option<&mut Placed<CustomSnapshots>> {
+        self.snapshots.as_mut()
+    }
+
     pub fn filetree(&mut self) -> Option<&mut Placed<CustomItems>> {
         self.filetree.as_mut()
     }

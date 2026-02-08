@@ -572,7 +572,6 @@ impl Window {
     }
 
     pub fn open_snapshot_preview(&mut self, buf: &mut Buffer) {
-        log::info!("open preview");
         let state = self.save_window_state(None);
         buf.create_undopoint(state);
         if let Some(cur) = buf.snapshots().current() {
@@ -599,7 +598,6 @@ impl Window {
     }
 
     pub fn close_snapshot_preview(&mut self, buf: &mut Buffer) {
-        log::info!("Close preview");
         if let Some(id) = std::mem::take(&mut self.snapshot_view.original_buffer) {
             buf.goto_snapshot(id);
             if let Some(data) = buf.snapshot_additional(id) {

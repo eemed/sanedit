@@ -25,6 +25,7 @@ use keymap::KeymapResult;
 use keymap::Layer;
 use language::Languages;
 use rustc_hash::FxHashMap;
+use rustc_hash::FxHashSet;
 use sanedit_core::Language;
 use sanedit_messages::key::KeyEvent;
 use sanedit_messages::redraw::Size;
@@ -55,6 +56,7 @@ use std::env;
 use std::path::Path;
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::time::Instant;
 
 use tokio::io;
 
@@ -62,6 +64,8 @@ use anyhow::Result;
 
 use crate::actions;
 use crate::actions::hooks::run;
+use crate::actions::jobs::ClientConnectionTest;
+use crate::actions::jobs::DISCONNECT_DURATION;
 use crate::actions::mouse;
 use crate::actions::window::focus_with_mode;
 use crate::actions::window::goto_other_buffer;
@@ -99,6 +103,7 @@ pub(crate) type Map<K, V> = FxHashMap<K, V>;
 
 pub(crate) struct Editor {
     clients: Map<ClientId, ClientHandle>,
+    client_responses: Map<ClientId, Instant>,
     draw_states: Map<ClientId, DrawState>,
     is_running: bool,
     working_dir: PathBuf,
@@ -147,6 +152,7 @@ impl Editor {
             _tokio_runtime: runtime,
             listen_address: opts.addr.clone(),
             clients: Map::default(),
+            client_responses: Map::default(),
             draw_states: Map::default(),
             syntaxes: Syntaxes::new(),
             languages: Languages::default(),
@@ -186,6 +192,9 @@ impl Editor {
     /// Ran after the startup configuration is complete
     pub fn on_startup(&mut self) {
         self.themes.load_all();
+
+        self.job_broker
+            .request(ClientConnectionTest::new(ClientId::temporary(usize::MAX)));
     }
 
     pub fn buffers(&self) -> &Buffers {
@@ -228,8 +237,30 @@ impl Editor {
 
         self.draw_states.remove(&id);
         self.clients.remove(&id);
+        self.client_responses.remove(&id);
 
         self.is_running = !self.clients.is_empty();
+    }
+
+    pub fn test_client_connections(&mut self) {
+        let mut quit = FxHashSet::default();
+        let now = Instant::now();
+
+        for (id, response) in &self.client_responses {
+            if DISCONNECT_DURATION >= now.duration_since(*response) {
+                quit.insert(*id);
+            }
+        }
+
+        for (id, client) in &mut self.clients {
+            if client.send(ClientMessage::ConnectionTest.into()).is_err() {
+                quit.insert(*id);
+            }
+        }
+
+        for id in quit {
+            self.quit_client(id);
+        }
     }
 
     pub fn is_last_client(&self) -> bool {
@@ -355,6 +386,8 @@ impl Editor {
     }
 
     fn handle_message(&mut self, id: ClientId, msg: Message) {
+        self.client_responses.insert(id, Instant::now());
+
         if let Message::Hello {
             color_count,
             size,

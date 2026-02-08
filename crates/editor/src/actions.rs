@@ -235,7 +235,6 @@ pub(crate) const COMMANDS: &[Action] = &[
     prompt::change_working_dir,
     prompt::grep,
     prompt::command_palette,
-    prompt::buffer_undopoints,
     prompt::show_keymaps,
 
     search::search_forward,

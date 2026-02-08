@@ -95,6 +95,12 @@ where
                     wm.new_window_horizontal();
                 }
             }
+            FromServer(ClientMessage::ConnectionTest) => {
+                if let Err(_e) = writer.write(Message::ConnectionTest) {
+                    log::error!("Client failed to send event to server");
+                    break;
+                }
+            }
             FromServer(msg) => match ui.handle_message(msg) {
                 Ok(UIResult::Exit) => break,
                 Ok(UIResult::Nothing) => {}

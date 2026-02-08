@@ -1,4 +1,5 @@
 // Contains different jobs to run in tokio runtime
+mod conntest;
 mod directory_option_provider;
 mod file_option_provider;
 mod games;
@@ -13,6 +14,7 @@ mod syntax;
 pub(crate) const CHANNEL_SIZE: usize = 64;
 
 pub(crate) use self::grep::*;
+pub(crate) use conntest::*;
 pub(crate) use directory_option_provider::*;
 pub(crate) use file_option_provider::*;
 pub(crate) use games::*;

@@ -30,6 +30,7 @@ pub enum ClientMessage {
     Redraw(Redraw),
     SplitHorizontal,
     SplitVertical,
+    ConnectionTest,
     Flush,
     Bye,
 }
@@ -60,5 +61,6 @@ pub enum Message {
     Resize(Size),
     FocusGained,
     FocusLost,
+    ConnectionTest,
     Bye,
 }

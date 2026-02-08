@@ -18,4 +18,5 @@ pub struct Snapshots {
 pub struct SnapshotPoint {
     pub title: String,
     pub next: Vec<usize>,
+    pub id: usize,
 }

@@ -1,4 +1,4 @@
-use crate::editor::buffers::{BufferId, SavedWindowState};
+use crate::editor::buffers::{SavedWindowState, SnapshotId};
 
 #[derive(Debug, Default)]
 pub(crate) struct SnapshotView {
@@ -6,5 +6,5 @@ pub(crate) struct SnapshotView {
     pub(crate) show: bool,
 
     /// Buffer is changed if snapshot is previewed, this is to restore it
-    pub(crate) original_buffer: Option<(BufferId, SavedWindowState)>,
+    pub(crate) original_buffer: Option<(SnapshotId, SavedWindowState)>,
 }

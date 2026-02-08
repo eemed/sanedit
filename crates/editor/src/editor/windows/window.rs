@@ -576,13 +576,14 @@ impl Window {
         buf.create_undopoint(state);
 
         let sel = self.snapshot_view.selection;
-
-        // buf.snapshots().get(sel)
-        // buf.goto_snapshot(snap);
+        if let Some(selected) = buf.snapshots().iter().nth(sel) {
+            buf.goto_snapshot(selected.id);
+            // self.snapshot_view.original_buffer = 
+            self.invalidate();
+        }
     }
 
-    pub fn close_snapshot_preview(&mut self, buf: &mut Buffer) {
-    }
+    pub fn close_snapshot_preview(&mut self, buf: &mut Buffer) {}
 
     /// Create snapshot additinal data for window
     /// Provide mark to store in aux

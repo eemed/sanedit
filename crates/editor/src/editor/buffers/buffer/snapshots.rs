@@ -132,6 +132,16 @@ impl Snapshots {
 
         None
     }
+
+    pub fn iter<'a>(&'a self) -> SnapshotIter<'a> {
+        let root = if self.snapshots.is_empty() {
+            None
+        } else {
+            Some(0)
+        };
+
+        SnapshotIter::new(&self.snapshots, root)
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -164,8 +174,7 @@ impl SnapshotNode {
 /// Iterate snapshots in the order they should be displayed on the UI
 #[derive(Debug)]
 pub(crate) struct SnapshotIter<'a> {
-    snapshots: &'a [SnapshotNode],
-    stack: Vec<SnapshotId>,
+    stack: Vec<&'a SnapshotNode>,
 }
 
 impl<'a> SnapshotIter<'a> {
@@ -178,102 +187,21 @@ impl<'a> SnapshotIter<'a> {
 
         while let Some(n) = stack.pop() {
             let node = &snapshots[n];
-            postorder.push(n);
-
-            for child in &node.next {
+            for child in node.next.iter().rev() {
                 stack.push(*child);
             }
+
+            postorder.push(&snapshots[n]);
         }
 
-        SnapshotIter { snapshots, stack }
+        SnapshotIter { stack: postorder }
     }
-}
-
-fn dfs2(snapshots: &[SnapshotNode], root: Option<SnapshotId>) {
-    let mut postorder = vec![];
-    let mut stack = vec![];
-    if let Some(root) = root {
-        stack.push(root)
-    }
-
-    while let Some(n) = stack.pop() {
-        let node = &snapshots[n];
-        postorder.push(n);
-
-        for child in &node.next {
-            stack.push(*child);
-        }
-    }
-}
-
-fn dfs(
-    snapshots: &[SnapshotNode],
-    node: usize,
-    lane: usize,
-    used_lanes: &Bitset256,
-    result: &mut Vec<RenderedLine>,
-) -> usize {
-    if lane > u8::MAX as usize {
-        return 0;
-    }
-
-    let mut lanes = used_lanes.clone();
-    lanes.insert(lane as u8);
-
-    let lanes_before = format_lanes_before(lane as u8, used_lanes);
-    let point = &snapshots[node];
-
-    // Leaf
-    if point.next.is_empty() {
-        let symbol = if snapshots.len() == 1 { "- " } else { "* " };
-        let line = RenderedLine {
-            graph: format!("{lanes_before}{symbol}"),
-            title: point.title.clone(),
-        };
-        result.push(line);
-        return 0;
-    }
-
-    let mut next_lanes = String::new();
-    let mut width = 0;
-    let last = point.next.len() - 1;
-    width += dfs(snapshots, point.next[last], lane, &lanes, result);
-
-    for (i, n) in point.next[..last].iter().rev().enumerate() {
-        // current lane + previously drawn lanes widths + next branch
-        let next_free_lane = lane + width + (1 + i);
-        width += dfs(snapshots, *n, next_free_lane, &lanes, result);
-        lanes.insert(next_free_lane as u8);
-
-        if i + 1 == last {
-            next_lanes.push_str("┘ ");
-        } else {
-            next_lanes.push_str("┴─");
-        }
-    }
-
-    let fork = point.next.len() > 1;
-    let first = node == 0;
-    let mylane = match (lane, fork, first) {
-        (0, false, true) => "* ",
-        (0, true, true) => "┴─",
-        (_, true, _) => "*─",
-        (_, false, _) => "* ",
-    };
-
-    let line = RenderedLine {
-        graph: format!("{}{}{}", lanes_before, mylane, next_lanes),
-        title: point.title.clone(),
-    };
-    result.push(line);
-
-    width
 }
 
 impl<'a> Iterator for SnapshotIter<'a> {
     type Item = &'a SnapshotNode;
 
     fn next(&mut self) -> Option<Self::Item> {
-        todo!()
+        self.stack.pop()
     }
 }

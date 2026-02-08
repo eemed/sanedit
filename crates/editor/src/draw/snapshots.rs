@@ -40,7 +40,6 @@ fn draw_impl(ctx: &mut DrawContext) -> redraw::snapshots::Snapshots {
     let now = Instant::now();
     let snaps = ctx.editor.buf.snapshots();
     let points: Vec<SnapshotPoint> = snaps
-        .nodes()
         .iter()
         .map(|node| {
             let since = now.duration_since(node.timestamp);
@@ -48,6 +47,7 @@ fn draw_impl(ctx: &mut DrawContext) -> redraw::snapshots::Snapshots {
             SnapshotPoint {
                 title: ts.to_string(),
                 next: node.next.clone(),
+                id: node.id,
             }
         })
         .collect();
@@ -61,5 +61,3 @@ fn draw_impl(ctx: &mut DrawContext) -> redraw::snapshots::Snapshots {
         points,
     }
 }
-
-

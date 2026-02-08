@@ -42,9 +42,8 @@ impl CustomSnapshots {
         let height = rect.height;
         let sel = self.snapshots.selected;
 
-        let mut visible_n = 0;
         let mut rows = 0;
-        for point in &self.snapshots.points {
+        for (visible_n, point) in self.snapshots.points.iter().enumerate() {
             if point.next.len() > 1 {
                 rows += 2;
             } else {
@@ -54,7 +53,6 @@ impl CustomSnapshots {
             if sel == visible_n {
                 break;
             }
-            visible_n += 1;
         }
 
         let mut min_scroll = 0;
@@ -190,7 +188,7 @@ fn render_snapshots(snapshots: &Snapshots) -> Vec<RenderedLine> {
     // Start iterating from bottom up
     for (i, point) in snapshots.points.iter().rev().enumerate() {
         let selected = snapshots.points.len() - 1 - i == snapshots.selected;
-        let last_saved = snapshots.points.len() - 1 - i == snapshots.last_saved;
+        let last_saved = point.id == snapshots.last_saved_id;
         let title = if last_saved {
             format!("(s) {}", point.title)
         } else {
@@ -219,7 +217,7 @@ fn render_snapshots(snapshots: &Snapshots) -> Vec<RenderedLine> {
 
         let last = point.next.len() - 1;
         stack.push(PointData {
-            lane: lane,
+            lane,
             used_lanes: lanes.clone(),
         });
 

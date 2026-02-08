@@ -10,8 +10,10 @@ pub enum SnapshotsUpdate {
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone, Hash)]
 pub struct Snapshots {
     pub points: Vec<SnapshotPoint>,
+    /// Index into points of the selected item
     pub selected: usize,
-    pub last_saved: usize,
+    /// Last saved snapshots id
+    pub last_saved_id: usize,
     pub in_focus: bool,
 }
 

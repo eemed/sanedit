@@ -247,7 +247,7 @@ impl Editor {
         let now = Instant::now();
 
         for (id, response) in &self.client_responses {
-            if DISCONNECT_DURATION >= now.duration_since(*response) {
+            if DISCONNECT_DURATION <= now.duration_since(*response) {
                 quit.insert(*id);
             }
         }

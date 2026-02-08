@@ -16,10 +16,7 @@ pub struct BinCodec<T> {
     phantom: PhantomData<T>,
 }
 
-impl<T> BinCodec<T>
-// where
-//     for<'de> T: Deserialize<'de> + Serialize,
-{
+impl<T> BinCodec<T> {
     pub fn new() -> BinCodec<T> {
         BinCodec {
             phantom: PhantomData,

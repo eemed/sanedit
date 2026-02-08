@@ -22,11 +22,7 @@ impl Job for ClientConnectionTest {
         let fut = async move {
             let mut ticker = tokio::time::interval(Duration::from_mins(8));
 
-            loop {
-                if ctx.kill.should_stop() {
-                    break;
-                }
-
+            while !ctx.kill.should_stop() {
                 ticker.tick().await;
                 ctx.send(());
             }

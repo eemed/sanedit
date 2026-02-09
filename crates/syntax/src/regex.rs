@@ -120,12 +120,8 @@ impl<'a> RegexToPEG<'a> {
             n: 0,
         };
         let empty = Rule::ByteSequence(vec![]);
-        let info = RuleInfo {
-            rule: empty.clone(),
-            top: true,
-            annotations: vec![],
-            name: "root".into(),
-        };
+        let mut info = RuleInfo::new("root".into(), empty.clone());
+        info.top = true;
         state.rules.push(info);
         state.rules[0].rule = state.convert_rec(0, &empty, 1)?;
         let rules = Rules::new(state.rules.into_boxed_slice());
@@ -287,8 +283,10 @@ impl<'a> RegexToPEG<'a> {
                 // e∗ = e e∗ | ε
                 let pos = self.rules.len();
                 let self_ref = Rule::Ref(pos);
-                let name = format!("{index}-zero-or-more");
-                self.rules.push(RuleInfo::new(&name, Rule::ByteAny));
+                self.rules.push(RuleInfo::new(
+                    format!("{index}-zero-or-more"),
+                    Rule::ByteAny,
+                ));
 
                 let epsilon = cont.clone();
                 let e = self.convert_rec(children[0], &self_ref, depth + 1)?;
@@ -307,8 +305,8 @@ impl<'a> RegexToPEG<'a> {
                 // XXX e+ = e e*
                 let pos = self.rules.len();
                 let self_ref = Rule::Ref(pos);
-                let name = format!("{index}-one-or-more");
-                self.rules.push(RuleInfo::new(&name, Rule::ByteAny));
+                self.rules
+                    .push(RuleInfo::new(format!("{index}-one-or-more"), Rule::ByteAny));
 
                 let right = self.convert_rec(children[0], cont, depth + 1)?;
                 let left = self.convert_rec(children[0], &self_ref, depth + 1)?;
@@ -449,8 +447,8 @@ impl<'a> RegexToPEG<'a> {
                 // Zero or more rest
                 let pos = self.rules.len();
                 let self_ref = Rule::Ref(pos);
-                let name = format!("{index}-counted-rep");
-                self.rules.push(RuleInfo::new(&name, Rule::ByteAny));
+                self.rules
+                    .push(RuleInfo::new(format!("{index}-counted-rep"), Rule::ByteAny));
 
                 let epsilon = cont.clone();
                 let e = self.convert_rec(children[0], &self_ref, depth + 1)?;

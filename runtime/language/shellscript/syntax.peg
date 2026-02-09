@@ -21,23 +21,39 @@ escaped = "\\" .;
 @show @highlight(identifier)
 identifier = var / var2;
 var = "$" ([A..Za..z0..9_]+ ![A..Za..z0..9_] / "#" / "@");
-var2 = "${" (!"}" .)* "}";
+var2 = "${" (escaped / slash / [^}])* "}";
+@show @highlight(operator)
+slash = "/";
 
 @show @highlight
 operator = [\[\]{}()\\;:,<>&$|=+*?!<>];
 
 here_doc = here_doc_op space* here_content;
-
 @show @highlight(string)
-here_content = here_tag here_extra (!here_stop .)* here_stop;
+here_content = here_tag  hdoc here_stop / here_tag2 hdoc2 here_stop2 / here_tag3 hdoc3 here_stop3;
+hdoc = here_extra (!here_stop (escaped / identifier / .))*;
 @show @highlight(default)
 here_extra = (!nl (operator / .))*;
 @show @highlight(operator)
 here_doc_op = "<<" "-"?;
 @show @highlight(preproc)
-here_tag = string / (!ws .)+;
+here_tag = (!ws .)+;
 @show @highlight(preproc)
 here_stop = nl @backref(here_tag) nl;
+
+@show @highlight(preproc)
+here_tag2 = "'" here_tag2_in "'";
+here_tag2_in = [^'\n]+;
+@show @highlight(preproc)
+here_stop2 = nl @backref(here_tag2_in) nl;
+hdoc2 = here_extra (!here_stop2 (escaped / identifier / .))*;
+
+@show @highlight(preproc)
+here_tag3 = "\"" here_tag3_in "\"";
+here_tag3_in = (escaped / [^"\n])+;
+@show @highlight(preproc)
+here_stop3 = nl @backref(here_tag3_in) nl;
+hdoc3 = here_extra (!here_stop3 (escaped / identifier / .))*;
 
 @show @highlight
 keyword =  (

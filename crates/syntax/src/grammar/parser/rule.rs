@@ -89,20 +89,26 @@ pub(crate) struct RuleInfo {
     pub(crate) annotations: Vec<Annotation>,
     pub(crate) name: String,
     pub(crate) rule: Rule,
+    pub(crate) is_backreferenced: bool,
 }
 
 impl RuleInfo {
     /// Common way to create a rule
-    pub fn new(name: &str, rule: Rule) -> RuleInfo {
+    pub fn new(name: String, rule: Rule) -> RuleInfo {
         RuleInfo {
             top: false,
             annotations: vec![],
-            name: name.into(),
+            name,
             rule,
+            is_backreferenced: false,
         }
     }
 
     pub fn show(&self) -> bool {
+        if self.is_backreferenced {
+            return true;
+        }
+
         self.annotations.iter().any(|ann| {
             matches!(
                 ann,

@@ -194,12 +194,10 @@ impl GitGlob {
                     let wildcard = Rule::Ref(wildcard_i);
                     seq.push(wildcard.clone());
 
-                    let prev = RuleInfo {
-                        top: false,
-                        annotations: vec![],
-                        name: format!("rule-{prev_i}"),
-                        rule: Rule::Sequence(std::mem::take(&mut seq)),
-                    };
+                    let prev = RuleInfo::new(
+                        format!("rule-{prev_i}"),
+                        Rule::Sequence(std::mem::take(&mut seq)),
+                    );
                     rules.push(prev);
 
                     // prev = ... Ref(wildcard)
@@ -217,12 +215,7 @@ impl GitGlob {
                         ]),
                     ]);
 
-                    let wcard = RuleInfo {
-                        top: false,
-                        annotations: vec![],
-                        name: format!("wildcard-{wildcard_i}"),
-                        rule,
-                    };
+                    let wcard = RuleInfo::new(format!("wildcard-{wildcard_i}"), rule);
                     rules.push(wcard);
                 }
                 "recursive_wildcard" => {
@@ -233,12 +226,10 @@ impl GitGlob {
                     let wildcard = Rule::Ref(wildcard_i);
                     seq.push(wildcard.clone());
 
-                    let prev = RuleInfo {
-                        top: false,
-                        annotations: vec![],
-                        name: format!("rule-{prev_i}"),
-                        rule: Rule::Sequence(std::mem::take(&mut seq)),
-                    };
+                    let prev = RuleInfo::new(
+                        format!("rule-{prev_i}"),
+                        Rule::Sequence(std::mem::take(&mut seq)),
+                    );
                     rules.push(prev);
 
                     // prev = ... Ref(wildcard)
@@ -260,12 +251,7 @@ impl GitGlob {
                         ]),
                     ]);
 
-                    let wcard = RuleInfo {
-                        top: false,
-                        annotations: vec![],
-                        name: format!("wildcard-{wildcard_i}"),
-                        rule,
-                    };
+                    let wcard = RuleInfo::new(format!("wildcard-{wildcard_i}"), rule);
                     rules.push(wcard);
                 }
                 "any" => {
@@ -299,12 +285,7 @@ impl GitGlob {
         seq.push(Rule::Optional(Rule::ByteSequence("/".into()).into()));
         seq.push(Rule::NotFollowedBy(Rule::ByteAny.into()));
 
-        let info = RuleInfo {
-            top: false,
-            annotations: vec![],
-            name: "final".into(),
-            rule: Rule::Sequence(seq),
-        };
+        let info = RuleInfo::new("final".into(), Rule::Sequence(seq));
         rules.push(info);
 
         if !separator_at_beginning_or_middle {
@@ -327,12 +308,7 @@ impl GitGlob {
                     ]),
                 ]),
             ]);
-            let info = RuleInfo {
-                top: false,
-                annotations: vec![],
-                name: "final".into(),
-                rule,
-            };
+            let info = RuleInfo::new("final".into(), rule);
             rules.push(info);
             rules[rule_i].top = true;
         } else {

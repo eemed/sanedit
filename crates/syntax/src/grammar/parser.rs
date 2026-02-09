@@ -101,12 +101,7 @@ impl<R: io::Read> GrammarParser<R> {
             }
 
             const WS_NAME: &str = "WS*";
-            self.rules.push(RuleInfo {
-                name: WS_NAME.into(),
-                rule: ws_zom,
-                annotations: vec![],
-                top: false,
-            });
+            self.rules.push(RuleInfo::new(WS_NAME.into(), ws_zom));
             self.seen.insert(WS_NAME.into());
         }
 
@@ -158,6 +153,7 @@ impl<R: io::Read> GrammarParser<R> {
             name,
             annotations,
             rule: def,
+            is_backreferenced: false,
         };
         Ok(rule)
     }
@@ -239,7 +235,10 @@ impl<R: io::Read> GrammarParser<R> {
                 self.consume(Token::RParen)?;
                 match name.as_str() {
                     "backref" => match self.indices.get(&in_parens) {
-                        Some(i) => Rule::Backreference(*i),
+                        Some(i) => {
+                            self.rules[*i].is_backreferenced = true;
+                            Rule::Backreference(*i)
+                        }
                         None => {
                             let i = self.rules.len();
                             let rrule = RuleInfo {
@@ -247,6 +246,7 @@ impl<R: io::Read> GrammarParser<R> {
                                 rule: Rule::Ref(0),
                                 annotations: vec![],
                                 top: false,
+                                is_backreferenced: true,
                             };
                             self.indices.insert(in_parens, i);
                             self.rules.push(rrule);
@@ -295,12 +295,7 @@ impl<R: io::Read> GrammarParser<R> {
                     Some(i) => Rule::Ref(*i),
                     None => {
                         let i = self.rules.len();
-                        let rrule = RuleInfo {
-                            name: ref_rule.clone(),
-                            rule: Rule::Ref(0),
-                            annotations: vec![],
-                            top: false,
-                        };
+                        let rrule = RuleInfo::new(ref_rule.clone(), Rule::Ref(0));
                         self.indices.insert(ref_rule, i);
                         self.rules.push(rrule);
                         Rule::Ref(i)

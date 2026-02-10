@@ -343,6 +343,7 @@ mod test {
     use super::*;
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn glob_rust() {
         let glob = GitGlob::new("**/*.rs").unwrap();
         assert_eq!(glob.is_match(b".hidden"), false);
@@ -351,6 +352,7 @@ mod test {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn glob_directory() {
         let glob = GitGlob::new("**/node_modules").unwrap();
         assert_eq!(glob.is_match(b"/root/user/node_modules"), true);
@@ -359,6 +361,7 @@ mod test {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn glob_zero_dirs() {
         let glob = GitGlob::new("a/**/b").unwrap();
         assert_eq!(glob.is_match(b"a/b"), true);
@@ -367,6 +370,7 @@ mod test {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn glob_wildcard() {
         let glob = GitGlob::new("*aw*").unwrap();
         assert_eq!(glob.is_match(b"lawyer"), true);
@@ -377,6 +381,7 @@ mod test {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn glob_hidden() {
         let glob = GitGlob::new(".*").unwrap();
         assert_eq!(glob.is_match(b".hidden"), true);
@@ -385,6 +390,7 @@ mod test {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn glob_question() {
         let glob = GitGlob::new("?at").unwrap();
         assert_eq!(glob.is_match(b"Cat"), true);
@@ -393,6 +399,7 @@ mod test {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn glob_question_no_separator() {
         let glob = GitGlob::new("foo?ar").unwrap();
         assert_eq!(glob.is_match(b"foobar"), true);
@@ -401,6 +408,7 @@ mod test {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn glob_alt_1() {
         let glob = GitGlob::new("[CB]at").unwrap();
         assert_eq!(glob.is_match(b"Cat"), true);
@@ -410,6 +418,7 @@ mod test {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn glob_alt_range() {
         let glob = GitGlob::new("Letter[0-9]").unwrap();
         assert_eq!(glob.is_match(b"Letter8"), true);
@@ -419,6 +428,7 @@ mod test {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn glob_negate() {
         let glob = GitGlob::new("!Letter[0-9]").unwrap();
         assert_eq!(glob.is_match(b"Letter8"), true);
@@ -429,6 +439,7 @@ mod test {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn glob_dir_level() {
         let glob = GitGlob::new("deb/").unwrap();
         assert_eq!(glob.is_match(b"deb"), true);
@@ -440,6 +451,7 @@ mod test {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn glob_star_end() {
         let glob = GitGlob::new("perf.data*").unwrap();
         assert_eq!(glob.is_match(b"perf.data"), true);
@@ -450,6 +462,7 @@ mod test {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn glob_recstar_end() {
         let glob = GitGlob::new("perf/**").unwrap();
         assert_eq!(glob.is_match(b"perf/bar"), true);
@@ -460,6 +473,7 @@ mod test {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn glob_direct_match() {
         let glob = GitGlob::new("runtime/config.toml").unwrap();
         assert_eq!(glob.is_match(b"runtime/config.toml"), true);
@@ -467,6 +481,7 @@ mod test {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn leading_slash() {
         let glob = GitGlob::new("/config.toml").unwrap();
         assert_eq!(glob.is_match(b"/config.toml"), true);

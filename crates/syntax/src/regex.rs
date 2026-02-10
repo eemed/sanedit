@@ -707,6 +707,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn regex_literal() {
         let regex = Regex::new("abc").unwrap();
         assert!(regex.is_match(b"abc"));
@@ -715,6 +716,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn regex_zero_or_more() {
         let regex = Regex::new("ba*").unwrap();
         assert!(!regex.is_match(b""));
@@ -725,6 +727,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn regex_escaped() {
         let regex = Regex::new("abc\\.").unwrap();
         assert!(!regex.is_match(b"abdc"));
@@ -732,6 +735,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn regex_alt() {
         let regex = Regex::new("ab|abc").unwrap();
         assert!(regex.is_match(b"ab"));
@@ -740,6 +744,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn regex_one_or_more() {
         let regex = Regex::new("(a|ab)+c").unwrap();
         assert!(regex.is_match(b"ac"));
@@ -751,6 +756,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn regex_optional() {
         let regex = Regex::new("ab?").unwrap();
         assert!(regex.is_match(b"a"));
@@ -759,6 +765,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn regex_group() {
         let regex = Regex::new("(a|ab)*c").unwrap();
         assert!(regex.is_match(b"c"));
@@ -774,6 +781,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn regex_capture() {
         let regex = Regex::new("(ab|bd)c").unwrap();
         assert!(regex.is_match(b"abc"));
@@ -784,6 +792,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn regex_any() {
         let regex = Regex::new(".*").unwrap();
         assert!(regex.is_match(b"a"));
@@ -792,6 +801,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn regex_class() {
         let regex = Regex::new("[a-z0-9C]+").unwrap();
         assert!(regex.is_match(b"AAAAAzooom"));
@@ -805,6 +815,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn regex_class_neg() {
         let regex = Regex::new(r"[^\x41-\x43\x50]+").unwrap();
         assert!(regex.is_match(b"perkele"));
@@ -820,6 +831,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn regex_digit() {
         let regex = Regex::new(r"\d+").unwrap();
         assert!(!regex.is_match(b"perkele"));
@@ -832,6 +844,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn regex_ndigit() {
         let regex = Regex::new(r"\D+").unwrap();
         assert!(regex.is_match(b"perkele"));
@@ -844,6 +857,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn regex_word() {
         let regex = Regex::new(r"\w+").unwrap();
         is_total_match(&regex, b"aaaaa");
@@ -854,6 +868,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn regex_nword() {
         let regex = Regex::new(r"\W+").unwrap();
         assert!(!regex.is_match(b"hello_world"));
@@ -865,6 +880,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn regex_space() {
         let regex = Regex::new(r"\s+").unwrap();
         is_total_match(&regex, b"   ");
@@ -876,6 +892,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn regex_nspace() {
         let regex = Regex::new(r"\S+").unwrap();
         assert!(!regex.is_match(b"   "));
@@ -886,6 +903,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn regex_nspace_group() {
         let regex = Regex::new(r"[\S ]+").unwrap();
         is_total_match(&regex, b"what the fuck");
@@ -893,6 +911,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn regex_counted_rep() {
         let regex = Regex::new(r"\d{3}.\d{3}").unwrap();
         assert!(regex.is_match(b"222.222"));
@@ -905,6 +924,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn regex_counted_rep_inf() {
         let regex = Regex::new(r"\d{3,}").unwrap();
         assert!(regex.is_match(b"222"));
@@ -918,6 +938,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn regex_counted_rep_capped() {
         let regex = Regex::new(r"\d{3,5}").unwrap();
         assert!(regex.is_match(b"222"));
@@ -935,6 +956,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn regex_hex() {
         let regex = Regex::new(r"\x41").unwrap();
         assert!(regex.is_match(b"A"));
@@ -945,6 +967,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn regex_lazy_optional() {
         let regex = Regex::new(r"a??ab").unwrap();
         assert!(regex.is_match(b"ab"));
@@ -957,6 +980,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn regex_lazy_zero_or_more() {
         let regex = Regex::new(r"ab*?c").unwrap();
         assert!(regex.is_match(b"ac"));
@@ -972,6 +996,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn regex_lazy_one_or_more() {
         let regex = Regex::new(r"ab+?").unwrap();
         assert!(regex.is_match(b"ab"));
@@ -983,6 +1008,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn regex_lazy_counted_rep_capped() {
         let regex = Regex::new(r"\d{3,5}?").unwrap();
         assert!(regex.is_match(b"222"));
@@ -998,6 +1024,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn regex_lazy_counted_rep_inf() {
         let regex = Regex::new(r"\d{3,}?").unwrap();
         assert!(regex.is_match(b"222"));
@@ -1017,6 +1044,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn regex_utf8_range() {
         let regex = Regex::new(r"[Ά-Ϋ]+").unwrap();
         assert!(regex.is_match(&"ΨΕΖ".as_bytes()));

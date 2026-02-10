@@ -17,10 +17,10 @@ pub struct JobContext {
 impl JobContext {
     pub fn send<A: Any + Send>(&mut self, any: A) {
         let any = Box::new(any);
-        self.sender
+        let _ = self
+            .sender
             .editor
-            .send(ToEditor::Jobs(FromJobs::Message(self.id, any)))
-            .expect("Main loop shut down");
+            .send(ToEditor::Jobs(FromJobs::Message(self.id, any)));
     }
 }
 

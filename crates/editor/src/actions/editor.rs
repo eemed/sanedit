@@ -8,6 +8,7 @@ use crate::{
         Editor,
     },
 };
+use sanedit_core::Language;
 use sanedit_server::ClientId;
 
 use super::{
@@ -149,8 +150,8 @@ fn toggle_ignore(editor: &mut Editor, id: ClientId) -> ActionResult {
     ActionResult::Ok
 }
 
-#[action("Editor: Load language")]
-fn load_language(editor: &mut Editor, id: ClientId) -> ActionResult {
+#[action("Editor: Detect language")]
+fn detect_language(editor: &mut Editor, id: ClientId) -> ActionResult {
     let bid = editor
         .hooks
         .running_hook()
@@ -159,8 +160,22 @@ fn load_language(editor: &mut Editor, id: ClientId) -> ActionResult {
             let (win, _) = editor.win_buf(id);
             win.buffer_id()
         });
-    let buf = editor.buffers().get(bid).unwrap();
-    let lang = getf!(buf.language.clone());
+
+    let buf = getf!(editor.buffers().get(bid));
+    let path = getf!(buf.path());
+    let lang = getf!(Language::determine(
+        path,
+        &editor.config.editor.language_detect
+    ));
     editor.load_language(&lang, false);
+    let buf = getf!(editor.buffers_mut().get_mut(bid));
+    buf.language = Some(lang);
+
+    for id in editor.windows.find_clients_with_buf(bid) {
+        if let Some(win) = editor.windows.get_mut(id) {
+            win.invalidate();
+        }
+    }
+
     ActionResult::Ok
 }

@@ -151,9 +151,18 @@ fn save_as(editor: &mut Editor, id: ClientId) -> ActionResult {
         .prompt("Save as")
         .simple()
         .on_confirm(|editor, id, out| {
-            let path = getf!(out.path());
+            let mut path = getf!(out.path());
             let (_win, buf) = editor.win_buf_mut(id);
             let bid = buf.id;
+            if path.is_relative() {
+                path = editor.working_dir().join(path);
+            }
+
+            if path.exists() {
+                let (win, _buf) = editor.win_buf_mut(id);
+                win.error_msg(&format!("File already exists: {path:?}"));
+                return ActionResult::Failed;
+            }
 
             // Leave the current buffer
             run(editor, id, Hook::BufLeave(bid));
@@ -162,11 +171,6 @@ fn save_as(editor: &mut Editor, id: ClientId) -> ActionResult {
             // Set path
             let (_win, buf) = editor.win_buf_mut(id);
             buf.set_path(&path);
-
-            // Detect language and set it
-            let lang = Language::determine(&path, &editor.config.editor.language_detect);
-            let (_win, buf) = editor.win_buf_mut(id);
-            buf.language = lang;
 
             // Rejoin buffer
             run(editor, id, Hook::BufCreated(bid));

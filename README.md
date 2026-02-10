@@ -14,7 +14,7 @@ SanEdit is a UTF-8 text editor inspired by [Neovim](https://neovim.io/), [Emacs]
 * Comment block
 * Search text
 * File picker
-* Undo, redo
+* Undotree
 * Align cursors
 * Automatic indentation
 * Automatic pair insertion on enter

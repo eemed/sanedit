@@ -313,6 +313,7 @@ impl Buffer {
     pub fn set_path<P: AsRef<Path>>(&mut self, path: P) {
         self.path = Some(path.as_ref().to_owned());
         self.is_modified = true;
+        self.last_saved_modified = None;
     }
 
     pub fn path(&self) -> Option<&Path> {

@@ -18,7 +18,7 @@ impl ClientConnectionTest {
 }
 
 impl Job for ClientConnectionTest {
-    fn run(&self, mut ctx: sanedit_server::JobContext) -> sanedit_server::JobResult {
+    fn run(&self, ctx: sanedit_server::JobContext) -> sanedit_server::JobResult {
         let fut = async move {
             let mut ticker = tokio::time::interval(Duration::from_mins(8));
 

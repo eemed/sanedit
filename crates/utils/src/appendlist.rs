@@ -339,13 +339,17 @@ mod test {
     use super::*;
 
     #[test]
-    fn appendlist_push_read() {
+    fn push() {
         let (read, write) = Appendlist::split();
 
         write.append_slice(&[1, 2]);
         write.append_vec(vec![3, 4]);
+        write.append_slice(&[5, 6]);
 
         let items = read.slice(0..4);
-        assert_eq!(items, &[1, 2, 3, 4])
+        assert_eq!(items, &[1, 2, 3, 4]);
+
+        let items = read.slice(4..6);
+        assert_eq!(items, &[5, 6])
     }
 }

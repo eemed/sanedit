@@ -38,7 +38,7 @@ impl Save {
 }
 
 impl Job for Save {
-    fn run(&self, mut ctx: JobContext) -> JobResult {
+    fn run(&self, ctx: JobContext) -> JobResult {
         let buf = self.buf.clone();
 
         let fut = async move {

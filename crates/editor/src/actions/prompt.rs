@@ -256,6 +256,9 @@ pub(crate) fn prompt_remove_grapheme_before_cursor(
     id: ClientId,
 ) -> ActionResult {
     let (win, _buf) = editor.win_buf_mut(id);
+    if win.prompt.input().is_empty() {
+        return ActionResult::Skipped;
+    }
     win.prompt.remove_grapheme_before_cursor();
 
     if let Some(on_input) = win.prompt.on_input() {

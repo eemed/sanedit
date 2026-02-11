@@ -30,10 +30,10 @@ pub fn get_option_provider_pool() -> &'static ThreadPool {
     static POOL: OnceLock<ThreadPool> = OnceLock::new();
     POOL.get_or_init(|| {
         let parallelism = std::thread::available_parallelism()
-            .map(|n| n.get())
-            .unwrap_or(2);
+            .map(|n| (n.get() as f64 * 0.7) as usize)
+            .unwrap_or(1);
 
-        let threads = parallelism.clamp(2, 8);
+        let threads = parallelism.clamp(1, 8);
 
         log::debug!("Option provider pool: {threads} threads.");
 

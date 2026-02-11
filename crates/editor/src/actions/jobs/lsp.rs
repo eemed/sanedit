@@ -66,7 +66,7 @@ impl LSPJob {
 }
 
 impl Job for LSPJob {
-    fn run(&self, mut ctx: JobContext) -> JobResult {
+    fn run(&self, ctx: JobContext) -> JobResult {
         // Clones here
         let wd = self.working_dir.clone();
         let lang = self.language.clone();

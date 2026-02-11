@@ -1,4 +1,4 @@
-document = (code_fence / inline / hr / other / keepany)*;
+document = (code_fence / link_or_code / inline / hr / other / keepany)*;
 
 @show @highlight(keep)
 keepany = .;
@@ -24,11 +24,11 @@ bold_und_cont = (!(bold_und / nl) (inline / .))*;
 italic = italic_star italic_star_cont italic_star / italic_und italic_und_cont italic_und;
 italic_star = "*";
 @show @highlight(italic)
-italic_star_cont = (!(italic_star / nl / WHITESPACE) (inline / .))*;
+italic_star_cont = (!(italic_star / nl) (inline / .))*;
 
 italic_und = "_";
 @show @highlight(italic)
-italic_und_cont = (!(italic_und / nl / WHITESPACE) (inline / .))*;
+italic_und_cont = (!(italic_und / nl) (inline / .))*;
 
 backtick = backtick_op backtick_cont backtick_op / dbacktick_op dbacktick_cont dbacktick_op;
 backtick_op = "`";
@@ -47,17 +47,17 @@ highlight_cont = (!"==" .)*;
 subscript = subscript_tilde subscript_content subscript_tilde;
 subscript_tilde = "~";
 @show @highlight(italic)
-subscript_content = (!(subscript_tilde / nl / WHITESPACE) (inline / .))*;
+subscript_content = (!(subscript_tilde / nl) (inline / .))*;
 
 superscript = superscript_tilde superscript_content superscript_tilde;
 superscript_tilde = "^";
 @show @highlight(italic)
-superscript_content = (!(superscript_tilde / nl / WHITESPACE) (inline / .))*;
+superscript_content = (!(superscript_tilde / nl) (inline / .))*;
 
 strikethrough = strikethrough_tilde strikethrough_content strikethrough_tilde;
 strikethrough_tilde = "~~";
 @show @highlight(italic)
-strikethrough_content = (!(strikethrough_tilde / nl / WHITESPACE) (inline / .))*;
+strikethrough_content = (!(strikethrough_tilde / nl) (inline / .))*;
 
 code_fence = start_fence fence_cont end_fence;
 start_fence = "```" [a..zA..Z0..9_:-]+ nl;
@@ -65,5 +65,19 @@ end_fence = "```";
 
 @show @highlight(keep)
 fence_cont = (!end_fence .)*;
+
+link_or_code = ("[`" code_name "`]" / "[" link_name "]" ) (code_start "`" code "`" code_end / link )?;
+@show @highlight(keep)
+link_name = (!"]" .)*;
+@show @highlight(keep)
+code_name = (!"`" .)*;
+@show @highlight(keep)
+link = "(" (!")" .)* ")";
+@show @highlight(keep)
+code = (!"`" .)*;
+@show @highlight(keep)
+code_start = "(";
+@show @highlight(keep)
+code_end = ")";
 
 hr = ("---" "-"* / "***" "*"* / "___" "_"*) nl;

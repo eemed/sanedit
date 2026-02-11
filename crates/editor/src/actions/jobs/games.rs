@@ -19,7 +19,7 @@ impl GameTick {
 }
 
 impl Job for GameTick {
-    fn run(&self, mut ctx: sanedit_server::JobContext) -> sanedit_server::JobResult {
+    fn run(&self, ctx: sanedit_server::JobContext) -> sanedit_server::JobResult {
         let (send, mut recv) = channel::<u64>();
 
         let fut = async move {

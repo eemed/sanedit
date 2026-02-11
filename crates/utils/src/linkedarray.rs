@@ -144,6 +144,14 @@ impl<T, const N: usize> Default for LinkedArray<T, N> {
     }
 }
 
+impl<T, const N: usize> Drop for LinkedArray<T, N> {
+    fn drop(&mut self) {
+        while let Some(t) = self.pop_last() {
+            drop(t);
+        }
+    }
+}
+
 #[derive(Debug)]
 struct Entry<T> {
     val: MaybeUninit<T>,
@@ -197,6 +205,7 @@ mod test {
         let mut iter = list.iter();
         assert_eq!(iter.next(), Some((1, &1)));
         assert_eq!(iter.next(), Some((0, &0)));
+        assert_eq!(iter.next(), None);
     }
 
     #[test]
@@ -220,5 +229,6 @@ mod test {
         let mut iter = list.iter();
         assert_eq!(iter.next(), Some((0, &0)));
         assert_eq!(iter.next(), Some((1, &1)));
+        assert_eq!(iter.next(), None);
     }
 }

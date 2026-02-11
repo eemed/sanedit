@@ -15,7 +15,7 @@ pub struct JobContext {
 }
 
 impl JobContext {
-    pub fn send<A: Any + Send>(&mut self, any: A) {
+    pub fn send<A: Any + Send>(&self, any: A) {
         let any = Box::new(any);
         let _ = self
             .sender

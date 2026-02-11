@@ -10,12 +10,12 @@ title = "#"+ (!nl .)*;
 @show @highlight(operator)
 list_op = nl ws* ("*" / "-" / "+")+ ws;
 
-link = "[" link_name "](" link_url ")";
+link = "[" link_name "]" ("(" link_url ")")?;
 @show @highlight(keyword)
-link_name = (!"]" .)*;
+link_name = (!"]" (backtick / .))*;
 
 @show @highlight(constant)
-link_url = (!")" .)*;
+link_url = (!")" (backtick / .))*;
 
 code_fence = fence code_name nl code fence;
 

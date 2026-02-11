@@ -137,7 +137,7 @@ impl Grep {
         let _ = worker.await;
     }
 
-    async fn send_results(mut recv: Receiver<GrepResult>, mut ctx: JobContext) {
+    async fn send_results(mut recv: Receiver<GrepResult>, ctx: JobContext) {
         const FPS: Duration = Duration::from_millis(1000 / 5);
         let mut last_sent = Instant::now();
         let mut results = vec![];

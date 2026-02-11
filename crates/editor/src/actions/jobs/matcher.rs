@@ -12,7 +12,11 @@ use std::{
 
 pub(crate) use option_provider::{Empty, OptionProvider};
 use sanedit_utils::{appendlist::Appendlist, sorted_vec::SortedVec};
-use tokio::sync::mpsc::{channel, Sender};
+use tokio::sync::{
+    mpsc::{channel, Sender},
+    Mutex,
+};
+use tokio_util::sync::CancellationToken;
 
 use crate::{
     actions::jobs::CHANNEL_SIZE,
@@ -22,7 +26,7 @@ use crate::{
 
 use sanedit_server::{ClientId, Job, JobContext, JobResult};
 
-use std::{cmp::min, sync::atomic::AtomicBool};
+use std::cmp::min;
 
 use sanedit_core::Range;
 
@@ -133,10 +137,10 @@ impl MatcherJob {
 }
 
 impl Job for MatcherJob {
-    fn run(&self, mut ctx: JobContext) -> JobResult {
+    fn run(&self, ctx: JobContext) -> JobResult {
         let strat = self.strat;
         let opts = self.opts.clone();
-        let mut patt = self.pattern.clone();
+        let starting_pattern = self.pattern.clone();
 
         let fut = async move {
             // Term channel
@@ -146,17 +150,38 @@ impl Job for MatcherJob {
             ctx.send(MatcherMessage::Init(psend));
 
             let kill = ctx.kill.clone();
-            let mut matcher = Matcher::new(list.clone(), strat, ctx);
+            let matcher = Arc::new(Matcher::new(list.clone(), strat, ctx));
             let write_done = matcher.write_done();
-            let do_matching = async {
-                matcher.do_match(&patt, 0);
+            let do_matching = async move {
+                let token = CancellationToken::new();
+                let ctoken = token.clone();
+                let mmatch = matcher.clone();
+                let handle = tokio::spawn(async move {
+                    let _ = tokio::task::spawn_blocking(move || {
+                        mmatch.do_match(&starting_pattern, 0, ctoken)
+                    })
+                    .await;
+                });
+                let task = Arc::new(Mutex::new(Some((token, handle))));
 
-                while let Some((t, n)) = precv.recv().await {
-                    if patt == t {
-                        continue;
+                while let Some((pattern, input_id)) = precv.recv().await {
+                    let mut guard = task.lock().await;
+                    if let Some((token, handle)) = guard.take() {
+                        token.cancel();
+                        let _ = handle.await;
                     }
-                    patt = t;
-                    matcher.do_match(&patt, n);
+
+                    let token = CancellationToken::new();
+                    let ctoken = token.clone();
+                    let mmatch = matcher.clone();
+                    let handle = tokio::spawn(async move {
+                        let _ = tokio::task::spawn_blocking(move || {
+                            mmatch.do_match(&pattern, input_id, ctoken)
+                        })
+                        .await;
+                    });
+
+                    *guard = Some((token, handle));
                 }
             };
 
@@ -183,10 +208,10 @@ impl KeepInTouch for MatcherJob {
 }
 
 /// Matches options to a pattern
+#[derive(Clone)]
 pub struct Matcher {
     reader: Appendlist<Arc<Choice>>,
     write_done: Arc<AtomicUsize>,
-    prev_search: Arc<AtomicBool>,
     strategy: MatchStrategy,
     job_context: JobContext,
 }
@@ -201,13 +226,11 @@ impl Matcher {
         job_context: JobContext,
     ) -> Matcher {
         let write_done = Arc::new(AtomicUsize::new(usize::MAX));
-        let prev_search = Arc::new(AtomicBool::new(false));
 
         Matcher {
             reader,
             write_done,
             strategy,
-            prev_search,
             job_context,
         }
     }
@@ -219,14 +242,10 @@ impl Matcher {
     /// Match the candidates with the pattern. Returns a receiver where the results
     /// can be read from in chunks.
     /// Dropping the receiver stops the matching process.
-    pub fn do_match(&mut self, pattern: &str, id: u64) {
-        // Cancel possible previous search
-        self.prev_search.store(true, Ordering::Release);
-        self.prev_search = Arc::new(AtomicBool::new(false));
-
+    pub fn do_match(&self, pattern: &str, id: u64, cancel: CancellationToken) {
         let reader = self.reader.clone();
-        let write_done = self.write_done.clone();
-        let mut sender = self.job_context.clone();
+        let write_done = &self.write_done;
+        let sender = &self.job_context;
         let case_sensitive = pattern.chars().any(|ch| ch.is_uppercase());
         let strat = self.strategy;
 
@@ -242,77 +261,64 @@ impl Matcher {
             }
         };
         let matcher = strat.get_match_func(&patterns, case_sensitive);
-        let local_stop = self.prev_search.clone();
 
-        rayon::spawn(move || {
-            const INITIAL_BACKOFF: u64 = 1;
-            let mut backoff = INITIAL_BACKOFF;
-            let mut taken = 0;
-            let send_rate = Duration::from_millis(1000 / 30);
-            let mut last_sent = Instant::now();
-            let mut first_sent = true;
-            let mut locally_sorted = vec![];
+        const INITIAL_BACKOFF: u64 = 1;
+        let mut backoff = INITIAL_BACKOFF;
+        let mut taken = 0;
+        let send_rate = Duration::from_millis(1000 / 30);
+        let mut last_sent = Instant::now();
+        let mut first_sent = true;
+        let mut locally_sorted = vec![];
 
-            loop {
-                if local_stop.load(Ordering::Acquire) {
-                    break;
-                }
+        while !self.job_context.kill.should_stop() && !cancel.is_cancelled() {
+            let total = write_done.load(Ordering::Acquire);
+            let available = reader.len();
+            let fully_read = available == total;
 
-                let total = write_done.load(Ordering::Acquire);
-                let available = reader.len();
-                let fully_read = available == total;
+            // If we are done reading all available options
+            if fully_read && available == taken {
+                sender.send(MatcherMessage::Done {
+                    input_id: id,
+                    clear_old: first_sent,
+                    results: std::mem::take(&mut locally_sorted),
+                });
+                break;
+            }
 
-                // If we are done reading all available options
-                if fully_read && available == taken {
-                    if local_stop.load(Ordering::Acquire) {
-                        break;
-                    }
-                    sender.send(MatcherMessage::Done {
+            if available >= taken + Self::BATCH_SIZE || fully_read {
+                backoff = INITIAL_BACKOFF;
+                let size = min(available - taken, Self::BATCH_SIZE);
+                let batch = taken..taken + size;
+                taken += size;
+
+                let opts = reader.slice(batch);
+                let mut results: Vec<ScoredChoice> = opts
+                    .iter()
+                    .filter_map(|choice| {
+                        let ranges = matches_with(choice.filter_text(), &matcher)?;
+                        let score = score(choice, &ranges);
+                        let scored = ScoredChoice::new(choice.clone(), score, ranges);
+                        Some(scored)
+                    })
+                    .collect();
+
+                results.sort();
+                locally_sorted.push(unsafe { SortedVec::from_sorted_unchecked(results) });
+
+                if last_sent.elapsed() > send_rate {
+                    sender.send(MatcherMessage::Progress {
                         input_id: id,
                         clear_old: first_sent,
                         results: std::mem::take(&mut locally_sorted),
                     });
-                    break;
+                    last_sent = Instant::now();
+                    first_sent = false;
                 }
-
-                if available >= taken + Self::BATCH_SIZE || fully_read {
-                    backoff = INITIAL_BACKOFF;
-                    let size = min(available - taken, Self::BATCH_SIZE);
-                    let batch = taken..taken + size;
-                    taken += size;
-
-                    let opts = reader.slice(batch);
-                    let mut results: Vec<ScoredChoice> = opts
-                        .iter()
-                        .filter_map(|choice| {
-                            let ranges = matches_with(choice.filter_text(), &matcher)?;
-                            let score = score(choice, &ranges);
-                            let scored = ScoredChoice::new(choice.clone(), score, ranges);
-                            Some(scored)
-                        })
-                        .collect();
-
-                    results.sort();
-                    locally_sorted.push(unsafe { SortedVec::from_sorted_unchecked(results) });
-
-                    if last_sent.elapsed() > send_rate {
-                        if local_stop.load(Ordering::Acquire) {
-                            break;
-                        }
-                        sender.send(MatcherMessage::Progress {
-                            input_id: id,
-                            clear_old: first_sent,
-                            results: std::mem::take(&mut locally_sorted),
-                        });
-                        last_sent = Instant::now();
-                        first_sent = false;
-                    }
-                } else {
-                    thread::sleep(Duration::from_micros(backoff));
-                    backoff = (backoff * 2).min(100);
-                }
+            } else {
+                thread::sleep(Duration::from_micros(backoff));
+                backoff = (backoff * 2).min(100);
             }
-        });
+        }
     }
 }
 

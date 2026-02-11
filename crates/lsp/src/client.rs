@@ -227,7 +227,7 @@ impl LSPClient {
                 }
             }
             _ => {
-                log::info!("<- {}", notif.method.as_str());
+                // log::info!("<- {}", notif.method.as_str());
             }
         }
 

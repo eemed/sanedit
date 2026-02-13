@@ -1,10 +1,13 @@
 document = (separated / alpha / ws+ / .)*;
-separated = keyword / string / comment / types / constant /operator;
+separated = preproc / keyword / string / comment / constant / types / operator;
 stop = ws+ / "{" / "[" / "]" / "(" / ")" / ";" / "<" / ">" / "," / ":" / ".";
 alpha = [a..zA..Z0..9_]+;
 WHITESPACE = [ \t] / nl;
 nl = "\n" / "\r\n";
 ws = WHITESPACE;
+
+@show @highlight
+preproc = ("package" / "import") &stop;
 
 @show @highlight(warn)
 todo = "TODO" / "XXX";
@@ -34,7 +37,7 @@ tstring    = "`" (escape / [^`])* "`";
 escape     = "\\" ("0" / "t" / "n" / "r" / "'" / "`" / "\"" / "\\" / "/");
 
 @show @highlight(constant)
-constant = (uppercase_constant / number / "true" / "false") &stop;
+constant = (uppercase_constant / number / "true" / "false" / "nil") &stop;
 uppercase_constant = [A..Z] [A..Z0..9_]+;
 
 # Can actually be functions or types but ok
@@ -50,7 +53,6 @@ builtin_types = (
     "uint" /
     "string"
     "rune" /
-    "nil" /
     "int8" /
     "int64" /
     "int32" /
@@ -78,13 +80,11 @@ words = (
     "recover" /
     "range" /
     "panic" /
-    "package" /
     "new" /
     "map" /
     "make" /
     "iota" /
     "interface" /
-    "import" /
     "if" /
     "goto" /
     "go" /

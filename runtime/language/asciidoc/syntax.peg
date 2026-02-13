@@ -1,5 +1,5 @@
 document = (special / list / line_comment)? (separated / ws+ / .)*;
-separated = code / keyword / preproc / comment / operator / string / specials / list_nl / identifier;
+separated = blocks / keyword / preproc / comment / operator / string / specials / list_nl / identifier;
 WHITESPACE = [ \t];
 ws = WHITESPACE;
 nl = "\n" / "\r\n";
@@ -22,24 +22,49 @@ link = "<" (!">" .)* ">";
 @show @highlight(preproc)
 tags = [a..zA..Z0..9.]+ ":" ":"? [a..zA..Z0..9./_-]* "[" (!"]" .)* "]";
 
-@show @highlight(default)
-code = fenced_code / dash / dot / underscore;
-fenced_code = fence fenced_lang fence_content fence;
+blocks = source / example / literal / pass / quote;
+
+@show @highlight(preproc)
+source_inj = "[" (source_inj_lang &"]" / (!(nl / "]" / ",") .)* ",")+ "]";
 @injection-language
-fenced_lang = [a..zA..Z]+;
-@inject
-fence_content = (!fence .)*;
+source_inj_lang = (!("," / "]" / nl) .)+;
+source =  source_inj nl sourceop nl sourcec sourceop / sourceop nl sourcec2 sourceop ;
+@show @inject
+sourcec = (!sourceop .)*;
+@show @highlight(string)
+sourcec2 = (!sourceop .)*;
 @show @highlight(operator)
-fence = "```";
-dash = rectangle? nl dashop &nl (!dashop .)* dashop;
+sourceop = "----";
+
+pass = passop nl pass_content passop;
+@show @highlight(string)
+pass_content = (!passop .)*;
 @show @highlight(operator)
-dashop = "----";
-dot =  dotop &nl (!dotop .)* dotop;
+passop = "++++";
+
+example = exampleop nl examplec exampleop;
+@show @highlight(string)
+examplec = (!exampleop .)*;
 @show @highlight(operator)
-dotop = "....";
-underscore =  uscore &nl (!uscore (keyword / .))* uscore;
+exampleop = "====";
+
+# sidebar = sidebarop nl sidebarc sidebarop;
+# @show @highlight(string)
+# sidebarc = (!sidebarop (separated / .))*;
+# @show @highlight(operator)
+# sidebarop = "****";
+
+literal = litop &nl litc litop;
+@show @highlight(string)
+litc = (!litop .)*;
 @show @highlight(operator)
-uscore = "____";
+litop = "....";
+
+quote = qop &nl qc qop;
+@show @highlight(operator)
+qop = "____";
+@show @highlight(string)
+qc = (!qop (keyword / .))*;
 
 
 @show @highlight
@@ -78,19 +103,22 @@ text = [a..zA..Z0..9-]*;
 specials = ("NOTE" / "WARNING" / "IMPORTANT" / "TIP" / "CAUTION") &":";
 
 @show @highlight(keyword)
-bold = "*" (!(nl / "*") ( escape / .))+ "*";
+bold = constrained_start "*" (!(nl / "*") ( escape / .))+ "*" constrained_end;
 @show @highlight(keyword)
 letter = "**" (!(nl / "**") ( escape / .))+ "**";
 @show @highlight(keyword)
-subscript = "~" (!(nl / "~") ( escape / .))+ "~";
+subscript = "~" (!(nl / ws / "~") ( escape / .))+ "~";
 @show @highlight(keyword)
-superscript = "^" (!(nl / "^") ( escape / . ))+ "^";
+superscript = "^" (!(nl / ws / "^") ( escape / . ))+ "^";
 @show @highlight(keyword)
 force = "{" (!(nl / "}") ( escape / .))+ "}";
 @show @highlight(keyword)
 emphtwo = "__" (!(nl / "__") ( escape / .))+ "__";
 @show @highlight(keyword)
-emph = "_" (!(nl / "_") ( escape / .))+ "_";
+emph = constrained_start "_" (!(nl / "_") ( escape / .))+ "_" constrained_end;
+
+constrained_start = (ws / nl);
+constrained_end = &[^a..zA..Z];
 
 @show @highlight(keyword)
 escape = "\\" .;

@@ -64,10 +64,6 @@ impl<T, const N: usize> RingBuffer<T, N> {
         self.write.wrapping_sub(self.read)
     }
 
-    fn position(&self, n: usize) -> usize {
-        n & (self.capacity() - 1)
-    }
-
     /// Push an element, overwrites last entry if needed
     pub fn push_overwrite(&mut self, item: T) {
         // If full just overwrite
@@ -75,7 +71,7 @@ impl<T, const N: usize> RingBuffer<T, N> {
             self.read = self.read.wrapping_add(1);
         }
 
-        let pos = self.position(self.write);
+        let pos = self.write % N;
         self.items[pos].write(item);
         self.write = self.write.wrapping_add(1);
     }
@@ -86,7 +82,7 @@ impl<T, const N: usize> RingBuffer<T, N> {
             return false;
         }
 
-        let pos = self.position(self.write);
+        let pos = self.write % N;
         self.items[pos].write(item);
         self.write = self.write.wrapping_add(1);
 
@@ -100,7 +96,7 @@ impl<T, const N: usize> RingBuffer<T, N> {
         }
 
         let item = unsafe {
-            std::mem::replace(&mut self.items[self.read], MaybeUninit::uninit()).assume_init()
+            std::mem::replace(&mut self.items[self.read % N], MaybeUninit::uninit()).assume_init()
         };
         self.read = self.read.wrapping_add(1);
         Some(item)
@@ -118,7 +114,7 @@ impl<T, const N: usize> RingBuffer<T, N> {
     }
 
     fn read_index(&self, read: usize) -> Option<&T> {
-        let pos = self.position(read);
+        let pos = read % N;
         let item = unsafe { self.items[pos].assume_init_ref() };
         Some(item)
     }
@@ -126,14 +122,8 @@ impl<T, const N: usize> RingBuffer<T, N> {
 
 impl<T, const N: usize> Drop for RingBuffer<T, N> {
     fn drop(&mut self) {
-        let mut idx = self.read;
-        while idx != self.write {
-            // SAFETY: The range from read to write contains initialized elements
-            unsafe {
-                let ptr = self.items[idx].as_mut_ptr();
-                std::ptr::drop_in_place(ptr);
-            }
-            idx = (idx + 1) % N;
+        while let Some(item) = self.take() {
+            drop(item);
         }
     }
 }
@@ -234,5 +224,60 @@ pub struct Ref {
 impl Ref {
     pub fn position(&self) -> usize {
         self.read
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn add() {
+        let mut ring = RingBuffer::<usize, 4>::default();
+        assert!(ring.push(1));
+        assert!(ring.push(2));
+        assert!(ring.push(3));
+        assert!(ring.push(4));
+        assert_eq!(false, ring.push(5));
+    }
+
+    #[test]
+    fn overwritten_ref() {
+        let mut ring = RingBuffer::<usize, 4>::default();
+        ring.push_overwrite(1);
+        let (refe, some) = ring.last().unwrap();
+        assert_eq!(&1, some);
+
+        ring.push_overwrite(2);
+        ring.push_overwrite(3);
+        ring.push_overwrite(4);
+
+        assert_eq!(Some(1).as_ref(), ring.read_reference(&refe));
+
+        ring.push_overwrite(5);
+
+        assert_eq!(None, ring.read_reference(&refe));
+    }
+
+    #[test]
+    fn take() {
+        let mut ring = RingBuffer::<usize, 4>::default();
+        assert!(ring.push(1));
+        assert!(ring.push(2));
+        assert!(ring.push(3));
+        assert!(ring.push(4));
+
+        assert_eq!(Some(1), ring.take());
+        assert!(ring.push(5));
+        assert_eq!(Some(2), ring.take());
+        assert_eq!(Some(3), ring.take());
+        assert_eq!(Some(4), ring.take());
+
+        assert!(ring.push(6));
+        assert!(ring.push(7));
+
+        assert_eq!(Some(5), ring.take());
+        assert_eq!(Some(6), ring.take());
+        assert_eq!(Some(7), ring.take());
     }
 }

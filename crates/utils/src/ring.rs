@@ -71,7 +71,7 @@ impl<T, const N: usize> RingBuffer<T, N> {
             self.read = self.read.wrapping_add(1);
         }
 
-        let pos = self.write % N;
+        let pos = self.write & (N - 1);
         self.items[pos].write(item);
         self.write = self.write.wrapping_add(1);
     }
@@ -82,7 +82,7 @@ impl<T, const N: usize> RingBuffer<T, N> {
             return false;
         }
 
-        let pos = self.write % N;
+        let pos = self.write & (N - 1);
         self.items[pos].write(item);
         self.write = self.write.wrapping_add(1);
 
@@ -96,7 +96,7 @@ impl<T, const N: usize> RingBuffer<T, N> {
         }
 
         let item = unsafe {
-            std::mem::replace(&mut self.items[self.read % N], MaybeUninit::uninit()).assume_init()
+            std::mem::replace(&mut self.items[self.read & (N - 1)], MaybeUninit::uninit()).assume_init()
         };
         self.read = self.read.wrapping_add(1);
         Some(item)
@@ -114,7 +114,7 @@ impl<T, const N: usize> RingBuffer<T, N> {
     }
 
     fn read_index(&self, read: usize) -> Option<&T> {
-        let pos = read % N;
+        let pos = read & (N - 1);
         let item = unsafe { self.items[pos].assume_init_ref() };
         Some(item)
     }

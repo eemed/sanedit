@@ -4,6 +4,7 @@ WHITESPACE = [ \t];
 ws = WHITESPACE;
 nl = "\n" / "\r\n";
 stop = WHITESPACE+ / nl;
+nle = &nl / !.;
 
 list_nl = nl ws* list ws;
 @show @highlight(operator)
@@ -22,31 +23,34 @@ link = "<" (!">" .)* ">";
 @show @highlight(preproc)
 tags = [a..zA..Z0..9.]+ ":" ":"? [a..zA..Z0..9./_-]* "[" (!"]" .)* "]";
 
-blocks = source / example / literal / pass / quote;
+blocks = (source / example / literal / pass / quote) nle;
+empty_line = &nl / !.;
 
+@show @highlight(preproc)
+dot_title = "." (!nl .)*;
 @show @highlight(preproc)
 source_inj = "[" (source_inj_lang &"]" / (!(nl / "]" / ",") .)* ",")+ "]";
 @injection-language
 source_inj_lang = (!("," / "]" / nl) .)+;
-source =  source_inj nl sourceop nl sourcec sourceop / sourceop nl sourcec2 sourceop ;
+source =  source_inj nl (dot_title nl)? sourceop sourcec sourceop / sourceop (dot_title nl)? sourcec2 sourceop ;
 @show @inject
 sourcec = (!sourceop .)*;
 @show @highlight(string)
 sourcec2 = (!sourceop .)*;
 @show @highlight(operator)
-sourceop = "----";
+sourceop = "----" nle;
 
-pass = passop nl pass_content passop;
+pass = (dot_title nl)? passop pass_content passop;
 @show @highlight(string)
 pass_content = (!passop .)*;
 @show @highlight(operator)
-passop = "++++";
+passop = "++++" nle;
 
-example = exampleop nl examplec exampleop;
+example = (dot_title nl)? exampleop examplec exampleop;
 @show @highlight(string)
 examplec = (!exampleop .)*;
 @show @highlight(operator)
-exampleop = "====";
+exampleop = "====" nle;
 
 # sidebar = sidebarop nl sidebarc sidebarop;
 # @show @highlight(string)
@@ -54,15 +58,15 @@ exampleop = "====";
 # @show @highlight(operator)
 # sidebarop = "****";
 
-literal = litop &nl litc litop;
+literal = (dot_title nl)? litop litc litop;
 @show @highlight(string)
 litc = (!litop .)*;
 @show @highlight(operator)
-litop = "....";
+litop = "...." nle;
 
-quote = qop &nl qc qop;
+quote = (dot_title nl)? qop qc qop;
 @show @highlight(operator)
-qop = "____";
+qop = "____" nle;
 @show @highlight(string)
 qc = (!qop (keyword / .))*;
 
@@ -78,7 +82,7 @@ operator = ops / table;
 ops = ("*"+ / "."+ / "-"+ / "+"+ / "'''") &stop;
 table = table_border (!table_border table_cell nl?)+ table_border;
 @show @highlight(operator)
-table_border = "|==" "="* nl;
+table_border = "|==" "="* nle;
 @show @highlight(operator)
 table_cell_border = "|";
 table_cell = table_cell_border (!(table_cell_border / nl) .)*;

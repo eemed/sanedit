@@ -124,6 +124,7 @@ async fn read_directory_recursive(
     done: Arc<AtomicUsize>,
     git_ignore: bool,
 ) {
+    log::info!("File option provider: read directory");
     let strip = {
         let s = dir.as_os_str().to_string_lossy();
         let mut len = s.len();
@@ -149,6 +150,7 @@ async fn read_directory_recursive(
 
     let count = n.load(Ordering::Acquire);
     done.store(count, Ordering::Release);
+    log::info!("File option provider: read directory found {count} entries");
 }
 
 fn get_ignore(dir: &Path, ignore: Ignore, git_ignore: bool) -> GitIgnoreList {
@@ -204,7 +206,7 @@ struct ReadDirContext {
 impl ReadDirContext {
     pub fn send(&self, opt: Arc<Choice>) {
         self.osend.append(opt);
-        self.n.fetch_add(1, Ordering::Release);
+        self.n.fetch_add(1, Ordering::AcqRel);
     }
 }
 

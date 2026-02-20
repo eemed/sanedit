@@ -44,4 +44,3 @@ which.workspace = true
 
 # Configuration handling
 toml_edit = { workspace = true, features = ["serde"] }
-

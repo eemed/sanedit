@@ -270,10 +270,11 @@ impl Matcher {
         let mut first_sent = true;
         let mut locally_sorted = vec![];
 
+        log::info!("Matching options");
+
         while !self.job_context.kill.should_stop() && !cancel.is_cancelled() {
             let total = write_done.load(Ordering::Acquire);
             let available = reader.len();
-            log::info!("Spin: total: {total}, available: {available}");
             let fully_read = available == total;
 
             // If we are done reading all available options
@@ -316,10 +317,13 @@ impl Matcher {
                     first_sent = false;
                 }
             } else {
+                log::info!("Sleep: total: {total}, available: {available}");
                 thread::sleep(Duration::from_micros(backoff));
                 backoff = (backoff * 2).min(100);
             }
         }
+
+        log::info!("Matching options done");
     }
 }
 
@@ -437,11 +441,7 @@ mod test {
         );
 
         matcher.do_match("sock", 1, CancellationToken::default());
-        assert_contains(
-            &mut recv,
-            1,
-            &["/run/socket.sock"],
-        );
+        assert_contains(&mut recv, 1, &["/run/socket.sock"]);
     }
 
     #[test]

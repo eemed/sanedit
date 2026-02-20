@@ -59,12 +59,12 @@ tasks:
     cmds:
       - rm -f {{.DEBUG_SOCKET}}
       - rm -f {{.LOG_FILE}} {{.LOG_FILE_CLIENT}}
-      - cargo run --bin sane -- --server-only --session debug --debug --config-dir ../runtime .. &
+      - taskset -c 1 cargo run --bin sane -- --server-only --session debug --debug --config-dir ../runtime .. &
       - |
         until [ -e {{.DEBUG_SOCKET}} ]; do \
           sleep 0.1; \
         done
-      - cargo run --bin sane -- --debug --session debug --config-dir ../runtime
+      - taskset -c 1 cargo run --bin sane -- --debug --session debug --config-dir ../runtime
     env:
       RUST_BACKTRACE: 1
 

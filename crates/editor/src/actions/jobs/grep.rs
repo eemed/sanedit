@@ -374,7 +374,7 @@ impl KeepInTouch for Grep {
 
     fn on_message(&self, editor: &mut Editor, mut msg: Box<dyn Any>) {
         if let Some(Start(id)) = msg.downcast_mut::<Start>() {
-            let (win, _buf) = editor.win_buf_mut(self.client_id);
+            let (win, _buf) = win_buf!(editor, self.client_id);
             win.locations.extra.is_loading = true;
             win.locations.extra.job = Some(*id);
             win.locations.extra.title = format!("Grep {:?}", self.pattern);
@@ -387,7 +387,7 @@ impl KeepInTouch for Grep {
             let draw = editor.draw_state(self.client_id);
             draw.no_redraw_window();
 
-            let (win, _buf) = editor.win_buf_mut(self.client_id);
+            let (win, _buf) = win_buf!(editor, self.client_id);
             for res in results.into_iter() {
                 let items: Vec<Item> = res.matches.into_iter().map(Item::from).collect();
                 let mut group = Group::new(&res.path);
@@ -398,20 +398,20 @@ impl KeepInTouch for Grep {
     }
 
     fn on_success(&self, editor: &mut Editor) {
-        let (win, _buf) = editor.win_buf_mut(self.client_id);
+        let (win, _buf) = win_buf!(editor, self.client_id);
         win.locations.extra.is_loading = false;
         win.locations.extra.job = None;
     }
 
     fn on_stop(&self, editor: &mut Editor) {
-        let (win, _buf) = editor.win_buf_mut(self.client_id);
+        let (win, _buf) = win_buf!(editor, self.client_id);
         win.locations.extra.is_loading = false;
         win.locations.extra.job = None;
     }
 
     fn on_failure(&self, editor: &mut Editor, reason: &str) {
         log::error!("Grep error: {reason}");
-        let (win, _buf) = editor.win_buf_mut(self.client_id);
+        let (win, _buf) = win_buf!(editor, self.client_id);
         win.locations.clear();
         win.locations.extra.is_loading = false;
         win.locations.extra.job = None;

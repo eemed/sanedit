@@ -6,7 +6,7 @@ ws = [ \t] / nl;
 nl = "\n" / "\r\n";
 alpha = [a..zA..Z0..9_-.]+;
 @show @highlight(warn)
-todo = "TODO" / "XXX";
+todo = "TODO" / "XXX" / "FIXME";
 
 @show @highlight
 comment = "<!--" (!"-->" (todo / .))* "-->";

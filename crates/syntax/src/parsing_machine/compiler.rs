@@ -1,8 +1,6 @@
 use sanedit_utils::bitset::Bitset256;
 
-use crate::{
-    grammar::{self, Rule, Rules},
-};
+use crate::grammar::{self, Rule, Rules};
 
 use super::{op::Operation, Addr};
 

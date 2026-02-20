@@ -99,7 +99,7 @@ pub(crate) struct Window {
     /// Cursor jumps across files
     pub cursor_jumps: Jumps<512>,
     /// Last edit jumped to in buffer
-    pub last_edit_jump: Option<SnapshotId>,
+    last_edit_jump: Option<SnapshotId>,
     /// Handles next keypress, before anything else
     pub next_key_handler: Option<NextKeyFunction>,
     /// Delete indent when insert mode is left. Auto indenting changes should set this

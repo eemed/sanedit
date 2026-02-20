@@ -13,7 +13,7 @@ use super::{jobs::SyntaxParser, ActionResult};
 /// background and will override the guesses made here.
 #[action("Adjust highlighting to take a buffer change into account")]
 pub(crate) fn prevent_flicker(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (_win, buf) = editor.win_buf(id);
+    let (_win, buf) = win_buf_ref!(editor, id);
     let bid = buf.id;
     let bid = editor
         .hooks
@@ -23,7 +23,7 @@ pub(crate) fn prevent_flicker(editor: &mut Editor, id: ClientId) -> ActionResult
     let clients = editor.windows().find_clients_with_buf(bid);
 
     for client in clients {
-        let (win, buf) = editor.win_buf_mut(client);
+        let (win, buf) = win_buf!(editor, client);
         let old = win.view_syntax();
         let edit = getf!(buf.last_edit());
 
@@ -60,7 +60,7 @@ pub(crate) fn prevent_flicker(editor: &mut Editor, id: ClientId) -> ActionResult
 
 #[action("Parse buffer syntax for view")]
 pub(crate) fn reparse_view(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (_win, buf) = editor.win_buf_mut(id);
+    let (_win, buf) = win_buf!(editor, id);
     let bid = buf.id;
     let bid = editor
         .hooks
@@ -74,7 +74,7 @@ pub(crate) fn reparse_view(editor: &mut Editor, id: ClientId) -> ActionResult {
             continue;
         }
 
-        let (win, buf) = editor.win_buf_mut(client);
+        let (win, buf) = win_buf!(editor, client);
         if !win.config.highlight_syntax {
             continue;
         }

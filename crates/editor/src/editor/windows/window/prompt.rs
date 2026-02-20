@@ -254,7 +254,7 @@ impl Prompt {
         let draw = editor.draw_state(id);
         draw.no_redraw_window();
 
-        let (win, _buf) = editor.win_buf_mut(id);
+        let (win, _buf) = win_buf!(editor, id);
         let is_progress = matches!(msg, Progress { .. });
         match msg {
             Init(sender) => {
@@ -263,7 +263,7 @@ impl Prompt {
                     let path = PathBuf::from(input);
                     let input = path.to_string_lossy();
                     let input = get_directory_searcher_term(&input);
-                    let (win, _buf) = editor.win_buf_mut(id);
+                    let (win, _buf) = win_buf!(editor, id);
                     let _ = sender.blocking_send((input.to_string(), win.prompt.input_id));
                 });
                 win.prompt.clear_choices();
@@ -287,7 +287,7 @@ impl Prompt {
                     win.prompt.clear_choices();
                 }
 
-                let (win, _buf) = editor.win_buf_mut(id);
+                let (win, _buf) = win_buf!(editor, id);
                 results
                     .into_iter()
                     .for_each(|res| win.prompt.add_choices(res));
@@ -303,12 +303,12 @@ impl Prompt {
         let draw = editor.draw_state(id);
         draw.no_redraw_window();
 
-        let (win, _buf) = editor.win_buf_mut(id);
+        let (win, _buf) = win_buf!(editor, id);
         let is_progress = matches!(msg, Progress { .. });
         match msg {
             Init(sender) => {
                 win.prompt.add_on_input(move |editor, id, input| {
-                    let (win, _buf) = editor.win_buf(id);
+                    let (win, _buf) = win_buf_ref!(editor, id);
                     let _ = sender.blocking_send((input.to_string(), win.prompt.input_id));
                 });
                 win.prompt.clear_choices();
@@ -332,7 +332,7 @@ impl Prompt {
                     win.prompt.clear_choices();
                 }
 
-                let (win, _buf) = editor.win_buf_mut(id);
+                let (win, _buf) = win_buf!(editor, id);
                 results
                     .into_iter()
                     .for_each(|res| win.prompt.add_choices(res));
@@ -353,7 +353,7 @@ impl Prompt {
         match msg {
             Init(sender) => {
                 win.prompt.add_on_input(move |editor, id, input| {
-                    let (win, _buf) = editor.win_buf_mut(id);
+                    let (win, _buf) = win_buf!(editor, id);
                     let _ = sender.blocking_send((input.to_string(), win.prompt.input_id));
                 });
                 win.prompt.clear_choices();
@@ -386,7 +386,7 @@ impl Prompt {
                             .unwrap_or(false)
                     })
                     .unwrap_or(false);
-                let (win, _buf) = editor.win_buf_mut(id);
+                let (win, _buf) = win_buf!(editor, id);
 
                 if no_input {
                     // If no input is matched, sort results using LRU
@@ -406,7 +406,7 @@ impl Prompt {
                             }
                         }
 
-                        let (win, _buf) = editor.win_buf_mut(id);
+                        let (win, _buf) = win_buf!(editor, id);
                         win.prompt.add_choices(SortedVec::from(rescored))
                     }
                 } else {

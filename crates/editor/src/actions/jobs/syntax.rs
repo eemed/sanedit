@@ -57,7 +57,7 @@ impl KeepInTouch for SyntaxParser {
 
     fn on_message(&self, editor: &mut Editor, msg: Box<dyn Any>) {
         if let Ok(output) = msg.downcast::<SyntaxResult>() {
-            let (win, buf) = editor.win_buf_mut(self.client_id);
+            let (win, buf) = win_buf!(editor, self.client_id);
             if buf.id == self.bid && self.total_changes_made == buf.total_changes_made() {
                 *win.view_syntax() = ViewSyntax::new(self.bid, *output, self.total_changes_made);
             }

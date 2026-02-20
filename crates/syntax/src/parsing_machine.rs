@@ -253,7 +253,11 @@ impl ParsingMachine {
                     }
                 },
                 Set(set) => {
-                    if reader.get(sp).map(|byte| set.contains(byte)).unwrap_or(false) {
+                    if reader
+                        .get(sp)
+                        .map(|byte| set.contains(byte))
+                        .unwrap_or(false)
+                    {
                         ip += 1;
                         sp += 1;
                     } else {
@@ -338,7 +342,11 @@ impl ParsingMachine {
                     }
                 }
                 TestSet(set, l) => {
-                    if reader.get(sp).map(|byte| set.contains(byte)).unwrap_or(false) {
+                    if reader
+                        .get(sp)
+                        .map(|byte| set.contains(byte))
+                        .unwrap_or(false)
+                    {
                         stack.push(StackEntry::Backtrack {
                             addr: *l,
                             spos: sp,

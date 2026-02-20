@@ -94,16 +94,16 @@ impl Completion {
 
         match msg {
             Init(sender) => {
-                let (win, buf) = editor.win_buf_mut(id);
+                let (win, buf) = win_buf!(editor, id);
                 let cursor = win.cursors.primary().pos();
                 let start = win.completion.item_start;
                 let slice = buf.slice(start..cursor);
                 let word = String::from(&slice);
                 let _ = sender.blocking_send((word, win.completion.input_id));
 
-                let (win, _buf) = editor.win_buf_mut(id);
+                let (win, _buf) = win_buf!(editor, id);
                 win.completion.on_input = Some(Rc::new(move |editor, id, input| {
-                    let (win, _buf) = editor.win_buf_mut(id);
+                    let (win, _buf) = win_buf!(editor, id);
                     let _ = sender.blocking_send((input.to_string(), win.completion.input_id));
                 }));
                 win.completion.clear_choices();
@@ -113,7 +113,7 @@ impl Completion {
                 clear_old,
                 input_id,
             } => {
-                let (win, _buf) = editor.win_buf_mut(id);
+                let (win, _buf) = win_buf!(editor, id);
                 if input_id != win.completion.input_id {
                     return;
                 }
@@ -133,7 +133,7 @@ impl Completion {
                 clear_old,
                 input_id,
             } => {
-                let (win, _buf) = editor.win_buf_mut(id);
+                let (win, _buf) = win_buf!(editor, id);
                 if input_id != win.completion.input_id {
                     return;
                 }
@@ -148,7 +148,7 @@ impl Completion {
                     focus(editor, id, Focus::Completion);
                 }
 
-                let (win, _buf) = editor.win_buf_mut(id);
+                let (win, _buf) = win_buf!(editor, id);
                 if win.completion.chooser.options().is_empty() {
                     win.info_msg("No completion items");
                     focus(editor, id, Focus::Window);

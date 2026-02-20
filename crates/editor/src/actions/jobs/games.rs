@@ -66,14 +66,14 @@ impl KeepInTouch for GameTick {
 
     fn on_message(&self, editor: &mut crate::editor::Editor, mut msg: Box<dyn std::any::Any>) {
         if msg.downcast_mut::<Tick>().is_some() {
-            let (win, _) = editor.win_buf_mut(self.id);
+            let (win, _) = win_buf!(editor, self.id);
             if let Some(game) = win.game.as_mut() {
                 game.tick();
             }
         }
 
         if let Ok(start) = msg.downcast::<Start>() {
-            let (win, _) = editor.win_buf_mut(self.id);
+            let (win, _) = win_buf!(editor, self.id);
             if let Some(game) = win.game.as_mut() {
                 game.set_tick_sender(start.0);
             }

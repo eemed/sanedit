@@ -29,7 +29,7 @@ type_names =
     "bool";
 
 @show @highlight(warn)
-todo = "TODO" / "XXX";
+todo = "TODO" / "XXX" / "FIXME";
 
 @show @highlight
 comment = line_comment / block_comment;

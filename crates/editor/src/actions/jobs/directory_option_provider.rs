@@ -106,12 +106,6 @@ fn read_directory(root: PathBuf, ctx: ReadDirContext) {
     });
 }
 
-async fn rayon_reader(dir: PathBuf, ctx: ReadDirContext) {
-    tokio::task::spawn_blocking(move || read_directory(dir, ctx))
-        .await
-        .unwrap()
-}
-
 async fn read_directory_recursive(
     dir: PathBuf,
     osend: Appendlist<Arc<Choice>>,
@@ -139,8 +133,7 @@ async fn read_directory_recursive(
         n: n.clone(),
     };
 
-    rayon_reader(dir, ctx).await;
-
+    let _ = tokio::task::spawn_blocking(move || read_directory(dir, ctx)).await;
     let count = n.load(Ordering::Acquire);
     done.store(count, Ordering::Release);
 }

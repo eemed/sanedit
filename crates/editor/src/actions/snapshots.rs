@@ -35,7 +35,7 @@ fn snapshots_select_first(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Undotree: Select last entry")]
 fn snapshots_select_last(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, buf) = win_buf!(editor, id);
     let nodes = buf.snapshots().nodes().len();
     win.snapshot_view.selection = nodes - 1;
     win.update_snapshot_preview(buf);
@@ -68,7 +68,7 @@ fn focus_snapshots(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Undotree: Confirm entry")]
 fn goto_snapshot_entry(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, buf) = win_buf!(editor, id);
     win.confirm_snapshot_preview(buf);
     focus(editor, id, Focus::Window);
     ActionResult::Ok
@@ -76,7 +76,7 @@ fn goto_snapshot_entry(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Undotree: Next entry")]
 fn next_snapshot_entry(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, buf) = win_buf!(editor, id);
     let nodes = buf.snapshots().nodes().len();
     win.snapshot_view.selection = min(nodes - 1, win.snapshot_view.selection + 1);
     win.update_snapshot_preview(buf);
@@ -86,7 +86,7 @@ fn next_snapshot_entry(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Undotree: Previous entry")]
 fn prev_snapshot_entry(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, buf) = win_buf!(editor, id);
     win.snapshot_view.selection = win.snapshot_view.selection.saturating_sub(1);
     win.update_snapshot_preview(buf);
     ActionResult::Ok
@@ -94,7 +94,7 @@ fn prev_snapshot_entry(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Undotree: Close")]
 fn close_snapshots(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, buf) = win_buf!(editor, id);
     win.close_snapshot_preview(buf);
     focus(editor, id, Focus::Window);
 

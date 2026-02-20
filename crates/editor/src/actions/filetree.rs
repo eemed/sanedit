@@ -53,7 +53,7 @@ fn show_filetree(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Filetree: Set root")]
 fn set_root(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, _buf) = editor.win_buf(id);
+    let (win, _buf) = win_buf_ref!(editor, id);
     let path = getf!(editor
         .filetree
         .iter()
@@ -63,7 +63,7 @@ fn set_root(editor: &mut Editor, id: ClientId) -> ActionResult {
     let node = getf!(editor.filetree.get_mut(&path));
     if matches!(node.kind(), Kind::Directory) {
         let _ = editor.change_working_dir(&path);
-        let (win, _buf) = editor.win_buf_mut(id);
+        let (win, _buf) = win_buf!(editor, id);
         win.ft_view.selection = 0;
     }
     ActionResult::Ok
@@ -81,7 +81,7 @@ fn focus_filetree(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Filetree: Confirm entry")]
 fn goto_ft_entry(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, _buf) = editor.win_buf(id);
+    let (win, _buf) = win_buf_ref!(editor, id);
     let path = getf!(editor
         .filetree
         .iter()
@@ -100,7 +100,7 @@ fn goto_ft_entry(editor: &mut Editor, id: ClientId) -> ActionResult {
         }
         Kind::File => {
             if let Err(e) = editor.open_file(id, &path) {
-                let (win, _buf) = editor.win_buf_mut(id);
+                let (win, _buf) = win_buf!(editor, id);
                 win.error_msg(&format!("Failed to open file {path:?}: {e}"));
                 return ActionResult::Failed;
             }
@@ -115,7 +115,7 @@ fn goto_ft_entry(editor: &mut Editor, id: ClientId) -> ActionResult {
 #[action("Filetree: Next entry")]
 fn next_ft_entry(editor: &mut Editor, id: ClientId) -> ActionResult {
     let visible = editor.filetree.iter().count();
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     win.ft_view.selection = min(visible - 1, win.ft_view.selection + 1);
 
     ActionResult::Ok
@@ -123,14 +123,14 @@ fn next_ft_entry(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Filetree: Previous entry")]
 fn prev_ft_entry(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     win.ft_view.selection = win.ft_view.selection.saturating_sub(1);
     ActionResult::Ok
 }
 
 #[action("Filetree: Close")]
 fn close_filetree(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     win.ft_view.show = false;
     focus(editor, id, Focus::Window);
 
@@ -182,7 +182,7 @@ pub fn new_file_result_path(wd: &Path, input: &str) -> anyhow::Result<PathBuf> {
 
 pub fn create_new_file(editor: &mut Editor, id: ClientId, name: String) -> ActionResult {
     let root = editor.working_dir().to_path_buf();
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     win.prompt = Prompt::builder()
         .prompt("Filename")
         .input(&name)
@@ -192,7 +192,7 @@ pub fn create_new_file(editor: &mut Editor, id: ClientId, name: String) -> Actio
             let file = match new_file_result_path(&root, input) {
                 Ok(path) => path,
                 Err(e) => {
-                    let (win, _buf) = editor.win_buf_mut(id);
+                    let (win, _buf) = win_buf!(editor, id);
                     win.error_msg(&format!("Invalid path {e}"));
                     return ActionResult::Failed;
                 }
@@ -205,7 +205,7 @@ pub fn create_new_file(editor: &mut Editor, id: ClientId, name: String) -> Actio
 
             // Create new file
             if let Err(e) = std::fs::File::create_new(&file) {
-                let (win, _buf) = editor.win_buf_mut(id);
+                let (win, _buf) = win_buf!(editor, id);
                 win.error_msg(&format!("Failed to create file {e}"));
                 return ActionResult::Failed;
             }
@@ -215,7 +215,7 @@ pub fn create_new_file(editor: &mut Editor, id: ClientId, name: String) -> Actio
 
             // Select the new entry if visible
             if let Some(pos) = editor.filetree.select(&file) {
-                let (win, _buf) = editor.win_buf_mut(id);
+                let (win, _buf) = win_buf!(editor, id);
                 win.ft_view.selection = pos;
             }
 
@@ -233,7 +233,7 @@ fn rename_file(editor: &mut Editor, id: ClientId, old: PathBuf) -> ActionResult 
         .strip_prefix(editor.working_dir())
         .unwrap_or(&old)
         .to_string_lossy();
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     win.prompt = Prompt::builder()
         .prompt("Rename")
         .input(&old_name)
@@ -244,7 +244,7 @@ fn rename_file(editor: &mut Editor, id: ClientId, old: PathBuf) -> ActionResult 
             let new = match new_file_result_path(root, input) {
                 Ok(path) => path,
                 Err(e) => {
-                    let (win, _buf) = editor.win_buf_mut(id);
+                    let (win, _buf) = win_buf!(editor, id);
                     win.error_msg(&format!("Rename error: {e}"));
                     return ActionResult::Failed;
                 }
@@ -261,7 +261,7 @@ fn rename_file(editor: &mut Editor, id: ClientId, old: PathBuf) -> ActionResult 
                 .iter()
                 .position(|entry| entry.path() == new.as_path())
             {
-                let (win, _buf) = editor.win_buf_mut(id);
+                let (win, _buf) = win_buf!(editor, id);
                 win.ft_view.selection = pos;
             }
 
@@ -308,7 +308,7 @@ pub(crate) fn handle_file_rename(
     }
 
     if let Err(e) = rename(old, new) {
-        let (win, _buf) = editor.win_buf_mut(id);
+        let (win, _buf) = win_buf!(editor, id);
         win.warn_msg(&format!("Failed to rename file/dir {e}"));
         return ActionResult::Failed;
     }
@@ -344,7 +344,7 @@ fn rename(src: impl AsRef<Path>, dst: impl AsRef<Path>) -> io::Result<()> {
 #[action("Filetree: Create new file")]
 fn ft_new_file(editor: &mut Editor, id: ClientId) -> ActionResult {
     let root = editor.working_dir().to_path_buf();
-    let (win, _buf) = editor.win_buf(id);
+    let (win, _buf) = win_buf_ref!(editor, id);
 
     let dir_name = getf!(new_file_prefill_path(
         &root,
@@ -358,7 +358,7 @@ fn ft_new_file(editor: &mut Editor, id: ClientId) -> ActionResult {
 #[action("Filetree: Rename file or folder")]
 fn ft_rename_file(editor: &mut Editor, id: ClientId) -> ActionResult {
     let old = {
-        let (win, _buf) = editor.win_buf(id);
+        let (win, _buf) = win_buf_ref!(editor, id);
         let entry = getf!(editor.filetree.iter().nth(win.ft_view.selection));
         entry.top_level_path()
     };
@@ -367,14 +367,14 @@ fn ft_rename_file(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Buffer: Rename file")]
 fn buffer_rename_file(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (_win, buf) = editor.win_buf_mut(id);
+    let (_win, buf) = win_buf!(editor, id);
     let initial_path = buf.path().map(PathBuf::from).unwrap_or(PathBuf::new());
     rename_file(editor, id, initial_path)
 }
 
 #[action("Buffer: Remove file")]
 fn buffer_remove_file(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (_win, buf) = editor.win_buf_mut(id);
+    let (_win, buf) = win_buf!(editor, id);
     if let Some(path) = buf.path().map(PathBuf::from) {
         return delete_file(editor, id, path);
     }
@@ -384,7 +384,7 @@ fn buffer_remove_file(editor: &mut Editor, id: ClientId) -> ActionResult {
 #[action("Buffer: Create file")]
 fn buffer_create_file(editor: &mut Editor, id: ClientId) -> ActionResult {
     let root = editor.working_dir();
-    let (_win, buf) = editor.win_buf(id);
+    let (_win, buf) = win_buf_ref!(editor, id);
     let prefill = buf
         .path()
         .and_then(Path::parent)
@@ -396,7 +396,7 @@ fn buffer_create_file(editor: &mut Editor, id: ClientId) -> ActionResult {
 #[action("Filetree: Delete file")]
 fn ft_delete_file(editor: &mut Editor, id: ClientId) -> ActionResult {
     let path = {
-        let (win, _buf) = editor.win_buf(id);
+        let (win, _buf) = win_buf_ref!(editor, id);
         let entry = getf!(editor.filetree.iter().nth(win.ft_view.selection));
         entry.top_level_path()
     };
@@ -409,7 +409,7 @@ fn delete_file(editor: &mut Editor, id: ClientId, path: PathBuf) -> ActionResult
         let path = path.strip_prefix(editor.working_dir()).unwrap_or(&path);
         format!("Delete {} {:?}? (y/N)", kind, path)
     };
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     win.prompt = Prompt::builder()
         .prompt(&prompt)
         .simple()
@@ -468,14 +468,14 @@ pub(crate) fn handle_file_delete(editor: &mut Editor, id: ClientId, path: &Path)
 
 #[action("Filetree: Goto parent")]
 fn select_ft_parent(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, _buf) = editor.win_buf(id);
+    let (win, _buf) = win_buf_ref!(editor, id);
     let entry = getf!(editor.filetree.iter().nth(win.ft_view.selection));
     let parent = getf!(editor.filetree.parent_of(entry.path()));
     let pos = getf!(editor
         .filetree
         .iter()
         .position(|entry| entry.path() == parent.path()));
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     win.ft_view.selection = pos;
 
     ActionResult::Ok

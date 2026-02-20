@@ -18,7 +18,7 @@ use super::{jobs::MatcherJob, window::mode_insert, ActionResult};
 
 #[action("Snippet: Jump to next placeholder")]
 pub(crate) fn snippet_jump_next(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, buf) = win_buf!(editor, id);
     if win.cursors_to_next_snippet_jump(buf) {
         mode_insert(editor, id);
     }
@@ -41,7 +41,7 @@ pub(crate) fn insert_snippet(editor: &mut Editor, id: ClientId) -> ActionResult 
         .prompt(MESSAGE)
         .loads_options()
         .on_confirm(move |editor, id, out| {
-            let (win, _buf) = editor.win_buf(id);
+            let (win, _buf) = win_buf_ref!(editor, id);
             let primary = win.cursors.primary().pos();
             let snippet = getf!(out.snippet().cloned());
             insert_snippet_impl(editor, id, snippet, Range::from(primary..primary), vec![])
@@ -62,7 +62,7 @@ pub(crate) fn insert_snippet_impl(
 
     // Apply additional edits first
     if !additional_changes.is_empty() {
-        let (win, buf) = editor.win_buf_mut(id);
+        let (win, buf) = win_buf!(editor, id);
         let changes = Changes::new(&additional_changes);
         if win.change(buf, &changes).is_ok() {
             let hook = Hook::BufChanged(buf.id);
@@ -73,7 +73,7 @@ pub(crate) fn insert_snippet_impl(
         pos = changes.move_offset(pos);
     }
 
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, buf) = win_buf!(editor, id);
     let slice = buf.slice(..);
     let indent_line = indent_at_line(&slice, pos);
     let preindent = {
@@ -127,7 +127,7 @@ pub(crate) fn insert_snippet_impl(
     }
 
     // Convert recorded placeholders to jumps
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, buf) = win_buf!(editor, id);
     let mut groups = vec![];
     for (start, end) in placeholders {
         let smark = buf.mark(start);

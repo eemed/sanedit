@@ -25,21 +25,21 @@ use super::{
 
 #[action("Cursors: Select next word")]
 fn select_to_next_word(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     win.cursors.start_selection();
     movement::next_word_end.execute(editor, id)
 }
 
 #[action("Cursors: Select previous word")]
 fn select_to_prev_word(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     win.cursors.start_selection();
     movement::prev_word_start.execute(editor, id)
 }
 
 #[action("Cursors: New on next line")]
 fn new_cursor_to_next_line(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, buf) = win_buf!(editor, id);
     let cursor = win.cursors.primary();
     let (pos, _col) = next_line(&buf.slice(..), cursor, win.display_options());
     win.cursors.cursors_mut().push_primary(Cursor::new(pos));
@@ -48,7 +48,7 @@ fn new_cursor_to_next_line(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Cursors: New on previous line")]
 fn new_cursor_to_prev_line(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, buf) = win_buf!(editor, id);
     let cursor = win.cursors.primary();
     let (pos, _col) = prev_line(&buf.slice(..), cursor, win.display_options());
     win.cursors.cursors_mut().push_primary(Cursor::new(pos));
@@ -57,7 +57,7 @@ fn new_cursor_to_prev_line(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Cursors: Start selection")]
 fn start_selection(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     win.cursors.start_selection();
     mode_select(editor, id);
     next_grapheme.execute(editor, id);
@@ -66,7 +66,7 @@ fn start_selection(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Cursors: Cancel selection")]
 fn stop_selection(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     win.stop_selection();
     mode_normal(editor, id);
     ActionResult::Ok
@@ -74,14 +74,14 @@ fn stop_selection(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Cursors: Remove secondary cursors")]
 fn keep_only_primary(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
 
     if win.cursors.has_selections() {
         win.stop_selection();
     } else {
         win.cursors.cursors_mut().remove_except_primary();
 
-        let (win, _buf) = editor.win_buf_mut(id);
+        let (win, _buf) = win_buf!(editor, id);
         win.stop_selection();
     }
 
@@ -90,7 +90,7 @@ fn keep_only_primary(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Cursors: Swap selection direction")]
 fn swap_selection_dir(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     win.cursors.swap_selection_dir();
 
     ActionResult::Ok
@@ -98,7 +98,7 @@ fn swap_selection_dir(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Cursors: Remove primary cursor")]
 fn remove_primary_cursor(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, buf) = win_buf!(editor, id);
     win.cursors.cursors_mut().remove_primary();
     win.view_to_around_cursor_zone(buf, Zone::Middle);
     ActionResult::Ok
@@ -106,7 +106,7 @@ fn remove_primary_cursor(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Cursors: Make next cursor primary")]
 fn make_next_cursor_primary(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, buf) = win_buf!(editor, id);
     win.cursors.primary_next();
     win.view_to_around_cursor_zone(buf, Zone::Middle);
     ActionResult::Ok
@@ -114,7 +114,7 @@ fn make_next_cursor_primary(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Cursors: Make previous cursor primary")]
 fn make_prev_cursor_primary(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, buf) = win_buf!(editor, id);
     win.cursors.primary_prev();
     win.view_to_around_cursor_zone(buf, Zone::Middle);
     ActionResult::Ok
@@ -126,7 +126,7 @@ fn remove_cursor_selections(editor: &mut Editor, id: ClientId) -> ActionResult {
         editor.copy_to_clipboard(id);
     }
 
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, buf) = win_buf!(editor, id);
     let res = match win.remove_cursor_selections(buf) {
         Ok(true) => {
             win.view_to_around_cursor_zone(buf, Zone::Middle);
@@ -150,7 +150,7 @@ fn change_cursor_selections(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Cursors: New cursors on line starts and goto insert mode")]
 fn cursors_to_lines_start(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, buf) = win_buf!(editor, id);
     win.cursors_to_lines_start(buf);
     mode_insert(editor, id);
     hooks::run(editor, id, Hook::CursorMoved);
@@ -159,7 +159,7 @@ fn cursors_to_lines_start(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Cursors: New cursors on line ends and goto insert mode")]
 fn cursors_to_lines_end(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, buf) = win_buf!(editor, id);
     win.cursors_to_lines_end(buf);
     mode_insert(editor, id);
     hooks::run(editor, id, Hook::CursorMoved);
@@ -168,7 +168,7 @@ fn cursors_to_lines_end(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Cursors: Goto to previous change")]
 fn jump_prev_change(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, buf) = win_buf!(editor, id);
     if win.cursors_to_prev_change(buf) {
         run(editor, id, Hook::CursorMoved)
     }
@@ -177,7 +177,7 @@ fn jump_prev_change(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Cursors: Goto to next change")]
 fn jump_next_change(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, buf) = win_buf!(editor, id);
     if win.cursors_to_next_change(buf) {
         run(editor, id, Hook::CursorMoved)
     }
@@ -348,7 +348,7 @@ pub(crate) fn jump_to_ref(editor: &mut Editor, id: ClientId, cursor: Ref) -> Act
 
 #[action("Cursors: Goto to top of view")]
 fn cursor_to_view_top(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     if win.cursor_to_view_zone(Zone::Top) {
         run(editor, id, Hook::CursorMoved);
     }
@@ -358,7 +358,7 @@ fn cursor_to_view_top(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Cursors: Goto to middle of view")]
 fn cursor_to_view_middle(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     if win.cursor_to_view_zone(Zone::Middle) {
         run(editor, id, Hook::CursorMoved);
     }
@@ -368,7 +368,7 @@ fn cursor_to_view_middle(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Cursors: Goto to bottom of view")]
 fn cursor_to_view_bottom(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     if win.cursor_to_view_zone(Zone::Bottom) {
         run(editor, id, Hook::CursorMoved);
     }
@@ -378,7 +378,7 @@ fn cursor_to_view_bottom(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Cursors: Trim whitespace")]
 fn cursor_trim_whitespace(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, buf) = win_buf!(editor, id);
     if win.cursor_trim_whitespace(buf) {
         run(editor, id, Hook::CursorMoved);
     }
@@ -388,7 +388,7 @@ fn cursor_trim_whitespace(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Cursors: Sort")]
 fn cursor_sort(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, buf) = win_buf!(editor, id);
     let bid = buf.id;
     if win.cursor_sort(buf, false).is_ok() {
         run(editor, id, Hook::CursorMoved);
@@ -400,7 +400,7 @@ fn cursor_sort(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Cursors: Sort reverse")]
 fn cursor_sort_rev(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, buf) = win_buf!(editor, id);
     let bid = buf.id;
     if win.cursor_sort(buf, true).is_ok() {
         run(editor, id, Hook::CursorMoved);
@@ -412,7 +412,7 @@ fn cursor_sort_rev(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Cursors: Split to select individual lines")]
 fn cursor_select_individual_lines(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, buf) = win_buf!(editor, id);
     win.cursors_to_lines_start(buf);
     run(editor, id, Hook::CursorMoved);
     select_line_without_eol.execute(editor, id);
@@ -421,7 +421,7 @@ fn cursor_select_individual_lines(editor: &mut Editor, id: ClientId) -> ActionRe
 
 #[action("Cursors: Select last selection")]
 fn select_last_selection(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, buf) = win_buf!(editor, id);
     if let Some(cursors) = win.last_selection.clone() {
         win.cursors = cursors;
     }

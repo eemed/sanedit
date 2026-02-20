@@ -121,7 +121,7 @@ emphtwo = "__" (!(nl / "__") ( escape / .))+ "__";
 @show @highlight(keyword)
 emph = constrained_start "_" (!(nl / "_") ( escape / .))+ "_" constrained_end;
 
-constrained_start = (ws / nl);
+constrained_start = (ws+ / nl);
 constrained_end = &[^a..zA..Z];
 
 @show @highlight(keyword)

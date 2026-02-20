@@ -40,7 +40,7 @@ fn quit(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Editor: Copy to next line end clipboard")]
 fn copy_to_eol(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     if win.cursors.has_selections() {
         return ActionResult::Skipped;
     }
@@ -51,14 +51,14 @@ fn copy_to_eol(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Editor: Copy to clipboard")]
 fn copy(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     if !win.cursors.has_selections() {
         editor.copy_line_to_clipboard(id);
     } else {
         editor.copy_to_clipboard(id);
     }
 
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     win.stop_selection();
     mode_normal(editor, id);
     ActionResult::Ok
@@ -75,7 +75,7 @@ fn cut(editor: &mut Editor, id: ClientId) -> ActionResult {
     editor.copy_to_clipboard(id);
 
     run(editor, id, Hook::RemovePre);
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, buf) = win_buf!(editor, id);
     let bid = buf.id;
     if win.remove_cursor_selections(buf).unwrap_or(false) {
         run(editor, id, Hook::BufChanged(bid));
@@ -97,7 +97,7 @@ fn open_config(editor: &mut Editor, id: ClientId) -> ActionResult {
 }
 
 fn prompt_create_and_open_config(editor: &mut Editor, id: ClientId) {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
 
     win.prompt = Prompt::builder()
         .prompt("Configuration file is missing. Create default configuration? (Y/n)")
@@ -111,7 +111,7 @@ fn prompt_create_and_open_config(editor: &mut Editor, id: ClientId) {
 
             let path = editor.config_dir.config();
             if let Err(e) = Config::serialize_default_configuration(&path) {
-                let (win, _buf) = editor.win_buf_mut(id);
+                let (win, _buf) = win_buf!(editor, id);
                 win.warn_msg("Failed to create default configuration file.");
                 log::error!("Failed to create default configuration file to: {path:?} {e}");
                 return ActionResult::Failed;
@@ -140,11 +140,11 @@ fn nop(_editor: &mut Editor, _id: ClientId) -> ActionResult {
 fn toggle_ignore(editor: &mut Editor, id: ClientId) -> ActionResult {
     if editor.ignore.is_empty() {
         editor.ignore = Ignore::new(editor.working_dir(), &editor.config, &editor.project_config);
-        let (win, _buf) = editor.win_buf_mut(id);
+        let (win, _buf) = win_buf!(editor, id);
         win.info_msg("File ignoring enabled");
     } else {
         editor.ignore = Ignore::empty();
-        let (win, _buf) = editor.win_buf_mut(id);
+        let (win, _buf) = win_buf!(editor, id);
         win.info_msg("File ignoring disabled");
     }
     ActionResult::Ok
@@ -157,7 +157,7 @@ fn detect_language(editor: &mut Editor, id: ClientId) -> ActionResult {
         .running_hook()
         .and_then(Hook::buffer_id)
         .unwrap_or_else(|| {
-            let (win, _) = editor.win_buf(id);
+            let (win, _) = win_buf_ref!(editor, id);
             win.buffer_id()
         });
 

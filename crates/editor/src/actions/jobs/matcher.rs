@@ -273,6 +273,7 @@ impl Matcher {
         while !self.job_context.kill.should_stop() && !cancel.is_cancelled() {
             let total = write_done.load(Ordering::Acquire);
             let available = reader.len();
+            log::info!("Spin: total: {total}, available: {available}");
             let fully_read = available == total;
 
             // If we are done reading all available options
@@ -342,4 +343,107 @@ fn matches_with(opt: &str, matcher: &MultiMatcher) -> Option<Vec<Range<usize>>> 
     } else {
         Some(matches)
     }
+}
+
+#[cfg(test)]
+mod test {
+    use crossbeam::channel::Receiver;
+    use sanedit_server::{FromJobs, ToEditor};
+
+    use super::*;
+
+    fn assert_contains(recv: &mut Receiver<ToEditor>, input: u64, choices: &[&str]) {
+        let mut all = std::collections::HashSet::new();
+        for choice in choices {
+            all.insert(choice.to_string());
+        }
+
+        let mut nresults = 0;
+
+        while let Ok(res) = recv.recv() {
+            let ToEditor::Jobs(FromJobs::Message(_, any)) = res else {
+                panic!("Invalid message")
+            };
+
+            let msg = any.downcast::<MatcherMessage>();
+            assert!(msg.is_ok());
+            let Ok(msg) = msg else { panic!("Invalid cast") };
+            match msg.as_ref() {
+                MatcherMessage::Init(_) => {}
+                MatcherMessage::Done {
+                    input_id,
+                    results,
+                    clear_old,
+                } => {
+                    if nresults == 0 {
+                        assert!(clear_old);
+                    }
+                    nresults += results.len();
+                    assert_eq!(input, *input_id);
+                    for rv in results {
+                        for res in rv.iter() {
+                            assert!(all.remove(res.choice().text()));
+                        }
+                    }
+                    break;
+                }
+                MatcherMessage::Progress {
+                    input_id,
+                    results,
+                    clear_old,
+                } => {
+                    if nresults == 0 {
+                        assert!(clear_old);
+                    }
+                    nresults += results.len();
+                    assert_eq!(input, *input_id);
+                    for rv in results {
+                        for res in rv.iter() {
+                            assert!(all.remove(res.choice().text()));
+                        }
+                    }
+                }
+            }
+        }
+
+        assert_eq!(choices.len(), nresults);
+    }
+
+    fn make_list(choices: &[&str]) -> Appendlist<Arc<Choice>> {
+        let list = Appendlist::new();
+        for choice in choices {
+            list.append(Choice::from_text(choice.to_string()));
+        }
+        list
+    }
+
+    #[test]
+    fn matches_options() {
+        let (ctx, mut recv) = JobContext::new_test();
+        let list = make_list(&[
+            "/run/socket.sock",
+            "/var/log/syslog",
+            "/tmp/abc.tmp",
+            "/home/me/.ssh/config",
+            "/home/me/.config/config.toml",
+        ]);
+
+        let matcher = Matcher::new(list.clone(), MatchStrategy::Default, ctx);
+        matcher.do_match("home", 0, CancellationToken::default());
+        assert_contains(
+            &mut recv,
+            0,
+            &["/home/me/.ssh/config", "/home/me/.config/config.toml"],
+        );
+
+        matcher.do_match("sock", 1, CancellationToken::default());
+        assert_contains(
+            &mut recv,
+            1,
+            &["/run/socket.sock"],
+        );
+    }
+
+    #[test]
+    fn slow_options() {}
 }

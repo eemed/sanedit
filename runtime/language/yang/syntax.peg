@@ -30,7 +30,7 @@ boolean = ("true" / "false") &stop;
 operator = [\[\]{}();:,.<>&|=+*/?!<>-];
 
 @show @highlight(warn)
-todo = "TODO" / "XXX";
+todo = "TODO" / "XXX" / "FIXME";
 
 kw_end = nl / "{" / ";";
 keyword_line = keyword  (ws+ (!kw_end (string  / comment / constant / alpha / operator / .))*)? &(nl / "{" / ";");

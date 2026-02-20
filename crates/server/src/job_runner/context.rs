@@ -15,6 +15,16 @@ pub struct JobContext {
 }
 
 impl JobContext {
+    pub fn new_test() -> (JobContext, crossbeam::channel::Receiver<ToEditor>) {
+        let (tx, rx) = crossbeam::channel::unbounded();
+        let (tx1, _rx2) = tokio::sync::mpsc::channel(1);
+        let res_sender = JobResponseSender {
+            editor: tx,
+            internal: tx1,
+        };
+        (res_sender.to_job_context(JobId::next()), rx)
+    }
+
     pub fn send<A: Any + Send>(&self, any: A) {
         let any = Box::new(any);
         let _ = self

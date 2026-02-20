@@ -7,7 +7,7 @@ pub(crate) fn command_palette(editor: &Editor, id: ClientId) -> Vec<Arc<Choice>>
     COMMANDS
         .iter()
         .map(|action| {
-            let (win, _buf) = editor.win_buf(id);
+            let (win, _buf) = win_buf_ref!(editor, id);
             let mut description = String::new();
             if let Some(bind) = editor.keymaps.find_bound_key(&win.layer(), action.name()) {
                 description = keyevents_to_string(&bind);

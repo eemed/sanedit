@@ -95,7 +95,6 @@ use self::syntax::Syntaxes;
 use self::themes::Themes;
 use self::windows::History;
 use self::windows::HistoryKind;
-use self::windows::Window;
 use self::windows::Windows;
 
 /// Type to use with all hashmaps
@@ -205,20 +204,6 @@ impl Editor {
         &mut self.buffers
     }
 
-    pub fn win_buf(&self, id: ClientId) -> (&Window, &Buffer) {
-        let win = self.windows.get(id).expect("no win for cliend id");
-        let bid = win.buffer_id();
-        let buf = self.buffers.get(bid).expect("no buffer for buffer id");
-        (win, buf)
-    }
-
-    pub fn win_buf_mut(&mut self, id: ClientId) -> (&mut Window, &mut Buffer) {
-        let win = self.windows.get_mut(id).expect("no win for cliend id");
-        let bid = win.buffer_id();
-        let buf = self.buffers.get_mut(bid).expect("no buffer for buffer id");
-        (win, buf)
-    }
-
     pub fn windows(&self) -> &Windows {
         &self.windows
     }
@@ -288,14 +273,14 @@ impl Editor {
             return;
         }
 
-        let (_win, buf) = self.win_buf_mut(id);
+        let (_win, buf) = win_buf!(self, id);
         let old = buf.id;
 
         // TODO buffer deletion when needed? if ever?
 
         run(self, id, Hook::BufLeave(old));
 
-        let (_win, buf) = self.win_buf_mut(id);
+        let (_win, buf) = win_buf!(self, id);
         if buf.remove_on_exit {
             run(self, id, Hook::BufDeletedPre(old));
             self.buffers.remove(old);
@@ -363,7 +348,7 @@ impl Editor {
             Some(bid) => bid,
             None => self.create_buffer(id, &path)?,
         };
-        let (win, _buf) = self.win_buf(id);
+        let (win, _buf) = win_buf_ref!(self, id);
         if win.buffer_id() == bid {
             return Ok(());
         }
@@ -402,14 +387,14 @@ impl Editor {
 
         match msg {
             Message::KeyEvent(key_event) => {
-                let (win, _buf) = self.win_buf_mut(id);
+                let (win, _buf) = win_buf!(self, id);
                 if win.macro_replay.is_replaying() {
                     win.macro_replay.stop_replaying();
                 }
                 self.handle_key_event(id, key_event);
             }
             Message::MouseEvent(mouse_event) => {
-                let (win, _buf) = self.win_buf_mut(id);
+                let (win, _buf) = win_buf!(self, id);
                 if win.macro_replay.is_replaying() {
                     win.macro_replay.stop_replaying();
                 }
@@ -506,7 +491,7 @@ impl Editor {
     }
 
     fn handle_resize(&mut self, id: ClientId, size: Size) {
-        let (win, buf) = self.win_buf_mut(id);
+        let (win, buf) = win_buf!(self, id);
         win.resize(size, buf);
     }
 
@@ -521,7 +506,7 @@ impl Editor {
                 if let Some(lang) = language {
                     let language = Language::new(&lang);
                     self.load_language(&language, false);
-                    let (_win, buf) = self.win_buf_mut(id);
+                    let (_win, buf) = win_buf!(self, id);
                     buf.language = Some(language);
                 }
             }
@@ -547,7 +532,7 @@ impl Editor {
             Element::Snapshots => {
                 if let MouseEventKind::ButtonDown(MouseButton::Left) = event.kind {
                     focus_with_mode(self, id, Focus::Snapshots, Mode::Normal);
-                    let (win, buf) = self.win_buf_mut(id);
+                    let (win, buf) = win_buf!(self, id);
                     win.snapshot_view.mouse.on_click(event.point);
                     match win.snapshot_view.mouse.clicks() {
                         MouseClick::Single => {
@@ -564,7 +549,7 @@ impl Editor {
             Element::Filetree => {
                 if let MouseEventKind::ButtonDown(MouseButton::Left) = event.kind {
                     focus_with_mode(self, id, Focus::Filetree, Mode::Normal);
-                    let (win, _buf) = self.win_buf_mut(id);
+                    let (win, _buf) = win_buf!(self, id);
                     win.ft_view.mouse.on_click(event.point);
                     match win.ft_view.mouse.clicks() {
                         MouseClick::Single => {
@@ -579,7 +564,7 @@ impl Editor {
             }
             Element::Locations => match event.kind {
                 MouseEventKind::ScrollDown => {
-                    let (win, _buf) = self.win_buf_mut(id);
+                    let (win, _buf) = win_buf!(self, id);
                     let max_offset = win
                         .locations
                         .visible_len()
@@ -589,7 +574,7 @@ impl Editor {
                     };
                     let offset = min(draw.loc_scroll_offset + 2, max_offset);
                     draw.loc_scroll_offset = offset;
-                    let (win, _buf) = self.win_buf_mut(id);
+                    let (win, _buf) = win_buf!(self, id);
                     while let Some(sel) = win.locations.selected_pos() {
                         if sel < offset {
                             win.locations.select_next();
@@ -604,7 +589,7 @@ impl Editor {
                     };
                     let offset = draw.loc_scroll_offset.saturating_sub(2);
                     draw.loc_scroll_offset = offset;
-                    let (win, _buf) = self.win_buf_mut(id);
+                    let (win, _buf) = win_buf!(self, id);
                     while let Some(sel) = win.locations.selected_pos() {
                         if sel >= offset + win.config.max_locations {
                             win.locations.select_prev();
@@ -619,7 +604,7 @@ impl Editor {
                         return;
                     };
                     let offset = draw.loc_scroll_offset;
-                    let (win, _buf) = self.win_buf_mut(id);
+                    let (win, _buf) = win_buf!(self, id);
                     let mouse = &mut win.locations.extra.mouse;
                     mouse.on_click(event.point);
 
@@ -636,11 +621,11 @@ impl Editor {
                 _ => {}
             },
             Element::Window => {
-                let (win, _buf) = self.win_buf_mut(id);
+                let (win, _buf) = win_buf!(self, id);
                 if win.focus != Focus::Window {
                     focus_with_mode(self, id, Focus::Window, Mode::Normal);
                 }
-                let (win, buf) = self.win_buf_mut(id);
+                let (win, buf) = win_buf!(self, id);
                 match event.kind {
                     MouseEventKind::ScrollDown => win.scroll_down_n(buf, 3),
                     MouseEventKind::ScrollUp => win.scroll_up_n(buf, 3),
@@ -731,7 +716,7 @@ impl Editor {
         log::debug!("KeyEvent '{event}'");
         use sanedit_messages::key::Key::*;
 
-        let (win, _buf) = self.win_buf_mut(id);
+        let (win, _buf) = win_buf!(self, id);
         if let Some(game) = win.game.as_mut() {
             if game.handle_input(event) {
                 win.game = None;
@@ -745,7 +730,7 @@ impl Editor {
         run(self, id, Hook::KeyPressedPre);
 
         // If next key handler specified
-        let (win, _buf) = self.win_buf_mut(id);
+        let (win, _buf) = win_buf!(self, id);
         if let Some(handler) = win.next_key_handler.take() {
             let event = win.clear_keys().pop().unwrap();
             (handler.0)(self, id, event);
@@ -770,7 +755,7 @@ impl Editor {
                 return;
             }
             KeymapResult::NotFound => {
-                let (win, _buf) = self.win_buf_mut(id);
+                let (win, _buf) = win_buf!(self, id);
                 events = win.clear_keys();
 
                 if win.focus == Focus::Window && win.mode != Mode::Insert {
@@ -794,7 +779,7 @@ impl Editor {
                 Tab => insert(self, id, "\t"),
                 Enter => {
                     let eol = {
-                        let (_, buf) = self.win_buf(id);
+                        let (_, buf) = win_buf_ref!(self, id);
                         buf.config.eol
                     };
                     insert(self, id, eol.as_ref());
@@ -849,14 +834,14 @@ impl Editor {
         self.reload_config();
 
         // Reload theme
-        let (win, _buf) = self.win_buf(id);
+        let (win, _buf) = win_buf_ref!(self, id);
         let theme = win.config.theme.to_string();
         if let Ok(theme) = self.themes.load(&theme).cloned() {
             self.send_to_client(id, ClientMessage::Theme(theme).into())
         }
 
         // Reload language
-        let (_win, buf) = self.win_buf(id);
+        let (_win, buf) = win_buf_ref!(self, id);
         if let Some(lang) = buf.language.clone() {
             self.load_language(&lang, true);
         }
@@ -873,7 +858,7 @@ impl Editor {
             return;
         };
 
-        let (win, _buf) = self.win_buf(id);
+        let (win, _buf) = win_buf_ref!(self, id);
         let lines = paste_separate_cursor_lines(text.as_str());
         let single_with_eol = lines.len() == 1 && lines[0].1 && win.cursors.len() == 1;
         let multicursor_match = win.cursors.len() == lines.len();
@@ -886,7 +871,7 @@ impl Editor {
     }
 
     fn paste_on_line_below(&mut self, id: ClientId, lines: Vec<(String, bool)>) {
-        let (win, buf) = self.win_buf_mut(id);
+        let (win, buf) = win_buf!(self, id);
         let bid = buf.id;
         let text = {
             let mut result: Vec<String> = vec![];
@@ -907,7 +892,7 @@ impl Editor {
 
     // Paste to current cursors
     fn paste_inline(&mut self, id: ClientId, lines: Vec<(String, bool)>) {
-        let (win, buf) = self.win_buf_mut(id);
+        let (win, buf) = win_buf!(self, id);
         let clen = win.cursors.cursors().len();
         let llen = lines.len();
         let bid = buf.id;
@@ -936,7 +921,7 @@ impl Editor {
     }
 
     pub fn copy_line_to_clipboard(&mut self, id: ClientId) {
-        let (win, buf) = self.win_buf_mut(id);
+        let (win, buf) = win_buf!(self, id);
         let mut lines = vec![];
 
         for range in win.cursor_lines(buf) {
@@ -953,7 +938,7 @@ impl Editor {
     }
 
     pub fn copy_to_eol_to_clipboard(&mut self, id: ClientId) {
-        let (win, buf) = self.win_buf_mut(id);
+        let (win, buf) = win_buf!(self, id);
         let mut lines = vec![];
 
         for range in win.cursors_to_eol(buf) {
@@ -966,7 +951,7 @@ impl Editor {
     }
 
     pub fn copy_to_clipboard(&mut self, id: ClientId) {
-        let (win, buf) = self.win_buf(id);
+        let (win, buf) = win_buf_ref!(self, id);
         let mut lines = vec![];
         for cursor in win.cursors.cursors() {
             if let Some(sel) = cursor.selection() {
@@ -1003,7 +988,7 @@ impl Editor {
 
     /// Return the currently focused elements keymap
     pub fn mapped_action(&self, id: ClientId) -> KeymapResult {
-        let (win, _buf) = self.win_buf(id);
+        let (win, _buf) = win_buf_ref!(self, id);
         let kmap = &self.keymaps;
         let key = win.layer();
         kmap.get(&key, win.keys())
@@ -1017,7 +1002,7 @@ impl Editor {
     }
 
     pub fn has_syntax(&self, id: ClientId) -> bool {
-        let (_win, buf) = self.win_buf(id);
+        let (_win, buf) = win_buf_ref!(self, id);
         if let Some(ref lang) = buf.language {
             return self.syntaxes.contains_key(lang);
         }
@@ -1030,7 +1015,7 @@ impl Editor {
     }
 
     pub fn lsp_for(&self, id: ClientId) -> Option<&Lsp> {
-        let (_win, buf) = self.win_buf(id);
+        let (_win, buf) = win_buf_ref!(self, id);
         let lang = buf.language.as_ref()?;
         self.language_servers.get(lang)
     }
@@ -1070,7 +1055,7 @@ impl Editor {
 
     pub fn replay_macro_continue(&mut self, id: ClientId) {
         while let Some(event) = {
-            let (win, _buf) = self.win_buf_mut(id);
+            let (win, _buf) = win_buf!(self, id);
             win.macro_replay.pop()
         } {
             self.handle_key_event(id, event);
@@ -1085,7 +1070,7 @@ impl Editor {
             }
         }
 
-        let (win, _buf) = self.win_buf_mut(id);
+        let (win, _buf) = win_buf!(self, id);
         win.macro_replay.stop_replaying();
     }
 
@@ -1109,7 +1094,7 @@ impl Editor {
     }
 
     pub fn replay_macro(&mut self, id: ClientId, macr: VecDeque<KeyEvent>) {
-        let (win, _buf) = self.win_buf_mut(id);
+        let (win, _buf) = win_buf!(self, id);
         if win.macro_replay.is_replaying() {
             return;
         }

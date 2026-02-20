@@ -27,7 +27,7 @@ use super::{
 
 /// Change focus and keymap and run hooks
 pub fn focus_with_mode(editor: &mut Editor, id: ClientId, focus: Focus, mode: Mode) {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     let same_mode = win.mode == mode;
     if same_mode && win.focus() == focus {
         return;
@@ -37,14 +37,14 @@ pub fn focus_with_mode(editor: &mut Editor, id: ClientId, focus: Focus, mode: Mo
         hooks::run(editor, id, Hook::ModeLeave);
     }
 
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     let old = std::mem::replace(&mut win.focus, focus);
 
     if win.focus != old {
         hooks::run(editor, id, Hook::OnFocusChanged(old));
     }
 
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     win.mode = mode;
 
     if !same_mode {
@@ -70,7 +70,7 @@ pub fn mode(editor: &mut Editor, id: ClientId, mode: Mode) {
 
 /// Change focus and run hooks
 pub fn focus(editor: &mut Editor, id: ClientId, focus: Focus) {
-    let (win, _buf) = editor.win_buf(id);
+    let (win, _buf) = win_buf_ref!(editor, id);
     let mode = win.mode;
     focus_with_mode(editor, id, focus, mode)
 }
@@ -89,14 +89,14 @@ fn reload_window(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Window: Clear messages")]
 fn clear_messages(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     win.clear_msg();
     ActionResult::Ok
 }
 
 #[action("Sync windows if a buffer is changed")]
 fn sync_windows(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (_win, buf) = editor.win_buf(id);
+    let (_win, buf) = win_buf_ref!(editor, id);
     let bid = buf.id;
     let bid = editor
         .hooks
@@ -107,7 +107,7 @@ fn sync_windows(editor: &mut Editor, id: ClientId) -> ActionResult {
 
     for client in clients {
         if id != client {
-            let (win, buf) = editor.win_buf_mut(client);
+            let (win, buf) = win_buf!(editor, client);
             win.on_buffer_changed(buf);
         }
     }
@@ -117,14 +117,14 @@ fn sync_windows(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Window: Goto previous buffer")]
 fn goto_prev_buffer(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     match win.last_buffer {
         Some(bid) => {
             if editor.buffers.get(bid).is_none() {
                 return ActionResult::Failed;
             }
 
-            let (win, buf) = editor.win_buf_mut(id);
+            let (win, buf) = win_buf!(editor, id);
             win.push_new_cursor_jump(buf);
             editor.open_buffer(id, bid);
             ActionResult::Ok
@@ -137,7 +137,7 @@ fn goto_prev_buffer(editor: &mut Editor, id: ClientId) -> ActionResult {
 }
 
 pub fn goto_other_buffer(editor: &mut Editor, id: ClientId) {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     let bid = win
         .last_buffer
         .filter(|bid| editor.buffers.get(*bid).is_some());
@@ -152,7 +152,7 @@ pub fn goto_other_buffer(editor: &mut Editor, id: ClientId) {
 
 #[action("Window: Cancel")]
 fn cancel(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     win.clear_popup();
 
     if win.cursors.cursors().iter().any(|c| c.is_selecting()) {
@@ -160,11 +160,11 @@ fn cancel(editor: &mut Editor, id: ClientId) -> ActionResult {
     } else if win.cursors().len() > 1 {
         win.cursors.cursors_mut().remove_except_primary();
 
-        let (win, _buf) = editor.win_buf_mut(id);
+        let (win, _buf) = win_buf!(editor, id);
         win.stop_selection();
     }
 
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     if win.search.is_highlighting_enabled() {
         // Clear search matches
         win.search.disable_highlighting();
@@ -199,7 +199,7 @@ fn new_window_vertical(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Editor: Status")]
 fn status(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, buf) = editor.win_buf(id);
+    let (win, buf) = win_buf_ref!(editor, id);
     let file = buf
         .path()
         .map(|path| {
@@ -280,42 +280,42 @@ fn status(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("View: Move to cursor")]
 fn view_to_cursor(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, buf) = win_buf!(editor, id);
     win.view_to_cursor(buf);
     ActionResult::Ok
 }
 
 #[action("View: Move to cursor high")]
 fn view_to_cursor_top(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, buf) = win_buf!(editor, id);
     win.view_to_cursor_zone(buf, Zone::Top);
     ActionResult::Ok
 }
 
 #[action("View: Move to cursor middle")]
 fn view_to_cursor_middle(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, buf) = win_buf!(editor, id);
     win.view_to_cursor_zone(buf, Zone::Middle);
     ActionResult::Ok
 }
 
 #[action("View: Move to cursor bottom")]
 fn view_to_cursor_bottom(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, buf) = win_buf!(editor, id);
     win.view_to_cursor_zone(buf, Zone::Bottom);
     ActionResult::Ok
 }
 
 #[action("LSP: Show diagnostic highlights")]
 fn show_diagnostic_highlights(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     win.config.highlight_diagnostics = true;
     ActionResult::Ok
 }
 
 #[action("LSP: Hide diagnostic higlights")]
 fn hide_diagnostic_highlights(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     win.config.highlight_diagnostics = false;
     ActionResult::Ok
 }
@@ -344,7 +344,7 @@ fn run_keymap_mode_leave(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Mode: Normal")]
 fn normal_mode(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     win.stop_selection();
     win.snippets.clear();
     remove_indent(editor, id);
@@ -356,7 +356,7 @@ fn normal_mode(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 /// Removes auto inserted indentation if it was the last change
 fn remove_indent(editor: &mut Editor, id: ClientId) {
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, buf) = win_buf!(editor, id);
     if !win.delete_indent_on_insert_leave {
         return;
     }
@@ -412,7 +412,7 @@ fn remove_indent(editor: &mut Editor, id: ClientId) {
 
 #[action("On insert mode leave")]
 fn on_insert_mode_leave(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     win.delete_indent_on_insert_leave = false;
     ActionResult::Ok
 }

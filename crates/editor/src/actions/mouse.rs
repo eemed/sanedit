@@ -21,7 +21,7 @@ pub(crate) fn on_button_down_left_click(
     id: ClientId,
     event: MouseEvent,
 ) -> ActionResult {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     win.mouse.on_click(event.point);
 
     if event.mods & key::CONTROL != 0 {
@@ -38,7 +38,7 @@ pub(crate) fn on_button_down_left_click(
 }
 
 pub(crate) fn on_drag(editor: &mut Editor, id: ClientId, point: Point) -> ActionResult {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
 
     match win.mouse.clicks() {
         MouseClick::Single => drag_normal(editor, id, point),
@@ -50,7 +50,7 @@ pub(crate) fn on_drag(editor: &mut Editor, id: ClientId, point: Point) -> Action
 }
 
 fn drag_normal(editor: &mut Editor, id: ClientId, point: Point) -> ActionResult {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     win.cursors.cursors_mut().remove_except_primary();
     let pos = getf!(pos_at_point(win, point));
 
@@ -76,7 +76,7 @@ fn drag_normal(editor: &mut Editor, id: ClientId, point: Point) -> ActionResult 
 }
 
 fn drag_word(editor: &mut Editor, id: ClientId, point: Point) -> ActionResult {
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, buf) = win_buf!(editor, id);
     win.cursors.cursors_mut().remove_except_primary();
     let slice = buf.slice(..);
     let pos = getf!(pos_at_point(win, point));
@@ -85,7 +85,7 @@ fn drag_word(editor: &mut Editor, id: ClientId, point: Point) -> ActionResult {
 }
 
 fn drag_line(editor: &mut Editor, id: ClientId, point: Point) -> ActionResult {
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, buf) = win_buf!(editor, id);
     win.cursors.cursors_mut().remove_except_primary();
     let slice = buf.slice(..);
     let pos = getf!(pos_at_point(win, point));
@@ -95,7 +95,7 @@ fn drag_line(editor: &mut Editor, id: ClientId, point: Point) -> ActionResult {
 }
 
 fn drag_impl(editor: &mut Editor, id: ClientId, range: BufferRange) -> ActionResult {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     {
         let mut cursors = win.cursors.cursors_mut();
         cursors.remove_except_primary();
@@ -126,14 +126,14 @@ fn drag_impl(editor: &mut Editor, id: ClientId, range: BufferRange) -> ActionRes
 }
 
 fn new_to_point(editor: &mut Editor, id: ClientId, point: Point) -> ActionResult {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     let pos = getf!(pos_at_point(win, point));
     win.cursors.cursors_mut().push(Cursor::new(pos));
     ActionResult::Ok
 }
 
 fn goto_position(editor: &mut Editor, id: ClientId, point: Point) -> ActionResult {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     let pos = getf!(pos_at_point(win, point));
     {
         let mut cursors = win.cursors.cursors_mut();
@@ -149,7 +149,7 @@ fn goto_position(editor: &mut Editor, id: ClientId, point: Point) -> ActionResul
 }
 
 fn select_word(editor: &mut Editor, id: ClientId, point: Point) -> ActionResult {
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, buf) = win_buf!(editor, id);
     let slice = buf.slice(..);
     let pos = getf!(pos_at_point(win, point));
     let word = getf!(word_at_pos(&slice, pos));
@@ -168,7 +168,7 @@ fn select_word(editor: &mut Editor, id: ClientId, point: Point) -> ActionResult 
 }
 
 fn select_line(editor: &mut Editor, id: ClientId, point: Point) -> ActionResult {
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, buf) = win_buf!(editor, id);
     let slice = buf.slice(..);
     let pos = getf!(pos_at_point(win, point));
     let sol = start_of_line(&slice, pos);

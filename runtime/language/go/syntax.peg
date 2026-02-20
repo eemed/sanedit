@@ -10,7 +10,7 @@ ws = WHITESPACE;
 preproc = ("package" / "import") &stop;
 
 @show @highlight(warn)
-todo = "TODO" / "XXX";
+todo = "TODO" / "XXX" / "FIXME";
 
 @show @highlight
 comment = line_comment / block_comment;

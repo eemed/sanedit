@@ -17,7 +17,7 @@ fn detect_indent(editor: &mut Editor, id: ClientId) -> ActionResult {
         return ActionResult::Ok;
     }
 
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     let wbid = win.buffer_id();
     let bid = editor
         .hooks
@@ -42,7 +42,7 @@ fn detect_eol(editor: &mut Editor, id: ClientId) -> ActionResult {
         return ActionResult::Ok;
     }
 
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     let wbid = win.buffer_id();
     let bid = editor
         .hooks
@@ -80,7 +80,7 @@ fn detect_eol(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Buffer: Indent lines")]
 fn indent_line(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, buf) = win_buf!(editor, id);
     if win.indent_cursor_lines(buf).is_ok() {
         let bid = buf.id;
         hooks::run(editor, id, Hook::BufChanged(bid));
@@ -92,7 +92,7 @@ fn indent_line(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Buffer: Dedent lines")]
 fn dedent_line(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, buf) = win_buf!(editor, id);
     if win.dedent_cursor_lines(buf).is_ok() {
         let bid = buf.id;
         hooks::run(editor, id, Hook::BufChanged(bid));

@@ -373,7 +373,7 @@ impl KeymapLayer {
         Action::Dynamic {
             name: format!("on_enter_{name}"),
             fun: Rc::new(move |editor, id| {
-                let (win, _buf) = editor.win_buf(id);
+                let (win, _buf) = win_buf_ref!(editor, id);
                 if win.mode.as_ref() != name {
                     return ActionResult::Skipped;
                 }
@@ -409,7 +409,7 @@ impl KeymapLayer {
         Action::Dynamic {
             name: format!("on_leave_{name}"),
             fun: Rc::new(move |editor, id| {
-                let (win, _buf) = editor.win_buf(id);
+                let (win, _buf) = win_buf_ref!(editor, id);
                 if win.mode.as_ref() != name {
                     return ActionResult::Skipped;
                 }
@@ -482,7 +482,7 @@ fn run_mapped_action2(
     result: ActionResult,
     skip: Option<ActionResult>,
 ) -> ActionResult {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     let in_prompt = Focus::Prompt == win.focus();
 
     if in_prompt {

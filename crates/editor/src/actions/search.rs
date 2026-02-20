@@ -33,7 +33,7 @@ pub(crate) fn prevent_flicker(editor: &mut Editor, id: ClientId) -> ActionResult
         }
     }
 
-    let (_win, buf) = editor.win_buf(id);
+    let (_win, buf) = win_buf_ref!(editor, id);
     let bid = buf.id;
     let bid = editor
         .hooks
@@ -43,7 +43,7 @@ pub(crate) fn prevent_flicker(editor: &mut Editor, id: ClientId) -> ActionResult
     let clients = editor.windows().find_clients_with_buf(bid);
 
     for client in clients {
-        let (win, buf) = editor.win_buf_mut(client);
+        let (win, buf) = win_buf!(editor, client);
         if let Some(old) = win.search.highlights_mut() {
             let edit = getf!(buf.last_edit());
 
@@ -92,7 +92,7 @@ pub(crate) fn prevent_flicker(editor: &mut Editor, id: ClientId) -> ActionResult
 /// setups async job to handle matches within the view range.
 fn highlight_view_matches_on_input(editor: &mut Editor, id: ClientId, pattern: &str) {
     let Ok((searcher, _)) = Searcher::new(pattern) else {
-        let (win, _buf) = editor.win_buf_mut(id);
+        let (win, _buf) = win_buf!(editor, id);
         win.search.reset_highlighting();
         return;
     };
@@ -100,7 +100,7 @@ fn highlight_view_matches_on_input(editor: &mut Editor, id: ClientId, pattern: &
 }
 
 fn highlight_current_search_matches(editor: &mut Editor, id: ClientId) {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     let mut opts = win.search.current.opts;
     opts.is_reversed = false;
 
@@ -113,7 +113,7 @@ fn highlight_current_search_matches(editor: &mut Editor, id: ClientId) {
 /// Highlights search matches on view using
 fn highlight_view_matches(editor: &mut Editor, id: ClientId, searcher: Searcher) {
     const JOB_NAME: &str = "search-highlight";
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, buf) = win_buf!(editor, id);
     let mut view = win.view().range();
     view.start = view.start.saturating_sub(HORIZON_TOP);
     view.end = min(buf.len(), view.end + HORIZON_BOTTOM);
@@ -124,7 +124,7 @@ fn highlight_view_matches(editor: &mut Editor, id: ClientId, searcher: Searcher)
 
 #[action("Search: Highlight matches")]
 fn highlight_search(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (_win, buf) = editor.win_buf_mut(id);
+    let (_win, buf) = win_buf!(editor, id);
     let bid = buf.id;
     let bid = editor
         .hooks
@@ -134,7 +134,7 @@ fn highlight_search(editor: &mut Editor, id: ClientId) -> ActionResult {
     let clients = editor.windows().find_clients_with_buf(bid);
 
     for client in clients {
-        let (win, buf) = editor.win_buf_mut(client);
+        let (win, buf) = win_buf!(editor, client);
         if !win.search.is_highlighting_enabled() {
             continue;
         }
@@ -154,7 +154,7 @@ fn highlight_search(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Search: Forward")]
 fn search_forward(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     win.search.disable_highlighting();
 
     win.prompt = Prompt::builder()
@@ -167,7 +167,7 @@ fn search_forward(editor: &mut Editor, id: ClientId) -> ActionResult {
         })
         .on_input(highlight_view_matches_on_input)
         .on_abort(|editor, id, _| {
-            let (win, _buf) = editor.win_buf_mut(id);
+            let (win, _buf) = win_buf!(editor, id);
             win.search.disable_highlighting();
         })
         .build();
@@ -177,7 +177,7 @@ fn search_forward(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Search: Backward")]
 fn search_backward(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
 
     win.search.disable_highlighting();
     win.prompt = Prompt::builder()
@@ -190,7 +190,7 @@ fn search_backward(editor: &mut Editor, id: ClientId) -> ActionResult {
         })
         .on_input(highlight_view_matches_on_input)
         .on_abort(|editor, id, _| {
-            let (win, _buf) = editor.win_buf_mut(id);
+            let (win, _buf) = win_buf!(editor, id);
             win.search.disable_highlighting();
         })
         .build();
@@ -201,7 +201,7 @@ fn search_backward(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Search: Find word under cursor and move to next occurence")]
 fn search_next_word_under_cursor(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, buf) = win_buf!(editor, id);
     let pos = win.cursors.primary().pos();
     let slice = buf.slice(..);
     let range = getf!(word_at_pos(&slice, pos));
@@ -213,7 +213,7 @@ fn search_next_word_under_cursor(editor: &mut Editor, id: ClientId) -> ActionRes
 
 #[action("Search: Find word under cursor and move to previous occurence")]
 fn search_prev_word_under_cursor(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, buf) = win_buf!(editor, id);
     let pos = win.cursors.primary().pos();
     let slice = buf.slice(..);
     let range = getf!(word_at_pos(&slice, pos));
@@ -225,7 +225,7 @@ fn search_prev_word_under_cursor(editor: &mut Editor, id: ClientId) -> ActionRes
 
 #[action("Editor: Clear match highlighting")]
 fn clear_search_matches(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     win.search.disable_highlighting();
     ActionResult::Ok
 }
@@ -244,7 +244,7 @@ fn prev_search_match(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 /// Continue current search
 fn continue_search(editor: &mut Editor, id: ClientId, reverse: bool) {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     let pos = win.primary_cursor().pos();
 
     let mut opts = win.search.current.opts;
@@ -263,7 +263,7 @@ fn continue_search(editor: &mut Editor, id: ClientId, reverse: bool) {
 
 /// Start a new search
 fn new_search(editor: &mut Editor, id: ClientId, needle: &str, reverse: bool) {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
 
     let (options, pattern) = SearchOptions::from_pattern(needle, reverse);
     let Ok(searcher) = Searcher::with_options(&pattern, &options) else {
@@ -301,7 +301,7 @@ fn skip_highlighted(win: &Window, starting_position: u64, reverse: bool) -> u64 
 }
 
 fn do_search(editor: &mut Editor, id: ClientId, searcher: Searcher, starting_position: u64) {
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, buf) = win_buf!(editor, id);
 
     let (start, mat, wrap) = if searcher.options().is_reversed {
         // Skip current match if needed

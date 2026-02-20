@@ -149,15 +149,34 @@ impl TryFrom<lsp_types::TextDocumentEdit> for FileEdit {
 
     fn try_from(value: lsp_types::TextDocumentEdit) -> Result<Self, Self::Error> {
         if let Some(path) = uri_to_path(&value.text_document.uri) {
-            let edits = value
-                .edits
-                .into_iter()
-                .map(|edit| match edit {
+            // merge same position insertion changes to one to not confuse editor
+            let mut edits = Vec::with_capacity(value.edits.len());
+            let mut current_edit: Option<TextEdit> = None;
+            for edit in value.edits {
+                let text = match edit {
                     lsp_types::OneOf::Left(a) => a,
                     lsp_types::OneOf::Right(b) => b.text_edit,
-                })
-                .filter_map(|edit| TextEdit::try_from(edit).ok())
-                .collect();
+                };
+
+                if let Ok(te) = TextEdit::try_from(text) {
+                    match current_edit {
+                        Some(mut cur) => {
+                            if cur.range.is_empty() && cur.range == te.range {
+                                cur.text.push_str(&te.text);
+                                current_edit = Some(cur);
+                            } else {
+                                edits.push(cur);
+                                current_edit = Some(te);
+                            }
+                        }
+                        None => current_edit = Some(te),
+                    }
+                }
+            }
+
+            if let Some(cur) = current_edit {
+                edits.push(cur);
+            }
 
             Ok(FileEdit { path, edits })
         } else {
@@ -433,6 +452,10 @@ pub struct PositionRange {
 }
 
 impl PositionRange {
+    pub fn is_empty(&self) -> bool {
+        self.start == self.end
+    }
+
     pub fn to_buffer_range(&self, slice: &PieceTreeSlice, enc: &PositionEncoding) -> BufferRange {
         let start = self.start.to_offset(slice, enc);
         let end = if self.start == self.end {

@@ -18,28 +18,28 @@ use super::{window::focus, ActionResult};
 
 #[action("Locations: Select first entry")]
 fn loc_select_first(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     win.locations.select_first();
     ActionResult::Ok
 }
 
 #[action("Locations: Select last entry")]
 fn loc_select_last(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     win.locations.select_last();
     ActionResult::Ok
 }
 
 #[action("Locations: Clear")]
 fn clear_locations(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     win.locations.clear();
     ActionResult::Ok
 }
 
 #[action("Locations: Show")]
 fn show_locations(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     win.locations.extra.show = true;
     focus(editor, id, Focus::Locations);
     ActionResult::Ok
@@ -47,7 +47,7 @@ fn show_locations(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Locations: Close")]
 fn close_locations(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     win.locations.extra.show = false;
     focus(editor, id, Focus::Window);
     ActionResult::Ok
@@ -55,7 +55,7 @@ fn close_locations(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Locations: Focus")]
 fn focus_locations(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     if win.locations.extra.show {
         focus(editor, id, Focus::Locations);
     }
@@ -65,21 +65,21 @@ fn focus_locations(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Locations: Next entry")]
 fn next_loc_entry(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     win.locations.select_next();
     ActionResult::Ok
 }
 
 #[action("Locations: Previous entry")]
 fn prev_loc_entry(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     win.locations.select_prev();
     ActionResult::Ok
 }
 
 #[action("Locations: Confirm entry")]
 fn goto_loc_entry(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
 
     if let Some(sel) = win.locations.selected_mut() {
         match sel {
@@ -97,16 +97,16 @@ fn goto_loc_entry(editor: &mut Editor, id: ClientId) -> ActionResult {
                 let path = parent.path().to_path_buf();
 
                 // Push current position to jumps
-                let (win, buf) = editor.win_buf_mut(id);
+                let (win, buf) = win_buf!(editor, id);
                 win.push_new_cursor_jump(buf);
 
                 if let Err(e) = editor.open_file(id, &path) {
-                    let (win, _buf) = editor.win_buf_mut(id);
+                    let (win, _buf) = win_buf!(editor, id);
                     win.error_msg(&format!("Failed to open file: {e}"));
                     return ActionResult::Failed;
                 }
 
-                let (win, buf) = editor.win_buf_mut(id);
+                let (win, buf) = win_buf!(editor, id);
                 win.goto_offset(offset, buf);
                 focus(editor, id, Focus::Window);
             }
@@ -118,14 +118,14 @@ fn goto_loc_entry(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Locations: Goto parent")]
 fn select_loc_parent(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     win.locations.select_parent();
     ActionResult::Ok
 }
 
 #[action("Locations: Expand / collapse toggle")]
 fn toggle_all_expand_locs(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     let mut has_expanded = false;
     for group in win.locations.groups() {
         if group.is_expanded() {
@@ -145,13 +145,13 @@ fn toggle_all_expand_locs(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Locations: Keep files with")]
 fn keep_locations(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     win.prompt = Prompt::builder()
         .prompt("Keep location files")
         .simple()
         .on_confirm(move |editor, id, out| {
             let wd = editor.working_dir().to_path_buf();
-            let (win, _buf) = editor.win_buf_mut(id);
+            let (win, _buf) = win_buf!(editor, id);
             let text = getf!(out.text());
             let case_sensitive = text.chars().any(|ch| ch.is_uppercase());
             win.locations.retain(|group| {
@@ -174,13 +174,13 @@ fn keep_locations(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Locations: Reject files with")]
 fn reject_locations(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     win.prompt = Prompt::builder()
         .prompt("Reject location files")
         .simple()
         .on_confirm(move |editor, id, out| {
             let wd = editor.working_dir().to_path_buf();
-            let (win, _buf) = editor.win_buf_mut(id);
+            let (win, _buf) = win_buf!(editor, id);
             let text = getf!(out.text());
             let case_sensitive = text.chars().any(|ch| ch.is_uppercase());
             win.locations.retain(|group| {
@@ -203,25 +203,29 @@ fn reject_locations(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Locations: Open next item")]
 fn goto_next_loc_item(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     if win.locations.select_next_item() {
         goto_loc_entry.execute(editor, id);
+        ActionResult::Ok
+    } else {
+        ActionResult::Failed
     }
-    ActionResult::Ok
 }
 
 #[action("Locations: Open previous item")]
 fn goto_prev_loc_item(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     if win.locations.select_prev_item() {
         goto_loc_entry.execute(editor, id);
+        ActionResult::Ok
+    } else {
+        ActionResult::Failed
     }
-    ActionResult::Ok
 }
 
 #[action("Locations: Stop backing job")]
 fn loc_stop_job(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     if let Some(job) = win.locations.extra.job.take() {
         editor.job_broker.stop(job);
     }
@@ -230,7 +234,7 @@ fn loc_stop_job(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Locations: Open next file")]
 fn goto_next_loc_file(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     if !win.locations.select_next_group() {
         return ActionResult::Skipped;
     }
@@ -250,7 +254,7 @@ fn goto_next_loc_file(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Locations: Open previous file")]
 fn goto_prev_loc_file(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     if !win.locations.select_prev_group() {
         return ActionResult::Skipped;
     }
@@ -281,15 +285,16 @@ fn loc_add_groups(editor: &mut Editor, id: ClientId) -> ActionResult {
         .build();
     editor.job_broker.request_slot(id, MESSAGE, job);
 
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     win.prompt = Prompt::builder()
         .prompt(MESSAGE)
         .loads_options()
+        .simple()
         .on_confirm(move |editor, id, _out| {
-            let (win, _buf) = editor.win_buf_mut(id);
+            let (win, _buf) = win_buf!(editor, id);
             let choices = win.prompt.options();
             for i in 0..choices.len() {
-                let choice = choices.get(i).unwrap();
+                let choice = getf!(choices.get(i));
 
                 if let Choice::Path { path, .. } = choice.choice() {
                     let groups = win.locations.groups();

@@ -10,7 +10,7 @@ use super::ActionResult;
 
 #[action("Popup: Close")]
 fn close(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     // Dont close signature help
     if win.mode == Mode::Insert {
         if let Some(popup) = win.popup() {

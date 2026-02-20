@@ -23,7 +23,7 @@ type_names =
     ;
 
 @show @highlight(warn)
-todo = "TODO" / "XXX";
+todo = "TODO" / "XXX" / "FIXME";
 
 @show @highlight
 comment = block_comment / line_comment ;

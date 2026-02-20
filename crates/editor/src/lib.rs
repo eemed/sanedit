@@ -21,10 +21,22 @@ macro_rules! get {
     }};
 }
 
+macro_rules! win_buf_ref {
+    ($editor:ident, $id:expr) => {{
+        let win = $editor.windows.get($id).expect("no win for cliend id {id}");
+        let bid = win.buffer_id();
+        let buf = $editor
+            .buffers
+            .get(bid)
+            .expect("no buffer for buffer id {bid}");
+        (win, buf)
+    }};
+}
+
 /// Quick way to borrow just window and buffer mutably from the editor.
 /// Used if mutable access is needed in other parts of editor
 macro_rules! win_buf {
-    ($editor:ident, $id:ident) => {{
+    ($editor:ident, $id:expr) => {{
         let win = $editor
             .windows
             .get_mut($id)

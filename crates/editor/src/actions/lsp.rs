@@ -46,7 +46,7 @@ pub(crate) type LspRequestFunction =
 
 /// Helper function to get out all of the mostly used stuff from editor state
 pub(crate) fn lsp_request(editor: &mut Editor, id: ClientId, f: LspRequestFunction) -> Result<()> {
-    let (_win, buf) = editor.win_buf_mut(id);
+    let (_win, buf) = win_buf!(editor, id);
     let lang = buf.language.clone().ok_or(LSPActionError::LanguageNotSet)?;
     let path = buf
         .path()
@@ -57,7 +57,7 @@ pub(crate) fn lsp_request(editor: &mut Editor, id: ClientId, f: LspRequestFuncti
         .get(&lang)
         .ok_or_else(|| LSPActionError::LanguageServerNotStarted(lang.as_str().to_string()))?;
 
-    let (win, buf) = editor.win_buf(id);
+    let (win, buf) = win_buf_ref!(editor, id);
     let slice = buf.slice(..);
     let request = (f)(win, buf, path, slice, handle);
 
@@ -114,7 +114,7 @@ pub(crate) fn lsp_notify(
     id: ClientId,
     f: fn(&Buffer, PathBuf, PieceTreeSlice, &Lsp) -> Option<Notification>,
 ) -> Result<()> {
-    let (_win, buf) = editor.win_buf_mut(id);
+    let (_win, buf) = win_buf!(editor, id);
     let bid = buf.id;
     let bid = editor
         .hooks
@@ -126,11 +126,11 @@ pub(crate) fn lsp_notify(
 
 #[action("LSP: Start server")]
 fn start_lsp(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (_win, buf) = editor.win_buf(id);
+    let (_win, buf) = win_buf_ref!(editor, id);
     let bid = buf.id;
 
     if let Err(e) = start_lsp_impl(editor, id, bid) {
-        let (win, _buf) = editor.win_buf_mut(id);
+        let (win, _buf) = win_buf!(editor, id);
         win.error_msg(&format!("{e}"));
         return ActionResult::Failed;
     }
@@ -172,7 +172,7 @@ fn start_lsp_impl(editor: &mut Editor, id: ClientId, bid: BufferId) -> Result<()
 
 #[action("LSP: Stop server")]
 fn stop_lsp(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (_win, buf) = editor.win_buf(id);
+    let (_win, buf) = win_buf_ref!(editor, id);
     let bid = buf.id;
     stop_lsp_impl(editor, id, bid).into()
 }
@@ -389,7 +389,7 @@ fn format(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("LSP: Rename")]
 fn rename(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, buf) = win_buf!(editor, id);
     let cursor = win.cursors.primary().pos();
     let slice = buf.slice(..);
     let word = getf!(word_at_pos(&slice, cursor));
@@ -401,7 +401,7 @@ fn rename(editor: &mut Editor, id: ClientId) -> ActionResult {
         .input(&word)
         .on_confirm(|editor, id, out| {
             let name = getf!(out.text());
-            let (win, buf) = editor.win_buf(id);
+            let (win, buf) = win_buf_ref!(editor, id);
             let slice = buf.slice(..);
             let offset = win.cursors.primary().pos();
             let total = buf.total_changes_made();

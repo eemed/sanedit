@@ -79,33 +79,16 @@ impl Changes {
             return;
         }
 
-        let mut off = 0i128;
 
-        for change in self.changes.iter() {
-            let mut range = change.range();
-            let abs = off.unsigned_abs() as u64;
-            if off.is_negative() {
-                range.backward(abs);
-            } else {
-                range.forward(abs);
-            }
-
+        for change in self.changes.iter().rev() {
+            let range = change.range();
             if !range.is_empty() {
                 self.remove_ranges(pt, &[range]);
             }
 
             if !change.text().is_empty() {
-                let abs = off.unsigned_abs() as u64;
-                let start = if off.is_negative() {
-                    change.start() - abs
-                } else {
-                    change.start() + abs
-                };
-                pt.insert_multi(&[start], change.text());
+                pt.insert(change.start(), change.text());
             }
-
-            off -= change.range().len() as i128;
-            off += change.text().len() as i128;
         }
     }
 

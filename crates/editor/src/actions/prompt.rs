@@ -44,7 +44,7 @@ fn select_theme(editor: &mut Editor, id: ClientId) -> ActionResult {
         .into_iter()
         .map(String::from)
         .collect();
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
 
     let job = MatcherJob::builder(id)
         .options(Arc::new(themes))
@@ -59,13 +59,13 @@ fn select_theme(editor: &mut Editor, id: ClientId) -> ActionResult {
             match editor.themes.get(text) {
                 Ok(t) => {
                     let theme = t.clone();
-                    let (win, _buf) = editor.win_buf_mut(id);
+                    let (win, _buf) = win_buf!(editor, id);
                     win.config.theme = text.into();
                     editor.send_to_client(id, ClientMessage::Theme(theme).into());
                     ActionResult::Ok
                 }
                 Err(_) => {
-                    let (win, _buf) = editor.win_buf_mut(id);
+                    let (win, _buf) = win_buf!(editor, id);
                     win.warn_msg(&format!("No such theme '{}'", text));
                     ActionResult::Failed
                 }
@@ -81,7 +81,7 @@ fn select_theme(editor: &mut Editor, id: ClientId) -> ActionResult {
 fn command_palette(editor: &mut Editor, id: ClientId) -> ActionResult {
     let opts = Arc::new(commands::command_palette(editor, id));
 
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     let job = MatcherJob::builder(id)
         .options(opts)
         .handler(Prompt::matcher_result_handler)
@@ -120,7 +120,7 @@ fn open_file(editor: &mut Editor, id: ClientId) -> ActionResult {
         .handler(Prompt::open_file_handler)
         .build();
     editor.job_broker.request_slot(id, PROMPT_MESSAGE, job);
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
 
     win.prompt = Prompt::builder()
         .prompt(PROMPT_MESSAGE)
@@ -129,7 +129,7 @@ fn open_file(editor: &mut Editor, id: ClientId) -> ActionResult {
             let path = getf!(out.path_selection());
 
             // Record a jump here before opening a new buffer
-            let (win, buf) = editor.win_buf_mut(id);
+            let (win, buf) = win_buf!(editor, id);
             win.push_new_cursor_jump(buf);
 
             match editor.open_file(id, &path) {
@@ -138,7 +138,7 @@ fn open_file(editor: &mut Editor, id: ClientId) -> ActionResult {
                     ActionResult::Ok
                 }
                 Err(e) => {
-                    let (win, _buf) = editor.win_buf_mut(id);
+                    let (win, _buf) = win_buf!(editor, id);
                     win.warn_msg(&format!("Failed to open file {path:?}: {e}"));
                     ActionResult::Failed
                 }
@@ -174,7 +174,7 @@ fn open_buffer(editor: &mut Editor, id: ClientId) -> ActionResult {
         .handler(Prompt::matcher_result_handler)
         .build();
     editor.job_broker.request_slot(id, PROMPT_MESSAGE, job);
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
 
     win.prompt = Prompt::builder()
         .prompt(PROMPT_MESSAGE)
@@ -182,12 +182,12 @@ fn open_buffer(editor: &mut Editor, id: ClientId) -> ActionResult {
         .on_confirm(move |editor, id, out| {
             let num = getf!(out.number());
             let bid = BufferId::from(num);
-            let (win, _buf) = editor.win_buf_mut(id);
+            let (win, _buf) = win_buf!(editor, id);
             let ok_buf = win.buffer_id() != bid && editor.buffers.get(bid).is_some();
             if !ok_buf {
                 return ActionResult::Failed;
             }
-            let (win, buf) = editor.win_buf_mut(id);
+            let (win, buf) = win_buf!(editor, id);
             win.push_new_cursor_jump(buf);
             editor.open_buffer(id, bid);
             ActionResult::Ok
@@ -201,12 +201,12 @@ fn open_buffer(editor: &mut Editor, id: ClientId) -> ActionResult {
 fn prompt_close(editor: &mut Editor, id: ClientId) -> ActionResult {
     mode_normal(editor, id);
 
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
 
     let slotname = win.prompt.message().to_string();
     editor.job_broker.stop_slot(id, &slotname);
 
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     if let Some(on_abort) = win.prompt.on_abort() {
         let input = win.prompt.input_or_selected();
         (on_abort)(editor, id, input)
@@ -217,12 +217,12 @@ fn prompt_close(editor: &mut Editor, id: ClientId) -> ActionResult {
 #[action("Prompt: Confirm")]
 fn prompt_confirm(editor: &mut Editor, id: ClientId) -> ActionResult {
     mode_normal(editor, id);
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
 
     let slotname = win.prompt.message().to_string();
     editor.job_broker.stop_slot(id, &slotname);
 
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     if let Some(on_confirm) = win.prompt.on_confirm() {
         let out = win.prompt.input_or_selected();
         if let Some(text) = out.text() {
@@ -238,14 +238,14 @@ fn prompt_confirm(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Prompt: Move cursor right")]
 fn prompt_next_grapheme(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     win.prompt.next_grapheme();
     ActionResult::Ok
 }
 
 #[action("Prompt: Move cursor left")]
 fn prompt_prev_grapheme(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     win.prompt.prev_grapheme();
     ActionResult::Ok
 }
@@ -255,7 +255,7 @@ pub(crate) fn prompt_remove_grapheme_before_cursor(
     editor: &mut Editor,
     id: ClientId,
 ) -> ActionResult {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     if win.prompt.input().is_empty() {
         return ActionResult::Skipped;
     }
@@ -270,14 +270,14 @@ pub(crate) fn prompt_remove_grapheme_before_cursor(
 
 #[action("Prompt: Select next completion item")]
 fn prompt_next_completion(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     win.prompt.next_completion();
     ActionResult::Ok
 }
 
 #[action("Prompt: Select previous completion item")]
 fn prompt_prev_completion(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     win.prompt.prev_completion();
     ActionResult::Ok
 }
@@ -296,7 +296,7 @@ fn prompt_history_prev(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Cursors: Goto line number")]
 fn goto_line(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
 
     win.prompt = Prompt::builder()
         .prompt("Line")
@@ -304,7 +304,7 @@ fn goto_line(editor: &mut Editor, id: ClientId) -> ActionResult {
         .on_confirm(move |editor, id, out| {
             let text = getf!(out.text());
             if let Ok(num) = text.parse::<u64>() {
-                let (win, buf) = editor.win_buf_mut(id);
+                let (win, buf) = win_buf!(editor, id);
                 win.goto_line(num, buf);
                 hooks::run(editor, id, Hook::CursorMoved);
                 return ActionResult::Ok;
@@ -319,7 +319,7 @@ fn goto_line(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Cursors: Goto percentage")]
 fn goto_percentage(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
 
     win.prompt = Prompt::builder()
         .prompt("Percentage")
@@ -328,7 +328,7 @@ fn goto_percentage(editor: &mut Editor, id: ClientId) -> ActionResult {
             let text = getf!(out.text());
             if let Ok(mut num) = text.parse::<u64>() {
                 num = min(100, num);
-                let (win, buf) = editor.win_buf_mut(id);
+                let (win, buf) = win_buf!(editor, id);
                 let offset = num * buf.len() / 100;
                 win.jump_to_offset(offset, buf);
                 hooks::run(editor, id, Hook::CursorMoved);
@@ -376,7 +376,7 @@ fn prompt_change_dir(editor: &mut Editor, id: ClientId, input: &Path, is_dir: bo
         }
     }
     let ignore = editor.ignore.clone();
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     let mut display = input.to_string_lossy().to_string();
     let has_end = display.ends_with(std::path::MAIN_SEPARATOR);
     if !has_end && is_dir {
@@ -404,7 +404,7 @@ fn prompt_change_dir(editor: &mut Editor, id: ClientId, input: &Path, is_dir: bo
             let path = getf!(out.path());
             if !out.is_selection() {
                 if let Err(err) = e.change_working_dir(&path) {
-                    let (win, _buf) = e.win_buf_mut(id);
+                    let (win, _buf) = win_buf!(e, id);
                     win.warn_msg(&err.to_string());
                     return ActionResult::Failed;
                 }
@@ -422,7 +422,7 @@ fn prompt_change_dir(editor: &mut Editor, id: ClientId, input: &Path, is_dir: bo
 
 #[action("Grep")]
 fn grep(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     win.prompt = Prompt::builder()
         .prompt("Grep")
         .history(HistoryKind::Grep)
@@ -463,7 +463,7 @@ pub(crate) fn unsaved_changes<F: Fn(&mut Editor, ClientId) -> ActionResult + 'st
     id: ClientId,
     on_confirm: F,
 ) {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     win.prompt = Prompt::builder()
         .prompt("Save all unsaved changes? (Y/n)")
         .simple()
@@ -491,7 +491,7 @@ pub(crate) fn unsaved_changes<F: Fn(&mut Editor, ClientId) -> ActionResult + 'st
 
 #[action("Window: Show cursor jumps")]
 fn prompt_jump(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, _buf) = editor.win_buf(id);
+    let (win, _buf) = win_buf_ref!(editor, id);
     let current = win.cursor_jumps.current().map(|(cursor, _)| cursor);
     let mut items: Vec<Arc<Choice>> = vec![];
     let mut cursors = vec![];
@@ -533,7 +533,7 @@ fn prompt_jump(editor: &mut Editor, id: ClientId) -> ActionResult {
         .build();
     editor.job_broker.request_slot(id, PROMPT_MESSAGE, job);
 
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     win.prompt = Prompt::builder()
         .prompt(PROMPT_MESSAGE)
         .loads_options()
@@ -566,7 +566,7 @@ fn kill_jobs(editor: &mut Editor, id: ClientId) -> ActionResult {
         .handler(Prompt::matcher_result_handler)
         .build();
     editor.job_broker.request_slot(id, PROMPT_MESSAGE, job);
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     win.prompt = Prompt::builder()
         .prompt(PROMPT_MESSAGE)
         .loads_options()
@@ -588,7 +588,7 @@ fn kill_jobs(editor: &mut Editor, id: ClientId) -> ActionResult {
 fn show_keymaps(editor: &mut Editor, id: ClientId) -> ActionResult {
     const PROMPT_MESSAGE: &str = "Maps";
 
-    let (win, _buf) = editor.win_buf(id);
+    let (win, _buf) = win_buf_ref!(editor, id);
     let key = win.layer();
     let maps: Arc<Vec<Arc<Choice>>> = Arc::new(
         editor
@@ -603,7 +603,7 @@ fn show_keymaps(editor: &mut Editor, id: ClientId) -> ActionResult {
         .handler(Prompt::matcher_result_handler)
         .build();
     editor.job_broker.request_slot(id, PROMPT_MESSAGE, job);
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     win.prompt = Prompt::builder()
         .prompt(PROMPT_MESSAGE)
         .loads_options()

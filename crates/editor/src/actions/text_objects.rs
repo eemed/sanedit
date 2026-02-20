@@ -39,7 +39,7 @@ fn select_with_col<F: Fn(&PieceTreeSlice, u64) -> Option<(BufferRange, usize)>>(
     f: F,
 ) -> ActionResult {
     let mut changed = false;
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, buf) = win_buf!(editor, id);
     let slice = buf.slice(..);
 
     {
@@ -74,7 +74,7 @@ fn select<F: Fn(&PieceTreeSlice, u64) -> Option<BufferRange>>(
     f: F,
 ) -> ActionResult {
     let mut changed = false;
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, buf) = win_buf!(editor, id);
     let slice = buf.slice(..);
 
     for cursor in win.cursors.cursors_mut().iter_mut() {
@@ -225,14 +225,14 @@ fn select_paragraph(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Select: Pattern")]
 fn select_pattern(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
 
     win.prompt = Prompt::builder()
         .prompt("Select pattern")
         .simple()
         .history(HistoryKind::Search)
         .on_confirm(move |editor, id, out| {
-            let (win, buf) = editor.win_buf_mut(id);
+            let (win, buf) = win_buf!(editor, id);
             let pattern = getf!(out.text());
             let searcher = getf!(get_pattern_searcher(pattern, win));
             let selections = get_cursor_selections(win, buf);

@@ -81,7 +81,7 @@ decorator = nl ws* "@" (!nl .)+;
 comment = "#" (todo / (!nl .))*;
 
 @show @highlight(warn)
-todo = "TODO";
+todo = "TODO" / "XXX" / "FIXME";
 
 @show @highlight
 function = builtin_functions &"(";

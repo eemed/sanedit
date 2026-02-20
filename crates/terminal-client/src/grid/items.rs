@@ -155,9 +155,7 @@ impl CustomItems {
         }
 
         match item.kind {
-            ItemKind::Group {
-                expanded,
-            } => {
+            ItemKind::Group { expanded } => {
                 if !item.is_readable {
                     x += grid.put_string(*line, x, "!", *mark_style);
                 } else if expanded {
@@ -299,9 +297,7 @@ impl CustomItems {
         }
 
         match item.kind {
-            ItemKind::Group {
-                expanded,
-            } => {
+            ItemKind::Group { expanded } => {
                 if !item.is_readable {
                     x += grid.put_string(*line, x, "! ", *mark_style);
                 } else if expanded {

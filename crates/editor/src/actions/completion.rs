@@ -218,7 +218,7 @@ fn completion_confirm(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Completion: Abort")]
 fn completion_abort(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     if win.focus() == Focus::Completion {
         focus(editor, id, Focus::Window);
         return ActionResult::Ok;
@@ -229,7 +229,7 @@ fn completion_abort(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Completion: Select next")]
 fn completion_next(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     win.completion.select_next();
 
     ActionResult::Ok
@@ -237,7 +237,7 @@ fn completion_next(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Completion: Select previous")]
 fn completion_prev(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     win.completion.select_prev();
 
     ActionResult::Ok
@@ -246,12 +246,12 @@ fn completion_prev(editor: &mut Editor, id: ClientId) -> ActionResult {
 #[action("Send word to matcher")]
 fn send_word(editor: &mut Editor, id: ClientId) -> ActionResult {
     let hook_bid = editor.hooks.running_hook().and_then(Hook::buffer_id);
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, buf) = win_buf!(editor, id);
     if hook_bid != Some(buf.id) || win.focus() != Focus::Completion {
         return ActionResult::Skipped;
     }
 
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, buf) = win_buf!(editor, id);
     if let Some(fun) = win.completion.on_input.clone() {
         let cursor = win.cursors.primary().pos();
         let start = win.completion.item_start();

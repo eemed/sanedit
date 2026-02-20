@@ -96,7 +96,8 @@ impl<T, const N: usize> RingBuffer<T, N> {
         }
 
         let item = unsafe {
-            std::mem::replace(&mut self.items[self.read & (N - 1)], MaybeUninit::uninit()).assume_init()
+            std::mem::replace(&mut self.items[self.read & (N - 1)], MaybeUninit::uninit())
+                .assume_init()
         };
         self.read = self.read.wrapping_add(1);
         Some(item)

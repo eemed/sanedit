@@ -152,7 +152,7 @@ impl LSPJob {
                 let (cid, constraints) = get!(lsp.reponse_of(id));
 
                 // Verify constraints
-                let (win, buf) = editor.win_buf(cid);
+                let (win, buf) = win_buf_ref!(editor, cid);
                 for constraint in constraints {
                     let ok = match constraint {
                         Constraint::Buffer(bid) => win.buffer_id() == bid,
@@ -235,7 +235,7 @@ impl LSPJob {
         position: Position,
     ) {
         log::info!("GOTO DEF");
-        let (win, buf) = editor.win_buf_mut(id);
+        let (win, buf) = win_buf!(editor, id);
         win.push_new_cursor_jump(buf);
 
         let is_current = buf.path().map(|p| p == path).unwrap_or(false);
@@ -244,7 +244,7 @@ impl LSPJob {
         }
 
         let enc = get!(editor.lsp_for(id).and_then(Lsp::position_encoding));
-        let (win, buf) = editor.win_buf_mut(id);
+        let (win, buf) = win_buf!(editor, id);
         let slice = buf.slice(..);
         let offset = position.to_offset(&slice, &enc);
         win.goto_offset(offset, buf);
@@ -299,7 +299,7 @@ impl LSPJob {
     }
 
     fn handle_signature_help(&self, editor: &mut Editor, id: ClientId, signatures: Signatures) {
-        let (win, _buf) = editor.win_buf_mut(id);
+        let (win, _buf) = win_buf!(editor, id);
         for signature in signatures.signatures {
             let text = signature.name;
             let msg = PopupMessage {
@@ -316,7 +316,7 @@ impl LSPJob {
         id: ClientId,
         symbols: BTreeMap<PathBuf, Vec<Symbol>>,
     ) {
-        let (win, _buf) = editor.win_buf_mut(id);
+        let (win, _buf) = win_buf!(editor, id);
         win.locations.clear();
         locations::show_locations.execute(editor, id);
 
@@ -442,7 +442,7 @@ impl LSPJob {
             .enumerate()
             .map(|(i, action)| Choice::from_numbered_text(i + 1, action.name().to_string()))
             .collect();
-        let (win, _buf) = editor.win_buf_mut(id);
+        let (win, _buf) = win_buf!(editor, id);
 
         if options.is_empty() {
             win.warn_msg("No code actions available");
@@ -520,6 +520,7 @@ impl LSPJob {
 
         let buf = editor.buffers_mut().get_mut(bid).unwrap();
         let slice = buf.slice(..);
+        // TODO: merge same spot changes to one, Otherwise they are sorted and are fucked
         let changes: Vec<Change> = edit
             .edits
             .into_iter()
@@ -533,6 +534,7 @@ impl LSPJob {
                 Change::replace(start..end, edit.text.as_bytes())
             })
             .collect();
+        log::info!("Changes: {changes:?}");
         if changes.is_empty() {
             return;
         }
@@ -556,7 +558,7 @@ impl LSPJob {
 
         // We may have edited the buffer in the window
         // Hook only runs this for all other windows than self
-        let (win, buf) = editor.win_buf_mut(id);
+        let (win, buf) = win_buf!(editor, id);
         if buf.id == bid {
             win.on_buffer_changed(buf);
         }
@@ -574,7 +576,7 @@ impl LSPJob {
             return;
         };
 
-        let (win, _buf) = editor.win_buf_mut(id);
+        let (win, _buf) = win_buf!(editor, id);
         win.locations.clear();
 
         locations::show_locations.execute(editor, id);

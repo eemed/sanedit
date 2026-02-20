@@ -30,7 +30,7 @@ fn do_move_line<F: Fn(&PieceTreeSlice, &Cursor, &DisplayOptions) -> (u64, usize)
     f: F,
     save_jump: bool,
 ) -> ActionResult {
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, buf) = win_buf!(editor, id);
     let opts = win.display_options().clone();
     let primary = win.cursors.primary_index();
     let mut jump = None;
@@ -71,7 +71,7 @@ fn do_move<F: Fn(&PieceTreeSlice, u64) -> u64>(
     col: Option<usize>,
     save_jump: bool,
 ) -> ActionResult {
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, buf) = win_buf!(editor, id);
     let mut changed = false;
     let primary = win.cursors.primary_index();
     let mut jump = None;
@@ -150,7 +150,7 @@ fn start_of_buffer(editor: &mut Editor, id: ClientId) -> ActionResult {
 #[action("Cursors: Goto to buffer end")]
 fn end_of_buffer(editor: &mut Editor, id: ClientId) -> ActionResult {
     let blen = {
-        let (_win, buf) = editor.win_buf(id);
+        let (_win, buf) = win_buf_ref!(editor, id);
         buf.len()
     };
     do_move_static(editor, id, blen, None, true)
@@ -210,7 +210,7 @@ pub fn pair_for(ch: char) -> Option<(char, char)> {
 
 #[action("Cursors: Goto to matching pair")]
 fn goto_matching_pair(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, buf) = win_buf!(editor, id);
     let pos = win.cursors.primary().pos();
     let slice = buf.slice(..);
     let mut chars = slice.chars_at(pos);
@@ -231,7 +231,7 @@ fn goto_matching_pair(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Cursors: Find next char on line")]
 fn find_next_char_on_line(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     win.next_key_handler = Some(NextKeyFunction(Arc::new(|editor, id, event| {
         let ch = match event.key() {
             sanedit_messages::key::Key::Char(ch) => *ch,
@@ -248,7 +248,7 @@ fn find_next_char_on_line(editor: &mut Editor, id: ClientId) -> ActionResult {
             None,
             false,
         );
-        let (win, _buf) = editor.win_buf_mut(id);
+        let (win, _buf) = win_buf!(editor, id);
         win.search.on_line_char_search = Some(ch);
         ActionResult::Ok
     })));
@@ -257,7 +257,7 @@ fn find_next_char_on_line(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Cursors: Find previous char on line")]
 fn find_prev_char_on_line(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     win.next_key_handler = Some(NextKeyFunction(Arc::new(|editor, id, event| {
         let ch = match event.key() {
             sanedit_messages::key::Key::Char(ch) => *ch,
@@ -270,7 +270,7 @@ fn find_prev_char_on_line(editor: &mut Editor, id: ClientId) -> ActionResult {
             None,
             false,
         );
-        let (win, _buf) = editor.win_buf_mut(id);
+        let (win, _buf) = win_buf!(editor, id);
         win.search.on_line_char_search = Some(ch);
         ActionResult::Ok
     })));
@@ -279,7 +279,7 @@ fn find_prev_char_on_line(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Cursors: Next searched char on line")]
 fn next_searched_char(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     if let Some(ch) = win.search.on_line_char_search {
         do_move(
             editor,
@@ -299,7 +299,7 @@ fn next_searched_char(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Cursors: Previous searched char on line")]
 fn prev_searched_char(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     if let Some(ch) = win.search.on_line_char_search {
         do_move(
             editor,
@@ -325,7 +325,7 @@ fn next_grapheme_on_line(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Cursors: Goto to previous visual line")]
 pub(crate) fn prev_visual_line(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, buf) = win_buf!(editor, id);
 
     // If multicursor use lines
     let multi_cursor = win.cursors.len() > 1;
@@ -392,7 +392,7 @@ fn prev_visual_line_impl(view: &View, cursor: &Cursor) -> Option<(u64, usize)> {
 
 #[action("Cursors: Goto to next visual line")]
 fn next_visual_line(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, buf) = win_buf!(editor, id);
 
     // If multicursor use lines
     let multi_cursor = win.cursors.len() > 1;

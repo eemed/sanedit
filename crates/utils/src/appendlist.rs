@@ -339,7 +339,7 @@ mod test {
     use super::*;
 
     #[test]
-    fn push() {
+    fn push_split() {
         let (read, write) = Appendlist::split();
 
         write.append_slice(&[1, 2]);
@@ -351,5 +351,22 @@ mod test {
 
         let items = read.slice(4..6);
         assert_eq!(items, &[5, 6])
+    }
+
+    #[test]
+    fn push() {
+        let list = Appendlist::new();
+
+        list.append(1);
+        list.append(2);
+        list.append(3);
+        list.append(4);
+        let items = list.slice(0..4);
+        assert_eq!(items, &[1, 2, 3, 4]);
+
+        list.append(5);
+        list.append(6);
+        let items = list.slice(3..6);
+        assert_eq!(items, &[4, 5, 6])
     }
 }

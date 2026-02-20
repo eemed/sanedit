@@ -31,7 +31,7 @@ use super::{
 #[action("Buffer: Remove character after cursor")]
 fn remove_grapheme_after_cursor(editor: &mut Editor, id: ClientId) -> ActionResult {
     run(editor, id, Hook::RemovePre);
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, buf) = win_buf!(editor, id);
     if win.remove_grapheme_after_cursors(buf).is_ok() {
         let hook = Hook::BufChanged(buf.id);
         run(editor, id, hook);
@@ -43,7 +43,7 @@ fn remove_grapheme_after_cursor(editor: &mut Editor, id: ClientId) -> ActionResu
 #[action("Buffer: Remove character before cursor")]
 fn remove_grapheme_before_cursor(editor: &mut Editor, id: ClientId) -> ActionResult {
     run(editor, id, Hook::RemovePre);
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, buf) = win_buf!(editor, id);
     if win.remove_grapheme_before_cursors(buf).is_ok() {
         let hook = Hook::BufChanged(buf.id);
         run(editor, id, hook);
@@ -54,7 +54,7 @@ fn remove_grapheme_before_cursor(editor: &mut Editor, id: ClientId) -> ActionRes
 
 #[action("Buffer: Undo")]
 pub(crate) fn undo(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, buf) = win_buf!(editor, id);
     if win.undo(buf).is_ok() {
         let hook = Hook::BufChanged(buf.id);
         run(editor, id, hook);
@@ -66,7 +66,7 @@ pub(crate) fn undo(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Buffer: Redo")]
 pub(crate) fn redo(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, buf) = win_buf!(editor, id);
     if win.redo(buf).is_ok() {
         let hook = Hook::BufChanged(buf.id);
         run(editor, id, hook);
@@ -77,7 +77,7 @@ pub(crate) fn redo(editor: &mut Editor, id: ClientId) -> ActionResult {
 }
 
 pub(crate) fn insert(editor: &mut Editor, id: ClientId, text: &str) {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
 
     use Focus::*;
     match win.focus() {
@@ -90,7 +90,7 @@ pub(crate) fn insert(editor: &mut Editor, id: ClientId, text: &str) {
         }
         Completion | Window => {
             run(editor, id, Hook::InsertPre);
-            let (win, buf) = editor.win_buf_mut(id);
+            let (win, buf) = win_buf!(editor, id);
             if win.insert_at_cursors(buf, text).is_ok() {
                 win.view_to_cursor(buf);
                 let hook = Hook::BufChanged(buf.id);
@@ -103,7 +103,7 @@ pub(crate) fn insert(editor: &mut Editor, id: ClientId, text: &str) {
 
 #[action("Buffer: Save all buffers")]
 fn save_all(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (_win, buf) = editor.win_buf(id);
+    let (_win, buf) = win_buf_ref!(editor, id);
     let original = buf.id;
     let bids: Vec<BufferId> = editor.buffers().iter().map(|(key, _)| key).collect();
 
@@ -125,7 +125,7 @@ fn save_all(editor: &mut Editor, id: ClientId) -> ActionResult {
 #[action("Buffer: Save")]
 fn save(editor: &mut Editor, id: ClientId) -> ActionResult {
     run(editor, id, Hook::BufSavedPre);
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, buf) = win_buf!(editor, id);
 
     match win.save_buffer(buf) {
         Ok(()) => {
@@ -146,20 +146,20 @@ fn save(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Buffer: Save as")]
 fn save_as(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     win.prompt = Prompt::builder()
         .prompt("Save as")
         .simple()
         .on_confirm(|editor, id, out| {
             let mut path = getf!(out.path());
-            let (_win, buf) = editor.win_buf_mut(id);
+            let (_win, buf) = win_buf!(editor, id);
             let bid = buf.id;
             if path.is_relative() {
                 path = editor.working_dir().join(path);
             }
 
             if path.exists() {
-                let (win, _buf) = editor.win_buf_mut(id);
+                let (win, _buf) = win_buf!(editor, id);
                 win.error_msg(&format!("File already exists: {path:?}"));
                 return ActionResult::Failed;
             }
@@ -169,7 +169,7 @@ fn save_as(editor: &mut Editor, id: ClientId) -> ActionResult {
             run(editor, id, Hook::BufDeletedPre(bid));
 
             // Set path
-            let (_win, buf) = editor.win_buf_mut(id);
+            let (_win, buf) = win_buf!(editor, id);
             buf.set_path(&path);
 
             // Rejoin buffer
@@ -186,7 +186,7 @@ fn save_as(editor: &mut Editor, id: ClientId) -> ActionResult {
 #[action("Buffer: Insert newline")]
 fn insert_newline(editor: &mut Editor, id: ClientId) -> ActionResult {
     run(editor, id, Hook::InsertPre);
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, buf) = win_buf!(editor, id);
     let _ = win.insert_newline(buf);
     win.view_to_cursor(buf);
 
@@ -198,14 +198,14 @@ fn insert_newline(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Buffer: Insert tab")]
 fn insert_tab(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, buf) = win_buf!(editor, id);
 
     let slice = buf.slice(..);
     let primary = win.cursors.primary().pos();
 
     if win.cursors().has_selections() {
         run(editor, id, Hook::InsertPre);
-        let (win, buf) = editor.win_buf_mut(id);
+        let (win, buf) = win_buf!(editor, id);
         if win.indent_cursor_lines(buf).is_ok() {
             let hook = Hook::BufChanged(buf.id);
             run(editor, id, hook);
@@ -219,7 +219,7 @@ fn insert_tab(editor: &mut Editor, id: ClientId) -> ActionResult {
         return completion::complete.execute(editor, id);
     } else {
         run(editor, id, Hook::InsertPre);
-        let (win, buf) = editor.win_buf_mut(id);
+        let (win, buf) = win_buf!(editor, id);
         if win.indent(buf).is_ok() {
             let hook = Hook::BufChanged(buf.id);
             run(editor, id, hook);
@@ -233,7 +233,7 @@ fn insert_tab(editor: &mut Editor, id: ClientId) -> ActionResult {
 #[action("Buffer: Dedent")]
 fn backtab(editor: &mut Editor, id: ClientId) -> ActionResult {
     run(editor, id, Hook::InsertPre);
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, buf) = win_buf!(editor, id);
     if win.dedent_cursor_lines(buf).is_ok() {
         let hook = Hook::BufChanged(buf.id);
         run(editor, id, hook);
@@ -244,7 +244,7 @@ fn backtab(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Buffer: Remove to line end")]
 fn remove_to_end_of_line(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, buf) = win_buf!(editor, id);
     if win.remove_line_after_cursor(buf).is_ok() {
         let hook = Hook::BufChanged(buf.id);
         run(editor, id, hook);
@@ -254,7 +254,7 @@ fn remove_to_end_of_line(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Buffer: Remove trailing whitespace")]
 fn strip_trailing_whitespace(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, buf) = win_buf!(editor, id);
     if win.strip_trailing_whitespace(buf).is_ok() {
         let hook = Hook::BufChanged(buf.id);
         run(editor, id, hook);
@@ -267,13 +267,13 @@ fn newline_below(editor: &mut Editor, id: ClientId) -> ActionResult {
     mode_insert(editor, id);
 
     // Disable autopair for this action
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     let restore = mem::replace(&mut win.config.autopair, false);
 
     end_of_line.execute(editor, id);
     insert_newline.execute(editor, id);
 
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     win.config.autopair = restore;
     ActionResult::Ok
 }
@@ -282,13 +282,13 @@ fn newline_below(editor: &mut Editor, id: ClientId) -> ActionResult {
 fn newline_above(editor: &mut Editor, id: ClientId) -> ActionResult {
     mode_insert(editor, id);
     // Disable autopair for this action
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     let restore = mem::replace(&mut win.config.autopair, false);
 
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     let orig = win.cursors().primary().pos();
     prev_line.execute(editor, id);
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     let prev = win.cursors().primary().pos();
     let on_first_line = orig == prev;
     if !on_first_line {
@@ -303,14 +303,14 @@ fn newline_above(editor: &mut Editor, id: ClientId) -> ActionResult {
         prev_line.execute(editor, id);
     }
 
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     win.config.autopair = restore;
     ActionResult::Ok
 }
 
 #[action("Buffer: Align cursor columns")]
 fn align_cursor_columns(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, buf) = win_buf!(editor, id);
     if win.align_cursors(buf).is_ok() {
         let hook = Hook::BufChanged(buf.id);
         run(editor, id, hook);
@@ -413,7 +413,7 @@ fn join_lines(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Buffer: Insert literal")]
 fn insert_literal(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     win.next_key_handler = Some(NextKeyFunction(Arc::new(|editor, id, key| {
         let input = key.literal_utf8();
         insert(editor, id, &input);
@@ -430,7 +430,7 @@ fn remove_line(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Buffer: Remove to line end")]
 fn remove_to_eol(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
     if win.cursors.has_selections() {
         return ActionResult::Skipped;
     }
@@ -459,7 +459,7 @@ fn change_to_eol(editor: &mut Editor, id: ClientId) -> ActionResult {
 #[action("Buffer: Check if file has been modified")]
 fn check_file_modification(editor: &mut Editor, id: ClientId) -> ActionResult {
     let prompt = editor.config.editor.auto_reload_changed_or_removed_file;
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, buf) = win_buf!(editor, id);
     let bid = buf.id;
 
     let path = getf!(buf.path());
@@ -483,7 +483,7 @@ fn check_file_modification(editor: &mut Editor, id: ClientId) -> ActionResult {
                 .on_confirm(|editor, id, out| {
                     let input = getf!(out.text());
                     let yes = is_yes(input);
-                    let (_win, buf) = editor.win_buf_mut(id);
+                    let (_win, buf) = win_buf!(editor, id);
                     let bid = buf.id;
                     if yes {
                         buf.set_unsaved();
@@ -527,12 +527,12 @@ fn check_file_modification(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Buffer: Reload file from disk")]
 fn reload_file_from_disk(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (_win, buf) = editor.win_buf_mut(id);
+    let (_win, buf) = win_buf!(editor, id);
     let bid = buf.id;
     let hook = Hook::BufDeletedPre(buf.id);
     run(editor, id, hook);
 
-    let (_win, buf) = editor.win_buf_mut(id);
+    let (_win, buf) = win_buf!(editor, id);
     let ok = buf.reload_from_disk();
     if !ok {
         return ActionResult::Ok;
@@ -547,7 +547,7 @@ fn reload_file_from_disk(editor: &mut Editor, id: ClientId) -> ActionResult {
     // Reload all clients that use this buffer
     let clients = editor.windows().find_clients_with_buf(bid);
     for client in clients {
-        let (win, buf) = editor.win_buf_mut(client);
+        let (win, buf) = win_buf!(editor, client);
         win.full_reload(buf);
     }
 
@@ -556,7 +556,7 @@ fn reload_file_from_disk(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Buffer: Selections to uppercase")]
 fn uppercase(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, buf) = win_buf!(editor, id);
     if win.uppercase_selections(buf).is_ok() {
         let hook = Hook::BufChanged(buf.id);
         run(editor, id, hook);
@@ -568,7 +568,7 @@ fn uppercase(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Buffer: Selections to lowercase")]
 fn lowercase(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, buf) = win_buf!(editor, id);
     if win.lowercase_selections(buf).is_ok() {
         let hook = Hook::BufChanged(buf.id);
         run(editor, id, hook);
@@ -580,7 +580,7 @@ fn lowercase(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Buffer: Rotate selections")]
 fn rotate_selections(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, buf) = win_buf!(editor, id);
     if win.rotate_selections(buf, false).is_ok() {
         let hook = Hook::BufChanged(buf.id);
         run(editor, id, hook);
@@ -592,7 +592,7 @@ fn rotate_selections(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Buffer: Rotate selections backwards")]
 fn rotate_selections_backwards(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, buf) = win_buf!(editor, id);
     if win.rotate_selections(buf, true).is_ok() {
         let hook = Hook::BufChanged(buf.id);
         run(editor, id, hook);
@@ -604,7 +604,7 @@ fn rotate_selections_backwards(editor: &mut Editor, id: ClientId) -> ActionResul
 
 #[action("Buffer: Set language")]
 fn set_language(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
 
     win.prompt = Prompt::builder()
         .prompt("Language")
@@ -614,7 +614,7 @@ fn set_language(editor: &mut Editor, id: ClientId) -> ActionResult {
             let lang = Language::new(text);
             editor.load_language(&lang, false);
 
-            let (win, buf) = editor.win_buf_mut(id);
+            let (win, buf) = win_buf!(editor, id);
             buf.language = Some(lang);
             *win.view_syntax() = ViewSyntax::default();
 
@@ -630,7 +630,7 @@ fn set_language(editor: &mut Editor, id: ClientId) -> ActionResult {
 fn set_indentation(editor: &mut Editor, id: ClientId) -> ActionResult {
     const TAB: &str = "Tab";
     const SPACE: &str = "Space";
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
 
     let options: Arc<Vec<String>> = Arc::new(vec![TAB.into(), SPACE.into()]);
     let job = MatcherJob::builder(id)
@@ -655,14 +655,14 @@ fn set_indentation(editor: &mut Editor, id: ClientId) -> ActionResult {
 }
 
 fn indentation_amount(editor: &mut Editor, id: ClientId, kind: IndentKind) -> ActionResult {
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, buf) = win_buf!(editor, id);
     win.prompt = Prompt::builder()
         .prompt("Indent amount")
         .input(&format!("{}", buf.config.indent_amount))
         .simple()
         .on_confirm(move |editor, id, input| {
             let n = getf!(input.number());
-            let (_win, buf) = editor.win_buf_mut(id);
+            let (_win, buf) = win_buf!(editor, id);
             buf.config.indent_kind = kind;
             buf.config.indent_amount = n as u8;
             ActionResult::Ok
@@ -675,7 +675,7 @@ fn indentation_amount(editor: &mut Editor, id: ClientId, kind: IndentKind) -> Ac
 
 #[action("Buffer: Reindent")]
 fn redindent(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, buf) = win_buf!(editor, id);
     if win.reindent(buf).is_ok() {
         let hook = Hook::BufChanged(buf.id);
         run(editor, id, hook);
@@ -687,7 +687,7 @@ fn redindent(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Buffer: Set end of line")]
 fn set_eol(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, _buf) = editor.win_buf_mut(id);
+    let (win, _buf) = win_buf!(editor, id);
 
     let eols: Vec<&'static str> = EndOfLine::all()
         .iter()
@@ -713,7 +713,7 @@ fn set_eol(editor: &mut Editor, id: ClientId) -> ActionResult {
         .loads_options()
         .simple()
         .on_confirm(move |editor, id, input| {
-            let (_win, buf) = editor.win_buf_mut(id);
+            let (_win, buf) = win_buf!(editor, id);
             let input = getf!(input.text());
             for (i, eol) in options.iter().enumerate() {
                 if *eol == input {
@@ -733,7 +733,7 @@ fn set_eol(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Buffer: Fix end of lines")]
 fn fix_eols(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, buf) = editor.win_buf_mut(id);
+    let (win, buf) = win_buf!(editor, id);
     if win.set_eols(buf).is_ok() {
         let hook = Hook::BufChanged(buf.id);
         run(editor, id, hook);

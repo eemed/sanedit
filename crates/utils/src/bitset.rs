@@ -34,7 +34,7 @@ impl Bitset256 {
     pub fn max(&self) -> Option<u8> {
         for i in (0u8..=255u8).rev() {
             if self.contains(i) {
-                return Some(i)
+                return Some(i);
             }
         }
 
@@ -44,7 +44,7 @@ impl Bitset256 {
     pub fn min(&self) -> Option<u8> {
         for i in 0u8..=255u8 {
             if self.contains(i) {
-                return Some(i)
+                return Some(i);
             }
         }
 

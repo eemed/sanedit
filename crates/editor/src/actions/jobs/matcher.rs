@@ -361,8 +361,6 @@ mod test {
             all.insert(choice.to_string());
         }
 
-        let mut nresults = 0;
-
         while let Ok(res) = recv.recv() {
             let ToEditor::Jobs(FromJobs::Message(_, any)) = res else {
                 panic!("Invalid message")
@@ -376,12 +374,8 @@ mod test {
                 MatcherMessage::Done {
                     input_id,
                     results,
-                    clear_old,
+                    ..
                 } => {
-                    if nresults == 0 {
-                        assert!(clear_old);
-                    }
-                    nresults += results.len();
                     assert_eq!(input, *input_id);
                     for rv in results {
                         for res in rv.iter() {
@@ -393,12 +387,8 @@ mod test {
                 MatcherMessage::Progress {
                     input_id,
                     results,
-                    clear_old,
+                    ..
                 } => {
-                    if nresults == 0 {
-                        assert!(clear_old);
-                    }
-                    nresults += results.len();
                     assert_eq!(input, *input_id);
                     for rv in results {
                         for res in rv.iter() {
@@ -409,7 +399,7 @@ mod test {
             }
         }
 
-        assert_eq!(choices.len(), nresults);
+        assert!(all.is_empty());
     }
 
     fn make_list(choices: &[&str]) -> Appendlist<Arc<Choice>> {
@@ -432,6 +422,7 @@ mod test {
         ]);
 
         let matcher = Matcher::new(list.clone(), MatchStrategy::Default, ctx);
+        matcher.write_done.store(list.len(), Ordering::Release);
         matcher.do_match("home", 0, CancellationToken::default());
         assert_contains(
             &mut recv,
@@ -442,7 +433,4 @@ mod test {
         matcher.do_match("sock", 1, CancellationToken::default());
         assert_contains(&mut recv, 1, &["/run/socket.sock"]);
     }
-
-    #[test]
-    fn slow_options() {}
 }

@@ -1072,6 +1072,8 @@ impl Editor {
 
         let (win, _buf) = win_buf!(self, id);
         win.macro_replay.stop_replaying();
+
+        run(self, id, Hook::OnMessagePost);
     }
 
     pub fn should_continue_macro(&self, id: ClientId) -> bool {

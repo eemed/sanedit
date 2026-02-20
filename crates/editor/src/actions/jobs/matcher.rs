@@ -317,7 +317,6 @@ impl Matcher {
                     first_sent = false;
                 }
             } else {
-                log::info!("Sleep: total: {total}, available: {available}");
                 thread::sleep(Duration::from_micros(backoff));
                 backoff = (backoff * 2).min(100);
             }

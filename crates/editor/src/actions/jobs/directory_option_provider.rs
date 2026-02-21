@@ -1,15 +1,14 @@
 use std::{
     path::{Path, PathBuf},
-    sync::{
-        atomic::{AtomicUsize, Ordering},
-        Arc,
-    },
+    sync::Arc,
 };
 
-use crossbeam::deque::{Injector, Steal, Worker};
+use crossbeam::{
+    channel::Sender,
+    deque::{Injector, Steal, Worker},
+};
 use rayon::iter::{IntoParallelIterator as _, ParallelIterator as _};
-use sanedit_server::{BoxFuture, Kill};
-use sanedit_utils::appendlist::Appendlist;
+use sanedit_server::BoxFuture;
 
 use crate::{common::Choice, editor::ignore::Ignore};
 
@@ -17,18 +16,10 @@ use super::{get_option_provider_pool, OptionProvider};
 
 #[derive(Clone)]
 struct ReadDirContext {
-    osend: Appendlist<Arc<Choice>>,
+    sender: Sender<Arc<Choice>>,
     strip: usize,
-    kill: Kill,
     ignore: Ignore,
     recurse: bool,
-    n: Arc<AtomicUsize>,
-}
-impl ReadDirContext {
-    pub fn send(&self, opt: Arc<Choice>) {
-        self.osend.append(opt);
-        self.n.fetch_add(1, Ordering::Release);
-    }
 }
 
 #[derive(Debug)]
@@ -66,10 +57,6 @@ fn read_directory(root: PathBuf, ctx: ReadDirContext) {
         (0..threads)
             .into_par_iter()
             .for_each_init(Worker::new_fifo, |local, _thread_idx| loop {
-                if ctx.kill.should_stop() {
-                    return;
-                }
-
                 let job = local
                     .pop()
                     .or_else(|| match injector.steal_batch_and_pop(local) {
@@ -83,10 +70,6 @@ fn read_directory(root: PathBuf, ctx: ReadDirContext) {
 
                 if let Ok(mut rd) = std::fs::read_dir(&dir) {
                     while let Some(Ok(entry)) = rd.next() {
-                        if ctx.kill.should_stop() {
-                            return;
-                        }
-
                         let path = entry.path();
                         let Ok(metadata) = entry.metadata() else {
                             continue;
@@ -99,7 +82,9 @@ fn read_directory(root: PathBuf, ctx: ReadDirContext) {
                             injector.push(path.clone());
                         }
 
-                        ctx.send(Choice::from_path(path, ctx.strip));
+                        if ctx.sender.send(Choice::from_path(path, ctx.strip)).is_err() {
+                            break;
+                        }
                     }
                 }
             });
@@ -108,11 +93,9 @@ fn read_directory(root: PathBuf, ctx: ReadDirContext) {
 
 async fn read_directory_recursive(
     dir: PathBuf,
-    osend: Appendlist<Arc<Choice>>,
+    sender: Sender<Arc<Choice>>,
     ignore: Ignore,
-    kill: Kill,
     recurse: bool,
-    done: Arc<AtomicUsize>,
 ) {
     let strip = {
         let s = dir.as_os_str().to_string_lossy();
@@ -123,36 +106,24 @@ async fn read_directory_recursive(
         len
     };
 
-    let n = Arc::new(AtomicUsize::new(0));
     let ctx = ReadDirContext {
-        osend,
+        sender,
         strip,
-        kill,
         ignore,
         recurse,
-        n: n.clone(),
     };
 
     let _ = tokio::task::spawn_blocking(move || read_directory(dir, ctx)).await;
-    let count = n.load(Ordering::Acquire);
-    done.store(count, Ordering::Release);
 }
 
 impl OptionProvider for DirectoryOptionProvider {
-    fn provide(
-        &self,
-        sender: Appendlist<Arc<Choice>>,
-        kill: Kill,
-        done: Arc<AtomicUsize>,
-    ) -> BoxFuture<'static, ()> {
+    fn provide(&self, sender: Sender<Arc<Choice>>) -> BoxFuture<'static, ()> {
         let dir = self.path.clone();
         Box::pin(read_directory_recursive(
             dir,
             sender,
             self.ignore.clone(),
-            kill,
             self.recurse,
-            done,
         ))
     }
 }

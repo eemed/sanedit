@@ -1,9 +1,6 @@
 use std::{
     path::{Path, PathBuf},
-    sync::{
-        atomic::{AtomicUsize, Ordering},
-        Arc, OnceLock,
-    },
+    sync::{Arc, OnceLock},
 };
 
 use rayon::{
@@ -11,9 +8,8 @@ use rayon::{
     ThreadPool,
 };
 use sanedit_syntax::GitGlob;
-use sanedit_utils::appendlist::Appendlist;
 
-use sanedit_server::{BoxFuture, Kill};
+use sanedit_server::BoxFuture;
 
 use crate::{
     common::{
@@ -24,7 +20,10 @@ use crate::{
 };
 
 use super::OptionProvider;
-use crossbeam::deque::{Injector, Steal, Worker};
+use crossbeam::{
+    channel::Sender,
+    deque::{Injector, Steal, Worker},
+};
 
 pub fn get_option_provider_pool() -> &'static ThreadPool {
     static POOL: OnceLock<ThreadPool> = OnceLock::new();
@@ -59,10 +58,6 @@ fn read_directory(root: PathBuf, mut ctx: ReadDirContext) {
         (0..threads)
             .into_par_iter()
             .for_each_init(Worker::new_fifo, |local, _thread_idx| loop {
-                if ctx.kill.should_stop() {
-                    return;
-                }
-
                 let job = local
                     .pop()
                     .or_else(|| match injector.steal_batch_and_pop(local) {
@@ -86,10 +81,6 @@ fn read_directory(root: PathBuf, mut ctx: ReadDirContext) {
 
                 if let Ok(mut rd) = std::fs::read_dir(&dir) {
                     while let Some(Ok(entry)) = rd.next() {
-                        if ctx.kill.should_stop() {
-                            return;
-                        }
-
                         let path = entry.path();
                         if ignore.is_ignored(&path) {
                             continue;
@@ -102,11 +93,15 @@ fn read_directory(root: PathBuf, mut ctx: ReadDirContext) {
                         if metadata.is_dir() {
                             injector.push((path, ignore.clone()));
                         } else if metadata.is_file() {
-                            ctx.send(Choice::from_path(path, ctx.strip));
+                            if ctx.sender.send(Choice::from_path(path, ctx.strip)).is_err() {
+                                break;
+                            }
                         } else if metadata.is_symlink() {
                             if let Ok(cpath) = path.canonicalize() {
-                                if cpath.is_file() {
-                                    ctx.send(Choice::from_path(path, ctx.strip));
+                                if cpath.is_file()
+                                    && ctx.sender.send(Choice::from_path(path, ctx.strip)).is_err()
+                                {
+                                    break;
                                 }
                             }
                         }
@@ -118,10 +113,8 @@ fn read_directory(root: PathBuf, mut ctx: ReadDirContext) {
 
 async fn read_directory_recursive(
     dir: PathBuf,
-    osend: Appendlist<Arc<Choice>>,
+    sender: Sender<Arc<Choice>>,
     ignore: Ignore,
-    kill: Kill,
-    done: Arc<AtomicUsize>,
     git_ignore: bool,
 ) {
     log::info!("File option provider: read directory");
@@ -135,22 +128,16 @@ async fn read_directory_recursive(
     };
 
     let ignore = get_ignore(&dir, ignore, git_ignore);
-    let n = Arc::new(AtomicUsize::new(0));
     let ctx = ReadDirContext {
-        osend,
-        n: n.clone(),
+        sender,
         strip,
-        kill,
         ignore,
         git_ignore,
     };
 
-    let _ = tokio::task::spawn_blocking(move || read_directory(dir, ctx))
-        .await;
+    let _ = tokio::task::spawn_blocking(move || read_directory(dir, ctx)).await;
 
-    let count = n.load(Ordering::Acquire);
-    done.store(count, Ordering::Release);
-    log::info!("File option provider: read directory found {count} entries");
+    log::info!("File option provider: read directory done");
 }
 
 fn get_ignore(dir: &Path, ignore: Ignore, git_ignore: bool) -> GitIgnoreList {
@@ -174,20 +161,13 @@ fn get_ignore(dir: &Path, ignore: Ignore, git_ignore: bool) -> GitIgnoreList {
 }
 
 impl OptionProvider for FileOptionProvider {
-    fn provide(
-        &self,
-        sender: Appendlist<Arc<Choice>>,
-        kill: Kill,
-        done: Arc<AtomicUsize>,
-    ) -> BoxFuture<'static, ()> {
+    fn provide(&self, sender: Sender<Arc<Choice>>) -> BoxFuture<'static, ()> {
         let dir = self.path.clone();
         let ignore = self.ignore.clone();
         Box::pin(read_directory_recursive(
             dir,
             sender,
             ignore,
-            kill,
-            done,
             self.git_ignore,
         ))
     }
@@ -195,19 +175,10 @@ impl OptionProvider for FileOptionProvider {
 
 #[derive(Clone)]
 struct ReadDirContext {
-    osend: Appendlist<Arc<Choice>>,
-    n: Arc<AtomicUsize>,
+    sender: Sender<Arc<Choice>>,
     strip: usize,
     ignore: GitIgnoreList,
     git_ignore: bool,
-    kill: Kill,
-}
-
-impl ReadDirContext {
-    pub fn send(&self, opt: Arc<Choice>) {
-        self.osend.append(opt);
-        self.n.fetch_add(1, Ordering::AcqRel);
-    }
 }
 
 #[derive(Debug, Clone)]

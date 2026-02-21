@@ -243,6 +243,27 @@ impl<T> Writer<T> {
         self.list.is_empty()
     }
 
+    pub fn append(&self, item: T) {
+        let pos = self.list.len();
+        let loc = BucketLocation::of(pos);
+        let mut alloc = false;
+        let bucket = self.list.list.buckets[loc.bucket].get_or_init(|| {
+            alloc = true;
+            let mut vec = Vec::with_capacity(loc.bucket_len);
+            for _ in 0..loc.bucket_len {
+                vec.push(MaybeUninit::uninit());
+            }
+            UnsafeCell::new(vec.into())
+        });
+
+        // SAFETY: we just allocated it if it was not there
+        let bucket = unsafe { &mut *bucket.get() };
+        let bucket = bucket.as_mut();
+        let place = &mut bucket[loc.pos];
+        place.write(item);
+        self.list.list.len.store(pos + 1, Ordering::Release);
+    }
+
     pub fn append_vec(&self, mut items: Vec<T>) -> AppendResult {
         let pos = self.list.len();
         let loc = BucketLocation::of(pos);

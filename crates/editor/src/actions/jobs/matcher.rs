@@ -2,21 +2,17 @@ mod option_provider;
 mod strategy;
 
 use std::{
+    cmp::min,
     sync::{
-        atomic::{AtomicUsize, Ordering},
+        atomic::{AtomicBool, Ordering},
         Arc,
     },
-    thread,
     time::{Duration, Instant},
 };
 
+use crossbeam::channel::{Receiver, TryRecvError};
 pub(crate) use option_provider::{Empty, OptionProvider};
 use sanedit_utils::{appendlist::Appendlist, sorted_vec::SortedVec};
-use tokio::sync::{
-    mpsc::{channel, Sender},
-    Mutex,
-};
-use tokio_util::sync::CancellationToken;
 
 use crate::{
     actions::jobs::CHANNEL_SIZE,
@@ -26,24 +22,22 @@ use crate::{
 
 use sanedit_server::{ClientId, Job, JobContext, JobResult};
 
-use std::cmp::min;
-
 use sanedit_core::Range;
 
 pub use strategy::*;
 
 #[derive(Debug)]
 pub(crate) enum MatcherMessage {
-    Init(Sender<(String, u64)>),
+    Init(tokio::sync::mpsc::Sender<(String, u64)>),
     Done {
         input_id: u64,
-        results: Vec<SortedVec<ScoredChoice>>,
         clear_old: bool,
+        results: Vec<SortedVec<ScoredChoice>>,
     },
     Progress {
         input_id: u64,
-        results: Vec<SortedVec<ScoredChoice>>,
         clear_old: bool,
+        results: Vec<SortedVec<ScoredChoice>>,
     },
 }
 
@@ -144,48 +138,42 @@ impl Job for MatcherJob {
 
         let fut = async move {
             // Term channel
-            let (psend, mut precv) = channel::<(String, u64)>(CHANNEL_SIZE);
-            let list = Appendlist::<Arc<Choice>>::new();
+            let (pattern_send, mut pattern_recv) =
+                tokio::sync::mpsc::channel::<(String, u64)>(CHANNEL_SIZE);
+            let (option_send, option_recv) = crossbeam::channel::unbounded::<Arc<Choice>>();
+            let option_list = Appendlist::<Arc<Choice>>::new();
 
-            ctx.send(MatcherMessage::Init(psend));
+            ctx.send(MatcherMessage::Init(pattern_send));
 
-            let kill = ctx.kill.clone();
-            let matcher = Arc::new(Matcher::new(list.clone(), strat, ctx));
-            let write_done = matcher.write_done();
+            let matcher = Arc::new(Matcher::new(option_recv, strat));
             let do_matching = async move {
-                let token = CancellationToken::new();
-                let ctoken = token.clone();
-                let mmatch = matcher.clone();
-                let handle = tokio::spawn(async move {
-                    let _ = tokio::task::spawn_blocking(move || {
-                        mmatch.do_match(&starting_pattern, 0, ctoken)
-                    })
-                    .await;
+                let mut cancel = Arc::new(AtomicBool::new(false));
+
+                let result_sender = ctx.clone();
+                let list = option_list.clone();
+                let nmatcher = matcher.clone();
+                let ccancel = cancel.clone();
+
+                rayon::spawn(move || {
+                    nmatcher.do_match(0, &starting_pattern, list, result_sender, ccancel);
                 });
-                let task = Arc::new(Mutex::new(Some((token, handle))));
 
-                while let Some((pattern, input_id)) = precv.recv().await {
-                    let mut guard = task.lock().await;
-                    if let Some((token, handle)) = guard.take() {
-                        token.cancel();
-                        let _ = handle.await;
-                    }
+                while let Some((pattern, input_id)) = pattern_recv.recv().await {
+                    cancel.store(true, Ordering::Release);
+                    cancel = Arc::new(AtomicBool::new(false));
 
-                    let token = CancellationToken::new();
-                    let ctoken = token.clone();
-                    let mmatch = matcher.clone();
-                    let handle = tokio::spawn(async move {
-                        let _ = tokio::task::spawn_blocking(move || {
-                            mmatch.do_match(&pattern, input_id, ctoken)
-                        })
-                        .await;
+                    let result_sender = ctx.clone();
+                    let list = option_list.clone();
+                    let nmatcher = matcher.clone();
+                    let ccancel = cancel.clone();
+
+                    rayon::spawn(move || {
+                        nmatcher.do_match(input_id, &pattern, list, result_sender, ccancel);
                     });
-
-                    *guard = Some((token, handle));
                 }
             };
 
-            tokio::join!(opts.provide(list, kill, write_done), do_matching);
+            tokio::join!(opts.provide(option_send), do_matching);
 
             Ok(())
         };
@@ -210,44 +198,27 @@ impl KeepInTouch for MatcherJob {
 /// Matches options to a pattern
 #[derive(Clone)]
 pub struct Matcher {
-    reader: Appendlist<Arc<Choice>>,
-    write_done: Arc<AtomicUsize>,
+    receiver: Receiver<Arc<Choice>>,
     strategy: MatchStrategy,
-    job_context: JobContext,
 }
 
 impl Matcher {
-    const BATCH_SIZE: usize = 512;
-
     // Create a new matcher.
-    pub fn new(
-        reader: Appendlist<Arc<Choice>>,
-        strategy: MatchStrategy,
-        job_context: JobContext,
-    ) -> Matcher {
-        let write_done = Arc::new(AtomicUsize::new(usize::MAX));
-
-        Matcher {
-            reader,
-            write_done,
-            strategy,
-            job_context,
-        }
+    pub fn new(receiver: Receiver<Arc<Choice>>, strategy: MatchStrategy) -> Matcher {
+        Matcher { receiver, strategy }
     }
 
-    pub fn write_done(&self) -> Arc<AtomicUsize> {
-        self.write_done.clone()
-    }
-
-    /// Match the candidates with the pattern. Returns a receiver where the results
-    /// can be read from in chunks.
-    /// Dropping the receiver stops the matching process.
-    pub fn do_match(&self, pattern: &str, id: u64, cancel: CancellationToken) {
-        let reader = self.reader.clone();
-        let write_done = &self.write_done;
-        let sender = &self.job_context;
+    pub fn do_match(
+        &self,
+        input_id: u64,
+        pattern: &str,
+        option_list: Appendlist<Arc<Choice>>,
+        result_sender: JobContext,
+        cancel: Arc<AtomicBool>,
+    ) {
         let case_sensitive = pattern.chars().any(|ch| ch.is_uppercase());
         let strat = self.strategy;
+        let mut is_first_result = true;
 
         // Apply strategy to pattern
         // Split pattern by whitespace and use the resulting patterns as independent
@@ -262,38 +233,47 @@ impl Matcher {
         };
         let matcher = strat.get_match_func(&patterns, case_sensitive);
 
-        const INITIAL_BACKOFF: u64 = 1;
+        const BATCH_SIZE: usize = 512;
+        const INITIAL_BACKOFF: u64 = 50;
+        let send_rate = Duration::from_millis(1000 / 30);
         let mut backoff = INITIAL_BACKOFF;
         let mut taken = 0;
-        let send_rate = Duration::from_millis(1000 / 30);
-        let mut last_sent = Instant::now();
-        let mut first_sent = true;
+        let mut last_sent_results = Instant::now();
+        let mut all_options_received = false;
         let mut locally_sorted = vec![];
 
         log::info!("Matching options");
 
-        while !self.job_context.kill.should_stop() && !cancel.is_cancelled() {
-            let total = write_done.load(Ordering::Acquire);
-            let available = reader.len();
-            let fully_read = available == total;
+        while !result_sender.kill.should_stop() && !cancel.load(Ordering::Acquire) {
+            loop {
+                match self.receiver.try_recv() {
+                    Ok(opt) => option_list.append(opt),
+                    Err(TryRecvError::Empty) => break,
+                    Err(TryRecvError::Disconnected) => {
+                        all_options_received = true;
+                        break;
+                    }
+                }
+            }
 
-            // If we are done reading all available options
-            if fully_read && available == taken {
-                sender.send(MatcherMessage::Done {
-                    input_id: id,
-                    clear_old: first_sent,
+            let available = option_list.len();
+
+            if all_options_received && available == taken {
+                result_sender.send(MatcherMessage::Done {
+                    input_id,
+                    clear_old: is_first_result,
                     results: std::mem::take(&mut locally_sorted),
                 });
                 break;
             }
 
-            if available >= taken + Self::BATCH_SIZE || fully_read {
+            if available >= taken + BATCH_SIZE || all_options_received {
                 backoff = INITIAL_BACKOFF;
-                let size = min(available - taken, Self::BATCH_SIZE);
+                let size = min(available - taken, BATCH_SIZE);
                 let batch = taken..taken + size;
                 taken += size;
 
-                let opts = reader.slice(batch);
+                let opts = option_list.slice(batch);
                 let mut results: Vec<ScoredChoice> = opts
                     .iter()
                     .filter_map(|choice| {
@@ -307,18 +287,18 @@ impl Matcher {
                 results.sort();
                 locally_sorted.push(unsafe { SortedVec::from_sorted_unchecked(results) });
 
-                if last_sent.elapsed() > send_rate {
-                    sender.send(MatcherMessage::Progress {
-                        input_id: id,
-                        clear_old: first_sent,
+                if last_sent_results.elapsed() > send_rate {
+                    result_sender.send(MatcherMessage::Progress {
+                        input_id,
+                        clear_old: is_first_result,
                         results: std::mem::take(&mut locally_sorted),
                     });
-                    last_sent = Instant::now();
-                    first_sent = false;
+                    last_sent_results = Instant::now();
+                    is_first_result = false;
                 }
             } else {
-                thread::sleep(Duration::from_micros(backoff));
-                backoff = (backoff * 2).min(100);
+                std::thread::sleep(Duration::from_micros(backoff));
+                backoff = (backoff * 2).min(500);
             }
         }
 
@@ -372,9 +352,7 @@ mod test {
             match msg.as_ref() {
                 MatcherMessage::Init(_) => {}
                 MatcherMessage::Done {
-                    input_id,
-                    results,
-                    ..
+                    input_id, results, ..
                 } => {
                     assert_eq!(input, *input_id);
                     for rv in results {
@@ -385,9 +363,7 @@ mod test {
                     break;
                 }
                 MatcherMessage::Progress {
-                    input_id,
-                    results,
-                    ..
+                    input_id, results, ..
                 } => {
                     assert_eq!(input, *input_id);
                     for rv in results {
@@ -412,7 +388,7 @@ mod test {
 
     #[test]
     fn matches_options() {
-        let (ctx, mut recv) = JobContext::new_test();
+        let (ctx, mut ctx_recv) = JobContext::new_test();
         let list = make_list(&[
             "/run/socket.sock",
             "/var/log/syslog",
@@ -421,16 +397,29 @@ mod test {
             "/home/me/.config/config.toml",
         ]);
 
-        let matcher = Matcher::new(list.clone(), MatchStrategy::Default, ctx);
-        matcher.write_done.store(list.len(), Ordering::Release);
-        matcher.do_match("home", 0, CancellationToken::default());
+        let (send, recv) = crossbeam::channel::unbounded();
+
+        for i in 0..list.len() {
+            let _ = send.send(list.get(i).unwrap().clone());
+        }
+        drop(send);
+
+        let list = Appendlist::new();
+        let matcher = Matcher::new(recv, MatchStrategy::Default);
+        matcher.do_match(
+            0,
+            "home",
+            list.clone(),
+            ctx.clone(),
+            Arc::new(AtomicBool::new(false)),
+        );
         assert_contains(
-            &mut recv,
+            &mut ctx_recv,
             0,
             &["/home/me/.ssh/config", "/home/me/.config/config.toml"],
         );
 
-        matcher.do_match("sock", 1, CancellationToken::default());
-        assert_contains(&mut recv, 1, &["/run/socket.sock"]);
+        matcher.do_match(1, "sock", list, ctx, Arc::new(AtomicBool::new(false)));
+        assert_contains(&mut ctx_recv, 1, &["/run/socket.sock"]);
     }
 }

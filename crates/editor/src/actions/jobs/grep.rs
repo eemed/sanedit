@@ -5,7 +5,6 @@ use std::fs::File;
 
 use std::io::Read;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -58,8 +57,7 @@ impl Grep {
     }
 
     async fn grep(
-        reader: Appendlist<Arc<Choice>>,
-        write_done: Arc<AtomicUsize>,
+        option_receiver: crossbeam::channel::Receiver<Arc<Choice>>,
         pattern: &str,
         msend: Sender<GrepResult>,
         modified_buffers: Arc<Map<PathBuf, PieceTreeSlice>>,
@@ -72,32 +70,18 @@ impl Grep {
 
         let (tx, rx) = crossbeam::channel::unbounded::<usize>();
         let kill_p = kill.clone();
-        let reader_p = reader.clone();
+        let (read, write) = Appendlist::split();
 
-        let producer = tokio::task::spawn(async move {
+        rayon::spawn(move || {
             let mut next = 0;
 
-            loop {
-                if kill_p.should_stop() {
+            while let Ok(opt) = option_receiver.recv() {
+                write.append(opt);
+                if kill_p.should_stop() || tx.send(next).is_err() {
                     break;
                 }
 
-                let available = reader_p.len();
-                let total = write_done.load(Ordering::Acquire);
-
-                // push new work indices
-                while next < available {
-                    if tx.send(next).is_err() {
-                        return;
-                    }
-                    next += 1;
-                }
-
-                if next == total && available == total {
-                    break;
-                }
-
-                tokio::task::yield_now().await;
+                next += 1;
             }
         });
 
@@ -112,7 +96,7 @@ impl Grep {
                     return;
                 }
 
-                let choice = reader.get(idx).unwrap();
+                let choice = read.get(idx).unwrap();
 
                 let path = match choice.as_ref() {
                     Choice::Path { path, .. } => path,
@@ -133,7 +117,6 @@ impl Grep {
             });
         });
 
-        let _ = producer.await;
         let _ = worker.await;
     }
 
@@ -350,14 +333,13 @@ impl Job for Grep {
 
         let fut = async move {
             // Results channel
-            let (msend, mrecv) = channel::<GrepResult>(CHANNEL_SIZE);
-            let list = Appendlist::<Arc<Choice>>::new();
-            let write_done = Arc::new(AtomicUsize::new(usize::MAX));
+            let (options_send, options_recv) = crossbeam::channel::unbounded();
+            let (result_send, result_recv) = channel::<GrepResult>(CHANNEL_SIZE);
 
             tokio::join!(
-                fopts.provide(list.clone(), ctx.kill.clone(), write_done.clone()),
-                Self::grep(list, write_done, &pattern, msend, bufs, ctx.kill.clone()),
-                Self::send_results(mrecv, ctx),
+                fopts.provide(options_send),
+                Self::grep(options_recv, &pattern, result_send, bufs, ctx.kill.clone()),
+                Self::send_results(result_recv, ctx),
             );
 
             Ok(())

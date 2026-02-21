@@ -79,7 +79,6 @@ impl Changes {
             return;
         }
 
-
         for change in self.changes.iter().rev() {
             let range = change.range();
             if !range.is_empty() {

@@ -2,7 +2,6 @@ mod history;
 
 use std::{path::PathBuf, rc::Rc};
 
-
 use sanedit_buffer::PieceTree;
 use sanedit_utils::{either::Either, sorted_vec::SortedVec};
 

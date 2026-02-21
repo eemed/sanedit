@@ -25,7 +25,7 @@ impl CustomSnapshots {
     }
 
     pub fn split_off(&self, win: &mut Rect) -> Rect {
-        const MIN: usize = 15;
+        const MIN: usize = 25;
 
         let rendered = render_snapshots(&self.snapshots);
         let max_width = rendered

@@ -143,6 +143,26 @@ impl<T: Ord> SortedVec<T> {
     }
 }
 
+impl<'a, T: Ord> std::iter::IntoIterator for &'a mut SortedVec<T> {
+    type Item = &'a mut T;
+
+    type IntoIter = std::slice::IterMut<'a, T>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.items.iter_mut()
+    }
+}
+
+impl<'a, T: Ord> std::iter::IntoIterator for &'a SortedVec<T> {
+    type Item = &'a T;
+
+    type IntoIter = std::slice::Iter<'a, T>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.items.iter()
+    }
+}
+
 impl<T: Ord> std::iter::IntoIterator for SortedVec<T> {
     type Item = T;
 

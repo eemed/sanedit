@@ -32,23 +32,11 @@ impl Bitset256 {
     }
 
     pub fn max(&self) -> Option<u8> {
-        for i in (0u8..=255u8).rev() {
-            if self.contains(i) {
-                return Some(i);
-            }
-        }
-
-        None
+        (0u8..=255u8).rev().find(|&i| self.contains(i))
     }
 
     pub fn min(&self) -> Option<u8> {
-        for i in 0u8..=255u8 {
-            if self.contains(i) {
-                return Some(i);
-            }
-        }
-
-        None
+        (0u8..=255u8).find(|&i| self.contains(i))
     }
 
     pub fn raw(&self) -> *const u8 {

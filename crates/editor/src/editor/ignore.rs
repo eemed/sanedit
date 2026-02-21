@@ -37,7 +37,7 @@ impl Ignore {
     ) -> GitIgnore {
         let (patterns, root) = {
             let mut dir = project_config
-                .project_file_path
+                .project_config_path
                 .as_ref()
                 .and_then(|path| path.parent())
                 .map(PathBuf::from)

@@ -147,6 +147,7 @@ impl Job for MatcherJob {
 
             let matcher = Arc::new(Matcher::new(option_recv, strat));
             let do_matching = async move {
+                log::info!("do_matching started");
                 let mut cancel = Arc::new(AtomicBool::new(false));
 
                 let result_sender = ctx.clone();
@@ -159,6 +160,7 @@ impl Job for MatcherJob {
                 });
 
                 while let Some((pattern, input_id)) = pattern_recv.recv().await {
+                    log::info!("do_matching new pattern: {pattern}");
                     cancel.store(true, Ordering::Release);
                     cancel = Arc::new(AtomicBool::new(false));
 
@@ -171,6 +173,8 @@ impl Job for MatcherJob {
                         nmatcher.do_match(input_id, &pattern, list, result_sender, ccancel);
                     });
                 }
+
+                log::info!("do_matching finished");
             };
 
             tokio::join!(opts.provide(option_send), do_matching);

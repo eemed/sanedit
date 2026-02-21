@@ -9,10 +9,9 @@ const PROJECT_CONFIG: &str = "sanedit-project.toml";
 #[derive(Debug, Serialize, Deserialize, Default)]
 #[serde(default)]
 pub struct ProjectConfig {
+    /// Path where this project config was found
     #[serde(skip)]
-    pub(crate) project_file_path: Option<PathBuf>,
-    pub(crate) run_command: String,
-    pub(crate) build_command: String,
+    pub(crate) project_config_path: Option<PathBuf>,
     pub(crate) ignore: Vec<String>,
 }
 
@@ -37,7 +36,7 @@ impl ProjectConfig {
 
         match Self::try_new(&path) {
             Ok(mut config) => {
-                config.project_file_path = path.into();
+                config.project_config_path = path.into();
                 config
             }
             Err(e) => {

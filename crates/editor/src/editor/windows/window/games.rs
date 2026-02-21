@@ -1,5 +1,4 @@
-use std::sync::mpsc::Sender;
-
+use crossbeam::channel::Sender;
 use sanedit_messages::{
     key::KeyEvent,
     redraw::{window::Window, Theme},

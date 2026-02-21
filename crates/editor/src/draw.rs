@@ -8,15 +8,9 @@ mod snapshots;
 mod statusline;
 mod window;
 
-use std::{
-    mem,
-    path::Path,
-    sync::{
-        mpsc::{channel, Receiver, Sender},
-        Arc,
-    },
-};
+use std::{mem, path::Path, sync::Arc};
 
+use crossbeam::channel::{self, Receiver, Sender};
 use sanedit_core::Language;
 use sanedit_messages::{
     redraw::{self, window::WindowUpdate, Redraw, Theme},
@@ -99,7 +93,7 @@ impl DrawState {
         let buffer = Arc::new(FromEditor::Message(ClientMessage::Redraw(Redraw::Window(
             WindowUpdate::Full(redraw::window::Window::default()),
         ))));
-        let (tx, rx) = channel();
+        let (tx, rx) = channel::unbounded();
         let _ = tx.send(buffer);
 
         let mut state = DrawState {

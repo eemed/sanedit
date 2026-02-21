@@ -1,8 +1,6 @@
-use std::{
-    sync::mpsc::{channel, Sender},
-    time::Duration,
-};
+use std::time::Duration;
 
+use crossbeam::channel::{self, Sender, TryRecvError};
 use sanedit_server::{ClientId, Job};
 
 use crate::editor::job_broker::KeepInTouch;
@@ -20,7 +18,7 @@ impl GameTick {
 
 impl Job for GameTick {
     fn run(&self, ctx: sanedit_server::JobContext) -> sanedit_server::JobResult {
-        let (send, mut recv) = channel::<u64>();
+        let (send, mut recv) = channel::unbounded();
 
         let fut = async move {
             ctx.send(Start(send));
@@ -32,7 +30,7 @@ impl Job for GameTick {
                 match recv.try_recv() {
                     Ok(nrate) => {
                         if nrate == 0 {
-                            let (chan_send, chan_rx) = channel::<u64>();
+                            let (chan_send, chan_rx) = channel::unbounded();
                             recv = chan_rx;
                             ctx.send(Start(chan_send));
                             rate = recv.recv()?;
@@ -42,8 +40,8 @@ impl Job for GameTick {
                         rate = nrate;
                     }
                     Err(e) => match e {
-                        std::sync::mpsc::TryRecvError::Empty => {}
-                        std::sync::mpsc::TryRecvError::Disconnected => break,
+                        TryRecvError::Empty => {}
+                        TryRecvError::Disconnected => break,
                     },
                 }
 

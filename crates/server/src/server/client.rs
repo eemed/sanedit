@@ -38,7 +38,7 @@ impl From<ClientId> for String {
 pub enum FromEditorSharedMessage {
     Shared {
         message: Arc<FromEditor>,
-        sender: std::sync::mpsc::Sender<Arc<FromEditor>>,
+        sender: crossbeam::channel::Sender<Arc<FromEditor>>,
     },
     Owned {
         message: FromEditor,

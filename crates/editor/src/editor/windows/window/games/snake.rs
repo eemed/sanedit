@@ -1,8 +1,9 @@
 use std::collections::HashSet;
 use std::hash::{BuildHasher, Hasher};
-use std::{collections::VecDeque, hash::RandomState, sync::mpsc::Sender};
+use std::{collections::VecDeque, hash::RandomState};
 
 use anyhow::bail;
+use crossbeam::channel::Sender;
 use sanedit_messages::redraw::window::Window;
 use sanedit_messages::redraw::{text_style, Size, Theme, ThemeField};
 use sanedit_messages::{

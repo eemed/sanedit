@@ -17,7 +17,9 @@ link_name = (!"]" (backtick / .))*;
 @show @highlight(constant)
 link_url = (!")" (backtick / .))*;
 
-code_fence = fence code_name nl code fence;
+code_fence = code_fence_inj / code_fence_dull;
+code_fence_inj = fence code_name nl code fence;
+code_fence_dull = fence nl (!fence .)* fence;
 
 @injection-language @highlight(operator)
 code_name = [a..zA..Z0..9_:-]+;

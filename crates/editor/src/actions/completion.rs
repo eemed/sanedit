@@ -107,7 +107,7 @@ fn completion_confirm(editor: &mut Editor, id: ClientId) -> ActionResult {
                 .language_servers
                 .get(&lang)
                 .and_then(Lsp::position_encoding));
-            if item.is_snippet {
+            if item.is_text_snippet {
                 let (text, mut replace) = match item.insert_text() {
                     Either::Left(text) => {
                         let pos = win.completion.point_offset();

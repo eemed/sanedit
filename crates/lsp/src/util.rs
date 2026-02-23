@@ -191,6 +191,35 @@ pub struct TextEdit {
     pub text: String,
 }
 
+impl TextEdit {
+    pub fn from_vec(edits: Vec<lsp_types::TextEdit>) -> Vec<TextEdit> {
+        let mut results = Vec::with_capacity(edits.len());
+        let mut current_edit: Option<TextEdit> = None;
+        for text in edits {
+            if let Ok(te) = TextEdit::try_from(text) {
+                match current_edit {
+                    Some(mut cur) => {
+                        if cur.range.is_empty() && cur.range == te.range {
+                            cur.text.push_str(&te.text);
+                            current_edit = Some(cur);
+                        } else {
+                            results.push(cur);
+                            current_edit = Some(te);
+                        }
+                    }
+                    None => current_edit = Some(te),
+                }
+            }
+        }
+
+        if let Some(cur) = current_edit {
+            results.push(cur);
+        }
+
+        results
+    }
+}
+
 impl TryFrom<lsp_types::TextEdit> for TextEdit {
     type Error = &'static str;
 
@@ -360,7 +389,7 @@ pub struct CompletionItem {
     pub additional_edits: Vec<TextEdit>,
 
     /// If text format is snippet, may contain for example $0
-    pub is_snippet: bool,
+    pub is_text_snippet: bool,
 }
 
 impl PartialOrd for CompletionItem {

@@ -32,7 +32,7 @@ pub(crate) enum Choice {
 
 impl Choice {
     pub fn from_completion_item(mut completion: CompletionItem) -> Arc<Choice> {
-        let display = if completion.is_snippet {
+        let display = if completion.is_text_snippet {
             Snippet::new(completion.text.as_str())
                 .ok()
                 .as_ref()
@@ -41,7 +41,7 @@ impl Choice {
             None
         };
 
-        completion.detail = if completion.is_snippet {
+        completion.detail = if completion.is_text_snippet {
             completion
                 .detail
                 .as_ref()

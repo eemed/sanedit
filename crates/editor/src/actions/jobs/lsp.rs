@@ -519,7 +519,6 @@ impl LSPJob {
 
         let buf = editor.buffers_mut().get_mut(bid).unwrap();
         let slice = buf.slice(..);
-        // TODO: merge same spot changes to one, Otherwise they are sorted and are fucked
         let changes: Vec<Change> = edit
             .edits
             .into_iter()
@@ -533,7 +532,6 @@ impl LSPJob {
                 Change::replace(start..end, edit.text.as_bytes())
             })
             .collect();
-        log::info!("Changes: {changes:?}");
         if changes.is_empty() {
             return;
         }

@@ -750,13 +750,6 @@ impl Handler {
         };
 
         for item in items {
-            // --------------
-            // let snippet = item.insert_text_format == Some(lsp_types::InsertTextFormat::SNIPPET);
-            // if snippet {
-            //     log::info!("Snippet: {item:?}");
-            // }
-            // --------------
-
             let text = item.insert_text.unwrap_or(item.label);
             let edit = item.text_edit.and_then(|ctedit| match ctedit {
                 lsp_types::CompletionTextEdit::Edit(edit) => TextEdit::try_from(edit).ok(),
@@ -768,13 +761,10 @@ impl Handler {
                 Some(kind) => kind.into(),
                 None => CompletionItemKind::Text,
             };
-            let snippet = item.insert_text_format == Some(lsp_types::InsertTextFormat::SNIPPET);
-            let additional_edits: Vec<TextEdit> = item
-                .additional_text_edits
-                .unwrap_or_default()
-                .into_iter()
-                .filter_map(|edit| TextEdit::try_from(edit).ok())
-                .collect();
+            let is_text_snippet =
+                item.insert_text_format == Some(lsp_types::InsertTextFormat::SNIPPET);
+            let additional_edits: Vec<TextEdit> =
+                TextEdit::from_vec(item.additional_text_edits.unwrap_or_default());
 
             let completion = CompletionItem {
                 text,
@@ -783,7 +773,7 @@ impl Handler {
                 additional_edits,
                 kind,
                 detail: item.detail,
-                is_snippet: snippet,
+                is_text_snippet,
             };
             results.push(completion);
         }

@@ -11,6 +11,7 @@ use crate::{
         hooks::run,
         locations,
         lsp::lsp_notify_for,
+        window::focus,
         ActionResult,
     },
     common::{markdown, Choice},
@@ -20,7 +21,7 @@ use crate::{
         hooks::Hook,
         job_broker::KeepInTouch,
         lsp::{Constraint, Lsp},
-        windows::{Completion, Cursors, Prompt},
+        windows::{Completion, Cursors, Focus, Prompt},
         Editor,
     },
 };
@@ -384,6 +385,7 @@ impl LSPJob {
             .build();
 
         editor.job_broker.request(job);
+        focus(editor, id, Focus::Completion);
     }
 
     fn handle_diagnostics(
@@ -478,6 +480,7 @@ impl LSPJob {
             .build();
 
         editor.job_broker.request(job);
+        focus(editor, id, Focus::Prompt);
     }
 
     fn edit_workspace(editor: &mut Editor, id: ClientId, edit: WorkspaceEdit) {

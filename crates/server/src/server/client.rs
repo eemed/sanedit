@@ -23,8 +23,16 @@ impl ClientId {
         self.0
     }
 
-    pub fn temporary(n: usize) -> ClientId {
+    pub fn new(n: usize) -> ClientId {
         ClientId(n)
+    }
+
+    pub fn temporary() -> ClientId {
+        ClientId(usize::MAX)
+    }
+
+    pub fn is_temporary(&self) -> bool {
+        self.0 == usize::MAX
     }
 }
 

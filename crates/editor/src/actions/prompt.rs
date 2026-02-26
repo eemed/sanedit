@@ -74,6 +74,7 @@ fn select_theme(editor: &mut Editor, id: ClientId) -> ActionResult {
         .build();
 
     editor.job_broker.request(job);
+    focus(editor, id, Focus::Prompt);
     ActionResult::Ok
 }
 
@@ -103,6 +104,7 @@ fn command_palette(editor: &mut Editor, id: ClientId) -> ActionResult {
         .build();
 
     editor.job_broker.request(job);
+    focus(editor, id, Focus::Prompt);
     ActionResult::Ok
 }
 
@@ -202,38 +204,35 @@ fn prompt_close(editor: &mut Editor, id: ClientId) -> ActionResult {
     mode_normal(editor, id);
 
     let (win, _buf) = win_buf!(editor, id);
-
-    let slotname = win.prompt.message().to_string();
-    editor.job_broker.stop_slot(id, &slotname);
-
-    let (win, _buf) = win_buf!(editor, id);
-    if let Some(on_abort) = win.prompt.on_abort() {
-        let input = win.prompt.input_or_selected();
+    let prompt = std::mem::take(&mut win.prompt);
+    if let Some(on_abort) = prompt.on_abort() {
+        let input = prompt.input_or_selected();
         (on_abort)(editor, id, input)
     }
+
     ActionResult::Ok
 }
 
 #[action("Prompt: Confirm")]
 fn prompt_confirm(editor: &mut Editor, id: ClientId) -> ActionResult {
     mode_normal(editor, id);
-    let (win, _buf) = win_buf!(editor, id);
 
-    let slotname = win.prompt.message().to_string();
-    editor.job_broker.stop_slot(id, &slotname);
-
+    let mut result = ActionResult::Ok;
     let (win, _buf) = win_buf!(editor, id);
-    if let Some(on_confirm) = win.prompt.on_confirm() {
-        let out = win.prompt.input_or_selected();
+    let mut prompt = std::mem::take(&mut win.prompt);
+    if let Some(on_confirm) = prompt.on_confirm() {
+        let out = prompt.input_or_selected();
         if let Some(text) = out.text() {
-            if let Some(kind) = win.prompt.history() {
+            if let Some(kind) = prompt.history() {
                 let history = editor.histories.entry(kind).or_default();
                 history.push(text);
             }
         }
-        return (on_confirm)(editor, id, out);
+
+        result = (on_confirm)(editor, id, out);
     }
-    ActionResult::Ok
+
+    result
 }
 
 #[action("Prompt: Move cursor right")]

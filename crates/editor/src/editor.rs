@@ -193,7 +193,7 @@ impl Editor {
         self.themes.load_all();
 
         self.job_broker
-            .request(ClientConnectionTest::new(ClientId::temporary(usize::MAX)));
+            .request(ClientConnectionTest::new(ClientId::temporary()));
     }
 
     pub fn buffers(&self) -> &Buffers {
@@ -444,7 +444,7 @@ impl Editor {
             .map(|parent| {
                 let win = self
                     .windows
-                    .get_mut(ClientId::temporary(parent))
+                    .get_mut(ClientId::new(parent))
                     .expect("Window not present");
                 let bid = win.buffer_id();
                 let config = win.config.clone();
@@ -713,7 +713,7 @@ impl Editor {
     }
 
     fn handle_key_event(&mut self, id: ClientId, event: KeyEvent) {
-        log::debug!("KeyEvent '{event}'");
+        log::info!("KeyEvent '{event}'");
         use sanedit_messages::key::Key::*;
 
         let (win, _buf) = win_buf!(self, id);
@@ -802,6 +802,7 @@ impl Editor {
                     prog.on_success(self);
                 }
                 self.job_broker.done(id);
+                log::info!("Job {id} ok");
             }
             Failed(id, reason) => {
                 log::info!("Job {id} failed because {}.", reason);
@@ -809,16 +810,32 @@ impl Editor {
                     prog.on_failure(self, &reason);
                 }
                 self.job_broker.done(id);
+                log::info!("Job {id} failed");
             }
             Stopped(id) => {
                 if let Some(prog) = self.job_broker.get(id) {
                     prog.on_stop(self);
                 }
                 self.job_broker.done(id);
+                log::info!("Job {id} stopped");
             }
         }
 
-        run(self, ClientId::temporary(0), Hook::OnJobMessagePost);
+        run(self, ClientId::temporary(), Hook::OnJobMessagePost);
+    }
+
+    pub fn continue_macros(&mut self) {
+        let client_ids: Vec<ClientId> = self.clients.keys().copied().collect();
+        for id in client_ids {
+            let (win, _buf) = win_buf!(self, id);
+            if !win.macro_replay.is_replaying() {
+                continue;
+            }
+
+            if self.should_continue_macro(id) {
+                self.replay_macro_continue(id);
+            }
+        }
     }
 
     pub fn working_dir(&self) -> &Path {

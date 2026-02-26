@@ -78,7 +78,7 @@ message = { fg = "fg", text_style = "bold" }
 
 [colors.prompt.completion]
 default = { bg = "bg_alt", fg = "fg" }
-# description = { }
+description = {  fg = "#969896" }
 match = { fg = "#de935f" }
 
 [colors.prompt.completion.selected]

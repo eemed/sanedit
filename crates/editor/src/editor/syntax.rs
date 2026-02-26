@@ -7,7 +7,7 @@ use std::{
 use sanedit_buffer::PieceTreeSlice;
 use sanedit_core::{movement, BufferRange, Detect, Directory, Language, Range};
 use sanedit_messages::redraw::{Color, Style};
-use sanedit_server::Kill;
+use sanedit_server::KillSwitch;
 use sanedit_utils::sorted_vec::SortedVec;
 
 use std::fs::File;
@@ -214,7 +214,7 @@ impl Syntax {
         &self,
         pt: &PieceTreeSlice,
         mut view: BufferRange,
-        kill: Kill,
+        kill: KillSwitch,
     ) -> anyhow::Result<SyntaxResult> {
         let mut hstart = view.start.saturating_sub(HORIZON_TOP);
         let hend = min(pt.len(), view.end + HORIZON_BOTTOM);

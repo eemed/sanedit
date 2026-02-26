@@ -3,15 +3,13 @@ mod strategy;
 
 use std::{
     cmp::min,
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        Arc,
-    },
+    sync::Arc,
     time::{Duration, Instant},
 };
 
 use crossbeam::channel::{Receiver, TryRecvError};
 pub(crate) use option_provider::{Empty, OptionProvider};
+use sanedit_server::KillSwitch;
 use sanedit_utils::{appendlist::Appendlist, sorted_vec::SortedVec};
 
 use crate::{
@@ -29,14 +27,15 @@ pub use strategy::*;
 #[derive(Debug)]
 pub(crate) enum MatcherMessage {
     Init(tokio::sync::mpsc::Sender<(String, u64)>),
-    Done {
+    Finish {
         input_id: u64,
-        clear_old: bool,
+    },
+    Start {
+        input_id: u64,
         results: Vec<SortedVec<ScoredChoice>>,
     },
     Progress {
         input_id: u64,
-        clear_old: bool,
         results: Vec<SortedVec<ScoredChoice>>,
     },
 }
@@ -128,6 +127,38 @@ impl MatcherJob {
     pub fn builder(cid: ClientId) -> MatcherJobBuilder {
         MatcherJobBuilder::new(cid)
     }
+
+    fn redirect_responses(
+        id: u64,
+        ctx: JobContext,
+        mut rx: tokio::sync::mpsc::Receiver<Vec<SortedVec<ScoredChoice>>>,
+    ) {
+        tokio::spawn(async move {
+            let mut is_first = true;
+            while let Some(results) = rx.recv().await {
+                if is_first {
+                    ctx.send(MatcherMessage::Start {
+                        input_id: id,
+                        results,
+                    });
+                } else {
+                    ctx.send(MatcherMessage::Progress {
+                        input_id: id,
+                        results,
+                    });
+                }
+                is_first = false;
+            }
+
+            if is_first {
+                ctx.send(MatcherMessage::Start {
+                    input_id: id,
+                    results: vec![],
+                });
+            }
+            ctx.send(MatcherMessage::Finish { input_id: id });
+        });
+    }
 }
 
 impl Job for MatcherJob {
@@ -148,32 +179,36 @@ impl Job for MatcherJob {
             let matcher = Arc::new(Matcher::new(option_recv, strat));
             let do_matching = async move {
                 log::info!("do_matching started");
-                let mut cancel = Arc::new(AtomicBool::new(false));
+                const QSIZE: usize = 1024;
+                let mut kswitch = KillSwitch::new();
 
-                let result_sender = ctx.clone();
                 let list = option_list.clone();
                 let nmatcher = matcher.clone();
-                let ccancel = cancel.clone();
+                let switch = kswitch.clone();
+                let (tx, rx) = tokio::sync::mpsc::channel(QSIZE);
 
+                Self::redirect_responses(0, ctx.clone(), rx);
                 rayon::spawn(move || {
-                    nmatcher.do_match(0, &starting_pattern, list, result_sender, ccancel);
+                    nmatcher.do_match(&starting_pattern, list, tx, switch);
                 });
 
                 while let Some((pattern, input_id)) = pattern_recv.recv().await {
                     log::info!("do_matching new pattern: {pattern}");
-                    cancel.store(true, Ordering::Release);
-                    cancel = Arc::new(AtomicBool::new(false));
+                    kswitch.kill();
+                    kswitch = KillSwitch::new();
 
-                    let result_sender = ctx.clone();
                     let list = option_list.clone();
                     let nmatcher = matcher.clone();
-                    let ccancel = cancel.clone();
+                    let switch = kswitch.clone();
+                    let (tx, rx) = tokio::sync::mpsc::channel(QSIZE);
 
+                    Self::redirect_responses(input_id, ctx.clone(), rx);
                     rayon::spawn(move || {
-                        nmatcher.do_match(input_id, &pattern, list, result_sender, ccancel);
+                        nmatcher.do_match(&pattern, list, tx, switch);
                     });
                 }
 
+                kswitch.kill();
                 log::info!("do_matching finished");
             };
 
@@ -214,15 +249,13 @@ impl Matcher {
 
     pub fn do_match(
         &self,
-        input_id: u64,
         pattern: &str,
         option_list: Appendlist<Arc<Choice>>,
-        result_sender: JobContext,
-        cancel: Arc<AtomicBool>,
+        result_sender: tokio::sync::mpsc::Sender<Vec<SortedVec<ScoredChoice>>>,
+        switch: KillSwitch,
     ) {
         let case_sensitive = pattern.chars().any(|ch| ch.is_uppercase());
         let strat = self.strategy;
-        let mut is_first_result = true;
 
         // Apply strategy to pattern
         // Split pattern by whitespace and use the resulting patterns as independent
@@ -248,7 +281,7 @@ impl Matcher {
 
         log::info!("Matching options");
 
-        while !result_sender.kill.should_stop() && !cancel.load(Ordering::Acquire) {
+        while !switch.is_killed() {
             loop {
                 match self.receiver.try_recv() {
                     Ok(opt) => option_list.append(opt),
@@ -263,11 +296,7 @@ impl Matcher {
             let available = option_list.len();
 
             if all_options_received && available == taken {
-                result_sender.send(MatcherMessage::Done {
-                    input_id,
-                    clear_old: is_first_result,
-                    results: std::mem::take(&mut locally_sorted),
-                });
+                let _ = result_sender.blocking_send(std::mem::take(&mut locally_sorted));
                 break;
             }
 
@@ -278,7 +307,7 @@ impl Matcher {
                 taken += size;
 
                 let opts = option_list.slice(batch);
-                let mut results: Vec<ScoredChoice> = opts
+                let results: Vec<ScoredChoice> = opts
                     .iter()
                     .filter_map(|choice| {
                         let ranges = matches_with(choice.filter_text(), &matcher)?;
@@ -288,17 +317,16 @@ impl Matcher {
                     })
                     .collect();
 
-                results.sort();
-                locally_sorted.push(unsafe { SortedVec::from_sorted_unchecked(results) });
+                locally_sorted.push(SortedVec::from(results));
 
                 if last_sent_results.elapsed() > send_rate {
-                    result_sender.send(MatcherMessage::Progress {
-                        input_id,
-                        clear_old: is_first_result,
-                        results: std::mem::take(&mut locally_sorted),
-                    });
+                    if result_sender
+                        .blocking_send(std::mem::take(&mut locally_sorted))
+                        .is_err()
+                    {
+                        break;
+                    }
                     last_sent_results = Instant::now();
-                    is_first_result = false;
                 }
             } else {
                 std::thread::sleep(Duration::from_micros(backoff));
@@ -355,20 +383,12 @@ mod test {
             let Ok(msg) = msg else { panic!("Invalid cast") };
             match msg.as_ref() {
                 MatcherMessage::Init(_) => {}
-                MatcherMessage::Done {
-                    input_id, results, ..
-                } => {
+                MatcherMessage::Finish { input_id, .. } => {
                     assert_eq!(input, *input_id);
-                    for rv in results {
-                        for res in rv.iter() {
-                            assert!(all.remove(res.choice().text()));
-                        }
-                    }
                     break;
                 }
-                MatcherMessage::Progress {
-                    input_id, results, ..
-                } => {
+                MatcherMessage::Start { input_id, results }
+                | MatcherMessage::Progress { input_id, results } => {
                     assert_eq!(input, *input_id);
                     for rv in results {
                         for res in rv.iter() {
@@ -410,20 +430,14 @@ mod test {
 
         let list = Appendlist::new();
         let matcher = Matcher::new(recv, MatchStrategy::Default);
-        matcher.do_match(
-            0,
-            "home",
-            list.clone(),
-            ctx.clone(),
-            Arc::new(AtomicBool::new(false)),
-        );
+        matcher.do_match("home", list.clone(), ctx.clone(), KillSwitch::new());
         assert_contains(
             &mut ctx_recv,
             0,
             &["/home/me/.ssh/config", "/home/me/.config/config.toml"],
         );
 
-        matcher.do_match(1, "sock", list, ctx, Arc::new(AtomicBool::new(false)));
+        matcher.do_match("sock", list, ctx, KillSwitch::new());
         assert_contains(&mut ctx_recv, 1, &["/run/socket.sock"]);
     }
 }

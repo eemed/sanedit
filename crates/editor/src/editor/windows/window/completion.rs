@@ -91,6 +91,7 @@ impl Completion {
 
         let draw = editor.draw_state(id);
         draw.no_redraw_window();
+        let is_start = matches!(msg, Start { .. });
 
         match msg {
             Init(sender) => {
@@ -108,44 +109,23 @@ impl Completion {
                 }));
                 win.completion.clear_choices();
             }
-            Progress {
-                results,
-                clear_old,
-                input_id,
-            } => {
+            Start { results, input_id } | Progress { results, input_id } => {
                 let (win, _buf) = win_buf!(editor, id);
                 if input_id != win.completion.input_id {
                     return;
                 }
-                if clear_old {
+                if is_start {
                     win.completion.clear_choices();
                 }
+
                 results
                     .into_iter()
                     .for_each(|res| win.completion.add_choices(res));
-
-                if win.focus() != Focus::Completion {
-                    focus(editor, id, Focus::Completion);
-                }
             }
-            Done {
-                results,
-                clear_old,
-                input_id,
-            } => {
+            Finish { input_id } => {
                 let (win, _buf) = win_buf!(editor, id);
                 if input_id != win.completion.input_id {
                     return;
-                }
-                if clear_old {
-                    win.completion.clear_choices();
-                }
-                results
-                    .into_iter()
-                    .for_each(|res| win.completion.add_choices(res));
-
-                if win.focus() != Focus::Completion {
-                    focus(editor, id, Focus::Completion);
                 }
 
                 let (win, _buf) = win_buf!(editor, id);

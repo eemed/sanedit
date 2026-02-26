@@ -4,7 +4,7 @@ use sanedit_server::ClientId;
 
 pub(crate) fn run(editor: &mut Editor, id: ClientId, hook: Hook) {
     // Skip hooks if id doesnt exist anymore
-    if editor.windows().get(id).is_none() {
+    if !id.is_temporary() && editor.windows().get(id).is_none() {
         return;
     }
 

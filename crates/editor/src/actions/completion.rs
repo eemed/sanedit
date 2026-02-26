@@ -78,6 +78,7 @@ fn complete_from_syntax(editor: &mut Editor, id: ClientId) -> ActionResult {
         .build();
 
     editor.job_broker.request(job);
+    focus(editor, id, Focus::Completion);
     ActionResult::Ok
 }
 

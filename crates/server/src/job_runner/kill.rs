@@ -6,22 +6,26 @@ use std::sync::{
 /// Wrapper around a atomic bool to stop multiple things in multiple threads at
 /// once
 #[derive(Debug, Clone, Default)]
-pub struct Kill {
+pub struct KillSwitch {
     atomic: Arc<AtomicBool>,
 }
 
-impl Kill {
-    pub fn should_stop(&self) -> bool {
-        self.atomic.load(Ordering::Relaxed)
+impl KillSwitch {
+    pub fn new() -> KillSwitch {
+        Self::default()
     }
 
-    pub fn stop(&self) {
+    pub fn is_killed(&self) -> bool {
+        self.atomic.load(Ordering::Acquire)
+    }
+
+    pub fn kill(&self) {
         self.atomic.store(true, Ordering::Release)
     }
 }
 
-impl From<Kill> for Arc<AtomicBool> {
-    fn from(value: Kill) -> Self {
+impl From<KillSwitch> for Arc<AtomicBool> {
+    fn from(value: KillSwitch) -> Self {
         value.atomic
     }
 }

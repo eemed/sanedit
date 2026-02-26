@@ -6,15 +6,9 @@ use sanedit_buffer::PieceTree;
 use sanedit_utils::{either::Either, sorted_vec::SortedVec};
 
 use crate::{
-    actions::{
-        jobs::MatcherMessage, prompt::get_directory_searcher_term, window::focus, ActionResult,
-    },
+    actions::{jobs::MatcherMessage, prompt::get_directory_searcher_term, ActionResult},
     common::{Choice, ScoredChoice},
-    editor::{
-        snippets::Snippet,
-        windows::{window::chooser::Choices, Focus},
-        Editor,
-    },
+    editor::{snippets::Snippet, windows::window::chooser::Choices, Editor},
 };
 use sanedit_server::ClientId;
 
@@ -255,7 +249,7 @@ impl Prompt {
         draw.no_redraw_window();
 
         let (win, _buf) = win_buf!(editor, id);
-        let is_progress = matches!(msg, Progress { .. });
+        let is_start = matches!(msg, Start { .. });
         match msg {
             Init(sender) => {
                 win.prompt.input_id = 0;
@@ -269,30 +263,26 @@ impl Prompt {
                 win.prompt.clear_choices();
                 win.prompt.is_options_loading = true;
             }
-            Done {
-                results,
-                clear_old,
-                input_id,
-            }
-            | Progress {
-                results,
-                clear_old,
-                input_id,
-            } => {
+            Finish { input_id } => {
                 if input_id != win.prompt.input_id {
                     return;
                 }
-                win.prompt.is_options_loading = is_progress;
-                if clear_old {
+
+                win.prompt.is_options_loading = false;
+            }
+            Start { results, input_id } | Progress { results, input_id } => {
+                if input_id != win.prompt.input_id {
+                    return;
+                }
+                if is_start {
                     win.prompt.clear_choices();
                 }
 
+                win.prompt.is_options_loading = true;
                 let (win, _buf) = win_buf!(editor, id);
                 results
                     .into_iter()
                     .for_each(|res| win.prompt.add_choices(res));
-
-                focus(editor, id, Focus::Prompt);
             }
         }
     }
@@ -304,7 +294,6 @@ impl Prompt {
         draw.no_redraw_window();
 
         let (win, _buf) = win_buf!(editor, id);
-        let is_progress = matches!(msg, Progress { .. });
         match msg {
             Init(sender) => {
                 win.prompt.add_on_input(move |editor, id, input| {
@@ -314,30 +303,34 @@ impl Prompt {
                 win.prompt.clear_choices();
                 win.prompt.is_options_loading = true;
             }
-            Done {
-                results,
-                clear_old,
-                input_id,
-            }
-            | Progress {
-                results,
-                clear_old,
-                input_id,
-            } => {
+            Finish { input_id } => {
                 if input_id != win.prompt.input_id {
                     return;
                 }
-                win.prompt.is_options_loading = is_progress;
-                if clear_old {
-                    win.prompt.clear_choices();
+
+                win.prompt.is_options_loading = false;
+            }
+            Start { results, input_id } => {
+                if input_id != win.prompt.input_id {
+                    return;
+                }
+
+                win.prompt.clear_choices();
+                win.prompt.is_options_loading = true;
+                let (win, _buf) = win_buf!(editor, id);
+                results
+                    .into_iter()
+                    .for_each(|res| win.prompt.add_choices(res));
+            }
+            Progress { results, input_id } => {
+                if input_id != win.prompt.input_id {
+                    return;
                 }
 
                 let (win, _buf) = win_buf!(editor, id);
                 results
                     .into_iter()
                     .for_each(|res| win.prompt.add_choices(res));
-
-                focus(editor, id, Focus::Prompt);
             }
         }
     }
@@ -349,9 +342,10 @@ impl Prompt {
         draw.no_redraw_window();
 
         let (win, _buf) = win_buf!(editor, id);
-        let is_progress = matches!(msg, Progress { .. });
+        let is_start = matches!(msg, Start { .. });
         match msg {
             Init(sender) => {
+                log::info!("open_file_handler: Init");
                 win.prompt.add_on_input(move |editor, id, input| {
                     let (win, _buf) = win_buf!(editor, id);
                     let _ = sender.blocking_send((input.to_string(), win.prompt.input_id));
@@ -359,24 +353,28 @@ impl Prompt {
                 win.prompt.clear_choices();
                 win.prompt.is_options_loading = true;
             }
-            Done {
-                results,
-                clear_old,
-                input_id,
-            }
-            | Progress {
-                results,
-                clear_old,
-                input_id,
-            } => {
+            Finish { input_id } => {
+                log::info!("open_file_handler: Finish: {input_id}");
                 if input_id != win.prompt.input_id {
                     return;
                 }
 
-                win.prompt.is_options_loading = is_progress;
-                if clear_old {
+                win.prompt.is_options_loading = false;
+            }
+            Start { results, input_id } | Progress { results, input_id } => {
+                if is_start {
+                    log::info!("open_file_handler: Start: {input_id}");
+                } else {
+                    log::info!("open_file_handler: Progress: {input_id}");
+                }
+                if input_id != win.prompt.input_id {
+                    return;
+                }
+
+                if is_start {
                     win.prompt.clear_choices();
                 }
+                win.prompt.is_options_loading = true;
 
                 let no_input = results
                     .first()
@@ -414,8 +412,6 @@ impl Prompt {
                         .into_iter()
                         .for_each(|res| win.prompt.add_choices(res));
                 }
-
-                focus(editor, id, Focus::Prompt);
             }
         }
     }

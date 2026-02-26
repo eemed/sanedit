@@ -2,7 +2,7 @@ use sanedit_buffer::PieceTreeSlice;
 use sanedit_core::{
     find_range,
     movement::{self, next_line_start},
-    paragraph_at_pos, word_at_pos, BufferRange, Cursor, Range, Searcher,
+    paragraph_at_pos, word_at_pos, BufferRange, Cursor, FindRangeOptions, Range, Searcher,
 };
 use sanedit_syntax::PieceTreeSliceSource;
 
@@ -26,10 +26,10 @@ fn select_range(
     id: ClientId,
     start: &str,
     end: &str,
-    include: bool,
+    opts: FindRangeOptions,
 ) -> ActionResult {
     select(editor, id, |slice, pos| {
-        find_range(slice, pos, start, end, include)
+        find_range(slice, pos, start, end, opts)
     })
 }
 
@@ -145,72 +145,156 @@ fn select_buffer(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Select: In curly brackets")]
 fn select_curly(editor: &mut Editor, id: ClientId) -> ActionResult {
-    select_range(editor, id, "{", "}", false)
+    select_range(
+        editor,
+        id,
+        "{",
+        "}",
+        FindRangeOptions::default().linewise().multiline(),
+    )
 }
 
 #[action("Select: In curly brackets (incl)")]
 fn select_curly_incl(editor: &mut Editor, id: ClientId) -> ActionResult {
-    select_range(editor, id, "{", "}", true)
+    select_range(
+        editor,
+        id,
+        "{",
+        "}",
+        FindRangeOptions::default().include().linewise().multiline(),
+    )
 }
 
 #[action("Select: In parentheses")]
 fn select_parens(editor: &mut Editor, id: ClientId) -> ActionResult {
-    select_range(editor, id, "(", ")", false)
+    select_range(
+        editor,
+        id,
+        "(",
+        ")",
+        FindRangeOptions::default().linewise().multiline(),
+    )
 }
 
 #[action("Select: In parentheses (incl)")]
 fn select_parens_incl(editor: &mut Editor, id: ClientId) -> ActionResult {
-    select_range(editor, id, "(", ")", true)
+    select_range(
+        editor,
+        id,
+        "(",
+        ")",
+        FindRangeOptions::default().include().linewise().multiline(),
+    )
 }
 
 #[action("Select: In square brackets")]
 fn select_square(editor: &mut Editor, id: ClientId) -> ActionResult {
-    select_range(editor, id, "[", "]", false)
+    select_range(
+        editor,
+        id,
+        "[",
+        "]",
+        FindRangeOptions::default().linewise().multiline(),
+    )
 }
 
 #[action("Select: In square brackets (incl)")]
 fn select_square_incl(editor: &mut Editor, id: ClientId) -> ActionResult {
-    select_range(editor, id, "[", "]", true)
+    select_range(
+        editor,
+        id,
+        "[",
+        "]",
+        FindRangeOptions::default().include().linewise().multiline(),
+    )
 }
 
 #[action("Select: In angle brackets")]
 fn select_angle(editor: &mut Editor, id: ClientId) -> ActionResult {
-    select_range(editor, id, "<", ">", false)
+    select_range(
+        editor,
+        id,
+        "<",
+        ">",
+        FindRangeOptions::default().linewise().multiline(),
+    )
 }
 
 #[action("Select: In angle brackets (incl)")]
 fn select_angle_incl(editor: &mut Editor, id: ClientId) -> ActionResult {
-    select_range(editor, id, "<", ">", true)
+    select_range(
+        editor,
+        id,
+        "<",
+        ">",
+        FindRangeOptions::default().include().linewise().multiline(),
+    )
 }
 
 #[action("Select: In single quotes (incl)")]
 fn select_single_incl(editor: &mut Editor, id: ClientId) -> ActionResult {
-    select_range(editor, id, "'", "'", true)
+    select_range(
+        editor,
+        id,
+        "'",
+        "'",
+        FindRangeOptions::default().include(),
+    )
 }
 
 #[action("Select: In single quotes")]
 fn select_single(editor: &mut Editor, id: ClientId) -> ActionResult {
-    select_range(editor, id, "'", "'", false)
+    select_range(
+        editor,
+        id,
+        "'",
+        "'",
+        FindRangeOptions::default(),
+    )
 }
 
 #[action("Select: In double quotes (incl)")]
 fn select_double_incl(editor: &mut Editor, id: ClientId) -> ActionResult {
-    select_range(editor, id, "\"", "\"", true)
+    select_range(
+        editor,
+        id,
+        "\"",
+        "\"",
+        FindRangeOptions::default().include(),
+    )
 }
 
 #[action("Select: In double quotes")]
 fn select_double(editor: &mut Editor, id: ClientId) -> ActionResult {
-    select_range(editor, id, "\"", "\"", false)
+    select_range(
+        editor,
+        id,
+        "\"",
+        "\"",
+        FindRangeOptions::default(),
+    )
 }
 
 #[action("Select: In backticks (incl)")]
 fn select_backtick_incl(editor: &mut Editor, id: ClientId) -> ActionResult {
-    select_range(editor, id, "`", "`", true)
+    select_range(
+        editor,
+        id,
+        "`",
+        "`",
+        FindRangeOptions::default().include(),
+    )
 }
 
 #[action("Select: In backticks")]
 fn select_backtick(editor: &mut Editor, id: ClientId) -> ActionResult {
-    select_range(editor, id, "`", "`", false)
+    select_range(
+        editor,
+        id,
+        "`",
+        "`",
+        FindRangeOptions::default(),
+    )
 }
 
 #[action("Select: Word")]

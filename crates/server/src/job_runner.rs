@@ -15,7 +15,7 @@ use crate::CHANNEL_SIZE;
 pub use context::*;
 pub use events::*;
 pub use id::*;
-pub use kill::Kill;
+pub use kill::KillSwitch;
 
 /// Used to communicate with jobs runner
 pub type JobsHandle = mpsc::Sender<ToJobs>;
@@ -62,10 +62,10 @@ pub async fn spawn_job_runner(sender: Sender<ToEditor>) -> JobsHandle {
 }
 
 #[derive(Debug, Default)]
-struct Jobs(FxHashMap<JobId, (Kill, JoinHandle<()>)>);
+struct Jobs(FxHashMap<JobId, (KillSwitch, JoinHandle<()>)>);
 
 impl std::ops::Deref for Jobs {
-    type Target = FxHashMap<JobId, (Kill, JoinHandle<()>)>;
+    type Target = FxHashMap<JobId, (KillSwitch, JoinHandle<()>)>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -81,7 +81,7 @@ impl std::ops::DerefMut for Jobs {
 impl Drop for Jobs {
     fn drop(&mut self) {
         for (kill, join) in self.0.values() {
-            kill.stop();
+            kill.kill();
             join.abort();
         }
     }
@@ -123,7 +123,7 @@ async fn jobs_loop(mut recv: mpsc::Receiver<ToJobs>, sender: crossbeam::channel:
                     }
                     Stop(id) => {
                         if let Some((kill, join)) = jobs.remove(&id) {
-                            kill.stop();
+                            kill.kill();
                             join.abort();
                             let _ = join.await;
                             let _ = context.editor.send(ToEditor::Jobs(FromJobs::Stopped(id)));

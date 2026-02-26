@@ -3,14 +3,14 @@ use std::any::Any;
 use crate::events::ToEditor;
 use tokio::sync::mpsc::{error::SendError, Sender};
 
-use super::{FromJobs, JobId, Kill};
+use super::{FromJobs, JobId, KillSwitch};
 
 /// Job context used to provide jobs the means to communicate back to the
 /// editor.
 #[derive(Debug, Clone)]
 pub struct JobContext {
     pub id: JobId,
-    pub kill: Kill,
+    pub kill: KillSwitch,
     sender: JobResponseSender,
 }
 
@@ -67,7 +67,7 @@ pub(crate) struct JobResponseSender {
 
 impl JobResponseSender {
     pub(super) fn to_job_context(&self, id: JobId) -> JobContext {
-        let kill = Kill::default();
+        let kill = KillSwitch::default();
         let sender = self.clone();
         JobContext { id, sender, kill }
     }

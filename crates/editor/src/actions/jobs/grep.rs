@@ -25,7 +25,7 @@ use crate::common::Choice;
 use crate::editor::ignore::Ignore;
 use crate::editor::Map;
 use crate::editor::{job_broker::KeepInTouch, Editor};
-use sanedit_server::{ClientId, Job, JobContext, JobId, JobResult, Kill};
+use sanedit_server::{ClientId, Job, JobContext, JobId, JobResult, KillSwitch};
 
 use super::FileOptionProvider;
 
@@ -61,7 +61,7 @@ impl Grep {
         pattern: &str,
         msend: Sender<GrepResult>,
         modified_buffers: Arc<Map<PathBuf, PieceTreeSlice>>,
-        kill: Kill,
+        kill: KillSwitch,
     ) {
         let Ok((searcher, _)) = Searcher::new(pattern) else {
             return;
@@ -77,7 +77,7 @@ impl Grep {
 
             while let Ok(opt) = option_receiver.recv() {
                 write.append(opt);
-                if kill_p.should_stop() || tx.send(next).is_err() {
+                if kill_p.is_killed() || tx.send(next).is_err() {
                     break;
                 }
 
@@ -92,7 +92,7 @@ impl Grep {
 
         let worker = tokio::task::spawn_blocking(move || {
             rx.into_iter().par_bridge().for_each(|idx| {
-                if kill2.should_stop() {
+                if kill2.is_killed() {
                     return;
                 }
 
@@ -145,7 +145,7 @@ impl Grep {
         path: PathBuf,
         searcher: &Searcher,
         result_sender: Sender<GrepResult>,
-        kill: Kill,
+        kill: KillSwitch,
     ) {
         if !Self::should_search_file(path.as_path()) {
             return;
@@ -195,7 +195,7 @@ impl Grep {
         slice: &PieceTreeSlice,
         searcher: &Searcher,
         result_sender: Sender<GrepResult>,
-        kill: Kill,
+        kill: KillSwitch,
     ) {
         if !Self::should_search(slice) {
             return;

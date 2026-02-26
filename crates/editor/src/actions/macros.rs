@@ -142,15 +142,7 @@ fn macro_on_char(editor: &mut Editor, id: ClientId) -> ActionResult {
 }
 
 #[action("Macro: Continue execution")]
-fn macro_continue(editor: &mut Editor, id: ClientId) -> ActionResult {
-    let (win, _buf) = win_buf!(editor, id);
-    if !win.macro_replay.is_replaying() {
-        return ActionResult::Ok;
-    }
-
-    if editor.should_continue_macro(id) {
-        editor.replay_macro_continue(id);
-    }
-
+fn macro_continue(editor: &mut Editor, _id: ClientId) -> ActionResult {
+    editor.continue_macros();
     ActionResult::Ok
 }

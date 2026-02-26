@@ -9,7 +9,7 @@ use sanedit_core::{
     movement::{
         self, find_next_char, find_prev_char, next_grapheme_boundary, prev_grapheme_boundary,
     },
-    Cursor, DisplayOptions,
+    Cursor, DisplayOptions, FindRangeOptions,
 };
 use sanedit_messages::redraw::Point;
 
@@ -220,8 +220,9 @@ fn goto_matching_pair(editor: &mut Editor, id: ClientId) -> ActionResult {
     let mut buf2 = [0u8; 4];
     let start = start.encode_utf8(&mut buf1);
     let end = end.encode_utf8(&mut buf2);
+    let opts = FindRangeOptions::default().include().multiline();
+    let range = getf!(find_range(&slice, pos, start, end, opts));
 
-    let range = getf!(find_range(&slice, pos, start, end, true));
     if range.start == pos {
         do_move_static(editor, id, range.end - end.len() as u64, None, true)
     } else {

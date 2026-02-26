@@ -1,5 +1,53 @@
+use crate::movement::end_of_line;
+use crate::movement::next_line_start;
+use crate::movement::prev_line_end;
+use crate::movement::start_of_line;
 use crate::{BufferRange, Range};
 use sanedit_buffer::{utf8::Graphemes, PieceTreeSlice};
+
+#[derive(Default, Debug, Clone, Copy)]
+pub struct FindRangeOptions {
+    flags: u8,
+}
+
+impl FindRangeOptions {
+    /// Include delimiters in the range
+    pub fn include(mut self) -> Self {
+        self.flags |= flags::INCLUDE;
+        self
+    }
+
+    /// Allow pairs to be on multiple lines
+    pub fn multiline(mut self) -> Self {
+        self.flags |= flags::MULTILINE;
+        self
+    }
+
+    /// operate on lines instead of characters
+    /// Does nothing if multiline is not enabled
+    pub fn linewise(mut self) -> Self {
+        self.flags |= flags::LINEWISE;
+        self
+    }
+
+    pub fn is_include(&self) -> bool {
+        self.flags & flags::INCLUDE == flags::INCLUDE
+    }
+
+    pub fn is_multiline(&self) -> bool {
+        self.flags & flags::MULTILINE == flags::MULTILINE
+    }
+
+    pub fn is_linewise(&self) -> bool {
+        self.flags & flags::LINEWISE == flags::LINEWISE
+    }
+}
+
+mod flags {
+    pub(crate) const INCLUDE: u8 = 1;
+    pub(crate) const MULTILINE: u8 = 1 << 1;
+    pub(crate) const LINEWISE: u8 = 1 << 2;
+}
 
 /// Get a range of buffer from start - end,
 ///
@@ -15,15 +63,35 @@ pub fn find_range(
     pos: u64,
     start: &str,
     end: &str,
-    include: bool,
+    opts: FindRangeOptions,
 ) -> Option<BufferRange> {
-    let mut range = if start == end {
-        find_range_delim_included(slice, pos, start)?
+    debug_assert!(start != end || !opts.is_multiline());
+
+    let mut range = if opts.is_multiline() {
+        find_incl_range(slice, pos, start, end)?
     } else {
-        find_range_included(slice, pos, start, end)?
+        find_incl_range_on_line(slice, pos, start)?
     };
 
-    if !include {
+    if opts.is_linewise() {
+        let sol = start_of_line(slice, range.start);
+        let end_sol = start_of_line(slice, range.end);
+        let on_same_line = sol == end_sol;
+
+        // if results on same line, ignore
+        if !on_same_line {
+            if opts.is_include() {
+                let eol = end_of_line(slice, range.end);
+                return Some(BufferRange::from(sol..eol));
+            } else {
+                let nsol = next_line_start(slice, range.start);
+                let eol = prev_line_end(slice, range.end);
+                return Some(BufferRange::from(nsol..eol));
+            }
+        }
+    }
+
+    if !opts.is_include() {
         range.start += start.len() as u64;
         range.end -= end.len() as u64;
     }
@@ -32,26 +100,26 @@ pub fn find_range(
 }
 
 /// Find range of delimiters in the current line
-fn find_range_delim_included(slice: &PieceTreeSlice, pos: u64, delim: &str) -> Option<BufferRange> {
+fn find_incl_range_on_line(slice: &PieceTreeSlice, pos: u64, delim: &str) -> Option<BufferRange> {
     let dlen = delim.len() as u64;
     let mut ngraphemes = slice.graphemes_at(pos);
     let mut pgraphemes = ngraphemes.clone();
 
     // Find next delimiter
-    let next = find_next_delim(&mut ngraphemes, delim)?;
+    let next = find_next_on_line(&mut ngraphemes, delim)?;
     // Try to find previous delimiter
     // "abc|e"
-    if let Some(prev) = find_prev_delim(&mut pgraphemes, delim) {
+    if let Some(prev) = find_prev_on_line(&mut pgraphemes, delim) {
         return Some(Range::from(pos - prev..pos + next + dlen));
     }
 
     // Find next of next
     // | "abce"
-    let next_next = find_next_delim(&mut ngraphemes, delim)?;
+    let next_next = find_next_on_line(&mut ngraphemes, delim)?;
     Some(Range::from(pos + next..pos + next + next_next + dlen * 2))
 }
 
-fn find_prev_delim(graphemes: &mut Graphemes, delim: &str) -> Option<u64> {
+fn find_prev_on_line(graphemes: &mut Graphemes, delim: &str) -> Option<u64> {
     let mut adv = 0;
 
     while let Some(g) = graphemes.prev() {
@@ -69,7 +137,7 @@ fn find_prev_delim(graphemes: &mut Graphemes, delim: &str) -> Option<u64> {
     None
 }
 
-fn find_next_delim(graphemes: &mut Graphemes, delim: &str) -> Option<u64> {
+fn find_next_on_line(graphemes: &mut Graphemes, delim: &str) -> Option<u64> {
     let mut adv = 0;
 
     while let Some(g) = graphemes.next() {
@@ -87,21 +155,20 @@ fn find_next_delim(graphemes: &mut Graphemes, delim: &str) -> Option<u64> {
     None
 }
 
-fn find_range_included(
+fn find_incl_range(
     slice: &PieceTreeSlice,
     pos: u64,
     start: &str,
     end: &str,
 ) -> Option<BufferRange> {
-    let slen = start.len() as u64;
+    let start_len = start.len() as u64;
     // Search forward for a start or end
-
     let mut graphemes = slice.graphemes_at(pos);
     let (adv, is_start) = find_next_start_or_end(&mut graphemes, start, end)?;
     if !is_start {
         // if end is found => search backwards from pos for a start
         // "[[] | ]" select the whole thing
-        let end_pos = pos + adv + slen;
+        let end_pos = pos + adv + start_len;
         let mut graphemes = slice.graphemes_at(pos);
         let mut cpos = pos;
         let mut nest = 1;
@@ -117,17 +184,19 @@ fn find_range_included(
             }
         }
 
-        Some((cpos..end_pos).into())
-    } else if adv == 0 {
+        return Some((cpos..end_pos).into());
+    }
+
+    if adv == 0 {
         // if we are at a start, anchor to this one
         let start_pos = pos;
-        let mut cpos = pos + slen;
+        let mut current_pos = pos + start_len;
         let mut nest = 1;
 
         while nest != 0 {
             // NOTE: using graphemes, Continue from old position
             let (adv, is_start) = find_next_start_or_end(&mut graphemes, start, end)?;
-            cpos += adv + slen;
+            current_pos += adv + start_len;
 
             if is_start {
                 nest += 1;
@@ -136,55 +205,85 @@ fn find_range_included(
             }
         }
 
-        Some((start_pos..cpos).into())
-    } else {
-        // if start is found => search backwards for end or start
-        let first_start_after = pos + adv + slen;
-        let mut g = slice.graphemes_at(pos);
-        let res = find_prev_start_or_end(&mut g, start, end);
-        let is_start = res.map(|(_, is_start)| is_start).unwrap_or(false);
+        return Some((start_pos..current_pos).into());
+    }
+
+    // if start is found => search backwards for end or start
+    let mut backwards_graphemes = slice.graphemes_at(pos);
+    let mut backwards_pos = pos;
+    let mut nest = 0;
+
+    while nest <= 0 {
+        let (adv, is_start) = find_prev_start_or_end(&mut backwards_graphemes, start, end)?;
+        backwards_pos -= adv;
+
         if is_start {
-            let (adv, _) = res.unwrap();
-            // "[ | [ ] ]" select the whole thing
-            // Search an end for the previous start instead
-            let start_pos = pos - adv;
-            let mut cpos = first_start_after;
-            let mut nest = 2;
-
-            while nest != 0 {
-                // NOTE: using graphemes, Continue from old position
-                let (adv, is_start) = find_next_start_or_end(&mut graphemes, start, end)?;
-                cpos += adv + slen;
-
-                if is_start {
-                    nest += 1;
-                } else {
-                    nest -= 1;
-                }
-            }
-
-            Some((start_pos..cpos).into())
+            nest += 1;
         } else {
-            // "(]) | [ ]"  select next brackets
-            // Jump forward to the first starting pos and search an end for that
-            let mut cpos = first_start_after;
-            let mut nest = 1;
-
-            while nest != 0 {
-                // NOTE: using graphemes, Continue from old position
-                let (adv, is_start) = find_next_start_or_end(&mut graphemes, start, end)?;
-                cpos += adv + slen;
-
-                if is_start {
-                    nest += 1;
-                } else {
-                    nest -= 1;
-                }
-            }
-
-            Some((first_start_after - slen..cpos).into())
+            nest -= 1;
         }
     }
+
+    nest += 1;
+
+    let mut current_pos = pos + adv + start_len;
+    while nest != 0 {
+        // NOTE: using graphemes, Continue from old position
+        let (adv, is_start) = find_next_start_or_end(&mut graphemes, start, end)?;
+        current_pos += adv + start_len;
+
+        if is_start {
+            nest += 1;
+        } else {
+            nest -= 1;
+        }
+    }
+
+    Some((backwards_pos..current_pos).into())
+
+    // if is_start {
+    //     let (adv, _) = res.unwrap();
+    //     // "[ | [ ] ]" select the whole thing
+    //     // Search an end for the previous start instead
+    //     let start_pos = pos - adv;
+    //     let mut cpos = first_start_after;
+
+    //     // "[  [| ] ]"
+    //     let mut nest = 2;
+
+    //     while nest != 0 {
+    //         // NOTE: using graphemes, Continue from old position
+    //         let (adv, is_start) = find_next_start_or_end(&mut graphemes, start, end)?;
+    //         cpos += adv + slen;
+
+    //         if is_start {
+    //             nest += 1;
+    //         } else {
+    //             nest -= 1;
+    //         }
+    //     }
+
+    //     return Some((start_pos..cpos).into());
+    // }
+
+    // "(]) | [ ]"  select next brackets
+    // Jump forward to the first starting pos and search an end for that
+    // let mut cpos = first_start_after;
+    // let mut nest = 1;
+
+    // while nest != 0 {
+    //     // NOTE: using graphemes, Continue from old position
+    //     let (adv, is_start) = find_next_start_or_end(&mut graphemes, start, end)?;
+    //     cpos += adv + slen;
+
+    //     if is_start {
+    //         nest += 1;
+    //     } else {
+    //         nest -= 1;
+    //     }
+    // }
+
+    // Some((first_start_after - slen..cpos).into())
 }
 
 /// Find next start or end in graphemes and return how much we advanced the iterator

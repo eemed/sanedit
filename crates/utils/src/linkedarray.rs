@@ -1,31 +1,33 @@
-use std::mem::MaybeUninit;
-
 #[derive(Debug)]
 pub struct LinkedArray<T, const N: usize> {
     nodes: [Entry<T>; N],
     head: Option<usize>,
     tail: Option<usize>,
     free: Option<usize>,
+    len: usize,
+}
+
+#[derive(Debug)]
+struct Entry<T> {
+    val: Option<T>,
+    next: Option<usize>,
+    prev: Option<usize>,
 }
 
 impl<T, const N: usize> LinkedArray<T, N> {
-    pub fn new() -> LinkedArray<T, N> {
-        let mut nodes = [(); N].map(|_| Entry::default());
-        for (i, entry) in nodes.iter_mut().enumerate() {
-            if i != 0 {
-                entry.prev = Some(i - 1);
-            }
+    pub fn new() -> Self {
+        let nodes: [Entry<T>; N] = std::array::from_fn(|i| Entry {
+            val: None,
+            prev: if i > 0 { Some(i - 1) } else { None },
+            next: if i + 1 < N { Some(i + 1) } else { None },
+        });
 
-            if i + 1 < N {
-                entry.next = Some(i + 1);
-            }
-        }
-
-        LinkedArray {
+        Self {
             nodes,
             head: None,
             tail: None,
             free: Some(0),
+            len: 0,
         }
     }
 
@@ -34,157 +36,135 @@ impl<T, const N: usize> LinkedArray<T, N> {
     }
 
     pub fn len(&self) -> usize {
-        self.iter().count()
+        self.len
     }
 
     pub fn is_empty(&self) -> bool {
-        self.head.is_none()
+        self.len == 0
     }
 
     pub fn is_full(&self) -> bool {
-        self.free.is_none()
+        self.len == N
     }
 
-    fn free_slot(&mut self) -> Option<usize> {
-        let free = self.free?;
-        self.free = self.nodes[free].next;
-        Some(free)
+    fn take_free(&mut self) -> Option<usize> {
+        let idx = self.free?;
+        self.free = self.nodes[idx].next;
+        self.nodes[idx].next = None;
+        self.nodes[idx].prev = None;
+        Some(idx)
     }
 
-    // Push an element to the front, returns the index in backing array
-    // returns none if the array is full
     pub fn push_front(&mut self, val: T) -> Option<usize> {
-        let slot = self.free_slot()?;
-        let node = &mut self.nodes[slot];
+        let idx = self.take_free()?;
 
-        node.val.write(val);
-        node.next = self.head;
-        node.prev = None;
+        self.nodes[idx].val = Some(val);
+        self.nodes[idx].next = self.head;
+        self.nodes[idx].prev = None;
 
         if let Some(head) = self.head {
-            self.nodes[head].prev = Some(slot);
+            self.nodes[head].prev = Some(idx);
         }
 
-        self.head = Some(slot);
+        self.head = Some(idx);
 
         if self.tail.is_none() {
-            self.tail = Some(slot);
+            self.tail = Some(idx);
         }
 
-        Some(slot)
+        self.len += 1;
+        Some(idx)
     }
 
-    // Move an element to front
     pub fn move_to_front(&mut self, index: usize) {
-        if let Some(next) = self.nodes[index].next {
-            self.nodes[next].prev = self.nodes[index].prev;
+        if index >= N {
+            return;
         }
 
-        if let Some(prev) = self.nodes[index].prev {
-            self.nodes[prev].next = self.nodes[index].next;
+        if self.nodes[index].val.is_none() {
+            return; // not in active list
         }
 
-        let node = &mut self.nodes[index];
-        node.next = self.head;
-        node.prev = None;
+        if Some(index) == self.head {
+            return;
+        }
+
+        let prev = self.nodes[index].prev;
+        let next = self.nodes[index].next;
+
+        if let Some(p) = prev {
+            self.nodes[p].next = next;
+        }
+
+        if let Some(n) = next {
+            self.nodes[n].prev = prev;
+        }
+
+        if Some(index) == self.tail {
+            self.tail = prev;
+        }
+
+        self.nodes[index].prev = None;
+        self.nodes[index].next = self.head;
 
         if let Some(head) = self.head {
             self.nodes[head].prev = Some(index);
         }
 
         self.head = Some(index);
-
-        if self.tail.is_none() {
-            self.tail = Some(index);
-        }
     }
 
     pub fn pop_last(&mut self) -> Option<T> {
         let tail = self.tail?;
-        self.tail = self.nodes[tail].prev;
+
+        let prev = self.nodes[tail].prev;
+
+        if let Some(p) = prev {
+            self.nodes[p].next = None;
+        } else {
+            self.head = None;
+        }
+
+        self.tail = prev;
+        let val = self.nodes[tail].val.take();
+
+        // return node to free list
         self.nodes[tail].next = self.free;
         self.nodes[tail].prev = None;
         self.free = Some(tail);
-        match self.tail {
-            Some(n) => {
-                let ntail = &mut self.nodes[n];
-                ntail.next = None;
-            }
-            None => self.head = None,
-        }
 
-        let val = std::mem::replace(&mut self.nodes[tail].val, MaybeUninit::uninit());
-        // SAFETY: initialized as this item was found in the used list
-        Some(unsafe { val.assume_init() })
+        self.len -= 1;
+        val
     }
 
-    pub fn iter<'a>(&'a self) -> Iter<'a, T> {
+    pub fn iter(&self) -> Iter<'_, T> {
         Iter {
             nodes: &self.nodes,
-            n: self.head,
+            current: self.head,
         }
     }
 }
 
-impl<T: PartialEq, const N: usize> LinkedArray<T, N> {
-    pub fn contains(&self, item: &T) -> Option<usize> {
-        for (i, val) in self.iter() {
-            if val == item {
-                return Some(i);
-            }
-        }
-
-        None
-    }
-}
-
-impl<T, const N: usize> Default for LinkedArray<T, N> {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl<T, const N: usize> Drop for LinkedArray<T, N> {
-    fn drop(&mut self) {
-        while let Some(t) = self.pop_last() {
-            drop(t);
-        }
-    }
-}
-
-#[derive(Debug)]
-struct Entry<T> {
-    val: MaybeUninit<T>,
-    next: Option<usize>,
-    prev: Option<usize>,
-}
-
-impl<T> Default for Entry<T> {
-    fn default() -> Self {
-        Self {
-            val: MaybeUninit::uninit(),
-            next: Default::default(),
-            prev: Default::default(),
-        }
-    }
-}
-
-#[derive(Debug)]
 pub struct Iter<'a, T> {
     nodes: &'a [Entry<T>],
-    n: Option<usize>,
+    current: Option<usize>,
 }
 
 impl<'a, T> Iterator for Iter<'a, T> {
     type Item = (usize, &'a T);
 
     fn next(&mut self) -> Option<Self::Item> {
-        let n = self.n?;
-        let node = &self.nodes[n];
-        // Iteration starts from head, so ok
-        let value = unsafe { node.val.assume_init_ref() };
-        self.n = node.next;
-        Some((n, value))
+        let idx = self.current?;
+        let node = &self.nodes[idx];
+        let val = node.val.as_ref()?;
+        self.current = node.next;
+        Some((idx, val))
+    }
+}
+
+impl<T, const N: usize> Default for LinkedArray<T, N> {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

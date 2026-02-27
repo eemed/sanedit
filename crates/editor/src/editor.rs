@@ -790,6 +790,7 @@ impl Editor {
     }
 
     pub fn handle_job_message(&mut self, msg: FromJobs) {
+        log::info!("handle_job_message");
         use FromJobs::*;
         match msg {
             Message(id, msg) => {
@@ -820,20 +821,23 @@ impl Editor {
                 log::info!("Job {id} stopped");
             }
         }
+        log::info!("handle_job_message pre done");
 
         run(self, ClientId::temporary(), Hook::OnJobMessagePost);
+        log::info!("handle_job_message done");
     }
 
     pub fn continue_macros(&mut self) {
         let client_ids: Vec<ClientId> = self.clients.keys().copied().collect();
         for id in client_ids {
-            let (win, _buf) = win_buf!(self, id);
-            if !win.macro_replay.is_replaying() {
-                continue;
-            }
+            if let Some(win) = self.windows.get_mut(id) {
+                if !win.macro_replay.is_replaying() {
+                    continue;
+                }
 
-            if self.should_continue_macro(id) {
-                self.replay_macro_continue(id);
+                if self.should_continue_macro(id) {
+                    self.replay_macro_continue(id);
+                }
             }
         }
     }

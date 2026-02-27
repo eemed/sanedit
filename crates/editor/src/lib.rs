@@ -23,12 +23,9 @@ macro_rules! get {
 
 macro_rules! win_buf_ref {
     ($editor:ident, $id:expr) => {{
-        let win = $editor.windows.get($id).expect("no win for cliend id {id}");
+        let win = $editor.windows.get($id).expect("no win for client id");
         let bid = win.buffer_id();
-        let buf = $editor
-            .buffers
-            .get(bid)
-            .expect("no buffer for buffer id {bid}");
+        let buf = $editor.buffers.get(bid).expect("no buffer for buffer id");
         (win, buf)
     }};
 }
@@ -37,15 +34,12 @@ macro_rules! win_buf_ref {
 /// Used if mutable access is needed in other parts of editor
 macro_rules! win_buf {
     ($editor:ident, $id:expr) => {{
-        let win = $editor
-            .windows
-            .get_mut($id)
-            .expect("no win for cliend id {id}");
+        let win = $editor.windows.get_mut($id).expect("no win for client id");
         let bid = win.buffer_id();
         let buf = $editor
             .buffers
             .get_mut(bid)
-            .expect("no buffer for buffer id {bid}");
+            .expect("no buffer for buffer id");
         (win, buf)
     }};
 }

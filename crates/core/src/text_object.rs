@@ -65,10 +65,11 @@ pub fn find_range(
     end: &str,
     opts: FindRangeOptions,
 ) -> Option<BufferRange> {
-    debug_assert!(start != end || !opts.is_multiline());
+    debug_assert!(!(start == end && opts.is_multiline()));
 
     let mut range = if opts.is_multiline() {
-        find_incl_range(slice, pos, start, end)?
+        find_incl_range(slice, pos, start, end)
+            .or_else(|| find_incl_block_range_on_line(slice, pos, start, end))?
     } else {
         find_incl_range_on_line(slice, pos, start)?
     };
@@ -97,6 +98,19 @@ pub fn find_range(
     }
 
     Some(range)
+}
+
+fn find_incl_block_range_on_line(
+    slice: &PieceTreeSlice,
+    pos: u64,
+    start: &str,
+    end: &str,
+) -> Option<BufferRange> {
+    let mut graphemes = slice.graphemes_at(pos);
+    let start_pos = pos + find_next_on_line(&mut graphemes, start)?;
+    let end_pos =
+        start_pos + (start.len() + end.len()) as u64 + find_next_on_line(&mut graphemes, end)?;
+    Some(Range::from(start_pos..end_pos))
 }
 
 /// Find range of delimiters in the current line

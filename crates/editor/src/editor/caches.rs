@@ -31,7 +31,7 @@ impl FilesMRU {
     }
 
     pub fn insert(&mut self, path: PathBuf) {
-        if let Some(pos) = self.items.contains(&path) {
+        if let Some((pos, _)) = self.items.iter().find(|(_, item)| *item == &path) {
             self.items.move_to_front(pos);
             return;
         }

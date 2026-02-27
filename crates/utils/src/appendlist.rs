@@ -152,8 +152,8 @@ impl<T> Appendlist<T> {
             .compare_exchange(
                 write_index,
                 write_index + written,
-                Ordering::Release,
-                Ordering::Relaxed,
+                Ordering::AcqRel,
+                Ordering::Acquire,
             )
             .is_err()
         {

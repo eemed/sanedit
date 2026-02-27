@@ -252,7 +252,6 @@ impl Prompt {
         let is_start = matches!(msg, Start { .. });
         match msg {
             Init(sender) => {
-                win.prompt.input_id = 0;
                 win.prompt.add_on_input(move |editor, id, input| {
                     let path = PathBuf::from(input);
                     let input = path.to_string_lossy();
@@ -414,6 +413,8 @@ impl Prompt {
                 }
             }
         }
+
+        log::info!("open_file_handler: done");
     }
 
     pub fn add_on_input<F>(&mut self, fun: F)

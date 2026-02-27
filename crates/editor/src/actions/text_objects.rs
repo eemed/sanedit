@@ -233,24 +233,12 @@ fn select_angle_incl(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Select: In single quotes (incl)")]
 fn select_single_incl(editor: &mut Editor, id: ClientId) -> ActionResult {
-    select_range(
-        editor,
-        id,
-        "'",
-        "'",
-        FindRangeOptions::default().include(),
-    )
+    select_range(editor, id, "'", "'", FindRangeOptions::default().include())
 }
 
 #[action("Select: In single quotes")]
 fn select_single(editor: &mut Editor, id: ClientId) -> ActionResult {
-    select_range(
-        editor,
-        id,
-        "'",
-        "'",
-        FindRangeOptions::default(),
-    )
+    select_range(editor, id, "'", "'", FindRangeOptions::default())
 }
 
 #[action("Select: In double quotes (incl)")]
@@ -266,35 +254,17 @@ fn select_double_incl(editor: &mut Editor, id: ClientId) -> ActionResult {
 
 #[action("Select: In double quotes")]
 fn select_double(editor: &mut Editor, id: ClientId) -> ActionResult {
-    select_range(
-        editor,
-        id,
-        "\"",
-        "\"",
-        FindRangeOptions::default(),
-    )
+    select_range(editor, id, "\"", "\"", FindRangeOptions::default())
 }
 
 #[action("Select: In backticks (incl)")]
 fn select_backtick_incl(editor: &mut Editor, id: ClientId) -> ActionResult {
-    select_range(
-        editor,
-        id,
-        "`",
-        "`",
-        FindRangeOptions::default().include(),
-    )
+    select_range(editor, id, "`", "`", FindRangeOptions::default().include())
 }
 
 #[action("Select: In backticks")]
 fn select_backtick(editor: &mut Editor, id: ClientId) -> ActionResult {
-    select_range(
-        editor,
-        id,
-        "`",
-        "`",
-        FindRangeOptions::default(),
-    )
+    select_range(editor, id, "`", "`", FindRangeOptions::default())
 }
 
 #[action("Select: Word")]

@@ -1,0 +1,17 @@
+[package]
+name = "sanedit-gui-client"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+sanedit-messages = { path = "../messages" }
+sanedit-utils = { path = "../utils" }
+
+tokio = { workspace = true, features = ["full"] }
+
+anyhow.workspace = true
+crossbeam.workspace = true
+eframe.workspace = true
+log.workspace = true
+libc.workspace = true
+unicode-width.workspace = true

@@ -10,7 +10,7 @@ use std::{
 
 use argh::FromArgs;
 use sanedit_server::{Address, ServerOptions};
-use sanedit_terminal_client::{unix::UnixDomainSocketClient, ClientOptions, InitialFile};
+use sanedit_terminal_client::InitialFile;
 
 const SESSION_NAMES: [&str; 16] = [
     "boar",
@@ -94,6 +94,10 @@ struct Cli {
     /// print version
     #[argh(switch, short = 'v')]
     version: bool,
+
+    /// use gui
+    #[argh(switch, short = 'g')]
+    gui: bool,
 }
 
 fn main() {
@@ -121,12 +125,6 @@ fn main() {
         .map(|name| Session::new(&sessions, name))
         .unwrap_or_else(|| next_available_session(&sessions));
     let log_file = init_logging(&cli, &log_tmp, &session);
-    let client_opts = ClientOptions {
-        file: file_to_open(&cli),
-        parent_client: cli.parent_client,
-        session: session.name.clone(),
-        language: cli.language.clone(),
-    };
     let existing_session = session.socket.try_exists().unwrap_or(false);
     let server_opts = ServerOptions {
         config_dir: cli.config_dir.clone(),
@@ -140,13 +138,13 @@ fn main() {
         let _ = fs::remove_file(session.socket);
     } else if existing_session {
         // Try to connect if it doest work create a new one
-        if let Some(opts) = connect_to_socket(&session.socket, client_opts) {
+        if !connect_to_socket(&cli, &session) {
             start_server_process(&cli, &session, server_opts);
-            connect_to_socket(&session.socket, opts);
+            connect_to_socket(&cli, &session);
         }
     } else {
         start_server_process(&cli, &session, server_opts);
-        connect_to_socket(&session.socket, client_opts);
+        connect_to_socket(&cli, &session);
     }
 
     if let Some(log_file) = log_file {
@@ -162,7 +160,7 @@ fn working_dir(cli: &Cli) -> Option<PathBuf> {
         .or(cli.working_dir.clone())
 }
 
-fn file_to_open(cli: &Cli) -> Option<InitialFile> {
+fn file_to_open_term(cli: &Cli) -> Option<sanedit_terminal_client::InitialFile> {
     if cli.stdin {
         let mut buf = vec![];
         let _ = std::io::stdin().read_to_end(&mut buf);
@@ -172,6 +170,22 @@ fn file_to_open(cli: &Cli) -> Option<InitialFile> {
         let path = path.canonicalize().ok().unwrap_or(path.clone());
         if !path.is_dir() {
             Some(InitialFile::Path(path.clone()))
+        } else {
+            None
+        }
+    }
+}
+
+fn file_to_open_gui(cli: &Cli) -> Option<sanedit_gui_client::InitialFile> {
+    if cli.stdin {
+        let mut buf = vec![];
+        let _ = std::io::stdin().read_to_end(&mut buf);
+        Some(sanedit_gui_client::InitialFile::Stdin(buf))
+    } else {
+        let path = cli.file.as_ref()?;
+        let path = path.canonicalize().ok().unwrap_or(path.clone());
+        if !path.is_dir() {
+            Some(sanedit_gui_client::InitialFile::Path(path.clone()))
         } else {
             None
         }
@@ -283,21 +297,51 @@ fn start_server(opts: ServerOptions) {
 }
 
 /// Returns options back if could not connect to socket
-fn connect_to_socket(socket: &Path, opts: ClientOptions) -> Option<ClientOptions> {
+fn connect_to_socket(cli: &Cli, session: &Session) -> bool {
     log::info!("Connecting to existing socket..");
-    // if socket already exists try to connect
-    match UnixDomainSocketClient::connect(socket) {
-        Ok(socket) => {
-            socket.run(opts);
-            None
+
+    if cli.gui {
+        match sanedit_gui_client::unix::UnixDomainSocketClient::connect(&session.socket) {
+            Ok(socket) => {
+                let opts = sanedit_gui_client::ClientOptions {
+                    file: file_to_open_gui(cli),
+                    parent_client: cli.parent_client,
+                    session: session.name.clone(),
+                    language: cli.language.clone(),
+                };
+                socket.run(opts);
+                true
+            }
+            Err(e) => {
+                let _ = std::fs::remove_file(&session.socket);
+                if matches!(e.kind(), std::io::ErrorKind::ConnectionRefused) {
+                    false
+                } else {
+                    println!("Invalid session: {e}");
+                    true
+                }
+            }
         }
-        Err(e) => {
-            let _ = std::fs::remove_file(socket);
-            if matches!(e.kind(), std::io::ErrorKind::ConnectionRefused) {
-                Some(opts)
-            } else {
-                println!("Invalid session: {e}");
-                None
+    } else {
+        match sanedit_terminal_client::unix::UnixDomainSocketClient::connect(&session.socket) {
+            Ok(socket) => {
+                let opts = sanedit_terminal_client::ClientOptions {
+                    file: file_to_open_term(cli),
+                    parent_client: cli.parent_client,
+                    session: session.name.clone(),
+                    language: cli.language.clone(),
+                };
+                socket.run(opts);
+                true
+            }
+            Err(e) => {
+                let _ = std::fs::remove_file(&session.socket);
+                if matches!(e.kind(), std::io::ErrorKind::ConnectionRefused) {
+                    false
+                } else {
+                    println!("Invalid session: {e}");
+                    true
+                }
             }
         }
     }

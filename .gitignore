@@ -12,3 +12,4 @@ crates/samples
 runtime/config.toml
 deb/
 crates/*.log
+crates/gui-client/assets

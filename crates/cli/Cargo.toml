@@ -25,6 +25,7 @@ path = "src/main.rs"
 
 [dependencies]
 sanedit-terminal-client = { path = "../terminal-client" }
+sanedit-gui-client = { path = "../gui-client" }
 sanedit-editor = { path = "../editor" }
 sanedit-server = { path = "../server" }
 sanedit-core = { path = "../core" }

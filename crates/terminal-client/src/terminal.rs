@@ -192,7 +192,7 @@ pub(crate) fn color_to_crossterm_color(color: Option<&Color>) -> style::Color {
             Color::Black => style::Color::Black,
             Color::White => style::Color::White,
             Color::Rgb(rgb) => {
-                let (r, g, b) = rgb.get();
+                let (r, g, b) = rgb.split();
                 style::Color::Rgb { r, g, b }
             }
         }

@@ -68,6 +68,21 @@ tasks:
     env:
       RUST_BACKTRACE: 1
 
+  run-gui:
+    desc: Build and run the debug GUI build
+    dir: crates
+    cmds:
+      - rm -f {{.DEBUG_SOCKET}}
+      - rm -f {{.LOG_FILE}} {{.LOG_FILE_CLIENT}}
+      - taskset -c 1 cargo run --bin sane -- --server-only --session debug --debug --config-dir ../runtime .. &
+      - |
+        until [ -e {{.DEBUG_SOCKET}} ]; do \
+          sleep 0.1; \
+        done
+      - taskset -c 1 cargo run --bin sane -- --gui --debug --session debug --config-dir ../runtime
+    env:
+      RUST_BACKTRACE: 1
+
   debug-glob:
     desc: Build and run the debug glob pattern
     dir: crates

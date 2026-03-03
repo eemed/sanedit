@@ -58,9 +58,9 @@ impl TryFrom<&str> for Color {
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Copy, PartialOrd, Ord, Hash)]
 pub struct Rgb {
-    pub(crate) red: u8,
-    pub(crate) green: u8,
-    pub(crate) blue: u8,
+    pub red: u8,
+    pub green: u8,
+    pub blue: u8,
 }
 
 impl fmt::Debug for Rgb {
@@ -143,7 +143,7 @@ impl Rgb {
         format!("#{:02x}{:02x}{:02x}", self.red, self.green, self.blue)
     }
 
-    pub fn get(&self) -> (u8, u8, u8) {
+    pub fn split(&self) -> (u8, u8, u8) {
         (self.red, self.green, self.blue)
     }
 }

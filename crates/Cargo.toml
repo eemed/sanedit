@@ -5,6 +5,7 @@ members = [
     "cli",
     "core",
     "editor",
+    "gui-client",
     "lsp",
     "macros",
     "messages",
@@ -22,14 +23,16 @@ edition = "2021"
 
 [workspace.dependencies]
 anyhow        = "1.0"
-argh          = "0.1.13"
+argh          = "0.1"
 bincode       = "1.3" # version 2 available but does not support serialized_size calculation, could replace with something else also?
+bstr          = "1.12"
 chrono        = "0.4"
-criterion     = "0.8.1" # Benchmarking
-crossbeam     = "0.8.4" # More features for channels
-crossterm     = "0.29.0"
-dynasm        = "4.0.1" # JIT
-dynasmrt      = "4.0.1" # JIT
+criterion     = "0.8" # Benchmarking
+crossbeam     = "0.8" # More features for channels
+crossterm     = "0.29"
+dynasm        = "4.0" # JIT
+dynasmrt      = "4.0" # JIT
+eframe        = "0.24" # GUI
 futures-core  = "0.3"
 futures-util  = "0.3"
 libc          = "0.2"
@@ -40,18 +43,17 @@ rayon         = "1.7"
 rustc-hash    = "2.1.1" # Faster hashmaps/sets
 serde         = "1.0"
 serde_json    = "1.0"
-smol_str      = "0.3.2"
-strum         = "0.27.2"
-strum_macros  = "0.27.2"
+smol_str      = "0.3"
+strum         = "0.27"
+strum_macros  = "0.27"
 syn           = "2"
 thiserror     = "2.0"
-tokio         = "1.40.0"
-tokio-util    = "0.7.12"
-toml_edit     = "0.24.0"
-unicode-width = "0.2.1" # Rendering itself has problems
-which         = "8.0.0" # Should be replaced with something simpler
-xattr         = "1.5.1" # xattrs preservation
-bstr          = "1.12.1"
+tokio         = "1.40"
+tokio-util    = "0.7"
+toml_edit     = "0.24"
+unicode-width = "0.2" # Rendering itself has problems
+which         = "8.0" # Should be replaced with something simpler
+xattr         = "1.5" # xattrs preservation
 
 [profile.dev.package."*"]
 debug = false

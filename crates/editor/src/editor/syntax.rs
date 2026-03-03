@@ -313,7 +313,7 @@ fn style_from_color(text: &str) -> Option<Style> {
         Color::Black => Color::White,
         Color::White => Color::Black,
         Color::Rgb(color) => {
-            let (r, g, b) = color.get();
+            let (r, g, b) = color.split();
             let brightness = (r as u32 * 299 + g as u32 * 587 + b as u32 * 114) / 1000;
             if brightness > 128 {
                 Color::Black

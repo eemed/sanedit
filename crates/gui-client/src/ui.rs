@@ -9,7 +9,7 @@ use std::io::Write;
 use crossbeam::channel::{Receiver, Sender};
 use eframe::egui;
 use sanedit_messages::{
-    redraw::{prompt::PromptUpdate, Redraw, Theme},
+    redraw::{prompt::PromptUpdate, window::WindowUpdate, Redraw, Theme},
     ClientMessage, Message, Writer,
 };
 
@@ -63,7 +63,7 @@ impl<W: Write> UI<W> {
             self.status.show(ctx, theme);
 
             egui::CentralPanel::default().show(ctx, |ui| {
-                self.grid.show(ui);
+                self.grid.show(ui, theme);
             });
 
             self.prompt.show(ctx);
@@ -95,7 +95,10 @@ impl<W: Write> UI<W> {
 
     fn handle_redraw(&mut self, redraw: Redraw) {
         match redraw {
-            Redraw::Window(window_update) => {}
+            Redraw::Window(window_update) => match window_update {
+                WindowUpdate::Full(window) => self.grid.window = window,
+                WindowUpdate::Cursor(cursor) => self.grid.cursor = cursor,
+            },
             Redraw::Statusline(statusline) => self.status.statusline = statusline,
             Redraw::Prompt(prompt_update) => match prompt_update {
                 PromptUpdate::Selection(_) => {}
@@ -149,9 +152,7 @@ pub(crate) fn run<W: Write + 'static>(
         ..eframe::NativeOptions::default()
     };
 
-    let mut grid = CharGrid::new(60, 20, 18.0);
-    grid.example_content(20, 60);
-
+    let grid = CharGrid::new(18.0);
     let status = StatusBar::new();
 
     let mut prompt = Prompt::new();

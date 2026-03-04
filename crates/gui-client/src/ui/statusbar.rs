@@ -19,8 +19,6 @@ impl StatusBar {
     /// Draw the status bar at the top
     pub fn show(&self, ctx: &egui::Context, theme: &Theme) {
         let EguiStyle { fg, bg } = theme.get(ThemeField::Statusline).into();
-        let fg = fg.unwrap_or(egui::Color32::WHITE);
-        let bg = bg.unwrap_or(egui::Color32::BLACK);
 
         egui::TopBottomPanel::top("status_bar")
             .resizable(false)

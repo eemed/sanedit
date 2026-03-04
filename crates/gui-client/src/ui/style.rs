@@ -2,14 +2,14 @@ use eframe::egui;
 use sanedit_messages::redraw::{Color, Rgb, Style};
 
 pub struct EguiStyle {
-    pub fg: Option<egui::Color32>,
-    pub bg: Option<egui::Color32>,
+    pub fg: egui::Color32,
+    pub bg: egui::Color32,
 }
 
 impl From<Style> for EguiStyle {
     fn from(style: Style) -> Self {
-        let bg = style.bg.map(convert_color);
-        let fg = style.fg.map(convert_color);
+        let bg = style.bg.map(convert_color).unwrap_or(egui::Color32::TRANSPARENT);
+        let fg = style.fg.map(convert_color).unwrap_or(egui::Color32::TRANSPARENT);
 
         EguiStyle { fg, bg }
     }

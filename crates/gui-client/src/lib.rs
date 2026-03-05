@@ -1,6 +1,7 @@
 pub mod client;
 pub(crate) mod signals;
 pub(crate) mod ui;
+pub(crate) mod input;
 
 use std::io;
 

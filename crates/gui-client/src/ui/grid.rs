@@ -1,4 +1,7 @@
-use crate::ui::{cell::Cell, style::EguiStyle};
+use crate::ui::{
+    cell::Cell,
+    style::{convert_color, EguiStyle},
+};
 use eframe::egui::{self, Color32};
 use sanedit_messages::redraw::{
     window::Window, Cursor, CursorShape, Point, Size, Theme, ThemeField,
@@ -8,8 +11,6 @@ pub struct CharGrid {
     pub window: Window,
     pub font_size: f32,
 
-    pub cursor: Option<Cursor>,
-
     cell_size: Option<egui::Vec2>,
 }
 
@@ -18,7 +19,6 @@ impl CharGrid {
         Self {
             window: Window::default(),
             font_size,
-            cursor: None,
             cell_size: None,
         }
     }
@@ -90,9 +90,9 @@ impl CharGrid {
         painter.rect_filled(rect, 0.0, default.bg);
 
         for (row, col, cell) in self.window.used() {
-            let pos = egui::pos2(
+            let mut pos = egui::pos2(
                 rect.left() + col as f32 * cell_size.x,
-                rect.top() + row as f32 * cell_size.y + cell_size.y,
+                rect.top() + row as f32 * cell_size.y,
             );
 
             let style = EguiStyle::from(cell.style);
@@ -101,6 +101,7 @@ impl CharGrid {
                 painter.rect_filled(egui::Rect::from_min_size(pos, cell_size), 0.0, style.bg);
             }
 
+            pos.y += cell_size.y;
             painter.text(
                 pos,
                 egui::Align2::LEFT_BOTTOM,
@@ -110,41 +111,37 @@ impl CharGrid {
             );
         }
 
-        // if let Some(Cursor {
-        //     bg,
-        //     fg,
-        //     shape,
-        //     point: Point { x, y },
-        // }) = self.cursor
-        // {
-        //     if y >= self.scroll_row && y < self.scroll_row + visible_rows {
-        //         let screen_row = y - self.scroll_row;
+        let cursor = EguiStyle::from(theme.get(ThemeField::Cursor));
 
-        //         if x < visible_cols {
-        //             let cursor_pos = egui::pos2(
-        //                 rect.left() + x as f32 * cell_size.x,
-        //                 rect.top() + screen_row as f32 * cell_size.y,
-        //             );
+        if let Some(Cursor {
+            bg,
+            fg,
+            shape,
+            point: Point { x, y },
+        }) = self.window.cursor
+        {
+            let mut cursor_pos = egui::pos2(
+                rect.left() + x as f32 * cell_size.x,
+                rect.top() + y as f32 * cell_size.y,
+            );
 
-        //             // Draw block cursor
-        //             painter.rect_filled(
-        //                 egui::Rect::from_min_size(cursor_pos, cell_size),
-        //                 0.0,
-        //                 egui::Color32::from_rgb(80, 80, 80), // gray highlight
-        //             );
+            // Draw block cursor
+            painter.rect_filled(
+                egui::Rect::from_min_size(cursor_pos, cell_size),
+                0.0,
+                cursor.bg,
+            );
 
-        //             // Optional: redraw character inverted
-        //             let cell = &self.cells[y][x];
+            let cell = self.window.at(y, x);
 
-        //             painter.text(
-        //                 cursor_pos,
-        //                 egui::Align2::LEFT_TOP,
-        //                 cell.ch,
-        //                 font_id.clone(),
-        //                 egui::Color32::WHITE,
-        //             );
-        //         }
-        //     }
-        // }
+            cursor_pos.y += cell_size.y;
+            painter.text(
+                cursor_pos,
+                egui::Align2::LEFT_BOTTOM,
+                cell.text.clone(),
+                font_id.clone(),
+                cursor.fg,
+            );
+        }
     }
 }

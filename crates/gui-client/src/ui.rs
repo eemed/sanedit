@@ -1,6 +1,6 @@
 mod cell;
 mod grid;
-mod prompt;
+mod select;
 mod statusbar;
 mod style;
 
@@ -13,7 +13,10 @@ use sanedit_messages::{
     ClientMessage, Message, Writer,
 };
 
-use crate::ui::{grid::CharGrid, prompt::Prompt, statusbar::StatusBar};
+use crate::{
+    input::keyevents_from_egui,
+    ui::{grid::CharGrid, select::Select, statusbar::StatusBar},
+};
 
 struct UI<W: Write> {
     sender: Option<Sender<egui::Context>>,
@@ -22,7 +25,7 @@ struct UI<W: Write> {
 
     grid: CharGrid,
     status: StatusBar,
-    prompt: Prompt,
+    select: Select,
     theme: Option<Theme>,
 }
 
@@ -66,8 +69,17 @@ impl<W: Write> UI<W> {
                 self.grid.show(ui, theme);
             });
 
-            self.prompt.show(ctx);
+            self.select.show(ctx, theme);
         }
+    }
+
+    fn redirect_input(&mut self, ctx: &egui::Context) {
+        ctx.input(|i| {
+            let events = keyevents_from_egui(i);
+            for event in events {
+                let _ = self.editor_writer.write(Message::KeyEvent(event));
+            }
+        });
     }
 
     fn process_messages(&mut self) {
@@ -89,7 +101,8 @@ impl<W: Write> UI<W> {
                 let _ = self.editor_writer.write(Message::ConnectionTest);
             }
             ClientMessage::Flush => {}
-            ClientMessage::Bye => {}
+            ClientMessage::Bye => {
+            }
         }
     }
 
@@ -97,13 +110,17 @@ impl<W: Write> UI<W> {
         match redraw {
             Redraw::Window(window_update) => match window_update {
                 WindowUpdate::Full(window) => self.grid.window = window,
-                WindowUpdate::Cursor(cursor) => self.grid.cursor = cursor,
+                WindowUpdate::Cursor(cursor) => self.grid.window.cursor = cursor,
             },
             Redraw::Statusline(statusline) => self.status.statusline = statusline,
             Redraw::Prompt(prompt_update) => match prompt_update {
-                PromptUpdate::Selection(_) => {}
-                PromptUpdate::Full(prompt) => {}
-                PromptUpdate::Close => {}
+                PromptUpdate::Selection(sel) => {
+                    if let Some(prompt) = &mut self.select.prompt {
+                        prompt.selected = sel;
+                    }
+                }
+                PromptUpdate::Full(prompt) => self.select.prompt = Some(prompt),
+                PromptUpdate::Close => self.select.prompt = None,
             },
             Redraw::Completion(completion_update) => {}
             Redraw::Filetree(items_update) => {}
@@ -119,6 +136,7 @@ impl<W: Write> eframe::App for UI<W> {
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
         self.setup(ctx);
         self.process_messages();
+        self.redirect_input(ctx);
         self.draw(ctx, frame);
     }
 }
@@ -154,9 +172,7 @@ pub(crate) fn run<W: Write + 'static>(
 
     let grid = CharGrid::new(18.0);
     let status = StatusBar::new();
-
-    let mut prompt = Prompt::new();
-    prompt.example_content();
+    let prompt = Select::new(16.0);
 
     let _ = eframe::run_native(
         UI::<W>::name(),
@@ -168,7 +184,7 @@ pub(crate) fn run<W: Write + 'static>(
                 editor_writer: writer,
                 grid,
                 status,
-                prompt,
+                select: prompt,
                 theme: None,
             })
         }),

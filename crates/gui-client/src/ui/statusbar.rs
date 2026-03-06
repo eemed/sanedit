@@ -20,7 +20,7 @@ impl StatusBar {
     pub fn show(&self, ctx: &egui::Context, theme: &Theme) {
         let EguiStyle { fg, bg } = theme.get(ThemeField::Statusline).into();
 
-        egui::TopBottomPanel::top("status_bar")
+        egui::TopBottomPanel::bottom("status_bar")
             .resizable(false)
             .frame(egui::Frame {
                 fill: bg,

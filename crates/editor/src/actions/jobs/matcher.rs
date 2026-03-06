@@ -178,7 +178,6 @@ impl Job for MatcherJob {
 
             let matcher = Arc::new(Matcher::new(option_recv, strat));
             let do_matching = async move {
-                log::info!("do_matching started");
                 const QSIZE: usize = 1024;
                 let mut kswitch = KillSwitch::new();
 
@@ -193,7 +192,6 @@ impl Job for MatcherJob {
                 });
 
                 while let Some((pattern, input_id)) = pattern_recv.recv().await {
-                    log::info!("do_matching new pattern: {pattern}");
                     kswitch.kill();
                     kswitch = KillSwitch::new();
 
@@ -209,7 +207,6 @@ impl Job for MatcherJob {
                 }
 
                 kswitch.kill();
-                log::info!("do_matching finished");
             };
 
             tokio::join!(opts.provide(option_send), do_matching);
@@ -279,8 +276,6 @@ impl Matcher {
         let mut all_options_received = false;
         let mut locally_sorted = vec![];
 
-        log::info!("Matching options");
-
         while !switch.is_killed() {
             loop {
                 match self.receiver.try_recv() {
@@ -333,8 +328,6 @@ impl Matcher {
                 backoff = (backoff * 2).min(500);
             }
         }
-
-        log::info!("Matching options done");
     }
 }
 

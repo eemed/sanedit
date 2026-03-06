@@ -1,44 +1,54 @@
 use eframe::egui;
-use egui::{Context, Event, Key as EKey};
+use egui::Event;
 use sanedit_messages::key::{self, Key, KeyEvent};
 
-pub fn keyevents_from_egui(i: &egui::InputState) -> Vec<KeyEvent> {
-    i.events
-        .iter()
-        .filter_map(|event| match event {
-            Event::Key {
-                key,
-                pressed: true,
-                modifiers,
-                ..
-            } => {
-                let mut key = egui_key_to_key(*key)?;
+pub fn keyevents_from_egui(i: &egui::InputState) -> Option<KeyEvent> {
+    let event = i.events.first()?;
+    match event {
+        Event::Key {
+            key,
+            pressed: true,
+            modifiers,
+            ..
+        } => {
+            let mut key = egui_key_to_key(*key)?;
 
-                let mut mods = 0;
+            let mut mods = 0;
 
-                if modifiers.ctrl {
-                    mods |= key::CONTROL;
-                }
-                if modifiers.alt {
-                    mods |= key::ALT;
-                }
-                if modifiers.shift {
-                    mods |= key::SHIFT;
-                }
-
-                if modifiers.shift && key == Key::Tab {
-                    key = Key::BackTab;
-                }
-
-                Some(KeyEvent::new(key, mods))
+            if modifiers.ctrl {
+                mods |= key::CONTROL;
             }
-            // Event::Text(text) => text
-            //     .chars()
-            //     .next()
-            //     .map(|ch| KeyEvent::new(Key::Char(ch), 0)),
-            _ => None,
-        })
-        .collect()
+            if modifiers.alt {
+                mods |= key::ALT;
+            }
+            if modifiers.shift {
+                mods |= key::SHIFT;
+
+                if let Key::Char(ch) = &mut key {
+                    ch.make_ascii_uppercase();
+                }
+            }
+
+            if modifiers.shift && key == Key::Tab {
+                key = Key::BackTab;
+            }
+
+            println!("Key: {key}, mods: {mods}");
+
+            Some(KeyEvent::new(key, mods))
+        }
+        Event::Text(text) => text.chars().next().map(|ch| {
+            let mut mods = 0;
+            if ch.is_uppercase() {
+                mods |= key::SHIFT;
+            }
+
+            let key = Key::Char(ch);
+            println!("Key2: {key}, mods: {mods}");
+            KeyEvent::new(key, mods)
+        }),
+        _ => None,
+    }
 }
 
 fn egui_key_to_key(key: egui::Key) -> Option<Key> {
@@ -71,6 +81,18 @@ fn egui_key_to_key(key: egui::Key) -> Option<Key> {
         X => Key::Char('x'),
         Y => Key::Char('y'),
         Z => Key::Char('z'),
+        F1 => Key::F(1),
+        F2 => Key::F(2),
+        F3 => Key::F(3),
+        F4 => Key::F(4),
+        F5 => Key::F(5),
+        F6 => Key::F(6),
+        F7 => Key::F(7),
+        F8 => Key::F(8),
+        F9 => Key::F(9),
+        F10 => Key::F(10),
+        F11 => Key::F(11),
+        F12 => Key::F(12),
         Enter => Key::Enter,
         Escape => Key::Esc,
         Tab => Key::Tab,
@@ -85,32 +107,20 @@ fn egui_key_to_key(key: egui::Key) -> Option<Key> {
         PageUp => Key::PageUp,
         PageDown => Key::PageDown,
         Insert => Key::Insert,
-        F1 => Key::F(1),
-        F2 => Key::F(2),
-        F3 => Key::F(3),
-        F4 => Key::F(4),
-        F5 => Key::F(5),
-        F6 => Key::F(6),
-        F7 => Key::F(7),
-        F8 => Key::F(8),
-        F9 => Key::F(9),
-        F10 => Key::F(10),
-        F11 => Key::F(11),
-        F12 => Key::F(12),
+        Space => Key::Char(' '),
+        Num0 => Key::Char('0'),
+        Num1 => Key::Char('1'),
+        Num2 => Key::Char('2'),
+        Num3 => Key::Char('3'),
+        Num4 => Key::Char('4'),
+        Num5 => Key::Char('5'),
+        Num6 => Key::Char('6'),
+        Num7 => Key::Char('7'),
+        Num8 => Key::Char('8'),
+        Num9 => Key::Char('9'),
+        Minus => Key::Char('-'),
         _ => return None,
-        // Space => todo!(),
-        // Minus => todo!(),
         // PlusEquals => todo!(),
-        // Num0 => todo!(),
-        // Num1 => todo!(),
-        // Num2 => todo!(),
-        // Num3 => todo!(),
-        // Num4 => todo!(),
-        // Num5 => todo!(),
-        // Num6 => todo!(),
-        // Num7 => todo!(),
-        // Num8 => todo!(),
-        // Num9 => todo!(),
         // F13 => todo!(),
         // F14 => todo!(),
         // F15 => todo!(),

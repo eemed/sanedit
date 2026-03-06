@@ -1,7 +1,7 @@
 pub mod client;
+pub(crate) mod input;
 pub(crate) mod signals;
 pub(crate) mod ui;
-pub(crate) mod input;
 
 use std::io;
 
@@ -23,34 +23,34 @@ where
     // let (tx, rx) = crossbeam::channel::unbounded();
     // signals::register_signal_handlers(internal_tx.clone());
 
-        // writer
-        //     .write(Message::Hello {
-        //         color_count: 16_777_216,
-        //         size: Size {
-        //             width: 400,
-        //             height: 400,
-        //         },
-        //         parent: opts.parent_client,
-        //     })
-        //     .expect("Failed to send hello");
+    // writer
+    //     .write(Message::Hello {
+    //         color_count: 16_777_216,
+    //         size: Size {
+    //             width: 400,
+    //             height: 400,
+    //         },
+    //         parent: opts.parent_client,
+    //     })
+    //     .expect("Failed to send hello");
 
-        // // Open file if exists
-        // if let Some(file) = opts.file.take() {
-        //     let command = match file {
-        //         InitialFile::Path(path_buf) => Command::OpenFile {
-        //             path: path_buf,
-        //             language: opts.language,
-        //         },
-        //         InitialFile::Stdin(vec) => Command::ReadStdin {
-        //             bytes: vec,
-        //             language: opts.language,
-        //         },
-        //     };
+    // // Open file if exists
+    // if let Some(file) = opts.file.take() {
+    //     let command = match file {
+    //         InitialFile::Path(path_buf) => Command::OpenFile {
+    //             path: path_buf,
+    //             language: opts.language,
+    //         },
+    //         InitialFile::Stdin(vec) => Command::ReadStdin {
+    //             bytes: vec,
+    //             language: opts.language,
+    //         },
+    //     };
 
-        //     writer
-        //         .write(Message::Command(command))
-        //         .expect("Failed to send command");
-        // }
+    //     writer
+    //         .write(Message::Command(command))
+    //         .expect("Failed to send command");
+    // }
 
     let (context_send, context_recv) = crossbeam::channel::bounded::<egui::Context>(1);
     let (message_send, message_recv) = crossbeam::channel::unbounded::<Vec<ClientMessage>>();
@@ -64,14 +64,25 @@ where
         let mut events = vec![];
         for msg in reader {
             match msg {
-                ClientMessage::ConnectionTest => {}
+                ClientMessage::Bye => {
+                    events.push(msg);
+
+                    if message_send.send(std::mem::take(&mut events)).is_err() {
+                        break;
+                    }
+                    ctx.request_repaint();
+                }
                 ClientMessage::Flush => {
-                    message_send.send(std::mem::take(&mut events));
+                    if message_send.send(std::mem::take(&mut events)).is_err() {
+                        break;
+                    }
                     ctx.request_repaint();
                 }
                 e => events.push(e),
             }
         }
+
+        let _ = message_send.send(vec![ClientMessage::Bye]);
     });
 
     ui::run(context_send, message_recv, writer);

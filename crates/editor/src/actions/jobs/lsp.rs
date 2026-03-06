@@ -370,8 +370,10 @@ impl LSPJob {
 
         win.completion = Completion::new(start, cursor.pos(), point);
 
+        log::info!("LSP Compl options: {opts:?}");
         let mut opts: Vec<Arc<Choice>> =
             opts.into_iter().map(Choice::from_completion_item).collect();
+        log::info!("LSP Compl options converted: {opts:?}");
 
         if add_own_snippets {
             opts.extend(editor.get_snippets(id));

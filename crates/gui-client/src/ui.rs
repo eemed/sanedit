@@ -1,4 +1,5 @@
 mod cell;
+mod floating;
 mod grid;
 mod select;
 mod statusbar;
@@ -9,13 +10,13 @@ use std::io::Write;
 use crossbeam::channel::{Receiver, Sender};
 use eframe::egui;
 use sanedit_messages::{
-    redraw::{prompt::PromptUpdate, window::WindowUpdate, Redraw, Theme},
+    redraw::{prompt::PromptUpdate, window::WindowUpdate, PopupComponent, Redraw, Theme},
     ClientMessage, Message, Writer,
 };
 
 use crate::{
     input::keyevents_from_egui,
-    ui::{grid::CharGrid, select::Select, statusbar::StatusBar},
+    ui::{floating::Floating, grid::CharGrid, select::Select, statusbar::StatusBar},
 };
 
 struct UI<W: Write> {
@@ -26,6 +27,7 @@ struct UI<W: Write> {
     grid: CharGrid,
     status: StatusBar,
     select: Select,
+    floating: Floating,
     theme: Option<Theme>,
 }
 
@@ -63,34 +65,31 @@ impl<W: Write> UI<W> {
         ctx.set_visuals(visuals);
 
         if let Some(ref theme) = self.theme {
-            self.status.show(ctx, theme);
-
-            egui::CentralPanel::default().show(ctx, |ui| {
-                self.grid.show(ui, theme);
-            });
-
+            self.grid.show(ctx, theme);
             self.select.show(ctx, theme);
+            self.floating.show(ctx, theme);
+            self.status.show(ctx, theme);
         }
     }
 
     fn redirect_input(&mut self, ctx: &egui::Context) {
         ctx.input(|i| {
-            let events = keyevents_from_egui(i);
-            for event in events {
+            let event = keyevents_from_egui(i);
+            if let Some(event) = event {
                 let _ = self.editor_writer.write(Message::KeyEvent(event));
             }
         });
     }
 
-    fn process_messages(&mut self) {
+    fn process_messages(&mut self, ctx: &egui::Context) {
         while let Ok(messages) = self.msg_recv.try_recv() {
             for message in messages {
-                self.handle_message(message);
+                self.handle_message(ctx, message);
             }
         }
     }
 
-    fn handle_message(&mut self, msg: ClientMessage) {
+    fn handle_message(&mut self, ctx: &egui::Context, msg: ClientMessage) {
         match msg {
             ClientMessage::Hello { id } => {}
             ClientMessage::Theme(theme) => self.theme = Some(theme),
@@ -102,6 +101,7 @@ impl<W: Write> UI<W> {
             }
             ClientMessage::Flush => {}
             ClientMessage::Bye => {
+                ctx.send_viewport_cmd(egui::ViewportCommand::Close);
             }
         }
     }
@@ -127,7 +127,10 @@ impl<W: Write> UI<W> {
             Redraw::Locations(items_update) => {}
             Redraw::Snapshots(snapshots_update) => {}
             Redraw::StatusMessage(status_message) => {}
-            Redraw::Popup(popup_component) => {}
+            Redraw::Popup(popup_component) => match popup_component {
+                PopupComponent::Open(popup) => self.floating.popup = Some(popup),
+                PopupComponent::Close => self.floating.popup = None,
+            },
         }
     }
 }
@@ -135,9 +138,10 @@ impl<W: Write> UI<W> {
 impl<W: Write> eframe::App for UI<W> {
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
         self.setup(ctx);
-        self.process_messages();
+        self.process_messages(ctx);
         self.redirect_input(ctx);
         self.draw(ctx, frame);
+
     }
 }
 
@@ -172,7 +176,8 @@ pub(crate) fn run<W: Write + 'static>(
 
     let grid = CharGrid::new(18.0);
     let status = StatusBar::new();
-    let prompt = Select::new(16.0);
+    let select = Select::new(16.0);
+    let floating = Floating::new(16.0);
 
     let _ = eframe::run_native(
         UI::<W>::name(),
@@ -184,7 +189,8 @@ pub(crate) fn run<W: Write + 'static>(
                 editor_writer: writer,
                 grid,
                 status,
-                select: prompt,
+                select,
+                floating,
                 theme: None,
             })
         }),

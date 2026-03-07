@@ -4,19 +4,16 @@ use sanedit_messages::{
         prompt::{Prompt, PromptUpdate},
         status::Status,
         window::WindowUpdate,
-        Popup, PopupComponent, Redraw, Size, Theme, ThemeField,
+        Popup, PopupComponent, Redraw, Size, Theme,
     },
     ClientMessage, Message, Writer,
 };
 
-use crate::{
-    input::keyevents_from_egui,
-    ui::{grid::CharGrid, style::EguiStyle},
-};
+use crate::{input::keyevents_from_egui, ui::grid::CharGrid};
 
 use std::{io::Write, sync::Arc};
 
-use crossbeam::channel::{Receiver, Sender};
+use crossbeam::channel::Receiver;
 
 pub const TAB_HEIGHT: f32 = 32.0;
 
@@ -32,7 +29,11 @@ pub struct Tab<W: Write> {
 }
 
 impl<W: Write> Tab<W> {
-    pub fn new(font_size: f32, msg_recv: Receiver<Vec<ClientMessage>>, editor_writer: Writer<W, Message>) -> Self {
+    pub fn new(
+        font_size: f32,
+        msg_recv: Receiver<Vec<ClientMessage>>,
+        editor_writer: Writer<W, Message>,
+    ) -> Self {
         Self {
             msg_recv,
             editor_writer,

@@ -1,10 +1,11 @@
 use serde::{Deserialize, Serialize};
+use strum_macros::AsRefStr;
 
 use sanedit_buffer::{utf8::prev_eol, Bytes, PieceTreeSlice};
 
 use crate::movement::is_empty_or_whitespace;
 
-#[derive(Debug, Eq, PartialEq, Hash, Copy, Clone, Serialize, Deserialize)]
+#[derive(Debug, Eq, AsRefStr, PartialEq, Hash, Copy, Clone, Serialize, Deserialize)]
 pub enum IndentKind {
     Space,
     Tab,

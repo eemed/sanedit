@@ -13,6 +13,10 @@ pub struct Status {
     pub cursor_percentage: usize,
     pub macro_recording: bool,
     pub pressed_keys: String,
+    pub language: String,
+    pub end_of_line: String,
+    pub indent_kind: String,
+    pub indent_amount: usize,
 }
 
 impl From<Status> for Redraw {

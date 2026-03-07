@@ -1,9 +1,7 @@
 use std::{cmp::max, sync::Arc};
 
 use eframe::egui::{self, text::LayoutJob, FontId, TextFormat};
-use sanedit_messages::redraw::{
-    Cell, Popup, PopupKind, PopupMessageText, Size, Style, Theme, ThemeField,
-};
+use sanedit_messages::redraw::{Cell, Popup, PopupMessageText, Theme, ThemeField};
 
 use crate::ui::style::EguiStyle;
 
@@ -67,9 +65,6 @@ impl Floating {
                         Self::format_item(cells.as_slice(), font_id.clone(), ui.available_width());
                     let galley = ui.fonts(|f| f.layout_job(text));
                     galleys.push(galley);
-                    // let (rect, _response) =
-                    //     ui.allocate_exact_size(galley.size(), egui::Sense::hover());
-                    // ui.painter().galley(rect.min, galley);
                 }
                 PopupMessageText::Plain(text) => {
                     let mut job = LayoutJob::default();

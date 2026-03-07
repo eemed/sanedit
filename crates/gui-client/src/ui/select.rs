@@ -91,7 +91,7 @@ impl Select {
 
             ui.label(
                 egui::RichText::new("🔎")
-                    .size(self.font_size * 1.2)
+                    .size(self.font_size)
                     .color(title_style.fg),
             );
 

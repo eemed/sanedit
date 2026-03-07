@@ -111,6 +111,19 @@ impl EndOfLine {
         Self::is_eol(&buf[..i])
     }
 
+    pub fn name(&self) -> &str {
+        match self {
+            EndOfLine::Lf => "LF",
+            EndOfLine::Vt => "VT",
+            EndOfLine::Ff => "FF",
+            EndOfLine::Cr => "CR",
+            EndOfLine::Crlf => "CRLF",
+            EndOfLine::Nel => "NEL",
+            EndOfLine::Ls => "LS",
+            EndOfLine::Ps => "PS",
+        }
+    }
+
     pub fn as_str(&self) -> &str {
         self.as_ref()
     }

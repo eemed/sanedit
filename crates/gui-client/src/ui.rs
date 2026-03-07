@@ -36,6 +36,7 @@ struct UI<W: Write> {
     status: StatusBar,
     select: Select,
     floating: Floating,
+    font_size: f32,
 }
 
 impl<W: Write> UI<W> {
@@ -56,12 +57,23 @@ impl<W: Write> UI<W> {
 
     fn draw(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         ctx.set_visuals(egui::Visuals::dark());
+
         let tab = &self.tabs[self.active_tab];
         let theme = tab.theme.clone();
         let style = theme
             .as_ref()
             .map(|theme| EguiStyle::from(theme.get(ThemeField::Default)))
             .unwrap_or(EguiStyle::default());
+        let comment_style = theme
+            .as_ref()
+            .map(|theme| EguiStyle::from(theme.get(ThemeField::Comment)))
+            .unwrap_or(EguiStyle::default());
+
+        // Borders
+        ctx.style_mut(|estyle| {
+            estyle.visuals.widgets.noninteractive.bg_stroke =
+                egui::Stroke::new(1.0, comment_style.fg);
+        });
 
         if let Some(ref theme) = theme {
             self.status.show(ctx, &tab.status, theme);
@@ -92,14 +104,21 @@ impl<W: Write> UI<W> {
             });
     }
 
+    fn font_id(&self, ui: &mut egui::Ui) -> egui::FontId {
+        let mut font = egui::TextStyle::Body.resolve(ui.style());
+        font.size = self.font_size;
+        font
+    }
+
     fn tab_bar(&mut self, ctx: &egui::Context, theme: &Theme) {
         fn tab_button(
             ui: &mut egui::Ui,
             selected: bool,
             label: &str,
             style: &EguiStyle,
+            font_id: egui::FontId,
         ) -> egui::Response {
-            let label = egui::RichText::new(label).color(style.fg);
+            let label = egui::RichText::new(label).color(style.fg).font(font_id);
             let button = Button::new(label)
                 .min_size(egui::vec2(80.0, TAB_HEIGHT))
                 .fill(style.bg)
@@ -114,12 +133,14 @@ impl<W: Write> UI<W> {
         let sel_style = EguiStyle::from(theme.get(ThemeField::Default));
         egui::TopBottomPanel::top("tab_bar")
             .resizable(false)
+            .show_separator_line(false)
             .frame(egui::Frame {
                 fill: inactive_style.bg,
                 ..Default::default()
             })
             .show(ctx, |ui| {
                 ui.horizontal(|ui| {
+                    let font_id = self.font_id(ui);
                     for tab in &self.tabs {
                         let selected = self.active_tab == 0;
                         let style = if selected {
@@ -128,23 +149,42 @@ impl<W: Write> UI<W> {
                             &inactive_style
                         };
                         let splits: Vec<&str> = tab.status.buffer.split("/").collect();
-                        if tab_button(ui, self.active_tab == 0, &splits[splits.len() - 1], style)
-                            .clicked()
-                        {
-                            self.active_tab = 0;
-                        }
+
+                        egui::Frame::default()
+                            .inner_margin(egui::Margin::symmetric(8.0, 0.0))
+                            .fill(style.bg)
+                            .show(ui, |ui| {
+                                if tab_button(
+                                    ui,
+                                    self.active_tab == 0,
+                                    &splits[splits.len() - 1],
+                                    style,
+                                    font_id.clone(),
+                                )
+                                .clicked()
+                                {
+                                    self.active_tab = 0;
+                                }
+                            });
                     }
                 });
             });
+    }
+
+    /// Returns whether the input was consumed
+    fn process_clientside_input(&mut self, ctx: &egui::Context) -> bool {
+        false
     }
 }
 
 impl<W: Write> eframe::App for UI<W> {
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
         self.setup(ctx);
-        let tab = &mut self.tabs[self.active_tab];
-        tab.process_messages(ctx);
-        tab.redirect_input(ctx);
+        if !self.process_clientside_input(ctx) {
+            let tab = &mut self.tabs[self.active_tab];
+            tab.process_messages(ctx);
+            tab.redirect_input(ctx);
+        }
 
         self.draw(ctx, frame);
     }
@@ -180,7 +220,7 @@ pub(crate) fn run<W: Write + 'static>(
     };
 
     let font_size = 18_f32;
-    let fsize_non_monospace = (font_size * 0.9).floor();
+    let fsize_non_monospace = (font_size * 0.8).floor();
     let status = StatusBar::new();
     let select = Select::new(fsize_non_monospace);
     let floating = Floating::new(fsize_non_monospace);
@@ -189,7 +229,7 @@ pub(crate) fn run<W: Write + 'static>(
     let _ = eframe::run_native(
         UI::<W>::name(),
         native_options,
-        Box::new(|_| {
+        Box::new(move |_| {
             Box::new(UI {
                 sender: Some(ctx_send),
                 tabs: vec![tab],
@@ -197,6 +237,7 @@ pub(crate) fn run<W: Write + 'static>(
                 status,
                 select,
                 floating,
+                font_size: fsize_non_monospace,
             })
         }),
     );

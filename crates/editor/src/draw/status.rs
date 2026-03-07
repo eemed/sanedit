@@ -44,6 +44,11 @@ fn draw_status(ctx: &mut DrawContext) -> Status {
         acc
     });
     let cursor_percentage = ((cpos as f64 / blen.max(1) as f64) * 100.0).floor() as usize;
+    let language = buf
+        .language
+        .as_ref()
+        .map(|lang| lang.as_str().to_string())
+        .unwrap_or("no language".to_string());
 
     Status {
         buffer,
@@ -54,5 +59,9 @@ fn draw_status(ctx: &mut DrawContext) -> Status {
         cursor_percentage,
         macro_recording: win.macro_record.is_recording(),
         pressed_keys,
+        language,
+        end_of_line: buf.config.eol.name().to_string(),
+        indent_kind: buf.config.indent_kind.as_ref().to_string(),
+        indent_amount: buf.config.indent_amount as usize,
     }
 }

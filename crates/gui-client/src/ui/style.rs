@@ -6,10 +6,25 @@ pub struct EguiStyle {
     pub bg: egui::Color32,
 }
 
+impl Default for EguiStyle {
+    fn default() -> Self {
+        Self {
+            fg: egui::Color32::WHITE,
+            bg: egui::Color32::BLACK,
+        }
+    }
+}
+
 impl From<Style> for EguiStyle {
     fn from(style: Style) -> Self {
-        let bg = style.bg.map(convert_color).unwrap_or(egui::Color32::TRANSPARENT);
-        let fg = style.fg.map(convert_color).unwrap_or(egui::Color32::TRANSPARENT);
+        let bg = style
+            .bg
+            .map(convert_color)
+            .unwrap_or(egui::Color32::TRANSPARENT);
+        let fg = style
+            .fg
+            .map(convert_color)
+            .unwrap_or(egui::Color32::TRANSPARENT);
 
         EguiStyle { fg, bg }
     }

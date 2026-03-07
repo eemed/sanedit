@@ -25,7 +25,7 @@ gray_fg = "#7A8478"
 
 [colors.window]
 default = { bg = "bg", fg = "fg" }
-statusline = { bg = "#343F44", fg = "fg" }
+statusline = { bg = "#475258", fg = "fg" }
 statusline_no_focus = { bg = "bg" }
 end_of_buffer = { fg = "#475258" }
 trailing_whitespace = { fg = "#475258" }

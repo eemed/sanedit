@@ -15,7 +15,7 @@ pub mod completion;
 pub mod items;
 pub mod prompt;
 pub mod snapshots;
-pub mod statusline;
+pub mod status;
 pub mod text_style;
 pub mod window;
 
@@ -60,7 +60,7 @@ pub enum Kind {
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone, Hash)]
 pub enum Redraw {
     Window(WindowUpdate),
-    Statusline(statusline::Statusline),
+    Status(status::Status),
     Prompt(PromptUpdate),
     Completion(CompletionUpdate),
     Filetree(ItemsUpdate),

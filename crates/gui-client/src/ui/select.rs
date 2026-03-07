@@ -4,14 +4,12 @@ use sanedit_messages::redraw::{choice::Choice, prompt::Prompt, Theme, ThemeField
 use crate::ui::style::EguiStyle;
 
 pub struct Select {
-    pub prompt: Option<Prompt>,
     pub font_size: f32,
 }
 
 impl Select {
     pub fn new(font_size: f32) -> Self {
         Self {
-            prompt: None,
             font_size,
         }
     }
@@ -72,9 +70,7 @@ impl Select {
         job
     }
 
-    pub fn draw(&mut self, ui: &mut Ui, theme: &Theme, width: f32) {
-        let prompt = self.prompt.as_ref().unwrap();
-
+    pub fn draw(&self, ui: &mut Ui, prompt: &Prompt, theme: &Theme, width: f32) {
         // Styles
         let sel_style = EguiStyle::from(theme.get(ThemeField::PromptCompletionSelected));
         let compl_style = EguiStyle::from(theme.get(ThemeField::PromptCompletion));
@@ -184,10 +180,7 @@ impl Select {
         }
     }
 
-    pub fn show(&mut self, ctx: &egui::Context, theme: &Theme) {
-        if self.prompt.is_none() {
-            return;
-        }
+    pub fn show(&self, ctx: &egui::Context, prompt: &Prompt, theme: &Theme) {
         let screen_rect = ctx.input(|i| i.screen_rect());
 
         let width = screen_rect.width() * 0.5;
@@ -212,7 +205,7 @@ impl Select {
                         .rounding(egui::Rounding::same(6.0))
                         .stroke(egui::Stroke::new(1.0, title_style.fg))
                         .shadow(egui::epaint::Shadow::big_light())
-                        .show(ui, |ui| self.draw(ui, theme, width));
+                        .show(ui, |ui| self.draw(ui, prompt, theme, width));
                 });
             });
     }

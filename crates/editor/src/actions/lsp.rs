@@ -292,6 +292,8 @@ fn sync_document(editor: &mut Editor, id: ClientId) -> ActionResult {
             }
         };
 
+        log::info!("Sync: {changes:?}");
+
         Some(Notification::DidChange {
             path,
             changes,

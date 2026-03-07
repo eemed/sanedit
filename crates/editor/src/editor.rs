@@ -802,7 +802,6 @@ impl Editor {
                     prog.on_success(self);
                 }
                 self.job_broker.done(id);
-                log::info!("Job {id} ok");
             }
             Failed(id, reason) => {
                 if let Some(prog) = self.job_broker.get(id) {

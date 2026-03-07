@@ -1,5 +1,6 @@
 use sanedit_messages::redraw::{
-    statusline::Statusline, Cell, Cursor, Severity, Size, StatusMessage, Style, ThemeField,
+    status::{Focus, Mode, Status},
+    Cell, Cursor, Severity, Size, StatusMessage, Style, ThemeField,
 };
 use unicode_width::UnicodeWidthChar as _;
 
@@ -214,7 +215,7 @@ pub(crate) trait Drawable {
     fn cursor(&self, ctx: &UIContext) -> DrawCursor;
 }
 
-impl Drawable for Statusline {
+impl Drawable for Status {
     fn draw(&self, ctx: &UIContext, mut grid: Subgrid) {
         let field = if ctx.client_in_focus {
             ThemeField::Statusline
@@ -224,28 +225,84 @@ impl Drawable for Statusline {
         let style = ctx.style(field);
         let width = grid.width();
         let mut x = 0;
-        x += grid.put_string(0, x, &self.left, style);
 
+        match self.focus {
+            Focus::Filetree => {
+                if x < width {
+                    x += grid.put_string(0, x, " Filetree", style);
+                }
+            }
+            Focus::Snapshots => {
+                if x < width {
+                    x += grid.put_string(0, x, " Undotree", style);
+                }
+            }
+            Focus::Locations => {
+                if x < width {
+                    x += grid.put_string(0, x, " Locations", style);
+                }
+            }
+            _ => {
+                if x < width {
+                    x += grid.put_string(0, x, " ", style);
+                }
+
+                if x < width {
+                    x += grid.put_string(0, x, &self.buffer, style);
+                }
+
+                if x < width {
+                    grid.replace(0, x, Cell::with_style(style));
+                    x += 1;
+                }
+
+                if self.buffer_modified && x < width {
+                    x += grid.put_string(0, x, "*", style);
+
+                    if x < width {
+                        grid.replace(0, x, Cell::with_style(style));
+                        x += 1;
+                    }
+                }
+
+                if self.buffer_read_only && x < width {
+                    x += grid.put_string(0, x, "(RO)", style);
+                }
+            }
+        }
+
+        let left_x = x + 1;
         while x < width {
             grid.replace(0, x, Cell::with_style(style));
             x += 1;
         }
 
-        for (i, cell) in self
-            .right
-            .chars()
-            .map(|ch| if ch.is_control() { ' ' } else { ch })
-            .map(|ch| Cell::new_char(ch, style))
-            .rev()
-            .enumerate()
-        {
-            let pos = width.saturating_sub(1 + i);
-            let c = grid.at(0, pos);
-            if c.is_blank() {
-                *c = cell;
-            } else {
-                break;
-            }
+        // keys | rec | mode | perc
+        let mut right = String::new();
+
+        if !self.pressed_keys.is_empty() {
+            right.push_str(&self.pressed_keys);
+            right.push_str(" | ");
+        }
+
+        if self.macro_recording {
+            right.push_str("MREC | ");
+        }
+
+        right.push_str(self.mode.statusline());
+        right.push_str(" | ");
+        right.push_str(&self.cursor_percentage.to_string());
+        right.push_str("% ");
+
+        let space = width.saturating_sub(left_x);
+        let rlen = right.chars().count();
+        if rlen > space {
+            right.truncate(space);
+        }
+
+        let pos = width.saturating_sub(rlen);
+        if pos < width {
+            grid.put_string(0, pos, &right, style);
         }
     }
 

@@ -1,9 +1,12 @@
 use serde::{Deserialize, Serialize};
 use strum_macros::{AsRefStr, EnumIter};
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy, AsRefStr, EnumIter, Hash, Serialize, Deserialize)]
+#[derive(
+    Debug, Default, PartialEq, Eq, Clone, Copy, AsRefStr, EnumIter, Hash, Serialize, Deserialize,
+)]
 #[strum(serialize_all = "lowercase")]
-pub(crate) enum Mode {
+pub enum Mode {
+    #[default]
     Normal,
     Insert,
     Select,

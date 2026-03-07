@@ -5,7 +5,7 @@ mod popup;
 mod prompt;
 mod search;
 mod snapshots;
-mod statusline;
+mod status;
 mod window;
 
 use std::{mem, path::Path, sync::Arc};
@@ -126,7 +126,7 @@ impl DrawState {
             redraw.push(window);
         }
 
-        if let Some(statusline) = statusline::draw(&mut ctx) {
+        if let Some(statusline) = status::draw(&mut ctx) {
             redraw.push(statusline);
         }
 
@@ -147,7 +147,7 @@ impl DrawState {
             }
         }
 
-        if let Some(current) = statusline::draw(&mut ctx) {
+        if let Some(current) = status::draw(&mut ctx) {
             redraw.push(current);
         }
 

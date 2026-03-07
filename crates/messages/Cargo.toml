@@ -12,6 +12,8 @@ serde = { workspace = true, features = ["derive"] }
 tokio-util = { workspace = true, features = ["codec"] }
 smol_str = { workspace = true, features = ["serde"] }
 
+strum.workspace = true
+strum_macros.workspace = true
 bincode.workspace = true
 thiserror.workspace = true
 log.workspace = true

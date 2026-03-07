@@ -58,93 +58,80 @@ impl CharGrid {
         }
     }
 
-    pub fn show(&mut self, ctx: &egui::Context, theme: &Theme) {
+    pub fn show(&mut self, ctx: &egui::Context, ui: &mut egui::Ui, theme: &Theme) {
         let default = EguiStyle::from(theme.get(ThemeField::Default));
-        egui::CentralPanel::default()
-            .frame(egui::Frame {
-                fill: default.bg,
-                inner_margin: egui::Margin::same(4.0),
-                ..Default::default()
-            })
-            .show(ctx, |ui| {
-                let total_rows = self.window.height();
-                if total_rows == 0 {
-                    return;
-                }
-                let total_cols = self.window.width();
-                let cell_size = self.cell_size(ui);
-                let font_id = self.font_id();
-                let available = ui.available_size();
-                let visible_cols = total_cols.min((available.x / cell_size.x).floor() as usize);
-                let visible_rows = total_rows.min((available.y / cell_size.y).floor() as usize);
-                let desired_size = egui::vec2(
-                    visible_cols as f32 * cell_size.x,
-                    visible_rows as f32 * cell_size.y,
-                );
+        let total_rows = self.window.height();
+        if total_rows == 0 {
+            return;
+        }
+        let total_cols = self.window.width();
+        let cell_size = self.cell_size(ui);
+        let font_id = self.font_id();
+        let available = ui.available_size();
+        let visible_cols = total_cols.min((available.x / cell_size.x).floor() as usize);
+        let visible_rows = total_rows.min((available.y / cell_size.y).floor() as usize);
+        let desired_size = egui::vec2(
+            visible_cols as f32 * cell_size.x,
+            visible_rows as f32 * cell_size.y,
+        );
 
-                let (rect, _response) = ui.allocate_exact_size(desired_size, egui::Sense::hover());
-                let painter = ui.painter_at(rect);
+        let (rect, _response) = ui.allocate_exact_size(desired_size, egui::Sense::hover());
+        let painter = ui.painter_at(rect);
 
-                painter.rect_filled(rect, 0.0, default.bg);
+        painter.rect_filled(rect, 0.0, default.bg);
 
-                for (row, col, cell) in self.window.used() {
-                    let pos = egui::pos2(
-                        rect.left() + col as f32 * cell_size.x,
-                        rect.top() + row as f32 * cell_size.y,
-                    );
+        let clip_fix = egui::vec2(2.0, 2.0);
 
-                    let style = EguiStyle::from(cell.style);
+        for (row, col, cell) in self.window.used() {
+            let mut pos = egui::pos2(
+                rect.left() + col as f32 * cell_size.x,
+                rect.top() + row as f32 * cell_size.y,
+            );
+            pos += clip_fix;
 
-                    if style.bg != egui::Color32::TRANSPARENT {
-                        painter.rect_filled(
-                            egui::Rect::from_min_size(pos, cell_size),
-                            0.0,
-                            style.bg,
-                        );
-                    }
+            let style = EguiStyle::from(cell.style);
+            painter.rect_filled(egui::Rect::from_min_size(pos, cell_size), 0.0, style.bg);
 
-                    // pos.y += cell_size.y;
-                    painter.text(
-                        pos,
-                        egui::Align2::LEFT_TOP,
-                        cell.text.clone(),
-                        font_id.clone(),
-                        style.fg,
-                    );
-                }
+            painter.text(
+                pos,
+                egui::Align2::LEFT_TOP,
+                cell.text.clone(),
+                font_id.clone(),
+                style.fg,
+            );
+        }
 
-                let cursor = EguiStyle::from(theme.get(ThemeField::Cursor));
+        let cursor = EguiStyle::from(theme.get(ThemeField::Cursor));
 
-                if let Some(Cursor {
-                    bg,
-                    fg,
-                    shape,
-                    point: Point { x, y },
-                }) = self.window.cursor
-                {
-                    let cursor_pos = egui::pos2(
-                        rect.left() + x as f32 * cell_size.x,
-                        rect.top() + y as f32 * cell_size.y,
-                    );
+        if let Some(Cursor {
+            bg,
+            fg,
+            shape,
+            point: Point { x, y },
+        }) = self.window.cursor
+        {
+            let mut cursor_pos = egui::pos2(
+                rect.left() + x as f32 * cell_size.x,
+                rect.top() + y as f32 * cell_size.y,
+            );
+            cursor_pos += clip_fix;
 
-                    // Draw block cursor
-                    painter.rect_filled(
-                        egui::Rect::from_min_size(cursor_pos, cell_size),
-                        0.0,
-                        cursor.bg,
-                    );
+            // Draw block cursor
+            painter.rect_filled(
+                egui::Rect::from_min_size(cursor_pos, cell_size),
+                0.0,
+                cursor.bg,
+            );
 
-                    let cell = self.window.at(y, x);
+            let cell = self.window.at(y, x);
 
-                    // cursor_pos.y += cell_size.y;
-                    painter.text(
-                        cursor_pos,
-                        egui::Align2::LEFT_TOP,
-                        cell.text.clone(),
-                        font_id.clone(),
-                        cursor.fg,
-                    );
-                }
-            });
+            painter.text(
+                cursor_pos,
+                egui::Align2::LEFT_TOP,
+                cell.text.clone(),
+                font_id.clone(),
+                cursor.fg,
+            );
+        }
     }
 }

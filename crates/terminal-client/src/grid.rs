@@ -20,7 +20,7 @@ use sanedit_messages::{
         items::ItemsUpdate,
         prompt::PromptUpdate,
         snapshots::SnapshotsUpdate,
-        statusline::Statusline,
+        status::Status,
         window::{Window, WindowUpdate},
         Cell, Cursor, Popup, PopupComponent, Redraw, Size, StatusMessage, Theme,
     },
@@ -63,7 +63,7 @@ impl<T> From<T> for Placed<T> {
 pub(crate) struct Grid {
     size: Size,
     window: Placed<Window>,
-    statusline: Placed<Statusline>,
+    statusline: Placed<Status>,
     prompt: Option<Placed<CustomPrompt>>,
     msg: Option<Placed<StatusMessage>>,
     completion: Option<Placed<CustomCompletion>>,
@@ -117,7 +117,7 @@ impl Grid {
                 WindowUpdate::Full(win) => self.window.item = win,
                 WindowUpdate::Cursor(cursor) => self.window.item.cursor = cursor,
             },
-            Statusline(statusline) => self.statusline.item = statusline,
+            Status(statusline) => self.statusline.item = statusline,
             Prompt(update) => match update {
                 PromptUpdate::Full(prompt) => match self.prompt {
                     Some(ref mut custom_prompt) => {

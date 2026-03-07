@@ -3,12 +3,10 @@ mod completion;
 mod config;
 mod cursors;
 mod filetree;
-mod focus;
 pub(crate) mod games;
 mod jumps;
 mod locations;
 mod macro_record;
-mod mode;
 mod mouse;
 mod prompt;
 mod search;
@@ -66,9 +64,10 @@ pub(crate) use cursors::Cursors;
 pub(crate) use locations::LocationsView;
 
 pub(crate) use self::{
-    completion::*, config::*, focus::*, jumps::*, macro_record::*, mode::*, prompt::*, search::*,
-    snapshot::*, view::*,
+    completion::*, config::*, jumps::*, macro_record::*, prompt::*, search::*, snapshot::*, view::*,
 };
+pub(crate) use sanedit_core::Focus;
+pub(crate) use sanedit_core::Mode;
 
 #[derive(Debug)]
 pub(crate) struct Window {

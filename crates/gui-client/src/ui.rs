@@ -77,17 +77,19 @@ impl<W: Write> UI<W> {
             .show(ctx, |ui| {
                 let tab = &mut self.tabs[self.active_tab];
                 tab.show(ctx, ui);
-            });
 
-        let tab = &mut self.tabs[self.active_tab];
-        if let Some(ref theme) = theme {
-            if let Some(ref prompt) = tab.prompt {
-                self.select.show(ctx, prompt, theme);
-            }
-            if let Some(ref popup) = tab.popup {
-                self.floating.show(ctx, popup, theme);
-            }
-        }
+                let tab = &mut self.tabs[self.active_tab];
+                if let Some(cell_size) = tab.cell_size() {
+                    if let Some(ref theme) = theme {
+                        if let Some(ref prompt) = tab.prompt {
+                            self.select.show(ctx, prompt, theme);
+                        }
+                        if let Some(ref popup) = tab.popup {
+                            self.floating.show(ctx, ui, popup, theme, cell_size);
+                        }
+                    }
+                }
+            });
     }
 
     fn tab_bar(&mut self, ctx: &egui::Context, theme: &Theme) {
@@ -99,49 +101,39 @@ impl<W: Write> UI<W> {
         ) -> egui::Response {
             let label = egui::RichText::new(label).color(style.fg);
             let button = Button::new(label)
-                .min_size(egui::vec2(120.0, TAB_HEIGHT))
-                .frame(true)
+                .min_size(egui::vec2(80.0, TAB_HEIGHT))
                 .fill(style.bg)
+                .stroke(egui::Stroke::NONE)
+                .frame(false)
                 .selected(selected);
 
             ui.add(button)
         }
 
-        fn add_tab_button(
-            ui: &mut egui::Ui,
-            selected: bool,
-            label: &str,
-            style: &EguiStyle,
-        ) -> egui::Response {
-            let label = egui::RichText::new(label).color(style.fg);
-            let button = Button::new(label)
-                .min_size(egui::vec2(TAB_HEIGHT, TAB_HEIGHT))
-                .frame(true)
-                .fill(style.bg)
-                .selected(selected);
-
-            ui.add(button)
-        }
-
-        let style = EguiStyle::from(theme.get(ThemeField::Statusline));
+        let inactive_style = EguiStyle::from(theme.get(ThemeField::Statusline));
+        let sel_style = EguiStyle::from(theme.get(ThemeField::Default));
         egui::TopBottomPanel::top("tab_bar")
             .resizable(false)
             .frame(egui::Frame {
-                fill: style.bg,
-                inner_margin: egui::Margin::same(4.0),
+                fill: inactive_style.bg,
                 ..Default::default()
             })
             .show(ctx, |ui| {
                 ui.horizontal(|ui| {
                     for tab in &self.tabs {
-                        if tab_button(ui, self.active_tab == 0, &tab.status.buffer, &style)
+                        let selected = self.active_tab == 0;
+                        let style = if selected {
+                            &sel_style
+                        } else {
+                            &inactive_style
+                        };
+                        let splits: Vec<&str> = tab.status.buffer.split("/").collect();
+                        if tab_button(ui, self.active_tab == 0, &splits[splits.len() - 1], style)
                             .clicked()
                         {
                             self.active_tab = 0;
                         }
                     }
-
-                    if add_tab_button(ui, self.active_tab == 2, "+", &style).clicked() {}
                 });
             });
     }
@@ -187,10 +179,12 @@ pub(crate) fn run<W: Write + 'static>(
         ..eframe::NativeOptions::default()
     };
 
+    let font_size = 18_f32;
+    let fsize_non_monospace = (font_size * 0.9).floor();
     let status = StatusBar::new();
-    let select = Select::new(16.0);
-    let floating = Floating::new(16.0);
-    let tab = Tab::new(msg_recv, writer);
+    let select = Select::new(fsize_non_monospace);
+    let floating = Floating::new(fsize_non_monospace);
+    let tab = Tab::new(font_size, msg_recv, writer);
 
     let _ = eframe::run_native(
         UI::<W>::name(),

@@ -1,8 +1,12 @@
 use eframe::egui;
 use sanedit_messages::{
-    ClientMessage, Message, Writer, redraw::{
-        Popup, PopupComponent, Redraw, Size, Theme, ThemeField, prompt::{Prompt, PromptUpdate}, status::Status, window::WindowUpdate
-    }
+    redraw::{
+        prompt::{Prompt, PromptUpdate},
+        status::Status,
+        window::WindowUpdate,
+        Popup, PopupComponent, Redraw, Size, Theme, ThemeField,
+    },
+    ClientMessage, Message, Writer,
 };
 
 use crate::{
@@ -28,17 +32,21 @@ pub struct Tab<W: Write> {
 }
 
 impl<W: Write> Tab<W> {
-    pub fn new(msg_recv: Receiver<Vec<ClientMessage>>, editor_writer: Writer<W, Message>) -> Self {
+    pub fn new(font_size: f32, msg_recv: Receiver<Vec<ClientMessage>>, editor_writer: Writer<W, Message>) -> Self {
         Self {
             msg_recv,
             editor_writer,
-            grid: CharGrid::new(18.0),
+            grid: CharGrid::new(font_size),
             status: Status::default(),
             prompt: None,
             popup: None,
             theme: None,
             size: None,
         }
+    }
+
+    pub fn cell_size(&self) -> Option<egui::Vec2> {
+        self.grid.cell_size
     }
 
     pub fn setup(&mut self, ctx: &egui::Context) {

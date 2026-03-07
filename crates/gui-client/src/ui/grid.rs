@@ -5,8 +5,7 @@ use sanedit_messages::redraw::{window::Window, Cursor, Point, Size, Theme, Theme
 pub struct CharGrid {
     pub window: Window,
     pub font_size: f32,
-
-    cell_size: Option<egui::Vec2>,
+    pub cell_size: Option<egui::Vec2>,
 }
 
 impl CharGrid {
@@ -31,6 +30,7 @@ impl CharGrid {
             egui::vec2(glyph_width.ceil(), row_height.ceil())
         })
     }
+
 
     fn cell_size(&mut self, ui: &egui::Ui) -> egui::Vec2 {
         if let Some(size) = self.cell_size {
@@ -80,18 +80,18 @@ impl CharGrid {
 
         painter.rect_filled(rect, 0.0, default.bg);
 
-        let clip_fix = egui::vec2(2.0, 2.0);
+        let clip_fix = egui::vec2(0.0, 2.0);
 
         for (row, col, cell) in self.window.used() {
             let mut pos = egui::pos2(
                 rect.left() + col as f32 * cell_size.x,
                 rect.top() + row as f32 * cell_size.y,
             );
-            pos += clip_fix;
 
             let style = EguiStyle::from(cell.style);
             painter.rect_filled(egui::Rect::from_min_size(pos, cell_size), 0.0, style.bg);
 
+            pos += clip_fix;
             painter.text(
                 pos,
                 egui::Align2::LEFT_TOP,
@@ -114,7 +114,6 @@ impl CharGrid {
                 rect.left() + x as f32 * cell_size.x,
                 rect.top() + y as f32 * cell_size.y,
             );
-            cursor_pos += clip_fix;
 
             // Draw block cursor
             painter.rect_filled(
@@ -125,6 +124,7 @@ impl CharGrid {
 
             let cell = self.window.at(y, x);
 
+            cursor_pos += clip_fix;
             painter.text(
                 cursor_pos,
                 egui::Align2::LEFT_TOP,

@@ -1,5 +1,9 @@
-use eframe::egui;
-use sanedit_messages::redraw::{Popup, Theme, ThemeField};
+use std::{cmp::max, sync::Arc};
+
+use eframe::egui::{self, text::LayoutJob, FontId, TextFormat};
+use sanedit_messages::redraw::{
+    Cell, Popup, PopupKind, PopupMessageText, Size, Style, Theme, ThemeField,
+};
 
 use crate::ui::style::EguiStyle;
 
@@ -18,65 +22,136 @@ impl Floating {
         font
     }
 
-    pub fn draw(&self, ui: &mut egui::Ui, theme: &Theme, width: f32) {
-        let font_id = self.font_id(ui);
-        ui.set_width(width);
-        ui.add_space(14.0);
-        // ui.horizontal(|ui| {
-        //     ui.add_space(12.0);
+    fn format_item(lines: &[Vec<Cell>], font_id: FontId) -> LayoutJob {
+        let mut job = LayoutJob::default();
 
-        //     ui.label(
-        //         egui::RichText::new("🔎")
-        //             .size(self.font_size * 1.2)
-        //             .color(title_style.fg),
-        //     );
+        // TODO optimize?
+        for line in lines {
+            if !job.is_empty() {
+                job.append(
+                    "\n",
+                    0.0,
+                    TextFormat {
+                        font_id: font_id.clone(),
+                        ..Default::default()
+                    },
+                );
+            }
 
-        //     ui.add_space(8.0);
+            for cell in line {
+                let style = EguiStyle::from(cell.style);
+                job.append(
+                    &cell.text,
+                    0.0,
+                    TextFormat {
+                        font_id: font_id.clone(),
+                        color: style.fg,
+                        ..Default::default()
+                    },
+                );
+            }
+        }
 
-        //     if prompt.input.is_empty() {
-        //         ui.label(
-        //             egui::RichText::new(&prompt.message)
-        //                 .size(self.font_size)
-        //                 .color(msg_style.fg),
-        //         );
-        //     } else {
-        //         ui.label(
-        //             egui::RichText::new(&prompt.input)
-        //                 .color(input_style.fg)
-        //                 .size(self.font_size),
-        //         );
-        //     }
-        // });
-
-        // ui.add_space(14.0);
+        job
     }
 
-    pub fn show(&self, ctx: &egui::Context, popup: &Popup, theme: &Theme) {
-        let screen_rect = ctx.input(|i| i.screen_rect());
+    pub fn draw_popups(&self, ui: &mut egui::Ui, popup: &Popup) -> Vec<Arc<egui::Galley>> {
+        let font_id = self.font_id(ui);
+        let mut galleys = vec![];
 
-        let width = screen_rect.width() * 0.5;
-        let height = 340.0;
-        let size = egui::vec2(width, height);
+        for message in &popup.messages {
+            match &message.text {
+                PopupMessageText::Formatted(cells) => {
+                    let text = Self::format_item(cells.as_slice(), font_id.clone());
+                    let galley = ui.fonts(|f| f.layout_job(text));
+                    galleys.push(galley);
+                    // let (rect, _response) =
+                    //     ui.allocate_exact_size(galley.size(), egui::Sense::hover());
+                    // ui.painter().galley(rect.min, galley);
+                }
+                PopupMessageText::Plain(text) => {
+                    let mut job = LayoutJob::default();
+                    job.append(
+                        text,
+                        0.0,
+                        TextFormat {
+                            font_id: font_id.clone(),
+                            ..Default::default()
+                        },
+                    );
+                    let galley = ui.fonts(|f| f.layout_job(job));
+                    galleys.push(galley);
+                }
+            }
+        }
 
-        let pos = egui::pos2(
-            screen_rect.center().x - width / 2.0,
-            screen_rect.top() + 80.0,
+        galleys
+    }
+
+    fn popup_position_from_cell(
+        screen: egui::Rect,
+        cell_pos: egui::Pos2,
+        popup_size: egui::Vec2,
+        cell_size: egui::Vec2,
+        margin: f32,
+    ) -> egui::Pos2 {
+        let space_above = cell_pos.y - screen.top();
+        // let space_below = screen.bottom() - cell_pos.y;
+
+        let y = if space_above >= popup_size.y + margin {
+            cell_pos.y - popup_size.y - margin // above
+        } else {
+            cell_pos.y + cell_size.y + margin // below
+        };
+
+        let x = cell_pos.x.clamp(
+            screen.left() + margin,
+            screen.right() - popup_size.x - margin,
         );
 
+        egui::Pos2::new(x, y)
+    }
+
+    pub fn show(
+        &self,
+        ctx: &egui::Context,
+        ui: &mut egui::Ui,
+        popup: &Popup,
+        theme: &Theme,
+        cell_size: egui::Vec2,
+    ) {
+        let screen_rect = ctx.input(|i| i.screen_rect());
         let title_style = EguiStyle::from(theme.get(ThemeField::PopupDefault));
+        let grid_offset = ui.min_rect().min;
+        let cell_pos = egui::Pos2::new(
+            grid_offset.x + popup.point.x as f32 * cell_size.x,
+            grid_offset.y + popup.point.y as f32 * cell_size.y,
+        );
+        let popups = self.draw_popups(ui, popup);
+        let popup_size = popups.iter().fold(egui::Vec2::ZERO, |mut acc, galley| {
+            acc.x = acc.x.max(galley.size().x);
+            acc.y += galley.size().y;
+            acc
+        });
+        let pos = Self::popup_position_from_cell(screen_rect, cell_pos, popup_size, cell_size, 0.0);
+
         egui::Area::new("popup_area")
             .order(egui::Order::Foreground)
             .fixed_pos(pos)
             .show(ctx, |ui| {
-                ui.allocate_ui_with_layout(size, egui::Layout::top_down(egui::Align::Min), |ui| {
-                    egui::Frame::default()
-                        .inner_margin(egui::Margin::same(4.0))
-                        .fill(title_style.bg)
-                        .rounding(egui::Rounding::same(6.0))
-                        .stroke(egui::Stroke::new(1.0, title_style.fg))
-                        .shadow(egui::epaint::Shadow::small_dark())
-                        .show(ui, |ui| self.draw(ui, theme, width));
-                });
+                egui::Frame::default()
+                    .inner_margin(egui::Margin::same(4.0))
+                    .fill(title_style.bg)
+                    .rounding(egui::Rounding::same(2.0))
+                    .stroke(egui::Stroke::new(1.0, title_style.fg))
+                    .shadow(egui::epaint::Shadow::small_light())
+                    .show(ui, |ui| {
+                        for galley in popups {
+                            let (rect, _) =
+                                ui.allocate_exact_size(galley.size(), egui::Sense::hover());
+                            ui.painter().galley(rect.min, galley);
+                        }
+                    });
             });
     }
 }

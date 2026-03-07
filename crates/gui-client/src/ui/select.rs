@@ -120,7 +120,6 @@ impl Select {
 
             for (i, item) in prompt.options.iter().enumerate() {
                 let selected = Some(i) == prompt.selected;
-
                 let item_style = if selected { &sel_style } else { &compl_style };
                 let descr_style = if selected {
                     &sel_descr_style
@@ -202,7 +201,7 @@ impl Select {
                     egui::Frame::default()
                         .inner_margin(egui::Margin::same(4.0))
                         .fill(title_style.bg)
-                        .rounding(egui::Rounding::same(6.0))
+                        .rounding(egui::Rounding::same(4.0))
                         .stroke(egui::Stroke::new(1.0, title_style.fg))
                         .shadow(egui::epaint::Shadow::big_light())
                         .show(ui, |ui| self.draw(ui, prompt, theme, width));

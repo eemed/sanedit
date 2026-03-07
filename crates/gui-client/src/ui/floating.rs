@@ -22,8 +22,9 @@ impl Floating {
         font
     }
 
-    fn format_item(lines: &[Vec<Cell>], font_id: FontId) -> LayoutJob {
+    fn format_item(lines: &[Vec<Cell>], font_id: FontId, max_width: f32) -> LayoutJob {
         let mut job = LayoutJob::default();
+        job.wrap.max_width = max_width;
 
         // TODO optimize?
         for line in lines {
@@ -62,7 +63,8 @@ impl Floating {
         for message in &popup.messages {
             match &message.text {
                 PopupMessageText::Formatted(cells) => {
-                    let text = Self::format_item(cells.as_slice(), font_id.clone());
+                    let text =
+                        Self::format_item(cells.as_slice(), font_id.clone(), ui.available_width());
                     let galley = ui.fonts(|f| f.layout_job(text));
                     galleys.push(galley);
                     // let (rect, _response) =
@@ -96,18 +98,23 @@ impl Floating {
         margin: f32,
     ) -> egui::Pos2 {
         let space_above = cell_pos.y - screen.top();
-        // let space_below = screen.bottom() - cell_pos.y;
+        let space_below = screen.bottom() - cell_pos.y - cell_size.y;
 
         let y = if space_above >= popup_size.y + margin {
-            cell_pos.y - popup_size.y - margin // above
-        } else {
+            (cell_pos.y - popup_size.y - margin).max(0.0) // above
+        } else if space_below >= popup_size.y + margin {
             cell_pos.y + cell_size.y + margin // below
+        } else {
+            margin
         };
 
-        let x = cell_pos.x.clamp(
-            screen.left() + margin,
-            screen.right() - popup_size.x - margin,
-        );
+        // let min = screen.left() + margin;
+        let width = popup_size.x + margin + margin + 8.0;
+        let mut x = cell_pos.x;
+        if x + width > screen.width() {
+            let diff = x + width - screen.width();
+            x -= diff;
+        }
 
         egui::Pos2::new(x, y)
     }
@@ -133,7 +140,7 @@ impl Floating {
             acc.y += galley.size().y;
             acc
         });
-        let pos = Self::popup_position_from_cell(screen_rect, cell_pos, popup_size, cell_size, 0.0);
+        let pos = Self::popup_position_from_cell(screen_rect, cell_pos, popup_size, cell_size, 2.0);
 
         egui::Area::new("popup_area")
             .order(egui::Order::Foreground)

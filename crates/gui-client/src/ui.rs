@@ -1,6 +1,7 @@
 mod cell;
 mod floating;
 mod grid;
+mod filetree;
 mod select;
 mod statusbar;
 mod style;
@@ -20,12 +21,7 @@ use sanedit_messages::{
 use crate::{
     input::keyevents_from_egui,
     ui::{
-        floating::Floating,
-        grid::CharGrid,
-        select::Select,
-        statusbar::StatusBar,
-        style::EguiStyle,
-        tab::{Tab, TAB_HEIGHT},
+        filetree::Filetree, floating::Floating, grid::CharGrid, select::Select, statusbar::StatusBar, style::EguiStyle, tab::{TAB_HEIGHT, Tab}
     },
 };
 
@@ -36,6 +32,7 @@ struct UI<W: Write> {
     status: StatusBar,
     select: Select,
     floating: Floating,
+    filetree: Filetree,
     font_size: f32,
 }
 
@@ -192,12 +189,12 @@ impl<W: Write> eframe::App for UI<W> {
 
 fn setup_fonts(ctx: &egui::Context) {
     let mut fonts = egui::FontDefinitions::default();
+    let mut font =
+        egui::FontData::from_static(include_bytes!("../assets/fonts/ComicMono/ComicMono.ttf"));
+    font.tweak.y_offset = 2.0;
 
     // Load JetBrains Mono
-    fonts.font_data.insert(
-        "comicmono".to_owned(),
-        egui::FontData::from_static(include_bytes!("../assets/fonts/ComicMono/ComicMono.ttf")),
-    );
+    fonts.font_data.insert("comicmono".to_owned(), font);
 
     // Put it first in monospace family
     fonts
@@ -219,11 +216,12 @@ pub(crate) fn run<W: Write + 'static>(
         ..eframe::NativeOptions::default()
     };
 
-    let font_size = 18_f32;
+    let font_size = 20_f32;
     let fsize_non_monospace = (font_size * 0.8).floor();
-    let status = StatusBar::new();
+    let status = StatusBar::new(fsize_non_monospace, 30.0);
     let select = Select::new(fsize_non_monospace);
     let floating = Floating::new(fsize_non_monospace);
+    let filetree = Filetree::new(fsize_non_monospace, 600.0);
     let tab = Tab::new(font_size, msg_recv, writer);
 
     let _ = eframe::run_native(

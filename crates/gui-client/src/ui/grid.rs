@@ -80,7 +80,8 @@ impl CharGrid {
 
         painter.rect_filled(rect, 0.0, default.bg);
 
-        let clip_fix = egui::vec2(0.0, 2.0);
+        // let clip_fix = egui::vec2(0.0, 2.0);
+        let clip_fix = egui::vec2(0.0, 0.0);
 
         for (row, col, cell) in self.window.used() {
             let mut pos = egui::pos2(

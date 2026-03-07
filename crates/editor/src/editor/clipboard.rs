@@ -31,6 +31,8 @@ impl DefaultClipboard {
         match session.as_deref() {
             Some("wayland") => {
                 try_clipboard!(WaylandClipboard);
+                try_clipboard!(XClip);
+                try_clipboard!(XSel);
             }
             Some("x11") => {
                 try_clipboard!(XClip);
@@ -42,6 +44,7 @@ impl DefaultClipboard {
                 try_clipboard!(XSel);
             }
         }
+
 
         // Fallback
         Box::new(Internal::new())

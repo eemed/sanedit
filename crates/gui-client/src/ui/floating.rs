@@ -16,7 +16,7 @@ impl Floating {
 
     fn font_id(&self, ui: &mut egui::Ui) -> egui::FontId {
         let mut font = egui::TextStyle::Body.resolve(ui.style());
-        font.size = self.font_size;
+        font.size = self.font_size * 1.2;
         font
     }
 
@@ -141,19 +141,21 @@ impl Floating {
             .order(egui::Order::Foreground)
             .fixed_pos(pos)
             .show(ctx, |ui| {
-                egui::Frame::default()
-                    .inner_margin(egui::Margin::same(4.0))
-                    .fill(title_style.bg)
-                    .rounding(egui::Rounding::same(2.0))
-                    .stroke(egui::Stroke::new(1.0, title_style.fg))
-                    .shadow(egui::epaint::Shadow::small_light())
-                    .show(ui, |ui| {
-                        for galley in popups {
-                            let (rect, _) =
-                                ui.allocate_exact_size(galley.size(), egui::Sense::hover());
-                            ui.painter().galley(rect.min, galley);
-                        }
-                    });
+                egui::ScrollArea::vertical().show(ui, |ui| {
+                    egui::Frame::default()
+                        .inner_margin(egui::Margin::same(4.0))
+                        .fill(title_style.bg)
+                        .rounding(egui::Rounding::same(2.0))
+                        .stroke(egui::Stroke::new(1.0, title_style.fg))
+                        .shadow(egui::epaint::Shadow::small_light())
+                        .show(ui, |ui| {
+                            for galley in popups {
+                                let (rect, _) =
+                                    ui.allocate_exact_size(galley.size(), egui::Sense::hover());
+                                ui.painter().galley(rect.min, galley);
+                            }
+                        });
+                })
             });
     }
 }

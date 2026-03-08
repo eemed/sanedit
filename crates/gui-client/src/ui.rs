@@ -1,7 +1,7 @@
 mod cell;
+mod filetree;
 mod floating;
 mod grid;
-mod filetree;
 mod select;
 mod statusbar;
 mod style;
@@ -21,7 +21,13 @@ use sanedit_messages::{
 use crate::{
     input::keyevents_from_egui,
     ui::{
-        filetree::Filetree, floating::Floating, grid::CharGrid, select::Select, statusbar::StatusBar, style::EguiStyle, tab::{TAB_HEIGHT, Tab}
+        filetree::Filetree,
+        floating::Floating,
+        grid::CharGrid,
+        select::Select,
+        statusbar::StatusBar,
+        style::EguiStyle,
+        tab::{Tab, TAB_HEIGHT},
     },
 };
 
@@ -74,6 +80,12 @@ impl<W: Write> UI<W> {
 
         if let Some(ref theme) = theme {
             self.status.show(ctx, &tab.status, theme);
+
+            let tab = &self.tabs[self.active_tab];
+            if let Some(ref ft) = tab.filetree_items {
+                self.filetree.show(ctx, ft, theme);
+            }
+
             self.tab_bar(ctx, theme);
         }
 
@@ -235,6 +247,7 @@ pub(crate) fn run<W: Write + 'static>(
                 status,
                 select,
                 floating,
+                filetree,
                 font_size: fsize_non_monospace,
             })
         }),

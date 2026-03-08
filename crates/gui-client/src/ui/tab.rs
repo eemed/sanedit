@@ -1,6 +1,7 @@
 use eframe::egui;
 use sanedit_messages::{
     redraw::{
+        items::{Items, ItemsUpdate},
         prompt::{Prompt, PromptUpdate},
         status::Status,
         window::WindowUpdate,
@@ -24,6 +25,8 @@ pub struct Tab<W: Write> {
     pub status: Status,
     pub prompt: Option<Prompt>,
     pub popup: Option<Popup>,
+    pub filetree_items: Option<Items>,
+
     pub theme: Option<Arc<Theme>>,
     pub size: Option<Size>,
 }
@@ -41,6 +44,7 @@ impl<W: Write> Tab<W> {
             status: Status::default(),
             prompt: None,
             popup: None,
+            filetree_items: None,
             theme: None,
             size: None,
         }
@@ -127,7 +131,15 @@ impl<W: Write> Tab<W> {
                 PromptUpdate::Close => self.prompt = None,
             },
             Redraw::Completion(completion_update) => {}
-            Redraw::Filetree(items_update) => {}
+            Redraw::Filetree(items_update) => match items_update {
+                ItemsUpdate::Full(items) => self.filetree_items = Some(items),
+                ItemsUpdate::Selection(sel) => {
+                    if let Some(ref mut ft) = self.filetree_items {
+                        ft.selected = sel.unwrap_or(0);
+                    }
+                }
+                ItemsUpdate::Close => self.filetree_items = None,
+            },
             Redraw::Locations(items_update) => {}
             Redraw::Snapshots(snapshots_update) => {}
             Redraw::StatusMessage(status_message) => {}

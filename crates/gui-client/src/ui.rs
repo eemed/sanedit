@@ -3,32 +3,28 @@ mod filetree;
 mod floating;
 mod grid;
 mod select;
+mod settings;
 mod statusbar;
 mod style;
 mod tab;
 
-use std::io::Write;
+use std::{io::Write, sync::Arc};
 
 use crossbeam::channel::{Receiver, Sender};
 use eframe::egui::{self, Button};
 use sanedit_messages::{
-    redraw::{
-        prompt::PromptUpdate, window::WindowUpdate, PopupComponent, Redraw, Theme, ThemeField,
-    },
+    redraw::{Theme, ThemeField},
     ClientMessage, Message, Writer,
 };
 
-use crate::{
-    input::keyevents_from_egui,
-    ui::{
-        filetree::Filetree,
-        floating::Floating,
-        grid::CharGrid,
-        select::Select,
-        statusbar::StatusBar,
-        style::EguiStyle,
-        tab::{Tab, TAB_HEIGHT},
-    },
+use crate::ui::{
+    filetree::Filetree,
+    floating::Floating,
+    select::Select,
+    settings::Settings,
+    statusbar::StatusBar,
+    style::EguiStyle,
+    tab::{Tab, TAB_HEIGHT},
 };
 
 struct UI<W: Write> {
@@ -39,7 +35,7 @@ struct UI<W: Write> {
     select: Select,
     floating: Floating,
     filetree: Filetree,
-    font_size: f32,
+    settings: Settings,
 }
 
 impl<W: Write> UI<W> {
@@ -49,7 +45,6 @@ impl<W: Write> UI<W> {
 
     fn setup(&mut self, ctx: &egui::Context) {
         if let Some(sender) = self.sender.take() {
-            setup_fonts(ctx);
             let _ = sender.send(ctx.clone());
 
             for tab in &mut self.tabs {
@@ -92,7 +87,7 @@ impl<W: Write> UI<W> {
         egui::CentralPanel::default()
             .frame(egui::Frame {
                 fill: style.bg,
-                inner_margin: egui::Margin::same(2.0),
+                inner_margin: egui::Margin::same(2),
                 ..Default::default()
             })
             .show(ctx, |ui| {
@@ -108,6 +103,8 @@ impl<W: Write> UI<W> {
                         if let Some(ref popup) = tab.popup {
                             self.floating.show(ctx, ui, popup, theme, cell_size);
                         }
+
+                        self.settings.show(ctx, theme);
                     }
                 }
             });
@@ -115,7 +112,7 @@ impl<W: Write> UI<W> {
 
     fn font_id(&self, ui: &mut egui::Ui) -> egui::FontId {
         let mut font = egui::TextStyle::Body.resolve(ui.style());
-        font.size = self.font_size;
+        font.size = self.settings.ui_font_size;
         font
     }
 
@@ -160,7 +157,7 @@ impl<W: Write> UI<W> {
                         let splits: Vec<&str> = tab.status.buffer.split("/").collect();
 
                         egui::Frame::default()
-                            .inner_margin(egui::Margin::symmetric(8.0, 0.0))
+                            .inner_margin(egui::Margin::symmetric(8, 0))
                             .fill(style.bg)
                             .show(ui, |ui| {
                                 if tab_button(
@@ -176,6 +173,29 @@ impl<W: Write> UI<W> {
                                 }
                             });
                     }
+
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        let button = ui.add_sized(
+                            (ui.available_height(), ui.available_height()),
+                            egui::Button::new(
+                                egui::RichText::new("🛠")
+                                    .font(font_id)
+                                    .color(inactive_style.fg),
+                            )
+                            .frame(false)
+                            .fill(inactive_style.bg)
+                            .corner_radius(0),
+                        );
+
+                        // if button.hovered() {
+                        //     let painter = ui.painter_at(button.rect);
+                        //     painter.rect_filled(button.rect, 4.0, sel_style.bg);
+                        // }
+
+                        if button.clicked() {
+                            self.settings.open = true;
+                        }
+                    });
                 });
             });
     }
@@ -199,25 +219,6 @@ impl<W: Write> eframe::App for UI<W> {
     }
 }
 
-fn setup_fonts(ctx: &egui::Context) {
-    let mut fonts = egui::FontDefinitions::default();
-    let mut font =
-        egui::FontData::from_static(include_bytes!("../assets/fonts/ComicMono/ComicMono.ttf"));
-    font.tweak.y_offset = 2.0;
-
-    // Load JetBrains Mono
-    fonts.font_data.insert("comicmono".to_owned(), font);
-
-    // Put it first in monospace family
-    fonts
-        .families
-        .get_mut(&egui::FontFamily::Monospace)
-        .unwrap()
-        .insert(0, "comicmono".to_owned());
-
-    ctx.set_fonts(fonts);
-}
-
 pub(crate) fn run<W: Write + 'static>(
     ctx_send: Sender<egui::Context>,
     msg_recv: Receiver<Vec<ClientMessage>>,
@@ -225,22 +226,23 @@ pub(crate) fn run<W: Write + 'static>(
 ) {
     let native_options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default().with_inner_size((1200.0, 1000.0)),
+        renderer: eframe::Renderer::Glow,
+        vsync: false,
         ..eframe::NativeOptions::default()
     };
 
-    let font_size = 20_f32;
-    let fsize_non_monospace = (font_size * 0.8).floor();
-    let status = StatusBar::new(fsize_non_monospace, 30.0);
-    let select = Select::new(fsize_non_monospace);
-    let floating = Floating::new(fsize_non_monospace);
-    let filetree = Filetree::new(fsize_non_monospace, 600.0);
-    let tab = Tab::new(font_size, msg_recv, writer);
+    let settings = Settings::new();
+    let status = StatusBar::new(settings.ui_font_size, 30.0);
+    let select = Select::new(settings.ui_font_size);
+    let floating = Floating::new(settings.ui_font_size);
+    let filetree = Filetree::new(settings.ui_font_size, 600.0);
+    let tab = Tab::new(settings.editor_font_size, msg_recv, writer);
 
     let _ = eframe::run_native(
         UI::<W>::name(),
         native_options,
         Box::new(move |_| {
-            Box::new(UI {
+            Ok(Box::new(UI {
                 sender: Some(ctx_send),
                 tabs: vec![tab],
                 active_tab: 0,
@@ -248,8 +250,8 @@ pub(crate) fn run<W: Write + 'static>(
                 select,
                 floating,
                 filetree,
-                font_size: fsize_non_monospace,
-            })
+                settings,
+            }))
         }),
     );
 }

@@ -1,4 +1,4 @@
-use std::{cmp::max, sync::Arc};
+use std::sync::Arc;
 
 use eframe::egui::{self, text::LayoutJob, FontId, TextFormat};
 use sanedit_messages::redraw::{Cell, Popup, PopupMessageText, Theme, ThemeField};
@@ -63,7 +63,7 @@ impl Floating {
                 PopupMessageText::Formatted(cells) => {
                     let text =
                         Self::format_item(cells.as_slice(), font_id.clone(), ui.available_width());
-                    let galley = ui.fonts(|f| f.layout_job(text));
+                    let galley = ui.fonts_mut(|f| f.layout_job(text));
                     galleys.push(galley);
                 }
                 PopupMessageText::Plain(text) => {
@@ -76,7 +76,7 @@ impl Floating {
                             ..Default::default()
                         },
                     );
-                    let galley = ui.fonts(|f| f.layout_job(job));
+                    let galley = ui.fonts_mut(|f| f.layout_job(job));
                     galleys.push(galley);
                 }
             }
@@ -137,22 +137,22 @@ impl Floating {
         });
         let pos = Self::popup_position_from_cell(screen_rect, cell_pos, popup_size, cell_size, 2.0);
 
-        egui::Area::new("popup_area")
+        egui::Area::new("popup_area".into())
             .order(egui::Order::Foreground)
             .fixed_pos(pos)
             .show(ctx, |ui| {
                 egui::ScrollArea::vertical().show(ui, |ui| {
                     egui::Frame::default()
-                        .inner_margin(egui::Margin::same(4.0))
+                        .inner_margin(egui::Margin::same(4))
                         .fill(title_style.bg)
-                        .rounding(egui::Rounding::same(2.0))
+                        .corner_radius(2)
                         .stroke(egui::Stroke::new(1.0, title_style.fg))
-                        .shadow(egui::epaint::Shadow::small_light())
+                        // .shadow(egui::epaint::Shadow::small_light())
                         .show(ui, |ui| {
                             for galley in popups {
                                 let (rect, _) =
                                     ui.allocate_exact_size(galley.size(), egui::Sense::hover());
-                                ui.painter().galley(rect.min, galley);
+                                ui.painter().galley(rect.min, galley, title_style.bg);
                             }
                         });
                 })

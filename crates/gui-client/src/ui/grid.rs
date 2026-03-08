@@ -1,6 +1,7 @@
+use eframe::egui::{self};
+use sanedit_messages::redraw::{window::Window, Cell, Cursor, Point, Size, Theme, ThemeField};
+
 use crate::ui::style::EguiStyle;
-use eframe::egui;
-use sanedit_messages::redraw::{window::Window, Cursor, Point, Size, Theme, ThemeField};
 
 pub struct CharGrid {
     pub window: Window,
@@ -17,22 +18,17 @@ impl CharGrid {
         }
     }
 
-    fn font_id(&self) -> egui::FontId {
-        egui::FontId::monospace(self.font_size)
-    }
+    fn compute_cell_size(&self, ui: &mut egui::Ui) -> egui::Vec2 {
+        let font_id = self.font_id(ui);
 
-    fn compute_cell_size(&self, ui: &egui::Ui) -> egui::Vec2 {
-        let font_id = self.font_id();
-
-        ui.fonts(|f| {
+        ui.fonts_mut(|f| {
             let row_height = f.row_height(&font_id);
-            let glyph_width = f.glyph_width(&font_id, 'W');
+            let glyph_width = f.glyph_width(&font_id, 'M');
             egui::vec2(glyph_width.ceil(), row_height.ceil())
         })
     }
 
-
-    fn cell_size(&mut self, ui: &egui::Ui) -> egui::Vec2 {
+    fn cell_size(&mut self, ui: &mut egui::Ui) -> egui::Vec2 {
         if let Some(size) = self.cell_size {
             size
         } else {
@@ -42,11 +38,13 @@ impl CharGrid {
         }
     }
 
-    pub fn invalidate_layout(&mut self) {
-        self.cell_size = None;
+    fn font_id(&self, ui: &mut egui::Ui) -> egui::FontId {
+        let mut font = egui::TextStyle::Monospace.resolve(ui.style());
+        font.size = self.font_size;
+        font
     }
 
-    pub fn size(&self, ui: &egui::Ui) -> Size {
+    pub fn size(&self, ui: &mut egui::Ui) -> Size {
         let cell_size = self.compute_cell_size(ui);
         let available = ui.available_size();
         let cols = (available.x / cell_size.x).floor() as usize;
@@ -59,6 +57,33 @@ impl CharGrid {
     }
 
     pub fn show(&mut self, ctx: &egui::Context, ui: &mut egui::Ui, theme: &Theme) {
+        fn draw_cell(
+            painter: &egui::Painter,
+            ui: &mut egui::Ui,
+            pos: egui::Pos2,
+            cell: &Cell,
+            font_id: egui::FontId,
+            fg: egui::Color32,
+        ) {
+            painter.text(pos, egui::Align2::LEFT_TOP, &cell.text, font_id, fg);
+            // let mut job = LayoutJob::default();
+
+            // job.append(
+            //     &cell.text,
+            //     0.0,
+            //     egui::TextFormat {
+            //         font_id,
+            //         color: fg,
+            //         valign: egui::Align::Center,
+            //         ..Default::default()
+            //     },
+            // );
+
+            // let galley = ui.fonts_mut(|f| f.layout_job(job));
+
+            // painter.galley(pos, galley, fg);
+        }
+
         let default = EguiStyle::from(theme.get(ThemeField::Default));
         let total_rows = self.window.height();
         if total_rows == 0 {
@@ -66,7 +91,7 @@ impl CharGrid {
         }
         let total_cols = self.window.width();
         let cell_size = self.cell_size(ui);
-        let font_id = self.font_id();
+        let font_id = self.font_id(ui);
         let available = ui.available_size();
         let visible_cols = total_cols.min((available.x / cell_size.x).floor() as usize);
         let visible_rows = total_rows.min((available.y / cell_size.y).floor() as usize);
@@ -76,6 +101,7 @@ impl CharGrid {
         );
 
         let (rect, _response) = ui.allocate_exact_size(desired_size, egui::Sense::hover());
+
         let painter = ui.painter_at(rect);
 
         painter.rect_filled(rect, 0.0, default.bg);
@@ -93,13 +119,7 @@ impl CharGrid {
             painter.rect_filled(egui::Rect::from_min_size(pos, cell_size), 0.0, style.bg);
 
             pos += clip_fix;
-            painter.text(
-                pos,
-                egui::Align2::LEFT_TOP,
-                cell.text.clone(),
-                font_id.clone(),
-                style.fg,
-            );
+            draw_cell(&painter, ui, pos, &cell, font_id.clone(), style.fg);
         }
 
         let cursor = EguiStyle::from(theme.get(ThemeField::Cursor));
@@ -126,13 +146,8 @@ impl CharGrid {
             let cell = self.window.at(y, x);
 
             cursor_pos += clip_fix;
-            painter.text(
-                cursor_pos,
-                egui::Align2::LEFT_TOP,
-                cell.text.clone(),
-                font_id.clone(),
-                cursor.fg,
-            );
+
+            draw_cell(&painter, ui, cursor_pos, &cell, font_id.clone(), cursor.fg);
         }
     }
 }

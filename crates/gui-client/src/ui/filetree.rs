@@ -1,7 +1,6 @@
 use eframe::egui;
 use sanedit_messages::redraw::{
     items::{ItemKind, Items},
-    status::{Mode, Status},
     Theme, ThemeField,
 };
 
@@ -61,14 +60,17 @@ impl Filetree {
         let font_id = self.font_id(ui);
 
         ui.horizontal(|ui| {
-            egui::Frame::none().rounding(4.0).show(ui, |ui| {
-                ui.set_width(ui.available_width());
+            egui::Frame::new()
+                .inner_margin(egui::Margin::symmetric(20, 10))
+                .show(ui, |ui| {
+                    ui.set_width(ui.available_width());
 
-                let text = egui::RichText::new("File browser")
-                    .heading()
-                    .font(font_id.clone());
-                ui.label(text);
-            })
+                    let text = egui::RichText::new("File browser")
+                        .heading()
+                        .color(style.fg)
+                        .font(font_id.clone());
+                    ui.label(text);
+                })
         });
 
         for (i, item) in items.items.iter().enumerate() {
@@ -76,11 +78,13 @@ impl Filetree {
             let row_style = if is_selected { &sel_style } else { &style };
 
             ui.horizontal(|ui| {
-                egui::Frame::none()
-                    .rounding(4.0)
+                egui::Frame::new()
+                    .corner_radius(4)
+                    .outer_margin(egui::Margin::symmetric(4, 0))
+                    .inner_margin(egui::Margin::symmetric(4, 2))
                     .fill(row_style.bg)
                     .show(ui, |ui| {
-                        ui.set_width(ui.available_width()- 2.0);
+                        ui.set_width(ui.available_width() - 2.0);
                         ui.set_height(row_height);
                         ui.add_space(8.0 + item.level as f32 * LEVEL_INDENT);
 

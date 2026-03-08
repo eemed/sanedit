@@ -3,52 +3,62 @@ use egui::Event;
 use sanedit_messages::key::{self, Key, KeyEvent};
 
 pub fn keyevents_from_egui(i: &egui::InputState) -> Option<KeyEvent> {
-    let event = i.events.first()?;
-    match event {
-        Event::Key {
-            key,
-            pressed: true,
-            modifiers,
-            ..
-        } => {
-            let mut key = egui_key_to_key(*key)?;
+    // let event = i.events.first()?;
+    //         println!("Event: {:?}", i.events);
+    for event in &i.events {
+        match event {
+            Event::Key {
+                key,
+                pressed: true,
+                modifiers,
+                ..
+            } => {
+                if let Some(mut key) = egui_key_to_key(*key) {
+                    let mut mods = 0;
 
-            let mut mods = 0;
+                    if modifiers.ctrl {
+                        mods |= key::CONTROL;
+                    }
+                    if modifiers.alt {
+                        mods |= key::ALT;
+                    }
+                    if modifiers.shift {
+                        mods |= key::SHIFT;
 
-            if modifiers.ctrl {
-                mods |= key::CONTROL;
-            }
-            if modifiers.alt {
-                mods |= key::ALT;
-            }
-            if modifiers.shift {
-                mods |= key::SHIFT;
+                        if let Key::Char(ch) = &mut key {
+                            ch.make_ascii_uppercase();
+                        }
+                    }
 
-                if let Key::Char(ch) = &mut key {
-                    ch.make_ascii_uppercase();
+                    if modifiers.shift && key == Key::Tab {
+                        key = Key::BackTab;
+                    }
+
+                    // println!("Key: {key}, mods: {mods}");
+
+                    return Some(KeyEvent::new(key, mods));
                 }
             }
+            Event::Text(text) => {
+                let event = text.chars().next().map(|ch| {
+                    let mut mods = 0;
+                    if ch.is_uppercase() {
+                        mods |= key::SHIFT;
+                    }
 
-            if modifiers.shift && key == Key::Tab {
-                key = Key::BackTab;
+                    let key = Key::Char(ch);
+                    // println!("Key2: {key}, mods: {mods}");
+                    KeyEvent::new(key, mods)
+                });
+                if event.is_some() {
+                    return event;
+                }
             }
-
-            println!("Key: {key}, mods: {mods}");
-
-            Some(KeyEvent::new(key, mods))
+            _ => {}
         }
-        Event::Text(text) => text.chars().next().map(|ch| {
-            let mut mods = 0;
-            if ch.is_uppercase() {
-                mods |= key::SHIFT;
-            }
-
-            let key = Key::Char(ch);
-            println!("Key2: {key}, mods: {mods}");
-            KeyEvent::new(key, mods)
-        }),
-        _ => None,
     }
+
+    None
 }
 
 fn egui_key_to_key(key: egui::Key) -> Option<Key> {
@@ -118,16 +128,7 @@ fn egui_key_to_key(key: egui::Key) -> Option<Key> {
         Num7 => Key::Char('7'),
         Num8 => Key::Char('8'),
         Num9 => Key::Char('9'),
-        Minus => Key::Char('-'),
+        // Minus => Key::Char('-'),
         _ => return None,
-        // PlusEquals => todo!(),
-        // F13 => todo!(),
-        // F14 => todo!(),
-        // F15 => todo!(),
-        // F16 => todo!(),
-        // F17 => todo!(),
-        // F18 => todo!(),
-        // F19 => todo!(),
-        // F20 => todo!(),
     })
 }

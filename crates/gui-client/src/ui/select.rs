@@ -140,7 +140,7 @@ impl Select {
                 const RIGHT_WIDTH: f32 = 120.0;
                 const PADDING: f32 = 14.0;
 
-                ui.painter().rect_filled(rect, 0.0, item_style.bg);
+                ui.painter().rect_filled(rect, 4.0, item_style.bg);
 
                 // split the row into two columns
                 let left_rect = if item.description.is_empty() {
@@ -154,10 +154,11 @@ impl Select {
 
                 let left_painter = ui.painter().with_clip_rect(left_rect);
                 let left_text = Self::format_item(item, font_id.clone(), item_style, mat_style);
-                let galley = ui.fonts(|f| f.layout_job(left_text));
+                let galley = ui.fonts_mut(|f| f.layout_job(left_text));
                 left_painter.galley(
                     rect.left_center() + egui::vec2(PADDING, -galley.size().y / 2.0),
                     galley,
+                    item_style.bg,
                 );
 
                 if !item.description.is_empty() {
@@ -180,7 +181,7 @@ impl Select {
     }
 
     pub fn show(&self, ctx: &egui::Context, prompt: &Prompt, theme: &Theme) {
-        let screen_rect = ctx.input(|i| i.screen_rect());
+        let screen_rect = ctx.input(|i| i.content_rect());
 
         let width = screen_rect.width() * 0.5;
         let height = 340.0;
@@ -193,17 +194,17 @@ impl Select {
 
         let title_style = EguiStyle::from(theme.get(ThemeField::PromptOverlayTitle));
 
-        egui::Area::new("prompt_area")
+        egui::Area::new("prompt_area".into())
             .order(egui::Order::Foreground)
             .fixed_pos(pos)
             .show(ctx, |ui| {
                 ui.allocate_ui_with_layout(size, egui::Layout::top_down(egui::Align::Min), |ui| {
                     egui::Frame::default()
-                        .inner_margin(egui::Margin::same(4.0))
+                        .inner_margin(egui::Margin::same(4))
                         .fill(title_style.bg)
-                        .rounding(egui::Rounding::same(4.0))
+                        .corner_radius(4)
                         .stroke(egui::Stroke::new(1.0, title_style.fg))
-                        .shadow(egui::epaint::Shadow::big_light())
+                        // .shadow(egui::epaint::Shadow::())
                         .show(ui, |ui| self.draw(ui, prompt, theme, width));
                 });
             });

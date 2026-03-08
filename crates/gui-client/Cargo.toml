@@ -8,10 +8,10 @@ sanedit-messages = { path = "../messages" }
 sanedit-utils = { path = "../utils" }
 
 tokio = { workspace = true, features = ["full"] }
+eframe = { workspace = true }
 
 anyhow.workspace = true
 crossbeam.workspace = true
-eframe.workspace = true
 log.workspace = true
 libc.workspace = true
 unicode-width.workspace = true

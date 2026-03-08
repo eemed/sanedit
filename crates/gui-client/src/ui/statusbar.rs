@@ -75,6 +75,8 @@ impl StatusBar {
                         .color(fg),
                 );
             }
+
+
         });
     }
 
@@ -87,7 +89,7 @@ impl StatusBar {
             .show_separator_line(false)
             .frame(egui::Frame {
                 fill: bg,
-                inner_margin: egui::Margin::same(4.0),
+                inner_margin: egui::Margin::same(4),
                 ..Default::default()
             })
             .show(ctx, |ui| {

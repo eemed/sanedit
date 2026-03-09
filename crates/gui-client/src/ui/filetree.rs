@@ -6,26 +6,20 @@ use sanedit_messages::redraw::{
 
 use crate::ui::style::EguiStyle;
 
+use super::settings::Settings;
+
 pub struct Filetree {
     pub max_width: f32,
-    pub font_size: f32,
 }
 
 impl Filetree {
-    pub fn new(font_size: f32, max_width: f32) -> Self {
+    pub fn new(max_width: f32) -> Self {
         Self {
             max_width,
-            font_size,
         }
     }
 
-    fn font_id(&self, ui: &mut egui::Ui) -> egui::FontId {
-        let mut font = egui::TextStyle::Body.resolve(ui.style());
-        font.size = self.font_size;
-        font
-    }
-
-    pub fn show(&self, ctx: &egui::Context, items: &Items, theme: &Theme) {
+    pub fn show(&self, ctx: &egui::Context, items: &Items, settings: &Settings, theme: &Theme) {
         let EguiStyle { bg, .. } = theme.get(ThemeField::FiletreeDefault).into();
 
         egui::SidePanel::left("file_tree_panel")
@@ -35,14 +29,15 @@ impl Filetree {
             .max_width(self.max_width)
             .show(ctx, |ui| {
                 egui::ScrollArea::vertical().show(ui, |ui| {
-                    self.draw(ui, items, theme);
+                    self.draw(ui, items, settings, theme);
                 })
             });
     }
 
-    fn draw(&self, ui: &mut egui::Ui, items: &Items, theme: &Theme) {
+    fn draw(&self, ui: &mut egui::Ui, items: &Items, settings: &Settings, theme: &Theme) {
         const LEVEL_INDENT: f32 = 20.0;
-        let row_height = self.font_size + 6.0;
+        let font_id = settings.ui_font_id(ui);
+        let row_height = font_id.size + 6.0;
 
         let style = EguiStyle::from(theme.get(ThemeField::FiletreeDefault));
         let file_style = EguiStyle::from(theme.get(ThemeField::FiletreeFile));
@@ -57,7 +52,6 @@ impl Filetree {
         let sel_dir_style = EguiStyle::from(theme.get(ThemeField::FiletreeSelectedDir));
         let sel_marker_style = EguiStyle::from(theme.get(ThemeField::FiletreeSelectedMarkers));
         let sel_symlink_style = EguiStyle::from(theme.get(ThemeField::FiletreeSelectedSymlink));
-        let font_id = self.font_id(ui);
 
         ui.horizontal(|ui| {
             egui::Frame::new()

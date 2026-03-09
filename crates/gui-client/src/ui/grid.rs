@@ -3,49 +3,44 @@ use sanedit_messages::redraw::{window::Window, Cell, Cursor, Point, Size, Theme,
 
 use crate::ui::style::EguiStyle;
 
+use super::settings::Settings;
+
 pub struct CharGrid {
     pub window: Window,
-    pub font_size: f32,
-    pub cell_size: Option<egui::Vec2>,
+    pub cell_size: Option<(egui::FontId, egui::Vec2)>,
 }
 
 impl CharGrid {
-    pub fn new(font_size: f32) -> Self {
+    pub fn new() -> Self {
         Self {
             window: Window::default(),
-            font_size,
             cell_size: None,
         }
     }
 
-    fn compute_cell_size(&self, ui: &mut egui::Ui) -> egui::Vec2 {
-        let font_id = self.font_id(ui);
-
-        ui.fonts_mut(|f| {
-            let row_height = f.row_height(&font_id);
-            let glyph_width = f.glyph_width(&font_id, 'M');
-            egui::vec2(glyph_width.ceil(), row_height.ceil())
-        })
-    }
-
-    fn cell_size(&mut self, ui: &mut egui::Ui) -> egui::Vec2 {
-        if let Some(size) = self.cell_size {
-            size
-        } else {
-            let size = self.compute_cell_size(ui);
-            self.cell_size = Some(size);
-            size
+    fn cell_size(&mut self, ui: &mut egui::Ui, font_id: egui::FontId) -> egui::Vec2 {
+        fn compute_cell_size(ui: &mut egui::Ui, font_id: egui::FontId) -> egui::Vec2 {
+            ui.fonts_mut(|f| {
+                let row_height = f.row_height(&font_id);
+                let glyph_width = f.glyph_width(&font_id, 'M');
+                egui::vec2(glyph_width.ceil(), row_height.ceil())
+            })
         }
+
+        if let Some((id, size)) = &self.cell_size {
+            if &font_id == id {
+                return *size;
+            }
+        }
+
+        let size = compute_cell_size(ui, font_id.clone());
+        self.cell_size = Some((font_id, size));
+        size
     }
 
-    fn font_id(&self, ui: &mut egui::Ui) -> egui::FontId {
-        let mut font = egui::TextStyle::Monospace.resolve(ui.style());
-        font.size = self.font_size;
-        font
-    }
-
-    pub fn size(&self, ui: &mut egui::Ui) -> Size {
-        let cell_size = self.compute_cell_size(ui);
+    pub fn size(&mut self, ui: &mut egui::Ui, settings: &Settings) -> Size {
+        let font_id = settings.editor_font_id(ui);
+        let cell_size = self.cell_size(ui, font_id);
         let available = ui.available_size();
         let cols = (available.x / cell_size.x).floor() as usize;
         let rows = (available.y / cell_size.y).floor() as usize;
@@ -56,7 +51,13 @@ impl CharGrid {
         }
     }
 
-    pub fn show(&mut self, ctx: &egui::Context, ui: &mut egui::Ui, theme: &Theme) {
+    pub fn show(
+        &mut self,
+        ctx: &egui::Context,
+        ui: &mut egui::Ui,
+        settings: &Settings,
+        theme: &Theme,
+    ) {
         fn draw_cell(
             painter: &egui::Painter,
             ui: &mut egui::Ui,
@@ -90,8 +91,8 @@ impl CharGrid {
             return;
         }
         let total_cols = self.window.width();
-        let cell_size = self.cell_size(ui);
-        let font_id = self.font_id(ui);
+        let font_id = settings.editor_font_id(ui);
+        let cell_size = self.cell_size(ui, font_id.clone());
         let available = ui.available_size();
         let visible_cols = total_cols.min((available.x / cell_size.x).floor() as usize);
         let visible_rows = total_rows.min((available.y / cell_size.y).floor() as usize);

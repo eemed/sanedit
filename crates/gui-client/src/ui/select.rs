@@ -3,21 +3,15 @@ use sanedit_messages::redraw::{choice::Choice, prompt::Prompt, Theme, ThemeField
 
 use crate::ui::style::EguiStyle;
 
+use super::settings::Settings;
+
 pub struct Select {
-    pub font_size: f32,
 }
 
 impl Select {
-    pub fn new(font_size: f32) -> Self {
+    pub fn new() -> Self {
         Self {
-            font_size,
         }
-    }
-
-    fn font_id(&self, ui: &mut Ui) -> egui::FontId {
-        let mut font = egui::TextStyle::Body.resolve(ui.style());
-        font.size = self.font_size;
-        font
     }
 
     fn format_item(
@@ -70,7 +64,8 @@ impl Select {
         job
     }
 
-    pub fn draw(&self, ui: &mut Ui, prompt: &Prompt, theme: &Theme, width: f32) {
+    pub fn draw(&self, ui: &mut Ui, prompt: &Prompt, settings: &Settings, theme: &Theme, width: f32) {
+        let font_id = settings.ui_font_id(ui);
         // Styles
         let sel_style = EguiStyle::from(theme.get(ThemeField::PromptCompletionSelected));
         let compl_style = EguiStyle::from(theme.get(ThemeField::PromptCompletion));
@@ -91,7 +86,7 @@ impl Select {
 
             ui.label(
                 egui::RichText::new("🔎")
-                    .size(self.font_size)
+                    .font(font_id.clone())
                     .color(title_style.fg),
             );
 
@@ -100,21 +95,20 @@ impl Select {
             if prompt.input.is_empty() {
                 ui.label(
                     egui::RichText::new(&prompt.message)
-                        .size(self.font_size)
+                    .font(font_id.clone())
                         .color(msg_style.fg),
                 );
             } else {
                 ui.label(
                     egui::RichText::new(&prompt.input)
                         .color(input_style.fg)
-                        .size(self.font_size),
+                    .font(font_id.clone()),
                 );
             }
         });
 
         ui.add_space(14.0);
 
-        let font_id = self.font_id(ui);
         if !prompt.options.is_empty() {
             ui.separator();
 
@@ -180,7 +174,7 @@ impl Select {
         }
     }
 
-    pub fn show(&self, ctx: &egui::Context, prompt: &Prompt, theme: &Theme) {
+    pub fn show(&self, ctx: &egui::Context, prompt: &Prompt, settings: &Settings, theme: &Theme) {
         let screen_rect = ctx.input(|i| i.content_rect());
 
         let width = screen_rect.width() * 0.5;
@@ -205,7 +199,7 @@ impl Select {
                         .corner_radius(4)
                         .stroke(egui::Stroke::new(1.0, title_style.fg))
                         // .shadow(egui::epaint::Shadow::())
-                        .show(ui, |ui| self.draw(ui, prompt, theme, width));
+                        .show(ui, |ui| self.draw(ui, prompt, settings, theme, width));
                 });
             });
     }

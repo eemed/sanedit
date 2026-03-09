@@ -33,6 +33,7 @@ crossterm     = "0.29"
 dynasm        = "4.0" # JIT
 dynasmrt      = "4.0" # JIT
 eframe        = "0.33" # GUI
+fontdb        = "0.23"
 futures-core  = "0.3"
 futures-util  = "0.3"
 libc          = "0.2"

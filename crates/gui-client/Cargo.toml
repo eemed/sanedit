@@ -12,6 +12,7 @@ eframe = { workspace = true }
 
 anyhow.workspace = true
 crossbeam.workspace = true
-log.workspace = true
+fontdb.workspace = true
 libc.workspace = true
+log.workspace = true
 unicode-width.workspace = true

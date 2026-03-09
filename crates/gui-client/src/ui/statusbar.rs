@@ -6,24 +6,19 @@ use sanedit_messages::redraw::{
 
 use crate::ui::style::EguiStyle;
 
+use super::settings::Settings;
+
 pub struct StatusBar {
     pub height: f32,
-    pub font_size: f32,
 }
 
 impl StatusBar {
-    pub fn new(font_size: f32, height: f32) -> Self {
-        Self { height, font_size }
+    pub fn new(height: f32) -> Self {
+        Self { height }
     }
 
-    fn font_id(&self, ui: &mut Ui) -> egui::FontId {
-        let mut font = egui::TextStyle::Body.resolve(ui.style());
-        font.size = self.font_size;
-        font
-    }
-
-    fn draw_line(&self, ui: &mut egui::Ui, status: &Status, theme: &Theme) {
-        let font_id = self.font_id(ui);
+    fn draw_line(&self, ui: &mut egui::Ui, status: &Status, settings: &Settings, theme: &Theme) {
+        let font_id = settings.ui_font_id(ui);
         let EguiStyle { fg, .. } = theme.get(ThemeField::Statusline).into();
         let text = match status.mode {
             Mode::Normal => "Normal",
@@ -80,7 +75,7 @@ impl StatusBar {
         });
     }
 
-    pub fn show(&self, ctx: &egui::Context, status: &Status, theme: &Theme) {
+    pub fn show(&self, ctx: &egui::Context, status: &Status, settings: &Settings, theme: &Theme) {
         let EguiStyle { bg, .. } = theme.get(ThemeField::Statusline).into();
 
         egui::TopBottomPanel::bottom("status_bar")
@@ -93,7 +88,7 @@ impl StatusBar {
                 ..Default::default()
             })
             .show(ctx, |ui| {
-                ui.horizontal(|ui| self.draw_line(ui, status, theme));
+                ui.horizontal(|ui| self.draw_line(ui, status, settings, theme));
             });
     }
 }

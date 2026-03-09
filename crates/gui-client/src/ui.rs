@@ -48,7 +48,7 @@ impl<W: Write> UI<W> {
             let _ = sender.send(ctx.clone());
 
             for tab in &mut self.tabs {
-                tab.setup(ctx);
+                tab.setup(ctx, &self.settings);
             }
         }
     }
@@ -74,11 +74,11 @@ impl<W: Write> UI<W> {
         });
 
         if let Some(ref theme) = theme {
-            self.status.show(ctx, &tab.status, theme);
+            self.status.show(ctx, &tab.status, &self.settings, theme);
 
             let tab = &self.tabs[self.active_tab];
             if let Some(ref ft) = tab.filetree_items {
-                self.filetree.show(ctx, ft, theme);
+                self.filetree.show(ctx, ft, &self.settings, theme);
             }
 
             self.tab_bar(ctx, theme);
@@ -92,28 +92,22 @@ impl<W: Write> UI<W> {
             })
             .show(ctx, |ui| {
                 let tab = &mut self.tabs[self.active_tab];
-                tab.show(ctx, ui);
+                tab.show(ctx, ui, &self.settings);
 
                 let tab = &mut self.tabs[self.active_tab];
                 if let Some(cell_size) = tab.cell_size() {
                     if let Some(ref theme) = theme {
                         if let Some(ref prompt) = tab.prompt {
-                            self.select.show(ctx, prompt, theme);
+                            self.select.show(ctx, prompt, &self.settings, theme);
                         }
                         if let Some(ref popup) = tab.popup {
-                            self.floating.show(ctx, ui, popup, theme, cell_size);
+                            self.floating.show(ctx, ui, popup, &self.settings, theme, cell_size);
                         }
 
                         self.settings.show(ctx, theme);
                     }
                 }
             });
-    }
-
-    fn font_id(&self, ui: &mut egui::Ui) -> egui::FontId {
-        let mut font = egui::TextStyle::Body.resolve(ui.style());
-        font.size = self.settings.ui_font_size;
-        font
     }
 
     fn tab_bar(&mut self, ctx: &egui::Context, theme: &Theme) {
@@ -146,7 +140,7 @@ impl<W: Write> UI<W> {
             })
             .show(ctx, |ui| {
                 ui.horizontal(|ui| {
-                    let font_id = self.font_id(ui);
+                    let font_id = self.settings.ui_font_id(ui);
                     for tab in &self.tabs {
                         let selected = self.active_tab == 0;
                         let style = if selected {
@@ -178,7 +172,7 @@ impl<W: Write> UI<W> {
                         let button = ui.add_sized(
                             (ui.available_height(), ui.available_height()),
                             egui::Button::new(
-                                egui::RichText::new("🛠")
+                                egui::RichText::new("🔧")
                                     .font(font_id)
                                     .color(inactive_style.fg),
                             )
@@ -232,11 +226,11 @@ pub(crate) fn run<W: Write + 'static>(
     };
 
     let settings = Settings::new();
-    let status = StatusBar::new(settings.ui_font_size, 30.0);
-    let select = Select::new(settings.ui_font_size);
-    let floating = Floating::new(settings.ui_font_size);
-    let filetree = Filetree::new(settings.ui_font_size, 600.0);
-    let tab = Tab::new(settings.editor_font_size, msg_recv, writer);
+    let status = StatusBar::new(30.0);
+    let select = Select::new();
+    let floating = Floating::new();
+    let filetree = Filetree::new(600.0);
+    let tab = Tab::new(msg_recv, writer);
 
     let _ = eframe::run_native(
         UI::<W>::name(),

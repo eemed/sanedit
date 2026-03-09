@@ -16,6 +16,8 @@ use std::{io::Write, sync::Arc};
 
 use crossbeam::channel::Receiver;
 
+use super::settings::Settings;
+
 pub const TAB_HEIGHT: f32 = 32.0;
 
 pub struct Tab<W: Write> {
@@ -33,14 +35,13 @@ pub struct Tab<W: Write> {
 
 impl<W: Write> Tab<W> {
     pub fn new(
-        font_size: f32,
         msg_recv: Receiver<Vec<ClientMessage>>,
         editor_writer: Writer<W, Message>,
     ) -> Self {
         Self {
             msg_recv,
             editor_writer,
-            grid: CharGrid::new(font_size),
+            grid: CharGrid::new(),
             status: Status::default(),
             prompt: None,
             popup: None,
@@ -51,12 +52,12 @@ impl<W: Write> Tab<W> {
     }
 
     pub fn cell_size(&self) -> Option<egui::Vec2> {
-        self.grid.cell_size
+        self.grid.cell_size.as_ref().map(|(_, size)| *size)
     }
 
-    pub fn setup(&mut self, ctx: &egui::Context) {
+    pub fn setup(&mut self, ctx: &egui::Context, settings: &Settings) {
         egui::CentralPanel::default().show(ctx, |ui| {
-            let size = self.grid.size(ui);
+            let size = self.grid.size(ui, settings);
             self.editor_writer
                 .write(Message::Hello {
                     color_count: 16_777_216,
@@ -68,15 +69,15 @@ impl<W: Write> Tab<W> {
     }
 
     /// Draw the status bar at the top
-    pub fn show(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
+    pub fn show(&mut self, ctx: &egui::Context, ui: &mut egui::Ui, settings: &Settings) {
         if let Some(ref theme) = self.theme {
-            let new_size = self.grid.size(ui);
+            let new_size = self.grid.size(ui, settings);
             if self.size != Some(new_size) {
                 self.size = Some(new_size);
                 let _ = self.editor_writer.write(Message::Resize(new_size));
             }
 
-            self.grid.show(ctx, ui, theme);
+            self.grid.show(ctx, ui, settings, theme);
         }
     }
 

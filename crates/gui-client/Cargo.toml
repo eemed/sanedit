@@ -8,7 +8,7 @@ sanedit-messages = { path = "../messages" }
 sanedit-utils = { path = "../utils" }
 
 tokio = { workspace = true, features = ["full"] }
-eframe = { workspace = true }
+eframe = { workspace = true, features = ["wgpu"] }
 
 anyhow.workspace = true
 crossbeam.workspace = true
@@ -16,3 +16,8 @@ fontdb.workspace = true
 libc.workspace = true
 log.workspace = true
 unicode-width.workspace = true
+
+# cosmic-text = "0.18"
+# glyphon = "0.10"
+# wgpu = "28.0"
+# pollster = "0.3"   # for blocking async device creation

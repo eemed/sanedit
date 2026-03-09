@@ -2,7 +2,7 @@ use eframe::egui;
 use egui::Event;
 use sanedit_messages::key::{self, Key, KeyEvent};
 
-pub fn keyevents_from_egui(i: &egui::InputState) -> Option<KeyEvent> {
+pub fn keyevents_from_egui(i: &mut egui::InputState) -> Option<KeyEvent> {
     // let event = i.events.first()?;
     //         println!("Event: {:?}", i.events);
     for event in &i.events {
@@ -36,6 +36,7 @@ pub fn keyevents_from_egui(i: &egui::InputState) -> Option<KeyEvent> {
 
                     // println!("Key: {key}, mods: {mods}");
 
+                    i.events.clear();
                     return Some(KeyEvent::new(key, mods));
                 }
             }
@@ -48,9 +49,11 @@ pub fn keyevents_from_egui(i: &egui::InputState) -> Option<KeyEvent> {
 
                     let key = Key::Char(ch);
                     // println!("Key2: {key}, mods: {mods}");
+
                     KeyEvent::new(key, mods)
                 });
                 if event.is_some() {
+                    i.events.clear();
                     return event;
                 }
             }

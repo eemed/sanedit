@@ -82,7 +82,7 @@ impl<W: Write> Tab<W> {
     }
 
     pub fn redirect_input(&mut self, ctx: &egui::Context) {
-        ctx.input(|i| {
+        ctx.input_mut(|i| {
             let event = keyevents_from_egui(i);
             if let Some(event) = event {
                 let _ = self.editor_writer.write(Message::KeyEvent(event));

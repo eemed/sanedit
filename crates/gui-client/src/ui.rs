@@ -8,7 +8,7 @@ mod statusbar;
 mod style;
 mod tab;
 
-use std::{io::Write, sync::Arc};
+use std::io::Write;
 
 use crossbeam::channel::{Receiver, Sender};
 use eframe::egui::{self, Button};
@@ -101,12 +101,14 @@ impl<W: Write> UI<W> {
                             self.select.show(ctx, prompt, &self.settings, theme);
                         }
                         if let Some(ref popup) = tab.popup {
-                            self.floating.show(ctx, ui, popup, &self.settings, theme, cell_size);
+                            self.floating
+                                .show(ctx, ui, popup, &self.settings, theme, cell_size);
                         }
 
                         self.settings.show(ctx, theme);
                     }
                 }
+
             });
     }
 
@@ -206,7 +208,9 @@ impl<W: Write> eframe::App for UI<W> {
         if !self.process_clientside_input(ctx) {
             let tab = &mut self.tabs[self.active_tab];
             tab.process_messages(ctx);
-            tab.redirect_input(ctx);
+            if !self.settings.open {
+                tab.redirect_input(ctx);
+            }
         }
 
         self.draw(ctx, frame);
@@ -220,8 +224,7 @@ pub(crate) fn run<W: Write + 'static>(
 ) {
     let native_options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default().with_inner_size((1200.0, 1000.0)),
-        renderer: eframe::Renderer::Glow,
-        vsync: false,
+        renderer: eframe::Renderer::Wgpu,
         ..eframe::NativeOptions::default()
     };
 
@@ -235,7 +238,7 @@ pub(crate) fn run<W: Write + 'static>(
     let _ = eframe::run_native(
         UI::<W>::name(),
         native_options,
-        Box::new(move |_| {
+        Box::new(move |cc| {
             Ok(Box::new(UI {
                 sender: Some(ctx_send),
                 tabs: vec![tab],

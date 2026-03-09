@@ -56,6 +56,8 @@ unicode-width = "0.2" # Rendering itself has problems
 which         = "8.0" # Should be replaced with something simpler
 xattr         = "1.5" # xattrs preservation
 
+
+
 [profile.dev.package."*"]
 debug = false
 opt-level = 3

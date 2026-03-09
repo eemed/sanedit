@@ -529,7 +529,10 @@ fn check_file_modification(editor: &mut Editor, id: ClientId) -> ActionResult {
 fn reload_file_from_disk(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (_win, buf) = win_buf!(editor, id);
     let bid = buf.id;
-    let hook = Hook::BufDeletedPre(buf.id);
+    let hook = Hook::BufLeave(bid);
+    run(editor, id, hook);
+
+    let hook = Hook::BufDeletedPre(bid);
     run(editor, id, hook);
 
     let (_win, buf) = win_buf!(editor, id);

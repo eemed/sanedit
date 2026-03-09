@@ -122,9 +122,7 @@ impl Language {
             return Some(Language { name: lang.into() });
         }
 
-        Some(Language {
-            name: pattern.into(),
-        })
+        None
     }
 
     pub fn as_str(&self) -> &str {

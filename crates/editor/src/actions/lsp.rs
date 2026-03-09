@@ -291,6 +291,7 @@ fn sync_document(editor: &mut Editor, id: ClientId) -> ActionResult {
                 Either::Left(changes)
             }
         };
+        log::info!("Sync: {changes:?}");
 
         log::info!("Sync: {changes:?}");
 
@@ -481,6 +482,7 @@ pub(crate) fn show_diagnostics(editor: &mut Editor, id: ClientId) -> ActionResul
 #[action("Will save document notification")]
 pub(crate) fn will_save_document(editor: &mut Editor, id: ClientId) -> ActionResult {
     lsp_notify(editor, id, |_buf, path, _slice, _lsp| {
+        log::info!("Will save");
         Some(Notification::WillSave { path: path.clone() })
     })
     .into()
@@ -490,6 +492,7 @@ pub(crate) fn will_save_document(editor: &mut Editor, id: ClientId) -> ActionRes
 pub(crate) fn did_save_document(editor: &mut Editor, id: ClientId) -> ActionResult {
     lsp_notify(editor, id, |_buf, path, slice, _lsp| {
         let text = String::from(&slice);
+        log::info!("Did save");
         Some(Notification::DidSave {
             path: path.clone(),
             text: Some(text),

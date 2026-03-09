@@ -174,9 +174,9 @@ impl LSPJob {
             Response::Notification(notif) => match notif {
                 sanedit_lsp::NotificationResult::Diagnostics {
                     path,
-                    version,
                     diagnostics,
-                } => self.handle_diagnostics(editor, path, version, diagnostics),
+                    ..
+                } => self.handle_diagnostics(editor, self.client_id, path, diagnostics),
             },
         }
     }
@@ -280,7 +280,7 @@ impl LSPJob {
                 log::error!("LSP '{}' failed to process: {msg}", self.opts.command);
             }
             RequestResult::Diagnostics { path, diagnostics } => {
-                self.handle_diagnostics(editor, path, None, diagnostics);
+                self.handle_diagnostics(editor, id, path, diagnostics);
                 on_message_post = false;
             }
             RequestResult::WorkspaceSymbols { symbols } => {
@@ -370,6 +370,7 @@ impl LSPJob {
 
         win.completion = Completion::new(start, cursor.pos(), point);
 
+        log::info!("lsp completed at: {position:?}");
         let mut opts: Vec<Arc<Choice>> =
             opts.into_iter().map(Choice::from_completion_item).collect();
 
@@ -391,21 +392,26 @@ impl LSPJob {
     fn handle_diagnostics(
         &self,
         editor: &mut Editor,
+        id: ClientId,
         path: PathBuf,
-        version: Option<i32>,
+        // version: Option<i32>,
         diags: Vec<TextDiagnostic>,
     ) {
-        let Some(bid) = editor.buffers().find(&path) else {
+        let Some(bid) = editor
+            .buffers()
+            .find(&path)
+            .or_else(|| editor.create_buffer(id, &path).ok())
+        else {
             return;
         };
-        let buf = editor.buffers().get(bid).unwrap();
+        // let buf = editor.buffers().get(bid).unwrap();
 
-        // Ensure not changed
-        if let Some(version) = version {
-            if buf.total_changes_made() != version as u32 {
-                return;
-            }
-        }
+        // // Ensure not changed
+        // if let Some(version) = version {
+        //     if buf.total_changes_made() != version as u32 {
+        //         return;
+        //     }
+        // }
 
         let Some(enc) = editor
             .language_servers
@@ -520,6 +526,7 @@ impl LSPJob {
         };
         let enc = get!(editor.lsp_for(id).and_then(Lsp::position_encoding));
 
+        log::info!("edit_document: {:?}", edit.edits);
         let buf = editor.buffers_mut().get_mut(bid).unwrap();
         let slice = buf.slice(..);
         let changes: Vec<Change> = edit

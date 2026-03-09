@@ -344,7 +344,6 @@ impl Prompt {
         let is_start = matches!(msg, Start { .. });
         match msg {
             Init(sender) => {
-                log::info!("open_file_handler: Init");
                 win.prompt.add_on_input(move |editor, id, input| {
                     let (win, _buf) = win_buf!(editor, id);
                     let _ = sender.blocking_send((input.to_string(), win.prompt.input_id));
@@ -353,7 +352,6 @@ impl Prompt {
                 win.prompt.is_options_loading = true;
             }
             Finish { input_id } => {
-                log::info!("open_file_handler: Finish: {input_id}");
                 if input_id != win.prompt.input_id {
                     return;
                 }
@@ -361,11 +359,6 @@ impl Prompt {
                 win.prompt.is_options_loading = false;
             }
             Start { results, input_id } | Progress { results, input_id } => {
-                if is_start {
-                    log::info!("open_file_handler: Start: {input_id}");
-                } else {
-                    log::info!("open_file_handler: Progress: {input_id}");
-                }
                 if input_id != win.prompt.input_id {
                     return;
                 }
@@ -413,8 +406,6 @@ impl Prompt {
                 }
             }
         }
-
-        log::info!("open_file_handler: done");
     }
 
     pub fn add_on_input<F>(&mut self, fun: F)

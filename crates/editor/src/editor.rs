@@ -790,7 +790,6 @@ impl Editor {
     }
 
     pub fn handle_job_message(&mut self, msg: FromJobs) {
-        log::info!("handle_job_message");
         use FromJobs::*;
         match msg {
             Message(id, msg) => {
@@ -803,28 +802,22 @@ impl Editor {
                     prog.on_success(self);
                 }
                 self.job_broker.done(id);
-                log::info!("Job {id} ok");
             }
             Failed(id, reason) => {
-                log::info!("Job {id} failed because {}.", reason);
                 if let Some(prog) = self.job_broker.get(id) {
                     prog.on_failure(self, &reason);
                 }
                 self.job_broker.done(id);
-                log::info!("Job {id} failed");
             }
             Stopped(id) => {
                 if let Some(prog) = self.job_broker.get(id) {
                     prog.on_stop(self);
                 }
                 self.job_broker.done(id);
-                log::info!("Job {id} stopped");
             }
         }
-        log::info!("handle_job_message pre done");
 
         run(self, ClientId::temporary(), Hook::OnJobMessagePost);
-        log::info!("handle_job_message done");
     }
 
     pub fn continue_macros(&mut self) {

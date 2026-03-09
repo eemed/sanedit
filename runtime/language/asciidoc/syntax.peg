@@ -4,7 +4,7 @@ WHITESPACE = [ \t];
 ws = WHITESPACE;
 nl = "\n" / "\r\n";
 stop = WHITESPACE+ / nl;
-nle = &nl / !.;
+nle = nl / !.;
 
 list_nl = nl ws* list ws;
 @show @highlight(operator)
@@ -23,11 +23,11 @@ link = "<" (!">" .)* ">";
 @show @highlight(preproc)
 tags = [a..zA..Z0..9.]+ ":" ":"? [a..zA..Z0..9./_-]* "[" (!"]" .)* "]";
 
-blocks = (source / example / literal / pass / quote) nle;
+blocks = source / example / literal / pass / quote / backtick;
 empty_line = &nl / !.;
 
 @show @highlight(preproc)
-dot_title = "." (!nl .)*;
+dot_title = "." !"." (!nl .)*;
 @show @highlight(preproc)
 source_inj = "[" (source_inj_lang &"]" / (!(nl / "]" / ",") .)* ",")+ "]";
 @injection-language
@@ -46,17 +46,21 @@ pass_content = (!passop .)*;
 @show @highlight(operator)
 passop = "++++" nle;
 
-example = (dot_title nl)? exampleop examplec exampleop;
+example = exampleop examplec exampleop;
 @show @highlight(string)
 examplec = (!exampleop .)*;
 @show @highlight(operator)
 exampleop = "====" nle;
 
-# sidebar = sidebarop nl sidebarc sidebarop;
-# @show @highlight(string)
-# sidebarc = (!sidebarop (separated / .))*;
-# @show @highlight(operator)
-# sidebarop = "****";
+backtick = backtickop backtick_lang backtickc_inj backtickop / backtickop nl backtickc backtickop nle;
+@show @highlight(preproc) @injection-language
+backtick_lang = (!nl .)+;
+@show @inject
+backtickc_inj = (!backtickop .)*;
+@show @highlight(string)
+backtickc = (!backtickop (separated / .))*;
+@show @highlight(operator)
+backtickop = "```";
 
 literal = (dot_title nl)? litop litc litop;
 @show @highlight(string)
@@ -82,7 +86,7 @@ operator = ops / table;
 ops = ("*"+ / "."+ / "-"+ / "+"+ / "'''") &stop;
 table = table_border (!table_border table_cell nl?)+ table_border;
 @show @highlight(operator)
-table_border = "|==" "="* nle;
+table_border = "|==" "="* (nl / !.);
 @show @highlight(operator)
 table_cell_border = "|";
 table_cell = table_cell_border (!(table_cell_border / nl) .)*;

@@ -225,6 +225,7 @@ impl Drawable for Statusline {
         let width = grid.width();
         let mut x = 0;
         x += grid.put_string(0, x, &self.left, style);
+        let min = x;
 
         while x < width {
             grid.replace(0, x, Cell::with_style(style));
@@ -240,12 +241,11 @@ impl Drawable for Statusline {
             .enumerate()
         {
             let pos = width.saturating_sub(1 + i);
-            let c = grid.at(0, pos);
-            if c.is_blank() {
-                *c = cell;
-            } else {
+            if pos < min {
                 break;
             }
+
+            *grid.at(0, pos) = cell;
         }
     }
 

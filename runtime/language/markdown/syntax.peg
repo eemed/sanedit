@@ -3,7 +3,6 @@ document = title? (nl title / list_op / link / code_fence / inline / block_quote
 WHITESPACE = [ \t];
 ws = WHITESPACE;
 nl = "\r\n" / "\n";
-nle = nl / !.;
 
 @show @whitespaced @highlight(identifier)
 title = "#"+ (!nl .)*;
@@ -18,9 +17,9 @@ link_name = "[" (!"]" (backtick / .))* "]";
 @show @highlight(constant)
 link_url = "(" (!")" (backtick / .))* ")";
 
-code_fence = (code_fence_inj / code_fence_dull) nle;
+code_fence = code_fence_inj / code_fence_dull;
 code_fence_inj = fence code_name nl code fence;
-code_fence_dull = fence nl (!fence .)* fence;
+code_fence_dull = fence nl (!(fence nl) .)* fence nl (&nl / !.);
 
 @injection-language @highlight(operator)
 code_name = [a..zA..Z0..9_:-]+;
@@ -32,7 +31,7 @@ spaces = WHITESPACE*;
 fence = "```";
 
 @show @highlight(keyword)
-hr = nl "---" nle;
+hr = nl "---" &nl;
 
 @show @highlight(keyword)
 block_quote =  nl ">" (!nl .)*;

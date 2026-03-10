@@ -4,7 +4,6 @@ WHITESPACE = [ \t];
 ws = WHITESPACE;
 nl = "\n" / "\r\n";
 stop = WHITESPACE+ / nl;
-nle = nl / !.;
 
 list_nl = nl ws* list ws;
 @show @highlight(operator)
@@ -24,7 +23,7 @@ link = "<" (!">" .)* ">";
 tags = [a..zA..Z0..9.]+ ":" ":"? [a..zA..Z0..9./_-]* "[" (!"]" .)* "]";
 
 blocks = source / example / literal / pass / quote / backtick;
-empty_line = &nl / !.;
+followed_by_empty_line = &nl / !.;
 
 @show @highlight(preproc)
 dot_title = "." !"." (!nl .)*;
@@ -32,45 +31,45 @@ dot_title = "." !"." (!nl .)*;
 source_inj = "[" (source_inj_lang &"]" / (!(nl / "]" / ",") .)* ",")+ "]";
 @injection-language
 source_inj_lang = (!("," / "]" / nl) .)+;
-source =  source_inj nl (dot_title nl)? sourceop sourcec sourceop / sourceop (dot_title nl)? sourcec2 sourceop ;
+source =  source_inj nl (dot_title nl)? sourceop sourcec sourceop followed_by_empty_line / sourceop (dot_title nl)? sourcec2 sourceop followed_by_empty_line;
 @show @inject
 sourcec = (!sourceop .)*;
 @show @highlight(string)
 sourcec2 = (!sourceop .)*;
 @show @highlight(operator)
-sourceop = "----" nle;
+sourceop = "----" nl;
 
-pass = (dot_title nl)? passop pass_content passop;
+pass = (dot_title nl)? passop pass_content passop followed_by_empty_line;
 @show @highlight(string)
 pass_content = (!passop .)*;
 @show @highlight(operator)
-passop = "++++" nle;
+passop = "++++" nl;
 
-example = exampleop examplec exampleop;
+example = exampleop examplec exampleop followed_by_empty_line;
 @show @highlight(string)
 examplec = (!exampleop .)*;
 @show @highlight(operator)
-exampleop = "====" nle;
+exampleop = "====" nl;
 
-backtick = backtickop backtick_lang backtickc_inj backtickop / backtickop nl backtickc backtickop nle;
+backtick = backtickop backtick_lang nl backtickc_inj backtickop nl followed_by_empty_line / backtickop nl backtickc backtickop nl followed_by_empty_line;
 @show @highlight(preproc) @injection-language
 backtick_lang = (!nl .)+;
 @show @inject
-backtickc_inj = (!backtickop .)*;
+backtickc_inj = (!(backtickop nl) .)*;
 @show @highlight(string)
 backtickc = (!backtickop (separated / .))*;
 @show @highlight(operator)
 backtickop = "```";
 
-literal = (dot_title nl)? litop litc litop;
+literal = (dot_title nl)? litop litc litop followed_by_empty_line;
 @show @highlight(string)
 litc = (!litop .)*;
 @show @highlight(operator)
-litop = "...." nle;
+litop = "...." nl;
 
-quote = (dot_title nl)? qop qc qop;
+quote = (dot_title nl)? qop qc qop followed_by_empty_line;
 @show @highlight(operator)
-qop = "____" nle;
+qop = "____" nl;
 @show @highlight(string)
 qc = (!qop (keyword / .))*;
 
@@ -84,9 +83,9 @@ preindent = nl ws+ (!nl .)* nl;
 operator = ops / table;
 @show @highlight(operator)
 ops = ("*"+ / "."+ / "-"+ / "+"+ / "'''") &stop;
-table = table_border (!table_border table_cell nl?)+ table_border;
+table = table_border (!table_border table_cell nl?)* table_border followed_by_empty_line;
 @show @highlight(operator)
-table_border = "|==" "="* (nl / !.);
+table_border = "|==" "="* nl;
 @show @highlight(operator)
 table_cell_border = "|";
 table_cell = table_cell_border (!(table_cell_border / nl) .)*;

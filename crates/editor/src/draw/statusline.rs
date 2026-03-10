@@ -39,7 +39,7 @@ fn draw_statusline(ctx: &mut DrawContext) -> Statusline {
         left.push_str("* ");
     }
     if buf.read_only {
-        left.push_str("(read-only) ");
+        left.push_str("(RO) ");
     }
 
     let cursor = win.primary_cursor();
@@ -48,13 +48,13 @@ fn draw_statusline(ctx: &mut DrawContext) -> Statusline {
 
     match win.focus() {
         Focus::Filetree => {
-            left = " File browser".to_string();
+            left = " File browser ".to_string();
         }
         Focus::Locations => {
-            left = " Locations".to_string();
+            left = " Locations ".to_string();
         }
         Focus::Snapshots => {
-            left = " Undotree (preview)".to_string();
+            left = " Undotree (preview) ".to_string();
         }
         _ => {}
     }
@@ -69,13 +69,15 @@ fn draw_statusline(ctx: &mut DrawContext) -> Statusline {
         }
 
         if win.macro_record.is_recording() {
-            result.push_str(" REC | ")
+            result.push_str(" Recording macro | ")
         }
+        let language = buf.language.as_ref().map(|lang| lang.as_str()).unwrap_or("no language");
 
         result.push_str(&format!(
-            " {} | {}% ",
+            " {}% │ {} │ {} ",
+            ((cpos as f64 / blen.max(1) as f64) * 100.0).floor(),
+            language,
             win.mode.statusline(),
-            ((cpos as f64 / blen.max(1) as f64) * 100.0).floor()
         ));
 
         result

@@ -1,9 +1,9 @@
 use std::{
-    path::PathBuf,
+    path::{Path, PathBuf},
     sync::atomic::{AtomicU32, Ordering},
 };
 
-use sanedit_core::{Diagnostic, Language};
+use sanedit_core::Diagnostic;
 use sanedit_lsp::{
     LSPClientSender, LSPRequestError, Notification, PositionEncoding, Request, RequestKind,
 };
@@ -15,17 +15,6 @@ use super::{
     Map,
 };
 
-pub(crate) fn get_diagnostics<'a>(
-    buf: &Buffer,
-    language_servers: &'a Map<Language, Lsp>,
-) -> Option<&'a [Diagnostic]> {
-    let lang = buf.language.as_ref()?;
-    let path = buf.path()?;
-    let lsp = language_servers.get(lang)?;
-    let diags = lsp.diagnostics.get(path)?;
-    Some(diags)
-}
-
 /// A way to discard non relevant LSP reponses.
 /// For example if we complete a completion request when the cursor has already
 /// moved, there is no point anymore.
@@ -34,6 +23,12 @@ pub(crate) enum Constraint {
     Buffer(BufferId),
     BufferVersion(u32),
     CursorPosition(u64),
+}
+
+#[derive(Debug)]
+enum DiagnosticList {
+    Resolved(SortedVec<Diagnostic>),
+    Unresolved(Vec<sanedit_lsp::TextDiagnostic>),
 }
 
 /// A handle to send operations to LSP instance.
@@ -54,7 +49,7 @@ pub(crate) struct Lsp {
     request_id: AtomicU32,
 
     /// Diagnostics per file
-    pub diagnostics: Map<PathBuf, SortedVec<Diagnostic>>,
+    diagnostics: Map<PathBuf, DiagnosticList>,
 }
 
 impl Lsp {
@@ -119,5 +114,46 @@ impl Lsp {
             .iter()
             .filter(|(_, (id, _))| id == &client)
             .count()
+    }
+
+    pub fn clear_diagnostics(&mut self) {
+        self.diagnostics.clear();
+    }
+
+    pub fn add_diagnostics(&mut self, path: &Path, diags: Vec<sanedit_lsp::TextDiagnostic>) {
+        self.diagnostics
+            .insert(path.to_path_buf(), DiagnosticList::Unresolved(diags));
+    }
+
+    pub fn diagnostics(&mut self, buf: &Buffer) -> Option<&[Diagnostic]> {
+        let path = buf.path()?;
+        let enc = self.position_encoding()?;
+        let diagnostics = self.diagnostics.get_mut(path)?;
+        if let DiagnosticList::Unresolved(text_diagnostics) = diagnostics {
+            let slice = buf.slice(..);
+            let converted_diags = text_diagnostics
+                .into_iter()
+                .map(|d| {
+                    let start;
+                    let end;
+                    if d.range.start == d.range.end {
+                        start = d.range.start.to_offset(&slice, &enc);
+                        end = start + 1;
+                    } else {
+                        start = d.range.start.to_offset(&slice, &enc);
+                        end = d.range.end.to_offset(&slice, &enc);
+                    }
+                    Diagnostic::new(d.severity, (start..end).into(), d.line, &d.description)
+                })
+                .collect();
+
+            *diagnostics = DiagnosticList::Resolved(converted_diags);
+        }
+
+        if let DiagnosticList::Resolved(diags) = diagnostics {
+            Some(diags.iter().as_slice())
+        } else {
+            None
+        }
     }
 }

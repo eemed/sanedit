@@ -173,10 +173,8 @@ impl LSPJob {
             }
             Response::Notification(notif) => match notif {
                 sanedit_lsp::NotificationResult::Diagnostics {
-                    path,
-                    diagnostics,
-                    ..
-                } => self.handle_diagnostics(editor, self.client_id, path, diagnostics),
+                    path, diagnostics, ..
+                } => self.handle_diagnostics(editor, path, diagnostics),
             },
         }
     }
@@ -280,7 +278,7 @@ impl LSPJob {
                 log::error!("LSP '{}' failed to process: {msg}", self.opts.command);
             }
             RequestResult::Diagnostics { path, diagnostics } => {
-                self.handle_diagnostics(editor, id, path, diagnostics);
+                self.handle_diagnostics(editor, path, diagnostics);
                 on_message_post = false;
             }
             RequestResult::WorkspaceSymbols { symbols } => {
@@ -392,55 +390,11 @@ impl LSPJob {
     fn handle_diagnostics(
         &self,
         editor: &mut Editor,
-        id: ClientId,
         path: PathBuf,
-        // version: Option<i32>,
         diags: Vec<TextDiagnostic>,
     ) {
-        let Some(bid) = editor
-            .buffers()
-            .find(&path)
-            .or_else(|| editor.create_buffer(id, &path).ok())
-        else {
-            return;
-        };
-        // let buf = editor.buffers().get(bid).unwrap();
-
-        // // Ensure not changed
-        // if let Some(version) = version {
-        //     if buf.total_changes_made() != version as u32 {
-        //         return;
-        //     }
-        // }
-
-        let Some(enc) = editor
-            .language_servers
-            .get(&self.language)
-            .and_then(Lsp::position_encoding)
-        else {
-            return;
-        };
-
-        let buf = editor.buffers().get(bid).unwrap();
-        let slice = buf.slice(..);
-        let diagnostics = diags
-            .into_iter()
-            .map(|d| {
-                let start;
-                let end;
-                if d.range.start == d.range.end {
-                    start = d.range.start.to_offset(&slice, &enc);
-                    end = start + 1;
-                } else {
-                    start = d.range.start.to_offset(&slice, &enc);
-                    end = d.range.end.to_offset(&slice, &enc);
-                }
-                Diagnostic::new(d.severity, (start..end).into(), d.line, &d.description)
-            })
-            .collect();
-
-        let lsp = editor.language_servers.get_mut(&self.language).unwrap();
-        lsp.diagnostics.insert(path, diagnostics);
+        let Some(lsp) = editor.language_servers.get_mut(&self.language) else { return; };
+        lsp.add_diagnostics(&path, diags);
     }
 
     fn code_action(&self, editor: &mut Editor, id: ClientId, actions: Vec<CodeAction>) {

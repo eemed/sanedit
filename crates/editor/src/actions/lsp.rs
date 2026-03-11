@@ -9,11 +9,7 @@ use thiserror::Error;
 use sanedit_lsp::{LSPRequestError, Notification, Position, PositionRange, RequestKind, TextEdit};
 
 use crate::editor::{
-    buffers::{Buffer, BufferConfig, BufferId},
-    hooks::Hook,
-    lsp::{get_diagnostics, Constraint, Lsp},
-    windows::{Focus, Prompt, Window},
-    Editor,
+    Editor, buffers::{Buffer, BufferConfig, BufferId}, hooks::Hook, lsp::{Constraint, Lsp}, windows::{Focus, Prompt, Window}
 };
 
 use sanedit_server::ClientId;
@@ -459,7 +455,9 @@ pub(crate) fn show_diagnostics(editor: &mut Editor, id: ClientId) -> ActionResul
     let view = win.view();
     let pos = win.cursors.primary().pos();
     let range = getf!(view.line_at_pos(pos));
-    let diagnostics = getf!(get_diagnostics(buf, &editor.language_servers));
+    let lang = getf!(buf.language.clone());
+    let lsp = getf!(editor.language_servers.get_mut(&lang));
+    let diagnostics = getf!(lsp.diagnostics(buf));
     win.clear_popup();
 
     for diag in diagnostics {
@@ -507,6 +505,7 @@ pub(crate) fn diagnostics_to_locations(editor: &mut Editor, id: ClientId) -> Act
 
     win.locations.clear();
 
+    // TODO resolve all diagnostics
     for (path, diags) in &lsp.diagnostics {
         if diags.is_empty() {
             continue;
@@ -535,9 +534,8 @@ pub(crate) fn diagnostics_to_locations(editor: &mut Editor, id: ClientId) -> Act
 pub(crate) fn next_diagnostic(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = win_buf!(editor, id);
     let lang = getf!(buf.language.clone());
-    let lsp = getf!(editor.language_servers.get(&lang));
-    let path = getf!(buf.path());
-    let diagnostics = getf!(lsp.diagnostics.get(path));
+    let lsp = getf!(editor.language_servers.get_mut(&lang));
+    let diagnostics = getf!(lsp.diagnostics(buf));
 
     let cpos = win.cursors().primary().pos();
     for diag in diagnostics.iter() {
@@ -555,9 +553,8 @@ pub(crate) fn next_diagnostic(editor: &mut Editor, id: ClientId) -> ActionResult
 pub(crate) fn prev_diagnostic(editor: &mut Editor, id: ClientId) -> ActionResult {
     let (win, buf) = win_buf!(editor, id);
     let lang = getf!(buf.language.clone());
-    let lsp = getf!(editor.language_servers.get(&lang));
-    let path = getf!(buf.path());
-    let diagnostics = getf!(lsp.diagnostics.get(path));
+    let lsp = getf!(editor.language_servers.get_mut(&lang));
+    let diagnostics = getf!(lsp.diagnostics(buf));
 
     let cpos = win.cursors().primary().pos();
     for diag in diagnostics.iter().rev() {

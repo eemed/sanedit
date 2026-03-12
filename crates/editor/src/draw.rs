@@ -32,7 +32,7 @@ pub(crate) struct EditorContext<'a> {
     pub(crate) theme: &'a Theme,
     pub(crate) working_dir: &'a Path,
     pub(crate) filetree: &'a Filetree,
-    pub(crate) language_servers: &'a Map<Language, Lsp>,
+    pub(crate) language_servers: &'a mut Map<Language, Lsp>,
 }
 
 pub(crate) struct DrawContext<'a, 'b> {

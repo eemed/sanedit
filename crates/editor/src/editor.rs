@@ -428,7 +428,7 @@ impl Editor {
             theme,
             working_dir: &self.working_dir,
             filetree: &self.filetree,
-            language_servers: &self.language_servers,
+            language_servers: &mut self.language_servers,
         }
     }
 
@@ -700,7 +700,7 @@ impl Editor {
             theme,
             working_dir: &self.working_dir,
             filetree: &self.filetree,
-            language_servers: &self.language_servers,
+            language_servers: &mut self.language_servers,
         };
 
         let messages = draw.redraw(ctx);

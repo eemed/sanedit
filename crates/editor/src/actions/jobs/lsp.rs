@@ -27,7 +27,7 @@ use crate::{
 };
 use sanedit_buffer::{PieceTree, PieceTreeSlice};
 use sanedit_core::{
-    prev_non_word, Change, Changes, Cursor, Diagnostic, GraphemeCategory, Group, Item, Language,
+    prev_non_word, Change, Changes, Cursor, GraphemeCategory, Group, Item, Language,
     Range,
 };
 use sanedit_lsp::{

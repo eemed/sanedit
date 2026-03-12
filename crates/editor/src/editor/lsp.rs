@@ -116,13 +116,20 @@ impl Lsp {
             .count()
     }
 
-    pub fn clear_diagnostics(&mut self) {
-        self.diagnostics.clear();
-    }
+    // pub fn clear_diagnostics(&mut self) {
+    //     self.diagnostics.clear();
+    // }
 
     pub fn add_diagnostics(&mut self, path: &Path, diags: Vec<sanedit_lsp::TextDiagnostic>) {
         self.diagnostics
             .insert(path.to_path_buf(), DiagnosticList::Unresolved(diags));
+    }
+
+    pub fn diagnostic_paths(&self) -> Vec<PathBuf> {
+        self.diagnostics
+            .keys()
+            .map(|key| key.to_path_buf())
+            .collect()
     }
 
     pub fn diagnostics(&mut self, buf: &Buffer) -> Option<&[Diagnostic]> {

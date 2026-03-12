@@ -13,7 +13,6 @@ use sanedit_utils::{either::Either, sorted_vec::SortedVec};
 
 use crate::editor::{
     buffers::Buffer,
-    lsp::get_diagnostics,
     windows::{Cell, Cursors, Focus, Mode, View},
 };
 
@@ -54,11 +53,7 @@ fn calculate_message(
 
 pub(crate) fn draw(ctx: &mut DrawContext) -> Option<FromEditorSharedMessage> {
     let EditorContext {
-        win,
-        theme,
-        buf,
-        language_servers,
-        ..
+        win, theme, buf, ..
     } = ctx.editor;
 
     let Ok(mut window_buffer) = ctx.state.window_buffer.recv() else {
@@ -126,7 +121,10 @@ pub(crate) fn draw(ctx: &mut DrawContext) -> Option<FromEditorSharedMessage> {
     let focus_on_win = win.focus() == Focus::Window;
     let cursors = win.cursors();
     let diagnostics = if win.config.highlight_diagnostics {
-        get_diagnostics(buf, language_servers)
+        buf.language
+            .as_ref()
+            .and_then(|lang| ctx.editor.language_servers.get_mut(lang))
+            .and_then(|lsp| lsp.diagnostics(buf))
     } else {
         None
     };

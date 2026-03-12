@@ -9,7 +9,11 @@ use thiserror::Error;
 use sanedit_lsp::{LSPRequestError, Notification, Position, PositionRange, RequestKind, TextEdit};
 
 use crate::editor::{
-    Editor, buffers::{Buffer, BufferConfig, BufferId}, hooks::Hook, lsp::{Constraint, Lsp}, windows::{Focus, Prompt, Window}
+    buffers::{Buffer, BufferConfig, BufferId},
+    hooks::Hook,
+    lsp::{Constraint, Lsp},
+    windows::{Focus, Prompt, Window},
+    Editor,
 };
 
 use sanedit_server::ClientId;
@@ -505,24 +509,38 @@ pub(crate) fn diagnostics_to_locations(editor: &mut Editor, id: ClientId) -> Act
 
     win.locations.clear();
 
-    // TODO resolve all diagnostics
-    for (path, diags) in &lsp.diagnostics {
-        if diags.is_empty() {
+    let paths: Vec<PathBuf> = lsp
+        .diagnostic_paths();
+    for path in paths {
+        let Some(bid) = editor
+            .buffers
+            .find(&path)
+            .or_else(|| editor.create_buffer(id, &path).ok())
+        else {
             continue;
+        };
+        let Some(buf) = editor.buffers.get(bid) else {
+            continue;
+        };
+
+        let mut group = Group::new(&path);
+        let lsp = getf!(editor.language_servers.get_mut(&lang));
+        if let Some(diags) = lsp.diagnostics(buf) {
+            for diag in diags {
+                let item = Item::new(
+                    diag.description(),
+                    Some(diag.line()),
+                    Some(diag.range().start),
+                    vec![],
+                );
+                group.push(item);
+            }
         }
-        let mut group = Group::new(path);
-        for diag in diags.iter() {
-            let item = Item::new(
-                diag.description(),
-                Some(diag.line()),
-                Some(diag.range().start),
-                vec![],
-            );
-            group.push(item);
-        }
+        let (win, _buf) = win_buf!(editor, id);
         win.locations.push(group);
     }
 
+    let (win, _buf) = win_buf!(editor, id);
     win.locations.extra.show = true;
     win.locations.extra.title = "LSP diagnostics".to_string();
     focus(editor, id, Focus::Locations);
